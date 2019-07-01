@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -39,6 +32,7 @@ module dispatch_mci_uti
   use iso_varying_string, string_t => varying_string
   use variables
   use mci_base
+  use mci_none
   use mci_midpoint
   use mci_vamp
   use dispatch_mci
@@ -64,6 +58,22 @@ contains
 
     process_id = "dispatch_mci_1"
 
+    write (u, "(A)")  "* Allocate MCI as none_t"
+    write (u, "(A)")
+
+    call var_list%set_string (&
+         var_str ("$integration_method"), &
+         var_str ("none"), is_known = .true.)
+    call dispatch_mci_s (mci, var_list, process_id)
+    select type (mci)
+    type is (mci_none_t)
+       call mci%write (u)
+    end select
+
+    call mci%final ()
+    deallocate (mci)
+
+    write (u, "(A)")
     write (u, "(A)")  "* Allocate MCI as midpoint_t"
     write (u, "(A)")
 

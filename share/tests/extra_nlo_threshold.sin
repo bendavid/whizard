@@ -86,7 +86,7 @@ printf "signal: %g +- %g" (integral(extra_nlo_threshold_signal),
 !FF = 9                   ! FF = 1
 !offshell_strategy = -4
 
-!process extra_nlo_threshold_p5 = e1, E1 => Wp, Wm, b, B {nlo_calculation = "Full"}
+!process extra_nlo_threshold_p5 = e1, E1 => Wp, Wm, b, B { nlo_calculation = full }
 !integrate (extra_nlo_threshold_p5)
 
 !model = SM

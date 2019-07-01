@@ -15,12 +15,17 @@ bindir=@bindir@
 # part of a Fortran module name (no '-'s in particular...)
 libname="`echo $basename | sed s/[^A-Za-z0-9_]/_/g`"
 
+mpirun=
+if test -f MPI_FLAG; then
+    mpirun="mpirun -np 1"
+fi
+
 # Run either the local version or the installed version of WHIZARD
 export OMP_NUM_THREADS
 OMP_NUM_THREADS=1
 if test -f TESTFLAG; then
   @DYLD_FLAGS@
-  ../../src/whizard --logfile $basename.log --no-banner --library ${libname}_lib --rebuild $* $script.sin
+  $mpirun ../../src/whizard --logfile $basename.log --no-banner --library ${libname}_lib --rebuild $* $script.sin
 else
-  $bindir/whizard --logfile $basename.log --no-banner --library ${libname}_lib --rebuild $* $script.sin
+  $mpirun $bindir/whizard --logfile $basename.log --no-banner --library ${libname}_lib --rebuild $* $script.sin
 fi

@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -42,7 +35,7 @@ module rt_data_uti
   use lexers
   use parser
   use flavors
-  use variables, only: var_list_t
+  use variables, only: var_list_t, var_entry_t, var_entry_init_int
   use eval_trees
   use models
   use prclib_stacks
@@ -61,35 +54,9 @@ module rt_data_uti
   public :: rt_data_7
   public :: rt_data_8
   public :: rt_data_9
+  public :: rt_data_10
 
 contains
-
-  subroutine fix_system_dependencies (global)
-    class(rt_data_t), intent(inout), target :: global
-    type(var_list_t), pointer :: var_list
-
-    var_list => global%get_var_list_ptr ()
-    call var_list%set_log (var_str ("?omega_openmp"), &
-         .false., is_known = .true., force=.true.)
-    call var_list%set_log (var_str ("?openmp_is_active"), &
-         .false., is_known = .true., force=.true.)
-    call var_list%set_int (var_str ("openmp_num_threads_default"), &
-         1, is_known = .true., force=.true.)
-    call var_list%set_int (var_str ("openmp_num_threads"), &
-         1, is_known = .true., force=.true.)
-    call var_list%set_int (var_str ("real_range"), &
-         307, is_known = .true., force=.true.)
-    call var_list%set_int (var_str ("real_precision"), &
-         15, is_known = .true., force=.true.)
-    call var_list%set_real (var_str ("real_epsilon"), &
-         1.e-16_default, is_known = .true., force=.true.)
-    call var_list%set_real (var_str ("real_tiny"), &
-         1.e-300_default, is_known = .true., force=.true.)
-
-    global%os_data%fc = "Fortran-compiler"
-    global%os_data%fcflags = "Fortran-flags"
-
-  end subroutine fix_system_dependencies
 
   function is_stable (pdg, global) result (flag)
     integer, intent(in) :: pdg
@@ -529,9 +496,9 @@ contains
     call global%process_stack%init_result_vars (var_str ("testproc"))
 
     call global%var_list%write_var (&
-         var_str ("integral(testproc)"), u)
+         var_str ("integral(testproc)"), u, defined=.true.)
     call global%var_list%write_var (&
-         var_str ("error(testproc)"), u)
+         var_str ("error(testproc)"), u, defined=.true.)
 
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
@@ -597,12 +564,12 @@ contains
 
     var_list => global%get_var_list_ptr ()
 
-    call var_list%write_var (var_str ("sqrts"), u)
-    call var_list%write_var (var_str ("luminosity"), u)
-    call var_list%write_var (var_str ("ff"), u)
-    call var_list%write_var (var_str ("gy"), u)
-    call var_list%write_var (var_str ("mf"), u)
-    call var_list%write_var (var_str ("x"), u)
+    call var_list%write_var (var_str ("sqrts"), u, defined=.true.)
+    call var_list%write_var (var_str ("luminosity"), u, defined=.true.)
+    call var_list%write_var (var_str ("ff"), u, defined=.true.)
+    call var_list%write_var (var_str ("gy"), u, defined=.true.)
+    call var_list%write_var (var_str ("mf"), u, defined=.true.)
+    call var_list%write_var (var_str ("x"), u, defined=.true.)
 
     write (u, "(A)")
 
@@ -637,7 +604,7 @@ contains
     call var_list%write_var (var_str ("ff"), u)
     call var_list%write_var (var_str ("gy"), u)
     call var_list%write_var (var_str ("mf"), u)
-    call var_list%write_var (var_str ("x"), u)
+    call var_list%write_var (var_str ("x"), u, defined=.true.)
 
     write (u, "(A)")
 
@@ -669,7 +636,7 @@ contains
     call var_list%write_var (var_str ("ff"), u)
     call var_list%write_var (var_str ("gy"), u)
     call var_list%write_var (var_str ("mf"), u)
-    call var_list%write_var (var_str ("x"), u)
+    call var_list%write_var (var_str ("x"), u, defined=.true.)
 
     write (u, "(A)")
 
@@ -699,7 +666,7 @@ contains
     call var_list%write_var (var_str ("ff"), u)
     call var_list%write_var (var_str ("gy"), u)
     call var_list%write_var (var_str ("mf"), u)
-    call var_list%write_var (var_str ("x"), u)
+    call var_list%write_var (var_str ("x"), u, defined=.true.)
 
     write (u, "(A)")
 
@@ -728,6 +695,47 @@ contains
     write (u, "(A)")  "* Test output end: rt_data_9"
 
   end subroutine rt_data_9
+
+  subroutine rt_data_10 (u)
+    integer, intent(in) :: u
+    type(rt_data_t) :: global
+    ! type(var_list_t) :: var_list
+    write (u, "(A)")  "* Test output: rt_data_10"
+    write (u, "(A)")  "*   Purpose: display descriptions"
+    write (u, "(A)")
+
+    call global%var_list%append_real (var_str ("sqrts"), &
+          intrinsic=.true., &
+          description=var_str ('Real variable in order to set the center-of-mass ' // &
+          'energy for the collisions.'))
+    call global%var_list%append_real (var_str ("luminosity"), 0._default, &
+          intrinsic=.true., &
+          description=var_str ('This specifier \ttt{luminosity = {\em ' // &
+          '<num>}} sets the integrated luminosity (in inverse femtobarns, ' // &
+          'fb${}^{-1}$) for the event generation of the processes in the ' // &
+          '\sindarin\ input files.'))
+    call global%var_list%append_int (var_str ("seed"), 1234, &
+          intrinsic=.true., &
+          description=var_str ('Integer variable \ttt{seed = {\em <num>}} ' // &
+          'that allows to set a specific random seed \ttt{num}.'))
+    call global%var_list%append_string (var_str ("$method"), var_str ("omega"), &
+         intrinsic=.true., &
+         description=var_str ('This string variable specifies the method ' // &
+         'for the matrix elements to be used in the evaluation.'))
+    call global%var_list%append_log (var_str ("?read_color_factors"), .true., &
+          intrinsic=.true., &
+          description=var_str ('This flag decides whether to read QCD ' // &
+          'color factors from the matrix element provided by each method, ' // &
+          'or to try and calculate the color factors in \whizard\ internally.'))
+
+    call global%var_list%sort ()
+
+    call global%write_var_descriptions (u)
+    call global%final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: rt_data_10"
+  end subroutine rt_data_10
 
 
 end module rt_data_uti

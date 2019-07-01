@@ -8,7 +8,8 @@
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
-#     Christian Speckner <cnspeckn@googlemail.com>
+#     with contributions from
+#     cf. main AUTHORS file
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by
@@ -49,9 +50,9 @@ OMEGA_SM_CKM = $(top_builddir)/omega/bin/omega_SM_CKM$(OCAML_NATIVE_EXT)
 
 OMEGA_SM_Higgs = $(top_builddir)/omega/bin/omega_SM_Higgs$(OCAML_NATIVE_EXT)
 
-OMEGA_2HDM = $(top_builddir)/omega/bin/omega_2HDM$(OCAML_NATIVE_EXT)
+OMEGA_THDM = $(top_builddir)/omega/bin/omega_THDM$(OCAML_NATIVE_EXT)
 
-OMEGA_2HDM_CKM = $(top_builddir)/omega/bin/omega_2HDM_CKM$(OCAML_NATIVE_EXT)
+OMEGA_THDM_CKM = $(top_builddir)/omega/bin/omega_THDM_CKM$(OCAML_NATIVE_EXT)
 
 OMEGA_HSExt = $(top_builddir)/omega/bin/omega_HSExt$(OCAML_NATIVE_EXT)
 
@@ -72,8 +73,8 @@ OMEGA_QED_VM = $(top_builddir)/omega/bin/omega_QED_VM$(OCAML_NATIVE_EXT)
 OMEGA_QCD_VM = $(top_builddir)/omega/bin/omega_QCD_VM$(OCAML_NATIVE_EXT)
 OMEGA_SM_VM = $(top_builddir)/omega/bin/omega_SM_VM$(OCAML_NATIVE_EXT)
 OMEGA_SM_CKM_VM = $(top_builddir)/omega/bin/omega_SM_CKM_VM$(OCAML_NATIVE_EXT)
-OMEGA_2HDM_VM = $(top_builddir)/omega/bin/omega_2HDM_VM$(OCAML_NATIVE_EXT)
-OMEGA_2HDM_CKM_VM = $(top_builddir)/omega/bin/omega_2HDM_CKM_VM$(OCAML_NATIVE_EXT)
+OMEGA_THDM_VM = $(top_builddir)/omega/bin/omega_THDM_VM$(OCAML_NATIVE_EXT)
+OMEGA_THDM_CKM_VM = $(top_builddir)/omega/bin/omega_THDM_CKM_VM$(OCAML_NATIVE_EXT)
 OMEGA_HSExt_VM = $(top_builddir)/omega/bin/omega_HSExt_VM$(OCAML_NATIVE_EXT)
 OMEGA_Zprime_VM = $(top_builddir)/omega/bin/omega_Zprime_VM$(OCAML_NATIVE_EXT)
 OMEGA_SM_Higgs_VM = $(top_builddir)/omega/bin/omega_SM_Higgs_VM$(OCAML_NATIVE_EXT)
@@ -90,6 +91,8 @@ AM_LDFLAGS =
 ## OpenMP
 if FC_USE_OPENMP
 AM_FCFLAGS += $(FCFLAGS_OPENMP)
+AM_TESTS_ENVIRONMENT = \
+	export OMP_NUM_THREADS=1;
 endif
 
 ########################################################################
@@ -115,11 +118,11 @@ EXTRA_PROGRAMS += omega_unit
 omega_unit_SOURCES = omega_unit.ml
 
 omega_unit: $(OMEGA_CORE) omega_unit.cmx
-	$(OCAMLOPT) $(OCAMLFLAGS) $(OCAMLOPTFLAGS) -o omega_unit \
+	@if $(AM_V_P); then :; else echo "  OCAMLOPT " $@; fi
+	$(AM_V_at)$(OCAMLOPT) $(OCAMLFLAGS) $(OCAMLOPTFLAGS) -o omega_unit \
 		unix.cmxa $(OMEGA_CORE) omega_unit.cmx
 
 omega_unit.cmx: omega_unit.ml
-	$(OCAMLOPT) $(OCAMLFLAGS) $(OCAMLOPTFLAGS) -c -o $@ $<
 
 omega_unit.cmx: $(OMEGA_CORE)
 
@@ -186,7 +189,9 @@ EXTRA_DIST += ects_driver.sh $(EXTENDED_COLOR_TESTS)
 
 ects.f90: $(OMEGA_QCD) $(OMEGA_SYM) $(OMEGA_SM)
 ects.f90: ects_driver.sh $(EXTENDED_COLOR_TESTS)
-	$(SHELL) $(srcdir)/ects_driver.sh $(OMEGA_XXX) $(EXTENDED_COLOR_TESTS) > $@
+	@if $(AM_V_P); then :; else echo "  ECTS_DRIVER"; fi
+	$(AM_V_at)$(SHELL) $(srcdir)/ects_driver.sh \
+		$(OMEGA_XXX) $(EXTENDED_COLOR_TESTS) > $@
 
 ects_SOURCES = color_test_lib.f90 \
 	parameters_SM.f90 parameters_QED.f90 parameters_QCD.f90 parameters_SYM.f90
@@ -215,6 +220,22 @@ EXTRA_DIST += cascade_driver.sh $(CASCADE_TESTS)
 
 ########################################################################
 
+TESTS += phase_space
+
+PHASE_SPACE_TESTS = eeee.phs qqggg.phs
+
+phase_space: phase_space_driver.sh Makefile
+	$(SED) -e 's|%%phase_space_tests%%|$(PHASE_SPACE_TESTS)|' \
+	  -e 's|%%srcdir%%|$(srcdir)|' \
+	  -e 's|%%SED%%|$(SED)|' \
+	  -e 's|%%top_builddir%%|$(top_builddir)|' \
+	  -e 's|%%OCAML_NATIVE_EXT%%|$(OCAML_NATIVE_EXT)|' $< >$@
+	chmod +x $@
+
+EXTRA_DIST += phase_space_driver.sh $(PHASE_SPACE_TESTS)
+
+########################################################################
+
 TESTS += ward
 EXTRA_PROGRAMS += ward
 EXTRA_DIST += ward_driver.sh
@@ -236,7 +257,9 @@ run_ward: ward
 ward.f90: ward_driver.sh $(OMEGA_QED) $(OMEGA_QCD) $(OMEGA_SYM)
 ward.f90: $(OMEGA_SM) $(OMEGA_SM_top_anom)
 ward.f90: ward_identities.list
-	$(SHELL) $(srcdir)/ward_driver.sh $(OMEGA_XXX) $(OMEGA_SPLIT) < $< > $@
+	@if $(AM_V_P); then :; else echo "  WARD_DRIVER"; fi
+	$(AM_V_at)$(SHELL) $(srcdir)/ward_driver.sh \
+		$(OMEGA_XXX) $(OMEGA_SPLIT) < $< > $@
 
 ward_SOURCES = $(WARD_LIB_F90)
 nodist_ward_SOURCES = ward.f90
@@ -254,7 +277,9 @@ run_ward_long: ward_long
 
 ward_long.f90: ward_driver.sh
 ward_long.f90: ward_identities_long.list
-	$(SHELL) $(srcdir)/ward_driver.sh $(OMEGA_XXX) $(OMEGA_SPLIT) < $< > $@
+	@if $(AM_V_P); then :; else echo "  WARD_DRIVER"; fi
+	$(AM_V_at)$(SHELL) $(srcdir)/ward_driver.sh \
+		$(OMEGA_XXX) $(OMEGA_SPLIT) < $< > $@
 
 ward_long_SOURCES = $(WARD_LIB_F90)
 nodist_ward_long_SOURCES = ward_long.f90
@@ -275,7 +300,9 @@ run_ward_fail: ward_fail
 
 ward_fail.f90: ward_driver.sh
 ward_fail.f90: ward_identities_fail.list
-	$(SHELL) $(srcdir)/ward_driver.sh $(OMEGA_XXX) $(OMEGA_SPLIT) < $< > $@
+	@if $(AM_V_P); then :; else echo "  WARD_DRIVER"; fi
+	$(AM_V_at)$(SHELL) $(srcdir)/ward_driver.sh \
+		$(OMEGA_XXX) $(OMEGA_SPLIT) < $< > $@
 
 ward_fail_SOURCES = $(WARD_LIB_F90)
 nodist_ward_fail_SOURCES = ward_fail.f90
@@ -305,12 +332,14 @@ run_compare: compare_split_function compare_split_module
 	./compare_split_module
 
 compare_split_function.f90: comparisons.list
-	$(SHELL) $(srcdir)/compare_driver.sh SF \
+	@if $(AM_V_P); then :; else echo "  COMPARE_DRIVER"; fi
+	$(AM_V_at)$(SHELL) $(srcdir)/compare_driver.sh SF \
 	"$(OMEGA_XXX) -target:single_function" \
 	"$(OMEGA_XXX) -target:split_function 10" < $< > $@
 
 compare_split_module.f90: comparisons.list
-	$(SHELL) $(srcdir)/compare_driver.sh SM \
+	@if $(AM_V_P); then :; else echo "  COMPARE_DRIVER"; fi
+	$(AM_V_at)$(SHELL) $(srcdir)/compare_driver.sh SM \
 	"$(OMEGA_XXX) -target:single_function" \
 	"$(OMEGA_XXX) -target:split_module 10" < $< > $@
 
@@ -340,7 +369,8 @@ compare_amplitude_UFO_SOURCES = \
 	compare_lib.f90 omega_testtools.f90 tao_random_numbers.f90
 
 compare_amplitude_UFO.f90: comparisons_UFO.list compare_driver_UFO.sh $(OMEGA_UFO)
-	$(SHELL) $(srcdir)/compare_driver_UFO.sh UFO \
+	@if $(AM_V_P); then :; else echo "  COMPARE_DRIVER_UFO"; fi
+	$(AM_V_at)$(SHELL) $(srcdir)/compare_driver_UFO.sh UFO \
 	  "$(OMEGA_XXX) -model:constant_width" \
 	  "$(OMEGA_UFO) -model:UFO_dir $(top_srcdir)/omega/tests/UFO/%%%/ -model:exec " \
 		< $< > $@
@@ -366,27 +396,29 @@ EXTRA_DIST += compare_driver_VM.sh compare_driver_VM_wrappers.sh
 EXTRA_DIST += comparisons_VM.list
 
 compare_amplitude_VM.f90: comparisons_VM.list comparisons_VM.wrappers.o
-	$(SHELL) $(srcdir)/compare_driver_VM.sh \
+	@if $(AM_V_P); then :; else echo "  COMPARE_DRIVER_VM"; fi
+	$(AM_V_at)$(SHELL) $(srcdir)/compare_driver_VM.sh \
 	"$(OMEGA_XXX) " "$(OMEGA_XXX_VM) " "$(OMEGA_XXX_VM_PARAMS_OPTS)" < $< > $@
 
 comparisons_VM.wrappers.f90: comparisons_VM.list
-	$(SHELL) $(srcdir)/compare_driver_VM_wrappers.sh \
+	@if $(AM_V_P); then :; else echo "  COMPARE_DRIVER_VM_WRAPPERS"; fi
+	$(AM_V_at)$(SHELL) $(srcdir)/compare_driver_VM_wrappers.sh \
 	"$(OMEGA_XXX) " "$(OMEGA_XXX_VM) " "$(OMEGA_XXX_VM_PARAMS_OPTS)" < $< > $@
 
 # Explicitly state dependence on model files
-compare_amplitude_VM.f90: compare_driver_VM.sh                   \
+compare_amplitude_VM.f90: compare_driver_VM.sh \
 	$(OMEGA_QED)      $(OMEGA_QED_VM)      \
 	$(OMEGA_QCD)      $(OMEGA_QCD_VM)      \
 	$(OMEGA_SM)       $(OMEGA_SM_VM)       \
 	$(OMEGA_SM_CKM)   $(OMEGA_SM_CKM_VM)   \
 	$(OMEGA_SM_Higgs) $(OMEGA_SM_Higgs_VM) \
-	$(OMEGA_2HDM)     $(OMEGA_2HDM_VM)     \
-	$(OMEGA_2HDM_CKM) $(OMEGA_2HDM_CKM_VM) \
+	$(OMEGA_THDM)     $(OMEGA_THDM_VM)     \
+	$(OMEGA_THDM_CKM) $(OMEGA_THDM_CKM_VM) \
 	$(OMEGA_HSExt)    $(OMEGA_HSExt_VM)    \
 	$(OMEGA_Zprime)   $(OMEGA_Zprime_VM)   
 
 COMPARE_EXTRA_MODELS = parameters_SM_CKM.f90 parameters_SM_Higgs.f90 \
-	parameters_2HDM.f90 parameters_2HDM_CKM.f90 parameters_HSExt.f90 \
+	parameters_THDM.f90 parameters_THDM_CKM.f90 parameters_HSExt.f90 \
 	parameters_Zprime.f90
 compare_amplitude_VM_SOURCES = $(COMPARE_LIB_F90) $(COMPARE_EXTRA_MODELS)
 nodist_compare_amplitude_VM_SOURCES = compare_amplitude_VM.f90 comparisons_VM.wrappers.f90
@@ -427,11 +459,13 @@ BENCHMARK_LIB_F90 = benchmark_lib.f90 $(WARD_SUPPORT_F90)
 BENCHMARK_LIB_O = $(BENCHMARK_LIB_F90:.f90=.o)
 
 benchmark_VM_vs_Fortran.f90: benchmark_processes.list benchmark_processes.wrappers.o
-	$(SHELL) $(srcdir)/benchmark_VM_vs_Fortran_driver.sh \
+	@if $(AM_V_P); then :; else echo "  BENCHMARK_VM_DRIVER"; fi
+	$(AM_V_at)$(SHELL) $(srcdir)/benchmark_VM_vs_Fortran_driver.sh \
 	"$(OMEGA_XXX) " "$(OMEGA_XXX_VM) " "$(OMEGA_XXX_VM_PARAMS_OPTS)" < $< > $@
 
 benchmark_processes.wrappers.f90: benchmark_processes.list
-	$(SHELL) $(srcdir)/benchmark_driver_wrappers.sh \
+	@if $(AM_V_P); then :; else echo "  BENCHMARK_DRIVER_WRAPPERS"; fi
+	$(AM_V_at)$(SHELL) $(srcdir)/benchmark_driver_wrappers.sh \
 	"$(OMEGA_XXX) " "$(OMEGA_XXX_VM) " "$(OMEGA_XXX_VM_PARAMS_OPTS)" < $< > $@
 
 # Explicitly state dependence on model files
@@ -453,7 +487,8 @@ if FC_USE_OPENMP
 EXTRA_PROGRAMS += benchmark_amp_parallel
 
 benchmark_amp_parallel.f90: benchmark_processes.list benchmark_processes.wrappers.o
-	$(SHELL) $(srcdir)/benchmark_amp_parallel_driver.sh \
+	@if $(AM_V_P); then :; else echo "  BENCHMARK_PARALLEL_DRIVER"; fi
+	$(AM_V_at)$(SHELL) $(srcdir)/benchmark_amp_parallel_driver.sh \
 	"$(OMEGA_XXX) " "$(OMEGA_XXX_VM) " "$(OMEGA_XXX_VM_PARAMS_OPTS)" < $< > $@
 
 # Explicitly state dependence on model files
@@ -518,11 +553,11 @@ EXTRA_PROGRAMS += vertex_unit
 vertex_unit_SOURCES = vertex_unit.ml
 
 vertex_unit: $(OMEGA_CORE) vertex_unit.cmx
-	$(OCAMLOPT) $(OCAMLFLAGS) $(OCAMLOPTFLAGS) -o vertex_unit \
+	@if $(AM_V_P); then :; else echo "  OCAMLOPT " $@; fi
+	$(AM_V_at)$(OCAMLOPT) $(OCAMLFLAGS) $(OCAMLOPTFLAGS) -o vertex_unit \
 		unix.cmxa $(OMEGA_CORE) $(OMEGA_MODELS) vertex_unit.cmx
 
 vertex_unit.cmx: vertex_unit.ml
-	$(OCAMLOPT) $(OCAMLFLAGS) $(OCAMLOPTFLAGS) -c -o $@ $<
 
 vertex_unit.cmx: $(OMEGA_CORE) $(OMEGA_MODELS)
 
@@ -535,11 +570,11 @@ EXTRA_PROGRAMS += ufo_unit
 ufo_unit_SOURCES = ufo_unit.ml
 
 ufo_unit: $(OMEGA_CORE) ufo_unit.cmx
-	$(OCAMLOPT) $(OCAMLFLAGS) $(OCAMLOPTFLAGS) -o ufo_unit \
+	@if $(AM_V_P); then :; else echo "  OCAMLOPT " $@; fi
+	$(AM_V_at)$(OCAMLOPT) $(OCAMLFLAGS) $(OCAMLOPTFLAGS) -o ufo_unit \
 		unix.cmxa $(OMEGA_CORE) $(OMEGA_MODELS) ufo_unit.cmx
 
 ufo_unit.cmx: ufo_unit.ml
-	$(OCAMLOPT) $(OCAMLFLAGS) $(OCAMLOPTFLAGS) -c -o $@ $<
 
 ufo_unit.cmx: $(OMEGA_CORE) $(OMEGA_MODELS)
 
@@ -581,7 +616,7 @@ clean-local: clean-macosx
 		$(EXTRA_PROGRAMS) ects.f90 ward.f90 compare_*.f90 \
 		parameters_SM_UFO.f90 \
 		omega_testtools.f90 test_omega95*.f90 benchmark*.f90 \
-		*.hbc *wrappers.f90 cascade
+		*.hbc *wrappers.f90 cascade phase_space
 if FC_SUBMODULES
 	-rm -f *.smod
 endif

@@ -7,8 +7,9 @@ edge[color=gray50]
 eio_ascii -> hep_common
 eio_callback -> eio_base
 eio_lhef -> event_base
-eio_callback -> event_base
 eio_lcio -> hep_events
+eio_direct -> event_base
+eio_callback -> event_base
 eio_ascii -> eio_base
 eio_weights -> event_base
 eio_lhef -> hep_common
@@ -21,12 +22,13 @@ eio_stdhep -> eio_data
 eio_hepmc -> eio_base
 hep_events -> hepmc_interface
 eio_checkpoints -> eio_base
+eio_direct -> eio_data
 eio_ascii -> event_base
 eio_lhef -> eio_base
 eio_lhef -> hep_events
 hep_events -> event_base
 eio_lhef -> eio_data
-eio_dump -> eio_base
+eio_base -> eio_data
 eio_hepmc -> hep_events
 eio_lcio -> event_base
 eio_checkpoints -> eio_data
@@ -43,8 +45,9 @@ eio_stdhep -> event_base
 eio_lcio -> eio_data
 eio_dump -> event_base
 eio_stdhep -> hep_common
+eio_direct -> eio_base
 eio_stdhep -> eio_base
-eio_base -> eio_data
+eio_dump -> eio_base
 eio_weights -> eio_data
 eio_hepmc -> eio_data
 eio_lcio -> lcio_interface

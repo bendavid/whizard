@@ -2466,7 +2466,7 @@ pure function pr_unitarity (p, m, w, cms, e) result (pe)
   complex(kind=default) :: c_mass2
   pv = p
   if (cms) then
-     c_mass2 = cmplx (m**2, -m*w)
+     c_mass2 = cmplx (m**2, -m*w, kind=default)
   else
      c_mass2 = m**2
   end if
@@ -10883,7 +10883,7 @@ program test_omega95_bispinors
   end do
   do i = 2, 3
      do j = 1, 4
-        testv%psi(i)%a(j) = cmplx (10.0_default * r(j))
+        testv%psi(i)%a(j) = cmplx (10.0_default * r(j), kind=default)
     end do
   end do
   testv%psi(4)%a(1) = (1.0_default, 0.0_default)

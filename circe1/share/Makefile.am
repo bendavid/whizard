@@ -1,12 +1,12 @@
 # Makefile.am --
-# $Id: Makefile.am 314 2010-04-17 20:32:33Z ohl $
 ########################################################################
 #
 # Copyright (C) 1999-2017 by 
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
-#     Christian Speckner <cnspeckn@googlemail.com>
+#     with contributions from
+#     cf. main AUTHORS file
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by 

@@ -77,16 +77,16 @@ eeuu    0.60  1E-15   200   10000  Zprime   scatter e+ e- -> u ubar
 Zhuub   0.60  1E-15   200   10000  Zprime   decay Zh -> u ubar
 ZhddbA  0.60  1E-15   200   10000  Zprime   decay Zh -> d dbar A
 
-# Check 2HDM
-eeWW    0.60  1E-15   200   10000  2HDM     scatter e+ e- -> W+ W-
-eeWWx   0.60  1E-15   200   10000  2HDM     scatter e+ W- -> e+ W-
-eeZZ    0.60  1E-15   200   10000  2HDM     scatter e+ e- -> Z Z
-eehH    0.60  1E-15   200   10000  2HDM     scatter e+ e- -> h0 H0
-eehA    0.60  1E-15   200   10000  2HDM     scatter e+ e- -> h0 A0
-WWZZZ   0.30  1E-12   200   10000  2HDM     scatter W+ W- -> Z Z Z
+# Check THDM
+eeWW    0.60  1E-15   200   10000  THDM     scatter e+ e- -> W+ W-
+eeWWx   0.60  1E-15   200   10000  THDM     scatter e+ W- -> e+ W-
+eeZZ    0.60  1E-15   200   10000  THDM     scatter e+ e- -> Z Z
+eehH    0.60  1E-15   200   10000  THDM     scatter e+ e- -> h0 H0
+eehA    0.60  1E-15   200   10000  THDM     scatter e+ e- -> h0 A0
+WWZZZ   0.30  1E-12   200   10000  THDM     scatter W+ W- -> Z Z Z
 
-# Check 2HDM_CKM
-utbdbb  0.60  1E-15   1     1000   2HDM_CKM scatter u tbar -> d bbar
+# Check THDM_CKM
+utbdbb  0.60  1E-15   1     1000   THDM_CKM scatter u tbar -> d bbar
 
 # Check HSExt
 ttbS    0.60  1E-15   1     1000   HSExt    scatter t tbar -> S

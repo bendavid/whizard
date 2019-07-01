@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -44,7 +37,7 @@ module radiation_generator
   use flavors
   use model_data
   use auto_components
-  use string_utils, only: split_string
+  use string_utils, only: split_string, string_contains_word
 
   implicit none
   private
@@ -417,7 +410,6 @@ contains
     integer, dimension(:), allocatable :: i_pdg
     integer :: i
     allocate (i_pdg (size (pdg)))
-    !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
     do i = 1, size (pdg)
        i_pdg(i) = pdg(i)%get ()
     end do
@@ -529,8 +521,6 @@ contains
     generator%fs_gluon = pl_out%search_for_particle (GLUON)
     generator%is_photon = pl_in%search_for_particle (PHOTON)
     generator%fs_photon = pl_out%search_for_particle (PHOTON)
-    !!!generator%only_final_state = .not. (&
-    !!!   generator%qcd_enabled .and. pl_in%contains_colored_particles ())
     generator%mass_sum = 0._default
     call generator%pdg_raw%init ()
   end subroutine radiation_generator_init_pdg_list
@@ -576,7 +566,7 @@ contains
     pl_out(1) = generator%pl_out
 
     call generator%if_table%init &
-       (model, pl_in, pl_out, generator%constraints)
+         (model, pl_in, pl_out, generator%constraints)
   end subroutine radiation_generator_setup_if_table
 
   subroutine radiation_generator_reset_particle_content_pdg_list (generator, pl)
@@ -621,6 +611,7 @@ contains
     logical, intent(in) :: set_mass_sum
     logical, intent(in) :: set_selected_particles
     logical, intent(in) :: set_required_particles
+    logical :: set_no_photon_induced = .true.
     integer :: i, j, n, n_constraints
     type(pdg_list_t) :: pl_req, pl_insert
     type(pdg_list_t) :: pl_antiparticles
@@ -632,12 +623,13 @@ contains
     integer :: n_nlo_correction_types
 
     n_nlo_correction_types = count ([generator%qcd_enabled, generator%qed_enabled])
+    if (generator%is_photon) set_no_photon_induced = .false.
 
     allocate (i_skip (generator%n_tot))
     i_skip = -1
 
     n_constraints = 2 + count([set_n_loop, set_mass_sum, &
-         set_selected_particles, set_required_particles])
+         set_selected_particles, set_required_particles, set_no_photon_induced])
     associate (constraints => generator%constraints)
       n = 1
       call constraints%init (n_constraints)
@@ -646,6 +638,10 @@ contains
       call constraints%set (n, constrain_couplings (generator%qcd_enabled, &
            generator%qed_enabled, n_nlo_correction_types))
       n = n + 1
+      if (set_no_photon_induced) then
+         call constraints%set (n, constrain_photon_induced_processes (generator%n_in))
+         n = n + 1
+      end if
       if (set_n_loop) then
          call constraints%set (n, constrain_n_loop(generator%n_loops))
          n = n + 1
@@ -728,7 +724,7 @@ contains
     call generator%pl_out%create_pdg_array (pdg_out)
 
     associate (if_table => generator%if_table)
-       call if_table%radiate (generator%constraints)
+       call if_table%radiate (generator%constraints, do_not_check_regular = .true.)
 
        do i = 1, if_table%get_length ()
           call if_table%get_pdg_out (i, pdg_tmp)
@@ -812,7 +808,7 @@ contains
           call if_table%get_pdg_out (i, pdg_tmp)
           if (size (pdg_tmp) == generator%n_tot) then
              call if_table%get_particle_string (i, &
-                prt_in0(flv + 1)%prt, prt_out0(flv + 1)%prt)
+                  prt_in0(flv + 1)%prt, prt_out0(flv + 1)%prt)
              flv = flv + 1
           end if
        end do
@@ -836,7 +832,6 @@ contains
     prt_tot_in = buf(1 : generator%n_in)
 
     do j = 1, flv
-       !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
        allocate (reshuffle_list_local (size (generator%reshuffle_list%get(j))))
        reshuffle_list_local = generator%reshuffle_list%get(j)
        do i = 1, size (reshuffle_list_local)
@@ -850,6 +845,17 @@ contains
        deallocate (reshuffle_list_local)
     end do
     prt_tot_out = buf(generator%n_in + 1 : generator%n_tot)
+    if (debug2_active (D_CORE)) then
+       print *, 'Generated initial state: '
+       do i = 1, size (prt_tot_in)
+          print *, char (prt_tot_in(i))
+       end do
+       print *, 'Generated final state: '
+       do i = 1, size (prt_tot_out)
+          print *, char (prt_tot_out(i))
+       end do
+    end if
+
 
   contains
 
@@ -858,7 +864,7 @@ contains
       type(string_t), intent(in) :: particle
       logical :: particle_present
       if (len (buffer) > 0) then
-         particle_present = check_for_substring (char(buffer), char(particle))
+         particle_present = check_for_substring (char(buffer), particle)
          if (.not. particle_present) buffer = buffer // ":" // particle
       else
          buffer = buffer // particle
@@ -867,7 +873,7 @@ contains
 
     function check_for_substring (buffer, substring) result (exist)
       character(len=*), intent(in) :: buffer
-      character(len=*), intent(in) :: substring
+      type(string_t), intent(in) :: substring
       character(len=50) :: buffer_internal
       logical :: exist
       integer :: i_first, i_last
@@ -876,7 +882,7 @@ contains
       do
          if (buffer(i_last:i_last) == ":") then
             buffer_internal = buffer (i_first : i_last - 1)
-            if (buffer_internal == substring) then
+            if (buffer_internal == char (substring)) then
                exist = .true.
                exit
             end if
@@ -884,7 +890,7 @@ contains
             if (i_last > len(buffer)) exit
          else if (i_last == len(buffer)) then
             buffer_internal = buffer (i_first : i_last)
-            exist = (buffer_internal == substring)
+            exist = buffer_internal == char (substring)
             exit
          else
             i_last = i_last + 1

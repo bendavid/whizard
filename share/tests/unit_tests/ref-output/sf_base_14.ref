@@ -18,10 +18,13 @@ p_in =  0.9000000
  Structure-function parameters:
  Channel #1: [selected]
    p = 0.8000000 0.5000000 0.9000000
+   pb= 0.2000000 0.5000000 0.1000000
    r = 0.8000000 0.5000000 0.9000000
+   rb= 0.2000000 0.5000000 0.1000000
    f = 1.0000000E+00
    m = - -
    x = 0.8000000 0.5000000 0.9000000
+   xb= 0.2000000 0.5000000 0.1000000
    bound = F F T
 ------------------------------------------------------------------------
  Colliding beams:
@@ -44,9 +47,11 @@ p_in =  0.9000000
  Structure-function parameters:
  Channel #1: [selected]
    r = 0.8000000 0.5000000
+   rb= 0.2000000 0.5000000
    f = 1.0000000E+00
    m = F
    x = 0.8000000 0.5000000
+   xb= 0.2000000 0.5000000
  SF test generator data:
    model     = Test
    incoming  = f(25)
@@ -128,9 +133,11 @@ p_in =  0.9000000
  Structure-function parameters:
  Channel #1: [selected]
    r = 0.9000000
+   rb= 0.1000000
    f = 1.0000000E+00
    m = F
    x = 0.9000000
+   xb= 0.1000000
  SF test data:
    model     = Test
    incoming  = f(25)

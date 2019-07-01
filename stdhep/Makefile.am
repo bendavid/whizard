@@ -1,5 +1,4 @@
 ## Makefile.am -- Makefile for WHIZARD
-# $Id: Makefile.am 7179 2015-08-27 12:32:33Z jr_reuter $
 ##
 ## Process this file with automake to produce Makefile.in
 ##
@@ -10,13 +9,7 @@
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
 #     with contributions from
-#     Fabian Bach <fabian.bach@t-online.de>
-#     Bijan Chokoufe <bijan.chokoufe@desy.de>
-#     Christian Speckner <cnspeckn@googlemail.com>
-#     Marco Sekulla <marco.sekulla@kit.edu>
-#     Christian Weiss <christian.weiss@desy.de>
-#     Felix Braam, Sebastian Schmidt,
-#     Hans-Werner Boschmann, Daniel Wiesler
+#     cf. main AUTHORS file
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by 

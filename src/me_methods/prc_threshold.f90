@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -80,23 +73,24 @@ module prc_threshold
   end interface
 
   interface
-    subroutine threshold_get_amp_squared (amp2, p_ofs, p_ons, leg, n_tot) bind(C)
+    subroutine threshold_get_amp_squared (amp2, p_ofs, p_ons, leg, n_tot, sel_hel_beam) bind(C)
       import
       real(c_default_float), intent(out) :: amp2
       real(c_default_float), dimension(0:3,*), intent(in) :: p_ofs
       real(c_default_float), dimension(0:3,*), intent(in) :: p_ons
-      integer(kind = c_int) :: n_tot, leg
+      integer(kind = c_int) :: n_tot, leg, sel_hel_beam
     end subroutine threshold_get_amp_squared
   end interface
 
   interface
     subroutine threshold_olp_eval2 (i_flv, alpha_s_c, parray, mu_c, &
-           sqme_c, acc_c) bind(C)
+           sel_hel_beam, sqme_c, acc_c) bind(C)
       import
       integer(c_int), intent(in) :: i_flv
       real(c_default_float), intent(in) :: alpha_s_c
       real(c_default_float), dimension(0:3,*), intent(in) :: parray
       real(c_default_float), intent(in) :: mu_c
+      integer, intent(in) :: sel_hel_beam
       real(c_default_float), dimension(4), intent(out) :: sqme_c
       real(c_default_float), intent(out) :: acc_c
     end subroutine threshold_olp_eval2
@@ -163,6 +157,7 @@ module prc_threshold
      real(default), dimension(:,:), allocatable :: parray_ofs
      real(default), dimension(:,:), allocatable :: parray_ons
      integer :: leg
+     logical :: has_beam_pol = .false.
   contains
     procedure :: write => prc_threshold_write
     procedure :: write_name => prc_threshold_write_name
@@ -176,7 +171,8 @@ module prc_threshold
     procedure :: compute_sqme_virt => prc_threshold_compute_sqme_virt
     procedure :: init => prc_threshold_init
     procedure :: activate_parameters => prc_threshold_activate_parameters
-    procedure :: create_and_load_extra_libraries => prc_threshold_create_and_load_extra_libraries
+    procedure :: create_and_load_extra_libraries => &
+         prc_threshold_create_and_load_extra_libraries
     procedure :: includes_polarization => prc_threshold_includes_polarization
   end type prc_threshold_t
 
@@ -435,7 +431,13 @@ contains
     n_tot = size (p)
     select type (driver => object%driver)
     class is (threshold_driver_t)
-       call driver%get_amp_squared (sqme, object%parray_ofs, object%parray_ons, object%leg, n_tot)
+       if (object%has_beam_pol) then
+          call driver%get_amp_squared (sqme, object%parray_ofs, &
+               object%parray_ons, object%leg, n_tot, i_flv - 1)
+       else
+          call driver%get_amp_squared (sqme, object%parray_ofs, &
+               object%parray_ons, object%leg, n_tot, -1)
+       end if
     end select
     bad_point = .false.
   end subroutine prc_threshold_compute_sqme
@@ -473,8 +475,13 @@ contains
     select type (driver => object%driver)
     class is (threshold_driver_t)
        if (associated (driver%olp_eval2)) then
-          call driver%olp_eval2 (i_flv_c, alpha_s_c, &
-             parray, mu_c, sqme_c, acc_c)
+          if (object%has_beam_pol) then
+             call driver%olp_eval2 (1, alpha_s_c, &
+                  parray, mu_c, i_flv_c - 1, sqme_c, acc_c)
+          else
+             call driver%olp_eval2 (i_flv_c, alpha_s_c, &
+                  parray, mu_c, -1, sqme_c, acc_c)
+          end if
           bad_point = real(acc_c, kind=default) > object%maximum_accuracy
           sqme = sqme_c
        else
@@ -521,8 +528,8 @@ contains
     end if
   end subroutine prc_threshold_activate_parameters
 
-  subroutine prc_threshold_create_and_load_extra_libraries ( &
-         core, flv_states, var_list, os_data, libname, model, i_core)
+  subroutine prc_threshold_create_and_load_extra_libraries &
+       (core, flv_states, var_list, os_data, libname, model, i_core, is_nlo)
     class(prc_threshold_t), intent(inout) :: core
     integer, intent(in), dimension(:,:), allocatable :: flv_states
     type(var_list_t), intent(in) :: var_list
@@ -530,21 +537,24 @@ contains
     type(string_t), intent(in) :: libname
     type(model_data_t), intent(in), target :: model
     integer, intent(in) :: i_core
-    call msg_debug (D_ME_METHODS, "prc_threshold_create_and_load_extra_libraries")
+    logical, intent(in) :: is_nlo
+    call msg_debug (D_ME_METHODS, &
+         "prc_threshold_create_and_load_extra_libraries")
     if (allocated (core%driver)) then
        select type (driver => core%driver)
        type is (threshold_driver_t)
           if (driver%nlo_type == NLO_VIRTUAL) call driver%start_openloops ()
        end select
     else
-       call msg_bug ("prc_threshold_create_and_load_extra_libraries: driver is not allocated")
+       call msg_bug ("prc_threshold_create_and_load_extra_libraries: " &
+            // "driver is not allocated")
     end if
   end subroutine prc_threshold_create_and_load_extra_libraries
 
   function prc_threshold_includes_polarization (object) result (polarized)
     logical :: polarized
     class(prc_threshold_t), intent(in) :: object
-    polarized = .false.
+    polarized = object%has_beam_pol
   end function prc_threshold_includes_polarization
 
 

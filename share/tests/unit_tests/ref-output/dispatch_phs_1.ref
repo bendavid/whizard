@@ -1,6 +1,10 @@
 * Test output: dispatch_phs_1
 *   Purpose: select phase-space configuration method
 
+* Allocate PHS as phs_none_t
+
+ Partonic phase-space configuration: non-functional dummy
+
 * Allocate PHS as phs_single_t
 
  Partonic phase-space configuration (single-particle):

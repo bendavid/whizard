@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -123,7 +116,9 @@ module mci_base_uti
      real(default) :: efficiency = 0
    contains
      procedure :: write => mci_test_results_write
-     procedure :: record => mci_test_results_record
+     procedure :: write_verbose => mci_test_results_write_verbose
+     procedure :: record_simple => mci_test_results_record_simple
+     procedure :: record_extended => mci_test_results_record_extended
   end type mci_test_results_t
 
 
@@ -485,10 +480,10 @@ contains
     f = sampler%f
   end subroutine test_sampler_fetch
 
-  subroutine mci_test_results_write (object, unit, verbose, suppress)
+  subroutine mci_test_results_write (object, unit, suppress)
     class(mci_test_results_t), intent(in) :: object
     integer, intent(in), optional :: unit
-    logical, intent(in), optional :: verbose, suppress
+    logical, intent(in), optional :: suppress
     integer :: u
     u = given_output_unit (unit)
     write (u, "(3x,A,1x,I0)") "Iterations = ", object%n_it
@@ -498,7 +493,19 @@ contains
     write (u, "(3x,A,1x,F12.10)")  "Efficiency = ", object%efficiency
   end subroutine mci_test_results_write
 
-  subroutine mci_test_results_record (object, n_it, n_calls, &
+  subroutine mci_test_results_write_verbose (object, unit)
+    class(mci_test_results_t), intent(in) :: object
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = given_output_unit (unit)
+    write (u, "(3x,A,1x,I0)") "Iterations = ", object%n_it
+    write (u, "(3x,A,1x,I0)") "Calls      = ", object%n_calls
+    write (u, "(3x,A,1x,F12.10)")  "Integral   = ", object%integral
+    write (u, "(3x,A,1x,F12.10)")  "Error      = ", object%error
+    write (u, "(3x,A,1x,F12.10)")  "Efficiency = ", object%efficiency
+  end subroutine mci_test_results_write_verbose
+
+  subroutine mci_test_results_record_simple (object, n_it, n_calls, &
        integral, error, efficiency, chain_weights, suppress)
     class(mci_test_results_t), intent(inout) :: object
     integer, intent(in) :: n_it
@@ -513,7 +520,28 @@ contains
     object%integral = integral
     object%error = error
     object%efficiency = efficiency
-  end subroutine mci_test_results_record
+  end subroutine mci_test_results_record_simple
+
+  subroutine mci_test_results_record_extended (object, n_it, n_calls, &
+       & n_calls_valid, integral, error, efficiency, efficiency_pos, &
+       & efficiency_neg, chain_weights, suppress)
+    class(mci_test_results_t), intent(inout) :: object
+    integer, intent(in) :: n_it
+    integer, intent(in) :: n_calls
+    integer, intent(in) :: n_calls_valid
+    real(default), intent(in) :: integral
+    real(default), intent(in) :: error
+    real(default), intent(in) :: efficiency
+    real(default), intent(in) :: efficiency_pos
+    real(default), intent(in) :: efficiency_neg
+    real(default), dimension(:), intent(in), optional :: chain_weights
+    logical, intent(in), optional :: suppress
+    object%n_it = n_it
+    object%n_calls = n_calls
+    object%integral = integral
+    object%error = error
+    object%efficiency = efficiency
+  end subroutine mci_test_results_record_extended
 
   subroutine mci_base_1 (u)
     integer, intent(in) :: u

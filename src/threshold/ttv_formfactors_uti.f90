@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -81,12 +74,15 @@ contains
     top_helicity_selection = -1
     v1 = 0.3_default
     v2 = 0.5_default
-    sqrts = 2 * m1s + 0.01_default
+    scan_sqrts_stepsize = 0.0_default
+    test = - one
+    write (u, "(A)") "Check high energy behavior"
+    sqrts = 500.0_default
     scan_sqrts_min = sqrts
     scan_sqrts_max = sqrts
-    scan_sqrts_stepsize = 0.1_default
-    mpole_fixed = .true.
-    test = - one
+    write (u, "(A)") "Check that the mass is not fixed"
+    mpole_fixed = .false.
+
     call init_parameters &
          (mpole, gam_out, m1s, Vtb, wt_inv, &
           alphaemi, sw, alphas_mz, mz, mw, &
@@ -95,62 +91,11 @@ contains
           scan_sqrts_stepsize, mpole_fixed, real(top_helicity_selection, default))
     call init_threshold_grids (test)
     call threshold%formfactor%activate ()
-
-    write (u, "(A)") "Check that the mass is fixed"
-    call ps%init (m1s**2, m1s**2, sqrts**2, mpole)
-    call assert_equal (u, m1s_to_mpole (350.0_default), m1s, &
-         "m1s_to_mpole (350.0_default) == m1s")
-    call assert_equal (u, m1s_to_mpole (550.0_default), m1s, &
-         "m1s_to_mpole (550.0_default) == m1s")
-    write (u, "(A)") ""
-
-    write (u, "(A)") "Check that the mass is not fixed"
-    mpole_fixed = .false.
-    call init_parameters &
-         (mpole, gam_out, m1s, Vtb, wt_inv, &
-          alphaemi, sw, alphas_mz, mz, mw, &
-          mb, sh, sf, NRQCD_ORDER, FF, offshell_strategy, &
-          v1, v2, scan_sqrts_min, scan_sqrts_max, &
-          scan_sqrts_stepsize, mpole_fixed, real(top_helicity_selection, default))
-    call init_threshold_grids (test)
+    call formfactor%activate ()
     call assert (u, m1s_to_mpole (350.0_default) > m1s + 0.1_default, &
          "m1s_to_mpole (350.0_default) > m1s")
     write (u, "(A)")
 
-    !!! care: the formfactor contains the tree level that we usually subtract again
-    write (u, "(A)") "Check low energy behavior"
-    mpole_fixed = .true.
-    call init_parameters &
-         (mpole, gam_out, m1s, Vtb, wt_inv, &
-          alphaemi, sw, alphas_mz, mz, mw, &
-          mb, sh, sf, NRQCD_ORDER, FF, offshell_strategy, &
-          v1, v2, scan_sqrts_min, scan_sqrts_max, &
-          scan_sqrts_stepsize, mpole_fixed, real(top_helicity_selection, default))
-    call init_threshold_grids (test)
-    call assert_equal (u, f_switch_off (v_matching (ps%sqrts, GAM_M1S)), one, "f_switch_off (v_matching (ps%sqrts, GAM_M1S))")
-    call formfactor%disable ()
-    call assert_equal (u, &
-         abs(formfactor%compute (ps, 1, 1)), &
-         zero, &
-         "disabled formfactor should return zero")
-    call formfactor%activate ()
-    call assert_equal (u, &
-         formfactor%compute (ps, 1, EXPANDED_SOFT_SWITCHOFF), &
-         formfactor%compute (ps, 1, EXPANDED_SOFT), &
-         "switchoff function should do nothing here")
-    write (u, "(A)") ""
-
-    write (u, "(A)") "Check high energy behavior"
-    sqrts = 500.0_default
-    scan_sqrts_min = sqrts
-    scan_sqrts_max = sqrts
-    call init_parameters &
-         (mpole, gam_out, m1s, Vtb, wt_inv, &
-          alphaemi, sw, alphas_mz, mz, mw, &
-          mb, sh, sf, NRQCD_ORDER, FF, offshell_strategy, &
-          v1, v2, scan_sqrts_min, scan_sqrts_max, &
-          scan_sqrts_stepsize, mpole_fixed, real(top_helicity_selection, default))
-    call init_threshold_grids (test)
     ! For simplicity we test on-shell back-to-back tops
     call ps%init (m1s**2, m1s**2, sqrts**2, mpole)
     call assert_equal (u, f_switch_off (v_matching (ps%sqrts, GAM_M1S)), tiny_10, &
@@ -174,6 +119,40 @@ contains
     call assert_equal (u, AS_SOFT, zero, "soft alphas", abs_smallness=tiny_10)
     call assert_equal (u, AS_USOFT, zero, "ultrasoft alphas", abs_smallness=tiny_10)
     call assert_equal (u, AS_LL_SOFT, zero, "LL soft alphas", abs_smallness=tiny_10)
+
+    !!! care: the formfactor contains the tree level that we usually subtract again
+    write (u, "(A)") "Check low energy behavior"
+    sqrts = 2 * m1s + 0.01_default
+    scan_sqrts_min = sqrts
+    scan_sqrts_max = sqrts
+    write (u, "(A)") "Check that the mass is fixed"
+    mpole_fixed = .true.
+    call init_parameters &
+         (mpole, gam_out, m1s, Vtb, wt_inv, &
+          alphaemi, sw, alphas_mz, mz, mw, &
+          mb, sh, sf, NRQCD_ORDER, FF, offshell_strategy, &
+          v1, v2, scan_sqrts_min, scan_sqrts_max, &
+          scan_sqrts_stepsize, mpole_fixed, real(top_helicity_selection, default))
+    call init_threshold_grids (test)
+
+    call ps%init (m1s**2, m1s**2, sqrts**2, mpole)
+    call assert_equal (u, m1s_to_mpole (350.0_default), m1s, &
+         "m1s_to_mpole (350.0_default) == m1s")
+    call assert_equal (u, m1s_to_mpole (550.0_default), m1s, &
+         "m1s_to_mpole (550.0_default) == m1s")
+    write (u, "(A)") ""
+    call assert_equal (u, f_switch_off (v_matching (ps%sqrts, GAM_M1S)), one, "f_switch_off (v_matching (ps%sqrts, GAM_M1S))")
+    call formfactor%disable ()
+    call assert_equal (u, &
+         abs(formfactor%compute (ps, 1, 1)), &
+         zero, &
+         "disabled formfactor should return zero")
+    call formfactor%activate ()
+    call assert_equal (u, &
+         formfactor%compute (ps, 1, EXPANDED_SOFT_SWITCHOFF), &
+         formfactor%compute (ps, 1, EXPANDED_SOFT), &
+         "switchoff function should do nothing here")
+    write (u, "(A)") ""
 
     write (u, "(A)")  "* Test output end: ttv_formfactors_1"
   end subroutine ttv_formfactors_1

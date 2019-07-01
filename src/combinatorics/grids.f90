@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -41,12 +34,12 @@ module grids
   use format_defs, only: FMT_16
   use diagnostics
 
+
   implicit none
   private
 
   public :: grid_t
-
-
+  public :: verify_points_for_grid
 
   integer, parameter :: DEFAULT_POINTS_PER_DIMENSION = 100
   character(len=*), parameter :: DEFAULT_OUTPUT_PRECISION = FMT_16
@@ -283,33 +276,61 @@ contains
                advance='no', iostat=iostat) grid%values (i)
        end do
     end if
-    if (iostat < 0) then
+    if (iostat /= 0) then
        call msg_warning &
             ('grid_save_to_file: Could not save grid to file')
     end if
     close (u)
   end subroutine grid_save_to_file
 
+  function verify_points_for_grid (file, points) result (valid)
+    logical :: valid
+    character(len=*), intent(in) :: file
+    integer, dimension(:), intent(in) :: points
+    integer, dimension(:), allocatable :: points_from_file
+    integer :: u
+    call load_points_from_file (file, u, points_from_file)
+    close (u)
+    if (allocated (points_from_file)) then
+      valid = all (points == points_from_file)
+    else
+      valid = .false.
+    end if
+  end function verify_points_for_grid
+
+  subroutine load_points_from_file (file, unit, points)
+    character(len=*), intent(in) :: file
+    integer, intent(out) :: unit
+    integer, dimension(:), allocatable :: points
+    integer :: iostat, n_dimensions, i_dim
+    unit = free_unit ()
+    open (file=file, unit=unit, action='read', iostat=iostat)
+    if (iostat /= 0)  return
+    read (unit, "(I12)", iostat=iostat) n_dimensions
+    if (iostat /= 0)  return
+    allocate (points (n_dimensions))
+    do i_dim = 1, size (points)
+       read (unit, "(I12,1X)", advance='no', iostat=iostat) &
+            points (i_dim)
+    end do
+    if (iostat /= 0)  return
+    read (unit, *)
+    if (iostat /= 0)  return
+  end subroutine load_points_from_file
+
   subroutine grid_load_from_file (grid, file)
     class(grid_t), intent(out) :: grid
     character(len=*), intent(in) :: file
-    integer :: iostat, u, i, n_dimensions
+    integer :: iostat, u, i
     integer, dimension(:), allocatable :: points
-    u = free_unit ()
-    open (file=file, unit=u, action='read', iostat=iostat)
-    read (u, "(I12)", iostat=iostat) n_dimensions
-    allocate (points (n_dimensions))
-    do i = 1, size (points)
-       read (u, "(I12,1X)", advance='no', iostat=iostat) &
-            points (i)
-    end do
-    read (u, *)
+    call load_points_from_file (file, u, points)
+    if (.not. allocated (points))  return
     call grid%init (points)
     do i = 1, size (grid%values)
        read (u, "(" // DEFAULT_OUTPUT_PRECISION // ",1X)", advance='no', iostat=iostat) &
             grid%values (i)
     end do
-    if (iostat < 0) then
+    if (iostat /= 0) then
        call msg_warning ('grid_load_from_file: Could not load grid from file')
     end if
     close (u)

@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -802,31 +795,46 @@ contains
     end if
   end function model_get_ufo_path
 
-  subroutine model_generate_ufo (filename, os_data, ufo_path)
+  subroutine model_generate_ufo (filename, os_data, ufo_path, &
+       ufo_path_requested)
     type(string_t), intent(in) :: filename
     type(os_data_t), intent(in) :: os_data
     type(string_t), intent(out) :: ufo_path
+    type(string_t), intent(in), optional :: ufo_path_requested
     type(string_t) :: model_name, omega_path, ufo_dir, ufo_init
     logical :: exist
     call get_model_name (filename, model_name)
-    call msg_message ("Model: Generating model '" // char (model_name) // "' from UFO sources")
-    call msg_message ("Model: Searching for UFO sources in working directory")
-    ufo_path = "."
-    ufo_dir = ufo_path // "/" // model_name
-    ufo_init = ufo_dir // "/" // "__init__.py"
-    inquire (file = char (ufo_init), exist = exist)
-    if (.not. exist) then
-       ufo_path = char (os_data%whizard_modelpath_ufo)
+    call msg_message ("Model: Generating model '" // char (model_name) &
+         // "' from UFO sources")
+    if (present (ufo_path_requested)) then
+       call msg_message ("Model: Searching for UFO sources in '" &
+            // char (ufo_path_requested) // "'")
+       ufo_path = ufo_path_requested
+       ufo_dir = ufo_path_requested // "/" // model_name
+       ufo_init = ufo_dir // "/" // "__init__.py"
+       inquire (file = char (ufo_init), exist = exist)
+    else
+       call msg_message ("Model: Searching for UFO sources in &
+            &working directory")
+       ufo_path = "."
        ufo_dir = ufo_path // "/" // model_name
        ufo_init = ufo_dir // "/" // "__init__.py"
-       call msg_message ("Model: Searching for UFO sources in '" &
-            // char (os_data%whizard_modelpath_ufo) // "'")
        inquire (file = char (ufo_init), exist = exist)
+       if (.not. exist) then
+          ufo_path = char (os_data%whizard_modelpath_ufo)
+          ufo_dir = ufo_path // "/" // model_name
+          ufo_init = ufo_dir // "/" // "__init__.py"
+          call msg_message ("Model: Searching for UFO sources in '" &
+               // char (os_data%whizard_modelpath_ufo) // "'")
+          inquire (file = char (ufo_init), exist = exist)
+       end if
     end if
     if (exist) then
-       call msg_message ("Model: Found UFO sources for model '" // char (model_name) // "'")
+       call msg_message ("Model: Found UFO sources for model '" &
+            // char (model_name) // "'")
     else
-       call msg_fatal ("Model: UFO sources for model '" // char (model_name) // "' not found")
+       call msg_fatal ("Model: UFO sources for model '" &
+            // char (model_name) // "' not found")
     end if
     omega_path = os_data%whizard_omega_binpath // "/omega_UFO.opt"
     call os_system_call (omega_path &
@@ -835,7 +843,8 @@ contains
          // " > " // filename)
     inquire (file = char (filename), exist = exist)
     if (exist) then
-        call msg_message ("Model: Model file '" // char (filename) // "' generated")
+        call msg_message ("Model: Model file '" // char (filename) //&
+             "' generated")
     else
         call msg_fatal ("Model: Model file '" // char (filename) &
              // "' could not be generated")
@@ -906,12 +915,13 @@ contains
     end if
   end function model_get_scheme
 
-  function model_matches (model, name, scheme, ufo) result (flag)
+  function model_matches (model, name, scheme, ufo, ufo_path) result (flag)
     logical :: flag
     class(model_t), intent(in) :: model
     type(string_t), intent(in) :: name
     type(string_t), intent(in), optional :: scheme
     logical, intent(in), optional :: ufo
+    type(string_t), intent(in), optional :: ufo_path
     logical :: ufo_model
     ufo_model = .false.;  if (present (ufo))  ufo_model = ufo
     if (name /= model%get_name ()) then
@@ -919,7 +929,11 @@ contains
     else if (ufo_model .neqv. model%is_ufo_model ()) then
        flag = .false.
     else if (ufo_model) then
-       flag = .true.
+       if (present (ufo_path)) then
+          flag = model%get_ufo_path () == ufo_path
+       else
+          flag = .true.
+       end if
     else if (model%has_schemes ()) then
        if (present (scheme)) then
           flag = model%get_scheme () == scheme
@@ -1053,13 +1067,15 @@ contains
   end subroutine syntax_model_file_write
 
   subroutine model_read (model, filename, os_data, exist, &
-       scheme, ufo, rebuild_mdl)
+       scheme, ufo, ufo_path_requested, rebuild_mdl)
     class(model_t), intent(out), target :: model
     type(string_t), intent(in) :: filename
     type(os_data_t), intent(in) :: os_data
     logical, intent(out), optional :: exist
     type(string_t), intent(in), optional :: scheme
-    logical, intent(in), optional :: ufo, rebuild_mdl
+    logical, intent(in), optional :: ufo
+    type(string_t), intent(in), optional :: ufo_path_requested
+    logical, intent(in), optional :: rebuild_mdl
     type(string_t) :: file
     type(stream_t), target :: stream
     type(lexer_t) :: lexer
@@ -1091,7 +1107,8 @@ contains
     end if
     if (ufo_model .and. rebuild) then
        file = filename
-       call model_generate_ufo (filename, os_data, model%ufo_path)
+       call model_generate_ufo (filename, os_data, model%ufo_path, &
+            ufo_path_requested=ufo_path_requested)
        inquire (file = char (file), exist = model_exist)
     end if
     if (.not. model_exist) then
@@ -1699,20 +1716,25 @@ contains
   end subroutine model_list_add
 
   subroutine model_list_read_model &
-       (model_list, name, filename, os_data, model, scheme, ufo, rebuild_mdl)
+       (model_list, name, filename, os_data, model, &
+       scheme, ufo, ufo_path, rebuild_mdl)
     class(model_list_t), intent(inout), target :: model_list
     type(string_t), intent(in) :: name, filename
     type(os_data_t), intent(in) :: os_data
     type(model_t), pointer, intent(inout) :: model
     type(string_t), intent(in), optional :: scheme
-    logical, intent(in), optional :: ufo, rebuild_mdl
+    logical, intent(in), optional :: ufo
+    type(string_t), intent(in), optional :: ufo_path
+    logical, intent(in), optional :: rebuild_mdl
     class(model_list_t), pointer :: global_model_list
     type(model_entry_t), pointer :: current
     logical :: exist
-    if (.not. model_list%model_exists (name, scheme, ufo, follow_link=.true.)) then
+    if (.not. model_list%model_exists (name, &
+         scheme, ufo, ufo_path, follow_link=.true.)) then
        allocate (current)
        call current%read (filename, os_data, exist, &
-            scheme=scheme, ufo=ufo, rebuild_mdl=rebuild_mdl)
+            scheme=scheme, ufo=ufo, ufo_path_requested=ufo_path, &
+            rebuild_mdl=rebuild_mdl)
        if (.not. exist)  return
        if (current%get_name () /= name) then
           call msg_fatal ("Model file '" // char (filename) // &
@@ -1727,7 +1749,7 @@ contains
        end do
        call global_model_list%import (current, model)
     else
-       model => model_list%get_model_ptr (name, scheme, ufo)
+       model => model_list%get_model_ptr (name, scheme, ufo, ufo_path)
     end if
   end subroutine model_list_read_model
 
@@ -1742,52 +1764,56 @@ contains
   end subroutine model_list_append_copy
 
   recursive function model_list_model_exists &
-       (model_list, name, scheme, ufo, follow_link) result (exists)
+       (model_list, name, scheme, ufo, ufo_path, follow_link) result (exists)
     class(model_list_t), intent(in) :: model_list
     logical :: exists
     type(string_t), intent(in) :: name
     type(string_t), intent(in), optional :: scheme
     logical, intent(in), optional :: ufo
+    type(string_t), intent(in), optional :: ufo_path
     logical, intent(in), optional :: follow_link
     type(model_entry_t), pointer :: current
     logical :: rec
     rec = .true.;  if (present (follow_link))  rec = follow_link
     current => model_list%first
     do while (associated (current))
-       if (current%matches (name, scheme, ufo)) then
+       if (current%matches (name, scheme, ufo, ufo_path)) then
           exists = .true.
           return
        end if
        current => current%next
     end do
     if (rec .and. associated (model_list%context)) then
-       exists = model_list%context%model_exists (name, scheme, ufo, follow_link)
+       exists = model_list%context%model_exists (name, &
+            scheme, ufo, ufo_path, follow_link)
     else
        exists = .false.
     end if
   end function model_list_model_exists
 
   recursive function model_list_get_model_ptr &
-       (model_list, name, scheme, ufo, follow_link) result (model)
+       (model_list, name, scheme, ufo, ufo_path, follow_link) result (model)
     class(model_list_t), intent(in) :: model_list
     type(model_t), pointer :: model
     type(string_t), intent(in) :: name
     type(string_t), intent(in), optional :: scheme
     logical, intent(in), optional :: ufo
+    type(string_t), intent(in), optional :: ufo_path
     logical, intent(in), optional :: follow_link
     type(model_entry_t), pointer :: current
     logical :: rec
     rec = .true.;  if (present (follow_link))  rec = follow_link
     current => model_list%first
     do while (associated (current))
-       if (current%matches (name, scheme, ufo)) then
+       if (current%matches (name, scheme, ufo, ufo_path)) then
           model => current%model_t
           return
        end if
        current => current%next
     end do
     if (rec .and. associated (model_list%context)) then
-       model => model_list%context%get_model_ptr (name, scheme, ufo, follow_link)
+       model => model_list%context%get_model_ptr (name, &
+            scheme, ufo, ufo_path, follow_link)
     else
        model => null ()
     end if

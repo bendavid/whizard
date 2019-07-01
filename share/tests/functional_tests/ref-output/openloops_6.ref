@@ -9,8 +9,8 @@ SM.wW =>  0.00000E+00
 SM.mb =>  4.20000E+00
 alpha_power = 1
 ?use_vamp_equivalences = false
-?alpha_s_is_fixed = false
-?alpha_s_from_mz = true
+?alphas_is_fixed = false
+?alphas_from_mz = true
 error_threshold =  1.00000E-08
 ?openloops_use_collier = false
 seed = 1111
@@ -39,10 +39,6 @@ seed = 1111
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'openloops_6_p0_i3.phs'
-Warning: You have set ?openloops_use_cms = true, but not all matrix
-element methods are set to OpenLoops. Note that other
-methods might not necessarily support the complex mass
-scheme. This can yield inconsistencies in your NLO results!
 | One-Loop-Provider: Using OpenLoops
 | Loading library: [...]
 | One-Loop-Provider: Using OpenLoops
@@ -53,9 +49,9 @@ scheme. This can yield inconsistencies in your NLO results!
 |   Process index = 1
 |   Process components:
 |     1: 'openloops_6_p0_i1':   t => W+, b [omega]
-|     2: 'openloops_6_p0_i2':   t => W+, b, gl [omega], [Real]
-|     3: 'openloops_6_p0_i3':   t => W+, b [openloops], [Virtual]
-|     4: 'openloops_6_p0_i4':   t => W+, b [inactive], [Subtraction]
+|     2: 'openloops_6_p0_i2':   t => W+, b, gl [omega], [real]
+|     3: 'openloops_6_p0_i3':   t => W+, b [openloops], [virtual]
+|     4: 'openloops_6_p0_i4':   t => W+, b [inactive], [subtraction]
 | ------------------------------------------------------------------------
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
@@ -70,51 +66,51 @@ scheme. This can yield inconsistencies in your NLO results!
 | Phase space: no equivalences between channels used.
 | Phase space: wood
 Warning: No cuts have been defined.
-| Starting integration for process 'openloops_6_p0' part 'Born'
-| Integrate: iterations = 1:1000
+| Starting integration for process 'openloops_6_p0' part 'born'
+| Integrate: iterations = 1:100
 | Integrator: 1 chains, 1 channels, 2 dimensions
-| Integrator: 1000 initial calls, 20 bins, stratified = T
+| Integrator: 100 initial calls, 20 bins, stratified = T
 | Integrator: VAMP
 |=============================================================================|
 | It      Calls  Integral[GeV] Error[GeV]  Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1        800     1.495E+00   0.00E+00    0.00    0.00   100.0
+   1        100     1.495E+00   0.00E+00    0.00    0.00   100.0
 |-----------------------------------------------------------------------------|
-   1        800     1.495E+00   0.00E+00    0.00    0.00   100.0
+   1        100     1.495E+00   0.00E+00    0.00    0.00   100.0
 |=============================================================================|
-| Starting integration for process 'openloops_6_p0' part 'Real'
-| Integrate: iterations = 1:1000
+| Starting integration for process 'openloops_6_p0' part 'real'
+| Integrate: iterations = 1:100
 | Integrator: 1 chains, 1 channels, 5 dimensions
-| Integrator: 1000 initial calls, 20 bins, stratified = T
+| Integrator: 100 initial calls, 20 bins, stratified = T
 | Integrator: VAMP
 |=============================================================================|
 | It      Calls  Integral[GeV] Error[GeV]  Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1       1000    -4.063E-01   9.95E-03    2.45    0.77    12.7
+   1        100    -4.234E-01   2.94E-02    6.94    0.69    27.7
 |-----------------------------------------------------------------------------|
-   1       1000    -4.063E-01   9.95E-03    2.45    0.77    12.7
+   1        100    -4.234E-01   2.94E-02    6.94    0.69    27.7
 |=============================================================================|
-| Starting integration for process 'openloops_6_p0' part 'Virtual'
-| Integrate: iterations = 1:1000
+| Starting integration for process 'openloops_6_p0' part 'virtual'
+| Integrate: iterations = 1:100
 | Integrator: 1 chains, 1 channels, 2 dimensions
-| Integrator: 1000 initial calls, 20 bins, stratified = T
+| Integrator: 100 initial calls, 20 bins, stratified = T
 | Integrator: VAMP
 |=============================================================================|
 | It      Calls  Integral[GeV] Error[GeV]  Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1        800     2.761E-01   0.00E+00    0.00    0.00   100.0
+   1        100     2.761E-01   0.00E+00    0.00    0.00   100.0
 |-----------------------------------------------------------------------------|
-   1        800     2.761E-01   0.00E+00    0.00    0.00   100.0
+   1        100     2.761E-01   0.00E+00    0.00    0.00   100.0
 |=============================================================================|
 | Integrate: sum of all components
 |=============================================================================|
 | It      Calls  Integral[GeV] Error[GeV]  Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1          0     1.365E+00   9.95E-03    0.73    0.00    77.1
+   1          0     1.348E+00   2.94E-02    2.18    0.00    76.1
 | NLO Correction: [O(alpha_s+1)/O(alpha_s)]
-|  ( -8.7053 +-   0.66573 ) %
+|  ( -9.8465 +-   1.96394 ) %
 |=============================================================================|
-[user variable] res_0 =  1.36512E+00
+[user variable] res_0 =  1.34806E+00
 seed = 2222
 | Process library 'openloops_6_lib': unloading
 | Process library 'openloops_6_lib': open
@@ -146,10 +142,6 @@ seed = 2222
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'openloops_6_p1_i3.phs'
-Warning: You have set ?openloops_use_cms = true, but not all matrix
-element methods are set to OpenLoops. Note that other
-methods might not necessarily support the complex mass
-scheme. This can yield inconsistencies in your NLO results!
 | One-Loop-Provider: Using OpenLoops
 | Loading library: [...]
 | One-Loop-Provider: Using OpenLoops
@@ -160,9 +152,9 @@ scheme. This can yield inconsistencies in your NLO results!
 |   Process index = 2
 |   Process components:
 |     1: 'openloops_6_p1_i1':   t => W+, b [omega]
-|     2: 'openloops_6_p1_i2':   t => W+, b, gl [omega], [Real]
-|     3: 'openloops_6_p1_i3':   t => W+, b [openloops], [Virtual]
-|     4: 'openloops_6_p1_i4':   t => W+, b [inactive], [Subtraction]
+|     2: 'openloops_6_p1_i2':   t => W+, b, gl [omega], [real]
+|     3: 'openloops_6_p1_i3':   t => W+, b [openloops], [virtual]
+|     4: 'openloops_6_p1_i4':   t => W+, b [inactive], [subtraction]
 | ------------------------------------------------------------------------
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
@@ -177,51 +169,51 @@ scheme. This can yield inconsistencies in your NLO results!
 | Phase space: no equivalences between channels used.
 | Phase space: wood
 Warning: No cuts have been defined.
-| Starting integration for process 'openloops_6_p1' part 'Born'
-| Integrate: iterations = 1:1000
+| Starting integration for process 'openloops_6_p1' part 'born'
+| Integrate: iterations = 1:100
 | Integrator: 1 chains, 1 channels, 2 dimensions
-| Integrator: 1000 initial calls, 20 bins, stratified = T
+| Integrator: 100 initial calls, 20 bins, stratified = T
 | Integrator: VAMP
 |=============================================================================|
 | It      Calls  Integral[GeV] Error[GeV]  Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1        800     1.495E+00   6.20E-04    0.04    0.01    71.6
+   1        100     1.590E+00   3.44E-02    2.17    0.22    76.3
 |-----------------------------------------------------------------------------|
-   1        800     1.495E+00   6.20E-04    0.04    0.01    71.6
+   1        100     1.590E+00   3.44E-02    2.17    0.22    76.3
 |=============================================================================|
-| Starting integration for process 'openloops_6_p1' part 'Real'
-| Integrate: iterations = 1:1000
+| Starting integration for process 'openloops_6_p1' part 'real'
+| Integrate: iterations = 1:100
 | Integrator: 1 chains, 1 channels, 5 dimensions
-| Integrator: 1000 initial calls, 20 bins, stratified = T
+| Integrator: 100 initial calls, 20 bins, stratified = T
 | Integrator: VAMP
 |=============================================================================|
 | It      Calls  Integral[GeV] Error[GeV]  Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1       1000    -3.941E-01   8.57E-03    2.18    0.69    19.8
+   1        100    -3.944E-01   2.71E-02    6.87    0.69    37.1
 |-----------------------------------------------------------------------------|
-   1       1000    -3.941E-01   8.57E-03    2.18    0.69    19.8
+   1        100    -3.944E-01   2.71E-02    6.87    0.69    37.1
 |=============================================================================|
-| Starting integration for process 'openloops_6_p1' part 'Virtual'
-| Integrate: iterations = 1:1000
+| Starting integration for process 'openloops_6_p1' part 'virtual'
+| Integrate: iterations = 1:100
 | Integrator: 1 chains, 1 channels, 2 dimensions
-| Integrator: 1000 initial calls, 20 bins, stratified = T
+| Integrator: 100 initial calls, 20 bins, stratified = T
 | Integrator: VAMP
 |=============================================================================|
 | It      Calls  Integral[GeV] Error[GeV]  Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1        800     2.763E-01   9.69E-05    0.04    0.01    74.2
+   1        100     2.803E-01   5.47E-03    1.95    0.20    76.0
 |-----------------------------------------------------------------------------|
-   1        800     2.763E-01   9.69E-05    0.04    0.01    74.2
+   1        100     2.803E-01   5.47E-03    1.95    0.20    76.0
 |=============================================================================|
 | Integrate: sum of all components
 |=============================================================================|
 | It      Calls  Integral[GeV] Error[GeV]  Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1          0     1.377E+00   8.60E-03    0.62    0.00    56.0
+   1          0     1.476E+00   4.41E-02    2.99    0.00    60.2
 | NLO Correction: [O(alpha_s+1)/O(alpha_s)]
-|  ( -7.8798 +-   0.57372 ) %
+|  ( -7.1780 +-   1.74505 ) %
 |=============================================================================|
-[user variable] res_1 =  1.37683E+00
+[user variable] res_1 =  1.47555E+00
 seed = 3333
 | Process library 'openloops_6_lib': unloading
 | Process library 'openloops_6_lib': open
@@ -253,10 +245,6 @@ seed = 3333
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'openloops_6_p2_i3.phs'
-Warning: You have set ?openloops_use_cms = true, but not all matrix
-element methods are set to OpenLoops. Note that other
-methods might not necessarily support the complex mass
-scheme. This can yield inconsistencies in your NLO results!
 | One-Loop-Provider: Using OpenLoops
 | Loading library: [...]
 | One-Loop-Provider: Using OpenLoops
@@ -267,9 +255,9 @@ scheme. This can yield inconsistencies in your NLO results!
 |   Process index = 3
 |   Process components:
 |     1: 'openloops_6_p2_i1':   t => W+, b [omega]
-|     2: 'openloops_6_p2_i2':   t => W+, b, gl [omega], [Real]
-|     3: 'openloops_6_p2_i3':   t => W+, b [openloops], [Virtual]
-|     4: 'openloops_6_p2_i4':   t => W+, b [inactive], [Subtraction]
+|     2: 'openloops_6_p2_i2':   t => W+, b, gl [omega], [real]
+|     3: 'openloops_6_p2_i3':   t => W+, b [openloops], [virtual]
+|     4: 'openloops_6_p2_i4':   t => W+, b [inactive], [subtraction]
 | ------------------------------------------------------------------------
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
@@ -284,55 +272,55 @@ scheme. This can yield inconsistencies in your NLO results!
 | Phase space: no equivalences between channels used.
 | Phase space: wood
 Warning: No cuts have been defined.
-| Starting integration for process 'openloops_6_p2' part 'Born'
-| Integrate: iterations = 1:1000
+| Starting integration for process 'openloops_6_p2' part 'born'
+| Integrate: iterations = 1:100
 | Integrator: 1 chains, 1 channels, 2 dimensions
-| Integrator: 1000 initial calls, 20 bins, stratified = T
+| Integrator: 100 initial calls, 20 bins, stratified = T
 | Integrator: VAMP
 |=============================================================================|
 | It      Calls  Integral[GeV] Error[GeV]  Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1        800     1.495E+00   6.27E-04    0.04    0.01    71.6
+   1        100     1.505E+00   3.49E-02    2.32    0.23    72.1
 |-----------------------------------------------------------------------------|
-   1        800     1.495E+00   6.27E-04    0.04    0.01    71.6
+   1        100     1.505E+00   3.49E-02    2.32    0.23    72.1
 |=============================================================================|
-| Starting integration for process 'openloops_6_p2' part 'Real'
-| Integrate: iterations = 1:1000
+| Starting integration for process 'openloops_6_p2' part 'real'
+| Integrate: iterations = 1:100
 | Integrator: 1 chains, 1 channels, 5 dimensions
-| Integrator: 1000 initial calls, 20 bins, stratified = T
+| Integrator: 100 initial calls, 20 bins, stratified = T
 | Integrator: VAMP
 |=============================================================================|
 | It      Calls  Integral[GeV] Error[GeV]  Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1       1000    -4.253E-01   1.15E-02    2.69    0.85    10.2
+   1        100    -4.603E-01   3.06E-02    6.65    0.67    35.3
 |-----------------------------------------------------------------------------|
-   1       1000    -4.253E-01   1.15E-02    2.69    0.85    10.2
+   1        100    -4.603E-01   3.06E-02    6.65    0.67    35.3
 |=============================================================================|
-| Starting integration for process 'openloops_6_p2' part 'Virtual'
-| Integrate: iterations = 1:1000
+| Starting integration for process 'openloops_6_p2' part 'virtual'
+| Integrate: iterations = 1:100
 | Integrator: 1 chains, 1 channels, 2 dimensions
-| Integrator: 1000 initial calls, 20 bins, stratified = T
+| Integrator: 100 initial calls, 20 bins, stratified = T
 | Integrator: VAMP
 |=============================================================================|
 | It      Calls  Integral[GeV] Error[GeV]  Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1        800     2.762E-01   9.75E-05    0.04    0.01    74.1
+   1        100     2.766E-01   5.84E-03    2.11    0.21    74.2
 |-----------------------------------------------------------------------------|
-   1        800     2.762E-01   9.75E-05    0.04    0.01    74.1
+   1        100     2.766E-01   5.84E-03    2.11    0.21    74.2
 |=============================================================================|
 | Integrate: sum of all components
 |=============================================================================|
 | It      Calls  Integral[GeV] Error[GeV]  Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1          0     1.346E+00   1.15E-02    0.85    0.00    54.7
+   1          0     1.321E+00   4.68E-02    3.54    0.00    53.7
 | NLO Correction: [O(alpha_s+1)/O(alpha_s)]
-|  ( -9.9709 +-   0.76665 ) %
+|  (-12.2037 +-   2.09046 ) %
 |=============================================================================|
-[user variable] res_2 =  1.34568E+00
-tolerance =  1.00000E-02
+[user variable] res_2 =  1.32132E+00
+tolerance =  1.00000E-01
 | expect: success
 | Summary of value checks:
 |   Failures: 0 / Total: 1
-| There were no errors and    6 warning(s).
+| There were no errors and    3 warning(s).
 | WHIZARD run finished.
 |=============================================================================|

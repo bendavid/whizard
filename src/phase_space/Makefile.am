@@ -7,7 +7,7 @@
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
 #     with contributions from
-#     Christian Speckner <cnspeckn@googlemail.com>
+#     cf. main AUTHORS file
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by
@@ -34,6 +34,7 @@ check_LTLIBRARIES = libphase_space_ut.la
 
 libphase_space_la_SOURCES = \
   phs_base.f90 \
+  phs_none.f90 \
   phs_single.f90 \
   resonances.f90 \
   mappings.f90 phs_trees.f90 phs_forests.f90 \
@@ -44,6 +45,7 @@ libphase_space_la_SOURCES = \
 
 libphase_space_ut_la_SOURCES = \
   phs_base_uti.f90 phs_base_ut.f90 \
+  phs_none_uti.f90 phs_none_ut.f90 \
   phs_single_uti.f90 phs_single_ut.f90 \
   resonances_uti.f90 resonances_ut.f90 \
   phs_trees_uti.f90 phs_trees_ut.f90 \
@@ -149,6 +151,10 @@ if FC_USE_OPENMP
 AM_FCFLAGS += $(FCFLAGS_OPENMP)
 endif
 
+# MPI
+if FC_USE_MPI
+AM_FCFLAGS += $(FCFLAGS_MPI)
+endif
 
 ########################################################################
 ## Non-standard targets and dependencies

@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -610,8 +603,7 @@ contains
     type(flavor_t), dimension(:,:), allocatable :: flv
     logical, dimension(:), allocatable :: stable
     real(default), dimension(:), allocatable :: m_prod, m_dec
-    !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
-    integer :: i, j
+    integer :: i
     call decay%init (model, process%get_id (), process%get_n_terms ())
     do i = 1, size (decay%term_config)
        if (present (process_instance)) then
@@ -622,24 +614,12 @@ contains
           call process%get_term_flv_out (i, flv)
        end if
        allocate (m_prod (size (flv(:,1)%get_mass ())))
-       !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
-       do j = 1, size (flv(:,1)%get_mass ())
-          m_prod(j) = flv(j,1)%get_mass ()
-       end do
-       !!! m_prod = flv(:,1)%get_mass ()
+       m_prod = flv(:,1)%get_mass ()
        call flv%set_model (model)
        allocate (m_dec (size (flv(:,1)%get_mass ())))
-       !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
-       do j = 1, size (flv(:,1)%get_mass ())
-          m_dec(j) = flv(j,1)%get_mass ()
-       end do
-       !!! m_dec = flv(:,1)%get_mass ()
+       m_dec = flv(:,1)%get_mass ()
        allocate (stable (size (flv, 1)))
-       !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
-       do j = 1, size (flv, 1)
-          stable(j) = flv(j,1)%is_stable ()
-       end do
-       !!! stable = flv(:,1)%is_stable ()
+       stable = flv(:,1)%is_stable ()
        call check_masses ()
        call decay%init_term (i, flv, stable, model, process_stack)
        deallocate (flv, stable, m_prod, m_dec)

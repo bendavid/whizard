@@ -1,5 +1,4 @@
-# Makefile.am -- O'Caml rules for Circe2 Makefiles
-# $Id: Makefile.ocaml 3116 2011-04-05 10:20:25Z kilian $
+# Makefile.ocaml -- O'Caml rules for Circe2 Makefiles
 ##
 ## Process Makefile.am with automake to include this file in Makefile.in
 ##
@@ -10,7 +9,7 @@
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
 #     with contributions from
-#     Christian Speckner <cnspeckn@googlemail.com>
+#     cf. main AUTHORS file
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by 
@@ -41,30 +40,38 @@ OCAML_BYTECODE_EXT = .bin
 SUFFIXES = .mll .mly .ml .mli .cmi .cmo .cmx .bin .opt
 
 .cmx$(OCAML_NATIVE_EXT):
-	$(OCAMLOPT) $(OCAMLFLAGS) $(OCAMLOPTFLAGS) -o $@ \
-	unix.cmxa bigarray.cmxa $(CIRCE2_CMX) $<
+	@if $(AM_V_P); then :; else echo "  OCAMLOPT " $@; fi
+	$(AM_V_at)$(OCAMLOPT) $(OCAMLFLAGS) $(OCAMLOPTFLAGS) -o $@ \
+	  unix.cmxa bigarray.cmxa $(CIRCE2_CMX) $<
 
 .cmo$(OCAML_BYTECODE_EXT):
-	$(OCAMLC) $(OCAMLDEBUGFLAGS) $(OCAMLFLAGS) -o $@ \
-	unix.cma bigarray.cma $(CIRCE2_CMO) $<
+	@if $(AM_V_P); then :; else echo "  OCAMLC   " $@; fi
+	$(AM_V_at)$(OCAMLC) $(OCAMLDEBUGFLAGS) $(OCAMLFLAGS) -o $@ \
+	  unix.cma $(CIRCE2_CMO) $<
 
 .ml.cmx:
-	$(OCAMLOPT) $(OCAMLFLAGS) $(OCAMLOPTFLAGS) -o $@ -c $<
+	@if $(AM_V_P); then :; else echo "  OCAMLOPT " $@; fi
+	$(AM_V_at)$(OCAMLOPT) $(OCAMLFLAGS) $(OCAMLOPTFLAGS) -o $@ -c $<
 
 .mli.cmi:
-	$(OCAMLCI) $(OCAMLFLAGS) -o $@ -c $<
+	@if $(AM_V_P); then :; else echo "  OCAMLC   " $@; fi
+	$(AM_V_at)$(OCAMLCI) $(OCAMLFLAGS) -o $@ -c $<
 
 .ml.cmo:
-	$(OCAMLC) $(OCAMLDEBUGFLAGS) $(OCAMLFLAGS) -o $@ -c $<
+	@if $(AM_V_P); then :; else echo "  OCAMLC   " $@; fi
+	$(AM_V_at)$(OCAMLC) $(OCAMLDEBUGFLAGS) $(OCAMLFLAGS) -o $@ -c $<
 
 .mll.ml:
-	$(OCAMLLEX) -o $@ $<
+	@if $(AM_V_P); then :; else echo "  OCAMLLEX " $@; fi
+	$(AM_V_at)$(OCAMLLEX) -o $@ $<
 
 .mly.mli:
-	$(OCAMLYACC) -b$* $<
+	@if $(AM_V_P); then :; else echo "  OCAMLYACC" $@; fi
+	$(AM_V_at)$(OCAMLYACC) -b$* $<
 
 .mly.ml:
-	$(OCAMLYACC) -b$* $<
+	@if $(AM_V_P); then :; else echo "  OCAMLYACC" $@; fi
+	$(AM_V_at)$(OCAMLYACC) -b$* $<
 
 ########################################################################
 ## The End.

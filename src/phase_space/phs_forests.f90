@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -144,7 +137,8 @@ module phs_forests
      type(mapping_t), dimension(:), allocatable :: s_mapping
    contains
      procedure :: write => phs_forest_write
-     procedure :: extract_resonance_histories => phs_forest_extract_resonance_histories
+     procedure :: extract_resonance_history_set &
+          => phs_forest_extract_resonance_history_set
   end type phs_forest_t
 
 
@@ -658,23 +652,26 @@ contains
     end if
   end subroutine phs_forest_get_on_shell
 
-  subroutine phs_forest_extract_resonance_histories (forest, res_hist)
+  subroutine phs_forest_extract_resonance_history_set &
+       (forest, res_set, include_trivial)
     class(phs_forest_t), intent(in) :: forest
-    type(resonance_history_t), dimension(:), allocatable, intent(out) :: res_hist
+    type(resonance_history_set_t), intent(out) :: res_set
+    logical, intent(in), optional :: include_trivial
     type(resonance_history_t) :: rh
-    type(resonance_history_set_t) :: res_hist_set
     integer :: g, t
-    call res_hist_set%init ()
+    logical :: triv
+    triv = .false.;  if (present (include_trivial))  triv = include_trivial
+    call res_set%init ()
     do g = 1, size (forest%grove)
        associate (grove => forest%grove(g))
           do t = 1, size (grove%tree)
              call grove%tree(t)%extract_resonance_history (rh)
-             call res_hist_set%enter (rh)
+             call res_set%enter (rh, include_trivial)
           end do
        end associate
     end do
-    call res_hist_set%to_array (res_hist)
-  end subroutine phs_forest_extract_resonance_histories
+    call res_set%freeze ()
+  end subroutine phs_forest_extract_resonance_history_set
 
   subroutine define_phs_forest_syntax (ifile)
     type(ifile_t) :: ifile

@@ -537,13 +537,18 @@ s = s // str(x(size(x))) // ']'
 <<String utils: public>>=
   public :: string_contains_word
 <<String utils: procedures>>=
-  function string_contains_word (str, word) result (val)
+  pure function string_contains_word (str, word, include_identical) result (val)
     logical :: val
     type(string_t), intent(in) :: str, word
     type(string_t) :: str_tmp, str_out
+    logical, intent(in), optional :: include_identical
+    logical :: yorn
     str_tmp = str
+    val = .false.
+    yorn = .false.; if (present (include_identical))  yorn = include_identical
+    if (yorn)  val = str == word
     call split (str_tmp, str_out, word)
-    val = str_out /= ""
+    val = val .or. (str_out /= "")
   end function string_contains_word
 
 @ %def string_contains_word
@@ -551,7 +556,7 @@ s = s // str(x(size(x))) // ']'
 <<String utils: public>>=
   public :: split_string
 <<String utils: procedures>>=
-  subroutine split_string (str, separator, str_array)
+  pure subroutine split_string (str, separator, str_array)
     type(string_t), dimension(:), allocatable, intent(out) :: str_array
     type(string_t), intent(in) :: str, separator
     type(string_t) :: str_tmp, str_out
@@ -650,19 +655,22 @@ Write an array of integers.
 <<Format utils: public>>=
   public :: write_integer_array
 <<Format utils: procedures>>=
-  subroutine write_integer_array (array, unit, n_max)
+  subroutine write_integer_array (array, unit, n_max, no_skip)
     integer, intent(in), dimension(:) :: array
     integer, intent(in), optional :: unit
     integer, intent(in), optional :: n_max
+    logical, intent(in), optional :: no_skip
     integer :: u, i, n
+    logical :: yorn
     u = given_output_unit (unit)
+    yorn = .false.; if (present (no_skip)) yorn = no_skip
     if (present (n_max)) then
        n = n_max
     else
        n = size (array)
     end if
     do i = 1, n
-       if (i < n) then
+       if (i < n .or. yorn) then
           write (u, "(I0, A)", advance = "no") array(i), ", "
        else
           write (u, "(I0)") array(i)
@@ -870,6 +878,11 @@ end module format_defs
 
 @ %def FMT_10 FMT_11 FMT_12 FMT_13 FMT_14
 @ %def FMT_15 FMT_16 FMT_17 FMT_18 FMT_19
+@ Fixed-point formats for better readability, where appropriate.
+<<Format defs: public parameters>>=
+  character(*), parameter, public :: FMF_12 = "F12.9"
+@ %def FMF_12
+@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Numeric Utilities}
 

@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -138,8 +131,9 @@ module prc_gosam
     procedure :: write_name => prc_gosam_write_name
     procedure :: init_driver => prc_gosam_init_driver
     procedure :: set_initialized => prc_gosam_set_initialized
-    procedure :: compute_sqme_sc => prc_gosam_compute_sqme_sc
+    procedure :: compute_sqme_spin_c => prc_gosam_compute_sqme_spin_c
     procedure :: allocate_workspace => prc_gosam_allocate_workspace
+    procedure :: set_particle_properties => prc_gosam_set_particle_properties
   end type prc_gosam_t
 
   type, extends (blha_state_t) :: gosam_state_t
@@ -417,8 +411,8 @@ contains
     call object%load_driver (os_data)
   end subroutine prc_gosam_prepare_library
 
-  subroutine prc_gosam_create_and_load_extra_libraries ( &
-         core, flv_states, var_list, os_data, libname, model, i_core)
+  subroutine prc_gosam_create_and_load_extra_libraries &
+       (core, flv_states, var_list, os_data, libname, model, i_core, is_nlo)
     class(prc_gosam_t), intent(inout) :: core
     integer, intent(in), dimension(:,:), allocatable :: flv_states
     type(var_list_t), intent(in) :: var_list
@@ -426,6 +420,7 @@ contains
     type(string_t), intent(in) :: libname
     type(model_data_t), intent(in), target :: model
     integer, intent(in) :: i_core
+    logical, intent(in) :: is_nlo
     core%sqme_tree_pos = 4
     call core%prepare_library (os_data, libname)
     call core%start ()
@@ -537,7 +532,7 @@ contains
     prc_gosam%initialized = .true.
   end subroutine prc_gosam_set_initialized
 
-  subroutine prc_gosam_compute_sqme_sc (object, &
+  subroutine prc_gosam_compute_sqme_spin_c (object, &
        i_flv, em, p, ren_scale, me_sc, bad_point)
     class(prc_gosam_t), intent(inout) :: object
     integer, intent(in) :: i_flv
@@ -553,17 +548,17 @@ contains
     integer :: pos_real, pos_imag
     real(double) :: acc_dble
     real(default) :: acc, alpha_s
-    if (object%i_sc(i_flv) > 0) then
+    if (object%i_spin_c(i_flv) > 0) then
        me_sc = cmplx (zero ,zero, kind=default)
        mom = object%create_momentum_array (p)
        if (vanishes (ren_scale)) &
-          call msg_fatal ("prc_gosam_compute_sqme_sc: ren_scale vanishes")
+          call msg_fatal ("prc_gosam_compute_sqme_spin_c: ren_scale vanishes")
        alpha_s = object%qcd%alpha%get (ren_scale)
        ren_scale_dble = dble (ren_scale)
        select type (driver => object%driver)
        type is (gosam_driver_t)
           call driver%set_alpha_s (alpha_s)
-          call driver%blha_olp_eval2 (object%i_sc(i_flv), &
+          call driver%blha_olp_eval2 (object%i_spin_c(i_flv), &
                mom, ren_scale_dble, r, acc_dble)
        end select
        igm1 = em - 1
@@ -581,7 +576,7 @@ contains
     else
        r = 0._double
     end if
-  end subroutine prc_gosam_compute_sqme_sc
+  end subroutine prc_gosam_compute_sqme_spin_c
 
   subroutine prc_gosam_allocate_workspace (object, core_state)
     class(prc_gosam_t), intent(in) :: object
@@ -594,6 +589,45 @@ contains
     integer, intent(in), optional :: unit
     call msg_warning (unit = unit, string = "gosam_state_write: What to write?")
   end subroutine gosam_state_write
+
+  subroutine prc_gosam_set_particle_properties (object, model)
+    class(prc_gosam_t), intent(inout) :: object
+    class(model_data_t), intent(in), target :: model
+    integer :: i, i_pdg
+    type(flavor_t) :: flv
+    real(default) :: mass, width
+    integer :: ierr
+    real(default) :: top_yukawa
+    do i = 1, OLP_N_MASSIVE_PARTICLES
+       i_pdg = OLP_MASSIVE_PARTICLES(i)
+       if (i_pdg < 0) cycle
+       call flv%init (i_pdg, model)
+       mass = flv%get_mass (); width = flv%get_width ()
+       select type (driver => object%driver)
+       class is (blha_driver_t)
+          if (i_pdg == 13) then
+             call driver%set_mass_and_width (i_pdg, mass = mass)
+          else
+             call driver%set_mass_and_width (i_pdg, mass = mass, width = width)
+          end if
+          if (i_pdg == 5) call driver%blha_olp_set_parameter &
+             ('yuk(5)'//c_null_char, dble(mass), 0._double, ierr)
+          if (i_pdg == 6) then
+             if (driver%external_top_yukawa > 0._default) then
+                top_yukawa = driver%external_top_yukawa
+             else
+                top_yukawa = mass
+             end if
+             call driver%blha_olp_set_parameter &
+                ('yuk(6)'//c_null_char, dble(top_yukawa), 0._double, ierr)
+          end if
+          if (driver%switch_off_muon_yukawas) then
+             if (i_pdg == 13) call driver%blha_olp_set_parameter &
+                ('yuk(13)' //c_null_char, 0._double, 0._double, ierr)
+          end if
+       end select
+    end do
+  end subroutine prc_gosam_set_particle_properties
 
 
 end module prc_gosam

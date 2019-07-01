@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -244,16 +237,9 @@ contains
        call hepmc_event_add_vertex (evt, v(i))
     end do
     allocate (is_beam (n_tot))
-    !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
-    do i = 1, n_tot
-       is_beam(i) = particle_set%prt(i)%get_status () == PRT_BEAM
-    end do
-    !!! is_beam = particle_set%prt(1:n_tot)%get_status () == PRT_BEAM
+    is_beam = particle_set%prt(1:n_tot)%get_status () == PRT_BEAM
     if (.not. any (is_beam)) then
-       do i = 1, n_tot
-          is_beam(i) = particle_set%prt(i)%get_status () == PRT_INCOMING
-       end do
-       !!! is_beam = particle_set%prt(1:n_tot)%get_status () == PRT_INCOMING
+       is_beam = particle_set%prt(1:n_tot)%get_status () == PRT_INCOMING
     end if
     if (count (is_beam) == 2) then
        hbeam = pack (hprt, is_beam)

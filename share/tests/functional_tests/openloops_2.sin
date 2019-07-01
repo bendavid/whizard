@@ -16,38 +16,40 @@ beams_pol_fraction = 0.8, 0.3
 
 $loop_me_method = "openloops"
 
-!!! Tests should be run single-threaded
+### Tests should be run single-threaded
 openmp_num_threads = 1
 
 mtop = 173.2
 wtop = 0.0
 
 ?use_vamp_equivalences = false
-?alpha_s_is_fixed = false
-?alpha_s_from_mz = true
+?alphas_is_fixed = false
+?alphas_from_mz = true
 
 ### The OpenLoops version installed might not be new enough to support Collier
 ?openloops_use_collier = false
-process openloops_2_p1 = e1, E1 => t, T { nlo_calculation = "Virtual" }
-
-seed = 2222
+process openloops_2_p1 = e1, E1 => t, T { nlo_calculation = virtual }
 
 sqrts = 500 GeV
+iterations = 1:100
 
 ### Only OLP component
 $virtual_selection = "OLP"
-integrate (openloops_2_p1) { iterations = 1:1000:"gw" }
+seed = 0
+integrate (openloops_2_p1)
 real res_1 = integral(openloops_2_p1)
 
 ### Only subtraction component
 $virtual_selection = "Subtraction"
-integrate (openloops_2_p1) { iterations = 1:1000:"gw" }
+seed = 0
+integrate (openloops_2_p1)
 real res_2 = integral(openloops_2_p1)
 
 ### Both components
 $virtual_selection = "Full"
-integrate (openloops_2_p1) { iterations = 1:1000:"gw" }
+seed = 0
+integrate (openloops_2_p1)
 real res_3 = integral(openloops_2_p1)
 
 printf "RES: %f %f %f" (res_1, res_2, res_3)
-expect (res_1 + res_2 == res_3) { tolerance = 0.1 }
+expect (res_1 + res_2 == res_3) { tolerance = 0.01 }

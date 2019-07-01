@@ -504,8 +504,8 @@ in the GoSam code are ready. This is done with a stamp mechanism.
   procedure :: create_and_load_extra_libraries => &
        prc_gosam_create_and_load_extra_libraries
 <<prc gosam: procedures>>=
-  subroutine prc_gosam_create_and_load_extra_libraries ( &
-         core, flv_states, var_list, os_data, libname, model, i_core)
+  subroutine prc_gosam_create_and_load_extra_libraries &
+       (core, flv_states, var_list, os_data, libname, model, i_core, is_nlo)
     class(prc_gosam_t), intent(inout) :: core
     integer, intent(in), dimension(:,:), allocatable :: flv_states
     type(var_list_t), intent(in) :: var_list
@@ -513,6 +513,7 @@ in the GoSam code are ready. This is done with a stamp mechanism.
     type(string_t), intent(in) :: libname
     type(model_data_t), intent(in), target :: model
     integer, intent(in) :: i_core
+    logical, intent(in) :: is_nlo
     core%sqme_tree_pos = 4
     call core%prepare_library (os_data, libname)
     call core%start ()
@@ -688,9 +689,9 @@ is 1, the implemented position association deviates from the above one
 in the addition of 1.
 <<prc gosam: procedures>>=
 <<prc gosam: prc gosam: TBP>>=
-  procedure :: compute_sqme_sc => prc_gosam_compute_sqme_sc
+  procedure :: compute_sqme_spin_c => prc_gosam_compute_sqme_spin_c
 <<prc gosam: procedures>>=
-  subroutine prc_gosam_compute_sqme_sc (object, &
+  subroutine prc_gosam_compute_sqme_spin_c (object, &
        i_flv, em, p, ren_scale, me_sc, bad_point)
     class(prc_gosam_t), intent(inout) :: object
     integer, intent(in) :: i_flv
@@ -706,17 +707,17 @@ in the addition of 1.
     integer :: pos_real, pos_imag
     real(double) :: acc_dble
     real(default) :: acc, alpha_s
-    if (object%i_sc(i_flv) > 0) then
+    if (object%i_spin_c(i_flv) > 0) then
        me_sc = cmplx (zero ,zero, kind=default)
        mom = object%create_momentum_array (p)
        if (vanishes (ren_scale)) &
-          call msg_fatal ("prc_gosam_compute_sqme_sc: ren_scale vanishes")
+          call msg_fatal ("prc_gosam_compute_sqme_spin_c: ren_scale vanishes")
        alpha_s = object%qcd%alpha%get (ren_scale)
        ren_scale_dble = dble (ren_scale)
        select type (driver => object%driver)
        type is (gosam_driver_t)
           call driver%set_alpha_s (alpha_s)
-          call driver%blha_olp_eval2 (object%i_sc(i_flv), &
+          call driver%blha_olp_eval2 (object%i_spin_c(i_flv), &
                mom, ren_scale_dble, r, acc_dble)
        end select
        igm1 = em - 1
@@ -734,9 +735,9 @@ in the addition of 1.
     else
        r = 0._double
     end if
-  end subroutine prc_gosam_compute_sqme_sc
+  end subroutine prc_gosam_compute_sqme_spin_c
 
-@ %def prc_gosam_compute_sqme_sc
+@ %def prc_gosam_compute_sqme_spin_c
 @
 <<prc gosam: prc gosam: TBP>>=
   procedure :: allocate_workspace => prc_gosam_allocate_workspace
@@ -760,4 +761,46 @@ in the addition of 1.
 
 @ %def prc_gosam_state_write
 @
+<<prc gosam: prc gosam: TBP>>=
+  procedure :: set_particle_properties => prc_gosam_set_particle_properties
+<<prc gosam: procedures>>=
+  subroutine prc_gosam_set_particle_properties (object, model)
+    class(prc_gosam_t), intent(inout) :: object
+    class(model_data_t), intent(in), target :: model
+    integer :: i, i_pdg
+    type(flavor_t) :: flv
+    real(default) :: mass, width
+    integer :: ierr
+    real(default) :: top_yukawa
+    do i = 1, OLP_N_MASSIVE_PARTICLES
+       i_pdg = OLP_MASSIVE_PARTICLES(i)
+       if (i_pdg < 0) cycle
+       call flv%init (i_pdg, model)
+       mass = flv%get_mass (); width = flv%get_width ()
+       select type (driver => object%driver)
+       class is (blha_driver_t)
+          if (i_pdg == 13) then
+             call driver%set_mass_and_width (i_pdg, mass = mass)
+          else
+             call driver%set_mass_and_width (i_pdg, mass = mass, width = width)
+          end if
+          if (i_pdg == 5) call driver%blha_olp_set_parameter &
+             ('yuk(5)'//c_null_char, dble(mass), 0._double, ierr)
+          if (i_pdg == 6) then
+             if (driver%external_top_yukawa > 0._default) then
+                top_yukawa = driver%external_top_yukawa
+             else
+                top_yukawa = mass
+             end if
+             call driver%blha_olp_set_parameter &
+                ('yuk(6)'//c_null_char, dble(top_yukawa), 0._double, ierr)
+          end if
+          if (driver%switch_off_muon_yukawas) then
+             if (i_pdg == 13) call driver%blha_olp_set_parameter &
+                ('yuk(13)' //c_null_char, 0._double, 0._double, ierr)
+          end if
+       end select
+    end do
+  end subroutine prc_gosam_set_particle_properties
 
+@ %def prc_gosam_set_particle_properties

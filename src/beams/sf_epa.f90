@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -340,14 +333,14 @@ contains
     sf_int%status = SF_INITIAL
   end subroutine epa_setup_constants
 
-  subroutine epa_complete_kinematics (sf_int, x, f, r, rb, map)
+  subroutine epa_complete_kinematics (sf_int, x, xb, f, r, rb, map)
     class(epa_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(out) :: x
+    real(default), dimension(:), intent(out) :: xb
     real(default), intent(out) :: f
     real(default), dimension(:), intent(in) :: r
     real(default), dimension(:), intent(in) :: rb
     logical, intent(in) :: map
-    real(default) :: xb1
     real(default) :: delta, sqrt_delta, lx
     if (map) then
        associate (data => sf_int%data)
@@ -373,13 +366,16 @@ contains
           return
        end if
     end if
-    xb1 = 1 - x(1)
-    if (size(x) == 3)  x(2:3) = r(2:3)
-    call sf_int%split_momentum (x, xb1)
+    xb(1) = 1 - x(1)
+    if (size(x) == 3) then
+       x(2:3) = r(2:3)
+       xb(2:3) = rb(2:3)
+    end if
+    call sf_int%split_momentum (x, xb)
     select case (sf_int%status)
     case (SF_DONE_KINEMATICS)
        sf_int%x = x(1)
-       sf_int%xb= xb1
+       sf_int%xb= xb(1)
        sf_int%E  = energy (sf_int%get_momentum (1))
     case (SF_FAILED_KINEMATICS)
        sf_int%x = 0
@@ -388,9 +384,10 @@ contains
     end select
   end subroutine epa_complete_kinematics
 
-  subroutine epa_inverse_kinematics (sf_int, x, f, r, rb, map, set_momenta)
+  subroutine epa_inverse_kinematics (sf_int, x, xb, f, r, rb, map, set_momenta)
     class(epa_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(in) :: x
+    real(default), dimension(:), intent(in) :: xb
     real(default), intent(out) :: f
     real(default), dimension(:), intent(out) :: r
     real(default), dimension(:), intent(out) :: rb
@@ -411,7 +408,7 @@ contains
        end associate
     else
        r (1) = x(1)
-       rb(1) = 1 - x(1)
+       rb(1) = xb(1)
        if (sf_int%data%x_min < x(1) .and. x(1) < sf_int%data%x_max) then
           f = 1
        else
@@ -420,14 +417,14 @@ contains
     end if
     if (size(r) == 3) then
        r (2:3) = x(2:3)
-       rb(2:3) = 1 - x(2:3)
+       rb(2:3) = xb(2:3)
     end if
     if (set_mom) then
-       call sf_int%split_momentum (x, sf_int%xb)
+       call sf_int%split_momentum (x, xb)
        select case (sf_int%status)
        case (SF_DONE_KINEMATICS)
           sf_int%x  = x(1)
-          sf_int%xb = 1 - x(1)
+          sf_int%xb = xb(1)
           sf_int%E  = energy (sf_int%get_momentum (1))
        case (SF_FAILED_KINEMATICS)
           sf_int%x = 0
@@ -436,18 +433,21 @@ contains
     end if
   end subroutine epa_inverse_kinematics
 
-  subroutine sf_epa_recover_x (sf_int, x, x_free)
+  subroutine sf_epa_recover_x (sf_int, x, xb, x_free)
     class(epa_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(out) :: x
+    real(default), dimension(:), intent(out) :: xb
     real(default), intent(inout), optional :: x_free
-    call sf_int%base_recover_x (x, x_free)
+    call sf_int%base_recover_x (x, xb, x_free)
     sf_int%x  = x(1)
-    sf_int%xb = 1 - x(1)
+    sf_int%xb = xb(1)
   end subroutine sf_epa_recover_x
 
-  subroutine epa_apply (sf_int, scale)
+  subroutine epa_apply (sf_int, scale, rescaling_function, i_rescale)
     class(epa_t), intent(inout) :: sf_int
     real(default), intent(in) :: scale
+    class(rescaling_function_t), intent(in), optional :: rescaling_function
+    integer, intent(in), optional :: i_rescale
     real(default) :: x, xb, qminsq, qmaxsq, f, E
     associate (data => sf_int%data)
       x = sf_int%x

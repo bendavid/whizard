@@ -8,9 +8,9 @@
 * Integrate with n_it = 3 and n_calls = 100
 
  VAMP2 integrator:
-   Integral             =  9.9983001E-01
-   Error                =  5.1332081E-04
-   Efficiency           =  9.1827126E-02
+   Integral             =  1.0002686E+00
+   Error                =  4.6165589E-04
+   Efficiency           =  9.1781237E-02
    Number of channels   = 1
    Number of dimensions = 1
  Grid config:
@@ -42,17 +42,17 @@
    n_calls       = 1000
    adapt grids   = F
    adapt weights = F
-   Results:  [it, calls, integral, error, efficiency]
-     1 1000  1.0006188E+00  4.3265019E-04  9.1249866E-02
-     2 1000  1.0006385E+00  4.9938272E-04  9.1361211E-02
-     3 1000  9.9983001E-01  5.1332081E-04  9.1827126E-02
- MD5 sum (including results) = 'E53C5A073650DA3FDC7371824F3A04E9'
+   Results:  [it, calls, valid, integral, error, efficiency]
+     1 1000 1000  9.9946112E-01  4.5355335E-04  9.2368436E-02
+     2 1000 1000  9.9972191E-01  4.4140069E-04  9.1756076E-02
+     3 1000 1000  1.0002686E+00  4.6165589E-04  9.1781237E-02
+ MD5 sum (including results) = 'B140822C3F9615D98C3185216E3B0177'
 
 * Contents of mci_instance:
 
  MCI VAMP2 instance:
  Selected channel        = 0
- Integrand               =  1.0888177E+01
+ Integrand               =  1.0881433E+01
  MCI weight              =  1.0000000E+00
  Valid                   = T
  MCI a-priori weight:
@@ -60,13 +60,14 @@
  MCI jacobian:
                            1  1.0000000E+00
  MCI mapped x:
-           1        1  9.9897875E-01
+           1        1  9.9891686E-01
  MCI channel weight:
                            1  1.0000000E+00
  Number of event         = 0
  Event generated         = F
  Event weight            =  0.0000000E+00
  Event excess            =  0.0000000E+00
+ Event rescale f max     =  1.0000000E+00
  Negative (event) weight = F
  MCI event
                            1  0.0000000E+00

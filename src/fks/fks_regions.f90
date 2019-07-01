@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -122,6 +115,7 @@ module fks_regions
     integer :: n_in = 0
     logical, dimension(:), allocatable :: massive
     logical, dimension(:), allocatable :: colored
+    real(default), dimension(:), allocatable :: charge
   contains
     procedure :: valid_pair => flv_structure_valid_pair
     procedure :: remove_particle => flv_structure_remove_particle
@@ -133,7 +127,7 @@ module fks_regions
     procedure :: write => flv_structure_write
     procedure :: to_string => flv_structure_to_string
     procedure :: create_uborn => flv_structure_create_uborn
-    procedure :: init_mass_and_color => flv_structure_init_mass_and_color
+    procedure :: init_mass_color_and_charge => flv_structure_init_mass_color_and_charge
     procedure :: get_last_two => flv_structure_get_last_two
     procedure :: final => flv_structure_final
   end type flv_structure_t
@@ -165,9 +159,10 @@ module fks_regions
     integer :: real_index
     type(ftuple_t), dimension(:), allocatable :: ftuples
     integer :: uborn_index
-    logical :: double_fsr
-    logical :: soft_divergence
-    logical :: coll_divergence
+    logical :: double_fsr = .false.
+    logical :: soft_divergence = .false.
+    logical :: coll_divergence = .false.
+    type(string_t) :: nlo_correction_type
     integer, dimension(:), allocatable :: i_reg_to_i_con
     logical :: pseudo_isr = .false.
   contains
@@ -270,7 +265,7 @@ module fks_regions
     procedure :: set_isr_pseudo_regions => region_data_set_isr_pseudo_regions
     procedure :: split_up_interference_regions_for_threshold => &
          region_data_split_up_interference_regions_for_threshold
-    procedure :: set_mass_and_color => region_data_set_mass_and_color
+    procedure :: set_mass_color_and_charge => region_data_set_mass_color_and_charge
     procedure :: uses_resonances => region_data_uses_resonances
     procedure :: get_emitter_list => region_data_get_emitter_list
     procedure :: get_associated_resonances => region_data_get_associated_resonances
@@ -280,10 +275,6 @@ module fks_regions
     procedure :: get_contributors => region_data_get_contributors
     procedure :: get_emitter => region_data_get_emitter
     procedure :: map_real_to_born_index => region_data_map_real_to_born_index
-    procedure :: get_uborn_group_size => region_data_get_uborn_group_size
-    procedure :: get_uborn_group => region_data_get_uborn_group
-    procedure :: get_emitter_group_size => region_data_get_emitter_group_size
-    procedure :: get_emitter_group => region_data_get_emitter_group
     generic :: get_flv_states_born => get_flv_states_born_single, get_flv_states_born_array
     procedure :: get_flv_states_born_single => region_data_get_flv_states_born_single
     procedure :: get_flv_states_born_array => region_data_get_flv_states_born_array
@@ -496,7 +487,6 @@ contains
     type(ftuple_t), intent(in), dimension(:) :: ftuples
     logical, intent(in) :: latex
     integer :: i, nreg
-    integer :: i1, i2
     if (latex) then
        ftuple_string = var_str ("$\left\{")
     else
@@ -543,7 +533,7 @@ contains
     type(flv_structure_t), intent(in) :: flv
     integer, intent(in) :: i, j
     associate (flst => flv%flst)
-       if (is_massless_vector (flst(i)) .and. is_massless_vector (flst(j))) then
+       if (is_vector (flst(i)) .and. is_vector (flst(j))) then
           ftuple%splitting_type = V_TO_VV
        else if (flst(i)+flst(j) == 0 &
              .and. is_fermion (abs(flst(i)))) then
@@ -564,7 +554,7 @@ contains
     integer :: em
     em = i; if (i == 0) em = 1
     associate (flst => flv%flst)
-       if (is_massless_vector (flst(em)) .and. is_massless_vector (flst(j))) then
+       if (is_vector (flst(em)) .and. is_vector (flst(j))) then
           ftuple%splitting_type = V_TO_VV
        else if (is_massless_vector (flst(em)) .and. is_fermion(abs(flst(j)))) then
           ftuple%splitting_type = V_TO_FF
@@ -706,11 +696,8 @@ contains
     class(ftuple_list_t), intent(in) :: list
     integer, intent(in) :: i1, i2
     type(ftuple_list_t), pointer :: list1, list2 => null ()
-    type(ftuple_t) :: f1, f2
     select type (list)
     type is (ftuple_list_t)
-    f1 = list%get_ftuple (i1)
-    f2 = list%get_ftuple (i2)
        if (list%compare (i1, i2)) then
           list1 => list%get_entry (i2)
           list2 => list%get_entry (i1)
@@ -1034,7 +1021,7 @@ contains
   subroutine flv_structure_write (flv, unit)
     class(flv_structure_t), intent(in) :: flv
     integer, intent(in), optional :: unit
-    integer :: i, u
+    integer :: u
     u = given_output_unit (unit); if (u < 0) return
     write (u, '(A)') char (flv%to_string ())
   end subroutine flv_structure_write
@@ -1096,7 +1083,7 @@ contains
 
   contains
     integer function determine_gauge_boson_to_be_inserted ()
-      select case (char(nlo_correction_type))
+      select case (char (nlo_correction_type))
       case ("QCD")
          determine_gauge_boson_to_be_inserted = GLUON
       case ("QED")
@@ -1110,19 +1097,24 @@ contains
 
   end function flv_structure_create_uborn
 
-  subroutine flv_structure_init_mass_and_color (flv, model)
+  subroutine flv_structure_init_mass_color_and_charge (flv, model)
     class(flv_structure_t), intent(inout) :: flv
     type(model_t), intent(in) :: model
     integer :: i
     type(flavor_t) :: flavor
-    allocate (flv%massive (flv%nlegs), flv%colored(flv%nlegs))
+    allocate (flv%massive (flv%nlegs), flv%colored(flv%nlegs), flv%charge(flv%nlegs))
     do i = 1, flv%nlegs
        call flavor%init (flv%flst(i), model)
        flv%massive(i) = flavor%get_mass () > 0
        flv%colored(i) = &
             is_quark (flv%flst(i)) .or. is_gluon (flv%flst(i))
+       if (flavor%is_antiparticle ()) then
+          flv%charge(i) = -flavor%get_charge ()
+       else
+          flv%charge(i) = flavor%get_charge ()
+       end if
     end do
-  end subroutine flv_structure_init_mass_and_color
+  end subroutine flv_structure_init_mass_color_and_charge
 
   function flv_structure_get_last_two (flv, n) result (flst_last)
     integer, dimension(2) :: flst_last
@@ -1137,6 +1129,7 @@ contains
     if (allocated (flv%tag)) deallocate (flv%tag)
     if (allocated (flv%massive)) deallocate (flv%massive)
     if (allocated (flv%colored)) deallocate (flv%colored)
+    if (allocated (flv%charge)) deallocate (flv%charge)
   end subroutine flv_structure_final
 
   subroutine flavor_permutation_init (perm, flv_in, flv_ref, n_first, n_last, with_tag)
@@ -1311,7 +1304,8 @@ contains
   end function flavor_permutation_test
 
   subroutine singular_region_init (sregion, alr, mult, i_res, &
-         flst_real, flst_uborn, flv_born, emitter, ftuples, equivalences)
+         flst_real, flst_uborn, flv_born, emitter, ftuples, equivalences, &
+         nlo_correction_type)
     class(singular_region_t), intent(out) :: sregion
     integer, intent(in) :: alr, mult, i_res
     type(flv_structure_t), intent(in) :: flst_real
@@ -1320,8 +1314,8 @@ contains
     integer, intent(in) :: emitter
     type(ftuple_t), intent(inout), dimension(:) :: ftuples
     logical, intent(inout), dimension(:,:) :: equivalences
-    integer :: i, i1, i2
-    integer :: n_regions, n_legs
+    type(string_t), intent(in) :: nlo_correction_type
+    integer :: i
     call debug_input_values ()
     sregion%alr = alr
     sregion%mult = mult
@@ -1329,9 +1323,8 @@ contains
     sregion%flst_real = flst_real
     sregion%flst_uborn = flst_uborn
     sregion%emitter = emitter
-    n_regions = size (ftuples)
+    sregion%nlo_correction_type = nlo_correction_type
     sregion%nregions = size (ftuples)
-    n_legs = size (flst_real%flst)
     allocate (sregion%ftuples (sregion%nregions))
     sregion%ftuples = ftuples
     do i = 1, size(flv_born)
@@ -1342,7 +1335,6 @@ contains
     end do
   contains
     subroutine debug_input_values()
-      integer :: i
       call msg_debug2 (D_SUBTRACTION, "singular_region_init")
       if (debug2_active (D_SUBTRACTION)) then
          print *, 'alr =    ', alr
@@ -1361,14 +1353,9 @@ contains
     integer, intent(in), optional :: unit
     integer, intent(in), optional :: maxnregions
     character(len=7), parameter :: flst_format = "(I3,A1)"
-    character(len=16), parameter :: ireg_format = "(A1,I1,A1,I1,A3)"
-    character(len=22), parameter :: &
-       ireg_format_resonant = "(A1,I1,A1,I1,A1,I1,A3)"
     character(len=7), parameter :: ireg_space_format = "(7X,A1)"
-    integer :: nreal, nborn, i, u, mr, i1, i2
+    integer :: nreal, nborn, i, u, mr
     integer :: nleft, nright, nreg, nreg_diff
-    integer :: i_res
-    character(len=3) :: closing_bracket
     u = given_output_unit (unit); if (u < 0) return
     mr = sregion%nregions; if (present (maxnregions))  mr = maxnregions
     nreal = size (sregion%flst_real%flst)
@@ -1435,8 +1422,9 @@ contains
            " \\"
   end subroutine singular_region_write_latex
 
-  subroutine singular_region_set_splitting_info (region)
+  subroutine singular_region_set_splitting_info (region, n_in)
     class(singular_region_t), intent(inout) :: region
+    integer, intent(in) :: n_in
     integer :: i1, i2
     integer :: reg
     region%double_fsr = .false.
@@ -1450,13 +1438,14 @@ contains
                   ftuple(reg)%splitting_type /= V_TO_FF
 
              if (i1 == 0) then
-               region%coll_divergence = .true.
+               region%coll_divergence = .not. any (region%flst_real%massive(1:n_in))
              else
                region%coll_divergence = .not. region%flst_real%massive(i1)
              end if
 
              if (ftuple(reg)%splitting_type == V_TO_VV) then
-                region%double_fsr = .true.
+                if (all (ftuple(reg)%ireg > n_in))  &
+                     region%double_fsr = all (is_gluon (region%flst_real%flst(ftuple(reg)%ireg)))
                 exit
              else if (ftuple(reg)%splitting_type == UNDEFINED_SPLITTING) then
                 call msg_fatal ("All splittings should be defined!")
@@ -1517,6 +1506,7 @@ contains
     reg_out%double_fsr = reg_in%double_fsr
     reg_out%soft_divergence = reg_in%soft_divergence
     reg_out%coll_divergence = reg_in%coll_divergence
+    reg_out%nlo_correction_type = reg_in%nlo_correction_type
     if (allocated (reg_in%ftuples)) then
        allocate (reg_out%ftuples (size (reg_in%ftuples)))
        reg_out%ftuples = reg_in%ftuples
@@ -1727,7 +1717,7 @@ contains
     call reg_data%init_singular_regions (ftuples, emitter, flst_alr, nlo_correction_type)
     reg_data%n_flv_real = maxval (reg_data%regions%real_index)
     call reg_data%find_emitters ()
-    call reg_data%set_mass_and_color (model)
+    call reg_data%set_mass_color_and_charge (model)
     call reg_data%set_splitting_info ()
 
   end subroutine region_data_init
@@ -1864,23 +1854,23 @@ contains
     reg_data%fks_mapping%normalization_factor = 0.5_default
   end subroutine region_data_split_up_interference_regions_for_threshold
 
-  subroutine region_data_set_mass_and_color (reg_data, model)
+  subroutine region_data_set_mass_color_and_charge (reg_data, model)
     class(region_data_t), intent(inout) :: reg_data
     type(model_t), intent(in) :: model
     integer :: i
     do i = 1, reg_data%n_regions
        associate (region => reg_data%regions(i))
-          call region%flst_uborn%init_mass_and_color (model)
-          call region%flst_real%init_mass_and_color (model)
+          call region%flst_uborn%init_mass_color_and_charge (model)
+          call region%flst_real%init_mass_color_and_charge (model)
        end associate
     end do
     do i = 1, reg_data%n_flv_born
-       call reg_data%flv_born(i)%init_mass_and_color (model)
+       call reg_data%flv_born(i)%init_mass_color_and_charge (model)
     end do
     do i = 1, size (reg_data%flv_real)
-       call reg_data%flv_real(i)%init_mass_and_color (model)
+       call reg_data%flv_real(i)%init_mass_color_and_charge (model)
     end do
-  end subroutine region_data_set_mass_and_color
+  end subroutine region_data_set_mass_color_and_charge
 
   function region_data_uses_resonances (reg_data) result (val)
     logical :: val
@@ -2011,70 +2001,6 @@ contains
        end if
     end do
   end function region_data_map_real_to_born_index
-
-  function region_data_get_uborn_group_size (reg_data, uborn_index) result (n_uborn)
-    integer :: n_uborn
-    class(region_data_t), intent(in) :: reg_data
-    integer, intent(in) :: uborn_index
-    integer :: alr
-    n_uborn = 0
-    call msg_debug (D_SUBTRACTION, "inside region_data_get_uborn_group_size")
-    call msg_debug (D_SUBTRACTION, "n_regions = ", reg_data%n_regions)
-    do alr = 1, reg_data%n_regions
-       if (reg_data%regions(alr)%i_res > 1) cycle
-       if (reg_data%regions(alr)%uborn_index == uborn_index) n_uborn = n_uborn + 1
-    end do
-  end function region_data_get_uborn_group_size
-
-  function region_data_get_uborn_group (reg_data, uborn_index) result (uborn_group)
-    integer, dimension(:), allocatable :: uborn_group
-    class(region_data_t), intent(in) :: reg_data
-    integer, intent(in) :: uborn_index
-    integer :: alr, n_uborn, i_born
-    n_uborn = reg_data%get_uborn_group_size (uborn_index)
-    if (n_uborn > 0) then
-       allocate (uborn_group (n_uborn))
-       i_born = 1
-       do alr = 1, reg_data%n_regions
-          if (reg_data%regions(alr)%i_res > 1) cycle
-          if (reg_data%regions(alr)%uborn_index == uborn_index) then
-             uborn_group (i_born) = alr
-             i_born = i_born + 1
-          end if
-       end do
-    end if
-  end function region_data_get_uborn_group
-
-  function region_data_get_emitter_group_size (reg_data, emitter) result (n_emitter)
-    integer :: n_emitter
-    class(region_data_t), intent(in) :: reg_data
-    integer, intent(in) :: emitter
-    integer :: alr
-    n_emitter = 0
-    do alr = 1, reg_data%n_regions
-       if (reg_data%regions(alr)%i_res > 1) cycle
-       if (reg_data%regions(alr)%emitter == emitter) n_emitter = n_emitter + 1
-    end do
-  end function region_data_get_emitter_group_size
-
-  function region_data_get_emitter_group (reg_data, emitter) result (emitter_group)
-    integer, dimension(:), allocatable :: emitter_group
-    class(region_data_t), intent(in) :: reg_data
-    integer, intent(in) :: emitter
-    integer :: alr, n_emitter, i_emitter
-    n_emitter = reg_data%get_emitter_group_size (emitter)
-    if (n_emitter > 0) then
-       allocate (emitter_group (n_emitter))
-       i_emitter = 1
-       do alr = 1, reg_data%n_regions
-          if (reg_data%regions(alr)%i_res > 1) cycle
-          if (reg_data%regions(alr)%emitter == emitter) then
-             emitter_group (i_emitter) = alr
-             i_emitter = i_emitter + 1
-          end if
-       end do
-    end if
-  end function region_data_get_emitter_group
 
   function region_data_get_flv_states_born_array (reg_data) result (flv_states)
     integer, dimension(:,:), allocatable :: flv_states
@@ -2541,7 +2467,7 @@ contains
           end do
           call reg_data%regions(j)%init (j, mult(j), 0, flv_alr_registered(j), &
                flv_uborn(j), reg_data%flv_born, flst_emitter(j), ftuple_array, &
-               equivalences)
+               equivalences, nlo_correction_type)
           if (allocated (ftuple_array)) deallocate (ftuple_array)
           if (allocated (equivalences)) deallocate (equivalences)
        end do
@@ -2549,26 +2475,29 @@ contains
 
     subroutine assign_real_indices ()
       type(flv_structure_t) :: current_flv_real
+      type(flv_structure_t), dimension(:), allocatable :: these_flv
       integer :: i_real, current_uborn_index
+      integer :: i, j, this_i_real
+      allocate (these_flv (size (flv_alr_registered)))
       i_real = 1
       associate (regions => reg_data%regions)
          do i = 1, reg_data%n_regions
-            if (i == 1) then
-               regions(i)%real_index = 1
-               current_flv_real = flv_alr_registered(1)
-               current_uborn_index = regions(i)%uborn_index
-            else if ((flv_alr_registered(i) .equiv. current_flv_real) &
-                   .and. regions(i)%uborn_index == current_uborn_index) then
-               regions(i)%real_index = i_real
-            else
-               i_real = i_real + 1
-               regions(i)%real_index = i_real
-               current_flv_real = flv_alr_registered(i)
-               current_uborn_index = regions(i)%uborn_index
-            end if
+            do j = 1, size (these_flv)
+               if (.not. allocated (these_flv(j)%flst)) then
+                  this_i_real = i_real
+                  call these_flv(i_real)%init (flv_alr_registered(i)%flst, reg_data%n_in)
+                  i_real = i_real + 1
+                  exit
+               else if (all (these_flv(j)%flst == flv_alr_registered(i)%flst)) then
+                  this_i_real = j
+                  exit
+               end if
+            end do
+            regions(i)%real_index = this_i_real
          end do
       end associate
-   end subroutine assign_real_indices
+      deallocate (these_flv)
+    end subroutine assign_real_indices
 
     subroutine write_perm_list (perm_list)
       integer, intent(in), dimension(:,:) :: perm_list
@@ -2663,7 +2592,6 @@ contains
        do alr = 1, size (reg_data%regions)
           i_res = fks_mapping%res_map%alr_to_i_res (alr)
           emitter = reg_data%regions(alr)%emitter
-          !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
           call reg_data%get_contributors (i_res, emitter, contributors%c, share_emitter)
           if (.not. share_emitter) cycle
           if (.not. any (contributors_count == contributors)) then
@@ -2677,7 +2605,6 @@ contains
        do alr = 1, size (reg_data%regions)
           i_res = fks_mapping%res_map%alr_to_i_res (alr)
           emitter = reg_data%regions(alr)%emitter
-          !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
           call reg_data%get_contributors (i_res, emitter, contributors%c, share_emitter)
           if (.not. share_emitter) cycle
           if (.not. any (reg_data%alr_contributors == contributors)) then
@@ -2759,7 +2686,6 @@ contains
           emitter = region%emitter
           i_res = region%i_res
           if (i_res /= 0) then
-             !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
              call reg_data%get_contributors (i_res, emitter, &
                 contributors%c, share_emitter)
              if (.not. share_emitter) cycle
@@ -2899,7 +2825,6 @@ contains
           emitter = reg_data%emitters(i_em)
           do i_res = 1, size (reg_data%resonances)
              if (reg_data%emitter_is_compatible_with_resonance (i_res, emitter)) then
-                !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
                 call reg_data%get_contributors (i_res, emitter, contributors%c, share_emitter)
                 if (.not. share_emitter) cycle
                 call check_for_phs_identifier &
@@ -2929,7 +2854,7 @@ contains
      class(region_data_t), intent(inout) :: reg_data
      integer :: alr
      do alr = 1, reg_data%n_regions
-        call reg_data%regions(alr)%set_splitting_info ()
+        call reg_data%regions(alr)%set_splitting_info (reg_data%n_in)
      end do
    end subroutine region_data_set_splitting_info
 
@@ -2945,7 +2870,6 @@ contains
        emitter = reg_data%emitters(i_em)
        if (allocated (reg_data%resonances)) then
           do i_res = 1, size (reg_data%resonances)
-             !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
              call reg_data%get_contributors (i_res, emitter, contributors%c, share_emitter)
              if (.not. share_emitter) cycle
              call check_for_phs_identifier &
@@ -3002,7 +2926,6 @@ contains
      u = free_unit ()
      open (u, file=char(filename), action = "write", status="replace")
      if (latex) then
-        !call reg_data%write_latex (os_data, proc_id // "_fks_regions", stat_out = status)
         call reg_data%write_latex (u)
         close (u)
         call os_data_build_latex_file (os_data, proc_id // "_fks_regions", stat_out = status)
@@ -3354,6 +3277,7 @@ contains
              f2 = region%flst_real%flst(region%ftuples(alr)%ireg(2))
              valid_splitting = f1 + f2 == 0 &
                   .or. (f1 == 21 .and. f2 == 21) &
+                  .or. (is_massive_vector (f1) .and. f2 == 22) &
                   .or. is_fermion_vector_splitting (f1, f2)
              if (.not. valid_splitting) then
                 if (no_fail(2)) then

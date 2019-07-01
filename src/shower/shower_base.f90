@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -95,8 +88,8 @@ module shower_base
      real(default) :: fsr_lambda = 0.29_default     ! PARP(72)
      real(default) :: isr_lambda = 0.29_default     ! PARP(61)
      integer :: max_n_flavors = 5                   ! MSTJ(45)
-     logical :: isr_alpha_s_running = .true.        ! MSTP(64)
-     logical :: fsr_alpha_s_running = .true.        ! MSTJ(44)
+     logical :: isr_alphas_running = .true.        ! MSTP(64)
+     logical :: fsr_alphas_running = .true.        ! MSTJ(44)
      real(default) :: fixed_alpha_s = 0.2_default   ! PARU(111)
      logical :: alpha_s_fudged = .true.
      logical :: isr_pt_ordered = .false.
@@ -263,12 +256,12 @@ contains
          var_list%get_rval (var_str ("ps_isr_lambda"))
     settings%max_n_flavors = &
          var_list%get_ival (var_str ("ps_max_n_flavors"))
-    settings%isr_alpha_s_running = &
-         var_list%get_lval (var_str ("?ps_isr_alpha_s_running"))
-    settings%fsr_alpha_s_running = &
-         var_list%get_lval (var_str ("?ps_fsr_alpha_s_running"))
+    settings%isr_alphas_running = &
+         var_list%get_lval (var_str ("?ps_isr_alphas_running"))
+    settings%fsr_alphas_running = &
+         var_list%get_lval (var_str ("?ps_fsr_alphas_running"))
     settings%fixed_alpha_s = &
-         var_list%get_rval (var_str ("ps_fixed_alpha_s"))
+         var_list%get_rval (var_str ("ps_fixed_alphas"))
     settings%isr_pt_ordered = &
          var_list%get_lval (var_str ("?ps_isr_pt_ordered"))
     settings%isr_angular_ordered = &
@@ -328,7 +321,7 @@ contains
        write (u, "(3x,A,ES19.12)") &
             "ps_isr_lambda                = ", settings%isr_lambda
        write (u, "(3x,A,1x,L1)") &
-            "ps_isr_alpha_s_running       = ", settings%isr_alpha_s_running
+            "ps_isr_alphas_running        = ", settings%isr_alphas_running
        write (u, "(3x,A,ES19.12)") &
             "ps_isr_primordial_kt_width   = ", settings%isr_primordial_kt_width
        write (u, "(3x,A,ES19.12)") &
@@ -348,7 +341,7 @@ contains
        write (u, "(3x,A,ES19.12)") &
             "ps_fsr_lambda                = ", settings%fsr_lambda
        write (u, "(3x,A,1x,L1)") &
-            "ps_fsr_alpha_s_running       = ", settings%fsr_alpha_s_running
+            "ps_fsr_alphas_running        = ", settings%fsr_alphas_running
     else if (settings%isr_active) then
        write (u, "(3x,A)") " [FSR off]"
     end if
@@ -391,7 +384,7 @@ contains
     else
        t = abs(tin)
     end if
-    if (settings%isr_alpha_s_running) then
+    if (settings%isr_alphas_running) then
        alpha_s = running_as_lam (number_of_flavors(t, d_nf, min_virtuality), &
             sqrt(t), d_lambda_isr, 0)
     else
@@ -416,7 +409,7 @@ contains
     else
        t = abs(tin)
     end if
-    if (settings%fsr_alpha_s_running) then
+    if (settings%fsr_alphas_running) then
        alpha_s = running_as_lam (number_of_flavors (t, d_nf, min_virtuality), &
             sqrt(t), d_lambda_fsr, 0)
     else

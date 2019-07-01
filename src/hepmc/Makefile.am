@@ -7,7 +7,7 @@
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
 #     with contributions from
-#     Christian Speckner <cnspeckn@googlemail.com>
+#     cf. main AUTHORS file
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by 
@@ -28,7 +28,13 @@
 ## The files in this directory end up in an auxiliary libtool library.
 if HEPMC_AVAILABLE
 noinst_LTLIBRARIES = libHepMCWrap.la
-libHepMCWrap_la_SOURCES = HepMCWrap.cpp
+if HEPMC_IS_VERSION3
+libHepMCWrap_la_SOURCES = \
+   HepMC3_WHIZARD_Polarization.h \
+   HepMC3Wrap.cpp
+else
+libHepMCWrap_la_SOURCES = HepMC2Wrap.cpp
+endif
 libHepMCWrap_la_CPPFLAGS = $(HEPMC_INCLUDES)
 else
 noinst_LTLIBRARIES = libHepMCWrap_dummy.la
@@ -48,6 +54,11 @@ endif
 ## OpenMP
 if FC_USE_OPENMP
 AM_FCFLAGS += $(FCFLAGS_OPENMP)
+endif
+
+# MPI
+if FC_USE_MPI
+AM_FCFLAGS += $(FCFLAGS_MPI)
 endif
 
 ########################################################################

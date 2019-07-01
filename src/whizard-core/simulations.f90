@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -39,9 +32,12 @@ module simulations
   use iso_varying_string, string_t => varying_string
   use io_units
   use format_utils, only: write_separator
-  use format_defs, only: FMT_19
+  use format_defs, only: FMT_15, FMT_19
+  use os_interface
   use numeric_utils
+  use string_utils, only: str
   use diagnostics
+  use lorentz, only: vector4_t
   use sm_qcd
   use md5
   use variables, only: var_list_t
@@ -53,8 +49,11 @@ module simulations
   use beam_structures, only: beam_structure_t
   use beams
   use rng_base
+  use rng_stream, only: rng_stream_t
   use selectors
+  use resonances, only: resonance_history_set_t
   use process_libraries, only: process_library_t
+  use process_libraries, only: process_component_def_t
   use prc_core
   !  TODO: (bcn 2016-09-13) should be ideally only pcm_base
   use pcm, only: pcm_nlo_t, pcm_instance_nlo_t
@@ -73,6 +72,7 @@ module simulations
   use dispatch_beams, only: dispatch_qcd
   use dispatch_rng, only: dispatch_rng_factory
   use dispatch_me_methods, only: dispatch_core_update, dispatch_core_restore
+  use dispatch_transforms, only: dispatch_evt_resonance
   use dispatch_transforms, only: dispatch_evt_decay
   use dispatch_transforms, only: dispatch_evt_shower
   use dispatch_transforms, only: dispatch_evt_hadrons
@@ -80,8 +80,11 @@ module simulations
 
   use integrations
   use event_streams
+  use restricted_subprocesses, only: resonant_subprocess_set_t
 
   use evt_nlo
+
+
 
   implicit none
   private
@@ -146,13 +149,13 @@ module simulations
      integer :: n_mci = 0
      type(mci_set_t), dimension(:), allocatable :: mci_sets
      type(selector_t) :: mci_selector
+     type(resonant_subprocess_set_t) :: resonant_subprocess_set
      type(core_safe_t), dimension(:), allocatable :: core_safe
      class(model_data_t), pointer :: model => null ()
      type(qcd_t) :: qcd
      type(entry_t), pointer :: first => null ()
      type(entry_t), pointer :: next => null ()
      class(evt_t), pointer :: evt_powheg => null ()
-     logical :: requires_real_switch_off = .true.
    contains
      procedure :: write_config => entry_write_config
      procedure :: final => entry_final
@@ -181,6 +184,17 @@ module simulations
      procedure :: update_process => entry_update_process
      procedure :: restore_process => entry_restore_process
      procedure :: connect_qcd => entry_connect_qcd
+     procedure :: setup_resonant_subprocesses &
+          => entry_setup_resonant_subprocesses
+     procedure :: compile_resonant_subprocesses &
+          => entry_compile_resonant_subprocesses
+     procedure :: prepare_resonant_subprocesses &
+          => entry_prepare_resonant_subprocesses
+     procedure :: prepare_resonant_subprocess_instances &
+          => entry_prepare_resonant_subprocess_instances
+     procedure :: write_resonant_subprocess_data &
+          => entry_write_resonant_subprocess_data
+     procedure :: write_process_data => entry_write_process_data
   end type entry_t
 
   type, extends (entry_t) :: alt_entry_t
@@ -195,6 +209,7 @@ module simulations
      type(string_t) :: sample_id
      logical :: unweighted = .true.
      logical :: negative_weights = .false.
+     logical :: support_resonance_history = .false.
      logical :: respect_selection = .true.
      integer :: norm_mode = NORM_UNDEFINED
      logical :: update_sqme = .false.
@@ -231,6 +246,10 @@ module simulations
      generic :: write_event => write_event_unit
      procedure :: write_event_unit => simulation_write_event_unit
      procedure :: write_alt_event => simulation_write_alt_event
+     procedure :: write_resonant_subprocess_data &
+          => simulation_write_resonant_subprocess_data
+     procedure :: write_process_data &
+          => simulation_write_process_data
      procedure :: final => simulation_final
      procedure :: init => simulation_init
      procedure :: compute_n_events => simulation_compute_n_events
@@ -260,7 +279,9 @@ module simulations
      procedure :: get_data => simulation_get_data
      procedure :: get_default_sample_name => simulation_get_default_sample_name
      procedure :: is_valid => simulation_is_valid
+     procedure :: get_hard_particle_set => simulation_get_hard_particle_set
      procedure :: evaluate_expressions => simulation_evaluate_expressions
+     procedure :: evaluate_transforms => simulation_evaluate_transforms
   end type simulation_t
 
 
@@ -383,20 +404,29 @@ contains
     end subroutine flush_weight_buffer
   end subroutine counter_record_mean_and_variance
 
-  subroutine mci_set_write (object, unit)
+  subroutine mci_set_write (object, unit, pacified)
     class(mci_set_t), intent(in) :: object
     integer, intent(in), optional :: unit
+    logical, intent(in), optional :: pacified
+    logical :: pacify
     integer :: u, i
     u = given_output_unit (unit)
+    pacify = .false.;  if (present (pacified))  pacify = pacified
     write (u, "(3x,A)")  "Components:"
     do i = 1, object%n_components
        write (u, "(5x,I0,A,A,A)")  object%i_component(i), &
             ": '", char (object%component_id(i)), "'"
     end do
     if (object%has_integral) then
-       write (u, "(3x,A," // FMT_19 // ")")  "Integral  = ", object%integral
-       write (u, "(3x,A," // FMT_19 // ")")  "Error     = ", object%error
-       write (u, "(3x,A,F13.10)")  "Weight    =", object%weight_mci
+       if (pacify) then
+          write (u, "(3x,A," // FMT_15 // ")")  "Integral  = ", object%integral
+          write (u, "(3x,A," // FMT_15 // ")")  "Error     = ", object%error
+          write (u, "(3x,A,F9.6)")  "Weight    =", object%weight_mci
+       else
+          write (u, "(3x,A," // FMT_19 // ")")  "Integral  = ", object%integral
+          write (u, "(3x,A," // FMT_19 // ")")  "Error     = ", object%error
+          write (u, "(3x,A,F13.10)")  "Weight    =", object%weight_mci
+       end if
     else
        write (u, "(3x,A)")  "Integral  = [undefined]"
     end if
@@ -429,13 +459,15 @@ contains
     logical, intent(in) :: use_process, integrate
     type(rt_data_t), intent(inout), target :: local
     type(rt_data_t), intent(inout), optional, target :: global
+    type(rt_data_t), pointer :: current
     call msg_debug (D_CORE, "prepare_process")
     call msg_debug (D_CORE, "global present", present (global))
     if (present (global)) then
-       process => global%process_stack%get_process_ptr (process_id)
+       current => global
     else
-       process => local%process_stack%get_process_ptr (process_id)
+       current => local
     end if
+    process => current%process_stack%get_process_ptr (process_id)
     call msg_debug (D_CORE, "use_process", use_process)
     call msg_debug (D_CORE, "associated process", associated (process))
     if (use_process .and. .not. associated (process)) then
@@ -454,11 +486,11 @@ contains
                local_stack = .true., init_only = .not. integrate)
        end if
        if (signal_is_pending ())  return
-       process => global%process_stack%get_process_ptr (process_id)
+       process => current%process_stack%get_process_ptr (process_id)
        if (associated (process)) then
           if (integrate) then
              call msg_message ("Simulate: integration done")
-             call global%process_stack%fill_result_vars (process_id)
+             call current%process_stack%fill_result_vars (process_id)
           else
              call msg_message ("Simulate: process initialization done")
           end if
@@ -474,26 +506,35 @@ contains
           call integrate_process (process_id, local, &
                local_stack = .true., init_only = .true.)
        end if
-       process => global%process_stack%get_process_ptr (process_id)
+       process => current%process_stack%get_process_ptr (process_id)
        call msg_message &
             ("Simulate: process '" &
                // char (process_id) // "': enabled for rescan only")
     end if
   end subroutine prepare_process
 
-  subroutine entry_write_config (object, unit)
+  subroutine entry_write_config (object, unit, pacified)
     class(entry_t), intent(in) :: object
     integer, intent(in), optional :: unit
+    logical, intent(in), optional :: pacified
+    logical :: pacify
     integer :: u, i
     u = given_output_unit (unit)
+    pacify = .false.;  if (present (pacified))  pacify = pacified
     write (u, "(3x,A,A,A)")  "Process   = '", char (object%process_id), "'"
     write (u, "(3x,A,A,A)")  "Library   = '", char (object%library), "'"
     write (u, "(3x,A,A,A)")  "Run       = '", char (object%run_id), "'"
     write (u, "(3x,A,L1)")   "is valid  = ", object%valid
     if (object%has_integral) then
-       write (u, "(3x,A," // FMT_19 // ")")  "Integral  = ", object%integral
-       write (u, "(3x,A," // FMT_19 // ")")  "Error     = ", object%error
-       write (u, "(3x,A,F13.10)")  "Weight    =", object%process_weight
+       if (pacify) then
+          write (u, "(3x,A," // FMT_15 // ")")  "Integral  = ", object%integral
+          write (u, "(3x,A," // FMT_15 // ")")  "Error     = ", object%error
+          write (u, "(3x,A,F9.6)")  "Weight    =", object%process_weight
+       else
+          write (u, "(3x,A," // FMT_19 // ")")  "Integral  = ", object%integral
+          write (u, "(3x,A," // FMT_19 // ")")  "Error     = ", object%error
+          write (u, "(3x,A,F13.10)")  "Weight    =", object%process_weight
+       end if
     else
        write (u, "(3x,A)")  "Integral  = [undefined]"
     end if
@@ -502,8 +543,12 @@ contains
     do i = 1, size (object%mci_sets)
        write (u, "(A)")
        write (u, "(1x,A,I0,A)")  "MCI set #", i, ":"
-       call object%mci_sets(i)%write (u)
+       call object%mci_sets(i)%write (u, pacified)
     end do
+    if (object%resonant_subprocess_set%is_active ()) then
+       write (u, "(A)")
+       call object%write_resonant_subprocess_data (u)
+    end if
     if (allocated (object%core_safe)) then
        do i = 1, size (object%core_safe)
           write (u, "(1x,A,I0,A)")  "Saved process-component core #", i, ":"
@@ -556,18 +601,22 @@ contains
   subroutine entry_init &
        (entry, process_id, &
        use_process, integrate, generate, update_sqme, &
+       support_resonance_history, &
        local, global, n_alt)
     class(entry_t), intent(inout), target :: entry
     type(string_t), intent(in) :: process_id
     logical, intent(in) :: use_process, integrate, generate, update_sqme
+    logical, intent(in) :: support_resonance_history
     type(rt_data_t), intent(inout), target :: local
     type(rt_data_t), intent(inout), optional, target :: global
     integer, intent(in), optional :: n_alt
     type(process_t), pointer :: process, master_process
     type(process_instance_t), pointer :: process_instance
+    type(process_library_t), pointer :: prclib_saved
     integer :: i
+    logical :: res_include_trivial
     logical :: combined_integration
-    integer :: fixed_mci = 0
+    integer :: selected_mci = 0
     call msg_debug (D_CORE, "entry_init")
     call msg_debug (D_CORE, "process_id", process_id)
     call prepare_process &
@@ -625,27 +674,36 @@ contains
     if (process%is_nlo_calculation ()) call process%init_nlo_settings (global%var_list)
     combined_integration = local%get_lval (var_str ("?combined_nlo_integration"))
     if (.not. combined_integration &
-       .and. local%get_lval (var_str ("?fixed_order_nlo_events"))) then
-       fixed_mci = process%extract_fixed_mci ()
-    end if
+         .and. local%get_lval (var_str ("?fixed_order_nlo_events"))) &
+              selected_mci = process%extract_active_component_mci ()
     call prepare_process_instance (process_instance, process, local%model, &
          local = local)
 
     if (generate) then
-       if (fixed_mci > 0) then
-          call process%prepare_simulation (fixed_mci)
-          call process_instance%init_simulation &
-             (fixed_mci, entry%config%safety_factor, &
-              local%get_lval (var_str ("?keep_failed_events")))
+       if (selected_mci > 0) then
+          call process%prepare_simulation (selected_mci)
+          call process_instance%init_simulation (selected_mci, entry%config%safety_factor, &
+               local%get_lval (var_str ("?keep_failed_events")))
        else
           do i = 1, entry%n_mci
              call process%prepare_simulation (i)
              call process_instance%init_simulation (i, entry%config%safety_factor, &
-                local%get_lval (var_str ("?keep_failed_events")))
+                  local%get_lval (var_str ("?keep_failed_events")))
           end do
-       end if
+      end if
     end if
+
+    if (support_resonance_history) then
+       prclib_saved => local%prclib
+       call entry%setup_resonant_subprocesses (local, process)
+       call entry%compile_resonant_subprocesses (local)
+       call entry%prepare_resonant_subprocesses (local, global)
+       call entry%prepare_resonant_subprocess_instances (local)
+       if (associated (prclib_saved))  call local%update_prclib (prclib_saved)
+    end if
+
     call entry%setup_event_transforms (process, local)
+
     call dispatch_qcd (entry%qcd, local%get_var_list_ptr (), local%os_data)
 
     call entry%connect_qcd ()
@@ -667,24 +725,26 @@ contains
     call entry%setup_expressions ()
 
     entry%model => process%get_model_ptr ()
+
     entry%valid = .true.
 
   end subroutine entry_init
 
-  subroutine entry_set_active_real_components (entry, i_mci)
+  subroutine entry_set_active_real_components (entry)
     class(entry_t), intent(inout) :: entry
-    integer, intent(in) :: i_mci
-    integer :: i
-    if (.not. entry%requires_real_switch_off) return
+    integer :: i_active_real
     select type (pcm => entry%instance%pcm)
     class is (pcm_instance_nlo_t)
-       i = pcm%active_real_component
+       i_active_real = entry%instance%get_real_of_mci ()
+       call msg_debug2 (D_CORE, "i_active_real", i_active_real)
        if (associated (entry%evt_powheg)) then
           select type (evt => entry%evt_powheg)
           type is (evt_shower_t)
-             if (entry%process%get_component_type(i) == COMP_REAL_FIN) then
+             if (entry%process%get_component_type(i_active_real) == COMP_REAL_FIN) then
+                call msg_debug (D_CORE, "Disabling Powheg matching for ", i_active_real)
                 call evt%disable_powheg_matching ()
              else
+                call msg_debug (D_CORE, "Enabling Powheg matching for ", i_active_real)
                 call evt%enable_powheg_matching ()
              end if
           class default
@@ -692,15 +752,6 @@ contains
           end select
        end if
     end select
-    if (entry%is_nlo () .and. .not. entry%process%is_combined_nlo_integration ()) then
-       if (entry%process%extract_fixed_mci () > 0) then
-          call entry%process%deactivate_components &
-               (entry%process%extract_fixed_mci ())
-       else
-          call entry%process%deactivate_real_component ()
-       end if
-    end if
-    entry%requires_real_switch_off = .false.
   end subroutine entry_set_active_real_components
 
   subroutine prepare_local_process (process, process_id, local)
@@ -720,7 +771,6 @@ contains
     type(process_t), intent(inout), target :: process
     class(model_data_t), intent(in), optional :: model
     type(rt_data_t), intent(in), optional, target :: local
-    integer :: i_component
     allocate (process_instance)
     call process_instance%init (process)
     if (process%is_nlo_calculation ()) then
@@ -927,6 +977,16 @@ contains
     if (process%contains_unstable (local%model)) then
        call dispatch_evt_decay (evt, local%var_list)
        if (associated (evt))  call entry%import_transform (evt)
+    else if (entry%resonant_subprocess_set%is_active ()) then
+       call dispatch_evt_resonance (evt, local%var_list, &
+            entry%resonant_subprocess_set%get_resonance_history_set (), &
+            entry%resonant_subprocess_set%get_libname ())
+       if (associated (evt)) then
+          call entry%resonant_subprocess_set%connect_transform (evt)
+          call entry%resonant_subprocess_set%set_on_shell_limit &
+               (local%get_rval (var_str ("resonance_on_shell_limit")))
+          call entry%import_transform (evt)
+       end if
     end if
     enable_fixed_order = local%get_lval (var_str ("?fixed_order_nlo_events"))
     if (enable_fixed_order) then
@@ -986,11 +1046,8 @@ contains
     class(entry_t), intent(inout) :: entry
     integer :: i_mci
     call msg_debug2 (D_CORE, "entry_select_mci")
-    if (entry%process%extract_fixed_mci () > 0) then
-       i_mci = entry%process%extract_fixed_mci ()
-    else
-       call entry%mci_selector%generate (entry%rng, i_mci)
-    end if
+    i_mci = entry%process%extract_active_component_mci ()
+    if (i_mci == 0) call entry%mci_selector%generate (entry%rng, i_mci)
     call msg_debug2 (D_CORE, "i_mci", i_mci)
   end function entry_select_mci
 
@@ -1076,6 +1133,101 @@ contains
     end do
   end subroutine entry_connect_qcd
 
+  subroutine entry_setup_resonant_subprocesses (entry, global, process)
+    class(entry_t), intent(inout) :: entry
+    type(rt_data_t), intent(inout), target :: global
+    type(process_t), intent(in), target :: process
+    type(string_t) :: libname
+    integer :: i_component
+    type(resonance_history_set_t) :: res_history_set
+    type(process_component_def_t), pointer :: process_component_def
+    libname = process%get_id () // "_R"
+    i_component = 1
+    call process%extract_resonance_history_set (res_history_set, &
+         i_component=i_component)
+    call entry%resonant_subprocess_set%init (res_history_set)
+    process_component_def => process%get_component_def_ptr (i_component)
+    call entry%resonant_subprocess_set%create_library &
+         (libname, &
+         process_component_def%get_prt_spec_in (), &
+         process_component_def%get_prt_spec_out (), &
+         global)
+  end subroutine entry_setup_resonant_subprocesses
+
+  subroutine entry_compile_resonant_subprocesses (entry, global)
+    class(entry_t), intent(inout) :: entry
+    type(rt_data_t), intent(inout), target :: global
+    call entry%resonant_subprocess_set%compile_library (global)
+  end subroutine entry_compile_resonant_subprocesses
+
+  subroutine entry_prepare_resonant_subprocesses (entry, local, global)
+    class(entry_t), intent(inout) :: entry
+    type(rt_data_t), intent(inout), target :: local
+    type(rt_data_t), intent(inout), optional, target :: global
+    call entry%resonant_subprocess_set%prepare_process_objects (local, global)
+  end subroutine entry_prepare_resonant_subprocesses
+
+  subroutine entry_prepare_resonant_subprocess_instances (entry, global)
+    class(entry_t), intent(inout) :: entry
+    type(rt_data_t), intent(in), target :: global
+    call entry%resonant_subprocess_set%prepare_process_instances (global)
+  end subroutine entry_prepare_resonant_subprocess_instances
+
+  subroutine entry_write_resonant_subprocess_data (entry, unit)
+    class(entry_t), intent(in) :: entry
+    integer, intent(in), optional :: unit
+    integer :: u, i
+    u = given_output_unit (unit)
+    call entry%resonant_subprocess_set%write (unit)
+    write (u, "(1x,A,I0)")  "Resonant subprocesses refer to &
+            &process component #", 1
+  end subroutine entry_write_resonant_subprocess_data
+
+  subroutine entry_write_process_data &
+       (entry, unit, show_process, show_instance, verbose)
+    class(entry_t), intent(in) :: entry
+    integer, intent(in), optional :: unit
+    logical, intent(in), optional :: show_process
+    logical, intent(in), optional :: show_instance
+    logical, intent(in), optional :: verbose
+    integer :: u, i
+    logical :: s_proc, s_inst, verb
+    type(process_t), pointer :: process
+    type(process_instance_t), pointer :: instance
+    u = given_output_unit (unit)
+    s_proc = .false.;  if (present (show_process))  s_proc = show_process
+    s_inst = .false.;  if (present (show_instance))  s_inst = show_instance
+    verb = .false.;  if (present (verbose))  verb = verbose
+    if (s_proc .or. s_inst) then
+       write (u, "(1x,A,':')")  "Process data"
+       if (s_proc) then
+          process => entry%process
+          if (associated (process)) then
+             if (verb) then
+                call write_separator (u, 2)
+                call process%write (.false., u)
+             else
+                call process%show (u, verbose=.false.)
+             end if
+          else
+             write (u, "(3x,A)")  "[not associated]"
+          end if
+       end if
+       if (s_inst) then
+          instance => entry%instance
+          if (associated (instance)) then
+             if (verb) then
+                call instance%write (u)
+             else
+                call instance%write_header (u)
+             end if
+          else
+             write (u, "(3x,A)")  "Process instance: [not associated]"
+          end if
+       end if
+    end if
+  end subroutine entry_write_process_data
+
   subroutine alt_entry_init (entry, process_id, master_process, local)
     class(alt_entry_t), intent(inout), target :: entry
     type(string_t), intent(in) :: process_id
@@ -1134,11 +1286,14 @@ contains
     call pset%final ()
   end subroutine entry_fill_particle_set
 
-  subroutine simulation_write (object, unit)
+  subroutine simulation_write (object, unit, testflag)
     class(simulation_t), intent(in) :: object
     integer, intent(in), optional :: unit
+    logical, intent(in), optional :: testflag
+    logical :: pacified
     integer :: u, i
     u = given_output_unit (unit)
+    pacified = object%pacify;  if (present (testflag))  pacified = testflag
     call write_separator (u, 2)
     write (u, "(1x,A,A,A)")  "Event sample: '", char (object%sample_id), "'"
     write (u, "(3x,A,I0)")  "Processes    = ", object%n_prc
@@ -1149,6 +1304,7 @@ contains
     write (u, "(3x,A,A)")   "Event norm   = ", &
          char (event_normalization_string (object%norm_mode))
     write (u, "(3x,A,L1)")  "Neg. weights = ", object%negative_weights
+    write (u, "(3x,A,L1)")  "Res. history = ", object%support_resonance_history
     write (u, "(3x,A,L1)")  "Respect sel. = ", object%respect_selection
     write (u, "(3x,A,L1)")  "Update sqme  = ", object%update_sqme
     write (u, "(3x,A,L1)")  "Update wgt   = ", object%update_weight
@@ -1157,8 +1313,17 @@ contains
     write (u, "(3x,A,L1)")  "Pacify       = ", object%pacify
     write (u, "(3x,A,I0)")  "Max. tries   = ", object%n_max_tries
     if (object%has_integral) then
-       write (u, "(3x,A," // FMT_19 // ")")  "Integral     = ", object%integral
-       write (u, "(3x,A," // FMT_19 // ")")  "Error        = ", object%error
+       if (pacified) then
+          write (u, "(3x,A," // FMT_15 // ")")  &
+               "Integral     = ", object%integral
+          write (u, "(3x,A," // FMT_15 // ")")  &
+               "Error        = ", object%error
+       else
+          write (u, "(3x,A," // FMT_19 // ")")  &
+               "Integral     = ", object%integral
+          write (u, "(3x,A," // FMT_19 // ")")  &
+               "Error        = ", object%error
+       end if
     else
        write (u, "(3x,A)")  "Integral     = [undefined]"
     end if
@@ -1204,7 +1369,7 @@ contains
              call write_separator (u)
           end if
           write (u, "(1x,A,I0,A)") "Process #", i, ":"
-          call object%entry(i)%write_config (u)
+          call object%entry(i)%write_config (u, pacified)
        end do
     end if
     call write_separator (u, 2)
@@ -1265,6 +1430,38 @@ contains
     end if
   end subroutine simulation_write_alt_event
 
+  subroutine simulation_write_resonant_subprocess_data (object, unit, i_prc)
+    class(simulation_t), intent(in) :: object
+    integer, intent(in), optional :: unit
+    integer, intent(in), optional :: i_prc
+    integer :: i
+    if (present (i_prc)) then
+       i = i_prc
+    else
+       i = object%i_prc
+    end if
+    call object%entry(i)%write_resonant_subprocess_data (unit)
+  end subroutine simulation_write_resonant_subprocess_data
+
+  subroutine simulation_write_process_data &
+       (object, unit, i_prc, &
+       show_process, show_instance, verbose)
+    class(simulation_t), intent(in) :: object
+    integer, intent(in), optional :: unit
+    integer, intent(in), optional :: i_prc
+    logical, intent(in), optional :: show_process
+    logical, intent(in), optional :: show_instance
+    logical, intent(in), optional :: verbose
+    integer :: i
+    if (present (i_prc)) then
+       i = i_prc
+    else
+       i = object%i_prc
+    end if
+    call object%entry(i)%write_process_data &
+         (unit, show_process, show_instance, verbose)
+  end subroutine simulation_write_process_data
+
   subroutine simulation_final (object)
     class(simulation_t), intent(inout) :: object
     integer :: i, j
@@ -1295,13 +1492,19 @@ contains
     type(string_t) :: norm_string, version_string
     logical :: use_process
     integer :: i, j
+    type(string_t) :: sample_suffix
+  
+    sample_suffix = ""
+  
     simulation%local => local
     simulation%sample_id = &
-         local%get_sval (var_str ("$sample"))
+         local%get_sval (var_str ("$sample")) // sample_suffix
     simulation%unweighted = &
          local%get_lval (var_str ("?unweighted"))
     simulation%negative_weights = &
          local%get_lval (var_str ("?negative_weights"))
+    simulation%support_resonance_history = &
+         local%get_lval (var_str ("?resonance_history"))
     simulation%respect_selection = &
          local%get_lval (var_str ("?sample_select"))
     version_string = &
@@ -1371,6 +1574,7 @@ contains
           call simulation%entry(i)%init (process_id(i), &
                use_process, integrate, generate, &
                simulation%update_sqme, &
+               simulation%support_resonance_history, &
                local, global, simulation%n_alt)
           if (signal_is_pending ())  return
        end do
@@ -1395,7 +1599,9 @@ contains
        do i = 1, simulation%n_prc
           call simulation%entry(i)%init &
                (process_id(i), &
-               use_process, integrate, generate, simulation%update_sqme, &
+               use_process, integrate, generate, &
+               simulation%update_sqme, &
+               simulation%support_resonance_history, &
                local, global)
           call simulation%entry(i)%determine_if_powheg_matching ()
           if (signal_is_pending ())  return
@@ -1599,6 +1805,7 @@ contains
     integer :: i, j, k
     type(entry_t), pointer :: current_entry
     integer :: n_events
+    integer :: start_it, end_it
     simulation%n_evt_requested = n
     n_events = n * simulation%get_n_nlo_entries (1)
     call simulation%entry%set_n (n)
@@ -1629,7 +1836,9 @@ contains
     write (msg_buffer, "(A,1x,A)") "Events: event normalization mode", &
          char (event_normalization_string (simulation%norm_mode))
     call msg_message ()
-    do i = 1, n
+    start_it = 1
+    end_it = n
+    do i = start_it, end_it
        if (present (es_array)) then
           call simulation%read_event (es_array, .true., generate_new)
        else
@@ -1639,7 +1848,8 @@ contains
           simulation%i_prc = simulation%select_prc ()
           simulation%i_mci = simulation%select_mci ()
           associate (entry => simulation%entry(simulation%i_prc))
-            call entry%set_active_real_components (simulation%i_mci)
+            entry%instance%i_mci = simulation%i_mci
+            call entry%set_active_real_components ()
             current_entry => entry%get_first ()
             do k = 1, current_entry%count_nlo_entries ()
                if (k > 1) then
@@ -1684,8 +1894,6 @@ contains
           associate (entry => simulation%entry(simulation%i_prc))
             call entry%accept_sqme_ref ()
             call entry%accept_weight_ref ()
-            !!! JRR: WK please check: why commented out
-            ! call entry%evaluate_transforms ()  ! doesn't activate
             call entry%check ()
             call entry%evaluate_expressions ()
             if (signal_is_pending ()) return
@@ -1710,6 +1918,7 @@ contains
           call simulation%write_event (es_array, passed)
        end if
     end do
+  
     call msg_message ("        ... event sample complete.")
     if (simulation%unweighted)  call simulation%show_efficiency ()
     call simulation%counter%show_excess ()
@@ -1970,20 +2179,23 @@ contains
     end if
   end subroutine simulation_read_event_es_array
 
-  subroutine simulation_recalculate (simulation)
+  subroutine simulation_recalculate (simulation, recover_phs)
     class(simulation_t), intent(inout) :: simulation
+    logical, intent(in), optional :: recover_phs
     integer :: i_prc
     i_prc = simulation%i_prc
     associate (entry => simulation%entry(i_prc))
       if (simulation%update_weight) then
-         call simulation%entry(i_prc)%recalculate &
+         call entry%recalculate &
               (update_sqme = simulation%update_sqme, &
               recover_beams = simulation%recover_beams, &
+              recover_phs = recover_phs, &
               weight_factor = entry%get_kinematical_weight ())
       else
-         call simulation%entry(i_prc)%recalculate &
+         call entry%recalculate &
               (update_sqme = simulation%update_sqme, &
-              recover_beams = simulation%recover_beams)
+              recover_beams = simulation%recover_beams, &
+              recover_phs = recover_phs)
       end if
     end associate
   end subroutine simulation_recalculate
@@ -2115,6 +2327,13 @@ contains
     valid = simulation%valid
   end function simulation_is_valid
 
+  function simulation_get_hard_particle_set (simulation, i_prc) result (pset)
+    class(simulation_t), intent(in) :: simulation
+    integer, intent(in) :: i_prc
+    type(particle_set_t) :: pset
+    call simulation%entry(i_prc)%get_hard_particle_set (pset)
+  end function simulation_get_hard_particle_set
+
   subroutine pacify_simulation (simulation)
     class(simulation_t), intent(inout) :: simulation
     integer :: i, j
@@ -2131,6 +2350,13 @@ contains
     class(simulation_t), intent(inout) :: simulation
     call simulation%entry(simulation%i_prc)%evaluate_expressions ()
   end subroutine simulation_evaluate_expressions
+
+  subroutine simulation_evaluate_transforms (simulation)
+    class(simulation_t), intent(inout) :: simulation
+    associate (entry => simulation%entry(simulation%i_prc))
+      call entry%evaluate_transforms ()
+    end associate
+  end subroutine simulation_evaluate_transforms
 
 
 end module simulations

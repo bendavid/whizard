@@ -227,6 +227,11 @@ virtual-subtracted or subtraction-dummy matrix element.
 @ % def BORN, NLO_REAL, NLO_VIRTUAL, NLO_SUBTRACTION, GKS
 @ [[NLO_FULL]] is not strictly a component status code but having it is
 convenient.
+<<Physics defs: public parameters>>=
+  integer, parameter, public :: n_beam_structure_int = 4
+
+@ %def n_beam_structure_int
+@
 <<Physics defs: public>>=
   public :: component_status
 <<Physics defs: interfaces>>=
@@ -239,19 +244,19 @@ convenient.
     integer :: i
     type(string_t), intent(in) :: string
     select case (char(string))
-    case ("Born")
+    case ("born")
        i = BORN
-    case ("Real")
+    case ("real")
        i = NLO_REAL
-    case ("Virtual")
+    case ("virtual")
        i = NLO_VIRTUAL
-    case ("Mismatch")
+    case ("mismatch")
        i = NLO_MISMATCH
-    case ("Dglap")
+    case ("dglap")
        i = NLO_DGLAP
-    case ("Subtraction")
+    case ("subtraction")
        i = NLO_SUBTRACTION
-    case ("Full")
+    case ("full")
        i = NLO_FULL
     case ("GKS")
        i = GKS
@@ -265,23 +270,23 @@ convenient.
     integer, intent(in) :: i
     select case (i)
     case (BORN)
-       string = "Born"
+       string = "born"
     case (NLO_REAL)
-       string = "Real"
+       string = "real"
     case (NLO_VIRTUAL)
-       string = "Virtual"
+       string = "virtual"
     case (NLO_MISMATCH)
-       string = "Mismatch"
+       string = "mismatch"
     case (NLO_DGLAP)
-       string = "Dglap"
+       string = "dglap"
     case (NLO_SUBTRACTION)
-       string = "Subtraction"
+       string = "subtraction"
     case (NLO_FULL)
-       string = "Full"
+       string = "full"
     case (GKS)
        string = "GKS"
     case default
-       string = "Undefined"
+       string = "undefined"
     end select
   end function component_status_to_string
 
@@ -1387,6 +1392,18 @@ optional mass-squared value instead.
   end subroutine phs_point_from_phs_point
 
 @ %def phs_point_from_phs_point
+@
+<<Lorentz: phs point: TBP>>=
+  procedure :: get_sqrts_in => phs_point_get_sqrts_in
+<<Lorentz: procedures>>=
+  function phs_point_get_sqrts_in (phs_point, n_in) result (msq)
+    real(default) :: msq
+    class(phs_point_t), intent(in) :: phs_point
+    integer, intent(in) :: n_in
+    msq = (sum (phs_point%p(1:n_in)))**2
+  end function phs_point_get_sqrts_in
+
+@ %def phs_point_get_sqrts_in
 @
 <<Lorentz: phs point: TBP>>=
   procedure :: final => phs_point_final
@@ -2899,19 +2916,32 @@ transformations.
 <<Lorentz: public>>=
   public :: vector_set_is_cms
 <<Lorentz: procedures>>=
-  function vector_set_is_cms (p) result (is_cms)
+  function vector_set_is_cms (p, n_in) result (is_cms)
     logical :: is_cms
-    type(vector4_t), dimension(:), intent(in) :: p
+    type(vector4_t), intent(in), dimension(:) :: p
+    integer, intent(in) :: n_in
     integer :: i
     type(vector4_t) :: p_sum
     p_sum%p = 0._default
-    do i = 1, size (p)
+    do i = 1, n_in
        p_sum = p_sum + p(i)
     end do
-    is_cms = p_sum%p(0) > zero .and. all (abs (p_sum%p(1:3)) < tiny_07)
+    is_cms = all (abs (p_sum%p(1:3)) < tiny_07)
   end function vector_set_is_cms
 
 @ %def vector_set_is_cms
+@
+<<Lorentz: public>>=
+  public :: vector_set_is_lab
+<<Lorentz: procedures>>=
+  function vector_set_is_lab (p, n_in) result (is_lab)
+    logical :: is_lab
+    type(vector4_t), intent(in), dimension(:) :: p
+    integer, intent(in) :: n_in
+    is_lab = .not. vector_set_is_cms (p, n_in)
+  end function vector_set_is_lab
+
+@ %def vector_set_is_lab
 @
 <<Lorentz: public>>=
   public :: vector4_write_set
@@ -2999,7 +3029,9 @@ transformations.
           call vector4_write (psum_out, u)
        end if
     else
-       write (u, "(A)") "Momentum conservation: CHECK"
+       if (verb) then
+          write (u, "(A)") "Momentum conservation: CHECK"
+       end if
     end if
   end subroutine vector4_check_momentum_conservation
 
@@ -4219,8 +4251,9 @@ We start with the LO-expression for the top width given by the decay
 $t\,\to\,W^+,b$, cf. [[doi:10.1016/0550-3213(91)90530-B]]:\\
 The analytic formula given there is
 \begin{equation*}
-  \Gamma = \frac{G_F m_t^2}{16\sqrt{2}\pi} \left[\mathcal{F}_0(\varepsilon, \xi^{-1/2}) - \frac{2\alpha_s}{3\pi}
-           \mathcal{F}_1 (\varepsilon, \xi^{-1/2})\right],
+  \Gamma = \frac{G_F m_t^2}{16\sqrt{2}\pi}
+  \left[\mathcal{F}_0(\varepsilon, \xi^{-1/2}) -
+    \frac{2\alpha_s}{3\pi} \mathcal{F}_1 (\varepsilon, \xi^{-1/2})\right],
 \end{equation*}
 with
 \begin{align*}
@@ -4230,25 +4263,33 @@ with
 \end{align*}
 Defining
 \begin{equation*}
-  u_q = \frac{1 + \varepsilon^2 - w^2 - \lambda^{1/2}}{1 + \varepsilon^2 - w^2 + \lambda^{1/2}}
+  u_q = \frac{1 + \varepsilon^2 - w^2 - \lambda^{1/2}}{1 +
+    \varepsilon^2 - w^2 + \lambda^{1/2}} 
 \end{equation*}
 and
 \begin{equation*}
-  u_w = \frac{1 - \varepsilon^2 + w^2 - \lambda^{1/2}}{1 - \varepsilon^2 + w^2 + \lambda^{1/2}}
+  u_w = \frac{1 - \varepsilon^2 + w^2 - \lambda^{1/2}}{1 -
+    \varepsilon^2 + w^2 + \lambda^{1/2}} 
 \end{equation*}
 the factor $\mathcal{F}_1$ can be expressed as
 \begin{align*}
   \mathcal{F}_1 = \frac{1}{2}f_0(1+\varepsilon^2-w^2)
-                & \left[\pi^2 + 2Li_2(u_w) - 2Li_2(1-u_w) - 4Li_2(u_q) \right. \\
-                & -4Li_2(u_q u_w) + \log\left(\frac{1-u_q}{w^2}\right)\log(1-u_q) - \log^2(1-u_q u_w) \\
-                & \left.+\frac{1}{4}\log^2\left(\frac{w^2}{u_w}\right) - \log(u_w) \log\left[\frac{(1-u_q u_w)^2}{1-u_q}\right]
-                  -2\log(u_q)\log\left[(1-u_q)(1-u_q u_w)\right]\right] \\
-                & -\sqrt{\lambda}f_0(2\log(w) + 3\log(\varepsilon) - 2\log{\lambda}) \\
-                &  +4(1-\varepsilon^2)\left[(1-\varepsilon^2)^2 + w^2(1+\varepsilon^2) - 4w^4\right]\log(u_w) \\
-                & \left[(3 - \varepsilon^2 + 11\varepsilon^4 - \varepsilon^6)
-                  + w^2(6 - 12\varepsilon^2 +2\varepsilon^4) - w^4(21 + 5\varepsilon^2) + 12w^6\right] \log(u_q) \\
-                & 6\sqrt{\lambda} (1-\varepsilon^2) (1 + \varepsilon^2 - w^2) \log(\varepsilon)
-                  + \sqrt{\lambda}\left[-5 + 22\varepsilon^2 - 5\varepsilon^4 - 9w^2(1+\varepsilon^2) + 6w^4\right].
+  & \left[\pi^2 + 2Li_2(u_w) - 2Li_2(1-u_w) - 4Li_2(u_q) \right. \\
+    & -4Li_2(u_q u_w) + \log\left(\frac{1-u_q}{w^2}\right)\log(1-u_q)
+    - \log^2(1-u_q u_w) \\
+    & \left.+\frac{1}{4}\log^2\left(\frac{w^2}{u_w}\right) - \log(u_w)
+    \log\left[\frac{(1-u_q u_w)^2}{1-u_q}\right]
+    -2\log(u_q)\log\left[(1-u_q)(1-u_q u_w)\right]\right] \\
+  & -\sqrt{\lambda}f_0(2\log(w) + 3\log(\varepsilon) - 2\log{\lambda}) \\
+  &  +4(1-\varepsilon^2)\left[(1-\varepsilon^2)^2 +
+    w^2(1+\varepsilon^2) - 4w^4\right]\log(u_w) \\
+  & \left[(3 - \varepsilon^2 + 11\varepsilon^4 - \varepsilon^6)
+    + w^2(6 - 12\varepsilon^2 +2\varepsilon^4) - w^4(21 +
+    5\varepsilon^2) + 12w^6\right] \log(u_q) \\
+  & 6\sqrt{\lambda} (1-\varepsilon^2) (1 + \varepsilon^2 - w^2)
+  \log(\varepsilon)
+  + \sqrt{\lambda}\left[-5 + 22\varepsilon^2 - 5\varepsilon^4 -
+    9w^2(1+\varepsilon^2) + 6w^4\right].
 \end{align*}
 @
 <<SM physics: public>>=
@@ -4295,12 +4336,12 @@ the factor $\mathcal{F}_1$ can be expressed as
   public :: top_width_sm_qcd_nlo_massless_b
 <<SM physics: procedures>>=
   elemental function top_width_sm_qcd_nlo_massless_b &
-         (alpha, sinthw, mtop, mw, alphas) result (gamma)
+         (alpha, sinthw, vtb, mtop, mw, alphas) result (gamma)
     real(default) :: gamma
-    real(default), intent(in) :: alpha, sinthw, mtop, mw, alphas
+    real(default), intent(in) :: alpha, sinthw, vtb, mtop, mw, alphas
     real(default) :: prefac, g_mu, w2
     g_mu = g_mu_from_alpha (alpha, mw, sinthw)
-    prefac = g_mu * mtop**3 / (16 * sqrt(two) * pi)
+    prefac = g_mu * mtop**3 * vtb**2 / (16 * sqrt(two) * pi)
     w2 = mw**2 / mtop**2
     gamma = prefac * (f0 (w2) - (two * alphas) / (3 * Pi) * f1 (w2))
   end function top_width_sm_qcd_nlo_massless_b
@@ -4337,12 +4378,12 @@ cf. Jezabek / Kuehn 1989.
   public :: top_width_sm_qcd_nlo_jk
 <<SM physics: procedures>>=
   elemental function top_width_sm_qcd_nlo_jk &
-         (alpha, sinthw, mtop, mw, mb, alphas) result (gamma)
+         (alpha, sinthw, vtb, mtop, mw, mb, alphas) result (gamma)
     real(default) :: gamma
-    real(default), intent(in) :: alpha, sinthw, mtop, mw, mb, alphas
+    real(default), intent(in) :: alpha, sinthw, vtb, mtop, mw, mb, alphas
     real(default) :: prefac, g_mu, eps2, i_xi
     g_mu = g_mu_from_alpha (alpha, mw, sinthw)
-    prefac = g_mu * mtop**3 / (16 * sqrt(two) * pi)
+    prefac = g_mu * mtop**3 * vtb**2 / (16 * sqrt(two) * pi)
     eps2 = (mb / mtop)**2
     i_xi = (mw / mtop)**2
     gamma = prefac * (ff0 (eps2, i_xi) - &
@@ -4350,14 +4391,15 @@ cf. Jezabek / Kuehn 1989.
   end function top_width_sm_qcd_nlo_jk
 
 @ %def top_width_sm_qcd_nlo_jk
-@ Same as above, $m_b > 0$, with the slightly different implementation (2.6)
-of arXiv:1204.1513v1 by Campbell and Ellis.
+@ Same as above, $m_b > 0$, with the slightly different implementation
+(2.6) of arXiv:1204.1513v1 by Campbell and Ellis.
 <<SM physics: public>>=
   public :: top_width_sm_qcd_nlo_ce
 <<SM physics: procedures>>=
-  elemental function top_width_sm_qcd_nlo_ce (alpha, sinthw, mtop, mw, mb, alpha_s) result (gamma)
+  elemental function top_width_sm_qcd_nlo_ce &
+       (alpha, sinthw, vtb, mtop, mw, mb, alpha_s) result (gamma)
     real(default) :: gamma
-    real(default), intent(in) :: alpha, sinthw, mtop, mw, mb, alpha_s
+    real(default), intent(in) :: alpha, sinthw, vtb, mtop, mw, mb, alpha_s
     real(default) :: pm, pp, p0, p3
     real(default) :: yw, yp
     real(default) :: W0, Wp, Wm, w2
@@ -4377,13 +4419,13 @@ of arXiv:1204.1513v1 by Campbell and Ellis.
     yw = log (Wp / Wm) / two
     f = (one - beta2)**2 + w2 * (one + beta2) - two * w2**2
     g_mu = g_mu_from_alpha (alpha, mw, sinthw)
-    gamma0 = g_mu * mtop**3 / (8 * pi * sqrt(two))
+    gamma0 = g_mu * mtop**3 * vtb**2 / (8 * pi * sqrt(two))
     gamma = gamma0 * alpha_s / twopi * CF * &
-          (8 * f * p0 * (Li2(one - pm) - Li2(one - pp) - two * Li2(one - pm / pp) &
+         (8 * f * p0 * (Li2(one - pm) - Li2(one - pp) - two * Li2(one - pm / pp) &
          + yp * log((four * p3**2) / (pp**2 * Wp)) + yw * log (pp)) &
          + four * (one - beta2) * ((one - beta2)**2 + w2 * (one + beta2) - four * w2**2) * yw &
          + (3 - beta2 + 11 * beta2**2 - beta2**3 + w2 * (6 - 12 * beta2 + two * beta2**2) &
-              - w2**2 * (21 + 5 * beta2) + 12 * w2**3) * yp &
+         - w2**2 * (21 + 5 * beta2) + 12 * w2**3) * yp &
          + 8 * f * p3 * log (sqrt(w2) / (four * p3**2)) &
          + 6 * (one - four * beta2 + 3 * beta2**2 + w2 * (3 + beta2) - four * w2**2) * p3 * log(sqrt(beta2)) &
          + (5 - 22 * beta2 + 5 * beta2**2 + 9 * w2 * (one + beta2) - 6 * w2**2) * p3)
@@ -4584,19 +4626,23 @@ end module sm_physics_uti
     call assert_equal (u, gamma0, 1.4655_default, &
          "top_width_sm_lo", rel_smallness=1.0E-5_default)
     alphas = zero
-    gamma0 = top_width_sm_qcd_nlo_massless_b (alpha, sinthw, mtop, mw, alphas)
+    gamma0 = top_width_sm_qcd_nlo_massless_b &
+         (alpha, sinthw, vtb, mtop, mw, alphas)
     call assert_equal (u, gamma0, 1.4655_default, &
          "top_width_sm_qcd_nlo_massless_b", rel_smallness=1.0E-5_default)
-    gamma0 = top_width_sm_qcd_nlo_jk (alpha, sinthw, mtop, mw, mb, alphas)
+    gamma0 = top_width_sm_qcd_nlo_jk &
+         (alpha, sinthw, vtb, mtop, mw, mb, alphas)
     call assert_equal (u, gamma0, 1.4655_default, &
          "top_width_sm_qcd_nlo", rel_smallness=1.0E-5_default)
 
     write (u, "(A)")  "*   Check NLO Width"
     alphas_mz = 0.1202      ! MSTW2008 NLO fit
     alphas = running_as (mtop, alphas_mz, mz, 1, 5.0_default)
-    gamma1 = top_width_sm_qcd_nlo_massless_b (alpha, sinthw, mtop, mw, alphas)
+    gamma1 = top_width_sm_qcd_nlo_massless_b &
+         (alpha, sinthw, vtb, mtop, mw, alphas)
     call assert_equal (u, gamma1, 1.3376_default, rel_smallness=1.0E-4_default)
-    gamma1 = top_width_sm_qcd_nlo_jk (alpha, sinthw, mtop, mw, mb, alphas)
+    gamma1 = top_width_sm_qcd_nlo_jk &
+         (alpha, sinthw, vtb, mtop, mw, mb, alphas)
     ! It would be nice to get one more significant digit but the
     ! expression is numerically rather unstable for mb -> 0
     call assert_equal (u, gamma1, 1.3376_default, rel_smallness=1.0E-3_default)
@@ -4611,24 +4657,30 @@ end module sm_physics_uti
     sinthw = 0.47143
     mz = 91.188
     mw = 80.419
-    call assert_equal (u, sqrt(one - mw**2 / mz**2), sinthw, "sinthw", rel_smallness=1.0E-6_default)
+    call assert_equal (u, sqrt(one - mw**2 / mz**2), sinthw, &
+         "sinthw", rel_smallness=1.0E-6_default)
 
     write (u, "(A)")  "*   Check LO Width"
     gamma0 = top_width_sm_lo (alpha, sinthw, vtb, mtop, mw, mb)
-    call assert_equal (u, gamma0, 1.5386446_default, "gamma0", rel_smallness=1.0E-7_default)
+    call assert_equal (u, gamma0, 1.5386446_default, &
+         "gamma0", rel_smallness=1.0E-7_default)
     alphas = zero
-    gamma0 = top_width_sm_qcd_nlo_jk (alpha, sinthw, mtop, mw, mb, alphas)
-    call assert_equal (u, gamma0, 1.5386446_default, "gamma0", rel_smallness=1.0E-7_default)
+    gamma0 = top_width_sm_qcd_nlo_jk &
+         (alpha, sinthw, vtb, mtop, mw, mb, alphas)
+    call assert_equal (u, gamma0, 1.5386446_default, &
+         "gamma0", rel_smallness=1.0E-7_default)
 
     write (u, "(A)")  "*   Check NLO Width"
     alphas_mz = 0.118 !(Z pole, NLL running to mu_h)
     alphas = running_as (mtop, alphas_mz, mz, 1, 5.0_default)
     write (u, "(A," // FMT_15 // ")")  "*   alphas = ", alphas
-    gamma1 = top_width_sm_qcd_nlo_jk (alpha, sinthw, mtop, mw, mb, alphas)
+    gamma1 = top_width_sm_qcd_nlo_jk &
+         (alpha, sinthw, vtb, mtop, mw, mb, alphas)
     write (u, "(A," // FMT_15 // ")")  "*   Gamma1 = ", gamma1
 
     mb = zero
-    gamma1 = top_width_sm_qcd_nlo_massless_b (alpha, sinthw, mtop, mw, alphas)
+    gamma1 = top_width_sm_qcd_nlo_massless_b &
+         (alpha, sinthw, vtb, mtop, mw, alphas)
     alphas = running_as (mtop, alphas_mz, mz, 1, 5.0_default)
     write (u, "(A," // FMT_15 // ")")  "*   Gamma1(mb=0) = ", gamma1
 
@@ -4899,7 +4951,7 @@ then any extra components.
   end subroutine qcd_write
 
 @ %def qcd_write
-@ Compute a MD5 sum for the [[alpha_s]] setup.  This is
+@ Compute an MD5 sum for the [[alpha_s]] setup.  This is
 done by writing them to a temporary file, using a standard format.
 <<SM qcd: qcd: TBP>>=
   procedure :: compute_alphas_md5sum => qcd_compute_alphas_md5sum

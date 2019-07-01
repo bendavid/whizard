@@ -7,7 +7,7 @@
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
 #     with contributions from
-#     Christian Speckner <cnspeckn@googlemail.com>
+#     cf. main AUTHORS file
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by
@@ -36,6 +36,7 @@ libevents_la_SOURCES = \
   event_base.f90 \
   eio_data.f90 \
   eio_base.f90 \
+  eio_direct.f90 \
   eio_checkpoints.f90 \
   eio_callback.f90 \
   eio_weights.f90 \
@@ -53,6 +54,7 @@ libevents_la_SOURCES = \
 libevents_ut_la_SOURCES = \
   eio_data_uti.f90 eio_data_ut.f90 \
   eio_base_uti.f90 eio_base_ut.f90 \
+  eio_direct_uti.f90 eio_direct_ut.f90 \
   eio_checkpoints_uti.f90 eio_checkpoints_ut.f90 \
   eio_weights_uti.f90 eio_weights_ut.f90 \
   eio_dump_uti.f90 eio_dump_ut.f90 \
@@ -159,6 +161,10 @@ if FC_USE_OPENMP
 AM_FCFLAGS += $(FCFLAGS_OPENMP)
 endif
 
+# MPI
+if FC_USE_MPI
+AM_FCFLAGS += $(FCFLAGS_MPI)
+endif
 
 ########################################################################
 ## Non-standard targets and dependencies

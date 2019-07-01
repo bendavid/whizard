@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -88,8 +81,6 @@ module process_mci
      procedure :: init => process_mci_entry_init
      procedure :: create_component_list => &
         process_mci_entry_create_component_list
-     procedure :: deactivate_real_component => &
-        process_mci_entry_deactivate_real_component
      procedure :: set_combined_integration => &
           process_mci_entry_set_combined_integration
      procedure :: set_associated_real_component &
@@ -261,29 +252,6 @@ contains
     end function get_n_components
   end subroutine process_mci_entry_create_component_list
 
-  subroutine process_mci_entry_deactivate_real_component (mci_entry, config)
-    class(process_mci_entry_t), intent(inout) :: mci_entry
-    type(process_component_def_t), intent(in) :: config
-    integer, dimension(:), allocatable :: i_list
-    integer :: n_component_old, i, j
-    if (allocated (mci_entry%i_component)) then
-       n_component_old = size (mci_entry%i_component)
-       deallocate (mci_entry%i_component)
-       allocate (mci_entry%i_component (n_component_old - 1))
-       allocate (i_list (size (config%get_association_list ())))
-       i_list = config%get_association_list ()
-       j = 1
-       do i = 1, n_component_old
-          if (i_list(i) /= 2) then
-             mci_entry%i_component(j) = i_list(i)
-             j = j + 1
-          end if
-       end do
-    else
-       call msg_fatal ("Trying to reset deallocated component list")
-    end if
-  end subroutine process_mci_entry_deactivate_real_component
-
   subroutine process_mci_entry_set_combined_integration (mci_entry, value)
     class(process_mci_entry_t), intent(inout) :: mci_entry
     logical, intent(in), optional :: value
@@ -300,11 +268,15 @@ contains
   subroutine process_mci_entry_set_parameters (mci_entry, var_list)
     class(process_mci_entry_t), intent(inout) :: mci_entry
     type(var_list_t), intent(in) :: var_list
+    integer :: integration_results_verbosity
     real(default) :: error_threshold
+    integration_results_verbosity = &
+         var_list%get_ival (var_str ("integration_results_verbosity"))
     error_threshold = &
          var_list%get_rval (var_str ("error_threshold"))
     mci_entry%activate_timer = &
          var_list%get_lval (var_str ("?integration_timer"))
+    call mci_entry%results%set_verbosity (integration_results_verbosity)
     call mci_entry%results%set_error_threshold (error_threshold)
   end subroutine process_mci_entry_set_parameters
 
@@ -358,8 +330,7 @@ contains
     if (mci_entry%pass == 1)  &
          call mci_entry%mci%startup_message (n_calls = n_calls)
     call mci_entry%mci%set_timer (active = mci_entry%activate_timer)
-    call mci_entry%results%display_init &
-         (mci_entry%process_type, screen = .true., unit = u_log)
+    call mci_entry%results%display_init (screen = .true., unit = u_log)
     call mci_entry%results%new_pass ()
     if (present (nlo_type)) then
        select case (nlo_type)
@@ -548,13 +519,13 @@ contains
     i_component = mci_work%config%i_component
   end function mci_work_get_active_components
 
-  function mci_work_get_x_strfun (mci_work) result (x)
+  pure function mci_work_get_x_strfun (mci_work) result (x)
     class(mci_work_t), intent(in) :: mci_work
     real(default), dimension(mci_work%config%n_par_sf) :: x
     x = mci_work%x(1 : mci_work%config%n_par_sf)
   end function mci_work_get_x_strfun
 
-  function mci_work_get_x_process (mci_work) result (x)
+  pure function mci_work_get_x_process (mci_work) result (x)
     class(mci_work_t), intent(in) :: mci_work
     real(default), dimension(mci_work%config%n_par_phs) :: x
     x = mci_work%x(mci_work%config%n_par_sf + 1 : mci_work%config%n_par)

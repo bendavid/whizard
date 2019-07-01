@@ -9,15 +9,17 @@
 
 * Extract resonance history set
 
-Resonance history with 1 resonances:
-Resonance contributors: 1 2 f(-24)
-
-Resonance history with 2 resonances:
-Resonance contributors: 1 2 f(-24)
-Resonance contributors: 1 2 3 f(23)
-
-Resonance history with 1 resonances:
-Resonance contributors: 1 2 3 f(25)
+Resonance history set:
+ 1 Resonance history with 1 resonances:
+   1 2 f(-24)
+   contained in (2)
+ 2 Resonance history with 2 resonances:
+   1 2 f(-24)
+   1 2 3 f(23)
+   contained in ()
+ 3 Resonance history with 1 resonances:
+   1 2 3 f(25)
+   contained in ()
 
 * Cleanup
 

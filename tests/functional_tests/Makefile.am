@@ -9,12 +9,7 @@
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
 #     with contributions from
-#     Fabian Bach <fabian.bach@t-online.de>
-#     Bijan Chokoufe <bijan.chokoufe@desy.de>
-#     Christian Speckner <cnspeckn@googlemail.com>
-#     Marco Sekulla <marco.sekulla@kit.edu>
-#     Christian Weiss <christian.weiss@desy.de>
-#     Felix Braam, Sebastian Schmidt
+#     cf. main AUTHORS file
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by
@@ -57,6 +52,7 @@ TESTS_DEFAULT = \
     testproc_8.run \
     testproc_9.run \
     testproc_10.run \
+    testproc_11.run \
     model_scheme_1.run \
     rebuild_1.run \
     rebuild_4.run \
@@ -106,6 +102,7 @@ TESTS_REQ_OCAML = \
     event_weights_1.run \
     event_weights_2.run \
     event_eff_1.run \
+    event_eff_2.run \
     event_dump_1.run \
     reweight_1.run \
     reweight_2.run \
@@ -156,11 +153,17 @@ TESTS_REQ_OCAML = \
     smtest_13.run \
     smtest_14.run \
     smtest_15.run \
+    resonances_1.run \
+    resonances_2.run \
+    resonances_3.run \
+    resonances_4.run \
+    resonances_5.run \
     mssmtest_1.run \
     mssmtest_2.run \
     sm_cms_1.run \
     ufo_1.run \
     ufo_2.run \
+    ufo_3.run \
     nlo_1.run \
     nlo_2.run \
     nlo_3.run \
@@ -177,6 +180,10 @@ TESTS_REQ_OCAML = \
     openloops_4.run \
     openloops_5.run \
     openloops_6.run \
+    openloops_7.run \
+    openloops_8.run \
+    openloops_9.run \
+    recola_1.run \
     powheg_1.run \
     spincor_1.run \
     show_1.run \
@@ -238,8 +245,7 @@ TESTS_REQ_OCAML = \
     mlm_matching_fsr.run \
     user_cuts.run \
     user_prc_threshold_1.run \
-    user_prc_threshold_2.run \
-    user_prc_threshold_3.run
+    user_prc_threshold_2.run
 
 XFAIL_TESTS_REQ_OCAML = \
     colors_hgg.run \
@@ -263,7 +269,8 @@ TESTS_REQ_LCIO = \
     lcio_1.run \
     lcio_2.run \
     lcio_3.run \
-    lcio_4.run
+    lcio_4.run \
+    lcio_5.run
 XFAIL_TESTS_REQ_LCIO =
 
 TESTS_REQ_LHAPDF5 = \
@@ -414,6 +421,7 @@ UFO_MODELPATH = ../models/UFO
 
 ufo_1.run: ufo_1_SM/$(UFO_TAG_FILE)
 ufo_2.run: ufo_2_SM/$(UFO_TAG_FILE)
+ufo_3.run: ufo_3_models/ufo_3_SM/$(UFO_TAG_FILE)
 
 ufo_1_SM/$(UFO_TAG_FILE): $(UFO_MODELPATH)/SM/$(UFO_TAG_FILE)
 	mkdir -p ufo_1_SM
@@ -421,6 +429,9 @@ ufo_1_SM/$(UFO_TAG_FILE): $(UFO_MODELPATH)/SM/$(UFO_TAG_FILE)
 ufo_2_SM/$(UFO_TAG_FILE): $(UFO_MODELPATH)/SM/$(UFO_TAG_FILE)
 	mkdir -p ufo_2_SM
 	cp $(UFO_MODELPATH)/SM/*.py ufo_2_SM
+ufo_3_models/ufo_3_SM/$(UFO_TAG_FILE): $(UFO_MODELPATH)/SM/$(UFO_TAG_FILE)
+	mkdir -p ufo_3_models/ufo_3_SM
+	cp $(UFO_MODELPATH)/SM/*.py ufo_3_models/ufo_3_SM
 
 $(UFO_MODELPATH)/SM/$(UFO_TAG_FILE): $(top_srcdir)/omega/tests/UFO/SM/$(UFO_TAG_FILE)
 	$(MAKE) -C $(UFO_MODELPATH)/SM all
@@ -437,10 +448,33 @@ $(top_builddir)/src/gamelan/gamelan.sty:
 endif
 
 noinst_PROGRAMS = 
+
+if OCAML_AVAILABLE
+noinst_PROGRAMS += resonances_1_count
+resonances_1_count_SOURCES = resonances_1_count.f90
+resonances_1.run: resonances_1_count
+
+noinst_PROGRAMS += resonances_2_count
+resonances_2_count_SOURCES = resonances_2_count.f90
+resonances_2.run: resonances_2_count
+
+noinst_PROGRAMS += resonances_3_count
+resonances_3_count_SOURCES = resonances_3_count.f90
+resonances_3.run: resonances_3_count
+
+noinst_PROGRAMS += resonances_4_count
+resonances_4_count_SOURCES = resonances_4_count.f90
+resonances_4.run: resonances_4_count
+endif
+
 if HEPMC_AVAILABLE
 TESTS_SRC += $(hepmc_6_rd_SOURCES)
 noinst_PROGRAMS += hepmc_6_rd
-hepmc_6_rd_SOURCES = hepmc_6_rd.cpp
+if HEPMC_IS_VERSION3
+hepmc_6_rd_SOURCES = hepmc_6_v3_rd.cpp
+else
+hepmc_6_rd_SOURCES = hepmc_6_v2_rd.cpp
+endif
 hepmc_6_rd_CXXFLAGS = $(HEPMC_INCLUDES) $(AM_CXXFLAGS)
 hepmc_6_rd_LDADD = $(LDFLAGS_HEPMC)
 hepmc_6.run: hepmc_6_rd
@@ -456,6 +490,7 @@ lcio_1.run: lcio_rd
 lcio_2.run: lcio_rd
 lcio_3.run: lcio_rd
 lcio_4.run: lcio_rd
+lcio_5.run: lcio_rd
 endif
 
 stdhep_4.run: stdhep_rd
@@ -478,10 +513,12 @@ BUILT_SOURCES = \
     LHAPDF5_FLAG \
     LHAPDF6_FLAG \
     GAMELAN_FLAG \
+    MPI_FLAG \
     EVENT_ANALYSIS_FLAG \
     OCAML_FLAG \
     PYTHIA6_FLAG \
     OPENLOOPS_FLAG \
+    RECOLA_FLAG \
     STATIC_FLAG \
     ref-output
 
@@ -521,6 +558,11 @@ if MPOST_AVAILABLE
 	touch $@
 endif
 
+MPI_FLAG:
+if FC_USE_MPI
+	touch $@
+endif
+
 OCAML_FLAG:
 if OCAML_AVAILABLE
 	touch $@
@@ -533,6 +575,11 @@ endif
 
 OPENLOOPS_FLAG:
 if OPENLOOPS_AVAILABLE
+	touch $@
+endif
+
+RECOLA_FLAG:
+if RECOLA_AVAILABLE
 	touch $@
 endif
 
@@ -584,21 +631,22 @@ clean-macosx:
 
 ## Remove generated files
 clean-local: clean-macosx
-	rm -f gamelan.sty 
-	rm -f TESTFLAG GAMELAN_FLAG 
+	rm -f gamelan.sty
+	rm -f TESTFLAG GAMELAN_FLAG MPI_FLAG RECOLA_FLAG
 	rm -f OCAML_FLAG OPENLOOPS_FLAG FASTJET_FLAG HEPMC_FLAG LCIO_FLAG
 	rm -f EVENT_ANALYSIS_FLAG PYTHIA6_FLAG LHAPDF5_FLAG
 	rm -f LHAPDF6_FLAG STATIC_FLAG static_1.exe static_2.exe
 	rm -f *.run *.log slha_test.out
 	rm -f core* stdhep_rd
 	rm -f *.f90 *.f90.in *.c *.$(FC_MODULE_EXT) *.o *.la
+	rm -f *_count.out
 	rm -f *.makefile
 	rm -f *.grid
 	rm -rf err-output
 	rm -rf ref-output
 	rm -f *.sin *.hbc *_fks_regions.out
-	rm -f *.olc *.olp *.olp_parameters
-	rm -f *.phs *.vg *.vgb *.evt *.evx *.lhe *.hepmc *.dat *.debug 
+	rm -f *.olc *.olp *.olp_parameters output.rcl
+	rm -f *.phs *.vg *.vg2 *.pg *.vgb *.evt *.evx *.lhe *.hepmc *.dat *.debug 
 	rm -f *.tmp *.hepevt *.hepevt.verb *.lha *.lha.verb *.slcio
 	rm -f prc_omega_diags_1_p_i1_diags.out prc_omega_diags_1_p_i1_diags.toc
 	rm -f *.hep *.up.hep *.[1-9] *.[1-9][0-9] *.[1-9][0-9][0-9] 
@@ -607,8 +655,10 @@ clean-local: clean-macosx
 	rm -f *.tbl sps1ap_decays.slha bar structure_6[a-b].out 
 	rm -f slhaspectrum.in suspect2.out suspect2_lha.out 
 	rm -f susyhit.in susyhit_slha.out suspect2_lha.in
-	rm -f -r ufo_1_SM ufo_2_SM ufo_1_SM.ufo.mdl ufo_2_SM.ufo.mdl
+	rm -rf ufo_1_SM ufo_2_SM ufo_3_models
+	rm -f ufo_1_SM.ufo.mdl ufo_2_SM.ufo.mdl ufo_3_SM.ufo.mdl
 	rm -f *.$(WT_OMEGA_CACHE_SUFFIX)
+	rm -rf output_cll
 	rm -rf *.dSYM
 if FC_SUBMODULES
 	rm -f *.smod

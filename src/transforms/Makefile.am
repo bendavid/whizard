@@ -7,13 +7,7 @@
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
 #     with contributions from
-#     Fabian Bach <fabian.bach@t-online.de>
-#     Bijan Chokoufe <bijan.chokoufe@desy.de>
-#     Christian Speckner <cnspeckn@googlemail.com>
-#     Marco Sekulla <marco.sekulla@kit.edu>
-#     Christian Weiss <christian.weiss@desy.de>
-#     Felix Braam, Sebastian Schmidt,
-#     Hans-Werner Boschmann, Daniel Wiesler
+#     cf. main AUTHORS file
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by
@@ -40,8 +34,10 @@ check_LTLIBRARIES = libtransforms_ut.la
 
 libtransforms_la_SOURCES = \
    event_transforms.f90 \
+   resonance_insertion.f90 \
    hadrons.f90 \
    tau_decays.f90 \
+   isr_qed_transverse.f90 \
    decays.f90 \
    shower.f90 \
    evt_nlo.f90 \
@@ -51,6 +47,7 @@ libtransforms_la_SOURCES = \
 
 libtransforms_ut_la_SOURCES = \
    event_transforms_uti.f90 event_transforms_ut.f90 \
+   resonance_insertion_uti.f90 resonance_insertion_ut.f90 \
    decays_uti.f90 decays_ut.f90 \
    shower_uti.f90 shower_ut.f90 \
    events_uti.f90 events_ut.f90 \
@@ -165,6 +162,14 @@ if FC_USE_OPENMP
 AM_FCFLAGS += $(FCFLAGS_OPENMP)
 endif
 
+## MPI
+if FC_USE_MPI
+AM_FCFLAGS += $(FCFLAGS_MPI)
+endif
+
+if RECOLA_AVAILABLE
+AM_FCFLAGS += $(RECOLA_INCLUDES)
+endif
 
 ########################################################################
 ## Non-standard targets and dependencies

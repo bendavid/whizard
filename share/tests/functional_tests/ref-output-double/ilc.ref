@@ -40,26 +40,17 @@ openmp_num_threads = 1
 | Phase space: wood
 Warning: No cuts have been defined.
 | Starting integration for process 'ilc_zh'
-| Integrate: iterations not specified, using default
-| Integrate: iterations = 3:1000:"gw", 3:10000:""
+| Integrate: iterations = 1:100
 | Integrator: 1 chains, 1 channels, 2 dimensions
 | Integrator: Using VAMP channel equivalences
-| Integrator: 1000 initial calls, 20 bins, stratified = T
+| Integrator: 100 initial calls, 20 bins, stratified = T
 | Integrator: VAMP
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1        800     5.704E+01   6.45E-02    0.11    0.03    74.7
-   2        800     5.717E+01   5.71E-02    0.10    0.03    41.5
-   3        800     5.722E+01   5.66E-02    0.10    0.03    53.7
+   1        100     5.807E+01   1.78E+00    3.06    0.31    76.1
 |-----------------------------------------------------------------------------|
-   3       2400     5.715E+01   3.41E-02    0.06    0.03    53.7    2.07   3
-|-----------------------------------------------------------------------------|
-   4       9984     5.721E+01   5.05E-03    0.01    0.01    53.7
-   5       9984     5.721E+01   5.06E-03    0.01    0.01    53.7
-   6       9984     5.720E+01   5.03E-03    0.01    0.01    53.7
-|-----------------------------------------------------------------------------|
-   6      29952     5.721E+01   2.91E-03    0.01    0.01    53.7    0.42   3
+   1        100     5.807E+01   1.78E+00    3.06    0.31    76.1
 |=============================================================================|
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 2
@@ -87,26 +78,17 @@ Warning: No cuts have been defined.
 | Beam structure: 1 channels, 2 dimensions
 Warning: No cuts have been defined.
 | Starting integration for process 'ilc_zh'
-| Integrate: iterations not specified, using default
-| Integrate: iterations = 3:1000:"gw", 3:10000:""
+| Integrate: iterations = 1:100
 | Integrator: 1 chains, 1 channels, 4 dimensions
 | Integrator: Using VAMP channel equivalences
-| Integrator: 1000 initial calls, 20 bins, stratified = T
+| Integrator: 100 initial calls, 20 bins, stratified = T
 | Integrator: VAMP
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1       1000     6.411E+01   7.57E-01    1.18    0.37    43.7
-   2       1000     6.497E+01   5.70E-01    0.88    0.28    37.5
-   3       1000     6.461E+01   5.01E-01    0.78    0.25    42.3
+   1        100     6.267E+01   2.33E+00    3.72    0.37    50.5
 |-----------------------------------------------------------------------------|
-   3       3000     6.463E+01   3.37E-01    0.52    0.29    42.3    0.42   3
-|-----------------------------------------------------------------------------|
-   4      10000     6.441E+01   1.63E-01    0.25    0.25    39.9
-   5      10000     6.447E+01   1.61E-01    0.25    0.25    39.9
-   6      10000     6.460E+01   1.61E-01    0.25    0.25    40.0
-|-----------------------------------------------------------------------------|
-   6      30000     6.450E+01   9.33E-02    0.14    0.25    40.0    0.35   3
+   1        100     6.267E+01   2.33E+00    3.72    0.37    50.5
 |=============================================================================|
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 3
@@ -137,26 +119,17 @@ Warning: No cuts have been defined.
 | Beam structure: 1 channels, 0 dimensions
 Warning: No cuts have been defined.
 | Starting integration for process 'ilc_zh'
-| Integrate: iterations not specified, using default
-| Integrate: iterations = 3:1000:"gw", 3:10000:""
+| Integrate: iterations = 1:100
 | Integrator: 1 chains, 1 channels, 2 dimensions
 | Integrator: Using VAMP channel equivalences
-| Integrator: 1000 initial calls, 20 bins, stratified = T
+| Integrator: 100 initial calls, 20 bins, stratified = T
 | Integrator: VAMP
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1        800     5.973E+01   1.71E-01    0.29    0.08    53.6
-   2        800     5.960E+01   1.55E-01    0.26    0.07    52.2
-   3        800     6.041E+01   1.99E-01    0.33    0.09    49.5
+   1        100     6.003E+01   1.69E+00    2.82    0.28    68.8
 |-----------------------------------------------------------------------------|
-   3       2400     5.985E+01   9.95E-02    0.17    0.08    49.5    5.40   3
-|-----------------------------------------------------------------------------|
-   4       9984     5.966E+01   4.11E-02    0.07    0.07    47.0
-   5       9984     5.979E+01   4.31E-02    0.07    0.07    47.1
-   6       9984     5.973E+01   4.23E-02    0.07    0.07    44.2
-|-----------------------------------------------------------------------------|
-   6      29952     5.973E+01   2.43E-02    0.04    0.07    44.2    2.34   3
+   1        100     6.003E+01   1.69E+00    2.82    0.28    68.8
 |=============================================================================|
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 5
@@ -187,26 +160,17 @@ Warning: No cuts have been defined.
 | Beam structure: 1 channels, 2 dimensions
 Warning: No cuts have been defined.
 | Starting integration for process 'ilc_zh'
-| Integrate: iterations not specified, using default
-| Integrate: iterations = 3:1000:"gw", 3:10000:""
+| Integrate: iterations = 1:100
 | Integrator: 1 chains, 1 channels, 4 dimensions
 | Integrator: Using VAMP channel equivalences
-| Integrator: 1000 initial calls, 20 bins, stratified = T
+| Integrator: 100 initial calls, 20 bins, stratified = T
 | Integrator: VAMP
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1       1000     6.691E+01   8.37E-01    1.25    0.40    41.7
-   2       1000     6.813E+01   5.44E-01    0.80    0.25    47.2
-   3       1000     6.674E+01   5.90E-01    0.88    0.28    45.6
+   1        100     6.483E+01   2.50E+00    3.85    0.39    54.3
 |-----------------------------------------------------------------------------|
-   3       3000     6.738E+01   3.61E-01    0.54    0.29    45.6    1.69   3
-|-----------------------------------------------------------------------------|
-   4      10000     6.714E+01   1.78E-01    0.27    0.27    40.5
-   5      10000     6.702E+01   1.75E-01    0.26    0.26    40.5
-   6      10000     6.716E+01   1.77E-01    0.26    0.26    40.5
-|-----------------------------------------------------------------------------|
-   6      30000     6.710E+01   1.02E-01    0.15    0.26    40.5    0.20   3
+   1        100     6.483E+01   2.50E+00    3.85    0.39    54.3
 |=============================================================================|
 epa_x_min =  1.00000E-01
 epa_mass =  5.10997E-04
@@ -236,26 +200,17 @@ epa_mass =  5.10997E-04
 | Beam structure: 1 channels, 2 dimensions
 Warning: No cuts have been defined.
 | Starting integration for process 'ilc_ww'
-| Integrate: iterations not specified, using default
-| Integrate: iterations = 3:1000:"gw", 3:10000:""
+| Integrate: iterations = 1:100
 | Integrator: 1 chains, 4 channels, 4 dimensions
 | Integrator: Using VAMP channel equivalences
-| Integrator: 1000 initial calls, 20 bins, stratified = T
+| Integrator: 100 initial calls, 20 bins, stratified = T
 | Integrator: VAMP
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1       1000     1.954E+02   7.37E+00    3.77    1.19    28.9
-   2       1000     1.967E+02   4.87E+00    2.48    0.78    33.7
-   3       1000     1.920E+02   4.56E+00    2.38    0.75    26.6
+   1        100     1.781E+02   2.29E+01   12.84    1.28    29.4
 |-----------------------------------------------------------------------------|
-   3       3000     1.944E+02   3.04E+00    1.56    0.86    26.6    0.26   3
-|-----------------------------------------------------------------------------|
-   4      10000     1.992E+02   1.45E+00    0.73    0.73    20.0
-   5      10000     1.978E+02   1.44E+00    0.73    0.73    19.4
-   6      10000     1.993E+02   1.45E+00    0.73    0.73    18.7
-|-----------------------------------------------------------------------------|
-   6      30000     1.988E+02   8.35E-01    0.42    0.73    18.7    0.36   3
+   1        100     1.781E+02   2.29E+01   12.84    1.28    29.4
 |=============================================================================|
 $circe2_file = "teslagg_500.circe"
 | RNG: Initializing TAO random-number generator
@@ -287,26 +242,17 @@ $circe2_file = "teslagg_500.circe"
 | Beam structure: 1 channels, 0 dimensions
 Warning: No cuts have been defined.
 | Starting integration for process 'ilc_ww'
-| Integrate: iterations not specified, using default
-| Integrate: iterations = 3:1000:"gw", 3:10000:""
+| Integrate: iterations = 1:100
 | Integrator: 1 chains, 4 channels, 2 dimensions
 | Integrator: Using VAMP channel equivalences
-| Integrator: 1000 initial calls, 20 bins, stratified = T
+| Integrator: 100 initial calls, 20 bins, stratified = T
 | Integrator: VAMP
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1        800     1.690E+04   1.14E+03    6.72    1.90    15.1
-   2        800     1.921E+04   1.18E+03    6.14    1.74    17.9
-   3        800     1.801E+04   1.09E+03    6.08    1.72    18.2
+   1        100     1.830E+04   3.27E+03   17.88    1.79    18.7
 |-----------------------------------------------------------------------------|
-   3       2400     1.801E+04   6.55E+02    3.64    1.78    18.2    0.99   3
-|-----------------------------------------------------------------------------|
-   4       9984     1.785E+04   3.16E+02    1.77    1.77    17.1
-   5       9984     1.764E+04   3.13E+02    1.78    1.78    16.5
-   6       9984     1.799E+04   3.19E+02    1.77    1.77    16.6
-|-----------------------------------------------------------------------------|
-   6      29952     1.782E+04   1.82E+02    1.02    1.77    16.6    0.31   3
+   1        100     1.830E+04   3.27E+03   17.88    1.79    18.7
 |=============================================================================|
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 10
@@ -334,26 +280,17 @@ Warning: No cuts have been defined.
 | Beam structure: 1 channels, 1 dimensions
 Warning: No cuts have been defined.
 | Starting integration for process 'ilc_zh'
-| Integrate: iterations not specified, using default
-| Integrate: iterations = 3:1000:"gw", 3:10000:""
+| Integrate: iterations = 1:100
 | Integrator: 1 chains, 1 channels, 3 dimensions
 | Integrator: Using VAMP channel equivalences
-| Integrator: 1000 initial calls, 20 bins, stratified = T
+| Integrator: 100 initial calls, 20 bins, stratified = T
 | Integrator: VAMP
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1       1000     4.075E+04   1.19E+03    2.92    0.92    31.1
-   2       1000     3.894E+04   4.70E+02    1.21    0.38    51.5
-   3       1000     3.879E+04   3.24E+02    0.83    0.26    23.8
+   1        100     3.942E+04   3.95E+03   10.02    1.00    31.0
 |-----------------------------------------------------------------------------|
-   3       3000     3.893E+04   2.60E+02    0.67    0.37    23.8    1.26   3
-|-----------------------------------------------------------------------------|
-   4       9984     3.803E+04   9.55E+01    0.25    0.25    10.4
-   5       9984     3.812E+04   1.11E+02    0.29    0.29    10.4
-   6       9984     3.817E+04   1.00E+02    0.26    0.26    10.4
-|-----------------------------------------------------------------------------|
-   6      29952     3.810E+04   5.87E+01    0.15    0.27    10.4    0.53   3
+   1        100     3.942E+04   3.95E+03   10.02    1.00    31.0
 |=============================================================================|
 $beam_events_file = "uniform_spread_2.5%.dat"
 | RNG: Initializing TAO random-number generator
@@ -383,26 +320,17 @@ $beam_events_file = "uniform_spread_2.5%.dat"
 Warning: No cuts have been defined.
 | Beam events: reading from file 'uniform_spread_2.5%.dat'
 | Starting integration for process 'ilc_zh'
-| Integrate: iterations not specified, using default
-| Integrate: iterations = 3:1000:"gw", 3:10000:""
+| Integrate: iterations = 1:100
 | Integrator: 1 chains, 1 channels, 2 dimensions
 | Integrator: Using VAMP channel equivalences
-| Integrator: 1000 initial calls, 20 bins, stratified = T
+| Integrator: 100 initial calls, 20 bins, stratified = T
 | Integrator: VAMP
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1        800     5.722E+01   8.26E-02    0.14    0.04    72.3
-   2        800     5.705E+01   7.71E-02    0.14    0.04    58.3
-   3        800     5.710E+01   7.56E-02    0.13    0.04    60.0
+   1        100     5.707E+01   1.74E+00    3.05    0.30    71.5
 |-----------------------------------------------------------------------------|
-   3       2400     5.712E+01   4.52E-02    0.08    0.04    60.0    1.28   3
-|-----------------------------------------------------------------------------|
-   4       9984     5.725E+01   1.50E-02    0.03    0.03    59.6
-   5       9984     5.727E+01   1.47E-02    0.03    0.03    59.5
-   6       9984     5.725E+01   1.46E-02    0.03    0.03    59.4
-|-----------------------------------------------------------------------------|
-   6      29952     5.726E+01   8.51E-03    0.01    0.03    59.4    0.66   3
+   1        100     5.707E+01   1.74E+00    3.05    0.30    71.5
 |=============================================================================|
 | Beam events: closed file 'uniform_spread_2.5%.dat'
 | There were no errors and    8 warning(s).

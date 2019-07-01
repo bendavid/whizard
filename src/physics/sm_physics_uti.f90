@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -106,19 +99,23 @@ contains
     call assert_equal (u, gamma0, 1.4655_default, &
          "top_width_sm_lo", rel_smallness=1.0E-5_default)
     alphas = zero
-    gamma0 = top_width_sm_qcd_nlo_massless_b (alpha, sinthw, mtop, mw, alphas)
+    gamma0 = top_width_sm_qcd_nlo_massless_b &
+         (alpha, sinthw, vtb, mtop, mw, alphas)
     call assert_equal (u, gamma0, 1.4655_default, &
          "top_width_sm_qcd_nlo_massless_b", rel_smallness=1.0E-5_default)
-    gamma0 = top_width_sm_qcd_nlo_jk (alpha, sinthw, mtop, mw, mb, alphas)
+    gamma0 = top_width_sm_qcd_nlo_jk &
+         (alpha, sinthw, vtb, mtop, mw, mb, alphas)
     call assert_equal (u, gamma0, 1.4655_default, &
          "top_width_sm_qcd_nlo", rel_smallness=1.0E-5_default)
 
     write (u, "(A)")  "*   Check NLO Width"
     alphas_mz = 0.1202      ! MSTW2008 NLO fit
     alphas = running_as (mtop, alphas_mz, mz, 1, 5.0_default)
-    gamma1 = top_width_sm_qcd_nlo_massless_b (alpha, sinthw, mtop, mw, alphas)
+    gamma1 = top_width_sm_qcd_nlo_massless_b &
+         (alpha, sinthw, vtb, mtop, mw, alphas)
     call assert_equal (u, gamma1, 1.3376_default, rel_smallness=1.0E-4_default)
-    gamma1 = top_width_sm_qcd_nlo_jk (alpha, sinthw, mtop, mw, mb, alphas)
+    gamma1 = top_width_sm_qcd_nlo_jk &
+         (alpha, sinthw, vtb, mtop, mw, mb, alphas)
     ! It would be nice to get one more significant digit but the
     ! expression is numerically rather unstable for mb -> 0
     call assert_equal (u, gamma1, 1.3376_default, rel_smallness=1.0E-3_default)
@@ -133,24 +130,30 @@ contains
     sinthw = 0.47143
     mz = 91.188
     mw = 80.419
-    call assert_equal (u, sqrt(one - mw**2 / mz**2), sinthw, "sinthw", rel_smallness=1.0E-6_default)
+    call assert_equal (u, sqrt(one - mw**2 / mz**2), sinthw, &
+         "sinthw", rel_smallness=1.0E-6_default)
 
     write (u, "(A)")  "*   Check LO Width"
     gamma0 = top_width_sm_lo (alpha, sinthw, vtb, mtop, mw, mb)
-    call assert_equal (u, gamma0, 1.5386446_default, "gamma0", rel_smallness=1.0E-7_default)
+    call assert_equal (u, gamma0, 1.5386446_default, &
+         "gamma0", rel_smallness=1.0E-7_default)
     alphas = zero
-    gamma0 = top_width_sm_qcd_nlo_jk (alpha, sinthw, mtop, mw, mb, alphas)
-    call assert_equal (u, gamma0, 1.5386446_default, "gamma0", rel_smallness=1.0E-7_default)
+    gamma0 = top_width_sm_qcd_nlo_jk &
+         (alpha, sinthw, vtb, mtop, mw, mb, alphas)
+    call assert_equal (u, gamma0, 1.5386446_default, &
+         "gamma0", rel_smallness=1.0E-7_default)
 
     write (u, "(A)")  "*   Check NLO Width"
     alphas_mz = 0.118 !(Z pole, NLL running to mu_h)
     alphas = running_as (mtop, alphas_mz, mz, 1, 5.0_default)
     write (u, "(A," // FMT_15 // ")")  "*   alphas = ", alphas
-    gamma1 = top_width_sm_qcd_nlo_jk (alpha, sinthw, mtop, mw, mb, alphas)
+    gamma1 = top_width_sm_qcd_nlo_jk &
+         (alpha, sinthw, vtb, mtop, mw, mb, alphas)
     write (u, "(A," // FMT_15 // ")")  "*   Gamma1 = ", gamma1
 
     mb = zero
-    gamma1 = top_width_sm_qcd_nlo_massless_b (alpha, sinthw, mtop, mw, alphas)
+    gamma1 = top_width_sm_qcd_nlo_massless_b &
+         (alpha, sinthw, vtb, mtop, mw, alphas)
     alphas = running_as (mtop, alphas_mz, mz, 1, 5.0_default)
     write (u, "(A," // FMT_15 // ")")  "*   Gamma1(mb=0) = ", gamma1
 

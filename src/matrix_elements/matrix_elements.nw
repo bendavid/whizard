@@ -5347,6 +5347,27 @@ abstract type.
 
 @ %def process_component_def_get_prt_in
 @ %def process_component_def_get_prt_out
+@ Return the incoming and outgoing particle specifiers as-is.
+<<Process libraries: process component def: TBP>>=
+  procedure :: get_prt_spec_in => process_component_def_get_prt_spec_in
+  procedure :: get_prt_spec_out => process_component_def_get_prt_spec_out
+<<Process libraries: procedures>>=
+  function process_component_def_get_prt_spec_in (component) result (prt)
+    class(process_component_def_t), intent(in) :: component
+    type(prt_spec_t), dimension(:), allocatable :: prt
+    allocate (prt (component%n_in))
+    prt(:) = component%prt_in(:)
+  end function process_component_def_get_prt_spec_in
+
+  function process_component_def_get_prt_spec_out (component) result (prt)
+    class(process_component_def_t), intent(in) :: component
+    type(prt_spec_t), dimension(:), allocatable :: prt
+    allocate (prt (component%n_out))
+    prt(:) = component%prt_out(:)
+  end function process_component_def_get_prt_spec_out
+
+@ %def process_component_def_get_prt_spec_in
+@ %def process_component_def_get_prt_spec_out
 @ Return the combination of incoming particles as a PDG code
 <<Process libraries: process component def: TBP>>=
   procedure :: get_pdg_in => process_component_def_get_pdg_in
@@ -5377,17 +5398,17 @@ abstract type.
 <<Process libraries: process component def: TBP>>=
   procedure :: get_nlo_type => process_component_def_get_nlo_type
   procedure :: get_associated_born &
-               => process_component_def_get_associated_born
+       => process_component_def_get_associated_born
   procedure :: get_associated_real_fin &
-               => process_component_def_get_associated_real_fin
+       => process_component_def_get_associated_real_fin
   procedure :: get_associated_real_sing &
-               => process_component_def_get_associated_real_sing
+       => process_component_def_get_associated_real_sing
   procedure :: get_associated_subtraction &
-               => process_component_def_get_associated_subtraction
+       => process_component_def_get_associated_subtraction
   procedure :: get_association_list &
-               => process_component_def_get_association_list
+       => process_component_def_get_association_list
   procedure :: can_be_integrated &
-               => process_component_def_can_be_integrated
+       => process_component_def_can_be_integrated
   procedure :: get_associated_real => process_component_def_get_associated_real
 <<Process libraries: procedures>>=
   elemental function process_component_def_get_nlo_type (component) result (nlo_type)
@@ -5808,7 +5829,7 @@ allocation is moved, so the original allocated object is returned empty.
               end if
            end if
            nlo_type_string = component_status (comp%nlo_type)
-           if (nlo_type_string /= "Born") then
+           if (nlo_type_string /= "born") then
              d = d // ", [" // nlo_type_string // "]"
            end if
          end associate

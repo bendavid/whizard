@@ -7,7 +7,7 @@
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
 #     with contributions from
-#     Christian Speckner <cnspeckn@googlemail.com>
+#     cf. main AUTHORS file
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by 
@@ -35,8 +35,8 @@ SUBDIRS = \
 noinst_LTLIBRARIES = libmodels.la
 
 libmodels_la_SOURCES = \
-  parameters.2HDM.f90 \
-  parameters.2HDM_CKM.f90 \
+  parameters.THDM.f90 \
+  parameters.THDM_CKM.f90 \
   parameters.AltH.f90 \
   parameters.GravTest.f90 \
   parameters.HSExt.f90 \
@@ -83,8 +83,8 @@ libmodels_la_SOURCES = \
 ## Install the modules used by generated matrix element code
 execmoddir = $(pkglibdir)/mod/models
 nodist_execmod_HEADERS = \
-  parameters_2hdm.$(FC_MODULE_EXT) \
-  parameters_2hdm_ckm.$(FC_MODULE_EXT) \
+  parameters_thdm.$(FC_MODULE_EXT) \
+  parameters_thdm_ckm.$(FC_MODULE_EXT) \
   parameters_alth.$(FC_MODULE_EXT) \
   parameters_gravtest.$(FC_MODULE_EXT) \
   parameters_hsext.$(FC_MODULE_EXT) \
@@ -166,22 +166,22 @@ NO_OPT=-O0
 endif
 
 .f90.o:
-	$(FCCOMPILE) $(NO_OPT) -c -o $@ $<
+	$(AM_V_FC)$(FCCOMPILE) $(NO_OPT) -c -o $@ $<
 
 .f90.obj:
-	$(FCCOMPILE) $(NO_OPT) -c -o $@ `$(CYGPATH_W) '$<'`
+	$(AM_V_FC)$(FCCOMPILE) $(NO_OPT) -c -o $@ `$(CYGPATH_W) '$<'`
 
 .f90.lo:
-	$(LTFCCOMPILE) $(NO_OPT) -c -o $@ $<
+	$(AM_V_FC)$(LTFCCOMPILE) $(NO_OPT) -c -o $@ $<
 
 ## The mismatch of filenames and module names requires a lot of repetition:
-parameters_2hdm.$(FC_MODULE_EXT): parameters.2HDM.lo
+parameters_thdm.$(FC_MODULE_EXT): parameters.THDM.lo
 	@:
 
-parameters_2hdm_ckm.$(FC_MODULE_EXT): parameters.2HDM_CKM.lo
+parameters_thdm_ckm.$(FC_MODULE_EXT): parameters.THDM_CKM.lo
 	@:
 
-parameters_alth.$(FC_MODULE_EXT): parameters.2HDM_CKM.lo
+parameters_alth.$(FC_MODULE_EXT): parameters.AltH.lo
 	@:
 
 parameters_gravtest.$(FC_MODULE_EXT): parameters.GravTest.lo
@@ -354,6 +354,11 @@ endif
 ## OpenMP
 if FC_USE_OPENMP
 AM_FCFLAGS += $(FCFLAGS_OPENMP)
+endif
+
+# MPI
+if FC_USE_MPI
+AM_FCFLAGS += $(FCFLAGS_MPI)
 endif
 
 ########################################################################

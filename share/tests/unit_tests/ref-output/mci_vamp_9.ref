@@ -32,9 +32,9 @@
    n_bins        = 20
    adapt grids   = F
    adapt weights = F
-   Results:  [it, calls, integral, error, efficiency]
-     1 1000  1.9867591797E+00  6.0096643417E-02  2.7928067085E-01
- MD5 sum (including results) = '26211F01A4F4F42FC55D37FDC6083086'
+   Results:  [it, calls, valid, integral, error, efficiency]
+     1 1000 1000  1.9867591797E+00  6.0096643417E-02  2.7928067085E-01
+ MD5 sum (including results) = '71D39E6EAA431FBCF9BF6E478EA2EC38'
 
 * Generate a weighted event
 
@@ -50,6 +50,7 @@
    pass complete = T
    n_calls       = 1000
    calls         = 1
+   calls_valid   = 1001
    it complete   = T
    n adapt.(g)   = 0
    n adapt.(w)   = 0

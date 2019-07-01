@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -40,6 +33,7 @@ module dispatch_mci
   use variables
 
   use mci_base
+  use mci_none
   use mci_midpoint
   use mci_vamp
   use mci_vamp2
@@ -68,6 +62,8 @@ contains
     integration_method = &
          var_list%get_sval (var_str ("$integration_method"))
     select case (char (integration_method))
+    case ("none")
+       allocate (mci_none_t :: mci)
     case ("midpoint")
        allocate (mci_midpoint_t :: mci)
     case ("vamp", "default")
@@ -102,6 +98,7 @@ contains
           grid_path = var_list%get_sval (var_str ("$grid_path"))
           if (grid_path /= "") call mci%prepend_integrator_path (grid_path)
           call mci%set_rebuild_flag (rebuild_grids, check_grid_file)
+          mci%negative_weights = negative_weights
           mci%verbose = verbose
        end select
     case default
@@ -181,6 +178,8 @@ contains
              var_list%get_sval (var_str ("$run_id"))
         rebuild_grids = &
              var_list%get_lval (var_str ("?rebuild_grids"))
+        negative_weights = &
+             var_list%get_lval (var_str ("?negative_weights")) .or. dispatch_nlo
       end subroutine unpack_options_vamp2
 
   end subroutine dispatch_mci_s

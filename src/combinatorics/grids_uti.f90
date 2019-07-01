@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -109,6 +102,8 @@ contains
     call grid%save_to_file ('grids_2_test')
     call grid%final ()
 
+    call assert (u, verify_points_for_grid('grids_2_test', [3]), &
+         "verify_points_for_grid")
     call grid%load_from_file ('grids_2_test')
     call grid%write (u)
     call assert (u, nearly_equal (grid%get_value([1]), one),   "grid%get_value(1) == 1")
@@ -121,6 +116,8 @@ contains
     call grid%save_to_file ('grids_2_test')
     call grid%final ()
 
+    call assert (u, verify_points_for_grid('grids_2_test', [3,3]), &
+         "verify_points_for_grid")
     call grid%load_from_file ('grids_2_test')
     call grid%write (u)
     call assert (u, nearly_equal (grid%get_value([1,1]), one),   "grid%get_value(1,1) == 1")
@@ -128,6 +125,11 @@ contains
     call assert (u, nearly_equal (grid%get_value([3,1]), three), "grid%get_value(3,1) == 3")
     call assert (u, nearly_equal (grid%get_value([1,2]), four),  "grid%get_value(1,2) == 4")
     call delete_file ('grids_2_test')
+
+    call grid%load_from_file ('grids_2_test')
+    call assert (u, .not. verify_points_for_grid('grids_2_test', [3,3]), &
+         "verify_points_for_grid")
+    call grid%write (u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: grids_2"

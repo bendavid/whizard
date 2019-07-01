@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -805,8 +798,7 @@ contains
     class(phs_t), intent(inout) :: phs
     type(vector4_t), dimension(:), intent(in) :: p
     type(vector4_t) :: p0, p1
-    type(lorentz_transformation_t) :: lt0, lt0_inv, lt_inv
-    !!! !!! !!! Workaround for standard-semantics ifort 16.0 bug
+    type(lorentz_transformation_t) :: lt0
     integer :: i
     phs%p = p
     if (phs%config%cm_frame) then
@@ -825,18 +817,10 @@ contains
        case (1)
           phs%lt_cm_to_lab = lt0
        case (2)
-          !!! !!! !!! Workaround for standard-semantics ifort 16.0 bug
-          lt0_inv = inverse (lt0)
-          p1 = lt0_inv * p(1)
-          !!! p1 = inverse (lt0) * p(1)
+          p1 = inverse (lt0) * p(1)
           phs%lt_cm_to_lab = lt0 * rotation_to_2nd (3, space_part (p1))
        end select
-       !!! !!! !!! Workaround for standard-semantics ifort 16.0 bug
-       lt_inv = inverse (phs%lt_cm_to_lab)
-       do i = 1, size (p)
-          phs%p(i) = lt_inv * p(i)
-       end do
-       !!! phs%p = inverse (phs%lt_cm_to_lab) * p
+       phs%p = inverse (phs%lt_cm_to_lab) * p
     end if
     phs%p_defined = .true.
   end subroutine phs_set_incoming_momenta
@@ -844,18 +828,12 @@ contains
   subroutine phs_set_outgoing_momenta (phs, q)
     class(phs_t), intent(inout) :: phs
     type(vector4_t), dimension(:), intent(in) :: q
-    !!! !!! !!! Workaround for standard-semantics ifort 16.0 bug
-    type(lorentz_transformation_t) :: l_inv
     integer :: i
     if (phs%p_defined) then
        if (phs%config%cm_frame) then
           phs%q = q
        else
-          l_inv = inverse (phs%lt_cm_to_lab)
-          do i = 1, size (q)
-             phs%q(i) = l_inv * q(i)
-          end do
-          !!! phs%q = inverse (phs%lt_cm_to_lab) * q
+          phs%q = inverse (phs%lt_cm_to_lab) * q
        end if
        phs%q_defined = .true.
     end if

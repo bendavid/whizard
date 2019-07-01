@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -40,6 +33,7 @@ module sf_base
   use io_units
   use format_utils, only: write_separator
   use format_defs, only: FMT_17, FMT_19
+  use physics_defs, only: n_beam_structure_int
   use diagnostics
   use lorentz
   use quantum_numbers
@@ -55,6 +49,7 @@ module sf_base
 
   public :: sf_data_t
   public :: sf_config_t
+  public :: rescaling_function_t
   public :: sf_int_t
   public :: sf_chain_t
   public :: sf_chain_instance_t
@@ -93,6 +88,16 @@ module sf_base
      procedure :: get_pdf_set => sf_config_get_pdf_set
      procedure :: get_beam_file => sf_config_get_beam_file
   end type sf_config_t
+
+  type, abstract :: rescaling_function_t
+    integer, dimension(:,:), allocatable :: sf_indices
+    integer, dimension(:,:), allocatable :: sf_indices_gluon
+    integer :: i_beam = 0
+  contains
+    procedure (rescaling_function_init_indices), deferred :: init_indices
+    procedure (rescaling_function_apply), deferred :: apply
+    procedure :: set_i_beam => rescaling_function_set_i_beam
+  end type rescaling_function_t
 
   type, abstract, extends (interaction_t) :: sf_int_t
      integer :: status = SF_UNDEFINED
@@ -156,6 +161,7 @@ module sf_base
      real(default), dimension(:), allocatable :: f
      logical, dimension(:), allocatable :: m
      real(default), dimension(:), allocatable :: x
+     real(default), dimension(:), allocatable :: xb
   end type sf_instance_t
 
   type, extends (beam_t) :: sf_chain_t
@@ -195,7 +201,7 @@ module sf_base
      real(default), dimension(:,:), allocatable :: p, pb
      real(default), dimension(:,:), allocatable :: r, rb
      real(default), dimension(:), allocatable :: f
-     real(default), dimension(:), allocatable :: x
+     real(default), dimension(:), allocatable :: x, xb
      logical, dimension(:), allocatable :: bound
      real(default) :: x_free = 1
      type(sf_channel_t), dimension(:), allocatable :: channel
@@ -208,6 +214,7 @@ module sf_base
      procedure :: link_interactions => sf_chain_instance_link_interactions
      procedure :: exchange_mask => sf_chain_exchange_mask
      procedure :: init_evaluators => sf_chain_instance_init_evaluators
+     procedure :: write_interaction => sf_chain_instance_write_interaction
      procedure :: compute_kinematics => sf_chain_instance_compute_kinematics
      procedure :: inverse_kinematics => sf_chain_instance_inverse_kinematics
      procedure :: recover_kinematics => sf_chain_instance_recover_kinematics
@@ -221,6 +228,7 @@ module sf_base
      procedure :: get_f => sf_chain_instance_get_f
      procedure :: get_status => sf_chain_instance_get_status
      procedure :: get_matrix_elements => sf_chain_instance_get_matrix_elements
+     procedure :: get_beam_int_ptr => sf_chain_instance_get_beam_int_ptr
   end type sf_chain_instance_t
 
 
@@ -258,6 +266,21 @@ module sf_base
   end interface
 
   abstract interface
+     subroutine rescaling_function_init_indices (func)
+       import
+       class(rescaling_function_t), intent(inout) :: func
+     end subroutine rescaling_function_init_indices
+  end interface
+
+  abstract interface
+     subroutine rescaling_function_apply (func, x)
+       import
+       class(rescaling_function_t), intent(in) :: func
+       real(default), intent(inout) :: x
+     end subroutine rescaling_function_apply
+  end interface
+
+  abstract interface
      function sf_int_type_string (object) result (string)
        import
        class(sf_int_t), intent(in) :: object
@@ -283,10 +306,11 @@ module sf_base
   end interface
 
   abstract interface
-     subroutine sf_int_complete_kinematics (sf_int, x, f, r, rb, map)
+     subroutine sf_int_complete_kinematics (sf_int, x, xb, f, r, rb, map)
        import
        class(sf_int_t), intent(inout) :: sf_int
        real(default), dimension(:), intent(out) :: x
+       real(default), dimension(:), intent(out) :: xb
        real(default), intent(out) :: f
        real(default), dimension(:), intent(in) :: r
        real(default), dimension(:), intent(in) :: rb
@@ -295,11 +319,12 @@ module sf_base
   end interface
 
   abstract interface
-     subroutine sf_int_inverse_kinematics (sf_int, x, f, r, rb, map, &
+     subroutine sf_int_inverse_kinematics (sf_int, x, xb, f, r, rb, map, &
           set_momenta)
        import
        class(sf_int_t), intent(inout) :: sf_int
        real(default), dimension(:), intent(in) :: x
+       real(default), dimension(:), intent(in) :: xb
        real(default), intent(out) :: f
        real(default), dimension(:), intent(out) :: r
        real(default), dimension(:), intent(out) :: rb
@@ -309,10 +334,12 @@ module sf_base
   end interface
 
   abstract interface
-     subroutine sf_int_apply (sf_int, scale)
+     subroutine sf_int_apply (sf_int, scale, rescaling_function, i_rescale)
        import
        class(sf_int_t), intent(inout) :: sf_int
        real(default), intent(in) :: scale
+       class(rescaling_function_t), intent(in), optional :: rescaling_function
+       integer, intent(in), optional :: i_rescale
      end subroutine sf_int_apply
   end interface
 
@@ -325,7 +352,7 @@ contains
     flag = .false.
   end function sf_data_is_generator
 
-  function sf_data_get_pdf_set (data) result (pdf_set)
+  elemental function sf_data_get_pdf_set (data) result (pdf_set)
     class(sf_data_t), intent(in) :: data
     integer :: pdf_set
     pdf_set = 0
@@ -359,7 +386,7 @@ contains
     allocate (sf_config%data, source = sf_data)
   end subroutine sf_config_init
 
-  function sf_config_get_pdf_set (sf_config) result (pdf_set)
+  elemental function sf_config_get_pdf_set (sf_config) result (pdf_set)
     class(sf_config_t), intent(in) :: sf_config
     integer :: pdf_set
     pdf_set = sf_config%data%get_pdf_set ()
@@ -370,6 +397,12 @@ contains
     type(string_t) :: file
     file = sf_config%data%get_beam_file ()
   end function sf_config_get_beam_file
+
+  subroutine rescaling_function_set_i_beam (func, i_beam)
+    class(rescaling_function_t), intent(inout) :: func
+    integer, intent(in) :: i_beam
+    func%i_beam = i_beam
+  end subroutine rescaling_function_set_i_beam
 
   subroutine write_sf_status (status, u)
     integer, intent(in) :: status
@@ -542,10 +575,10 @@ contains
     rb= 1
   end subroutine sf_int_generate_free
 
-  subroutine sf_int_split_momentum (sf_int, x, xb1)
+  subroutine sf_int_split_momentum (sf_int, x, xb)
     class(sf_int_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(in) :: x
-    real(default), intent(in) :: xb1
+    real(default), dimension(:), intent(in) :: xb
     type(vector4_t) :: k
     type(vector4_t), dimension(2) :: q
     type(splitting_data_t) :: sd
@@ -556,7 +589,7 @@ contains
        call sd%init (k, &
             sf_int%mi2(1), sf_int%mr2(1), sf_int%mo2(1), &
             collinear = size (x) == 1)
-       call sd%set_t_bounds (x(1), xb1)
+       call sd%set_t_bounds (x(1), xb(1))
        select case (size (x))
        case (1)
        case (3)
@@ -596,10 +629,10 @@ contains
     end if
   end subroutine sf_int_split_momentum
 
-  subroutine sf_int_split_momenta (sf_int, x, xb1)
+  subroutine sf_int_split_momenta (sf_int, x, xb)
     class(sf_int_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(in) :: x
-    real(default), dimension(:), intent(in) :: xb1
+    real(default), dimension(:), intent(in) :: xb
     type(vector4_t), dimension(2) :: k
     type(vector4_t), dimension(4) :: q
     real(default), dimension(4) :: E
@@ -613,7 +646,7 @@ contains
        end select
        k(1) = sf_int%get_momentum (1)
        k(2) = sf_int%get_momentum (2)
-       q(1:2) = xb1 * k
+       q(1:2) = xb * k
        q(3:4) = x * k
        select case (size (sf_int%mr2))
        case (2)
@@ -668,9 +701,10 @@ contains
     end if
   end subroutine sf_int_reduce_momenta
 
-  subroutine sf_int_recover_x (sf_int, x, x_free)
+  subroutine sf_int_recover_x (sf_int, x, xb, x_free)
     class(sf_int_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(out) :: x
+    real(default), dimension(:), intent(out) :: xb
     real(default), intent(inout), optional :: x_free
     type(vector4_t), dimension(:), allocatable :: k
     type(vector4_t), dimension(:), allocatable :: q
@@ -685,8 +719,9 @@ contains
           call sd%init (k(1), &
                sf_int%mi2(1), sf_int%mr2(1), sf_int%mo2(1), &
                collinear = size (x) == 1)
-          call sd%recover (k(1), q(2), sf_int%on_shell_mode)
-          x(1) = sd%get_x ()
+          call sd%recover (k(1), q, sf_int%on_shell_mode)
+          x(1)  = sd%get_x ()
+          xb(1) = sd%get_xb ()
           select case (size (x))
           case (1)
           case (3)
@@ -706,6 +741,7 @@ contains
                 end if
              end if
              call sd%inverse_phi (x(3))
+             xb(2:3) = 1 - x(2:3)
           case default
              call msg_bug ("Structure function: impossible number &
                   &of parameters")
@@ -722,15 +758,19 @@ contains
              select case (size (q))
              case (4)
                 x = energy (q(3:4)) / energy (k)
+                xb= energy (q(1:2)) / energy (k)
              case (2)
                 x = energy (q) / energy (k)
+                xb= 1 - x
              end select
           case (KEEP_MOMENTUM)
              select case (size (q))
              case (4)
                 x = longitudinal_part (q(3:4)) / longitudinal_part (k)
+                xb= longitudinal_part (q(1:2)) / longitudinal_part (k)
              case (2)
                 x = longitudinal_part (q) / longitudinal_part (k)
+                xb= 1 - x
              end select
           end select
        end select
@@ -790,11 +830,11 @@ contains
     real(default), dimension(:), intent(in) :: xb
     real(default), intent(in) :: scale
     real(default), dimension(:), intent(in), optional :: E
-    real(default), dimension(size (x)) :: xx
+    real(default), dimension(size (x)) :: xx, xxb
     real(default) :: f
     if (present (E))  call sf_int%seed_kinematics (E)
     if (sf_int%status >= SF_SEED_KINEMATICS) then
-       call sf_int%complete_kinematics (xx, f, x, xb, map=.false.)
+       call sf_int%complete_kinematics (xx, xxb, f, x, xb, map=.false.)
        call sf_int%apply (scale)
        call sf_int%get_values (value)
        value = value * f
@@ -934,8 +974,8 @@ contains
   end function sf_chain_get_n_bound
 
   function sf_chain_get_beam_int_ptr (sf_chain) result (int)
-    class(sf_chain_t), intent(in), target :: sf_chain
     type(interaction_t), pointer :: int
+    class(sf_chain_t), intent(in), target :: sf_chain
     int => beam_get_int_ptr (sf_chain%beam_t)
   end function sf_chain_get_beam_int_ptr
 
@@ -1055,12 +1095,15 @@ contains
                 write (u, *)
              end if
              write (u, "(3x,A,9(1x,F9.7))")  "p =", object%p(:,c)
+             write (u, "(3x,A,9(1x,F9.7))")  "pb=", object%pb(:,c)
              write (u, "(3x,A,9(1x,F9.7))")  "r =", object%r(:,c)
+             write (u, "(3x,A,9(1x,F9.7))")  "rb=", object%rb(:,c)
              write (u, "(3x,A,9(1x,ES13.7))")  "f =", object%f(c)
              write (u, "(3x,A)", advance="no") "m ="
              call object%channel(c)%write (u)
           end do
           write (u, "(3x,A,9(1x,F9.7))")  "x =", object%x
+          write (u, "(3x,A,9(1x,F9.7))")  "xb=", object%xb
           if (.not. all (object%bound)) then
              write (u, "(3x,A,9(1x,L1))")  "bound =", object%bound
           end if
@@ -1083,10 +1126,12 @@ contains
                         write (u, *)
                      end if
                      write (u, "(3x,A,9(1x,F9.7))")  "r =", sf%r(:,c)
+                     write (u, "(3x,A,9(1x,F9.7))")  "rb=", sf%rb(:,c)
                      write (u, "(3x,A,9(1x,ES13.7))")  "f =", sf%f(c)
                      write (u, "(3x,A,9(1x,L1,7x))") "m =", sf%m(c)
                   end do
                   write (u, "(3x,A,9(1x,F9.7))")  "x =", sf%x
+                  write (u, "(3x,A,9(1x,F9.7))")  "xb=", sf%xb
                end if
                call sf%int%write(u)
                if (.not. sf%eval%is_empty ()) then
@@ -1125,6 +1170,7 @@ contains
             allocate (sf%f (n_channel));         sf%f = 0
             allocate (sf%m (n_channel));         sf%m = .false.
             allocate (sf%x (n_par));             sf%x = 0
+            allocate (sf%xb(n_par));             sf%xb= 0
             n_par_tot = n_par_tot + n_par
           end associate
        end do
@@ -1134,6 +1180,7 @@ contains
        allocate (chain%rb(n_par_tot, n_channel));  chain%rb= 0
        allocate (chain%f (n_channel));             chain%f = 0
        allocate (chain%x (n_par_tot));             chain%x = 0
+       allocate (chain%xb(n_par_tot));             chain%xb= 0
        call allocate_sf_channels &
             (chain%channel, n_channel=n_channel, n_strfun=n_strfun)
     end if
@@ -1261,11 +1308,16 @@ contains
     end if
   end subroutine sf_chain_exchange_mask
 
-  subroutine sf_chain_instance_init_evaluators (chain)
+  subroutine sf_chain_instance_init_evaluators (chain, n_sub, has_pdfs)
     class(sf_chain_instance_t), intent(inout), target :: chain
+    integer, intent(in), optional :: n_sub
+    logical, intent(in), optional :: has_pdfs
     type(interaction_t), pointer :: int
     type(quantum_numbers_mask_t) :: mask
-    integer :: i
+    integer :: i, ns
+    logical :: yorn
+    ns = 0;  if (present (n_sub))  ns = n_sub
+    yorn = .false.; if (present (has_pdfs)) yorn = has_pdfs
     if (chain%status >= SF_DONE_MASK) then
        if (allocated (chain%sf)) then
           if (size (chain%sf) /= 0) then
@@ -1273,13 +1325,22 @@ contains
              int => beam_get_int_ptr (chain%beam_t)
              do i = 1, size (chain%sf)
                 associate (sf => chain%sf(i))
-                  call sf%eval%init_product &
-                       (int, sf%int%interaction_t, mask)
-                  if (sf%eval%is_empty ()) then
-                     chain%status = SF_FAILED_CONNECTIONS
-                     return
-                  end if
-                  int => sf%eval%interaction_t
+                   if (yorn) then
+                       if (int%get_n_sub () == 0) then
+                            call interaction_declare_subtraction (int, n_beam_structure_int)
+                       end if
+                       if (sf%int%interaction_t%get_n_sub () == 0) then
+                            call interaction_declare_subtraction &
+                                 (sf%int%interaction_t, n_beam_structure_int)
+                       end if
+                   end if
+                   call sf%eval%init_product &
+                        (int, sf%int%interaction_t, mask, ignore_sub = .true.)
+                   if (sf%eval%is_empty ()) then
+                      chain%status = SF_FAILED_CONNECTIONS
+                      return
+                   end if
+                   int => sf%eval%interaction_t
                 end associate
              end do
              call find_outgoing_particles ()
@@ -1310,6 +1371,33 @@ contains
       end do
     end subroutine find_outgoing_particles
   end subroutine sf_chain_instance_init_evaluators
+
+  subroutine sf_chain_instance_write_interaction (chain, i_sf, i_int, unit)
+    class(sf_chain_instance_t), intent(in) :: chain
+    integer, intent(in) :: i_sf, i_int
+    integer, intent(in) :: unit
+    class(interaction_t), pointer :: int_in1 => null ()
+    class(interaction_t), pointer :: int_in2 => null ()
+    integer :: u
+    u = given_output_unit (unit); if (u < 0) return
+    if (chain%status >= SF_DONE_MASK) then
+       if (allocated (chain%sf)) then
+          int_in1 => evaluator_get_int_in_ptr (chain%sf(i_sf)%eval, 1)
+          int_in2 => evaluator_get_int_in_ptr (chain%sf(i_sf)%eval, 2)
+          if (int_in1%get_tag () == i_int) then
+             call int_in1%basic_write (u)
+          else if (int_in2%get_tag () == i_int) then
+             call int_in2%basic_write (u)
+          else
+             write (u, "(A,1x,I0,1x,A,1x,I0)") 'No tag of sf', i_sf, 'matches' , i_int
+          end if
+       else
+          write (u, "(A)") 'No sf_chain allocated!'
+       end if
+    else
+       write (u, "(A)") 'sf_chain not ready!'
+    end if
+  end subroutine sf_chain_instance_write_interaction
 
   subroutine sf_chain_instance_compute_kinematics (chain, c_sel, p_in)
     class(sf_chain_instance_t), intent(inout), target :: chain
@@ -1366,10 +1454,11 @@ contains
                      sf%rb(j,c_sel) = chain%rb(sf%int%par_index(j),c_sel)
                   end do
                   call sf%int%complete_kinematics &
-                       (sf%x, sf%f(c_sel), sf%r(:,c_sel), sf%rb(:,c_sel), &
+                       (sf%x, sf%xb, sf%f(c_sel), sf%r(:,c_sel), sf%rb(:,c_sel), &
                         sf%m(c_sel))
                   do j = 1, size (sf%x)
                      chain%x(sf%int%par_index(j)) = sf%x(j)
+                     chain%xb(sf%int%par_index(j)) = sf%xb(j)
                   end do
                   if (sf%int%status <= SF_FAILED_KINEMATICS) then
                      chain%status = SF_FAILED_KINEMATICS
@@ -1378,7 +1467,7 @@ contains
                   do c = 1, size (sf%f)
                      if (c /= c_sel) then
                         call sf%int%inverse_kinematics &
-                             (sf%x, sf%f(c), sf%r(:,c), sf%rb(:,c), sf%m(c))
+                             (sf%x, sf%xb, sf%f(c), sf%r(:,c), sf%rb(:,c), sf%m(c))
                         do j = 1, size (sf%x)
                            chain%r (sf%int%par_index(j),c) = sf%r (j,c)
                            chain%rb(sf%int%par_index(j),c) = sf%rb(j,c)
@@ -1412,9 +1501,10 @@ contains
     end if
   end subroutine sf_chain_instance_compute_kinematics
 
-  subroutine sf_chain_instance_inverse_kinematics (chain, x)
+  subroutine sf_chain_instance_inverse_kinematics (chain, x, xb)
     class(sf_chain_instance_t), intent(inout), target :: chain
     real(default), dimension(:), intent(in) :: x
+    real(default), dimension(:), intent(in) :: xb
     type(interaction_t), pointer :: int
     real(default) :: f_mapping
     integer :: i, j, c
@@ -1427,15 +1517,17 @@ contains
           if (size (chain%sf) /= 0) then
              forall (i = 1:size (chain%sf))  chain%sf(i)%int%status = SF_INITIAL
              chain%x = x
+             chain%xb= xb
              do i = 1, size (chain%sf)
                 associate (sf => chain%sf(i))
                   call sf%int%seed_kinematics ()
                   do j = 1, size (sf%x)
-                     sf%x(j) = chain%x(sf%int%par_index(j))
+                     sf%x(j)  = chain%x(sf%int%par_index(j))
+                     sf%xb(j) = chain%xb(sf%int%par_index(j))
                   end do
                   do c = 1, size (sf%f)
                      call sf%int%inverse_kinematics &
-                          (sf%x, sf%f(c), sf%r(:,c), sf%rb(:,c), sf%m(c), c==1)
+                          (sf%x, sf%xb, sf%f(c), sf%r(:,c), sf%rb(:,c), sf%m(c), c==1)
                      chain%f(c) = chain%f(c) * sf%f(c)
                      do j = 1, size (sf%x)
                         chain%r (sf%int%par_index(j),c) = sf%r (j,c)
@@ -1488,13 +1580,14 @@ contains
              do i = 1, size (chain%sf)
                 associate (sf => chain%sf(i))
                   call sf%int%seed_kinematics ()
-                  call sf%int%recover_x (sf%x, chain%x_free)
+                  call sf%int%recover_x (sf%x, sf%xb, chain%x_free)
                   do j = 1, size (sf%x)
-                     chain%x(sf%int%par_index(j)) = sf%x(j)
+                     chain%x(sf%int%par_index(j))  = sf%x(j)
+                     chain%xb(sf%int%par_index(j)) = sf%xb(j)
                   end do
                   do c = 1, size (sf%f)
                      call sf%int%inverse_kinematics &
-                          (sf%x, sf%f(c), sf%r(:,c), sf%rb(:,c), sf%m(c), c==1)
+                          (sf%x, sf%xb, sf%f(c), sf%r(:,c), sf%rb(:,c), sf%m(c), c==1)
                      chain%f(c) = chain%f(c) * sf%f(c)
                      do j = 1, size (sf%x)
                         chain%r (sf%int%par_index(j),c) = sf%r (j,c)
@@ -1531,25 +1624,41 @@ contains
     end if
   end subroutine sf_chain_instance_return_beam_momenta
 
-  subroutine sf_chain_instance_evaluate (chain, scale)
+  subroutine sf_chain_instance_evaluate (chain, scale, rescaling_function, i_rescale)
     class(sf_chain_instance_t), intent(inout), target :: chain
     real(default), intent(in) :: scale
+    class(rescaling_function_t), intent(inout), optional :: rescaling_function
+    integer, intent(in), optional :: i_rescale
     type(interaction_t), pointer :: out_int
     real(default) :: sf_sum
-    integer :: i
+    integer :: i, i_skip
+    i_skip = 0; if (present (i_rescale)) i_skip = i_rescale
     if (chain%status >= SF_DONE_KINEMATICS) then
        if (allocated (chain%sf)) then
           if (size (chain%sf) /= 0) then
              do i = 1, size (chain%sf)
                 associate (sf => chain%sf(i))
-                  call sf%int%apply (scale)
-                  if (sf%int%status <= SF_FAILED_EVALUATION) then
-                     chain%status = SF_FAILED_EVALUATION
-                     return
+                   if (i_skip > 0 .and. i /= i_skip) then
+                      call sf%int%transfer_me_to_sub (i_skip)
+                      if (present (rescaling_function)) then
+                         if (allocated (rescaling_function%sf_indices_gluon)) then
+                            if (i_skip == 1) then
+                               call sf%int%transfer_me_to_sub (3)
+                            else
+                               call sf%int%transfer_me_to_sub (4)
+                            end if
+                         end if
+                      end if
+                   else
+                      if (present (rescaling_function)) &
+                           call rescaling_function%set_i_beam (i)
+                      call sf%int%apply (scale, rescaling_function, i_rescale)
+                      if (sf%int%status <= SF_FAILED_EVALUATION) then
+                         chain%status = SF_FAILED_EVALUATION
+                         return
+                      end if
                   end if
-                  if (.not. sf%eval%is_empty ()) then
-                     call sf%eval%evaluate ()
-                  end if
+                  if (.not. sf%eval%is_empty ())  call sf%eval%evaluate ()
                 end associate
              end do
              out_int => chain%get_out_int_ptr ()
@@ -1640,6 +1749,12 @@ contains
         ff = real (sf%int%get_matrix_element ())
      end associate
   end subroutine sf_chain_instance_get_matrix_elements
+
+  function sf_chain_instance_get_beam_int_ptr (chain) result (int)
+    type(interaction_t), pointer :: int
+    class(sf_chain_instance_t), intent(in), target :: chain
+    int => beam_get_int_ptr (chain%beam_t)
+  end function sf_chain_instance_get_beam_int_ptr
 
 
 end module sf_base

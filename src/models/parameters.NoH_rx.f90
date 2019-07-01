@@ -1,12 +1,11 @@
-! $Id: parameters.NoH_rx.f90,v 1.0 2014/02/21 13:31:48 msekulla Exp $
+! parameters.NoH_rx.f90
 !
 ! Copyright (C) 1999-2017 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     with contributions from
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     Marco Sekulla <marco.sekulla@kit.edu> (only this file)
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 

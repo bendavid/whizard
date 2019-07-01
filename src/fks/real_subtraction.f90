@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -54,6 +47,7 @@ module real_subtraction
   use flavors
   use phs_fks, only: real_kinematics_t, isr_kinematics_t
   use phs_fks, only: I_PLUS, I_MINUS
+  use phs_fks, only: SQRTS_VAR, SQRTS_FIXED
   use phs_fks, only: phs_point_set_t
   use ttv_formfactors, only: m1s_to_mpole
 
@@ -105,7 +99,8 @@ module real_subtraction
   type :: soft_mismatch_t
     type(region_data_t), pointer :: reg_data => null ()
     real(default), dimension(:), allocatable :: sqme_born
-    real(default), dimension(:,:,:), allocatable :: sqme_born_cc
+    real(default), dimension(:,:,:), allocatable :: sqme_born_color_c
+    real(default), dimension(:,:,:), allocatable :: sqme_born_charge_c
     type(real_kinematics_t), pointer :: real_kinematics => null ()
     type(soft_subtraction_t) :: sub_soft
   contains
@@ -127,14 +122,15 @@ module real_subtraction
 
   type :: real_subtraction_t
     type(region_data_t), pointer :: reg_data => null ()
-    type(pdf_data_t) :: pdf_data
     type(real_kinematics_t), pointer :: real_kinematics => null ()
     type(isr_kinematics_t), pointer :: isr_kinematics => null ()
     type(real_scales_t) :: scales
     real(default), dimension(:,:), allocatable :: sqme_real_non_sub
     real(default), dimension(:), allocatable :: sqme_born
-    real(default), dimension(:,:,:), allocatable :: sqme_born_cc
-    complex(default), dimension(:,:,:,:), allocatable :: sqme_born_sc
+    real(default), dimension(:,:,:), allocatable :: sqme_coll_isr
+    real(default), dimension(:,:,:), allocatable :: sqme_born_color_c
+    real(default), dimension(:,:,:), allocatable :: sqme_born_charge_c
+    complex(default), dimension(:,:,:,:), allocatable :: sqme_born_spin_c
     type(soft_subtraction_t) :: sub_soft
     type(coll_subtraction_t) :: sub_coll
     logical, dimension(:), allocatable :: sc_required
@@ -142,11 +138,9 @@ module real_subtraction
     integer :: purpose = INTEGRATION
     logical :: radiation_event = .true.
     logical :: subtraction_event = .false.
-    type(pdf_container_t), dimension(2) :: pdf_born, pdf_scaled, pdf_scaled_coll
     integer, dimension(:), allocatable :: selected_alr
   contains
     procedure :: init => real_subtraction_init
-    procedure :: init_pdfs => real_subtraction_init_pdfs
     procedure :: set_resonance_mappings => real_subtraction_set_resonance_mappings
     procedure :: set_real_kinematics => real_subtraction_set_real_kinematics
     procedure :: set_isr_kinematics => real_subtraction_set_isr_kinematics
@@ -167,9 +161,6 @@ module real_subtraction
     procedure :: get_spin_correlation_term => real_subtraction_get_spin_correlation_term
     procedure :: compute_sub_coll => real_subtraction_compute_sub_coll
     procedure :: compute_sub_coll_soft => real_subtraction_compute_sub_coll_soft
-    procedure :: compute_pdfs => real_subtraction_compute_pdfs
-    procedure :: scale_pdfs_real => real_subtraction_scale_pdfs_real
-    procedure :: scale_pdfs_collinear => real_subtraction_scale_pdfs_collinear
     procedure :: requires_spin_correlations => &
          real_subtraction_requires_spin_correlations
     procedure :: final => real_subtraction_final
@@ -333,31 +324,37 @@ contains
   end subroutine soft_subtraction_create_softvec_mismatch
 
   function soft_subtraction_compute (sub_soft, p_born, &
-     born_ij, y, q2, alpha_s, alr, emitter, i_res) result (sqme)
+     born_ij, y, q2, alpha_coupling, alr, emitter, i_res) result (sqme)
     real(default) :: sqme
     class(soft_subtraction_t), intent(inout) :: sub_soft
     type(vector4_t), intent(in), dimension(:) :: p_born
     real(default), intent(in), dimension(:,:) :: born_ij
     real(default), intent(in) :: y
-    real(default), intent(in) :: q2, alpha_s
+    real(default), intent(in) :: q2, alpha_coupling
     integer, intent(in) :: alr, emitter, i_res
     real(default) :: s_alpha_soft
     real(default) :: kb
     real(default) :: xi2_factor
 
-    if (.not. vector_set_is_cms (p_born)) then
+    if (.not. vector_set_is_cms (p_born, sub_soft%reg_data%n_in)) then
        call vector4_write_set (p_born, show_mass = .true., &
-          check_conservation = .true.)
+              check_conservation = .true.)
        call msg_fatal ("Soft subtraction: phase space point must be in CMS")
     end if
     if (debug2_active (D_SUBTRACTION)) then
-       print *, 'Compute soft subtraction using alpha_s = ', alpha_s
+       associate (nlo_corr_type => sub_soft%reg_data%regions(alr)%nlo_correction_type)
+          if (nlo_corr_type == "QCD") then
+             print *, 'Compute soft subtraction using alpha_s = ', alpha_coupling
+          else if (nlo_corr_type == "QED") then
+             print *, 'Compute soft subtraction using alpha_qed = ', alpha_coupling
+          end if
+       end associate
     end if
 
     s_alpha_soft = sub_soft%reg_data%get_svalue_soft (p_born, &
          sub_soft%p_soft, alr, emitter, i_res)
     if (s_alpha_soft > one + tiny_07) call msg_fatal ("s_alpha_soft > 1!")
-    if (debug_active (D_SUBTRACTION)) &
+    if (debug2_active (D_SUBTRACTION)) &
          call msg_print_color ('s_alpha_soft', s_alpha_soft, COL_YELLOW)
     select case (sub_soft%factorization_mode)
     case (NO_FACTORIZATION)
@@ -366,7 +363,7 @@ contains
        kb = sub_soft%evaluate_factorization_threshold (thr_leg(emitter), p_born, born_ij)
     end select
     call msg_debug2 (D_SUBTRACTION, 'KB', kb)
-    sqme = four * pi * alpha_s * s_alpha_soft * kb
+    sqme = four * pi * alpha_coupling * s_alpha_soft * kb
     if (sub_soft%xi2_expanded) then
        xi2_factor = four / q2
     else
@@ -493,7 +490,9 @@ contains
     integer, intent(in) :: factorization_mode
     soft_mismatch%reg_data => reg_data
     allocate (soft_mismatch%sqme_born (reg_data%n_flv_born))
-    allocate (soft_mismatch%sqme_born_cc (reg_data%n_legs_born, &
+    allocate (soft_mismatch%sqme_born_color_c (reg_data%n_legs_born, &
+         reg_data%n_legs_born, reg_data%n_flv_born))
+    allocate (soft_mismatch%sqme_born_charge_c (reg_data%n_legs_born, &
          reg_data%n_legs_born, reg_data%n_flv_born))
     call soft_mismatch%sub_soft%init (reg_data)
     soft_mismatch%sub_soft%xi2_expanded = .false.
@@ -525,7 +524,7 @@ contains
                show_mass = .true.)
           print *, 'xi: ', xi, 'y: ', y, 's: ', s, 'E_gluon: ', E_gluon
        end if
-          
+
        allocate (p_born (soft_mismatch%reg_data%n_legs_born))
 
        do alr = 1, soft_mismatch%reg_data%n_regions
@@ -554,11 +553,11 @@ contains
            select type (fks_mapping => soft_mismatch%reg_data%fks_mapping)
            type is (fks_mapping_resonances_t)
               call fks_mapping%set_resonance_momentum &
-                 (real_kinematics%xi_ref_momenta(i_con))
+                   (real_kinematics%xi_ref_momenta(i_con))
            end select
 
            sqme_soft = soft_mismatch%sub_soft%compute &
-                (p_born, soft_mismatch%sqme_born_cc(:,:,i_born), y, &
+                (p_born, soft_mismatch%sqme_born_color_c(:,:,i_born), y, &
                 q2, alpha_s, alr, emitter, i_res)
 
            sqme_alr = soft_mismatch%compute (alr, xi, y, p_em, &
@@ -621,7 +620,8 @@ contains
     call soft_mismatch%sub_soft%final ()
     if (associated (soft_mismatch%reg_data)) nullify (soft_mismatch%reg_data)
     if (allocated (soft_mismatch%sqme_born)) deallocate (soft_mismatch%sqme_born)
-    if (allocated (soft_mismatch%sqme_born_cc)) deallocate (soft_mismatch%sqme_born_cc)
+    if (allocated (soft_mismatch%sqme_born_color_c)) deallocate (soft_mismatch%sqme_born_color_c)
+    if (allocated (soft_mismatch%sqme_born_charge_c)) deallocate (soft_mismatch%sqme_born_charge_c)
     if (associated (soft_mismatch%real_kinematics)) nullify (soft_mismatch%real_kinematics)
   end subroutine soft_mismatch_final
 
@@ -633,29 +633,23 @@ contains
   end subroutine coll_subtraction_init
 
   function coll_subtraction_compute_fsr &
-     (coll_sub, sregion, p_res, p_born, sqme_born, mom_times_sqme_born_sc, &
-     xi, alpha_s, alr, double_fsr) result (sqme)
+     (coll_sub, sregion, p_res, p_born, sqme_born, mom_times_sqme_born_spin_c, &
+     xi, alpha_coupling, alr, double_fsr) result (sqme)
     real(default) :: sqme
     class(coll_subtraction_t), intent(in) :: coll_sub
     type(singular_region_t), intent(in) :: sregion
     type(vector4_t), intent(in) :: p_res
     type(vector4_t), intent(in), dimension(:) :: p_born
-    real(default), intent(in) :: sqme_born, mom_times_sqme_born_sc
-    real(default), intent(in) :: xi, alpha_s
+    real(default), intent(in) :: sqme_born, mom_times_sqme_born_spin_c
+    real(default), intent(in) :: xi, alpha_coupling
     integer, intent(in) :: alr
     logical, intent(in) :: double_fsr
     real(default) :: q0, z, p0
     real(default) :: z_o_xi, onemz
     real(default) :: pggz
+    real(default) :: CA_factor, CF_factor, TR_factor
     integer :: nlegs, emitter
     integer :: flv_em, flv_rad
-
-    if (.not. vector_set_is_cms (p_born)) then
-       call vector4_write_set (p_born, show_mass = .true., &
-            check_conservation = .true., n_in = coll_sub%n_in)
-       call msg_fatal ("Collinear subtraction, FSR: Phase space point &
-            &must be in CMS")
-    end if
 
     nlegs = size (sregion%flst_real%flst)
     emitter = sregion%emitter
@@ -667,62 +661,83 @@ contains
     !!! the integrand is symmetric under this variable change
     z_o_xi = q0 / (two * p0)
     z = xi * z_o_xi; onemz = one - z
-    if (is_gluon(flv_em) .and. is_gluon(flv_rad)) then
-       pggz = two * CA * (xi * z / onemz + onemz / z_o_xi)
-       sqme = pggz * sqme_born + four * CA * z * onemz * xi * mom_times_sqme_born_sc
-    else if (is_quark(abs(flv_em)) .and. is_quark (abs(flv_rad))) then
-       sqme = TR * xi * (sqme_born - four * z * onemz * mom_times_sqme_born_sc)
-    else if (is_quark (abs(flv_em)) .and. is_gluon (flv_rad)) then
-       sqme = sqme_born * CF * (one + onemz**2) / z_o_xi
+    if (sregion%nlo_correction_type == "QCD") then
+       CA_factor = CA; CF_factor = CF; TR_factor = TR
+    else if (sregion%nlo_correction_type == "QED") then
+       CA_factor = zero
+       CF_factor = sregion%flst_real%charge(emitter)**2
+       TR_factor = sregion%flst_real%charge(emitter)**2
+    end if
+    if (is_gluon (flv_em) .and. is_gluon (flv_rad)) then
+       pggz = two * CA_factor * (xi * z / onemz + onemz / z_o_xi)
+       sqme = pggz * sqme_born + four * CA_factor * z * onemz * xi * mom_times_sqme_born_spin_c
+    else if (is_fermion (flv_em) .and. is_fermion (flv_rad)) then
+       sqme = TR_factor * xi * (sqme_born - four * z * onemz * mom_times_sqme_born_spin_c)
+    else if (is_fermion (flv_em) .and. is_massless_vector (flv_rad)) then
+       sqme = sqme_born * CF_factor * (one + onemz**2) / z_o_xi
     else
        sqme = zero
     end if
     sqme = sqme / (p0**2 * onemz * z_o_xi)
-    sqme = sqme * four * pi * alpha_s
+    sqme = sqme * four * pi * alpha_coupling
     if (double_fsr) sqme = sqme * onemz
 
   end function coll_subtraction_compute_fsr
 
   function coll_subtraction_compute_isr &
-     (coll_sub, sregion, p_born, sqme_born, sqme_born_sc, &
-     xi, alpha_s, alr, isr_mode) result (sqme)
+     (coll_sub, sregion, p_born, sqme_born, sqme_born_spin_c, &
+     xi, alpha_coupling, alr, emitter, isr_mode) result (sqme)
     real(default) :: sqme
     class(coll_subtraction_t), intent(in) :: coll_sub
     type(singular_region_t), intent(in) :: sregion
     type(vector4_t), intent(in), dimension(:) :: p_born
     real(default), intent(in) :: sqme_born
-    real(default), intent(in) :: sqme_born_sc
-    real(default), intent(in) :: xi, alpha_s
-    integer, intent(in) :: alr, isr_mode
+    real(default), intent(in) :: sqme_born_spin_c
+    real(default), intent(in) :: xi, alpha_coupling
+    integer, intent(in) :: alr, emitter, isr_mode
     real(default) :: z, onemz
     real(default) :: p02
+    real(default) :: CF_factor, TR_factor
     integer :: flv_em, flv_rad
     integer :: nlegs
 
-    if (vector_set_is_cms (p_born)) then
+    if (isr_mode == SQRTS_VAR .and. vector_set_is_cms (p_born, coll_sub%n_in)) then
        call vector4_write_set (p_born, show_mass = .true., &
-          check_conservation = .true.)
+            check_conservation = .true.)
        call msg_fatal ("Collinear subtraction, ISR: Phase space point &
-          &must be in lab frame")
+            &must be in lab frame")
     end if
 
     nlegs = size (sregion%flst_real%flst)
     flv_rad = sregion%flst_real%flst(nlegs)
-    flv_em = sregion%flst_real%flst(isr_mode)
+    flv_em = sregion%flst_real%flst(emitter)
     !!! No need to pay attention to n_in = 1, because this case always has a
     !!! massive initial-state particle and thus no collinear divergence.
     p02 = p_born(1)%p(0) * p_born(2)%p(0) / two
     z = one - xi; onemz = xi
+    if (sregion%nlo_correction_type == "QCD") then
+       CF_factor = CF; TR_factor = TR
+    else if (sregion%nlo_correction_type == "QED") then
+       CF_factor = sregion%flst_real%charge(emitter)**2
+       TR_factor = sregion%flst_real%charge(nlegs)**2
+    end if
 
-    if (is_quark(flv_em) .and. is_gluon(flv_rad)) then
-       sqme = CF * (one + z**2) * sqme_born
-    else if (is_gluon(flv_em) .and. is_quark (flv_rad)) then
-       sqme = TR * (z**2 + onemz**2) * onemz * sqme_born
+    if (is_fermion (flv_em) .and. is_massless_vector (flv_rad)) then
+       sqme = CF_factor * (one + z**2) * sqme_born
+    else if (is_massless_vector (flv_em) .and. is_fermion (flv_rad)) then
+       sqme = TR_factor * (z**2 + onemz**2) * onemz * sqme_born
     else
        sqme = zero
     end if
-    sqme = sqme * z / p02
-    sqme = sqme * four * pi * alpha_s
+    if (isr_mode == SQRTS_VAR) then
+       sqme = sqme / p02 * z
+    else
+       !!! We have no idea why this seems to work as there should be no factor
+       !!! of z for the fixed-beam settings. This should definitely be understood in the
+       !!! future!
+       sqme = sqme / p02 / z
+    end if
+    sqme = sqme * four * pi * alpha_coupling
   end function coll_subtraction_compute_isr
 
   subroutine coll_subtraction_final (sub_coll)
@@ -733,7 +748,7 @@ contains
   subroutine real_subtraction_init (rsub, reg_data)
     class(real_subtraction_t), intent(inout), target :: rsub
     type(region_data_t), intent(in), target :: reg_data
-    integer :: alr, i_born
+    integer :: alr
     call msg_debug (D_SUBTRACTION, "real_subtraction_init")
     call msg_debug (D_SUBTRACTION, "n_in", reg_data%n_in)
     call msg_debug (D_SUBTRACTION, "nlegs_born", reg_data%n_legs_born)
@@ -744,48 +759,30 @@ contains
     rsub%reg_data => reg_data
     allocate (rsub%sqme_born (reg_data%n_flv_born))
     rsub%sqme_born = zero
-    allocate (rsub%sqme_born_cc (reg_data%n_legs_born, reg_data%n_legs_born, &
+    allocate (rsub%sqme_born_color_c (reg_data%n_legs_born, reg_data%n_legs_born, &
          reg_data%n_flv_born))
+    rsub%sqme_born_color_c = zero
+    allocate (rsub%sqme_born_charge_c (reg_data%n_legs_born, reg_data%n_legs_born, &
+         reg_data%n_flv_born))
+    rsub%sqme_born_charge_c = zero
     allocate (rsub%sqme_real_non_sub (reg_data%n_flv_real, reg_data%n_phs))
+    rsub%sqme_real_non_sub = zero
     allocate (rsub%sc_required (reg_data%n_regions))
     do alr = 1, reg_data%n_regions
-       rsub%sc_required(alr) = any (reg_data%regions(alr)%flst_uborn%flst == GLUON)
+       rsub%sc_required(alr) = any (reg_data%regions(alr)%flst_uborn%flst == GLUON) .or. &
+            any (reg_data%regions(alr)%flst_uborn%flst == PHOTON)
     end do
     if (rsub%requires_spin_correlations ()) then
-       allocate (rsub%sqme_born_sc (0:3, 0:3, reg_data%n_legs_born, reg_data%n_flv_born))
-       rsub%sqme_born_sc = zero
+       allocate (rsub%sqme_born_spin_c (0:3, 0:3, reg_data%n_legs_born, reg_data%n_flv_born))
+       rsub%sqme_born_spin_c = zero
     end if
 
     call rsub%sub_soft%init (reg_data)
     call rsub%sub_coll%init (reg_data%n_regions, reg_data%n_in)
 
-    if (rsub%reg_data%n_in > 1 .and. any (rsub%reg_data%get_emitter_list () <= 2)) then
-       call rsub%init_pdfs ()
-    end if
+    allocate (rsub%sqme_coll_isr (2, 2, reg_data%n_flv_born))
+    rsub%sqme_coll_isr = zero
   end subroutine real_subtraction_init
-
-  subroutine real_subtraction_init_pdfs (rsub)
-    class(real_subtraction_t), intent(inout) :: rsub
-    type(string_t) :: lhapdf_dir, lhapdf_file
-    integer :: lhapdf_member
-    call msg_debug (D_SUBTRACTION, "real_subtraction_init_pdfs")
-    lhapdf_dir = ""
-    lhapdf_file = ""
-    lhapdf_member = 0
-    if (LHAPDF6_AVAILABLE) then
-       call lhapdf_initialize &
-          (1, lhapdf_dir, lhapdf_file, lhapdf_member, rsub%pdf_data%pdf)
-       associate (pdf_data => rsub%pdf_data)
-          pdf_data%type = STRF_LHAPDF6
-          pdf_data%xmin = pdf_data%pdf%getxmin ()
-          pdf_data%xmax = pdf_data%pdf%getxmax ()
-          pdf_data%qmin = sqrt (pdf_data%pdf%getq2min ())
-          pdf_data%qmax = sqrt (pdf_data%pdf%getq2max ())
-       end associate
-    else
-       call msg_fatal ("Real subtraction: PDF method must be LHAPDF6")
-    end if
-  end subroutine real_subtraction_init_pdfs
 
   subroutine real_subtraction_set_resonance_mappings (rsub, use_mappings)
     class(real_subtraction_t), intent(inout) :: rsub
@@ -819,12 +816,13 @@ contains
   end function real_subtraction_get_i_res
 
   subroutine real_subtraction_compute (rsub, emitter, i_phs, alpha_s, &
-           separate_alrs, sqme)
+           alpha_qed, separate_alrs, sqme)
     class(real_subtraction_t), intent(inout) :: rsub
     integer, intent(in) :: emitter, i_phs
     logical, intent(in) :: separate_alrs
     real(default), intent(inout), dimension(:) :: sqme
-    real(default) :: sqme_alr, alpha_s
+    real(default), intent(in) :: alpha_s, alpha_qed
+    real(default) :: sqme_alr, alpha_coupling
     integer :: alr, i_con, i_res, this_emitter
     logical :: same_emitter
     do alr = 1, rsub%reg_data%n_regions
@@ -837,10 +835,18 @@ contains
        else
           same_emitter = rsub%reg_data%regions(alr)%emitter <= rsub%isr_kinematics%n_in
        end if
+       associate (nlo_corr_type => rsub%reg_data%regions(alr)%nlo_correction_type)
+          if (nlo_corr_type == "QCD") then
+             alpha_coupling = alpha_s
+          else if (nlo_corr_type == "QED") then
+             alpha_coupling = alpha_qed
+          end if
+       end associate
        if (same_emitter .and. i_phs == rsub%real_kinematics%alr_to_i_phs (alr)) then
           i_res = rsub%get_i_res (alr)
           this_emitter = rsub%reg_data%regions(alr)%emitter
-          sqme_alr = rsub%evaluate_emitter_region (alr, this_emitter, i_phs, i_res, alpha_s)
+          sqme_alr = rsub%evaluate_emitter_region (alr, this_emitter, i_phs, i_res, &
+               alpha_coupling)
           if (rsub%purpose == INTEGRATION .or. rsub%purpose == FIXED_ORDER_EVENTS) then
              i_con = rsub%get_i_contributor (alr)
              sqme_alr = sqme_alr * rsub%get_phs_factor (i_con)
@@ -870,20 +876,20 @@ contains
   end subroutine real_subtraction_compute
 
   function real_subtraction_evaluate_emitter_region (rsub, alr, emitter, &
-      i_phs, i_res, alpha_s) result (sqme)
+      i_phs, i_res, alpha_coupling) result (sqme)
     real(default) :: sqme
     class(real_subtraction_t), intent(inout) :: rsub
     integer, intent(in) :: alr, emitter, i_phs, i_res
-    real(default), intent(in) :: alpha_s
+    real(default), intent(in) :: alpha_coupling
     if (emitter <= rsub%isr_kinematics%n_in) then
-       sqme = rsub%evaluate_region_isr (alr, emitter, i_phs, i_res, alpha_s)
+       sqme = rsub%evaluate_region_isr (alr, emitter, i_phs, i_res, alpha_coupling)
     else
        select type (fks_mapping => rsub%reg_data%fks_mapping)
        type is (fks_mapping_resonances_t)
           call fks_mapping%set_resonance_momenta &
                (rsub%real_kinematics%xi_ref_momenta)
        end select
-       sqme = rsub%evaluate_region_fsr (alr, emitter, i_phs, i_res, alpha_s)
+       sqme = rsub%evaluate_region_fsr (alr, emitter, i_phs, i_res, alpha_coupling)
     end if
   end function real_subtraction_evaluate_emitter_region
 
@@ -893,7 +899,7 @@ contains
     integer, intent(in) :: i_reg, alr, i1, i2, i_phs
     real(default), intent(inout) :: sum_s_alpha, sum_s_alpha_soft
     type(vector4_t), dimension(:), allocatable :: p_real, p_born
-    integer :: this_emitter, i_res
+    integer :: i_res
     allocate (p_real (rsub%reg_data%n_legs_real))
     allocate (p_born (rsub%reg_data%n_legs_born))
     if (rsub%reg_data%has_pseudo_isr ()) then
@@ -906,19 +912,23 @@ contains
     i_res = rsub%get_i_res (i_reg)
     sum_s_alpha = sum_s_alpha + rsub%reg_data%get_svalue (p_real, i_reg, i1, i2, i_res)
     associate (r => rsub%real_kinematics)
-       call rsub%sub_soft%create_softvec_fsr (p_born, r%y_soft(i_phs), r%phi, &
-            i1, r%xi_ref_momenta(rsub%sub_soft%i_xi_ref (i_reg, i_phs)))
+       if (i1 > rsub%sub_soft%reg_data%n_in) then
+          call rsub%sub_soft%create_softvec_fsr (p_born, r%y_soft(i_phs), r%phi, &
+               i1, r%xi_ref_momenta(rsub%sub_soft%i_xi_ref (i_reg, i_phs)))
+       else
+          call rsub%sub_soft%create_softvec_isr (r%y_soft(i_phs), r%phi)
+       end if
     end associate
     sum_s_alpha_soft = sum_s_alpha_soft + rsub%reg_data%get_svalue_soft &
          (p_born, rsub%sub_soft%p_soft, i_reg, i1, i_res)
   end subroutine real_subtraction_evaluate_emitter_region_debug
 
   function real_subtraction_evaluate_region_fsr (rsub, alr, emitter, i_phs, &
-       i_res, alpha_s) result (sqme_tot)
+       i_res, alpha_coupling) result (sqme_tot)
     real(default) :: sqme_tot
     class(real_subtraction_t), intent(inout) :: rsub
     integer, intent(in) :: alr, emitter, i_phs, i_res
-    real(default), intent(in) :: alpha_s
+    real(default), intent(in) :: alpha_coupling
     real(default) :: sqme_rad, sqme_soft, sqme_coll, sqme_cs, sqme_remn
     sqme_rad = zero; sqme_soft = zero; sqme_coll = zero
     sqme_cs = zero; sqme_remn = zero
@@ -932,7 +942,7 @@ contains
               emitter)
       end if
       if (rsub%subtraction_event .and. .not. rsub%subtraction_deactivated) then
-         call rsub%evaluate_subtraction_terms_fsr (alr, emitter, i_phs, i_res, alpha_s, &
+         call rsub%evaluate_subtraction_terms_fsr (alr, emitter, i_phs, i_res, alpha_coupling, &
               sqme_soft, sqme_coll, sqme_cs)
          call apply_kinematic_factors_subtraction_fsr (sqme_soft, sqme_coll, sqme_cs, &
               rsub%real_kinematics, i_phs)
@@ -953,7 +963,7 @@ contains
       sqme_tot = sqme_tot * rsub%real_kinematics%jac_rand(i_phs)
     end associate
 
-    if (debug_active (D_SUBTRACTION) .and. .not. debug2_active (D_SUBTRACTIOn)) then
+    if (debug_active (D_SUBTRACTION) .and. .not. debug2_active (D_SUBTRACTION)) then
        call register_debug_sqme ()
     else if (debug2_active (D_SUBTRACTION)) then
        call write_computation_status ()
@@ -992,12 +1002,13 @@ contains
             !!! Do not write sqme_rad twice
             if (write_histo .and. .not. rsub%radiation_event) &
                  call write_point_to_file (E_gluon, this_sqme_rad, sqme_soft)
-            if (abs (this_sqme_rad - sqme_soft) > min (this_sqme_rad, sqme_soft) .and. &
-                 sqme_soft > tiny_10 .and. this_sqme_rad > tiny_10) then
+            if ( .not. nearly_equal (this_sqme_rad, sqme_soft, &
+                 abs_smallness=tiny_07, rel_smallness=tiny_07*1000)) then
                call msg_print_color ("Soft MEs do not match", COL_RED)
             else
                call msg_print_color (char ("sqme_soft OK in region " // str (alr)), COL_GREEN)
             end if
+            print *, 'this_sqme_rad, sqme_soft =    ', this_sqme_rad, sqme_soft
          end if
          if (collinear) then
             if (abs (this_sqme_rad - sqme_coll) > min (this_sqme_rad, sqme_coll) .and. &
@@ -1051,6 +1062,9 @@ contains
            present (region_type)) &
          write (u,'(A)') char (str (passed) // " of " // str (total) // &
               " " // region_type // " points passed in total")
+      write (u,'(A,ES16.9)')  'jacobian - real: ', rsub%real_kinematics%jac(i_phs)%jac(1)
+      write (u,'(A,ES16.9)')  'jacobian - soft: ', rsub%real_kinematics%jac(i_phs)%jac(2)
+      write (u,'(A,ES16.9)')  'jacobian - coll: ', rsub%real_kinematics%jac(i_phs)%jac(3)
     end subroutine write_computation_status
 
     subroutine write_point_to_file (E_gluon, sqme_rad, sqme_soft)
@@ -1068,53 +1082,38 @@ contains
 
   end function real_subtraction_evaluate_region_fsr
 
-  function real_subtraction_evaluate_region_isr (rsub, alr, emitter, i_phs, i_res, alpha_s) &
+  function real_subtraction_evaluate_region_isr (rsub, alr, emitter, i_phs, i_res, alpha_coupling) &
        result (sqme_tot)
     real(default) :: sqme_tot
     class(real_subtraction_t), intent(inout) :: rsub
     integer, intent(in) :: alr, emitter, i_phs, i_res
-    real(default), intent(in) :: alpha_s
+    real(default), intent(in) :: alpha_coupling
     integer :: i_real
     real(default) :: sqme_rad, sqme_soft, sqme_coll_plus, sqme_coll_minus
     real(default) :: sqme_cs_plus, sqme_cs_minus
     real(default) :: sqme_remn
-    logical :: proc_scatter
-
-    proc_scatter = rsub%isr_kinematics%n_in == 2
 
     sqme_rad = zero; sqme_soft = zero;
     sqme_coll_plus = zero; sqme_coll_minus = zero
     sqme_cs_plus = zero; sqme_cs_minus = zero
     sqme_remn = zero
 
-    if (proc_scatter) call rsub%compute_pdfs ()
     associate (region => rsub%reg_data%regions(alr))
-      i_real = region%real_index
       if (rsub%radiation_event) then
-         sqme_rad = rsub%sqme_real_non_sub (1, i_phs)
+         sqme_rad = rsub%sqme_real_non_sub (rsub%reg_data%get_matrix_element_index (alr), i_phs)
          call evaluate_fks_factors (sqme_rad, rsub%reg_data, rsub%real_kinematics, &
               alr, i_phs, emitter, i_res)
-         if (proc_scatter) then
-            call rsub%scale_pdfs_real (sqme_rad, i_real, I_PLUS)
-            call rsub%scale_pdfs_real (sqme_rad, i_real, I_MINUS)
-         end if
-
          call apply_kinematic_factors_radiation (sqme_rad, rsub%purpose, rsub%real_kinematics, &
-            i_phs, .true., .false.)
+              i_phs, .true., .false.)
       end if
       if (rsub%subtraction_event .and. .not. rsub%subtraction_deactivated) then
-         call rsub%evaluate_subtraction_terms_isr (alr, emitter, i_phs, i_res, alpha_s, &
+         call rsub%evaluate_subtraction_terms_isr (alr, emitter, i_phs, i_res, alpha_coupling, &
               sqme_soft, sqme_coll_plus, sqme_coll_minus, sqme_cs_plus, sqme_cs_minus)
-         if (proc_scatter) then
-            call rsub%scale_pdfs_collinear (sqme_coll_plus, i_real, &
-                 region%uborn_index, I_PLUS)
-            call rsub%scale_pdfs_collinear (sqme_coll_minus, i_real, &
-                 region%uborn_index, I_MINUS)
-         end if
          call apply_kinematic_factors_subtraction_isr (sqme_soft, sqme_coll_plus, &
               sqme_coll_minus, sqme_cs_plus, sqme_cs_minus, rsub%real_kinematics, i_phs)
-         sqme_remn = compute_sqme_remnant_isr (proc_scatter, sqme_soft, sqme_cs_plus, &
-            sqme_cs_minus, rsub%isr_kinematics, rsub%real_kinematics, i_phs)
+         sqme_remn = compute_sqme_remnant_isr (rsub%isr_kinematics%isr_mode, &
+              sqme_soft, sqme_cs_plus, sqme_cs_minus, &
+              rsub%isr_kinematics, rsub%real_kinematics, i_phs)
 
          sqme_tot = sqme_rad - sqme_soft - sqme_coll_plus - sqme_coll_minus &
               + sqme_cs_plus + sqme_cs_minus + sqme_remn
@@ -1130,31 +1129,23 @@ contains
   contains
 
     subroutine debug_output ()
-       logical :: soft, collinear
+       logical :: soft
        type(vector4_t) :: p_gluon
        if (debug_active (D_SUBTRACTION)) then
           call msg_debug (D_SUBTRACTION, "real_subtraction_evaluate_region_isr")
-          if (debug_active (D_SUBTRACTION)) then
+          if (debug2_active (D_SUBTRACTION)) then
              call write_computation_status ()
           else
              associate (p_real => rsub%real_kinematics%p_real_cms)
                 p_gluon = p_real%get_momentum (i_phs, p_real%get_n_momenta (i_phs))
                 soft = p_gluon%p(0) < 2.0_default
              end associate
-             collinear = abs (rsub%real_kinematics%y (i_phs) - one) < 0.01_default
              if (soft) then
                 if (abs (sqme_rad - sqme_soft) > sqme_rad .and. sqme_soft > tiny_10) then
                    call msg_warning ("Soft MEs do not match in soft region")
                    call write_computation_status ()
                 end if
              end if
-             ! TODO: (bcn 2016-01-13) check coll_plus and coll_minus
-             !if (collinear) then
-                !if (abs (sqme_rad - sqme_coll) > sqme_rad .and. sqme_coll > tiny_10) then
-                   !call msg_warning ("Collinear MEs do not match in collinear region")
-                   !call write_computation_status ()
-                !end if
-             !end if
           end if
        end if
     end subroutine debug_output
@@ -1182,19 +1173,24 @@ contains
        write (u,'(A,ES16.9)')  'sqme_cs_minus: ', sqme_cs_minus
        write (u,'(A,ES16.9)')  'sqme_remn: ', sqme_remn
        write (u,'(A,ES16.9)')  'sqme_tot: ', sqme_tot
+       write (u,'(A,ES16.9)')  'jacobian - real: ', rsub%real_kinematics%jac(i_phs)%jac(1)
+       write (u,'(A,ES16.9)')  'jacobian - soft: ', rsub%real_kinematics%jac(i_phs)%jac(2)
+       write (u,'(A,ES16.9)')  'jacobian - collplus: ', rsub%real_kinematics%jac(i_phs)%jac(3)
+       write (u,'(A,ES16.9)')  'jacobian - collminus: ', rsub%real_kinematics%jac(i_phs)%jac(4)
+
     end subroutine write_computation_status
 
   end function real_subtraction_evaluate_region_isr
 
   subroutine real_subtraction_evaluate_subtraction_terms_fsr (rsub, &
-       alr, emitter, i_phs, i_res, alpha_s, sqme_soft, sqme_coll, sqme_cs)
+       alr, emitter, i_phs, i_res, alpha_coupling, sqme_soft, sqme_coll, sqme_cs)
     class(real_subtraction_t), intent(inout) :: rsub
     integer, intent(in) :: alr, emitter, i_phs, i_res
-    real(default), intent(in) :: alpha_s
+    real(default), intent(in) :: alpha_coupling
     real(default), intent(out) :: sqme_soft, sqme_coll, sqme_cs
-    sqme_soft = rsub%compute_sub_soft (alr, emitter, i_phs, i_res, alpha_s)
-    sqme_coll = rsub%compute_sub_coll (alr, emitter, i_phs, alpha_s)
-    sqme_cs = rsub%compute_sub_coll_soft (alr, emitter, alpha_s)
+    sqme_soft = rsub%compute_sub_soft (alr, emitter, i_phs, i_res, alpha_coupling)
+    sqme_coll = rsub%compute_sub_coll (alr, emitter, i_phs, alpha_coupling)
+    sqme_cs = rsub%compute_sub_coll_soft (alr, emitter, alpha_coupling)
   end subroutine real_subtraction_evaluate_subtraction_terms_fsr
 
   subroutine evaluate_fks_factors (sqme, reg_data, real_kinematics, &
@@ -1211,13 +1207,16 @@ contains
        p_real => real_kinematics%p_real_cms
     end if
     s_alpha = reg_data%get_svalue (p_real%get_momenta(i_phs), alr, emitter, i_res)
-    if (debug_active (D_SUBTRACTION)) call msg_print_color('s_alpha', s_alpha, COL_YELLOW)
+    if (debug2_active (D_SUBTRACTION)) call msg_print_color('s_alpha', s_alpha, COL_YELLOW)
     if (s_alpha > one + tiny_07) call msg_fatal ("s_alpha > 1!")
     sqme = sqme * s_alpha
     associate (region => reg_data%regions(alr))
        sqme = sqme * region%mult
-       if (emitter > reg_data%n_in) &
-            sqme = sqme * region%double_fsr_factor (p_real%get_momenta(i_phs))
+       if (emitter > reg_data%n_in) then
+          if (debug2_active (D_SUBTRACTION)) &
+               print *, 'Double FSR: ', region%double_fsr_factor (p_real%get_momenta(i_phs))
+          sqme = sqme * region%double_fsr_factor (p_real%get_momenta(i_phs))
+       end if
     end associate
   end subroutine evaluate_fks_factors
 
@@ -1293,23 +1292,24 @@ contains
     end associate
   end subroutine apply_kinematic_factors_subtraction_isr
 
-  function compute_sqme_remnant_isr (proc_scatter, sqme_soft, sqme_cs_plus, sqme_cs_minus, &
+  function compute_sqme_remnant_isr (isr_mode, sqme_soft, sqme_cs_plus, sqme_cs_minus, &
      isr_kinematics, real_kinematics, i_phs) result (sqme_remn)
     real(default) :: sqme_remn
-    logical, intent(in) :: proc_scatter
+    integer, intent(in) :: isr_mode
     real(default), intent(in) :: sqme_soft, sqme_cs_plus, sqme_cs_minus
     type(isr_kinematics_t), intent(in) :: isr_kinematics
     type(real_kinematics_t), intent(in) :: real_kinematics
     integer, intent(in) :: i_phs
     real(default) :: xi_tilde, xi_max, xi_max_plus, xi_max_minus
     xi_max = real_kinematics%xi_max (i_phs)
-    if (proc_scatter) then
+    select case (isr_mode)
+    case (SQRTS_VAR)
        xi_max_plus = one - isr_kinematics%x(I_PLUS)
        xi_max_minus = one - isr_kinematics%x(I_MINUS)
-    else
+    case (SQRTS_FIXED)
        xi_max_plus = real_kinematics%xi_max (i_phs)
        xi_max_minus = real_kinematics%xi_max (i_phs)
-    end if
+    end select
     xi_tilde = real_kinematics%xi_tilde
     sqme_remn = log(xi_max) * xi_tilde * sqme_soft
     sqme_remn = sqme_remn - log (xi_max_plus) * xi_tilde * sqme_cs_plus &
@@ -1317,26 +1317,26 @@ contains
   end function compute_sqme_remnant_isr
 
   subroutine real_subtraction_evaluate_subtraction_terms_isr (rsub, &
-      alr, emitter, i_phs, i_res, alpha_s, sqme_soft, sqme_coll_plus, &
+      alr, emitter, i_phs, i_res, alpha_coupling, sqme_soft, sqme_coll_plus, &
       sqme_coll_minus, sqme_cs_plus, sqme_cs_minus)
 
     class(real_subtraction_t), intent(inout) :: rsub
     integer, intent(in) :: alr, emitter, i_phs, i_res
-    real(default), intent(in) :: alpha_s
+    real(default), intent(in) :: alpha_coupling
     real(default), intent(out) :: sqme_soft
     real(default), intent(out) :: sqme_coll_plus, sqme_coll_minus
     real(default), intent(out) :: sqme_cs_plus, sqme_cs_minus
-    sqme_soft = rsub%compute_sub_soft (alr, emitter, i_phs, i_res, alpha_s)
+    sqme_soft = rsub%compute_sub_soft (alr, emitter, i_phs, i_res, alpha_coupling)
     if (emitter /= 2) then
-       sqme_coll_plus = rsub%compute_sub_coll (alr, 1, i_phs, alpha_s)
-       sqme_cs_plus = rsub%compute_sub_coll_soft (alr, 1, alpha_s)
+       sqme_coll_plus = rsub%compute_sub_coll (alr, 1, i_phs, alpha_coupling)
+       sqme_cs_plus = rsub%compute_sub_coll_soft (alr, 1, alpha_coupling)
     else
        sqme_coll_plus = zero
        sqme_cs_plus = zero
     end if
     if (emitter /= 1) then
-       sqme_coll_minus = rsub%compute_sub_coll (alr, 2, i_phs, alpha_s)
-       sqme_cs_minus = rsub%compute_sub_coll_soft (alr, 2, alpha_s)
+       sqme_coll_minus = rsub%compute_sub_coll (alr, 2, i_phs, alpha_coupling)
+       sqme_cs_minus = rsub%compute_sub_coll_soft (alr, 2, alpha_coupling)
     else
        sqme_coll_minus = zero
        sqme_cs_minus = zero
@@ -1364,15 +1364,16 @@ contains
   end function real_subtraction_get_i_contributor
 
   function real_subtraction_compute_sub_soft (rsub, alr, emitter, &
-       i_phs, i_res, alpha_s) result (sqme_soft)
+       i_phs, i_res, alpha_coupling) result (sqme_soft)
     real(default) :: sqme_soft
     class(real_subtraction_t), intent(inout) :: rsub
     integer, intent(in) :: alr, emitter, i_phs, i_res
-    real(default), intent(in) :: alpha_s
+    real(default), intent(in) :: alpha_coupling
     integer :: i_xi_ref, i_born
     real(default) :: q2
     type(vector4_t), dimension(:), allocatable :: p_born
-    associate (real_kinematics => rsub%real_kinematics)
+    associate (real_kinematics => rsub%real_kinematics, &
+            nlo_corr_type => rsub%reg_data%regions(alr)%nlo_correction_type)
        if (rsub%reg_data%regions(alr)%has_soft_divergence ()) then
           i_xi_ref = rsub%sub_soft%i_xi_ref (alr, i_phs)
           q2 = real_kinematics%xi_ref_momenta (i_xi_ref)**2
@@ -1389,13 +1390,20 @@ contains
                   real_kinematics%xi_ref_momenta(i_xi_ref))
           else
              call rsub%sub_soft%create_softvec_isr &
-                (real_kinematics%y_soft(i_phs), real_kinematics%phi)
+                  (real_kinematics%y_soft(i_phs), real_kinematics%phi)
           end if
           i_born = rsub%reg_data%regions(alr)%uborn_index
-          sqme_soft = rsub%sub_soft%compute &
-               (p_born, rsub%sqme_born_cc(:,:,i_born), &
-               real_kinematics%y(i_phs), &
-               q2, alpha_s, alr, emitter, i_res)
+          if (nlo_corr_type == "QCD") then
+             sqme_soft = rsub%sub_soft%compute &
+                  (p_born, rsub%sqme_born_color_c(:,:,i_born), &
+                  real_kinematics%y(i_phs), &
+                  q2, alpha_coupling, alr, emitter, i_res)
+          else if (nlo_corr_type == "QED") then
+             sqme_soft = rsub%sub_soft%compute &
+                  (p_born, rsub%sqme_born_charge_c(:,:,i_born), &
+                  real_kinematics%y(i_phs), &
+                  q2, alpha_coupling, alr, emitter, i_res)
+          end if
        else
           sqme_soft = zero
        end if
@@ -1424,7 +1432,7 @@ contains
     class(real_subtraction_t), intent(in) :: rsub
     integer, intent(in) :: alr, i_born, emitter
     real(default), dimension(0:3) :: k_perp
-    integer :: i, mu, nu
+    integer :: mu, nu
 
     if (rsub%sc_required(alr)) then
        if (debug2_active(D_SUBTRACTION)) call check_me_consistency ()
@@ -1441,7 +1449,7 @@ contains
        do mu = 0, 3
           do nu = 0, 3
              mom_times_sqme = mom_times_sqme + &
-                  k_perp(mu) * k_perp(nu) * rsub%sqme_born_sc (mu, nu, emitter, i_born)
+                  k_perp(mu) * k_perp(nu) * rsub%sqme_born_spin_c (mu, nu, emitter, i_born)
           end do
        end do
     else
@@ -1451,10 +1459,10 @@ contains
     subroutine check_me_consistency ()
       real(default) ::  sqme_sum
       call msg_debug2 (D_SUBTRACTION, "Spin-correlation: Consistency check")
-      sqme_sum = rsub%sqme_born_sc(0,0,emitter,i_born) &
-               - rsub%sqme_born_sc(1,1,emitter,i_born) &
-               - rsub%sqme_born_sc(2,2,emitter,i_born) &
-               - rsub%sqme_born_sc(3,3,emitter,i_born)
+      sqme_sum = rsub%sqme_born_spin_c(0,0,emitter,i_born) &
+               - rsub%sqme_born_spin_c(1,1,emitter,i_born) &
+               - rsub%sqme_born_spin_c(2,2,emitter,i_born) &
+               - rsub%sqme_born_spin_c(3,3,emitter,i_born)
       if (.not. nearly_equal (sqme_sum, -rsub%sqme_born(i_born), 0.0001_default)) then
          print *, 'Spin-correlated matrix elements are not consistent: '
          print *, 'emitter: ', emitter
@@ -1494,14 +1502,15 @@ contains
     end function k_perp_isr
   end function real_subtraction_get_spin_correlation_term
 
-  function real_subtraction_compute_sub_coll (rsub, alr, em, i_phs, alpha_s) result (sqme_coll)
+  function real_subtraction_compute_sub_coll (rsub, alr, em, i_phs, alpha_coupling) &
+         result (sqme_coll)
     real(default) :: sqme_coll
     class(real_subtraction_t), intent(inout) :: rsub
     integer, intent(in) :: alr, em, i_phs
-    real(default), intent(in) :: alpha_s
-    real(default) :: xi, xi_max_pm
-    real(default) :: mom_times_sqme_sc
-    integer :: i_con
+    real(default), intent(in) :: alpha_coupling
+    real(default) :: xi, xi_max
+    real(default) :: mom_times_sqme_spin_c
+    integer :: i_con, pdf_type
     real(default) :: pfr
     associate (sregion => rsub%reg_data%regions(alr))
        if (sregion%has_collinear_divergence ()) then
@@ -1511,20 +1520,32 @@ contains
           else
              i_con = 1
           end if
-          mom_times_sqme_sc = rsub%get_spin_correlation_term (alr, sregion%uborn_index, em)
+          mom_times_sqme_spin_c = rsub%get_spin_correlation_term (alr, sregion%uborn_index, em)
           if (em <= rsub%sub_coll%n_in) then
-             xi_max_pm = one - rsub%isr_kinematics%x(em)
-             xi = rsub%real_kinematics%xi_tilde * xi_max_pm
+             select case (rsub%isr_kinematics%isr_mode)
+             case (SQRTS_FIXED)
+                xi_max = rsub%real_kinematics%xi_max(i_phs)
+             case (SQRTS_VAR)
+                xi_max = one - rsub%isr_kinematics%x(em)
+             end select
+             xi = rsub%real_kinematics%xi_tilde * xi_max
+             if (rsub%reg_data%regions(alr)%flst_real%flst(em) == 21) then
+                pdf_type = 2
+             else
+                pdf_type = 1
+             end if
              sqme_coll = rsub%sub_coll%compute_isr (sregion, &
                   rsub%real_kinematics%p_born_lab%phs_point(1)%p, &
-                  rsub%sqme_born(sregion%uborn_index), mom_times_sqme_sc, &
-                  xi, alpha_s, alr, em)
+                  rsub%sqme_coll_isr(em, pdf_type, sregion%uborn_index), &
+                  mom_times_sqme_spin_c, &
+                  xi, alpha_coupling, alr, em, &
+                  rsub%isr_kinematics%isr_mode)
           else
              sqme_coll = rsub%sub_coll%compute_fsr (sregion, &
-                    rsub%real_kinematics%xi_ref_momenta (i_con), &
-                    rsub%real_kinematics%p_born_cms%get_momenta(1), &
-                    rsub%sqme_born(sregion%uborn_index), mom_times_sqme_sc, &
-                    xi, alpha_s, alr, sregion%double_fsr)
+                  rsub%real_kinematics%xi_ref_momenta (i_con), &
+                  rsub%real_kinematics%p_born_lab%get_momenta(1), &
+                  rsub%sqme_born(sregion%uborn_index), mom_times_sqme_spin_c, &
+                  xi, alpha_coupling, alr, sregion%double_fsr)
              if (rsub%sub_coll%use_resonance_mappings) then
                 select type (fks_mapping => rsub%reg_data%fks_mapping)
                 type is (fks_mapping_resonances_t)
@@ -1540,12 +1561,13 @@ contains
     end associate
   end function real_subtraction_compute_sub_coll
 
-  function real_subtraction_compute_sub_coll_soft (rsub, alr, em, alpha_s) result (sqme_cs)
+  function real_subtraction_compute_sub_coll_soft (rsub, alr, em, alpha_coupling) &
+         result (sqme_cs)
     real(default) :: sqme_cs
     class(real_subtraction_t), intent(inout) :: rsub
     integer, intent(in) :: alr, em
-    real(default), intent(in) :: alpha_s
-    real(default) :: mom_times_sqme_sc
+    real(default), intent(in) :: alpha_coupling
+    real(default) :: mom_times_sqme_spin_c
     integer :: i_con
     associate (sregion => rsub%reg_data%regions(alr))
        if (sregion%has_collinear_divergence ()) then
@@ -1554,76 +1576,24 @@ contains
           else
              i_con = 1
           end if
-          mom_times_sqme_sc = rsub%get_spin_correlation_term (alr, sregion%uborn_index, em)
+          mom_times_sqme_spin_c = rsub%get_spin_correlation_term (alr, sregion%uborn_index, em)
           if (em <= rsub%sub_coll%n_in) then
              sqme_cs = rsub%sub_coll%compute_isr (sregion, &
                   rsub%real_kinematics%p_born_lab%phs_point(1)%p, &
-                  rsub%sqme_born(sregion%uborn_index), mom_times_sqme_sc, &
-                  zero, alpha_s, alr, em)
+                  rsub%sqme_born(sregion%uborn_index), mom_times_sqme_spin_c, &
+                  zero, alpha_coupling, alr, em, rsub%isr_kinematics%isr_mode)
           else
              sqme_cs = rsub%sub_coll%compute_fsr (sregion, &
                   rsub%real_kinematics%xi_ref_momenta(i_con), &
-                  rsub%real_kinematics%p_born_cms%phs_point(1)%p, &
-                  rsub%sqme_born(sregion%uborn_index), mom_times_sqme_sc, &
-                  zero, alpha_s, alr, sregion%double_fsr)
+                  rsub%real_kinematics%p_born_lab%phs_point(1)%p, &
+                  rsub%sqme_born(sregion%uborn_index), mom_times_sqme_spin_c, &
+                  zero, alpha_coupling, alr, sregion%double_fsr)
           end if
        else
           sqme_cs = zero
        end if
     end associate
   end function real_subtraction_compute_sub_coll_soft
-
-  subroutine real_subtraction_compute_pdfs (rsub)
-    class(real_subtraction_t), intent(inout) :: rsub
-    integer :: i
-    real(default) :: z, z_coll, x, Q
-    real(default) :: x_scaled, x_scaled_coll
-    real(double), dimension(-6:6) :: f_dble = 0._double
-    Q = rsub%isr_kinematics%fac_scale
-    do i = 1, 2
-       x = rsub%isr_kinematics%x(i)
-       z = rsub%isr_kinematics%z(i)
-       z_coll = rsub%isr_kinematics%z_coll(i)
-       x_scaled = x * z
-       x_scaled_coll = x * z_coll
-       call rsub%pdf_data%evolve (dble(x), dble(Q), f_dble)
-       rsub%pdf_born(i)%f = f_dble / dble(x)
-       call rsub%pdf_data%evolve (dble(x_scaled), dble(Q), f_dble)
-       rsub%pdf_scaled(i)%f = f_dble / dble(x_scaled)
-       call rsub%pdf_data%evolve (dble(x_scaled_coll), dble(Q), f_dble)
-       rsub%pdf_scaled_coll(i)%f = f_dble / dble(x_scaled_coll)
-    end do
-  end subroutine real_subtraction_compute_pdfs
-
-  subroutine real_subtraction_scale_pdfs_real (rsub, sqme, i_real, i_part)
-    class(real_subtraction_t), intent(inout) :: rsub
-    real(default), intent(inout) :: sqme
-    integer, intent(in) :: i_real, i_part
-    integer :: flv
-    real(default) :: pdfs, pdfb
-    flv = rsub%reg_data%flv_real(i_real)%flst(i_part)
-    !!! Gluon has index 0 in the pdf array
-    if (flv == GLUON) flv = 0
-    pdfb = rsub%pdf_born(i_part)%f(flv)
-    pdfs = rsub%pdf_scaled(i_part)%f(flv)
-    sqme = sqme * pdfs / pdfb
-  end subroutine real_subtraction_scale_pdfs_real
-
-  subroutine real_subtraction_scale_pdfs_collinear &
-     (rsub, sqme, i_real, i_born, i_part)
-    class(real_subtraction_t), intent(inout) :: rsub
-    real(default), intent(inout) :: sqme
-    integer, intent(in) :: i_real, i_born, i_part
-    integer :: flv_born, flv_real
-    real(default) :: pdfs, pdfb
-    flv_born = rsub%reg_data%flv_born(i_born)%flst(i_part)
-    flv_real = rsub%reg_data%flv_real(i_real)%flst(i_part)
-    if (flv_born == GLUON) flv_born = 0
-    if (flv_real == GLUON) flv_real = 0
-    pdfb = rsub%pdf_born(i_part)%f(flv_born)
-    pdfs = rsub%pdf_scaled_coll(i_part)%f(flv_real)
-    sqme = sqme * pdfs / pdfb
-  end subroutine real_subtraction_scale_pdfs_collinear
 
   function real_subtraction_requires_spin_correlations (rsub) result (val)
     logical :: val
@@ -1642,7 +1612,8 @@ contains
     if (associated (rsub%isr_kinematics)) nullify (rsub%isr_kinematics)
     if (allocated (rsub%sqme_real_non_sub)) deallocate (rsub%sqme_real_non_sub)
     if (allocated (rsub%sqme_born)) deallocate (rsub%sqme_born)
-    if (allocated (rsub%sqme_born_cc)) deallocate (rsub%sqme_born_cc)
+    if (allocated (rsub%sqme_born_color_c)) deallocate (rsub%sqme_born_color_c)
+    if (allocated (rsub%sqme_born_charge_c)) deallocate (rsub%sqme_born_charge_c)
     if (allocated (rsub%sc_required)) deallocate (rsub%sc_required)
     if (allocated (rsub%selected_alr)) deallocate (rsub%selected_alr)
   end subroutine real_subtraction_final
@@ -1651,9 +1622,11 @@ contains
     real(default) :: f
     class(powheg_damping_simple_t), intent(in) :: partition
     type(vector4_t), intent(in), dimension(:) :: p
-    real(default) :: pt2
+    !!! real(default) :: pt2
+    f = 1
+    call msg_bug ("Simple damping currently not available")
     !!! TODO (cw-2017-03-01) Compute pt2 from emitter)
-    f = partition%h2 / (pt2 + partition%h2)
+    !!! f = partition%h2 / (pt2 + partition%h2)
   end function powheg_damping_simple_get_f
 
   subroutine powheg_damping_simple_init (partition, scale, reg_data)

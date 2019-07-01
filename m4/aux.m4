@@ -148,6 +148,7 @@ AC_SUBST($1_LIB)
 dnl WHIZARD summary
 AC_DEFUN([WO_SUMMARY],[dnl
 WO_VERSION=AC_PACKAGE_VERSION()
+function echo_summary () {
 echo "|=============================================================================|"
 echo "|                                                                             |"
 echo "|    WW             WW  WW   WW  WW  WWWWWW      WW      WWWWW    WWWW        |"
@@ -219,6 +220,12 @@ if test "$FC_OPENMP_OFF" = "!" ; then
    echo "          OpenMP: --- on with max. $FC_OPENMP_DEFAULT_MAX_THREADS threads"
 elif test "$FC_OPENMP_ON" = "!" ; then
      echo "          OpenMP: --- off ---"
+fi
+if test "$MPI_AVAILABLE" = "yes" ; then
+     echo "             MPI: --- on ---"
+     echo "     MPI Library: --- $MPI_LIBRARY, v$MPI_VERSION ---"
+else
+     echo "             MPI: --- off ---"
 fi
 echo "--------------------------------------------------------------"
 echo "  OCaml compiler: --- $OCAMLOPT ---"
@@ -320,4 +327,6 @@ echo "***  'make installcheck' will not work. The installed      ***"
 echo "***            WHIZARD will work as intended.              ***"
 echo "**************************************************************"
 fi
+}
+echo_summary | tee config-summary.log
 ])

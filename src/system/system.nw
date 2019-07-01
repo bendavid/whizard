@@ -309,6 +309,9 @@ contains
 <<Diagnostics: procedures>>
 
 end module diagnostics
+
+
+<<Diagnostics: external procedures>>
 @ %def diagnostics
 @
 Diagnostics levels:
@@ -362,9 +365,19 @@ Diagnostics areas:
        i = D_TAUOLA
     case ("core")
        i = D_CORE
+    case ("vamp2")
+       i = D_VAMP2
+    case ("mpi")
+       i = D_MPI
+    case ("qft")
+       i = D_QFT
+    case ("beams")
+       i = D_BEAMS
+    case ("all")
+       i = D_ALL
     case default
        print "(A)", "Possible values for --debug are:"
-       do i = 1, D_LAST
+       do i = 0, D_LAST
           print "(A)", char ('  ' // d_area_to_string(i))
        end do
        call msg_fatal ("Please use one of the listed areas")
@@ -405,6 +418,16 @@ Diagnostics areas:
        string = "tauola"
     case (D_CORE)
        string = "core"
+    case (D_VAMP2)
+       string = "vamp2"
+    case (D_MPI)
+       string = "mpi"
+    case (D_QFT)
+       string = "qft"
+    case (D_BEAMS)
+       string = "beams"
+    case (D_ALL)
+       string = "all"
     case default
        string = "undefined"
     end select
@@ -416,20 +439,20 @@ Diagnostics areas:
   public :: D_PARTICLES, D_EVENTS, D_SHOWER, D_MODEL_F, &
        D_MATCHING, D_TRANSFORMS, D_SUBTRACTION, D_VIRTUAL, D_THRESHOLD, &
        D_PHASESPACE, D_MISMATCH, D_ME_METHODS, D_PROCESS_INTEGRATION, &
-       D_TAUOLA, D_CORE
+       D_TAUOLA, D_CORE, D_VAMP2, D_MPI, D_QFT, D_BEAMS
 <<Diagnostics: parameters>>=
   integer, parameter :: D_ALL=0, D_PARTICLES=1, D_EVENTS=2, &
        D_SHOWER=3, D_MODEL_F=4, &
        D_MATCHING=5, D_TRANSFORMS=6, &
        D_SUBTRACTION=7, D_VIRTUAL=8, D_THRESHOLD=9, D_PHASESPACE=10, &
        D_MISMATCH=11, D_ME_METHODS=12, D_PROCESS_INTEGRATION=13, &
-       D_TAUOLA=14, D_CORE=15, &
-       D_LAST=15
+       D_TAUOLA=14, D_CORE=15, D_VAMP2 = 16, D_MPI = 17, D_QFT = 18, &
+       D_BEAMS=19, D_LAST=19
 @ %def D_ALL D_PARTICLES D_EVENTS
 @ %def D_SHOWER D_MODEL_F D_MATCHING D_TRANSFORMS
 @ %def D_SUBTRACTION D_VIRTUAL D_THRESHOLD D_PHASESPACE
 @ %def D_MISMATCH D_ME_METHODS D_PROCESS_INTEGRATION
-@ %def D_TAUOLA D_CORE
+@ %def D_TAUOLA D_CORE D_VAMP2 D_MPI D_QFT
 @
 <<Diagnostics: public>>=
   public :: msg_level
@@ -446,6 +469,38 @@ Diagnostics areas:
      COL_PURPLE = 35, COL_AQUA = 36
 
 @ %def COLORS
+@
+<<Diagnostics: public>>=
+  public :: set_debug_levels
+<<Diagnostics: procedures>>=
+  subroutine set_debug_levels (area_str)
+    type(string_t), intent(in) :: area_str
+    integer :: area
+    area = d_area (area_str)
+    if (area == D_ALL) then
+       msg_level = DEBUG
+    else
+       msg_level(area) = DEBUG
+    end if
+  end subroutine set_debug_levels
+
+@ %def set_debug_levels
+@
+<<Diagnostics: public>>=
+  public :: set_debug2_levels
+<<Diagnostics: procedures>>=
+  subroutine set_debug2_levels (area_str)
+    type(string_t), intent(in) :: area_str
+    integer :: area
+    area = d_area (area_str)
+    if (area == D_ALL) then
+       msg_level = DEBUG2
+    else
+       msg_level(area) = DEBUG2
+    end if
+  end subroutine set_debug2_levels
+
+@ %def set_debug2_levels
 @
 <<Diagnostics: types>>=
   type :: terminal_color_t
@@ -526,11 +581,39 @@ interactive mode.
 How to handle bugs and unmasked fatal errors.  Either execute a normal
 stop statement, or call the C [[exit()]] function, or try to cause a
 program crash by dereferencing a null pointer.
+
+These procedures are appended to the [[diagnostics]] source code, but
+not as module procedures but as external procedures.  This avoids a
+circular module dependency across source directories.
 <<Diagnostics: parameters>>=
-  integer, parameter :: TERM_STOP = 0, TERM_EXIT = 1, TERM_CRASH = 2
+  integer, parameter, public :: TERM_STOP = 0, TERM_EXIT = 1, TERM_CRASH = 2
 @ %def TERM_STOP TERM_EXIT TERM_CRASH
+<<Diagnostics: public>>=
+  public :: handle_fatal_errors
 <<Diagnostics: variables>>=
   integer, save :: handle_fatal_errors = TERM_EXIT
+<<Diagnostics: external procedures>>=
+  subroutine fatal_force_crash ()
+    use diagnostics, only: handle_fatal_errors, TERM_CRASH !NODEP!
+    implicit none
+    handle_fatal_errors = TERM_CRASH
+  end subroutine fatal_force_crash
+
+  subroutine fatal_force_exit ()
+    use diagnostics, only: handle_fatal_errors, TERM_EXIT !NODEP!
+    implicit none
+    handle_fatal_errors = TERM_EXIT
+  end subroutine fatal_force_exit
+
+  subroutine fatal_force_stop ()
+    use diagnostics, only: handle_fatal_errors, TERM_STOP !NODEP!
+    implicit none
+    handle_fatal_errors = TERM_STOP
+  end subroutine fatal_force_stop
+
+@ %def fatal_force_crash
+@ %def fatal_force_exit
+@ %def fatal_force_stop
 @
 Keep track of errors.  This might be used for exception handling,
 later.  The counter is incremented only for screen messages, to avoid
@@ -663,6 +746,8 @@ After a message is issued, the buffer should be cleared:
   end subroutine buffer_clear
 
 @ %def buffer_clear
+<<Diagnostics: public>>=
+  public :: create_col_string
 <<Diagnostics: procedures>>=
   function create_col_string (color) result (col_string)
      type(string_t) :: col_string
@@ -850,7 +935,6 @@ but this may change.
        call exit (return_code)
     else
        !!! Should implement WHIZARD exit code (currently only via C)
-       ! stop
        call exit (0)
     end if
   end subroutine msg_terminate
@@ -890,7 +974,7 @@ but this may change.
           call exit (1_c_int)
        case (TERM_CRASH)
           print *, "*** Intentional crash ***"
-	  crash_ptr => null ()
+          crash_ptr => null ()
           print *, crash_ptr
        end select
        stop "WHIZARD run aborted."
@@ -1151,6 +1235,8 @@ to other step sizes with an optional argument.
 
 @ %def msg_show_progress
 @ Interface to the standard clib exit function
+<<Diagnostics: public>>=
+  public :: exit
 <<Diagnostics: interfaces>>=
   interface
      subroutine exit (status) bind (C)
@@ -1661,6 +1747,8 @@ module os_interface
   use system_defs, only: DLERROR_LEN, ENVVAR_LEN
   use system_dependencies
 
+<<Use mpi f08>>
+
 <<Standard module head>>
 
 <<OS interface: public>>
@@ -2069,7 +2157,7 @@ of each other.    %% Fooling Noweb Emacs mode: $
        !!! Check if our OS has a /dev/null
        unit_dev = free_unit ()
        open (file = "/dev/null", unit = unit_dev, &
-            action = "write", iostat = status) 
+            action = "write", iostat = status)
        close (unit_dev)
        if (status /= 0) then
           pipe = ""
@@ -2462,7 +2550,7 @@ installed, this rpath is irrelevant.
             os_data%fcflags // " " // &
             os_data%whizard_ldflags // " " // &
             os_data%ldflags // " " // &
-	    os_data%ldflags_static // " " // &
+            os_data%ldflags_static // " " // &
             "-o '" // exec_name // "' " // &
             objlist // " " // &
             os_data%ldflags_hepmc // " " // &
@@ -2476,7 +2564,7 @@ installed, this rpath is irrelevant.
             os_data%fcflags // " " // &
             os_data%whizard_ldflags // " " // &
             os_data%ldflags // " " // &
-	    os_data%ldflags_static // " " // &
+            os_data%ldflags_static // " " // &
             "-o '" // exec_name // "' " // &
             objlist // " " // &
             os_data%ldflags_hepmc // " " // &
@@ -2509,7 +2597,7 @@ the library itself.
     else
        required = .true.
     end if
-	 if (present (silent)) then
+   if (present (silent)) then
        quiet = silent
     else
        quiet = .false.
@@ -2622,6 +2710,58 @@ diagnostics.
 
 @ %def openmp_set_num_threads_verbose
 @
+\subsection{Controlling MPI}
+The overall MPI handling has to be defined a context specific way,
+but we can simplify things like logging or receiving [[n_size]] or [[rank]].
+<<OS interface: public>>=
+  public :: mpi_set_logging
+<<OS interface: procedures>>=
+  subroutine mpi_set_logging (mpi_logging)
+    logical, intent(in) :: mpi_logging
+    integer :: n_size, rank
+    call mpi_get_comm_id (n_size, rank)
+    if (mpi_logging .and. n_size > 1) then
+       write (msg_buffer, "(A,I0,A)") "MPI: Using ", n_size, " processes."
+       call msg_message ()
+       if (rank == 0) then
+          call msg_message ("MPI: master worker")
+       else
+          write (msg_buffer, "(A,I0)") "MPI: slave worker #", rank
+          call msg_message ()
+       end if
+    end if
+  end subroutine mpi_set_logging
+
+@ %def mpi_set_logging
+@ Receive communicator size and rank inside communicator. The subroutine is a stub, if not compiled with [[MPI]].
+<<OS interface: public>>=
+  public :: mpi_get_comm_id
+<<OS interface: procedures>>=
+  subroutine mpi_get_comm_id (n_size, rank)
+    integer, intent(out) :: n_size
+    integer, intent(out) :: rank
+    n_size = 1
+    rank = 0
+  <<OS interface: mpi get comm id>>
+  end subroutine mpi_get_comm_id
+
+@ %def mpi_get_comm_id
+<<OS interface: mpi get comm id>>=
+@
+<<MPI: OS interface: mpi get comm id>>=
+  call MPI_Comm_size (MPI_COMM_WORLD, n_size)
+  call MPI_Comm_rank (MPI_COMM_WORLD, rank)
+@
+<<OS interface: public>>=
+  public :: mpi_is_comm_master
+<<OS interface: procedures>>=
+  logical function mpi_is_comm_master () result (flag)
+    integer :: n_size, rank
+    call mpi_get_comm_id (n_size, rank)
+    flag = (rank == 0)
+  end function mpi_is_comm_master
+
+@ %def mpi_is_comm_master
 \subsection{Unit tests}
 Test module, followed by the corresponding implementation module.
 <<[[os_interface_ut.f90]]>>=
@@ -3108,7 +3248,7 @@ argument.
        word = extract (buffer, 1, pos-1)
        if (len (word) /= 0) then
          call read_int_from_string (word, len (word), l)
-	 length = length + l
+         length = length + l
        end if
        split_fmt(i) = split_fmt(i) // word
        buffer = remove (buffer, 1, pos-1)

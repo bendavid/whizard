@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -119,6 +112,7 @@ module interactions
      procedure :: is_empty => interaction_is_empty
      procedure :: get_n_matrix_elements => &
           interaction_get_n_matrix_elements
+     procedure :: get_state_depth => interaction_get_state_depth
      procedure :: get_n_in_helicities => interaction_get_n_in_helicities
      procedure :: get_me_size => interaction_get_me_size
      procedure :: get_norm => interaction_get_norm
@@ -133,6 +127,7 @@ module interactions
      procedure :: get_quantum_numbers_all_qn_mask => &
         interaction_get_quantum_numbers_all_qn_mask
      procedure :: get_quantum_numbers_all_sub => interaction_get_quantum_numbers_all_sub
+     procedure :: get_flavors => interaction_get_flavors
      procedure :: get_quantum_numbers_mask => interaction_get_quantum_numbers_mask
      generic :: get_matrix_element => get_matrix_element_single
      generic :: get_matrix_element => get_matrix_element_array
@@ -194,6 +189,7 @@ module interactions
      procedure :: set_source_link => interaction_set_source_link
      procedure :: find_source => interaction_find_source
      procedure :: receive_momenta => interaction_receive_momenta
+     procedure :: transfer_me_to_sub => interaction_transfer_me_to_sub
   end type interaction_t
 
 
@@ -551,19 +547,20 @@ contains
   end subroutine interaction_assign
 
   subroutine interaction_add_state &
-       (int, qn, index, value, sum_values, counter_index, me_index)
+       (int, qn, index, value, sum_values, counter_index, ignore_sub, me_index)
     class(interaction_t), intent(inout) :: int
     type(quantum_numbers_t), dimension(:), intent(in) :: qn
     integer, intent(in), optional :: index
     complex(default), intent(in), optional :: value
     logical, intent(in), optional :: sum_values
     integer, intent(in), optional :: counter_index
+    logical, intent(in), optional :: ignore_sub
     integer, intent(out), optional :: me_index
     type(quantum_numbers_t), dimension(size(qn)) :: qn_tmp
     qn_tmp = qn
     call qn_tmp%undefine (int%mask)
     call int%state_matrix%add_state (qn_tmp, index, value, sum_values, &
-         counter_index, me_index)
+         counter_index, ignore_sub, me_index)
     int%update_values = .true.
   end subroutine interaction_add_state
 
@@ -591,6 +588,12 @@ contains
     class(interaction_t), intent(in) :: int
     n = int%state_matrix%get_n_matrix_elements ()
   end function interaction_get_n_matrix_elements
+
+  function interaction_get_state_depth (int) result (n)
+    integer :: n
+    class(interaction_t), intent(in) :: int
+    n = int%state_matrix%get_depth ()
+  end function interaction_get_state_depth
 
   function interaction_get_n_in_helicities (int) result (n_hel)
     integer :: n_hel
@@ -634,10 +637,10 @@ contains
     norm = int%state_matrix%get_norm ()
   end function interaction_get_norm
 
-  pure function interaction_get_n_sub (int) result (n_sub)
+  function interaction_get_n_sub (int) result (n_sub)
     integer :: n_sub
     class(interaction_t), intent(in) :: int
-    n_sub = int%state_matrix%get_n_sub ()
+    n_sub = int%state_matrix%compute_n_sub ()
   end function interaction_get_n_sub
 
   function interaction_get_quantum_numbers_single (int, i) result (qn)
@@ -690,6 +693,14 @@ contains
     end do
   end subroutine interaction_get_quantum_numbers_all_sub
 
+  subroutine interaction_get_flavors (int, only_elementary, qn_mask, flv)
+    class(interaction_t), intent(in), target :: int
+    logical, intent(in) :: only_elementary
+    type(quantum_numbers_mask_t), intent(in), dimension(:), optional :: qn_mask
+    integer, intent(out), dimension(:,:), allocatable :: flv
+    call int%state_matrix%get_flavors (only_elementary, qn_mask, flv)
+  end subroutine interaction_get_flavors
+
   subroutine interaction_get_quantum_numbers_mask (int, qn_mask, qn)
     class(interaction_t), intent(in) :: int
     type(quantum_numbers_mask_t), intent(in) :: qn_mask
@@ -736,10 +747,11 @@ contains
     call int%state_matrix%set_matrix_element (value)
   end subroutine interaction_set_matrix_element_all
 
-  subroutine interaction_set_matrix_element_array (int, value)
+  subroutine interaction_set_matrix_element_array (int, value, range)
     class(interaction_t), intent(inout) :: int
-    complex(default), dimension(:), intent(in) :: value
-    call int%state_matrix%set_matrix_element (value)
+    complex(default), intent(in), dimension(:) :: value
+    integer, intent(in), dimension(:), optional :: range
+    call int%state_matrix%set_matrix_element (value, range)
   end subroutine interaction_set_matrix_element_array
 
   pure subroutine interaction_set_matrix_element_single (int, i, value)
@@ -1391,33 +1403,48 @@ contains
     type(interaction_t), intent(inout), target :: int
     integer, intent(in) :: n_sub
     type(state_iterator_t) :: it
-    type(quantum_numbers_t), dimension(:), allocatable :: qn
+    type(quantum_numbers_t), dimension(:), allocatable :: qn, qn_save
     integer :: i, s
-    integer :: n_me_orig
+    integer :: n_me_orig, n_sub_int
     complex(default), dimension(:), allocatable :: me_orig
-    call it%init (int%state_matrix)
+    type(state_matrix_t), target :: state_matrix_save
+    state_matrix_save = int%state_matrix
+    call it%init (state_matrix_save)
     i = 1; n_me_orig = int%state_matrix%get_n_matrix_elements ()
     allocate (me_orig (n_me_orig))
     allocate (qn (it%get_depth ()))
     do while (it%is_valid () .and. i <= n_me_orig)
        qn = it%get_quantum_numbers ()
+       qn_save = qn
        me_orig (i) = it%get_matrix_element ()
+       n_sub_int = 0
        do s = 1, n_sub
           call qn%set_subtraction_index (s)
-          call int%state_matrix%add_state (qn)
+          if (.not. all (qn == qn_save)) then
+             n_sub_int = n_sub_int + 1
+             call int%state_matrix%add_state (qn)
+          end if
        end do
        call it%advance ()
        i = i + 1
     end do
-    call int%state_matrix%freeze()
+    call int%state_matrix%freeze ()
+    call int%state_matrix%set_n_sub ()
     do i = 1, n_me_orig
        call int%state_matrix%set_matrix_element (i, me_orig(i))
-       do s = 1, n_sub
-          call int%state_matrix%set_matrix_element (i + s + n_me_orig - 1, me_orig(i))
+       do s = 1, n_sub_int
+          call int%state_matrix%set_matrix_element (s + n_me_orig + (i - 1) * n_sub_int, me_orig(i))
        end do
     end do
-    deallocate (me_orig, qn)
+    deallocate (me_orig, qn, qn_save)
+    call state_matrix_save%final ()
   end subroutine interaction_declare_subtraction
+
+  subroutine interaction_transfer_me_to_sub (int, i_sub)
+    class(interaction_t), intent(inout) :: int
+    integer, intent(in) :: i_sub
+    call int%state_matrix%transfer_me_to_sub (i_sub)
+  end subroutine interaction_transfer_me_to_sub
 
   subroutine find_connections (int1, int2, n, connection_index)
     class(interaction_t), intent(in) :: int1, int2
@@ -1426,14 +1453,14 @@ contains
     integer, dimension(:,:), allocatable :: conn_index_tmp
     integer, dimension(:), allocatable :: ordering
     integer :: i, j, k
-    type(external_link_t) :: link2, link1
-    type(interaction_t), pointer :: int_link, int_link1
+    type(external_link_t) :: link1, link2
+    type(interaction_t), pointer :: int_link1, int_link2
     n = 0
     do i = 1, size (int2%source)
        link2 = interaction_get_ultimate_source (int2, i)
        if (external_link_is_set (link2)) then
-          int_link => external_link_get_ptr (link2)
-          if (int_link%tag == int1%tag) then
+          int_link2 => external_link_get_ptr (link2)
+          if (int_link2%tag == int1%tag) then
              n = n + 1
           else
              k = external_link_get_index (link2)
@@ -1441,10 +1468,9 @@ contains
                 link1 = interaction_get_ultimate_source (int1, j)
                 if (external_link_is_set (link1)) then
                    int_link1 => external_link_get_ptr (link1)
-                   if (int_link1%tag == int_link%tag) then
-                      if (external_link_get_index (link1) == k) then
-                         n = n + 1
-                      end if
+                   if (int_link1%tag == int_link2%tag) then
+                      if (external_link_get_index (link1) == k) &
+                           n = n + 1
                    end if
                 end if
              end do
@@ -1456,8 +1482,8 @@ contains
     do i = 1, size (int2%source)
        link2 = interaction_get_ultimate_source (int2, i)
        if (external_link_is_set (link2)) then
-          int_link => external_link_get_ptr (link2)
-          if (int_link%tag == int1%tag) then
+          int_link2 => external_link_get_ptr (link2)
+          if (int_link2%tag == int1%tag) then
              n = n + 1
              conn_index_tmp(n,1) = external_link_get_index (int2%source(i))
              conn_index_tmp(n,2) = i
@@ -1467,7 +1493,7 @@ contains
                 link1 = interaction_get_ultimate_source (int1, j)
                 if (external_link_is_set (link1)) then
                    int_link1 => external_link_get_ptr (link1)
-                   if (int_link1%tag == int_link%tag) then
+                   if (int_link1%tag == int_link2%tag) then
                       if (external_link_get_index (link1) == k) then
                          n = n + 1
                          conn_index_tmp(n,1) = j

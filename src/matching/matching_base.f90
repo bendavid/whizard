@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -139,12 +132,12 @@ contains
   subroutine matching_connect (matching, process_instance, model, shower)
     class(matching_t), intent(inout) :: matching
     type(process_instance_t), intent(in), target :: process_instance
-    class(model_data_t), intent(in), target :: model
-    class(shower_base_t), intent(in), target :: shower
+    class(model_data_t), intent(in), target, optional :: model
+    class(shower_base_t), intent(in), target, optional :: shower
     call msg_debug (D_MATCHING, "matching_connect")
     matching%process_instance => process_instance
-    matching%model => model
-    matching%shower => shower
+    if (present (model))  matching%model => model
+    if (present (shower))  matching%shower => shower
   end subroutine matching_connect
 
   subroutine matching_prepare_for_events (matching)

@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -56,11 +49,13 @@ module pdg_arrays
   public :: operator(.match.)
   public :: is_quark
   public :: is_gluon
+  public :: is_photon
   public :: is_colored
   public :: is_lepton
   public :: is_fermion
   public :: is_massless_vector
   public :: is_massive_vector
+  public :: is_vector
   public :: operator(<)
   public :: operator(>)
   public :: operator(<=)
@@ -80,6 +75,7 @@ module pdg_arrays
      procedure :: get_length => pdg_array_get_length
      procedure :: get => pdg_array_get
      procedure :: set => pdg_array_set
+     procedure :: add => pdg_array_add
      procedure :: replace => pdg_array_replace
      procedure :: has_colored_particles => pdg_array_has_colored_particles
      procedure :: sort_abs => pdg_array_sort_abs
@@ -111,6 +107,8 @@ module pdg_arrays
      generic :: operator (<) => pdg_list_lt
      procedure, private :: pdg_list_lt
      procedure :: replace => pdg_list_replace
+     procedure :: fusion => pdg_list_fusion
+     procedure :: get_pdg_sizes => pdg_list_get_pdg_sizes
      procedure :: match_replace => pdg_list_match_replace
      generic :: operator (.match.) => pdg_list_match_pdg_array
      procedure, private :: pdg_list_match_pdg_array
@@ -274,6 +272,20 @@ contains
     aval%pdg(i) = pdg
   end subroutine pdg_array_set
 
+  function pdg_array_add (aval, aval_add) result (aval_out)
+    type(pdg_array_t) :: aval_out
+    class(pdg_array_t), intent(in) :: aval
+    type(pdg_array_t), intent(in) :: aval_add
+    integer :: n, n_add, i
+    n = size (aval%pdg)
+    n_add = size (aval_add%pdg)
+    allocate (aval_out%pdg (n + n_add))
+    aval_out%pdg(1:n) = aval%pdg
+    do i = 1, n_add
+       aval_out%pdg(n+i) = aval_add%pdg(i)
+    end do
+  end function pdg_array_add
+
   function pdg_array_replace (aval, i, pdg_new) result (aval_new)
     class(pdg_array_t), intent(in) :: aval
     integer, intent(in) :: i
@@ -338,6 +350,16 @@ contains
     end if
   end function is_gluon
 
+  elemental function is_photon (pdg_nr)
+    logical :: is_photon
+    integer, intent(in) :: pdg_nr
+    if (pdg_nr == 22) then
+       is_photon = .true.
+    else
+       is_photon = .false.
+    end if
+  end function is_photon
+
   elemental function is_colored (pdg_nr)
     logical :: is_colored
     integer, intent(in) :: pdg_nr
@@ -360,25 +382,35 @@ contains
     is_fermion = is_lepton(pdg_nr) .or. is_quark(pdg_nr)
   end function is_fermion
 
-  function is_massless_vector (pdg_nr) result (res)
+  elemental function is_massless_vector (pdg_nr)
     integer, intent(in) :: pdg_nr
-    logical :: res
+    logical :: is_massless_vector
     if (pdg_nr == 21 .or. pdg_nr == 22) then
-      res = .true.
+      is_massless_vector = .true.
     else
-      res = .false.
+      is_massless_vector = .false.
     end if
   end function is_massless_vector
 
-  function is_massive_vector (pdg_nr) result (res)
+  elemental function is_massive_vector (pdg_nr)
     integer, intent(in) :: pdg_nr
-    logical :: res
-    if (pdg_nr == 23 .or. pdg_nr == 24) then
-      res = .true.
+    logical :: is_massive_vector
+    if (abs (pdg_nr) == 23 .or. abs (pdg_nr) == 24) then
+      is_massive_vector = .true.
     else
-      res = .false.
+      is_massive_vector = .false.
     end if
   end function is_massive_vector
+
+  elemental function is_vector (pdg_nr)
+    integer, intent(in) :: pdg_nr
+    logical :: is_vector
+    if (is_massless_vector (pdg_nr) .or. is_massive_vector (pdg_nr)) then
+      is_vector = .true.
+    else
+      is_vector = .false.
+    end if
+  end function is_vector
 
   function pdg_array_has_colored_particles (pdg) result (colored)
     class(pdg_array_t), intent(in) :: pdg
@@ -528,7 +560,7 @@ contains
    aval2 = isec
   end function pdg_array_intersect
 
-  function pdg_array_search_for_particle (pdg, i_part) result (found)
+  elemental function pdg_array_search_for_particle (pdg, i_part) result (found)
     class(pdg_array_t), intent(in) :: pdg
     integer, intent(in) :: i_part
     logical :: found
@@ -740,11 +772,11 @@ contains
   end function pdg_list_lt
 
   function pdg_list_replace (pl, i, pl_insert, n_in) result (pl_out)
+    type(pdg_list_t) :: pl_out
     class(pdg_list_t), intent(in) :: pl
     integer, intent(in) :: i
     class(pdg_list_t), intent(in) :: pl_insert
     integer, intent(in), optional :: n_in
-    type(pdg_list_t) :: pl_out
     integer :: n, n_insert, n_out, k
     n = pl%get_size ()
     n_insert = pl_insert%get_size ()
@@ -779,6 +811,42 @@ contains
        end if
 !    end if
   end function pdg_list_replace
+
+  function pdg_list_fusion (pl, pl_insert, i, check_if_existing) result (pl_out)
+    type(pdg_list_t) :: pl_out
+    class(pdg_list_t), intent(in) :: pl
+    type(pdg_list_t), intent(in) :: pl_insert
+    integer, intent(in) :: i
+    logical, intent(in) :: check_if_existing
+    integer :: n, n_insert, k, n_out
+    logical :: new_pdg
+    n = pl%get_size ()
+    n_insert = pl_insert%get_size ()
+    new_pdg = .not. check_if_existing .or. &
+         (.not. any (pl%search_for_particle (pl_insert%a(1)%pdg)))
+    call pl_out%init (n + n_insert - 1)
+    do k = 1, n
+       if (new_pdg .and. k == i) then
+          pl_out%a(k) = pl%a(k)%add (pl_insert%a(1))
+       else
+          pl_out%a(k) = pl%a(k)
+       end if
+    end do
+    do k = n + 1, n + n_insert - 1
+       pl_out%a(k) = pl_insert%a(k-n)
+    end do
+  end function pdg_list_fusion
+
+  function pdg_list_get_pdg_sizes (pl) result (i_size)
+    integer, dimension(:), allocatable :: i_size
+    class(pdg_list_t), intent(in) :: pl
+    integer :: i, n
+    n = pl%get_size ()
+    allocate (i_size (n))
+    do i = 1, n
+       i_size(i) = size (pl%a(i)%pdg)
+    end do
+  end function pdg_list_get_pdg_sizes
 
   subroutine pdg_list_match_replace (pl, pl_match, success)
     class(pdg_list_t), intent(inout) :: pl
@@ -863,14 +931,14 @@ contains
    end if
   end subroutine pdg_list_create_antiparticles
 
-  function pdg_list_search_for_particle (pl, i_part) result (found)
+  elemental function pdg_list_search_for_particle (pl, i_part) result (found)
+    logical :: found
     class(pdg_list_t), intent(in) :: pl
     integer, intent(in) :: i_part
-    logical :: found
     integer :: i_pl
     do i_pl = 1, size (pl%a)
        found = pl%a(i_pl)%search_for_particle (i_part)
-       if (found) return
+       if (found)  return
     end do
   end function pdg_list_search_for_particle
 

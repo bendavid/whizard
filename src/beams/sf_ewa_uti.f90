@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -139,7 +132,7 @@ contains
     type(vector4_t) :: k
     type(vector4_t), dimension(2) :: q
     real(default) :: E
-    real(default), dimension(:), allocatable :: r, rb, x
+    real(default), dimension(:), allocatable :: r, rb, x, xb
     real(default) :: f
 
     write (u, "(A)")  "* Test output: sf_ewa_2"
@@ -190,14 +183,16 @@ contains
     allocate (r (data%get_n_par ()))
     allocate (rb(size (r)))
     allocate (x (size (r)))
+    allocate (xb(size (r)))
 
     r = 0.4_default
     rb = 1 - r
-    call sf_int%complete_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.false.)
 
     write (u, "(A,9(1x,F10.7))")  "r =", r
     write (u, "(A,9(1x,F10.7))")  "rb=", rb
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "f =", f
 
     write (u, "(A)")
@@ -215,13 +210,14 @@ contains
 
     call sf_int%seed_kinematics ([k])
     call sf_int%set_momenta (q, outgoing=.true.)
-    call sf_int%recover_x (x)
-    call sf_int%inverse_kinematics (x, f, r, rb, map=.false., &
+    call sf_int%recover_x (x, xb)
+    call sf_int%inverse_kinematics (x, xb, f, r, rb, map=.false., &
          set_momenta=.true.)
 
     write (u, "(A,9(1x,F10.7))")  "r =", r
     write (u, "(A,9(1x,F10.7))")  "rb=", rb
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "f =", f
 
     write (u, "(A)")
@@ -252,7 +248,7 @@ contains
     type(vector4_t) :: k
     type(vector4_t), dimension(2) :: q
     real(default) :: E
-    real(default), dimension(:), allocatable :: r, rb, x
+    real(default), dimension(:), allocatable :: r, rb, x, xb
     real(default) :: f
 
     write (u, "(A)")  "* Test output: sf_ewa_3"
@@ -303,14 +299,16 @@ contains
     allocate (r (data%get_n_par ()))
     allocate (rb(size (r)))
     allocate (x (size (r)))
+    allocate (xb(size (r)))
 
     r = 0.4_default
     rb = 1 - r
-    call sf_int%complete_kinematics (x, f, r, rb, map=.true.)
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.true.)
 
     write (u, "(A,9(1x,F10.7))")  "r =", r
     write (u, "(A,9(1x,F10.7))")  "rb=", rb
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "f =", f
 
     write (u, "(A)")
@@ -328,13 +326,14 @@ contains
 
     call sf_int%seed_kinematics ([k])
     call sf_int%set_momenta (q, outgoing=.true.)
-    call sf_int%recover_x (x)
-    call sf_int%inverse_kinematics (x, f, r, rb, map=.true., &
+    call sf_int%recover_x (x, xb)
+    call sf_int%inverse_kinematics (x, xb, f, r, rb, map=.true., &
          set_momenta=.true.)
 
     write (u, "(A,9(1x,F10.7))")  "r =", r
     write (u, "(A,9(1x,F10.7))")  "rb=", rb
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "f =", f
 
     write (u, "(A)")
@@ -365,7 +364,7 @@ contains
     type(vector4_t) :: k
     type(vector4_t), dimension(2) :: q
     real(default) :: E
-    real(default), dimension(:), allocatable :: r, rb, x
+    real(default), dimension(:), allocatable :: r, rb, x, xb
     real(default) :: f
 
     write (u, "(A)")  "* Test output: sf_ewa_4"
@@ -414,16 +413,18 @@ contains
     allocate (r (data%get_n_par ()))
     allocate (rb(size (r)))
     allocate (x (size (r)))
+    allocate (xb(size (r)))
 
     r = [0.5_default, 0.5_default, 0.25_default]
     rb = 1 - r
     sf_int%on_shell_mode = KEEP_ENERGY
-    call sf_int%complete_kinematics (x, f, r, rb, map=.true.)
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.true.)
     call interaction_pacify_momenta (sf_int%interaction_t, 1e-10_default)
 
     write (u, "(A,9(1x,F10.7))")  "r =", r
     write (u, "(A,9(1x,F10.7))")  "rb=", rb
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "f =", f
 
     write (u, "(A)")
@@ -441,14 +442,15 @@ contains
 
     call sf_int%seed_kinematics ([k])
     call sf_int%set_momenta (q, outgoing=.true.)
-    call sf_int%recover_x (x)
-    call sf_int%inverse_kinematics (x, f, r, rb, map=.true., &
+    call sf_int%recover_x (x, xb)
+    call sf_int%inverse_kinematics (x, xb, f, r, rb, map=.true., &
          set_momenta=.true.)
     call interaction_pacify_momenta (sf_int%interaction_t, 1e-10_default)
 
     write (u, "(A,9(1x,F10.7))")  "r =", r
     write (u, "(A,9(1x,F10.7))")  "rb=", rb
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "f =", f
 
     write (u, "(A)")
@@ -478,7 +480,7 @@ contains
     class(sf_int_t), allocatable :: sf_int
     type(vector4_t) :: k
     real(default) :: E
-    real(default), dimension(:), allocatable :: r, rb, x
+    real(default), dimension(:), allocatable :: r, rb, x, xb
     real(default) :: f
 
     write (u, "(A)")  "* Test output: sf_ewa_5"
@@ -529,14 +531,16 @@ contains
     allocate (r (data%get_n_par ()))
     allocate (rb(size (r)))
     allocate (x (size (r)))
+    allocate (xb(size (r)))
 
     r = 0.4_default
     rb = 1 - r
-    call sf_int%complete_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.false.)
 
     write (u, "(A,9(1x,F10.7))")  "r =", r
     write (u, "(A,9(1x,F10.7))")  "rb=", rb
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "f =", f
 
     write (u, "(A)")

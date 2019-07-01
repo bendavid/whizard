@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -184,7 +177,7 @@ contains
     write (u, "(A)") "* Get VEGAS empty result object and write out"
     write (u, "(A)")
 
-    call mc_integrator%get_result (mc_integrator_result)
+    mc_integrator_result = mc_integrator%get_result ()
     call mc_integrator_result%write (u)
 
     write (u, "(A)")
@@ -267,7 +260,7 @@ contains
     write (u, "(A)") "* Get VEGAS result object and write out"
     write (u, "(A)")
 
-    call mc_integrator%get_result (mc_integrator_result)
+    mc_integrator_result = mc_integrator%get_result ()
     call mc_integrator_result%write (u)
 
     write (u, "(A)")
@@ -361,7 +354,7 @@ contains
     type(vegas_result_t) :: mc_integrator_result
 
     integer :: i, u_event
-    real(default), dimension(1) :: event
+    real(default), dimension(1) :: event, mean, delta, M2
     real(default) :: result, abserr
 
     write (u, "(A)") "* Test output: vegas_5"
@@ -394,7 +387,8 @@ contains
     call mc_integrator%integrate (func, rng, 3, opt_verbose=.true., result=result, abserr=abserr)
     call mc_integrator%get_config (mc_integrator_config)
     call mc_integrator_config%write (u)
-    write (u, "(2x,A," // FMT_12 // ",A," // FMT_12 // ")") "Result: ", result, " +/- ", abserr
+    write (u, "(2x,A," // FMT_12 // ",A," // FMT_12 // ")") &
+         & "Result: ", result, " +/- ", abserr
 
     write (u, "(A)")
     write (u, "(A)") "* Integrate with n_it = 3 and n_calls = 2000 (Precision)"
@@ -404,16 +398,28 @@ contains
     call mc_integrator%integrate (func, rng, 3, opt_verbose=.true., result=result, abserr=abserr)
     call mc_integrator%get_config (mc_integrator_config)
     call mc_integrator_config%write (u)
-    write (u, "(2x,A," // FMT_12 // ",A," // FMT_12 // ")") "Result: ", result, " +/- ", abserr
+    write (u, "(2x,A," // FMT_12 // ",A," // FMT_12 // ")") &
+         & "Result: ", result, " +/- ", abserr
 
     write (u, "(A)")
-    write (u, "(A)") "* Generate 1000 events based on the adaptation."
+    write (u, "(A)") "* Generate 10000 events based on the adaptation and&
+         & calculate mean and variance"
     write (u, "(A)")
 
-    do i = 1, 1000
-       call mc_integrator%generate_event (func, rng, event)
-       write (u, "(2x,I4,1x," // FMT_10 // ")") i, event
+    mean = 0._default
+    M2 = 0._default
+    do i = 1, 10000
+       call mc_integrator%generate_unweighted (func, rng, event)
+       delta = event - mean
+       mean = mean + delta / i
+       M2 = M2 + delta * (event - mean)
     end do
+
+    write (u, "(2X,A)") "Result:"
+    write (u, "(4X,A," // FMT_12 //")") &
+         & "mean               = ", mean
+    write (u, "(4X,A," // FMT_12 //")") &
+         & "(sample) std. dev. = ", sqrt (M2 / (9999))
 
     write (u, "(A)")
     write (u, "(A)") "* Cleanup"

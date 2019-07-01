@@ -1596,8 +1596,12 @@ it is ignored.
 <<Model data: procedures>>=
   subroutine model_data_final (model)
     class(model_data_t), intent(inout) :: model
-    deallocate (model%par_real)
-    deallocate (model%par_complex)
+    if (associated (model%par_real)) then
+       deallocate (model%par_real)
+    end if
+    if (associated (model%par_complex)) then
+       deallocate (model%par_complex)
+    end if
   end subroutine model_data_final
 
 @ %def model_data_final
@@ -3293,7 +3297,7 @@ type-bound.  We implement them as ordinary procedures.
   end subroutine color_init_from_array2
 
   pure subroutine color_init_from_array2g (col, c1, ghost)
-    integer, dimension(:,:), intent(inout) :: c1
+    integer, dimension(:,:), intent(in) :: c1
     type(color_t), dimension(:), intent(out) :: col
     logical, intent(in), dimension(:) :: ghost
     call color_init_from_array2 (col, c1)
@@ -3469,6 +3473,47 @@ TBP since this is an array.
   end function color_ghost_parity
 
 @ %def color_ghost_parity
+@ Determine the color representation, given a color object. We allow
+only singlet ($1$), (anti)triplet ($\pm 3$), and octet states ($8$).
+A color ghost must not have color assigned, but the color type is $8$.  For
+non-diagonal color, representations must match.  If the color type is
+undefined, return $0$.  If it is invalid or unsupported, return $-1$.
+
+Assumption: nonzero entries precede nonzero ones.
+<<Colors: color: TBP>>=
+  procedure :: get_type => color_get_type
+<<Colors: procedures>>=
+  elemental function color_get_type (col) result (ctype)
+    class(color_t), intent(in) :: col
+    integer :: ctype
+    if (col%defined) then
+       ctype = -1
+       if (col%ghost) then
+          if (all (col%c1 == 0 .and. col%c2 == 0)) then
+             ctype = 8
+          end if
+       else
+          if (all ((col%c1 == 0 .and. col%c2 == 0) &
+               & .or. (col%c1 > 0 .and. col%c2 > 0) &
+               & .or. (col%c1 < 0 .and. col%c2 < 0))) then
+             if (all (col%c1 == 0)) then
+                ctype = 1
+             else if ((col%c1(1) > 0 .and. col%c1(2) == 0)) then
+                ctype = 3
+             else if ((col%c1(1) < 0 .and. col%c1(2) == 0)) then
+                ctype = -3
+             else if ((col%c1(1) > 0 .and. col%c1(2) < 0) &
+                  .or.(col%c1(1) < 0 .and. col%c1(2) > 0)) then
+                ctype = 8
+             end if
+          end if
+       end if
+    else
+       ctype = 0
+    end if
+  end function color_get_type
+    
+@ %def color_get_type
 @
 \subsection{Accessing contents}
 Return the number of color indices.  We assume that it is identical
@@ -4021,6 +4066,121 @@ transfer the defined one.
   end function merge_colors
 
 @ %def merge_colors
+@ Merge up to two (diagonal!) color objects.  The result inherits the unmatched
+color lines of the input colors.  If one of the input colors is
+undefined, the output is undefined as well.  It must be in a supported
+color representation.
+
+A color-ghost object should not actually occur in real-particle
+events, but for completeness we define its behavior.  For simplicity,
+it is identified as a color-octet with zero color/anticolor.  It can
+only couple to a triplet or antitriplet.  A fusion of triplet with
+matching antitriplet will yield a singlet, not a ghost, however.
+
+If the fusion fails, the result is undefined.
+
+NOTE: The [[select type]] casting is required by gfortran 4.8.  It may not be
+required by the standard.
+<<Colors: color: TBP>>=
+  generic :: operator (.fuse.) => color_fusion
+  procedure, private :: color_fusion
+<<Colors: procedures>>=
+  function color_fusion (col1, col2) result (col)
+    class(color_t), intent(in) :: col1, col2
+    type(color_t) :: col
+    integer, dimension(2) :: ctype
+    if (col1%is_defined () .and. col2%is_defined ()) then
+       if (col1%is_diagonal () .and. col2%is_diagonal ()) then
+          select type (col1)
+          type is (color_t)
+             select type (col2)
+             type is (color_t)
+                ctype = [col1%get_type (), col2%get_type ()]
+                select case (ctype(1))
+                case (1)
+                   select case (ctype(2))
+                   case (1,3,-3,8)
+                      col = col2
+                   end select
+                case (3)
+                   select case (ctype(2))
+                   case (1)
+                      col = col1
+                   case (-3)
+                      call t_a (col1%get_col (), col2%get_acl ())
+                   case (8)
+                      call t_o (col1%get_col (), col2%get_acl (), &
+                           &    col2%get_col ())
+                   end select
+                case (-3)
+                   select case (ctype(2))
+                   case (1)
+                      col = col1
+                   case (3)
+                      call t_a (col2%get_col (), col1%get_acl ())
+                   case (8)
+                      call a_o (col1%get_acl (), col2%get_col (), &
+                           &    col2%get_acl ())
+                   end select
+                case (8)
+                   select case (ctype(2))
+                   case (1)
+                      col = col1
+                   case (3)
+                      call t_o (col2%get_col (), col1%get_acl (), &
+                           &    col1%get_col ())
+                   case (-3)
+                      call a_o (col2%get_acl (), col1%get_col (), &
+                           &    col1%get_acl ())
+                   case (8)
+                      call o_o (col1%get_col (), col1%get_acl (), &
+                           &    col2%get_col (), col2%get_acl ())
+                   end select
+                end select
+             end select
+          end select
+       end if
+    end if
+  contains
+    subroutine t_a (c1, c2)
+      integer, intent(in) :: c1, c2
+      if (c1 == c2) then
+         call col%init_col_acl (0, 0)
+      else
+         call col%init_col_acl (c1, c2)
+      end if
+    end subroutine t_a
+    subroutine t_o (c1, c2, c3)
+      integer, intent(in) :: c1, c2, c3
+      if (c1 == c2) then
+         call col%init_col_acl (c3, 0)
+      else if (c2 == 0 .and. c3 == 0) then
+         call col%init_col_acl (c1, 0)
+      end if
+    end subroutine t_o
+    subroutine a_o (c1, c2, c3)
+      integer, intent(in) :: c1, c2, c3
+      if (c1 == c2) then
+         call col%init_col_acl (0, c3)
+      else if (c2 == 0 .and. c3 == 0) then
+         call col%init_col_acl (0, c1)
+      end if
+    end subroutine a_o
+    subroutine o_o (c1, c2, c3, c4)
+      integer, intent(in) :: c1, c2, c3, c4
+      if (all ([c1,c2,c3,c4] /= 0)) then
+         if (c2 == c3 .and. c4 == c1) then
+            call col%init_col_acl (0, 0)
+         else if (c2 == c3) then
+            call col%init_col_acl (c1, c4)
+         else if (c4 == c1) then
+            call col%init_col_acl (c3, c2)
+         end if
+      end if
+    end subroutine o_o
+  end function color_fusion
+
+@ %def color_fusion
 @ Compute the color factor, given two interfering color arrays.
 <<Colors: public>>=
   public :: compute_color_factor
@@ -4267,6 +4427,146 @@ end module colors_uti
   end subroutine color_1
 
 @ %def color_1
+@ A color fusion test.
+<<Colors: execute tests>>=
+  call test (color_2, "color_2", &
+       "color fusion", &
+       u, results)
+<<Colors: test declarations>>=
+  public :: color_2
+<<Colors: tests>>=
+  subroutine color_2 (u)
+    integer, intent(in) :: u
+    type(color_t) :: s1, t1, t2, a1, a2, o1, o2, o3, o4, g1
+
+    write (u, "(A)")  "* Test output: color_2"
+    write (u, "(A)")  "*   Purpose: test all combinations for color-object fusion"
+    write (u, "(A)")
+    
+    call s1%init_col_acl (0,0)
+    call t1%init_col_acl (1,0)
+    call t2%init_col_acl (2,0)
+    call a1%init_col_acl (0,1)
+    call a2%init_col_acl (0,2)
+    call o1%init_col_acl (1,2)
+    call o2%init_col_acl (1,3)
+    call o3%init_col_acl (2,3)
+    call o4%init_col_acl (2,1)
+    call g1%init (ghost=.true.)
+
+    call wrt ("s1", s1)
+    call wrt ("t1", t1)
+    call wrt ("t2", t2)
+    call wrt ("a1", a1)
+    call wrt ("a2", a2)
+    call wrt ("o1", o1)
+    call wrt ("o2", o2)
+    call wrt ("o3", o3)
+    call wrt ("o4", o4)
+    call wrt ("g1", g1)
+
+    write (u, *)
+    
+    call wrt ("s1 * s1", s1 .fuse. s1)
+
+    write (u, *)
+    
+    call wrt ("s1 * t1", s1 .fuse. t1)
+    call wrt ("s1 * a1", s1 .fuse. a1)
+    call wrt ("s1 * o1", s1 .fuse. o1)
+
+    write (u, *)
+    
+    call wrt ("t1 * s1", t1 .fuse. s1)
+    call wrt ("a1 * s1", a1 .fuse. s1)
+    call wrt ("o1 * s1", o1 .fuse. s1)
+
+    write (u, *)
+    
+    call wrt ("t1 * t1", t1 .fuse. t1)
+
+    write (u, *)
+    
+    call wrt ("t1 * t2", t1 .fuse. t2)
+    call wrt ("t1 * a1", t1 .fuse. a1)
+    call wrt ("t1 * a2", t1 .fuse. a2)
+    call wrt ("t1 * o1", t1 .fuse. o1)
+    call wrt ("t2 * o1", t2 .fuse. o1)
+
+    write (u, *)
+    
+    call wrt ("t2 * t1", t2 .fuse. t1)
+    call wrt ("a1 * t1", a1 .fuse. t1)
+    call wrt ("a2 * t1", a2 .fuse. t1)
+    call wrt ("o1 * t1", o1 .fuse. t1)
+    call wrt ("o1 * t2", o1 .fuse. t2)
+
+    write (u, *)
+    
+    call wrt ("a1 * a1", a1 .fuse. a1)
+
+    write (u, *)
+    
+    call wrt ("a1 * a2", a1 .fuse. a2)
+    call wrt ("a1 * o1", a1 .fuse. o1)
+    call wrt ("a2 * o2", a2 .fuse. o2)
+
+    write (u, *)
+    
+    call wrt ("a2 * a1", a2 .fuse. a1)
+    call wrt ("o1 * a1", o1 .fuse. a1)
+    call wrt ("o2 * a2", o2 .fuse. a2)
+
+    write (u, *)
+    
+    call wrt ("o1 * o1", o1 .fuse. o1)
+
+    write (u, *)
+    
+    call wrt ("o1 * o2", o1 .fuse. o2)
+    call wrt ("o1 * o3", o1 .fuse. o3)
+    call wrt ("o1 * o4", o1 .fuse. o4)
+
+    write (u, *)
+    
+    call wrt ("o2 * o1", o2 .fuse. o1)
+    call wrt ("o3 * o1", o3 .fuse. o1)
+    call wrt ("o4 * o1", o4 .fuse. o1)
+
+    write (u, *)
+    
+    call wrt ("g1 * g1", g1 .fuse. g1)
+
+    write (u, *)
+    
+    call wrt ("g1 * s1", g1 .fuse. s1)
+    call wrt ("g1 * t1", g1 .fuse. t1)
+    call wrt ("g1 * a1", g1 .fuse. a1)
+    call wrt ("g1 * o1", g1 .fuse. o1)
+
+    write (u, *)
+    
+    call wrt ("s1 * g1", s1 .fuse. g1)
+    call wrt ("t1 * g1", t1 .fuse. g1)
+    call wrt ("a1 * g1", a1 .fuse. g1)
+    call wrt ("o1 * g1", o1 .fuse. g1)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: color_2"
+
+  contains
+    
+    subroutine wrt (s, col)
+      character(*), intent(in) :: s
+      class(color_t), intent(in) :: col
+      write (u, "(A,1x,'=',1x)", advance="no")  s
+      call col%write (u)
+      write (u, *)
+    end subroutine wrt
+
+  end subroutine color_2
+
+@ %def color_2
 @
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{The Madgraph color model}
@@ -5542,7 +5842,7 @@ if it is zero, but defined.  Otherwise, suppress zero color.
        call qn%h%write (u)
     end if
     if (qn%sub > 0) &
-       write (u, "(A,I1)", advance = "no") " SUB = ", qn%sub
+       write (u, "(A,I0)", advance = "no") " SUB = ", qn%sub
     write (u, "(A)", advance="no")  "]"
   end subroutine quantum_numbers_write_single
 
@@ -5777,6 +6077,8 @@ Matching and equality is derived from the individual quantum numbers.
 The variant [[fhmatch]] matches only flavor and helicity.  The variant
 [[dhmatch]] matches only diagonal helicity, if the matching helicity is
 undefined.
+<<Quantum numbers: public>>=
+  public :: quantum_numbers_eq_wo_sub
 <<Quantum numbers: quantum numbers: TBP>>=
   generic :: operator(.match.) => quantum_numbers_match
   generic :: operator(.fmatch.) => quantum_numbers_match_f
@@ -5820,6 +6122,14 @@ undefined.
          (qn1%c .match. qn2%c) .and. &
          (qn1%h .dmatch. qn2%h)
   end function quantum_numbers_match_hel_diag
+
+  elemental function quantum_numbers_eq_wo_sub (qn1, qn2) result (eq)
+    logical :: eq
+    type(quantum_numbers_t), intent(in) :: qn1, qn2
+    eq = (qn1%f == qn2%f) .and. &
+         (qn1%c == qn2%c) .and. &
+         (qn1%h == qn2%h)
+  end function quantum_numbers_eq_wo_sub
 
   elemental function quantum_numbers_eq (qn1, qn2) result (eq)
     logical :: eq
@@ -6388,7 +6698,7 @@ a diagonal helicity quantum number.
           call qn%h%diagonalize ()
        end if
     end if
-    if (mask%sub > 0) qn%sub = 0
+    if (mask%sub > 0)  qn%sub = 0
   end subroutine quantum_numbers_undefine
 
   function quantum_numbers_undefined0 (qn, mask) result (qn_new)
@@ -6698,9 +7008,9 @@ in square brackets, then the value (if any).
     do while (associated (current))
        write (u, "(A)", advance="no")  repeat (" ", i)
        call node_write (current, me_array, verbose = verb, &
-	  unit = u, col_verbose = col_verbose, testflag = testflag)
+            unit = u, col_verbose = col_verbose, testflag = testflag)
        call node_write_rec (current, me_array, verbose = verb, &
- 	  indent = i + 2, unit = u, col_verbose = col_verbose, testflag = testflag)
+ 	    indent = i + 2, unit = u, col_verbose = col_verbose, testflag = testflag)
        current => current%next
     end do
   end subroutine node_write_rec
@@ -6842,11 +7152,11 @@ indentation.
     if (associated (state%root)) then
        if (allocated (state%me)) then
           call node_write_rec (state%root, state%me, verbose = verbose, &
-	     indent = 1, unit = u, col_verbose = col_verbose, &
-             testflag = testflag)
+	       indent = 1, unit = u, col_verbose = col_verbose, &
+               testflag = testflag)
        else
           call node_write_rec (state%root, verbose = verbose, indent = 1, &
-	     unit = u, col_verbose = col_verbose, testflag = testflag)
+	       unit = u, col_verbose = col_verbose, testflag = testflag)
        end if
     end if
     if (present (write_value_list)) then
@@ -6992,15 +7302,39 @@ A state is defined if its root is allocated:
 @ %def state_matrix_is_empty
 @ Return the number of matrix-element values.
 <<State matrices: state matrix: TBP>>=
-  procedure :: get_n_matrix_elements => state_matrix_get_n_matrix_elements
+  generic :: get_n_matrix_elements => get_n_matrix_elements_all, get_n_matrix_elements_mask
+  procedure :: get_n_matrix_elements_all => state_matrix_get_n_matrix_elements_all
+  procedure :: get_n_matrix_elements_mask => state_matrix_get_n_matrix_elements_mask
 <<State matrices: procedures>>=
-  pure function state_matrix_get_n_matrix_elements (state) result (n)
+  pure function state_matrix_get_n_matrix_elements_all (state) result (n)
     integer :: n
     class(state_matrix_t), intent(in) :: state
     n = state%n_matrix_elements
-  end function state_matrix_get_n_matrix_elements
+  end function state_matrix_get_n_matrix_elements_all
 
-@ %def state_matrix_get_n_matrix_elements
+@ %def state_matrix_get_n_matrix_elements_all
+@
+<<State matrices: procedures>>=
+  function state_matrix_get_n_matrix_elements_mask (state, qn_mask) result (n)
+    integer :: n
+    class(state_matrix_t), intent(in) :: state
+    type(quantum_numbers_mask_t), intent(in), dimension(:) :: qn_mask
+    type(state_iterator_t) :: it
+    type(quantum_numbers_t), dimension(size(qn_mask)) :: qn
+    type(state_matrix_t) :: state_tmp
+    call state_tmp%init ()
+    call it%init (state)
+    do while (it%is_valid ())
+       qn = it%get_quantum_numbers ()
+       call qn%undefine (qn_mask)
+       call state_tmp%add_state (qn)
+       call it%advance ()
+    end do
+    n = state_tmp%n_matrix_elements
+    call state_tmp%final ()
+  end function state_matrix_get_n_matrix_elements_mask
+
+@ %def state_matrix_get_n_matrix_elments_mask
 @ Return the size of the [[me]]-array for debugging purposes.
 <<State matrices: state matrix: TBP>>=
   procedure :: get_me_size => state_matrix_get_me_size
@@ -7020,32 +7354,47 @@ A state is defined if its root is allocated:
 <<State matrices: state matrix: TBP>>=
   procedure :: compute_n_sub => state_matrix_compute_n_sub
 <<State matrices: procedures>>=
-  subroutine state_matrix_compute_n_sub (state)
-    class(state_matrix_t), intent(inout) :: state
+  function state_matrix_compute_n_sub (state) result (n_sub)
+    integer :: n_sub
+    class(state_matrix_t), intent(in) :: state
     type(state_iterator_t) :: it
     type(quantum_numbers_t), dimension(state%depth) :: qn
-    integer :: sub
+    integer :: sub, sub_pos
+    n_sub = 0
     call it%init (state)
     do while (it%is_valid ())
        qn = it%get_quantum_numbers ()
-       sub = qn(1)%get_sub ()
-       if (sub > state%n_sub) state%n_sub = sub
+       sub = 0
+       sub_pos = qn_array_sub_pos ()
+       if (sub_pos > 0)  sub = qn(sub_pos)%get_sub ()
+       if (sub > n_sub)  n_sub = sub
        call it%advance ()
     end do
-  end subroutine state_matrix_compute_n_sub
+  contains
+    function qn_array_sub_pos () result (pos)
+      integer :: pos
+      integer :: i
+      pos = 0
+      do i = 1, state%depth
+         if (qn(i)%get_sub () > 0) then
+            pos = i
+            exit
+         end if
+      end do
+    end function qn_array_sub_pos
+  end function state_matrix_compute_n_sub
 
 @ %def state_matrix_compute_n_sub
 @
 <<State matrices: state matrix: TBP>>=
-  procedure :: get_n_sub => state_matrix_get_n_sub
+  procedure :: set_n_sub => state_matrix_set_n_sub
 <<State matrices: procedures>>=
-  pure function state_matrix_get_n_sub (state) result (n)
-    integer :: n
-    class(state_matrix_t), intent(in) :: state
-    n = state%n_sub
-  end function state_matrix_get_n_sub
+  subroutine state_matrix_set_n_sub (state)
+    class(state_matrix_t), intent(inout) :: state
+    state%n_sub = state%compute_n_sub ()
+  end subroutine state_matrix_set_n_sub
 
-@ %def state_matrix_get_n_sub
+@ %def state_matrix_set_n_sub
 @ Return the number of leaves.  This can be larger than the number of
 independent matrix elements.
 <<State matrices: state matrix: TBP>>=
@@ -7114,21 +7463,86 @@ state matrix since there is no shortcut.
 
 @ %def state_matrix_get_quantum_number
 <<State matrices: state matrix: TBP>>=
-  procedure :: get_quantum_numbers => &
-     state_matrix_get_quantum_numbers
+  generic :: get_quantum_numbers => get_quantum_numbers_all, get_quantum_numbers_mask
+  procedure :: get_quantum_numbers_all => state_matrix_get_quantum_numbers_all
+  procedure :: get_quantum_numbers_mask => state_matrix_get_quantum_numbers_mask
 <<State matrices: procedures>>=
-  subroutine state_matrix_get_quantum_numbers (state, qn)
-    type(quantum_numbers_t), dimension(:,:), allocatable, intent(out) :: qn
+  subroutine state_matrix_get_quantum_numbers_all (state, qn)
     class(state_matrix_t), intent(in), target :: state
+    type(quantum_numbers_t), intent(out), dimension(:,:), allocatable :: qn
     integer :: i
     allocate (qn (state%get_n_matrix_elements (), &
        state%get_depth()))
     do i = 1, state%get_n_matrix_elements ()
        qn (i, :) = state%get_quantum_number (i)
     end do
-  end subroutine state_matrix_get_quantum_numbers
+  end subroutine state_matrix_get_quantum_numbers_all
 
-@ %def state_matrix_get_quantum_numbers
+@ %def state_matrix_get_quantum_numbers_all
+@
+<<State matrices: procedures>>=
+  subroutine state_matrix_get_quantum_numbers_mask (state, qn_mask, qn)
+    class(state_matrix_t), intent(in), target :: state
+    type(quantum_numbers_mask_t), intent(in), dimension(:) :: qn_mask
+    type(quantum_numbers_t), intent(out), dimension(:,:), allocatable :: qn
+    type(quantum_numbers_t), dimension(:), allocatable :: qn_tmp
+    type(state_matrix_t) :: state_tmp
+    type(state_iterator_t) :: it
+    integer :: i, n
+    n = state%get_n_matrix_elements (qn_mask)
+    allocate (qn (n, state%get_depth ()))
+    allocate (qn_tmp (state%get_depth ()))
+    call it%init (state)
+    call state_tmp%init ()
+    do while (it%is_valid ())
+       qn_tmp = it%get_quantum_numbers ()
+       call qn_tmp%undefine (qn_mask)
+       call state_tmp%add_state (qn_tmp)
+       call it%advance ()
+    end do
+    do i = 1, n
+       qn (i, :) = state_tmp%get_quantum_number (i)
+    end do
+    call state_tmp%final ()
+  end subroutine state_matrix_get_quantum_numbers_mask
+
+@ %def state_matrix_get_quantum_numbers_mask
+@
+<<State matrices: state matrix: TBP>>=
+  procedure :: get_flavors => state_matrix_get_flavors
+<<State matrices: procedures>>=
+  subroutine state_matrix_get_flavors (state, only_elementary, qn_mask, flv)
+    class(state_matrix_t), intent(in), target :: state
+    logical, intent(in) :: only_elementary
+    type(quantum_numbers_mask_t), intent(in), dimension(:), optional :: qn_mask
+    integer, intent(out), dimension(:,:), allocatable :: flv
+    type(quantum_numbers_t), dimension(:,:), allocatable :: qn
+    integer :: i_flv, n_partons
+    type(flavor_t), dimension(:), allocatable :: flv_flv
+    if (present (qn_mask)) then
+       call state%get_quantum_numbers (qn_mask, qn)
+    else
+       call state%get_quantum_numbers (qn)
+    end if
+    allocate (flv_flv (size (qn, dim=2)))
+    if (only_elementary) then
+       flv_flv = qn(1, :)%get_flavor ()
+       n_partons = count (is_elementary (flv_flv%get_pdg ()))
+    end if
+    allocate (flv (size (qn, dim=1), n_partons))
+    do i_flv = 1, size (qn, dim=1)
+       flv_flv = qn(i_flv, :)%get_flavor ()
+       flv(i_flv, :) = pack (flv_flv%get_pdg (), is_elementary(flv_flv%get_pdg()))
+    end do
+  contains
+    elemental function is_elementary (pdg)
+      logical :: is_elementary
+      integer, intent(in) :: pdg
+      is_elementary = abs(pdg) /= 2212 .and. abs(pdg) /= 92 .and. abs(pdg) /= 93
+    end function is_elementary
+  end subroutine state_matrix_get_flavors
+
+@ %def state_matrix_get_flavors
 @ Return a single matrix element using its index.  Works only if the
 shortcut array is allocated.
 <<State matrices: state matrix: TBP>>=
@@ -7206,13 +7620,15 @@ node.
   procedure :: add_state => state_matrix_add_state
 <<State matrices: procedures>>=
   subroutine state_matrix_add_state &
-       (state, qn, index, value, sum_values, counter_index, me_index)
+       (state, qn, index, value, sum_values, counter_index, ignore_sub, &
+        me_index)
     class(state_matrix_t), intent(inout) :: state
     type(quantum_numbers_t), dimension(:), intent(in) :: qn
     integer, intent(in), optional :: index
     complex(default), intent(in), optional :: value
     logical, intent(in), optional :: sum_values
     integer, intent(in), optional :: counter_index
+    logical, intent(in), optional :: ignore_sub
     integer, intent(out), optional :: me_index
     logical :: set_index, get_index, add
     set_index = present (index)
@@ -7234,7 +7650,15 @@ node.
        match = .false.
        child => parent%child_first
        SCAN_CHILDREN: do while (associated (child))
-          match = child%qn == qn(1)
+          if (present (ignore_sub)) then
+             if (ignore_sub) then
+                match = quantum_numbers_eq_wo_sub (child%qn, qn(1))
+             else
+                match = child%qn == qn(1)
+             end if
+          else
+             match = child%qn == qn(1)
+          end if
           if (match)  exit SCAN_CHILDREN
           child => child%next
        end do SCAN_CHILDREN
@@ -7344,7 +7768,7 @@ we scan the state again and transfer them to the matrix-element array.
        if (allocated (state%me))  deallocate (state%me)
        allocate (state%me (state%n_matrix_elements))
        state%me = 0
-       call state%compute_n_sub ()
+       call state%set_n_sub ()
     end if
     if (state%leaf_nodes_store_values) then
        call it%init (state)
@@ -7406,13 +7830,18 @@ generic:
 @ %def state_matrix_set_matrix_element_all
 @ Set the matrix-element array directly.
 <<State matrices: procedures>>=
-  subroutine state_matrix_set_matrix_element_array (state, value)
+  subroutine state_matrix_set_matrix_element_array (state, value, range)
     class(state_matrix_t), intent(inout) :: state
-    complex(default), dimension(:), intent(in) :: value
-    if (.not. allocated (state%me)) then
-       allocate (state%me (size (value)))
+    complex(default), intent(in), dimension(:) :: value
+    integer, intent(in), dimension(:), optional :: range
+    integer :: i, n_me, n_val, i_first, i_last
+    if (present (range)) then
+       state%me(range) = value
+    else
+       if (.not. allocated (state%me)) &
+            allocate (state%me (size (value)))
+       state%me(:) = value
     end if
-    state%me = value
   end subroutine state_matrix_set_matrix_element_array
 
   pure subroutine state_matrix_set_matrix_element_single (state, i, value)
@@ -7458,6 +7887,29 @@ generic:
   end subroutine state_matrix_add_to_matrix_element
 
 @ %def state_matrix_add_to_matrix_element
+@
+<<State matrices: state matrix: TBP>>=
+  procedure :: transfer_me_to_sub => state_matrix_transfer_me_to_sub
+<<State matrices: procedures>>=
+  subroutine state_matrix_transfer_me_to_sub (state, i_sub)
+    class(state_matrix_t), intent(inout), target :: state
+    integer, intent(in) :: i_sub
+    type(state_iterator_t) :: it
+    type(quantum_numbers_t), dimension(:), allocatable :: qn
+    complex(default) :: me
+    call it%init (state)
+    do while (it%is_valid ())
+       qn = it%get_quantum_numbers ()
+       if (all (qn%get_sub () == 0)) then
+          me = it%get_matrix_element ()
+          call qn%set_subtraction_index (i_sub)
+          call state%set_matrix_element (qn, me)
+       end if
+       call it%advance ()
+    end do
+  end subroutine state_matrix_transfer_me_to_sub
+
+@ %def state_matrix_transfer_me_to_sub
 @
 \subsection{State iterators}
 Accessing the quantum state from outside is best done using a
@@ -7977,7 +8429,7 @@ is reflected in the state-matrix norm.
 <<State matrices: state matrix: TBP>>=
   procedure :: sum => state_matrix_sum
 <<State matrices: procedures>>=
-  function state_matrix_sum (state) result (value)
+  pure function state_matrix_sum (state) result (value)
     complex(default) :: value
     class(state_matrix_t), intent(in) :: state
     value = sum (state%me)
@@ -8371,22 +8823,18 @@ cuts.
     do while (it%is_valid ())
        qn1 = it%get_quantum_numbers ()
        if (all (qn .match. qn1)) then
-          !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
-          !!! diagonal = qn1%are_diagonal ()
-          do i = 1, depth
-             diagonal(i) = qn1(i)%are_diagonal ()
-          end do
+          diagonal = qn1%are_diagonal ()
           value = it%get_matrix_element ()
           select case (mode)
           case (FM_IGNORE_HELICITY, FM_CORRELATED_HELICITY)
-             ! trace over diagonal states that match qn
+             !!! trace over diagonal states that match qn
              if (all (diagonal)) then
                 do i = 1, depth
                    call single_state(i)%add_state &
                         ([qn(i)], value=value, sum_values=.true.)
                 end do
              end if
-          case (FM_FACTOR_HELICITY)  ! trace over all other particles
+          case (FM_FACTOR_HELICITY)  !!! trace over all other particles
              do i = 1, depth
                 if (all (diagonal .or. mask(:,i))) then
                    call single_state(i)%add_state &
@@ -8556,11 +9004,7 @@ from that.
     do while (it%is_valid ())
        i = i + 1
        flv = it%get_flavor ()
-       !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
-       !!! pdg = flv%get_pdg ()
-       do j = 1, d
-          pdg(j) = flv(j)%get_pdg ()
-       end do
+       pdg = flv%get_pdg ()
        idx_subset = pack (idx, mask)
        pdg_subset = pack (pdg, mask)
        map_subset = order_abs (pdg_subset)
@@ -9848,19 +10292,20 @@ After this, the value array has to be updated.
   procedure :: add_state => interaction_add_state
 <<Interactions: procedures>>=
   subroutine interaction_add_state &
-       (int, qn, index, value, sum_values, counter_index, me_index)
+       (int, qn, index, value, sum_values, counter_index, ignore_sub, me_index)
     class(interaction_t), intent(inout) :: int
     type(quantum_numbers_t), dimension(:), intent(in) :: qn
     integer, intent(in), optional :: index
     complex(default), intent(in), optional :: value
     logical, intent(in), optional :: sum_values
     integer, intent(in), optional :: counter_index
+    logical, intent(in), optional :: ignore_sub
     integer, intent(out), optional :: me_index
     type(quantum_numbers_t), dimension(size(qn)) :: qn_tmp
     qn_tmp = qn
     call qn_tmp%undefine (int%mask)
     call int%state_matrix%add_state (qn_tmp, index, value, sum_values, &
-         counter_index, me_index)
+         counter_index, ignore_sub, me_index)
     int%update_values = .true.
   end subroutine interaction_add_state
 
@@ -9908,6 +10353,17 @@ value pointers.
   end function interaction_get_n_matrix_elements
 
 @ %def interaction_get_n_matrix_elements
+@
+<<Interactions: interaction: TBP>>=
+  procedure :: get_state_depth => interaction_get_state_depth
+<<Interactions: procedures>>=
+  function interaction_get_state_depth (int) result (n)
+    integer :: n
+    class(interaction_t), intent(in) :: int
+    n = int%state_matrix%get_depth ()
+  end function interaction_get_state_depth
+
+@ %def interaction_get_state_depth
 @
 <<Interactions: interaction: TBP>>=
   procedure :: get_n_in_helicities => interaction_get_n_in_helicities
@@ -9971,10 +10427,10 @@ this would be unity).
 <<Interactions: interaction: TBP>>=
   procedure :: get_n_sub => interaction_get_n_sub
 <<Interactions: procedures>>=
-  pure function interaction_get_n_sub (int) result (n_sub)
+  function interaction_get_n_sub (int) result (n_sub)
     integer :: n_sub
     class(interaction_t), intent(in) :: int
-    n_sub = int%state_matrix%get_n_sub ()
+    n_sub = int%state_matrix%compute_n_sub ()
   end function interaction_get_n_sub
 
 @ %def interaction_get_n_sub
@@ -10051,6 +10507,20 @@ this would be unity).
   end subroutine interaction_get_quantum_numbers_all_sub
 
 @ %def interaction_get_quantum_numbers_all
+@
+<<Interactions: interaction: TBP>>=
+  procedure :: get_flavors => interaction_get_flavors
+<<Interactions: procedures>>=
+  subroutine interaction_get_flavors (int, only_elementary, qn_mask, flv)
+    class(interaction_t), intent(in), target :: int
+    logical, intent(in) :: only_elementary
+    type(quantum_numbers_mask_t), intent(in), dimension(:), optional :: qn_mask
+    integer, intent(out), dimension(:,:), allocatable :: flv
+    call int%state_matrix%get_flavors (only_elementary, qn_mask, flv)
+  end subroutine interaction_get_flavors
+
+@ %def interaction_get_flavors
+@
 <<Interactions: interaction: TBP>>=
   procedure :: get_quantum_numbers_mask => interaction_get_quantum_numbers_mask
 <<Interactions: procedures>>=
@@ -10126,10 +10596,11 @@ numbers, a given index, or return the whole array.
 @ %def interaction_set_matrix_element_all
 @ Set the matrix-element array directly.
 <<Interactions: procedures>>=
-  subroutine interaction_set_matrix_element_array (int, value)
+  subroutine interaction_set_matrix_element_array (int, value, range)
     class(interaction_t), intent(inout) :: int
-    complex(default), dimension(:), intent(in) :: value
-    call int%state_matrix%set_matrix_element (value)
+    complex(default), intent(in), dimension(:) :: value
+    integer, intent(in), dimension(:), optional :: range
+    call int%state_matrix%set_matrix_element (value, range)
   end subroutine interaction_set_matrix_element_array
 
   pure subroutine interaction_set_matrix_element_single (int, i, value)
@@ -11096,35 +11567,55 @@ to the current one.
     type(interaction_t), intent(inout), target :: int
     integer, intent(in) :: n_sub
     type(state_iterator_t) :: it
-    type(quantum_numbers_t), dimension(:), allocatable :: qn
+    type(quantum_numbers_t), dimension(:), allocatable :: qn, qn_save
     integer :: i, s
-    integer :: n_me_orig
+    integer :: n_me_orig, n_sub_int
     complex(default), dimension(:), allocatable :: me_orig
-    call it%init (int%state_matrix)
+    type(state_matrix_t), target :: state_matrix_save
+    state_matrix_save = int%state_matrix
+    call it%init (state_matrix_save)
     i = 1; n_me_orig = int%state_matrix%get_n_matrix_elements ()
     allocate (me_orig (n_me_orig))
     allocate (qn (it%get_depth ()))
     do while (it%is_valid () .and. i <= n_me_orig)
        qn = it%get_quantum_numbers ()
+       qn_save = qn
        me_orig (i) = it%get_matrix_element ()
+       n_sub_int = 0
        do s = 1, n_sub
           call qn%set_subtraction_index (s)
-          call int%state_matrix%add_state (qn)
+          if (.not. all (qn == qn_save)) then
+             n_sub_int = n_sub_int + 1
+             call int%state_matrix%add_state (qn)
+          end if
        end do
        call it%advance ()
        i = i + 1
     end do
-    call int%state_matrix%freeze()
+    call int%state_matrix%freeze ()
+    call int%state_matrix%set_n_sub ()
     do i = 1, n_me_orig
        call int%state_matrix%set_matrix_element (i, me_orig(i))
-       do s = 1, n_sub
-          call int%state_matrix%set_matrix_element (i + s + n_me_orig - 1, me_orig(i))
+       do s = 1, n_sub_int
+          call int%state_matrix%set_matrix_element (s + n_me_orig + (i - 1) * n_sub_int, me_orig(i))
        end do
     end do
-    deallocate (me_orig, qn)
+    deallocate (me_orig, qn, qn_save)
+    call state_matrix_save%final ()
   end subroutine interaction_declare_subtraction
 
 @ %def interaction_declare_subtraction
+@
+<<Interactions: interaction: TBP>>=
+  procedure :: transfer_me_to_sub => interaction_transfer_me_to_sub
+<<Interactions: procedures>>=
+  subroutine interaction_transfer_me_to_sub (int, i_sub)
+    class(interaction_t), intent(inout) :: int
+    integer, intent(in) :: i_sub
+    call int%state_matrix%transfer_me_to_sub (i_sub)
+  end subroutine interaction_transfer_me_to_sub
+
+@ %def interaction_transfer_me_to_sub
 @
 \subsection{Recovering connections}
 When creating an evaluator for two interactions, we have to know by
@@ -11156,14 +11647,14 @@ may be out of order.)
     integer, dimension(:,:), allocatable :: conn_index_tmp
     integer, dimension(:), allocatable :: ordering
     integer :: i, j, k
-    type(external_link_t) :: link2, link1
-    type(interaction_t), pointer :: int_link, int_link1
+    type(external_link_t) :: link1, link2
+    type(interaction_t), pointer :: int_link1, int_link2
     n = 0
     do i = 1, size (int2%source)
        link2 = interaction_get_ultimate_source (int2, i)
        if (external_link_is_set (link2)) then
-          int_link => external_link_get_ptr (link2)
-          if (int_link%tag == int1%tag) then
+          int_link2 => external_link_get_ptr (link2)
+          if (int_link2%tag == int1%tag) then
              n = n + 1
           else
              k = external_link_get_index (link2)
@@ -11171,10 +11662,9 @@ may be out of order.)
                 link1 = interaction_get_ultimate_source (int1, j)
                 if (external_link_is_set (link1)) then
                    int_link1 => external_link_get_ptr (link1)
-                   if (int_link1%tag == int_link%tag) then
-                      if (external_link_get_index (link1) == k) then
-                         n = n + 1
-                      end if
+                   if (int_link1%tag == int_link2%tag) then
+                      if (external_link_get_index (link1) == k) &
+                           n = n + 1
                    end if
                 end if
              end do
@@ -11186,8 +11676,8 @@ may be out of order.)
     do i = 1, size (int2%source)
        link2 = interaction_get_ultimate_source (int2, i)
        if (external_link_is_set (link2)) then
-          int_link => external_link_get_ptr (link2)
-          if (int_link%tag == int1%tag) then
+          int_link2 => external_link_get_ptr (link2)
+          if (int_link2%tag == int1%tag) then
              n = n + 1
              conn_index_tmp(n,1) = external_link_get_index (int2%source(i))
              conn_index_tmp(n,2) = i
@@ -11197,7 +11687,7 @@ may be out of order.)
                 link1 = interaction_get_ultimate_source (int1, j)
                 if (external_link_is_set (link1)) then
                    int_link1 => external_link_get_ptr (link1)
-                   if (int_link1%tag == int_link%tag) then
+                   if (int_link1%tag == int_link2%tag) then
                       if (external_link_get_index (link1) == k) then
                          n = n + 1
                          conn_index_tmp(n,1) = j
@@ -11410,6 +11900,7 @@ module evaluators
 <<Use strings>>
   use io_units
   use format_defs, only: FMT_19
+  use physics_defs, only: n_beam_structure_int
   use diagnostics
   use lorentz
   use model_data
@@ -11466,6 +11957,36 @@ evaluator.
 
 @ %def pairing_array_init
 @
+<<Evaluators: public>>=
+  public :: pairing_array_write
+<<Evaluators: procedures>>=
+  subroutine pairing_array_write (pa, unit)
+    type(pairing_array_t), intent(in) :: pa
+    integer, intent(in), optional :: unit
+    integer :: i, u
+    u = given_output_unit (unit); if (u < 0) return
+    write (u, "(A)", advance = "no") "["
+    if (allocated (pa%i1)) then
+       write (u, "(I0,A)", advance = "no") pa%i1, ","
+    else
+       write (u, "(A)", advance = "no") "x,"
+    end if
+    if (allocated (pa%i2)) then
+       write (u, "(I0,A)", advance = "no") pa%i1, ","
+    else
+       write (u, "(A)", advance = "no") "x,"
+    end if
+    write (u, "(A)", advance = "no") "]"
+    if (allocated (pa%factor)) then
+       write (u, "(A,F5.4,A,F5.4,A)") ";(", &
+            real(pa%factor), ",", aimag(pa%factor), ")]"
+    else
+       write (u, "(A)") ""
+    end if
+  end subroutine pairing_array_write
+
+@ %def pairing_array_write
+@
 \subsection{The evaluator type}
 Possible variants of evaluators:
 <<Evaluators: parameters>>=
@@ -11508,7 +12029,7 @@ pairing lists, one for each matrix element in the result interaction.
     logical, intent(in), optional :: show_state, show_table, col_verbose
     logical, intent(in), optional :: testflag
     logical :: conjugate, square, show_tab
-    integer :: u, i, j
+    integer :: u
     u = given_output_unit (unit);  if (u < 0)  return
     show_tab = .true.;  if (present (show_table))  show_tab = .false.
     call eval%basic_write &
@@ -11532,52 +12053,65 @@ pairing lists, one for each matrix element in the result interaction.
        case (EVAL_SQUARED_FLOWS, EVAL_SQUARE_WITH_COLOR_FACTORS)
           conjugate = .true.
           square = .true.
+       case (EVAL_IDENTITY)
+          write (u, "(1X,A)") "Identity evaluator, pairing array unused"
+          return
        case default
           conjugate = .false.
           square = .false.
        end select
-       if (eval%type == EVAL_IDENTITY) then
-          write (u, "(1X,A)") "Identity evaluator, pairing array unused"
-          return
-       end if
-       if (allocated (eval%pairing_array)) then
-          do i = 1, size (eval%pairing_array)
-             write (u, "(2x,A,I0,A)")  "ME(", i, ") = "
-             do j = 1, size (eval%pairing_array(i)%i1)
-                write (u, "(4x,A)", advance="no")  "+"
-                if (allocated (eval%pairing_array(i)%i2)) then
-                   write (u, "(1x,A,I0,A)", advance="no")  &
-                        "ME1(", eval%pairing_array(i)%i1(j), ")"
-                   if (conjugate) then
-                      write (u, "(A)", advance="no")  "* x"
-                   else
-                      write (u, "(A)", advance="no")  " x"
-                   end if
-                   write (u, "(1x,A,I0,A)", advance="no")  &
-                        "ME2(", eval%pairing_array(i)%i2(j), ")"
-                else if (square) then
-                   write (u, "(1x,A)", advance="no")  "|"
-                   write (u, "(A,I0,A)", advance="no")  &
-                        "ME1(", eval%pairing_array(i)%i1(j), ")"
-                   write (u, "(A)", advance="no")  "|^2"
-                else
-                   write (u, "(1x,A,I0,A)", advance="no")  &
-                        "ME1(", eval%pairing_array(i)%i1(j), ")"
-                end if
-                if (allocated (eval%pairing_array(i)%factor)) then
-                   write (u, "(1x,A)", advance="no")  "x"
-                   write (u, "(1x,'('," // FMT_19 // ",','," // FMT_19 // &
-                        ",')')") eval%pairing_array(i)%factor(j)
-                else
-                   write (u, *)
-                end if
-             end do
-          end do
-       end if
+       call eval%write_pairing_array (conjugate, square, u)
     end if
   end subroutine evaluator_write
 
 @ %def evaluator_write
+@
+<<Evaluators: evaluator: TBP>>=
+  procedure :: write_pairing_array => evaluator_write_pairing_array
+<<Evaluators: procedures>>=
+  subroutine evaluator_write_pairing_array (eval, conjugate, square, unit)
+    class(evaluator_t), intent(in) :: eval
+    logical, intent(in) :: conjugate, square
+    integer, intent(in), optional :: unit
+    integer :: u, i, j
+    u = given_output_unit (unit);  if (u < 0)  return
+    if (allocated (eval%pairing_array)) then
+       do i = 1, size (eval%pairing_array)
+          write (u, "(2x,A,I0,A)")  "ME(", i, ") = "
+          do j = 1, size (eval%pairing_array(i)%i1)
+             write (u, "(4x,A)", advance="no")  "+"
+             if (allocated (eval%pairing_array(i)%i2)) then
+                write (u, "(1x,A,I0,A)", advance="no")  &
+                     "ME1(", eval%pairing_array(i)%i1(j), ")"
+                if (conjugate) then
+                   write (u, "(A)", advance="no")  "* x"
+                else
+                   write (u, "(A)", advance="no")  " x"
+                end if
+                write (u, "(1x,A,I0,A)", advance="no")  &
+                     "ME2(", eval%pairing_array(i)%i2(j), ")"
+             else if (square) then
+                write (u, "(1x,A)", advance="no")  "|"
+                write (u, "(A,I0,A)", advance="no")  &
+                     "ME1(", eval%pairing_array(i)%i1(j), ")"
+                write (u, "(A)", advance="no")  "|^2"
+             else
+                write (u, "(1x,A,I0,A)", advance="no")  &
+                     "ME1(", eval%pairing_array(i)%i1(j), ")"
+             end if
+             if (allocated (eval%pairing_array(i)%factor)) then
+                write (u, "(1x,A)", advance="no")  "x"
+                write (u, "(1x,'('," // FMT_19 // ",','," // FMT_19 // &
+                     ",')')") eval%pairing_array(i)%factor(j)
+             else
+                write (u, *)
+             end if
+          end do
+       end do
+    end if
+  end subroutine evaluator_write_pairing_array
+
+@ %def evaluator_write_pairing_array
 @ Assignment: Deep copy of the interaction component.
 <<Evaluators: public>>=
   public :: assignment(=)
@@ -12153,7 +12687,7 @@ assignments remain fixed from now on.
 <<Evaluators: procedures>>=
   subroutine evaluator_init_product &
        (eval, int_in1, int_in2, qn_mask_conn, qn_filter_conn, qn_mask_rest, &
-        connections_are_resonant)
+        connections_are_resonant, ignore_sub)
 
     class(evaluator_t), intent(out), target :: eval
     class(interaction_t), intent(in), target :: int_in1, int_in2
@@ -12161,6 +12695,7 @@ assignments remain fixed from now on.
     type(quantum_numbers_t), intent(in), optional :: qn_filter_conn
     type(quantum_numbers_mask_t), intent(in), optional :: qn_mask_rest
     logical, intent(in), optional :: connections_are_resonant
+    logical, intent(in), optional :: ignore_sub
 
     type(qn_mask_array_t), dimension(2) :: qn_mask_in
     type(state_matrix_t), pointer :: state_in1, state_in2
@@ -12185,7 +12720,6 @@ assignments remain fixed from now on.
     type(index_map_t), dimension(2) :: prt_map_in
     type(index_map_t) :: prt_map_conn
     type(prt_mask_t), dimension(2) :: prt_is_connected
-    !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
     type(quantum_numbers_mask_t), dimension(:), allocatable :: &
          qn_mask_conn_initial, int_in1_mask, int_in2_mask
 
@@ -12217,7 +12751,6 @@ assignments remain fixed from now on.
        prt_is_connected(i)%entry = .true.
        prt_is_connected(i)%entry(connection_index(:,i)) = .false.
     end do
-    !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
     allocate (qn_mask_conn_initial (n_conn), &
          int_in1_mask (n_conn), int_in2_mask (n_conn))
     int_in1_mask = int_in1%get_mask (connection_index(:,1))
@@ -12234,7 +12767,7 @@ assignments remain fixed from now on.
          state_in1, state_in2, &
          qn_mask_conn_initial,  &
          n_conn, connection_index, n_rest, &
-         qn_filter_conn)
+         qn_filter_conn, ignore_sub)
     call connection_table_fill (connection_table, &
          state_in1, state_in2, &
          connection_index, prt_is_connected)
@@ -12320,7 +12853,7 @@ assignments remain fixed from now on.
     subroutine connection_table_init &
         (connection_table, state_in1, state_in2, qn_mask_conn, &
          n_conn, connection_index, n_rest, &
-         qn_filter_conn)
+         qn_filter_conn, is_real_sub)
       type(connection_table_t), intent(out) :: connection_table
       type(state_matrix_t), intent(in), target :: state_in1, state_in2
       type(quantum_numbers_mask_t), dimension(:), intent(in) :: qn_mask_conn
@@ -12328,11 +12861,14 @@ assignments remain fixed from now on.
       integer, dimension(:,:), intent(in) :: connection_index
       integer, dimension(2), intent(in) :: n_rest
       type(quantum_numbers_t), intent(in), optional :: qn_filter_conn
+      logical, intent(in), optional :: is_real_sub
       integer, dimension(2) :: n_me_in
       type(state_iterator_t) :: it
       type(quantum_numbers_t), dimension(n_conn) :: qn
       integer :: i, me_index_in, me_index_conn, n_me_conn
       integer, dimension(2) :: me_count
+      logical :: is_sub, has_sub_qn
+      integer :: i_beam_sub
       connection_table%n_conn = n_conn
       connection_table%n_rest = n_rest
       n_me_in(1) = state_in1%get_n_matrix_elements ()
@@ -12356,8 +12892,15 @@ assignments remain fixed from now on.
             end if
             call quantum_numbers_canonicalize_color (qn)
             me_index_in = it%get_me_index ()
+            is_sub = .false.; if (present (is_real_sub)) is_sub = is_real_sub
+            has_sub_qn = .false.
+            do i_beam_sub = 1, n_beam_structure_int
+               has_sub_qn = has_sub_qn .or. any (qn%get_sub () == i_beam_sub)
+            end do
             call connection_table%state%add_state (qn, &
-                counter_index = i, me_index = me_index_conn)
+                 counter_index = i, &
+                 ignore_sub = .not. (is_sub .and. has_sub_qn), &
+                 me_index = me_index_conn)
             call index_map_set_entry (connection_table%index_conn(i), &
                  me_index_in, me_index_conn)
             call it%advance ()
@@ -12439,9 +12982,9 @@ assignments remain fixed from now on.
             if (index_conn /= 0) then
                call connection_entry_add_state &
                     (connection_table%entry(index_conn), i, &
-                     index_in, it%get_quantum_numbers (), &
-                     connection_index(:,i), prt_is_connected(i), &
-                     color_offset)
+                    index_in, it%get_quantum_numbers (), &
+                    connection_index(:,i), prt_is_connected(i), &
+                    color_offset)
             end if
             call it%advance ()
          end do
@@ -12879,7 +13422,7 @@ differences:
          if (index_conn /= 0) then
             call connection_entry_add_state &
                  (connection_table%entry(index_conn), &
-                  index_in, it%get_quantum_numbers ())
+                 index_in, it%get_quantum_numbers ())
          end if
          call it%advance ()
       end do
@@ -13458,14 +14001,12 @@ a cooler implementation anyway.
     type(evaluator_t), intent(in) :: eval_src
     type(evaluator_t), intent(in), target :: eval_target
     if (associated (eval%int_in1)) then
-       if (eval%int_in1%get_tag () &
-            == eval_src%get_tag ()) then
+       if (eval%int_in1%get_tag () == eval_src%get_tag ()) then
           eval%int_in1 => eval_target%interaction_t
        end if
     end if
     if (associated (eval%int_in2)) then
-       if (eval%int_in2%get_tag () &
-            == eval_src%get_tag ()) then
+       if (eval%int_in2%get_tag () == eval_src%get_tag ()) then
           eval%int_in2 => eval_target%interaction_t
        end if
     end if
@@ -13479,14 +14020,12 @@ a cooler implementation anyway.
     type(interaction_t), intent(in) :: int_src
     type(interaction_t), intent(in), target :: int_target
     if (associated (eval%int_in1)) then
-       if (eval%int_in1%get_tag () &
-            == int_src%get_tag ()) then
+       if (eval%int_in1%get_tag () == int_src%get_tag ()) then
           eval%int_in1 => int_target
        end if
     end if
     if (associated (eval%int_in2)) then
-       if (eval%int_in2%get_tag () &
-            == int_src%get_tag ()) then
+       if (eval%int_in2%get_tag () == int_src%get_tag ()) then
           eval%int_in2 => int_target
        end if
     end if
@@ -13508,6 +14047,24 @@ present in the interaction.
   end subroutine evaluator_get_unstable_particle
 
 @ %def evaluator_get_unstable_particle
+@
+<<Evaluators: public>>=
+  public :: evaluator_get_int_in_ptr
+<<Evaluators: procedures>>=
+  function evaluator_get_int_in_ptr (eval, i) result (int_in)
+    class(interaction_t), pointer :: int_in
+    type(evaluator_t), intent(in), target :: eval
+    integer, intent(in) :: i
+    if (i == 1) then
+       int_in => eval%int_in1
+    else if (i == 2) then
+       int_in => eval%int_in2
+    else
+       int_in => null ()
+    end if
+  end function evaluator_get_int_in_ptr
+
+@ %def evaluator_get_int_in_ptr
 @
 \subsection{Creating an evaluator: identity}
 The identity evaluator creates a copy of the first input evaluator; the second
@@ -13616,8 +14173,8 @@ entries and normalization (in the corresponding evaluation routine below).
     allocate (resonant(n_tot + ndropped))
     resonant = int%get_resonance_flags ()
     call eval%interaction_t%basic_init (n_in, n_vir, n_out, &
-       mask = mask(inotdropped) .or. qn_mask(inotdropped), &
-       resonant = resonant(inotdropped))
+         mask = mask(inotdropped) .or. qn_mask(inotdropped), &
+         resonant = resonant(inotdropped))
     i = 1
     do j = 1, n_tot + ndropped
        if (dropped(j)) cycle
@@ -13716,6 +14273,13 @@ marked as [[pure]].
           call eval%evaluate_product (i, &
                eval%int_in1, eval%int_in2, &
                eval%pairing_array(i)%i1, eval%pairing_array(i)%i2)
+          if (debug2_active (D_QFT)) then
+             print *, 'eval%pairing_array(i)%i1, eval%pairing_array(i)%i2 =    ', &
+                  eval%pairing_array(i)%i1, eval%pairing_array(i)%i2
+             print *, 'MEs =    ', &
+                  eval%int_in1%get_matrix_element (eval%pairing_array(i)%i1), &
+                  eval%int_in2%get_matrix_element (eval%pairing_array(i)%i2)
+          end if
        end do
     case (EVAL_SQUARE_WITH_COLOR_FACTORS)
        do i = 1, size(eval%pairing_array)

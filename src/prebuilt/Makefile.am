@@ -27,6 +27,11 @@ if FC_USE_OPENMP
 AM_FCFLAGS += $(FCFLAGS_OPENMP)
 endif
 
+# MPI
+if FC_USE_MPI
+AM_FCFLAGS += $(FCFLAGS_MPI)
+endif
+
 ########################################################################
 ## Cleanup
 

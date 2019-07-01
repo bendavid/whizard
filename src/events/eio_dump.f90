@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -79,7 +72,7 @@ module eio_dump
 contains
 
   subroutine eio_dump_set_parameters (eio, extension, &
-       pacify, weights, compressed, summary, screen)
+       pacify, weights, compressed, summary, screen, unit)
     class(eio_dump_t), intent(inout) :: eio
     type(string_t), intent(in), optional :: extension
     logical, intent(in), optional :: pacify
@@ -87,11 +80,13 @@ contains
     logical, intent(in), optional :: compressed
     logical, intent(in), optional :: summary
     logical, intent(in), optional :: screen
+    integer, intent(in), optional :: unit
     if (present (pacify))  eio%pacify = pacify
     if (present (weights))  eio%weights = weights
     if (present (compressed))  eio%compressed = compressed
     if (present (summary))  eio%summary = summary
     if (present (screen))  eio%screen = screen
+    if (present (unit))  eio%unit = unit
     eio%extension = "pset.dat"
     if (present (extension))  eio%extension = extension
   end subroutine eio_dump_set_parameters
@@ -122,10 +117,12 @@ contains
        object%screen = .false.
     end if
     if (object%writing) then
-       write (msg_buffer, "(A,A,A)")  "Events: closing event dump file '", &
-            char (object%filename), "'"
-       call msg_message ()
-       close (object%unit)
+       if (object%filename /= "") then
+          write (msg_buffer, "(A,A,A)")  "Events: closing event dump file '", &
+               char (object%filename), "'"
+          call msg_message ()
+          close (object%unit)
+       end if
        object%writing = .false.
     end if
   end subroutine eio_dump_final
@@ -141,7 +138,10 @@ contains
     else
        eio%extension = "pset.dat"
     end if
-    if (sample /= "") then
+    if (sample == "" .and. eio%unit /= 0) then
+       eio%filename = ""
+       eio%writing = .true.
+    else if (sample /= "") then
        eio%filename = sample // "." // eio%extension
        eio%unit = free_unit ()
        write (msg_buffer, "(A,A,A)")  "Events: writing to event dump file '", &
@@ -203,7 +203,7 @@ contains
          else
             write (u, "(1x,A)")  "sqme (ref)    = [undefined]"
          end if
-         if (event%sqme_ref_known) then
+         if (event%sqme_prc_known) then
             write (u, "(1x,A," // fmt // ")")  "sqme (prc)   = ", &
                  event%sqme_prc
          else

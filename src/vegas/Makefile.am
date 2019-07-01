@@ -7,7 +7,7 @@
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
 #     with contributions from
-#     Christian Speckner <cnspeckn@googlemail.com>
+#     cf. main AUTHORS file
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by
@@ -127,12 +127,21 @@ if FC_USE_OPENMP
 AM_FCFLAGS += $(FCFLAGS_OPENMP)
 endif
 
+# MPI
+if FC_USE_MPI
+AM_FCFLAGS += $(FCFLAGS_MPI)
+endif
 
 ########################################################################
 ## Non-standard targets and dependencies
 
 ## (Re)create F90 sources from NOWEB source.
 if NOWEB_AVAILABLE
+
+FILTER =
+if FC_USE_MPI
+FILTER += -filter "sed 's/defn MPI:/defn/'"
+endif
 
 PRELUDE = $(top_srcdir)/src/noweb-frame/whizard-prelude.nw
 POSTLUDE = $(top_srcdir)/src/noweb-frame/whizard-postlude.nw
@@ -141,7 +150,7 @@ vegas.stamp: $(PRELUDE) $(srcdir)/vegas.nw $(POSTLUDE)
 	@rm -f vegas.tmp
 	@touch vegas.tmp
 	for src in $(libvegas_la_SOURCES) $(libvegas_ut_la_SOURCES); do \
-		$(NOTANGLE) -R[[$$src]] $^ | $(CPIF) $$src; \
+		$(NOTANGLE) -R[[$$src]] $(FILTER) $^ | $(CPIF) $$src; \
 		done
 	@mv -f vegas.tmp vegas.stamp
 

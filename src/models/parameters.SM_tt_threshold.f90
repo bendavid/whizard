@@ -1,11 +1,11 @@
-! $Id: parameters.SM_tt_threshold.f90,v 1.4 2006/06/16 13:31:48 kilian Exp $
+! parameters.SM_tt_threshold.f90
 !
 ! Copyright (C) 1999-2012 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
-!     Fabian Bach <fabian.bach@desy.de> (only this file)
+!     with contributions from
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -336,11 +336,10 @@ contains
     end if
   end function ttv_wtpole
 
- ! TODO: (bcn 2015-11-11) Vtb is not considered in NLO width
   pure function top_width_nlo (mpole, sqrts) result (w)
     real(default) :: w
     real(default), intent(in) :: mpole, sqrts
-    w = top_width_sm_qcd_nlo_jk (one / alphaemi, sinthw, mpole, &
+    w = top_width_sm_qcd_nlo_jk (one / alphaemi, sinthw, vtb, mpole, &
          mass(24), mass(5), AS_HARD) + wt_inv
   end function top_width_nlo
 

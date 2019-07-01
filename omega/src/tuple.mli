@@ -35,7 +35,7 @@ module type Mono =
     type 'a t
 
     val arity : 'a t -> int
-    val max_arity : int
+    val max_arity : unit -> int
 
     val compare : ('a -> 'a -> int) -> 'a t -> 'a t -> int
 
@@ -166,7 +166,7 @@ module type Nary =
     end
 module Unbounded_Nary : Nary
 
-module type Bound = sig val max_arity : int end
+module type Bound = sig val max_arity : unit -> int end
 module Nary (B: Bound) : Nary
 
 (* \begin{dubious}

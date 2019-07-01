@@ -1,5 +1,5 @@
 # SINDARIN file for WHIZARD self test
-# Input file for testing user defined amplitudes
+# Testing factorized NLO calculation at top threshold
 
 ?logging = true
 ?openmp_logging = false
@@ -11,69 +11,50 @@
 openmp_num_threads = 1
 
 model = SM_tt_threshold
-sqrts = 360 GeV
-sqrtsstepsize = 0.1 GeV
-sqrtsmin = sqrts - sqrtsstepsize
-sqrtsmax = sqrts + sqrtsstepsize
+sqrtsmin = 350 GeV
+sqrtsmax = 350 GeV
+sqrtsstepsize = 0.0 GeV
 
+me = 0
 mZ = 91.188
 mW = 80.419
 mb = 4.2
 alphas = 0.118 ! (Z pole, NLL running to mu_h)
 alpha_em_i = 125.924 ! (not running)
 m1S = 172.0
-# TODO: (bcn 2016-03-22) remove these
 scale = m1S
 mpole_fixed = 1
 
-nrqcd_order  = 0
+
+nrqcd_order  = 1 # NLL
 sh     = 1.
 sf     = 1.
 Vtb    = 1.
+FF     = 9
 
 $method = "threshold"
 $born_me_method = "threshold"
 $loop_me_method = "threshold"
 $correlation_me_method = "threshold"
 $real_tree_me_method = "threshold"
-real num_diff = 0.001
-iterations = 3:1000:"gw"
+alpha_power = 4
+alphas_power = 0
 
-FF = 10        !!! tree
-! bits for offshell strategy :
-! NLO|factorization|interference|onshellprojection|LOwidthinsignal
+alphas = 0.118
+?alphas_is_fixed = false
+?alphas_from_mz = true
+?alphas_from_lambda_qcd = false
 
-!!! signal diagram from Omega
+process user_prc_threshold_2_p1 = E1, e1 => Wp, Wm, b, B { nlo_calculation = real }
+
+top_helicity_selection = 3
 seed = 0
-process user_prc_threshold_2_sig = E1, e1 => Wp, Wm, b, B {$restrictions = "3+5~t && 4+6~tbar"}
-offshell_strategy = 0+0+4+0+0 ! activate interference
-integrate (user_prc_threshold_2_sig)
-
-!!! We can also compute the signal diagram in the signal component (in threshold.f90)
-seed = 0
-process user_prc_threshold_2_sig_thr = E1, e1 => Wp, Wm, b, B
-offshell_strategy = 0+0+0+0+0
-integrate (user_prc_threshold_2_sig_thr)
-expect (integral (user_prc_threshold_2_sig_thr) ==
-  integral (user_prc_threshold_2_sig)) {tolerance = num_diff}
-
-!!! Make sure that we get exactely the same when we use OMega natively
-seed = 0
-$method = "omega"
-process user_prc_threshold_2_native = E1, e1 => Wp, Wm, b, B {$restrictions = "3+5~t && 4+6~tbar"}
-offshell_strategy = 0+0+0+0+0
-integrate (user_prc_threshold_2_native)
-expect (integral (user_prc_threshold_2_native) ==
-  integral (user_prc_threshold_2_sig)) {tolerance = num_diff}
-$method = "threshold"
-
-!!! tree level result from amp_blob, i.e. with factorized onshell LO decays
-seed = 0
-process user_prc_threshold_2_factorized = E1, e1 => Wp, Wm, b, B
-offshell_strategy = 0+2+0+0+0 ! activate factorization
-integrate (user_prc_threshold_2_factorized)
-
-!!! Differences of O(Gamma/M) are ok
-expect (integral (user_prc_threshold_2_sig) ==
-  integral (user_prc_threshold_2_factorized)) {tolerance =
-  4 * wtop / mtpole * integral (user_prc_threshold_2_sig)}
+!!! offshell_strategy: Factorized, NLO, on-shell proj., helicity approx., Boosted Decay
+offshell_strategy = 1 + 2 + 8 + 32 + 512
+!!! Below threshold
+sqrts = 343 GeV
+iterations = 1:700
+integrate (user_prc_threshold_2_p1)
+!!! Above threshold
+sqrts = 345 GeV
+integrate (user_prc_threshold_2_p1)

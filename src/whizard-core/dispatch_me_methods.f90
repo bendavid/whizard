@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -66,7 +59,7 @@ module dispatch_me_methods
 contains
 
   subroutine dispatch_core_def (core_def, prt_in, prt_out, &
-       model, var_list, id, nlo_type)
+       model, var_list, id, nlo_type, method)
     class(prc_core_def_t), allocatable, intent(inout) :: core_def
     type(string_t), dimension(:), intent(in) :: prt_in
     type(string_t), dimension(:), intent(in) :: prt_out
@@ -74,8 +67,8 @@ contains
     type(var_list_t), intent(in) :: var_list
     type(string_t), intent(in), optional :: id
     integer, intent(in), optional :: nlo_type
-    type(string_t) :: method
-    type(string_t) :: model_name
+    type(string_t), intent(in), optional :: method
+    type(string_t) :: model_name, meth
     type(string_t) :: ufo_path
     type(string_t) :: restrictions
     logical :: ufo
@@ -86,7 +79,12 @@ contains
     type(string_t) :: extra_options
     integer :: nlo
     nlo = BORN;  if (present (nlo_type))  nlo = nlo_type
-    method = var_list%get_sval (var_str ("$method"))
+    if (present (method)) then
+       meth = method
+    else
+       meth = var_list%get_sval (var_str ("$method"))
+    end if
+    call msg_debug2 (D_CORE, "dispatch_core_def")
     if (associated (model)) then
        model_name = model%get_name ()
        cms_scheme = model%get_scheme () == "Complex_Mass_Scheme"
@@ -109,7 +107,8 @@ contains
          var_str ("?report_progress"))
     extra_options = var_list%get_sval (&
          var_str ("$omega_flags"))
-    select case (char (method))
+    call msg_debug2 (D_CORE, "dispatching core method: ", meth)
+    select case (char (meth))
     case ("unit_test")
        allocate (prc_test_def_t :: core_def)
        select type (core_def)
@@ -152,7 +151,7 @@ contains
       type is (gosam_def_t)
         if (present (id)) then
            call core_def%init (id, model_name, prt_in, &
-              prt_out, nlo, var_list)
+                prt_out, nlo, var_list)
         else
            call msg_fatal ("Dispatch GoSam def: No id!")
         end if
@@ -163,7 +162,7 @@ contains
        type is (openloops_def_t)
           if (present (id)) then
              call core_def%init (id, model_name, prt_in, &
-                prt_out, nlo, var_list)
+                  prt_out, nlo, var_list)
           else
              call msg_fatal ("Dispatch OpenLoops def: No id!")
           end if
@@ -203,7 +202,7 @@ contains
        end select
     case default
        call msg_fatal ("Process configuration: method '" &
-            // char (method) // "' not implemented")
+            // char (meth) // "' not implemented")
     end select
   end subroutine dispatch_core_def
 

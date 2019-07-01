@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -77,19 +70,22 @@ contains
     end if
   end subroutine write_indent
 
-  subroutine write_integer_array (array, unit, n_max)
+  subroutine write_integer_array (array, unit, n_max, no_skip)
     integer, intent(in), dimension(:) :: array
     integer, intent(in), optional :: unit
     integer, intent(in), optional :: n_max
+    logical, intent(in), optional :: no_skip
     integer :: u, i, n
+    logical :: yorn
     u = given_output_unit (unit)
+    yorn = .false.; if (present (no_skip)) yorn = no_skip
     if (present (n_max)) then
        n = n_max
     else
        n = size (array)
     end if
     do i = 1, n
-       if (i < n) then
+       if (i < n .or. yorn) then
           write (u, "(I0, A)", advance = "no") array(i), ", "
        else
           write (u, "(I0)") array(i)

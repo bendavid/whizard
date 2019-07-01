@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -40,6 +33,7 @@ module prc_openloops
   use kinds
   use io_units
   use iso_varying_string, string_t => varying_string
+  use string_utils, only: str
   use constants
   use numeric_utils
   use diagnostics
@@ -59,6 +53,7 @@ module prc_openloops
 
   use blha_config
   use blha_olp_interfaces
+
 
   implicit none
   private
@@ -118,7 +113,8 @@ module prc_openloops
     real(default) :: m_b, m_W
     real(default) :: vtb
   contains
-    procedure :: compute_top_width => openloops_threshold_data_compute_top_width
+    procedure :: compute_top_width => &
+         openloops_threshold_data_compute_top_width
   end type openloops_threshold_data_t
 
   type, extends (blha_state_t) :: openloops_state_t
@@ -142,7 +138,7 @@ module prc_openloops
     procedure :: set_verbosity => prc_openloops_set_verbosity
     procedure :: create_and_load_extra_libraries => &
          prc_openloops_create_and_load_extra_libraries
-    procedure :: compute_sqme_sc => prc_openloops_compute_sqme_sc
+    procedure :: compute_sqme_spin_c => prc_openloops_compute_sqme_spin_c
   end type prc_openloops_t
 
 
@@ -158,13 +154,14 @@ module prc_openloops
 
 contains
 
-  function openloops_threshold_data_compute_top_width (data, mtop, alpha_s) result (wtop)
+  function openloops_threshold_data_compute_top_width &
+       (data, mtop, alpha_s) result (wtop)
     real(default) :: wtop
     class(openloops_threshold_data_t), intent(in) :: data
     real(default), intent(in) :: mtop, alpha_s
     if (data%nlo) then
-       wtop = top_width_sm_qcd_nlo_jk (data%alpha_ew, data%sinthw, mtop, &
-              data%m_W, data%m_b, alpha_s)
+       wtop = top_width_sm_qcd_nlo_jk (data%alpha_ew, data%sinthw, &
+              data%vtb, mtop, data%m_W, data%m_b, alpha_s)
     else
        wtop = top_width_sm_lo (data%alpha_ew, data%sinthw, data%vtb, &
               mtop, data%m_W, data%m_b)
@@ -199,6 +196,7 @@ contains
     type(string_t), dimension(:), intent(in) :: prt_in, prt_out
     integer, intent(in) :: nlo_type
     type(var_list_t), intent(in) :: var_list
+  
     object%basename = basename
     allocate (openloops_writer_t :: object%writer)
     select case (nlo_type)
@@ -208,13 +206,12 @@ contains
        object%suffix = '_REAL'
     case (NLO_VIRTUAL)
        object%suffix = '_LOOP'
-    case (NLO_SUBTRACTION)
+    case (NLO_SUBTRACTION, NLO_MISMATCH)
        object%suffix = '_SUB'
-    case (NLO_MISMATCH)
-       object%suffix = '_MISMATCH'
     case (NLO_DGLAP)
        object%suffix = '_DGLAP'
     end select
+  
     select type (writer => object%writer)
     class is (prc_blha_writer_t)
        call writer%init (model_name, prt_in, prt_out)
@@ -437,23 +434,23 @@ contains
     select type (driver => object%driver)
     type is (openloops_driver_t)
        call driver%blha_olp_set_parameter ('mass(5)'//c_null_char, &
-          dble(openloops_default_bmass), 0._double, ierr)
+            dble(openloops_default_bmass), 0._double, ierr)
        call driver%blha_olp_set_parameter ('mass(6)'//c_null_char, &
-          dble(openloops_default_topmass), 0._double, ierr)
+            dble(openloops_default_topmass), 0._double, ierr)
        call driver%blha_olp_set_parameter ('width(6)'//c_null_char, &
-          dble(openloops_default_topwidth), 0._double, ierr)
+            dble(openloops_default_topwidth), 0._double, ierr)
        call driver%blha_olp_set_parameter ('mass(23)'//c_null_char, &
-          dble(openloops_default_zmass), 0._double, ierr)
+            dble(openloops_default_zmass), 0._double, ierr)
        call driver%blha_olp_set_parameter ('width(23)'//c_null_char, &
-          dble(openloops_default_zwidth), 0._double, ierr)
+            dble(openloops_default_zwidth), 0._double, ierr)
        call driver%blha_olp_set_parameter ('mass(24)'//c_null_char, &
-          dble(openloops_default_wmass), 0._double, ierr)
+            dble(openloops_default_wmass), 0._double, ierr)
        call driver%blha_olp_set_parameter ('width(24)'//c_null_char, &
-          dble(openloops_default_wwidth), 0._double, ierr)
+            dble(openloops_default_wwidth), 0._double, ierr)
        call driver%blha_olp_set_parameter ('mass(25)'//c_null_char, &
-          dble(openloops_default_higgsmass), 0._double, ierr)
+            dble(openloops_default_higgsmass), 0._double, ierr)
        call driver%blha_olp_set_parameter ('width(25)'//c_null_char, &
-          dble(openloops_default_higgswidth), 0._double, ierr)
+            dble(openloops_default_higgswidth), 0._double, ierr)
     end select
   end subroutine prc_openloops_reset_parameters
 
@@ -464,12 +461,12 @@ contains
     select type (driver => object%driver)
     type is (openloops_driver_t)
        call driver%blha_olp_set_parameter ('verbose'//c_null_char, &
-          dble(verbose), 0._double, ierr)
+            dble(verbose), 0._double, ierr)
     end select
   end subroutine prc_openloops_set_verbosity
 
-  subroutine prc_openloops_create_and_load_extra_libraries ( &
-         core, flv_states, var_list, os_data, libname, model, i_core)
+  subroutine prc_openloops_create_and_load_extra_libraries &
+       (core, flv_states, var_list, os_data, libname, model, i_core, is_nlo)
     class(prc_openloops_t), intent(inout) :: core
     integer, intent(in), dimension(:,:), allocatable :: flv_states
     type(var_list_t), intent(in) :: var_list
@@ -477,48 +474,50 @@ contains
     type(string_t), intent(in) :: libname
     type(model_data_t), intent(in), target :: model
     integer, intent(in) :: i_core
+    logical, intent(in) :: is_nlo
     core%sqme_tree_pos = 1
     call core%set_n_external (core%data%get_n_tot ())
     call core%prepare_library (os_data, model)
     call core%start ()
     call core%read_contract_file (flv_states)
     call core%print_parameter_file (i_core)
-    call core%reset_helicity_list ()
+    call core%reset_i_whizard_to_i_olc ()
   end subroutine prc_openloops_create_and_load_extra_libraries
 
-  subroutine prc_openloops_compute_sqme_sc (object, &
-       i_flv, em, p, ren_scale, sqme_sc, bad_point)
+  subroutine prc_openloops_compute_sqme_spin_c (object, &
+       i_flv, em, p, ren_scale, sqme_spin_c, bad_point)
     class(prc_openloops_t), intent(inout) :: object
     integer, intent(in) :: i_flv
     integer, intent(in) :: em
     type(vector4_t), intent(in), dimension(:) :: p
     real(default), intent(in) :: ren_scale
-    real(default), intent(out), dimension(0:3, 0:3) :: sqme_sc
+    real(default), intent(out), dimension(0:3, 0:3) :: sqme_spin_c
     logical, intent(out) :: bad_point
     real(double), dimension(5*N_EXTERNAL) :: mom
     real(double), dimension(N_EXTERNAL) :: res
     real(double), dimension(16) :: res_munu
     real(default) :: alpha_s
-    if (object%i_sc(i_flv) > 0) then
+    if (object%i_spin_c(i_flv) > 0) then
        mom = object%create_momentum_array (p)
-       sqme_sc = zero
-       if (vanishes (ren_scale)) &
-            call msg_fatal ("prc_openloops_compute_sqme_sc: ren_scale vanishes")
+       sqme_spin_c = zero
+       if (vanishes (ren_scale)) call msg_fatal &
+            ("prc_openloops_compute_sqme_spin_c: ren_scale vanishes")
        alpha_s = object%qcd%alpha%get (ren_scale)
 
        select type (driver => object%driver)
        type is (openloops_driver_t)
           call driver%set_alpha_s (alpha_s)
           call driver%evaluate_spin_correlations_powheg &
-               (object%i_sc(i_flv), mom, em, res, res_munu)
+               (object%i_spin_c(i_flv), mom, em, res, res_munu)
        end select
-       sqme_sc = reshape (res_munu, (/4,4/))
+       sqme_spin_c = reshape (res_munu, (/4,4/))
        bad_point = .false.
-       if (object%includes_polarization ()) sqme_sc = object%n_hel * sqme_sc
+       if (object%includes_polarization ()) &
+            sqme_spin_c = object%n_hel * sqme_spin_c
     else
-       sqme_sc = zero
+       sqme_spin_c = zero
     end if
-  end subroutine prc_openloops_compute_sqme_sc
+  end subroutine prc_openloops_compute_sqme_spin_c
 
 
 end module prc_openloops

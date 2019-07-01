@@ -25,17 +25,17 @@
      # part. (total) = 5
    MD5 sum (def)       = '                                '
 
-* Initialize a process object
-
-* Configure phase space
+* Initialize a process object with phase space
 
 * Extract resonance history set
 
-Resonance history with 1 resonances:
-Resonance contributors: 1 2 f(-24)
-
-Resonance history with 1 resonances:
-Resonance contributors: 1 2 3 f(23)
+Resonance history set:
+ 1 Resonance history with 1 resonances:
+   1 2 f(-24)
+   contained in ()
+ 2 Resonance history with 1 resonances:
+   1 2 3 f(23)
+   contained in ()
 
 * Cleanup
 

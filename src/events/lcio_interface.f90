@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -512,7 +505,7 @@ contains
     rid = 0; if (present (run_id))  rid = run_id
     runhdr%obj = new_lcio_run_header (rid)
     call run_header_set_simstring (runhdr%obj, &
-         "WHIZARD version:" // "2.5.0")
+         "WHIZARD version:" // "2.6.0")
   end subroutine lcio_run_header_init
 
   subroutine lcio_run_header_write (wrt, hdr)
@@ -731,17 +724,8 @@ contains
   subroutine lcio_polarization_init_int (prt, hel)
     type(lcio_particle_t), intent(inout) :: prt
     integer, intent(in) :: hel
-    select case (hel)
-    case (1:)
-       call lcio_particle_set_spin (prt%obj, 1._c_double, &
-            0._c_double, 0._c_double)
-    case (:-1)
-       call lcio_particle_set_spin (prt%obj, 1._c_double, &
-            real (pi, c_double), 0._c_double)
-    case (0)
-       call lcio_particle_set_spin (prt%obj, 1._c_double, &
-            real (pi/2, c_double), 0._c_double)
-    end select
+    call lcio_particle_set_spin (prt%obj, 0._c_double, &
+         0._c_double, real (hel, c_double))
   end subroutine lcio_polarization_init_int
 
   subroutine lcio_particle_to_pol (prt, flv, pol)

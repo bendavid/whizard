@@ -19,18 +19,18 @@ mb = 4.2 GeV
 mmu = 5 GeV
 
 ?use_vamp_equivalences = false
-?alpha_s_is_fixed = false
-?alpha_s_from_mz = true
+?alphas_is_fixed = false
+?alphas_from_mz = true
 
 $fks_mapping_type = "resonances"
 
-process fks_res_2_p1 = E1, e1 => b, B, e2, E2 { nlo_calculation = "Mismatch" }
+process fks_res_2_p1 = E1, e1 => b, B, e2, E2 { nlo_calculation = mismatch }
 
 seed = 2222
 
 sqrts = 500 GeV
 
-integrate (fks_res_2_p1) { iterations = 2:10000:"gw" }
+integrate (fks_res_2_p1) { iterations = 1:600 }
 
 n_events = 1
 sample_format = debug

@@ -33,11 +33,11 @@
    n_bins        = 10
    adapt grids   = T
    adapt weights = F
-   Results:  [it, calls, integral, error, efficiency]
-     1 96  9.9310177618E-01  1.1330584296E-02  1.0730955898E-01
-     2 96  9.9988408492E-01  5.1162010614E-03  3.4388164053E-01
-     3 96  9.9901418127E-01  4.5963285350E-03  2.3579170730E-01
- MD5 sum (including results) = 'F639C4B0974ED20E331E51F25F4DE50B'
+   Results:  [it, calls, valid, integral, error, efficiency]
+     1 96 96  9.9310177618E-01  1.1330584296E-02  1.0730955898E-01
+     2 96 96  9.9988408492E-01  5.1162010614E-03  3.4388164053E-01
+     3 96 96  9.9901418127E-01  4.5963285350E-03  2.3579170730E-01
+ MD5 sum (including results) = 'A6B57C1AAA5153E0761D9B0FBBD317DF'
 
 * Cleanup
 

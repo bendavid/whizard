@@ -22,7 +22,7 @@ beams = U, u
 
 cuts = all Pt >= 100 GeV [j]
  
-iterations = 3:20000
+iterations = 1:1000
 
 !!! Tests should be run single-threaded 
 openmp_num_threads = 1

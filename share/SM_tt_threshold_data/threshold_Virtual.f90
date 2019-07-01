@@ -46,7 +46,7 @@ subroutine @ID@_start_openloops () bind(C)
 end subroutine @ID@_start_openloops
 
 subroutine @ID@_olp_eval2 (i_flv, alpha_s_c, p_ofs, mu_c, &
-       sqme_c, acc_c) bind(C)
+       sel_hel_beam, sqme_c, acc_c) bind(C)
   use @ID@_threshold
   use @ID@_virtual
   use physics_defs, only: ass_boson, ass_quark
@@ -59,6 +59,7 @@ subroutine @ID@_olp_eval2 (i_flv, alpha_s_c, p_ofs, mu_c, &
   real(c_default_float), intent(in) :: alpha_s_c
   real(c_default_float), dimension(0:3,*), intent(in) :: p_ofs
   real(c_default_float), intent(in) :: mu_c
+  integer, intent(in) :: sel_hel_beam
   real(c_default_float), dimension(4), intent(out) :: sqme_c
   real(c_default_float), intent(out) :: acc_c
   type(momentum), dimension(:), allocatable :: mom_ofs, mom_ons
@@ -72,6 +73,8 @@ subroutine @ID@_olp_eval2 (i_flv, alpha_s_c, p_ofs, mu_c, &
   real(double) :: mu, alpha_s, dynamic_top_mass
   complex(default) :: born_decay_me, bw
   real(default) :: prod2, born_decay_me2
+  logical :: eval_this_beam_helicities
+  integer, dimension(2) :: sel_hel
   call msg_debug (D_ME_METHODS, "@ID@_olp_eval2")
   if (i_flv /= 1)  call msg_fatal ("i_flv /= 1, threshold interface was not built for this")
   if (any (id <= 0))  call msg_fatal ("Could not register process in OpenLoops")
@@ -84,6 +87,9 @@ subroutine @ID@_olp_eval2 (i_flv, alpha_s_c, p_ofs, mu_c, &
   call set_parameter("alpha_s", alpha_s)
   call set_parameter("mu", mu)
   total = 0
+
+  sel_hel = get_selected_beam_helicities (sel_hel_beam)
+  call set_production_factors (sel_hel_beam)
 
   call compute_projected_momenta (mom_ofs, mom_ons)
   call set_parameter("width(6)", zero)
@@ -111,6 +117,9 @@ subroutine @ID@_olp_eval2 (i_flv, alpha_s_c, p_ofs, mu_c, &
      if (skip (h_t, h_tbar)) cycle
      do h_el = -1, 1, 2
      do h_pos = -1, 1, 2
+        eval_this_beam_helicities = sel_hel_beam < 0 .or. &
+            (sel_hel(1) == h_el .and. sel_hel(2) == h_pos)
+        if (.not. eval_this_beam_helicities) cycle
         prod2 = abs2 (production_me(h_el, h_pos, h_t, h_tbar))
      do leg = 1, 2
         dynamic_top_mass = sqrt (ptop_ons(leg) * ptop_ons(leg))

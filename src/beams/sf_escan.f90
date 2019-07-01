@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -229,15 +222,17 @@ contains
     end select
   end subroutine escan_init
 
-  subroutine escan_complete_kinematics (sf_int, x, f, r, rb, map)
+  subroutine escan_complete_kinematics (sf_int, x, xb, f, r, rb, map)
     class(escan_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(out) :: x
+    real(default), dimension(:), intent(out) :: xb
     real(default), intent(out) :: f
     real(default) :: sqrt_x
     real(default), dimension(:), intent(in) :: r
     real(default), dimension(:), intent(in) :: rb
     logical, intent(in) :: map
     x = r
+    xb= rb
     sqrt_x = sqrt (x(1))
     if (sqrt_x > 0) then
        f = 1 / (2 * sqrt_x)
@@ -249,18 +244,21 @@ contains
     call sf_int%reduce_momenta ([sqrt_x, sqrt_x])
   end subroutine escan_complete_kinematics
 
-  subroutine escan_recover_x (sf_int, x, x_free)
+  subroutine escan_recover_x (sf_int, x, xb, x_free)
     class(escan_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(out) :: x
+    real(default), dimension(:), intent(out) :: xb
     real(default), intent(inout), optional :: x_free
-    real(default), dimension(2) :: xi
-    call sf_int%base_recover_x (xi, x_free)
+    real(default), dimension(2) :: xi, xib
+    call sf_int%base_recover_x (xi, xib, x_free)
     x = product (xi)
+    xb= 1 - x
   end subroutine escan_recover_x
 
-  subroutine escan_inverse_kinematics (sf_int, x, f, r, rb, map, set_momenta)
+  subroutine escan_inverse_kinematics (sf_int, x, xb, f, r, rb, map, set_momenta)
     class(escan_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(in) :: x
+    real(default), dimension(:), intent(in) :: xb
     real(default), intent(out) :: f
     real(default), dimension(:), intent(out) :: r
     real(default), dimension(:), intent(out) :: rb
@@ -278,15 +276,17 @@ contains
        return
     end if
     r = x
-    rb = 1 - r
+    rb = xb
     if (set_mom) then
        call sf_int%reduce_momenta ([sqrt_x, sqrt_x])
     end if
   end subroutine escan_inverse_kinematics
 
-  subroutine escan_apply (sf_int, scale)
+  subroutine escan_apply (sf_int, scale, rescaling_function, i_rescale)
     class(escan_t), intent(inout) :: sf_int
     real(default), intent(in) :: scale
+    class(rescaling_function_t), intent(in), optional :: rescaling_function
+    integer, intent(in), optional :: i_rescale
     real(default) :: f
     associate (data => sf_int%data)
       f = data%norm

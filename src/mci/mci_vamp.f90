@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -96,6 +89,7 @@ module mci_vamp
      logical :: is_final_pass = .false.
      logical :: integral_defined = .false.
      integer, dimension(:), allocatable :: calls
+     integer, dimension(:), allocatable :: calls_valid
      real(default), dimension(:), allocatable :: integral
      real(default), dimension(:), allocatable :: error
      real(default), dimension(:), allocatable :: efficiency
@@ -112,6 +106,7 @@ module mci_vamp
      procedure :: update => pass_update
      procedure :: get_integration_index => pass_get_integration_index
      procedure :: get_calls => pass_get_calls
+     procedure :: get_calls_valid => pass_get_calls_valid
      procedure :: get_integral => pass_get_integral
      procedure :: get_error => pass_get_error
      procedure :: get_efficiency => pass_get_efficiency
@@ -185,6 +180,7 @@ module mci_vamp
      logical :: pass_complete = .false.
      integer :: n_calls = 0
      integer :: calls = 0
+     integer :: calls_valid = 0
      logical :: it_complete = .false.
      logical :: enable_adapt_grids = .false.
      logical :: enable_adapt_weights = .false.
@@ -310,10 +306,10 @@ contains
     write (u, "(3x,A,L1)")  "adapt grids   = ", object%adapt_grids
     write (u, "(3x,A,L1)")  "adapt weights = ", object%adapt_weights
     if (object%integral_defined) then
-       write (u, "(3x,A)")  "Results:  [it, calls, integral, error, efficiency]"
+       write (u, "(3x,A)")  "Results:  [it, calls, valid, integral, error, efficiency]"
        do i = 1, object%n_it
-          write (u, "(5x,I0,1x,I0,3(1x," // fmt // "))") &
-               i, object%calls(i), object%integral(i), object%error(i), &
+          write (u, "(5x,I0,2(1x,I0),3(1x," // fmt // "))") &
+               i, object%calls(i), object%calls_valid(i), object%integral(i), object%error(i), &
                object%efficiency(i)
        end do
     else
@@ -334,15 +330,16 @@ contains
     call read_lval (u, object%adapt_grids)
     call read_lval (u, object%adapt_weights)
     allocate (object%calls (object%n_it), source = 0)
+    allocate (object%calls_valid (object%n_it), source = 0)
     allocate (object%integral (object%n_it), source = 0._default)
     allocate (object%error (object%n_it), source = 0._default)
     allocate (object%efficiency (object%n_it), source = 0._default)
     read (u, "(A)")  buffer
     select case (trim (adjustl (buffer)))
-    case ("Results:  [it, calls, integral, error, efficiency]")
+    case ("Results:  [it, calls, valid, integral, error, efficiency]")
        do i = 1, object%n_it
           read (u, *) &
-               j, object%calls(i), object%integral(i), object%error(i), &
+               j, object%calls(i), object%calls_valid(i), object%integral(i), object%error(i), &
                object%efficiency(i)
        end do
        object%integral_defined = .true.
@@ -390,6 +387,7 @@ contains
        call msg_warning ()
     end if
     allocate (pass%calls (n_it), source = 0)
+    allocate (pass%calls_valid (n_it), source = 0)
     allocate (pass%integral (n_it), source = 0._default)
     allocate (pass%error (n_it), source = 0._default)
     allocate (pass%efficiency (n_it), source = 0._default)
@@ -427,6 +425,7 @@ contains
     if (pass%integral_defined) then
        n = pass%n_it
        if (ok)  ok = all (pass%calls(:n) == ref%calls(:n))
+       if (ok)  ok = all (pass%calls_valid(:n) == ref%calls_valid (:n))
        if (ok)  ok = all (pass%integral(:n) .matches. ref%integral(:n))
        if (ok)  ok = all (pass%error(:n) .matches. ref%error(:n))
        if (ok)  ok = all (pass%efficiency(:n) .matches. ref%efficiency(:n))
@@ -449,6 +448,7 @@ contains
        if (ref%integral_defined) then
           if (.not. allocated (pass%calls)) then
              allocate (pass%calls (pass%n_it), source = 0)
+             allocate (pass%calls_valid (pass%n_it), source = 0)
              allocate (pass%integral (pass%n_it), source = 0._default)
              allocate (pass%error (pass%n_it), source = 0._default)
              allocate (pass%efficiency (pass%n_it), source = 0._default)
@@ -457,11 +457,13 @@ contains
           n_ref = count (ref%calls /= 0)
           ok = n <= n_ref .and. n_ref <= pass%n_it
           if (ok)  ok = all (pass%calls(:n) == ref%calls(:n))
+          if (ok)  ok = all (pass%calls_valid(:n) == ref%calls_valid(:n))
           if (ok)  ok = all (pass%integral(:n) .matches. ref%integral(:n))
           if (ok)  ok = all (pass%error(:n) .matches. ref%error(:n))
           if (ok)  ok = all (pass%efficiency(:n) .matches. ref%efficiency(:n))
           if (ok) then
              pass%calls(n+1:n_ref) = ref%calls(n+1:n_ref)
+             pass%calls_valid(n+1:n_ref) = ref%calls_valid(n+1:n_ref)
              pass%integral(n+1:n_ref) = ref%integral(n+1:n_ref)
              pass%error(n+1:n_ref) = ref%error(n+1:n_ref)
              pass%efficiency(n+1:n_ref) = ref%efficiency(n+1:n_ref)
@@ -502,6 +504,18 @@ contains
        calls = 0
     end if
   end function pass_get_calls
+
+  function pass_get_calls_valid (pass) result (calls_valid)
+    class(pass_t), intent(in) :: pass
+    integer :: calls_valid
+    integer :: n
+    n = pass%get_integration_index ()
+    if (n /= 0) then
+       calls_valid = pass%calls_valid(n)
+    else
+       calls_valid = 0
+    end if
+  end function pass_get_calls_valid
 
   function pass_get_integral (pass) result (integral)
     class(pass_t), intent(in) :: pass
@@ -1148,6 +1162,7 @@ contains
                 instance%it_complete = .true.
                 if (instance%integral /= 0) then
                    mci%current_pass%calls(it) = instance%calls
+                   mci%current_pass%calls_valid(it) = instance%calls_valid
                    mci%current_pass%integral(it) = instance%integral
                    if (abs (instance%error / instance%integral) &
                         > epsilon (1._default)) then
@@ -1161,18 +1176,26 @@ contains
                 if (mci%has_chains ()) then
                    call mci%collect_chain_weights (instance%w)
                    call results%record (1, &
-                        n_calls    = mci%current_pass%calls(it), &
-                        integral   = mci%current_pass%integral(it), &
-                        error      = mci%current_pass%error(it), &
-                        efficiency = mci%current_pass%efficiency(it), &
-                        chain_weights = mci%chain_weights, &
+                        n_calls        = mci%current_pass%calls(it), &
+                        n_calls_valid  = mci%current_pass%calls_valid(it), &
+                        integral       = mci%current_pass%integral(it), &
+                        error          = mci%current_pass%error(it), &
+                        efficiency     = mci%current_pass%efficiency(it), &
+                        ! TODO pos. and neg. Efficiency
+                        efficiency_pos = 0._default, &
+                        efficiency_neg = 0._default, &
+                        chain_weights  = mci%chain_weights, &
                         suppress = pacify)
                 else
                    call results%record (1, &
-                        n_calls    = mci%current_pass%calls(it), &
-                        integral   = mci%current_pass%integral(it), &
-                        error      = mci%current_pass%error(it), &
-                        efficiency = mci%current_pass%efficiency(it), &
+                        n_calls        = mci%current_pass%calls(it), &
+                        n_calls_valid  = mci%current_pass%calls_valid(it), &
+                        integral       = mci%current_pass%integral(it), &
+                        error          = mci%current_pass%error(it), &
+                        efficiency     = mci%current_pass%efficiency(it), &
+                        ! TODO pos. and neg. Efficiency
+                        efficiency_pos = 0._default, &
+                        efficiency_neg = 0._default, &
                         suppress = pacify)
                 end if
              end if
@@ -1468,6 +1491,7 @@ contains
     write (u, "(3x,A,L1)")  "pass complete = ", object%it_complete
     write (u, "(3x,A,I0)")  "n_calls       = ", object%n_calls
     write (u, "(3x,A,I0)")  "calls         = ", object%calls
+    write (u, "(3x,A,I0)")  "calls_valid   = ", object%calls_valid
     write (u, "(3x,A,L1)")  "it complete   = ", object%it_complete
     write (u, "(3x,A,I0)")  "n adapt.(g)   = ", object%n_adapt_grids
     write (u, "(3x,A,I0)")  "n adapt.(w)   = ", object%n_adapt_weights
@@ -1546,6 +1570,7 @@ contains
       end if
       instance%it = 0
       instance%calls = 0
+      instance%calls_valid = 0
       instance%enable_adapt_grids = current%adapt_grids
       instance%enable_adapt_weights = current%adapt_weights
       instance%generating_events = .false.
@@ -1604,6 +1629,7 @@ contains
     class(mci_vamp_instance_t), intent(inout) :: instance
     logical, intent(in) :: reshape
     instance%calls = 0
+    instance%calls_valid = 0
     instance%integral = 0
     instance%error = 0
     instance%efficiency = 0
@@ -1836,25 +1862,29 @@ contains
     integer, intent(in), optional :: channel
     type(vamp_grid), dimension(:), intent(in), optional :: grids
     type(exception) :: exc
-    class(mci_instance_t), pointer :: instance
     logical :: verbose
     character(*), parameter :: FN = "WHIZARD sampling function"
+    class(mci_instance_t), pointer :: instance
     select type (data)
     type is (mci_workspace_t)
        instance => data%instance
        select type (instance)
        class is (mci_vamp_instance_t)
-          instance%calls = instance%calls + 1
           verbose = instance%mci%verbose
+          call instance%evaluate (data%sampler, channel, xi)
+          if (signal_is_pending ()) then
+             call raise_exception (exc, EXC_FATAL, FN, "signal received")
+             call handle_vamp_exception (exc, verbose)
+             call terminate_now_if_signal ()
+          end if
+          instance%calls = instance%calls + 1
+          if (data%sampler%is_valid ()) &
+               & instance%calls_valid = instance%calls_valid + 1
+          f = instance%get_value ()
+          call terminate_now_if_single_event ()
+       class default
+          call msg_bug("VAMP: " // FN // ": unknown MCI instance type")
        end select
-       call instance%evaluate (data%sampler, channel, xi)
-       if (signal_is_pending ()) then
-          call raise_exception (exc, EXC_FATAL, FN, "signal received")
-          call handle_vamp_exception (exc, verbose)
-          call terminate_now_if_signal ()
-       end if
-       f = instance%get_value ()
-       call terminate_now_if_single_event ()
     end select
   end function vamp_sampling_function
 

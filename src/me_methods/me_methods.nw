@@ -2687,7 +2687,7 @@ diagrams, at least in the testsuite.
        omega_binary = "omega_UFO.opt"
     type is (omega_ovm_writer_t)
        select case (char (writer%model_name))
-       case ("SM", "SM_CKM", "SM_Higgs", "2HDM", "2HDM_CKM", &
+       case ("SM", "SM_CKM", "SM_Higgs", "THDM", "THDM_CKM", &
              "HSExt", "QED", "QCD", "Zprime")
        case default
           call msg_fatal ("The model " // char (writer%model_name) &
@@ -5065,35 +5065,35 @@ Used for testing.
   dummy color-correlation. This effectively switches off the subtraction
   contributions, reproducing the real phase-space volume.
 <<Prc User: prc user defined base: TBP>>=
-  procedure :: compute_sqme_cc => prc_user_defined_base_compute_sqme_cc
+  procedure :: compute_sqme_color_c => prc_user_defined_base_compute_sqme_color_c
 <<Prc User: procedures>>=
-  subroutine prc_user_defined_base_compute_sqme_cc (object, i_flv, p, &
-     ren_scale, born_cc, bad_point, born_out)
+  subroutine prc_user_defined_base_compute_sqme_color_c (object, i_flv, p, &
+     ren_scale, born_color_c, bad_point, born_out)
     class(prc_user_defined_base_t), intent(inout) :: object
     integer, intent(in) :: i_flv
     type(vector4_t), intent(in), dimension(:) :: p
     real(default), intent(in) :: ren_scale
-    real(default), intent(inout), dimension(:,:) :: born_cc
+    real(default), intent(inout), dimension(:,:) :: born_color_c
     logical, intent(out) :: bad_point
     real(default), intent(out), optional :: born_out
-    call msg_debug2 (D_ME_METHODS, "prc_user_defined_base_compute_sqme_cc")
+    call msg_debug2 (D_ME_METHODS, "prc_user_defined_base_compute_sqme_color_c")
     if (size (p) == 4) then
        if (present (born_out)) then
           born_out = 0.0015_default
-          born_cc = zero
-          born_cc(3,3) = - CF * born_out
-          born_cc(4,4) = - CF * born_out
-          born_cc(3,4) = CF * born_out
-          born_cc(4,3) = born_cc(3,4)
+          born_color_c = zero
+          born_color_c(3,3) = - CF * born_out
+          born_color_c(4,4) = - CF * born_out
+          born_color_c(3,4) = CF * born_out
+          born_color_c(4,3) = born_color_c(3,4)
           bad_point = .false.
        end if
     else
        if (present (born_out)) born_out = zero
-       born_cc = zero
+       born_color_c = zero
     end if
-  end subroutine prc_user_defined_base_compute_sqme_cc
+  end subroutine prc_user_defined_base_compute_sqme_color_c
 
-@ %def prc_user_defined_base_compute_sqme_cc
+@ %def prc_user_defined_base_compute_sqme_color_c
 @
 <<Prc User: prc user defined base: TBP>>=
   procedure :: compute_alpha_s => prc_user_defined_base_compute_alpha_s
@@ -5288,16 +5288,16 @@ Used for testing.
 @ %def prc_user_defined_base_get_sf_value
 @
 <<Prc User: prc user defined base: TBP>>=
-  procedure :: get_helicity_list_base => prc_user_defined_base_get_helicity_list
+  procedure :: get_i_whizard_to_i_olc_base => prc_user_defined_base_get_i_whizard_to_i_olc
 <<Prc User: procedures>>=
-  function prc_user_defined_base_get_helicity_list (object, i) result (i_out)
+  function prc_user_defined_base_get_i_whizard_to_i_olc (object, i) result (i_out)
     integer :: i_out
     class(prc_user_defined_base_t), intent(in) :: object
     integer, intent(in) :: i
     i_out = i
-  end function prc_user_defined_base_get_helicity_list
+  end function prc_user_defined_base_get_i_whizard_to_i_olc
 
-@ %def prc_user_defined_base_get_helicity_list
+@ %def prc_user_defined_base_get_i_whizard_to_i_olc
 @
 <<Prc User: prc user defined base: TBP>>=
   procedure(prc_user_defined_base_includes_polarization), deferred :: &
@@ -5314,12 +5314,12 @@ Used for testing.
 @ %def prc_user_defined_base_includes_polarization
 @
 <<Prc User: prc user defined base: TBP>>=
-  procedure(prc_user_defined_base_create_and_load_extra_libraries), deferred :: &
-    create_and_load_extra_libraries
+  procedure(prc_user_defined_base_create_and_load_extra_libraries), &
+       deferred :: create_and_load_extra_libraries
 <<Prc User: interfaces>>=
   abstract interface
-    subroutine prc_user_defined_base_create_and_load_extra_libraries ( &
-         core, flv_states, var_list, os_data, libname, model, i_core)
+    subroutine prc_user_defined_base_create_and_load_extra_libraries &
+         (core, flv_states, var_list, os_data, libname, model, i_core, is_nlo)
       import
       class(prc_user_defined_base_t), intent(inout) :: core
       integer, intent(in), dimension(:,:), allocatable :: flv_states
@@ -5328,6 +5328,7 @@ Used for testing.
       type(string_t), intent(in) :: libname
       type(model_data_t), intent(in), target :: model
       integer, intent(in) :: i_core
+      logical, intent(in) :: is_nlo
     end subroutine prc_user_defined_base_create_and_load_extra_libraries
   end interface
 
@@ -5944,8 +5945,8 @@ result of the integration is the n-particle-phase-space volume.
   procedure :: create_and_load_extra_libraries => &
        prc_user_defined_test_create_and_load_extra_libraries
 <<Prc User: procedures>>=
-  subroutine prc_user_defined_test_create_and_load_extra_libraries ( &
-         core, flv_states, var_list, os_data, libname, model, i_core)
+  subroutine prc_user_defined_test_create_and_load_extra_libraries &
+       (core, flv_states, var_list, os_data, libname, model, i_core, is_nlo)
     class(prc_user_defined_test_t), intent(inout) :: core
     integer, intent(in), dimension(:,:), allocatable :: flv_states
     type(var_list_t), intent(in) :: var_list
@@ -5953,6 +5954,7 @@ result of the integration is the n-particle-phase-space volume.
     type(string_t), intent(in) :: libname
     type(model_data_t), intent(in), target :: model
     integer, intent(in) :: i_core
+    logical, intent(in) :: is_nlo
   end subroutine prc_user_defined_test_create_and_load_extra_libraries
 
 @ %def prc_user_defined_test_create_and_load_extra_libraries
@@ -6096,12 +6098,12 @@ end module prc_threshold
   public :: threshold_get_amp_squared
 <<Prc Threshold: interfaces>>=
   interface
-    subroutine threshold_get_amp_squared (amp2, p_ofs, p_ons, leg, n_tot) bind(C)
+    subroutine threshold_get_amp_squared (amp2, p_ofs, p_ons, leg, n_tot, sel_hel_beam) bind(C)
       import
       real(c_default_float), intent(out) :: amp2
       real(c_default_float), dimension(0:3,*), intent(in) :: p_ofs
       real(c_default_float), dimension(0:3,*), intent(in) :: p_ons
-      integer(kind = c_int) :: n_tot, leg
+      integer(kind = c_int) :: n_tot, leg, sel_hel_beam
     end subroutine threshold_get_amp_squared
   end interface
 
@@ -6112,12 +6114,13 @@ end module prc_threshold
 <<Prc Threshold: interfaces>>=
   interface
     subroutine threshold_olp_eval2 (i_flv, alpha_s_c, parray, mu_c, &
-           sqme_c, acc_c) bind(C)
+           sel_hel_beam, sqme_c, acc_c) bind(C)
       import
       integer(c_int), intent(in) :: i_flv
       real(c_default_float), intent(in) :: alpha_s_c
       real(c_default_float), dimension(0:3,*), intent(in) :: parray
       real(c_default_float), intent(in) :: mu_c
+      integer, intent(in) :: sel_hel_beam
       real(c_default_float), dimension(4), intent(out) :: sqme_c
       real(c_default_float), intent(out) :: acc_c
     end subroutine threshold_olp_eval2
@@ -6362,6 +6365,7 @@ end module prc_threshold
      real(default), dimension(:,:), allocatable :: parray_ofs
      real(default), dimension(:,:), allocatable :: parray_ons
      integer :: leg
+     logical :: has_beam_pol = .false.
   contains
   <<Prc Threshold: prc threshold: TBP>>
   end type prc_threshold_t
@@ -6496,7 +6500,13 @@ end module prc_threshold
     n_tot = size (p)
     select type (driver => object%driver)
     class is (threshold_driver_t)
-       call driver%get_amp_squared (sqme, object%parray_ofs, object%parray_ons, object%leg, n_tot)
+       if (object%has_beam_pol) then
+          call driver%get_amp_squared (sqme, object%parray_ofs, &
+               object%parray_ons, object%leg, n_tot, i_flv - 1)
+       else
+          call driver%get_amp_squared (sqme, object%parray_ofs, &
+               object%parray_ons, object%leg, n_tot, -1)
+       end if
     end select
     bad_point = .false.
   end subroutine prc_threshold_compute_sqme
@@ -6539,8 +6549,13 @@ end module prc_threshold
     select type (driver => object%driver)
     class is (threshold_driver_t)
        if (associated (driver%olp_eval2)) then
-          call driver%olp_eval2 (i_flv_c, alpha_s_c, &
-             parray, mu_c, sqme_c, acc_c)
+          if (object%has_beam_pol) then
+             call driver%olp_eval2 (1, alpha_s_c, &
+                  parray, mu_c, i_flv_c - 1, sqme_c, acc_c)
+          else
+             call driver%olp_eval2 (i_flv_c, alpha_s_c, &
+                  parray, mu_c, -1, sqme_c, acc_c)
+          end if
           bad_point = real(acc_c, kind=default) > object%maximum_accuracy
           sqme = sqme_c
        else
@@ -6601,10 +6616,11 @@ matrix element.
 @ %def prc_threshold_activate_parameters
 @
 <<Prc Threshold: prc threshold: TBP>>=
-  procedure :: create_and_load_extra_libraries => prc_threshold_create_and_load_extra_libraries
+  procedure :: create_and_load_extra_libraries => &
+       prc_threshold_create_and_load_extra_libraries
 <<Prc Threshold: procedures>>=
-  subroutine prc_threshold_create_and_load_extra_libraries ( &
-         core, flv_states, var_list, os_data, libname, model, i_core)
+  subroutine prc_threshold_create_and_load_extra_libraries &
+       (core, flv_states, var_list, os_data, libname, model, i_core, is_nlo)
     class(prc_threshold_t), intent(inout) :: core
     integer, intent(in), dimension(:,:), allocatable :: flv_states
     type(var_list_t), intent(in) :: var_list
@@ -6612,14 +6628,17 @@ matrix element.
     type(string_t), intent(in) :: libname
     type(model_data_t), intent(in), target :: model
     integer, intent(in) :: i_core
-    call msg_debug (D_ME_METHODS, "prc_threshold_create_and_load_extra_libraries")
+    logical, intent(in) :: is_nlo
+    call msg_debug (D_ME_METHODS, &
+         "prc_threshold_create_and_load_extra_libraries")
     if (allocated (core%driver)) then
        select type (driver => core%driver)
        type is (threshold_driver_t)
           if (driver%nlo_type == NLO_VIRTUAL) call driver%start_openloops ()
        end select
     else
-       call msg_bug ("prc_threshold_create_and_load_extra_libraries: driver is not allocated")
+       call msg_bug ("prc_threshold_create_and_load_extra_libraries: " &
+            // "driver is not allocated")
     end if
   end subroutine prc_threshold_create_and_load_extra_libraries
 
@@ -6631,7 +6650,7 @@ matrix element.
   function prc_threshold_includes_polarization (object) result (polarized)
     logical :: polarized
     class(prc_threshold_t), intent(in) :: object
-    polarized = .false.
+    polarized = object%has_beam_pol
   end function prc_threshold_includes_polarization
 
 @ %def prc_threshold_includes_polarization

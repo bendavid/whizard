@@ -25,10 +25,10 @@
 
 * Integrate with n_it = 3 and n_calls = 10000 (Adaptation)
 
-  Result:  1.37522E+00 +/-  3.17616E-03
+  Result:  1.38464E+00 +/-  2.48057E-03
 
 * Integrate with n_it = 3 and n_calls = 2000 (Precision)
 
-  Result:  1.38413E+00 +/-  9.96031E-03
+  Result:  1.38376E+00 +/-  7.17677E-03
 
 * Cleanup

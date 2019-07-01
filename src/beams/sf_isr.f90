@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -300,9 +293,10 @@ contains
     call object%data%set_order (order)
   end subroutine isr_set_order
 
-  subroutine isr_complete_kinematics (sf_int, x, f, r, rb, map)
+  subroutine isr_complete_kinematics (sf_int, x, xb, f, r, rb, map)
     class(isr_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(out) :: x
+    real(default), dimension(:), intent(out) :: xb
     real(default), intent(out) :: f
     real(default), dimension(:), intent(in) :: r
     real(default), dimension(:), intent(in) :: rb
@@ -321,8 +315,12 @@ contains
     end if
     sf_int%x = 1 - sf_int%xb
     x(1) = sf_int%x
-    if (size (x) == 3)  x(2:3) = r(2:3)
-    call sf_int%split_momentum (x, sf_int%xb)
+    xb(1) = sf_int%xb
+    if (size (x) == 3) then
+       x(2:3) = r(2:3)
+       xb(2:3) = rb(2:3)
+    end if
+    call sf_int%split_momentum (x, xb)
     select case (sf_int%status)
     case (SF_FAILED_KINEMATICS)
        sf_int%x = 0
@@ -331,18 +329,20 @@ contains
     end select
   end subroutine isr_complete_kinematics
 
-  subroutine sf_isr_recover_x (sf_int, x, x_free)
+  subroutine sf_isr_recover_x (sf_int, x, xb, x_free)
     class(isr_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(out) :: x
+    real(default), dimension(:), intent(out) :: xb
     real(default), intent(inout), optional :: x_free
-    call sf_int%base_recover_x (x, x_free)
+    call sf_int%base_recover_x (x, xb, x_free)
     sf_int%x  = x(1)
-    sf_int%xb = 1 - x(1)
+    sf_int%xb = xb(1)
   end subroutine sf_isr_recover_x
 
-  subroutine isr_inverse_kinematics (sf_int, x, f, r, rb, map, set_momenta)
+  subroutine isr_inverse_kinematics (sf_int, x, xb, f, r, rb, map, set_momenta)
     class(isr_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(in) :: x
+    real(default), dimension(:), intent(in) :: xb
     real(default), intent(out) :: f
     real(default), dimension(:), intent(out) :: r
     real(default), dimension(:), intent(out) :: rb
@@ -353,9 +353,9 @@ contains
     set_mom = .false.;  if (present (set_momenta))  set_mom = set_momenta
     eps = sf_int%data%eps
     if (map) then
-       call map_power_inverse_1 (sf_int%xb, f, rb(1), eps)
+       call map_power_inverse_1 (xb(1), f, rb(1), eps)
     else
-       rb(1) = sf_int%xb
+       rb(1) = xb(1)
        if (rb(1) > 0) then
           f = 1
        else
@@ -365,10 +365,10 @@ contains
     r(1) = 1 - rb(1)
     if (size(r) == 3) then
        r(2:3) = x(2:3)
-       rb(2:3)= 1 - r(2:3)
+       rb(2:3)= xb(2:3)
     end if
     if (set_mom) then
-       call sf_int%split_momentum (x, sf_int%xb)
+       call sf_int%split_momentum (x, xb)
        select case (sf_int%status)
        case (SF_FAILED_KINEMATICS)
           r = 0
@@ -431,9 +431,11 @@ contains
     end select
   end subroutine isr_init
 
-  subroutine isr_apply (sf_int, scale)
+  subroutine isr_apply (sf_int, scale, rescaling_function, i_rescale)
     class(isr_t), intent(inout) :: sf_int
     real(default), intent(in) :: scale
+    class(rescaling_function_t), intent(in), optional :: rescaling_function
+    integer, intent(in), optional :: i_rescale
     real(default) :: f, finv, x, xb, eps, rb
     real(default) :: log_x, log_xb, x_2
     real(default), parameter :: &
@@ -442,8 +444,8 @@ contains
          & zeta3 = 1.20205690315959428539973816151_default
     real(default), parameter :: &
          & g1 = 3._default / 4._default, &
-         & g2 = (27 - 8*pi**2) / 96._default, &
-         & g3 = (27 - 24*pi**2 + 128*zeta3) / 384._default
+         & g2 = (27 - 8 * pi**2) / 96._default, &
+         & g3 = (27 - 24 * pi**2 + 128 * zeta3) / 384._default
     associate (data => sf_int%data)
       eps = sf_int%data%eps
       x = sf_int%x
@@ -456,27 +458,27 @@ contains
       end if
       if (f > 0 .and. data%order > 0) then
          f = f * (1 + g1 * eps)
-         x_2 = x*x
-         if (rb>0)  f = f * (1 - (1-x_2) / (2 * rb))
+         x_2 = x * x
+         if (rb > 0)  f = f * (1 - (1-x_2) / (2 * rb))
          if (data%order > 1) then
             f = f * (1 + g2 * eps**2)
-            if (rb>0 .and. xb>0 .and. x>xmin) then
+            if (rb > 0 .and. xb > 0 .and. x > xmin) then
                log_x  = log_prec (x, xb)
                log_xb = log_prec (xb, x)
-               f = f * (1 - ((1+3*x_2)*log_x + xb * (4*(1+x)*log_xb + 5 + x)) &
-                    / ( 8 * rb) * eps)
+               f = f * (1 - ((1 + 3 * x_2) * log_x + xb * (4 * (1 + x) * log_xb + 5 + x)) &
+                    / (8 * rb) * eps)
             end if
             if (data%order > 2) then
                f = f * (1 + g3 * eps**3)
                if (rb > 0 .and. xb > 0 .and. x > xmin) then
-                  f = f * (1 - ((1+x) * xb &
+                  f = f * (1 - ((1 + x) * xb &
                        * (6 * Li2(x) + 12 * log_xb**2 - 3 * pi**2) &
-                       + 1.5_default * (1 + 8*x + 3*x_2) * log_x &
-                       + 6 * (x+5) * xb * log_xb &
-                       + 12 * (1+x_2) * log_x * log_xb &
-                       - (1 + 7*x_2) * log_x**2 / 2 &
-                       + (39 - 24*x - 15*x_2) / 4) &
-                       / ( 48 * rb) * eps**2)
+                       + 1.5_default * (1 + 8 * x + 3 * x_2) * log_x &
+                       + 6 * (x + 5) * xb * log_xb &
+                       + 12 * (1 + x_2) * log_x * log_xb &
+                       - (1 + 7 * x_2) * log_x**2 / 2 &
+                       + (39 - 24 * x - 15 * x_2) / 4) &
+                       / (48 * rb) * eps**2)
                end if
             end if
          end if

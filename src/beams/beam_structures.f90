@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -93,6 +86,7 @@ module beam_structures
      procedure :: get_n_record => beam_structure_get_n_record
      procedure :: get_i_entry => beam_structure_get_i_entry
      procedure :: get_name => beam_structure_get_name
+     procedure :: has_pdf => beam_structure_has_pdf
      procedure :: contains => beam_structure_contains
      procedure :: polarized => beam_structure_polarized
      procedure :: get_smatrix => beam_structure_get_smatrix
@@ -443,9 +437,9 @@ contains
   end function beam_structure_get_i_entry
 
   function beam_structure_get_name (beam_structure, i) result (name)
+    type(string_t) :: name
     class(beam_structure_t), intent(in) :: beam_structure
     integer, intent(in) :: i
-    type(string_t) :: name
     associate (record => beam_structure%record(i))
       if (record%entry(1)%is_valid) then
          name = record%entry(1)%name
@@ -454,6 +448,18 @@ contains
       end if
     end associate
   end function beam_structure_get_name
+
+  function beam_structure_has_pdf (beam_structure) result (has_pdf)
+    logical :: has_pdf
+    class(beam_structure_t), intent(in) :: beam_structure
+    integer :: i
+    type(string_t) :: name
+    has_pdf = .false.
+    do i = 1, beam_structure%get_n_record ()
+       name = beam_structure%get_name (i)
+       has_pdf = has_pdf .or. name == var_str ("pdf_builtin") .or. name == var_str ("lhapdf")
+    end do
+  end function beam_structure_has_pdf
 
   function beam_structure_contains (beam_structure, name) result (flag)
     class(beam_structure_t), intent(in) :: beam_structure

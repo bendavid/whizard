@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -248,7 +241,6 @@ contains
   function beam_data_get_energy (beam_data) result (e)
     class(beam_data_t), intent(in) :: beam_data
     real(default), dimension(:), allocatable :: e
-    !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
     integer :: i
     allocate (e (beam_data%n))
     if (beam_data%initialized) then
@@ -387,17 +379,11 @@ contains
     real(default), dimension(size(p3)) :: e
     real(default), dimension(size(flv)) :: m
     type(lorentz_transformation_t) :: L_boost, L_rot
-    !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
-    integer :: i
     call beam_data_init (beam_data, size (flv))
     m = flv%get_mass ()
     e = sqrt (p3 ** 2 + m ** 2)
     allocate (p (beam_data%n))
-    !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
-    !!! p = vector4_moving (e, p3)
-    do i = 1, beam_data%n
-       p(i) = vector4_moving (e(i), p3(i))
-    end do
+    p = vector4_moving (e, p3)
     p0 = sum (p)
     beam_data%p = p
     beam_data%lab_is_cm_frame = .false.

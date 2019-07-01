@@ -10,6 +10,7 @@ Impure elemental functions
 ALLOCATABLE structure component
 ALLOCATABLE dummy argument
 ALLOCATABLE function result
+Automatic allocate on assignment
 
 
 * C interoperability:

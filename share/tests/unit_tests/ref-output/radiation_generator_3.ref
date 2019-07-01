@@ -32,9 +32,9 @@ tau- tau+ d:u:s:e-:mu-:mu+:A dbar:ubar:sbar:e+:mu-:mu+:A
 * Outgoing: PDG(11)PDG(-11)
 * Additional radiation:
 * Incoming:
-e-:A e+:A
+e- e+
 * Outgoing:
-e- e+ A:e-:e+
+e- e+ A
 ------------------------------------------------------------------------
 * Process 4: Quark-antiquark production with additional photon
 * Leading order:
@@ -92,9 +92,9 @@ u ubar u ubar A
 * Outgoing: PDG(12)PDG(-12)
 * Additional radiation:
 * Incoming:
-e-:A e+:A
+e- e+
 * Outgoing:
-nue nuebar A:e-:e+
+nue nuebar A
 ------------------------------------------------------------------------
 * Process 10: Drell-Yan lepto-production
 * Leading order:
@@ -102,9 +102,9 @@ nue nuebar A:e-:e+
 * Outgoing: PDG(11)PDG(-11)
 * Additional radiation:
 * Incoming:
-u:A ubar:A
+u ubar
 * Outgoing:
-e- e+ A:u:ubar
+e- e+ A
 ------------------------------------------------------------------------
 * Process 11: WZ production at hadron-colliders
 * Leading order:
@@ -112,9 +112,9 @@ e- e+ A:u:ubar
 * Outgoing: PDG(-24)PDG(23)
 * Additional radiation:
 * Incoming:
-d:A ubar:A
+d ubar
 * Outgoing:
-W- Z A:u:dbar
+W- Z A
 ------------------------------------------------------------------------
 * Process 12: Positron-neutrino production
 * Leading order:
@@ -122,7 +122,7 @@ W- Z A:u:dbar
 * Outgoing: PDG(-11)PDG(12)
 * Additional radiation:
 * Incoming:
-dbar:A u:A
+dbar u
 * Outgoing:
-e+ nue A:ubar:d
+e+ nue A
 ------------------------------------------------------------------------

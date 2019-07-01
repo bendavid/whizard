@@ -6,16 +6,19 @@ node[shape=record,style=filled,fillcolor=white]
 edge[color=gray50]
 tau_decays -> event_transforms
 shower -> event_transforms
+dispatch_transforms -> shower
 dispatch_transforms -> evt_nlo
 events -> decays
-dispatch_transforms -> shower
+dispatch_transforms -> hadrons
+dispatch_transforms -> decays
 evt_nlo -> event_transforms
 events -> event_transforms
 hadrons -> event_transforms
-dispatch_transforms -> hadrons
+resonance_insertion -> event_transforms
 eio_raw -> events
 decays -> event_transforms
-dispatch_transforms -> decays
+isr_qed_transverse -> event_transforms
+dispatch_transforms -> resonance_insertion
 dispatch_transforms -> event_transforms
 events -> evt_nlo
 dispatch_transforms -> eio_raw

@@ -72,41 +72,41 @@ iterations = 5:20000
 seed = 1234
 
 !!!The subprocesses
-process fourj_p1 = e1, E1 => C, C, c, c { nlo_calculation = "Born" }
+process fourj_p1 = e1, E1 => C, C, c, c { nlo_calculation = born }
 integrate (fourj_p1)
 real res_1 = integral (fourj_p1)
-process fourj_p2 = e1, E1 => C, U, u, c { nlo_calculation = "Born" }
+process fourj_p2 = e1, E1 => C, U, u, c { nlo_calculation = born }
 integrate (fourj_p2)
 real res_2 = integral (fourj_p2)
-process fourj_p3 = e1, E1 => C, S, c, s { nlo_calculation = "Born" }
+process fourj_p3 = e1, E1 => C, S, c, s { nlo_calculation = born }
 integrate (fourj_p3)
 real res_3 = integral (fourj_p3)
-process fourj_p4 = e1, E1 => C, D, c, d { nlo_calculation = "Born" }
+process fourj_p4 = e1, E1 => C, D, c, d { nlo_calculation = born }
 integrate (fourj_p4)
 real res_4 = integral (fourj_p4)
-process fourj_p5 = e1, E1 => U, U, u, u { nlo_calculation = "Born" }
+process fourj_p5 = e1, E1 => U, U, u, u { nlo_calculation = born }
 integrate (fourj_p5)
 real res_5 = integral (fourj_p5)
-process fourj_p6 = e1, E1 => U, S, u, s { nlo_calculation = "Born" }
+process fourj_p6 = e1, E1 => U, S, u, s { nlo_calculation = born }
 integrate (fourj_p6)
 real res_6 = integral (fourj_p6)
-process fourj_p7 = e1, E1 => U, D, u, d { nlo_calculation = "Born" }
+process fourj_p7 = e1, E1 => U, D, u, d { nlo_calculation = born }
 integrate (fourj_p7)
 real res_7 = integral (fourj_p7)
-process fourj_p8 = e1, E1 => S, S, s, s { nlo_calculation = "Born" }
+process fourj_p8 = e1, E1 => S, S, s, s { nlo_calculation = born }
 integrate (fourj_p8)
 real res_8 = integral (fourj_p8)
-process fourj_p9 = e1, E1 => S, D, d, s { nlo_calculation = "Born" }
+process fourj_p9 = e1, E1 => S, D, d, s { nlo_calculation = born }
 integrate (fourj_p9)
 real res_9 = integral (fourj_p9)
-process fourj_p10 = e1, E1 => D, D, d, d { nlo_calculation = "Born" }
+process fourj_p10 = e1, E1 => D, D, d, d { nlo_calculation = born }
 integrate (fourj_p10)
 real res_10 = integral (fourj_p10)
 real int_tot = res_1 + res_2 + res_3 + res_4 + res_5
              + res_6 + res_7 + res_8 + res_9 + res_10
 
 !!! The full process
-process fourj_p11 = e1, E1 => jet, jet, jet, jet { nlo_calculation = "Born" }
+process fourj_p11 = e1, E1 => jet, jet, jet, jet { nlo_calculation = born }
 integrate (fourj_p11)
 expect (integral (fourj_p11) == int_tot) {tolerance = 0.1}
 

@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -45,6 +38,8 @@ module dispatch_transforms
   use models
   use os_interface
   use beam_structures
+  use resonances, only: resonance_history_set_t
+  use instances, only: process_instance_t, process_instance_hook_t
 
   use event_base, only: event_callback_t, event_callback_nop_t
   use eio_base
@@ -60,6 +55,7 @@ module dispatch_transforms
   use eio_dump
 
   use event_transforms
+  use resonance_insertion
   use decays
   use shower_base
   use shower_core
@@ -76,8 +72,10 @@ module dispatch_transforms
   private
 
   public :: dispatch_evt_nlo
+  public :: dispatch_evt_resonance
   public :: dispatch_evt_decay
   public :: dispatch_evt_shower
+  public :: dispatch_evt_shower_hook
   public :: dispatch_matching
   public :: dispatch_evt_hadrons
   public :: dispatch_eio
@@ -96,6 +94,26 @@ contains
        evt%keep_failed_events = keep_failed_events
     end select
   end subroutine dispatch_evt_nlo
+
+  subroutine dispatch_evt_resonance (evt, var_list, res_history_set, libname)
+    class(evt_t), intent(out), pointer :: evt
+    type(var_list_t), intent(in) :: var_list
+    type(resonance_history_set_t), intent(in) :: res_history_set
+    type(string_t), intent(in) :: libname
+    logical :: resonance_history
+    resonance_history = var_list%get_lval (var_str ("?resonance_history"))
+    if (resonance_history) then
+       allocate (evt_resonance_t :: evt)
+       call msg_message ("Simulate: activating resonance insertion")
+       select type (evt)
+       type is (evt_resonance_t)
+          call evt%set_resonance_data (res_history_set)
+          call evt%set_library (libname)
+       end select
+    else
+       evt => null ()
+    end if
+  end subroutine dispatch_evt_resonance
 
   subroutine dispatch_evt_decay (evt, var_list)
     class(evt_t), intent(out), pointer :: evt
@@ -165,6 +183,19 @@ contains
     call dispatch_matching (evt, settings, var_list, process_name)
   end subroutine dispatch_evt_shower
 
+  subroutine dispatch_evt_shower_hook (hook, var_list, process_instance)
+    class(process_instance_hook_t), pointer, intent(out) :: hook
+    type(var_list_t), intent(in) :: var_list
+    class(process_instance_t), intent(in), target :: process_instance
+    if (var_list%get_lval (var_str ('?powheg_matching'))) then
+       call msg_message ("Integration hook: add POWHEG hook")
+       allocate (powheg_matching_hook_t :: hook)
+       call hook%init (var_list, process_instance)
+    else
+       hook => null ()
+    end if
+  end subroutine dispatch_evt_shower_hook
+
   subroutine dispatch_matching (evt, settings, var_list, process_name)
     class(evt_t), intent(inout) :: evt
     type(var_list_t), intent(in) :: var_list
@@ -233,7 +264,7 @@ contains
     !!! !!! !!! Workaround for ifort v18(beta) bug
     type(event_callback_nop_t) :: event_callback_tmp
     logical :: check, keep_beams, keep_remnants, recover_beams
-    logical :: use_alpha_s_from_file, use_scale_from_file
+    logical :: use_alphas_from_file, use_scale_from_file
     logical :: write_sqme_prc, write_sqme_ref, write_sqme_alt
     logical :: output_cross_section, ensure_order
     type(string_t) :: lhef_version, lhef_extension, raw_version
@@ -255,8 +286,8 @@ contains
          var_list%get_lval (var_str ("?hepevt_ensure_order"))
     recover_beams = &
          var_list%get_lval (var_str ("?recover_beams"))
-    use_alpha_s_from_file = &
-         var_list%get_lval (var_str ("?use_alpha_s_from_file"))
+    use_alphas_from_file = &
+         var_list%get_lval (var_str ("?use_alphas_from_file"))
     use_scale_from_file = &
          var_list%get_lval (var_str ("?use_scale_from_file"))
     select case (char (method))
@@ -312,7 +343,7 @@ contains
                var_list%get_lval (var_str ("?lhef_write_sqme_alt"))
           call eio%set_parameters ( &
                keep_beams, keep_remnants, recover_beams, &
-               use_alpha_s_from_file, use_scale_from_file, &
+               use_alphas_from_file, use_scale_from_file, &
                char (lhef_version), lhef_extension, &
                write_sqme_ref, write_sqme_prc, write_sqme_alt)
        end select
@@ -325,7 +356,7 @@ contains
           extension_hepmc = &
                var_list%get_sval (var_str ("$extension_hepmc"))
           call eio%set_parameters (recover_beams, &
-               use_alpha_s_from_file, use_scale_from_file, &
+               use_alphas_from_file, use_scale_from_file, &
                extension_hepmc, output_cross_section)
        end select
     case ("lcio")
@@ -335,7 +366,7 @@ contains
           extension_lcio = &
                var_list%get_sval (var_str ("$extension_lcio"))
           call eio%set_parameters (recover_beams, &
-               use_alpha_s_from_file, use_scale_from_file, &
+               use_alphas_from_file, use_scale_from_file, &
                extension_lcio)
        end select
     case ("stdhep")
@@ -346,7 +377,7 @@ contains
                var_list%get_sval (var_str ("$extension_stdhep"))
           call eio%set_parameters &
                (keep_beams, keep_remnants, ensure_order, recover_beams, &
-                use_alpha_s_from_file, use_scale_from_file, extension_stdhep)
+                use_alphas_from_file, use_scale_from_file, extension_stdhep)
        end select
     case ("stdhep_up")
        allocate (eio_stdhep_hepeup_t :: eio)
@@ -355,7 +386,7 @@ contains
           extension_stdhep_up = &
                var_list%get_sval (var_str ("$extension_stdhep_up"))
           call eio%set_parameters (keep_beams, keep_remnants, ensure_order, &
-               recover_beams, use_alpha_s_from_file, &
+               recover_beams, use_alphas_from_file, &
                use_scale_from_file, extension_stdhep_up)
        end select
     case ("stdhep_ev4")
@@ -366,7 +397,7 @@ contains
                var_list%get_sval (var_str ("$extension_stdhep_ev4"))
           call eio%set_parameters &
                (keep_beams, keep_remnants, ensure_order, recover_beams, &
-                use_alpha_s_from_file, use_scale_from_file, extension_stdhep_ev4)
+                use_alphas_from_file, use_scale_from_file, extension_stdhep_ev4)
        end select
     case ("ascii")
        allocate (eio_ascii_ascii_t :: eio)

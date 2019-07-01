@@ -125,10 +125,13 @@
  Structure-function parameters:
  Channel #1: [selected]
    p = 0.8000000
+   pb= 0.2000000
    r = 0.8000000
+   rb= 0.2000000
    f = 1.6000000E+00
    m = +
    x = 0.6400000
+   xb= 0.3600000
 ------------------------------------------------------------------------
  Colliding beams:
  Interaction: 5
@@ -150,9 +153,11 @@
  Structure-function parameters:
  Channel #1: [selected]
    r = 0.8000000
+   rb= 0.2000000
    f = 1.6000000E+00
    m = T
    x = 0.6400000
+   xb= 0.3600000
  SF test data:
    model     = Test
    incoming  = f(25)
@@ -311,10 +316,13 @@
  Structure-function parameters:
  Channel #1: [selected]
    p = 0.5000000 0.6000000 0.8000000
+   pb= 0.5000000 0.4000000 0.2000000
    r = 0.5000000 0.6000000 0.8000000
+   rb= 0.5000000 0.4000000 0.2000000
    f = 1.6000000E+00
    m = - +
    x = 0.5000000 0.6000000 0.6400000
+   xb= 0.5000000 0.4000000 0.3600000
 ------------------------------------------------------------------------
  Colliding beams:
  Interaction: 10
@@ -336,9 +344,11 @@
  Structure-function parameters:
  Channel #1: [selected]
    r = 0.5000000 0.6000000
+   rb= 0.5000000 0.4000000
    f = 1.0000000E+00
    m = F
    x = 0.5000000 0.6000000
+   xb= 0.5000000 0.4000000
  SF test spectrum data:
    model     = Test
    incoming  = f(25)
@@ -397,9 +407,11 @@
  Structure-function parameters:
  Channel #1: [selected]
    r = 0.8000000
+   rb= 0.2000000
    f = 1.6000000E+00
    m = T
    x = 0.6400000
+   xb= 0.3600000
  SF test data:
    model     = Test
    incoming  = f(25)

@@ -6,7 +6,7 @@ openmp_num_threads = 1
 | Switching to model 'SM_tt_threshold'
 SM_tt_threshold.sqrtsmin =>  3.50000E+02
 SM_tt_threshold.sqrtsmax =>  3.50000E+02
-SM_tt_threshold.sqrtsstepsize =>  2.00000E-01
+SM_tt_threshold.sqrtsstepsize =>  0.00000E+00
 SM_tt_threshold.m1S =>  1.72000E+02
 SM_tt_threshold.mZ =>  9.11880E+01
 SM_tt_threshold.mW =>  8.04190E+01
@@ -24,6 +24,7 @@ SM_tt_threshold.mpole_fixed =>  1.00000E+00
 SM_tt_threshold.offshell_strategy =>  4.00000E+00
 SM_tt_threshold.me =>  0.00000E+00
 sqrts =  3.50000E+02
+[user variable] num_diff =  1.00000E-03
 seed = 0
 $restrictions = "3+5~t && 4+6~tbar"
 | Process library 'user_prc_threshold_1_lib': recorded process 'user_prc_threshold_1_p1'
@@ -52,9 +53,7 @@ $restrictions = "3+5~t && 4+6~tbar"
 |  by M. Jezabek, T. Teubner.
 | %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 | 
-| Scanning from 349.800 GeV to 350.200 GeV in steps of   0.200 GeV
-|  33.3%
-|  66.7%
+| Scanning from 350.000 GeV to 350.000 GeV in steps of   0.000 GeV
 | 100.0%
 | Beam structure: [any particles]
 | Beam data (collision):
@@ -77,17 +76,17 @@ $restrictions = "3+5~t && 4+6~tbar"
 | Phase space: wood
 Warning: No cuts have been defined.
 | Starting integration for process 'user_prc_threshold_1_p1'
-| Integrate: iterations = 1:1000
+| Integrate: iterations = 1:200
 | Integrator: 6 chains, 15 channels, 8 dimensions
 | Integrator: Using VAMP channel equivalences
-| Integrator: 1000 initial calls, 20 bins, stratified = T
+| Integrator: 200 initial calls, 20 bins, stratified = T
 | Integrator: VAMP
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1        990     7.852E+02   6.73E+01    8.58    2.70    12.2
+   1        195     7.811E+02   1.52E+02   19.42    2.71    28.7
 |-----------------------------------------------------------------------------|
-   1        990     7.852E+02   6.73E+01    8.58    2.70    12.2
+   1        195     7.811E+02   1.52E+02   19.42    2.71    28.7
 |=============================================================================|
 seed = 0
 | Process library 'user_prc_threshold_1_lib': unloading
@@ -141,140 +140,18 @@ seed = 0
 | Phase space: wood
 Warning: No cuts have been defined.
 | Starting integration for process 'user_prc_threshold_1_p2'
-| Integrate: iterations = 1:1000
+| Integrate: iterations = 1:200
 | Integrator: 1 chains, 1 channels, 2 dimensions
 | Integrator: Using VAMP channel equivalences
-| Integrator: 1000 initial calls, 20 bins, stratified = T
+| Integrator: 200 initial calls, 20 bins, stratified = T
 | Integrator: VAMP
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1        800     5.571E+02   1.21E-01    0.02    0.01    80.8
+   1        200     5.568E+02   4.28E-01    0.08    0.01    80.9
 |-----------------------------------------------------------------------------|
-   1        800     5.571E+02   1.21E-01    0.02    0.01    80.8
+   1        200     5.568E+02   4.28E-01    0.08    0.01    80.9
 |=============================================================================|
-seed = 0
-$method = "dummy"
-| Process library 'user_prc_threshold_1_lib': unloading
-| Process library 'user_prc_threshold_1_lib': open
-| Process library 'user_prc_threshold_1_lib': recorded process 'user_prc_threshold_1_p3'
-error_threshold =  1.00000E-04
-| Integrate: current process library needs compilation
-| Process library 'user_prc_threshold_1_lib': compiling ...
-| Process library 'user_prc_threshold_1_lib': writing makefile
-| Process library 'user_prc_threshold_1_lib': removing old files
-| Process library 'user_prc_threshold_1_lib': writing driver
-| Process library 'user_prc_threshold_1_lib': creating source code
-| Process library 'user_prc_threshold_1_lib': compiling sources
-| Process library 'user_prc_threshold_1_lib': linking
-| Process library 'user_prc_threshold_1_lib': loading
-| Process library 'user_prc_threshold_1_lib': ... success.
-| Integrate: compilation done
-| RNG: Initializing TAO random-number generator
-| RNG: Setting seed for random-number generator to 0
-| Initializing integration for process user_prc_threshold_1_p3:
-| Beam structure: [any particles]
-| Beam data (collision):
-|   e+  (mass = 0.0000000E+00 GeV)
-|   e-  (mass = 0.0000000E+00 GeV)
-|   sqrts = 3.500000000000E+02 GeV
-| Phase space: generating configuration ...
-| Phase space: ... success.
-| Phase space: writing configuration file 'user_prc_threshold_1_p3_i1.phs'
-| ------------------------------------------------------------------------
-| Process [scattering]: 'user_prc_threshold_1_p3'
-|   Library name  = 'user_prc_threshold_1_lib'
-|   Process index = 3
-|   Process components:
-|     1: 'user_prc_threshold_1_p3_i1':   e+, e- => mu-, mu+ [dummy]
-| ------------------------------------------------------------------------
-| Phase space: 2 channels, 2 dimensions
-| Phase space: found 2 channels, collected in 2 groves.
-| Phase space: Using 2 equivalences between channels.
-| Phase space: wood
-Warning: No cuts have been defined.
-| Starting integration for process 'user_prc_threshold_1_p3'
-| Integrate: iterations = 1:1000
-| Integrator: 2 chains, 2 channels, 2 dimensions
-| Integrator: Using VAMP channel equivalences
-| Integrator: 1000 initial calls, 20 bins, stratified = T
-| Integrator: VAMP
-|=============================================================================|
-| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
-|=============================================================================|
-   1        784     6.324E+04   0.00E+00    0.00    0.00   100.0
-|-----------------------------------------------------------------------------|
-   1        784     6.324E+04   0.00E+00    0.00    0.00   100.0
-|=============================================================================|
-seed = 0
-$restrictions = "3+5~t && 4+6~tbar"
-$method = "threshold"
-| Process library 'user_prc_threshold_1_lib': unloading
-| Process library 'user_prc_threshold_1_lib': open
-| Process library 'user_prc_threshold_1_lib': recorded process 'user_prc_threshold_1_p4'
-| Integrate: current process library needs compilation
-| Process library 'user_prc_threshold_1_lib': compiling ...
-| Process library 'user_prc_threshold_1_lib': writing makefile
-| Process library 'user_prc_threshold_1_lib': removing old files
-| Process library 'user_prc_threshold_1_lib': writing driver
-| Process library 'user_prc_threshold_1_lib': creating source code
-| Process library 'user_prc_threshold_1_lib': compiling sources
-| Process library 'user_prc_threshold_1_lib': linking
-| Process library 'user_prc_threshold_1_lib': loading
-| Loaded extra threshold functions
-| Process library 'user_prc_threshold_1_lib': ... success.
-| Integrate: compilation done
-| RNG: Initializing TAO random-number generator
-| RNG: Setting seed for random-number generator to 0
-| Initializing integration for process user_prc_threshold_1_p4:
-| 
-| %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-|  Initialize e+e- => ttbar threshold resummation:
-|  Use analytic (LL) or TOPPIK (NLL) form factors for ttA/ttZ vector
-|  and axial vector couplings (S/P-wave) in the threshold region.
-|  Cf. threshold shapes from A. Hoang et al.: [arXiv:hep-ph/0107144],
-|  [arXiv:1309.6323].
-|  Numerical NLL solutions calculated with TOPPIK [arXiv:hep-ph/9904468]
-|  by M. Jezabek, T. Teubner.
-| %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-| 
-| Opening grid file: SM_tt_threshold.grid
-| Threshold setup unchanged: reusing existing threshold grid.
-| Beam structure: [any particles]
-| Beam data (collision):
-|   e+  (mass = 0.0000000E+00 GeV)
-|   e-  (mass = 0.0000000E+00 GeV)
-|   sqrts = 3.500000000000E+02 GeV
-| Phase space: generating configuration ...
-| Phase space: ... success.
-| Phase space: writing configuration file 'user_prc_threshold_1_p4_i1.phs'
-| ------------------------------------------------------------------------
-| Process [scattering]: 'user_prc_threshold_1_p4'
-|   Library name  = 'user_prc_threshold_1_lib'
-|   Process index = 4
-|   Process components:
-|     1: 'user_prc_threshold_1_p4_i1':   e+, e- => W+, W-, b, bbar [threshold]
-| ------------------------------------------------------------------------
-| Phase space: 15 channels, 8 dimensions
-| Phase space: found 15 channels, collected in 6 groves.
-| Phase space: Using 15 equivalences between channels.
-| Phase space: wood
-Warning: No cuts have been defined.
-| Starting integration for process 'user_prc_threshold_1_p4'
-| Integrate: iterations = 1:1000
-| Integrator: 6 chains, 15 channels, 8 dimensions
-| Integrator: Using VAMP channel equivalences
-| Integrator: 1000 initial calls, 20 bins, stratified = T
-| Integrator: VAMP
-|=============================================================================|
-| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
-|=============================================================================|
-   1        990     7.852E+02   6.73E+01    8.58    2.70    12.2
-|-----------------------------------------------------------------------------|
-   1        990     7.852E+02   6.73E+01    8.58    2.70    12.2
-|=============================================================================|
-tolerance =  1.00000E-04
-| expect: success
 seed = 0
 $method = "threshold"
 | Process library 'user_prc_threshold_1_lib': unloading
@@ -289,7 +166,6 @@ $method = "threshold"
 | Process library 'user_prc_threshold_1_lib': compiling sources
 | Process library 'user_prc_threshold_1_lib': linking
 | Process library 'user_prc_threshold_1_lib': loading
-| Loaded extra threshold functions
 | Loaded extra threshold functions
 | Process library 'user_prc_threshold_1_lib': ... success.
 | Integrate: compilation done
@@ -320,7 +196,7 @@ $method = "threshold"
 | ------------------------------------------------------------------------
 | Process [scattering]: 'user_prc_threshold_1_p5'
 |   Library name  = 'user_prc_threshold_1_lib'
-|   Process index = 5
+|   Process index = 3
 |   Process components:
 |     1: 'user_prc_threshold_1_p5_i1':   e+, e- => t, tbar [threshold]
 | ------------------------------------------------------------------------
@@ -330,23 +206,29 @@ $method = "threshold"
 | Phase space: wood
 Warning: No cuts have been defined.
 | Starting integration for process 'user_prc_threshold_1_p5'
-| Integrate: iterations = 1:1000
+| Integrate: iterations = 1:200
 | Integrator: 1 chains, 1 channels, 2 dimensions
 | Integrator: Using VAMP channel equivalences
-| Integrator: 1000 initial calls, 20 bins, stratified = T
+| Integrator: 200 initial calls, 20 bins, stratified = T
 | Integrator: VAMP
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1        800     5.571E+02   1.21E-01    0.02    0.01    80.8
+   1        200     5.568E+02   4.28E-01    0.08    0.01    80.9
 |-----------------------------------------------------------------------------|
-   1        800     5.571E+02   1.21E-01    0.02    0.01    80.8
+   1        200     5.568E+02   4.28E-01    0.08    0.01    80.9
 |=============================================================================|
 tolerance =  1.00000E-04
 | expect: success
 seed = 0
-$restrictions = "3+5~t && 4+6~tbar"
 $born_me_method = "threshold"
+$loop_me_method = "threshold"
+$correlation_me_method = "threshold"
+$real_tree_me_method = "threshold"
+$restrictions = "3+5~t && 4+6~tbar"
+Warning: You have not disabled VAMP equivalences.
+   Note that they are automatically switched off
+   for NLO calculations.
 | Process library 'user_prc_threshold_1_lib': unloading
 | Process library 'user_prc_threshold_1_lib': open
 | Process library 'user_prc_threshold_1_lib': recorded process 'user_prc_threshold_1_p6'
@@ -359,6 +241,7 @@ $born_me_method = "threshold"
 | Process library 'user_prc_threshold_1_lib': compiling sources
 | Process library 'user_prc_threshold_1_lib': linking
 | Process library 'user_prc_threshold_1_lib': loading
+| Loaded extra threshold functions
 | Loaded extra threshold functions
 | Loaded extra threshold functions
 | Loaded extra threshold functions
@@ -380,6 +263,32 @@ $born_me_method = "threshold"
 | 
 | Opening grid file: SM_tt_threshold.grid
 | Threshold setup unchanged: reusing existing threshold grid.
+| 
+| %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+|  Initialize e+e- => ttbar threshold resummation:
+|  Use analytic (LL) or TOPPIK (NLL) form factors for ttA/ttZ vector
+|  and axial vector couplings (S/P-wave) in the threshold region.
+|  Cf. threshold shapes from A. Hoang et al.: [arXiv:hep-ph/0107144],
+|  [arXiv:1309.6323].
+|  Numerical NLL solutions calculated with TOPPIK [arXiv:hep-ph/9904468]
+|  by M. Jezabek, T. Teubner.
+| %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+| 
+| Opening grid file: SM_tt_threshold.grid
+| Threshold setup unchanged: reusing existing threshold grid.
+| 
+| %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+|  Initialize e+e- => ttbar threshold resummation:
+|  Use analytic (LL) or TOPPIK (NLL) form factors for ttA/ttZ vector
+|  and axial vector couplings (S/P-wave) in the threshold region.
+|  Cf. threshold shapes from A. Hoang et al.: [arXiv:hep-ph/0107144],
+|  [arXiv:1309.6323].
+|  Numerical NLL solutions calculated with TOPPIK [arXiv:hep-ph/9904468]
+|  by M. Jezabek, T. Teubner.
+| %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+| 
+| Opening grid file: SM_tt_threshold.grid
+| Threshold setup unchanged: reusing existing threshold grid.
 | Beam structure: [any particles]
 | Beam data (collision):
 |   e+  (mass = 0.0000000E+00 GeV)
@@ -388,35 +297,202 @@ $born_me_method = "threshold"
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'user_prc_threshold_1_p6_i1.phs'
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'user_prc_threshold_1_p6_i3.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'user_prc_threshold_1_p6'
 |   Library name  = 'user_prc_threshold_1_lib'
-|   Process index = 6
+|   Process index = 4
 |   Process components:
 |     1: 'user_prc_threshold_1_p6_i1':   e+, e- => W+, W-, b, bbar [threshold]
+|     2: 'user_prc_threshold_1_p6_i2':   e+, e- => W+, W-, b, bbar, gl [inactive], [real]
+|     3: 'user_prc_threshold_1_p6_i3':   e+, e- => W+, W-, b, bbar [inactive], [virtual]
+|     4: 'user_prc_threshold_1_p6_i4':   e+, e- => W+, W-, b, bbar [inactive], [subtraction]
+| ------------------------------------------------------------------------
+| Phase space: 15 channels, 8 dimensions
+| Phase space: found 15 channels, collected in 6 groves.
+| Phase space: Using 15 equivalences between channels.
+| Phase space: wood
+| Phase space: 15 channels, 11 dimensions
+| Phase space: found 15 channels, collected in 6 groves.
+| Phase space: no equivalences between channels used.
+| Phase space: wood
+| Phase space: 15 channels, 8 dimensions
+| Phase space: found 15 channels, collected in 6 groves.
+| Phase space: Using 15 equivalences between channels.
+| Phase space: wood
+Warning: No cuts have been defined.
+| Starting integration for process 'user_prc_threshold_1_p6' part 'born'
+| Integrate: iterations = 1:200
+| Integrator: 6 chains, 15 channels, 8 dimensions
+| Integrator: 200 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1        195     7.811E+02   1.52E+02   19.42    2.71    28.7
+|-----------------------------------------------------------------------------|
+   1        195     7.811E+02   1.52E+02   19.42    2.71    28.7
+|=============================================================================|
+| Integrate: sum of all components
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1          0     7.811E+02   1.52E+02   19.42    0.00    28.7
+| NLO Correction: [O(alpha_s+1)/O(alpha_s)]
+|  (  0.0000 +-   0.00000 ) %
+|=============================================================================|
+tolerance =  1.00000E-04
+| expect: success
+$method = "threshold"
+seed = 0
+| Process library 'user_prc_threshold_1_lib': unloading
+| Process library 'user_prc_threshold_1_lib': open
+| Process library 'user_prc_threshold_1_lib': recorded process 'user_prc_threshold_1_sig_thr'
+SM_tt_threshold.offshell_strategy =>  0.00000E+00
+| Integrate: current process library needs compilation
+| Process library 'user_prc_threshold_1_lib': compiling ...
+| Process library 'user_prc_threshold_1_lib': writing makefile
+| Process library 'user_prc_threshold_1_lib': removing old files
+| Process library 'user_prc_threshold_1_lib': writing driver
+| Process library 'user_prc_threshold_1_lib': creating source code
+| Process library 'user_prc_threshold_1_lib': compiling sources
+| Process library 'user_prc_threshold_1_lib': linking
+| Process library 'user_prc_threshold_1_lib': loading
+| Loaded extra threshold functions
+| Loaded extra threshold functions
+| Loaded extra threshold functions
+| Loaded extra threshold functions
+| Loaded extra threshold functions
+| Process library 'user_prc_threshold_1_lib': ... success.
+| Integrate: compilation done
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 0
+| Initializing integration for process user_prc_threshold_1_sig_thr:
+| 
+| %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+|  Initialize e+e- => ttbar threshold resummation:
+|  Use analytic (LL) or TOPPIK (NLL) form factors for ttA/ttZ vector
+|  and axial vector couplings (S/P-wave) in the threshold region.
+|  Cf. threshold shapes from A. Hoang et al.: [arXiv:hep-ph/0107144],
+|  [arXiv:1309.6323].
+|  Numerical NLL solutions calculated with TOPPIK [arXiv:hep-ph/9904468]
+|  by M. Jezabek, T. Teubner.
+| %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+| 
+| Opening grid file: SM_tt_threshold.grid
+| Threshold setup unchanged: reusing existing threshold grid.
+| Beam structure: [any particles]
+| Beam data (collision):
+|   e+  (mass = 0.0000000E+00 GeV)
+|   e-  (mass = 0.0000000E+00 GeV)
+|   sqrts = 3.500000000000E+02 GeV
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'user_prc_threshold_1_sig_thr_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'user_prc_threshold_1_sig_thr'
+|   Library name  = 'user_prc_threshold_1_lib'
+|   Process index = 5
+|   Process components:
+|     1: 'user_prc_threshold_1_sig_thr_i1':   e+, e- => W+, W-, b, bbar [threshold]
 | ------------------------------------------------------------------------
 | Phase space: 15 channels, 8 dimensions
 | Phase space: found 15 channels, collected in 6 groves.
 | Phase space: Using 15 equivalences between channels.
 | Phase space: wood
 Warning: No cuts have been defined.
-| Starting integration for process 'user_prc_threshold_1_p6'
-| Integrate: iterations = 1:1000
+| Starting integration for process 'user_prc_threshold_1_sig_thr'
+| Integrate: iterations = 1:200
 | Integrator: 6 chains, 15 channels, 8 dimensions
 | Integrator: Using VAMP channel equivalences
-| Integrator: 1000 initial calls, 20 bins, stratified = T
+| Integrator: 200 initial calls, 20 bins, stratified = T
 | Integrator: VAMP
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1        990     7.852E+02   6.73E+01    8.58    2.70    12.2
+   1        195     7.811E+02   1.52E+02   19.42    2.71    28.7
 |-----------------------------------------------------------------------------|
-   1        990     7.852E+02   6.73E+01    8.58    2.70    12.2
+   1        195     7.811E+02   1.52E+02   19.42    2.71    28.7
 |=============================================================================|
-tolerance =  1.00000E-04
+tolerance =  1.00000E-03
+| expect: success
+seed = 0
+| Process library 'user_prc_threshold_1_lib': unloading
+| Process library 'user_prc_threshold_1_lib': open
+| Process library 'user_prc_threshold_1_lib': recorded process 'user_prc_threshold_1_factorized'
+SM_tt_threshold.offshell_strategy =>  2.00000E+00
+| Integrate: current process library needs compilation
+| Process library 'user_prc_threshold_1_lib': compiling ...
+| Process library 'user_prc_threshold_1_lib': writing makefile
+| Process library 'user_prc_threshold_1_lib': removing old files
+| Process library 'user_prc_threshold_1_lib': writing driver
+| Process library 'user_prc_threshold_1_lib': creating source code
+| Process library 'user_prc_threshold_1_lib': compiling sources
+| Process library 'user_prc_threshold_1_lib': linking
+| Process library 'user_prc_threshold_1_lib': loading
+| Loaded extra threshold functions
+| Loaded extra threshold functions
+| Loaded extra threshold functions
+| Loaded extra threshold functions
+| Loaded extra threshold functions
+| Loaded extra threshold functions
+| Process library 'user_prc_threshold_1_lib': ... success.
+| Integrate: compilation done
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 0
+| Initializing integration for process user_prc_threshold_1_factorized:
+| 
+| %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+|  Initialize e+e- => ttbar threshold resummation:
+|  Use analytic (LL) or TOPPIK (NLL) form factors for ttA/ttZ vector
+|  and axial vector couplings (S/P-wave) in the threshold region.
+|  Cf. threshold shapes from A. Hoang et al.: [arXiv:hep-ph/0107144],
+|  [arXiv:1309.6323].
+|  Numerical NLL solutions calculated with TOPPIK [arXiv:hep-ph/9904468]
+|  by M. Jezabek, T. Teubner.
+| %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+| 
+| Opening grid file: SM_tt_threshold.grid
+| Threshold setup unchanged: reusing existing threshold grid.
+| Beam structure: [any particles]
+| Beam data (collision):
+|   e+  (mass = 0.0000000E+00 GeV)
+|   e-  (mass = 0.0000000E+00 GeV)
+|   sqrts = 3.500000000000E+02 GeV
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'user_prc_threshold_1_factorized_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'user_prc_threshold_1_factorized'
+|   Library name  = 'user_prc_threshold_1_lib'
+|   Process index = 6
+|   Process components:
+|     1: 'user_prc_threshold_1_factorized_i1':   e+, e- => W+, W-, b, bbar [threshold]
+| ------------------------------------------------------------------------
+| Phase space: 15 channels, 8 dimensions
+| Phase space: found 15 channels, collected in 6 groves.
+| Phase space: Using 15 equivalences between channels.
+| Phase space: wood
+Warning: No cuts have been defined.
+| Starting integration for process 'user_prc_threshold_1_factorized'
+| Integrate: iterations = 1:200
+| Integrator: 6 chains, 15 channels, 8 dimensions
+| Integrator: Using VAMP channel equivalences
+| Integrator: 200 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1        195     7.681E+02   1.49E+02   19.44    2.72    28.8
+|-----------------------------------------------------------------------------|
+   1        195     7.681E+02   1.49E+02   19.44    2.72    28.8
+|=============================================================================|
+tolerance =  2.79506E+01
 | expect: success
 | Summary of value checks:
-|   Failures: 0 / Total: 3
-| There were no errors and    6 warning(s).
+|   Failures: 0 / Total: 4
+| There were no errors and    7 warning(s).
 | WHIZARD run finished.
 |=============================================================================|

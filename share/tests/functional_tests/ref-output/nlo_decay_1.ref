@@ -43,9 +43,9 @@ SM.mtop =>  1.73200E+02
 |   Process index = 1
 |   Process components:
 |     1: 'nlo_decay_1_p1_i1':   W+ => u, dbar [inactive]
-|     2: 'nlo_decay_1_p1_i2':   W+ => u, dbar, u:gl [omega], [Real]
-|     3: 'nlo_decay_1_p1_i3':   W+ => u, dbar [inactive], [Virtual]
-|     4: 'nlo_decay_1_p1_i4':   W+ => u, dbar [inactive], [Subtraction]
+|     2: 'nlo_decay_1_p1_i2':   W+ => u, dbar, u:gl [omega], [real]
+|     3: 'nlo_decay_1_p1_i3':   W+ => u, dbar [inactive], [virtual]
+|     4: 'nlo_decay_1_p1_i4':   W+ => u, dbar [inactive], [subtraction]
 | ------------------------------------------------------------------------
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
@@ -61,7 +61,7 @@ SM.mtop =>  1.73200E+02
 | Phase space: wood
 Warning: No cuts have been defined.
 | Using user-defined general scale.
-| Starting integration for process 'nlo_decay_1_p1' part 'Real'
+| Starting integration for process 'nlo_decay_1_p1' part 'real'
 | Integrate: iterations = 2:500:"gw"
 | Integrator: 1 chains, 1 channels, 5 dimensions
 | Integrator: 500 initial calls, 20 bins, stratified = T
@@ -112,9 +112,9 @@ Warning: No cuts have been defined.
 |   Process index = 2
 |   Process components:
 |     1: 'nlo_decay_1_p2_i1':   t => b, W+ [inactive]
-|     2: 'nlo_decay_1_p2_i2':   t => b, W+, b:gl [omega], [Real]
-|     3: 'nlo_decay_1_p2_i3':   t => b, W+ [inactive], [Virtual]
-|     4: 'nlo_decay_1_p2_i4':   t => b, W+ [inactive], [Subtraction]
+|     2: 'nlo_decay_1_p2_i2':   t => b, W+, b:gl [omega], [real]
+|     3: 'nlo_decay_1_p2_i3':   t => b, W+ [inactive], [virtual]
+|     4: 'nlo_decay_1_p2_i4':   t => b, W+ [inactive], [subtraction]
 | ------------------------------------------------------------------------
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
@@ -130,7 +130,7 @@ Warning: No cuts have been defined.
 | Phase space: wood
 Warning: No cuts have been defined.
 | Using user-defined general scale.
-| Starting integration for process 'nlo_decay_1_p2' part 'Real'
+| Starting integration for process 'nlo_decay_1_p2' part 'real'
 | Integrate: iterations = 2:500:"gw"
 | Integrator: 1 chains, 1 channels, 5 dimensions
 | Integrator: 500 initial calls, 20 bins, stratified = T

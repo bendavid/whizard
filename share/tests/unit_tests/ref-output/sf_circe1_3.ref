@@ -15,6 +15,7 @@
 * Generate x
 
 x =  1.0000000  0.9997418
+xb=  0.0000000  0.0002582
 f =  1.0000000
 xf=  0.9997418
 
@@ -35,6 +36,7 @@ xf=  0.9997418
  RNG factory: test (1)
  Random-number generator: test (state = 5)
    x =  1.0000000000E+00  9.9974182319E-01
+   xb=  0.0000000000E+00  2.5817681304E-04
    f =  1.0000000000E+00
  SF instance: [evaluated]
    beam      = 1 2

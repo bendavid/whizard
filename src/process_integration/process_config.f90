@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -60,7 +53,6 @@ module process_config
   use prc_core
   use prc_user_defined
   use prc_openloops, only: prc_openloops_t
-  use prc_recola, only: prc_recola_t
   use prc_threshold, only: prc_threshold_t
   use beams
   use mci_base
@@ -68,6 +60,8 @@ module process_config
   use phs_base
   use variables
   use expr_base
+
+  use pcm_base, only: pcm_t
 
   implicit none
   private
@@ -162,6 +156,7 @@ module process_config
      procedure :: get_beam_file => process_beam_config_get_beam_file
      procedure :: compute_md5sum => process_beam_config_compute_md5sum
      procedure :: get_md5sum => process_beam_config_get_md5sum
+     procedure :: has_structure_function => process_beam_config_has_structure_function
   end type process_beam_config_t
 
   type :: process_component_t
@@ -205,6 +200,7 @@ module process_config
      integer, dimension(:), allocatable :: flv, hel, col
      type(interaction_t) :: int
      type(interaction_t), pointer :: int_eff => null ()
+     class(pcm_t), pointer :: pcm => null ()
    contains
      procedure :: write => process_term_write
      procedure :: write_state_summary => process_term_write_state_summary
@@ -737,6 +733,12 @@ contains
     md5 = beam_config%md5sum
   end function process_beam_config_get_md5sum
 
+  pure function process_beam_config_has_structure_function (beam_config) result (has_sf)
+    logical :: has_sf
+    class(process_beam_config_t), intent(in) :: beam_config
+    has_sf = beam_config%n_strfun > 0
+  end function process_beam_config_has_structure_function
+
   subroutine process_component_final (object)
     class(process_component_t), intent(inout) :: object
     if (allocated (object%mci_template)) then
@@ -1053,35 +1055,40 @@ contains
     end subroutine count_number_of_states
 
     subroutine compute_n_sub ()
+      logical :: can_have_sub
       use_color = .false.; if (present (use_internal_color)) &
            use_color = use_internal_color
-      if (nlo_t == NLO_VIRTUAL) then
-         n_sub = 1
-         if (.not. use_color) n_sub = n_sub + n_tot * (n_tot - 1) / 2
-      else if (nlo_t == NLO_REAL) then
-         if (.not. use_color .and. term%i_term_global == term%i_sub) then
-            n_sub = n_tot * (n_tot - 1) / 2
-         else
-            n_sub = 0
-         end if
+      can_have_sub = nlo_t == NLO_VIRTUAL .or. &
+           (nlo_t == NLO_REAL .and. term%i_term_global == term%i_sub) .or. &
+           nlo_t == NLO_MISMATCH
+      if (can_have_sub .and. .not. use_color) then
+         n_sub = n_tot * (n_tot - 1) / 2
       else
          n_sub = 0
+      end if
+      !!! Add one for additional Born matrix element
+      if (nlo_t == NLO_VIRTUAL)  n_sub = n_sub + 1
+      if (associated (term%pcm)) then
+         if (term%pcm%has_pdfs .and. nlo_t == NLO_REAL .and. can_have_sub)  n_sub = n_sub + 4
       end if
     end subroutine compute_n_sub
 
     subroutine fill_quantum_numbers ()
       integer :: nn
-      if (nlo_t == NLO_VIRTUAL) then
-         nn = (n_sub + 1) * n
-      else if (nlo_t == NLO_REAL) then
-         if (term%i_term_global == term%i_sub) then
+      logical :: can_have_sub
+      select type (core)
+      class is (prc_user_defined_base_t)
+         can_have_sub = nlo_t == NLO_VIRTUAL .or. &
+              (nlo_t == NLO_REAL .and. term%i_term_global == term%i_sub) .or. &
+              nlo_t == NLO_MISMATCH
+         if (can_have_sub) then
             nn = (n_sub + 1) * n
          else
             nn = n
          end if
-      else
+      class default
          nn = n
-      end if
+      end select
       allocate (term%flv (nn), term%col (nn), term%hel (nn))
       allocate (flv (n_tot), col (n_tot), hel (n_tot))
       allocate (qn (n_tot))
@@ -1120,8 +1127,6 @@ contains
 
     subroutine setup_states_threshold ()
       integer :: s, f, c, h, i
-      if (is_pol) &
-           call msg_fatal ("Polarized beams only supported by OpenLoops")
       i = 0
       n_sub = 0; if (nlo_t == NLO_VIRTUAL) n_sub = 1
       associate (data => term%data)
@@ -1131,12 +1136,16 @@ contains
                   do c = 1, data%n_col
                      i = i + 1
                      term%flv(i) = f
-                     !!! Dumy initialization of helicity
-                     term%hel(i) = 1
+                     term%hel(i) = h
                      !!! Dummy-initialization of color
                      term%col(i) = 1
                      call flv%init (term%data%flv_state (:,f), model)
-                     call qn%init (flv, s)
+                     if (is_pol) then
+                        call hel%init (data%hel_state (:,h))
+                        call qn%init (flv, hel, s)
+                     else
+                        call qn%init (flv, s)
+                     end if
                      call term%int%add_state (qn)
                   end do
                end do

@@ -33,7 +33,7 @@ sqrts = 500
 integrate (testproc_10_p1)
 
 # Rebuild only grids because QCD setup has changed
-?alpha_s_is_fixed = false
-?alpha_s_from_mz = true
+?alphas_is_fixed = false
+?alphas_from_mz = true
 integrate (testproc_10_p1)
 

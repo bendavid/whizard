@@ -13,12 +13,12 @@ Vtb = 1.
 wZ =  2.443
 wW =  2.049
 wH =  4.143E-03
-?alpha_s_is_fixed = false
-?alpha_s_from_mz = true
-?alpha_s_from_lambda_qcd = false
+?alphas_is_fixed = false
+?alphas_from_mz = true
+?alphas_from_lambda_qcd = false
 alphas = 0.118 ! (Z pole, NLL running to mu_h)
-alpha_s_order = 2
-alpha_s_nf = 5
+alphas_order = 2
+alphas_nf = 5
 scale = m1S
 
 alpha_power = 4
@@ -90,7 +90,7 @@ $loop_me_method        = "threshold"
 $correlation_me_method = "threshold"
 $real_tree_me_method   = "threshold"
 !!! Full can be separated into Born, Real and Virtual
-process matched_nlodecay = e1, E1 => Wp, Wm, b, B { nlo_calculation = "Full" }
+process matched_nlodecay = e1, E1 => Wp, Wm, b, B { nlo_calculation = full }
 integrate (matched_nlodecay)
 
 $method                = "openloops"
@@ -98,7 +98,7 @@ $born_me_method        = "openloops"
 $loop_me_method        = "openloops"
 $correlation_me_method = "openloops"
 $real_tree_me_method   = "openloops"
-process nlofull = e1, E1 => Wp, Wm, b, B { nlo_calculation = "Full" }
+process nlofull = e1, E1 => Wp, Wm, b, B { nlo_calculation = full }
 
 !!! h * m1S * sqrt(nustar)
 scale = sh * m1S * sqrt(abs(sqrt((sqrts - 2 * m1S + I * wtop1S) / m1S)) + 0.05)

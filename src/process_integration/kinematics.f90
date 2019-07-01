@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -38,7 +31,6 @@ module kinematics
   use kinds, only: default
   use format_utils, only: write_separator
   use diagnostics
-  use constants, only: two
   use io_units
   use lorentz
   use physics_defs
@@ -82,10 +74,12 @@ module kinematics
      procedure :: init_sf_chain => kinematics_init_sf_chain
      procedure :: init_phs => kinematics_init_phs
      procedure :: evaluate_radiation_kinematics => kinematics_evaluate_radiation_kinematics
+     procedure :: compute_xi_ref_momenta => kinematics_compute_xi_ref_momenta
      procedure :: compute_selected_channel => kinematics_compute_selected_channel
      procedure :: compute_other_channels => kinematics_compute_other_channels
      procedure :: get_incoming_momenta => kinematics_get_incoming_momenta
      procedure :: recover_mcpar => kinematics_recover_mcpar
+     procedure :: recover_sfchain => kinematics_recover_sfchain
      procedure :: get_mcpar => kinematics_get_mcpar
      procedure :: evaluate_sf_chain => kinematics_evaluate_sf_chain
      procedure :: return_beam_momenta => kinematics_return_beam_momenta
@@ -148,13 +142,15 @@ contains
   subroutine kinematics_set_nlo_info (k, nlo_type)
     class(kinematics_t), intent(inout) :: k
     integer, intent(in) :: nlo_type
-    if (nlo_type == NLO_VIRTUAL) k%only_cm_frame = .true.
+    if (nlo_type == NLO_VIRTUAL)  k%only_cm_frame = .true.
   end subroutine kinematics_set_nlo_info
 
-  subroutine kinematics_init_sf_chain (k, sf_chain, config)
+  subroutine kinematics_init_sf_chain (k, sf_chain, config, n_sub, has_pdfs)
     class(kinematics_t), intent(inout) :: k
     type(sf_chain_t), intent(in), target :: sf_chain
     type(process_beam_config_t), intent(in) :: config
+    integer, intent(in), optional :: n_sub
+    logical, intent(in), optional :: has_pdfs
     integer :: n_strfun, n_channel
     integer :: c
     k%n_in = config%data%get_n_in ()
@@ -170,7 +166,7 @@ contains
     end if
     call k%sf_chain%link_interactions ()
     call k%sf_chain%exchange_mask ()
-    call k%sf_chain%init_evaluators ()
+    call k%sf_chain%init_evaluators (n_sub, has_pdfs)
   end subroutine kinematics_init_sf_chain
 
   subroutine kinematics_init_phs (k, config)
@@ -185,9 +181,19 @@ contains
     k%f_allocated = .true.
   end subroutine kinematics_init_phs
 
-  subroutine kinematics_evaluate_radiation_kinematics (k, r_in, reg_data, nlo_type)
+  subroutine kinematics_evaluate_radiation_kinematics (k, r_in)
     class(kinematics_t), intent(inout) :: k
     real(default), intent(in), dimension(:) :: r_in
+    select type (phs => k%phs)
+    type is (phs_fks_t)
+       call phs%generate_radiation_variables &
+            (r_in(phs%n_r_born + 1 : phs%n_r_born + 3), k%threshold)
+       call phs%compute_cms_energy ()
+    end select
+  end subroutine kinematics_evaluate_radiation_kinematics
+
+  subroutine kinematics_compute_xi_ref_momenta (k, reg_data, nlo_type)
+    class(kinematics_t), intent(inout) :: k
     type(region_data_t), intent(in) :: reg_data
     integer, intent(in) :: nlo_type
     logical :: use_contributors
@@ -195,18 +201,15 @@ contains
     select type (phs => k%phs)
     type is (phs_fks_t)
        if (use_contributors) then
-          call phs%compute_xi_ref_momenta (reg_data%alr_contributors)
+          call phs%compute_xi_ref_momenta (contributors = reg_data%alr_contributors)
        else if (k%threshold) then
           if (.not. is_subtraction_component (k%emitter, nlo_type)) &
                call phs%compute_xi_ref_momenta_threshold ()
        else
           call phs%compute_xi_ref_momenta ()
        end if
-       call phs%generate_radiation_variables &
-            (r_in(phs%n_r_born + 1 : phs%n_r_born + 3), k%threshold)
-       call phs%compute_cms_energy ()
     end select
-  end subroutine kinematics_evaluate_radiation_kinematics
+  end subroutine kinematics_compute_xi_ref_momenta
 
   subroutine kinematics_compute_selected_channel &
        (k, mci_work, phs_channel, p, success)
@@ -306,6 +309,14 @@ contains
     call mci_work%set_x_process (x_phs)
   end subroutine kinematics_recover_mcpar
 
+  subroutine kinematics_recover_sfchain (k, channel, p)
+    class(kinematics_t), intent(inout) :: k
+    integer, intent(in) :: channel
+    type(vector4_t), dimension(:), intent(in) :: p
+    k%selected_channel = channel
+    call k%sf_chain%recover_kinematics (channel)
+  end subroutine kinematics_recover_sfchain
+
   subroutine kinematics_get_mcpar (k, phs_channel, r)
     class(kinematics_t), intent(in) :: k
     integer, intent(in) :: phs_channel
@@ -322,12 +333,14 @@ contains
     end if
   end subroutine kinematics_get_mcpar
 
-  subroutine kinematics_evaluate_sf_chain (k, fac_scale)
+  subroutine kinematics_evaluate_sf_chain (k, fac_scale, rescaling_function, i_rescale)
     class(kinematics_t), intent(inout) :: k
     real(default), intent(in) :: fac_scale
+    class(rescaling_function_t), intent(inout), optional :: rescaling_function
+    integer, intent(in), optional :: i_rescale
     select case (k%sf_chain%get_status ())
     case (SF_DONE_KINEMATICS)
-       call k%sf_chain%evaluate (fac_scale)
+       call k%sf_chain%evaluate (fac_scale, rescaling_function, i_rescale)
     end select
   end subroutine kinematics_evaluate_sf_chain
 
@@ -372,25 +385,15 @@ contains
     type(vector4_t), dimension(:), allocatable :: p_tot
     integer :: n_tot
     n_tot = k%phs%get_n_tot ()
+    allocate (p_tot (size (pcm_instance%real_kinematics%p_born_cms%phs_point(1)%p)))
     select type (phs => k%phs)
     type is (phs_fks_t)
-       if (nlo_type == NLO_REAL) then !!! Pure Real
-            n_tot = n_tot - 1
-            allocate (p_tot (n_tot))
-            p_tot(1 : k%n_in) = phs%p_born
-            p_tot(k%n_in + 1 : n_tot) = phs%q_born
-       else !!! Mismatch
-          allocate (p_tot (n_tot))
-          p_tot(1 : k%n_in) = k%phs%p
-          p_tot(k%n_in + 1 : n_tot) = phs%q
-       end if
-       sqrts = two * energy (phs%p_born(1))
-    class default !!! Virtual, Born must be checked before
-       allocate (p_tot (n_tot))
-       p_tot(1 : k%n_in) = k%phs%p
+       p_tot = pcm_instance%real_kinematics%p_born_cms%phs_point(1)%p
+    class default
+       p_tot(1 : k%n_in) = phs%p
        p_tot(k%n_in + 1 : n_tot) = phs%q
-       sqrts = two * energy (phs%p(1))
     end select
+    sqrts = sum (p_tot (1:k%n_in))**1
     mtop = m1s_to_mpole (sqrts)
     L_to_cms = get_boost_for_threshold_projection (p_tot, sqrts, mtop)
     call pcm_instance%real_kinematics%p_born_cms%set_momenta (1, p_tot)
@@ -408,7 +411,7 @@ contains
     type(vector4_t), intent(in), dimension(:) :: p_in
     type(vector4_t), intent(out), dimension(:), allocatable :: p_out
     logical, intent(out) :: success
-    type(phs_point_t) :: p
+    type(vector4_t), dimension(:), allocatable :: p_real
     type(vector4_t), dimension(:), allocatable :: p_born
     real(default) :: xi_max_offshell, xi_offshell, y_offshell, jac_rand_dummy, phi
     select type (phs => k%phs)
@@ -419,14 +422,15 @@ contains
        else
           p_born = p_in
        end if
-       if (.not. k%phs%is_cm_frame ()) &
+       if (.not. k%phs%is_cm_frame () .and. .not. k%threshold) then
             p_born = inverse (k%phs%lt_cm_to_lab) * p_born
+       end if
        call phs%compute_xi_max (p_born, k%threshold)
        if (k%emitter >= 0) then
-          p = size (p_born) + 1
+          allocate (p_real (size (p_born) + 1))
           allocate (p_out (size (p_born) + 1))
           if (k%emitter <= k%n_in) then
-             call phs%generate_isr (k%i_phs, p_born, p)
+             call phs%generate_isr (k%i_phs, p_real)
           else
              if (k%threshold) then
                 jac_rand_dummy = 1._default
@@ -439,24 +443,24 @@ contains
                      xi_max_offshell)
                 xi_offshell = xi_max_offshell * phs%generator%real_kinematics%xi_tilde
                 phi = phs%generator%real_kinematics%phi
-                call phs%generate_fsr (k%emitter, k%i_phs, p, &
+                call phs%generate_fsr (k%emitter, k%i_phs, p_real, &
                      xi_y_phi = [xi_offshell, y_offshell, phi], no_jacobians = .true.)
-                call phs%generator%real_kinematics%p_real_cms%set_momenta (k%i_phs, p)
-                call phs%generate_fsr_threshold (k%emitter, k%i_phs, p)
+                call phs%generator%real_kinematics%p_real_cms%set_momenta (k%i_phs, p_real)
+                call phs%generate_fsr_threshold (k%emitter, k%i_phs, p_real)
                 if (debug2_active (D_SUBTRACTION)) &
                      call generate_fsr_threshold_for_other_emitters (k%emitter, k%i_phs)
              else if (k%i_con > 0) then
-                call phs%generate_fsr (k%emitter, k%i_phs, p, k%i_con)
+                call phs%generate_fsr (k%emitter, k%i_phs, p_real, k%i_con)
              else
-                call phs%generate_fsr (k%emitter, k%i_phs, p)
+                call phs%generate_fsr (k%emitter, k%i_phs, p_real)
              end if
           end if
-          success = check_scalar_products (p%p)
-          if (debug_active (D_SUBTRACTION)) then
-             call msg_debug (D_SUBTRACTION, "Real phase-space: ")
-             call p%write ()
+          success = check_scalar_products (p_real)
+          if (debug2_active (D_SUBTRACTION)) then
+             call msg_debug2 (D_SUBTRACTION, "Real phase-space: ")
+             call vector4_write_set (p_real)
           end if
-          p_out = p%p
+          p_out = p_real
        else
           allocate (p_out (size (p_in))); p_out = p_in
           success = .true.

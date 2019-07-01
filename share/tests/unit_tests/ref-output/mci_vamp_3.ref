@@ -32,11 +32,11 @@
    n_bins        = 10
    adapt grids   = T
    adapt weights = F
-   Results:  [it, calls, integral, error, efficiency]
-     1 96  9.9310177618E-01  1.1330584296E-02  1.0730955898E-01
-     2 96  9.9988408492E-01  5.1162010614E-03  3.4388164053E-01
-     3 96  9.9901418127E-01  4.5963285350E-03  2.3579170730E-01
- MD5 sum (including results) = '7877A7E4681B45D2EE514D78D278E5D9'
+   Results:  [it, calls, valid, integral, error, efficiency]
+     1 96 96  9.9310177618E-01  1.1330584296E-02  1.0730955898E-01
+     2 96 96  9.9988408492E-01  5.1162010614E-03  3.4388164053E-01
+     3 96 96  9.9901418127E-01  4.5963285350E-03  2.3579170730E-01
+ MD5 sum (including results) = '323111847C9A22D861A3AE0A5DF73ECC'
 
 * Contents of mci_instance:
 
@@ -50,6 +50,7 @@
    pass complete = T
    n_calls       = 100
    calls         = 96
+   calls_valid   = 96
    it complete   = T
    n adapt.(g)   = 2
    n adapt.(w)   = 0

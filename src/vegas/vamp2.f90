@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -43,8 +36,11 @@ module vamp2
   use format_defs, only: FMT_12, FMT_14, FMT_17, FMT_19
   use diagnostics
   use rng_base
+  use rng_stream, only: rng_stream_t
 
   use vegas
+
+
 
   implicit none
   private
@@ -115,6 +111,8 @@ module vamp2
      real(default), dimension(:), allocatable :: variance
      real(default), dimension(:), allocatable :: efficiency
      type(vamp2_result_t) :: result
+     logical :: event_prepared
+     real(default), dimension(:), allocatable :: event_weight
    contains
      procedure, public :: final => vamp2_final
      procedure, public :: write => vamp2_write
@@ -123,13 +121,17 @@ module vamp2
      procedure, public :: set_calls => vamp2_set_n_calls
      procedure, public :: set_limits => vamp2_set_limits
      procedure, public :: set_chain => vamp2_set_chain
+     procedure, public :: get_n_calls => vamp2_get_n_calls
      procedure, public :: get_integral => vamp2_get_integral
      procedure, public :: get_variance => vamp2_get_variance
      procedure, public :: get_efficiency => vamp2_get_efficiency
+     procedure :: get_evt_weight => vamp2_get_evt_weight
+     procedure :: get_evt_weight_excess => vamp2_get_evt_weight_excess
      procedure, private :: adapt_weights => vamp2_adapt_weights
      procedure, public :: reset_result => vamp2_reset_result
      procedure, public :: integrate => vamp2_integrate
-     procedure, public :: generate_event => vamp2_generate_event
+     procedure, public :: generate_weighted => vamp2_generate_weighted_event
+     procedure, public :: generate_unweighted => vamp2_generate_unweighted_event
      procedure, public :: write_grids => vamp2_write_grids
      procedure, public :: read_grids => vamp2_read_grids
   end type vamp2_t
@@ -192,11 +194,13 @@ contains
     integer :: ch
     self%g = 0.
     self%gi = 0.
+    !$OMP PARALLEL DO PRIVATE(ch) SHARED(self)
     do ch = 1, self%n_channel
        if (self%wi(ch) /= 0) then
           self%gi(ch) = self%grids(ch)%get_probability (self%xi(:, ch))
        end if
     end do
+    !$OMP END PARALLEL DO
     if (self%gi(self%current_channel) /= 0) then
        do ch = 1, self%n_channel
           if (self%wi(ch) /= 0 .and. self%det(ch) /= 0) then
@@ -217,8 +221,8 @@ contains
     if (self%valid_x) then
        call self%evaluate_weight ()
        f = self%evaluate_func (x) / self%g
+       self%n_calls = self%n_calls + 1
     end if
-    self%n_calls = self%n_calls + 1
   end function vamp2_func_evaluate
 
   subroutine vamp2_config_write (self, unit, indent)
@@ -303,6 +307,8 @@ contains
     end do
     self%weight = 1. / self%config%n_channel
     call self%reset_result ()
+    allocate (self%event_weight(self%config%n_channel), source = 0._default)
+    self%event_prepared = .false.
   end function vamp2_init
 
   subroutine vamp2_final (self)
@@ -390,6 +396,11 @@ contains
     self%chain = chain
   end subroutine vamp2_set_chain
 
+  elemental real(default) function vamp2_get_n_calls (self) result (n_calls)
+    class(vamp2_t), intent(in) :: self
+    n_calls = sum (self%integrator%get_calls ())
+  end function vamp2_get_n_calls
+
   elemental real(default) function vamp2_get_integral (self) result (integral)
     class(vamp2_t), intent(in) :: self
     integral = 0.
@@ -413,6 +424,17 @@ contains
        efficiency = self%result%efficiency
     end if
   end function vamp2_get_efficiency
+
+  real(default) function vamp2_get_evt_weight (self) result (evt_weight)
+    class(vamp2_t), intent(in) :: self
+    evt_weight = self%result%evt_weight
+  end function vamp2_get_evt_weight
+
+  real(default) function vamp2_get_evt_weight_excess (self) result (evt_weight_excess)
+    class(vamp2_t), intent(in) :: self
+    evt_weight_excess = self%result%evt_weight_excess
+  end function vamp2_get_evt_weight_excess
+
   subroutine vamp2_adapt_weights (self)
     class(vamp2_t), intent(inout) :: self
     integer :: n_weights_underflow
@@ -482,6 +504,7 @@ contains
     logical :: adapt_weight = .true.
     logical :: refine_grid = .true.
     logical :: verbose = .false.
+  
     if (present (iterations)) self%config%iterations = iterations
     if (present (opt_reset_result)) reset_result = opt_reset_result
     if (present (opt_adapt_weight)) adapt_weight = opt_adapt_weight
@@ -489,7 +512,7 @@ contains
     if (present (opt_verbose)) verbose = opt_verbose
     cumulative_int = 0.
     cumulative_std = 0.
-    if (reset_result) call self%reset_result
+    if (reset_result) call self%reset_result ()
     if (verbose) then
        call msg_message ("Results: [it, calls, integral, error, chi^2, eff.]")
     end if
@@ -502,17 +525,15 @@ contains
           func%grids(ch) = self%integrator(ch)%get_grid ()
        end do
        channel: do ch = 1, self%config%n_channel
-          ! Oh, do me! Integrate me! Integrate me, soooo hard!
+        
           call func%set_channel (ch)
           call self%integrator(ch)%integrate ( &
                & func, rng, iterations, opt_refine_grid = .false., opt_verbose = verbose)
-          total_integral = total_integral &
-               & + self%weight(ch) * self%integrator(ch)%get_integral ()
-          total_sq_integral = total_sq_integral &
-               & + self%weight(ch) * self%integrator(ch)%get_integral ()**2
-          total_variance = total_variance &
-               & + self%weight(ch)**2 * self%config%n_calls * self%integrator(ch)%get_variance ()
        end do channel
+     
+       total_integral = dot_product (self%weight, self%integrator%get_integral ())
+       total_sq_integral = dot_product (self%weight, self%integrator%get_integral ()**2)
+       total_variance = self%config%n_calls * dot_product (self%weight**2, self%integrator%get_variance ())
        associate (result => self%result)
          ! a**2 - b**2 = (a - b) * (a + b)
          total_variance = sqrt (total_variance + total_sq_integral)
@@ -539,22 +560,9 @@ contains
          result%sum_wgts = result%sum_wgts + wgt
          result%sum_int_wgtd = result%sum_int_wgtd + (total_integral * wgt)
          result%sum_chi = result%sum_chi + (total_sq_integral * wgt)
-         result%max_abs_f = dot_product (self%weight * self%config%n_calls, &
-              & self%integrator%get_max_abs_f ())
-         result%max_abs_f_pos = dot_product (self%weight * self%config%n_calls, &
-              & self%integrator%get_max_abs_f_pos ())
-         result%max_abs_f_neg = dot_product (self%weight * self%config%n_calls, &
-              & self%integrator%get_max_abs_f_neg ())
-         result%efficiency = 0.
-         if (result%max_abs_f > 0.) then
-            result%efficiency = dot_product (self%weight, &
-                 & (self%integrator%get_efficiency () * self%weight &
-                 & * self%config%n_calls * self%integrator%get_max_abs_f ())) &
-                 & / result%max_abs_f
-            ! TODO pos. or. negative efficiency would be very nice.
-         end if
          cumulative_int = result%sum_int_wgtd / result%sum_wgts
          cumulative_std = sqrt (1. / result%sum_wgts)
+         call calculate_efficiency ()
          if (verbose) then
             write (msg_buffer, "(I0,1x,I0,1x, 4(" // FMT_17 // ",1x))") &
                  & it, self%config%n_calls, cumulative_int, cumulative_std, &
@@ -573,73 +581,148 @@ contains
     end do iteration
     if (present (result)) result = cumulative_int
     if (present (abserr)) abserr = abs (cumulative_std)
+  contains
+    subroutine calculate_efficiency ()
+      self%result%max_abs_f = dot_product (self%weight, &
+           & self%integrator%get_max_abs_f ())
+      self%result%max_abs_f_pos = dot_product (self%weight, &
+           & self%integrator%get_max_abs_f_pos ())
+      self%result%max_abs_f_neg = dot_product (self%weight, &
+           & self%integrator%get_max_abs_f_neg ())
+      self%result%efficiency = 0.
+      if (self%result%max_abs_f > 0.) then
+         self%result%efficiency = &
+              & dot_product (self%weight * self%integrator%get_max_abs_f (), &
+              & self%integrator%get_efficiency ()) / self%result%max_abs_f
+         ! TODO pos. or. negative efficiency would be very nice.
+      end if
+    end subroutine calculate_efficiency
+
   end subroutine vamp2_integrate
 
-  subroutine vamp2_generate_event (self, func, rng, x, opt_event_weight, opt_event_excess)
+  subroutine vamp2_generate_weighted_event (&
+       self, func, rng, x)
     class(vamp2_t), intent(inout) :: self
     class(vamp2_func_t), intent(inout) :: func
     class(rng_t), intent(inout) :: rng
     real(default), dimension(self%config%n_dim), intent(out)  :: x
-    real(default), intent(out), optional :: opt_event_weight
-    real(default), intent(out), optional :: opt_event_excess
     integer :: ch, i
-    real(default) :: r, event_weight, max_abs_f
-    real(default), dimension(self%config%n_channel) :: weight
-    if (any (self%integrator%get_max_abs_f () > 0)) then
-       weight = self%weight * self%integrator%get_max_abs_f ()
-    else
-       weight = self%weight
+    real(default) :: r
+    if (.not. self%event_prepared) then
+       call prepare_event ()
     end if
-    weight = weight / sum (weight)
     call rng%generate (r)
     nchannel: do ch = 1, self%config%n_channel
-       r = r - weight(ch)
+       r = r - self%event_weight(ch)
        if (r <= 0._default) exit nchannel
     end do nchannel
     ch = min (ch, self%config%n_channel)
     call func%set_channel (ch)
-    ! TODO move to a separat procedure and let this be done at initialisation
-    do i = 1, self%config%n_channel
-       func%wi(i) = self%weight(i)
-       func%grids(i) = self%integrator(i)%get_grid ()
-    end do
-    if (present (opt_event_excess)) opt_event_excess = 0
+    call msg_debug (D_VAMP2, "vamp2_generate_weighted_event")
+    call msg_debug (D_VAMP2, "Selected channel", ch)
+    call msg_debug (D_VAMP2, "Ch. Event weight", self%event_weight(ch))
+    call self%integrator(ch)%generate_unweighted (func, rng, x)
+    self%result%evt_weight = self%integrator(ch)%get_evt_weight ()
+    call msg_debug2 (D_VAMP2, "Event weight", self%result%evt_weight)
+  contains
+    subroutine prepare_event ()
+      integer :: i
+      self%event_prepared = .false.
+      do i = 1, self%config%n_channel
+         func%wi(i) = self%weight(i)
+         func%grids(i) = self%integrator(i)%get_grid ()
+      end do
+      if (any (self%integrator%get_max_abs_f () > 0)) then
+         self%event_weight = self%weight * self%integrator%get_max_abs_f ()
+      else
+         self%event_weight = self%weight
+      end if
+      self%event_weight = self%event_weight / sum (self%event_weight)
+      self%event_prepared = .true.
+    end subroutine prepare_event
+
+  end subroutine vamp2_generate_weighted_event
+
+  subroutine vamp2_generate_unweighted_event ( &
+       & self, func, rng, x, opt_event_rescale)
+    class(vamp2_t), intent(inout) :: self
+    class(vamp2_func_t), intent(inout) :: func
+    class(rng_t), intent(inout) :: rng
+    real(default), dimension(self%config%n_dim), intent(out)  :: x
+    real(default), intent(in), optional :: opt_event_rescale
+    integer :: ch, i
+    real(default) :: r, max_abs_f, event_rescale
+    event_rescale = 1._default
+    if (present (opt_event_rescale)) then
+       event_rescale = opt_event_rescale
+    end if
+    if (.not. self%event_prepared) then
+       call prepare_event ()
+    end if
+    call rng%generate (r)
+    nchannel: do ch = 1, self%config%n_channel
+       r = r - self%event_weight(ch)
+       if (r <= 0._default) exit nchannel
+    end do nchannel
+    ch = min (ch, self%config%n_channel)
+    call func%set_channel (ch)
+    call msg_debug (D_VAMP2, "vamp2_generate_unweighted_event")
+    call msg_debug (D_VAMP2, "Selected channel", ch)
+    call msg_debug (D_VAMP2, "Ch. Event weight", self%event_weight(ch))
     generate: do
-       call self%integrator(ch)%generate_event (func, rng, x, event_weight)
-       if (present (opt_event_weight)) then
-          opt_event_weight = event_weight * self%weight(ch) / weight(ch)
+       call self%integrator(ch)%generate_weighted (func, rng, x)
+       self%result%evt_weight = self%integrator(ch)%get_evt_weight ()
+       call msg_debug (D_VAMP2, "Event weight", self%result%evt_weight)
+       max_abs_f = merge ( &
+            self%integrator(ch)%get_max_abs_f_pos (), &
+            self%integrator(ch)%get_max_abs_f_neg (), &
+            self%result%evt_weight > 0.)
+       self%result%evt_weight_excess = 0._default
+       if (self%result%evt_weight > max_abs_f) then
+          self%result%evt_weight_excess = self%result%evt_weight / max_abs_f - 1._default
           exit generate
-       end if
-       if (event_weight > 0.) then
-          if (abs (event_weight) > self%integrator(ch)%get_max_abs_f_pos ()) then
-             if (present (opt_event_excess)) then
-                opt_event_excess = event_weight / self%integrator(ch)%get_max_abs_f_pos () - 1._default
-             else
-                write (msg_buffer, "(A,1X," // FMT_17 // ",A)") "[VAMP2] Event&
-                     & generation: weight > 1 (", self%result%max_abs_f_pos, ")"
-                call msg_warning ()
-             end if
-          end if
-          max_abs_f = self%integrator(ch)%get_max_abs_f_pos ()
-       else
-          if (abs (event_weight) > self%integrator(ch)%get_max_abs_f_neg ()) then
-             if (present (opt_event_excess)) then
-                opt_event_excess = event_weight / self%integrator(ch)%get_max_abs_f_neg () - 1._default
-             else
-                write (msg_buffer, "(A,1X," // FMT_17 // ",A)") "[VAMP2] Event&
-                     & generation: weight > 1 (", self%result%max_abs_f_neg, ")"
-                call msg_warning ()
-             end if
-          end if
-          max_abs_f = self%integrator(ch)%get_max_abs_f_neg ()
        end if
        call rng%generate (r)
+       if (debug2_active (D_VAMP2)) then
+          print *, "max_abs_f    = ", max_abs_f
+          print *, "rescale      = ", event_rescale
+          print *, "r            = ", r
+          print *, "accept       = ", event_rescale * max_abs_f * r
+          print *, "x            = ", x
+          print *, "Event Excess = ", self%result%evt_weight_excess
+       end if
        ! Do not use division, because max_abs_f could be zero.
-       if (max_abs_f * r <= abs(event_weight)) then
+       if (event_rescale * max_abs_f * r <= abs(self%result%evt_weight)) then
+          call msg_debug (D_VAMP2, "accept event")
           exit generate
+       else
+          if (debug2_active (D_VAMP2)) then
+             print *, "diff           = ", abs(self%result%evt_weight) - (event_rescale * max_abs_f * r)
+             print *, "max_abs_f_pos  = ", self%integrator(ch)%get_max_abs_f_pos ()
+             print *, "max_abs_f_neg  = ", self%integrator(ch)%get_max_abs_f_neg ()
+             print *, "sign           = ", (self%result%evt_weight > 0.)
+          end if
+          call msg_debug (D_VAMP2, "do not accept event")
        end if
     end do generate
-  end subroutine vamp2_generate_event
+  contains
+    subroutine prepare_event ()
+      integer :: i
+      self%event_prepared = .false.
+      do i = 1, self%config%n_channel
+         func%wi(i) = self%weight(i)
+         func%grids(i) = self%integrator(i)%get_grid ()
+      end do
+      if (any (self%integrator%get_max_abs_f () > 0)) then
+         self%event_weight = self%weight * self%integrator%get_max_abs_f ()
+      else
+         self%event_weight = self%weight
+      end if
+      self%event_weight = self%event_weight / sum (self%event_weight)
+      self%event_prepared = .true.
+    end subroutine prepare_event
+
+  end subroutine vamp2_generate_unweighted_event
 
   subroutine vamp2_write_grids (self, unit)
     class(vamp2_t), intent(in) :: self
@@ -667,8 +750,8 @@ contains
     write (u, double_fmt) "sum_chi =", self%result%sum_chi
     write (u, double_fmt) "chi2 =", self%result%chi2
     write (u, double_fmt) "efficiency =", self%result%efficiency
-    write (u, double_fmt) "efficiency =", self%result%efficiency_pos
-    write (u, double_fmt) "efficiency =", self%result%efficiency_neg
+    write (u, double_fmt) "efficiency_pos =", self%result%efficiency_pos
+    write (u, double_fmt) "efficiency_neg =", self%result%efficiency_neg
     write (u, double_fmt) "max_abs_f =", self%result%max_abs_f
     write (u, double_fmt) "max_abs_f_pos =", self%result%max_abs_f_pos
     write (u, double_fmt) "max_abs_f_neg =", self%result%max_abs_f_neg

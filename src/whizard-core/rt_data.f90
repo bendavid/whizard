@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -62,6 +55,9 @@ module rt_data
   private
 
   public :: rt_data_t
+  public :: fix_system_dependencies
+  public :: show_description_of_string
+  public :: show_tex_descriptions
 
   type :: rt_parse_nodes_t
      type(parse_node_t), pointer :: cuts_lexpr => null ()
@@ -112,6 +108,8 @@ module rt_data
      procedure :: write_beams => rt_data_write_beams
      procedure :: write_expr => rt_data_write_expr
      procedure :: write_process_stack => rt_data_write_process_stack
+     procedure :: write_var_descriptions => rt_data_write_var_descriptions
+     procedure :: show_description_of_string => rt_data_show_description_of_string
      procedure :: clear_beams => rt_data_clear_beams
      procedure :: global_init => rt_data_global_init
      procedure :: local_init => rt_data_local_init
@@ -331,21 +329,19 @@ contains
   subroutine rt_data_write_vars (object, unit, vars)
     class(rt_data_t), intent(in), target :: object
     integer, intent(in), optional :: unit
-    type(string_t), dimension(:), intent(in), optional :: vars
+    type(string_t), dimension(:), intent(in) :: vars
     type(var_list_t), pointer :: var_list
     integer :: u, i
     u = given_output_unit (unit)
-    if (present (vars)) then
-       var_list => object%get_var_list_ptr ()
-       do i = 1, size (vars)
-          associate (var => vars(i))
-            if (var_list%contains (var, follow_link=.true.)) then
-               call var_list%write_var (var, unit = u, &
-                    follow_link = .true.)
-            end if
-          end associate
-       end do
-    end if
+    var_list => object%get_var_list_ptr ()
+    do i = 1, size (vars)
+       associate (var => vars(i))
+         if (var_list%contains (var, follow_link=.true.)) then
+            call var_list%write_var (var, unit = u, &
+                 follow_link = .true., defined=.true.)
+         end if
+       end associate
+    end do
   end subroutine rt_data_write_vars
 
   subroutine rt_data_write_model_list (object, unit)
@@ -390,6 +386,32 @@ contains
     integer, intent(in), optional :: unit
     call object%process_stack%write (unit)
   end subroutine rt_data_write_process_stack
+
+  subroutine rt_data_write_var_descriptions (rt_data, unit, ascii_output)
+    class(rt_data_t), intent(in) :: rt_data
+    integer, intent(in), optional :: unit
+    logical, intent(in), optional :: ascii_output
+    integer :: u
+    logical :: ao
+    u = given_output_unit (unit)
+    ao = .false.;  if (present (ascii_output))  ao = ascii_output
+    call rt_data%var_list%write (u, follow_link=.true., &
+         descriptions=.true., ascii_output=ao)
+  end subroutine rt_data_write_var_descriptions
+
+  subroutine rt_data_show_description_of_string (rt_data, string, &
+         unit, ascii_output)
+    class(rt_data_t), intent(in) :: rt_data
+    type(string_t), intent(in) :: string
+    integer, intent(in), optional :: unit
+    logical, intent(in), optional :: ascii_output
+    integer :: u
+    logical :: ao
+    u = given_output_unit (unit)
+    ao = .false.;  if (present (ascii_output))  ao = ascii_output
+    call rt_data%var_list%write_var (string, unit=u, follow_link=.true., &
+         defined=.false., descriptions=.true., ascii_output=ao)
+  end subroutine rt_data_show_description_of_string
 
   subroutine rt_data_clear_beams (global)
     class(rt_data_t), intent(inout) :: global
@@ -444,9 +466,17 @@ contains
     class(rt_data_t), intent(inout), target :: local
     logical, target, save :: known = .true.
     call local%var_list%append_string_ptr (var_str ("$fc"), &
-         local%os_data%fc, known, intrinsic=.true.)
+         local%os_data%fc, known, intrinsic=.true., &
+         description=var_str('This string variable gives the ' // &
+         '\ttt{Fortran} compiler used within \whizard. It can ' // &
+         'only be accessed, not set by the user. (cf. also ' // &
+         '\ttt{\$fcflags})'))
     call local%var_list%append_string_ptr (var_str ("$fcflags"), &
-         local%os_data%fcflags, known, intrinsic=.true.)
+         local%os_data%fcflags, known, intrinsic=.true., &
+         description=var_str('This string variable gives the ' // &
+         'compiler flags for the \ttt{Fortran} compiler used ' // &
+         'within \whizard. It can only be accessed, not set by ' // &
+         'the user. (cf. also \ttt{\$fc})'))
   end subroutine rt_data_init_pointer_variables
 
   subroutine rt_data_activate (local)
@@ -577,14 +607,15 @@ contains
          (name, filename, global%os_data, model, scheme)
   end subroutine rt_data_read_model
 
-  subroutine rt_data_read_ufo_model (global, name, model)
+  subroutine rt_data_read_ufo_model (global, name, model, ufo_path)
     class(rt_data_t), intent(inout) :: global
     type(string_t), intent(in) :: name
     type(model_t), pointer, intent(out) :: model
+    type(string_t), intent(in), optional :: ufo_path
     type(string_t) :: filename
     filename = name // ".ufo.mdl"
     call global%model_list%read_model &
-         (name, filename, global%os_data, model, ufo=.true.)
+         (name, filename, global%os_data, model, ufo=.true., ufo_path=ufo_path)
   end subroutine rt_data_read_ufo_model
 
   subroutine rt_data_init_fallback_model (global, name, filename)
@@ -594,11 +625,12 @@ contains
          (name, filename, global%os_data, global%fallback_model)
   end subroutine rt_data_init_fallback_model
 
-  subroutine rt_data_select_model (global, name, scheme, ufo)
+  subroutine rt_data_select_model (global, name, scheme, ufo, ufo_path)
     class(rt_data_t), intent(inout), target :: global
     type(string_t), intent(in) :: name
     type(string_t), intent(in), optional :: scheme
     logical, intent(in), optional :: ufo
+    type(string_t), intent(in), optional :: ufo_path
     logical :: same_model, ufo_model
     ufo_model = .false.;  if (present (ufo))  ufo_model = ufo
     if (associated (global%model)) then
@@ -610,7 +642,7 @@ contains
        global%model => global%model_list%get_model_ptr (name, scheme, ufo)
        if (.not. associated (global%model)) then
           if (ufo_model) then
-             call global%read_ufo_model (name, global%model)
+             call global%read_ufo_model (name, global%model, ufo_path)
           else
              call global%read_model (name, global%model)
           end if
@@ -788,74 +820,81 @@ contains
     call global%var_list%undefine (follow_link=.false.)
   end subroutine rt_data_unset_values
 
-  subroutine rt_data_set_log (global, name, lval, is_known, verbose)
+  subroutine rt_data_set_log &
+       (global, name, lval, is_known, force, verbose)
     class(rt_data_t), intent(inout) :: global
     type(string_t), intent(in) :: name
     logical, intent(in) :: lval
     logical, intent(in) :: is_known
-    logical, intent(in), optional :: verbose
+    logical, intent(in), optional :: force, verbose
     call global%var_list%set_log (name, lval, is_known, &
-         verbose=verbose)
+         force=force, verbose=verbose)
   end subroutine rt_data_set_log
 
-  subroutine rt_data_set_int (global, name, ival, is_known, verbose)
+  subroutine rt_data_set_int &
+       (global, name, ival, is_known, force, verbose)
     class(rt_data_t), intent(inout) :: global
     type(string_t), intent(in) :: name
     integer, intent(in) :: ival
     logical, intent(in) :: is_known
-    logical, intent(in), optional :: verbose
+    logical, intent(in), optional :: force, verbose
     call global%var_list%set_int (name, ival, is_known, &
-         verbose=verbose)
+         force=force, verbose=verbose)
   end subroutine rt_data_set_int
 
-  subroutine rt_data_set_real (global, name, rval, is_known, verbose, pacified)
+  subroutine rt_data_set_real &
+       (global, name, rval, is_known, force, verbose, pacified)
     class(rt_data_t), intent(inout) :: global
     type(string_t), intent(in) :: name
     real(default), intent(in) :: rval
     logical, intent(in) :: is_known
-    logical, intent(in), optional :: verbose, pacified
+    logical, intent(in), optional :: force, verbose, pacified
     call global%var_list%set_real (name, rval, is_known, &
-         verbose=verbose, pacified=pacified)
+         force=force, verbose=verbose, pacified=pacified)
   end subroutine rt_data_set_real
 
-  subroutine rt_data_set_cmplx (global, name, cval, is_known, verbose, pacified)
+  subroutine rt_data_set_cmplx &
+       (global, name, cval, is_known, force, verbose, pacified)
     class(rt_data_t), intent(inout) :: global
     type(string_t), intent(in) :: name
     complex(default), intent(in) :: cval
     logical, intent(in) :: is_known
-    logical, intent(in), optional :: verbose, pacified
+    logical, intent(in), optional :: force, verbose, pacified
     call global%var_list%set_cmplx (name, cval, is_known, &
-         verbose=verbose, pacified=pacified)
+         force=force, verbose=verbose, pacified=pacified)
   end subroutine rt_data_set_cmplx
 
-  subroutine rt_data_set_subevt (global, name, pval, is_known, verbose)
+  subroutine rt_data_set_subevt &
+       (global, name, pval, is_known, force, verbose)
     class(rt_data_t), intent(inout) :: global
     type(string_t), intent(in) :: name
     type(subevt_t), intent(in) :: pval
     logical, intent(in) :: is_known
-    logical, intent(in), optional :: verbose
+    logical, intent(in), optional :: force, verbose
     call global%var_list%set_subevt (name, pval, is_known, &
-         verbose=verbose)
+         force=force, verbose=verbose)
   end subroutine rt_data_set_subevt
 
-  subroutine rt_data_set_pdg_array (global, name, aval, is_known, verbose)
+  subroutine rt_data_set_pdg_array &
+       (global, name, aval, is_known, force, verbose)
     class(rt_data_t), intent(inout) :: global
     type(string_t), intent(in) :: name
     type(pdg_array_t), intent(in) :: aval
     logical, intent(in) :: is_known
-    logical, intent(in), optional :: verbose
+    logical, intent(in), optional :: force, verbose
     call global%var_list%set_pdg_array (name, aval, is_known, &
-         verbose=verbose)
+         force=force, verbose=verbose)
   end subroutine rt_data_set_pdg_array
 
-  subroutine rt_data_set_string (global, name, sval, is_known, verbose)
+  subroutine rt_data_set_string &
+       (global, name, sval, is_known, force, verbose)
     class(rt_data_t), intent(inout) :: global
     type(string_t), intent(in) :: name
     type(string_t), intent(in) :: sval
     logical, intent(in) :: is_known
-    logical, intent(in), optional :: verbose
+    logical, intent(in), optional :: force, verbose
     call global%var_list%set_string (name, sval, is_known, &
-         verbose=verbose)
+         force=force, verbose=verbose)
   end subroutine rt_data_set_string
 
   function rt_data_get_lval (global, name) result (lval)
@@ -1146,6 +1185,49 @@ contains
        allocate (callback, source = global%event_callback)
     end if
   end function rt_data_get_event_callback
+
+  subroutine fix_system_dependencies (global)
+    class(rt_data_t), intent(inout), target :: global
+    type(var_list_t), pointer :: var_list
+
+    var_list => global%get_var_list_ptr ()
+    call var_list%set_log (var_str ("?omega_openmp"), &
+         .false., is_known = .true., force=.true.)
+    call var_list%set_log (var_str ("?openmp_is_active"), &
+         .false., is_known = .true., force=.true.)
+    call var_list%set_int (var_str ("openmp_num_threads_default"), &
+         1, is_known = .true., force=.true.)
+    call var_list%set_int (var_str ("openmp_num_threads"), &
+         1, is_known = .true., force=.true.)
+    call var_list%set_int (var_str ("real_range"), &
+         307, is_known = .true., force=.true.)
+    call var_list%set_int (var_str ("real_precision"), &
+         15, is_known = .true., force=.true.)
+    call var_list%set_real (var_str ("real_epsilon"), &
+         1.e-16_default, is_known = .true., force=.true.)
+    call var_list%set_real (var_str ("real_tiny"), &
+         1.e-300_default, is_known = .true., force=.true.)
+
+    global%os_data%fc = "Fortran-compiler"
+    global%os_data%fcflags = "Fortran-flags"
+
+  end subroutine fix_system_dependencies
+
+  subroutine show_description_of_string (string)
+    type(string_t), intent(in) :: string
+    type(rt_data_t), target :: global
+    call global%global_init ()
+    call global%show_description_of_string (string, ascii_output=.true.)
+  end subroutine show_description_of_string
+
+  subroutine show_tex_descriptions ()
+    type(rt_data_t), target :: global
+    call global%global_init ()
+    call fix_system_dependencies (global)
+    call global%set_int (var_str ("seed"), 0, is_known=.true.)
+    call global%var_list%sort ()
+    call global%write_var_descriptions ()
+  end subroutine show_tex_descriptions
 
 
 end module rt_data

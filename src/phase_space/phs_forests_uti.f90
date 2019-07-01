@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -45,7 +38,7 @@ module phs_forests_uti
   use model_data
   use mappings
   use phs_base
-  use resonances, only: resonance_history_t
+  use resonances, only: resonance_history_set_t
 
   use phs_forests
 
@@ -194,7 +187,7 @@ contains
     type(string_t) :: process_id
     type(string_t) :: filename
     logical :: found_process
-    type(resonance_history_t), dimension(:), allocatable :: res_history
+    type(resonance_history_set_t) :: res_set
     integer :: i
 
     write (u, "(A)")  "* Test output: phs_forest_2"
@@ -246,12 +239,10 @@ contains
 
     write (u, "(A)")
     write (u, "(A)")  "* Extract resonance history set"
+    write (u, "(A)")
 
-    call forest%extract_resonance_histories (res_history)
-    do i = 1, size (res_history)
-       write (u, *)
-       call res_history(i)%write (u)
-    end do
+    call forest%extract_resonance_history_set (res_set)
+    call res_set%write (u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"

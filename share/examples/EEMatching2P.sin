@@ -1,4 +1,4 @@
-# $Id: EEMatching2P.sin 2293 2010-04-11 23:57:50Z jr_reuter $
+# EEMatching2P.sin 
 # Simple complete physics example: e+e- to jets with
 # 	 matched PYTHIA shower (max. 2 hard matrix-element jets)
 ########################################################################
@@ -9,8 +9,7 @@
 #     Juergen Reuter <juergen.reuter@desy.de>
 #     Sebastian Schmidt <sebastian.t.schmidt@desy.de>
 #     with contributions from 
-#     Sebastian Schmidt 
-#     Christian Speckner <cnspeckn@googlemail.com>
+#     cf. main AUTHORS file
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by 

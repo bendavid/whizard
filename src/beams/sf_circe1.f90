@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -99,6 +92,7 @@ module sf_circe1
   type, extends (sf_int_t) :: circe1_t
      type(circe1_data_t), pointer :: data => null ()
      real(default), dimension(2) :: x = 0
+     real(default), dimension(2) :: xb= 0
      real(default) :: f = 0
      logical, dimension(2) :: continuum = .true.
      logical, dimension(2) :: peak = .true.
@@ -279,6 +273,7 @@ contains
        if (object%data%generate)  call object%rng_obj%rng%write (u)
        if (object%status >= SF_DONE_KINEMATICS) then
           write (u, "(3x,A,2(1x," // FMT_17 // "))")  "x =", object%x
+          write (u, "(3x,A,2(1x," // FMT_17 // "))")  "xb=", object%xb
           if (object%status >= SF_FAILED_EVALUATION) then
              write (u, "(3x,A,1x," // FMT_17 // ")")  "f =", object%f
           end if
@@ -481,20 +476,21 @@ contains
     x = [xc1, xc2]
   end subroutine circe_generate
 
-  subroutine circe1_complete_kinematics (sf_int, x, f, r, rb, map)
+  subroutine circe1_complete_kinematics (sf_int, x, xb, f, r, rb, map)
     class(circe1_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(out) :: x
+    real(default), dimension(:), intent(out) :: xb
     real(default), intent(out) :: f
     real(default), dimension(:), intent(in) :: r
     real(default), dimension(:), intent(in) :: rb
     logical, intent(in) :: map
-    real(default), dimension(2) :: xb1
     x = r
+    xb = rb
     sf_int%x = x
+    sf_int%xb= xb
     f = 1
     if (sf_int%data%with_radiation) then
-       xb1 = 1 - x
-       call sf_int%split_momenta (x, xb1)
+       call sf_int%split_momenta (x, xb)
     else
        call sf_int%reduce_momenta (x)
     end if
@@ -503,39 +499,41 @@ contains
     end select
   end subroutine circe1_complete_kinematics
 
-  subroutine circe1_inverse_kinematics (sf_int, x, f, r, rb, map, set_momenta)
+  subroutine circe1_inverse_kinematics (sf_int, x, xb, f, r, rb, map, set_momenta)
     class(circe1_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(in) :: x
+    real(default), dimension(:), intent(in) :: xb
     real(default), intent(out) :: f
     real(default), dimension(:), intent(out) :: r
     real(default), dimension(:), intent(out) :: rb
     logical, intent(in) :: map
     logical, intent(in), optional :: set_momenta
-    real(default), dimension(2) :: xb1
     logical :: set_mom
     set_mom = .false.;  if (present (set_momenta))  set_mom = set_momenta
     r = x
-    rb = 1 - x
+    rb = xb
     sf_int%x = x
+    sf_int%xb= xb
     f = 1
     if (set_mom) then
-       xb1 = 1 - x
-       call sf_int%split_momenta (x, xb1)
+       call sf_int%split_momenta (x, xb)
        select case (sf_int%status)
        case (SF_FAILED_KINEMATICS);  f = 0
        end select
     end if
   end subroutine circe1_inverse_kinematics
 
-  subroutine circe1_apply (sf_int, scale)
+  subroutine circe1_apply (sf_int, scale, rescaling_function, i_rescale)
     class(circe1_t), intent(inout) :: sf_int
     real(default), intent(in) :: scale
+    class(rescaling_function_t), intent(in), optional :: rescaling_function
+    integer, intent(in), optional :: i_rescale
     real(default), dimension(2) :: xb
     real(double), dimension(2) :: xc
     real(double), parameter :: one = 1
     associate (data => sf_int%data)
       xc = sf_int%x
-      xb = 1 - sf_int%x
+      xb = sf_int%xb
       if (data%generate) then
          sf_int%f = 1
       else

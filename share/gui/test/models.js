@@ -5,10 +5,10 @@ const chaiAsPromised = require('chai-as-promised');
 chai.use(chaiAsPromised);
 
 describe('sindarinModel', () => {
-  const modelName = '2HDM';
+  const modelName = 'THDM';
   const description = 'Two-Higgs Doublet Model';
   it('should be constructable', () => {
     const test = new models.SindarinModel(modelName, description);
-    expect(test.toString()).to.equal('model = 2HDM');
+    expect(test.toString()).to.equal('model = THDM');
   });
 });

@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -117,7 +110,7 @@ module prc_user_defined
     procedure :: get_flv_state => prc_user_defined_base_get_flv_state
     procedure :: compute_sqme => prc_user_defined_base_compute_sqme
     procedure :: compute_sqme_virt => prc_user_defined_base_compute_sqme_virt
-    procedure :: compute_sqme_cc => prc_user_defined_base_compute_sqme_cc
+    procedure :: compute_sqme_color_c => prc_user_defined_base_compute_sqme_color_c
     procedure :: compute_alpha_s => prc_user_defined_base_compute_alpha_s
     procedure :: get_alpha_s => prc_user_defined_base_get_alpha_s
     procedure :: is_allowed => prc_user_defined_base_is_allowed
@@ -130,11 +123,11 @@ module prc_user_defined
     procedure :: init_sf_handler_dummy => prc_user_defined_base_init_sf_handler_dummy
     procedure :: apply_structure_functions => prc_user_defined_base_apply_structure_functions
     procedure :: get_sf_value => prc_user_defined_base_get_sf_value
-    procedure :: get_helicity_list_base => prc_user_defined_base_get_helicity_list
+    procedure :: get_i_whizard_to_i_olc_base => prc_user_defined_base_get_i_whizard_to_i_olc
     procedure(prc_user_defined_base_includes_polarization), deferred :: &
       includes_polarization
-    procedure(prc_user_defined_base_create_and_load_extra_libraries), deferred :: &
-      create_and_load_extra_libraries
+    procedure(prc_user_defined_base_create_and_load_extra_libraries), &
+         deferred :: create_and_load_extra_libraries
   end type prc_user_defined_base_t
 
   type, abstract, extends (prc_core_def_t) :: user_defined_def_t
@@ -210,8 +203,8 @@ module prc_user_defined
   end interface
 
   abstract interface
-    subroutine prc_user_defined_base_create_and_load_extra_libraries ( &
-         core, flv_states, var_list, os_data, libname, model, i_core)
+    subroutine prc_user_defined_base_create_and_load_extra_libraries &
+         (core, flv_states, var_list, os_data, libname, model, i_core, is_nlo)
       import
       class(prc_user_defined_base_t), intent(inout) :: core
       integer, intent(in), dimension(:,:), allocatable :: flv_states
@@ -220,6 +213,7 @@ module prc_user_defined
       type(string_t), intent(in) :: libname
       type(model_data_t), intent(in), target :: model
       integer, intent(in) :: i_core
+      logical, intent(in) :: is_nlo
     end subroutine prc_user_defined_base_create_and_load_extra_libraries
   end interface
 
@@ -365,31 +359,31 @@ contains
     bad_point = .false.
   end subroutine prc_user_defined_base_compute_sqme_virt
 
-  subroutine prc_user_defined_base_compute_sqme_cc (object, i_flv, p, &
-     ren_scale, born_cc, bad_point, born_out)
+  subroutine prc_user_defined_base_compute_sqme_color_c (object, i_flv, p, &
+     ren_scale, born_color_c, bad_point, born_out)
     class(prc_user_defined_base_t), intent(inout) :: object
     integer, intent(in) :: i_flv
     type(vector4_t), intent(in), dimension(:) :: p
     real(default), intent(in) :: ren_scale
-    real(default), intent(inout), dimension(:,:) :: born_cc
+    real(default), intent(inout), dimension(:,:) :: born_color_c
     logical, intent(out) :: bad_point
     real(default), intent(out), optional :: born_out
-    call msg_debug2 (D_ME_METHODS, "prc_user_defined_base_compute_sqme_cc")
+    call msg_debug2 (D_ME_METHODS, "prc_user_defined_base_compute_sqme_color_c")
     if (size (p) == 4) then
        if (present (born_out)) then
           born_out = 0.0015_default
-          born_cc = zero
-          born_cc(3,3) = - CF * born_out
-          born_cc(4,4) = - CF * born_out
-          born_cc(3,4) = CF * born_out
-          born_cc(4,3) = born_cc(3,4)
+          born_color_c = zero
+          born_color_c(3,3) = - CF * born_out
+          born_color_c(4,4) = - CF * born_out
+          born_color_c(3,4) = CF * born_out
+          born_color_c(4,3) = born_color_c(3,4)
           bad_point = .false.
        end if
     else
        if (present (born_out)) born_out = zero
-       born_cc = zero
+       born_color_c = zero
     end if
-  end subroutine prc_user_defined_base_compute_sqme_cc
+  end subroutine prc_user_defined_base_compute_sqme_color_c
 
   subroutine prc_user_defined_base_compute_alpha_s (object, core_state, fac_scale)
     class(prc_user_defined_base_t), intent(in) :: object
@@ -522,12 +516,12 @@ contains
     val = core%sf_handler%val
   end function prc_user_defined_base_get_sf_value
 
-  function prc_user_defined_base_get_helicity_list (object, i) result (i_out)
+  function prc_user_defined_base_get_i_whizard_to_i_olc (object, i) result (i_out)
     integer :: i_out
     class(prc_user_defined_base_t), intent(in) :: object
     integer, intent(in) :: i
     i_out = i
-  end function prc_user_defined_base_get_helicity_list
+  end function prc_user_defined_base_get_i_whizard_to_i_olc
 
   subroutine user_defined_def_set_active_writer (def, active)
     class(user_defined_def_t), intent(inout) :: def
@@ -905,8 +899,8 @@ contains
     polarized = .false.
   end function prc_user_defined_test_includes_polarization
 
-  subroutine prc_user_defined_test_create_and_load_extra_libraries ( &
-         core, flv_states, var_list, os_data, libname, model, i_core)
+  subroutine prc_user_defined_test_create_and_load_extra_libraries &
+       (core, flv_states, var_list, os_data, libname, model, i_core, is_nlo)
     class(prc_user_defined_test_t), intent(inout) :: core
     integer, intent(in), dimension(:,:), allocatable :: flv_states
     type(var_list_t), intent(in) :: var_list
@@ -914,6 +908,7 @@ contains
     type(string_t), intent(in) :: libname
     type(model_data_t), intent(in), target :: model
     integer, intent(in) :: i_core
+    logical, intent(in) :: is_nlo
   end subroutine prc_user_defined_test_create_and_load_extra_libraries
 
 

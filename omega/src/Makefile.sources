@@ -8,7 +8,8 @@
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
-#     Christian Speckner <cnspeckn@googlemail.com>
+#     with contributions from
+#     cf. main AUTHORS file
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by
@@ -63,11 +64,11 @@ VERTEX_MLD = $(VERTEX_MLL:.mll=.ml) $(VERTEX_MLY:.mly=.ml)
 VERTEX_ML_PRIMARY = vertex_syntax.ml vertex.ml
 VERTEX_ML = vertex_syntax.ml $(VERTEX_MLD) vertex.ml
 
-UFO_MLL = uFOx_lexer.mll uFO_lexer.mll
-UFO_MLY = uFOx_parser.mly uFO_parser.mly
+UFO_MLL = UFOx_lexer.mll UFO_lexer.mll
+UFO_MLY = UFOx_parser.mly UFO_parser.mly
 UFO_MLD = $(UFO_MLL:.mll=.ml) $(UFO_MLY:.mly=.ml)
-UFO_ML_PRIMARY = uFOx_syntax.ml uFOx.ml uFO_syntax.ml uFO.ml
-UFO_ML = uFOx_syntax.ml uFO_syntax.ml $(UFO_MLD) uFOx.ml uFO.ml
+UFO_ML_PRIMARY = UFOx_syntax.ml UFOx.ml UFO_syntax.ml UFO.ml
+UFO_ML = UFOx_syntax.ml UFO_syntax.ml $(UFO_MLD) UFOx.ml UFO.ml
 
 OMEGA_MLL = $(CASCADE_MLL) $(VERTEX_MLL) $(UFO_MLL)
 OMEGA_MLY = $(CASCADE_MLY) $(VERTEX_MLY) $(UFO_MLY)
@@ -89,12 +90,12 @@ OMEGA_INTERFACES_MLI = \
 ########################################################################
 
 OMEGA_CORE_ML_PART1 = \
-    oUnit.ml oUnitDiff.ml \
+    OUnit.ml OUnitDiff.ml \
     config.ml partial.ml pmap.ml \
     thoList.ml thoArray.ml thoString.ml permutation.ml bundle.ml powSet.ml \
     thoFilename.ml cache.ml progress.ml trie.ml linalg.ml tree2.ml \
     algebra.ml options.ml product.ml combinatorics.ml partition.ml tree.ml \
-    tuple.ml topology.ml dAG.ml momentum.ml phasespace.ml \
+    tuple.ml topology.ml DAG.ml momentum.ml phasespace.ml \
     charges.ml color.ml modeltools.ml whizard.ml
 
 OMEGA_CORE_ML_PART2 = \
@@ -160,10 +161,10 @@ OMEGA_APPLICATIONS_ML = \
     omega_SM_tt_threshold.ml \
     omega_SM_Higgs.ml \
     omega_SM_Higgs_VM.ml \
-    omega_2HDM.ml \
-    omega_2HDM_VM.ml \
-    omega_2HDM_CKM.ml \
-    omega_2HDM_CKM_VM.ml \
+    omega_THDM.ml \
+    omega_THDM_VM.ml \
+    omega_THDM_CKM.ml \
+    omega_THDM_CKM_VM.ml \
     omega_MSSM.ml \
     omega_MSSM_CKM.ml \
     omega_MSSM_Grav.ml \

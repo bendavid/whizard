@@ -15,6 +15,7 @@
 r =  0.4000000
 rb=  0.6000000
 x =  0.0390554
+xb=  0.9609446
 f =  0.1493629
 
 * Recover x from momenta
@@ -22,6 +23,7 @@ f =  0.1493629
 r =  0.4000000
 rb=  0.6000000
 x =  0.0390554
+xb=  0.9609446
 f =  0.1493629
 
 * Evaluate EPA structure function

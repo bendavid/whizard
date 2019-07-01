@@ -4,8 +4,8 @@
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
+!     with contributions from
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -36,8 +36,8 @@ module system_dependencies
   public
  
   ! Program version
-  character(*), parameter :: WHIZARD_VERSION = "2.5.0"
-  character(*), parameter :: WHIZARD_DATE = "May 06 2017"
+  character(*), parameter :: WHIZARD_VERSION = "2.6.0"
+  character(*), parameter :: WHIZARD_DATE = "Sep 08 2017"
 
   ! System paths
   ! These are used for testing without existing installation
@@ -112,7 +112,9 @@ module system_dependencies
        "-I" // WHIZARD_TEST_UTILITIES_MODPATH // " " // &
        "-I" // WHIZARD_TEST_BASICS_MODPATH // " " // &
        "-I/usr/local/packages/OpenLoops/lib_src/openloops/mod -I/usr/l&
-       &ocal/packages/recola/recola-collier-1.2/recola-1.2/modules" 
+       &ocal/packages/recola/recola-collier-1.2/recola-1.2/modules -I/usr/loca&
+       &l/packages/recola/recola-collier-1.2/recola-1.2/../COLLIER-1.1/modules&
+       &" 
 
   ! WHIZARD-specific link flags
   character(*), parameter :: WHIZARD_TEST_LDFLAGS = &
@@ -128,7 +130,9 @@ module system_dependencies
        &nLoops/lib -L/usr/local/packages/OpenLoops/lib -lopenloops " // &
        "-Wl,-rpath,/usr/local/packages/recola/recola-collier-1.2/recol&
        &a-1.2 -L/usr/local/packages/recola/recola-collier-1.2/recola-1.2 -lrec&
-       &ola"
+       &ola -Wl,-rpath,/usr/local/packages/recola/recola-collier-1.2/recola-1.&
+       &2/../COLLIER-1.1 -L/usr/local/packages/recola/recola-collier-1.2/recol&
+       &a-1.2/../COLLIER-1.1 -lcollier"
 
   ! Libtool
   character(*), parameter :: WHIZARD_LIBTOOL_TEST = &
@@ -216,7 +220,9 @@ module system_dependencies
       "-I" // WHIZARD_UTILITIES_MODPATH // " " // &
       "-I" // WHIZARD_BASICS_MODPATH // " " // &
        "-I/usr/local/packages/OpenLoops/lib_src/openloops/mod -I/usr/l&
-       &ocal/packages/recola/recola-collier-1.2/recola-1.2/modules"
+       &ocal/packages/recola/recola-collier-1.2/recola-1.2/modules -I/usr/loca&
+       &l/packages/recola/recola-collier-1.2/recola-1.2/../COLLIER-1.1/modules&
+       &"
 
   ! WHIZARD-specific link flags
   character(*), parameter :: WHIZARD_LDFLAGS = &
@@ -227,7 +233,9 @@ module system_dependencies
        &nLoops/lib -L/usr/local/packages/OpenLoops/lib -lopenloops " // &
        "-Wl,-rpath,/usr/local/packages/recola/recola-collier-1.2/recol&
        &a-1.2 -L/usr/local/packages/recola/recola-collier-1.2/recola-1.2 -lrec&
-       &ola"
+       &ola -Wl,-rpath,/usr/local/packages/recola/recola-collier-1.2/recola-1.&
+       &2/../COLLIER-1.1 -L/usr/local/packages/recola/recola-collier-1.2/recol&
+       &a-1.2/../COLLIER-1.1 -lcollier"
 
   ! Libtool
   character(*), parameter :: WHIZARD_LIBTOOL = &
@@ -238,7 +246,7 @@ module system_dependencies
   character(*), parameter :: DEFAULT_FC = &
        "gfortran"
   character(*), parameter :: DEFAULT_FCFLAGS = &
-       "  -g -O2"
+       "   -g -O2"
   character(*), parameter :: DEFAULT_FCFLAGS_PIC = &
        " -fno-common"
   character(*), parameter :: DEFAULT_FC_SRC_EXT = &

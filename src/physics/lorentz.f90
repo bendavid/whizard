@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -84,6 +77,7 @@ module lorentz
   public :: generate_on_shell_decay
   public :: vector_set_reshuffle
   public :: vector_set_is_cms
+  public :: vector_set_is_lab
   public :: vector4_write_set
   public :: vector4_check_momentum_conservation
   public :: spinor_product
@@ -152,6 +146,7 @@ module lorentz
      type(vector4_t), dimension(:), allocatable :: p
      integer :: n_momenta = 0
   contains
+    procedure :: get_sqrts_in => phs_point_get_sqrts_in
     procedure :: final => phs_point_final
     procedure :: write => phs_point_write
     procedure :: get_x => phs_point_get_x
@@ -968,6 +963,13 @@ contains
     allocate (phs_point%p (phs_point%n_momenta))
     phs_point%p = phs_point_in%p
   end subroutine phs_point_from_phs_point
+
+  function phs_point_get_sqrts_in (phs_point, n_in) result (msq)
+    real(default) :: msq
+    class(phs_point_t), intent(in) :: phs_point
+    integer, intent(in) :: n_in
+    msq = (sum (phs_point%p(1:n_in)))**2
+  end function phs_point_get_sqrts_in
 
   subroutine phs_point_final (phs_point)
     class(phs_point_t), intent(inout) :: phs_point
@@ -1863,17 +1865,25 @@ contains
     end do
   end subroutine vector_set_reshuffle
 
-  function vector_set_is_cms (p) result (is_cms)
+  function vector_set_is_cms (p, n_in) result (is_cms)
     logical :: is_cms
-    type(vector4_t), dimension(:), intent(in) :: p
+    type(vector4_t), intent(in), dimension(:) :: p
+    integer, intent(in) :: n_in
     integer :: i
     type(vector4_t) :: p_sum
     p_sum%p = 0._default
-    do i = 1, size (p)
+    do i = 1, n_in
        p_sum = p_sum + p(i)
     end do
-    is_cms = p_sum%p(0) > zero .and. all (abs (p_sum%p(1:3)) < tiny_07)
+    is_cms = all (abs (p_sum%p(1:3)) < tiny_07)
   end function vector_set_is_cms
+
+  function vector_set_is_lab (p, n_in) result (is_lab)
+    logical :: is_lab
+    type(vector4_t), intent(in), dimension(:) :: p
+    integer, intent(in) :: n_in
+    is_lab = .not. vector_set_is_cms (p, n_in)
+  end function vector_set_is_lab
 
   subroutine vector4_write_set (p, unit, show_mass, testflag, &
         check_conservation, ultra, n_in)
@@ -1953,7 +1963,9 @@ contains
           call vector4_write (psum_out, u)
        end if
     else
-       write (u, "(A)") "Momentum conservation: CHECK"
+       if (verb) then
+          write (u, "(A)") "Momentum conservation: CHECK"
+       end if
     end if
   end subroutine vector4_check_momentum_conservation
 

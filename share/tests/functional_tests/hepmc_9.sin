@@ -50,5 +50,5 @@ rescan "hepmc_9a" (hepmc_9_p) {
   sample_format = weight_stream
   $sample = "hepmc_9c"
   ?update_sqme = true
-  ?use_alpha_s_from_file = true
+  ?use_alphas_from_file = true
 }

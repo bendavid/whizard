@@ -598,6 +598,48 @@ it is recorded.
 @ %def constrain_in_state
 @ %def constraint_in_state_check_before_record
 @
+\subsubsection{Photon induced processes}
+If set, filter out photon induced processes.
+<<Auto components: public>>=
+  public :: constrain_photon_induced_processes
+<<Auto components: types>>=
+  type, extends (split_constraint_t) :: constraint_photon_induced_processes
+     private
+     integer :: n_in
+   contains
+     procedure :: check_before_record => &
+          constraint_photon_induced_processes_check_before_record
+  end type constraint_photon_induced_processes
+
+@ %def constraint_photon_induced_processes
+<<Auto components: procedures>>=
+  function constrain_photon_induced_processes (n_in) result (c)
+    integer, intent(in) :: n_in
+    type(constraint_photon_induced_processes) :: c
+    c%n_in = n_in
+  end function constrain_photon_induced_processes
+
+  subroutine constraint_photon_induced_processes_check_before_record &
+       (c, table, pl, n_loop, passed)
+    class(constraint_photon_induced_processes), intent(in) :: c
+    class(ps_table_t), intent(in) :: table
+    type(pdg_list_t), intent(in) :: pl
+    integer, intent(in) :: n_loop
+    logical, intent(out) :: passed
+    integer :: i
+    select type (table)
+    type is (if_table_t)
+       passed = .false.
+       do i = 1, c%n_in
+          if (pl%a(i)%get () == 22)  return
+       end do
+    end select
+    passed = .true.
+  end subroutine constraint_photon_induced_processes_check_before_record
+
+@ %def constrain_photon_induced_processes
+@ %def constraint_photon_induced_processes_check_before_record
+@
 \subsubsection{Coupling constraint}
 Filters vertices which do not match the desired NLO pattern.
 <<Auto components: types>>=
@@ -649,6 +691,10 @@ Filters vertices which do not match the desired NLO pattern.
        do i = 1, pl%get_size ()
           call pl_vertex%set (i + 1, pl%get(i))
        end do
+       if (pl_vertex%get_size () > 3) then
+          passed = .false.
+          cycle
+       end if
        if (is_massless_vector(pa%get(j))) then
           if (.not. table%model%check_vertex &
                (pl_vertex%a(1)%get (), pl_vertex%a(2)%get (), pl_vertex%a(3)%get ())) then
@@ -661,10 +707,6 @@ Filters vertices which do not match the desired NLO pattern.
           cycle
        end if
        if (.not. (pl_vertex .match. pdg_gauge_bosons)) then
-          passed = .false.
-          cycle
-       end if
-       if (.not. c%ew .and. (pl_vertex .match. pdg_W_Z)) then
           passed = .false.
           cycle
        end if
@@ -881,10 +923,10 @@ the output, and we write an arrow if [[n_in]] is present.
     i = 1
     do while (i < index)
       if (associated (entry%next)) then
-        entry => entry%next
-        i=i+1
+         entry => entry%next
+         i = i + 1
       else
-        call msg_fatal ("ps_table: entry with requested index does not exist!")
+         call msg_fatal ("ps_table: entry with requested index does not exist!")
       end if
     end do
 
@@ -902,24 +944,22 @@ the output, and we write an arrow if [[n_in]] is present.
     n0 = n_in + 1
     allocate (prt_in (n_in), prt_out (entry%get_size () - n_in))
     do i = 1, n_in
-      prt_in(i) = ""
-      pdg = entry%get(i)
-      do j = 1, size(pdg)
-        prt => object%model%get_field_ptr (pdg(j))
-        prt_in(i) = prt_in(i) // prt%get_name (pdg(j) >= 0)
-        if (j /= size(pdg)) &
-           prt_in(i) = prt_in(i) // ":"
-      end do
+       prt_in(i) = ""
+       pdg = entry%get(i)
+       do j = 1, size (pdg)
+          prt => object%model%get_field_ptr (pdg(j))
+          prt_in(i) = prt_in(i) // prt%get_name (pdg(j) >= 0)
+          if (j /= size (pdg))  prt_in(i) = prt_in(i) // ":"
+       end do
     end do
     do i = n0, entry%get_size ()
-      prt_out(i-n_in) = ""
-      pdg = entry%get(i)
-      do j = 1, size(pdg)
-         prt => object%model%get_field_ptr (pdg(j))
-         prt_out(i-n_in) = prt_out(i-n_in) // prt%get_name (pdg(j) < 0)
-         if (j /= size(pdg)) &
-            prt_out(i-n_in) = prt_out(i-n_in) // ":"
-      end do
+       prt_out(i-n_in) = ""
+       pdg = entry%get(i)
+       do j = 1, size (pdg)
+          prt => object%model%get_field_ptr (pdg(j))
+          prt_out(i-n_in) = prt_out(i-n_in) // prt%get_name (pdg(j) < 0)
+          if (j /= size (pdg))  prt_out(i-n_in) = prt_out(i-n_in) // ":"
+       end do
     end do
   end subroutine ps_table_get_particle_string
 
@@ -932,12 +972,13 @@ the output, and we write an arrow if [[n_in]] is present.
   generic :: init => if_table_init
   procedure, private :: if_table_init
 <<Auto components: procedures>>=
-  subroutine ps_table_init (table, model, pl, constraints, n_in)
+  subroutine ps_table_init (table, model, pl, constraints, n_in, do_not_check_regular)
     class(ps_table_t), intent(out) :: table
     class(model_data_t), intent(in), target :: model
     type(pdg_list_t), dimension(:), intent(in) :: pl
     type(split_constraints_t), intent(in) :: constraints
     integer, intent(in), optional :: n_in
+    logical, intent(in), optional :: do_not_check_regular
     logical :: passed
     integer :: i
     table%model => model
@@ -956,7 +997,8 @@ the output, and we write an arrow if [[n_in]] is present.
     end if
 
     do i = 1, size (pl)
-       call table%record (pl(i), 0, 0, constraints, passed)
+       call table%record (pl(i), 0, 0, constraints, &
+            do_not_check_regular, passed)
        if (.not. passed) then
           call msg_fatal ("ps_table: Registering process components failed")
        end if
@@ -993,7 +1035,7 @@ the output, and we write an arrow if [[n_in]] is present.
        deallocate (pa_in)
     end do
     n_in = size (pl_in(1)%a)
-    call table%init (model, pl, constraints, n_in)
+    call table%init (model, pl, constraints, n_in, do_not_check_regular = .true.)
   end subroutine if_table_init
 
 @ %def ps_table_init if_table_init
@@ -1035,13 +1077,15 @@ contain states.  Add and record split states on the fly.
 <<Auto components: fs table: TBP>>=
   procedure :: radiate => fs_table_radiate
 <<Auto components: procedures>>=
-  subroutine fs_table_radiate (table, constraints)
+  subroutine fs_table_radiate (table, constraints, do_not_check_regular)
     class(fs_table_t), intent(inout) :: table
     type(split_constraints_t) :: constraints
+    logical, intent(in), optional :: do_not_check_regular
     type(ps_entry_t), pointer :: current
     current => table%first
     do while (associated (current))
-       call table%split (current, 0, constraints, record = .true.)
+       call table%split (current, 0, constraints, record = .true., &
+            do_not_check_regular = do_not_check_regular)
        current => current%next
     end do
   end subroutine fs_table_radiate
@@ -1065,12 +1109,12 @@ greater than $n_\text{max}$.
   procedure :: split => ps_table_split
 <<Auto components: procedures>>=
   recursive subroutine ps_table_split (table, pl, n_rad, constraints, &
-        record)
+        record, do_not_check_regular)
     class(ps_table_t), intent(inout) :: table
     class(pdg_list_t), intent(in) :: pl
     integer, intent(in) :: n_rad
     type(split_constraints_t), intent(in) :: constraints
-    logical, intent(in), optional :: record
+    logical, intent(in), optional :: record, do_not_check_regular
     integer :: n_loop, i
     logical :: passed, save_pdg_index
     type(vertex_iterator_t) :: vit
@@ -1080,7 +1124,8 @@ greater than $n_\text{max}$.
        if (record) then
           n_loop = 0
           INCR_LOOPS: do
-             call table%record_sorted (pl, n_loop, n_rad, constraints, passed)
+             call table%record_sorted (pl, n_loop, n_rad, constraints, &
+                  do_not_check_regular, passed)
              if (.not. passed)  exit INCR_LOOPS
              if (.not. table%loops)  exit INCR_LOOPS
              n_loop = n_loop + 1
@@ -1101,7 +1146,8 @@ greater than $n_\text{max}$.
           SCAN_VERTICES: do
              call vit%get_next_match (pdg2)
              if (allocated (pdg2)) then
-                call table%insert (pl, n_rad, i, pdg2, constraints)
+                call table%insert (pl, n_rad, i, pdg2, constraints, &
+                     do_not_check_regular = do_not_check_regular)
              else
                 exit SCAN_VERTICES
              end if
@@ -1120,13 +1166,14 @@ particles after entry [[n_in]].  Otherwise, they follow index [[i]].
   procedure :: insert => ps_table_insert
 <<Auto components: procedures>>=
   recursive subroutine ps_table_insert &
-       (table, pl, n_rad, i, pdg, constraints, n_in)
+       (table, pl, n_rad, i, pdg, constraints, n_in, do_not_check_regular)
     class(ps_table_t), intent(inout) :: table
     class(pdg_list_t), intent(in) :: pl
     integer, intent(in) :: n_rad, i
     integer, dimension(:), intent(in) :: pdg
     type(split_constraints_t), intent(in) :: constraints
     integer, intent(in), optional :: n_in
+    logical, intent(in), optional :: do_not_check_regular
     type(pdg_list_t) :: pl_insert
     logical :: passed
     integer :: k, s
@@ -1136,9 +1183,29 @@ particles after entry [[n_in]].  Otherwise, they follow index [[i]].
        call pl_insert%set (k, pdg(k))
     end do
     call constraints%check_before_insert (table, pl%get (i), pl_insert, passed)
-    if (passed) call table%split (pl%replace (i, pl_insert, n_in), n_rad + s - 1, &
-            constraints, record = .true.)
-  end subroutine ps_table_insert
+    if (passed) then
+       if (.not. is_colored_isr ()) return
+       call table%split (pl%replace (i, pl_insert, n_in), n_rad + s - 1, &
+            constraints, record = .true., do_not_check_regular = .true.)
+    end if
+  contains
+    logical function is_colored_isr () result (ok)
+      type(pdg_list_t) :: pl_replaced
+      ok = .true.
+      if (present (n_in)) then
+         if (i <= n_in) then
+            ok = pl_insert%contains_colored_particles ()
+            if (.not. ok) then
+               pl_replaced = pl%replace (i, pl_insert, n_in)
+               associate (size_replaced => pl_replaced%get_pdg_sizes (), &
+                    size => pl%get_pdg_sizes ())
+                  ok = all (size_replaced(:n_in) == size(:n_in))
+               end associate
+            end if
+         end if
+      end if
+    end function is_colored_isr
+ end subroutine ps_table_insert
 
 @ %def ps_table_insert
 @ Special case:
@@ -1156,17 +1223,19 @@ procedure.
   procedure :: insert => if_table_insert
 <<Auto components: procedures>>=
   recursive subroutine if_table_insert  &
-       (table, pl, n_rad, i, pdg, constraints, n_in)
+       (table, pl, n_rad, i, pdg, constraints, n_in, do_not_check_regular)
     class(if_table_t), intent(inout) :: table
     class(pdg_list_t), intent(in) :: pl
     integer, intent(in) :: n_rad, i
     integer, dimension(:), intent(in) :: pdg
     type(split_constraints_t), intent(in) :: constraints
     integer, intent(in), optional :: n_in
+    logical, intent(in), optional :: do_not_check_regular
     integer, dimension(:), allocatable :: pdg_work
     integer :: p
     if (i > 2) then
-       call ps_table_insert (table, pl, n_rad, i, pdg, constraints)
+       call ps_table_insert (table, pl, n_rad, i, pdg, constraints, &
+            do_not_check_regular = do_not_check_regular)
     else
        allocate (pdg_work (size (pdg)))
        do p = 1, size (pdg)
@@ -1176,10 +1245,12 @@ procedure.
           select case (table%proc_type)
           case (PROC_DECAY)
              call ps_table_insert (table, &
-               pl, n_rad, i, pdg_work, constraints, n_in = 1)
+                  pl, n_rad, i, pdg_work, constraints, n_in = 1, &
+                  do_not_check_regular = do_not_check_regular)
           case (PROC_SCATTER)
              call ps_table_insert (table, &
-               pl, n_rad, i, pdg_work, constraints, n_in = 2)
+                  pl, n_rad, i, pdg_work, constraints, n_in = 2, &
+                  do_not_check_regular = do_not_check_regular)
           end select
        end do
     end if
@@ -1195,23 +1266,27 @@ allowed in the [[pl_beam]] PDG list, if that is provided.
   procedure :: record_sorted => if_table_record_sorted
 <<Auto components: procedures>>=
   subroutine ps_table_record_sorted &
-       (table, pl, n_loop, n_rad, constraints, passed)
+       (table, pl, n_loop, n_rad, constraints, do_not_check_regular, passed)
     class(ps_table_t), intent(inout) :: table
     type(pdg_list_t), intent(in) :: pl
     integer, intent(in) :: n_loop, n_rad
     type(split_constraints_t), intent(in) :: constraints
+    logical, intent(in), optional :: do_not_check_regular
     logical, intent(out) :: passed
-    call table%record (pl%sort_abs (), n_loop, n_rad, constraints, passed)
+    call table%record (pl%sort_abs (), n_loop, n_rad, constraints, &
+         do_not_check_regular, passed)
   end subroutine ps_table_record_sorted
 
   subroutine if_table_record_sorted &
-       (table, pl, n_loop, n_rad, constraints, passed)
+       (table, pl, n_loop, n_rad, constraints, do_not_check_regular, passed)
     class(if_table_t), intent(inout) :: table
     type(pdg_list_t), intent(in) :: pl
     integer, intent(in) :: n_loop, n_rad
     type(split_constraints_t), intent(in) :: constraints
+    logical, intent(in), optional :: do_not_check_regular
     logical, intent(out) :: passed
-    call table%record (pl%sort_abs (2), n_loop, n_rad, constraints, passed)
+    call table%record (pl%sort_abs (2), n_loop, n_rad, constraints, &
+         do_not_check_regular, passed)
   end subroutine if_table_record_sorted
 
 @ %def ps_table_record_sorted if_table_record_sorted
@@ -1224,15 +1299,20 @@ available energy.  This restriction is removed by setting
 <<Auto components: ps table: TBP>>=
   procedure :: record => ps_table_record
 <<Auto components: procedures>>=
-  subroutine ps_table_record (table, pl, n_loop, n_rad, constraints, passed)
+  subroutine ps_table_record (table, pl, n_loop, n_rad, constraints, &
+       do_not_check_regular, passed)
     class(ps_table_t), intent(inout) :: table
     type(pdg_list_t), intent(in) :: pl
     integer, intent(in) :: n_loop, n_rad
     type(split_constraints_t), intent(in) :: constraints
+    logical, intent(in), optional :: do_not_check_regular
     logical, intent(out) :: passed
     type(ps_entry_t), pointer :: current
+    logical :: needs_check
     passed = .false.
-    if (.not. pl%is_regular ()) then
+    needs_check = .true.
+    if (present (do_not_check_regular))  needs_check = .not. do_not_check_regular
+    if (needs_check .and. .not. pl%is_regular ()) then
        call msg_warning ("Record ps_table entry: Irregular pdg-list encountered!")
        return
     end if
@@ -1864,7 +1944,7 @@ module radiation_generator
   use flavors
   use model_data
   use auto_components
-  use string_utils, only: split_string
+  use string_utils, only: split_string, string_contains_word
 
   implicit none
   private
@@ -2234,7 +2314,6 @@ caller when this is a function.
     integer, dimension(:), allocatable :: i_pdg
     integer :: i
     allocate (i_pdg (size (pdg)))
-    !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
     do i = 1, size (pdg)
        i_pdg(i) = pdg(i)%get ()
     end do
@@ -2449,8 +2528,6 @@ initialization phase (more precisely: at the moment only in the
     generator%fs_gluon = pl_out%search_for_particle (GLUON)
     generator%is_photon = pl_in%search_for_particle (PHOTON)
     generator%fs_photon = pl_out%search_for_particle (PHOTON)
-    !!!generator%only_final_state = .not. (&
-    !!!   generator%qcd_enabled .and. pl_in%contains_colored_particles ())
     generator%mass_sum = 0._default
     call generator%pdg_raw%init ()
   end subroutine radiation_generator_init_pdg_list
@@ -2507,7 +2584,7 @@ initialization phase (more precisely: at the moment only in the
     pl_out(1) = generator%pl_out
 
     call generator%if_table%init &
-       (model, pl_in, pl_out, generator%constraints)
+         (model, pl_in, pl_out, generator%constraints)
   end subroutine radiation_generator_setup_if_table
 
 @ %def radiation_generator_setup_if_table
@@ -2577,6 +2654,7 @@ initialization phase (more precisely: at the moment only in the
     logical, intent(in) :: set_mass_sum
     logical, intent(in) :: set_selected_particles
     logical, intent(in) :: set_required_particles
+    logical :: set_no_photon_induced = .true.
     integer :: i, j, n, n_constraints
     type(pdg_list_t) :: pl_req, pl_insert
     type(pdg_list_t) :: pl_antiparticles
@@ -2588,12 +2666,13 @@ initialization phase (more precisely: at the moment only in the
     integer :: n_nlo_correction_types
 
     n_nlo_correction_types = count ([generator%qcd_enabled, generator%qed_enabled])
+    if (generator%is_photon) set_no_photon_induced = .false.
 
     allocate (i_skip (generator%n_tot))
     i_skip = -1
 
     n_constraints = 2 + count([set_n_loop, set_mass_sum, &
-         set_selected_particles, set_required_particles])
+         set_selected_particles, set_required_particles, set_no_photon_induced])
     associate (constraints => generator%constraints)
       n = 1
       call constraints%init (n_constraints)
@@ -2602,6 +2681,10 @@ initialization phase (more precisely: at the moment only in the
       call constraints%set (n, constrain_couplings (generator%qcd_enabled, &
            generator%qed_enabled, n_nlo_correction_types))
       n = n + 1
+      if (set_no_photon_induced) then
+         call constraints%set (n, constrain_photon_induced_processes (generator%n_in))
+         n = n + 1
+      end if
       if (set_n_loop) then
          call constraints%set (n, constrain_n_loop(generator%n_loops))
          n = n + 1
@@ -2689,7 +2772,7 @@ initialization phase (more precisely: at the moment only in the
     call generator%pl_out%create_pdg_array (pdg_out)
 
     associate (if_table => generator%if_table)
-       call if_table%radiate (generator%constraints)
+       call if_table%radiate (generator%constraints, do_not_check_regular = .true.)
 
        do i = 1, if_table%get_length ()
           call if_table%get_pdg_out (i, pdg_tmp)
@@ -2779,7 +2862,7 @@ initialization phase (more precisely: at the moment only in the
           call if_table%get_pdg_out (i, pdg_tmp)
           if (size (pdg_tmp) == generator%n_tot) then
              call if_table%get_particle_string (i, &
-                prt_in0(flv + 1)%prt, prt_out0(flv + 1)%prt)
+                  prt_in0(flv + 1)%prt, prt_out0(flv + 1)%prt)
              flv = flv + 1
           end if
        end do
@@ -2803,7 +2886,6 @@ initialization phase (more precisely: at the moment only in the
     prt_tot_in = buf(1 : generator%n_in)
 
     do j = 1, flv
-       !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
        allocate (reshuffle_list_local (size (generator%reshuffle_list%get(j))))
        reshuffle_list_local = generator%reshuffle_list%get(j)
        do i = 1, size (reshuffle_list_local)
@@ -2817,6 +2899,17 @@ initialization phase (more precisely: at the moment only in the
        deallocate (reshuffle_list_local)
     end do
     prt_tot_out = buf(generator%n_in + 1 : generator%n_tot)
+    if (debug2_active (D_CORE)) then
+       print *, 'Generated initial state: '
+       do i = 1, size (prt_tot_in)
+          print *, char (prt_tot_in(i))
+       end do
+       print *, 'Generated final state: '
+       do i = 1, size (prt_tot_out)
+          print *, char (prt_tot_out(i))
+       end do
+    end if
+
 
   contains
 
@@ -2825,7 +2918,7 @@ initialization phase (more precisely: at the moment only in the
       type(string_t), intent(in) :: particle
       logical :: particle_present
       if (len (buffer) > 0) then
-         particle_present = check_for_substring (char(buffer), char(particle))
+         particle_present = check_for_substring (char(buffer), particle)
          if (.not. particle_present) buffer = buffer // ":" // particle
       else
          buffer = buffer // particle
@@ -2834,7 +2927,7 @@ initialization phase (more precisely: at the moment only in the
 
     function check_for_substring (buffer, substring) result (exist)
       character(len=*), intent(in) :: buffer
-      character(len=*), intent(in) :: substring
+      type(string_t), intent(in) :: substring
       character(len=50) :: buffer_internal
       logical :: exist
       integer :: i_first, i_last
@@ -2843,7 +2936,7 @@ initialization phase (more precisely: at the moment only in the
       do
          if (buffer(i_last:i_last) == ":") then
             buffer_internal = buffer (i_first : i_last - 1)
-            if (buffer_internal == substring) then
+            if (buffer_internal == char (substring)) then
                exist = .true.
                exit
             end if
@@ -2851,7 +2944,7 @@ initialization phase (more precisely: at the moment only in the
             if (i_last > len(buffer)) exit
          else if (i_last == len(buffer)) then
             buffer_internal = buffer (i_first : i_last)
-            exist = (buffer_internal == substring)
+            exist = buffer_internal == char (substring)
             exit
          else
             i_last = i_last + 1
@@ -3197,17 +3290,17 @@ end module radiation_generator_uti
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
     call test(radiation_generator_1, "radiation_generator_1", &
-       "Test the generator of N+1-particle flavor structures in QCD", &
-       u, results)
+         "Test the generator of N+1-particle flavor structures in QCD", &
+         u, results)
     call test(radiation_generator_2, "radiation_generator_2", &
-       "Test multiple splittings in QCD", &
-       u, results)
+         "Test multiple splittings in QCD", &
+         u, results)
     call test(radiation_generator_3, "radiation_generator_3", &
-       "Test the generator of N+1-particle flavor structures in QED", &
-       u, results)
+         "Test the generator of N+1-particle flavor structures in QED", &
+         u, results)
     call test(radiation_generator_4, "radiation_generator_4", &
-       "Test multiple splittings in QED", &
-       u, results)
+         "Test multiple splittings in QED", &
+         u, results)
   end subroutine radiation_generator_test
 
 @ %def radiation_generator_test
@@ -3233,8 +3326,8 @@ end module radiation_generator_uti
     call syntax_model_file_init ()
     call os_data_init (os_data)
     call model_list%read_model &
-       (var_str ("SM"), var_str ("SM.mdl"), &
-        os_data, model)
+         (var_str ("SM"), var_str ("SM.mdl"), &
+         os_data, model)
     write (u, "(A)") "* Success"
 
     allocate (pdg_in (2))
@@ -3323,7 +3416,7 @@ end module radiation_generator_uti
       call generator%init (pdg_in, pdg_out, &
            pdg_excluded_gauge_splittings = pdg_excluded, qcd = .true., qed = .false.)
       call generator%set_n (2, size(pdg_out), 0)
-      if (yorn) call generator%set_initial_state_emissions ()
+      if (yorn)  call generator%set_initial_state_emissions ()
       call generator%set_constraints (.false., .false., .true., .true.)
       call generator%setup_if_table (model)
       call generator%generate (prt_strings_in, prt_strings_out)
@@ -12917,33 +13010,51 @@ with the same name in parallel.
 @
 Call OMega and generate a model file from an UFO source file.  We
 start with a file name; the model name is expected to be the base
-name, stripping extensions.
+name, stripping extensions.  
+
+The path search either takes [[ufo_path_requested]], or searches first
+in the working directory, then in a hard-coded UFO model directory.
 <<Models: procedures>>=
-  subroutine model_generate_ufo (filename, os_data, ufo_path)
+  subroutine model_generate_ufo (filename, os_data, ufo_path, &
+       ufo_path_requested)
     type(string_t), intent(in) :: filename
     type(os_data_t), intent(in) :: os_data
     type(string_t), intent(out) :: ufo_path
+    type(string_t), intent(in), optional :: ufo_path_requested
     type(string_t) :: model_name, omega_path, ufo_dir, ufo_init
     logical :: exist
     call get_model_name (filename, model_name)
-    call msg_message ("Model: Generating model '" // char (model_name) // "' from UFO sources")
-    call msg_message ("Model: Searching for UFO sources in working directory")
-    ufo_path = "."
-    ufo_dir = ufo_path // "/" // model_name
-    ufo_init = ufo_dir // "/" // "__init__.py"
-    inquire (file = char (ufo_init), exist = exist)
-    if (.not. exist) then
-       ufo_path = char (os_data%whizard_modelpath_ufo)
+    call msg_message ("Model: Generating model '" // char (model_name) &
+         // "' from UFO sources")
+    if (present (ufo_path_requested)) then
+       call msg_message ("Model: Searching for UFO sources in '" &
+            // char (ufo_path_requested) // "'")
+       ufo_path = ufo_path_requested
+       ufo_dir = ufo_path_requested // "/" // model_name
+       ufo_init = ufo_dir // "/" // "__init__.py"
+       inquire (file = char (ufo_init), exist = exist)
+    else
+       call msg_message ("Model: Searching for UFO sources in &
+            &working directory")
+       ufo_path = "."
        ufo_dir = ufo_path // "/" // model_name
        ufo_init = ufo_dir // "/" // "__init__.py"
-       call msg_message ("Model: Searching for UFO sources in '" &
-            // char (os_data%whizard_modelpath_ufo) // "'")
        inquire (file = char (ufo_init), exist = exist)
+       if (.not. exist) then
+          ufo_path = char (os_data%whizard_modelpath_ufo)
+          ufo_dir = ufo_path // "/" // model_name
+          ufo_init = ufo_dir // "/" // "__init__.py"
+          call msg_message ("Model: Searching for UFO sources in '" &
+               // char (os_data%whizard_modelpath_ufo) // "'")
+          inquire (file = char (ufo_init), exist = exist)
+       end if
     end if
     if (exist) then
-       call msg_message ("Model: Found UFO sources for model '" // char (model_name) // "'")
+       call msg_message ("Model: Found UFO sources for model '" &
+            // char (model_name) // "'")
     else
-       call msg_fatal ("Model: UFO sources for model '" // char (model_name) // "' not found")
+       call msg_fatal ("Model: UFO sources for model '" &
+            // char (model_name) // "' not found")
     end if
     omega_path = os_data%whizard_omega_binpath // "/omega_UFO.opt"
     call os_system_call (omega_path &
@@ -12952,7 +13063,8 @@ name, stripping extensions.
          // " > " // filename)
     inquire (file = char (filename), exist = exist)
     if (exist) then
-        call msg_message ("Model: Model file '" // char (filename) // "' generated")
+        call msg_message ("Model: Model file '" // char (filename) //&
+             "' generated")
     else
         call msg_fatal ("Model: Model file '" // char (filename) &
              // "' could not be generated")
@@ -13071,16 +13183,19 @@ applicable) scheme.  This helps in determining whether we need a new
 model object.
 
 A UFO model is considered to be distinct from a non-UFO model.  We assume that
-if [[ufo]] is asked for, there is no scheme argument.
+if [[ufo]] is asked for, there is no scheme argument.  Furthermore,
+if there is an [[ufo_path]] requested, it must coincide with the
+[[ufo_path]] of the model.  If not, the model [[ufo_path]] is not checked.
 <<Models: model: TBP>>=
   procedure :: matches => model_matches
 <<Models: procedures>>=
-  function model_matches (model, name, scheme, ufo) result (flag)
+  function model_matches (model, name, scheme, ufo, ufo_path) result (flag)
     logical :: flag
     class(model_t), intent(in) :: model
     type(string_t), intent(in) :: name
     type(string_t), intent(in), optional :: scheme
     logical, intent(in), optional :: ufo
+    type(string_t), intent(in), optional :: ufo_path
     logical :: ufo_model
     ufo_model = .false.;  if (present (ufo))  ufo_model = ufo
     if (name /= model%get_name ()) then
@@ -13088,7 +13203,11 @@ if [[ufo]] is asked for, there is no scheme argument.
     else if (ufo_model .neqv. model%is_ufo_model ()) then
        flag = .false.
     else if (ufo_model) then
-       flag = .true.
+       if (present (ufo_path)) then
+          flag = model%get_ufo_path () == ufo_path
+       else
+          flag = .true.
+       end if
     else if (model%has_schemes ()) then
        if (present (scheme)) then
           flag = model%get_scheme () == scheme
@@ -13255,19 +13374,23 @@ module variables:
 Read a model from file.  Handle all syntax and respect the provided scheme.
 
 The [[ufo]] flag just says that the model object should be tagged as
-being derived from an UFO model.  There is no difference in the
+being derived from an UFO model.  The UFO model path may be requested
+by the caller.  If not, we use a standard path search for UFO models.
+There is no difference in the
 contents of the file or the generated model object.
 <<Models: model: TBP>>=
   procedure :: read => model_read
 <<Models: procedures>>=
   subroutine model_read (model, filename, os_data, exist, &
-       scheme, ufo, rebuild_mdl)
+       scheme, ufo, ufo_path_requested, rebuild_mdl)
     class(model_t), intent(out), target :: model
     type(string_t), intent(in) :: filename
     type(os_data_t), intent(in) :: os_data
     logical, intent(out), optional :: exist
     type(string_t), intent(in), optional :: scheme
-    logical, intent(in), optional :: ufo, rebuild_mdl
+    logical, intent(in), optional :: ufo
+    type(string_t), intent(in), optional :: ufo_path_requested
+    logical, intent(in), optional :: rebuild_mdl
     type(string_t) :: file
     type(stream_t), target :: stream
     type(lexer_t) :: lexer
@@ -13299,7 +13422,8 @@ contents of the file or the generated model object.
     end if
     if (ufo_model .and. rebuild) then
        file = filename
-       call model_generate_ufo (filename, os_data, model%ufo_path)
+       call model_generate_ufo (filename, os_data, model%ufo_path, &
+            ufo_path_requested=ufo_path_requested)
        inquire (file = char (file), exist = model_exist)
     end if
     if (.not. model_exist) then
@@ -14016,20 +14140,25 @@ modified, we should first allocate a local copy.
   procedure :: read_model => model_list_read_model
 <<Models: procedures>>=
   subroutine model_list_read_model &
-       (model_list, name, filename, os_data, model, scheme, ufo, rebuild_mdl)
+       (model_list, name, filename, os_data, model, &
+       scheme, ufo, ufo_path, rebuild_mdl)
     class(model_list_t), intent(inout), target :: model_list
     type(string_t), intent(in) :: name, filename
     type(os_data_t), intent(in) :: os_data
     type(model_t), pointer, intent(inout) :: model
     type(string_t), intent(in), optional :: scheme
-    logical, intent(in), optional :: ufo, rebuild_mdl
+    logical, intent(in), optional :: ufo
+    type(string_t), intent(in), optional :: ufo_path
+    logical, intent(in), optional :: rebuild_mdl
     class(model_list_t), pointer :: global_model_list
     type(model_entry_t), pointer :: current
     logical :: exist
-    if (.not. model_list%model_exists (name, scheme, ufo, follow_link=.true.)) then
+    if (.not. model_list%model_exists (name, &
+         scheme, ufo, ufo_path, follow_link=.true.)) then
        allocate (current)
        call current%read (filename, os_data, exist, &
-            scheme=scheme, ufo=ufo, rebuild_mdl=rebuild_mdl)
+            scheme=scheme, ufo=ufo, ufo_path_requested=ufo_path, &
+            rebuild_mdl=rebuild_mdl)
        if (.not. exist)  return
        if (current%get_name () /= name) then
           call msg_fatal ("Model file '" // char (filename) // &
@@ -14044,7 +14173,7 @@ modified, we should first allocate a local copy.
        end do
        call global_model_list%import (current, model)
     else
-       model => model_list%get_model_ptr (name, scheme, ufo)
+       model => model_list%get_model_ptr (name, scheme, ufo, ufo_path)
     end if
   end subroutine model_list_read_model
 
@@ -14071,26 +14200,28 @@ told otherwise.
   procedure :: model_exists => model_list_model_exists
 <<Models: procedures>>=
   recursive function model_list_model_exists &
-       (model_list, name, scheme, ufo, follow_link) result (exists)
+       (model_list, name, scheme, ufo, ufo_path, follow_link) result (exists)
     class(model_list_t), intent(in) :: model_list
     logical :: exists
     type(string_t), intent(in) :: name
     type(string_t), intent(in), optional :: scheme
     logical, intent(in), optional :: ufo
+    type(string_t), intent(in), optional :: ufo_path
     logical, intent(in), optional :: follow_link
     type(model_entry_t), pointer :: current
     logical :: rec
     rec = .true.;  if (present (follow_link))  rec = follow_link
     current => model_list%first
     do while (associated (current))
-       if (current%matches (name, scheme, ufo)) then
+       if (current%matches (name, scheme, ufo, ufo_path)) then
           exists = .true.
           return
        end if
        current => current%next
     end do
     if (rec .and. associated (model_list%context)) then
-       exists = model_list%context%model_exists (name, scheme, ufo, follow_link)
+       exists = model_list%context%model_exists (name, &
+            scheme, ufo, ufo_path, follow_link)
     else
        exists = .false.
     end if
@@ -14102,26 +14233,28 @@ told otherwise.
   procedure :: get_model_ptr => model_list_get_model_ptr
 <<Models: procedures>>=
   recursive function model_list_get_model_ptr &
-       (model_list, name, scheme, ufo, follow_link) result (model)
+       (model_list, name, scheme, ufo, ufo_path, follow_link) result (model)
     class(model_list_t), intent(in) :: model_list
     type(model_t), pointer :: model
     type(string_t), intent(in) :: name
     type(string_t), intent(in), optional :: scheme
     logical, intent(in), optional :: ufo
+    type(string_t), intent(in), optional :: ufo_path
     logical, intent(in), optional :: follow_link
     type(model_entry_t), pointer :: current
     logical :: rec
     rec = .true.;  if (present (follow_link))  rec = follow_link
     current => model_list%first
     do while (associated (current))
-       if (current%matches (name, scheme, ufo)) then
+       if (current%matches (name, scheme, ufo, ufo_path)) then
           model => current%model_t
           return
        end if
        current => current%next
     end do
     if (rec .and. associated (model_list%context)) then
-       model => model_list%context%get_model_ptr (name, scheme, ufo, follow_link)
+       model => model_list%context%get_model_ptr (name, &
+            scheme, ufo, ufo_path, follow_link)
     else
        model => null ()
     end if

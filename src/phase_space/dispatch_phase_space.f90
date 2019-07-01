@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -49,6 +42,7 @@ module dispatch_phase_space
   use mappings
   use phs_forests, only: phs_parameters_t
   use phs_base
+  use phs_none
   use phs_single
   use phs_wood
   use phs_fks
@@ -91,6 +85,8 @@ contains
     run_id = &
          var_list%get_sval (var_str ("$run_id"))
     select case (char (phs_method))
+    case ("none")
+       allocate (phs_none_config_t :: phs)
     case ("single")
        allocate (phs_single_config_t :: phs)
        if (vis_channels) then

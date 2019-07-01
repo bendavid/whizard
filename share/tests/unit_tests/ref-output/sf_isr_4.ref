@@ -16,11 +16,13 @@
           non-coll., keeping energy
 
 x =  0.9999866  0.5000000  0.2500000
+xb=  0.0000134  0.5000000  0.7500000
 f =  0.0004337
 
 * Recover x and r from momenta
 
 x =  0.9999866  0.5000000  0.2500000
+xb=  0.0000134  0.5000000  0.7500000
 r =  0.5000000  0.5000000  0.2500000
 
 * Evaluate ISR structure function

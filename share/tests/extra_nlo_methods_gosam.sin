@@ -32,9 +32,9 @@ mtop = 175 GeV
 
 ?use_vamp_equivalences = false
 !!! The expected value for (NLO-LO)/LO is alpha_s / pi
-?alpha_s_is_fixed = true
-?alpha_s_from_mz = false
-?alpha_s_from_lambda_qcd = false
+?alphas_is_fixed = true
+?alphas_from_mz = false
+?alphas_from_lambda_qcd = false
 alpha_power = 2
 alphas_power = 0
 
@@ -51,7 +51,7 @@ $real_tree_me_method = "omega"
 $correlation_me_method = "omega"
 
 # Need to define the process anew after each method switch
-process extra_nlo_gosam_omomom = E1, e1 => u, U { nlo_calculation = "Full" }
+process extra_nlo_gosam_omomom = E1, e1 => u, U { nlo_calculation = full }
 integrate (extra_nlo_gosam_omomom)
 show (integral(extra_nlo_gosam_omomom))
 show (error(extra_nlo_gosam_omomom))
@@ -62,7 +62,7 @@ $born_me_method = "gosam"
 $real_tree_me_method = "omega"
 $correlation_me_method = "omega"
 
-process extra_nlo_gosam_olomom = E1, e1 => u, U { nlo_calculation = "Full" }
+process extra_nlo_gosam_olomom = E1, e1 => u, U { nlo_calculation = full }
 integrate (extra_nlo_gosam_olomom)
 show (integral(extra_nlo_gosam_olomom))
 show (error(extra_nlo_gosam_olomom))
@@ -73,7 +73,7 @@ $born_me_method = "omega"
 $real_tree_me_method = "gosam"
 $correlation_me_method = "omega"
 
-process extra_nlo_gosam_omolom = E1, e1 => u, U { nlo_calculation = "Full" }
+process extra_nlo_gosam_omolom = E1, e1 => u, U { nlo_calculation = full }
 integrate (extra_nlo_gosam_omolom)
 show (integral(extra_nlo_gosam_omolom))
 show (error(extra_nlo_gosam_omolom))
@@ -84,7 +84,7 @@ $born_me_method = "gosam"
 $real_tree_me_method = "gosam"
 $correlation_me_method = "omega"
 
-process extra_nlo_gosam_ololom = E1, e1 => u, U { nlo_calculation = "Full" }
+process extra_nlo_gosam_ololom = E1, e1 => u, U { nlo_calculation = full }
 integrate (extra_nlo_gosam_ololom)
 show (integral(extra_nlo_gosam_ololom))
 show (error(extra_nlo_gosam_ololom))
@@ -95,7 +95,7 @@ $born_me_method = "omega"
 $real_tree_me_method = "omega"
 $correlation_me_method = "gosam"
 
-process extra_nlo_gosam_omomol = E1, e1 => u, U { nlo_calculation = "Full" }
+process extra_nlo_gosam_omomol = E1, e1 => u, U { nlo_calculation = full }
 integrate (extra_nlo_gosam_omomol)
 show (integral(extra_nlo_gosam_omomol))
 show (error(extra_nlo_gosam_omomol))
@@ -106,7 +106,7 @@ $born_me_method = "gosam"
 $real_tree_me_method = "omega"
 $correlation_me_method = "gosam"
 
-process extra_nlo_gosam_olomol = E1, e1 => u, U { nlo_calculation = "Full" }
+process extra_nlo_gosam_olomol = E1, e1 => u, U { nlo_calculation = full }
 integrate (extra_nlo_gosam_olomol)
 show (integral(extra_nlo_gosam_olomol))
 show (error(extra_nlo_gosam_olomol))
@@ -117,7 +117,7 @@ $born_me_method = "omega"
 $real_tree_me_method = "gosam"
 $correlation_me_method = "gosam"
 
-process extra_nlo_gosam_omolol = E1, e1 => u, U { nlo_calculation = "Full" }
+process extra_nlo_gosam_omolol = E1, e1 => u, U { nlo_calculation = full }
 integrate (extra_nlo_gosam_omolol)
 show (integral(extra_nlo_gosam_omolol))
 show (error(extra_nlo_gosam_omolol))
@@ -128,7 +128,7 @@ $born_me_method = "gosam"
 $real_tree_me_method = "gosam"
 $correlation_me_method = "gosam"
 
-process extra_nlo_gosam_ololol = E1, e1 => u, U { nlo_calculation = "Full" }
+process extra_nlo_gosam_ololol = E1, e1 => u, U { nlo_calculation = full }
 integrate (extra_nlo_gosam_ololol)
 show (integral(extra_nlo_gosam_ololol))
 show (error(extra_nlo_gosam_ololol))

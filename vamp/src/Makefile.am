@@ -1,5 +1,4 @@
 # Makefile.am --
-# $Id: Makefile.am 319 2010-04-18 15:00:54Z ohl $
 ########################################################################
 ##
 ## Process this file with automake to produce Makefile.in
@@ -9,7 +8,7 @@
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
 #     with contributions from
-#     Christian Speckner <cnspeckn@googlemail.com>
+#     cf. main AUTHORS file
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by 
@@ -73,16 +72,16 @@ NOWEB_FILES = \
     application.nw sample.nw
 
 moduleexecincludedir = $(pkgincludedir)/../vamp
-if FC_MPI
-lib_LTLIBRARIES = libvamp.la libvampi.la
-libvamp_la_SOURCES = $(SOURCE_FILES)
-libvampi_la_SOURCES = mpi90.f90 vampi.f90
-nodist_moduleexecinclude_DATA = $(MODULE_FILES) # mpi90.$(FC_MODULE_EXT) vampi.$(FC_MODULE_EXT)
-else !FC_MPI
+# if FC_MPI
+# lib_LTLIBRARIES = libvamp.la libvampi.la
+# libvamp_la_SOURCES = $(SOURCE_FILES)
+# libvampi_la_SOURCES = mpi90.f90 vampi.f90
+# nodist_moduleexecinclude_DATA = $(MODULE_FILES) # mpi90.$(FC_MODULE_EXT) vampi.$(FC_MODULE_EXT)
+# else !FC_MPI
 lib_LTLIBRARIES = libvamp.la
 libvamp_la_SOURCES = $(SOURCE_FILES)
 nodist_moduleexecinclude_DATA = $(MODULE_FILES)
-endif !FC_MPI
+# endif !FC_MPI
 
 EXTRA_DIST = $(NOWEB_FILES) $(SOURCE_FILES) iso_fortran_env_stub.f90
 

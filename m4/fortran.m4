@@ -129,13 +129,21 @@ fi
 AC_SUBST([FC_IS_GFORTRAN_4567])
 AC_SUBST([FC_IS_NAG])
 
-### Catch buggy ifort version 17.0.X
-if test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "17.0.0" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "17.0.1" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "17.0.2"; then
-FC_IS_IFORT17="yes"
+### Catch old ifort version 15.0.0/1/2/3 and 16.0/1/2/3
+if test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "15.0.0" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "15.0.1" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "15.0.2" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "15.0.3" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "16.0.0" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "16.0.1" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "16.0.2" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "16.0.3" ; then
+FC_IS_IFORT1516="yes"
   else
-FC_IS_IFORT17="no"
+FC_IS_IFORT1516="no"
 fi
-AC_SUBST([FC_IS_IFORT17])
+AC_SUBST([FC_IS_IFORT1516])
+
+### Catch buggy ifort version 17.0.0/1/2/3
+if test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "17.0.0" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "17.0.1" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "17.0.2" || test "$wo_cv_fc_vendor" = "Intel" -a "$wo_cv_fc_version" = "17.0.3" ; then
+FC_IS_IFORT170123="yes"
+  else
+FC_IS_IFORT170123="no"
+fi
+AC_SUBST([FC_IS_IFORT170123])
 
 AC_CACHE_CHECK([the major version],
 [wo_cv_fc_major_version],
@@ -156,11 +164,20 @@ AC_MSG_ERROR([***************************************************************])
 fi 
 ])
 
-AC_DEFUN([WO_FC_VETO_IFORT_17],
+AC_DEFUN([WO_FC_VETO_IFORT_1516],
 [dnl
-if test "$FC_IS_IFORT17" = "yes"; then
+if test "$FC_IS_IFORT1516" = "yes"; then
 AC_MSG_NOTICE([error: ***************************************************************])
-AC_MSG_NOTICE([error: ifort v17.0 unfortunately suffers from severe compiler bugs.  .])
+AC_MSG_NOTICE([error: ifort version < 17 suffers from severe compiler bugs, disabled.])
+AC_MSG_ERROR([***************************************************************])
+fi 
+])
+
+AC_DEFUN([WO_FC_VETO_IFORT_170123],
+[dnl
+if test "$FC_IS_IFORT170123" = "yes"; then
+AC_MSG_NOTICE([error: ***************************************************************])
+AC_MSG_NOTICE([error: ifort v17.0.01/2/3 suffers from severe compiler bugs, disabled.])
 AC_MSG_ERROR([***************************************************************])
 fi 
 ])
@@ -720,6 +737,91 @@ AC_SUBST([FC_OPENMP_HEADER])
 AC_SUBST([FC_OPENMP_DEFAULT_MAX_THREADS])
 ])
 ### end WO_FC_SET_OPENMP
+
+### Enable/disable MPI support (either OpenMPI or MPICH)
+AC_DEFUN([WO_FC_SET_MPI],
+[dnl
+AC_REQUIRE([WO_FC_FILENAME_CASE_CONVERSION])
+AC_ARG_ENABLE([fc_mpi],
+  [AS_HELP_STRING([--enable-fc-mpi],
+    [use OpenMPI/MPICH for the Fortran code [[no]]])],
+  [], [enable_fc_mpi="no"])
+if test "x$enable_fc_mpi" = "xyes"; then
+   if test "$FC" != "mpifort" || test "$F77" != "mpifort"; then
+        WO_FC_MSG_ERROR_BOX([For MPI please use mpifort as Fortran and F77 compiler!])
+   fi
+   if test -n "$MPI_DIR"; then
+     wo_mpi_config_path=$MPI_DIR/bin:$PATH
+   else
+     wo_mpi_config_path=$PATH
+   fi
+   AC_MSG_CHECKING([the requested MPI library])
+   wo_cv_fc_requested_mpilib=openmpi
+   AC_ARG_WITH([mpi-lib],
+     [  --with-mpi-lib=mpich|openmpi   request an external MPI library.],
+     [case "x$withval" in
+        x | xno | xyes ) wo_cv_fc_mpilib=openmpi ;;
+        * )              wo_cv_fc_mpilib="`echo $withval | $LOWERCASE`" ;;
+      esac])
+   case "$wo_cv_fc_requested_mpilib" in
+      mpich | openmpi )
+        AC_MSG_RESULT([$wo_cv_fc_requested_mpilib])
+        ;;
+      *)
+        AC_MSG_RESULT()
+        WO_FC_MSG_ERROR_BOX([argument of --with-mpi-library is $wo_cv_fc_mpilib, but must be one of mpich, openmpi!])
+        ;;
+   esac
+   case "$wo_cv_fc_requested_mpilib" in
+      mpich )
+        AC_PATH_PROG([MPICHVERSION],[mpichversion],[no],[$wo_mpi_config_path])
+	if test "$MPICHVERSION" != "no"; then
+	  AC_CACHE_CHECK([the MPICH version],
+	     [wo_cv_mpich_version],
+	     [dnl
+	        wo_cv_mpich_version=[`$MPICHVERSION --version | $SED -e 's/MPICH VERSION://'`]
+		wo_cv_mpich_major_version=[`echo $wo_cv_mpich_version | $SED -e 's/\([0-9][0-9]*\)\..*/\1/'`]
+	  ])
+	  MPI_VERSION=$wo_cv_mpich_version
+	  FCFLAGS_MPI="-lmpifort"
+	else
+	  enable_fc_mpi="no"
+	fi
+	;;
+      openmpi )
+        AC_PATH_PROG([OMPI_INFO],[ompi_info],[no],[$wo_mpi_config_path])
+	if test "$OMPI_INFO" != "no"; then
+	  AC_CACHE_CHECK([the OPENMPI version],
+	     [wo_cv_openmpi_version],
+	     [dnl
+	        wo_cv_openmpi_version=[`$OMPI_INFO --version | head -1 | $SED -e 's/Open MPI v//'`]
+		wo_cv_openmpi_major_version=[`echo $wo_cv_openmpi_version | $SED -e 's/\([0-9][0-9]*\)\..*/\1/'`]
+	  ])
+	  MPI_VERSION=$wo_cv_openmpi_version
+	  FCFLAGS_MPI="-lmpi"
+	else
+	  enable_fc_mpi="no"
+	fi
+	;;
+   esac
+else
+  AC_MSG_NOTICE([no MPI support demanded])  
+fi
+MPI_AVAILABLE=$enable_fc_mpi
+MPI_LIBRARY=$wo_cv_fc_requested_mpilib
+AM_CONDITIONAL([FC_USE_MPI],
+        [test "x$enable_fc_mpi" = "xyes"])
+])
+AC_SUBST([MPI_AVAILABLE])
+AC_SUBST([MPI_LIBRARY])
+AC_SUBST([MPI_VERSION])
+AC_SUBST([FCFLAGS_MPI])
+### end WO_FC_SET_MPI
+
+
+# AC_CACHE_CHECK([whether MPI is activated], [wo_cv_fc_mpi],
+# ])
+
 
 ### Check for profiling support
 AC_DEFUN([WO_FC_CHECK_PROFILING],

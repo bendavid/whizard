@@ -289,7 +289,8 @@ module Constant (M : Model.T) : Constant with type t = M.constant =
 
 (* \thocwmodulesection{Mutable Models} *)
 
-module Mutable (FGC : sig type f and g and c end) =
+module Mutable (FGC : sig type f and g and c end) : Model.Mutable
+       with type flavor = FGC.f and type gauge = FGC.g and type constant = FGC.c =
   struct
     type flavor = FGC.f
     type gauge = FGC.g
@@ -319,52 +320,75 @@ module Mutable (FGC : sig type f and g and c end) =
 
     let set_color, color =
       declare (fun f -> uninitialized "color")
+
     let set_pdg, pdg =
       declare (fun f -> uninitialized "pdg")
+
     let set_lorentz, lorentz =
       declare (fun f -> uninitialized "lorentz")
+
     let set_propagator, propagator =
       declare (fun f -> uninitialized "propagator")
+
     let set_width, width =
       declare (fun f -> uninitialized "width")
+
     let set_goldstone, goldstone =
       declare (fun f -> uninitialized "goldstone")
+
     let set_conjugate, conjugate =
       declare (fun f -> uninitialized "conjugate")
+
     let set_fermion, fermion =
       declare (fun f -> uninitialized "fermion")
+
     let set_max_degree, max_degree =
       declare (fun () -> uninitialized "max_degree")
+
     let set_vertices, vertices =
-      declare (fun () -> uninitialized "vertices" )
+      declare (fun () -> uninitialized "vertices")
+
     let set_fuse2, fuse2 =
       declare (fun f1 f2 -> uninitialized "fuse2")
+
     let set_fuse3, fuse3 =
       declare (fun f1 f2 f3 -> uninitialized "fuse3")
+
     let set_fuse, fuse =
       declare (fun f -> uninitialized "fuse")
+
     let set_flavors, flavors =
       declare (fun () -> [])
+
     let set_external_flavors, external_flavors =
       declare (fun () -> [("uninitialized", [])])
+
     let set_parameters, parameters =
-      declare (fun f -> uninitialized "parameters")
+      declare (fun () -> uninitialized "parameters")
+
     let set_flavor_of_string, flavor_of_string =
       declare (fun f -> uninitialized "flavor_of_string")
+
     let set_flavor_to_string, flavor_to_string =
       declare (fun f -> uninitialized "flavor_to_string")
+
     let set_flavor_to_TeX, flavor_to_TeX =
       declare (fun f -> uninitialized "flavor_to_TeX")
+
     let set_flavor_symbol, flavor_symbol =
       declare (fun f -> uninitialized "flavor_symbol")
+
     let set_gauge_symbol, gauge_symbol =
-      declare (fun f -> uninitialized "gauge_symbol")
+      declare (fun g -> uninitialized "gauge_symbol")
+
     let set_mass_symbol, mass_symbol =
       declare (fun f -> uninitialized "mass_symbol")
+
     let set_width_symbol, width_symbol =
       declare (fun f -> uninitialized "width_symbol")
+
     let set_constant_symbol, constant_symbol =
-      declare (fun f -> uninitialized "constant_symbol")
+      declare (fun c -> uninitialized "constant_symbol")
 
     module F = Fusions (struct
       type f = flavor

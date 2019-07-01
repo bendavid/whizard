@@ -4,8 +4,8 @@
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
+!     with contributions from
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -230,7 +230,7 @@ module system_dependencies
   character(*), parameter :: DEFAULT_FC = &
        "@FC@"
   character(*), parameter :: DEFAULT_FCFLAGS = &
-       "@FCFLAGS_PROFILING@ @FCFLAGS_OPENMP@ @FCFLAGS@"
+       "@FCFLAGS_PROFILING@ @FCFLAGS_OPENMP@ @FCFLAGS_MPI@ @FCFLAGS@"
   character(*), parameter :: DEFAULT_FCFLAGS_PIC = &
        "@FCFLAGS_PIC@"
   character(*), parameter :: DEFAULT_FC_SRC_EXT = &

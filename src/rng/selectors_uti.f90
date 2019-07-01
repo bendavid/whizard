@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -46,6 +39,7 @@ module selectors_uti
   private
 
   public :: selectors_1
+  public :: selectors_2
 
 contains
 
@@ -103,6 +97,63 @@ contains
     write (u, "(A)")  "* Test output end: selectors_1"
 
   end subroutine selectors_1
+
+  subroutine selectors_2 (u)
+    integer, intent(in) :: u
+    type(selector_t) :: selector
+    class(rng_t), allocatable, target :: rng
+    integer :: i, n
+
+    write (u, "(A)")  "* Test output: selectors_2"
+    write (u, "(A)")  "*   Purpose: initialize and use a selector &
+         &with offset index"
+    write (u, "(A)")
+
+    write (u, "(A)")  "* Initialize selector"
+    write (u, "(A)")
+
+    call selector%init &
+         ([2._default, 3.5_default, 0._default, &
+         2._default, 0.5_default, 2._default], &
+         offset = -1)
+    call selector%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Select numbers using predictable test generator"
+    write (u, "(A)")
+
+    allocate (rng_test_t :: rng)
+    call rng%init (1)
+
+    do i = 1, 5
+       call selector%generate (rng, n)
+       write (u, "(1x,I0)")  n
+    end do
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Select numbers using real input number"
+    write (u, "(A)")
+
+    write (u, "(1x,A,I0)")  "select(0.00) = ", selector%select (0._default)
+    write (u, "(1x,A,I0)")  "select(0.77) = ", selector%select (0.77_default)
+    write (u, "(1x,A,I0)")  "select(1.00) = ", selector%select (1._default)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Get weight"
+    write (u, "(A)")
+
+    write (u, "(1x,A,ES19.12)")  "weight(1) =", selector%get_weight(1)
+    write (u, "(1x,A,ES19.12)")  "weight(2) =", selector%get_weight(2)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Cleanup"
+
+    call rng%final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: selectors_2"
+
+  end subroutine selectors_2
 
 
 end module selectors_uti

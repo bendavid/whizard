@@ -1,15 +1,13 @@
 General:
 
-* WHIZARD 2.4 currently runs only with the NAGFOR 6.0 (or newer) and 
+* WHIZARD 2.4+ currently runs only with the NAGFOR 6.0 (or newer) and 
   gfortran 4.8.5 (or newer) Fortran compilers as well as Intel ifort
-  16.0.0 (or newer). Intel ifort 17.0.0/1/2 has a serious regression and
-  does not work, however.
+  17.0.4 (or newer).
 
-  [After compiler bugs are fixed, it should also run with PGF
-   and pathscale.  See the file EXTENSIONS for the list of Fortran 2003 
+  [See the file EXTENSIONS for the list of Fortran 2003/2008/2015 
    features that the compiler must support.]
 
-* WHIZARD 2.4 incorporates all features from WHIZARD 1, making the
+* WHIZARD 2.6+ incorporates all features from WHIZARD 1, making the
   legacy branch obsolete now.
   
 * Please report bugs and problems or performance issues 
@@ -45,7 +43,7 @@ Known bugs:
 
 Manual:
 
-* WHIZARD 2.4, the new features, is still mostly undocumented.  The manual
+* WHIZARD 2.6, the new features, is still mostly undocumented.  The manual
   is still quite sparse. We are working on that. Regular updates independent
   from the subreleases can be found on the Hepforge webpage:
   http://projects.hepforge.org/whizard/manual.pdf

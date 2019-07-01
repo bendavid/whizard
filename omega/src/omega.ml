@@ -65,6 +65,18 @@ module Make (Fusion_Maker : Fusion.Maker) (Target_Maker : Target.Maker) (M : Mod
     module W = Whizard.Make(Fusion_Maker)(P)(P_Whizard)(M)
     module C = Cascade.Make(M)(P)
 
+(* For the phase space, we need asymmetric DAGs.
+
+   HACK: since we will not use this to compute amplitudes, there's
+   no need to supply the proper statistics module and we may
+   assume Dirac fermions.
+
+   HACK: for the phase space, we should be able to work on the
+   uncolored model. *)
+
+    module PHS =
+      Fusion.Helac(struct let max_arity () = pred (M.max_degree ()) end)(P)(M)
+
 (* Form a ['a list] from a ['a option array], containing
    the elements that are not [None] in order. *)
 
@@ -139,6 +151,16 @@ i*)
 		  (Tree.map prune_color_and_couplings prune_color t))
 	      (ThoList.flatmap (fun a -> F.forest (wf1 a) a) amplitudes)))
       | [] -> ([], [])
+
+    let dag_sans_color = function
+      | amplitude :: _ as amplitudes ->
+	let prune_color wf =
+	  (F.flavor_sans_color wf, F.momentum_list wf) in
+	let prune_color_and_couplings (wf, c) =
+	  (prune_color wf, None) in
+        let prune a = a in
+        List.map prune amplitudes
+      | [] -> []
 
     let p2s p =
       if p >= 0 && p <= 9 then
@@ -359,7 +381,8 @@ i*)
       and params = ref false
       and poles = ref false
       and dag_out = ref None
-      and dag0_out = ref None in
+      and dag0_out = ref None
+      and phase_space_out = ref None in
       Options.parse
         (Options.cmdline "-target:" T.options @
          Options.cmdline "-model:" M.options @
@@ -412,7 +435,9 @@ i*)
           ("-dag", Arg.String (fun s -> dag_out := Some s),
            "               print minimal DAG");
           ("-full_dag", Arg.String (fun s -> dag0_out := Some s),
-           "          print complete DAG")])
+           "          print complete DAG");
+          ("-phase_space", Arg.String (fun s -> phase_space_out := Some s),
+           "       print minimal DAG for phase space")])
 (*i       ("-T", Arg.Int Topology.Binary.debug_triplet, "");
           ("-P", Arg.Int Topology.Binary.debug_partition, "")])
 i*)
@@ -530,6 +555,50 @@ i*)
             let ch = open_out name in
             List.iter (F.amplitude_to_dot ch) (CF.processes amplitudes);
             close_out ch
+        | None -> ()
+        end;
+
+        begin match !phase_space_out with
+        | Some name ->
+           let ch = open_out name in
+           begin try
+             List.iter
+               (fun (fin, fout) ->
+                 Printf.fprintf
+                   ch "%s -> %s ::\n"
+                   (String.concat " " (List.map M.flavor_to_string fin))
+                   (String.concat " " (List.map M.flavor_to_string fout));
+                 match fin with
+                 | [] ->
+                    failwith "Omega(): phase space: no incoming particles"
+                 | [f] ->
+                    PHS.phase_space_channels
+                      ch
+                      (PHS.amplitude_sans_color
+                         false PHS.no_exclusions selectors fin fout)
+                 | [f1; f2] ->
+                    PHS.phase_space_channels
+                      ch
+                      (PHS.amplitude_sans_color
+                         false PHS.no_exclusions selectors fin fout);
+                    PHS.phase_space_channels_flipped
+                      ch
+                      (PHS.amplitude_sans_color
+                         false PHS.no_exclusions selectors [f2; f1] fout)
+                 | _ ->
+                    failwith "Omega(): phase space: 3 or more incoming particles")
+               processes;
+             close_out ch
+           with
+           | exc ->
+              begin
+                close_out ch;
+                Printf.eprintf
+                  "O'Mega: exception %s in phase space construction!\n"
+                  (Printexc.to_string exc);
+                flush stderr
+              end
+           end
         | None -> ()
         end;
 

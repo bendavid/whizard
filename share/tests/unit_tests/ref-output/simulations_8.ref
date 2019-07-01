@@ -9,7 +9,7 @@
 * Initialize raw event file
 
  MD5 sum (proc)   = '4B15ACE9F2F60427FBA8AD9719D76E22'
- MD5 sum (config) = 'F493406B831C202B34F911BDD8567BC4'
+ MD5 sum (config) = '7DB17DA7839BC74D10D9CF1CDCC4487C'
 
 * Generate an event
 
@@ -56,6 +56,7 @@
    pass complete = F
    n_calls       = 0
    calls         = 1
+   calls_valid   = 1
    it complete   = F
    n adapt.(g)   = 0
    n adapt.(w)   = 0
@@ -191,10 +192,13 @@
  Structure-function parameters:
  Channel #1: [selected]
    p = 0.3536881 0.3521986
+   pb= 0.6463119 0.6478014
    r = 0.3536881 0.3521986
+   rb= 0.6463119 0.6478014
    f = 1.0000000E+00
    m = - -
    x = 0.3536881 0.3521986
+   xb= 0.6463119 0.6478014
 ------------------------------------------------------------------------
  Colliding beams:
  Interaction: 4
@@ -216,9 +220,11 @@
  Structure-function parameters:
  Channel #1: [selected]
    r = 0.3536881
+   rb= 0.6463119
    f = 1.0000000E+00
    m = F
    x = 0.3536881
+   xb= 0.6463119
  SF test data:
    model     = Test
    incoming  = f(25)
@@ -295,9 +301,11 @@
  Structure-function parameters:
  Channel #1: [selected]
    r = 0.3521986
+   rb= 0.6478014
    f = 1.0000000E+00
    m = F
    x = 0.3521986
+   xb= 0.6478014
  SF test data:
    model     = Test
    incoming  = f(25)
@@ -1102,6 +1110,7 @@ event_excess* =>  0.00000E+00
    pass complete = F
    n_calls       = 0
    calls         = 0
+   calls_valid   = 0
    it complete   = F
    n adapt.(g)   = 0
    n adapt.(w)   = 0
@@ -1232,10 +1241,13 @@ event_excess* =>  0.00000E+00
  Structure-function parameters:
  Channel #1: [selected]
    p = 0.3536881 0.3521986
+   pb= 0.6463119 0.6478014
    r = 0.3536881 0.3521986
+   rb= 0.6463119 0.6478014
    f = 1.0000000E+00
    m = - -
    x = 0.3536881 0.3521986
+   xb= 0.6463119 0.6478014
 ------------------------------------------------------------------------
  Colliding beams:
  Interaction: 5
@@ -1257,9 +1269,11 @@ event_excess* =>  0.00000E+00
  Structure-function parameters:
  Channel #1: [selected]
    r = 0.3536881
+   rb= 0.6463119
    f = 1.0000000E+00
    m = F
    x = 0.3536881
+   xb= 0.6463119
  SF test data:
    model     = Test
    incoming  = f(25)
@@ -1336,9 +1350,11 @@ event_excess* =>  0.00000E+00
  Structure-function parameters:
  Channel #1: [selected]
    r = 0.3521986
+   rb= 0.6478014
    f = 1.0000000E+00
    m = F
    x = 0.3521986
+   xb= 0.6478014
  SF test data:
    model     = Test
    incoming  = f(25)

@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -420,9 +413,10 @@ contains
     call circe2_generate (circe2_global_state, rng_obj, x, pdg, hel)
   end subroutine circe2_generate_whizard
 
-  subroutine circe2_complete_kinematics (sf_int, x, f, r, rb, map)
+  subroutine circe2_complete_kinematics (sf_int, x, xb, f, r, rb, map)
     class(circe2_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(out) :: x
+    real(default), dimension(:), intent(out) :: xb
     real(default), intent(out) :: f
     real(default), dimension(:), intent(in) :: r
     real(default), dimension(:), intent(in) :: rb
@@ -431,14 +425,16 @@ contains
        call msg_fatal ("CIRCE2: map flag not supported")
     else
        x = r
+       xb= rb
        f = 1
     end if
     call sf_int%reduce_momenta (x)
   end subroutine circe2_complete_kinematics
 
-  subroutine circe2_inverse_kinematics (sf_int, x, f, r, rb, map, set_momenta)
+  subroutine circe2_inverse_kinematics (sf_int, x, xb, f, r, rb, map, set_momenta)
     class(circe2_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(in) :: x
+    real(default), dimension(:), intent(in) :: xb
     real(default), intent(out) :: f
     real(default), dimension(:), intent(out) :: r
     real(default), dimension(:), intent(out) :: rb
@@ -450,7 +446,7 @@ contains
        call msg_fatal ("CIRCE2: map flag not supported")
     else
        r = x
-       rb= 1 - r
+       rb= xb
        f = 1
     end if
     if (set_mom) then
@@ -458,9 +454,11 @@ contains
     end if
   end subroutine circe2_inverse_kinematics
 
-  subroutine circe2_apply (sf_int, scale)
+  subroutine circe2_apply (sf_int, scale, rescaling_function, i_rescale)
     class(circe2_t), intent(inout) :: sf_int
     real(default), intent(in) :: scale
+    class(rescaling_function_t), intent(in), optional :: rescaling_function
+    integer, intent(in), optional :: i_rescale
     complex(default) :: f
     associate (data => sf_int%data)
       f = 1

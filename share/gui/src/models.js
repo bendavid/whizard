@@ -22,8 +22,6 @@ export function SindarinModelData(modelString) {
 function fillModelList() {
   const modelList = [];
   const models = [
-    {name: '2HDM', description: 'Two-Higgs Doublet Model'},
-    {name: '2HDM_CKM', description: 'Two-Higgs Doublet Model with CKM matrix'},
     {name: 'AltH', description: 'An SM extension for VV scattering'},
     {name: 'GravTest', description: 'SQED with gravitino'},
     {name: 'HSExt', description: '?????'},
@@ -58,6 +56,8 @@ function fillModelList() {
     {name: 'SSC_2', description: 'SM extension for VV scattering'},
     {name: 'SSC_AltT', description: 'SM extension for VV scattering'},
     {name: 'Template', description: 'Augmentable SM template'},
+    {name: 'THDM', description: 'Two-Higgs Doublet Model'},
+    {name: 'THDM_CKM', description: 'Two-Higgs Doublet Model with CKM matrix'},
     {name: 'Threeshl', description: '???'},
     {name: 'Threeshl_nohf', description: '???'},
     {name: 'UED', description: 'Universal Extra Dimensions'},

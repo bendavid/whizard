@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -40,10 +33,13 @@ program main
   use diagnostics
   use ifiles
   use os_interface
+  use rt_data, only: show_description_of_string, show_tex_descriptions
   use whizard
 
   use cmdline_options
   use features
+
+
 
   implicit none
 
@@ -59,12 +55,12 @@ program main
   character(CMDLINE_ARG_LEN) :: arg
   character(2) :: option
   type(string_t) :: long_option, value
-  integer :: i, j, arg_len, arg_status, area
+  integer :: i, j, arg_len, arg_status
   logical :: look_for_options
   logical :: interactive
   logical :: banner
   type(string_t) :: files, this, model, default_lib, library, libraries
-  type(string_t) :: logfile
+  type(string_t) :: logfile, query_string
   logical :: user_code_enable = .false.
   integer :: n_user_src = 0, n_user_lib = 0
   type(string_t) :: user_src, user_lib, user_target
@@ -104,6 +100,8 @@ program main
   rebuild_events = .false.
   recompile_library = .false.
   call paths_init (paths)
+
+
 
   ! Read and process options
   call init_options (print_usage)
@@ -197,15 +195,22 @@ program main
               call no_option_value (long_option, value)
               logging = .false.
               cycle SCAN_CMDLINE
+           case ("--query")
+              call no_option_value (long_option, value)
+              query_string = get_option_value (i, long_option, value)
+              call show_description_of_string (query_string)
+              call exit (0)
+           case ("--generate-variables-tex")
+              call no_option_value (long_option, value)
+              call show_tex_descriptions ()
+              call exit (0)
            case ("--debug")
               call no_option_value (long_option, value)
-              area = d_area (get_option_value (i, long_option, value))
-              msg_level(area) = DEBUG
+              call set_debug_levels (get_option_value (i, long_option, value))
               cycle SCAN_CMDLINE
            case ("--debug2")
               call no_option_value (long_option, value)
-              area = d_area (get_option_value (i, long_option, value))
-              msg_level(area) = DEBUG2
+              call set_debug2_levels (get_option_value (i, long_option, value))
               cycle SCAN_CMDLINE
            case ("--single-event")
               call no_option_value (long_option, value)
@@ -294,7 +299,7 @@ program main
               cycle SCAN_CMDLINE
            case ("--write-syntax-tables")
               call no_option_value (long_option, value)
-              call init_syntax_tables ()
+        call init_syntax_tables ()
               call write_syntax_tables ()
               call final_syntax_tables ()
               stop
@@ -346,6 +351,11 @@ program main
                          ("Option '" // option // "' needs a value")
                     model = get_option_value (i, var_str (option))
                     cycle SCAN_CMDLINE
+                 case ("-q")
+                    call no_option_value (long_option, value)
+                    query_string = get_option_value (i, long_option, value)
+                    call show_description_of_string (query_string)
+                    call exit (0)
                  case ("-r")
                     rebuild_library = .true.
                     rebuild_user = .true.
@@ -390,6 +400,7 @@ program main
       options%rebuild_phs = rebuild_phs
       options%rebuild_grids = rebuild_grids
       options%rebuild_events = rebuild_events
+    
 
       call whizard_instance%init (options, paths, logfile)
 
@@ -432,6 +443,8 @@ program main
   call whizard_instance%final ()
   deallocate (whizard_instance)
 
+
+
   call terminate_now_if_signal ()
   call release_term_signals ()
   call msg_terminate (quit_code = quit_code)
@@ -462,7 +475,7 @@ end program main
     print "(A)", "Options for resetting default directories and tools" &
             // "(GNU naming conventions):"
     print "(A)", "    --prefix DIR"
-    print "(A)", "    --exec_prefix DIR"
+    print "(A)", "    --exec-prefix DIR"
     print "(A)", "    --bindir DIR"
     print "(A)", "    --libdir DIR"
     print "(A)", "    --includedir DIR"
@@ -490,6 +503,7 @@ end program main
     print "(A)", "    --no-logging      switch off logging at startup"
     print "(A)", "    --no-model        do not preload a model"
     print "(A)", "    --no-rebuild      do not force rebuilding"
+    print "(A)", "-q, --query VARIABLE  display documentation of VARIABLE"
     print "(A)", "-r, --rebuild         rebuild all (see below)"
     print "(A)", "    --rebuild-library"
     print "(A)", "                      rebuild process code library"

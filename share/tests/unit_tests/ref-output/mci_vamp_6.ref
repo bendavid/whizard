@@ -34,11 +34,11 @@
    n_bins        = 20
    adapt grids   = F
    adapt weights = T
-   Results:  [it, calls, integral, error, efficiency]
-     1 1000  1.0177061925E+00  6.8751470140E-03  5.6613058481E-01
-     2 999  9.9606993307E-01  4.5105166991E-03  7.6079094764E-01
-     3 998  9.9900035217E-01  3.1422731077E-03  8.5249627461E-01
- MD5 sum (including results) = '824D36B219E1A2ED4E1079353D86EC47'
+   Results:  [it, calls, valid, integral, error, efficiency]
+     1 1000 1000  1.0177061925E+00  6.8751470140E-03  5.6613058481E-01
+     2 999 999  9.9606993307E-01  4.5105166991E-03  7.6079094764E-01
+     3 998 998  9.9900035217E-01  3.1422731077E-03  8.5249627461E-01
+ MD5 sum (including results) = '54A4E02FEC41FF52C85D6FF0FF97C412'
 
 * Contents of mci_instance:
 
@@ -52,6 +52,7 @@
    pass complete = T
    n_calls       = 1000
    calls         = 998
+   calls_valid   = 998
    it complete   = T
    n adapt.(g)   = 0
    n adapt.(w)   = 2
@@ -97,11 +98,11 @@
    n_bins        = 20
    adapt grids   = F
    adapt weights = T
-   Results:  [it, calls, integral, error, efficiency]
-     1 1000  1.0177061925E+00  6.8751470140E-03  5.6613058481E-01
-     2 1000  9.9837452897E-01  7.5171713359E-03  5.5477954562E-01
-     3 1000  9.9192591793E-01  6.9449035134E-03  5.5271493712E-01
- MD5 sum (including results) = '716E5A9CF1EA8406629C408AB0F5B7AC'
+   Results:  [it, calls, valid, integral, error, efficiency]
+     1 1000 1000  1.0177061925E+00  6.8751470140E-03  5.6613058481E-01
+     2 1000 1000  9.9837452897E-01  7.5171713359E-03  5.5477954562E-01
+     3 1000 1000  9.9192591793E-01  6.9449035134E-03  5.5271493712E-01
+ MD5 sum (including results) = '431249C8A79F9F23E666F02D8898D809'
 
 * Contents of mci_instance:
 
@@ -115,6 +116,7 @@
    pass complete = T
    n_calls       = 1000
    calls         = 1000
+   calls_valid   = 1000
    it complete   = T
    n adapt.(g)   = 0
    n adapt.(w)   = 2

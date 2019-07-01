@@ -1,6 +1,10 @@
 * Test output: dispatch_mci_1
 *   Purpose: select integration method
 
+* Allocate MCI as none_t
+
+ Integrator: non-functional dummy
+
 * Allocate MCI as midpoint_t
 
  Single-channel midpoint rule integrator:

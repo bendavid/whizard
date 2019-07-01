@@ -81,7 +81,9 @@
 * Recover x and r
 
 x =  0.5000000
+xb=  0.5000000
 r =  0.5000000
+rb=  0.5000000
 
 * Set kinematics for x=0.5, keeping momentum
 
@@ -122,7 +124,9 @@ r =  0.5000000
 * Recover x and r
 
 x =  0.5000000
+xb=  0.5000000
 r =  0.5000000
+rb=  0.5000000
 
 * Set outgoing mass to zero
 
@@ -165,7 +169,9 @@ r =  0.5000000
 * Recover x and r
 
 x =  0.5000000
+xb=  0.5000000
 r =  0.5000000
+rb=  0.5000000
 
 * Set kinematics for x=0.5, keeping momentum
 
@@ -206,7 +212,9 @@ r =  0.5000000
 * Recover x and r
 
 x =  0.5000000
+xb=  0.5000000
 r =  0.5000000
+rb=  0.5000000
 
 * Set incoming mass to zero
 
@@ -249,7 +257,9 @@ r =  0.5000000
 * Recover x and r
 
 x =  0.5000000
+xb=  0.5000000
 r =  0.5000000
+rb=  0.5000000
 
 * Set kinematics for x=0.5, keeping momentum
 
@@ -290,7 +300,9 @@ r =  0.5000000
 * Recover x and r
 
 x =  0.5000000
+xb=  0.5000000
 r =  0.5000000
+rb=  0.5000000
 
 * Set all masses to zero
 
@@ -333,7 +345,9 @@ r =  0.5000000
 * Recover x and r
 
 x =  0.5000000
+xb=  0.5000000
 r =  0.5000000
+rb=  0.5000000
 
 * Set kinematics for x=0.5, keeping momentum
 
@@ -374,7 +388,9 @@ r =  0.5000000
 * Recover x and r
 
 x =  0.5000000
+xb=  0.5000000
 r =  0.5000000
+rb=  0.5000000
 
 * Cleanup
 

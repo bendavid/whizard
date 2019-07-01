@@ -51,13 +51,15 @@
    Maximum absolute negative value =  0.0000000000E+00
    Integral (of latest iteration)  =  0.0000000000E+00
    Standard deviation              =  0.0000000000E+00
+  Event weight                    =  0.0000000000E+00
+  Event weight excess             =  0.0000000000E+00
 
 * Initialise grid with n_calls = 20000
 
 
 * Integrate with n_it = 3 and n_calls = 20000 (Adaptation)
 
-  Result:  2.00022E+00 +/-  2.70144E-04
+  Result:  1.99967E+00 +/-  2.64783E-04
 
 * Write grid to file vamp2_3.grids
 
@@ -67,6 +69,6 @@
 
 * Integrate with n_it = 3 and n_calls = 5000 (Precision)
 
-  Result:  2.00052E+00 +/-  9.65532E-04
+  Result:  2.00011E+00 +/-  5.53554E-04
 
 * Cleanup

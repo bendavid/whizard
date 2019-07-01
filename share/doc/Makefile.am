@@ -6,7 +6,8 @@
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
-#     Christian Speckner <cnspeckn@googlemail.com>
+#     with contributions from
+#     cf. main AUTHORS file
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by
@@ -44,7 +45,12 @@ MANUAL_PICS = \
    Z-lineshape_1.pdf Z-lineshape_2.eps Z-lineshape_2.pdf \
    flow4.eps flow4.pdf lep_higgs_1.eps lep_higgs_1.pdf \
    lep_higgs_2.eps lep_higgs_2.pdf lep_higgs_3.eps \
-   lep_higgs_3.pdf circe2-smoothing.eps circe2-smoothing.pdf
+   lep_higgs_3.pdf circe2-smoothing.eps circe2-smoothing.pdf \
+   resonance_e_gam.eps resonance_e_gam.pdf resonance_n_charged.eps \
+   resonance_n_charged.pdf resonance_n_hadron.eps \
+   resonance_n_hadron.pdf resonance_n_particles.eps \
+   resonance_n_particles.pdf resonance_n_photons.eps \
+   resonance_n_photons.pdf resonance_n_visible.eps resonance_n_visible.pdf
 
 if NOWEB_AVAILABLE
 dist_pdf_DATA = manual.pdf $(PACKAGE).pdf gamelan_manual.pdf
@@ -79,24 +85,35 @@ manual.pdf: $(PACKAGE).pdf
 $(PACKAGE).ps: gamelan_manual.ps
 $(PACKAGE).pdf: gamelan_manual.pdf $(WHIZARD_DEPENDENCY_GRAPHS_PDF) overview.pdf
 
+manual.pdf: variables.tex
+
+variables.tex: ../../src/whizard
+	../../src/whizard --generate-variables-tex > variables.tex
 
 gamelan_manual.pdf: gamelan.sty
 
 ## Rules for creating PS
 .tex.dvi:
+	@if $(AM_V_P); then TEXINPUTS=$(TEX_FLAGS) $(LATEX) $<; else \
+	   echo " LATEX     " $<; TEXINPUTS=$(TEX_FLAGS) $(LATEX) $< >/dev/null; fi
 	-TEXINPUTS=$(TEX_FLAGS) $(LATEX) $<; \
 	while grep 'Rerun to get cross-references right\.' $*.log; \
 	do TEXINPUTS=$(TEX_FLAGS) $(LATEX) $<; \
 	done
-	-test -r $*.mp && $(GML) $*
-	TEXINPUTS=$(TEX_FLAGS) $(LATEX) $<
+	@if test -r $*.mp; then \
+	   if $(AM_V_P); then $(GML) $*; else echo " GML       " $*; $(GML) $* >/dev/null; fi; \
+	fi
+	@if $(AM_V_P); then TEXINPUTS=$(TEX_FLAGS) $(LATEX) $<; else \
+	   echo " LATEX     " $<; TEXINPUTS=$(TEX_FLAGS) $(LATEX) $< >/dev/null; fi
 .dvi.ps:
-	$(DVIPS) -o $@ $<
+	@if $(AM_V_P); then $(DVIPS) -o $@ $<; else \
+	   echo " DVIPS     " $<; $(DVIPS) -o $@ $< >/dev/null; fi
 
 SUFFIXES: .dot .tex .dvi .ps .pdf
 
 .dot.pdf:
-	$(DOT) -Tpdf $< > $@
+	@if $(AM_V_P); then :; else echo " DOT       " $@; fi
+	$(AM_V_at)$(DOT) -Tpdf $< > $@
 
 if DISTRIBUTION
 WHIZARD_DEPENDENCY_GRAPHS_DOT = \
@@ -138,16 +155,27 @@ all-dots: $(WHIZARD_DEPENDENCY_GRAPHS_DOT) overview.dot
 
 $(WHIZARD_DEPENDENCY_GRAPHS_DOT):
 	@rm -f $@
-	$(top_srcdir)/share/doc/dep2dot.py \
-		../../src/`echo $@ | sed 's/.dot//'`/Makefile.depend > $@
+	@if $(AM_V_P); then \
+	   $(top_srcdir)/share/doc/dep2dot.py \
+		../../src/`echo $@ | sed 's/.dot//'`/Makefile.depend > $@; else \
+	   echo " DEP2DOT   " $@; \
+	   $(top_srcdir)/share/doc/dep2dot.py \
+		../../src/`echo $@ | sed 's/.dot//'`/Makefile.depend > $@; fi
 
 overview.dot:
 	@rm -f $@
-	list=''; \
-	for dep in $(WHIZARD_DEPENDENCY_GRAPHS_DOT); do \
+	@if $(AM_V_P); then \
+	   list=''; \
+	   for dep in $(WHIZARD_DEPENDENCY_GRAPHS_DOT); do \
 		list="$$list ../../src/`echo $$dep | sed 's/.dot//'`/Makefile.depend"; \
-	done ; \
-	$(top_srcdir)/share/doc/dep2dot.py $$list > $@
+	   done ; \
+	   $(top_srcdir)/share/doc/dep2dot.py $$list > $@; else \
+	   echo " DEP2DOT   " $@; \
+	   list=''; \
+	   for dep in $(WHIZARD_DEPENDENCY_GRAPHS_DOT); do \
+		list="$$list ../../src/`echo $$dep | sed 's/.dot//'`/Makefile.depend"; \
+	   done ; \
+	   $(top_srcdir)/share/doc/dep2dot.py $$list > $@; fi
 dist_noinst_DATA += $(WHIZARD_DEPENDENCY_GRAPHS_DOT) overview.dot
 endif
 
@@ -155,12 +183,22 @@ endif
 if DISTRIBUTION
 if PDFLATEX_AVAILABLE
 .tex.pdf:
-	-TEXINPUTS=$(TEX_FLAGS) $(PDFLATEX) $<; \
-	while grep 'Rerun to get cross-references right\.' $*.log; \
-	do TEXINPUTS=$(TEX_FLAGS) $(PDFLATEX) $<; \
-	done
-	-test -r $*.mp && $(GML) $*
-	TEXINPUTS=$(TEX_FLAGS) $(PDFLATEX) $<
+	@if $(AM_V_P); then TEXINPUTS=$(TEX_FLAGS) $(PDFLATEX) $<; else \
+	   echo " PDFLATEX  " $<; TEXINPUTS=$(TEX_FLAGS) $(PDFLATEX) $< >/dev/null; fi
+	@if $(AM_V_P); then \
+	   while grep 'Rerun to get cross-references right\.' $*.log; \
+	   do TEXINPUTS=$(TEX_FLAGS) $(PDFLATEX) $<; \
+	   done; else \
+	   echo " PDFLATEX  " $< "(for cross-references)"; \
+	   while grep 'Rerun to get cross-references right\.' $*.log >/dev/null; \
+	   do TEXINPUTS=$(TEX_FLAGS) $(PDFLATEX) $< >/dev/null; \
+	   done; \
+	fi
+	@if test -r $*.mp; then \
+	   if $(AM_V_P); then $(GML) $*; else echo " GML       " $*; $(GML) $* >/dev/null; fi; \
+	fi
+	@if $(AM_V_P); then TEXINPUTS=$(TEX_FLAGS) $(PDFLATEX) $<; else \
+	   echo " PDFLATEX  " $<; TEXINPUTS=$(TEX_FLAGS) $(PDFLATEX) $< >/dev/null; fi
 else
 if PS2PDF_AVAILABLE
 .ps.pdf:
@@ -179,14 +217,19 @@ HACHAOPTS = -tocbis
 
 if DISTRIBUTION
 index.html: manual.html
-	$(HACHA) $(HACHAOPTS) -o index.html manual.html
+	@if $(AM_V_P); then $(HACHA) $(HACHAOPTS) -o index.html manual.html; else \
+	   echo " HACHA     " $@; $(HACHA) $(HACHAOPTS) -o index.html manual.html >/dev/null 2>&1; fi
 
-manual.html: manual.tex $(MANUAL_PICS)
-	TEXINPUTS=$(TEX_FLAGS) $(HEVEA) -fix $(HEVEAOPTS) manual.tex
-	TEXINPUTS=$(TEX_FLAGS) $(IMAGEN) manual
+manual.html: variables.tex manual.tex $(MANUAL_PICS)
+	@if $(AM_V_P); then TEXINPUTS=$(TEX_FLAGS) $(HEVEA) -fix $(HEVEAOPTS) manual.tex; else \
+	   echo " HEVEA     " $@; \
+	   TEXINPUTS=$(TEX_FLAGS) $(HEVEA) -s -fix $(HEVEAOPTS) manual.tex >/dev/null 2>&1; fi
+	@if $(AM_V_P); then TEXINPUTS=$(TEX_FLAGS) $(IMAGEN) manual; else \
+	   echo " IMAGEN     manual"; TEXINPUTS=$(TEX_FLAGS) $(IMAGEN) manual >/dev/null 2>&1; fi
 ### There are no Feynman diagrams at the moment inside the manual.
 #	$(MPOST) manualpics.mp
-	TEXINPUTS=$(TEX_FLAGS) $(HEVEA) -fix $(HEVEAOPTS) manual.tex
+	@if $(AM_V_P); then TEXINPUTS=$(TEX_FLAGS) $(HEVEA) -fix $(HEVEAOPTS) manual.tex; else \
+	   echo " HEVEA     " $@; TEXINPUTS=$(TEX_FLAGS) $(HEVEA) -s -fix $(HEVEAOPTS) manual.tex; fi
 else
 	@echo "HEVEA not available. The HTML manual cannot be made"
 endif !DISTRIBUTION
@@ -222,10 +265,12 @@ WHIZARD_NOWEB_SRC = \
 
 $(PACKAGE).tex: $(WHIZARD_NOWEB_SRC)
 	-rm -f $@
-	$(NOWEAVE) -delay $^ | $(CPIF) $@
+	@if $(AM_V_P); then :; else echo " NOWEAVE   " $@; fi
+	$(AM_V_at)$(NOWEAVE) -delay $^ | $(CPIF) $@
 
 gamelan.sty: $(top_srcdir)/src/gamelan/gamelan.nw
-	$(NOTANGLE) -R$@ $< | $(CPIF) $@
+	@if $(AM_V_P); then :; else echo " NOTANGLE  " $@; fi
+	$(AM_V_at)$(NOTANGLE) -R$@ $< | $(CPIF) $@
 endif NOWEB_AVAILABLE
 
 ## Cleanup tasks
@@ -234,7 +279,7 @@ mostlyclean-latex:
 	gamelan_manual.[1-9] gamelan_manual.[1-9][0-9] \
 	manual.ps manual.pdf gamelan_manual.ps gamelan_manual.pdf \
 	$(WHIZARD_DEPENDENCY_GRAPHS_DOT) $(WHIZARD_DEPENDENCY_GRAPHS_PDF) \
-	overview.dot overview.pdf
+	overview.dot overview.pdf variables.tex
 	-test "$(srcdir)" != "." && rm -f $(PACKAGE).pdf
 clean-latex:
 maintainer-clean-latex:

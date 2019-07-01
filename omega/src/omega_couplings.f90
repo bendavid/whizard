@@ -1340,7 +1340,7 @@ contains
     complex(kind=default) :: c_mass2
     pv = p
     if (cms) then
-       c_mass2 = cmplx (m**2, -m*w)
+       c_mass2 = cmplx (m**2, -m*w, kind=default)
     else
        c_mass2 = m**2
     end if

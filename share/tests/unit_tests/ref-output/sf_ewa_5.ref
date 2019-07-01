@@ -105,6 +105,7 @@
 r =  0.4000000
 rb=  0.6000000
 x =  0.4000000
+xb=  0.6000000
 f =  1.0000000
 
 * Evaluate EWA structure function
@@ -129,6 +130,7 @@ f =  1.0000000
      PDG (VB)  = 24
  SF parameters:
    x = 4.0000000000E-01
+   xb= 6.0000000000E-01
  SF instance: [evaluated]
    beam      = 1
    incoming  = 1

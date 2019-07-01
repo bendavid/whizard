@@ -7,13 +7,7 @@
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
 #     with contributions from
-#     Fabian Bach <fabian.bach@t-online.de>
-#     Bijan Chokoufe <bijan.chokoufe@desy.de>
-#     Christian Speckner <cnspeckn@googlemail.com>
-#     Marco Sekulla <marco.sekulla@kit.edu>
-#     Christian Weiss <christian.weiss@desy.de>
-#     Felix Braam, Sebastian Schmidt
-#     Hans-Werner Boschmann, Daniel Wiesler
+#     cf. main AUTHORS file
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by 
@@ -49,8 +43,8 @@ SUBDIRS = \
 ## to be installed with the 'models' prefix kept
 modelsdir = $(pkgdatadir)/models
 dist_models_DATA = \
-  models/2HDM.mdl \
-  models/2HDM_CKM.mdl \
+  models/THDM.mdl \
+  models/THDM_CKM.mdl \
   models/AltH.mdl \
   models/GravTest.mdl \
   models/HSExt.mdl \
@@ -130,6 +124,7 @@ dist_examples_DATA = \
   examples/NLO_eettbar_GoSam.sin \
   examples/NLO_eettbar_OpenLoops.sin \
   examples/NLO_NLL_matched.sin \
+  examples/LHC_VBS_likesign.sin \
   examples/DrellYanMatchingP.sin \
   examples/DrellYanMatchingW.sin \
   examples/DrellYanNoMatchingP.sin \

@@ -1,4 +1,4 @@
-# $Id: DrellYanMatchingW.sin 2293 2010-04-11 23:57:50Z jr_reuter $
+# DrellYanMatchingW.sin
 # Simple complete physics example: DY with Matched WHIZARD shower
 ########################################################################
 #
@@ -7,7 +7,7 @@
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
 #     with contributions from
-#     Sebastian Schmidt, Christian Speckner 
+#     cf. main AUTHORS file
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by 

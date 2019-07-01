@@ -94,6 +94,9 @@ WHIZARD:
 -- An interface to FeynRules exists and is included in the 
    FeynRules program: http://feynrules.irmp.ucl.ac.be
 
+-- Parallelisation with MPI requires a at least MPI-3 capable MPI library.
+   You can get OpenMPI from https://www.open-mpi.org/.
+
 #-------------------------------------------------------------
 #  platform specific issues
 #-------------------------------------------------------------
@@ -231,6 +234,7 @@ Optional Features:
   --enable-fc-openmp      use OpenMP for the Fortran code [[no]]
   --enable-fc-profiling   use profiling for the Fortran code [[no]]
   --enable-fc-impure	  compile Omega libraries impure [[no]]
+  --enable-fc-mpi         use OpenMPI/MPICH for the Fortran code [[no]]
   --disable-ocaml	  disable the OCaml parts, even if OCaml available
   			  [[no]]
   --enable-default-UFO-dir=directory
@@ -270,7 +274,8 @@ Optional Packages:
                           request a floating point precision other than
 			  double precision.  Note that only single and
                           double are guaranteed to be provided by all
-                          Fortran compilers.			  
+                          Fortran compilers.
+  --with-mpi-lib=mpich|openmpi   request an external MPI library.
   --with-pythia8=dir      assume the given directory for PYTHIA8
   --with-fastjet=dir      assume the given directory for FastJet
   --with-gosam=dir        assume the given directory for GoSam

@@ -104,7 +104,7 @@ Warning: Reading phs file: MD5 sum check disabled
 $rescan_input_format = "hepmc"
 $sample = "hepmc_9c"
 ?update_sqme = true
-?use_alpha_s_from_file = true
+?use_alphas_from_file = true
 | Starting simulation for process 'hepmc_9_p'
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 4

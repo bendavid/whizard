@@ -13,8 +13,8 @@ module integration_results
   implicit none
   private
 
+  public :: integration_entry_t
   public :: integration_results_t
-  public :: integration_results_append_null
   public :: integration_results_write_driver
   public :: integration_results_compile_driver
 
@@ -34,12 +34,33 @@ module integration_results
      integer :: it = 0
      integer :: n_it = 0
      integer :: n_calls = 0
+     integer :: n_calls_valid = 0
      logical :: improved = .false.
      real(default) :: integral = 0
      real(default) :: error = 0
      real(default) :: efficiency = 0
+     real(default) :: efficiency_pos = 0
+     real(default) :: efficiency_neg = 0
      real(default) :: chi2 = 0
      real(default), dimension(:), allocatable :: chain_weights
+   contains
+     procedure :: get_pass => integration_entry_get_pass
+     procedure :: get_n_calls => integration_entry_get_n_calls
+     procedure :: get_n_calls_valid => integration_entry_get_n_calls_valid
+     procedure :: get_integral => integration_entry_get_integral
+     procedure :: get_error => integration_entry_get_error
+     procedure :: get_rel_error => integration_entry_get_relative_error
+     procedure :: get_accuracy => integration_entry_get_accuracy
+     procedure :: get_efficiency => integration_entry_get_efficiency
+     procedure :: get_efficiency_pos => integration_entry_get_efficiency_pos
+     procedure :: get_efficiency_neg => integration_entry_get_efficiency_neg
+     procedure :: get_chi2 => integration_entry_get_chi2
+     procedure :: has_improved => integration_entry_has_improved
+     procedure :: get_n_groves => integration_entry_get_n_groves
+     procedure :: write => integration_entry_write
+     procedure :: write_verbose => integration_entry_write_verbose
+     procedure :: read => integration_entry_read
+     procedure :: write_chain_weights => integration_entry_write_chain_weights
   end type integration_entry_t
 
   type, extends (mci_results_t) :: integration_results_t
@@ -50,24 +71,31 @@ module integration_results
      integer :: n_it = 0
      logical :: screen = .false.
      integer :: unit = 0
+     integer :: verbosity = 0
      real(default) :: error_threshold = 0
      type(integration_entry_t), dimension(:), allocatable :: entry
      type(integration_entry_t), dimension(:), allocatable :: average
    contains
      procedure :: init => integration_results_init
+     procedure :: set_verbosity => integration_results_set_verbosity
      procedure :: set_error_threshold => integration_results_set_error_threshold
      procedure :: write => integration_results_write
+     procedure :: write_verbose => integration_results_write_verbose
+     procedure :: write_chain_weights => &
+          integration_results_write_chain_weights
+     procedure :: read => integration_results_read
+     procedure, private :: write_header
+     procedure, private :: write_hline
+     procedure, private :: write_dline
      procedure :: display_init => integration_results_display_init
      procedure :: display_current => integration_results_display_current
      procedure :: display_pass => integration_results_display_pass
      procedure :: display_final => integration_results_display_final
-     procedure :: write_chain_weights => &
-          integration_results_write_chain_weights
      procedure :: expand => integration_results_expand
      procedure :: new_pass => integration_results_new_pass
-     procedure :: append_entry => integration_results_append_entry
      procedure :: append => integration_results_append
-     procedure :: record => integration_results_record
+     procedure :: record_simple => integration_results_record_simple
+     procedure :: record_extended => integration_results_record_extended
      procedure :: exist => integration_results_exist
      procedure :: get_entry => results_get_entry
      procedure :: get_n_calls => integration_results_get_n_calls
@@ -81,15 +109,20 @@ module integration_results
   end type integration_results_t
 
 
+  interface integration_entry_t
+     module procedure integration_entry_init
+  end interface integration_entry_t
+
+
 contains
 
-  subroutine integration_entry_init (entry, &
-       process_type, pass, it, n_it, n_calls, improved, &
-       integral, error, efficiency, chi2, chain_weights)
-    type(integration_entry_t), intent(out) :: entry
-    integer, intent(in) :: process_type, pass, it, n_it, n_calls
+  type(integration_entry_t) function integration_entry_init (process_type, pass,&
+       & it, n_it, n_calls, n_calls_valid, improved, integral, error,&
+       & efficiency, efficiency_pos, efficiency_neg, chi2, chain_weights)&
+       & result (entry)
+    integer, intent(in) :: process_type, pass, it, n_it, n_calls, n_calls_valid
     logical, intent(in) :: improved
-    real(default), intent(in) :: integral, error, efficiency
+    real(default), intent(in) :: integral, error, efficiency, efficiency_pos, efficiency_neg
     real(default), intent(in), optional :: chi2
     real(default), dimension(:), intent(in), optional :: chain_weights
     entry%process_type = process_type
@@ -97,55 +130,62 @@ contains
     entry%it = it
     entry%n_it = n_it
     entry%n_calls = n_calls
+    entry%n_calls_valid = n_calls_valid
     entry%improved = improved
     entry%integral = integral
     entry%error = error
     entry%efficiency = efficiency
-    if (present (chi2)) &
-         entry%chi2 = chi2
+    entry%efficiency_pos = efficiency_pos
+    entry%efficiency_neg = efficiency_neg
+    if (present (chi2)) entry%chi2 = chi2
     if (present (chain_weights)) then
        allocate (entry%chain_weights (size (chain_weights)))
        entry%chain_weights = chain_weights
     end if
-  end subroutine integration_entry_init
+  end function integration_entry_init
 
   elemental function integration_entry_get_pass (entry) result (n)
     integer :: n
-    type(integration_entry_t), intent(in) :: entry
+    class(integration_entry_t), intent(in) :: entry
     n = entry%pass
   end function integration_entry_get_pass
 
   elemental function integration_entry_get_n_calls (entry) result (n)
     integer :: n
-    type(integration_entry_t), intent(in) :: entry
+    class(integration_entry_t), intent(in) :: entry
     n = entry%n_calls
   end function integration_entry_get_n_calls
 
+  elemental function integration_entry_get_n_calls_valid (entry) result (n)
+    integer :: n
+    class(integration_entry_t), intent(in) :: entry
+    n = entry%n_calls_valid
+  end function integration_entry_get_n_calls_valid
+
   elemental function integration_entry_get_integral (entry) result (int)
     real(default) :: int
-    type(integration_entry_t), intent(in) :: entry
+    class(integration_entry_t), intent(in) :: entry
     int = entry%integral
   end function integration_entry_get_integral
 
   elemental function integration_entry_get_error (entry) result (err)
     real(default) :: err
-    type(integration_entry_t), intent(in) :: entry
+    class(integration_entry_t), intent(in) :: entry
     err = entry%error
   end function integration_entry_get_error
 
   elemental function integration_entry_get_relative_error (entry) result (err)
     real(default) :: err
-    type(integration_entry_t), intent(in) :: entry
+    class(integration_entry_t), intent(in) :: entry
+    err = 0
     if (entry%integral /= 0) then
        err = entry%error / entry%integral
-    else
-       err = 0
     end if
   end function integration_entry_get_relative_error
 
   elemental function integration_entry_get_accuracy (entry) result (acc)
     real(default) :: acc
-    type(integration_entry_t), intent(in) :: entry
+    class(integration_entry_t), intent(in) :: entry
     acc = accuracy (entry%integral, entry%error, entry%n_calls)
   end function integration_entry_get_accuracy
 
@@ -153,108 +193,67 @@ contains
     real(default) :: acc
     real(default), intent(in) :: integral, error
     integer, intent(in) :: n_calls
+    acc = 0
     if (integral /= 0) then
        acc = error / integral * sqrt (real (n_calls, default))
-    else
-       acc = 0
     end if
   end function accuracy
 
   elemental function integration_entry_get_efficiency (entry) result (eff)
     real(default) :: eff
-    type(integration_entry_t), intent(in) :: entry
+    class(integration_entry_t), intent(in) :: entry
     eff = entry%efficiency
   end function integration_entry_get_efficiency
 
+  elemental function integration_entry_get_efficiency_pos (entry) result (eff)
+    real(default) :: eff
+    class(integration_entry_t), intent(in) :: entry
+    eff = entry%efficiency_pos
+  end function integration_entry_get_efficiency_pos
+
+  elemental function integration_entry_get_efficiency_neg (entry) result (eff)
+    real(default) :: eff
+    class(integration_entry_t), intent(in) :: entry
+    eff = entry%efficiency_neg
+  end function integration_entry_get_efficiency_neg
+
   elemental function integration_entry_get_chi2 (entry) result (chi2)
     real(default) :: chi2
-    type(integration_entry_t), intent(in) :: entry
+    class(integration_entry_t), intent(in) :: entry
     chi2 = entry%chi2
   end function integration_entry_get_chi2
 
   elemental function integration_entry_has_improved (entry) result (flag)
     logical :: flag
-    type(integration_entry_t), intent(in) :: entry
+    class(integration_entry_t), intent(in) :: entry
     flag = entry%improved
   end function integration_entry_has_improved
 
   elemental function integration_entry_get_n_groves (entry) result (n_groves)
     integer :: n_groves
-    type(integration_entry_t), intent(in) :: entry
+    class(integration_entry_t), intent(in) :: entry
+    n_groves = 0
     if (allocated (entry%chain_weights)) then
        n_groves = size (entry%chain_weights, 1)
-    else
-       n_groves = 0
     end if
   end function integration_entry_get_n_groves
 
-  subroutine write_header (process_type, unit, logfile)
-    integer, intent(in) :: process_type
+  subroutine integration_entry_write (entry, unit, verbosity, suppress)
+    class(integration_entry_t), intent(in) :: entry
     integer, intent(in), optional :: unit
-    logical, intent(in), optional :: logfile
-    character(5) :: phys_unit
-    integer :: u
-    u = given_output_unit (unit);  if (u < 0)  return
-    select case (process_type)
-    case (PRC_DECAY);      phys_unit = "[GeV]"
-    case (PRC_SCATTERING); phys_unit = "[fb] "
-    case default
-       phys_unit = ""
-    end select
-    write (msg_buffer, "(A)") &
-         "It      Calls  Integral" // phys_unit // &
-         " Error" // phys_unit // &
-         "  Err[%]    Acc  Eff[%]   Chi2 N[It] |"
-    call msg_message (unit=u, logfile=logfile)
-  end subroutine write_header
-
-  subroutine write_hline (unit)
-    integer, intent(in), optional :: unit
-    integer :: u
-    u = given_output_unit (unit);  if (u < 0)  return
-    write (u, "(A)")  "|" // (repeat ("-", 77)) // "|"
-    flush (u)
-  end subroutine write_hline
-
-  subroutine write_dline (unit)
-    integer, intent(in), optional :: unit
-    integer :: u
-    u = given_output_unit (unit);  if (u < 0)  return
-    write (u, "(A)")  "|" // (repeat ("=", 77)) // "|"
-    flush (u)
-  end subroutine write_dline
-
-  subroutine integration_entry_write (entry, unit, verbose, suppress)
-    type(integration_entry_t), intent(in) :: entry
-    integer, intent(in), optional :: unit
-    logical, intent(in), optional :: verbose
+    integer, intent(in), optional :: verbosity
     logical, intent(in), optional :: suppress
     integer :: u
     character(1) :: star
     character(12) :: fmt
     character(7) :: fmt2
-    logical :: verb, supp
+    character(120) :: buffer
+    integer :: verb
+    logical :: supp
     u = given_output_unit (unit);  if (u < 0)  return
-    verb = .false.;  if (present (verbose))  verb = verbose
+    verb = 0; if (present (verbosity)) verb = verbosity
     supp = .false.;  if (present (suppress)) supp = suppress
-    if (verb)  then
-       write (u, *)  "process_type = ", entry%process_type
-       write (u, *)  "        pass = ", entry%pass
-       write (u, *)  "          it = ", entry%it
-       write (u, *)  "        n_it = ", entry%n_it
-       write (u, *)  "     n_calls = ", entry%n_calls
-       write (u, *)  "    improved = ", entry%improved
-       write (u, *)  "    integral = ", entry%integral
-       write (u, *)  "       error = ", entry%error
-       write (u, *)  "  efficiency = ", entry%efficiency
-       write (u, *)  "        chi2 = ", entry%chi2
-       if (allocated (entry%chain_weights)) then
-          write (u, *)  "    n_groves = ", size (entry%chain_weights)
-          write (u, *)  "chain_weights = ", entry%chain_weights
-       else
-          write (u, *)  "    n_groves = 0"
-       end if
-    else if (entry%process_type /= PRC_UNKNOWN) then
+    if (entry%process_type /= PRC_UNKNOWN) then
        if (entry%improved .and. .not. supp) then
           star = "*"
        else
@@ -262,37 +261,65 @@ contains
        end if
        call pac_fmt (fmt, FMT_14, "3x," // FMT_10 // ",1x", suppress)
        call pac_fmt (fmt2, "1x,F6.2", "2x,F5.1", suppress)
+       write (buffer, "(1x,I3,1x,I10)") entry%it, entry%n_calls
+       if (verb > 1) then
+          write (buffer, "(A,1x,I10)") trim (buffer), entry%n_calls_valid
+       end if
+       write (buffer, "(A,1x," // fmt // ",1x,ES9.2,1x,F7.2," // &
+            "1x,F7.2,A1," // fmt2 // ")") &
+            trim (buffer), &
+            entry%integral, &
+            abs(entry%error), &
+            abs(integration_entry_get_relative_error (entry)) * 100, &
+            abs(integration_entry_get_accuracy (entry)), &
+            star, &
+            entry%efficiency * 100
+       if (verb > 2) then
+          write (buffer, "(A,1X," // fmt2 // ",1X," // fmt2 // ")") &
+               trim (buffer), &
+               entry%efficiency_pos * 100, &
+               entry%efficiency_neg * 100
+       end if
        if (entry%n_it /= 1) then
-          write (u, "(1x,I3,1x,I10,1x," // fmt // ",1x,ES9.2,1x,F7.2," // &
-            "1x,F7.2,A1," // fmt2 // ",1x,F7.2,1x,I3)") &
-               entry%it, &
-               entry%n_calls, &
-               entry%integral, &
-               abs(entry%error), &
-               abs(integration_entry_get_relative_error (entry)) * 100, &
-               abs(integration_entry_get_accuracy (entry)), &
-               star, &
-               entry%efficiency * 100, &
+          write (buffer, "(A,1x,F7.2,1x,I3)") &
+               trim (buffer), &
                entry%chi2, &
                entry%n_it
-       else
-          write (u, "(1x,I3,1x,I10,1x," // fmt // ",1x,ES9.2,1x,F7.2," // &
-            "1x,F7.2,A1," // fmt2 // ",1x,F7.2,1x,I3)") &
-               entry%it, &
-               entry%n_calls, &
-               entry%integral, &
-               abs(entry%error), &
-               abs(integration_entry_get_relative_error (entry)) * 100, &
-               abs(integration_entry_get_accuracy (entry)), &
-               star, &
-               entry%efficiency * 100
        end if
+       write (u, "(A)") trim (buffer)
     end if
     flush (u)
   end subroutine integration_entry_write
 
+  subroutine integration_entry_write_verbose (entry, unit)
+    class(integration_entry_t), intent(in) :: entry
+    integer, intent(in) :: unit
+    integer :: u
+    u = given_output_unit (unit);  if (u < 0)  return
+    write (u, *)  "  process_type = ", entry%process_type
+    write (u, *)  "          pass = ", entry%pass
+    write (u, *)  "            it = ", entry%it
+    write (u, *)  "          n_it = ", entry%n_it
+    write (u, *)  "       n_calls = ", entry%n_calls
+    write (u, *)  " n_calls_valid = ", entry%n_calls_valid
+    write (u, *)  "      improved = ", entry%improved
+    write (u, *)  "      integral = ", entry%integral
+    write (u, *)  "         error = ", entry%error
+    write (u, *)  "    efficiency = ", entry%efficiency
+    write (u, *)  "efficiency_pos = ", entry%efficiency_pos
+    write (u, *)  "efficiency_neg = ", entry%efficiency_neg
+    write (u, *)  "          chi2 = ", entry%chi2
+    if (allocated (entry%chain_weights)) then
+       write (u, *)  "    n_groves = ", size (entry%chain_weights)
+       write (u, *)  "chain_weights = ", entry%chain_weights
+    else
+       write (u, *)  "    n_groves = 0"
+    end if
+    flush (u)
+  end subroutine integration_entry_write_verbose
+
   subroutine integration_entry_read (entry, unit)
-    type(integration_entry_t), intent(out) :: entry
+    class(integration_entry_t), intent(out) :: entry
     integer, intent(in) :: unit
     character(30) :: dummy
     character :: equals
@@ -302,10 +329,13 @@ contains
     read (unit, *)  dummy, equals, entry%it
     read (unit, *)  dummy, equals, entry%n_it
     read (unit, *)  dummy, equals, entry%n_calls
+    read (unit, *)  dummy, equals, entry%n_calls_valid
     read (unit, *)  dummy, equals, entry%improved
     read (unit, *)  dummy, equals, entry%integral
     read (unit, *)  dummy, equals, entry%error
     read (unit, *)  dummy, equals, entry%efficiency
+    read (unit, *)  dummy, equals, entry%efficiency_pos
+    read (unit, *)  dummy, equals, entry%efficiency_neg
     read (unit, *)  dummy, equals, entry%chi2
     read (unit, *)  dummy, equals, n_groves
     if (n_groves /= 0) then
@@ -315,7 +345,7 @@ contains
   end subroutine integration_entry_read
 
   subroutine integration_entry_write_chain_weights (entry, unit)
-    type(integration_entry_t), intent(in) :: entry
+    class(integration_entry_t), intent(in) :: entry
     integer, intent(in), optional :: unit
     integer :: u, i
     u = given_output_unit (unit);  if (u < 0)  return
@@ -327,64 +357,6 @@ contains
     end if
   end subroutine integration_entry_write_chain_weights
 
-  function compute_average (entry, pass) result (result)
-    type(integration_entry_t) :: result
-    type(integration_entry_t), dimension(:), intent(in) :: entry
-    integer, intent(in) :: pass
-    integer :: i
-    logical, dimension(size(entry)) :: mask
-    real(default), dimension(size(entry)) :: ivar
-    real(default) :: sum_ivar, variance
-    result%process_type = entry(1)%process_type
-    result%pass = pass
-    mask = entry%pass == pass .and. entry%process_type /= PRC_UNKNOWN
-    result%it = maxval (entry%it, mask)
-    result%n_it = count (mask)
-    result%n_calls = sum (entry%n_calls, mask)
-    if (.not. any (mask .and. entry%error == 0)) then
-       where (mask)
-          ivar = 1 / entry%error ** 2
-       elsewhere
-          ivar = 0
-       end where
-       sum_ivar = sum (ivar, mask)
-       if (sum_ivar /= 0) then
-          variance = 1 / sum_ivar
-       else
-          variance = 0
-       end if
-       result%integral = sum (entry%integral * ivar, mask) * variance
-       if (result%n_it > 1) then
-          result%chi2 = &
-               sum ((entry%integral - result%integral)**2 * ivar, mask) &
-               / (result%n_it - 1)
-       end if
-    else if (result%n_it /= 0) then
-       result%integral = sum (entry%integral, mask) / result%n_it
-       if (result%n_it > 1) then
-          variance = &
-               sum ((entry%integral - result%integral)**2, mask) &
-               / (result%n_it - 1)
-          if (result%integral /= 0) then
-             if (abs (variance / result%integral) &
-                  < 100 * epsilon (1._default)) then
-                variance = 0
-             end if
-          end if
-          result%chi2 = variance / result%n_it
-       else
-          variance = 0
-       end if
-    end if
-    result%error = sqrt (variance)
-    do i = size (entry), 1, -1
-       if (mask(i)) then
-          result%efficiency = entry(i)%efficiency
-          exit
-       end if
-    end do
-  end function compute_average
-
   subroutine integration_results_init (results, process_type)
     class(integration_results_t), intent(out) :: results
     integer, intent(in) :: process_type
@@ -395,152 +367,76 @@ contains
     allocate (results%average (RESULTS_CHUNK_SIZE))
   end subroutine integration_results_init
 
+  subroutine integration_results_set_verbosity (results, verbosity)
+    class(integration_results_t), intent(inout) :: results
+    integer, intent(in) :: verbosity
+    results%verbosity = verbosity
+  end subroutine integration_results_set_verbosity
+
   subroutine integration_results_set_error_threshold (results, error_threshold)
     class(integration_results_t), intent(inout) :: results
     real(default), intent(in) :: error_threshold
     results%error_threshold = error_threshold
   end subroutine integration_results_set_error_threshold
 
-  subroutine integration_results_write (object, unit, verbose, suppress)
+  subroutine integration_results_write (object, unit, suppress)
     class(integration_results_t), intent(in) :: object
     integer, intent(in), optional :: unit
-    logical, intent(in), optional :: verbose
     logical, intent(in), optional :: suppress
     logical :: verb
     integer :: u, n
     u = given_output_unit (unit);  if (u < 0)  return
-    verb = .false.;  if (present (verbose))  verb = verbose
-    if (.not. verb) then
-       call write_dline (unit)
-       if (object%n_it /= 0) then
-          call write_header (object%entry(1)%process_type, unit, &
-               logfile=.false.)
-          call write_dline (unit)
-          do n = 1, object%n_it
-             if (n > 1) then
-                if (object%entry(n)%pass /= object%entry(n-1)%pass) then
-                   call write_hline (unit)
-                   call integration_entry_write &
-                        (object%average(object%entry(n-1)%pass), &
-                           unit, suppress = suppress)
-                   call write_hline (unit)
-                end if
+    call object%write_dline (unit)
+    if (object%n_it /= 0) then
+       call object%write_header (unit, logfile = .false.)
+       call object%write_dline (unit)
+       do n = 1, object%n_it
+          if (n > 1) then
+             if (object%entry(n)%pass /= object%entry(n-1)%pass) then
+                call object%write_hline (unit)
+                call object%average(object%entry(n-1)%pass)%write ( &
+                     & unit, suppress = suppress)
+                call object%write_hline (unit)
              end if
-             call integration_entry_write (object%entry(n), unit, &
-                     suppress = suppress)
-          end do
-          call write_hline(unit)
-          call integration_entry_write (object%average(object%n_pass), &
-                   unit, suppress = suppress)
-       else
-          call msg_message ("[WHIZARD integration results: empty]", unit)
-       end if
-       call write_dline (unit)
+          end if
+          call object%entry(n)%write (unit, &
+               suppress = suppress)
+       end do
+       call object%write_hline(unit)
+       call object%average(object%n_pass)%write (unit, suppress = suppress)
     else
-       write (u, *)  "begin(integration_results)"
-       write (u, *)  "  n_pass = ", object%n_pass
-       write (u, *)  "    n_it = ", object%n_it
-       if (object%n_it > 0) then
-          write (u, *)  "begin(integration_pass)"
-          do n = 1, object%n_it
-             if (n > 1) then
-                if (object%entry(n)%pass /= object%entry(n-1)%pass) then
-                   write (u, *)  "end(integration_pass)"
-                   write (u, *)  "begin(integration_pass)"
-                end if
-             end if
-             write (u, *)  "begin(iteration)"
-             call integration_entry_write (object%entry(n), unit, &
-                      verbose = verb, suppress = suppress)
-             write (u, *)  "end(iteration)"
-          end do
-          write (u, *)  "end(integration_pass)"
-       end if
-       write (u, *)  "end(integration_results)"
+       call msg_message ("[WHIZARD integration results: empty]", unit)
     end if
+    call object%write_dline (unit)
     flush (u)
   end subroutine integration_results_write
 
-  subroutine integration_results_display_init &
-       (results, process_type, screen, unit)
-    class(integration_results_t), intent(inout) :: results
-    integer, intent(in) :: process_type
-    logical, intent(in) :: screen
+  subroutine integration_results_write_verbose (object, unit)
+    class(integration_results_t), intent(in) :: object
     integer, intent(in), optional :: unit
-    integer :: u
-    if (present (unit))  results%unit = unit
-    u = given_output_unit ()
-    results%screen = screen
-    if (results%n_it == 0) then
-       if (results%screen) then
-          call write_dline (u)
-          call write_header (process_type, u, &
-               logfile=.false.)
-          call write_dline (u)
-       end if
-       if (results%unit /= 0) then
-          call write_dline (results%unit)
-          call write_header (process_type, results%unit, &
-               logfile=.false.)
-          call write_dline (results%unit)
-       end if
-    else
-       if (results%screen) then
-          call write_hline (u)
-       end if
-       if (results%unit /= 0) then
-          call write_hline (results%unit)
-       end if
+    integer :: u, n
+    u = given_output_unit (unit);  if (u < 0)  return
+    write (u, *)  "begin(integration_results)"
+    write (u, *)  "  n_pass = ", object%n_pass
+    write (u, *)  "    n_it = ", object%n_it
+    if (object%n_it > 0) then
+       write (u, *)  "begin(integration_pass)"
+       do n = 1, object%n_it
+          if (n > 1) then
+             if (object%entry(n)%pass /= object%entry(n-1)%pass) then
+                write (u, *)  "end(integration_pass)"
+                write (u, *)  "begin(integration_pass)"
+             end if
+          end if
+          write (u, *)  "begin(iteration)"
+          call object%entry(n)%write_verbose (unit)
+          write (u, *)  "end(iteration)"
+       end do
+       write (u, *)  "end(integration_pass)"
     end if
-  end subroutine integration_results_display_init
-
-  subroutine integration_results_display_current (results, pacify)
-    class(integration_results_t), intent(in) :: results
-    integer :: u
-    logical, intent(in), optional :: pacify
-    u = given_output_unit ()
-    if (results%screen) then
-       call integration_entry_write (results%entry(results%n_it), u, &
-            suppress = pacify)
-    end if
-    if (results%unit /= 0) then
-       call integration_entry_write (results%entry(results%n_it), &
-            results%unit, suppress = pacify)
-    end if
-  end subroutine integration_results_display_current
-
-  subroutine integration_results_display_pass (results, pacify)
-    class(integration_results_t), intent(in) :: results
-    logical, intent(in), optional :: pacify
-    integer :: u
-    u = given_output_unit ()
-    if (results%screen) then
-       call write_hline (u)
-       call integration_entry_write &
-            (results%average(results%entry(results%n_it)%pass), &
-                u, suppress = pacify)
-    end if
-    if (results%unit /= 0) then
-       call write_hline (results%unit)
-       call integration_entry_write &
-            (results%average(results%entry(results%n_it)%pass), &
-                results%unit, suppress = pacify)
-    end if
-  end subroutine integration_results_display_pass
-
-  subroutine integration_results_display_final (results)
-    class(integration_results_t), intent(inout) :: results
-    integer :: u
-    u = given_output_unit ()
-    if (results%screen) then
-       call write_dline (u)
-    end if
-    if (results%unit /= 0) then
-       call write_dline (results%unit)
-    end if
-    results%screen = .false.
-    results%unit = 0
-  end subroutine integration_results_display_final
+    write (u, *)  "end(integration_results)"
+    flush (u)
+  end subroutine integration_results_write_verbose
 
   subroutine integration_results_write_chain_weights (results, unit)
     class(integration_results_t), intent(in) :: results
@@ -555,23 +451,23 @@ contains
           write (u, "(1x,I3)", advance="no")  i
        end do
        write (u, *)
-       call write_dline (unit)
+       call results%write_dline (unit)
        do n = 1, results%n_it
           if (n > 1) then
              if (results%entry(n)%pass /= results%entry(n-1)%pass) then
-                call write_hline (unit)
+                call results%write_hline (unit)
              end if
           end if
           write (u, "(1x,I6,1x,A1)", advance="no")  n, "|"
-          call integration_entry_write_chain_weights (results%entry(n), unit)
+          call results%entry(n)%write_chain_weights (unit)
        end do
        flush (u)
-       call write_dline(unit)
+       call results%write_dline(unit)
     end if
   end subroutine integration_results_write_chain_weights
 
   subroutine integration_results_read (results, unit)
-    type(integration_results_t), intent(out) :: results
+    class(integration_results_t), intent(out) :: results
     integer, intent(in) :: unit
     character(80) :: buffer
     character :: equals
@@ -596,7 +492,7 @@ contains
              exit READ_ENTRIES
           end if
           it = it + 1
-          call integration_entry_read (results%entry(it), unit)
+          call results%entry(it)%read (unit)
           read (unit, *)  buffer
           if (trim (adjustl (buffer)) /= "end(iteration)") then
              call read_err (); return
@@ -617,39 +513,139 @@ contains
     end subroutine read_err
   end subroutine integration_results_read
 
-  function integration_results_iterations_are_consistent &
-       (results, pass, n_calls) result (flag)
-    logical :: flag
-    type(integration_results_t), intent(in) :: results
-    integer, dimension(:), intent(in) :: pass, n_calls
-    integer :: n_it
-    n_it = results%n_it
-    flag = size (pass) >= n_it .and. size (n_calls) >= n_it
-    if (flag) then
-       flag = all (results%entry(:n_it)%pass == pass(:n_it) &
-                   .and. &
-                   (results%entry(:n_it)%n_calls == n_calls(:n_it) &
-                    .or. &
-                    results%entry(:n_it)%process_type == PRC_UNKNOWN))
+  subroutine write_header (results, unit, logfile)
+    class(integration_results_t), intent(in) :: results
+    integer, intent(in), optional :: unit
+    logical, intent(in), optional :: logfile
+    character(5) :: phys_unit
+    integer :: u
+    u = given_output_unit (unit);  if (u < 0)  return
+    select case (results%process_type)
+    case (PRC_DECAY);      phys_unit = "[GeV]"
+    case (PRC_SCATTERING); phys_unit = "[fb] "
+    case default
+       phys_unit = "    "
+    end select
+    write (msg_buffer, "(A, A)") &
+         "It      Calls"
+    if (results%verbosity > 1) then
+       write (msg_buffer, "(A, A)") trim (msg_buffer), &
+            "      Valid"
     end if
-  end function integration_results_iterations_are_consistent
+    write (msg_buffer, "(A, A)") trim (msg_buffer), &
+         "  Integral" // phys_unit // &
+         " Error" // phys_unit // &
+         "  Err[%]    Acc  Eff[%]"
+    if (results%verbosity > 2) then
+       write (msg_buffer, "(A, A)") trim (msg_buffer), &
+            "  (+)[%]  (-)[%]"
+    end if
+    write (msg_buffer, "(A, A)") trim (msg_buffer), &
+         "   Chi2 N[It] |"
+    call msg_message (unit=u, logfile=logfile)
+  end subroutine write_header
 
-  subroutine integration_results_discard (results, it)
-    type(integration_results_t), intent(inout) :: results
-    integer, intent(in) :: it
-    if (it <= results%n_it) then
-       select case (it)
-       case (:1)
-          results%n_it = 0
-          results%n_pass = 0
-          results%current_pass = 0
-       case default
-          results%n_it = it - 1
-          results%n_pass = maxval (results%entry(1:results%n_it)%pass)
-          results%current_pass = results%n_pass
-       end select
+  subroutine write_hline (results, unit)
+    class(integration_results_t), intent(in) :: results
+    integer, intent(in), optional :: unit
+    integer :: u, len
+    u = given_output_unit (unit);  if (u < 0)  return
+    len = 77
+    if (results%verbosity > 1) len = len + 11
+    if (results%verbosity > 2) len = len + 16
+    write (u, "(A)")  "|" // (repeat ("-", len)) // "|"
+    flush (u)
+  end subroutine write_hline
+
+  subroutine write_dline (results, unit)
+    class(integration_results_t), intent(in) :: results
+    integer, intent(in), optional :: unit
+    integer :: u, len
+    u = given_output_unit (unit);  if (u < 0)  return
+    len = 77
+    if (results%verbosity > 1) len = len + 11
+    if (results%verbosity > 2) len = len + 16
+    write (u, "(A)")  "|" // (repeat ("=", len)) // "|"
+    flush (u)
+  end subroutine write_dline
+
+  subroutine integration_results_display_init &
+       (results, screen, unit)
+    class(integration_results_t), intent(inout) :: results
+    logical, intent(in) :: screen
+    integer, intent(in), optional :: unit
+    integer :: u
+    if (present (unit))  results%unit = unit
+    u = given_output_unit ()
+    results%screen = screen
+    if (results%n_it == 0) then
+       if (results%screen) then
+          call results%write_dline (u)
+          call results%write_header (u, &
+               logfile=.false.)
+          call results%write_dline (u)
+       end if
+       if (results%unit /= 0) then
+          call results%write_dline (results%unit)
+          call results%write_header (results%unit, &
+               logfile=.false.)
+          call results%write_dline (results%unit)
+       end if
+    else
+       if (results%screen) then
+          call results%write_hline (u)
+       end if
+       if (results%unit /= 0) then
+          call results%write_hline (results%unit)
+       end if
     end if
-  end subroutine integration_results_discard
+  end subroutine integration_results_display_init
+
+  subroutine integration_results_display_current (results, pacify)
+    class(integration_results_t), intent(in) :: results
+    integer :: u
+    logical, intent(in), optional :: pacify
+    u = given_output_unit ()
+    if (results%screen) then
+       call results%entry(results%n_it)%write (u, &
+            verbosity = results%verbosity, suppress = pacify)
+    end if
+    if (results%unit /= 0) then
+       call results%entry(results%n_it)%write ( &
+            results%unit, verbosity = results%verbosity, suppress = pacify)
+    end if
+  end subroutine integration_results_display_current
+
+  subroutine integration_results_display_pass (results, pacify)
+    class(integration_results_t), intent(in) :: results
+    logical, intent(in), optional :: pacify
+    integer :: u
+    u = given_output_unit ()
+    if (results%screen) then
+       call results%write_hline (u)
+       call results%average(results%entry(results%n_it)%pass)%write ( &
+                u, verbosity = results%verbosity, suppress = pacify)
+    end if
+    if (results%unit /= 0) then
+       call results%write_hline (results%unit)
+       call results%average(results%entry(results%n_it)%pass)%write ( &
+                results%unit, verbosity = results%verbosity, suppress = pacify)
+    end if
+  end subroutine integration_results_display_pass
+
+  subroutine integration_results_display_final (results)
+    class(integration_results_t), intent(inout) :: results
+    integer :: u
+    u = given_output_unit ()
+    if (results%screen) then
+       call results%write_dline (u)
+    end if
+    if (results%unit /= 0) then
+       call results%write_dline (results%unit)
+    end if
+    results%screen = .false.
+    results%unit = 0
+  end subroutine integration_results_display_final
 
   subroutine integration_results_expand (results)
     class(integration_results_t), intent(inout) :: results
@@ -677,68 +673,43 @@ contains
     results%current_pass = results%current_pass + 1
   end subroutine integration_results_new_pass
 
-  subroutine integration_results_append_entry (results, entry)
+  subroutine integration_results_append (results, &
+       n_it, n_calls, n_calls_valid, &
+       integral, error, efficiency, efficiency_pos, efficiency_neg, &
+       chain_weights)
     class(integration_results_t), intent(inout) :: results
-    type(integration_entry_t), intent(in), optional :: entry
+    integer, intent(in) :: n_it, n_calls, n_calls_valid
+    real(default), intent(in) :: integral, error, efficiency, efficiency_pos, &
+         & efficiency_neg
+    real(default), dimension(:), intent(in), optional :: chain_weights
+    logical :: improved
+    type(integration_entry_t) :: entry
+    real(default) :: err_checked
+    improved = .true.
+    if (results%n_it /= 0) improved = abs(accuracy (integral, error, n_calls)) &
+            < abs(results%entry(results%n_it)%get_accuracy ())
+    err_checked = 0
+    if (abs (error) >= results%error_threshold) err_checked = error
+    entry = integration_entry_t ( &
+         results%process_type, results%current_pass, &
+         results%n_it+1, n_it, n_calls, n_calls_valid, improved, &
+         integral, err_checked, efficiency, efficiency_pos, efficiency_neg, &
+         chain_weights=chain_weights)
     if (results%n_it == 0) then
        results%n_it = 1
        results%n_pass = 1
     else
        call results%expand ()
-       if (present (entry)) then
-          if (entry%pass /= results%entry(results%n_it)%pass) &
-               results%n_pass = results%n_pass + 1
-       end if
+       if (entry%pass /= results%entry(results%n_it)%pass) &
+            results%n_pass = results%n_pass + 1
        results%n_it = results%n_it + 1
     end if
-    if (present (entry)) then
-       results%entry(results%n_it) = entry
-       results%average(results%n_pass) = &
-            compute_average (results%entry, entry%pass)
-    end if
-  end subroutine integration_results_append_entry
-
-  subroutine integration_results_append (results, &
-       n_it, n_calls, &
-       integral, error, efficiency, &
-       chain_weights)
-    class(integration_results_t), intent(inout) :: results
-    integer, intent(in) :: n_it, n_calls
-    real(default), intent(in) :: integral, error, efficiency
-    real(default), dimension(:), intent(in), optional :: chain_weights
-    logical :: improved
-    type(integration_entry_t) :: entry
-    real(default) :: err_checked
-    if (results%n_it /= 0) then
-       improved = abs(accuracy (integral, error, n_calls)) &
-            < abs(integration_entry_get_accuracy (results%entry(results%n_it)))
-    else
-       improved = .true.
-    end if
-    if (abs (error) >= results%error_threshold) then
-       err_checked = error
-    else
-       err_checked = 0
-    end if
-    call integration_entry_init (entry, &
-         results%process_type, results%current_pass, &
-         results%n_it+1, n_it, n_calls, improved, &
-         integral, err_checked, efficiency, &
-         chain_weights=chain_weights)
-    call results%append_entry (entry)
+    results%entry(results%n_it) = entry
+    results%average(results%n_pass) = &
+         compute_average (results%entry, entry%pass)
   end subroutine integration_results_append
 
-  subroutine integration_results_append_null (results, pass, n_it)
-    type(integration_results_t), intent(inout) :: results
-    integer, intent(in) :: pass, n_it
-    type(integration_entry_t) :: entry
-    call integration_entry_init (entry, &
-         PRC_UNKNOWN, results%current_pass, n_it, 1, 0, .false., &
-         0._default, 0._default, 0._default)
-    call results%append_entry (entry)
-  end subroutine integration_results_append_null
-
-  subroutine integration_results_record &
+  subroutine integration_results_record_simple &
        (object, n_it, n_calls, integral, error, efficiency, &
         chain_weights, suppress)
     class(integration_results_t), intent(inout) :: object
@@ -747,15 +718,96 @@ contains
     real(default), dimension(:), intent(in), optional :: chain_weights
     real(default) :: err
     logical, intent(in), optional :: suppress
-
+    err = 0._default
     if (abs (error) >= abs (integral) * INTEGRATION_ERROR_TOLERANCE) then
        err = error
-    else
-       err = 0
     end if
-    call object%append (n_it, n_calls, integral, err, efficiency, chain_weights)
+    call object%append (n_it, n_calls, 0, integral, err, efficiency, 0._default,&
+         & 0._default, chain_weights)
     call object%display_current (suppress)
-  end subroutine integration_results_record
+  end subroutine integration_results_record_simple
+
+  subroutine integration_results_record_extended (object, n_it, n_calls,&
+       & n_calls_valid, integral, error, efficiency, efficiency_pos,&
+       & efficiency_neg, chain_weights, suppress)
+    class(integration_results_t), intent(inout) :: object
+    integer, intent(in) :: n_it, n_calls, n_calls_valid
+    real(default), intent(in) :: integral, error, efficiency, efficiency_pos,&
+         & efficiency_neg
+    real(default), dimension(:), intent(in), optional :: chain_weights
+    real(default) :: err
+    logical, intent(in), optional :: suppress
+    err = 0._default
+    if (abs (error) >= abs (integral) * INTEGRATION_ERROR_TOLERANCE) then
+       err = error
+    end if
+    call object%append (n_it, n_calls, n_calls_valid, integral, err, efficiency,&
+         & efficiency_pos, efficiency_neg, chain_weights)
+    call object%display_current (suppress)
+  end subroutine integration_results_record_extended
+
+  type(integration_entry_t) function compute_average (entry, pass) &
+       & result (result)
+    type(integration_entry_t), dimension(:), intent(in) :: entry
+    integer, intent(in) :: pass
+    integer :: i
+    logical, dimension(size(entry)) :: mask
+    real(default), dimension(size(entry)) :: ivar
+    real(default) :: sum_ivar, variance
+    result%process_type = entry(1)%process_type
+    result%pass = pass
+    mask = entry%pass == pass .and. entry%process_type /= PRC_UNKNOWN
+    result%it = maxval (entry%it, mask)
+    result%n_it = count (mask)
+    result%n_calls = sum (entry%n_calls, mask)
+    result%n_calls_valid = sum (entry%n_calls_valid, mask)
+    if (.not. any (mask .and. entry%error == 0)) then
+       where (mask)
+          ivar = 1 / entry%error ** 2
+       elsewhere
+          ivar = 0
+       end where
+       sum_ivar = sum (ivar, mask)
+       variance = 0
+       if (sum_ivar /= 0) then
+          variance = 1 / sum_ivar
+       end if
+       result%integral = sum (entry%integral * ivar, mask) * variance
+       if (result%n_it > 1) then
+          result%chi2 = &
+               sum ((entry%integral - result%integral)**2 * ivar, mask) &
+               / (result%n_it - 1)
+       end if
+    else if (result%n_it /= 0) then
+       result%integral = sum (entry%integral, mask) / result%n_it
+       variance = 0
+       if (result%n_it > 1) then
+          variance = &
+               sum ((entry%integral - result%integral)**2, mask) &
+               / (result%n_it - 1)
+          if (result%integral /= 0) then
+             if (abs (variance / result%integral) &
+                  < 100 * epsilon (1._default)) then
+                variance = 0
+             end if
+          end if
+       end if
+       result%chi2 = variance / result%n_it
+    end if
+    result%error = sqrt (variance)
+    result%efficiency = entry(last_index (mask))%efficiency
+    result%efficiency_pos = entry(last_index (mask))%efficiency_pos
+    result%efficiency_neg = entry(last_index (mask))%efficiency_neg
+  contains
+    integer function last_index (mask) result (index)
+      logical, dimension(:), intent(in) :: mask
+      integer :: i
+      do i = size (mask), 1, -1
+         if (mask(i)) exit
+      end do
+      index = i
+    end function last_index
+  end function compute_average
 
   function integration_results_exist (results) result (flag)
     logical :: flag
@@ -806,8 +858,9 @@ contains
     integer :: n_calls
     logical, intent(in), optional :: last
     integer, intent(in), optional :: it, pass
-    n_calls = integration_entry_get_n_calls &
-         (results%get_entry (last, it, pass))
+    type(integration_entry_t) :: entry
+    entry = results%get_entry (last, it, pass)
+    n_calls = entry%get_n_calls ()
   end function integration_results_get_n_calls
 
   function integration_results_get_integral (results, last, it, pass) &
@@ -816,8 +869,9 @@ contains
     real(default) :: integral
     logical, intent(in), optional :: last
     integer, intent(in), optional :: it, pass
-    integral = integration_entry_get_integral &
-         (results%get_entry (last, it, pass))
+    type(integration_entry_t) :: entry
+    entry = results%get_entry (last, it, pass)
+    integral = entry%get_integral ()
   end function integration_results_get_integral
 
   function integration_results_get_error (results, last, it, pass) &
@@ -826,8 +880,9 @@ contains
     real(default) :: error
     logical, intent(in), optional :: last
     integer, intent(in), optional :: it, pass
-    error = integration_entry_get_error &
-         (results%get_entry (last, it, pass))
+    type(integration_entry_t) :: entry
+    entry = results%get_entry (last, it, pass)
+    error = entry%get_error ()
   end function integration_results_get_error
 
   function integration_results_get_accuracy (results, last, it, pass) &
@@ -836,8 +891,9 @@ contains
     real(default) :: accuracy
     logical, intent(in), optional :: last
     integer, intent(in), optional :: it, pass
-    accuracy = integration_entry_get_accuracy &
-         (results%get_entry (last, it, pass))
+    type(integration_entry_t) :: entry
+    entry = results%get_entry (last, it, pass)
+    accuracy = entry%get_accuracy ()
   end function integration_results_get_accuracy
 
   function integration_results_get_chi2 (results, last, it, pass) &
@@ -846,8 +902,9 @@ contains
     real(default) :: chi2
     logical, intent(in), optional :: last
     integer, intent(in), optional :: it, pass
-    chi2 = integration_entry_get_chi2 &
-         (results%get_entry (last, it, pass))
+    type(integration_entry_t) :: entry
+    entry = results%get_entry (last, it, pass)
+    chi2 = entry%get_chi2 ()
   end function integration_results_get_chi2
 
   function integration_results_get_efficiency (results, last, it, pass) &
@@ -856,8 +913,9 @@ contains
     real(default) :: efficiency
     logical, intent(in), optional :: last
     integer, intent(in), optional :: it, pass
-    efficiency = integration_entry_get_efficiency &
-         (results%get_entry (last, it, pass))
+    type(integration_entry_t) :: entry
+    entry = results%get_entry (last, it, pass)
+    efficiency = entry%get_efficiency ()
   end function integration_results_get_efficiency
 
   function integration_results_get_current_pass (results) result (pass)
@@ -869,10 +927,9 @@ contains
   function integration_results_get_current_it (results) result (it)
     integer :: it
     type(integration_results_t), intent(in) :: results
+    it = 0
     if (allocated (results%entry)) then
        it = count (results%entry(1:results%n_it)%pass == results%n_pass)
-    else
-       it = 0
     end if
   end function integration_results_get_current_it
 
@@ -906,7 +963,7 @@ contains
     integer :: u
     u = free_unit ()
     open (unit = u, status = "scratch", action = "readwrite")
-    call integration_results_write (results, u, verbose=.true.)
+    call results%write_verbose (u)
     rewind (u)
     md5sum_results = md5sum (u)
     close (u)
@@ -941,7 +998,7 @@ contains
     integer :: u
     u = given_output_unit ()
     if (object%screen) then
-      call write_hline (u)
+      call object%write_hline (u)
       call msg_message ("NLO Correction: [O(alpha_s+1)/O(alpha_s)]")
       write(msg_buffer,'(1X,A1,F8.4,A4,F9.5,1X,A3)') '(', corr, ' +- ', err, ') %'
       call msg_message ()
@@ -957,6 +1014,7 @@ contains
     integer :: n, i, n_pass, pass
     integer, dimension(:), allocatable :: ipass
     real(default) :: ymin, ymax, yavg, ydif, y0, y1
+    real(default), dimension(results%n_it) :: ymin_arr, ymax_arr
     logical :: reset
     file_tex = filename // ".tex"
     unit = free_unit ()
@@ -974,10 +1032,12 @@ contains
           pass = pass + 1
        end if
     end do
-    ymin = minval (integration_entry_get_integral (results%entry(:n)) &
-                   - integration_entry_get_error (results%entry(:n)))
-    ymax = maxval (integration_entry_get_integral (results%entry(:n)) &
-                   + integration_entry_get_error (results%entry(:n)))
+    ymin_arr = integration_entry_get_integral (results%entry(:n)) &
+                   - integration_entry_get_error (results%entry(:n))
+    ymin = minval (ymin_arr)
+    ymax_arr = integration_entry_get_integral (results%entry(:n)) &
+                   + integration_entry_get_error (results%entry(:n))
+    ymax = maxval (ymax_arr)
     yavg = (ymax + ymin) / 2
     ydif = (ymax - ymin)
     if (ydif * 1.5 > GML_MIN_RANGE_RATIO * yavg) then

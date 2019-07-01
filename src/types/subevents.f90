@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -948,17 +941,15 @@ contains
     type(subevt_t), intent(inout) :: subevt
     type(subevt_t), intent(in) :: pl
     real(default), dimension(:), intent(in) :: rval
-    integer, dimension(size(rval)) :: idx
     integer :: i
+    integer, dimension(size(rval)) :: idx
     call subevt_reset (subevt, pl%n_active)
     subevt%n_active = pl%n_active
     if (allocated (subevt%prt))  deallocate (subevt%prt)
     allocate (subevt%prt (size(pl%prt)))
-    !!! !!! !!! Workaround for the ifort 16.0/1
-    !subevt%prt = pl%prt(order (rval))
     idx = order (rval)
-    do i = 1, size(idx)
-       subevt%prt(i) = pl%prt(idx(i))
+    do i = 1, size (idx)
+       subevt%prt(i) = pl%prt (idx(i))
     end do
   end subroutine subevt_sort_real
 

@@ -313,31 +313,31 @@ model "Test"
    n_bins        = 20
    adapt grids   = T
    adapt weights = T
-   Results:  [it, calls, integral, error, efficiency]
-     1 1000  7.7464622036E+03  0.0000000000E+00  1.0000000000E+00
-     2 1000  7.7464622036E+03  0.0000000000E+00  1.0000000000E+00
-     3 1000  7.7464622036E+03  0.0000000000E+00  1.0000000000E+00
+   Results:  [it, calls, valid, integral, error, efficiency]
+     1 1000 1000  7.7464622036E+03  0.0000000000E+00  1.0000000000E+00
+     2 1000 1000  7.7464622036E+03  0.0000000000E+00  1.0000000000E+00
+     3 1000 1000  7.7464622036E+03  0.0000000000E+00  1.0000000000E+00
  Integration pass:
    n_it          = 3
    n_calls       = 1000
    n_bins        = 20
    adapt grids   = T
    adapt weights = F
-   Results:  [it, calls, integral, error, efficiency]
-     1 1000  7.7464622036E+03  0.0000000000E+00  1.0000000000E+00
-     2 1000  7.7464622036E+03  0.0000000000E+00  1.0000000000E+00
-     3 1000  7.7464622036E+03  0.0000000000E+00  1.0000000000E+00
+   Results:  [it, calls, valid, integral, error, efficiency]
+     1 1000 1000  7.7464622036E+03  0.0000000000E+00  1.0000000000E+00
+     2 1000 1000  7.7464622036E+03  0.0000000000E+00  1.0000000000E+00
+     3 1000 1000  7.7464622036E+03  0.0000000000E+00  1.0000000000E+00
  Integration pass:
    n_it          = 3
    n_calls       = 1000
    n_bins        = 20
    adapt grids   = F
    adapt weights = F
-   Results:  [it, calls, integral, error, efficiency]
-     1 1000  7.7464622036E+03  0.0000000000E+00  1.0000000000E+00
-     2 1000  7.7464622036E+03  0.0000000000E+00  1.0000000000E+00
-     3 1000  7.7464622036E+03  0.0000000000E+00  1.0000000000E+00
- MD5 sum (including results) = '98C4F77A5DA5163982AF81C25BABC369'
+   Results:  [it, calls, valid, integral, error, efficiency]
+     1 1000 1000  7.7464622036E+03  0.0000000000E+00  1.0000000000E+00
+     2 1000 1000  7.7464622036E+03  0.0000000000E+00  1.0000000000E+00
+     3 1000 1000  7.7464622036E+03  0.0000000000E+00  1.0000000000E+00
+ MD5 sum (including results) = '4F97FF5B997AD5D8D76A0BBBF1BB536D'
  Call statistics (current run):
    total       = 3000
    failed kin. = 0

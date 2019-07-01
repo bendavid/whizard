@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -39,30 +32,41 @@ module simulations_uti
     use kinds, only: i64
     use iso_varying_string, string_t => varying_string
     use io_units
+    use format_defs, only: FMT_10, FMT_12
     use ifiles
     use lexers
     use parser
+    use lorentz
     use flavors
     use interactions, only: reset_interaction_counter
+    use process_libraries, only: process_library_t
     use prclib_stacks
     use phs_forests
     use event_base, only: generic_event_t
     use event_base, only: event_callback_t
+    use particles, only: particle_set_t
     use eio_data
     use eio_base
+    use eio_direct, only: eio_direct_t
     use eio_raw
     use eio_ascii
+    use eio_dump
     use eio_callback
     use eval_trees
+    use model_data, only: model_data_t
     use models
     use rt_data
     use event_streams
     use decays_ut, only: prepare_testbed
+    use process, only: process_t
+    use process_stacks, only: process_entry_t
     use process_configurations_ut, only: prepare_test_library
     use compilations, only: compile_library
     use integrations, only: integrate_process
 
     use simulations
+
+    use restricted_subprocesses_uti, only: prepare_resonance_test_library
 
   implicit none
   private
@@ -80,6 +84,8 @@ module simulations_uti
   public :: simulations_11
   public :: simulations_12
   public :: simulations_13
+  public :: simulations_14
+  public :: simulations_15
 
   type, extends (event_callback_t) :: simulations_13_callback_t
      integer :: u
@@ -1657,6 +1663,315 @@ contains
     write (u, "(A)")  "* Test output end: simulations_13"
 
   end subroutine simulations_13
+
+  subroutine simulations_14 (u)
+    integer, intent(in) :: u
+    type(string_t) :: libname, libname_generated
+    type(string_t) :: procname
+    type(string_t) :: model_name
+    type(rt_data_t), target :: global
+    type(prclib_entry_t), pointer :: lib_entry
+    type(process_library_t), pointer :: lib
+    class(model_t), pointer :: model
+    class(model_data_t), pointer :: model_data
+    type(simulation_t), target :: simulation
+    type(particle_set_t) :: pset
+    type(eio_direct_t) :: eio_in
+    type(eio_dump_t) :: eio_out
+    real(default) :: sqrts, mw, pp
+    real(default), dimension(3) :: p3
+    type(vector4_t), dimension(:), allocatable :: p
+    real(default), dimension(:), allocatable :: m
+    integer :: u_verbose, i
+    real(default) :: sqme_proc
+    real(default), dimension(:), allocatable :: sqme
+    real(default) :: on_shell_limit
+    integer, dimension(:), allocatable :: i_array
+    real(default), dimension(:), allocatable :: prob_array
+
+    write (u, "(A)")  "* Test output: simulations_14"
+    write (u, "(A)")  "*   Purpose: construct resonant subprocesses &
+         &in the simulation object"
+    write (u, "(A)")
+
+    write (u, "(A)")  "* Build and load a test library with one process"
+    write (u, "(A)")
+
+    call syntax_model_file_init ()
+    call syntax_phs_forest_init ()
+
+    libname = "simulations_14_lib"
+    procname = "simulations_14_p"
+
+    call global%global_init ()
+    call global%append_log (&
+         var_str ("?rebuild_phase_space"), .true., intrinsic = .true.)
+    call global%append_log (&
+         var_str ("?rebuild_grids"), .true., intrinsic = .true.)
+    call global%append_log (&
+         var_str ("?rebuild_events"), .true., intrinsic = .true.)
+    call global%set_log (var_str ("?omega_openmp"), &
+         .false., is_known = .true.)
+    call global%set_int (var_str ("seed"), &
+         0, is_known = .true.)
+    call global%set_real (var_str ("sqrts"),&
+         1000._default, is_known = .true.)
+    call global%set_log (var_str ("?recover_beams"), &
+         .false., is_known = .true.)
+    call global%set_log (var_str ("?update_sqme"), &
+         .true., is_known = .true.)
+    call global%set_log (var_str ("?update_weight"), &
+         .true., is_known = .true.)
+    call global%set_log (var_str ("?update_event"), &
+         .true., is_known = .true.)
+
+    model_name = "SM"
+    call global%select_model (model_name)
+    allocate (model)
+    call model%init_instance (global%model)
+    model_data => model
+
+    write (u, "(A)")  "* Initialize process library and process"
+    write (u, "(A)")
+
+    allocate (lib_entry)
+    call lib_entry%init (libname)
+    lib => lib_entry%process_library_t
+    call global%add_prclib (lib_entry)
+
+    call prepare_resonance_test_library &
+         (lib, libname, procname, model_data, global, u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Initialize simulation object &
+         &with resonant subprocesses"
+    write (u, "(A)")
+
+    call global%set_log (var_str ("?resonance_history"), &
+         .true., is_known = .true.)
+    call global%set_real (var_str ("resonance_on_shell_limit"), &
+         10._default, is_known = .true.)
+
+    call simulation%init ([procname], &
+         integrate=.false., generate=.false., local=global)
+
+    call simulation%write_resonant_subprocess_data (u, 1)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Resonant subprocesses: generated library"
+    write (u, "(A)")
+
+    libname_generated = procname // "_R"
+    lib => global%prclib_stack%get_library_ptr (libname_generated)
+    if (associated (lib))  call lib%write (u, libpath=.false.)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Generated process stack"
+    write (u, "(A)")
+
+    call global%process_stack%show (u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Particle set"
+    write (u, "(A)")
+
+    pset = simulation%get_hard_particle_set (1)
+    call pset%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Initialize object for direct access"
+    write (u, "(A)")
+
+    call eio_in%init_direct &
+         (n_beam = 0, n_in = 2, n_vir = 0, n_out = 3, &
+         pdg = [-11, 11, 1, -2, 24], model=global%model)
+    call eio_in%set_selection_indices (1, 1, 1, 1)
+
+    sqrts = global%get_rval (var_str ("sqrts"))
+    mw = 80._default   ! deliberately slightly different from true mw
+    pp = sqrt (sqrts**2 - 4 * mw**2) / 2
+
+    allocate (p (5), m (5))
+    p(1) = vector4_moving (sqrts/2, sqrts/2, 3)
+    m(1) = 0
+    p(2) = vector4_moving (sqrts/2,-sqrts/2, 3)
+    m(2) = 0
+    p3(1) = pp/2
+    p3(2) = mw/2
+    p3(3) = 0
+    p(3) = vector4_moving (sqrts/4, vector3_moving (p3))
+    m(3) = 0
+    p3(2) = -mw/2
+    p(4) = vector4_moving (sqrts/4, vector3_moving (p3))
+    m(4) = 0
+    p(5) = vector4_moving (sqrts/2,-pp, 1)
+    m(5) = mw
+    call eio_in%set_momentum (p, m**2)
+
+    call eio_in%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Transfer and show particle set"
+    write (u, "(A)")
+
+    call simulation%read_event (eio_in)
+    pset = simulation%get_hard_particle_set (1)
+    call pset%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* (Re)calculate matrix element"
+    write (u, "(A)")
+
+    call simulation%recalculate (recover_phs = .false.)
+    call simulation%evaluate_transforms ()
+
+    write (u, "(A)")  "* Show event with sqme"
+    write (u, "(A)")
+
+    call eio_out%set_parameters (unit = u, &
+         weights = .true., pacify = .true., compressed = .true.)
+    call eio_out%init_out (var_str (""))
+    call simulation%write_event (eio_out)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Write event to separate file &
+         &'simulations_14_event_verbose.log'"
+
+    u_verbose = free_unit ()
+    open (unit = u_verbose, file = "simulations_14_event_verbose.log", &
+         status = "replace", action = "write")
+    call simulation%write (u_verbose)
+    write (u_verbose, *)
+    call simulation%write_event (u_verbose, verbose =.true., testflag = .true.)
+    close (u_verbose)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Cleanup"
+
+    call simulation%final ()
+    call global%final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: simulations_14"
+
+  end subroutine simulations_14
+
+  subroutine simulations_15 (u)
+    integer, intent(in) :: u
+    type(string_t) :: libname, libname_generated
+    type(string_t) :: procname
+    type(string_t) :: model_name
+    type(rt_data_t), target :: global
+    type(prclib_entry_t), pointer :: lib_entry
+    type(process_library_t), pointer :: lib
+    class(model_t), pointer :: model
+    class(model_data_t), pointer :: model_data
+    type(simulation_t), target :: simulation
+    real(default) :: sqrts
+    type(eio_dump_t) :: eio_out
+    integer :: u_verbose
+
+    write (u, "(A)")  "* Test output: simulations_15"
+    write (u, "(A)")  "*   Purpose: generate event with resonant subprocess"
+    write (u, "(A)")
+
+    write (u, "(A)")  "* Build and load a test library with one process"
+    write (u, "(A)")
+
+    call syntax_model_file_init ()
+    call syntax_phs_forest_init ()
+
+    libname = "simulations_15_lib"
+    procname = "simulations_15_p"
+
+    call global%global_init ()
+    call global%append_log (&
+         var_str ("?rebuild_phase_space"), .true., intrinsic = .true.)
+    call global%append_log (&
+         var_str ("?rebuild_grids"), .true., intrinsic = .true.)
+    call global%append_log (&
+         var_str ("?rebuild_events"), .true., intrinsic = .true.)
+    call global%set_log (var_str ("?omega_openmp"), &
+         .false., is_known = .true.)
+    call global%set_int (var_str ("seed"), &
+         0, is_known = .true.)
+    call global%set_real (var_str ("sqrts"),&
+         1000._default, is_known = .true.)
+    call global%set_log (var_str ("?recover_beams"), &
+         .false., is_known = .true.)
+    call global%set_log (var_str ("?update_sqme"), &
+         .true., is_known = .true.)
+    call global%set_log (var_str ("?update_weight"), &
+         .true., is_known = .true.)
+    call global%set_log (var_str ("?update_event"), &
+         .true., is_known = .true.)
+    call global%set_log (var_str ("?resonance_history"), &
+         .true., is_known = .true.)
+    call global%set_real (var_str ("resonance_on_shell_limit"), &
+         10._default, is_known = .true.)
+
+    model_name = "SM"
+    call global%select_model (model_name)
+    allocate (model)
+    call model%init_instance (global%model)
+    model_data => model
+
+    write (u, "(A)")  "* Initialize process library and process"
+    write (u, "(A)")
+
+    allocate (lib_entry)
+    call lib_entry%init (libname)
+    lib => lib_entry%process_library_t
+    call global%add_prclib (lib_entry)
+
+    call prepare_resonance_test_library &
+         (lib, libname, procname, model_data, global, u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Initialize simulation object &
+         &with resonant subprocesses"
+    write (u, "(A)")
+
+    call global%it_list%init ([1], [1000])
+    call simulation%init ([procname], &
+         integrate=.true., generate=.true., local=global)
+
+    call simulation%write_resonant_subprocess_data (u, 1)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Generate event"
+    write (u, "(A)")
+
+    call simulation%init_process_selector ()
+    call simulation%generate (1)
+
+    call eio_out%set_parameters (unit = u, &
+         weights = .true., pacify = .true., compressed = .true.)
+    call eio_out%init_out (var_str (""))
+    call simulation%write_event (eio_out)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Write event to separate file &
+         &'simulations_15_event_verbose.log'"
+
+    u_verbose = free_unit ()
+    open (unit = u_verbose, file = "simulations_15_event_verbose.log", &
+         status = "replace", action = "write")
+    call simulation%write (u_verbose)
+    write (u_verbose, *)
+    call simulation%write_event (u_verbose, verbose =.true., testflag = .true.)
+    close (u_verbose)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Cleanup"
+
+    call simulation%final ()
+    call global%final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: simulations_15"
+
+  end subroutine simulations_15
 
 
   subroutine display_file (file, u)

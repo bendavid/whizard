@@ -35,16 +35,16 @@ integrate (alphas_ugug) { iterations = 5:5000 }
 ?rebuild_phase_space = false
 #?rebuild_grids = false
 
-?alpha_s_is_fixed = false
-?alpha_s_from_mz = true
-alpha_s_order = 1
+?alphas_is_fixed = false
+?alphas_from_mz = true
+alphas_order = 1
 
 seed = 0
 integrate (alphas_ugug) { iterations = 5:5000 }
 
-?alpha_s_is_fixed = false
-?alpha_s_from_mz = false
-?alpha_s_from_pdf_builtin = true 
+?alphas_is_fixed = false
+?alphas_from_mz = false
+?alphas_from_pdf_builtin = true 
 seed = 0
 integrate (alphas_ugug) { iterations = 5:5000 }
 

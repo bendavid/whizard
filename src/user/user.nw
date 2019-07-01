@@ -809,25 +809,25 @@ For the test case, we set $x=r^2$ and consequently $f(r)=2r$.
 <<SF user: user: TBP>>=
   procedure :: complete_kinematics => user_complete_kinematics
 <<SF user: procedures>>=
-  subroutine user_complete_kinematics (sf_int, x, f, r, rb, map)
+  subroutine user_complete_kinematics (sf_int, x, xb, f, r, rb, map)
     !!! JRR: WK please check (#529)
     !!! This cannot be correct, as the CIRCE1 structure function has
     !!! twice the variables (2->4 instead of 1->2 splitting)
     class(user_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(out) :: x
+    real(default), dimension(:), intent(out) :: xb
     real(default), intent(out) :: f
     real(default), dimension(:), intent(in) :: r
     real(default), dimension(:), intent(in) :: rb
     logical, intent(in) :: map
-    real(default) :: xb1
     if (map) then
        call msg_fatal ("User structure function: map flag not supported")
     else
        x(1) = r(1)
+       xb(1)= rb(1)
        f = 1
     end if
-    xb1 = 1 - x(1)
-    call sf_int%split_momentum (x, xb1)
+    call sf_int%split_momentum (x, xb)
     select case (sf_int%status)
     case (SF_DONE_KINEMATICS)
        sf_int%x = x(1)
@@ -844,30 +844,29 @@ can set momenta by the same formula as for normal kinematics.
 <<SF user: user: TBP>>=
   procedure :: inverse_kinematics => user_inverse_kinematics
 <<SF user: procedures>>=
-  subroutine user_inverse_kinematics (sf_int, x, f, r, rb, map, set_momenta)
+  subroutine user_inverse_kinematics (sf_int, x, xb, f, r, rb, map, set_momenta)
     !!! JRR: WK please check (#529)
     !!! This cannot be correct, as the CIRCE1 structure function has
     !!! twice the variables (2->4 instead of 1->2 splitting)
     class(user_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(in) :: x
+    real(default), dimension(:), intent(in) :: xb
     real(default), intent(out) :: f
     real(default), dimension(:), intent(out) :: r
     real(default), dimension(:), intent(out) :: rb
     logical, intent(in) :: map
     logical, intent(in), optional :: set_momenta
-    real(default) :: xb1
     logical :: set_mom
     set_mom = .false.;  if (present (set_momenta))  set_mom = set_momenta
     if (map) then
        call msg_fatal ("User structure function: map flag not supported")
     else
        r(1) = x(1)
+       rb(1)= xb(1)
        f = 1
     end if
-    xb1 = 1 - x(1)
-    rb = 1 - r
     if (set_mom) then
-       call sf_int%split_momentum (x, xb1)
+       call sf_int%split_momentum (x, xb)
        select case (sf_int%status)
        case (SF_DONE_KINEMATICS)
           sf_int%x = x(1)
@@ -910,10 +909,12 @@ the matrix elements.
 <<SF user: user: TBP>>=
   procedure :: apply => user_apply
 <<SF user: procedures>>=
-  subroutine user_apply (sf_int, scale) !, x, data)
+  subroutine user_apply (sf_int, scale, rescaling_function, i_rescale) !, x, data)
     !!! JRR: WK please check (#529)
     class(user_t), intent(inout) :: sf_int
     real(default), intent(in) :: scale
+    class(rescaling_function_t), intent(in), optional :: rescaling_function
+    integer, intent(in), optional :: i_rescale
     real(default), dimension(:), allocatable :: x
     real(c_double), dimension(sf_int%data%n_states) :: fval
     complex(default), dimension(sf_int%data%n_states) :: fc

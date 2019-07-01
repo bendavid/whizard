@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -132,6 +125,8 @@ module physics_defs
   integer, parameter, public :: GKS = 7
   integer, parameter, public :: COMPONENT_UNDEFINED = 99
 
+  integer, parameter, public :: n_beam_structure_int = 4
+
   integer, parameter, public :: THR_POS_WP = 3
   integer, parameter, public :: THR_POS_WM = 4
   integer, parameter, public :: THR_POS_B = 5
@@ -167,19 +162,19 @@ contains
     integer :: i
     type(string_t), intent(in) :: string
     select case (char(string))
-    case ("Born")
+    case ("born")
        i = BORN
-    case ("Real")
+    case ("real")
        i = NLO_REAL
-    case ("Virtual")
+    case ("virtual")
        i = NLO_VIRTUAL
-    case ("Mismatch")
+    case ("mismatch")
        i = NLO_MISMATCH
-    case ("Dglap")
+    case ("dglap")
        i = NLO_DGLAP
-    case ("Subtraction")
+    case ("subtraction")
        i = NLO_SUBTRACTION
-    case ("Full")
+    case ("full")
        i = NLO_FULL
     case ("GKS")
        i = GKS
@@ -193,23 +188,23 @@ contains
     integer, intent(in) :: i
     select case (i)
     case (BORN)
-       string = "Born"
+       string = "born"
     case (NLO_REAL)
-       string = "Real"
+       string = "real"
     case (NLO_VIRTUAL)
-       string = "Virtual"
+       string = "virtual"
     case (NLO_MISMATCH)
-       string = "Mismatch"
+       string = "mismatch"
     case (NLO_DGLAP)
-       string = "Dglap"
+       string = "dglap"
     case (NLO_SUBTRACTION)
-       string = "Subtraction"
+       string = "subtraction"
     case (NLO_FULL)
-       string = "Full"
+       string = "full"
     case (GKS)
        string = "GKS"
     case default
-       string = "Undefined"
+       string = "undefined"
     end select
   end function component_status_to_string
 

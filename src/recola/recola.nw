@@ -17,7 +17,7 @@ module recola_wrapper
   use kinds
 <<Use strings>>
   use constants, only: zero
-  use diagnostics, only: msg_fatal
+  use diagnostics, only: msg_fatal, msg_debug, msg_debug2, D_ME_METHODS
 
 <<Standard module head>>
 
@@ -119,6 +119,7 @@ process definition
     integer, intent(in) :: id
     type(string_t), intent(in) :: process_string
     character(len=*), intent(in) :: order
+    call msg_debug2 (D_ME_METHODS, "define_process_rcl")
     call define_process_rcl (id, char (process_string), order)
   end subroutine rclwrap_define_process
 
@@ -128,6 +129,7 @@ process definition
   public :: rclwrap_generate_processes
 <<recola wrapper: procedures>>=
   subroutine rclwrap_generate_processes ()
+    call msg_debug2 (D_ME_METHODS, "generate_processes_rcl")
     call generate_processes_rcl ()
   end subroutine rclwrap_generate_processes
 
@@ -141,6 +143,7 @@ process definition
     real(double), intent(in), dimension(:,:) :: p
     character(len=*), intent(in) :: order
     real(double), intent(out), dimension(0:1), optional :: sqme
+    call msg_debug2 (D_ME_METHODS, "compute_process_rcl")
     call compute_process_rcl (id, p, order, sqme)
   end subroutine rclwrap_compute_process
 
@@ -154,6 +157,7 @@ process definition
     character(len=*), intent(in) :: order
     integer, dimension(:), intent(in) :: col, hel
     complex(double), intent(out) :: amp
+    call msg_debug2 (D_ME_METHODS, "get_amplitude_rcl")
     call get_amplitude_rcl (id, g_power, order, col, hel, amp)
   end subroutine rclwrap_get_amplitude
 
@@ -166,6 +170,7 @@ process definition
     integer, intent(in) :: id, alpha_power
     character(len=*), intent(in) :: order
     real(double), intent(out) :: sqme
+    call msg_debug2 (D_ME_METHODS, "get_squared_amplitude_rcl")
     call get_squared_amplitude_rcl (id, alpha_power, order, sqme)
   end subroutine rclwrap_get_squared_amplitude
 
@@ -177,6 +182,7 @@ process definition
   subroutine rclwrap_set_pole_mass (pdg_id, mass, width)
     integer, intent(in) :: pdg_id
     real(double), intent(in) :: mass, width
+    call msg_debug2 (D_ME_METHODS, "rclwrap_set_pole_mass of ", pdg_id)
     select case (abs(pdg_id))
     case (11)
        if (width > zero) &
@@ -223,6 +229,7 @@ process definition
   subroutine rclwrap_set_onshell_mass (pdg_id, mass, width)
     integer, intent(in) :: pdg_id
     real(double), intent(in) :: mass, width
+    call msg_debug2 (D_ME_METHODS, "rclwrap_set_onshell_mass of ", pdg_id)
     select case (abs(pdg_id))
     case (23)
        call set_onshell_mass_z_rcl (mass, width)
@@ -240,6 +247,8 @@ process definition
 <<recola wrapper: procedures>>=
   subroutine rclwrap_use_gfermi_scheme (gf)
     real(double), intent(in), optional :: gf
+    call msg_debug2 (D_ME_METHODS, "use_gfermi_scheme_rcl", &
+         real(gf, kind=default))
     call use_gfermi_scheme_rcl (gf)
   end subroutine rclwrap_use_gfermi_scheme
 
@@ -250,6 +259,8 @@ process definition
 <<recola wrapper: procedures>>=
   subroutine rclwrap_set_light_fermions (m)
     real(double), intent(in) :: m
+    call msg_debug2 (D_ME_METHODS, "set_light_fermions_rcl", &
+         real(m, kind=default))
     call set_light_fermions_rcl (m)
   end subroutine rclwrap_set_light_fermions
 
@@ -260,6 +271,7 @@ process definition
 <<recola wrapper: procedures>>=
   subroutine rclwrap_set_light_fermion (pdg_id)
     integer, intent(in) :: pdg_id
+    call msg_debug2 (D_ME_METHODS, "rclwrap_set_light_fermion", pdg_id)
     select case (abs(pdg_id))
     case (1)
        call set_light_down_rcl ()
@@ -289,6 +301,7 @@ process definition
 <<recola wrapper: procedures>>=
   subroutine rclwrap_unset_light_fermion (pdg_id)
     integer, intent(in) :: pdg_id
+    call msg_debug2 (D_ME_METHODS, "rclwrap_unset_light_fermion", pdg_id)
     select case (abs(pdg_id))
     case (1)
        call unset_light_down_rcl ()
@@ -317,6 +330,7 @@ process definition
   public :: rclwrap_set_onshell_scheme
 <<recola wrapper: procedures>>=
   subroutine rclwrap_set_onshell_scheme
+    call msg_debug2 (D_ME_METHODS, "set_on_shell_scheme_rcl")
     call set_on_shell_scheme_rcl ()
   end subroutine rclwrap_set_onshell_scheme
 
@@ -328,6 +342,7 @@ process definition
   subroutine rclwrap_set_alpha_s (alpha_s, mu, nf)
     real(double), intent(in) :: alpha_s, mu
     integer, intent(in) :: nf
+    call msg_debug2 (D_ME_METHODS, "set_alphas_rcl")
     call set_alphas_rcl (alpha_s, mu, nf)
   end subroutine rclwrap_set_alpha_s
 
@@ -338,6 +353,7 @@ process definition
 <<recola wrapper: procedures>>=
   function rclwrap_get_alpha_s () result (alpha_s)
     real(double) :: alpha_s
+    call msg_debug2 (D_ME_METHODS, "get_alphas_rcl")
     call get_alphas_rcl (alpha_s)
   end function rclwrap_get_alpha_s
 
@@ -349,8 +365,7 @@ process definition
   subroutine rclwrap_get_helicity_configurations (id, hel)
     integer, intent(in) :: id
     integer, intent(inout), dimension(:,:), allocatable :: hel
-    !!! Not in the official RECOLA release yet
-    ! call get_helicity_configurations_rcl (id, hel)
+    call get_helicity_configurations_rcl (id, hel)
   end subroutine rclwrap_get_helicity_configurations
 
 @ %def rclwrap_get_helicity_configurations
@@ -361,8 +376,7 @@ process definition
   subroutine rclwrap_get_color_configurations (id, col)
     integer, intent(in) :: id
     integer, intent(out), dimension(:,:), allocatable :: col
-    !!! Not in the official RECOLA release yet
-    ! call get_colour_configurations_rcl (id, col)
+    call get_colour_configurations_rcl (id, col)
   end subroutine rclwrap_get_color_configurations
 
 @ %def rclwrap_get_color_configurations
@@ -371,7 +385,8 @@ process definition
   public :: rclwrap_use_dim_reg_soft
 <<recola wrapper: procedures>>=
   subroutine rclwrap_use_dim_reg_soft ()
-     call use_dim_reg_soft_rcl ()
+    call msg_debug2 (D_ME_METHODS, "use_dim_reg_soft_rcl")
+    call use_dim_reg_soft_rcl ()
   end subroutine rclwrap_use_dim_reg_soft
 
 @ %def rclwrap_use_dim_reg_soft
@@ -382,6 +397,7 @@ the mass regulator in GeV to [[m]].
 <<recola wrapper: procedures>>=
   subroutine rclwrap_use_mass_reg_soft (m)
     real(double), intent(in) :: m
+    call msg_debug2 (D_ME_METHODS, "use_mass_reg_soft_rcl")
     call use_mass_reg_soft_rcl (m)
   end subroutine rclwrap_use_mass_reg_soft
 
@@ -392,6 +408,7 @@ the mass regulator in GeV to [[m]].
 <<recola wrapper: procedures>>=
   subroutine rclwrap_set_delta_uv (d)
     real(double), intent(in) :: d
+    call msg_debug2 (D_ME_METHODS, "set_delta_uv_rcl")
     call set_delta_uv_rcl (d)
   end subroutine rclwrap_set_delta_uv
 
@@ -402,6 +419,7 @@ the mass regulator in GeV to [[m]].
 <<recola wrapper: procedures>>=
   subroutine rclwrap_set_mu_uv (mu)
     real(double), intent(in) :: mu
+    call msg_debug2 (D_ME_METHODS, "set_mu_uv_rcl")
     call set_mu_uv_rcl (mu)
   end subroutine rclwrap_set_mu_uv
 
@@ -412,6 +430,10 @@ the mass regulator in GeV to [[m]].
 <<recola wrapper: procedures>>=
   subroutine rclwrap_set_delta_ir (d, d2)
     real(double), intent(in) :: d, d2
+    call msg_debug2 (D_ME_METHODS, "set_delta_ir_rcl", &
+         real(d, kind=default))
+    call msg_debug2 (D_ME_METHODS, "set_delta_ir_rcl", &
+         real(d2, kind=default))
     call set_delta_ir_rcl (d, d2)
   end subroutine rclwrap_set_delta_ir
 
@@ -422,6 +444,7 @@ the mass regulator in GeV to [[m]].
 <<recola wrapper: procedures>>=
   subroutine rclwrap_set_mu_ir (mu)
     real(double), intent(in) :: mu
+    call msg_debug2 (D_ME_METHODS, "set_mu_ir_rcl")
     call set_mu_ir_rcl (mu)
   end subroutine rclwrap_set_mu_ir
 
@@ -432,6 +455,7 @@ the mass regulator in GeV to [[m]].
 <<recola wrapper: procedures>>=
   function rclwrap_get_renormalization_scale () result (mu)
     real(double) :: mu
+    call msg_debug2 (D_ME_METHODS, "get_renormalization_scale_rcl")
     call get_renormalization_scale_rcl (mu)
   end function rclwrap_get_renormalization_scale
 
@@ -442,6 +466,7 @@ the mass regulator in GeV to [[m]].
 <<recola wrapper: procedures>>=
   subroutine rclwrap_get_flavor_scheme (nf)
     integer, intent(out) :: nf
+    call msg_debug2 (D_ME_METHODS, "get_flavour_scheme_rcl")
     call get_flavour_scheme_rcl (nf)
   end subroutine rclwrap_get_flavor_scheme
 
@@ -452,6 +477,7 @@ the mass regulator in GeV to [[m]].
 <<recola wrapper: procedures>>=
   subroutine rclwrap_use_alpha0_scheme (al0)
     real(double), intent(in), optional :: al0
+    call msg_debug2 (D_ME_METHODS, "use_alpha0_scheme_rcl")
     call use_alpha0_scheme_rcl (al0)
   end subroutine rclwrap_use_alpha0_scheme
 
@@ -462,6 +488,7 @@ the mass regulator in GeV to [[m]].
 <<recola wrapper: procedures>>=
   subroutine rclwrap_use_alphaz_scheme (alz)
     real(double), intent(in), optional :: alz
+    call msg_debug2 (D_ME_METHODS, "use_alphaz_scheme_rcl")
     call use_alphaz_scheme_rcl (alz)
   end subroutine rclwrap_use_alphaz_scheme
 
@@ -471,6 +498,7 @@ the mass regulator in GeV to [[m]].
   public :: rclwrap_set_complex_mass_scheme
 <<recola wrapper: procedures>>=
   subroutine rclwrap_set_complex_mass_scheme ()
+    call msg_debug2 (D_ME_METHODS, "set_complex_mass_scheme_rcl")
     call set_complex_mass_scheme_rcl ()
   end subroutine rclwrap_set_complex_mass_scheme
 
@@ -481,6 +509,7 @@ the mass regulator in GeV to [[m]].
 <<recola wrapper: procedures>>=
   subroutine rclwrap_set_resonant_particle (pdg_id)
     integer, intent(in) :: pdg_id
+    call msg_debug2 (D_ME_METHODS, "set_resonant_particle_rcl")
     call set_resonant_particle_rcl (char(get_recola_particle_string (pdg_id)))
   end subroutine rclwrap_set_resonant_particle
 
@@ -490,6 +519,7 @@ the mass regulator in GeV to [[m]].
   public :: rclwrap_switch_on_resonant_self_energies
 <<recola wrapper: procedures>>=
   subroutine rclwrap_switch_on_resonant_self_energies ()
+    call msg_debug2 (D_ME_METHODS, "switchon_resonant_selfenergies_rcl")
     call switchon_resonant_selfenergies_rcl ()
   end subroutine rclwrap_switch_on_resonant_self_energies
 
@@ -499,6 +529,7 @@ the mass regulator in GeV to [[m]].
   public :: rclwrap_switch_off_resonant_self_energies
 <<recola wrapper: procedures>>=
   subroutine rclwrap_switch_off_resonant_self_energies ()
+    call msg_debug2 (D_ME_METHODS, "switchoff_resonant_selfenergies_rcl")
     call switchoff_resonant_selfenergies_rcl ()
   end subroutine rclwrap_switch_off_resonant_self_energies
 
@@ -509,6 +540,7 @@ the mass regulator in GeV to [[m]].
 <<recola wrapper: procedures>>=
   subroutine rclwrap_set_draw_level_branches (n)
     integer, intent(in) :: n
+    call msg_debug2 (D_ME_METHODS, "set_draw_level_branches_rcl")
     call set_draw_level_branches_rcl (n)
   end subroutine rclwrap_set_draw_level_branches
 
@@ -519,6 +551,7 @@ the mass regulator in GeV to [[m]].
 <<recola wrapper: procedures>>=
   subroutine rclwrap_set_print_level_amplitude (n)
     integer, intent(in) :: n
+    call msg_debug2 (D_ME_METHODS, "set_print_level_amplitude_rcl")
     call set_print_level_amplitude_rcl (n)
   end subroutine rclwrap_set_print_level_amplitude
 
@@ -529,6 +562,7 @@ the mass regulator in GeV to [[m]].
 <<recola wrapper: procedures>>=
   subroutine rclwrap_set_print_level_squared_amplitude (n)
     integer, intent(in) :: n
+    call msg_debug2 (D_ME_METHODS, "set_print_level_squared_amplitude_rcl")
     call set_print_level_squared_amplitude_rcl (n)
   end subroutine rclwrap_set_print_level_squared_amplitude
 
@@ -539,6 +573,7 @@ the mass regulator in GeV to [[m]].
 <<recola wrapper: procedures>>=
   subroutine rclwrap_set_print_level_correlations (n)
     integer, intent(in) :: n
+    call msg_debug2 (D_ME_METHODS, "set_print_level_correlations_rcl")
     call set_print_level_correlations_rcl (n)
   end subroutine rclwrap_set_print_level_correlations
 
@@ -549,6 +584,7 @@ the mass regulator in GeV to [[m]].
 <<recola wrapper: procedures>>=
   subroutine rclwrap_set_print_level_RAM (n)
     integer, intent(in) :: n
+    call msg_debug2 (D_ME_METHODS, "set_print_level_RAM_rcl")
     call set_print_level_RAM_rcl (n)
   end subroutine rclwrap_set_print_level_RAM
 
@@ -560,6 +596,7 @@ the mass regulator in GeV to [[m]].
   subroutine rclwrap_scale_coupling3 (pdg_id1, pdg_id2, pdg_id3, factor)
     integer, intent(in) :: pdg_id1, pdg_id2, pdg_id3
     complex(double), intent(in) :: factor
+    call msg_debug2 (D_ME_METHODS, "scale_coupling3_rcl")
     call scale_coupling3_rcl (factor, char(get_recola_particle_string (pdg_id1)), &
          char(get_recola_particle_string (pdg_id2)), char(get_recola_particle_string (pdg_id3)))
   end subroutine rclwrap_scale_coupling3
@@ -572,6 +609,7 @@ the mass regulator in GeV to [[m]].
   subroutine rclwrap_scale_coupling4 (pdg_id1, pdg_id2, pdg_id3, pdg_id4, factor)
     integer, intent(in) :: pdg_id1, pdg_id2, pdg_id3, pdg_id4
     complex(double), intent(in) :: factor
+    call msg_debug2 (D_ME_METHODS, "scale_coupling4_rcl")
     call scale_coupling4_rcl (factor, char(get_recola_particle_string (pdg_id1)), &
          char(get_recola_particle_string (pdg_id2)), char(get_recola_particle_string (pdg_id3)), &
          char(get_recola_particle_string (pdg_id4)))
@@ -584,6 +622,7 @@ the mass regulator in GeV to [[m]].
 <<recola wrapper: procedures>>=
   subroutine rclwrap_switch_off_coupling3 (pdg_id1, pdg_id2, pdg_id3)
     integer, intent(in) :: pdg_id1, pdg_id2, pdg_id3
+    call msg_debug2 (D_ME_METHODS, "switchoff_coupling3_rcl")
     call switchoff_coupling3_rcl (char(get_recola_particle_string (pdg_id1)), &
          char(get_recola_particle_string (pdg_id2)), char(get_recola_particle_string (pdg_id3)))
   end subroutine rclwrap_switch_off_coupling3
@@ -595,9 +634,12 @@ the mass regulator in GeV to [[m]].
 <<recola wrapper: procedures>>=
   subroutine rclwrap_switch_off_coupling4 (pdg_id1, pdg_id2, pdg_id3, pdg_id4)
     integer, intent(in) :: pdg_id1, pdg_id2, pdg_id3, pdg_id4
-    call switchoff_coupling4_rcl (char(get_recola_particle_string (pdg_id1)), &
-         char(get_recola_particle_string (pdg_id2)), char(get_recola_particle_string (pdg_id3)), &
-         char(get_recola_particle_string (pdg_id4)))
+    call msg_debug2 (D_ME_METHODS, "switchoff_coupling4_rcl")
+    call switchoff_coupling4_rcl &
+         (char(get_recola_particle_string (pdg_id1)), &
+          char(get_recola_particle_string (pdg_id2)), &
+          char(get_recola_particle_string (pdg_id3)), &
+          char(get_recola_particle_string (pdg_id4)))
   end subroutine rclwrap_switch_off_coupling4
 
 @ %def rclwrap_switch_off_coupling4
@@ -607,6 +649,7 @@ the mass regulator in GeV to [[m]].
 <<recola wrapper: procedures>>=
   subroutine rclwrap_set_ifail (i)
     integer, intent(in) :: i
+    call msg_debug2 (D_ME_METHODS, "set_ifail_rcl")
     call set_ifail_rcl (i)
   end subroutine rclwrap_set_ifail
 
@@ -617,6 +660,7 @@ the mass regulator in GeV to [[m]].
 <<recola wrapper: procedures>>=
   subroutine rclwrap_get_ifail (i)
     integer, intent(out) :: i
+    call msg_debug2 (D_ME_METHODS, "get_ifail_rcl")
     call get_ifail_rcl (i)
   end subroutine rclwrap_get_ifail
 
@@ -627,6 +671,7 @@ the mass regulator in GeV to [[m]].
 <<recola wrapper: procedures>>=
   subroutine rclwrap_set_output_file (filename)
     character(len=*), intent(in) :: filename
+    call msg_debug2 (D_ME_METHODS, "set_output_file_rcl")
     call set_output_file_rcl (filename)
   end subroutine rclwrap_set_output_file
 
@@ -638,6 +683,7 @@ the mass regulator in GeV to [[m]].
   subroutine rclwrap_set_gs_power (id, gs_array)
     integer, intent(in) :: id
     integer, dimension(:,:), intent(in) :: gs_array
+    call msg_debug2 (D_ME_METHODS, "set_gs_power_rcl")
     call set_gs_power_rcl (id, gs_array)
   end subroutine rclwrap_set_gs_power
 
@@ -648,6 +694,7 @@ the mass regulator in GeV to [[m]].
 <<recola wrapper: procedures>>=
   subroutine rclwrap_select_gs_power_born_amp (id, gs_power)
     integer, intent(in) :: id, gs_power
+    call msg_debug2 (D_ME_METHODS, "select_gs_power_BornAmpl_rcl")
     call select_gs_power_BornAmpl_rcl (id, gs_power)
  end subroutine rclwrap_select_gs_power_born_amp
 
@@ -658,6 +705,7 @@ the mass regulator in GeV to [[m]].
 <<recola wrapper: procedures>>=
   subroutine rclwrap_unselect_gs_power_born_amp (id, gs_power)
     integer, intent(in) :: id, gs_power
+    call msg_debug2 (D_ME_METHODS, "unselect_gs_power_BornAmpl_rcl")
     call unselect_gs_power_BornAmpl_rcl (id, gs_power)
  end subroutine rclwrap_unselect_gs_power_born_amp
 
@@ -668,6 +716,7 @@ the mass regulator in GeV to [[m]].
 <<recola wrapper: procedures>>=
   subroutine rclwrap_select_gs_power_loop_amp (id, gs_power)
     integer, intent(in) :: id, gs_power
+    call msg_debug2 (D_ME_METHODS, "select_gs_power_LoopAmpl_rcl")
     call select_gs_power_LoopAmpl_rcl (id, gs_power)
  end subroutine rclwrap_select_gs_power_loop_amp
 
@@ -678,6 +727,7 @@ the mass regulator in GeV to [[m]].
 <<recola wrapper: procedures>>=
   subroutine rclwrap_unselect_gs_power_loop_amp (id, gs_power)
     integer, intent(in) :: id, gs_power
+    call msg_debug2 (D_ME_METHODS, "unselect_gs_power_LoopAmpl_rcl")
     call unselect_gs_power_LoopAmpl_rcl (id, gs_power)
  end subroutine rclwrap_unselect_gs_power_loop_amp
 
@@ -688,6 +738,7 @@ the mass regulator in GeV to [[m]].
 <<recola wrapper: procedures>>=
   subroutine rclwrap_select_all_gs_powers_born_amp (id)
     integer, intent(in) :: id
+    call msg_debug2 (D_ME_METHODS, "select_all_gs_powers_BornAmpl_rcl")
     call select_all_gs_powers_BornAmpl_rcl (id)
   end subroutine rclwrap_select_all_gs_powers_born_amp
 
@@ -698,6 +749,7 @@ the mass regulator in GeV to [[m]].
 <<recola wrapper: procedures>>=
   subroutine rclwrap_unselect_all_gs_powers_loop_amp (id)
     integer, intent(in) :: id
+    call msg_debug2 (D_ME_METHODS, "unselect_all_gs_powers_BornAmpl_rcl")
     call unselect_all_gs_powers_BornAmpl_rcl (id)
   end subroutine rclwrap_unselect_all_gs_powers_loop_amp
 
@@ -708,6 +760,7 @@ the mass regulator in GeV to [[m]].
 <<recola wrapper: procedures>>=
   subroutine rclwrap_select_all_gs_powers_loop_amp (id)
     integer, intent(in) :: id
+    call msg_debug2 (D_ME_METHODS, "select_all_gs_powers_LoopAmpl_rcl")
     call select_all_gs_powers_LoopAmpl_rcl (id)
   end subroutine rclwrap_select_all_gs_powers_loop_amp
 
@@ -718,6 +771,7 @@ the mass regulator in GeV to [[m]].
 <<recola wrapper: procedures>>=
   subroutine rclwrap_unselect_all_gs_powers_born_amp (id)
     integer, intent(in) :: id
+    call msg_debug2 (D_ME_METHODS, "unselect_all_gs_powers_LoopAmpl_rcl")
     call unselect_all_gs_powers_LoopAmpl_rcl (id)
   end subroutine rclwrap_unselect_all_gs_powers_born_amp
 
@@ -729,6 +783,7 @@ the mass regulator in GeV to [[m]].
   subroutine rclwrap_set_resonant_squared_momentum (id, i_res, p2)
     integer, intent(in) :: id, i_res
     real(double), intent(in) :: p2
+    call msg_debug2 (D_ME_METHODS, "set_resonant_squared_momentum_rcl")
     call set_resonant_squared_momentum_rcl (id, i_res, p2)
   end subroutine rclwrap_set_resonant_squared_momentum
 
@@ -740,6 +795,7 @@ the mass regulator in GeV to [[m]].
   subroutine rclwrap_compute_running_alpha_s (Q, nf, n_loops)
     real(double), intent(in) :: Q
     integer, intent(in) :: nf, n_loops
+    call msg_debug2 (D_ME_METHODS, "compute_running_alphas_rcl")
     call compute_running_alphas_rcl (Q, nf, n_loops)
   end subroutine rclwrap_compute_running_alpha_s
 
@@ -749,6 +805,7 @@ the mass regulator in GeV to [[m]].
   public :: rclwrap_set_dynamic_settings
 <<recola wrapper: procedures>>=
   subroutine rclwrap_set_dynamic_settings ()
+    call msg_debug2 (D_ME_METHODS, "set_dynamic_settings_rcl")
     call set_dynamic_settings_rcl (1)
   end subroutine rclwrap_set_dynamic_settings
 
@@ -761,6 +818,7 @@ the mass regulator in GeV to [[m]].
     integer, intent(in) :: id
     character(len=*), intent(in) :: order
     real(double), dimension(0:1), intent(out), optional :: sqme
+    call msg_debug2 (D_ME_METHODS, "rescale_process_rcl")
     call rescale_process_rcl (id, order, sqme)
   end subroutine rclwrap_rescale_process
 
@@ -775,6 +833,7 @@ the mass regulator in GeV to [[m]].
     character(len=*), intent(in) :: order
     integer, dimension(:), intent(in) :: hel
     real(double), intent(out) :: sqme
+    call msg_debug2 (D_ME_METHODS, "get_polarized_squared_amplitude_rcl")
     call get_polarized_squared_amplitude_rcl (id, alphas_power, &
          order, hel, sqme)
   end subroutine rclwrap_get_polarized_squared_amplitude
@@ -790,6 +849,7 @@ the mass regulator in GeV to [[m]].
     real(double), dimension(:,:), intent(in) :: p
     integer, intent(in) :: i1, i2
     real(double), intent(out), optional :: sqme
+    call msg_debug2 (D_ME_METHODS, "compute_colour_correlation_rcl")
     call compute_colour_correlation_rcl (id, p, i1, i2, sqme)
   end subroutine rclwrap_compute_color_correlation
 
@@ -801,6 +861,7 @@ the mass regulator in GeV to [[m]].
   subroutine rclwrap_compute_all_color_correlations (id, p)
     integer, intent(in) :: id
     real(double), dimension(:,:), intent(in) :: p
+    call msg_debug2 (D_ME_METHODS, "compute_all_colour_correlations_rcl")
     call compute_all_colour_correlations_rcl (id, p)
   end subroutine rclwrap_compute_all_color_correlations
 
@@ -812,6 +873,7 @@ the mass regulator in GeV to [[m]].
   subroutine rclwrap_rescale_color_correlation (id, i1, i2, sqme)
     integer, intent(in) :: id, i1, i2
     real(double), intent(out), optional :: sqme
+    call msg_debug2 (D_ME_METHODS, "rescale_colour_correlation_rcl")
     call rescale_colour_correlation_rcl (id, i1, i2, sqme)
   end subroutine rclwrap_rescale_color_correlation
 
@@ -822,6 +884,7 @@ the mass regulator in GeV to [[m]].
 <<recola wrapper: procedures>>=
   subroutine rclwrap_rescale_all_color_correlations (id)
     integer, intent(in) :: id
+    call msg_debug2 (D_ME_METHODS, "rescale_all_colour_correlations_rcl")
     call rescale_all_colour_correlations_rcl (id)
   end subroutine rclwrap_rescale_all_color_correlations
 
@@ -833,6 +896,7 @@ the mass regulator in GeV to [[m]].
   subroutine rclwrap_get_color_correlation (id, alphas_power, i1, i2, sqme)
     integer, intent(in) :: id, alphas_power, i1, i2
     real(double), intent(out) :: sqme
+    call msg_debug2 (D_ME_METHODS, "get_colour_correlation_rcl")
     call get_colour_correlation_rcl (id, alphas_power, i1, i2, sqme)
   end subroutine rclwrap_get_color_correlation
 
@@ -847,6 +911,7 @@ the mass regulator in GeV to [[m]].
     integer, intent(in) :: i_photon
     complex(double), dimension(:), intent(in) :: pol
     real(double), intent(out), optional :: sqme
+    call msg_debug2 (D_ME_METHODS, "compute_spin_correlation_rcl")
     call compute_spin_correlation_rcl (id, p, i_photon, pol, sqme)
   end subroutine rclwrap_compute_spin_correlation
 
@@ -859,6 +924,7 @@ the mass regulator in GeV to [[m]].
     integer, intent(in) :: id, i_photon
     complex(double), dimension(:), intent(in) :: pol
     real(double), intent(out), optional :: sqme
+    call msg_debug2 (D_ME_METHODS, "rescale_spin_correlation_rcl")
     call rescale_spin_correlation_rcl (id, i_photon, pol, sqme)
   end subroutine rclwrap_rescale_spin_correlation
 
@@ -870,6 +936,7 @@ the mass regulator in GeV to [[m]].
   subroutine rclwrap_get_spin_correlation (id, alphas_power, sqme)
     integer, intent(in) :: id, alphas_power
     real(double), intent(out) :: sqme
+    call msg_debug2 (D_ME_METHODS, "get_spin_correlation_rcl")
     call get_spin_correlation_rcl (id, alphas_power, sqme)
   end subroutine rclwrap_get_spin_correlation
 
@@ -885,6 +952,7 @@ the mass regulator in GeV to [[m]].
     integer, intent(in) :: i_gluon, i_spectator
     complex(double), dimension(:), intent(in) :: pol
     real(double), intent(out), optional :: sqme
+    call msg_debug2 (D_ME_METHODS, "compute_spin_colour_correlation_rcl")
     call compute_spin_colour_correlation_rcl (id, p, &
          i_gluon, i_spectator, pol, sqme)
   end subroutine rclwrap_compute_spin_color_correlation
@@ -899,6 +967,7 @@ the mass regulator in GeV to [[m]].
     integer, intent(in) :: id, i_gluon, i_spectator
     complex(double), dimension(:), intent(in) :: pol
     real(double), intent(out), optional :: sqme
+    call msg_debug2 (D_ME_METHODS, "rescale_spin_colour_correlation_rcl")
     call rescale_spin_colour_correlation_rcl (id, i_gluon, &
          i_spectator, pol, sqme)
   end subroutine rclwrap_rescale_spin_color_correlation
@@ -912,6 +981,7 @@ the mass regulator in GeV to [[m]].
        i_gluon, i_spectator, sqme)
     integer, intent(in) :: id, alphas_power, i_gluon, i_spectator
     real(double), intent(out) :: sqme
+    call msg_debug2 (D_ME_METHODS, "get_spin_colour_correlation_rcl")
     call get_spin_colour_correlation_rcl (id, alphas_power, &
          i_gluon, i_spectator, sqme)
   end subroutine rclwrap_get_spin_color_correlation
@@ -924,6 +994,7 @@ the mass regulator in GeV to [[m]].
   subroutine rclwrap_get_momenta (id, p)
     integer, intent(in) :: id
     real(double), dimension(:,:), intent(out) :: p
+    call msg_debug2 (D_ME_METHODS, "get_momenta_rcl")
     call get_momenta_rcl (id, p)
   end subroutine rclwrap_get_momenta
 
@@ -933,6 +1004,7 @@ the mass regulator in GeV to [[m]].
   public :: rclwrap_reset_recola
 <<recola wrapper: procedures>>=
   subroutine rclwrap_reset_recola
+    call msg_debug2 (D_ME_METHODS, "reset_recola_rcl")
     call reset_recola_rcl ()
   end subroutine rclwrap_reset_recola
 
@@ -1703,37 +1775,6 @@ is used.
   end subroutine abort_if_recola_not_active
 
 @ %def abort_if_recola_not_active
-@
-<<prc recola: public>>=
-  public :: create_recola_color_structures
-<<prc recola: procedures>>=
-  function create_recola_color_structures (col_omega) result (col_recola)
-    integer, dimension(:,:), allocatable :: col_recola
-    integer, dimension(:,:,:), intent(in) :: col_omega
-    integer :: n_tot, n_flv
-    integer :: i, j, i_flv
-    integer, dimension(2) :: tuple1, tuple2
-    n_tot = size (col_omega, dim=2)
-    n_flv = size (col_omega, dim=3)
-    allocate (col_recola (n_flv, n_tot))
-    do i_flv = 1, n_flv
-       col_recola (:,i_flv) = 0
-       do i = 1, n_tot
-          tuple1 = col_omega (:,i,i_flv)
-          do j = 1, n_tot
-             tuple2 = col_omega (:,j,i_flv)
-             if (tuple1(1) /= 0) then
-                if (tuple1(1) == -tuple2(j)) then
-                   col_recola(i_flv,i) = j
-                   exit
-                end if
-             end if
-          end do
-       end do
-    end do
-  end function create_recola_color_structures
-
-@ %def create_recola_color_structures
 @ We create [[prc_recola_t]] as an extension of the [[prc_user_defined_base_t]],
 which in turn inherits from [[prc_core_tt]]. This way, we can use a lot of the
 existing interfaces in the actual code. However, we have to stick to the rules and
@@ -1744,7 +1785,9 @@ implement the deferred type-bound procedures of [[prc_core_t]].
   type, extends (prc_user_defined_base_t) :: prc_recola_t
      integer :: recola_id = 0
      integer, dimension(:,:), allocatable :: color_state
-     integer :: alpha_power=0, alphas_power=0
+     integer :: alpha_power = 0
+     integer :: alphas_power = 0
+     integer :: n_f = 0
      logical :: nlo_computation = .false.
   contains
   <<prc recola: prc recola: TBP>>
@@ -1823,16 +1866,6 @@ because we are not going to load any external dynamical libraries.
 @ %def prc_recola_set_coupling_powers
 @
 <<prc recola: prc recola: TBP>>=
-  procedure :: set_nlo => prc_recola_set_nlo
-<<prc recola: procedures>>=
-  subroutine prc_recola_set_nlo (object)
-    class(prc_recola_t), intent(inout) :: object
-    object%nlo_computation = .true.
-  end subroutine prc_recola_set_nlo
-
-@ %def prc_recola_set_nlo
-@
-<<prc recola: prc recola: TBP>>=
   procedure :: compute_alpha_s => prc_recola_compute_alpha_s
 <<prc recola: procedures>>=
   subroutine prc_recola_compute_alpha_s (object, core_state, fac_scale)
@@ -1884,16 +1917,18 @@ because we are not going to load any external dynamical libraries.
        prc_recola_create_and_load_extra_libraries
 <<prc recola: procedures>>=
   subroutine prc_recola_create_and_load_extra_libraries &
-       (core, flv_states, var_list, os_data, libname, model, i_core)
+       (core, flv_states, var_list, os_data, libname, model, i_core, is_nlo)
      class(prc_recola_t), intent(inout) :: core
-    integer, intent(in), dimension(:,:), allocatable :: flv_states
+     integer, intent(in), dimension(:,:), allocatable :: flv_states
      type(var_list_t), intent(in) :: var_list
      type(os_data_t), intent(in) :: os_data
      type(string_t), intent(in) :: libname
      type(model_data_t), intent(in), target :: model
      integer, intent(in) :: i_core
+     logical, intent(in) :: is_nlo
      integer :: i_recola = 0
-     call core%set_nlo ()
+     core%nlo_computation = is_nlo
+     core%n_f = var_list%get_ival (var_str ("alphas_nf"))
      call core%enable_dynamic_settings ()
      call core%register_processes (i_recola)
      call core%replace_helicity_and_color_arrays ()
@@ -1911,12 +1946,13 @@ to be in its own format to do so.
     integer, dimension(:,:), allocatable :: col_recola
     integer :: i
     deallocate (object%data%hel_state)
-    call rclwrap_get_helicity_configurations (object%recola_id, object%data%hel_state)
+    call rclwrap_get_helicity_configurations &
+         (object%recola_id, object%data%hel_state)
     call rclwrap_get_color_configurations (object%recola_id, col_recola)
     allocate (object%color_state (object%data%n_in + object%data%n_out, &
-           size (col_recola, dim = 1)))
-    do i = 1, size (col_recola, dim = 1)
-       object%color_state (:, i) = col_recola (i, :)
+           size (col_recola, dim = 2)))
+    do i = 1, size (col_recola, dim = 2)
+       object%color_state (:, i) = col_recola (:, i)
     end do
     object%data%n_hel = size (object%data%hel_state, dim = 1)
   end subroutine prc_recola_replace_helicity_and_color_arrays
@@ -1943,7 +1979,6 @@ to be in its own format to do so.
     type(string_t) :: process_string
     integer :: i_flv, i_part
     integer :: n_tot
-    !!! TODO (cw-2016-08-08): Include amplitude type (LO, NLO, ...)
     !!! TODO (cw-2016-08-08): Include helicities
     call msg_debug (D_ME_METHODS, "RECOLA: register process")
     n_tot = object%data%n_in + object%data%n_out
@@ -1951,18 +1986,20 @@ to be in its own format to do so.
     do i_flv = 1, object%data%n_flv
        recola_id = recola_id + 1
        object%recola_id = recola_id
-       particle_names = get_recola_particle_string (object%data%flv_state (:, i_flv))
+       particle_names = &
+            get_recola_particle_string (object%data%flv_state (:, i_flv))
        process_string = var_str ("")
        do i_part = 1, n_tot
           if (debug2_active (D_ME_METHODS)) &
                print *, "Appending particle: ", char (particle_names(i_part))
-          process_string = process_string // particle_names (i_part) // var_str (" ")
+          process_string = process_string // &
+               particle_names (i_part) // var_str (" ")
           if (i_part == object%data%n_in) &
              process_string = process_string // var_str ("-> ")
        end do
        if (debug_active (D_ME_METHODS)) then
           print *, "RECOLA process_id: ", object%recola_id
-          print *, "NLO? ", object%nlo_computation
+          print *, "NLO computation  : ", object%nlo_computation
        end if
        if (object%nlo_computation) then
           call rclwrap_define_process (object%recola_id, process_string, 'NLO')
@@ -1970,14 +2007,14 @@ to be in its own format to do so.
           call rclwrap_define_process (object%recola_id, process_string, 'LO')
        end if
        call msg_debug (D_ME_METHODS, "RECOLA: generating process")
-       call rclwrap_generate_processes ()
-       call msg_debug (D_ME_METHODS, "RECOLA: generating process successfull")
     end do
+    call rclwrap_generate_processes ()
+    call msg_debug (D_ME_METHODS, "RECOLA: generating process successfull")
   end subroutine prc_recola_register_processes
 
 @ %def prc_recola_register_processes
 @ Computes the amplitude as a function of the phase space point, the
-flavor, helicity and color index. It is currently only used in thes form
+flavor, helicity and color index. It is currently only used in the form
 by [[prc_omega_t]], all the other ones use different interfaces. However,
 with RECOLA, we might be able to use this, too.
 <<prc recola: prc recola: TBP>>=
@@ -1995,7 +2032,8 @@ with RECOLA, we might be able to use this, too.
     real(default), intent(in), allocatable :: alpha_qcd_forced
     class(prc_core_state_t), intent(inout), allocatable, optional :: &
          core_state
-    real(double), dimension(0:3, object%data%n_in + object%data%n_out) :: p_recola
+    real(double), dimension(0:3, object%data%n_in + object%data%n_out) :: &
+         p_recola
     integer :: i
     logical :: new_event
     complex(double) :: amp_dble
@@ -2015,9 +2053,8 @@ with RECOLA, we might be able to use this, too.
        end do
        call rclwrap_compute_process (object%recola_id, p_recola, 'LO')
     end if
-
-    call rclwrap_get_amplitude (object%recola_id, 0, 'LO', object%color_state (:, c), &
-         object%data%hel_state (h, :), amp_dble)
+    call rclwrap_get_amplitude (object%recola_id, 0, 'LO', &
+         object%color_state (:, c), object%data%hel_state (h, :), amp_dble)
     amp = amp_dble
   end function prc_recola_compute_amplitude
 
@@ -2035,6 +2072,37 @@ prints out information about the current state of the object.
 @ %def prc_recola_write
 @
 <<prc recola: prc recola: TBP>>=
+  procedure :: compute_sqme => prc_recola_compute_sqme
+<<prc recola: procedures>>=
+  subroutine prc_recola_compute_sqme (object, i_flv, p, &
+         ren_scale, sqme, bad_point)
+     class(prc_recola_t), intent(in) :: object
+     integer, intent(in) :: i_flv
+     type(vector4_t), dimension(:), intent(in) :: p
+     real(default), intent(in) :: ren_scale
+     real(default), intent(out) :: sqme
+     real(double) :: sqme_dble
+     real(double), dimension(0:3, object%data%n_in + object%data%n_out) :: &
+          p_recola
+     real(default) :: alpha_s
+     integer :: i
+     logical, intent(out) :: bad_point
+     do i = 1, object%data%n_in + object%data%n_out
+        p_recola(:, i) = dble(p(i)%p)
+     end do
+     call rclwrap_set_mu_ir (dble (ren_scale))
+     alpha_s = object%qcd%alpha%get (ren_scale)
+     call rclwrap_set_alpha_s (dble (alpha_s), dble (ren_scale), object%n_f)
+     call rclwrap_compute_process (object%recola_id, p_recola, 'LO')
+     call rclwrap_get_squared_amplitude &
+          (object%recola_id, object%alphas_power, 'LO', sqme_dble)
+     sqme = sqme_dble
+     bad_point = .false.
+  end subroutine prc_recola_compute_sqme
+
+@ %def prc_recola_compute_sqme
+@
+<<prc recola: prc recola: TBP>>=
   procedure :: compute_sqme_virt => prc_recola_compute_sqme_virt
 <<prc recola: procedures>>=
   subroutine prc_recola_compute_sqme_virt (object, i_flv, &
@@ -2046,7 +2114,8 @@ prints out information about the current state of the object.
     real(default), dimension(4), intent(out) :: sqme
     real(default) :: amp
     logical, intent(out) :: bad_point
-    real(double), dimension(0:3, object%data%n_in + object%data%n_out) :: p_recola
+    real(double), dimension(0:3, object%data%n_in + object%data%n_out) :: &
+         p_recola
     real(double) :: sqme_dble
     integer :: i
     real(default) :: alpha_s
@@ -2057,13 +2126,12 @@ prints out information about the current state of the object.
     end do
     call rclwrap_set_mu_ir (dble (ren_scale))
     alpha_s = object%qcd%alpha%get (ren_scale)
-    !!! TODO (cw-2016-12-23): Use variable n_f here
-    call rclwrap_set_alpha_s (dble (alpha_s), dble (ren_scale), 5)
+    call rclwrap_set_alpha_s (dble (alpha_s), dble (ren_scale), object%n_f)
     call rclwrap_compute_process (object%recola_id, p_recola, 'NLO')
-    call rclwrap_get_squared_amplitude (object%recola_id, object%alphas_power + 1, &
-         'NLO', sqme_dble)
+    call rclwrap_get_squared_amplitude &
+         (object%recola_id, object%alphas_power + 1, 'NLO', sqme_dble)
     sqme(3) = sqme_dble
-    call rclwrap_get_squared_amplitude&
+    call rclwrap_get_squared_amplitude &
          (object%recola_id, object%alphas_power, 'LO', sqme_dble)
     sqme(4) = sqme_dble
 
@@ -2082,10 +2150,12 @@ prints out information about the current state of the object.
     class(model_data_t), intent(in), target, optional :: model
     object%qcd = qcd
 
-    call rclwrap_set_pole_mass (11, dble(model%get_real (var_str ('me'))), 0._double)
-    call rclwrap_set_pole_mass (13, dble(model%get_real (var_str ('mmu'))), 0._double)
-    call rclwrap_set_pole_mass (15, dble(model%get_real (var_str ('mtau'))), 0._double)
-
+    call rclwrap_set_pole_mass &
+         (11, dble(model%get_real (var_str ('me'))), 0._double)
+    call rclwrap_set_pole_mass &
+         (13, dble(model%get_real (var_str ('mmu'))), 0._double)
+    call rclwrap_set_pole_mass &
+         (15, dble(model%get_real (var_str ('mtau'))), 0._double)
 
     call rclwrap_set_pole_mass (1, 0._double, 0._double)
     call rclwrap_set_pole_mass (2, 0._double, 0._double)
@@ -2256,9 +2326,7 @@ module prc_recola_uti
   use process_constants
   use process_libraries
   use prc_core
-
   use prc_omega
-  use prc_recola, only: create_recola_color_structures
 
 <<Standard module head>>
 
@@ -2371,6 +2439,7 @@ end module prc_recola_uti
     write (u, "(A)") "* RECOLA: generate process"
     call rclwrap_generate_processes ()
     call rclwrap_compute_process (1, p, 'LO')
+    call rclwrap_get_helicity_configurations (1, helicities)
     allocate (hel_recola (4), col_recola (4))
     col_recola = [0,0,0,0]
 
@@ -2408,10 +2477,10 @@ end module prc_recola_uti
 
     select type (driver)
     type is (omega_driver_t)
-       call driver%init (get_omega_parameter_array (), 0)
+       call driver%init (get_omega_parameter_array (), 1)
        call driver%new_event (real(p, kind =  default))
        do i = 1, 6
-          call rclwrap_get_amplitude (1, 0, 'LO', col_recola, helicities (i, :), amp_recola)
+          call rclwrap_get_amplitude (1, 0, 'LO', col_recola, helicities (:,i), amp_recola)
        end do
        do i = 1, 16
            call rclwrap_get_amplitude (1, 0, 'LO', col_recola, data%hel_state (:,i), amp_recola)
@@ -2419,7 +2488,7 @@ end module prc_recola_uti
            amp_recola_default = amp_recola
            call driver%get_amplitude (1, i, 1, amp)
            write(u,"(A,4(I2),A)") "Helicity: [",data%hel_state (:,i),"]"
-           call assert_equal (u, amp, amp_recola_default) ! , "Helicity:", data%hel_state (:,i))
+           call assert_equal (u, amp, amp_recola_default, rel_smallness = 1.E-7_default) 
        end do
 
     end select
@@ -2466,8 +2535,6 @@ end module prc_recola_uti
     class(prc_core_driver_t), allocatable :: driver
     complex(default) :: amp
     integer :: n_allowed
-
-    logical(c_bool) :: flag
 
     write (u, "(A)") "* Test output: prc_recola_2"
     write (u, "(A)") "* Purpose: Test interface to RECOLA and compare matrix elements with O'Mega for 2->3 process"
@@ -2535,17 +2602,24 @@ end module prc_recola_uti
 
     select type (driver)
     type is (omega_driver_t)
-       call driver%init (get_omega_parameter_array (), 0)
+       call driver%init (get_omega_parameter_array (), 1)
        call driver%new_event (real(p, kind = default))
        do i = 1, 32
-           call rclwrap_get_amplitude (2, 0, 'LO', col_recola, helicities (i, :), amp_recola)
-           amp_recola = amp_recola * cmplx (0, -1, double)
+           call rclwrap_get_amplitude &
+                (2, 0, 'LO', col_recola, data%hel_state (:,i), amp_recola)
+           if (data%hel_state(3,i) * data%hel_state(4,i) * &
+                data%hel_state(5,i) == -1) then
+              amp_recola = amp_recola * cmplx (0, -1, double)
+           else
+              amp_recola = amp_recola * cmplx (0, 1, double)
+           end if
            amp_recola_default = amp_recola
            call driver%get_amplitude (1, i, 1, amp)
-           write(u,"(A,5(I2),A)") "O'MEGA Helicity:[", data%hel_state (:,i),"]"
-           write(u,"(A,5(I2),A)") "RECOLA Helicity: [", helicities (i,:),"]"
-           write(u,"(A,2(F12.7,1x),A,2(F12.7,1x))") "RECOLA:", amp_recola,", O'MEGA:", amp
-           call assert_equal (u, amp, amp_recola_default)
+           write(u,"(A,5(I2),A)") "Helicity: [", data%hel_state (:,i),"]"
+           write(u,"(A,2(F12.7,1x),A,2(F12.7,1x))") "RECOLA:", &
+                amp_recola,", O'MEGA:", amp
+           call assert_equal &
+                (u, amp, amp_recola_default, rel_smallness = 1.E-6_default)
        end do
 
     end select
@@ -2557,127 +2631,4 @@ end module prc_recola_uti
 
   end subroutine prc_recola_2
 @ %def prc_recola_2
-@
-<<prc recola: execute tests>>=
-  call test (prc_recola_3, "prc_recola_2", &
-       "Registering a RECOLA process and computing the amplitude for 2->3 process", &
-       u, results)
-<<prc recola: test declarations>>=
-  public :: prc_recola_3
-<<prc recola: tests>>=
-  subroutine prc_recola_3 (u)
-    integer, intent(in) :: u
-    real(double) :: p(0:3,1:4)
-    real(double) :: sqrts = 500._double
-    real(double) :: m_quark = 0._double
-    real(double) :: p_x_out, p_y_out, p_z_out, p_z_in
-    integer      :: h_e_p, h_e_m, h_mu_p, h_mu_m, counter
-    real(double) :: sqme
-    integer :: i
-
-    real(default), parameter :: ee = 0.3 !!! Electromagnetic coupling
-
-    type(process_library_t) :: lib
-    class(prc_core_def_t), allocatable :: def
-    type(process_def_entry_t), pointer :: entry
-    type(string_t), dimension(:), allocatable :: prt_in, prt_out
-    type(os_data_t) :: os_data
-    type(process_constants_t) :: data
-    class(prc_core_driver_t), allocatable :: driver
-    complex(default) :: amp
-
-    integer, dimension(:,:), allocatable :: helicities
-    integer, dimension(:,:), allocatable :: colors, col_recola
-
-    write (u, "(A)") "* Test output: prc_recola_3"
-    write (u, "(A)") "* Purpose: Test interface to RECOLA and compare matrix elements with O'Mega for a colored process"
-    write (u, "(A)")
-
-    p_z_in = sqrts / 2
-    p_z_out = 0._double
-    p_y_out = sqrts / 10._default
-    p_x_out = sqrt ((sqrts / 2)**2 - p_y_out**2 - p_z_out**2)
-    p(:,1) = [sqrts / 2,  0._double,  0._double,  p_z_in]
-    p(:,2) = [sqrts / 2,  0._double,  0._double, -p_z_in]
-    p(:,3) = [sqrts / 2,  p_x_out,  p_y_out,  p_z_out]
-    p(:,4) = [sqrts / 2, -p_x_out, -p_y_out, -p_z_out]
-
-    write (u, "(A)") "Use phase-space point: "
-    do i = 1, 4
-       write (u, "(4(F12.3,1x))") p(:,1)
-    end do
-    write (u, "(A)")
-    call write_separator (u)
-    write (u, "(A)")
-    write (u, "(A)") "* RECOLA: Evaluate process"
-    call rclwrap_set_onshell_scheme ()
-    write (u, "(A)") "*  RECOLA: Define process u u~ -> g at leading order"
-    call rclwrap_define_process (1, var_str ('u u~ -> g g'), 'LO')
-    write (u, "(A)") "* RECOLA: generate process"
-    call rclwrap_generate_processes ()
-    call rclwrap_get_helicity_configurations (1, helicities)
-    call rclwrap_get_color_configurations (1, colors)
-    print *, 'Number of helicities: ', size (helicities, dim=1)
-    do i = 1, size (helicities, dim=1)
-       print *, 'hel: ', helicities (i, :)
-    end do
-    do i = 1, size (colors, dim=1)
-       print *, 'col: ', colors (i, :)
-    end do
-    call rclwrap_compute_process (1, p, 'LO')
-
-    write (u, "(A)") "* Setting up Omega to compute the same amplitude"
-
-    call lib%init (var_str ("omega3"))
-    allocate (prt_in (2), prt_out (2))
-    prt_in = [var_str ("u"), var_str ("ubar")]
-    prt_out = [var_str ("g"), var_str ("g")]
-
-    allocate (omega_def_t :: def)
-    select type (def)
-    type is (omega_def_t)
-       call def%init (var_str ("SM"), prt_in, prt_out, &
-            ufo = .false., ovm = .false.)
-    end select
-
-    allocate (entry)
-    call entry%init (var_str ("omega3_a"), model_name = var_str ("SM"), &
-       n_in = 2, n_components = 1)
-    call entry%import_component (1, n_out = 2, &
-         prt_in  = new_prt_spec (prt_in), &
-         prt_out = new_prt_spec (prt_out), &
-         method  = var_str ("omega"), &
-         variant = def)
-    call lib%append (entry)
-
-    call os_data_init (os_data)
-    call lib%configure (os_data)
-    call lib%write_makefile (os_data, force = .true.)
-    call lib%clean (os_data, distclean = .false.)
-    call lib%write_driver (force = .true.)
-    call lib%load (os_data)
-    call lib%connect_process (var_str ("omega3_a"), 1, data, driver)
-
-    select type (driver)
-    type is (omega_driver_t)
-       call driver%init (get_omega_parameter_array (), 0)
-       call driver%new_event (real (p, kind = default))
-       col_recola = create_recola_color_structures (data%col_state)
-       print *, 'Number of colors: ', data%n_col
-       do i = 1, 5
-          print *, 'omega color state: ', data%col_state (:,:,i)
-          print *, 'reconstructed recola state: ', col_recola (i, :)
-       end do
-
-    end select
-
-    call rclwrap_reset_recola ()
-
-    write (u, "(A)")
-    write (u, "(A)") "* End of test output: prc_recola_3"
-
-
-  end subroutine prc_recola_3
-
-@ %def prc_recola_3
 @

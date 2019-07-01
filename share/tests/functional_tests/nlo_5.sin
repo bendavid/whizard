@@ -16,8 +16,8 @@ $loop_me_method = "dummy"
 openmp_num_threads = 1
 
 ?use_vamp_equivalences = false
-?alpha_s_is_fixed = true
-?alpha_s_from_mz = false
+?alphas_is_fixed = true
+?alphas_from_mz = false
 alphas = 0.1178
 
 ms = 0
@@ -30,7 +30,7 @@ mb = 0
 
 alias jet = u:U:d:D:s:S:c:C:b:B
 
-process nlo_5_p1 = E1, e1 => jet, jet { nlo_calculation = "Real" }
+process nlo_5_p1 = E1, e1 => jet, jet { nlo_calculation = real }
 
 sqrts = 500 GeV
 seed = 0

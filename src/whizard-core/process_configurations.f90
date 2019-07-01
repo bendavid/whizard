@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -37,6 +30,9 @@ module process_configurations
 
   use iso_varying_string, string_t => varying_string
   use diagnostics
+  use io_units
+  use physics_defs, only: BORN, NLO_VIRTUAL, NLO_REAL, NLO_DGLAP, &
+       NLO_SUBTRACTION, NLO_MISMATCH
   use models
   use prc_core_def
   use particle_specifiers
@@ -57,6 +53,7 @@ module process_configurations
      type(string_t) :: id
      integer :: num_id = 0
    contains
+     procedure :: write => process_configuration_write
      procedure :: init => process_configuration_init
      procedure :: setup_component => process_configuration_setup_component
      procedure :: set_fixed_emitter => process_configuration_set_fixed_emitter
@@ -69,34 +66,50 @@ module process_configurations
 
 contains
 
+  subroutine process_configuration_write (config, unit)
+    class(process_configuration_t), intent(in) :: config
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = given_output_unit (unit)
+    write (u, "(A)")  "Process configuration:"
+    if (associated (config%entry)) then
+       call config%entry%write (u)
+    else
+       write (u, "(1x,3A)")  "ID    = '", char (config%id), "'"
+       write (u, "(1x,A,1x,I0)")  "num ID =", config%num_id
+       write (u, "(2x,A)")  "[no entry]"
+    end if
+  end subroutine process_configuration_write
+
   subroutine process_configuration_init &
-       (config, prc_name, n_in, n_components, global, nlo_proc)
+       (config, prc_name, n_in, n_components, model, var_list, nlo_process)
     class(process_configuration_t), intent(out) :: config
     type(string_t), intent(in) :: prc_name
     integer, intent(in) :: n_in
     integer, intent(in) :: n_components
-    type(rt_data_t), intent(in) :: global
-    logical, intent(in), optional :: nlo_proc
-    type(model_t), pointer :: model
-    logical :: nlo_process
-    model => global%model
+    type(model_t), intent(in), pointer :: model
+    type(var_list_t), intent(in) :: var_list
+    logical, intent(in), optional :: nlo_process
+    logical :: nlo_proc
+    call msg_debug (D_CORE, "process_configuration_init")
     config%id = prc_name
-    if (present (nlo_proc)) then
-       nlo_process = nlo_proc
+    if (present (nlo_process)) then
+       nlo_proc = nlo_process
     else
-       nlo_process = global%nlo_fixed_order
+       nlo_proc = .false.
     end if
+    call msg_debug (D_CORE, "nlo_process", nlo_proc)
     allocate (config%entry)
-    if (global%var_list%is_known (var_str ("process_num_id"))) then
+    if (var_list%is_known (var_str ("process_num_id"))) then
        config%num_id = &
-            global%var_list%get_ival (var_str ("process_num_id"))
+            var_list%get_ival (var_str ("process_num_id"))
        call config%entry%init (prc_name, &
             model = model, n_in = n_in, n_components = n_components, &
-            num_id = config%num_id, nlo_process = nlo_process)
+            num_id = config%num_id, nlo_process = nlo_proc)
     else
        call config%entry%init (prc_name, &
             model = model, n_in = n_in, n_components = n_components, &
-            nlo_process = nlo_process)
+            nlo_process = nlo_proc)
     end if
   end subroutine process_configuration_init
 
@@ -115,15 +128,54 @@ contains
     type(string_t), dimension(:), allocatable :: prt_str_out
     class(prc_core_def_t), allocatable :: core_def
     type(string_t) :: method
+    type(string_t) :: born_me_method
+    type(string_t) :: real_tree_me_method
+    type(string_t) :: loop_me_method
+    type(string_t) :: correlation_me_method
+    type(string_t) :: dglap_me_method
     integer :: i
-
+    call msg_debug2 (D_CORE, "process_configuration_setup_component")
     allocate (prt_str_in  (size (prt_in)))
     allocate (prt_str_out (size (prt_out)))
     forall (i = 1:size (prt_in))  prt_str_in(i)  = prt_in(i)% get_name ()
     forall (i = 1:size (prt_out)) prt_str_out(i) = prt_out(i)%get_name ()
 
+    method = var_list%get_sval (var_str ("$method"))
+    if (present (nlo_type)) then
+       select case (nlo_type)
+       case (BORN)
+          born_me_method = var_list%get_sval (var_str ("$born_me_method"))
+          if (born_me_method /= var_str ("")) then
+             method = born_me_method
+          end if
+       case (NLO_VIRTUAL)
+          loop_me_method = var_list%get_sval (var_str ("$loop_me_method"))
+          if (loop_me_method /= var_str ("")) then
+             method = loop_me_method
+          end if
+       case (NLO_REAL)
+          real_tree_me_method = &
+               var_list%get_sval (var_str ("$real_tree_me_method"))
+          if (real_tree_me_method /= var_str ("")) then
+             method = real_tree_me_method
+          end if
+       case (NLO_DGLAP)
+          dglap_me_method = &
+               var_list%get_sval (var_str ("$dglap_me_method"))
+          if (dglap_me_method /= var_str ("")) then
+             method = dglap_me_method
+          end if
+       case (NLO_SUBTRACTION,NLO_MISMATCH)
+          correlation_me_method = &
+               var_list%get_sval (var_str ("$correlation_me_method"))
+          if (correlation_me_method /= var_str ("")) then
+             method = correlation_me_method
+          end if
+       case default
+       end select
+    end if
     call dispatch_core_def (core_def, prt_str_in, prt_str_out, &
-         model, var_list, config%id, nlo_type)
+         model, var_list, config%id, nlo_type, method)
     select type (core_def)
     class is (user_defined_def_t)
        if (present (can_be_integrated)) then
@@ -132,7 +184,8 @@ contains
           call msg_fatal ("Cannot decide if user-defined core is integrated!")
        end if
     end select
-    method = var_list%get_sval (var_str ("$method"))
+
+    call msg_debug2 (D_CORE, "import_component with method ", method)
     call config%entry%import_component (i_component, &
          n_out = size (prt_out), &
          prt_in = prt_in, &

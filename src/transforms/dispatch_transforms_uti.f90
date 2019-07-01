@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -41,6 +34,7 @@ module dispatch_transforms_uti
   use event_base, only: event_callback_t
   use models, only: model_t, model_list_t
   use models, only: syntax_model_file_init, syntax_model_file_final
+  use resonances, only: resonance_history_set_t
   use beam_structures, only: beam_structure_t
   use eio_base, only: eio_t
   use os_interface, only: os_data_t, os_data_init
@@ -164,6 +158,7 @@ contains
     type(model_list_t) :: model_list
     type(model_t), pointer :: model
     type(os_data_t) :: os_data
+    type(resonance_history_set_t) :: res_history_set
     type(beam_structure_t) :: beam_structure
     class(evt_t), pointer :: evt
 
@@ -177,6 +172,20 @@ contains
     call model_list%read_model (var_str ("SM_hadrons"), &
          var_str ("SM_hadrons.mdl"), os_data, model)
 
+    write (u, "(A)")  "* Resonance insertion"
+    write (u, "(A)")
+
+    call var_list%set_log (var_str ("?resonance_history"), .true., &
+         is_known = .true.)
+    call dispatch_evt_resonance (evt, var_list, &
+         res_history_set, &
+         var_str ("foo_R"))
+    call evt%write (u, verbose = .true., more_verbose = .true.)
+
+    call evt%final ()
+    deallocate (evt)
+
+    write (u, "(A)")
     write (u, "(A)")  "* Partonic decays"
     write (u, "(A)")
 

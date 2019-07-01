@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -364,7 +357,7 @@ contains
 
   subroutine connected_state_setup_connected_trace &
        (state, isolated, int, resonant, undo_helicities, n_sub, &
-        keep_fs_flavors)
+        keep_fs_flavors, is_real_sub)
     class(connected_state_t), intent(inout), target :: state
     type(isolated_state_t), intent(in), target :: isolated
     type(interaction_t), intent(in), optional, target :: int
@@ -372,9 +365,12 @@ contains
     logical, intent(in), optional :: undo_helicities
     integer, intent(in), optional :: n_sub
     logical, intent(in), optional :: keep_fs_flavors
+    logical, intent(in), optional :: is_real_sub
     type(quantum_numbers_mask_t) :: mask
-    type(interaction_t), pointer :: src_int
+    type(interaction_t), pointer :: src_int, beam_int
     logical :: reduce, fs_flv_flag
+    call msg_debug (D_PROCESS_INTEGRATION, &
+         "connected_state_setup_connected_trace")
     reduce = .false.; fs_flv_flag = .true.
     if (present (undo_helicities)) reduce = undo_helicities
     if (present (keep_fs_flavors)) fs_flv_flag = .not. keep_fs_flavors
@@ -384,27 +380,32 @@ contains
     else
        src_int => isolated%sf_chain_eff%get_out_int_ptr ()
     end if
-    if (present (n_sub)) then
-       if (n_sub > 0) call interaction_declare_subtraction (src_int, n_sub)
+
+    if (debug2_active (D_PROCESS_INTEGRATION)) then
+       call src_int%basic_write ()
     end if
-    if (reduce) call undo_qn_hel (src_int, mask, src_int%get_n_tot (), &
-       isolated%sf_chain_eff%config%n_strfun == 0)
 
     call state%trace%init_product (src_int, isolated%trace, &
-          qn_mask_conn = mask, &
-          qn_mask_rest = mask, &
-          connections_are_resonant = resonant)
+         qn_mask_conn = mask, &
+         qn_mask_rest = mask, &
+         connections_are_resonant = resonant, &
+         ignore_sub = is_real_sub)
+
+    if (reduce) then
+       beam_int => isolated%sf_chain_eff%get_beam_int_ptr ()
+       call undo_qn_hel (beam_int, mask, beam_int%get_n_tot ())
+       call beam_int%set_matrix_element (cmplx (1, 0, default))
+    end if
+
     state%has_trace = .true.
   contains
-    subroutine undo_qn_hel (int_in, mask, n_tot, replace_sf)
+    subroutine undo_qn_hel (int_in, mask, n_tot)
       type(interaction_t), intent(inout) :: int_in
       type(quantum_numbers_mask_t), intent(in) :: mask
       integer, intent(in) :: n_tot
-      logical, intent(in) :: replace_sf
       type(quantum_numbers_mask_t), dimension(n_tot) :: mask_in
       mask_in = mask
       call int_in%set_mask (mask_in)
-      if (replace_sf) call int_in%set_matrix_element (cmplx (1, 0, default))
     end subroutine undo_qn_hel
   end subroutine connected_state_setup_connected_trace
 
@@ -449,8 +450,8 @@ contains
        src_int => state%flows_sf%interaction_t
     end if
     call state%flows%init_product (src_int, isolated%flows, mask, &
-          qn_filter_conn = qn_filter_conn, &
-          connections_are_resonant = resonant)
+         qn_filter_conn = qn_filter_conn, &
+         connections_are_resonant = resonant)
     state%has_flows = .true.
   end subroutine connected_state_setup_connected_flows
 
@@ -577,7 +578,7 @@ contains
   subroutine isolated_state_evaluate_sf_chain (state, fac_scale)
     class(isolated_state_t), intent(inout) :: state
     real(default), intent(in) :: fac_scale
-    if (state%sf_chain_is_allocated) call state%sf_chain_eff%evaluate (fac_scale)
+    if (state%sf_chain_is_allocated)  call state%sf_chain_eff%evaluate (fac_scale)
   end subroutine isolated_state_evaluate_sf_chain
 
   subroutine parton_state_evaluate_trace (state)

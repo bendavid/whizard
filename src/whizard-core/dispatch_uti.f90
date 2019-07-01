@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -470,7 +463,7 @@ contains
     write (u, "(A)")  "* Allocate alpha_s as fixed"
     write (u, "(A)")
 
-    call global%set_log (var_str ("?alpha_s_is_fixed"), &
+    call global%set_log (var_str ("?alphas_is_fixed"), &
          .true., is_known = .true.)
     call dispatch_qcd (qcd, global%get_var_list_ptr (), global%os_data)
     call qcd%write (u)
@@ -479,12 +472,12 @@ contains
     write (u, "(A)")  "* Allocate alpha_s as running (built-in)"
     write (u, "(A)")
 
-    call global%set_log (var_str ("?alpha_s_is_fixed"), &
+    call global%set_log (var_str ("?alphas_is_fixed"), &
          .false., is_known = .true.)
-    call global%set_log (var_str ("?alpha_s_from_mz"), &
+    call global%set_log (var_str ("?alphas_from_mz"), &
          .true., is_known = .true.)
     call global%set_int &
-         (var_str ("alpha_s_order"), 1, is_known = .true.)
+         (var_str ("alphas_order"), 1, is_known = .true.)
     call model_vars%set_real (var_str ("alphas"), 0.1234_default, &
           is_known=.true.)
     call model_vars%set_real (var_str ("mZ"), 91.234_default, &
@@ -496,18 +489,18 @@ contains
     write (u, "(A)")  "* Allocate alpha_s as running (built-in, Lambda defined)"
     write (u, "(A)")
 
-    call global%set_log (var_str ("?alpha_s_from_mz"), &
+    call global%set_log (var_str ("?alphas_from_mz"), &
          .false., is_known = .true.)
     call global%set_log (&
-         var_str ("?alpha_s_from_lambda_qcd"), &
+         var_str ("?alphas_from_lambda_qcd"), &
          .true., is_known = .true.)
     call global%set_real &
          (var_str ("lambda_qcd"), 250.e-3_default, &
           is_known=.true.)
     call global%set_int &
-         (var_str ("alpha_s_order"), 2, is_known = .true.)
+         (var_str ("alphas_order"), 2, is_known = .true.)
     call global%set_int &
-         (var_str ("alpha_s_nf"), 4, is_known = .true.)
+         (var_str ("alphas_nf"), 4, is_known = .true.)
     call dispatch_qcd (qcd, global%get_var_list_ptr (), global%os_data)
     call qcd%write (u)
 
@@ -516,10 +509,10 @@ contains
     write (u, "(A)")
 
     call global%set_log (&
-         var_str ("?alpha_s_from_lambda_qcd"), &
+         var_str ("?alphas_from_lambda_qcd"), &
          .false., is_known = .true.)
     call global%set_log &
-         (var_str ("?alpha_s_from_pdf_builtin"), &
+         (var_str ("?alphas_from_pdf_builtin"), &
          .true., is_known = .true.)
     call dispatch_qcd (qcd, global%get_var_list_ptr (), global%os_data)
     call qcd%write (u)

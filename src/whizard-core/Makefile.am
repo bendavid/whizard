@@ -7,13 +7,7 @@
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
 #     with contributions from
-#     Fabian Bach <fabian.bach@t-online.de>
-#     Bijan Chokoufe <bijan.chokoufe@desy.de>
-#     Christian Speckner <cnspeckn@googlemail.com>
-#     Marco Sekulla <marco.sekulla@kit.edu>
-#     Christian Weiss <christian.weiss@desy.de>
-#     Felix Braam, Sebastian Schmidt,
-#     Hans-Werner Boschmann, Daniel Wiesler
+#     cf. main AUTHORS file
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by
@@ -45,6 +39,7 @@ libwhizard_core_la_SOURCES = \
   compilations.f90 \
   integrations.f90 \
   event_streams.f90 \
+  restricted_subprocesses.f90 \
   simulations.f90 \
   commands.f90 \
   whizard.f90 \
@@ -58,7 +53,8 @@ libwhizard_core_ut_la_SOURCES = \
   process_configurations_uti.f90 process_configurations_ut.f90 \
   compilations_uti.f90 compilations_ut.f90 \
   integrations_uti.f90 integrations_ut.f90 \
-event_streams_uti.f90 event_streams_ut.f90 \
+  event_streams_uti.f90 event_streams_ut.f90 \
+  restricted_subprocesses_uti.f90 restricted_subprocesses_ut.f90 \
   simulations_uti.f90 simulations_ut.f90 \
   commands_uti.f90 commands_ut.f90
 
@@ -181,11 +177,25 @@ if FC_USE_OPENMP
 AM_FCFLAGS += $(FCFLAGS_OPENMP)
 endif
 
+## MPI
+if FC_USE_MPI
+AM_FCFLAGS += $(FCFLAGS_MPI)
+endif
+
+if RECOLA_AVAILABLE
+AM_FCFLAGS += $(RECOLA_INCLUDES)
+endif
+
 ########################################################################
 ## Non-standard targets and dependencies
 
 ## (Re)create F90 sources from NOWEB source.
 if NOWEB_AVAILABLE
+
+FILTER =
+if FC_USE_MPI
+FILTER += -filter "sed 's/defn MPI:/defn/'"
+endif
 
 WHIZARD_SRC = \
   $(libwhizard_core_la_SOURCES) \
@@ -201,7 +211,7 @@ whizard.stamp: $(PRELUDE) $(srcdir)/whizard.nw $(POSTLUDE)
 	@rm -f whizard.tmp
 	@touch whizard.tmp
 	for src in $(WHIZARD_SRC); do \
-	  $(NOTANGLE) -R[[$$src]] $^ | $(CPIF) $$src; \
+	  $(NOTANGLE) -R[[$$src]] $(FILTER) $^ | $(CPIF) $$src; \
         done
 	@mv -f whizard.tmp whizard.stamp
 

@@ -50,6 +50,9 @@ Compare: x
 Compare: 1-x
   0.40000000  0.40000000
 
+Extract: x, 1-x
+  0.60000000  0.40000000
+
 * Project on-shell (keep energy)
 
 Incoming momentum k =

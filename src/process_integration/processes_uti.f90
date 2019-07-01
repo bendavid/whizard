@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -46,6 +39,7 @@ module processes_uti
   use pdg_arrays
   use model_data
   use var_base, only: vars_t
+  use variables, only: var_list_t
   use model_testbed, only: prepare_model
   use particle_specifiers, only: new_prt_spec
   use flavors
@@ -53,6 +47,7 @@ module processes_uti
   use particles
   use rng_base
   use mci_base
+  use mci_none, only: mci_none_t
   use mci_midpoint
   use sf_mappings
   use sf_base
@@ -60,7 +55,7 @@ module processes_uti
   use phs_single
   use phs_forests, only: syntax_phs_forest_init, syntax_phs_forest_final
   use phs_wood, only: phs_wood_config_t
-  use resonances, only: resonance_history_t
+  use resonances, only: resonance_history_set_t
   use process_constants
   use prc_core_def, only: prc_core_def_t
   use prc_core
@@ -72,7 +67,7 @@ module processes_uti
   use process_counter
   use process_config, only: process_term_t
   use process, only: process_t
-  use instances, only: process_instance_t
+  use instances, only: process_instance_t, process_instance_hook_t
 
   use rng_base_ut, only: rng_test_factory_t
   use sf_base_ut, only: sf_test_data_t
@@ -101,6 +96,17 @@ module processes_uti
   public :: processes_16
   public :: processes_17
   public :: processes_18
+  public :: processes_19
+
+  type, extends(process_instance_hook_t) :: process_instance_hook_test_t
+    integer :: unit
+    character(len=15) :: name
+  contains
+    procedure :: init => process_instance_hook_test_init
+    procedure :: final => process_instance_hook_test_final
+    procedure :: evaluate => process_instance_hook_test_evaluate
+  end type process_instance_hook_test_t
+
 
 contains
 
@@ -633,7 +639,7 @@ contains
     call process_instance%choose_mci (1)
     call process_instance%set_trace (pset, 1, check_match = .false.)
     call process_instance%recover &
-         (channel = 1, i_term = 1, update_sqme = .true.)
+         (channel = 1, i_term = 1, update_sqme = .true., recover_phs = .true.)
     call process_instance%write (u)
 
     write (u, "(A)")
@@ -795,7 +801,7 @@ contains
     call process_instance%choose_mci (1)
     call process_instance%set_trace (pset, 1, check_match = .false.)
     call process_instance%recover &
-         (channel = 2, i_term = 1, update_sqme = .true.)
+         (channel = 2, i_term = 1, update_sqme = .true., recover_phs = .true.)
     call process_instance%write (u)
 
     write (u, "(A)")
@@ -1079,7 +1085,7 @@ contains
     call process_instance%choose_mci (1)
     call process_instance%set_trace (pset, 1, check_match = .false.)
     call process_instance%recover &
-         (channel = 1, i_term = 1, update_sqme = .true.)
+         (channel = 1, i_term = 1, update_sqme = .true., recover_phs = .true.)
 
     call process_instance%recover_event ()
     call process_instance%evaluate_event_data ()
@@ -1380,7 +1386,7 @@ contains
     call process_instance%init (process)
     call process_instance%choose_mci (1)
     call process_instance%set_trace (pset, 1, check_match = .false.)
-    call process_instance%recover (1, 1, .true.)
+    call process_instance%recover (1, 1, .true., .true.)
     call process_instance%write (u)
 
     write (u, "(A)")
@@ -1627,7 +1633,7 @@ contains
 
     call process_instance%choose_mci (1)
     call process_instance%set_trace (pset, 1, check_match = .false.)
-    call process_instance%recover (1, 1, .true.)
+    call process_instance%recover (1, 1, .true., .true.)
     call process_instance%write (u)
 
     write (u, "(A)")
@@ -1651,21 +1657,11 @@ contains
     type(string_t) :: libname
     type(string_t) :: procname
     type(string_t) :: model_name
-    type(string_t) :: run_id
     type(os_data_t) :: os_data
-    type(string_t), dimension(:), allocatable :: prt_in, prt_out
-    class(prc_core_def_t), allocatable :: def
-    type(process_def_entry_t), pointer :: entry
-    type(qcd_t) :: qcd
-    class(rng_factory_t), allocatable :: rng_factory
     class(model_data_t), pointer :: model
     class(vars_t), pointer :: vars
-    type(process_t), allocatable, target :: process
-    class(mci_t), allocatable :: mci_template
-    class(phs_config_t), allocatable :: phs_config_template
-    class(phs_config_t), pointer :: phs_config
-    real(default) :: sqrts
-    type(resonance_history_t), dimension(:), allocatable :: res_hist
+    type(process_t), pointer :: process
+    type(resonance_history_set_t) :: res_set
     integer :: i
 
     write (u, "(A)")  "* Test output: processes_18"
@@ -1677,81 +1673,31 @@ contains
 
     libname = "processes_18_lib"
     procname = "processes_18_p"
-    run_id = "run18"
+
     call os_data_init (os_data)
 
-    allocate (rng_test_factory_t :: rng_factory)
-
     call syntax_phs_forest_init ()
-
-    write (u, "(A)")  "* Initialize a process library with one process"
-    write (u, "(A)")
 
     model_name = "SM"
     call prepare_model (model, model_name, vars)
 
-    call lib%init (libname)
+    write (u, "(A)")  "* Initialize a process library with one process"
+    write (u, "(A)")
 
-    allocate (prt_in (2), prt_out (3))
-    prt_in = [var_str ("e+"), var_str ("e-")]
-    prt_out = [var_str ("d"), var_str ("ubar"), var_str ("W+")]
-
-    allocate (template_me_def_t :: def)
-    select type (def)
-    type is (template_me_def_t)
-       call def%init (model, prt_in, prt_out, unity = .false.)
-    end select
-    allocate (entry)
-    call entry%init (procname, &
-         model_name = model_name, &
-         n_in = 2, n_components = 1)
-    call entry%import_component (1, n_out = size (prt_out), &
-         prt_in  = new_prt_spec (prt_in), &
-         prt_out = new_prt_spec (prt_out), &
-         method  = var_str ("template"), &
-         variant = def)
-    call entry%write (u)
-
-    call lib%append (entry)
-
-    call lib%configure (os_data)
-    call lib%write_makefile (os_data, force = .true.)
-    call lib%clean (os_data, distclean = .false.)
-    call lib%write_driver (force = .true.)
-    call lib%load (os_data)
+    call prepare_resonance_test_library (lib, libname, procname, model, os_data, u)
 
     write (u, "(A)")
-    write (u, "(A)")  "* Initialize a process object"
-    write (u, "(A)")
+    write (u, "(A)")  "* Initialize a process object with phase space"
 
     allocate (process)
-    call process%init (procname, run_id, &
-         lib, os_data, qcd, rng_factory, model)
-
-    call process%setup_test_cores ()
-    allocate (phs_wood_config_t :: phs_config_template)
-    call process%init_component &
-       (1, .true., mci_template, phs_config_template)
-
-    write (u, "(A)")  "* Configure phase space"
-
-    sqrts = 1000
-    call process%setup_beams_sqrts (sqrts, i_core = 1)
-    call process%configure_phs ()
+    call prepare_resonance_test_process (process, lib, procname, model, os_data)
 
     write (u, "(A)")
     write (u, "(A)")  "* Extract resonance history set"
+    write (u, "(A)")
 
-    phs_config => process%get_phs_config (1)
-    select type (phs_config)
-    type is (phs_wood_config_t)
-       call phs_config%extract_resonance_histories (res_hist)
-    end select
-
-    do i = 1, size (res_hist)
-       write (u, *)
-       call res_hist(i)%write (u)
-    end do
+    call process%extract_resonance_history_set (res_set)
+    call res_set%write (u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
@@ -1765,6 +1711,72 @@ contains
     write (u, "(A)")  "* Test output end: processes_18"
 
   end subroutine processes_18
+
+  subroutine processes_19 (u)
+    integer, intent(in) :: u
+    type(process_library_t), target :: lib
+    type(string_t) :: libname
+    type(string_t) :: procname
+    type(string_t) :: run_id
+    type(os_data_t) :: os_data
+    type(qcd_t) :: qcd
+    class(rng_factory_t), allocatable :: rng_factory
+    class(model_data_t), pointer :: model
+    type(process_t), allocatable, target :: process
+    class(mci_t), allocatable :: mci_template
+    class(phs_config_t), allocatable :: phs_config_template
+    real(default) :: sqrts
+    type(process_instance_t) :: process_instance
+    class(process_instance_hook_t), allocatable, target :: process_instance_hook, process_instance_hook2
+    type(particle_set_t) :: pset
+
+    write (u, "(A)")  "* Test output: processes_19"
+    write (u, "(A)")  "*   Purpose: allocate process instance &
+         &and add an after evaluate hook"
+    write (u, "(A)")
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Allocate a process instance"
+    write (u, "(A)")
+
+    call process_instance%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Allocate hook and add to process instance"
+    write (u, "(A)")
+
+    allocate (process_instance_hook_test_t :: process_instance_hook)
+    call process_instance%append_after_hook (process_instance_hook)
+
+    allocate (process_instance_hook_test_t :: process_instance_hook2)
+    call process_instance%append_after_hook (process_instance_hook2)
+
+    select type (process_instance_hook)
+    type is (process_instance_hook_test_t)
+       process_instance_hook%unit = u
+       process_instance_hook%name = "Hook 1"
+    end select
+    select type (process_instance_hook2)
+    type is (process_instance_hook_test_t)
+       process_instance_hook2%unit = u
+       process_instance_hook2%name = "Hook 2"
+    end select
+
+    write (u, "(A)")  "* Evaluate matrix element and square"
+    write (u, "(A)")
+
+    call process_instance%evaluate_after_hook ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Cleanup"
+
+    call process_instance_hook%final ()
+    deallocate (process_instance_hook)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: processes_19"
+
+  end subroutine processes_19
 
 
   subroutine prepare_test_process (process, process_instance, model)
@@ -1831,6 +1843,101 @@ contains
     call process_instance%final ()
     call process%final ()
   end subroutine cleanup_test_process
+
+  subroutine prepare_resonance_test_library &
+       (lib, libname, procname, model, os_data, u)
+    type(process_library_t), target, intent(out) :: lib
+    type(string_t), intent(in) :: libname
+    type(string_t), intent(in) :: procname
+    class(model_data_t), intent(in), pointer :: model
+    type(os_data_t), intent(in) :: os_data
+    integer, intent(in) :: u
+    type(string_t), dimension(:), allocatable :: prt_in, prt_out
+    class(prc_core_def_t), allocatable :: def
+    type(process_def_entry_t), pointer :: entry
+
+    call lib%init (libname)
+
+    allocate (prt_in (2), prt_out (3))
+    prt_in = [var_str ("e+"), var_str ("e-")]
+    prt_out = [var_str ("d"), var_str ("ubar"), var_str ("W+")]
+
+    allocate (template_me_def_t :: def)
+    select type (def)
+    type is (template_me_def_t)
+       call def%init (model, prt_in, prt_out, unity = .false.)
+    end select
+    allocate (entry)
+    call entry%init (procname, &
+         model_name = model%get_name (), &
+         n_in = 2, n_components = 1)
+    call entry%import_component (1, n_out = size (prt_out), &
+         prt_in  = new_prt_spec (prt_in), &
+         prt_out = new_prt_spec (prt_out), &
+         method  = var_str ("template"), &
+         variant = def)
+    call entry%write (u)
+
+    call lib%append (entry)
+
+    call lib%configure (os_data)
+    call lib%write_makefile (os_data, force = .true.)
+    call lib%clean (os_data, distclean = .false.)
+    call lib%write_driver (force = .true.)
+    call lib%load (os_data)
+
+  end subroutine prepare_resonance_test_library
+
+  subroutine prepare_resonance_test_process &
+       (process, lib, procname, model, os_data)
+    class(process_t), intent(out), target :: process
+    type(process_library_t), intent(in), target :: lib
+    type(string_t), intent(in) :: procname
+    class(model_data_t), intent(inout), pointer :: model
+    type(os_data_t), intent(in) :: os_data
+    type(qcd_t) :: qcd
+    class(rng_factory_t), allocatable :: rng_factory
+    class(mci_t), allocatable :: mci_template
+    class(phs_config_t), allocatable :: phs_config_template
+    real(default) :: sqrts
+
+    allocate (rng_test_factory_t :: rng_factory)
+
+    call process%init (procname, var_str (""), &
+         lib, os_data, qcd, rng_factory, model)
+
+    allocate (phs_wood_config_t :: phs_config_template)
+    allocate (mci_none_t :: mci_template)
+    call process%init_component &
+       (1, .true., mci_template, phs_config_template)
+
+    call process%setup_test_cores (type_string = var_str ("template"))
+
+    sqrts = 1000
+    call process%setup_beams_sqrts (sqrts, i_core = 1)
+    call process%configure_phs ()
+    call process%setup_mci ()
+
+    call process%setup_terms ()
+
+  end subroutine prepare_resonance_test_process 
+
+  subroutine process_instance_hook_test_init (hook, var_list, instance)
+    class(process_instance_hook_test_t), intent(inout), target :: hook
+    type(var_list_t), intent(in) :: var_list
+    class(process_instance_t), intent(in), target :: instance
+  end subroutine process_instance_hook_test_init
+
+  subroutine process_instance_hook_test_final (hook)
+    class(process_instance_hook_test_t), intent(inout) :: hook
+  end subroutine process_instance_hook_test_final
+
+  subroutine process_instance_hook_test_evaluate (hook, instance)
+    class(process_instance_hook_test_t), intent(inout) :: hook
+    class(process_instance_t), intent(in), target :: instance
+    write (hook%unit, "(A)") "Execute hook:"
+    write (hook%unit, "(2X,A,1X,A,I0,A)") hook%name, "(", len (trim (hook%name)), ")"
+  end subroutine process_instance_hook_test_evaluate
 
 
 end module processes_uti

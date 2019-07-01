@@ -29,31 +29,30 @@ $phs_method = "wood"
 $integration_method = "vamp"
 
 sqrts = 1000
+iterations = 1:100
 
 !!! Tests should be run single-threaded 
 openmp_num_threads = 1
 
-int n = 1000
-
 cuts = sqrts_hat > 100 and all Pt > mW [u:Z:Wp]
 
 beams = Z, p => none, pdf_builtin
-integrate (ep_3_p1) { iterations = 5:n:"g", 3:n }
+integrate (ep_3_p1)
 beams = Wp, p => none, pdf_builtin
-integrate (ep_3_p2) { iterations = 5:n:"g", 3:n }
+integrate (ep_3_p2)
 beams = p, Z => pdf_builtin, none
-integrate (ep_3_q1) { iterations = 5:n:"g", 3:n }
+integrate (ep_3_q1)
 beams = p, Wp => pdf_builtin, none
-integrate (ep_3_q2) { iterations = 5:n:"g", 3:n }
+integrate (ep_3_q2)
 
 ewa_x_min = 0.01
 
 beams = "e+", p => ewa, pdf_builtin
-integrate (ep_3_p3) { iterations = 5:n:"g", 3:n }
+integrate (ep_3_p3)
 beams = "e+", p => ewa, pdf_builtin
-integrate (ep_3_p4) { iterations = 5:n:"g", 3:n }
+integrate (ep_3_p4)
 beams = p, "e+" => pdf_builtin, ewa
-integrate (ep_3_q3) { iterations = 5:n:"g", 3:n }
+integrate (ep_3_q3)
 beams = p, "e+" => pdf_builtin, ewa
-integrate (ep_3_q4) { iterations = 5:n:"g", 3:n }
+integrate (ep_3_q4)
 

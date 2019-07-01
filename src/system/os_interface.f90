@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -43,6 +36,8 @@ module os_interface
   use system_defs, only: DLERROR_LEN, ENVVAR_LEN
   use system_dependencies
 
+
+
   implicit none
   private
 
@@ -67,6 +62,9 @@ module os_interface
   public :: os_link_static
   public :: os_get_dlname
   public :: openmp_set_num_threads_verbose
+  public :: mpi_set_logging
+  public :: mpi_get_comm_id
+  public :: mpi_is_comm_master
 
   type :: paths_t
      type(string_t) :: prefix
@@ -472,7 +470,7 @@ contains
        !!! Check if our OS has a /dev/null
        unit_dev = free_unit ()
        open (file = "/dev/null", unit = unit_dev, &
-            action = "write", iostat = status) 
+            action = "write", iostat = status)
        close (unit_dev)
        if (status /= 0) then
           pipe = ""
@@ -738,7 +736,7 @@ contains
     else
        required = .true.
     end if
-         if (present (silent)) then
+   if (present (silent)) then
        quiet = silent
     else
        quiet = .false.
@@ -839,6 +837,36 @@ contains
        end if
     end if
   end subroutine openmp_set_num_threads_verbose
+
+  subroutine mpi_set_logging (mpi_logging)
+    logical, intent(in) :: mpi_logging
+    integer :: n_size, rank
+    call mpi_get_comm_id (n_size, rank)
+    if (mpi_logging .and. n_size > 1) then
+       write (msg_buffer, "(A,I0,A)") "MPI: Using ", n_size, " processes."
+       call msg_message ()
+       if (rank == 0) then
+          call msg_message ("MPI: master worker")
+       else
+          write (msg_buffer, "(A,I0)") "MPI: slave worker #", rank
+          call msg_message ()
+       end if
+    end if
+  end subroutine mpi_set_logging
+
+  subroutine mpi_get_comm_id (n_size, rank)
+    integer, intent(out) :: n_size
+    integer, intent(out) :: rank
+    n_size = 1
+    rank = 0
+  
+  end subroutine mpi_get_comm_id
+
+  logical function mpi_is_comm_master () result (flag)
+    integer :: n_size, rank
+    call mpi_get_comm_id (n_size, rank)
+    flag = (rank == 0)
+  end function mpi_is_comm_master
 
 
 end module os_interface

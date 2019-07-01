@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -240,25 +233,25 @@ contains
     end if
   end subroutine user_write
 
-  subroutine user_complete_kinematics (sf_int, x, f, r, rb, map)
+  subroutine user_complete_kinematics (sf_int, x, xb, f, r, rb, map)
     !!! JRR: WK please check (#529)
     !!! This cannot be correct, as the CIRCE1 structure function has
     !!! twice the variables (2->4 instead of 1->2 splitting)
     class(user_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(out) :: x
+    real(default), dimension(:), intent(out) :: xb
     real(default), intent(out) :: f
     real(default), dimension(:), intent(in) :: r
     real(default), dimension(:), intent(in) :: rb
     logical, intent(in) :: map
-    real(default) :: xb1
     if (map) then
        call msg_fatal ("User structure function: map flag not supported")
     else
        x(1) = r(1)
+       xb(1)= rb(1)
        f = 1
     end if
-    xb1 = 1 - x(1)
-    call sf_int%split_momentum (x, xb1)
+    call sf_int%split_momentum (x, xb)
     select case (sf_int%status)
     case (SF_DONE_KINEMATICS)
        sf_int%x = x(1)
@@ -268,30 +261,29 @@ contains
     end select
   end subroutine user_complete_kinematics
 
-  subroutine user_inverse_kinematics (sf_int, x, f, r, rb, map, set_momenta)
+  subroutine user_inverse_kinematics (sf_int, x, xb, f, r, rb, map, set_momenta)
     !!! JRR: WK please check (#529)
     !!! This cannot be correct, as the CIRCE1 structure function has
     !!! twice the variables (2->4 instead of 1->2 splitting)
     class(user_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(in) :: x
+    real(default), dimension(:), intent(in) :: xb
     real(default), intent(out) :: f
     real(default), dimension(:), intent(out) :: r
     real(default), dimension(:), intent(out) :: rb
     logical, intent(in) :: map
     logical, intent(in), optional :: set_momenta
-    real(default) :: xb1
     logical :: set_mom
     set_mom = .false.;  if (present (set_momenta))  set_mom = set_momenta
     if (map) then
        call msg_fatal ("User structure function: map flag not supported")
     else
        r(1) = x(1)
+       rb(1)= xb(1)
        f = 1
     end if
-    xb1 = 1 - x(1)
-    rb = 1 - r
     if (set_mom) then
-       call sf_int%split_momentum (x, xb1)
+       call sf_int%split_momentum (x, xb)
        select case (sf_int%status)
        case (SF_DONE_KINEMATICS)
           sf_int%x = x(1)
@@ -302,10 +294,12 @@ contains
     end if
   end subroutine user_inverse_kinematics
 
-  subroutine user_apply (sf_int, scale) !, x, data)
+  subroutine user_apply (sf_int, scale, rescaling_function, i_rescale) !, x, data)
     !!! JRR: WK please check (#529)
     class(user_t), intent(inout) :: sf_int
     real(default), intent(in) :: scale
+    class(rescaling_function_t), intent(in), optional :: rescaling_function
+    integer, intent(in), optional :: i_rescale
     real(default), dimension(:), allocatable :: x
     real(c_double), dimension(sf_int%data%n_states) :: fval
     complex(default), dimension(sf_int%data%n_states) :: fc

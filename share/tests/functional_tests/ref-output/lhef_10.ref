@@ -1,8 +1,8 @@
 ?openmp_logging = false
 ?vis_history = false
 ?integration_timer = false
-?alpha_s_is_fixed = false
-?alpha_s_from_mz = true
+?alphas_is_fixed = false
+?alphas_from_mz = true
 seed = 0
 | Process library 'lhef_10_lib': recorded process 'lhef_10_p'
 sqrts =  8.000000000000E+03

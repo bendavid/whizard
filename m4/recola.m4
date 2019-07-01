@@ -26,19 +26,20 @@ if test "$enable_recola" = "yes"; then
      AC_LANG_PUSH([Fortran])
      recola_libdir=`dirname $RECOLA`
      RECOLA_DIR=$recola_libdir
-     wo_recola_libdir="-L${recola_libdir}"
-     wo_recola_ldflags="-Wl,-rpath,$RECOLA_DIR -L$RECOLA_DIR -lrecola"
-     wo_recola_includes="-I${recola_libdir}/modules"
+     COLLIER_DIR="$recola_libdir/../COLLIER-1.1"
+     wo_recola_libdir="-L${recola_libdir} -L${COLLIER_DIR}"
+     wo_recola_ldflags="-Wl,-rpath,$RECOLA_DIR -L$RECOLA_DIR -lrecola -Wl,-rpath,$COLLIER_DIR -L$COLLIER_DIR -lcollier"
+     wo_recola_includes="-I${recola_libdir}/modules -I${COLLIER_DIR}/modules"
      wo_recola_version=""
      save_LIBS="$LIBS"
-     LIBS="${LIBS} ${wo_recola_libdir} -lrecola ${wo_recola_includes}"
+     LIBS="${LIBS} ${wo_recola_libdir} -lrecola -lcollier ${wo_recola_includes}"
      AC_LINK_IFELSE([dnl
-	AC_LANG_PROGRAM([],[[
-		use globals_rcl
-		call openOutput
-		]])],
+        AC_LANG_PROGRAM([],[[
+                use globals_rcl
+                call openOutput
+                ]])],
          [wo_recola_version=`./conftest | $GREP 'Version' | $SED 's/.* Version //g'`],
-	 [enable_recola="no"])
+         [enable_recola="no"])
      AC_MSG_RESULT([$enable_recola])
      if test "$enable_recola" = "no"; then
        LIBS="$save_LIBS"

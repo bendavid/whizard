@@ -1,0 +1,251 @@
+?openmp_logging = false
+?vis_history = false
+?integration_timer = false
+seed = 0
+$method = "omega"
+| Process library 'event_eff_2_lib': recorded process 'event_eff_2_p1'
+| Process library 'event_eff_2_lib': compiling ...
+| Process library 'event_eff_2_lib': writing makefile
+| Process library 'event_eff_2_lib': removing old files
+| Process library 'event_eff_2_lib': writing driver
+| Process library 'event_eff_2_lib': creating source code
+| Process library 'event_eff_2_lib': compiling sources
+| Process library 'event_eff_2_lib': linking
+| Process library 'event_eff_2_lib': loading
+| Process library 'event_eff_2_lib': ... success.
+$phs_method = "wood"
+$integration_method = "vamp2"
+sqrts =  1.000000000000E+03
+openmp_num_threads = 1
+n_events = 1000
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 0
+| Initializing integration for process event_eff_2_p1:
+| Beam structure: [any particles]
+| Beam data (collision):
+|   e-  (mass = 0.0000000E+00 GeV)
+|   e+  (mass = 0.0000000E+00 GeV)
+|   sqrts = 1.000000000000E+03 GeV
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'event_eff_2_p1_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'event_eff_2_p1'
+|   Library name  = 'event_eff_2_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'event_eff_2_p1_i1':   e-, e+ => m-, m+ [omega]
+| ------------------------------------------------------------------------
+| Phase space: 1 channels, 2 dimensions
+| Phase space: found 1 channel, collected in 1 grove.
+| Phase space: Using 1 equivalence between channels.
+| Phase space: wood
+Warning: No cuts have been defined.
+| Starting integration for process 'event_eff_2_p1'
+| Integrate: iterations = 3:1000:"g", 3:1000
+| Integrator: 1 chains, 1 channels, 2 dimensions
+| Integrator: 1000 initial calls, 20 max. bins, stratified = T
+| Integrator: VAMP2
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+| [VAMP2] set chain: use chained weights.
+   1        800  8.6990044E+01  7.71E-02    0.09    0.03*  66.87
+   2        800  8.6808651E+01  6.11E-02    0.07    0.02*  44.35
+   3        800  8.6825005E+01  6.07E-02    0.07    0.02*  59.64
+|-----------------------------------------------------------------------------|
+   3       2400  8.6858091E+01  3.76E-02    0.04    0.02   59.64    1.94   3
+|-----------------------------------------------------------------------------|
+   4        800  8.6923190E+01  6.18E-02    0.07    0.02   59.63
+   5        800  8.7029575E+01  6.12E-02    0.07    0.02*  59.07
+   6        800  8.6974455E+01  6.34E-02    0.07    0.02   59.09
+|-----------------------------------------------------------------------------|
+   6       2400  8.6976123E+01  3.59E-02    0.04    0.02   59.09    0.75   3
+|=============================================================================|
+| Starting simulation for process 'event_eff_2_p1'
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 1
+| Simulation: requested number of events = 1000
+|             corr. to luminosity [fb-1] =   1.1497E+01
+| Events: writing to raw file 'event_eff_2_p1.evx'
+| Events: generating 1000 unweighted, unpolarized events ...
+| Events: event normalization mode '1'
+|         ... event sample complete.
+| Events: actual unweighting efficiency =  60.24 %
+| Events: closing raw file 'event_eff_2_p1.evx'
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 2
+| Initializing integration for process event_eff_2_p1:
+| Beam structure: [any particles]
+| Beam data (collision):
+|   e-  (mass = 0.0000000E+00 GeV)
+|   e+  (mass = 0.0000000E+00 GeV)
+|   sqrts = 1.000000000000E+03 GeV
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'event_eff_2_p1_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'event_eff_2_p1'
+|   Library name  = 'event_eff_2_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'event_eff_2_p1_i1':   e-, e+ => m-, m+ [omega]
+| ------------------------------------------------------------------------
+| Phase space: 1 channels, 2 dimensions
+| Phase space: found 1 channel, collected in 1 grove.
+| Phase space: Using 1 equivalence between channels.
+| Phase space: wood
+Warning: No cuts have been defined.
+| Using user-defined reweighting factor.
+| Starting integration for process 'event_eff_2_p1'
+| Integrate: iterations = 3:1000:"g", 3:1000
+| Integrator: 1 chains, 1 channels, 2 dimensions
+| Integrator: 1000 initial calls, 20 max. bins, stratified = T
+| Integrator: VAMP2
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+| [VAMP2] set chain: use chained weights.
+   1        800  8.6787815E+01  1.63E-01    0.19    0.05*  33.31
+   2        800  8.7204185E+01  1.35E-01    0.16    0.04*  63.35
+   3        800  8.6982088E+01  1.34E-01    0.15    0.04*  39.23
+|-----------------------------------------------------------------------------|
+   3       2400  8.7014303E+01  8.20E-02    0.09    0.05   39.23    1.99   3
+|-----------------------------------------------------------------------------|
+   4        800  8.6945316E+01  1.25E-01    0.14    0.04*  60.22
+   5        800  8.6994015E+01  1.20E-01    0.14    0.04*  58.85
+   6        800  8.6829652E+01  1.27E-01    0.15    0.04   61.02
+|-----------------------------------------------------------------------------|
+   6       2400  8.6925734E+01  7.16E-02    0.08    0.04   61.02    0.46   3
+|=============================================================================|
+| Starting simulation for process 'event_eff_2_p1'
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 3
+| Simulation: requested number of events = 1000
+|             corr. to luminosity [fb-1] =   1.1504E+01
+| Events: writing to raw file 'event_eff_2_p1.evx'
+| Events: generating 1000 unweighted, unpolarized events ...
+| Events: event normalization mode '1'
+|         ... event sample complete.
+| Events: actual unweighting efficiency =  60.42 %
+Warning: Encountered events with excess weight: 4 events (  0.400 %)
+| Maximum excess weight = 1.306E-02
+| Average excess weight = 2.085E-05
+| Events: closing raw file 'event_eff_2_p1.evx'
+?negative_weights = true
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 4
+| Initializing integration for process event_eff_2_p1:
+| Beam structure: [any particles]
+| Beam data (collision):
+|   e-  (mass = 0.0000000E+00 GeV)
+|   e+  (mass = 0.0000000E+00 GeV)
+|   sqrts = 1.000000000000E+03 GeV
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'event_eff_2_p1_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'event_eff_2_p1'
+|   Library name  = 'event_eff_2_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'event_eff_2_p1_i1':   e-, e+ => m-, m+ [omega]
+| ------------------------------------------------------------------------
+| Phase space: 1 channels, 2 dimensions
+| Phase space: found 1 channel, collected in 1 grove.
+| Phase space: Using 1 equivalence between channels.
+| Phase space: wood
+Warning: No cuts have been defined.
+| Using user-defined reweighting factor.
+| Starting integration for process 'event_eff_2_p1'
+| Integrate: iterations = 3:1000:"g", 3:1000
+| Integrator: 1 chains, 1 channels, 2 dimensions
+| Integrator: 1000 initial calls, 20 max. bins, stratified = T
+| Integrator: VAMP2
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+| [VAMP2] set chain: use chained weights.
+   1        800 -8.6707576E+01  1.62E-01    0.19    0.05*  33.99
+   2        800 -8.6719587E+01  1.29E-01    0.15    0.04*  62.27
+   3        800 -8.6798854E+01  1.24E-01    0.14    0.04*  45.47
+|-----------------------------------------------------------------------------|
+   3       2400 -8.6748362E+01  7.82E-02    0.09    0.04   45.47    0.14   3
+|-----------------------------------------------------------------------------|
+   4        800 -8.6851145E+01  1.17E-01    0.14    0.04*  60.08
+   5        800 -8.7100005E+01  1.20E-01    0.14    0.04   58.77
+   6        800 -8.6953529E+01  1.25E-01    0.14    0.04   56.52
+|-----------------------------------------------------------------------------|
+   6       2400 -8.6966869E+01  6.97E-02    0.08    0.04   56.52    1.11   3
+|=============================================================================|
+| Starting simulation for process 'event_eff_2_p1'
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 5
+| Simulation: requested number of events = 1000
+|             corr. to luminosity [fb-1] =  -1.1499E+01
+| Events: writing to raw file 'event_eff_2_p1.evx'
+| Events: generating 1000 unweighted, unpolarized events ...
+| Events: event normalization mode '1'
+|         ... event sample complete.
+| Events: actual unweighting efficiency =  53.88 %
+| Events: closing raw file 'event_eff_2_p1.evx'
+?negative_weights = true
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 6
+| Initializing integration for process event_eff_2_p1:
+| Beam structure: [any particles]
+| Beam data (collision):
+|   e-  (mass = 0.0000000E+00 GeV)
+|   e+  (mass = 0.0000000E+00 GeV)
+|   sqrts = 1.000000000000E+03 GeV
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'event_eff_2_p1_i1.phs'
+| ------------------------------------------------------------------------
+| Process [scattering]: 'event_eff_2_p1'
+|   Library name  = 'event_eff_2_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'event_eff_2_p1_i1':   e-, e+ => m-, m+ [omega]
+| ------------------------------------------------------------------------
+| Phase space: 1 channels, 2 dimensions
+| Phase space: found 1 channel, collected in 1 grove.
+| Phase space: Using 1 equivalence between channels.
+| Phase space: wood
+Warning: No cuts have been defined.
+| Using user-defined reweighting factor.
+| Starting integration for process 'event_eff_2_p1'
+| Integrate: iterations = 3:1000:"g", 3:1000
+| Integrator: 1 chains, 1 channels, 2 dimensions
+| Integrator: 1000 initial calls, 20 max. bins, stratified = T
+| Integrator: VAMP2
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+| [VAMP2] set chain: use chained weights.
+   1        800 -4.3608894E+01  1.58E-01    0.36    0.10*  29.56
+   2        800 -4.3568570E+01  1.44E-01    0.33    0.09*  54.07
+   3        800 -4.3429657E+01  1.38E-01    0.32    0.09*  34.10
+|-----------------------------------------------------------------------------|
+   3       2400 -4.3528084E+01  8.44E-02    0.19    0.09   34.10    0.42   3
+|-----------------------------------------------------------------------------|
+   4        800 -4.3229513E+01  1.35E-01    0.31    0.09*  59.96
+   5        800 -4.3492676E+01  1.35E-01    0.31    0.09*  56.39
+   6        800 -4.3349995E+01  1.25E-01    0.29    0.08*  56.95
+|-----------------------------------------------------------------------------|
+   6       2400 -4.3357222E+01  7.58E-02    0.17    0.09   56.95    0.95   3
+|=============================================================================|
+| Starting simulation for process 'event_eff_2_p1'
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 7
+| Simulation: requested number of events = 1000
+|             corr. to luminosity [fb-1] =  -2.3064E+01
+| Events: writing to raw file 'event_eff_2_p1.evx'
+| Events: generating 1000 unweighted, unpolarized events ...
+| Events: event normalization mode '1'
+|         ... event sample complete.
+| Events: actual unweighting efficiency =  59.28 %
+| Events: closing raw file 'event_eff_2_p1.evx'
+| There were no errors and    5 warning(s).
+| WHIZARD run finished.
+|=============================================================================|

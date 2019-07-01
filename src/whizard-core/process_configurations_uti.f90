@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -87,9 +80,12 @@ contains
        call global%set_string (var_str ("$method"),&
             var_str ("unit_test"), is_known = .true.)
 
-       call prc_config%init (prc_name, size (prt_in), n_components, global)
+       call prc_config%init (prc_name, &
+            size (prt_in), n_components, &
+            global%model, global%var_list)
        call prc_config%setup_component (1, &
-            new_prt_spec (prt_in), new_prt_spec (prt_out), global%model, global%var_list)
+            new_prt_spec (prt_in), new_prt_spec (prt_out), &
+            global%model, global%var_list)
        call prc_config%record (global)
 
        deallocate (prt_in, prt_out)
@@ -113,9 +109,12 @@ contains
        call global%set_string (var_str ("$method"),&
             var_str ("omega"), is_known = .true.)
 
-       call prc_config%init (prc_name, size (prt_in), n_components, global)
+       call prc_config%init (prc_name, &
+            size (prt_in), n_components, &
+            global%model, global%var_list)
        call prc_config%setup_component (1, &
-            new_prt_spec (prt_in), new_prt_spec (prt_out), global%model, global%var_list)
+            new_prt_spec (prt_in), new_prt_spec (prt_out), &
+            global%model, global%var_list)
        call prc_config%record (global)
 
        deallocate (prt_in, prt_out)
@@ -139,9 +138,12 @@ contains
        call global%set_string (var_str ("$method"),&
             var_str ("unit_test"), is_known = .true.)
 
-       call prc_config%init (prc_name, size (prt_in), n_components, global)
+       call prc_config%init (prc_name, &
+            size (prt_in), n_components, &
+            global%model, global%var_list)
        call prc_config%setup_component (1, &
-            new_prt_spec (prt_in), new_prt_spec (prt_out), global%model, global%var_list)
+            new_prt_spec (prt_in), new_prt_spec (prt_out), &
+            global%model, global%var_list)
        call prc_config%record (global)
 
        deallocate (prt_in, prt_out)
@@ -227,7 +229,8 @@ contains
     call global%set_log (var_str ("?omega_openmp"), &
          .false., is_known = .true.)
 
-    call prc_config%init (prc_name, size (prt_in), n_components, global)
+    call prc_config%init (prc_name, size (prt_in), n_components, &
+         global%model, global%var_list)
 
     call global%set_log (var_str ("?report_progress"), &
          .true., is_known = .true.)

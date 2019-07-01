@@ -333,9 +333,9 @@ model "Test"
    n_bins        = 20
    adapt grids   = F
    adapt weights = F
-   Results:  [it, calls, integral, error, efficiency]
-     1 1000  8.2007377587E+03  2.2182719667E+02  3.1782731339E-01
- MD5 sum (including results) = 'F8AC52702CE18C8B3C80C8C7756D0CEE'
+   Results:  [it, calls, valid, integral, error, efficiency]
+     1 1000 1000  8.2007377587E+03  2.2182719667E+02  3.1782731339E-01
+ MD5 sum (including results) = '6CEDEE781B16D92225A6167995AB5156'
  Call statistics (current run):
    total       = 1000
    failed kin. = 0

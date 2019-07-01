@@ -26,7 +26,7 @@ module type Mono =
   sig
     type 'a t
     val arity : 'a t -> int
-    val max_arity : int
+    val max_arity : unit -> int
     val compare : ('a -> 'a -> int) -> 'a t -> 'a t -> int
     val for_all : ('a -> bool) -> 'a t -> bool
     val map : ('a -> 'b) -> 'a t -> 'b t
@@ -88,7 +88,7 @@ module Binary =
     type 'a t = 'a * 'a
 
     let arity _ = 2
-    let max_arity = 2
+    let max_arity () = 2
 
     let of2 x y = (x, y)
 
@@ -158,7 +158,7 @@ module Ternary =
     type 'a t = 'a * 'a * 'a
 
     let arity _ = 3
-    let max_arity = 3
+    let max_arity () = 3
 
     let of3 x y z = (x, y, z)
 
@@ -246,7 +246,7 @@ module Mixed23 =
     let arity = function
       | T2 _ -> 2
       | T3 _ -> 3
-    let max_arity = 3
+    let max_arity () = 3
 
     let of2 x y = T2 (x, y)
     let of3 x y z = T3 (x, y, z)
@@ -360,13 +360,15 @@ module type Nary =
       val of_list : 'a list -> 'a t
     end
 
-module Nary (A : sig val max_arity : int end) =
+module Nary (A : sig val max_arity : unit -> int end) =
   struct
 
     type 'a t = 'a * 'a list
 
     let arity (_, y) = succ (List.length y)
-    let max_arity = A.max_arity
+
+    let max_arity () =
+      try A.max_arity () with _ -> -1
 
     let of2 x y = (x, [y])
     let of3 x y z = (x, [y; z])
@@ -413,21 +415,19 @@ module Nary (A : sig val max_arity : int end) =
         | x :: y -> f (x, y)
         | [] -> failwith "Tuple.Nary.product_fold") (xl :: yl) init
 
-    let bounded_power_fold f l init =
-      List.fold_right (fun n -> product_fold f (l, ThoList.clone (pred n) l))
-        (ThoList.range 2 A.max_arity) init
-    let bounded_power l =
-      bounded_power_fold (fun t acc -> t :: acc) l []
-
     exception No_termination
-    let unbounded_power_fold f l init = raise No_termination
-    let unbounded_power l = raise No_termination
 
-    let power_fold, power =
-      if A.max_arity > 0 then
-        (bounded_power_fold, bounded_power)
+    let power_fold f l init =
+      let ma = max_arity () in
+      if ma > 0 then
+        List.fold_right
+          (fun n -> product_fold f (l, ThoList.clone (pred n) l))
+          (ThoList.range 2 ma) init
       else
-        (unbounded_power_fold, unbounded_power)
+        raise No_termination
+
+    let power l =
+      power_fold (fun t acc -> t :: acc) l []
 
     type 'a graded = 'a list array
 
@@ -452,7 +452,7 @@ module Nary (A : sig val max_arity : int end) =
 
     let graded_sym_power_fold rank f set acc =
       let max_rank = Array.length set in
-      let degrees = ThoList.range 2 max_arity in
+      let degrees = ThoList.range 2 (max_arity ()) in
       let partitions =
         ThoList.flatmap
           (fun deg -> Partition.tuples deg rank 1 max_rank) degrees in
@@ -466,8 +466,8 @@ module Nary (A : sig val max_arity : int end) =
 
   end
 
-module type Bound = sig val max_arity : int end
-module Unbounded_Nary = Nary (struct let max_arity = -1 end)
+module type Bound = sig val max_arity : unit -> int end
+module Unbounded_Nary = Nary (struct let max_arity () = -1 end)
 
 (*i
  *  Local Variables:

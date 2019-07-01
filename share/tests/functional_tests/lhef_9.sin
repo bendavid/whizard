@@ -50,5 +50,5 @@ rescan "lhef_9a" (lhef_9_p) {
   sample_format = weight_stream
   $sample = "lhef_9c"
   ?update_sqme = true
-  ?use_alpha_s_from_file = true
+  ?use_alphas_from_file = true
 }

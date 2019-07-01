@@ -2048,10 +2048,6 @@ subarrays to merge should contain at least one element.
 <<Sorting: order1>>=
   integer :: n, i, s, b1, b2, e1, e2
   n = size (idx)
-  !!! !!! !!! Work around ifort 16.0.(0/1) compiler bug
-  !forall (i = 1:n)
-     !idx(i) = i
-  !end forall
   do i = 1, n
      idx(i) = i
   end do
@@ -2352,20 +2348,19 @@ module grids
   use io_units
   use format_defs, only: FMT_16
   use diagnostics
+<<Use mpi f08>>
 
 <<Standard module head>>
 
-<<grids: public>>
+<<Grids: public>>
 
-<<grids: interfaces>>
+<<Grids: parameters>>
 
-<<grids: parameters>>
-
-<<grids: types>>
+<<Grids: types>>
 
 contains
 
-<<grids: procedures>>
+<<Grids: procedures>>
 
 end module grids
 @ %def grids
@@ -2393,15 +2388,15 @@ The following might be implemented in the future
   \item Update the grid sequentially to represent the \emph{minimum}
     of a function over the unit hypercube.
 \end{itemize}
-<<grids: public>>=
+<<Grids: public>>=
   public :: grid_t
-<<grids: types>>=
+<<Grids: types>>=
   type :: grid_t
      private
      real(default), dimension(:), allocatable :: values
      integer, dimension(:), allocatable :: points
   contains
-   <<grids: grid: TBP>>
+   <<Grids: grid: TBP>>
   end type grid_t
 
 @ %def grid_t
@@ -2410,11 +2405,11 @@ The following might be implemented in the future
 For initialization, we expect the number of points for each dimension
 as an array or the the number of dimensions as a scalar whereby the
 default number of points is used then for each dimension.
-<<grids: grid: TBP>>=
+<<Grids: grid: TBP>>=
   generic :: init => init_base, init_simple
   procedure :: init_base => grid_init_base
   procedure :: init_simple => grid_init_simple
-<<grids: procedures>>=
+<<Grids: procedures>>=
   pure subroutine grid_init_base (grid, points)
     class(grid_t), intent(inout) :: grid
     integer, dimension(:), intent(in) :: points
@@ -2425,7 +2420,7 @@ default number of points is used then for each dimension.
   end subroutine grid_init_base
 
 @ %def grid_init_base
-<<grids: procedures>>=
+<<Grids: procedures>>=
   pure subroutine grid_init_simple (grid, dimensions)
     class(grid_t), intent(inout) :: grid
     integer, intent(in) :: dimensions
@@ -2437,9 +2432,9 @@ default number of points is used then for each dimension.
 
 @ %def grid_init_simple
 @ Manual assignment (tests)
-<<grids: grid: TBP>>=
+<<Grids: grid: TBP>>=
   procedure :: set_values => grid_set_values
-<<grids: procedures>>=
+<<Grids: procedures>>=
   subroutine grid_set_values (grid, values)
     class(grid_t), intent(inout) :: grid
     real(default), dimension(:), intent(in) :: values
@@ -2448,14 +2443,14 @@ default number of points is used then for each dimension.
 
 @ %def grid_set_values
 @ A reasonable default
-<<grids: parameters>>=
+<<Grids: parameters>>=
   integer, parameter :: DEFAULT_POINTS_PER_DIMENSION = 100
 @ %def DEFAULT_POINTS_PER_DIMENSION
 @ Calling this is not mandatory, when an instance of [[grid_t]] goes out
 of scope as it will be done by Fortran automatically.
-<<grids: grid: TBP>>=
+<<Grids: grid: TBP>>=
   procedure :: final => grid_final
-<<grids: procedures>>=
+<<Grids: procedures>>=
   pure subroutine grid_final (grid)
     class(grid_t), intent(inout) :: grid
     if (allocated (grid%values)) then
@@ -2476,11 +2471,11 @@ $n_\text{points}(\text{dim})$.
 @ We get the value of the grid either from given [[indices]] or from a
 point [[x]] in the hypercube.  In the latter case, we have to find the
 segment first.
-<<grids: grid: TBP>>=
+<<Grids: grid: TBP>>=
   generic :: get_value => get_value_from_x, get_value_from_indices
   procedure :: get_value_from_x => grid_get_value_from_x
   procedure :: get_value_from_indices => grid_get_value_from_indices
-<<grids: procedures>>=
+<<Grids: procedures>>=
   function grid_get_value_from_indices (grid, indices)
     real(default) :: grid_get_value_from_indices
     class(grid_t), intent(in) :: grid
@@ -2489,7 +2484,7 @@ segment first.
   end function grid_get_value_from_indices
 
 @ %def grid_get_value_from_indices
-<<grids: procedures>>=
+<<Grids: procedures>>=
   function grid_get_value_from_x (grid, x)
     real(default) :: grid_get_value_from_x
     class(grid_t), intent(in) :: grid
@@ -2503,9 +2498,9 @@ segment first.
 is identified by a tupel of [[indices]].  This is just a brute force
 search, for fine grids one could also implement a binary search for
 $\mathcal{O}(\log{N})$ behavior instead of $\mathcal{O}({N})$.
-<<grids: grid: TBP>>=
+<<Grids: grid: TBP>>=
   procedure :: get_segment => grid_get_segment
-<<grids: procedures>>=
+<<Grids: procedures>>=
   function grid_get_segment (grid, x, unit)
     class(grid_t), intent(in) :: grid
     real(default), dimension(:), intent(in) :: x
@@ -2543,9 +2538,9 @@ like hashing could be implemented.
                &\text{indices}(3) * \text{size}(1) * \text{size}(2) +
                 \dots
 \end{align}
-<<grids: grid: TBP>>=
+<<Grids: grid: TBP>>=
   procedure :: get_index => grid_get_index
-<<grids: procedures>>=
+<<Grids: procedures>>=
   pure function grid_get_index (grid, indices) result (grid_index)
     integer :: grid_index
     class(grid_t), intent(in) :: grid
@@ -2567,9 +2562,9 @@ like hashing could be implemented.
 Given a point in the hypercube [[x]] and its value [[y]], we update
 the grids, such that the stepwise function $f$ defined by the grid is
 $f(x_i)\geq y_i\;\forall \{x_i, y_i\}$.
-<<grids: grid: TBP>>=
+<<Grids: grid: TBP>>=
   procedure :: update_maxima => grid_update_maxima
-<<grids: procedures>>=
+<<Grids: procedures>>=
   subroutine grid_update_maxima (grid, x, y)
     class(grid_t), intent(inout) :: grid
     real(default), dimension(:), intent(in) :: x
@@ -2584,9 +2579,9 @@ $f(x_i)\geq y_i\;\forall \{x_i, y_i\}$.
 @ %def grid_update_maxima
 @ More general cases have to be thought through when they are needed.
 \emph{This is inefficient and non-general}.
-<<grids: grid: TBP>>=
+<<Grids: grid: TBP>>=
   procedure :: get_maximum_in_3d => grid_get_maximum_in_3d
-<<grids: procedures>>=
+<<Grids: procedures>>=
   function grid_get_maximum_in_3d (grid, projected_index) result (maximum)
     real(default) :: maximum
     class(grid_t), intent(in) :: grid
@@ -2607,9 +2602,9 @@ $f(x_i)\geq y_i\;\forall \{x_i, y_i\}$.
 
 @ %def grid_get_maximum_in_3d
 @
-<<grids: grid: TBP>>=
+<<Grids: grid: TBP>>=
   procedure :: is_non_zero_everywhere => grid_is_non_zero_everywhere
-<<grids: procedures>>=
+<<Grids: procedures>>=
   pure function grid_is_non_zero_everywhere (grid) result (yorn)
     logical :: yorn
     class(grid_t), intent(in) :: grid
@@ -2617,12 +2612,30 @@ $f(x_i)\geq y_i\;\forall \{x_i, y_i\}$.
   end function grid_is_non_zero_everywhere
 
 @ %def grid_is_non_zero_everywhere
-@
+@ MPI: We allow for several grids in a parallelized run to be combined with [[MPI_reduce]].
+The operator has to be specified. We do not check on any specifications.
+<<MPI: Grids: grid: TBP>>=
+  procedure :: mpi_reduce => grid_mpi_reduce
+<<MPI: Grids: procedures>>=
+  subroutine grid_mpi_reduce (grid, operator)
+    class(grid_t), intent(inout) :: grid
+    type(MPI_op), intent(in) :: operator
+    real(default), dimension(size (grid%values)) :: root_values
+    integer :: rank
+    call MPI_Comm_rank (MPI_COMM_WORLD, rank)
+    call MPI_Reduce (grid%values, root_values, size (grid%values),&
+         & MPI_DOUBLE_PRECISION, operator, 0, MPI_COMM_WORLD)
+    if (rank == 0) then
+       grid%values = root_values
+    end if
+  end subroutine grid_mpi_reduce
+
+@ %def grid_mpi_reduce
 \subsection{Input and Output to screen and disk}
 
-<<grids: grid: TBP>>=
+<<Grids: grid: TBP>>=
   procedure :: write => grid_write
-<<grids: procedures>>=
+<<Grids: procedures>>=
   subroutine grid_write (grid, unit)
     class(grid_t), intent(in) :: grid
     integer, intent(in), optional :: unit
@@ -2648,10 +2661,10 @@ $f(x_i)\geq y_i\;\forall \{x_i, y_i\}$.
   end subroutine grid_write
 
 @ %def grid_write
-<<grids: grid: TBP>>=
+<<Grids: grid: TBP>>=
   procedure :: compute_and_write_mean_and_max => &
        grid_compute_and_write_mean_and_max
-<<grids: procedures>>=
+<<Grids: procedures>>=
   subroutine grid_compute_and_write_mean_and_max (grid, unit)
     class(grid_t), intent(in) :: grid
     integer, intent(in), optional :: unit
@@ -2688,9 +2701,9 @@ $f(x_i)\geq y_i\;\forall \{x_i, y_i\}$.
 @ %def grid_compute_and_write_mean_and_max
 @
 @
-<<grids: grid: TBP>>=
+<<Grids: grid: TBP>>=
   procedure :: save_to_file => grid_save_to_file
-<<grids: procedures>>=
+<<Grids: procedures>>=
   subroutine grid_save_to_file (grid, file)
     class(grid_t), intent(in) :: grid
     character(len=*), intent(in) :: file
@@ -2711,7 +2724,7 @@ $f(x_i)\geq y_i\;\forall \{x_i, y_i\}$.
                advance='no', iostat=iostat) grid%values (i)
        end do
     end if
-    if (iostat < 0) then
+    if (iostat /= 0) then
        call msg_warning &
             ('grid_save_to_file: Could not save grid to file')
     end if
@@ -2720,33 +2733,71 @@ $f(x_i)\geq y_i\;\forall \{x_i, y_i\}$.
 
 @ %def grid_save_to_file
 @
-<<grids: parameters>>=
+<<Grids: parameters>>=
   character(len=*), parameter :: DEFAULT_OUTPUT_PRECISION = FMT_16
 @ %def DEFAULT_OUTPUT_PRECISION
 @
-<<grids: grid: TBP>>=
+<<Grids: public>>=
+  public :: verify_points_for_grid
+<<Grids: procedures>>=
+  function verify_points_for_grid (file, points) result (valid)
+    logical :: valid
+    character(len=*), intent(in) :: file
+    integer, dimension(:), intent(in) :: points
+    integer, dimension(:), allocatable :: points_from_file
+    integer :: u
+    call load_points_from_file (file, u, points_from_file)
+    close (u)
+    if (allocated (points_from_file)) then
+      valid = all (points == points_from_file)
+    else
+      valid = .false.
+    end if
+  end function verify_points_for_grid
+
+@ %def verify_points_for_grid
+@ Returns the [[unit]] that has opened the input [[file]] and read the
+first two lines. The caller has to close it. Furhtermore, we return
+[[points]] cointaining the number of points in each dimension.
+<<Grids: procedures>>=
+  subroutine load_points_from_file (file, unit, points)
+    character(len=*), intent(in) :: file
+    integer, intent(out) :: unit
+    integer, dimension(:), allocatable :: points
+    integer :: iostat, n_dimensions, i_dim
+    unit = free_unit ()
+    open (file=file, unit=unit, action='read', iostat=iostat)
+    if (iostat /= 0)  return
+    read (unit, "(I12)", iostat=iostat) n_dimensions
+    if (iostat /= 0)  return
+    allocate (points (n_dimensions))
+    do i_dim = 1, size (points)
+       read (unit, "(I12,1X)", advance='no', iostat=iostat) &
+            points (i_dim)
+    end do
+    if (iostat /= 0)  return
+    read (unit, *)
+    if (iostat /= 0)  return
+  end subroutine load_points_from_file
+
+@ %def procedure
+@
+<<Grids: grid: TBP>>=
   procedure :: load_from_file => grid_load_from_file
-<<grids: procedures>>=
+<<Grids: procedures>>=
   subroutine grid_load_from_file (grid, file)
     class(grid_t), intent(out) :: grid
     character(len=*), intent(in) :: file
-    integer :: iostat, u, i, n_dimensions
+    integer :: iostat, u, i
     integer, dimension(:), allocatable :: points
-    u = free_unit ()
-    open (file=file, unit=u, action='read', iostat=iostat)
-    read (u, "(I12)", iostat=iostat) n_dimensions
-    allocate (points (n_dimensions))
-    do i = 1, size (points)
-       read (u, "(I12,1X)", advance='no', iostat=iostat) &
-            points (i)
-    end do
-    read (u, *)
+    call load_points_from_file (file, u, points)
+    if (.not. allocated (points))  return
     call grid%init (points)
     do i = 1, size (grid%values)
        read (u, "(" // DEFAULT_OUTPUT_PRECISION // ",1X)", advance='no', iostat=iostat) &
             grid%values (i)
     end do
-    if (iostat < 0) then
+    if (iostat /= 0) then
        call msg_warning ('grid_load_from_file: Could not load grid from file')
     end if
     close (u)
@@ -2765,11 +2816,11 @@ module grids_ut
 
 <<Standard module head>>
 
-<<grids: public test>>
+<<Grids: public test>>
 
 contains
 
-<<grids: test driver>>
+<<Grids: test driver>>
 
 end module grids_ut
 @ %def grids_ut
@@ -2788,33 +2839,33 @@ module grids_uti
 
 <<Standard module head>>
 
-<<grids: test declarations>>
+<<Grids: test declarations>>
 
 contains
 
-<<grids: tests>>
+<<Grids: tests>>
 
 end module grids_uti
 @ %def grids_ut
 @ API: driver for the unit tests below.
-<<grids: public test>>=
+<<Grids: public test>>=
   public :: grids_test
-<<grids: test driver>>=
+<<Grids: test driver>>=
   subroutine grids_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
-  <<grids: execute tests>>
+  <<Grids: execute tests>>
   end subroutine grids_test
 
 @ %def grids_test
 @
 \subsubsection{Test Index Function}
-<<grids: execute tests>>=
+<<Grids: execute tests>>=
   call test(grids_1, "grids_1", &
        "Test Index Function", u, results)
-<<grids: test declarations>>=
+<<Grids: test declarations>>=
   public :: grids_1
-<<grids: tests>>=
+<<Grids: tests>>=
   subroutine grids_1 (u)
     integer, intent(in) :: u
     type(grid_t) :: grid
@@ -2862,12 +2913,12 @@ end module grids_uti
 @ %def grids_1
 @
 \subsubsection{Saving and Loading}
-<<grids: execute tests>>=
+<<Grids: execute tests>>=
   call test(grids_2, "grids_2", &
             "Saving and Loading", u, results)
-<<grids: test declarations>>=
+<<Grids: test declarations>>=
   public :: grids_2
-<<grids: tests>>=
+<<Grids: tests>>=
   subroutine grids_2 (u)
     integer, intent(in) :: u
     type(grid_t) :: grid
@@ -2880,6 +2931,8 @@ end module grids_uti
     call grid%save_to_file ('grids_2_test')
     call grid%final ()
 
+    call assert (u, verify_points_for_grid('grids_2_test', [3]), &
+         "verify_points_for_grid")
     call grid%load_from_file ('grids_2_test')
     call grid%write (u)
     call assert (u, nearly_equal (grid%get_value([1]), one),   "grid%get_value(1) == 1")
@@ -2892,6 +2945,8 @@ end module grids_uti
     call grid%save_to_file ('grids_2_test')
     call grid%final ()
 
+    call assert (u, verify_points_for_grid('grids_2_test', [3,3]), &
+         "verify_points_for_grid")
     call grid%load_from_file ('grids_2_test')
     call grid%write (u)
     call assert (u, nearly_equal (grid%get_value([1,1]), one),   "grid%get_value(1,1) == 1")
@@ -2900,6 +2955,11 @@ end module grids_uti
     call assert (u, nearly_equal (grid%get_value([1,2]), four),  "grid%get_value(1,2) == 4")
     call delete_file ('grids_2_test')
 
+    call grid%load_from_file ('grids_2_test')
+    call assert (u, .not. verify_points_for_grid('grids_2_test', [3,3]), &
+         "verify_points_for_grid")
+    call grid%write (u)
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: grids_2"
   end subroutine grids_2
@@ -2907,12 +2967,12 @@ end module grids_uti
 @ %def grids_2
 @
 \subsubsection{Get Segments}
-<<grids: execute tests>>=
+<<Grids: execute tests>>=
   call test(grids_3, "grids_3", &
             "Get Segments", u, results)
-<<grids: test declarations>>=
+<<Grids: test declarations>>=
   public :: grids_3
-<<grids: tests>>=
+<<Grids: tests>>=
   subroutine grids_3 (u)
     integer, intent(in) :: u
     type(grid_t) :: grid
@@ -2952,12 +3012,12 @@ end module grids_uti
 @ %def grids_3
 @
 \subsubsection{Update Maxima}
-<<grids: execute tests>>=
+<<Grids: execute tests>>=
   call test(grids_4, "grids_4", &
             "Update Maxima", u, results)
-<<grids: test declarations>>=
+<<Grids: test declarations>>=
   public :: grids_4
-<<grids: tests>>=
+<<Grids: tests>>=
   subroutine grids_4 (u)
     integer, intent(in) :: u
     type(grid_t) :: grid
@@ -2983,12 +3043,12 @@ end module grids_uti
 @ %def grids_4
 @
 \subsubsection{Finding and checking}
-<<grids: execute tests>>=
+<<Grids: execute tests>>=
   call test(grids_5, "grids_5", &
             "Finding and checking", u, results)
-<<grids: test declarations>>=
+<<Grids: test declarations>>=
   public :: grids_5
-<<grids: tests>>=
+<<Grids: tests>>=
   subroutine grids_5 (u)
     integer, intent(in) :: u
     type(grid_t) :: grid

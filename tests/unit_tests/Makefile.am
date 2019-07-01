@@ -9,12 +9,7 @@
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
 #     with contributions from
-#     Fabian Bach <fabian.bach@t-online.de>
-#     Bijan Chokoufe <bijan.chokoufe@desy.de>
-#     Christian Speckner <cnspeckn@googlemail.com>
-#     Marco Sekulla <marco.sekulla@kit.edu>
-#     Christian Weiss <christian.weiss@desy.de>
-#     Felix Braam, Sebastian Schmidt
+#     cf. main AUTHORS file
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by 
@@ -77,6 +72,7 @@ UNIT_TESTS = \
     sf_beam_events.run \
     sf_escan.run \
     phs_base.run \
+    phs_none.run \
     phs_single.run \
     resonances.run \
     phs_trees.run \
@@ -84,7 +80,6 @@ UNIT_TESTS = \
     phs_wood.run \
     phs_fks_generator.run \
     fks_regions.run \
-    nlo_color_data.run \
     rng_base.run \
     rng_tao.run \
     rng_stream.run \
@@ -92,9 +87,11 @@ UNIT_TESTS = \
     vegas.run \
     vamp2.run \
     mci_base.run \
+    mci_none.run \
     mci_midpoint.run \
     mci_vamp.run \
     mci_vamp2.run \
+    integration_results.run \
     prclib_interfaces.run \
     particle_specifiers.run \
     process_libraries.run \
@@ -108,6 +105,7 @@ UNIT_TESTS = \
     process_stacks.run \
     cascades.run \
     event_transforms.run \
+    resonance_insertion.run \
     decays.run \
     shower.run \
     shower_base.run \
@@ -115,6 +113,7 @@ UNIT_TESTS = \
     hep_events.run \
     eio_data.run \
     eio_base.run \
+    eio_direct.run \
     eio_raw.run \
     eio_checkpoints.run \
     eio_lhef.run \
@@ -133,6 +132,7 @@ UNIT_TESTS = \
     event_streams.run \
     integrations.run \
     ttv_formfactors.run \
+    restricted_subprocesses.run \
     simulations.run
 
 XFAIL_UNIT_TESTS =
@@ -379,7 +379,8 @@ clean-local: clean-macosx
 	rm -f *.tex *.mp *.mpx *.t[1-9] *.t[1-9][0-9] *.t[1-9][0-9][0-9] 
 	rm -f *.ltp *.aux *.dvi *.ps *.pdf so_test.*
 	rm -f *.tbl sps1ap_decays.slha bar structure_6[a-b].out
-	rm -f *.vg2 *.vegas *.grids
+	rm -f *.vg2 *.vegas *.grids grids_2_test
+	rm -rf output_cll
 	rm -rf *.dSYM
 if FC_SUBMODULES
 	rm -f *.smod

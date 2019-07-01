@@ -51,16 +51,18 @@
    Maximum absolute negative value =  0.0000000000E+00
    Integral (of latest iteration)  =  0.0000000000E+00
    Standard deviation              =  0.0000000000E+00
+  Event weight                    =  0.0000000000E+00
+  Event weight excess             =  0.0000000000E+00
 
 * Initialise grid with n_calls = 10000
 
 
 * Integrate with n_it = 3 and n_calls = 10000 (Adaptation)
 
-  Result:  2.00161E+00 +/-  3.28857E-03
+  Result:  2.00053E+00 +/-  3.16117E-03
 
 * Integrate with n_it = 3 and n_calls = 2000 (Precision)
 
-  Result:  2.00705E+00 +/-  9.74680E-03
+  Result:  2.01484E+00 +/-  1.05658E-02
 
 * Cleanup

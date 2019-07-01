@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -488,7 +481,7 @@ contains
        call msg_fatal ("QCD alpha: calculation mode is ambiguous")
     case (1)
        if (fixed) then
-          call msg_fatal ("QCD alpha: use '?alpha_s_is_fixed = false' for " // &
+          call msg_fatal ("QCD alpha: use '?alphas_is_fixed = false' for " // &
                "running alphas")
        else if (from_mz) then
           allocate (alpha_qcd_from_scale_t :: qcd%alpha)
@@ -504,18 +497,18 @@ contains
     call init_alpha ()
   contains
     subroutine unpack_variables ()
-      fixed = var_list%get_lval (var_str ("?alpha_s_is_fixed"))
-      from_mz = var_list%get_lval (var_str ("?alpha_s_from_mz"))
+      fixed = var_list%get_lval (var_str ("?alphas_is_fixed"))
+      from_mz = var_list%get_lval (var_str ("?alphas_from_mz"))
       from_pdf_builtin = &
-           var_list%get_lval (var_str ("?alpha_s_from_pdf_builtin"))
+           var_list%get_lval (var_str ("?alphas_from_pdf_builtin"))
       from_lhapdf = &
-           var_list%get_lval (var_str ("?alpha_s_from_lhapdf"))
+           var_list%get_lval (var_str ("?alphas_from_lhapdf"))
       from_lambda_qcd = &
-           var_list%get_lval (var_str ("?alpha_s_from_lambda_qcd"))
+           var_list%get_lval (var_str ("?alphas_from_lambda_qcd"))
       pdfset = var_list%get_sval (var_str ("$pdf_builtin_set"))
       lambda = var_list%get_rval (var_str ("lambda_qcd"))
-      nf = var_list%get_ival (var_str ("alpha_s_nf"))
-      order = var_list%get_ival (var_str ("alpha_s_order"))
+      nf = var_list%get_ival (var_str ("alphas_nf"))
+      order = var_list%get_ival (var_str ("alphas_order"))
       lhapdf_dir = var_list%get_sval (var_str ("$lhapdf_dir"))
       lhapdf_file = var_list%get_sval (var_str ("$lhapdf_file"))
       lhapdf_member = var_list%get_ival (var_str ("lhapdf_member"))

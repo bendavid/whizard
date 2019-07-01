@@ -1,4 +1,4 @@
-# $Id: LEP_cc10.sin 2227 2010-04-05 04:46:08Z reuter $
+# LEP_cc10.sin
 # Simple complete physics example: W endpoint in the Standard Model
 ########################################################################
 #
@@ -7,7 +7,7 @@
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
 #     with contributions from
-#     Christian Speckner <cnspeckn@googlemail.com>
+#     cf. main AUTHORS file
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by 

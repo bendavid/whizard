@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -41,6 +34,7 @@ module colors_uti
   private
 
   public :: color_1
+  public :: color_2
 
 contains
 
@@ -99,6 +93,137 @@ contains
        write (u, "(A)")
     end do
   end subroutine color_1
+
+  subroutine color_2 (u)
+    integer, intent(in) :: u
+    type(color_t) :: s1, t1, t2, a1, a2, o1, o2, o3, o4, g1
+
+    write (u, "(A)")  "* Test output: color_2"
+    write (u, "(A)")  "*   Purpose: test all combinations for color-object fusion"
+    write (u, "(A)")
+    
+    call s1%init_col_acl (0,0)
+    call t1%init_col_acl (1,0)
+    call t2%init_col_acl (2,0)
+    call a1%init_col_acl (0,1)
+    call a2%init_col_acl (0,2)
+    call o1%init_col_acl (1,2)
+    call o2%init_col_acl (1,3)
+    call o3%init_col_acl (2,3)
+    call o4%init_col_acl (2,1)
+    call g1%init (ghost=.true.)
+
+    call wrt ("s1", s1)
+    call wrt ("t1", t1)
+    call wrt ("t2", t2)
+    call wrt ("a1", a1)
+    call wrt ("a2", a2)
+    call wrt ("o1", o1)
+    call wrt ("o2", o2)
+    call wrt ("o3", o3)
+    call wrt ("o4", o4)
+    call wrt ("g1", g1)
+
+    write (u, *)
+    
+    call wrt ("s1 * s1", s1 .fuse. s1)
+
+    write (u, *)
+    
+    call wrt ("s1 * t1", s1 .fuse. t1)
+    call wrt ("s1 * a1", s1 .fuse. a1)
+    call wrt ("s1 * o1", s1 .fuse. o1)
+
+    write (u, *)
+    
+    call wrt ("t1 * s1", t1 .fuse. s1)
+    call wrt ("a1 * s1", a1 .fuse. s1)
+    call wrt ("o1 * s1", o1 .fuse. s1)
+
+    write (u, *)
+    
+    call wrt ("t1 * t1", t1 .fuse. t1)
+
+    write (u, *)
+    
+    call wrt ("t1 * t2", t1 .fuse. t2)
+    call wrt ("t1 * a1", t1 .fuse. a1)
+    call wrt ("t1 * a2", t1 .fuse. a2)
+    call wrt ("t1 * o1", t1 .fuse. o1)
+    call wrt ("t2 * o1", t2 .fuse. o1)
+
+    write (u, *)
+    
+    call wrt ("t2 * t1", t2 .fuse. t1)
+    call wrt ("a1 * t1", a1 .fuse. t1)
+    call wrt ("a2 * t1", a2 .fuse. t1)
+    call wrt ("o1 * t1", o1 .fuse. t1)
+    call wrt ("o1 * t2", o1 .fuse. t2)
+
+    write (u, *)
+    
+    call wrt ("a1 * a1", a1 .fuse. a1)
+
+    write (u, *)
+    
+    call wrt ("a1 * a2", a1 .fuse. a2)
+    call wrt ("a1 * o1", a1 .fuse. o1)
+    call wrt ("a2 * o2", a2 .fuse. o2)
+
+    write (u, *)
+    
+    call wrt ("a2 * a1", a2 .fuse. a1)
+    call wrt ("o1 * a1", o1 .fuse. a1)
+    call wrt ("o2 * a2", o2 .fuse. a2)
+
+    write (u, *)
+    
+    call wrt ("o1 * o1", o1 .fuse. o1)
+
+    write (u, *)
+    
+    call wrt ("o1 * o2", o1 .fuse. o2)
+    call wrt ("o1 * o3", o1 .fuse. o3)
+    call wrt ("o1 * o4", o1 .fuse. o4)
+
+    write (u, *)
+    
+    call wrt ("o2 * o1", o2 .fuse. o1)
+    call wrt ("o3 * o1", o3 .fuse. o1)
+    call wrt ("o4 * o1", o4 .fuse. o1)
+
+    write (u, *)
+    
+    call wrt ("g1 * g1", g1 .fuse. g1)
+
+    write (u, *)
+    
+    call wrt ("g1 * s1", g1 .fuse. s1)
+    call wrt ("g1 * t1", g1 .fuse. t1)
+    call wrt ("g1 * a1", g1 .fuse. a1)
+    call wrt ("g1 * o1", g1 .fuse. o1)
+
+    write (u, *)
+    
+    call wrt ("s1 * g1", s1 .fuse. g1)
+    call wrt ("t1 * g1", t1 .fuse. g1)
+    call wrt ("a1 * g1", a1 .fuse. g1)
+    call wrt ("o1 * g1", o1 .fuse. g1)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: color_2"
+
+  contains
+    
+    subroutine wrt (s, col)
+      character(*), intent(in) :: s
+      class(color_t), intent(in) :: col
+      write (u, "(A,1x,'=',1x)", advance="no")  s
+      call col%write (u)
+      write (u, *)
+    end subroutine wrt
+
+  end subroutine color_2
 
 
 end module colors_uti

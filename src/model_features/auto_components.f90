@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -56,6 +49,7 @@ module auto_components
   public :: constrain_radiation
   public :: constrain_mass_sum
   public :: constrain_in_state
+  public :: constrain_photon_induced_processes
   public :: constrain_couplings
   public :: ps_table_t
   public :: ds_table_t
@@ -146,6 +140,14 @@ module auto_components
    contains
      procedure :: check_before_record => constraint_in_state_check_before_record
   end type constraint_in_state
+
+  type, extends (split_constraint_t) :: constraint_photon_induced_processes
+     private
+     integer :: n_in
+   contains
+     procedure :: check_before_record => &
+          constraint_photon_induced_processes_check_before_record
+  end type constraint_photon_induced_processes
 
   type, extends (split_constraint_t) :: constraint_coupling_t
     private
@@ -512,6 +514,30 @@ contains
     passed = .true.
   end subroutine constraint_in_state_check_before_record
 
+  function constrain_photon_induced_processes (n_in) result (c)
+    integer, intent(in) :: n_in
+    type(constraint_photon_induced_processes) :: c
+    c%n_in = n_in
+  end function constrain_photon_induced_processes
+
+  subroutine constraint_photon_induced_processes_check_before_record &
+       (c, table, pl, n_loop, passed)
+    class(constraint_photon_induced_processes), intent(in) :: c
+    class(ps_table_t), intent(in) :: table
+    type(pdg_list_t), intent(in) :: pl
+    integer, intent(in) :: n_loop
+    logical, intent(out) :: passed
+    integer :: i
+    select type (table)
+    type is (if_table_t)
+       passed = .false.
+       do i = 1, c%n_in
+          if (pl%a(i)%get () == 22)  return
+       end do
+    end select
+    passed = .true.
+  end subroutine constraint_photon_induced_processes_check_before_record
+
   function constrain_couplings (qcd, qed, n_nlo_correction_types) result (c)
     type(constraint_coupling_t) :: c
     logical, intent(in) :: qcd, qed
@@ -540,6 +566,10 @@ contains
        do i = 1, pl%get_size ()
           call pl_vertex%set (i + 1, pl%get(i))
        end do
+       if (pl_vertex%get_size () > 3) then
+          passed = .false.
+          cycle
+       end if
        if (is_massless_vector(pa%get(j))) then
           if (.not. table%model%check_vertex &
                (pl_vertex%a(1)%get (), pl_vertex%a(2)%get (), pl_vertex%a(3)%get ())) then
@@ -552,10 +582,6 @@ contains
           cycle
        end if
        if (.not. (pl_vertex .match. pdg_gauge_bosons)) then
-          passed = .false.
-          cycle
-       end if
-       if (.not. c%ew .and. (pl_vertex .match. pdg_W_Z)) then
           passed = .false.
           cycle
        end if
@@ -671,10 +697,10 @@ contains
     i = 1
     do while (i < index)
       if (associated (entry%next)) then
-        entry => entry%next
-        i=i+1
+         entry => entry%next
+         i = i + 1
       else
-        call msg_fatal ("ps_table: entry with requested index does not exist!")
+         call msg_fatal ("ps_table: entry with requested index does not exist!")
       end if
     end do
 
@@ -692,33 +718,32 @@ contains
     n0 = n_in + 1
     allocate (prt_in (n_in), prt_out (entry%get_size () - n_in))
     do i = 1, n_in
-      prt_in(i) = ""
-      pdg = entry%get(i)
-      do j = 1, size(pdg)
-        prt => object%model%get_field_ptr (pdg(j))
-        prt_in(i) = prt_in(i) // prt%get_name (pdg(j) >= 0)
-        if (j /= size(pdg)) &
-           prt_in(i) = prt_in(i) // ":"
-      end do
+       prt_in(i) = ""
+       pdg = entry%get(i)
+       do j = 1, size (pdg)
+          prt => object%model%get_field_ptr (pdg(j))
+          prt_in(i) = prt_in(i) // prt%get_name (pdg(j) >= 0)
+          if (j /= size (pdg))  prt_in(i) = prt_in(i) // ":"
+       end do
     end do
     do i = n0, entry%get_size ()
-      prt_out(i-n_in) = ""
-      pdg = entry%get(i)
-      do j = 1, size(pdg)
-         prt => object%model%get_field_ptr (pdg(j))
-         prt_out(i-n_in) = prt_out(i-n_in) // prt%get_name (pdg(j) < 0)
-         if (j /= size(pdg)) &
-            prt_out(i-n_in) = prt_out(i-n_in) // ":"
-      end do
+       prt_out(i-n_in) = ""
+       pdg = entry%get(i)
+       do j = 1, size (pdg)
+          prt => object%model%get_field_ptr (pdg(j))
+          prt_out(i-n_in) = prt_out(i-n_in) // prt%get_name (pdg(j) < 0)
+          if (j /= size (pdg))  prt_out(i-n_in) = prt_out(i-n_in) // ":"
+       end do
     end do
   end subroutine ps_table_get_particle_string
 
-  subroutine ps_table_init (table, model, pl, constraints, n_in)
+  subroutine ps_table_init (table, model, pl, constraints, n_in, do_not_check_regular)
     class(ps_table_t), intent(out) :: table
     class(model_data_t), intent(in), target :: model
     type(pdg_list_t), dimension(:), intent(in) :: pl
     type(split_constraints_t), intent(in) :: constraints
     integer, intent(in), optional :: n_in
+    logical, intent(in), optional :: do_not_check_regular
     logical :: passed
     integer :: i
     table%model => model
@@ -737,7 +762,8 @@ contains
     end if
 
     do i = 1, size (pl)
-       call table%record (pl(i), 0, 0, constraints, passed)
+       call table%record (pl(i), 0, 0, constraints, &
+            do_not_check_regular, passed)
        if (.not. passed) then
           call msg_fatal ("ps_table: Registering process components failed")
        end if
@@ -774,7 +800,7 @@ contains
        deallocate (pa_in)
     end do
     n_in = size (pl_in(1)%a)
-    call table%init (model, pl, constraints, n_in)
+    call table%init (model, pl, constraints, n_in, do_not_check_regular = .true.)
   end subroutine if_table_init
 
   subroutine ps_table_enable_loops (table)
@@ -796,24 +822,26 @@ contains
     call table%split (pl_in, 0, constraints)
   end subroutine ds_table_make
 
-  subroutine fs_table_radiate (table, constraints)
+  subroutine fs_table_radiate (table, constraints, do_not_check_regular)
     class(fs_table_t), intent(inout) :: table
     type(split_constraints_t) :: constraints
+    logical, intent(in), optional :: do_not_check_regular
     type(ps_entry_t), pointer :: current
     current => table%first
     do while (associated (current))
-       call table%split (current, 0, constraints, record = .true.)
+       call table%split (current, 0, constraints, record = .true., &
+            do_not_check_regular = do_not_check_regular)
        current => current%next
     end do
   end subroutine fs_table_radiate
 
   recursive subroutine ps_table_split (table, pl, n_rad, constraints, &
-        record)
+        record, do_not_check_regular)
     class(ps_table_t), intent(inout) :: table
     class(pdg_list_t), intent(in) :: pl
     integer, intent(in) :: n_rad
     type(split_constraints_t), intent(in) :: constraints
-    logical, intent(in), optional :: record
+    logical, intent(in), optional :: record, do_not_check_regular
     integer :: n_loop, i
     logical :: passed, save_pdg_index
     type(vertex_iterator_t) :: vit
@@ -823,7 +851,8 @@ contains
        if (record) then
           n_loop = 0
           INCR_LOOPS: do
-             call table%record_sorted (pl, n_loop, n_rad, constraints, passed)
+             call table%record_sorted (pl, n_loop, n_rad, constraints, &
+                  do_not_check_regular, passed)
              if (.not. passed)  exit INCR_LOOPS
              if (.not. table%loops)  exit INCR_LOOPS
              n_loop = n_loop + 1
@@ -844,7 +873,8 @@ contains
           SCAN_VERTICES: do
              call vit%get_next_match (pdg2)
              if (allocated (pdg2)) then
-                call table%insert (pl, n_rad, i, pdg2, constraints)
+                call table%insert (pl, n_rad, i, pdg2, constraints, &
+                     do_not_check_regular = do_not_check_regular)
              else
                 exit SCAN_VERTICES
              end if
@@ -854,13 +884,14 @@ contains
   end subroutine ps_table_split
 
   recursive subroutine ps_table_insert &
-       (table, pl, n_rad, i, pdg, constraints, n_in)
+       (table, pl, n_rad, i, pdg, constraints, n_in, do_not_check_regular)
     class(ps_table_t), intent(inout) :: table
     class(pdg_list_t), intent(in) :: pl
     integer, intent(in) :: n_rad, i
     integer, dimension(:), intent(in) :: pdg
     type(split_constraints_t), intent(in) :: constraints
     integer, intent(in), optional :: n_in
+    logical, intent(in), optional :: do_not_check_regular
     type(pdg_list_t) :: pl_insert
     logical :: passed
     integer :: k, s
@@ -870,22 +901,44 @@ contains
        call pl_insert%set (k, pdg(k))
     end do
     call constraints%check_before_insert (table, pl%get (i), pl_insert, passed)
-    if (passed) call table%split (pl%replace (i, pl_insert, n_in), n_rad + s - 1, &
-            constraints, record = .true.)
-  end subroutine ps_table_insert
+    if (passed) then
+       if (.not. is_colored_isr ()) return
+       call table%split (pl%replace (i, pl_insert, n_in), n_rad + s - 1, &
+            constraints, record = .true., do_not_check_regular = .true.)
+    end if
+  contains
+    logical function is_colored_isr () result (ok)
+      type(pdg_list_t) :: pl_replaced
+      ok = .true.
+      if (present (n_in)) then
+         if (i <= n_in) then
+            ok = pl_insert%contains_colored_particles ()
+            if (.not. ok) then
+               pl_replaced = pl%replace (i, pl_insert, n_in)
+               associate (size_replaced => pl_replaced%get_pdg_sizes (), &
+                    size => pl%get_pdg_sizes ())
+                  ok = all (size_replaced(:n_in) == size(:n_in))
+               end associate
+            end if
+         end if
+      end if
+    end function is_colored_isr
+ end subroutine ps_table_insert
 
   recursive subroutine if_table_insert  &
-       (table, pl, n_rad, i, pdg, constraints, n_in)
+       (table, pl, n_rad, i, pdg, constraints, n_in, do_not_check_regular)
     class(if_table_t), intent(inout) :: table
     class(pdg_list_t), intent(in) :: pl
     integer, intent(in) :: n_rad, i
     integer, dimension(:), intent(in) :: pdg
     type(split_constraints_t), intent(in) :: constraints
     integer, intent(in), optional :: n_in
+    logical, intent(in), optional :: do_not_check_regular
     integer, dimension(:), allocatable :: pdg_work
     integer :: p
     if (i > 2) then
-       call ps_table_insert (table, pl, n_rad, i, pdg, constraints)
+       call ps_table_insert (table, pl, n_rad, i, pdg, constraints, &
+            do_not_check_regular = do_not_check_regular)
     else
        allocate (pdg_work (size (pdg)))
        do p = 1, size (pdg)
@@ -895,44 +948,55 @@ contains
           select case (table%proc_type)
           case (PROC_DECAY)
              call ps_table_insert (table, &
-               pl, n_rad, i, pdg_work, constraints, n_in = 1)
+                  pl, n_rad, i, pdg_work, constraints, n_in = 1, &
+                  do_not_check_regular = do_not_check_regular)
           case (PROC_SCATTER)
              call ps_table_insert (table, &
-               pl, n_rad, i, pdg_work, constraints, n_in = 2)
+                  pl, n_rad, i, pdg_work, constraints, n_in = 2, &
+                  do_not_check_regular = do_not_check_regular)
           end select
        end do
     end if
   end subroutine if_table_insert
 
   subroutine ps_table_record_sorted &
-       (table, pl, n_loop, n_rad, constraints, passed)
+       (table, pl, n_loop, n_rad, constraints, do_not_check_regular, passed)
     class(ps_table_t), intent(inout) :: table
     type(pdg_list_t), intent(in) :: pl
     integer, intent(in) :: n_loop, n_rad
     type(split_constraints_t), intent(in) :: constraints
+    logical, intent(in), optional :: do_not_check_regular
     logical, intent(out) :: passed
-    call table%record (pl%sort_abs (), n_loop, n_rad, constraints, passed)
+    call table%record (pl%sort_abs (), n_loop, n_rad, constraints, &
+         do_not_check_regular, passed)
   end subroutine ps_table_record_sorted
 
   subroutine if_table_record_sorted &
-       (table, pl, n_loop, n_rad, constraints, passed)
+       (table, pl, n_loop, n_rad, constraints, do_not_check_regular, passed)
     class(if_table_t), intent(inout) :: table
     type(pdg_list_t), intent(in) :: pl
     integer, intent(in) :: n_loop, n_rad
     type(split_constraints_t), intent(in) :: constraints
+    logical, intent(in), optional :: do_not_check_regular
     logical, intent(out) :: passed
-    call table%record (pl%sort_abs (2), n_loop, n_rad, constraints, passed)
+    call table%record (pl%sort_abs (2), n_loop, n_rad, constraints, &
+         do_not_check_regular, passed)
   end subroutine if_table_record_sorted
 
-  subroutine ps_table_record (table, pl, n_loop, n_rad, constraints, passed)
+  subroutine ps_table_record (table, pl, n_loop, n_rad, constraints, &
+       do_not_check_regular, passed)
     class(ps_table_t), intent(inout) :: table
     type(pdg_list_t), intent(in) :: pl
     integer, intent(in) :: n_loop, n_rad
     type(split_constraints_t), intent(in) :: constraints
+    logical, intent(in), optional :: do_not_check_regular
     logical, intent(out) :: passed
     type(ps_entry_t), pointer :: current
+    logical :: needs_check
     passed = .false.
-    if (.not. pl%is_regular ()) then
+    needs_check = .true.
+    if (present (do_not_check_regular))  needs_check = .not. do_not_check_regular
+    if (needs_check .and. .not. pl%is_regular ()) then
        call msg_warning ("Record ps_table entry: Irregular pdg-list encountered!")
        return
     end if

@@ -2,10 +2,10 @@
 ?vis_history = false
 ?integration_timer = false
 seed = 0
-| Switching to model '2HDM'
-| Process library 'model_test_1_lib': recorded process 'models_ccww_2hdm'
-| Switching to model '2HDM_CKM'
-| Process library 'model_test_1_lib': recorded process 'models_ccww_2hdm_ckm'
+| Switching to model 'THDM'
+| Process library 'model_test_1_lib': recorded process 'models_ccww_thdm'
+| Switching to model 'THDM_CKM'
+| Process library 'model_test_1_lib': recorded process 'models_ccww_thdm_ckm'
 | Switching to model 'GravTest'
 GravTest.mH =>  1.250000000000E+02
 | Process library 'model_test_1_lib': recorded process 'models_ccww_grav_test'
@@ -166,7 +166,7 @@ openmp_num_threads = 1
 seed = 0
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
-| Initializing integration for process models_ccww_2hdm:
+| Initializing integration for process models_ccww_thdm:
 | Beam structure: [any particles]
 | Beam data (collision):
 |   c     (mass = 1.2000000E+00 GeV)
@@ -174,21 +174,21 @@ seed = 0
 |   sqrts = 2.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'models_ccww_2hdm_i1.phs'
+| Phase space: writing configuration file 'models_ccww_thdm_i1.phs'
 | ------------------------------------------------------------------------
-| Process [scattering]: 'models_ccww_2hdm'
+| Process [scattering]: 'models_ccww_thdm'
 |   Library name  = 'model_test_1_lib'
 |   Process index = 1
 |   Process components:
-|     1: 'models_ccww_2hdm_i1':   c, cbar => W+, W- [omega]
+|     1: 'models_ccww_thdm_i1':   c, cbar => W+, W- [omega]
 | ------------------------------------------------------------------------
 | Phase space: 3 channels, 2 dimensions
 | Phase space: found 3 channels, collected in 2 groves.
 | Phase space: Using 3 equivalences between channels.
 | Phase space: wood
 Warning: No cuts have been defined.
-| Starting integration for process 'models_ccww_2hdm'
-| Integrate: iterations = 3:100
+| Starting integration for process 'models_ccww_thdm'
+| Integrate: iterations = 1:100
 | Integrator: 2 chains, 3 channels, 2 dimensions
 | Integrator: Using VAMP channel equivalences
 | Integrator: 100 initial calls, 20 bins, stratified = T
@@ -197,15 +197,13 @@ Warning: No cuts have been defined.
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
    1         99  7.5144851E+03  6.76E+02    8.99    0.89*  40.19
-   2         99  8.4042565E+03  6.40E+02    7.61    0.76*  44.88
-   3         99  7.3675919E+03  6.51E+02    8.83    0.88   39.31
 |-----------------------------------------------------------------------------|
-   3        297  7.7757776E+03  3.78E+02    4.86    0.84   39.31    0.75   3
+   1         99  7.5144851E+03  6.76E+02    8.99    0.89   40.19
 |=============================================================================|
 seed = 1
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 1
-| Initializing integration for process models_ccww_2hdm_ckm:
+| Initializing integration for process models_ccww_thdm_ckm:
 | Beam structure: [any particles]
 | Beam data (collision):
 |   c     (mass = 1.2000000E+00 GeV)
@@ -213,21 +211,21 @@ seed = 1
 |   sqrts = 2.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'models_ccww_2hdm_ckm_i1.phs'
+| Phase space: writing configuration file 'models_ccww_thdm_ckm_i1.phs'
 | ------------------------------------------------------------------------
-| Process [scattering]: 'models_ccww_2hdm_ckm'
+| Process [scattering]: 'models_ccww_thdm_ckm'
 |   Library name  = 'model_test_1_lib'
 |   Process index = 2
 |   Process components:
-|     1: 'models_ccww_2hdm_ckm_i1':   c, cbar => W+, W- [omega]
+|     1: 'models_ccww_thdm_ckm_i1':   c, cbar => W+, W- [omega]
 | ------------------------------------------------------------------------
 | Phase space: 3 channels, 2 dimensions
 | Phase space: found 3 channels, collected in 2 groves.
 | Phase space: Using 3 equivalences between channels.
 | Phase space: wood
 Warning: No cuts have been defined.
-| Starting integration for process 'models_ccww_2hdm_ckm'
-| Integrate: iterations = 3:100
+| Starting integration for process 'models_ccww_thdm_ckm'
+| Integrate: iterations = 1:100
 | Integrator: 2 chains, 3 channels, 2 dimensions
 | Integrator: Using VAMP channel equivalences
 | Integrator: 100 initial calls, 20 bins, stratified = T
@@ -236,10 +234,8 @@ Warning: No cuts have been defined.
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
    1         99  7.3770184E+03  6.73E+02    9.12    0.91*  39.73
-   2         99  5.9280149E+03  5.97E+02   10.08    1.00   31.67
-   3         99  6.5636682E+03  5.91E+02    9.01    0.90*  35.02
 |-----------------------------------------------------------------------------|
-   3        297  6.5655673E+03  3.56E+02    5.43    0.94   35.02    1.30   3
+   1         99  7.3770184E+03  6.73E+02    9.12    0.91   39.73
 |=============================================================================|
 seed = 2
 | RNG: Initializing TAO random-number generator
@@ -266,7 +262,7 @@ seed = 2
 | Phase space: wood
 Warning: No cuts have been defined.
 | Starting integration for process 'models_ccww_grav_test'
-| Integrate: iterations = 3:100
+| Integrate: iterations = 1:100
 | Integrator: 2 chains, 3 channels, 2 dimensions
 | Integrator: Using VAMP channel equivalences
 | Integrator: 100 initial calls, 20 bins, stratified = T
@@ -275,10 +271,8 @@ Warning: No cuts have been defined.
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
    1         99  5.5673184E+03  5.70E+02   10.24    1.02*  29.75
-   2         99  5.7572859E+03  5.87E+02   10.20    1.01*  30.77
-   3         99  7.2214374E+03  6.70E+02    9.28    0.92*  38.55
 |-----------------------------------------------------------------------------|
-   3        297  6.0833277E+03  3.49E+02    5.74    0.99   38.55    2.00   3
+   1         99  5.5673184E+03  5.70E+02   10.24    1.02   29.75
 |=============================================================================|
 seed = 3
 | RNG: Initializing TAO random-number generator
@@ -305,7 +299,7 @@ seed = 3
 | Phase space: wood
 Warning: No cuts have been defined.
 | Starting integration for process 'models_ccww_hsext'
-| Integrate: iterations = 3:100
+| Integrate: iterations = 1:100
 | Integrator: 2 chains, 3 channels, 2 dimensions
 | Integrator: Using VAMP channel equivalences
 | Integrator: 100 initial calls, 20 bins, stratified = T
@@ -314,10 +308,8 @@ Warning: No cuts have been defined.
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
    1         99  8.3080339E+05  5.36E+04    6.46    0.64*  47.18
-   2         99  7.2281903E+05  4.59E+04    6.36    0.63*  40.98
-   3         99  7.0255702E+05  5.17E+04    7.36    0.73   39.08
 |-----------------------------------------------------------------------------|
-   3        297  7.4789868E+05  2.89E+04    3.87    0.67   39.08    1.73   3
+   1         99  8.3080339E+05  5.36E+04    6.46    0.64   47.18
 |=============================================================================|
 seed = 4
 | RNG: Initializing TAO random-number generator
@@ -344,7 +336,7 @@ seed = 4
 | Phase space: wood
 Warning: No cuts have been defined.
 | Starting integration for process 'models_ccww_littlest'
-| Integrate: iterations = 3:100
+| Integrate: iterations = 1:100
 | Integrator: 2 chains, 3 channels, 2 dimensions
 | Integrator: Using VAMP channel equivalences
 | Integrator: 100 initial calls, 20 bins, stratified = T
@@ -353,10 +345,8 @@ Warning: No cuts have been defined.
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
    1         99  6.7081379E+03  5.93E+02    8.84    0.88*  35.88
-   2         99  7.2361248E+03  6.42E+02    8.88    0.88   38.71
-   3         99  5.8673539E+03  5.52E+02    9.40    0.94   31.39
 |-----------------------------------------------------------------------------|
-   3        297  6.5346029E+03  3.42E+02    5.23    0.90   31.39    1.37   3
+   1         99  6.7081379E+03  5.93E+02    8.84    0.88   35.88
 |=============================================================================|
 seed = 5
 | RNG: Initializing TAO random-number generator
@@ -383,7 +373,7 @@ seed = 5
 | Phase space: wood
 Warning: No cuts have been defined.
 | Starting integration for process 'models_ccww_littlest_eta'
-| Integrate: iterations = 3:100
+| Integrate: iterations = 1:100
 | Integrator: 2 chains, 3 channels, 2 dimensions
 | Integrator: Using VAMP channel equivalences
 | Integrator: 100 initial calls, 20 bins, stratified = T
@@ -392,10 +382,8 @@ Warning: No cuts have been defined.
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
    1         99  5.9060694E+03  5.73E+02    9.70    0.96*  31.86
-   2         99  5.5015175E+03  5.56E+02   10.10    1.01   29.68
-   3         99  6.3077086E+03  6.44E+02   10.21    1.02   34.03
 |-----------------------------------------------------------------------------|
-   3        297  5.8669033E+03  3.39E+02    5.78    1.00   34.03    0.45   3
+   1         99  5.9060694E+03  5.73E+02    9.70    0.96   31.86
 |=============================================================================|
 seed = 6
 | RNG: Initializing TAO random-number generator
@@ -422,7 +410,7 @@ seed = 6
 | Phase space: wood
 Warning: No cuts have been defined.
 | Starting integration for process 'models_ccww_littlest_tpar'
-| Integrate: iterations = 3:100
+| Integrate: iterations = 1:100
 | Integrator: 2 chains, 3 channels, 2 dimensions
 | Integrator: Using VAMP channel equivalences
 | Integrator: 100 initial calls, 20 bins, stratified = T
@@ -431,10 +419,8 @@ Warning: No cuts have been defined.
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
    1         99  6.2761051E+03  5.73E+02    9.13    0.91*  35.11
-   2         99  6.0321258E+03  5.97E+02    9.90    0.99   32.22
-   3         99  5.7761033E+03  6.21E+02   10.74    1.07   30.84
 |-----------------------------------------------------------------------------|
-   3        297  6.0414224E+03  3.44E+02    5.70    0.98   30.84    0.18   3
+   1         99  6.2761051E+03  5.73E+02    9.13    0.91   35.11
 |=============================================================================|
 seed = 7
 | RNG: Initializing TAO random-number generator
@@ -461,7 +447,7 @@ seed = 7
 | Phase space: wood
 Warning: No cuts have been defined.
 | Starting integration for process 'models_ccww_mssm'
-| Integrate: iterations = 3:100
+| Integrate: iterations = 1:100
 | Integrator: 2 chains, 3 channels, 2 dimensions
 | Integrator: Using VAMP channel equivalences
 | Integrator: 100 initial calls, 20 bins, stratified = T
@@ -470,10 +456,8 @@ Warning: No cuts have been defined.
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
    1         99  5.9494213E+03  6.28E+02   10.55    1.05*  31.92
-   2         99  4.9825432E+03  5.27E+02   10.57    1.05   26.67
-   3         99  6.2572676E+03  6.06E+02    9.69    0.96*  33.41
 |-----------------------------------------------------------------------------|
-   3        297  5.6506201E+03  3.36E+02    5.94    1.02   33.41    1.42   3
+   1         99  5.9494213E+03  6.28E+02   10.55    1.05   31.92
 |=============================================================================|
 seed = 8
 | RNG: Initializing TAO random-number generator
@@ -500,7 +484,7 @@ seed = 8
 | Phase space: wood
 Warning: No cuts have been defined.
 | Starting integration for process 'models_ccww_mssm_ckm'
-| Integrate: iterations = 3:100
+| Integrate: iterations = 1:100
 | Integrator: 2 chains, 3 channels, 2 dimensions
 | Integrator: Using VAMP channel equivalences
 | Integrator: 100 initial calls, 20 bins, stratified = T
@@ -509,10 +493,8 @@ Warning: No cuts have been defined.
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
    1         99  6.9673584E+03  6.29E+02    9.03    0.90*  37.22
-   2         99  6.2215554E+03  5.95E+02    9.56    0.95   33.22
-   3         99  7.2629389E+03  6.40E+02    8.81    0.88*  38.78
 |-----------------------------------------------------------------------------|
-   3        297  6.7894515E+03  3.58E+02    5.28    0.91   38.78    0.77   3
+   1         99  6.9673584E+03  6.29E+02    9.03    0.90   37.22
 |=============================================================================|
 seed = 9
 | RNG: Initializing TAO random-number generator
@@ -539,7 +521,7 @@ seed = 9
 | Phase space: wood
 Warning: No cuts have been defined.
 | Starting integration for process 'models_ccww_mssm_grav'
-| Integrate: iterations = 3:100
+| Integrate: iterations = 1:100
 | Integrator: 2 chains, 3 channels, 2 dimensions
 | Integrator: Using VAMP channel equivalences
 | Integrator: 100 initial calls, 20 bins, stratified = T
@@ -548,10 +530,8 @@ Warning: No cuts have been defined.
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
    1         99  7.0900237E+03  6.59E+02    9.29    0.92*  38.09
-   2         99  5.4276581E+03  5.78E+02   10.65    1.06   28.99
-   3         99  6.5293778E+03  6.57E+02   10.06    1.00*  34.87
 |-----------------------------------------------------------------------------|
-   3        297  6.2658431E+03  3.62E+02    5.78    1.00   34.87    1.91   3
+   1         99  7.0900237E+03  6.59E+02    9.29    0.92   38.09
 |=============================================================================|
 seed = 10
 | RNG: Initializing TAO random-number generator
@@ -578,7 +558,7 @@ seed = 10
 | Phase space: wood
 Warning: No cuts have been defined.
 | Starting integration for process 'models_ccww_nmssm'
-| Integrate: iterations = 3:100
+| Integrate: iterations = 1:100
 | Integrator: 2 chains, 3 channels, 2 dimensions
 | Integrator: Using VAMP channel equivalences
 | Integrator: 100 initial calls, 20 bins, stratified = T
@@ -587,10 +567,8 @@ Warning: No cuts have been defined.
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
    1         99  5.3772942E+03  5.41E+02   10.06    1.00*  29.82
-   2         99  6.0643009E+03  6.40E+02   10.56    1.05   33.01
-   3         99  6.2108722E+03  5.92E+02    9.53    0.95*  33.80
 |-----------------------------------------------------------------------------|
-   3        297  5.8426197E+03  3.39E+02    5.80    1.00   33.80    0.62   3
+   1         99  5.3772942E+03  5.41E+02   10.06    1.00   29.82
 |=============================================================================|
 seed = 11
 | RNG: Initializing TAO random-number generator
@@ -617,7 +595,7 @@ seed = 11
 | Phase space: wood
 Warning: No cuts have been defined.
 | Starting integration for process 'models_ccww_nmssm_ckm'
-| Integrate: iterations = 3:100
+| Integrate: iterations = 1:100
 | Integrator: 2 chains, 3 channels, 2 dimensions
 | Integrator: Using VAMP channel equivalences
 | Integrator: 100 initial calls, 20 bins, stratified = T
@@ -626,10 +604,8 @@ Warning: No cuts have been defined.
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
    1         99  5.6207771E+03  5.42E+02    9.64    0.96*  31.18
-   2         99  6.6895957E+03  6.21E+02    9.29    0.92*  36.24
-   3         99  7.0314418E+03  6.14E+02    8.74    0.87*  38.09
 |-----------------------------------------------------------------------------|
-   3        297  6.3732450E+03  3.40E+02    5.34    0.92   38.09    1.67   3
+   1         99  5.6207771E+03  5.42E+02    9.64    0.96   31.18
 |=============================================================================|
 seed = 12
 | RNG: Initializing TAO random-number generator
@@ -656,7 +632,7 @@ seed = 12
 | Phase space: wood
 Warning: No cuts have been defined.
 | Starting integration for process 'models_ccww_nmssm_hgg'
-| Integrate: iterations = 3:100
+| Integrate: iterations = 1:100
 | Integrator: 2 chains, 3 channels, 2 dimensions
 | Integrator: Using VAMP channel equivalences
 | Integrator: 100 initial calls, 20 bins, stratified = T
@@ -665,10 +641,8 @@ Warning: No cuts have been defined.
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
    1         99  5.8020707E+03  5.14E+02    8.86    0.88*  32.08
-   2         99  5.7754493E+03  5.04E+02    8.73    0.87*  31.82
-   3         99  5.8367835E+03  6.08E+02   10.42    1.04   31.69
 |-----------------------------------------------------------------------------|
-   3        297  5.8010212E+03  3.10E+02    5.34    0.92   31.69    0.00   3
+   1         99  5.8020707E+03  5.14E+02    8.86    0.88   32.08
 |=============================================================================|
 seed = 13
 | RNG: Initializing TAO random-number generator
@@ -695,7 +669,7 @@ seed = 13
 | Phase space: wood
 Warning: No cuts have been defined.
 | Starting integration for process 'models_ccww_psssm'
-| Integrate: iterations = 3:100
+| Integrate: iterations = 1:100
 | Integrator: 2 chains, 3 channels, 2 dimensions
 | Integrator: Using VAMP channel equivalences
 | Integrator: 100 initial calls, 20 bins, stratified = T
@@ -704,10 +678,8 @@ Warning: No cuts have been defined.
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
    1         99  6.4182194E+08  5.96E+07    9.28    0.92*  34.08
-   2         99  7.9085589E+08  6.80E+07    8.60    0.86*  37.84
-   3         99  6.2721156E+08  5.68E+07    9.05    0.90   30.01
 |-----------------------------------------------------------------------------|
-   3        297  6.7606042E+08  3.52E+07    5.20    0.90   30.01    1.96   3
+   1         99  6.4182194E+08  5.96E+07    9.28    0.92   34.08
 |=============================================================================|
 seed = 14
 | RNG: Initializing TAO random-number generator
@@ -734,7 +706,7 @@ seed = 14
 | Phase space: wood
 Warning: No cuts have been defined.
 | Starting integration for process 'models_uudd_qcd'
-| Integrate: iterations = 3:100
+| Integrate: iterations = 1:100
 | Integrator: 1 chains, 1 channels, 2 dimensions
 | Integrator: Using VAMP channel equivalences
 | Integrator: 100 initial calls, 20 bins, stratified = T
@@ -743,10 +715,8 @@ Warning: No cuts have been defined.
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
    1        100  1.2587507E+05  2.94E+03    2.34    0.23*  67.96
-   2        100  1.2549983E+05  2.94E+03    2.35    0.23   67.75
-   3        100  1.2103750E+05  2.77E+03    2.29    0.23*  64.28
 |-----------------------------------------------------------------------------|
-   3        300  1.2401361E+05  1.66E+03    1.34    0.23   64.28    0.90   3
+   1        100  1.2587507E+05  2.94E+03    2.34    0.23   67.96
 |=============================================================================|
 seed = 15
 | RNG: Initializing TAO random-number generator
@@ -773,7 +743,7 @@ seed = 15
 | Phase space: wood
 Warning: No cuts have been defined.
 | Starting integration for process 'models_eemm_qed'
-| Integrate: iterations = 3:100
+| Integrate: iterations = 1:100
 | Integrator: 1 chains, 1 channels, 2 dimensions
 | Integrator: Using VAMP channel equivalences
 | Integrator: 100 initial calls, 20 bins, stratified = T
@@ -782,10 +752,8 @@ Warning: No cuts have been defined.
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
    1        100  2.1772937E+03  4.57E+01    2.10    0.21*  66.89
-   2        100  2.1887864E+03  4.83E+01    2.21    0.22   67.24
-   3        100  2.2147495E+03  4.78E+01    2.16    0.22*  68.04
 |-----------------------------------------------------------------------------|
-   3        300  2.1931664E+03  2.73E+01    1.24    0.22   68.04    0.17   3
+   1        100  2.1772937E+03  4.57E+01    2.10    0.21   66.89
 |=============================================================================|
 seed = 16
 | RNG: Initializing TAO random-number generator
@@ -812,7 +780,7 @@ seed = 16
 | Phase space: wood
 Warning: No cuts have been defined.
 | Starting integration for process 'models_ccww_sm'
-| Integrate: iterations = 3:100
+| Integrate: iterations = 1:100
 | Integrator: 2 chains, 3 channels, 2 dimensions
 | Integrator: Using VAMP channel equivalences
 | Integrator: 100 initial calls, 20 bins, stratified = T
@@ -821,10 +789,8 @@ Warning: No cuts have been defined.
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
    1         99  5.4136006E+03  5.84E+02   10.79    1.07*  29.81
-   2         99  6.2755245E+03  5.86E+02    9.33    0.93*  33.78
-   3         99  7.1070137E+03  6.04E+02    8.50    0.85*  37.96
 |-----------------------------------------------------------------------------|
-   3        297  6.2465089E+03  3.41E+02    5.46    0.94   37.96    2.03   3
+   1         99  5.4136006E+03  5.84E+02   10.79    1.07   29.81
 |=============================================================================|
 seed = 17
 | RNG: Initializing TAO random-number generator
@@ -851,7 +817,7 @@ seed = 17
 | Phase space: wood
 Warning: No cuts have been defined.
 | Starting integration for process 'models_ccww_sm_ckm'
-| Integrate: iterations = 3:100
+| Integrate: iterations = 1:100
 | Integrator: 2 chains, 3 channels, 2 dimensions
 | Integrator: Using VAMP channel equivalences
 | Integrator: 100 initial calls, 20 bins, stratified = T
@@ -860,10 +826,8 @@ Warning: No cuts have been defined.
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
    1         99  5.8798557E+03  5.74E+02    9.76    0.97*  33.05
-   2         99  6.1041937E+03  5.82E+02    9.54    0.95*  32.60
-   3         99  6.8546384E+03  6.55E+02    9.56    0.95   36.59
 |-----------------------------------------------------------------------------|
-   3        297  6.2323733E+03  3.47E+02    5.56    0.96   36.59    0.66   3
+   1         99  5.8798557E+03  5.74E+02    9.76    0.97   33.05
 |=============================================================================|
 seed = 18
 | RNG: Initializing TAO random-number generator
@@ -890,7 +854,7 @@ seed = 18
 | Phase space: wood
 Warning: No cuts have been defined.
 | Starting integration for process 'models_ccww_sm_ac'
-| Integrate: iterations = 3:100
+| Integrate: iterations = 1:100
 | Integrator: 2 chains, 3 channels, 2 dimensions
 | Integrator: Using VAMP channel equivalences
 | Integrator: 100 initial calls, 20 bins, stratified = T
@@ -899,10 +863,8 @@ Warning: No cuts have been defined.
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
    1         99  5.7751152E+03  5.94E+02   10.28    1.02*  31.38
-   2         99  6.8980425E+03  6.38E+02    9.25    0.92*  37.02
-   3         99  6.3764757E+03  6.33E+02    9.92    0.99   34.15
 |-----------------------------------------------------------------------------|
-   3        297  6.3222696E+03  3.58E+02    5.67    0.98   34.15    0.84   3
+   1         99  5.7751152E+03  5.94E+02   10.28    1.02   31.38
 |=============================================================================|
 seed = 19
 | RNG: Initializing TAO random-number generator
@@ -929,7 +891,7 @@ seed = 19
 | Phase space: wood
 Warning: No cuts have been defined.
 | Starting integration for process 'models_ccww_sm_ac_ckm'
-| Integrate: iterations = 3:100
+| Integrate: iterations = 1:100
 | Integrator: 2 chains, 3 channels, 2 dimensions
 | Integrator: Using VAMP channel equivalences
 | Integrator: 100 initial calls, 20 bins, stratified = T
@@ -938,10 +900,8 @@ Warning: No cuts have been defined.
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
    1         99  5.6718111E+03  6.23E+02   10.98    1.09*  31.58
-   2         99  6.3242693E+03  6.25E+02    9.88    0.98*  33.81
-   3         99  6.7054920E+03  5.47E+02    8.16    0.81*  35.84
 |-----------------------------------------------------------------------------|
-   3        297  6.2759019E+03  3.43E+02    5.47    0.94   35.84    0.78   3
+   1         99  5.6718111E+03  6.23E+02   10.98    1.09   31.58
 |=============================================================================|
 seed = 20
 | RNG: Initializing TAO random-number generator
@@ -968,7 +928,7 @@ seed = 20
 | Phase space: wood
 Warning: No cuts have been defined.
 | Starting integration for process 'models_ccww_sm_dim6'
-| Integrate: iterations = 3:100
+| Integrate: iterations = 1:100
 | Integrator: 2 chains, 3 channels, 2 dimensions
 | Integrator: Using VAMP channel equivalences
 | Integrator: 100 initial calls, 20 bins, stratified = T
@@ -977,10 +937,8 @@ Warning: No cuts have been defined.
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
    1         99  6.3233409E+03  5.61E+02    8.87    0.88*  34.07
-   2         99  6.5218994E+03  6.20E+02    9.50    0.95   34.97
-   3         99  6.4218589E+03  6.03E+02    9.38    0.93*  34.30
 |-----------------------------------------------------------------------------|
-   3        297  6.4157030E+03  3.42E+02    5.34    0.92   34.30    0.03   3
+   1         99  6.3233409E+03  5.61E+02    8.87    0.88   34.07
 |=============================================================================|
 seed = 21
 | RNG: Initializing TAO random-number generator
@@ -1007,7 +965,7 @@ seed = 21
 | Phase space: wood
 Warning: No cuts have been defined.
 | Starting integration for process 'models_wwww_sm_rx'
-| Integrate: iterations = 3:100
+| Integrate: iterations = 1:100
 | Integrator: 2 chains, 4 channels, 2 dimensions
 | Integrator: Using VAMP channel equivalences
 | Integrator: 100 initial calls, 20 bins, stratified = T
@@ -1016,10 +974,8 @@ Warning: No cuts have been defined.
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
    1        100  3.0227479E+07  9.65E+06   31.94    3.19*  10.86
-   2        100  8.9149458E+09  7.79E+09   87.34    8.73    4.59
-   3        100  6.7491731E+08  4.44E+08   65.84    6.58*   0.34
 |-----------------------------------------------------------------------------|
-   3        300  3.0545203E+07  9.65E+06   31.60    5.47    0.34    1.70   3
+   1        100  3.0227479E+07  9.65E+06   31.94    3.19   10.86
 |=============================================================================|
 seed = 22
 | RNG: Initializing TAO random-number generator
@@ -1046,7 +1002,7 @@ seed = 22
 | Phase space: wood
 Warning: No cuts have been defined.
 | Starting integration for process 'models_wwww_sm_ul'
-| Integrate: iterations = 3:100
+| Integrate: iterations = 1:100
 | Integrator: 2 chains, 4 channels, 2 dimensions
 | Integrator: Using VAMP channel equivalences
 | Integrator: 100 initial calls, 20 bins, stratified = T
@@ -1055,10 +1011,8 @@ Warning: No cuts have been defined.
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
    1        100  9.7080025E+08  7.49E+08   77.19    7.72*   4.95
-   2        100  5.2201853E+07  3.51E+07   67.28    6.73*   0.27
-   3        100  5.2791958E+08  4.26E+08   80.73    8.07    1.80
 |-----------------------------------------------------------------------------|
-   3        300  5.7403154E+07  3.50E+07   60.91   10.55    1.80    1.36   3
+   1        100  9.7080025E+08  7.49E+08   77.19    7.72    4.95
 |=============================================================================|
 seed = 23
 | RNG: Initializing TAO random-number generator
@@ -1085,7 +1039,7 @@ seed = 23
 | Phase space: wood
 Warning: No cuts have been defined.
 | Starting integration for process 'models_wwww_noh_rx'
-| Integrate: iterations = 3:100
+| Integrate: iterations = 1:100
 | Integrator: 1 chains, 2 channels, 2 dimensions
 | Integrator: Using VAMP channel equivalences
 | Integrator: 100 initial calls, 20 bins, stratified = T
@@ -1094,10 +1048,8 @@ Warning: No cuts have been defined.
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
    1        100  2.1032248E+10  1.99E+10   94.76    9.48*   2.06
-   2        100  8.8335491E+08  8.24E+08   93.32    9.33*   0.09
-   3        100  5.8479753E+08  4.34E+08   74.27    7.43*   0.06
 |-----------------------------------------------------------------------------|
-   3        300  6.5723646E+08  3.84E+08   58.45   10.12    0.06    0.57   3
+   1        100  2.1032248E+10  1.99E+10   94.76    9.48    2.06
 |=============================================================================|
 seed = 24
 | RNG: Initializing TAO random-number generator
@@ -1124,7 +1076,7 @@ seed = 24
 | Phase space: wood
 Warning: No cuts have been defined.
 | Starting integration for process 'models_ccww_sm_top'
-| Integrate: iterations = 3:100
+| Integrate: iterations = 1:100
 | Integrator: 2 chains, 3 channels, 2 dimensions
 | Integrator: Using VAMP channel equivalences
 | Integrator: 100 initial calls, 20 bins, stratified = T
@@ -1133,10 +1085,8 @@ Warning: No cuts have been defined.
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
    1         99  6.7123251E+03  6.25E+02    9.30    0.93*  37.02
-   2         99  6.5217383E+03  6.37E+02    9.77    0.97   34.99
-   3         99  6.9777402E+03  6.58E+02    9.43    0.94*  37.27
 |-----------------------------------------------------------------------------|
-   3        297  6.7318181E+03  3.69E+02    5.48    0.95   37.27    0.12   3
+   1         99  6.7123251E+03  6.25E+02    9.30    0.93   37.02
 |=============================================================================|
 seed = 25
 | RNG: Initializing TAO random-number generator
@@ -1163,7 +1113,7 @@ seed = 25
 | Phase space: wood
 Warning: No cuts have been defined.
 | Starting integration for process 'models_ccww_sm_top_anom'
-| Integrate: iterations = 3:100
+| Integrate: iterations = 1:100
 | Integrator: 2 chains, 3 channels, 2 dimensions
 | Integrator: Using VAMP channel equivalences
 | Integrator: 100 initial calls, 20 bins, stratified = T
@@ -1172,10 +1122,8 @@ Warning: No cuts have been defined.
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
    1         99  5.0274506E+03  5.41E+02   10.76    1.07*  28.07
-   2         99  6.4044695E+03  6.21E+02    9.69    0.96*  34.35
-   3         99  6.4771342E+03  6.57E+02   10.14    1.01   34.59
 |-----------------------------------------------------------------------------|
-   3        297  5.8597391E+03  3.46E+02    5.91    1.02   34.59    2.01   3
+   1         99  5.0274506E+03  5.41E+02   10.76    1.07   28.07
 |=============================================================================|
 seed = 26
 | RNG: Initializing TAO random-number generator
@@ -1202,7 +1150,7 @@ seed = 26
 | Phase space: wood
 Warning: No cuts have been defined.
 | Starting integration for process 'models_ccww_sm_higgs'
-| Integrate: iterations = 3:100
+| Integrate: iterations = 1:100
 | Integrator: 2 chains, 3 channels, 2 dimensions
 | Integrator: Using VAMP channel equivalences
 | Integrator: 100 initial calls, 20 bins, stratified = T
@@ -1211,10 +1159,8 @@ Warning: No cuts have been defined.
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
    1         99  6.1901689E+03  5.99E+02    9.68    0.96*  33.39
-   2         99  6.2592569E+03  6.37E+02   10.18    1.01   33.41
-   3         99  6.0618017E+03  6.26E+02   10.33    1.03   32.35
 |-----------------------------------------------------------------------------|
-   3        297  6.1700189E+03  3.58E+02    5.80    1.00   32.35    0.03   3
+   1         99  6.1901689E+03  5.99E+02    9.68    0.96   33.39
 |=============================================================================|
 seed = 27
 | RNG: Initializing TAO random-number generator
@@ -1242,7 +1188,7 @@ seed = 27
 | Phase space: wood
 Warning: No cuts have been defined.
 | Starting integration for process 'models_ccww_sm_tt_thresh'
-| Integrate: iterations = 3:100
+| Integrate: iterations = 1:100
 | Integrator: 2 chains, 3 channels, 2 dimensions
 | Integrator: Using VAMP channel equivalences
 | Integrator: 100 initial calls, 20 bins, stratified = T
@@ -1251,10 +1197,8 @@ Warning: No cuts have been defined.
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
    1         99  8.0683449E+03  7.13E+02    8.84    0.88*  39.17
-   2         99  6.6405721E+03  6.57E+02    9.89    0.98   32.13
-   3         99  6.9024432E+03  6.00E+02    8.70    0.87*  33.39
 |-----------------------------------------------------------------------------|
-   3        297  7.1411491E+03  3.76E+02    5.27    0.91   33.39    1.21   3
+   1         99  8.0683449E+03  7.13E+02    8.84    0.88   39.17
 |=============================================================================|
 seed = 28
 | RNG: Initializing TAO random-number generator
@@ -1281,7 +1225,7 @@ seed = 28
 | Phase space: wood
 Warning: No cuts have been defined.
 | Starting integration for process 'models_ccww_simplest'
-| Integrate: iterations = 3:100
+| Integrate: iterations = 1:100
 | Integrator: 2 chains, 3 channels, 2 dimensions
 | Integrator: Using VAMP channel equivalences
 | Integrator: 100 initial calls, 20 bins, stratified = T
@@ -1290,10 +1234,8 @@ Warning: No cuts have been defined.
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
    1         99  6.4272106E+03  6.11E+02    9.51    0.95*  35.25
-   2         99  6.9900320E+03  6.24E+02    8.92    0.89*  37.31
-   3         99  7.4435554E+03  6.67E+02    8.96    0.89   39.72
 |-----------------------------------------------------------------------------|
-   3        297  6.9248097E+03  3.65E+02    5.27    0.91   39.72    0.64   3
+   1         99  6.4272106E+03  6.11E+02    9.51    0.95   35.25
 |=============================================================================|
 seed = 29
 | RNG: Initializing TAO random-number generator
@@ -1320,7 +1262,7 @@ seed = 29
 | Phase space: wood
 Warning: No cuts have been defined.
 | Starting integration for process 'models_ccww_simplest_univ'
-| Integrate: iterations = 3:100
+| Integrate: iterations = 1:100
 | Integrator: 2 chains, 3 channels, 2 dimensions
 | Integrator: Using VAMP channel equivalences
 | Integrator: 100 initial calls, 20 bins, stratified = T
@@ -1329,10 +1271,8 @@ Warning: No cuts have been defined.
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
    1         99  7.7043209E+03  6.46E+02    8.38    0.83*  41.45
-   2         99  6.0465493E+03  5.53E+02    9.15    0.91   32.48
-   3         99  5.8518524E+03  5.60E+02    9.57    0.95   31.38
 |-----------------------------------------------------------------------------|
-   3        297  6.4257216E+03  3.36E+02    5.23    0.90   31.38    2.72   3
+   1         99  7.7043209E+03  6.46E+02    8.38    0.83   41.45
 |=============================================================================|
 seed = 30
 | RNG: Initializing TAO random-number generator
@@ -1359,7 +1299,7 @@ seed = 30
 | Phase space: wood
 Warning: No cuts have been defined.
 | Starting integration for process 'models_ccww_template'
-| Integrate: iterations = 3:100
+| Integrate: iterations = 1:100
 | Integrator: 2 chains, 3 channels, 2 dimensions
 | Integrator: Using VAMP channel equivalences
 | Integrator: 100 initial calls, 20 bins, stratified = T
@@ -1368,10 +1308,8 @@ Warning: No cuts have been defined.
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
    1         99  6.4986405E+03  6.33E+02    9.74    0.97*  34.99
-   2         99  7.0761107E+03  6.30E+02    8.90    0.89*  37.90
-   3         99  5.4400332E+03  5.94E+02   10.93    1.09   29.04
 |-----------------------------------------------------------------------------|
-   3        297  6.3025459E+03  3.57E+02    5.66    0.98   29.04    1.86   3
+   1         99  6.4986405E+03  6.33E+02    9.74    0.97   34.99
 |=============================================================================|
 seed = 31
 | RNG: Initializing TAO random-number generator
@@ -1398,7 +1336,7 @@ seed = 31
 | Phase space: wood
 Warning: No cuts have been defined.
 | Starting integration for process 'models_ccww_threeshl'
-| Integrate: iterations = 3:100
+| Integrate: iterations = 1:100
 | Integrator: 3 chains, 5 channels, 2 dimensions
 | Integrator: Using VAMP channel equivalences
 | Integrator: 100 initial calls, 20 bins, stratified = T
@@ -1407,10 +1345,8 @@ Warning: No cuts have been defined.
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
    1        100  5.6047229E+03  5.35E+02    9.54    0.95*  30.68
-   2        100  7.5097235E+03  6.33E+02    8.43    0.84*  38.02
-   3        100  6.7696322E+03  6.53E+02    9.65    0.97   33.97
 |-----------------------------------------------------------------------------|
-   3        300  6.5024343E+03  3.46E+02    5.33    0.92   33.97    2.76   3
+   1        100  5.6047229E+03  5.35E+02    9.54    0.95   30.68
 |=============================================================================|
 seed = 32
 | RNG: Initializing TAO random-number generator
@@ -1437,7 +1373,7 @@ seed = 32
 | Phase space: wood
 Warning: No cuts have been defined.
 | Starting integration for process 'models_ccww_threeshl_nohf'
-| Integrate: iterations = 3:100
+| Integrate: iterations = 1:100
 | Integrator: 2 chains, 3 channels, 2 dimensions
 | Integrator: Using VAMP channel equivalences
 | Integrator: 100 initial calls, 20 bins, stratified = T
@@ -1446,10 +1382,8 @@ Warning: No cuts have been defined.
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
    1         99  7.9595906E+03  7.16E+02    8.99    0.89*  39.56
-   2         99  7.4044234E+03  7.18E+02    9.69    0.96   36.80
-   3         99  5.4915443E+03  5.96E+02   10.86    1.08   27.29
 |-----------------------------------------------------------------------------|
-   3        297  6.7635369E+03  3.86E+02    5.71    0.98   27.29    4.07   3
+   1         99  7.9595906E+03  7.16E+02    8.99    0.89   39.56
 |=============================================================================|
 seed = 33
 | RNG: Initializing TAO random-number generator
@@ -1476,7 +1410,7 @@ seed = 33
 | Phase space: wood
 Warning: No cuts have been defined.
 | Starting integration for process 'models_ccww_ued'
-| Integrate: iterations = 3:100
+| Integrate: iterations = 1:100
 | Integrator: 2 chains, 3 channels, 2 dimensions
 | Integrator: Using VAMP channel equivalences
 | Integrator: 100 initial calls, 20 bins, stratified = T
@@ -1485,10 +1419,8 @@ Warning: No cuts have been defined.
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
    1         99  5.6251056E+08  4.44E+07    7.90    0.79*  37.65
-   2         99  7.2079411E+08  4.86E+07    6.74    0.67*  46.92
-   3         99  6.6722953E+08  4.41E+07    6.61    0.66*  43.32
 |-----------------------------------------------------------------------------|
-   3        297  6.4626269E+08  2.63E+07    4.07    0.70   43.32    3.07   3
+   1         99  5.6251056E+08  4.44E+07    7.90    0.79   37.65
 |=============================================================================|
 seed = 34
 | RNG: Initializing TAO random-number generator
@@ -1515,7 +1447,7 @@ seed = 34
 | Phase space: wood
 Warning: No cuts have been defined.
 | Starting integration for process 'models_wwww_ssc'
-| Integrate: iterations = 3:100
+| Integrate: iterations = 1:100
 | Integrator: 2 chains, 6 channels, 2 dimensions
 | Integrator: Using VAMP channel equivalences
 | Integrator: 100 initial calls, 20 bins, stratified = T
@@ -1524,10 +1456,8 @@ Warning: No cuts have been defined.
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
    1         96  1.5923967E+08  1.15E+08   72.15    7.07*   7.71
-   2         96  3.0552251E+11  2.53E+11   82.93    8.13    7.60
-   3         96  2.1901836E+09  2.12E+09   96.91    9.50    0.05
 |-----------------------------------------------------------------------------|
-   3        288  1.6523586E+08  1.15E+08   69.43   11.78    0.05    1.18   3
+   1         96  1.5923967E+08  1.15E+08   72.15    7.07    7.71
 |=============================================================================|
 seed = 35
 | RNG: Initializing TAO random-number generator
@@ -1554,7 +1484,7 @@ seed = 35
 | Phase space: wood
 Warning: No cuts have been defined.
 | Starting integration for process 'models_wwww_ssc_2'
-| Integrate: iterations = 3:100
+| Integrate: iterations = 1:100
 | Integrator: 2 chains, 6 channels, 2 dimensions
 | Integrator: Using VAMP channel equivalences
 | Integrator: 100 initial calls, 20 bins, stratified = T
@@ -1563,10 +1493,8 @@ Warning: No cuts have been defined.
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
    1         96  1.7800933E+08  1.31E+08   73.83    7.23*   7.03
-   2         96  4.2548018E+08  3.42E+08   80.29    7.87    5.56
-   3         96  1.7041119E+07  7.99E+06   46.88    4.59*   0.22
 |-----------------------------------------------------------------------------|
-   3        288  1.7855793E+07  7.97E+06   44.65    7.58    0.22    1.46   3
+   1         96  1.7800933E+08  1.31E+08   73.83    7.23    7.03
 |=============================================================================|
 seed = 36
 | RNG: Initializing TAO random-number generator
@@ -1593,7 +1521,7 @@ seed = 36
 | Phase space: wood
 Warning: No cuts have been defined.
 | Starting integration for process 'models_wwww_ssc_altt'
-| Integrate: iterations = 3:100
+| Integrate: iterations = 1:100
 | Integrator: 2 chains, 6 channels, 2 dimensions
 | Integrator: Using VAMP channel equivalences
 | Integrator: 100 initial calls, 20 bins, stratified = T
@@ -1602,10 +1530,8 @@ Warning: No cuts have been defined.
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
    1         96  8.7439298E+06  4.17E+06   47.71    4.68*  10.61
-   2         96  5.4123826E+07  2.77E+07   51.17    5.01    9.19
-   3         96  6.5254603E+08  6.42E+08   98.42    9.64    6.14
 |-----------------------------------------------------------------------------|
-   3        288  9.7773844E+06  4.13E+06   42.19    7.16    6.14    1.81   3
+   1         96  8.7439298E+06  4.17E+06   47.71    4.68   10.61
 |=============================================================================|
 seed = 37
 | RNG: Initializing TAO random-number generator
@@ -1632,7 +1558,7 @@ seed = 37
 | Phase space: wood
 Warning: No cuts have been defined.
 | Starting integration for process 'models_wwww_alth'
-| Integrate: iterations = 3:100
+| Integrate: iterations = 1:100
 | Integrator: 2 chains, 6 channels, 2 dimensions
 | Integrator: Using VAMP channel equivalences
 | Integrator: 100 initial calls, 20 bins, stratified = T
@@ -1641,10 +1567,8 @@ Warning: No cuts have been defined.
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
    1         96  9.7013066E+08  6.17E+08   63.61    6.23*   6.93
-   2         96  1.3790507E+08  1.26E+08   91.39    8.95    0.99
-   3         96  1.4892086E+10  1.47E+10   98.90    9.69    6.13
 |-----------------------------------------------------------------------------|
-   3        288  1.7226347E+08  1.23E+08   71.68   12.16    6.13    1.37   3
+   1         96  9.7013066E+08  6.17E+08   63.61    6.23    6.93
 |=============================================================================|
 seed = 38
 | RNG: Initializing TAO random-number generator
@@ -1671,7 +1595,7 @@ seed = 38
 | Phase space: wood
 Warning: No cuts have been defined.
 | Starting integration for process 'models_ccww_xdim'
-| Integrate: iterations = 3:100
+| Integrate: iterations = 1:100
 | Integrator: 2 chains, 3 channels, 2 dimensions
 | Integrator: Using VAMP channel equivalences
 | Integrator: 100 initial calls, 20 bins, stratified = T
@@ -1680,10 +1604,8 @@ Warning: No cuts have been defined.
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
    1         99  5.9545173E+08  4.73E+07    7.94    0.79*  39.05
-   2         99  6.2235057E+08  4.41E+07    7.08    0.70*  40.82
-   3         99  5.9180377E+08  4.73E+07    8.00    0.80   38.81
 |-----------------------------------------------------------------------------|
-   3        297  6.0413688E+08  2.66E+07    4.41    0.76   38.81    0.14   3
+   1         99  5.9545173E+08  4.73E+07    7.94    0.79   39.05
 |=============================================================================|
 seed = 39
 | RNG: Initializing TAO random-number generator
@@ -1710,7 +1632,7 @@ seed = 39
 | Phase space: wood
 Warning: No cuts have been defined.
 | Starting integration for process 'models_ccww_wzw'
-| Integrate: iterations = 3:100
+| Integrate: iterations = 1:100
 | Integrator: 2 chains, 3 channels, 2 dimensions
 | Integrator: Using VAMP channel equivalences
 | Integrator: 100 initial calls, 20 bins, stratified = T
@@ -1719,10 +1641,8 @@ Warning: No cuts have been defined.
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
    1         99  7.6063186E+03  6.93E+02    9.10    0.91*  41.07
-   2         99  6.9438589E+03  5.98E+02    8.62    0.86*  37.29
-   3         99  6.8560122E+03  5.95E+02    8.68    0.86   36.66
 |-----------------------------------------------------------------------------|
-   3        297  7.0909614E+03  3.60E+02    5.08    0.88   36.66    0.39   3
+   1         99  7.6063186E+03  6.93E+02    9.10    0.91   41.07
 |=============================================================================|
 seed = 40
 | RNG: Initializing TAO random-number generator
@@ -1749,7 +1669,7 @@ seed = 40
 | Phase space: wood
 Warning: No cuts have been defined.
 | Starting integration for process 'models_ccww_zprime'
-| Integrate: iterations = 3:100
+| Integrate: iterations = 1:100
 | Integrator: 2 chains, 3 channels, 2 dimensions
 | Integrator: Using VAMP channel equivalences
 | Integrator: 100 initial calls, 20 bins, stratified = T
@@ -1758,93 +1678,91 @@ Warning: No cuts have been defined.
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
    1         99  5.9222102E+03  6.23E+02   10.52    1.05*  31.63
-   2         99  7.5559856E+03  6.41E+02    8.48    0.84*  40.32
-   3         99  6.3160668E+03  5.87E+02    9.29    0.92   33.70
 |-----------------------------------------------------------------------------|
-   3        297  6.5692167E+03  3.56E+02    5.41    0.93   33.70    1.82   3
+   1         99  5.9222102E+03  6.23E+02   10.52    1.05   31.63
 |=============================================================================|
 models_ccww_zprime:
-   6.5692167E+03 +- 3.56E+02 fb
+   5.9222102E+03 +- 6.23E+02 fb
 models_ccww_wzw:
-   7.0909614E+03 +- 3.60E+02 fb
+   7.6063186E+03 +- 6.93E+02 fb
 models_ccww_xdim:
-   6.0413688E+08 +- 2.66E+07 fb
+   5.9545173E+08 +- 4.73E+07 fb
 models_wwww_alth:
-   1.7226347E+08 +- 1.23E+08 fb
+   9.7013066E+08 +- 6.17E+08 fb
 models_wwww_ssc_altt:
-   9.7773844E+06 +- 4.13E+06 fb
+   8.7439298E+06 +- 4.17E+06 fb
 models_wwww_ssc_2:
-   1.7855793E+07 +- 7.97E+06 fb
+   1.7800933E+08 +- 1.31E+08 fb
 models_wwww_ssc:
-   1.6523586E+08 +- 1.15E+08 fb
+   1.5923967E+08 +- 1.15E+08 fb
 models_ccww_ued:
-   6.4626269E+08 +- 2.63E+07 fb
+   5.6251056E+08 +- 4.44E+07 fb
 models_ccww_threeshl_nohf:
-   6.7635369E+03 +- 3.86E+02 fb
+   7.9595906E+03 +- 7.16E+02 fb
 models_ccww_threeshl:
-   6.5024343E+03 +- 3.46E+02 fb
+   5.6047229E+03 +- 5.35E+02 fb
 models_ccww_template:
-   6.3025459E+03 +- 3.57E+02 fb
+   6.4986405E+03 +- 6.33E+02 fb
 models_ccww_simplest_univ:
-   6.4257216E+03 +- 3.36E+02 fb
+   7.7043209E+03 +- 6.46E+02 fb
 models_ccww_simplest:
-   6.9248097E+03 +- 3.65E+02 fb
+   6.4272106E+03 +- 6.11E+02 fb
 models_ccww_sm_tt_thresh:
-   7.1411491E+03 +- 3.76E+02 fb
+   8.0683449E+03 +- 7.13E+02 fb
 models_ccww_sm_higgs:
-   6.1700189E+03 +- 3.58E+02 fb
+   6.1901689E+03 +- 5.99E+02 fb
 models_ccww_sm_top_anom:
-   5.8597391E+03 +- 3.46E+02 fb
+   5.0274506E+03 +- 5.41E+02 fb
 models_ccww_sm_top:
-   6.7318181E+03 +- 3.69E+02 fb
+   6.7123251E+03 +- 6.25E+02 fb
 models_wwww_noh_rx:
-   6.5723646E+08 +- 3.84E+08 fb
+   2.1032248E+10 +- 1.99E+10 fb
 models_wwww_sm_ul:
-   5.7403154E+07 +- 3.50E+07 fb
+   9.7080025E+08 +- 7.49E+08 fb
 models_wwww_sm_rx:
-   3.0545203E+07 +- 9.65E+06 fb
+   3.0227479E+07 +- 9.65E+06 fb
 models_ccww_sm_dim6:
-   6.4157030E+03 +- 3.42E+02 fb
+   6.3233409E+03 +- 5.61E+02 fb
 models_ccww_sm_ac_ckm:
-   6.2759019E+03 +- 3.43E+02 fb
+   5.6718111E+03 +- 6.23E+02 fb
 models_ccww_sm_ac:
-   6.3222696E+03 +- 3.58E+02 fb
+   5.7751152E+03 +- 5.94E+02 fb
 models_ccww_sm_ckm:
-   6.2323733E+03 +- 3.47E+02 fb
+   5.8798557E+03 +- 5.74E+02 fb
 models_ccww_sm:
-   6.2465089E+03 +- 3.41E+02 fb
+   5.4136006E+03 +- 5.84E+02 fb
 models_eemm_qed:
-   2.1931664E+03 +- 2.73E+01 fb
+   2.1772937E+03 +- 4.57E+01 fb
 models_uudd_qcd:
-   1.2401361E+05 +- 1.66E+03 fb
+   1.2587507E+05 +- 2.94E+03 fb
 models_ccww_psssm:
-   6.7606042E+08 +- 3.52E+07 fb
+   6.4182194E+08 +- 5.96E+07 fb
 models_ccww_nmssm_hgg:
-   5.8010212E+03 +- 3.10E+02 fb
+   5.8020707E+03 +- 5.14E+02 fb
 models_ccww_nmssm_ckm:
-   6.3732450E+03 +- 3.40E+02 fb
+   5.6207771E+03 +- 5.42E+02 fb
 models_ccww_nmssm:
-   5.8426197E+03 +- 3.39E+02 fb
+   5.3772942E+03 +- 5.41E+02 fb
 models_ccww_mssm_grav:
-   6.2658431E+03 +- 3.62E+02 fb
+   7.0900237E+03 +- 6.59E+02 fb
 models_ccww_mssm_ckm:
-   6.7894515E+03 +- 3.58E+02 fb
+   6.9673584E+03 +- 6.29E+02 fb
 models_ccww_mssm:
-   5.6506201E+03 +- 3.36E+02 fb
+   5.9494213E+03 +- 6.28E+02 fb
 models_ccww_littlest_tpar:
-   6.0414224E+03 +- 3.44E+02 fb
+   6.2761051E+03 +- 5.73E+02 fb
 models_ccww_littlest_eta:
-   5.8669033E+03 +- 3.39E+02 fb
+   5.9060694E+03 +- 5.73E+02 fb
 models_ccww_littlest:
-   6.5346029E+03 +- 3.42E+02 fb
+   6.7081379E+03 +- 5.93E+02 fb
 models_ccww_hsext:
-   7.4789868E+05 +- 2.89E+04 fb
+   8.3080339E+05 +- 5.36E+04 fb
 models_ccww_grav_test:
-   6.0833277E+03 +- 3.49E+02 fb
-models_ccww_2hdm_ckm:
-   6.5655673E+03 +- 3.56E+02 fb
-models_ccww_2hdm:
-   7.7757776E+03 +- 3.78E+02 fb
+   5.5673184E+03 +- 5.70E+02 fb
+models_ccww_thdm_ckm:
+   7.3770184E+03 +- 6.73E+02 fb
+models_ccww_thdm:
+   7.5144851E+03 +- 6.76E+02 fb
 | There were no errors and   41 warning(s).
 | WHIZARD run finished.
 |=============================================================================|

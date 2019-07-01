@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -84,8 +77,8 @@ module blha_olp_interfaces
   public :: olp_print_parameter
   public :: blha_result_array_size
   public :: parameter_error_message
-  public :: blha_cc_fill_diag
-  public :: blha_cc_fill_offdiag
+  public :: blha_color_c_fill_diag
+  public :: blha_color_c_fill_offdiag
   public :: blha_loop_positions
 
   integer, parameter, public :: OLP_PARAMETER_LIMIT = 10
@@ -105,7 +98,8 @@ module blha_olp_interfaces
     integer :: I_REAL = 1
     integer :: I_LOOP = 2
     integer :: I_SUB = 3
-    logical, dimension(0:3) :: compute_component
+    integer :: I_DGLAP = 4
+    logical, dimension(0:4) :: compute_component
     logical :: include_polarizations = .false.
     logical :: switch_off_muon_yukawas = .false.
     logical :: use_internal_color_correlations = .true.
@@ -118,6 +112,7 @@ module blha_olp_interfaces
     procedure :: set_real_trees => blha_template_set_real_trees
     procedure :: set_loop => blha_template_set_loop
     procedure :: set_subtraction => blha_template_set_subtraction
+    procedure :: set_dglap => blha_template_set_dglap
     procedure :: set_internal_color_correlations &
        => blha_template_set_internal_color_correlations
     procedure :: get_internal_color_correlations &
@@ -126,6 +121,7 @@ module blha_olp_interfaces
     procedure :: compute_real_trees => blha_template_compute_real_trees
     procedure :: compute_loop => blha_template_compute_loop
     procedure :: compute_subtraction => blha_template_compute_subtraction
+    procedure :: compute_dglap => blha_template_compute_dglap
     procedure :: check => blha_template_check
     procedure :: reset => blha_template_reset
   end type blha_template_t
@@ -134,7 +130,7 @@ module blha_olp_interfaces
     integer :: n_particles
     integer :: n_hel
     integer :: n_proc
-    integer, dimension(:), allocatable :: i_tree, i_sc, i_cc
+    integer, dimension(:), allocatable :: i_tree, i_spin_c, i_color_c
     integer, dimension(:), allocatable :: i_virt
     integer, dimension(:,:), allocatable :: i_hel
     integer, dimension(:), allocatable :: i_whizard_to_i_olc
@@ -156,8 +152,8 @@ module blha_olp_interfaces
     procedure :: init_ew_parameters => prc_blha_init_ew_parameters
     procedure :: compute_sqme_virt => prc_blha_compute_sqme_virt
     procedure :: compute_sqme => prc_blha_compute_sqme
-    procedure :: compute_sqme_cc_raw => prc_blha_compute_sqme_cc_raw
-    procedure :: compute_sqme_cc => prc_blha_compute_sqme_cc
+    procedure :: compute_sqme_color_c_raw => prc_blha_compute_sqme_color_c_raw
+    procedure :: compute_sqme_color_c => prc_blha_compute_sqme_color_c
     generic :: get_beam_helicities => get_beam_helicities_single
     generic :: get_beam_helicities => get_beam_helicities_array
     procedure :: get_beam_helicities_single => prc_blha_get_beam_helicities_single
@@ -165,13 +161,13 @@ module blha_olp_interfaces
     procedure :: includes_polarization => prc_blha_includes_polarization
     procedure(prc_blha_init_driver), deferred :: &
         init_driver
-    procedure :: reset_helicity_list => prc_blha_reset_helicity_list
-    procedure :: set_helicity_list_trivial => prc_blha_set_helicity_list_trivial
-    procedure :: set_helicity_list => prc_blha_set_helicity_list
-    generic :: get_helicity_list => get_helicity_list_all
-    generic :: get_helicity_list => get_helicity_list_single
-    procedure :: get_helicity_list_all => prc_blha_get_helicity_list_all
-    procedure :: get_helicity_list_single => prc_blha_get_helicity_list_single
+    procedure :: reset_i_whizard_to_i_olc => prc_blha_reset_i_whizard_to_i_olc
+    procedure :: set_i_whizard_to_i_olc_trivial => prc_blha_set_i_whizard_to_i_olc_trivial
+    procedure :: set_i_whizard_to_i_olc => prc_blha_set_i_whizard_to_i_olc
+    generic :: get_i_whizard_to_i_olc => get_i_whizard_to_i_olc_all
+    generic :: get_i_whizard_to_i_olc => get_i_whizard_to_i_olc_single
+    procedure :: get_i_whizard_to_i_olc_all => prc_blha_get_i_whizard_to_i_olc_all
+    procedure :: get_i_whizard_to_i_olc_single => prc_blha_get_i_whizard_to_i_olc_single
     procedure :: warmup_helicities => prc_blha_warmup_helicities
   end type prc_blha_t
 
@@ -406,9 +402,9 @@ contains
           rsize = 1
        case (BLHA_AMP_LOOP)
           rsize = 4
-       case (BLHA_AMP_CC)
+       case (BLHA_AMP_COLOR_C)
           rsize = n_part * (n_part - 1) / 2
-       case (BLHA_AMP_SC)
+       case (BLHA_AMP_SPIN_C)
           rsize = 2 * n_part**2
        case default
           rsize = 0
@@ -467,6 +463,11 @@ contains
     template%compute_component (template%I_SUB) = .true.
   end subroutine blha_template_set_subtraction
 
+  subroutine blha_template_set_dglap (template)
+    class(blha_template_t), intent(inout) :: template
+    template%compute_component (template%I_DGLAP) = .true.
+  end subroutine blha_template_set_dglap
+
   subroutine blha_template_set_internal_color_correlations (template)
     class(blha_template_t), intent(inout) :: template
     template%use_internal_color_correlations = .true.
@@ -502,6 +503,12 @@ contains
     logical :: val
     val = template%compute_component (template%I_SUB)
   end function blha_template_compute_subtraction
+
+  pure function blha_template_compute_dglap (template) result (val)
+    class(blha_template_t), intent(in) :: template
+    logical :: val
+    val = template%compute_component (template%I_DGLAP)
+  end function blha_template_compute_dglap
 
   function blha_template_check (template) result (val)
     class(blha_template_t), intent(in) :: template
@@ -679,10 +686,10 @@ contains
             else if (rd_line(i_next : i_next + 4) == 'Tree') then
                amp_type(label_count) = BLHA_AMP_TREE
             else if (rd_line(i_next : i_next + 6) == 'ccTree') then
-               amp_type(label_count) = BLHA_AMP_CC
+               amp_type(label_count) = BLHA_AMP_COLOR_C
             else if (rd_line(i_next : i_next + 6) == 'scTree' .or. &
                  rd_line(i_next : i_next + 14) == 'sctree_polvect') then
-               amp_type(label_count) = BLHA_AMP_SC
+               amp_type(label_count) = BLHA_AMP_SPIN_C
             else
                call msg_fatal ("AmplitudeType present but AmpType not known!")
             end if
@@ -1006,16 +1013,16 @@ contains
              call msg_fatal ("Tree matrix element present, &
                   &but neither Born nor real indices are allocated!")
           end if
-       case (BLHA_AMP_CC)
-          if (allocated (object%i_cc)) then
-             object%i_cc(flv_index(i_proc)) = label(i_proc)
+       case (BLHA_AMP_COLOR_C)
+          if (allocated (object%i_color_c)) then
+             object%i_color_c(flv_index(i_proc)) = label(i_proc)
           else
              call msg_fatal ("Color-correlated matrix element present, &
                   &but cc-indices are not allocated!")
           end if
-       case (BLHA_AMP_SC)
-          if (allocated (object%i_sc)) then
-             object%i_sc(flv_index(i_proc)) = label(i_proc)
+       case (BLHA_AMP_SPIN_C)
+          if (allocated (object%i_spin_c)) then
+             object%i_spin_c(flv_index(i_proc)) = label(i_proc)
           else
              call msg_fatal ("Spin-correlated matrix element present, &
                   &but sc-indices are not allocated!")
@@ -1079,32 +1086,33 @@ contains
     if (blha_template%compute_loop ()) then
        if (blha_template%include_polarizations) then
           allocate (object%i_virt (n_flv * n_hel), &
-               object%i_cc (n_flv * n_hel))
+               object%i_color_c (n_flv * n_hel))
           if (blha_template%use_internal_color_correlations) then
              allocate (object%i_hel (n_flv * n_in * n_hel * 2, n_in))
           else
              allocate (object%i_hel (n_flv * n_in * n_hel, n_in))
           end if
        else
-          allocate (object%i_virt (n_flv), object%i_cc (n_flv))
+          allocate (object%i_virt (n_flv), object%i_color_c (n_flv))
        end if
        object%i_virt = 0
-       object%i_cc = 0
+       object%i_color_c = 0
     else if (blha_template%compute_subtraction ()) then
        if (blha_template%include_polarizations) then
           allocate (object%i_tree (n_flv * n_hel), &
-               object%i_cc (n_flv * n_hel), &
-               object%i_sc (n_flv * n_hel), &
+               object%i_color_c (n_flv * n_hel), &
+               object%i_spin_c (n_flv * n_hel), &
                object%i_hel (3 * (n_flv * n_hel * n_in), n_in))
           object%i_hel = 0
        else
-          allocate (object%i_tree (n_flv), object%i_cc (n_flv) , &
-               object%i_sc (n_flv))
+          allocate (object%i_tree (n_flv), object%i_color_c (n_flv) , &
+               object%i_spin_c (n_flv))
        end if
        object%i_tree = 0
-       object%i_cc = 0
-       object%i_sc = 0
-    else if (blha_template%compute_real_trees () .or. blha_template%compute_born ()) then
+       object%i_color_c = 0
+       object%i_spin_c = 0
+    else if (blha_template%compute_real_trees () .or. blha_template%compute_born () &
+           .or. blha_template%compute_dglap ()) then
        if (blha_template%include_polarizations) then
           allocate (object%i_hel (n_flv * n_hel * n_in, n_in))
           object%i_hel = 0
@@ -1256,42 +1264,47 @@ contains
     end if
   end subroutine prc_blha_compute_sqme
 
-  subroutine blha_cc_fill_diag (sqme_born, flavors, sqme_cc)
+  subroutine blha_color_c_fill_diag (sqme_born, flavors, sqme_color_c)
      real(default), intent(in) :: sqme_born
      integer, intent(in), dimension(:) :: flavors
-     real(default), intent(inout), dimension(:,:) :: sqme_cc
+     real(default), intent(inout), dimension(:,:) :: sqme_color_c
      integer :: i
      do i = 1, size (flavors)
         if (is_quark (flavors(i))) then
-           sqme_cc (i, i) = -cf * sqme_born
+           sqme_color_c (i, i) = -cf * sqme_born
         else if (is_gluon (flavors(i))) then
-           sqme_cc (i, i) = -ca * sqme_born
+           sqme_color_c (i, i) = -ca * sqme_born
         else
-           sqme_cc (i, i) = zero
+           sqme_color_c (i, i) = zero
         end if
      end do
-  end subroutine blha_cc_fill_diag
+  end subroutine blha_color_c_fill_diag
 
-  subroutine blha_cc_fill_offdiag (n, r, sqme_cc, offset)
+  subroutine blha_color_c_fill_offdiag (n, r, sqme_color_c, offset, n_flv)
     integer, intent(in) :: n
     real(default), intent(in), dimension(:) :: r
-    real(default), intent(inout), dimension(:,:) :: sqme_cc
-    integer, intent(in), optional :: offset
-    integer :: i, j, im1, jm1, pos
+    real(default), intent(inout), dimension(:,:) :: sqme_color_c
+    integer, intent(in), optional :: offset, n_flv
+    integer :: i, j, pos, incr
+    if (present (offset)) then
+       incr = offset
+    else
+       incr = 0
+    end if
     do j = 1, n
        do i = 1, j
           if (i /= j) then
-             im1 = i - 1; jm1 = j - 1
-             pos = im1 + jm1 * (jm1 - 1) / 2 + 1
-             if (present (offset)) pos = pos + offset
-             sqme_cc (i, j) = -r (pos)
+             pos = (j - 1) * (j - 2) / 2 + i
+             if (present (n_flv))  incr = incr + n_flv - 1
+             if (present (offset))  pos = pos + incr
+             sqme_color_c (i, j) = -r (pos)
           end if
-          sqme_cc (j, i) = sqme_cc (i, j)
+          sqme_color_c (j, i) = sqme_color_c (i, j)
        end do
     end do
-  end subroutine blha_cc_fill_offdiag
+  end subroutine blha_color_c_fill_offdiag
 
-  subroutine prc_blha_compute_sqme_cc_raw &
+  subroutine prc_blha_compute_sqme_color_c_raw &
      (object, i_flv, p, ren_scale, rr, bad_point)
     class(prc_blha_t), intent(in) :: object
     integer, intent(in) :: i_flv
@@ -1303,35 +1316,35 @@ contains
     real(double), dimension(size(rr)) :: r
     real(default) :: alpha_s, acc
     real(double) :: mu_dble, acc_dble
-    if (object%i_cc(i_flv) > 0) then
+    if (object%i_color_c(i_flv) > 0) then
        mom = object%create_momentum_array (p)
        if (vanishes (ren_scale)) &
-          call msg_fatal ("prc_blha_compute_sqme_cc: ren_scale vanishes")
+          call msg_fatal ("prc_blha_compute_sqme_color_c: ren_scale vanishes")
        mu_dble = dble(ren_scale)
        alpha_s = object%qcd%alpha%get (ren_scale)
 
        select type (driver => object%driver)
        class is (blha_driver_t)
           call driver%set_alpha_s (alpha_s)
-          call driver%blha_olp_eval2 (object%i_cc(i_flv), &
+          call driver%blha_olp_eval2 (object%i_color_c(i_flv), &
                mom, mu_dble, r, acc_dble)
        end select
        rr = r
        acc = acc_dble
        bad_point = acc > object%maximum_accuracy
-       if (object%includes_polarization ()) rr = object%n_hel * rr
+       if (object%includes_polarization ())  rr = object%n_hel * rr
     else
        rr = zero
     end if
-  end subroutine prc_blha_compute_sqme_cc_raw
+  end subroutine prc_blha_compute_sqme_color_c_raw
 
-  subroutine prc_blha_compute_sqme_cc &
-         (object, i_flv, p, ren_scale, born_cc, bad_point, born_out)
+  subroutine prc_blha_compute_sqme_color_c &
+         (object, i_flv, p, ren_scale, born_color_c, bad_point, born_out)
     class(prc_blha_t), intent(inout) :: object
     integer, intent(in) :: i_flv
     type(vector4_t), intent(in), dimension(:) :: p
     real(default), intent(in) :: ren_scale
-    real(default), intent(inout), dimension(:,:) :: born_cc
+    real(default), intent(inout), dimension(:,:) :: born_color_c
     real(default), intent(out), optional :: born_out
     logical, intent(out) :: bad_point
     real(default), dimension(:), allocatable :: r
@@ -1339,8 +1352,8 @@ contains
     real(default) :: born
     integer, dimension(:), allocatable :: flavors
     allocate (r (blha_result_array_size &
-         (size(born_cc, dim=1), BLHA_AMP_CC)))
-    call object%compute_sqme_cc_raw (i_flv, p, ren_scale, r, bad_point)
+         (size(born_color_c, dim=1), BLHA_AMP_COLOR_C)))
+    call object%compute_sqme_color_c_raw (i_flv, p, ren_scale, r, bad_point)
 
     select type (driver => object%driver)
     class is (blha_driver_t)
@@ -1351,15 +1364,12 @@ contains
        end if
        if (present (born_out)) born_out = born
     end select
-    call blha_cc_fill_offdiag (object%n_particles, r, born_cc)
-    !!! !!! !!! Workaround for ifort 16.0 missing default allocate-on-assignment
-    allocate (flavors (object%get_n_flvs (i_flv)))
-    !!! !!! !!! End of workaround
+    call blha_color_c_fill_offdiag (object%n_particles, r, born_color_c)
     flavors = object%get_flv_state (i_flv)
-    call blha_cc_fill_diag (born, flavors, born_cc)
+    call blha_color_c_fill_diag (born, flavors, born_color_c)
 
     bad_point = bad_point .or. bad_point2
-  end subroutine prc_blha_compute_sqme_cc
+  end subroutine prc_blha_compute_sqme_color_c
 
   function prc_blha_get_beam_helicities_single (object, i, invert_second) result (hel)
     integer, dimension(:), allocatable :: hel
@@ -1393,11 +1403,11 @@ contains
     end do
   end function prc_blha_get_beam_helicities_array
 
-  subroutine prc_blha_reset_helicity_list (object)
+  subroutine prc_blha_reset_i_whizard_to_i_olc (object)
     class(prc_blha_t), intent(inout) :: object
     if (allocated (object%i_whizard_to_i_olc)) &
          deallocate (object%i_whizard_to_i_olc)
-  end subroutine prc_blha_reset_helicity_list
+  end subroutine prc_blha_reset_i_whizard_to_i_olc
 
   recursive function blha_loop_positions (i_flv, n_sub) result (index)
     integer :: index
@@ -1410,32 +1420,27 @@ contains
     end if
   end function blha_loop_positions
 
-  subroutine prc_blha_set_helicity_list_trivial (object, n_flv, n_hel, n_sub, loop)
+  subroutine prc_blha_set_i_whizard_to_i_olc_trivial (object, n_flv, n_hel, n_sub)
     class(prc_blha_t), intent(inout) :: object
     integer, intent(in) :: n_flv, n_sub, n_hel
-    logical, intent(in) :: loop
-    integer :: i_flv, i_hel, i_sub, n_sub_limit
-    integer :: i
+    integer :: i_flv
+    call msg_debug (D_CORE, "setting up trivial helicity list")
     if (allocated (object%i_whizard_to_i_olc)) &
          deallocate (object%i_whizard_to_i_olc)
-    n_sub_limit = n_sub; if (.not. loop .and. n_sub_limit > 0) n_sub_limit = n_sub_limit - 1
     allocate (object%i_whizard_to_i_olc (n_flv * n_hel))
     object%i_whizard_to_i_olc = 0
-    i = 0
     do i_flv = 1, n_flv
-       do i_hel = 1, n_hel
-          i = i + 1
-          object%i_whizard_to_i_olc(i) = i + n_sub_limit * (i_flv - 1)
-       end do
+       object%i_whizard_to_i_olc(i_flv) = i_flv
     end do
-  end subroutine prc_blha_set_helicity_list_trivial
+  end subroutine prc_blha_set_i_whizard_to_i_olc_trivial
 
-  subroutine prc_blha_set_helicity_list (object, helicities)
+  subroutine prc_blha_set_i_whizard_to_i_olc (object, helicities)
     class(prc_blha_t), intent(inout) :: object
     integer, intent(in), dimension(:,:) :: helicities
     integer, dimension(:, :), allocatable :: hel_olc
     integer :: n1, n2
     integer :: i, j
+    call msg_debug (D_CORE, "setting up helicity list from OLC file")
     n1 = size (helicities, dim=1)
     n2 = size (object%get_beam_helicities (), dim=1)
     if (allocated (object%i_whizard_to_i_olc)) &
@@ -1445,26 +1450,26 @@ contains
     hel_olc = object%get_beam_helicities (invert_second = .true.)
     do i = 1, n1
        do j = 1, n2
-          if (all (helicities (i, :) == hel_olc (j, :))) &
-             object%i_whizard_to_i_olc (j) = i
+          if (all (helicities(i, :) == hel_olc(j, :))) &
+             object%i_whizard_to_i_olc(j) = i
        end do
     end do
     deallocate (hel_olc)
-  end subroutine prc_blha_set_helicity_list
+  end subroutine prc_blha_set_i_whizard_to_i_olc
 
-  function prc_blha_get_helicity_list_all (object) result (i_out)
+  function prc_blha_get_i_whizard_to_i_olc_all (object) result (i_out)
     integer, dimension(:), allocatable :: i_out
     class(prc_blha_t), intent(in) :: object
     allocate (i_out (size (object%i_whizard_to_i_olc)))
     i_out = object%i_whizard_to_i_olc
-  end function prc_blha_get_helicity_list_all
+  end function prc_blha_get_i_whizard_to_i_olc_all
 
-  function prc_blha_get_helicity_list_single (object, i) result (i_out)
+  function prc_blha_get_i_whizard_to_i_olc_single (object, i) result (i_out)
     integer :: i_out
     class(prc_blha_t), intent(in) :: object
     integer, intent(in) :: i
     i_out = object%i_whizard_to_i_olc (i)
-  end function prc_blha_get_helicity_list_single
+  end function prc_blha_get_i_whizard_to_i_olc_single
 
   subroutine prc_blha_warmup_helicities (object, p)
     class(prc_blha_t), intent(inout) :: object

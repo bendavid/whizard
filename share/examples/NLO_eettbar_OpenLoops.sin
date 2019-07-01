@@ -1,4 +1,4 @@
-# $Id: LEP_cc10.sin 2227 2010-04-05 04:46:08Z reuter $
+# NLO_eettbar_OpenLoops.sin
 # Simple complete physics example: Top quark production at a lepton collider
 ########################################################################
 #
@@ -7,7 +7,7 @@
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
 #     with contributions from
-#     Christian Speckner <cnspeckn@googlemail.com>
+#     cf. main AUTHORS file
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by 
@@ -47,13 +47,13 @@ mtop = 175 GeV
 
 ?use_vamp_equivalences = false
 $loop_me_method = "openloops"
-?alpha_s_is_fixed = false
-?alpha_s_from_mz = true
-?alpha_s_from_lambda_qcd = false
+?alphas_is_fixed = false
+?alphas_from_mz = true
+?alphas_from_lambda_qcd = false
 alpha_power = 2
 alphas_power = 0
 
-process nlo_tt = E1, e1 => t, T { nlo_calculation = "Full" }
+process nlo_tt = E1, e1 => t, T { nlo_calculation = full }
 
 seed = 2222
 

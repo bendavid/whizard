@@ -21,10 +21,10 @@ wtop = 0
 mtop = 175 GeV
 
 ?use_vamp_equivalences = false
-?alpha_s_is_fixed = false
-?alpha_s_from_mz = true
+?alphas_is_fixed = false
+?alphas_from_mz = true
 
-process nlo_4_p1 = E1, e1 => t, T { nlo_calculation = "Full" }
+process nlo_4_p1 = E1, e1 => t, T { nlo_calculation = full }
 
 seed = 2222
 

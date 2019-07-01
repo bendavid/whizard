@@ -686,21 +686,19 @@ temporarily override defaults.  The data set is transparent.
   subroutine rt_data_write_vars (object, unit, vars)
     class(rt_data_t), intent(in), target :: object
     integer, intent(in), optional :: unit
-    type(string_t), dimension(:), intent(in), optional :: vars
+    type(string_t), dimension(:), intent(in) :: vars
     type(var_list_t), pointer :: var_list
     integer :: u, i
     u = given_output_unit (unit)
-    if (present (vars)) then
-       var_list => object%get_var_list_ptr ()
-       do i = 1, size (vars)
-          associate (var => vars(i))
-            if (var_list%contains (var, follow_link=.true.)) then
-               call var_list%write_var (var, unit = u, &
-                    follow_link = .true.)
-            end if
-          end associate
-       end do
-    end if
+    var_list => object%get_var_list_ptr ()
+    do i = 1, size (vars)
+       associate (var => vars(i))
+         if (var_list%contains (var, follow_link=.true.)) then
+            call var_list%write_var (var, unit = u, &
+                 follow_link = .true., defined=.true.)
+         end if
+       end associate
+    end do
   end subroutine rt_data_write_vars
 
 @ %def rt_data_write_vars
@@ -772,6 +770,42 @@ temporarily override defaults.  The data set is transparent.
   end subroutine rt_data_write_process_stack
 
 @ %def rt_data_write_process_stack
+@
+<<RT data: rt data: TBP>>=
+  procedure :: write_var_descriptions => rt_data_write_var_descriptions
+<<RT data: procedures>>=
+  subroutine rt_data_write_var_descriptions (rt_data, unit, ascii_output)
+    class(rt_data_t), intent(in) :: rt_data
+    integer, intent(in), optional :: unit
+    logical, intent(in), optional :: ascii_output
+    integer :: u
+    logical :: ao
+    u = given_output_unit (unit)
+    ao = .false.;  if (present (ascii_output))  ao = ascii_output
+    call rt_data%var_list%write (u, follow_link=.true., &
+         descriptions=.true., ascii_output=ao)
+  end subroutine rt_data_write_var_descriptions
+
+@ %def rt_data_write_var_descriptions
+@
+<<RT data: rt data: TBP>>=
+  procedure :: show_description_of_string => rt_data_show_description_of_string
+<<RT data: procedures>>=
+  subroutine rt_data_show_description_of_string (rt_data, string, &
+         unit, ascii_output)
+    class(rt_data_t), intent(in) :: rt_data
+    type(string_t), intent(in) :: string
+    integer, intent(in), optional :: unit
+    logical, intent(in), optional :: ascii_output
+    integer :: u
+    logical :: ao
+    u = given_output_unit (unit)
+    ao = .false.;  if (present (ascii_output))  ao = ascii_output
+    call rt_data%var_list%write_var (string, unit=u, follow_link=.true., &
+         defined=.false., descriptions=.true., ascii_output=ao)
+  end subroutine rt_data_show_description_of_string
+
+@ %def rt_data_show_description_of_string
 @
 \subsection{Clear}
 The [[clear]] command can remove the contents of various subobjects.
@@ -862,9 +896,17 @@ their targets.
     class(rt_data_t), intent(inout), target :: local
     logical, target, save :: known = .true.
     call local%var_list%append_string_ptr (var_str ("$fc"), &
-         local%os_data%fc, known, intrinsic=.true.)
+         local%os_data%fc, known, intrinsic=.true., &
+         description=var_str('This string variable gives the ' // &
+         '\ttt{Fortran} compiler used within \whizard. It can ' // &
+         'only be accessed, not set by the user. (cf. also ' // &
+         '\ttt{\$fcflags})'))
     call local%var_list%append_string_ptr (var_str ("$fcflags"), &
-         local%os_data%fcflags, known, intrinsic=.true.)
+         local%os_data%fcflags, known, intrinsic=.true., &
+         description=var_str('This string variable gives the ' // &
+         'compiler flags for the \ttt{Fortran} compiler used ' // &
+         'within \whizard. It can only be accessed, not set by ' // &
+         'the user. (cf. also \ttt{\$fc})'))
   end subroutine rt_data_init_pointer_variables
 
 @ %def rt_data_init_pointer_variables
@@ -1074,14 +1116,15 @@ global context.
 <<RT data: rt data: TBP>>=
   procedure :: read_ufo_model => rt_data_read_ufo_model
 <<RT data: procedures>>=
-  subroutine rt_data_read_ufo_model (global, name, model)
+  subroutine rt_data_read_ufo_model (global, name, model, ufo_path)
     class(rt_data_t), intent(inout) :: global
     type(string_t), intent(in) :: name
     type(model_t), pointer, intent(out) :: model
+    type(string_t), intent(in), optional :: ufo_path
     type(string_t) :: filename
     filename = name // ".ufo.mdl"
     call global%model_list%read_model &
-         (name, filename, global%os_data, model, ufo=.true.)
+         (name, filename, global%os_data, model, ufo=.true., ufo_path=ufo_path)
   end subroutine rt_data_read_ufo_model
 
 @ %def rt_data_read_ufo_model
@@ -1107,11 +1150,12 @@ variable list to the model variable list.
 <<RT data: rt data: TBP>>=
   procedure :: select_model => rt_data_select_model
 <<RT data: procedures>>=
-  subroutine rt_data_select_model (global, name, scheme, ufo)
+  subroutine rt_data_select_model (global, name, scheme, ufo, ufo_path)
     class(rt_data_t), intent(inout), target :: global
     type(string_t), intent(in) :: name
     type(string_t), intent(in), optional :: scheme
     logical, intent(in), optional :: ufo
+    type(string_t), intent(in), optional :: ufo_path
     logical :: same_model, ufo_model
     ufo_model = .false.;  if (present (ufo))  ufo_model = ufo
     if (associated (global%model)) then
@@ -1123,7 +1167,7 @@ variable list to the model variable list.
        global%model => global%model_list%get_model_ptr (name, scheme, ufo)
        if (.not. associated (global%model)) then
           if (ufo_model) then
-             call global%read_ufo_model (name, global%model)
+             call global%read_ufo_model (name, global%model, ufo_path)
           else
              call global%read_model (name, global%model)
           end if
@@ -1381,74 +1425,81 @@ can assume that the variable has been initialized.
   procedure :: set_pdg_array => rt_data_set_pdg_array
   procedure :: set_string => rt_data_set_string
 <<RT data: procedures>>=
-  subroutine rt_data_set_log (global, name, lval, is_known, verbose)
+  subroutine rt_data_set_log &
+       (global, name, lval, is_known, force, verbose)
     class(rt_data_t), intent(inout) :: global
     type(string_t), intent(in) :: name
     logical, intent(in) :: lval
     logical, intent(in) :: is_known
-    logical, intent(in), optional :: verbose
+    logical, intent(in), optional :: force, verbose
     call global%var_list%set_log (name, lval, is_known, &
-         verbose=verbose)
+         force=force, verbose=verbose)
   end subroutine rt_data_set_log
 
-  subroutine rt_data_set_int (global, name, ival, is_known, verbose)
+  subroutine rt_data_set_int &
+       (global, name, ival, is_known, force, verbose)
     class(rt_data_t), intent(inout) :: global
     type(string_t), intent(in) :: name
     integer, intent(in) :: ival
     logical, intent(in) :: is_known
-    logical, intent(in), optional :: verbose
+    logical, intent(in), optional :: force, verbose
     call global%var_list%set_int (name, ival, is_known, &
-         verbose=verbose)
+         force=force, verbose=verbose)
   end subroutine rt_data_set_int
 
-  subroutine rt_data_set_real (global, name, rval, is_known, verbose, pacified)
+  subroutine rt_data_set_real &
+       (global, name, rval, is_known, force, verbose, pacified)
     class(rt_data_t), intent(inout) :: global
     type(string_t), intent(in) :: name
     real(default), intent(in) :: rval
     logical, intent(in) :: is_known
-    logical, intent(in), optional :: verbose, pacified
+    logical, intent(in), optional :: force, verbose, pacified
     call global%var_list%set_real (name, rval, is_known, &
-         verbose=verbose, pacified=pacified)
+         force=force, verbose=verbose, pacified=pacified)
   end subroutine rt_data_set_real
 
-  subroutine rt_data_set_cmplx (global, name, cval, is_known, verbose, pacified)
+  subroutine rt_data_set_cmplx &
+       (global, name, cval, is_known, force, verbose, pacified)
     class(rt_data_t), intent(inout) :: global
     type(string_t), intent(in) :: name
     complex(default), intent(in) :: cval
     logical, intent(in) :: is_known
-    logical, intent(in), optional :: verbose, pacified
+    logical, intent(in), optional :: force, verbose, pacified
     call global%var_list%set_cmplx (name, cval, is_known, &
-         verbose=verbose, pacified=pacified)
+         force=force, verbose=verbose, pacified=pacified)
   end subroutine rt_data_set_cmplx
 
-  subroutine rt_data_set_subevt (global, name, pval, is_known, verbose)
+  subroutine rt_data_set_subevt &
+       (global, name, pval, is_known, force, verbose)
     class(rt_data_t), intent(inout) :: global
     type(string_t), intent(in) :: name
     type(subevt_t), intent(in) :: pval
     logical, intent(in) :: is_known
-    logical, intent(in), optional :: verbose
+    logical, intent(in), optional :: force, verbose
     call global%var_list%set_subevt (name, pval, is_known, &
-         verbose=verbose)
+         force=force, verbose=verbose)
   end subroutine rt_data_set_subevt
 
-  subroutine rt_data_set_pdg_array (global, name, aval, is_known, verbose)
+  subroutine rt_data_set_pdg_array &
+       (global, name, aval, is_known, force, verbose)
     class(rt_data_t), intent(inout) :: global
     type(string_t), intent(in) :: name
     type(pdg_array_t), intent(in) :: aval
     logical, intent(in) :: is_known
-    logical, intent(in), optional :: verbose
+    logical, intent(in), optional :: force, verbose
     call global%var_list%set_pdg_array (name, aval, is_known, &
-         verbose=verbose)
+         force=force, verbose=verbose)
   end subroutine rt_data_set_pdg_array
 
-  subroutine rt_data_set_string (global, name, sval, is_known, verbose)
+  subroutine rt_data_set_string &
+       (global, name, sval, is_known, force, verbose)
     class(rt_data_t), intent(inout) :: global
     type(string_t), intent(in) :: name
     type(string_t), intent(in) :: sval
     logical, intent(in) :: is_known
-    logical, intent(in), optional :: verbose
+    logical, intent(in), optional :: force, verbose
     call global%var_list%set_string (name, sval, is_known, &
-         verbose=verbose)
+         force=force, verbose=verbose)
   end subroutine rt_data_set_string
 
 @ %def rt_data_set_log
@@ -1823,6 +1874,70 @@ suppress numerical fluctuations in (constant) test matrix elements.
 
 @ %def rt_data_has_event_callback
 @ %def rt_data_get_event_callback
+@ Force system-dependent objects to well-defined values.  Some of the
+variables are locked and therefore must be addressed directly.
+
+This is, of course, only required for testing purposes. In principle,
+the [[real_specimen]] variables could be set to their values in
+[[rt_data_t]], but this depends on the precision again, so we set
+them to some dummy values.
+<<RT data: public>>=
+  public :: fix_system_dependencies
+<<RT data: procedures>>=
+  subroutine fix_system_dependencies (global)
+    class(rt_data_t), intent(inout), target :: global
+    type(var_list_t), pointer :: var_list
+
+    var_list => global%get_var_list_ptr ()
+    call var_list%set_log (var_str ("?omega_openmp"), &
+         .false., is_known = .true., force=.true.)
+    call var_list%set_log (var_str ("?openmp_is_active"), &
+         .false., is_known = .true., force=.true.)
+    call var_list%set_int (var_str ("openmp_num_threads_default"), &
+         1, is_known = .true., force=.true.)
+    call var_list%set_int (var_str ("openmp_num_threads"), &
+         1, is_known = .true., force=.true.)
+    call var_list%set_int (var_str ("real_range"), &
+         307, is_known = .true., force=.true.)
+    call var_list%set_int (var_str ("real_precision"), &
+         15, is_known = .true., force=.true.)
+    call var_list%set_real (var_str ("real_epsilon"), &
+         1.e-16_default, is_known = .true., force=.true.)
+    call var_list%set_real (var_str ("real_tiny"), &
+         1.e-300_default, is_known = .true., force=.true.)
+
+    global%os_data%fc = "Fortran-compiler"
+    global%os_data%fcflags = "Fortran-flags"
+
+  end subroutine fix_system_dependencies
+
+@ %def fix_system_dependencies
+@
+<<RT data: public>>=
+  public :: show_description_of_string
+<<RT data: procedures>>=
+  subroutine show_description_of_string (string)
+    type(string_t), intent(in) :: string
+    type(rt_data_t), target :: global
+    call global%global_init ()
+    call global%show_description_of_string (string, ascii_output=.true.)
+  end subroutine show_description_of_string
+
+@ %def show_description_of_string
+@
+<<RT data: public>>=
+  public :: show_tex_descriptions
+<<RT data: procedures>>=
+  subroutine show_tex_descriptions ()
+    type(rt_data_t), target :: global
+    call global%global_init ()
+    call fix_system_dependencies (global)
+    call global%set_int (var_str ("seed"), 0, is_known=.true.)
+    call global%var_list%sort ()
+    call global%write_var_descriptions ()
+  end subroutine show_tex_descriptions
+
+@ %def show_tex_descriptions
 @
 \subsection{Unit Tests}
 Test module, followed by the corresponding implementation module.
@@ -1856,7 +1971,7 @@ module rt_data_uti
   use lexers
   use parser
   use flavors
-  use variables, only: var_list_t
+  use variables, only: var_list_t, var_entry_t, var_entry_init_int
   use eval_trees
   use models
   use prclib_stacks
@@ -1888,42 +2003,6 @@ end module rt_data_uti
 @ %def rt_data_test
 @
 \subsubsection{Initial content}
-Force system-dependent objects to well-defined values.  Some of the
-variables are locked and therefore must be addressed directly.
-
-This is, of course, only required for testing purposes. In principle,
-the [[real_specimen]] variables could be set to their values in
-[[rt_data_t]], but this depends on the precision again, so we set
-them to some dummy values.
-<<RT data: test auxiliary>>=
-  subroutine fix_system_dependencies (global)
-    class(rt_data_t), intent(inout), target :: global
-    type(var_list_t), pointer :: var_list
-
-    var_list => global%get_var_list_ptr ()
-    call var_list%set_log (var_str ("?omega_openmp"), &
-         .false., is_known = .true., force=.true.)
-    call var_list%set_log (var_str ("?openmp_is_active"), &
-         .false., is_known = .true., force=.true.)
-    call var_list%set_int (var_str ("openmp_num_threads_default"), &
-         1, is_known = .true., force=.true.)
-    call var_list%set_int (var_str ("openmp_num_threads"), &
-         1, is_known = .true., force=.true.)
-    call var_list%set_int (var_str ("real_range"), &
-         307, is_known = .true., force=.true.)
-    call var_list%set_int (var_str ("real_precision"), &
-         15, is_known = .true., force=.true.)
-    call var_list%set_real (var_str ("real_epsilon"), &
-         1.e-16_default, is_known = .true., force=.true.)
-    call var_list%set_real (var_str ("real_tiny"), &
-         1.e-300_default, is_known = .true., force=.true.)
-
-    global%os_data%fc = "Fortran-compiler"
-    global%os_data%fcflags = "Fortran-flags"
-
-  end subroutine fix_system_dependencies
-
-@ %def fix_system_dependencies
 @
 Display the RT data in the state just after (global) initialization.
 <<RT data: execute tests>>=
@@ -2441,9 +2520,9 @@ global variable list.
     call global%process_stack%init_result_vars (var_str ("testproc"))
 
     call global%var_list%write_var (&
-         var_str ("integral(testproc)"), u)
+         var_str ("integral(testproc)"), u, defined=.true.)
     call global%var_list%write_var (&
-         var_str ("error(testproc)"), u)
+         var_str ("error(testproc)"), u, defined=.true.)
 
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
@@ -2531,12 +2610,12 @@ the collision energy.  The method [[get_sqrts]] fetches the correct value.
 
     var_list => global%get_var_list_ptr ()
 
-    call var_list%write_var (var_str ("sqrts"), u)
-    call var_list%write_var (var_str ("luminosity"), u)
-    call var_list%write_var (var_str ("ff"), u)
-    call var_list%write_var (var_str ("gy"), u)
-    call var_list%write_var (var_str ("mf"), u)
-    call var_list%write_var (var_str ("x"), u)
+    call var_list%write_var (var_str ("sqrts"), u, defined=.true.)
+    call var_list%write_var (var_str ("luminosity"), u, defined=.true.)
+    call var_list%write_var (var_str ("ff"), u, defined=.true.)
+    call var_list%write_var (var_str ("gy"), u, defined=.true.)
+    call var_list%write_var (var_str ("mf"), u, defined=.true.)
+    call var_list%write_var (var_str ("x"), u, defined=.true.)
 
     write (u, "(A)")
 
@@ -2571,7 +2650,7 @@ the collision energy.  The method [[get_sqrts]] fetches the correct value.
     call var_list%write_var (var_str ("ff"), u)
     call var_list%write_var (var_str ("gy"), u)
     call var_list%write_var (var_str ("mf"), u)
-    call var_list%write_var (var_str ("x"), u)
+    call var_list%write_var (var_str ("x"), u, defined=.true.)
 
     write (u, "(A)")
 
@@ -2603,7 +2682,7 @@ the collision energy.  The method [[get_sqrts]] fetches the correct value.
     call var_list%write_var (var_str ("ff"), u)
     call var_list%write_var (var_str ("gy"), u)
     call var_list%write_var (var_str ("mf"), u)
-    call var_list%write_var (var_str ("x"), u)
+    call var_list%write_var (var_str ("x"), u, defined=.true.)
 
     write (u, "(A)")
 
@@ -2633,7 +2712,7 @@ the collision energy.  The method [[get_sqrts]] fetches the correct value.
     call var_list%write_var (var_str ("ff"), u)
     call var_list%write_var (var_str ("gy"), u)
     call var_list%write_var (var_str ("mf"), u)
-    call var_list%write_var (var_str ("x"), u)
+    call var_list%write_var (var_str ("x"), u, defined=.true.)
 
     write (u, "(A)")
 
@@ -2664,6 +2743,56 @@ the collision energy.  The method [[get_sqrts]] fetches the correct value.
   end subroutine rt_data_9
 
 @ %def rt_data_9
+\subsubsection{Descriptions}
+<<RT data: execute tests>>=
+  call test(rt_data_10, "rt_data_10", &
+            "descriptions", u, results)
+<<RT data: test declarations>>=
+  public :: rt_data_10
+<<RT data: tests>>=
+  subroutine rt_data_10 (u)
+    integer, intent(in) :: u
+    type(rt_data_t) :: global
+    ! type(var_list_t) :: var_list
+    write (u, "(A)")  "* Test output: rt_data_10"
+    write (u, "(A)")  "*   Purpose: display descriptions"
+    write (u, "(A)")
+
+    call global%var_list%append_real (var_str ("sqrts"), &
+          intrinsic=.true., &
+          description=var_str ('Real variable in order to set the center-of-mass ' // &
+          'energy for the collisions.'))
+    call global%var_list%append_real (var_str ("luminosity"), 0._default, &
+          intrinsic=.true., &
+          description=var_str ('This specifier \ttt{luminosity = {\em ' // &
+          '<num>}} sets the integrated luminosity (in inverse femtobarns, ' // &
+          'fb${}^{-1}$) for the event generation of the processes in the ' // &
+          '\sindarin\ input files.'))
+    call global%var_list%append_int (var_str ("seed"), 1234, &
+          intrinsic=.true., &
+          description=var_str ('Integer variable \ttt{seed = {\em <num>}} ' // &
+          'that allows to set a specific random seed \ttt{num}.'))
+    call global%var_list%append_string (var_str ("$method"), var_str ("omega"), &
+         intrinsic=.true., &
+         description=var_str ('This string variable specifies the method ' // &
+         'for the matrix elements to be used in the evaluation.'))
+    call global%var_list%append_log (var_str ("?read_color_factors"), .true., &
+          intrinsic=.true., &
+          description=var_str ('This flag decides whether to read QCD ' // &
+          'color factors from the matrix element provided by each method, ' // &
+          'or to try and calculate the color factors in \whizard\ internally.'))
+
+    call global%var_list%sort ()
+
+    call global%write_var_descriptions (u)
+    call global%final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: rt_data_10"
+  end subroutine rt_data_10
+
+@ %def rt_data_10
+@
 @
 \clearpage
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -2721,7 +2850,7 @@ intent(out).
   public :: dispatch_core_def
 <<Dispatch me methods: procedures>>=
   subroutine dispatch_core_def (core_def, prt_in, prt_out, &
-       model, var_list, id, nlo_type)
+       model, var_list, id, nlo_type, method)
     class(prc_core_def_t), allocatable, intent(inout) :: core_def
     type(string_t), dimension(:), intent(in) :: prt_in
     type(string_t), dimension(:), intent(in) :: prt_out
@@ -2729,8 +2858,8 @@ intent(out).
     type(var_list_t), intent(in) :: var_list
     type(string_t), intent(in), optional :: id
     integer, intent(in), optional :: nlo_type
-    type(string_t) :: method
-    type(string_t) :: model_name
+    type(string_t), intent(in), optional :: method
+    type(string_t) :: model_name, meth
     type(string_t) :: ufo_path
     type(string_t) :: restrictions
     logical :: ufo
@@ -2741,7 +2870,12 @@ intent(out).
     type(string_t) :: extra_options
     integer :: nlo
     nlo = BORN;  if (present (nlo_type))  nlo = nlo_type
-    method = var_list%get_sval (var_str ("$method"))
+    if (present (method)) then
+       meth = method
+    else
+       meth = var_list%get_sval (var_str ("$method"))
+    end if
+    call msg_debug2 (D_CORE, "dispatch_core_def")
     if (associated (model)) then
        model_name = model%get_name ()
        cms_scheme = model%get_scheme () == "Complex_Mass_Scheme"
@@ -2764,7 +2898,8 @@ intent(out).
          var_str ("?report_progress"))
     extra_options = var_list%get_sval (&
          var_str ("$omega_flags"))
-    select case (char (method))
+    call msg_debug2 (D_CORE, "dispatching core method: ", meth)
+    select case (char (meth))
     case ("unit_test")
        allocate (prc_test_def_t :: core_def)
        select type (core_def)
@@ -2807,7 +2942,7 @@ intent(out).
       type is (gosam_def_t)
         if (present (id)) then
            call core_def%init (id, model_name, prt_in, &
-              prt_out, nlo, var_list)
+                prt_out, nlo, var_list)
         else
            call msg_fatal ("Dispatch GoSam def: No id!")
         end if
@@ -2818,7 +2953,7 @@ intent(out).
        type is (openloops_def_t)
           if (present (id)) then
              call core_def%init (id, model_name, prt_in, &
-                prt_out, nlo, var_list)
+                  prt_out, nlo, var_list)
           else
              call msg_fatal ("Dispatch OpenLoops def: No id!")
           end if
@@ -2858,7 +2993,7 @@ intent(out).
        end select
     case default
        call msg_fatal ("Process configuration: method '" &
-            // char (method) // "' not implemented")
+            // char (meth) // "' not implemented")
     end select
   end subroutine dispatch_core_def
 
@@ -3564,7 +3699,7 @@ We can't move this to [[beams]] as it depends on
     write (u, "(A)")  "* Allocate alpha_s as fixed"
     write (u, "(A)")
 
-    call global%set_log (var_str ("?alpha_s_is_fixed"), &
+    call global%set_log (var_str ("?alphas_is_fixed"), &
          .true., is_known = .true.)
     call dispatch_qcd (qcd, global%get_var_list_ptr (), global%os_data)
     call qcd%write (u)
@@ -3573,12 +3708,12 @@ We can't move this to [[beams]] as it depends on
     write (u, "(A)")  "* Allocate alpha_s as running (built-in)"
     write (u, "(A)")
 
-    call global%set_log (var_str ("?alpha_s_is_fixed"), &
+    call global%set_log (var_str ("?alphas_is_fixed"), &
          .false., is_known = .true.)
-    call global%set_log (var_str ("?alpha_s_from_mz"), &
+    call global%set_log (var_str ("?alphas_from_mz"), &
          .true., is_known = .true.)
     call global%set_int &
-         (var_str ("alpha_s_order"), 1, is_known = .true.)
+         (var_str ("alphas_order"), 1, is_known = .true.)
     call model_vars%set_real (var_str ("alphas"), 0.1234_default, &
           is_known=.true.)
     call model_vars%set_real (var_str ("mZ"), 91.234_default, &
@@ -3590,18 +3725,18 @@ We can't move this to [[beams]] as it depends on
     write (u, "(A)")  "* Allocate alpha_s as running (built-in, Lambda defined)"
     write (u, "(A)")
 
-    call global%set_log (var_str ("?alpha_s_from_mz"), &
+    call global%set_log (var_str ("?alphas_from_mz"), &
          .false., is_known = .true.)
     call global%set_log (&
-         var_str ("?alpha_s_from_lambda_qcd"), &
+         var_str ("?alphas_from_lambda_qcd"), &
          .true., is_known = .true.)
     call global%set_real &
          (var_str ("lambda_qcd"), 250.e-3_default, &
           is_known=.true.)
     call global%set_int &
-         (var_str ("alpha_s_order"), 2, is_known = .true.)
+         (var_str ("alphas_order"), 2, is_known = .true.)
     call global%set_int &
-         (var_str ("alpha_s_nf"), 4, is_known = .true.)
+         (var_str ("alphas_nf"), 4, is_known = .true.)
     call dispatch_qcd (qcd, global%get_var_list_ptr (), global%os_data)
     call qcd%write (u)
 
@@ -3610,10 +3745,10 @@ We can't move this to [[beams]] as it depends on
     write (u, "(A)")
 
     call global%set_log (&
-         var_str ("?alpha_s_from_lambda_qcd"), &
+         var_str ("?alphas_from_lambda_qcd"), &
          .false., is_known = .true.)
     call global%set_log &
-         (var_str ("?alpha_s_from_pdf_builtin"), &
+         (var_str ("?alphas_from_pdf_builtin"), &
          .true., is_known = .true.)
     call dispatch_qcd (qcd, global%get_var_list_ptr (), global%os_data)
     call qcd%write (u)
@@ -3643,6 +3778,9 @@ module process_configurations
 
 <<Use strings>>
   use diagnostics
+  use io_units
+  use physics_defs, only: BORN, NLO_VIRTUAL, NLO_REAL, NLO_DGLAP, &
+       NLO_SUBTRACTION, NLO_MISMATCH
   use models
   use prc_core_def
   use particle_specifiers
@@ -3679,39 +3817,60 @@ end module process_configurations
   end type process_configuration_t
 
 @ %def process_configuration_t
+@ Output (for unit tests).
+<<Process configurations: process configuration: TBP>>=
+  procedure :: write => process_configuration_write
+<<Process configurations: procedures>>=
+  subroutine process_configuration_write (config, unit)
+    class(process_configuration_t), intent(in) :: config
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = given_output_unit (unit)
+    write (u, "(A)")  "Process configuration:"
+    if (associated (config%entry)) then
+       call config%entry%write (u)
+    else
+       write (u, "(1x,3A)")  "ID    = '", char (config%id), "'"
+       write (u, "(1x,A,1x,I0)")  "num ID =", config%num_id
+       write (u, "(2x,A)")  "[no entry]"
+    end if
+  end subroutine process_configuration_write
+
+@ %def process_configuration_write
 @ Initialize a process.  We only need the name, the number of incoming
 particles, and the number of components.
 <<Process configurations: process configuration: TBP>>=
   procedure :: init => process_configuration_init
 <<Process configurations: procedures>>=
   subroutine process_configuration_init &
-       (config, prc_name, n_in, n_components, global, nlo_proc)
+       (config, prc_name, n_in, n_components, model, var_list, nlo_process)
     class(process_configuration_t), intent(out) :: config
     type(string_t), intent(in) :: prc_name
     integer, intent(in) :: n_in
     integer, intent(in) :: n_components
-    type(rt_data_t), intent(in) :: global
-    logical, intent(in), optional :: nlo_proc
-    type(model_t), pointer :: model
-    logical :: nlo_process
-    model => global%model
+    type(model_t), intent(in), pointer :: model
+    type(var_list_t), intent(in) :: var_list
+    logical, intent(in), optional :: nlo_process
+    logical :: nlo_proc
+    call msg_debug (D_CORE, "process_configuration_init")
     config%id = prc_name
-    if (present (nlo_proc)) then
-       nlo_process = nlo_proc
+    if (present (nlo_process)) then
+       nlo_proc = nlo_process
     else
-       nlo_process = global%nlo_fixed_order
+       nlo_proc = .false.
     end if
+    call msg_debug (D_CORE, "nlo_process", nlo_proc)
     allocate (config%entry)
-    if (global%var_list%is_known (var_str ("process_num_id"))) then
+    if (var_list%is_known (var_str ("process_num_id"))) then
        config%num_id = &
-            global%var_list%get_ival (var_str ("process_num_id"))
+            var_list%get_ival (var_str ("process_num_id"))
        call config%entry%init (prc_name, &
             model = model, n_in = n_in, n_components = n_components, &
-            num_id = config%num_id, nlo_process = nlo_process)
+            num_id = config%num_id, nlo_process = nlo_proc)
     else
        call config%entry%init (prc_name, &
             model = model, n_in = n_in, n_components = n_components, &
-            nlo_process = nlo_process)
+            nlo_process = nlo_proc)
     end if
   end subroutine process_configuration_init
 
@@ -3742,15 +3901,54 @@ polarization flag and names of decay processes, where applicable.
     type(string_t), dimension(:), allocatable :: prt_str_out
     class(prc_core_def_t), allocatable :: core_def
     type(string_t) :: method
+    type(string_t) :: born_me_method
+    type(string_t) :: real_tree_me_method
+    type(string_t) :: loop_me_method
+    type(string_t) :: correlation_me_method
+    type(string_t) :: dglap_me_method
     integer :: i
-
+    call msg_debug2 (D_CORE, "process_configuration_setup_component")
     allocate (prt_str_in  (size (prt_in)))
     allocate (prt_str_out (size (prt_out)))
     forall (i = 1:size (prt_in))  prt_str_in(i)  = prt_in(i)% get_name ()
     forall (i = 1:size (prt_out)) prt_str_out(i) = prt_out(i)%get_name ()
 
+    method = var_list%get_sval (var_str ("$method"))
+    if (present (nlo_type)) then
+       select case (nlo_type)
+       case (BORN)
+          born_me_method = var_list%get_sval (var_str ("$born_me_method"))
+          if (born_me_method /= var_str ("")) then
+             method = born_me_method
+          end if
+       case (NLO_VIRTUAL)
+          loop_me_method = var_list%get_sval (var_str ("$loop_me_method"))
+          if (loop_me_method /= var_str ("")) then
+             method = loop_me_method
+          end if
+       case (NLO_REAL)
+          real_tree_me_method = &
+               var_list%get_sval (var_str ("$real_tree_me_method"))
+          if (real_tree_me_method /= var_str ("")) then
+             method = real_tree_me_method
+          end if
+       case (NLO_DGLAP)
+          dglap_me_method = &
+               var_list%get_sval (var_str ("$dglap_me_method"))
+          if (dglap_me_method /= var_str ("")) then
+             method = dglap_me_method
+          end if
+       case (NLO_SUBTRACTION,NLO_MISMATCH)
+          correlation_me_method = &
+               var_list%get_sval (var_str ("$correlation_me_method"))
+          if (correlation_me_method /= var_str ("")) then
+             method = correlation_me_method
+          end if
+       case default
+       end select
+    end if
     call dispatch_core_def (core_def, prt_str_in, prt_str_out, &
-         model, var_list, config%id, nlo_type)
+         model, var_list, config%id, nlo_type, method)
     select type (core_def)
     class is (user_defined_def_t)
        if (present (can_be_integrated)) then
@@ -3759,7 +3957,8 @@ polarization flag and names of decay processes, where applicable.
           call msg_fatal ("Cannot decide if user-defined core is integrated!")
        end if
     end select
-    method = var_list%get_sval (var_str ("$method"))
+
+    call msg_debug2 (D_CORE, "import_component with method ", method)
     call config%entry%import_component (i_component, &
          n_out = size (prt_out), &
          prt_in = prt_in, &
@@ -3967,9 +4166,12 @@ This is re-exported by the UT module.
        call global%set_string (var_str ("$method"),&
             var_str ("unit_test"), is_known = .true.)
 
-       call prc_config%init (prc_name, size (prt_in), n_components, global)
+       call prc_config%init (prc_name, &
+            size (prt_in), n_components, &
+            global%model, global%var_list)
        call prc_config%setup_component (1, &
-            new_prt_spec (prt_in), new_prt_spec (prt_out), global%model, global%var_list)
+            new_prt_spec (prt_in), new_prt_spec (prt_out), &
+            global%model, global%var_list)
        call prc_config%record (global)
 
        deallocate (prt_in, prt_out)
@@ -3993,9 +4195,12 @@ This is re-exported by the UT module.
        call global%set_string (var_str ("$method"),&
             var_str ("omega"), is_known = .true.)
 
-       call prc_config%init (prc_name, size (prt_in), n_components, global)
+       call prc_config%init (prc_name, &
+            size (prt_in), n_components, &
+            global%model, global%var_list)
        call prc_config%setup_component (1, &
-            new_prt_spec (prt_in), new_prt_spec (prt_out), global%model, global%var_list)
+            new_prt_spec (prt_in), new_prt_spec (prt_out), &
+            global%model, global%var_list)
        call prc_config%record (global)
 
        deallocate (prt_in, prt_out)
@@ -4019,9 +4224,12 @@ This is re-exported by the UT module.
        call global%set_string (var_str ("$method"),&
             var_str ("unit_test"), is_known = .true.)
 
-       call prc_config%init (prc_name, size (prt_in), n_components, global)
+       call prc_config%init (prc_name, &
+            size (prt_in), n_components, &
+            global%model, global%var_list)
        call prc_config%setup_component (1, &
-            new_prt_spec (prt_in), new_prt_spec (prt_out), global%model, global%var_list)
+            new_prt_spec (prt_in), new_prt_spec (prt_out), &
+            global%model, global%var_list)
        call prc_config%record (global)
 
        deallocate (prt_in, prt_out)
@@ -4129,7 +4337,8 @@ library.  The [[prepare_test_library]] contents are spelled out.
     call global%set_log (var_str ("?omega_openmp"), &
          .false., is_known = .true.)
 
-    call prc_config%init (prc_name, size (prt_in), n_components, global)
+    call prc_config%init (prc_name, size (prt_in), n_components, &
+         global%model, global%var_list)
 
     call global%set_log (var_str ("?report_progress"), &
          .true., is_known = .true.)
@@ -5078,6 +5287,7 @@ module integrations
        COMP_MISMATCH, COMP_PDF, COMP_REAL, COMP_SUB, COMP_VIRT, &
        COMP_REAL_SING
   use process
+  use pcm_base, only: pcm_t
   use instances
   use process_stacks
   use models
@@ -5090,12 +5300,14 @@ module integrations
   use dispatch_phase_space, only: dispatch_sf_channels
   use dispatch_phase_space, only: dispatch_phs
   use dispatch_mci, only: dispatch_mci_s
+  use dispatch_transforms, only: dispatch_evt_shower_hook
 
   use compilations, only: compile_library
 
   use dispatch_fks, only: dispatch_fks_s
   use blha_olp_interfaces
   use nlo_data
+<<Use mpi f08>>
 
 <<Standard module head>>
 
@@ -5198,8 +5410,7 @@ local changes to currently inactive models.
             // " in library '" // char (local%prclib%get_name ()) // "'")
        return
     end if
-    intg%run_id = &
-         local%var_list%get_sval (var_str ("$run_id"))
+    intg%run_id = local%var_list%get_sval (var_str ("$run_id"))
     call dispatch_qcd (intg%qcd, local%get_var_list_ptr (), local%os_data)
     call dispatch_rng_factory (rng_factory, local%var_list)
     model_name = local%prclib%get_model_name (intg%process_id)
@@ -5224,10 +5435,11 @@ local changes to currently inactive models.
 <<Integrations: integration: TBP>>=
   procedure :: setup_process => integration_setup_process
 <<Integrations: procedures>>=
-  subroutine integration_setup_process (intg, local, verbose)
+  subroutine integration_setup_process (intg, local, verbose, init_only)
     class(integration_t), intent(inout) :: intg
     type(rt_data_t), intent(inout), target :: local
     logical, intent(in), optional :: verbose
+    logical, intent(in), optional :: init_only
     type(var_list_t), pointer :: var_list
     class(prc_core_t), allocatable :: core_template
     class(prc_core_t), pointer :: core => null ()
@@ -5244,7 +5456,7 @@ local changes to currently inactive models.
     type(sf_channel_t), dimension(:), allocatable :: sf_channel
     type(phs_channel_collection_t) :: phs_channel_collection
     logical :: sf_trace
-    logical :: verb
+    logical :: verb, initialize_only
     type(blha_template_t) :: blha_template
     type(fks_template_t) :: fks_template
     type(string_t) :: sf_string
@@ -5252,9 +5464,11 @@ local changes to currently inactive models.
     integer :: i_real = 0
     integer :: i_core
     integer :: i_core_born, i_core_real
-    logical :: first_real_component, use_real_partition
-    real(default) :: real_partition_scale
+    logical :: first_real_component, has_pdfs
+    integer :: nlo_type_fetched
+    class(pcm_t), pointer :: pcm => null ()
     verb = .true.; if (present (verbose))  verb = verbose
+    initialize_only = .false.;  if (present (init_only))  initialize_only = init_only
     call intg%process%set_var_list (local%get_var_list_ptr ())
     var_list => intg%process%get_var_list_ptr ()
 
@@ -5265,7 +5479,8 @@ local changes to currently inactive models.
 
     call setup_log_and_history ()
 
-    call dispatch_mci_s (mci_template, local%get_var_list_ptr (), intg%process_id, &
+    call dispatch_mci_s (mci_template, local%get_var_list_ptr (), &
+         intg%process_id, &
          intg%process%is_nlo_calculation ())
 
     call display_init_message (verb)
@@ -5282,7 +5497,8 @@ local changes to currently inactive models.
     do i_component = 1, n_components
        config => intg%process%get_component_def_ptr (i_component)
        call intg%process%core_manager_register &
-          (config%get_nlo_type (), i_component, config%get_def_type_string ())
+            (config%get_nlo_type (), i_component, &
+            config%get_def_type_string ())
     end do
     call intg%process%allocate_cm_arrays (n_components)
     do i_core = 1, intg%process%get_n_cores ()
@@ -5298,11 +5514,17 @@ local changes to currently inactive models.
 
     call intg%process%init_cores ()
     first_real_component = .true.
+
+    pcm => intg%process%get_pcm_ptr ()
+    pcm%has_pdfs = local%beam_structure%has_pdf ()
+
     do i_component = 1, n_components
        config => intg%process%get_component_def_ptr (i_component)
-       core => intg%process%get_core_nlo_type ( &
+       nlo_type_fetched = config%get_nlo_type ()
+       if (nlo_type_fetched == NLO_MISMATCH)  nlo_type_fetched = NLO_SUBTRACTION
+       core => intg%process%get_core_from_md5sum ( &
             intg%process%get_md5sum_constants (i_component, &
-            config%get_def_type_string (), config%get_nlo_type ()))
+            config%get_def_type_string (), nlo_type_fetched))
        select case (config%get_nlo_type ())
        case (NLO_VIRTUAL)
           call setup_virtual_component ()
@@ -5339,7 +5561,7 @@ local changes to currently inactive models.
     call setup_structure_functions ()
 
     call intg%process%configure_phs &
-         (intg%rebuild_phs, intg%ignore_phs_mismatch, & !verbose=verbose, &
+         (intg%rebuild_phs, intg%ignore_phs_mismatch, &
           combined_integration = intg%combined_integration)
 
     if (intg%process%is_nlo_calculation ()) then
@@ -5354,20 +5576,20 @@ local changes to currently inactive models.
        if (var_list%get_lval (var_str ("?nlo_use_real_partition"))) then
           call intg%process%setup_real_partition &
                (var_list%get_rval (var_str ("real_partition_scale")))
-       end if 
+       end if
     end if
-
-    call intg%process%setup_terms (with_beams = local%beam_structure%is_set ())
 
     if (intg%process%needs_extra_code ()) then
        call blha_template%init (local%beam_structure%has_polarized_beams(), &
             var_list%get_lval (var_str ("?openloops_switch_off_muon_yukawa")), &
-            var_list%get_rval (var_str ("blha_use_top_yukawa")), &
+            var_list%get_rval (var_str ("blha_top_yukawa")), &
             var_list%get_sval (var_str ("$blha_ew_scheme")))
-       call intg%process%init_blha_cores(blha_template, var_list)
+       call intg%process%init_blha_cores (blha_template, var_list)
        call intg%process%create_and_load_extra_libraries &
             (local%beam_structure, var_list, local%os_data)
     end if
+
+    call intg%process%setup_terms (with_beams = local%beam_structure%has_polarized_beams ())
 
     if (verb) then
        call intg%process%write (screen = .true.)
@@ -5377,7 +5599,8 @@ local changes to currently inactive models.
     if (intg%process_has_me) then
        if (size (sf_config) > 0) then
           call intg%process%collect_channels (phs_channel_collection)
-       else if (intg%process%contains_trivial_component ()) then
+       else if (.not. initialize_only &
+            .and. intg%process%contains_trivial_component ()) then
           call msg_fatal ("Integrate: 2 -> 1 process can't be handled &
                &with fixed-energy beams")
        end if
@@ -5456,21 +5679,6 @@ local changes to currently inactive models.
               call msg_message ("Run ID = " // '"' // char (intg%run_id) // '"')
       end if
     end subroutine display_init_message
-
-    function get_me_method (nlo_type) result (me_method)
-      type(string_t) :: me_method
-      integer, intent(in) :: nlo_type
-      select case (nlo_type)
-      case (BORN)
-         me_method = var_list%get_sval (var_str ("$born_me_method"))
-      case (NLO_REAL)
-         me_method = var_list%get_sval (var_str ("$real_tree_me_method"))
-      case (NLO_VIRTUAL)
-         me_method = var_list%get_sval (var_str ("$loop_me_method"))
-      case (NLO_SUBTRACTION)
-         me_method = var_list%get_sval (var_str ("$correlation_me_method"))
-      end select
-    end function get_me_method
 
     subroutine setup_born_component ()
       call intg%process%init_component (i_component, &
@@ -5564,8 +5772,9 @@ local changes to currently inactive models.
          pdg_prc = 0
       end if
       call dispatch_sf_config (sf_config, sf_prop, local%beam_structure, &
-         local%get_var_list_ptr (), local%var_list, &
-         local%model, local%os_data, local%get_sqrts (), pdg_prc)
+           local%get_var_list_ptr (), local%var_list, &
+           local%model, local%os_data, local%get_sqrts (), pdg_prc)
+
       sf_trace = &
            var_list%get_lval (var_str ("?sf_trace"))
       sf_trace_file = &
@@ -5744,11 +5953,13 @@ expressions.
 <<Integrations: integration: TBP>>=
   procedure :: init => integration_init
 <<Integrations: procedures>>=
-  subroutine integration_init (intg, process_id, local, global, local_stack)
+  subroutine integration_init &
+       (intg, process_id, local, global, local_stack, init_only)
     class(integration_t), intent(out) :: intg
     type(string_t), intent(in) :: process_id
     type(rt_data_t), intent(inout), target :: local
     type(rt_data_t), intent(inout), optional, target :: global
+    logical, intent(in), optional :: init_only
     logical, intent(in), optional :: local_stack
     logical :: use_local
     use_local = .false.;  if (present (local_stack))  use_local = local_stack
@@ -5760,7 +5971,7 @@ expressions.
        call intg%create_process (process_id)
     end if
     call intg%init_process (local)
-    call intg%setup_process (local)
+    call intg%setup_process (local, init_only = init_only)
     call intg%init_iteration_multipliers (local)
   end subroutine integration_init
 
@@ -5808,10 +6019,12 @@ of the integration history.
        call msg_message ()
     end if
 
+    call setup_hooks ()
+
     nlo_active = any (intg%process%get_component_nlo_type &
          ([(i_mci, i_mci = 1, n_mci)]) /= BORN)
     do i_mci = 1, n_mci
-       i_component = intg%process%i_mci_to_i_component (i_mci)
+       i_component = intg%process%get_master_component (i_mci)
        nlo_type = intg%process%get_component_nlo_type (i_component)
        if (intg%process%component_can_be_integrated (i_component)) then
           if (n_mci > 1) then
@@ -5876,7 +6089,14 @@ of the integration history.
 
     call process_instance%final ()
     deallocate (process_instance)
-
+  contains
+    subroutine setup_hooks ()
+      class(process_instance_hook_t), pointer :: hook
+      call dispatch_evt_shower_hook (hook, var_list, process_instance)
+      if (associated (hook)) then
+         call process_instance%append_after_hook (hook)
+      end if
+    end subroutine setup_hooks
   end subroutine integration_integrate
 
 @ %def integration_integrate
@@ -5984,7 +6204,8 @@ of the integration history.
     type(string_t) :: prclib_name
     type(integration_t) :: intg
     character(32) :: buffer
-
+  <<Integrations: integrate process: variables>>
+  <<Integrations: integrate process: init>>
     if (.not. associated (local%prclib)) then
        call msg_fatal ("Integrate: current process library is undefined")
        return
@@ -5998,7 +6219,7 @@ of the integration history.
        call msg_message ("Integrate: compilation done")
     end if
 
-    call intg%init (process_id, local, global, local_stack)
+    call intg%init (process_id, local, global, local_stack, init_only)
     if (signal_is_pending ())  return
 
     if (present (init_only)) then
@@ -6012,6 +6233,7 @@ of the integration history.
        call msg_message ("Integrate: ... test complete.")
        if (signal_is_pending ())  return
     end if
+  <<Integrations: integrate process: end init>>
 
     if (intg%phs_only) then
        call msg_message ("Integrate: phase space only, skipping integration")
@@ -6022,10 +6244,53 @@ of the integration history.
           call intg%integrate_dummy ()
        end if
     end if
-
   end subroutine integrate_process
 
 @ %def integrate_process
+<<Integrations: integrate process: variables>>=
+@
+<<Integrations: integrate process: init>>=
+@
+<<Integrations: integrate process: end init>>=
+@
+@ The parallelization leads to undefined behavior while writing simultaneously to one file.
+The master worker has to initialize single-handed the corresponding library files and the phase space file.
+The slave worker will wait with a blocking [[MPI_BCAST]] until they receive a logical flag.
+<<MPI: Integrations: integrate process: variables>>=
+  type(var_list_t), pointer :: var_list
+  logical :: mpi_logging, process_init
+  integer :: rank, n_size
+<<MPI: Integrations: integrate process: init>>=
+  call msg_debug (D_MPI, "integrate_process")
+  var_list => local%get_var_list_ptr ()
+  process_init = .false.
+  call mpi_get_comm_id (n_size, rank)
+  mpi_logging = (("vamp2" == char (var_list%get_sval (var_str ("$integration_method"))) .and. &
+       & (n_size > 1)) .or. var_list%get_lval (var_str ("?mpi_logging")))
+  call msg_debug (D_MPI, "n_size", rank)
+  call msg_debug (D_MPI, "rank", rank)
+  call msg_debug (D_MPI, "mpi_logging", mpi_logging)
+  if (rank /= 0) then
+     if (mpi_logging) then
+        call msg_message ("MPI: wait for master to finish process initialization ...")
+     end if
+     call MPI_bcast (process_init, 1, MPI_LOGICAL, 0, MPI_COMM_WORLD)
+  else
+     process_init = .true.
+  end if
+
+  if (process_init) then
+<<MPI: Integrations: integrate process: end init>>=
+  if (rank == 0) then
+     if (mpi_logging) then
+        call msg_message ("MPI: finish process initialization, load slaves ...")
+     end if
+     call MPI_bcast (process_init, 1, MPI_LOGICAL, 0, MPI_COMM_WORLD)
+  end if
+end if
+call MPI_barrier (MPI_COMM_WORLD)
+call mpi_set_logging (mpi_logging)
+@ %def integrate_process_mpi
 @
 \subsection{Unit Tests}
 Test module, followed by the stand-alone unit-test procedures.
@@ -7830,6 +8095,1402 @@ parameters and once with modified parameters.
 @
 \clearpage
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Restricted Subprocesses}
+This module provides an automatic means to construct restricted subprocesses
+of a current process object.  A restricted subprocess has the same initial and
+final state as the current process, but a restricted set of Feynman graphs.
+
+The actual application extracts the set of resonance histories that apply to
+the process and uses this to construct subprocesses that are restricted to one
+of those histories, respectively.  The resonance histories are derived from
+the phase-space setup.  This implies that the method is tied to the OMega
+matrix element generator and to the wood phase space method.
+
+The processes are collected in a new process library that is generated
+on-the-fly.
+
+The [[resonant_subprocess_t]] object is intended as a component of the event
+record, which manages all operations regarding resonance handling.
+
+The run-time calculations are delegated to an event transform
+([[evt_resonance_t]]), as a part of the event transform chain.  The transform
+selects one (or none) of the resonance histories, given the momentum
+configuration, computes matrix elements and inserts resonances into the
+particle set.
+<<[[restricted_subprocesses.f90]]>>=
+<<File header>>
+
+module restricted_subprocesses
+
+<<Use kinds>>
+<<Use strings>>
+  use diagnostics, only: msg_message, msg_fatal, msg_bug
+  use diagnostics, only: signal_is_pending
+  use io_units, only: given_output_unit
+  use format_defs, only: FMT_14, FMT_19
+  use string_utils, only: str
+  use lorentz, only: vector4_t
+  use particle_specifiers, only: prt_spec_t
+  use particles, only: particle_set_t
+  use resonances, only: resonance_history_t, resonance_history_set_t
+  use variables, only: var_list_t
+  use models, only: model_t
+  use process_libraries, only: process_library_t
+  use prclib_stacks, only: prclib_entry_t
+  use event_transforms, only: evt_t
+  use resonance_insertion, only: evt_resonance_t
+  use rt_data, only: rt_data_t
+  use compilations, only: compile_library
+  use process_configurations, only: process_configuration_t
+  use process, only: process_t, process_ptr_t
+  use instances, only: process_instance_t, process_instance_ptr_t
+  use integrations, only: integrate_process
+
+<<Use mpi f08>>
+
+<<Standard module head>>
+
+<<Restricted subprocesses: public>>
+
+<<Restricted subprocesses: types>>
+
+<<Restricted subprocesses: interfaces>>
+
+contains
+
+<<Restricted subprocesses: procedures>>
+
+end module restricted_subprocesses
+@ %def restricted_subprocesses
+@
+\subsection{Process configuration}
+We extend the [[process_configuration_t]] by another method for initialization
+that takes into account a resonance history.
+<<Restricted subprocesses: public>>=
+  public :: restricted_process_configuration_t
+<<Restricted subprocesses: types>>=
+  type, extends (process_configuration_t) :: restricted_process_configuration_t
+     private
+   contains
+   <<Restricted subprocesses: restricted process configuration: TBP>>
+  end type restricted_process_configuration_t
+
+@ %def restricted_process_configuration_t
+@
+Resonance history as an argument.  We use it to override the [[restrictions]]
+setting in a local variable list.  Since we can construct the restricted
+process only by using OMega, we enforce it as the ME method.  Other settings
+are taken from the variable list.  The model will most likely be set, but we
+insert a safeguard just in case.
+
+We have to create a local copy of the model here, via pointer
+allocation.  The reason is that the model as stored (via pointer) in
+the base type will be finalized and deallocated.
+
+The current implementation will generate a LO process, the optional
+[[nlo_process]] is unset.  (It is not obvious
+whether the construction makes sense beyond LO.)
+<<Restricted subprocesses: restricted process configuration: TBP>>=
+  procedure :: init_resonant_process
+<<Restricted subprocesses: procedures>>=
+  subroutine init_resonant_process &
+       (prc_config, prc_name, prt_in, prt_out, res_history, model, var_list)
+    class(restricted_process_configuration_t), intent(out) :: prc_config
+    type(string_t), intent(in) :: prc_name
+    type(prt_spec_t), dimension(:), intent(in) :: prt_in
+    type(prt_spec_t), dimension(:), intent(in) :: prt_out
+    type(resonance_history_t), intent(in) :: res_history
+    type(model_t), intent(in), target :: model
+    type(var_list_t), intent(in), target :: var_list
+    type(model_t), pointer :: local_model
+    type(var_list_t) :: local_var_list
+    allocate (local_model)
+    call local_model%init_instance (model)
+    call local_var_list%link (var_list)
+    call local_var_list%append_string (var_str ("$model_name"), &
+         sval = local_model%get_name (), &
+         intrinsic=.true.)
+    call local_var_list%append_string (var_str ("$method"), &
+         sval = var_str ("omega"), &
+         intrinsic=.true.)
+    call local_var_list%append_string (var_str ("$restrictions"), &
+         sval = res_history%as_omega_string (size (prt_in)), &
+         intrinsic = .true.)
+    call prc_config%init (prc_name, size (prt_in), 1, &
+         local_model, local_var_list)
+    call prc_config%setup_component (1, &
+         prt_in, prt_out, &
+         local_model, local_var_list)
+  end subroutine init_resonant_process
+
+@ %def init_resonant_process
+@
+\subsection{Resonant-subprocess set manager}
+This data type enables generation of a library of resonant subprocesses for a
+given master process, and it allows for convenient access.  The matrix
+elements from the subprocesses can be used as channel weights to activate a
+selector, which then returns a preferred channel via some random number
+generator.
+<<Restricted subprocesses: public>>=
+  public :: resonant_subprocess_set_t
+<<Restricted subprocesses: types>>=
+  type :: resonant_subprocess_set_t
+     private
+     integer :: n_history = 0
+     type(resonance_history_set_t) :: res_history_set
+     logical :: lib_active = .false.
+     type(string_t) :: libname
+     type(string_t), dimension(:), allocatable :: proc_id
+     type(process_ptr_t), dimension(:), allocatable :: subprocess
+     type(process_instance_ptr_t), dimension(:), allocatable :: instance
+     logical :: filled = .false.
+     type(evt_resonance_t), pointer :: evt => null ()
+   contains
+   <<Restricted subprocesses: resonant subprocess set: TBP>>
+  end type resonant_subprocess_set_t
+
+@ %def resonant_subprocess_set_t
+@ Output
+<<Restricted subprocesses: resonant subprocess set: TBP>>=
+  procedure :: write => resonant_subprocess_set_write
+<<Restricted subprocesses: procedures>>=
+  subroutine resonant_subprocess_set_write (prc_set, unit, testflag)
+    class(resonant_subprocess_set_t), intent(in) :: prc_set
+    integer, intent(in), optional :: unit
+    logical, intent(in), optional :: testflag
+    logical :: truncate
+    integer :: u
+    u = given_output_unit (unit)
+    truncate = .false.;  if (present (testflag))  truncate = testflag
+    write (u, "(1x,A)")  "Resonant subprocess set:"
+    if (prc_set%n_history > 0) then
+       call prc_set%res_history_set%write (u, indent=1)
+       if (prc_set%lib_active) then
+          write (u, "(3x,A,A,A)")  "Process library = '", &
+               char (prc_set%libname), "'"
+       else
+          write (u, "(3x,A)")  "Process library: [inactive]"
+       end if
+       if (associated (prc_set%evt)) then
+          if (truncate) then
+             write (u, "(3x,A,1x," // FMT_14 // ")") &
+                  "Process sqme =", prc_set%get_master_sqme ()
+          else
+             write (u, "(3x,A,1x," // FMT_19 // ")") &
+                  "Process sqme =", prc_set%get_master_sqme ()
+          end if
+       end if
+       if (associated (prc_set%evt)) then
+          write (u, "(3x,A)")  "Event transform: associated"
+          write (u, "(2x)", advance="no")
+          call prc_set%evt%write_selector (u, testflag)
+       else
+          write (u, "(3x,A)")  "Event transform: not associated"
+       end if
+    else
+       write (u, "(2x,A)")  "[empty]"
+    end if
+  end subroutine resonant_subprocess_set_write
+
+@ %def resonant_subprocess_set_write
+@
+\subsection{Resonance history set}
+Initialize subprocess set with a pre-created resonance history set.
+<<Restricted subprocesses: resonant subprocess set: TBP>>=
+  procedure :: init => resonant_subprocess_set_init
+<<Restricted subprocesses: procedures>>=
+  subroutine resonant_subprocess_set_init (prc_set, res_history_set)
+    class(resonant_subprocess_set_t), intent(out) :: prc_set
+    type(resonance_history_set_t), intent(in) :: res_history_set
+    prc_set%n_history = res_history_set%get_n_history ()
+    if (prc_set%n_history > 0) then
+       prc_set%res_history_set = res_history_set
+    end if
+  end subroutine resonant_subprocess_set_init
+
+@ %def resonant_subprocess_set_init
+@ Return the resonance history set.
+<<Restricted subprocesses: resonant subprocess set: TBP>>=
+  procedure :: get_resonance_history_set &
+       => resonant_subprocess_set_get_resonance_history_set
+<<Restricted subprocesses: procedures>>=
+  function resonant_subprocess_set_get_resonance_history_set (prc_set) &
+       result (res_history_set)
+    class(resonant_subprocess_set_t), intent(in) :: prc_set
+    type(resonance_history_set_t) :: res_history_set
+    res_history_set = prc_set%res_history_set
+  end function resonant_subprocess_set_get_resonance_history_set
+
+@ %def resonant_subprocess_set_get_resonance_history_set
+@
+\subsection{Library}
+Create the appropriate process library.
+<<Restricted subprocesses: resonant subprocess set: TBP>>=
+  procedure :: create_library => resonant_subprocess_set_create_library
+<<Restricted subprocesses: procedures>>=
+  subroutine resonant_subprocess_set_create_library (prc_set, &
+       libname, prt_in, prt_out, global)
+    class(resonant_subprocess_set_t), intent(inout) :: prc_set
+    type(string_t), intent(in) :: libname
+    type(prt_spec_t), dimension(:), intent(in) :: prt_in
+    type(prt_spec_t), dimension(:), intent(in) :: prt_out
+    type(rt_data_t), intent(inout), target :: global
+    type(prclib_entry_t), pointer :: lib_entry
+    type(process_library_t), pointer :: lib
+    type(restricted_process_configuration_t) :: prc_config
+    type(resonance_history_t) :: res_history
+    integer :: i
+    call msg_message ("Creating library for resonant subprocesses '" &
+         // char (libname) // "'")
+    prc_set%libname = libname
+    lib => global%prclib_stack%get_library_ptr (prc_set%libname)
+    if (.not. (associated (lib))) then
+       allocate (lib_entry)
+       call lib_entry%init (libname)
+       lib => lib_entry%process_library_t
+       call global%add_prclib (lib_entry)
+    else
+       call global%update_prclib (lib)
+    end if
+    allocate (prc_set%proc_id (prc_set%n_history))
+    do i = 1, prc_set%n_history
+       prc_set%proc_id(i) = libname // str (i)
+       res_history = prc_set%res_history_set%get_history(i)
+       call prc_config%init_resonant_process (prc_set%proc_id(i), &
+            prt_in, prt_out, &
+            res_history, &
+            global%model, global%var_list)
+       call msg_message ("Resonant subprocess #" &
+            // char (str(i)) // ": " &
+            // char (res_history%as_omega_string (size (prt_in))))
+       call prc_config%record (global)
+       if (signal_is_pending ())  return
+    end do
+    prc_set%lib_active = .true.
+  end subroutine resonant_subprocess_set_create_library
+
+@ %def resonant_subprocess_set_create_library
+@ Compile the generated library, required settings taken from the
+[[global]] data set.
+<<Restricted subprocesses: resonant subprocess set: TBP>>=
+  procedure :: compile_library => resonant_subprocess_set_compile_library
+<<Restricted subprocesses: procedures>>=
+  subroutine resonant_subprocess_set_compile_library (prc_set, global)
+    class(resonant_subprocess_set_t), intent(in) :: prc_set
+    type(rt_data_t), intent(inout), target :: global
+    call compile_library (prc_set%libname, global)
+  end subroutine resonant_subprocess_set_compile_library
+
+@ %def resonant_subprocess_set_compile_library
+@ Check if the library has been created / the process has been evaluated.
+<<Restricted subprocesses: resonant subprocess set: TBP>>=
+  procedure :: is_active => resonant_subprocess_set_is_active
+<<Restricted subprocesses: procedures>>=
+  function resonant_subprocess_set_is_active (prc_set) result (flag)
+    class(resonant_subprocess_set_t), intent(in) :: prc_set
+    logical :: flag
+    flag = prc_set%lib_active
+  end function resonant_subprocess_set_is_active
+
+@ %def resonant_subprocess_set_is_active
+@ Return number of generated process objects, library, and process IDs.
+<<Restricted subprocesses: resonant subprocess set: TBP>>=
+  procedure :: get_n_process => resonant_subprocess_set_get_n_process
+  procedure :: get_libname => resonant_subprocess_set_get_libname
+  procedure :: get_proc_id => resonant_subprocess_set_get_proc_id
+<<Restricted subprocesses: procedures>>=
+  function resonant_subprocess_set_get_n_process (prc_set) result (n)
+    class(resonant_subprocess_set_t), intent(in) :: prc_set
+    integer :: n
+    if (prc_set%lib_active) then
+       n = size (prc_set%proc_id)
+    else
+       n = 0
+    end if
+  end function resonant_subprocess_set_get_n_process
+
+  function resonant_subprocess_set_get_libname (prc_set) result (libname)
+    class(resonant_subprocess_set_t), intent(in) :: prc_set
+    type(string_t) :: libname
+    if (prc_set%lib_active) then
+       libname = prc_set%libname
+    else
+       libname = ""
+    end if
+  end function resonant_subprocess_set_get_libname
+
+  function resonant_subprocess_set_get_proc_id (prc_set, i) result (proc_id)
+    class(resonant_subprocess_set_t), intent(in) :: prc_set
+    integer, intent(in) :: i
+    type(string_t) :: proc_id
+    if (allocated (prc_set%proc_id)) then
+       proc_id = prc_set%proc_id(i)
+    else
+       proc_id = ""
+    end if
+  end function resonant_subprocess_set_get_proc_id
+
+@ %def resonant_subprocess_set_get_n_process
+@ %def resonant_subprocess_set_get_libname
+@ %def resonant_subprocess_set_get_proc_id
+@
+\subsection{Process objects and instances}
+Prepare process objects for all entries in the resonant-subprocesses
+library.  The process objects are appended to the global process
+stack.  A local environment can be used where we place temporary
+variable settings that affect process-object generation.  We
+initialize the processes, such that we can evaluate matrix elements,
+but we do not need to integrate them.
+
+The internal procedure [[prepare_process]] is an abridged version of
+the procedure with this name in the [[simulations]] module.
+<<Restricted subprocesses: resonant subprocess set: TBP>>=
+  procedure :: prepare_process_objects &
+       => resonant_subprocess_set_prepare_process_objects
+<<Restricted subprocesses: procedures>>=
+  subroutine resonant_subprocess_set_prepare_process_objects &
+       (prc_set, local, global)
+    class(resonant_subprocess_set_t), intent(inout) :: prc_set
+    type(rt_data_t), intent(inout), target :: local
+    type(rt_data_t), intent(inout), optional, target :: global
+    type(rt_data_t), pointer :: current
+    type(process_library_t), pointer :: lib
+    type(string_t) :: proc_id, libname_cur, libname_res
+    integer :: i, n
+    if (.not. prc_set%is_active ())  return
+    if (present (global)) then
+       current => global
+    else
+       current => local
+    end if
+    libname_cur = current%prclib%get_name ()
+    libname_res = prc_set%get_libname ()
+    lib => current%prclib_stack%get_library_ptr (libname_res)
+    if (associated (lib))  call current%update_prclib (lib)
+    call local%set_string (var_str ("$phs_method"), &
+            var_str ("none"), is_known = .true.)
+    call local%set_string (var_str ("$integration_method"), &
+            var_str ("none"), is_known = .true.)
+    n = prc_set%get_n_process ()
+    allocate (prc_set%subprocess (n))
+    do i = 1, n
+       proc_id = prc_set%get_proc_id (i)
+       call prepare_process (prc_set%subprocess(i)%p, proc_id)
+       if (signal_is_pending ())  return
+    end do
+    lib => current%prclib_stack%get_library_ptr (libname_cur)
+    if (associated (lib))  call current%update_prclib (lib)
+  contains
+    subroutine prepare_process (process, process_id)
+      type(process_t), pointer, intent(out) :: process
+      type(string_t), intent(in) :: process_id
+      call msg_message ("Simulate: initializing resonant subprocess '" &
+               // char (process_id) // "'")
+      if (present (global)) then
+         call integrate_process (process_id, local, global, &
+              init_only = .true.)
+      else
+         call integrate_process (process_id, local, local_stack = .true., &
+              init_only = .true.)
+      end if
+      process => current%process_stack%get_process_ptr (process_id)
+      if (.not. associated (process)) then
+         call msg_fatal ("Simulate: resonant subprocess '" &
+               // char (process_id) // "' could not be initialized: aborting")
+      end if
+    end subroutine prepare_process
+  end subroutine resonant_subprocess_set_prepare_process_objects
+
+@ %def resonant_subprocess_set_prepare_process_objects
+@ Workspace for the resonant subprocesses.
+<<Restricted subprocesses: resonant subprocess set: TBP>>=
+  procedure :: prepare_process_instances &
+       => resonant_subprocess_set_prepare_process_instances
+<<Restricted subprocesses: procedures>>=
+  subroutine resonant_subprocess_set_prepare_process_instances (prc_set, global)
+    class(resonant_subprocess_set_t), intent(inout) :: prc_set
+    type(rt_data_t), intent(in), target :: global
+    integer :: i, n
+    if (.not. prc_set%is_active ())  return
+    n = size (prc_set%subprocess)
+    allocate (prc_set%instance (n))
+    do i = 1, n
+       allocate (prc_set%instance(i)%p)
+       call prc_set%instance(i)%p%init (prc_set%subprocess(i)%p)
+       call prc_set%instance(i)%p%setup_event_data (global%model)
+    end do
+  end subroutine resonant_subprocess_set_prepare_process_instances
+
+@ %def resonant_subprocess_set_prepare_process_instances
+@
+\subsection{Event transform connection}
+The idea is that the resonance-insertion event transform has been
+allocated somewhere (namely, in the standard event-transform chain),
+but we maintain a link such that we can inject matrix-element results
+event by event.  The event transform holds a selector, to choose one
+of the resonance histories (or none), and it manages resonance
+insertion for the particle set.
+
+The data that the event transform requires are provided here: the set
+of resonance histories and the set of subprocess instances that we
+have generated (see above).  The master-process instance is set
+when we [[connect]] the transform by the standard method.
+<<Restricted subprocesses: resonant subprocess set: TBP>>=
+  procedure :: connect_transform => &
+       resonant_subprocess_set_connect_transform
+<<Restricted subprocesses: procedures>>=
+  subroutine resonant_subprocess_set_connect_transform (prc_set, evt)
+    class(resonant_subprocess_set_t), intent(inout) :: prc_set
+    class(evt_t), intent(in), target :: evt
+    select type (evt)
+    type is (evt_resonance_t)
+       prc_set%evt => evt
+       call prc_set%evt%set_resonance_data (prc_set%res_history_set)
+       call prc_set%evt%set_subprocess_instances (prc_set%instance)
+    class default
+       call msg_bug ("Resonant subprocess set: event transform has wrong type")
+    end select
+  end subroutine resonant_subprocess_set_connect_transform
+
+@ %def resonant_subprocess_set_connect_transform
+@ Set the on-shell limit value in the connected transform.
+<<Restricted subprocesses: resonant subprocess set: TBP>>=
+  procedure :: set_on_shell_limit => resonant_subprocess_set_on_shell_limit
+<<Restricted subprocesses: procedures>>=
+  subroutine resonant_subprocess_set_on_shell_limit (prc_set, on_shell_limit)
+    class(resonant_subprocess_set_t), intent(inout) :: prc_set
+    real(default), intent(in) :: on_shell_limit
+    call prc_set%evt%set_on_shell_limit (on_shell_limit)
+  end subroutine resonant_subprocess_set_on_shell_limit
+
+@ %def resonant_subprocess_set_on_shell_limit
+@
+\subsection{Wrappers for runtime calculations}
+All runtime calculations are delegated to the event transform.  The
+following procedures are essentially redundant wrappers.  We retain
+them for a unit test below.
+
+Debugging aid:
+<<Restricted subprocesses: resonant subprocess set: TBP>>=
+  procedure :: dump_instances => resonant_subprocess_set_dump_instances
+<<Restricted subprocesses: procedures>>=
+  subroutine resonant_subprocess_set_dump_instances (prc_set, unit, testflag)
+    class(resonant_subprocess_set_t), intent(inout) :: prc_set
+    integer, intent(in), optional :: unit
+    logical, intent(in), optional :: testflag
+    integer :: i, n, u
+    u = given_output_unit (unit)
+    write (u, "(A)")  "*** Process instances of resonant subprocesses"
+    write (u, *)
+    n = size (prc_set%subprocess)
+    do i = 1, n
+       associate (instance => prc_set%instance(i)%p)
+         call instance%write (u, testflag)
+         write (u, *)
+         write (u, *)
+       end associate
+    end do
+  end subroutine resonant_subprocess_set_dump_instances
+
+@ %def resonant_subprocess_set_dump_instances
+@ Inject the current kinematics configuration, reading from the
+previous event transform or from the process instance.
+<<Restricted subprocesses: resonant subprocess set: TBP>>=
+  procedure :: fill_momenta => resonant_subprocess_set_fill_momenta
+<<Restricted subprocesses: procedures>>=
+  subroutine resonant_subprocess_set_fill_momenta (prc_set)
+    class(resonant_subprocess_set_t), intent(inout) :: prc_set
+    integer :: i, n
+    call prc_set%evt%fill_momenta ()
+  end subroutine resonant_subprocess_set_fill_momenta
+
+@ %def resonant_subprocess_set_fill_momenta
+@ Determine the indices of the resonance histories that can be
+considered on-shell for the current kinematics.
+<<Restricted subprocesses: resonant subprocess set: TBP>>=
+  procedure :: determine_on_shell_histories &
+       => resonant_subprocess_set_determine_on_shell_histories
+<<Restricted subprocesses: procedures>>=
+  subroutine resonant_subprocess_set_determine_on_shell_histories &
+       (prc_set, index_array)
+    class(resonant_subprocess_set_t), intent(in) :: prc_set
+    integer, dimension(:), allocatable, intent(out) :: index_array
+    call prc_set%evt%determine_on_shell_histories (index_array)
+  end subroutine resonant_subprocess_set_determine_on_shell_histories
+
+@ %def resonant_subprocess_set_determine_on_shell_histories
+@ Evaluate selected subprocesses.  (In actual operation, the ones that
+have been tagged as on-shell.)
+<<Restricted subprocesses: resonant subprocess set: TBP>>=
+  procedure :: evaluate_subprocess &
+       => resonant_subprocess_set_evaluate_subprocess
+<<Restricted subprocesses: procedures>>=
+  subroutine resonant_subprocess_set_evaluate_subprocess (prc_set, index_array)
+    class(resonant_subprocess_set_t), intent(inout) :: prc_set
+    integer, dimension(:), intent(in) :: index_array
+    call prc_set%evt%evaluate_subprocess (index_array)
+  end subroutine resonant_subprocess_set_evaluate_subprocess
+
+@ %def resonant_subprocess_set_evaluate_subprocess
+@ Extract the matrix elements of the master process / the resonant
+subprocesses.  After the previous routine has been executed, they
+should be available and stored in the corresponding process instances.
+<<Restricted subprocesses: resonant subprocess set: TBP>>=
+  procedure :: get_master_sqme &
+       => resonant_subprocess_set_get_master_sqme
+  procedure :: get_subprocess_sqme &
+       => resonant_subprocess_set_get_subprocess_sqme
+<<Restricted subprocesses: procedures>>=
+  function resonant_subprocess_set_get_master_sqme (prc_set) result (sqme)
+    class(resonant_subprocess_set_t), intent(in) :: prc_set
+    real(default) :: sqme
+    sqme = prc_set%evt%get_master_sqme ()
+  end function resonant_subprocess_set_get_master_sqme
+
+  subroutine resonant_subprocess_set_get_subprocess_sqme (prc_set, sqme)
+    class(resonant_subprocess_set_t), intent(in) :: prc_set
+    real(default), dimension(:), intent(inout) :: sqme
+    integer :: i
+    call prc_set%evt%get_subprocess_sqme (sqme)
+  end subroutine resonant_subprocess_set_get_subprocess_sqme
+
+@ %def resonant_subprocess_set_get_master_sqme
+@ %def resonant_subprocess_set_get_subprocess_sqme
+@ We use the calculations of resonant matrix elements to determine
+probabilities for all resonance configurations.
+<<Restricted subprocesses: resonant subprocess set: TBP>>=
+  procedure :: compute_probabilities &
+       => resonant_subprocess_set_compute_probabilities
+<<Restricted subprocesses: procedures>>=
+  subroutine resonant_subprocess_set_compute_probabilities (prc_set, prob_array)
+    class(resonant_subprocess_set_t), intent(inout) :: prc_set
+    real(default), dimension(:), allocatable, intent(out) :: prob_array
+    integer, dimension(:), allocatable :: index_array
+    real(default) :: sqme, sqme_sum, sqme_bg
+    real(default), dimension(:), allocatable :: sqme_res
+    integer :: n
+    n = size (prc_set%subprocess)
+    allocate (prob_array (0:n), source = 0._default)
+    call prc_set%evt%compute_probabilities ()
+    call prc_set%evt%get_selector_weights (prob_array)
+  end subroutine resonant_subprocess_set_compute_probabilities
+
+@ %def resonant_subprocess_set_compute_probabilities
+@
+\subsection{Unit tests}
+Test module, followed by the stand-alone unit-test procedures.
+<<[[restricted_subprocesses_ut.f90]]>>=
+<<File header>>
+
+module restricted_subprocesses_ut
+  use unit_tests
+  use restricted_subprocesses_uti
+
+<<Standard module head>>
+
+<<Restricted subprocesses: public test>>
+
+contains
+
+<<Restricted subprocesses: test driver>>
+
+end module restricted_subprocesses_ut
+@ %def restricted_subprocesses_ut
+@
+<<[[restricted_subprocesses_uti.f90]]>>=
+<<File header>>
+
+module restricted_subprocesses_uti
+
+<<Use kinds>>
+<<Use strings>>
+  use io_units, only: free_unit
+  use format_defs, only: FMT_10, FMT_12
+  use lorentz, only: vector4_t, vector3_moving, vector4_moving
+  use particle_specifiers, only: new_prt_spec
+  use process_libraries, only: process_library_t
+  use resonances, only: resonance_info_t
+  use resonances, only: resonance_history_t
+  use resonances, only: resonance_history_set_t
+  use sm_qcd, only: qcd_t
+  use state_matrices, only: FM_IGNORE_HELICITY
+  use particles, only: particle_set_t
+  use model_data, only: model_data_t
+  use models, only: syntax_model_file_init, syntax_model_file_final
+  use models, only: model_t
+  use rng_base, only: rng_factory_t
+  use rng_base_ut, only: rng_test_factory_t
+  use mci_base, only: mci_t
+  use mci_none, only: mci_none_t
+  use phs_base, only: phs_config_t
+  use phs_forests, only: syntax_phs_forest_init, syntax_phs_forest_final
+  use phs_wood, only: phs_wood_config_t
+  use process_libraries, only: process_def_entry_t
+  use process_libraries, only: process_component_def_t
+  use prclib_stacks, only: prclib_entry_t
+  use prc_core_def, only: prc_core_def_t
+  use prc_omega, only: omega_def_t
+  use process, only: process_t
+  use instances, only: process_instance_t
+  use process_stacks, only: process_entry_t
+  use event_transforms, only: evt_trivial_t
+  use resonance_insertion, only: evt_resonance_t
+  use integrations, only: integrate_process
+  use rt_data, only: rt_data_t
+
+  use restricted_subprocesses
+
+<<Standard module head>>
+
+<<Restricted subprocesses: test declarations>>
+
+<<Restricted subprocesses: test auxiliary types>>
+
+<<Restricted subprocesses: public test auxiliary>>
+
+contains
+
+<<Restricted subprocesses: tests>>
+
+<<Restricted subprocesses: test auxiliary>>
+
+end module restricted_subprocesses_uti
+
+@ %def restricted_subprocesses_uti
+@ API: driver for the unit tests below.
+<<Restricted subprocesses: public test>>=
+  public :: restricted_subprocesses_test
+<<Restricted subprocesses: test driver>>=
+  subroutine restricted_subprocesses_test (u, results)
+    integer, intent(in) :: u
+    type(test_results_t), intent(inout) :: results
+  <<Restricted subprocesses: execute tests>>
+  end subroutine restricted_subprocesses_test
+
+@ %def restricted_subprocesses_test
+@
+\subsubsection{subprocess configuration}
+Initialize a [[restricted_subprocess_configuration_t]] object which represents
+a given process with a defined resonance history.
+<<Restricted subprocesses: execute tests>>=
+  call test (restricted_subprocesses_1, "restricted_subprocesses_1", &
+       "single subprocess", &
+       u, results)
+<<Restricted subprocesses: test declarations>>=
+  public :: restricted_subprocesses_1
+<<Restricted subprocesses: tests>>=
+  subroutine restricted_subprocesses_1 (u)
+    integer, intent(in) :: u
+    type(rt_data_t) :: global
+    type(resonance_info_t) :: res_info
+    type(resonance_history_t) :: res_history
+    type(string_t) :: prc_name
+    type(string_t), dimension(2) :: prt_in
+    type(string_t), dimension(3) :: prt_out
+    type(restricted_process_configuration_t) :: prc_config
+
+    write (u, "(A)")  "* Test output: restricted_subprocesses_1"
+    write (u, "(A)")  "*   Purpose: create subprocess list from resonances"
+    write (u, "(A)")
+
+    call syntax_model_file_init ()
+
+    call global%global_init ()
+    call global%set_log (var_str ("?omega_openmp"), &
+         .false., is_known = .true.)
+    call global%select_model (var_str ("SM"))
+
+    write (u, "(A)")  "* Create resonance history"
+    write (u, "(A)")
+
+    call res_info%init (3, -24, global%model, 5)
+    call res_history%add_resonance (res_info)
+    call res_history%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Create process configuration"
+    write (u, "(A)")
+
+    prc_name = "restricted_subprocesses_1_p"
+    prt_in(1) = "e-"
+    prt_in(2) = "e+"
+    prt_out(1) = "d"
+    prt_out(2) = "u"
+    prt_out(3) = "W+"
+
+    call prc_config%init_resonant_process (prc_name, &
+         new_prt_spec (prt_in), new_prt_spec (prt_out), &
+         res_history, global%model, global%var_list)
+
+    call prc_config%write (u)
+
+    write (u, *)
+    write (u, "(A)")  "* Cleanup"
+
+    call global%final ()
+    call syntax_model_file_final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: restricted_subprocesses_1"
+
+  end subroutine restricted_subprocesses_1
+
+@ %def restricted_subprocesses_1
+@
+\subsubsection{Subprocess library configuration}
+Create a process library that represents restricted subprocesses for a given
+set of resonance histories
+<<Restricted subprocesses: execute tests>>=
+  call test (restricted_subprocesses_2, "restricted_subprocesses_2", &
+       "subprocess library", &
+       u, results)
+<<Restricted subprocesses: test declarations>>=
+  public :: restricted_subprocesses_2
+<<Restricted subprocesses: tests>>=
+  subroutine restricted_subprocesses_2 (u)
+    integer, intent(in) :: u
+    type(rt_data_t), target :: global
+    type(resonance_info_t) :: res_info
+    type(resonance_history_t), dimension(2) :: res_history
+    type(resonance_history_set_t) :: res_history_set
+    type(string_t) :: libname
+    type(string_t), dimension(2) :: prt_in
+    type(string_t), dimension(3) :: prt_out
+    type(resonant_subprocess_set_t) :: prc_set
+    type(process_library_t), pointer :: lib
+
+    write (u, "(A)")  "* Test output: restricted_subprocesses_2"
+    write (u, "(A)")  "*   Purpose: create subprocess library from resonances"
+    write (u, "(A)")
+
+    call syntax_model_file_init ()
+
+    call global%global_init ()
+    call global%set_log (var_str ("?omega_openmp"), &
+         .false., is_known = .true.)
+    call global%select_model (var_str ("SM"))
+
+    write (u, "(A)")  "* Create resonance histories"
+    write (u, "(A)")
+
+    call res_info%init (3, -24, global%model, 5)
+    call res_history(1)%add_resonance (res_info)
+    call res_history(1)%write (u)
+
+    call res_info%init (7, 23, global%model, 5)
+    call res_history(2)%add_resonance (res_info)
+    call res_history(2)%write (u)
+
+    call res_history_set%init ()
+    call res_history_set%enter (res_history(1))
+    call res_history_set%enter (res_history(2))
+    call res_history_set%freeze ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Empty restricted subprocess set"
+    write (u, "(A)")
+
+    write (u, "(A,1x,L1)")  "active =", prc_set%is_active ()
+    write (u, "(A)")
+
+    call prc_set%write (u, testflag=.true.)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Fill restricted subprocess set"
+    write (u, "(A)")
+
+    libname = "restricted_subprocesses_2_p_R"
+    prt_in(1) = "e-"
+    prt_in(2) = "e+"
+    prt_out(1) = "d"
+    prt_out(2) = "u"
+    prt_out(3) = "W+"
+
+    call prc_set%init (res_history_set)
+    call prc_set%create_library (libname, &
+         new_prt_spec (prt_in), new_prt_spec (prt_out), &
+         global)
+
+    write (u, "(A,1x,L1)")  "active =", prc_set%is_active ()
+    write (u, "(A)")
+
+    call prc_set%write (u, testflag=.true.)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Queries"
+    write (u, "(A)")
+
+    write (u, "(A,1x,I0)")  "n_process =", prc_set%get_n_process ()
+    write (u, "(A)")
+    write (u, "(A,A,A)")  "libname = '", char (prc_set%get_libname ()), "'"
+    write (u, "(A)")
+    write (u, "(A,A,A)")  "proc_id(1) = '", char (prc_set%get_proc_id (1)), "'"
+    write (u, "(A,A,A)")  "proc_id(2) = '", char (prc_set%get_proc_id (2)), "'"
+
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Process library"
+    write (u, "(A)")
+
+    call prc_set%compile_library (global)
+
+    lib => global%prclib_stack%get_library_ptr (libname)
+    if (associated (lib))  call lib%write (u, libpath=.false.)
+
+    write (u, *)
+    write (u, "(A)")  "* Cleanup"
+
+    call global%final ()
+    call syntax_model_file_final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: restricted_subprocesses_2"
+
+  end subroutine restricted_subprocesses_2
+
+@ %def restricted_subprocesses_2
+@
+\subsubsection{Auxiliary: Test processes}
+Auxiliary subroutine that constructs the process library for the above test.
+This parallels a similar subroutine in [[processes_uti]], but this time we
+want an \oMega\ process.
+<<Restricted subprocesses: public test auxiliary>>=
+  public :: prepare_resonance_test_library
+<<Restricted subprocesses: test auxiliary>>=
+  subroutine prepare_resonance_test_library &
+       (lib, libname, procname, model, global, u)
+    type(process_library_t), target, intent(out) :: lib
+    type(string_t), intent(in) :: libname
+    type(string_t), intent(in) :: procname
+    class(model_data_t), intent(in), pointer :: model
+    type(rt_data_t), intent(in), target :: global
+    integer, intent(in) :: u
+    type(string_t), dimension(:), allocatable :: prt_in, prt_out
+    class(prc_core_def_t), allocatable :: def
+    type(process_def_entry_t), pointer :: entry
+
+    call lib%init (libname)
+
+    allocate (prt_in (2), prt_out (3))
+    prt_in = [var_str ("e+"), var_str ("e-")]
+    prt_out = [var_str ("d"), var_str ("ubar"), var_str ("W+")]
+
+    allocate (omega_def_t :: def)
+    select type (def)
+    type is (omega_def_t)
+       call def%init (model%get_name (), prt_in, prt_out, &
+            ovm=.false., ufo=.false.)
+    end select
+    allocate (entry)
+    call entry%init (procname, &
+         model_name = model%get_name (), &
+         n_in = 2, n_components = 1)
+    call entry%import_component (1, n_out = size (prt_out), &
+         prt_in  = new_prt_spec (prt_in), &
+         prt_out = new_prt_spec (prt_out), &
+         method  = var_str ("omega"), &
+         variant = def)
+    call entry%write (u)
+
+    call lib%append (entry)
+
+    call lib%configure (global%os_data)
+    call lib%write_makefile (global%os_data, force = .true.)
+    call lib%clean (global%os_data, distclean = .false.)
+    call lib%write_driver (force = .true.)
+    call lib%load (global%os_data)
+
+  end subroutine prepare_resonance_test_library
+
+@ %def prepare_resonance_test_library
+@
+\subsubsection{Kinematics and resonance selection}
+Prepare an actual process with resonant subprocesses.  Insert
+kinematics and apply the resonance selector in an associated event
+transform.
+<<Restricted subprocesses: execute tests>>=
+  call test (restricted_subprocesses_3, "restricted_subprocesses_3", &
+       "resonance kinematics and probability", &
+       u, results)
+<<Restricted subprocesses: test declarations>>=
+  public :: restricted_subprocesses_3
+<<Restricted subprocesses: tests>>=
+  subroutine restricted_subprocesses_3 (u)
+    integer, intent(in) :: u
+    type(rt_data_t), target :: global
+    class(model_t), pointer :: model
+    class(model_data_t), pointer :: model_data
+    type(string_t) :: libname, libname_res
+    type(string_t) :: procname
+    type(process_component_def_t), pointer :: process_component_def
+    type(prclib_entry_t), pointer :: lib_entry
+    type(process_library_t), pointer :: lib
+    type(process_t), pointer :: process
+    type(process_instance_t), target :: process_instance
+    type(resonance_history_set_t) :: res_history_set
+    type(resonant_subprocess_set_t) :: prc_set
+    type(particle_set_t) :: pset
+    real(default) :: sqrts, mw, pp
+    real(default), dimension(3) :: p3
+    type(vector4_t), dimension(:), allocatable :: p
+    real(default), dimension(:), allocatable :: m
+    integer, dimension(:), allocatable :: pdg
+    real(default), dimension(:), allocatable :: sqme
+    logical, dimension(:), allocatable :: mask
+    real(default) :: on_shell_limit
+    integer, dimension(:), allocatable :: i_array
+    real(default), dimension(:), allocatable :: prob_array
+    type(evt_resonance_t), target :: evt_resonance
+    integer :: i, u_dump
+
+    write (u, "(A)")  "* Test output: restricted_subprocesses_3"
+    write (u, "(A)")  "*   Purpose: handle process and resonance kinematics"
+    write (u, "(A)")
+
+    call syntax_model_file_init ()
+    call syntax_phs_forest_init ()
+
+    call global%global_init ()
+    call global%append_log (&
+         var_str ("?rebuild_phase_space"), .true., intrinsic = .true.)
+    call global%set_log (var_str ("?omega_openmp"), &
+         .false., is_known = .true.)
+    call global%set_int (var_str ("seed"), &
+         0, is_known = .true.)
+    call global%set_real (var_str ("sqrts"),&
+         1000._default, is_known = .true.)
+    call global%set_log (var_str ("?resonance_history"), &
+         .true., is_known = .true.)
+
+    call global%select_model (var_str ("SM"))
+    allocate (model)
+    call model%init_instance (global%model)
+    model_data => model
+
+    libname = "restricted_subprocesses_3_lib"
+    libname_res = "restricted_subprocesses_3_lib_res"
+    procname = "restricted_subprocesses_3_p"
+
+    write (u, "(A)")  "* Initialize process library and process"
+    write (u, "(A)")
+
+    allocate (lib_entry)
+    call lib_entry%init (libname)
+    lib => lib_entry%process_library_t
+    call global%add_prclib (lib_entry)
+
+    call prepare_resonance_test_library &
+         (lib, libname, procname, model_data, global, u)
+
+    call integrate_process (procname, global, &
+         local_stack = .true., init_only = .true.)
+
+    process => global%process_stack%get_process_ptr (procname)
+
+    call process_instance%init (process)
+    call process_instance%setup_event_data ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Extract resonance history set"
+    write (u, "(A)")
+
+    call process%extract_resonance_history_set &
+         (res_history_set, include_trivial=.true., i_component=1)
+    call res_history_set%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Build resonant-subprocess library"
+    write (u, "(A)")
+
+    call prc_set%init (res_history_set)
+
+    process_component_def => process%get_component_def_ptr (1)
+    call prc_set%create_library &
+         (libname_res, &
+    process_component_def%get_prt_spec_in (), &
+    process_component_def%get_prt_spec_out (), &
+          global)
+    call prc_set%compile_library (global)
+    call prc_set%write (u, testflag=.true.)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Build particle set"
+    write (u, "(A)")
+
+    sqrts = global%get_rval (var_str ("sqrts"))
+    mw = 80._default   ! deliberately slightly different from true mw
+    pp = sqrt (sqrts**2 - 4 * mw**2) / 2
+
+    allocate (pdg (5), p (5), m (5))
+    pdg(1) = -11
+    p(1) = vector4_moving (sqrts/2, sqrts/2, 3)
+    m(1) = 0
+    pdg(2) = 11
+    p(2) = vector4_moving (sqrts/2,-sqrts/2, 3)
+    m(2) = 0
+    pdg(3) = 1
+    p3(1) = pp/2
+    p3(2) = mw/2
+    p3(3) = 0
+    p(3) = vector4_moving (sqrts/4, vector3_moving (p3))
+    m(3) = 0
+    p3(2) = -mw/2
+    pdg(4) = -2
+    p(4) = vector4_moving (sqrts/4, vector3_moving (p3))
+    m(4) = 0
+    pdg(5) = 24
+    p(5) = vector4_moving (sqrts/2,-pp, 1)
+    m(5) = mw
+
+    call pset%init_direct (0, 2, 0, 3, pdg, model)
+    call pset%set_momentum (p, m**2)
+    call pset%write (u, testflag=.true.)
+
+     write (u, "(A)")
+     write (u, "(A)")  "* Fill process instance"
+
+    ! workflow from event_recalculate
+    call process_instance%choose_mci (1)
+    call process_instance%set_trace (pset, 1)
+    call process_instance%recover &
+         (1, 1, update_sqme=.true., recover_phs=.false.)
+    call process_instance%evaluate_event_data (weight = 1._default)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Prepare resonant subprocesses"
+
+    call prc_set%prepare_process_objects (global)
+    call prc_set%prepare_process_instances (global)
+
+    call prc_set%connect_transform (evt_resonance)
+    call evt_resonance%connect (process_instance, model)
+
+    call prc_set%fill_momenta ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Show squared matrix element of master process,"
+    write (u, "(A)")  "  should coincide with 2nd subprocess sqme"
+    write (u, "(A)")
+
+    write (u, "(1x,I0,1x," // FMT_12 // ")")  0, prc_set%get_master_sqme ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Compute squared matrix elements &
+         &of selected resonant subprocesses [1,2]"
+    write (u, "(A)")
+
+    call prc_set%evaluate_subprocess ([1,2])
+
+    allocate (sqme (3), source = 0._default)
+    call prc_set%get_subprocess_sqme (sqme)
+    do i = 1, size (sqme)
+       write (u, "(1x,I0,1x," // FMT_12 // ")")  i, sqme(i)
+    end do
+    deallocate (sqme)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Compute squared matrix elements &
+         &of all resonant subprocesses"
+    write (u, "(A)")
+
+    call prc_set%evaluate_subprocess ([1,2,3])
+
+    allocate (sqme (3), source = 0._default)
+    call prc_set%get_subprocess_sqme (sqme)
+    do i = 1, size (sqme)
+       write (u, "(1x,I0,1x," // FMT_12 // ")")  i, sqme(i)
+    end do
+    deallocate (sqme)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Write process instances to file &
+         &restricted_subprocesses_3_lib_res.dat"
+
+    u_dump = free_unit ()
+    open (unit = u_dump, file = "restricted_subprocesses_3_lib_res.dat", &
+         action = "write", status = "replace")
+    call prc_set%dump_instances (u_dump)
+    close (u_dump)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Determine on-shell resonant subprocesses"
+    write (u, "(A)")
+
+    on_shell_limit = 0
+    write (u, "(1x,A,1x," // FMT_10 // ")")  "on_shell_limit =", on_shell_limit
+    call prc_set%set_on_shell_limit (on_shell_limit)
+    call prc_set%determine_on_shell_histories (i_array)
+    write (u, "(1x,A,9(1x,I0))")  "resonant =", i_array
+
+    on_shell_limit = 0.1_default
+    write (u, "(1x,A,1x," // FMT_10 // ")")  "on_shell_limit =", on_shell_limit
+    call prc_set%set_on_shell_limit (on_shell_limit)
+    call prc_set%determine_on_shell_histories (i_array)
+    write (u, "(1x,A,9(1x,I0))")  "resonant =", i_array
+
+    on_shell_limit = 10._default
+    write (u, "(1x,A,1x," // FMT_10 // ")")  "on_shell_limit =", on_shell_limit
+    call prc_set%set_on_shell_limit (on_shell_limit)
+    call prc_set%determine_on_shell_histories (i_array)
+    write (u, "(1x,A,9(1x,I0))")  "resonant =", i_array
+
+    on_shell_limit = 10000._default
+    write (u, "(1x,A,1x," // FMT_10 // ")")  "on_shell_limit =", on_shell_limit
+    call prc_set%set_on_shell_limit (on_shell_limit)
+    call prc_set%determine_on_shell_histories (i_array)
+    write (u, "(1x,A,9(1x,I0))")  "resonant =", i_array
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Compute probabilities for applicable resonances"
+    write (u, "(A)")  "  and initialize the process selector"
+    write (u, "(A)")  "  (The first number is the probability for background)"
+    write (u, "(A)")
+
+    on_shell_limit = 0
+    write (u, "(1x,A,1x," // FMT_10 // ")")  "on_shell_limit =", on_shell_limit
+    call prc_set%set_on_shell_limit (on_shell_limit)
+    call prc_set%determine_on_shell_histories (i_array)
+    call prc_set%compute_probabilities (prob_array)
+    write (u, "(1x,A,9(1x,"// FMT_12 // "))")  "resonant =", prob_array
+    call prc_set%write (u, testflag=.true.)
+    write (u, *)
+
+    on_shell_limit = 10._default
+    write (u, "(1x,A,1x," // FMT_10 // ")")  "on_shell_limit =", on_shell_limit
+    call prc_set%set_on_shell_limit (on_shell_limit)
+    call prc_set%determine_on_shell_histories (i_array)
+    call prc_set%compute_probabilities (prob_array)
+    write (u, "(1x,A,9(1x,"// FMT_12 // "))")  "resonant =", prob_array
+    call prc_set%write (u, testflag=.true.)
+    write (u, *)
+
+    on_shell_limit = 10000._default
+    write (u, "(1x,A,1x," // FMT_10 // ")")  "on_shell_limit =", on_shell_limit
+    call prc_set%set_on_shell_limit (on_shell_limit)
+    call prc_set%determine_on_shell_histories (i_array)
+    call prc_set%compute_probabilities (prob_array)
+    write (u, "(1x,A,9(1x,"// FMT_12 // "))")  "resonant =", prob_array
+    write (u, *)
+    call prc_set%write (u, testflag=.true.)
+    write (u, *)
+
+    write (u, "(A)")  "* Cleanup"
+
+    call global%final ()
+    call syntax_phs_forest_final ()
+    call syntax_model_file_final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: restricted_subprocesses_3"
+
+  end subroutine restricted_subprocesses_3
+
+@ %def restricted_subprocesses_3
+@
+\subsubsection{Event transform}
+Prepare an actual process with resonant subprocesses.  Prepare the
+resonance selector for a fixed event and apply the resonance-insertion
+event transform.
+<<Restricted subprocesses: execute tests>>=
+  call test (restricted_subprocesses_4, "restricted_subprocesses_4", &
+       "event transform", &
+       u, results)
+<<Restricted subprocesses: test declarations>>=
+  public :: restricted_subprocesses_4
+<<Restricted subprocesses: tests>>=
+  subroutine restricted_subprocesses_4 (u)
+    integer, intent(in) :: u
+    type(rt_data_t), target :: global
+    class(model_t), pointer :: model
+    class(model_data_t), pointer :: model_data
+    type(string_t) :: libname, libname_res
+    type(string_t) :: procname
+    type(process_component_def_t), pointer :: process_component_def
+    type(prclib_entry_t), pointer :: lib_entry
+    type(process_library_t), pointer :: lib
+    type(process_t), pointer :: process
+    type(process_instance_t), target :: process_instance
+    type(resonance_history_set_t) :: res_history_set
+    type(resonant_subprocess_set_t) :: prc_set
+    type(particle_set_t) :: pset
+    real(default) :: sqrts, mw, pp
+    real(default), dimension(3) :: p3
+    type(vector4_t), dimension(:), allocatable :: p
+    real(default), dimension(:), allocatable :: m
+    integer, dimension(:), allocatable :: pdg
+    real(default) :: on_shell_limit
+    type(evt_trivial_t), target :: evt_trivial
+    type(evt_resonance_t), target :: evt_resonance
+    real(default) :: probability
+    integer :: i
+
+    write (u, "(A)")  "* Test output: restricted_subprocesses_4"
+    write (u, "(A)")  "*   Purpose: employ event transform"
+    write (u, "(A)")
+
+    call syntax_model_file_init ()
+    call syntax_phs_forest_init ()
+
+    call global%global_init ()
+    call global%append_log (&
+         var_str ("?rebuild_phase_space"), .true., intrinsic = .true.)
+    call global%set_log (var_str ("?omega_openmp"), &
+         .false., is_known = .true.)
+    call global%set_int (var_str ("seed"), &
+         0, is_known = .true.)
+    call global%set_real (var_str ("sqrts"),&
+         1000._default, is_known = .true.)
+    call global%set_log (var_str ("?resonance_history"), &
+         .true., is_known = .true.)
+
+    call global%select_model (var_str ("SM"))
+    allocate (model)
+    call model%init_instance (global%model)
+    model_data => model
+
+    libname = "restricted_subprocesses_4_lib"
+    libname_res = "restricted_subprocesses_4_lib_res"
+    procname = "restricted_subprocesses_4_p"
+
+    write (u, "(A)")  "* Initialize process library and process"
+    write (u, "(A)")
+
+    allocate (lib_entry)
+    call lib_entry%init (libname)
+    lib => lib_entry%process_library_t
+    call global%add_prclib (lib_entry)
+
+    call prepare_resonance_test_library &
+         (lib, libname, procname, model_data, global, u)
+
+    call integrate_process (procname, global, &
+         local_stack = .true., init_only = .true.)
+
+    process => global%process_stack%get_process_ptr (procname)
+
+    call process_instance%init (process)
+    call process_instance%setup_event_data ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Extract resonance history set"
+
+    call process%extract_resonance_history_set &
+         (res_history_set, include_trivial=.false., i_component=1)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Build resonant-subprocess library"
+
+    call prc_set%init (res_history_set)
+
+    process_component_def => process%get_component_def_ptr (1)
+    call prc_set%create_library &
+         (libname_res, &
+    process_component_def%get_prt_spec_in (), &
+    process_component_def%get_prt_spec_out (), &
+          global)
+    call prc_set%compile_library (global)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Build particle set"
+    write (u, "(A)")
+
+    sqrts = global%get_rval (var_str ("sqrts"))
+    mw = 80._default   ! deliberately slightly different from true mw
+    pp = sqrt (sqrts**2 - 4 * mw**2) / 2
+
+    allocate (pdg (5), p (5), m (5))
+    pdg(1) = -11
+    p(1) = vector4_moving (sqrts/2, sqrts/2, 3)
+    m(1) = 0
+    pdg(2) = 11
+    p(2) = vector4_moving (sqrts/2,-sqrts/2, 3)
+    m(2) = 0
+    pdg(3) = 1
+    p3(1) = pp/2
+    p3(2) = mw/2
+    p3(3) = 0
+    p(3) = vector4_moving (sqrts/4, vector3_moving (p3))
+    m(3) = 0
+    p3(2) = -mw/2
+    pdg(4) = -2
+    p(4) = vector4_moving (sqrts/4, vector3_moving (p3))
+    m(4) = 0
+    pdg(5) = 24
+    p(5) = vector4_moving (sqrts/2,-pp, 1)
+    m(5) = mw
+
+    call pset%init_direct (0, 2, 0, 3, pdg, model)
+    call pset%set_momentum (p, m**2)
+
+    write (u, "(A)")  "* Fill process instance"
+    write (u, "(A)")
+
+    ! workflow from event_recalculate
+    call process_instance%choose_mci (1)
+    call process_instance%set_trace (pset, 1)
+    call process_instance%recover &
+         (1, 1, update_sqme=.true., recover_phs=.false.)
+    call process_instance%evaluate_event_data (weight = 1._default)
+
+    write (u, "(A)")  "* Prepare resonant subprocesses"
+    write (u, "(A)")
+
+    call prc_set%prepare_process_objects (global)
+    call prc_set%prepare_process_instances (global)
+
+    write (u, "(A)")  "* Fill trivial event transform (deliberately w/o color)"
+    write (u, "(A)")
+
+    call evt_trivial%connect (process_instance, model)
+    call evt_trivial%set_particle_set (pset, 1, 1)
+    call evt_trivial%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Initialize resonance-insertion event transform"
+    write (u, "(A)")
+
+    evt_trivial%next => evt_resonance
+    evt_resonance%previous => evt_trivial
+
+    call evt_resonance%connect (process_instance, model)
+    call prc_set%connect_transform (evt_resonance)
+    call evt_resonance%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Compute probabilities for applicable resonances"
+    write (u, "(A)")  "  and initialize the process selector"
+    write (u, "(A)")
+
+    on_shell_limit = 10._default
+    write (u, "(1x,A,1x," // FMT_10 // ")")  "on_shell_limit =", on_shell_limit
+    call evt_resonance%set_on_shell_limit (on_shell_limit)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Evaluate resonance-insertion event transform"
+    write (u, "(A)")
+
+    call evt_resonance%prepare_new_event (1, 1)
+    call evt_resonance%generate_weighted (probability)
+    call evt_resonance%make_particle_set (1, .false.)
+
+    call evt_resonance%write (u, testflag=.true.)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Cleanup"
+
+    call global%final ()
+    call syntax_phs_forest_final ()
+    call syntax_model_file_final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: restricted_subprocesses_4"
+
+  end subroutine restricted_subprocesses_4
+
+@ %def restricted_subprocesses_4
+@
+\clearpage
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Simulation}
 This module manages simulation: event generation and reading/writing of event
 files.  The [[simulation]] object is intended to be used (via a pointer)
@@ -7844,9 +9505,12 @@ module simulations
 <<Use strings>>
   use io_units
   use format_utils, only: write_separator
-  use format_defs, only: FMT_19
+  use format_defs, only: FMT_15, FMT_19
+  use os_interface
   use numeric_utils
+  use string_utils, only: str
   use diagnostics
+  use lorentz, only: vector4_t
   use sm_qcd
   use md5
   use variables, only: var_list_t
@@ -7858,8 +9522,11 @@ module simulations
   use beam_structures, only: beam_structure_t
   use beams
   use rng_base
+  use rng_stream, only: rng_stream_t
   use selectors
+  use resonances, only: resonance_history_set_t
   use process_libraries, only: process_library_t
+  use process_libraries, only: process_component_def_t
   use prc_core
   !  TODO: (bcn 2016-09-13) should be ideally only pcm_base
   use pcm, only: pcm_nlo_t, pcm_instance_nlo_t
@@ -7878,6 +9545,7 @@ module simulations
   use dispatch_beams, only: dispatch_qcd
   use dispatch_rng, only: dispatch_rng_factory
   use dispatch_me_methods, only: dispatch_core_update, dispatch_core_restore
+  use dispatch_transforms, only: dispatch_evt_resonance
   use dispatch_transforms, only: dispatch_evt_decay
   use dispatch_transforms, only: dispatch_evt_shower
   use dispatch_transforms, only: dispatch_evt_hadrons
@@ -7885,8 +9553,11 @@ module simulations
 
   use integrations
   use event_streams
+  use restricted_subprocesses, only: resonant_subprocess_set_t
 
   use evt_nlo
+
+<<Use mpi f08>>
 
 <<Standard module head>>
 
@@ -8091,20 +9762,29 @@ process configuration, we keep a separate event record.
 <<Simulations: mci set: TBP>>=
   procedure :: write => mci_set_write
 <<Simulations: procedures>>=
-  subroutine mci_set_write (object, unit)
+  subroutine mci_set_write (object, unit, pacified)
     class(mci_set_t), intent(in) :: object
     integer, intent(in), optional :: unit
+    logical, intent(in), optional :: pacified
+    logical :: pacify
     integer :: u, i
     u = given_output_unit (unit)
+    pacify = .false.;  if (present (pacified))  pacify = pacified
     write (u, "(3x,A)")  "Components:"
     do i = 1, object%n_components
        write (u, "(5x,I0,A,A,A)")  object%i_component(i), &
             ": '", char (object%component_id(i)), "'"
     end do
     if (object%has_integral) then
-       write (u, "(3x,A," // FMT_19 // ")")  "Integral  = ", object%integral
-       write (u, "(3x,A," // FMT_19 // ")")  "Error     = ", object%error
-       write (u, "(3x,A,F13.10)")  "Weight    =", object%weight_mci
+       if (pacify) then
+          write (u, "(3x,A," // FMT_15 // ")")  "Integral  = ", object%integral
+          write (u, "(3x,A," // FMT_15 // ")")  "Error     = ", object%error
+          write (u, "(3x,A,F9.6)")  "Weight    =", object%weight_mci
+       else
+          write (u, "(3x,A," // FMT_19 // ")")  "Integral  = ", object%integral
+          write (u, "(3x,A," // FMT_19 // ")")  "Error     = ", object%error
+          write (u, "(3x,A,F13.10)")  "Weight    =", object%weight_mci
+       end if
     else
        write (u, "(3x,A)")  "Integral  = [undefined]"
     end if
@@ -8152,9 +9832,10 @@ the rescan, we want to restore the original state.
 \subsection{Process Object}
 The simulation works on process objects.  This subroutine makes a
 process object available for simulation.  The process is in the
-process stack.  If integration is not yet
-done, do it.  Any generated process object should be put on the global stack,
-if it is separate from the local one.
+process stack.  [[use_process]] implies that the process should
+already exist as an object in the process stack.  If integration is
+not yet done, do it.  Any generated process object should be put on
+the global stack, if it is separate from the local one.
 <<Simulations: procedures>>=
   subroutine prepare_process &
        (process, process_id, use_process, integrate, local, global)
@@ -8163,13 +9844,15 @@ if it is separate from the local one.
     logical, intent(in) :: use_process, integrate
     type(rt_data_t), intent(inout), target :: local
     type(rt_data_t), intent(inout), optional, target :: global
+    type(rt_data_t), pointer :: current
     call msg_debug (D_CORE, "prepare_process")
     call msg_debug (D_CORE, "global present", present (global))
     if (present (global)) then
-       process => global%process_stack%get_process_ptr (process_id)
+       current => global
     else
-       process => local%process_stack%get_process_ptr (process_id)
+       current => local
     end if
+    process => current%process_stack%get_process_ptr (process_id)
     call msg_debug (D_CORE, "use_process", use_process)
     call msg_debug (D_CORE, "associated process", associated (process))
     if (use_process .and. .not. associated (process)) then
@@ -8188,11 +9871,11 @@ if it is separate from the local one.
                local_stack = .true., init_only = .not. integrate)
        end if
        if (signal_is_pending ())  return
-       process => global%process_stack%get_process_ptr (process_id)
+       process => current%process_stack%get_process_ptr (process_id)
        if (associated (process)) then
           if (integrate) then
              call msg_message ("Simulate: integration done")
-             call global%process_stack%fill_result_vars (process_id)
+             call current%process_stack%fill_result_vars (process_id)
           else
              call msg_message ("Simulate: process initialization done")
           end if
@@ -8208,7 +9891,7 @@ if it is separate from the local one.
           call integrate_process (process_id, local, &
                local_stack = .true., init_only = .true.)
        end if
-       process => global%process_stack%get_process_ptr (process_id)
+       process => current%process_stack%get_process_ptr (process_id)
        call msg_message &
             ("Simulate: process '" &
                // char (process_id) // "': enabled for rescan only")
@@ -8256,13 +9939,13 @@ However, all entries share the same event transforms.
      integer :: n_mci = 0
      type(mci_set_t), dimension(:), allocatable :: mci_sets
      type(selector_t) :: mci_selector
+     type(resonant_subprocess_set_t) :: resonant_subprocess_set
      type(core_safe_t), dimension(:), allocatable :: core_safe
      class(model_data_t), pointer :: model => null ()
      type(qcd_t) :: qcd
      type(entry_t), pointer :: first => null ()
      type(entry_t), pointer :: next => null ()
      class(evt_t), pointer :: evt_powheg => null ()
-     logical :: requires_real_switch_off = .true.
    contains
    <<Simulations: entry: TBP>>
   end type entry_t
@@ -8276,19 +9959,28 @@ the base-object method.
 <<Simulations: entry: TBP>>=
   procedure :: write_config => entry_write_config
 <<Simulations: procedures>>=
-  subroutine entry_write_config (object, unit)
+  subroutine entry_write_config (object, unit, pacified)
     class(entry_t), intent(in) :: object
     integer, intent(in), optional :: unit
+    logical, intent(in), optional :: pacified
+    logical :: pacify
     integer :: u, i
     u = given_output_unit (unit)
+    pacify = .false.;  if (present (pacified))  pacify = pacified
     write (u, "(3x,A,A,A)")  "Process   = '", char (object%process_id), "'"
     write (u, "(3x,A,A,A)")  "Library   = '", char (object%library), "'"
     write (u, "(3x,A,A,A)")  "Run       = '", char (object%run_id), "'"
     write (u, "(3x,A,L1)")   "is valid  = ", object%valid
     if (object%has_integral) then
-       write (u, "(3x,A," // FMT_19 // ")")  "Integral  = ", object%integral
-       write (u, "(3x,A," // FMT_19 // ")")  "Error     = ", object%error
-       write (u, "(3x,A,F13.10)")  "Weight    =", object%process_weight
+       if (pacify) then
+          write (u, "(3x,A," // FMT_15 // ")")  "Integral  = ", object%integral
+          write (u, "(3x,A," // FMT_15 // ")")  "Error     = ", object%error
+          write (u, "(3x,A,F9.6)")  "Weight    =", object%process_weight
+       else
+          write (u, "(3x,A," // FMT_19 // ")")  "Integral  = ", object%integral
+          write (u, "(3x,A," // FMT_19 // ")")  "Error     = ", object%error
+          write (u, "(3x,A,F13.10)")  "Weight    =", object%process_weight
+       end if
     else
        write (u, "(3x,A)")  "Integral  = [undefined]"
     end if
@@ -8297,8 +9989,12 @@ the base-object method.
     do i = 1, size (object%mci_sets)
        write (u, "(A)")
        write (u, "(1x,A,I0,A)")  "MCI set #", i, ":"
-       call object%mci_sets(i)%write (u)
+       call object%mci_sets(i)%write (u, pacified)
     end do
+    if (object%resonant_subprocess_set%is_active ()) then
+       write (u, "(A)")
+       call object%write_resonant_subprocess_data (u)
+    end if
     if (allocated (object%core_safe)) then
        do i = 1, size (object%core_safe)
           write (u, "(1x,A,I0,A)")  "Saved process-component core #", i, ":"
@@ -8381,6 +10077,13 @@ Otherwise, just initialize the object.
 If [[generate]] is set, prepare the MCI objects for generating new events.
 For pure rescanning, this is not necessary.
 
+If [[resonance_history]] is set, we create a separate process library
+which contains all possible restricted subprocesses with distinct
+resonance histories.  These processes will not be integrated, but
+their matrix element codes are used for determining probabilities of
+resonance histories.  Note that this can work only if the process
+method is OMega, and the phase-space method is 'wood'.
+
 When done, we assign the [[instance]] and [[process]] pointers of the
 base type by the [[connect]] method, so we can reference them later.
 <<Simulations: entry: TBP>>=
@@ -8389,18 +10092,22 @@ base type by the [[connect]] method, so we can reference them later.
   subroutine entry_init &
        (entry, process_id, &
        use_process, integrate, generate, update_sqme, &
+       support_resonance_history, &
        local, global, n_alt)
     class(entry_t), intent(inout), target :: entry
     type(string_t), intent(in) :: process_id
     logical, intent(in) :: use_process, integrate, generate, update_sqme
+    logical, intent(in) :: support_resonance_history
     type(rt_data_t), intent(inout), target :: local
     type(rt_data_t), intent(inout), optional, target :: global
     integer, intent(in), optional :: n_alt
     type(process_t), pointer :: process, master_process
     type(process_instance_t), pointer :: process_instance
+    type(process_library_t), pointer :: prclib_saved
     integer :: i
+    logical :: res_include_trivial
     logical :: combined_integration
-    integer :: fixed_mci = 0
+    integer :: selected_mci = 0
     call msg_debug (D_CORE, "entry_init")
     call msg_debug (D_CORE, "process_id", process_id)
     call prepare_process &
@@ -8458,27 +10165,36 @@ base type by the [[connect]] method, so we can reference them later.
     if (process%is_nlo_calculation ()) call process%init_nlo_settings (global%var_list)
     combined_integration = local%get_lval (var_str ("?combined_nlo_integration"))
     if (.not. combined_integration &
-       .and. local%get_lval (var_str ("?fixed_order_nlo_events"))) then
-       fixed_mci = process%extract_fixed_mci ()
-    end if
+         .and. local%get_lval (var_str ("?fixed_order_nlo_events"))) &
+              selected_mci = process%extract_active_component_mci ()
     call prepare_process_instance (process_instance, process, local%model, &
          local = local)
 
     if (generate) then
-       if (fixed_mci > 0) then
-          call process%prepare_simulation (fixed_mci)
-          call process_instance%init_simulation &
-             (fixed_mci, entry%config%safety_factor, &
-              local%get_lval (var_str ("?keep_failed_events")))
+       if (selected_mci > 0) then
+          call process%prepare_simulation (selected_mci)
+          call process_instance%init_simulation (selected_mci, entry%config%safety_factor, &
+               local%get_lval (var_str ("?keep_failed_events")))
        else
           do i = 1, entry%n_mci
              call process%prepare_simulation (i)
              call process_instance%init_simulation (i, entry%config%safety_factor, &
-                local%get_lval (var_str ("?keep_failed_events")))
+                  local%get_lval (var_str ("?keep_failed_events")))
           end do
-       end if
+      end if
     end if
+
+    if (support_resonance_history) then
+       prclib_saved => local%prclib
+       call entry%setup_resonant_subprocesses (local, process)
+       call entry%compile_resonant_subprocesses (local)
+       call entry%prepare_resonant_subprocesses (local, global)
+       call entry%prepare_resonant_subprocess_instances (local)
+       if (associated (prclib_saved))  call local%update_prclib (prclib_saved)
+    end if
+
     call entry%setup_event_transforms (process, local)
+
     call dispatch_qcd (entry%qcd, local%get_var_list_ptr (), local%os_data)
 
     call entry%connect_qcd ()
@@ -8500,6 +10216,7 @@ base type by the [[connect]] method, so we can reference them later.
     call entry%setup_expressions ()
 
     entry%model => process%get_model_ptr ()
+
     entry%valid = .true.
 
   end subroutine entry_init
@@ -8509,20 +10226,21 @@ base type by the [[connect]] method, so we can reference them later.
 <<Simulations: entry: TBP>>=
   procedure :: set_active_real_components => entry_set_active_real_components
 <<Simulations: procedures>>=
-  subroutine entry_set_active_real_components (entry, i_mci)
+  subroutine entry_set_active_real_components (entry)
     class(entry_t), intent(inout) :: entry
-    integer, intent(in) :: i_mci
-    integer :: i
-    if (.not. entry%requires_real_switch_off) return
+    integer :: i_active_real
     select type (pcm => entry%instance%pcm)
     class is (pcm_instance_nlo_t)
-       i = pcm%active_real_component
+       i_active_real = entry%instance%get_real_of_mci ()
+       call msg_debug2 (D_CORE, "i_active_real", i_active_real)
        if (associated (entry%evt_powheg)) then
           select type (evt => entry%evt_powheg)
           type is (evt_shower_t)
-             if (entry%process%get_component_type(i) == COMP_REAL_FIN) then
+             if (entry%process%get_component_type(i_active_real) == COMP_REAL_FIN) then
+                call msg_debug (D_CORE, "Disabling Powheg matching for ", i_active_real)
                 call evt%disable_powheg_matching ()
              else
+                call msg_debug (D_CORE, "Enabling Powheg matching for ", i_active_real)
                 call evt%enable_powheg_matching ()
              end if
           class default
@@ -8530,15 +10248,6 @@ base type by the [[connect]] method, so we can reference them later.
           end select
        end if
     end select
-    if (entry%is_nlo () .and. .not. entry%process%is_combined_nlo_integration ()) then
-       if (entry%process%extract_fixed_mci () > 0) then
-          call entry%process%deactivate_components &
-               (entry%process%extract_fixed_mci ())
-       else
-          call entry%process%deactivate_real_component ()
-       end if
-    end if
-    entry%requires_real_switch_off = .false.
   end subroutine entry_set_active_real_components
 
 @ %def entry_set_active_real_components
@@ -8570,7 +10279,6 @@ does not affect parameters.
     type(process_t), intent(inout), target :: process
     class(model_data_t), intent(in), optional :: model
     type(rt_data_t), intent(in), optional, target :: local
-    integer :: i_component
     allocate (process_instance)
     call process_instance%init (process)
     if (process%is_nlo_calculation ()) then
@@ -8828,7 +10536,12 @@ information about how many entries to associate from [[region_data]].
 
 @ %def entry_determine_if_powheg_matching
 @ Part of simulation-entry initialization: dispatch event transforms
-(decay, shower) as requested.
+(decay, shower) as requested.  If a transform is not applicable or
+switched off via some variable, it will be skipped.
+
+Regarding resonances/decays: these two transforms are currently mutually
+exclusive.  Resonance insertion will not be applied if there is an
+unstable particle in the game.
 <<Simulations: entry: TBP>>=
   procedure, private :: setup_event_transforms &
        => entry_setup_event_transforms
@@ -8844,6 +10557,16 @@ information about how many entries to associate from [[region_data]].
     if (process%contains_unstable (local%model)) then
        call dispatch_evt_decay (evt, local%var_list)
        if (associated (evt))  call entry%import_transform (evt)
+    else if (entry%resonant_subprocess_set%is_active ()) then
+       call dispatch_evt_resonance (evt, local%var_list, &
+            entry%resonant_subprocess_set%get_resonance_history_set (), &
+            entry%resonant_subprocess_set%get_libname ())
+       if (associated (evt)) then
+          call entry%resonant_subprocess_set%connect_transform (evt)
+          call entry%resonant_subprocess_set%set_on_shell_limit &
+               (local%get_rval (var_str ("resonance_on_shell_limit")))
+          call entry%import_transform (evt)
+       end if
     end if
     enable_fixed_order = local%get_lval (var_str ("?fixed_order_nlo_events"))
     if (enable_fixed_order) then
@@ -8915,11 +10638,8 @@ the normalization procedure for the process components.
     class(entry_t), intent(inout) :: entry
     integer :: i_mci
     call msg_debug2 (D_CORE, "entry_select_mci")
-    if (entry%process%extract_fixed_mci () > 0) then
-       i_mci = entry%process%extract_fixed_mci ()
-    else
-       call entry%mci_selector%generate (entry%rng, i_mci)
-    end if
+    i_mci = entry%process%extract_active_component_mci ()
+    if (i_mci == 0) call entry%mci_selector%generate (entry%rng, i_mci)
     call msg_debug2 (D_CORE, "i_mci", i_mci)
   end function entry_select_mci
 
@@ -9026,6 +10746,160 @@ parameters stored in the process object.
 
 @ %def entry_connect_qcd
 @
+\subsection{Handling resonant subprocesses}
+Resonant subprocesses are required if we want to determine resonance histories
+when generating events.  The feature is optional, to be switched on by
+the user.
+
+This procedure initializes a new, separate process library that
+contains copies of the current process, restricted to the relevant
+resonance histories.  The histories can be extracted from the process
+object.
+
+In principle, the result depends on the component that we select for
+the purpose of extracting resonances.  We fix this to the first component.
+<<Simulations: entry: TBP>>=
+  procedure :: setup_resonant_subprocesses &
+       => entry_setup_resonant_subprocesses
+<<Simulations: procedures>>=
+  subroutine entry_setup_resonant_subprocesses (entry, global, process)
+    class(entry_t), intent(inout) :: entry
+    type(rt_data_t), intent(inout), target :: global
+    type(process_t), intent(in), target :: process
+    type(string_t) :: libname
+    integer :: i_component
+    type(resonance_history_set_t) :: res_history_set
+    type(process_component_def_t), pointer :: process_component_def
+    libname = process%get_id () // "_R"
+    i_component = 1
+    call process%extract_resonance_history_set (res_history_set, &
+         i_component=i_component)
+    call entry%resonant_subprocess_set%init (res_history_set)
+    process_component_def => process%get_component_def_ptr (i_component)
+    call entry%resonant_subprocess_set%create_library &
+         (libname, &
+         process_component_def%get_prt_spec_in (), &
+         process_component_def%get_prt_spec_out (), &
+         global)
+  end subroutine entry_setup_resonant_subprocesses
+
+@ %def entry_setup_resonant_subprocesses
+@ Compile the resonant-subprocesses library.  This is a simple wrapper.
+<<Simulations: entry: TBP>>=
+  procedure :: compile_resonant_subprocesses &
+       => entry_compile_resonant_subprocesses
+<<Simulations: procedures>>=
+  subroutine entry_compile_resonant_subprocesses (entry, global)
+    class(entry_t), intent(inout) :: entry
+    type(rt_data_t), intent(inout), target :: global
+    call entry%resonant_subprocess_set%compile_library (global)
+  end subroutine entry_compile_resonant_subprocesses
+
+@ %def entry_compile_resonant_subprocesses
+@ Prepare process objects for the resonant-subprocesses library.  The
+process objects are appended to the global process stack.  We
+initialize the processes, such that we can evaluate matrix elements,
+but we do not need to integrate them.
+<<Simulations: entry: TBP>>=
+  procedure :: prepare_resonant_subprocesses &
+       => entry_prepare_resonant_subprocesses
+<<Simulations: procedures>>=
+  subroutine entry_prepare_resonant_subprocesses (entry, local, global)
+    class(entry_t), intent(inout) :: entry
+    type(rt_data_t), intent(inout), target :: local
+    type(rt_data_t), intent(inout), optional, target :: global
+    call entry%resonant_subprocess_set%prepare_process_objects (local, global)
+  end subroutine entry_prepare_resonant_subprocesses
+
+@ %def entry_prepare_resonant_subprocesses
+@ Prepare process instances.  They are linked to their corresponding process
+objects.  Both, process and instance objects, are allocated as anonymous
+targets inside the [[resonant_subprocess_set]] component.
+
+NOTE: those anonymous object are likely forgotten during finalization of the
+parent [[event_t]] (extended as [[entry_t]]) object.  This should be checked!
+The memory leak is probably harmless as long as the event object is created
+once per run, not once per event.
+<<Simulations: entry: TBP>>=
+  procedure :: prepare_resonant_subprocess_instances &
+       => entry_prepare_resonant_subprocess_instances
+<<Simulations: procedures>>=
+  subroutine entry_prepare_resonant_subprocess_instances (entry, global)
+    class(entry_t), intent(inout) :: entry
+    type(rt_data_t), intent(in), target :: global
+    call entry%resonant_subprocess_set%prepare_process_instances (global)
+  end subroutine entry_prepare_resonant_subprocess_instances
+
+@ %def entry_prepare_resonant_subprocess_instances
+@ Display the resonant subprocesses.  This includes, upon request, the
+resonance set that defines those subprocess, and a short or long account of the
+process objects themselves.
+<<Simulations: entry: TBP>>=
+  procedure :: write_resonant_subprocess_data &
+       => entry_write_resonant_subprocess_data
+<<Simulations: procedures>>=
+  subroutine entry_write_resonant_subprocess_data (entry, unit)
+    class(entry_t), intent(in) :: entry
+    integer, intent(in), optional :: unit
+    integer :: u, i
+    u = given_output_unit (unit)
+    call entry%resonant_subprocess_set%write (unit)
+    write (u, "(1x,A,I0)")  "Resonant subprocesses refer to &
+            &process component #", 1
+  end subroutine entry_write_resonant_subprocess_data
+
+@ %def entry_write_resonant_subprocess_data
+@ Display of the master process for the current event, for diagnostics.
+<<Simulations: entry: TBP>>=
+  procedure :: write_process_data => entry_write_process_data
+<<Simulations: procedures>>=
+  subroutine entry_write_process_data &
+       (entry, unit, show_process, show_instance, verbose)
+    class(entry_t), intent(in) :: entry
+    integer, intent(in), optional :: unit
+    logical, intent(in), optional :: show_process
+    logical, intent(in), optional :: show_instance
+    logical, intent(in), optional :: verbose
+    integer :: u, i
+    logical :: s_proc, s_inst, verb
+    type(process_t), pointer :: process
+    type(process_instance_t), pointer :: instance
+    u = given_output_unit (unit)
+    s_proc = .false.;  if (present (show_process))  s_proc = show_process
+    s_inst = .false.;  if (present (show_instance))  s_inst = show_instance
+    verb = .false.;  if (present (verbose))  verb = verbose
+    if (s_proc .or. s_inst) then
+       write (u, "(1x,A,':')")  "Process data"
+       if (s_proc) then
+          process => entry%process
+          if (associated (process)) then
+             if (verb) then
+                call write_separator (u, 2)
+                call process%write (.false., u)
+             else
+                call process%show (u, verbose=.false.)
+             end if
+          else
+             write (u, "(3x,A)")  "[not associated]"
+          end if
+       end if
+       if (s_inst) then
+          instance => entry%instance
+          if (associated (instance)) then
+             if (verb) then
+                call instance%write (u)
+             else
+                call instance%write_header (u)
+             end if
+          else
+             write (u, "(3x,A)")  "Process instance: [not associated]"
+          end if
+       end if
+    end if
+  end subroutine entry_write_process_data
+
+@ %def entry_write_process_data
+@
 \subsection{Entries for alternative environment}
 Entries for alternate environments.  [No additional components
 anymore, so somewhat redundant.]
@@ -9036,7 +10910,7 @@ anymore, so somewhat redundant.]
   end type alt_entry_t
 
 @ %def alt_entry_t
-@ The alternative entries are there to re-evaluate the event, given
+ The alternative entries are there to re-evaluate the event, given
 momenta, in a different context.
 
 Therefore, we allocate a local process object and use this as the
@@ -9140,6 +11014,7 @@ event file version. It can be
      type(string_t) :: sample_id
      logical :: unweighted = .true.
      logical :: negative_weights = .false.
+     logical :: support_resonance_history = .false.
      logical :: respect_selection = .true.
      integer :: norm_mode = NORM_UNDEFINED
      logical :: update_sqme = .false.
@@ -9182,11 +11057,14 @@ writes the current event and process instance, depending on options.
 <<Simulations: simulation: TBP>>=
   procedure :: write => simulation_write
 <<Simulations: procedures>>=
-  subroutine simulation_write (object, unit)
+  subroutine simulation_write (object, unit, testflag)
     class(simulation_t), intent(in) :: object
     integer, intent(in), optional :: unit
+    logical, intent(in), optional :: testflag
+    logical :: pacified
     integer :: u, i
     u = given_output_unit (unit)
+    pacified = object%pacify;  if (present (testflag))  pacified = testflag
     call write_separator (u, 2)
     write (u, "(1x,A,A,A)")  "Event sample: '", char (object%sample_id), "'"
     write (u, "(3x,A,I0)")  "Processes    = ", object%n_prc
@@ -9197,6 +11075,7 @@ writes the current event and process instance, depending on options.
     write (u, "(3x,A,A)")   "Event norm   = ", &
          char (event_normalization_string (object%norm_mode))
     write (u, "(3x,A,L1)")  "Neg. weights = ", object%negative_weights
+    write (u, "(3x,A,L1)")  "Res. history = ", object%support_resonance_history
     write (u, "(3x,A,L1)")  "Respect sel. = ", object%respect_selection
     write (u, "(3x,A,L1)")  "Update sqme  = ", object%update_sqme
     write (u, "(3x,A,L1)")  "Update wgt   = ", object%update_weight
@@ -9205,8 +11084,17 @@ writes the current event and process instance, depending on options.
     write (u, "(3x,A,L1)")  "Pacify       = ", object%pacify
     write (u, "(3x,A,I0)")  "Max. tries   = ", object%n_max_tries
     if (object%has_integral) then
-       write (u, "(3x,A," // FMT_19 // ")")  "Integral     = ", object%integral
-       write (u, "(3x,A," // FMT_19 // ")")  "Error        = ", object%error
+       if (pacified) then
+          write (u, "(3x,A," // FMT_15 // ")")  &
+               "Integral     = ", object%integral
+          write (u, "(3x,A," // FMT_15 // ")")  &
+               "Error        = ", object%error
+       else
+          write (u, "(3x,A," // FMT_19 // ")")  &
+               "Integral     = ", object%integral
+          write (u, "(3x,A," // FMT_19 // ")")  &
+               "Error        = ", object%error
+       end if
     else
        write (u, "(3x,A)")  "Integral     = [undefined]"
     end if
@@ -9252,7 +11140,7 @@ writes the current event and process instance, depending on options.
              call write_separator (u)
           end if
           write (u, "(1x,A,I0,A)") "Process #", i, ":"
-          call object%entry(i)%write_config (u)
+          call object%entry(i)%write_config (u, pacified)
        end do
     end if
     call write_separator (u, 2)
@@ -9330,6 +11218,51 @@ in order to suppress numerical noise in the testsuite.
   end subroutine simulation_write_alt_event
 
 @ %def simulation_write_alt_event
+@ This writes the contents of the resonant subprocess set in the current event
+record.
+<<Simulations: simulation: TBP>>=
+  procedure :: write_resonant_subprocess_data &
+       => simulation_write_resonant_subprocess_data
+<<Simulations: procedures>>=
+  subroutine simulation_write_resonant_subprocess_data (object, unit, i_prc)
+    class(simulation_t), intent(in) :: object
+    integer, intent(in), optional :: unit
+    integer, intent(in), optional :: i_prc
+    integer :: i
+    if (present (i_prc)) then
+       i = i_prc
+    else
+       i = object%i_prc
+    end if
+    call object%entry(i)%write_resonant_subprocess_data (unit)
+  end subroutine simulation_write_resonant_subprocess_data
+
+@ %def simulation_write_resonant_subprocess_data
+@ The same for the master process, as an additional debugging aid.
+<<Simulations: simulation: TBP>>=
+  procedure :: write_process_data &
+       => simulation_write_process_data
+<<Simulations: procedures>>=
+  subroutine simulation_write_process_data &
+       (object, unit, i_prc, &
+       show_process, show_instance, verbose)
+    class(simulation_t), intent(in) :: object
+    integer, intent(in), optional :: unit
+    integer, intent(in), optional :: i_prc
+    logical, intent(in), optional :: show_process
+    logical, intent(in), optional :: show_instance
+    logical, intent(in), optional :: verbose
+    integer :: i
+    if (present (i_prc)) then
+       i = i_prc
+    else
+       i = object%i_prc
+    end if
+    call object%entry(i)%write_process_data &
+         (unit, show_process, show_instance, verbose)
+  end subroutine simulation_write_process_data
+
+@ %def simulation_write_process_data
 @ Finalizer.
 <<Simulations: simulation: TBP>>=
   procedure :: final => simulation_final
@@ -9386,13 +11319,19 @@ we may only read and rescan events.
     type(string_t) :: norm_string, version_string
     logical :: use_process
     integer :: i, j
+    type(string_t) :: sample_suffix
+  <<Simulations: simulation init: variables>>
+    sample_suffix = ""
+  <<Simulations: simulation init: init>>
     simulation%local => local
     simulation%sample_id = &
-         local%get_sval (var_str ("$sample"))
+         local%get_sval (var_str ("$sample")) // sample_suffix
     simulation%unweighted = &
          local%get_lval (var_str ("?unweighted"))
     simulation%negative_weights = &
          local%get_lval (var_str ("?negative_weights"))
+    simulation%support_resonance_history = &
+         local%get_lval (var_str ("?resonance_history"))
     simulation%respect_selection = &
          local%get_lval (var_str ("?sample_select"))
     version_string = &
@@ -9462,6 +11401,7 @@ we may only read and rescan events.
           call simulation%entry(i)%init (process_id(i), &
                use_process, integrate, generate, &
                simulation%update_sqme, &
+               simulation%support_resonance_history, &
                local, global, simulation%n_alt)
           if (signal_is_pending ())  return
        end do
@@ -9486,7 +11426,9 @@ we may only read and rescan events.
        do i = 1, simulation%n_prc
           call simulation%entry(i)%init &
                (process_id(i), &
-               use_process, integrate, generate, simulation%update_sqme, &
+               use_process, integrate, generate, &
+               simulation%update_sqme, &
+               simulation%support_resonance_history, &
                local, global)
           call simulation%entry(i)%determine_if_powheg_matching ()
           if (signal_is_pending ())  return
@@ -9536,6 +11478,20 @@ we may only read and rescan events.
   end subroutine simulation_init
 
 @ %def simulation_init
+@
+<<Simulations: simuulation init: variables>>=
+@
+<<Simulations: simuulation init: init>>=
+@
+<<MPI: Simulations: simulation init: variables>>=
+  integer :: rank, n_size
+@
+<<MPI: Simulations: simulation init: init>>=
+  call mpi_get_comm_id (n_size, rank)
+  if (n_size > 1) then
+     sample_suffix = var_str ("_") // str (rank)
+  end if
+@
 @ The number of events that we want to simulate is determined by the
 settings of [[n_events]], [[luminosity]], and [[?unweighted]].  For
 weighted events, we take [[n_events]] at face value as the number of
@@ -9764,6 +11720,7 @@ process instance will not be complete.  This should be fixed.
     integer :: i, j, k
     type(entry_t), pointer :: current_entry
     integer :: n_events
+  <<Simulations: simulation generate: variables>>
     simulation%n_evt_requested = n
     n_events = n * simulation%get_n_nlo_entries (1)
     call simulation%entry%set_n (n)
@@ -9794,7 +11751,8 @@ process instance will not be complete.  This should be fixed.
     write (msg_buffer, "(A,1x,A)") "Events: event normalization mode", &
          char (event_normalization_string (simulation%norm_mode))
     call msg_message ()
-    do i = 1, n
+  <<Simulations: simulation generate: init>>
+    do i = start_it, end_it
        if (present (es_array)) then
           call simulation%read_event (es_array, .true., generate_new)
        else
@@ -9804,7 +11762,8 @@ process instance will not be complete.  This should be fixed.
           simulation%i_prc = simulation%select_prc ()
           simulation%i_mci = simulation%select_mci ()
           associate (entry => simulation%entry(simulation%i_prc))
-            call entry%set_active_real_components (simulation%i_mci)
+            entry%instance%i_mci = simulation%i_mci
+            call entry%set_active_real_components ()
             current_entry => entry%get_first ()
             do k = 1, current_entry%count_nlo_entries ()
                if (k > 1) then
@@ -9849,8 +11808,6 @@ process instance will not be complete.  This should be fixed.
           associate (entry => simulation%entry(simulation%i_prc))
             call entry%accept_sqme_ref ()
             call entry%accept_weight_ref ()
-            !!! JRR: WK please check: why commented out
-            ! call entry%evaluate_transforms ()  ! doesn't activate
             call entry%check ()
             call entry%evaluate_expressions ()
             if (signal_is_pending ()) return
@@ -9875,6 +11832,7 @@ process instance will not be complete.  This should be fixed.
           call simulation%write_event (es_array, passed)
        end if
     end do
+  <<Simulations: simulation generate: finalize>>
     call msg_message ("        ... event sample complete.")
     if (simulation%unweighted)  call simulation%show_efficiency ()
     call simulation%counter%show_excess ()
@@ -9882,6 +11840,47 @@ process instance will not be complete.  This should be fixed.
   end subroutine simulation_generate
 
 @ %def simulation_generate
+@
+<<Simulations: simulation generate: variables>>=
+  integer :: start_it, end_it
+@
+<<Simulations: simulation generate: init>>=
+  start_it = 1
+  end_it = n
+@
+<<Simulations: simulation generate: finalize>>=
+@
+<<MPI: Simulations: simulation generate: variables>>=
+  integer :: n_size, rank
+  integer :: worker_n_events, root_n_events
+<<MPI: Simulations: simulation generate: init>>=
+  call mpi_get_comm_id (n_size, rank)
+  if (n_size > 1) then
+     start_it = start_it + nint (rank * (real (n) / n_size))
+     end_it = min (nint ((rank + 1) * (real (n) / n_size)), n)
+     write (msg_buffer, "(A,I0,A,I0,A)") &
+          & "MPI: generate events [", start_it, ":", end_it, "]"
+     call msg_message ()
+     do i = 1, rank + 1
+        select type (rng => simulation%rng)
+        type is (rng_stream_t)
+           call rng%next_substream ()
+        end select
+     end do
+  end if
+@
+<<MPI: Simulations: simulation generate: finalize>>=
+  call MPI_Barrier (MPI_COMM_WORLD)
+  if (n_size > 1) then
+     worker_n_events = end_it - start_it + 1
+     call MPI_Reduce (worker_n_events, root_n_events, 1, MPI_INTEGER, MPI_SUM,&
+          & 0, MPI_COMM_WORLD)
+     if (rank == 0) then
+        write (msg_buffer, "(A,I0)") "MPI: Number of generated events in world = ", root_n_events
+        call msg_message ()
+     end if
+  end if
+@
 @ Compute the event matrix element and weight for all alternative
 environments, given the current event and selected process.  We first
 copy the particle set, then temporarily update the process core with
@@ -10232,23 +12231,30 @@ Recalculate the process instance contents, given an event with known particle
 set.  The indices for MC, term, and channel must be already set.  The
 [[recalculate]] method of the selected entry will import the result
 into [[sqme_prc]] and [[weight_prc]].
+
+If [[recover_phs]] is set (and false), do not attempt any phase-space
+calculation.  Useful if we need only matrix elements (esp. testing); this flag
+is not stored in the simulation record.
 <<Simulations: simulation: TBP>>=
   procedure :: recalculate => simulation_recalculate
 <<Simulations: procedures>>=
-  subroutine simulation_recalculate (simulation)
+  subroutine simulation_recalculate (simulation, recover_phs)
     class(simulation_t), intent(inout) :: simulation
+    logical, intent(in), optional :: recover_phs
     integer :: i_prc
     i_prc = simulation%i_prc
     associate (entry => simulation%entry(i_prc))
       if (simulation%update_weight) then
-         call simulation%entry(i_prc)%recalculate &
+         call entry%recalculate &
               (update_sqme = simulation%update_sqme, &
               recover_beams = simulation%recover_beams, &
+              recover_phs = recover_phs, &
               weight_factor = entry%get_kinematical_weight ())
       else
-         call simulation%entry(i_prc)%recalculate &
+         call entry%recalculate &
               (update_sqme = simulation%update_sqme, &
-              recover_beams = simulation%recover_beams)
+              recover_beams = simulation%recover_beams, &
+              recover_phs = recover_phs)
       end if
     end associate
   end subroutine simulation_recalculate
@@ -10416,6 +12422,19 @@ process ID of the first process.
 
 @ %def simulation_is_valid
 @
+Return the hard-interaction particle set for event entry [[i_prc]].
+<<Simulations: simulation: TBP>>=
+  procedure :: get_hard_particle_set => simulation_get_hard_particle_set
+<<Simulations: procedures>>=
+  function simulation_get_hard_particle_set (simulation, i_prc) result (pset)
+    class(simulation_t), intent(in) :: simulation
+    integer, intent(in) :: i_prc
+    type(particle_set_t) :: pset
+    call simulation%entry(i_prc)%get_hard_particle_set (pset)
+  end function simulation_get_hard_particle_set
+
+@ %def simulation_get_hard_particle_set
+@
 \subsection{Auxiliary}
 Call pacify: eliminate numerical noise.
 <<Simulations: public>>=
@@ -10438,8 +12457,8 @@ Call pacify: eliminate numerical noise.
   end subroutine pacify_simulation
 
 @ %def pacify_simulation
-@ Evaluate expressions for the currently selected process.  (This is used only
-in the unit tests.)
+@ Manually evaluate expressions for the currently selected process.
+This is used only in the unit tests.
 <<Simulations: simulation: TBP>>=
   procedure :: evaluate_expressions => simulation_evaluate_expressions
 <<Simulations: procedures>>=
@@ -10449,6 +12468,19 @@ in the unit tests.)
   end subroutine simulation_evaluate_expressions
 
 @ %def simulation_evaluate_expressions
+@ Manually evaluate event transforms for the currently selected
+process.  This is used only in the unit tests.
+<<Simulations: simulation: TBP>>=
+  procedure :: evaluate_transforms => simulation_evaluate_transforms
+<<Simulations: procedures>>=
+  subroutine simulation_evaluate_transforms (simulation)
+    class(simulation_t), intent(inout) :: simulation
+    associate (entry => simulation%entry(simulation%i_prc))
+      call entry%evaluate_transforms ()
+    end associate
+  end subroutine simulation_evaluate_transforms
+
+@ %def simulation_evaluate_transforms
 @
 \subsection{Unit tests}
 Test module, followed by the stand-alone unit-test procedures.
@@ -10479,30 +12511,41 @@ module simulations_uti
     use kinds, only: i64
   <<Use strings>>
     use io_units
+    use format_defs, only: FMT_10, FMT_12
     use ifiles
     use lexers
     use parser
+    use lorentz
     use flavors
     use interactions, only: reset_interaction_counter
+    use process_libraries, only: process_library_t
     use prclib_stacks
     use phs_forests
     use event_base, only: generic_event_t
     use event_base, only: event_callback_t
+    use particles, only: particle_set_t
     use eio_data
     use eio_base
+    use eio_direct, only: eio_direct_t
     use eio_raw
     use eio_ascii
+    use eio_dump
     use eio_callback
     use eval_trees
+    use model_data, only: model_data_t
     use models
     use rt_data
     use event_streams
     use decays_ut, only: prepare_testbed
+    use process, only: process_t
+    use process_stacks, only: process_entry_t
     use process_configurations_ut, only: prepare_test_library
     use compilations, only: compile_library
     use integrations, only: integrate_process
 
     use simulations
+
+    use restricted_subprocesses_uti, only: prepare_resonance_test_library
 
 <<Standard module head>>
 
@@ -12296,6 +14339,347 @@ store the output channel [[u]] so we know where to write into.
 @ %def simulations_13_callback_write
 @ %def simulations_13_callback
 @
+\subsubsection{Resonant subprocess setup}
+Prepare a process with resonances and enter resonant subprocesses in
+the simulation object.  Select a kinematics configuration and compute
+probabilities for resonant subprocesses.
+
+The process and its initialization is taken from [[processes_18]], but
+we need a complete \oMega\ matrix element here.
+<<Simulations: execute tests>>=
+  call test (simulations_14, "simulations_14", &
+       "resonant subprocesses evaluation", &
+       u, results)
+<<Simulations: test declarations>>=
+  public :: simulations_14
+<<Simulations: tests>>=
+  subroutine simulations_14 (u)
+    integer, intent(in) :: u
+    type(string_t) :: libname, libname_generated
+    type(string_t) :: procname
+    type(string_t) :: model_name
+    type(rt_data_t), target :: global
+    type(prclib_entry_t), pointer :: lib_entry
+    type(process_library_t), pointer :: lib
+    class(model_t), pointer :: model
+    class(model_data_t), pointer :: model_data
+    type(simulation_t), target :: simulation
+    type(particle_set_t) :: pset
+    type(eio_direct_t) :: eio_in
+    type(eio_dump_t) :: eio_out
+    real(default) :: sqrts, mw, pp
+    real(default), dimension(3) :: p3
+    type(vector4_t), dimension(:), allocatable :: p
+    real(default), dimension(:), allocatable :: m
+    integer :: u_verbose, i
+    real(default) :: sqme_proc
+    real(default), dimension(:), allocatable :: sqme
+    real(default) :: on_shell_limit
+    integer, dimension(:), allocatable :: i_array
+    real(default), dimension(:), allocatable :: prob_array
+
+    write (u, "(A)")  "* Test output: simulations_14"
+    write (u, "(A)")  "*   Purpose: construct resonant subprocesses &
+         &in the simulation object"
+    write (u, "(A)")
+
+    write (u, "(A)")  "* Build and load a test library with one process"
+    write (u, "(A)")
+
+    call syntax_model_file_init ()
+    call syntax_phs_forest_init ()
+
+    libname = "simulations_14_lib"
+    procname = "simulations_14_p"
+
+    call global%global_init ()
+    call global%append_log (&
+         var_str ("?rebuild_phase_space"), .true., intrinsic = .true.)
+    call global%append_log (&
+         var_str ("?rebuild_grids"), .true., intrinsic = .true.)
+    call global%append_log (&
+         var_str ("?rebuild_events"), .true., intrinsic = .true.)
+    call global%set_log (var_str ("?omega_openmp"), &
+         .false., is_known = .true.)
+    call global%set_int (var_str ("seed"), &
+         0, is_known = .true.)
+    call global%set_real (var_str ("sqrts"),&
+         1000._default, is_known = .true.)
+    call global%set_log (var_str ("?recover_beams"), &
+         .false., is_known = .true.)
+    call global%set_log (var_str ("?update_sqme"), &
+         .true., is_known = .true.)
+    call global%set_log (var_str ("?update_weight"), &
+         .true., is_known = .true.)
+    call global%set_log (var_str ("?update_event"), &
+         .true., is_known = .true.)
+
+    model_name = "SM"
+    call global%select_model (model_name)
+    allocate (model)
+    call model%init_instance (global%model)
+    model_data => model
+
+    write (u, "(A)")  "* Initialize process library and process"
+    write (u, "(A)")
+
+    allocate (lib_entry)
+    call lib_entry%init (libname)
+    lib => lib_entry%process_library_t
+    call global%add_prclib (lib_entry)
+
+    call prepare_resonance_test_library &
+         (lib, libname, procname, model_data, global, u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Initialize simulation object &
+         &with resonant subprocesses"
+    write (u, "(A)")
+
+    call global%set_log (var_str ("?resonance_history"), &
+         .true., is_known = .true.)
+    call global%set_real (var_str ("resonance_on_shell_limit"), &
+         10._default, is_known = .true.)
+
+    call simulation%init ([procname], &
+         integrate=.false., generate=.false., local=global)
+
+    call simulation%write_resonant_subprocess_data (u, 1)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Resonant subprocesses: generated library"
+    write (u, "(A)")
+
+    libname_generated = procname // "_R"
+    lib => global%prclib_stack%get_library_ptr (libname_generated)
+    if (associated (lib))  call lib%write (u, libpath=.false.)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Generated process stack"
+    write (u, "(A)")
+
+    call global%process_stack%show (u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Particle set"
+    write (u, "(A)")
+
+    pset = simulation%get_hard_particle_set (1)
+    call pset%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Initialize object for direct access"
+    write (u, "(A)")
+
+    call eio_in%init_direct &
+         (n_beam = 0, n_in = 2, n_vir = 0, n_out = 3, &
+         pdg = [-11, 11, 1, -2, 24], model=global%model)
+    call eio_in%set_selection_indices (1, 1, 1, 1)
+
+    sqrts = global%get_rval (var_str ("sqrts"))
+    mw = 80._default   ! deliberately slightly different from true mw
+    pp = sqrt (sqrts**2 - 4 * mw**2) / 2
+
+    allocate (p (5), m (5))
+    p(1) = vector4_moving (sqrts/2, sqrts/2, 3)
+    m(1) = 0
+    p(2) = vector4_moving (sqrts/2,-sqrts/2, 3)
+    m(2) = 0
+    p3(1) = pp/2
+    p3(2) = mw/2
+    p3(3) = 0
+    p(3) = vector4_moving (sqrts/4, vector3_moving (p3))
+    m(3) = 0
+    p3(2) = -mw/2
+    p(4) = vector4_moving (sqrts/4, vector3_moving (p3))
+    m(4) = 0
+    p(5) = vector4_moving (sqrts/2,-pp, 1)
+    m(5) = mw
+    call eio_in%set_momentum (p, m**2)
+
+    call eio_in%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Transfer and show particle set"
+    write (u, "(A)")
+
+    call simulation%read_event (eio_in)
+    pset = simulation%get_hard_particle_set (1)
+    call pset%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* (Re)calculate matrix element"
+    write (u, "(A)")
+
+    call simulation%recalculate (recover_phs = .false.)
+    call simulation%evaluate_transforms ()
+
+    write (u, "(A)")  "* Show event with sqme"
+    write (u, "(A)")
+
+    call eio_out%set_parameters (unit = u, &
+         weights = .true., pacify = .true., compressed = .true.)
+    call eio_out%init_out (var_str (""))
+    call simulation%write_event (eio_out)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Write event to separate file &
+         &'simulations_14_event_verbose.log'"
+
+    u_verbose = free_unit ()
+    open (unit = u_verbose, file = "simulations_14_event_verbose.log", &
+         status = "replace", action = "write")
+    call simulation%write (u_verbose)
+    write (u_verbose, *)
+    call simulation%write_event (u_verbose, verbose =.true., testflag = .true.)
+    close (u_verbose)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Cleanup"
+
+    call simulation%final ()
+    call global%final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: simulations_14"
+
+  end subroutine simulations_14
+
+@ %def simulations_14
+@
+\subsubsection{Resonant subprocess simulation}
+Prepare a process with resonances and enter resonant subprocesses in
+the simulation object.  Simulate events with selection of resonance
+histories.
+
+The process and its initialization is taken from [[processes_18]], but
+we need a complete \oMega\ matrix element here.
+<<Simulations: execute tests>>=
+  call test (simulations_15, "simulations_15", &
+       "resonant subprocesses in simulation", &
+       u, results)
+<<Simulations: test declarations>>=
+  public :: simulations_15
+<<Simulations: tests>>=
+  subroutine simulations_15 (u)
+    integer, intent(in) :: u
+    type(string_t) :: libname, libname_generated
+    type(string_t) :: procname
+    type(string_t) :: model_name
+    type(rt_data_t), target :: global
+    type(prclib_entry_t), pointer :: lib_entry
+    type(process_library_t), pointer :: lib
+    class(model_t), pointer :: model
+    class(model_data_t), pointer :: model_data
+    type(simulation_t), target :: simulation
+    real(default) :: sqrts
+    type(eio_dump_t) :: eio_out
+    integer :: u_verbose
+
+    write (u, "(A)")  "* Test output: simulations_15"
+    write (u, "(A)")  "*   Purpose: generate event with resonant subprocess"
+    write (u, "(A)")
+
+    write (u, "(A)")  "* Build and load a test library with one process"
+    write (u, "(A)")
+
+    call syntax_model_file_init ()
+    call syntax_phs_forest_init ()
+
+    libname = "simulations_15_lib"
+    procname = "simulations_15_p"
+
+    call global%global_init ()
+    call global%append_log (&
+         var_str ("?rebuild_phase_space"), .true., intrinsic = .true.)
+    call global%append_log (&
+         var_str ("?rebuild_grids"), .true., intrinsic = .true.)
+    call global%append_log (&
+         var_str ("?rebuild_events"), .true., intrinsic = .true.)
+    call global%set_log (var_str ("?omega_openmp"), &
+         .false., is_known = .true.)
+    call global%set_int (var_str ("seed"), &
+         0, is_known = .true.)
+    call global%set_real (var_str ("sqrts"),&
+         1000._default, is_known = .true.)
+    call global%set_log (var_str ("?recover_beams"), &
+         .false., is_known = .true.)
+    call global%set_log (var_str ("?update_sqme"), &
+         .true., is_known = .true.)
+    call global%set_log (var_str ("?update_weight"), &
+         .true., is_known = .true.)
+    call global%set_log (var_str ("?update_event"), &
+         .true., is_known = .true.)
+    call global%set_log (var_str ("?resonance_history"), &
+         .true., is_known = .true.)
+    call global%set_real (var_str ("resonance_on_shell_limit"), &
+         10._default, is_known = .true.)
+
+    model_name = "SM"
+    call global%select_model (model_name)
+    allocate (model)
+    call model%init_instance (global%model)
+    model_data => model
+
+    write (u, "(A)")  "* Initialize process library and process"
+    write (u, "(A)")
+
+    allocate (lib_entry)
+    call lib_entry%init (libname)
+    lib => lib_entry%process_library_t
+    call global%add_prclib (lib_entry)
+
+    call prepare_resonance_test_library &
+         (lib, libname, procname, model_data, global, u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Initialize simulation object &
+         &with resonant subprocesses"
+    write (u, "(A)")
+
+    call global%it_list%init ([1], [1000])
+    call simulation%init ([procname], &
+         integrate=.true., generate=.true., local=global)
+
+    call simulation%write_resonant_subprocess_data (u, 1)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Generate event"
+    write (u, "(A)")
+
+    call simulation%init_process_selector ()
+    call simulation%generate (1)
+
+    call eio_out%set_parameters (unit = u, &
+         weights = .true., pacify = .true., compressed = .true.)
+    call eio_out%init_out (var_str (""))
+    call simulation%write_event (eio_out)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Write event to separate file &
+         &'simulations_15_event_verbose.log'"
+
+    u_verbose = free_unit ()
+    open (unit = u_verbose, file = "simulations_15_event_verbose.log", &
+         status = "replace", action = "write")
+    call simulation%write (u_verbose)
+    write (u_verbose, *)
+    call simulation%write_event (u_verbose, verbose =.true., testflag = .true.)
+    close (u_verbose)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Cleanup"
+
+    call simulation%final ()
+    call global%final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: simulations_15"
+
+  end subroutine simulations_15
+
+@ %def simulations_15
+@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{More Unit Tests}
 
@@ -13226,7 +15610,7 @@ module commands
 <<Use kinds>>
 <<Use strings>>
   use io_units
-  use string_utils, only: lower_case, split_string
+  use string_utils, only: lower_case, split_string, str
   use format_utils, only: write_indent
   use format_defs, only: FMT_14, FMT_19
   use diagnostics
@@ -13266,6 +15650,8 @@ module commands
   use simulations
 
   use radiation_generator
+
+<<Use mpi f08>>
 
 <<Standard module head>>
 
@@ -13567,6 +15953,8 @@ it.
      type(string_t) :: name
      type(string_t) :: scheme
      logical :: ufo_model = .false.
+     logical :: ufo_path_set = .false.
+     type(string_t) :: ufo_path
    contains
    <<Commands: cmd model: TBP>>
   end type cmd_model_t
@@ -13584,7 +15972,11 @@ it.
     call write_indent (u, indent)
     write (u, "(1x,A,1x,'""',A,'""')", advance="no")  "model =", char (cmd%name)
     if (cmd%ufo_model) then
-       write (u, "(1x,A)")  "(ufo)"
+       if (cmd%ufo_path_set) then
+          write (u, "(1x,A,A,A)")  "(ufo (", char (cmd%ufo_path), "))"
+       else
+          write (u, "(1x,A)")  "(ufo)"
+       end if
     else if (cmd%scheme /= "") then
        write (u, "(1x,'(',A,')')")  char (cmd%scheme)
     else
@@ -13606,6 +15998,7 @@ Assign the model pointer in the [[global]] record, so it can be used for
     class(cmd_model_t), intent(inout) :: cmd
     type(rt_data_t), intent(inout), target :: global
     type(parse_node_t), pointer :: pn_name, pn_arg, pn_scheme
+    type(parse_node_t), pointer :: pn_ufo_arg, pn_path
     type(model_t), pointer :: model
     type(string_t) :: scheme
     pn_name => cmd%pn%get_sub_ptr (3)
@@ -13618,17 +16011,27 @@ Assign the model pointer in the [[global]] record, so it can be used for
     cmd%name = pn_name%get_string ()
     if (associated (pn_scheme)) then
        select case (char (pn_scheme%get_rule_key ()))
-       case ("ufo")
+       case ("ufo_spec")
           cmd%ufo_model = .true.
+          pn_ufo_arg => pn_scheme%get_sub_ptr (2)
+          if (associated (pn_ufo_arg)) then
+             pn_path => pn_ufo_arg%get_sub_ptr ()
+             cmd%ufo_path_set = .true.
+             cmd%ufo_path = pn_path%get_string ()
+          end if
        case default
           scheme = pn_scheme%get_string ()
-	  select case (char (lower_case (scheme)))
-	  case ("ufo");  cmd%ufo_model = .true.
+    select case (char (lower_case (scheme)))
+    case ("ufo");  cmd%ufo_model = .true.
           case default;  cmd%scheme = scheme
           end select
        end select
        if (cmd%ufo_model) then
-          call preload_ufo_model (model, cmd%name)
+          if (cmd%ufo_path_set) then
+             call preload_ufo_model (model, cmd%name, cmd%ufo_path)
+          else
+             call preload_ufo_model (model, cmd%name)
+          end if
        else
           call preload_model (model, cmd%name, cmd%scheme)
        end if
@@ -13659,20 +16062,23 @@ Assign the model pointer in the [[global]] record, so it can be used for
          end if
       end if
     end subroutine preload_model
-    subroutine preload_ufo_model (model, name)
+    subroutine preload_ufo_model (model, name, ufo_path)
       type(model_t), pointer, intent(out) :: model
       type(string_t), intent(in) :: name
+      type(string_t), intent(in), optional :: ufo_path
       model => null ()
       if (associated (global%model)) then
-         if (global%model%matches (name, ufo=.true.)) then
+         if (global%model%matches (name, ufo=.true., ufo_path=ufo_path)) then
             model => global%model
          end if
       end if
       if (.not. associated (model)) then
-         if (global%model_list%model_exists (name, scheme)) then
-            model => global%model_list%get_model_ptr (name, ufo=.true.)
+         if (global%model_list%model_exists (name, &
+              ufo=.true., ufo_path=ufo_path)) then
+            model => global%model_list%get_model_ptr (name, &
+                 ufo=.true., ufo_path=ufo_path)
          else
-            call global%read_ufo_model (name, model)
+            call global%read_ufo_model (name, model, ufo_path=ufo_path)
          end if
       end if
     end subroutine preload_ufo_model
@@ -13688,7 +16094,11 @@ the variable list.
     class(cmd_model_t), intent(inout) :: cmd
     type(rt_data_t), intent(inout), target :: global
     if (cmd%ufo_model) then
-       call global%select_model (cmd%name, ufo = .true.)
+       if (cmd%ufo_path_set) then
+          call global%select_model (cmd%name, ufo=.true., ufo_path=cmd%ufo_path)
+       else
+          call global%select_model (cmd%name, ufo=.true.)
+       end if
     else if (cmd%scheme /= "") then
        call global%select_model (cmd%name, cmd%scheme)
     else
@@ -13882,17 +16292,12 @@ or arrays which would make the expansion ambiguous.
     type(string_t), dimension(:), allocatable :: prt_in_nlo, prt_out_nlo
     type(radiation_generator_t) :: radiation_generator
     type(pdg_list_t) :: pl_in, pl_out, pl_excluded_gauge_splittings
-    type(string_t) :: born_me_method
-    type(string_t) :: real_tree_me_method
-    type(string_t) :: loop_me_method
-    type(string_t) :: correlation_me_method
-    type(string_t) :: soft_mismatch_me_method
-    type(string_t) :: dglap_me_method
+    type(string_t) :: method, born_me_method, loop_me_method, correlation_me_method, &
+         real_tree_me_method, dglap_me_method
     integer, dimension(:), allocatable :: i_list
     logical :: use_real_finite
     logical :: gks_active
     logical :: initial_state_colored
-    logical :: has_structure_functions
     integer :: n_components_extra
     integer :: gks_multiplicity
     integer :: n_emitters
@@ -13921,21 +16326,32 @@ or arrays which would make the expansion ambiguous.
     gks_active = gks_multiplicity > 2
     call check_for_nlo_corrections ()
 
+    method = var_list%get_sval (var_str ("$method"))
     born_me_method = var_list%get_sval (var_str ("$born_me_method"))
+    if (born_me_method == var_str (""))  born_me_method = method
     use_real_finite = var_list%get_lval (var_str ('?nlo_use_real_partition'))
     if (nlo_fixed_order) then
-       real_tree_me_method = var_list%get_sval (var_str ("$real_tree_me_method"))
+       real_tree_me_method = &
+            var_list%get_sval (var_str ("$real_tree_me_method"))
+       if (real_tree_me_method == var_str ("")) &
+            real_tree_me_method = method
        loop_me_method = var_list%get_sval (var_str ("$loop_me_method"))
-       correlation_me_method = var_list%get_sval (var_str ("$correlation_me_method"))
-       soft_mismatch_me_method = var_list%get_sval (var_str ("$soft_mismatch_me_method"))
+       if (loop_me_method == var_str ("")) &
+            loop_me_method = method
+       correlation_me_method = &
+            var_list%get_sval (var_str ("$correlation_me_method"))
+       if (correlation_me_method == var_str ("")) &
+            correlation_me_method = method
        dglap_me_method = var_list%get_sval (var_str ("$dglap_me_method"))
+       if (dglap_me_method == var_str ("")) &
+            dglap_me_method = method
        call check_nlo_options (cmd%local)
     end if
-    if (any (cmd%local%selected_nlo_parts))  &
-         call override_local_me_method (born_me_method)
 
     call determine_needed_components ()
-    call prc_config%init (cmd%id, n_in, n_components_init, cmd%local, nlo_fixed_order)
+    call prc_config%init (cmd%id, n_in, n_components_init, &
+         cmd%local%model, cmd%local%var_list, &
+         nlo_process = nlo_fixed_order)
 
     alpha_power = var_list%get_ival (var_str ("alpha_power"))
     alphas_power = var_list%get_ival (var_str ("alphas_power"))
@@ -13951,14 +16367,6 @@ or arrays which would make the expansion ambiguous.
   end subroutine cmd_process_execute
 
 @ %def cmd_process_execute
-@
-<<Commands: cmd process execute procedures>>=
-  subroutine override_local_me_method (me_method)
-    type(string_t), intent(in) :: me_method
-    call var_list%set_string (var_str ("$method"), me_method, is_known=.true.)
-  end subroutine override_local_me_method
-
-@ %def override_local_me_method
 @
 <<Commands: cmd process execute procedures>>=
   elemental function is_threshold (method)
@@ -13984,6 +16392,7 @@ or arrays which would make the expansion ambiguous.
 <<Commands: cmd process execute procedures>>=
   subroutine check_for_nlo_corrections ()
     type(string_t) :: nlo_correction_type
+    type(pdg_array_t), dimension(:), allocatable :: pdg
     if (nlo_fixed_order .or. gks_active) then
        nlo_correction_type = var_list%get_sval (var_str ('$nlo_correction_type'))
        select case (char(nlo_correction_type))
@@ -14001,6 +16410,16 @@ or arrays which would make the expansion ambiguous.
     end if
     if (nlo_fixed_order) then
        call radiation_generator%find_splittings ()
+       if (debug2_active (D_CORE)) then
+          print *, ''
+          print *, 'Found (pdg) splittings: '
+          do i = 1, radiation_generator%if_table%get_length ()
+             call radiation_generator%if_table%get_pdg_out (i, pdg)
+             call pdg_array_write_set (pdg)
+             print *, '----------------'
+          end do
+       end if
+
        nlo_fixed_order = radiation_generator%contains_emissions ()
        if (.not. nlo_fixed_order) call msg_warning &
             (arr = [var_str ("No NLO corrections found for process ") // cmd%id // var_str("."), &
@@ -14062,8 +16481,7 @@ or arrays which would make the expansion ambiguous.
        call check_threshold_consistency ()
        requires_soft_mismatch = fks_method == var_str ('resonances')
        n_components_extra = needed_extra_components (initial_state_colored, &
-            has_structure_functions, requires_soft_mismatch, &
-            use_real_finite, n_emitters)
+            requires_soft_mismatch, use_real_finite, n_in)
        allocate (i_list (n_components_extra))
     else if (gks_active) then
        call radiation_generator%generate_multiple (gks_multiplicity, cmd%local%model)
@@ -14090,10 +16508,13 @@ or arrays which would make the expansion ambiguous.
     call radiation_generator%init (pl_in, pl_out, &
          pl_excluded_gauge_splittings, qcd = qcd_corr, qed = qed_corr)
     call radiation_generator%set_n (n_in, n_out, 0)
-    initial_state_colored = pdg_in%has_colored_particles()
-    has_structure_functions = global%beam_structure%get_n_record () > 0
-    requires_dglap_remnants = initial_state_colored .and. has_structure_functions
-    if (requires_dglap_remnants)  call radiation_generator%set_initial_state_emissions ()
+    initial_state_colored = pdg_in%has_colored_particles ()
+    if ((n_in == 2 .and. initial_state_colored) .or. qed_corr) then
+        requires_dglap_remnants = n_in == 2 .and. initial_state_colored
+        call radiation_generator%set_initial_state_emissions ()
+    else
+       requires_dglap_remnants = .false.
+    end if
     call radiation_generator%set_constraints (.false., .false., .true., .true.)
     call radiation_generator%setup_if_table (cmd%local%model)
   end subroutine setup_radiation_generator
@@ -14160,7 +16581,7 @@ or arrays which would make the expansion ambiguous.
     end do
   end subroutine split_prt
 
-@
+@ %def split_prt
 @
 <<Commands: cmd process execute procedures>>=
   subroutine setup_components()
@@ -14174,7 +16595,6 @@ or arrays which would make the expansion ambiguous.
                   requires_dglap_remnants, requires_soft_mismatch, &
                   use_real_finite, n_emitters)
 
-             call override_local_me_method (born_me_method)
              i_comp = i
              call msg_debug (D_CORE, "Setting up this NLO component:", i_comp)
              call prc_config%setup_component (i_comp, &
@@ -14184,7 +16604,6 @@ or arrays which would make the expansion ambiguous.
 
              call radiation_generator%generate_real_particle_strings &
                   (prt_in_nlo, prt_out_nlo)
-             call override_local_me_method (real_tree_me_method)
              i_comp = n_components + i
              call msg_debug (D_CORE, "Setting up this NLO component:", i_comp)
              call prc_config%setup_component (i_comp, &
@@ -14192,7 +16611,6 @@ or arrays which would make the expansion ambiguous.
                   cmd%local%model, var_list, NLO_REAL, &
                   can_be_integrated = selected_nlo_parts (NLO_REAL))
 
-             call override_local_me_method (loop_me_method)
              i_comp = n_components * 2 + i
              call msg_debug (D_CORE, "Setting up this NLO component:", i_comp)
              call prc_config%setup_component (i_comp, &
@@ -14200,7 +16618,6 @@ or arrays which would make the expansion ambiguous.
                   cmd%local%model, var_list, NLO_VIRTUAL, &
                   can_be_integrated = selected_nlo_parts (NLO_VIRTUAL))
 
-             call override_local_me_method (correlation_me_method)
              i_comp = n_components * 3 + i
              call msg_debug (D_CORE, "Setting up this NLO component:", i_comp)
              call prc_config%setup_component (i_comp, &
@@ -14209,7 +16626,6 @@ or arrays which would make the expansion ambiguous.
                   can_be_integrated = selected_nlo_parts (NLO_SUBTRACTION))
 
              if (use_real_finite) then
-                call override_local_me_method (real_tree_me_method)
                 i_comp = n_components * 4 + i
                 call msg_debug (D_CORE, "Setting up this NLO component:", i_comp)
                 call prc_config%setup_component (i_comp, &
@@ -14219,7 +16635,6 @@ or arrays which would make the expansion ambiguous.
              end if
 
              if (requires_dglap_remnants) then
-                call override_local_me_method (dglap_me_method)
                 i_comp = n_components * 4 + i
                 call msg_debug (D_CORE, "Setting up this NLO component:", i_comp)
                 call prc_config%setup_component (i_comp, &
@@ -14229,7 +16644,6 @@ or arrays which would make the expansion ambiguous.
              end if
 
              if (requires_soft_mismatch) then
-                call override_local_me_method (soft_mismatch_me_method)
                 i_comp = n_components * 4 + i
                 call msg_debug (D_CORE, "Setting up this NLO component:", i_comp)
                 call prc_config%setup_component (i_comp, &
@@ -14242,7 +16656,6 @@ or arrays which would make the expansion ambiguous.
                   requires_dglap_remnants, use_real_finite, requires_soft_mismatch)
           end associate
        else if (gks_active) then
-          call override_local_me_method (var_str ("omega"))
           call prc_config%setup_component (i, prt_spec_in, prt_spec_out, &
                cmd%local%model, var_list, BORN, can_be_integrated = .true.)
           call radiation_generator%reset_queue ()
@@ -14287,7 +16700,8 @@ on into an object (the pcm?).
        call msg_fatal ("POWHEG requires the 'combined_nlo_integration'-option &
             &to be set to true.")
     end if
-    fixed_order_nlo_events = var_list%get_lval (var_str ('?fixed_order_nlo_events'))
+    fixed_order_nlo_events = &
+         var_list%get_lval (var_str ('?fixed_order_nlo_events'))
     if (fixed_order_nlo_events .and. .not. combined .and. &
          all (local%selected_nlo_parts)) &
        call msg_fatal ("Option mismatch: Fixed order NLO events of the full ", &
@@ -14328,15 +16742,13 @@ all Borns, then all Reals, etc.
 @
 <<Commands: procedures>>=
   pure function needed_extra_components (initial_state_colored, &
-         has_structure_functions, requires_soft_mismatch, &
-         use_real_finite, n_emitters) result (n)
+         requires_soft_mismatch, use_real_finite, n_in) result (n)
     integer :: n
     logical, intent(in) :: initial_state_colored, &
-         has_structure_functions, use_real_finite, &
-         requires_soft_mismatch
-    integer, intent(in) :: n_emitters
+         use_real_finite, requires_soft_mismatch
+    integer, intent(in) :: n_in
     if (initial_state_colored) then
-       if (has_structure_functions) then
+       if (n_in == 2) then
           n = 5
        else
           n = 4
@@ -14484,17 +16896,17 @@ particle-specifier expression which we can process further.
     pn_arg => parse_node_get_sub_ptr (cmd%pn, 3)
     if (associated (pn_arg)) then
        n_comp = parse_node_get_n_sub (pn_arg)
-    else
-       n_comp = 0
-    end if
-    if (n_comp > 0) then
-       pn_comp => parse_node_get_sub_ptr (pn_arg)
        allocate (cmd%nlo_component (n_comp))
-       do i = 1, n_comp
+       pn_comp => parse_node_get_sub_ptr (pn_arg)
+       i = 0
+       do while (associated (pn_comp))
+          i = i + 1
           cmd%nlo_component(i) = component_status &
-               (eval_string (pn_comp, global%var_list))
+               (parse_node_get_rule_key (pn_comp))
           pn_comp => parse_node_get_next_ptr (pn_comp)
        end do
+    else
+       allocate (cmd%nlo_component (0))
     end if
   end subroutine cmd_nlo_compile
 
@@ -14506,11 +16918,10 @@ particle-specifier expression which we can process further.
   subroutine cmd_nlo_execute (cmd, global)
     class(cmd_nlo_t), intent(inout) :: cmd
     type(rt_data_t), intent(inout), target :: global
-    type(parse_node_t), pointer :: current_component
-    type(string_t) :: component_type
     type(string_t) :: string
     integer :: n, i, j
     logical, dimension(0:5) :: selected_nlo_parts
+    call msg_debug (D_CORE, "cmd_nlo_execute")
     selected_nlo_parts = .false.
     if (allocated (cmd%nlo_component)) then
        n = size (cmd%nlo_component)
@@ -14534,7 +16945,7 @@ particle-specifier expression which we can process further.
                char (string))
        end select
     end do
-    global%nlo_fixed_order = any (selected_nlo_parts(1:5))
+    global%nlo_fixed_order = any (selected_nlo_parts)
     global%selected_nlo_parts = selected_nlo_parts
     allocate (global%nlo_component (size (cmd%nlo_component)))
     global%nlo_component = cmd%nlo_component
@@ -14634,6 +17045,8 @@ can't incorporate in a generated executable.
     type(rt_data_t), intent(inout), target :: global
     type(string_t), dimension(:), allocatable :: libname, libname_static
     integer :: i
+    <<Commands: cmd compile execute: variables>>
+    <<Commands: cmd compile execute: init>>
     if (allocated (cmd%libname)) then
        allocate (libname (size (cmd%libname)))
        libname = cmd%libname
@@ -14654,10 +17067,44 @@ can't incorporate in a generated executable.
           call compile_library (libname(i), cmd%local)
        end do
     end if
+    <<Commands: cmd compile execute: end init>>
   end subroutine cmd_compile_execute
 
 @ %def cmd_compile_execute
+<<Commands: cmd compile execute: variables>>=
 @
+<<Commands: cmd compile execute: init>>=
+@
+<<Commands: cmd compile execute: end init>>=
+@
+@ The parallelization leads to undefined behavior while writing simultaneously to one file.
+The master worker has to initialize single-handed the corresponding library files.
+The slave worker will wait with a blocking [[MPI_BCAST]] until they receive a logical flag.
+<<MPI: Commands: cmd compile execute: variables>>=
+  logical :: compile_init
+  integer :: rank, n_size
+<<MPI: Commands: cmd compile execute: init>>=
+  call msg_debug (D_MPI, "cmd_compile_execute")
+  compile_init = .false.
+  call mpi_get_comm_id (n_size, rank)
+  call msg_debug (D_MPI, "n_size", rank)
+  call msg_debug (D_MPI, "rank", rank)
+  if (rank /= 0) then
+     call msg_debug (D_MPI, "wait for master")
+     call MPI_bcast (compile_init, 1, MPI_LOGICAL, 0, MPI_COMM_WORLD)
+  else
+     compile_init = .true.
+  end if
+
+  if (compile_init) then
+<<MPI: Commands: cmd compile execute: end init>>=
+  if (rank == 0) then
+     call msg_debug (D_MPI, "load slaves")
+     call MPI_bcast (compile_init, 1, MPI_LOGICAL, 0, MPI_COMM_WORLD)
+  end if
+end if
+call MPI_barrier (MPI_COMM_WORLD)
+@ %def cmd_compile_execute_mpi
 This is the interface to the external procedure which returns the
 names of all static libraries which are part of the executable.  (The
 default is none.)  The routine must allocate the array.
@@ -17475,8 +19922,8 @@ The data type encapsulating the command:
        DEFAULT_ANALYSIS_FILENAME = "whizard_analysis.dat"
   character(len=1), dimension(2), parameter, public :: &
        FORBIDDEN_ENDINGS1 = [ "o", "a" ]
-  character(len=2), dimension(5), parameter, public :: &
-       FORBIDDEN_ENDINGS2 = [ "mp", "ps", "vg", "lo", "la" ]
+  character(len=2), dimension(6), parameter, public :: &
+       FORBIDDEN_ENDINGS2 = [ "mp", "ps", "vg", "pg", "lo", "la" ]
   character(len=3), dimension(16), parameter, public :: &
        FORBIDDEN_ENDINGS3 = [ "aux", "dvi", "evt", "evx", "f03", "f90", &
           "f95", "log", "ltp", "mpx", "olc", "olp", "pdf", "phs", "sin", "tex" ]
@@ -18379,7 +20826,9 @@ referred to at any time.
              process_string = process_string // " " // prt_out(j)
           end do
           call msg_message (char (process_string))
-          call prc_config%init (process_id(i), 1, 1, global)
+          call prc_config%init (process_id(i), 1, 1, &
+               global%model, global%var_list, &
+               nlo_process = global%nlo_fixed_order)
           !!! Causes runtime error with gfortran 4.9.1
           ! call prc_config%setup_component (1, &
           !      new_prt_spec ([prt_in]), new_prt_spec (prt_out), global%model, global%var_list)
@@ -18729,13 +21178,14 @@ terminate then in [[command_list_execute]].
     type(var_list_t), pointer :: var_list
     type(rt_data_t), dimension(:), allocatable, target :: alt_env
     integer :: n_events, n_fmt
-    type(string_t) :: sample
+    type(string_t) :: sample, sample_suffix
     logical :: rebuild_events, read_raw, write_raw
     type(simulation_t), target :: sim
     type(string_t), dimension(:), allocatable :: sample_fmt
     type(event_stream_array_t) :: es_array
     type(event_sample_data_t) :: data
     integer :: i, checkpoint, callback
+   <<Commands: cmd simulate execute: variables>>
     var_list => cmd%local%var_list
     if (allocated (cmd%local%pn%alt_setup)) then
        allocate (alt_env (size (cmd%local%pn%alt_setup)))
@@ -18755,8 +21205,14 @@ terminate then in [[command_list_execute]].
             (var_list%get_ival (var_str ("openmp_num_threads")), &
             var_list%get_lval (var_str ("?openmp_logging")))
        call sim%compute_n_events (n_events, var_list)
+       sample_suffix = ""
+     <<Commands: cmd simulate execute: init>>
        sample = var_list%get_sval (var_str ("$sample"))
-       if (sample == "")  sample = sim%get_default_sample_name ()
+       if (sample == "")  then
+          sample = sim%get_default_sample_name () // sample_suffix
+       else
+          sample = var_list%get_sval (var_str ("$sample")) // sample_suffix
+       end if
        rebuild_events = &
             var_list%get_lval (var_str ("?rebuild_events"))
        read_raw = &
@@ -18827,6 +21283,24 @@ terminate then in [[command_list_execute]].
   end subroutine cmd_simulate_execute
 
 @ %def cmd_simulate_execute
+<<Commands: cmd simulate execute: variables>>=
+@
+<<Commands: cmd simulate execute: init>>=
+@
+<<MPI: Commands: cmd simulate execute: variables>>=
+  logical :: mpi_logging
+  integer :: rank, n_size
+@ Append rank id to sample name.
+<<MPI: Commands: cmd simulate execute: init>>=
+  call mpi_get_comm_id (n_size, rank)
+  if (n_size > 1) then
+     sample_suffix = var_str ("_") // str (rank)
+  end if
+  mpi_logging = (("vamp2" == char (var_list%get_sval (var_str ("$integration_method"))) &
+       & .and. (n_size > 1)) &
+       & .or. var_list%get_lval (var_str ("?mpi_logging")))
+  call mpi_set_logging (mpi_logging)
+@
 @ Build an alternative setup: the parse tree is stored in the global
 environment.  We create a temporary command list to compile and execute this;
 the result is an alternative local environment [[alt_env]] which we can hand
@@ -18915,7 +21389,7 @@ object and its associated methods.
     type(rt_data_t), intent(inout), target :: global
     type(var_list_t), pointer :: var_list
     type(rt_data_t), dimension(:), allocatable, target :: alt_env
-    type(string_t) :: sample
+    type(string_t) :: sample, sample_suffix
     logical :: exist, write_raw, update_event, update_sqme
     type(simulation_t), target :: sim
     type(event_sample_data_t) :: input_data, data
@@ -18926,6 +21400,7 @@ object and its associated methods.
     type(string_t) :: lhef_extension, extension_hepmc, extension_lcio
     type(event_stream_array_t) :: es_array
     integer :: i, n_events
+  <<Commands: cmd rescan execute: variables>>
     var_list => cmd%local%var_list
     if (allocated (cmd%local%pn%alt_setup)) then
        allocate (alt_env (size (cmd%local%pn%alt_setup)))
@@ -18942,8 +21417,14 @@ object and its associated methods.
     input_sample = eval_string (cmd%pn_filename, var_list)
     input_format = var_list%get_sval (&
          var_str ("$rescan_input_format"))
+    sample_suffix = ""
+  <<Commands: cmd rescan execute: init>>
     sample = var_list%get_sval (var_str ("$sample"))
-    if (sample == "")  sample = sim%get_default_sample_name ()
+    if (sample == "") then
+       sample = sim%get_default_sample_name () // sample_suffix
+    else
+       sample = var_list%get_sval (var_str ("$sample")) // sample_suffix
+    end if
     write_raw = var_list%get_lval (var_str ("?write_raw"))
     if (allocated (cmd%local%sample_fmt)) then
        n_fmt = size (cmd%local%sample_fmt)
@@ -19019,6 +21500,24 @@ object and its associated methods.
   end subroutine cmd_rescan_execute
 
 @ %def cmd_rescan_execute
+@
+<<Commands: cmd rescan execute: variables>>=
+@
+<<Commands: cmd rescan execute: init>>=
+@
+<<MPI: Commands: cmd rescan execute: variables>>=
+  logical :: mpi_logging
+  integer :: rank, n_size
+@ Append rank id to sample name.
+<<MPI: Commands: cmd rescan execute: init>>=
+  call mpi_get_comm_id (n_size, rank)
+  if (n_size > 1) then
+     sample_suffix = var_str ("_") // str (rank)
+  end if
+  mpi_logging = (("vamp2" == char (var_list%get_sval (var_str ("$integration_method"))) &
+       & .and. (n_size > 1)) &
+       & .or. var_list%get_lval (var_str ("?mpi_logging")))
+  call mpi_set_logging (mpi_logging)
 @
 \subsubsection{Parameters: number of iterations}
 Specify number of iterations and number of calls for one integration pass.
@@ -19853,11 +22352,8 @@ rhs by the stored rhs pointers (the list elements), one by one, then
     type(string_t) :: key
     integer :: var_type
     integer :: i
-    logical, parameter :: debug = .false.
-    if (debug) then
-       print *, "compile scan"
-       call parse_node_write_rec (cmd%pn)
-    end if
+    call msg_debug (D_CORE, "cmd_scan_compile")
+    if (debug_active (D_CORE))  call parse_node_write_rec (cmd%pn)
     pn_var => parse_node_get_sub_ptr (cmd%pn, 2)
     pn_body => parse_node_get_next_ptr (pn_var)
     if (associated (pn_body)) then
@@ -20053,7 +22549,7 @@ rhs by the stored rhs pointers (the list elements), one by one, then
        i = i + 1
        pn_rhs => parse_node_get_next_ptr (pn_rhs)
     end do
-    if (debug) then
+    if (debug_active (D_CORE)) then
        do i = 1, cmd%n_values
           print *, "scan command ", i
           call parse_node_write_rec (cmd%scan_cmd(i)%ptr)
@@ -20669,8 +23165,11 @@ Also here, after each command we set a breakpoint.
     call ifile_append (ifile, "ALT model_name = model_id | string_literal")
     call ifile_append (ifile, "IDE model_id")
     call ifile_append (ifile, "ARG model_arg = ( model_scheme? )")
-    call ifile_append (ifile, "ALT model_scheme = ufo | scheme_id | string_literal")
+    call ifile_append (ifile, "ALT model_scheme = " &
+         // "ufo_spec | scheme_id | string_literal")
+    call ifile_append (ifile, "SEQ ufo_spec = ufo ufo_arg?")
     call ifile_append (ifile, "KEY ufo")
+    call ifile_append (ifile, "ARG ufo_arg = ( string_literal )")
     call ifile_append (ifile, "IDE scheme_id")
     call ifile_append (ifile, "SEQ cmd_library = library '=' lib_name")
     call ifile_append (ifile, "KEY library")
@@ -20705,7 +23204,7 @@ Also here, after each command we set a breakpoint.
          // "model | library | beams | iterations | " &
          // "cuts | weight | logical | string | pdg | " &
          // "scale | factorization_scale | renormalization_scale | " &
-	 // "selection | reweight | analysis | " &
+   // "selection | reweight | analysis | " &
          // "stable | unstable | polarized | unpolarized | " &
          // "expect | intrinsic | int | real | complex | " &
          // "alias_var | string | results | result_var | " &
@@ -20723,7 +23222,7 @@ Also here, after each command we set a breakpoint.
          // "beams | iterations | " &
          // "cuts | weight | " &
          // "scale | factorization_scale | renormalization_scale | " &
-	 // "selection | reweight | analysis | " &
+   // "selection | reweight | analysis | " &
          // "unstable | polarized | " &
          // "expect | " &
          // "log_var | string_var | var_name")
@@ -20976,7 +23475,17 @@ Also here, after each command we set a breakpoint.
     call ifile_append (ifile, "SEQ cmd_nlo = " &
                        // "nlo_calculation '=' nlo_calculation_list")
     call ifile_append (ifile, "KEY nlo_calculation")
-    call ifile_append (ifile, "LIS nlo_calculation_list = sexpr+")
+    call ifile_append (ifile, "LIS nlo_calculation_list = nlo_comp+")
+    call ifile_append (ifile, "ALT nlo_comp = " // &
+         "full | born | real | virtual | dglap | subtraction | " // &
+         "mismatch | GKS")
+    call ifile_append (ifile, "KEY full")
+    call ifile_append (ifile, "KEY born")
+    call ifile_append (ifile, "KEY virtual")
+    call ifile_append (ifile, "KEY dglap")
+    call ifile_append (ifile, "KEY subtraction")
+    call ifile_append (ifile, "KEY mismatch")
+    call ifile_append (ifile, "KEY GKS")
     call define_expr_syntax (ifile, particles=.true., analysis=.true.)
   end subroutine define_cmd_list_syntax
 
@@ -24248,7 +26757,6 @@ module whizard
   use ifiles
   use lexers
   use parser
-  use variables, only: var_list_t
   use eval_trees
   use models
   use phs_forests
@@ -25066,10 +27574,13 @@ program main
   use diagnostics
   use ifiles
   use os_interface
+  use rt_data, only: show_description_of_string, show_tex_descriptions
   use whizard
 
   use cmdline_options
   use features
+
+<<Use mpi f08>>
 
   implicit none
 
@@ -25085,12 +27596,12 @@ program main
   character(CMDLINE_ARG_LEN) :: arg
   character(2) :: option
   type(string_t) :: long_option, value
-  integer :: i, j, arg_len, arg_status, area
+  integer :: i, j, arg_len, arg_status
   logical :: look_for_options
   logical :: interactive
   logical :: banner
   type(string_t) :: files, this, model, default_lib, library, libraries
-  type(string_t) :: logfile
+  type(string_t) :: logfile, query_string
   logical :: user_code_enable = .false.
   integer :: n_user_src = 0, n_user_lib = 0
   type(string_t) :: user_src, user_lib, user_target
@@ -25130,6 +27641,8 @@ program main
   rebuild_events = .false.
   recompile_library = .false.
   call paths_init (paths)
+
+<<Main: MPI init>>
 
   ! Read and process options
   call init_options (print_usage)
@@ -25223,15 +27736,22 @@ program main
               call no_option_value (long_option, value)
               logging = .false.
               cycle SCAN_CMDLINE
+           case ("--query")
+              call no_option_value (long_option, value)
+              query_string = get_option_value (i, long_option, value)
+              call show_description_of_string (query_string)
+              call exit (0)
+           case ("--generate-variables-tex")
+              call no_option_value (long_option, value)
+              call show_tex_descriptions ()
+              call exit (0)
            case ("--debug")
               call no_option_value (long_option, value)
-              area = d_area (get_option_value (i, long_option, value))
-              msg_level(area) = DEBUG
+              call set_debug_levels (get_option_value (i, long_option, value))
               cycle SCAN_CMDLINE
            case ("--debug2")
               call no_option_value (long_option, value)
-              area = d_area (get_option_value (i, long_option, value))
-              msg_level(area) = DEBUG2
+              call set_debug2_levels (get_option_value (i, long_option, value))
               cycle SCAN_CMDLINE
            case ("--single-event")
               call no_option_value (long_option, value)
@@ -25320,7 +27840,7 @@ program main
               cycle SCAN_CMDLINE
            case ("--write-syntax-tables")
               call no_option_value (long_option, value)
-	      call init_syntax_tables ()
+        call init_syntax_tables ()
               call write_syntax_tables ()
               call final_syntax_tables ()
               stop
@@ -25372,6 +27892,11 @@ program main
                          ("Option '" // option // "' needs a value")
                     model = get_option_value (i, var_str (option))
                     cycle SCAN_CMDLINE
+                 case ("-q")
+                    call no_option_value (long_option, value)
+                    query_string = get_option_value (i, long_option, value)
+                    call show_description_of_string (query_string)
+                    call exit (0)
                  case ("-r")
                     rebuild_library = .true.
                     rebuild_user = .true.
@@ -25416,6 +27941,7 @@ program main
       options%rebuild_phs = rebuild_phs
       options%rebuild_grids = rebuild_grids
       options%rebuild_events = rebuild_events
+    <<Main: dependent flags>>
 
       call whizard_instance%init (options, paths, logfile)
 
@@ -25458,6 +27984,8 @@ program main
   call whizard_instance%final ()
   deallocate (whizard_instance)
 
+<<Main: MPI finalize>>
+
   call terminate_now_if_signal ()
   call release_term_signals ()
   call msg_terminate (quit_code = quit_code)
@@ -25488,7 +28016,7 @@ end program main
     print "(A)", "Options for resetting default directories and tools" &
             // "(GNU naming conventions):"
     print "(A)", "    --prefix DIR"
-    print "(A)", "    --exec_prefix DIR"
+    print "(A)", "    --exec-prefix DIR"
     print "(A)", "    --bindir DIR"
     print "(A)", "    --libdir DIR"
     print "(A)", "    --includedir DIR"
@@ -25516,6 +28044,7 @@ end program main
     print "(A)", "    --no-logging      switch off logging at startup"
     print "(A)", "    --no-model        do not preload a model"
     print "(A)", "    --no-rebuild      do not force rebuilding"
+    print "(A)", "-q, --query VARIABLE  display documentation of VARIABLE"
     print "(A)", "-r, --rebuild         rebuild all (see below)"
     print "(A)", "    --rebuild-library"
     print "(A)", "                      rebuild process code library"
@@ -25560,6 +28089,7 @@ program main_ut
   use cmdline_options
 
   use model_testbed !NODEP!
+<<Use mpi f08>>
 
 <<Main: use tests>>
 
@@ -25577,7 +28107,7 @@ program main_ut
   character(CMDLINE_ARG_LEN) :: arg
   character(2) :: option
   type(string_t) :: long_option, value
-  integer :: i, j, arg_len, arg_status, area
+  integer :: i, j, arg_len, arg_status
   logical :: look_for_options
   logical :: banner
   type(string_t) :: check, checks
@@ -25594,6 +28124,8 @@ program main_ut
   msg_level = RESULT
   check = ""
   checks = ""
+
+<<Main: MPI init>>
 
   ! Read and process options
   call init_options (print_usage)
@@ -25634,13 +28166,11 @@ program main_ut
               cycle SCAN_CMDLINE
            case ("--debug")
               call no_option_value (long_option, value)
-              area = d_area (get_option_value (i, long_option, value))
-              msg_level(area) = DEBUG
+              call set_debug_levels (get_option_value (i, long_option, value))
               cycle SCAN_CMDLINE
            case ("--debug2")
               call no_option_value (long_option, value)
-              area = d_area (get_option_value (i, long_option, value))
-              msg_level(area) = DEBUG
+              call set_debug2_levels (get_option_value (i, long_option, value))
               cycle SCAN_CMDLINE
            case default
               call print_usage ()
@@ -25693,6 +28223,8 @@ program main_ut
       if (.not. success)  quit_code = 7
    end if
 
+ <<Main: MPI finalize>>
+
    call msg_terminate (quit_code = quit_code)
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -25731,6 +28263,30 @@ end program main_ut
     print "(A)", "    --check TEST      run unit test TEST"
   end subroutine print_usage
 @ %def main_ut
+@
+<<Main: MPI init>>=
+@
+<<Main: MPI finalize>>=
+@
+@ MPI init.
+<<MPI: Main: MPI init>>=
+  call MPI_init ()
+<<MPI: Main: MPI finalize>>=
+  call MPI_finalize ()
+@ %def MPI_init MPI_finalize
+<<Main: dependent flags>>=
+@
+Every rebuild action is forbidden for the slave workers except
+[[rebuild_grids]], which is handled correctly inside the corresponding
+integration object.
+<<MPI: Main: dependent flags>>=
+  if (.not. mpi_is_comm_master ()) then
+    options%rebuild_library = .false.
+    options%recompile_library = .false.
+    options%rebuild_user = .false.
+    options%rebuild_phs = .false.
+    options%rebuild_events = .false.
+  end if
 @
 \subsection{Self-tests}
 For those self-tests, we need some auxiliary routines that provide an
@@ -26334,6 +28890,15 @@ This is for developers only, but needs a well-defined interface.
 <<Main: all tests>>=
   call phs_base_test (u, results)
 @
+\subsubsection{PHS None}
+<<Main: use tests>>=
+  use phs_none_ut, only: phs_none_test
+<<Main: test cases>>=
+  case ("phs_none")
+     call phs_none_test (u, results)
+<<Main: all tests>>=
+  call phs_none_test (u, results)
+@
 \subsubsection{PHS Single}
 <<Main: use tests>>=
   use phs_single_ut, only: phs_single_test
@@ -26382,15 +28947,6 @@ This is for developers only, but needs a well-defined interface.
      call prc_recola_test (u, results)
 <<Main: all tests>>=
   call prc_recola_test (u, results)
-@
-\subsubsection{NLO Color data}
-<<Main: use tests>>=
-  use nlo_color_data_ut, only: nlo_color_data_test
-<<Main: test cases>>=
-  case ("nlo_color_data")
-     call nlo_color_data_test (u, results)
-<<Main: all tests>>=
-  call nlo_color_data_test (u, results)
 @
 \subsubsection{RNG Base}
 <<Main: use tests>>=
@@ -26446,7 +29002,6 @@ This is for developers only, but needs a well-defined interface.
 <<Main: all tests>>=
   call vamp2_test (u, results)
 @
-
 \subsubsection{MCI Base}
 <<Main: use tests>>=
   use mci_base_ut, only: mci_base_test
@@ -26455,6 +29010,15 @@ This is for developers only, but needs a well-defined interface.
      call mci_base_test (u, results)
 <<Main: all tests>>=
   call mci_base_test (u, results)
+@
+\subsubsection{MCI None}
+<<Main: use tests>>=
+  use mci_none_ut, only: mci_none_test
+<<Main: test cases>>=
+  case ("mci_none")
+     call mci_none_test (u, results)
+<<Main: all tests>>=
+  call mci_none_test (u, results)
 @
 \subsubsection{MCI Midpoint}
 <<Main: use tests>>=
@@ -26474,14 +29038,23 @@ This is for developers only, but needs a well-defined interface.
 <<Main: all tests>>=
   call mci_vamp_test (u, results)
 @
-\subsubsection{MCI VEGAS}
+\subsubsection{MCI VAMP2}
 <<Main: use tests>>=
   use mci_vamp2_ut, only: mci_vamp2_test
 <<Main: test cases>>=
   case ("mci_vamp2")
      call mci_vamp2_test (u, results)
-<<Main: all tests vamp2>>=
+<<Main: all tests>>=
   call mci_vamp2_test (u, results)
+@
+\subsubsection{Integration Results}
+<<Main: use tests>>=
+  use integration_results_ut, only: integration_results_test
+<<Main: test cases>>=
+  case ("integration_results")
+     call integration_results_test (u, results)
+<<Main: all tests>>=
+  call integration_results_test (u, results)
 @
 \subsubsection{PRCLib Interfaces}
 <<Main: use tests>>=
@@ -26658,6 +29231,15 @@ This is for developers only, but needs a well-defined interface.
 <<Main: all tests>>=
   call event_transforms_test (u, results)
 @
+\subsubsection{Resonance Insertion Transform}
+<<Main: use tests>>=
+  use resonance_insertion_ut, only: resonance_insertion_test
+<<Main: test cases>>=
+  case ("resonance_insertion")
+     call resonance_insertion_test (u, results)
+<<Main: all tests>>=
+  call resonance_insertion_test (u, results)
+@
 \subsubsection{Decays}
 <<Main: use tests>>=
   use decays_ut, only: decays_test
@@ -26711,6 +29293,15 @@ This is for developers only, but needs a well-defined interface.
      call eio_base_test (u, results)
 <<Main: all tests>>=
   call eio_base_test (u, results)
+@
+\subsubsection{EIO Direct}
+<<Main: use tests>>=
+  use eio_direct_ut, only: eio_direct_test
+<<Main: test cases>>=
+  case ("eio_direct")
+     call eio_direct_test (u, results)
+<<Main: all tests>>=
+  call eio_direct_test (u, results)
 @
 \subsubsection{EIO Raw}
 <<Main: use tests>>=
@@ -26917,6 +29508,15 @@ This is for developers only, but needs a well-defined interface.
      call event_streams_test (u, results)
 <<Main: all tests>>=
   call event_streams_test (u, results)
+@
+\subsubsection{Restricted Subprocesses}
+<<Main: use tests>>=
+  use restricted_subprocesses_ut, only: restricted_subprocesses_test
+<<Main: test cases>>=
+  case ("restricted_subprocesses")
+     call restricted_subprocesses_test (u, results)
+<<Main: all tests>>=
+  call restricted_subprocesses_test (u, results)
 @
 \subsubsection{Simulations}
 <<Main: use tests>>=

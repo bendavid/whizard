@@ -103,9 +103,12 @@ module type T =
    amplitudes are included to allow the checking of Slavnov-Taylor
    identities. *)
     type amplitude
+    type amplitude_sans_color
     type selectors
     val amplitudes : bool -> exclusions -> selectors ->
       flavor_sans_color list -> flavor_sans_color list -> amplitude list
+    val amplitude_sans_color : bool -> exclusions -> selectors ->
+      flavor_sans_color list -> flavor_sans_color list -> amplitude_sans_color
 
     val dependencies : amplitude -> wf -> (wf, coupling) Tree2.t
 
@@ -193,6 +196,11 @@ module type T =
     val tower_to_dot : out_channel -> amplitude -> unit
     val amplitude_to_dot : out_channel -> amplitude -> unit
 
+(* \thocwmodulesubsection{WHIZARD} *)
+
+    val phase_space_channels : out_channel -> amplitude_sans_color -> unit
+    val phase_space_channels_flipped : out_channel -> amplitude_sans_color -> unit
+
   end
 
 (* There is more than one way to make fusions.  *)
@@ -204,6 +212,26 @@ module type Maker =
       and type flavor_sans_color = M.flavor
       and type constant = M.constant
       and type selectors = Cascade.Make(M)(P).selectors
+
+(*i If we want or need to expose [Make], here's how to do it:
+
+module type Stat =
+  sig
+    type flavor
+    type stat
+    exception Impossible
+    val stat : flavor -> int -> stat
+    val stat_fuse : stat -> stat -> flavor -> stat
+    val stat_sign : stat -> int
+  end
+
+module type Stat_Maker = functor (M : Model.T) ->
+  Stat with type flavor = M.flavor
+
+module Make : functor (PT : Tuple.Poly) (Stat : Stat_Maker)
+                      (T : Topology.T with type 'a children = 'a PT.t) -> Maker
+
+i*)
 
 (* Straightforward Dirac fermions vs. slightly more complicated
    Majorana fermions: *)

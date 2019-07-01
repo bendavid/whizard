@@ -1,12 +1,11 @@
-! $Id: parameters.NMSSM.f90,v 1.1 2005/10/25 09:21:48 reuter Exp $
+! parameters.NMSSM.f90
 !
 ! Copyright (C) 1999-2017 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     with contributions from
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     Felix Braam (parts of this file only)
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 

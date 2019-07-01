@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -46,6 +39,7 @@ module sf_aux_uti
   public :: sf_aux_1
   public :: sf_aux_2
   public :: sf_aux_3
+  public :: sf_aux_4
 
 contains
 
@@ -119,6 +113,10 @@ contains
     write (u, "(2(1x,F11.8))")  sd%xb, energy (q(1)) / energy (k)
 
     write (u, "(A)")
+    write (u, "(A)")  "Extract: x, 1-x"
+    write (u, "(2(1x,F11.8))")  sd%get_x (), sd%get_xb ()
+
+    write (u, "(A)")
     write (u, "(A)")  "* Project on-shell (keep energy)"
 
     q0 = q
@@ -147,7 +145,7 @@ contains
     write (u, "(A)")
 
     call sd%init (k, mk**2, mp**2, mq**2)
-    call sd%recover (k, q0(2), KEEP_ENERGY)
+    call sd%recover (k, q0, KEEP_ENERGY)
 
     write (u, "(A)")  "Compare: x"
     write (u, "(2(1x,F11.8))")  x, sd%x
@@ -197,7 +195,7 @@ contains
     write (u, "(A)")
 
     call sd%init (k, mk**2, mp**2, mq**2)
-    call sd%recover (k, q0(2), KEEP_MOMENTUM)
+    call sd%recover (k, q0, KEEP_MOMENTUM)
 
     write (u, "(A)")  "Compare: x"
     write (u, "(2(1x,F11.8))")  x, sd%x
@@ -288,7 +286,7 @@ contains
     write (u, "(A)")
 
     call sd%init (k, mk**2, mp**2, mq**2)
-    call sd%recover (k, q0(2), KEEP_ENERGY)
+    call sd%recover (k, q0, KEEP_ENERGY)
 
     write (u, "(A)")  "Compare: x"
     write (u, "(2(1x,F11.8))")  x, sd%x
@@ -327,7 +325,7 @@ contains
     write (u, "(A)")
 
     call sd%init (k, mk**2, mp**2, mq**2)
-    call sd%recover (k, q0(2), KEEP_MOMENTUM)
+    call sd%recover (k, q0, KEEP_MOMENTUM)
 
     write (u, "(A)")  "Compare: x"
     write (u, "(2(1x,F11.8))")  x, sd%x
@@ -441,7 +439,7 @@ contains
 
     call sd%init (k, mk**2, mp**2, mq**2)
     call sd%set_t_bounds (x, 1 - x)
-    call sd%recover (k, q0(2), KEEP_ENERGY)
+    call sd%recover (k, q0, KEEP_ENERGY)
 
     write (u, "(A)")  "Compare: x"
     write (u, "(2(1x,F11.8))")  x, sd%x
@@ -492,7 +490,7 @@ contains
 
     call sd%init (k, mk**2, mp**2, mq**2)
     call sd%set_t_bounds (x, 1 - x)
-    call sd%recover (k, q0(2), KEEP_MOMENTUM)
+    call sd%recover (k, q0, KEEP_MOMENTUM)
 
     write (u, "(A)")  "Compare: x"
     write (u, "(2(1x,F11.8))")  x, sd%x
@@ -584,7 +582,7 @@ contains
 
     call sd%init (k, mk**2, mp**2, mq**2)
     call sd%set_t_bounds (x, 1 - x)
-    call sd%recover (k, q0(2), KEEP_ENERGY)
+    call sd%recover (k, q0, KEEP_ENERGY)
 
     write (u, "(A)")  "Compare: x"
     write (u, "(2(1x,F11.8))")  x, sd%x
@@ -624,7 +622,7 @@ contains
 
     call sd%init (k, mk**2, mp**2, mq**2)
     call sd%set_t_bounds (x, 1 - x)
-    call sd%recover (k, q0(2), KEEP_MOMENTUM)
+    call sd%recover (k, q0, KEEP_MOMENTUM)
 
     write (u, "(A)")  "Compare: x"
     write (u, "(2(1x,F11.8))")  x, sd%x
@@ -740,7 +738,7 @@ contains
 
     call sd%init (k, mk**2, mp**2, mq**2)
     call sd%set_t_bounds (x, 1 - x)
-    call sd%recover (k, q0(2), KEEP_ENERGY)
+    call sd%recover (k, q0, KEEP_ENERGY)
 
     write (u, "(A)")  "Compare: x"
     write (u, "(2(1x,F11.8))")  x, sd%x
@@ -791,7 +789,7 @@ contains
 
     call sd%init (k, mk**2, mp**2, mq**2)
     call sd%set_t_bounds (x, 1 - x)
-    call sd%recover (k, q0(2), KEEP_MOMENTUM)
+    call sd%recover (k, q0, KEEP_MOMENTUM)
 
     write (u, "(A)")  "Compare: x"
     write (u, "(2(1x,F11.8))")  x, sd%x
@@ -883,7 +881,7 @@ contains
 
     call sd%init (k, mk**2, mp**2, mq**2)
     call sd%set_t_bounds (x, 1 - x)
-    call sd%recover (k, q0(2), KEEP_ENERGY)
+    call sd%recover (k, q0, KEEP_ENERGY)
 
     write (u, "(A)")  "Compare: x"
     write (u, "(2(1x,F11.8))")  x, sd%x
@@ -923,7 +921,7 @@ contains
 
     call sd%init (k, mk**2, mp**2, mq**2)
     call sd%set_t_bounds (x, 1 - x)
-    call sd%recover (k, q0(2), KEEP_MOMENTUM)
+    call sd%recover (k, q0, KEEP_MOMENTUM)
 
     write (u, "(A)")  "Compare: x"
     write (u, "(2(1x,F11.8))")  x, sd%x
@@ -937,6 +935,163 @@ contains
     write (u, "(A)")  "* Test output end: sf_aux_3"
 
   end subroutine sf_aux_3
+
+  subroutine sf_aux_4 (u)
+    integer, intent(in) :: u
+    type(splitting_data_t) :: sd
+    type(vector4_t) :: k
+    type(vector4_t), dimension(2) :: q
+    real(default) :: E, mk, mp, mq, qmin, qmax
+    real(default) :: x, xb
+
+    write (u, "(A)")  "* Test output: sf_aux_4"
+    write (u, "(A)")  "*   Purpose: compute massless collinear splitting near endpoint"
+
+    E = 1
+    mk = 0
+    mp = 0
+    mq = 0
+    qmin = 1e-2_default
+    qmax = 1e0_default
+
+    k = vector4_moving (E, sqrt (E**2 - mk**2), 3)
+
+    x = 0.1_default
+    xb = 1 - x
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* (1) Collinear setup, moderate kinematics"
+    write (u, "(A)")
+
+    call sd%init (k, mk**2, mp**2, mq**2, collinear = .true.)
+    call sd%set_t_bounds (x, xb)
+
+    call sd%write (u)
+
+    q = sd%split_momentum (k)
+
+    write (u, "(A)")
+    write (u, "(A)")  "Incoming momentum k ="
+    call vector4_write (k, u)
+    write (u, "(A)")
+    write (u, "(A)")  "Outgoing momentum sum p + q ="
+    call vector4_write (sum (q), u)
+    write (u, "(A)")
+    write (u, "(A)")  "Radiated momentum p ="
+    call vector4_write (q(1), u)
+    write (u, "(A)")
+    write (u, "(A)")  "Outgoing momentum q ="
+    call vector4_write (q(2), u)
+    write (u, "(A)")
+
+    write (u, "(A)")  "* Recover parameters from outgoing momenta"
+    write (u, "(A)")
+
+    call sd%init (k, mk**2, mp**2, mq**2, collinear = .true.)
+    call sd%set_t_bounds (x, xb)
+    call sd%recover (k, q, KEEP_ENERGY)
+
+    write (u, "(A)")  "Compare: x"
+    write (u, "(2(1x,F11.8))")  x, sd%x
+
+    write (u, "(A)")  "Compare: 1-x"
+    write (u, "(2(1x,F11.8))")  xb, sd%xb
+
+    write (u, "(A)")
+    call sd%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* (2) Close to x=0"
+    write (u, "(A)")
+
+    x = 1e-9_default
+    xb = 1 - x
+
+    call sd%init (k, mk**2, mp**2, mq**2, collinear = .true.)
+    call sd%set_t_bounds (x, xb)
+
+    call sd%write (u)
+
+    q = sd%split_momentum (k)
+
+    write (u, "(A)")
+    write (u, "(A)")  "Incoming momentum k ="
+    call vector4_write (k, u)
+    write (u, "(A)")
+    write (u, "(A)")  "Outgoing momentum sum p + q ="
+    call vector4_write (sum (q), u)
+    write (u, "(A)")
+    write (u, "(A)")  "Radiated momentum p ="
+    call vector4_write (q(1), u)
+    write (u, "(A)")
+    write (u, "(A)")  "Outgoing momentum q ="
+    call vector4_write (q(2), u)
+    write (u, "(A)")
+
+    write (u, "(A)")  "* Recover parameters from outgoing momenta"
+    write (u, "(A)")
+
+    call sd%init (k, mk**2, mp**2, mq**2, collinear = .true.)
+    call sd%set_t_bounds (x, xb)
+    call sd%recover (k, q, KEEP_ENERGY)
+
+    write (u, "(A)")  "Compare: x"
+    write (u, "(2(1x,F11.8))")  x, sd%x
+
+    write (u, "(A)")  "Compare: 1-x"
+    write (u, "(2(1x,F11.8))")  xb, sd%xb
+
+    write (u, "(A)")
+    call sd%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* (3) Close to x=1"
+    write (u, "(A)")
+
+    xb = 1e-9_default
+    x = 1 - xb
+
+    call sd%init (k, mk**2, mp**2, mq**2, collinear = .true.)
+    call sd%set_t_bounds (x, xb)
+
+    call sd%write (u)
+
+    q = sd%split_momentum (k)
+
+    write (u, "(A)")
+    write (u, "(A)")  "Incoming momentum k ="
+    call vector4_write (k, u)
+    write (u, "(A)")
+    write (u, "(A)")  "Outgoing momentum sum p + q ="
+    call vector4_write (sum (q), u)
+    write (u, "(A)")
+    write (u, "(A)")  "Radiated momentum p ="
+    call vector4_write (q(1), u)
+    write (u, "(A)")
+    write (u, "(A)")  "Outgoing momentum q ="
+    call vector4_write (q(2), u)
+    write (u, "(A)")
+
+    write (u, "(A)")  "* Recover parameters from outgoing momenta"
+    write (u, "(A)")
+
+    call sd%init (k, mk**2, mp**2, mq**2, collinear = .true.)
+    call sd%set_t_bounds (x, xb)
+    call sd%recover (k, q, KEEP_ENERGY)
+
+    write (u, "(A)")  "Compare: x"
+    write (u, "(2(1x,F11.8))")  x, sd%x
+
+    write (u, "(A)")  "Compare: 1-x"
+    write (u, "(2(1x,F11.8))")  xb, sd%xb
+
+    write (u, "(A)")
+    call sd%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: sf_aux_4"
+
+  end subroutine sf_aux_4
 
 
 end module sf_aux_uti

@@ -1,6 +1,19 @@
 * Test output: dispatch_transforms_2
 *   Purpose: configure event transform
 
+* Resonance insertion
+
+========================================================================
+ Event transform: resonance insertion
+========================================================================
+ Process library = 'foo_R'
+   Resonance history set: [incomplete]
+   Subprocess instances: not allocated
+   Selected: [none]
+   On-shell limit =  0.00000E+00
+------------------------------------------------------------------------
+------------------------------------------------------------------------
+
 * Partonic decays
 
 ========================================================================

@@ -32,6 +32,7 @@
 % Noweb emacs mode: single ' below
 \newcommand{\oMega}{\texttt{O'MEGA}}
 \newcommand{\vamp}{\texttt{VAMP}}
+\newcommand{\vamptwo}{\texttt{VAMP2}}
 \newcommand{\pythia}{\texttt{PYTHIA}}
 \newcommand{\gosam}{\texttt{GoSam}}
 \newcommand{\includemodulegraph}{\begingroup
@@ -47,12 +48,12 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\def\WhizardVersion{2.5.0}
-\def\WhizardDate{May 06 2017}
+\def\WhizardVersion{2.6.0}
+\def\WhizardDate{Sep 08 2017}
 <<Version>>=
-2.5.0
+2.6.0
 <<Date>>=
-May 06 2017
+Sep 08 2017
 @
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \title{%
@@ -70,11 +71,12 @@ May 06 2017
 \date{Version \WhizardVersion, \WhizardDate \\
  \mbox{}
  with contributions from:
- Fabian Bach, Felix Braam, Hans-Werner Boschmann,
- Bijan Chokouf\'{e} Nejad, Christian Fleper, David Gordo Gomez,
- Vincent Rothe, 
+ Fabian Bach, Tim Barklow, Mikael Berggren, Hans-Werner Boschmann,
+ Felix Braam, Simon Brass, Bijan Chokouf\'{e} Nejad, Christian Fleper,
+ David Gordo Gomez, Akiya Miyamoto, Moritz Prei{\ss}er, Vincent Rothe,
  Sebastian Schmidt, Marco Sekulla, So Young Shim, Christian Speckner,
- Christian Weiss, Daniel Wiesler, Zhijie Zhao
+ Pascal Stienemeier, Manuel Utsch, Christian Weiss, Daniel Wiesler,
+ Zhijie Zhao
  \vspace{1cm}
  \begin{center}
  \includegraphics[width=4cm]{Whizard-Logo}
@@ -125,14 +127,7 @@ The WHIZARD file header:
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -166,3 +161,9 @@ We are strict with our names:
 <<Use strings>>=
   use iso_varying_string, string_t => varying_string
 @ %def string_t
+@ And we need the Fortran 2008 MPI module, if compiled with [[MPI]].
+<<Use mpi f08>>=
+@
+<<MPI: Use mpi f08>>=
+  use mpi_f08 !NODEP!
+@ %def mpi_f08

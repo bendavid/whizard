@@ -52,7 +52,6 @@ module VM (Fusion_Maker : Fusion.Maker) (P : Momentum.T) (M : Model.T) =
     type amplitudes = CF.amplitudes
 
 (* Options. *)
-    (*i TODO: (bcn 2014-07-21) Not handled yet i*)
     type diagnostic = All | Arguments | Momenta | Gauge
 
     let wrapper_module = ref "ovm_wrapper"

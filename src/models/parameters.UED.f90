@@ -1,11 +1,11 @@
-! $Id: parameters.UED.omega.f90,v 1.1 2006/06/16 13:31:48 kilian Exp $
+! parameters.UED.f90
 !
 ! Copyright (C) 1999-2017 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     with contributions from
-!     Christian Speckner <cnspeckn@googlemail.com>
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 

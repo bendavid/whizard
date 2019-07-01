@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -65,7 +58,7 @@ contains
     integer, intent(in) :: u
     type(phs_fks_generator_t) :: generator
     type(vector4_t), dimension(:), allocatable :: p_born
-    type(phs_point_t) :: p_real
+    type(vector4_t), dimension(:), allocatable :: p_real
     integer :: emitter, i_phs
     real(default) :: x1, x2, x3
     real(default), parameter :: sqrts = 250.0_default
@@ -90,7 +83,7 @@ contains
 
     allocate (generator%isr_kinematics)
     generator%n_in = 2
-    generator%isr_mode = SQRTS_FIXED
+    generator%isr_kinematics%isr_mode = SQRTS_FIXED
 
     call generator%set_sqrts_hat (sqrts)
 
@@ -134,9 +127,10 @@ contains
     write (u, "(A)") "Produce real momenta: "
     i_phs = 1; emitter = phs_identifiers(i_phs)%emitter
     write (u, "(A,I1)") "emitter: ", emitter
-    p_real = 5
+
+    allocate (p_real (5))
     call generator%generate_fsr (emitter, i_phs, p_born, p_real)
-    call vector4_write_set (p_real%p, u, testflag = .true., ultra = .true.)
+    call vector4_write_set (p_real, u, testflag = .true., ultra = .true.)
     call write_separator (u)
     write (u, "(A)")
     write (u, "(A)") "* Test output end: phs_fks_generator_1"
@@ -147,7 +141,7 @@ contains
     integer, intent(in) :: u
     type(phs_fks_generator_t) :: generator
     type(vector4_t), dimension(:), allocatable :: p_born
-    type(phs_point_t) :: p_real
+    type(vector4_t), dimension(:), allocatable :: p_real
     integer :: emitter, i_phs
     real(default) :: x1, x2, x3
     real(default), parameter :: sqrts_hadronic = 250.0_default
@@ -183,7 +177,7 @@ contains
     call generator%set_sqrts_hat (sqrts_hadronic)
     call generator%set_isr_kinematics (p_born)
     generator%n_in = 2
-    generator%isr_mode = SQRTS_VAR
+    generator%isr_kinematics%isr_mode = SQRTS_VAR
 
     write (u, "(A)") "* Use four-particle phase space containing: "
     call vector4_write_set (p_born, u, testflag = .true., ultra = .true.)
@@ -226,9 +220,9 @@ contains
     write (u, "(A)") "Produce real momenta: "
     i_phs = 1; emitter = phs_identifiers(i_phs)%emitter
     write (u, "(A,I1)") "emitter: ", emitter
-    p_real = 5
+    allocate (p_real(5))
     call generator%generate_isr (i_phs, p_born, p_real)
-    call vector4_write_set (p_real%p, u, testflag = .true., ultra = .true.)
+    call vector4_write_set (p_real, u, testflag = .true., ultra = .true.)
     call write_separator (u)
     write (u, "(A)")
     write (u, "(A)") "* Test output end: phs_fks_generator_2"
@@ -239,7 +233,7 @@ contains
     integer, intent(in) :: u
     type(phs_fks_generator_t) :: generator
     type(vector4_t), dimension(:), allocatable :: p_born
-    type(phs_point_t) :: p_real
+    type(vector4_t), dimension(:), allocatable :: p_real
     real(default) :: x1, x2, x3
     real(default) :: mB, mW, mT
     integer :: i, emitter, i_phs
@@ -262,7 +256,8 @@ contains
     p_born(3)%p(1:3) = -p_born(2)%p(1:3)
 
     generator%n_in = 1
-    generator%isr_mode = SQRTS_FIXED
+    allocate (generator%isr_kinematics)
+    generator%isr_kinematics%isr_mode = SQRTS_FIXED
 
     mB = 4.2_default
     mW = 80.376_default
@@ -317,17 +312,17 @@ contains
     write (u, "(A)") "Produce real momenta via initial-state emission: "
     i_phs = 1; emitter = phs_identifiers(i_phs)%emitter
     write (u, "(A,I1)") "emitter: ", emitter
-    p_real = 4
+    allocate (p_real (4))
     call generator%generate_isr_fixed_beam_energy (i_phs, p_born, p_real)
-    call pacify (p_real%p, 1E-6_default)
-    call vector4_write_set (p_real%p, u, testflag = .true., ultra = .true.)
+    call pacify (p_real, 1E-6_default)
+    call vector4_write_set (p_real, u, testflag = .true., ultra = .true.)
     call write_separator(u)
     write (u, "(A)") "Produce real momenta via final-state emisson: "
     i_phs = 2; emitter = phs_identifiers(i_phs)%emitter
     write (u, "(A,I1)") "emitter: ", emitter
     call generator%generate_fsr (emitter, i_phs, p_born, p_real)
-    call pacify (p_real%p, 1E-6_default)
-    call vector4_write_set (p_real%p, u, testflag = .true., ultra = .true.)
+    call pacify (p_real, 1E-6_default)
+    call vector4_write_set (p_real, u, testflag = .true., ultra = .true.)
     write (u, "(A)")
     write (u, "(A)") "* Test output end: phs_fks_generator_3"
 
@@ -337,7 +332,7 @@ contains
     integer, intent(in) :: u
     type(phs_fks_generator_t) :: generator
     type(vector4_t), dimension(:), allocatable :: p_born
-    type(phs_point_t) :: p_real
+    type(vector4_t), dimension(:), allocatable :: p_real
     integer, dimension(:), allocatable :: emitters
     integer, dimension(:,:), allocatable :: resonance_lists
     type(resonance_contributors_t), dimension(2) :: alr_contributors
@@ -383,7 +378,7 @@ contains
 
     allocate (generator%isr_kinematics)
     generator%n_in = 2
-    generator%isr_mode = SQRTS_FIXED
+    generator%isr_kinematics%isr_mode = SQRTS_FIXED
 
     call generator%set_sqrts_hat (sqrts)
 
@@ -429,7 +424,7 @@ contains
     call generator%generate_radiation_variables &
        ([x1, x2, x3], p_born, phs_identifiers)
 
-    p_real = nlegborn + 1
+    allocate (p_real(nlegborn + 1))
     call generator%compute_xi_ref_momenta (p_born, alr_contributors)
     !!! Keep the distinction between i_phs and i_con because in general,
     !!! they are not the same.
@@ -437,17 +432,17 @@ contains
        i_con = i_phs
        emitter = phs_identifiers(i_phs)%emitter
        write (u, "(A,I1,1X,A,I1,A,I1,A)") &
-          "* Generate FSR phase space for emitter ", emitter, &
-          "and resonance pair (",  resonance_lists (i_con, 1), ",", &
-          resonance_lists (i_con, 2), ")"
+            "* Generate FSR phase space for emitter ", emitter, &
+            "and resonance pair (",  resonance_lists (i_con, 1), ",", &
+            resonance_lists (i_con, 2), ")"
        call generator%compute_xi_max (emitter, i_phs, p_born, &
             generator%real_kinematics%xi_max(i_phs), i_con = i_con)
        call generator%generate_fsr (emitter, i_phs, i_con, p_born, p_real)
-       call vector4_write_set (p_real%p, u, testflag = .true., ultra = .true.)
+       call vector4_write_set (p_real, u, testflag = .true., ultra = .true.)
        call write_separator(u)
        write (u, "(A)") "* Check if resonance masses are conserved: "
        m_inv_born = compute_resonance_mass (p_born, resonance_lists (i_con,:))
-       m_inv_real = compute_resonance_mass (p_real%p, resonance_lists (i_con,:), 7)
+       m_inv_real = compute_resonance_mass (p_real, resonance_lists (i_con,:), 7)
        write (u, "(A,1X, " // fmt // ")") "m_inv_born = ", m_inv_born
        write (u, "(A,1X, " // fmt // ")") "m_inv_real = ", m_inv_real
        if (abs (m_inv_born - m_inv_real) < tiny_07) then
@@ -458,7 +453,7 @@ contains
        call write_separator(u)
        call write_separator(u)
     end do
-    call p_real%final ()
+    deallocate (p_real)
     write (u, "(A)")
     write (u, "(A)") "* Test output end: phs_fks_generator_4"
   end subroutine phs_fks_generator_4
@@ -469,7 +464,7 @@ contains
     type(phs_fks_generator_t) :: generator
     type(vector4_t), dimension(:), allocatable :: p_born
     type(vector4_t), dimension(:), allocatable :: p_born_onshell
-    type(phs_point_t) :: p_real
+    type(vector4_t), dimension(:), allocatable :: p_real
     real(default) :: x1, x2, x3
     real(default) :: mB, mW, mtop, mcheck
     integer :: i, emitter, i_phs
@@ -510,7 +505,8 @@ contains
     p_born(6)%p(3) = 44.25011295081_default
 
     generator%n_in = 2
-    generator%isr_mode = SQRTS_FIXED
+    allocate (generator%isr_kinematics)
+    generator%isr_kinematics%isr_mode = SQRTS_FIXED
 
     mB = 4.2_default
     mW = 80.376_default
@@ -543,7 +539,10 @@ contains
     write (u, "(A)")
 
     write (u, "(A)") "* Perform onshell-projection:"
-    call generator%real_kinematics%apply_threshold_projection_born (mtop, L_to_cms)
+    associate (p_born => generator%real_kinematics%p_born_cms%phs_point(1)%p, &
+         p_born_onshell => generator%real_kinematics%p_born_onshell%phs_point(1)%p)
+       call threshold_projection_born (mtop, L_to_cms, p_born, p_born_onshell)
+    end associate
     call generator%real_kinematics%p_born_onshell%write (1, unit = u, testflag = .true., &
          ultra = .true.)
     associate (p => generator%real_kinematics%p_born_onshell%phs_point(1)%p)
@@ -588,12 +587,12 @@ contains
 
     call write_separator (u)
     write (u, "(A)") "* Produce real momenta from on-shell phase space: "
-    p_real = 7
+    allocate (p_real(7))
     do i_phs = 1, 2
        emitter = phs_identifiers(i_phs)%emitter
        write (u, "(A,I1)") "emitter: ", emitter
        call generator%generate_fsr_threshold (emitter, i_phs, p_born_onshell, p_real)
-       call check_phsp (p_real%p, emitter)
+       call check_phsp (p_real, emitter)
     end do
 
     call write_separator(u)
@@ -649,7 +648,7 @@ contains
     integer, intent(in) :: u
     type(phs_fks_generator_t) :: generator
     type(vector4_t), dimension(:), allocatable :: p_born
-    type(phs_point_t) :: p_real
+    type(vector4_t), dimension(:), allocatable :: p_real
     real(default) :: x1, x2, x3
     real(default) :: mB, mW, mT
     integer :: i, emitter, i_phs
@@ -678,7 +677,8 @@ contains
     p_born(4)%p(3) = -8.440032040958_default
 
     generator%n_in = 1
-    generator%isr_mode = SQRTS_FIXED
+    allocate (generator%isr_kinematics)
+    generator%isr_kinematics%isr_mode = SQRTS_FIXED
 
     mB = 4.2_default
     mW = 80.376_default
@@ -735,17 +735,17 @@ contains
     write (u, "(A)") "Produce real momenta via initial-state emission: "
     i_phs = 1; emitter = phs_identifiers(i_phs)%emitter
     write (u, "(A,I1)") "emitter: ", emitter
-    p_real = 5
+    allocate (p_real(5))
     call generator%generate_isr_fixed_beam_energy (i_phs, p_born, p_real)
-    call pacify (p_real%p, 1E-6_default)
-    call vector4_write_set (p_real%p, u, testflag = .true., ultra = .true.)
+    call pacify (p_real, 1E-6_default)
+    call vector4_write_set (p_real, u, testflag = .true., ultra = .true.)
     call write_separator(u)
     write (u, "(A)") "Produce real momenta via final-state emisson: "
     i_phs = 2; emitter = phs_identifiers(i_phs)%emitter
     write (u, "(A,I1)") "emitter: ", emitter
     call generator%generate_fsr (emitter, i_phs, p_born, p_real)
-    call pacify (p_real%p, 1E-6_default)
-    call vector4_write_set (p_real%p, u, testflag = .true., ultra = .true.)
+    call pacify (p_real, 1E-6_default)
+    call vector4_write_set (p_real, u, testflag = .true., ultra = .true.)
     write (u, "(A)")
     write (u, "(A)") "* Test output end: phs_fks_generator_6"
 
@@ -755,7 +755,7 @@ contains
     integer, intent(in) :: u
     type(phs_fks_generator_t) :: generator
     type(vector4_t), dimension(:), allocatable :: p_born
-    type(phs_point_t) :: p_real
+    type(vector4_t), dimension(:), allocatable :: p_real
     real(default) :: x1, x2, x3
     integer :: i, emitter, i_phs
     type(phs_identifier_t), dimension(2) :: phs_identifiers
@@ -787,7 +787,8 @@ contains
 
     allocate (generator%emitters(2))
     generator%n_in = 2
-    generator%isr_mode = SQRTS_FIXED
+    allocate (generator%isr_kinematics)
+    generator%isr_kinematics%isr_mode = SQRTS_FIXED
     generator%emitters(1) = 1; generator%emitters(2) = 2
     generator%sqrts = sqrts
 
@@ -831,16 +832,16 @@ contains
     write (u, "(A)") "Produce real momenta via initial-state emission: "
     i_phs = 1; emitter = phs_identifiers(i_phs)%emitter
     write (u, "(A,I1)") "emitter: ", emitter
-    p_real = 5
+    allocate (p_real(5))
     call generator%generate_isr_fixed_beam_energy (i_phs, p_born, p_real)
-    call pacify (p_real%p, 1E-6_default)
-    call vector4_write_set (p_real%p, u, testflag = .true., ultra = .true.)
+    call pacify (p_real, 1E-6_default)
+    call vector4_write_set (p_real, u, testflag = .true., ultra = .true.)
     call write_separator(u)
     i_phs = 2; emitter = phs_identifiers(i_phs)%emitter
     write (u, "(A,I1)") "emitter: ", emitter
     call generator%generate_isr_fixed_beam_energy (i_phs, p_born, p_real)
-    call pacify (p_real%p, 1E-6_default)
-    call vector4_write_set (p_real%p, u, testflag = .true., ultra = .true.)
+    call pacify (p_real, 1E-6_default)
+    call vector4_write_set (p_real, u, testflag = .true., ultra = .true.)
     write (u, "(A)")
     write (u, "(A)") "* Test output end: phs_fks_generator_7"
 

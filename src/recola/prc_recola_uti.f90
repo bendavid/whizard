@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -50,16 +43,13 @@ module prc_recola_uti
   use process_constants
   use process_libraries
   use prc_core
-
   use prc_omega
-  use prc_recola, only: create_recola_color_structures
 
   implicit none
   private
 
   public :: prc_recola_1
   public :: prc_recola_2
-  public :: prc_recola_3
 
 contains
 
@@ -139,6 +129,7 @@ contains
     write (u, "(A)") "* RECOLA: generate process"
     call rclwrap_generate_processes ()
     call rclwrap_compute_process (1, p, 'LO')
+    call rclwrap_get_helicity_configurations (1, helicities)
     allocate (hel_recola (4), col_recola (4))
     col_recola = [0,0,0,0]
 
@@ -176,10 +167,10 @@ contains
 
     select type (driver)
     type is (omega_driver_t)
-       call driver%init (get_omega_parameter_array (), 0)
+       call driver%init (get_omega_parameter_array (), 1)
        call driver%new_event (real(p, kind =  default))
        do i = 1, 6
-          call rclwrap_get_amplitude (1, 0, 'LO', col_recola, helicities (i, :), amp_recola)
+          call rclwrap_get_amplitude (1, 0, 'LO', col_recola, helicities (:,i), amp_recola)
        end do
        do i = 1, 16
            call rclwrap_get_amplitude (1, 0, 'LO', col_recola, data%hel_state (:,i), amp_recola)
@@ -187,7 +178,7 @@ contains
            amp_recola_default = amp_recola
            call driver%get_amplitude (1, i, 1, amp)
            write(u,"(A,4(I2),A)") "Helicity: [",data%hel_state (:,i),"]"
-           call assert_equal (u, amp, amp_recola_default) ! , "Helicity:", data%hel_state (:,i))
+           call assert_equal (u, amp, amp_recola_default, rel_smallness = 1.E-7_default) 
        end do
 
     end select
@@ -224,8 +215,6 @@ contains
     class(prc_core_driver_t), allocatable :: driver
     complex(default) :: amp
     integer :: n_allowed
-
-    logical(c_bool) :: flag
 
     write (u, "(A)") "* Test output: prc_recola_2"
     write (u, "(A)") "* Purpose: Test interface to RECOLA and compare matrix elements with O'Mega for 2->3 process"
@@ -293,17 +282,24 @@ contains
 
     select type (driver)
     type is (omega_driver_t)
-       call driver%init (get_omega_parameter_array (), 0)
+       call driver%init (get_omega_parameter_array (), 1)
        call driver%new_event (real(p, kind = default))
        do i = 1, 32
-           call rclwrap_get_amplitude (2, 0, 'LO', col_recola, helicities (i, :), amp_recola)
-           amp_recola = amp_recola * cmplx (0, -1, double)
+           call rclwrap_get_amplitude &
+                (2, 0, 'LO', col_recola, data%hel_state (:,i), amp_recola)
+           if (data%hel_state(3,i) * data%hel_state(4,i) * &
+                data%hel_state(5,i) == -1) then
+              amp_recola = amp_recola * cmplx (0, -1, double)
+           else
+              amp_recola = amp_recola * cmplx (0, 1, double)
+           end if
            amp_recola_default = amp_recola
            call driver%get_amplitude (1, i, 1, amp)
-           write(u,"(A,5(I2),A)") "O'MEGA Helicity:[", data%hel_state (:,i),"]"
-           write(u,"(A,5(I2),A)") "RECOLA Helicity: [", helicities (i,:),"]"
-           write(u,"(A,2(F12.7,1x),A,2(F12.7,1x))") "RECOLA:", amp_recola,", O'MEGA:", amp
-           call assert_equal (u, amp, amp_recola_default)
+           write(u,"(A,5(I2),A)") "Helicity: [", data%hel_state (:,i),"]"
+           write(u,"(A,2(F12.7,1x),A,2(F12.7,1x))") "RECOLA:", &
+                amp_recola,", O'MEGA:", amp
+           call assert_equal &
+                (u, amp, amp_recola_default, rel_smallness = 1.E-6_default)
        end do
 
     end select
@@ -314,120 +310,6 @@ contains
     write (u, "(A)") "* End of test output: prc_recola_2"
 
   end subroutine prc_recola_2
-  subroutine prc_recola_3 (u)
-    integer, intent(in) :: u
-    real(double) :: p(0:3,1:4)
-    real(double) :: sqrts = 500._double
-    real(double) :: m_quark = 0._double
-    real(double) :: p_x_out, p_y_out, p_z_out, p_z_in
-    integer      :: h_e_p, h_e_m, h_mu_p, h_mu_m, counter
-    real(double) :: sqme
-    integer :: i
-
-    real(default), parameter :: ee = 0.3 !!! Electromagnetic coupling
-
-    type(process_library_t) :: lib
-    class(prc_core_def_t), allocatable :: def
-    type(process_def_entry_t), pointer :: entry
-    type(string_t), dimension(:), allocatable :: prt_in, prt_out
-    type(os_data_t) :: os_data
-    type(process_constants_t) :: data
-    class(prc_core_driver_t), allocatable :: driver
-    complex(default) :: amp
-
-    integer, dimension(:,:), allocatable :: helicities
-    integer, dimension(:,:), allocatable :: colors, col_recola
-
-    write (u, "(A)") "* Test output: prc_recola_3"
-    write (u, "(A)") "* Purpose: Test interface to RECOLA and compare matrix elements with O'Mega for a colored process"
-    write (u, "(A)")
-
-    p_z_in = sqrts / 2
-    p_z_out = 0._double
-    p_y_out = sqrts / 10._default
-    p_x_out = sqrt ((sqrts / 2)**2 - p_y_out**2 - p_z_out**2)
-    p(:,1) = [sqrts / 2,  0._double,  0._double,  p_z_in]
-    p(:,2) = [sqrts / 2,  0._double,  0._double, -p_z_in]
-    p(:,3) = [sqrts / 2,  p_x_out,  p_y_out,  p_z_out]
-    p(:,4) = [sqrts / 2, -p_x_out, -p_y_out, -p_z_out]
-
-    write (u, "(A)") "Use phase-space point: "
-    do i = 1, 4
-       write (u, "(4(F12.3,1x))") p(:,1)
-    end do
-    write (u, "(A)")
-    call write_separator (u)
-    write (u, "(A)")
-    write (u, "(A)") "* RECOLA: Evaluate process"
-    call rclwrap_set_onshell_scheme ()
-    write (u, "(A)") "*  RECOLA: Define process u u~ -> g at leading order"
-    call rclwrap_define_process (1, var_str ('u u~ -> g g'), 'LO')
-    write (u, "(A)") "* RECOLA: generate process"
-    call rclwrap_generate_processes ()
-    call rclwrap_get_helicity_configurations (1, helicities)
-    call rclwrap_get_color_configurations (1, colors)
-    print *, 'Number of helicities: ', size (helicities, dim=1)
-    do i = 1, size (helicities, dim=1)
-       print *, 'hel: ', helicities (i, :)
-    end do
-    do i = 1, size (colors, dim=1)
-       print *, 'col: ', colors (i, :)
-    end do
-    call rclwrap_compute_process (1, p, 'LO')
-
-    write (u, "(A)") "* Setting up Omega to compute the same amplitude"
-
-    call lib%init (var_str ("omega3"))
-    allocate (prt_in (2), prt_out (2))
-    prt_in = [var_str ("u"), var_str ("ubar")]
-    prt_out = [var_str ("g"), var_str ("g")]
-
-    allocate (omega_def_t :: def)
-    select type (def)
-    type is (omega_def_t)
-       call def%init (var_str ("SM"), prt_in, prt_out, &
-            ufo = .false., ovm = .false.)
-    end select
-
-    allocate (entry)
-    call entry%init (var_str ("omega3_a"), model_name = var_str ("SM"), &
-       n_in = 2, n_components = 1)
-    call entry%import_component (1, n_out = 2, &
-         prt_in  = new_prt_spec (prt_in), &
-         prt_out = new_prt_spec (prt_out), &
-         method  = var_str ("omega"), &
-         variant = def)
-    call lib%append (entry)
-
-    call os_data_init (os_data)
-    call lib%configure (os_data)
-    call lib%write_makefile (os_data, force = .true.)
-    call lib%clean (os_data, distclean = .false.)
-    call lib%write_driver (force = .true.)
-    call lib%load (os_data)
-    call lib%connect_process (var_str ("omega3_a"), 1, data, driver)
-
-    select type (driver)
-    type is (omega_driver_t)
-       call driver%init (get_omega_parameter_array (), 0)
-       call driver%new_event (real (p, kind = default))
-       col_recola = create_recola_color_structures (data%col_state)
-       print *, 'Number of colors: ', data%n_col
-       do i = 1, 5
-          print *, 'omega color state: ', data%col_state (:,:,i)
-          print *, 'reconstructed recola state: ', col_recola (i, :)
-       end do
-
-    end select
-
-    call rclwrap_reset_recola ()
-
-    write (u, "(A)")
-    write (u, "(A)") "* End of test output: prc_recola_3"
-
-
-  end subroutine prc_recola_3
-
 
 end module prc_recola_uti
 

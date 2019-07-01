@@ -39,9 +39,9 @@ sqrts =  2.50000E+02
 |   Process index = 1
 |   Process components:
 |     1: 'nlo_1_p1_i1':   e-, e+ => u, ubar [inactive]
-|     2: 'nlo_1_p1_i2':   e-, e+ => u, ubar, gl [omega], [Real]
-|     3: 'nlo_1_p1_i3':   e-, e+ => u, ubar [inactive], [Virtual]
-|     4: 'nlo_1_p1_i4':   e-, e+ => u, ubar [inactive], [Subtraction]
+|     2: 'nlo_1_p1_i2':   e-, e+ => u, ubar, gl [omega], [real]
+|     3: 'nlo_1_p1_i3':   e-, e+ => u, ubar [inactive], [virtual]
+|     4: 'nlo_1_p1_i4':   e-, e+ => u, ubar [inactive], [subtraction]
 | ------------------------------------------------------------------------
 | Phase space: 2 channels, 2 dimensions
 | Phase space: found 2 channels, collected in 2 groves.
@@ -57,7 +57,7 @@ sqrts =  2.50000E+02
 | Phase space: wood
 Warning: No cuts have been defined.
 | Using user-defined general scale.
-| Starting integration for process 'nlo_1_p1' part 'Real'
+| Starting integration for process 'nlo_1_p1' part 'real'
 | Integrate: iterations = 2:500
 | Integrator: 2 chains, 2 channels, 5 dimensions
 | Integrator: 500 initial calls, 20 bins, stratified = T
@@ -96,9 +96,9 @@ Warning: No cuts have been defined.
 |   Process index = 1
 |   Process components:
 |     1: 'nlo_1_p1_i1':   e-, e+ => u, ubar [inactive]
-|     2: 'nlo_1_p1_i2':   e-, e+ => u, ubar, gl [omega], [Real]
-|     3: 'nlo_1_p1_i3':   e-, e+ => u, ubar [inactive], [Virtual]
-|     4: 'nlo_1_p1_i4':   e-, e+ => u, ubar [inactive], [Subtraction]
+|     2: 'nlo_1_p1_i2':   e-, e+ => u, ubar, gl [omega], [real]
+|     3: 'nlo_1_p1_i3':   e-, e+ => u, ubar [inactive], [virtual]
+|     4: 'nlo_1_p1_i4':   e-, e+ => u, ubar [inactive], [subtraction]
 | ------------------------------------------------------------------------
 | Phase space: 2 channels, 2 dimensions
 | Phase space: found 2 channels, collected in 2 groves.
@@ -114,7 +114,7 @@ Warning: No cuts have been defined.
 | Phase space: wood
 Warning: No cuts have been defined.
 | Using user-defined general scale.
-| Starting integration for process 'nlo_1_p1' part 'Real'
+| Starting integration for process 'nlo_1_p1' part 'real'
 | Integrate: iterations = 2:500
 | Integrator: 2 chains, 2 channels, 5 dimensions
 | Integrator: 500 initial calls, 20 bins, stratified = T

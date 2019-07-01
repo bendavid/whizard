@@ -7,7 +7,7 @@
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
 #     with contributions from
-#     Christian Speckner <cnspeckn@googlemail.com>
+#     cf. main AUTHORS file
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by
@@ -37,12 +37,10 @@ libfks_la_SOURCES = \
   virtual.f90 \
   real_subtraction.f90 \
   dglap_remnant.f90 \
-  nlo_color_data.f90 \
   dispatch_fks.f90
 
 libfks_ut_la_SOURCES = \
-  fks_regions_uti.f90 fks_regions_ut.f90 \
-  nlo_color_data_ut.f90 nlo_color_data_uti.f90
+  fks_regions_uti.f90 fks_regions_ut.f90
 
 ## Omitting this would exclude it from the distribution
 dist_noinst_DATA = fks.nw
@@ -142,6 +140,10 @@ if FC_USE_OPENMP
 AM_FCFLAGS += $(FCFLAGS_OPENMP)
 endif
 
+# MPI
+if FC_USE_MPI
+AM_FCFLAGS += $(FCFLAGS_MPI)
+endif
 
 ########################################################################
 ## Non-standard targets and dependencies

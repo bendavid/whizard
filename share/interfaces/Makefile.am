@@ -9,8 +9,7 @@
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
 # with contributions from
-#     Christian Speckner <cnspeckn@googlemail.com>
-#     Steffen Schwertfeger (only this file)
+#     cf. main AUTHORS file
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by

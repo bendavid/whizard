@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -56,15 +49,15 @@ contains
     logical :: subtraction_disabled
     type(string_t) :: exclude_from_resonance
     fks_dij_exp1 = &
-       var_list%get_rval (var_str ("fks_dij_exp1"))
+         var_list%get_rval (var_str ("fks_dij_exp1"))
     fks_dij_exp2 = &
-       var_list%get_rval (var_str ("fks_dij_exp2"))
+         var_list%get_rval (var_str ("fks_dij_exp2"))
     fks_mapping_type = &
-       var_list%get_sval (var_str ("$fks_mapping_type"))
+         var_list%get_sval (var_str ("$fks_mapping_type"))
     subtraction_disabled = &
-       var_list%get_lval (var_str ("?disable_subtraction"))
+         var_list%get_lval (var_str ("?disable_subtraction"))
     exclude_from_resonance = &
-       var_list%get_sval (var_str ("$resonances_exclude_particles"))
+         var_list%get_sval (var_str ("$resonances_exclude_particles"))
     if (exclude_from_resonance /= var_str ("default")) &
        call split_string (exclude_from_resonance, var_str (":"), &
        fks_template%excluded_resonances)
@@ -79,6 +72,7 @@ contains
        call fks_template%set_mapping_type (FKS_RESONANCES)
     end select
     fks_template%subtraction_disabled = subtraction_disabled
+    fks_template%n_f = var_list%get_ival (var_str ("alphas_nf"))
   end subroutine dispatch_fks_s
 
 

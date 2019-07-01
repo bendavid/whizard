@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -434,8 +427,8 @@ contains
        alphas = alphas_notsohard (sqrts)
     end if
     if (threshold%settings%nlo) then
-       gamma = top_width_sm_qcd_nlo_jk (width%aem, width%sw, top_mass, &
-            width%mw, width%mb, alphas) + width%gam_inv
+       gamma = top_width_sm_qcd_nlo_jk (width%aem, width%sw, width%vtb, &
+            top_mass, width%mw, width%mb, alphas) + width%gam_inv
     else
        gamma = top_width_sm_lo (width%aem, width%sw, width%vtb, top_mass, &
             width%mw, width%mb) + width%gam_inv
@@ -681,7 +674,11 @@ contains
     complex(default) :: c
     c = one
     if (.not. threshold%settings%initialized_ff .or. .not. ps%inside_grid) return
-    call interpolate_linear (sq_grid, p_grid, ff_grid(:,:,1,vec_type), ps%sqrts, ps%p, c)
+    if (POINTS_SQ > 1) then
+       call interpolate_linear (sq_grid, p_grid, ff_grid(:,:,1,vec_type), ps%sqrts, ps%p, c)
+    else
+       call interpolate_linear (p_grid, ff_grid(1,:,1,vec_type), ps%p, c)
+    end if
   end function resummed_formfactor
 
   !!! leading nonrelativistic O(alphas^1) contribution (-> expansion of resummation)
@@ -1078,9 +1075,13 @@ contains
   pure function sqrts_iter (i_sq) result (sqrts)
     integer, intent(in) :: i_sq
     real(default) :: sqrts
-    sqrts = sqrts_min - sqrts_it + &
-            (sqrts_max - sqrts_min + two * sqrts_it) * &
-            real(i_sq - 1) / real(POINTS_SQ - 1)
+    if (POINTS_SQ > 1) then
+       sqrts = sqrts_min - sqrts_it + &
+               (sqrts_max - sqrts_min + two * sqrts_it) * &
+               real(i_sq - 1) / real(POINTS_SQ - 1)
+    else
+       sqrts = sqrts_min
+    end if
   end function sqrts_iter
 
   function scan_formfactor_over_p_LL_analytic (a_soft, sqrts, vec_type) result (ff_analytic)
@@ -1254,7 +1255,11 @@ contains
   subroutine init_threshold_phase_space_grid ()
     integer :: i_sq
     call msg_debug (D_THRESHOLD, "init_threshold_phase_space_grid")
-    POINTS_SQ = int ((sqrts_max - sqrts_min) / sqrts_it + tiny_07) + 3
+    if (sqrts_it > tiny_07) then
+       POINTS_SQ = int ((sqrts_max - sqrts_min) / sqrts_it + tiny_07) + 3
+    else
+       POINTS_SQ = 1
+    end if
     call msg_debug (D_THRESHOLD, "Number of sqrts grid points: POINTS_SQ", POINTS_SQ)
     call msg_debug (D_THRESHOLD, "sqrts_max", sqrts_max)
     call msg_debug (D_THRESHOLD, "sqrts_min", sqrts_min)

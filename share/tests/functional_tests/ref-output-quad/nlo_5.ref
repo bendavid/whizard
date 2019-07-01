@@ -5,8 +5,8 @@
 $loop_me_method = "dummy"
 openmp_num_threads = 1
 ?use_vamp_equivalences = false
-?alpha_s_is_fixed = true
-?alpha_s_from_mz = false
+?alphas_is_fixed = true
+?alphas_from_mz = false
 SM.alphas =>  1.17800E-01
 SM.ms =>  0.00000E+00
 SM.mc =>  0.00000E+00
@@ -49,9 +49,9 @@ seed = 0
 |   Process index = 1
 |   Process components:
 |     1: 'nlo_5_p1_i1':   e+, e- => u:ubar:d:dbar:s:sbar:c:cbar:b:bbar, u:ubar:d:dbar:s:sbar:c:cbar:b:bbar [inactive]
-|     2: 'nlo_5_p1_i2':   e+, e- => d:dbar:u:ubar:s:sbar:c:cbar:b:bbar, d:dbar:u:ubar:s:sbar:c:cbar:b:bbar, gl [omega], [Real]
-|     3: 'nlo_5_p1_i3':   e+, e- => u:ubar:d:dbar:s:sbar:c:cbar:b:bbar, u:ubar:d:dbar:s:sbar:c:cbar:b:bbar [inactive], [Virtual]
-|     4: 'nlo_5_p1_i4':   e+, e- => u:ubar:d:dbar:s:sbar:c:cbar:b:bbar, u:ubar:d:dbar:s:sbar:c:cbar:b:bbar [inactive], [Subtraction]
+|     2: 'nlo_5_p1_i2':   e+, e- => d:dbar:u:ubar:s:sbar:c:cbar:b:bbar, d:dbar:u:ubar:s:sbar:c:cbar:b:bbar, gl [omega], [real]
+|     3: 'nlo_5_p1_i3':   e+, e- => u:ubar:d:dbar:s:sbar:c:cbar:b:bbar, u:ubar:d:dbar:s:sbar:c:cbar:b:bbar [inactive], [virtual]
+|     4: 'nlo_5_p1_i4':   e+, e- => u:ubar:d:dbar:s:sbar:c:cbar:b:bbar, u:ubar:d:dbar:s:sbar:c:cbar:b:bbar [inactive], [subtraction]
 | ------------------------------------------------------------------------
 | Phase space: 2 channels, 2 dimensions
 | Phase space: found 2 channels, collected in 2 groves.
@@ -66,7 +66,7 @@ seed = 0
 | Phase space: no equivalences between channels used.
 | Phase space: wood
 Warning: No cuts have been defined.
-| Starting integration for process 'nlo_5_p1' part 'Real'
+| Starting integration for process 'nlo_5_p1' part 'real'
 | Integrate: iterations = 1:100:"gw"
 | Integrator: 2 chains, 2 channels, 5 dimensions
 | Integrator: 100 initial calls, 20 bins, stratified = T

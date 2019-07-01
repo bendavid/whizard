@@ -53,9 +53,12 @@ module type T =
     val bra : braket -> wf
     val ket : braket -> rhs list
     type amplitude
+    type amplitude_sans_color
     type selectors
     val amplitudes : bool -> exclusions -> selectors ->
       flavor_sans_color list -> flavor_sans_color list -> amplitude list
+    val amplitude_sans_color : bool -> exclusions -> selectors ->
+      flavor_sans_color list -> flavor_sans_color list -> amplitude_sans_color
     val dependencies : amplitude -> wf -> (wf, coupling) Tree2.t
     val incoming : amplitude -> flavor list
     val outgoing : amplitude -> flavor list
@@ -79,6 +82,8 @@ module type T =
     val s_channel : amplitude -> wf list
     val tower_to_dot : out_channel -> amplitude -> unit
     val amplitude_to_dot : out_channel -> amplitude -> unit
+    val phase_space_channels : out_channel -> amplitude_sans_color -> unit
+    val phase_space_channels_flipped : out_channel -> amplitude_sans_color -> unit
   end
 
 module type Maker =
@@ -1579,6 +1584,9 @@ i*)
     let amplitudes goldstones exclusions selectors fin fout =
       colorize_amplitudes (amplitude goldstones selectors fin fout)
 
+    let amplitude_sans_color goldstones exclusions selectors fin fout =
+      amplitude goldstones selectors fin fout
+
     type flavor = CA.flavor
     type flavor_sans_color = A.flavor
     type p = A.p
@@ -1611,6 +1619,7 @@ i*)
     let ket = CA.ket   
 
     type amplitude = CA.amplitude
+    type amplitude_sans_color = A.amplitude
     let incoming = CA.incoming
     let outgoing = CA.outgoing
     let externals = CA.externals
@@ -1809,6 +1818,83 @@ i*)
 
     let amplitude_to_dot ch a =
       dag_to_dot ch a.CA.brakets a.CA.fusion_dag
+
+(* \thocwmodulesubsection{Phasespace} *)
+
+
+    let variable wf =
+      M.flavor_to_string wf.A.flavor ^
+        "[" ^ String.concat "/" (List.map p2s (P.to_ints wf.A.momentum)) ^ "]"
+
+    let below_to_string transform dag wf =
+      let n2s wf = variable (transform wf)
+      and e2s c = "" in
+      Tree2.to_string n2s e2s (A.D.dependencies dag wf)
+
+    let bra_to_string transform dag wf =
+      let tree = A.D.dependencies dag wf in
+      if Tree2.is_singleton tree then
+        let n2s wf = variable (transform wf)
+        and e2s c = "" in
+        Tree2.to_string n2s e2s tree
+      else
+        failwith "Fusion.phase_space_channels: wrong topology!"
+
+    let ket_to_string transform ch dag ket =
+      "(" ^
+        (String.concat ","
+           (List.map (below_to_string transform dag) (A.children ket))) ^ ")"
+
+    let phase_space_braket transform ch (bra, ket) dag =
+      Printf.fprintf
+        ch "%s: { %s }\n"
+        (bra_to_string transform dag bra)
+        (String.concat " | " (List.map (ket_to_string transform ch dag) ket))
+
+(*i Food for thought:
+
+    let braket_to_tree2 dag (bra, ket) =
+      let bra' = A.D.dependencies dag bra in
+      if Tree2.is_singleton bra' then
+        Tree2.cons
+          [(fst ket, bra, List.map (A.D.dependencies dag) (A.children ket))]
+      else
+        failwith "Fusion.phase_space_channels: wrong topology!"
+
+    let phase_space_braket transform ch (bra, ket) dag =
+      let n2s wf = variable (transform wf)
+      and e2s c = "" in
+      Printf.fprintf
+        ch "%s\n" (Tree2.to_string n2s e2s (braket_to_tree2 dag (bra, ket)))
+i*)
+
+    let phase_space_channels_transformed transform ch a =
+      List.iter
+        (fun braket -> phase_space_braket transform ch braket a.A.fusion_dag)
+        a.A.brakets
+
+    let phase_space_channels ch a =
+      phase_space_channels_transformed (fun wf -> wf) ch a
+
+    let exchange_momenta_list p1 p2 p =
+      List.map
+        (fun pi ->
+          if pi = p1 then
+            p2
+          else if pi = p2 then
+            p1
+          else
+            pi)
+        p
+
+    let exchange_momenta p1 p2 p =
+      P.of_ints (P.dim p) (exchange_momenta_list p1 p2 (P.to_ints p))
+
+    let flip_momenta wf =
+      { wf with A.momentum = exchange_momenta 1 2 wf.A.momentum }
+
+    let phase_space_channels_flipped ch a =
+      phase_space_channels_transformed flip_momenta ch a
 
   end
 

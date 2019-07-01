@@ -35,17 +35,23 @@ let sort_children (edge, node, children) =
 
 let cons fusions = Node (List.sort compare (List.map sort_children fusions))
 
+let is_singleton = function
+  | Leaf _ -> true
+  | _ -> false
+
 let rec to_string n2s e2s = function
   | Leaf n -> n2s n
-  | Node children ->
-      "{" ^
-      String.concat ","
-        (List.map
-           (fun (e, n, ch_list) ->
-             e2s e ^ ":" ^ n2s n ^
-             "<(" ^ (String.concat ";" (List.map (to_string n2s e2s) ch_list)) ^ ")")
-           children) ^
-      "}"
+  | Node [children] ->
+     children_to_string n2s e2s children
+  | Node children2 ->
+     "{ " ^
+       String.concat " | " (List.map (children_to_string n2s e2s) children2) ^
+         " }"
+
+and children_to_string n2s e2s (e, n, children) =
+  "(" ^ (match e2s e with "" -> "" | s -> s ^ ">") ^ n2s n ^ ":" ^
+    (String.concat "," (List.map (to_string n2s e2s) children)) ^ ")"
+
   
 (*i
  *  Local Variables:

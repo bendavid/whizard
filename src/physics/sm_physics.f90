@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -820,12 +813,12 @@ contains
   end function alpha_from_g_mu
 
   elemental function top_width_sm_qcd_nlo_massless_b &
-         (alpha, sinthw, mtop, mw, alphas) result (gamma)
+         (alpha, sinthw, vtb, mtop, mw, alphas) result (gamma)
     real(default) :: gamma
-    real(default), intent(in) :: alpha, sinthw, mtop, mw, alphas
+    real(default), intent(in) :: alpha, sinthw, vtb, mtop, mw, alphas
     real(default) :: prefac, g_mu, w2
     g_mu = g_mu_from_alpha (alpha, mw, sinthw)
-    prefac = g_mu * mtop**3 / (16 * sqrt(two) * pi)
+    prefac = g_mu * mtop**3 * vtb**2 / (16 * sqrt(two) * pi)
     w2 = mw**2 / mtop**2
     gamma = prefac * (f0 (w2) - (two * alphas) / (3 * Pi) * f1 (w2))
   end function top_width_sm_qcd_nlo_massless_b
@@ -846,21 +839,22 @@ contains
   end function f1
 
   elemental function top_width_sm_qcd_nlo_jk &
-         (alpha, sinthw, mtop, mw, mb, alphas) result (gamma)
+         (alpha, sinthw, vtb, mtop, mw, mb, alphas) result (gamma)
     real(default) :: gamma
-    real(default), intent(in) :: alpha, sinthw, mtop, mw, mb, alphas
+    real(default), intent(in) :: alpha, sinthw, vtb, mtop, mw, mb, alphas
     real(default) :: prefac, g_mu, eps2, i_xi
     g_mu = g_mu_from_alpha (alpha, mw, sinthw)
-    prefac = g_mu * mtop**3 / (16 * sqrt(two) * pi)
+    prefac = g_mu * mtop**3 * vtb**2 / (16 * sqrt(two) * pi)
     eps2 = (mb / mtop)**2
     i_xi = (mw / mtop)**2
     gamma = prefac * (ff0 (eps2, i_xi) - &
          (two * alphas) / (3 * Pi) * ff1 (eps2, i_xi))
   end function top_width_sm_qcd_nlo_jk
 
-  elemental function top_width_sm_qcd_nlo_ce (alpha, sinthw, mtop, mw, mb, alpha_s) result (gamma)
+  elemental function top_width_sm_qcd_nlo_ce &
+       (alpha, sinthw, vtb, mtop, mw, mb, alpha_s) result (gamma)
     real(default) :: gamma
-    real(default), intent(in) :: alpha, sinthw, mtop, mw, mb, alpha_s
+    real(default), intent(in) :: alpha, sinthw, vtb, mtop, mw, mb, alpha_s
     real(default) :: pm, pp, p0, p3
     real(default) :: yw, yp
     real(default) :: W0, Wp, Wm, w2
@@ -880,13 +874,13 @@ contains
     yw = log (Wp / Wm) / two
     f = (one - beta2)**2 + w2 * (one + beta2) - two * w2**2
     g_mu = g_mu_from_alpha (alpha, mw, sinthw)
-    gamma0 = g_mu * mtop**3 / (8 * pi * sqrt(two))
+    gamma0 = g_mu * mtop**3 * vtb**2 / (8 * pi * sqrt(two))
     gamma = gamma0 * alpha_s / twopi * CF * &
-          (8 * f * p0 * (Li2(one - pm) - Li2(one - pp) - two * Li2(one - pm / pp) &
+         (8 * f * p0 * (Li2(one - pm) - Li2(one - pp) - two * Li2(one - pm / pp) &
          + yp * log((four * p3**2) / (pp**2 * Wp)) + yw * log (pp)) &
          + four * (one - beta2) * ((one - beta2)**2 + w2 * (one + beta2) - four * w2**2) * yw &
          + (3 - beta2 + 11 * beta2**2 - beta2**3 + w2 * (6 - 12 * beta2 + two * beta2**2) &
-              - w2**2 * (21 + 5 * beta2) + 12 * w2**3) * yp &
+         - w2**2 * (21 + 5 * beta2) + 12 * w2**3) * yp &
          + 8 * f * p3 * log (sqrt(w2) / (four * p3**2)) &
          + 6 * (one - four * beta2 + 3 * beta2**2 + w2 * (3 + beta2) - four * w2**2) * p3 * log(sqrt(beta2)) &
          + (5 - 22 * beta2 + 5 * beta2**2 + 9 * w2 * (one + beta2) - 6 * w2**2) * p3)

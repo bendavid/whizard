@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -39,6 +32,7 @@ module evaluators
   use iso_varying_string, string_t => varying_string
   use io_units
   use format_defs, only: FMT_19
+  use physics_defs, only: n_beam_structure_int
   use diagnostics
   use lorentz
   use model_data
@@ -52,10 +46,12 @@ module evaluators
   implicit none
   private
 
+  public :: pairing_array_write
   public :: evaluator_t
   public :: assignment(=)
   public :: evaluator_reassign_links
   public :: evaluator_get_unstable_particle
+  public :: evaluator_get_int_in_ptr
 
   integer, parameter :: &
        EVAL_UNDEFINED = 0, &
@@ -79,6 +75,7 @@ module evaluators
      type(pairing_array_t), dimension(:), allocatable :: pairing_array
    contains
      procedure :: write => evaluator_write
+     procedure :: write_pairing_array => evaluator_write_pairing_array
      procedure :: init_product => evaluator_init_product
      procedure :: init_square => evaluator_init_square
      procedure :: init_square_diag => evaluator_init_square_diag
@@ -168,6 +165,31 @@ contains
     if (has_factor)  allocate (pa%factor (n))
   end subroutine pairing_array_init
 
+  subroutine pairing_array_write (pa, unit)
+    type(pairing_array_t), intent(in) :: pa
+    integer, intent(in), optional :: unit
+    integer :: i, u
+    u = given_output_unit (unit); if (u < 0) return
+    write (u, "(A)", advance = "no") "["
+    if (allocated (pa%i1)) then
+       write (u, "(I0,A)", advance = "no") pa%i1, ","
+    else
+       write (u, "(A)", advance = "no") "x,"
+    end if
+    if (allocated (pa%i2)) then
+       write (u, "(I0,A)", advance = "no") pa%i1, ","
+    else
+       write (u, "(A)", advance = "no") "x,"
+    end if
+    write (u, "(A)", advance = "no") "]"
+    if (allocated (pa%factor)) then
+       write (u, "(A,F5.4,A,F5.4,A)") ";(", &
+            real(pa%factor), ",", aimag(pa%factor), ")]"
+    else
+       write (u, "(A)") ""
+    end if
+  end subroutine pairing_array_write
+
   subroutine evaluator_write (eval, unit, &
        verbose, show_momentum_sum, show_mass, show_state, show_table, &
        col_verbose, testflag)
@@ -177,7 +199,7 @@ contains
     logical, intent(in), optional :: show_state, show_table, col_verbose
     logical, intent(in), optional :: testflag
     logical :: conjugate, square, show_tab
-    integer :: u, i, j
+    integer :: u
     u = given_output_unit (unit);  if (u < 0)  return
     show_tab = .true.;  if (present (show_table))  show_tab = .false.
     call eval%basic_write &
@@ -201,50 +223,58 @@ contains
        case (EVAL_SQUARED_FLOWS, EVAL_SQUARE_WITH_COLOR_FACTORS)
           conjugate = .true.
           square = .true.
+       case (EVAL_IDENTITY)
+          write (u, "(1X,A)") "Identity evaluator, pairing array unused"
+          return
        case default
           conjugate = .false.
           square = .false.
        end select
-       if (eval%type == EVAL_IDENTITY) then
-          write (u, "(1X,A)") "Identity evaluator, pairing array unused"
-          return
-       end if
-       if (allocated (eval%pairing_array)) then
-          do i = 1, size (eval%pairing_array)
-             write (u, "(2x,A,I0,A)")  "ME(", i, ") = "
-             do j = 1, size (eval%pairing_array(i)%i1)
-                write (u, "(4x,A)", advance="no")  "+"
-                if (allocated (eval%pairing_array(i)%i2)) then
-                   write (u, "(1x,A,I0,A)", advance="no")  &
-                        "ME1(", eval%pairing_array(i)%i1(j), ")"
-                   if (conjugate) then
-                      write (u, "(A)", advance="no")  "* x"
-                   else
-                      write (u, "(A)", advance="no")  " x"
-                   end if
-                   write (u, "(1x,A,I0,A)", advance="no")  &
-                        "ME2(", eval%pairing_array(i)%i2(j), ")"
-                else if (square) then
-                   write (u, "(1x,A)", advance="no")  "|"
-                   write (u, "(A,I0,A)", advance="no")  &
-                        "ME1(", eval%pairing_array(i)%i1(j), ")"
-                   write (u, "(A)", advance="no")  "|^2"
-                else
-                   write (u, "(1x,A,I0,A)", advance="no")  &
-                        "ME1(", eval%pairing_array(i)%i1(j), ")"
-                end if
-                if (allocated (eval%pairing_array(i)%factor)) then
-                   write (u, "(1x,A)", advance="no")  "x"
-                   write (u, "(1x,'('," // FMT_19 // ",','," // FMT_19 // &
-                        ",')')") eval%pairing_array(i)%factor(j)
-                else
-                   write (u, *)
-                end if
-             end do
-          end do
-       end if
+       call eval%write_pairing_array (conjugate, square, u)
     end if
   end subroutine evaluator_write
+
+  subroutine evaluator_write_pairing_array (eval, conjugate, square, unit)
+    class(evaluator_t), intent(in) :: eval
+    logical, intent(in) :: conjugate, square
+    integer, intent(in), optional :: unit
+    integer :: u, i, j
+    u = given_output_unit (unit);  if (u < 0)  return
+    if (allocated (eval%pairing_array)) then
+       do i = 1, size (eval%pairing_array)
+          write (u, "(2x,A,I0,A)")  "ME(", i, ") = "
+          do j = 1, size (eval%pairing_array(i)%i1)
+             write (u, "(4x,A)", advance="no")  "+"
+             if (allocated (eval%pairing_array(i)%i2)) then
+                write (u, "(1x,A,I0,A)", advance="no")  &
+                     "ME1(", eval%pairing_array(i)%i1(j), ")"
+                if (conjugate) then
+                   write (u, "(A)", advance="no")  "* x"
+                else
+                   write (u, "(A)", advance="no")  " x"
+                end if
+                write (u, "(1x,A,I0,A)", advance="no")  &
+                     "ME2(", eval%pairing_array(i)%i2(j), ")"
+             else if (square) then
+                write (u, "(1x,A)", advance="no")  "|"
+                write (u, "(A,I0,A)", advance="no")  &
+                     "ME1(", eval%pairing_array(i)%i1(j), ")"
+                write (u, "(A)", advance="no")  "|^2"
+             else
+                write (u, "(1x,A,I0,A)", advance="no")  &
+                     "ME1(", eval%pairing_array(i)%i1(j), ")"
+             end if
+             if (allocated (eval%pairing_array(i)%factor)) then
+                write (u, "(1x,A)", advance="no")  "x"
+                write (u, "(1x,'('," // FMT_19 // ",','," // FMT_19 // &
+                     ",')')") eval%pairing_array(i)%factor(j)
+             else
+                write (u, *)
+             end if
+          end do
+       end do
+    end if
+  end subroutine evaluator_write_pairing_array
 
   subroutine evaluator_assign (eval_out, eval_in)
     type(evaluator_t), intent(out) :: eval_out
@@ -521,7 +551,7 @@ contains
 
   subroutine evaluator_init_product &
        (eval, int_in1, int_in2, qn_mask_conn, qn_filter_conn, qn_mask_rest, &
-        connections_are_resonant)
+        connections_are_resonant, ignore_sub)
 
     class(evaluator_t), intent(out), target :: eval
     class(interaction_t), intent(in), target :: int_in1, int_in2
@@ -529,6 +559,7 @@ contains
     type(quantum_numbers_t), intent(in), optional :: qn_filter_conn
     type(quantum_numbers_mask_t), intent(in), optional :: qn_mask_rest
     logical, intent(in), optional :: connections_are_resonant
+    logical, intent(in), optional :: ignore_sub
 
     type(qn_mask_array_t), dimension(2) :: qn_mask_in
     type(state_matrix_t), pointer :: state_in1, state_in2
@@ -553,7 +584,6 @@ contains
     type(index_map_t), dimension(2) :: prt_map_in
     type(index_map_t) :: prt_map_conn
     type(prt_mask_t), dimension(2) :: prt_is_connected
-    !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
     type(quantum_numbers_mask_t), dimension(:), allocatable :: &
          qn_mask_conn_initial, int_in1_mask, int_in2_mask
 
@@ -585,7 +615,6 @@ contains
        prt_is_connected(i)%entry = .true.
        prt_is_connected(i)%entry(connection_index(:,i)) = .false.
     end do
-    !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
     allocate (qn_mask_conn_initial (n_conn), &
          int_in1_mask (n_conn), int_in2_mask (n_conn))
     int_in1_mask = int_in1%get_mask (connection_index(:,1))
@@ -602,7 +631,7 @@ contains
          state_in1, state_in2, &
          qn_mask_conn_initial,  &
          n_conn, connection_index, n_rest, &
-         qn_filter_conn)
+         qn_filter_conn, ignore_sub)
     call connection_table_fill (connection_table, &
          state_in1, state_in2, &
          connection_index, prt_is_connected)
@@ -688,7 +717,7 @@ contains
     subroutine connection_table_init &
         (connection_table, state_in1, state_in2, qn_mask_conn, &
          n_conn, connection_index, n_rest, &
-         qn_filter_conn)
+         qn_filter_conn, is_real_sub)
       type(connection_table_t), intent(out) :: connection_table
       type(state_matrix_t), intent(in), target :: state_in1, state_in2
       type(quantum_numbers_mask_t), dimension(:), intent(in) :: qn_mask_conn
@@ -696,11 +725,14 @@ contains
       integer, dimension(:,:), intent(in) :: connection_index
       integer, dimension(2), intent(in) :: n_rest
       type(quantum_numbers_t), intent(in), optional :: qn_filter_conn
+      logical, intent(in), optional :: is_real_sub
       integer, dimension(2) :: n_me_in
       type(state_iterator_t) :: it
       type(quantum_numbers_t), dimension(n_conn) :: qn
       integer :: i, me_index_in, me_index_conn, n_me_conn
       integer, dimension(2) :: me_count
+      logical :: is_sub, has_sub_qn
+      integer :: i_beam_sub
       connection_table%n_conn = n_conn
       connection_table%n_rest = n_rest
       n_me_in(1) = state_in1%get_n_matrix_elements ()
@@ -724,8 +756,15 @@ contains
             end if
             call quantum_numbers_canonicalize_color (qn)
             me_index_in = it%get_me_index ()
+            is_sub = .false.; if (present (is_real_sub)) is_sub = is_real_sub
+            has_sub_qn = .false.
+            do i_beam_sub = 1, n_beam_structure_int
+               has_sub_qn = has_sub_qn .or. any (qn%get_sub () == i_beam_sub)
+            end do
             call connection_table%state%add_state (qn, &
-                counter_index = i, me_index = me_index_conn)
+                 counter_index = i, &
+                 ignore_sub = .not. (is_sub .and. has_sub_qn), &
+                 me_index = me_index_conn)
             call index_map_set_entry (connection_table%index_conn(i), &
                  me_index_in, me_index_conn)
             call it%advance ()
@@ -807,9 +846,9 @@ contains
             if (index_conn /= 0) then
                call connection_entry_add_state &
                     (connection_table%entry(index_conn), i, &
-                     index_in, it%get_quantum_numbers (), &
-                     connection_index(:,i), prt_is_connected(i), &
-                     color_offset)
+                    index_in, it%get_quantum_numbers (), &
+                    connection_index(:,i), prt_is_connected(i), &
+                    color_offset)
             end if
             call it%advance ()
          end do
@@ -1189,7 +1228,7 @@ contains
          if (index_conn /= 0) then
             call connection_entry_add_state &
                  (connection_table%entry(index_conn), &
-                  index_in, it%get_quantum_numbers ())
+                 index_in, it%get_quantum_numbers ())
          end if
          call it%advance ()
       end do
@@ -1706,14 +1745,12 @@ contains
     type(evaluator_t), intent(in) :: eval_src
     type(evaluator_t), intent(in), target :: eval_target
     if (associated (eval%int_in1)) then
-       if (eval%int_in1%get_tag () &
-            == eval_src%get_tag ()) then
+       if (eval%int_in1%get_tag () == eval_src%get_tag ()) then
           eval%int_in1 => eval_target%interaction_t
        end if
     end if
     if (associated (eval%int_in2)) then
-       if (eval%int_in2%get_tag () &
-            == eval_src%get_tag ()) then
+       if (eval%int_in2%get_tag () == eval_src%get_tag ()) then
           eval%int_in2 => eval_target%interaction_t
        end if
     end if
@@ -1727,14 +1764,12 @@ contains
     type(interaction_t), intent(in) :: int_src
     type(interaction_t), intent(in), target :: int_target
     if (associated (eval%int_in1)) then
-       if (eval%int_in1%get_tag () &
-            == int_src%get_tag ()) then
+       if (eval%int_in1%get_tag () == int_src%get_tag ()) then
           eval%int_in1 => int_target
        end if
     end if
     if (associated (eval%int_in2)) then
-       if (eval%int_in2%get_tag () &
-            == int_src%get_tag ()) then
+       if (eval%int_in2%get_tag () == int_src%get_tag ()) then
           eval%int_in2 => int_target
        end if
     end if
@@ -1748,6 +1783,19 @@ contains
     integer, intent(out) :: i
     call interaction_get_unstable_particle (eval%interaction_t, flv, p, i)
   end subroutine evaluator_get_unstable_particle
+
+  function evaluator_get_int_in_ptr (eval, i) result (int_in)
+    class(interaction_t), pointer :: int_in
+    type(evaluator_t), intent(in), target :: eval
+    integer, intent(in) :: i
+    if (i == 1) then
+       int_in => eval%int_in1
+    else if (i == 2) then
+       int_in => eval%int_in2
+    else
+       int_in => null ()
+    end if
+  end function evaluator_get_int_in_ptr
 
   subroutine evaluator_init_identity (eval, int)
     class(evaluator_t), intent(out), target :: eval
@@ -1832,8 +1880,8 @@ contains
     allocate (resonant(n_tot + ndropped))
     resonant = int%get_resonance_flags ()
     call eval%interaction_t%basic_init (n_in, n_vir, n_out, &
-       mask = mask(inotdropped) .or. qn_mask(inotdropped), &
-       resonant = resonant(inotdropped))
+         mask = mask(inotdropped) .or. qn_mask(inotdropped), &
+         resonant = resonant(inotdropped))
     i = 1
     do j = 1, n_tot + ndropped
        if (dropped(j)) cycle
@@ -1917,6 +1965,13 @@ contains
           call eval%evaluate_product (i, &
                eval%int_in1, eval%int_in2, &
                eval%pairing_array(i)%i1, eval%pairing_array(i)%i2)
+          if (debug2_active (D_QFT)) then
+             print *, 'eval%pairing_array(i)%i1, eval%pairing_array(i)%i2 =    ', &
+                  eval%pairing_array(i)%i1, eval%pairing_array(i)%i2
+             print *, 'MEs =    ', &
+                  eval%int_in1%get_matrix_element (eval%pairing_array(i)%i1), &
+                  eval%int_in2%get_matrix_element (eval%pairing_array(i)%i2)
+          end if
        end do
     case (EVAL_SQUARE_WITH_COLOR_FACTORS)
        do i = 1, size(eval%pairing_array)

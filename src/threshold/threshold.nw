@@ -9330,8 +9330,8 @@ end module ttv_formfactors
        alphas = alphas_notsohard (sqrts)
     end if
     if (threshold%settings%nlo) then
-       gamma = top_width_sm_qcd_nlo_jk (width%aem, width%sw, top_mass, &
-            width%mw, width%mb, alphas) + width%gam_inv
+       gamma = top_width_sm_qcd_nlo_jk (width%aem, width%sw, width%vtb, &
+            top_mass, width%mw, width%mb, alphas) + width%gam_inv
     else
        gamma = top_width_sm_lo (width%aem, width%sw, width%vtb, top_mass, &
             width%mw, width%mb) + width%gam_inv
@@ -9722,7 +9722,11 @@ where the variables are from.
     complex(default) :: c
     c = one
     if (.not. threshold%settings%initialized_ff .or. .not. ps%inside_grid) return
-    call interpolate_linear (sq_grid, p_grid, ff_grid(:,:,1,vec_type), ps%sqrts, ps%p, c)
+    if (POINTS_SQ > 1) then
+       call interpolate_linear (sq_grid, p_grid, ff_grid(:,:,1,vec_type), ps%sqrts, ps%p, c)
+    else
+       call interpolate_linear (p_grid, ff_grid(1,:,1,vec_type), ps%p, c)
+    end if
   end function resummed_formfactor
 
 @
@@ -10170,9 +10174,13 @@ grid).
   pure function sqrts_iter (i_sq) result (sqrts)
     integer, intent(in) :: i_sq
     real(default) :: sqrts
-    sqrts = sqrts_min - sqrts_it + &
-            (sqrts_max - sqrts_min + two * sqrts_it) * &
-            real(i_sq - 1) / real(POINTS_SQ - 1)
+    if (POINTS_SQ > 1) then
+       sqrts = sqrts_min - sqrts_it + &
+               (sqrts_max - sqrts_min + two * sqrts_it) * &
+               real(i_sq - 1) / real(POINTS_SQ - 1)
+    else
+       sqrts = sqrts_min
+    end if
   end function sqrts_iter
 
 @
@@ -10356,7 +10364,11 @@ grid).
   subroutine init_threshold_phase_space_grid ()
     integer :: i_sq
     call msg_debug (D_THRESHOLD, "init_threshold_phase_space_grid")
-    POINTS_SQ = int ((sqrts_max - sqrts_min) / sqrts_it + tiny_07) + 3
+    if (sqrts_it > tiny_07) then
+       POINTS_SQ = int ((sqrts_max - sqrts_min) / sqrts_it + tiny_07) + 3
+    else
+       POINTS_SQ = 1
+    end if
     call msg_debug (D_THRESHOLD, "Number of sqrts grid points: POINTS_SQ", POINTS_SQ)
     call msg_debug (D_THRESHOLD, "sqrts_max", sqrts_max)
     call msg_debug (D_THRESHOLD, "sqrts_min", sqrts_min)
@@ -10916,52 +10928,22 @@ end module ttv_formfactors_uti
     top_helicity_selection = -1
     v1 = 0.3_default
     v2 = 0.5_default
-    sqrts = 2 * m1s + 0.01_default
-    scan_sqrts_min = sqrts
-    scan_sqrts_max = sqrts
-    scan_sqrts_stepsize = 0.1_default
-    mpole_fixed = .true.
+    scan_sqrts_stepsize = 0.0_default
     test = - one
-  <<(re)start grid>>
-    call threshold%formfactor%activate ()
-
-    write (u, "(A)") "Check that the mass is fixed"
-    call ps%init (m1s**2, m1s**2, sqrts**2, mpole)
-    call assert_equal (u, m1s_to_mpole (350.0_default), m1s, &
-         "m1s_to_mpole (350.0_default) == m1s")
-    call assert_equal (u, m1s_to_mpole (550.0_default), m1s, &
-         "m1s_to_mpole (550.0_default) == m1s")
-    write (u, "(A)") ""
-
-    write (u, "(A)") "Check that the mass is not fixed"
-    mpole_fixed = .false.
-  <<(re)start grid>>
-    call assert (u, m1s_to_mpole (350.0_default) > m1s + 0.1_default, &
-         "m1s_to_mpole (350.0_default) > m1s")
-    write (u, "(A)")
-
-    !!! care: the formfactor contains the tree level that we usually subtract again
-    write (u, "(A)") "Check low energy behavior"
-    mpole_fixed = .true.
-  <<(re)start grid>>
-    call assert_equal (u, f_switch_off (v_matching (ps%sqrts, GAM_M1S)), one, "f_switch_off (v_matching (ps%sqrts, GAM_M1S))")
-    call formfactor%disable ()
-    call assert_equal (u, &
-         abs(formfactor%compute (ps, 1, 1)), &
-         zero, &
-         "disabled formfactor should return zero")
-    call formfactor%activate ()
-    call assert_equal (u, &
-         formfactor%compute (ps, 1, EXPANDED_SOFT_SWITCHOFF), &
-         formfactor%compute (ps, 1, EXPANDED_SOFT), &
-         "switchoff function should do nothing here")
-    write (u, "(A)") ""
-
     write (u, "(A)") "Check high energy behavior"
     sqrts = 500.0_default
     scan_sqrts_min = sqrts
     scan_sqrts_max = sqrts
+    write (u, "(A)") "Check that the mass is not fixed"
+    mpole_fixed = .false.
+
   <<(re)start grid>>
+    call threshold%formfactor%activate ()
+    call formfactor%activate ()
+    call assert (u, m1s_to_mpole (350.0_default) > m1s + 0.1_default, &
+         "m1s_to_mpole (350.0_default) > m1s")
+    write (u, "(A)")
+
     ! For simplicity we test on-shell back-to-back tops
     call ps%init (m1s**2, m1s**2, sqrts**2, mpole)
     call assert_equal (u, f_switch_off (v_matching (ps%sqrts, GAM_M1S)), tiny_10, &
@@ -10985,6 +10967,34 @@ end module ttv_formfactors_uti
     call assert_equal (u, AS_SOFT, zero, "soft alphas", abs_smallness=tiny_10)
     call assert_equal (u, AS_USOFT, zero, "ultrasoft alphas", abs_smallness=tiny_10)
     call assert_equal (u, AS_LL_SOFT, zero, "LL soft alphas", abs_smallness=tiny_10)
+
+    !!! care: the formfactor contains the tree level that we usually subtract again
+    write (u, "(A)") "Check low energy behavior"
+    sqrts = 2 * m1s + 0.01_default
+    scan_sqrts_min = sqrts
+    scan_sqrts_max = sqrts
+    write (u, "(A)") "Check that the mass is fixed"
+    mpole_fixed = .true.
+  <<(re)start grid>>
+
+    call ps%init (m1s**2, m1s**2, sqrts**2, mpole)
+    call assert_equal (u, m1s_to_mpole (350.0_default), m1s, &
+         "m1s_to_mpole (350.0_default) == m1s")
+    call assert_equal (u, m1s_to_mpole (550.0_default), m1s, &
+         "m1s_to_mpole (550.0_default) == m1s")
+    write (u, "(A)") ""
+    call assert_equal (u, f_switch_off (v_matching (ps%sqrts, GAM_M1S)), one, "f_switch_off (v_matching (ps%sqrts, GAM_M1S))")
+    call formfactor%disable ()
+    call assert_equal (u, &
+         abs(formfactor%compute (ps, 1, 1)), &
+         zero, &
+         "disabled formfactor should return zero")
+    call formfactor%activate ()
+    call assert_equal (u, &
+         formfactor%compute (ps, 1, EXPANDED_SOFT_SWITCHOFF), &
+         formfactor%compute (ps, 1, EXPANDED_SOFT), &
+         "switchoff function should do nothing here")
+    write (u, "(A)") ""
 
     write (u, "(A)")  "* Test output end: ttv_formfactors_1"
   end subroutine ttv_formfactors_1

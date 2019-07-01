@@ -19,12 +19,12 @@ mb = 4.2 GeV
 mmu = 5 GeV
 
 ?use_vamp_equivalences = false
-?alpha_s_is_fixed = false
-?alpha_s_from_mz = true
+?alphas_is_fixed = false
+?alphas_from_mz = true
 
 $fks_mapping_type = "resonances"
 
-process fks_res_1_p1 = E1, e1 => b, B, e2, E2 { nlo_calculation = "Real" }
+process fks_res_1_p1 = E1, e1 => b, B, e2, E2 { nlo_calculation = real }
 
 seed = 2222
 

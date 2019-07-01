@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -45,6 +38,7 @@ program main_ut
   use cmdline_options
 
   use model_testbed !NODEP!
+
 
   use eio_base_ut, only: eio_prepare_test
   use eio_base_ut, only: eio_cleanup_test
@@ -97,13 +91,13 @@ program main_ut
   use sf_beam_events_ut, only: sf_beam_events_test
   use sf_escan_ut, only: sf_escan_test
   use phs_base_ut, only: phs_base_test
+  use phs_none_ut, only: phs_none_test
   use phs_single_ut, only: phs_single_test
   use phs_wood_ut, only: phs_wood_test
   use phs_wood_ut, only: phs_wood_vis_test
   use phs_fks_ut, only: phs_fks_generator_test
   use fks_regions_ut, only: fks_regions_test
   use prc_recola_ut, only: prc_recola_test
-  use nlo_color_data_ut, only: nlo_color_data_test
   use rng_base_ut, only: rng_base_test
   use rng_tao_ut, only: rng_tao_test
   use rng_stream_ut, only: rng_stream_test
@@ -111,9 +105,11 @@ program main_ut
   use vegas_ut, only: vegas_test
   use vamp2_ut, only: vamp2_test
   use mci_base_ut, only: mci_base_test
+  use mci_none_ut, only: mci_none_test
   use mci_midpoint_ut, only: mci_midpoint_test
   use mci_vamp_ut, only: mci_vamp_test
   use mci_vamp2_ut, only: mci_vamp2_test
+  use integration_results_ut, only: integration_results_test
   use prclib_interfaces_ut, only: prclib_interfaces_test
   use particle_specifiers_ut, only: particle_specifiers_test
   use process_libraries_ut, only: process_libraries_test
@@ -134,12 +130,14 @@ program main_ut
   use processes_ut, only: processes_test
   use process_stacks_ut, only: process_stacks_test
   use event_transforms_ut, only: event_transforms_test
+  use resonance_insertion_ut, only: resonance_insertion_test
   use decays_ut, only: decays_test
   use shower_ut, only: shower_test
   use events_ut, only: events_test
   use hep_events_ut, only: hep_events_test
   use eio_data_ut, only: eio_data_test
   use eio_base_ut, only: eio_base_test
+  use eio_direct_ut, only: eio_direct_test
   use eio_raw_ut, only: eio_raw_test
   use eio_checkpoints_ut, only: eio_checkpoints_test
   use eio_lhef_ut, only: eio_lhef_test
@@ -164,6 +162,7 @@ program main_ut
   use integrations_ut, only: integrations_test
   use integrations_ut, only: integrations_history_test
   use event_streams_ut, only: event_streams_test
+  use restricted_subprocesses_ut, only: restricted_subprocesses_test
   use simulations_ut, only: simulations_test
   use commands_ut, only: commands_test
   use ttv_formfactors_ut, only: ttv_formfactors_test
@@ -182,7 +181,7 @@ program main_ut
   character(CMDLINE_ARG_LEN) :: arg
   character(2) :: option
   type(string_t) :: long_option, value
-  integer :: i, j, arg_len, arg_status, area
+  integer :: i, j, arg_len, arg_status
   logical :: look_for_options
   logical :: banner
   type(string_t) :: check, checks
@@ -199,6 +198,8 @@ program main_ut
   msg_level = RESULT
   check = ""
   checks = ""
+
+
 
   ! Read and process options
   call init_options (print_usage)
@@ -239,13 +240,11 @@ program main_ut
               cycle SCAN_CMDLINE
            case ("--debug")
               call no_option_value (long_option, value)
-              area = d_area (get_option_value (i, long_option, value))
-              msg_level(area) = DEBUG
+              call set_debug_levels (get_option_value (i, long_option, value))
               cycle SCAN_CMDLINE
            case ("--debug2")
               call no_option_value (long_option, value)
-              area = d_area (get_option_value (i, long_option, value))
-              msg_level(area) = DEBUG
+              call set_debug2_levels (get_option_value (i, long_option, value))
               cycle SCAN_CMDLINE
            case default
               call print_usage ()
@@ -297,6 +296,8 @@ program main_ut
       call test_results%wrapup (6, success)
       if (.not. success)  quit_code = 7
    end if
+
+ 
 
    call msg_terminate (quit_code = quit_code)
 
@@ -532,6 +533,8 @@ contains
        call sf_escan_test (u, results)
     case ("phs_base")
        call phs_base_test (u, results)
+    case ("phs_none")
+       call phs_none_test (u, results)
     case ("phs_single")
        call phs_single_test (u, results)
     case ("phs_wood")
@@ -544,8 +547,6 @@ contains
        call fks_regions_test (u, results)
     case ("prc_recola")
        call prc_recola_test (u, results)
-    case ("nlo_color_data")
-       call nlo_color_data_test (u, results)
     case ("rng_base")
        call rng_base_test (u, results)
     case ("rng_tao")
@@ -560,12 +561,16 @@ contains
        call vamp2_test (u, results)
     case ("mci_base")
        call mci_base_test (u, results)
+    case ("mci_none")
+       call mci_none_test (u, results)
     case ("mci_midpoint")
        call mci_midpoint_test (u, results)
     case ("mci_vamp")
        call mci_vamp_test (u, results)
     case ("mci_vamp2")
        call mci_vamp2_test (u, results)
+    case ("integration_results")
+       call integration_results_test (u, results)
     case ("prclib_interfaces")
        call prclib_interfaces_test (u, results)
     case ("particle_specifiers")
@@ -606,6 +611,8 @@ contains
        call process_stacks_test (u, results)
     case ("event_transforms")
        call event_transforms_test (u, results)
+    case ("resonance_insertion")
+       call resonance_insertion_test (u, results)
     case ("decays")
        call decays_test (u, results)
     case ("shower")
@@ -618,6 +625,8 @@ contains
        call eio_data_test (u, results)
     case ("eio_base")
        call eio_base_test (u, results)
+    case ("eio_direct")
+       call eio_direct_test (u, results)
     case ("eio_raw")
        call eio_raw_test (u, results)
     case ("eio_checkpoints")
@@ -666,6 +675,8 @@ contains
        call integrations_history_test (u, results)
     case ("event_streams")
        call event_streams_test (u, results)
+    case ("restricted_subprocesses")
+       call restricted_subprocesses_test (u, results)
     case ("simulations")
        call simulations_test (u, results)
     case ("commands")
@@ -716,13 +727,13 @@ contains
        call sf_beam_events_test (u, results)
        call sf_escan_test (u, results)
        call phs_base_test (u, results)
+       call phs_none_test (u, results)
        call phs_single_test (u, results)
        call phs_wood_test (u, results)
        call phs_wood_vis_test (u, results)
        call phs_fks_generator_test (u, results)
        call fks_regions_test (u, results)
        call prc_recola_test (u, results)
-       call nlo_color_data_test (u, results)
        call rng_base_test (u, results)
        call rng_tao_test (u, results)
        call rng_stream_test (u, results)
@@ -730,8 +741,11 @@ contains
        call vegas_test (u, results)
        call vamp2_test (u, results)
        call mci_base_test (u, results)
+       call mci_none_test (u, results)
        call mci_midpoint_test (u, results)
        call mci_vamp_test (u, results)
+       call mci_vamp2_test (u, results)
+       call integration_results_test (u, results)
        call prclib_interfaces_test (u, results)
        call particle_specifiers_test (u, results)
        call process_libraries_test (u, results)
@@ -752,12 +766,14 @@ contains
        call processes_test (u, results)
        call process_stacks_test (u, results)
        call event_transforms_test (u, results)
+       call resonance_insertion_test (u, results)
        call decays_test (u, results)
        call shower_test (u, results)
        call events_test (u, results)
        call hep_events_test (u, results)
        call eio_data_test (u, results)
        call eio_base_test (u, results)
+       call eio_direct_test (u, results)
        call eio_raw_test (u, results)
        call eio_checkpoints_test (u, results)
        call eio_lhef_test (u, results)
@@ -782,6 +798,7 @@ contains
        call integrations_test (u, results)
        call integrations_history_test (u, results)
        call event_streams_test (u, results)
+       call restricted_subprocesses_test (u, results)
        call simulations_test (u, results)
        call commands_test (u, results)
        call ttv_formfactors_test (u, results)

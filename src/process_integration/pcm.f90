@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -44,24 +37,21 @@ module pcm
   use process_constants, only: process_constants_t
   use physics_defs
   use model_data, only: model_data_t
-  use quantum_numbers, only: quantum_numbers_t
+  use interactions, only: interaction_t
+  use quantum_numbers, only: quantum_numbers_t, quantum_numbers_mask_t
   use flavors, only: flavor_t
   use nlo_data, only: nlo_settings_t
   use phs_fks, only: isr_kinematics_t, real_kinematics_t
   use phs_fks, only: phs_identifier_t
-  use nlo_color_data, only: nlo_color_data_t
   use fks_regions, only: region_data_t
   use phs_fks, only: phs_fks_generator_t
-  use phs_fks, only: get_boost_for_threshold_projection
-  use phs_fks, only: threshold_projection_born
   use phs_fks, only: dalitz_plot_t
   use real_subtraction, only: real_subtraction_t, soft_mismatch_t
-  use real_subtraction, only: FIXED_ORDER_EVENTS, POWHEG, this_purpose
+  use real_subtraction, only: FIXED_ORDER_EVENTS, POWHEG
   use real_subtraction, only: real_partition_t, powheg_damping_simple_t
   use real_subtraction, only: real_partition_fixed_order_t
   use virtual, only: virtual_t
   use dglap_remnant, only: dglap_remnant_t
-  use ttv_formfactors, only: m1s_to_mpole
 
   use pcm_base
 
@@ -82,13 +72,11 @@ module pcm
   type, extends (pcm_instance_t) :: pcm_instance_default_t
   contains
     procedure :: final => pcm_instance_default_final
-    procedure :: is_valid => pcm_instance_default_is_valid
   end type pcm_instance_default_t
 
   type, extends (pcm_t) :: pcm_nlo_t
     type(nlo_settings_t) :: settings
     type(region_data_t) :: region_data
-    type(nlo_color_data_t) :: color_data
     class(real_partition_t), allocatable :: real_partition
     type(dalitz_plot_t) :: dalitz_plot
     type(quantum_numbers_t), dimension(:,:), allocatable :: qn_real, qn_born
@@ -102,7 +90,6 @@ module pcm
     procedure :: has_massive_emitter => pcm_nlo_has_massive_emitter
     procedure :: get_mass_info => pcm_nlo_get_mass_info
     procedure :: allocate_instance => pcm_nlo_allocate_instance
-    procedure :: init_color_data => pcm_nlo_init_color_data
     procedure :: init_qn => pcm_nlo_init_qn
     procedure :: allocate_ps_matching => pcm_nlo_allocate_ps_matching
     procedure :: activate_dalitz_plot => pcm_nlo_activate_dalitz_plot
@@ -113,8 +100,11 @@ module pcm
     procedure :: is_nlo => pcm_nlo_is_nlo
   end type pcm_nlo_t
 
+  type :: interaction_index_t
+     integer, dimension(:), allocatable :: index
+  end type interaction_index_t
+
   type, extends (pcm_instance_t) :: pcm_instance_nlo_t
-     integer :: active_real_component = 1
      logical :: use_internal_color_correlation = .true.
      type(real_kinematics_t), pointer :: real_kinematics => null ()
      type(isr_kinematics_t), pointer :: isr_kinematics => null ()
@@ -122,7 +112,8 @@ module pcm
      type(virtual_t) :: virtual
      type(soft_mismatch_t) :: soft_mismatch
      type(dglap_remnant_t) :: dglap_remnant
-     logical, dimension(:), allocatable :: bad_blha_point
+     integer, dimension(:), allocatable :: i_mci_to_real_component
+     type(interaction_index_t), dimension(:), allocatable :: interaction_index
   contains
     procedure :: set_radiation_event => pcm_instance_nlo_set_radiation_event
     procedure :: set_subtraction_event => pcm_instance_nlo_set_subtraction_event
@@ -138,6 +129,7 @@ module pcm
        pcm_instance_nlo_set_momenta_and_scales_virtual
     procedure :: set_fac_scale => pcm_instance_nlo_set_fac_scale
     procedure :: set_momenta => pcm_instance_nlo_set_momenta
+    procedure :: init_interaction_index => pcm_instance_nlo_init_interaction_index
     procedure :: get_momenta => pcm_instance_nlo_get_momenta
     procedure :: get_xi_max => pcm_instance_nlo_get_xi_max
     procedure :: get_n_born => pcm_instance_nlo_get_n_born
@@ -151,11 +143,11 @@ module pcm
     procedure :: compute_sqme_dglap_remnant => pcm_instance_nlo_compute_sqme_dglap_remnant
     procedure :: set_fixed_order_event_mode => pcm_instance_nlo_set_fixed_order_event_mode
     procedure :: set_powheg_mode => pcm_instance_nlo_set_powheg_mode
+    procedure :: init_soft_mismatch => pcm_instance_nlo_init_soft_mismatch
     procedure :: init_dglap_remnant => pcm_instance_nlo_init_dglap_remnant
     procedure :: is_fixed_order_nlo_events &
          => pcm_instance_nlo_is_fixed_order_nlo_events
     procedure :: final => pcm_instance_nlo_final
-    procedure :: is_valid => pcm_instance_nlo_is_valid
   end type pcm_instance_nlo_t
 
 
@@ -180,12 +172,6 @@ contains
   subroutine pcm_instance_default_final (pcm_instance)
     class(pcm_instance_default_t), intent(inout) :: pcm_instance
   end subroutine pcm_instance_default_final
-
-  function pcm_instance_default_is_valid (pcm_instance) result (valid)
-    logical :: valid
-    class(pcm_instance_default_t), intent(in) :: pcm_instance
-    valid = .true.
-  end function pcm_instance_default_is_valid
 
   function pcm_nlo_get_n_sub (pcm_nlo) result (n_sub)
     integer :: n_sub
@@ -223,12 +209,8 @@ contains
     class(pcm_nlo_t), intent(in) :: pcm
     logical, intent(in) :: born
     if (born) then
-       !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
-       allocate (flv (pcm%region_data%n_legs_born, pcm%region_data%n_flv_born))
        flv = pcm%region_data%get_flv_states_born ()
     else
-       !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
-       allocate (flv (pcm%region_data%n_legs_real, pcm%region_data%n_flv_real))
        flv = pcm%region_data%get_flv_states_real ()
     end if
   end function pcm_nlo_get_flv_states
@@ -238,12 +220,8 @@ contains
     class(pcm_nlo_t), intent(in) :: pcm
     logical, intent(in) :: born
     if (born) then
-       !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
-       allocate (qn (size (pcm%qn_born, dim = 1), size (pcm%qn_born, dim = 2)))
        qn = pcm%qn_born
     else
-       !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
-       allocate (qn (size (pcm%qn_real, dim = 1), size (pcm%qn_real, dim = 2)))
        qn = pcm%qn_real
     end if
   end function pcm_nlo_get_qn
@@ -275,16 +253,6 @@ contains
     allocate (pcm_instance_nlo_t :: instance)
   end subroutine pcm_nlo_allocate_instance
 
-  subroutine pcm_nlo_init_color_data (pcm, prc_constants, &
-     flavor_indices, color_indices)
-    class(pcm_nlo_t), intent(inout) :: pcm
-    type(process_constants_t), intent(in), dimension(2) :: prc_constants
-    integer, intent(in), dimension(:) :: flavor_indices, color_indices
-    call pcm%color_data%prepare (pcm%region_data, flavor_indices, color_indices)
-    call pcm%color_data%init_color_matrix (pcm%region_data, prc_constants, &
-       pcm%settings%factorization_mode)
-  end subroutine pcm_nlo_init_color_data
-
   subroutine pcm_nlo_init_qn (pcm, model)
     class(pcm_nlo_t), intent(inout) :: pcm
     class(model_data_t), intent(in) :: model
@@ -292,7 +260,6 @@ contains
     type(flavor_t), dimension(:), allocatable :: flv
     integer :: i
     type(quantum_numbers_t), dimension(:), allocatable :: qn
-    !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
     allocate (flv_states (pcm%region_data%n_legs_born, pcm%region_data%n_flv_born))
     flv_states = pcm%get_flv_states (.true.)
     allocate (pcm%qn_born (size (flv_states, dim = 1), size (flv_states, dim = 2)))
@@ -305,7 +272,6 @@ contains
     end do
     deallocate (flv); deallocate (qn)
     deallocate (flv_states)
-    !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
     allocate (flv_states (pcm%region_data%n_legs_real, pcm%region_data%n_flv_real))
     flv_states = pcm%get_flv_states (.false.)
     allocate (pcm%qn_real (size (flv_states, dim = 1), size (flv_states, dim = 2)))
@@ -366,7 +332,7 @@ contains
     logical :: yorn
     yorn = .false.; if (present (singular_jacobian)) yorn = singular_jacobian
     call generator%connect_kinematics (pcm_instance%isr_kinematics, &
-       pcm_instance%real_kinematics, pcm%has_massive_emitter ())
+         pcm_instance%real_kinematics, pcm%has_massive_emitter ())
     generator%n_in = pcm%region_data%n_in
     call generator%set_sqrts_hat (sqrts)
     call generator%set_emitters (pcm%region_data%emitters)
@@ -406,51 +372,44 @@ contains
   end subroutine pcm_instance_nlo_disable_subtraction
 
   subroutine pcm_instance_nlo_init_config (pcm_instance, active_components, &
-     nlo_types, sqrts, i_real_fin)
+     nlo_types, sqrts, i_real_fin, model)
     class(pcm_instance_nlo_t), intent(inout) :: pcm_instance
     logical, intent(in), dimension(:) :: active_components
     integer, intent(in), dimension(:) :: nlo_types
     real(default), intent(in) :: sqrts
     integer, intent(in) :: i_real_fin
+    class(model_data_t), intent(in) :: model
     integer :: i_component
+    call msg_debug (D_PROCESS_INTEGRATION, "pcm_instance_nlo_init_config")
+    call pcm_instance%init_real_and_isr_kinematics (sqrts)
     select type (pcm => pcm_instance%config)
     type is (pcm_nlo_t)
        do i_component = 1, size (active_components)
-          if (active_components(i_component)) then
+          if (active_components(i_component) .or. pcm%settings%combined_integration) then
              select case (nlo_types(i_component))
              case (NLO_REAL)
-                pcm_instance%active_real_component = i_component
                 if (i_component /= i_real_fin) then
                    call pcm_instance%setup_real_component &
-                        (pcm%settings%fks_template%subtraction_disabled, sqrts)
+                        (pcm%settings%fks_template%subtraction_disabled)
                 end if
              case (NLO_VIRTUAL)
-                call pcm_instance%init_virtual ()
+                call pcm_instance%init_virtual (model)
+             case (NLO_MISMATCH)
+                call pcm_instance%init_soft_mismatch ()
              case (NLO_DGLAP)
                 call pcm_instance%init_dglap_remnant ()
              end select
           end if
        end do
-       allocate (pcm_instance%bad_blha_point (size (active_components)))
-       pcm_instance%bad_blha_point = .false.
     end select
   end subroutine pcm_instance_nlo_init_config
 
   subroutine pcm_instance_nlo_setup_real_component (pcm_instance, &
-     subtraction_disabled, sqrts)
+     subtraction_disabled)
     class(pcm_instance_nlo_t), intent(inout), target :: pcm_instance
     logical, intent(in) :: subtraction_disabled
-    real(default), intent(in) :: sqrts
-    call pcm_instance%init_real_and_isr_kinematics (sqrts)
     call pcm_instance%init_real_subtraction ()
-    if (subtraction_disabled) call pcm_instance%disable_subtraction ()
-    select type (config => pcm_instance%config)
-    type is (pcm_nlo_t)
-       associate (region_data => config%region_data)
-          call pcm_instance%soft_mismatch%init (region_data, &
-               pcm_instance%real_kinematics, config%settings%factorization_mode)
-       end associate
-    end select
+    if (subtraction_disabled)  call pcm_instance%disable_subtraction ()
   end subroutine pcm_instance_nlo_setup_real_component
 
   subroutine pcm_instance_nlo_init_real_and_isr_kinematics (pcm_instance, sqrts)
@@ -523,8 +482,6 @@ contains
     class(pcm_instance_nlo_t), intent(inout) :: pcm_instance
     type(vector4_t), intent(in), dimension(:) :: p
     real(default), intent(in) :: ren_scale, fac_scale
-    real(default) :: sqrts, mtop
-    type(lorentz_transformation_t) :: L_to_cms
     select type (config => pcm_instance%config)
     type is (pcm_nlo_t)
        associate (virtual => pcm_instance%virtual)
@@ -551,21 +508,62 @@ contains
     associate (kinematics => pcm_instance%real_kinematics)
        if (yorn) then
           if (.not. kinematics%p_born_cms%initialized) &
-             call kinematics%p_born_cms%init (size (p_born), 1)
+               call kinematics%p_born_cms%init (size (p_born), 1)
           if (.not. kinematics%p_real_cms%initialized) &
-             call kinematics%p_real_cms%init (size (p_real), 1)
+               call kinematics%p_real_cms%init (size (p_real), 1)
           kinematics%p_born_cms%phs_point(1)%p = p_born
           kinematics%p_real_cms%phs_point(i_phs)%p = p_real
        else
           if (.not. kinematics%p_born_lab%initialized) &
-             call kinematics%p_born_lab%init (size (p_born), 1)
+               call kinematics%p_born_lab%init (size (p_born), 1)
           if (.not. kinematics%p_real_lab%initialized) &
-             call kinematics%p_real_lab%init (size (p_real), 1)
+               call kinematics%p_real_lab%init (size (p_real), 1)
           kinematics%p_born_lab%phs_point(1)%p = p_born
           kinematics%p_real_lab%phs_point(i_phs)%p = p_real
        end if
     end associate
   end subroutine pcm_instance_nlo_set_momenta
+
+  subroutine pcm_instance_nlo_init_interaction_index (pcm_instance, i_term, &
+       nlo_type, is_subtraction, int)
+    class(pcm_instance_nlo_t), intent(inout) :: pcm_instance
+    integer, intent(in) :: i_term, nlo_type
+    logical, intent(in) :: is_subtraction
+    class(interaction_t), intent(in) :: int
+    integer :: i_flv, j_flv, n_flv
+    logical :: pure_real
+    type(quantum_numbers_mask_t), dimension(:), allocatable :: qn_mask
+    integer, dimension(:,:), allocatable :: flv_int
+    integer, dimension(:,:), allocatable :: flv_fks
+    select type (config => pcm_instance%config)
+    type is (pcm_nlo_t)
+       if (.not. allocated (pcm_instance%interaction_index(i_term)%index)) then
+          pure_real = nlo_type == NLO_REAL .and. .not. is_subtraction
+          if (pure_real) then
+             n_flv = config%region_data%n_flv_real
+             flv_fks = config%region_data%get_flv_states_real ()
+          else
+             n_flv = config%region_data%n_flv_born
+             flv_fks = config%region_data%get_flv_states_born ()
+          end if
+          allocate (qn_mask (int%get_state_depth ()))
+          call qn_mask%set_sub (1)
+          allocate (pcm_instance%interaction_index(i_term)%index (n_flv))
+          call int%get_flavors (.true., qn_mask, flv_int)
+          do i_flv = 1, size (flv_int, dim=1)
+             if (all (flv_int(i_flv, :) == 0)) then
+                pcm_instance%interaction_index(i_term)%index = [(i_flv, i_flv = 1, n_flv)]
+             else if (size (flv_int, dim=1) == n_flv) then
+                do j_flv = 1, n_flv
+                   if (all (flv_int(i_flv, :) == flv_fks(: , j_flv))) &
+                        pcm_instance%interaction_index(i_term)%index(j_flv) = i_flv
+                end do
+             end if
+          end do
+       end if
+       if (allocated (qn_mask))  deallocate (qn_mask)
+    end select
+  end subroutine pcm_instance_nlo_init_interaction_index
 
   function pcm_instance_nlo_get_momenta (pcm_instance, i_phs, born_phsp, cms) result (p)
     type(vector4_t), dimension(:), allocatable :: p
@@ -645,15 +643,20 @@ contains
     end if
   end subroutine pcm_instance_nlo_set_x_rad
 
-  subroutine pcm_instance_nlo_init_virtual (pcm_instance)
+  subroutine pcm_instance_nlo_init_virtual (pcm_instance, model)
     class(pcm_instance_nlo_t), intent(inout) :: pcm_instance
+    class(model_data_t), intent(in) :: model
     select type (config => pcm_instance%config)
     type is (pcm_nlo_t)
        associate (region_data => config%region_data)
           call pcm_instance%virtual%init (region_data%get_flv_states_born (), &
-               region_data%n_in, config%settings%use_internal_color_correlations, &
-               config%settings%virtual_selection, config%settings%virtual_resonance_aware_collinear)
+               region_data%n_in, config%settings%fks_template%n_f, &
+               config%settings%use_internal_color_correlations, &
+               config%settings%virtual_selection, &
+               config%settings%virtual_resonance_aware_collinear, &
+               region_data%regions(1)%nlo_correction_type, model)
           pcm_instance%virtual%factorization_mode = config%settings%factorization_mode
+          pcm_instance%virtual%has_pdfs = config%has_pdfs
        end associate
     end select
   end subroutine pcm_instance_nlo_init_virtual
@@ -663,10 +666,10 @@ contains
   end subroutine pcm_instance_nlo_disable_virtual_subtraction
 
   subroutine pcm_instance_nlo_compute_sqme_virt (pcm_instance, p, &
-         alpha_s, me, separate_alrs, sqme_virt)
+         alpha_coupling, me, separate_alrs, sqme_virt)
     class(pcm_instance_nlo_t), intent(inout) :: pcm_instance
     type(vector4_t), intent(in), dimension(:) :: p
-    real(default), intent(in) :: alpha_s
+    real(default), intent(in) :: alpha_coupling
     complex(default), intent(in), dimension(:) :: me
     logical, intent(in) :: separate_alrs
     real(default), dimension(:), allocatable, intent(inout) :: sqme_virt
@@ -687,7 +690,7 @@ contains
           end if
           sqme_virt = zero
           call virtual%evaluate (config%region_data, &
-               alpha_s, pp, real(me), separate_alrs, sqme_virt)
+               alpha_coupling, pp, real(me), separate_alrs, sqme_virt)
        end select
     end associate
   end subroutine pcm_instance_nlo_compute_sqme_virt
@@ -725,7 +728,8 @@ contains
           allocate (sqme_dglap (1))
        end if
     end select
-    sqme_dglap = pcm_instance%dglap_remnant%evaluate (alpha_s, sqme_born)
+    sqme_dglap = zero
+    call pcm_instance%dglap_remnant%evaluate (alpha_s, sqme_born, separate_alrs, sqme_dglap)
   end subroutine pcm_instance_nlo_compute_sqme_dglap_remnant
 
   subroutine pcm_instance_nlo_set_fixed_order_event_mode (pcm_instance)
@@ -738,12 +742,21 @@ contains
     pcm_instance%real_sub%purpose = POWHEG
   end subroutine pcm_instance_nlo_set_powheg_mode
 
+  subroutine pcm_instance_nlo_init_soft_mismatch (pcm_instance)
+    class(pcm_instance_nlo_t), intent(inout) :: pcm_instance
+    select type (config => pcm_instance%config)
+    type is (pcm_nlo_t)
+       call pcm_instance%soft_mismatch%init (config%region_data, &
+            pcm_instance%real_kinematics, config%settings%factorization_mode)
+    end select
+  end subroutine pcm_instance_nlo_init_soft_mismatch
+
   subroutine pcm_instance_nlo_init_dglap_remnant (pcm_instance)
     class(pcm_instance_nlo_t), intent(inout) :: pcm_instance
     select type (config => pcm_instance%config)
     type is (pcm_nlo_t)
        call pcm_instance%dglap_remnant%init (pcm_instance%isr_kinematics, &
-          config%region_data%get_flv_states_born (), config%get_n_alr ())
+            config%region_data%get_flv_states_born (), config%get_n_alr ())
     end select
   end subroutine pcm_instance_nlo_init_dglap_remnant
 
@@ -767,12 +780,6 @@ contains
        nullify (pcm_instance%isr_kinematics)
     end if
   end subroutine pcm_instance_nlo_final
-
-  function pcm_instance_nlo_is_valid (pcm_instance) result (valid)
-    logical :: valid
-    class(pcm_instance_nlo_t), intent(in) :: pcm_instance
-    valid = .not. any (pcm_instance%bad_blha_point)
-  end function pcm_instance_nlo_is_valid
 
 
 end module pcm

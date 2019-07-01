@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -72,8 +65,8 @@ contains
     call syntax_model_file_init ()
     call os_data_init (os_data)
     call model_list%read_model &
-       (var_str ("SM"), var_str ("SM.mdl"), &
-        os_data, model)
+         (var_str ("SM"), var_str ("SM.mdl"), &
+         os_data, model)
     write (u, "(A)") "* Success"
 
     allocate (pdg_in (2))
@@ -162,7 +155,7 @@ contains
       call generator%init (pdg_in, pdg_out, &
            pdg_excluded_gauge_splittings = pdg_excluded, qcd = .true., qed = .false.)
       call generator%set_n (2, size(pdg_out), 0)
-      if (yorn) call generator%set_initial_state_emissions ()
+      if (yorn)  call generator%set_initial_state_emissions ()
       call generator%set_constraints (.false., .false., .true., .true.)
       call generator%setup_if_table (model)
       call generator%generate (prt_strings_in, prt_strings_out)

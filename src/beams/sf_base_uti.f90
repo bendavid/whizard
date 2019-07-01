@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -214,7 +207,7 @@ contains
     type(vector4_t) :: k
     type(vector4_t), dimension(2) :: q
     real(default) :: E
-    real(default), dimension(:), allocatable :: r, rb, x
+    real(default), dimension(:), allocatable :: r, rb, x, xb
     real(default) :: f
 
     write (u, "(A)")  "* Test output: sf_base_2"
@@ -261,14 +254,16 @@ contains
     allocate (r (data%get_n_par ()))
     allocate (rb(size (r)))
     allocate (x (size (r)))
+    allocate (xb(size (r)))
 
     r = 0
     rb = 1 - r
-    call sf_int%complete_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.false.)
     call sf_int%write (u)
 
     write (u, "(A)")
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "f =", f
 
     write (u, "(A)")
@@ -277,11 +272,12 @@ contains
 
     r = 1
     rb = 1 - r
-    call sf_int%complete_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.false.)
     call sf_int%write (u)
 
     write (u, "(A)")
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "f =", f
 
     write (u, "(A)")
@@ -290,11 +286,12 @@ contains
 
     r = 0.5_default
     rb = 1 - r
-    call sf_int%complete_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.false.)
     call sf_int%write (u)
 
     write (u, "(A)")
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "f =", f
 
     write (u, "(A)")
@@ -303,11 +300,12 @@ contains
 
     r = 0.8_default
     rb = 1 - r
-    call sf_int%complete_kinematics (x, f, r, rb, map=.true.)
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.true.)
     call sf_int%write (u)
 
     write (u, "(A)")
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "f =", f
 
     write (u, "(A)")
@@ -324,21 +322,23 @@ contains
 
     call sf_int%seed_kinematics ([k])
     call sf_int%set_momenta (q, outgoing=.true.)
-    call sf_int%recover_x (x)
+    call sf_int%recover_x (x, xb)
 
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
 
     write (u, "(A)")
     write (u, "(A)")  "* Compute inverse kinematics for x=0.64 and evaluate"
     write (u, "(A)")
 
     x = 0.64_default
-    call sf_int%inverse_kinematics (x, f, r, rb, map=.true.)
+    call sf_int%inverse_kinematics (x, xb, f, r, rb, map=.true.)
     call sf_int%apply (scale=0._default)
     call sf_int%write (u)
 
     write (u, "(A)")
     write (u, "(A,9(1x,F10.7))")  "r =", r
+    write (u, "(A,9(1x,F10.7))")  "rb=", rb
     write (u, "(A,9(1x,F10.7))")  "f =", f
 
     write (u, "(A)")
@@ -361,7 +361,7 @@ contains
     class(sf_int_t), allocatable :: sf_int
     type(vector4_t) :: k
     real(default) :: E
-    real(default), dimension(:), allocatable :: r, rb, x
+    real(default), dimension(:), allocatable :: r, rb, x, xb
     real(default) :: f
 
     write (u, "(A)")  "* Test output: sf_base_3"
@@ -396,6 +396,7 @@ contains
     allocate (r (data%get_n_par ()))
     allocate (rb(size (r)))
     allocate (x (size (r)))
+    allocate (xb(size (r)))
 
     write (u, "(A)")
     write (u, "(A)")  "* Initialize incoming momentum with E=500"
@@ -417,17 +418,19 @@ contains
     r = 0.5_default
     rb = 1 - r
     sf_int%on_shell_mode = KEEP_ENERGY
-    call sf_int%complete_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.false.)
     call sf_int%write (u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Recover x and r"
     write (u, "(A)")
 
-    call sf_int%recover_x (x)
-    call sf_int%inverse_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%recover_x (x, xb)
+    call sf_int%inverse_kinematics (x, xb, f, r, rb, map=.false.)
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "r =", r
+    write (u, "(A,9(1x,F10.7))")  "rb=", rb
 
     write (u, "(A)")
     write (u, "(A)")  "* Set kinematics for x=0.5, keeping momentum"
@@ -436,17 +439,19 @@ contains
     r = 0.5_default
     rb = 1 - r
     sf_int%on_shell_mode = KEEP_MOMENTUM
-    call sf_int%complete_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.false.)
     call sf_int%write (u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Recover x and r"
     write (u, "(A)")
 
-    call sf_int%recover_x (x)
-    call sf_int%inverse_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%recover_x (x, xb)
+    call sf_int%inverse_kinematics (x, xb, f, r, rb, map=.false.)
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "r =", r
+    write (u, "(A,9(1x,F10.7))")  "rb=", rb
 
     write (u, "(A)")
     write (u, "(A)")  "* Set outgoing mass to zero"
@@ -461,17 +466,19 @@ contains
     r = 0.5_default
     rb = 1 - r
     sf_int%on_shell_mode = KEEP_ENERGY
-    call sf_int%complete_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.false.)
     call sf_int%write (u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Recover x and r"
     write (u, "(A)")
 
-    call sf_int%recover_x (x)
-    call sf_int%inverse_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%recover_x (x, xb)
+    call sf_int%inverse_kinematics (x, xb, f, r, rb, map=.false.)
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "r =", r
+    write (u, "(A,9(1x,F10.7))")  "rb=", rb
 
     write (u, "(A)")
     write (u, "(A)")  "* Set kinematics for x=0.5, keeping momentum"
@@ -480,17 +487,19 @@ contains
     r = 0.5_default
     rb = 1 - r
     sf_int%on_shell_mode = KEEP_MOMENTUM
-    call sf_int%complete_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.false.)
     call sf_int%write (u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Recover x and r"
     write (u, "(A)")
 
-    call sf_int%recover_x (x)
-    call sf_int%inverse_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%recover_x (x, xb)
+    call sf_int%inverse_kinematics (x, xb, f, r, rb, map=.false.)
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "r =", r
+    write (u, "(A,9(1x,F10.7))")  "rb=", rb
 
     write (u, "(A)")
     write (u, "(A)")  "* Set incoming mass to zero"
@@ -509,17 +518,19 @@ contains
     r = 0.5_default
     rb = 1 - r
     sf_int%on_shell_mode = KEEP_ENERGY
-    call sf_int%complete_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.false.)
     call sf_int%write (u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Recover x and r"
     write (u, "(A)")
 
-    call sf_int%recover_x (x)
-    call sf_int%inverse_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%recover_x (x, xb)
+    call sf_int%inverse_kinematics (x, xb, f, r, rb, map=.false.)
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "r =", r
+    write (u, "(A,9(1x,F10.7))")  "rb=", rb
 
     write (u, "(A)")
     write (u, "(A)")  "* Set kinematics for x=0.5, keeping momentum"
@@ -528,17 +539,19 @@ contains
     r = 0.5_default
     rb = 1 - r
     sf_int%on_shell_mode = KEEP_MOMENTUM
-    call sf_int%complete_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.false.)
     call sf_int%write (u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Recover x and r"
     write (u, "(A)")
 
-    call sf_int%recover_x (x)
-    call sf_int%inverse_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%recover_x (x, xb)
+    call sf_int%inverse_kinematics (x, xb, f, r, rb, map=.false.)
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "r =", r
+    write (u, "(A,9(1x,F10.7))")  "rb=", rb
 
     write (u, "(A)")
     write (u, "(A)")  "* Set all masses to zero"
@@ -554,17 +567,19 @@ contains
     r = 0.5_default
     rb = 1 - r
     sf_int%on_shell_mode = KEEP_ENERGY
-    call sf_int%complete_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.false.)
     call sf_int%write (u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Recover x and r"
     write (u, "(A)")
 
-    call sf_int%recover_x (x)
-    call sf_int%inverse_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%recover_x (x, xb)
+    call sf_int%inverse_kinematics (x, xb, f, r, rb, map=.false.)
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "r =", r
+    write (u, "(A,9(1x,F10.7))")  "rb=", rb
 
     write (u, "(A)")
     write (u, "(A)")  "* Set kinematics for x=0.5, keeping momentum"
@@ -573,17 +588,19 @@ contains
     r = 0.5_default
     rb = 1 - r
     sf_int%on_shell_mode = KEEP_MOMENTUM
-    call sf_int%complete_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.false.)
     call sf_int%write (u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Recover x and r"
     write (u, "(A)")
 
-    call sf_int%recover_x (x)
-    call sf_int%inverse_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%recover_x (x, xb)
+    call sf_int%inverse_kinematics (x, xb, f, r, rb, map=.false.)
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "r =", r
+    write (u, "(A,9(1x,F10.7))")  "rb=", rb
 
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
@@ -605,7 +622,7 @@ contains
     class(sf_int_t), allocatable :: sf_int
     type(vector4_t) :: k
     real(default) :: E
-    real(default), dimension(:), allocatable :: r, rb, x
+    real(default), dimension(:), allocatable :: r, rb, x, xb
     real(default) :: f
 
     write (u, "(A)")  "* Test output: sf_base_4"
@@ -640,6 +657,7 @@ contains
     allocate (r (data%get_n_par ()))
     allocate (rb(size (r)))
     allocate (x (size (r)))
+    allocate (xb(size (r)))
 
     write (u, "(A)")
     write (u, "(A)")  "* Initialize incoming momentum with E=500"
@@ -661,17 +679,19 @@ contains
     r = [0.5_default, 0.5_default, 0.125_default]
     rb = 1 - r
     sf_int%on_shell_mode = KEEP_ENERGY
-    call sf_int%complete_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.false.)
     call sf_int%write (u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Recover x and r"
     write (u, "(A)")
 
-    call sf_int%recover_x (x)
-    call sf_int%inverse_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%recover_x (x, xb)
+    call sf_int%inverse_kinematics (x, xb, f, r, rb, map=.false.)
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "r =", r
+    write (u, "(A,9(1x,F10.7))")  "rb=", rb
 
     write (u, "(A)")
     write (u, "(A)")  "* Set kinematics for x=0.5/0.5/0.125, keeping momentum"
@@ -680,17 +700,19 @@ contains
     r = [0.5_default, 0.5_default, 0.125_default]
     rb = 1 - r
     sf_int%on_shell_mode = KEEP_MOMENTUM
-    call sf_int%complete_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.false.)
     call sf_int%write (u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Recover x and r"
     write (u, "(A)")
 
-    call sf_int%recover_x (x)
-    call sf_int%inverse_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%recover_x (x, xb)
+    call sf_int%inverse_kinematics (x, xb, f, r, rb, map=.false.)
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "r =", r
+    write (u, "(A,9(1x,F10.7))")  "rb=", rb
 
     write (u, "(A)")
     write (u, "(A)")  "* Set outgoing mass to zero"
@@ -705,17 +727,19 @@ contains
     r = [0.5_default, 0.5_default, 0.125_default]
     rb = 1 - r
     sf_int%on_shell_mode = KEEP_ENERGY
-    call sf_int%complete_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.false.)
     call sf_int%write (u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Recover x and r"
     write (u, "(A)")
 
-    call sf_int%recover_x (x)
-    call sf_int%inverse_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%recover_x (x, xb)
+    call sf_int%inverse_kinematics (x, xb, f, r, rb, map=.false.)
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "r =", r
+    write (u, "(A,9(1x,F10.7))")  "rb=", rb
 
     write (u, "(A)")
     write (u, "(A)")  "* Set kinematics for x=0.5/0.5/0.125, keeping momentum"
@@ -724,17 +748,19 @@ contains
     r = [0.5_default, 0.5_default, 0.125_default]
     rb = 1 - r
     sf_int%on_shell_mode = KEEP_MOMENTUM
-    call sf_int%complete_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.false.)
     call sf_int%write (u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Recover x and r"
     write (u, "(A)")
 
-    call sf_int%recover_x (x)
-    call sf_int%inverse_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%recover_x (x, xb)
+    call sf_int%inverse_kinematics (x, xb, f, r, rb, map=.false.)
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "r =", r
+    write (u, "(A,9(1x,F10.7))")  "rb=", rb
 
     write (u, "(A)")
     write (u, "(A)")  "* Set incoming mass to zero"
@@ -753,17 +779,19 @@ contains
     r = [0.5_default, 0.5_default, 0.125_default]
     rb = 1 - r
     sf_int%on_shell_mode = KEEP_ENERGY
-    call sf_int%complete_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.false.)
     call sf_int%write (u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Recover x and r"
     write (u, "(A)")
 
-    call sf_int%recover_x (x)
-    call sf_int%inverse_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%recover_x (x, xb)
+    call sf_int%inverse_kinematics (x, xb, f, r, rb, map=.false.)
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "r =", r
+    write (u, "(A,9(1x,F10.7))")  "rb=", rb
 
     write (u, "(A)")
     write (u, "(A)")  "* Set kinematics for x=0.5/0.5/0.125, keeping momentum"
@@ -772,17 +800,19 @@ contains
     r = [0.5_default, 0.5_default, 0.125_default]
     rb = 1 - r
     sf_int%on_shell_mode = KEEP_MOMENTUM
-    call sf_int%complete_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.false.)
     call sf_int%write (u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Recover x and r"
     write (u, "(A)")
 
-    call sf_int%recover_x (x)
-    call sf_int%inverse_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%recover_x (x, xb)
+    call sf_int%inverse_kinematics (x, xb, f, r, rb, map=.false.)
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "r =", r
+    write (u, "(A,9(1x,F10.7))")  "rb=", rb
 
     write (u, "(A)")
     write (u, "(A)")  "* Set all masses to zero"
@@ -812,17 +842,19 @@ contains
     r = [0.5_default, 0.5_default, 0.125_default]
     rb = 1 - r
     sf_int%on_shell_mode = KEEP_ENERGY
-    call sf_int%complete_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.false.)
     call sf_int%write (u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Recover x and r"
     write (u, "(A)")
 
-    call sf_int%recover_x (x)
-    call sf_int%inverse_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%recover_x (x, xb)
+    call sf_int%inverse_kinematics (x, xb, f, r, rb, map=.false.)
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "r =", r
+    write (u, "(A,9(1x,F10.7))")  "rb=", rb
 
     write (u, "(A)")
     write (u, "(A)")  "* Set kinematics for x=0.5/0.5/0.125, keeping momentum"
@@ -831,17 +863,19 @@ contains
     r = [0.5_default, 0.5_default, 0.125_default]
     rb = 1 - r
     sf_int%on_shell_mode = KEEP_MOMENTUM
-    call sf_int%complete_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.false.)
     call sf_int%write (u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Recover x and r"
     write (u, "(A)")
 
-    call sf_int%recover_x (x)
-    call sf_int%inverse_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%recover_x (x, xb)
+    call sf_int%inverse_kinematics (x, xb, f, r, rb, map=.false.)
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "r =", r
+    write (u, "(A,9(1x,F10.7))")  "rb=", rb
 
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
@@ -866,7 +900,7 @@ contains
     type(vector4_t), dimension(2) :: k
     type(vector4_t), dimension(4) :: q
     real(default) :: E
-    real(default), dimension(:), allocatable :: r, rb, x
+    real(default), dimension(:), allocatable :: r, rb, x, xb
     real(default) :: f
 
     write (u, "(A)")  "* Test output: sf_base_5"
@@ -919,14 +953,16 @@ contains
     allocate (r (data%get_n_par ()))
     allocate (rb(size (r)))
     allocate (x (size (r)))
+    allocate (xb(size (r)))
 
     r = [0.4_default, 0.8_default]
     rb = 1 - r
-    call sf_int%complete_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.false.)
     call sf_int%write (u)
 
     write (u, "(A)")
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "f =", f
 
     write (u, "(A)")
@@ -935,11 +971,12 @@ contains
 
     r = [0.6_default, 0.8_default]
     rb = 1 - r
-    call sf_int%complete_kinematics (x, f, r, rb, map=.true.)
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.true.)
     call sf_int%write (u)
 
     write (u, "(A)")
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "f =", f
 
     write (u, "(A)")
@@ -956,8 +993,9 @@ contains
 
     call sf_int%seed_kinematics (k)
     call sf_int%set_momenta (q, outgoing=.true.)
-    call sf_int%recover_x (x)
+    call sf_int%recover_x (x, xb)
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
 
     write (u, "(A)")
     write (u, "(A)")  "* Compute inverse kinematics for x=0.36,0.64 &
@@ -965,12 +1003,14 @@ contains
     write (u, "(A)")
 
     x = [0.36_default, 0.64_default]
-    call sf_int%inverse_kinematics (x, f, r, rb, map=.true.)
+    xb = 1 - x
+    call sf_int%inverse_kinematics (x, xb, f, r, rb, map=.true.)
     call sf_int%apply (scale=0._default)
     call sf_int%write (u)
 
     write (u, "(A)")
     write (u, "(A,9(1x,F10.7))")  "r =", r
+    write (u, "(A,9(1x,F10.7))")  "rb=", rb
     write (u, "(A,9(1x,F10.7))")  "f =", f
 
     write (u, "(A)")
@@ -994,7 +1034,7 @@ contains
     type(vector4_t), dimension(2) :: k
     type(vector4_t), dimension(2) :: q
     real(default) :: E
-    real(default), dimension(:), allocatable :: r, rb, x
+    real(default), dimension(:), allocatable :: r, rb, x, xb
     real(default) :: f
 
     write (u, "(A)")  "* Test output: sf_base_6"
@@ -1037,14 +1077,16 @@ contains
     allocate (r (data%get_n_par ()))
     allocate (rb(size (r)))
     allocate (x (size (r)))
+    allocate (xb(size (r)))
 
     r = [0.4_default, 0.8_default]
     rb = 1 - r
-    call sf_int%complete_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.false.)
     call sf_int%write (u)
 
     write (u, "(A)")
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "f =", f
 
     write (u, "(A)")
@@ -1061,8 +1103,9 @@ contains
 
     call sf_int%seed_kinematics (k)
     call sf_int%set_momenta (q, outgoing=.true.)
-    call sf_int%recover_x (x)
+    call sf_int%recover_x (x, xb)
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
 
     write (u, "(A)")
     write (u, "(A)")  "* Compute inverse kinematics for x=0.4,0.8 &
@@ -1070,12 +1113,14 @@ contains
     write (u, "(A)")
 
     x = [0.4_default, 0.8_default]
-    call sf_int%inverse_kinematics (x, f, r, rb, map=.false.)
+    xb = 1 - x
+    call sf_int%inverse_kinematics (x, xb, f, r, rb, map=.false.)
     call sf_int%apply (scale=0._default)
     call sf_int%write (u)
 
     write (u, "(A)")
     write (u, "(A,9(1x,F10.7))")  "r =", r
+    write (u, "(A,9(1x,F10.7))")  "rb=", rb
     write (u, "(A,9(1x,F10.7))")  "f =", f
 
     write (u, "(A)")
@@ -1521,7 +1566,7 @@ contains
 
     call sf_chain_instance%link_interactions ()
     sf_chain_instance%status = SF_DONE_CONNECTIONS
-    call sf_chain_instance%inverse_kinematics (x_saved)
+    call sf_chain_instance%inverse_kinematics (x_saved, 1 - x_saved)
 
     call write_separator (u, 2)
     call sf_chain_instance%write (u)
@@ -1861,7 +1906,7 @@ contains
 
     x_saved = sf_chain_instance%x
 
-    call sf_chain_instance%inverse_kinematics (x_saved)
+    call sf_chain_instance%inverse_kinematics (x_saved, 1 - x_saved)
     call sf_chain_instance%evaluate (scale=0._default)
 
     call write_separator (u, 2)
@@ -1915,7 +1960,7 @@ contains
     type(vector4_t), dimension(2) :: k
     type(vector4_t), dimension(2) :: q
     real(default) :: E
-    real(default), dimension(:), allocatable :: r, rb, x
+    real(default), dimension(:), allocatable :: r, rb, x, xb
     real(default) :: f, x_free
 
     write (u, "(A)")  "* Test output: sf_base_13"
@@ -1947,6 +1992,7 @@ contains
     allocate (r (data%get_n_par ()))
     allocate (rb(size (r)))
     allocate (x (size (r)))
+    allocate (xb(size (r)))
 
     write (u, "(A)")  "* Generate free r values"
     write (u, "(A)")
@@ -1965,11 +2011,12 @@ contains
     write (u, "(A)")  "* Complete kinematics"
     write (u, "(A)")
 
-    call sf_int%complete_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.false.)
     call sf_int%write (u)
 
     write (u, "(A)")
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "f =", f
     write (u, "(A,9(1x,F10.7))")  "xf=", x_free
 
@@ -1988,8 +2035,9 @@ contains
     call sf_int%seed_kinematics (k)
     call sf_int%set_momenta (q, outgoing=.true.)
     x_free = 1
-    call sf_int%recover_x (x, x_free)
+    call sf_int%recover_x (x, xb, x_free)
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "xf=", x_free
 
     write (u, "(A)")
@@ -1997,12 +2045,13 @@ contains
          &and evaluate"
     write (u, "(A)")
 
-    call sf_int%inverse_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%inverse_kinematics (x, xb, f, r, rb, map=.false.)
     call sf_int%apply (scale=0._default)
     call sf_int%write (u)
 
     write (u, "(A)")
     write (u, "(A,9(1x,F10.7))")  "r =", r
+    write (u, "(A,9(1x,F10.7))")  "rb=", rb
     write (u, "(A,9(1x,F10.7))")  "f =", f
 
     write (u, "(A)")
@@ -2227,14 +2276,14 @@ contains
     sf_int%status = SF_INITIAL
   end subroutine sf_test_init
 
-  subroutine sf_test_complete_kinematics (sf_int, x, f, r, rb, map)
+  subroutine sf_test_complete_kinematics (sf_int, x, xb, f, r, rb, map)
     class(sf_test_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(out) :: x
+    real(default), dimension(:), intent(out) :: xb
     real(default), intent(out) :: f
     real(default), dimension(:), intent(in) :: r
     real(default), dimension(:), intent(in) :: rb
     logical, intent(in) :: map
-    real(default) :: xb1
     if (map) then
        x(1) = r(1)**2
        f = 2 * r(1)
@@ -2242,24 +2291,27 @@ contains
        x(1) = r(1)
        f = 1
     end if
-    xb1 = 1 - x(1)
-    if (size (x) == 3)  x(2:3) = r(2:3)
-    call sf_int%split_momentum (x, xb1)
+    xb(1) = 1 - x(1)
+    if (size (x) == 3) then
+       x(2:3)  = r(2:3)
+       xb(2:3) = rb(2:3)
+    end if
+    call sf_int%split_momentum (x, xb)
     sf_int%x = x(1)
     select case (sf_int%status)
     case (SF_FAILED_KINEMATICS);  f = 0
     end select
   end subroutine sf_test_complete_kinematics
 
-  subroutine sf_test_inverse_kinematics (sf_int, x, f, r, rb, map, set_momenta)
+  subroutine sf_test_inverse_kinematics (sf_int, x, xb, f, r, rb, map, set_momenta)
     class(sf_test_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(in) :: x
+    real(default), dimension(:), intent(in) :: xb
     real(default), intent(out) :: f
     real(default), dimension(:), intent(out) :: r
     real(default), dimension(:), intent(out) :: rb
     logical, intent(in) :: map
     logical, intent(in), optional :: set_momenta
-    real(default) :: xb1
     logical :: set_mom
     set_mom = .false.;  if (present (set_momenta))  set_mom = set_momenta
     if (map) then
@@ -2269,21 +2321,22 @@ contains
        r(1) = x(1)
        f = 1
     end if
-    xb1 = 1 - x(1)
     if (size (x) == 3)  r(2:3) = x(2:3)
     rb = 1 - r
     sf_int%x = x(1)
     if (set_mom) then
-       call sf_int%split_momentum (x, xb1)
+       call sf_int%split_momentum (x, xb)
        select case (sf_int%status)
        case (SF_FAILED_KINEMATICS);  f = 0
        end select
     end if
   end subroutine sf_test_inverse_kinematics
 
-  subroutine sf_test_apply (sf_int, scale)
+  subroutine sf_test_apply (sf_int, scale, rescaling_function, i_rescale)
     class(sf_test_t), intent(inout) :: sf_int
     real(default), intent(in) :: scale
+    class(rescaling_function_t), intent(in), optional :: rescaling_function
+    integer, intent(in), optional :: i_rescale
     select case (sf_int%data%mode)
     case (0)
        call sf_int%set_matrix_element &
@@ -2418,9 +2471,10 @@ contains
     sf_int%status = SF_INITIAL
   end subroutine sf_test_spectrum_init
 
-  subroutine sf_test_spectrum_complete_kinematics (sf_int, x, f, r, rb, map)
+  subroutine sf_test_spectrum_complete_kinematics (sf_int, x, xb, f, r, rb, map)
     class(sf_test_spectrum_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(out) :: x
+    real(default), dimension(:), intent(out) :: xb
     real(default), intent(out) :: f
     real(default), dimension(:), intent(in) :: r
     real(default), dimension(:), intent(in) :: rb
@@ -2433,9 +2487,9 @@ contains
        x = r
        f = 1
     end if
+    xb = 1 - x
     if (sf_int%data%with_radiation) then
-       xb1 = 1 - x
-       call sf_int%split_momenta (x, xb1)
+       call sf_int%split_momenta (x, xb)
     else
        call sf_int%reduce_momenta (x)
     end if
@@ -2445,9 +2499,10 @@ contains
   end subroutine sf_test_spectrum_complete_kinematics
 
   subroutine sf_test_spectrum_inverse_kinematics &
-       (sf_int, x, f, r, rb, map, set_momenta)
+       (sf_int, x, xb, f, r, rb, map, set_momenta)
     class(sf_test_spectrum_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(in) :: x
+     real(default), dimension(:), intent(in) :: xb
     real(default), intent(out) :: f
     real(default), dimension(:), intent(out) :: r
     real(default), dimension(:), intent(out) :: rb
@@ -2466,8 +2521,7 @@ contains
     rb = 1 - r
     if (set_mom)  then
        if (sf_int%data%with_radiation) then
-          xb1 = 1 - x
-          call sf_int%split_momenta (x, xb1)
+          call sf_int%split_momenta (x, xb)
        else
           call sf_int%reduce_momenta (x)
        end if
@@ -2477,9 +2531,11 @@ contains
     end if
   end subroutine sf_test_spectrum_inverse_kinematics
 
-  subroutine sf_test_spectrum_apply (sf_int, scale)
+  subroutine sf_test_spectrum_apply (sf_int, scale, rescaling_function, i_rescale)
     class(sf_test_spectrum_t), intent(inout) :: sf_int
     real(default), intent(in) :: scale
+    class(rescaling_function_t), intent(in), optional :: rescaling_function
+    integer, intent(in), optional :: i_rescale
     call sf_int%set_matrix_element &
          (cmplx (1._default, kind=default))
     sf_int%status = SF_EVALUATED
@@ -2602,30 +2658,34 @@ contains
     x_free = x_free * product (r)
   end subroutine sf_test_generator_generate_free
 
-  subroutine sf_test_generator_recover_x (sf_int, x, x_free)
+  subroutine sf_test_generator_recover_x (sf_int, x, xb, x_free)
     class(sf_test_generator_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(out) :: x
+    real(default), dimension(:), intent(out) :: xb
     real(default), intent(inout), optional :: x_free
-    call sf_int%base_recover_x (x)
+    call sf_int%base_recover_x (x, xb)
     if (present (x_free))  x_free = x_free * product (x)
   end subroutine sf_test_generator_recover_x
 
-  subroutine sf_test_generator_complete_kinematics (sf_int, x, f, r, rb, map)
+  subroutine sf_test_generator_complete_kinematics (sf_int, x, xb, f, r, rb, map)
     class(sf_test_generator_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(out) :: x
+    real(default), dimension(:), intent(out) :: xb
     real(default), intent(out) :: f
     real(default), dimension(:), intent(in) :: r
     real(default), dimension(:), intent(in) :: rb
     logical, intent(in) :: map
     x = r
+    xb= rb
     f = 1
     call sf_int%reduce_momenta (x)
   end subroutine sf_test_generator_complete_kinematics
 
   subroutine sf_test_generator_inverse_kinematics &
-       (sf_int, x, f, r, rb, map, set_momenta)
+       (sf_int, x, xb, f, r, rb, map, set_momenta)
     class(sf_test_generator_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(in) :: x
+    real(default), dimension(:), intent(in) :: xb
     real(default), intent(out) :: f
     real(default), dimension(:), intent(out) :: r
     real(default), dimension(:), intent(out) :: rb
@@ -2634,14 +2694,16 @@ contains
     logical :: set_mom
     set_mom = .false.;  if (present (set_momenta))  set_mom = set_momenta
     r = x
-    rb= 1 - x
+    rb= xb
     f = 1
     if (set_mom)  call sf_int%reduce_momenta (x)
   end subroutine sf_test_generator_inverse_kinematics
 
-  subroutine sf_test_generator_apply (sf_int, scale)
+  subroutine sf_test_generator_apply (sf_int, scale, rescaling_function, i_rescale)
     class(sf_test_generator_t), intent(inout) :: sf_int
     real(default), intent(in) :: scale
+    class(rescaling_function_t), intent(in), optional :: rescaling_function
+    integer, intent(in), optional :: i_rescale
     call sf_int%set_matrix_element &
          (cmplx (1._default, kind=default))
     sf_int%status = SF_EVALUATED

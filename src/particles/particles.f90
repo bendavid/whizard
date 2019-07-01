@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -139,6 +132,7 @@ module particles
   end type particle_t
 
   type :: particle_set_t
+     ! private !!! 
      integer :: n_beam = 0
      integer :: n_in  = 0
      integer :: n_vir = 0
@@ -154,13 +148,36 @@ module particles
      procedure :: init_particle_set => particle_set_init_particle_set
      procedure :: set_model => particle_set_set_model
      procedure :: final => particle_set_final
+     procedure :: basic_init => particle_set_basic_init
+     procedure :: init_direct => particle_set_init_direct
+     procedure :: transfer => particle_set_transfer
+     procedure :: insert => particle_set_insert
+     procedure :: recover_color => particle_set_recover_color
+     generic :: get_color => get_color_all
+     generic :: get_color => get_color_indices
+     procedure :: get_color_all => particle_set_get_color_all
+     procedure :: get_color_indices => particle_set_get_color_indices
+     generic :: set_color => set_color_single
+     generic :: set_color => set_color_indices
+     generic :: set_color => set_color_all
+     procedure :: set_color_single => particle_set_set_color_single
+     procedure :: set_color_indices => particle_set_set_color_indices
+     procedure :: set_color_all => particle_set_set_color_all
+     procedure :: find_prt_invalid_color => particle_set_find_prt_invalid_color
      generic :: get_momenta => get_momenta_all
      generic :: get_momenta => get_momenta_indices
      procedure :: get_momenta_all => particle_set_get_momenta_all
      procedure :: get_momenta_indices => particle_set_get_momenta_indices
-     procedure :: set_momenta => particle_set_set_momenta
+     generic :: set_momentum => set_momentum_single
+     generic :: set_momentum => set_momentum_indices
+     generic :: set_momentum => set_momentum_all
+     procedure :: set_momentum_single => particle_set_set_momentum_single
+     procedure :: set_momentum_indices => particle_set_set_momentum_indices
+     procedure :: set_momentum_all => particle_set_set_momentum_all
+     procedure :: recover_momentum => particle_set_recover_momentum
      procedure :: replace_incoming_momenta => particle_set_replace_incoming_momenta
      procedure :: replace_outgoing_momenta => particle_set_replace_outgoing_momenta
+     procedure :: get_outgoing_momenta => particle_set_get_outgoing_momenta
      procedure :: parent_add_child => particle_set_parent_add_child
      procedure :: build_radiation => particle_set_build_radiation
      procedure :: write => particle_set_write
@@ -945,6 +962,202 @@ contains
     call particle_set%correlated_state%final ()
   end subroutine particle_set_final
 
+  subroutine particle_set_basic_init (particle_set, n_beam, n_in, n_vir, n_out)
+    class(particle_set_t), intent(out) :: particle_set
+    integer, intent(in) :: n_beam, n_in, n_vir, n_out
+    particle_set%n_beam = n_beam
+    particle_set%n_in = n_in
+    particle_set%n_vir = n_vir
+    particle_set%n_out = n_out
+    particle_set%n_tot = n_beam + n_in + n_vir + n_out
+    allocate (particle_set%prt (particle_set%n_tot))
+  end subroutine particle_set_basic_init
+
+  subroutine particle_set_init_direct (particle_set, &
+       n_beam, n_in, n_vir, n_out, pdg, model)
+    class(particle_set_t), intent(out) :: particle_set
+    integer, intent(in) :: n_beam
+    integer, intent(in) :: n_in
+    integer, intent(in) :: n_vir
+    integer, intent(in) :: n_out
+    integer, dimension(:), intent(in) :: pdg
+    class(model_data_t), intent(in), target :: model
+    type(flavor_t), dimension(:), allocatable :: flv
+    integer :: i, k, n
+    call particle_set%basic_init (n_beam, n_in, n_vir, n_out)
+    n = 0
+    call particle_set%prt(n+1:n+n_beam)%reset_status (PRT_BEAM)
+    do i = n+1, n+n_beam
+       call particle_set%prt(i)%set_children &
+            ([(k, k=n+n_beam+1, n+n_beam+n_in+n_vir)])
+    end do
+    n = n + n_beam
+    call particle_set%prt(n+1:n+n_in)%reset_status (PRT_INCOMING)
+    do i = n+1, n+n_in
+       call particle_set%prt(i)%set_parents &
+            ([(k, k=n-n_beam+1, n)])
+       call particle_set%prt(i)%set_children &
+            ([(k, k=n+n_in+n_vir+1, n+n_in+n_vir+n_out)])
+    end do
+    n = n + n_in
+    call particle_set%prt(n+1:n+n_vir)%reset_status (PRT_VIRTUAL)
+    do i = n+1, n+n_vir
+       call particle_set%prt(i)%set_parents &
+            ([(k, k=n-n_in-n_beam+1, n-n_in)])
+    end do
+    n = n + n_vir
+    call particle_set%prt(n+1:n+n_out)%reset_status (PRT_OUTGOING)
+    do i = n+1, n+n_out
+       call particle_set%prt(i)%set_parents &
+            ([(k, k=n-n_vir-n_in+1, n-n_vir)])
+    end do
+    allocate (flv (particle_set%n_tot))
+    call flv%init (pdg, model)
+    do i = 1, particle_set%n_tot
+       call particle_set%prt(i)%set_flavor (flv(i))
+    end do
+  end subroutine particle_set_init_direct
+
+  subroutine particle_set_transfer (pset, source, n_new, map)
+    class(particle_set_t), intent(out) :: pset
+    class(particle_set_t), intent(in) :: source
+    integer, intent(in) :: n_new
+    integer, dimension(:), intent(in) :: map
+    integer :: i
+    call pset%basic_init &
+         (source%n_beam, source%n_in, source%n_vir + n_new, source%n_out)
+    do i = 1, source%n_tot
+       call pset%prt(map(i))%reset_status (source%prt(i)%get_status ())
+       call pset%prt(map(i))%set_flavor (source%prt(i)%get_flv ())
+       call pset%prt(map(i))%set_color (source%prt(i)%get_col ())
+       call pset%prt(map(i))%set_parents (map (source%prt(i)%get_parents ()))
+       call pset%prt(map(i))%set_children (map (source%prt(i)%get_children ()))
+    end do
+  end subroutine particle_set_transfer
+  
+  subroutine particle_set_insert (pset, i, status, flv, child)
+    class(particle_set_t), intent(inout) :: pset
+    integer, intent(in) :: i
+    integer, intent(in) :: status
+    type(flavor_t), intent(in) :: flv
+    integer, dimension(:), intent(in) :: child
+    integer, dimension(:), allocatable :: p_child, parent
+    integer :: j, k, c, n_parent
+    logical :: no_match
+    call pset%prt(i)%reset_status (status)
+    call pset%prt(i)%set_flavor (flv)
+    call pset%prt(i)%set_children (child)
+    n_parent = pset%prt(i)%get_n_parents ()
+    do j = 1, i - 1
+       p_child = pset%prt(j)%get_children ()
+       no_match = .true.
+       do k = 1, size (p_child)
+          if (any (p_child(k) == child)) then
+             if (n_parent == 0 .and. no_match) then
+                if (.not. allocated (parent)) then
+                   parent = [j]
+                else
+                   parent = [parent, j]
+                end if
+                p_child(k) = i
+             else
+                p_child(k) = 0
+             end if
+             no_match = .false.
+          end if
+       end do
+       if (.not. no_match) then
+          p_child = pack (p_child, p_child /= 0)
+          call pset%prt(j)%set_children (p_child)
+       end if
+    end do
+    if (n_parent == 0) then
+       call pset%prt(i)%set_parents (parent)
+    end if
+    do j = 1, size (child)
+       c = child(j)
+       call pset%prt(c)%set_parents ([i])
+    end do
+  end subroutine particle_set_insert
+  
+  subroutine particle_set_recover_color (pset, i)
+    class(particle_set_t), intent(inout) :: pset
+    integer, intent(in) :: i
+    type(color_t) :: col
+    integer, dimension(:), allocatable :: child
+    integer :: j
+    child = pset%prt(i)%get_children ()
+    if (size (child) > 0) then
+       col = pset%prt(child(1))%get_col ()
+       do j = 2, size (child)
+          col = col .fuse. pset%prt(child(j))%get_col ()
+       end do
+       call pset%prt(i)%set_color (col)
+    end if
+  end subroutine particle_set_recover_color
+       
+  function particle_set_get_color_all (particle_set) result (col)
+    class(particle_set_t), intent(in) :: particle_set
+    type(color_t), dimension(:), allocatable :: col
+    allocate (col (size (particle_set%prt)))
+    col = particle_set%prt%col
+  end function particle_set_get_color_all
+
+  function particle_set_get_color_indices (particle_set, indices) result (col)
+     type(color_t), dimension(:), allocatable :: col
+     class(particle_set_t), intent(in) :: particle_set
+     integer, intent(in), dimension(:), allocatable :: indices
+     integer :: i
+     allocate (col (size (indices)))
+     do i = 1, size (indices)
+        col(i) = particle_set%prt(indices(i))%col
+     end do
+  end function particle_set_get_color_indices
+
+  subroutine particle_set_set_color_single (particle_set, i, col)
+    class(particle_set_t), intent(inout) :: particle_set
+    integer, intent(in) :: i
+    type(color_t), intent(in) :: col
+    call particle_set%prt(i)%set_color (col)
+  end subroutine particle_set_set_color_single
+
+  subroutine particle_set_set_color_indices (particle_set, indices, col)
+    class(particle_set_t), intent(inout) :: particle_set
+    integer, dimension(:), intent(in) :: indices
+    type(color_t), dimension(:), intent(in) :: col
+    integer :: i
+    do i = 1, size (indices)
+       call particle_set%prt(indices(i))%set_color (col(i))
+    end do
+  end subroutine particle_set_set_color_indices
+
+  subroutine particle_set_set_color_all (particle_set, col)
+    class(particle_set_t), intent(inout) :: particle_set
+    type(color_t), dimension(:), intent(in) :: col
+    call particle_set%prt%set_color (col)
+  end subroutine particle_set_set_color_all
+
+  subroutine particle_set_find_prt_invalid_color (particle_set, index, prt)
+    class(particle_set_t), intent(in) :: particle_set
+    integer, dimension(:), allocatable, intent(out) :: index
+    type(particle_t), dimension(:), allocatable, intent(out), optional :: prt
+    type(flavor_t) :: flv
+    type(color_t) :: col
+    logical, dimension(:), allocatable :: mask
+    integer :: i, n, n_invalid
+    n = size (particle_set%prt)
+    allocate (mask (n))
+    do i = 1, n
+       associate (prt => particle_set%prt(i))
+         flv = prt%get_flv ()
+         col = prt%get_col ()
+         mask(i) = flv%get_color_type () /= col%get_type ()
+       end associate
+    end do
+    index = pack ([(i, i = 1, n)], mask)
+    if (present (prt))  prt = pack (particle_set%prt, mask)
+  end subroutine particle_set_find_prt_invalid_color
+  
   function particle_set_get_momenta_all (particle_set) result (p)
     class(particle_set_t), intent(in) :: particle_set
     type(vector4_t), dimension(:), allocatable :: p
@@ -963,15 +1176,54 @@ contains
      end do
   end function particle_set_get_momenta_indices
 
-  pure subroutine particle_set_set_momenta (particle_set, p)
+  subroutine particle_set_set_momentum_single &
+       (particle_set, i, p, p2, on_shell)
+    class(particle_set_t), intent(inout) :: particle_set
+    integer, intent(in) :: i
+    type(vector4_t), intent(in) :: p
+    real(default), intent(in), optional :: p2
+    logical, intent(in), optional :: on_shell
+    call particle_set%prt(i)%set_momentum (p, p2, on_shell)
+  end subroutine particle_set_set_momentum_single
+
+  subroutine particle_set_set_momentum_indices &
+       (particle_set, indices, p, p2, on_shell)
+    class(particle_set_t), intent(inout) :: particle_set
+    integer, dimension(:), intent(in) :: indices
+    type(vector4_t), dimension(:), intent(in) :: p
+    real(default), dimension(:), intent(in), optional :: p2
+    logical, intent(in), optional :: on_shell
+    integer :: i
+    if (present (p2)) then
+       do i = 1, size (indices)
+          call particle_set%prt(indices(i))%set_momentum (p(i), p2(i), on_shell)
+       end do
+    else
+       do i = 1, size (indices)
+          call particle_set%prt(indices(i))%set_momentum &
+               (p(i), on_shell=on_shell)
+       end do
+    end if
+  end subroutine particle_set_set_momentum_indices
+
+  subroutine particle_set_set_momentum_all (particle_set, p, p2, on_shell)
     class(particle_set_t), intent(inout) :: particle_set
     type(vector4_t), dimension(:), intent(in) :: p
-    if (.not. allocated (particle_set%prt)) then
-       allocate (particle_set%prt (size (p)))
-    end if
-    particle_set%prt%p = p
-  end subroutine particle_set_set_momenta
+    real(default), dimension(:), intent(in), optional :: p2
+    logical, intent(in), optional :: on_shell
+    call particle_set%prt%set_momentum (p, p2, on_shell)
+  end subroutine particle_set_set_momentum_all
 
+  subroutine particle_set_recover_momentum (particle_set, i)
+    class(particle_set_t), intent(inout) :: particle_set
+    integer, intent(in) :: i
+    type(vector4_t), dimension(:), allocatable :: p
+    integer, dimension(:), allocatable :: index
+    index = particle_set%prt(i)%get_children ()
+    p = particle_set%get_momenta (index)
+    call particle_set%set_momentum (i, sum (p))
+  end subroutine particle_set_recover_momentum
+  
   subroutine particle_set_replace_incoming_momenta (particle_set, p)
     class(particle_set_t), intent(inout) :: particle_set
     type(vector4_t), intent(in), dimension(:) :: p
@@ -998,6 +1250,20 @@ contains
        end if
     end do
   end subroutine particle_set_replace_outgoing_momenta
+
+  function particle_set_get_outgoing_momenta (particle_set) result (p)
+    class(particle_set_t), intent(in) :: particle_set
+    type(vector4_t), dimension(:), allocatable :: p
+    integer :: i, k
+    allocate (p (count (particle_set%prt%get_status () == PRT_OUTGOING)))
+    k = 0
+    do i = 1, size (particle_set%prt)
+       if (particle_set%prt(i)%get_status () == PRT_OUTGOING) then
+          k = k + 1
+          p(k) = particle_set%prt(i)%get_momentum ()
+       end if
+    end do
+  end function particle_set_get_outgoing_momenta
 
   subroutine particle_set_parent_add_child (particle_set, parent, child)
     class(particle_set_t), intent(inout) :: particle_set
@@ -1032,7 +1298,6 @@ contains
 
      n = particle_set%get_n_tot ()
      allocate (status_mask (n))
-     !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
      do i = 1, n
         status_mask(i) = particle_set%prt(i)%get_status () == PRT_INCOMING
      end do
@@ -1369,11 +1634,7 @@ contains
     kb = .false.
     if (present (keep_beams)) kb = keep_beams
     allocate (is_real (pset%n_tot))
-    !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
-    do j = 1, pset%n_tot
-       is_real(j) = pset%prt(j)%is_real (kb)
-    end do
-    !!! is_real = pset%prt%is_real (kb)
+    is_real = pset%prt%is_real (kb)
     allocate (is_parent (pset%n_tot), is_real_parent (pset%n_tot))
     is_real_parent = .false.
     is_parent = .false.
@@ -1413,10 +1674,7 @@ contains
     kb = .false.
     if (present (keep_beams)) kb = keep_beams
     allocate (is_real (pset%n_tot))
-    !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
-    do j = 1, pset%n_tot
-       is_real(j) = pset%prt(j)%is_real (kb)
-    end do
+    is_real = pset%prt%is_real (kb)
     is_real = pset%prt%is_real (kb)
     allocate (is_child (pset%n_tot), is_real_child (pset%n_tot))
     is_real_child = .false.
@@ -1537,11 +1795,7 @@ contains
     end do
     n_particles = count (.not. particle_set%prt%is_hadronic_beam_remnant ())
     allocate (no_hadronic_remnants (particle_set%n_tot))
-    !!! !!! !!! Workaround for intel 16.0 standard-semantics bug
-    !!! no_hadronic_remnants = .not. particle_set%prt%is_hadronic_beam_remnant ()
-    do i = 1, particle_set%n_tot
-       no_hadronic_remnants(i) = .not. particle_set%prt(i)%is_hadronic_beam_remnant ()
-    end do
+    no_hadronic_remnants = .not. particle_set%prt%is_hadronic_beam_remnant ()
     allocate (particles (n_particles + n_extra))
     k = 1
     do i = 1, particle_set%n_tot
@@ -1841,11 +2095,7 @@ contains
     kb = .false.;  if (present (keep_beams))  kb = keep_beams
     allocate (status (pset_in%n_tot))
     pset_out%factorization_mode = pset_in%factorization_mode
-    !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
-    do i = 1, pset_in%n_tot
-       status(i) = pset_in%prt(i)%get_status ()
-    end do
-    !!! status = pset_in%prt%get_status ()
+    status = pset_in%prt%get_status ()
     if (kb)  pset_out%n_beam  = count (status == PRT_BEAM)
     pset_out%n_in  = count (status == PRT_INCOMING)
     pset_out%n_vir = count (status == PRT_RESONANT)
@@ -1950,11 +2200,7 @@ contains
 
       subroutine count_and_allocate
         allocate (status (pset_in%n_tot))
-        !!! !!! !!! Workaround for ifort standard-semantics bug
-        do i = 1, pset_in%n_tot
-           status(i) = particle_get_status (pset_in%prt(i))
-        end do
-        !!! status = particle_get_status (pset_in%prt)
+        status = particle_get_status (pset_in%prt)
         if (kb)  pset_out%n_beam  = count (status == PRT_BEAM)
         pset_out%n_in  = count (status == PRT_INCOMING)
         if (kb .and. kv) then
@@ -2148,11 +2394,7 @@ contains
       integer :: n_out_p
       integer :: i
       allocate (p_status (pset%n_tot), p_idx (pset%n_tot))
-      !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
-      !!! p_status = pset%prt%get_status ()
-      do i = 1, pset%n_tot
-         p_status(i) = pset%prt(i)%get_status ()
-      end do
+      p_status = pset%prt%get_status ()
       p_idx = [(i, i = 1, pset%n_tot)]
       allocate (p_in (n_in))
       p_in = pack (p_idx, p_status == PRT_INCOMING)
@@ -2182,11 +2424,7 @@ contains
       logical, dimension(:), allocatable :: mask_p
       integer :: i
       allocate (pdg_p (pset%n_tot))
-      !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
-      !!! pdg_p = pset%prt%get_pdg ()
-      do i = 1, pset%n_tot
-         pdg_p(i) = pset%prt(i)%get_pdg ()
-      end do
+      pdg_p = pset%prt%get_pdg ()
       allocate (mask_p (pset%n_tot), source = .false.)
       mask_p (p_in) = .true.
       mask_p (p_out) = .true.
@@ -2493,16 +2731,11 @@ contains
   subroutine particle_set_order_color_lines (pset_out, pset_in)
     class(particle_set_t), intent(inout) :: pset_out
     type(particle_set_t), intent(in) :: pset_in
-    integer :: i, n, n_col_rem, remnant1, remnant2
+    integer :: i, n, n_col_rem
     n_col_rem = 0
     do i = 1, pset_in%n_tot
        if (pset_in%prt(i)%get_status () == PRT_BEAM_REMNANT .and. &
             any (pset_in%prt(i)%get_color () /= 0)) then
-          if (n == 0) then
-             remnant1 = i
-          else
-             remnant2 = i
-          end if
           n_col_rem = n_col_rem + 1
        end if
     end do

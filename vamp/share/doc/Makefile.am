@@ -1,5 +1,4 @@
 # Makefile.am --
-# $Id: Makefile.am 317 2010-04-18 00:31:03Z ohl $
 ########################################################################
 ##
 ## Process this file with automake to produce Makefile.in
@@ -8,7 +7,8 @@
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
-#     Christian Speckner <cnspeckn@googlemail.com>
+#     with contributions from
+#     cf. main AUTHORS file
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by 
@@ -66,7 +66,8 @@ VPATH = $(srcdir):$(top_builddir)/vamp/src:$(top_srcdir)/vamp/src
 if NOWEB_AVAILABLE
 
 vamp.tex: $(WEBS)
-	$(NOWEAVE) -filter ./tex-comments -delay -index \
+	@if $(AM_V_P); then :; else echo " NOWEAVE   " $@; fi
+	$(AM_V_at)$(NOWEAVE) -filter ./tex-comments -delay -index \
 	    `for i in  $^; do case $$i in *.nw) echo $$i;; esac done` \
 	  | $(CPIF) $@
 
@@ -92,29 +93,33 @@ MPOST_LATEX = TEX=$(LATEX) TEXINPUTS=$(TEX_FLAGS) $(MPOST)
 
 if DISTRIBUTION
 if PDFLATEX_AVAILABLE
-if MPOST_AVAILABLE
 if SUPP_PDF_AVAILABLE
-if MAKEINDEX_AVAILABLE
 .tex.pdf:
-	-TEXINPUTS=$(TEX_FLAGS) $(PDFLATEX) $<
-	$(MAKEINDEX) -o $*.ind $*.idx
-	-test -r $*.mp && $(MPOST_LATEX) $*
-	-test -r $*pics.mp && MPINPUTS=$(MP_FLAGS) $(MPOST) $*pics
-	TEXINPUTS=$(TEX_FLAGS) $(PDFLATEX) $<
-	if grep -s 'Rerun to get cross-references right.' $*.log; then \
-	  TEXINPUTS=$(TEX_FLAGS) $(PDFLATEX) $<; \
-	fi
-else
-	-TEXINPUTS=$(TEX_FLAGS) $(PDFLATEX) $<
-	-test -r $*.mp && $(MPOST_LATEX) $*
-	-test -r $*pics.mp && MPINPUTS=$(MP_FLAGS) $(MPOST) $*pics
-	TEXINPUTS=$(TEX_FLAGS) $(PDFLATEX) $<
-	if grep -s 'Rerun to get cross-references right.' $*.log; then \
-	  TEXINPUTS=$(TEX_FLAGS) $(PDFLATEX) $<; \
-	fi
-endif 
-endif SUPP_PDF_AVAILABLE
+	@if $(AM_V_P); then TEXINPUTS=$(TEX_FLAGS) $(PDFLATEX) $<; else \
+	   echo " PDFLATEX  " $<; TEXINPUTS=$(TEX_FLAGS) $(PDFLATEX) $< >/dev/null; fi
+if MAKEINDEX_AVAILABLE
+	@if $(AM_V_P); then $(MAKEINDEX) -o $*.ind $*.idx; else \
+	   echo " MAKEINDEX " $*.ind $*.idx; $(MAKEINDEX) -q -o $*.ind $*.idx; fi
+endif MAKEINDEX_AVAILABLE
+if MPOST_AVAILABLE
+	@if $(AM_V_P); then test -r $*.mp && $(MPOST_LATEX) $*; else \
+	   echo " METAPOST  " $*.mp; test -r $*.mp && $(MPOST_LATEX) $* >/dev/null; fi
+	@if $(AM_V_P); then test -r $*pics.mp && MPINPUTS=$(MP_FLAGS) $(MPOST) $*pics; else \
+	   echo " METAPOST  " $*pics.mp; \
+	   test -r $*pics.mp && MPINPUTS=$(MP_FLAGS) $(MPOST) $*pics > /dev/null; fi
 endif MPOST_AVAILABLE
+	@if $(AM_V_P); then TEXINPUTS=$(TEX_FLAGS) $(PDFLATEX) $<; else \
+	   echo " PDFLATEX  " $<; TEXINPUTS=$(TEX_FLAGS) $(PDFLATEX) $< >/dev/null; fi
+	@if $(AM_V_P); then \
+	   if grep -s 'Rerun to get cross-references right.' $*.log; then \
+	      TEXINPUTS=$(TEX_FLAGS) $(PDFLATEX) $<; \
+	   fi; else \
+	   if grep -s 'Rerun to get cross-references right.' $*.log >/dev/null; then \
+	      echo " PDFLATEX  " $< "(for cross-references)"; \
+	      TEXINPUTS=$(TEX_FLAGS) $(PDFLATEX) $< >/dev/null; \
+	   fi; \
+	fi
+endif SUPP_PDF_AVAILABLE
 endif PDFLATEX_AVAILABLE
 endif DISTRIBUTION
 

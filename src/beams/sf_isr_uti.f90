@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -120,7 +113,7 @@ contains
     class(sf_int_t), allocatable :: sf_int
     type(vector4_t) :: k
     real(default) :: E
-    real(default), dimension(:), allocatable :: r, rb, x
+    real(default), dimension(:), allocatable :: r, rb, x, xb
     real(default) :: f, f_isr
 
     write (u, "(A)")  "* Test output: sf_isr_2"
@@ -167,23 +160,25 @@ contains
     allocate (r (data%get_n_par ()))
     allocate (rb(size (r)))
     allocate (x (size (r)))
+    allocate (xb(size (r)))
 
     r = 0.9_default
     rb = 1 - r
     write (u, "(A,9(1x," // FMT_12 // "))")  "r =", r
     write (u, "(A,9(1x," // FMT_12 // "))")  "rb=", rb
 
-    call sf_int%complete_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.false.)
 
     write (u, "(A)")
     write (u, "(A,9(1x," // FMT_12 // "))")  "x =", x
+    write (u, "(A,9(1x," // FMT_12 // "))")  "xb=", xb
     write (u, "(A,9(1x," // FMT_12 // "))")  "f =", f
 
     write (u, "(A)")
     write (u, "(A)")  "* Invert kinematics"
     write (u, "(A)")
 
-    call sf_int%inverse_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%inverse_kinematics (x, xb, f, r, rb, map=.false.)
     write (u, "(A,9(1x," // FMT_12 // "))")  "r =", r
     write (u, "(A,9(1x," // FMT_12 // "))")  "rb=", rb
     write (u, "(A,9(1x," // FMT_12 // "))")  "f =", f
@@ -238,7 +233,7 @@ contains
     class(sf_int_t), allocatable :: sf_int
     type(vector4_t) :: k
     real(default) :: E
-    real(default), dimension(:), allocatable :: r, rb, x
+    real(default), dimension(:), allocatable :: r, rb, x, xb
     real(default) :: f, f_isr
 
     write (u, "(A)")  "* Test output: sf_isr_3"
@@ -285,23 +280,25 @@ contains
     allocate (r (data%get_n_par ()))
     allocate (rb(size (r)))
     allocate (x (size (r)))
+    allocate (xb(size (r)))
 
     r = 0.7_default
     rb = 1 - r
     write (u, "(A,9(1x," // FMT_12 // "))")  "r =", r
     write (u, "(A,9(1x," // FMT_12 // "))")  "rb=", rb
 
-    call sf_int%complete_kinematics (x, f, r, rb, map=.true.)
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.true.)
 
     write (u, "(A)")
     write (u, "(A,9(1x," // FMT_12 // "))")  "x =", x
+    write (u, "(A,9(1x," // FMT_12 // "))")  "xb=", xb
     write (u, "(A,9(1x," // FMT_12 // "))")  "f =", f
 
     write (u, "(A)")
     write (u, "(A)")  "* Invert kinematics"
     write (u, "(A)")
 
-    call sf_int%inverse_kinematics (x, f, r, rb, map=.true.)
+    call sf_int%inverse_kinematics (x, xb, f, r, rb, map=.true.)
     write (u, "(A,9(1x," // FMT_12 // "))")  "r =", r
     write (u, "(A,9(1x," // FMT_12 // "))")  "rb=", rb
     write (u, "(A,9(1x," // FMT_12 // "))")  "f =", f
@@ -357,7 +354,7 @@ contains
     type(vector4_t) :: k
     type(vector4_t), dimension(2) :: q
     real(default) :: E
-    real(default), dimension(:), allocatable :: r, rb, x
+    real(default), dimension(:), allocatable :: r, rb, x, xb
     real(default) :: f, f_isr
     character(len=80) :: buffer
     integer :: u_scratch, iostat
@@ -408,14 +405,16 @@ contains
     allocate (r (data%get_n_par ()))
     allocate (rb(size (r)))
     allocate (x (size (r)))
+    allocate (xb(size (r)))
 
     r = [0.5_default, 0.5_default, 0.25_default]
     rb = 1 - r
     sf_int%on_shell_mode = KEEP_ENERGY
-    call sf_int%complete_kinematics (x, f, r, rb, map=.true.)
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.true.)
     call interaction_pacify_momenta (sf_int%interaction_t, 1e-10_default)
 
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "f =", f
 
     write (u, "(A)")
@@ -432,17 +431,18 @@ contains
 
     call sf_int%seed_kinematics ([k])
     call sf_int%set_momenta (q, outgoing=.true.)
-    call sf_int%recover_x (x)
-    call sf_int%inverse_kinematics (x, f, r, rb, map=.true.)
+    call sf_int%recover_x (x, xb)
+    call sf_int%inverse_kinematics (x, xb, f, r, rb, map=.true.)
 
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "r =", r
 
     write (u, "(A)")
     write (u, "(A)")  "* Evaluate ISR structure function"
     write (u, "(A)")
 
-    call sf_int%complete_kinematics (x, f, r, rb, map=.true.)
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.true.)
     call interaction_pacify_momenta (sf_int%interaction_t, 1e-10_default)
     call sf_int%apply (scale = 10._default)
     u_scratch = free_unit ()
@@ -492,7 +492,7 @@ contains
     class(sf_int_t), dimension(:), allocatable :: sf_int
     type(vector4_t), dimension(2) :: k
     real(default) :: E, f_map
-    real(default), dimension(:), allocatable :: p, pb, r, rb, x
+    real(default), dimension(:), allocatable :: p, pb, r, rb, x, xb
     real(default), dimension(2) :: f, f_isr
     integer :: i
 
@@ -561,6 +561,7 @@ contains
     allocate (r (size (p)))
     allocate (rb(size (p)))
     allocate (x (size (p)))
+    allocate (xb(size (p)))
 
     p = [0.7_default, 0.4_default]
     pb= 1 - p
@@ -573,12 +574,13 @@ contains
     write (u, "(A,9(1x," // FMT_12 // "))")  "fm=", f_map
 
     do i = 1, 2
-       call sf_int(i)%complete_kinematics (x(i:i), f(i), r(i:i), rb(i:i), &
+       call sf_int(i)%complete_kinematics (x(i:i), xb(i:i), f(i), r(i:i), rb(i:i), &
             map=.false.)
     end do
 
     write (u, "(A)")
     write (u, "(A,9(1x," // FMT_12 // "))")  "x =", x
+    write (u, "(A,9(1x," // FMT_12 // "))")  "xb=", xb
     write (u, "(A,9(1x," // FMT_12 // "))")  "f =", f
 
     write (u, "(A)")
@@ -586,7 +588,7 @@ contains
     write (u, "(A)")
 
     do i = 1, 2
-       call sf_int(i)%inverse_kinematics (x(i:i), f(i), r(i:i), rb(i:i), &
+       call sf_int(i)%inverse_kinematics (x(i:i), xb(i:i), f(i), r(i:i), rb(i:i), &
             map=.false.)
     end do
     call mapping%inverse (r, rb, f_map, p, pb)

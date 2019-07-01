@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -811,13 +804,16 @@ contains
   end subroutine event_set_scale_forced
 
   subroutine event_recalculate &
-       (event, update_sqme, weight_factor, recover_beams)
+       (event, update_sqme, weight_factor, recover_beams, recover_phs)
     class(event_t), intent(inout) :: event
     logical, intent(in) :: update_sqme
     real(default), intent(in), optional :: weight_factor
     logical, intent(in), optional :: recover_beams
+    logical, intent(in), optional :: recover_phs
     type(particle_set_t), pointer :: particle_set
     integer :: i_mci, i_term, channel
+    logical :: rec_phs_mci
+    rec_phs_mci = .true.;  if (present (recover_phs))  rec_phs_mci = recover_phs
     if (event%has_valid_particle_set ()) then
        particle_set => event%get_particle_set_ptr ()
        i_mci = event%selected_i_mci
@@ -832,8 +828,8 @@ contains
           call event%instance%set_alpha_qcd_forced &
                (i_term, event%alpha_qcd_forced)
        end if
-       call event%instance%recover (channel, i_term, update_sqme, &
-            event%scale_forced)
+       call event%instance%recover (channel, i_term, &
+            update_sqme, rec_phs_mci, event%scale_forced)
        if (signal_is_pending ())  return
        if (update_sqme .and. present (weight_factor)) then
           call event%instance%evaluate_event_data &
@@ -841,7 +837,7 @@ contains
        else if (event%weight_ref_is_known ()) then
           call event%instance%evaluate_event_data &
                (weight = event%get_weight_ref ())
-       else
+       else if (rec_phs_mci) then
           call event%instance%recover_event ()
           if (signal_is_pending ())  return
           call event%instance%evaluate_event_data ()

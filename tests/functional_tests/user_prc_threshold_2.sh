@@ -1,12 +1,11 @@
 #!/bin/sh
-### Check WHIZARD: different offshell strategies in threshold
+### Check WHIZARD: process library handling
 echo "Running script $0"
 if test -f OCAML_FLAG; then
-    s=`basename @script@`
+    name=`basename @script@`
     ./run_whizard.sh @script@ --no-logging
-    rc=$?; if [ $rc != 0 ]; then exit $rc; fi
-    diff ref-output/${s}.ref ${s}.log
-  else
+    diff ref-output/$name.ref $name.log
+else
     echo "|=============================================================================|"
     echo "No O'Mega matrix elements available, test skipped"
     exit 77

@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -116,21 +109,23 @@ module process_libraries
      procedure :: get_n_tot => process_component_def_get_n_tot
      procedure :: get_prt_in => process_component_def_get_prt_in
      procedure :: get_prt_out => process_component_def_get_prt_out
+     procedure :: get_prt_spec_in => process_component_def_get_prt_spec_in
+     procedure :: get_prt_spec_out => process_component_def_get_prt_spec_out
      procedure :: get_pdg_in => process_component_def_get_pdg_in
      procedure :: get_md5sum => process_component_def_get_md5sum
      procedure :: get_nlo_type => process_component_def_get_nlo_type
      procedure :: get_associated_born &
-                  => process_component_def_get_associated_born
+          => process_component_def_get_associated_born
      procedure :: get_associated_real_fin &
-                  => process_component_def_get_associated_real_fin
+          => process_component_def_get_associated_real_fin
      procedure :: get_associated_real_sing &
-                  => process_component_def_get_associated_real_sing
+          => process_component_def_get_associated_real_sing
      procedure :: get_associated_subtraction &
-                  => process_component_def_get_associated_subtraction
+          => process_component_def_get_associated_subtraction
      procedure :: get_association_list &
-                  => process_component_def_get_association_list
+          => process_component_def_get_association_list
      procedure :: can_be_integrated &
-                  => process_component_def_can_be_integrated
+          => process_component_def_can_be_integrated
      procedure :: get_associated_real => process_component_def_get_associated_real
      procedure :: get_me_method => process_component_def_get_me_method
      procedure :: get_fixed_emitter => process_component_def_get_fixed_emitter
@@ -500,6 +495,20 @@ contains
     end do
   end subroutine process_component_def_get_prt_out
 
+  function process_component_def_get_prt_spec_in (component) result (prt)
+    class(process_component_def_t), intent(in) :: component
+    type(prt_spec_t), dimension(:), allocatable :: prt
+    allocate (prt (component%n_in))
+    prt(:) = component%prt_in(:)
+  end function process_component_def_get_prt_spec_in
+
+  function process_component_def_get_prt_spec_out (component) result (prt)
+    class(process_component_def_t), intent(in) :: component
+    type(prt_spec_t), dimension(:), allocatable :: prt
+    allocate (prt (component%n_out))
+    prt(:) = component%prt_out(:)
+  end function process_component_def_get_prt_spec_out
+
   subroutine process_component_def_get_pdg_in (component, model, pdg)
     class(process_component_def_t), intent(in) :: component
     class(model_data_t), intent(in), target :: model
@@ -825,7 +834,7 @@ contains
               end if
            end if
            nlo_type_string = component_status (comp%nlo_type)
-           if (nlo_type_string /= "Born") then
+           if (nlo_type_string /= "born") then
              d = d // ", [" // nlo_type_string // "]"
            end if
          end associate

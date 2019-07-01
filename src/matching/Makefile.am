@@ -6,13 +6,8 @@
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
-#     Fabian Bach <fabian.bach@t-online.de>
-#     Bijan Chokoufe <bijan.chokoufe@desy.de>
-#     Christian Speckner <cnspeckn@googlemail.com>
-#     Marco Sekulla <marco.sekulla@kit.edu>
-#     Christian Weiss <christian.weiss@desy.de>
-#     Felix Braam, Sebastian Schmidt,
-#     Hans-Werner Boschmann, Daniel Wiesler
+#     with contributions from
+#     cf. main AUTHORS file
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by
@@ -154,12 +149,25 @@ if FC_USE_OPENMP
 AM_FCFLAGS += $(FCFLAGS_OPENMP)
 endif
 
+# MPI
+if FC_USE_MPI
+AM_FCFLAGS += $(FCFLAGS_MPI)
+endif
+
+if RECOLA_AVAILABLE
+AM_FCFLAGS += $(RECOLA_INCLUDES)
+endif
 
 ########################################################################
 ## Non-standard targets and dependencies
 
 ## (Re)create F90 sources from NOWEB source.
 if NOWEB_AVAILABLE
+
+FILTER =
+if FC_USE_MPI
+FILTER += -filter "sed 's/defn MPI:/defn/'"
+endif
 
 PRELUDE = $(top_srcdir)/src/noweb-frame/whizard-prelude.nw
 POSTLUDE = $(top_srcdir)/src/noweb-frame/whizard-postlude.nw
@@ -170,7 +178,7 @@ matching.stamp: $(PRELUDE) $(srcdir)/matching.nw $(POSTLUDE)
 	for src in \
           $(libmatching_la_SOURCES) \
           $(libmatching_ut_la_SOURCES); do \
-	  $(NOTANGLE) -R[[$$src]] $^ | $(CPIF) $$src; \
+	  $(NOTANGLE) -R[[$$src]] $(FILTER) $^ | $(CPIF) $$src; \
         done
 	@mv -f matching.tmp matching.stamp
 

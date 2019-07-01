@@ -9,7 +9,7 @@
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
 #     with contributions from
-#     Christian Speckner <cnspeckn@googlemail.com>
+#     cf. main AUTHORS file
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by 
@@ -68,23 +68,29 @@ include $(top_srcdir)/omega/src/Makefile.sources
 if OCAML_AVAILABLE 
 omega_core.a: omega_core.cmxa
 omega_core.cmxa: $(OMEGA_CORE_CMX)
-	$(OCAMLOPT) $(OCAMLFLAGS) $(OCAMLOPTFLAGS) -a -o $@ $^
+	@if $(AM_V_P); then :; else echo "  OCAMLOPT " $@; fi
+	$(AM_V_at)$(OCAMLOPT) $(OCAMLFLAGS) $(OCAMLOPTFLAGS) -a -o $@ $^
 
 omega_core.cma: $(OMEGA_CORE_CMO)
-	$(OCAMLC) $(OCAMLFLAGS) -a -o $@ $^
+	@if $(AM_V_P); then :; else echo "  OCAMLC   " $@; fi
+	$(AM_V_at)$(OCAMLC) $(OCAMLFLAGS) -a -o $@ $^
 
 omega_targets.a: omega_targets.cmxa
 omega_targets.cmxa: $(OMEGA_TARGETS_CMX)
-	$(OCAMLOPT) $(OCAMLFLAGS) $(OCAMLOPTFLAGS) -a -o $@ $^
+	@if $(AM_V_P); then :; else echo "  OCAMLOPT " $@; fi
+	$(AM_V_at)$(OCAMLOPT) $(OCAMLFLAGS) $(OCAMLOPTFLAGS) -a -o $@ $^
 
 omega_targets.cma: $(OMEGA_TARGETS_CMO)
-	$(OCAMLC) $(OCAMLFLAGS) -a -o $@ $^
+	@if $(AM_V_P); then :; else echo "  OCAMLC   " $@; fi
+	$(AM_V_at)$(OCAMLC) $(OCAMLFLAGS) -a -o $@ $^
 
 omega_models.cmxa: $(OMEGA_MODELS_CMX)
-	$(OCAMLOPT) $(OCAMLFLAGS) $(OCAMLOPTFLAGS) -a -o $@ $^
+	@if $(AM_V_P); then :; else echo "  OCAMLOPT " $@; fi
+	$(AM_V_at)$(OCAMLOPT) $(OCAMLFLAGS) $(OCAMLOPTFLAGS) -a -o $@ $^
 
 omega_models.cma: $(OMEGA_MODELS_CMO)
-	$(OCAMLC) $(OCAMLFLAGS) -a -o $@ $^
+	@if $(AM_V_P); then :; else echo "  OCAMLC   " $@; fi
+	$(AM_V_at)$(OCAMLC) $(OCAMLFLAGS) -a -o $@ $^
 
 cascade_lexer.mli: cascade_lexer.ml cascade_parser.cmi
 	$(OCAMLC) -i $< | $(GREP) 'val token' >$@
@@ -92,10 +98,10 @@ cascade_lexer.mli: cascade_lexer.ml cascade_parser.cmi
 vertex_lexer.mli: vertex_lexer.ml vertex_parser.cmi
 	$(OCAMLC) -i $< | $(EGREP) 'val (token|init_position)' >$@
 
-uFO_lexer.mli: uFO_lexer.ml uFO_parser.cmi
+UFO_lexer.mli: UFO_lexer.ml UFO_parser.cmi
 	$(OCAMLC) -i $< | $(EGREP) 'val (token|init_position)' >$@
 
-uFOx_lexer.mli: uFOx_lexer.ml uFOx_parser.cmi
+UFOx_lexer.mli: UFOx_lexer.ml UFOx_parser.cmi
 	$(OCAMLC) -i $< | $(EGREP) 'val (token|init_position)' >$@
 
 endif
@@ -162,13 +168,14 @@ if OCAML_AVAILABLE
 
 @am__include@ @am__quote@Makefile.depend_ocaml@am__quote@
 
-PARSERS = cascade vertex uFO uFOx
+PARSERS = cascade vertex UFO UFOx
 
 Makefile.depend_ocaml: $(OMEGA_CAML_PRIMARY)
+	@if $(AM_V_P); then :; else echo "  OCAMLDEP " $@; fi
 	@rm -f $@
-	$(OCAMLDEP) -I $(srcdir) $^ $(OMEGA_DERIVED_CAML) \
+	$(AM_V_at)$(OCAMLDEP) -I $(srcdir) $^ $(OMEGA_DERIVED_CAML) \
 	  | sed 's,[^ 	]*/,,g' > $@
-	for parser in $(PARSERS); do \
+	$(AM_V_at)for parser in $(PARSERS); do \
 	  echo $${parser}.cmi: $${parser}_lexer.cmi; \
 	  echo $${parser}_lexer.cmi: $${parser}_parser.cmi; \
 	  echo $${parser}_parser.cmi: $${parser}_syntax.cmi; \

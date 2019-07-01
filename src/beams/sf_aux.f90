@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -75,6 +68,7 @@ module sf_aux
      procedure :: split_momentum => splitting_split_momentum
      procedure :: recover => splitting_recover
      procedure :: get_x => splitting_get_x
+     procedure :: get_xb => splitting_get_xb
   end type splitting_data_t
 
 
@@ -279,26 +273,28 @@ contains
 
   subroutine splitting_recover (d, k, q, keep)
     class(splitting_data_t), intent(inout) :: d
-    type(vector4_t), intent(in) :: k, q
+    type(vector4_t), intent(in) :: k
+    type(vector4_t), dimension(2), intent(in) :: q
     integer, intent(in) :: keep
     type(lorentz_transformation_t) :: rot
-    type(vector4_t) :: q0, k0
+    type(vector4_t) :: k0
+    type(vector4_t), dimension(2) :: q0
     real(default) :: p1, p2, p3, pt2, pp2, pl
     real(default) :: aux, den, norm
     real(default) :: st2, ct2, ct
     rot = inverse (rotation_to_2nd (3, space_part (k)))
     q0 = rot * q
-    p1 = vector4_get_component (q0, 1)
-    p2 = vector4_get_component (q0, 2)
-    p3 = vector4_get_component (q0, 3)
+    p1 = vector4_get_component (q0(2), 1)
+    p2 = vector4_get_component (q0(2), 2)
+    p3 = vector4_get_component (q0(2), 3)
     pt2 = p1 ** 2 + p2 ** 2
     pp2 = p1 ** 2 + p2 ** 2 + p3 ** 2
     pl = abs (p3)
     k0 = vector4_moving (d%E, d%p, 3)
     select case (keep)
     case (KEEP_ENERGY)
-       d%x = energy (q0) / d%E
-       d%xb = 1 - d%x
+       d%x = energy (q0(2)) / d%E
+       d%xb = energy (q0(1)) / d%E
        call d%set_t_bounds ()
        if (.not. d%collinear) then
           aux = (d%xb * d%pb) ** 2 * pp2 - d%p ** 2 * pt2
@@ -310,7 +306,7 @@ contains
           end if
        end if
     case (KEEP_MOMENTUM)
-       d%xb = sqrt (space_part (k0 - q0) ** 2 + d%u) / d%E
+       d%xb = sqrt (space_part (q0(1)) ** 2 + d%u) / d%E
        d%x = 1 - d%xb
        call d%set_t_bounds ()
        norm = 1
@@ -347,6 +343,12 @@ contains
     real(default) :: x
     x = sd%x
   end function splitting_get_x
+
+  function splitting_get_xb (sd) result (xb)
+    class(splitting_data_t), intent(in) :: sd
+    real(default) :: xb
+    xb = sd%xb
+  end function splitting_get_xb
 
 
 end module sf_aux

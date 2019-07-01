@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -54,15 +47,19 @@ module diagnostics
   public :: D_PARTICLES, D_EVENTS, D_SHOWER, D_MODEL_F, &
        D_MATCHING, D_TRANSFORMS, D_SUBTRACTION, D_VIRTUAL, D_THRESHOLD, &
        D_PHASESPACE, D_MISMATCH, D_ME_METHODS, D_PROCESS_INTEGRATION, &
-       D_TAUOLA, D_CORE
+       D_TAUOLA, D_CORE, D_VAMP2, D_MPI, D_QFT, D_BEAMS
   public :: msg_level
+  public :: set_debug_levels
+  public :: set_debug2_levels
   public :: term_col
   public :: mask_fatal_errors
+  public :: handle_fatal_errors
   public :: msg_count
   public :: msg_list_clear
   public :: msg_summary
   public :: msg_listing
   public :: msg_buffer
+  public :: create_col_string
   public :: msg_terminate
   public :: msg_bug, msg_fatal, msg_error, msg_warning
   public :: msg_message, msg_result
@@ -72,6 +69,7 @@ module diagnostics
   public :: debug_active
   public :: debug2_active
   public :: msg_show_progress
+  public :: exit
   public :: msg_banner
   public :: logging
   public :: logfile_init
@@ -107,8 +105,8 @@ module diagnostics
        D_MATCHING=5, D_TRANSFORMS=6, &
        D_SUBTRACTION=7, D_VIRTUAL=8, D_THRESHOLD=9, D_PHASESPACE=10, &
        D_MISMATCH=11, D_ME_METHODS=12, D_PROCESS_INTEGRATION=13, &
-       D_TAUOLA=14, D_CORE=15, &
-       D_LAST=15
+       D_TAUOLA=14, D_CORE=15, D_VAMP2 = 16, D_MPI = 17, D_QFT = 18, &
+       D_BEAMS=19, D_LAST=19
   integer, parameter, public :: COL_UNDEFINED = -1
   integer, parameter, public :: COL_GREY = 90, COL_PEACH = 91, COL_LIGHT_GREEN = 92, &
      COL_LIGHT_YELLOW = 93, COL_LIGHT_BLUE = 94, COL_PINK = 95, &
@@ -116,7 +114,7 @@ module diagnostics
      COL_RED = 31, COL_GREEN = 32, COL_YELLOW = 33, COL_BLUE = 34, &
      COL_PURPLE = 35, COL_AQUA = 36
 
-  integer, parameter :: TERM_STOP = 0, TERM_EXIT = 1, TERM_CRASH = 2
+  integer, parameter, public :: TERM_STOP = 0, TERM_EXIT = 1, TERM_CRASH = 2
 
   type :: terminal_color_t
      integer :: color = COL_UNDEFINED
@@ -280,9 +278,19 @@ contains
        i = D_TAUOLA
     case ("core")
        i = D_CORE
+    case ("vamp2")
+       i = D_VAMP2
+    case ("mpi")
+       i = D_MPI
+    case ("qft")
+       i = D_QFT
+    case ("beams")
+       i = D_BEAMS
+    case ("all")
+       i = D_ALL
     case default
        print "(A)", "Possible values for --debug are:"
-       do i = 1, D_LAST
+       do i = 0, D_LAST
           print "(A)", char ('  ' // d_area_to_string(i))
        end do
        call msg_fatal ("Please use one of the listed areas")
@@ -323,10 +331,42 @@ contains
        string = "tauola"
     case (D_CORE)
        string = "core"
+    case (D_VAMP2)
+       string = "vamp2"
+    case (D_MPI)
+       string = "mpi"
+    case (D_QFT)
+       string = "qft"
+    case (D_BEAMS)
+       string = "beams"
+    case (D_ALL)
+       string = "all"
     case default
        string = "undefined"
     end select
   end function d_area_to_string
+
+  subroutine set_debug_levels (area_str)
+    type(string_t), intent(in) :: area_str
+    integer :: area
+    area = d_area (area_str)
+    if (area == D_ALL) then
+       msg_level = DEBUG
+    else
+       msg_level(area) = DEBUG
+    end if
+  end subroutine set_debug_levels
+
+  subroutine set_debug2_levels (area_str)
+    type(string_t), intent(in) :: area_str
+    integer :: area
+    area = d_area (area_str)
+    if (area == D_ALL) then
+       msg_level = DEBUG2
+    else
+       msg_level(area) = DEBUG2
+    end if
+  end subroutine set_debug2_levels
 
   function term_col_int (col_int) result (color)
     type(terminal_color_t) :: color
@@ -607,7 +647,6 @@ contains
        call exit (return_code)
     else
        !!! Should implement WHIZARD exit code (currently only via C)
-       ! stop
        call exit (0)
     end if
   end subroutine msg_terminate
@@ -1134,3 +1173,23 @@ contains
 
 
 end module diagnostics
+
+
+  subroutine fatal_force_crash ()
+    use diagnostics, only: handle_fatal_errors, TERM_CRASH !NODEP!
+    implicit none
+    handle_fatal_errors = TERM_CRASH
+  end subroutine fatal_force_crash
+
+  subroutine fatal_force_exit ()
+    use diagnostics, only: handle_fatal_errors, TERM_EXIT !NODEP!
+    implicit none
+    handle_fatal_errors = TERM_EXIT
+  end subroutine fatal_force_exit
+
+  subroutine fatal_force_stop ()
+    use diagnostics, only: handle_fatal_errors, TERM_STOP !NODEP!
+    implicit none
+    handle_fatal_errors = TERM_STOP
+  end subroutine fatal_force_stop
+

@@ -31,9 +31,9 @@ mtop = 175 GeV
 
 ?use_vamp_equivalences = false
 $loop_me_method = "openloops"
-?alpha_s_is_fixed = true
-?alpha_s_from_mz = false
-?alpha_s_from_lambda_qcd = false
+?alphas_is_fixed = true
+?alphas_from_mz = false
+?alphas_from_lambda_qcd = false
 alpha_power = 2
 alphas_power = 0
 real pii = 3.14159265358
@@ -44,7 +44,7 @@ show(alphas)
 !scale = eval Pt [sort by -Pt [colored]]
 
 # Needs OpenLoops library ee??
-process extra_nlo_uu = E1, e1 => u, U { nlo_calculation = "Full" }
+process extra_nlo_uu = E1, e1 => u, U { nlo_calculation = full }
 
 sqrts = 500 GeV
 
@@ -55,7 +55,7 @@ show (error(extra_nlo_uu))
 real separate_integral = integral(extra_nlo_uu)
 real separate_error = error(extra_nlo_uu)
 
-process extra_nlo_uu_b = E1, e1 => u, U { nlo_calculation = "Born" }
+process extra_nlo_uu_b = E1, e1 => u, U { nlo_calculation = born }
 integrate (extra_nlo_uu_b)
 real ratio = (separate_integral - integral(extra_nlo_uu_b)) / integral(extra_nlo_uu_b)
 printf "ratio = %f" (ratio)

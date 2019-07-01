@@ -604,9 +604,9 @@ expansion, there should be exactly one valid entry per record.
   procedure :: get_name => beam_structure_get_name
 <<Beam structures: procedures>>=
   function beam_structure_get_name (beam_structure, i) result (name)
+    type(string_t) :: name
     class(beam_structure_t), intent(in) :: beam_structure
     integer, intent(in) :: i
-    type(string_t) :: name
     associate (record => beam_structure%record(i))
       if (record%entry(1)%is_valid) then
          name = record%entry(1)%name
@@ -617,6 +617,23 @@ expansion, there should be exactly one valid entry per record.
   end function beam_structure_get_name
 
 @ %def beam_structure_get_name
+@
+<<Beam structures: beam structure: TBP>>=
+  procedure :: has_pdf => beam_structure_has_pdf
+<<Beam structures: procedures>>=
+  function beam_structure_has_pdf (beam_structure) result (has_pdf)
+    logical :: has_pdf
+    class(beam_structure_t), intent(in) :: beam_structure
+    integer :: i
+    type(string_t) :: name
+    has_pdf = .false.
+    do i = 1, beam_structure%get_n_record ()
+       name = beam_structure%get_name (i)
+       has_pdf = has_pdf .or. name == var_str ("pdf_builtin") .or. name == var_str ("lhapdf")
+    end do
+  end function beam_structure_has_pdf
+
+@ %def beam_structure_has_pdf
 @ Return true if the beam structure contains a particular structure
 function identifier (such as [[lhapdf]], [[isr]], etc.)
 <<Beam structures: beam structure: TBP>>=
@@ -1372,7 +1389,6 @@ parameters.
   function beam_data_get_energy (beam_data) result (e)
     class(beam_data_t), intent(in) :: beam_data
     real(default), dimension(:), allocatable :: e
-    !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
     integer :: i
     allocate (e (beam_data%n))
     if (beam_data%initialized) then
@@ -1573,17 +1589,11 @@ particular, include it in the MD5 sum.
     real(default), dimension(size(p3)) :: e
     real(default), dimension(size(flv)) :: m
     type(lorentz_transformation_t) :: L_boost, L_rot
-    !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
-    integer :: i
     call beam_data_init (beam_data, size (flv))
     m = flv%get_mass ()
     e = sqrt (p3 ** 2 + m ** 2)
     allocate (p (beam_data%n))
-    !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
-    !!! p = vector4_moving (e, p3)
-    do i = 1, beam_data%n
-       p(i) = vector4_moving (e(i), p3(i))
-    end do
+    p = vector4_moving (e, p3)
     p0 = sum (p)
     beam_data%p = p
     beam_data%lab_is_cm_frame = .false.
@@ -2927,31 +2937,39 @@ If the energy is below mass shell, we return a zero momentum.
 \subsection{Recovering the splitting}
 This is the inverse problem.  We have on-shell momenta and want to
 deduce the splitting parameters $x$, $t$, and $\phi$.
+
+Update 2018-08-22: As a true inverse to [[splitting_split_momentum]], we now use
+not just a single momentum [[q2]] as before, but the momentum pair [[q1]], [[q2]]
+for recovering $x$ and $\bar x$ separately.  If $x$ happens to be
+close to $1$, we would completely lose the tiny $\bar x$ value,
+otherwise, and thus get a meaningless result.
 <<SF aux: splitting data: TBP>>=
   procedure :: recover => splitting_recover
 <<SF aux: procedures>>=
   subroutine splitting_recover (d, k, q, keep)
     class(splitting_data_t), intent(inout) :: d
-    type(vector4_t), intent(in) :: k, q
+    type(vector4_t), intent(in) :: k
+    type(vector4_t), dimension(2), intent(in) :: q
     integer, intent(in) :: keep
     type(lorentz_transformation_t) :: rot
-    type(vector4_t) :: q0, k0
+    type(vector4_t) :: k0
+    type(vector4_t), dimension(2) :: q0
     real(default) :: p1, p2, p3, pt2, pp2, pl
     real(default) :: aux, den, norm
     real(default) :: st2, ct2, ct
     rot = inverse (rotation_to_2nd (3, space_part (k)))
     q0 = rot * q
-    p1 = vector4_get_component (q0, 1)
-    p2 = vector4_get_component (q0, 2)
-    p3 = vector4_get_component (q0, 3)
+    p1 = vector4_get_component (q0(2), 1)
+    p2 = vector4_get_component (q0(2), 2)
+    p3 = vector4_get_component (q0(2), 3)
     pt2 = p1 ** 2 + p2 ** 2
     pp2 = p1 ** 2 + p2 ** 2 + p3 ** 2
     pl = abs (p3)
     k0 = vector4_moving (d%E, d%p, 3)
     select case (keep)
     case (KEEP_ENERGY)
-       d%x = energy (q0) / d%E
-       d%xb = 1 - d%x
+       d%x = energy (q0(2)) / d%E
+       d%xb = energy (q0(1)) / d%E
        call d%set_t_bounds ()
        if (.not. d%collinear) then
           aux = (d%xb * d%pb) ** 2 * pp2 - d%p ** 2 * pt2
@@ -2963,7 +2981,7 @@ deduce the splitting parameters $x$, $t$, and $\phi$.
           end if
        end if
     case (KEEP_MOMENTUM)
-       d%xb = sqrt (space_part (k0 - q0) ** 2 + d%u) / d%E
+       d%xb = sqrt (space_part (q0(1)) ** 2 + d%u) / d%E
        d%x = 1 - d%xb
        call d%set_t_bounds ()
        norm = 1
@@ -3000,6 +3018,7 @@ deduce the splitting parameters $x$, $t$, and $\phi$.
 \subsection{Extract data}
 <<SF aux: splitting data: TBP>>=
   procedure :: get_x => splitting_get_x
+  procedure :: get_xb => splitting_get_xb
 <<SF aux: procedures>>=
   function splitting_get_x (sd) result (x)
     class(splitting_data_t), intent(in) :: sd
@@ -3007,7 +3026,14 @@ deduce the splitting parameters $x$, $t$, and $\phi$.
     x = sd%x
   end function splitting_get_x
 
+  function splitting_get_xb (sd) result (xb)
+    class(splitting_data_t), intent(in) :: sd
+    real(default) :: xb
+    xb = sd%xb
+  end function splitting_get_xb
+
 @ %def splitting_get_x
+@ %def splitting_get_xb
 @
 \subsection{Unit tests}
 Test module, followed by the corresponding implementation module.
@@ -3145,6 +3171,10 @@ input values.
     write (u, "(2(1x,F11.8))")  sd%xb, energy (q(1)) / energy (k)
 
     write (u, "(A)")
+    write (u, "(A)")  "Extract: x, 1-x"
+    write (u, "(2(1x,F11.8))")  sd%get_x (), sd%get_xb ()
+
+    write (u, "(A)")
     write (u, "(A)")  "* Project on-shell (keep energy)"
 
     q0 = q
@@ -3173,7 +3203,7 @@ input values.
     write (u, "(A)")
 
     call sd%init (k, mk**2, mp**2, mq**2)
-    call sd%recover (k, q0(2), KEEP_ENERGY)
+    call sd%recover (k, q0, KEEP_ENERGY)
 
     write (u, "(A)")  "Compare: x"
     write (u, "(2(1x,F11.8))")  x, sd%x
@@ -3223,7 +3253,7 @@ input values.
     write (u, "(A)")
 
     call sd%init (k, mk**2, mp**2, mq**2)
-    call sd%recover (k, q0(2), KEEP_MOMENTUM)
+    call sd%recover (k, q0, KEEP_MOMENTUM)
 
     write (u, "(A)")  "Compare: x"
     write (u, "(2(1x,F11.8))")  x, sd%x
@@ -3314,7 +3344,7 @@ input values.
     write (u, "(A)")
 
     call sd%init (k, mk**2, mp**2, mq**2)
-    call sd%recover (k, q0(2), KEEP_ENERGY)
+    call sd%recover (k, q0, KEEP_ENERGY)
 
     write (u, "(A)")  "Compare: x"
     write (u, "(2(1x,F11.8))")  x, sd%x
@@ -3353,7 +3383,7 @@ input values.
     write (u, "(A)")
 
     call sd%init (k, mk**2, mp**2, mq**2)
-    call sd%recover (k, q0(2), KEEP_MOMENTUM)
+    call sd%recover (k, q0, KEEP_MOMENTUM)
 
     write (u, "(A)")  "Compare: x"
     write (u, "(2(1x,F11.8))")  x, sd%x
@@ -3481,7 +3511,7 @@ input values.
 
     call sd%init (k, mk**2, mp**2, mq**2)
     call sd%set_t_bounds (x, 1 - x)
-    call sd%recover (k, q0(2), KEEP_ENERGY)
+    call sd%recover (k, q0, KEEP_ENERGY)
 
     write (u, "(A)")  "Compare: x"
     write (u, "(2(1x,F11.8))")  x, sd%x
@@ -3532,7 +3562,7 @@ input values.
 
     call sd%init (k, mk**2, mp**2, mq**2)
     call sd%set_t_bounds (x, 1 - x)
-    call sd%recover (k, q0(2), KEEP_MOMENTUM)
+    call sd%recover (k, q0, KEEP_MOMENTUM)
 
     write (u, "(A)")  "Compare: x"
     write (u, "(2(1x,F11.8))")  x, sd%x
@@ -3624,7 +3654,7 @@ input values.
 
     call sd%init (k, mk**2, mp**2, mq**2)
     call sd%set_t_bounds (x, 1 - x)
-    call sd%recover (k, q0(2), KEEP_ENERGY)
+    call sd%recover (k, q0, KEEP_ENERGY)
 
     write (u, "(A)")  "Compare: x"
     write (u, "(2(1x,F11.8))")  x, sd%x
@@ -3664,7 +3694,7 @@ input values.
 
     call sd%init (k, mk**2, mp**2, mq**2)
     call sd%set_t_bounds (x, 1 - x)
-    call sd%recover (k, q0(2), KEEP_MOMENTUM)
+    call sd%recover (k, q0, KEEP_MOMENTUM)
 
     write (u, "(A)")  "Compare: x"
     write (u, "(2(1x,F11.8))")  x, sd%x
@@ -3793,7 +3823,7 @@ is not possible.
 
     call sd%init (k, mk**2, mp**2, mq**2)
     call sd%set_t_bounds (x, 1 - x)
-    call sd%recover (k, q0(2), KEEP_ENERGY)
+    call sd%recover (k, q0, KEEP_ENERGY)
 
     write (u, "(A)")  "Compare: x"
     write (u, "(2(1x,F11.8))")  x, sd%x
@@ -3844,7 +3874,7 @@ is not possible.
 
     call sd%init (k, mk**2, mp**2, mq**2)
     call sd%set_t_bounds (x, 1 - x)
-    call sd%recover (k, q0(2), KEEP_MOMENTUM)
+    call sd%recover (k, q0, KEEP_MOMENTUM)
 
     write (u, "(A)")  "Compare: x"
     write (u, "(2(1x,F11.8))")  x, sd%x
@@ -3936,7 +3966,7 @@ is not possible.
 
     call sd%init (k, mk**2, mp**2, mq**2)
     call sd%set_t_bounds (x, 1 - x)
-    call sd%recover (k, q0(2), KEEP_ENERGY)
+    call sd%recover (k, q0, KEEP_ENERGY)
 
     write (u, "(A)")  "Compare: x"
     write (u, "(2(1x,F11.8))")  x, sd%x
@@ -3976,7 +4006,7 @@ is not possible.
 
     call sd%init (k, mk**2, mp**2, mq**2)
     call sd%set_t_bounds (x, 1 - x)
-    call sd%recover (k, q0(2), KEEP_MOMENTUM)
+    call sd%recover (k, q0, KEEP_MOMENTUM)
 
     write (u, "(A)")  "Compare: x"
     write (u, "(2(1x,F11.8))")  x, sd%x
@@ -3992,6 +4022,179 @@ is not possible.
   end subroutine sf_aux_3
 
 @ %def sf_aux_3
+@
+\subsubsection{Endpoint stability}
+Compute momentum splitting for collinear kinematics close to both
+endpoints.  In particular, check both directions $x\to$ momenta and
+momenta $\to x$.
+
+For purely massless collinear splitting, the [[KEEP_XXX]] flag is
+irrelevant.  We choose [[KEEP_ENERGY]] here.
+<<SF aux: execute tests>>=
+  call test (sf_aux_4, "sf_aux_4", &
+       "endpoint numerics", &
+       u, results)
+<<SF aux: test declarations>>=
+  public :: sf_aux_4
+<<SF aux: tests>>=
+  subroutine sf_aux_4 (u)
+    integer, intent(in) :: u
+    type(splitting_data_t) :: sd
+    type(vector4_t) :: k
+    type(vector4_t), dimension(2) :: q
+    real(default) :: E, mk, mp, mq, qmin, qmax
+    real(default) :: x, xb
+
+    write (u, "(A)")  "* Test output: sf_aux_4"
+    write (u, "(A)")  "*   Purpose: compute massless collinear splitting near endpoint"
+
+    E = 1
+    mk = 0
+    mp = 0
+    mq = 0
+    qmin = 1e-2_default
+    qmax = 1e0_default
+
+    k = vector4_moving (E, sqrt (E**2 - mk**2), 3)
+
+    x = 0.1_default
+    xb = 1 - x
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* (1) Collinear setup, moderate kinematics"
+    write (u, "(A)")
+
+    call sd%init (k, mk**2, mp**2, mq**2, collinear = .true.)
+    call sd%set_t_bounds (x, xb)
+
+    call sd%write (u)
+
+    q = sd%split_momentum (k)
+
+    write (u, "(A)")
+    write (u, "(A)")  "Incoming momentum k ="
+    call vector4_write (k, u)
+    write (u, "(A)")
+    write (u, "(A)")  "Outgoing momentum sum p + q ="
+    call vector4_write (sum (q), u)
+    write (u, "(A)")
+    write (u, "(A)")  "Radiated momentum p ="
+    call vector4_write (q(1), u)
+    write (u, "(A)")
+    write (u, "(A)")  "Outgoing momentum q ="
+    call vector4_write (q(2), u)
+    write (u, "(A)")
+
+    write (u, "(A)")  "* Recover parameters from outgoing momenta"
+    write (u, "(A)")
+
+    call sd%init (k, mk**2, mp**2, mq**2, collinear = .true.)
+    call sd%set_t_bounds (x, xb)
+    call sd%recover (k, q, KEEP_ENERGY)
+
+    write (u, "(A)")  "Compare: x"
+    write (u, "(2(1x,F11.8))")  x, sd%x
+
+    write (u, "(A)")  "Compare: 1-x"
+    write (u, "(2(1x,F11.8))")  xb, sd%xb
+
+    write (u, "(A)")
+    call sd%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* (2) Close to x=0"
+    write (u, "(A)")
+
+    x = 1e-9_default
+    xb = 1 - x
+
+    call sd%init (k, mk**2, mp**2, mq**2, collinear = .true.)
+    call sd%set_t_bounds (x, xb)
+
+    call sd%write (u)
+
+    q = sd%split_momentum (k)
+
+    write (u, "(A)")
+    write (u, "(A)")  "Incoming momentum k ="
+    call vector4_write (k, u)
+    write (u, "(A)")
+    write (u, "(A)")  "Outgoing momentum sum p + q ="
+    call vector4_write (sum (q), u)
+    write (u, "(A)")
+    write (u, "(A)")  "Radiated momentum p ="
+    call vector4_write (q(1), u)
+    write (u, "(A)")
+    write (u, "(A)")  "Outgoing momentum q ="
+    call vector4_write (q(2), u)
+    write (u, "(A)")
+
+    write (u, "(A)")  "* Recover parameters from outgoing momenta"
+    write (u, "(A)")
+
+    call sd%init (k, mk**2, mp**2, mq**2, collinear = .true.)
+    call sd%set_t_bounds (x, xb)
+    call sd%recover (k, q, KEEP_ENERGY)
+
+    write (u, "(A)")  "Compare: x"
+    write (u, "(2(1x,F11.8))")  x, sd%x
+
+    write (u, "(A)")  "Compare: 1-x"
+    write (u, "(2(1x,F11.8))")  xb, sd%xb
+
+    write (u, "(A)")
+    call sd%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* (3) Close to x=1"
+    write (u, "(A)")
+
+    xb = 1e-9_default
+    x = 1 - xb
+
+    call sd%init (k, mk**2, mp**2, mq**2, collinear = .true.)
+    call sd%set_t_bounds (x, xb)
+
+    call sd%write (u)
+
+    q = sd%split_momentum (k)
+
+    write (u, "(A)")
+    write (u, "(A)")  "Incoming momentum k ="
+    call vector4_write (k, u)
+    write (u, "(A)")
+    write (u, "(A)")  "Outgoing momentum sum p + q ="
+    call vector4_write (sum (q), u)
+    write (u, "(A)")
+    write (u, "(A)")  "Radiated momentum p ="
+    call vector4_write (q(1), u)
+    write (u, "(A)")
+    write (u, "(A)")  "Outgoing momentum q ="
+    call vector4_write (q(2), u)
+    write (u, "(A)")
+
+    write (u, "(A)")  "* Recover parameters from outgoing momenta"
+    write (u, "(A)")
+
+    call sd%init (k, mk**2, mp**2, mq**2, collinear = .true.)
+    call sd%set_t_bounds (x, xb)
+    call sd%recover (k, q, KEEP_ENERGY)
+
+    write (u, "(A)")  "Compare: x"
+    write (u, "(2(1x,F11.8))")  x, sd%x
+
+    write (u, "(A)")  "Compare: 1-x"
+    write (u, "(2(1x,F11.8))")  xb, sd%xb
+
+    write (u, "(A)")
+    call sd%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: sf_aux_4"
+
+  end subroutine sf_aux_4
+
+@ %def sf_aux_4
 @
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Mappings for structure functions}
@@ -8125,6 +8328,7 @@ module sf_base
   use io_units
   use format_utils, only: write_separator
   use format_defs, only: FMT_17, FMT_19
+  use physics_defs, only: n_beam_structure_int
   use diagnostics
   use lorentz
   use quantum_numbers
@@ -8241,7 +8445,7 @@ will override this.
 <<SF base: sf data: TBP>>=
   procedure :: get_pdf_set => sf_data_get_pdf_set
 <<SF base: procedures>>=
-  function sf_data_get_pdf_set (data) result (pdf_set)
+  elemental function sf_data_get_pdf_set (data) result (pdf_set)
     class(sf_data_t), intent(in) :: data
     integer :: pdf_set
     pdf_set = 0
@@ -8315,14 +8519,13 @@ object contains the actual configuration data.
 <<SF base: sf config: TBP>>=
   procedure :: get_pdf_set => sf_config_get_pdf_set
 <<SF base: procedures>>=
-  function sf_config_get_pdf_set (sf_config) result (pdf_set)
+  elemental function sf_config_get_pdf_set (sf_config) result (pdf_set)
     class(sf_config_t), intent(in) :: sf_config
     integer :: pdf_set
     pdf_set = sf_config%data%get_pdf_set ()
   end function sf_config_get_pdf_set
 
 @ %def sf_config_get_pdf_set
-@
 @ Return the beam spectrum file, if any.
 <<SF base: sf config: TBP>>=
   procedure :: get_beam_file => sf_config_get_beam_file
@@ -8334,6 +8537,62 @@ object contains the actual configuration data.
   end function sf_config_get_beam_file
 
 @ %def sf_config_get_beam_file
+@
+\subsection{Rescaling function}
+NLO applications require that the beam energy fractions
+can be recomputed flexibly for different components of
+the calculation, e.g. in the collinear subtraction. To
+deal with this, we use a rescaling function which is given
+to [[sf_int_apply]] as an optional argument to use a different
+set of [[x]] values.
+<<SF base: public>>=
+  public :: rescaling_function_t
+<<SF base: types>>=
+  type, abstract :: rescaling_function_t
+    integer, dimension(:,:), allocatable :: sf_indices
+    integer, dimension(:,:), allocatable :: sf_indices_gluon
+    integer :: i_beam = 0
+  contains
+  <<SF base: rescaling function: TBP>>
+  end type rescaling_function_t
+
+@ %def rescaling_function_t
+@
+<<SF base: rescaling function: TBP>>=
+  procedure (rescaling_function_init_indices), deferred :: init_indices
+<<SF base: interfaces>>=
+  abstract interface
+     subroutine rescaling_function_init_indices (func)
+       import
+       class(rescaling_function_t), intent(inout) :: func
+     end subroutine rescaling_function_init_indices
+  end interface
+
+@ %def rescaling_function_init_indices
+@
+<<SF base: rescaling function: TBP>>=
+  procedure (rescaling_function_apply), deferred :: apply
+<<SF base: interfaces>>=
+  abstract interface
+     subroutine rescaling_function_apply (func, x)
+       import
+       class(rescaling_function_t), intent(in) :: func
+       real(default), intent(inout) :: x
+     end subroutine rescaling_function_apply
+  end interface
+
+@ %def rescaling_function_apply
+@
+<<SF base: rescaling function: TBP>>=
+  procedure :: set_i_beam => rescaling_function_set_i_beam
+<<SF base: procedures>>=
+  subroutine rescaling_function_set_i_beam (func, i_beam)
+    class(rescaling_function_t), intent(inout) :: func
+    integer, intent(in) :: i_beam
+    func%i_beam = i_beam
+  end subroutine rescaling_function_set_i_beam
+
+@ %def rescaling_function_set_i_beam
 @
 \subsection{Structure-function instance}
 The [[sf_int_t]] data type contains an [[interaction_t]] object (it is
@@ -8742,15 +9001,23 @@ convenient mapping from $r$ to $x$ with Jacobian $f$.
 In the [[inverse_kinematics]] variant, we exchange the intent of [[x]]
 and [[r]].  The momenta are calculated only if the optional flag
 [[set_momenta]] is present and set.
+
+Update 2018-08-22: Throughout this algorithm, we now carry
+[[xb]]=$1-x$ together with [[x]] values, as we did for [[r]] before.
+This allows us to handle unstable endpoint numerics wherever
+necessary.  The only place where the changes actually did matter was
+for inverse kinematics in the ISR setup, with a very soft photon, but
+it might be most sensible to apply the extension with [[xb]] everywhere.
 <<SF base: sf int: TBP>>=
   procedure (sf_int_complete_kinematics), deferred :: complete_kinematics
   procedure (sf_int_inverse_kinematics), deferred :: inverse_kinematics
 <<SF base: interfaces>>=
   abstract interface
-     subroutine sf_int_complete_kinematics (sf_int, x, f, r, rb, map)
+     subroutine sf_int_complete_kinematics (sf_int, x, xb, f, r, rb, map)
        import
        class(sf_int_t), intent(inout) :: sf_int
        real(default), dimension(:), intent(out) :: x
+       real(default), dimension(:), intent(out) :: xb
        real(default), intent(out) :: f
        real(default), dimension(:), intent(in) :: r
        real(default), dimension(:), intent(in) :: rb
@@ -8759,11 +9026,12 @@ and [[r]].  The momenta are calculated only if the optional flag
   end interface
 
   abstract interface
-     subroutine sf_int_inverse_kinematics (sf_int, x, f, r, rb, map, &
+     subroutine sf_int_inverse_kinematics (sf_int, x, xb, f, r, rb, map, &
           set_momenta)
        import
        class(sf_int_t), intent(inout) :: sf_int
        real(default), dimension(:), intent(in) :: x
+       real(default), dimension(:), intent(in) :: xb
        real(default), intent(out) :: f
        real(default), dimension(:), intent(out) :: r
        real(default), dimension(:), intent(out) :: rb
@@ -8786,10 +9054,10 @@ on shell.
 <<SF base: sf int: TBP>>=
   procedure :: split_momentum => sf_int_split_momentum
 <<SF base: procedures>>=
-  subroutine sf_int_split_momentum (sf_int, x, xb1)
+  subroutine sf_int_split_momentum (sf_int, x, xb)
     class(sf_int_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(in) :: x
-    real(default), intent(in) :: xb1
+    real(default), dimension(:), intent(in) :: xb
     type(vector4_t) :: k
     type(vector4_t), dimension(2) :: q
     type(splitting_data_t) :: sd
@@ -8800,7 +9068,7 @@ on shell.
        call sd%init (k, &
             sf_int%mi2(1), sf_int%mr2(1), sf_int%mo2(1), &
             collinear = size (x) == 1)
-       call sd%set_t_bounds (x(1), xb1)
+       call sd%set_t_bounds (x(1), xb(1))
        select case (size (x))
        case (1)
        case (3)
@@ -8846,10 +9114,10 @@ This is simple because we insist on all momenta being collinear.
 <<SF base: sf int: TBP>>=
   procedure :: split_momenta => sf_int_split_momenta
 <<SF base: procedures>>=
-  subroutine sf_int_split_momenta (sf_int, x, xb1)
+  subroutine sf_int_split_momenta (sf_int, x, xb)
     class(sf_int_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(in) :: x
-    real(default), dimension(:), intent(in) :: xb1
+    real(default), dimension(:), intent(in) :: xb
     type(vector4_t), dimension(2) :: k
     type(vector4_t), dimension(4) :: q
     real(default), dimension(4) :: E
@@ -8863,7 +9131,7 @@ This is simple because we insist on all momenta being collinear.
        end select
        k(1) = sf_int%get_momentum (1)
        k(2) = sf_int%get_momentum (2)
-       q(1:2) = xb1 * k
+       q(1:2) = xb * k
        q(3:4) = x * k
        select case (size (sf_int%mr2))
        case (2)
@@ -8935,16 +9203,16 @@ momentum-transfer bounds.  For the pair case, we currently implement
 only collinear splitting and assume massless particles.  This should
 be improved.
 
-NOTE: We should also improve this in the sense of extracting both $x$
-and $\bar x$, where for the latter we may consult the beam remnant.
-The current implementation is not sensitive to small $\bar x$ values.
+Update 2017-08-22: recover also [[xb]], using the updated [[recover]]
+method of the splitting-data object.  Th
 <<SF base: sf int: TBP>>=
   procedure :: recover_x => sf_int_recover_x
   procedure :: base_recover_x => sf_int_recover_x
 <<SF base: procedures>>=
-  subroutine sf_int_recover_x (sf_int, x, x_free)
+  subroutine sf_int_recover_x (sf_int, x, xb, x_free)
     class(sf_int_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(out) :: x
+    real(default), dimension(:), intent(out) :: xb
     real(default), intent(inout), optional :: x_free
     type(vector4_t), dimension(:), allocatable :: k
     type(vector4_t), dimension(:), allocatable :: q
@@ -8959,8 +9227,9 @@ The current implementation is not sensitive to small $\bar x$ values.
           call sd%init (k(1), &
                sf_int%mi2(1), sf_int%mr2(1), sf_int%mo2(1), &
                collinear = size (x) == 1)
-          call sd%recover (k(1), q(2), sf_int%on_shell_mode)
-          x(1) = sd%get_x ()
+          call sd%recover (k(1), q, sf_int%on_shell_mode)
+          x(1)  = sd%get_x ()
+          xb(1) = sd%get_xb ()
           select case (size (x))
           case (1)
           case (3)
@@ -8980,6 +9249,7 @@ The current implementation is not sensitive to small $\bar x$ values.
                 end if
              end if
              call sd%inverse_phi (x(3))
+             xb(2:3) = 1 - x(2:3)
           case default
              call msg_bug ("Structure function: impossible number &
                   &of parameters")
@@ -8996,15 +9266,19 @@ The current implementation is not sensitive to small $\bar x$ values.
              select case (size (q))
              case (4)
                 x = energy (q(3:4)) / energy (k)
+                xb= energy (q(1:2)) / energy (k)
              case (2)
                 x = energy (q) / energy (k)
+                xb= 1 - x
              end select
           case (KEEP_MOMENTUM)
              select case (size (q))
              case (4)
                 x = longitudinal_part (q(3:4)) / longitudinal_part (k)
+                xb= longitudinal_part (q(1:2)) / longitudinal_part (k)
              case (2)
                 x = longitudinal_part (q) / longitudinal_part (k)
+                xb= 1 - x
              end select
           end select
        end select
@@ -9022,10 +9296,12 @@ indicated by the status code.
   procedure (sf_int_apply), deferred :: apply
 <<SF base: interfaces>>=
   abstract interface
-     subroutine sf_int_apply (sf_int, scale)
+     subroutine sf_int_apply (sf_int, scale, rescaling_function, i_rescale)
        import
        class(sf_int_t), intent(inout) :: sf_int
        real(default), intent(in) :: scale
+       class(rescaling_function_t), intent(in), optional :: rescaling_function
+       integer, intent(in), optional :: i_rescale
      end subroutine sf_int_apply
   end interface
 
@@ -9115,6 +9391,8 @@ kinematics for that energy, otherwise take it from a previous run.
 
 We assume that the [[E]] array has dimension [[n_in]], and the [[x]]
 array has [[n_par]].
+
+Note: the output x values ([[xx]] and [[xxb]]) are unused in this use case.
 <<SF base: sf int: TBP>>=
   procedure :: compute_values => sf_int_compute_values
 <<SF base: procedures>>=
@@ -9125,11 +9403,11 @@ array has [[n_par]].
     real(default), dimension(:), intent(in) :: xb
     real(default), intent(in) :: scale
     real(default), dimension(:), intent(in), optional :: E
-    real(default), dimension(size (x)) :: xx
+    real(default), dimension(size (x)) :: xx, xxb
     real(default) :: f
     if (present (E))  call sf_int%seed_kinematics (E)
     if (sf_int%status >= SF_SEED_KINEMATICS) then
-       call sf_int%complete_kinematics (xx, f, x, xb, map=.false.)
+       call sf_int%complete_kinematics (xx, xxb, f, x, xb, map=.false.)
        call sf_int%apply (scale)
        call sf_int%get_values (value)
        value = value * f
@@ -9191,6 +9469,7 @@ channels.
      real(default), dimension(:), allocatable :: f
      logical, dimension(:), allocatable :: m
      real(default), dimension(:), allocatable :: x
+     real(default), dimension(:), allocatable :: xb
   end type sf_instance_t
 
 @ %def sf_instance_t
@@ -9386,8 +9665,8 @@ The index [[i]] is the structure-function index in the chain.
   procedure :: get_beam_int_ptr => sf_chain_get_beam_int_ptr
 <<SF base: procedures>>=
   function sf_chain_get_beam_int_ptr (sf_chain) result (int)
-    class(sf_chain_t), intent(in), target :: sf_chain
     type(interaction_t), pointer :: int
+    class(sf_chain_t), intent(in), target :: sf_chain
     int => beam_get_int_ptr (sf_chain%beam_t)
   end function sf_chain_get_beam_int_ptr
 
@@ -9504,6 +9783,10 @@ values can be interpreted directly as momentum fractions (or angle
 fractions, where recoil is involved).  The [[f]] factor is the
 Jacobian that results from applying all mappings.
 
+Update 2017-08-22: carry and output all complements ([[pb]], [[rb]],
+[[xb]]).  Previously, [[xb]] was not included in the record, and the
+output did not contain either.  It does become more verbose, however.
+
 The [[mapping]] entry may store a global mapping that is applied to a
 combination of $x$ values and structure functions, as opposed to mappings that
 affect only a single structure function.  It is applied before the latter
@@ -9525,7 +9808,7 @@ involved in a local mapping.
      real(default), dimension(:,:), allocatable :: p, pb
      real(default), dimension(:,:), allocatable :: r, rb
      real(default), dimension(:), allocatable :: f
-     real(default), dimension(:), allocatable :: x
+     real(default), dimension(:), allocatable :: x, xb
      logical, dimension(:), allocatable :: bound
      real(default) :: x_free = 1
      type(sf_channel_t), dimension(:), allocatable :: channel
@@ -9597,12 +9880,15 @@ status.  We check both for allocation and nonzero size.
                 write (u, *)
              end if
              write (u, "(3x,A,9(1x,F9.7))")  "p =", object%p(:,c)
+             write (u, "(3x,A,9(1x,F9.7))")  "pb=", object%pb(:,c)
              write (u, "(3x,A,9(1x,F9.7))")  "r =", object%r(:,c)
+             write (u, "(3x,A,9(1x,F9.7))")  "rb=", object%rb(:,c)
              write (u, "(3x,A,9(1x,ES13.7))")  "f =", object%f(c)
              write (u, "(3x,A)", advance="no") "m ="
              call object%channel(c)%write (u)
           end do
           write (u, "(3x,A,9(1x,F9.7))")  "x =", object%x
+          write (u, "(3x,A,9(1x,F9.7))")  "xb=", object%xb
           if (.not. all (object%bound)) then
              write (u, "(3x,A,9(1x,L1))")  "bound =", object%bound
           end if
@@ -9625,10 +9911,12 @@ status.  We check both for allocation and nonzero size.
                         write (u, *)
                      end if
                      write (u, "(3x,A,9(1x,F9.7))")  "r =", sf%r(:,c)
+                     write (u, "(3x,A,9(1x,F9.7))")  "rb=", sf%rb(:,c)
                      write (u, "(3x,A,9(1x,ES13.7))")  "f =", sf%f(c)
                      write (u, "(3x,A,9(1x,L1,7x))") "m =", sf%m(c)
                   end do
                   write (u, "(3x,A,9(1x,F9.7))")  "x =", sf%x
+                  write (u, "(3x,A,9(1x,F9.7))")  "xb=", sf%xb
                end if
                call sf%int%write(u)
                if (.not. sf%eval%is_empty ()) then
@@ -9684,6 +9972,7 @@ arrays for each structure function.
             allocate (sf%f (n_channel));         sf%f = 0
             allocate (sf%m (n_channel));         sf%m = .false.
             allocate (sf%x (n_par));             sf%x = 0
+            allocate (sf%xb(n_par));             sf%xb= 0
             n_par_tot = n_par_tot + n_par
           end associate
        end do
@@ -9693,6 +9982,7 @@ arrays for each structure function.
        allocate (chain%rb(n_par_tot, n_channel));  chain%rb= 0
        allocate (chain%f (n_channel));             chain%f = 0
        allocate (chain%x (n_par_tot));             chain%x = 0
+       allocate (chain%xb(n_par_tot));             chain%xb= 0
        call allocate_sf_channels &
             (chain%channel, n_channel=n_channel, n_strfun=n_strfun)
     end if
@@ -9877,11 +10167,16 @@ chain.
 <<SF base: sf chain instance: TBP>>=
   procedure :: init_evaluators => sf_chain_instance_init_evaluators
 <<SF base: procedures>>=
-  subroutine sf_chain_instance_init_evaluators (chain)
+  subroutine sf_chain_instance_init_evaluators (chain, n_sub, has_pdfs)
     class(sf_chain_instance_t), intent(inout), target :: chain
+    integer, intent(in), optional :: n_sub
+    logical, intent(in), optional :: has_pdfs
     type(interaction_t), pointer :: int
     type(quantum_numbers_mask_t) :: mask
-    integer :: i
+    integer :: i, ns
+    logical :: yorn
+    ns = 0;  if (present (n_sub))  ns = n_sub
+    yorn = .false.; if (present (has_pdfs)) yorn = has_pdfs
     if (chain%status >= SF_DONE_MASK) then
        if (allocated (chain%sf)) then
           if (size (chain%sf) /= 0) then
@@ -9889,13 +10184,22 @@ chain.
              int => beam_get_int_ptr (chain%beam_t)
              do i = 1, size (chain%sf)
                 associate (sf => chain%sf(i))
-                  call sf%eval%init_product &
-                       (int, sf%int%interaction_t, mask)
-                  if (sf%eval%is_empty ()) then
-                     chain%status = SF_FAILED_CONNECTIONS
-                     return
-                  end if
-                  int => sf%eval%interaction_t
+                   if (yorn) then
+                       if (int%get_n_sub () == 0) then
+                            call interaction_declare_subtraction (int, n_beam_structure_int)
+                       end if
+                       if (sf%int%interaction_t%get_n_sub () == 0) then
+                            call interaction_declare_subtraction &
+                                 (sf%int%interaction_t, n_beam_structure_int)
+                       end if
+                   end if
+                   call sf%eval%init_product &
+                        (int, sf%int%interaction_t, mask, ignore_sub = .true.)
+                   if (sf%eval%is_empty ()) then
+                      chain%status = SF_FAILED_CONNECTIONS
+                      return
+                   end if
+                   int => sf%eval%interaction_t
                 end associate
              end do
              call find_outgoing_particles ()
@@ -9908,6 +10212,38 @@ chain.
   end subroutine sf_chain_instance_init_evaluators
 
 @ %def sf_chain_instance_init_evaluators
+@ For debug purposes
+<<SF base: sf chain instance: TBP>>=
+  procedure :: write_interaction => sf_chain_instance_write_interaction
+<<SF base: procedures>>=
+  subroutine sf_chain_instance_write_interaction (chain, i_sf, i_int, unit)
+    class(sf_chain_instance_t), intent(in) :: chain
+    integer, intent(in) :: i_sf, i_int
+    integer, intent(in) :: unit
+    class(interaction_t), pointer :: int_in1 => null ()
+    class(interaction_t), pointer :: int_in2 => null ()
+    integer :: u
+    u = given_output_unit (unit); if (u < 0) return
+    if (chain%status >= SF_DONE_MASK) then
+       if (allocated (chain%sf)) then
+          int_in1 => evaluator_get_int_in_ptr (chain%sf(i_sf)%eval, 1)
+          int_in2 => evaluator_get_int_in_ptr (chain%sf(i_sf)%eval, 2)
+          if (int_in1%get_tag () == i_int) then
+             call int_in1%basic_write (u)
+          else if (int_in2%get_tag () == i_int) then
+             call int_in2%basic_write (u)
+          else
+             write (u, "(A,1x,I0,1x,A,1x,I0)") 'No tag of sf', i_sf, 'matches' , i_int
+          end if
+       else
+          write (u, "(A)") 'No sf_chain allocated!'
+       end if
+    else
+       write (u, "(A)") 'sf_chain not ready!'
+    end if
+  end subroutine sf_chain_instance_write_interaction
+
+@ %def sf_chain_instance_write_interaction
 @ This is an internal subroutine of the previous one: After evaluators
 are set, trace the outgoing particles to the last evaluator.  We only
 need the first channel, all channels are equivalent for this purpose.
@@ -10015,10 +10351,11 @@ multiply to obtain the overall Jacobian.
                      sf%rb(j,c_sel) = chain%rb(sf%int%par_index(j),c_sel)
                   end do
                   call sf%int%complete_kinematics &
-                       (sf%x, sf%f(c_sel), sf%r(:,c_sel), sf%rb(:,c_sel), &
+                       (sf%x, sf%xb, sf%f(c_sel), sf%r(:,c_sel), sf%rb(:,c_sel), &
                         sf%m(c_sel))
                   do j = 1, size (sf%x)
                      chain%x(sf%int%par_index(j)) = sf%x(j)
+                     chain%xb(sf%int%par_index(j)) = sf%xb(j)
                   end do
                   if (sf%int%status <= SF_FAILED_KINEMATICS) then
                      chain%status = SF_FAILED_KINEMATICS
@@ -10027,7 +10364,7 @@ multiply to obtain the overall Jacobian.
                   do c = 1, size (sf%f)
                      if (c /= c_sel) then
                         call sf%int%inverse_kinematics &
-                             (sf%x, sf%f(c), sf%r(:,c), sf%rb(:,c), sf%m(c))
+                             (sf%x, sf%xb, sf%f(c), sf%r(:,c), sf%rb(:,c), sf%m(c))
                         do j = 1, size (sf%x)
                            chain%r (sf%int%par_index(j),c) = sf%r (j,c)
                            chain%rb(sf%int%par_index(j),c) = sf%rb(j,c)
@@ -10072,9 +10409,10 @@ inverts mappings.  See below [[recover_kinematics]].
 <<SF base: sf chain instance: TBP>>=
   procedure :: inverse_kinematics => sf_chain_instance_inverse_kinematics
 <<SF base: procedures>>=
-  subroutine sf_chain_instance_inverse_kinematics (chain, x)
+  subroutine sf_chain_instance_inverse_kinematics (chain, x, xb)
     class(sf_chain_instance_t), intent(inout), target :: chain
     real(default), dimension(:), intent(in) :: x
+    real(default), dimension(:), intent(in) :: xb
     type(interaction_t), pointer :: int
     real(default) :: f_mapping
     integer :: i, j, c
@@ -10087,15 +10425,17 @@ inverts mappings.  See below [[recover_kinematics]].
           if (size (chain%sf) /= 0) then
              forall (i = 1:size (chain%sf))  chain%sf(i)%int%status = SF_INITIAL
              chain%x = x
+             chain%xb= xb
              do i = 1, size (chain%sf)
                 associate (sf => chain%sf(i))
                   call sf%int%seed_kinematics ()
                   do j = 1, size (sf%x)
-                     sf%x(j) = chain%x(sf%int%par_index(j))
+                     sf%x(j)  = chain%x(sf%int%par_index(j))
+                     sf%xb(j) = chain%xb(sf%int%par_index(j))
                   end do
                   do c = 1, size (sf%f)
                      call sf%int%inverse_kinematics &
-                          (sf%x, sf%f(c), sf%r(:,c), sf%rb(:,c), sf%m(c), c==1)
+                          (sf%x, sf%xb, sf%f(c), sf%r(:,c), sf%rb(:,c), sf%m(c), c==1)
                      chain%f(c) = chain%f(c) * sf%f(c)
                      do j = 1, size (sf%x)
                         chain%r (sf%int%par_index(j),c) = sf%r (j,c)
@@ -10164,13 +10504,14 @@ independent of this.
              do i = 1, size (chain%sf)
                 associate (sf => chain%sf(i))
                   call sf%int%seed_kinematics ()
-                  call sf%int%recover_x (sf%x, chain%x_free)
+                  call sf%int%recover_x (sf%x, sf%xb, chain%x_free)
                   do j = 1, size (sf%x)
-                     chain%x(sf%int%par_index(j)) = sf%x(j)
+                     chain%x(sf%int%par_index(j))  = sf%x(j)
+                     chain%xb(sf%int%par_index(j)) = sf%xb(j)
                   end do
                   do c = 1, size (sf%f)
                      call sf%int%inverse_kinematics &
-                          (sf%x, sf%f(c), sf%r(:,c), sf%rb(:,c), sf%m(c), c==1)
+                          (sf%x, sf%xb, sf%f(c), sf%r(:,c), sf%rb(:,c), sf%m(c), c==1)
                      chain%f(c) = chain%f(c) * sf%f(c)
                      do j = 1, size (sf%x)
                         chain%r (sf%int%par_index(j),c) = sf%r (j,c)
@@ -10220,25 +10561,41 @@ functions in the chain.
 <<SF base: sf chain instance: TBP>>=
   procedure :: evaluate => sf_chain_instance_evaluate
 <<SF base: procedures>>=
-  subroutine sf_chain_instance_evaluate (chain, scale)
+  subroutine sf_chain_instance_evaluate (chain, scale, rescaling_function, i_rescale)
     class(sf_chain_instance_t), intent(inout), target :: chain
     real(default), intent(in) :: scale
+    class(rescaling_function_t), intent(inout), optional :: rescaling_function
+    integer, intent(in), optional :: i_rescale
     type(interaction_t), pointer :: out_int
     real(default) :: sf_sum
-    integer :: i
+    integer :: i, i_skip
+    i_skip = 0; if (present (i_rescale)) i_skip = i_rescale
     if (chain%status >= SF_DONE_KINEMATICS) then
        if (allocated (chain%sf)) then
           if (size (chain%sf) /= 0) then
              do i = 1, size (chain%sf)
                 associate (sf => chain%sf(i))
-                  call sf%int%apply (scale)
-                  if (sf%int%status <= SF_FAILED_EVALUATION) then
-                     chain%status = SF_FAILED_EVALUATION
-                     return
+                   if (i_skip > 0 .and. i /= i_skip) then
+                      call sf%int%transfer_me_to_sub (i_skip)
+                      if (present (rescaling_function)) then
+                         if (allocated (rescaling_function%sf_indices_gluon)) then
+                            if (i_skip == 1) then
+                               call sf%int%transfer_me_to_sub (3)
+                            else
+                               call sf%int%transfer_me_to_sub (4)
+                            end if
+                         end if
+                      end if
+                   else
+                      if (present (rescaling_function)) &
+                           call rescaling_function%set_i_beam (i)
+                      call sf%int%apply (scale, rescaling_function, i_rescale)
+                      if (sf%int%status <= SF_FAILED_EVALUATION) then
+                         chain%status = SF_FAILED_EVALUATION
+                         return
+                      end if
                   end if
-                  if (.not. sf%eval%is_empty ()) then
-                     call sf%eval%evaluate ()
-                  end if
+                  if (.not. sf%eval%is_empty ())  call sf%eval%evaluate ()
                 end associate
              end do
              out_int => chain%get_out_int_ptr ()
@@ -10379,6 +10736,17 @@ zero-size [[r]] argument, so nothing to do then.
   end subroutine sf_chain_instance_get_matrix_elements
 
 @ %def sf_chain_instance_get_matrix_elements
+@
+<<SF base: sf chain instance: TBP>>=
+  procedure :: get_beam_int_ptr => sf_chain_instance_get_beam_int_ptr
+<<SF base: procedures>>=
+  function sf_chain_instance_get_beam_int_ptr (chain) result (int)
+    type(interaction_t), pointer :: int
+    class(sf_chain_instance_t), intent(in), target :: chain
+    int => beam_get_int_ptr (chain%beam_t)
+  end function sf_chain_instance_get_beam_int_ptr
+
+@ %def sf_chain_instance_get_beam_ptr
 @
 \subsection{Unit tests}
 Test module, followed by the corresponding implementation module.
@@ -10671,14 +11039,14 @@ For the test case, we set $x=r^2$ and consequently $f(r)=2r$.
 <<SF base: sf test int: TBP>>=
   procedure :: complete_kinematics => sf_test_complete_kinematics
 <<SF base: test auxiliary>>=
-  subroutine sf_test_complete_kinematics (sf_int, x, f, r, rb, map)
+  subroutine sf_test_complete_kinematics (sf_int, x, xb, f, r, rb, map)
     class(sf_test_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(out) :: x
+    real(default), dimension(:), intent(out) :: xb
     real(default), intent(out) :: f
     real(default), dimension(:), intent(in) :: r
     real(default), dimension(:), intent(in) :: rb
     logical, intent(in) :: map
-    real(default) :: xb1
     if (map) then
        x(1) = r(1)**2
        f = 2 * r(1)
@@ -10686,9 +11054,12 @@ For the test case, we set $x=r^2$ and consequently $f(r)=2r$.
        x(1) = r(1)
        f = 1
     end if
-    xb1 = 1 - x(1)
-    if (size (x) == 3)  x(2:3) = r(2:3)
-    call sf_int%split_momentum (x, xb1)
+    xb(1) = 1 - x(1)
+    if (size (x) == 3) then
+       x(2:3)  = r(2:3)
+       xb(2:3) = rb(2:3)
+    end if
+    call sf_int%split_momentum (x, xb)
     sf_int%x = x(1)
     select case (sf_int%status)
     case (SF_FAILED_KINEMATICS);  f = 0
@@ -10702,15 +11073,15 @@ can set momenta by the same formula as for normal kinematics.
 <<SF base: sf test int: TBP>>=
   procedure :: inverse_kinematics => sf_test_inverse_kinematics
 <<SF base: test auxiliary>>=
-  subroutine sf_test_inverse_kinematics (sf_int, x, f, r, rb, map, set_momenta)
+  subroutine sf_test_inverse_kinematics (sf_int, x, xb, f, r, rb, map, set_momenta)
     class(sf_test_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(in) :: x
+    real(default), dimension(:), intent(in) :: xb
     real(default), intent(out) :: f
     real(default), dimension(:), intent(out) :: r
     real(default), dimension(:), intent(out) :: rb
     logical, intent(in) :: map
     logical, intent(in), optional :: set_momenta
-    real(default) :: xb1
     logical :: set_mom
     set_mom = .false.;  if (present (set_momenta))  set_mom = set_momenta
     if (map) then
@@ -10720,12 +11091,11 @@ can set momenta by the same formula as for normal kinematics.
        r(1) = x(1)
        f = 1
     end if
-    xb1 = 1 - x(1)
     if (size (x) == 3)  r(2:3) = x(2:3)
     rb = 1 - r
     sf_int%x = x(1)
     if (set_mom) then
-       call sf_int%split_momentum (x, xb1)
+       call sf_int%split_momentum (x, xb)
        select case (sf_int%status)
        case (SF_FAILED_KINEMATICS);  f = 0
        end select
@@ -10741,9 +11111,11 @@ parameter~$x$.
 <<SF base: sf test int: TBP>>=
   procedure :: apply => sf_test_apply
 <<SF base: test auxiliary>>=
-  subroutine sf_test_apply (sf_int, scale)
+  subroutine sf_test_apply (sf_int, scale, rescaling_function, i_rescale)
     class(sf_test_t), intent(inout) :: sf_int
     real(default), intent(in) :: scale
+    class(rescaling_function_t), intent(in), optional :: rescaling_function
+    integer, intent(in), optional :: i_rescale
     select case (sf_int%data%mode)
     case (0)
        call sf_int%set_matrix_element &
@@ -10971,9 +11343,10 @@ and consequently $f(r)=4r_1r_2$.
 <<SF base: sf test spectrum: TBP>>=
   procedure :: complete_kinematics => sf_test_spectrum_complete_kinematics
 <<SF base: test auxiliary>>=
-  subroutine sf_test_spectrum_complete_kinematics (sf_int, x, f, r, rb, map)
+  subroutine sf_test_spectrum_complete_kinematics (sf_int, x, xb, f, r, rb, map)
     class(sf_test_spectrum_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(out) :: x
+    real(default), dimension(:), intent(out) :: xb
     real(default), intent(out) :: f
     real(default), dimension(:), intent(in) :: r
     real(default), dimension(:), intent(in) :: rb
@@ -10986,9 +11359,9 @@ and consequently $f(r)=4r_1r_2$.
        x = r
        f = 1
     end if
+    xb = 1 - x
     if (sf_int%data%with_radiation) then
-       xb1 = 1 - x
-       call sf_int%split_momenta (x, xb1)
+       call sf_int%split_momenta (x, xb)
     else
        call sf_int%reduce_momenta (x)
     end if
@@ -11005,9 +11378,10 @@ can set momenta by the same formula as for normal kinematics.
   procedure :: inverse_kinematics => sf_test_spectrum_inverse_kinematics
 <<SF base: test auxiliary>>=
   subroutine sf_test_spectrum_inverse_kinematics &
-       (sf_int, x, f, r, rb, map, set_momenta)
+       (sf_int, x, xb, f, r, rb, map, set_momenta)
     class(sf_test_spectrum_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(in) :: x
+     real(default), dimension(:), intent(in) :: xb
     real(default), intent(out) :: f
     real(default), dimension(:), intent(out) :: r
     real(default), dimension(:), intent(out) :: rb
@@ -11026,8 +11400,7 @@ can set momenta by the same formula as for normal kinematics.
     rb = 1 - r
     if (set_mom)  then
        if (sf_int%data%with_radiation) then
-          xb1 = 1 - x
-          call sf_int%split_momenta (x, xb1)
+          call sf_int%split_momenta (x, xb)
        else
           call sf_int%reduce_momenta (x)
        end if
@@ -11043,9 +11416,11 @@ the application always succeeds.
 <<SF base: sf test spectrum: TBP>>=
   procedure :: apply => sf_test_spectrum_apply
 <<SF base: test auxiliary>>=
-  subroutine sf_test_spectrum_apply (sf_int, scale)
+  subroutine sf_test_spectrum_apply (sf_int, scale, rescaling_function, i_rescale)
     class(sf_test_spectrum_t), intent(inout) :: sf_int
     real(default), intent(in) :: scale
+    class(rescaling_function_t), intent(in), optional :: rescaling_function
+    integer, intent(in), optional :: i_rescale
     call sf_int%set_matrix_element &
          (cmplx (1._default, kind=default))
     sf_int%status = SF_EVALUATED
@@ -11266,11 +11641,12 @@ nubmers 0.8 and 0.5.
 <<SF base: sf test generator: TBP>>=
   procedure :: recover_x => sf_test_generator_recover_x
 <<SF base: test auxiliary>>=
-  subroutine sf_test_generator_recover_x (sf_int, x, x_free)
+  subroutine sf_test_generator_recover_x (sf_int, x, xb, x_free)
     class(sf_test_generator_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(out) :: x
+    real(default), dimension(:), intent(out) :: xb
     real(default), intent(inout), optional :: x_free
-    call sf_int%base_recover_x (x)
+    call sf_int%base_recover_x (x, xb)
     if (present (x_free))  x_free = x_free * product (x)
   end subroutine sf_test_generator_recover_x
 
@@ -11279,14 +11655,16 @@ nubmers 0.8 and 0.5.
 <<SF base: sf test generator: TBP>>=
   procedure :: complete_kinematics => sf_test_generator_complete_kinematics
 <<SF base: test auxiliary>>=
-  subroutine sf_test_generator_complete_kinematics (sf_int, x, f, r, rb, map)
+  subroutine sf_test_generator_complete_kinematics (sf_int, x, xb, f, r, rb, map)
     class(sf_test_generator_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(out) :: x
+    real(default), dimension(:), intent(out) :: xb
     real(default), intent(out) :: f
     real(default), dimension(:), intent(in) :: r
     real(default), dimension(:), intent(in) :: rb
     logical, intent(in) :: map
     x = r
+    xb= rb
     f = 1
     call sf_int%reduce_momenta (x)
   end subroutine sf_test_generator_complete_kinematics
@@ -11299,9 +11677,10 @@ can set momenta by the same formula as for normal kinematics.
   procedure :: inverse_kinematics => sf_test_generator_inverse_kinematics
 <<SF base: test auxiliary>>=
   subroutine sf_test_generator_inverse_kinematics &
-       (sf_int, x, f, r, rb, map, set_momenta)
+       (sf_int, x, xb, f, r, rb, map, set_momenta)
     class(sf_test_generator_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(in) :: x
+    real(default), dimension(:), intent(in) :: xb
     real(default), intent(out) :: f
     real(default), dimension(:), intent(out) :: r
     real(default), dimension(:), intent(out) :: rb
@@ -11310,7 +11689,7 @@ can set momenta by the same formula as for normal kinematics.
     logical :: set_mom
     set_mom = .false.;  if (present (set_momenta))  set_mom = set_momenta
     r = x
-    rb= 1 - x
+    rb= xb
     f = 1
     if (set_mom)  call sf_int%reduce_momenta (x)
   end subroutine sf_test_generator_inverse_kinematics
@@ -11321,9 +11700,11 @@ the application always succeeds.
 <<SF base: sf test generator: TBP>>=
   procedure :: apply => sf_test_generator_apply
 <<SF base: test auxiliary>>=
-  subroutine sf_test_generator_apply (sf_int, scale)
+  subroutine sf_test_generator_apply (sf_int, scale, rescaling_function, i_rescale)
     class(sf_test_generator_t), intent(inout) :: sf_int
     real(default), intent(in) :: scale
+    class(rescaling_function_t), intent(in), optional :: rescaling_function
+    integer, intent(in), optional :: i_rescale
     call sf_int%set_matrix_element &
          (cmplx (1._default, kind=default))
     sf_int%status = SF_EVALUATED
@@ -11400,7 +11781,7 @@ structure function.
     type(vector4_t) :: k
     type(vector4_t), dimension(2) :: q
     real(default) :: E
-    real(default), dimension(:), allocatable :: r, rb, x
+    real(default), dimension(:), allocatable :: r, rb, x, xb
     real(default) :: f
 
     write (u, "(A)")  "* Test output: sf_base_2"
@@ -11447,14 +11828,16 @@ structure function.
     allocate (r (data%get_n_par ()))
     allocate (rb(size (r)))
     allocate (x (size (r)))
+    allocate (xb(size (r)))
 
     r = 0
     rb = 1 - r
-    call sf_int%complete_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.false.)
     call sf_int%write (u)
 
     write (u, "(A)")
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "f =", f
 
     write (u, "(A)")
@@ -11463,11 +11846,12 @@ structure function.
 
     r = 1
     rb = 1 - r
-    call sf_int%complete_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.false.)
     call sf_int%write (u)
 
     write (u, "(A)")
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "f =", f
 
     write (u, "(A)")
@@ -11476,11 +11860,12 @@ structure function.
 
     r = 0.5_default
     rb = 1 - r
-    call sf_int%complete_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.false.)
     call sf_int%write (u)
 
     write (u, "(A)")
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "f =", f
 
     write (u, "(A)")
@@ -11489,11 +11874,12 @@ structure function.
 
     r = 0.8_default
     rb = 1 - r
-    call sf_int%complete_kinematics (x, f, r, rb, map=.true.)
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.true.)
     call sf_int%write (u)
 
     write (u, "(A)")
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "f =", f
 
     write (u, "(A)")
@@ -11510,21 +11896,23 @@ structure function.
 
     call sf_int%seed_kinematics ([k])
     call sf_int%set_momenta (q, outgoing=.true.)
-    call sf_int%recover_x (x)
+    call sf_int%recover_x (x, xb)
 
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
 
     write (u, "(A)")
     write (u, "(A)")  "* Compute inverse kinematics for x=0.64 and evaluate"
     write (u, "(A)")
 
     x = 0.64_default
-    call sf_int%inverse_kinematics (x, f, r, rb, map=.true.)
+    call sf_int%inverse_kinematics (x, xb, f, r, rb, map=.true.)
     call sf_int%apply (scale=0._default)
     call sf_int%write (u)
 
     write (u, "(A)")
     write (u, "(A,9(1x,F10.7))")  "r =", r
+    write (u, "(A,9(1x,F10.7))")  "rb=", rb
     write (u, "(A,9(1x,F10.7))")  "f =", f
 
     write (u, "(A)")
@@ -11559,7 +11947,7 @@ projections, collinear case.
     class(sf_int_t), allocatable :: sf_int
     type(vector4_t) :: k
     real(default) :: E
-    real(default), dimension(:), allocatable :: r, rb, x
+    real(default), dimension(:), allocatable :: r, rb, x, xb
     real(default) :: f
 
     write (u, "(A)")  "* Test output: sf_base_3"
@@ -11594,6 +11982,7 @@ projections, collinear case.
     allocate (r (data%get_n_par ()))
     allocate (rb(size (r)))
     allocate (x (size (r)))
+    allocate (xb(size (r)))
 
     write (u, "(A)")
     write (u, "(A)")  "* Initialize incoming momentum with E=500"
@@ -11615,17 +12004,19 @@ projections, collinear case.
     r = 0.5_default
     rb = 1 - r
     sf_int%on_shell_mode = KEEP_ENERGY
-    call sf_int%complete_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.false.)
     call sf_int%write (u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Recover x and r"
     write (u, "(A)")
 
-    call sf_int%recover_x (x)
-    call sf_int%inverse_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%recover_x (x, xb)
+    call sf_int%inverse_kinematics (x, xb, f, r, rb, map=.false.)
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "r =", r
+    write (u, "(A,9(1x,F10.7))")  "rb=", rb
 
     write (u, "(A)")
     write (u, "(A)")  "* Set kinematics for x=0.5, keeping momentum"
@@ -11634,17 +12025,19 @@ projections, collinear case.
     r = 0.5_default
     rb = 1 - r
     sf_int%on_shell_mode = KEEP_MOMENTUM
-    call sf_int%complete_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.false.)
     call sf_int%write (u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Recover x and r"
     write (u, "(A)")
 
-    call sf_int%recover_x (x)
-    call sf_int%inverse_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%recover_x (x, xb)
+    call sf_int%inverse_kinematics (x, xb, f, r, rb, map=.false.)
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "r =", r
+    write (u, "(A,9(1x,F10.7))")  "rb=", rb
 
     write (u, "(A)")
     write (u, "(A)")  "* Set outgoing mass to zero"
@@ -11659,17 +12052,19 @@ projections, collinear case.
     r = 0.5_default
     rb = 1 - r
     sf_int%on_shell_mode = KEEP_ENERGY
-    call sf_int%complete_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.false.)
     call sf_int%write (u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Recover x and r"
     write (u, "(A)")
 
-    call sf_int%recover_x (x)
-    call sf_int%inverse_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%recover_x (x, xb)
+    call sf_int%inverse_kinematics (x, xb, f, r, rb, map=.false.)
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "r =", r
+    write (u, "(A,9(1x,F10.7))")  "rb=", rb
 
     write (u, "(A)")
     write (u, "(A)")  "* Set kinematics for x=0.5, keeping momentum"
@@ -11678,17 +12073,19 @@ projections, collinear case.
     r = 0.5_default
     rb = 1 - r
     sf_int%on_shell_mode = KEEP_MOMENTUM
-    call sf_int%complete_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.false.)
     call sf_int%write (u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Recover x and r"
     write (u, "(A)")
 
-    call sf_int%recover_x (x)
-    call sf_int%inverse_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%recover_x (x, xb)
+    call sf_int%inverse_kinematics (x, xb, f, r, rb, map=.false.)
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "r =", r
+    write (u, "(A,9(1x,F10.7))")  "rb=", rb
 
     write (u, "(A)")
     write (u, "(A)")  "* Set incoming mass to zero"
@@ -11707,17 +12104,19 @@ projections, collinear case.
     r = 0.5_default
     rb = 1 - r
     sf_int%on_shell_mode = KEEP_ENERGY
-    call sf_int%complete_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.false.)
     call sf_int%write (u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Recover x and r"
     write (u, "(A)")
 
-    call sf_int%recover_x (x)
-    call sf_int%inverse_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%recover_x (x, xb)
+    call sf_int%inverse_kinematics (x, xb, f, r, rb, map=.false.)
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "r =", r
+    write (u, "(A,9(1x,F10.7))")  "rb=", rb
 
     write (u, "(A)")
     write (u, "(A)")  "* Set kinematics for x=0.5, keeping momentum"
@@ -11726,17 +12125,19 @@ projections, collinear case.
     r = 0.5_default
     rb = 1 - r
     sf_int%on_shell_mode = KEEP_MOMENTUM
-    call sf_int%complete_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.false.)
     call sf_int%write (u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Recover x and r"
     write (u, "(A)")
 
-    call sf_int%recover_x (x)
-    call sf_int%inverse_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%recover_x (x, xb)
+    call sf_int%inverse_kinematics (x, xb, f, r, rb, map=.false.)
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "r =", r
+    write (u, "(A,9(1x,F10.7))")  "rb=", rb
 
     write (u, "(A)")
     write (u, "(A)")  "* Set all masses to zero"
@@ -11752,17 +12153,19 @@ projections, collinear case.
     r = 0.5_default
     rb = 1 - r
     sf_int%on_shell_mode = KEEP_ENERGY
-    call sf_int%complete_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.false.)
     call sf_int%write (u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Recover x and r"
     write (u, "(A)")
 
-    call sf_int%recover_x (x)
-    call sf_int%inverse_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%recover_x (x, xb)
+    call sf_int%inverse_kinematics (x, xb, f, r, rb, map=.false.)
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "r =", r
+    write (u, "(A,9(1x,F10.7))")  "rb=", rb
 
     write (u, "(A)")
     write (u, "(A)")  "* Set kinematics for x=0.5, keeping momentum"
@@ -11771,17 +12174,19 @@ projections, collinear case.
     r = 0.5_default
     rb = 1 - r
     sf_int%on_shell_mode = KEEP_MOMENTUM
-    call sf_int%complete_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.false.)
     call sf_int%write (u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Recover x and r"
     write (u, "(A)")
 
-    call sf_int%recover_x (x)
-    call sf_int%inverse_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%recover_x (x, xb)
+    call sf_int%inverse_kinematics (x, xb, f, r, rb, map=.false.)
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "r =", r
+    write (u, "(A,9(1x,F10.7))")  "rb=", rb
 
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
@@ -11815,7 +12220,7 @@ projections, non-collinear case.
     class(sf_int_t), allocatable :: sf_int
     type(vector4_t) :: k
     real(default) :: E
-    real(default), dimension(:), allocatable :: r, rb, x
+    real(default), dimension(:), allocatable :: r, rb, x, xb
     real(default) :: f
 
     write (u, "(A)")  "* Test output: sf_base_4"
@@ -11850,6 +12255,7 @@ projections, non-collinear case.
     allocate (r (data%get_n_par ()))
     allocate (rb(size (r)))
     allocate (x (size (r)))
+    allocate (xb(size (r)))
 
     write (u, "(A)")
     write (u, "(A)")  "* Initialize incoming momentum with E=500"
@@ -11871,17 +12277,19 @@ projections, non-collinear case.
     r = [0.5_default, 0.5_default, 0.125_default]
     rb = 1 - r
     sf_int%on_shell_mode = KEEP_ENERGY
-    call sf_int%complete_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.false.)
     call sf_int%write (u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Recover x and r"
     write (u, "(A)")
 
-    call sf_int%recover_x (x)
-    call sf_int%inverse_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%recover_x (x, xb)
+    call sf_int%inverse_kinematics (x, xb, f, r, rb, map=.false.)
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "r =", r
+    write (u, "(A,9(1x,F10.7))")  "rb=", rb
 
     write (u, "(A)")
     write (u, "(A)")  "* Set kinematics for x=0.5/0.5/0.125, keeping momentum"
@@ -11890,17 +12298,19 @@ projections, non-collinear case.
     r = [0.5_default, 0.5_default, 0.125_default]
     rb = 1 - r
     sf_int%on_shell_mode = KEEP_MOMENTUM
-    call sf_int%complete_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.false.)
     call sf_int%write (u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Recover x and r"
     write (u, "(A)")
 
-    call sf_int%recover_x (x)
-    call sf_int%inverse_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%recover_x (x, xb)
+    call sf_int%inverse_kinematics (x, xb, f, r, rb, map=.false.)
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "r =", r
+    write (u, "(A,9(1x,F10.7))")  "rb=", rb
 
     write (u, "(A)")
     write (u, "(A)")  "* Set outgoing mass to zero"
@@ -11915,17 +12325,19 @@ projections, non-collinear case.
     r = [0.5_default, 0.5_default, 0.125_default]
     rb = 1 - r
     sf_int%on_shell_mode = KEEP_ENERGY
-    call sf_int%complete_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.false.)
     call sf_int%write (u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Recover x and r"
     write (u, "(A)")
 
-    call sf_int%recover_x (x)
-    call sf_int%inverse_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%recover_x (x, xb)
+    call sf_int%inverse_kinematics (x, xb, f, r, rb, map=.false.)
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "r =", r
+    write (u, "(A,9(1x,F10.7))")  "rb=", rb
 
     write (u, "(A)")
     write (u, "(A)")  "* Set kinematics for x=0.5/0.5/0.125, keeping momentum"
@@ -11934,17 +12346,19 @@ projections, non-collinear case.
     r = [0.5_default, 0.5_default, 0.125_default]
     rb = 1 - r
     sf_int%on_shell_mode = KEEP_MOMENTUM
-    call sf_int%complete_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.false.)
     call sf_int%write (u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Recover x and r"
     write (u, "(A)")
 
-    call sf_int%recover_x (x)
-    call sf_int%inverse_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%recover_x (x, xb)
+    call sf_int%inverse_kinematics (x, xb, f, r, rb, map=.false.)
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "r =", r
+    write (u, "(A,9(1x,F10.7))")  "rb=", rb
 
     write (u, "(A)")
     write (u, "(A)")  "* Set incoming mass to zero"
@@ -11963,17 +12377,19 @@ projections, non-collinear case.
     r = [0.5_default, 0.5_default, 0.125_default]
     rb = 1 - r
     sf_int%on_shell_mode = KEEP_ENERGY
-    call sf_int%complete_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.false.)
     call sf_int%write (u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Recover x and r"
     write (u, "(A)")
 
-    call sf_int%recover_x (x)
-    call sf_int%inverse_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%recover_x (x, xb)
+    call sf_int%inverse_kinematics (x, xb, f, r, rb, map=.false.)
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "r =", r
+    write (u, "(A,9(1x,F10.7))")  "rb=", rb
 
     write (u, "(A)")
     write (u, "(A)")  "* Set kinematics for x=0.5/0.5/0.125, keeping momentum"
@@ -11982,17 +12398,19 @@ projections, non-collinear case.
     r = [0.5_default, 0.5_default, 0.125_default]
     rb = 1 - r
     sf_int%on_shell_mode = KEEP_MOMENTUM
-    call sf_int%complete_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.false.)
     call sf_int%write (u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Recover x and r"
     write (u, "(A)")
 
-    call sf_int%recover_x (x)
-    call sf_int%inverse_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%recover_x (x, xb)
+    call sf_int%inverse_kinematics (x, xb, f, r, rb, map=.false.)
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "r =", r
+    write (u, "(A,9(1x,F10.7))")  "rb=", rb
 
     write (u, "(A)")
     write (u, "(A)")  "* Set all masses to zero"
@@ -12022,17 +12440,19 @@ projections, non-collinear case.
     r = [0.5_default, 0.5_default, 0.125_default]
     rb = 1 - r
     sf_int%on_shell_mode = KEEP_ENERGY
-    call sf_int%complete_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.false.)
     call sf_int%write (u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Recover x and r"
     write (u, "(A)")
 
-    call sf_int%recover_x (x)
-    call sf_int%inverse_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%recover_x (x, xb)
+    call sf_int%inverse_kinematics (x, xb, f, r, rb, map=.false.)
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "r =", r
+    write (u, "(A,9(1x,F10.7))")  "rb=", rb
 
     write (u, "(A)")
     write (u, "(A)")  "* Set kinematics for x=0.5/0.5/0.125, keeping momentum"
@@ -12041,17 +12461,19 @@ projections, non-collinear case.
     r = [0.5_default, 0.5_default, 0.125_default]
     rb = 1 - r
     sf_int%on_shell_mode = KEEP_MOMENTUM
-    call sf_int%complete_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.false.)
     call sf_int%write (u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Recover x and r"
     write (u, "(A)")
 
-    call sf_int%recover_x (x)
-    call sf_int%inverse_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%recover_x (x, xb)
+    call sf_int%inverse_kinematics (x, xb, f, r, rb, map=.false.)
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "r =", r
+    write (u, "(A,9(1x,F10.7))")  "rb=", rb
 
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
@@ -12088,7 +12510,7 @@ Construct and display a structure function object for a pair spectrum
     type(vector4_t), dimension(2) :: k
     type(vector4_t), dimension(4) :: q
     real(default) :: E
-    real(default), dimension(:), allocatable :: r, rb, x
+    real(default), dimension(:), allocatable :: r, rb, x, xb
     real(default) :: f
 
     write (u, "(A)")  "* Test output: sf_base_5"
@@ -12141,14 +12563,16 @@ Construct and display a structure function object for a pair spectrum
     allocate (r (data%get_n_par ()))
     allocate (rb(size (r)))
     allocate (x (size (r)))
+    allocate (xb(size (r)))
 
     r = [0.4_default, 0.8_default]
     rb = 1 - r
-    call sf_int%complete_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.false.)
     call sf_int%write (u)
 
     write (u, "(A)")
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "f =", f
 
     write (u, "(A)")
@@ -12157,11 +12581,12 @@ Construct and display a structure function object for a pair spectrum
 
     r = [0.6_default, 0.8_default]
     rb = 1 - r
-    call sf_int%complete_kinematics (x, f, r, rb, map=.true.)
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.true.)
     call sf_int%write (u)
 
     write (u, "(A)")
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "f =", f
 
     write (u, "(A)")
@@ -12178,8 +12603,9 @@ Construct and display a structure function object for a pair spectrum
 
     call sf_int%seed_kinematics (k)
     call sf_int%set_momenta (q, outgoing=.true.)
-    call sf_int%recover_x (x)
+    call sf_int%recover_x (x, xb)
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
 
     write (u, "(A)")
     write (u, "(A)")  "* Compute inverse kinematics for x=0.36,0.64 &
@@ -12187,12 +12613,14 @@ Construct and display a structure function object for a pair spectrum
     write (u, "(A)")
 
     x = [0.36_default, 0.64_default]
-    call sf_int%inverse_kinematics (x, f, r, rb, map=.true.)
+    xb = 1 - x
+    call sf_int%inverse_kinematics (x, xb, f, r, rb, map=.true.)
     call sf_int%apply (scale=0._default)
     call sf_int%write (u)
 
     write (u, "(A)")
     write (u, "(A,9(1x,F10.7))")  "r =", r
+    write (u, "(A,9(1x,F10.7))")  "rb=", rb
     write (u, "(A,9(1x,F10.7))")  "f =", f
 
     write (u, "(A)")
@@ -12228,7 +12656,7 @@ Construct and display a structure function object for a pair spectrum
     type(vector4_t), dimension(2) :: k
     type(vector4_t), dimension(2) :: q
     real(default) :: E
-    real(default), dimension(:), allocatable :: r, rb, x
+    real(default), dimension(:), allocatable :: r, rb, x, xb
     real(default) :: f
 
     write (u, "(A)")  "* Test output: sf_base_6"
@@ -12271,14 +12699,16 @@ Construct and display a structure function object for a pair spectrum
     allocate (r (data%get_n_par ()))
     allocate (rb(size (r)))
     allocate (x (size (r)))
+    allocate (xb(size (r)))
 
     r = [0.4_default, 0.8_default]
     rb = 1 - r
-    call sf_int%complete_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.false.)
     call sf_int%write (u)
 
     write (u, "(A)")
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "f =", f
 
     write (u, "(A)")
@@ -12295,8 +12725,9 @@ Construct and display a structure function object for a pair spectrum
 
     call sf_int%seed_kinematics (k)
     call sf_int%set_momenta (q, outgoing=.true.)
-    call sf_int%recover_x (x)
+    call sf_int%recover_x (x, xb)
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
 
     write (u, "(A)")
     write (u, "(A)")  "* Compute inverse kinematics for x=0.4,0.8 &
@@ -12304,12 +12735,14 @@ Construct and display a structure function object for a pair spectrum
     write (u, "(A)")
 
     x = [0.4_default, 0.8_default]
-    call sf_int%inverse_kinematics (x, f, r, rb, map=.false.)
+    xb = 1 - x
+    call sf_int%inverse_kinematics (x, xb, f, r, rb, map=.false.)
     call sf_int%apply (scale=0._default)
     call sf_int%write (u)
 
     write (u, "(A)")
     write (u, "(A,9(1x,F10.7))")  "r =", r
+    write (u, "(A,9(1x,F10.7))")  "rb=", rb
     write (u, "(A,9(1x,F10.7))")  "f =", f
 
     write (u, "(A)")
@@ -12807,7 +13240,7 @@ Again, we skip evaluators.
 
     call sf_chain_instance%link_interactions ()
     sf_chain_instance%status = SF_DONE_CONNECTIONS
-    call sf_chain_instance%inverse_kinematics (x_saved)
+    call sf_chain_instance%inverse_kinematics (x_saved, 1 - x_saved)
 
     call write_separator (u, 2)
     call sf_chain_instance%write (u)
@@ -13175,7 +13608,7 @@ two-particle mappings.
 
     x_saved = sf_chain_instance%x
 
-    call sf_chain_instance%inverse_kinematics (x_saved)
+    call sf_chain_instance%inverse_kinematics (x_saved, 1 - x_saved)
     call sf_chain_instance%evaluate (scale=0._default)
 
     call write_separator (u, 2)
@@ -13241,7 +13674,7 @@ which is evaluated as a beam-event generator.
     type(vector4_t), dimension(2) :: k
     type(vector4_t), dimension(2) :: q
     real(default) :: E
-    real(default), dimension(:), allocatable :: r, rb, x
+    real(default), dimension(:), allocatable :: r, rb, x, xb
     real(default) :: f, x_free
 
     write (u, "(A)")  "* Test output: sf_base_13"
@@ -13273,6 +13706,7 @@ which is evaluated as a beam-event generator.
     allocate (r (data%get_n_par ()))
     allocate (rb(size (r)))
     allocate (x (size (r)))
+    allocate (xb(size (r)))
 
     write (u, "(A)")  "* Generate free r values"
     write (u, "(A)")
@@ -13291,11 +13725,12 @@ which is evaluated as a beam-event generator.
     write (u, "(A)")  "* Complete kinematics"
     write (u, "(A)")
 
-    call sf_int%complete_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.false.)
     call sf_int%write (u)
 
     write (u, "(A)")
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "f =", f
     write (u, "(A,9(1x,F10.7))")  "xf=", x_free
 
@@ -13314,8 +13749,9 @@ which is evaluated as a beam-event generator.
     call sf_int%seed_kinematics (k)
     call sf_int%set_momenta (q, outgoing=.true.)
     x_free = 1
-    call sf_int%recover_x (x, x_free)
+    call sf_int%recover_x (x, xb, x_free)
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "xf=", x_free
 
     write (u, "(A)")
@@ -13323,12 +13759,13 @@ which is evaluated as a beam-event generator.
          &and evaluate"
     write (u, "(A)")
 
-    call sf_int%inverse_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%inverse_kinematics (x, xb, f, r, rb, map=.false.)
     call sf_int%apply (scale=0._default)
     call sf_int%write (u)
 
     write (u, "(A)")
     write (u, "(A,9(1x,F10.7))")  "r =", r
+    write (u, "(A,9(1x,F10.7))")  "rb=", rb
     write (u, "(A,9(1x,F10.7))")  "f =", f
 
     write (u, "(A)")
@@ -13960,9 +14397,10 @@ mapping is turned off, the Jacobian [[f]] includes the value of the
 <<SF isr: isr: TBP>>=
   procedure :: complete_kinematics => isr_complete_kinematics
 <<SF isr: procedures>>=
-  subroutine isr_complete_kinematics (sf_int, x, f, r, rb, map)
+  subroutine isr_complete_kinematics (sf_int, x, xb, f, r, rb, map)
     class(isr_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(out) :: x
+    real(default), dimension(:), intent(out) :: xb
     real(default), intent(out) :: f
     real(default), dimension(:), intent(in) :: r
     real(default), dimension(:), intent(in) :: rb
@@ -13981,8 +14419,12 @@ mapping is turned off, the Jacobian [[f]] includes the value of the
     end if
     sf_int%x = 1 - sf_int%xb
     x(1) = sf_int%x
-    if (size (x) == 3)  x(2:3) = r(2:3)
-    call sf_int%split_momentum (x, sf_int%xb)
+    xb(1) = sf_int%xb
+    if (size (x) == 3) then
+       x(2:3) = r(2:3)
+       xb(2:3) = rb(2:3)
+    end if
+    call sf_int%split_momentum (x, xb)
     select case (sf_int%status)
     case (SF_FAILED_KINEMATICS)
        sf_int%x = 0
@@ -13996,19 +14438,17 @@ mapping is turned off, the Jacobian [[f]] includes the value of the
 momentum configuration.  In the specific case of ISR, we also set the
 internally stored $x$ and $\bar x$ values, so they can be used in the
 following routine.
-
-Note: the extraction of $\bar x$ is not numerically safe, but it can't
-be as long as the base [[recover_x]] isn't.
 <<SF isr: isr: TBP>>=
   procedure :: recover_x => sf_isr_recover_x
 <<SF isr: procedures>>=
-  subroutine sf_isr_recover_x (sf_int, x, x_free)
+  subroutine sf_isr_recover_x (sf_int, x, xb, x_free)
     class(isr_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(out) :: x
+    real(default), dimension(:), intent(out) :: xb
     real(default), intent(inout), optional :: x_free
-    call sf_int%base_recover_x (x, x_free)
+    call sf_int%base_recover_x (x, xb, x_free)
     sf_int%x  = x(1)
-    sf_int%xb = 1 - x(1)
+    sf_int%xb = xb(1)
   end subroutine sf_isr_recover_x
 
 @ %def sf_isr_recover_x
@@ -14023,9 +14463,10 @@ current sampling point (but maybe another channel).
 <<SF isr: isr: TBP>>=
   procedure :: inverse_kinematics => isr_inverse_kinematics
 <<SF isr: procedures>>=
-  subroutine isr_inverse_kinematics (sf_int, x, f, r, rb, map, set_momenta)
+  subroutine isr_inverse_kinematics (sf_int, x, xb, f, r, rb, map, set_momenta)
     class(isr_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(in) :: x
+    real(default), dimension(:), intent(in) :: xb
     real(default), intent(out) :: f
     real(default), dimension(:), intent(out) :: r
     real(default), dimension(:), intent(out) :: rb
@@ -14036,9 +14477,9 @@ current sampling point (but maybe another channel).
     set_mom = .false.;  if (present (set_momenta))  set_mom = set_momenta
     eps = sf_int%data%eps
     if (map) then
-       call map_power_inverse_1 (sf_int%xb, f, rb(1), eps)
+       call map_power_inverse_1 (xb(1), f, rb(1), eps)
     else
-       rb(1) = sf_int%xb
+       rb(1) = xb(1)
        if (rb(1) > 0) then
           f = 1
        else
@@ -14048,10 +14489,10 @@ current sampling point (but maybe another channel).
     r(1) = 1 - rb(1)
     if (size(r) == 3) then
        r(2:3) = x(2:3)
-       rb(2:3)= 1 - r(2:3)
+       rb(2:3)= xb(2:3)
     end if
     if (set_mom) then
-       call sf_int%split_momentum (x, sf_int%xb)
+       call sf_int%split_momentum (x, xb)
        select case (sf_int%status)
        case (SF_FAILED_KINEMATICS)
           r = 0
@@ -14139,9 +14580,11 @@ choose to conserve momentum, so energy conservation may be violated.
 <<SF isr: isr: TBP>>=
   procedure :: apply => isr_apply
 <<SF isr: procedures>>=
-  subroutine isr_apply (sf_int, scale)
+  subroutine isr_apply (sf_int, scale, rescaling_function, i_rescale)
     class(isr_t), intent(inout) :: sf_int
     real(default), intent(in) :: scale
+    class(rescaling_function_t), intent(in), optional :: rescaling_function
+    integer, intent(in), optional :: i_rescale
     real(default) :: f, finv, x, xb, eps, rb
     real(default) :: log_x, log_xb, x_2
     real(default), parameter :: &
@@ -14150,8 +14593,8 @@ choose to conserve momentum, so energy conservation may be violated.
          & zeta3 = 1.20205690315959428539973816151_default
     real(default), parameter :: &
          & g1 = 3._default / 4._default, &
-         & g2 = (27 - 8*pi**2) / 96._default, &
-         & g3 = (27 - 24*pi**2 + 128*zeta3) / 384._default
+         & g2 = (27 - 8 * pi**2) / 96._default, &
+         & g3 = (27 - 24 * pi**2 + 128 * zeta3) / 384._default
     associate (data => sf_int%data)
       eps = sf_int%data%eps
       x = sf_int%x
@@ -14164,27 +14607,27 @@ choose to conserve momentum, so energy conservation may be violated.
       end if
       if (f > 0 .and. data%order > 0) then
          f = f * (1 + g1 * eps)
-         x_2 = x*x
-         if (rb>0)  f = f * (1 - (1-x_2) / (2 * rb))
+         x_2 = x * x
+         if (rb > 0)  f = f * (1 - (1-x_2) / (2 * rb))
          if (data%order > 1) then
             f = f * (1 + g2 * eps**2)
-            if (rb>0 .and. xb>0 .and. x>xmin) then
+            if (rb > 0 .and. xb > 0 .and. x > xmin) then
                log_x  = log_prec (x, xb)
                log_xb = log_prec (xb, x)
-               f = f * (1 - ((1+3*x_2)*log_x + xb * (4*(1+x)*log_xb + 5 + x)) &
-                    / ( 8 * rb) * eps)
+               f = f * (1 - ((1 + 3 * x_2) * log_x + xb * (4 * (1 + x) * log_xb + 5 + x)) &
+                    / (8 * rb) * eps)
             end if
             if (data%order > 2) then
                f = f * (1 + g3 * eps**3)
                if (rb > 0 .and. xb > 0 .and. x > xmin) then
-                  f = f * (1 - ((1+x) * xb &
+                  f = f * (1 - ((1 + x) * xb &
                        * (6 * Li2(x) + 12 * log_xb**2 - 3 * pi**2) &
-                       + 1.5_default * (1 + 8*x + 3*x_2) * log_x &
-                       + 6 * (x+5) * xb * log_xb &
-                       + 12 * (1+x_2) * log_x * log_xb &
-                       - (1 + 7*x_2) * log_x**2 / 2 &
-                       + (39 - 24*x - 15*x_2) / 4) &
-                       / ( 48 * rb) * eps**2)
+                       + 1.5_default * (1 + 8 * x + 3 * x_2) * log_x &
+                       + 6 * (x + 5) * xb * log_xb &
+                       + 12 * (1 + x_2) * log_x * log_xb &
+                       - (1 + 7 * x_2) * log_x**2 / 2 &
+                       + (39 - 24 * x - 15 * x_2) / 4) &
+                       / (48 * rb) * eps**2)
                end if
             end if
          end if
@@ -14338,7 +14781,7 @@ structure function.  The parameter pair is mapped in the calling program.
     class(sf_int_t), allocatable :: sf_int
     type(vector4_t) :: k
     real(default) :: E
-    real(default), dimension(:), allocatable :: r, rb, x
+    real(default), dimension(:), allocatable :: r, rb, x, xb
     real(default) :: f, f_isr
 
     write (u, "(A)")  "* Test output: sf_isr_2"
@@ -14385,23 +14828,25 @@ structure function.  The parameter pair is mapped in the calling program.
     allocate (r (data%get_n_par ()))
     allocate (rb(size (r)))
     allocate (x (size (r)))
+    allocate (xb(size (r)))
 
     r = 0.9_default
     rb = 1 - r
     write (u, "(A,9(1x," // FMT_12 // "))")  "r =", r
     write (u, "(A,9(1x," // FMT_12 // "))")  "rb=", rb
 
-    call sf_int%complete_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.false.)
 
     write (u, "(A)")
     write (u, "(A,9(1x," // FMT_12 // "))")  "x =", x
+    write (u, "(A,9(1x," // FMT_12 // "))")  "xb=", xb
     write (u, "(A,9(1x," // FMT_12 // "))")  "f =", f
 
     write (u, "(A)")
     write (u, "(A)")  "* Invert kinematics"
     write (u, "(A)")
 
-    call sf_int%inverse_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%inverse_kinematics (x, xb, f, r, rb, map=.false.)
     write (u, "(A,9(1x," // FMT_12 // "))")  "r =", r
     write (u, "(A,9(1x," // FMT_12 // "))")  "rb=", rb
     write (u, "(A,9(1x," // FMT_12 // "))")  "f =", f
@@ -14468,7 +14913,7 @@ structure function.
     class(sf_int_t), allocatable :: sf_int
     type(vector4_t) :: k
     real(default) :: E
-    real(default), dimension(:), allocatable :: r, rb, x
+    real(default), dimension(:), allocatable :: r, rb, x, xb
     real(default) :: f, f_isr
 
     write (u, "(A)")  "* Test output: sf_isr_3"
@@ -14515,23 +14960,25 @@ structure function.
     allocate (r (data%get_n_par ()))
     allocate (rb(size (r)))
     allocate (x (size (r)))
+    allocate (xb(size (r)))
 
     r = 0.7_default
     rb = 1 - r
     write (u, "(A,9(1x," // FMT_12 // "))")  "r =", r
     write (u, "(A,9(1x," // FMT_12 // "))")  "rb=", rb
 
-    call sf_int%complete_kinematics (x, f, r, rb, map=.true.)
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.true.)
 
     write (u, "(A)")
     write (u, "(A,9(1x," // FMT_12 // "))")  "x =", x
+    write (u, "(A,9(1x," // FMT_12 // "))")  "xb=", xb
     write (u, "(A,9(1x," // FMT_12 // "))")  "f =", f
 
     write (u, "(A)")
     write (u, "(A)")  "* Invert kinematics"
     write (u, "(A)")
 
-    call sf_int%inverse_kinematics (x, f, r, rb, map=.true.)
+    call sf_int%inverse_kinematics (x, xb, f, r, rb, map=.true.)
     write (u, "(A,9(1x," // FMT_12 // "))")  "r =", r
     write (u, "(A,9(1x," // FMT_12 // "))")  "rb=", rb
     write (u, "(A,9(1x," // FMT_12 // "))")  "f =", f
@@ -14599,7 +15046,7 @@ structure function. We blank out numerical fluctuations for 32bit.
     type(vector4_t) :: k
     type(vector4_t), dimension(2) :: q
     real(default) :: E
-    real(default), dimension(:), allocatable :: r, rb, x
+    real(default), dimension(:), allocatable :: r, rb, x, xb
     real(default) :: f, f_isr
     character(len=80) :: buffer
     integer :: u_scratch, iostat
@@ -14650,14 +15097,16 @@ structure function. We blank out numerical fluctuations for 32bit.
     allocate (r (data%get_n_par ()))
     allocate (rb(size (r)))
     allocate (x (size (r)))
+    allocate (xb(size (r)))
 
     r = [0.5_default, 0.5_default, 0.25_default]
     rb = 1 - r
     sf_int%on_shell_mode = KEEP_ENERGY
-    call sf_int%complete_kinematics (x, f, r, rb, map=.true.)
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.true.)
     call interaction_pacify_momenta (sf_int%interaction_t, 1e-10_default)
 
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "f =", f
 
     write (u, "(A)")
@@ -14674,17 +15123,18 @@ structure function. We blank out numerical fluctuations for 32bit.
 
     call sf_int%seed_kinematics ([k])
     call sf_int%set_momenta (q, outgoing=.true.)
-    call sf_int%recover_x (x)
-    call sf_int%inverse_kinematics (x, f, r, rb, map=.true.)
+    call sf_int%recover_x (x, xb)
+    call sf_int%inverse_kinematics (x, xb, f, r, rb, map=.true.)
 
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "r =", r
 
     write (u, "(A)")
     write (u, "(A)")  "* Evaluate ISR structure function"
     write (u, "(A)")
 
-    call sf_int%complete_kinematics (x, f, r, rb, map=.true.)
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.true.)
     call interaction_pacify_momenta (sf_int%interaction_t, 1e-10_default)
     call sf_int%apply (scale = 10._default)
     u_scratch = free_unit ()
@@ -14746,7 +15196,7 @@ structure function.
     class(sf_int_t), dimension(:), allocatable :: sf_int
     type(vector4_t), dimension(2) :: k
     real(default) :: E, f_map
-    real(default), dimension(:), allocatable :: p, pb, r, rb, x
+    real(default), dimension(:), allocatable :: p, pb, r, rb, x, xb
     real(default), dimension(2) :: f, f_isr
     integer :: i
 
@@ -14815,6 +15265,7 @@ structure function.
     allocate (r (size (p)))
     allocate (rb(size (p)))
     allocate (x (size (p)))
+    allocate (xb(size (p)))
 
     p = [0.7_default, 0.4_default]
     pb= 1 - p
@@ -14827,12 +15278,13 @@ structure function.
     write (u, "(A,9(1x," // FMT_12 // "))")  "fm=", f_map
 
     do i = 1, 2
-       call sf_int(i)%complete_kinematics (x(i:i), f(i), r(i:i), rb(i:i), &
+       call sf_int(i)%complete_kinematics (x(i:i), xb(i:i), f(i), r(i:i), rb(i:i), &
             map=.false.)
     end do
 
     write (u, "(A)")
     write (u, "(A,9(1x," // FMT_12 // "))")  "x =", x
+    write (u, "(A,9(1x," // FMT_12 // "))")  "xb=", xb
     write (u, "(A,9(1x," // FMT_12 // "))")  "f =", f
 
     write (u, "(A)")
@@ -14840,7 +15292,7 @@ structure function.
     write (u, "(A)")
 
     do i = 1, 2
-       call sf_int(i)%inverse_kinematics (x(i:i), f(i), r(i:i), rb(i:i), &
+       call sf_int(i)%inverse_kinematics (x(i:i), xb(i:i), f(i), r(i:i), rb(i:i), &
             map=.false.)
     end do
     call mapping%inverse (r, rb, f_map, p, pb)
@@ -15385,14 +15837,14 @@ also output [[xb]], which is $\bar x=1-x$.
 <<SF epa: epa: TBP>>=
   procedure :: complete_kinematics => epa_complete_kinematics
 <<SF epa: procedures>>=
-  subroutine epa_complete_kinematics (sf_int, x, f, r, rb, map)
+  subroutine epa_complete_kinematics (sf_int, x, xb, f, r, rb, map)
     class(epa_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(out) :: x
+    real(default), dimension(:), intent(out) :: xb
     real(default), intent(out) :: f
     real(default), dimension(:), intent(in) :: r
     real(default), dimension(:), intent(in) :: rb
     logical, intent(in) :: map
-    real(default) :: xb1
     real(default) :: delta, sqrt_delta, lx
     if (map) then
        associate (data => sf_int%data)
@@ -15418,13 +15870,16 @@ also output [[xb]], which is $\bar x=1-x$.
           return
        end if
     end if
-    xb1 = 1 - x(1)
-    if (size(x) == 3)  x(2:3) = r(2:3)
-    call sf_int%split_momentum (x, xb1)
+    xb(1) = 1 - x(1)
+    if (size(x) == 3) then
+       x(2:3) = r(2:3)
+       xb(2:3) = rb(2:3)
+    end if
+    call sf_int%split_momentum (x, xb)
     select case (sf_int%status)
     case (SF_DONE_KINEMATICS)
        sf_int%x = x(1)
-       sf_int%xb= xb1
+       sf_int%xb= xb(1)
        sf_int%E  = energy (sf_int%get_momentum (1))
     case (SF_FAILED_KINEMATICS)
        sf_int%x = 0
@@ -15440,9 +15895,10 @@ can set momenta by the same formula as for normal kinematics.
 <<SF epa: epa: TBP>>=
   procedure :: inverse_kinematics => epa_inverse_kinematics
 <<SF epa: procedures>>=
-  subroutine epa_inverse_kinematics (sf_int, x, f, r, rb, map, set_momenta)
+  subroutine epa_inverse_kinematics (sf_int, x, xb, f, r, rb, map, set_momenta)
     class(epa_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(in) :: x
+    real(default), dimension(:), intent(in) :: xb
     real(default), intent(out) :: f
     real(default), dimension(:), intent(out) :: r
     real(default), dimension(:), intent(out) :: rb
@@ -15463,7 +15919,7 @@ can set momenta by the same formula as for normal kinematics.
        end associate
     else
        r (1) = x(1)
-       rb(1) = 1 - x(1)
+       rb(1) = xb(1)
        if (sf_int%data%x_min < x(1) .and. x(1) < sf_int%data%x_max) then
           f = 1
        else
@@ -15472,14 +15928,14 @@ can set momenta by the same formula as for normal kinematics.
     end if
     if (size(r) == 3) then
        r (2:3) = x(2:3)
-       rb(2:3) = 1 - x(2:3)
+       rb(2:3) = xb(2:3)
     end if
     if (set_mom) then
-       call sf_int%split_momentum (x, sf_int%xb)
+       call sf_int%split_momentum (x, xb)
        select case (sf_int%status)
        case (SF_DONE_KINEMATICS)
           sf_int%x  = x(1)
-          sf_int%xb = 1 - x(1)
+          sf_int%xb = xb(1)
           sf_int%E  = energy (sf_int%get_momentum (1))
        case (SF_FAILED_KINEMATICS)
           sf_int%x = 0
@@ -15499,13 +15955,14 @@ be as long as the base [[recover_x]] isn't.
 <<SF epa: epa: TBP>>=
   procedure :: recover_x => sf_epa_recover_x
 <<SF epa: procedures>>=
-  subroutine sf_epa_recover_x (sf_int, x, x_free)
+  subroutine sf_epa_recover_x (sf_int, x, xb, x_free)
     class(epa_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(out) :: x
+    real(default), dimension(:), intent(out) :: xb
     real(default), intent(inout), optional :: x_free
-    call sf_int%base_recover_x (x, x_free)
+    call sf_int%base_recover_x (x, xb, x_free)
     sf_int%x  = x(1)
-    sf_int%xb = 1 - x(1)
+    sf_int%xb = xb(1)
   end subroutine sf_epa_recover_x
 
 @ %def sf_epa_recover_x
@@ -15525,9 +15982,11 @@ generated $x$ values are identical.
 <<SF epa: epa: TBP>>=
   procedure :: apply => epa_apply
 <<SF epa: procedures>>=
-  subroutine epa_apply (sf_int, scale)
+  subroutine epa_apply (sf_int, scale, rescaling_function, i_rescale)
     class(epa_t), intent(inout) :: sf_int
     real(default), intent(in) :: scale
+    class(rescaling_function_t), intent(in), optional :: rescaling_function
+    integer, intent(in), optional :: i_rescale
     real(default) :: x, xb, qminsq, qmaxsq, f, E
     associate (data => sf_int%data)
       x = sf_int%x
@@ -15691,7 +16150,7 @@ structure function.
     type(vector4_t) :: k
     type(vector4_t), dimension(2) :: q
     real(default) :: E
-    real(default), dimension(:), allocatable :: r, rb, x
+    real(default), dimension(:), allocatable :: r, rb, x, xb
     real(default) :: f
 
     write (u, "(A)")  "* Test output: sf_epa_2"
@@ -15738,14 +16197,16 @@ structure function.
     allocate (r (data%get_n_par ()))
     allocate (rb(size (r)))
     allocate (x (size (r)))
+    allocate (xb(size (r)))
 
     r = 0.4_default
     rb = 1 - r
-    call sf_int%complete_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.false.)
 
     write (u, "(A,9(1x,F10.7))")  "r =", r
     write (u, "(A,9(1x,F10.7))")  "rb=", rb
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "f =", f
 
     write (u, "(A)")
@@ -15763,13 +16224,14 @@ structure function.
 
     call sf_int%seed_kinematics ([k])
     call sf_int%set_momenta (q, outgoing=.true.)
-    call sf_int%recover_x (x)
-    call sf_int%inverse_kinematics (x, f, r, rb, map=.false., &
+    call sf_int%recover_x (x, xb)
+    call sf_int%inverse_kinematics (x, xb, f, r, rb, map=.false., &
          set_momenta=.true.)
 
     write (u, "(A,9(1x,F10.7))")  "r =", r
     write (u, "(A,9(1x,F10.7))")  "rb=", rb
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "f =", f
 
     write (u, "(A)")
@@ -15812,7 +16274,7 @@ structure function, applying the standard single-particle mapping.
     type(vector4_t) :: k
     type(vector4_t), dimension(2) :: q
     real(default) :: E
-    real(default), dimension(:), allocatable :: r, rb, x
+    real(default), dimension(:), allocatable :: r, rb, x, xb
     real(default) :: f
 
     write (u, "(A)")  "* Test output: sf_epa_3"
@@ -15859,14 +16321,16 @@ structure function, applying the standard single-particle mapping.
     allocate (r (data%get_n_par ()))
     allocate (rb(size (r)))
     allocate (x (size (r)))
+    allocate (xb(size (r)))
 
     r = 0.4_default
     rb = 1 - r
-    call sf_int%complete_kinematics (x, f, r, rb, map=.true.)
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.true.)
 
     write (u, "(A,9(1x,F10.7))")  "r =", r
     write (u, "(A,9(1x,F10.7))")  "rb=", rb
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "f =", f
 
     write (u, "(A)")
@@ -15884,13 +16348,14 @@ structure function, applying the standard single-particle mapping.
 
     call sf_int%seed_kinematics ([k])
     call sf_int%set_momenta (q, outgoing=.true.)
-    call sf_int%recover_x (x)
-    call sf_int%inverse_kinematics (x, f, r, rb, map=.true., &
+    call sf_int%recover_x (x, xb)
+    call sf_int%inverse_kinematics (x, xb, f, r, rb, map=.true., &
          set_momenta=.true.)
 
     write (u, "(A,9(1x,F10.7))")  "r =", r
     write (u, "(A,9(1x,F10.7))")  "rb=", rb
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "f =", f
 
     write (u, "(A)")
@@ -15933,7 +16398,7 @@ structure function.
     type(vector4_t) :: k
     type(vector4_t), dimension(2) :: q
     real(default) :: E, m
-    real(default), dimension(:), allocatable :: r, rb, x
+    real(default), dimension(:), allocatable :: r, rb, x, xb
     real(default) :: f
 
     write (u, "(A)")  "* Test output: sf_epa_4"
@@ -15982,16 +16447,18 @@ structure function.
     allocate (r (data%get_n_par ()))
     allocate (rb(size (r)))
     allocate (x (size (r)))
+    allocate (xb(size (r)))
 
     r = [0.5_default, 0.5_default, 0.25_default]
     rb = 1 - r
     sf_int%on_shell_mode = KEEP_ENERGY
-    call sf_int%complete_kinematics (x, f, r, rb, map=.true.)
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.true.)
     call interaction_pacify_momenta (sf_int%interaction_t, 1e-10_default)
 
     write (u, "(A,9(1x,F10.7))")  "r =", r
     write (u, "(A,9(1x,F10.7))")  "rb=", rb
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "f =", f
 
     write (u, "(A)")
@@ -16009,14 +16476,15 @@ structure function.
 
     call sf_int%seed_kinematics ([k])
     call sf_int%set_momenta (q, outgoing=.true.)
-    call sf_int%recover_x (x)
-    call sf_int%inverse_kinematics (x, f, r, rb, map=.true., &
+    call sf_int%recover_x (x, xb)
+    call sf_int%inverse_kinematics (x, xb, f, r, rb, map=.true., &
          set_momenta=.true.)
     call interaction_pacify_momenta (sf_int%interaction_t, 1e-10_default)
 
     write (u, "(A,9(1x,F10.7))")  "r =", r
     write (u, "(A,9(1x,F10.7))")  "rb=", rb
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "f =", f
 
     write (u, "(A)")
@@ -16059,7 +16527,7 @@ non-uniform charge.
     class(sf_int_t), allocatable :: sf_int
     type(vector4_t) :: k
     real(default) :: E
-    real(default), dimension(:), allocatable :: r, rb, x
+    real(default), dimension(:), allocatable :: r, rb, x, xb
     real(default) :: f
 
     write (u, "(A)")  "* Test output: sf_epa_5"
@@ -16107,14 +16575,16 @@ non-uniform charge.
     allocate (r (data%get_n_par ()))
     allocate (rb(size (r)))
     allocate (x (size (r)))
+    allocate (xb(size (r)))
 
     r = 0.4_default
     rb = 1 - r
-    call sf_int%complete_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.false.)
 
     write (u, "(A,9(1x,F10.7))")  "r =", r
     write (u, "(A,9(1x,F10.7))")  "rb=", rb
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "f =", f
 
     write (u, "(A)")
@@ -16627,6 +17097,7 @@ depends. Hence, a dummy routine.
        if (object%status >= SF_DONE_KINEMATICS) then
           write (u, "(1x,A)")  "SF parameters:"
           write (u, "(3x,A," // FMT_17 // ")")  "x =", object%x
+          write (u, "(3x,A," // FMT_17 // ")")  "xb=", object%xb
        end if
        call object%base_write (u, testflag)
     else
@@ -16809,14 +17280,15 @@ discussed above is applied.
 <<SF ewa: ewa: TBP>>=
   procedure :: complete_kinematics => ewa_complete_kinematics
 <<SF ewa: procedures>>=
-  subroutine ewa_complete_kinematics (sf_int, x, f, r, rb, map)
+  subroutine ewa_complete_kinematics (sf_int, x, xb, f, r, rb, map)
     class(ewa_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(out) :: x
+    real(default), dimension(:), intent(out) :: xb
     real(default), intent(out) :: f
     real(default), dimension(:), intent(in) :: r
     real(default), dimension(:), intent(in) :: rb
     logical, intent(in) :: map
-    real(default) :: xb1, e_1
+    real(default) :: e_1
     real(default) :: x0, x1, lx0, lx1, lx
     e_1 = energy (sf_int%get_momentum (1))
     if (sf_int%data%recoil) then
@@ -16851,13 +17323,16 @@ discussed above is applied.
           return
        end if
     end if
-    xb1 = 1 - x(1)
-    if (size(x) == 3)  x(2:3) = r(2:3)
-    call sf_int%split_momentum (x, xb1)
+    xb(1) = 1 - x(1)
+    if (size(x) == 3) then
+       x(2:3) = r(2:3)
+       xb(2:3) = rb(2:3)
+    end if
+    call sf_int%split_momentum (x, xb)
     select case (sf_int%status)
     case (SF_DONE_KINEMATICS)
        sf_int%x  = x(1)
-       sf_int%xb = xb1
+       sf_int%xb = xb(1)
     case (SF_FAILED_KINEMATICS)
        sf_int%x  = 0
        sf_int%xb = 0
@@ -16872,9 +17347,10 @@ can set momenta by the same formula as for normal kinematics.
 <<SF ewa: ewa: TBP>>=
   procedure :: inverse_kinematics => ewa_inverse_kinematics
 <<SF ewa: procedures>>=
-  subroutine ewa_inverse_kinematics (sf_int, x, f, r, rb, map, set_momenta)
+  subroutine ewa_inverse_kinematics (sf_int, x, xb, f, r, rb, map, set_momenta)
     class(ewa_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(in) :: x
+    real(default), dimension(:), intent(in) :: xb
     real(default), intent(out) :: f
     real(default), dimension(:), intent(out) :: r
     real(default), dimension(:), intent(out) :: rb
@@ -16913,16 +17389,17 @@ can set momenta by the same formula as for normal kinematics.
     end if
     if (size(r) == 3) then
        r (2:3) = x(2:3)
-       rb(2:3) = 1 - x(2:3)
+       rb(2:3) = xb(2:3)
     end if
     if (set_mom) then
-       call sf_int%split_momentum (x, sf_int%xb)
+       call sf_int%split_momentum (x, xb)
        select case (sf_int%status)
        case (SF_DONE_KINEMATICS)
-          sf_int%x  = x(1)
-          sf_int%xb = 1 - x(1)
+          sf_int%x = x(1)
+          sf_int%xb= xb(1)
        case (SF_FAILED_KINEMATICS)
           sf_int%x = 0
+          sf_int%xb= 0
           f = 0
        end select
     end if
@@ -16944,9 +17421,11 @@ generated $x$ values are identical.
 <<SF ewa: ewa: TBP>>=
   procedure :: apply => ewa_apply
 <<SF ewa: procedures>>=
-  subroutine ewa_apply (sf_int, scale)
+  subroutine ewa_apply (sf_int, scale, rescaling_function, i_rescale)
     class(ewa_t), intent(inout) :: sf_int
     real(default), intent(in) :: scale
+    class(rescaling_function_t), intent(in), optional :: rescaling_function
+    integer, intent(in), optional :: i_rescale
     real(default) :: x, xb, pt2, c1, c2
     real(default) :: cv, ca
     real(default) :: f, fm, fp, fL
@@ -17149,7 +17628,7 @@ structure function.
     type(vector4_t) :: k
     type(vector4_t), dimension(2) :: q
     real(default) :: E
-    real(default), dimension(:), allocatable :: r, rb, x
+    real(default), dimension(:), allocatable :: r, rb, x, xb
     real(default) :: f
 
     write (u, "(A)")  "* Test output: sf_ewa_2"
@@ -17200,14 +17679,16 @@ structure function.
     allocate (r (data%get_n_par ()))
     allocate (rb(size (r)))
     allocate (x (size (r)))
+    allocate (xb(size (r)))
 
     r = 0.4_default
     rb = 1 - r
-    call sf_int%complete_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.false.)
 
     write (u, "(A,9(1x,F10.7))")  "r =", r
     write (u, "(A,9(1x,F10.7))")  "rb=", rb
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "f =", f
 
     write (u, "(A)")
@@ -17225,13 +17706,14 @@ structure function.
 
     call sf_int%seed_kinematics ([k])
     call sf_int%set_momenta (q, outgoing=.true.)
-    call sf_int%recover_x (x)
-    call sf_int%inverse_kinematics (x, f, r, rb, map=.false., &
+    call sf_int%recover_x (x, xb)
+    call sf_int%inverse_kinematics (x, xb, f, r, rb, map=.false., &
          set_momenta=.true.)
 
     write (u, "(A,9(1x,F10.7))")  "r =", r
     write (u, "(A,9(1x,F10.7))")  "rb=", rb
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "f =", f
 
     write (u, "(A)")
@@ -17274,7 +17756,7 @@ structure function, applying the standard single-particle mapping.
     type(vector4_t) :: k
     type(vector4_t), dimension(2) :: q
     real(default) :: E
-    real(default), dimension(:), allocatable :: r, rb, x
+    real(default), dimension(:), allocatable :: r, rb, x, xb
     real(default) :: f
 
     write (u, "(A)")  "* Test output: sf_ewa_3"
@@ -17325,14 +17807,16 @@ structure function, applying the standard single-particle mapping.
     allocate (r (data%get_n_par ()))
     allocate (rb(size (r)))
     allocate (x (size (r)))
+    allocate (xb(size (r)))
 
     r = 0.4_default
     rb = 1 - r
-    call sf_int%complete_kinematics (x, f, r, rb, map=.true.)
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.true.)
 
     write (u, "(A,9(1x,F10.7))")  "r =", r
     write (u, "(A,9(1x,F10.7))")  "rb=", rb
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "f =", f
 
     write (u, "(A)")
@@ -17350,13 +17834,14 @@ structure function, applying the standard single-particle mapping.
 
     call sf_int%seed_kinematics ([k])
     call sf_int%set_momenta (q, outgoing=.true.)
-    call sf_int%recover_x (x)
-    call sf_int%inverse_kinematics (x, f, r, rb, map=.true., &
+    call sf_int%recover_x (x, xb)
+    call sf_int%inverse_kinematics (x, xb, f, r, rb, map=.true., &
          set_momenta=.true.)
 
     write (u, "(A,9(1x,F10.7))")  "r =", r
     write (u, "(A,9(1x,F10.7))")  "rb=", rb
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "f =", f
 
     write (u, "(A)")
@@ -17399,7 +17884,7 @@ structure function.
     type(vector4_t) :: k
     type(vector4_t), dimension(2) :: q
     real(default) :: E
-    real(default), dimension(:), allocatable :: r, rb, x
+    real(default), dimension(:), allocatable :: r, rb, x, xb
     real(default) :: f
 
     write (u, "(A)")  "* Test output: sf_ewa_4"
@@ -17448,16 +17933,18 @@ structure function.
     allocate (r (data%get_n_par ()))
     allocate (rb(size (r)))
     allocate (x (size (r)))
+    allocate (xb(size (r)))
 
     r = [0.5_default, 0.5_default, 0.25_default]
     rb = 1 - r
     sf_int%on_shell_mode = KEEP_ENERGY
-    call sf_int%complete_kinematics (x, f, r, rb, map=.true.)
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.true.)
     call interaction_pacify_momenta (sf_int%interaction_t, 1e-10_default)
 
     write (u, "(A,9(1x,F10.7))")  "r =", r
     write (u, "(A,9(1x,F10.7))")  "rb=", rb
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "f =", f
 
     write (u, "(A)")
@@ -17475,14 +17962,15 @@ structure function.
 
     call sf_int%seed_kinematics ([k])
     call sf_int%set_momenta (q, outgoing=.true.)
-    call sf_int%recover_x (x)
-    call sf_int%inverse_kinematics (x, f, r, rb, map=.true., &
+    call sf_int%recover_x (x, xb)
+    call sf_int%inverse_kinematics (x, xb, f, r, rb, map=.true., &
          set_momenta=.true.)
     call interaction_pacify_momenta (sf_int%interaction_t, 1e-10_default)
 
     write (u, "(A,9(1x,F10.7))")  "r =", r
     write (u, "(A,9(1x,F10.7))")  "rb=", rb
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "f =", f
 
     write (u, "(A)")
@@ -17525,7 +18013,7 @@ non-uniform quantum numbers.
     class(sf_int_t), allocatable :: sf_int
     type(vector4_t) :: k
     real(default) :: E
-    real(default), dimension(:), allocatable :: r, rb, x
+    real(default), dimension(:), allocatable :: r, rb, x, xb
     real(default) :: f
 
     write (u, "(A)")  "* Test output: sf_ewa_5"
@@ -17576,14 +18064,16 @@ non-uniform quantum numbers.
     allocate (r (data%get_n_par ()))
     allocate (rb(size (r)))
     allocate (x (size (r)))
+    allocate (xb(size (r)))
 
     r = 0.4_default
     rb = 1 - r
-    call sf_int%complete_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.false.)
 
     write (u, "(A,9(1x,F10.7))")  "r =", r
     write (u, "(A,9(1x,F10.7))")  "rb=", rb
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "f =", f
 
     write (u, "(A)")
@@ -17893,15 +18383,17 @@ The [[map]] flag is ignored.
 <<SF escan: escan: TBP>>=
   procedure :: complete_kinematics => escan_complete_kinematics
 <<SF escan: procedures>>=
-  subroutine escan_complete_kinematics (sf_int, x, f, r, rb, map)
+  subroutine escan_complete_kinematics (sf_int, x, xb, f, r, rb, map)
     class(escan_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(out) :: x
+    real(default), dimension(:), intent(out) :: xb
     real(default), intent(out) :: f
     real(default) :: sqrt_x
     real(default), dimension(:), intent(in) :: r
     real(default), dimension(:), intent(in) :: rb
     logical, intent(in) :: map
     x = r
+    xb= rb
     sqrt_x = sqrt (x(1))
     if (sqrt_x > 0) then
        f = 1 / (2 * sqrt_x)
@@ -17920,13 +18412,15 @@ is the product of the extracted momentum fractions.
 <<SF escan: escan: TBP>>=
   procedure :: recover_x => escan_recover_x
 <<SF escan: procedures>>=
-  subroutine escan_recover_x (sf_int, x, x_free)
+  subroutine escan_recover_x (sf_int, x, xb, x_free)
     class(escan_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(out) :: x
+    real(default), dimension(:), intent(out) :: xb
     real(default), intent(inout), optional :: x_free
-    real(default), dimension(2) :: xi
-    call sf_int%base_recover_x (xi, x_free)
+    real(default), dimension(2) :: xi, xib
+    call sf_int%base_recover_x (xi, xib, x_free)
     x = product (xi)
+    xb= 1 - x
   end subroutine escan_recover_x
 
 @ %def escan_recover_x
@@ -17934,9 +18428,10 @@ is the product of the extracted momentum fractions.
 <<SF escan: escan: TBP>>=
   procedure :: inverse_kinematics => escan_inverse_kinematics
 <<SF escan: procedures>>=
-  subroutine escan_inverse_kinematics (sf_int, x, f, r, rb, map, set_momenta)
+  subroutine escan_inverse_kinematics (sf_int, x, xb, f, r, rb, map, set_momenta)
     class(escan_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(in) :: x
+    real(default), dimension(:), intent(in) :: xb
     real(default), intent(out) :: f
     real(default), dimension(:), intent(out) :: r
     real(default), dimension(:), intent(out) :: rb
@@ -17954,7 +18449,7 @@ is the product of the extracted momentum fractions.
        return
     end if
     r = x
-    rb = 1 - r
+    rb = xb
     if (set_mom) then
        call sf_int%reduce_momenta ([sqrt_x, sqrt_x])
     end if
@@ -17967,9 +18462,11 @@ Here, we insert the predefined norm.
 <<SF escan: escan: TBP>>=
   procedure :: apply => escan_apply
 <<SF escan: procedures>>=
-  subroutine escan_apply (sf_int, scale)
+  subroutine escan_apply (sf_int, scale, rescaling_function, i_rescale)
     class(escan_t), intent(inout) :: sf_int
     real(default), intent(in) :: scale
+    class(rescaling_function_t), intent(in), optional :: rescaling_function
+    integer, intent(in), optional :: i_rescale
     real(default) :: f
     associate (data => sf_int%data)
       f = data%norm
@@ -18108,7 +18605,7 @@ Active the beam event reader, generate an event.
     class(sf_int_t), allocatable :: sf_int
     type(vector4_t) :: k1, k2
     real(default) :: E
-    real(default), dimension(:), allocatable :: r, rb, x
+    real(default), dimension(:), allocatable :: r, rb, x, xb
     real(default) :: x_free, f
 
     write (u, "(A)")  "* Test output: sf_escan_2"
@@ -18153,16 +18650,18 @@ Active the beam event reader, generate an event.
     allocate (r (data%get_n_par ()))
     allocate (rb(size (r)))
     allocate (x (size (r)))
+    allocate (xb(size (r)))
 
     r  = 0.8
     rb = 1 - r
     x_free = 1
 
-    call sf_int%complete_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.false.)
 
     write (u, "(A,9(1x,F10.7))")  "r =", r
     write (u, "(A,9(1x,F10.7))")  "rb=", rb
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "f =", f
     write (u, "(A,9(1x,F10.7))")  "xf=", x_free
 
@@ -18170,12 +18669,13 @@ Active the beam event reader, generate an event.
     write (u, "(A)")  "* Inverse kinematics"
     write (u, "(A)")
 
-    call sf_int%recover_x (x, x_free)
-    call sf_int%inverse_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%recover_x (x, xb, x_free)
+    call sf_int%inverse_kinematics (x, xb, f, r, rb, map=.false.)
 
     write (u, "(A,9(1x,F10.7))")  "r =", r
     write (u, "(A,9(1x,F10.7))")  "rb=", rb
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "f =", f
     write (u, "(A,9(1x,F10.7))")  "xf=", x_free
 
@@ -18519,9 +19019,10 @@ The [[map]] flag doesn't apply.
 <<SF gaussian: gaussian: TBP>>=
   procedure :: complete_kinematics => gaussian_complete_kinematics
 <<SF gaussian: procedures>>=
-  subroutine gaussian_complete_kinematics (sf_int, x, f, r, rb, map)
+  subroutine gaussian_complete_kinematics (sf_int, x, xb, f, r, rb, map)
     class(gaussian_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(out) :: x
+    real(default), dimension(:), intent(out) :: xb
     real(default), intent(out) :: f
     real(default), dimension(:), intent(in) :: r
     real(default), dimension(:), intent(in) :: rb
@@ -18530,6 +19031,7 @@ The [[map]] flag doesn't apply.
        call msg_fatal ("gaussian: map flag not supported")
     else
        x = r
+       xb= rb
        f = 1
     end if
     call sf_int%reduce_momenta (x)
@@ -18541,9 +19043,10 @@ The [[map]] flag doesn't apply.
   procedure :: inverse_kinematics => gaussian_inverse_kinematics
 <<SF gaussian: procedures>>=
   subroutine gaussian_inverse_kinematics &
-       (sf_int, x, f, r, rb, map, set_momenta)
+       (sf_int, x, xb, f, r, rb, map, set_momenta)
     class(gaussian_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(in) :: x
+    real(default), dimension(:), intent(in) :: xb
     real(default), intent(out) :: f
     real(default), dimension(:), intent(out) :: r
     real(default), dimension(:), intent(out) :: rb
@@ -18555,9 +19058,9 @@ The [[map]] flag doesn't apply.
        call msg_fatal ("gaussian: map flag not supported")
     else
        r = x
+       rb= xb
        f = 1
     end if
-    rb = 1 - r
     if (set_mom) then
        call sf_int%reduce_momenta (x)
     end if
@@ -18570,9 +19073,11 @@ Trivial, just set the unit weight.
 <<SF gaussian: gaussian: TBP>>=
   procedure :: apply => gaussian_apply
 <<SF gaussian: procedures>>=
-  subroutine gaussian_apply (sf_int, scale)
+  subroutine gaussian_apply (sf_int, scale, rescaling_function, i_rescale)
     class(gaussian_t), intent(inout) :: sf_int
     real(default), intent(in) :: scale
+    class(rescaling_function_t), intent(in), optional :: rescaling_function
+    integer, intent(in), optional :: i_rescale
     real(default) :: f
     f = 1
     call sf_int%set_matrix_element (cmplx (f, kind=default))
@@ -18715,7 +19220,7 @@ Active the beam event reader, generate an event.
     class(sf_int_t), allocatable :: sf_int
     type(vector4_t) :: k1, k2
     real(default) :: E
-    real(default), dimension(:), allocatable :: r, rb, x
+    real(default), dimension(:), allocatable :: r, rb, x, xb
     real(default) :: x_free, f
     integer :: i
 
@@ -18762,17 +19267,20 @@ Active the beam event reader, generate an event.
     allocate (r (data%get_n_par ()))
     allocate (rb(size (r)))
     allocate (x (size (r)))
+    allocate (xb(size (r)))
 
     r  = 0
     rb = 0
     x_free = 1
     call sf_int%generate_free (r, rb, x_free)
-    call sf_int%complete_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.false.)
     call pacify (rb, 1.e-8_default)
+    call pacify (xb, 1.e-8_default)
 
     write (u, "(A,9(1x,F10.7))")  "r =", r
     write (u, "(A,9(1x,F10.7))")  "rb=", rb
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "f =", f
     write (u, "(A,9(1x,F10.7))")  "xf=", x_free
 
@@ -19212,9 +19720,10 @@ The [[map]] flag doesn't apply.
 <<SF beam events: beam events: TBP>>=
   procedure :: complete_kinematics => beam_events_complete_kinematics
 <<SF beam events: procedures>>=
-  subroutine beam_events_complete_kinematics (sf_int, x, f, r, rb, map)
+  subroutine beam_events_complete_kinematics (sf_int, x, xb, f, r, rb, map)
     class(beam_events_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(out) :: x
+    real(default), dimension(:), intent(out) :: xb
     real(default), intent(out) :: f
     real(default), dimension(:), intent(in) :: r
     real(default), dimension(:), intent(in) :: rb
@@ -19223,6 +19732,7 @@ The [[map]] flag doesn't apply.
        call msg_fatal ("Beam events: map flag not supported")
     else
        x = r
+       xb= rb
        f = 1
     end if
     call sf_int%reduce_momenta (x)
@@ -19234,9 +19744,10 @@ The [[map]] flag doesn't apply.
   procedure :: inverse_kinematics => beam_events_inverse_kinematics
 <<SF beam events: procedures>>=
   subroutine beam_events_inverse_kinematics &
-       (sf_int, x, f, r, rb, map, set_momenta)
+       (sf_int, x, xb, f, r, rb, map, set_momenta)
     class(beam_events_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(in) :: x
+    real(default), dimension(:), intent(in) :: xb
     real(default), intent(out) :: f
     real(default), dimension(:), intent(out) :: r
     real(default), dimension(:), intent(out) :: rb
@@ -19248,9 +19759,9 @@ The [[map]] flag doesn't apply.
        call msg_fatal ("Beam events: map flag not supported")
     else
        r = x
+       rb= xb
        f = 1
     end if
-    rb = 1 - r
     if (set_mom) then
        call sf_int%reduce_momenta (x)
     end if
@@ -19263,9 +19774,11 @@ Trivial, just set the unit weight.
 <<SF beam events: beam events: TBP>>=
   procedure :: apply => beam_events_apply
 <<SF beam events: procedures>>=
-  subroutine beam_events_apply (sf_int, scale)
+  subroutine beam_events_apply (sf_int, scale, rescaling_function, i_rescale)
     class(beam_events_t), intent(inout) :: sf_int
     real(default), intent(in) :: scale
+    class(rescaling_function_t), intent(in), optional :: rescaling_function
+    integer, intent(in), optional :: i_rescale
     real(default) :: f
     f = 1
     call sf_int%set_matrix_element (cmplx (f, kind=default))
@@ -19404,7 +19917,7 @@ Active the beam event reader, generate an event.
     class(sf_int_t), allocatable :: sf_int
     type(vector4_t) :: k1, k2
     real(default) :: E
-    real(default), dimension(:), allocatable :: r, rb, x
+    real(default), dimension(:), allocatable :: r, rb, x, xb
     real(default) :: x_free, f
     integer :: i
 
@@ -19451,16 +19964,18 @@ Active the beam event reader, generate an event.
     allocate (r (data%get_n_par ()))
     allocate (rb(size (r)))
     allocate (x (size (r)))
+    allocate (xb(size (r)))
 
     r  = 0
     rb = 0
     x_free = 1
     call sf_int%generate_free (r, rb, x_free)
-    call sf_int%complete_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.false.)
 
     write (u, "(A,9(1x,F10.7))")  "r =", r
     write (u, "(A,9(1x,F10.7))")  "rb=", rb
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "f =", f
     write (u, "(A,9(1x,F10.7))")  "xf=", x_free
     select type (sf_int)
@@ -19939,6 +20454,7 @@ electron being the radiated particle, helicity is not kept.
   type, extends (sf_int_t) :: circe1_t
      type(circe1_data_t), pointer :: data => null ()
      real(default), dimension(2) :: x = 0
+     real(default), dimension(2) :: xb= 0
      real(default) :: f = 0
      logical, dimension(2) :: continuum = .true.
      logical, dimension(2) :: peak = .true.
@@ -19979,6 +20495,7 @@ depends. Hence, a dummy routine.
        if (object%data%generate)  call object%rng_obj%rng%write (u)
        if (object%status >= SF_DONE_KINEMATICS) then
           write (u, "(3x,A,2(1x," // FMT_17 // "))")  "x =", object%x
+          write (u, "(3x,A,2(1x," // FMT_17 // "))")  "xb=", object%xb
           if (object%status >= SF_FAILED_EVALUATION) then
              write (u, "(3x,A,1x," // FMT_17 // ")")  "f =", object%f
           end if
@@ -20211,20 +20728,21 @@ We store the $x$ values, so we can use them for the evaluation later.
 <<SF circe1: circe1: TBP>>=
   procedure :: complete_kinematics => circe1_complete_kinematics
 <<SF circe1: procedures>>=
-  subroutine circe1_complete_kinematics (sf_int, x, f, r, rb, map)
+  subroutine circe1_complete_kinematics (sf_int, x, xb, f, r, rb, map)
     class(circe1_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(out) :: x
+    real(default), dimension(:), intent(out) :: xb
     real(default), intent(out) :: f
     real(default), dimension(:), intent(in) :: r
     real(default), dimension(:), intent(in) :: rb
     logical, intent(in) :: map
-    real(default), dimension(2) :: xb1
     x = r
+    xb = rb
     sf_int%x = x
+    sf_int%xb= xb
     f = 1
     if (sf_int%data%with_radiation) then
-       xb1 = 1 - x
-       call sf_int%split_momenta (x, xb1)
+       call sf_int%split_momenta (x, xb)
     else
        call sf_int%reduce_momenta (x)
     end if
@@ -20239,24 +20757,24 @@ meaningless, but we copy them anyway.
 <<SF circe1: circe1: TBP>>=
   procedure :: inverse_kinematics => circe1_inverse_kinematics
 <<SF circe1: procedures>>=
-  subroutine circe1_inverse_kinematics (sf_int, x, f, r, rb, map, set_momenta)
+  subroutine circe1_inverse_kinematics (sf_int, x, xb, f, r, rb, map, set_momenta)
     class(circe1_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(in) :: x
+    real(default), dimension(:), intent(in) :: xb
     real(default), intent(out) :: f
     real(default), dimension(:), intent(out) :: r
     real(default), dimension(:), intent(out) :: rb
     logical, intent(in) :: map
     logical, intent(in), optional :: set_momenta
-    real(default), dimension(2) :: xb1
     logical :: set_mom
     set_mom = .false.;  if (present (set_momenta))  set_mom = set_momenta
     r = x
-    rb = 1 - x
+    rb = xb
     sf_int%x = x
+    sf_int%xb= xb
     f = 1
     if (set_mom) then
-       xb1 = 1 - x
-       call sf_int%split_momenta (x, xb1)
+       call sf_int%split_momenta (x, xb)
        select case (sf_int%status)
        case (SF_FAILED_KINEMATICS);  f = 0
        end select
@@ -20274,15 +20792,17 @@ The scale is ignored.
 <<SF circe1: circe1: TBP>>=
   procedure :: apply => circe1_apply
 <<SF circe1: procedures>>=
-  subroutine circe1_apply (sf_int, scale)
+  subroutine circe1_apply (sf_int, scale, rescaling_function, i_rescale)
     class(circe1_t), intent(inout) :: sf_int
     real(default), intent(in) :: scale
+    class(rescaling_function_t), intent(in), optional :: rescaling_function
+    integer, intent(in), optional :: i_rescale
     real(default), dimension(2) :: xb
     real(double), dimension(2) :: xc
     real(double), parameter :: one = 1
     associate (data => sf_int%data)
       xc = sf_int%x
-      xb = 1 - sf_int%x
+      xb = sf_int%xb
       if (data%generate) then
          sf_int%f = 1
       else
@@ -20475,7 +20995,7 @@ structure function.
     type(vector4_t) :: k1, k2
     type(vector4_t), dimension(4) :: q
     real(default) :: E
-    real(default), dimension(:), allocatable :: r, rb, x
+    real(default), dimension(:), allocatable :: r, rb, x, xb
     real(default) :: f
 
     write (u, "(A)")  "* Test output: sf_circe1_2"
@@ -20534,13 +21054,16 @@ structure function.
     allocate (r (data%get_n_par ()))
     allocate (rb(size (r)))
     allocate (x (size (r)))
+    allocate (xb(size (r)))
 
     r = [0.9_default, 0.8_default]
-    call sf_int%complete_kinematics (x, f, r, rb, map=.false.)
+    rb = 1 - r
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.false.)
     call sf_int%write (u)
 
     write (u, "(A)")
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "f =", f
 
     write (u, "(A)")
@@ -20557,15 +21080,16 @@ structure function.
 
     call sf_int%seed_kinematics ([k1, k2])
     call sf_int%set_momenta (q, outgoing=.true.)
-    call sf_int%recover_x (x)
+    call sf_int%recover_x (x, xb)
 
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
 
     write (u, "(A)")
     write (u, "(A)")  "* Evaluate"
     write (u, "(A)")
 
-    call sf_int%complete_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.false.)
     call sf_int%apply (scale = 0._default)
     call sf_int%write (u)
 
@@ -20601,7 +21125,7 @@ Construct and evaluate a structure function object in generator mode.
     class(sf_int_t), allocatable :: sf_int
     type(vector4_t) :: k1, k2
     real(default) :: E
-    real(default), dimension(:), allocatable :: r, rb, x
+    real(default), dimension(:), allocatable :: r, rb, x, xb
     real(default) :: f, x_free
 
     write (u, "(A)")  "* Test output: sf_circe1_3"
@@ -20663,14 +21187,16 @@ Construct and evaluate a structure function object in generator mode.
     allocate (r (data%get_n_par ()))
     allocate (rb(size (r)))
     allocate (x (size (r)))
+    allocate (xb(size (r)))
 
     r  = 0
     rb = 0
     x_free = 1
     call sf_int%generate_free (r, rb, x_free)
-    call sf_int%complete_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.false.)
 
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "f =", f
     write (u, "(A,9(1x,F10.7))")  "xf=", x_free
 
@@ -21218,9 +21744,10 @@ and helicities.  (For unpolarized generation, helicities are zero.)
 <<SF circe2: circe2: TBP>>=
   procedure :: complete_kinematics => circe2_complete_kinematics
 <<SF circe2: procedures>>=
-  subroutine circe2_complete_kinematics (sf_int, x, f, r, rb, map)
+  subroutine circe2_complete_kinematics (sf_int, x, xb, f, r, rb, map)
     class(circe2_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(out) :: x
+    real(default), dimension(:), intent(out) :: xb
     real(default), intent(out) :: f
     real(default), dimension(:), intent(in) :: r
     real(default), dimension(:), intent(in) :: rb
@@ -21229,6 +21756,7 @@ and helicities.  (For unpolarized generation, helicities are zero.)
        call msg_fatal ("CIRCE2: map flag not supported")
     else
        x = r
+       xb= rb
        f = 1
     end if
     call sf_int%reduce_momenta (x)
@@ -21239,9 +21767,10 @@ and helicities.  (For unpolarized generation, helicities are zero.)
 <<SF circe2: circe2: TBP>>=
   procedure :: inverse_kinematics => circe2_inverse_kinematics
 <<SF circe2: procedures>>=
-  subroutine circe2_inverse_kinematics (sf_int, x, f, r, rb, map, set_momenta)
+  subroutine circe2_inverse_kinematics (sf_int, x, xb, f, r, rb, map, set_momenta)
     class(circe2_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(in) :: x
+    real(default), dimension(:), intent(in) :: xb
     real(default), intent(out) :: f
     real(default), dimension(:), intent(out) :: r
     real(default), dimension(:), intent(out) :: rb
@@ -21253,7 +21782,7 @@ and helicities.  (For unpolarized generation, helicities are zero.)
        call msg_fatal ("CIRCE2: map flag not supported")
     else
        r = x
-       rb= 1 - r
+       rb= xb
        f = 1
     end if
     if (set_mom) then
@@ -21270,9 +21799,11 @@ the interaction has only one entry, and the factor is unity.
 <<SF circe2: circe2: TBP>>=
   procedure :: apply => circe2_apply
 <<SF circe2: procedures>>=
-  subroutine circe2_apply (sf_int, scale)
+  subroutine circe2_apply (sf_int, scale, rescaling_function, i_rescale)
     class(circe2_t), intent(inout) :: sf_int
     real(default), intent(in) :: scale
+    class(rescaling_function_t), intent(in), optional :: rescaling_function
+    integer, intent(in), optional :: i_rescale
     complex(default) :: f
     associate (data => sf_int%data)
       f = 1
@@ -21461,7 +21992,7 @@ Construct and evaluate a structure function object in generator mode.
     class(sf_int_t), allocatable :: sf_int
     type(vector4_t) :: k1, k2
     real(default) :: E
-    real(default), dimension(:), allocatable :: r, rb, x
+    real(default), dimension(:), allocatable :: r, rb, x, xb
     real(default) :: f, x_free
 
     write (u, "(A)")  "* Test output: sf_circe2_2"
@@ -21521,14 +22052,16 @@ Construct and evaluate a structure function object in generator mode.
     allocate (r (data%get_n_par ()))
     allocate (rb(size (r)))
     allocate (x (size (r)))
+    allocate (xb(size (r)))
 
     r  = 0
     rb = 0
     x_free = 1
     call sf_int%generate_free (r, rb, x_free)
-    call sf_int%complete_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.false.)
 
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "f =", f
     write (u, "(A,9(1x,F10.7))")  "xf=", x_free
 
@@ -21572,7 +22105,7 @@ Construct and evaluate a structure function object in generator mode.
     class(sf_int_t), allocatable :: sf_int
     type(vector4_t) :: k1, k2
     real(default) :: E
-    real(default), dimension(:), allocatable :: r, rb, x
+    real(default), dimension(:), allocatable :: r, rb, x, xb
     real(default) :: f, x_free
 
     write (u, "(A)")  "* Test output: sf_circe2_3"
@@ -21632,14 +22165,16 @@ Construct and evaluate a structure function object in generator mode.
     allocate (r (data%get_n_par ()))
     allocate (rb(size (r)))
     allocate (x (size (r)))
+    allocate (xb(size (r)))
 
     r  = 0
     rb = 0
     x_free = 1
     call sf_int%generate_free (r, rb, x_free)
-    call sf_int%complete_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.false.)
 
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "f =", f
     write (u, "(A,9(1x,F10.7))")  "xf=", x_free
 
@@ -21753,8 +22288,8 @@ end module sf_pdf_builtin
 \subsection{Codes for default PDF sets}
 <<SF pdf builtin: parameters>>=
   character(*), parameter :: PDF_BUILTIN_DEFAULT_PROTON = "CTEQ6L"
-  character(*), parameter :: PDF_BUILTIN_DEFAULT_PION   = "NONE"
-  character(*), parameter :: PDF_BUILTIN_DEFAULT_PHOTON = "MRST2004QEDp"
+  ! character(*), parameter :: PDF_BUILTIN_DEFAULT_PION   = "NONE"
+  ! character(*), parameter :: PDF_BUILTIN_DEFAULT_PHOTON = "MRST2004QEDp"
 @ %def PDF_BUILTIN_DEFAULT_SET
 @
 \subsection{The PDF builtin data block}
@@ -21923,7 +22458,7 @@ applying the PDF will generate the corresponding flavor on output.
 <<SF pdf builtin: pdf builtin data: TBP>>=
   procedure :: get_pdf_set => pdf_builtin_data_get_pdf_set
 <<SF pdf builtin: procedures>>=
-  function pdf_builtin_data_get_pdf_set (data) result (pdf_set)
+  elemental function pdf_builtin_data_get_pdf_set (data) result (pdf_set)
     class(pdf_builtin_data_t), intent(in) :: data
     integer :: pdf_set
     pdf_set = data%id
@@ -21953,8 +22488,8 @@ special flavor code.
      type(pdf_builtin_data_t), pointer :: data => null ()
      real(default) :: x = 0
      real(default) :: q = 0
-   contains
-   <<SF pdf builtin: pdf builtin: TBP>>
+  contains
+  <<SF pdf builtin: pdf builtin: TBP>>
   end type pdf_builtin_t
 
 @ %def pdf_builtin_t
@@ -22072,22 +22607,22 @@ For the test case, we set $x=r^2$ and consequently $f(r)=2r$.
 <<SF pdf builtin: pdf builtin: TBP>>=
   procedure :: complete_kinematics => pdf_builtin_complete_kinematics
 <<SF pdf builtin: procedures>>=
-  subroutine pdf_builtin_complete_kinematics (sf_int, x, f, r, rb, map)
+  subroutine pdf_builtin_complete_kinematics (sf_int, x, xb, f, r, rb, map)
     class(pdf_builtin_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(out) :: x
+    real(default), dimension(:), intent(out) :: xb
     real(default), intent(out) :: f
     real(default), dimension(:), intent(in) :: r
     real(default), dimension(:), intent(in) :: rb
     logical, intent(in) :: map
-    real(default) :: xb1
     if (map) then
        call msg_fatal ("PDF builtin: map flag not supported")
     else
        x(1) = r(1)
+       xb(1)= rb(1)
        f = 1
     end if
-    xb1 = 1 - x(1)
-    call sf_int%split_momentum (x, xb1)
+    call sf_int%split_momentum (x, xb)
     select case (sf_int%status)
     case (SF_DONE_KINEMATICS)
        sf_int%x = x(1)
@@ -22104,27 +22639,26 @@ can set momenta by the same formula as for normal kinematics.
 <<SF pdf builtin: pdf builtin: TBP>>=
   procedure :: inverse_kinematics => pdf_builtin_inverse_kinematics
 <<SF pdf builtin: procedures>>=
-  subroutine pdf_builtin_inverse_kinematics (sf_int, x, f, r, rb, map, set_momenta)
+  subroutine pdf_builtin_inverse_kinematics (sf_int, x, xb, f, r, rb, map, set_momenta)
     class(pdf_builtin_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(in) :: x
+    real(default), dimension(:), intent(in) :: xb
     real(default), intent(out) :: f
     real(default), dimension(:), intent(out) :: r
     real(default), dimension(:), intent(out) :: rb
     logical, intent(in) :: map
     logical, intent(in), optional :: set_momenta
-    real(default) :: xb1
     logical :: set_mom
     set_mom = .false.;  if (present (set_momenta))  set_mom = set_momenta
     if (map) then
        call msg_fatal ("PDF builtin: map flag not supported")
     else
        r(1) = x(1)
+       rb(1)= xb(1)
        f = 1
     end if
-    xb1 = 1 - x(1)
-    rb = 1 - r
     if (set_mom) then
-       call sf_int%split_momentum (x, xb1)
+       call sf_int%split_momentum (x, xb)
        select case (sf_int%status)
        case (SF_DONE_KINEMATICS)
           sf_int%x = x(1)
@@ -22144,17 +22678,24 @@ adjusting to the $x$ and $Q$ bounds.  Account for the Jacobian.
 <<SF pdf builtin: pdf builtin: TBP>>=
   procedure :: apply => pdf_builtin_apply
 <<SF pdf builtin: procedures>>=
-  subroutine pdf_builtin_apply (sf_int, scale)
+  subroutine pdf_builtin_apply (sf_int, scale, rescaling_function, i_rescale)
     class(pdf_builtin_t), intent(inout) :: sf_int
     real(default), intent(in) :: scale
+    class(rescaling_function_t), intent(in), optional :: rescaling_function
+    integer, intent(in), optional :: i_rescale
     real(default), dimension(-6:6) :: ff
     real(double), dimension(-6:6) :: ff_dbl
     real(default) :: x, fph
     real(double) :: xx, qq
     complex(default), dimension(:), allocatable :: fc
+    integer :: i, i_idx
     associate (data => sf_int%data)
       sf_int%q = scale
       x = sf_int%x
+      if (present (rescaling_function))  call rescaling_function%apply (x)
+      call msg_debug (D_BEAMS, "pdf_builtin_apply")
+      call msg_debug (D_BEAMS, "rescaling_function: ", present(rescaling_function))
+      call msg_debug (D_BEAMS, "x: ", x)
       xx = x
       qq = scale
       if (data%invert) then
@@ -22189,7 +22730,23 @@ adjusting to the $x$ and $Q$ bounds.  Account for the Jacobian.
          fc = max (pack (ff, data%mask), 0._default)
       end if
     end associate
-    call sf_int%set_matrix_element (fc)
+    if (debug_active (D_BEAMS))  print *, 'Set pdfs: ', real (fc)
+    if (present (rescaling_function)) then
+       if (present (i_rescale)) then
+          i_idx = i_rescale + 1
+       else
+          i_idx = 1
+       end if
+       if (debug_active (D_BEAMS))  print *, 'at positions: ', rescaling_function%sf_indices(i_idx,:)
+       call sf_int%set_matrix_element (fc, rescaling_function%sf_indices(i_idx, :))
+       if (allocated (rescaling_function%sf_indices_gluon)) then
+          do i = 1, 13
+             call sf_int%set_matrix_element (rescaling_function%sf_indices_gluon(i_rescale, i), fc(7))
+          end do
+       end if
+    else
+       call sf_int%set_matrix_element (fc, [(i, i = 1, size(fc))])
+    end if
     sf_int%status = SF_EVALUATED
   end subroutine pdf_builtin_apply
 
@@ -22405,7 +22962,7 @@ structure function.
     type(vector4_t) :: k
     type(vector4_t), dimension(2) :: q
     real(default) :: E
-    real(default), dimension(:), allocatable :: r, rb, x
+    real(default), dimension(:), allocatable :: r, rb, x, xb
     real(default) :: f
 
     write (u, "(A)")  "* Test output: sf_pdf_builtin_2"
@@ -22456,14 +23013,16 @@ structure function.
     allocate (r (data%get_n_par ()))
     allocate (rb(size (r)))
     allocate (x (size (r)))
+    allocate (xb(size (r)))
 
     r = 0.5_default
     rb = 1 - r
-    call sf_int%complete_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.false.)
     call sf_int%write (u)
 
     write (u, "(A)")
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "f =", f
 
     write (u, "(A)")
@@ -22480,15 +23039,16 @@ structure function.
 
     call sf_int%seed_kinematics ([k])
     call sf_int%set_momenta (q, outgoing=.true.)
-    call sf_int%recover_x (x)
+    call sf_int%recover_x (x, xb)
 
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
 
     write (u, "(A)")
     write (u, "(A)")  "* Evaluate for Q = 100 GeV"
     write (u, "(A)")
 
-    call sf_int%complete_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.false.)
     call sf_int%apply (scale = 100._default)
     call sf_int%write (u)
 
@@ -22898,22 +23458,22 @@ For the test case, we set $x=r^2$ and consequently $f(r)=2r$.
 <<SF lhapdf: lhapdf: TBP>>=
   procedure :: complete_kinematics => lhapdf_complete_kinematics
 <<SF lhapdf: procedures>>=
-  subroutine lhapdf_complete_kinematics (sf_int, x, f, r, rb, map)
+  subroutine lhapdf_complete_kinematics (sf_int, x, xb, f, r, rb, map)
     class(lhapdf_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(out) :: x
+    real(default), dimension(:), intent(out) :: xb
     real(default), intent(out) :: f
     real(default), dimension(:), intent(in) :: r
     real(default), dimension(:), intent(in) :: rb
     logical, intent(in) :: map
-    real(default) :: xb1
     if (map) then
        call msg_fatal ("LHAPDF: map flag not supported")
     else
        x(1) = r(1)
+       xb(1)= rb(1)
        f = 1
     end if
-    xb1 = 1 - x(1)
-    call sf_int%split_momentum (x, xb1)
+    call sf_int%split_momentum (x, xb)
     select case (sf_int%status)
     case (SF_DONE_KINEMATICS)
        sf_int%x = x(1)
@@ -22931,27 +23491,26 @@ can set momenta by the same formula as for normal kinematics.
 <<SF lhapdf: lhapdf: TBP>>=
   procedure :: inverse_kinematics => lhapdf_inverse_kinematics
 <<SF lhapdf: procedures>>=
-  subroutine lhapdf_inverse_kinematics (sf_int, x, f, r, rb, map, set_momenta)
+  subroutine lhapdf_inverse_kinematics (sf_int, x, xb, f, r, rb, map, set_momenta)
     class(lhapdf_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(in) :: x
+    real(default), dimension(:), intent(in) :: xb
     real(default), intent(out) :: f
     real(default), dimension(:), intent(out) :: r
     real(default), dimension(:), intent(out) :: rb
     logical, intent(in) :: map
     logical, intent(in), optional :: set_momenta
-    real(default) :: xb1
     logical :: set_mom
     set_mom = .false.;  if (present (set_momenta))  set_mom = set_momenta
     if (map) then
        call msg_fatal ("LHAPDF: map flag not supported")
     else
        r(1) = x(1)
+       rb(1)= xb(1)
        f = 1
     end if
-    xb1 = 1 - x(1)
-    rb = 1 - r
     if (set_mom) then
-       call sf_int%split_momentum (x, xb1)
+       call sf_int%split_momentum (x, xb)
        select case (sf_int%status)
        case (SF_DONE_KINEMATICS)
           sf_int%x = x(1)
@@ -23211,7 +23770,7 @@ applying the PDF will generate the corresponding flavor on output.
 <<SF lhapdf: lhapdf data: TBP>>=
   procedure :: get_pdf_set => lhapdf_data_get_pdf_set
 <<SF lhapdf: procedures>>=
-  function lhapdf_data_get_pdf_set (data) result (pdf_set)
+  elemental function lhapdf_data_get_pdf_set (data) result (pdf_set)
     class(lhapdf_data_t), intent(in) :: data
     integer :: pdf_set
     pdf_set = data%set
@@ -23361,20 +23920,27 @@ to $x=1$).  We set these unphysical values to zero.
 <<SF lhapdf: lhapdf: TBP>>=
   procedure :: apply => lhapdf_apply
 <<SF lhapdf: procedures>>=
-  subroutine lhapdf_apply (sf_int, scale)
+  subroutine lhapdf_apply (sf_int, scale, rescaling_function, i_rescale)
     class(lhapdf_t), intent(inout) :: sf_int
     real(default), intent(in) :: scale
+    class(rescaling_function_t), intent(in), optional :: rescaling_function
+    integer, intent(in), optional :: i_rescale
     real(default) :: x, s
     double precision :: xx, qq, ss
     double precision, dimension(-6:6) :: ff
     double precision :: fphot
     complex(default), dimension(:), allocatable :: fc
+    integer :: i, i_idx
     external :: evolvePDFM, evolvePDFpM
     associate (data => sf_int%data)
       sf_int%q = scale
       x = sf_int%x
+      if (present (rescaling_function))  call rescaling_function%apply (x)
       s = sf_int%s
       xx = x
+      call msg_debug (D_BEAMS, "lhapdf_apply")
+      call msg_debug (D_BEAMS, "rescaling_function: ", present(rescaling_function))
+      call msg_debug (D_BEAMS, "x: ", x)
       qq = min (data%qmax, scale)
       qq = max (data%qmin, qq)
       if (.not. data% photon) then
@@ -23436,7 +24002,22 @@ to $x=1$).  We set these unphysical values to zero.
          fc = max (pack (ff / x, data%mask), 0._default)
       end if
     end associate
-    call sf_int%set_matrix_element (fc)
+    if (debug_active (D_BEAMS))  print *, 'Set pdfs: ', real (fc)
+    if (present (rescaling_function)) then
+       if (present (i_rescale)) then
+          i_idx = i_rescale + 1
+       else
+          i_idx = 1
+       end if
+       call sf_int%set_matrix_element (fc, rescaling_function%sf_indices(i_idx, :))
+       if (allocated (rescaling_function%sf_indices_gluon)) then
+          do i = 1, 13
+             call sf_int%set_matrix_element (rescaling_function%sf_indices_gluon(i_rescale, i), fc(7))
+          end do
+       end if
+    else
+       call sf_int%set_matrix_element (fc, [(i, i = 1, size(fc))])
+    end if
     sf_int%status = SF_EVALUATED
   end subroutine lhapdf_apply
 
@@ -23680,7 +24261,7 @@ structure function.
     type(vector4_t) :: k
     type(vector4_t), dimension(2) :: q
     real(default) :: E
-    real(default), dimension(:), allocatable :: r, rb, x
+    real(default), dimension(:), allocatable :: r, rb, x, xb
     real(default) :: f
 
     write (u, "(A)")  "* Test output: sf_lhapdf_2"
@@ -23728,14 +24309,16 @@ structure function.
     allocate (r (data%get_n_par ()))
     allocate (rb(size (r)))
     allocate (x (size (r)))
+    allocate (xb(size (r)))
 
     r = 0.5_default
     rb = 1 - r
-    call sf_int%complete_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.false.)
     call sf_int%write (u)
 
     write (u, "(A)")
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "f =", f
 
     write (u, "(A)")
@@ -23752,15 +24335,16 @@ structure function.
 
     call sf_int%seed_kinematics ([k])
     call sf_int%set_momenta (q, outgoing=.true.)
-    call sf_int%recover_x (x)
+    call sf_int%recover_x (x, xb)
 
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
 
     write (u, "(A)")
     write (u, "(A)")  "* Evaluate for Q = 100 GeV"
     write (u, "(A)")
 
-    call sf_int%complete_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.false.)
     call sf_int%apply (scale = 100._default)
     call sf_int%write (u, testflag = .true.)
 
@@ -24547,7 +25131,7 @@ each matrix-element call.
        call msg_fatal ("QCD alpha: calculation mode is ambiguous")
     case (1)
        if (fixed) then
-          call msg_fatal ("QCD alpha: use '?alpha_s_is_fixed = false' for " // &
+          call msg_fatal ("QCD alpha: use '?alphas_is_fixed = false' for " // &
                "running alphas")
        else if (from_mz) then
           allocate (alpha_qcd_from_scale_t :: qcd%alpha)
@@ -24569,18 +25153,18 @@ each matrix-element call.
 @
 <<Dispatch qcd: dispatch qcd: procedures>>=
   subroutine unpack_variables ()
-    fixed = var_list%get_lval (var_str ("?alpha_s_is_fixed"))
-    from_mz = var_list%get_lval (var_str ("?alpha_s_from_mz"))
+    fixed = var_list%get_lval (var_str ("?alphas_is_fixed"))
+    from_mz = var_list%get_lval (var_str ("?alphas_from_mz"))
     from_pdf_builtin = &
-         var_list%get_lval (var_str ("?alpha_s_from_pdf_builtin"))
+         var_list%get_lval (var_str ("?alphas_from_pdf_builtin"))
     from_lhapdf = &
-         var_list%get_lval (var_str ("?alpha_s_from_lhapdf"))
+         var_list%get_lval (var_str ("?alphas_from_lhapdf"))
     from_lambda_qcd = &
-         var_list%get_lval (var_str ("?alpha_s_from_lambda_qcd"))
+         var_list%get_lval (var_str ("?alphas_from_lambda_qcd"))
     pdfset = var_list%get_sval (var_str ("$pdf_builtin_set"))
     lambda = var_list%get_rval (var_str ("lambda_qcd"))
-    nf = var_list%get_ival (var_str ("alpha_s_nf"))
-    order = var_list%get_ival (var_str ("alpha_s_order"))
+    nf = var_list%get_ival (var_str ("alphas_nf"))
+    order = var_list%get_ival (var_str ("alphas_order"))
     lhapdf_dir = var_list%get_sval (var_str ("$lhapdf_dir"))
     lhapdf_file = var_list%get_sval (var_str ("$lhapdf_file"))
     lhapdf_member = var_list%get_ival (var_str ("lhapdf_member"))

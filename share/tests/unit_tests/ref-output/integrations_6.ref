@@ -216,31 +216,31 @@ model "Test"
    n_bins        = 20
    adapt grids   = T
    adapt weights = T
-   Results:  [it, calls, integral, error, efficiency]
-     1 800  7.7464622036E+03  0.0000000000E+00  1.0000000000E+00
-     2 800  7.7464622036E+03  0.0000000000E+00  1.0000000000E+00
-     3 800  7.7464622036E+03  0.0000000000E+00  1.0000000000E+00
+   Results:  [it, calls, valid, integral, error, efficiency]
+     1 800 800  7.7464622036E+03  0.0000000000E+00  1.0000000000E+00
+     2 800 800  7.7464622036E+03  0.0000000000E+00  1.0000000000E+00
+     3 800 800  7.7464622036E+03  0.0000000000E+00  1.0000000000E+00
  Integration pass:
    n_it          = 3
    n_calls       = 1000
    n_bins        = 20
    adapt grids   = T
    adapt weights = F
-   Results:  [it, calls, integral, error, efficiency]
-     1 800  7.7464622036E+03  0.0000000000E+00  1.0000000000E+00
-     2 800  7.7464622036E+03  0.0000000000E+00  1.0000000000E+00
-     3 800  7.7464622036E+03  0.0000000000E+00  1.0000000000E+00
+   Results:  [it, calls, valid, integral, error, efficiency]
+     1 800 800  7.7464622036E+03  0.0000000000E+00  1.0000000000E+00
+     2 800 800  7.7464622036E+03  0.0000000000E+00  1.0000000000E+00
+     3 800 800  7.7464622036E+03  0.0000000000E+00  1.0000000000E+00
  Integration pass:
    n_it          = 3
    n_calls       = 1000
    n_bins        = 20
    adapt grids   = F
    adapt weights = F
-   Results:  [it, calls, integral, error, efficiency]
-     1 800  7.7464622036E+03  0.0000000000E+00  1.0000000000E+00
-     2 800  7.7464622036E+03  0.0000000000E+00  1.0000000000E+00
-     3 800  7.7464622036E+03  0.0000000000E+00  1.0000000000E+00
- MD5 sum (including results) = '7247B187F2056ACF57D1FE45D3FBFB7D'
+   Results:  [it, calls, valid, integral, error, efficiency]
+     1 800 800  7.7464622036E+03  0.0000000000E+00  1.0000000000E+00
+     2 800 800  7.7464622036E+03  0.0000000000E+00  1.0000000000E+00
+     3 800 800  7.7464622036E+03  0.0000000000E+00  1.0000000000E+00
+ MD5 sum (including results) = '0C2ACDD5600C18256BF9D9A31B074E39'
  Call statistics (current run):
    total       = 2400
    failed kin. = 0

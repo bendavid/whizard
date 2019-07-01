@@ -1,0 +1,82 @@
+* Test output: prc_recola_2
+* Purpose: Test interface to RECOLA and compare matrix elements with O'Mega for 2->3 process
+
+Use phase-space point:
+     350.000        0.000        0.000      350.000
+     350.000        0.000        0.000      350.000
+     350.000        0.000        0.000      350.000
+     350.000        0.000        0.000      350.000
+     350.000        0.000        0.000      350.000
+
+------------------------------------------------------------------------
+
+* RECOLA: Evaluate process
+*  RECOLA: Define process e+ e- -> mu+ mu- A at leading order
+* RECOLA: generate process
+* Setting up Omega to compute the same amplitude
+Helicity: [-1-1-1-1-1]
+RECOLA:   0.0000000    0.0000000 , O'MEGA:   0.0000000    0.0000000
+Helicity: [-1-1-1-1 1]
+RECOLA:   0.0000000    0.0000000 , O'MEGA:   0.0000000    0.0000000
+Helicity: [-1-1-1 1-1]
+RECOLA:   0.0000000    0.0000000 , O'MEGA:   0.0000000    0.0000000
+Helicity: [-1-1-1 1 1]
+RECOLA:   0.0000000    0.0000000 , O'MEGA:   0.0000000    0.0000000
+Helicity: [-1-1 1-1-1]
+RECOLA:   0.0000000    0.0000000 , O'MEGA:   0.0000000    0.0000000
+Helicity: [-1-1 1-1 1]
+RECOLA:   0.0000000    0.0000000 , O'MEGA:   0.0000000    0.0000000
+Helicity: [-1-1 1 1-1]
+RECOLA:   0.0000000    0.0000000 , O'MEGA:   0.0000000    0.0000000
+Helicity: [-1-1 1 1 1]
+RECOLA:   0.0000000    0.0000000 , O'MEGA:   0.0000000    0.0000000
+Helicity: [-1 1-1-1-1]
+RECOLA:   0.0000000    0.0000000 , O'MEGA:   0.0000000    0.0000000
+Helicity: [-1 1-1-1 1]
+RECOLA:   0.0000000    0.0000000 , O'MEGA:   0.0000000    0.0000000
+Helicity: [-1 1-1 1-1]
+RECOLA:   0.0325437   -0.0249967 , O'MEGA:   0.0325437   -0.0249967
+Helicity: [-1 1-1 1 1]
+RECOLA:   0.0214538   -0.0163772 , O'MEGA:   0.0214538   -0.0163772
+Helicity: [-1 1 1-1-1]
+RECOLA:  -0.0019945    0.0015257 , O'MEGA:  -0.0019945    0.0015257
+Helicity: [-1 1 1-1 1]
+RECOLA:  -0.0013572    0.0010348 , O'MEGA:  -0.0013572    0.0010348
+Helicity: [-1 1 1 1-1]
+RECOLA:   0.0000000    0.0000000 , O'MEGA:   0.0000000    0.0000000
+Helicity: [-1 1 1 1 1]
+RECOLA:   0.0000000    0.0000000 , O'MEGA:   0.0000000    0.0000000
+Helicity: [ 1-1-1-1-1]
+RECOLA:   0.0000000    0.0000000 , O'MEGA:   0.0000000    0.0000000
+Helicity: [ 1-1-1-1 1]
+RECOLA:   0.0000000    0.0000000 , O'MEGA:   0.0000000    0.0000000
+Helicity: [ 1-1-1 1-1]
+RECOLA:  -0.0013563   -0.0010359 , O'MEGA:  -0.0013563   -0.0010359
+Helicity: [ 1-1-1 1 1]
+RECOLA:  -0.0019932   -0.0015273 , O'MEGA:  -0.0019932   -0.0015273
+Helicity: [ 1-1 1-1-1]
+RECOLA:   0.0241285    0.0184044 , O'MEGA:   0.0241285    0.0184044
+Helicity: [ 1-1 1-1 1]
+RECOLA:   0.0366012    0.0280908 , O'MEGA:   0.0366012    0.0280908
+Helicity: [ 1-1 1 1-1]
+RECOLA:   0.0000000    0.0000000 , O'MEGA:   0.0000000    0.0000000
+Helicity: [ 1-1 1 1 1]
+RECOLA:   0.0000000    0.0000000 , O'MEGA:   0.0000000    0.0000000
+Helicity: [ 1 1-1-1-1]
+RECOLA:   0.0000000    0.0000000 , O'MEGA:   0.0000000    0.0000000
+Helicity: [ 1 1-1-1 1]
+RECOLA:   0.0000000    0.0000000 , O'MEGA:   0.0000000    0.0000000
+Helicity: [ 1 1-1 1-1]
+RECOLA:   0.0000000    0.0000000 , O'MEGA:   0.0000000    0.0000000
+Helicity: [ 1 1-1 1 1]
+RECOLA:   0.0000000    0.0000000 , O'MEGA:   0.0000000    0.0000000
+Helicity: [ 1 1 1-1-1]
+RECOLA:   0.0000000    0.0000000 , O'MEGA:   0.0000000    0.0000000
+Helicity: [ 1 1 1-1 1]
+RECOLA:   0.0000000    0.0000000 , O'MEGA:   0.0000000    0.0000000
+Helicity: [ 1 1 1 1-1]
+RECOLA:   0.0000000    0.0000000 , O'MEGA:   0.0000000    0.0000000
+Helicity: [ 1 1 1 1 1]
+RECOLA:   0.0000000    0.0000000 , O'MEGA:   0.0000000    0.0000000
+
+* End of test output: prc_recola_2

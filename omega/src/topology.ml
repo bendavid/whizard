@@ -350,7 +350,7 @@ module Nary (B : Tuple.Bound) =
       else
         partition d sum @ partitions' (pred d) sum
 
-    let partitions sum = partitions' (succ B.max_arity) sum
+    let partitions sum = partitions' (succ (B.max_arity ())) sum
 
 (* \begin{table}
      \begin{center}
@@ -418,7 +418,7 @@ module Nary (B : Tuple.Bound) =
 
   end
     
-module Nary4 = Nary (struct let max_arity = 3 end)
+module Nary4 = Nary (struct let max_arity () = 3 end)
 
 (* \thocwmodulesection{Factorizing Diagrams for $\phi^4$} *)
 
@@ -780,7 +780,7 @@ i*)
    \end{equation} *)
 
     let diagrams_via_keystones deg n =
-      let module N = Nary (struct let max_arity = to_int (pred deg) end) in
+      let module N = Nary (struct let max_arity () = to_int (pred deg) end) in
       List.fold_left
         (fun acc p -> acc + diagrams_per_keystone deg p * keystones p)
         zero (List.map (List.map of_int) (N.partitions (to_int n)))
@@ -808,7 +808,7 @@ module Helac (B : Tuple.Bound) =
       else
         List.map (fun p -> 1::p) (partition d' (pred sum)) @ partitions' d' sum
 
-    let partitions sum = partitions' (succ B.max_arity) sum
+    let partitions sum = partitions' (succ (B.max_arity ())) sum
 
     type 'a children = 'a Tuple.t
 

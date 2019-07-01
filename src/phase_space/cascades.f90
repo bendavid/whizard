@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -826,7 +819,6 @@ contains
           fmt_head = fmt_head // ",1x,'  '"
        end if
     end do
-    !!! !!! !!! Workaround for standard-semantics ifort 16.0 bug
     do i = 1, n_tot
        fmt_proc(i) = fmt_proc(i) // ")"
     end do
@@ -2050,13 +2042,7 @@ contains
     n_prt = size (flv, 1)
     n_flv = size (flv, 2)
     allocate (mass (n_prt, n_flv), mass_in (n_flv), mass_out (n_flv))
-    !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
-    !!! mass = flv%get_mass ()
-    do i = 1, n_prt
-       do j = 1, n_flv
-          mass(i,j) = flv(i,j)%get_mass ()
-       end do
-    end do
+    mass = flv%get_mass ()
     mass_in = sum (mass(:n_in,:), 1)
     mass_out = sum (mass(n_in+1:,:), 1)
     if (any (mass_in > sqrts)) then
@@ -2146,6 +2132,7 @@ contains
           cascade => cascade%next
        end do
     end do
+    call res_hist_set%freeze ()
     call res_hist_set%to_array (res_hists)
   end subroutine cascade_set_get_resonance_histories
 

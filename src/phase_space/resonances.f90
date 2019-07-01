@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -39,9 +32,10 @@ module resonances
 !   use kinds, only: TC
   use iso_varying_string, string_t => varying_string
   use string_utils, only: str
+  use format_utils, only: write_indent
   use io_units
   use diagnostics
-  use lorentz, only: vector4_t, compute_resonance_mass
+  use lorentz
   use constants, only: one
   use model_data, only: model_data_t
   use flavors, only: flavor_t
@@ -52,6 +46,7 @@ module resonances
   public :: resonance_contributors_t
   public :: resonance_info_t
   public :: resonance_history_t
+  public :: resonance_tree_t
   public :: resonance_history_set_t
 
   integer, parameter :: n_max_resonances = 10
@@ -70,6 +65,7 @@ module resonances
      type(flavor_t) :: flavor
      type(resonance_contributors_t) :: contributors
   contains
+     procedure :: copy => resonance_info_copy
      procedure :: write => resonance_info_write
      procedure, private :: resonance_info_init_pdg
      procedure, private :: resonance_info_init_flv
@@ -77,6 +73,10 @@ module resonances
      procedure, private :: resonance_info_equal
      generic :: operator(==) => resonance_info_equal
      procedure :: mapping => resonance_info_mapping
+     procedure, private :: get_n_contributors => resonance_info_get_n_contributors
+     procedure, private :: contains => resonance_info_contains
+     procedure :: evaluate_distance => resonance_info_evaluate_distance
+     procedure :: is_on_shell => resonance_info_is_on_shell
      procedure :: as_omega_string => resonance_info_as_omega_string
   end type resonance_info_t
 
@@ -85,6 +85,7 @@ module resonances
      integer :: n_resonances = 0
   contains
      procedure :: clear => resonance_history_clear
+     procedure :: copy => resonance_history_copy
      procedure :: write => resonance_history_write
      procedure, private :: resonance_history_equal
      generic :: operator(==) => resonance_history_equal
@@ -97,18 +98,54 @@ module resonances
      procedure :: mapping => resonance_history_mapping
      procedure :: only_has_n_contributors => resonance_history_only_has_n_contributors
      procedure :: has_flavor => resonance_history_has_flavor
+     procedure :: evaluate_distances => resonance_history_evaluate_distances
+     procedure :: is_on_shell => resonance_history_is_on_shell
      procedure :: as_omega_string => resonance_history_as_omega_string
+     procedure :: to_tree => resonance_history_to_tree
   end type resonance_history_t
 
+  type :: resonance_branch_t
+     integer :: i = 0
+     type(flavor_t) :: flv
+     integer, dimension(:), allocatable :: r_child
+     integer, dimension(:), allocatable :: o_child
+  end type resonance_branch_t
+  
+  type :: resonance_tree_t
+     private
+     integer :: n = 0
+     type(resonance_branch_t), dimension(:), allocatable :: branch
+   contains
+     procedure :: write => resonance_tree_write
+     procedure :: get_n_resonances => resonance_tree_get_n_resonances
+     procedure :: get_flv => resonance_tree_get_flv
+     procedure :: get_children => resonance_tree_get_children
+  end type resonance_tree_t
+
+
+  type :: index_array_t
+     integer, dimension(:), allocatable :: i
+  end type index_array_t
+
   type :: resonance_history_set_t
+     private
+     logical :: complete = .false.
      integer :: n_filter = 0
      type(resonance_history_t), dimension(:), allocatable :: history
+     type(index_array_t), dimension(:), allocatable :: contains_this
+     type(resonance_tree_t), dimension(:), allocatable :: tree
      integer :: last = 0
    contains
      procedure :: write => resonance_history_set_write
      procedure :: init => resonance_history_set_init
      procedure :: enter => resonance_history_set_enter
+     procedure :: freeze => resonance_history_set_freeze
+     procedure :: determine_on_shell_histories &
+          => resonance_history_set_determine_on_shell_histories
+     procedure :: get_n_history => resonance_history_set_get_n_history
+     procedure :: get_history => resonance_history_set_get_history
      procedure :: to_array => resonance_history_set_to_array
+     procedure :: get_tree => resonance_history_set_get_tree
      procedure, private :: expand => resonance_history_set_expand
   end type resonance_history_set_t
 
@@ -133,17 +170,36 @@ contains
     end if
   end subroutine resonance_contributors_assign
 
-  subroutine resonance_info_write (resonance, unit)
+  subroutine resonance_info_copy (resonance_in, resonance_out)
+    class(resonance_info_t), intent(in) :: resonance_in
+    type(resonance_info_t), intent(out) :: resonance_out
+    resonance_out%flavor = resonance_in%flavor
+    if (allocated (resonance_in%contributors%c)) then
+       associate (c => resonance_in%contributors%c)
+          allocate (resonance_out%contributors%c (size (c)))
+          resonance_out%contributors%c = c
+       end associate
+    end if
+  end subroutine resonance_info_copy
+
+  subroutine resonance_info_write (resonance, unit, verbose)
     class(resonance_info_t), intent(in) :: resonance
     integer, optional, intent(in) :: unit
+    logical, optional, intent(in) :: verbose
     integer :: u, i
+    logical :: verb
     u = given_output_unit (unit);  if (u < 0)  return
-    write (u, '(A)', advance='no') "Resonance contributors: "
+    verb = .true.;  if (present (verbose))  verb = verbose
+    if (verb) then
+       write (u, '(A)', advance='no') "Resonance contributors: "
+    else
+       write (u, '(1x)', advance="no")
+    end if
     if (allocated (resonance%contributors%c)) then
        do i = 1, size(resonance%contributors%c)
           write (u, '(I0,1X)', advance='no') resonance%contributors%c(i)
        end do
-    else
+    else if (verb) then
        write (u, "(A)", advance="no")  "[not allocated]"
     end if
     if (resonance%flavor%is_defined ()) call resonance%flavor%write (u)
@@ -199,19 +255,56 @@ contains
     end if
   end function resonance_info_mapping
 
+  elemental function resonance_info_get_n_contributors (resonance) result (n)
+    class(resonance_info_t), intent(in) :: resonance
+    integer :: n
+    if (allocated (resonance%contributors%c)) then
+       n = size (resonance%contributors%c)
+    else
+       n = 0
+    end if
+  end function resonance_info_get_n_contributors
+  
+  elemental function resonance_info_contains (resonance, c) result (flag)
+    class(resonance_info_t), intent(in) :: resonance
+    integer, intent(in) :: c
+    logical :: flag
+    if (allocated (resonance%contributors%c)) then
+       flag = any (resonance%contributors%c == c)
+    else
+       flag = .false.
+    end if
+  end function resonance_info_contains
+  
   subroutine resonance_history_clear (res_hist)
     class(resonance_history_t), intent(out) :: res_hist
   end subroutine resonance_history_clear
 
-  subroutine resonance_history_write (res_hist, unit)
+  subroutine resonance_history_copy (res_hist_in, res_hist_out)
+    class(resonance_history_t), intent(in) :: res_hist_in
+    type(resonance_history_t), intent(out) :: res_hist_out
+    integer :: i
+    res_hist_out%n_resonances = res_hist_in%n_resonances
+    allocate (res_hist_out%resonances (size (res_hist_in%resonances)))
+    do i = 1, size (res_hist_in%resonances)
+       call res_hist_in%resonances(i)%copy (res_hist_out%resonances(i))
+    end do
+  end subroutine resonance_history_copy
+
+  subroutine resonance_history_write (res_hist, unit, verbose, indent)
     class(resonance_history_t), intent(in) :: res_hist
     integer, optional, intent(in) :: unit
+    logical, optional, intent(in) :: verbose
+    integer, optional, intent(in) :: indent
     integer :: u, i
     u = given_output_unit (unit);  if (u < 0)  return
+    call write_indent (u, indent)
     write(u, '(A,I0,A)') "Resonance history with ", &
          res_hist%n_resonances, " resonances:"
     do i = 1, res_hist%n_resonances
-       call res_hist%resonances(i)%write (u)
+       call write_indent (u, indent)
+       write (u, "(2x)", advance="no")
+       call res_hist%resonances(i)%write (u, verbose)
     end do
   end subroutine resonance_history_write
 
@@ -221,27 +314,26 @@ contains
     integer :: i
     equal = .false.
     if (rh1%n_resonances == rh2%n_resonances) then
-       if (size (rh1%resonances) == size (rh2%resonances)) then
-          do i = 1, rh1%n_resonances
-             if (.not. rh1%resonances(i) == rh2%resonances(i)) then
-                return
-             end if
-          end do
-          equal = .true.
-       end if
+       do i = 1, rh1%n_resonances
+          if (.not. rh1%resonances(i) == rh2%resonances(i)) then
+             return
+          end if
+       end do
+       equal = .true.
     end if
   end function resonance_history_equal
 
-  elemental function resonance_history_contains (rh1, rh2) result (is_sub_res)
-    logical :: is_sub_res
+  elemental function resonance_history_contains (rh1, rh2) result (flag)
+    logical :: flag
     class(resonance_history_t), intent(in) :: rh1, rh2
-    integer :: i_res
-    is_sub_res = .false.
+    integer :: i
     if (rh1%n_resonances > rh2%n_resonances) then
-       do i_res = 1, rh1%n_resonances
-          is_sub_res = is_sub_res &
-               .or. any (rh1%resonances(i_res) == rh2%resonances)
+       flag = .true.
+       do i = 1, rh2%n_resonances
+          flag = flag .and. any (rh1%resonances == rh2%resonances(i))
        end do
+    else
+       flag = .false.
     end if
   end function resonance_history_contains
 
@@ -249,20 +341,25 @@ contains
     class(resonance_history_t), intent(inout) :: res_hist
     type(resonance_info_t), intent(in) :: resonance
     type(resonance_info_t), dimension(:), allocatable :: tmp
-    integer :: n
+    integer :: n, i
     call msg_debug (D_PHASESPACE, "resonance_history_add_resonance")
     if (.not. allocated (res_hist%resonances)) then
        n = 0
-       allocate (res_hist%resonances (n_max_resonances))
+       allocate (res_hist%resonances (1))
     else
        n = res_hist%n_resonances
-       if (n >= size (res_hist%resonances)) then
-          allocate (tmp (n + n_max_resonances))
-          tmp(1:n) = res_hist%resonances(1:n)
-          call move_alloc (from=tmp, to=res_hist%resonances)
-       end if
+       allocate (tmp (n))
+       do i = 1, n
+          call res_hist%resonances(i)%copy (tmp(i))
+       end do
+       deallocate (res_hist%resonances)
+       allocate (res_hist%resonances (n+1))
+       do i = 1, n
+          call tmp(i)%copy (res_hist%resonances(i))
+       end do
+       deallocate (tmp)
     end if
-    res_hist%resonances(n+1) = resonance
+    call resonance%copy (res_hist%resonances(n+1))
     res_hist%n_resonances = n + 1
     call msg_debug &
          (D_PHASESPACE, "res_hist%n_resonances", res_hist%n_resonances)
@@ -271,14 +368,42 @@ contains
   subroutine resonance_history_remove_resonance (res_hist, i_res)
     class(resonance_history_t), intent(inout) :: res_hist
     integer, intent(in) :: i_res
-    integer :: i
-    res_hist%n_resonances = res_hist%n_resonances - 1
+    type(resonance_info_t), dimension(:), allocatable :: tmp_1, tmp_2
+    integer :: i, j, n
+    n = res_hist%n_resonances
+    res_hist%n_resonances = n - 1
     if (res_hist%n_resonances == 0) then
        deallocate (res_hist%resonances)
     else
-       do i = i_res + 1, size (res_hist%resonances)
-          res_hist%resonances (i - 1) = res_hist%resonances (i)
-       end do
+       if (i_res > 1) allocate (tmp_1(1:i_res-1))
+       if (i_res < n) allocate (tmp_2(i_res+1:n))
+       if (allocated (tmp_1)) then
+          do i = 1, i_res - 1
+             call res_hist%resonances(i)%copy (tmp_1(i)) 
+          end do
+       end if
+       if (allocated (tmp_2)) then
+          do i = i_res + 1, n
+             call res_hist%resonances(i)%copy (tmp_2(i))
+          end do
+       end if
+       deallocate (res_hist%resonances)
+       allocate (res_hist%resonances (res_hist%n_resonances))
+       j = 1
+       if (allocated (tmp_1)) then
+          do i = 1, i_res - 1
+             call tmp_1(i)%copy (res_hist%resonances(j))
+             j = j + 1
+          end do
+          deallocate (tmp_1)
+       end if
+       if (allocated (tmp_2)) then
+          do i = i_res + 1, n
+             call tmp_2(i)%copy (res_hist%resonances(j))
+             j = j + 1
+          end do
+          deallocate (tmp_2)
+       end if
     end if
   end subroutine resonance_history_remove_resonance
 
@@ -347,6 +472,52 @@ contains
     end do
   end function resonance_history_has_flavor
 
+  subroutine resonance_info_evaluate_distance (res_info, p, dist)
+    class(resonance_info_t), intent(in) :: res_info
+    type(vector4_t), dimension(:), intent(in) :: p
+    real(default), intent(out) :: dist
+    real(default) :: m, w
+    type(vector4_t) :: q
+    m = res_info%flavor%get_mass ()
+    w = res_info%flavor%get_width ()
+    q = sum (p(res_info%contributors%c))
+    dist = abs (q**2 - m**2) / (m * w)
+  end subroutine resonance_info_evaluate_distance
+    
+  subroutine resonance_history_evaluate_distances (res_hist, p, dist)
+    class(resonance_history_t), intent(in) :: res_hist
+    type(vector4_t), dimension(:), intent(in) :: p
+    real(default), dimension(:), intent(out) :: dist
+    integer :: i
+    do i = 1, res_hist%n_resonances
+       call res_hist%resonances(i)%evaluate_distance (p, dist(i))
+    end do
+  end subroutine resonance_history_evaluate_distances
+
+  function resonance_info_is_on_shell (res_info, p, on_shell_limit) &
+       result (flag)
+    class(resonance_info_t), intent(in) :: res_info
+    type(vector4_t), dimension(:), intent(in) :: p
+    real(default), intent(in) :: on_shell_limit
+    logical :: flag
+    real(default) :: dist
+    call res_info%evaluate_distance (p, dist)
+    flag = dist < on_shell_limit
+  end function resonance_info_is_on_shell
+
+  function resonance_history_is_on_shell (res_hist, p, on_shell_limit) &
+       result (flag)
+    class(resonance_history_t), intent(in) :: res_hist
+    type(vector4_t), dimension(:), intent(in) :: p
+    real(default), intent(in) :: on_shell_limit
+    logical :: flag
+    integer :: i
+    flag = .true.
+    do i = 1, res_hist%n_resonances
+       flag = flag .and. res_hist%resonances(i)%is_on_shell (p, on_shell_limit)
+    end do
+  end function resonance_history_is_on_shell
+
   function resonance_info_as_omega_string (res_info, n_in) result (string)
     class(resonance_info_t), intent(in) :: res_info
     integer, intent(in) :: n_in
@@ -374,15 +545,191 @@ contains
     end do
   end function resonance_history_as_omega_string
 
-  subroutine resonance_history_set_write (res_set, unit)
+  subroutine resonance_tree_write (tree, unit, indent)
+    class(resonance_tree_t), intent(in) :: tree
+    integer, intent(in), optional :: unit, indent
+    integer :: u, b, c
+    u = given_output_unit (unit)
+    call write_indent (u, indent)
+    write (u, "(A)", advance="no")  "Resonance tree:"
+    if (tree%n > 0) then
+       write (u, *)
+       do b = 1, tree%n
+          call write_indent (u, indent)
+          write (u, "(2x,'r',I0,':',1x)", advance="no")  b
+          associate (branch => tree%branch(b))
+            call branch%flv%write (u)
+            write (u, "(1x,'=>')", advance="no")
+            if (allocated (branch%r_child)) then
+               do c = 1, size (branch%r_child)
+                  write (u, "(1x,'r',I0)", advance="no")  branch%r_child(c)
+               end do
+            end if
+            if (allocated (branch%o_child)) then
+               do c = 1, size (branch%o_child)
+                  write (u, "(1x,I0)", advance="no")  branch%o_child(c)
+               end do
+            end if
+            write (u, *)
+          end associate
+       end do
+    else
+       write (u, "(1x,A)")  "[empty]"
+    end if
+  end subroutine resonance_tree_write
+
+  function resonance_tree_get_n_resonances (tree) result (n)
+    class(resonance_tree_t), intent(in) :: tree
+    integer :: n
+    n = tree%n
+  end function resonance_tree_get_n_resonances
+  
+  function resonance_tree_get_flv (tree, i) result (flv)
+    class(resonance_tree_t), intent(in) :: tree
+    integer, intent(in) :: i
+    type(flavor_t) :: flv
+    flv = tree%branch(i)%flv
+  end function resonance_tree_get_flv
+  
+  function resonance_tree_get_children (tree, i, offset_r, offset_o) &
+       result (child)
+    class(resonance_tree_t), intent(in) :: tree
+    integer, intent(in) :: i, offset_r, offset_o
+    integer, dimension(:), allocatable :: child
+    integer :: nr, no
+    associate (branch => tree%branch(i))
+      nr = size (branch%r_child)
+      no = size (branch%o_child)
+      allocate (child (nr + no))
+      child(1:nr) = branch%r_child + offset_r
+      child(nr+1:nr+no) = branch%o_child + offset_o
+    end associate
+  end function resonance_tree_get_children
+  
+  subroutine resonance_history_to_tree (res_hist, tree)
+    class(resonance_history_t), intent(in) :: res_hist
+    type(resonance_tree_t), intent(out) :: tree
+    integer :: nr
+    integer, dimension(:), allocatable :: r_branch, r_source
+
+    nr = res_hist%n_resonances
+    tree%n = nr
+    allocate (tree%branch (tree%n), r_branch (tree%n), r_source (tree%n))
+    if (tree%n > 0) then
+       call find_branch_ordering ()
+       call set_flavors ()
+       call set_child_resonances ()
+       call set_child_outgoing ()
+    end if
+
+  contains
+
+    subroutine find_branch_ordering ()
+      integer, dimension(:), allocatable :: nc_array
+      integer :: r, ir, nc
+      allocate (nc_array (tree%n))
+      nc_array(:) = res_hist%resonances%get_n_contributors ()
+      ir = 0
+      do nc = maxval (nc_array), minval (nc_array), -1
+         do r = 1, nr
+            if (nc_array(r) == nc) then
+               ir = ir + 1
+               r_branch(r) = ir
+               r_source(ir) = r
+            end if
+         end do
+      end do
+    end subroutine find_branch_ordering
+
+    subroutine set_flavors ()
+      integer :: r
+      do r = 1, nr
+         tree%branch(r_branch(r))%flv = res_hist%resonances(r)%flavor
+      end do
+    end subroutine set_flavors
+
+    subroutine set_child_resonances ()
+      integer, dimension(:), allocatable :: r_child, r_parent
+      integer :: r, ir, pr
+      allocate (r_parent (nr), source = 0)
+      SCAN_RES: do r = 1, nr
+         associate (this_res => res_hist%resonances(r))
+           SCAN_PARENT: do ir = 1, nr
+              pr = r_source(ir)
+              if (pr == r)  cycle SCAN_PARENT
+              if (all (res_hist%resonances(pr)%contains &
+                   (this_res%contributors%c))) then
+                 r_parent (r) = pr
+              end if
+           end do SCAN_PARENT
+         end associate
+      end do SCAN_RES
+      allocate (r_child (nr), source = [(r, r = 1, nr)])
+      do r = 1, nr
+         ir = r_branch(r)
+         tree%branch(ir)%r_child = r_branch (pack (r_child, r_parent == r))
+      end do
+    end subroutine set_child_resonances
+
+    subroutine set_child_outgoing ()
+      integer, dimension(:), allocatable :: o_child, o_parent
+      integer :: o_max, r, o, ir
+      o_max = 0
+      do r = 1, nr
+         associate (this_res => res_hist%resonances(r))
+           o_max = max (o_max, maxval (this_res%contributors%c))
+         end associate
+      end do
+      allocate (o_parent (o_max), source=0)
+      SCAN_OUT: do o = 1, o_max
+         SCAN_PARENT: do ir = 1, nr
+            r = r_source(ir)
+            associate (this_res => res_hist%resonances(r))
+              if (this_res%contains (o))  o_parent(o) = r
+            end associate
+         end do SCAN_PARENT
+      end do SCAN_OUT
+      allocate (o_child (o_max), source = [(o, o = 1, o_max)])
+      do r = 1, nr
+         ir = r_branch(r)
+         tree%branch(ir)%o_child = pack (o_child, o_parent == r)
+      end do
+    end subroutine set_child_outgoing
+
+  end subroutine resonance_history_to_tree
+  
+  subroutine resonance_history_set_write (res_set, unit, indent, show_trees)
     class(resonance_history_set_t), intent(in) :: res_set
     integer, intent(in), optional :: unit
-    integer :: u, i
+    integer, intent(in), optional :: indent
+    logical, intent(in), optional :: show_trees
+    logical :: s_trees
+    integer :: u, i, j, ind
     u = given_output_unit (unit)
-    write (u, "(A)")  "Resonance history set:"
+    s_trees = .false.;  if (present (show_trees))  s_trees = show_trees
+    ind = 0;  if (present (indent))  ind = indent
+    call write_indent (u, indent)
+    write (u, "(A)", advance="no")  "Resonance history set:"
+    if (res_set%complete) then
+       write (u, *)
+    else
+       write (u, "(1x,A)")  "[incomplete]"
+    end if
     do i = 1, res_set%last
-       write (u, "('* ')", advance="no")
-       call res_set%history(i)%write (u)
+       write (u, "(1x,I0,1x)", advance="no")  i
+       call res_set%history(i)%write (u, verbose=.false., indent=indent)
+       if (allocated (res_set%contains_this)) then
+          call write_indent (u, indent)
+          write (u, "(3x,A)", advance="no")  "contained in ("
+          do j = 1, size (res_set%contains_this(i)%i)
+             if (j>1)  write (u, "(',')", advance="no")
+             write (u, "(I0)", advance="no")  res_set%contains_this(i)%i(j)
+          end do
+          write (u, "(A)")  ")"
+       end if
+       if (s_trees .and. allocated (res_set%tree)) then
+          call res_set%tree(i)%write (u, ind + 1)
+       end if
     end do
   end subroutine resonance_history_set_write
 
@@ -398,11 +745,18 @@ contains
     end if
   end subroutine resonance_history_set_init
 
-  subroutine resonance_history_set_enter (res_set, res_history)
+  subroutine resonance_history_set_enter (res_set, res_history, trivial)
     class(resonance_history_set_t), intent(inout) :: res_set
     type(resonance_history_t), intent(in) :: res_history
+    logical, intent(in), optional :: trivial
     integer :: i, new
-    if (res_history%n_resonances == 0)  return
+    if (res_history%n_resonances == 0) then
+       if (present (trivial)) then
+          if (.not. trivial) return
+       else
+          return
+       end if
+    end if
     if (res_set%n_filter > 0) then
        if (.not. res_history%only_has_n_contributors (res_set%n_filter))  return
     end if
@@ -415,12 +769,89 @@ contains
     res_set%last = new
   end subroutine resonance_history_set_enter
 
-  subroutine resonance_history_set_to_array (res_set, res_history)
+  subroutine resonance_history_set_freeze (res_set)
     class(resonance_history_set_t), intent(inout) :: res_set
+    integer :: i, n, c
+    logical, dimension(:), allocatable :: contains_this
+    integer, dimension(:), allocatable :: index_array
+    n = res_set%last
+    allocate (contains_this (n))
+    allocate (index_array (n), source = [(i, i=1, n)])
+    allocate (res_set%contains_this (n))
+    do i = 1, n
+       contains_this = resonance_history_contains &
+            (res_set%history(1:n), res_set%history(i))
+       c = count (contains_this)
+       allocate (res_set%contains_this(i)%i (c))
+       res_set%contains_this(i)%i = pack (index_array, contains_this)
+    end do
+    allocate (res_set%tree (n))
+    do i = 1, n
+       call res_set%history(i)%to_tree (res_set%tree(i))
+    end do
+    res_set%complete = .true.
+  end subroutine resonance_history_set_freeze
+  
+  subroutine resonance_history_set_determine_on_shell_histories &
+       (res_set, p, on_shell_limit, index_array)
+    class(resonance_history_set_t), intent(in) :: res_set
+    type(vector4_t), dimension(:), intent(in) :: p
+    real(default), intent(in) :: on_shell_limit
+    integer, dimension(:), allocatable, intent(out) :: index_array
+    integer :: n, i
+    integer, dimension(:), allocatable :: i_array
+    if (res_set%complete) then
+       n = res_set%last
+       allocate (i_array (n), source=0)
+       do i = 1, n
+          if (res_set%history(i)%is_on_shell (p, on_shell_limit))  i_array(i) = i
+       end do
+       do i = 1, n
+          if (any (i_array(res_set%contains_this(i)%i) /= 0)) then
+             i_array(i) = 0
+          end if
+       end do
+       allocate (index_array (count (i_array /= 0)))
+       index_array(:) = pack (i_array, i_array /= 0)
+    end if    
+  end subroutine resonance_history_set_determine_on_shell_histories
+    
+  function resonance_history_set_get_n_history (res_set) result (n)
+    class(resonance_history_set_t), intent(in) :: res_set
+    integer :: n
+    if (res_set%complete) then
+       n = res_set%last
+    else 
+       n = 0
+    end if
+  end function resonance_history_set_get_n_history
+
+  function resonance_history_set_get_history (res_set, i) result (res_history)
+    class(resonance_history_set_t), intent(in) :: res_set
+    integer, intent(in) :: i
+    type(resonance_history_t) :: res_history
+    if (res_set%complete .and. i <= res_set%last) then
+       res_history = res_set%history(i)
+    end if
+  end function resonance_history_set_get_history
+
+  subroutine resonance_history_set_to_array (res_set, res_history)
+    class(resonance_history_set_t), intent(in) :: res_set
     type(resonance_history_t), dimension(:), allocatable, intent(out) :: res_history
-    allocate (res_history (res_set%last))
-    res_history(:) = res_set%history(1:res_set%last)
+    if (res_set%complete) then
+       allocate (res_history (res_set%last))
+       res_history(:) = res_set%history(1:res_set%last)
+    end if
   end subroutine resonance_history_set_to_array
+
+  subroutine resonance_history_set_get_tree (res_set, i, res_tree)
+    class(resonance_history_set_t), intent(in) :: res_set
+    integer, intent(in) :: i
+    type(resonance_tree_t), intent(out) :: res_tree
+    if (res_set%complete) then
+       res_tree = res_set%tree(i)
+    end if
+  end subroutine resonance_history_set_get_tree
 
   subroutine resonance_history_set_expand (res_set)
     class(resonance_history_set_t), intent(inout) :: res_set

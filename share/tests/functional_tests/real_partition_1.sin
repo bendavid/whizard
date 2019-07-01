@@ -15,18 +15,22 @@ openmp_num_threads = 1
 $loop_me_method = "dummy"
 ?use_vamp_equivalences = false
 
-iterations = 2:5000
 sqrts = 250
 scale = sqrts
 
 seed = 0
-process real_partition_1_p1 = e1, E1 => u, U { nlo_calculation = "Real" }
+iterations = 1:100
+process real_partition_1_p1 = e1, E1 => u, U { nlo_calculation = real }
 integrate (real_partition_1_p1)
 
 seed = 1
 ?nlo_use_real_partition = true
 # Large scale to reduce required statistics
-real_partition_scale = 50 GeV
+real_partition_scale = 100 GeV
 
-process real_partition_1_p2 = e1, E1 => u, U { nlo_calculation = "Real" }
+iterations = 1:1000
+process real_partition_1_p2 = e1, E1 => u, U { nlo_calculation = real }
 integrate (real_partition_1_p2)
+
+tolerance = 2 * sqrt (error (real_partition_1_p1)**2 + error (real_partition_1_p2)**2)
+expect (integral (real_partition_1_p1) == integral (real_partition_1_p2))

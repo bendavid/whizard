@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -80,6 +73,7 @@ module colors
      procedure :: is_nonzero => color_is_nonzero
      procedure :: is_diagonal => color_is_diagonal
      procedure :: is_ghost => color_is_ghost
+     procedure :: get_type => color_get_type
      procedure, private :: get_number_of_indices => color_get_number_of_indices
      procedure :: get_col => color_get_col
      procedure :: get_acl => color_get_acl
@@ -93,6 +87,8 @@ module colors
      procedure :: invert => color_invert
      generic :: operator(.merge.) => merge_colors
      procedure, private ::  merge_colors
+     generic :: operator (.fuse.) => color_fusion
+     procedure, private :: color_fusion
   end type color_t
 
 
@@ -237,7 +233,7 @@ contains
   end subroutine color_init_from_array2
 
   pure subroutine color_init_from_array2g (col, c1, ghost)
-    integer, dimension(:,:), intent(inout) :: c1
+    integer, dimension(:,:), intent(in) :: c1
     type(color_t), dimension(:), intent(out) :: col
     logical, intent(in), dimension(:) :: ghost
     call color_init_from_array2 (col, c1)
@@ -357,6 +353,36 @@ contains
     parity = mod (count (col%ghost), 2) == 1
   end function color_ghost_parity
 
+  elemental function color_get_type (col) result (ctype)
+    class(color_t), intent(in) :: col
+    integer :: ctype
+    if (col%defined) then
+       ctype = -1
+       if (col%ghost) then
+          if (all (col%c1 == 0 .and. col%c2 == 0)) then
+             ctype = 8
+          end if
+       else
+          if (all ((col%c1 == 0 .and. col%c2 == 0) &
+               & .or. (col%c1 > 0 .and. col%c2 > 0) &
+               & .or. (col%c1 < 0 .and. col%c2 < 0))) then
+             if (all (col%c1 == 0)) then
+                ctype = 1
+             else if ((col%c1(1) > 0 .and. col%c1(2) == 0)) then
+                ctype = 3
+             else if ((col%c1(1) < 0 .and. col%c1(2) == 0)) then
+                ctype = -3
+             else if ((col%c1(1) > 0 .and. col%c1(2) < 0) &
+                  .or.(col%c1(1) < 0 .and. col%c1(2) > 0)) then
+                ctype = 8
+             end if
+          end if
+       end if
+    else
+       ctype = 0
+    end if
+  end function color_get_type
+    
   elemental function color_get_number_of_indices (col) result (n)
     integer :: n
     class(color_t), intent(in) :: col
@@ -781,6 +807,101 @@ contains
        call color_init_array (col, col2%c1)
     end if
   end function merge_colors
+
+  function color_fusion (col1, col2) result (col)
+    class(color_t), intent(in) :: col1, col2
+    type(color_t) :: col
+    integer, dimension(2) :: ctype
+    if (col1%is_defined () .and. col2%is_defined ()) then
+       if (col1%is_diagonal () .and. col2%is_diagonal ()) then
+          select type (col1)
+          type is (color_t)
+             select type (col2)
+             type is (color_t)
+                ctype = [col1%get_type (), col2%get_type ()]
+                select case (ctype(1))
+                case (1)
+                   select case (ctype(2))
+                   case (1,3,-3,8)
+                      col = col2
+                   end select
+                case (3)
+                   select case (ctype(2))
+                   case (1)
+                      col = col1
+                   case (-3)
+                      call t_a (col1%get_col (), col2%get_acl ())
+                   case (8)
+                      call t_o (col1%get_col (), col2%get_acl (), &
+                           &    col2%get_col ())
+                   end select
+                case (-3)
+                   select case (ctype(2))
+                   case (1)
+                      col = col1
+                   case (3)
+                      call t_a (col2%get_col (), col1%get_acl ())
+                   case (8)
+                      call a_o (col1%get_acl (), col2%get_col (), &
+                           &    col2%get_acl ())
+                   end select
+                case (8)
+                   select case (ctype(2))
+                   case (1)
+                      col = col1
+                   case (3)
+                      call t_o (col2%get_col (), col1%get_acl (), &
+                           &    col1%get_col ())
+                   case (-3)
+                      call a_o (col2%get_acl (), col1%get_col (), &
+                           &    col1%get_acl ())
+                   case (8)
+                      call o_o (col1%get_col (), col1%get_acl (), &
+                           &    col2%get_col (), col2%get_acl ())
+                   end select
+                end select
+             end select
+          end select
+       end if
+    end if
+  contains
+    subroutine t_a (c1, c2)
+      integer, intent(in) :: c1, c2
+      if (c1 == c2) then
+         call col%init_col_acl (0, 0)
+      else
+         call col%init_col_acl (c1, c2)
+      end if
+    end subroutine t_a
+    subroutine t_o (c1, c2, c3)
+      integer, intent(in) :: c1, c2, c3
+      if (c1 == c2) then
+         call col%init_col_acl (c3, 0)
+      else if (c2 == 0 .and. c3 == 0) then
+         call col%init_col_acl (c1, 0)
+      end if
+    end subroutine t_o
+    subroutine a_o (c1, c2, c3)
+      integer, intent(in) :: c1, c2, c3
+      if (c1 == c2) then
+         call col%init_col_acl (0, c3)
+      else if (c2 == 0 .and. c3 == 0) then
+         call col%init_col_acl (0, c1)
+      end if
+    end subroutine a_o
+    subroutine o_o (c1, c2, c3, c4)
+      integer, intent(in) :: c1, c2, c3, c4
+      if (all ([c1,c2,c3,c4] /= 0)) then
+         if (c2 == c3 .and. c4 == c1) then
+            call col%init_col_acl (0, 0)
+         else if (c2 == c3) then
+            call col%init_col_acl (c1, c4)
+         else if (c4 == c1) then
+            call col%init_col_acl (c3, c2)
+         end if
+      end if
+    end subroutine o_o
+  end function color_fusion
 
   function compute_color_factor (col1, col2, nc) result (factor)
     real(default) :: factor

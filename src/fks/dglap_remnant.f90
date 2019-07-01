@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -58,13 +51,13 @@ module dglap_remnant
     type(pdf_data_t) :: pdf_data
     type(isr_kinematics_t), pointer :: isr_kinematics => null ()
     integer, dimension(:), allocatable :: i_light_quarks
-    integer, dimension(2) :: flv_in
+    integer, dimension(:,:), allocatable :: flv_in
+    integer :: n_flv
     type(pdf_container_t), dimension(2) :: pdf_scaled
     type(pdf_container_t), dimension(2) :: pdf_born
     real(default), dimension(:), pointer :: sqme_born => null ()
   contains
     procedure :: init => dglap_remnant_init
-    procedure :: set_incoming_flavor => dglap_remnant_set_incoming_flavor
     procedure :: init_pdfs => dglap_remnant_init_pdfs
     procedure :: compute_pdfs => dglap_remnant_compute_pdfs
     procedure :: get_gluon_pdf => dglap_remnant_get_gluon_pdf
@@ -86,7 +79,9 @@ contains
     logical, dimension(-6:6) :: quark_checked = .false.
 
     dglap%isr_kinematics => isr_kinematics
-    call dglap%set_incoming_flavor (flv(1,1), flv(2,1))
+    dglap%n_flv = size (flv, dim=2)
+    allocate (dglap%flv_in (2, dglap%n_flv))
+    dglap%flv_in = flv
     n_quarks = 0
     do i = 1, size (flv, dim = 1)
        if (is_quark(flv(i,1))) then
@@ -103,14 +98,9 @@ contains
        end if
     end do
 
+
     call dglap%init_pdfs ()
   end subroutine dglap_remnant_init
-
-  subroutine dglap_remnant_set_incoming_flavor (dglap, flv1, flv2)
-    class(dglap_remnant_t), intent(inout) :: dglap
-    integer, intent(in) :: flv1, flv2
-    dglap%flv_in(1) = flv1; dglap%flv_in(2) = flv2
-  end subroutine dglap_remnant_set_incoming_flavor
 
   subroutine dglap_remnant_init_pdfs (dglap)
     class(dglap_remnant_t), intent(inout) :: dglap
@@ -186,62 +176,72 @@ contains
     end do
   end function dglap_remnant_get_summed_quark_pdf
 
-  function dglap_remnant_evaluate (dglap, alpha_s, sqme_born) result (sqme_dglap)
-    real(default), dimension(:), allocatable :: sqme_dglap
+  subroutine dglap_remnant_evaluate (dglap, alpha_s, sqme_born, &
+         separate_alrs, sqme_dglap)
     class(dglap_remnant_t), intent(inout) :: dglap
     real(default), intent(in) :: alpha_s
-    real(default), dimension(:), intent(in) :: sqme_born
+    real(default), intent(in), dimension(:) :: sqme_born
+    logical, intent(in) :: separate_alrs
+    real(default), intent(inout), dimension(:) :: sqme_dglap
     real(default) :: factor, factor_soft, plus_dist_remnant
     real(default) :: pdfs, pdfb
-    integer :: emitter
+    integer :: i_flv, ii_flv, emitter
     real(default), dimension(2) :: tmp
     real(default) :: sb, xb, onemz
     real(default) :: fac_scale2, jac
 
     sb = dglap%isr_kinematics%sqrts_born**2
-    tmp = zero
     fac_scale2 = dglap%isr_kinematics%fac_scale**2
 
     call dglap%compute_pdfs ()
 
-    do emitter = 1, 2
-       associate (z => dglap%isr_kinematics%z(emitter))
-          jac = dglap%isr_kinematics%jacobian(emitter)
-          onemz = one - z
-          factor = log(sb / z / fac_scale2) / onemz + two * log(onemz) / onemz
-          factor_soft = log(sb / fac_scale2) / onemz + two * log(onemz) / onemz
+    do i_flv = 1, dglap%n_flv
+       if (separate_alrs) then
+          ii_flv = i_flv
+       else
+          ii_flv = 1
+       end if
 
-          xb = dglap%isr_kinematics%x(emitter)
-          plus_dist_remnant = log(one - xb) * log(sb / fac_scale2) + log(one - xb)**2
+       tmp = zero
+       do emitter = 1, 2
+          associate (z => dglap%isr_kinematics%z(emitter))
+             jac = dglap%isr_kinematics%jacobian(emitter)
+             onemz = one - z
+             factor = log(sb / z / fac_scale2) / onemz + two * log(onemz) / onemz
+             factor_soft = log(sb / fac_scale2) / onemz + two * log(onemz) / onemz
 
-          if (is_gluon(dglap%flv_in(emitter))) then
-             pdfs = dglap%get_gluon_pdf (emitter, scaled = .true.)
-             pdfb = dglap%get_gluon_pdf (emitter, scaled = .false.)
-             tmp(emitter) = p_hat_gg(z) * factor / z * pdfs / pdfb * jac &
-                  - p_hat_gg(one) * factor_soft * jac &
-                  + p_hat_gg(one) * plus_dist_remnant
-             pdfs = dglap%get_summed_quark_pdf (emitter)
-             tmp(emitter) = tmp(emitter) + &
-                  (p_hat_qg(z) * factor - p_derived_qg(z)) / z * pdfs / pdfb * jac
-          else if (is_quark(dglap%flv_in(emitter))) then
-             pdfs = dglap%get_quark_pdf (emitter, dglap%flv_in(emitter), scaled = .true.)
-             pdfb = dglap%get_quark_pdf (emitter, dglap%flv_in(emitter), scaled = .false.)
-             if (vanishes (pdfb)) then
-                sqme_dglap = zero
-                return
+             xb = dglap%isr_kinematics%x(emitter)
+             plus_dist_remnant = log(one - xb) * log(sb / fac_scale2) + log(one - xb)**2
+
+             if (is_gluon(dglap%flv_in(emitter, i_flv))) then
+                pdfs = dglap%get_gluon_pdf (emitter, scaled = .true.)
+                pdfb = dglap%get_gluon_pdf (emitter, scaled = .false.)
+                tmp(emitter) = p_hat_gg(z) * factor / z * pdfs / pdfb * jac &
+                     - p_hat_gg(one) * factor_soft * jac &
+                     + p_hat_gg(one) * plus_dist_remnant
+                pdfs = dglap%get_summed_quark_pdf (emitter)
+                tmp(emitter) = tmp(emitter) + &
+                     (p_hat_qg(z) * factor - p_derived_qg(z)) / z * pdfs / pdfb * jac
+             else if (is_quark(dglap%flv_in(emitter, i_flv))) then
+                pdfs = dglap%get_quark_pdf (emitter, dglap%flv_in(emitter, i_flv), scaled = .true.)
+                pdfb = dglap%get_quark_pdf (emitter, dglap%flv_in(emitter, i_flv), scaled = .false.)
+                if (vanishes (pdfb)) then
+                   sqme_dglap = zero
+                   return
+                end if
+                tmp(emitter) = p_hat_qq(z) * factor / z * pdfs / pdfb * jac &
+                     - p_derived_qq(z) / z * pdfs / pdfb * jac &
+                     - p_hat_qq(one) * factor_soft * jac &
+                     + p_hat_qq(one) * plus_dist_remnant
+                pdfs = dglap%get_gluon_pdf (emitter, scaled = .true.)
+                tmp(emitter) = tmp(emitter) + &
+                     (p_hat_gq(z) * factor - p_derived_gq(z)) / z * pdfs / pdfb * jac
              end if
-             tmp(emitter) = p_hat_qq(z) * factor / z * pdfs / pdfb * jac &
-                  - p_derived_qq(z) / z * pdfs / pdfb * jac &
-                  - p_hat_qq(one) * factor_soft * jac &
-                  + p_hat_qq(one) * plus_dist_remnant
-             pdfs = dglap%get_gluon_pdf (emitter, scaled = .true.)
-             tmp(emitter) = tmp(emitter) + &
-                  (p_hat_gq(z) * factor - p_derived_gq(z)) / z * pdfs / pdfb * jac
-          end if
-       end associate
+          end associate
+       end do
+       sqme_dglap(ii_flv) = sqme_dglap(ii_flv) + alpha_s / twopi * (tmp(1) + tmp(2)) * sqme_born(i_flv)
     end do
-    sqme_dglap = alpha_s / twopi * (tmp(1) + tmp(2)) * sqme_born
-  end function dglap_remnant_evaluate
+  end subroutine dglap_remnant_evaluate
 
   function p_hat_gg (z)
     real(default) :: p_hat_gg

@@ -284,6 +284,8 @@ module It (M : Model.T) =
           GBG ((x * c), fb, coup, f) 
       | Gauge_Gauge_Gauge c ->
           Gauge_Gauge_Gauge (x * c)
+      | I_Gauge_Gauge_Gauge c ->
+          I_Gauge_Gauge_Gauge (x * c)
       | Aux_Gauge_Gauge c ->
           Aux_Gauge_Gauge (x * c)
       | Scalar_Vector_Vector c ->
@@ -805,6 +807,7 @@ module It (M : Model.T) =
               let sign =
                 begin match v with
                 | V3 (Gauge_Gauge_Gauge _, _, _)
+                | V3 (I_Gauge_Gauge_Gauge _, _, _)
                 | V3 (Aux_Gauge_Gauge _, _, _) -> 1
                 | V3 (FBF (_, _, _, _), fuse2, _) ->
                     begin match fuse2 with

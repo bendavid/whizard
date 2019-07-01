@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -92,13 +85,13 @@ module sf_pdf_builtin
      type(pdf_builtin_data_t), pointer :: data => null ()
      real(default) :: x = 0
      real(default) :: q = 0
-   contains
-     procedure :: type_string => pdf_builtin_type_string
-     procedure :: write => pdf_builtin_write
-     procedure :: init => pdf_builtin_init
-     procedure :: complete_kinematics => pdf_builtin_complete_kinematics
-     procedure :: inverse_kinematics => pdf_builtin_inverse_kinematics
-     procedure :: apply => pdf_builtin_apply
+  contains
+    procedure :: type_string => pdf_builtin_type_string
+    procedure :: write => pdf_builtin_write
+    procedure :: init => pdf_builtin_init
+    procedure :: complete_kinematics => pdf_builtin_complete_kinematics
+    procedure :: inverse_kinematics => pdf_builtin_inverse_kinematics
+    procedure :: apply => pdf_builtin_apply
   end type pdf_builtin_t
 
   type, extends (alpha_qcd_t) :: alpha_qcd_pdf_builtin_t
@@ -112,8 +105,8 @@ module sf_pdf_builtin
 
 
   character(*), parameter :: PDF_BUILTIN_DEFAULT_PROTON = "CTEQ6L"
-  character(*), parameter :: PDF_BUILTIN_DEFAULT_PION   = "NONE"
-  character(*), parameter :: PDF_BUILTIN_DEFAULT_PHOTON = "MRST2004QEDp"
+  ! character(*), parameter :: PDF_BUILTIN_DEFAULT_PION   = "NONE"
+  ! character(*), parameter :: PDF_BUILTIN_DEFAULT_PHOTON = "MRST2004QEDp"
 
 contains
 
@@ -220,7 +213,7 @@ contains
     allocate (pdf_builtin_t :: sf_int)
   end subroutine pdf_builtin_data_allocate_sf_int
 
-  function pdf_builtin_data_get_pdf_set (data) result (pdf_set)
+  elemental function pdf_builtin_data_get_pdf_set (data) result (pdf_set)
     class(pdf_builtin_data_t), intent(in) :: data
     integer :: pdf_set
     pdf_set = data%id
@@ -308,22 +301,22 @@ contains
     end select
   end subroutine pdf_builtin_init
 
-  subroutine pdf_builtin_complete_kinematics (sf_int, x, f, r, rb, map)
+  subroutine pdf_builtin_complete_kinematics (sf_int, x, xb, f, r, rb, map)
     class(pdf_builtin_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(out) :: x
+    real(default), dimension(:), intent(out) :: xb
     real(default), intent(out) :: f
     real(default), dimension(:), intent(in) :: r
     real(default), dimension(:), intent(in) :: rb
     logical, intent(in) :: map
-    real(default) :: xb1
     if (map) then
        call msg_fatal ("PDF builtin: map flag not supported")
     else
        x(1) = r(1)
+       xb(1)= rb(1)
        f = 1
     end if
-    xb1 = 1 - x(1)
-    call sf_int%split_momentum (x, xb1)
+    call sf_int%split_momentum (x, xb)
     select case (sf_int%status)
     case (SF_DONE_KINEMATICS)
        sf_int%x = x(1)
@@ -333,27 +326,26 @@ contains
     end select
   end subroutine pdf_builtin_complete_kinematics
 
-  subroutine pdf_builtin_inverse_kinematics (sf_int, x, f, r, rb, map, set_momenta)
+  subroutine pdf_builtin_inverse_kinematics (sf_int, x, xb, f, r, rb, map, set_momenta)
     class(pdf_builtin_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(in) :: x
+    real(default), dimension(:), intent(in) :: xb
     real(default), intent(out) :: f
     real(default), dimension(:), intent(out) :: r
     real(default), dimension(:), intent(out) :: rb
     logical, intent(in) :: map
     logical, intent(in), optional :: set_momenta
-    real(default) :: xb1
     logical :: set_mom
     set_mom = .false.;  if (present (set_momenta))  set_mom = set_momenta
     if (map) then
        call msg_fatal ("PDF builtin: map flag not supported")
     else
        r(1) = x(1)
+       rb(1)= xb(1)
        f = 1
     end if
-    xb1 = 1 - x(1)
-    rb = 1 - r
     if (set_mom) then
-       call sf_int%split_momentum (x, xb1)
+       call sf_int%split_momentum (x, xb)
        select case (sf_int%status)
        case (SF_DONE_KINEMATICS)
           sf_int%x = x(1)
@@ -364,17 +356,24 @@ contains
     end if
   end subroutine pdf_builtin_inverse_kinematics
 
-  subroutine pdf_builtin_apply (sf_int, scale)
+  subroutine pdf_builtin_apply (sf_int, scale, rescaling_function, i_rescale)
     class(pdf_builtin_t), intent(inout) :: sf_int
     real(default), intent(in) :: scale
+    class(rescaling_function_t), intent(in), optional :: rescaling_function
+    integer, intent(in), optional :: i_rescale
     real(default), dimension(-6:6) :: ff
     real(double), dimension(-6:6) :: ff_dbl
     real(default) :: x, fph
     real(double) :: xx, qq
     complex(default), dimension(:), allocatable :: fc
+    integer :: i, i_idx
     associate (data => sf_int%data)
       sf_int%q = scale
       x = sf_int%x
+      if (present (rescaling_function))  call rescaling_function%apply (x)
+      call msg_debug (D_BEAMS, "pdf_builtin_apply")
+      call msg_debug (D_BEAMS, "rescaling_function: ", present(rescaling_function))
+      call msg_debug (D_BEAMS, "x: ", x)
       xx = x
       qq = scale
       if (data%invert) then
@@ -409,7 +408,23 @@ contains
          fc = max (pack (ff, data%mask), 0._default)
       end if
     end associate
-    call sf_int%set_matrix_element (fc)
+    if (debug_active (D_BEAMS))  print *, 'Set pdfs: ', real (fc)
+    if (present (rescaling_function)) then
+       if (present (i_rescale)) then
+          i_idx = i_rescale + 1
+       else
+          i_idx = 1
+       end if
+       if (debug_active (D_BEAMS))  print *, 'at positions: ', rescaling_function%sf_indices(i_idx,:)
+       call sf_int%set_matrix_element (fc, rescaling_function%sf_indices(i_idx, :))
+       if (allocated (rescaling_function%sf_indices_gluon)) then
+          do i = 1, 13
+             call sf_int%set_matrix_element (rescaling_function%sf_indices_gluon(i_rescale, i), fc(7))
+          end do
+       end if
+    else
+       call sf_int%set_matrix_element (fc, [(i, i = 1, size(fc))])
+    end if
     sf_int%status = SF_EVALUATED
   end subroutine pdf_builtin_apply
 

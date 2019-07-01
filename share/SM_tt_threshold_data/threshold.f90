@@ -122,7 +122,7 @@ module @ID@_threshold
        compute_decay_owfs, table_spin_states, compute_production_me, &
        top_decay_born, anti_top_decay_born, top_propagators, compute_real, abs2, &
        apply_boost, compute_projected_momenta, convert_to_mom_and_invert_sign, &
-       handle_onshell_test_point
+       handle_onshell_test_point, set_production_factors, get_selected_beam_helicities
 
   logical, parameter, public :: test_ward = .false.
   logical, parameter, public :: test_onshell = .false.
@@ -147,9 +147,7 @@ module @ID@_threshold
   !     It is defined here for convenience only and must be
   !     compatible with hardcoded values in the amplitude!
   real(default), parameter, public :: N_ = 3
-  !!! Colour factors: N_ colors can be produced
-  !!! Helicity factors: Mean over incoming helicities
-  real(default), parameter, public :: production_factors = N_ / four
+  real(default), public :: production_factors
 
   integer, dimension(n_prt_OS,n_hel_OS), save, protected :: table_spin_states_OS
   data table_spin_states_OS(:,   1) / -1, -1, -1, -1 /
@@ -536,10 +534,10 @@ contains
          f_vlf (gccq33, owf_Wm_4, owf_b_6)
   end function anti_top_decay_born
 
-  subroutine compute_born (n_tot, p_ofs, ffi, amp, tree_contrib)
+  subroutine compute_born (n_tot, p_ofs, ffi, sel_hel_beam, amp, tree_contrib)
     integer, intent(in) :: n_tot
     real(default), dimension(0:3,*), intent(in) :: p_ofs
-    integer, intent(in) :: ffi
+    integer, intent(in) :: ffi, sel_hel_beam
     complex(default), dimension(:), intent(inout) :: amp
     logical, intent(in), optional :: tree_contrib
     complex(default), dimension(-1:1,-1:1,-1:1,-1:1) :: production_me
@@ -550,6 +548,8 @@ contains
     type(momentum), dimension(:), allocatable :: mom_ofs, mom_ons, p_decay
     type(momentum) :: p12
     type(lorentz_transformation_t), dimension(2) :: lt
+    integer, dimension(2) :: sel_hel
+    logical :: this_helicity_selected
     amp = zero
     allocate (mom_ofs (n_tot), mom_ons (n_tot), p_decay(n_tot))
     call convert_to_mom_and_invert_sign (p_ofs, n_tot, mom_ofs)
@@ -561,7 +561,12 @@ contains
          propagators = top_propagators (ffi, p12, ptop_ofs)
          call compute_partial_matrix_elements ()
     end if
+    sel_hel = get_selected_beam_helicities (sel_hel_beam)
     do hi = 1, nhel_max
+       this_helicity_selected = sel_hel_beam < 0 .or. &
+            (table_spin_states (1, hi) == sel_hel(1) &
+            .and. table_spin_states (2, hi) == sel_hel(2))
+       if (.not. this_helicity_selected) cycle
        if (threshold%settings%factorized_computation) then
           amp(hi) = multiply_partial_matrix_elements ( &
                production_me, born_decay_me, propagators, hi)
@@ -979,12 +984,12 @@ contains
          (h_t /= settings%sel_hel_top .or. h_tbar /= settings%sel_hel_topbar)
   end function skip
 
-  function compute_real (n_tot, p_ofs, p_ons, leg, ffi) result (amp2)
+  function compute_real (n_tot, p_ofs, p_ons, leg, ffi, sel_hel_beam) result (amp2)
     real(default) :: amp2
     integer, intent(in) :: n_tot
     real(default), dimension(0:3,*), intent(in) :: p_ofs
     real(default), dimension(0:3,*), intent(in) :: p_ons
-    integer, intent(in) :: leg, ffi
+    integer, intent(in) :: leg, ffi, sel_hel_beam
     complex(default), dimension(-1:1,-1:1,-1:1,-1:1) :: production_me
     complex(default), dimension(-1:1,-1:1,-1:1,-1:1) :: real_decay_me
     complex(default), dimension(-1:1,-1:1,-1:1) :: born_decay_me
@@ -996,14 +1001,20 @@ contains
     integer :: hi, h_t, h_tbar, h_gl
     type(momentum), dimension(:), allocatable :: mom_ofs, mom_ons
     integer :: other_leg
+    integer, dimension(2) :: sel_hel
+    logical :: this_helicity_selected
     call check_for_consistent_flags_for_real (threshold%settings)
     call convert_to_mom_and_invert_sign (p_ofs, n_tot, mom_ofs)
     call convert_to_mom_and_invert_sign (p_ons, n_tot, mom_ons)
     call compute_real_amplitudes (ffi, mom_ofs, mom_ons, leg, &
          production_me, real_decay_me, born_decay_me, top_propagators_)
     total = zero
+    sel_hel = get_selected_beam_helicities (sel_hel_beam)
     do hi = 1, nhel_max
        s = table_spin_states(:,hi)
+       this_helicity_selected = sel_hel_beam < 0 .or. &
+            (s(1) == sel_hel(1) .and. s(2) == sel_hel(2))
+       if (.not. this_helicity_selected) cycle
        do h_t = -1, 1, 2
        do h_tbar = -1, 1, 2
           if (skip (threshold%settings, h_t, h_tbar)) cycle
@@ -1239,6 +1250,35 @@ contains
     end subroutine check_spinor_sum
   end subroutine handle_onshell_test_point
 
+  function get_selected_beam_helicities (sel_hel_beam) result (sel_hel)
+    integer, dimension(2) :: sel_hel
+    integer, intent(in) :: sel_hel_beam
+    integer :: i
+    if (sel_hel_beam >= 0) then
+       do i = 0, 1
+          if (btest (sel_hel_beam, i)) then
+             sel_hel(i+1) = 1
+          else
+             sel_hel(i+1) = -1
+          end if
+       end do
+    else
+       sel_hel = 0
+    end if
+  end function get_selected_beam_helicities
+
+
+  subroutine set_production_factors (sel_hel_beam)
+    integer, intent(in) :: sel_hel_beam
+    !!! Colour factors: N_ colors can be produced
+    if (sel_hel_beam >= 0) then
+       production_factors = N_
+    else
+       !!! Helicity factors: Average over incoming helicities
+       production_factors = N_ / four
+    end if
+  end subroutine
+
 end module @ID@_threshold
 
 
@@ -1268,7 +1308,7 @@ subroutine @ID@_set_process_mode (mode) bind(C)
 end subroutine @ID@_set_process_mode
 
 !!! p_ons is supplied correctly for the real computation
-subroutine @ID@_get_amp_squared (amp2, p_ofs, p_ons, leg, n_tot) bind(C)
+subroutine @ID@_get_amp_squared (amp2, p_ofs, p_ons, leg, n_tot, sel_hel_beam) bind(C)
   use iso_c_binding
   use kinds
   use constants
@@ -1289,7 +1329,7 @@ subroutine @ID@_get_amp_squared (amp2, p_ofs, p_ons, leg, n_tot) bind(C)
   real(c_default_float), intent(out) :: amp2
   real(c_default_float), dimension(0:3,*), intent(in) :: p_ofs
   real(c_default_float), dimension(0:3,*), intent(in) :: p_ons
-  integer, intent(in) :: leg, n_tot
+  integer, intent(in) :: leg, n_tot, sel_hel_beam
   complex(default), dimension(:), save, allocatable :: amp_with_FF, &
        amp_no_FF, amp_omega_full
   logical :: real_computation
@@ -1303,10 +1343,11 @@ subroutine @ID@_get_amp_squared (amp2, p_ofs, p_ons, leg, n_tot) bind(C)
      end if
      call allocate_amps ()
   end if
+  call set_production_factors (sel_hel_beam)
   if (real_computation) then
-     amp2 = compute_real (n_tot, p_ofs, p_ons, leg, FF)
+     amp2 = compute_real (n_tot, p_ofs, p_ons, leg, FF, sel_hel_beam)
   else
-     amp2 = compute_born_special_cases (n_tot, p_ofs, leg)
+     amp2 = compute_born_special_cases (n_tot, p_ofs, leg, sel_hel_beam)
   end if
   amp2 = amp2 * production_factors
 
@@ -1326,7 +1367,7 @@ contains
     integer, intent(in) :: n_tot
     real(c_default_float), dimension(0:3,n_tot) :: p_ofs_work
     if (test_onshell) then
-       call compute_born (n_tot, p_ofs_work, TREE, amp_no_FF, tree_contrib=.true.)
+       call compute_born (n_tot, p_ofs_work, TREE, -1, amp_no_FF, tree_contrib=.true.)
        do hi = 1, size(amp_omega_full)
           call assert_equal (output_unit, amp_omega_full(hi), &
                amp_no_FF(hi), "Signal \= Factorized", exit_on_fail=.true., &
@@ -1336,9 +1377,10 @@ contains
     end if
   end subroutine handle_test_onshell
 
-  function compute_born_special_cases (n_tot, p_ofs, leg) result (amp2)
+  function compute_born_special_cases (n_tot, p_ofs, leg, sel_hel_beam) result (amp2)
     real(c_default_float) :: amp2
     integer, intent(in) :: n_tot, leg
+    integer, intent(in) :: sel_hel_beam
     real(c_default_float), dimension(0:3,*), intent(in) :: p_ofs
     real(c_default_float), dimension(0:3,n_tot) :: p_ofs_work
     integer, dimension(6,1) :: table_flavor_states
@@ -1369,17 +1411,19 @@ contains
     select case (FF)
     case (EXPANDED_HARD, EXPANDED_SOFT, EXPANDED_SOFT_SWITCHOFF, &
             EXPANDED_NOTSOHARD)
-       call compute_born (n_tot, p_ofs_work, FF, amp_with_FF, tree_contrib=.false.)
+       call compute_born (n_tot, p_ofs_work, FF, sel_hel_beam, &
+            amp_with_FF, tree_contrib=.false.)
        if (threshold%settings%interference) then
           amp_no_FF = amp_omega_full
        else
-          call compute_born (n_tot, p_ofs_work, TREE, amp_no_FF, tree_contrib=.true.)
+          call compute_born (n_tot, p_ofs_work, TREE, sel_hel_beam, &
+               amp_no_FF, tree_contrib=.true.)
        end if
        amp2 = real (sum (abs2 (amp_no_FF))) + &
             2 * sum (real (amp_no_FF * conjg (amp_with_FF)))   !!! No |FFtilde|^2 here
     case (MATCHED, MATCHED_NOTSOHARD)
-       call compute_born (n_tot, p_ofs_work, RESUMMED, amp_with_FF, &
-            tree_contrib=.false.)
+       call compute_born (n_tot, p_ofs_work, RESUMMED, sel_hel_beam, &
+            amp_with_FF, tree_contrib=.false.)
        if (threshold%settings%factorized_computation .and. ( &
             threshold%settings%helicity_approximation%simple .or. &
             threshold%settings%helicity_approximation%extra .or. &
@@ -1401,7 +1445,7 @@ contains
           else
              use_ff = MATCHED_EXPANDED_NOTSOHARD
           end if
-          call compute_born (n_tot, p_ofs_work, use_ff, &
+          call compute_born (n_tot, p_ofs_work, use_ff, sel_hel_beam, &
                amp_with_FF, tree_contrib=.false.)
           amp2 = amp2 + &                                      !!! 2 RealOf{resummed - expanded}{full}
                2 * sum (real (amp_with_FF * conjg (amp_omega_full)))
@@ -1413,7 +1457,7 @@ contains
           call msg_bug ("threshold: compute_born_special_cases: this should not happen!")
        end select
     case default
-       call compute_born (n_tot, p_ofs_work, FF, amp_with_FF)
+       call compute_born (n_tot, p_ofs_work, FF, sel_hel_beam, amp_with_FF)
        if (threshold%settings%interference) then
           amp_no_FF = amp_omega_full
           if (threshold%settings%flip_relative_sign) &
@@ -1434,9 +1478,11 @@ contains
     if (test_ward)  amp2 = 0
     if (threshold%settings%only_interference_term) then
        if (FF == TREE) then
-          call compute_born (n_tot, p_ofs_work, FF, amp_with_FF, tree_contrib=.true.)
+          call compute_born (n_tot, p_ofs_work, FF, sel_hel_beam,  &
+               amp_with_FF, tree_contrib=.true.)
        else
-          call compute_born (n_tot, p_ofs_work, FF, amp_with_FF, tree_contrib=.false.)
+          call compute_born (n_tot, p_ofs_work, FF, sel_hel_beam, &
+               amp_with_FF, tree_contrib=.false.)
        end if
        amp2 = sum (2 * real (amp_omega_full * conjg (amp_with_FF)))
     end if

@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -216,16 +209,21 @@ contains
     read (buffer, *)  ival
   end function read_ival
 
-  function string_contains_word (str, word) result (val)
+  pure function string_contains_word (str, word, include_identical) result (val)
     logical :: val
     type(string_t), intent(in) :: str, word
     type(string_t) :: str_tmp, str_out
+    logical, intent(in), optional :: include_identical
+    logical :: yorn
     str_tmp = str
+    val = .false.
+    yorn = .false.; if (present (include_identical))  yorn = include_identical
+    if (yorn)  val = str == word
     call split (str_tmp, str_out, word)
-    val = str_out /= ""
+    val = val .or. (str_out /= "")
   end function string_contains_word
 
-  subroutine split_string (str, separator, str_array)
+  pure subroutine split_string (str, separator, str_array)
     type(string_t), dimension(:), allocatable, intent(out) :: str_array
     type(string_t), intent(in) :: str, separator
     type(string_t) :: str_tmp, str_out

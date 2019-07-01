@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -48,6 +41,7 @@ module pcm_base
 
   type, abstract :: pcm_t
      logical :: initialized = .false.
+     logical :: has_pdfs = .false.
   contains
     procedure(pcm_allocate_instance), deferred :: allocate_instance
     procedure(pcm_is_nlo), deferred :: is_nlo
@@ -56,10 +50,12 @@ module pcm_base
 
   type, abstract :: pcm_instance_t
     class(pcm_t), pointer :: config => null ()
+    logical :: bad_point = .false.
   contains
     procedure(pcm_instance_final), deferred :: final
-    procedure(pcm_instance_is_valid), deferred :: is_valid
     procedure :: link_config => pcm_instance_link_config
+    procedure :: is_valid => pcm_instance_is_valid
+    procedure :: set_bad_point => pcm_instance_set_bad_point
   end type pcm_instance_t
 
 
@@ -93,14 +89,6 @@ module pcm_base
      end subroutine pcm_instance_final
   end interface
 
-  abstract interface
-     function pcm_instance_is_valid (pcm_instance) result (valid)
-        import
-        logical :: valid
-        class(pcm_instance_t), intent(in) :: pcm_instance
-     end function pcm_instance_is_valid
-  end interface
-
 
 contains
 
@@ -109,6 +97,18 @@ contains
      class(pcm_t), intent(in), target :: config
      pcm_instance%config => config
   end subroutine pcm_instance_link_config
+
+  function pcm_instance_is_valid (pcm_instance) result (valid)
+    logical :: valid
+    class(pcm_instance_t), intent(in) :: pcm_instance
+    valid = .not. pcm_instance%bad_point
+  end function pcm_instance_is_valid
+
+  pure subroutine pcm_instance_set_bad_point (pcm_instance, bad_point)
+    class(pcm_instance_t), intent(inout) :: pcm_instance
+    logical, intent(in) :: bad_point
+    pcm_instance%bad_point = pcm_instance%bad_point .or. bad_point
+  end subroutine pcm_instance_set_bad_point
 
 
 end module pcm_base

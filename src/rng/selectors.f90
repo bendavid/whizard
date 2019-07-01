@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -38,6 +31,7 @@ module selectors
   use kinds, only: default
   use io_units
   use diagnostics
+  use format_defs, only: FMT_14, FMT_19
   use rng_base
 
   implicit none
@@ -46,6 +40,7 @@ module selectors
   public :: selector_t
 
   type :: selector_t
+     integer :: offset = 0
      integer, dimension(:), allocatable :: map
      real(default), dimension(:), allocatable :: weight
      real(default), dimension(:), allocatable :: acc
@@ -60,30 +55,40 @@ end type selector_t
 
 contains
 
-  subroutine selector_write (object, unit)
+  subroutine selector_write (object, unit, testflag)
     class(selector_t), intent(in) :: object
     integer, intent(in), optional :: unit
+    logical, intent(in), optional :: testflag
     integer :: u, i
+    logical :: truncate
     u = given_output_unit (unit)
+    truncate = .false.;  if (present (testflag))  truncate = testflag
     write (u, "(1x,A)")  "Selector: i, weight, acc. weight"
     if (allocated (object%weight)) then
        do i = 1, size (object%weight)
-          write (u, "(3x,I0,1x,ES19.12,1x,ES19.12)") &
-               object%map(i), object%weight(i), object%acc(i)
+          if (truncate) then
+             write (u, "(3x,I0,2(1x," // FMT_14 // "))") &
+                  object%map(i), object%weight(i), object%acc(i)
+          else
+             write (u, "(3x,I0,2(1x," // FMT_19 // "))") &
+                  object%map(i), object%weight(i), object%acc(i)
+          end if
        end do
     else
        write (u, "(3x,A)")  "[undefined]"
     end if
   end subroutine selector_write
 
-  subroutine selector_init (selector, weight, negative_weights)
+  subroutine selector_init (selector, weight, negative_weights, offset)
     class(selector_t), intent(out) :: selector
     real(default), dimension(:), intent(in) :: weight
     logical, intent(in), optional :: negative_weights
+    integer, intent(in), optional :: offset
     real(default) :: s
     integer :: n, i
     logical :: neg_wgt
     logical, dimension(:), allocatable :: mask
+    if (present (offset))  selector%offset = offset
     if (size (weight) == 0) &
          call msg_bug ("Selector init: zero-size weight array")
     neg_wgt = .false.
@@ -96,7 +101,7 @@ contains
     n = count (mask)
     if (n > 0) then
        allocate (selector%map (n), &
-            source = pack ([(i, i = 1, size (weight))], mask))
+            source = pack ([(i + selector%offset, i = 1, size (weight))], mask))
        allocate (selector%weight (n), &
             source = pack (abs (weight) / s, mask))
        allocate (selector%acc (n))
@@ -131,7 +136,7 @@ contains
     integer, intent(out) :: n
     real(default) :: x
     select case (size (selector%acc))
-    case (1);  n = 1
+    case (1);  n = 1 + selector%offset
     case default
        call rng%generate (x)
        n = selector%select (x)

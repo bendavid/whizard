@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -65,7 +58,7 @@ module process
   use expr_base
   use sf_base
   use sf_mappings
-  use resonances, only: resonance_history_t
+  use resonances, only: resonance_history_t, resonance_history_set_t
 
   use prc_test_core, only: test_t
   use prc_core, only: prc_core_t
@@ -76,7 +69,7 @@ module process
 
   use phs_base
   use phs_wood, only: phs_wood_config_t
-  use phs_wood, only: EXTENSION_NONE, EXTENSION_DEFAULT, EXTENSION_DGLAP
+  use phs_wood, only: EXTENSION_DEFAULT, EXTENSION_DGLAP
   use phs_fks, only: phs_fks_config_t, get_filtered_resonance_histories
   use blha_config, only: blha_master_t
   use nlo_data, only: FKS_DEFAULT, FKS_RESONANCES
@@ -94,6 +87,7 @@ module process
   private
 
   public :: process_t
+  public :: process_ptr_t
 
   type :: process_t
      private
@@ -134,6 +128,8 @@ module process
      procedure :: check_masses => process_check_masses
      procedure :: get_pdg_in => process_get_pdg_in
      procedure :: get_phs_config => process_get_phs_config
+     procedure :: extract_resonance_history_set &
+          => process_extract_resonance_history_set
      procedure :: setup_beams_beam_structure => process_setup_beams_beam_structure
      procedure :: beams_startup_message => process_beams_startup_message
      procedure :: configure_phs => process_configure_phs
@@ -146,9 +142,7 @@ module process
      procedure :: sf_startup_message => process_sf_startup_message
      procedure :: collect_channels => process_collect_channels
      procedure :: contains_trivial_component => process_contains_trivial_component
-     procedure :: deactivate_real_component => process_deactivate_real_component
-     procedure :: deactivate_components => process_deactivate_components
-     procedure :: i_mci_to_i_component => process_i_mci_to_i_component
+     procedure :: get_master_component => process_get_master_component
      procedure :: setup_mci => process_setup_mci
      procedure :: set_cuts => process_set_cuts
      procedure :: set_scale => process_set_scale
@@ -184,6 +178,7 @@ module process
      procedure :: get_correction_error => process_get_correction_error
      procedure :: lab_is_cm_frame => process_lab_is_cm_frame
      procedure :: get_component_ptr => process_get_component_ptr
+     procedure :: get_qcd_ptr => process_get_qcd_ptr
      generic :: get_component_type => get_component_type_single
      procedure :: get_component_type_single => process_get_component_type_single
      generic :: get_component_type => get_component_type_all
@@ -191,13 +186,16 @@ module process
      procedure :: get_component_i_terms => process_get_component_i_terms
      procedure :: get_n_allowed_born => process_get_n_allowed_born
      procedure :: get_pcm_ptr => process_get_pcm_ptr
-     procedure :: component_can_be_integrated => process_component_can_be_integrated
+     generic :: component_can_be_integrated => component_can_be_integrated_single
+     generic :: component_can_be_integrated => component_can_be_integrated_all
+     procedure :: component_can_be_integrated_single => process_component_can_be_integrated_single
+     procedure :: component_can_be_integrated_all => process_component_can_be_integrated_all
      procedure :: reset_selected_cores => process_reset_selected_cores
      procedure :: select_components => process_select_components
      procedure :: component_is_selected => process_component_is_selected
      procedure :: get_coupling_powers => process_get_coupling_powers
      procedure :: get_real_component => process_get_real_component
-     procedure :: extract_fixed_mci => process_extract_fixed_mci
+     procedure :: extract_active_component_mci => process_extract_active_component_mci
      procedure :: needs_extra_code => process_needs_extra_code
      procedure :: uses_real_partition => process_uses_real_partition
      procedure :: get_md5sum_prc => process_get_md5sum_prc
@@ -213,11 +211,13 @@ module process
      procedure :: get_core_term => process_get_core_term
      procedure :: get_subtraction_core => process_get_subtraction_core
      procedure :: get_term_ptr => process_get_term_ptr
-     procedure :: get_core_nlo_type => process_get_core_nlo_type
+     procedure :: get_core_from_md5sum => process_get_core_from_md5sum
      procedure :: get_i_core_nlo_type => process_get_i_core_nlo_type
      procedure :: get_i_term => process_get_i_term
      procedure :: set_i_mci_work => process_set_i_mci_work
      procedure :: get_i_mci_work => process_get_i_mci_work
+     procedure :: get_i_sub => process_get_i_sub
+     procedure :: get_i_term_virtual => process_get_i_term_virtual
      generic :: component_is_active => component_is_active_single
      procedure :: component_is_active_single => process_component_is_active_single
      generic :: component_is_active => component_is_active_all
@@ -254,6 +254,7 @@ module process
      procedure :: get_beam_config_ptr => process_get_beam_config_ptr
      procedure :: cm_frame => process_cm_frame
      procedure :: get_pdf_set => process_get_pdf_set
+     procedure :: pcm_contains_pdfs => process_pcm_contains_pdfs
      procedure :: get_beam_file => process_get_beam_file
      procedure :: get_var_list_ptr => process_get_var_list_ptr
      procedure :: get_model_ptr => process_get_model_ptr
@@ -284,7 +285,8 @@ module process
      procedure :: get_component_nlo_type => process_get_component_nlo_type
      procedure :: get_component_associated_born &
                => process_get_component_associated_born
-     procedure :: get_associated_real_component => process_get_associated_real_component
+     procedure :: get_first_real_component => process_get_first_real_component
+     procedure :: get_first_real_term => process_get_first_real_term
      procedure :: get_associated_real_fin => process_get_associated_real_fin
      procedure :: setup_region_data => process_setup_region_data
      procedure :: setup_real_partition => process_setup_real_partition
@@ -294,6 +296,10 @@ module process
      procedure :: create_and_load_extra_libraries &
         => process_create_and_load_extra_libraries
   end type process_t
+
+  type :: process_ptr_t
+     type(process_t), pointer :: p => null ()
+  end type process_ptr_t
 
 
 contains
@@ -470,16 +476,20 @@ contains
        end select
        write (u, "(2x)", advance="no")
     end if
-    write (u, "(ES14.7,1x,'+-',ES9.2)", advance="no") &
-         object%get_integral_tot (), object%get_error_tot ()
-    select case (object%meta%type)
-    case (PRC_DECAY)
-       write (u, "(1x,A)")  "GeV"
-    case (PRC_SCATTERING)
-       write (u, "(1x,A)")  "fb"
-    case default
-       write (u, *)
-    end select
+    if (object%has_integral_tot ()) then
+       write (u, "(ES14.7,1x,'+-',ES9.2)", advance="no") &
+            object%get_integral_tot (), object%get_error_tot ()
+       select case (object%meta%type)
+       case (PRC_DECAY)
+          write (u, "(1x,A)")  "GeV"
+       case (PRC_SCATTERING)
+          write (u, "(1x,A)")  "fb"
+       case default
+          write (u, *)
+       end select
+    else
+       write (u, "(A)")  "[integral undefined]"
+    end if
   end subroutine process_show
 
   subroutine process_final (process)
@@ -520,6 +530,7 @@ contains
     type(qcd_t), intent(in) :: qcd
     class(rng_factory_t), intent(inout), allocatable :: rng_factory
     class(model_data_t), intent(inout), pointer :: model
+    call msg_debug (D_PROCESS_INTEGRATION, "process_init")
     if (.not. lib%is_active ()) then
        call msg_bug ("Process init: inactive library not handled yet")
     end if
@@ -555,11 +566,15 @@ contains
     class(process_t), intent(inout) :: process
     integer, intent(in) :: nlo_type, i_component
     type(string_t), intent(in), optional :: type_string
-    if (nlo_type == NLO_SUBTRACTION) then
+    select case (nlo_type)
+    case (NLO_SUBTRACTION)
        call process%core_manager_register_sub (nlo_type, i_component, type_string)
-    else
+    case (NLO_MISMATCH)
+       process%cm%i_component_to_i_core(i_component) = &
+            process%get_i_core_nlo_type (NLO_SUBTRACTION, .true.)
+    case default
        call process%core_manager_register_default (nlo_type, i_component, type_string)
-    end if
+    end select
   end subroutine process_core_manager_register
 
   subroutine process_core_manager_register_sub (process, nlo_type, i_component, type_string)
@@ -643,7 +658,7 @@ contains
   end subroutine process_init_component
 
   subroutine process_setup_terms (process, with_beams)
-    class(process_t), intent(inout) :: process
+    class(process_t), intent(inout), target :: process
     logical, intent(in), optional :: with_beams
     class(model_data_t), pointer :: model
     integer :: i, j, k, i_term
@@ -653,6 +668,7 @@ contains
     type(string_t) :: subtraction_method
     class(prc_core_t), pointer :: core => null ()
     logical :: setup_subtraction_component, singular_real
+    integer :: nlo_type_to_fetch
     model => process%config%model
     n_components = process%meta%n_components
     allocate (n_entry (n_components), source = 0)
@@ -676,6 +692,8 @@ contains
     if (process%is_nlo_calculation ()) then
        i_sub = process%component(1)%config%get_associated_subtraction ()
        subtraction_method = process%component(i_sub)%config%get_me_method ()
+       call msg_debug2 (D_PROCESS_INTEGRATION, "process_setup_terms: ", &
+            subtraction_method)
     end if
 
     do i = 1, n_components
@@ -693,10 +711,16 @@ contains
               else
                  process%term(i_term)%i_sub = 0
               end if
-              process%term(i_term)%i_core = set_i_core (i, component%get_nlo_type (), &
+              nlo_type_to_fetch = component%get_nlo_type ()
+              if (nlo_type_to_fetch == NLO_MISMATCH)  nlo_type_to_fetch = NLO_SUBTRACTION
+              process%term(i_term)%i_core = set_i_core (i, nlo_type_to_fetch, &
                    setup_subtraction_component, component%config%get_def_type_string ())
-              if (process%term(i_term)%i_core == 0) call msg_fatal ("Core not found!")
+              if (process%term(i_term)%i_core == 0) then
+                 call msg_bug ("Process '" // char (process%get_id ()) &
+                      // "': core not found!")
+              end if
               core => process%get_core_term (i_term)
+              process%term(i_term)%pcm => process%pcm
               if (i_sub > 0) then
                  select type (pcm => process%pcm)
                  type is (pcm_nlo_t)
@@ -837,8 +861,7 @@ contains
        class(process_t), intent(in) :: process
        type(flavor_t), dimension(:), allocatable :: flv
        real(default), dimension(:), allocatable :: mass
-       !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
-       integer :: i, j, k
+       integer :: i, j
        integer :: i_component
        class(prc_core_t), pointer :: core => null ()
        do i = 1, process%get_n_terms ()
@@ -849,10 +872,7 @@ contains
             allocate (flv (data%n_flv), mass (data%n_flv))
             do j = 1, data%n_in + data%n_out
                call flv%init (data%flv_state(j,:), process%config%model)
-               !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
-               do k = 1, data%n_flv
-                  mass(k) = flv(k)%get_mass ()
-               end do
+               mass = flv%get_mass ()
                if (any (.not. nearly_equal(mass, mass(1)))) then
                   call msg_fatal ("Process '" // char (process%meta%id) // "': " &
                        // "mass values in flavor combination do not coincide. ")
@@ -890,6 +910,24 @@ contains
     end if
   end function process_get_phs_config
 
+  subroutine process_extract_resonance_history_set &
+       (process, res_set, include_trivial, i_component)
+    class(process_t), intent(in), target :: process
+    type(resonance_history_set_t), intent(out) :: res_set
+    logical, intent(in), optional :: include_trivial
+    integer, intent(in), optional :: i_component
+    integer :: i
+    i = 1;  if (present (i_component))  i = i_component
+    select type (phs_config => process%get_phs_config (i))
+    class is (phs_wood_config_t)
+       call phs_config%extract_resonance_history_set (res_set, include_trivial)
+    class default
+       call msg_error ("process '" // char (process%get_id ()) &
+            // "': extract resonance histories: phase-space method must be &
+            &'wood'.  No resonances can be determined.")
+    end select
+  end subroutine process_extract_resonance_history_set
+  
   subroutine process_setup_beams_beam_structure &
        (process, beam_structure, sqrts, decay_rest_frame)
     class(process_t), intent(inout) :: process
@@ -942,7 +980,8 @@ contains
                   call check_and_extend_phs (component)
                case (NLO_REAL, NLO_MISMATCH, NLO_DGLAP)
                   i_born = component%config%get_associated_born ()
-                  call check_and_extend_phs (component)
+                  if (component%component_type /= COMP_REAL_FIN) &
+                       call check_and_extend_phs (component)
                   call process%component(i_born)%get_phs_config (phs_config_born)
                   select type (config => component%phs_config)
                   type is (phs_fks_config_t)
@@ -1061,33 +1100,7 @@ contains
     flag = .false.
   end function process_contains_trivial_component
 
-  subroutine process_deactivate_real_component (process)
-    class(process_t), intent(inout) :: process
-    type(process_component_def_t) :: config
-    integer :: i
-    config = process%component(1)%get_config ()
-    call process%mci_entry(1)%deactivate_real_component (config)
-    do i = 1, process%meta%n_components
-       select case (process%component(i)%component_type)
-       case (COMP_REAL)
-          process%component(i)%active = .false.
-       end select
-    end do
-  end subroutine process_deactivate_real_component
-
-  subroutine process_deactivate_components (process, fixed_mci)
-    class(process_t), intent(inout) :: process
-    integer, intent(in) :: fixed_mci
-    integer :: i_mci, i_component
-    do i_mci = 1, size (process%mci_entry)
-       if (i_mci /= fixed_mci) then
-          i_component = process%i_mci_to_i_component (i_mci)
-          process%component(i_component)%active = .false.
-       end if
-    end do
-  end subroutine process_deactivate_components
-
-  function process_i_mci_to_i_component (process, i_mci) result (i_component)
+  function process_get_master_component (process, i_mci) result (i_component)
      integer :: i_component
      class(process_t), intent(in) :: process
      integer, intent(in) :: i_mci
@@ -1099,7 +1112,7 @@ contains
            return
         end if
      end do
-  end function process_i_mci_to_i_component
+  end function process_get_master_component
 
 
   subroutine process_setup_mci (process, combined_integration)
@@ -1224,7 +1237,7 @@ contains
     integer :: u_log
     u_log = logfile_unit ()
     call results%init (process%meta%type)
-    call results%display_init (process%meta%type, screen = .true., unit = u_log)
+    call results%display_init (screen = .true., unit = u_log)
     call results%new_pass ()
     call results%record (1, 0, 0._default, 0._default, 0._default)
     call results%display_final ()
@@ -1244,8 +1257,8 @@ contains
     integer, intent(in), optional :: nlo_type
     associate (mci_entry => process%mci_entry(i_mci))
        call mci_entry%integrate (mci_work%mci, mci_sampler, n_it, n_calls, &
-          adapt_grids, adapt_weights, final, pacify, &
-          nlo_type = nlo_type)
+            adapt_grids, adapt_weights, final, pacify, &
+            nlo_type = nlo_type)
        call mci_entry%results%display_pass (pacify)
     end associate
   end subroutine process_integrate
@@ -1259,7 +1272,7 @@ contains
     logical, intent(in) :: keep_failed_events
     associate (mci_entry => process%mci_entry(i_mci))
        call mci_entry%generate_weighted_event (mci_work%mci, &
-          mci_sampler, keep_failed_events)
+            mci_sampler, keep_failed_events)
     end associate
   end subroutine process_generate_weighted_event
 
@@ -1282,7 +1295,7 @@ contains
     integer :: u_log
     u_log = logfile_unit ()
     call results%init (process%meta%type)
-    call results%display_init (process%meta%type, screen = .true., unit = u_log)
+    call results%display_init (screen = .true., unit = u_log)
     call results%new_pass ()
     call results%record (1, 0, &
          process%get_integral (), &
@@ -1423,21 +1436,29 @@ contains
     logical :: flag
     class(process_t), intent(in) :: process
     integer, intent(in) :: i_mci
-    flag = process%mci_entry(i_mci)%has_integral ()
+    if (allocated (process%mci_entry)) then
+       flag = process%mci_entry(i_mci)%has_integral ()
+    else
+       flag = .false.
+    end if
   end function process_has_integral_mci
 
   function process_has_integral_tot (process) result (flag)
     logical :: flag
     class(process_t), intent(in) :: process
     integer :: i, j, i_component
-    flag = .true.
-    do i = 1, size (process%mci_entry)
-       do j = 1, size (process%mci_entry(i)%i_component)
-          i_component = process%mci_entry(i)%i_component(j)
-          if (process%component_can_be_integrated (i_component)) &
-             flag = flag .and. process%mci_entry(i)%has_integral ()
+    if (allocated (process%mci_entry)) then
+       flag = .true.
+       do i = 1, size (process%mci_entry)
+          do j = 1, size (process%mci_entry(i)%i_component)
+             i_component = process%mci_entry(i)%i_component(j)
+             if (process%component_can_be_integrated (i_component)) &
+                flag = flag .and. process%mci_entry(i)%has_integral ()
+          end do
        end do
-    end do
+    else
+       flag = .false.
+    end if
   end function process_has_integral_tot
 
   function process_get_integral_mci (process, i_mci) result (integral)
@@ -1572,6 +1593,12 @@ contains
     component => process%component(i)
   end function process_get_component_ptr
 
+  function process_get_qcd_ptr (process) result (qcd)
+    type(qcd_t), pointer :: qcd
+    class(process_t), intent(in), target :: process
+    qcd => process%config%qcd
+  end function process_get_qcd_ptr
+
   elemental function process_get_component_type_single &
      (process, i_component) result (comp_type)
     integer :: comp_type
@@ -1609,7 +1636,7 @@ contains
     pcm => process%pcm
   end function process_get_pcm_ptr
 
-  function process_component_can_be_integrated (process, i_component) &
+  function process_component_can_be_integrated_single (process, i_component) &
            result (active)
     logical :: active
     class(process_t), intent(in) :: process
@@ -1626,7 +1653,17 @@ contains
        if (combined_integration) &
             active = active .and. component%component_type <= COMP_MASTER
     end associate
-  end function process_component_can_be_integrated
+  end function process_component_can_be_integrated_single
+
+  function process_component_can_be_integrated_all (process) result (val)
+    logical, dimension(:), allocatable :: val
+    class(process_t), intent(in) :: process
+    integer :: i
+    allocate (val (size (process%component)))
+    do i = 1, size (process%component)
+       val(i) = process%component_can_be_integrated (i)
+    end do
+  end function process_component_can_be_integrated_all
 
   pure subroutine process_reset_selected_cores (process)
     class(process_t), intent(inout) :: process
@@ -1657,8 +1694,6 @@ contains
     class(process_t), intent(in) :: process
     integer :: i_component
     type(process_component_def_t), pointer :: config => null ()
-    logical :: comp_real_fin
-
     i_real = 0
     do i_component = 1, size (process%component)
        config => process%get_component_def_ptr (i_component)
@@ -1669,7 +1704,7 @@ contains
     end do
   end function process_get_real_component
 
-  function process_extract_fixed_mci (process) result (i_active)
+  function process_extract_active_component_mci (process) result (i_active)
     integer :: i_active
     class(process_t), intent(in) :: process
     integer :: i_mci, j, i_component, n_active
@@ -1692,7 +1727,7 @@ contains
           end associate
        end do
     end subroutine count_n_active
-  end function process_extract_fixed_mci
+  end function process_extract_active_component_mci
 
   function process_needs_extra_code (process, only_blha) result (val)
     logical :: val
@@ -1775,8 +1810,8 @@ contains
     class(process_t), intent(inout) :: process
     type(blha_template_t), intent(inout) :: blha_template
     type(var_list_t), intent(in), pointer :: var_list
-    integer :: i_core, i
-    integer :: n_in, n_legs, n_flv, n_hel
+    integer :: i_core, n_in, n_legs, n_flv, n_hel, f
+    type(flavor_t) :: flv_in
     do i_core = 1, process%get_n_cores ()
        call fill_blha_template (process%get_nlo_type (i_core))
        select type (core => process%cm%cores(i_core)%core)
@@ -1796,7 +1831,13 @@ contains
              n_legs = core%data%get_n_tot ()
              n_flv = core%data%n_flv
           end select
-          n_hel = process%term(process%get_i_term (i_core))%int%get_n_in_helicities ()
+          n_hel = 1
+          if (blha_template%include_polarizations) then
+             do f = 1, core%data%n_in
+                call flv_in%init (core%data%flv_state (f, 1), process%config%model)
+                n_hel = n_hel * flv_in%get_multiplicity ()
+             end do
+          end if
           call core%init_blha (blha_template, n_in, n_legs, n_flv, n_hel)
           call core%init_driver (process%config%os_data)
        end select
@@ -1811,20 +1852,47 @@ contains
 
     subroutine fill_blha_template (nlo_type)
       integer, intent(in) :: nlo_type
+      type(string_t) :: method, born_me_method, real_tree_me_method, &
+           loop_me_method, correlation_me_method, dglap_me_method
+      method = var_list%get_sval (var_str ("$method"))
+      born_me_method = var_list%get_sval (var_str ("$born_me_method"))
+      if (born_me_method == "")  born_me_method = method
+      real_tree_me_method = var_list%get_sval (var_str ("$real_tree_me_method")) 
+      if (real_tree_me_method == "")  real_tree_me_method = method
+      loop_me_method = var_list%get_sval (var_str ("$loop_me_method"))
+      if (loop_me_method == "")  loop_me_method = method
+      correlation_me_method = var_list%get_sval (var_str ("$correlation_me_method"))
+      if (correlation_me_method == "")  correlation_me_method = method
+      dglap_me_method = var_list%get_sval (var_str ("$dglap_me_method"))
+      if (dglap_me_method == "")  dglap_me_method = method
+      call msg_debug2 (D_PROCESS_INTEGRATION, &
+           "process_init_blha_cores: method = ", method)
+      call msg_debug2 (D_PROCESS_INTEGRATION, &
+           "process_init_blha_cores: method = ", born_me_method)
+      call msg_debug2 (D_PROCESS_INTEGRATION, &
+           "process_init_blha_cores: method = ", loop_me_method)
+      call msg_debug2 (D_PROCESS_INTEGRATION, &
+           "process_init_blha_cores: method = ", correlation_me_method)
+      call msg_debug2 (D_PROCESS_INTEGRATION, &
+           "process_init_blha_cores: method = ", dglap_me_method)      
       select case (nlo_type)
       case (BORN)
-         if (needs_entry (var_list%get_sval (var_str ("$born_me_method")))) &
+         if (needs_entry (method) .or. needs_entry (born_me_method)) &
             call blha_template%set_born ()
       case (NLO_REAL)
-         if (needs_entry (var_list%get_sval (var_str ("$real_tree_me_method")))) &
+         if (needs_entry (real_tree_me_method)) &
             call blha_template%set_real_trees ()
       case (NLO_VIRTUAL)
-         if (needs_entry (var_list%get_sval (var_str ("$loop_me_method")))) &
+         if (needs_entry (loop_me_method)) &
             call blha_template%set_loop ()
       case (NLO_SUBTRACTION)
-         if (needs_entry (var_list%get_sval (var_str ("$correlation_me_method")))) then
+         if (needs_entry (correlation_me_method)) then
             call blha_template%set_subtraction ()
             call blha_template%set_internal_color_correlations ()
+         end if
+      case (NLO_DGLAP)
+         if (needs_entry (dglap_me_method)) then
+            call blha_template%set_dglap ()
          end if
       end select
     end subroutine fill_blha_template
@@ -1884,7 +1952,7 @@ contains
     term => process%term(i)
   end function process_get_term_ptr
 
-  function process_get_core_nlo_type (process, md5sum) result (core)
+  function process_get_core_from_md5sum (process, md5sum) result (core)
     class(prc_core_t), pointer :: core
     class(process_t), intent(in), target :: process
     character(32), intent(in) :: md5sum
@@ -1895,7 +1963,7 @@ contains
        end do
        core => cm%cores(i_core)%core
     end associate
-  end function process_get_core_nlo_type
+  end function process_get_core_from_md5sum
 
   function process_get_i_core_nlo_type (process, nlo_type, include_sub) result (i_core)
     integer :: i_core
@@ -1905,7 +1973,7 @@ contains
     logical :: skip_sub
     skip_sub = .false.
     if (present (include_sub)) skip_sub = .not. include_sub
-    do i_core = 1, process%cm%n_cores
+    do i_core = 1, N_MAX_CORES
        if (skip_sub) then
           if (process%cm%sub(i_core)) cycle
        end if
@@ -1936,6 +2004,24 @@ contains
     integer, intent(in) :: i_mci
     i_mci_work = process%mci_entry(i_mci)%i_mci
   end function process_get_i_mci_work
+
+  elemental function process_get_i_sub (process, i_term) result (i_sub)
+    integer :: i_sub
+    class(process_t), intent(in) :: process
+    integer, intent(in) :: i_term
+    i_sub = process%term(i_term)%i_sub
+  end function process_get_i_sub
+
+  elemental function process_get_i_term_virtual (process) result (i_term)
+    integer :: i_term
+    class(process_t), intent(in) :: process
+    integer :: i_component
+    i_term = 0
+    do i_component = 1, size (process%component)
+       if (process%component(i_component)%get_nlo_type () == NLO_VIRTUAL) &
+            i_term = process%component(i_component)%i_term(1)
+    end do
+  end function process_get_i_term_virtual
 
   elemental function process_component_is_active_single (process, i_comp) result (val)
     logical :: val
@@ -2281,6 +2367,12 @@ contains
     pdf_set = process%beam_config%get_pdf_set ()
   end function process_get_pdf_set
 
+  function process_pcm_contains_pdfs (process) result (has_pdfs)
+    logical :: has_pdfs
+    class(process_t), intent(in) :: process
+    has_pdfs = process%pcm%has_pdfs
+  end function process_pcm_contains_pdfs
+
   function process_get_beam_file (process) result (file)
     class(process_t), intent(in) :: process
     type(string_t) :: file
@@ -2438,11 +2530,16 @@ contains
     call mci_work%init (process%mci_entry(i))
   end subroutine process_init_mci_work
 
-  subroutine process_setup_test_cores (process)
+  subroutine process_setup_test_cores (process, type_string)
     class(process_t), intent(inout) :: process
     class(prc_core_t), allocatable :: core
+    type(string_t), intent(in), optional :: type_string
     allocate (test_t :: core)
-    call process%core_manager_register (BORN, 1, var_str ("test_me"))
+    if (present (type_string)) then
+       call process%core_manager_register (BORN, 1, type_string)
+    else
+       call process%core_manager_register (BORN, 1, var_str ("test_me"))
+    end if
     call process%allocate_cm_arrays (1)
     call process%allocate_core (1, core)
     call process%init_cores ()
@@ -2482,7 +2579,6 @@ contains
     class(process_t), intent(inout) :: process
     type(var_list_t), intent(in), target :: var_list
     type(fks_template_t), intent(in), optional :: fks_template
-    type(string_t) :: color_method
     select type (pcm => process%pcm)
     type is (pcm_nlo_t)
        call pcm%settings%init (var_list, fks_template)
@@ -2560,12 +2656,26 @@ contains
     i_born = process%component(i_component)%config%get_associated_born ()
   end function process_get_component_associated_born
 
-  function process_get_associated_real_component (process, i_component) result (i_real)
+  function process_get_first_real_component (process) result (i_real)
      integer :: i_real
      class(process_t), intent(in) :: process
-     integer, intent(in) :: i_component
-     i_real = process%component(i_component)%config%get_associated_real ()
-  end function process_get_associated_real_component
+     i_real = process%component(1)%config%get_associated_real ()
+  end function process_get_first_real_component
+
+  function process_get_first_real_term (process) result (i_real)
+     integer :: i_real
+     class(process_t), intent(in) :: process
+     integer :: i_component, i_term
+     i_component = process%component(1)%config%get_associated_real ()
+     i_real = 0
+     do i_term = 1, size (process%term)
+        if (process%term(i_term)%i_component == i_component) then
+           i_real = i_term
+           exit
+        end if
+     end do
+     if (i_real == 0) call msg_fatal ("Did not find associated real term!")
+  end function process_get_first_real_term
 
   elemental function process_get_associated_real_fin (process, i_component) result (i_real)
      integer :: i_real
@@ -2671,22 +2781,27 @@ contains
     integer :: openloops_phs_tolerance, openloops_stability_log
     logical :: use_cms, use_collier
     type(string_t) :: openloops_extra_cmd
-    type(string_t) :: ew_scheme
+    type(string_t) :: ew_scheme, correction_type
     type(process_component_def_t), pointer :: config => null ()
     config => process%meta%lib%get_component_def_ptr (process%meta%id, 1)
     call config%get_coupling_powers (alpha_power, alphas_power)
     associate (cm => process%cm)
        associate (var_list => process%meta%var_list)
-          openloops_phs_tolerance = var_list%get_ival (var_str ("openloops_phs_tolerance"))
-          openloops_stability_log = var_list%get_ival (var_str ("openloops_stability_log"))
+          openloops_phs_tolerance = &
+               var_list%get_ival (var_str ("openloops_phs_tolerance"))
+          openloops_stability_log = &
+               var_list%get_ival (var_str ("openloops_stability_log"))
           openloops_extra_cmd = var_list%get_sval (var_str ("$openloops_extra_cmd"))
           use_cms = var_list%get_lval (var_str ("?openloops_use_cms"))
           use_collier = var_list%get_lval (var_str ("?openloops_use_collier"))
           ew_scheme = var_list%get_sval (var_str ("$blha_ew_scheme"))
+          correction_type = var_list%get_sval (var_str ("$nlo_correction_type"))
           call blha_master%set_ew_scheme (ew_scheme)
        end associate
-       call blha_master%set_methods (process%is_nlo_calculation (), process%meta%var_list)
+       call blha_master%set_methods &
+            (process%is_nlo_calculation (), process%meta%var_list)
        call blha_master%allocate_config_files ()
+       call blha_master%set_correction_type (correction_type)
        call blha_master%setup_additional_features (openloops_phs_tolerance, &
             use_cms, &
             openloops_stability_log, &
@@ -2708,18 +2823,23 @@ contains
     type(string_t) :: libname
     integer :: i_component, i_core
     logical, dimension(process%cm%n_cores) :: loaded
-    logical :: give_warning
+    logical :: give_warning, is_nlo
     integer :: n_in
     integer, dimension(:,:), allocatable :: flv_born, flv_real
     type(process_component_def_t), pointer :: config => null ()
+    integer :: nlo_type_fetched
 
     loaded = .false.
+    call msg_debug2 (D_PROCESS_INTEGRATION, &
+         "process_create_and_load_extra_libraries")
     select type (pcm => process%pcm)
     type is (pcm_nlo_t)
        call pcm%region_data%get_all_flv_states (flv_born, flv_real)
        n_in = pcm%region_data%get_n_in ()
+       is_nlo = .true.
     class default
        i_core = process%get_i_core_nlo_type (BORN)
+       is_nlo = .false.
        associate (core => process%cm%cores(i_core)%core)
           allocate (flv_born (core%data%get_n_tot (), core%data%n_flv))
           flv_born = core%data%flv_state
@@ -2727,11 +2847,15 @@ contains
        end associate
     end select
     if (process%needs_extra_code (only_blha = .true.)) &
-         call process%create_blha_interface (flv_born, flv_real, n_in, beam_structure)
+         call process%create_blha_interface &
+         (flv_born, flv_real, n_in, beam_structure)
     give_warning = .false.
     do i_component = 1, process%meta%n_components
-       config => process%meta%lib%get_component_def_ptr (process%meta%id, i_component)
-       i_core = process%get_i_core_nlo_type (config%get_nlo_type ())
+       config => process%meta%lib%get_component_def_ptr &
+            (process%meta%id, i_component)
+       nlo_type_fetched = config%get_nlo_type ()
+       if (nlo_type_fetched == NLO_MISMATCH)  nlo_type_fetched = NLO_SUBTRACTION
+       i_core = process%get_i_core_nlo_type (nlo_type_fetched)
        if (config%can_be_integrated () .or. &
             process%get_nlo_type (i_core) == NLO_SUBTRACTION) then
           if (.not. loaded (i_core)) then
@@ -2744,19 +2868,27 @@ contains
                    else
                       give_warning = .true.
                    end if
+                   call msg_debug2 (D_PROCESS_INTEGRATION, &
+                        "create and load radiation libraries")
                    call core%create_and_load_extra_libraries &
                         (flv_real, var_list, os_data, libname, &
-                        process%config%model, i_core)
+                        process%config%model, i_core, is_nlo)
                 else
                    if (allocated (flv_born)) then
                       call core%data%set_flv_state (flv_born)
                    else
                       give_warning = .true.
                    end if
+                   call msg_debug2 (D_PROCESS_INTEGRATION, &
+                        "create and load Born libraries")
                    call core%create_and_load_extra_libraries &
                         (flv_born, var_list, os_data, libname, &
-                        process%config%model, i_core)
+                        process%config%model, i_core, is_nlo)
                 end if
+             end select
+             select type (core => process%cm%cores(i_core)%core)
+             type is (prc_threshold_t)
+                core%has_beam_pol = beam_structure%has_polarized_beams ()
              end select
              loaded(i_core) = .true.
           end if

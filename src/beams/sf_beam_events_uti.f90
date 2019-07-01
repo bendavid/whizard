@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -107,7 +100,7 @@ contains
     class(sf_int_t), allocatable :: sf_int
     type(vector4_t) :: k1, k2
     real(default) :: E
-    real(default), dimension(:), allocatable :: r, rb, x
+    real(default), dimension(:), allocatable :: r, rb, x, xb
     real(default) :: x_free, f
     integer :: i
 
@@ -154,16 +147,18 @@ contains
     allocate (r (data%get_n_par ()))
     allocate (rb(size (r)))
     allocate (x (size (r)))
+    allocate (xb(size (r)))
 
     r  = 0
     rb = 0
     x_free = 1
     call sf_int%generate_free (r, rb, x_free)
-    call sf_int%complete_kinematics (x, f, r, rb, map=.false.)
+    call sf_int%complete_kinematics (x, xb, f, r, rb, map=.false.)
 
     write (u, "(A,9(1x,F10.7))")  "r =", r
     write (u, "(A,9(1x,F10.7))")  "rb=", rb
     write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "xb=", xb
     write (u, "(A,9(1x,F10.7))")  "f =", f
     write (u, "(A,9(1x,F10.7))")  "xf=", x_free
     select type (sf_int)

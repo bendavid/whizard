@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -344,6 +337,7 @@ contains
        if (object%status >= SF_DONE_KINEMATICS) then
           write (u, "(1x,A)")  "SF parameters:"
           write (u, "(3x,A," // FMT_17 // ")")  "x =", object%x
+          write (u, "(3x,A," // FMT_17 // ")")  "xb=", object%xb
        end if
        call object%base_write (u, testflag)
     else
@@ -499,14 +493,15 @@ contains
     sf_int%status = SF_INITIAL
   end subroutine ewa_setup_constants
 
-  subroutine ewa_complete_kinematics (sf_int, x, f, r, rb, map)
+  subroutine ewa_complete_kinematics (sf_int, x, xb, f, r, rb, map)
     class(ewa_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(out) :: x
+    real(default), dimension(:), intent(out) :: xb
     real(default), intent(out) :: f
     real(default), dimension(:), intent(in) :: r
     real(default), dimension(:), intent(in) :: rb
     logical, intent(in) :: map
-    real(default) :: xb1, e_1
+    real(default) :: e_1
     real(default) :: x0, x1, lx0, lx1, lx
     e_1 = energy (sf_int%get_momentum (1))
     if (sf_int%data%recoil) then
@@ -541,13 +536,16 @@ contains
           return
        end if
     end if
-    xb1 = 1 - x(1)
-    if (size(x) == 3)  x(2:3) = r(2:3)
-    call sf_int%split_momentum (x, xb1)
+    xb(1) = 1 - x(1)
+    if (size(x) == 3) then
+       x(2:3) = r(2:3)
+       xb(2:3) = rb(2:3)
+    end if
+    call sf_int%split_momentum (x, xb)
     select case (sf_int%status)
     case (SF_DONE_KINEMATICS)
        sf_int%x  = x(1)
-       sf_int%xb = xb1
+       sf_int%xb = xb(1)
     case (SF_FAILED_KINEMATICS)
        sf_int%x  = 0
        sf_int%xb = 0
@@ -555,9 +553,10 @@ contains
     end select
   end subroutine ewa_complete_kinematics
 
-  subroutine ewa_inverse_kinematics (sf_int, x, f, r, rb, map, set_momenta)
+  subroutine ewa_inverse_kinematics (sf_int, x, xb, f, r, rb, map, set_momenta)
     class(ewa_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(in) :: x
+    real(default), dimension(:), intent(in) :: xb
     real(default), intent(out) :: f
     real(default), dimension(:), intent(out) :: r
     real(default), dimension(:), intent(out) :: rb
@@ -596,24 +595,27 @@ contains
     end if
     if (size(r) == 3) then
        r (2:3) = x(2:3)
-       rb(2:3) = 1 - x(2:3)
+       rb(2:3) = xb(2:3)
     end if
     if (set_mom) then
-       call sf_int%split_momentum (x, sf_int%xb)
+       call sf_int%split_momentum (x, xb)
        select case (sf_int%status)
        case (SF_DONE_KINEMATICS)
-          sf_int%x  = x(1)
-          sf_int%xb = 1 - x(1)
+          sf_int%x = x(1)
+          sf_int%xb= xb(1)
        case (SF_FAILED_KINEMATICS)
           sf_int%x = 0
+          sf_int%xb= 0
           f = 0
        end select
     end if
   end subroutine ewa_inverse_kinematics
 
-  subroutine ewa_apply (sf_int, scale)
+  subroutine ewa_apply (sf_int, scale, rescaling_function, i_rescale)
     class(ewa_t), intent(inout) :: sf_int
     real(default), intent(in) :: scale
+    class(rescaling_function_t), intent(in), optional :: rescaling_function
+    integer, intent(in), optional :: i_rescale
     real(default) :: x, xb, pt2, c1, c2
     real(default) :: cv, ca
     real(default) :: f, fm, fp, fL

@@ -9,7 +9,7 @@
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
 #     with contributions from
-#     Christian Speckner <cnspeckn@googlemail.com>
+#     cf. main AUTHORS file
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by 
@@ -75,7 +75,8 @@ endif
 if NOWEB_AVAILABLE
 
 circe2.tex: $(WEBS)
-	$(NOWEAVE) -filter ./tex-comments -delay -index \
+	@if $(AM_V_P); then :; else echo " NOWEAVE   " $@; fi
+	$(AM_V_at)$(NOWEAVE) -filter ./tex-comments -delay -index \
 	    `for i in  $^; do case $$i in *.nw) echo $$i;; esac done` \
 	  > $@
 
@@ -88,7 +89,8 @@ tex-comments: tex-comments.sh
 	chmod +x $@
 
 .data.histo:
-	cp $< $@
+	@if $(AM_V_P); then :; else echo " CP        " $@; fi
+	$(AM_V_at)cp $< $@
 
 # preview.pdf: vegas.data vamp.data
 
@@ -117,19 +119,24 @@ if DISTRIBUTION
 if OCAMLWEB_AVAILABLE
 
 .mll.implementation:
-	$(OCAMLWEB) --no-preamble --noweb --no-index $< >$@
+	@if $(AM_V_P); then :; else echo " OCAMLWEB  " $@; fi
+	$(AM_V_at)$(OCAMLWEB) --no-preamble --noweb --no-index $< >$@
 
 .mly.implementation:
-	$(OCAMLWEB) --no-preamble --noweb --no-index $< >$@
+	@if $(AM_V_P); then :; else echo " OCAMLWEB  " $@; fi
+	$(AM_V_at)$(OCAMLWEB) --no-preamble --noweb --no-index $< >$@
 
 .ml.implementation:
-	$(OCAMLWEB) --no-preamble --noweb --no-index $< >$@
+	@if $(AM_V_P); then :; else echo " OCAMLWEB  " $@; fi
+	$(AM_V_at)$(OCAMLWEB) --no-preamble --noweb --no-index $< >$@
 
 .mli.interface:
-	$(OCAMLWEB) --no-preamble --noweb --no-index $< >$@
+	@if $(AM_V_P); then :; else echo " OCAMLWEB  " $@; fi
+	$(AM_V_at)$(OCAMLWEB) --no-preamble --noweb --no-index $< >$@
 
 index.tex: $(CIRCE2_CAML) $(CIRCE2_DERIVED)
-	$(OCAMLWEB) --no-preamble --noweb $^ | \
+	@if $(AM_V_P); then :; else echo " OCAMLWEB  " $@; fi
+	$(AM_V_at)$(OCAMLWEB) --no-preamble --noweb $^ | \
 	   sed -n '/\\ocwbeginindex{}/,/\\ocwendindex{}/p' >$@
 
 endif OCAMLWEB_AVAILABLE
@@ -137,32 +144,34 @@ endif DISTRIBUTION
 
 endif NOWEB_AVAILABLE
 
+MPOST_LATEX = TEX=$(LATEX) TEXINPUTS=$(TEX_FLAGS) $(MPOST)
+
 if DISTRIBUTION
 if PDFLATEX_AVAILABLE
-if MPOST_AVAILABLE
 if SUPP_PDF_AVAILABLE
+.tex.pdf:
+	@if $(AM_V_P); then TEXINPUTS=$(TEX_FLAGS) $(PDFLATEX) $<; else \
+	   echo " PDFLATEX  " $<; TEXINPUTS=$(TEX_FLAGS) $(PDFLATEX) $< >/dev/null; fi
 if MAKEINDEX_AVAILABLE
-.tex.pdf:
-	-TEXINPUTS=$(TEX_FLAGS) $(PDFLATEX) $<
-	-$(MAKEINDEX) -o $*.ind $*.idx
-	-test -r $*.mp && TEX=$(LATEX) TEXINPUTS=$(TEX_FLAGS) $(MPOST) $*
-	-test -r $*pics.mp && MPINPUTS=$(MP_FLAGS) $(MPOST) $*pics
-	TEXINPUTS=$(TEX_FLAGS) $(PDFLATEX) $<
-	if grep -s 'Rerun to get cross-references right.' $*.log; then \
-	   TEXINPUTS=$(TEX_FLAGS) $(PDFLATEX) $<; \
-	fi
-else
-.tex.pdf:
-	-TEXINPUTS=$(TEX_FLAGS) $(PDFLATEX) $<
-	-test -r $*.mp && TEX=$(LATEX) TEXINPUTS=$(TEX_FLAGS) $(MPOST) $*
-	-test -r $*pics.mp && MPINPUTS=$(MP_FLAGS) $(MPOST) $*pics
-	TEXINPUTS=$(TEX_FLAGS) $(PDFLATEX) $<
-	if grep -s 'Rerun to get cross-references right.' $*.log; then \
-	   TEXINPUTS=$(TEX_FLAGS) $(PDFLATEX) $<; \
-	fi
-endif
-endif SUPP_PDF_AVAILABLE
+	@if $(AM_V_P); then $(MAKEINDEX) -o $*.ind $*.idx; else \
+	   echo " MAKEINDEX " $*.ind $*.idx; $(MAKEINDEX) -q -o $*.ind $*.idx; fi
+endif MAKEINDEX_AVAILABLE
+if MPOST_AVAILABLE
+	@if $(AM_V_P); then test -r $*.mp && $(MPOST_LATEX) $*; else \
+	   echo " METAPOST  " $*.mp; test -r $*.mp && $(MPOST_LATEX) $* >/dev/null; fi
 endif MPOST_AVAILABLE
+	@if $(AM_V_P); then TEXINPUTS=$(TEX_FLAGS) $(PDFLATEX) $<; else \
+	   echo " PDFLATEX  " $<; TEXINPUTS=$(TEX_FLAGS) $(PDFLATEX) $< >/dev/null; fi
+	@if $(AM_V_P); then \
+	   if grep -s 'Rerun to get cross-references right.' $*.log; then \
+	      TEXINPUTS=$(TEX_FLAGS) $(PDFLATEX) $<; \
+	   fi; else \
+	   if grep -s 'Rerun to get cross-references right.' $*.log >/dev/null; then \
+	      echo " PDFLATEX  " $< "(for cross-references)"; \
+	      TEXINPUTS=$(TEX_FLAGS) $(PDFLATEX) $< >/dev/null; \
+	   fi; \
+	fi
+endif SUPP_PDF_AVAILABLE
 endif PDFLATEX_AVAILABLE
 endif DISTRIBUTION
 

@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -60,6 +53,7 @@ module integrations
        COMP_MISMATCH, COMP_PDF, COMP_REAL, COMP_SUB, COMP_VIRT, &
        COMP_REAL_SING
   use process
+  use pcm_base, only: pcm_t
   use instances
   use process_stacks
   use models
@@ -72,12 +66,14 @@ module integrations
   use dispatch_phase_space, only: dispatch_sf_channels
   use dispatch_phase_space, only: dispatch_phs
   use dispatch_mci, only: dispatch_mci_s
+  use dispatch_transforms, only: dispatch_evt_shower_hook
 
   use compilations, only: compile_library
 
   use dispatch_fks, only: dispatch_fks_s
   use blha_olp_interfaces
   use nlo_data
+
 
   implicit none
   private
@@ -152,8 +148,7 @@ contains
             // " in library '" // char (local%prclib%get_name ()) // "'")
        return
     end if
-    intg%run_id = &
-         local%var_list%get_sval (var_str ("$run_id"))
+    intg%run_id = local%var_list%get_sval (var_str ("$run_id"))
     call dispatch_qcd (intg%qcd, local%get_var_list_ptr (), local%os_data)
     call dispatch_rng_factory (rng_factory, local%var_list)
     model_name = local%prclib%get_model_name (intg%process_id)
@@ -173,10 +168,11 @@ contains
          local%os_data, intg%qcd, rng_factory, model_instance)
   end subroutine integration_init_process
 
-  subroutine integration_setup_process (intg, local, verbose)
+  subroutine integration_setup_process (intg, local, verbose, init_only)
     class(integration_t), intent(inout) :: intg
     type(rt_data_t), intent(inout), target :: local
     logical, intent(in), optional :: verbose
+    logical, intent(in), optional :: init_only
     type(var_list_t), pointer :: var_list
     class(prc_core_t), allocatable :: core_template
     class(prc_core_t), pointer :: core => null ()
@@ -193,7 +189,7 @@ contains
     type(sf_channel_t), dimension(:), allocatable :: sf_channel
     type(phs_channel_collection_t) :: phs_channel_collection
     logical :: sf_trace
-    logical :: verb
+    logical :: verb, initialize_only
     type(blha_template_t) :: blha_template
     type(fks_template_t) :: fks_template
     type(string_t) :: sf_string
@@ -201,9 +197,11 @@ contains
     integer :: i_real = 0
     integer :: i_core
     integer :: i_core_born, i_core_real
-    logical :: first_real_component, use_real_partition
-    real(default) :: real_partition_scale
+    logical :: first_real_component, has_pdfs
+    integer :: nlo_type_fetched
+    class(pcm_t), pointer :: pcm => null ()
     verb = .true.; if (present (verbose))  verb = verbose
+    initialize_only = .false.;  if (present (init_only))  initialize_only = init_only
     call intg%process%set_var_list (local%get_var_list_ptr ())
     var_list => intg%process%get_var_list_ptr ()
 
@@ -214,7 +212,8 @@ contains
 
     call setup_log_and_history ()
 
-    call dispatch_mci_s (mci_template, local%get_var_list_ptr (), intg%process_id, &
+    call dispatch_mci_s (mci_template, local%get_var_list_ptr (), &
+         intg%process_id, &
          intg%process%is_nlo_calculation ())
 
     call display_init_message (verb)
@@ -231,7 +230,8 @@ contains
     do i_component = 1, n_components
        config => intg%process%get_component_def_ptr (i_component)
        call intg%process%core_manager_register &
-          (config%get_nlo_type (), i_component, config%get_def_type_string ())
+            (config%get_nlo_type (), i_component, &
+            config%get_def_type_string ())
     end do
     call intg%process%allocate_cm_arrays (n_components)
     do i_core = 1, intg%process%get_n_cores ()
@@ -247,11 +247,17 @@ contains
 
     call intg%process%init_cores ()
     first_real_component = .true.
+
+    pcm => intg%process%get_pcm_ptr ()
+    pcm%has_pdfs = local%beam_structure%has_pdf ()
+
     do i_component = 1, n_components
        config => intg%process%get_component_def_ptr (i_component)
-       core => intg%process%get_core_nlo_type ( &
+       nlo_type_fetched = config%get_nlo_type ()
+       if (nlo_type_fetched == NLO_MISMATCH)  nlo_type_fetched = NLO_SUBTRACTION
+       core => intg%process%get_core_from_md5sum ( &
             intg%process%get_md5sum_constants (i_component, &
-            config%get_def_type_string (), config%get_nlo_type ()))
+            config%get_def_type_string (), nlo_type_fetched))
        select case (config%get_nlo_type ())
        case (NLO_VIRTUAL)
           call setup_virtual_component ()
@@ -288,7 +294,7 @@ contains
     call setup_structure_functions ()
 
     call intg%process%configure_phs &
-         (intg%rebuild_phs, intg%ignore_phs_mismatch, & !verbose=verbose, &
+         (intg%rebuild_phs, intg%ignore_phs_mismatch, &
           combined_integration = intg%combined_integration)
 
     if (intg%process%is_nlo_calculation ()) then
@@ -303,20 +309,20 @@ contains
        if (var_list%get_lval (var_str ("?nlo_use_real_partition"))) then
           call intg%process%setup_real_partition &
                (var_list%get_rval (var_str ("real_partition_scale")))
-       end if 
+       end if
     end if
-
-    call intg%process%setup_terms (with_beams = local%beam_structure%is_set ())
 
     if (intg%process%needs_extra_code ()) then
        call blha_template%init (local%beam_structure%has_polarized_beams(), &
             var_list%get_lval (var_str ("?openloops_switch_off_muon_yukawa")), &
-            var_list%get_rval (var_str ("blha_use_top_yukawa")), &
+            var_list%get_rval (var_str ("blha_top_yukawa")), &
             var_list%get_sval (var_str ("$blha_ew_scheme")))
-       call intg%process%init_blha_cores(blha_template, var_list)
+       call intg%process%init_blha_cores (blha_template, var_list)
        call intg%process%create_and_load_extra_libraries &
             (local%beam_structure, var_list, local%os_data)
     end if
+
+    call intg%process%setup_terms (with_beams = local%beam_structure%has_polarized_beams ())
 
     if (verb) then
        call intg%process%write (screen = .true.)
@@ -326,7 +332,8 @@ contains
     if (intg%process_has_me) then
        if (size (sf_config) > 0) then
           call intg%process%collect_channels (phs_channel_collection)
-       else if (intg%process%contains_trivial_component ()) then
+       else if (.not. initialize_only &
+            .and. intg%process%contains_trivial_component ()) then
           call msg_fatal ("Integrate: 2 -> 1 process can't be handled &
                &with fixed-energy beams")
        end if
@@ -405,21 +412,6 @@ contains
               call msg_message ("Run ID = " // '"' // char (intg%run_id) // '"')
       end if
     end subroutine display_init_message
-
-    function get_me_method (nlo_type) result (me_method)
-      type(string_t) :: me_method
-      integer, intent(in) :: nlo_type
-      select case (nlo_type)
-      case (BORN)
-         me_method = var_list%get_sval (var_str ("$born_me_method"))
-      case (NLO_REAL)
-         me_method = var_list%get_sval (var_str ("$real_tree_me_method"))
-      case (NLO_VIRTUAL)
-         me_method = var_list%get_sval (var_str ("$loop_me_method"))
-      case (NLO_SUBTRACTION)
-         me_method = var_list%get_sval (var_str ("$correlation_me_method"))
-      end select
-    end function get_me_method
 
     subroutine setup_born_component ()
       call intg%process%init_component (i_component, &
@@ -513,8 +505,9 @@ contains
          pdg_prc = 0
       end if
       call dispatch_sf_config (sf_config, sf_prop, local%beam_structure, &
-         local%get_var_list_ptr (), local%var_list, &
-         local%model, local%os_data, local%get_sqrts (), pdg_prc)
+           local%get_var_list_ptr (), local%var_list, &
+           local%model, local%os_data, local%get_sqrts (), pdg_prc)
+
       sf_trace = &
            var_list%get_lval (var_str ("?sf_trace"))
       sf_trace_file = &
@@ -651,11 +644,13 @@ contains
     end do
   end subroutine integration_apply_call_multipliers
 
-  subroutine integration_init (intg, process_id, local, global, local_stack)
+  subroutine integration_init &
+       (intg, process_id, local, global, local_stack, init_only)
     class(integration_t), intent(out) :: intg
     type(string_t), intent(in) :: process_id
     type(rt_data_t), intent(inout), target :: local
     type(rt_data_t), intent(inout), optional, target :: global
+    logical, intent(in), optional :: init_only
     logical, intent(in), optional :: local_stack
     logical :: use_local
     use_local = .false.;  if (present (local_stack))  use_local = local_stack
@@ -667,7 +662,7 @@ contains
        call intg%create_process (process_id)
     end if
     call intg%init_process (local)
-    call intg%setup_process (local)
+    call intg%setup_process (local, init_only = init_only)
     call intg%init_iteration_multipliers (local)
   end subroutine integration_init
 
@@ -708,10 +703,12 @@ contains
        call msg_message ()
     end if
 
+    call setup_hooks ()
+
     nlo_active = any (intg%process%get_component_nlo_type &
          ([(i_mci, i_mci = 1, n_mci)]) /= BORN)
     do i_mci = 1, n_mci
-       i_component = intg%process%i_mci_to_i_component (i_mci)
+       i_component = intg%process%get_master_component (i_mci)
        nlo_type = intg%process%get_component_nlo_type (i_component)
        if (intg%process%component_can_be_integrated (i_component)) then
           if (n_mci > 1) then
@@ -776,7 +773,14 @@ contains
 
     call process_instance%final ()
     deallocate (process_instance)
-
+  contains
+    subroutine setup_hooks ()
+      class(process_instance_hook_t), pointer :: hook
+      call dispatch_evt_shower_hook (hook, var_list, process_instance)
+      if (associated (hook)) then
+         call process_instance%append_after_hook (hook)
+      end if
+    end subroutine setup_hooks
   end subroutine integration_integrate
 
   subroutine integration_setup_process_mci (intg)
@@ -844,7 +848,8 @@ contains
     type(string_t) :: prclib_name
     type(integration_t) :: intg
     character(32) :: buffer
-
+  
+  
     if (.not. associated (local%prclib)) then
        call msg_fatal ("Integrate: current process library is undefined")
        return
@@ -858,7 +863,7 @@ contains
        call msg_message ("Integrate: compilation done")
     end if
 
-    call intg%init (process_id, local, global, local_stack)
+    call intg%init (process_id, local, global, local_stack, init_only)
     if (signal_is_pending ())  return
 
     if (present (init_only)) then
@@ -872,6 +877,7 @@ contains
        call msg_message ("Integrate: ... test complete.")
        if (signal_is_pending ())  return
     end if
+  
 
     if (intg%phs_only) then
        call msg_message ("Integrate: phase space only, skipping integration")
@@ -882,7 +888,6 @@ contains
           call intg%integrate_dummy ()
        end if
     end if
-
   end subroutine integrate_process
 
 

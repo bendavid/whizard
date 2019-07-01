@@ -29,6 +29,7 @@ type ('n, 'e) t
 val cons : ('e * 'n * ('n, 'e) t list) list -> ('n, 'e) t
 val leaf : 'n -> ('n, 'e) t
 
+val is_singleton : ('n, 'e) t -> bool
 val to_string : ('n -> string) -> ('e -> string) -> ('n, 'e) t -> string
 
 (*i

@@ -73,7 +73,6 @@ the event implementation.
 
 module event_base
 
-  use system_defs, only: LF
 <<Use kinds>>
   use kinds, only: i64
 <<Use strings>>
@@ -1955,6 +1954,495 @@ event.  For the test case, we do not actually modify the current event.
 @ %def eio_base_1
 @
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Direct Event Access}
+As a convenient application of the base type, we construct an event
+handler that allows us of setting and retrieving events just in the
+same way as an file I/O format, but directly dealing with particle
+data and momenta.  This is an input and output format, but we do not
+care about counting events.
+<<[[eio_direct.f90]]>>=
+<<File header>>
+
+module eio_direct
+
+<<Use kinds>>
+<<Use strings>>
+  use io_units
+  use diagnostics
+  use cputime
+  use lorentz, only: vector4_t
+  use particles, only: particle_set_t
+  use model_data, only: model_data_t
+  use event_base
+  use eio_data
+  use eio_base
+
+<<Standard module head>>
+
+<<EIO direct: public>>
+
+<<EIO direct: types>>
+
+contains
+
+<<EIO direct: procedures>>
+
+end module eio_direct
+@ %def eio_direct
+@
+\subsection{Type}
+<<EIO direct: public>>=
+  public :: eio_direct_t
+<<EIO direct: types>>=
+  type, extends (eio_t) :: eio_direct_t
+     private
+     integer :: i_prc = 0
+     integer :: i_mci = 0
+     integer :: i_term = 0
+     integer :: channel = 0
+     type(particle_set_t) :: pset
+   contains
+   <<EIO direct: eio direct: TBP>>
+  end type eio_direct_t
+
+@ %def eio_direct_t
+@
+\subsection{Common Methods}
+Output.
+<<EIO direct: eio direct: TBP>>=
+  procedure :: write => eio_direct_write
+<<EIO direct: procedures>>=
+  subroutine eio_direct_write (object, unit)
+    class(eio_direct_t), intent(in) :: object
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = given_output_unit (unit)
+    write (u, "(1x,A)")  "Event direct access:"
+    write (u, "(3x,A,1x,I0)")  "i_prc =", object%i_prc
+    write (u, "(3x,A,1x,I0)")  "i_mci =", object%i_prc
+    write (u, "(3x,A,1x,I0)")  "i_term =", object%i_prc
+    write (u, "(3x,A,1x,I0)")  "channel =", object%i_prc
+    call object%pset%write (u)
+  end subroutine eio_direct_write
+
+@ %def eio_direct_write
+@ Finalizer: trivial.
+<<EIO direct: eio direct: TBP>>=
+  procedure :: final => eio_direct_final
+<<EIO direct: procedures>>=
+  subroutine eio_direct_final (object)
+    class(eio_direct_t), intent(inout) :: object
+    call object%pset%final ()
+  end subroutine eio_direct_final
+
+@ %def eio_direct_final
+@ Initialize for input and/or output, both are identical
+<<EIO direct: eio direct: TBP>>=
+  procedure :: init_out => eio_direct_init_out
+<<EIO direct: procedures>>=
+  subroutine eio_direct_init_out (eio, sample, data, success, extension)
+    class(eio_direct_t), intent(inout) :: eio
+    type(string_t), intent(in) :: sample
+    type(string_t), intent(in), optional :: extension
+    type(event_sample_data_t), intent(in), optional :: data
+    logical, intent(out), optional :: success
+    if (present (success))  success = .true.
+  end subroutine eio_direct_init_out
+
+@ %def eio_direct_init_out
+@ 
+<<EIO direct: eio direct: TBP>>=
+  procedure :: init_in => eio_direct_init_in
+<<EIO direct: procedures>>=
+  subroutine eio_direct_init_in (eio, sample, data, success, extension)
+    class(eio_direct_t), intent(inout) :: eio
+    type(string_t), intent(in) :: sample
+    type(string_t), intent(in), optional :: extension
+    type(event_sample_data_t), intent(inout), optional :: data
+    logical, intent(out), optional :: success
+    if (present (success))  success = .true.
+  end subroutine eio_direct_init_in
+
+@ %def eio_direct_init_in
+@ Switch from input to output: no-op
+<<EIO direct: eio direct: TBP>>=
+  procedure :: switch_inout => eio_direct_switch_inout
+<<EIO direct: procedures>>=
+  subroutine eio_direct_switch_inout (eio, success)
+    class(eio_direct_t), intent(inout) :: eio
+    logical, intent(out), optional :: success
+    if (present (success))  success = .true.
+  end subroutine eio_direct_switch_inout
+
+@ %def eio_direct_switch_inout
+@ Output: transfer event contents from the [[event]] object to the
+[[eio]] object.  Note that finalization of the particle set is not
+(yet) automatic.
+<<EIO direct: eio direct: TBP>>=
+  procedure :: output => eio_direct_output
+<<EIO direct: procedures>>=
+  subroutine eio_direct_output (eio, event, i_prc, reading, passed, pacify)
+    class(eio_direct_t), intent(inout) :: eio
+    class(generic_event_t), intent(in), target :: event
+    integer, intent(in) :: i_prc
+    logical, intent(in), optional :: reading, passed, pacify
+    type(particle_set_t), pointer :: pset_ptr
+    call eio%pset%final ()
+    pset_ptr => event%get_particle_set_ptr ()
+    if (associated (pset_ptr)) then
+       eio%i_prc = i_prc
+       eio%pset = pset_ptr
+    end if
+  end subroutine eio_direct_output
+
+@ %def eio_direct_output
+@ Input: transfer event contents from the [[eio]] object to the
+[[event]] object.  The [[i_prc]] parameter has been stored inside the
+[[eio]] record before.
+<<EIO direct: eio direct: TBP>>=
+  procedure :: input_i_prc => eio_direct_input_i_prc
+  procedure :: input_event => eio_direct_input_event
+<<EIO direct: procedures>>=
+  subroutine eio_direct_input_i_prc (eio, i_prc, iostat)
+    class(eio_direct_t), intent(inout) :: eio
+    integer, intent(out) :: i_prc
+    integer, intent(out) :: iostat
+    i_prc = eio%i_prc
+    iostat = 0
+  end subroutine eio_direct_input_i_prc
+
+  subroutine eio_direct_input_event (eio, event, iostat)
+    class(eio_direct_t), intent(inout) :: eio
+    class(generic_event_t), intent(inout), target :: event
+    integer, intent(out) :: iostat
+    call event%select (eio%i_mci, eio%i_term, eio%channel)
+    call event%set_hard_particle_set (eio%pset)
+  end subroutine eio_direct_input_event
+
+@ %def eio_direct_input_i_prc
+@ %def eio_direct_input_event
+@ No-op.
+<<EIO direct: eio direct: TBP>>=
+  procedure :: skip => eio_direct_skip
+<<EIO direct: procedures>>=
+  subroutine eio_direct_skip (eio, iostat)
+    class(eio_direct_t), intent(inout) :: eio
+    integer, intent(out) :: iostat
+    iostat = 0
+  end subroutine eio_direct_skip
+
+@ %def eio_direct_skip
+@
+\subsection{Retrieve individual contents}
+<<EIO direct: eio direct: TBP>>=
+  procedure :: get_n_in => eio_direct_get_n_in
+  procedure :: get_n_out => eio_direct_get_n_out
+  procedure :: get_n_tot => eio_direct_get_n_tot
+<<EIO direct: procedures>>=
+  function eio_direct_get_n_in (eio) result (n_in)
+    class(eio_direct_t), intent(in) :: eio
+    integer :: n_in
+    n_in = eio%pset%get_n_in ()
+  end function eio_direct_get_n_in
+
+  function eio_direct_get_n_out (eio) result (n_out)
+    class(eio_direct_t), intent(in) :: eio
+    integer :: n_out
+    n_out = eio%pset%get_n_out ()
+  end function eio_direct_get_n_out
+
+  function eio_direct_get_n_tot (eio) result (n_tot)
+    class(eio_direct_t), intent(in) :: eio
+    integer :: n_tot
+    n_tot = eio%pset%get_n_tot ()
+  end function eio_direct_get_n_tot
+
+@ %def eio_direct_get_n_in
+@ %def eio_direct_get_n_out
+@ %def eio_direct_get_n_tot
+@ All momenta as a single allocatable array.
+<<EIO direct: eio direct: TBP>>=
+  procedure :: get_momentum_array => eio_direct_get_momentum_array
+<<EIO direct: procedures>>=
+  subroutine eio_direct_get_momentum_array (eio, p)
+    class(eio_direct_t), intent(in) :: eio
+    type(vector4_t), dimension(:), allocatable, intent(out) :: p
+    integer :: n
+    n = eio%get_n_tot ()
+    allocate (p (n))
+    p(:) = eio%pset%get_momenta ()
+  end subroutine eio_direct_get_momentum_array
+
+@ %def eio_direct_get_momentum_array
+@
+\subsection{Manual access}
+Build the contained particle set from scratch.
+<<EIO direct: eio direct: TBP>>=
+  procedure :: init_direct => eio_direct_init_direct
+<<EIO direct: procedures>>=
+  subroutine eio_direct_init_direct &
+       (eio, n_beam, n_in, n_vir, n_out, pdg, model)
+    class(eio_direct_t), intent(out) :: eio
+    integer, intent(in) :: n_beam
+    integer, intent(in) :: n_in
+    integer, intent(in) :: n_vir
+    integer, intent(in) :: n_out
+    integer, dimension(:), intent(in) :: pdg
+    class(model_data_t), intent(in), target :: model
+    call eio%pset%init_direct (n_beam, n_in, n_vir, n_out, pdg, model)
+  end subroutine eio_direct_init_direct
+
+@ %def eio_direct_init_direct
+@ Set the selection indices.  This is supposed to select the [[i_prc]],
+[[i_mci]], [[i_term]], and [[channel]]
+entries of the event where the momentum set has to be stored, respectively.
+The selection indices determine the process, MCI set, calculation term, and
+phase-space channel is to be used for recalculation.  The index values must
+not be zero, even if the do not apply.
+<<EIO direct: eio direct: TBP>>=
+  procedure :: set_selection_indices => eio_direct_set_selection_indices
+<<EIO direct: procedures>>=
+  subroutine eio_direct_set_selection_indices &
+       (eio, i_prc, i_mci, i_term, channel)
+    class(eio_direct_t), intent(inout) :: eio
+    integer, intent(in) :: i_prc
+    integer, intent(in) :: i_mci
+    integer, intent(in) :: i_term
+    integer, intent(in) :: channel
+    eio%i_prc = i_prc
+    eio%i_mci = i_mci
+    eio%i_term = i_term
+    eio%channel = channel
+  end subroutine eio_direct_set_selection_indices
+
+@ %def eio_direct_set_i_prc
+@ Set momentum (or momenta -- elemental).
+<<EIO direct: eio direct: TBP>>=
+  generic :: set_momentum => set_momentum_single
+  generic :: set_momentum => set_momentum_all
+  procedure :: set_momentum_single => eio_direct_set_momentum_single
+  procedure :: set_momentum_all => eio_direct_set_momentum_all
+<<EIO direct: procedures>>=
+  subroutine eio_direct_set_momentum_single (eio, i, p, p2, on_shell)
+    class(eio_direct_t), intent(inout) :: eio
+    integer, intent(in) :: i
+    type(vector4_t), intent(in) :: p
+    real(default), intent(in), optional :: p2
+    logical, intent(in), optional :: on_shell
+    call eio%pset%set_momentum (i, p, p2, on_shell)
+  end subroutine eio_direct_set_momentum_single
+
+  subroutine eio_direct_set_momentum_all (eio, p, p2, on_shell)
+    class(eio_direct_t), intent(inout) :: eio
+    type(vector4_t), dimension(:), intent(in) :: p
+    real(default), dimension(:), intent(in), optional :: p2
+    logical, intent(in), optional :: on_shell
+    call eio%pset%set_momentum (p, p2, on_shell)
+  end subroutine eio_direct_set_momentum_all
+
+@ %def eio_direct_set_momentum
+@
+\subsection{Unit tests}
+Test module, followed by the corresponding implementation module.
+<<[[eio_direct_ut.f90]]>>=
+<<File header>>
+
+module eio_direct_ut
+  use unit_tests
+  use eio_direct_uti
+
+<<Standard module head>>
+
+<<EIO direct: public test>>
+
+contains
+
+<<EIO direct: test driver>>
+
+end module eio_direct_ut
+@ %def eio_direct_ut
+@
+<<[[eio_direct_uti.f90]]>>=
+<<File header>>
+
+module eio_direct_uti
+
+<<Use kinds>>
+<<Use strings>>
+  use lorentz, only: vector4_t
+  use model_data, only: model_data_t
+  use event_base
+  use eio_data
+  use eio_base
+
+  use eio_direct
+
+  use eio_base_ut, only: eio_prepare_test, eio_cleanup_test
+
+<<Standard module head>>
+
+<<EIO direct: test declarations>>
+
+contains
+
+<<EIO direct: tests>>
+
+end module eio_direct_uti
+@ %def eio_direct_ut
+@ API: driver for the unit tests below.
+<<EIO direct: public test>>=
+  public :: eio_direct_test
+<<EIO direct: test driver>>=
+  subroutine eio_direct_test (u, results)
+    integer, intent(in) :: u
+    type(test_results_t), intent(inout) :: results
+  <<EIO direct: execute tests>>
+  end subroutine eio_direct_test
+
+@ %def eio_direct_test
+@
+\subsubsection{Test I/O methods}
+We test the implementation of all I/O methods.
+<<EIO direct: execute tests>>=
+  call test (eio_direct_1, "eio_direct_1", &
+       "read and write event contents", &
+       u, results)
+<<EIO direct: test declarations>>=
+  public :: eio_direct_1
+<<EIO direct: tests>>=
+  subroutine eio_direct_1 (u)
+    integer, intent(in) :: u
+    class(generic_event_t), pointer :: event
+    class(eio_t), allocatable :: eio
+    type(event_sample_data_t) :: data
+    type(string_t) :: sample
+    type(vector4_t), dimension(:), allocatable :: p
+    class(model_data_t), pointer :: model
+    integer :: i, n_events, iostat, i_prc
+
+    write (u, "(A)")  "* Test output: eio_direct_1"
+    write (u, "(A)")  "*   Purpose: generate and read/write an event"
+    write (u, "(A)")
+
+    write (u, "(A)")  "* Initialize test process"
+
+    call eio_prepare_test (event, unweighted = .false.)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Initial state"
+    write (u, "(A)")
+
+    allocate (eio_direct_t :: eio)
+    call eio%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Extract an empty event"
+    write (u, "(A)")
+
+    call eio%output (event, 1)
+    call eio%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Retrieve contents"
+    write (u, "(A)")
+
+    select type (eio)
+    class is (eio_direct_t)
+       write (u, "(A,1x,I0)")  "n_in =", eio%get_n_in ()
+       write (u, "(A,1x,I0)")  "n_out =", eio%get_n_out ()
+    end select
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Generate and extract an event"
+    write (u, "(A)")
+
+    call event%generate (1, [0._default, 0._default])
+    model => event%get_model_ptr ()
+
+    sample = ""
+    call eio%init_out (sample)
+    call eio%output (event, 1)
+    call eio%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Retrieve contents"
+    write (u, "(A)")
+
+    select type (eio)
+    class is (eio_direct_t)
+       write (u, "(A,1x,I0)")  "n_in =", eio%get_n_in ()
+       write (u, "(A,1x,I0)")  "n_out =", eio%get_n_out ()
+    end select
+
+    select type (eio)
+    class is (eio_direct_t)
+       call eio%get_momentum_array (p)
+       if (allocated (p)) then
+          write (u, "(A)")  "p[3] ="
+          call p(3)%write (u)
+       end if
+    end select
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Re-create an eio event record: initialization"
+    write (u, "(A)")
+
+    call eio%final ()
+
+    select type (eio)
+    class is (eio_direct_t)
+       call eio%init_direct &
+            (n_beam = 0, n_in = 2, n_vir = 0, n_out = 2, &
+            pdg = [25, 25, 25, 25], model = model)
+       call eio%set_selection_indices (1, 1, 1, 1)
+       call eio%write (u)
+    end select
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Re-create an eio event record: &
+         &set momenta, interchanged"
+    write (u, "(A)")
+
+    select type (eio)
+    class is (eio_direct_t)
+       call eio%set_momentum (p([1,2,4,3]), on_shell=.true.)
+       call eio%write (u)
+    end select
+
+    write (u, "(A)")
+    write (u, "(A)")  "* 'read' i_prc"
+    write (u, "(A)")
+
+    call eio%input_i_prc (i_prc, iostat)
+    write (u, "(1x,A,1x,I0)")  "i_prc =", i_prc
+    write (u, "(1x,A,1x,I0)")  "iostat =", iostat
+
+    write (u, "(A)")
+    write (u, "(A)")  "* 'read' (fill) event"
+    write (u, "(A)")
+
+    call eio%input_event (event, iostat)
+    write (u, "(1x,A,1x,I0)")  "iostat =", iostat
+    write (u, "(A)")
+
+    call event%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Cleanup"
+
+    call eio%final ()
+    deallocate (eio)
+
+    call eio_cleanup_test (event)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: eio_direct_1"
+
+  end subroutine eio_direct_1
+
+@ %def eio_direct_1
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Event Generation Checkpoints}
 This is an output-only format.  Its only use is to write screen
 messages every $n$ events, to inform the user about progress.
@@ -3041,12 +3529,14 @@ end module eio_dump
 @ %def eio_dump_t
 @
 \subsection{Specific Methods}
-Set pacify flags.
+Set control parameters.  We may provide a [[unit]] for input or output; this
+will be taken if the sample file name is empty.  In that case, the unit is
+assumed to be open and will be kept open; no messages will be issued.
 <<EIO dump: eio dump: TBP>>=
   procedure :: set_parameters => eio_dump_set_parameters
 <<EIO dump: procedures>>=
   subroutine eio_dump_set_parameters (eio, extension, &
-       pacify, weights, compressed, summary, screen)
+       pacify, weights, compressed, summary, screen, unit)
     class(eio_dump_t), intent(inout) :: eio
     type(string_t), intent(in), optional :: extension
     logical, intent(in), optional :: pacify
@@ -3054,11 +3544,13 @@ Set pacify flags.
     logical, intent(in), optional :: compressed
     logical, intent(in), optional :: summary
     logical, intent(in), optional :: screen
+    integer, intent(in), optional :: unit
     if (present (pacify))  eio%pacify = pacify
     if (present (weights))  eio%weights = weights
     if (present (compressed))  eio%compressed = compressed
     if (present (summary))  eio%summary = summary
     if (present (screen))  eio%screen = screen
+    if (present (unit))  eio%unit = unit
     eio%extension = "pset.dat"
     if (present (extension))  eio%extension = extension
   end subroutine eio_dump_set_parameters
@@ -3102,10 +3594,12 @@ of the current object status.
        object%screen = .false.
     end if
     if (object%writing) then
-       write (msg_buffer, "(A,A,A)")  "Events: closing event dump file '", &
-            char (object%filename), "'"
-       call msg_message ()
-       close (object%unit)
+       if (object%filename /= "") then
+          write (msg_buffer, "(A,A,A)")  "Events: closing event dump file '", &
+               char (object%filename), "'"
+          call msg_message ()
+          close (object%unit)
+       end if
        object%writing = .false.
     end if
   end subroutine eio_dump_final
@@ -3126,7 +3620,10 @@ of the current object status.
     else
        eio%extension = "pset.dat"
     end if
-    if (sample /= "") then
+    if (sample == "" .and. eio%unit /= 0) then
+       eio%filename = ""
+       eio%writing = .true.
+    else if (sample /= "") then
        eio%filename = sample // "." // eio%extension
        eio%unit = free_unit ()
        write (msg_buffer, "(A,A,A)")  "Events: writing to event dump file '", &
@@ -3205,7 +3702,7 @@ and to screen (if requested).
          else
             write (u, "(1x,A)")  "sqme (ref)    = [undefined]"
          end if
-         if (event%sqme_ref_known) then
+         if (event%sqme_prc_known) then
             write (u, "(1x,A," // fmt // ")")  "sqme (prc)   = ", &
                  event%sqme_prc
          else
@@ -9529,17 +10026,8 @@ not specified in the HepMC format).
   subroutine lcio_polarization_init_int (prt, hel)
     type(lcio_particle_t), intent(inout) :: prt
     integer, intent(in) :: hel
-    select case (hel)
-    case (1:)
-       call lcio_particle_set_spin (prt%obj, 1._c_double, &
-            0._c_double, 0._c_double)
-    case (:-1)
-       call lcio_particle_set_spin (prt%obj, 1._c_double, &
-            real (pi, c_double), 0._c_double)
-    case (0)
-       call lcio_particle_set_spin (prt%obj, 1._c_double, &
-            real (pi/2, c_double), 0._c_double)
-    end select
+    call lcio_particle_set_spin (prt%obj, 0._c_double, &
+         0._c_double, real (hel, c_double))
   end subroutine lcio_polarization_init_int
 
 @ %def lcio_polarization_init
@@ -10513,16 +11001,9 @@ http://herwig.hepforge.org/trac/wiki/FaQs.
        call hepmc_event_add_vertex (evt, v(i))
     end do
     allocate (is_beam (n_tot))
-    !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
-    do i = 1, n_tot
-       is_beam(i) = particle_set%prt(i)%get_status () == PRT_BEAM
-    end do
-    !!! is_beam = particle_set%prt(1:n_tot)%get_status () == PRT_BEAM
+    is_beam = particle_set%prt(1:n_tot)%get_status () == PRT_BEAM
     if (.not. any (is_beam)) then
-       do i = 1, n_tot
-          is_beam(i) = particle_set%prt(i)%get_status () == PRT_INCOMING
-       end do
-       !!! is_beam = particle_set%prt(1:n_tot)%get_status () == PRT_INCOMING
+       is_beam = particle_set%prt(1:n_tot)%get_status () == PRT_INCOMING
     end if
     if (count (is_beam) == 2) then
        hbeam = pack (hprt, is_beam)
@@ -11312,7 +11793,7 @@ can store the version string with a default value.
      logical :: write_sqme_ref = .false.
      logical :: write_sqme_prc = .false.
      logical :: write_sqme_alt = .false.
-     logical :: use_alpha_s_from_file = .false.
+     logical :: use_alphas_from_file = .false.
      logical :: use_scale_from_file = .false.
      integer :: n_alt = 0
      integer, dimension(:), allocatable :: proc_num_id
@@ -11336,13 +11817,13 @@ Set parameters that are specifically used with LHEF.
 <<EIO LHEF: procedures>>=
   subroutine eio_lhef_set_parameters (eio, &
        keep_beams, keep_remnants, recover_beams, &
-       use_alpha_s_from_file, use_scale_from_file, &
+       use_alphas_from_file, use_scale_from_file, &
        version, extension, write_sqme_ref, write_sqme_prc, write_sqme_alt)
     class(eio_lhef_t), intent(inout) :: eio
     logical, intent(in), optional :: keep_beams
     logical, intent(in), optional :: keep_remnants
     logical, intent(in), optional :: recover_beams
-    logical, intent(in), optional :: use_alpha_s_from_file
+    logical, intent(in), optional :: use_alphas_from_file
     logical, intent(in), optional :: use_scale_from_file
     character(*), intent(in), optional :: version
     type(string_t), intent(in), optional :: extension
@@ -11352,8 +11833,8 @@ Set parameters that are specifically used with LHEF.
     if (present (keep_beams))  eio%keep_beams = keep_beams
     if (present (keep_remnants))  eio%keep_remnants = keep_remnants
     if (present (recover_beams))  eio%recover_beams = recover_beams
-    if (present (use_alpha_s_from_file)) &
-         eio%use_alpha_s_from_file = use_alpha_s_from_file
+    if (present (use_alphas_from_file)) &
+         eio%use_alphas_from_file = use_alphas_from_file
     if (present (use_scale_from_file)) &
          eio%use_scale_from_file = use_scale_from_file
     if (present (version)) then
@@ -11401,7 +11882,7 @@ of the current object status.
     write (u, "(3x,A,L1)")    "Keep remnants     = ", object%keep_remnants
     write (u, "(3x,A,L1)")    "Recover beams     = ", object%recover_beams
     write (u, "(3x,A,L1)")    "Alpha_s from file = ", &
-         object%use_alpha_s_from_file
+         object%use_alphas_from_file
     write (u, "(3x,A,L1)")    "Scale from file   = ", &
          object%use_scale_from_file
     write (u, "(3x,A,A)")     "Version           = ", object%version
@@ -11910,7 +12391,7 @@ the matrix element.
     call event%select (1, 1, 1)
     call hepeup_to_event (event, eio%fallback_model, &
          recover_beams = eio%recover_beams, &
-         use_alpha_s = eio%use_alpha_s_from_file, &
+         use_alpha_s = eio%use_alphas_from_file, &
          use_scale = eio%use_scale_from_file)
     select case (eio%version)
     case ("1.0")
@@ -13224,7 +13705,7 @@ end module eio_stdhep
      logical :: keep_remnants = .true.
      logical :: ensure_order = .false.
      logical :: recover_beams = .false.
-     logical :: use_alpha_s_from_file = .false.
+     logical :: use_alphas_from_file = .false.
      logical :: use_scale_from_file = .false.
      integer, dimension(:), allocatable :: proc_num_id
      integer(i64) :: n_events_expected = 0
@@ -13265,21 +13746,21 @@ Set parameters that are specifically used with STDHEP file formats.
 <<EIO stdhep: procedures>>=
   subroutine eio_stdhep_set_parameters (eio, &
        keep_beams, keep_remnants, ensure_order, recover_beams, &
-       use_alpha_s_from_file, use_scale_from_file, extension)
+       use_alphas_from_file, use_scale_from_file, extension)
     class(eio_stdhep_t), intent(inout) :: eio
     logical, intent(in), optional :: keep_beams
     logical, intent(in), optional :: keep_remnants
     logical, intent(in), optional :: ensure_order
     logical, intent(in), optional :: recover_beams
-    logical, intent(in), optional :: use_alpha_s_from_file
+    logical, intent(in), optional :: use_alphas_from_file
     logical, intent(in), optional :: use_scale_from_file
     type(string_t), intent(in), optional :: extension
     if (present (keep_beams))  eio%keep_beams = keep_beams
     if (present (keep_remnants))  eio%keep_remnants = keep_remnants
     if (present (ensure_order))  eio%ensure_order = ensure_order
     if (present (recover_beams))  eio%recover_beams = recover_beams
-    if (present (use_alpha_s_from_file)) &
-         eio%use_alpha_s_from_file = use_alpha_s_from_file
+    if (present (use_alphas_from_file)) &
+         eio%use_alphas_from_file = use_alphas_from_file
     if (present (use_scale_from_file))  &
          eio%use_scale_from_file = use_scale_from_file
     if (present (extension)) then
@@ -13321,7 +13802,7 @@ of the current object status.
     write (u, "(3x,A,L1)")    "Keep remnants     = ", object%keep_remnants
     write (u, "(3x,A,L1)")    "Recover beams     = ", object%recover_beams
     write (u, "(3x,A,L1)")    "Alpha_s from file = ", &
-         object%use_alpha_s_from_file
+         object%use_alphas_from_file
     write (u, "(3x,A,L1)")    "Scale from file   = ", &
          object%use_scale_from_file
     if (allocated (object%proc_num_id)) then
@@ -13616,7 +14097,7 @@ the HEPEVT common block as there is no control on the process ID.
     call event%select (1, 1, 1)
     call hepeup_to_event (event, eio%fallback_model, &
          recover_beams = eio%recover_beams, &
-         use_alpha_s = eio%use_alpha_s_from_file, &
+         use_alpha_s = eio%use_alphas_from_file, &
          use_scale = eio%use_scale_from_file)
   end subroutine eio_stdhep_input_event
 
@@ -14288,7 +14769,7 @@ HepMC and this is written for every event, we make it optional with
      type(event_sample_data_t) :: data
      ! logical :: keep_beams = .false.
      logical :: recover_beams = .false.
-     logical :: use_alpha_s_from_file = .false.
+     logical :: use_alphas_from_file = .false.
      logical :: use_scale_from_file = .false.
      logical :: output_cross_section = .false.
      type(hepmc_iostream_t) :: iostream
@@ -14307,18 +14788,18 @@ Set parameters that are specifically used with HepMC.
 <<EIO HepMC: procedures>>=
   subroutine eio_hepmc_set_parameters &
        (eio, &
-       recover_beams, use_alpha_s_from_file, use_scale_from_file, &
+       recover_beams, use_alphas_from_file, use_scale_from_file, &
        extension, output_cross_section)
     class(eio_hepmc_t), intent(inout) :: eio
     logical, intent(in), optional :: recover_beams
-    logical, intent(in), optional :: use_alpha_s_from_file
+    logical, intent(in), optional :: use_alphas_from_file
     logical, intent(in), optional :: use_scale_from_file
     logical, intent(in), optional :: output_cross_section
     type(string_t), intent(in), optional :: extension
     if (present (recover_beams)) &
          eio%recover_beams = recover_beams
-    if (present (use_alpha_s_from_file)) &
-         eio%use_alpha_s_from_file = use_alpha_s_from_file
+    if (present (use_alphas_from_file)) &
+         eio%use_alphas_from_file = use_alphas_from_file
     if (present (use_scale_from_file)) &
          eio%use_scale_from_file = use_scale_from_file
     if (present (extension)) then
@@ -14353,7 +14834,7 @@ of the current object status.
     end if
     write (u, "(3x,A,L1)")    "Recover beams     = ", object%recover_beams
     write (u, "(3x,A,L1)")    "Alpha_s from file = ", &
-         object%use_alpha_s_from_file
+         object%use_alphas_from_file
     write (u, "(3x,A,L1)")    "Scale from file   = ", &
          object%use_scale_from_file
     write (u, "(3x,A,A,A)")     "File extension    = '", &
@@ -14580,7 +15061,7 @@ event files.
     call hepmc_to_event (event, eio%hepmc_event, &
          eio%fallback_model, &
          recover_beams = eio%recover_beams, &
-         use_alpha_s = eio%use_alpha_s_from_file, &
+         use_alpha_s = eio%use_alphas_from_file, &
          use_scale = eio%use_scale_from_file)
     call hepmc_event_final (eio%hepmc_event)
   end subroutine eio_hepmc_input_event
@@ -14947,7 +15428,7 @@ Note: the [[keep_beams]] flag is not supported.
      logical :: reading = .false.
      type(event_sample_data_t) :: data
      logical :: recover_beams = .false.
-     logical :: use_alpha_s_from_file = .false.
+     logical :: use_alphas_from_file = .false.
      logical :: use_scale_from_file = .false.
      type(lcio_writer_t) :: lcio_writer
      type(lcio_reader_t) :: lcio_reader
@@ -14966,16 +15447,16 @@ Set parameters that are specifically used with LCIO.
   procedure :: set_parameters => eio_lcio_set_parameters
 <<EIO LCIO: procedures>>=
   subroutine eio_lcio_set_parameters &
-       (eio, recover_beams, use_alpha_s_from_file, use_scale_from_file, &
+       (eio, recover_beams, use_alphas_from_file, use_scale_from_file, &
        extension)
     class(eio_lcio_t), intent(inout) :: eio
     logical, intent(in), optional :: recover_beams
-    logical, intent(in), optional :: use_alpha_s_from_file
+    logical, intent(in), optional :: use_alphas_from_file
     logical, intent(in), optional :: use_scale_from_file
     type(string_t), intent(in), optional :: extension
     if (present (recover_beams))  eio%recover_beams = recover_beams
-    if (present (use_alpha_s_from_file)) &
-         eio%use_alpha_s_from_file = use_alpha_s_from_file
+    if (present (use_alphas_from_file)) &
+         eio%use_alphas_from_file = use_alphas_from_file
     if (present (use_scale_from_file)) &
          eio%use_scale_from_file = use_scale_from_file
     if (present (extension)) then
@@ -15008,7 +15489,7 @@ of the current object status.
     end if
     write (u, "(3x,A,L1)")    "Recover beams     = ", object%recover_beams
     write (u, "(3x,A,L1)")    "Alpha_s from file = ", &
-         object%use_alpha_s_from_file
+         object%use_alphas_from_file
     write (u, "(3x,A,L1)")    "Scale from file   = ", &
          object%use_scale_from_file
     write (u, "(3x,A,A,A)")     "File extension    = '", &
@@ -15238,7 +15719,7 @@ event files.
     call event%select (1, 1, 1)
     call lcio_to_event (event, eio%lcio_event, eio%fallback_model, &
          recover_beams = eio%recover_beams, &
-         use_alpha_s = eio%use_alpha_s_from_file, &
+         use_alpha_s = eio%use_alphas_from_file, &
          use_scale = eio%use_scale_from_file)
     call lcio_event_final (eio%lcio_event)
   end subroutine eio_lcio_input_event

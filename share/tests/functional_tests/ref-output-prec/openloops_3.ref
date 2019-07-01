@@ -2,14 +2,11 @@
 ?vis_history = false
 ?integration_timer = false
 ?pacify = true
-$born_me_method = "openloops"
-$real_tree_me_method = "openloops"
-$correlation_me_method = "openloops"
-$loop_me_method = "openloops"
+$method = "openloops"
 openmp_num_threads = 1
 ?use_vamp_equivalences = false
-?alpha_s_is_fixed = false
-?alpha_s_from_mz = true
+?alphas_is_fixed = false
+?alphas_from_mz = true
 ?openloops_use_collier = false
 seed = 2222
 sqrts =  5.00000E+02
@@ -47,6 +44,13 @@ SM.wtop =>  0.00000E+00
 | Phase space: generating configuration ...
 | Phase space: ... success.
 | Phase space: writing configuration file 'openloops_3_p1_i1.phs'
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'openloops_3_p1_i3.phs'
+| One-Loop-Provider: Using OpenLoops
+| Loading library: [...]
+| One-Loop-Provider: Using OpenLoops
+| Loading library: [...]
 | One-Loop-Provider: Using OpenLoops
 | Loading library: [...]
 | One-Loop-Provider: Using OpenLoops
@@ -57,26 +61,53 @@ SM.wtop =>  0.00000E+00
 |   Process index = 1
 |   Process components:
 |     1: 'openloops_3_p1_i1':   e+, e- => t, tbar [openloops]
+|     2: 'openloops_3_p1_i2':   e+, e- => t, tbar, gl [inactive], [real]
+|     3: 'openloops_3_p1_i3':   e+, e- => t, tbar [inactive], [virtual]
+|     4: 'openloops_3_p1_i4':   e+, e- => t, tbar [inactive], [subtraction]
 | ------------------------------------------------------------------------
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: no equivalences between channels used.
 | Phase space: wood
+| Phase space: 1 channels, 5 dimensions
+| Phase space: found 1 channel, collected in 1 grove.
+| Phase space: no equivalences between channels used.
+| Phase space: wood
+| Phase space: 1 channels, 2 dimensions
+| Phase space: found 1 channel, collected in 1 grove.
+| Phase space: no equivalences between channels used.
+| Phase space: wood
 Warning: No cuts have been defined.
-| Starting integration for process 'openloops_3_p1'
-| Integrate: iterations = 1:1000:"gw"
+| Starting integration for process 'openloops_3_p1' part 'born'
+| Integrate: iterations = 1:100
 | Integrator: 1 chains, 1 channels, 2 dimensions
-| Integrator: 1000 initial calls, 20 bins, stratified = T
+| Integrator: 100 initial calls, 20 bins, stratified = T
 | Integrator: VAMP
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1        800     5.475E+02   5.34E-01    0.10    0.03    48.2
+   1        100     6.257E+02   2.89E+01    4.61    0.46    55.5
 |-----------------------------------------------------------------------------|
-   1        800     5.475E+02   5.34E-01    0.10    0.03    48.2
+   1        100     6.257E+02   2.89E+01    4.61    0.46    55.5
+|=============================================================================|
+| Integrate: sum of all components
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1          0     6.257E+02   2.89E+01    4.61    0.00    55.5
+| NLO Correction: [O(alpha_s+1)/O(alpha_s)]
+|  (  0.0000 +-   0.00000 ) %
 |=============================================================================|
 n_events = 1
 | Starting simulation for process 'openloops_3_p1'
+| One-Loop-Provider: Using OpenLoops
+| Loading library: [...]
+| One-Loop-Provider: Using OpenLoops
+| Loading library: [...]
+| One-Loop-Provider: Using OpenLoops
+| Loading library: [...]
+| One-Loop-Provider: Using OpenLoops
+| Loading library: [...]
 | Simulate: using integration grids from file 'openloops_3_p1_m1.vg'
 | Simulate: activating fixed-order NLO events
 | QCD alpha: using a running strong coupling
@@ -131,9 +162,9 @@ seed = 3333
 |   Process index = 2
 |   Process components:
 |     1: 'openloops_3_p2_i1':   e+, e- => t, tbar [inactive]
-|     2: 'openloops_3_p2_i2':   e+, e- => t, tbar, gl [openloops], [Real]
-|     3: 'openloops_3_p2_i3':   e+, e- => t, tbar [inactive], [Virtual]
-|     4: 'openloops_3_p2_i4':   e+, e- => t, tbar [inactive], [Subtraction]
+|     2: 'openloops_3_p2_i2':   e+, e- => t, tbar, gl [openloops], [real]
+|     3: 'openloops_3_p2_i3':   e+, e- => t, tbar [inactive], [virtual]
+|     4: 'openloops_3_p2_i4':   e+, e- => t, tbar [inactive], [subtraction]
 | ------------------------------------------------------------------------
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
@@ -148,23 +179,23 @@ seed = 3333
 | Phase space: no equivalences between channels used.
 | Phase space: wood
 Warning: No cuts have been defined.
-| Starting integration for process 'openloops_3_p2' part 'Real'
-| Integrate: iterations = 1:1000:"gw"
+| Starting integration for process 'openloops_3_p2' part 'real'
+| Integrate: iterations = 1:100
 | Integrator: 1 chains, 1 channels, 5 dimensions
-| Integrator: 1000 initial calls, 20 bins, stratified = T
+| Integrator: 100 initial calls, 20 bins, stratified = T
 | Integrator: VAMP
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1       1000    -7.302E+01   1.38E+00    1.89    0.60    38.3
+   1        100    -7.301E+01   4.28E+00    5.86    0.59    39.2
 |-----------------------------------------------------------------------------|
-   1       1000    -7.302E+01   1.38E+00    1.89    0.60    38.3
+   1        100    -7.301E+01   4.28E+00    5.86    0.59    39.2
 |=============================================================================|
 | Integrate: sum of all components
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1          0    -7.302E+01   1.38E+00    1.89    0.00     0.0
+   1          0    -7.301E+01   4.28E+00    5.86    0.00     0.0
 |=============================================================================|
 n_events = 1
 | Starting simulation for process 'openloops_3_p2'
@@ -230,9 +261,9 @@ seed = 4444
 |   Process index = 3
 |   Process components:
 |     1: 'openloops_3_p3_i1':   e+, e- => t, tbar [inactive]
-|     2: 'openloops_3_p3_i2':   e+, e- => t, tbar, gl [inactive], [Real]
-|     3: 'openloops_3_p3_i3':   e+, e- => t, tbar [openloops], [Virtual]
-|     4: 'openloops_3_p3_i4':   e+, e- => t, tbar [inactive], [Subtraction]
+|     2: 'openloops_3_p3_i2':   e+, e- => t, tbar, gl [inactive], [real]
+|     3: 'openloops_3_p3_i3':   e+, e- => t, tbar [openloops], [virtual]
+|     4: 'openloops_3_p3_i4':   e+, e- => t, tbar [inactive], [subtraction]
 | ------------------------------------------------------------------------
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
@@ -247,23 +278,23 @@ seed = 4444
 | Phase space: no equivalences between channels used.
 | Phase space: wood
 Warning: No cuts have been defined.
-| Starting integration for process 'openloops_3_p3' part 'Virtual'
-| Integrate: iterations = 1:1000:"gw"
+| Starting integration for process 'openloops_3_p3' part 'virtual'
+| Integrate: iterations = 1:100
 | Integrator: 1 chains, 1 channels, 2 dimensions
-| Integrator: 1000 initial calls, 20 bins, stratified = T
+| Integrator: 100 initial calls, 20 bins, stratified = T
 | Integrator: VAMP
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1        800     1.432E+02   1.42E-01    0.10    0.03    46.1
+   1        100     1.387E+02   7.85E+00    5.66    0.57    44.8
 |-----------------------------------------------------------------------------|
-   1        800     1.432E+02   1.42E-01    0.10    0.03    46.1
+   1        100     1.387E+02   7.85E+00    5.66    0.57    44.8
 |=============================================================================|
 | Integrate: sum of all components
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1          0     1.432E+02   1.42E-01    0.10    0.00    46.1
+   1          0     1.387E+02   7.85E+00    5.66    0.00    44.8
 |=============================================================================|
 n_events = 1
 | Starting simulation for process 'openloops_3_p3'
@@ -296,10 +327,10 @@ n_events = 1
    Helicity handling  = drop
    Keep correlations  = F
 ------------------------------------------------------------------------
-   Squared matrix el. (ref) =  2.38965E-02
-   Squared matrix el. (prc) =  2.38965E-02
-   Event weight (ref)       =  5.33963E+02
-   Event weight (prc)       =  5.33963E+02
+   Squared matrix el. (ref) =  2.66014E-02
+   Squared matrix el. (prc) =  2.66014E-02
+   Event weight (ref)       =  5.94404E+02
+   Event weight (prc)       =  5.94404E+02
 ------------------------------------------------------------------------
    Selected MCI group = 1
    Selected term      = 1
@@ -313,7 +344,7 @@ n_events = 1
 ------------------------------------------------------------------------
    Associated process: 'openloops_3_p1'
    TAO random-number generator:
-     seed  = 145620994
+     seed  = 145620996
      calls = 3
    Number of tries = 1
 ------------------------------------------------------------------------
@@ -331,12 +362,12 @@ n_events = 1
  Children: 3 4
  Particle 3 [o] f(6)
  E =   2.500000E+02
- P =  -8.866348E+01 -1.557406E+02 -1.963155E+01
+ P =  -3.093375E+01  1.729251E+02 -4.051886E+01
  T =   2.999824000E+04
  Parents:  1 2
  Particle 4 [o] f(-6)
  E =   2.500000E+02
- P =   8.866348E+01  1.557406E+02  1.963155E+01
+ P =   3.093375E+01 -1.729251E+02  4.051886E+01
  T =   2.999824000E+04
  Parents:  1 2
 ========================================================================
@@ -350,18 +381,18 @@ n_out* => 2
 n_tot* => 4
 $process_id* => "openloops_3_p1"
 process_num_id* => [unknown integer]
-sqme* =>  2.38965E-02
-sqme_ref* =>  2.38965E-02
+sqme* =>  2.66014E-02
+sqme_ref* =>  2.66014E-02
 event_index* => 1
-event_weight* =>  5.33963E+02
-event_weight_ref* =>  5.33963E+02
+event_weight* =>  5.94404E+02
+event_weight_ref* =>  5.94404E+02
 event_excess* =>  0.00000E+00
 ------------------------------------------------------------------------
  subevent:
  1 prt(i:-11|-2.5000000E+02; 0.0000000E+00, 0.0000000E+00,-2.5000000E+02| 2.6111793E-07| 1)
  2 prt(i:11|-2.5000000E+02; 0.0000000E+00, 0.0000000E+00, 2.5000000E+02| 2.6111793E-07| 2)
- 3 prt(o:6| 2.5000000E+02;-8.8663478E+01,-1.5574065E+02,-1.9631554E+01| 2.9998240E+04| 3)
- 4 prt(o:-6| 2.5000000E+02; 8.8663478E+01, 1.5574065E+02, 1.9631554E+01| 2.9998240E+04| 4)
+ 3 prt(o:6| 2.5000000E+02;-3.0933754E+01, 1.7292509E+02,-4.0518856E+01| 2.9998240E+04| 3)
+ 4 prt(o:-6| 2.5000000E+02; 3.0933754E+01,-1.7292509E+02, 4.0518856E+01| 2.9998240E+04| 4)
 ========================================================================
 ========================================================================
  Event
@@ -371,10 +402,10 @@ event_excess* =>  0.00000E+00
    Helicity handling  = drop
    Keep correlations  = F
 ------------------------------------------------------------------------
-   Squared matrix el. (ref) = -6.19431E-03
-   Squared matrix el. (prc) = -2.22339E-02
-   Event weight (ref)       = -1.38411E+02
-   Event weight (prc)       = -4.96812E+02
+   Squared matrix el. (ref) = -4.37375E-03
+   Squared matrix el. (prc) = -1.55208E-02
+   Event weight (ref)       = -9.77307E+01
+   Event weight (prc)       = -3.46809E+02
 ------------------------------------------------------------------------
    Selected MCI group = 2
    Selected term      = 4
@@ -406,12 +437,12 @@ event_excess* =>  0.00000E+00
  Children: 3 4
  Particle 3 [o] f(6)
  E =   2.500000E+02
- P =   1.105312E+01 -4.433896E+01 -1.743951E+02
+ P =   1.659778E+02  4.649104E+01 -5.283667E+01
  T =   2.999824000E+04
  Parents:  1 2
  Particle 4 [o] f(-6)
  E =   2.500000E+02
- P =  -1.105312E+01  4.433896E+01  1.743951E+02
+ P =  -1.659778E+02 -4.649104E+01  5.283667E+01
  T =   2.999824000E+04
  Parents:  1 2
 ========================================================================
@@ -425,18 +456,18 @@ n_out* => 2
 n_tot* => 4
 $process_id* => "openloops_3_p2"
 process_num_id* => [unknown integer]
-sqme* => -2.22339E-02
-sqme_ref* => -6.19431E-03
+sqme* => -1.55208E-02
+sqme_ref* => -4.37375E-03
 event_index* => 1
-event_weight* => -4.96812E+02
-event_weight_ref* => -1.38411E+02
+event_weight* => -3.46809E+02
+event_weight_ref* => -9.77307E+01
 event_excess* =>  0.00000E+00
 ------------------------------------------------------------------------
  subevent:
  1 prt(i:-11|-2.5000000E+02; 0.0000000E+00, 0.0000000E+00,-2.5000000E+02| 2.6111793E-07| 1)
  2 prt(i:11|-2.5000000E+02; 0.0000000E+00, 0.0000000E+00, 2.5000000E+02| 2.6111793E-07| 2)
- 3 prt(o:6| 2.5000000E+02; 1.1053117E+01,-4.4338958E+01,-1.7439508E+02| 2.9998240E+04| 3)
- 4 prt(o:-6| 2.5000000E+02;-1.1053117E+01, 4.4338958E+01, 1.7439508E+02| 2.9998240E+04| 4)
+ 3 prt(o:6| 2.5000000E+02; 1.6597780E+02, 4.6491044E+01,-5.2836666E+01| 2.9998240E+04| 3)
+ 4 prt(o:-6| 2.5000000E+02;-1.6597780E+02,-4.6491044E+01, 5.2836666E+01| 2.9998240E+04| 4)
 ========================================================================
 ========================================================================
  Event
@@ -446,10 +477,10 @@ event_excess* =>  0.00000E+00
    Helicity handling  = drop
    Keep correlations  = F
 ------------------------------------------------------------------------
-   Squared matrix el. (ref) = -6.19431E-03
-   Squared matrix el. (prc) =  1.86019E-03
-   Event weight (ref)       = -1.38411E+02
-   Event weight (prc)       =  4.15656E+01
+   Squared matrix el. (ref) = -4.37375E-03
+   Squared matrix el. (prc) =  1.48910E-03
+   Event weight (ref)       = -9.77307E+01
+   Event weight (prc)       =  3.32737E+01
 ------------------------------------------------------------------------
    Selected MCI group = 2
    Selected term      = 4
@@ -481,12 +512,12 @@ event_excess* =>  0.00000E+00
  Children: 3 4
  Particle 3 [o] f(6)
  E =   2.500000E+02
- P =   1.105312E+01 -4.433896E+01 -1.743951E+02
+ P =   1.659778E+02  4.649104E+01 -5.283667E+01
  T =   2.999824000E+04
  Parents:  1 2
  Particle 4 [o] f(-6)
  E =   2.500000E+02
- P =  -1.105312E+01  4.433896E+01  1.743951E+02
+ P =  -1.659778E+02 -4.649104E+01  5.283667E+01
  T =   2.999824000E+04
  Parents:  1 2
 ========================================================================
@@ -500,19 +531,19 @@ n_out* => 3
 n_tot* => 5
 $process_id* => "openloops_3_p2"
 process_num_id* => [unknown integer]
-sqme* =>  1.86019E-03
-sqme_ref* => -6.19431E-03
+sqme* =>  1.48910E-03
+sqme_ref* => -4.37375E-03
 event_index* => 1
-event_weight* =>  4.15656E+01
-event_weight_ref* => -1.38411E+02
+event_weight* =>  3.32737E+01
+event_weight_ref* => -9.77307E+01
 event_excess* =>  0.00000E+00
 ------------------------------------------------------------------------
  subevent:
  1 prt(i:-11|-2.5000000E+02; 0.0000000E+00, 0.0000000E+00,-2.5000000E+02| 2.6111793E-07| 1)
  2 prt(i:11|-2.5000000E+02; 0.0000000E+00, 0.0000000E+00, 2.5000000E+02| 2.6111793E-07| 2)
- 3 prt(o:6| 2.3798283E+02; 1.3835460E+01,-6.4990210E+01,-1.4907194E+02| 2.9998240E+04| 3)
- 4 prt(o:-6| 2.0626411E+02;-6.8674432E+00, 2.7548362E+01, 1.0835390E+02| 2.9998240E+04| 4)
- 5 prt(o:21| 5.5753060E+01;-6.9680171E+00, 3.7441848E+01, 4.0718036E+01| 0.0000000E+00| 5)
+ 3 prt(o:6| 1.8711951E+02; 4.8885826E+01,-1.4740977E+01,-4.9074934E+01| 2.9998240E+04| 3)
+ 4 prt(o:-6| 2.2065264E+02;-1.2586171E+02,-3.5254367E+01, 4.0066281E+01| 2.9998240E+04| 4)
+ 5 prt(o:21| 9.2227854E+01; 7.6975885E+01, 4.9995344E+01, 9.0086533E+00| 0.0000000E+00| 5)
 ========================================================================
 ========================================================================
  Event
@@ -522,10 +553,10 @@ event_excess* =>  0.00000E+00
    Helicity handling  = drop
    Keep correlations  = F
 ------------------------------------------------------------------------
-   Squared matrix el. (ref) = -6.19431E-03
-   Squared matrix el. (prc) =  1.79075E-03
-   Event weight (ref)       = -1.38411E+02
-   Event weight (prc)       =  4.00140E+01
+   Squared matrix el. (ref) = -4.37375E-03
+   Squared matrix el. (prc) =  9.10429E-04
+   Event weight (ref)       = -9.77307E+01
+   Event weight (prc)       =  2.03434E+01
 ------------------------------------------------------------------------
    Selected MCI group = 2
    Selected term      = 4
@@ -557,12 +588,12 @@ event_excess* =>  0.00000E+00
  Children: 3 4
  Particle 3 [o] f(6)
  E =   2.500000E+02
- P =   1.105312E+01 -4.433896E+01 -1.743951E+02
+ P =   1.659778E+02  4.649104E+01 -5.283667E+01
  T =   2.999824000E+04
  Parents:  1 2
  Particle 4 [o] f(-6)
  E =   2.500000E+02
- P =  -1.105312E+01  4.433896E+01  1.743951E+02
+ P =  -1.659778E+02 -4.649104E+01  5.283667E+01
  T =   2.999824000E+04
  Parents:  1 2
 ========================================================================
@@ -576,19 +607,19 @@ n_out* => 3
 n_tot* => 5
 $process_id* => "openloops_3_p2"
 process_num_id* => [unknown integer]
-sqme* =>  1.79075E-03
-sqme_ref* => -6.19431E-03
+sqme* =>  9.10429E-04
+sqme_ref* => -4.37375E-03
 event_index* => 1
-event_weight* =>  4.00140E+01
-event_weight_ref* => -1.38411E+02
+event_weight* =>  2.03434E+01
+event_weight_ref* => -9.77307E+01
 event_excess* =>  0.00000E+00
 ------------------------------------------------------------------------
  subevent:
  1 prt(i:-11|-2.5000000E+02; 0.0000000E+00, 0.0000000E+00,-2.5000000E+02| 2.6111793E-07| 1)
  2 prt(i:11|-2.5000000E+02; 0.0000000E+00, 0.0000000E+00, 2.5000000E+02| 2.6111793E-07| 2)
- 3 prt(o:6| 2.0626411E+02; 6.8674432E+00,-2.7548362E+01,-1.0835390E+02| 2.9998240E+04| 3)
- 4 prt(o:-6| 2.3798283E+02;-1.4561022E+00, 1.5331111E+01, 1.6248208E+02| 2.9998240E+04| 4)
- 5 prt(o:21| 5.5753060E+01;-5.4113410E+00, 1.2217251E+01,-5.4128180E+01| 0.0000000E+00| 5)
+ 3 prt(o:6| 2.2065264E+02; 1.2586171E+02, 3.5254367E+01,-4.0066281E+01| 2.9998240E+04| 3)
+ 4 prt(o:-6| 1.8711951E+02;-6.8239543E+01, 9.3199232E+00,-1.6491614E+01| 2.9998240E+04| 4)
+ 5 prt(o:21| 9.2227854E+01;-5.7622167E+01,-4.4574291E+01, 5.6557895E+01| 0.0000000E+00| 5)
 ========================================================================
 ========================================================================
  Event
@@ -598,10 +629,10 @@ event_excess* =>  0.00000E+00
    Helicity handling  = drop
    Keep correlations  = F
 ------------------------------------------------------------------------
-   Squared matrix el. (ref) =  1.29525E-02
-   Squared matrix el. (prc) =  1.29525E-02
-   Event weight (ref)       =  2.89421E+02
-   Event weight (prc)       =  2.89421E+02
+   Squared matrix el. (ref) =  1.22409E-02
+   Squared matrix el. (prc) =  1.22409E-02
+   Event weight (ref)       =  2.73522E+02
+   Event weight (prc)       =  2.73522E+02
 ------------------------------------------------------------------------
    Selected MCI group = 3
    Selected term      = 5
@@ -633,12 +664,12 @@ event_excess* =>  0.00000E+00
  Children: 3 4
  Particle 3 [o] f(6)
  E =   2.500000E+02
- P =   3.257737E+01 -6.782911E+01 -1.638282E+02
+ P =  -9.602929E+01  1.904619E+01 -1.513849E+02
  T =   2.999824000E+04
  Parents:  1 2
  Particle 4 [o] f(-6)
  E =   2.500000E+02
- P =  -3.257737E+01  6.782911E+01  1.638282E+02
+ P =   9.602929E+01 -1.904619E+01  1.513849E+02
  T =   2.999824000E+04
  Parents:  1 2
 ========================================================================
@@ -652,16 +683,16 @@ n_out* => 2
 n_tot* => 4
 $process_id* => "openloops_3_p3"
 process_num_id* => [unknown integer]
-sqme* =>  1.29525E-02
-sqme_ref* =>  1.29525E-02
+sqme* =>  1.22409E-02
+sqme_ref* =>  1.22409E-02
 event_index* => 1
-event_weight* =>  2.89421E+02
-event_weight_ref* =>  2.89421E+02
+event_weight* =>  2.73522E+02
+event_weight_ref* =>  2.73522E+02
 event_excess* =>  0.00000E+00
 ------------------------------------------------------------------------
  subevent:
  1 prt(i:-11|-2.5000000E+02; 0.0000000E+00, 0.0000000E+00,-2.5000000E+02| 2.6111793E-07| 1)
  2 prt(i:11|-2.5000000E+02; 0.0000000E+00, 0.0000000E+00, 2.5000000E+02| 2.6111793E-07| 2)
- 3 prt(o:6| 2.5000000E+02; 3.2577367E+01,-6.7829107E+01,-1.6382823E+02| 2.9998240E+04| 3)
- 4 prt(o:-6| 2.5000000E+02;-3.2577367E+01, 6.7829107E+01, 1.6382823E+02| 2.9998240E+04| 4)
+ 3 prt(o:6| 2.5000000E+02;-9.6029292E+01, 1.9046186E+01,-1.5138487E+02| 2.9998240E+04| 3)
+ 4 prt(o:-6| 2.5000000E+02; 9.6029292E+01,-1.9046186E+01, 1.5138487E+02| 2.9998240E+04| 4)
 ========================================================================

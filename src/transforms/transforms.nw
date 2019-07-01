@@ -29,6 +29,11 @@ We have the following modules:
 \item[tau\_decays]
   (not implemented yet) Let $\tau$ leptons decay taking full spin
   correlations into account.
+\item[isr\_qed\_transverse]
+  (not implemented yet) Generate transverse momentum $p_T$ of the ISR
+  photons (and potentially multiple ISR photons) after the event
+  has been fully showered and hadronized. The rest of the event
+  needs to get the recoil boost of the ISR photons.
 \item[events]
   Combine all pieces to generate full events.
 \item[eio\_raw]
@@ -207,6 +212,7 @@ implementation-specific methods.
   subroutine evt_reset (evt)
     class(evt_t), intent(inout) :: evt
     evt%rejection_count = 0
+    call evt%particle_set%final ()
     evt%particle_set_exists = .false.
   end subroutine evt_reset
 
@@ -1411,6 +1417,1436 @@ invalid.
 @ %def evt_hadrons_prepare_new_event
 @
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Resonance Insertion}
+<<[[resonance_insertion.f90]]>>=
+<<File header>>
+
+module resonance_insertion
+
+<<Use kinds>>
+<<Use strings>>
+  use io_units
+  use format_utils, only: write_separator
+  use format_defs, only: FMT_12
+  use rng_base, only: rng_t
+  use selectors, only: selector_t
+  use sm_qcd
+  use model_data
+  use interactions, only: interaction_t
+  use particles, only: particle_t, particle_set_t
+  use subevents, only: PRT_RESONANT
+  use models
+  use resonances, only: resonance_history_set_t
+  use resonances, only: resonance_tree_t
+  use instances, only: process_instance_ptr_t
+  use event_transforms
+
+<<Standard module head>>
+
+<<Resonance insertion: public>>
+
+<<Resonance insertion: types>>
+
+contains
+
+<<Resonance insertion: procedures>>
+
+end module resonance_insertion
+@ %def resonance_insertion
+@
+\subsection{Resonance-Insertion Event Transform}
+This is the type for the event transform that applies resonance insertion.
+The resonance history set describe the resonance histories that we may
+consider.  There is a process library with process objects that correspond to
+the resonance histories.  Library creation, compilation etc.\ is done outside
+the scope of this module.
+<<Resonance insertion: public>>=
+  public :: evt_resonance_t
+<<Resonance insertion: types>>=
+  type, extends (evt_t) :: evt_resonance_t
+     type(resonance_history_set_t) :: res_history_set
+     type(string_t) :: libname
+     type(string_t), dimension(:), allocatable :: proc_id
+     real(default) :: on_shell_limit = 0
+     logical :: selector_active = .false.
+     type(selector_t) :: selector
+     integer :: selected_history = 0
+     type(process_instance_ptr_t), dimension(:), allocatable :: instance
+   contains
+   <<Resonance insertion: evt resonance: TBP>>
+  end type evt_resonance_t
+
+@ %def evt_resonance_t
+<<Resonance insertion: evt resonance: TBP>>=
+  procedure :: write_name => evt_resonance_write_name
+<<Resonance insertion: procedures>>=
+  subroutine evt_resonance_write_name (evt, unit)
+    class(evt_resonance_t), intent(in) :: evt
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = given_output_unit (unit)
+    write (u, "(1x,A)")  "Event transform: resonance insertion"
+  end subroutine evt_resonance_write_name
+
+@ %def evt_resonance_write_name
+@ Output.
+<<Resonance insertion: evt resonance: TBP>>=
+  procedure :: write => evt_resonance_write
+<<Resonance insertion: procedures>>=
+  subroutine evt_resonance_write (evt, unit, verbose, more_verbose, testflag)
+    class(evt_resonance_t), intent(in) :: evt
+    integer, intent(in), optional :: unit
+    logical, intent(in), optional :: verbose, more_verbose, testflag
+    integer :: u
+    u = given_output_unit (unit)
+    call write_separator (u, 2)
+    call evt%write_name (u)
+    call write_separator (u, 2)
+    write (u, "(1x,A,A,A)")  "Process library = '", char (evt%libname), "'"
+    call evt%res_history_set%write (u, indent=1)
+    if (allocated (evt%instance)) then
+       write (u, "(3x,A)")  "Subprocess instances: allocated"
+    else
+       write (u, "(3x,A)")  "Subprocess instances: not allocated"
+    end if
+    if (evt%particle_set_exists) then
+       if (evt%selected_history > 0) then
+          write (u, "(3x,A,I0)")  "Selected: resonance history #", &
+               evt%selected_history
+       else
+          write (u, "(3x,A)")  "Selected: no resonance history"
+       end if
+    else
+       write (u, "(3x,A)")  "Selected: [none]"
+    end if
+    write (u, "(3x,A,1x," // FMT_12 // ")")  &
+         "On-shell limit =", evt%on_shell_limit
+    call write_separator (u)
+    if (evt%selector_active) then
+       write (u, "(2x)", advance="no")
+       call evt%selector%write (u, testflag=testflag)
+       call write_separator (u)
+    end if
+    call evt%base_write (u, testflag = testflag, show_set = .false.)
+    call write_separator (u)
+    if (evt%particle_set_exists) then
+       call evt%particle_set%write &
+            (u, summary = .true., compressed = .true., testflag = testflag)
+       call write_separator (u)
+    end if
+  end subroutine evt_resonance_write
+
+@ %def evt_resonance_write
+@
+\subsection{Set contained data}
+Insert the resonance data, in form of a pre-generated resonance
+history set.
+<<Resonance insertion: evt resonance: TBP>>=
+  procedure :: set_resonance_data => evt_resonance_set_resonance_data
+<<Resonance insertion: procedures>>=
+  subroutine evt_resonance_set_resonance_data (evt, res_history_set)
+    class(evt_resonance_t), intent(inout) :: evt
+    type(resonance_history_set_t), intent(in) :: res_history_set
+    evt%res_history_set = res_history_set
+  end subroutine evt_resonance_set_resonance_data
+  
+@ %def evt_resonance_set_resonance_data  
+@ Set the library that contains the resonant subprocesses.
+<<Resonance insertion: evt resonance: TBP>>=
+  procedure :: set_library => evt_resonance_set_library
+<<Resonance insertion: procedures>>=
+  subroutine evt_resonance_set_library (evt, libname)
+    class(evt_resonance_t), intent(inout) :: evt
+    type(string_t), intent(in) :: libname
+    evt%libname = libname
+  end subroutine evt_resonance_set_library
+
+@ %def evt_resonance_set_library
+@ Assign pointers to subprocess instances.  Once a subprocess has been
+selected, the instance is used for generating the particle set with
+valid quantum-number assignments, ready for resonance insertion.
+<<Resonance insertion: evt resonance: TBP>>=
+  procedure :: set_subprocess_instances &
+       => evt_resonance_set_subprocess_instances
+<<Resonance insertion: procedures>>=
+  subroutine evt_resonance_set_subprocess_instances (evt, instance)
+    class(evt_resonance_t), intent(inout) :: evt
+    type(process_instance_ptr_t), dimension(:), intent(in) :: instance
+    evt%instance = instance
+  end subroutine evt_resonance_set_subprocess_instances
+  
+@ %def evt_resonance_set_subprocess_instances
+@ Set the on-shell limit, the relative distance from a resonance that
+is still considered to be on-shell.  For details, see the
+[[resonances]] module.
+<<Resonance insertion: evt resonance: TBP>>=
+  procedure :: set_on_shell_limit => evt_resonance_set_on_shell_limit
+<<Resonance insertion: procedures>>=
+  subroutine evt_resonance_set_on_shell_limit (evt, on_shell_limit)
+    class(evt_resonance_t), intent(inout) :: evt
+    real(default), intent(in) :: on_shell_limit
+    evt%on_shell_limit = on_shell_limit
+  end subroutine evt_resonance_set_on_shell_limit
+  
+@ %def evt_resonance_set_on_shell_limit
+@
+\subsection{Selector}
+Manually import a random-number generator object.  This should be
+done only for testing purposes.  The standard procedure is to
+[[connect]] a process to an event transform; this will create an
+appropriate [[rng]] from the RNG factory in the process object.
+<<Resonance insertion: evt resonance: TBP>>=
+  procedure :: import_rng => evt_resonance_import_rng
+<<Resonance insertion: procedures>>=
+  subroutine evt_resonance_import_rng (evt, rng)
+    class(evt_resonance_t), intent(inout) :: evt
+    class(rng_t), allocatable, intent(inout) :: rng
+    call move_alloc (from = rng, to = evt%rng)
+  end subroutine evt_resonance_import_rng
+
+@ %def evt_resonance_import_rng
+@
+We use a standard selector object to choose from the available resonance
+histories.  If the selector is inactive, we do not insert resonances.
+<<Resonance insertion: evt resonance: TBP>>=
+  procedure :: write_selector => evt_resonance_write_selector
+<<Resonance insertion: procedures>>=
+  subroutine evt_resonance_write_selector (evt, unit, testflag)
+    class(evt_resonance_t), intent(in) :: evt
+    integer, intent(in), optional :: unit
+    logical, intent(in), optional :: testflag
+    integer :: u
+    u = given_output_unit (unit)
+    if (evt%selector_active) then
+       call evt%selector%write (u, testflag)
+    else
+       write (u, "(1x,A)")  "Selector: [inactive]"
+    end if
+  end subroutine evt_resonance_write_selector
+    
+@ %def evt_resonance_write_selector
+@
+The selector is initialized with relative weights of
+histories which need not be normalized.  Channels with weight zero are
+ignored.
+
+The [[offset]] will normally be $-1$, so we count from zero, and zero
+is a valid result from the selector.  Selecting the zero entry implies
+no resonance insertion.  However, this behavior is not hard-coded
+here (without offset, no resonance is not possible as a result).
+<<Resonance insertion: evt resonance: TBP>>=
+  procedure :: init_selector => evt_resonance_init_selector
+<<Resonance insertion: procedures>>=
+  subroutine evt_resonance_init_selector (evt, weight, offset)
+    class(evt_resonance_t), intent(inout) :: evt
+    real(default), dimension(:), intent(in) :: weight
+    integer, intent(in), optional :: offset
+    if (any (weight > 0)) then
+       call evt%selector%init (weight, offset = offset)
+       evt%selector_active = .true.
+    else
+       evt%selector_active = .false.
+    end if
+  end subroutine evt_resonance_init_selector
+    
+@ %def evt_resonance_init_selector
+@ Return all selector weights, for inspection.  Note that the index
+counts from zero.
+<<Resonance insertion: evt resonance: TBP>>=
+  procedure :: get_selector_weights => evt_resonance_get_selector_weights
+<<Resonance insertion: procedures>>=
+  subroutine evt_resonance_get_selector_weights (evt, weight)
+    class(evt_resonance_t), intent(in) :: evt
+    real(default), dimension(0:), intent(out) :: weight
+    integer :: i
+    do i = 0, ubound (weight,1)
+       weight(i) = evt%selector%get_weight (i)
+    end do
+  end subroutine evt_resonance_get_selector_weights
+  
+@ %def evt_resonance_get_selector_weights
+@
+\subsection{Runtime calculations}
+Use the associated master process instance and the subprocess
+instances to distribute the current momentum set, then compute the
+squared matrix elements weights for all subprocesses.
+
+NOTE: Procedures in this subsection are not covered by unit tests
+in this module, but by unit tests of the [[restricted_subprocesses]]
+module.
+
+Fill the particle set, so the momentum configuration can be used by
+the subprocess instances.  The standard workflow is to copy from the
+previous particle set.
+<<Resonance insertion: evt resonance: TBP>>=
+  procedure :: fill_momenta => evt_resonance_fill_momenta
+<<Resonance insertion: procedures>>=
+  subroutine evt_resonance_fill_momenta (evt)
+    class(evt_resonance_t), intent(inout) :: evt
+    integer :: i, n
+    if (associated (evt%previous)) then
+       evt%particle_set = evt%previous%particle_set
+    else if (associated (evt%process_instance)) then
+       ! this branch only for unit test
+       call evt%process_instance%get_trace &
+            (evt%particle_set, i_term=1, n_incoming=evt%process%get_n_in ())
+    end if
+  end subroutine evt_resonance_fill_momenta
+
+@ %def evt_resonance_fill_momenta
+@
+Return the indices of those subprocesses which can be considered
+on-shell.  The result depends on the stored particle set (outgoing
+momenta) and on the on-shell limit value.
+<<Resonance insertion: evt resonance: TBP>>=
+  procedure :: determine_on_shell_histories &
+       => evt_resonance_determine_on_shell_histories
+<<Resonance insertion: procedures>>=
+  subroutine evt_resonance_determine_on_shell_histories (evt, index_array)
+    class(evt_resonance_t), intent(in) :: evt
+    integer, dimension(:), allocatable, intent(out) :: index_array
+    call evt%res_history_set%determine_on_shell_histories &
+         (evt%particle_set%get_outgoing_momenta (), &
+         evt%on_shell_limit, index_array)
+  end subroutine evt_resonance_determine_on_shell_histories
+    
+@ %def evt_resonance_determine_on_shell_histories
+@ Evaluate selected subprocesses.  (In actual operation, the ones that
+have been tagged as on-shell.)
+
+We assume that the MCI, term, and channel indices can all be set to 1.
+<<Resonance insertion: evt resonance: TBP>>=
+  procedure :: evaluate_subprocess => evt_resonance_evaluate_subprocess
+<<Resonance insertion: procedures>>=
+  subroutine evt_resonance_evaluate_subprocess (evt, index_array)
+    class(evt_resonance_t), intent(inout) :: evt
+    integer, dimension(:), intent(in) :: index_array
+    integer :: k, i
+    if (allocated (evt%instance)) then
+       do k = 1, size (index_array)
+          i = index_array(k)
+          associate (instance => evt%instance(i)%p)
+            call instance%choose_mci (1)
+            call instance%set_trace (evt%particle_set, 1, check_match=.false.)
+            call instance%recover (channel = 1, i_term = 1, &
+                 update_sqme = .true., recover_phs = .false.)
+          end associate
+       end do
+    end if
+  end subroutine evt_resonance_evaluate_subprocess
+    
+@ %def evt_resonance_evaluate_subprocess
+@ Return the current squared matrix-element value of the master
+process, and of the selected resonant subprocesses, respectively.
+<<Resonance insertion: evt resonance: TBP>>=
+  procedure :: get_master_sqme => evt_resonance_get_master_sqme
+  procedure :: get_subprocess_sqme => evt_resonance_get_subprocess_sqme
+<<Resonance insertion: procedures>>=
+  function evt_resonance_get_master_sqme (evt) result (sqme)
+    class(evt_resonance_t), intent(in) :: evt
+    real(default) :: sqme
+    sqme = evt%process_instance%get_sqme ()
+  end function evt_resonance_get_master_sqme
+  
+  subroutine evt_resonance_get_subprocess_sqme (evt, sqme, index_array)
+    class(evt_resonance_t), intent(in) :: evt
+    real(default), dimension(:), intent(out) :: sqme
+    integer, dimension(:), intent(in), optional :: index_array
+    integer :: k, i
+    if (present (index_array)) then
+       sqme = 0
+       do k = 1, size (index_array)
+          call get_sqme (index_array(k))
+       end do
+    else
+       do i = 1, size (evt%instance)
+          call get_sqme (i)
+       end do
+    end if
+  contains
+    subroutine get_sqme (i)
+      integer, intent(in) :: i
+      associate (instance => evt%instance(i)%p)
+        sqme(i) = instance%get_sqme ()
+      end associate
+    end subroutine get_sqme
+  end subroutine evt_resonance_get_subprocess_sqme
+  
+@ %def evt_resonance_get_master_sqme
+@ %def evt_resonance_get_subprocess_sqme
+@ We use the calculations of resonant matrix elements to determine
+probabilities for all resonance configurations.  This method combines
+the steps implemented above.  First, we query the kinematics and
+determine the applicable resonance histories.  We collect squared matrix elements for
+those resonance histories and compare them to the master-process
+squared matrix element.
+
+The result is the probability for each resonance history
+together with the probability for non-resonant background (zeroth
+entry).  The latter is defined as the difference between the complete
+process result and the sum of the resonances, ignoring the possibility
+for interference.  If the complete process result is actually
+undershooting the sum of resonances, we nevertheless count the
+background with positive probability.
+<<Resonance insertion: evt resonance: TBP>>=
+  procedure :: compute_probabilities => evt_resonance_compute_probabilities
+<<Resonance insertion: procedures>>=
+  subroutine evt_resonance_compute_probabilities (evt)
+    class(evt_resonance_t), intent(inout) :: evt
+    integer, dimension(:), allocatable :: index_array
+    real(default) :: sqme_master, sqme_sum, sqme_bg
+    real(default), dimension(:), allocatable :: sqme_res
+    integer :: n, i
+    if (.not. associated (evt%process_instance))  return
+    n = size (evt%instance)
+    call evt%determine_on_shell_histories (index_array)
+    call evt%evaluate_subprocess (index_array)
+    allocate (sqme_res (n), source = 0._default)
+    call evt%get_subprocess_sqme (sqme_res, index_array)
+    sqme_master = evt%get_master_sqme ()
+    sqme_sum = sum (sqme_res)
+    sqme_bg = abs (sqme_master - sqme_sum)
+    call evt%init_selector ([sqme_bg, sqme_res], offset = -1)
+  end subroutine evt_resonance_compute_probabilities
+    
+@ %def evt_resonance_compute_probabilities
+@ 
+\subsection{Sanity check}
+Check the color assignment, which may be wrong for the inserted resonances.
+Delegated to the particle-set component.  Return offending particle
+indices and, optionally, particles as arrays.
+
+This is done in a unit test.  The current algorithm, i.e., selecting
+the color assignment from the resonant-subprocess instance, should not
+generate invalid color assignments.
+<<Resonance insertion: evt resonance: TBP>>=
+  procedure :: find_prt_invalid_color => evt_resonance_find_prt_invalid_color
+<<Resonance insertion: procedures>>=
+  subroutine evt_resonance_find_prt_invalid_color (evt, index, prt)
+    class(evt_resonance_t), intent(in) :: evt
+    integer, dimension(:), allocatable, intent(out) :: index
+    type(particle_t), dimension(:), allocatable, intent(out), optional :: prt
+    if (evt%particle_set_exists) then
+       call evt%particle_set%find_prt_invalid_color (index, prt)
+    else
+       allocate (prt (0))
+    end if
+  end subroutine evt_resonance_find_prt_invalid_color
+  
+@ %def evt_resonance_find_prt_invalid_color
+@
+\subsection{API implementation}
+<<Resonance insertion: evt resonance: TBP>>=
+  procedure :: prepare_new_event => evt_resonance_prepare_new_event
+<<Resonance insertion: procedures>>=
+  subroutine evt_resonance_prepare_new_event (evt, i_mci, i_term)
+    class(evt_resonance_t), intent(inout) :: evt
+    integer, intent(in) :: i_mci, i_term
+    call evt%reset ()
+  end subroutine evt_resonance_prepare_new_event
+
+@ %def evt_resonance_prepare_new_event
+@ Select one of the histories, based on the momentum array from the
+current particle set.  Compute the probabilities for all resonant
+subprocesses and initialize the selector accordingly.  Then select one
+resonance history, or none.
+<<Resonance insertion: evt resonance: TBP>>=
+  procedure :: generate_weighted => evt_resonance_generate_weighted
+<<Resonance insertion: procedures>>=
+  subroutine evt_resonance_generate_weighted (evt, probability)
+    class(evt_resonance_t), intent(inout) :: evt
+    real(default), intent(inout) :: probability
+    call evt%fill_momenta ()
+    call evt%compute_probabilities ()
+    call evt%selector%generate (evt%rng, evt%selected_history)
+    probability = 1
+  end subroutine evt_resonance_generate_weighted
+
+@ %def evt_resonance_generate_weighted
+@ Here take the current particle set and insert resonance intermediate
+states if applicable.  The resonance history has already been chosen
+by the generator above.  If no resonance history applies, just retain
+the particle set.
+
+If a resonance history applies, we factorize the exclusive interaction
+of the selected (resonance-process) process instance.  With a
+temporary particle set [[prt_set]] as workspace, we the insert the
+resonances, reinstate parent-child relations and set colors and
+momenta for the resonances.  The temporary is then copied back.
+
+Taking the event data from the resonant subprocess instead of the
+master process, guarantees that all flavor, helicity, and color
+assignments are valid for the selected resonance history.  Note that
+the transform may thus choose a quantum-number combination that is
+different from the one chosen by the master process.
+
+However, if the selector chooses resonance history \#0, i.e., no
+resonance, we just copy the particle set from the previous (i.e.,
+trivial) event transform and ignore all subprocess data.
+<<Resonance insertion: evt resonance: TBP>>=
+  procedure :: make_particle_set => evt_resonance_make_particle_set
+<<Resonance insertion: procedures>>=
+  subroutine evt_resonance_make_particle_set &
+       (evt, factorization_mode, keep_correlations, r)
+    class(evt_resonance_t), intent(inout) :: evt
+    integer, intent(in) :: factorization_mode
+    logical, intent(in) :: keep_correlations
+    real(default), dimension(:), intent(in), optional :: r
+    type(particle_set_t), target :: prt_set
+    type(particle_t), dimension(:), allocatable :: prt
+    integer :: n_beam, n_in, n_vir, n_res, n_out, i, i_res, i_term
+    type(interaction_t), pointer :: int_matrix, int_flows
+    integer, dimension(:), allocatable :: map
+    type(resonance_tree_t) :: res_tree
+    if (associated (evt%previous)) then
+       if (evt%previous%particle_set_exists) then
+          if (evt%selected_history > 0) then
+             if (allocated (evt%instance)) then
+                associate (instance => evt%instance(evt%selected_history)%p)
+                  call instance%evaluate_event_data (weight = 1._default)
+                  i_term = evt%process_instance%select_i_term ()
+                  int_matrix => instance%get_matrix_int_ptr (i_term)
+                  int_flows  => instance%get_flows_int_ptr (i_term)
+                  call evt%factorize_interactions (int_matrix, int_flows, &
+                       factorization_mode, keep_correlations, r)
+                  call evt%tag_incoming ()
+                end associate
+             else  ! this branch only for unit test
+                evt%particle_set = evt%previous%particle_set
+             end if
+             call evt%res_history_set%get_tree (evt%selected_history, res_tree)
+             n_beam = evt%particle_set%get_n_beam ()
+             n_in = evt%particle_set%get_n_in ()
+             n_vir = evt%particle_set%get_n_vir ()
+             n_out = evt%particle_set%get_n_out ()
+             n_res = res_tree%get_n_resonances ()
+             allocate (map (n_beam + n_in + n_vir + n_out))
+             map(1:n_beam+n_in+n_vir) &
+                  = [(i, i = 1, n_beam+n_in+n_vir)]
+             map(n_beam+n_in+n_vir+1:n_beam+n_in+n_vir+n_out) &
+                  = [(i + n_res, &
+                  &   i = n_beam+n_in+n_vir+1, &
+                  &       n_beam+n_in+n_vir+n_out)]
+             call prt_set%transfer (evt%particle_set, n_res, map)
+             do i = 1, n_res
+                i_res = n_beam + n_in + n_vir + i
+                call prt_set%insert (i_res, &
+                     PRT_RESONANT, &
+                     res_tree%get_flv (i), &
+                     res_tree%get_children (i, &
+                     &   n_beam+n_in+n_vir, n_beam+n_in+n_vir+n_res))
+             end do
+             do i = n_res, 1, -1
+                i_res = n_beam + n_in + n_vir + i
+                call prt_set%recover_color (i_res)
+             end do
+             call prt_set%set_momentum &
+                  (map(:), evt%particle_set%get_momenta (), on_shell = .true.)
+             do i = n_res, 1, -1
+                i_res = n_beam + n_in + n_vir + i
+                call prt_set%recover_momentum (i_res)
+             end do
+             call evt%particle_set%final ()
+             evt%particle_set = prt_set
+             call prt_set%final ()
+             evt%particle_set_exists = .true.
+          else  ! retain particle set, as copied from previous evt
+             evt%particle_set_exists = .true.
+          end if
+       else
+          evt%particle_set_exists = .false.
+       end if
+    else
+       evt%particle_set_exists = .false.
+    end if
+  end subroutine evt_resonance_make_particle_set
+
+@ %def event_resonance_make_particle_set
+@
+\subsection{Unit tests}
+Test module, followed by the corresponding implementation module.
+<<[[resonance_insertion_ut.f90]]>>=
+<<File header>>
+
+module resonance_insertion_ut
+  use unit_tests
+  use resonance_insertion_uti
+
+<<Standard module head>>
+
+<<Resonance insertion: public test>>
+
+contains
+
+<<Resonance insertion: test driver>>
+
+end module resonance_insertion_ut
+@ %def resonance_insertion_ut
+@
+<<[[resonance_insertion_uti.f90]]>>=
+<<File header>>
+
+module resonance_insertion_uti
+
+<<Use kinds>>
+<<Use strings>>
+  use format_utils, only: write_separator
+  use os_interface
+  use lorentz
+  use rng_base, only: rng_t
+  use flavors, only: flavor_t
+  use colors, only: color_t
+  use models, only: syntax_model_file_init, syntax_model_file_final
+  use models, only: model_list_t, model_t
+  use particles, only: particle_t, particle_set_t
+
+  use resonances, only: resonance_info_t
+  use resonances, only: resonance_history_t
+  use resonances, only: resonance_history_set_t
+
+  use event_transforms
+  use resonance_insertion
+
+  use rng_base_ut, only: rng_test_t
+
+<<Standard module head>>
+
+<<Resonance insertion: test declarations>>
+
+contains
+
+<<Resonance insertion: tests>>
+
+end module resonance_insertion_uti
+
+@ %def resonance_insertion_uti
+@ API: driver for the unit tests below.
+<<Resonance insertion: public test>>=
+  public :: resonance_insertion_test
+<<Resonance insertion: test driver>>=
+  subroutine resonance_insertion_test (u, results)
+    integer, intent(in) :: u
+    type(test_results_t), intent(inout) :: results
+  <<Resonance insertion: execute tests>>
+  end subroutine resonance_insertion_test
+
+@ %def resonance_insertion_test
+@
+\subsubsection{Test resonance insertion as event transform}
+Insert a resonance (W boson) into an event with momentum assignment.
+<<Resonance insertion: execute tests>>=
+  call test (resonance_insertion_1, "resonance_insertion_1", &
+       "simple resonance insertion", &
+       u, results)
+<<Resonance insertion: test declarations>>=
+  public :: resonance_insertion_1
+<<Resonance insertion: tests>>=
+  subroutine resonance_insertion_1 (u)
+    integer, intent(in) :: u
+    type(os_data_t) :: os_data
+    type(particle_set_t) :: pset
+    type(model_list_t) :: model_list
+    type(model_t), pointer :: model
+    type(resonance_info_t) :: res_info
+    type(resonance_history_t) :: res_history
+    type(resonance_history_set_t) :: res_history_set
+    type(evt_trivial_t), target :: evt_trivial
+    type(evt_resonance_t), target :: evt_resonance
+    type(flavor_t) :: fw
+    type(color_t) :: col
+    real(default) :: mw, ew, pw
+    type(vector4_t), dimension(5) :: p
+    class(rng_t), allocatable :: rng
+    real(default) :: probability
+    integer, dimension(:), allocatable :: i_invalid
+    type(particle_t), dimension(:), allocatable :: prt_invalid
+    integer :: i
+
+    write (u, "(A)")  "* Test output: resonance_insertion_1"
+    write (u, "(A)")  "*   Purpose: apply simple resonance insertion"
+    write (u, "(A)")
+
+    write (u, "(A)")  "* Initialize environment"
+    write (u, "(A)")
+
+    call syntax_model_file_init ()
+    call os_data_init (os_data)
+    call model_list%read_model &
+         (var_str ("SM"), var_str ("SM.mdl"), &
+         os_data, model)
+    ! reset slightly in order to avoid a rounding ambiguity
+    call model%set_real (var_str ("mW"), 80.418_default)
+
+    write (u, "(A)")  "* Initialize particle set"
+    write (u, "(A)")
+    
+    call pset%init_direct (n_beam = 0, n_in = 2, n_vir = 0, n_out = 3, &
+         pdg = [1, -1, 1, -2, 24], model = model)
+
+    call fw%init (24, model)
+
+    mw = fw%get_mass ()
+    ew = 200._default
+    pw = sqrt (ew**2 - mw**2)
+
+    p(1) = vector4_moving (ew, ew, 3)
+    p(2) = vector4_moving (ew,-ew, 3)
+    p(3) = vector4_moving (ew/2, vector3_moving ([pw/2, mw/2, 0._default]))
+    p(4) = vector4_moving (ew/2, vector3_moving ([pw/2,-mw/2, 0._default]))
+    p(5) = vector4_moving (ew, vector3_moving ([-pw, 0._default, 0._default]))
+
+    call pset%set_momentum (p, on_shell = .true.)
+    
+    call col%init_col_acl (1,0)
+    call pset%set_color (1, col)
+    
+    call col%init_col_acl (0,1)
+    call pset%set_color (2, col)
+
+    call col%init_col_acl (2,0)
+    call pset%set_color (3, col)
+    
+    call col%init_col_acl (0,2)
+    call pset%set_color (4, col)
+
+    call col%init_col_acl (0,0)
+    call pset%set_color (5, col)
+
+    write (u, "(A)")  "* Fill trivial event transform"
+    write (u, "(A)")
+
+    call evt_trivial%reset ()
+    call evt_trivial%set_particle_set (pset, 1, 1)
+    call evt_trivial%write (u)
+    call write_separator (u, 2)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Prepare resonance history set"
+    write (u, "(A)")
+    
+    call res_history_set%init ()
+
+    call res_info%init (3, -24, model, 2)
+    call res_history%add_resonance (res_info)
+    call res_history_set%enter (res_history)
+    call res_history%clear ()
+
+    call res_history_set%freeze ()
+
+    write (u, "(A)")  "* Initialize resonance insertion transform"
+    write (u, "(A)")
+    
+    evt_trivial%next => evt_resonance
+    evt_resonance%previous => evt_trivial
+    
+    allocate (rng_test_t :: rng)
+    call evt_resonance%import_rng (rng)
+
+    call evt_resonance%set_resonance_data (res_history_set)
+    call evt_resonance%write (u)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Fill resonance insertion transform"
+    write (u, "(A)")
+    
+    call evt_resonance%prepare_new_event (1, 1)
+    call evt_resonance%init_selector ([1._default])
+    call evt_resonance%generate_weighted (probability)
+    call evt_resonance%make_particle_set (0, .false.)
+    
+    call evt_resonance%write (u)
+    
+    write (u, "(A)")
+    write (u, "(A,1x,F8.5)")  "Event probability =", probability
+
+    write (u, "(A)")
+    call evt_resonance%find_prt_invalid_color (i_invalid, prt_invalid)
+    write (u, "(A)")  "Particles with invalid color:"
+    select case (size (prt_invalid))
+    case (0)
+       write (u, "(2x,A)")  "[none]"
+    case default
+       do i = 1, size (prt_invalid)
+          write (u, "(1x,A,1x,I0)", advance="no")  "Particle", i_invalid(i)
+          call prt_invalid(i)%write (u)
+       end do
+    end select
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Cleanup"
+
+    call evt_resonance%final ()
+    call evt_trivial%final ()
+    call syntax_model_file_final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: resonance_insertion_1"
+
+  end subroutine resonance_insertion_1
+
+@ %def resonance_insertion_1
+@
+\subsubsection{Resonance insertion with color mismatch}
+Same as previous test (but no momenta); resonance insertion should fail
+because of color mismatch: W boson is color-neutral.
+<<Resonance insertion: execute tests>>=
+  call test (resonance_insertion_2, "resonance_insertion_2", &
+       "resonance color mismatch", &
+       u, results)
+<<Resonance insertion: test declarations>>=
+  public :: resonance_insertion_2
+<<Resonance insertion: tests>>=
+  subroutine resonance_insertion_2 (u)
+    integer, intent(in) :: u
+    type(os_data_t) :: os_data
+    type(particle_set_t) :: pset
+    type(model_list_t) :: model_list
+    type(model_t), pointer :: model
+    type(resonance_info_t) :: res_info
+    type(resonance_history_t) :: res_history
+    type(resonance_history_set_t) :: res_history_set
+    type(evt_trivial_t), target :: evt_trivial
+    type(evt_resonance_t), target :: evt_resonance
+    type(color_t) :: col
+    class(rng_t), allocatable :: rng
+    real(default) :: probability
+    type(particle_t), dimension(:), allocatable :: prt_invalid
+    integer, dimension(:), allocatable :: i_invalid
+    integer :: i
+
+    write (u, "(A)")  "* Test output: resonance_insertion_2"
+    write (u, "(A)")  "*   Purpose: resonance insertion with color mismatch"
+    write (u, "(A)")
+
+    write (u, "(A)")  "* Initialize environment"
+    write (u, "(A)")
+
+    call syntax_model_file_init ()
+    call os_data_init (os_data)
+    call model_list%read_model &
+         (var_str ("SM"), var_str ("SM.mdl"), &
+         os_data, model)
+
+    write (u, "(A)")  "* Initialize particle set"
+    write (u, "(A)")
+    
+    call pset%init_direct (n_beam = 0, n_in = 2, n_vir = 0, n_out = 3, &
+         pdg = [1, -1, 1, -2, 24], model = model)
+
+    call col%init_col_acl (1,0)
+    call pset%set_color (1, col)
+    
+    call col%init_col_acl (0,2)
+    call pset%set_color (2, col)
+
+    call col%init_col_acl (1,0)
+    call pset%set_color (3, col)
+    
+    call col%init_col_acl (0,2)
+    call pset%set_color (4, col)
+
+    call col%init_col_acl (0,0)
+    call pset%set_color (5, col)
+
+    write (u, "(A)")  "* Fill trivial event transform"
+    write (u, "(A)")
+
+    call evt_trivial%reset ()
+    call evt_trivial%set_particle_set (pset, 1, 1)
+    call evt_trivial%write (u)
+    call write_separator (u, 2)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Prepare resonance history set"
+    write (u, "(A)")
+    
+    call res_history_set%init ()
+
+    call res_info%init (3, -24, model, 2)
+    call res_history%add_resonance (res_info)
+    call res_history_set%enter (res_history)
+    call res_history%clear ()
+
+    call res_history_set%freeze ()
+
+    write (u, "(A)")  "* Initialize resonance insertion transform"
+    write (u, "(A)")
+    
+    evt_trivial%next => evt_resonance
+    evt_resonance%previous => evt_trivial
+    
+    allocate (rng_test_t :: rng)
+    call evt_resonance%import_rng (rng)
+
+    call evt_resonance%set_resonance_data (res_history_set)
+    call evt_resonance%write (u)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Fill resonance insertion transform"
+    write (u, "(A)")
+    
+    call evt_resonance%prepare_new_event (1, 1)
+    call evt_resonance%init_selector ([1._default])
+    call evt_resonance%generate_weighted (probability)
+    call evt_resonance%make_particle_set (0, .false.)
+    
+    call evt_resonance%write (u)
+    
+    write (u, "(A)")
+    write (u, "(A,1x,F8.5)")  "Event probability =", probability
+
+    write (u, "(A)")
+    call evt_resonance%find_prt_invalid_color (i_invalid, prt_invalid)
+    write (u, "(A)")  "Particles with invalid color:"
+    select case (size (prt_invalid))
+    case (0)
+       write (u, "(2x,A)")  "[none]"
+    case default
+       do i = 1, size (prt_invalid)
+          write (u, "(1x,A,1x,I0)", advance="no")  "Particle", i_invalid(i)
+          call prt_invalid(i)%write (u)
+       end do
+    end select
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Cleanup"
+
+    call evt_resonance%final ()
+    call evt_trivial%final ()
+    call syntax_model_file_final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: resonance_insertion_2"
+
+  end subroutine resonance_insertion_2
+
+@ %def resonance_insertion_2
+@
+\subsubsection{Complex resonance history}
+This is the resonance history $u\bar u \to (t\to W^+ b) + (\bar t\to
+(h \to b\bar b) + (\bar t^\ast \to W^-\bar b))$.
+<<Resonance insertion: execute tests>>=
+  call test (resonance_insertion_3, "resonance_insertion_3", &
+       "complex resonance history", &
+       u, results)
+<<Resonance insertion: test declarations>>=
+  public :: resonance_insertion_3
+<<Resonance insertion: tests>>=
+  subroutine resonance_insertion_3 (u)
+    integer, intent(in) :: u
+    type(os_data_t) :: os_data
+    type(particle_set_t) :: pset
+    type(model_list_t) :: model_list
+    type(model_t), pointer :: model
+    type(resonance_info_t) :: res_info
+    type(resonance_history_t) :: res_history
+    type(resonance_history_set_t) :: res_history_set
+    type(evt_trivial_t), target :: evt_trivial
+    type(evt_resonance_t), target :: evt_resonance
+    type(color_t) :: col
+    class(rng_t), allocatable :: rng
+    real(default) :: probability
+    type(particle_t), dimension(:), allocatable :: prt_invalid
+    integer, dimension(:), allocatable :: i_invalid
+    integer :: i
+
+    write (u, "(A)")  "* Test output: resonance_insertion_3"
+    write (u, "(A)")  "*   Purpose: resonance insertion with color mismatch"
+    write (u, "(A)")
+
+    write (u, "(A)")  "* Initialize environment"
+    write (u, "(A)")
+
+    call syntax_model_file_init ()
+    call os_data_init (os_data)
+    call model_list%read_model &
+         (var_str ("SM"), var_str ("SM.mdl"), &
+         os_data, model)
+
+    write (u, "(A)")  "* Initialize particle set"
+    write (u, "(A)")
+    
+    call pset%init_direct (n_beam = 0, n_in = 2, n_vir = 0, n_out = 6, &
+         pdg = [2, -2, 24, 5, 5, -5, -24, -5], model = model)
+
+    call col%init_col_acl (1,0)
+    call pset%set_color (1, col)
+    
+    call col%init_col_acl (0,2)
+    call pset%set_color (2, col)
+
+    call col%init_col_acl (0,0)
+    call pset%set_color (3, col)
+    
+    call col%init_col_acl (1,0)
+    call pset%set_color (4, col)
+
+    call col%init_col_acl (3,0)
+    call pset%set_color (5, col)
+
+    call col%init_col_acl (0,3)
+    call pset%set_color (6, col)
+
+    call col%init_col_acl (0,0)
+    call pset%set_color (7, col)
+
+    call col%init_col_acl (0,2)
+    call pset%set_color (8, col)
+
+    write (u, "(A)")  "* Fill trivial event transform"
+    write (u, "(A)")
+
+    call evt_trivial%reset ()
+    call evt_trivial%set_particle_set (pset, 1, 1)
+    call evt_trivial%write (u)
+    call write_separator (u, 2)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Prepare resonance history set"
+    write (u, "(A)")
+    
+    call res_history_set%init ()
+
+    call res_info%init (3, 6, model, 6)
+    call res_history%add_resonance (res_info)
+    call res_info%init (12, 25, model, 6)
+    call res_history%add_resonance (res_info)
+    call res_info%init (60, -6, model, 6)
+    call res_history%add_resonance (res_info)
+    call res_history_set%enter (res_history)
+    call res_history%clear ()
+
+    call res_history_set%freeze ()
+
+    write (u, "(A)")  "* Initialize resonance insertion transform"
+    write (u, "(A)")
+    
+    evt_trivial%next => evt_resonance
+    evt_resonance%previous => evt_trivial
+    
+    allocate (rng_test_t :: rng)
+    call evt_resonance%import_rng (rng)
+
+    call evt_resonance%set_resonance_data (res_history_set)
+    call evt_resonance%write (u)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Fill resonance insertion transform"
+    write (u, "(A)")
+    
+    call evt_resonance%prepare_new_event (1, 1)
+    call evt_resonance%init_selector ([1._default])
+    call evt_resonance%generate_weighted (probability)
+    call evt_resonance%make_particle_set (0, .false.)
+    
+    call evt_resonance%write (u)
+    
+    write (u, "(A)")
+    call evt_resonance%find_prt_invalid_color (i_invalid, prt_invalid)
+    write (u, "(A)")  "Particles with invalid color:"
+    select case (size (prt_invalid))
+    case (0)
+       write (u, "(2x,A)")  "[none]"
+    case default
+       do i = 1, size (prt_invalid)
+          write (u, "(1x,A,1x,I0)", advance="no")  "Particle", i_invalid(i)
+          call prt_invalid(i)%write (u)
+       end do
+    end select
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Cleanup"
+
+    call evt_resonance%final ()
+    call evt_trivial%final ()
+    call syntax_model_file_final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: resonance_insertion_3"
+
+  end subroutine resonance_insertion_3
+
+@ %def resonance_insertion_3
+@
+\subsubsection{Resonance history selection}
+Another test with zero momenta: select one of several resonant channels
+using the selector component.
+<<Resonance insertion: execute tests>>=
+  call test (resonance_insertion_4, "resonance_insertion_4", &
+       "resonance history selection", &
+       u, results)
+<<Resonance insertion: test declarations>>=
+  public :: resonance_insertion_4
+<<Resonance insertion: tests>>=
+  subroutine resonance_insertion_4 (u)
+    integer, intent(in) :: u
+    type(os_data_t) :: os_data
+    type(particle_set_t) :: pset
+    type(model_list_t) :: model_list
+    type(model_t), pointer :: model
+    type(resonance_info_t) :: res_info
+    type(resonance_history_t) :: res_history
+    type(resonance_history_set_t) :: res_history_set
+    type(evt_trivial_t), target :: evt_trivial
+    type(evt_resonance_t), target :: evt_resonance
+    type(color_t) :: col
+    class(rng_t), allocatable :: rng
+    real(default) :: probability
+    integer :: i
+
+    write (u, "(A)")  "* Test output: resonance_insertion_4"
+    write (u, "(A)")  "*   Purpose: resonance history selection"
+    write (u, "(A)")
+
+    write (u, "(A)")  "* Initialize environment"
+    write (u, "(A)")
+
+    call syntax_model_file_init ()
+    call os_data_init (os_data)
+    call model_list%read_model &
+         (var_str ("SM"), var_str ("SM.mdl"), &
+         os_data, model)
+
+    write (u, "(A)")  "* Initialize particle set"
+    write (u, "(A)")
+    
+    call pset%init_direct (n_beam = 0, n_in = 2, n_vir = 0, n_out = 4, &
+         pdg = [1, -1, 1, -2, -3, 4], model = model)
+
+    write (u, "(A)")  "* Fill trivial event transform"
+    write (u, "(A)")
+
+    call evt_trivial%reset ()
+    call evt_trivial%set_particle_set (pset, 1, 1)
+    call evt_trivial%write (u)
+    call write_separator (u, 2)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Prepare resonance history set"
+    write (u, "(A)")
+    
+    call res_history_set%init ()
+
+    call res_info%init (3, -24, model, 4)
+    call res_history%add_resonance (res_info)
+    call res_history_set%enter (res_history)
+    call res_history%clear ()
+
+    call res_info%init (12, 24, model, 4)
+    call res_history%add_resonance (res_info)
+    call res_history_set%enter (res_history)
+    call res_history%clear ()
+
+    call res_info%init (12, 24, model, 4)
+    call res_history%add_resonance (res_info)
+    call res_info%init (15, 25, model, 4)
+    call res_history%add_resonance (res_info)
+    call res_history_set%enter (res_history)
+    call res_history%clear ()
+
+    call res_history_set%freeze ()
+
+    write (u, "(A)")  "* Initialize resonance insertion transform"
+    write (u, "(A)")
+    
+    evt_trivial%next => evt_resonance
+    evt_resonance%previous => evt_trivial
+    
+    allocate (rng_test_t :: rng)
+    call evt_resonance%import_rng (rng)
+
+    call evt_resonance%set_resonance_data (res_history_set)
+    call evt_resonance%write (u)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Fill resonance insertion transform"
+    write (u, "(A)")
+    
+    do i = 1, 6
+       write (u, "(A,1x,I0)")  "* Event #", i
+       write (u, "(A)")
+    
+       call evt_resonance%prepare_new_event (1, 1)
+       call evt_resonance%init_selector ([1._default, 2._default, 1._default])
+       call evt_resonance%generate_weighted (probability)
+       call evt_resonance%make_particle_set (0, .false.)
+    
+       call evt_resonance%write (u)
+       write (u, "(A)")
+    end do
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Cleanup"
+
+    call evt_resonance%final ()
+    call evt_trivial%final ()
+    call syntax_model_file_final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: resonance_insertion_4"
+
+  end subroutine resonance_insertion_4
+
+@ %def resonance_insertion_4
+@
+\subsubsection{Resonance history selection}
+Another test with zero momenta: select either a resonant channel or no
+resonance.
+<<Resonance insertion: execute tests>>=
+  call test (resonance_insertion_5, "resonance_insertion_5", &
+       "resonance history on/off", &
+       u, results)
+<<Resonance insertion: test declarations>>=
+  public :: resonance_insertion_5
+<<Resonance insertion: tests>>=
+  subroutine resonance_insertion_5 (u)
+    integer, intent(in) :: u
+    type(os_data_t) :: os_data
+    type(particle_set_t) :: pset
+    type(model_list_t) :: model_list
+    type(model_t), pointer :: model
+    type(resonance_info_t) :: res_info
+    type(resonance_history_t) :: res_history
+    type(resonance_history_set_t) :: res_history_set
+    type(evt_trivial_t), target :: evt_trivial
+    type(evt_resonance_t), target :: evt_resonance
+    type(color_t) :: col
+    class(rng_t), allocatable :: rng
+    real(default) :: probability
+    integer :: i
+
+    write (u, "(A)")  "* Test output: resonance_insertion_5"
+    write (u, "(A)")  "*   Purpose: resonance history selection including no resonance"
+    write (u, "(A)")
+
+    write (u, "(A)")  "* Initialize environment"
+    write (u, "(A)")
+
+    call syntax_model_file_init ()
+    call os_data_init (os_data)
+    call model_list%read_model &
+         (var_str ("SM"), var_str ("SM.mdl"), &
+         os_data, model)
+
+    write (u, "(A)")  "* Initialize particle set"
+    write (u, "(A)")
+    
+    call pset%init_direct (n_beam = 0, n_in = 2, n_vir = 0, n_out = 4, &
+         pdg = [1, -1, 1, -2, -3, 4], model = model)
+
+    write (u, "(A)")  "* Fill trivial event transform"
+    write (u, "(A)")
+
+    call evt_trivial%reset ()
+    call evt_trivial%set_particle_set (pset, 1, 1)
+
+    write (u, "(A)")  "* Prepare resonance history set"
+    write (u, "(A)")
+    
+    call res_history_set%init ()
+
+    call res_info%init (3, -24, model, 4)
+    call res_history%add_resonance (res_info)
+    call res_history_set%enter (res_history)
+    call res_history%clear ()
+
+    call res_history_set%freeze ()
+
+    write (u, "(A)")  "* Initialize resonance insertion transform"
+    write (u, "(A)")
+    
+    evt_trivial%next => evt_resonance
+    evt_resonance%previous => evt_trivial
+    
+    allocate (rng_test_t :: rng)
+    call evt_resonance%import_rng (rng)
+
+    call evt_resonance%set_resonance_data (res_history_set)
+    
+    write (u, "(A)")  "* Fill resonance insertion transform"
+    write (u, "(A)")
+    
+    do i = 1, 2
+       write (u, "(A,1x,I0)")  "* Event #", i
+       write (u, "(A)")
+    
+       call evt_resonance%prepare_new_event (1, 1)
+       call evt_resonance%init_selector ([1._default, 3._default], offset = -1)
+       call evt_resonance%generate_weighted (probability)
+       call evt_resonance%make_particle_set (0, .false.)
+    
+       call evt_resonance%write (u)
+       write (u, "(A)")
+    end do
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Cleanup"
+
+    call evt_resonance%final ()
+    call evt_trivial%final ()
+    call syntax_model_file_final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: resonance_insertion_5"
+
+  end subroutine resonance_insertion_5
+
+@ %def resonance_insertion_5
+@
+\subsubsection{Resonance insertion with structured beams}
+Insert a resonance (W boson) into an event with beam and virtual
+particles.
+<<Resonance insertion: execute tests>>=
+  call test (resonance_insertion_6, "resonance_insertion_6", &
+       "resonance insertion with beam structure", &
+       u, results)
+<<Resonance insertion: test declarations>>=
+  public :: resonance_insertion_6
+<<Resonance insertion: tests>>=
+  subroutine resonance_insertion_6 (u)
+    integer, intent(in) :: u
+    type(os_data_t) :: os_data
+    type(model_list_t) :: model_list
+    type(particle_set_t) :: pset
+    type(model_t), pointer :: model
+    type(resonance_info_t) :: res_info
+    type(resonance_history_t) :: res_history
+    type(resonance_history_set_t) :: res_history_set
+    type(evt_trivial_t), target :: evt_trivial
+    type(evt_resonance_t), target :: evt_resonance
+!!!    type(flavor_t) :: fw
+!!!    type(color_t) :: col
+!!!    real(default) :: mw, ew, pw
+!!!    type(vector4_t), dimension(5) :: p
+    class(rng_t), allocatable :: rng
+    real(default) :: probability
+!!!    integer, dimension(:), allocatable :: i_invalid
+!!!    type(particle_t), dimension(:), allocatable :: prt_invalid
+!!!    integer :: i
+
+    write (u, "(A)")  "* Test output: resonance_insertion_6"
+    write (u, "(A)")  "*   Purpose: resonance insertion with structured beams"
+    write (u, "(A)")
+
+    write (u, "(A)")  "* Initialize environment"
+    write (u, "(A)")
+
+    call syntax_model_file_init ()
+    call os_data_init (os_data)
+    call model_list%read_model &
+         (var_str ("SM"), var_str ("SM.mdl"), &
+         os_data, model)
+
+    write (u, "(A)")  "* Initialize particle set"
+    write (u, "(A)")
+    
+    call pset%init_direct (n_beam = 2, n_in = 2, n_vir = 2, n_out = 2, &
+         pdg = [11, -11, 11, -11, 22, 22, 13, -13], model = model)
+
+!!!    call fw%init (24, model)
+!!!
+!!!    mw = fw%get_mass ()
+!!!    ew = 200._default
+!!!    pw = sqrt (ew**2 - mw**2)
+!!!
+!!!    p(1) = vector4_moving (ew, ew, 3)
+!!!    p(2) = vector4_moving (ew,-ew, 3)
+!!!    p(3) = vector4_moving (ew/2, vector3_moving ([pw/2, mw/2, 0._default]))
+!!!    p(4) = vector4_moving (ew/2, vector3_moving ([pw/2,-mw/2, 0._default]))
+!!!    p(5) = vector4_moving (ew, vector3_moving ([-pw, 0._default, 0._default]))
+!!!
+!!!    call pset%set_momentum (p, on_shell = .true.)
+!!!    
+!!!    call col%init_col_acl (1,0)
+!!!    call pset%set_color (1, col)
+!!!    
+!!!    call col%init_col_acl (0,1)
+!!!    call pset%set_color (2, col)
+!!!
+!!!    call col%init_col_acl (2,0)
+!!!    call pset%set_color (3, col)
+!!!    
+!!!    call col%init_col_acl (0,2)
+!!!    call pset%set_color (4, col)
+!!!
+!!!    call col%init_col_acl (0,0)
+!!!    call pset%set_color (5, col)
+!!!
+    write (u, "(A)")  "* Fill trivial event transform"
+    write (u, "(A)")
+
+    call evt_trivial%reset ()
+    call evt_trivial%set_particle_set (pset, 1, 1)
+    call evt_trivial%write (u)
+    call write_separator (u, 2)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Prepare resonance history set"
+    write (u, "(A)")
+    
+    call res_history_set%init ()
+
+    call res_info%init (3, 23, model, 2)
+    call res_history%add_resonance (res_info)
+    call res_history_set%enter (res_history)
+    call res_history%clear ()
+
+    call res_history_set%freeze ()
+
+    write (u, "(A)")  "* Initialize resonance insertion transform"
+    write (u, "(A)")
+    
+    evt_trivial%next => evt_resonance
+    evt_resonance%previous => evt_trivial
+    
+    allocate (rng_test_t :: rng)
+    call evt_resonance%import_rng (rng)
+
+    call evt_resonance%set_resonance_data (res_history_set)
+    call evt_resonance%write (u)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Fill resonance insertion transform"
+    write (u, "(A)")
+    
+    call evt_resonance%prepare_new_event (1, 1)
+    call evt_resonance%init_selector ([1._default])
+    call evt_resonance%generate_weighted (probability)
+    call evt_resonance%make_particle_set (0, .false.)
+    
+    call evt_resonance%write (u)
+    
+    write (u, "(A)")
+    write (u, "(A,1x,F8.5)")  "Event probability =", probability
+!!!
+!!!    write (u, "(A)")
+!!!    call evt_resonance%find_prt_invalid_color (i_invalid, prt_invalid)
+!!!    write (u, "(A)")  "Particles with invalid color:"
+!!!    select case (size (prt_invalid))
+!!!    case (0)
+!!!       write (u, "(2x,A)")  "[none]"
+!!!    case default
+!!!       do i = 1, size (prt_invalid)
+!!!          write (u, "(1x,A,1x,I0)", advance="no")  "Particle", i_invalid(i)
+!!!          call prt_invalid(i)%write (u)
+!!!       end do
+!!!    end select
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Cleanup"
+
+    call evt_resonance%final ()
+    call evt_trivial%final ()
+    call syntax_model_file_final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: resonance_insertion_6"
+
+  end subroutine resonance_insertion_6
+
+@ %def resonance_insertion_6
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Tau decays}
 <<[[tau_decays.f90]]>>=
 <<File header>>
@@ -1529,6 +2965,131 @@ product of branching ratios of the corresponding tau decays?
   end subroutine evt_tau_decays_prepare_new_event
 
 @ %def evt_tau_decays_prepare_new_event
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Transverse momentum for ISR photons}
+<<[[isr_qed_transverse.f90]]>>=
+<<File header>>
+
+module isr_qed_transverse
+
+<<Use kinds>>
+  use io_units
+  use format_utils, only: write_separator
+  use sm_qcd
+  use model_data
+  use models
+  use event_transforms
+
+<<Standard module head>>
+
+<<ISR QED transverse: public>>
+
+<<ISR QED transverse: types>>
+
+contains
+
+<<ISR QED transverse: procedures>>
+
+end module isr_qed_transverse
+@ %def isr_qed_transverse
+\subsection{ISR QED Transverse Momentum Event Transform}
+This is the type for the event transform generating transverse
+momentum for the QED ISR photons.
+<<ISR QED transverse: public>>=
+  public :: evt_isr_qed_transverse_t
+<<ISR QED transverse: types>>=
+  type, extends (evt_t) :: evt_isr_qed_transverse_t
+     type(model_t), pointer :: model_hadrons => null()
+     type(qcd_t), pointer :: qcd_t => null()
+   contains
+   <<ISR QED transverse: evt isr qed transverse: TBP>>
+  end type evt_isr_qed_transverse_t
+
+@ %def evt_isr_qed_transverse_t
+<<ISR QED transverse: evt isr qed transverse: TBP>>=
+  procedure :: write_name => evt_isr_qed_transverse_write_name
+<<ISR QED transverse: procedures>>=
+  subroutine evt_isr_qed_transverse_write_name (evt, unit)
+    class(evt_isr_qed_transverse_t), intent(in) :: evt
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = given_output_unit (unit)
+    write (u, "(1x,A)")  "Event transform: ISR QED transverse"
+  end subroutine evt_isr_qed_transverse_write_name
+
+@ %def evt_isr_qed_transverse_write_name
+@ Output.
+<<ISR QED transverse: evt isr qed transverse: TBP>>=
+  procedure :: write => evt_isr_qed_transverse_write
+<<ISR QED transverse: procedures>>=
+  subroutine evt_isr_qed_transverse_write &
+       (evt, unit, verbose, more_verbose, testflag)
+    class(evt_isr_qed_transverse_t), intent(in) :: evt
+    integer, intent(in), optional :: unit
+    logical, intent(in), optional :: verbose, more_verbose, testflag
+    integer :: u
+    u = given_output_unit (unit)
+    call write_separator (u, 2)
+    call evt%write_name (u)
+    call write_separator (u)
+    call evt%base_write (u, testflag = testflag, show_set = .false.)
+    if (evt%particle_set_exists)  &
+         call evt%particle_set%write &
+         (u, summary = .true., compressed = .true., testflag = testflag)
+    call write_separator (u)
+  end subroutine evt_isr_qed_transverse_write
+
+@ %def evt_isr_qed_transverse_write
+@ Here we take the particle set from the previous event transform and
+generate the transverse momentum for the photons. With that a boost to 
+the rest of the event has to be applied.
+<<ISR QED transverse: evt isr qed transverse: TBP>>=
+  procedure :: generate_weighted => &
+       evt_isr_qed_transverse_generate_weighted
+<<ISR QED transverse: procedures>>=
+  subroutine evt_isr_qed_transverse_generate_weighted (evt, probability)
+    class(evt_isr_qed_transverse_t), intent(inout) :: evt
+    real(default), intent(inout) :: probability
+    logical :: valid
+    evt%particle_set = evt%previous%particle_set
+    !!! To be checked or expanded
+    probability = 1
+    valid = .true.
+    evt%particle_set_exists = valid
+  end subroutine evt_isr_qed_transverse_generate_weighted
+
+@ %def evt_isr_qed_transverse_generate_weighted
+@ The factorization parameters are irrelevant.
+<<ISR QED transverse: evt isr qed transverse: TBP>>=
+  procedure :: make_particle_set => &
+       evt_isr_qed_transverse_make_particle_set
+<<ISR QED transverse: procedures>>=
+  subroutine evt_isr_qed_transverse_make_particle_set &
+       (evt, factorization_mode, keep_correlations, r)
+    class(evt_isr_qed_transverse_t), intent(inout) :: evt
+    integer, intent(in) :: factorization_mode
+    logical, intent(in) :: keep_correlations
+    real(default), dimension(:), intent(in), optional :: r
+    logical :: valid
+    !!! to be checked and expanded
+    valid = .true.
+    evt%particle_set_exists = evt%particle_set_exists .and. valid
+  end subroutine evt_isr_qed_transverse_make_particle_set
+
+@ %def event_isr_qed_transverse_make_particle_set
+@
+<<ISR QED transverse: evt isr qed transverse: TBP>>=
+  procedure :: prepare_new_event => &
+       evt_isr_qed_transverse_prepare_new_event
+<<ISR QED transverse: procedures>>=
+  subroutine evt_isr_qed_transverse_prepare_new_event (evt, i_mci, i_term)
+    class(evt_isr_qed_transverse_t), intent(inout) :: evt
+    integer, intent(in) :: i_mci, i_term
+    call evt%reset ()
+  end subroutine evt_isr_qed_transverse_prepare_new_event
+
+@ %def evt_isr_qed_transverse_prepare_new_event
 @
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Decays}
@@ -2125,8 +3686,7 @@ versions are available for comparison.
     type(flavor_t), dimension(:,:), allocatable :: flv
     logical, dimension(:), allocatable :: stable
     real(default), dimension(:), allocatable :: m_prod, m_dec
-    !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
-    integer :: i, j
+    integer :: i
     call decay%init (model, process%get_id (), process%get_n_terms ())
     do i = 1, size (decay%term_config)
        if (present (process_instance)) then
@@ -2137,24 +3697,12 @@ versions are available for comparison.
           call process%get_term_flv_out (i, flv)
        end if
        allocate (m_prod (size (flv(:,1)%get_mass ())))
-       !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
-       do j = 1, size (flv(:,1)%get_mass ())
-          m_prod(j) = flv(j,1)%get_mass ()
-       end do
-       !!! m_prod = flv(:,1)%get_mass ()
+       m_prod = flv(:,1)%get_mass ()
        call flv%set_model (model)
        allocate (m_dec (size (flv(:,1)%get_mass ())))
-       !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
-       do j = 1, size (flv(:,1)%get_mass ())
-          m_dec(j) = flv(j,1)%get_mass ()
-       end do
-       !!! m_dec = flv(:,1)%get_mass ()
+       m_dec = flv(:,1)%get_mass ()
        allocate (stable (size (flv, 1)))
-       !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
-       do j = 1, size (flv, 1)
-          stable(j) = flv(j,1)%is_stable ()
-       end do
-       !!! stable = flv(:,1)%is_stable ()
+       stable = flv(:,1)%is_stable ()
        call check_masses ()
        call decay%init_term (i, flv, stable, model, process_stack)
        deallocate (flv, stable, m_prod, m_dec)
@@ -4604,9 +6152,7 @@ we mark the particle set as invalid. This procedure directly takes the
     evt%particle_set = evt%previous%particle_set
     valid = .true.;  vetoed = .false.
     fac_scale = evt%process_instance%get_fac_scale (i_term)
-    if (evt%is_first_event) then
-       call evt%first_event ()
-    end if
+    if (evt%is_first_event)  call evt%first_event ()
     call evt%shower%import_particle_set &
          (evt%particle_set, evt%os_data, fac_scale)
     if (allocated (evt%matching)) then
@@ -5275,15 +6821,15 @@ object in the [[pcm_instance]].
        select type (config => pcm%config)
        type is (pcm_nlo_t)
           call config%setup_phs_generator (pcm, evt%phs_fks_generator, &
-             process_instance%get_sqrts ())
+               process_instance%get_sqrts ())
           call evt%set_i_evaluation_mappings (config%region_data, &
-             pcm%real_kinematics%alr_to_i_phs)
+               pcm%real_kinematics%alr_to_i_phs)
        end select
     end select
     call evt%set_mode (process_instance)
     call evt%setup_general_event_kinematics (process_instance)
     if (evt%mode > EVT_NLO_SEPARATE_BORNLIKE) &
-       call evt%setup_real_event_kinematics (process_instance)
+         call evt%setup_real_event_kinematics (process_instance)
     call msg_debug2 (D_TRANSFORMS, "evt_nlo_connect: success")
   end subroutine evt_nlo_connect
 
@@ -5595,7 +7141,7 @@ is distributed over the real and Born subevents.
                         event_deps%p_born_cms%phs_point(1)%p, event_deps%phs_identifiers)
                    call generator%generate_isr (i_phs, &
                         event_deps%p_born_lab%phs_point(1)%p, &
-                        event_deps%p_real_lab%phs_point(i_phs))
+                        event_deps%p_real_lab%phs_point(i_phs)%p)
                    event_deps%p_real_cms%phs_point(i_phs) &
                         = evt%boost_to_cms (event_deps%p_real_lab%phs_point(i_phs))
                 else
@@ -5606,13 +7152,13 @@ is distributed over the real and Born subevents.
                            event_deps%phs_identifiers, event_deps%contributors, i_con)
                       call generator%generate_fsr (emitter, i_phs, i_con, &
                            event_deps%p_born_cms%phs_point(1)%p, &
-                           event_deps%p_real_cms%phs_point(i_phs))
+                           event_deps%p_real_cms%phs_point(i_phs)%p)
                    else
                       call generator%prepare_generation (x_rad, i_phs, emitter, &
                            event_deps%p_born_cms%phs_point(1)%p, event_deps%phs_identifiers)
                       call generator%generate_fsr (emitter, i_phs, &
                            event_deps%p_born_cms%phs_point(1)%p, &
-                           event_deps%p_real_cms%phs_point(i_phs))
+                           event_deps%p_real_cms%phs_point(i_phs)%p)
                    end if
                    event_deps%p_real_lab%phs_point(i_phs) &
                         = evt%boost_to_lab (event_deps%p_real_cms%phs_point(i_phs))
@@ -5754,11 +7300,9 @@ emission matrix elements.
        class is (pcm_instance_nlo_t)
           n_real = pcm%get_n_real ()
        end select
-       i_real = process_instance%get_associated_real ()
+       i_real = evt%process%get_first_real_term ()
        select type (phs => process_instance%term(i_real)%k_term%phs)
        type is (phs_fks_t)
-          !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
-          allocate (event_deps%phs_identifiers (size (phs%phs_identifiers)))
           event_deps%phs_identifiers = phs%phs_identifiers
        end select
        n_phs = size (event_deps%phs_identifiers)
@@ -5798,8 +7342,8 @@ emission matrix elements.
           if (config%settings%combined_integration) then
              evt%mode = EVT_NLO_COMBINED
           else
-             i_real = evt%process_instance%get_associated_real ()
-             if (i_real == evt%process%extract_fixed_mci ()) then
+             i_real = evt%process%get_first_real_component ()
+             if (i_real == evt%process%extract_active_component_mci ()) then
                 evt%mode = EVT_NLO_SEPARATE_REAL
              else
                 evt%mode = EVT_NLO_SEPARATE_BORNLIKE
@@ -6943,17 +8487,23 @@ computed [[sqme]] by this factor.  Otherwise, we make use of the MCI setup
 normalize the result just as when generating events.
 
 Evaluating event expressions must also be done separately.
+
+If [[recover_phs]] is set (and false), do not attempt any phase-space
+calculation, including MCI evaluation.  Useful if we need only matrix elements.
 <<Events: event: TBP>>=
   procedure :: recalculate => event_recalculate
 <<Events: procedures>>=
   subroutine event_recalculate &
-       (event, update_sqme, weight_factor, recover_beams)
+       (event, update_sqme, weight_factor, recover_beams, recover_phs)
     class(event_t), intent(inout) :: event
     logical, intent(in) :: update_sqme
     real(default), intent(in), optional :: weight_factor
     logical, intent(in), optional :: recover_beams
+    logical, intent(in), optional :: recover_phs
     type(particle_set_t), pointer :: particle_set
     integer :: i_mci, i_term, channel
+    logical :: rec_phs_mci
+    rec_phs_mci = .true.;  if (present (recover_phs))  rec_phs_mci = recover_phs
     if (event%has_valid_particle_set ()) then
        particle_set => event%get_particle_set_ptr ()
        i_mci = event%selected_i_mci
@@ -6968,8 +8518,8 @@ Evaluating event expressions must also be done separately.
           call event%instance%set_alpha_qcd_forced &
                (i_term, event%alpha_qcd_forced)
        end if
-       call event%instance%recover (channel, i_term, update_sqme, &
-            event%scale_forced)
+       call event%instance%recover (channel, i_term, &
+            update_sqme, rec_phs_mci, event%scale_forced)
        if (signal_is_pending ())  return
        if (update_sqme .and. present (weight_factor)) then
           call event%instance%evaluate_event_data &
@@ -6977,7 +8527,7 @@ Evaluating event expressions must also be done separately.
        else if (event%weight_ref_is_known ()) then
           call event%instance%evaluate_event_data &
                (weight = event%get_weight_ref ())
-       else
+       else if (rec_phs_mci) then
           call event%instance%recover_event ()
           if (signal_is_pending ())  return
           call event%instance%evaluate_event_data ()
@@ -8629,6 +10179,8 @@ module dispatch_transforms
   use models
   use os_interface
   use beam_structures
+  use resonances, only: resonance_history_set_t
+  use instances, only: process_instance_t, process_instance_hook_t
 
   use event_base, only: event_callback_t, event_callback_nop_t
   use eio_base
@@ -8644,6 +10196,7 @@ module dispatch_transforms
   use eio_dump
 
   use event_transforms
+  use resonance_insertion
   use decays
   use shower_base
   use shower_core
@@ -8684,6 +10237,31 @@ end module dispatch_transforms
   end subroutine dispatch_evt_nlo
 
 @ %def dispatch_evt_nlo
+@
+<<Dispatch transforms: public>>=
+  public :: dispatch_evt_resonance
+<<Dispatch transforms: procedures>>=
+  subroutine dispatch_evt_resonance (evt, var_list, res_history_set, libname)
+    class(evt_t), intent(out), pointer :: evt
+    type(var_list_t), intent(in) :: var_list
+    type(resonance_history_set_t), intent(in) :: res_history_set
+    type(string_t), intent(in) :: libname
+    logical :: resonance_history
+    resonance_history = var_list%get_lval (var_str ("?resonance_history"))
+    if (resonance_history) then
+       allocate (evt_resonance_t :: evt)
+       call msg_message ("Simulate: activating resonance insertion")
+       select type (evt)
+       type is (evt_resonance_t)
+          call evt%set_resonance_data (res_history_set)
+          call evt%set_library (libname)
+       end select
+    else
+       evt => null ()
+    end if
+  end subroutine dispatch_evt_resonance
+
+@ %def dispatch_evt_decay
 @
 <<Dispatch transforms: public>>=
   public :: dispatch_evt_decay
@@ -8762,6 +10340,24 @@ end module dispatch_transforms
   end subroutine dispatch_evt_shower
 
 @ %def dispatch_evt_shower
+@
+<<Dispatch transforms: public>>=
+  public :: dispatch_evt_shower_hook
+<<Dispatch transforms: procedures>>=
+  subroutine dispatch_evt_shower_hook (hook, var_list, process_instance)
+    class(process_instance_hook_t), pointer, intent(out) :: hook
+    type(var_list_t), intent(in) :: var_list
+    class(process_instance_t), intent(in), target :: process_instance
+    if (var_list%get_lval (var_str ('?powheg_matching'))) then
+       call msg_message ("Integration hook: add POWHEG hook")
+       allocate (powheg_matching_hook_t :: hook)
+       call hook%init (var_list, process_instance)
+    else
+       hook => null ()
+    end if
+  end subroutine dispatch_evt_shower_hook
+
+@ %def dispatch_evt_shower_hook
 @
 <<Dispatch transforms: public>>=
   public :: dispatch_matching
@@ -8845,7 +10441,7 @@ which is defined here.
     !!! !!! !!! Workaround for ifort v18(beta) bug
     type(event_callback_nop_t) :: event_callback_tmp
     logical :: check, keep_beams, keep_remnants, recover_beams
-    logical :: use_alpha_s_from_file, use_scale_from_file
+    logical :: use_alphas_from_file, use_scale_from_file
     logical :: write_sqme_prc, write_sqme_ref, write_sqme_alt
     logical :: output_cross_section, ensure_order
     type(string_t) :: lhef_version, lhef_extension, raw_version
@@ -8867,8 +10463,8 @@ which is defined here.
          var_list%get_lval (var_str ("?hepevt_ensure_order"))
     recover_beams = &
          var_list%get_lval (var_str ("?recover_beams"))
-    use_alpha_s_from_file = &
-         var_list%get_lval (var_str ("?use_alpha_s_from_file"))
+    use_alphas_from_file = &
+         var_list%get_lval (var_str ("?use_alphas_from_file"))
     use_scale_from_file = &
          var_list%get_lval (var_str ("?use_scale_from_file"))
     select case (char (method))
@@ -8924,7 +10520,7 @@ which is defined here.
                var_list%get_lval (var_str ("?lhef_write_sqme_alt"))
           call eio%set_parameters ( &
                keep_beams, keep_remnants, recover_beams, &
-               use_alpha_s_from_file, use_scale_from_file, &
+               use_alphas_from_file, use_scale_from_file, &
                char (lhef_version), lhef_extension, &
                write_sqme_ref, write_sqme_prc, write_sqme_alt)
        end select
@@ -8937,7 +10533,7 @@ which is defined here.
           extension_hepmc = &
                var_list%get_sval (var_str ("$extension_hepmc"))
           call eio%set_parameters (recover_beams, &
-               use_alpha_s_from_file, use_scale_from_file, &
+               use_alphas_from_file, use_scale_from_file, &
                extension_hepmc, output_cross_section)
        end select
     case ("lcio")
@@ -8947,7 +10543,7 @@ which is defined here.
           extension_lcio = &
                var_list%get_sval (var_str ("$extension_lcio"))
           call eio%set_parameters (recover_beams, &
-               use_alpha_s_from_file, use_scale_from_file, &
+               use_alphas_from_file, use_scale_from_file, &
                extension_lcio)
        end select
     case ("stdhep")
@@ -8958,7 +10554,7 @@ which is defined here.
                var_list%get_sval (var_str ("$extension_stdhep"))
           call eio%set_parameters &
                (keep_beams, keep_remnants, ensure_order, recover_beams, &
-                use_alpha_s_from_file, use_scale_from_file, extension_stdhep)
+                use_alphas_from_file, use_scale_from_file, extension_stdhep)
        end select
     case ("stdhep_up")
        allocate (eio_stdhep_hepeup_t :: eio)
@@ -8967,7 +10563,7 @@ which is defined here.
           extension_stdhep_up = &
                var_list%get_sval (var_str ("$extension_stdhep_up"))
           call eio%set_parameters (keep_beams, keep_remnants, ensure_order, &
-               recover_beams, use_alpha_s_from_file, &
+               recover_beams, use_alphas_from_file, &
                use_scale_from_file, extension_stdhep_up)
        end select
     case ("stdhep_ev4")
@@ -8978,7 +10574,7 @@ which is defined here.
                var_list%get_sval (var_str ("$extension_stdhep_ev4"))
           call eio%set_parameters &
                (keep_beams, keep_remnants, ensure_order, recover_beams, &
-                use_alpha_s_from_file, use_scale_from_file, extension_stdhep_ev4)
+                use_alphas_from_file, use_scale_from_file, extension_stdhep_ev4)
        end select
     case ("ascii")
        allocate (eio_ascii_ascii_t :: eio)
@@ -9155,6 +10751,7 @@ module dispatch_transforms_uti
   use event_base, only: event_callback_t
   use models, only: model_t, model_list_t
   use models, only: syntax_model_file_init, syntax_model_file_final
+  use resonances, only: resonance_history_set_t
   use beam_structures, only: beam_structure_t
   use eio_base, only: eio_t
   use os_interface, only: os_data_t, os_data_init
@@ -9297,8 +10894,7 @@ end module dispatch_transforms_uti
 @ %def dispatch_transforms_1
 @
 \subsubsection{Event transforms}
-This test dispatches an [[evt]] (event transform) object.  Currently,
-the only nontrivial transform is the partonic decay chain..
+This test dispatches [[evt]] (event transform) objects.
 <<Dispatch transforms: execute tests>>=
   call test (dispatch_transforms_2, "dispatch_transforms_2", &
        "event transforms", &
@@ -9312,6 +10908,7 @@ the only nontrivial transform is the partonic decay chain..
     type(model_list_t) :: model_list
     type(model_t), pointer :: model
     type(os_data_t) :: os_data
+    type(resonance_history_set_t) :: res_history_set
     type(beam_structure_t) :: beam_structure
     class(evt_t), pointer :: evt
 
@@ -9325,6 +10922,20 @@ the only nontrivial transform is the partonic decay chain..
     call model_list%read_model (var_str ("SM_hadrons"), &
          var_str ("SM_hadrons.mdl"), os_data, model)
 
+    write (u, "(A)")  "* Resonance insertion"
+    write (u, "(A)")
+
+    call var_list%set_log (var_str ("?resonance_history"), .true., &
+         is_known = .true.)
+    call dispatch_evt_resonance (evt, var_list, &
+         res_history_set, &
+         var_str ("foo_R"))
+    call evt%write (u, verbose = .true., more_verbose = .true.)
+
+    call evt%final ()
+    deallocate (evt)
+
+    write (u, "(A)")
     write (u, "(A)")  "* Partonic decays"
     write (u, "(A)")
 

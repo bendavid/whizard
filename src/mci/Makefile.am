@@ -7,7 +7,7 @@
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
 #     with contributions from
-#     Christian Speckner <cnspeckn@googlemail.com>
+#     cf. main AUTHORS file
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by
@@ -36,6 +36,7 @@ libmci_la_SOURCES = \
   mci_base.f90 \
   iterations.f90 \
   integration_results.f90 \
+  mci_none.f90 \
   mci_midpoint.f90 \
   mci_vamp.f90 \
   mci_vamp2.f90 \
@@ -44,6 +45,8 @@ libmci_la_SOURCES = \
 libmci_ut_la_SOURCES = \
   mci_base_uti.f90 mci_base_ut.f90 \
   iterations_uti.f90 iterations_ut.f90 \
+  mci_none_uti.f90 mci_none_ut.f90 \
+  integration_results_uti.f90 integration_results_ut.f90 \
   mci_midpoint_uti.f90 mci_midpoint_ut.f90 \
   mci_vamp_uti.f90 mci_vamp_ut.f90 \
   mci_vamp2_uti.f90 mci_vamp2_ut.f90 \
@@ -139,6 +142,10 @@ if FC_USE_OPENMP
 AM_FCFLAGS += $(FCFLAGS_OPENMP)
 endif
 
+# MPI
+if FC_USE_MPI
+AM_FCFLAGS += $(FCFLAGS_MPI)
+endif
 
 ########################################################################
 ## Non-standard targets and dependencies
@@ -150,6 +157,11 @@ endif
 ## (Re)create F90 sources from NOWEB source.
 if NOWEB_AVAILABLE
 
+FILTER =
+if FC_USE_MPI
+FILTER += -filter "sed 's/defn MPI:/defn/'"
+endif
+
 PRELUDE = $(top_srcdir)/src/noweb-frame/whizard-prelude.nw
 POSTLUDE = $(top_srcdir)/src/noweb-frame/whizard-postlude.nw
 
@@ -157,7 +169,7 @@ mci.stamp: $(PRELUDE) $(srcdir)/mci.nw $(POSTLUDE)
 	@rm -f mci.tmp
 	@touch mci.tmp
 	for src in $(libmci_la_SOURCES) $(libmci_ut_la_SOURCES); do \
-	  $(NOTANGLE) -R[[$$src]] $^ | $(CPIF) $$src; \
+	  $(NOTANGLE) -R[[$$src]] $(FILTER) $^ | $(CPIF) $$src; \
         done
 	@mv -f mci.tmp mci.stamp
 

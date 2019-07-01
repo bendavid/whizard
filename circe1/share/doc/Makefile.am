@@ -1,12 +1,12 @@
 # Makefile.am --
-# $Id: Makefile.am 317 2010-04-18 00:31:03Z ohl $
 ########################################################################
 #
 # Copyright (C) 1999-2017 by 
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
-#     Christian Speckner <cnspeckn@googlemail.com>
+#     with contributions from
+#     cf. main AUTHORS file
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by 
@@ -71,7 +71,8 @@ VPATH = $(srcdir):$(top_builddir)/circe1/src:$(top_srcdir)/circe1/src
 if NOWEB_AVAILABLE
 
 circe1.tex: $(WEBS)
-	$(NOWEAVE) -filter ./tex-comments -delay -index \
+	@if $(AM_V_P); then :; else echo " NOWEAVE   " $@; fi
+	$(AM_V_at)$(NOWEAVE) -filter ./tex-comments -delay -index \
 	    `for i in  $^; do case $$i in *.nw) echo $$i;; esac done` \
 	  > $@
 
@@ -80,7 +81,8 @@ circe1.tex: tex-comments
 endif NOWEB_AVAILABLE
 
 .mp4.mp: circemacs.mp4
-	$(M4) -I$(top_srcdir)/circe1/share/doc $< >$@
+	@if $(AM_V_P); then :; else echo " M4        " $@; fi
+	$(AM_V_at)$(M4) -I$(top_srcdir)/circe1/share/doc $< >$@
 
 ########################################################################
 # Old targets for the fit plots
@@ -90,16 +92,6 @@ fit.mp dist.mp: circemacs.mp4
 
 fit.11: fit.mp
 	TEX=$(LATEX) TEXINPUTS=$(TEX_FLAGS) $(MPOST) $<
-
-
-# preview.pdf: vegas.data vamp.data
-
-# vegas.data: vegas.d
-# 	cp $< $@
-# 
-# vamp.data: vamp.d
-# 	cp $< $@
-
 
 ########################################################################
 # The distribution plots for the write-up
@@ -113,96 +105,126 @@ dist.1: dist.mp \
   de-sband-ee.dat dg-sband-ee.dat de-tesla-ee.dat dg-tesla-ee.dat \
   de-xband-ee.dat dg-xband-ee.dat de-sbandt-ee.dat dg-sbandt-ee.dat \
   de-teslat-ee.dat dg-teslat-ee.dat de-xbandt-ee.dat dg-xbandt-ee.dat
-	TEX=$(LATEX) TEXINPUTS=$(TEX_FLAGS) \
-	MPINPUTS=$(MP_FLAGS) $(MPOST) $<
+	@if $(AM_V_P); then TEX=$(LATEX) TEXINPUTS=$(TEX_FLAGS) \
+	MPINPUTS=$(MP_FLAGS) $(MPOST) $<; else \
+	echo " METAPOST  " $@; TEX=$(LATEX) TEXINPUTS=$(TEX_FLAGS) \
+	MPINPUTS=$(MP_FLAGS) $(MPOST) $< >/dev/null; fi
 
 ########################################################################
 # Generating CIRCE data
 ########################################################################
 
 de-sband.dat: $(top_builddir)/circe1/tools/circe1_plot
-	echo 1 0.001 1.0 50 -1.0 11 11 500.0 1 $(CIRCE1_VER) $(CIRCE1_REV) | $(CPLOT)
+	@if $(AM_V_P); then :; else echo " PLOT      " $@; fi
+	$(AM_V_at)echo 1 0.001 1.0 50 -1.0 11 11 500.0 1 $(CIRCE1_VER) $(CIRCE1_REV) | $(CPLOT)
 
 dg-sband.dat: $(top_builddir)/circe1/tools/circe1_plot
-	echo 1 0.001 1.0 50 -1.0 22 11 500.0 1 $(CIRCE1_VER) $(CIRCE1_REV) | $(CPLOT)
+	@if $(AM_V_P); then :; else echo " PLOT      " $@; fi
+	$(AM_V_at)echo 1 0.001 1.0 50 -1.0 22 11 500.0 1 $(CIRCE1_VER) $(CIRCE1_REV) | $(CPLOT)
 
 de-tesla.dat: $(top_builddir)/circe1/tools/circe1_plot
-	echo 1 0.001 1.0 50 -1.0 11 11 500.0 2 $(CIRCE1_VER) $(CIRCE1_REV) | $(CPLOT)
+	@if $(AM_V_P); then :; else echo " PLOT      " $@; fi
+	$(AM_V_at)echo 1 0.001 1.0 50 -1.0 11 11 500.0 2 $(CIRCE1_VER) $(CIRCE1_REV) | $(CPLOT)
 
 dg-tesla.dat: $(top_builddir)/circe1/tools/circe1_plot
-	echo 1 0.001 1.0 50 -1.0 22 11 500.0 2 $(CIRCE1_VER) $(CIRCE1_REV) | $(CPLOT)
+	@if $(AM_V_P); then :; else echo " PLOT      " $@; fi
+	$(AM_V_at)echo 1 0.001 1.0 50 -1.0 22 11 500.0 2 $(CIRCE1_VER) $(CIRCE1_REV) | $(CPLOT)
 
 de-xband.dat: $(top_builddir)/circe1/tools/circe1_plot
-	echo 1 0.001 1.0 50 -1.0 11 11 500.0 3 $(CIRCE1_VER) $(CIRCE1_REV) | $(CPLOT)
+	@if $(AM_V_P); then :; else echo " PLOT      " $@; fi
+	$(AM_V_at)echo 1 0.001 1.0 50 -1.0 11 11 500.0 3 $(CIRCE1_VER) $(CIRCE1_REV) | $(CPLOT)
 
 dg-xband.dat: $(top_builddir)/circe1/tools/circe1_plot
-	echo 1 0.001 1.0 50 -1.0 22 11 500.0 3 $(CIRCE1_VER) $(CIRCE1_REV) | $(CPLOT)
+	@if $(AM_V_P); then :; else echo " PLOT      " $@; fi
+	$(AM_V_at)echo 1 0.001 1.0 50 -1.0 22 11 500.0 3 $(CIRCE1_VER) $(CIRCE1_REV) | $(CPLOT)
 
 de-sbandt.dat: $(top_builddir)/circe1/tools/circe1_plot
-	echo 1 0.001 1.0 50 -1.0 11 11 1000.0 1 $(CIRCE1_VER) $(CIRCE1_REV) | $(CPLOT)
+	@if $(AM_V_P); then :; else echo " PLOT      " $@; fi
+	$(AM_V_at)echo 1 0.001 1.0 50 -1.0 11 11 1000.0 1 $(CIRCE1_VER) $(CIRCE1_REV) | $(CPLOT)
 
 dg-sbandt.dat: $(top_builddir)/circe1/tools/circe1_plot
-	echo 1 0.001 1.0 50 -1.0 22 11 1000.0 1 $(CIRCE1_VER) $(CIRCE1_REV) | $(CPLOT)
+	@if $(AM_V_P); then :; else echo " PLOT      " $@; fi
+	$(AM_V_at)echo 1 0.001 1.0 50 -1.0 22 11 1000.0 1 $(CIRCE1_VER) $(CIRCE1_REV) | $(CPLOT)
 
 de-teslat.dat: $(top_builddir)/circe1/tools/circe1_plot
-	echo 1 0.001 1.0 50 -1.0 11 11 1000.0 2 $(CIRCE1_VER) $(CIRCE1_REV) | $(CPLOT)
+	@if $(AM_V_P); then :; else echo " PLOT      " $@; fi
+	$(AM_V_at)echo 1 0.001 1.0 50 -1.0 11 11 1000.0 2 $(CIRCE1_VER) $(CIRCE1_REV) | $(CPLOT)
 
 dg-teslat.dat: $(top_builddir)/circe1/tools/circe1_plot
-	echo 1 0.001 1.0 50 -1.0 22 11 1000.0 2 $(CIRCE1_VER) $(CIRCE1_REV) | $(CPLOT)
+	@if $(AM_V_P); then :; else echo " PLOT      " $@; fi
+	$(AM_V_at)echo 1 0.001 1.0 50 -1.0 22 11 1000.0 2 $(CIRCE1_VER) $(CIRCE1_REV) | $(CPLOT)
 
 de-xbandt.dat: $(top_builddir)/circe1/tools/circe1_plot
-	echo 1 0.001 1.0 50 -1.0 11 11 1000.0 3 $(CIRCE1_VER) $(CIRCE1_REV) | $(CPLOT)
+	@if $(AM_V_P); then :; else echo " PLOT      " $@; fi
+	$(AM_V_at)echo 1 0.001 1.0 50 -1.0 11 11 1000.0 3 $(CIRCE1_VER) $(CIRCE1_REV) | $(CPLOT)
 
 dg-xbandt.dat: $(top_builddir)/circe1/tools/circe1_plot
-	echo 1 0.001 1.0 50 -1.0 22 11 1000.0 3 $(CIRCE1_VER) $(CIRCE1_REV) | $(CPLOT)
+	@if $(AM_V_P); then :; else echo " PLOT      " $@; fi
+	$(AM_V_at)echo 1 0.001 1.0 50 -1.0 22 11 1000.0 3 $(CIRCE1_VER) $(CIRCE1_REV) | $(CPLOT)
 
 de-tesla3.dat: $(top_builddir)/circe1/tools/circe1_plot
-	echo 1 0.001 1.0 50 -1.0 11 11 350.0 2 $(CIRCE1_VER) $(CIRCE1_REV) | $(CPLOT)
+	@if $(AM_V_P); then :; else echo " PLOT      " $@; fi
+	$(AM_V_at)echo 1 0.001 1.0 50 -1.0 11 11 350.0 2 $(CIRCE1_VER) $(CIRCE1_REV) | $(CPLOT)
 
 dg-tesla3.dat: $(top_builddir)/circe1/tools/circe1_plot
-	echo 1 0.001 1.0 50 -1.0 22 11 350.0 2 $(CIRCE1_VER) $(CIRCE1_REV) | $(CPLOT)
+	@if $(AM_V_P); then :; else echo " PLOT      " $@; fi
+	$(AM_V_at)echo 1 0.001 1.0 50 -1.0 22 11 350.0 2 $(CIRCE1_VER) $(CIRCE1_REV) | $(CPLOT)
 
 de-tesla8.dat: $(top_builddir)/circe1/tools/circe1_plot
-	echo 1 0.001 1.0 50 -1.0 11 11 800.0 2 $(CIRCE1_VER) $(CIRCE1_REV) | $(CPLOT)
+	@if $(AM_V_P); then :; else echo " PLOT      " $@; fi
+	$(AM_V_at)echo 1 0.001 1.0 50 -1.0 11 11 800.0 2 $(CIRCE1_VER) $(CIRCE1_REV) | $(CPLOT)
 
 dg-tesla8.dat: $(top_builddir)/circe1/tools/circe1_plot
-	echo 1 0.001 1.0 50 -1.0 22 11 800.0 2 $(CIRCE1_VER) $(CIRCE1_REV) | $(CPLOT)
+	@if $(AM_V_P); then :; else echo " PLOT      " $@; fi
+	$(AM_V_at)echo 1 0.001 1.0 50 -1.0 22 11 800.0 2 $(CIRCE1_VER) $(CIRCE1_REV) | $(CPLOT)
 
 de-sband-ee.dat: $(top_builddir)/circe1/tools/circe1_plot
-	echo 1 0.001 1.0 50 -1.0 11 11 500.0 4 $(CIRCE1_VER) $(CIRCE1_REV) | $(CPLOT)
+	@if $(AM_V_P); then :; else echo " PLOT      " $@; fi
+	$(AM_V_at)echo 1 0.001 1.0 50 -1.0 11 11 500.0 4 $(CIRCE1_VER) $(CIRCE1_REV) | $(CPLOT)
 
 dg-sband-ee.dat: $(top_builddir)/circe1/tools/circe1_plot
-	echo 1 0.001 1.0 50 -1.0 22 11 500.0 4 $(CIRCE1_VER) $(CIRCE1_REV) | $(CPLOT)
+	@if $(AM_V_P); then :; else echo " PLOT      " $@; fi
+	$(AM_V_at)echo 1 0.001 1.0 50 -1.0 22 11 500.0 4 $(CIRCE1_VER) $(CIRCE1_REV) | $(CPLOT)
 
 de-tesla-ee.dat: $(top_builddir)/circe1/tools/circe1_plot
-	echo 1 0.001 1.0 50 -1.0 11 11 500.0 5 $(CIRCE1_VER) $(CIRCE1_REV) | $(CPLOT)
+	@if $(AM_V_P); then :; else echo " PLOT      " $@; fi
+	$(AM_V_at)echo 1 0.001 1.0 50 -1.0 11 11 500.0 5 $(CIRCE1_VER) $(CIRCE1_REV) | $(CPLOT)
 
 dg-tesla-ee.dat: $(top_builddir)/circe1/tools/circe1_plot
-	echo 1 0.001 1.0 50 -1.0 22 11 500.0 5 $(CIRCE1_VER) $(CIRCE1_REV) | $(CPLOT)
+	@if $(AM_V_P); then :; else echo " PLOT      " $@; fi
+	$(AM_V_at)echo 1 0.001 1.0 50 -1.0 22 11 500.0 5 $(CIRCE1_VER) $(CIRCE1_REV) | $(CPLOT)
 
 de-xband-ee.dat: $(top_builddir)/circe1/tools/circe1_plot
-	echo 1 0.001 1.0 50 -1.0 11 11 500.0 6 $(CIRCE1_VER) $(CIRCE1_REV) | $(CPLOT)
+	@if $(AM_V_P); then :; else echo " PLOT      " $@; fi
+	$(AM_V_at)echo 1 0.001 1.0 50 -1.0 11 11 500.0 6 $(CIRCE1_VER) $(CIRCE1_REV) | $(CPLOT)
 
 dg-xband-ee.dat: $(top_builddir)/circe1/tools/circe1_plot
-	echo 1 0.001 1.0 50 -1.0 22 11 500.0 6 $(CIRCE1_VER) $(CIRCE1_REV) | $(CPLOT)
+	@if $(AM_V_P); then :; else echo " PLOT      " $@; fi
+	$(AM_V_at)echo 1 0.001 1.0 50 -1.0 22 11 500.0 6 $(CIRCE1_VER) $(CIRCE1_REV) | $(CPLOT)
 
 de-sbandt-ee.dat: $(top_builddir)/circe1/tools/circe1_plot
-	echo 1 0.001 1.0 50 -1.0 11 11 1000.0 4 $(CIRCE1_VER) $(CIRCE1_REV) | $(CPLOT)
+	@if $(AM_V_P); then :; else echo " PLOT      " $@; fi
+	$(AM_V_at)echo 1 0.001 1.0 50 -1.0 11 11 1000.0 4 $(CIRCE1_VER) $(CIRCE1_REV) | $(CPLOT)
 
 dg-sbandt-ee.dat: $(top_builddir)/circe1/tools/circe1_plot
-	echo 1 0.001 1.0 50 -1.0 22 11 1000.0 4 $(CIRCE1_VER) $(CIRCE1_REV) | $(CPLOT)
+	@if $(AM_V_P); then :; else echo " PLOT      " $@; fi
+	$(AM_V_at)echo 1 0.001 1.0 50 -1.0 22 11 1000.0 4 $(CIRCE1_VER) $(CIRCE1_REV) | $(CPLOT)
 
 de-teslat-ee.dat: $(top_builddir)/circe1/tools/circe1_plot
-	echo 1 0.001 1.0 50 -1.0 11 11 1000.0 5 $(CIRCE1_VER) $(CIRCE1_REV) | $(CPLOT)
+	@if $(AM_V_P); then :; else echo " PLOT      " $@; fi
+	$(AM_V_at)echo 1 0.001 1.0 50 -1.0 11 11 1000.0 5 $(CIRCE1_VER) $(CIRCE1_REV) | $(CPLOT)
 
 dg-teslat-ee.dat: $(top_builddir)/circe1/tools/circe1_plot
-	echo 1 0.001 1.0 50 -1.0 22 11 1000.0 5 $(CIRCE1_VER) $(CIRCE1_REV) | $(CPLOT)
+	@if $(AM_V_P); then :; else echo " PLOT      " $@; fi
+	$(AM_V_at)echo 1 0.001 1.0 50 -1.0 22 11 1000.0 5 $(CIRCE1_VER) $(CIRCE1_REV) | $(CPLOT)
 
 de-xbandt-ee.dat: $(top_builddir)/circe1/tools/circe1_plot
-	echo 1 0.001 1.0 50 -1.0 11 11 1000.0 6 $(CIRCE1_VER) $(CIRCE1_REV) | $(CPLOT)
+	@if $(AM_V_P); then :; else echo " PLOT      " $@; fi
+	$(AM_V_at)echo 1 0.001 1.0 50 -1.0 11 11 1000.0 6 $(CIRCE1_VER) $(CIRCE1_REV) | $(CPLOT)
 
 dg-xbandt-ee.dat: $(top_builddir)/circe1/tools/circe1_plot
-	echo 1 0.001 1.0 50 -1.0 22 11 1000.0 6 $(CIRCE1_VER) $(CIRCE1_REV) | $(CPLOT)
+	@if $(AM_V_P); then :; else echo " PLOT      " $@; fi
+	$(AM_V_at)echo 1 0.001 1.0 50 -1.0 22 11 1000.0 6 $(CIRCE1_VER) $(CIRCE1_REV) | $(CPLOT)
 
 CPLOT = $(top_builddir)/circe1/tools/circe1_plot | $(GREP) -v circe1: | $(SED) 's/E/e/g' > $@
 
@@ -214,30 +236,26 @@ SUFFIXES = .tex .pdf
 
 if DISTRIBUTION
 if PDFLATEX_AVAILABLE
-if MPOST_AVAILABLE
 if SUPP_PDF_AVAILABLE
+.tex.pdf:
+	@if $(AM_V_P); then TEXINPUTS=$(TEX_FLAGS) $(PDFLATEX) $<; else \
+	   echo " PDFLATEX  " $<; TEXINPUTS=$(TEX_FLAGS) $(PDFLATEX) $< >/dev/null; fi
 if MAKEINDEX_AVAILABLE
-.tex.pdf:
-	-TEXINPUTS=$(TEX_FLAGS) $(PDFLATEX) $<
-	$(MAKEINDEX) -o $*.ind $*.idx
-	-test -r $*.mp && TEX=$(LATEX) TEXINPUTS=$(TEX_FLAGS) $(MPOST) $*
-	-test -r $*pics.mp && MPINPUTS=$(MP_FLAGS) $(MPOST) $*pics
-	TEXINPUTS=$(TEX_FLAGS) $(PDFLATEX) $<
-	if grep -s 'Rerun to get cross-references right.' $*.log; then \
-	  TEXINPUTS=$(TEX_FLAGS) $(PDFLATEX) $<; \
+	@if $(AM_V_P); then $(MAKEINDEX) -o $*.ind $*.idx; else \
+	   echo " MAKEINDEX " $*.ind $*.idx; $(MAKEINDEX) -q -o $*.ind $*.idx; fi
+endif MAKEINDEX_AVAILABLE
+	@if $(AM_V_P); then TEXINPUTS=$(TEX_FLAGS) $(PDFLATEX) $<; else \
+	   echo " PDFLATEX  " $<; TEXINPUTS=$(TEX_FLAGS) $(PDFLATEX) $< >/dev/null; fi
+	@if $(AM_V_P); then \
+	   if grep -s 'Rerun to get cross-references right.' $*.log; then \
+	      TEXINPUTS=$(TEX_FLAGS) $(PDFLATEX) $<; \
+	   fi; else \
+	   if grep -s 'Rerun to get cross-references right.' $*.log >/dev/null; then \
+	      echo " PDFLATEX  " $< "(for cross-references)"; \
+	      TEXINPUTS=$(TEX_FLAGS) $(PDFLATEX) $< >/dev/null; \
+	   fi; \
 	fi
-else
-.tex.pdf:
-	-TEXINPUTS=$(TEX_FLAGS) $(PDFLATEX) $<
-	-test -r $*.mp && TEX=$(LATEX) TEXINPUTS=$(TEX_FLAGS) $(MPOST) $*
-	-test -r $*pics.mp && MPINPUTS=$(MP_FLAGS) $(MPOST) $*pics
-	TEXINPUTS=$(TEX_FLAGS) $(PDFLATEX) $<
-	if grep -s 'Rerun to get cross-references right.' $*.log; then \
-	  TEXINPUTS=$(TEX_FLAGS) $(PDFLATEX) $<; \
-	fi
-endif
 endif SUPP_PDF_AVAILABLE
-endif MPOST_AVAILABLE
 endif PDFLATEX_AVAILABLE
 endif DISTRIBUTION
 
@@ -256,17 +274,20 @@ endif DISTRIBUTION
 if EPSPDF_AVAILABLE
 if EPSPDF_043
 .eps.pdf:
-	$(EPSPDF) $< $@ 
+	@if $(AM_V_P); then :; else echo " EPSPDF    " $@; fi
+	$(AM_V_at)$(EPSPDF) $< $@ 
 else
 if EPSTOPDF_AVAILABLE
 .eps.pdf:
-	$(EPSTOPDF) --outfile=$@ $<
+	@if $(AM_V_P); then :; else echo " EPSTOPDF  " $@; fi
+	$(AM_V_at)$(EPSTOPDF) --outfile=$@ $<
 endif
 endif
 else
 if EPSTOPDF_AVAILABLE
 .eps.pdf:
-	$(EPSTOPDF) --outfile=$@ $<
+	@if $(AM_V_P); then :; else echo " EPSTOPDF  " $@; fi
+	$(AM_V_at)$(EPSTOPDF) --outfile=$@ $<
 endif
 endif
 

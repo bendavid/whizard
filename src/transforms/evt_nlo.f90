@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -147,15 +140,15 @@ contains
        select type (config => pcm%config)
        type is (pcm_nlo_t)
           call config%setup_phs_generator (pcm, evt%phs_fks_generator, &
-             process_instance%get_sqrts ())
+               process_instance%get_sqrts ())
           call evt%set_i_evaluation_mappings (config%region_data, &
-             pcm%real_kinematics%alr_to_i_phs)
+               pcm%real_kinematics%alr_to_i_phs)
        end select
     end select
     call evt%set_mode (process_instance)
     call evt%setup_general_event_kinematics (process_instance)
     if (evt%mode > EVT_NLO_SEPARATE_BORNLIKE) &
-       call evt%setup_real_event_kinematics (process_instance)
+         call evt%setup_real_event_kinematics (process_instance)
     call msg_debug2 (D_TRANSFORMS, "evt_nlo_connect: success")
   end subroutine evt_nlo_connect
 
@@ -406,7 +399,7 @@ contains
                         event_deps%p_born_cms%phs_point(1)%p, event_deps%phs_identifiers)
                    call generator%generate_isr (i_phs, &
                         event_deps%p_born_lab%phs_point(1)%p, &
-                        event_deps%p_real_lab%phs_point(i_phs))
+                        event_deps%p_real_lab%phs_point(i_phs)%p)
                    event_deps%p_real_cms%phs_point(i_phs) &
                         = evt%boost_to_cms (event_deps%p_real_lab%phs_point(i_phs))
                 else
@@ -417,13 +410,13 @@ contains
                            event_deps%phs_identifiers, event_deps%contributors, i_con)
                       call generator%generate_fsr (emitter, i_phs, i_con, &
                            event_deps%p_born_cms%phs_point(1)%p, &
-                           event_deps%p_real_cms%phs_point(i_phs))
+                           event_deps%p_real_cms%phs_point(i_phs)%p)
                    else
                       call generator%prepare_generation (x_rad, i_phs, emitter, &
                            event_deps%p_born_cms%phs_point(1)%p, event_deps%phs_identifiers)
                       call generator%generate_fsr (emitter, i_phs, &
                            event_deps%p_born_cms%phs_point(1)%p, &
-                           event_deps%p_real_cms%phs_point(i_phs))
+                           event_deps%p_real_cms%phs_point(i_phs)%p)
                    end if
                    event_deps%p_real_lab%phs_point(i_phs) &
                         = evt%boost_to_lab (event_deps%p_real_cms%phs_point(i_phs))
@@ -533,11 +526,9 @@ contains
        class is (pcm_instance_nlo_t)
           n_real = pcm%get_n_real ()
        end select
-       i_real = process_instance%get_associated_real ()
+       i_real = evt%process%get_first_real_term ()
        select type (phs => process_instance%term(i_real)%k_term%phs)
        type is (phs_fks_t)
-          !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
-          allocate (event_deps%phs_identifiers (size (phs%phs_identifiers)))
           event_deps%phs_identifiers = phs%phs_identifiers
        end select
        n_phs = size (event_deps%phs_identifiers)
@@ -572,8 +563,8 @@ contains
           if (config%settings%combined_integration) then
              evt%mode = EVT_NLO_COMBINED
           else
-             i_real = evt%process_instance%get_associated_real ()
-             if (i_real == evt%process%extract_fixed_mci ()) then
+             i_real = evt%process%get_first_real_component ()
+             if (i_real == evt%process%extract_active_component_mci ()) then
                 evt%mode = EVT_NLO_SEPARATE_REAL
              else
                 evt%mode = EVT_NLO_SEPARATE_BORNLIKE

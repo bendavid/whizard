@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -95,17 +88,21 @@ module state_matrices
      procedure :: set_model => state_matrix_set_model
      procedure :: is_defined => state_matrix_is_defined
      procedure :: is_empty => state_matrix_is_empty
-     procedure :: get_n_matrix_elements => state_matrix_get_n_matrix_elements
+     generic :: get_n_matrix_elements => get_n_matrix_elements_all, get_n_matrix_elements_mask
+     procedure :: get_n_matrix_elements_all => state_matrix_get_n_matrix_elements_all
+     procedure :: get_n_matrix_elements_mask => state_matrix_get_n_matrix_elements_mask
      procedure :: get_me_size => state_matrix_get_me_size
      procedure :: compute_n_sub => state_matrix_compute_n_sub
-     procedure :: get_n_sub => state_matrix_get_n_sub
+     procedure :: set_n_sub => state_matrix_set_n_sub
      procedure :: get_n_leaves => state_matrix_get_n_leaves
      procedure :: get_depth => state_matrix_get_depth
      procedure :: get_norm => state_matrix_get_norm
      procedure :: get_quantum_number => &
         state_matrix_get_quantum_number
-     procedure :: get_quantum_numbers => &
-        state_matrix_get_quantum_numbers
+     generic :: get_quantum_numbers => get_quantum_numbers_all, get_quantum_numbers_mask
+     procedure :: get_quantum_numbers_all => state_matrix_get_quantum_numbers_all
+     procedure :: get_quantum_numbers_mask => state_matrix_get_quantum_numbers_mask
+     procedure :: get_flavors => state_matrix_get_flavors
      generic :: get_matrix_element => get_matrix_element_single
      generic :: get_matrix_element => get_matrix_element_array
      procedure :: get_matrix_element_single => &
@@ -131,6 +128,7 @@ module state_matrices
      procedure :: set_matrix_element_clone => &
         state_matrix_set_matrix_element_clone
      procedure :: add_to_matrix_element => state_matrix_add_to_matrix_element
+     procedure :: transfer_me_to_sub => state_matrix_transfer_me_to_sub
      procedure :: get_diagonal_entries => state_matrix_get_diagonal_entries
      procedure :: renormalize => state_matrix_renormalize
      procedure :: normalize_by_trace => state_matrix_normalize_by_trace
@@ -318,9 +316,9 @@ contains
     do while (associated (current))
        write (u, "(A)", advance="no")  repeat (" ", i)
        call node_write (current, me_array, verbose = verb, &
-          unit = u, col_verbose = col_verbose, testflag = testflag)
+            unit = u, col_verbose = col_verbose, testflag = testflag)
        call node_write_rec (current, me_array, verbose = verb, &
-          indent = i + 2, unit = u, col_verbose = col_verbose, testflag = testflag)
+            indent = i + 2, unit = u, col_verbose = col_verbose, testflag = testflag)
        current => current%next
     end do
   end subroutine node_write_rec
@@ -410,11 +408,11 @@ contains
     if (associated (state%root)) then
        if (allocated (state%me)) then
           call node_write_rec (state%root, state%me, verbose = verbose, &
-             indent = 1, unit = u, col_verbose = col_verbose, &
-             testflag = testflag)
+               indent = 1, unit = u, col_verbose = col_verbose, &
+               testflag = testflag)
        else
           call node_write_rec (state%root, verbose = verbose, indent = 1, &
-             unit = u, col_verbose = col_verbose, testflag = testflag)
+               unit = u, col_verbose = col_verbose, testflag = testflag)
        end if
     end if
     if (present (write_value_list)) then
@@ -530,11 +528,30 @@ contains
     flag = state%depth == 0
   end function state_matrix_is_empty
 
-  pure function state_matrix_get_n_matrix_elements (state) result (n)
+  pure function state_matrix_get_n_matrix_elements_all (state) result (n)
     integer :: n
     class(state_matrix_t), intent(in) :: state
     n = state%n_matrix_elements
-  end function state_matrix_get_n_matrix_elements
+  end function state_matrix_get_n_matrix_elements_all
+
+  function state_matrix_get_n_matrix_elements_mask (state, qn_mask) result (n)
+    integer :: n
+    class(state_matrix_t), intent(in) :: state
+    type(quantum_numbers_mask_t), intent(in), dimension(:) :: qn_mask
+    type(state_iterator_t) :: it
+    type(quantum_numbers_t), dimension(size(qn_mask)) :: qn
+    type(state_matrix_t) :: state_tmp
+    call state_tmp%init ()
+    call it%init (state)
+    do while (it%is_valid ())
+       qn = it%get_quantum_numbers ()
+       call qn%undefine (qn_mask)
+       call state_tmp%add_state (qn)
+       call it%advance ()
+    end do
+    n = state_tmp%n_matrix_elements
+    call state_tmp%final ()
+  end function state_matrix_get_n_matrix_elements_mask
 
   pure function state_matrix_get_me_size (state) result (n)
     integer :: n
@@ -546,25 +563,40 @@ contains
     end if
   end function state_matrix_get_me_size
 
-  subroutine state_matrix_compute_n_sub (state)
-    class(state_matrix_t), intent(inout) :: state
+  function state_matrix_compute_n_sub (state) result (n_sub)
+    integer :: n_sub
+    class(state_matrix_t), intent(in) :: state
     type(state_iterator_t) :: it
     type(quantum_numbers_t), dimension(state%depth) :: qn
-    integer :: sub
+    integer :: sub, sub_pos
+    n_sub = 0
     call it%init (state)
     do while (it%is_valid ())
        qn = it%get_quantum_numbers ()
-       sub = qn(1)%get_sub ()
-       if (sub > state%n_sub) state%n_sub = sub
+       sub = 0
+       sub_pos = qn_array_sub_pos ()
+       if (sub_pos > 0)  sub = qn(sub_pos)%get_sub ()
+       if (sub > n_sub)  n_sub = sub
        call it%advance ()
     end do
-  end subroutine state_matrix_compute_n_sub
+  contains
+    function qn_array_sub_pos () result (pos)
+      integer :: pos
+      integer :: i
+      pos = 0
+      do i = 1, state%depth
+         if (qn(i)%get_sub () > 0) then
+            pos = i
+            exit
+         end if
+      end do
+    end function qn_array_sub_pos
+  end function state_matrix_compute_n_sub
 
-  pure function state_matrix_get_n_sub (state) result (n)
-    integer :: n
-    class(state_matrix_t), intent(in) :: state
-    n = state%n_sub
-  end function state_matrix_get_n_sub
+  subroutine state_matrix_set_n_sub (state)
+    class(state_matrix_t), intent(inout) :: state
+    state%n_sub = state%compute_n_sub ()
+  end subroutine state_matrix_set_n_sub
 
   function state_matrix_get_n_leaves (state) result (n)
     integer :: n
@@ -608,16 +640,72 @@ contains
     end do
   end function state_matrix_get_quantum_number
 
-  subroutine state_matrix_get_quantum_numbers (state, qn)
-    type(quantum_numbers_t), dimension(:,:), allocatable, intent(out) :: qn
+  subroutine state_matrix_get_quantum_numbers_all (state, qn)
     class(state_matrix_t), intent(in), target :: state
+    type(quantum_numbers_t), intent(out), dimension(:,:), allocatable :: qn
     integer :: i
     allocate (qn (state%get_n_matrix_elements (), &
        state%get_depth()))
     do i = 1, state%get_n_matrix_elements ()
        qn (i, :) = state%get_quantum_number (i)
     end do
-  end subroutine state_matrix_get_quantum_numbers
+  end subroutine state_matrix_get_quantum_numbers_all
+
+  subroutine state_matrix_get_quantum_numbers_mask (state, qn_mask, qn)
+    class(state_matrix_t), intent(in), target :: state
+    type(quantum_numbers_mask_t), intent(in), dimension(:) :: qn_mask
+    type(quantum_numbers_t), intent(out), dimension(:,:), allocatable :: qn
+    type(quantum_numbers_t), dimension(:), allocatable :: qn_tmp
+    type(state_matrix_t) :: state_tmp
+    type(state_iterator_t) :: it
+    integer :: i, n
+    n = state%get_n_matrix_elements (qn_mask)
+    allocate (qn (n, state%get_depth ()))
+    allocate (qn_tmp (state%get_depth ()))
+    call it%init (state)
+    call state_tmp%init ()
+    do while (it%is_valid ())
+       qn_tmp = it%get_quantum_numbers ()
+       call qn_tmp%undefine (qn_mask)
+       call state_tmp%add_state (qn_tmp)
+       call it%advance ()
+    end do
+    do i = 1, n
+       qn (i, :) = state_tmp%get_quantum_number (i)
+    end do
+    call state_tmp%final ()
+  end subroutine state_matrix_get_quantum_numbers_mask
+
+  subroutine state_matrix_get_flavors (state, only_elementary, qn_mask, flv)
+    class(state_matrix_t), intent(in), target :: state
+    logical, intent(in) :: only_elementary
+    type(quantum_numbers_mask_t), intent(in), dimension(:), optional :: qn_mask
+    integer, intent(out), dimension(:,:), allocatable :: flv
+    type(quantum_numbers_t), dimension(:,:), allocatable :: qn
+    integer :: i_flv, n_partons
+    type(flavor_t), dimension(:), allocatable :: flv_flv
+    if (present (qn_mask)) then
+       call state%get_quantum_numbers (qn_mask, qn)
+    else
+       call state%get_quantum_numbers (qn)
+    end if
+    allocate (flv_flv (size (qn, dim=2)))
+    if (only_elementary) then
+       flv_flv = qn(1, :)%get_flavor ()
+       n_partons = count (is_elementary (flv_flv%get_pdg ()))
+    end if
+    allocate (flv (size (qn, dim=1), n_partons))
+    do i_flv = 1, size (qn, dim=1)
+       flv_flv = qn(i_flv, :)%get_flavor ()
+       flv(i_flv, :) = pack (flv_flv%get_pdg (), is_elementary(flv_flv%get_pdg()))
+    end do
+  contains
+    elemental function is_elementary (pdg)
+      logical :: is_elementary
+      integer, intent(in) :: pdg
+      is_elementary = abs(pdg) /= 2212 .and. abs(pdg) /= 92 .and. abs(pdg) /= 93
+    end function is_elementary
+  end subroutine state_matrix_get_flavors
 
   elemental function state_matrix_get_matrix_element_single (state, i) result (me)
     complex(default) :: me
@@ -664,13 +752,15 @@ contains
   end function state_matrix_get_max_color_value
 
   subroutine state_matrix_add_state &
-       (state, qn, index, value, sum_values, counter_index, me_index)
+       (state, qn, index, value, sum_values, counter_index, ignore_sub, &
+        me_index)
     class(state_matrix_t), intent(inout) :: state
     type(quantum_numbers_t), dimension(:), intent(in) :: qn
     integer, intent(in), optional :: index
     complex(default), intent(in), optional :: value
     logical, intent(in), optional :: sum_values
     integer, intent(in), optional :: counter_index
+    logical, intent(in), optional :: ignore_sub
     integer, intent(out), optional :: me_index
     logical :: set_index, get_index, add
     set_index = present (index)
@@ -692,7 +782,15 @@ contains
        match = .false.
        child => parent%child_first
        SCAN_CHILDREN: do while (associated (child))
-          match = child%qn == qn(1)
+          if (present (ignore_sub)) then
+             if (ignore_sub) then
+                match = quantum_numbers_eq_wo_sub (child%qn, qn(1))
+             else
+                match = child%qn == qn(1)
+             end if
+          else
+             match = child%qn == qn(1)
+          end if
           if (match)  exit SCAN_CHILDREN
           child => child%next
        end do SCAN_CHILDREN
@@ -767,7 +865,7 @@ contains
        if (allocated (state%me))  deallocate (state%me)
        allocate (state%me (state%n_matrix_elements))
        state%me = 0
-       call state%compute_n_sub ()
+       call state%set_n_sub ()
     end if
     if (state%leaf_nodes_store_values) then
        call it%init (state)
@@ -801,13 +899,18 @@ contains
     state%me = value
   end subroutine state_matrix_set_matrix_element_all
 
-  subroutine state_matrix_set_matrix_element_array (state, value)
+  subroutine state_matrix_set_matrix_element_array (state, value, range)
     class(state_matrix_t), intent(inout) :: state
-    complex(default), dimension(:), intent(in) :: value
-    if (.not. allocated (state%me)) then
-       allocate (state%me (size (value)))
+    complex(default), intent(in), dimension(:) :: value
+    integer, intent(in), dimension(:), optional :: range
+    integer :: i, n_me, n_val, i_first, i_last
+    if (present (range)) then
+       state%me(range) = value
+    else
+       if (.not. allocated (state%me)) &
+            allocate (state%me (size (value)))
+       state%me(:) = value
     end if
-    state%me = value
   end subroutine state_matrix_set_matrix_element_array
 
   pure subroutine state_matrix_set_matrix_element_single (state, i, value)
@@ -842,6 +945,24 @@ contains
        call msg_fatal ("Cannot add to matrix element - it%node not allocated")
     end if
   end subroutine state_matrix_add_to_matrix_element
+
+  subroutine state_matrix_transfer_me_to_sub (state, i_sub)
+    class(state_matrix_t), intent(inout), target :: state
+    integer, intent(in) :: i_sub
+    type(state_iterator_t) :: it
+    type(quantum_numbers_t), dimension(:), allocatable :: qn
+    complex(default) :: me
+    call it%init (state)
+    do while (it%is_valid ())
+       qn = it%get_quantum_numbers ()
+       if (all (qn%get_sub () == 0)) then
+          me = it%get_matrix_element ()
+          call qn%set_subtraction_index (i_sub)
+          call state%set_matrix_element (qn, me)
+       end if
+       call it%advance ()
+    end do
+  end subroutine state_matrix_transfer_me_to_sub
 
   subroutine state_iterator_init (it, state)
     class(state_iterator_t), intent(out) :: it
@@ -1189,7 +1310,7 @@ contains
     state%norm = norm
   end subroutine state_matrix_set_norm
 
-  function state_matrix_sum (state) result (value)
+  pure function state_matrix_sum (state) result (value)
     complex(default) :: value
     class(state_matrix_t), intent(in) :: state
     value = sum (state%me)
@@ -1451,22 +1572,18 @@ contains
     do while (it%is_valid ())
        qn1 = it%get_quantum_numbers ()
        if (all (qn .match. qn1)) then
-          !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
-          !!! diagonal = qn1%are_diagonal ()
-          do i = 1, depth
-             diagonal(i) = qn1(i)%are_diagonal ()
-          end do
+          diagonal = qn1%are_diagonal ()
           value = it%get_matrix_element ()
           select case (mode)
           case (FM_IGNORE_HELICITY, FM_CORRELATED_HELICITY)
-             ! trace over diagonal states that match qn
+             !!! trace over diagonal states that match qn
              if (all (diagonal)) then
                 do i = 1, depth
                    call single_state(i)%add_state &
                         ([qn(i)], value=value, sum_values=.true.)
                 end do
              end if
-          case (FM_FACTOR_HELICITY)  ! trace over all other particles
+          case (FM_FACTOR_HELICITY)  !!! trace over all other particles
              do i = 1, depth
                 if (all (diagonal .or. mask(:,i))) then
                    call single_state(i)%add_state &
@@ -1576,11 +1693,7 @@ contains
     do while (it%is_valid ())
        i = i + 1
        flv = it%get_flavor ()
-       !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
-       !!! pdg = flv%get_pdg ()
-       do j = 1, d
-          pdg(j) = flv(j)%get_pdg ()
-       end do
+       pdg = flv%get_pdg ()
        idx_subset = pack (idx, mask)
        pdg_subset = pack (pdg, mask)
        map_subset = order_abs (pdg_subset)

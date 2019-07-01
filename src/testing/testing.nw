@@ -205,6 +205,10 @@ declaring the actual test routines.
 
 @ %def unit_test
 @ The test routine can print to screen and, optionally, to a logging unit.
+
+NB: We call [[fatal_force_crash]] to produce a deliberate crash with backtrace
+on any fatal error, if the runtime system does allow it.
+This is not normal behavior, but should be useful if something goes wrong.
 <<Tests: public>>=
   public :: test
 <<Tests: procedures>>=
@@ -223,6 +227,7 @@ declaring the actual test routines.
     write (u_log, "(A)")  "Test: " // name
     u_test = free_unit ()
     open (u_test, status="scratch", action="readwrite")
+    call fatal_force_crash ()
     call test_proc (u_test)
     rewind (u_test)
     inquire (file=ref_prefix//name//ref, exist=exist)

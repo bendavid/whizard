@@ -1294,6 +1294,25 @@ allocatable by the caller.
   end subroutine pdg_array_set
 
 @ %def pdg_array_set
+@
+<<PDG arrays: pdg array: TBP>>=
+  procedure :: add => pdg_array_add
+<<PDG arrays: procedures>>=
+  function pdg_array_add (aval, aval_add) result (aval_out)
+    type(pdg_array_t) :: aval_out
+    class(pdg_array_t), intent(in) :: aval
+    type(pdg_array_t), intent(in) :: aval_add
+    integer :: n, n_add, i
+    n = size (aval%pdg)
+    n_add = size (aval_add%pdg)
+    allocate (aval_out%pdg (n + n_add))
+    aval_out%pdg(1:n) = aval%pdg
+    do i = 1, n_add
+       aval_out%pdg(n+i) = aval_add%pdg(i)
+    end do
+  end function pdg_array_add
+
+@ %def pdg_array_add
 @ Replace element with index [[i]] by a new array of elements.
 <<PDG arrays: public>>=
   public :: pdg_array_replace
@@ -1401,6 +1420,21 @@ array.  If either one is zero (UNDEFINED), the match also succeeds.
   end function is_gluon
 
 @ %def is_gluon
+@ Check if pdg-number corresponds to a photon
+<<PDG arrays: public>>=
+  public :: is_photon
+<<PDG arrays: procedures>>=
+  elemental function is_photon (pdg_nr)
+    logical :: is_photon
+    integer, intent(in) :: pdg_nr
+    if (pdg_nr == 22) then
+       is_photon = .true.
+    else
+       is_photon = .false.
+    end if
+  end function is_photon
+
+@ %def is_photon
 @ Check if pdg-number corresponds to a colored particle
 <<PDG arrays: public>>=
   public :: is_colored
@@ -1412,7 +1446,7 @@ array.  If either one is zero (UNDEFINED), the match also succeeds.
   end function is_colored
 
 @ %def is_colored
-% Check if the pdg-number corresponds to a lepton
+@ Check if the pdg-number corresponds to a lepton
 <<PDG arrays: public>>=
   public :: is_lepton
 <<PDG arrays: procedures>>=
@@ -1442,13 +1476,13 @@ array.  If either one is zero (UNDEFINED), the match also succeeds.
 <<PDG arrays: public>>=
   public :: is_massless_vector
 <<PDG arrays: procedures>>=
-  function is_massless_vector (pdg_nr) result (res)
+  elemental function is_massless_vector (pdg_nr)
     integer, intent(in) :: pdg_nr
-    logical :: res
+    logical :: is_massless_vector
     if (pdg_nr == 21 .or. pdg_nr == 22) then
-      res = .true.
+      is_massless_vector = .true.
     else
-      res = .false.
+      is_massless_vector = .false.
     end if
   end function is_massless_vector
 
@@ -1457,17 +1491,32 @@ array.  If either one is zero (UNDEFINED), the match also succeeds.
 <<PDG arrays: public>>=
   public :: is_massive_vector
 <<PDG arrays: procedures>>=
-  function is_massive_vector (pdg_nr) result (res)
+  elemental function is_massive_vector (pdg_nr)
     integer, intent(in) :: pdg_nr
-    logical :: res
-    if (pdg_nr == 23 .or. pdg_nr == 24) then
-      res = .true.
+    logical :: is_massive_vector
+    if (abs (pdg_nr) == 23 .or. abs (pdg_nr) == 24) then
+      is_massive_vector = .true.
     else
-      res = .false.
+      is_massive_vector = .false.
     end if
   end function is_massive_vector
 
 @ %def is massive_vector
+@ Check if pdg-number corresponds to a vector boson
+<<PDG arrays: public>>=
+  public :: is_vector
+<<PDG arrays: procedures>>=
+  elemental function is_vector (pdg_nr)
+    integer, intent(in) :: pdg_nr
+    logical :: is_vector
+    if (is_massless_vector (pdg_nr) .or. is_massive_vector (pdg_nr)) then
+      is_vector = .true.
+    else
+      is_vector = .false.
+    end if
+  end function is_vector
+
+@ %def is vector
 @ Check if particle is strongly interacting
 <<PDG arrays: pdg array: TBP>>=
   procedure :: has_colored_particles => pdg_array_has_colored_particles
@@ -1698,7 +1747,7 @@ sorting, we eliminate double entries.
 <<PDG arrays: pdg array: TBP>>=
   procedure :: search_for_particle => pdg_array_search_for_particle
 <<PDG arrays: procedures>>=
-  function pdg_array_search_for_particle (pdg, i_part) result (found)
+  elemental function pdg_array_search_for_particle (pdg, i_part) result (found)
     class(pdg_array_t), intent(in) :: pdg
     integer, intent(in) :: i_part
     logical :: found
@@ -2015,11 +2064,11 @@ the remainder after entry [[n_in]].
   procedure :: replace => pdg_list_replace
 <<PDG arrays: procedures>>=
   function pdg_list_replace (pl, i, pl_insert, n_in) result (pl_out)
+    type(pdg_list_t) :: pl_out
     class(pdg_list_t), intent(in) :: pl
     integer, intent(in) :: i
     class(pdg_list_t), intent(in) :: pl_insert
     integer, intent(in), optional :: n_in
-    type(pdg_list_t) :: pl_out
     integer :: n, n_insert, n_out, k
     n = pl%get_size ()
     n_insert = pl_insert%get_size ()
@@ -2056,6 +2105,52 @@ the remainder after entry [[n_in]].
   end function pdg_list_replace
 
 @ %def pdg_list_replace
+@
+<<PDG arrays: pdg list: TBP>>=
+  procedure :: fusion => pdg_list_fusion
+<<PDG arrays: procedures>>=
+  function pdg_list_fusion (pl, pl_insert, i, check_if_existing) result (pl_out)
+    type(pdg_list_t) :: pl_out
+    class(pdg_list_t), intent(in) :: pl
+    type(pdg_list_t), intent(in) :: pl_insert
+    integer, intent(in) :: i
+    logical, intent(in) :: check_if_existing
+    integer :: n, n_insert, k, n_out
+    logical :: new_pdg
+    n = pl%get_size ()
+    n_insert = pl_insert%get_size ()
+    new_pdg = .not. check_if_existing .or. &
+         (.not. any (pl%search_for_particle (pl_insert%a(1)%pdg)))
+    call pl_out%init (n + n_insert - 1)
+    do k = 1, n
+       if (new_pdg .and. k == i) then
+          pl_out%a(k) = pl%a(k)%add (pl_insert%a(1))
+       else
+          pl_out%a(k) = pl%a(k)
+       end if
+    end do
+    do k = n + 1, n + n_insert - 1
+       pl_out%a(k) = pl_insert%a(k-n)
+    end do
+  end function pdg_list_fusion
+
+@ %def pdg_list_fusion
+@
+<<PDG arrays: pdg list: TBP>>=
+  procedure :: get_pdg_sizes => pdg_list_get_pdg_sizes
+<<PDG arrays: procedures>>=
+  function pdg_list_get_pdg_sizes (pl) result (i_size)
+    integer, dimension(:), allocatable :: i_size
+    class(pdg_list_t), intent(in) :: pl
+    integer :: i, n
+    n = pl%get_size ()
+    allocate (i_size (n))
+    do i = 1, n
+       i_size(i) = size (pl%a(i)%pdg)
+    end do
+  end function pdg_list_get_pdg_sizes
+
+@ %def pdg_list_get_pdg_sizes
 @ Replace the entries of [[pl]] by the matching entries of [[pl_match]], one by
 one.  This is done in-place.  If there is no match, return failure.
 <<PDG arrays: pdg list: TBP>>=
@@ -2170,14 +2265,14 @@ intent(out) or as function result, so be conservative here:
 <<PDG arrays: pdg list: TBP>>=
   procedure :: search_for_particle => pdg_list_search_for_particle
 <<PDG arrays: procedures>>=
-  function pdg_list_search_for_particle (pl, i_part) result (found)
+  elemental function pdg_list_search_for_particle (pl, i_part) result (found)
+    logical :: found
     class(pdg_list_t), intent(in) :: pl
     integer, intent(in) :: i_part
-    logical :: found
     integer :: i_pl
     do i_pl = 1, size (pl%a)
        found = pl%a(i_pl)%search_for_particle (i_part)
-       if (found) return
+       if (found)  return
     end do
   end function pdg_list_search_for_particle
 
@@ -4019,17 +4114,15 @@ PDG value.
     type(subevt_t), intent(inout) :: subevt
     type(subevt_t), intent(in) :: pl
     real(default), dimension(:), intent(in) :: rval
-    integer, dimension(size(rval)) :: idx
     integer :: i
+    integer, dimension(size(rval)) :: idx
     call subevt_reset (subevt, pl%n_active)
     subevt%n_active = pl%n_active
     if (allocated (subevt%prt))  deallocate (subevt%prt)
     allocate (subevt%prt (size(pl%prt)))
-    !!! !!! !!! Workaround for the ifort 16.0/1
-    !subevt%prt = pl%prt(order (rval))
     idx = order (rval)
-    do i = 1, size(idx)
-       subevt%prt(i) = pl%prt(idx(i))
+    do i = 1, size (idx)
+       subevt%prt(i) = pl%prt (idx(i))
     end do
   end subroutine subevt_sort_real
 

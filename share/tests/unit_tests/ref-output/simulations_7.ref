@@ -55,6 +55,7 @@
    pass complete = F
    n_calls       = 0
    calls         = 1
+   calls_valid   = 1
    it complete   = F
    n adapt.(g)   = 0
    n adapt.(w)   = 0
@@ -190,10 +191,13 @@
  Structure-function parameters:
  Channel #1: [selected]
    p = 0.0816240 0.2132770
+   pb= 0.9183760 0.7867230
    r = 0.0816240 0.2132770
+   rb= 0.9183760 0.7867230
    f = 1.0000000E+00
    m = - -
    x = 0.0816240 0.2132770
+   xb= 0.9183760 0.7867230
 ------------------------------------------------------------------------
  Colliding beams:
  Interaction: 4
@@ -215,9 +219,11 @@
  Structure-function parameters:
  Channel #1: [selected]
    r = 0.0816240
+   rb= 0.9183760
    f = 1.0000000E+00
    m = F
    x = 0.0816240
+   xb= 0.9183760
  SF test data:
    model     = Test
    incoming  = f(25)
@@ -294,9 +300,11 @@
  Structure-function parameters:
  Channel #1: [selected]
    r = 0.2132770
+   rb= 0.7867230
    f = 1.0000000E+00
    m = F
    x = 0.2132770
+   xb= 0.7867230
  SF test data:
    model     = Test
    incoming  = f(25)

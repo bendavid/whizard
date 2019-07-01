@@ -33,10 +33,10 @@
    n_bins        = 20
    adapt grids   = T
    adapt weights = F
-   Results:  [it, calls, integral, error, efficiency]
-     1 1000  1.0088530962E+00  3.4375735070E-03  7.2121395531E-01
-     2 1000  1.0002027295E+00  3.9437934619E-03  6.9539437616E-01
- MD5 sum (including results) = '9BAA14D406F9FA2849EE9FBBB7488D88'
+   Results:  [it, calls, valid, integral, error, efficiency]
+     1 1000 1000  1.0088530962E+00  3.4375735070E-03  7.2121395531E-01
+     2 1000 1000  1.0002027295E+00  3.9437934619E-03  6.9539437616E-01
+ MD5 sum (including results) = '6205E35B2BFFFB18E3A8BA41A67A838A'
 
 * Write grids and extract binning
 
@@ -96,10 +96,10 @@
    n_bins        = 20
    adapt grids   = T
    adapt weights = F
-   Results:  [it, calls, integral, error, efficiency]
-     1 1000  1.0088530962E+00  3.4375735070E-03  7.2121395531E-01
-     2 1000  9.9977448991E-01  3.7774467176E-03  6.9313634831E-01
- MD5 sum (including results) = '987DD23306FA5A6C823E08880EEF263C'
+   Results:  [it, calls, valid, integral, error, efficiency]
+     1 1000 1000  1.0088530962E+00  3.4375735070E-03  7.2121395531E-01
+     2 1000 1000  9.9977448991E-01  3.7774467176E-03  6.9313634831E-01
+ MD5 sum (including results) = '93D7FE1CBA3F573B92759BB4B77A3D5F'
 
 * Write grids and extract binning
 

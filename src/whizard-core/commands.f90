@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -38,7 +31,7 @@ module commands
   use kinds, only: default
   use iso_varying_string, string_t => varying_string
   use io_units
-  use string_utils, only: lower_case, split_string
+  use string_utils, only: lower_case, split_string, str
   use format_utils, only: write_indent
   use format_defs, only: FMT_14, FMT_19
   use diagnostics
@@ -79,6 +72,8 @@ module commands
 
   use radiation_generator
 
+
+
   implicit none
   private
 
@@ -112,6 +107,8 @@ module commands
      type(string_t) :: name
      type(string_t) :: scheme
      logical :: ufo_model = .false.
+     logical :: ufo_path_set = .false.
+     type(string_t) :: ufo_path
    contains
      procedure :: write => cmd_model_write
      procedure :: compile => cmd_model_compile
@@ -675,8 +672,8 @@ end type range_real_t
        DEFAULT_ANALYSIS_FILENAME = "whizard_analysis.dat"
   character(len=1), dimension(2), parameter, public :: &
        FORBIDDEN_ENDINGS1 = [ "o", "a" ]
-  character(len=2), dimension(5), parameter, public :: &
-       FORBIDDEN_ENDINGS2 = [ "mp", "ps", "vg", "lo", "la" ]
+  character(len=2), dimension(6), parameter, public :: &
+       FORBIDDEN_ENDINGS2 = [ "mp", "ps", "vg", "pg", "lo", "la" ]
   character(len=3), dimension(16), parameter, public :: &
        FORBIDDEN_ENDINGS3 = [ "aux", "dvi", "evt", "evx", "f03", "f90", &
           "f95", "log", "ltp", "mpx", "olc", "olp", "pdf", "phs", "sin", "tex" ]
@@ -910,7 +907,11 @@ contains
     call write_indent (u, indent)
     write (u, "(1x,A,1x,'""',A,'""')", advance="no")  "model =", char (cmd%name)
     if (cmd%ufo_model) then
-       write (u, "(1x,A)")  "(ufo)"
+       if (cmd%ufo_path_set) then
+          write (u, "(1x,A,A,A)")  "(ufo (", char (cmd%ufo_path), "))"
+       else
+          write (u, "(1x,A)")  "(ufo)"
+       end if
     else if (cmd%scheme /= "") then
        write (u, "(1x,'(',A,')')")  char (cmd%scheme)
     else
@@ -922,6 +923,7 @@ contains
     class(cmd_model_t), intent(inout) :: cmd
     type(rt_data_t), intent(inout), target :: global
     type(parse_node_t), pointer :: pn_name, pn_arg, pn_scheme
+    type(parse_node_t), pointer :: pn_ufo_arg, pn_path
     type(model_t), pointer :: model
     type(string_t) :: scheme
     pn_name => cmd%pn%get_sub_ptr (3)
@@ -934,17 +936,27 @@ contains
     cmd%name = pn_name%get_string ()
     if (associated (pn_scheme)) then
        select case (char (pn_scheme%get_rule_key ()))
-       case ("ufo")
+       case ("ufo_spec")
           cmd%ufo_model = .true.
+          pn_ufo_arg => pn_scheme%get_sub_ptr (2)
+          if (associated (pn_ufo_arg)) then
+             pn_path => pn_ufo_arg%get_sub_ptr ()
+             cmd%ufo_path_set = .true.
+             cmd%ufo_path = pn_path%get_string ()
+          end if
        case default
           scheme = pn_scheme%get_string ()
-          select case (char (lower_case (scheme)))
-          case ("ufo");  cmd%ufo_model = .true.
+    select case (char (lower_case (scheme)))
+    case ("ufo");  cmd%ufo_model = .true.
           case default;  cmd%scheme = scheme
           end select
        end select
        if (cmd%ufo_model) then
-          call preload_ufo_model (model, cmd%name)
+          if (cmd%ufo_path_set) then
+             call preload_ufo_model (model, cmd%name, cmd%ufo_path)
+          else
+             call preload_ufo_model (model, cmd%name)
+          end if
        else
           call preload_model (model, cmd%name, cmd%scheme)
        end if
@@ -975,20 +987,23 @@ contains
          end if
       end if
     end subroutine preload_model
-    subroutine preload_ufo_model (model, name)
+    subroutine preload_ufo_model (model, name, ufo_path)
       type(model_t), pointer, intent(out) :: model
       type(string_t), intent(in) :: name
+      type(string_t), intent(in), optional :: ufo_path
       model => null ()
       if (associated (global%model)) then
-         if (global%model%matches (name, ufo=.true.)) then
+         if (global%model%matches (name, ufo=.true., ufo_path=ufo_path)) then
             model => global%model
          end if
       end if
       if (.not. associated (model)) then
-         if (global%model_list%model_exists (name, scheme)) then
-            model => global%model_list%get_model_ptr (name, ufo=.true.)
+         if (global%model_list%model_exists (name, &
+              ufo=.true., ufo_path=ufo_path)) then
+            model => global%model_list%get_model_ptr (name, &
+                 ufo=.true., ufo_path=ufo_path)
          else
-            call global%read_ufo_model (name, model)
+            call global%read_ufo_model (name, model, ufo_path=ufo_path)
          end if
       end if
     end subroutine preload_ufo_model
@@ -998,7 +1013,11 @@ contains
     class(cmd_model_t), intent(inout) :: cmd
     type(rt_data_t), intent(inout), target :: global
     if (cmd%ufo_model) then
-       call global%select_model (cmd%name, ufo = .true.)
+       if (cmd%ufo_path_set) then
+          call global%select_model (cmd%name, ufo=.true., ufo_path=cmd%ufo_path)
+       else
+          call global%select_model (cmd%name, ufo=.true.)
+       end if
     else if (cmd%scheme /= "") then
        call global%select_model (cmd%name, cmd%scheme)
     else
@@ -1099,17 +1118,12 @@ contains
     type(string_t), dimension(:), allocatable :: prt_in_nlo, prt_out_nlo
     type(radiation_generator_t) :: radiation_generator
     type(pdg_list_t) :: pl_in, pl_out, pl_excluded_gauge_splittings
-    type(string_t) :: born_me_method
-    type(string_t) :: real_tree_me_method
-    type(string_t) :: loop_me_method
-    type(string_t) :: correlation_me_method
-    type(string_t) :: soft_mismatch_me_method
-    type(string_t) :: dglap_me_method
+    type(string_t) :: method, born_me_method, loop_me_method, correlation_me_method, &
+         real_tree_me_method, dglap_me_method
     integer, dimension(:), allocatable :: i_list
     logical :: use_real_finite
     logical :: gks_active
     logical :: initial_state_colored
-    logical :: has_structure_functions
     integer :: n_components_extra
     integer :: gks_multiplicity
     integer :: n_emitters
@@ -1138,21 +1152,32 @@ contains
     gks_active = gks_multiplicity > 2
     call check_for_nlo_corrections ()
 
+    method = var_list%get_sval (var_str ("$method"))
     born_me_method = var_list%get_sval (var_str ("$born_me_method"))
+    if (born_me_method == var_str (""))  born_me_method = method
     use_real_finite = var_list%get_lval (var_str ('?nlo_use_real_partition'))
     if (nlo_fixed_order) then
-       real_tree_me_method = var_list%get_sval (var_str ("$real_tree_me_method"))
+       real_tree_me_method = &
+            var_list%get_sval (var_str ("$real_tree_me_method"))
+       if (real_tree_me_method == var_str ("")) &
+            real_tree_me_method = method
        loop_me_method = var_list%get_sval (var_str ("$loop_me_method"))
-       correlation_me_method = var_list%get_sval (var_str ("$correlation_me_method"))
-       soft_mismatch_me_method = var_list%get_sval (var_str ("$soft_mismatch_me_method"))
+       if (loop_me_method == var_str ("")) &
+            loop_me_method = method
+       correlation_me_method = &
+            var_list%get_sval (var_str ("$correlation_me_method"))
+       if (correlation_me_method == var_str ("")) &
+            correlation_me_method = method
        dglap_me_method = var_list%get_sval (var_str ("$dglap_me_method"))
+       if (dglap_me_method == var_str ("")) &
+            dglap_me_method = method
        call check_nlo_options (cmd%local)
     end if
-    if (any (cmd%local%selected_nlo_parts))  &
-         call override_local_me_method (born_me_method)
 
     call determine_needed_components ()
-    call prc_config%init (cmd%id, n_in, n_components_init, cmd%local, nlo_fixed_order)
+    call prc_config%init (cmd%id, n_in, n_components_init, &
+         cmd%local%model, cmd%local%var_list, &
+         nlo_process = nlo_fixed_order)
 
     alpha_power = var_list%get_ival (var_str ("alpha_power"))
     alphas_power = var_list%get_ival (var_str ("alphas_power"))
@@ -1162,11 +1187,6 @@ contains
     call prc_config%record (cmd%local)
 
   contains
-
-    subroutine override_local_me_method (me_method)
-      type(string_t), intent(in) :: me_method
-      call var_list%set_string (var_str ("$method"), me_method, is_known=.true.)
-    end subroutine override_local_me_method
 
     elemental function is_threshold (method)
       logical :: is_threshold
@@ -1189,6 +1209,7 @@ contains
 
     subroutine check_for_nlo_corrections ()
       type(string_t) :: nlo_correction_type
+      type(pdg_array_t), dimension(:), allocatable :: pdg
       if (nlo_fixed_order .or. gks_active) then
          nlo_correction_type = var_list%get_sval (var_str ('$nlo_correction_type'))
          select case (char(nlo_correction_type))
@@ -1206,6 +1227,16 @@ contains
       end if
       if (nlo_fixed_order) then
          call radiation_generator%find_splittings ()
+         if (debug2_active (D_CORE)) then
+            print *, ''
+            print *, 'Found (pdg) splittings: '
+            do i = 1, radiation_generator%if_table%get_length ()
+               call radiation_generator%if_table%get_pdg_out (i, pdg)
+               call pdg_array_write_set (pdg)
+               print *, '----------------'
+            end do
+         end if
+
          nlo_fixed_order = radiation_generator%contains_emissions ()
          if (.not. nlo_fixed_order) call msg_warning &
               (arr = [var_str ("No NLO corrections found for process ") // cmd%id // var_str("."), &
@@ -1261,8 +1292,7 @@ contains
          call check_threshold_consistency ()
          requires_soft_mismatch = fks_method == var_str ('resonances')
          n_components_extra = needed_extra_components (initial_state_colored, &
-              has_structure_functions, requires_soft_mismatch, &
-              use_real_finite, n_emitters)
+              requires_soft_mismatch, use_real_finite, n_in)
          allocate (i_list (n_components_extra))
       else if (gks_active) then
          call radiation_generator%generate_multiple (gks_multiplicity, cmd%local%model)
@@ -1286,10 +1316,13 @@ contains
       call radiation_generator%init (pl_in, pl_out, &
            pl_excluded_gauge_splittings, qcd = qcd_corr, qed = qed_corr)
       call radiation_generator%set_n (n_in, n_out, 0)
-      initial_state_colored = pdg_in%has_colored_particles()
-      has_structure_functions = global%beam_structure%get_n_record () > 0
-      requires_dglap_remnants = initial_state_colored .and. has_structure_functions
-      if (requires_dglap_remnants)  call radiation_generator%set_initial_state_emissions ()
+      initial_state_colored = pdg_in%has_colored_particles ()
+      if ((n_in == 2 .and. initial_state_colored) .or. qed_corr) then
+          requires_dglap_remnants = n_in == 2 .and. initial_state_colored
+          call radiation_generator%set_initial_state_emissions ()
+      else
+         requires_dglap_remnants = .false.
+      end if
       call radiation_generator%set_constraints (.false., .false., .true., .true.)
       call radiation_generator%setup_if_table (cmd%local%model)
     end subroutine setup_radiation_generator
@@ -1362,7 +1395,6 @@ contains
                     requires_dglap_remnants, requires_soft_mismatch, &
                     use_real_finite, n_emitters)
 
-               call override_local_me_method (born_me_method)
                i_comp = i
                call msg_debug (D_CORE, "Setting up this NLO component:", i_comp)
                call prc_config%setup_component (i_comp, &
@@ -1372,7 +1404,6 @@ contains
 
                call radiation_generator%generate_real_particle_strings &
                     (prt_in_nlo, prt_out_nlo)
-               call override_local_me_method (real_tree_me_method)
                i_comp = n_components + i
                call msg_debug (D_CORE, "Setting up this NLO component:", i_comp)
                call prc_config%setup_component (i_comp, &
@@ -1380,7 +1411,6 @@ contains
                     cmd%local%model, var_list, NLO_REAL, &
                     can_be_integrated = selected_nlo_parts (NLO_REAL))
 
-               call override_local_me_method (loop_me_method)
                i_comp = n_components * 2 + i
                call msg_debug (D_CORE, "Setting up this NLO component:", i_comp)
                call prc_config%setup_component (i_comp, &
@@ -1388,7 +1418,6 @@ contains
                     cmd%local%model, var_list, NLO_VIRTUAL, &
                     can_be_integrated = selected_nlo_parts (NLO_VIRTUAL))
 
-               call override_local_me_method (correlation_me_method)
                i_comp = n_components * 3 + i
                call msg_debug (D_CORE, "Setting up this NLO component:", i_comp)
                call prc_config%setup_component (i_comp, &
@@ -1397,7 +1426,6 @@ contains
                     can_be_integrated = selected_nlo_parts (NLO_SUBTRACTION))
 
                if (use_real_finite) then
-                  call override_local_me_method (real_tree_me_method)
                   i_comp = n_components * 4 + i
                   call msg_debug (D_CORE, "Setting up this NLO component:", i_comp)
                   call prc_config%setup_component (i_comp, &
@@ -1407,7 +1435,6 @@ contains
                end if
 
                if (requires_dglap_remnants) then
-                  call override_local_me_method (dglap_me_method)
                   i_comp = n_components * 4 + i
                   call msg_debug (D_CORE, "Setting up this NLO component:", i_comp)
                   call prc_config%setup_component (i_comp, &
@@ -1417,7 +1444,6 @@ contains
                end if
 
                if (requires_soft_mismatch) then
-                  call override_local_me_method (soft_mismatch_me_method)
                   i_comp = n_components * 4 + i
                   call msg_debug (D_CORE, "Setting up this NLO component:", i_comp)
                   call prc_config%setup_component (i_comp, &
@@ -1430,7 +1456,6 @@ contains
                     requires_dglap_remnants, use_real_finite, requires_soft_mismatch)
             end associate
          else if (gks_active) then
-            call override_local_me_method (var_str ("omega"))
             call prc_config%setup_component (i, prt_spec_in, prt_spec_out, &
                  cmd%local%model, var_list, BORN, can_be_integrated = .true.)
             call radiation_generator%reset_queue ()
@@ -1474,7 +1499,8 @@ contains
        call msg_fatal ("POWHEG requires the 'combined_nlo_integration'-option &
             &to be set to true.")
     end if
-    fixed_order_nlo_events = var_list%get_lval (var_str ('?fixed_order_nlo_events'))
+    fixed_order_nlo_events = &
+         var_list%get_lval (var_str ('?fixed_order_nlo_events'))
     if (fixed_order_nlo_events .and. .not. combined .and. &
          all (local%selected_nlo_parts)) &
        call msg_fatal ("Option mismatch: Fixed order NLO events of the full ", &
@@ -1507,15 +1533,13 @@ contains
   end subroutine set_component_list
 
   pure function needed_extra_components (initial_state_colored, &
-         has_structure_functions, requires_soft_mismatch, &
-         use_real_finite, n_emitters) result (n)
+         requires_soft_mismatch, use_real_finite, n_in) result (n)
     integer :: n
     logical, intent(in) :: initial_state_colored, &
-         has_structure_functions, use_real_finite, &
-         requires_soft_mismatch
-    integer, intent(in) :: n_emitters
+         use_real_finite, requires_soft_mismatch
+    integer, intent(in) :: n_in
     if (initial_state_colored) then
-       if (has_structure_functions) then
+       if (n_in == 2) then
           n = 5
        else
           n = 4
@@ -1630,28 +1654,27 @@ contains
     pn_arg => parse_node_get_sub_ptr (cmd%pn, 3)
     if (associated (pn_arg)) then
        n_comp = parse_node_get_n_sub (pn_arg)
-    else
-       n_comp = 0
-    end if
-    if (n_comp > 0) then
-       pn_comp => parse_node_get_sub_ptr (pn_arg)
        allocate (cmd%nlo_component (n_comp))
-       do i = 1, n_comp
+       pn_comp => parse_node_get_sub_ptr (pn_arg)
+       i = 0
+       do while (associated (pn_comp))
+          i = i + 1
           cmd%nlo_component(i) = component_status &
-               (eval_string (pn_comp, global%var_list))
+               (parse_node_get_rule_key (pn_comp))
           pn_comp => parse_node_get_next_ptr (pn_comp)
        end do
+    else
+       allocate (cmd%nlo_component (0))
     end if
   end subroutine cmd_nlo_compile
 
   subroutine cmd_nlo_execute (cmd, global)
     class(cmd_nlo_t), intent(inout) :: cmd
     type(rt_data_t), intent(inout), target :: global
-    type(parse_node_t), pointer :: current_component
-    type(string_t) :: component_type
     type(string_t) :: string
     integer :: n, i, j
     logical, dimension(0:5) :: selected_nlo_parts
+    call msg_debug (D_CORE, "cmd_nlo_execute")
     selected_nlo_parts = .false.
     if (allocated (cmd%nlo_component)) then
        n = size (cmd%nlo_component)
@@ -1675,7 +1698,7 @@ contains
                char (string))
        end select
     end do
-    global%nlo_fixed_order = any (selected_nlo_parts(1:5))
+    global%nlo_fixed_order = any (selected_nlo_parts)
     global%selected_nlo_parts = selected_nlo_parts
     allocate (global%nlo_component (size (cmd%nlo_component)))
     global%nlo_component = cmd%nlo_component
@@ -1738,6 +1761,8 @@ contains
     type(rt_data_t), intent(inout), target :: global
     type(string_t), dimension(:), allocatable :: libname, libname_static
     integer :: i
+    
+    
     if (allocated (cmd%libname)) then
        allocate (libname (size (cmd%libname)))
        libname = cmd%libname
@@ -1758,6 +1783,7 @@ contains
           call compile_library (libname(i), cmd%local)
        end do
     end if
+    
   end subroutine cmd_compile_execute
 
   subroutine cmd_exec_write (cmd, unit, indent)
@@ -4283,7 +4309,9 @@ contains
              process_string = process_string // " " // prt_out(j)
           end do
           call msg_message (char (process_string))
-          call prc_config%init (process_id(i), 1, 1, global)
+          call prc_config%init (process_id(i), 1, 1, &
+               global%model, global%var_list, &
+               nlo_process = global%nlo_fixed_order)
           !!! Causes runtime error with gfortran 4.9.1
           ! call prc_config%setup_component (1, &
           !      new_prt_spec ([prt_in]), new_prt_spec (prt_out), global%model, global%var_list)
@@ -4502,13 +4530,14 @@ contains
     type(var_list_t), pointer :: var_list
     type(rt_data_t), dimension(:), allocatable, target :: alt_env
     integer :: n_events, n_fmt
-    type(string_t) :: sample
+    type(string_t) :: sample, sample_suffix
     logical :: rebuild_events, read_raw, write_raw
     type(simulation_t), target :: sim
     type(string_t), dimension(:), allocatable :: sample_fmt
     type(event_stream_array_t) :: es_array
     type(event_sample_data_t) :: data
     integer :: i, checkpoint, callback
+   
     var_list => cmd%local%var_list
     if (allocated (cmd%local%pn%alt_setup)) then
        allocate (alt_env (size (cmd%local%pn%alt_setup)))
@@ -4528,8 +4557,14 @@ contains
             (var_list%get_ival (var_str ("openmp_num_threads")), &
             var_list%get_lval (var_str ("?openmp_logging")))
        call sim%compute_n_events (n_events, var_list)
+       sample_suffix = ""
+     
        sample = var_list%get_sval (var_str ("$sample"))
-       if (sample == "")  sample = sim%get_default_sample_name ()
+       if (sample == "")  then
+          sample = sim%get_default_sample_name () // sample_suffix
+       else
+          sample = var_list%get_sval (var_str ("$sample")) // sample_suffix
+       end if
        rebuild_events = &
             var_list%get_lval (var_str ("?rebuild_events"))
        read_raw = &
@@ -4651,7 +4686,7 @@ contains
     type(rt_data_t), intent(inout), target :: global
     type(var_list_t), pointer :: var_list
     type(rt_data_t), dimension(:), allocatable, target :: alt_env
-    type(string_t) :: sample
+    type(string_t) :: sample, sample_suffix
     logical :: exist, write_raw, update_event, update_sqme
     type(simulation_t), target :: sim
     type(event_sample_data_t) :: input_data, data
@@ -4662,6 +4697,7 @@ contains
     type(string_t) :: lhef_extension, extension_hepmc, extension_lcio
     type(event_stream_array_t) :: es_array
     integer :: i, n_events
+  
     var_list => cmd%local%var_list
     if (allocated (cmd%local%pn%alt_setup)) then
        allocate (alt_env (size (cmd%local%pn%alt_setup)))
@@ -4678,8 +4714,14 @@ contains
     input_sample = eval_string (cmd%pn_filename, var_list)
     input_format = var_list%get_sval (&
          var_str ("$rescan_input_format"))
+    sample_suffix = ""
+  
     sample = var_list%get_sval (var_str ("$sample"))
-    if (sample == "")  sample = sim%get_default_sample_name ()
+    if (sample == "") then
+       sample = sim%get_default_sample_name () // sample_suffix
+    else
+       sample = var_list%get_sval (var_str ("$sample")) // sample_suffix
+    end if
     write_raw = var_list%get_lval (var_str ("?write_raw"))
     if (allocated (cmd%local%sample_fmt)) then
        n_fmt = size (cmd%local%sample_fmt)
@@ -5355,11 +5397,8 @@ contains
     type(string_t) :: key
     integer :: var_type
     integer :: i
-    logical, parameter :: debug = .false.
-    if (debug) then
-       print *, "compile scan"
-       call parse_node_write_rec (cmd%pn)
-    end if
+    call msg_debug (D_CORE, "cmd_scan_compile")
+    if (debug_active (D_CORE))  call parse_node_write_rec (cmd%pn)
     pn_var => parse_node_get_sub_ptr (cmd%pn, 2)
     pn_body => parse_node_get_next_ptr (pn_var)
     if (associated (pn_body)) then
@@ -5555,7 +5594,7 @@ contains
        i = i + 1
        pn_rhs => parse_node_get_next_ptr (pn_rhs)
     end do
-    if (debug) then
+    if (debug_active (D_CORE)) then
        do i = 1, cmd%n_values
           print *, "scan command ", i
           call parse_node_write_rec (cmd%scan_cmd(i)%ptr)
@@ -5974,8 +6013,11 @@ contains
     call ifile_append (ifile, "ALT model_name = model_id | string_literal")
     call ifile_append (ifile, "IDE model_id")
     call ifile_append (ifile, "ARG model_arg = ( model_scheme? )")
-    call ifile_append (ifile, "ALT model_scheme = ufo | scheme_id | string_literal")
+    call ifile_append (ifile, "ALT model_scheme = " &
+         // "ufo_spec | scheme_id | string_literal")
+    call ifile_append (ifile, "SEQ ufo_spec = ufo ufo_arg?")
     call ifile_append (ifile, "KEY ufo")
+    call ifile_append (ifile, "ARG ufo_arg = ( string_literal )")
     call ifile_append (ifile, "IDE scheme_id")
     call ifile_append (ifile, "SEQ cmd_library = library '=' lib_name")
     call ifile_append (ifile, "KEY library")
@@ -6010,7 +6052,7 @@ contains
          // "model | library | beams | iterations | " &
          // "cuts | weight | logical | string | pdg | " &
          // "scale | factorization_scale | renormalization_scale | " &
-         // "selection | reweight | analysis | " &
+   // "selection | reweight | analysis | " &
          // "stable | unstable | polarized | unpolarized | " &
          // "expect | intrinsic | int | real | complex | " &
          // "alias_var | string | results | result_var | " &
@@ -6028,7 +6070,7 @@ contains
          // "beams | iterations | " &
          // "cuts | weight | " &
          // "scale | factorization_scale | renormalization_scale | " &
-         // "selection | reweight | analysis | " &
+   // "selection | reweight | analysis | " &
          // "unstable | polarized | " &
          // "expect | " &
          // "log_var | string_var | var_name")
@@ -6281,7 +6323,17 @@ contains
     call ifile_append (ifile, "SEQ cmd_nlo = " &
                        // "nlo_calculation '=' nlo_calculation_list")
     call ifile_append (ifile, "KEY nlo_calculation")
-    call ifile_append (ifile, "LIS nlo_calculation_list = sexpr+")
+    call ifile_append (ifile, "LIS nlo_calculation_list = nlo_comp+")
+    call ifile_append (ifile, "ALT nlo_comp = " // &
+         "full | born | real | virtual | dglap | subtraction | " // &
+         "mismatch | GKS")
+    call ifile_append (ifile, "KEY full")
+    call ifile_append (ifile, "KEY born")
+    call ifile_append (ifile, "KEY virtual")
+    call ifile_append (ifile, "KEY dglap")
+    call ifile_append (ifile, "KEY subtraction")
+    call ifile_append (ifile, "KEY mismatch")
+    call ifile_append (ifile, "KEY GKS")
     call define_expr_syntax (ifile, particles=.true., analysis=.true.)
   end subroutine define_cmd_list_syntax
 

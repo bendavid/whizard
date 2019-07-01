@@ -60,7 +60,7 @@ program test_omega95_bispinors
   end do
   do i = 2, 3
      do j = 1, 4
-        testv%psi(i)%a(j) = cmplx (10.0_default * r(j))
+        testv%psi(i)%a(j) = cmplx (10.0_default * r(j), kind=default)
     end do
   end do
   testv%psi(4)%a(1) = (1.0_default, 0.0_default)

@@ -69,6 +69,7 @@
 r =  0.4000000
 rb=  0.6000000
 x =  0.4000000
+xb=  0.6000000
 f =  1.0000000
 
 * Recover x from momenta
@@ -76,6 +77,7 @@ f =  1.0000000
 r =  0.4000000
 rb=  0.6000000
 x =  0.4000000
+xb=  0.6000000
 f =  1.0000000
 
 * Evaluate EWA structure function
@@ -100,6 +102,7 @@ f =  1.0000000
      PDG (VB)  = 24
  SF parameters:
    x = 4.0000000000E-01
+   xb= 6.0000000000E-01
  SF instance: [evaluated]
    beam      = 1
    incoming  = 1
@@ -115,8 +118,8 @@ f =  1.0000000
  helicity lock: 2
  Outgoing:
  Particle 2
- E =   0.000000000000E+00
- P =   0.000000000000E+00  0.000000000000E+00  0.000000000000E+00
+ E =   9.000000000000E+02
+ P =   0.000000000000E+00  0.000000000000E+00  9.000000000000E+02
  mask [fch] = [FFgF]
  internal links: 1 => X
  helicity lock: 1

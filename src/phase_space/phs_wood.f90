@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -52,7 +45,7 @@ module phs_wood
   use sf_base
   use phs_base
   use mappings
-  use resonances, only: resonance_history_t
+  use resonances, only: resonance_history_set_t
   use phs_forests
   use cascades
 
@@ -93,8 +86,8 @@ module phs_wood
      procedure :: generate_phase_space => phs_wood_config_generate_phase_space
      procedure :: write_phase_space => phs_wood_config_write_phase_space
      procedure :: clear_phase_space => phs_wood_config_clear_phase_space
-     procedure :: extract_resonance_histories &
-          => phs_wood_config_extract_resonance_histories
+     procedure :: extract_resonance_history_set &
+          => phs_wood_config_extract_resonance_history_set
      procedure :: configure => phs_wood_config_configure
      procedure :: reshuffle_flavors => phs_wood_config_reshuffle_flavors
      procedure :: set_momentum_links => phs_wood_config_set_momentum_links
@@ -327,11 +320,14 @@ contains
     end if
   end subroutine phs_wood_config_clear_phase_space
 
-  subroutine phs_wood_config_extract_resonance_histories (phs_config, res_hist)
+  subroutine phs_wood_config_extract_resonance_history_set &
+       (phs_config, res_set, include_trivial)
     class(phs_wood_config_t), intent(in) :: phs_config
-    type(resonance_history_t), dimension(:), allocatable, intent(out) :: res_hist
-    call phs_config%forest%extract_resonance_histories (res_hist)
-  end subroutine phs_wood_config_extract_resonance_histories
+    type(resonance_history_set_t), intent(out) :: res_set
+    logical, intent(in), optional :: include_trivial
+    call phs_config%forest%extract_resonance_history_set &
+         (res_set, include_trivial)
+  end subroutine phs_wood_config_extract_resonance_history_set
 
   subroutine phs_wood_config_configure (phs_config, sqrts, &
        sqrts_fixed, cm_frame, azimuthal_dependence, rebuild, ignore_mismatch, &
@@ -391,6 +387,10 @@ contains
              call phs_config%read_phs_file (exist, found)
              rebuild_phs = .not. (exist .and. found)
           end if
+       end if
+       if (.not. mpi_is_comm_master ()) then
+          rebuild_phs = .false.
+          call msg_message ("MPI: Workers do not build phase space configuration.")
        end if
        if (rebuild_phs) then
           call phs_config%generate_phase_space ()

@@ -122,8 +122,8 @@ Warning: No cuts have been defined.
 |-----------------------------------------------------------------------------|
    1       1000  3.0985849E+04  0.00E+00    0.00    0.00  100.00
 |=============================================================================|
-?alpha_s_is_fixed = false
-?alpha_s_from_mz = true
+?alphas_is_fixed = false
+?alphas_from_mz = true
 | QCD alpha: using a running strong coupling
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 3

@@ -59,9 +59,9 @@ seed = 0
    5      20000  1.2853960E+07  8.97E+04    0.70    0.99    5.08    1.21   5
 |=============================================================================|
 ?rebuild_phase_space = false
-?alpha_s_is_fixed = false
-?alpha_s_from_mz = true
-alpha_s_order = 1
+?alphas_is_fixed = false
+?alphas_from_mz = true
+alphas_order = 1
 seed = 0
 | QCD alpha: using a running strong coupling
 | RNG: Initializing TAO random-number generator
@@ -102,9 +102,9 @@ seed = 0
 |-----------------------------------------------------------------------------|
    5      20000  8.1607398E+06  5.69E+04    0.70    0.99    5.08    1.21   5
 |=============================================================================|
-?alpha_s_is_fixed = false
-?alpha_s_from_mz = false
-?alpha_s_from_pdf_builtin = true
+?alphas_is_fixed = false
+?alphas_from_mz = false
+?alphas_from_pdf_builtin = true
 seed = 0
 | QCD alpha: using a running strong coupling
 | Initialized builtin PDF CTEQ6L

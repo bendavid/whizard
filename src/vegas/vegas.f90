@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -35,11 +28,13 @@
 
 module vegas
   use kinds, only: default
+
   use diagnostics
   use io_units
   use format_utils, only: write_indent
   use format_defs, only: FMT_17
   use rng_base, only: rng_t
+  use rng_stream, only: rng_stream_t
 
   implicit none
   private
@@ -52,7 +47,7 @@ module vegas
 
   integer, parameter, public :: VEGAS_MODE_IMPORTANCE = 0, &
        & VEGAS_MODE_STRATIFIED = 1, VEGAS_MODE_IMPORTANCE_ONLY = 2
-character(len=*), parameter, private :: &
+  character(len=*), parameter, private :: &
      descr_fmt =         "(1X,A)", &
      integer_fmt =       "(1X,A18,1X,I15)", &
      integer_array_fmt = "(1X,I18,1X,I15)", &
@@ -84,14 +79,15 @@ character(len=*), parameter, private :: &
   end type vegas_config_t
 
   type :: vegas_grid_t
-     integer :: n_dim = 0
-     integer :: n_bins = 0
+     integer :: n_dim = 1
+     integer :: n_bins = 1
      real(default), dimension(:), allocatable :: x_lower
      real(default), dimension(:), allocatable :: x_upper
      real(default), dimension(:), allocatable :: delta_x
      real(default), dimension(:,:), allocatable :: xi
    contains
      procedure, public :: write => vegas_grid_write
+     procedure, private :: resize => vegas_grid_resize
      procedure, public :: get_probability => vegas_grid_get_probability
   end type vegas_grid_t
 
@@ -111,6 +107,8 @@ character(len=*), parameter, private :: &
      real(default) :: max_abs_f_neg = 0.
      real(default) :: result = 0.
      real(default) :: std = 0.
+     real(default) :: evt_weight = 0.
+     real(default) :: evt_weight_excess = 0.
    contains
      procedure, public :: write => vegas_result_write
   end type vegas_result_t
@@ -121,7 +119,6 @@ character(len=*), parameter, private :: &
      real(default) :: hypercube_volume = 0.
      real(default) :: jacobian = 0.
      real(default), dimension(:, :), allocatable :: d
-     real(default), dimension(:), allocatable :: weight
      type(vegas_grid_t) :: grid
      integer, dimension(:), allocatable :: bin
      integer, dimension(:), allocatable :: box
@@ -130,9 +127,9 @@ character(len=*), parameter, private :: &
      procedure, public :: final => vegas_final
      procedure, public :: set_limits => vegas_set_limits
      procedure, public :: set_calls => vegas_set_n_calls
+     procedure, public :: get_grid => vegas_get_grid
      procedure, public :: get_config => vegas_get_config
      procedure, public :: set_config => vegas_set_config
-     procedure, public :: get_grid => vegas_get_grid
      procedure, public :: get_result => vegas_get_result
      procedure, public :: get_calls => vegas_get_n_calls
      procedure, public :: get_integral => vegas_get_integral
@@ -141,18 +138,18 @@ character(len=*), parameter, private :: &
      procedure, public :: get_max_abs_f => vegas_get_max_abs_f
      procedure, public :: get_max_abs_f_pos => vegas_get_max_abs_f_pos
      procedure, public :: get_max_abs_f_neg => vegas_get_max_abs_f_neg
-     procedure, public :: get_distribution => vegas_get_distribution
-     procedure, public :: set_distribution => vegas_set_distribution
+     procedure, public :: get_evt_weight => vegas_get_evt_weight
+     procedure, public :: get_evt_weight_excess => vegas_get_evt_weight_excess
      procedure, private :: init_grid => vegas_init_grid
      procedure, public :: reset_result => vegas_reset_result
      procedure, public :: reset_grid => vegas_reset_grid
-     procedure, private :: resize => vegas_resize_grid
      procedure, public :: refine => vegas_refine_grid
      procedure, public :: integrate => vegas_integrate
      procedure, private :: random_point => vegas_random_point
      procedure, private :: simple_random_point => vegas_simple_random_point
      procedure, private :: accumulate_distribution => vegas_accumulate_distribution
-     procedure, public :: generate_event => vegas_generate_event
+     procedure :: generate_weighted => vegas_generate_weighted_event
+     procedure, public :: generate_unweighted=> vegas_generate_unweighted_event
      procedure, public :: write_grid => vegas_write_grid
      procedure, public :: read_grid => vegas_read_grid
   end type vegas_t
@@ -165,6 +162,10 @@ character(len=*), parameter, private :: &
        real(default), dimension(:), intent(in) :: x
      end function vegas_func_evaluate
   end interface
+
+  interface vegas_grid_t
+     module procedure vegas_grid_init
+  end interface vegas_grid_t
 
   interface vegas_t
      module procedure vegas_init
@@ -211,40 +212,90 @@ contains
          & "Number of boxes                 = ", self%n_boxes
   end subroutine vegas_config_write
 
-  subroutine vegas_grid_write (self, unit, indent)
+  type(vegas_grid_t) function vegas_grid_init (n_dim, n_bins_max) result (self)
+    integer, intent(in) :: n_dim
+    integer, intent(in) :: n_bins_max
+    self%n_dim = n_dim
+    self%n_bins = 1
+    allocate (self%x_upper(n_dim), source=1.0_default)
+    allocate (self%x_lower(n_dim), source=0.0_default)
+    allocate (self%delta_x(n_dim), source=1.0_default)
+    allocate (self%xi((n_bins_max + 1), n_dim), source=0.0_default)
+  end function vegas_grid_init
+
+  subroutine vegas_grid_write (self, unit)
     class(vegas_grid_t), intent(in) :: self
     integer, intent(in), optional :: unit
-    integer, intent(in), optional :: indent
-    integer :: u, ind, i, j
+    integer :: u, i, j
     u = given_output_unit (unit)
-    ind = 0; if (present (indent)) ind = indent
+    write (u, descr_fmt) "begin vegas_grid_t"
+    write (u, integer_fmt) "n_dim = ", self%n_dim
+    write (u, integer_fmt) "n_bins = ", self%n_bins
     write (u, descr_fmt) "begin x_lower"
     do j = 1, self%n_dim
-       call write_indent (u, ind)
        write (u, double_array_fmt)  j, self%x_lower(j)
     end do
     write (u, descr_fmt) "end x_lower"
     write (u, descr_fmt) "begin x_upper"
     do j = 1, self%n_dim
-       call write_indent (u, ind)
        write (u, double_array_fmt) j, self%x_upper(j)
     end do
     write (u, descr_fmt) "end x_upper"
     write (u, descr_fmt) "begin delta_x"
     do j = 1, self%n_dim
-       call write_indent (u, ind)
        write (u, double_array_fmt)  j, self%delta_x(j)
     end do
     write (u, descr_fmt) "end delta_x"
     write (u, descr_fmt) "begin xi"
     do j = 1, self%n_dim
        do i = 1, self%n_bins + 1
-          call write_indent (u, ind)
           write (u, double_array2_fmt) i, j, self%xi(i, j)
        end do
     end do
     write (u, descr_fmt) "end xi"
+    write (u, descr_fmt) "end vegas_grid_t"
   end subroutine vegas_grid_write
+
+  subroutine vegas_grid_resize (self, n_bins, w)
+    class(vegas_grid_t), intent(inout) :: self
+    integer, intent(in) :: n_bins
+    real(default), dimension(:, :), intent(in) :: w
+    real(default), dimension(size(self%xi)) :: xi_new
+    integer :: i, j, k
+    real(default) :: pts_per_bin
+    real(default) :: d_width
+    call msg_debug (D_VAMP2, "vegas_grid_resize")
+    do j = 1, self%n_dim
+       if (self%n_bins /= n_bins) then
+          pts_per_bin = real(self%n_bins, default) / real(n_bins, default)
+          self%n_bins = n_bins
+       else
+          if (all (w(:, j) == 0.)) then
+             call msg_bug ("[VEGAS] grid_resize: resize weights are zero.")
+          end if
+          pts_per_bin = sum(w(:, j)) / self%n_bins
+       end if
+       d_width = 0.
+       k = 0
+       do i = 2, self%n_bins
+          do while (pts_per_bin > d_width)
+             k = k + 1
+             d_width = d_width + w(k, j)
+          end do
+          d_width = d_width - pts_per_bin
+          if (debug_active (D_VAMP2)) then
+             print *, "  pts_per_bin = ", pts_per_bin, ", d_width = ", d_width
+             print *, "  j = ", j, ",  k = ", k, ", i = ", i
+          end if
+          associate (x_upper => self%xi(k + 1, j), x_lower => self%xi(k, j))
+            xi_new(i) = x_upper - (x_upper - x_lower) * d_width / w(k, j)
+          end associate
+       end do
+       self%xi(:, j) = 0. ! Reset grid explicitly
+       self%xi(2:n_bins, j) = xi_new(2:n_bins)
+       self%xi(n_bins + 1, j) = 1.
+    end do
+  end subroutine vegas_grid_resize
 
   function vegas_grid_get_probability (self, x) result (g)
     class(vegas_grid_t), intent(in) :: self
@@ -329,6 +380,10 @@ contains
     call write_indent (u, ind)
     write (u, "(2x,A," // FMT_17 // ")") &
          & "Standard deviation              = ", self%std
+    write (u, "(2x,A," // FMT_17 // ")") &
+         & "Event weight                    = ", self%evt_weight
+    write (u, "(2x,A," // FMT_17 // ")") &
+         & "Event weight excess             = ", self%evt_weight_excess
   end subroutine vegas_result_write
 
   type(vegas_t) function vegas_init (n_dim, alpha, n_bins_max, iterations, mode) result (self)
@@ -342,12 +397,8 @@ contains
     if (present (n_bins_max)) self%config%n_bins_max = n_bins_max
     if (present (iterations)) self%config%iterations = iterations
     if (present (mode)) self%config%mode = mode
+    self%grid = vegas_grid_t (n_dim, self%config%n_bins_max)
     allocate (self%d(self%config%n_bins_max, n_dim), source=0.0_default)
-    allocate (self%grid%x_upper(n_dim), source=1.0_default)
-    allocate (self%grid%x_lower(n_dim), source=0.0_default)
-    allocate (self%grid%delta_x(n_dim), source=1.0_default)
-    allocate (self%grid%xi((self%config%n_bins_max + 1), n_dim), source=0.0_default)
-    allocate (self%weight(self%config%n_bins_max), source=0.0_default)
     allocate (self%box(n_dim), source=1)
     allocate (self%bin(n_dim), source=1)
     self%config%n_bins = 1
@@ -364,7 +415,6 @@ contains
     deallocate (self%grid%delta_x)
     deallocate (self%d)
     deallocate (self%grid%xi)
-    deallocate (self%weight)
     deallocate (self%box)
     deallocate (self%bin)
   end subroutine vegas_final
@@ -383,7 +433,6 @@ contains
     if (any(x_upper < x_lower)) then
        call msg_fatal ("VEGAS: [set_limits] upper limits are smaller than lower limits.")
     end if
-
     if (any((x_upper - x_lower) > huge(0._default))) then
        call msg_fatal ("VEGAS: [set_limits] upper and lower limits exceed rendering.")
     end if
@@ -413,6 +462,13 @@ contains
     end if
   end subroutine vegas_set_n_calls
 
+  type(vegas_grid_t) function vegas_get_grid (self) result (grid)
+    class(vegas_t), intent(in) :: self
+    grid = self%grid
+    grid%n_dim = self%config%n_dim
+    grid%n_bins = self%config%n_bins
+  end function vegas_get_grid
+
   subroutine vegas_get_config (self, config)
     class(vegas_t), intent(in) :: self
     type(vegas_config_t), intent(out) :: config
@@ -428,18 +484,10 @@ contains
     self%config%n_calls_min = config%n_calls_min
    end subroutine vegas_set_config
 
-  type(vegas_grid_t) function vegas_get_grid (self) result (grid)
+  type(vegas_result_t) function vegas_get_result (self) result (result)
     class(vegas_t), intent(in) :: self
-    grid = self%grid
-    grid%n_dim = self%config%n_dim
-    grid%n_bins = self%config%n_bins
-  end function vegas_get_grid
-
-  subroutine vegas_get_result (self, result)
-    class(vegas_t), intent(in) :: self
-    type(vegas_result_t), intent(out) :: result
     result = self%result
-  end subroutine vegas_get_result
+  end function vegas_get_result
 
   elemental real(default) function vegas_get_n_calls (self) result (n_calls)
     class(vegas_t), intent(in) :: self
@@ -494,27 +542,20 @@ contains
     end if
   end function vegas_get_max_abs_f_neg
 
-  subroutine vegas_get_distribution (self, distribution)
+  real(default) function vegas_get_evt_weight (self) result (evt_weight)
     class(vegas_t), intent(in) :: self
-    real(default), dimension(self%config%n_bins_max, self%config%n_dim), intent(out) :: distribution
-    distribution = self%d
-  end subroutine vegas_get_distribution
+    evt_weight = self%result%evt_weight
+  end function vegas_get_evt_weight
 
-  subroutine vegas_set_distribution (self, distribution)
-    class(vegas_t), intent(inout) :: self
-    real(default), dimension(:, :), intent(in) :: distribution
-    if (size (distribution, 1) > self%config%n_bins_max) then
-       write (msg_buffer, "(A, I5)") &
-            "[set_distribution] new distribution size exceeds", self%config%n_bins_max
-       call msg_bug ()
-    end if
-    self%d = distribution(1:self%config%n_bins_max, 1:self%config%n_dim)
-    call self%refine ()
-  end subroutine vegas_set_distribution
+  real(default) function vegas_get_evt_weight_excess (self) result (evt_weight_excess)
+    class(vegas_t), intent(in) :: self
+    evt_weight_excess = self%result%evt_weight_excess
+  end function vegas_get_evt_weight_excess
 
   subroutine vegas_init_grid (self)
     class(vegas_t), intent(inout) :: self
     integer :: n_bins, n_boxes, box_per_bin, n_total_boxes
+    real(default), dimension(:, :), allocatable :: w
     n_bins = self%config%n_bins_max
     n_boxes = 1
     if (self%config%mode /= VEGAS_MODE_IMPORTANCE_ONLY) then
@@ -537,7 +578,9 @@ contains
          &**self%config%n_dim / real(self%config%n_calls, default)
     self%config%n_boxes = n_boxes
     if (n_bins /= self%config%n_bins) then
-       call self%resize (n_bins)
+       allocate (w(self%config%n_bins, self%config%n_dim), source=1.0_default)
+       call self%grid%resize (n_bins, w)
+       self%config%n_bins = n_bins
     end if
   end subroutine vegas_init_grid
 
@@ -567,79 +610,42 @@ contains
     call self%reset_result ()
   end subroutine vegas_reset_grid
 
-  subroutine vegas_resize_grid (self, n_bins)
-    class(vegas_t), intent(inout) :: self
-    integer, intent(in) :: n_bins
-    integer :: i, j, k
-    real(default) :: pts_per_bin, d_width
-    real(default), dimension(n_bins + 1) :: xi_new
-    pts_per_bin = real(self%config%n_bins, default) / real(n_bins, default)
-    do j = 1, self%config%n_dim
-       d_width = 0.
-       i = 2
-       do k = 1, self%config%n_bins
-          d_width = d_width + 1.
-          associate (x_upper => self%grid%xi(k + 1, j), x_lower => self%grid%xi(k, j))
-            do while (d_width > pts_per_bin .and. i <= n_bins)
-               d_width = d_width - pts_per_bin
-               xi_new(i) = x_upper - (x_upper - x_lower) * d_width
-               i = i + 1
-            end do
-          end associate
-       end do
-       self%grid%xi(:, j) = 0. ! Reset grid explicitly
-       self%grid%xi(2:n_bins, j) = xi_new(2:n_bins)
-       self%grid%xi(n_bins + 1, j) = 1.
-    end do
-    self%config%n_bins = n_bins
-  end subroutine vegas_resize_grid
-
   subroutine vegas_refine_grid (self)
     class(vegas_t), intent(inout) :: self
-    integer :: i, j, k
-    real(default) :: d_min, grid_total_jacobian, total_weight
-    real(default) :: pts_per_bin, d_width
-    real(default), dimension(self%config%n_bins_max + 1) :: xi_new
+    integer :: j
+    real(default), dimension(self%config%n_bins, self%config%n_dim) :: w
     ndim: do j = 1, self%config%n_dim
-       ! d[i][j] = (d[i-1][j]+d[i][j]+d[i+1][j])/3
-       associate (n_bins => self%config%n_bins)
-         if (n_bins > 2) then
-            self%d(1, j) = (self%d(1, j) + self%d(2, j)) / 2.0_default
-            self%d(2:n_bins - 1, j) = (self%d(1:n_bins - 2, j) &
-                 & + self%d(2:n_bins - 1, j) &
-                 & + self%d(3:n_bins, j)) / 3.0_default
-            self%d(n_bins, j) = (self%d(n_bins - 1, j) &
-                 & + self%d(n_bins, j)) / 2.0_default
-         end if
-         self%weight = 1.0_default
-         if (.not. all (self%d(:n_bins, j) < tiny(1.0_default))) then
-            d_min = minval (self%d(:n_bins, j), self%d(:n_bins, j) /= 0.)
-            self%d(:n_bins, j) = max (self%d(:n_bins, j), d_min)
-            self%d(:n_bins, j) = self%d(:n_bins, j) / sum (self%d(:n_bins, j))
-            do i = 1, n_bins
-               self%weight(i) = ((self%d(i, j) - 1.) / log(self%d(i, j)))**self%config%alpha
-            end do
-         end if
-         total_weight = sum(self%weight)
-         pts_per_bin = total_weight / n_bins
-         xi_new = self%grid%xi(:, j)
-         d_width = 0.
-         i = 2
-         do k = 1, n_bins
-            d_width = d_width + self%weight(k)
-            associate (x_upper => self%grid%xi(k + 1, j), x_lower => self%grid%xi(k, j))
-              do while (d_width > pts_per_bin .and. i <= n_bins)
-                 d_width = d_width - pts_per_bin
-                 xi_new(i) = x_upper - (x_upper - x_lower) * d_width / self%weight(k)
-                 i = i + 1
-              end do
-            end associate
-         end do
-         self%grid%xi(:, j) = 0. ! Reset explicitly the grid
-         self%grid%xi(2:n_bins, j) = xi_new(2:self%config%n_bins)
-         self%grid%xi(n_bins + 1, j) = 1.
-       end associate
+       call average_distribution (self%config%n_bins, self%d(:self%config&
+            &%n_bins, j), self%config%alpha, w(:, j))
     end do ndim
+    call self%grid%resize (self%config%n_bins, w)
+  contains
+      subroutine average_distribution (n_bins, d, alpha, w)
+        integer, intent(in) :: n_bins
+        real(default), dimension(:), intent(inout) :: d
+        real(default), intent(in) :: alpha
+        real(default), dimension(n_bins), intent(out) :: w
+        if (n_bins > 2) then
+           d(1) = (d(1) + d(2)) / 2.0_default
+           d(2:n_bins - 1) = (d(1:n_bins - 2) + d(2:n_bins - 1) + d(3:n_bins)) /&
+                & 3.0_default
+           d(n_bins) = d(n_bins - 1) + d(n_bins) / 2.0_default
+        end if
+        w = 1.0_default
+        if (.not. all (d < tiny (1.0_default))) then
+           d = d / sum (d)
+           where (d < tiny (1.0_default))
+              d = tiny (1.0_default)
+           end where
+           where (d /= 1.0_default)
+              w = ((d - 1.) / log(d))**alpha
+           elsewhere
+              ! Analytic limes for d -> 1
+              w = 1.0_default
+           end where
+        end if
+      end subroutine average_distribution
+
   end subroutine vegas_refine_grid
 
   subroutine vegas_integrate (self, func, rng, iterations, opt_reset_result,&
@@ -663,21 +669,24 @@ contains
     logical :: reset_result = .true.
     logical :: refine_grid = .true.
     logical :: verbose = .false.
+    integer :: n_size
     integer :: n_dim_par
     logical :: box_success
+    ! MPI-specific variables below
     if (present (iterations)) self%config%iterations = iterations
     if (present (opt_reset_result)) reset_result = opt_reset_result
     if (present (opt_refine_grid)) refine_grid = opt_refine_grid
     if (present (opt_verbose)) verbose = opt_verbose
     call self%init_grid ()
-    if (reset_result) call self%reset_result
+    if (reset_result) call self%reset_result ()
     self%result%it_start = self%result%it_num
     cumulative_int = 0.
     cumulative_std = 0.
+    n_size = 1
+    n_dim_par = floor (self%config%n_dim / 2.)
     if (verbose) then
        call msg_message ("Results: [it, calls, integral, error, chi^2, eff.]")
     end if
-    n_dim_par = floor (self%config%n_dim / 2.)
     iteration: do it = 1, self%config%iterations
        self%result%it_num = self%result%it_start + it
        self%d = 0.
@@ -691,10 +700,18 @@ contains
        sum_abs_f_neg = 0.
        max_abs_f_neg = 0.
        box_success = .true.
+       select type (rng)
+       type is (rng_stream_t)
+          call rng%next_substream ()
+       end select
        loop_over_par_boxes: do while (box_success)
           loop_over_perp_boxes: do while (box_success)
              fval_box = 0._default
              fval_sq_box = 0._default
+             if (debug2_active (D_VAMP2)) then
+                print *, "box:"
+                print *, self%box
+             end if
              do k = 1, self%config%calls_per_box
                 call self%random_point (rng, x, bin_volume)
                 ! Call the function, yeah, call it...
@@ -712,6 +729,16 @@ contains
                 if (self%config%mode /= VEGAS_MODE_STRATIFIED) then
                    call self%accumulate_distribution (fval_sq)
                 end if
+                if (debug2_active (D_VAMP2)) then
+                   print *, "fval          = ", fval
+                   print *, "fval_sq       = ", fval_sq
+                   print *, "fval_box      = ", fval_box
+                   print *, "fval_box_sq   = ", fval_sq_box
+                   print *, "sum_abs_f_pos = ", sum_abs_f_pos
+                   print *, "sum_abs_f_neg = ", sum_abs_f_neg
+                   print *, "max_abs_f_pos = ", max_abs_f_pos
+                   print *, "max_abs_f_neg = ", max_abs_f_neg
+                end if
              end do
              fval_sq_box = sqrt (fval_sq_box * self%config%calls_per_box)
              ! (a - b) * (a + b) = a**2 - b**2
@@ -725,49 +752,46 @@ contains
              call increment_box_coord (self%box(n_dim_par + 1:self%config&
                   &%n_dim), box_success)
           end do loop_over_perp_boxes
-          call increment_box_coord (self%box(1:n_dim_par), box_success)
+          shift: do k = 1, n_size
+             call increment_box_coord (self%box(1:n_dim_par), box_success)
+             if (.not. box_success) exit shift
+          end do shift
+          
        end do loop_over_par_boxes
-       ! Compute final results for this iterations
-       total_variance = total_sq_integral / (self%config%calls_per_box - 1.)
-       ! Ensure variance is always positive and larger than zero.
-       if (total_variance < tiny (1._default) / epsilon (1._default) &
-            & * max (total_integral**2, 1._default)) then
-          total_variance = tiny (1._default) / epsilon (1._default) &
-               & * max (total_integral**2, 1._default)
-       end if
-       wgt = 1. / total_variance
-       ! Reuse of variable!
-       total_sq_integral = total_integral**2
-       self%result%result = total_integral
-       self%result%std = sqrt (total_variance)
-       self%result%samples = self%result%samples + 1
-       if (self%result%samples == 1) then
-          self%result%chi2 = 0._default
-       else
-          chi = total_integral
-          if (self%result%sum_wgts > 0) chi = chi - self%result%sum_int_wgtd / self%result%sum_wgts
-          self%result%chi2 = self%result%chi2 * (self%result%samples - 2.0_default)
-          self%result%chi2 = (wgt / (1._default + (wgt / self%result%sum_wgts))) &
-               & * chi**2
-          self%result%chi2 = self%result%chi2 / (self%result%samples - 1._default)
-       end if
-       self%result%sum_wgts = self%result%sum_wgts + wgt
-       self%result%sum_int_wgtd = self%result%sum_int_wgtd + (total_integral * wgt)
-       self%result%sum_chi = self%result%sum_chi + (total_sq_integral * wgt)
-       cumulative_int = self%result%sum_int_wgtd / self%result%sum_wgts
-       cumulative_std = sqrt (1. / self%result%sum_wgts)
-       self%result%max_abs_f_pos = max_abs_f_pos
-       self%result%max_abs_f_neg = max_abs_f_neg
-       self%result%efficiency_pos = 0.
-       if (max_abs_f_pos > 0.) then
-          self%result%efficiency_pos = sum_abs_f_pos / (self%config%n_calls * max_abs_f_pos)
-       end if
-       self%result%efficiency_neg = 0.
-       if (max_abs_f_neg > 0.) then
-          self%result%efficiency_neg = sum_abs_f_neg / (self%config%n_calls * max_abs_f_neg)
-       end if
-       self%result%max_abs_f = max (self%result%max_abs_f_pos, self%result%max_abs_f_neg)
-       self%result%efficiency = self%result%efficiency_pos + self%result%efficiency_neg
+     
+       associate (result => self%result)
+         ! Compute final results for this iterations
+         total_variance = total_sq_integral / (self%config%calls_per_box - 1.)
+         ! Ensure variance is always positive and larger than zero.
+         if (total_variance < tiny (1._default) / epsilon (1._default) &
+              & * max (total_integral**2, 1._default)) then
+            total_variance = tiny (1._default) / epsilon (1._default) &
+                 & * max (total_integral**2, 1._default)
+         end if
+         wgt = 1. / total_variance
+         total_sq_integral = total_integral**2
+         result%result = total_integral
+         result%std = sqrt (total_variance)
+         result%samples = result%samples + 1
+         if (result%samples == 1) then
+            result%chi2 = 0._default
+         else
+            chi = total_integral
+            if (result%sum_wgts > 0) then
+               chi = chi - result%sum_int_wgtd / result%sum_wgts
+            end if
+            result%chi2 = result%chi2 * (result%samples - 2.0_default)
+            result%chi2 = (wgt / (1._default + (wgt / result%sum_wgts))) &
+                 & * chi**2
+            result%chi2 = result%chi2 / (result%samples - 1._default)
+         end if
+         result%sum_wgts = result%sum_wgts + wgt
+         result%sum_int_wgtd = result%sum_int_wgtd + (total_integral * wgt)
+         result%sum_chi = result%sum_chi + (total_sq_integral * wgt)
+         cumulative_int = result%sum_int_wgtd / result%sum_wgts
+         cumulative_std = sqrt (1. / result%sum_wgts)
+       end associate
+       call calculate_efficiency ()
        if (verbose) then
           write (msg_buffer, "(I0,1x,I0,1x, 4(" // FMT_17 // ",1x))") &
                & it, self%config%n_calls, cumulative_int, cumulative_std, &
@@ -779,18 +803,44 @@ contains
     if (present(result)) result = cumulative_int
     if (present(abserr)) abserr = abs(cumulative_std)
   contains
-      subroutine increment_box_coord (box, success)
-        integer, dimension(:), intent(inout) :: box
-        logical, intent(out) :: success
-        integer :: j
-        success = .true.
-        do j = size(box), 1, -1
-           box(j) = box(j) + 1
-           if (box(j) <= self%config%n_boxes) return
-           box(j) = 1
-        end do
-        success = .false.
-      end subroutine increment_box_coord
+    subroutine calculate_efficiency ()
+      self%result%max_abs_f_pos = self%config%n_calls * max_abs_f_pos
+      self%result%max_abs_f_neg = self%config%n_calls * max_abs_f_neg
+      call msg_debug (D_VAMP2, "max_abs_f_pos", self%result%max_abs_f_pos)
+      call msg_debug (D_VAMP2, "max_abs_f_neg", self%result%max_abs_f_neg)
+      call msg_debug (D_VAMP2, "sum_abs_f_pos", sum_abs_f_pos)
+      call msg_debug (D_VAMP2, "sum_abs_f_neg", sum_abs_f_neg)
+      self%result%max_abs_f = &
+           & max (self%result%max_abs_f_pos, self%result%max_abs_f_neg)
+      self%result%efficiency_pos = 0.
+      if (max_abs_f_pos > 0.) then
+         self%result%efficiency_pos = &
+              & sum_abs_f_pos / max_abs_f_pos
+      end if
+      self%result%efficiency_neg = 0.
+      if (max_abs_f_neg > 0.) then
+         self%result%efficiency_neg = &
+              & sum_abs_f_neg / max_abs_f_neg
+      end if
+      self%result%efficiency = 0.
+      if (self%result%max_abs_f > 0.) then
+         self%result%efficiency = (sum_abs_f_pos + sum_abs_f_neg) &
+              & / self%result%max_abs_f
+      end if
+    end subroutine calculate_efficiency
+
+    subroutine increment_box_coord (box, success)
+      integer, dimension(:), intent(inout) :: box
+      logical, intent(out) :: success
+      integer :: j
+      success = .true.
+      do j = size (box), 1, -1
+         box(j) = box(j) + 1
+         if (box(j) <= self%config%n_boxes) return
+         box(j) = 1
+      end do
+      success = .false.
+    end subroutine increment_box_coord
 
   end subroutine vegas_integrate
 
@@ -803,6 +853,7 @@ contains
     real(default) :: r, y, z, bin_width
     bin_volume = 1.
     ndim: do j = 1, self%config%n_dim
+       call msg_debug2 (D_VAMP2, "j", j)
        call rng%generate (r)
        z = ((self%box(j) - 1 + r) / self%config%n_boxes) * self%config%n_bins + 1
        self%bin(j) = max (min (int (z), self%config%n_bins), 1)
@@ -815,7 +866,15 @@ contains
        end if
        x(j) = self%grid%x_lower(j) + y * self%grid%delta_x(j)
        bin_volume = bin_volume * bin_width
+       if (debug2_active (D_VAMP2)) then
+          print *, "r      =", r
+          print *, "z      =", z
+          print *, "bin(j) =", self%bin(j)
+          print *, "y      =", y
+          print *, "x(j)   =", x(j)
+       end if
     end do ndim
+    call msg_debug2 (D_VAMP2, "bin_volume", bin_volume)
   end subroutine vegas_random_point
 
   subroutine vegas_simple_random_point (self, rng, x, bin_volume)
@@ -827,6 +886,7 @@ contains
     real(default) :: r, y, z, bin_width
     bin_volume = 1.
     ndim: do j = 1, self%config%n_dim
+       call msg_debug2 (D_VAMP2, "j", j)
        call rng%generate (r)
        z = r * self%config%n_bins + 1
        k = max (min (int (z), self%config%n_bins), 1)
@@ -839,7 +899,15 @@ contains
        end if
        x(j) = self%grid%x_lower(j) + y * self%grid%delta_x(j)
        bin_volume = bin_volume * bin_width
+       if (debug2_active (D_VAMP2)) then
+          print *, "r      =", r
+          print *, "z      =", z
+          print *, "bin(j) =", self%bin(j)
+          print *, "y      =", y
+          print *, "x(j)   =", x(j)
+       end if
     end do ndim
+    call msg_debug2 (D_VAMP2, "bin_volume", bin_volume)
   end subroutine vegas_simple_random_point
 
   subroutine vegas_accumulate_distribution (self, y)
@@ -851,50 +919,50 @@ contains
     end do
   end subroutine vegas_accumulate_distribution
 
-  subroutine vegas_generate_event (self, func, rng, x, weight)
+  subroutine vegas_generate_weighted_event (self, func, rng, x)
+    class(vegas_t), intent(inout) :: self
+    class(vegas_func_t), intent(inout) :: func
+    class(rng_t), intent(inout) :: rng
+    real(default), dimension(self%config%n_dim), intent(inout) :: x
+    real(default) :: bin_volume
+    call self%simple_random_point (rng, x, bin_volume)
+    ! Cancel n_calls from jacobian with n_calls
+    self%result%evt_weight = self%config%n_calls * self%jacobian * bin_volume &
+         & * func%evaluate (x)
+    call msg_debug (D_VAMP2, "Event weight", self%result%evt_weight)
+  end subroutine vegas_generate_weighted_event
+
+  subroutine vegas_generate_unweighted_event (self, func, rng, x)
     class(vegas_t), intent(inout) :: self
     class(vegas_func_t), intent(inout) :: func
     class(rng_t), intent(inout) :: rng
     real(default), dimension(self%config%n_dim), intent(out) :: x
-    real(default), intent(out), optional :: weight
     real(default) :: bin_volume
-    real(default) :: fval, max_abs_f
+    real(default) :: max_abs_f
     real(default) :: r
-    generate: do
-       call self%simple_random_point (rng, x, bin_volume)
-       fval = self%jacobian * bin_volume * func%evaluate (x)
-       if (present(weight)) then
-          weight = fval
+    associate (result => self%result)
+      generate: do
+         call self%generate_weighted (func, rng, x)
+         max_abs_f = merge (result%max_abs_f_pos, result%max_abs_f_neg, &
+              & result%evt_weight > 0.)
+         if (result%evt_weight > max_abs_f) then
+            result%evt_weight_excess = &
+                 & result%evt_weight / max_abs_f - 1._default
+            exit generate
+         end if
+         call rng%generate (r)
+         if (debug2_active (D_VAMP2)) then
+            print *, "max_abs_f    = ", max_abs_f
+            print *, "accept       = ", max_abs_f * r
+            print *, "x            = ", x
+         end if
+         ! Do not use division, because max_abs_f could be zero.
+         if (max_abs_f * r <= abs(result%evt_weight)) then
           exit generate
-       end if
-       if (fval > 0.) then
-          if (abs (fval) > self%result%max_abs_f_pos) then
-             self%result%max_abs_f_pos = abs (fval)
-             write (msg_buffer, "(A,1X," // FMT_17 // ")") &
-                  & "[VEGAS] Adjust maximal absolute value for event&
-                  & generation.", self%result%max_abs_f_pos
-             call msg_warning ()
-             exit generate
-          end if
-          max_abs_f = self%result%max_abs_f_pos
-       else
-          if (abs (fval) > self%result%max_abs_f_neg) then
-             self%result%max_abs_f_neg = abs (fval)
-             write (msg_buffer, "(A,1X," // FMT_17 // ")") "[VEGAS] Adjust&
-                  & maximal absolute value for event generation.", self%result&
-                  &%max_abs_f_neg
-             call msg_warning ()
-             exit generate
-          end if
-          max_abs_f = self%result%max_abs_f_neg
-       end if
-       call rng%generate (r)
-       ! Do not use division, because max_abs_f could be zero.
-       if (max_abs_f * r <= abs(fval)) then
-          exit generate
-       end if
-    end do generate
-  end subroutine vegas_generate_event
+         end if
+      end do generate
+    end associate
+  end subroutine vegas_generate_unweighted_event
 
   subroutine vegas_write_grid (self, unit)
     class(vegas_t), intent(in) :: self
@@ -995,6 +1063,7 @@ contains
     read (unit, integer_fmt) buffer, self%config%n_calls_min
     read (unit, integer_fmt) buffer, self%config%n_boxes
     read (unit, integer_fmt) buffer, self%config%n_bins
+    self%grid%n_bins = self%config%n_bins
     read (unit, integer_fmt) buffer, self%result%it_start
     read (unit, integer_fmt) buffer, self%result%it_num
     read (unit, integer_fmt) buffer, self%result%samples

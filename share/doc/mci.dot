@@ -10,6 +10,8 @@ dispatch_mci -> mci_midpoint
 integration_results -> mci_base
 dispatch_mci -> mci_vamp
 mci_vamp2 -> mci_base
+mci_none -> mci_base
+dispatch_mci -> mci_none
 dispatch_mci -> mci_base
 dispatch_mci -> mci_vamp2
  }

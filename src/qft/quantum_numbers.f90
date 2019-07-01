@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -50,6 +43,7 @@ module quantum_numbers
   public :: quantum_numbers_get_color
   public :: quantum_numbers_get_helicity
   public :: quantum_numbers_get_color_type
+  public :: quantum_numbers_eq_wo_sub
   public :: assignment(=)
   public :: quantum_numbers_are_compatible
   public :: quantum_numbers_are_physical
@@ -330,7 +324,7 @@ contains
        call qn%h%write (u)
     end if
     if (qn%sub > 0) &
-       write (u, "(A,I1)", advance = "no") " SUB = ", qn%sub
+       write (u, "(A,I0)", advance = "no") " SUB = ", qn%sub
     write (u, "(A)", advance="no")  "]"
   end subroutine quantum_numbers_write_single
 
@@ -499,6 +493,14 @@ contains
          (qn1%c .match. qn2%c) .and. &
          (qn1%h .dmatch. qn2%h)
   end function quantum_numbers_match_hel_diag
+
+  elemental function quantum_numbers_eq_wo_sub (qn1, qn2) result (eq)
+    logical :: eq
+    type(quantum_numbers_t), intent(in) :: qn1, qn2
+    eq = (qn1%f == qn2%f) .and. &
+         (qn1%c == qn2%c) .and. &
+         (qn1%h == qn2%h)
+  end function quantum_numbers_eq_wo_sub
 
   elemental function quantum_numbers_eq (qn1, qn2) result (eq)
     logical :: eq
@@ -828,7 +830,7 @@ contains
           call qn%h%diagonalize ()
        end if
     end if
-    if (mask%sub > 0) qn%sub = 0
+    if (mask%sub > 0)  qn%sub = 0
   end subroutine quantum_numbers_undefine
 
   function quantum_numbers_undefined0 (qn, mask) result (qn_new)

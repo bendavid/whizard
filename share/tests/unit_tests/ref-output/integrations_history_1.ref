@@ -313,28 +313,28 @@ model "Test"
    n_bins        = 20
    adapt grids   = T
    adapt weights = T
-   Results:  [it, calls, integral, error, efficiency]
-     1 1000  7.7464622036E+03  0.0000000000E+00  1.0000000000E+00
-     2 1000  7.7464622036E+03  0.0000000000E+00  1.0000000000E+00
+   Results:  [it, calls, valid, integral, error, efficiency]
+     1 1000 1000  7.7464622036E+03  0.0000000000E+00  1.0000000000E+00
+     2 1000 1000  7.7464622036E+03  0.0000000000E+00  1.0000000000E+00
  Integration pass:
    n_it          = 2
    n_calls       = 1000
    n_bins        = 20
    adapt grids   = T
    adapt weights = F
-   Results:  [it, calls, integral, error, efficiency]
-     1 1000  7.7464622036E+03  0.0000000000E+00  1.0000000000E+00
-     2 1000  7.7464622036E+03  0.0000000000E+00  1.0000000000E+00
+   Results:  [it, calls, valid, integral, error, efficiency]
+     1 1000 1000  7.7464622036E+03  0.0000000000E+00  1.0000000000E+00
+     2 1000 1000  7.7464622036E+03  0.0000000000E+00  1.0000000000E+00
  Integration pass:
    n_it          = 2
    n_calls       = 1000
    n_bins        = 20
    adapt grids   = F
    adapt weights = F
-   Results:  [it, calls, integral, error, efficiency]
-     1 1000  7.7464622036E+03  0.0000000000E+00  1.0000000000E+00
-     2 1000  7.7464622036E+03  0.0000000000E+00  1.0000000000E+00
- MD5 sum (including results) = '64C5114528C62D485E11B21C7DD876D7'
+   Results:  [it, calls, valid, integral, error, efficiency]
+     1 1000 1000  7.7464622036E+03  0.0000000000E+00  1.0000000000E+00
+     2 1000 1000  7.7464622036E+03  0.0000000000E+00  1.0000000000E+00
+ MD5 sum (including results) = '514AE07EFCB8075444241D0376DB7C51'
  Call statistics (current run):
    total       = 2000
    failed kin. = 0

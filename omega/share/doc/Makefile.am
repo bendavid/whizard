@@ -9,7 +9,7 @@
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
 #     with contributions from
-#     Christian Speckner <cnspeckn@googlemail.com>
+#     cf. main AUTHORS file
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by 
@@ -87,36 +87,68 @@ endif
 
 SUFFIXES = .mly .mll .ml .implementation .mli .interface .nw .tex .dvi .eps .pdf .ps
 
+MPOST_LATEX = TEX=$(LATEX) TEXINPUTS=$(TEX_FLAGS) MPINPUTS=$(MP_FLAGS) $(MPOST)
+
 if DISTRIBUTION
 if SUPP_PDF_AVAILABLE
 if PDFLATEX_AVAILABLE
 .tex.pdf:
-	-TEXINPUTS=$(TEX_FLAGS) $(PDFLATEX) $<
+	@if $(AM_V_P); then TEXINPUTS=$(TEX_FLAGS) $(PDFLATEX) $<; else \
+	   echo " PDFLATEX  " $<; TEXINPUTS=$(TEX_FLAGS) $(PDFLATEX) $< >/dev/null; fi
 if MPOST_AVAILABLE
-	-test -r $*pics.mp && MPINPUTS=$(MP_FLAGS) $(MPOST) $*pics
-	-test -r $*.mp && TEX=$(LATEX) TEXINPUTS=$(TEX_FLAGS) MPINPUTS=$(MP_FLAGS) $(MPOST) $*
+	@if test -r $*pics.mp; then \
+	if $(AM_V_P); then MPINPUTS=$(MP_FLAGS) $(MPOST) $*pics; else \
+	   echo " METAPOST  " $*pics.mp; MPINPUTS=$(MP_FLAGS) $(MPOST) $*pics > /dev/null; fi; \
+	fi
+	@if test -r $*.mp; then \
+	if $(AM_V_P); then $(MPOST_LATEX) $*; else \
+	   echo " METAPOST  " $*.mp; $(MPOST_LATEX) $* >/dev/null; fi; \
+	fi
 endif MPOST_AVAILABLE
-	echo "skipping -bibtex $*"
-	TEXINPUTS=$(TEX_FLAGS) $(PDFLATEX) $<
-	while $(GREP) -s 'Rerun to get cross-references right.' $*.log; do \
-	  TEXINPUTS=$(TEX_FLAGS) $(PDFLATEX) $<; \
-	done
+	$(AM_V_at)echo " PDFLATEX   skipping -bibtex $*"
+	@if $(AM_V_P); then TEXINPUTS=$(TEX_FLAGS) $(PDFLATEX) $<; else \
+	   echo " PDFLATEX  " $<; TEXINPUTS=$(TEX_FLAGS) $(PDFLATEX) $< >/dev/null; fi
+	@if $(AM_V_P); then \
+	   if grep -s 'Rerun to get cross-references right.' $*.log; then \
+	      TEXINPUTS=$(TEX_FLAGS) $(PDFLATEX) $<; \
+	   fi; else \
+	   if grep -s 'Rerun to get cross-references right.' $*.log >/dev/null; then \
+	      echo " PDFLATEX  " $< "(for cross-references)"; \
+	      TEXINPUTS=$(TEX_FLAGS) $(PDFLATEX) $< >/dev/null; \
+	   fi; \
+	fi
 else  !PDFLATEX_AVAILABLE
 if LATEX_AVAILABLE
 if DVIPS_AVAILABLE
 if PS2PDF_AVAILABLE
 	-TEXINPUTS=$(TEX_FLAGS) $(LATEX) $<
 if MPOST_AVAILABLE
-	MPINPUTS=$(MP_FLAGS) $(MPOST) $*pics
-	TEX=$(LATEX) TEXINPUTS=$(TEX_FLAGS) MPINPUTS=$(MP_FLAGS) $(MPOST) $*
+	@if test -r $*pics.mp; then \
+	if $(AM_V_P); then MPINPUTS=$(MP_FLAGS) $(MPOST) $*pics; else \
+	   echo " METAPOST  " $*pics.mp; MPINPUTS=$(MP_FLAGS) $(MPOST) $*pics > /dev/null; fi; \
+	fi
+	@if test -r $*.mp; then \
+	if $(AM_V_P); then $(MPOST_LATEX) $*; else \
+	   echo " METAPOST  " $*.mp; $(MPOST_LATEX) $* >/dev/null; fi; \
+	fi
 endif MPOST_AVAILABLE
-	echo "skipping -bibtex $*"
+	$(AM_V_at)echo " PDFLATEX   skipping -bibtex $*"
+	@if $(AM_V_P); then TEXINPUTS=$(TEX_FLAGS) $(LATEX) $<; else \
+	   echo " LATEX     " $<; TEXINPUTS=$(TEX_FLAGS) $(LATEX) $< >/dev/null; fi
 	TEXINPUTS=$(TEX_FLAGS) $(LATEX) $<
-	while $(GREP) -s 'Rerun to get cross-references right.' $*.log; do \
-	  TEXINPUTS=$(TEX_FLAGS) $(LATEX) $<; \
-	done
-	$(DVIPS) -o $*.ps $*
-	$(PS2PDF) $*
+	@if $(AM_V_P); then \
+	   if grep -s 'Rerun to get cross-references right.' $*.log; then \
+	      TEXINPUTS=$(TEX_FLAGS) $(LATEX) $<; \
+	   fi; else \
+	   if grep -s 'Rerun to get cross-references right.' $*.log >/dev/null; then \
+	      echo " LATEX     " $< "(for cross-references)"; \
+	      TEXINPUTS=$(TEX_FLAGS) $(LATEX) $< >/dev/null; \
+	   fi; \
+	fi
+	@if $(AM_V_P); then :; else echo " DVIPS     " $<; fi
+	$(AM_V_at)$(DVIPS) -o $*.ps $*
+	@if $(AM_V_P); then :; else echo " PS2PDF    " $*; fi
+	$(AM_V_at)$(PS2PDF) $*
 endif PS2PDF_AVAILABLE
 endif DVIPS_AVAILABLE
 endif LATEX_AVAILABLE
@@ -179,25 +211,31 @@ omega.pdf: \
     $(PICTURES_PDF) $(PICTURES_EPS)
 
 .nw.tex:
-	$(NOWEAVE) -delay $< > $@
+	@if $(AM_V_P); then :; else echo " NOWEAVE   " $@; fi
+	$(AM_V_at)$(NOWEAVE) -delay $< > $@
 
 if DISTRIBUTION
 if OCAMLWEB_AVAILABLE
 
 .mll.implementation:
-	$(OCAMLWEB) --no-preamble --noweb --no-index $< >$@
+	@if $(AM_V_P); then :; else echo " OCAMLWEB  " $@; fi
+	$(AM_V_at)$(OCAMLWEB) --no-preamble --noweb --no-index $< >$@
 
 .mly.implementation:
-	$(OCAMLWEB) --no-preamble --noweb --no-index $< >$@
+	@if $(AM_V_P); then :; else echo " OCAMLWEB  " $@; fi
+	$(AM_V_at)$(OCAMLWEB) --no-preamble --noweb --no-index $< >$@
 
 .ml.implementation:
-	$(OCAMLWEB) --no-preamble --noweb --no-index $< >$@
+	@if $(AM_V_P); then :; else echo " OCAMLWEB  " $@; fi
+	$(AM_V_at)$(OCAMLWEB) --no-preamble --noweb --no-index $< >$@
 
 .mli.interface:
-	$(OCAMLWEB) --no-preamble --noweb --no-index $< >$@
+	@if $(AM_V_P); then :; else echo " OCAMLWEB  " $@; fi
+	$(AM_V_at)$(OCAMLWEB) --no-preamble --noweb --no-index $< >$@
 
 index.tex: $(OMEGA_CAML)
-	$(OCAMLWEB) --no-preamble --noweb $^ | \
+	@if $(AM_V_P); then :; else echo " OCAMLWEB  " $@; fi
+	$(AM_V_at)$(OCAMLWEB) --no-preamble --noweb $^ | \
 	sed -n '/\\ocwbeginindex{}/,/\\ocwendindex{}/p' >$@
 
 endif OCAMLWEB_AVAILABLE
@@ -208,17 +246,20 @@ endif NOWEB_AVAILABLE
 if EPSPDF_AVAILABLE
 if EPSPDF_043
 .eps.pdf:
-	$(EPSPDF) $< $@ 
+	@if $(AM_V_P); then :; else echo " EPSPDF    " $@; fi
+	$(AM_V_at)$(EPSPDF) $< $@ 
 else
 if EPSTOPDF_AVAILABLE
 .eps.pdf:
-	$(EPSTOPDF) --outfile=$@ $<
+	@if $(AM_V_P); then :; else echo " EPSTOPDF  " $@; fi
+	$(AM_V_at)$(EPSTOPDF) --outfile=$@ $<
 endif
 endif
 else
 if EPSTOPDF_AVAILABLE
 .eps.pdf:
-	$(EPSTOPDF) --outfile=$@ $<
+	@if $(AM_V_P); then :; else echo " EPSTOPDF  " $@; fi
+	$(AM_V_at)$(EPSTOPDF) --outfile=$@ $<
 endif
 endif
 

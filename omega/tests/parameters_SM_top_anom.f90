@@ -191,7 +191,8 @@ contains
     n_tvaz = norm
     n_vlrw = sqrt(2.0_default) * mass(24) * norm / 2
     n_tlrw = sqrt(2.0_default) * norm / 2
-    n_tvag = gs * norm
+    ! Assuming that imag(gs).eq.0 ...
+    n_tvag = real (gs, kind=default) * norm
     n_sph  = sqrt(0.5_default) * vev * norm
 
     tvaabb(1) = 0.0_default
@@ -313,6 +314,8 @@ contains
         c = coeff(i) / (1.0_default + k2/lam**2)**2
       case (3)
         c = coeff(i) * exp(-k2/lam**2)
+      case default
+        c = 0 ! hoping we never get here ...
     end select
   end function gmom
 
@@ -442,6 +445,8 @@ contains
         c = - sqrt(2.0_default) * real(gtlr_btw(k2, 2))
       case (2)
         c = - sqrt(2.0_default) * aimag(gtlr_btw(k2, 2)) * imago
+      case default
+        c = 0 ! hoping we never get here ...
     end select
   end function gtva_ttww
 
@@ -455,6 +460,8 @@ contains
         c = - sqrt(2.0_default) * real(gtlr_btw(k2, 1))
       case (2)
         c =   sqrt(2.0_default) * aimag(gtlr_btw(k2, 1)) * imago
+      case default
+        c = 0 ! hoping we never get here ...
     end select
   end function gtva_bbww
 

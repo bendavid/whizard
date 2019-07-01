@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -156,7 +149,10 @@ module mci_base
   type, abstract :: mci_results_t
    contains
      procedure (mci_results_write), deferred :: write
-     procedure (mci_results_record), deferred :: record
+     procedure (mci_results_write_verbose), deferred :: write_verbose
+     generic :: record => record_simple, record_extended
+     procedure (mci_results_record_simple), deferred :: record_simple
+     procedure (mci_results_record_extended), deferred :: record_extended
   end type mci_results_t
 
 
@@ -348,16 +344,22 @@ module mci_base
   end interface
 
   abstract interface
-     subroutine mci_results_write (object, unit, verbose, suppress)
+     subroutine mci_results_write (object, unit, suppress)
        import
        class(mci_results_t), intent(in) :: object
        integer, intent(in), optional :: unit
-       logical, intent(in), optional :: verbose, suppress
+       logical, intent(in), optional :: suppress
      end subroutine mci_results_write
+
+     subroutine mci_results_write_verbose (object, unit)
+       import
+       class(mci_results_t), intent(in) :: object
+       integer, intent(in), optional :: unit
+     end subroutine mci_results_write_verbose
   end interface
 
   abstract interface
-     subroutine mci_results_record (object, n_it, &
+     subroutine mci_results_record_simple (object, n_it, &
           n_calls, integral, error, efficiency, chain_weights, suppress)
        import
        class(mci_results_t), intent(inout) :: object
@@ -368,7 +370,24 @@ module mci_base
        real(default), intent(in) :: efficiency
        real(default), dimension(:), intent(in), optional :: chain_weights
        logical, intent(in), optional :: suppress
-     end subroutine mci_results_record
+     end subroutine mci_results_record_simple
+
+     subroutine mci_results_record_extended (object, n_it, n_calls,&
+          & n_calls_valid, integral, error, efficiency, efficiency_pos,&
+          & efficiency_neg, chain_weights, suppress)
+       import
+       class(mci_results_t), intent(inout) :: object
+       integer, intent(in) :: n_it
+       integer, intent(in) :: n_calls
+       integer, intent(in) :: n_calls_valid
+       real(default), intent(in) :: integral
+       real(default), intent(in) :: error
+       real(default), intent(in) :: efficiency
+       real(default), intent(in) :: efficiency_pos
+       real(default), intent(in) :: efficiency_neg
+       real(default), dimension(:), intent(in), optional :: chain_weights
+       logical, intent(in), optional :: suppress
+     end subroutine mci_results_record_extended
   end interface
 
 

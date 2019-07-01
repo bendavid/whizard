@@ -22,6 +22,7 @@
    pass complete = F
    n_calls       = 0
    calls         = 1
+   calls_valid   = 1
    it complete   = F
    n adapt.(g)   = 0
    n adapt.(w)   = 0

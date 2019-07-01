@@ -108,7 +108,7 @@ and the cutoff of the Gaussian primordial $k_t$ distribution,
 The parameter [[MSTJ(45)]] gives the maximum number of flavors in
 gluon decay to quarks, and is here called [[max_n_flavors]].
 
-The two parameters [[isr_alpha_s_running] and [[fsr_alpha_s_running]]
+The two parameters [[isr_alphas_running] and [[fsr_alphas_running]]
 decide whether to use constant or running
 $alpha_s$ in the form of the function $D\_{alpha_s} (t)$ for the FSR
 and ISR ([[MSTJ(44)]], [[MSTP(64)]]), respectively. The next
@@ -139,8 +139,8 @@ end of the line.
      real(default) :: fsr_lambda = 0.29_default     ! PARP(72)
      real(default) :: isr_lambda = 0.29_default     ! PARP(61)
      integer :: max_n_flavors = 5                   ! MSTJ(45)
-     logical :: isr_alpha_s_running = .true.        ! MSTP(64)
-     logical :: fsr_alpha_s_running = .true.        ! MSTJ(44)
+     logical :: isr_alphas_running = .true.        ! MSTP(64)
+     logical :: fsr_alphas_running = .true.        ! MSTJ(44)
      real(default) :: fixed_alpha_s = 0.2_default   ! PARU(111)
      logical :: alpha_s_fudged = .true.
      logical :: isr_pt_ordered = .false.
@@ -201,12 +201,12 @@ hadronization are switched on).
          var_list%get_rval (var_str ("ps_isr_lambda"))
     settings%max_n_flavors = &
          var_list%get_ival (var_str ("ps_max_n_flavors"))
-    settings%isr_alpha_s_running = &
-         var_list%get_lval (var_str ("?ps_isr_alpha_s_running"))
-    settings%fsr_alpha_s_running = &
-         var_list%get_lval (var_str ("?ps_fsr_alpha_s_running"))
+    settings%isr_alphas_running = &
+         var_list%get_lval (var_str ("?ps_isr_alphas_running"))
+    settings%fsr_alphas_running = &
+         var_list%get_lval (var_str ("?ps_fsr_alphas_running"))
     settings%fixed_alpha_s = &
-         var_list%get_rval (var_str ("ps_fixed_alpha_s"))
+         var_list%get_rval (var_str ("ps_fixed_alphas"))
     settings%isr_pt_ordered = &
          var_list%get_lval (var_str ("?ps_isr_pt_ordered"))
     settings%isr_angular_ordered = &
@@ -271,7 +271,7 @@ hadronization are switched on).
        write (u, "(3x,A,ES19.12)") &
             "ps_isr_lambda                = ", settings%isr_lambda
        write (u, "(3x,A,1x,L1)") &
-            "ps_isr_alpha_s_running       = ", settings%isr_alpha_s_running
+            "ps_isr_alphas_running        = ", settings%isr_alphas_running
        write (u, "(3x,A,ES19.12)") &
             "ps_isr_primordial_kt_width   = ", settings%isr_primordial_kt_width
        write (u, "(3x,A,ES19.12)") &
@@ -291,7 +291,7 @@ hadronization are switched on).
        write (u, "(3x,A,ES19.12)") &
             "ps_fsr_lambda                = ", settings%fsr_lambda
        write (u, "(3x,A,1x,L1)") &
-            "ps_fsr_alpha_s_running       = ", settings%fsr_alpha_s_running
+            "ps_fsr_alphas_running        = ", settings%fsr_alphas_running
     else if (settings%isr_active) then
        write (u, "(3x,A)") " [FSR off]"
     end if
@@ -479,7 +479,7 @@ Temporary parameters for the $P_t$-ordered shower:
     else
        t = abs(tin)
     end if
-    if (settings%isr_alpha_s_running) then
+    if (settings%isr_alphas_running) then
        alpha_s = running_as_lam (number_of_flavors(t, d_nf, min_virtuality), &
             sqrt(t), d_lambda_isr, 0)
     else
@@ -504,7 +504,7 @@ Temporary parameters for the $P_t$-ordered shower:
     else
        t = abs(tin)
     end if
-    if (settings%fsr_alpha_s_running) then
+    if (settings%fsr_alphas_running) then
        alpha_s = running_as_lam (number_of_flavors (t, d_nf, min_virtuality), &
             sqrt(t), d_lambda_fsr, 0)
     else
@@ -697,7 +697,7 @@ to steer the initial and final state showers.
     write (u, "(A)")
 
     call var_list%init_defaults (0)
-    call var_list%set_log (var_str ("?alpha_s_is_fixed"), &
+    call var_list%set_log (var_str ("?alphas_is_fixed"), &
          .true., is_known = .true.)
     call shower_settings%init (var_list)
     call write_separator (u)
@@ -4064,15 +4064,9 @@ proper flavor information, by the ISR shower.
     n_in = particle_set%get_n_in ()
     n_out = particle_set%get_n_out ()
     allocate (hard_colored_mask (size (particles)))
-    !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
-    do i = 1, size (particles)
-       hard_colored_mask(i) = (particles(i)%get_status () == PRT_INCOMING .or. &
-            particles(i)%get_status () == PRT_OUTGOING) .and. &
-            particles(i)%is_colored ()
-    end do
-    !!! hard_colored_mask = (particles%get_status () == PRT_INCOMING .or. &
-    !!!                      particles%get_status () == PRT_OUTGOING) .and. &
-    !!!                     particles%is_colored ()
+    hard_colored_mask = (particles%get_status () == PRT_INCOMING .or. &
+         particles%get_status () == PRT_OUTGOING) .and. &
+         particles%is_colored ()
     allocate (hard_colored_ids (count (hard_colored_mask)))
     hard_colored_ids = pack ([(i, i=1, size (particles))], hard_colored_mask)
     allocate (shower_partons_ids (n_shower_partons))
@@ -6631,12 +6625,12 @@ contains
        call pygive ("PARP(61)=" // buffer)
        write (buffer, "(I10)") shower%settings%max_n_flavors
        call pygive ("MSTJ(45)=" // buffer)
-       if (shower%settings%isr_alpha_s_running) then
+       if (shower%settings%isr_alphas_running) then
           call pygive ("MSTP(64)=2")
        else
           call pygive ("MSTP(64)=0")
        end if
-       if (shower%settings%fsr_alpha_s_running) then
+       if (shower%settings%fsr_alphas_running) then
           call pygive ("MSTJ(44)=2")
        else
           call pygive ("MSTJ(44)=0")

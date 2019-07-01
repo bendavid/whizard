@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -48,17 +41,17 @@ contains
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
     call test(radiation_generator_1, "radiation_generator_1", &
-       "Test the generator of N+1-particle flavor structures in QCD", &
-       u, results)
+         "Test the generator of N+1-particle flavor structures in QCD", &
+         u, results)
     call test(radiation_generator_2, "radiation_generator_2", &
-       "Test multiple splittings in QCD", &
-       u, results)
+         "Test multiple splittings in QCD", &
+         u, results)
     call test(radiation_generator_3, "radiation_generator_3", &
-       "Test the generator of N+1-particle flavor structures in QED", &
-       u, results)
+         "Test the generator of N+1-particle flavor structures in QED", &
+         u, results)
     call test(radiation_generator_4, "radiation_generator_4", &
-       "Test multiple splittings in QED", &
-       u, results)
+         "Test multiple splittings in QED", &
+         u, results)
   end subroutine radiation_generator_test
 
 

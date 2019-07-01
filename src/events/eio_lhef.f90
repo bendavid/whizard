@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -69,7 +62,7 @@ module eio_lhef
      logical :: write_sqme_ref = .false.
      logical :: write_sqme_prc = .false.
      logical :: write_sqme_alt = .false.
-     logical :: use_alpha_s_from_file = .false.
+     logical :: use_alphas_from_file = .false.
      logical :: use_scale_from_file = .false.
      integer :: n_alt = 0
      integer, dimension(:), allocatable :: proc_num_id
@@ -114,13 +107,13 @@ contains
 
   subroutine eio_lhef_set_parameters (eio, &
        keep_beams, keep_remnants, recover_beams, &
-       use_alpha_s_from_file, use_scale_from_file, &
+       use_alphas_from_file, use_scale_from_file, &
        version, extension, write_sqme_ref, write_sqme_prc, write_sqme_alt)
     class(eio_lhef_t), intent(inout) :: eio
     logical, intent(in), optional :: keep_beams
     logical, intent(in), optional :: keep_remnants
     logical, intent(in), optional :: recover_beams
-    logical, intent(in), optional :: use_alpha_s_from_file
+    logical, intent(in), optional :: use_alphas_from_file
     logical, intent(in), optional :: use_scale_from_file
     character(*), intent(in), optional :: version
     type(string_t), intent(in), optional :: extension
@@ -130,8 +123,8 @@ contains
     if (present (keep_beams))  eio%keep_beams = keep_beams
     if (present (keep_remnants))  eio%keep_remnants = keep_remnants
     if (present (recover_beams))  eio%recover_beams = recover_beams
-    if (present (use_alpha_s_from_file)) &
-         eio%use_alpha_s_from_file = use_alpha_s_from_file
+    if (present (use_alphas_from_file)) &
+         eio%use_alphas_from_file = use_alphas_from_file
     if (present (use_scale_from_file)) &
          eio%use_scale_from_file = use_scale_from_file
     if (present (version)) then
@@ -171,7 +164,7 @@ contains
     write (u, "(3x,A,L1)")    "Keep remnants     = ", object%keep_remnants
     write (u, "(3x,A,L1)")    "Recover beams     = ", object%recover_beams
     write (u, "(3x,A,L1)")    "Alpha_s from file = ", &
-         object%use_alpha_s_from_file
+         object%use_alphas_from_file
     write (u, "(3x,A,L1)")    "Scale from file   = ", &
          object%use_scale_from_file
     write (u, "(3x,A,A)")     "Version           = ", object%version
@@ -273,7 +266,7 @@ contains
        allocate (eio%tag_generator)
        call eio%tag_generator%init ( &
             var_str ("generator"), &
-            [xml_attribute (var_str ("version"), var_str ("2.5.0"))], &
+            [xml_attribute (var_str ("version"), var_str ("2.6.0"))], &
             .true.)
        allocate (eio%tag_xsecinfo)
        call eio%tag_xsecinfo%init ( &
@@ -593,7 +586,7 @@ contains
     call event%select (1, 1, 1)
     call hepeup_to_event (event, eio%fallback_model, &
          recover_beams = eio%recover_beams, &
-         use_alpha_s = eio%use_alpha_s_from_file, &
+         use_alpha_s = eio%use_alphas_from_file, &
          use_scale = eio%use_scale_from_file)
     select case (eio%version)
     case ("1.0")
@@ -634,7 +627,7 @@ contains
        call eio%tag_gen_n%write (var_str ("WHIZARD"), u)
        write (u, *)
        write (u, "(2x)", advance = "no")
-       call eio%tag_gen_v%write (var_str ("2.5.0"), u)
+       call eio%tag_gen_v%write (var_str ("2.6.0"), u)
        write (u, *)
     end select
     call eio%tag_head%close (u);  write (u, *)

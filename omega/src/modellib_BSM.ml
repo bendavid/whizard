@@ -7105,7 +7105,7 @@ module Threeshl (Module_options: Threeshl_options) =
 
    end
 
-(* \thocwmodulesection{2HDM with and without non-trivial flavor structure} *)
+(* \thocwmodulesection{THDM with and without non-trivial flavor structure} *)
 
 module type THDM_flags =
   sig

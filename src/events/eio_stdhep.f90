@@ -1,4 +1,4 @@
-! WHIZARD 2.5.0 May 06 2017
+! WHIZARD 2.6.0 Sep 08 2017
 !
 ! Copyright (C) 1999-2017 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,14 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !
 !     with contributions from
-!     Fabian Bach <fabian.bach@t-online.de>
-!     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
-!     So Young Shim <soyoung.shim@desy.de>
-!     Florian Staub <florian.staub@cern.ch>
-!     Christian Weiss <christian.weiss@desy.de>
-!     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
+!     cf. main AUTHORS file
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by
@@ -66,7 +59,7 @@ module eio_stdhep
      logical :: keep_remnants = .true.
      logical :: ensure_order = .false.
      logical :: recover_beams = .false.
-     logical :: use_alpha_s_from_file = .false.
+     logical :: use_alphas_from_file = .false.
      logical :: use_scale_from_file = .false.
      integer, dimension(:), allocatable :: proc_num_id
      integer(i64) :: n_events_expected = 0
@@ -104,21 +97,21 @@ contains
 
   subroutine eio_stdhep_set_parameters (eio, &
        keep_beams, keep_remnants, ensure_order, recover_beams, &
-       use_alpha_s_from_file, use_scale_from_file, extension)
+       use_alphas_from_file, use_scale_from_file, extension)
     class(eio_stdhep_t), intent(inout) :: eio
     logical, intent(in), optional :: keep_beams
     logical, intent(in), optional :: keep_remnants
     logical, intent(in), optional :: ensure_order
     logical, intent(in), optional :: recover_beams
-    logical, intent(in), optional :: use_alpha_s_from_file
+    logical, intent(in), optional :: use_alphas_from_file
     logical, intent(in), optional :: use_scale_from_file
     type(string_t), intent(in), optional :: extension
     if (present (keep_beams))  eio%keep_beams = keep_beams
     if (present (keep_remnants))  eio%keep_remnants = keep_remnants
     if (present (ensure_order))  eio%ensure_order = ensure_order
     if (present (recover_beams))  eio%recover_beams = recover_beams
-    if (present (use_alpha_s_from_file)) &
-         eio%use_alpha_s_from_file = use_alpha_s_from_file
+    if (present (use_alphas_from_file)) &
+         eio%use_alphas_from_file = use_alphas_from_file
     if (present (use_scale_from_file))  &
          eio%use_scale_from_file = use_scale_from_file
     if (present (extension)) then
@@ -152,7 +145,7 @@ contains
     write (u, "(3x,A,L1)")    "Keep remnants     = ", object%keep_remnants
     write (u, "(3x,A,L1)")    "Recover beams     = ", object%recover_beams
     write (u, "(3x,A,L1)")    "Alpha_s from file = ", &
-         object%use_alpha_s_from_file
+         object%use_alphas_from_file
     write (u, "(3x,A,L1)")    "Scale from file   = ", &
          object%use_scale_from_file
     if (allocated (object%proc_num_id)) then
@@ -212,16 +205,16 @@ contains
        select type (eio)
        type is (eio_stdhep_hepeup_t)
           call stdhep_init_out (char (eio%filename), &
-               "WHIZARD 2.5.0", eio%n_events_expected)
+               "WHIZARD 2.6.0", eio%n_events_expected)
           call stdhep_write (100)
           call stdhep_write (STDHEP_HEPRUP)
        type is (eio_stdhep_hepevt_t)
           call stdhep_init_out (char (eio%filename), &
-               "WHIZARD 2.5.0", eio%n_events_expected)
+               "WHIZARD 2.6.0", eio%n_events_expected)
           call stdhep_write (100)
        type is (eio_stdhep_hepev4_t)
           call stdhep_init_out (char (eio%filename), &
-               "WHIZARD 2.5.0", eio%n_events_expected)
+               "WHIZARD 2.6.0", eio%n_events_expected)
           call stdhep_write (100)
        end select
     end if
@@ -258,16 +251,16 @@ contains
                error = data%error(i))
        end do
        call stdhep_init_out (char (eio%filename), &
-            "WHIZARD 2.5.0", eio%n_events_expected)
+            "WHIZARD 2.6.0", eio%n_events_expected)
        call stdhep_write (100)
        call stdhep_write (STDHEP_HEPRUP)
     type is (eio_stdhep_hepevt_t)
        call stdhep_init_out (char (eio%filename), &
-            "WHIZARD 2.5.0", eio%n_events_expected)
+            "WHIZARD 2.6.0", eio%n_events_expected)
        call stdhep_write (100)
     type is (eio_stdhep_hepev4_t)
        call stdhep_init_out (char (eio%filename), &
-            "WHIZARD 2.5.0", eio%n_events_expected)
+            "WHIZARD 2.6.0", eio%n_events_expected)
        call stdhep_write (100)
     end select
     if (present (success))  success = .true.
@@ -402,7 +395,7 @@ contains
     call event%select (1, 1, 1)
     call hepeup_to_event (event, eio%fallback_model, &
          recover_beams = eio%recover_beams, &
-         use_alpha_s = eio%use_alpha_s_from_file, &
+         use_alpha_s = eio%use_alphas_from_file, &
          use_scale = eio%use_scale_from_file)
   end subroutine eio_stdhep_input_event
 
