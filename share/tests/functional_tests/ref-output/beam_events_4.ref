@@ -114,6 +114,7 @@ n_events = 10
 | Events: generating 10 unweighted, unpolarized events ...
 | Events: event normalization mode '1'
 |         ... event sample complete.
+| Events: actual unweighting efficiency =  50.00 %
 | Events: closing raw file 'beam_events_4_p1.evx'
 | Beam events: closed file 'uniform_spread_2.5%.dat'
 | Beam events: closed file 'uniform_spread_2.5%.dat'

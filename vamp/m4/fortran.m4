@@ -702,7 +702,7 @@ else
   wo_cv_fc_use_openmp="no"
 fi])
 AM_CONDITIONAL([FC_USE_OPENMP],
-	[test "$wo_cv_fc_use_openmp" = "yes"])
+        [test "$wo_cv_fc_use_openmp" = "yes"])
 AM_COND_IF([FC_USE_OPENMP],
 [FC_OPENMP_ON=""
 FC_OPENMP_OFF="!"
@@ -763,14 +763,14 @@ AC_CACHE_CHECK([whether profiling is activated], [wo_cv_fc_prof],
 [dnl
 if test "$FC_SUPPORTS_PROFILING" = "yes" -a "$enable_fc_profiling" = "yes"; then
   wo_cv_fc_prof="yes"
-  FCFLAGS_PROFILING="-pg"	
+  FCFLAGS_PROFILING="-pg"       
 else
   wo_cv_fc_prof="no"
   FCFLAGS_PROFILING=""
 fi])
 AC_SUBST(FCFLAGS_PROFILING)
 AM_CONDITIONAL([FC_USE_PROFILING],
-	[test -n "$FCFLAGS_PROFILING"])
+        [test -n "$FCFLAGS_PROFILING"])
 ])
 ### end WO_FC_SET_PROFILING
 
@@ -793,87 +793,629 @@ AM_CONDITIONAL([FC_IMPURE],
 ])
 ### end WO_FC_OMEGA_IMPURE
 
-### Check for extended precision support (real and complex!)
-AC_DEFUN([WO_FC_CHECK_EXTENDED],
+########################################################################
+### Configure kinds.f90
+########################################################################
+
+dnl#  splashy error reporting
+AC_DEFUN([WO_FC_MSG_ERROR_BOX],
 [dnl
-AC_CACHE_CHECK([whether $FC permits extended real and complex],
-  [wo_cv_fc_extended],
-  [dnl
+  AC_MSG_NOTICE([error: ***************************************************************************])
+  AC_MSG_NOTICE([error: $1])
+  AC_MSG_ERROR([***************************************************************************])])
+
+AC_DEFUN([WO_FC_MSG_ERROR_BOX2],
+[dnl
+  AC_MSG_NOTICE([error: ***************************************************************************])
+  AC_MSG_NOTICE([error: $1])
+  AC_MSG_NOTICE([error: $2])
+  AC_MSG_ERROR([***************************************************************************])])
+
+AC_DEFUN([WO_FC_MSG_WARN_BOX],
+[dnl
+  AC_MSG_WARN([***************************************************************************])
+  AC_MSG_WARN([$1])
+  AC_MSG_WARN([***************************************************************************])])
+
+dnl#  Check for iso_fortran_env in the incarnation of 2008
+AC_DEFUN([WO_FC_CHECK_ISO_FORTRAN_ENV_2008],
+ [AC_CACHE_CHECK([whether $FC supports iso_fortran_env (F2008)],
+   [wo_cv_fc_iso_fortran_env_2008],
+   AC_REQUIRE([AC_PROG_FC])
+   AC_LANG([Fortran])
+   [AC_LINK_IFELSE(
+      [dnl
+       program conftest
+         use iso_fortran_env
+         implicit none
+         integer :: i
+         i = real32
+         i = real64
+         i = real128
+         i = int8
+         i = int16
+         i = int32
+         i = int64
+       end program conftest],
+      [wo_cv_fc_iso_fortran_env_2008=yes],
+      [wo_cv_fc_iso_fortran_env_2008=no])])])
+
+dnl#  An extension of ISO_FORTRAN_ENV adding definitions of the
+dnl#  Fortran 2008 variables, flagged as unavailable.
+AC_DEFUN([WO_FC_ISO_FORTRAN_ENV_2008_DUMMY],
+ [module iso_fortran_env_2008
+    public
+    integer, parameter :: real32 = -1
+    integer, parameter :: real64 = -1
+    integer, parameter :: real128 = -1
+    integer, parameter :: int8 = -1
+    integer, parameter :: int16 = -1
+    integer, parameter :: int32 = -1
+    integer, parameter :: int64 = -1
+  end module iso_fortran_env_2008])
+
+dnl#  An empty extension of ISO_FORTRAN_ENV to be used if the
+dnl#  Fortran 2008 variables are available
+AC_DEFUN([WO_FC_ISO_FORTRAN_ENV_2008_EMPTY],
+ [module iso_fortran_env_2008
+  end module iso_fortran_env_2008])
+
+dnl#  An extension of ISO_C_BINDING adding definitions of
+dnl#  gfortran extensions, flagged as unavailable.
+AC_DEFUN([WO_FC_ISO_C_BINDING_GFORTRAN_DUMMY],
+ [module iso_c_binding_gfortran
+    public
+    integer, parameter :: c_float128 = -1
+  end module iso_c_binding_gfortran])
+
+dnl#  An empty extension of ISO_C_BINDING to be used if the
+dnl#  gfortran extensions are available.
+AC_DEFUN([WO_FC_ISO_C_BINDING_GFORTRAN_EMPTY],
+ [module iso_c_binding_gfortran
+  end module iso_c_binding_gfortran])
+
+dnl#  Check for gfortran extensions in iso_c_binding
+AC_DEFUN([WO_FC_CHECK_ISO_C_BINDING_GFORTRAN],
+ [AC_CACHE_CHECK([whether $FC supports c_float128 (a gfortran extension)],
+   [wo_cv_fc_iso_c_binding_gfortran],
+   AC_REQUIRE([AC_PROG_FC])
+   AC_LANG([Fortran])
+   [AC_LINK_IFELSE(
+      [dnl
+       program conftest
+         use iso_c_binding
+         implicit none
+         integer :: i
+         i = c_float128
+       end program conftest],
+      [wo_cv_fc_iso_c_binding_gfortran=yes],
+      [wo_cv_fc_iso_c_binding_gfortran=no])])])
+
+dnl#  A, by autoconf standards, large program that performs
+dnl#  RUNTIME checks of the available kinds.
+dnl#  Note that it can NOT be used for cross compiling!
+AC_DEFUN([WO_FC_MODULE_QUERY_KINDS],
+[dnl
+module query_kinds
+  use, intrinsic :: iso_fortran_env
+  use, intrinsic :: iso_c_binding
+  use :: iso_fortran_env_2008
+  use :: iso_c_binding_gfortran
+  implicit none
+  private
+  type, public :: real_kind
+     integer :: kind = -1
+     integer :: min_prec = -1
+     integer :: max_prec = -1
+     character(len=9) :: name  = "-1"
+     character(len=7) :: iso_name = "-1"
+     character(len=13) :: c_name = "-1"
+     character(len=21) :: c_name_complex = "-1"
+  end type real_kind
+  type, public :: int_kind
+     integer :: kind = -1
+     integer :: min_range = -1
+     integer :: max_range = -1
+     character(len=9) :: name = "-1"
+     character(len=5) :: iso_name = "-1"
+  end type int_kind
+  public :: query_real
+  public :: query_int
+  public :: real_by_name
+  integer, parameter :: NUM_KINDS = 20
+  integer, parameter :: MAX_PREC  = 99
+  integer, parameter :: MAX_RANGE = 99
+contains
+  subroutine real_iso_name (kind)
+    type(real_kind), intent(inout) :: kind
+    !!! The following MUST NOT be a SELECT CASE statement,
+    !!! because two or more of the real<n> kinds might be
+    !!! negative and identical
+    if (real32 >= 0 .and. kind%kind == real32) then
+       kind%iso_name = "real32"
+    else if (real64 >= 0 .and. kind%kind == real64) then
+       kind%iso_name = "real64"
+    else if (real128 >= 0 .and. kind%kind == real128) then
+       kind%iso_name = "real128"
+    end if
+  end subroutine real_iso_name
+  subroutine real_c_name (kind)
+    type(real_kind), intent(inout) :: kind
+    !!! The following MUST NOT be a SELECT CASE statement.
+    if (c_float >= 0 .and. kind%kind == c_float) then
+       kind%c_name = "c_float"
+       kind%c_name_complex = "c_float_complex"
+    else if (c_double >= 0 .and. kind%kind == c_double) then
+       kind%c_name = "c_double"
+       kind%c_name_complex = "c_double_complex"
+    else if (c_long_double >= 0 .and. kind%kind == c_long_double) then
+       kind%c_name = "c_long_double"
+       kind%c_name_complex = "c_long_double_complex"
+    !!! The following is gfortran specific:
+    else if (c_float128 >= 0 .and. kind%kind == c_float128) then
+       kind%c_name = "c_float128"
+       kind%c_name_complex = "c_float128_complex"
+    end if
+  end subroutine real_c_name
+  subroutine int_iso_name (kind)
+    type(int_kind), intent(inout) :: kind
+    !!! The following MUST NOT be a SELECT CASE statement.
+    if (int8 >= 0 .and. kind%kind == int8) then
+       kind%iso_name = "int8"
+    else if (int16 >= 0 .and. kind%kind == int16) then
+       kind%iso_name = "int16"
+    else if (int32 >= 0 .and. kind%kind == int32) then
+       kind%iso_name = "int32"
+    else if (int64 >= 0 .and. kind%kind == int64) then
+       kind%iso_name = "int64"
+    end if
+  end subroutine int_iso_name
+  subroutine query_real (single, double, other)
+    type(real_kind), intent(out) :: single
+    type(real_kind), intent(out) :: double
+    type(real_kind), dimension(:), allocatable, intent(out) :: other
+    type(real_kind), dimension(NUM_KINDS) :: kinds
+    integer :: kind_single = kind (1.0)
+    integer :: kind_double = kind (1.0D0)
+    integer :: precision_double = precision (1.0D0)
+    integer :: p, k, last_k, offset, i, j
+    single = real_kind ()
+    double = real_kind ()
+    last_k = -1
+    offset = 0
+    prec_loop: do p = 1, MAX_PREC
+       k = selected_real_kind (p = p)
+       if (k < 0) then
+          exit prec_loop
+       end if
+       if (k == last_k) then
+          kinds(offset)%max_prec = p
+       else
+          last_k = k
+          offset = offset + 1
+          kinds(offset)%kind = k
+          kinds(offset)%min_prec = p
+          kinds(offset)%max_prec = p
+       end if
+    end do prec_loop
+    allocate (other(offset-2))
+    i = 1
+    do j = 1, offset
+       if (kinds(j)%kind == kind_single) then
+          single = kinds(j)
+          single%name = "single"
+          call real_iso_name (single)
+          call real_c_name (single)
+       else if (kinds(j)%kind == kind_double) then
+          double = kinds(j)
+          double%name = "double"
+          call real_iso_name (double)
+          call real_c_name (double)
+       else
+          if (i > offset - 2) then
+             print *, "query_real: expected REAL and DOUBLE"
+             return
+          end if
+          other(i) = kinds(j)
+          if (other(i)%max_prec >= 4 * precision_double) then
+             other(i)%name = "octuple"
+          else if (other(i)%max_prec >= 2 * precision_double) then
+             other(i)%name = "quadruple"
+          else if (other(i)%max_prec > precision_double) then
+             other(i)%name = "extended"
+          else
+             write (other(i)%name, "('prec',I2.2)") other(i)%max_prec
+          endif
+          call real_iso_name (other(i))
+          call real_c_name (other(i))
+          i = i + 1
+       end if
+    end do
+  end subroutine query_real
+  function name_matches (name, k) result (yorn)
+    character(len=*), intent(in) :: name
+    type(real_kind), intent(in) :: k
+    logical :: yorn
+    yorn = trim (name) == k%name &
+         .or. trim (name) == k%iso_name &
+         .or. trim (name) == k%c_name
+  end function name_matches
+  function real_by_name (name, single, double, other) result (match)
+    character(len=*), intent(in) :: name
+    type(real_kind), intent(in) :: single
+    type(real_kind), intent(in) :: double
+    type(real_kind), dimension(:), intent(in) :: other
+    type(real_kind) :: match
+    integer :: i
+    match = real_kind ()
+    if (name_matches (name, single)) then
+       match = single
+    else if (name_matches (name, double)) then
+       match = double
+    else
+       do i = 1, size (other)
+          if (name_matches (name, other(i))) then
+             match = other(i)
+             match%name = name
+          end if
+       end do
+    end if
+  end function real_by_name
+  subroutine query_int (default, other)
+    type(int_kind), intent(out) :: default
+    type(int_kind), dimension(:), allocatable, intent(inout) :: other
+    type(int_kind), dimension(NUM_KINDS) :: kinds
+    integer :: kind_default = kind (1)
+    integer :: r, k, last_k, offset, i, j
+    default = int_kind ()
+    last_k = -1
+    offset = 0
+    range_loop: do r = 1, MAX_PREC
+       k = selected_int_kind (r)
+       if (k < 0) then
+          exit range_loop
+       end if
+       if (k == last_k) then
+          kinds(offset)%max_range = r
+       else
+          last_k = k
+          offset = offset + 1
+          kinds(offset)%kind = k
+          kinds(offset)%min_range = r
+          kinds(offset)%max_range = r
+       end if
+       if (k == kind_default) then
+          default = kinds(offset)
+       end if
+    end do range_loop
+    allocate (other(offset-1))
+    i = 1
+    do j = 1, offset
+       if (kinds(j)%kind == kind_default) then
+          default = kinds(j)
+          default%name = "dflt_int"
+          call int_iso_name (default)
+       else
+          if (i > offset - 1) then
+             print *, "query_int: expected DEFAULT"
+             return
+          end if
+          other(i) = kinds(j)
+          write (other(i)%name, "('range',I2.2)") other(i)%max_range
+          call int_iso_name (other(i))
+          i = i + 1
+       end if
+    end do
+  end subroutine query_int
+end module query_kinds])
+
+AC_DEFUN([WO_FC_MODULE_REPORT_KINDS],
+[dnl
+module report_kinds
+  use query_kinds
+  implicit none
+  private
+  public print_kinds
+contains
+  subroutine print_kinds (request, single_real, double_real, other_real, &
+                          default_int, other_int)
+    character(len=*), intent(in)  :: request
+    type(real_kind), intent(in) :: single_real, double_real
+    type(real_kind), dimension(:), intent(in) :: other_real
+    type(int_kind), intent(in) :: default_int
+    type(int_kind), dimension(:), intent(in), allocatable :: other_int
+    type(real_kind) :: default_real
+    integer :: i
+    print *, "module kinds"
+    print *, " use, intrinsic :: iso_fortran_env"
+    print *, " use, intrinsic :: iso_c_binding"
+    print *, " implicit none"
+    print *, " private"
+    print *, ""
+    print *, " !!! available REAL kinds               ! prec.  ! ISO     ! C"
+    call print_real_kind (single_real)
+    call print_real_kind (double_real)
+    do i = 1, size (other_real)
+       call print_real_kind (other_real(i))
+    end do
+    print *, ""
+    print *, " !!! available INTEGER kinds            ! range  ! ISO     ! C"
+    call print_int_kind (default_int)
+    do i = 1, size (other_int)
+       call print_int_kind (other_int(i))
+    end do
+    print *, ""
+    print *, " !!! additional INTEGER kinds"
+    print *, " public :: i8, i16, i32, i64"
+    print *, " integer, parameter :: i8  = selected_int_kind (2)"
+    print *, " integer, parameter :: i16 = selected_int_kind (4)"
+    print *, " integer, parameter :: i32 = selected_int_kind (9)"
+    print *, " integer, parameter :: i64 = selected_int_kind (18)"
+    print *, " public :: TC"
+    print *, " integer, parameter :: TC = i32"
+    default_real = real_by_name (request, single_real, double_real, other_real)
+    print *, ""
+    print *, " !!! default REAL kinds"
+    print *, " public :: single, double"
+    print *, " public :: default, c_default_float, c_default_complex"
+    print *, " integer, parameter :: default           = ", default_real%name
+    print *, " integer, parameter :: c_default_float   = ", default_real%c_name
+    print *, " integer, parameter :: c_default_complex = ", &
+         default_real%c_name_complex
+    print *, ""
+    if (default_real%kind < 0) then
+       print *, " !!! ERROR: the requested default real kind '" // &
+               request // "' is not available in this environment"
+       print *, ""
+    else
+       if (trim (default_real%c_name) == "-1" .or. &
+         trim (default_real%c_name_complex) == "-1") then
+       	   print *, " !!! ERROR: for the requested default real kind '" // &
+           	     request // "' there is no supported C analogue"
+           print *, ""
+       else if (trim (request) == "real128") then
+          if (default_real%max_prec < 2 * double_real%max_prec) then
+             print *, " !!! WARNING: the requested default real kind 'real128'", &
+               " does NOT provide quadruple precision in this environment"
+             print *, ""
+          end if
+       end if
+    end if
+    print *, "end module kinds"
+  end subroutine print_kinds
+  subroutine print_real_kind (k)
+    type(real_kind), intent(in) :: k
+    write (*, "(A,A,A,I2,A,I2,A,I2,A,A,A,A)") &
+         "  integer, parameter :: ", k%name, " = ", k%kind, &
+         "   ! ", k%min_prec, "..", k%max_prec, &
+         " ! ", k%iso_name, " ! ", k%c_name
+  end subroutine print_real_kind
+  subroutine print_int_kind (k)
+    type(int_kind), intent(in) :: k
+    write (*, "(A,A,A,I2,A,I2,A,I2,A,A,A,A)") &
+         "  integer, parameter :: ", k%name, " = ", k%kind, &
+         "   ! ", k%min_range, "..", k%max_range, &
+         " ! ", k%iso_name, "   ! ", ""
+  end subroutine print_int_kind
+end module report_kinds])
+
+AC_DEFUN([WO_FC_PROGRAM_CONFIGURE_KINDS],
+[dnl
+program configure_kinds
+  use query_kinds
+  use report_kinds
+  implicit none
+  type(real_kind), dimension(:), allocatable :: other_real
+  type(int_kind), dimension(:), allocatable :: other_int
+  type(real_kind) :: single_real, double_real
+  type(int_kind) :: default_int
+  character(len=120) :: request
+  integer :: length, status
+  call get_command_argument (1, request, length, status)
+  if (status == 0 .and. length > 0) then
+     call query_real (single_real, double_real, other_real)
+     call query_int (default_int, other_int)
+     call print_kinds (request(1:length), &
+                       single_real, double_real, other_real, &
+                       default_int, other_int)
+  end if
+end program configure_kinds])
+
+dnl#  combining the source code
+AC_DEFUN([WO_FC_CONFIGURE_KINDS_SOURCE],
+[dnl
+WO_FC_MODULE_QUERY_KINDS
+WO_FC_MODULE_REPORT_KINDS
+WO_FC_PROGRAM_CONFIGURE_KINDS])
+
+AC_DEFUN([WO_FC_MODULE_KINDS_CROSS_COMPILING],
+[dnl
+! A minimalistic kinds.f90, since we're cross compiling
+module kinds
+  use, intrinsic :: iso_fortran_env
+  use, intrinsic :: iso_c_binding
+  implicit none
+  private
+  public :: single, double
+  integer, parameter :: single = kind (1.0)
+  integer, parameter :: double = kind (1.0D0)
+  public :: i8, i16, i32, i64, TC
+  integer, parameter :: i8  = selected_int_kind (2)
+  integer, parameter :: i16 = selected_int_kind (4)
+  integer, parameter :: i32 = selected_int_kind (9)
+  integer, parameter :: i64 = selected_int_kind (18)
+  integer, parameter :: TC = i32
+  public :: default
+  integer, parameter :: default = $1
+  public :: c_default_float, c_default_complex
+  integer, parameter :: c_default_float = $2
+  integer, parameter :: c_default_complex = $3
+end module kinds])
+
+dnl#  fall back option for cross compilation
+AC_DEFUN([WO_FC_CONFIGURE_KINDS_CROSS_COMPILING],
+[dnl
+  case "X$wo_cv_fc_requested_precision" in
+    Xsingle)
+      wo_cv_fc_requested_default_c_float_kind=c_float
+      wo_cv_fc_requested_default_c_complex_kind=c_float_complex
+      ;;
+    Xdouble)
+      wo_cv_fc_requested_default_c_float_kind=c_double
+      wo_cv_fc_requested_default_c_complex_kind=c_double_complex
+      ;;
+    *)
+      WO_FC_MSG_ERROR_BOX(dnl
+        [cross compilation supported for single and double precision only!])
+      ;;
+  esac
+  AC_COMPILE_IFELSE(dnl
+    [WO_FC_MODULE_KINDS_CROSS_COMPILING(dnl
+       [$wo_cv_fc_requested_precision],
+       [$wo_cv_fc_requested_default_c_float_kind],
+       [$wo_cv_fc_requested_default_c_complex_kind])],
+    [cp conftest.$ac_ext kinds.f90],
+    [WO_FC_MSG_ERROR_BOX(dnl
+      [setting up kinds.f90 for cross compilation failed])])])
+
+dnl#  report success
+AC_DEFUN([WO_FC_CONFIGURE_KINDS_RUN_OK],
+[dnl
+  $INSTALL -d `AS_DIRNAME(["$1"])`
+  ./conftest$EXEEXT "$wo_cv_fc_requested_precision" >$1
+  if test X"$KEEP_KINDLY" != X; then
+     cp -a ./conftest.f90 "$KEEP_KINDLY"
+  fi
+  if test ! -s $1; then
+     WO_FC_MSG_ERROR_BOX([./conftest$EXEEXT produced no output])
+  fi
+  kinds_error="`$SED -n '/ERROR/s/^.*ERROR: *//p' $1`"
+  if test "x$kinds_error" != x; then
+     WO_FC_MSG_ERROR_BOX([$kinds_error])
+  fi
+  kinds_warning="`$SED -n '/WARNING/s/^.*WARNING: *//p' $1`"
+  if test "x$kinds_warning" != x; then
+     WO_FC_MSG_WARN_BOX([$kinds_warning])
+  fi])
+
+dnl#  report failure
+AC_DEFUN([WO_FC_CONFIGURE_KINDS_RUN_FAIL],
+[rm -f $1
+ if test X"$KEEP_KINDLY" != X; then
+    cp -a ./conftest.f90 "$KEEP_KINDLY"
+ fi
+ WO_FC_MSG_ERROR_BOX([could not compile kinds selection program])])
+
+########################################################################
+###
+###  Prepare a kinds.f90 with a DEFAULT kind taken from the argument
+###  of `--with-precision'.  If we are NOT cross compiling, 
+###  add comments explaing the relationship to the kinds defined in
+###  ISO_FORTRAN_ENV and ISO_C_BINDING.
+###
+###  The default of DEFAULT is `double'.
+###
+########################################################################
+AC_DEFUN([WO_FC_CONFIGURE_KINDS],
+[dnl
+AC_REQUIRE([AC_PROG_SED])
+AC_REQUIRE([AC_PROG_INSTALL])
+AC_REQUIRE([WO_FC_FILENAME_CASE_CONVERSION])
 AC_REQUIRE([AC_PROG_FC])
 AC_LANG([Fortran])
-AC_COMPILE_IFELSE([dnl
-  program conftest
-     integer, parameter :: d=selected_real_kind(precision(1.)+1, range(1.)+1)
-     integer, parameter :: q=selected_real_kind(precision(1._d)+1, range(1._d))
-     real(kind=q) :: x
-     complex(kind=q) :: z
-  end program conftest
-  ], 
-  [wo_cv_fc_extended="yes"],
-  [wo_cv_fc_extended="no"])
-])
-FC_SUPPORTS_EXTENDED="$wo_cv_fc_extended"
-AC_SUBST([FC_SUPPORTS_EXTENDED])
-])
-### end WO_FC_CHECK_EXTENDED
+AC_REQUIRE([WO_FC_CHECK_ISO_FORTRAN_ENV_2008])
+AC_REQUIRE([WO_FC_CHECK_ISO_C_BINDING_GFORTRAN])
+AC_MSG_CHECKING([the requested floating point precision])
+wo_cv_fc_requested_precision=double
+AC_ARG_WITH([precision],
+  [  --with-precision=single|double|quadruple|extended|real32|real64|real128
+                          request a floating point precision other than
+                          double precision.  Note that only single and
+                          double are guaranteed to be provided by all
+                          Fortran compilers.],
+  [case "x$withval" in
+     x | xno | xyes ) wo_cv_fc_requested_precision=double ;;
+     * )              wo_cv_fc_requested_precision="`echo $withval | $LOWERCASE`" ;;
+   esac])
+case "$wo_cv_fc_requested_precision" in
+   single | double | extended | quadruple | real32 | real64 | real128 )
+     AC_MSG_RESULT([$wo_cv_fc_requested_precision])
+     ;;
+   *)
+     AC_MSG_RESULT()
+     WO_FC_MSG_ERROR_BOX2([argument of --with-precision is $wo_cv_fc_requested_precision, but must be one of],
+       [single, double, quadruple, extended, real32, real64, real128!])
+     ;;
+esac
 
-### Check for C extended precision support (real and complex!)
-AC_DEFUN([WO_FC_CHECK_EXTENDED_C],
-[dnl
-AC_CACHE_CHECK([whether $FC permits extended-precision C types],
-  [wo_cv_fc_extended_c],
-  [dnl
-AC_REQUIRE([AC_PROG_FC])
-AC_LANG([Fortran])
-AC_COMPILE_IFELSE([dnl
-  program conftest
-     use iso_c_binding
-     real(c_long_double) :: x
-     complex(c_long_double_complex) :: z
-  end program conftest
-  ], 
-  [wo_cv_fc_extended_c="yes"],
-  [wo_cv_fc_extended_c="no"])
-])
-FC_SUPPORTS_EXTENDED_C="$wo_cv_fc_extended_c"
-AC_SUBST([FC_SUPPORTS_EXTENDED_C])
-])
-### end WO_FC_CHECK_EXTENDED_C
+dnl  save_cross_compiling=$cross_compiling
+dnl  cross_compiling=yes
 
-
-### Enable/disable extended precision and set default precision
-AC_DEFUN([WO_FC_SET_PRECISION],
-[dnl
-AC_REQUIRE([WO_FC_CHECK_EXTENDED])
-AC_ARG_ENABLE([fc_extended],
-  [AS_HELP_STRING([--enable-fc-extended],
-    [use extended precision in Fortran code [[no]]])])
-if test "$enable_fc_extended" = "yes"; then
-  FC_EXT_OR_SINGLE="extended"
+if test "x$wo_cv_fc_iso_fortran_env_2008" = xyes; then
+  if test "x$wo_cv_fc_iso_c_binding_gfortran" = xyes; then
+    AC_RUN_IFELSE(dnl
+     [WO_FC_ISO_FORTRAN_ENV_2008_EMPTY
+      WO_FC_ISO_C_BINDING_GFORTRAN_EMPTY
+      WO_FC_CONFIGURE_KINDS_SOURCE],
+     [WO_FC_CONFIGURE_KINDS_RUN_OK([$1])],
+     [WO_FC_CONFIGURE_KINDS_RUN_FAIL([$1])],
+     [WO_FC_CONFIGURE_KINDS_CROSS_COMPILING])
+  else
+    AC_RUN_IFELSE(dnl
+     [WO_FC_ISO_FORTRAN_ENV_2008_EMPTY
+      WO_FC_ISO_C_BINDING_GFORTRAN_DUMMY
+      WO_FC_CONFIGURE_KINDS_SOURCE],
+     [WO_FC_CONFIGURE_KINDS_RUN_OK([$1])],
+     [WO_FC_CONFIGURE_KINDS_RUN_FAIL([$1])],
+     [WO_FC_CONFIGURE_KINDS_CROSS_COMPILING])
+  fi
 else
-  FC_EXT_OR_SINGLE="single"
+  if test "x$wo_cv_fc_iso_c_binding_gfortran" = xyes; then
+    AC_RUN_IFELSE(dnl
+     [WO_FC_ISO_FORTRAN_ENV_2008_DUMMY
+      WO_FC_ISO_C_BINDING_GFORTRAN_EMPTY
+      WO_FC_CONFIGURE_KINDS_SOURCE],
+     [WO_FC_CONFIGURE_KINDS_RUN_OK([$1])],
+     [WO_FC_CONFIGURE_KINDS_RUN_FAIL([$1])],
+     [WO_FC_CONFIGURE_KINDS_CROSS_COMPILING])
+  else
+    AC_RUN_IFELSE(dnl
+     [WO_FC_ISO_FORTRAN_ENV_2008_DUMMY
+      WO_FC_ISO_C_BINDING_GFORTRAN_DUMMY
+      WO_FC_CONFIGURE_KINDS_SOURCE],
+     [WO_FC_CONFIGURE_KINDS_RUN_OK([$1])],
+     [WO_FC_CONFIGURE_KINDS_RUN_FAIL([$1])],
+     [WO_FC_CONFIGURE_KINDS_CROSS_COMPILING])
+  fi
 fi
-AC_SUBST([FC_EXT_OR_SINGLE])
-AC_CACHE_CHECK([the default numeric precision], [wo_cv_fc_precision],
-[dnl
-if test "$FC_SUPPORTS_EXTENDED" = "yes" \
-  -a "$FC_SUPPORTS_EXTENDED_C" = "yes" \
-  -a "$enable_fc_extended" = "yes"; then
-  wo_cv_fc_precision="extended"
-  wo_cv_fc_precision_c="c_long_double"
+rm -f iso_c_binding_gfortran.*
+rm -f iso_fortran_env_2008.*
+rm -f query_kinds.*
+rm -f report_kinds.*
+
+dnl  cross_compiling=$save_cross_compiling
+
+if test "$wo_cv_fc_requested_precision" = "real128" -a "$FC_VENDOR" = "gfortran"; then
+  FC_PRECISION="extended"
+elif test "$wo_cv_fc_requested_precision" = "real128" -a "$FC_VENDOR" = "Intel"; then
+  FC_PRECISION="quadruple"
+elif test "$wo_cv_fc_requested_precision" = "real64"; then
+  FC_PRECISION="double"
+elif test "$wo_cv_fc_requested_precision" = "real32"; then
+  FC_PRECISION="single"
 else
-  wo_cv_fc_precision="double"
-  wo_cv_fc_precision_c="c_double"
+  FC_PRECISION=$wo_cv_fc_requested_precision
 fi
+AC_SUBST([FC_PRECISION])
+AM_CONDITIONAL([FC_PREC], [test "$FC_PRECISION" = "extended" || test "$FC_PRECISION" = "quadruple"])
+AM_CONDITIONAL([FC_EXT], [test "$FC_PRECISION" = "extended"])
+AM_CONDITIONAL([FC_QUAD], [test "$FC_PRECISION" = "quadruple"])
 ])
-FC_PRECISION="$wo_cv_fc_precision"
-FC_PRECISION_C="$wo_cv_fc_precision_c"
-AC_SUBST(FC_PRECISION)
-AC_SUBST(FC_PRECISION_C)
-AM_CONDITIONAL([FC_EXT],
-     [test "$FC_PRECISION" = "extended"])
-])
-### end WO_FC_SET_PRECISION
+
+########################################################################
+### end of configure kinds.f90
+########################################################################
+
 
 ### filename_case_conversion, define two variables LOWERCASE and 
 ### UPPERCASE for /bin/sh filters that convert strings to lower 

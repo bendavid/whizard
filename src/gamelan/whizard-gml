@@ -87,7 +87,7 @@ test -z "$SED"   && SED=sed
 test -z "$MP"    && MP=mpost
 test -z "$LATEX" && LATEX=latex
 
-BUILDDIR=/Users/reuter/local/packages/whizard/trunk/build
+BUILDDIR=/Users/reuter/Physik/whizard/trunk/build
 PKGLIBDIR=/Users/reuter/local/lib/whizard
 
 if test -z "$GMLDIR"; then

@@ -81,6 +81,7 @@ $sample = "pythia6_2a"
 | Events: generating 1 unweighted, unpolarized events ...
 | Events: event normalization mode '1'
 |         ... event sample complete.
+| Events: actual unweighting efficiency = 100.00 %
 | Events: closing ASCII file 'pythia6_2a.debug'
 | Events: closing raw file 'pythia6_2a.evx'
 $sample = "pythia6_2b"
@@ -100,6 +101,7 @@ $sample = "pythia6_2b"
 | Events: generating 1 unweighted, unpolarized events ...
 | Events: event normalization mode '1'
 |         ... event sample complete.
+| Events: actual unweighting efficiency =  33.33 %
 | Events: closing ASCII file 'pythia6_2b.debug'
 | Events: closing raw file 'pythia6_2b.evx'
 | RNG: Initializing TAO random-number generator
@@ -199,6 +201,7 @@ $sample = "pythia6_2c"
 | Events: generating 1 unweighted, unpolarized events ...
 | Events: event normalization mode '1'
 |         ... event sample complete.
+| Events: actual unweighting efficiency = 100.00 %
 | Events: closing ASCII file 'pythia6_2c.debug'
 | Events: closing raw file 'pythia6_2c.evx'
 $sample = "pythia6_2d"
@@ -221,6 +224,7 @@ $sample = "pythia6_2d"
 | Events: generating 1 unweighted, unpolarized events ...
 | Events: event normalization mode '1'
 |         ... event sample complete.
+| Events: actual unweighting efficiency =  50.00 %
 | Events: closing ASCII file 'pythia6_2d.debug'
 | Events: closing raw file 'pythia6_2d.evx'
 | There were no errors and    3 warning(s).

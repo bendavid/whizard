@@ -33,25 +33,27 @@ bin_PROGRAMS = circe1_plot circe1_fit circe1_sample \
 bin_SCRIPTS = circe1_fit.run circe1_minuit1.run circe1_minuit2.run \
 	circe1_int.run
 
+KINDS=$(top_builddir)/src/kinds.lo
+
 circe1_plot_SOURCES = circe1_plot.f90
-circe1_plot_LDADD = $(top_builddir)/src/libcirce1.la
+circe1_plot_LDADD = $(KINDS) $(top_builddir)/src/libcirce1.la
 
 circe1_sample_SOURCES = circe1_sample.f90
-circe1_sample_LDADD = $(top_builddir)/src/libcirce1.la
+circe1_sample_LDADD = $(KINDS) $(top_builddir)/src/libcirce1.la
 
 circe1_fit_SOURCES = circe1_fit.f90
-circe1_fit_LDADD = $(top_builddir)/minuit/libminuit.la \
+circe1_fit_LDADD = $(KINDS) $(top_builddir)/minuit/libminuit.la \
 	$(top_builddir)/src/libcirce1.la
 
 circe1_int_SOURCES = circe1_int.f90
-circe1_int_LDADD = $(top_builddir)/src/libcirce1.la
+circe1_int_LDADD = $(KINDS) $(top_builddir)/src/libcirce1.la
 
 circe1_minuit1_SOURCES = circe1_minuit1.f90
-circe1_minuit1_LDADD = $(top_builddir)/minuit/libminuit.la \
+circe1_minuit1_LDADD = $(KINDS) $(top_builddir)/minuit/libminuit.la \
 	$(top_builddir)/src/libcirce1.la
 
 circe1_minuit2_SOURCES = circe1_minuit2.f90
-circe1_minuit2_LDADD = $(top_builddir)/minuit/libminuit.la \
+circe1_minuit2_LDADD = $(KINDS) $(top_builddir)/minuit/libminuit.la \
 	$(top_builddir)/src/libcirce1.la
 
 EXTRA_DIST = $(circe1_plot_SOURCES) $(circe1_fit_SOURCES) \

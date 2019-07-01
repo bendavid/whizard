@@ -1,4 +1,4 @@
-! WHIZARD 2.2.7 Aug 11 2015
+! WHIZARD 2.2.8 Nov 22 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,11 +6,14 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
-!     Fabian Bach <fabian.bach@desy.de>
+!     Fabian Bach <fabian.bach@t-online.de>
+!     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
+!     Soyoung Shim <soyoung.shim@desy.de>
+!     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, Daniel Wiesler 
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -79,19 +82,21 @@ contains
     integer, intent(in) :: n_components 
     type(rt_data_t), intent(in) :: global
     type(model_t), pointer :: model
+    logical :: nlo_process
     model => global%model
     config%id = prc_name
+    nlo_process = global%nlo_fixed_order .or. global%nlo_threshold_matching
     allocate (config%entry)
     if (global%var_list%is_known (var_str ("process_num_id"))) then
        config%num_id = &
             global%var_list%get_ival (var_str ("process_num_id"))
        call config%entry%init (prc_name, &
             model = model, n_in = n_in, n_components = n_components, &
-            num_id = config%num_id, nlo_process = global%nlo_calculation)
+            num_id = config%num_id, nlo_process = nlo_process)
     else
        call config%entry%init (prc_name, &
             model = model, n_in = n_in, n_components = n_components, &
-            nlo_process = global%nlo_calculation)
+            nlo_process = nlo_process)
     end if
   end subroutine process_configuration_init
     

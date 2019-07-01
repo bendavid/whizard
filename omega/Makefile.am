@@ -1,5 +1,5 @@
 # Makefile.am -- Makefile for O'Mega within and without WHIZARD
-# $Id: Makefile.am 6465 2015-01-10 15:22:31Z jr_reuter $
+# $Id: Makefile.am 7218 2015-09-08 21:42:34Z jr_reuter $
 ##
 ## Process this file with automake to produce Makefile.in
 ##
@@ -46,12 +46,30 @@ DIST_SUBDIRS = src lib models bin share tools extensions tests scripts
 DISTCHECK_CONFIGURE_FLAGS = FC=$(FC) FCFLAGS="$(FCFLAGS)" LIBS="$(LIBS)" \
 	--enable-distribution
 
+if FC_IS_NAG
+EXTRA_DISTCHECK_CONFIGURE_FLAGS = \
+    "--disable-noweb-force" \
+    "--disable-noweb-force --disable-ocaml" \
+    "--disable-noweb-force --disable-shared" \
+    "--disable-noweb-force --disable-static"
+else
+if FC_IS_GFORTRAN
 EXTRA_DISTCHECK_CONFIGURE_FLAGS = \
     "--disable-noweb-force" \
     "--disable-noweb-force --disable-ocaml" \
     "--disable-noweb-force --disable-shared" \
     "--disable-noweb-force --disable-static" \
-    "--disable-noweb-force --enable-fc-quadruple"
+    "--disable-noweb-force --with-precision=extended" \
+    "--disable-noweb-force --with-precision=quadruple"
+else
+EXTRA_DISTCHECK_CONFIGURE_FLAGS = \
+    "--disable-noweb-force" \
+    "--disable-noweb-force --disable-ocaml" \
+    "--disable-noweb-force --disable-shared" \
+    "--disable-noweb-force --disable-static" \
+    "--disable-noweb-force --with-precision=quadruple"
+endif
+endif
 
 extra-distcheck:
 	@echo "================================================="  >$@.log
@@ -86,6 +104,12 @@ endif
 uninstall-local:
 	rm -f $(OMEGA_USER_CACHE_DIR)/*$(OMEGA_CACHE_SUFFIX)
 	rm -f $(OMEGA_SYSTEM_CACHE_DIR)/*$(OMEGA_CACHE_SUFFIX)
+
+DISTCLEANFILES = \
+  iso_c_binding_gfortran.$(FC_MODULE_EXT) \
+  iso_fortran_env_2008.$(FC_MODULE_EXT) \
+  query_kinds.$(FC_MODULE_EXT) \
+  report_kinds.$(FC_MODULE_EXT)
 
 ########################################################################
 ## The End.

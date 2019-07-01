@@ -1,4 +1,4 @@
-! WHIZARD 2.2.7 Aug 11 2015
+! WHIZARD 2.2.8 Nov 22 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,11 +6,14 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
-!     Fabian Bach <fabian.bach@desy.de>
+!     Fabian Bach <fabian.bach@t-online.de>
+!     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
+!     Soyoung Shim <soyoung.shim@desy.de>
+!     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, Daniel Wiesler 
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -32,8 +35,11 @@
 
 module event_base
   
+  use system_defs, only: LF
   use kinds, only: default
+  use kinds, only: i64
   use iso_varying_string, string_t => varying_string
+  use io_units
   use string_utils, only: lower_case
   use diagnostics
   use model_data
@@ -46,13 +52,26 @@ module event_base
   public :: event_normalization_mode
   public :: event_normalization_string
   public :: event_normalization_update
+  public :: event_callback_t
+  public :: event_callback_nop_t
 
+  integer, parameter :: N_SUPPORTED_EVENT_FORMATS = 2
   integer, parameter, public :: NORM_UNDEFINED = 0
   integer, parameter, public :: NORM_UNIT = 1
   integer, parameter, public :: NORM_N_EVT = 2
   integer, parameter, public :: NORM_SIGMA = 3
   integer, parameter, public :: NORM_S_N = 4
 
+
+  type :: nlo_event_info_t
+    logical :: nlo_event = .false.
+    type(string_t), dimension(N_SUPPORTED_EVENT_FORMATS) :: &
+       supported_event_formats
+  contains
+    procedure :: init_sample_formats => nlo_event_info_init_sample_formats
+    procedure :: check_supported_sample_formats &
+       => nlo_event_info_check_supported_sample_formats
+  end type nlo_event_info_t
 
   type, abstract :: generic_event_t
      !private
@@ -73,7 +92,7 @@ module event_base
      real(default), dimension(:), allocatable :: sqme_alt
      logical :: weight_alt_known = .false.
      real(default), dimension(:), allocatable :: weight_alt
-     logical :: nlo_event = .false.
+     type(nlo_event_info_t) :: nlo_info
    contains
      procedure :: base_init => generic_event_init
      procedure :: has_valid_particle_set => generic_event_has_valid_particle_set
@@ -127,7 +146,26 @@ module event_base
      procedure :: reset => generic_event_reset
      procedure :: base_reset => generic_event_reset
      procedure :: pacify_particle_set => generic_event_pacify_particle_set
+     procedure :: set_nlo_event => generic_event_set_nlo_event
+     procedure :: is_nlo_event => generic_event_is_nlo_event
+     procedure :: init_sample_formats => generic_event_init_sample_formats
+     procedure :: check_supported_sample_formats &
+        => generic_event_check_supported_sample_formats
   end type generic_event_t
+  
+  type, abstract :: event_callback_t
+     private
+   contains
+     procedure(event_callback_write), deferred :: write
+     procedure(event_callback_proc), deferred :: proc
+  end type event_callback_t
+  
+  type, extends (event_callback_t) :: event_callback_nop_t
+     private
+   contains
+     procedure :: write => event_callback_nop_write
+     procedure :: proc => event_callback_nop
+  end type event_callback_nop_t
   
 
   abstract interface
@@ -226,9 +264,49 @@ module event_base
      end subroutine generic_event_set_scale_forced
   end interface
 
+  abstract interface
+     subroutine event_callback_write (event_callback, unit)
+       import
+       class(event_callback_t), intent(in) :: event_callback
+       integer, intent(in), optional :: unit
+     end subroutine event_callback_write
+  end interface
+  
+  abstract interface
+     subroutine event_callback_proc (event_callback, i, event)
+       import
+       class(event_callback_t), intent(in) :: event_callback
+       integer(i64), intent(in) :: i
+       class(generic_event_t), intent(in) :: event
+     end subroutine event_callback_proc
+  end interface
+  
 
 contains
   
+  subroutine nlo_event_info_init_sample_formats (nlo_info)
+    class(nlo_event_info_t), intent(inout) :: nlo_info
+    nlo_info%supported_event_formats(1) = var_str ("hepmc")
+    nlo_info%supported_event_formats(2) = var_str ("debug")
+  end subroutine nlo_event_info_init_sample_formats
+
+  subroutine nlo_event_info_check_supported_sample_formats (nlo_info, format)
+    class(nlo_event_info_t), intent(in) :: nlo_info
+    type(string_t), intent(in) :: format
+    logical :: value
+    type(string_t) :: err_message
+    integer :: i
+    value = any (nlo_info%supported_event_formats == format)
+    if (.not. value) then
+      err_message = var_str ("NLO event setup: sample_format ") // format // &
+            var_str (" is not supported yet. Please choose one of the following: ") // LF
+      do i = 1, N_SUPPORTED_EVENT_FORMATS
+         err_message = err_message // nlo_info%supported_event_formats (i) // LF
+      end do
+      call msg_fatal (char (err_message))
+    end if
+  end subroutine nlo_event_info_check_supported_sample_formats
+
   subroutine generic_event_init (event, n_alt)
     class(generic_event_t), intent(out) :: event
     integer, intent(in) :: n_alt
@@ -496,6 +574,29 @@ contains
     if (event%has_valid_particle_set ())  call pacify (event%particle_set)
   end subroutine generic_event_pacify_particle_set
 
+  subroutine generic_event_set_nlo_event (event, value)
+    class(generic_event_t), intent(inout) :: event
+    logical, intent(in) :: value
+    event%nlo_info%nlo_event = value
+  end subroutine generic_event_set_nlo_event
+
+  function generic_event_is_nlo_event (event) result (value)
+    logical :: value
+    class(generic_event_t), intent(in) :: event
+    value = event%nlo_info%nlo_event
+  end function generic_event_is_nlo_event
+
+  subroutine generic_event_init_sample_formats (event)
+    class(generic_event_t), intent(inout) :: event
+    call event%nlo_info%init_sample_formats ()
+  end subroutine generic_event_init_sample_formats
+
+  subroutine generic_event_check_supported_sample_formats (event, format)
+    class(generic_event_t), intent(in) :: event
+    type(string_t), intent(in) :: format
+    call event%nlo_info%check_supported_sample_formats (format)
+  end subroutine generic_event_check_supported_sample_formats
+
   function event_normalization_mode (string, unweighted) result (mode)
     integer :: mode
     type(string_t), intent(in) :: string
@@ -560,6 +661,20 @@ contains
       end select
     end function factor
   end subroutine event_normalization_update
+  
+  subroutine event_callback_nop_write (event_callback, unit)
+    class(event_callback_nop_t), intent(in) :: event_callback
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = given_output_unit (unit)
+    write (u, "(1x,A)")  "NOP"
+  end subroutine event_callback_nop_write
+  
+  subroutine event_callback_nop (event_callback, i, event)
+    class(event_callback_nop_t), intent(in) :: event_callback
+    integer(i64), intent(in) :: i
+    class(generic_event_t), intent(in) :: event
+  end subroutine event_callback_nop
   
 
 end module event_base

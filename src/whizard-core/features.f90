@@ -12,7 +12,6 @@ module features
   use jets, only: fastjet_available
   use system_dependencies, only: PYTHIA6_AVAILABLE
   use system_dependencies, only: PYTHIA8_AVAILABLE
-  use system_dependencies, only: STDHEP_AVAILABLE
   use hepmc_interface, only: hepmc_is_available
   use lcio_interface, only: lcio_is_available
   use system_dependencies, only: EVENT_ANALYSIS
@@ -96,9 +95,7 @@ contains
        end if
        help = "direct access for shower/hadronization"
     case ("stdhep")
-       if (STDHEP_AVAILABLE) then
-          result = "yes"
-       end if
+       result = "yes"
        help = "event I/O format"
     case ("hepmc")
        if (hepmc_is_available ()) then

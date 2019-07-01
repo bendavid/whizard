@@ -66,6 +66,7 @@ $sample = "beam_setup_4p_1"
 | Events: generating 1 unweighted, unpolarized events ...
 | Events: event normalization mode '1'
 |         ... event sample complete.
+| Events: actual unweighting efficiency = 100.00 %
 | Events: closing ASCII file 'beam_setup_4p_1.mokka.evt'
 | Events: closing raw file 'beam_setup_4p_1.evx'
 seed = 0
@@ -119,6 +120,7 @@ $sample = "beam_setup_4p_2"
 | Events: generating 1 unweighted, unpolarized events ...
 | Events: event normalization mode '1'
 |         ... event sample complete.
+| Events: actual unweighting efficiency = 100.00 %
 | Events: closing ASCII file 'beam_setup_4p_2.mokka.evt'
 | Events: closing raw file 'beam_setup_4p_2.evx'
 seed = 0
@@ -173,6 +175,7 @@ $sample = "beam_setup_4p_3"
 | Events: generating 1 unweighted, unpolarized events ...
 | Events: event normalization mode '1'
 |         ... event sample complete.
+| Events: actual unweighting efficiency = 100.00 %
 | Events: closing ASCII file 'beam_setup_4p_3.mokka.evt'
 | Events: closing raw file 'beam_setup_4p_3.evx'
 seed = 0
@@ -228,6 +231,7 @@ $sample = "beam_setup_4p_4"
 | Events: generating 1 unweighted, unpolarized events ...
 | Events: event normalization mode '1'
 |         ... event sample complete.
+| Events: actual unweighting efficiency = 100.00 %
 | Events: closing ASCII file 'beam_setup_4p_4.mokka.evt'
 | Events: closing raw file 'beam_setup_4p_4.evx'
 | There were no errors and    4 warning(s).

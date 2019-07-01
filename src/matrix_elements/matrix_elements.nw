@@ -819,6 +819,8 @@ the insertion of additional code when a library is loaded.
 @ %def prclib_driver_t
 @ This is the dynamic version.  It contains a [[dlaccess]] object for
 communicating with the OS.
+<<Prclib interfaces: public>>=
+  public :: prclib_driver_dynamic_t
 <<Prclib interfaces: types>>=
   type, extends (prclib_driver_t) :: prclib_driver_dynamic_t
      type(dlaccess_t) :: dlaccess
@@ -2873,6 +2875,8 @@ Test module, followed by the corresponding implementation module.
 <<File header>>
 
 module prclib_interfaces_ut
+  use kinds
+  use system_dependencies, only: CC_IS_GNU, CC_HAS_QUADMATH
   use unit_tests
   use prclib_interfaces_uti
   
@@ -2897,6 +2901,7 @@ module prclib_interfaces_uti
   use, intrinsic :: iso_c_binding !NODEP!
   
   use kinds
+  use system_dependencies, only: CC_HAS_QUADMATH, DEFAULT_FC_PRECISION
 <<Use strings>>
   use io_units
   use system_defs, only: TAB
@@ -4012,9 +4017,11 @@ There is a single test process with a single feature.  The process
 code is provided as a C library of independent procedures.
 These procedures should match the Fortran bind(C) interface.
 <<Prclib interfaces: execute tests>>=
-  call test (prclib_interfaces_6, "prclib_interfaces_6", &
-       "compile and link (C library)", &
-       u, results)
+  if (default == double .or. (CC_IS_GNU .and. CC_HAS_QUADMATH)) then
+     call test (prclib_interfaces_6, "prclib_interfaces_6", &
+          "compile and link (C library)", &
+          u, results)
+  end if
 <<Prclib interfaces: test declarations>>=
   public :: prclib_interfaces_6
 <<Prclib interfaces: tests>>=
@@ -4200,6 +4207,9 @@ additional function (feature), the name given as an argument.
     write (u, "(A)")  "/* (Pseudo) matrix element code file &
          &for WHIZARD self-test */"
     write (u, "(A)")  "#include <stdbool.h>"
+    if (CC_HAS_QUADMATH) then
+       write (u, "(A)")  "#include <quadmath.h>"
+    end if
     write (u, *)
     call write_test_me_code_4 (u, char (basename))
     write (u, *)
@@ -4283,15 +4293,20 @@ the previous example, but coded in C.
     write (u, "(A)")  "  }"
     write (u, "(A)")  "}"
     write (u, *)
-    if (c_default_complex == c_long_double_complex) then
+    select case (DEFAULT_FC_PRECISION)
+    case ("quadruple")
+       write (u, "(A)")  "void " // id // "_color_factors&
+            &( int (*cf_index1)[], int (*cf_index2)[], &
+            &__complex128 (*color_factors)[] ) {"
+    case ("extended")
        write (u, "(A)")  "void " // id // "_color_factors&
             &( int (*cf_index1)[], int (*cf_index2)[], &
             &long double _Complex (*color_factors)[] ) {"
-    else
+    case default
        write (u, "(A)")  "void " // id // "_color_factors&
             &( int (*cf_index1)[], int (*cf_index2)[], &
-            &double _Complex (*color_factors)[] ) {"
-    end if
+            &double _Complex (*color_factors)[] ) {"       
+    end select
     write (u, "(A)")  "  (*color_factors)[0] = 1;"
     write (u, "(A)")  "  (*cf_index1)[0] = 1;"
     write (u, "(A)")  "  (*cf_index2)[0] = 1;"
@@ -4711,8 +4726,6 @@ squared matrix elements.
   public :: prc_user_defined_base_driver_t
 <<Prc core def: types>>=
   type, abstract, extends (prc_core_driver_t) :: prc_user_defined_base_driver_t 
-  contains
-  <<Prc core def: prc user defined base driver: TBP>>
   end type prc_user_defined_base_driver_t
 
 @ %def prc_user_defined_base_driver_t
@@ -4754,7 +4767,7 @@ module process_libraries
   use diagnostics
   use md5
   use physics_defs, only: BORN, NLO_REAL, NLO_VIRTUAL, NLO_PDF
-  use physics_defs, only: NLO_SUBTRACTION, GKS
+  use physics_defs, only: NLO_SUBTRACTION, GKS, NLO_THRESHOLD_RESUMMATION
   use os_interface
   use model_data
   use particle_specifiers
@@ -5176,6 +5189,21 @@ abstract type.
   
 @ %def process_component_def_get_prt_in
 @ %def process_component_def_get_prt_out
+@ Return the combination of incoming particles as a PDG code
+<<Process libraries: process component def: TBP>>=
+  procedure :: get_pdg_in => process_component_def_get_pdg_in
+<<Process libraries: procedures>>=
+  subroutine process_component_def_get_pdg_in (component, model, pdg)
+    class(process_component_def_t), intent(in) :: component
+    class(model_data_t), intent(in), target :: model
+    integer, intent(out), dimension(:) :: pdg
+    integer :: i
+    do i = 1, size (pdg)
+       pdg(i) = model%get_pdg (component%prt_in(i)%to_string ())
+    end do
+  end subroutine process_component_def_get_pdg_in
+    
+@ %def process_component_def_get_pdg_in
 @ Return the MD5 sum.
 <<Process libraries: process component def: TBP>>=
   procedure :: get_md5sum => process_component_def_get_md5sum
@@ -5227,7 +5255,7 @@ abstract type.
   end function process_component_def_get_associated_real_sing
 
 
-  function process_component_def_is_active_nlo_component (component) result (active)
+  elemental function process_component_def_is_active_nlo_component (component) result (active)
     class(process_component_def_t), intent(in) :: component
     logical :: active
     active = component%active_nlo_component
@@ -5584,7 +5612,11 @@ allocation is moved, so the original allocated object is returned empty.
               d = d // comp%prt_out(p)%to_string ()
            end do
            if (comp%method /= "") then
-              d = d // " [" // comp%method // "]"
+              if (def%nlo_process .and. .not. comp%active_nlo_component) then
+                 d = d // " [inactive]"
+              else
+                 d = d // " [" // comp%method // "]"
+              end if
            end if
            nlo_type_string = get_nlo_type_string (comp%nlo_type)
            if (nlo_type_string /= "Born") then
@@ -5610,6 +5642,10 @@ allocation is moved, so the original allocated object is returned empty.
          nlo_type_string = 'Subtraction'
       case (GKS)
          nlo_type_string = 'GKS'
+      case (NLO_THRESHOLD_RESUMMATION)
+         nlo_type_string = 'NLL_Resummation'
+      case default 
+         call msg_fatal ("No component specifier for this NLO type")
       end select
     end function get_nlo_type_string
   end subroutine process_def_import_component
@@ -5740,6 +5776,18 @@ The query is passed to the process component.
   end function process_def_needs_code
   
 @ %def process_def_needs_code
+@ Return the first entry for the incoming particle(s), PDG code, of
+this process.
+<<Process libraries: process def: TBP>>=
+  procedure :: get_pdg_in_1 => process_def_get_pdg_in_1
+<<Process libraries: procedures>>=
+  subroutine process_def_get_pdg_in_1 (def, pdg)
+    class(process_def_t), intent(in), target :: def
+    integer, dimension(:), intent(out) :: pdg
+    call def%initial(1)%get_pdg_in (def%model, pdg)
+  end subroutine process_def_get_pdg_in_1
+    
+@ %def process_def_get_pdg_in_1
 @
 \subsubsection{Process definition list}
 A list of process definitions is the starting point for creating a
@@ -6040,6 +6088,29 @@ This tells us whether the process is a decay or a scattering.
   end function process_def_list_get_n_in
   
 @ %def process_def_list_get_n_in
+@ Return the incoming particle pdg codesnumber of incoming particles
+of a given process in the library.  If there is a PDG array, return
+only the first code for each beam.  This serves as a quick way
+for (re)constructing beam properties.
+<<Process libraries: process def list: TBP>>=
+  procedure :: get_pdg_in_1 => process_def_list_get_pdg_in_1
+<<Process libraries: procedures>>=
+  subroutine process_def_list_get_pdg_in_1 (list, id, pdg)
+    class(process_def_list_t), intent(in) :: list
+    type(string_t), intent(in) :: id
+    integer, dimension(:), intent(out) :: pdg
+    type(process_def_entry_t), pointer :: current
+    current => list%first
+    do while (associated (current))
+       if (id == current%id) then
+          call current%get_pdg_in_1 (pdg)
+          return
+       end if
+       current => current%next
+    end do
+  end subroutine process_def_list_get_pdg_in_1
+  
+@ %def process_def_list_get_pdg_in_1
 @ Return the number of components of a given process in the library.
 <<Process libraries: process def list: TBP>>=
   procedure :: get_n_components => process_def_list_get_n_components
@@ -7159,7 +7230,7 @@ scan the process entries until we have found a match.
 <<Process libraries: procedures>>=
   subroutine process_library_connect_process &
        (lib, id, i_component, data, proc_driver)
-    class(process_library_t), intent(in) :: Lib
+    class(process_library_t), intent(in) :: lib
     type(string_t), intent(in) :: id
     integer, intent(in) :: i_component
     type(process_constants_t), intent(out) :: data

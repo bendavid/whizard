@@ -207,6 +207,13 @@ particle SSC_PHI_PP 48
   tex_anti "\phi^{--}"
   mass mkm_p width wkm_p
 
+# Resonance Scalar IsoTensor(scalar)
+particle SSC_PHI_SN 49
+  spin 0
+  name "Rphis0" Rphisn
+  tex_name "\phi_s^0"
+  mass mkm_p width wkm_p
+
 #Resonance Tensor Isoscalar
 particle SSC_f 52
   spin 2
@@ -235,6 +242,13 @@ particle SSC_T_PP 55
   anti "Rt--" Rtmm
   tex_name "t^{++}"
   tex_anti "t^{--}"
+  mass mkm_t width wkm_t
+
+# Resonance Tensor IsoTensor (scalar)
+particle SSC_T_SN 59
+  spin 2
+  name "Rts0" Rtsn
+  tex_name "t_s^0"
   mass mkm_t width wkm_t
 
 # Hadrons
@@ -349,6 +363,9 @@ vertex Rsigma H H
 # Phi - vector boson
 vertex Rphin Wp Wm
 vertex Rphin Z Z
+vertex Rphisn Wp Wm
+vertex Rphisn Z Z
+vertex Rphisn H H
 vertex Rphip Wm Z
 vertex Rphipp Wm Wm
 vertex Rphim Wp Z
@@ -367,6 +384,8 @@ vertex Rf H H
 # Tensor t - vector boson
 vertex Rtn Wp Wm
 vertex Rtn Z Z
+vertex Rtsn Wp Wm
+vertex Rtsn Z Z
 vertex Rtp Wm Z
 vertex Rtpp Wm Wm
 vertex Rtm Wp Z

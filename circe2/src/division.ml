@@ -104,9 +104,9 @@ module Mono (* [: T] *) =
       { x = equidistant n x_min x_max;
         x_min = x_max;
         x_max = x_min;
-        n = Array.create n 0;
-        w = Array.create n 0.0;
-        w2 = Array.create n 0.0;
+        n = Array.make n 0;
+        w = Array.make n 0.0;
+        w2 = Array.make n 0.0;
         bias = bias }
 
     let bins d = d.x
@@ -165,9 +165,9 @@ module Mono (* [: T] *) =
       match Array.length f with
       | 0 -> f
       | 1 -> Array.copy f
-      | 2 -> Array.create 2 ((f.(0) +. f.(1)) /. 2.0)
+      | 2 -> Array.make 2 ((f.(0) +. f.(1)) /. 2.0)
       | n ->
-          let f' = Array.create n 0.0 in
+          let f' = Array.make n 0.0 in
           f'.(0) <- (f.(0) +. f.(1)) /. 2.0;
           for i = 1 to n - 2 do
             f'.(i) <- (f.(i-1) +. f.(i) +. f.(i+1)) /. 3.0
@@ -185,7 +185,7 @@ module Mono (* [: T] *) =
     let rebinning_weights' power fs =
       let sum_f = Array.fold_left (+.) 0.0 fs in
       if sum_f <= 0.0 then
-        Array.create (Array.length fs) 1.0
+        Array.make (Array.length fs) 1.0
       else
         Array.map (fun f ->
           let f' = f /. sum_f in
@@ -244,7 +244,7 @@ i*)
 
     let rebin' m x =
       let n = Array.length x - 1 in
-      let x' = Array.create (n + 1) 0.0 in
+      let x' = Array.make (n + 1) 0.0 in
       let sum_m = Array.fold_left (+.) 0.0 m in
       if sum_m <= 0.0 then
         Array.copy x
@@ -296,9 +296,9 @@ i*)
       { x = x;
         x_min = d.x_min;
         x_max = d.x_max;
-        n = Array.create n 0;
-        w = Array.create n 0.0;
-        w2 = Array.create n 0.0;
+        n = Array.make n 0;
+        w = Array.make n 0.0;
+        w2 = Array.make n 0.0;
         bias = d.bias }
 
     let to_channel oc d =
@@ -354,7 +354,7 @@ module Make_Poly (M : Diffmaps.Real) (* [: Poly] *) =
       pd.ofs.(i) + Mono.find pd.d.(i) x
 
     let bins pd =
-      let a = Array.create (pd.n_bins + 1) 0.0 in
+      let a = Array.make (pd.n_bins + 1) 0.0 in
       let bins0 = Mono.bins pd.d.(0) in
       let len = Array.length bins0 in
       Array.blit bins0 0 a 0 len;
@@ -426,7 +426,7 @@ module Make_Poly (M : Diffmaps.Real) (* [: Poly] *) =
           let d = Array.of_list
               (List.map (fun i ->
                 Mono.create ?bias i.nbin i.x_min i.x_max) intervals) in
-          let ofs = Array.create ndiv 0 in
+          let ofs = Array.make ndiv 0 in
           for i = 1 to ndiv - 1 do
             ofs.(i) <- ofs.(i-1) + Mono.n_bins d.(i-1)
           done;
@@ -436,9 +436,9 @@ module Make_Poly (M : Diffmaps.Real) (* [: Poly] *) =
             n_bins = n_bins;
             ofs = ofs;
             maps = Array.of_list (List.map (fun i -> i.map) intervals);
-            n = Array.create ndiv 0;
-            w = Array.create ndiv 0.0;
-            w2 = Array.create ndiv 0.0 }
+            n = Array.make ndiv 0;
+            w = Array.make ndiv 0.0;
+            w2 = Array.make ndiv 0.0 }
 
     (* We can safely assume that [find_raw pd.x y = find_raw pd.x x].
        \begin{equation}
@@ -483,9 +483,9 @@ module Make_Poly (M : Diffmaps.Real) (* [: Poly] *) =
         n_bins = pd.n_bins;
         ofs = pd.ofs;
         maps = Array.copy pd.maps;
-        n = Array.create ndiv 0;
-        w = Array.create ndiv 0.0;
-        w2 = Array.create ndiv 0.0 }
+        n = Array.make ndiv 0;
+        w = Array.make ndiv 0.0;
+        w2 = Array.make ndiv 0.0 }
 
     let to_channel oc pd =
       for i = 0 to Array.length pd.d - 1 do

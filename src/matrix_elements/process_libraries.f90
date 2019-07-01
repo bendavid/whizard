@@ -1,4 +1,4 @@
-! WHIZARD 2.2.7 Aug 11 2015
+! WHIZARD 2.2.8 Nov 22 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,11 +6,14 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
-!     Fabian Bach <fabian.bach@desy.de>
+!     Fabian Bach <fabian.bach@t-online.de>
+!     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
+!     Soyoung Shim <soyoung.shim@desy.de>
+!     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, Daniel Wiesler 
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -39,7 +42,7 @@ module process_libraries
   use diagnostics
   use md5
   use physics_defs, only: BORN, NLO_REAL, NLO_VIRTUAL, NLO_PDF
-  use physics_defs, only: NLO_SUBTRACTION, GKS
+  use physics_defs, only: NLO_SUBTRACTION, GKS, NLO_THRESHOLD_RESUMMATION
   use os_interface
   use model_data
   use particle_specifiers
@@ -111,6 +114,7 @@ module process_libraries
      procedure :: get_n_tot => process_component_def_get_n_tot
      procedure :: get_prt_in => process_component_def_get_prt_in
      procedure :: get_prt_out => process_component_def_get_prt_out
+     procedure :: get_pdg_in => process_component_def_get_pdg_in
      procedure :: get_md5sum => process_component_def_get_md5sum
      procedure :: get_nlo_type => process_component_def_get_nlo_type
      procedure :: get_associated_born &
@@ -155,6 +159,7 @@ module process_libraries
      procedure :: get_md5sum => process_def_get_md5sum
      procedure :: get_core_def_ptr => process_def_get_core_def_ptr
      procedure :: needs_code => process_def_needs_code
+     procedure :: get_pdg_in_1 => process_def_get_pdg_in_1
   end type process_def_t
 
   type, extends (process_def_t) :: process_def_entry_t
@@ -179,6 +184,7 @@ module process_libraries
      procedure :: get_num_id => process_def_list_get_num_id
      procedure :: get_model_name => process_def_list_get_model_name
      procedure :: get_n_in => process_def_list_get_n_in
+     procedure :: get_pdg_in_1 => process_def_list_get_pdg_in_1
      procedure :: get_n_components => process_def_list_get_n_components
      procedure :: get_component_def_ptr => process_def_list_get_component_def_ptr
      procedure :: get_component_list => process_def_list_get_component_list
@@ -476,6 +482,16 @@ contains
     end do
   end subroutine process_component_def_get_prt_out
   
+  subroutine process_component_def_get_pdg_in (component, model, pdg)
+    class(process_component_def_t), intent(in) :: component
+    class(model_data_t), intent(in), target :: model
+    integer, intent(out), dimension(:) :: pdg
+    integer :: i
+    do i = 1, size (pdg)
+       pdg(i) = model%get_pdg (component%prt_in(i)%to_string ())
+    end do
+  end subroutine process_component_def_get_pdg_in
+    
   function process_component_def_get_md5sum (component) result (md5sum)
     class(process_component_def_t), intent(in) :: component
     character(32) :: md5sum
@@ -507,7 +523,7 @@ contains
   end function process_component_def_get_associated_real_sing
 
 
-  function process_component_def_is_active_nlo_component (component) result (active)
+  elemental function process_component_def_is_active_nlo_component (component) result (active)
     class(process_component_def_t), intent(in) :: component
     logical :: active
     active = component%active_nlo_component
@@ -766,7 +782,11 @@ contains
               d = d // comp%prt_out(p)%to_string ()
            end do
            if (comp%method /= "") then
-              d = d // " [" // comp%method // "]"
+              if (def%nlo_process .and. .not. comp%active_nlo_component) then
+                 d = d // " [inactive]"
+              else
+                 d = d // " [" // comp%method // "]"
+              end if
            end if
            nlo_type_string = get_nlo_type_string (comp%nlo_type)
            if (nlo_type_string /= "Born") then
@@ -792,6 +812,10 @@ contains
          nlo_type_string = 'Subtraction'
       case (GKS)
          nlo_type_string = 'GKS'
+      case (NLO_THRESHOLD_RESUMMATION)
+         nlo_type_string = 'NLL_Resummation'
+      case default 
+         call msg_fatal ("No component specifier for this NLO type")
       end select
     end function get_nlo_type_string
   end subroutine process_def_import_component
@@ -872,6 +896,12 @@ contains
     flag = def%initial(i_component)%needs_code ()
   end function process_def_needs_code
   
+  subroutine process_def_get_pdg_in_1 (def, pdg)
+    class(process_def_t), intent(in), target :: def
+    integer, dimension(:), intent(out) :: pdg
+    call def%initial(1)%get_pdg_in (def%model, pdg)
+  end subroutine process_def_get_pdg_in_1
+    
   subroutine process_def_list_final (list)
     class(process_def_list_t), intent(inout) :: list
     type(process_def_entry_t), pointer :: current
@@ -1068,6 +1098,21 @@ contains
        current => current%next
     end do
   end function process_def_list_get_n_in
+  
+  subroutine process_def_list_get_pdg_in_1 (list, id, pdg)
+    class(process_def_list_t), intent(in) :: list
+    type(string_t), intent(in) :: id
+    integer, dimension(:), intent(out) :: pdg
+    type(process_def_entry_t), pointer :: current
+    current => list%first
+    do while (associated (current))
+       if (id == current%id) then
+          call current%get_pdg_in_1 (pdg)
+          return
+       end if
+       current => current%next
+    end do
+  end subroutine process_def_list_get_pdg_in_1
   
   function process_def_list_get_n_components (list, id) result (n)
     integer :: n
@@ -1778,7 +1823,7 @@ contains
   
   subroutine process_library_connect_process &
        (lib, id, i_component, data, proc_driver)
-    class(process_library_t), intent(in) :: Lib
+    class(process_library_t), intent(in) :: lib
     type(string_t), intent(in) :: id
     integer, intent(in) :: i_component
     type(process_constants_t), intent(out) :: data

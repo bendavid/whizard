@@ -1,4 +1,4 @@
-! WHIZARD 2.2.7 Aug 11 2015
+! WHIZARD 2.2.8 Nov 22 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,11 +6,14 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
-!     Fabian Bach <fabian.bach@desy.de>
+!     Fabian Bach <fabian.bach@t-online.de>
+!     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
+!     Soyoung Shim <soyoung.shim@desy.de>
+!     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, Daniel Wiesler 
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -82,6 +85,7 @@ module phs_fks
     integer, dimension(:), allocatable :: emitters
     type(real_kinematics_t), pointer :: real_kinematics => null()
     type(isr_kinematics_t), pointer :: isr_kinematics => null()
+    integer :: n_in
     real(default) :: xi_min = tiny_07
     real(default) :: y_max = 1._default
     real(default) :: sqrts
@@ -103,6 +107,7 @@ module phs_fks
                       phs_fks_generator_compute_emitter_kinematics_massless
     procedure :: compute_emitter_kinematics_massive => &
                       phs_fks_generator_compute_emitter_kinematics_massive
+    procedure :: generate_isr_decay => phs_fks_generator_generate_isr_decay
     procedure :: generate_isr => phs_fks_generator_generate_isr
     procedure :: generate_isr_from_x => phs_fks_generator_generate_isr_from_x
     procedure :: set_beam_energy => phs_fks_generator_set_beam_energy
@@ -178,13 +183,12 @@ contains
 
   subroutine phs_fks_config_final (object)
     class(phs_fks_config_t), intent(inout) :: object
-!    call object%phs_wood_config_t%final ()
   end subroutine phs_fks_config_final
 
   subroutine phs_fks_config_write (object, unit)
     class(phs_fks_config_t), intent(in) :: object
     integer, intent(in), optional :: unit
-    call object%phs_wood_config_t%write
+    call object%phs_wood_config_t%write (unit)
   end subroutine phs_fks_config_write
 
   subroutine phs_fks_config_set_mode (phs_config, mode)
@@ -228,7 +232,7 @@ contains
   subroutine phs_fks_config_startup_message (phs_config, unit)
     class(phs_fks_config_t), intent(in) :: phs_config
     integer, intent(in), optional :: unit
-    call phs_config%phs_wood_config_t%startup_message
+    call phs_config%phs_wood_config_t%startup_message (unit)
   end subroutine phs_fks_config_startup_message
 
   subroutine phs_fks_config_allocate_instance (phs)
@@ -521,7 +525,7 @@ contains
     real(default) :: cpsi, beta
     type(vector3_t) :: vec, vec_orth
     type(lorentz_transformation_t) :: rot, lambda
-    integer :: i
+    integer :: i, n_in
     real(default) :: xi, y, phi
 
     associate (rad_var => generator%real_kinematics)
@@ -532,14 +536,18 @@ contains
     end associate
     nlegborn = size (p_born)
     nlegreal = nlegborn+1
-    if (emitter <= 2 .or. emitter > nlegborn) then
-      call msg_fatal ("Generate FSR phase space: Invalid emitter!")
-    end if
+    n_in = generator%n_in
+
+    call check_valid_emitter (emitter, nlegborn)
+    !call check_valid_reference_frame (p_born)
+        
     allocate (p_real (nlegreal))
 
-    p_real(1) = p_born(1)
-    p_real(2) = p_born(2)
-    q = p_born(1) + p_born(2)
+    q = vector4_null
+    do i = 1, n_in
+       p_real(i) = p_born(i)
+       q = q + p_born(i)
+    end do 
     q0 = q%p(0)
     q2 = q**2
     generator%real_kinematics%cms_energy2 = q2
@@ -587,7 +595,7 @@ contains
     k = p_real(emitter)%p(1:3) + p_real(nlegreal)%p(1:3)
     vec%p(1:3) = 1/uk*k%p(1:3)
     lambda = boost (beta/sqrt(1-beta**2), vec)
-    do i = 3, nlegborn
+    do i = n_in+1, nlegborn
       if (i /= emitter) then
         p_real(i) = lambda * p_born(i)
       end if
@@ -600,25 +608,41 @@ contains
        if (generator%is_massive(emitter)) then
           jac%jac(1) = jac%jac(1)*4/q0/uk_n_born/xi
        else
-          k2 = 2*uk_n*uk_np1*(1-y)
+          k2 = two * uk_n * uk_np1* (one - y)
           jac%jac(1) = uk_n**2/uk_n_born / (uk_n - k2/(2*q0))
        end if
        !!! Soft jacobian
-       jac%jac(2) = 1._default
+       jac%jac(2) = one
        !!! Collinear jacobian
-       jac%jac(3) = 1-xi/2*q0/uk_n_born
+       jac%jac(3) = one - xi/two * q0/uk_n_born
     end associate
   contains
+    subroutine check_valid_emitter (emitter, nlegborn)
+      integer, intent(in) :: emitter, nlegborn
+      if (emitter > nlegborn) then
+         call msg_fatal ("Emitter too large!")
+      end if
+    end subroutine check_valid_emitter
+
+    subroutine check_valid_reference_frame (p)
+      type(vector4_t), intent(in), dimension(:) :: p
+      if (.not. vector_set_is_cms (p)) &
+         call msg_fatal ("Input momenta have to be in center-of-mass frame")
+    end subroutine check_valid_reference_frame
+ 
     subroutine check_cpsi_bound (cpsi)
       real(default), intent(inout) :: cpsi
-      if (cpsi > 1._default) cpsi = 1._default
+      if (cpsi > one) then
+         cpsi = one
+      else if (cpsi < -one) then
+         cpsi = -one
+      end if
     end subroutine check_cpsi_bound
   end subroutine phs_fks_generator_generate_fsr
 
-  subroutine phs_fks_generate_fsr (phs, emitter, p_born, p_real)
+  subroutine phs_fks_generate_fsr (phs, emitter, p_real)
     class(phs_fks_t), intent(inout) :: phs
     integer, intent(in) :: emitter
-    type(vector4_t), intent(in), dimension(:) :: p_born
     type(vector4_t), intent(out), dimension(:), allocatable :: p_real
     type(vector4_t), dimension(:), allocatable :: p
     integer :: i
@@ -702,26 +726,27 @@ contains
     beta = (1-alpha**2)/(1+alpha**2)
   end function compute_beta_massive
 
-  pure function get_xi_max_fsr_massless (p_born, emitter) result (xi_max)
+  pure function get_xi_max_fsr_massless (p_born, emitter, n_in) result (xi_max)
     type(vector4_t), intent(in), dimension(:) :: p_born
-    integer, intent(in) :: emitter
+    integer, intent(in) :: emitter, n_in
     real(default) :: xi_max
     real(default) :: uk_n_born, q0
-    q0 = p_born(1)%p(0) + p_born(2)%p(0)
+    q0 = sum (p_born(1:n_in)%p(0))
     uk_n_born = space_part_norm (p_born(emitter))
     xi_max = 2*uk_n_born / q0
   end function get_xi_max_fsr_massless
 
-  pure function get_xi_max_fsr_massive (p_born, emitter, m2, y) result (xi_max)
+  pure function get_xi_max_fsr_massive (p_born, emitter, m2, y, n_in) result (xi_max)
+    real(default) :: xi_max
     type(vector4_t), intent(in), dimension(:) :: p_born
     integer, intent(in) :: emitter
     real(default), intent(in) :: m2, y
-    real(default) :: xi_max
+    integer, intent(in) :: n_in
     real(default) :: q0, mrec2
     real(default) :: k0_rec_max
     real(default) :: z, z1, z2
     real(default) :: k_np1_max
-    q0 = 2*p_born(1)%p(0)
+    q0 = n_in*p_born(1)%p(0)
     associate (p => p_born(emitter)%p)
        mrec2 = (q0-p(0))**2 - p(1)**2 - p(2)**2 - p(3)**2
     end associate
@@ -749,6 +774,15 @@ contains
     xi_max = one - max (plus_val, minus_val)
   end function get_xi_max_isr
 
+  function get_xi_max_isr_decay (p) result (xi_max)
+     real(default) :: xi_max
+     type(vector4_t), dimension(:), intent(in) :: p
+     real(default) :: m_in, m_out1, m_out2
+     m_in = p(1)**1
+     m_out1 = p(2)**1; m_out2 = p(3)**1
+     xi_max = one - (m_out1 + m_out2)**2 / m_in**2
+  end function get_xi_max_isr_decay
+
   subroutine phs_fks_generate_isr &
        (phs, p_born, p_real)
     class(phs_fks_t), intent(inout) :: phs
@@ -757,17 +791,99 @@ contains
     type(vector4_t) :: p0, p1
     type(lorentz_transformation_t) :: lt
     real(default) :: sqrts_hat
-    call phs%generator%generate_isr (p_born, p_real)
-    phs%generator%real_kinematics%p_real_lab = p_real
-    if (.not. phs%config%cm_frame) then
-       sqrts_hat = (p_real(1)+p_real(2))**1
-       p0 = p_real(1) + p_real(2)
-       lt = boost (p0, sqrts_hat)
-       p1 = inverse(lt) * p_real(1)
-       lt = lt * rotation_to_2nd (3, space_part (p1))
-       phs%generator%real_kinematics%p_real_cms = inverse (lt) * p_real
-    end if
+
+    associate (generator => phs%generator)
+       select case (generator%n_in)
+       case (1)
+          call generator%generate_isr_decay (p_born, p_real)
+          phs%config%cm_frame = .true.
+       case (2) 
+          call generator%generate_isr (p_born, p_real)
+       end select
+       phs%generator%real_kinematics%p_real_lab = p_real
+       if (.not. phs%config%cm_frame) then
+          sqrts_hat = (p_real(1)+p_real(2))**1
+          p0 = p_real(1) + p_real(2)
+          lt = boost (p0, sqrts_hat)
+          p1 = inverse(lt) * p_real(1)
+          lt = lt * rotation_to_2nd (3, space_part (p1))
+          phs%generator%real_kinematics%p_real_cms = inverse (lt) * p_real
+       else
+          phs%generator%real_kinematics%p_real_cms = p_real
+       end if
+     end associate
   end subroutine phs_fks_generate_isr
+
+  subroutine phs_fks_generator_generate_isr_decay (generator, p_born, p_real)
+     class(phs_fks_generator_t), intent(inout) :: generator
+     type(vector4_t), intent(in), dimension(:) :: p_born
+     type(vector4_t), intent(out), dimension(:), allocatable :: p_real
+     real(default) :: xi_max, xi, y, phi
+     integer :: nlegborn, nlegreal
+     real(default) :: k0_np1
+     real(default) :: msq_in
+     real(default) :: msq, msq1, msq2, m, p, E 
+     real(default) :: rlda, rlda_soft
+     type(vector4_t) :: p_virt
+     type(vector3_t) :: p_ref, p_ref_orth
+     real(default) :: theta_born, phi_born
+     type(lorentz_transformation_t) :: L, rotation
+
+    associate (rad_var => generator%real_kinematics)
+      xi_max = rad_var%xi_max(1)
+      xi = rad_var%xi_tilde * xi_max
+      y = rad_var%y(1)
+      phi = rad_var%phi
+      rad_var%y_soft = y
+    end associate
+
+    nlegborn = size (p_born)
+    nlegreal = nlegborn+1
+    allocate (p_real (nlegreal))
+    
+    p_real(1) = p_born(1)
+    k0_np1 = p_real(1)%p(0) * xi/two
+    p_real(nlegreal)%p(0) = k0_np1
+    p_real(nlegreal)%p(1) = k0_np1*sqrt(one-y**2)*sin(phi)
+    p_real(nlegreal)%p(2) = k0_np1*sqrt(one-y**2)*cos(phi)
+    p_real(nlegreal)%p(3) = k0_np1*y
+
+    p_virt = p_real(1) - p_real(nlegreal)
+    L = boost (p_virt, p_virt**1)
+
+    msq = p_virt**2; m = sqrt(msq)
+    msq1 = p_born(2)**2
+    msq2 = p_born(3)**2
+    rlda = sqrt (lambda (msq, msq1, msq2))
+    p = rlda / (2*m)
+
+    p_ref = space_part (p_virt) / space_part_norm (p_virt)
+    p_ref_orth = create_orthogonal (p_ref)
+    theta_born = polar_angle (p_born(2))
+    phi_born = azimuthal_angle (p_born(2))
+    rotation = LT_compose_r2_r3_b3 (cos(theta_born), sin(theta_born), &
+        cos(phi_born), sin(phi_born), 0._default)
+
+    E = sqrt (msq1 + p**2)
+    p_real(2) = vector4_moving (E, p, 3)
+    p_real(2) = rotation * p_real(2)
+   
+    E = sqrt (msq2 + p**2)
+    p_real(3) = vector4_moving (E, -p, 3)
+    p_real(3) = rotation * p_real(3)
+
+    p_real(2:3) = L * p_real(2:3)
+
+    associate (jac => generator%real_kinematics%jac(1))
+       jac%jac(1) = rlda / msq
+       msq_in = p_born(1)**2
+       rlda_soft = sqrt (lambda (msq_in, msq1, msq2))
+       !!! We have to undo the Jacobian which has already been supplied by the Born phase space.
+       jac%jac(1) = jac%jac(1) * msq_in / rlda_soft 
+       jac%jac(2) = one
+    end associate
+
+  end subroutine phs_fks_generator_generate_isr_decay
 
   subroutine phs_fks_generator_generate_isr &
        (generator, p_born, p_real)
@@ -795,15 +911,15 @@ contains
     end associate
 
     nlegborn = size (p_born)
-    nlegreal = nlegborn+1
+    nlegreal = nlegborn + 1
     generator%isr_kinematics%sqrts_born = sqrt ((p_born(1) + p_born(2))**2)
     allocate (p_real (nlegreal))
 
     !!! Initial state real momenta
     xb_plus = generator%isr_kinematics%x(I_PLUS)
     xb_minus = generator%isr_kinematics%x(I_MINUS)
-    x_plus = xb_plus/sqrt(1-xi) * sqrt ((2-xi*(1-y)) / (2-xi*(1+y)))
-    x_minus = xb_minus/sqrt(1-xi) * sqrt ((2-xi*(1+y)) / (2-xi*(1-y)))
+    x_plus = xb_plus / sqrt(one - xi) * sqrt ((two - xi * (one - y)) / (two - xi * (one + y)))
+    x_minus = xb_minus / sqrt(one - xi) * sqrt ((two - xi * (one + y)) / (two - xi * (one - y)))
     p_real(I_PLUS) = x_plus/xb_plus * p_born(I_PLUS)
     p_real(I_MINUS) = x_minus/xb_minus * p_born(I_MINUS)
     generator%isr_kinematics%z(I_PLUS) = x_plus/generator%isr_kinematics%x(I_PLUS)
@@ -811,18 +927,16 @@ contains
 
     !!! Create radiation momentum
     sqrts_real = generator%isr_kinematics%sqrts_born / sqrt(1-xi)
-    k0_np1 = sqrts_real*xi/2
+    k0_np1 = sqrts_real * xi / two
     p_real(nlegreal)%p(0) = k0_np1
-    p_real(nlegreal)%p(1) = k0_np1*sqrt(1-y**2)*sin(phi)
-    p_real(nlegreal)%p(2) = k0_np1*sqrt(1-y**2)*cos(phi)
-    p_real(nlegreal)%p(3) = k0_np1*y
+    p_real(nlegreal)%p(1) = k0_np1 * sqrt (one - y**2)*sin(phi)
+    p_real(nlegreal)%p(2) = k0_np1 * sqrt(one - y**2)*cos(phi)
+    p_real(nlegreal)%p(3) = k0_np1 * y
 
     call get_boost_parameters (p_real, beta_gamma, beta_vec)
-    !!!lambda_longit = create_longitudinal_boost (p_real, inverse = .true.)
     lambda_longit = create_longitudinal_boost (beta_gamma, beta_vec, inverse = .true.)
     p_real(nlegreal) = lambda_longit * p_real(nlegreal)
 
-    !!!lambda_longit = create_longitudinal_boost (p_born, inverse = .false.)
     call get_boost_parameters (p_born, beta_gamma, beta_vec)
     lambda_longit = create_longitudinal_boost (beta_gamma, beta_vec, inverse = .false.)
     forall (i=3:nlegborn) &
@@ -832,7 +946,6 @@ contains
     forall (i=3:nlegborn) &
          p_real(i) = lambda_transv * p_real(i)
 
-    !!!lambda_longit_inv = create_longitudinal_boost (p_real, inverse = .true.)
     lambda_longit_inv = create_longitudinal_boost (beta_gamma, beta_vec, inverse = .true.)
     forall (i=3:nlegborn) &
          p_real(i) = lambda_longit_inv * p_real(i)
@@ -840,12 +953,12 @@ contains
     !!! Compute jacobians
     do i = 1, 2
        associate (jac => generator%real_kinematics%jac(i))
-          xi_plus = xi_max * (one-xb_plus)
-          xi_minus = xi_max * (one-xb_minus)
-          jac%jac(1) = one / (one-xi)
+          xi_plus = xi_max * (one - xb_plus)
+          xi_minus = xi_max * (one - xb_minus)
+          jac%jac(1) = one / (one - xi)
           jac%jac(2) = one
-          jac%jac(3) = xi_plus / (one-xi_plus)
-          jac%jac(4) = xi_minus / (one-xi_minus)
+          jac%jac(3) = xi_plus / (one - xi_plus)
+          jac%jac(4) = xi_minus / (one - xi_minus)
        end associate
     end do
   contains
@@ -854,8 +967,8 @@ contains
        real(default), intent(out) :: beta_gamma
        type(vector3_t), intent(out) :: beta_vec
        beta_vec = (p(1)%p(1:3) + p(2)%p(1:3)) / (p(1)%p(0) + p(2)%p(0))
-       beta_gamma = beta_vec**1 / sqrt (1-beta_vec**2)
-       beta_vec = beta_vec / beta_vec**1
+       beta_gamma = beta_vec**1 / sqrt (one - beta_vec**2)
+       beta_vec = beta_vec / beta_vec**1 
     end subroutine get_boost_parameters
 
     function create_longitudinal_boost (beta_gamma, beta_vec, inverse) result (lambda)
@@ -877,10 +990,10 @@ contains
        type(vector3_t) :: vec_transverse
        real(default) :: pt2, beta, beta_gamma
        pt2 = transverse_part(p_rad)**2
-       beta = 1.0 / sqrt (1 + sqrts_real**2 * (1-xi)/pt2)
-       beta_gamma = beta / sqrt (1-beta**2)
+       beta = one / sqrt (one + sqrts_real**2 * (one - xi) / pt2)
+       beta_gamma = beta / sqrt (one - beta**2)
        vec_transverse%p(1:2) = p_rad%p(1:2)
-       vec_transverse%p(3) = 0._default
+       vec_transverse%p(3) = zero
        call normalize (vec_transverse)
        lambda = boost (-beta_gamma, vec_transverse)
     end function create_transversal_boost
@@ -901,7 +1014,7 @@ contains
     class(phs_fks_generator_t), intent(inout) :: generator
     real(default), intent(in) :: sqrts
     generator%sqrts = sqrts
-    generator%isr_kinematics%beam_energy = sqrts / 2
+    generator%isr_kinematics%beam_energy = sqrts / two
   end subroutine phs_fks_generator_set_beam_energy
 
   subroutine phs_fks_generator_set_emitters (generator, emitters)
@@ -918,7 +1031,7 @@ contains
        allocate (generator%is_massive (n_tot))
        allocate (generator%m2 (n_tot))
        generator%is_massive = .false.
-       generator%m2 = 0._default
+       generator%m2 = zero
     end if
   end subroutine phs_fks_generator_setup_masses
 
@@ -933,7 +1046,7 @@ contains
        p = generator%real_kinematics%p_born_lab(1:2)
     end if
 
-    generator%isr_kinematics%x = p%p(0) / (generator%sqrts/2)
+    generator%isr_kinematics%x = p%p(0) / (generator%sqrts/two)
   end subroutine phs_fks_generator_set_isr_kinematics
 
   subroutine phs_fks_generator_generate_radiation_variables &
@@ -943,31 +1056,47 @@ contains
     type(vector4_t), intent(in), dimension(:) :: p_born
     integer :: em
 
-    if (any (generator%emitters <= 2)) &
+    if (any (generator%emitters <= 2) .and. generator%n_in > 1) &
         call generator%set_isr_kinematics (generator%real_kinematics%p_born_lab)
 
     associate (rad_var => generator%real_kinematics)
        rad_var%jac_rand = 1.0
        call generator%compute_xi_tilde (r_in(I_XI))
-       rad_var%phi = r_in (I_PHI)*twopi
-       rad_var%jac_rand = rad_var%jac_rand*twopi
+       rad_var%phi = r_in (I_PHI) * twopi
+       rad_var%jac_rand = rad_var%jac_rand * twopi
        call generator%compute_y (r_in(I_Y), p_born)
        do em = 1, size (p_born)
           if (any (generator%emitters == em)) then
+             select case (generator%n_in)
+             case (1)
+                if (em > 1) then
+                   if (generator%is_massive(em)) then
+                      rad_var%xi_max(em) = get_xi_max_fsr &
+                         (p_born, em, generator%m2(em), rad_var%y(em), 1)
+                   else
+                      rad_var%xi_max(em) = get_xi_max_fsr (p_born, em, 1)
+                   end if
+                else
+                   rad_var%xi_max(em) = get_xi_max_isr_decay (p_born) 
+                end if
+             case (2)
                 if (generator%is_massive(em)) then
                    if (em <= 2) then
-                      call msg_fatal ("Massive emitters incompatible with IS phase space")
+                      call msg_fatal ("Massive emitters incompatible with IS scattering phase space")
                    else
-                     rad_var%xi_max (em) = get_xi_max_fsr &
-                                   (p_born, em, generator%m2(em), rad_var%y(em))
+                     rad_var%xi_max(em) = get_xi_max_fsr &
+                        (p_born, em, generator%m2(em), rad_var%y(em), 2)
                    end if
                 else
                    if (em <= 2) then
                       rad_var%xi_max(em) = get_xi_max_isr (generator%isr_kinematics%x, rad_var%y(em))
                    else
-                      rad_var%xi_max(em) = get_xi_max_fsr (p_born, em)
+                      rad_var%xi_max(em) = get_xi_max_fsr (p_born, em, 2)
                    end if
                 end if
+             case default
+                call msg_fatal ("Real phase space: Only 1 or 2 initial state particles supported")
+             end select  
           end if
        end do
     end associate
@@ -978,21 +1107,23 @@ contains
     real(default), intent(in) :: r_y
     type(vector4_t), dimension(:) :: p
     integer :: em
-    real(default) :: beta
+    real(default) :: beta, one_p_beta, one_m_beta
     associate (rad_var => generator%real_kinematics)
        do em = 1, size (p)
           if (any (generator%emitters == em)) then
-             if (generator%is_massive (em)) then
+             if (generator%is_massive (em) .and. em > generator%n_in) then
                 generator%m2(em) = p(em)**2
                 beta = beta_emitter (generator%sqrts, p(em))
-                rad_var%y(em) = 1.0/beta * (1-(1+beta) * &
-                    exp(-r_y*log((1+beta)/(1-beta))))
+                one_m_beta = one - beta
+                one_p_beta = one + beta
+                rad_var%y(em) = one / beta * (one - one_p_beta * &
+                    exp ( - r_y * log(one_p_beta / one_m_beta)))
                 rad_var%jac_rand(em) = rad_var%jac_rand(em) * &
-                    (1-beta*rad_var%y(em))*log((1+beta)/(1-beta))/beta
+                    (1 - beta * rad_var%y(em)) * log(one_p_beta / one_m_beta) / beta
              else
-                rad_var%y(em) = (1-2*r_y)*generator%y_max
-                rad_var%jac_rand(em) = rad_var%jac_rand(em)*3*(1-rad_var%y(em)**2)
-                rad_var%y(em) = 1.5_default*(rad_var%y(em) - rad_var%y(em)**3/3)
+                rad_var%y(em) = (one - two * r_y) * generator%y_max
+                rad_var%jac_rand(em) = rad_var%jac_rand(em) * 3 * (one - rad_var%y(em)**2)
+                rad_var%y(em) = 1.5_default * (rad_var%y(em) - rad_var%y(em)**3/3)
              end if
           end if
        end do

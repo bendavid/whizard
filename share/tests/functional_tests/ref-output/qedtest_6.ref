@@ -73,6 +73,7 @@ n_events = 10
 | Events: generating 10 unweighted, unpolarized events ...
 | Events: event normalization mode '1'
 |         ... event sample complete.
+| Events: actual unweighting efficiency =  83.33 %
 | There were no errors and    1 warning(s).
 | WHIZARD run finished.
 |=============================================================================|

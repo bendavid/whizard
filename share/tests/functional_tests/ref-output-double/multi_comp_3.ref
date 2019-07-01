@@ -148,6 +148,7 @@ n_events = 1000
 | Events: generating 1000 unweighted, unpolarized events ...
 | Events: event normalization mode '1'
 |         ... event sample complete.
+| Events: actual unweighting efficiency =  39.15 %
 Warning: Encountered events with excess weight: 2 events (  0.200 %)
 | Maximum excess weight = 4.460E-04
 | Average excess weight = 4.487E-07

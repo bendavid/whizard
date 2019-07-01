@@ -604,7 +604,7 @@ contains
          N = 2009, M = 1009, &
          N_SHORT = 1984
     real(kind=default), parameter :: &
-         A_2027082 = 0.36410514377569680455_default
+         A_2027082 = 0.36410514377569680455_tao_r64
     real(kind=default), dimension(N) :: a
     type(tao_random_state) :: s, t
     integer, dimension(:), allocatable :: ibuf

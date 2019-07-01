@@ -189,6 +189,33 @@ will be used for event generation.
   end subroutine mci_startup_message
 
 @ %def mci_startup_message
+@ Dump type-specific info to a logfile.
+<<MCI base: mci: TBP>>=
+  procedure(mci_write_log_entry), deferred :: write_log_entry
+<<MCI base: interfaces>>=
+  abstract interface
+     subroutine mci_write_log_entry (mci, u)
+       import
+       class(mci_t), intent(in) :: mci
+       integer, intent(in) :: u
+     end subroutine mci_write_log_entry
+  end interface
+       
+@ %def mci_write_log_entry
+In order to avoid dependencies on definite MCI implementations,
+we introduce a MD5 sum calculator.
+<<MCI base: mci: TBP>>=
+  procedure(mci_compute_md5sum), deferred :: compute_md5sum
+<<MCI base: interfaces>>=
+  abstract interface
+     subroutine mci_compute_md5sum (mci, pacify)
+       import
+       class(mci_t), intent(inout) :: mci
+       logical, intent(in), optional :: pacify
+     end subroutine mci_compute_md5sum
+  end interface
+
+@ %def mci_compute_md5sum@ 
 @ Record the index of the MCI object within a process.  For
 multi-component processes with more than one integrator, the
 integrator should know about its own index, so file names can be
@@ -530,7 +557,19 @@ Note: currently unused outside of tests, might be deleted later.
   end interface
   
 @ %def mci_rebuild
-@ Return the value of the integral, error, efficiency, and time per call.
+@
+Pacify: reduce numerical noise.  The base implementation does nothing.
+<<MCI base: mci: TBP>>=
+  procedure :: pacify => mci_pacify
+<<MCI base: procedures>>=
+  subroutine mci_pacify (object, efficiency_reset, error_reset)
+    class(mci_t), intent(inout) :: object
+    logical, intent(in), optional :: efficiency_reset, error_reset
+  end subroutine mci_pacify
+    
+@ %def mci_pacify
+@
+Return the value of the integral, error, efficiency, and time per call.
 <<MCI base: mci: TBP>>=
   procedure :: get_integral => mci_get_integral
   procedure :: get_error => mci_get_error
@@ -612,6 +651,7 @@ point.
      integer :: selected_channel = 0
      real(default) :: mci_weight = 0
      real(default) :: integrand  = 0
+     logical :: negative_weights = .false.
    contains
    <<MCI base: mci instance: TBP>>
   end type mci_instance_t
@@ -1156,6 +1196,8 @@ vetoing unweighted events.
      procedure :: final => mci_test_final
      procedure :: write => mci_test_write
      procedure :: startup_message => mci_test_startup_message
+     procedure :: write_log_entry => mci_test_write_log_entry
+     procedure :: compute_md5sum => mci_test_compute_md5sum
      procedure :: declare_flat_dimensions => mci_test_ignore_flat_dimensions
      procedure :: declare_equivalences => mci_test_ignore_equivalences
      procedure :: set_divisions => mci_test_set_divisions
@@ -1208,6 +1250,22 @@ vetoing unweighted events.
   end subroutine mci_test_startup_message
   
 @ %def mci_test_startup_message
+@ Log entry: nothing.
+<<MCI base: tests>>=
+  subroutine mci_test_write_log_entry (mci, u)
+    class(mci_test_t), intent(in) :: mci
+    integer, intent(in) :: u
+  end subroutine mci_test_write_log_entry
+       
+@ %def mci_test_write_log_entry
+@ Compute MD5 sum: nothing.
+<<MCI base: tests>>=
+  subroutine mci_test_compute_md5sum (mci, pacify)
+    class(mci_test_t), intent(inout) :: mci
+    logical, intent(in), optional :: pacify
+  end subroutine mci_test_compute_md5sum
+
+@ %def mci_test_compute_md5sum
 @ This is a no-op for the test integrator.
 <<MCI base: tests>>=
   subroutine mci_test_ignore_flat_dimensions (mci, dim_flat)
@@ -2381,6 +2439,7 @@ submitted to integration.
 
 module iterations
 
+<<Use kinds>>
 <<Use strings>>
   use io_units
   use diagnostics
@@ -2562,6 +2621,17 @@ Return the total number of passes.
   end function iterations_list_get_n_calls
 
 @ %def iterations_list_get_n_calls
+@ 
+<<Iterations: iterations list: TBP>>=
+  procedure :: set_n_calls => iterations_list_set_n_calls
+<<Iterations: procedures>>=
+  subroutine iterations_list_set_n_calls (it_list, pass, n_calls)
+    class(iterations_list_t), intent(inout) :: it_list
+    integer, intent(in) :: pass, n_calls
+    it_list%pass(pass)%n_calls = n_calls
+  end subroutine iterations_list_set_n_calls
+
+@ %def iterations_list_set_n_calls
 @ Get the adaptation mode (automatic/custom) and, for custom adaptation, the
 flags for a specific pass.
 <<Iterations: iterations list: TBP>>=
@@ -2610,6 +2680,19 @@ flags for a specific pass.
 
 @ %def iterations_list_get_n_it
 @
+\subsection{Iteration Multipliers}
+<<Iterations: public>>=
+  public :: iteration_multipliers_t
+<<Iterations: types>>=
+  type :: iteration_multipliers_t
+    real(default) :: mult_real = 1._default
+    real(default) :: mult_virt = 1._default
+    real(default) :: mult_pdf = 1._default
+    real(default) :: mult_threshold = 1._default
+    integer, dimension(:), allocatable :: n_calls0 
+  end type iteration_multipliers_t
+
+@ %def iterations_multipliers
 @
 \subsection{Unit tests}
 Test module, followed by the corresponding implementation module.
@@ -4337,6 +4420,27 @@ end type mci_midpoint_t
   end subroutine mci_midpoint_startup_message
     
 @ %def mci_midpoint_startup_message
+@ Log entry: just headline.
+<<MCI midpoint: mci midpoint: TBP>>=
+  procedure :: write_log_entry => mci_midpoint_write_log_entry
+<<MCI midpoint: procedures>>=
+  subroutine mci_midpoint_write_log_entry (mci, u)
+    class(mci_midpoint_t), intent(in) :: mci
+    integer, intent(in) :: u
+    write (u, "(1x,A)")  "MC Integrator is Midpoint rule"
+  end subroutine mci_midpoint_write_log_entry
+       
+@ %def mci_midpoint_write_log_entry
+@ MD5 sum: nothing.
+<<MCI midpoint: mci midpoint: TBP>>=
+  procedure :: compute_md5sum => mci_midpoint_compute_md5sum
+<<MCI midpoint: procedures>>=
+  subroutine mci_midpoint_compute_md5sum (mci, pacify)
+    class(mci_midpoint_t), intent(inout) :: mci
+    logical, intent(in), optional :: pacify
+  end subroutine mci_midpoint_compute_md5sum
+
+@ %def mci_midpoint_compute_md5sum
 @ The number of channels must be one.
 <<MCI midpoint: mci midpoint: TBP>>=
   procedure :: set_dimensions => mci_midpoint_set_dimensions
@@ -4695,14 +4799,12 @@ efficiency value.
             mci%max_known = .true.
          end if
          if (mci%max_abs /= 0) then
-            if (mci%integral == mci%integral_pos) then
+            if (mci%integral_neg == 0) then
                mci%efficiency = mci%integral / mci%max_abs
                mci%efficiency_known = .true.
             else if (mci%n_calls /= 0) then
                mci%efficiency = &
-                    (mci%n_calls_pos * mci%integral_pos &
-                    - mci%n_calls_neg * mci%integral_neg) &
-                    / mci%n_calls / mci%max_abs
+                    (mci%integral_pos - mci%integral_neg) / mci%max_abs
                mci%efficiency_known = .true.
             end if
          end if
@@ -5697,6 +5799,7 @@ module mci_vamp
 <<Use strings>>
   use io_units
   use format_utils, only: pac_fmt
+  use format_utils, only: write_separator
   use format_defs, only: FMT_12, FMT_14, FMT_17, FMT_19
   use diagnostics
   use md5
@@ -6389,6 +6492,27 @@ printout, which incorporates the current results.
   end subroutine mci_vamp_startup_message
     
 @ %def mci_vamp_startup_message
+@ Log entry: just headline.
+<<MCI vamp: mci vamp: TBP>>=
+  procedure :: write_log_entry => mci_vamp_write_log_entry
+<<MCI vamp: procedures>>=
+  subroutine mci_vamp_write_log_entry (mci, u)
+    class(mci_vamp_t), intent(in) :: mci
+    integer, intent(in) :: u
+    write (u, "(1x,A)")  "MC Integrator is VAMP"       
+    call write_separator (u)
+    call mci%write_history (u)
+    call write_separator (u)       
+    if (mci%grid_par%use_vamp_equivalences) then
+       call vamp_equivalences_write (mci%equivalences, u)          
+    else
+       write (u, "(3x,A)") "No VAMP equivalences have been used"
+    end if
+    call write_separator (u)
+    call mci%write_chain_weights (u) 
+  end subroutine mci_vamp_write_log_entry
+       
+@ %def mci_vamp_write_log_entry
 @ Set the MCI index (necessary for processes with multiple components).
 We append the index to the grid filename, just before the final dotted
 suffix.
@@ -7184,6 +7308,7 @@ result.
     class(mci_instance_t), intent(inout), target :: instance
     class(mci_sampler_t), intent(inout), target :: sampler
     class(vamp_data_t), allocatable :: data
+    logical :: positive
     type(exception) :: vamp_exception
     select type (instance)
     type is (mci_vamp_instance_t)
@@ -7206,12 +7331,20 @@ result.
                      data, &
                      phi = phi_trivial, &
                      excess = instance%vamp_excess, &
+                     positive = positive, &
                      exc = vamp_exception)
                 if (signal_is_pending ())  return
                 if (sampler%is_valid ())  exit REJECTION
              end do REJECTION
              call handle_vamp_exception (vamp_exception, mci%verbose)
-             instance%vamp_weight = 1
+             if (positive) then
+                instance%vamp_weight = 1
+             else if (instance%negative_weights) then
+                instance%vamp_weight = -1
+             else
+                call msg_fatal ("VAMP: event with negative weight generated")
+                instance%vamp_weight = 0
+             end if
              instance%vamp_weight_set = .true.
           else
              call msg_bug ("VAMP: generate event: grids undefined")
@@ -7239,7 +7372,8 @@ Note: This feature is currently unused.
   end subroutine mci_vamp_rebuild_event
        
 @ %def mci_vamp_rebuild_event
-@
+@ Pacify: override the default no-op, since VAMP numerics might need
+some massage.
 <<MCI vamp: mci vamp: TBP>>=
   procedure :: pacify => mci_vamp_pacify
 <<MCI vamp: procedures>>=
@@ -7262,7 +7396,7 @@ Note: This feature is currently unused.
     end do
   end subroutine mci_vamp_pacify
     
-@  %def mci_vamp_pacify
+@ %def mci_vamp_pacify
 @
 \subsection{Sampler as Workspace}
 In the full setup, the sampling function requires the process instance
@@ -7304,7 +7438,6 @@ history, which is then just transient.
      logical :: enable_adapt_weights = .false.
      logical :: allow_adapt_grids = .false.
      logical :: allow_adapt_weights = .false.
-     logical :: negative_weights = .false.
      integer :: n_adapt_grids = 0
      integer :: n_adapt_weights = 0
      logical :: generating_events = .false.
@@ -7749,11 +7882,21 @@ averaged over all active channels.
     class(mci_vamp_instance_t), intent(in) :: mci
     real(default), dimension(:), allocatable :: efficiency
     allocate (efficiency (mci%mci%n_channel))
-    where (mci%grids%grids%f_max /= 0)
-       efficiency = mci%grids%grids%mu(1) / abs (mci%grids%grids%f_max)
-    elsewhere
-       efficiency = 0
-    end where
+    if (.not. mci%negative_weights) then
+       where (mci%grids%grids%f_max /= 0)
+          efficiency = mci%grids%grids%mu(1) / abs (mci%grids%grids%f_max)
+       elsewhere
+          efficiency = 0
+       end where
+    else
+       where (mci%grids%grids%f_max /= 0)
+          efficiency = &
+               (mci%grids%grids%mu_plus(1) - mci%grids%grids%mu_minus(1)) &
+               / abs (mci%grids%grids%f_max)
+       elsewhere
+          efficiency = 0
+       end where
+    end if
   end function mci_vamp_instance_get_efficiency_array
 
   function mci_vamp_instance_get_efficiency (mci) result (efficiency)
@@ -8086,6 +8229,12 @@ greater than one, the function is extended as a constant in the other
 dimension(s).
 
 In mode [[2]], the function is $11 x^{10}$, also with integral $1$.
+
+Mode [[4]] includes ranges of zero and negative function value, the
+integral is negative.  The results should be identical to the results
+of [[mci_midpoint_4]], where the same function is evaluated.  The
+function is $f(x) = (1 - 3 x^2)\,\theta(x-1/2)$ with integral
+$\int_0^1 f(x)\,dx=-3/8$, minimum $f(1)=-2$ and maximum $f(1/2)=1/4$.
 <<MCI vamp: test types>>=
   type, extends (mci_sampler_t) :: test_sampler_1_t
      real(default), dimension(:), allocatable :: x
@@ -8113,6 +8262,8 @@ In mode [[2]], the function is $11 x^{10}$, also with integral $1$.
        write (u, "(1x,A)") "Test sampler: f(x) = 11 x^10"
     case (3)
        write (u, "(1x,A)") "Test sampler: f(x) = 11 x^10 * 2 * cos^2 (2 pi y)"
+    case (4)
+       write (u, "(1x,A)") "Test sampler: f(x) = (1 - 3 x^2) theta(x - 1/2)"
     end select
   end subroutine test_sampler_1_write
   
@@ -8139,6 +8290,12 @@ In mode [[2]], the function is $11 x^{10}$, also with integral $1$.
        sampler%val = 11 * x_in(1) ** 10
     case (3)
        sampler%val = 11 * x_in(1) ** 10 * 2 * cos (twopi * x_in(2)) ** 2
+    case (4)
+       if (x_in(1) >= .5_default) then
+          sampler%val = 1 - 3 * x_in(1) ** 2
+       else
+          sampler%val = 0
+       end if
     end select
     call sampler%fetch (val, x, f)
   end subroutine test_sampler_1_evaluate
@@ -9545,7 +9702,7 @@ them in again and compare.
 
 @ %def mci_vamp_10
 @
-\subsubsection{Weighted events}
+\subsubsection{Weighted events with grid I/O}
 Construct an integrator and use it for a two-dimensional sampler with two
 channels.  Integrate, write grids, and generate a weighted event using
 the grids from file.
@@ -9624,10 +9781,9 @@ the grids from file.
 
 @ %def mci_vamp_11
 @
-\subsubsection{Weighted events}
+\subsubsection{Unweighted events with grid I/O}
 Construct an integrator and use it for a two-dimensional sampler with two
-channels.  Integrate, write grids, and generate a weighted event using
-the grids from file.
+channels.
 <<MCI vamp: execute tests>>=
  call test (mci_vamp_12, "mci_vamp_12", &
       "unweighted events with grid I/O", &
@@ -10090,3 +10246,92 @@ adaptation.  Then show the VAMP history.
   end subroutine mci_vamp_15
 
 @ %def mci_vamp_15
+@
+\subsubsection{One-dimensional integration with sign change}
+Construct an integrator and use it for a one-dimensional sampler.
+<<MCI vamp: execute tests>>=
+  call test (mci_vamp_16, "mci_vamp_16", &
+       "1-D integral with sign change", &
+       u, results)
+<<MCI vamp: test declarations>>=
+  public :: mci_vamp_16
+<<MCI vamp: tests>>=
+  subroutine mci_vamp_16 (u)
+    integer, intent(in) :: u
+    type(grid_parameters_t) :: grid_par
+    class(mci_t), allocatable, target :: mci
+    class(mci_instance_t), pointer :: mci_instance => null ()
+    class(mci_sampler_t), allocatable :: sampler
+    class(rng_t), allocatable :: rng
+    
+    write (u, "(A)")  "* Test output: mci_vamp_16"
+    write (u, "(A)")  "*   Purpose: integrate function in one dimension &
+         &(single channel)"
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Initialize integrator"
+    write (u, "(A)")
+
+    allocate (mci_vamp_t :: mci)
+    call mci%set_dimensions (1, 1)
+    select type (mci)
+    type is (mci_vamp_t)
+       grid_par%use_vamp_equivalences = .false.
+       call mci%set_grid_parameters (grid_par)
+       mci%negative_weights = .true.
+    end select
+    
+    allocate (rng_tao_t :: rng)
+    call rng%init ()
+    call mci%import_rng (rng)
+
+    call mci%write (u)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Initialize instance"
+    write (u, "(A)")
+    
+    call mci%allocate_instance (mci_instance)
+    call mci_instance%init (mci)
+    
+    write (u, "(A)")  "* Initialize test sampler"
+    write (u, "(A)")
+    
+    allocate (test_sampler_1_t :: sampler)
+    select type (sampler)
+    type is (test_sampler_1_t)
+       sampler%mode = 4
+    end select
+    call sampler%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Integrate with n_calls = 1000"
+    write (u, "(A)")  "   (lower precision to avoid"
+    write (u, "(A)")  "      numerical noise)"
+    write (u, "(A)")
+    
+    select type (mci)
+    type is (mci_vamp_t)
+       call mci%add_pass ()
+    end select
+    call mci%integrate (mci_instance, sampler, 1, 1000, pacify = .true.)
+    call mci%write (u, .true.)
+ 
+    write (u, "(A)")
+    write (u, "(A)")  "* Contents of mci_instance:"
+    write (u, "(A)")
+    
+    call mci_instance%write (u, .true.)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Cleanup"
+
+    call mci_instance%final ()
+    call mci%final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: mci_vamp_16"
+
+  end subroutine mci_vamp_16
+
+@ %def mci_vamp_16

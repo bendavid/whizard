@@ -24,10 +24,11 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 module parameters_sm_tt_threshold
   use kinds
-  use constants 
+  use constants
   use sm_physics !NODEP!
   use omega_vectors
   use ttv_formfactors
+  use diagnostics
   implicit none
   private
 
@@ -49,13 +50,16 @@ module parameters_sm_tt_threshold
   complex(default), dimension(2), public :: &
        gncneu, gnclep, gncup, gncdwn
 
+  integer, public :: FF
+
   public :: import_from_whizard, model_update_alpha_s, &
-       va_ilc_tta, va_ilc_ttz, ttv_mtpole
+       ttv_formfactor, va_ilc_tta, va_ilc_ttz, ttv_mtpole, &
+       onshell_tops, expanded_amp2
 
 contains
 
   subroutine import_from_whizard (par_array)
-    real(default), dimension(35), intent(in) :: par_array
+    real(default), dimension(40), intent(in) :: par_array
     type :: parameter_set
        real(default) :: mZ
        real(default) :: mW
@@ -85,7 +89,12 @@ contains
        real(default) :: FF
        real(default) :: v1
        real(default) :: v2
+       real(default) :: scan_sqrts_min
+       real(default) :: scan_sqrts_max
+       real(default) :: scan_sqrts_stepsize
        real(default) :: test
+       real(default) :: no_pwave
+       real(default) :: mpole_fixed
        real(default) :: ee
        real(default) :: cw
        real(default) :: sw
@@ -97,6 +106,8 @@ contains
     !!! This corresponds to 1/alpha = 137.03598949333
     real(default), parameter :: &
          alpha = 1.0_default/137.03598949333_default
+    logical :: no_pwave, mpole_fixed
+    call msg_debug (D_THRESHOLD, "import_from_whizard")
     e_em = sqrt(4.0_default * PI * alpha)
     par%mZ     = par_array(1)
     par%mW     = par_array(2)
@@ -126,13 +137,18 @@ contains
     par%FF     = par_array(26)
     par%v1     = par_array(27)
     par%v2     = par_array(28)
-    par%test   = par_array(29)
-    par%ee     = par_array(30)
-    par%cw     = par_array(31)
-    par%sw     = par_array(32)
-    par%v      = par_array(33)
-    par%mtpole = par_array(34)
-    par%wtop   = par_array(35)
+    par%scan_sqrts_min = par_array(29)
+    par%scan_sqrts_max = par_array(30)
+    par%scan_sqrts_stepsize = par_array(31)
+    par%test   = par_array(32)
+    par%no_pwave = par_array(33)
+    par%mpole_fixed = par_array(34)
+    par%ee     = par_array(35)
+    par%cw     = par_array(36)
+    par%sw     = par_array(37)
+    par%v      = par_array(38)
+    par%mtpole = par_array(39)
+    par%wtop   = par_array(40)
     mass(1:27) = 0
     width(1:27) = 0
     mass(3) = par%ms
@@ -153,6 +169,7 @@ contains
     width(26) = 0
     mass(27) = par%xipm * mass(24)
     width(27) = 0
+    FF = par%FF
     vev = par%v
     e = par%ee
     sinthw = par%sw
@@ -179,7 +196,12 @@ contains
     gncdwn(1) = - g / 2 / costhw * ( - 0.5_default - 2 * qedwn * sin2thw)
     gncneu(2) = - g / 2 / costhw * ( + 0.5_default)
     gnclep(2) = - g / 2 / costhw * ( - 0.5_default)
-    gncup(2)  = - g / 2 / costhw * ( + 0.5_default)
+    no_pwave = par%no_pwave > 0.0_default
+    if (no_pwave) then
+       gncup(2) = 0.0_default
+    else
+       gncup(2)  = - g / 2 / costhw * ( + 0.5_default)
+    end if
     gncdwn(2) = - g / 2 / costhw * ( - 0.5_default)
     qlep = - e * qelep
     qup = - e * qeup
@@ -208,10 +230,14 @@ contains
     !!! Color flow basis, divide by sqrt(2)
     gs = sqrt(2.0_default*PI*par%alphas)
     igs = cmplx (0.0_default, 1.0_default, kind=default) * gs
-    call ttv_formfactors_init_parameters (mass(6), width(6), par%m1s, par%Vtb, &
-       par%wt_inv, par%alphaemi, par%sw, par%alphas, par%mZ, par%mW, mass(5), &
-       par%sh, par%sf, par%nloop, par%FF, par%v1, par%v2)
-    call ttv_formfactors_init_threshold_grids (par%test)
+    mpole_fixed = par%mpole_fixed > 0.0_default
+    call init_parameters &
+         (mass(6), width(6), par%m1s, par%Vtb, par%wt_inv, &
+          par%alphaemi, par%sw, par%alphas, par%mZ, par%mW, &
+          mass(5), par%sh, par%sf, par%nloop, par%FF, &
+          par%v1, par%v2, par%scan_sqrts_min, par%scan_sqrts_max, &
+          par%scan_sqrts_stepsize, mpole_fixed)
+    call init_threshold_grids (par%test)
   end subroutine import_from_whizard
 
   subroutine model_update_alpha_s (alpha_s)
@@ -220,36 +246,61 @@ contains
     igs = cmplx (0.0_default, 1.0_default, kind=default) * gs
   end subroutine model_update_alpha_s
 
-  pure function ttv_formfactor (p, k, i) result (c)
+  !pure
+  function ttv_formfactor (p, k, i, FF_mode) result (c)
     complex(default) :: c
     type(momentum), intent(in) :: p, k
     integer, intent(in) :: i
+    integer, intent(in), optional :: FF_mode
     type(phase_space_point_t) :: ps
+    integer :: this_FF
     call ps%init (p*p, k*k, (k+p)*(k+p), mass(6))
-    c = ttv_formfactors_FF (ps, i)
+    this_FF = FF; if (present (FF_mode))  this_FF = FF_mode
+    c = FF_master (ps, i, this_FF)
     !!! form factors include tree level: FF = 1 + O(alphas)
     !!! subtract tree level contribution ~ 1 already included in SM couplings
     c = c - 1.0_default
   end function ttv_formfactor
 
-  pure function va_ilc_tta (p, k, i) result (c)
+  !pure
+  function onshell_tops (p, k) result (onshell)
+    logical :: onshell
+    type(momentum), intent(in) :: p, k
+    type(phase_space_point_t) :: ps
+    call ps%init (p*p, k*k, (k+p)*(k+p), mass(6))
+    onshell = ps%onshell
+  end function onshell_tops
+
+  !pure
+  function va_ilc_tta (p, k, i) result (c)
     complex(default) :: c
     type(momentum), intent(in) :: p, k
     integer, intent(in) :: i
     c = 0.0_default
-    if ( i==1 ) c = qup * ttv_formfactor (p, k, 1)
+    if (i==1) c = qup * ttv_formfactor (p, k, 1)
   end function va_ilc_tta
 
-  pure function va_ilc_ttz (p, k, i) result (c)
+  !pure
+  function va_ilc_ttz (p, k, i) result (c)
     complex(default) :: c
     type(momentum), intent(in) :: p, k
     integer, intent(in) :: i
     c = gncup(i) * ttv_formfactor (p, k, i)
   end function va_ilc_ttz
 
-  pure function ttv_mtpole (s) result (m)
+  !pure
+  function ttv_mtpole (s) result (m)
     real(default), intent(in) :: s
     real(default) :: m
-    m = ttv_formfactors_m1s_to_mpole ( sqrt(s) )
+    m = m1s_to_mpole (sqrt (s))
   end function ttv_mtpole
+
+  !pure
+  function expanded_amp2 (amp_tree, amp_blob) result (amp2)
+    real(default) :: amp2
+    complex(default), dimension(:), intent(in) :: amp_tree, amp_blob
+    amp2 = sum (amp_tree * conjg (amp_tree) + &
+         amp_tree * conjg (amp_blob) + &
+         amp_blob * conjg (amp_tree))
+  end function expanded_amp2
 end module parameters_sm_tt_threshold

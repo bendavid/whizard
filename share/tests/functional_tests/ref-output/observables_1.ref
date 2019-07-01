@@ -68,6 +68,7 @@ n_events = 1
 | Events: generating 1 unweighted, unpolarized events ...
 | Events: event normalization mode '1'
 |         ... event sample complete.
+| Events: actual unweighting efficiency =   9.09 %
 | Events: closing ASCII file 'observables_1_p.debug'
 | Events: closing raw file 'observables_1_p.evx'
 $out_file = "observables_1.dat"

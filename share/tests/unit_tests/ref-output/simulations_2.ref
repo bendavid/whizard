@@ -7,7 +7,7 @@
 
  Event sample properties:
    MD5 sum (proc)   = '5368809EAF375C82590A69A6239A7DD4'
-   MD5 sum (config) = '50E27813A19FCA4A192DCEA0994EB349'
+   MD5 sum (config) = '84C44539010DE76E0EA21E34BD713917'
    unweighted       = F
    negative weights = F
    normalization    = 'sigma'
@@ -40,7 +40,7 @@
    Sim. valid   = T
    Ev.file ver. = 2
    MD5 sum (proc)   = '5368809EAF375C82590A69A6239A7DD4'
-   MD5 sum (config) = '50E27813A19FCA4A192DCEA0994EB349'
+   MD5 sum (config) = '84C44539010DE76E0EA21E34BD713917'
    Events requested  = 3
    Events total      = 3
      generated       = 3

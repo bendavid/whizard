@@ -149,6 +149,7 @@ Warning: Process 'smtest_13_2': matrix element vanishes, no events can be genera
 | Events: generating 10 unweighted, unpolarized events ...
 | Events: event normalization mode '1'
 |         ... event sample complete.
+| Events: actual unweighting efficiency =  90.91 %
 | Events: closing raw file 'smtest_13_1.evx'
 | There were no errors and    5 warning(s).
 | WHIZARD run finished.

@@ -7,10 +7,10 @@
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
 #     with contributions from
-#     Fabian Bach <fabian.bach@desy.de>
+#     Fabian Bach <fabian.bach@t-online.de>
 #     Bijan Chokoufe <bijan.chokoufe@desy.de>
 #     Christian Speckner <cnspeckn@googlemail.com>
-#     Marco Sekulla <marco.sekulla@desy.de>
+#     Marco Sekulla <marco.sekulla@kit.edu>
 #     Christian Weiss <christian.weiss@desy.de>
 #     Felix Braam, Sebastian Schmidt,
 #     Hans-Werner Boschmann, Daniel Wiesler
@@ -112,7 +112,8 @@ module_lists = \
   ../shower/Modules \
   ../matching/Modules \
   ../process_integration/Modules \
-  ../transforms/Modules
+  ../transforms/Modules \
+  ../threshold/Modules
 
 $(module_lists):
 	$(MAKE) -C `dirname $@` Modules
@@ -161,7 +162,7 @@ SUFFIXES = .lo .$(FC_MODULE_EXT)
 	@:
 #	touch $@
 
-AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system -I../combinatorics -I../parsing -I../rng -I../physics -I../qft -I../expr_base -I../sindarin -I../types -I../matrix_elements -I../particles -I../beams -I../me_methods -I../events -I../phase_space -I../mci -I../user -I../blha -I../gosam -I../openloops -I../fks -I../variables -I../model_features -I../muli -I../shower -I../matching -I../process_integration -I../transforms -I../xdr -I../../vamp/src -I../pdf_builtin -I../../circe1/src -I../../circe2/src -I../lhapdf -I../fastjet
+AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system -I../combinatorics -I../parsing -I../rng -I../physics -I../qft -I../expr_base -I../sindarin -I../types -I../matrix_elements -I../particles -I../beams -I../me_methods -I../events -I../phase_space -I../mci -I../user -I../blha -I../gosam -I../openloops -I../fks -I../variables -I../model_features -I../muli -I../shower -I../matching -I../process_integration -I../transforms -I../xdr -I../../vamp/src -I../pdf_builtin -I../../circe1/src -I../../circe2/src -I../lhapdf -I../fastjet -I../threshold
 
 ########################################################################
 ## Default Fortran compiler options

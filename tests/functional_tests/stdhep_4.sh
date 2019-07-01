@@ -1,7 +1,7 @@
 #!/bin/sh
 ### Check WHIZARD for a simple test process
 echo "Running script $0"
-if test -f OCAML_FLAG -a -f STDHEP_FLAG; then
+if test -f OCAML_FLAG; then
     rm -f @script@_lib.* @script@_p?.*
     rm -f default_prclib.*
     s=`basename @script@`
@@ -13,7 +13,7 @@ if test -f OCAML_FLAG -a -f STDHEP_FLAG; then
     diff ref-output/$s.ref ${s}_hep.log
 else
     echo "|=============================================================================|"
-    echo "No StdHEP available, test skipped"
+    echo "No O'Mega matrix elements available, test skipped"
     exit 77
 fi
 

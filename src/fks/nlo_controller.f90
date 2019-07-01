@@ -1,4 +1,4 @@
-! WHIZARD 2.2.7 Aug 11 2015
+! WHIZARD 2.2.8 Nov 22 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,11 +6,14 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
-!     Fabian Bach <fabian.bach@desy.de>
+!     Fabian Bach <fabian.bach@t-online.de>
+!     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
+!     Soyoung Shim <soyoung.shim@desy.de>
+!     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, Daniel Wiesler 
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -33,9 +36,8 @@
 module nlo_controller
 
   use kinds, only: default
-  use iso_varying_string, string_t => varying_string
   use io_units
-  use constants, only: zero, pi, twopi
+  use constants
   use unit_tests
   use diagnostics
   use physics_defs
@@ -64,6 +66,8 @@ module nlo_controller
   private
 
   public :: nlo_controller_t
+
+  public :: operator(*)
 
   type :: ftuple_color_map_t
     integer :: index
@@ -99,12 +103,27 @@ module nlo_controller
     procedure :: write => color_data_write
   end type color_data_t
 
+  type :: polarization_data_t
+    logical :: valid = .false.
+    real(default) :: value = zero
+    integer :: h1 = 0
+    integer :: h2 = 0
+    !!real(default), dimension(:), allocatable :: pmatrix_diag
+  contains
+    procedure :: set_helicities => polarization_data_set_helicities
+    procedure :: set_value => polarization_data_set_value
+    procedure :: is_active => polarization_data_is_valid
+    procedure :: write => polarization_data_write 
+  end type polarization_data_t
+
   type :: nlo_controller_t
     logical :: needs_initialization = .true.
     type(region_data_t) :: reg_data
     type(nlo_particle_data_t) :: particle_data
     type(nlo_states_t) :: particle_states
-    type(sqme_collector_t) :: sqme_collector
+    type(sqme_collector_t), pointer :: sqme_collector => null ()
+    type(polarization_data_t), dimension(:), allocatable :: pol_density_matrix
+    type(polarization_data_t), dimension(:), allocatable :: pol_sqme
     integer :: n_allowed_born
     integer :: active_emitter
     integer :: active_flavor_structure_real
@@ -119,7 +138,7 @@ module nlo_controller
     logical :: alpha_s_born_set
     complex(default) :: me_sc
     type(interaction_t), public :: int_born
-    type(sf_chain_instance_t), pointer :: sf_born => null ()
+    type(sf_chain_instance_t) :: sf_born
     type(kinematics_counter_t), public :: counter
     logical, public :: counter_active = .false.
     logical :: use_internal_color_correlations = .true.
@@ -133,7 +152,12 @@ module nlo_controller
     procedure :: get_mass_info => nlo_controller_get_mass_info
     procedure :: set_fixed_order_event_mode => nlo_controller_set_fixed_order_event_mode
     procedure :: set_powheg_mode => nlo_controller_set_powheg_mode
+    procedure :: set_real_sqme_born_pointer => nlo_controller_set_real_sqme_born_pointer
     procedure :: init => nlo_controller_init
+    procedure :: init_pol_density_matrix => nlo_controller_init_pol_density_matrix
+    procedure :: init_polarized_sqmes => nlo_controller_init_polarized_sqmes
+    procedure :: beams_are_polarized => nlo_controller_beams_are_polarized 
+    procedure :: get_weighted_helicity_sum => nlo_controller_get_weighted_helicity_sum
     procedure :: set_flv_states => nlo_controller_set_flv_states
     procedure :: get_flv_state_real => nlo_controller_get_flv_state_real
     procedure :: set_particle_data => nlo_controller_set_particle_data
@@ -144,6 +168,7 @@ module nlo_controller
     procedure :: get_n_flv_born => nlo_controller_get_n_flv_born
     procedure :: get_n_flv_real => nlo_controller_get_n_flv_real
     procedure :: get_n_alr => nlo_controller_get_n_alr
+    procedure :: get_n_in => nlo_controller_get_n_in
     procedure :: init_region_data => nlo_controller_init_region_data
     procedure :: get_xi_max => nlo_controller_get_xi_max
     procedure :: init_born_amps => nlo_controller_init_born_amps
@@ -169,7 +194,8 @@ module nlo_controller
     procedure :: get_hel_born => nlo_controller_get_hel_born
     procedure :: get_col_born => nlo_controller_get_col_born
     procedure :: set_alpha_s_born => nlo_controller_set_alpha_s_born
-    procedure :: init_real_kinematics => nlo_controller_init_real_kinematics
+    procedure :: init_real_and_isr_kinematics &
+       => nlo_controller_init_real_and_isr_kinematics
     procedure :: init_isr_kinematics => nlo_controller_init_isr_kinematics
     procedure :: set_real_kinematics => nlo_controller_set_real_kinematics
     procedure :: get_real_kinematics => nlo_controller_get_real_kinematics
@@ -180,6 +206,11 @@ module nlo_controller
     procedure :: requires_spin_correlation => &
                     nlo_controller_requires_spin_correlation
   end type nlo_controller_t
+
+
+  interface operator(*)
+     module procedure polarization_data_multiply
+  end interface
 
 
 contains
@@ -321,7 +352,7 @@ contains
     integer :: nreg, region
     integer :: p1, p2, p_rad
     integer :: flv_em, flv_rad
-    integer :: n_col_real, n_col_born
+    integer :: n_col_real
     integer, dimension(2) :: col_em, col_rad
     integer :: i
     !!! splitting type: 1 - q -> qg
@@ -330,7 +361,6 @@ contains
     integer :: splitting_type_flv, splitting_type_col
     nreg = size (allreg)
     n_col_real = size (color_states_real (1,1,:))
-    n_col_born = size (color_states_born (1,1,:))
     do region = 1, nreg
       call allreg(region)%get (p1, p2)
       if (p1 == emitter .or. p2 == emitter .or. present (p_rad_in)) then
@@ -407,9 +437,8 @@ contains
     class(color_data_t), intent(inout) :: color_data
     type(region_data_t), intent(inout) :: reg_data
     type(process_constants_t), intent(in), dimension(2) :: prc_constants
-    integer :: nlegs_born, nlegs_real
+    integer :: nlegs_real
     integer :: i, n_in
-    nlegs_born = reg_data%nlegs_born
     nlegs_real = reg_data%nlegs_real
     call prc_constants(1)%get_col_state (color_data%col_state_born)
     call prc_constants(2)%get_col_state (color_data%col_state_real)
@@ -478,13 +507,13 @@ contains
                   color_data%beta_ij (em2, em1, uborn_index)
           else
             if (is_quark (abs (flv_born%flst (em1)))) then
-              color_data%beta_ij (em1, em2, uborn_index) = -cf
+              color_data%beta_ij (em1, em2, uborn_index) = - cf
             else
-              color_data%beta_ij (em1, em2, uborn_index) = -ca
+              color_data%beta_ij (em1, em2, uborn_index) = - ca
             end if
           end if
         else
-          color_data%beta_ij (em1, em2, uborn_index) = 0.0
+          color_data%beta_ij (em1, em2, uborn_index) = zero
         end if
       end do
     end do
@@ -817,10 +846,9 @@ contains
   end function nlo_controller_get_k_perp
 
   function nlo_controller_compute_sqme_real_fin &
-       (nlo_controller, weight, p_real) result (sqme_fin)
+       (nlo_controller, weight) result (sqme_fin)
     class(nlo_controller_t), intent(inout) :: nlo_controller
     real(default), intent(in) :: weight
-    type(vector4_t), intent(inout), dimension(:), allocatable :: p_real
     type(vector4_t), dimension(:), allocatable :: p_born
     real(default) :: sqme_fin
     integer :: emitter, i_flv
@@ -870,29 +898,123 @@ contains
     nlo_controller%real_terms%purpose = POWHEG
   end subroutine nlo_controller_set_powheg_mode
 
+  subroutine nlo_controller_set_real_sqme_born_pointer (nlo_controller, sqme_born_list)
+    class(nlo_controller_t), intent(inout) :: nlo_controller
+    real(default), intent(in), dimension(:), target :: sqme_born_list
+    nlo_controller%real_terms%sqme_born => sqme_born_list
+  end subroutine nlo_controller_set_real_sqme_born_pointer
+
+  function polarization_data_multiply (p1, p2) result (prod)
+    real(default) :: prod
+    type(polarization_data_t), dimension(:), intent(in) :: p1, p2
+    integer :: i, j
+    prod = zero
+    do i = 1, size (p1)
+       do j = 1, size (p2)
+          if (p1(i)%h1 == p2(j)%h1 .and. p1(i)%h2 == p2(j)%h2) then
+             prod = prod + p1(i)%value * p2(j)%value
+             exit
+          end if
+       end do
+    end do
+  end function polarization_data_multiply
+
+  subroutine polarization_data_set_helicities (pol_data, h1, h2)
+    class(polarization_data_t), intent(inout) :: pol_data
+    integer, intent(in) :: h1, h2
+    pol_data%h1 = h1; pol_data%h2 = -h2
+    pol_data%valid = (pol_data%h1 == 1 .or. pol_data%h1 == -1) &
+                .and. (pol_data%h2 == 1 .or. pol_data%h2 == -1)
+  end subroutine polarization_data_set_helicities
+
+  subroutine polarization_data_set_value (pol_data, value)
+     class(polarization_data_t), intent(inout) :: pol_data
+     real(default), intent(in) :: value
+     pol_data%value = value
+  end subroutine polarization_data_set_value
+
+  elemental function polarization_data_is_valid (pol_data) result (valid)
+    logical :: valid
+    class(polarization_data_t), intent(in) :: pol_data
+    valid = pol_data%valid
+  end function polarization_data_is_valid
+
+  subroutine polarization_data_write (pol_data, unit)
+    class(polarization_data_t), intent(in) :: pol_data
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = given_output_unit (unit)    
+    write (u, "(A,1x,L1)") "valid: ", pol_data%valid
+    write (u, "(A,1x,F7.5)") "value: ", pol_data%value
+    write (u, "(A,1x,I0,1x,I0)") "helicities: ", pol_data%h1, pol_data%h2
+  end subroutine polarization_data_write
+
   subroutine nlo_controller_init (nlo_controller, prc_constants, template, model)
      class(nlo_controller_t), intent(inout) :: nlo_controller
      type(process_constants_t), intent(in), dimension(2) :: prc_constants
      type(fks_template_t), intent(in) :: template
      type(model_data_t), intent(in) :: model
+     integer :: n_in, n_tot_born, n_tot_real
      call nlo_controller%set_flv_states (prc_constants)
-     call nlo_controller%init_region_data (template, model)
      call nlo_controller%set_particle_data (prc_constants)
+     call nlo_controller%init_region_data (template, model)
      call nlo_controller%setup_matrix_elements ()
      if (nlo_controller%use_internal_color_correlations) &
         call nlo_controller%color_data%init (nlo_controller%reg_data, prc_constants)
      nlo_controller%alpha_s_born_set = .false.
-     call nlo_controller%init_real_kinematics ()
+     call nlo_controller%init_real_and_isr_kinematics ()
      associate (particle_data => nlo_controller%particle_data)
+        n_in = particle_data%n_in
+        n_tot_born = n_in + particle_data%n_out_born
+        n_tot_real = n_in + particle_data%n_out_real
         call nlo_controller%real_terms%init (nlo_controller%reg_data, &
-                                       particle_data%n_in + particle_data%n_out_born, &
-                                       particle_data%n_in + particle_data%n_out_real, &
-                                       nlo_controller%sqme_collector)
+           n_in, n_tot_born, n_tot_real, nlo_controller%sqme_collector)
+        if (template%subtraction_disabled) call nlo_controller%disable_subtraction ()
      end associate
      nlo_controller%counter_active = template%count_kinematics
      if (nlo_controller%counter_active) call nlo_controller%counter%init(20)
      allocate (powheg_damping_simple_t :: nlo_controller%powheg_damping)
    end subroutine nlo_controller_init
+
+  subroutine nlo_controller_init_pol_density_matrix (nlo_controller, n_entries)
+    class(nlo_controller_t), intent(inout) :: nlo_controller
+    integer :: n_entries
+    allocate (nlo_controller%pol_density_matrix (n_entries))
+  end subroutine nlo_controller_init_pol_density_matrix
+
+  subroutine nlo_controller_init_polarized_sqmes (nlo_controller, helicities)
+    class(nlo_controller_t), intent(inout) :: nlo_controller
+    integer, intent(in), dimension(:,:) :: helicities
+    integer :: i_sqme, n_sqme 
+    integer :: h1, h2
+    integer, dimension(2) :: flavor_sign
+
+    associate (flv => nlo_controller%particle_states%flv_state_born (:,1))
+       flavor_sign(1:2) = sign (1, flv(1:2)) 
+    end associate
+
+    n_sqme = size (helicities, dim=1)
+    allocate (nlo_controller%pol_sqme (n_sqme))
+    associate (pol_sqme => nlo_controller%pol_sqme)
+       do i_sqme = 1, n_sqme
+          h1 = flavor_sign(1) * helicities (i_sqme, 1)
+          h2 = flavor_sign(2) * helicities (i_sqme, 2)
+          call pol_sqme(i_sqme)%set_helicities (h1, h2)
+       end do
+    end associate
+  end subroutine nlo_controller_init_polarized_sqmes
+
+  elemental function nlo_controller_beams_are_polarized (nlo_controller) result (val)
+    logical :: val
+    class(nlo_controller_t), intent(in) :: nlo_controller
+    val = allocated (nlo_controller%pol_density_matrix)
+  end function nlo_controller_beams_are_polarized
+
+  function nlo_controller_get_weighted_helicity_sum (nlo_controller) result (sqme)
+     real(default) :: sqme
+     class(nlo_controller_t), intent(in) :: nlo_controller
+     sqme = four * (nlo_controller%pol_sqme * nlo_controller%pol_density_matrix)
+  end function nlo_controller_get_weighted_helicity_sum
 
   subroutine nlo_controller_set_flv_states (nlo_controller, prc_constants)
     class(nlo_controller_t), intent(inout) :: nlo_controller
@@ -913,6 +1035,7 @@ contains
     class(nlo_controller_t), intent(in) :: nlo_controller
     integer, intent(in) :: i_uborn
     integer, dimension(:), allocatable :: flv_state
+    allocate (flv_state (size (nlo_controller%particle_states%flv_state_real (:,i_uborn))))
     flv_state = nlo_controller%particle_states%flv_state_real (:,i_uborn)
   end function nlo_controller_get_flv_state_real
 
@@ -920,36 +1043,44 @@ contains
     class(nlo_controller_t), intent(inout) :: nlo_controller
     type(process_constants_t), intent(in), dimension(2) :: prc_constants
     associate (particle_data => nlo_controller%particle_data)
-       particle_data%n_flv_born = nlo_controller%reg_data%n_flv_born
-       particle_data%n_flv_real = nlo_controller%reg_data%n_flv_real
+       particle_data%n_flv_born = size (nlo_controller%particle_states%flv_state_born(1,:))
+       particle_data%n_flv_real = size (nlo_controller%particle_states%flv_state_real(1,:))
        particle_data%n_in = prc_constants(2)%n_in
        particle_data%n_out_born = prc_constants(1)%n_out
        particle_data%n_out_real = prc_constants(2)%n_out
     end associate
   end subroutine nlo_controller_set_particle_data
 
-  subroutine nlo_controller_setup_matrix_elements (nlo_controller)
+  subroutine nlo_controller_setup_matrix_elements (nlo_controller, n_hel)
     class(nlo_controller_t), intent(inout) :: nlo_controller
+    integer, intent(in), optional :: n_hel
     integer :: n_tot_born
     associate (collector => nlo_controller%sqme_collector, &
-               particle_data => nlo_controller%particle_data)
-       allocate (collector%sqme_born_list (particle_data%n_flv_born))
-       allocate (collector%sqme_virt_list (particle_data%n_flv_born))
-       allocate (collector%sqme_real_non_sub (particle_data%n_flv_real))
-       allocate (collector%sqme_real_per_emitter &
-          (nlo_controller%reg_data%n_flv_real, &
+         particle_data => nlo_controller%particle_data)
+      if (present (n_hel)) then
+         allocate (collector%sqme_virt_born_list (particle_data%n_flv_born, n_hel))
+         allocate (collector%sqme_virt_list (particle_data%n_flv_born, n_hel))
+      else
+         allocate (collector%sqme_virt_born_list (particle_data%n_flv_born, 1))
+         allocate (collector%sqme_virt_list (particle_data%n_flv_born, 1))
+      end if
+      allocate (collector%sqme_born_list (particle_data%n_flv_born))
+      allocate (collector%sqme_real_non_sub (particle_data%n_flv_real))
+      allocate (collector%sqme_real_per_emitter &
+           (nlo_controller%reg_data%n_flv_real, &
            particle_data%n_in + particle_data%n_out_born))
-       n_tot_born = particle_data%n_in + particle_data%n_out_born
-       allocate (collector%sqme_born_cc (n_tot_born, n_tot_born, particle_data%n_flv_born))
-       allocate (collector%sqme_born_sc (particle_data%n_flv_born))
-       collector%sqme_born_list = 0._default
-       collector%sqme_real_non_sub = 0._default
-       collector%sqme_real_per_emitter = 0._default
-       collector%sqme_born_cc = 0._default
-       collector%sqme_born_sc = cmplx (0._default, 0._default, kind=default)
-       collector%current_sqme_real = 0._default
-       collector%sqme_real_sum = 0._default
-       collector%sqme_virt_list = 0._default
+      n_tot_born = particle_data%n_in + particle_data%n_out_born
+      allocate (collector%sqme_born_cc (n_tot_born, n_tot_born, particle_data%n_flv_born))
+      allocate (collector%sqme_born_sc (particle_data%n_flv_born))
+      collector%sqme_born_list = 0._default
+      collector%sqme_real_non_sub = 0._default
+      collector%sqme_real_per_emitter = 0._default
+      collector%sqme_born_cc = 0._default
+      collector%sqme_born_sc = cmplx (0._default, 0._default, kind=default)
+      collector%current_sqme_real = 0._default
+      collector%sqme_real_sum = 0._default
+      collector%sqme_virt_born_list = 0._default
+      collector%sqme_virt_list = 0._default
     end associate
   end subroutine nlo_controller_setup_matrix_elements
 
@@ -964,6 +1095,7 @@ contains
     call generator%connect_kinematics (nlo_controller%isr_kinematics, &
          nlo_controller%real_kinematics, &
          nlo_controller%has_massive_emitter ())
+    generator%n_in = nlo_controller%particle_data%n_in
     call generator%set_beam_energy (sqrts)
     call generator%set_emitters (nlo_controller%reg_data%emitters)
     call generator%setup_masses (nlo_controller%particle_data%n_in + &
@@ -1004,19 +1136,27 @@ contains
     n_alr = nlo_controller%reg_data%n_regions
   end function nlo_controller_get_n_alr
 
+  function nlo_controller_get_n_in (controller) result (n_in)
+    integer :: n_in
+    class(nlo_controller_t), intent(in) :: controller
+    n_in = controller%particle_data%n_in
+  end function nlo_controller_get_n_in
+
   subroutine nlo_controller_init_region_data (nlo_controller, template, model)
     class(nlo_controller_t), intent(inout) :: nlo_controller
     type(fks_template_t), intent(in) :: template
     type(model_data_t), intent(in) :: model
+    integer :: n_in
     associate (states => nlo_controller%particle_states)
-       call nlo_controller%reg_data%init (model, &
+       n_in = nlo_controller%particle_data%n_in
+       call nlo_controller%reg_data%init (n_in, model, &
                      states%flv_state_born, states%flv_state_real, &
                      template%mapping_type)
        call nlo_controller%reg_data%write_to_file (template%id)
     end associate
     select type (mapping => nlo_controller%reg_data%fks_mapping)
     type is (fks_mapping_default_t)
-       call mapping%set_parameter (template%fks_dij_exp1, template%fks_dij_exp2)
+       call mapping%set_parameter (n_in, template%fks_dij_exp1, template%fks_dij_exp2)
     end select
   end subroutine nlo_controller_init_region_data
 
@@ -1057,7 +1197,8 @@ contains
 
   subroutine nlo_controller_init_virtual (nlo_controller)
     class(nlo_controller_t), intent(inout) :: nlo_controller
-    call nlo_controller%virtual_terms%init (nlo_controller%particle_states%flv_state_born)
+    call nlo_controller%virtual_terms%init (nlo_controller%particle_states%flv_state_born, &
+       nlo_controller%particle_data%n_in)
   end subroutine nlo_controller_init_virtual
 
   subroutine nlo_controller_init_pdf_subtraction (nlo_controller)
@@ -1077,8 +1218,6 @@ contains
   subroutine nlo_controller_evaluate_pdf_subtraction (nlo_controller, sqme)
     class(nlo_controller_t), intent(inout) :: nlo_controller
     real(default), intent(inout) :: sqme
-    integer :: alr
-
     if (.not. nlo_controller%alpha_s_born_set) &
         call msg_fatal ("Strong coupling not set for pdf subtraction")
     call nlo_controller%pdf_terms%evaluate (nlo_controller%alpha_s_born, sqme, 1)
@@ -1087,6 +1226,7 @@ contains
   pure function nlo_controller_get_emitter_list (nlo_controller) result(emitters)
     class(nlo_controller_t), intent(in) :: nlo_controller
     integer, dimension(:), allocatable :: emitters
+    allocate (emitters (size (nlo_controller%reg_data%get_emitter_list ())))
     emitters = nlo_controller%reg_data%get_emitter_list ()
   end function nlo_controller_get_emitter_list
 
@@ -1193,31 +1333,16 @@ contains
     nlo_controller%alpha_s_born_set = .true.
   end subroutine nlo_controller_set_alpha_s_born
 
-  subroutine nlo_controller_init_real_kinematics (nlo_controller)
+  subroutine nlo_controller_init_real_and_isr_kinematics (nlo_controller)
     class(nlo_controller_t), intent(inout) :: nlo_controller
     integer :: n_tot
     n_tot = nlo_controller%particle_data%n_in + &
             nlo_controller%particle_data%n_out_born
     allocate (nlo_controller%real_kinematics)
     allocate (nlo_controller%isr_kinematics)
-    associate (real_kinematics => nlo_controller%real_kinematics)
-       allocate (real_kinematics%xi_max (n_tot))
-       allocate (real_kinematics%y (n_tot))
-       allocate (real_kinematics%y_soft (n_tot))
-       allocate (real_kinematics%jac_rand (n_tot))
-       allocate (real_kinematics%p_born_cms (n_tot), &
-                 real_kinematics%p_born_lab (n_tot))
-       allocate (real_kinematics%p_real_cms (n_tot+1), &
-                 real_kinematics%p_real_lab (n_tot+1))
-       allocate (real_kinematics%jac (n_tot))
-       real_kinematics%xi_tilde = 0
-       real_kinematics%y = 0
-       real_kinematics%xi_max = 0
-       real_kinematics%phi = 0
-       real_kinematics%cms_energy2 = 0
-       allocate (real_kinematics%k_perp (n_tot))
-    end associate
-  end subroutine nlo_controller_init_real_kinematics
+    call nlo_controller%real_kinematics%init (n_tot)
+    nlo_controller%isr_kinematics%n_in = nlo_controller%particle_data%n_in
+  end subroutine nlo_controller_init_real_and_isr_kinematics
 
   subroutine nlo_controller_init_isr_kinematics (nlo_controller)
     class(nlo_controller_t), intent(inout) :: nlo_controller
@@ -1322,25 +1447,23 @@ contains
   end subroutine nlo_controller_set_fac_scale
 
   function nlo_controller_compute_virt &
-       (nlo_controller, i_flv, int_born) result(sqme_virt)
+       (nlo_controller, i_flv, i_hel, p_born) result(sqme_virt)
     class(nlo_controller_t), intent(inout) :: nlo_controller
-    integer, intent(in) :: i_flv
-    type(interaction_t), intent(in) :: int_born
+    integer, intent(in) :: i_flv, i_hel
+    type(vector4_t), intent(in), dimension(:) :: p_born
     real(default) :: sqme_virt
-    type(vector4_t), dimension(:), allocatable :: p_born
-    p_born = int_born%get_momenta ()
     associate (collector => nlo_controller%sqme_collector)
        if (nlo_controller%use_internal_color_correlations) then
           call nlo_controller%virtual_terms%evaluate &
                (nlo_controller%reg_data, &
                i_flv, nlo_controller%alpha_s_born, &
-               p_born, collector%sqme_born_list (i_flv), &
+               p_born, collector%sqme_virt_born_list (i_flv, i_hel), &
                nlo_controller%color_data%beta_ij)
        else
           call nlo_controller%virtual_terms%evaluate &
                (nlo_controller%reg_data, &
                i_flv, nlo_controller%alpha_s_born, &
-               p_born, collector%sqme_born_list (i_flv), &
+               p_born, collector%sqme_virt_born_list (i_flv, i_hel), &
                collector%sqme_born_cc)
        end if
     end associate

@@ -9,10 +9,10 @@
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
 #     with contributions from
-#     Fabian Bach <fabian.bach@desy.de>
+#     Fabian Bach <fabian.bach@t-online.de>
 #     Bijan Chokoufe <bijan.chokoufe@desy.de>
 #     Christian Speckner <cnspeckn@googlemail.com>
-#     Marco Sekulla <marco.sekulla@desy.de>
+#     Marco Sekulla <marco.sekulla@kit.edu>
 #     Christian Weiss <christian.weiss@desy.de>
 #     Felix Braam, Sebastian Schmidt
 #
@@ -97,6 +97,7 @@ TESTS_REQ_OCAML = \
     beam_setup_2.run \
     beam_setup_3.run \
     beam_setup_4.run \
+    beam_setup_5.run \
     qcdtest_1.run \
     qcdtest_2.run \
     qcdtest_3.run \
@@ -105,6 +106,8 @@ TESTS_REQ_OCAML = \
     observables_1.run \
     event_weights_1.run \
     event_weights_2.run \
+    event_eff_1.run \
+    event_dump_1.run \
     reweight_1.run \
     reweight_2.run \
     reweight_3.run \
@@ -130,6 +133,12 @@ TESTS_REQ_OCAML = \
     lhef_9.run \
     lhef_10.run \
     lhef_11.run \
+    stdhep_1.run \
+    stdhep_2.run \
+    stdhep_3.run \
+    stdhep_4.run \
+    stdhep_5.run \
+    stdhep_6.run \
     select_1.run \
     select_2.run \
     fatal_beam_decay.run \
@@ -148,14 +157,18 @@ TESTS_REQ_OCAML = \
     smtest_13.run \
     smtest_14.run \
     smtest_15.run \
-    smtest_16.run \
-    smtest_17.run \
     mssmtest.run \
+    nlo_1.run \
+    nlo_2.run \
+    nlo_3.run \
+    nlo_4.run \
+    powheg_1.run \
     spincor_1.run \
     show_1.run \
     show_2.run \
     show_3.run \
     show_4.run \
+    method_ovm_1.run \
     multi_comp_1.run \
     multi_comp_2.run \
     multi_comp_3.run \
@@ -205,7 +218,9 @@ TESTS_REQ_OCAML = \
     parton_shower_2.run \
     mlm_matching_fsr.run \
     user_cuts.run \
+    user_prc_threshold.run \
     $(TESTS_USER_STRFUN) 
+
 XFAIL_TESTS_REQ_OCAML = \
     colors_hgg.run \
     user_cuts.run \
@@ -231,16 +246,9 @@ TESTS_REQ_LHAPDF6 = \
 XFAIL_TESTS_REQ_LHAPDF5 =
 XFAIL_TESTS_REQ_LHAPDF6 =
 
-TESTS_REQ_STDHEP = \
-    stdhep_1.run \
-    stdhep_2.run \
-    stdhep_3.run \
-    stdhep_4.run \
-    stdhep_5.run
-XFAIL_TESTS_REQ_STDHEP =
-
 TESTS_STATIC = \
-    static_1.run
+    static_1.run \
+    static_2.run
 XFAIL_TESTS_STATIC =
 
 TESTS_REQ_PYTHIA6 = \
@@ -266,7 +274,6 @@ TEST_DRIVERS_RUN = \
     $(TESTS_REQ_LHAPDF6) \
     $(TESTS_REQ_HEPMC) \
     $(TESTS_REQ_FASTJET) \
-    $(TESTS_REQ_STDHEP) \
     $(TESTS_REQ_PYTHIA6) \
     $(TESTS_REQ_EV_ANA) \
     $(TESTS_STATIC)
@@ -296,9 +303,6 @@ XFAIL_TESTS += $(XFAIL_TESTS_REQ_LHAPDF5)
 
 TESTS += $(TESTS_REQ_LHAPDF6)
 XFAIL_TESTS += $(XFAIL_TESTS_REQ_LHAPDF6)
-
-TESTS += $(TESTS_REQ_STDHEP)
-XFAIL_TESTS += $(XFAIL_TESTS_REQ_STDHEP)
 
 TESTS += $(TESTS_REQ_PYTHIA6)
 XFAIL_TESTS += $(XFAIL_TESTS_REQ_PYTHIA6)
@@ -342,6 +346,9 @@ testproc_3.phs: $(top_builddir)/share/tests/functional_tests/testproc_3.phs
 static_1.run: static_1.exe.sin
 static_1.exe.sin: $(top_builddir)/share/tests/functional_tests/static_1.exe.sin
 	cp $< $@
+static_2.run: static_2.exe.sin
+static_2.exe.sin: $(top_builddir)/share/tests/functional_tests/static_2.exe.sin
+	cp $< $@
 
 susyhit.run: susyhit.in
 user_cuts.run: user_cuts.f90
@@ -352,9 +359,7 @@ user_strfun.f90: $(top_builddir)/share/tests/functional_tests/user_strfun.f90
 	cp $< $@
 
 model_test.run: tdefs.$(FC_MODULE_EXT) tglue.$(FC_MODULE_EXT) \
-	threeshl.$(FC_MODULE_EXT) tscript.$(FC_MODULE_EXT) \
-	ttv_formfactors.$(FC_MODULE_EXT) nr_tools.$(FC_MODULE_EXT) \
-	nr.$(FC_MODULE_EXT) nrtype.$(FC_MODULE_EXT) interpolation.$(FC_MODULE_EXT)
+	threeshl.$(FC_MODULE_EXT) tscript.$(FC_MODULE_EXT)
 tdefs.mod: $(top_builddir)/src/models/threeshl_bundle/tdefs.$(FC_MODULE_EXT)
 	cp $< $@
 tglue.mod: $(top_builddir)/src/models/threeshl_bundle/tglue.$(FC_MODULE_EXT)
@@ -363,16 +368,6 @@ tscript.mod: $(top_builddir)/src/models/threeshl_bundle/tscript.$(FC_MODULE_EXT)
 	cp $< $@
 threeshl.mod: $(top_builddir)/src/models/threeshl_bundle/threeshl.$(FC_MODULE_EXT)
 	cp $< $@
-ttv_formfactors.mod: $(top_builddir)/src/models/SM_tt_threshold_bundle/ttv_formfactors.$(FC_MODULE_EXT)
-	cp $< $@
-nr_tools.mod: $(top_builddir)/src/models/SM_tt_threshold_bundle/nr_tools.$(FC_MODULE_EXT)
-	cp $< $@ 
-nr.mod: $(top_builddir)/src/models/SM_tt_threshold_bundle/nr.$(FC_MODULE_EXT)
-	cp $< $@ 
-nrtype.mod: $(top_builddir)/src/models/SM_tt_threshold_bundle/nrtype.$(FC_MODULE_EXT)
-	cp $< $@ 
-interpolation.mod: $(top_builddir)/src/models/SM_tt_threshold_bundle/interpolation.$(FC_MODULE_EXT)
-	cp $< $@ 
 
 TEST.mdl: $(top_srcdir)/share/tests/TEST.mdl
 	cp $< $@
@@ -410,19 +405,17 @@ hepmc_6_rd_LDADD = $(LDFLAGS_HEPMC)
 hepmc_6.run: hepmc_6_rd
 endif
 
-if STDHEP_AVAILABLE
 stdhep_4.run: stdhep_rd
 stdhep_5.run: stdhep_rd
+stdhep_6.run: stdhep_rd
 stdhep_rd: $(top_builddir)/src/xdr/stdhep_rd
 	cp $< $@
-endif
 
 susyhit.in: $(top_builddir)/share/tests/functional_tests/susyhit.in
 	cp $< $@
 
 BUILT_SOURCES = \
     TESTFLAG  \
-    STDHEP_FLAG \
     HEPMC_FLAG \
     LCIO_FLAG \
     FASTJET_FLAG \
@@ -440,11 +433,6 @@ BUILT_SOURCES = \
 # otherwise it uses the installed version
 TESTFLAG:
 	touch $@
-
-STDHEP_FLAG:
-if STDHEP_AVAILABLE
-	touch $@
-endif
 
 FASTJET_FLAG:
 if FASTJET_AVAILABLE
@@ -497,16 +485,25 @@ if STATIC_AVAILABLE
 endif
 
 # The reference output files are in the source directory.  Copy them here.
+if FC_QUAD
+ref-output: $(top_srcdir)/share/tests/functional_tests/ref-output
+	mkdir -p ref-output
+	for f in $</*.ref; do cp $$f $@; done
+	for f in $</../ref-output-prec/*.ref; do cp $$f $@; done
+	for f in $</../ref-output-quad/*.ref; do cp $$f $@; done
+else
 if FC_EXT
 ref-output: $(top_srcdir)/share/tests/functional_tests/ref-output
 	mkdir -p ref-output
 	for f in $</*.ref; do cp $$f $@; done
+	for f in $</../ref-output-prec/*.ref; do cp $$f $@; done
 	for f in $</../ref-output-ext/*.ref; do cp $$f $@; done
 else
 ref-output: $(top_srcdir)/share/tests/functional_tests/ref-output
 	mkdir -p ref-output
 	for f in $</*.ref; do cp $$f $@; done
 	for f in $</../ref-output-double/*.ref; do cp $$f $@; done
+endif
 endif
 
 ## installcheck runs the test scripts with the TESTFLAG removed.
@@ -518,14 +515,15 @@ notestflag:
 ## Remove generated files
 clean-local:
 	rm -f gamelan.sty TEST.mdl 
-	rm -f TESTFLAG GAMELAN_FLAG STDHEP_FLAG 
+	rm -f TESTFLAG GAMELAN_FLAG 
 	rm -f OCAML_FLAG FASTJET_FLAG HEPMC_FLAG LCIO_FLAG 
 	rm -f EVENT_ANALYSIS_FLAG PYTHIA6_FLAG LHAPDF5_FLAG
-	rm -f LHAPDF6_FLAG STATIC_FLAG static_1.exe
+	rm -f LHAPDF6_FLAG STATIC_FLAG static_1.exe static_2.exe
 	rm -f *.run *.log slha_test.out
 	rm -f core* stdhep_rd
-	rm -f *.f90 *.c *.$(FC_MODULE_EXT) *.o *.la
+	rm -f *.f90 *.f90.in *.c *.$(FC_MODULE_EXT) *.o *.la
 	rm -f *.makefile
+	rm -f *.grid
 	rm -rf err-output
 	rm -rf ref-output
 	rm -f *.sin *.hbc 

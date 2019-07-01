@@ -35,8 +35,8 @@ r =  0.5000000  0.5000000  0.2500000
      order  =  3
      recoil =  T
  SF parameters:
-   x = 9.9998660542E-01
-   xb= 1.3394576642E-05
+   x = 9.99986605E-01
+   xb= 1.33945766E-05
  SF instance: [evaluated]
    beam      = 1
    incoming  = 1

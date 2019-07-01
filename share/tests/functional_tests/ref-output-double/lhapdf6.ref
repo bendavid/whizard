@@ -81,6 +81,7 @@ $lhef_version = "1.0"
 | Events: generating 1 unweighted, unpolarized events ...
 | Events: event normalization mode '1'
 |         ... event sample complete.
+| Events: actual unweighting efficiency =  25.00 %
 | Events: closing LHEF file 'lhapdf6_1_p_1.lhe'
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 2
@@ -140,6 +141,7 @@ $lhef_version = "1.0"
 | Events: generating 1 unweighted, unpolarized events ...
 | Events: event normalization mode '1'
 |         ... event sample complete.
+| Events: actual unweighting efficiency =  50.00 %
 | Events: closing LHEF file 'lhapdf6_1_p_2.lhe'
 | WHIZARD run finished.
 |=============================================================================|

@@ -1,4 +1,4 @@
-(* $Id: omega.ml 6465 2015-01-10 15:22:31Z jr_reuter $
+(* $Id: omega.ml 7377 2015-11-20 15:59:02Z jr_reuter $
 
    Copyright (C) 1999-2015 by
 
@@ -588,11 +588,3 @@ i*)
       failwith "Omega().diagrams: disabled"
 
   end
-
-(*i
- *  Local Variables:
- *  mode:caml
- *  indent-tabs-mode:nil
- *  page-delimiter:"^(\\* .*\n"
- *  End:
-i*)

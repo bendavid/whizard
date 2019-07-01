@@ -1,4 +1,4 @@
-! WHIZARD 2.2.7 Aug 11 2015
+! WHIZARD 2.2.8 Nov 22 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,11 +6,14 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
-!     Fabian Bach <fabian.bach@desy.de>
+!     Fabian Bach <fabian.bach@t-online.de>
+!     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
+!     Soyoung Shim <soyoung.shim@desy.de>
+!     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, Daniel Wiesler 
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -88,6 +91,7 @@ module polarizations
      procedure :: write => smatrix_write
      procedure :: init => smatrix_init
      procedure :: set_entry => smatrix_set_entry
+     procedure :: exists => smatrix_exists
   end type smatrix_t
   
   type, extends (smatrix_t) :: pmatrix_t
@@ -633,6 +637,12 @@ contains
     smatrix%value(i) = value
   end subroutine smatrix_set_entry
   
+  elemental function smatrix_exists (smatrix) result (exist)
+    logical :: exist
+    class(smatrix_t), intent(in) :: smatrix
+    exist = .not. all (smatrix%value == 0)
+  end function smatrix_exists
+
   subroutine pmatrix_write (object, unit, indent)
     class(pmatrix_t), intent(in) :: object
     integer, intent(in), optional :: unit, indent

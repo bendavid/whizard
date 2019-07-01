@@ -1,4 +1,4 @@
-! WHIZARD 2.2.7 Aug 11 2015
+! WHIZARD 2.2.8 Nov 22 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,11 +6,14 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
-!     Fabian Bach <fabian.bach@desy.de>
+!     Fabian Bach <fabian.bach@t-online.de>
+!     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
+!     Soyoung Shim <soyoung.shim@desy.de>
+!     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, Daniel Wiesler 
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -181,6 +184,8 @@ module hepmc_interface
      type(c_ptr) :: obj
   end type hepmc_iostream_t
 
+
+  real(default), parameter :: pb_per_fb = 1.e-3_default
 
   interface
      logical(c_bool) function hepmc_available () bind(C)
@@ -1265,7 +1270,6 @@ contains
     type(hepmc_event_t), intent(in) :: evt
     real(default), intent(in) :: weight
     real(c_double) :: w
-    real(default), parameter :: pb_per_fb = 1.e-3_default
     w = weight * pb_per_fb
     call gen_event_add_weight (evt%obj, w)
   end subroutine hepmc_event_add_weight
@@ -1282,7 +1286,7 @@ contains
     integer, intent(in) :: index
     integer(c_int) :: i
     i = index - 1
-    weight = gen_event_weight (evt%obj, i)
+    weight = gen_event_weight (evt%obj, i) / pb_per_fb
   end function hepmc_event_get_weight
 
   subroutine hepmc_event_add_vertex (evt, v)

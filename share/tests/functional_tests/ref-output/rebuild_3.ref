@@ -67,6 +67,7 @@ n_events = 1
 | Events: generating 1 unweighted, unpolarized events ...
 | Events: event normalization mode '1'
 |         ... event sample complete.
+| Events: actual unweighting efficiency =  50.00 %
 | Events: closing raw file 'rebuild_3_p.evx'
 | There were no errors and    1 warning(s).
 | WHIZARD run finished.
@@ -140,6 +141,7 @@ n_events = 1
 | Events: generating 1 unweighted, unpolarized events ...
 | Events: event normalization mode '1'
 |         ... event sample complete.
+| Events: actual unweighting efficiency =  50.00 %
 | Events: closing raw file 'rebuild_3_p.evx'
 | There were no errors and    1 warning(s).
 | WHIZARD run finished.

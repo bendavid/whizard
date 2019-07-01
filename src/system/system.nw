@@ -1518,6 +1518,7 @@ for linking. The default for the Fortran compiler on most systems is
      type(string_t) :: whizard_gmlpath
      type(string_t) :: whizard_cutspath
      type(string_t) :: whizard_texpath
+     type(string_t) :: whizard_sharepath
      type(string_t) :: whizard_testdatapath
      type(string_t) :: whizard_modelpath_local
      type(string_t) :: whizard_models_libpath_local
@@ -1616,6 +1617,7 @@ necessary.
        os_data%whizard_gmlpath        = WHIZARD_TEST_GMLPATH
        os_data%whizard_cutspath       = WHIZARD_TEST_CUTSPATH
        os_data%whizard_texpath        = WHIZARD_TEST_TEXPATH
+       os_data%whizard_sharepath      = WHIZARD_TEST_SHAREPATH
        os_data%whizard_testdatapath   = WHIZARD_TEST_TESTDATAPATH
        os_data%whizard_circe2path     = WHIZARD_TEST_CIRCE2PATH
        os_data%whizard_beamsimpath    = WHIZARD_TEST_BEAMSIMPATH
@@ -1640,6 +1642,7 @@ necessary.
        os_data%whizard_gmlpath        = WHIZARD_GMLPATH
        os_data%whizard_cutspath       = WHIZARD_CUTSPATH
        os_data%whizard_texpath        = WHIZARD_TEXPATH
+       os_data%whizard_sharepath      = WHIZARD_SHAREPATH
        os_data%whizard_testdatapath   = WHIZARD_TESTDATAPATH
        os_data%whizard_circe2path     = WHIZARD_CIRCE2PATH
        os_data%whizard_beamsimpath    = WHIZARD_BEAMSIMPATH
@@ -1695,6 +1698,7 @@ of each other.    %% Fooling Noweb Emacs mode: $
     call expand_paths (os_data%whizard_gmlpath)
     call expand_paths (os_data%whizard_cutspath)
     call expand_paths (os_data%whizard_texpath)
+    call expand_paths (os_data%whizard_sharepath)
     call expand_paths (os_data%whizard_testdatapath)
     call expand_paths (os_data%whizard_circe2path)
     call expand_paths (os_data%whizard_beamsimpath)
@@ -1772,6 +1776,8 @@ of each other.    %% Fooling Noweb Emacs mode: $
     write (u, *) "whizard_circe2path     = ", char (os_data%whizard_circe2path)
     write (u, *) "whizard_beamsimpath    = ", char (os_data%whizard_beamsimpath)
     write (u, *) "whizard_mulipath    = ", char (os_data%whizard_mulipath)
+    write (u, *) "whizard_sharepath  = ", &
+         char (os_data%whizard_sharepath)
     write (u, *) "whizard_testdatapath  = ", &
          char (os_data%whizard_testdatapath)
     write (u, *) "whizard_modelpath_local      = ", &

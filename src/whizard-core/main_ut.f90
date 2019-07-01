@@ -1,4 +1,4 @@
-! WHIZARD 2.2.7 Aug 11 2015
+! WHIZARD 2.2.8 Nov 22 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,11 +6,14 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
-!     Fabian Bach <fabian.bach@desy.de>
+!     Fabian Bach <fabian.bach@t-online.de>
+!     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
+!     Soyoung Shim <soyoung.shim@desy.de>
+!     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, Daniel Wiesler 
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -332,6 +335,7 @@ contains
     use models_ut, only: models_test
     use auto_components_ut, only: auto_components_test
     use radiation_generator_ut, only: radiation_generator_test
+    use blha_ut, only: blha_test
     use evaluators_ut, only: evaluator_test
     use eval_trees_ut, only: expressions_test
     use phs_forests_ut, only: phs_forests_test
@@ -395,6 +399,7 @@ contains
     use eio_stdhep_ut, only: eio_stdhep_test
     use eio_ascii_ut, only: eio_ascii_test
     use eio_weights_ut, only: eio_weights_test
+    use eio_dump_ut, only: eio_dump_test
     use iterations_ut, only: iterations_test
     use beam_structures_ut, only: beam_structures_test
     use rt_data_ut, only: rt_data_test
@@ -407,6 +412,7 @@ contains
     use event_streams_ut, only: event_streams_test
     use simulations_ut, only: simulations_test
     use commands_ut, only: commands_test
+    use ttv_formfactors_ut, only: ttv_formfactors_test
     
     type(string_t), intent(in) :: check
     type(test_results_t), intent(inout) :: results
@@ -485,6 +491,8 @@ contains
        call auto_components_test (u, results)
     case ("radiation_generator")
        call radiation_generator_test (u, results)
+    case ("blha")
+       call blha_test (u, results)
     case ("evaluators")
        call evaluator_test (u, results)
     case ("expressions")
@@ -611,6 +619,8 @@ contains
        call eio_ascii_test (u, results)
     case ("eio_weights")
        call eio_weights_test (u, results)
+    case ("eio_dump")
+       call eio_dump_test (u, results)
     case ("iterations")
        call iterations_test (u, results)
     case ("beam_structures")
@@ -635,6 +645,8 @@ contains
        call simulations_test (u, results)
     case ("commands")
        call commands_test (u, results)
+    case ("ttv_formfactors")
+       call ttv_formfactors_test (u, results)
     case ("all")
        call format_test (u, results)
        call md5_test (u, results)
@@ -664,6 +676,7 @@ contains
        call models_test (u, results)
        call auto_components_test (u, results)
        call radiation_generator_test (u, results)
+       call blha_test (u, results)
        call evaluator_test (u, results)
        call expressions_test (u, results)
        call phs_forests_test (u, results)
@@ -727,6 +740,7 @@ contains
        call eio_stdhep_test (u, results)
        call eio_ascii_test (u, results)
        call eio_weights_test (u, results)
+       call eio_dump_test (u, results)
        call iterations_test (u, results)
        call beam_structures_test (u, results)
        call rt_data_test (u, results)
@@ -739,6 +753,7 @@ contains
        call event_streams_test (u, results)
        call simulations_test (u, results)
        call commands_test (u, results)
+       call ttv_formfactors_test (u, results)
     case default
        call msg_fatal ("Self-test '" // char (check) // "' not implemented.")
     end select

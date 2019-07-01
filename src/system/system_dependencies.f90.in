@@ -57,10 +57,10 @@ module system_dependencies
        "@BUILDDIR@/src/matrix_elements"
   character(*), parameter :: WHIZARD_TEST_MODELS_MODPATH = &
        "@BUILDDIR@/src/models"
+  character(*), parameter :: WHIZARD_TEST_THRESHOLD_MODPATH = &
+       "@BUILDDIR@/src/threshold"
   character(*), parameter :: WHIZARD_TEST_OMEGA_MODPATH = &
        "@BUILDDIR@/omega/src"
-  character(*), parameter :: WHIZARD_TEST_CORE_MODPATH = &
-       "@BUILDDIR@/src/whizard-core"
   character(*), parameter :: WHIZARD_TEST_CORE_LIBPATH = &
        "@BUILDDIR@/src/whizard-core"
   character(*), parameter :: WHIZARD_TEST_OMEGA_BINPATH = &
@@ -85,6 +85,8 @@ module system_dependencies
        "@BUILDDIR@/src/gamelan"
   character(*), parameter :: WHIZARD_TEST_CUTSPATH = &
        "@SRCDIR@/share/cuts"
+  character(*), parameter :: WHIZARD_TEST_SHAREPATH = &
+       "@SRCDIR@/share"
   character(*), parameter :: WHIZARD_TEST_TESTDATAPATH = &
        "@SRCDIR@/share/test"
   character(*), parameter :: WHIZARD_TEST_TEXPATH = &
@@ -101,8 +103,8 @@ module system_dependencies
   ! WHIZARD-specific include flags
   character(*), parameter :: WHIZARD_TEST_INCLUDES = &
       "-I" // WHIZARD_TEST_MODELS_MODPATH // " " // &
+      "-I" // WHIZARD_TEST_THRESHOLD_MODPATH // " " // &
       "-I" // WHIZARD_TEST_OMEGA_MODPATH // " " // &
-      "-I" // WHIZARD_TEST_CORE_MODPATH // " " // &
       "-I" // WHIZARD_TEST_ME_MODPATH // " " // &
       "-I" // WHIZARD_TEST_PHYSICS_MODPATH // " " // &
       "-I" // WHIZARD_TEST_SYSTEM_MODPATH // " " // &
@@ -164,10 +166,10 @@ module system_dependencies
        PKGLIBDIR // "/mod/matrix_elements"
   character(*), parameter :: WHIZARD_MODELS_MODPATH = &
        PKGLIBDIR // "/mod/models"
+  character(*), parameter :: WHIZARD_THRESHOLD_MODPATH = &
+       PKGLIBDIR // "/mod/threshold"
   character(*), parameter :: WHIZARD_OMEGA_MODPATH = &
        INCLUDEDIR // "/omega"
-  character(*), parameter :: WHIZARD_CORE_MODPATH = &
-       PKGLIBDIR // "/mod/whizard-core"
   character(*), parameter :: WHIZARD_OMEGA_BINPATH = &
        BINDIR
   character(*), parameter :: WHIZARD_OMEGA_LIBPATH = &
@@ -180,6 +182,8 @@ module system_dependencies
        PKGDATADIR // "/susy"
   character(*), parameter :: WHIZARD_GMLPATH= &
        PKGLIBDIR // "/gamelan"
+  character(*), parameter :: WHIZARD_SHAREPATH = &
+       PKGDATADIR
   character(*), parameter :: WHIZARD_TESTDATAPATH = &
        PKGDATADIR // "/test"
   character(*), parameter :: WHIZARD_CUTSPATH = &
@@ -198,8 +202,8 @@ module system_dependencies
   ! WHIZARD-specific include flags
   character(*), parameter :: WHIZARD_INCLUDES = &
       "-I" // WHIZARD_MODELS_MODPATH // " " // &
+      "-I" // WHIZARD_THRESHOLD_MODPATH // " " // &
       "-I" // WHIZARD_OMEGA_MODPATH // " " // &
-      "-I" // WHIZARD_CORE_MODPATH // " " // &
       "-I" // WHIZARD_ME_MODPATH // " " // &
       "-I" // WHIZARD_PHYSICS_MODPATH // " " // &
       "-I" // WHIZARD_SYSTEM_MODPATH // " " // &
@@ -229,7 +233,9 @@ module system_dependencies
        "@FCFLAGS_PIC@"
   character(*), parameter :: DEFAULT_FC_SRC_EXT = &
        ".@FC_SRC_EXT@"
-
+  character(*), parameter :: DEFAULT_FC_PRECISION = &
+       "@FC_PRECISION@"
+  
   ! Fortran compiler
   character(*), parameter :: DEFAULT_CC = &
        "@CC@"
@@ -237,7 +243,9 @@ module system_dependencies
        "@CFLAGS@"
   character(*), parameter :: DEFAULT_CFLAGS_PIC = &
        "@CFLAGS_PIC@"
-
+  logical, parameter :: CC_IS_GNU = @CC_IS_GNU@
+  logical, parameter :: CC_HAS_QUADMATH = @CC_HAS_QUADMATH@
+  
   ! Object files
   character(*), parameter :: DEFAULT_OBJ_EXT = &
        ".@OBJ_EXT@"
@@ -326,8 +334,6 @@ module system_dependencies
 
   logical, parameter :: PYTHIA6_AVAILABLE = @PYTHIA6_AVAILABLE_FLAG@
   logical, parameter :: PYTHIA8_AVAILABLE = @PYTHIA8_AVAILABLE_FLAG@
-
-  logical, parameter :: STDHEP_AVAILABLE = @STDHEP_AVAILABLE_FLAG@
 
   logical, parameter :: GOSAM_AVAILABLE = @GOSAM_AVAILABLE_FLAG@
   logical, parameter :: OPENLOOPS_AVAILABLE = @OPENLOOPS_AVAILABLE_FLAG@

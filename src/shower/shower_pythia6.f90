@@ -1,4 +1,4 @@
-! WHIZARD 2.2.7 Aug 11 2015
+! WHIZARD 2.2.8 Nov 22 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,11 +6,14 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
-!     Fabian Bach <fabian.bach@desy.de>
+!     Fabian Bach <fabian.bach@t-online.de>
+!     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
+!     Soyoung Shim <soyoung.shim@desy.de>
+!     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, Daniel Wiesler 
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -509,23 +512,25 @@ contains
            parent2 = JMOHEP(2,old_index(j))
          end if
          allocate (parents(parent2-parent1+1))
+         parents = 0
          child = n_tot_old + j
          npar = 0
          do parent = parent1, parent2
             if (parent > 0) then
-               if (parent >= 1 .and. parent <= 2) then
+               if (parent <= 2) then
                   call particle_set%parent_add_child (parent, child)
                else
-                  if (new_index(parent) > 0 ) then
+                  if (new_index(parent) > 0) then
                      npar = npar + 1
                      parents(npar) = new_index(parent)
-                     call particle_set%prt(new_index(parent) )%add_child (child)
+                     call particle_set%prt(new_index(parent))%add_child (child)
                   end if
                end if
             end if
          end do
+         parents = pack (parents, parents > 0)
          if (npar > 0) call particle_set%prt(child)%set_parents (parents)
-         deallocate (parents)
+         if (allocated (parents))  deallocate (parents)
       end do
       NHEP = 0
     end subroutine set_parent_child_relations_from_hepevt

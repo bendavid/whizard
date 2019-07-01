@@ -7,10 +7,10 @@
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
 #     with contributions from
-#     Fabian Bach <fabian.bach@desy.de>
+#     Fabian Bach <fabian.bach@t-online.de>
 #     Bijan Chokoufe <bijan.chokoufe@desy.de>
 #     Christian Speckner <cnspeckn@googlemail.com>
-#     Marco Sekulla <marco.sekulla@desy.de>
+#     Marco Sekulla <marco.sekulla@kit.edu>
 #     Christian Weiss <christian.weiss@desy.de>
 #     Felix Braam, Sebastian Schmidt
 #
@@ -50,7 +50,7 @@ SUBDIRS = \
   hoppet \
   beams \
   me_methods \
-  stdhep xdr events \
+  xdr events \
   phase_space \
   mci variables \
   muli shower \
@@ -59,12 +59,14 @@ SUBDIRS = \
   gosam openloops \
   looptools \
   model_features \
+  threshold \
   process_integration \
   matching \
   transforms \
   whizard-core \
   prebuilt \
   models
+
 if MPOST_AVAILABLE
 SUBDIRS += gamelan feynmf
 endif
@@ -85,6 +87,7 @@ libwhizard_la_LDFLAGS = $(LIBRARY_VERSION)
 
 ## Collect the various partial libraries
 libwhizard_la_LIBADD = \
+  threshold/libthreshold.la \
   whizard-core/libwhizard_core.la \
   transforms/libtransforms.la \
   ../vamp/src/libvamp.la \
@@ -153,13 +156,6 @@ else
 libwhizard_la_LIBADD += lhapdf/libLHAPDFWrap_dummy.la
 endif
 
-## If STDHEP is not available, link in a dummy as replacements
-if STDHEP_AVAILABLE
-libwhizard_la_LIBADD += $(LDFLAGS_STDHEP)
-else
-libwhizard_la_LIBADD += stdhep/libstdhep_dummy.la
-endif 
-
 if HOPPET_AVAILABLE
 libwhizard_la_LIBADD += $(LDFLAGS_HOPPET) hoppet/libhoppet.la
 else
@@ -186,11 +182,13 @@ check_LTLIBRARIES = libwhizard_test.la
 libwhizard_test_la_SOURCES =
 
 libwhizard_test_la_LIBADD = \
+  threshold/libthreshold_ut.la \
   whizard-core/libwhizard_core_ut.la \
   transforms/libtransforms_ut.la \
   matching/libmatching_ut.la \
   fks/libfks_ut.la \
   process_integration/libprocess_integration_ut.la \
+  blha/libblha_ut.la \
   model_features/libmodel_features_ut.la \
   mci/libmci_ut.la \
   phase_space/libphase_space_ut.la \
@@ -232,8 +230,8 @@ nodist_EXTRA_whizard_SOURCES = dummy.f90
 whizard_LDADD  = whizard-core/libwhizard_main.la
 whizard_LDADD += ./libwhizard.la
 whizard_LDADD += prebuilt/libwhizard_prebuilt.la
+whizard_LDADD += $(CXXLIBS)
 whizard_LDADD += $(LDFLAGS_LHAPDF)
-whizard_LDADD += $(LDFLAGS_STDHEP)
 whizard_LDADD += $(LDFLAGS_HEPMC)
 whizard_LDADD += $(LDFLAGS_LCIO)
 whizard_LDADD += $(LDFLAGS_HOPPET)
@@ -255,8 +253,8 @@ whizard_ut_LDADD  = whizard-core/libwhizard_main_ut.la
 whizard_ut_LDADD += ./libwhizard_test.la
 whizard_ut_LDADD += ./libwhizard.la
 whizard_ut_LDADD += prebuilt/libwhizard_prebuilt.la
+whizard_ut_LDADD += $(CXXLIBS)
 whizard_ut_LDADD += $(LDFLAGS_LHAPDF)
-whizard_ut_LDADD += $(LDFLAGS_STDHEP)
 whizard_ut_LDADD += $(LDFLAGS_HEPMC)
 whizard_ut_LDADD += $(LDFLAGS_LCIO)
 whizard_ut_LDADD += $(LDFLAGS_HOPPET)

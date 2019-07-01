@@ -1,4 +1,4 @@
-! WHIZARD 2.2.7 Aug 11 2015
+! WHIZARD 2.2.8 Nov 22 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,11 +6,14 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
-!     Fabian Bach <fabian.bach@desy.de>
+!     Fabian Bach <fabian.bach@t-online.de>
+!     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
+!     Soyoung Shim <soyoung.shim@desy.de>
+!     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, Daniel Wiesler 
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -33,7 +36,9 @@
 module simulations_uti
   
     use kinds, only: default
+    use kinds, only: i64
     use iso_varying_string, string_t => varying_string
+    use io_units
     use ifiles
     use lexers
     use parser
@@ -41,10 +46,13 @@ module simulations_uti
     use interactions, only: reset_interaction_counter
     use prclib_stacks
     use phs_forests
+    use event_base, only: generic_event_t
+    use event_base, only: event_callback_t
     use eio_data
     use eio_base
     use eio_raw
     use eio_ascii
+    use eio_callback
     use eval_trees
     use models
     use rt_data
@@ -71,6 +79,15 @@ module simulations_uti
   public :: simulations_10
   public :: simulations_11
   public :: simulations_12
+  public :: simulations_13
+
+  type, extends (event_callback_t) :: simulations_13_callback_t
+     integer :: u
+   contains
+     procedure :: write => simulations_13_callback_write
+     procedure :: proc => simulations_13_callback
+  end type simulations_13_callback_t
+  
 
 contains
 
@@ -1525,6 +1542,122 @@ contains
     
   end subroutine simulations_12
   
+  subroutine simulations_13 (u)
+    integer, intent(in) :: u
+    type(string_t) :: libname, procname1, sample
+    type(rt_data_t), target :: global
+    class(eio_t), allocatable :: eio
+    type(simulation_t), allocatable, target :: simulation
+    type(flavor_t) :: flv
+    integer :: i_evt
+    type(simulations_13_callback_t) :: event_callback
+    
+    write (u, "(A)")  "* Test output: simulations_13"
+    write (u, "(A)")  "*   Purpose: generate events for a single process"
+    write (u, "(A)")  "*            and execute callback"
+    write (u, "(A)")
+
+    write (u, "(A)")  "* Initialize process and integrate"
+    write (u, "(A)")
+
+    call syntax_model_file_init ()
+
+    call global%global_init ()
+    call global%set_log (var_str ("?omega_openmp"), &
+         .false., is_known = .true.)
+    call global%set_int (var_str ("seed"), &
+         0, is_known = .true.)    
+    
+    libname = "simulation_13"
+    procname1 = "simulation_13p"
+    
+    call prepare_test_library (global, libname, 1, [procname1])
+    call compile_library (libname, global)
+
+    call global%append_log (&
+         var_str ("?rebuild_phase_space"), .true., intrinsic = .true.)
+    call global%append_log (&
+         var_str ("?rebuild_grids"), .true., intrinsic = .true.)
+    call global%append_log (&
+         var_str ("?rebuild_events"), .true., intrinsic = .true.)
+
+    call global%set_string (var_str ("$method"), &
+         var_str ("unit_test"), is_known = .true.)
+    call global%set_string (var_str ("$phs_method"), &
+         var_str ("single"), is_known = .true.)
+    call global%set_string (var_str ("$integration_method"),&
+         var_str ("midpoint"), is_known = .true.)
+    call global%set_log (var_str ("?vis_history"),&
+         .false., is_known = .true.)    
+    call global%set_log (var_str ("?integration_timer"),&
+         .false., is_known = .true.)    
+    call global%set_log (var_str ("?recover_beams"), &
+         .false., is_known = .true.)
+
+    call global%set_real (var_str ("sqrts"),&
+         1000._default, is_known = .true.)
+
+    call flv%init (25, global%model)
+
+    call global%it_list%init ([1], [1000])
+
+    call global%set_string (var_str ("$run_id"), &
+         var_str ("r1"), is_known = .true.)
+    call integrate_process (procname1, global, local_stack=.true.)
+
+    write (u, "(A)")  "* Initialize event generation"
+    write (u, "(A)")
+
+    call global%set_log (var_str ("?unweighted"), &
+         .false., is_known = .true.)
+    sample = "simulations_13"
+    call global%set_string (var_str ("$sample"), &
+         sample, is_known = .true.)
+
+    allocate (simulation)
+    call simulation%init ([procname1], .true., .true., global)
+    call simulation%init_process_selector ()
+
+    write (u, "(A)")  "* Prepare callback object"
+    write (u, "(A)")
+    
+    event_callback%u = u
+    call global%set_event_callback (event_callback)
+
+    write (u, "(A)")  "* Initialize callback I/O object"
+    write (u, "(A)")
+
+    allocate (eio_callback_t :: eio)
+    select type (eio)
+    class is (eio_callback_t);  
+       call eio%set_parameters (callback = event_callback, &
+            count_interval = 3)
+    end select
+    call eio%init_out (sample, data = simulation%get_data ())
+    
+    write (u, "(A)")  "* Generate 7 events, with callback every 3 events"
+    write (u, "(A)")
+
+    do i_evt = 1, 7
+       call simulation%generate (1)
+       call simulation%write_event (eio)
+    end do
+
+    call eio%final ()
+    deallocate (eio)
+    call simulation%final ()
+    deallocate (simulation)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Cleanup"
+
+    call global%final ()
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: simulations_13"
+    
+  end subroutine simulations_13
+  
 
   subroutine display_file (file, u)
     use io_units, only: free_unit
@@ -1543,6 +1676,21 @@ contains
 1   continue
   end subroutine display_file
 
+  subroutine simulations_13_callback_write (event_callback, unit)
+    class(simulations_13_callback_t), intent(in) :: event_callback
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = given_output_unit (unit)
+    write (u, "(1x,A)")  "Hello"
+  end subroutine simulations_13_callback_write
+  
+  subroutine simulations_13_callback (event_callback, i, event)
+    class(simulations_13_callback_t), intent(in) :: event_callback
+    integer(i64), intent(in) :: i
+    class(generic_event_t), intent(in) :: event
+    write (event_callback%u, "(A,I0)")  "hello event #", i
+  end subroutine simulations_13_callback
+  
 
 end module simulations_uti
   

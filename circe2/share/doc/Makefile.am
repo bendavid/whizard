@@ -33,8 +33,7 @@ include $(top_srcdir)/src/Makefile.sources
 
 VPATH = $(srcdir):$(top_builddir)/src:$(srcdir):$(top_srcdir)/src
 
-WEBS = \
-  prelude.nw circe2.nw circe2_moments.nw postlude.nw
+WEBS = prelude.nw circe2.nw postlude.nw
 
 if DISTRIBUTION
 PDFS = circe2.pdf 

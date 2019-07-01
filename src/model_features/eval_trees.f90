@@ -1,4 +1,4 @@
-! WHIZARD 2.2.7 Aug 11 2015
+! WHIZARD 2.2.8 Nov 22 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,11 +6,14 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
-!     Fabian Bach <fabian.bach@desy.de>
+!     Fabian Bach <fabian.bach@t-online.de>
+!     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
+!     Soyoung Shim <soyoung.shim@desy.de>
+!     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, Daniel Wiesler 
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -129,6 +132,8 @@ module eval_trees
      real(default), pointer :: tolerance => null ()
      integer, pointer :: jet_algorithm => null ()
      real(default), pointer :: jet_r => null ()
+     real(default), pointer :: jet_p => null ()
+     real(default), pointer :: jet_ycut => null ()
      type(prt_t), pointer :: prt1 => null ()
      type(prt_t), pointer :: prt2 => null ()
      procedure(unary_log),  nopass, pointer :: op1_log  => null ()
@@ -2039,9 +2044,9 @@ contains
     type(eval_node_t), intent(inout), optional :: en0
     logical, dimension(:), allocatable :: mask1
     integer :: n, i
-    ! Should not be hardcoded!
+    !!! Should not be initialized for every event
     type(jet_definition_t) :: jet_def
-    call jet_def%init (en1%jet_algorithm, en1%jet_r)
+    call jet_def%init (en1%jet_algorithm, en1%jet_r, en1%jet_p, en1%jet_ycut)
     n = subevt_get_length (en1%pval)
     allocate (mask1 (n))
     if (present (en0)) then
@@ -4970,6 +4975,8 @@ contains
           call eval_node_init_prt_fun_unary (en, en1, key, cluster_p)
           call var_list%get_iptr (var_str ("jet_algorithm"), en1%jet_algorithm)
           call var_list%get_rptr (var_str ("jet_r"), en1%jet_r)
+          call var_list%get_rptr (var_str ("jet_p"), en1%jet_p)
+          call var_list%get_rptr (var_str ("jet_ycut"), en1%jet_ycut)
        case ("select")
           call eval_node_init_prt_fun_unary (en, en1, key, select_p)
        case ("extract")

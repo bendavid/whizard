@@ -196,6 +196,8 @@
 \newcommand{\spheno}{\texttt{SPheno}}
 \newcommand{\Mathematica}{\texttt{Mathematica}}
 \newcommand{\FeynRules}{\texttt{FeynRules}}
+\newcommand{\gosam}{\texttt{Gosam}}
+\newcommand{\openloops}{\texttt{OpenLoops}}
 %%%%%
 \newcommand{\sindarin}{\texttt{SINDARIN}}
 \newcommand{\fortran}{\texttt{Fortran}}
@@ -267,7 +269,7 @@ Parameter & Value & Default & Description \\
 }
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %END LATEX
-\newcommand{\thisversion}{2.2.7}
+\newcommand{\thisversion}{2.2.8}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -639,7 +641,9 @@ of \whizard:
   2.2.4 & 02/2015 & LCIO support; progress on NLO; many technical
   bug fixes \\
   2.2.7 & 08/2015 & progress on POWHEG; fixed-order NLO events;
-  revalidation of ILC event chain
+  revalidation of ILC event chain \\ 
+  2.2.8 & 11/2015 & support for quadruple precision; StdHEP included;
+  SM dim 6 operators supported
   \\\hline 
 \end{tabular}
 \end{center}
@@ -797,10 +801,15 @@ them, before you install \whizard.
 \item
   The \fastjet\ jet-algorithm package.  See Sec.~\ref{sec:fastjet}.
 \item
-  The \stdhep\ event-format package.  See Sec.~\ref{sec:stdhep}.
-\item
   The \lcio\ event-format package.  See Sec.~\ref{sec:lcio}.
 \end{itemize}
+Until version v2.2.7 of \whizard, the event-format package \stdhep\ used
+to be available as an external package. As their distribution is frozen
+with the final version v5.06.01, and it used to be notoriously difficult to
+compile and link \stdhep\ into \whizard, it was decided to include \stdhep\
+into \whizard. This is the case from version v2.2.8 of \whizard\ on. Linking
+against an external version of \stdhep\ is precluded from there on. Nevertheless,
+we list some explanations in Sec.~\ref{sec:stdhep}. 
 Once these prerequisites are met, you may unpack the package in a
 directory of your choice
 \begin{quote}\small\tt
@@ -1216,65 +1225,32 @@ configure: --------------------------------------------------------------
 
 \stdhep\ is a  library for handling collider scattering
 events.  In particular, it provides a portable format for event
-files.  If you do not need this format, you may skip this section.
-
-If \stdhep\ is not already installed on your system, you may obtain
-\stdhep\ from
-\begin{quote}
-  \url{http://cepa.fnal.gov/psm/stdhep}
-\end{quote}
-You will need only the libraries for file I/O, not the various
-translation tools for \pythia, \herwig, etc.  Note that \stdhep\ has
-largely been replaced by the \hepmc\ format, and conversion tools exist.
+files. Until version 2.2.7 of \whizard, \stdhep\ that was maintained
+by Fermilab, could be linked as an externally compiled library. As
+the \stdhep\ package is frozen in its final release v5.06.1 and no
+longer maintained, it has from version 2.2.8 been included \whizard.
+This eases many things, as it was notoriously difficult to compile
+and link \stdhep\ in a way compatible with \whizard. Not the full package
+has been included, but only the libraries for file I/O (\texttt{mcfio}, the
+library for the XDR conversion), while the various translation tools for
+\pythia, \herwig, etc.  have been abandoned. Note that \stdhep\ has
+largely been replaced in the hadron collider community by the
+\hepmc\ format, and in the lepton collider community by \lcio. \whizard\ might
+serve as a conversion tools for all these formats, but other tools also
+exist, of course.
 
 If the \stdhep\ library is linked with the installation, \whizard\ is
-able to write files in the \stdhep\ format,
-
-\stdhep\ is written in Fortran77. Although not really necessary, we
-strongly advice to compile \stdhep\ with the same compiler as
-\whizard. Otherwise, one has to add the corresponding Fortran77
-run-time libraries to the configure command for \whizard. In order to
-compile \stdhep\ with a modern \fortran\ compiler, add the line
-\ttt{F77 = <your Fortran compiler>} below the \ttt{MAKE=make}
-statement in the GNUmakefile of the \stdhep\ distribution after you
-extracted the tarball (Note that there might be some difficulties that
-some modern compilers do not understand the \ttt{D} debugging
-precompiler statements in some of the files. In that case just replace
-them by comment characters, \ttt{C}. Also, some of the hard-coded
-compiler flags are tailor-made for old-fashioned \ttt{g77}). After
-that just do \ttt{make}. Copy the libraries created in the \ttt{lib}
-directory of your \stdhep\ distribution to a directory which is in the
-\ttt{LD\_LIBRARY\_PATH} of your computer.
-
-The \whizard\ configure script will search for the two libraries  
-\ttt{libFmcfio.a} and \ttt{libstdhep.a}. When \whizard\ does not find
-the \stdhep\ library, you have to set the location of the two libraries
-explicitly: 
-\begin{verbatim}
-  ./configure ... ... ... STDHEP=<stdhep path>/libstdhep.a 
-               FMCFIO=<fmcfio path>/libFmcfio.a
-\end{verbatim}
-The  corresponding configure output will look like this:
+able to write files in the \stdhep\ format, the  corresponding configure output
+notifies you that \stdhep\ is always included:
 \begin{footnotesize}
 \begin{verbatim}
 configure: --------------------------------------------------------------
 configure: --- STDHEP ---
 configure:
-checking for libFmcfio.a... /usr/local/lib/libFmcfio.a
-checking for libstdhep.a... /usr/local/lib/libstdhep.a
-checking for stdxwinit in -lstdhep -lFmcfio... yes
+configure: StdHEP v5.06.01 is included internally
 configure: -------------------------------------------------------------- 
 \end{verbatim}
 \end{footnotesize}
-In the last line, \whizard\ checks whether it can correctly access
-functions from the library. If some symbols could not be resolved, it
-will put a ``no'' in the last entry. Then the \ttt{config.log} will
-tell you more about what went wrong in detail.
-
-If \stdhep\ is installed in a non-default directory where
-\whizard\ would not find it, set the environment variable
-\ttt{STDHEP\_DIR} to the correct installation path when configuring
-\whizard.
 
 %%%%%
 
@@ -1331,6 +1307,14 @@ the correct installation path when configuring \whizard.  Furthermore,
 the environment variable \ttt{CXXFLAGS} allows you to set specific
 \ttt{C/C++} preprocessor flags, e.g. non-standard include paths for
 header files.
+
+{\bf Installation bug of \lcio:} when using \texttt{cmake}
+\texttt{v3}, it is (at least with most known \lcio\ versions) not
+possible to specify the installation path. Instead, files are
+installed into the source directory of \lcio. So the binaries in
+\texttt{bin}, the libraries in \texttt{lib}, and the headers in
+\texttt{include} have to be copied by hand to the desired
+\texttt{prefix}. 
 
 
 %%%%%
@@ -1464,9 +1448,6 @@ The most important options are
   \ttt{HEPMC\_DIR} (variable): The location of the optional \hepmc\ package, if
   non-default.
 \item
-  \ttt{STDHEP\_DIR} (variable): The location of the optional \stdhep\
-  package, if non-default.
-\item
   \ttt{LCIO\_DIR} (variable): The location of the optional \lcio\
   package, if non-default.
 \end{itemize}
@@ -1499,7 +1480,7 @@ process.
   \ttt{LDFLAGS} (variable): non-standard linker flags
 \end{itemize}
 
-For other options (like e.g. \ttt{--enable-fc-extended} etc.) please
+For other options (like e.g. \ttt{--with-precision=...} etc.) please
 see the \ttt{configure --help} option.
 
 %%%%%
@@ -2380,7 +2361,7 @@ named \verb|hello.sin|.
 		|        M. Moretti, T. Ohl, J. Reuter, arXiv: hep-ph/0102195                 |
 		|                                                                             |
 		|=============================================================================|
-		|                               WHIZARD 2.2.7
+		|                               WHIZARD 2.2.8
 		|=============================================================================|
 		| Reading model file '/usr/local/share/whizard/models/SM.mdl'
 		| Preloaded model: SM
@@ -2411,7 +2392,7 @@ including the \whizard\ banner is shown in Fig.~\ref{fig:helloworld})
 \centerline{[... here a banner is displayed]}
 \begin{Verbatim}
 |=============================================================================|
-|                               WHIZARD 2.2.7
+|                               WHIZARD 2.2.8
 |=============================================================================|
 | Reading model file '/usr/local/share/whizard/models/SM.mdl'
 | Preloaded model: SM
@@ -2470,7 +2451,7 @@ This produces a lot of output which looks similar to this:
  | Writing log to 'whizard.log'
 [... banner ...]
  |=============================================================================|
- |                               WHIZARD 2.2.7
+ |                               WHIZARD 2.2.8
  |=============================================================================|
  | Reading model file '/usr/local/share/whizard/models/SM.mdl'
  | Preloaded model: SM
@@ -8308,6 +8289,111 @@ printf "File path: %s/%s" ($directory, $file)
 \end{code}
 There is a related \ttt{sprintf} function, cf.~Sec.~\ref{sec:sprintf}.
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{WHIZARD next-to-leading order mode}
+\subsection{Prerequisites}
+A full NLO computation requires virtual matrix elements obtained from
+loop diagrams. Since \oMega\ cannot calculate such diagrams, external
+programs have to be used.  \whizard\ has a generic interface to each
+matrix-element generator which is BLHA-compatible.  
+Explicit implementations exist for \gosam\ and \openloops.
+
+%%%%%
+
+\subsubsection{Setting up \gosam}
+
+The installation of \gosam\ is detailed on the HepForge page
+\url{http://gosam/hepforge.org}. We mention here some of the steps
+necessary to get it to be linked with \whizard.
+
+{\bf Bug in \gosam\ installation scripts:} In many versions of
+\gosam\ there is a bug in the installation scripts that is only
+effective if \gosam\ is installed with superuser privileges. Then all
+files in \texttt{\$installdir/share/golem} do not have read privileges
+for normal users. These privileges must be given manually to all files
+in that directory.
+
+Prerequisites for \gosam\ to produce code for one-loop matrix elements
+are the scientific algebra program \texttt{form} and the generator of
+loop topologies and diagrams, \texttt{qgraf}.
+These can be accessed via their respective webpages
+\url{http://www.nikhef.nl/~form/} and
+\url{http://cfif.ist.utl.pt/~paulo/qgraf.html}. Note also that both
+\texttt{Java} and the Java runtime environment have to be installed in
+order for \gosam\ to properly work. Furthermore, \texttt{libtool}
+needs to be installed.
+
+%%%%%
+
+\subsubsection{Setting up \openloops}
+
+The installation of \openloops\ is explained in detail on the HepForge page
+\url{http://openloops.hepforge.org}. In the following the main steps for usage with \whizard\
+are summarized.
+
+Automatized NLO corrections in \whizard\ are still an experimental feature, and so are 
+some features of \openloops\ used by it, e.g. leptonic initial-states and 
+decay matrix-elements. For this reason, the beta version of \openloops\ should be
+checked out. The relevant URL is
+\begin{code}
+   \url{http://openloops.hepforge.org/svn/OpenLoops/branches/public\_beta}.
+\end{code}
+The program can simply be installed by running \texttt{scons}, of which a local version
+is included in the \openloops directory. This produces the binary file \openloops, 
+which is the main hook for all other usage of the program.
+
+\openloops\ works by loading pre-compiled external libraries, which have to be installed for
+each individual process. This requires the file \texttt{openloops.cfg}, which should contain
+the following content:
+\begin{code}
+   [OpenLoops]
+   process\_repositories=public, whizard, public_beta
+\end{code}
+The libraries can then be installed via
+\begin{code}
+   ./openloops libinstall proc_name
+\end{code}
+A list of supported library names can be found on the \openloops\ web page. Note that a process library 
+also includes all possible permutated processes, i.e. the process library $ppll$, for example, can 
+also be used to compute the matrix elements for $e^+ e^- \rightarrow q \bar{q}$ (massless quarks only).
+
+For some \whizard\ applications, additional repositories have to be used. These libraries are:
+\begin{itemize}
+  \item \texttt{eett},
+  \item \texttt{eetth},
+  \item \texttt{eetttt},
+  \item \texttt{eetbw},
+  \item \texttt{eevjj},
+  \item \texttt{eevvjj} (\texttt{v} corresponds to massive vector bosons, i.e. $W^\pm$ and $Z$, so this library also includes the process $e^+ e^- \rightarrow bW^+\bar{b}W^-$),
+  \item \texttt{eellllbb} (Off-shell top-quark pair production with leptonic vector boson decay),
+  \item \texttt{tbw} (Loops for top decay)
+\end{itemize}
+Finally, \openloops\ can be linked to \whizard\ during configuration by including
+\begin{code}
+  --enable-openloops --with-openloops=$OPENLOOPS_PATH,
+\end{code}
+where \texttt{\$OPENLOOPS\_PATH} is the directory the \openloops\ binary is located in. \openloops\ can then be used with the 
+\sindarin option
+\begin{code}
+  $loop_me_method = "openloops".
+\end{code}
+\subsection{NLO cross sections}
+NLO computation can be switched on in \sindarin\ with
+\begin{code}
+  process proc_nlo = in1, in2 => out1, ..., outN { nlo_calculation = "Components" },
+\end{code}
+where after the \texttt{nlo\_calculation} can be followed by a list of strings specifying the desired NLO-components to
+be integrated, i.e. \texttt{"Born"}, \texttt{"Real"}, \texttt{"Virtual"}, (\texttt{"Pdf"}, for hadron collisions) or
+\texttt{"Full"}. The \texttt{"Full"}-option implies all components. For example, specifying 
+\begin{code}
+  nlo_calculation = "Born", "Virtual"
+\end{code}
+will result in the computation of the Born and virtual component. 
+
+\subsection{Fixed-order NLO events}
+
+\subsection{Powheg matching}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -9091,7 +9177,7 @@ event formats available in \whizard. The second column shows whether
 these are ASCII or binary formats, the third column contains brief
 remarks about the corresponding format, while the last column tells
 whether external programs or libraries are needed (which is the case
-only for StdHEP and HepMC formats). 
+only for the HepMC formats). 
 
 The "\ttt{.evx}'' is \whizard's native binary event format. If you
 \begin{table}
@@ -9120,10 +9206,10 @@ The "\ttt{.evx}'' is \whizard's native binary event format. If you
       \\
       short & ASCII & variant of HEPEVT & no 
       \\
-      StdHEP (HEPEVT) & binary & based on HEPEVT common block  & yes
+      StdHEP (HEPEVT) & binary & based on HEPEVT common block  & no
       \\
       StdHEP (HEPRUP/EUP) & binary & based on HEPRUP/EUP common block
-      & yes \\
+      & no \\
       Weight stream & ASCII & just weights & yes \\ 
       \hline
     \end{tabular}    
@@ -9193,13 +9279,17 @@ the following supported variables:
   installed and correctly linked) \newline
   Standard suffix: \ttt{.hepmc} 
 \item \ttt{stdhep}: StdHEP binary format based on the HEPEVT common
-  block (only available if StdHEP is installed and correctly linked)
+  block 
   \newline 
   Standard suffix: \ttt{.hep} 
 \item \ttt{stdhep\_up}: StdHEP binary format based on the HEPRUP/HEPEUP
-  common blocks (only available if StdHEP is installed and correctly
-  linked)  \newline
+  common blocks
+  \newline
   Standard suffix: \ttt{.up.hep}
+\item \ttt{stdhep\_ev4}: StdHEP binary format based on the HEPEVT/HEPEV4
+  common blocks
+  \newline
+  Standard suffix: \ttt{.ev4.hep}  
 \item \ttt{weight\_stream}: Format that prints out only the event
   weight (and maybe alternative ones) \newline
   Standard suffix: \ttt{.weight.dat}
@@ -9405,7 +9495,7 @@ This is the modern version of the Les Houches accord event format
 <LesHouchesEvents version="1.0">
 <header>
   <generator_name>WHIZARD</generator_name>
-  <generator_version>2.2.7</generator_version>
+  <generator_version>2.2.8</generator_version>
 </header>
 <init>
  25 25  5.0000000000E+02  5.0000000000E+02 -1 -1 -1 -1 3 1
@@ -13955,16 +14045,6 @@ spin-density matrix (i.e. classical spin correlations). (cf. also
 \ttt{decay\_helicity}, \ttt{?isotropic\_decay})
 %%%%%
 \item
-\ttt{?diags} \qquad (default: \ttt{false}) \newline
-Logical variable that allows to give out a Postscript or PDF file 
-for the Feynman diagrams for a \oMega\ process. (cf. \ttt{?diags\_color}). 
-%%%%
-\item
-\ttt{?diags\_color} \qquad (default: \ttt{false}) \newline
-Same as \ttt{?diags}, but switches on color flow instead of Feynman
-diagram generation. (cf. \ttt{?diags}). 
-%%%%%
-\item
 \ttt{Dist} \newline
 Binary observable specifier, that gives the $\eta$-$\phi$-
 (pseudorapidity-azimuth) distance $R = \sqrt{(\Delta \eta)^2 +
@@ -14482,9 +14562,18 @@ the default file name and suffix is
 %%%%%
 \item
 \ttt{\$extension\_stdhep\_up} \qquad (default: \ttt{"up.hep"}) \newline
-String variable that allows via \ttt{\$extension\_stdhep = "{\em <suffix>}"} to 
+String variable that allows via \ttt{\$extension\_stdhep\_up = "{\em <suffix>}"} to 
 specify the suffix for the file \ttt{name.suffix} to which events in
 the StdHEP format via the HEPRUP/HEPEUP common blocks are
+written. \ttt{{\em <process\_name>}.up.hep} is the default file name and
+suffix, if this variable not set. (cf. also \ttt{sample\_format},
+\ttt{\$sample})
+%%%%%
+\item
+\ttt{\$extension\_stdhep\_ev4} \qquad (default: \ttt{"ev4.hep"}) \newline
+String variable that allows via \ttt{\$extension\_stdhep\_ev4 = "{\em <suffix>}"} to 
+specify the suffix for the file \ttt{name.suffix} to which events in
+the StdHEP format via the HEPEVT/HEPEV4 common blocks are
 written. \ttt{{\em <process\_name>}.up.hep} is the default file name and
 suffix, if this variable not set. (cf. also \ttt{sample\_format},
 \ttt{\$sample})
@@ -16645,17 +16734,13 @@ decay. The syntax is \ttt{stable {\em <prt\_name>}} (cf. also \ttt{unstable})
 \ttt{stdhep} \newline 
 Specifier for the \ttt{sample\_format} command to demand the
 generation of binary StdHEP event files based on the HEPEVT common
-block. Note that this is only available if the StdHEP package is
-installed and correctly linked. (cf. also 
-\ttt{\$sample}, \ttt{sample\_format}) 
+block. (cf. also \ttt{\$sample}, \ttt{sample\_format}) 
 %%%%%
 \item
 \ttt{stdhep\_up} \newline 
 Specifier for the \ttt{sample\_format} command to demand the
 generation of binary StdHEP event files based on the HEPRUP/HEPEUP common
-blocks. Note that this is only available if the StdHEP package is
-installed and correctly linked. (cf. also 
-\ttt{\$sample}, \ttt{sample\_format}) 
+blocks. (cf. also \ttt{\$sample}, \ttt{sample\_format}) 
 %%%%%
 \item
 \ttt{?stratified} \qquad (default: \ttt{true}) \newline
@@ -16909,6 +16994,17 @@ method \ttt{wood} has been used) according to their
 properties: \ttt{integrate (foo) \{ iterations=3:10000 ?vis\_channels
 = true \}}. The default is \ttt{false}. 
 (cf. also \ttt{integrate}, \ttt{?vis\_history})
+%%%%%
+\item
+\ttt{?vis\_diags} \qquad (default: \ttt{false}) \newline
+Logical variable that allows to give out a Postscript or PDF file 
+for the Feynman diagrams for a \oMega\ process. 
+(cf. \ttt{?vis\_diags\_color}). 
+%%%%
+\item
+\ttt{?vis\_diags\_color} \qquad (default: \ttt{false}) \newline
+Same as \ttt{?vis\_diags}, but switches on color flow instead of Feynman
+diagram generation. (cf. \ttt{?vis\_diags}). 
 %%%%%
 \item
 \ttt{?vis\_history} \qquad (default: \ttt{true}) \newline

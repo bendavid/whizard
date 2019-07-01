@@ -9,10 +9,10 @@
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
 #     with contributions from
-#     Fabian Bach <fabian.bach@desy.de>
+#     Fabian Bach <fabian.bach@t-online.de>
 #     Bijan Chokoufe <bijan.chokoufe@desy.de>
 #     Christian Speckner <cnspeckn@googlemail.com>
-#     Marco Sekulla <marco.sekulla@desy.de>
+#     Marco Sekulla <marco.sekulla@kit.edu>
 #     Christian Weiss <christian.weiss@desy.de>
 #     Felix Braam, Sebastian Schmidt
 #
@@ -37,8 +37,10 @@ WHIZARD_DRIVER = run_whizard.sh
 TESTS_EXTENDED = \
 	extra_nlo_tt.run \
 	extra_nlo_tt_powheg.run \
+	extra_nlo_tt_powheg_sudakov.run \
 	extra_nlo_uu.run \
 	extra_nlo_uu_powheg.run \
+	extra_nlo_methods_gosam.run \
 	extra_nlo_methods.run
 
 XFAIL_TESTS_EXTENDED =
@@ -90,7 +92,6 @@ endif
 
 BUILT_SOURCES = \
     TESTFLAG  \
-    STDHEP_FLAG \
     HEPMC_FLAG \
     LCIO_FLAG \
     FASTJET_FLAG \
@@ -102,6 +103,7 @@ BUILT_SOURCES = \
     PYTHON_FLAG \
     PYTHIA6_FLAG \
     OPENLOOPS_FLAG \
+    GOSAM_FLAG \
     STATIC_FLAG \
     ref-output
 
@@ -110,11 +112,6 @@ BUILT_SOURCES = \
 # otherwise it uses the installed version
 TESTFLAG:
 	touch $@
-
-STDHEP_FLAG:
-if STDHEP_AVAILABLE
-	touch $@
-endif
 
 FASTJET_FLAG:
 if FASTJET_AVAILABLE
@@ -166,6 +163,11 @@ if OPENLOOPS_AVAILABLE
 	touch $@
 endif
 
+GOSAM_FLAG:
+if GOSAM_AVAILABLE
+	touch $@
+endif
+
 EVENT_ANALYSIS_FLAG:
 if EVENT_ANALYSIS_AVAILABLE
 	touch $@
@@ -190,9 +192,8 @@ notestflag:
 ## Remove generated files
 clean-local:
 	rm -f gamelan.sty TEST.mdl 
-	rm -f TESTFLAG GAMELAN_FLAG STDHEP_FLAG 
-	rm -f OCAML_FLAG PYTHON_FLAG FASTJET_FLAG HEPMC_FLAG LCIO_FLAG 
-	rm -f EVENT_ANALYSIS_FLAG PYTHIA6_FLAG LHAPDF5_FLAG OPENLOOPS_FLAG
+	rm -f TESTFLAG
+	rm -f *_FLAG
 	rm -f LHAPDF6_FLAG STATIC_FLAG static_1.exe
 	rm -f *.run *.log slha_test.out
 	rm -f core* stdhep_rd
@@ -212,6 +213,9 @@ clean-local:
 	rm -f *.$(WT_OMEGA_CACHE_SUFFIX)
 	rm -f *.olc *.olp *.olp_parameters
 	rm -rf stability_log
+	rm -rf *olp_modules
+	rm -rf Generated_Loops
+	rm -rf include lib golem.in
 if FC_SUBMODULES
 	rm -f *.smod
 endif

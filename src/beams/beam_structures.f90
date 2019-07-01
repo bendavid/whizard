@@ -1,4 +1,4 @@
-! WHIZARD 2.2.7 Aug 11 2015
+! WHIZARD 2.2.8 Nov 22 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,11 +6,14 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
-!     Fabian Bach <fabian.bach@desy.de>
+!     Fabian Bach <fabian.bach@t-online.de>
+!     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
+!     Soyoung Shim <soyoung.shim@desy.de>
+!     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, Daniel Wiesler 
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -75,6 +78,7 @@ module beam_structures
      procedure :: expand => beam_structure_expand
      procedure :: final_pol => beam_structure_final_pol
      procedure :: init_pol => beam_structure_init_pol
+     procedure :: has_polarized_beams => beam_structure_has_polarized_beams
      procedure :: set_smatrix => beam_structure_set_smatrix
      procedure :: init_smatrix => beam_structure_init_smatrix
      procedure :: set_sentry => beam_structure_set_sentry
@@ -95,6 +99,7 @@ module beam_structures
      procedure :: get_pol_f => beam_structure_get_pol_f
      procedure :: asymmetric => beam_structure_asymmetric
      procedure :: get_momenta => beam_structure_get_momenta
+     procedure :: check_against_n_in => beam_structure_check_against_n_in
   end type beam_structure_t
   
 
@@ -313,6 +318,16 @@ contains
          allocate (beam_structure%pol_f (n), source = 1._default)
   end subroutine beam_structure_init_pol
     
+  elemental function beam_structure_has_polarized_beams (beam_structure) result (pol)
+    logical :: pol
+    class(beam_structure_t), intent(in) :: beam_structure
+    if (allocated (beam_structure%pol_f)) then
+       pol = any (beam_structure%pol_f /= 0)
+    else
+       pol = .false.
+    end if
+  end function beam_structure_has_polarized_beams
+
   subroutine beam_structure_set_smatrix (beam_structure, i, smatrix)
     class(beam_structure_t), intent(inout) :: beam_structure
     integer, intent(in) :: i
@@ -524,6 +539,27 @@ contains
             &momentum/a p undefined")
     end if
   end function beam_structure_get_momenta
+    
+  subroutine beam_structure_check_against_n_in (beam_structure, n_in, applies)
+    class(beam_structure_t), intent(in) :: beam_structure
+    integer, intent(in) :: n_in
+    logical, intent(out) :: applies
+    if (beam_structure%is_set ()) then
+       if (n_in == beam_structure%get_n_beam ()) then
+          applies = .true.
+       else if (beam_structure%get_n_beam () == 0) then
+          call msg_fatal &
+               ("Asymmetric beams: missing beam particle specification")
+          applies = .false.
+       else
+          call msg_fatal &
+               ("Mismatch of process and beam setup (scattering/decay)")
+          applies = .false.
+       end if
+    else
+       applies = .false.
+    end if
+  end subroutine beam_structure_check_against_n_in
     
 
 end module beam_structures

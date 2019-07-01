@@ -1,4 +1,4 @@
-(* $Id: modellib_SM.ml 6759 2015-03-23 13:42:37Z fbach $
+(* $Id: modellib_SM.ml 7378 2015-11-20 16:08:49Z jr_reuter $
 
    Copyright (C) 1999-2015 by
 
@@ -7,7 +7,8 @@
        Juergen Reuter <juergen.reuter@desy.de>
        with contributions from
        Christian Speckner <cnspeckn@googlemail.com>
-       Fabian Bach <fabian.bach@desy.de> (only parts of this file)
+       Fabian Bach <fabian.bach@t-online.de> (only parts of this file)
+       Soyoung Shim <soyoung.shim@desy.de> (only parts of this file)
 
    WHIZARD is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by
@@ -24,9 +25,9 @@
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
 let rcs_file = RCS.parse "Modellib_SM" ["Lagragians"]
-    { RCS.revision = "$Revision: 6759 $";
-      RCS.date = "$Date: 2015-03-23 14:42:37 +0100 (Mon, 23 Mar 2015) $";
-      RCS.author = "$Author: fbach $";
+    { RCS.revision = "$Revision: 7378 $";
+      RCS.date = "$Date: 2015-11-20 17:08:49 +0100 (Fri, 20 Nov 2015) $";
+      RCS.author = "$Author: jr_reuter $";
       RCS.source
         = "$URL: svn+ssh://jr_reuter@login.hepforge.org/hepforge/svn/whizard/trunk/omega/src/modellib_SM.ml $" }
 
@@ -527,6 +528,7 @@ module type SM_flags =
     val triple_anom : bool
     val quartic_anom : bool
     val higgs_anom : bool
+    val dim6 : bool
     val k_matrix : bool
     val ckm_present : bool
     val top_anom : bool
@@ -541,6 +543,7 @@ module SM_no_anomalous : SM_flags =
     let triple_anom = false
     let quartic_anom = false
     let higgs_anom = false
+    let dim6 = false
     let k_matrix = false
     let ckm_present = false
     let top_anom = false
@@ -555,6 +558,7 @@ module SM_no_anomalous_ckm : SM_flags =
     let triple_anom = false
     let quartic_anom = false
     let higgs_anom = false
+    let dim6 = false
     let k_matrix = false
     let ckm_present = true
     let top_anom = false
@@ -569,6 +573,7 @@ module SM_anomalous : SM_flags =
     let triple_anom = true
     let quartic_anom = true
     let higgs_anom = true
+    let dim6 = false
     let k_matrix = false
     let ckm_present = false
     let top_anom = false
@@ -583,6 +588,7 @@ module SM_anomalous_ckm : SM_flags =
     let triple_anom = true
     let quartic_anom = true
     let higgs_anom = true
+    let dim6 = false
     let k_matrix = false
     let ckm_present = true
     let top_anom = false
@@ -597,6 +603,7 @@ module SM_k_matrix : SM_flags =
     let triple_anom = false
     let quartic_anom = true
     let higgs_anom = false
+    let dim6 = false
     let k_matrix = true
     let ckm_present = false
     let top_anom = false
@@ -611,6 +618,7 @@ module SM_Higgs : SM_flags =
     let triple_anom = false
     let quartic_anom = false
     let higgs_anom = false
+    let dim6 = false
     let k_matrix = false
     let ckm_present = false
     let top_anom = false
@@ -625,6 +633,7 @@ module SM_anomalous_top : SM_flags =
     let triple_anom = false
     let quartic_anom = false
     let higgs_anom = false
+    let dim6 = false
     let k_matrix = false
     let ckm_present = false
     let top_anom = true
@@ -639,11 +648,27 @@ module SM_tt_threshold : SM_flags =
     let triple_anom = false
     let quartic_anom = false
     let higgs_anom = false
+    let dim6 = false
     let k_matrix = false
     let ckm_present = true
     let top_anom = false
     let top_anom_4f = false
     let tt_threshold = true
+  end
+
+module SM_dim6 : SM_flags =
+  struct
+    let higgs_triangle = false
+    let higgs_hmm = false
+    let triple_anom = false
+    let quartic_anom = false
+    let higgs_anom = false
+    let dim6 = true
+    let k_matrix = false
+    let ckm_present = false
+    let top_anom = false
+    let top_anom_4f = false
+    let tt_threshold = false
   end
 
 (* \thocwmodulesection{Complete Minimal Standard Model (including some extensions)} *)
@@ -668,9 +693,10 @@ module SM (Flags : SM_flags) =
         "cancel_widths", Arg.Unit (fun () -> default_width := Vanishing),
         "use vanishing width"]
 
-    type f_aux_top = TTGG | TBWA | TBWZ | TTWW | BBWW |   (*i top auxiliary field "flavors" i*)
-                     QGUG | QBUB | QW | DL | DR |
-                     QUQD1L | QUQD1R | QUQD8L | QUQD8R
+    type f_aux_top = TTGG | TBWA | TBWZ | TTWW | BBWW 
+		     | TCGG  (*i top auxiliary field "flavors" i*)
+                     | QGUG | QBUB | QW | DL | DR 
+                     | QUQD1L | QUQD1R | QUQD8L | QUQD8R
 
     type matter_field = L of int | N of int | U of int | D of int
     type gauge_boson = Ga | Wp | Wm | Z | Gl
@@ -700,9 +726,11 @@ module SM (Flags : SM_flags) =
     let family n = List.map matter_field [ L n; N n; U n; D n ]
 
     let rec aux_top_flavors (f,l,co,ch) = List.append
-      ( List.map other [ Aux_top(l,co,ch/2,true,f); Aux_top(l,co,ch/2,false,f) ] )
+      ( List.map other [ Aux_top (l,co,ch/2,true,f); 
+			 Aux_top (l,co,ch/2,false,f) ] )
       ( if ch > 1 then List.append
-          ( List.map other [ Aux_top(l,co,-ch/2,true,f); Aux_top(l,co,-ch/2,false,f) ] )
+          ( List.map other [ Aux_top (l,co,-ch/2,true,f); 
+			     Aux_top (l,co,-ch/2,false,f) ] )
           ( aux_top_flavors (f,l,co,(ch-2)) )
         else [] )
 
@@ -717,7 +745,8 @@ module SM (Flags : SM_flags) =
     let flavors () = List.append
       ( ThoList.flatmap snd (external_flavors ()) )
       ( ThoList.flatmap aux_top_flavors
-         [ (TTGG,2,1,1); (TBWA,2,0,2); (TBWZ,2,0,2); (TTWW,2,0,1); (BBWW,2,0,1);
+         [ (TTGG,2,1,1); (TCGG,2,1,1); (TBWA,2,0,2); (TBWZ,2,0,2); 
+	   (TTWW,2,0,1); (BBWW,2,0,1);
            (QGUG,1,1,1); (QBUB,1,0,1); (QW,1,0,3); (DL,0,0,3); (DR,0,0,3);
            (QUQD1L,0,0,3); (QUQD1R,0,0,3); (QUQD8L,0,1,3); (QUQD8R,0,1,3) ] )
 
@@ -855,8 +884,13 @@ module SM (Flags : SM_flags) =
       | -3 -> [ 0//1;  0//1; -1//1]
       |  n -> invalid_arg ("SM.generation': " ^ string_of_int n)
 
+(* Generation is not a good quantum number for models with flavor mixing, 
+   i.e. if CKM mixing is present. Also, for the FCNC vertices implemented
+   in the SM variant with anomalous top couplings it is not a valid
+   symmetry. *)
+
     let generation f =
-      if Flags.ckm_present then
+      if (Flags.ckm_present || Flags.top_anom) then
         []
       else
         match f with
@@ -909,15 +943,15 @@ module SM (Flags : SM_flags) =
       | Sinthw | Costhw | E | G_weak | I_G_weak | Vev
       | Q_lepton | Q_up | Q_down | G_CC | G_CCQ of int*int
       | G_NC_neutrino | G_NC_lepton | G_NC_up | G_NC_down 
-      | G_TVA_ttA | G_TVA_bbA 
-      | G_VLR_ttZ | G_TVA_ttZ | G_TVA_bbZ 
+      | G_TVA_ttA | G_TVA_bbA | G_TVA_tcA | G_TVA_tcZ 
+      | G_VLR_ttZ | G_TVA_ttZ | G_VLR_tcZ | G_TVA_bbZ 
       | VA_ILC_ttA | VA_ILC_ttZ
       | G_VLR_btW | G_VLR_tbW
       | G_TLR_btW | G_TRL_tbW
       | G_TLR_btWZ | G_TRL_tbWZ
       | G_TLR_btWA | G_TRL_tbWA
       | G_TVA_ttWW | G_TVA_bbWW
-      | G_TVA_ttG | G_TVA_ttGG
+      | G_TVA_ttG | G_TVA_ttGG | G_TVA_tcG | G_TVA_tcGG
       | G_SP_ttH
       | G_VLR_qGuG | G_VLR_qBuB
       | G_VLR_qBuB_u | G_VLR_qBuB_d | G_VLR_qBuB_e | G_VL_qBuB_n
@@ -954,6 +988,25 @@ module SM (Flags : SM_flags) =
       | Gs | I_Gs | G2
       | Mass of flavor | Width of flavor
       | K_Matrix_Coeff of int | K_Matrix_Pole of int
+      | I_Dim6_AWW_Gauge | I_Dim6_AWW_GGG | I_Dim6_AWW_DP | I_Dim6_AWW_DW 
+      | I_Dim6_WWZ_W | I_Dim6_WWZ_DPWDW | I_Dim6_WWZ_DW | I_Dim6_WWZ_D 
+(*i      | I_Dim6_GGG_G | I_Dim6_GGG_CG  i*)
+      | G_HZZ6_V3 | G_HZZ6_D | G_HZZ6_DP | G_HZZ6_PB  
+      | G_HWW_6_D | G_HWW_6_DP 
+      | G_HGaZ6_D | G_HGaZ6_DP | G_HGaZ6_PB 
+      | G_HGaGa6 
+      | Dim6_vev3 | Dim6_Cphi | Anom_Dim6_AAWW_DW | Anom_Dim6_AAWW_W
+      | Anom_Dim6_H4_v2 | Anom_Dim6_H4_P2  
+      | Anom_Dim6_AHWW_DPB | Anom_Dim6_AHWW_DPW | Anom_Dim6_AHWW_DW 
+      | Anom_Dim6_HHWW_DW | Anom_Dim6_HHWW_DPW 
+      | Anom_Dim6_HWWZ_DW | Anom_Dim6_HWWZ_DDPW | Anom_Dim6_HWWZ_DPW
+      | Anom_Dim6_HWWZ_DPB 
+      | Anom_Dim6_AHHZ_D | Anom_Dim6_AHHZ_DP | Anom_Dim6_AHHZ_PB 
+      | Anom_Dim6_AZWW_W | Anom_Dim6_AZWW_DWDPW 
+      | Anom_Dim6_WWWW_W | Anom_Dim6_WWWW_DWDPW | Anom_Dim6_WWZZ_W
+      | Anom_Dim6_WWZZ_DWDPW
+      | Anom_Dim6_HHAA | Anom_Dim6_HHZZ_D | Anom_Dim6_HHZZ_DP
+      | Anom_Dim6_HHZZ_PB | Anom_Dim6_HHZZ_T
 	  
 (* Two integer counters for the QCD and EW order of the couplings. *)
 
@@ -977,14 +1030,34 @@ module SM (Flags : SM_flags) =
       | I_G1_minus_kappa_minus_G4_ZWW | I_kappa5_AWW 
       | I_kappa5_ZWW | G5_AWW | G5_ZWW 
       | I_lambda_AWW | I_lambda_ZWW | I_lambda5_AWW 
-      | I_lambda5_ZWW | G_TVA_ttA | G_TVA_bbA 
-      | G_VLR_ttZ | G_TVA_ttZ | G_TVA_bbZ 
+      | I_lambda5_ZWW | G_TVA_ttA | G_TVA_bbA | G_TVA_tcA
+      | G_VLR_ttZ | G_TVA_ttZ | G_VLR_tcZ | G_TVA_tcZ | G_TVA_bbZ 
       | VA_ILC_ttA | VA_ILC_ttZ
       | G_VLR_btW | G_VLR_tbW | G_TLR_btW | G_TRL_tbW
       | G_TLR_btWA | G_TRL_tbWA | G_TLR_btWZ | G_TRL_tbWZ	
       | G_VLR_qBuB | G_VLR_qBuB_u | G_VLR_qBuB_d
       | G_VLR_qBuB_e | G_VL_qBuB_n | G_VL_qW | G_VL_qW_u | G_VL_qW_d
       | G_SL_DttR | G_SR_DttR  | G_SL_DttL | G_SLR_DbtR | G_SL_DbtL
+      | G_HZZ6_V3 | G_HZZ6_D | G_HZZ6_DP | G_HZZ6_PB  
+      | G_HGaZ6_D | G_HGaZ6_DP | G_HGaZ6_PB 
+      | G_HWW_6_D | G_HWW_6_DP 
+      | G_HGaGa6   
+      | I_Dim6_AWW_Gauge | I_Dim6_AWW_GGG | I_Dim6_AWW_DP | I_Dim6_AWW_DW 
+      | I_Dim6_WWZ_W | I_Dim6_WWZ_DPWDW | I_Dim6_WWZ_DW | I_Dim6_WWZ_D 
+(*i      | I_Dim6_GGG_G | I_Dim6_GGG_CG  i*)
+      | Dim6_vev3 | Dim6_Cphi 
+      | Anom_Dim6_H4_v2 | Anom_Dim6_H4_P2 | Anom_Dim6_AAWW_DW
+      | Anom_Dim6_AAWW_W
+      | Anom_Dim6_AHWW_DPB | Anom_Dim6_AHWW_DPW | Anom_Dim6_AHWW_DW
+      | Anom_Dim6_HHWW_DW | Anom_Dim6_HHWW_DPW
+      | Anom_Dim6_HWWZ_DW | Anom_Dim6_HWWZ_DDPW | Anom_Dim6_HWWZ_DPW
+      | Anom_Dim6_HWWZ_DPB
+      | Anom_Dim6_AHHZ_D | Anom_Dim6_AHHZ_DP | Anom_Dim6_AHHZ_PB 
+      | Anom_Dim6_AZWW_W | Anom_Dim6_AZWW_DWDPW 
+      | Anom_Dim6_WWWW_W | Anom_Dim6_WWWW_DWDPW | Anom_Dim6_WWZZ_W
+      | Anom_Dim6_WWZZ_DWDPW
+      | Anom_Dim6_HHAA | Anom_Dim6_HHZZ_D | Anom_Dim6_HHZZ_DP
+      | Anom_Dim6_HHZZ_PB | Anom_Dim6_HHZZ_T
       | G_TVA_ttWW | G_TVA_bbWW | G_SP_ttH -> (0,1)
       | G_HHWW | G_HHZZ | G_H4
       | G_WWWW | G_ZZWW | G_AZWW | G_AAWW  
@@ -994,7 +1067,8 @@ module SM (Flags : SM_flags) =
       | D_Alpha_WWWW2_S | D_Alpha_WWWW2_T | D_Alpha_ZZWW0_S 
       | D_Alpha_ZZWW0_T | D_Alpha_ZZWW1_S | D_Alpha_ZZWW1_T
       | D_Alpha_ZZWW1_U | D_Alpha_ZZZZ_S | D_Alpha_ZZZZ_T -> (0,2)
-      | Gs | I_Gs | G_TVA_ttG | G_TVA_ttGG | G_VLR_qGuG 
+      | Gs | I_Gs | G_TVA_ttG | G_TVA_ttGG | G_TVA_tcG | G_TVA_tcGG
+      | G_VLR_qGuG 
       | C_quqd1R_bt | C_quqd1R_tb | C_quqd1L_bt | C_quqd1L_tb
       | C_quqd8R_bt | C_quqd8R_tb | C_quqd8L_bt | C_quqd8L_tb -> (1,0)
       | G2 | G_Hgg -> (2,0)
@@ -1301,11 +1375,35 @@ module SM (Flags : SM_flags) =
           ((Z, Wp, Wm), Dim6_Gauge_Gauge_Gauge_5 (-1),
            I_lambda5_ZWW) ]
 
+    let anomalous_dim6_triple_gauge =
+      List.map tgc
+        [ ((Ga, Wm, Wp), Dim6_Gauge_Gauge_Gauge_i 1, 
+           I_Dim6_AWW_GGG); 
+          ((Ga, Wm, Wp), Dim6_AWW_DP 1, 
+           I_Dim6_AWW_DP); 
+          ((Ga, Wm, Wp), Dim6_AWW_DW 1,  
+           I_Dim6_AWW_DW); 
+          ((Wm, Wp, Z), Dim6_Gauge_Gauge_Gauge_i 1,  
+           I_Dim6_WWZ_W); 
+          ((Wm, Wp, Z), Dim6_WWZ_DPWDW 1,  
+           I_Dim6_WWZ_DPWDW); 
+          ((Wm, Wp, Z), Dim6_WWZ_DW 1,  
+           I_Dim6_WWZ_DW); 
+          ((Wm, Wp, Z), Dim6_WWZ_D 1,  
+           I_Dim6_WWZ_D)(*i ;
+          ((G, G, G), Dim6_Glu_Glu_Glu 1, 
+           I_Dim6_GGG_G);
+          ((G, G, G), Gauge_Gauge_Gauge_I 1, 
+           I_Dim6_GGG_CG) i*) 
+	]
+
     let triple_gauge =
       if Flags.triple_anom then
         anomalous_triple_gauge
+      else if Flags.dim6 then
+        standard_triple_gauge @ anomalous_dim6_triple_gauge
       else
-        standard_triple_gauge
+	standard_triple_gauge
 
 (* \begin{equation}
      \mathcal{L}_{\textrm{QGC}} =
@@ -1396,6 +1494,29 @@ module SM (Flags : SM_flags) =
              Vector4 [(1, C_12_34); (1, C_13_42); (1, C_14_23)], Alpha_ZZZZ) ]
       else
         []
+	      
+    let anomalous_dim6_quartic_gauge =
+      if Flags.dim6 then
+	List.map qgc 
+          [ ((Ga, Ga, Wm, Wp),
+             Dim6_Vector4_DW 1, Anom_Dim6_AAWW_DW); 
+            ((Ga, Ga, Wm, Wp), 
+             Dim6_Vector4_W 1, Anom_Dim6_AAWW_W);  
+            ((Ga, Z, Wm, Wp),
+             Dim6_Vector4_W 1, Anom_Dim6_AZWW_W);
+            ((Ga, Z, Wm, Wp),
+             Dim6_Vector4_DW 1, Anom_Dim6_AZWW_DWDPW); 
+            ((Wm, Wp, Wm, Wp),
+             Dim6_Vector4_W 1, Anom_Dim6_WWWW_W);
+            ((Wm, Wp, Wm, Wp),
+             Dim6_Vector4_DW 1, Anom_Dim6_WWWW_DWDPW);
+            ((Z, Z, Wm, Wp),
+             Dim6_Vector4_W 1, Anom_Dim6_WWZZ_W); 
+            ((Z, Z, Wm, Wp),
+             Dim6_Vector4_DW 1, Anom_Dim6_WWZZ_DWDPW)
+     ]
+      else
+        []
 
 (* In any diagonal channel~$\chi$, the scattering amplitude~$a_\chi(s)$ is
    unitary iff\footnote{%
@@ -1416,7 +1537,6 @@ module SM (Flags : SM_flags) =
    \end{equation} 
 
 *)
-
 
     let k_matrix_quartic_gauge =
       if Flags.k_matrix then
@@ -1496,7 +1616,8 @@ module SM (Flags : SM_flags) =
 i*)
 
     let quartic_gauge =
-      standard_quartic_gauge @ anomalous_quartic_gauge @ k_matrix_quartic_gauge
+      standard_quartic_gauge @ anomalous_quartic_gauge @
+	anomalous_dim6_quartic_gauge @ k_matrix_quartic_gauge
 
     let standard_gauge_higgs =
       [ ((O H, G Wp, G Wm), Scalar_Vector_Vector 1, G_HWW);
@@ -1608,11 +1729,48 @@ i*)
         (O H, G Wp, G Wm), Dim5_Scalar_Vector_Vector_U 1, G_HWW_u
       ]
 
+    let anomalous_dim6_gauge_higgs =
+      [ (O H, G Z, G Z), Scalar_Vector_Vector 1, G_HZZ6_V3;
+        (O H, G Z, G Z), Dim6_Scalar_Vector_Vector_D 1, G_HZZ6_D;
+        (O H, G Z, G Z), Dim6_Scalar_Vector_Vector_DP 1, G_HZZ6_DP;
+        (O H, G Z, G Z), Scalar_Vector_Vector_t 1, G_HZZ6_PB;
+        (O H, G Ga, G Z), Dim6_HAZ_D 1, G_HGaZ6_D;
+        (O H, G Ga, G Z), Dim6_HAZ_DP 1, G_HGaZ6_DP;
+        (O H, G Ga, G Z), Scalar_Vector_Vector_t 1, G_HGaZ6_PB;
+        (O H, G Ga, G Ga), Scalar_Vector_Vector_t 1, G_HGaGa6;
+        (O H, G Wm, G Wp), Dim6_Scalar_Vector_Vector_D 1, G_HWW_6_D;
+        (O H, G Wm, G Wp), Dim6_Scalar_Vector_Vector_DP 1, G_HWW_6_DP
+      ]
+
     let anomalous_gauge_higgs4 =
       []
 
+    let anomalous_dim6_gauge_higgs4 = 
+      [(G Ga, O H, G Wm, G Wp), Dim6_AHWW_DPB 1, Anom_Dim6_AHWW_DPB;
+       (G Ga, O H, G Wm, G Wp), Dim6_AHWW_DPW 1, Anom_Dim6_AHWW_DPW;
+       (G Ga, O H, G Wm, G Wp), Dim6_AHWW_DW 1, Anom_Dim6_AHWW_DW;
+       (O H, G Wm, G Wp, G Z), Dim6_HWWZ_DW 1, Anom_Dim6_HWWZ_DW;
+       (O H, G Wm, G Wp, G Z), Dim6_HWWZ_DDPW 1, Anom_Dim6_HWWZ_DDPW;
+       (O H, G Wm, G Wp, G Z), Dim6_HWWZ_DPW 1, Anom_Dim6_HWWZ_DPW;
+       (O H, G Wm, G Wp, G Z), Dim6_HWWZ_DPB 1, Anom_Dim6_HWWZ_DPB;
+       (G Ga, O H, O H, G Z), Dim6_AHHZ_D 1, Anom_Dim6_AHHZ_D;
+       (G Ga, O H, O H, G Z), Dim6_AHHZ_DP 1, Anom_Dim6_AHHZ_DP;
+       (G Ga, O H, O H, G Z), Dim6_AHHZ_PB 1, Anom_Dim6_AHHZ_PB;
+       (O H, O H, G Ga, G Ga), Dim6_Scalar2_Vector2_PB 1, Anom_Dim6_HHAA;
+       (O H, O H, G Wm, G Wp), Dim6_Scalar2_Vector2_D 1, Anom_Dim6_HHWW_DW;
+       (O H, O H, G Wm, G Wp), Dim6_Scalar2_Vector2_DP 1, Anom_Dim6_HHWW_DPW;
+       (O H, O H, G Z, G Z), Dim6_HHZZ_T 1, Anom_Dim6_HHZZ_T;
+       (O H, O H, G Z, G Z), Dim6_Scalar2_Vector2_D 1, Anom_Dim6_HHZZ_D; 
+       (O H, O H, G Z, G Z), Dim6_Scalar2_Vector2_DP 1, Anom_Dim6_HHZZ_DP;
+       (O H, O H, G Z, G Z), Dim6_Scalar2_Vector2_PB 1, Anom_Dim6_HHZZ_PB
+      ]
+
     let anomalous_higgs =
       []
+
+    let anomalous_dim6_higgs =
+      [(O H, O H, O H), Scalar_Scalar_Scalar 1, Dim6_vev3;
+       (O H, O H, O H), Dim6_HHH 1, Dim6_Cphi ]
 
     let higgs_triangle_vertices = 
       if Flags.higgs_triangle then
@@ -1625,29 +1783,41 @@ i*)
     let anomalous_higgs4 =
       []
 
+    let anomalous_dim6_higgs4 = 
+      [(O H, O H, O H, O H), Scalar4 1, Anom_Dim6_H4_v2; 
+       (O H, O H, O H, O H), Dim6_H4_P2 1, Anom_Dim6_H4_P2]
+
     let gauge_higgs =
       if Flags.higgs_anom then
         standard_gauge_higgs @ anomalous_gauge_higgs
+      else if Flags.dim6 then
+        standard_gauge_higgs @ anomalous_dim6_gauge_higgs
       else
-        standard_gauge_higgs
+	standard_gauge_higgs
 
     let gauge_higgs4 =
       if Flags.higgs_anom then
         standard_gauge_higgs4 @ anomalous_gauge_higgs4
+      else if Flags.dim6 then
+        standard_gauge_higgs4 @ anomalous_dim6_gauge_higgs4
       else
-        standard_gauge_higgs4
+	standard_gauge_higgs4
 
     let higgs =
       if Flags.higgs_anom then
         standard_higgs @ anomalous_higgs
+      else if Flags.dim6 then
+        standard_higgs @ anomalous_dim6_higgs
       else
-        standard_higgs
+	standard_higgs
 
     let higgs4 =
       if Flags.higgs_anom then
         standard_higgs4 @ anomalous_higgs4
+      else if Flags.dim6 then
+        standard_higgs4 @ anomalous_dim6_higgs4
       else
-        standard_higgs4
+	standard_higgs4
 
     let goldstone_vertices =
       [ ((O Phi0, G Wm, G Wp), Scalar_Vector_Vector 1, I_G_ZWW);
@@ -1661,11 +1831,19 @@ i*)
      \Delta\mathcal{L}_{tt\gamma} =
         - e \frac{\upsilon}{\Lambda^2}
             \bar{t} i\sigma^{\mu\nu} k_\nu (d_V(k^2) + i d_A(k^2) \gamma_5) t A_\mu
-   \end{equation} *)
+   \end{equation}
+   \begin{equation}
+     \Delta\mathcal{L}_{tc\gamma} =
+        - e \frac{\upsilon}{\Lambda^2}
+            \bar{t} i\sigma^{\mu\nu} k_\nu (d_V(k^2) + i d_A(k^2) \gamma_5) c A_\mu \,\text{+\,h.c.}
+   \end{equation}
+ *)
 
     let anomalous_ttA =
       if Flags.top_anom then
-        [ ((M (U (-3)), G Ga, M (U 3)), FBF (1, Psibar, TVAM, Psi), G_TVA_ttA) ]
+        [ ((M (U (-3)), G Ga, M (U 3)), FBF (1, Psibar, TVAM, Psi), G_TVA_ttA);
+	  ((M (U (-3)), G Ga, M (U 2)), FBF (1, Psibar, TVAM, Psi), G_TVA_tcA);
+	  ((M (U (-2)), G Ga, M (U 3)), FBF (1, Psibar, TVAM, Psi), G_TVA_tcA) ]
       else
         []
 
@@ -1692,11 +1870,20 @@ i*)
         - g_s \frac{\upsilon}{\Lambda^2}
             \bar{t}\lambda^a i\sigma^{\mu\nu}k_\nu
                 (d_V(k^2)+id_A(k^2)\gamma_5)tG^a_\mu
-   \end{equation} *)
+   \end{equation} 
+   \begin{equation}
+     \Delta\mathcal{L}_{tcg} =
+        - g_s \frac{\upsilon}{\Lambda^2}
+            \bar{t}\lambda^a i\sigma^{\mu\nu}k_\nu
+                (d_V(k^2)+id_A(k^2)\gamma_5)cG^a_\mu\,\text{+\,h.c.}
+   \end{equation} 
+*)
 
     let anomalous_ttG =
       if Flags.top_anom then
-        [ ((M (U (-3)), G Gl, M (U 3)), FBF (1, Psibar, TVAM, Psi), G_TVA_ttG) ]
+        [ ((M (U (-3)), G Gl, M (U 3)), FBF (1, Psibar, TVAM, Psi), G_TVA_ttG);
+	  ((M (U (-3)), G Gl, M (U 2)), FBF (1, Psibar, TVAM, Psi), G_TVA_tcG);
+	  ((M (U (-2)), G Gl, M (U 3)), FBF (1, Psibar, TVAM, Psi), G_TVA_tcG) ]
       else
         []
 
@@ -1706,12 +1893,24 @@ i*)
               \bar{t} \fmslash{Z} (X_L(k^2) P_L + X_R(k^2) P_R) t
             + \bar{t}\frac{i\sigma^{\mu\nu}k_\nu}{m_Z}
                   (d_V(k^2)+id_A(k^2)\gamma_5)tZ_\mu\right\rbrack
+   \end{equation}
+   \begin{equation}
+     \Delta\mathcal{L}_{tcZ} =
+        - \frac{g}{2 c_W} \frac{\upsilon^2}{\Lambda^2}\left\lbrack
+              \bar{t} \fmslash{Z} (X_L(k^2) P_L + X_R(k^2) P_R) c
+            + \bar{t}\frac{i\sigma^{\mu\nu}k_\nu}{m_Z}
+                  (d_V(k^2)+id_A(k^2)\gamma_5)cZ_\mu\right\rbrack
+                     \,\text{+\,h.c.}
    \end{equation} *)
 
     let anomalous_ttZ =
       if Flags.top_anom then
         [ ((M (U (-3)), G Z, M (U 3)), FBF (1, Psibar, VLRM, Psi), G_VLR_ttZ);
-          ((M (U (-3)), G Z, M (U 3)), FBF (1, Psibar, TVAM, Psi), G_TVA_ttZ) ]
+	  ((M (U (-3)), G Z, M (U 2)), FBF (1, Psibar, VLRM, Psi), G_VLR_tcZ);
+	  ((M (U (-2)), G Z, M (U 3)), FBF (1, Psibar, VLRM, Psi), G_VLR_tcZ);
+          ((M (U (-3)), G Z, M (U 3)), FBF (1, Psibar, TVAM, Psi), G_TVA_ttZ);
+	  ((M (U (-2)), G Z, M (U 3)), FBF (1, Psibar, TVAM, Psi), G_TVA_tcZ);
+	  ((M (U (-3)), G Z, M (U 2)), FBF (1, Psibar, TVAM, Psi), G_TVA_tcZ) ]
       else
         []
 
@@ -1740,7 +1939,7 @@ i*)
             \bar{b}\fmslash{W}^-(V_L(k^2) P_L+V_R(k^2) P_R) t
           + \bar{b}\frac{i\sigma^{\mu\nu}k_\nu}{m_W}
                 (g_L(k^2)P_L+g_R(k^2)P_R)tW^-_\mu\right\rbrack
-        + \textnormal{H.c.}
+          \,\text{+\,h.c.}
    \end{equation} *)
 
     let anomalous_tbW =
@@ -1770,12 +1969,28 @@ effective operators:
         - \frac{g_s^2}{2} f_{abc} \frac{\upsilon}{\Lambda^2}
             \bar{t} \lambda^a \sigma^{\mu\nu}
                 (d_V(k^2)+id_A(k^2)\gamma_5)t G^b_\mu G^c_\nu
-   \end{equation} *)
+   \end{equation}
+   \begin{equation}
+     \Delta\mathcal{L}_{tcgg} =
+        - \frac{g_s^2}{2} f_{abc} \frac{\upsilon}{\Lambda^2}
+            \bar{t} \lambda^a \sigma^{\mu\nu}
+                (d_V(k^2)+id_A(k^2)\gamma_5)c G^b_\mu G^c_\nu           
+                   \,\text{+\,h.c.}
+   \end{equation}
+*)
 
     let anomalous_ttGG =
       if Flags.top_anom then
-        [ ((M (U (-3)), O (Aux_top (2,1,0,true,TTGG)), M (U 3)), FBF (1, Psibar, TVA, Psi), G_TVA_ttGG);
-          ((O (Aux_top (2,1,0,false,TTGG)), G Gl, G Gl), Aux_Gauge_Gauge 1, I_Gs) ]
+        [ ((M (U (-3)), O (Aux_top (2,1,0,true,TTGG)), M (U 3)), 
+	      FBF (1, Psibar, TVA, Psi), G_TVA_ttGG);
+	  ((M (U (-3)), O (Aux_top (2,1,0,true,TCGG)), M (U 2)), 
+	      FBF (1, Psibar, TVA, Psi), G_TVA_tcGG);
+	  ((M (U (-2)), O (Aux_top (2,1,0,true,TCGG)), M (U 3)), 
+	      FBF (1, Psibar, TVA, Psi), G_TVA_tcGG);
+          ((O (Aux_top (2,1,0,false,TTGG)), G Gl, G Gl), 
+	      Aux_Gauge_Gauge 1, I_Gs);
+          ((O (Aux_top (2,1,0,false,TCGG)), G Gl, G Gl), 
+	      Aux_Gauge_Gauge 1, I_Gs) ]
       else
         []
 
@@ -1784,7 +1999,7 @@ effective operators:
         - i\sin\theta_w \frac{g^2}{2\sqrt{2}} \frac{\upsilon^2}{\Lambda^2}\left\lbrack
             \bar{b}\frac{\sigma^{\mu\nu}}{m_W}
                 (g_L(k^2)P_L+g_R(k^2)P_R)t A_\mu W^-_\nu \right\rbrack
-        + \textnormal{H.c.}
+           \,\text{+\,h.c.}
    \end{equation} *)
 
     let anomalous_tbWA =
@@ -1801,15 +2016,19 @@ effective operators:
         - i\cos\theta_w \frac{g^2}{2\sqrt{2}} \frac{\upsilon^2}{\Lambda^2}\left\lbrack
             \bar{b}\frac{\sigma^{\mu\nu}}{m_W}
                 (g_L(k^2)P_L+g_R(k^2)P_R)t Z_\mu W^-_\nu \right\rbrack
-        + \textnormal{H.c.}
+               \,\text{+\,h.c.}
    \end{equation} *)
 
     let anomalous_tbWZ =
       if Flags.top_anom then
-        [ ((M (D (-3)), O (Aux_top (2,0,-1,true,TBWZ)), M (U 3)), FBF (1, Psibar, TLR, Psi), G_TLR_btWZ);
-          ((O (Aux_top (2,0,1,false,TBWZ)), G Z, G Wm), Aux_Gauge_Gauge 1, I_G_weak);
-          ((M (U (-3)), O (Aux_top (2,0,1,true,TBWZ)), M (D 3)), FBF (1, Psibar, TRL, Psi), G_TRL_tbWZ);
-          ((O (Aux_top (2,0,-1,false,TBWZ)), G Wp, G Z), Aux_Gauge_Gauge 1, I_G_weak) ]
+        [ ((M (D (-3)), O (Aux_top (2,0,-1,true,TBWZ)), M (U 3)), 
+	      FBF (1, Psibar, TLR, Psi), G_TLR_btWZ);
+          ((O (Aux_top (2,0,1,false,TBWZ)), G Z, G Wm), 
+	      Aux_Gauge_Gauge 1, I_G_weak);
+          ((M (U (-3)), O (Aux_top (2,0,1,true,TBWZ)), M (D 3)), 
+	      FBF (1, Psibar, TRL, Psi), G_TRL_tbWZ);
+          ((O (Aux_top (2,0,-1,false,TBWZ)), G Wp, G Z), 
+	      Aux_Gauge_Gauge 1, I_G_weak) ]
       else
         []
 
@@ -2000,32 +2219,60 @@ effective operators:
       | "A" -> G Ga | "Z" | "Z0" -> G Z
       | "W+" -> G Wp | "W-" -> G Wm
       | "H" -> O H
-      | "Aux_t_ttGG0" -> O (Aux_top (2,1, 0,true,TTGG)) | "Aux_ttGG0" -> O (Aux_top (2,1, 0,false,TTGG))
-      | "Aux_t_tbWA+" -> O (Aux_top (2,0, 1,true,TBWA)) | "Aux_tbWA+" -> O (Aux_top (2,0, 1,false,TBWA))
-      | "Aux_t_tbWA-" -> O (Aux_top (2,0,-1,true,TBWA)) | "Aux_tbWA-" -> O (Aux_top (2,0,-1,false,TBWA))
-      | "Aux_t_tbWZ+" -> O (Aux_top (2,0, 1,true,TBWZ)) | "Aux_tbWZ+" -> O (Aux_top (2,0, 1,false,TBWZ))
-      | "Aux_t_tbWZ-" -> O (Aux_top (2,0,-1,true,TBWZ)) | "Aux_tbWZ-" -> O (Aux_top (2,0,-1,false,TBWZ))
-      | "Aux_t_ttWW0" -> O (Aux_top (2,0, 0,true,TTWW)) | "Aux_ttWW0" -> O (Aux_top (2,0, 0,false,TTWW))
-      | "Aux_t_bbWW0" -> O (Aux_top (2,0, 0,true,BBWW)) | "Aux_bbWW0" -> O (Aux_top (2,0, 0,false,BBWW))
-      | "Aux_t_qGuG0" -> O (Aux_top (1,1, 0,true,QGUG)) | "Aux_qGuG0" -> O (Aux_top (1,1, 0,false,QGUG))
-      | "Aux_t_qBuB0" -> O (Aux_top (1,0, 0,true,QBUB)) | "Aux_qBuB0" -> O (Aux_top (1,0, 0,false,QBUB))
-      | "Aux_t_qW0"   -> O (Aux_top (1,0, 0,true,QW))   | "Aux_qW0"   -> O (Aux_top (1,0, 0,false,QW))
-      | "Aux_t_qW+"   -> O (Aux_top (1,0, 1,true,QW))   | "Aux_qW+"   -> O (Aux_top (1,0, 1,false,QW))
-      | "Aux_t_qW-"   -> O (Aux_top (1,0,-1,true,QW))   | "Aux_qW-"   -> O (Aux_top (1,0,-1,false,QW))
-      | "Aux_t_dL0"   -> O (Aux_top (0,0, 0,true,DL))   | "Aux_dL0"   -> O (Aux_top (0,0, 0,false,DL))
-      | "Aux_t_dL+"   -> O (Aux_top (0,0, 1,true,DL))   | "Aux_dL+"   -> O (Aux_top (0,0, 1,false,DL))
-      | "Aux_t_dL-"   -> O (Aux_top (0,0,-1,true,DL))   | "Aux_dL-"   -> O (Aux_top (0,0,-1,false,DL))
-      | "Aux_t_dR0"   -> O (Aux_top (0,0, 0,true,DR))   | "Aux_dR0"   -> O (Aux_top (0,0, 0,false,DR))
-      | "Aux_t_dR+"   -> O (Aux_top (0,0, 1,true,DR))   | "Aux_dR+"   -> O (Aux_top (0,0, 1,false,DR))
-      | "Aux_t_dR-"   -> O (Aux_top (0,0,-1,true,DR))   | "Aux_dR-"   -> O (Aux_top (0,0,-1,false,DR))
-      | "Aux_t_quqd1L+" -> O (Aux_top (0,0, 1,true,QUQD1L)) | "Aux_quqd1L+" -> O (Aux_top (0,0, 1,false,QUQD1L))
-      | "Aux_t_quqd1L-" -> O (Aux_top (0,0,-1,true,QUQD1L)) | "Aux_quqd1L-" -> O (Aux_top (0,0,-1,false,QUQD1L))
-      | "Aux_t_quqd1R+" -> O (Aux_top (0,0, 1,true,QUQD1R)) | "Aux_quqd1R+" -> O (Aux_top (0,0, 1,false,QUQD1R))
-      | "Aux_t_quqd1R-" -> O (Aux_top (0,0,-1,true,QUQD1R)) | "Aux_quqd1R-" -> O (Aux_top (0,0,-1,false,QUQD1R))
-      | "Aux_t_quqd8L+" -> O (Aux_top (0,1, 1,true,QUQD8L)) | "Aux_quqd8L+" -> O (Aux_top (0,1, 1,false,QUQD8L))
-      | "Aux_t_quqd8L-" -> O (Aux_top (0,1,-1,true,QUQD8L)) | "Aux_quqd8L-" -> O (Aux_top (0,1,-1,false,QUQD8L))
-      | "Aux_t_quqd8R+" -> O (Aux_top (0,1, 1,true,QUQD8R)) | "Aux_quqd8R+" -> O (Aux_top (0,1, 1,false,QUQD8R))
-      | "Aux_t_quqd8R-" -> O (Aux_top (0,1,-1,true,QUQD8R)) | "Aux_quqd8R-" -> O (Aux_top (0,1,-1,false,QUQD8R))
+      | "Aux_t_ttGG0" -> O (Aux_top (2,1, 0,true,TTGG)) 
+      | "Aux_ttGG0" -> O (Aux_top (2,1, 0,false,TTGG))
+      | "Aux_t_tcGG0" -> O (Aux_top (2,1, 0,true,TCGG)) 
+      | "Aux_tcGG0" -> O (Aux_top (2,1, 0,false,TCGG))
+      | "Aux_t_tbWA+" -> O (Aux_top (2,0, 1,true,TBWA)) 
+      | "Aux_tbWA+" -> O (Aux_top (2,0, 1,false,TBWA))
+      | "Aux_t_tbWA-" -> O (Aux_top (2,0,-1,true,TBWA)) 
+      | "Aux_tbWA-" -> O (Aux_top (2,0,-1,false,TBWA))
+      | "Aux_t_tbWZ+" -> O (Aux_top (2,0, 1,true,TBWZ)) 
+      | "Aux_tbWZ+" -> O (Aux_top (2,0, 1,false,TBWZ))
+      | "Aux_t_tbWZ-" -> O (Aux_top (2,0,-1,true,TBWZ)) 
+      | "Aux_tbWZ-" -> O (Aux_top (2,0,-1,false,TBWZ))
+      | "Aux_t_ttWW0" -> O (Aux_top (2,0, 0,true,TTWW)) 
+      | "Aux_ttWW0" -> O (Aux_top (2,0, 0,false,TTWW))
+      | "Aux_t_bbWW0" -> O (Aux_top (2,0, 0,true,BBWW)) 
+      | "Aux_bbWW0" -> O (Aux_top (2,0, 0,false,BBWW))
+      | "Aux_t_qGuG0" -> O (Aux_top (1,1, 0,true,QGUG)) 
+      | "Aux_qGuG0" -> O (Aux_top (1,1, 0,false,QGUG))
+      | "Aux_t_qBuB0" -> O (Aux_top (1,0, 0,true,QBUB)) 
+      | "Aux_qBuB0" -> O (Aux_top (1,0, 0,false,QBUB))
+      | "Aux_t_qW0"   -> O (Aux_top (1,0, 0,true,QW))   
+      | "Aux_qW0"   -> O (Aux_top (1,0, 0,false,QW))
+      | "Aux_t_qW+"   -> O (Aux_top (1,0, 1,true,QW))   
+      | "Aux_qW+"   -> O (Aux_top (1,0, 1,false,QW))
+      | "Aux_t_qW-"   -> O (Aux_top (1,0,-1,true,QW))   
+      | "Aux_qW-"   -> O (Aux_top (1,0,-1,false,QW))
+      | "Aux_t_dL0"   -> O (Aux_top (0,0, 0,true,DL))   
+      | "Aux_dL0"   -> O (Aux_top (0,0, 0,false,DL))
+      | "Aux_t_dL+"   -> O (Aux_top (0,0, 1,true,DL))   
+      | "Aux_dL+"   -> O (Aux_top (0,0, 1,false,DL))
+      | "Aux_t_dL-"   -> O (Aux_top (0,0,-1,true,DL))   
+      | "Aux_dL-"   -> O (Aux_top (0,0,-1,false,DL))
+      | "Aux_t_dR0"   -> O (Aux_top (0,0, 0,true,DR))   
+      | "Aux_dR0"   -> O (Aux_top (0,0, 0,false,DR))
+      | "Aux_t_dR+"   -> O (Aux_top (0,0, 1,true,DR))   
+      | "Aux_dR+"   -> O (Aux_top (0,0, 1,false,DR))
+      | "Aux_t_dR-"   -> O (Aux_top (0,0,-1,true,DR))   
+      | "Aux_dR-"   -> O (Aux_top (0,0,-1,false,DR))
+      | "Aux_t_quqd1L+" -> O (Aux_top (0,0, 1,true,QUQD1L)) 
+      | "Aux_quqd1L+" -> O (Aux_top (0,0, 1,false,QUQD1L))
+      | "Aux_t_quqd1L-" -> O (Aux_top (0,0,-1,true,QUQD1L)) 
+      | "Aux_quqd1L-" -> O (Aux_top (0,0,-1,false,QUQD1L))
+      | "Aux_t_quqd1R+" -> O (Aux_top (0,0, 1,true,QUQD1R)) 
+      | "Aux_quqd1R+" -> O (Aux_top (0,0, 1,false,QUQD1R))
+      | "Aux_t_quqd1R-" -> O (Aux_top (0,0,-1,true,QUQD1R)) 
+      | "Aux_quqd1R-" -> O (Aux_top (0,0,-1,false,QUQD1R))
+      | "Aux_t_quqd8L+" -> O (Aux_top (0,1, 1,true,QUQD8L)) 
+      | "Aux_quqd8L+" -> O (Aux_top (0,1, 1,false,QUQD8L))
+      | "Aux_t_quqd8L-" -> O (Aux_top (0,1,-1,true,QUQD8L)) 
+      | "Aux_quqd8L-" -> O (Aux_top (0,1,-1,false,QUQD8L))
+      | "Aux_t_quqd8R+" -> O (Aux_top (0,1, 1,true,QUQD8R)) 
+      | "Aux_quqd8R+" -> O (Aux_top (0,1, 1,false,QUQD8R))
+      | "Aux_t_quqd8R-" -> O (Aux_top (0,1,-1,true,QUQD8R)) 
+      | "Aux_quqd8R-" -> O (Aux_top (0,1,-1,false,QUQD8R))
       | _ -> invalid_arg "Modellib.SM.flavor_of_string"
 
     let flavor_to_string = function
@@ -2065,7 +2312,7 @@ effective operators:
           | Aux_top (_,_,ch,n,v) -> "Aux_" ^ (if n then "t_" else "") ^ (
               begin match v with
               | TTGG -> "ttGG" | TBWA -> "tbWA" | TBWZ -> "tbWZ"
-              | TTWW -> "ttWW" | BBWW -> "bbWW"
+              | TTWW -> "ttWW" | BBWW -> "bbWW" | TCGG -> "tcgg"
               | QGUG -> "qGuG" | QBUB -> "qBuB"
               | QW   -> "qW"   | DL   -> "dL"   | DR   -> "dR"
               | QUQD1L -> "quqd1L" | QUQD1R -> "quqd1R"
@@ -2107,15 +2354,18 @@ effective operators:
           begin match f with
           | Phip -> "\\phi^+" | Phim -> "\\phi^-" | Phi0 -> "\\phi^0" 
           | H -> "H"
-          | Aux_top (_,_,ch,n,v) -> "\\textnormal{Aux_" ^ (if n then "t_" else "") ^ (
-              begin match v with
-              | TTGG -> "ttGG" | TBWA -> "tbWA" | TBWZ -> "tbWZ"
-              | TTWW -> "ttWW" | BBWW -> "bbWW"
-              | QGUG -> "qGuG" | QBUB -> "qBuB"
-              | QW   -> "qW"   | DL   -> "dL"   | DR   -> "dR"
-              | QUQD1L -> "quqd1L" | QUQD1R -> "quqd1R"
-              | QUQD8L -> "quqd8L" | QUQD8R -> "quqd8R"
-              end ) ^ ( if ch > 0 then "^+" else if ch < 0 then "^-" else "^0" ) ^ "}"
+          | Aux_top (_,_,ch,n,v) -> 
+	       "\\textnormal{Aux_" ^ (if n then "t_" else "") ^ (
+		 begin match v with
+		 | TTGG -> "ttGG" | TBWA -> "tbWA" | TBWZ -> "tbWZ"
+		 | TTWW -> "ttWW" | BBWW -> "bbWW" | TCGG -> "tcgg"
+		 | QGUG -> "qGuG" | QBUB -> "qBuB"
+		 | QW   -> "qW"   | DL   -> "dL"   | DR   -> "dR"
+		 | QUQD1L -> "quqd1L" | QUQD1R -> "quqd1R"
+		 | QUQD8L -> "quqd8L" | QUQD8R -> "quqd8R"
+		 end ) ^ 
+		 ( if ch > 0 then "^+" else if ch < 0 then 
+		     "^-" else "^0" ) ^ "}"
           end
 
     let flavor_symbol = function
@@ -2143,12 +2393,13 @@ effective operators:
           | Aux_top (_,_,ch,n,v) -> "aux_" ^ (if n then "t_" else "") ^ (
               begin match v with
               | TTGG -> "ttgg" | TBWA -> "tbwa" | TBWZ -> "tbwz"
-              | TTWW -> "ttww" | BBWW -> "bbww"
+              | TTWW -> "ttww" | BBWW -> "bbww" | TCGG -> "tcgg"
               | QGUG -> "qgug" | QBUB -> "qbub"
               | QW   -> "qw"   | DL   -> "dl"   | DR   -> "dr"
               | QUQD1L -> "quqd1l" | QUQD1R -> "quqd1r"
               | QUQD8L -> "quqd8l" | QUQD8R -> "quqd8r"
-              end ) ^ "_" ^ ( if ch > 0 then "p" else if ch < 0 then "m" else "0" )
+              end ) ^ "_" ^ ( if ch > 0 then "p" else 
+		  if ch < 0 then "m" else "0" )
           end
 
     let pdg = function
@@ -2201,7 +2452,9 @@ effective operators:
       | G_NC_lepton -> "gnclep" | G_NC_neutrino -> "gncneu"
       | G_NC_up -> "gncup" | G_NC_down -> "gncdwn"
       | G_TVA_ttA -> "gtva_tta" | G_TVA_bbA -> "gtva_bba" 
-      | G_VLR_ttZ -> "gvlr_ttz" | G_TVA_ttZ -> "gtva_ttz" | G_TVA_bbZ -> "gtva_bbz"
+      | G_VLR_ttZ -> "gvlr_ttz" | G_TVA_ttZ -> "gtva_ttz" 
+      | G_VLR_tcZ -> "gvlr_tcz" | G_TVA_tcZ -> "gtva_tcz"
+      | G_TVA_bbZ -> "gtva_bbz" | G_TVA_tcA -> "gtva_tca"
       | VA_ILC_ttA -> "va_ilc_tta" | VA_ILC_ttZ -> "va_ilc_ttz"
       | G_VLR_btW -> "gvlr_btw" | G_VLR_tbW -> "gvlr_tbw"
       | G_TLR_btW -> "gtlr_btw" | G_TRL_tbW -> "gtrl_tbw"
@@ -2209,6 +2462,7 @@ effective operators:
       | G_TLR_btWZ -> "gtlr_btwz" | G_TRL_tbWZ -> "gtrl_tbwz"
       | G_TVA_ttWW -> "gtva_ttww" | G_TVA_bbWW -> "gtva_bbww"
       | G_TVA_ttG -> "gtva_ttg" | G_TVA_ttGG -> "gtva_ttgg"
+      | G_TVA_tcG -> "gtva_tcg" | G_TVA_tcGG -> "gtva_tcgg"
       | G_SP_ttH -> "gsp_tth"
       | G_VLR_qGuG -> "gvlr_qgug"
       | G_VLR_qBuB -> "gvlr_qbub"
@@ -2216,7 +2470,8 @@ effective operators:
       | G_VLR_qBuB_e -> "gvlr_qbub_e" | G_VL_qBuB_n -> "gvl_qbub_n"
       | G_VL_qW -> "gvl_qw"
       | G_VL_qW_u -> "gvl_qw_u" | G_VL_qW_d -> "gvl_qw_d"
-      | G_SL_DttR -> "gsl_dttr" | G_SR_DttR -> "gsr_dttr" | G_SL_DttL -> "gsl_dttl"
+      | G_SL_DttR -> "gsl_dttr" | G_SR_DttR -> "gsr_dttr" 
+      | G_SL_DttL -> "gsl_dttl"
       | G_SLR_DbtR -> "gslr_dbtr" | G_SL_DbtL -> "gsl_dbtl"
       | C_quqd1R_bt -> "c_quqd1_1" | C_quqd1R_tb -> "conjg(c_quqd1_1)"
       | C_quqd1L_bt -> "conjg(c_quqd1_2)" | C_quqd1L_tb -> "c_quqd1_2"
@@ -2273,6 +2528,39 @@ effective operators:
       | Width f -> "width" ^ flavor_symbol f
       | K_Matrix_Coeff i -> "kc" ^ string_of_int i
       | K_Matrix_Pole i -> "kp" ^ string_of_int i
+      | G_HZZ6_V3 -> "ghzz6v3" | G_HZZ6_D ->"ghzz6d"
+      | G_HZZ6_DP ->"ghzz6dp" | G_HZZ6_PB ->"ghzz6pb"
+      | G_HGaZ6_D -> "ghaz6d" | G_HGaZ6_DP -> "ghaz6dp"
+      | G_HGaZ6_PB -> "ghaz6pb" | G_HGaGa6 -> "ghgaga6"
+      | G_HWW_6_D -> "ghww6d" | G_HWW_6_DP ->"ghww6dp"
+      | I_Dim6_AWW_Gauge -> "dim6awwgauge" | I_Dim6_AWW_GGG -> "dim6awwggg"
+      | I_Dim6_AWW_DP -> "dim6awwdp" | I_Dim6_AWW_DW -> "dim6awwdw"
+      | I_Dim6_WWZ_W -> "dim6wwzw" | I_Dim6_WWZ_DPWDW -> "dim6wwzdpwdw"
+      | I_Dim6_WWZ_DW -> "dim6wwzdw" | I_Dim6_WWZ_D -> "dim6wwzd"
+      | Dim6_vev3 -> "dim6vev3" | Dim6_Cphi -> "dim6cphi"
+(*i      | I_Dim6_GGG_G -> "dim6gggg" | I_Dim6_GGG_CG -> "dim6gggcg"  i*)
+      | Anom_Dim6_H4_v2 -> "adim6h4v2" | Anom_Dim6_H4_P2 -> "adim6h4p2"
+      | Anom_Dim6_AHWW_DPB -> "adim6ahwwdpb"
+      | Anom_Dim6_AHWW_DPW -> "adim6ahwwdpw"
+      | Anom_Dim6_AHWW_DW -> "adim6ahwwdw"
+      | Anom_Dim6_AAWW_DW -> "adim6aawwdw" | Anom_Dim6_AAWW_W -> "adim6aawww"
+      | Anom_Dim6_HHWW_DW -> "adim6hhwwdw"
+      | Anom_Dim6_HHWW_DPW -> "adim6hhwwdpw" 
+      | Anom_Dim6_HWWZ_DW -> "adim6hwwzdw"
+      | Anom_Dim6_HWWZ_DDPW -> "adim6hwwzddpw" 
+      | Anom_Dim6_HWWZ_DPW -> "adim6hwwzdpw"
+      | Anom_Dim6_HWWZ_DPB -> "adim6hwwzdpb"
+      | Anom_Dim6_AHHZ_D -> "adim6ahhzd" | Anom_Dim6_AHHZ_DP -> "adim6ahhzdp" 
+      | Anom_Dim6_AHHZ_PB -> "adim6ahhzpb"
+      | Anom_Dim6_AZWW_W -> "adim6azwww"
+      | Anom_Dim6_AZWW_DWDPW -> "adim6azwwdwdpw"
+      | Anom_Dim6_WWWW_W -> "adim6wwwww"
+      | Anom_Dim6_WWWW_DWDPW -> "adim6wwwwdwdpw"
+      | Anom_Dim6_WWZZ_W -> "adim6wwzzw"
+      | Anom_Dim6_WWZZ_DWDPW -> "adim6wwzzdwdpw"
+      | Anom_Dim6_HHAA -> "adim6hhaa"
+      | Anom_Dim6_HHZZ_D -> "adim6hhzzd" | Anom_Dim6_HHZZ_DP -> "adim6hhzzdp" 
+      | Anom_Dim6_HHZZ_PB -> "adim6hhzzpb" | Anom_Dim6_HHZZ_T -> "adim6hhzzt"
 
   end
 
@@ -2608,12 +2896,4 @@ module Groves (M : Model.Gauge) : Model.Gauge with module Ch = M.Ch =
 (* \thocwmodulesection{MSM With Cloned Families} *)
 
 module SM_clones = Groves(SM(SM_no_anomalous))
-
-(*i
- *  Local Variables:
- *  mode:caml
- *  indent-tabs-mode:nil
- *  page-delimiter:"^(\\* .*\n"
- *  End:
-i*)
 

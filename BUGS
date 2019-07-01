@@ -1,10 +1,11 @@
 General:
 
 * WHIZARD 2.2 currently runs only with the NAGFOR 6.0 (or newer) and 
-  gfortran 4.7.4 (or newer) Fortran compilers
+  gfortran 4.7.4 (or newer) Fortran compilers as well as Intel ifort
+  16.0.0 (or newer)
 
   [After compiler bugs are fixed, it should also run with PGF
-   and ifort.  See the file EXTENSIONS for the list of Fortran 2003 
+   and pathscale.  See the file EXTENSIONS for the list of Fortran 2003 
    features that the compiler must support.]
 
 * WHIZARD 2.2 incorporates all features from WHIZARD 1, making the
@@ -20,6 +21,16 @@ Known bugs:
   self test) does not work in v2.2.2 due to a regression in that compiler.
   This is fixed both in v2.2.3+ of WHIZARD as well as in v4.9.2+ of
   gfortran.
+
+* MAC OS X El Capitan (Darwin 10.11):
+  The security measures of the new Darwin systems do not allow e.g.
+  environment variables passed to subprocesses. This does not change
+  anything for the installed WHIZARD, but the testsuite (make check)
+  will not work before make install has been executed. make distcheck 
+  will not work on El Capitan. There is also the option to disable
+  the System Integrity Protocol (SIP) of El Capitan by booting in
+  Recovery Mode, open a terminal and type 'csrutil disable'. However, we
+  do not recommend to do so.
 
 Manual:
 

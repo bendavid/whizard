@@ -67,6 +67,7 @@ openmp_num_threads = 1
 | Events: writing to HepMC file 'hepmc_4_p.1.hepmc'
 | Events: writing to HepMC file 'hepmc_4_p.2.hepmc'
 |         ... event sample complete.
+| Events: actual unweighting efficiency =  83.33 %
 | Events: closing HepMC file 'hepmc_4_p.2.hepmc'
 | There were no errors and    1 warning(s).
 | WHIZARD run finished.

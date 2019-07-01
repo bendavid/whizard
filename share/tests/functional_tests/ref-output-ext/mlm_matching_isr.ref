@@ -100,6 +100,7 @@ $sample = "mlm_matching_isr_a"
 | Events: generating 1 unweighted, unpolarized events ...
 | Events: event normalization mode '1'
 |         ... event sample complete.
+| Events: actual unweighting efficiency =  10.00 %
 | Events: closing ASCII file 'mlm_matching_isr_a.debug'
 | Events: closing raw file 'mlm_matching_isr_a.evx'
 | RNG: Initializing TAO random-number generator
@@ -297,6 +298,7 @@ $sample = "mlm_matching_isr_b"
 | Events: generating 1 unweighted, unpolarized events ...
 | Events: event normalization mode '1'
 |         ... event sample complete.
+| Events: actual unweighting efficiency =   0.89 %
 | Events: closing ASCII file 'mlm_matching_isr_b.debug'
 | Events: closing raw file 'mlm_matching_isr_b.evx'
 | WHIZARD run finished.

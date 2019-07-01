@@ -85,6 +85,7 @@ n_events = 1
 | Events: generating 1 unweighted, unpolarized events ...
 | Events: event normalization mode '1'
 |         ... event sample complete.
+| Events: actual unweighting efficiency = 100.00 %
 | Events: closing ASCII file 'testproc_8_p.lha'
 | There were no errors and    2 warning(s).
 | WHIZARD run finished.

@@ -1,4 +1,4 @@
-! WHIZARD 2.2.7 Aug 11 2015
+! WHIZARD 2.2.8 Nov 22 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,11 +6,14 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
-!     Fabian Bach <fabian.bach@desy.de>
+!     Fabian Bach <fabian.bach@t-online.de>
+!     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
+!     Soyoung Shim <soyoung.shim@desy.de>
+!     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, Daniel Wiesler 
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -54,6 +57,11 @@ module auto_components
   public :: ds_table_t
   public :: fs_table_t
   public :: if_table_t
+
+  integer, parameter :: PROC_UNDEFINED = 0
+  integer, parameter :: PROC_DECAY = 1
+  integer, parameter :: PROC_SCATTER = 2
+
 
   type, abstract :: split_constraint_t
    contains
@@ -141,6 +149,7 @@ module auto_components
      logical :: loops = .false.
      type(ps_entry_t), pointer :: first => null ()
      type(ps_entry_t), pointer :: last => null ()
+     integer :: proc_type
    contains
      procedure :: final => ps_table_final
      procedure :: base_write => ps_table_base_write
@@ -349,7 +358,16 @@ contains
     integer :: i, k, n_in
     select type (table)
     type is (if_table_t)
-       n_in = 2
+       if (table%proc_type > 0) then
+          select case (table%proc_type)
+          case (PROC_DECAY)
+             n_in = 1
+          case (PROC_SCATTER)
+             n_in = 2
+          end select
+       else
+          call msg_fatal ("Neither a decay nor a scattering process")
+       end if
     class default
        n_in = 0
     end select
@@ -523,14 +541,19 @@ contains
     integer :: u
     u = given_output_unit (unit)
     write (u, "(1x,A)")  "Table of in/out states:"
-    call object%base_write (u, n_in = 2)
+    select case (object%proc_type)
+    case (PROC_DECAY)
+       call object%base_write (u, n_in = 1)
+    case (PROC_SCATTER)
+       call object%base_write (u, n_in = 2)
+     end select
   end subroutine if_table_write
           
-  subroutine ps_table_get_particle_string (object, index, n_in, prt_in, prt_out)
+  subroutine ps_table_get_particle_string (object, index, prt_in, prt_out)
     class(ps_table_t), intent(in) :: object
     integer, intent(in) :: index
-    integer, intent(in) :: n_in
     type(string_t), intent(out), dimension(:), allocatable :: prt_in, prt_out
+    integer :: n_in
     type(field_data_t), pointer :: prt
     type(ps_entry_t), pointer :: entry
     integer, dimension(:), allocatable :: pdg
@@ -546,6 +569,18 @@ contains
         call msg_fatal ("ps_table: entry with requested index does not exist!")
       end if
     end do
+
+    if (object%proc_type > 0) then
+       select case (object%proc_type)
+       case (PROC_DECAY)
+          n_in = 1
+       case (PROC_SCATTER)
+          n_in = 2
+       end select
+    else
+       call msg_fatal ("Neither decay nor scattering process")
+    end if
+
     n0 = n_in + 1
     allocate (prt_in (n_in), prt_out (entry%get_size () - n_in))
     do i = 1, n_in
@@ -570,14 +605,29 @@ contains
     end do
   end subroutine ps_table_get_particle_string
                         
-  subroutine ps_table_init (table, model, pl, constraints)
+  subroutine ps_table_init (table, model, pl, constraints, n_in)
     class(ps_table_t), intent(out) :: table
     class(model_data_t), intent(in), target :: model
     type(pdg_list_t), dimension(:), intent(in) :: pl
     type(split_constraints_t), intent(in) :: constraints
+    integer, intent(in), optional :: n_in
     logical :: passed
     integer :: i
     table%model => model
+
+    if (present (n_in)) then
+       select case (n_in)
+       case (1) 
+          table%proc_type = PROC_DECAY
+       case (2) 
+          table%proc_type = PROC_SCATTER
+       case default 
+          table%proc_type = PROC_UNDEFINED
+       end select
+    else
+       table%proc_type = PROC_UNDEFINED
+    end if
+
     do i = 1, size (pl)
        call table%record (pl(i), 0, 0, constraints, passed)
        if (.not. passed) then
@@ -615,7 +665,8 @@ contains
        end do
        deallocate (pa_in)
     end do
-    call table%init (model, pl, constraints)
+    n_in = size (pl_in(1)%a)
+    call table%init (model, pl, constraints, n_in)
   end subroutine if_table_init
     
   subroutine ps_table_enable_loops (table)
@@ -729,8 +780,14 @@ contains
           pdg_work(1) = pdg(p)
           pdg_work(2:p) = pdg(1:p-1)
           pdg_work(p+1:) = pdg(p+1:)
-          call ps_table_insert (table, &
+          select case (table%proc_type)
+          case (PROC_DECAY)
+             call ps_table_insert (table, &
+               pl, n_rad, i, pdg_work, constraints, n_in = 1)
+          case (PROC_SCATTER)
+             call ps_table_insert (table, &
                pl, n_rad, i, pdg_work, constraints, n_in = 2)
+          end select
        end do
     end if
   end subroutine if_table_insert

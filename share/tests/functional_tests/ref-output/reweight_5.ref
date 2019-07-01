@@ -90,6 +90,7 @@ Warning: Reading phs file: MD5 sum check disabled
 | Events: generating 2 unweighted, unpolarized events ...
 | Events: event normalization mode '1'
 |         ... event sample complete.
+| Events: actual unweighting efficiency = 100.00 %
 | Events: closing weight stream file 'reweight_5a.weights.dat'
 | Events: closing raw file 'reweight_5a.evx'
 | There were no errors and    4 warning(s).

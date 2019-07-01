@@ -1,4 +1,4 @@
-! WHIZARD 2.2.7 Aug 11 2015
+! WHIZARD 2.2.8 Nov 22 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,11 +6,14 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
-!     Fabian Bach <fabian.bach@desy.de>
+!     Fabian Bach <fabian.bach@t-online.de>
+!     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
+!     Soyoung Shim <soyoung.shim@desy.de>
+!     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, Daniel Wiesler 
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -190,6 +193,7 @@ contains
   end subroutine rt_data_2
   
   subroutine rt_data_3 (u)
+    use event_base, only: event_callback_nop_t
     integer, intent(in) :: u
     type(rt_data_t), target :: global, local
     type(flavor_t), dimension(2) :: flv
@@ -198,6 +202,7 @@ contains
     type(stream_t) :: stream
     type(parse_tree_t) :: parse_tree
     type(prclib_entry_t), pointer :: lib
+    type(event_callback_nop_t) :: event_callback_nop
     
     write (u, "(A)")  "* Test output: rt_data_3"
     write (u, "(A)")  "*   Purpose: initialize global runtime data &
@@ -269,6 +274,8 @@ contains
     allocate (lib)
     call lib%init (var_str ("library_2"))
     call local%add_prclib (lib)
+
+    call local%set_event_callback (event_callback_nop)
 
     call local%write (u)
 

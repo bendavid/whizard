@@ -1,4 +1,4 @@
-! WHIZARD 2.2.7 Aug 11 2015
+! WHIZARD 2.2.8 Nov 22 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,11 +6,14 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
-!     Fabian Bach <fabian.bach@desy.de>
+!     Fabian Bach <fabian.bach@t-online.de>
+!     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
+!     Soyoung Shim <soyoung.shim@desy.de>
+!     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, Daniel Wiesler 
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -50,6 +53,7 @@ module powheg_matching
   use lorentz
   use sm_qcd, only: qcd_t, alpha_qcd_from_scale_t, alpha_qcd_from_lambda_t
   use sm_physics, only: Li2
+  use subevents, only: PRT_INCOMING, PRT_OUTGOING
   use colors
   use particles
   use grids
@@ -60,6 +64,8 @@ module powheg_matching
   use nlo_data, only: compute_dalitz_bounds, FSR_SIMPLE, FSR_MASSIVE
   use phs_fks
   use matching_base
+  use processes, only: pcm_instance_nlo_t
+  use pcm_base, only: pcm_instance_t
 
   implicit none
   private
@@ -113,14 +119,17 @@ module powheg_matching
   type :: process_deps_t
      real(default) :: lambda2_gen, sqrts
      integer :: n_alr
+     logical :: cm_frame = .true.
   contains
      procedure :: write => process_deps_write
   end type process_deps_t
 
   type :: event_deps_t
      real(default) :: s_hat
-     type(vector4_t), dimension(:), allocatable :: p_born
-     type(vector4_t), dimension(:), allocatable :: p_real
+     type(vector4_t), dimension(:), allocatable :: p_born_cms
+     type(vector4_t), dimension(:), allocatable :: p_born_lab
+     type(vector4_t), dimension(:), allocatable :: p_real_cms
+     type(vector4_t), dimension(:), allocatable :: p_real_lab
      real(default) :: sqme_born
   contains
      procedure :: write => event_deps_write
@@ -244,36 +253,38 @@ module powheg_matching
    contains
      procedure :: get_method => powheg_matching_get_method
      procedure :: before_shower => powheg_matching_before_shower
+     procedure :: first_event => powheg_matching_first_event
      procedure :: after_shower => powheg_matching_after_shower
      procedure :: display_grid_startup_message => &
                          powheg_display_grid_startup_message
      procedure :: write => powheg_write
      procedure :: final => powheg_matching_final
-     procedure :: first_event => powheg_setup_grids
-     procedure :: setup_grids => powheg_setup_grids
-     procedure :: setup_sudakovs => powheg_setup_sudakovs
+     procedure :: setup_grids => powheg_matching_setup_grids
+     procedure :: setup_sudakovs => powheg_matching_setup_sudakovs
      procedure :: init => powheg_matching_init
      generic :: update => update_momenta, &
                           update_particle_set
-     procedure :: update_momenta => powheg_update_momenta
-     procedure :: update_particle_set => powheg_update_particle_set
-     procedure :: reweight_matrix_elements => powheg_reweight_matrix_elements
-     procedure :: compute_sqme_real => powheg_compute_sqme_real
-     procedure :: set_scale => powheg_set_scale
-     procedure :: fill_grids => powheg_fill_grids
-     procedure :: generate_xi_and_y_for_grids => powheg_generate_xi_and_y_for_grids
-     procedure :: prepare_momenta_for_fill_grids => powheg_prepare_momenta_for_fill_grids
-     procedure :: above_pt2_min => powheg_above_pt2_min
-     procedure :: update_sudakovs => powheg_update_sudakovs
-     procedure :: import_norms_from_grid => powheg_import_norms_from_grid
-     procedure :: save_grids => powheg_save_grids
-     procedure :: load_grids => powheg_load_grids
-     procedure :: requires_new_grids => powheg_requires_new_grids
-     procedure :: generate_emission => powheg_generate_emission
-     procedure :: build_particle_set => powheg_build_particle_set
-     procedure :: reweight_norm => powheg_reweight_norm
-     procedure :: norm_from_xi_and_y => powheg_norm_from_xi_and_y
-     procedure :: prepare_for_events => powheg_prepare_for_events
+     procedure :: update_momenta => powheg_matching_update_momenta
+     procedure :: update_particle_set => powheg_matching_update_particle_set
+     procedure :: update_event_deps => powheg_matching_update_event_deps 
+     procedure :: boost_preal_to_lab_frame => powheg_matching_boost_preal_to_lab_frame
+     procedure :: reweight_matrix_elements => powheg_matching_reweight_matrix_elements
+     procedure :: compute_sqme_real => powheg_matching_compute_sqme_real
+     procedure :: set_scale => powheg_matching_set_scale
+     procedure :: fill_grids => powheg_matching_fill_grids
+     procedure :: generate_xi_and_y_for_grids => powheg_matching_generate_xi_and_y_for_grids
+     procedure :: prepare_momenta_for_fill_grids => powheg_matching_prepare_momenta_for_fill_grids
+     procedure :: above_pt2_min => powheg_matching_above_pt2_min
+     procedure :: update_sudakovs => powheg_matching_update_sudakovs
+     procedure :: import_norms_from_grid => powheg_matching_import_norms_from_grid
+     procedure :: save_grids => powheg_matching_save_grids
+     procedure :: load_grids => powheg_matching_load_grids
+     procedure :: requires_new_grids => powheg_matching_requires_new_grids
+     procedure :: generate_emission => powheg_matching_generate_emission
+     procedure :: build_particle_set => powheg_matching_build_particle_set
+     procedure :: reweight_norm => powheg_matching_reweight_norm
+     procedure :: norm_from_xi_and_y => powheg_matching_norm_from_xi_and_y
+     procedure :: prepare_for_events => powheg_matching_prepare_for_events
      procedure :: compute_lambda2_gen => powheg_matching_compute_lambda2_gen
      procedure :: setup_nlo_environment => powheg_matching_setup_nlo_environment
      procedure :: copy_momenta => powheg_matching_copy_momenta
@@ -413,24 +424,53 @@ contains
     write (u, "(3X,A," // FMT_19 // ")") "sqme_born = ", event_deps%sqme_born
   end subroutine event_deps_write
 
-  subroutine event_deps_update (event_deps, sqme_born, p_born)
+  subroutine event_deps_update (event_deps, sqme_born, p_born, lt_lab_to_cms)
     class(event_deps_t), intent(inout) :: event_deps
     real(default), intent(in) :: sqme_born
     type(vector4_t), dimension(:), intent(in) :: p_born
+    type(lorentz_transformation_t), intent(in), optional :: lt_lab_to_cms
+    integer :: i, n_born
     event_deps%sqme_born = sqme_born
+    n_born = size (p_born)
     if (debug_active (D_MATCHING)) then
-       if (size (p_born) /= size (event_deps%p_born)) then
-          call msg_fatal ("event_deps_update: number of born_momenta has changed")
+       if (n_born /= size (event_deps%p_born_lab)) then
+          call msg_fatal &
+               ("event_deps_update: number of born_momenta has changed")
        end if
     end if
-    event_deps%p_born = p_born
-    call event_deps%set_cms ()
+    !!! !!! !!! Workaround for standard-semantics ifort 16.0 bug 
+    if (.not. allocated (event_deps%p_born_lab)) &
+       allocate (event_deps%p_born_lab (n_born))
+    if (.not. allocated (event_deps%p_born_cms)) &
+       allocate (event_deps%p_born_cms (n_born))
+    do i = 1, n_born
+       event_deps%p_born_lab(i) = p_born(i)
+    end do
+    call event_deps%set_cms (lt_lab_to_cms)
   end subroutine event_deps_update
 
-  pure subroutine event_deps_set_cms (event_deps)
+  subroutine event_deps_set_cms (event_deps, lt_lab_to_cms)
     class(event_deps_t), intent(inout) :: event_deps
-    event_deps%s_hat = &
-         (event_deps%p_born(1) + event_deps%p_born(2))**2
+    type(lorentz_transformation_t), intent(in), optional :: lt_lab_to_cms
+    associate (p => event_deps%p_born_lab)
+       event_deps%s_hat = (p(1) + p(2))**2
+       if (present (lt_lab_to_cms)) then
+          event_deps%p_born_cms = lt_lab_to_cms * p
+       else
+          event_deps%p_born_cms = p
+       end if
+    end associate
+  contains
+    function compute_boost_to_cm_frame (p) result (lt)
+      type(lorentz_transformation_t) :: lt
+      type(vector4_t), dimension(:), intent(in) :: p
+      real(default) :: E1, E2
+      real(default) :: beta, beta_gamma
+      E1 = p(1)%p(0); E2 = p(2)%p(0)
+      beta = (E1 - E2) / (E1 + E2)
+      beta_gamma = beta / sqrt (one - beta**2)
+      lt = inverse (boost (beta_gamma, 3))
+   end function compute_boost_to_cm_frame
   end subroutine event_deps_set_cms
 
   pure subroutine veto_counter_record_ubf (counter, vetoed)
@@ -831,7 +871,7 @@ contains
      real(default) :: m, mrec
      real(default) :: q0
      q0 = sqrt(sudakov%event_deps%s_hat)
-     associate (p => sudakov%event_deps%p_born(sudakov%associated_emitter))
+     associate (p => sudakov%event_deps%p_born_lab(sudakov%associated_emitter))
         m = p**1
         mrec = sqrt ((q0-p%p(0))**2 - p%p(1)**2 - p%p(2)**2 - p%p(3)**2)
      end associate
@@ -845,7 +885,7 @@ contains
     real(default) :: E_em, xi_max
     real(default) :: xi_1, xi_min, xi_m
     pt2 = r%pt2
-    E_em = energy (sudakov%event_deps%p_born(sudakov%associated_emitter))
+    E_em = energy (sudakov%event_deps%p_born_lab(sudakov%associated_emitter))
     q02 = sudakov%event_deps%s_hat; q0 = sqrt(q02)
     !xi_max = sqrt (sudakov%xi2_max)
     xi_max = sudakov%xi_max_extended
@@ -870,7 +910,7 @@ contains
     type(vector4_t) :: p_emitter
 
     q0 = sqrt (sudakov%event_deps%s_hat)
-    p_emitter = sudakov%event_deps%p_born(sudakov%associated_emitter)
+    p_emitter = sudakov%event_deps%p_born_lab(sudakov%associated_emitter)
     associate (p => p_emitter%p)
       mrec2 = (q0 - p(0))**2 - p(1)**2 - p(2)**2 - p(3)**2
       E_em = p(0)
@@ -902,7 +942,7 @@ contains
      real(default), intent(in) :: s_hat
      real(default) :: q, E_em, xi_max, z2
      q = sqrt(s_hat)
-     E_em = energy (sudakov%event_deps%p_born (sudakov%associated_emitter))
+     E_em = energy (sudakov%event_deps%p_born_lab (sudakov%associated_emitter))
      !xi_max = sqrt(sudakov%xi2_max)
      xi_max = sudakov%xi_max_extended
      z2 = sudakov%z2
@@ -915,7 +955,7 @@ contains
     real(default), intent(in) :: xi, y, alpha_s
     real(default) :: q, p_em
     q = sqrt (sudakov%event_deps%s_hat)
-    p_em = space_part_norm (sudakov%event_deps%p_born(sudakov%associated_emitter))
+    p_em = space_part_norm (sudakov%event_deps%p_born_lab(sudakov%associated_emitter))
     u = alpha_s * q/p_em * one/(xi*(one-sudakov%z))
   end function sudakov_massive_fsr_upper_bound_func
 
@@ -927,8 +967,8 @@ contains
     real(default) :: q0, p_em, E_em
     real(default) :: y1, y2
     q0 = sqrt (sudakov%event_deps%s_hat)
-    E_em = energy (sudakov%event_deps%p_born(sudakov%associated_emitter))
-    p_em = space_part_norm (sudakov%event_deps%p_born(sudakov%associated_emitter))
+    E_em = energy (sudakov%event_deps%p_born_lab(sudakov%associated_emitter))
+    p_em = space_part_norm (sudakov%event_deps%p_born_lab(sudakov%associated_emitter))
     xi_max = sudakov%xi_max_extended
     associate (z1 => sudakov%z1, z2 => sudakov%z2)
        xi_1 = (sqrt (pt2*(pt2*z1**2 + 8*E_em*q0*(one-z1))) - pt2*z1) / (2*q0**2*(one-z1))
@@ -1002,6 +1042,14 @@ contains
     call matching%generate_emission (particle_set = particle_set)
     vetoed = .false.
   end subroutine powheg_matching_before_shower
+
+  subroutine powheg_matching_first_event (matching)
+    class(powheg_matching_t),  intent(inout), target :: matching
+    associate (instance => matching%process_instance)
+       matching%process_deps%cm_frame = instance%is_cm_frame (1)
+    end associate
+    call matching%setup_grids ()
+  end subroutine powheg_matching_first_event
 
   subroutine powheg_matching_after_shower (matching, particle_set, vetoed)
     class(powheg_matching_t), intent(inout) :: matching
@@ -1079,9 +1127,10 @@ contains
     end do
     write (u,'(A,I0)') "Total number of events which radiate a gluon: ", &
                        matching%n_emissions
+    close (u)
   end subroutine powheg_matching_final
 
-  subroutine powheg_setup_grids (matching)
+  subroutine powheg_matching_setup_grids (matching)
     class(powheg_matching_t), intent(inout), target :: matching
     call matching%prepare_for_events ()
     if (matching%requires_new_grids ()) then
@@ -1092,9 +1141,9 @@ contains
     end if
     call matching%grid%compute_and_write_mean_and_max ()
     call matching%import_norms_from_grid ()
-  end subroutine powheg_setup_grids
+  end subroutine powheg_matching_setup_grids
 
-  subroutine powheg_setup_sudakovs (powheg)
+  subroutine powheg_matching_setup_sudakovs (powheg)
     class(powheg_matching_t), intent(inout), target :: powheg
     integer :: alr, emitter
     logical :: is_fsr, is_massive
@@ -1104,13 +1153,16 @@ contains
     do alr = 1, powheg%process_deps%n_alr
        if (is_fsr) then
           ubf_type = powheg%settings%upper_bound_func
-          if (.not. powheg%testing%active) then
-             emitter = powheg%process_instance%nlo_controller%get_emitter (alr)
-             is_massive = powheg%phs_fks_generator%is_massive (emitter)
-          else
-             emitter = 1
-             is_massive = .false.
-          end if
+          select type (pcm => powheg%process_instance%pcm)
+          class is (pcm_instance_nlo_t)
+             if (.not. powheg%testing%active) then
+                emitter = pcm%controller%get_emitter (alr)
+                is_massive = powheg%phs_fks_generator%is_massive (emitter)
+             else
+                emitter = 1
+                is_massive = .false.
+             end if
+          end select
           if (is_massive) ubf_type = UBF_MASSIVE
           select case (ubf_type)
           case (UBF_SIMPLE)
@@ -1132,7 +1184,7 @@ contains
 
        powheg%sudakov(alr)%s%associated_emitter = emitter
     end do
-  end subroutine powheg_setup_sudakovs
+  end subroutine powheg_matching_setup_sudakovs
 
   subroutine powheg_matching_init (matching, var_list, process_name)
     class(powheg_matching_t), intent(out) :: matching
@@ -1143,25 +1195,67 @@ contains
     matching%process_name = process_name
   end subroutine powheg_matching_init
 
-  subroutine powheg_update_momenta (powheg, p_born)
+  subroutine powheg_matching_update_momenta (powheg, p_born)
     class(powheg_matching_t), intent(inout) :: powheg
     type(vector4_t), dimension(:), intent(in) :: p_born
-    if (.not. powheg%testing%active) then
-       call powheg%event_deps%update &
-            (powheg%process_instance%sqme_collector%get_sqme_born(1), p_born)
+    type(lorentz_transformation_t) :: lt_lab_to_cms
+    
+    if (.not. powheg%process_deps%cm_frame) then
+       lt_lab_to_cms = inverse (powheg%process_instance%get_lorentz_transformation (1))
+       call powheg%update_event_deps (powheg%process_instance%pcm, &
+          p_born, lt_lab_to_cms)
     else
-       call powheg%event_deps%update &
-            (powheg%testing%sqme_born, p_born)
+       call powheg%update_event_deps (powheg%process_instance%pcm, p_born)
     end if
-  end subroutine powheg_update_momenta
+  end subroutine powheg_matching_update_momenta
 
-  subroutine powheg_update_particle_set (powheg, particle_set)
+  subroutine powheg_matching_update_particle_set (powheg, particle_set)
     class(powheg_matching_t), intent(inout) :: powheg
     type(particle_set_t), intent(in) :: particle_set
-    call powheg%update_momenta (particle_set%get_momenta())
-  end subroutine powheg_update_particle_set
+    integer, dimension(:), allocatable :: indices
+    logical, dimension(:), allocatable :: in_out_mask
+    integer :: i
+    allocate (in_out_mask (particle_set%get_n_tot()))
+    do i = 1, particle_set%get_n_tot()
+       in_out_mask(i) = particle_set%prt(i)%get_status () == PRT_INCOMING &
+            .or. particle_set%prt(i)%get_status () == PRT_OUTGOING
+    end do
+    allocate (indices (size (particle_set%get_indices (in_out_mask))))
+    indices = particle_set%get_indices (in_out_mask)
+    call powheg%update_momenta (particle_set%get_momenta (indices))
+  end subroutine powheg_matching_update_particle_set
 
-  function powheg_reweight_matrix_elements (powheg, r) result (accepted)
+  subroutine powheg_matching_update_event_deps (powheg, pcm, p_born, lt_lab_to_cms)
+    class(powheg_matching_t), intent(inout) :: powheg
+    class(pcm_instance_t), intent(in) :: pcm
+    type(vector4_t), dimension(:), intent(in) :: p_born
+    type(lorentz_transformation_t), intent(in), optional :: lt_lab_to_cms
+    select type (pcm => powheg%process_instance%pcm)
+    class is (pcm_instance_nlo_t)
+       if (.not. powheg%testing%active) then
+          call powheg%event_deps%update &
+               (pcm%collector%get_sqme_born(1), p_born, lt_lab_to_cms)
+       else
+          call powheg%event_deps%update &
+               (powheg%testing%sqme_born, p_born, lt_lab_to_cms)
+       end if
+    end select
+  end subroutine powheg_matching_update_event_deps
+
+  subroutine powheg_matching_boost_preal_to_lab_frame (powheg)
+    class(powheg_matching_t), intent(inout) :: powheg
+    type(lorentz_transformation_t) :: lt_cms_to_lab
+    associate (event_deps => powheg%event_deps)
+       if (powheg%process_deps%cm_frame) then
+          event_deps%p_real_lab = event_deps%p_real_cms
+       else
+          lt_cms_to_lab = powheg%process_instance%get_lorentz_transformation (1)
+          event_deps%p_real_lab = lt_cms_to_lab * event_deps%p_real_cms
+       end if
+    end associate
+  end subroutine powheg_matching_boost_preal_to_lab_frame
+    
+  function powheg_matching_reweight_matrix_elements (powheg, r) result (accepted)
     logical :: accepted
     class(powheg_matching_t), intent(inout) :: powheg
     type(radiation_t), intent(in) :: r
@@ -1170,66 +1264,73 @@ contains
     real(default) :: norm, ubf, ubound, random, weight
     real(default) :: alpha_s
     call msg_debug (D_MATCHING, "reweight_matrix_elements")
-    call powheg%rng%generate (random)
-    emitter = powheg%process_instance%nlo_controller%get_emitter (r%alr)
-    powheg%event_deps%p_real = &
-         powheg%phs_fks_generator%generate_fsr_from_xi_and_y (r%xi, &
-                          r%y, r%phi, emitter, powheg%event_deps%p_born)
-    call powheg%copy_momenta ()
-    norm = powheg%norm_from_xi_and_y (r)
-    associate (s => powheg%sudakov(r%alr)%s)
-       alpha_s = s%alpha_s (s%kt2 (r%xi, r%y), use_correct=.true.)
-       ubf = s%upper_bound_func (r%xi, r%y, alpha_s)
-       sqme_real_x_jacobian = powheg%compute_sqme_real (r%alr, alpha_s)
-       sqme_born = powheg%event_deps%sqme_born
-       ubound = sqme_born * ubf * norm
-       weight = sqme_real_x_jacobian / ubound
-       if (weight > 1) call s%veto_counter%record_fail()
+    select type (pcm => powheg%process_instance%pcm)
+    class is (pcm_instance_nlo_t)
+       call powheg%rng%generate (random)
+       emitter = pcm%controller%get_emitter (r%alr)
+       powheg%event_deps%p_real_cms = &
+            powheg%phs_fks_generator%generate_fsr_from_xi_and_y (r%xi, &
+            r%y, r%phi, emitter, powheg%event_deps%p_born_cms)
+       call powheg%boost_preal_to_lab_frame ()
+       call powheg%copy_momenta ()
+       norm = powheg%norm_from_xi_and_y (r)
+       associate (s => powheg%sudakov(r%alr)%s)
+         alpha_s = s%alpha_s (s%kt2 (r%xi, r%y), use_correct=.true.)
+         ubf = s%upper_bound_func (r%xi, r%y, alpha_s)
+         sqme_real_x_jacobian = powheg%compute_sqme_real (r%alr, alpha_s)
+         sqme_born = powheg%event_deps%sqme_born
+         ubound = sqme_born * ubf * norm
+         weight = sqme_real_x_jacobian / ubound
+         if (weight > 1) call s%veto_counter%record_fail()
+         if (debug_active (D_MATCHING)) then
+            if (weight < 0) call msg_warning ("R/B < 0!")
+         end if
+         accepted = random < weight
+       end associate
        if (debug_active (D_MATCHING)) then
-          if (weight < 0) call msg_warning ("R/B < 0!")
+          print *, '  r%alr =    ',   r%alr
+          print *, '  r%xi =    ', r%xi
+          print *, '  r%y =    ', r%y
+          print *, '  emitter =    ', emitter
+          print *, '  random =    ', random
+          print *, '  sqme_real_x_jacobian =    ', sqme_real_x_jacobian
+          print *, '  sqme_born =    ', sqme_born
+          print *, '  ubf =    ', ubf
+          print *, '  norm =    ',   norm
+          print *, '  ubound =    ', ubound
+          print *, '  matrix element  accepted =    ', accepted
        end if
-       accepted = random < weight
-    end associate
-    if (debug_active (D_MATCHING)) then
-       print *, '  r%alr =    ',   r%alr
-       print *, '  r%xi =    ', r%xi
-       print *, '  r%y =    ', r%y
-       print *, '  emitter =    ', emitter
-       print *, '  random =    ', random
-       print *, '  sqme_real_x_jacobian =    ', sqme_real_x_jacobian
-       print *, '  sqme_born =    ', sqme_born
-       print *, '  ubf =    ', ubf
-       print *, '  norm =    ',   norm
-       print *, '  ubound =    ', ubound
-       print *, '  matrix element  accepted =    ', accepted
-    end if
-  end function powheg_reweight_matrix_elements
+    end select
+  end function powheg_matching_reweight_matrix_elements
 
-  function powheg_compute_sqme_real (powheg, alr, alpha_s) result (sqme)
+  function powheg_matching_compute_sqme_real (powheg, alr, alpha_s) result (sqme)
     class(powheg_matching_t), intent(inout) :: powheg
     integer, intent(in) :: alr
     real(default), intent(in) :: alpha_s
     integer :: emitter
     real(default) :: sqme
-    if (.not. powheg%testing%active) then
-       associate (instance => powheg%process_instance)
-          emitter = instance%nlo_controller%get_emitter (alr)
-          call instance%compute_sqme_real_rad (emitter, &
-               powheg%event_deps%p_born, powheg%event_deps%p_real, alpha_s)
-          sqme = instance%sqme_collector%sqme_real_per_emitter (1, emitter)
-       end associate
-    else
-       sqme = one
-    end if
-  end function powheg_compute_sqme_real
+    select type (pcm => powheg%process_instance%pcm)
+    class is (pcm_instance_nlo_t)
+       if (.not. powheg%testing%active) then
+          associate (instance => powheg%process_instance)
+            emitter = pcm%controller%get_emitter (alr)
+            call instance%compute_sqme_real_rad (emitter, &
+                 powheg%event_deps%p_born_lab, powheg%event_deps%p_real_lab, alpha_s)
+            sqme = pcm%collector%sqme_real_per_emitter (1, emitter)
+          end associate
+       else
+          sqme = one
+       end if
+    end select
+  end function powheg_matching_compute_sqme_real
 
-  subroutine powheg_set_scale (powheg, pT2)
+  subroutine powheg_matching_set_scale (powheg, pT2)
     class(powheg_matching_t), intent(inout) :: powheg
     real(default), intent(in) :: pT2
     call powheg%process_instance%set_fac_scale (sqrt(pT2))
-  end subroutine powheg_set_scale
+  end subroutine powheg_matching_set_scale
 
-  subroutine powheg_fill_grids (powheg)
+  subroutine powheg_matching_fill_grids (powheg)
     class(powheg_matching_t), intent(inout) :: powheg
     real(default), dimension(3) :: radiation_variables
     real(default) :: f_alr, xi, y, norm, real_me, ubf
@@ -1298,71 +1399,79 @@ contains
       end if
     end subroutine show_vars
 
-  end subroutine powheg_fill_grids
+  end subroutine powheg_matching_fill_grids
 
-  subroutine powheg_generate_xi_and_y_for_grids (powheg, &
+  subroutine powheg_matching_generate_xi_and_y_for_grids (powheg, &
                                        radiation_randoms, alr, xi, y)
     class(powheg_matching_t), intent(inout) :: powheg
     integer, intent(in) :: alr
     real(default), dimension(:), intent(in) :: radiation_randoms
     real(default), intent(out) :: xi, y
     integer :: emitter
-    if (.not. powheg%testing%active) then
-       associate (nlo => powheg%process_instance%nlo_controller, &
-                  fks => powheg%phs_fks_generator)
-          emitter = nlo%get_emitter (alr)
-          powheg%event_deps%p_real = fks%generate_fsr_from_x &
-                 (radiation_randoms, emitter, powheg%event_deps%p_born)
-          call powheg%copy_momenta ()
-          call fks%get_radiation_variables (emitter, xi, y)
-       end associate
-    else
-       xi = radiation_randoms (I_XI)
-       y = radiation_randoms (I_Y)
-    end if
-  end subroutine powheg_generate_xi_and_y_for_grids
+    select type (pcm => powheg%process_instance%pcm)
+    class is (pcm_instance_nlo_t)
+       if (.not. powheg%testing%active) then
+          associate (fks => powheg%phs_fks_generator)
+            emitter = pcm%controller%get_emitter (alr)
+            powheg%event_deps%p_real_cms = fks%generate_fsr_from_x &
+                 (radiation_randoms, emitter, powheg%event_deps%p_born_cms)
+            call powheg%boost_preal_to_lab_frame ()
+            call powheg%copy_momenta ()
+            call fks%get_radiation_variables (emitter, xi, y)
+          end associate
+       else
+          xi = radiation_randoms (I_XI)
+          y = radiation_randoms (I_Y)
+       end if
+    end select
+  end subroutine powheg_matching_generate_xi_and_y_for_grids
 
-  subroutine powheg_prepare_momenta_for_fill_grids (powheg, &
+  subroutine powheg_matching_prepare_momenta_for_fill_grids (powheg, &
                                                       radiation_randoms)
     real(default), dimension(3), intent(out) :: radiation_randoms
     class(powheg_matching_t), intent(inout) :: powheg
-    if (.not. powheg%testing%active) then
-       associate (nlo => powheg%process_instance%nlo_controller, &
-                  fks => powheg%phs_fks_generator, &
-                  process => powheg%process_instance%process)
-          do
-             call process%generate_weighted_event (powheg%process_instance, 1)
-             call powheg%update (nlo%int_born%get_momenta ())
-             call powheg%rng%generate (radiation_randoms)
-             call fks%generate_radiation_variables &
-                  (radiation_randoms, powheg%event_deps%p_born)
-             call powheg%update_sudakovs (fks%real_kinematics%y)
-             if (powheg%above_pt2_min ()) exit
-          end do
-       end associate
-    else
-       call powheg%rng%generate (radiation_randoms)
-    end if
-  end subroutine powheg_prepare_momenta_for_fill_grids
+    select type (pcm => powheg%process_instance%pcm)
+    class is (pcm_instance_nlo_t)
+       if (.not. powheg%testing%active) then
+          associate ( &
+               fks => powheg%phs_fks_generator, &
+               process => powheg%process_instance%process)
+            do
+               call process%generate_weighted_event (powheg%process_instance, 1)
+               call powheg%update (pcm%controller%int_born%get_momenta ())
+               call powheg%rng%generate (radiation_randoms)
+               call fks%generate_radiation_variables &
+                    (radiation_randoms, powheg%event_deps%p_born_lab)
+               call powheg%update_sudakovs (fks%real_kinematics%y)
+               if (powheg%above_pt2_min ()) exit
+            end do
+          end associate
+       else
+          call powheg%rng%generate (radiation_randoms)
+       end if
+    end select
+  end subroutine powheg_matching_prepare_momenta_for_fill_grids
 
-  function powheg_above_pt2_min (powheg) result (above)
+  function powheg_matching_above_pt2_min (powheg) result (above)
     logical :: above
     class(powheg_matching_t), intent(in) :: powheg
     integer :: alr, emitter
     real(default) :: xi, y
     above = .true.
-    associate (nlo => powheg%process_instance%nlo_controller, &
-                      fks => powheg%phs_fks_generator)
-       do alr = 1, powheg%process_deps%n_alr
-          emitter = nlo%get_emitter (alr)
-          call fks%get_radiation_variables (emitter, xi, y)
-          above = powheg%sudakov(alr)%s%kt2 (xi, y) >= powheg%settings%pt2_min
-          if (.not. above) exit
-       end do
-    end associate
-  end function powheg_above_pt2_min
+    select type (pcm => powheg%process_instance%pcm)
+    class is (pcm_instance_nlo_t)
+       associate (fks => powheg%phs_fks_generator)
+         do alr = 1, powheg%process_deps%n_alr
+            emitter = pcm%controller%get_emitter (alr)
+            call fks%get_radiation_variables (emitter, xi, y)
+            above = powheg%sudakov(alr)%s%kt2 (xi, y) >= powheg%settings%pt2_min
+            if (.not. above) exit
+         end do
+       end associate
+    end select
+  end function powheg_matching_above_pt2_min
 
-  subroutine powheg_update_sudakovs (powheg, y)
+  subroutine powheg_matching_update_sudakovs (powheg, y)
     class(powheg_matching_t), intent(inout) :: powheg
     real(default), dimension(:), intent(in) :: y
     integer :: alr, emitter
@@ -1373,7 +1482,7 @@ contains
        type is (sudakov_massive_fsr_t)
           emitter = s%associated_emitter
           q0 = sqrt (s%event_deps%s_hat)
-          p_emitter = s%event_deps%p_born (emitter)
+          p_emitter = s%event_deps%p_born_lab (emitter)
           associate (p => p_emitter%p)
              mrec2 = (q0 - p(0))**2 - p(1)**2 - p(2)**2 - p(3)**2
           end associate
@@ -1382,9 +1491,9 @@ contains
           s%z = s%z2 - (s%z2-s%z1)*(one+y(emitter))/two
        end select
     end do
-  end subroutine powheg_update_sudakovs
+  end subroutine powheg_matching_update_sudakovs
 
-  subroutine powheg_import_norms_from_grid (powheg)
+  subroutine powheg_matching_import_norms_from_grid (powheg)
     class(powheg_matching_t), intent(inout) :: powheg
     integer :: alr
     real(default) :: norm_max
@@ -1392,17 +1501,17 @@ contains
        norm_max = powheg%grid%get_maximum_in_3d (alr)
        call powheg%sudakov(alr)%s%set_normalization (norm_max)
     end do
-  end subroutine powheg_import_norms_from_grid
+  end subroutine powheg_matching_import_norms_from_grid
 
-  subroutine powheg_save_grids (powheg)
+  subroutine powheg_matching_save_grids (powheg)
     class(powheg_matching_t), intent(inout) :: powheg
     type(string_t) :: filename, n_points
     n_points = str (powheg%settings%n_init)
     filename = powheg%process_name // "_" // n_points // "_powheg_grids.dat"
     call powheg%grid%save_to_file (char (filename))
-  end subroutine powheg_save_grids
+  end subroutine powheg_matching_save_grids
 
-  subroutine powheg_load_grids (powheg)
+  subroutine powheg_matching_load_grids (powheg)
     class(powheg_matching_t), intent(inout) :: powheg
     type(string_t) :: filename, n_points
     n_points = str (powheg%settings%n_init)
@@ -1411,18 +1520,18 @@ contains
     write (msg_buffer, "(A,A,A)") "POWHEG: using grids from file '", &
                                char (filename), "'"
     call msg_message ()
-  end subroutine powheg_load_grids
+  end subroutine powheg_matching_load_grids
 
-  function powheg_requires_new_grids (powheg) result (requires)
+  function powheg_matching_requires_new_grids (powheg) result (requires)
     logical :: requires
     class(powheg_matching_t), intent(in) :: powheg
     type(string_t) :: filename, n_points
     n_points = str (powheg%settings%n_init)
     filename = powheg%process_name // "_" // n_points // "_powheg_grids.dat"
     requires = .not. os_file_exist (filename) .or. powheg%settings%rebuild_grids
-  end function powheg_requires_new_grids
+  end function powheg_matching_requires_new_grids
 
-  subroutine powheg_generate_emission (powheg, particle_set, pt2_generated)
+  subroutine powheg_matching_generate_emission (powheg, particle_set, pt2_generated)
     class(powheg_matching_t), intent(inout) :: powheg
     type(particle_set_t), intent(inout), optional :: particle_set
     real(default), intent(out), optional :: pt2_generated
@@ -1434,58 +1543,59 @@ contains
     if (signal_is_pending ())  return
     r_max%pt2 = zero
     r_max%alr = 0
-    call msg_debug (D_MATCHING, "powheg_generate_emission")
-    associate (nlo => powheg%process_instance%nlo_controller)
-      allocate (p_real_max (nlo%get_n_particles_real ()))
-      do alr = 1, powheg%process_deps%n_alr
-         if (signal_is_pending ())  return
-         associate (sudakov => powheg%sudakov(alr)%s)
-           xi2_max = nlo%get_xi_max (alr)**2
-           call sudakov%update (xi2_max)
-           select type (sudakov)
-           type is (sudakov_massive_fsr_t)
-              call sudakov%compute_xi_max_extended ()
-           end select
-           r%alr = alr
-           r%pt2 = sudakov%kt2_max (powheg%event_deps%s_hat)
-           sudakov%last_log = 0
-           call msg_debug (D_MATCHING, "Starting evolution at r%pt2", r%pt2)
-           PT_EVOLUTION: do
-              if (signal_is_pending ())  return
-              call sudakov%generate_emission (r)
-              if (signal_is_pending ())  return
-              if (r%valid) then
-                 accepted = powheg%reweight_norm (r)
-                 call sudakov%veto_counter%record_norm (.not. accepted)
-                 if (.not. accepted) cycle PT_EVOLUTION
-                 accepted = powheg%reweight_matrix_elements (r)
-                 call sudakov%veto_counter%record_sqme (.not. accepted)
-                 if (.not. accepted) cycle PT_EVOLUTION
-              end if
-              exit
-           end do PT_EVOLUTION
-           if (r%pt2 > r_max%pt2 .and. r%valid) then
-              r_max = r
-              p_real_max = powheg%event_deps%p_real
-           end if
-         end associate
-      end do
-      if (r_max%pt2 > powheg%settings%pt2_min) then
-         powheg%n_emissions = powheg%n_emissions + 1
-         call powheg%set_scale (r_max%pt2)
-         if (present (particle_set)) &
-              call powheg%build_particle_set (particle_set, &
-              powheg%event_deps%p_born, &
-              p_real_max, nlo%get_emitter (r_max%alr))
-         if (present (pt2_generated)) pt2_generated = r_max%pt2
-      else
-         call powheg%set_scale (powheg%settings%pt2_min)
-         if (present (pt2_generated)) pt2_generated = powheg%settings%pt2_min
-      end if
-    end associate
-  end subroutine powheg_generate_emission
+    call msg_debug (D_MATCHING, "powheg_matching_generate_emission")
+    select type (pcm => powheg%process_instance%pcm)
+    class is (pcm_instance_nlo_t)
+       allocate (p_real_max (pcm%controller%get_n_particles_real ()))
+       do alr = 1, powheg%process_deps%n_alr
+          if (signal_is_pending ())  return
+          associate (sudakov => powheg%sudakov(alr)%s)
+            xi2_max = pcm%controller%get_xi_max (alr)**2
+            call sudakov%update (xi2_max)
+            select type (sudakov)
+            type is (sudakov_massive_fsr_t)
+               call sudakov%compute_xi_max_extended ()
+            end select
+            r%alr = alr
+            r%pt2 = sudakov%kt2_max (powheg%event_deps%s_hat)
+            sudakov%last_log = 0
+            call msg_debug (D_MATCHING, "Starting evolution at r%pt2", r%pt2)
+            PT_EVOLUTION: do
+               if (signal_is_pending ())  return
+               call sudakov%generate_emission (r)
+               if (signal_is_pending ())  return
+               if (r%valid) then
+                  accepted = powheg%reweight_norm (r)
+                  call sudakov%veto_counter%record_norm (.not. accepted)
+                  if (.not. accepted) cycle PT_EVOLUTION
+                  accepted = powheg%reweight_matrix_elements (r)
+                  call sudakov%veto_counter%record_sqme (.not. accepted)
+                  if (.not. accepted) cycle PT_EVOLUTION
+               end if
+               exit
+            end do PT_EVOLUTION
+            if (r%pt2 > r_max%pt2 .and. r%valid) then
+               r_max = r
+               p_real_max = powheg%event_deps%p_real_lab
+            end if
+          end associate
+       end do
+       if (r_max%pt2 > powheg%settings%pt2_min) then
+          powheg%n_emissions = powheg%n_emissions + 1
+          call powheg%set_scale (r_max%pt2)
+          if (present (particle_set)) &
+               call powheg%build_particle_set (particle_set, &
+               powheg%event_deps%p_born_lab, &
+               p_real_max, pcm%controller%get_emitter (r_max%alr))
+          if (present (pt2_generated)) pt2_generated = r_max%pt2
+       else
+          call powheg%set_scale (powheg%settings%pt2_min)
+          if (present (pt2_generated)) pt2_generated = powheg%settings%pt2_min
+       end if
+    end select
+  end subroutine powheg_matching_generate_emission
 
-  subroutine powheg_build_particle_set &
+  subroutine powheg_matching_build_particle_set &
        (powheg, particle_set, p_born, p_real, emitter)
     class(powheg_matching_t), intent(inout) :: powheg
     type(particle_set_t), intent(inout) :: particle_set
@@ -1493,13 +1603,17 @@ contains
     integer, intent(in) :: emitter
     integer, dimension(:), allocatable :: flv_radiated
     real(default) :: r_col
-    flv_radiated = powheg%process_instance%nlo_controller%get_flv_state_real (1)
-    call powheg%rng%generate (r_col)
-    call particle_set%build_radiation (p_real, emitter, flv_radiated, &
-         powheg%process_instance%process%get_model_ptr (), r_col)
-  end subroutine powheg_build_particle_set
+    select type (pcm => powheg%process_instance%pcm)
+    class is (pcm_instance_nlo_t)
+       allocate (flv_radiated (size (pcm%controller%get_flv_state_real (1))))
+       flv_radiated = pcm%controller%get_flv_state_real (1)
+       call powheg%rng%generate (r_col)
+       call particle_set%build_radiation (p_real, emitter, flv_radiated, &
+            powheg%process_instance%process%get_model_ptr (), r_col)
+    end select
+  end subroutine powheg_matching_build_particle_set
 
-  function powheg_reweight_norm (powheg, r) result (accepted)
+  function powheg_matching_reweight_norm (powheg, r) result (accepted)
     logical :: accepted
     class(powheg_matching_t), intent(inout) :: powheg
     type(radiation_t), intent(in) :: r
@@ -1519,15 +1633,15 @@ contains
     if (debug_active (D_MATCHING)) then
        if (.not. (zero < r%xi .and. &
                   r%xi < sqrt(powheg%sudakov(r%alr)%s%xi2_max))) then
-          call msg_bug ("powheg_reweight_norm: xi is out of bounds")
+          call msg_bug ("powheg_matching_reweight_norm: xi is out of bounds")
        end if
        if (norm_true > norm_max) then
-          call msg_bug ("powheg_reweight_norm: norm shouldnt be larger than norm_max")
+          call msg_bug ("powheg_matching_reweight_norm: norm shouldnt be larger than norm_max")
        end if
     end if
-  end function powheg_reweight_norm
+  end function powheg_matching_reweight_norm
 
-  function powheg_norm_from_xi_and_y (powheg, r) result (norm_true)
+  function powheg_matching_norm_from_xi_and_y (powheg, r) result (norm_true)
     real(default) :: norm_true
     class(powheg_matching_t), intent(inout) :: powheg
     type(radiation_t), intent(in) :: r
@@ -1541,22 +1655,22 @@ contains
        rands(I_Y) = (one - r%y) / two
     type is (sudakov_massive_fsr_t)
        beta = beta_emitter (sqrt (powheg%event_deps%s_hat), &
-          powheg%event_deps%p_born (s%associated_emitter))
+          powheg%event_deps%p_born_lab (s%associated_emitter))
        rands(I_Y) = - log((one-r%y*beta)/(one+beta)) / log((one+beta)/(one-beta))
     end select
     norm_true = powheg%grid%get_value ([rands, f_alr])
-  end function powheg_norm_from_xi_and_y
+  end function powheg_matching_norm_from_xi_and_y
 
-  subroutine powheg_prepare_for_events (matching)
+  subroutine powheg_matching_prepare_for_events (matching)
     class(powheg_matching_t), intent(inout), target :: matching
-    call msg_debug (D_MATCHING, "powheg_prepare_for_events")
+    call msg_debug (D_MATCHING, "powheg_matching_prepare_for_events")
     call matching%setup_nlo_environment ()
     call matching%grid%init ([matching%settings%size_grid_xi, &
                               matching%settings%size_grid_y, &
                               matching%process_deps%n_alr])
     call matching%compute_lambda2_gen ()
     call matching%setup_sudakovs ()
-  end subroutine powheg_prepare_for_events
+  end subroutine powheg_matching_prepare_for_events
 
   subroutine powheg_matching_compute_lambda2_gen (matching)
     class(powheg_matching_t), intent(inout) :: matching
@@ -1571,34 +1685,38 @@ contains
     class(powheg_matching_t), intent(inout) :: matching
     integer :: n_in, n_out_born, n_out_real
     call msg_debug (D_MATCHING, "powheg_matching_setup_nlo_environment")
-    if (.not. matching%testing%active) then
-       associate (nlo_controller => matching%process_instance%nlo_controller)
-          matching%process_deps%n_alr = nlo_controller%get_n_alr ()
-          n_in = nlo_controller%particle_data%n_in
-          n_out_born = nlo_controller%particle_data%n_out_born
-          n_out_real = nlo_controller%particle_data%n_out_real
+    select type (pcm => matching%process_instance%pcm)
+    class is (pcm_instance_nlo_t)
+       if (.not. matching%testing%active) then
+          matching%process_deps%n_alr = pcm%controller%get_n_alr ()
+          n_in = pcm%controller%particle_data%n_in
+          n_out_born = pcm%controller%particle_data%n_out_born
+          n_out_real = pcm%controller%particle_data%n_out_real
           matching%process_deps%sqrts = matching%process_instance%get_sqrts ()
-          call nlo_controller%setup_generator &
+          call pcm%controller%setup_generator &
                (matching%phs_fks_generator, &
                matching%process_deps%sqrts, &
                matching%settings%singular_jacobian)
-       end associate
-    else
-       matching%process_deps%n_alr = matching%testing%n_alr
-       n_in = matching%testing%n_in
-       n_out_born = matching%testing%n_out_born
-       n_out_real = matching%testing%n_out_real
-    end if
-    allocate (matching%event_deps%p_born (n_in + n_out_born))
-    allocate (matching%event_deps%p_real (n_in + n_out_real))
+       else
+          matching%process_deps%n_alr = matching%testing%n_alr
+          n_in = matching%testing%n_in
+          n_out_born = matching%testing%n_out_born
+          n_out_real = matching%testing%n_out_real
+       end if
+       allocate (matching%event_deps%p_born_lab (n_in + n_out_born))
+       allocate (matching%event_deps%p_born_cms (n_in + n_out_born))
+       allocate (matching%event_deps%p_real_lab (n_in + n_out_real))
+       allocate (matching%event_deps%p_real_cms (n_in + n_out_real))
+    end select
   end subroutine powheg_matching_setup_nlo_environment
 
   subroutine powheg_matching_copy_momenta (matching)
      class(powheg_matching_t), intent(inout) :: matching
-     associate (real_kinematics => matching%process_instance%nlo_controller%real_kinematics)
-        real_kinematics%p_real_cms = matching%event_deps%p_real
-        real_kinematics%p_real_lab = matching%event_deps%p_real
-     end associate
+     select type (pcm => matching%process_instance%pcm)
+     class is (pcm_instance_nlo_t)
+        pcm%controller%real_kinematics%p_real_cms = matching%event_deps%p_real_cms
+        pcm%controller%real_kinematics%p_real_lab = matching%event_deps%p_real_lab
+     end select
   end subroutine powheg_matching_copy_momenta
 
   function get_alpha (qcd, scale2) result (alpha_s)
@@ -1677,90 +1795,25 @@ contains
     integer :: i_call, i_bin, alr, emitter
     real(default) :: alpha_s, kT2, weight
     real(default) :: pt2_min, s, random_jacobian
-    real(default), dimension(n_bins) :: histo1, histo2, histo1sq
+    real(default), dimension(n_bins) :: histo1, histo2, histo1sq, histo2sq
+    real(default), dimension(n_bins) :: tmp
+    integer :: i_strip, n_in_strip, n_strips
     real(default), dimension(n_bins) :: average, average_sq, error
     real(default), dimension(n_bins) :: &
          sudakov_0, sudakov_p, sudakov_m, rel_error
     integer :: u
 
-    p_born = powheg%event_deps%p_born
+    p_born = powheg%event_deps%p_born_lab
     sqme_born = powheg%event_deps%sqme_born
     s = powheg%event_deps%s_hat
     pt2_min = powheg%settings%pt2_min
     n_calls1 = 100000; n_calls2 = 1000000
-    histo1 = zero; histo2 = zero; histo1sq = zero
+    histo1 = zero; histo2 = zero; histo1sq = zero; histo2sq = zero
+    n_strips = 10
 
-    write (msg_buffer, "(A)") "POWHEG: test_sudakov: Computing integrals"
-    call msg_message ()
-    associate (nlo => powheg%process_instance%nlo_controller, &
-               fks => powheg%phs_fks_generator)
-       do i_call = 1, n_calls1
-          do alr = 1, powheg%process_deps%n_alr
-             call powheg%rng%generate (random)
-             emitter = nlo%get_emitter (alr)
-             powheg%event_deps%p_real = fks%generate_fsr_from_x (random, emitter, p_born)
-             call powheg%copy_momenta ()
-             call fks%get_radiation_variables (emitter, xi, y, phi)
-             kT2 = powheg%sudakov(alr)%s%kt2(xi, y)
-             if (kT2 > pt2_min .and. xi < one - 1000*tiny_07) then
-                alpha_s = get_alpha (powheg%qcd, kT2)
-                sqme_real_x_jacobian = powheg%compute_sqme_real (alr, alpha_s)
-                random_jacobian = nlo%real_kinematics%jac_rand (emitter)
-                weight = sqme_real_x_jacobian * random_jacobian / sqme_born
-                do i_bin = 1, n_bins
-                   if (kT2 > binning(i_bin)) then
-                      histo1(i_bin) = histo1(i_bin) + weight
-                      histo1sq(i_bin) = histo1sq(i_bin) + weight**2
-                   end if
-                end do
-             end if
-             ! Do not cycle since there is a Heaviside in the exponent
-          end do
-          call msg_show_progress (i_call, n_calls1)
-       end do
-    end associate
-    average = histo1 / n_calls1
-    average_sq = histo1sq / n_calls1
-    error = sqrt ((average_sq - average**2) / n_calls1)
-    sudakov_0 = exp(-average)
-    sudakov_p = exp(-(average + error))
-    sudakov_m = exp(-(average - error))
-    rel_error = (sudakov_0 - sudakov_p + sudakov_m - sudakov_0) / &
-         (2 * sudakov_0) * 100
-
-    write (msg_buffer, "(A)") "POWHEG: test_sudakov: Generating emissions"
-    call msg_message ()
-    do i_call = 1, n_calls2
-       if (signal_is_pending ())  return
-       call powheg%generate_emission (pt2_generated = kT2)
-       do i_bin = 1, n_bins
-          if (kT2 > binning(i_bin)) then
-              histo2(i_bin) = histo2(i_bin) + one
-          end if
-       end do
-       call msg_show_progress (i_call, n_calls2)
-    end do
-    histo2 = histo2 / n_calls2
-    histo2 = one - histo2
-
-    u = free_unit ()
-    open (file='test_sudakov_data', unit=u, action='write')
-    print *, 'exp(-Integrated R/B)-distribution: '
-    print *, 'pT2  sudakov_+  sudakov_0  sudakov_-  rel_err[%]: '
-    do i_bin = 1, n_bins
-       print *, binning (i_bin), &
-            sudakov_p (i_bin), sudakov_0 (i_bin), sudakov_m (i_bin), &
-            rel_error (i_bin)
-       write (u, "(5(" // FMT_16 // ",2X))") binning (i_bin), &
-            sudakov_p (i_bin), sudakov_0 (i_bin), sudakov_m (i_bin), &
-            histo2 (i_bin)
-    end do
-    close (u)
-    print *, '*******************************'
-    print *, 'Noemission probability: '
-    do i_bin = 1, n_bins
-       print *, binning (i_bin), histo2 (i_bin)
-    end do
+    call compute_integrals ()
+    call generate_emissions ()
+    call write_to_screen_and_file ()
 
   contains
 
@@ -1770,6 +1823,99 @@ contains
       !pt2 = pt2_min + (s-pt2_min) * (i-1) / (n_bins-1)
       pt2 = pt2_min * exp (log (s / pt2_min) * (i-1) / (n_bins-1))
     end function
+
+    subroutine compute_integrals ()
+      write (msg_buffer, "(A)") "POWHEG: test_sudakov: Computing integrals"
+      call msg_message ()
+      select type (pcm => powheg%process_instance%pcm)
+      class is (pcm_instance_nlo_t)
+         associate (fks => powheg%phs_fks_generator)
+           do i_call = 1, n_calls1
+              do alr = 1, powheg%process_deps%n_alr
+                 call powheg%rng%generate (random)
+                 emitter = pcm%controller%get_emitter (alr)
+                 !!! The sudakov test works only with lepton collisions without beam spectria
+                 !!! so we can identify the cms and lab momenta.
+                 powheg%event_deps%p_real_cms = fks%generate_fsr_from_x (random, emitter, p_born)
+                 powheg%event_deps%p_real_lab = powheg%event_deps%p_real_cms
+                 call powheg%copy_momenta ()
+                 call fks%get_radiation_variables (emitter, xi, y, phi)
+                 kT2 = powheg%sudakov(alr)%s%kt2(xi, y)
+                 if (kT2 >= pt2_min .and. xi < one - tiny_07) then
+                    alpha_s = get_alpha (powheg%qcd, kT2)
+                    sqme_real_x_jacobian = powheg%compute_sqme_real (alr, alpha_s)
+                    random_jacobian = pcm%controller%real_kinematics%jac_rand (emitter)
+                    weight = sqme_real_x_jacobian * random_jacobian / sqme_born
+                    do i_bin = 1, n_bins
+                       if (kT2 > binning(i_bin)) then
+                          histo1(i_bin) = histo1(i_bin) + weight
+                          histo1sq(i_bin) = histo1sq(i_bin) + weight**2
+                       end if
+                    end do
+                 end if
+                 ! Do not cycle since there is a Heaviside in the exponent
+              end do
+              call msg_show_progress (i_call, n_calls1)
+           end do
+         end associate
+      end select
+      average = histo1 / n_calls1
+      average_sq = histo1sq / n_calls1
+      error = sqrt ((average_sq - average**2) / n_calls1)
+      sudakov_0 = exp(-average)
+      sudakov_p = exp(-(average + error))
+      sudakov_m = exp(-(average - error))
+      rel_error = (sudakov_0 - sudakov_p + sudakov_m - sudakov_0) / &
+           (2 * sudakov_0) * 100
+    end subroutine compute_integrals
+
+    subroutine generate_emissions ()
+      write (msg_buffer, "(A)") "POWHEG: test_sudakov: Generating emissions"
+      call msg_message ()
+      do i_strip = 1, n_strips
+         tmp = 0
+         n_in_strip = n_calls2 / n_strips
+         do i_call = 1, n_in_strip
+            if (signal_is_pending ())  return
+            call powheg%generate_emission (pt2_generated = kT2)
+            do i_bin = 1, n_bins
+               if (kT2 > binning(i_bin)) then
+                  tmp(i_bin) = tmp(i_bin) + 1
+               end if
+            end do
+         end do
+         tmp = one - (one * tmp) / n_in_strip
+         histo2 = histo2 + tmp
+         histo2sq = histo2sq + tmp**2
+         call msg_show_progress (i_strip, n_strips)
+      end do
+      average = histo2 / n_strips
+      average_sq = histo2sq / n_strips
+      error = sqrt ((average_sq - average**2) / n_strips)
+    end subroutine generate_emissions
+
+    subroutine write_to_screen_and_file ()
+      u = free_unit ()
+      open (file='sudakov.dat', unit=u, action='write')
+      print *, 'exp(-Integrated R/B)-distribution: '
+      print *, 'pT2  sudakov_+  sudakov_0  sudakov_-  rel_err[%]: '
+      do i_bin = 1, n_bins
+         print *, binning(i_bin), &
+              sudakov_p(i_bin), sudakov_0(i_bin), sudakov_m(i_bin), &
+              rel_error(i_bin)
+         write (u, "(6(" // FMT_16 // ",2X))") binning(i_bin), &
+              sudakov_p(i_bin), sudakov_0(i_bin), sudakov_m(i_bin), &
+              average(i_bin), error(i_bin)
+      end do
+      close (u)
+      print *, '*******************************'
+      print *, 'Noemission probability: '
+      do i_bin = 1, n_bins
+         print *, binning (i_bin), average (i_bin), error(i_bin)
+      end do
+    end subroutine write_to_screen_and_file
+
+
   end subroutine powheg_test_sudakov
 
 

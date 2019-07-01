@@ -97,6 +97,7 @@ luminosity =  0.0000000E+00
 | |===================================================================|
 | 
 |         ... event sample complete.
+| Events: actual unweighting efficiency =  83.33 %
 n_events = 0
 luminosity =  1.0000000E-01
 | Starting simulation for process 'qedtest_10_p'
@@ -118,6 +119,7 @@ luminosity =  1.0000000E-01
 | |===================================================================|
 | 
 |         ... event sample complete.
+| Events: actual unweighting efficiency =  87.50 %
 n_events = 100
 luminosity =  1.0000000E-01
 | Starting simulation for process 'qedtest_10_p'
@@ -146,6 +148,7 @@ luminosity =  1.0000000E-01
 | |===================================================================|
 | 
 |         ... event sample complete.
+| Events: actual unweighting efficiency =  84.03 %
 | There were no errors and    1 warning(s).
 | WHIZARD run finished.
 |=============================================================================|

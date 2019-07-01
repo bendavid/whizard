@@ -1208,6 +1208,18 @@ particle LAMBDACP 4122
   anti "lambdac-" lambdacm
   tex_name "\Lambda_c^+"
   tex_anti "\bar{\Lambda_c}^{-}"
+particle LAMBDACP2593 14122
+  spin 1/2 charge 1
+  name "lambdac(2593)+" lambdacp2593
+  anti "lambdac(2593)-" lambdacm2593
+  tex_name "\Lambda_c^+(2593)"
+  tex_anti "\bar{\Lambda_c}^{-}(2593)"
+particle LAMBDACP2625 4124
+  spin 3/2 charge 1
+  name "lambdac(2625)+" lambdacp2625
+  anti "lambdac(2625)-" lambdacm2625
+  tex_name "\Lambda_c^+(2625)"
+  tex_anti "\bar{\Lambda_c}^{-}(2625)"
 particle SIGMAC0 4112
   spin 1/2 charge 0
   name sigmac sigmac0

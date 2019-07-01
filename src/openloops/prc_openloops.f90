@@ -1,4 +1,4 @@
-! WHIZARD 2.2.7 Aug 11 2015
+! WHIZARD 2.2.8 Nov 22 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,11 +6,14 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
-!     Fabian Bach <fabian.bach@desy.de>
+!     Fabian Bach <fabian.bach@t-online.de>
+!     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
+!     Soyoung Shim <soyoung.shim@desy.de>
+!     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, Daniel Wiesler 
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -78,7 +81,6 @@ module prc_openloops
 
   type, extends (prc_blha_writer_t) :: openloops_writer_t
   contains
-    procedure :: init => openloops_writer_init 
     procedure, nopass :: type_name => openloops_writer_type_name
   end type openloops_writer_t
 
@@ -99,6 +101,9 @@ module prc_openloops
   contains
     procedure :: init_dlaccess_to_library => openloops_driver_init_dlaccess_to_library
     procedure :: set_alpha_s => openloops_driver_set_alpha_s
+    procedure :: set_alpha_qed => openloops_driver_set_alpha_qed
+    procedure :: set_GF => openloops_driver_set_GF
+    procedure :: set_weinberg_angle => openloops_driver_set_weinberg_angle
     procedure :: print_alpha_s => openloops_driver_print_alpha_s
     procedure, nopass :: type_name => openloops_driver_type_name
     procedure :: load_sc_procedure => openloops_driver_load_sc_procedure
@@ -145,32 +150,6 @@ module prc_openloops
 
 contains
 
-  subroutine openloops_writer_init (writer, model_name, prt_in, prt_out)
-    class(openloops_writer_t), intent(inout) :: writer
-    type(string_t), intent(in) :: model_name
-    type(string_t), dimension(:), intent(in) :: prt_in, prt_out
-    integer :: i
-    
-    writer%model_name = model_name
-    select case (size (prt_in))
-       case(1); writer%process_mode = " -decay"
-       case(2); writer%process_mode = " -scatter"
-    end select
-
-    associate (s => writer%process_string)
-      s = " '" 
-      do i = 1, size (prt_in)
-         if (i > 1) s = s // " "
-         s = s // prt_in(i)
-      end do
-      s = s // " ->"
-      do i = 1, size (prt_out)
-         s = s // " " // prt_out(i)
-      end do
-      s = s // "'"
-    end associate
-  end subroutine openloops_writer_init
-
   function openloops_writer_type_name () result (string)
     type(string_t) :: string
     string = "openloops"
@@ -195,7 +174,7 @@ contains
        object%suffix = '_SUB'
     end select
     select type (writer => object%writer)
-    type is (openloops_writer_t)
+    class is (prc_blha_writer_t)
        call writer%init (model_name, prt_in, prt_out)
     end select
   end subroutine openloops_def_init
@@ -208,7 +187,10 @@ contains
   subroutine openloops_def_write (object, unit)
     class(openloops_def_t), intent(in) :: object
     integer, intent(in) :: unit
-    !!! Dummy method
+    select type (writer => object%writer)
+    type is (openloops_writer_t)
+       call writer%write (unit)
+    end select
   end subroutine openloops_def_write
 
   subroutine openloops_driver_init_dlaccess_to_library &
@@ -239,7 +221,38 @@ contains
     call driver%blha_olp_set_parameter &
        (c_char_'alphas'//c_null_char, &
         dble (alpha_s), 0._double, ierr)
+    if (ierr == 0) call parameter_error_message (var_str ('alphas'))
   end subroutine openloops_driver_set_alpha_s
+
+  subroutine openloops_driver_set_alpha_qed (driver, alpha)
+    class(openloops_driver_t), intent(inout) :: driver
+    real(default), intent(in) :: alpha
+    integer :: ierr
+    call driver%blha_olp_set_parameter &
+       (c_char_'alpha_qed'//c_null_char, &
+        dble (alpha), 0._double, ierr) 
+    if (ierr == 0) call parameter_error_message (var_str ('alpha_qed'))
+  end subroutine openloops_driver_set_alpha_qed
+
+  subroutine openloops_driver_set_GF (driver, GF)
+    class(openloops_driver_t), intent(inout) :: driver
+    real(default), intent(in) :: GF
+    integer :: ierr 
+    call driver%blha_olp_set_parameter &
+       (c_char_'GF'//c_null_char, &
+        dble(GF), 0._double, ierr)
+    if (ierr == 0) call parameter_error_message (var_str ('GF'))
+  end subroutine openloops_driver_set_GF
+
+  subroutine openloops_driver_set_weinberg_angle (driver, sw2)
+    class(openloops_driver_t), intent(inout) :: driver
+    real(default), intent(in) :: sw2
+    integer :: ierr 
+    call driver%blha_olp_set_parameter &
+       (c_char_'sw2'//c_null_char, &
+        dble(sw2), 0._double, ierr)
+    if (ierr == 0) call parameter_error_message (var_str ('sw2'))
+  end subroutine openloops_driver_set_weinberg_angle
 
   subroutine openloops_driver_print_alpha_s (object)
     class(openloops_driver_t), intent(in) :: object
@@ -272,7 +285,6 @@ contains
   subroutine openloops_def_read (object, unit)
     class(openloops_def_t), intent(out) :: object
     integer, intent(in) :: unit
-    call msg_bug ("openloops_def_read: not implemented")
   end subroutine openloops_def_read
 
   subroutine openloops_def_allocate_driver (object, driver, basename)
@@ -285,7 +297,6 @@ contains
   subroutine openloops_state_write (object, unit)
     class(openloops_state_t), intent(in) :: object
     integer, intent(in), optional :: unit
-    call msg_warning ("openloops_state_write: What to write?")
   end subroutine openloops_state_write
 
   subroutine prc_openloops_allocate_workspace (object, core_state)
@@ -317,7 +328,7 @@ contains
   subroutine prc_openloops_write (object, unit)
     class(prc_openloops_t), intent(in) :: object
     integer, intent(in), optional :: unit
-    call msg_message ("OpenLoops")
+    call msg_message (unit = unit, string = "OpenLoops")
   end subroutine prc_openloops_write
 
   subroutine prc_openloops_prepare_library (object, os_data, model, var_list)
@@ -329,7 +340,8 @@ contains
     call object%load_driver (os_data)
     call object%reset_parameters ()
     call object%set_particle_properties (model)
-    call object%set_alpha_qed (model)
+    !!!call object%set_alpha_qed (model)
+    call object%set_electroweak_parameters (model)
     verbosity = var_list%get_ival (var_str ("openloops_verbosity"))
     call object%set_verbosity (verbosity)
   end subroutine prc_openloops_prepare_library
@@ -411,15 +423,17 @@ contains
                                                         BLHA_AMP_TREE)) :: r
     real(double) :: mu_dble
     real(double) :: acc_dble
-
+    real(default) :: alpha_s
+    
     mom = object%create_momentum_array (p) 
     mu_dble = dble(mu)    
+    alpha_s = object%qcd%alpha%get (mu)
 
     select type (driver => object%driver)
     type is (openloops_driver_t)
+       call driver%set_alpha_s (alpha_s)
        if (allocated (object%i_born)) then
-          call driver%blha_olp_eval2 &
-             (object%i_born(i_born), mom, mu_dble, r, acc_dble)
+          call driver%blha_olp_eval2 (object%i_born(i_born), mom, mu_dble, r, acc_dble)
           sqme = r(1)
        else
           sqme = 0._default
@@ -438,11 +452,11 @@ contains
     real(default), intent(in) :: ren_scale
     real(default), intent(out) :: sqme
     logical, intent(out) :: bad_point
+    real(default) :: mu
     real(double), dimension(5*object%n_particles) :: mom
     real(double), dimension(blha_result_array_size (object%n_particles, &
                                                     BLHA_AMP_TREE)) :: r
     real(double) :: mu_dble
-    real(default) :: mu
     real(double) :: acc_dble
     real(default) :: acc
     real(default) :: alpha_s
@@ -451,9 +465,9 @@ contains
     if (vanishes (ren_scale)) then
        mu = sqrt (two * p(1) * p(2))
     else
-      mu = ren_scale
+       mu = ren_scale
     end if
-    mu_dble = dble(mu)
+    mu_dble = dble (mu)
 
     alpha_s = object%qcd%alpha%get (mu)
     select type (driver => object%driver)
@@ -480,21 +494,18 @@ contains
     logical, intent(out) :: bad_point
     real(double), dimension(5*N_EXTERNAL) :: mom
     real(double), dimension(N_EXTERNAL) :: r
-    real(double) :: ren_scale_dble
-    real(double) :: acc_dble
     real(default) :: ren_scale, alpha_s
     real(double), dimension(4) :: polvect
     integer :: i
     
     mom = object%create_momentum_array (p)
-    me_sc = 0
+    me_sc = zero
     if (vanishes (ren_scale_in)) then
-       ren_scale = sqrt (2*p(1)*p(2))
+       ren_scale = sqrt (two * p(1) * p(2))
     else
        ren_scale = ren_scale_in
     end if
     alpha_s = object%qcd%alpha%get (ren_scale)
-    ren_scale_dble = dble (ren_scale)
 
     forall(i=1:4) polvect(i) = pol_vects(em)%p(i-1)
 
@@ -507,7 +518,8 @@ contains
        if (i /= em) me_sc = me_sc + r(i)
     end do
 
-    me_sc = me_sc/CA
+    me_sc = me_sc / CA
+    bad_point = .false.
 
   end subroutine prc_openloops_compute_sqme_sc
 

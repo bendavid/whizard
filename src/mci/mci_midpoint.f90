@@ -1,4 +1,4 @@
-! WHIZARD 2.2.7 Aug 11 2015
+! WHIZARD 2.2.8 Nov 22 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,11 +6,14 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
-!     Fabian Bach <fabian.bach@desy.de>
+!     Fabian Bach <fabian.bach@t-online.de>
+!     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
+!     Soyoung Shim <soyoung.shim@desy.de>
+!     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, Daniel Wiesler 
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -65,6 +68,8 @@ module mci_midpoint
      procedure :: final => mci_midpoint_final
      procedure :: write => mci_midpoint_write
      procedure :: startup_message => mci_midpoint_startup_message
+     procedure :: write_log_entry => mci_midpoint_write_log_entry
+     procedure :: compute_md5sum => mci_midpoint_compute_md5sum
      procedure :: set_dimensions => mci_midpoint_set_dimensions
      procedure :: declare_flat_dimensions => mci_midpoint_declare_flat_dimensions
      procedure :: declare_equivalences => mci_midpoint_ignore_equivalences
@@ -160,6 +165,17 @@ contains
     call msg_message (unit = unit)
   end subroutine mci_midpoint_startup_message
     
+  subroutine mci_midpoint_write_log_entry (mci, u)
+    class(mci_midpoint_t), intent(in) :: mci
+    integer, intent(in) :: u
+    write (u, "(1x,A)")  "MC Integrator is Midpoint rule"
+  end subroutine mci_midpoint_write_log_entry
+       
+  subroutine mci_midpoint_compute_md5sum (mci, pacify)
+    class(mci_midpoint_t), intent(inout) :: mci
+    logical, intent(in), optional :: pacify
+  end subroutine mci_midpoint_compute_md5sum
+
   subroutine mci_midpoint_set_dimensions (mci, n_dim, n_channel)
     class(mci_midpoint_t), intent(inout) :: mci
     integer, intent(in) :: n_dim
@@ -404,14 +420,12 @@ contains
             mci%max_known = .true.
          end if
          if (mci%max_abs /= 0) then
-            if (mci%integral == mci%integral_pos) then
+            if (mci%integral_neg == 0) then
                mci%efficiency = mci%integral / mci%max_abs
                mci%efficiency_known = .true.
             else if (mci%n_calls /= 0) then
                mci%efficiency = &
-                    (mci%n_calls_pos * mci%integral_pos &
-                    - mci%n_calls_neg * mci%integral_neg) &
-                    / mci%n_calls / mci%max_abs
+                    (mci%integral_pos - mci%integral_neg) / mci%max_abs
                mci%efficiency_known = .true.
             end if
          end if

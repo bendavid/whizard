@@ -57,6 +57,8 @@ module auto_components
 
 <<Auto components: public>>
 
+<<Auto components: parameters>>
+
 <<Auto components: types>>
 
 <<Auto components: interfaces>>
@@ -373,7 +375,16 @@ For an [[if_table]] in particular, we check the final state only.
     integer :: i, k, n_in
     select type (table)
     type is (if_table_t)
-       n_in = 2
+       if (table%proc_type > 0) then
+          select case (table%proc_type)
+          case (PROC_DECAY)
+             n_in = 1
+          case (PROC_SCATTER)
+             n_in = 2
+          end select
+       else
+          call msg_fatal ("Neither a decay nor a scattering process")
+       end if
     class default
        n_in = 0
     end select
@@ -545,7 +556,13 @@ states are accumulated in a table that we can read out after completion.
 
 @ %def ps_entry_t
 @
-This is the wrapper type for the decay tree for the list of final
+<<Auto components: parameters>>=
+  integer, parameter :: PROC_UNDEFINED = 0
+  integer, parameter :: PROC_DECAY = 1
+  integer, parameter :: PROC_SCATTER = 2
+
+@ %def auto_components parameters
+@ This is the wrapper type for the decay tree for the list of final
 states and the final array.  First, an abstract base type:
 <<Auto components: public>>=
   public :: ps_table_t
@@ -556,6 +573,7 @@ states and the final array.  First, an abstract base type:
      logical :: loops = .false.
      type(ps_entry_t), pointer :: first => null ()
      type(ps_entry_t), pointer :: last => null ()
+     integer :: proc_type
    contains
    <<Auto components: ps table: TBP>>
   end type ps_table_t
@@ -700,7 +718,12 @@ the output, and we write an arrow if [[n_in]] is present.
     integer :: u
     u = given_output_unit (unit)
     write (u, "(1x,A)")  "Table of in/out states:"
-    call object%base_write (u, n_in = 2)
+    select case (object%proc_type)
+    case (PROC_DECAY)
+       call object%base_write (u, n_in = 1)
+    case (PROC_SCATTER)
+       call object%base_write (u, n_in = 2)
+     end select
   end subroutine if_table_write
           
 @ %def ps_table_write ds_table_write fs_table_write
@@ -708,11 +731,11 @@ the output, and we write an arrow if [[n_in]] is present.
 <<Auto components: ps table: TBP>>=
   procedure :: get_particle_string => ps_table_get_particle_string
 <<Auto components: procedures>>=
-  subroutine ps_table_get_particle_string (object, index, n_in, prt_in, prt_out)
+  subroutine ps_table_get_particle_string (object, index, prt_in, prt_out)
     class(ps_table_t), intent(in) :: object
     integer, intent(in) :: index
-    integer, intent(in) :: n_in
     type(string_t), intent(out), dimension(:), allocatable :: prt_in, prt_out
+    integer :: n_in
     type(field_data_t), pointer :: prt
     type(ps_entry_t), pointer :: entry
     integer, dimension(:), allocatable :: pdg
@@ -728,6 +751,18 @@ the output, and we write an arrow if [[n_in]] is present.
         call msg_fatal ("ps_table: entry with requested index does not exist!")
       end if
     end do
+
+    if (object%proc_type > 0) then
+       select case (object%proc_type)
+       case (PROC_DECAY)
+          n_in = 1
+       case (PROC_SCATTER)
+          n_in = 2
+       end select
+    else
+       call msg_fatal ("Neither decay nor scattering process")
+    end if
+
     n0 = n_in + 1
     allocate (prt_in (n_in), prt_out (entry%get_size () - n_in))
     do i = 1, n_in
@@ -761,14 +796,29 @@ the output, and we write an arrow if [[n_in]] is present.
   generic :: init => if_table_init
   procedure, private :: if_table_init
 <<Auto components: procedures>>=
-  subroutine ps_table_init (table, model, pl, constraints)
+  subroutine ps_table_init (table, model, pl, constraints, n_in)
     class(ps_table_t), intent(out) :: table
     class(model_data_t), intent(in), target :: model
     type(pdg_list_t), dimension(:), intent(in) :: pl
     type(split_constraints_t), intent(in) :: constraints
+    integer, intent(in), optional :: n_in
     logical :: passed
     integer :: i
     table%model => model
+
+    if (present (n_in)) then
+       select case (n_in)
+       case (1) 
+          table%proc_type = PROC_DECAY
+       case (2) 
+          table%proc_type = PROC_SCATTER
+       case default 
+          table%proc_type = PROC_UNDEFINED
+       end select
+    else
+       table%proc_type = PROC_UNDEFINED
+    end if
+
     do i = 1, size (pl)
        call table%record (pl(i), 0, 0, constraints, passed)
        if (.not. passed) then
@@ -806,7 +856,8 @@ the output, and we write an arrow if [[n_in]] is present.
        end do
        deallocate (pa_in)
     end do
-    call table%init (model, pl, constraints)
+    n_in = size (pl_in(1)%a)
+    call table%init (model, pl, constraints, n_in)
   end subroutine if_table_init
     
 @ %def ps_table_init if_table_init
@@ -982,8 +1033,14 @@ procedure.
           pdg_work(1) = pdg(p)
           pdg_work(2:p) = pdg(1:p-1)
           pdg_work(p+1:) = pdg(p+1:)
-          call ps_table_insert (table, &
+          select case (table%proc_type)
+          case (PROC_DECAY)
+             call ps_table_insert (table, &
+               pl, n_rad, i, pdg_work, constraints, n_in = 1)
+          case (PROC_SCATTER)
+             call ps_table_insert (table, &
                pl, n_rad, i, pdg_work, constraints, n_in = 2)
+          end select
        end do
     end if
   end subroutine if_table_insert
@@ -1990,7 +2047,11 @@ caller when this is a function.
     integer, dimension(:), allocatable :: i_pdg
     integer :: i
     allocate (i_pdg (size (pdg)))
-    i_pdg = pdg%get ()
+    !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
+    !!! i_pdg = pdg%get ()
+    do i = 1, size (pdg)
+       i_pdg(i) = pdg(i)%get ()
+    end do
     i_pdg = sort_abs (i_pdg)
     do i = 1, size (pdg)
        call pdg(i)%set (1, i_pdg(i))
@@ -2144,8 +2205,8 @@ caller when this is a function.
     generator%pl_out = pl_out
     generator%is_gluon = pl_in%search_for_particle (GLUON)
     generator%fs_gluon = pl_out%search_for_particle (GLUON)
-    generator%only_final_state = .not. (&
-       generator%qcd_enabled .and. pl_in%contains_colored_particles ())
+    !!!generator%only_final_state = .not. (&
+    !!!   generator%qcd_enabled .and. pl_in%contains_colored_particles ())
     generator%mass_sum = 0._default
     call generator%pdg_raw%init ()
   end subroutine radiation_generator_init_pdg_list
@@ -2169,6 +2230,17 @@ caller when this is a function.
   end subroutine radiation_generator_init_pdg_array
 
 @ %def radiation_generator_init_pdg_list radiation_generator_init_pdg_array
+@
+<<radiation generator: radiation generator: TBP>>=
+  procedure :: set_initial_state_emissions => &
+     radiation_generator_set_initial_state_emissions
+<<radiation generator: procedures>>=
+  subroutine radiation_generator_set_initial_state_emissions (generator)
+     class(radiation_generator_t), intent(inout) :: generator
+     generator%only_final_state = .false.
+  end subroutine radiation_generator_set_initial_state_emissions
+
+@ %def radiation_generator_set_initial_state_emissions
 @
 <<radiation generator: radiation generator: TBP>>=
   procedure :: setup_if_table => radiation_generator_setup_if_table
@@ -2310,7 +2382,7 @@ caller when this is a function.
            do i = 1, generator%n_out
               call pl_insert%set(i, generator%pl_out%get(i))
            end do
-           last_index = generator%n_out
+           last_index = generator%n_out + 1
         else
            call generator%pl_in%create_antiparticles (pl_antiparticles, n_new_particles)
            call pl_insert%init (generator%n_tot+n_new_particles+1)
@@ -2379,7 +2451,7 @@ caller when this is a function.
        do i = 1, generator%if_table%get_length ()
           call generator%if_table%get_pdg_out (i, pdg_tmp)
           if (size (pdg_tmp) == generator%n_tot) then
-             call if_table%get_particle_string (i, 2, &
+             call if_table%get_particle_string (i, &
                 prt_in0(flv+1)%prt, prt_out0(flv+1)%prt)
              call pdg_reshuffle (pdg_out, pdg_tmp, reshuffle_list_local)
              call reshuffle_list%append (reshuffle_list_local)
@@ -2426,17 +2498,18 @@ caller when this is a function.
       integer, intent(out), dimension(:), allocatable :: list
       type(pdg_sorter_t), dimension(:), allocatable :: sort_born
       type(pdg_sorter_t), dimension(:), allocatable :: sort_real
-      integer :: i_min, n_born, n_real
+      integer :: i_min, n_in, n_born, n_real
       integer :: ib, ir
-      integer, parameter :: n_in = 2
  
-      n_born = size (pdg_born); n_real = size (pdg_real)
+      n_in = generator%n_in
+      n_born = size (pdg_born)
+      n_real = size (pdg_real)
       allocate (list (n_real-n_in))
       allocate (sort_born (n_born))
       allocate (sort_real (n_real-n_in))
 
       sort_born%pdg = pdg_born%get ()
-      sort_real%pdg = pdg_real(3:n_real)%get ()
+      sort_real%pdg = pdg_real(n_in+1:n_real)%get()
 
       do ib = 1, n_born
          if (any (sort_born(ib)%pdg == sort_real%pdg)) &
@@ -2445,7 +2518,7 @@ caller when this is a function.
 
       i_min = maxval (sort_real%associated_born) + 1
 
-      do ir = 1, n_real-2
+      do ir = 1, n_real-n_in
          if (sort_real(ir)%associated_born == 0) then
             sort_real(ir)%associated_born = i_min
             i_min = i_min+1
@@ -2461,8 +2534,8 @@ caller when this is a function.
       type(pdg_sorter_t), intent(inout), dimension(:) :: sort_real
       integer, intent(in) :: ib, n_real
       integer :: ir
-      
-      do ir = 1, n_real-2
+
+      do ir = 1, n_real-generator%n_in
          if (sort_born%pdg == sort_real(ir)%pdg &
             .and..not. sort_real(ir)%checked) then
             sort_real(ir)%associated_born = ib
@@ -2865,23 +2938,28 @@ end module radiation_generator_uti
     allocate (pdg_in (2)); allocate (pdg_out (2))
     pdg_in(1) = 2; pdg_in(2) = -2
     pdg_out(1) = 11; pdg_out(2) = -11
-    call test_process (generator, pdg_in, pdg_out, u)
+    call test_process (generator, pdg_in, pdg_out, u, .true.)
     deallocate (pdg_out); deallocate (pdg_in)
 
     write (u, "(A)") "* Process 7: WZ production at hadron-colliders"
     allocate (pdg_in (2)); allocate (pdg_out (2))
     pdg_in(1) = 1; pdg_in(2) = -2
     pdg_out(1) = -24; pdg_out(2) = 23
-    call test_process (generator, pdg_in, pdg_out, u)
+    call test_process (generator, pdg_in, pdg_out, u, .true.)
     deallocate (pdg_out); deallocate (pdg_in)
 
   contains
-    subroutine test_process (generator, pdg_in, pdg_out, u)
+    subroutine test_process (generator, pdg_in, pdg_out, u, &
+       include_initial_state)
       type(radiation_generator_t), intent(inout) :: generator
       type(pdg_array_t), dimension(:), intent(in) :: pdg_in, pdg_out
       integer, intent(in) :: u
+      logical, intent(in), optional :: include_initial_state
       type(string_t), dimension(:), allocatable :: prt_strings_in
       type(string_t), dimension(:), allocatable :: prt_strings_out
+      logical :: yorn
+      yorn = .false.
+      if (present (include_initial_state)) yorn = include_initial_state
       write (u, "(A)") "* Leading order: "
       write (u, "(A)", advance = 'no') '* Incoming: '
       call write_pdg_array (pdg_in, u)
@@ -2890,6 +2968,7 @@ end module radiation_generator_uti
 
       call generator%init (pdg_in, pdg_out, qcd = .true., qed = .false.)
       call generator%set_n (2, size(pdg_out), 0)
+      if (yorn) call generator%set_initial_state_emissions ()
       call generator%set_constraints (.false., .false., .true., .true.)
       call generator%setup_if_table ()
       call generator%generate (prt_strings_in, prt_strings_out)
@@ -3100,6 +3179,8 @@ leafs are literal constants or named-parameter references.
      real(default), pointer :: tolerance => null ()
      integer, pointer :: jet_algorithm => null ()
      real(default), pointer :: jet_r => null ()
+     real(default), pointer :: jet_p => null ()
+     real(default), pointer :: jet_ycut => null ()
      type(prt_t), pointer :: prt1 => null ()
      type(prt_t), pointer :: prt2 => null ()
      procedure(unary_log),  nopass, pointer :: op1_log  => null ()
@@ -5141,9 +5222,9 @@ test.
     type(eval_node_t), intent(inout), optional :: en0
     logical, dimension(:), allocatable :: mask1
     integer :: n, i
-    ! Should not be hardcoded!
+    !!! Should not be initialized for every event
     type(jet_definition_t) :: jet_def
-    call jet_def%init (en1%jet_algorithm, en1%jet_r)
+    call jet_def%init (en1%jet_algorithm, en1%jet_r, en1%jet_p, en1%jet_ycut)
     n = subevt_get_length (en1%pval)
     allocate (mask1 (n))
     if (present (en0)) then
@@ -8389,11 +8470,10 @@ array.
 @ 
 \subsubsection{Particle functions}
 This combines the treatment of 'join', 'combine', 'collect', 'cluster',
-'select', 
-and 'extract' which all have the same syntax.  The one or two argument
-nodes are allocated.  If there is a condition, the condition node is
-also allocated as a logical expression, for which the variable list is
-augmented by the appropriate (unary/binary) observables.
+'select', and 'extract' which all have the same syntax.  The one or two
+argument nodes are allocated.  If there is a condition, the condition
+node is also allocated as a logical expression, for which the variable
+list is augmented by the appropriate (unary/binary) observables.
 <<Eval trees: procedures>>=
   recursive subroutine eval_node_compile_prt_function (en, pn, var_list)
     type(eval_node_t), pointer :: en
@@ -8431,6 +8511,8 @@ augmented by the appropriate (unary/binary) observables.
           call eval_node_init_prt_fun_unary (en, en1, key, cluster_p)
           call var_list%get_iptr (var_str ("jet_algorithm"), en1%jet_algorithm)
           call var_list%get_rptr (var_str ("jet_r"), en1%jet_r)
+          call var_list%get_rptr (var_str ("jet_p"), en1%jet_p)
+          call var_list%get_rptr (var_str ("jet_ycut"), en1%jet_ycut)
        case ("select")
           call eval_node_init_prt_fun_unary (en, en1, key, select_p)
        case ("extract")
@@ -11955,7 +12037,7 @@ which also take care of the building a new variable list.
   end subroutine model_copy_parameter
   
 @ %def model_copy_parameter
-@ Rcalculate all derived parameters.
+@ Recalculate all derived parameters.
 <<Models: model: TBP>>=
   procedure :: update_parameters => model_parameters_update
 <<Models: procedures>>=

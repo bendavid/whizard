@@ -29,18 +29,20 @@
 
 ## We create a library which is still to be combined with auxiliary libs.
 noinst_LTLIBRARIES = libblha.la
+check_LTLIBRARIES = libblha_ut.la
 
 libblha_la_SOURCES = \
   blha_config.f90 \
-  blha_interface.f90 \
-  blha_driver.f90 \
   blha_olp_interfaces.f90
+
+libblha_ut_la_SOURCES = \
+  blha_uti.f90 blha_ut.f90
 
 ## Omitting this would exclude it from the distribution
 dist_noinst_DATA = blha.nw
 
 # Dump module names into file Modules
-libblha_Modules = ${libblha_la_SOURCES:.f90=}
+libblha_Modules = ${libblha_la_SOURCES:.f90=} ${libblha_ut_la_SOURCES:.f90=}
 Modules: Makefile
 	@for module in $(libblha_Modules); do \
           echo $$module >> $@.new; \
@@ -65,6 +67,9 @@ module_lists = \
   ../qft/Modules \
   ../expr_base/Modules \
   ../types/Modules \
+  ../user/Modules \
+  ../variables/Modules \
+  ../model_features/Modules \
   ../matrix_elements/Modules \
   ../particles/Modules \
   ../beams/Modules \
@@ -99,7 +104,7 @@ DISTCLEANFILES = Module_dependencies.sed
 @am__include@ @am__quote@Makefile.depend@am__quote@
 
 Makefile.depend: Module_dependencies.sed
-Makefile.depend: $(libblha_la_SOURCES)
+Makefile.depend: $(libblha_la_SOURCES) ${libblha_ut_la_SOURCES}
 	@rm -f $@
 	for src in $^; do \
 	  module="`basename $$src | sed 's/\.f[90][0358]//'`"; \
@@ -116,7 +121,7 @@ DISTCLEANFILES += Makefile.depend
 	@:
 #	touch $@
 
-AM_FCFLAGS = $(include_modules) -I../fastjet 
+AM_FCFLAGS = $(include_modules) -I../fastjet -I../pdf_builtin -I../lhapdf
 
 ########################################################################
 ## Default Fortran compiler options
@@ -144,12 +149,12 @@ POSTLUDE = $(top_srcdir)/src/noweb-frame/whizard-postlude.nw
 blha.stamp: $(PRELUDE) $(srcdir)/blha.nw $(POSTLUDE)
 	@rm -f blha.tmp
 	@touch blha.tmp
-	for src in $(libblha_la_SOURCES); do \
+	for src in $(libblha_la_SOURCES) $(libblha_ut_la_SOURCES); do \
 	  $(NOTANGLE) -R[[$$src]] $^ | $(CPIF) $$src; \
         done
 	@mv -f blha.tmp blha.stamp
 
-$(libblha_la_SOURCES): blha.stamp
+$(libblha_la_SOURCES) $(libblha_ut_la_SOURCES): blha.stamp
 ## Recover from the removal of $@
 	@if test -f $@; then :; else \
 	  rm -f blha.stamp; \

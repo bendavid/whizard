@@ -5020,6 +5020,7 @@ Write a tag and read it again, using a temporary file.
     write (u, *)
     write (u, "(A,L1)")  "success = ", success
     deallocate (tag)
+    close (u_tmp)
     call cstream%final ()
     
     write (u, *)
@@ -5050,6 +5051,7 @@ Write a tag and read it again, using a temporary file.
     write (u, *)
     write (u, "(A,L1)")  "success = ", success
     deallocate (tag)
+    close (u_tmp)
     call cstream%final ()
     
     write (u, *)
@@ -5080,7 +5082,9 @@ Write a tag and read it again, using a temporary file.
     call tag%write (u)
     write (u, *)
     write (u, "(A,L1)")  "success = ", success
+    close (u_tmp)
     deallocate (tag)
+
     call cstream%final ()
     
     write (u, *)
@@ -5108,6 +5112,7 @@ Write a tag and read it again, using a temporary file.
     write (u, *)
     write (u, "(A,L1)")  "success = ", success
     deallocate (tag)
+    close (u_tmp)
     call cstream%final ()
     
     write (u, "(A)")
@@ -5172,6 +5177,7 @@ Write and read two tags, one of them optional.
     write (u, *)
     write (u, "(A,L1)")  "success = ", success
     deallocate (tag1, tag2)
+    close (u_tmp)
     call cstream%final ()
     
     write (u, *)
@@ -5206,6 +5212,7 @@ Write and read two tags, one of them optional.
     write (u, *)
     write (u, "(A,L1)")  "success = ", success
     deallocate (tag1, tag2)
+    close (u_tmp)
     call cstream%final ()
     
     write (u, "(A)")
@@ -5262,6 +5269,7 @@ Write and read a tag with single-line content.
     write (u, "(A,L1)")  "content = ", tag%has_content
     write (u, *)
     deallocate (tag)
+    close (u_tmp)
     call cstream%final ()
     
     write (u, "(A)")  "* Tag with content"
@@ -5293,6 +5301,7 @@ Write and read a tag with single-line content.
     write (u, "(A,L1)")  "content = ", tag%has_content
     write (u, "(A,L1)")  "closing = ", closing
     deallocate (tag)
+    close (u_tmp)
     call cstream%final ()
     
     write (u, *)
@@ -5332,6 +5341,7 @@ Write and read a tag with single-line content.
     write (u, "(A,L1)")  "success = ", success
     write (u, "(A,L1)")  "content = ", tag%has_content
     deallocate (tag)
+    close (u_tmp)
     call cstream%final ()
     
     write (u, "(A)")
@@ -5388,6 +5398,7 @@ Write a tag and read it again, using a temporary file.
     call tag%write (u)
     write (u, *)
     deallocate (tag)
+    close (u_tmp)
     call cstream%final ()
     
     write (u, "(A)")

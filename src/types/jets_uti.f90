@@ -1,4 +1,4 @@
-! WHIZARD 2.2.7 Aug 11 2015
+! WHIZARD 2.2.8 Nov 22 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,11 +6,14 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
-!     Fabian Bach <fabian.bach@desy.de>
+!     Fabian Bach <fabian.bach@t-online.de>
+!     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
+!     Soyoung Shim <soyoung.shim@desy.de>
+!     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, Daniel Wiesler 
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -60,7 +63,7 @@ contains
 
     write (u, "(A)")  "* Print banner"
     call print_banner ()
-    
+
     write (u, *)
     write (u, "(A)")  "* Prepare input particles"
     allocate (prt (3))
@@ -99,10 +102,10 @@ contains
           call constituents(j)%final ()
        end do
     end do
-    
+
     write (u, *)
     write (u, "(A)")  "* Cleanup"
-    
+
     do i = 1, size (prt)
        call prt(i)%final ()
     end do
@@ -114,8 +117,8 @@ contains
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: jets_1"        
-    
+
   end subroutine jets_1
-  
+
 
 end module jets_uti

@@ -29,9 +29,6 @@
 
 depend_filter_extra = -e 's/iso_fortran_env\.lo//'
 
-KINDS_FILE = \
-  kinds.f90
-
 NOWEB_SOURCE_FILES = \
   divisions.f90 \
   vamp.f90 \
@@ -46,7 +43,7 @@ NOWEB_SOURCE_FILES = \
   products.f90 \
   $(sources_extra)
 
-SOURCE_FILES = $(KINDS_FILES) $(NOWEB_SOURCE_FILES)
+SOURCE_FILES = $(NOWEB_SOURCE_FILES)
 
 MODULE_FILES = \
   divisions.$(FC_MODULE_EXT) \
@@ -149,7 +146,7 @@ Makefile.depend: $(SOURCE_FILES)
 				 $(depend_filter_extra) ; \
 	done > $@
 
-DISTCLEANFILES = Makefile.depend
+DISTCLEANFILES = Makefile.depend kinds.f90
 
 ########################################################################
 ## Non-standard cleanup tasks

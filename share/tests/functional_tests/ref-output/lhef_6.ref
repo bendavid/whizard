@@ -68,6 +68,7 @@ $lhef_version = "2.0"
 | Events: writing to LHEF file 'lhef_6_p.1.lhe'
 | Events: writing to LHEF file 'lhef_6_p.2.lhe'
 |         ... event sample complete.
+| Events: actual unweighting efficiency =  50.00 %
 | Events: closing LHEF file 'lhef_6_p.2.lhe'
 | There were no errors and    1 warning(s).
 | WHIZARD run finished.

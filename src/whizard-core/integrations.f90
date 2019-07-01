@@ -1,4 +1,4 @@
-! WHIZARD 2.2.7 Aug 11 2015
+! WHIZARD 2.2.8 Nov 22 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,11 +6,14 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
-!     Fabian Bach <fabian.bach@desy.de>
+!     Fabian Bach <fabian.bach@t-online.de>
+!     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
+!     Soyoung Shim <soyoung.shim@desy.de>
+!     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, Daniel Wiesler 
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -95,12 +98,15 @@ module integrations
     type(string_t) :: history_filename
     type(string_t) :: log_filename
     logical :: combined_integration = .false.
+    type(iteration_multipliers_t) :: iteration_multipliers
    contains
      procedure :: create_process => integration_create_process
      procedure :: init_process => integration_init_process
      procedure :: setup_process => integration_setup_process
      procedure :: evaluate => integration_evaluate
      procedure :: make_iterations_list => integration_make_iterations_list
+     procedure :: init_iteration_multipliers => integration_init_iteration_multipliers
+     procedure :: apply_call_multipliers => integration_apply_call_multipliers
      procedure :: init => integration_init
      procedure :: integrate => integration_integrate
      procedure :: setup_component_cores => integration_setup_component_cores
@@ -265,7 +271,7 @@ contains
     n_components = intg%process%get_n_components ()
     n_in = intg%process%get_n_in ()
 
-    call blha_template%init ()
+    call blha_template%init (local%beam_structure%has_polarized_beams())
     intg%combined_integration = var_list%get_lval (&
                                 var_str ('?combined_nlo_integration')) &
                                 .and. intg%process%is_nlo_calculation ()
@@ -350,6 +356,11 @@ contains
        case (GKS)
          call intg%process%init_component &
              (i_component, core_template, mci_template, phs_config_template) 
+       case (NLO_THRESHOLD_RESUMMATION)
+         call intg%process%init_component &
+             (i_component, core_template, mci_template, phs_config_template)
+         if (intg%combined_integration) &
+            call intg%process%set_component_type (i_component, COMP_RESUM)
        case default
          call msg_fatal ("setup_process: NLO type not implemented!")
        end select
@@ -370,16 +381,8 @@ contains
     decay_rest_frame = &
          var_list%get_lval (var_str ("?decay_rest_frame"))    
     if (intg%process_has_me) then
-       if (local%beam_structure%is_set ()) then
-          call intg%process%setup_beams_beam_structure &
-               (local%beam_structure, sqrts, decay_rest_frame)
-        else if (n_in == 2) then
-          call intg%process%setup_beams_sqrts &
-               (sqrts, local%beam_structure)
-       else 
-          call intg%process%setup_beams_decay &
-               (decay_rest_frame, local%beam_structure)
-       end if
+       call intg%process%setup_beams_beam_structure &
+            (local%beam_structure, sqrts, decay_rest_frame)
     end if
     call intg%process%check_masses ()
     if (verb .and. intg%process_has_me) then
@@ -501,6 +504,55 @@ contains
          adapt_grids = adapt_grids, adapt_weights = adapt_weights)
   end subroutine integration_make_iterations_list
   
+  subroutine integration_init_iteration_multipliers (intg, local)
+    class(integration_t), intent(inout) :: intg
+    type(rt_data_t), intent(in) :: local
+    integer :: n_pass, pass
+    n_pass = local%it_list%get_n_pass ()
+    associate (it_multipliers => intg%iteration_multipliers)
+       allocate (it_multipliers%n_calls0 (n_pass))
+       do pass = 1, n_pass
+          it_multipliers%n_calls0(pass) = local%it_list%get_n_calls (pass)
+       end do
+       it_multipliers%mult_real = local%var_list%get_rval &
+           (var_str ("mult_call_real"))
+       it_multipliers%mult_virt = local%var_list%get_rval &
+           (var_str ("mult_call_virt"))
+       it_multipliers%mult_pdf = local%var_list%get_rval &
+           (var_str ("mult_call_pdf"))
+    end associate
+  end subroutine integration_init_iteration_multipliers
+
+  subroutine integration_apply_call_multipliers (intg, n_pass, i_component, it_list)
+    class(integration_t), intent(in) :: intg
+    integer, intent(in) :: n_pass, i_component
+    type(iterations_list_t), intent(inout) :: it_list
+    integer :: nlo_type
+    integer :: n_calls0, n_calls
+    integer :: pass
+    real(default) :: multiplier
+    nlo_type = intg%process%get_component_nlo_type (i_component)
+    do pass = 1, n_pass
+       associate (multipliers => intg%iteration_multipliers)
+          select case (nlo_type)
+          case (NLO_REAL)
+             multiplier = multipliers%mult_real
+          case (NLO_VIRTUAL)
+             multiplier = multipliers%mult_virt
+          case (NLO_PDF)
+             multiplier = multipliers%mult_pdf
+          case (NLO_THRESHOLD_RESUMMATION)
+             multiplier = multipliers%mult_threshold
+          case default
+             return
+          end select
+       end associate
+       n_calls0 = intg%iteration_multipliers%n_calls0 (pass)
+       n_calls = floor (multiplier * n_calls0)
+       call it_list%set_n_calls (pass, n_calls)
+    end do
+  end subroutine integration_apply_call_multipliers
+
   subroutine integration_init (intg, process_id, local, global, local_stack)
     class(integration_t), intent(out) :: intg
     type(string_t), intent(in) :: process_id
@@ -518,6 +570,7 @@ contains
     end if
     call intg%init_process (local)
     call intg%setup_process (local)
+    call intg%init_iteration_multipliers (local)
   end subroutine integration_init
 
   subroutine integration_integrate (intg, local, eff_reset)
@@ -545,8 +598,8 @@ contains
     call process_instance%init (intg%process, use_internal_color_correlations, &
                                 combined_integration = intg%combined_integration)
 
-    if (process_instance%has_nlo_component ()) then
-       call process_instance%create_blha_interface ()
+    if (process_instance%has_blha_component ()) then
+       call process_instance%create_blha_interface (local%beam_structure)
        call process_instance%load_blha_libraries (local%os_data)
     end if
 
@@ -568,8 +621,10 @@ contains
     do i_mci = 1, n_mci
        i_component = intg%process%i_mci_to_i_component (i_mci)
        if (intg%process%is_active_nlo_component (i_component)) then
-         if (process_instance%collect_matrix_elements) &
-            call process_instance%nlo_controller%sqme_collector%reset ()
+          select type (pcm => process_instance%pcm)
+          class is (pcm_instance_nlo_t)
+             if (pcm%collect_matrix_elements)  call pcm%collector%reset ()
+          end select
          if (n_mci > 1) then
             write (msg_buffer, "(A,A,A,I0)") &
                  "Starting integration for process '", &
@@ -585,6 +640,7 @@ contains
          else
             it_list = local%it_list
          end if
+         call intg%apply_call_multipliers (n_pass, i_mci, it_list)
          call msg_message ("Integrate: " // char (it_list%to_string ()))
          do pass = 1, n_pass
             call intg%evaluate (process_instance, i_mci, pass, it_list, pacify)

@@ -1,4 +1,4 @@
-(* $Id: colorize.ml 6943 2015-05-01 10:53:21Z msekulla $
+(* $Id: colorize.ml 7372 2015-11-18 18:07:59Z jr_reuter $
 
    Copyright (C) 1999-2015 by
 
@@ -7,7 +7,8 @@
        Juergen Reuter <juergen.reuter@desy.de>
        with contributions from
        Christian Speckner <cnspeckn@googlemail.com>
-       Marco Sekulla <sekulla@physik.uni-siegen.de>
+       Marco Sekulla <marco.sekulla@kit.edu>
+       Soyoung Shim <soyoung.shim@desy.de>
 
    WHIZARD is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by
@@ -24,9 +25,9 @@
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
 let rcs_file = RCS.parse "Colorize" ["Colorizing Monochrome Models"]
-    { RCS.revision = "$Revision: 6943 $";
-      RCS.date = "$Date: 2015-05-01 12:53:21 +0200 (Fri, 01 May 2015) $";
-      RCS.author = "$Author: msekulla $";
+    { RCS.revision = "$Revision: 7372 $";
+      RCS.date = "$Date: 2015-11-18 19:07:59 +0100 (Wed, 18 Nov 2015) $";
+      RCS.author = "$Author: jr_reuter $";
       RCS.source
         = "$URL: svn+ssh://jr_reuter@login.hepforge.org/hepforge/svn/whizard/trunk/omega/src/colorize.ml $" }
 
@@ -378,6 +379,32 @@ module It (M : Model.T) =
           TensorScalar_Scalar_Scalar_cf (x * c)
       | Dim7_Tensor_2_Vector_Vector_T c ->
           Dim7_Tensor_2_Vector_Vector_T (x * c)
+      | Dim6_Scalar_Vector_Vector_D c -> 
+          Dim6_Scalar_Vector_Vector_D (x * c)
+      | Dim6_Scalar_Vector_Vector_DP c -> 
+          Dim6_Scalar_Vector_Vector_DP (x * c) 
+      | Dim6_HAZ_D c -> 
+          Dim6_HAZ_D (x * c)
+      | Dim6_HAZ_DP c -> 
+          Dim6_HAZ_DP (x * c)
+      | Gauge_Gauge_Gauge_i c ->
+          Gauge_Gauge_Gauge_i (x * c)
+      | Dim6_GGG c -> 
+          Dim6_GGG (x * c) 
+      | Dim6_AWW_DP c -> 
+          Dim6_AWW_DP (x *c) 
+      | Dim6_AWW_DW c -> 
+          Dim6_AWW_DW (x * c) 
+      | Dim6_Gauge_Gauge_Gauge_i c ->
+          Dim6_Gauge_Gauge_Gauge_i (x * c)
+      | Dim6_HHH c ->
+          Dim6_HHH (x * c)
+      | Dim6_WWZ_DPWDW c ->
+          Dim6_WWZ_DPWDW (x * c)
+      | Dim6_WWZ_DW c ->
+          Dim6_WWZ_DW (x * c)
+      | Dim6_WWZ_D c ->
+          Dim6_WWZ_D (x * c)
 
     let mult_vertex4 x = function
       | Scalar4 c ->
@@ -406,6 +433,40 @@ module It (M : Model.T) =
           Dim8_Scalar2_Vector2_1 (x * c)
       | Dim8_Scalar4 c ->
           Dim8_Scalar4 (x * c)
+      | Dim6_H4_P2 c ->
+          Dim6_H4_P2 (x * c)
+      | Dim6_AHWW_DPB c ->
+          Dim6_AHWW_DPB (x * c)
+      | Dim6_AHWW_DPW c ->
+          Dim6_AHWW_DPW (x * c)
+      | Dim6_AHWW_DW c ->
+          Dim6_AHWW_DW (x * c)
+      | Dim6_Vector4_DW c ->
+          Dim6_Vector4_DW (x * c)
+      | Dim6_Vector4_W c ->
+          Dim6_Vector4_W (x * c)
+      | Dim6_Scalar2_Vector2_PB c ->       
+          Dim6_Scalar2_Vector2_PB (x * c)
+      | Dim6_Scalar2_Vector2_D c ->
+          Dim6_Scalar2_Vector2_D (x * c)
+      | Dim6_Scalar2_Vector2_DP c ->
+          Dim6_Scalar2_Vector2_DP (x * c)
+      | Dim6_HHZZ_T c ->   
+          Dim6_HHZZ_T (x * c)
+      | Dim6_HWWZ_DW c -> 
+          Dim6_HWWZ_DW (x * c)
+      | Dim6_HWWZ_DPB c -> 
+          Dim6_HWWZ_DPB (x * c)
+      | Dim6_HWWZ_DDPW c -> 
+          Dim6_HWWZ_DDPW (x * c)
+      | Dim6_HWWZ_DPW c -> 
+          Dim6_HWWZ_DPW (x * c)
+      | Dim6_AHHZ_D c -> 
+          Dim6_AHHZ_D (x * c)
+      | Dim6_AHHZ_DP c -> 
+          Dim6_AHHZ_DP (x * c)
+      | Dim6_AHHZ_PB c -> 
+          Dim6_AHHZ_PB (x * c)
 
     let mult_vertexn x = function
       | foo -> ignore (incomplete "mult_vertexn"); foo
@@ -486,6 +547,46 @@ module It (M : Model.T) =
           incomplete "permute_vertex4' GBBG"
       | Vector4_K_Matrix_tho (c, ch2_list) ->
           incomplete "permute_vertex4' Vector4_K_Matrix_tho"
+      | Dim8_Scalar2_Vector2_1 ic4_list ->
+          incomplete "permute_vertex4' Dim8_Scalar2_Vector2_1"
+      | Dim8_Scalar2_Vector2_2 ic4_list ->
+          incomplete "permute_vertex4' Dim8_Scalar2_Vector2_2"
+      | Dim8_Scalar4 ic4_list ->
+          incomplete "permute_vertex4' Dim8_Scalar4"
+      | Dim6_H4_P2 ic4_list ->
+	  incomplete "permute_vertex4' Dim6_H4_P2"
+      | Dim6_AHWW_DPB ic4_list ->
+	  incomplete "permute_vertex4' Dim6_AHWW_DPB"
+      | Dim6_AHWW_DPW ic4_list ->
+	  incomplete "permute_vertex4' Dim6_AHWW_DPW"
+      | Dim6_AHWW_DW ic4_list ->
+	  incomplete "permute_vertex4' Dim6_AHWW_DW"
+      | Dim6_Vector4_DW ic4_list ->
+	  incomplete "permute_vertex4' Dim6_Vector4_DW"
+      | Dim6_Vector4_W ic4_list ->
+	  incomplete "permute_vertex4' Dim6_Vector4_W"
+      | Dim6_Scalar2_Vector2_D ic4_list ->
+	  incomplete "permute_vertex4' Dim6_Scalar2_Vector2_D"
+      | Dim6_Scalar2_Vector2_DP ic4_list ->
+	  incomplete "permute_vertex4' Dim6_Scalar2_Vector2_DP"
+      | Dim6_Scalar2_Vector2_PB ic4_list ->
+	  incomplete "permute_vertex4' Dim6_Scalar2_Vector2_PB"
+      | Dim6_HHZZ_T ic4_list ->
+	  incomplete "permute_vertex4' Dim6_HHZZ_T"
+      | Dim6_HWWZ_DW ic4_list ->
+	  incomplete "permute_vertex4' Dim6_HWWZ_DW"
+      | Dim6_HWWZ_DPB ic4_list ->
+	  incomplete "permute_vertex4' Dim6_HWWZ_DPB"
+      | Dim6_HWWZ_DDPW ic4_list ->
+	  incomplete "permute_vertex4' Dim6_HWWZ_DDPW"
+      | Dim6_HWWZ_DPW ic4_list ->
+	  incomplete "permute_vertex4' Dim6_HWWZ_DPW"
+      | Dim6_AHHZ_D ic4_list ->
+	  incomplete "permute_vertex4' Dim6_AHHZ_D"
+      | Dim6_AHHZ_DP ic4_list ->
+	  incomplete "permute_vertex4' Dim6_AHHZ_DP"
+      | Dim6_AHHZ_PB ic4_list ->
+	  incomplete "permute_vertex4' Dim6_AHHZ_PB"
 
     let permute_vertex4 perm = function
       | V3 (v, fuse, c) -> V3 (v, fuse, c)
@@ -1510,11 +1611,3 @@ module Gauge (M : Model.Gauge) =
     let flow = CM.flow
 
   end
-
-(*i
- *  Local Variables:
- *  mode:caml
- *  indent-tabs-mode:nil
- *  page-delimiter:"^(\\* .*\n"
- *  End:
-i*)

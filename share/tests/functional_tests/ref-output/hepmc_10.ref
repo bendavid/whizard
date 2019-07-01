@@ -79,6 +79,7 @@ $sample = "hepmc_10a"
 | Events: generating 1 unweighted, unpolarized events ...
 | Events: event normalization mode '1'
 |         ... event sample complete.
+| Events: actual unweighting efficiency =   0.10 %
 Warning: Encountered events with excess weight: 1 events (100.000 %)
 | Maximum excess weight = 1.155E-01
 | Average excess weight = 1.155E-01

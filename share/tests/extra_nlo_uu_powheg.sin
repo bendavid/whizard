@@ -47,8 +47,7 @@ powheg_pt_min = 1
 
 !?powheg_test_sudakov = true
 
-# hardest jet pT
-scale = eval Pt [sort by -Pt [colored]]
+scale = 2 * mtop
 
 # Needs OpenLoops library ee??
 process extra_nlo_uu_powheg = E1, e1 => u, U { nlo_calculation = "Full" }
@@ -59,7 +58,7 @@ fks_mapping_type = 1
 
 sqrts = 500 GeV
 
-iterations = 5:50000:"gw", 5:50000:""
+iterations = 5:20000:"gw", 5:20000:""
 integrate (extra_nlo_uu_powheg)
 show (integral(extra_nlo_uu_powheg))
 show (error(extra_nlo_uu_powheg))
@@ -74,8 +73,8 @@ $y_label = "$N_{\textrm{events}}$"
 ?y_log = true
 y_min = 1
 y_max = n_events
-histogram m_jj (0 GeV, 500 GeV, 20 GeV)
-analysis = record m_jj (eval M [collect [colored]])
+histogram pt_dist (0 GeV, 500 GeV, 20 GeV)
+analysis = record pt_dist (eval Pt [collect [t:T:g]])
 $sample = "extra_nlo_uu_powheg"
 
 simulate (extra_nlo_uu_powheg)

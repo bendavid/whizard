@@ -83,6 +83,8 @@ model "Test"
  Event reweighting factor: [undefined]
 ------------------------------------------------------------------------
  Event analysis: [undefined]
+------------------------------------------------------------------------
+ Event callback: [undefined]
 ========================================================================
  Process stack:
 ========================================================================
@@ -201,7 +203,7 @@ model "Test"
    sqrts = 1.000000000000E+03 GeV
    Azimuthal dependence    = F
    Lab frame is c.m. frame = T
-   MD5 sum (beams/strf) = 'A2B1699F398D66462554093B60EE7E64'
+   MD5 sum (beams/strf) = '80007D5E30CFD7B9BD09FF0704AAA3A6'
 ========================================================================
  Multi-channel integrator configurations:
 ------------------------------------------------------------------------
@@ -213,7 +215,7 @@ model "Test"
    Current pass          = 1
    Number of iterations  = 1
    Number of calls       = 1000
-   MD5 sum (components)  = 'E5C0EFCBF29E5D5C9E1FB964B317FB72'
+   MD5 sum (components)  = '14D8C2F3C8B2FCBECE47F0340B343A56'
  Single-channel midpoint rule integrator:
    Integral             =  7.7464622036E+03
    Efficiency           =  9.6824583655E-01

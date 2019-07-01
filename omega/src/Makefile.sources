@@ -1,5 +1,5 @@
 # Makefile.sources -- Makefile component for O'Mega
-# $Id: Makefile.sources 6943 2015-05-01 10:53:21Z msekulla $
+# $Id: Makefile.sources 7295 2015-09-30 05:28:53Z jr_reuter $
 ##
 ## Process Makefile.am with automake to include this file in Makefile.in
 ##
@@ -154,6 +154,7 @@ OMEGA_APPLICATIONS_ML = \
     omega_SM_CKM_VM.ml \
     omega_SM_ac.ml \
     omega_SM_ac_CKM.ml \
+    omega_SM_dim6.ml \
     omega_SM_top.ml \
     omega_SM_top_anom.ml \
     omega_SM_tt_threshold.ml \
@@ -260,14 +261,10 @@ if FC_USE_OPENMP
 AM_FCFLAGS += $(FCFLAGS_OPENMP)
 endif
 
-if STANDALONE_OMEGA_BUILD
-  KINDS_F90 = kinds.f90
-  CONSTANTS_F90 = constants.f90
-  STRINGS_F90 = iso_varying_string.f90
-  OMEGA_PARAMETERS_F90 = # omega_parameters.f90 omega_parameters_madgraph.f90
-else
-# use the copies in ../../misc instead
-endif
+KINDS_F90 = kinds.f90
+CONSTANTS_F90 = constants.f90
+STRINGS_F90 = iso_varying_string.f90
+OMEGA_PARAMETERS_F90 = # omega_parameters.f90 omega_parameters_madgraph.f90
 
 OMEGALIB_DERIVED_F90 = \
     omega_spinors.f90 omega_bispinors.f90 omega_vectors.f90 \
@@ -279,11 +276,11 @@ OMEGALIB_DERIVED_F90 = \
     omega95.f90 omega95_bispinors.f90 omegavm95.f90
 
 OMEGALIB_F90 = \
-    $(KINDS_F90) $(CONSTANTS_F90) $(STRINGS_F90) \
+    $(CONSTANTS_F90) $(STRINGS_F90) \
     $(OMEGALIB_DERIVED_F90) \
     $(OMEGA_PARAMETERS_F90)
 
-OMEGALIB_MOD = $(OMEGALIB_F90:.f90=.mod)
+OMEGALIB_MOD = $(KINDS_F90:.f90=.mod) $(OMEGALIB_F90:.f90=.mod)
 
 ########################################################################
 ## The End.

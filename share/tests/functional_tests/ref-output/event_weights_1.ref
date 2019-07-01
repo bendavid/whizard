@@ -77,6 +77,7 @@ seed = 0
 | Events: generating 2 unweighted, unpolarized events ...
 | Events: event normalization mode '1'
 |         ... event sample complete.
+| Events: actual unweighting efficiency =  66.67 %
 | Events: closing weight stream file 'event_weights_1a.weights.dat'
 | Events: closing raw file 'event_weights_1a.evx'
 $sample_normalization = "1"
@@ -93,6 +94,7 @@ seed = 0
 | Events: generating 2 unweighted, unpolarized events ...
 | Events: event normalization mode '1'
 |         ... event sample complete.
+| Events: actual unweighting efficiency = 100.00 %
 | Events: closing weight stream file 'event_weights_1b.weights.dat'
 | Events: closing raw file 'event_weights_1b.evx'
 $sample_normalization = "1/n"
@@ -109,6 +111,7 @@ seed = 0
 | Events: generating 2 unweighted, unpolarized events ...
 | Events: event normalization mode '1/n'
 |         ... event sample complete.
+| Events: actual unweighting efficiency = 100.00 %
 | Events: closing weight stream file 'event_weights_1c.weights.dat'
 | Events: closing raw file 'event_weights_1c.evx'
 $sample_normalization = "sigma"
@@ -125,6 +128,7 @@ seed = 0
 | Events: generating 2 unweighted, unpolarized events ...
 | Events: event normalization mode 'sigma'
 |         ... event sample complete.
+| Events: actual unweighting efficiency =  66.67 %
 | Events: closing weight stream file 'event_weights_1d.weights.dat'
 | Events: closing raw file 'event_weights_1d.evx'
 $sample_normalization = "sigma/n"
@@ -141,6 +145,7 @@ seed = 0
 | Events: generating 2 unweighted, unpolarized events ...
 | Events: event normalization mode 'sigma/n'
 |         ... event sample complete.
+| Events: actual unweighting efficiency = 100.00 %
 | Events: closing weight stream file 'event_weights_1e.weights.dat'
 | Events: closing raw file 'event_weights_1e.evx'
 | There were no errors and    1 warning(s).

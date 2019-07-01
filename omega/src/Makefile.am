@@ -1,5 +1,5 @@
 # Makefile.am -- Makefile for O'Mega within and without WHIZARD
-# $Id: Makefile.am 7140 2015-08-07 21:11:59Z jr_reuter $
+# $Id: Makefile.am 7295 2015-09-30 05:28:53Z jr_reuter $
 ##
 ## Process this file with automake to produce Makefile.in
 ##
@@ -109,7 +109,7 @@ SUFFIXES += .lo .$(FC_MODULE_EXT)
 
 ########################################################################
 
-DISTCLEANFILES =
+DISTCLEANFILES = kinds.f90
 
 if NOWEB_AVAILABLE
 
@@ -142,7 +142,7 @@ MYPRECIOUS += $(OMEGALIB_DERIVED_F90)
 ########################################################################
 @am__include@ @am__quote@Makefile.depend_fortran@am__quote@
 
-Makefile.depend_fortran: $(libomega_core_la_SOURCES)
+Makefile.depend_fortran: kinds.f90 $(libomega_core_la_SOURCES)
 	@rm -f $@
 	for src in $^; do \
 	  module="`basename $$src | sed 's/\.f[90][0358]//'`"; \

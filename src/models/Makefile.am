@@ -27,7 +27,6 @@
 
 ## Build model-specific extra sources.
 SUBDIRS = \
-	SM_tt_threshold_bundle \
 	threeshl_bundle
 
 ## Build WHIZARD/O'Mega model interface library
@@ -60,6 +59,7 @@ libmodels_la_SOURCES = \
   parameters.SM.f90 \
   parameters.SM_ac.f90 \
   parameters.SM_ac_CKM.f90 \
+  parameters.SM_dim6.f90 \
   parameters.SM_CKM.f90 \
   parameters.SM_top.f90 \
   parameters.SM_top_anom.f90 \
@@ -106,6 +106,7 @@ nodist_execmod_HEADERS = \
   parameters_sm.$(FC_MODULE_EXT) \
   parameters_sm_ac.$(FC_MODULE_EXT) \
   parameters_sm_ac_ckm.$(FC_MODULE_EXT) \
+  parameters_sm_dim6.$(FC_MODULE_EXT) \
   parameters_sm_ckm.$(FC_MODULE_EXT) \
   parameters_sm_top.$(FC_MODULE_EXT) \
   parameters_sm_top_anom.$(FC_MODULE_EXT) \
@@ -147,8 +148,8 @@ external_Test_la_SOURCES = external.Test.f90
 external_Test_la_LDFLAGS = -module
 
 ## Collect the SM ttbar threshold code.
-external_SM_tt_threshold_la_LIBADD = SM_tt_threshold_bundle/libSM_tt_threshold_bundle.la
-libmodels_la_LIBADD = SM_tt_threshold_bundle/libSM_tt_threshold_bundle.la
+external_SM_tt_threshold_la_LIBADD = ../threshold/libthreshold.la
+libmodels_la_LIBADD = ../threshold/libthreshold.la
 
 ## Collect the 3SHL code.
 external_Threeshl_la_LIBADD = threeshl_bundle/libthreeshl_bundle.la
@@ -238,6 +239,9 @@ parameters_sm.$(FC_MODULE_EXT): parameters.SM.lo
 parameters_sm_ckm.$(FC_MODULE_EXT): parameters.SM_CKM.lo
 	@:
 
+parameters_sm_dim6.$(FC_MODULE_EXT): parameters.SM_dim6.lo
+	@:
+
 parameters_sm_ac.$(FC_MODULE_EXT): parameters.SM_ac.lo
 	@:
 
@@ -302,7 +306,7 @@ parameters_zprime.$(FC_MODULE_EXT): parameters.Zprime.lo
 ## Dependency on O'Mega modules
 
 basicsdir = $(top_builddir)/src/basics
-testingdir = $(top_builddir)/src/testing 
+testingdir = $(top_builddir)/src/testing
 utilitiesdir = $(top_builddir)/src/utilities
 systemdir = $(top_builddir)/src/system
 physicsdir = $(top_builddir)/src/physics
@@ -329,11 +333,11 @@ $(libmodels_la_OBJECTS) $(external_SM_tt_threshold_la_OBJECTS) $(external_Threes
   $(physicsdir)/$(SMPHYSICS_MOD) \
   $(combinatoricsdir)/$(SOLVER_MOD) \
   $(omegadir)/$(OMEGAVECTORS_MOD) \
-  SM_tt_threshold_bundle/$(TTV_FORMFACTORS_MOD) \
+  ../threshold/$(TTV_FORMFACTORS_MOD) \
   threeshl_bundle/threeshl.$(FC_MODULE_EXT) \
   threeshl_bundle/tglue.$(FC_MODULE_EXT)
 
-AM_FCFLAGS = -I$(basicsdir) -I$(testingdir) -I$(utilitiesdir) -I$(systemdir) -I$(physicsdir) -I$(combinatoricsdir) -I$(omegadir) -ISM_tt_threshold_bundle -Ithreeshl_bundle
+AM_FCFLAGS = -I$(basicsdir) -I$(testingdir) -I$(utilitiesdir) -I$(systemdir) -I$(physicsdir) -I$(combinatoricsdir) -I$(omegadir) -I../threshold -Ithreeshl_bundle
 
 ########################################################################
 ## Default Fortran compiler options

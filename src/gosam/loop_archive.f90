@@ -1,4 +1,4 @@
-! WHIZARD 2.2.7 Aug 11 2015
+! WHIZARD 2.2.8 Nov 22 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,11 +6,14 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
-!     Fabian Bach <fabian.bach@desy.de>
+!     Fabian Bach <fabian.bach@t-online.de>
+!     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
+!     Soyoung Shim <soyoung.shim@desy.de>
+!     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, Daniel Wiesler 
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -80,7 +83,7 @@ contains
     type(string_t), intent(in) :: olp_file, olc_file, config_file, lib
     type(string_t) :: current_prefix
     type(string_t) :: filename
-    
+
     ! Copy, rename and move olp-file and olc-file
     filename = archive%current_prefix // '.olp'
     call os_system_call ('cp ' // olp_file // ' ' // &
@@ -90,7 +93,7 @@ contains
     filename = archive%current_prefix // '.olc'
     call os_system_call ('cp ' // olc_file // ' ' // &
        filename)
-    call os_system_call ('mv ' // filename // ' ' // & 
+    call os_system_call ('mv ' // filename // ' ' // &
        archive%name)
     ! Do the same with the loop-library and the config file
     filename = archive%current_prefix // '_libgolem_olp.' // &
@@ -143,14 +146,14 @@ contains
        if (counter >= 100) call msg_fatal ("Maximum number of loop-libraries exceeded!")
     end do
     write(prefix,"(A,I2.2)") 'V', counter
-    archive%current_prefix = var_str (prefix)    
+    archive%current_prefix = var_str (prefix)
   end subroutine loop_archive_search
 
   subroutine loop_archive_restore (archive, olp_orig, olc_orig, path)
     class(loop_archive_t), intent(inout) :: archive
     type(string_t), intent(in) :: olp_orig, olc_orig, path
     type(string_t) :: olp_file, olc_file, config_file, lib
-    
+
     olp_file = archive%current_prefix // '.olp'
     olc_file = archive%current_prefix // '.olc'
     config_file = archive%current_prefix // '_golem.in'
@@ -162,7 +165,7 @@ contains
 
     call os_system_call ('cp ' // archive%name // '/' // olc_file // ' .')
     call os_system_call ('mv ' // olc_file // ' ' // olc_orig)
-   
+
     call os_system_call ('cp ' // archive%name // '/' // config_file // ' .')
     call os_system_call ('mv ' // config_file // ' golem.in')
 
@@ -171,7 +174,7 @@ contains
          archive%os_data%shrlib_ext)
     call os_system_call ('mv libgolem_olp.' // archive%os_data%shrlib_ext &
          // ' ' // path // '/.libs')
-    
+
   end subroutine loop_archive_restore
 
 

@@ -80,6 +80,8 @@ model "Test"
  Event reweighting factor: [undefined]
 ------------------------------------------------------------------------
  Event analysis: [undefined]
+------------------------------------------------------------------------
+ Event callback: [undefined]
 ========================================================================
  Process stack:
 ========================================================================
@@ -218,7 +220,7 @@ model "Test"
    sqrts = 1.000000000000E+03 GeV
    Azimuthal dependence    = F
    Lab frame is c.m. frame = T
-   MD5 sum (beams/strf) = 'B4B64F3661E49871B9D40EC0BA0E4CDC'
+   MD5 sum (beams/strf) = '6BE255DEA282C8DA7625B220411D4B05'
  Structure-function configuration: beam(s) 1
  SF test data:
    model     = Test
@@ -246,7 +248,7 @@ model "Test"
    Current pass          = 1
    Number of iterations  = 1
    Number of calls       = 1000
-   MD5 sum (components)  = '66117C59FBEC7E691DF433C1748D98C3'
+   MD5 sum (components)  = 'EFD678B3D5D890D21129E58B702C7DFE'
  VAMP integrator:
    Integral             =  8.2007377587E+03
    Error                =  2.2182719667E+02
@@ -336,7 +338,7 @@ model "Test"
    adapt weights = F
    Results:  [it, calls, integral, error, efficiency]
      1 1000  8.2007377587E+03  2.2182719667E+02  3.1782731339E-01
- MD5 sum (including results) = 'E5CE281F4FA105C83EFF417DD3333015'
+ MD5 sum (including results) = 'F8AC52702CE18C8B3C80C8C7756D0CEE'
  Call statistics (current run):
    total       = 1000
    failed kin. = 0

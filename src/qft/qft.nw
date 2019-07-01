@@ -2823,6 +2823,17 @@ extension of [[hel]] (ugh).
   end subroutine helicity_diagonalize
 
 @ %def helicity_diagonalize
+@
+<<Helicities: helicity: TBP>>=
+  procedure :: get_indices => helicity_get_indices
+<<Helicities: procedures>>=
+  subroutine helicity_get_indices (hel, h1, h2)
+    class(helicity_t), intent(in) :: hel
+    integer, intent(out) :: h1, h2
+    h1 = hel%h1; h2 = hel%h2
+   end subroutine helicity_get_indices
+
+@ %def helicity_get_indices
 @ Output (no linebreak).  No output if undefined.
 <<Helicities: helicity: TBP>>=
   procedure :: write => helicity_write
@@ -6906,9 +6917,14 @@ state matrix since there is no shortcut.
 @ Return a single matrix element using its index.  Works only if the
 shortcut array is allocated.
 <<State matrices: state matrix: TBP>>=
-  procedure :: get_matrix_element => state_matrix_get_matrix_element
+  generic :: get_matrix_element => get_matrix_element_single
+  generic :: get_matrix_element => get_matrix_element_array
+  procedure :: get_matrix_element_single => &
+    state_matrix_get_matrix_element_single
+  procedure :: get_matrix_element_array => &
+    state_matrix_get_matrix_element_array
 <<State matrices: procedures>>=
-  function state_matrix_get_matrix_element (state, i) result (me)
+  elemental function state_matrix_get_matrix_element_single (state, i) result (me)
     complex(default) :: me
     class(state_matrix_t), intent(in) :: state
     integer, intent(in) :: i
@@ -6917,9 +6933,23 @@ shortcut array is allocated.
     else
        me = 0
     end if
-  end function state_matrix_get_matrix_element
+  end function state_matrix_get_matrix_element_single
 
-@ %def state_matrix_get_matrix_element
+@ %def state_matrix_get_matrix_element_single
+@
+<<State matrices: procedures>>=
+  function state_matrix_get_matrix_element_array (state) result (me)
+     complex(default), dimension(:), allocatable :: me
+     class(state_matrix_t), intent(in) :: state
+     if (allocated (state%me)) then
+        allocate (me (size (state%me)))
+        me = state%me
+     else
+        me = 0
+     end if
+  end function state_matrix_get_matrix_element_array
+
+@ %def state_matrix_get_matrix_element_array
 @ Return the color index with maximum absolute value that is present within
 the state matrix.
 <<State matrices: state matrix: TBP>>=
@@ -8074,7 +8104,11 @@ cuts.
     do while (it%is_valid ())
        qn1 = it%get_quantum_numbers ()
        if (all (qn .match. qn1)) then
-          diagonal = qn1%are_diagonal ()
+          !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
+          !!! diagonal = qn1%are_diagonal ()
+          do i = 1, depth
+             diagonal(i) = qn1(i)%are_diagonal ()
+          end do
           value = it%get_matrix_element ()
           select case (mode)
           case (FM_IGNORE_HELICITY)  ! trace over diagonal states that match qn
@@ -8105,6 +8139,29 @@ cuts.
   end subroutine state_matrix_factorize
 
 @ %def state_matrix_factorize
+@
+<<State matrices: state matrix: TBP>>=
+  procedure :: get_polarization_density_matrix &
+     => state_matrix_get_polarization_density_matrix
+<<State matrices: procedures>>=
+  function state_matrix_get_polarization_density_matrix (state) result (pol_matrix)
+    real(default), dimension(:,:), allocatable :: pol_matrix
+    class(state_matrix_t), intent(in) :: state
+    type(node_t), pointer :: current => null ()
+    !!! What's the generic way to allocate the matrix?
+    allocate (pol_matrix (4,4)); pol_matrix = 0
+    if (associated (state%root%child_first)) then
+       current => state%root%child_first
+       do while (associated (current))
+         call current%qn%write ()
+         current => current%next
+       end do
+    else
+       call msg_fatal ("Polarization state not allocated!")
+    end if 
+  end function state_matrix_get_polarization_density_matrix
+
+@ %def state_matrix_get_polarization_density_matrix
 @
 \subsubsection{Quantum-number matching}
 This feature allows us to check whether a given string of PDG values
@@ -8209,7 +8266,7 @@ from that.
     integer, dimension(:), allocatable :: pdg, pdg_subset
     integer, dimension(:), allocatable :: idx, map_subset, idx_subset, map
     type(quantum_numbers_t), dimension(:), allocatable :: qn
-    integer :: n, d, c, i
+    integer :: n, d, c, i, j
     call state_tmp%init ()
     d = state_full%get_depth ()
     allocate (flv (d), qn (d), pdg (d), idx (d), map (d))
@@ -8230,7 +8287,11 @@ from that.
     do while (it%is_valid ())
        i = i + 1
        flv = it%get_flavor ()
-       pdg = flv%get_pdg ()
+       !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
+       !!! pdg = flv%get_pdg ()
+       do j = 1, d
+          pdg(j) = flv(j)%get_pdg ()          
+       end do
        idx_subset = pack (idx, mask)
        pdg_subset = pack (pdg, mask)
        map_subset = order_abs (pdg_subset)
@@ -9511,16 +9572,29 @@ this would be unity).
 @ Get the matrix element that corresponds to a set of quantum
 numbers, a given index, or return the whole array.
 <<Interactions: interaction: TBP>>=
-  procedure :: get_matrix_element => interaction_get_matrix_element
+  generic :: get_matrix_element => get_matrix_element_single
+  generic :: get_matrix_element => get_matrix_element_array
+  procedure :: get_matrix_element_single => &
+     interaction_get_matrix_element_single
+  procedure :: get_matrix_element_array => &
+     interaction_get_matrix_element_array
 <<Interactions: procedures>>=
-  function interaction_get_matrix_element (int, i) result (me)
+  function interaction_get_matrix_element_single (int, i) result (me)
     class(interaction_t), intent(in) :: int
     complex(default) :: me
     integer, intent(in) :: i
     me = int%state_matrix%get_matrix_element (i)
-  end function interaction_get_matrix_element
+  end function interaction_get_matrix_element_single
 
-@ %def interaction_get_matrix_element
+@ %def interaction_get_matrix_element_single
+<<Interactions: procedures>>=
+  function interaction_get_matrix_element_array (int) result (me)
+    complex(default), dimension(:), allocatable :: me
+    class(interaction_t), intent(in) :: int
+    me = int%state_matrix%get_matrix_element ()
+  end function interaction_get_matrix_element_array
+
+@ %def interaction_get_matrix_element_array
 @ Set the complex value(s) stored in the quantum state.
 <<Interactions: interaction: TBP>>=
   generic :: set_matrix_element => interaction_set_matrix_element_qn, &
@@ -11541,9 +11615,10 @@ assignments remain fixed from now on.
     integer, dimension(:,:), allocatable :: connection_index
     type(index_map_t), dimension(2) :: prt_map_in
     type(index_map_t) :: prt_map_conn
-    type(prt_mask_t), dimension(2) :: prt_is_connected
+    type(prt_mask_t), dimension(2) :: prt_is_connected    
+    !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
     type(quantum_numbers_mask_t), dimension(:), allocatable :: &
-         qn_mask_conn_initial
+         qn_mask_conn_initial, int_in1_mask, int_in2_mask
 
     integer :: i
 
@@ -11580,10 +11655,17 @@ assignments remain fixed from now on.
        prt_is_connected(i)%entry = .true.
        prt_is_connected(i)%entry(connection_index(:,i)) = .false.
     end do
-    allocate (qn_mask_conn_initial (n_conn))
-    qn_mask_conn_initial = &
-         int_in1%get_mask (connection_index(:,1)) .or. &
-         int_in2%get_mask (connection_index(:,2))
+    !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug    
+    allocate (qn_mask_conn_initial (n_conn), &
+         int_in1_mask (n_conn), int_in2_mask (n_conn))
+    int_in1_mask = int_in1%get_mask (connection_index(:,1))
+    int_in2_mask = int_in2%get_mask (connection_index(:,2))    
+    do i = 1, n_conn
+       qn_mask_conn_initial(i) = int_in1_mask(i) .or. int_in2_mask(i)
+    end do
+    !!! qn_mask_conn_initial = &
+    !!!      int_in1%get_mask (connection_index(:,1)) .or. &
+    !!!      int_in2%get_mask (connection_index(:,2))
     allocate (qn_mask_in(1)%mask (int_in1%get_n_tot ()))
     allocate (qn_mask_in(2)%mask (int_in2%get_n_tot ()))
     qn_mask_in(1)%mask = int_in1%get_mask ()
@@ -12810,7 +12892,10 @@ interaction also in the case where its color indices coincide.
 This will become a standard procedure in F2008.  The result is true if
 the number of true values in the mask is odd.  We use the function for
 determining the ghost parity of a quantum-number array.
-<<Evaluators: procedures>>=
+
+[tho:] It's not used anymore and [[mod (count (mask), 2) == 1]] is
+a cooler implementation anyway.
+<<(UNUSED) Evaluators: procedures>>=
   function parity (mask)
     logical :: parity
     logical, dimension(:) :: mask

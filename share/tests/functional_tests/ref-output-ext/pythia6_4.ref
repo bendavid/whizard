@@ -95,6 +95,7 @@ $sample = "pythia6_4a"
 | Events: generating 1 unweighted, unpolarized events ...
 | Events: event normalization mode '1'
 |         ... event sample complete.
+| Events: actual unweighting efficiency =  16.67 %
 | Events: closing ASCII file 'pythia6_4a.debug'
 | Events: closing raw file 'pythia6_4a.evx'
 $sample = "pythia6_4b"
@@ -114,6 +115,7 @@ $sample = "pythia6_4b"
 | Events: generating 1 unweighted, unpolarized events ...
 | Events: event normalization mode '1'
 |         ... event sample complete.
+| Events: actual unweighting efficiency =  11.11 %
 | Events: closing ASCII file 'pythia6_4b.debug'
 | Events: closing raw file 'pythia6_4b.evx'
 | There were no errors and    1 warning(s).

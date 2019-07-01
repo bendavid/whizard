@@ -1,4 +1,4 @@
-! WHIZARD 2.2.7 Aug 11 2015
+! WHIZARD 2.2.8 Nov 22 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,11 +6,14 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
-!     Fabian Bach <fabian.bach@desy.de>
+!     Fabian Bach <fabian.bach@t-online.de>
+!     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
+!     Soyoung Shim <soyoung.shim@desy.de>
+!     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, Daniel Wiesler 
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -35,6 +38,7 @@ module prclib_interfaces_uti
   use, intrinsic :: iso_c_binding !NODEP!
   
   use kinds
+  use system_dependencies, only: CC_HAS_QUADMATH, DEFAULT_FC_PRECISION
   use iso_varying_string, string_t => varying_string
   use io_units
   use system_defs, only: TAB
@@ -1245,6 +1249,9 @@ contains
     write (u, "(A)")  "/* (Pseudo) matrix element code file &
          &for WHIZARD self-test */"
     write (u, "(A)")  "#include <stdbool.h>"
+    if (CC_HAS_QUADMATH) then
+       write (u, "(A)")  "#include <quadmath.h>"
+    end if
     write (u, *)
     call write_test_me_code_4 (u, char (basename))
     write (u, *)
@@ -1323,15 +1330,20 @@ contains
     write (u, "(A)")  "  }"
     write (u, "(A)")  "}"
     write (u, *)
-    if (c_default_complex == c_long_double_complex) then
+    select case (DEFAULT_FC_PRECISION)
+    case ("quadruple")
+       write (u, "(A)")  "void " // id // "_color_factors&
+            &( int (*cf_index1)[], int (*cf_index2)[], &
+            &__complex128 (*color_factors)[] ) {"
+    case ("extended")
        write (u, "(A)")  "void " // id // "_color_factors&
             &( int (*cf_index1)[], int (*cf_index2)[], &
             &long double _Complex (*color_factors)[] ) {"
-    else
+    case default
        write (u, "(A)")  "void " // id // "_color_factors&
             &( int (*cf_index1)[], int (*cf_index2)[], &
-            &double _Complex (*color_factors)[] ) {"
-    end if
+            &double _Complex (*color_factors)[] ) {"       
+    end select
     write (u, "(A)")  "  (*color_factors)[0] = 1;"
     write (u, "(A)")  "  (*cf_index1)[0] = 1;"
     write (u, "(A)")  "  (*cf_index2)[0] = 1;"

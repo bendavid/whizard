@@ -74,7 +74,7 @@
    sqrts = 1.000000000000E+03 GeV
    Azimuthal dependence    = F
    Lab frame is c.m. frame = T
-   MD5 sum (beams/strf) = 'E0F93E0D5C27F1B7E52C7070BA08809B'
+   MD5 sum (beams/strf) = '703F73C4D926DB56915B17CFD59EB52E'
  Structure-function configuration: beam(s) 1
  SF test data:
    model     = Test
@@ -103,7 +103,7 @@
    MC input parameters   = 4
    MC parameters (SF)    = 2
    MC parameters (PHS)   = 2
-   MD5 sum (components)  = '22FFDE7323C1C34211D9929B86814F4C'
+   MD5 sum (components)  = 'ED4C9005CF385101C22D36D8743BEA19'
  Call statistics (current run): [no calls]
 ========================================================================
 

@@ -3378,7 +3378,8 @@ end module solver_uti
 
     zero_position = solve_interval (test_func_4, two, 10.0_default, success)
     call assert (u, success, "success")
-    call assert_equal (u, zero_position, 3.5216674014805425_default, &
+    call assert_equal (u, zero_position, &
+         3.5216674011865940283397224_default, & 
          "test_func_4: zero_position", rel_smallness=1000*DEFAULT_PRECISION)
 
     write (u, "(A)")

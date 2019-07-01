@@ -1,4 +1,4 @@
-! WHIZARD 2.2.7 Aug 11 2015
+! WHIZARD 2.2.8 Nov 22 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,11 +6,14 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
-!     Fabian Bach <fabian.bach@desy.de>
+!     Fabian Bach <fabian.bach@t-online.de>
+!     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
+!     Soyoung Shim <soyoung.shim@desy.de>
+!     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, Daniel Wiesler 
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -52,8 +55,10 @@ module dispatch
   use prc_template_me
   use prc_test
   use prc_omega
+  use prc_user_defined
   use prc_gosam
   use prc_openloops
+  use prc_threshold
   use processes
   use unit_tests, only: vanishes
   use pdg_arrays
@@ -88,12 +93,14 @@ module dispatch
   use eio_base
   use eio_raw
   use eio_checkpoints
+  use eio_callback
   use eio_lhef
   use eio_hepmc
   use eio_lcio
   use eio_stdhep
   use eio_ascii
   use eio_weights
+  use eio_dump
   use shower_base
   use shower_core
   use shower
@@ -191,9 +198,9 @@ contains
          end select                  
       case ("omega")
          diags = var_list%get_lval (&
-              var_str ("?diags"))
+              var_str ("?vis_diags"))
          diags_color = var_list%get_lval (&
-              var_str ("?diags_color"))         
+              var_str ("?vis_diags_color"))         
          restrictions = var_list%get_sval (&
               var_str ("$restrictions"))
          openmp_support = var_list%get_lval (&
@@ -211,9 +218,9 @@ contains
          end select
       case ("ovm")
          diags = var_list%get_lval (&
-              var_str ("?diags"))
+              var_str ("?vis_diags"))
          diags_color = var_list%get_lval (&
-              var_str ("?diags_color"))         
+              var_str ("?vis_diags_color"))         
          restrictions = var_list%get_sval (&
               var_str ("$restrictions"))
          openmp_support = var_list%get_lval (&
@@ -236,14 +243,10 @@ contains
           if (present (id)) then
              if (present (nlo_type)) then
                 call core_def%init (id, model_name, prt_in, &
-                   prt_out, nlo_type, &
-                   filter = [var_list%get_sval (var_str ("$gosam_filter_lo")), &
-                             var_list%get_sval (var_str ("$gosam_filter_nlo"))])
+                   prt_out, nlo_type, var_list)
              else
                 call core_def%init (id, model_name, prt_in, &
-                   prt_out, BORN, &
-                   filter = [var_list%get_sval (var_str ("$gosam_filter_lo")), &
-                             var_list%get_sval (var_str ("$gosam_filter_nlo"))])
+                   prt_out, BORN, var_list)
              end if
           else
              call msg_fatal ("Dispatch GoSam def: No id!")
@@ -264,6 +267,20 @@ contains
             else
                call msg_fatal ("Dispatch OpenLoops def: No id!")
             end if
+         end select
+      case ("dummy")
+         allocate (user_defined_test_def_t :: core_def)
+         select type (core_def)
+         type is (user_defined_test_def_t)
+            call core_def%init (id, model_name, prt_in, prt_out)
+         end select 
+      case ("threshold")
+         restrictions = var_list%get_sval (&
+              var_str ("$restrictions"))
+         allocate (threshold_def_t :: core_def)
+         select type (core_def)
+         type is (threshold_def_t)
+            call core_def%init (id, model_name, prt_in, prt_out, restrictions)
          end select
       case default
          call msg_fatal ("Process configuration: method '" &
@@ -309,6 +326,18 @@ contains
       select type (core)
       type is (prc_openloops_t)
          call core%set_parameters (qcd, use_color_factors)
+      end select
+    type is (user_defined_test_def_t)
+      if (.not. allocated (core)) allocate (prc_user_defined_test_t :: core)
+      select type (core)
+      type is (prc_user_defined_test_t)
+         call core%set_parameters (qcd, use_color_factors)
+      end select
+    type is (threshold_def_t)
+      if (.not. allocated (core)) allocate (prc_threshold_t :: core)
+      select type (core)
+      type is (prc_threshold_t)
+         call core%set_parameters (qcd, use_color_factors, model)
       end select
     class default
        call msg_bug ("Process core: unexpected process definition type")
@@ -517,18 +546,22 @@ contains
     real(default) :: fks_dij_exp1, fks_dij_exp2
     integer :: fks_mapping_type
     logical :: kinematics_counter_active 
+    logical :: subtraction_disabled
     
     fks_dij_exp1 = &
-         global%var_list%get_rval (var_str ("fks_dij_exp1"))
+       global%var_list%get_rval (var_str ("fks_dij_exp1"))
     fks_dij_exp2 = &
-         global%var_list%get_rval (var_str ("fks_dij_exp2")) 
+       global%var_list%get_rval (var_str ("fks_dij_exp2")) 
     fks_mapping_type = &
-         global%var_list%get_ival (var_str ("fks_mapping_type"))
+       global%var_list%get_ival (var_str ("fks_mapping_type"))
     kinematics_counter_active = &
-         global%var_list%get_lval (var_str ("?fks_count_kinematics"))
+       global%var_list%get_lval (var_str ("?fks_count_kinematics"))
+    subtraction_disabled = &
+       global%var_list%get_lval (var_str ("?disable_subtraction"))  
 
     call fks_template%set_dij_exp (fks_dij_exp1, fks_dij_exp2)
     call fks_template%set_mapping_type (fks_mapping_type)
+    if (subtraction_disabled) call fks_template%disable_subtraction () 
     
   end subroutine dispatch_fks
 
@@ -1293,6 +1326,7 @@ contains
   end subroutine dispatch_sf_channels
     
   subroutine dispatch_eio (eio, method, global)
+    use event_base, only: event_callback_nop_t
     
     class(eio_t), intent(inout), allocatable :: eio
     type(string_t), intent(in) :: method
@@ -1302,13 +1336,16 @@ contains
     logical :: write_sqme_prc, write_sqme_ref, write_sqme_alt
     logical :: output_cross_section, ensure_order
     type(string_t) :: lhef_version, lhef_extension, raw_version
-    type(string_t) :: extension_default, debug_extension, extension_hepmc, &
+    type(string_t) :: extension_default, debug_extension, dump_extension, &
+         extension_hepmc, &
          extension_lha, extension_hepevt, extension_ascii_short, &
          extension_ascii_long, extension_athena, extension_mokka, &
-         extension_stdhep, extension_stdhep_up, extension_raw, &
-         extension_hepevt_verb, extension_lha_verb, extension_lcio
+         extension_stdhep, extension_stdhep_up, extension_stdhep_ev4, &
+         extension_raw, extension_hepevt_verb, extension_lha_verb, &
+         extension_lcio
     integer :: checkpoint
     logical :: show_process, show_transforms, show_decay, verbose, pacified
+    logical :: dump_weights, dump_compressed, dump_summary, dump_screen
     keep_beams = &
          global%var_list%get_lval (var_str ("?keep_beams"))
     keep_remnants = &
@@ -1344,6 +1381,18 @@ contains
                global%var_list%get_lval (var_str ("?pacify"))
           call eio%set_parameters (checkpoint, blank = pacified)
        end select
+    case ("callback")
+       allocate (eio_callback_t :: eio)
+       select type (eio)
+       type is (eio_callback_t)
+          checkpoint = &
+               global%var_list%get_ival (var_str ("event_callback_interval"))
+          if (global%has_event_callback ()) then
+             call eio%set_parameters (global%get_event_callback (), checkpoint)
+          else
+             call eio%set_parameters (event_callback_nop_t (), 0)
+          end if
+       end select
     case ("lhef")
        allocate (eio_lhef_t :: eio)
        select type (eio)
@@ -1373,7 +1422,8 @@ contains
           extension_hepmc = &
                global%var_list%get_sval (var_str ("$extension_hepmc"))          
           ! call eio%set_parameters (keep_beams, recover_beams, extension_hepmc)
-          call eio%set_parameters (recover_beams, &
+          call eio%set_parameters (global%model, &
+               recover_beams, &
                use_alpha_s_from_file, use_scale_from_file, &
                extension_hepmc, output_cross_section)
        end select
@@ -1408,6 +1458,16 @@ contains
           call eio%set_parameters (keep_beams, keep_remnants, ensure_order, &
                recover_beams, use_alpha_s_from_file, &
                use_scale_from_file, extension_stdhep_up)          
+       end select
+    case ("stdhep_ev4")
+       allocate (eio_stdhep_hepev4_t :: eio)
+       select type (eio)
+       type is (eio_stdhep_hepev4_t)                   
+          extension_stdhep_ev4 = &
+               global%var_list%get_sval (var_str ("$extension_stdhep_ev4"))
+          call eio%set_parameters &
+               (keep_beams, keep_remnants, ensure_order, recover_beams, &
+                use_alpha_s_from_file, use_scale_from_file, extension_stdhep_ev4)
        end select       
     case ("ascii")   
        allocate (eio_ascii_ascii_t :: eio)
@@ -1447,6 +1507,30 @@ contains
                show_transforms = show_transforms, &
                show_decay = show_decay, &
                verbose = verbose)
+       end select
+    case ("dump")   
+       allocate (eio_dump_t :: eio)
+       select type (eio)
+       type is (eio_dump_t)
+          dump_extension = &
+               global%var_list%get_sval (var_str ("$dump_extension"))          
+          pacified = &
+               global%var_list%get_lval (var_str ("?pacify"))
+          dump_weights = &
+               global%var_list%get_lval (var_str ("?dump_weights"))
+          dump_compressed = &
+               global%var_list%get_lval (var_str ("?dump_compressed"))
+          dump_summary = &
+               global%var_list%get_lval (var_str ("?dump_summary"))
+          dump_screen = &
+               global%var_list%get_lval (var_str ("?dump_screen"))
+          call eio%set_parameters ( &
+               extension = dump_extension, &
+               pacify = pacified, &
+               weights = dump_weights, &
+               compressed = dump_compressed, &
+               summary = dump_summary, &
+               screen = dump_screen)
        end select
     case ("hepevt")
        allocate (eio_ascii_hepevt_t :: eio)

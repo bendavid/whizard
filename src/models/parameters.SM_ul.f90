@@ -6,7 +6,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     with contributions from
 !     Christian Speckner <cnspeckn@googlemail.com>
-!     Marco Sekulla <sekulla@physik.uni-siegen.de> (only this file)
+!     Marco Sekulla <marco.sekulla@kit.edu> (only this file)
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 

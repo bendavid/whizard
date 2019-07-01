@@ -1,4 +1,4 @@
-! WHIZARD 2.2.7 Aug 11 2015
+! WHIZARD 2.2.8 Nov 22 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,11 +6,14 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
-!     Fabian Bach <fabian.bach@desy.de>
+!     Fabian Bach <fabian.bach@t-online.de>
+!     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
+!     Soyoung Shim <soyoung.shim@desy.de>
+!     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, Daniel Wiesler 
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -96,6 +99,17 @@ module sm_physics
   public :: integral_over_p_gqq
   public :: integral_over_p_ggg
   public :: p_qqg_pol
+  public :: top_width_sm_lo
+  public :: g_mu_from_alpha
+  public :: alpha_from_g_mu
+  public :: top_width_sm_qcd_nlo_massless_b
+  public :: f0
+  public :: f1
+  public :: top_width_sm_qcd_nlo
+  public :: ff0
+  public :: ff_f0
+  public :: ff_lambda
+  public :: ff1
 
   real(kind=default), parameter, public ::  gamma_q = three/two * CF, &
      k_q = (7.0_default/two - pi**2/6.0_default) * CF
@@ -255,7 +269,7 @@ contains
     real(kind=double), intent(in) :: x
     real(kind=double) :: Li2
     real(kind=double), parameter :: pi2_6 = pi**2/6
-    if (abs(1-x) < 1.E-13_double) then
+    if (abs(1-x) < tiny_07) then
        Li2 = pi2_6
     else if (abs(1-x) <  0.5_double) then
        Li2 = pi2_6 - log(1-x) * log(x) - Li2_restricted (1-x)
@@ -778,6 +792,117 @@ contains
     end if
     P = P * CF
   end function p_qqg_pol
+
+  elemental function top_width_sm_lo (alpha, sinthw, vtb, mtop, mw, mb) &
+         result (gamma)
+    real(default) :: gamma
+    real(default), intent(in) :: alpha, sinthw, vtb, mtop, mw, mb
+    real(default) :: kappa
+    kappa = sqrt ((mtop**2 - (mw + mb)**2) * (mtop**2 - (mw - mb)**2))
+    gamma = alpha / four * mtop / (two * sinthw**2) * &
+         vtb**2 * kappa / mtop**2 * &
+         ((mtop**2 + mb**2) / (two * mtop**2) + &
+          (mtop**2 - mb**2)**2 / (two * mtop**2 * mw**2) - &
+           mw**2 / mtop**2)
+  end function top_width_sm_lo
+
+  elemental function g_mu_from_alpha (alpha, mw, sinthw) result (g_mu)
+    real(default) :: g_mu
+    real(default), intent(in) :: alpha, mw, sinthw
+    g_mu = pi * alpha / sqrt(two) / mw**2 / sinthw**2
+  end function g_mu_from_alpha
+
+  elemental function alpha_from_g_mu (g_mu, mw, sinthw) result (alpha)
+    real(default) :: alpha
+    real(default), intent(in) :: g_mu, mw, sinthw
+    alpha = g_mu * sqrt(two) / pi * mw**2 * sinthw**2
+  end function alpha_from_g_mu
+
+  elemental function top_width_sm_qcd_nlo_massless_b &
+         (alpha, sinthw, mtop, mw, alphas) result (gamma)
+    real(default) :: gamma
+    real(default), intent(in) :: alpha, sinthw, mtop, mw, alphas
+    real(default) :: prefac, g_mu, w2
+    g_mu = g_mu_from_alpha (alpha, mw, sinthw)
+    prefac = g_mu * mtop**3 / (16 * sqrt(two) * pi)
+    w2 = mw**2 / mtop**2
+    gamma = prefac * (f0 (w2) - (two * alphas) / (3 * Pi) * f1 (w2))
+  end function top_width_sm_qcd_nlo_massless_b
+
+  elemental function f0 (w2) result (f)
+    real(default) :: f
+    real(default), intent(in) :: w2
+    f = two * (one - w2)**2 * (1 + 2 * w2)
+  end function f0
+
+  elemental function f1 (w2) result (f)
+    real(default) :: f
+    real(default), intent(in) :: w2
+    f = f0 (w2) * (pi**2 + two * Li2 (w2) - two * Li2 (one - w2)) &
+         + four * w2 * (one - w2 - two * w2**2) * log (w2) &
+         + two * (one - w2)**2 * (five + four * w2) * log (one - w2) &
+         - (one - w2) * (five + 9 * w2 - 6 * w2**2)
+  end function f1
+
+  elemental function top_width_sm_qcd_nlo &
+         (alpha, sinthw, mtop, mw, mb, alphas) result (gamma)
+    real(default) :: gamma
+    real(default), intent(in) :: alpha, sinthw, mtop, mw, mb, alphas
+    real(default) :: prefac, g_mu, eps2, i_xi
+    g_mu = g_mu_from_alpha (alpha, mw, sinthw)
+    prefac = g_mu * mtop**3 / (16 * sqrt(two) * pi)
+    eps2 = (mb / mtop)**2
+    i_xi = (mw / mtop)**2
+    gamma = prefac * (ff0 (eps2, i_xi) - &
+         (two * alphas) / (3 * Pi) * ff1 (eps2, i_xi))
+  end function top_width_sm_qcd_nlo
+
+  elemental function ff0 (eps2, w2) result (f)
+    real(default) :: f
+    real(default), intent(in) :: eps2, w2
+    f = one / two * sqrt(ff_lambda (eps2, w2)) * ff_f0 (eps2, w2)
+  end function ff0
+
+  elemental function ff_f0 (eps2, w2) result (f)
+    real(default) :: f
+    real(default), intent(in) :: eps2, w2
+    f = four * ((1 - eps2)**2 + w2 * (1 + eps2) - 2 * w2**2)
+  end function ff_f0
+
+  elemental function ff_lambda (eps2, w2) result (l)
+    real(default) :: l
+    real(default), intent(in) :: eps2, w2
+    l = one + w2**2 + eps2**2 - two * (w2 + eps2 + w2 * eps2)
+  end function ff_lambda
+
+  elemental function ff1 (eps2, w2) result (f)
+    real(default) :: f
+    real(default), intent(in) :: eps2, w2
+    real(default) :: uq, uw, sq_lam, fff
+    sq_lam = sqrt (ff_lambda (eps2, w2))
+    fff = ff_f0 (eps2, w2)
+    uw = (one - eps2 + w2 - sq_lam) / &
+         (one - eps2 + w2 + sq_lam)
+    uq = (one + eps2 - w2 - sq_lam) / &
+         (one + eps2 - w2 + sq_lam)
+    f = one / two * fff * (one + eps2 - w2) * &
+         (pi**2 + two * Li2 (uw) - two * Li2 (one - uw) - four * Li2 (uq) &
+          - four * Li2 (uq * uw) + log ((one - uq) / w2) * log (one - uq) &
+          - log (one - uq * uw)**2 + one / four * log (w2 / uw)**2 &
+          - log (uw) * log ((one - uq * uw)**2 / (one - uq)) &
+          - two * log (uq) * log ((one - uq) * (one - uq * uw))) &
+         - sq_lam * fff * (two * log (sqrt (w2)) &
+          + three * log (sqrt (eps2)) - two * log (sq_lam**2)) &
+         + four * (one - eps2) * ((one - eps2)**2 + w2 * (one + eps2) &
+          - four * w2**2) * log (uw) &
+         + (three - eps2 + 11 * eps2**2 - eps2**3 + w2 * &
+          (6 - 12 * eps2 + 2 * eps2**2) - w2**2 * (21 + five * eps2) &
+          + 12 * w2**3) * log (uq) &
+         + 6 * sq_lam * (one - eps2) * &
+          (one + eps2 - w2) * log (sqrt (eps2)) &
+         + sq_lam * (- five + 22 * eps2 - five * eps2**2 - 9 * w2 * &
+          (one + eps2) + 6 * w2**2)
+  end function ff1
 
 
 end module sm_physics

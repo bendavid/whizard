@@ -1,4 +1,4 @@
-(* $Id: coupling.mli 6943 2015-05-01 10:53:21Z msekulla $
+(* $Id: coupling.mli 7372 2015-11-18 18:07:59Z jr_reuter $
 
    Copyright (C) 1999-2015 by
 
@@ -7,7 +7,8 @@
        Juergen Reuter <juergen.reuter@desy.de>
        with contributions from
        Christian Speckner <cnspeckn@googlemail.com>
-       Marco Sekulla <sekulla@physik.uni-siegen.de>
+       Marco Sekulla <marco.sekulla@kit.edu>
+       Soyoung Shim <soyoung.shim@desy.de> (only parts of this file)
 
    WHIZARD is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by
@@ -280,7 +281,81 @@ type 'a vertex3 =
       $T^{\alpha\beta} ((\ii\partial^\mu V_1^\nu)
                           \ii\overleftrightarrow\partial_\alpha
                           \ii\overleftrightarrow\partial_\beta
-                        (\ii\partial_\nu V_{2,\mu})) $ *)
+					    (\ii\partial_\nu V_{2,\mu})) $ *)
+  | Dim6_Scalar_Vector_Vector_D of int
+    (* %
+       $\ii \phi ( - (\partial^\mu \partial^\nu W^{-}_{\mu})W^{+}_{\nu} 
+                     - (\partial^\mu \partial^\nu W^{+}_{\nu})W^{-}_{\mu}
+					    \\ \mbox{} \qquad
+                     + ( (\partial^\rho \partial_\rho W^{-}_{\mu})W^{+}_{\nu}
+                        + (\partial^\rho \partial_\rho W^{+}_{\nu})W^{-}_{\mu})
+					    g^{\mu\nu}) $ *)
+  | Dim6_Scalar_Vector_Vector_DP of int
+    (* %
+       $\ii ( (\partial^\mu H)(\partial^\nu W^{-}_{\mu})W^{+}_{\nu}
+               + (\partial^\nu H)(\partial^\mu W^{+}_{\nu})W^{-}_{\mu}
+					     \\ \mbox{} \qquad
+               - ((\partial^\rho H)(\partial_\rho W^{-}_{\mu})W^{+}_{\nu}
+                   (\partial^\rho H)(\partial^\rho W^{+}_{\nu})W^{-}_{\mu})
+					     g^{\mu\nu})  $*)
+  | Dim6_HAZ_D of int   (* %
+      $\ii ((\partial^\mu \partial^\nu A_{\mu})Z_{\nu} 
+      + (\partial^\rho \partial_\rho A_{\mu})Z_{\nu}g^{\mu\nu} )$ *)
+  | Dim6_HAZ_DP of int   (* %
+      $\ii ((\partial^{\nu} A_{\mu})(\partial^{\mu} H)Z_{\nu} 
+      - (\partial^{\rho} A_{\mu})(\partial_{\rho} H)Z_{\nu} g^{\mu\nu})$ *)
+  | Dim6_AWW_DP of int   (* % 
+      $\ii ((\partial^{\rho} A_{\mu}) W^{-}_{\nu} W^{+}_{\rho} g^{\mu\nu} 
+      - (\partial^{\nu} A_{\mu}) W^{-}_{\nu} W^{+}_{\rho} g^{\mu\rho}) $ *)
+  | Dim6_AWW_DW of int
+    (*%
+      $\ii [ (3(\partial^\rho A_{\mu})W^{-}_{\nu}W^{+}_{\rho} 
+      - (\partial^\rho W^{-}_{\nu})A_{\mu}W^{+}_{\rho}
+      + (\partial^\rho W^{+}_{\rho})A_{\mu} W^{-}_{\nu})g^{\mu\nu}
+      \\ \mbox{} \qquad
+      +(-3(\partial^\nu A_{\mu})W^{-}_{\nu}W^{+}_{\rho} 
+      -  (\partial^\nu W^{-}_{\nu})A_{\mu}W^{+}_{\rho}
+      + (\partial^\nu W^{+}_{\rho})A_{\mu}W^{-}_{\nu})g^{\mu\rho}
+      \\ \mbox{} \qquad
+      +(2(\partial^\mu W^{-}_{\nu})A_{\mu}W^{+}_{\rho} 
+      - 2(\partial^\mu W^{+}_{\rho})A_{\mu}W^{-}_{\nu})g^{\nu\rho} ]$ 
+    *)
+  | Dim6_HHH of int   (*% 
+      $\ii(-(\partial^{\mu}H_1)(\partial_{\mu}H_2)H_3 
+      - (\partial^{\mu}H_1)H_2(\partial_{\mu}H_3) 
+      - H_1(\partial^{\mu}H_2)(\partial_{\mu}H_3) )$ *)
+  | Dim6_Gauge_Gauge_Gauge_i of int
+    (*% 
+      $\ii 
+      (-(\partial^{\nu}V_{\mu})(\partial^{\rho}V_{\nu})(\partial^{\mu}V_{\rho})
+      + (\partial^{\rho}V_{\mu})(\partial^{\mu}V_{\nu})(\partial^{\nu}V_{\rho})
+      \\ \mbox{} \qquad
+      + (-\partial^{\nu}V_{\rho} g^{\mu\rho} 
+      + \partial^{\mu}V_{\rho} g^{\nu\rho})
+      (\partial^{\sigma}V_{\mu})(\partial_{\sigma}V_{\nu})
+      + (\partial^{\rho}V_{\nu} g^{\mu\nu} - \partial^{\mu}V_{\nu} g^{\nu\rho})
+      (\partial^{\sigma}V_{\mu})(\partial_{\sigma}V_{\rho})
+      \\ \mbox{} \qquad
+      + (-\partial^{\rho}V_{\mu} g^{\mu\nu} + \partial^{\mu}V_{\mu} g^{\mu\rho})
+      (\partial^{\sigma}V_{\nu})(\partial_{\sigma}V_{\rho}) )$ *)
+  | Gauge_Gauge_Gauge_i of int
+  | Dim6_GGG of int
+  | Dim6_WWZ_DPWDW of int
+    (* %
+       $\ii( ((\partial^\rho V_{\mu})V_{\nu}V_{\rho} 
+       - (\partial^{\rho}V_{\nu})V_{\mu}V_{\rho})g^{\mu\nu}
+       - (\partial^{\nu}V_{\mu})V_{\nu}V_{\rho}g^{\mu\rho} 
+       + (\partial^{\mu}V_{\nu})V_{\mu}V_{\rho})g^{\rho\nu} )$ *)
+  | Dim6_WWZ_DW of int
+    (* % 
+       $\ii( ((\partial^\mu V_{\mu})V_{\nu}V_{\rho} 
+       + V_{\mu}(\partial^\mu V_{\nu})V_{\rho})g^{\nu\rho}
+       - ((\partial^\nu V_{\mu})V_{\nu}V_{\rho} 
+       + V_{\mu}(\partial^\nu V_{\nu})V_{\rho})g^{\mu\rho})$ *)
+  | Dim6_WWZ_D of int   (* %
+      $\ii (  V_{\mu})V_{\nu}(\partial^{\nu}V_{\rho})g^{\mu\rho} 
+      + V_{\mu}V_{\nu}(\partial^{\mu}V_{\rho})g^{\nu\rho})$ 
+    *)
   | TensorVector_Vector_Vector of int
   | TensorVector_Vector_Vector_cf of int
   | TensorVector_Scalar_Scalar of int
@@ -389,7 +464,202 @@ type 'a vertex4 =
   | Vector4_K_Matrix_jr of int * (int * contract4) list
   | DScalar2_Vector2_K_Matrix_ms of int * (int * contract4) list
   | DScalar4_K_Matrix_ms of int * (int * contract4) list
-
+  | Dim6_H4_P2 of int
+    (* %
+       $\ii( -(\partial^{\mu}H_1)(\partial_{\mu}H_2) H_3 H_4 
+       - (\partial^{\mu}H_1)H_2(\partial_{\mu}H_3) H_4 
+       -(\partial^{\mu}H_1)H_2 H_3 (\partial_{mu}H_4)
+       \\ \mbox{} \qquad
+       - H_1(\partial^{\mu}H_2)(\partial_{\mu}H_3) H_4
+       - H_1(\partial^{\mu}H_2) H_3(\partial_{\mu} H_4) 
+       - H_1 H_2 (\partial^{\mu}H_3)(\partial_{\mu} H_4) )$ *)
+  | Dim6_AHWW_DPB of int   (* %
+      $\ii H ( (\partial^{\rho} A_{\mu}) W_{\nu}W_{\rho} g^{\mu\nu} 
+       - (\partial^{\nu}A_{\mu})W_{\nu}W_{\rho}g^{\mu\rho})$ *)
+  | Dim6_AHWW_DPW of int
+    (* %
+      $\ii ( ((\partial^{\rho}A_{\mu})W_{\nu}W_{\rho} 
+      - (\partial^{\rho} H)A_{\mu}W_{\nu}W_{\rho})g^{\mu\nu}
+       \\ \mbox{} \qquad
+      (-(\partial^{\nu}A_{\mu})W_{\nu}W_{\rho} 
+      + (\partial^{\nu} H)A_{\mu}W_{\nu}W_{\rho})g^{\mu\rho})$ 
+    *)
+  | Dim6_AHWW_DW of int
+    (* %
+       $\ii H( (3(\partial^{\rho}A_{\mu})W_{\nu}W_{\rho} 
+       - A_{\mu}(\partial^{\rho}W_{\nu})W_{\rho} 
+       + A_{\mu}W_{\nu}(\partial^{\rho}W_{\rho})) g^{\mu\nu} 
+       \\ \mbox{} \qquad
+       + (-3(\partial^{\nu}A_{\mu})W_{\nu}W_{\rho} 
+       - A_{\mu}(\partial^{\nu}W_{\nu})W_{\rho} 
+       + A_{\mu}W_{\nu}(\partial^{\nu}W_{\rho})) g^{\mu\rho} 
+       \\ \mbox{} \qquad
+       + 2(A_{\mu}(\partial^{\mu}W_{\nu})W_{\rho} 
+       + A_{\mu}W_{\nu}(\partial^{\mu}W_{\rho}))) g^{\nu\rho}) $ 
+    *)
+  | Dim6_Vector4_DW of int   (*%
+      $\ii ( -V_{1,\mu}V_{2,\nu}V^{3,\nu}V^{4,\mu} 
+      - V_{1,\mu}V_{2,\nu}V^{3,\mu}V^{4,\nu} \\
+      \mbox{} \qquad
+      + 2V_{1,\mu}V^{2,\mu}V_{3,\nu}V^{4,\nu} $
+    *)
+  | Dim6_Vector4_W of int
+    (* %
+      $\ii (((\partial^{\rho}V_{1,\mu})V_{2}^{\mu}
+       (\partial^{\sigma}V_{3,\rho})V_{4,\sigma} 
+       + V_{1,\mu}(\partial^{\rho}V_{2}^{\mu})
+       (\partial^{\sigma}V_{3,\rho})V_{4,\sigma} 
+       \\ \mbox{} \qquad
+       + (\partial^{\sigma}V_{1,\mu})V_{2}^{\mu}V_{3,\rho}
+       (\partial^{\rho}V_{4,\sigma}) 
+       + V_{1,\mu}(\partial^{\sigma}V_{2}^{\mu})V_{3,\rho}
+       (\partial^{\rho}V_{4,\sigma}))
+       \\ \mbox{} \qquad
+       + ((\partial^{\sigma}V_{1,\mu})V_{2,\nu}
+       (\partial^{\nu}V_{3}^{\mu})V_{4,\sigma} 
+       - V_{1,\mu}(\partial^{\sigma}V_{2,\nu})
+       (\partial^{\nu}V_{3}^{\mu})V_{4,\sigma} 
+       \\ \mbox{} \qquad
+       - (\partial^{\nu}V_{1}^{\mu})V_{2,\nu}
+       (\partial^{\sigma}V_{3,\mu})V_{4,\sigma} 
+       - (\partial^{\sigma}V_{1,\mu})V_{2,\nu}V_{3}^{\mu}
+       (\partial^{\nu}V_{4,\sigma}))
+       \\ \mbox{} \qquad
+       + ( -(\partial^{\rho}V_{1,\mu})V_{2,\nu}
+       (\partial^{\nu}V_{3,\rho})V_{4}^{\mu} 
+       + (\partial^{\rho}V_{1,\mu})V_{2,\nu}V_{3,\rho}
+       (\partial^{\nu}V_{4}^{\mu}) 
+       \\ \mbox{} \qquad
+       - V_{1,\mu}(\partial^{\rho}V_{2,\nu})V_{3,\rho}
+       (\partial^{\nu}V_{4}^{\mu}) 
+       - (\partial^{\nu}V_{1,\mu})V_{2,\nu}V_{3,\rho}
+       (\partial^{\rho}V_{4}^{\mu}) ) 
+       \\ \mbox{} \qquad
+       +( -(\partial^{\sigma}V_{1,\mu})V_{2,\nu}
+       (\partial^{\mu}V_{3}^{\nu})V_{4,\sigma} 
+       + V_{1,\mu}(\partial^{\sigma}V_{2,\nu})
+       (\partial^{\mu}V_{3}^{\nu})V_{4,\sigma} 
+       \\ \mbox{} \qquad
+       - V_{1,\mu}(\partial^{\mu}V_{2,\nu})
+       (\partial^{\sigma}V_{3}^{\nu})V_{4,\sigma} 
+       - V_{1,\mu}(\partial^{\sigma}V_{2,\nu})V_{3}^{\nu}
+       (\partial^{\mu}V_{4,\sigma})
+       \\ \mbox{} \qquad
+       + ( -V_{1,\mu}(\partial^{\rho}V_{2,\nu})
+       (\partial^{\mu}V_{3,\rho})V_{4}^{\nu} 
+       - (\partial^{\rho}V_{1,\mu})V_{2,\nu}V_{3,\rho}
+       (\partial^{\mu}V_{4}^{\nu})
+       \\ \mbox{} \qquad
+       + V_{1,\mu}(\partial^{\rho}V_{2,\nu})V_{3,\rho}
+       (\partial^{\mu}V_{4}^{\nu}) 
+       - V_{1,\mu}(\partial^{\mu}V_{2,\nu})V_{3,\rho}
+       (\partial^{\rho}V_{4}^{\nu}) )
+       \\ \mbox{} \qquad
+       + ((\partial^{\nu}V_{1,\mu})V_{2,\nu}
+       (\partial^{\mu}V_{3,\rho})V_{4}^{\rho} 
+       + V_{1,\mu}(\partial^{\mu}V_{2,\nu})
+       (\partial^{\nu}V_{3,\rho})V_{4}^{\rho}
+       \\ \mbox{} \qquad 
+       + (\partial^{\nu}V_{1,\mu})V_{2,\nu}V_{3,\rho}
+       (\partial^{\mu}V_{4}^{\rho})
+       + V_{1,\mu}(\partial^{\mu}V_{2,\nu})V_{3,\rho}
+       (\partial^{\nu}V_{4}^{\rho})) 
+       \\ \mbox{} \qquad
+       + (\partial^{\rho}V_{1,\mu})V_{2,\nu}V_{3}^{\mu}
+       (\partial_{\rho}V_{4}^{\nu})
+       - (\partial^{\rho}V_{1,\mu})V_{2}^{\mu}V_{3,\nu}
+       (\partial_{\rho}V_{4}^{\nu})
+       \\ \mbox{} \qquad
+       + V_{1,\mu}(\partial^{\rho}V_{2,\nu})
+       (\partial_{\rho}V_{3}^{\mu})V_{4}^{\nu}
+       - V_{1,\mu}(\partial^{\rho}V_{2}^{\mu})
+       (\partial_{\rho}V_{3,\nu})V_{4}^{\nu}
+       \\ \mbox{} \qquad
+       + (\partial^{\rho}V_{1,\mu})V_{2,\nu}
+       (\partial_{\rho}V_{3}^{\nu})V_{4}^{\mu}
+       -  (\partial^{\rho}V_{1,\mu})V_{2}^{\mu}
+       (\partial_{\rho}V_{3, \nu})V_{4}^{\nu}
+       \\ \mbox{} \qquad
+       + V_{1,\mu}(\partial^{\rho}V_{2,\nu})V_{3}^{\nu}
+       (\partial_{\rho}V_{4}^{\mu})
+       - V_{1,\mu}(\partial^{\rho}V_{2}^{\mu})V_{3,\nu}
+       (\partial_{\rho}V_{4}^{\nu}) )$  
+    *)
+  | Dim6_Scalar2_Vector2_D of int
+    (*%
+      $\ii H_1 H_2 (-(\partial^{\mu}\partial^{\nu}V_{3,\mu})V_{4,\nu} 
+      + (\partial^{\mu}\partial_{\mu}V_{3,\nu})V_{4}^{\nu} \\
+      \mbox{}\qquad
+      - V_{3,\mu}(\partial^{\mu}\partial^{\nu}V_{4,\nu}) 
+      + V_{3,\mu}(\partial^{\nu}\partial_{\nu}V_{4}^{\mu}))$ 
+    *)
+  | Dim6_Scalar2_Vector2_DP of int
+    (*%
+      $\ii ((\partial^{\mu}H_1)H_2(\partial^{\nu}V_{3,\mu})V_{4,\nu} 
+      - (\partial^{\nu}H_1)H_2(\partial_{\nu}V_{3,\mu})V^{4,\mu} 
+      + H_1(\partial^{\mu}H_2)(\partial^{\nu}V_{3,\mu})V_{4,\nu} \\
+      \mbox{} \qquad 
+      -  H_1(\partial^{\nu}H_2)(\partial_{\nu}V_{3,\mu})V^{4,\mu}
+      + (\partial^{\nu}H_1)H_2V_{3,\mu}(\partial^{\mu}V_{4,\nu}) 
+      - (\partial^{\nu}H_1)H_2V_{3,\mu}(\partial_{\nu}V^{4,\mu}) \\
+      \mbox{} \qquad
+      + H_1(\partial^{\nu}H_2)V_{3,\mu}(\partial^{\mu}V_{4,\nu}) 
+      - H_1(\partial^{\nu}H_2)V_{3,\mu}(\partial_{\nu}V^{4,\mu})) $
+    *)
+  | Dim6_Scalar2_Vector2_PB of int   
+    (*%
+      $\ii (H_1H_2(\partial^{\nu}V_{3,\mu})(\partial^{\mu}V_{4,\nu}) 
+      - H_1H_2(\partial^{\nu}V_{3,\mu})(\partial_{\nu}V^{4,\mu})) $
+    *)
+  | Dim6_HHZZ_T of int   (*% 
+    $\ii H_1H_2V_{3,\mu}V^{4,\mu}$ *)
+  | Dim6_HWWZ_DW of int
+    (* %
+       $\ii( H_1(\partial^{\rho}W_{2,\mu})W^{3,\mu}Z_{4,\rho} 
+       - H_1W_{2,\mu}(\partial^{\rho}W^{3,\mu})Z_{4,\rho} 
+       - 2H_1(\partial^{\nu}W_{2,\mu})W_{3,\nu}Z^{4,\mu} \\
+       \mbox{} \qquad
+       - H_1W_{2,\mu}(\partial^{\nu}W_{3,\nu})Z^{4,\mu}
+       + H_1(\partial^{\mu}W_{2,\mu})W_{3,\nu}Z^{4,\nu} 
+       + 2H_1W_{2,\mu}(\partial^{\mu}W_{3,\nu})Z^{4,\nu})$
+    *)
+  | Dim6_HWWZ_DPB of int
+    (* %
+      $\ii ( - H_1W_{2,\mu}W_{3,\nu}(\partial^{\nu}Z^{4,\mu}) + 
+      H_1W_{2,\mu}W_{3,\nu}(\partial^{\mu}Z^{4,\nu}))$ *)
+  | Dim6_HWWZ_DDPW of int
+    (* % 
+       $ \ii(H_1(\partial^{\nu}W_{2,\mu})W^{3,\mu}Z_{4,\nu} 
+       - H_1W_{2,\mu}(\partial^{\nu}W^{3,\mu})Z_{4,\nu} 
+       - H_1(\partial^{\nu}W_{2,\mu})W_{3,\nu}Z^{4,\mu} \\
+       \mbox{} \qquad
+       + H_1W_{2,\mu}W_{3,\nu}(\partial^{\nu}Z^{4,\mu})
+       + H_1W_{2,\mu}(\partial^{\mu}W_{3,\nu})Z^{4,\nu} 
+       - H_1W_{2,\mu}W_{3,\nu}(\partial^{\mu}Z^{4,\nu}))$ *)   
+  | Dim6_HWWZ_DPW of int
+    (* %
+       $\ii ( H_1(\partial^{\nu}W_{2,\mu})W^{3,\mu}Z_{4,\nu} 
+       - H_1W_{2,\mu}(\partial^{\nu}W^{3,\mu})Z_{4,\nu}
+       + (\partial^{\nu}H_1)W_{2,\mu}W_{3,\nu}Z^{4,\mu} \\
+       \mbox{} \qquad
+       - H_1(\partial^{\nu}W_{2,\mu})W_{3,\nu}Z^{4,\mu}
+       - (\partial^{\mu}H_1)W_{2,\mu}W_{3,\nu}Z^{4,\nu}
+       + H_1W_{2,\mu}(\partial^{\mu}W_{3,\nu})Z^{4,\nu} )$ *)
+  | Dim6_AHHZ_D of int
+    (* % 
+      $\ii (H_1H_2(\partial^{\mu}\partial^{\nu}A_{\mu})Z_{\nu} - 
+      H_1H_2(\partial^{\nu}\partial_{\nu}A_{\mu})Z^{\mu})$ *)
+  | Dim6_AHHZ_DP of int
+    (* %
+       $\ii ((\partial^{\mu}H_1)H_2(\partial^{\nu}A_{\mu})Z_{\nu} 
+       + H_1(\partial^{\mu}H_2)(\partial^{\nu}A_{\mu})Z_{\nu} \\
+       \mbox{} \qquad
+       - (\partial^{\nu}H_1)H_2(\partial_{\nu}A_{\mu})Z^{\mu} - 
+       H_1(\partial^{\nu}H_2)(\partial_{\nu}A_{\mu})Z^{\mu} ) $ *)
+  | Dim6_AHHZ_PB of int
+    (* %
+       $\ii (H_1H_2(\partial^{\nu}A_{\mu})(\partial_{\nu}Z^{\mu}) - 
+       H_1H_2(\partial^{\nu}A_{\mu})(\partial^{\mu}Z_{\nu}))$ *)
 
 type 'a vertexn = unit
 
@@ -2584,11 +2854,3 @@ type 'a parameters =
      \caption{\label{tab:dim7-tensor2-vector-vector-T}
        \ldots}
    \end{table} *)
-
-(*i
- *  Local Variables:
- *  mode:caml
- *  indent-tabs-mode:nil
- *  page-delimiter:"^(\\* .*\n"
- *  End:
-i*)

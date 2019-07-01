@@ -54,6 +54,7 @@ dist_models_DATA = \
   models/Simplest_univ.mdl \
   models/SM_ac_CKM.mdl \
   models/SM_ac.mdl \
+  models/SM_dim6.mdl \
   models/SM_CKM.mdl \
   models/SM_rx.mdl \
   models/SM_ul.mdl \
@@ -155,8 +156,7 @@ dist_muli_DATA = \
   muli/dsigma_cteq6ll.LHpdf.xml \
   muli/pdf_norm_cteq6ll.LHpdf.xml
 
-## Files containing precompiled cross sections for muli
-## to be installed with the 'muli' prefix kept
 thresholddir = $(pkgdatadir)/SM_tt_threshold_data
 dist_threshold_DATA = \
-  SM_tt_threshold_data/download_data.sh
+  SM_tt_threshold_data/download_data.sh \
+  SM_tt_threshold_data/threshold.f90

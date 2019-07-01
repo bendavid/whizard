@@ -67,6 +67,7 @@ $lhef_version = "1.0"
 | Events: generating 1 unweighted, unpolarized events ...
 | Events: event normalization mode '1'
 |         ... event sample complete.
+| Events: actual unweighting efficiency = 100.00 %
 | Events: closing LHEF file 'lhef_1_p.lhe'
 | There were no errors and    1 warning(s).
 | WHIZARD run finished.

@@ -79,6 +79,7 @@ $sample = "mlm_matching_fsr_1"
 | Events: generating 1 unweighted, unpolarized events ...
 | Events: event normalization mode '1'
 |         ... event sample complete.
+| Events: actual unweighting efficiency =  33.33 %
 | Events: closing ASCII file 'mlm_matching_fsr_1.evt'
 | Events: closing raw file 'mlm_matching_fsr_1.evx'
 mlm_matching_fsr_eeuu:
@@ -151,6 +152,7 @@ $sample = "mlm_matching_fsr_2"
 | Events: generating 1 unweighted, unpolarized events ...
 | Events: event normalization mode '1'
 |         ... event sample complete.
+| Events: actual unweighting efficiency =  33.33 %
 | Events: closing ASCII file 'mlm_matching_fsr_2.evt'
 | Events: closing raw file 'mlm_matching_fsr_2.evx'
 mlm_matching_fsr_eeuu:

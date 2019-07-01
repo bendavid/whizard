@@ -67,6 +67,7 @@ sample_split_n_evt = 2
 | Events: writing to STDHEP file 'stdhep_3_p.1.hep'
 | Events: writing to STDHEP file 'stdhep_3_p.2.hep'
 |         ... event sample complete.
+| Events: actual unweighting efficiency =  83.33 %
 | Events: closing STDHEP file 'stdhep_3_p.2.hep'
 | There were no errors and    1 warning(s).
 | WHIZARD run finished.

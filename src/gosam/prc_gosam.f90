@@ -1,4 +1,4 @@
-! WHIZARD 2.2.7 Aug 11 2015
+! WHIZARD 2.2.8 Nov 22 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,11 +6,14 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
-!     Fabian Bach <fabian.bach@desy.de>
+!     Fabian Bach <fabian.bach@t-online.de>
+!     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
+!     Soyoung Shim <soyoung.shim@desy.de>
+!     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, Daniel Wiesler 
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -31,12 +34,12 @@
 ! to the source 'whizard.nw'
 
 module prc_gosam
-  
+
   use, intrinsic :: iso_c_binding !NODEP!
   use, intrinsic :: iso_fortran_env
 
   use kinds
-  use iso_varying_string, string_t => varying_string  
+  use iso_varying_string, string_t => varying_string
   use io_units
   use constants
   use unit_tests, only: vanishes
@@ -53,7 +56,8 @@ module prc_gosam
   use sm_qcd
   use flavors
   use model_data
-  
+  use variables
+
   use process_constants
   use prclib_interfaces
   use process_libraries
@@ -86,7 +90,13 @@ module prc_gosam
     type(string_t) :: ninja_dir
     type(string_t) :: form_dir
     type(string_t) :: qgraf_dir
+    type(string_t), dimension(2) :: filter
+    type(string_t) :: symmetries
+    integer :: form_threads
+    integer :: form_workspace
+    type(string_t) :: fc
   contains
+    procedure :: write_config => gosam_writer_write_config
     procedure, nopass :: type_name => gosam_writer_type_name
     procedure :: init => gosam_writer_init
     procedure :: generate_configuration_file => &
@@ -103,7 +113,7 @@ module prc_gosam
     procedure :: allocate_driver => gosam_def_allocate_driver
   end type gosam_def_t
 
-  type, extends (blha_driver_t) :: gosam_driver_t 
+  type, extends (blha_driver_t) :: gosam_driver_t
     type(string_t) :: gosam_dir
     type(string_t) :: olp_file
     type(string_t) :: olc_file
@@ -116,6 +126,9 @@ module prc_gosam
     procedure :: init_dlaccess_to_library => gosam_driver_init_dlaccess_to_library
     procedure :: write_makefile => gosam_driver_write_makefile
     procedure :: set_alpha_s => gosam_driver_set_alpha_s
+    procedure :: set_alpha_qed => gosam_driver_set_alpha_qed
+    procedure :: set_GF => gosam_driver_set_GF
+    procedure :: set_weinberg_angle => gosam_driver_set_weinberg_angle
     procedure :: print_alpha_s => gosam_driver_print_alpha_s
   end type gosam_driver_t
 
@@ -150,13 +163,13 @@ module prc_gosam
 contains
 
   subroutine gosam_def_init (object, basename, model_name, &
-                             prt_in, prt_out, nlo_type, filter)
+                             prt_in, prt_out, nlo_type, var_list)
     class(gosam_def_t), intent(inout) :: object
     type(string_t), intent(in) :: model_name
     type(string_t), intent(in) :: basename
     type(string_t), dimension(:), intent(in) :: prt_in, prt_out
     integer, intent(in) :: nlo_type
-    type(string_t), dimension(2), intent(in), optional :: filter 
+    type(var_list_t), intent(in) :: var_list
     object%basename = basename
     allocate (gosam_writer_t :: object%writer)
     select case (nlo_type)
@@ -171,9 +184,29 @@ contains
     end select
     select type (writer => object%writer)
     type is (gosam_writer_t)
-      call writer%init (model_name, prt_in, prt_out, filter)
+      call writer%init (model_name, prt_in, prt_out)
+      writer%filter = &
+           [var_list%get_sval (var_str ("$gosam_filter_lo")), &
+            var_list%get_sval (var_str ("$gosam_filter_nlo"))]
+      writer%symmetries = &
+           var_list%get_sval (var_str ("$gosam_symmetries"))
+      writer%form_threads = &
+           var_list%get_ival (var_str ("form_threads"))
+      writer%form_workspace = &
+           var_list%get_ival (var_str ("form_workspace"))
+      writer%fc = &
+           var_list%get_sval (var_str ("$gosam_fc"))
     end select
   end subroutine gosam_def_init
+
+  subroutine gosam_writer_write_config (gosam_writer)
+    class(gosam_writer_t), intent(in) :: gosam_writer
+    integer :: unit
+    unit = free_unit ()
+    open (unit, file = "golem.in", status = "replace", action = "write")
+    call gosam_writer%generate_configuration_file (unit)
+    close(unit)
+  end subroutine gosam_writer_write_config
 
   function gosam_def_type_string () result (string)
     type(string_t) :: string
@@ -192,9 +225,7 @@ contains
   subroutine gosam_def_read (object, unit)
     class(gosam_def_t), intent(out) :: object
     integer, intent(in) :: unit
-    call msg_bug ("GoSam process definition: input not supported yet")
   end subroutine gosam_def_read
-
 
   subroutine gosam_def_allocate_driver (object, driver, basename)
     class(gosam_def_t), intent(in) :: object
@@ -208,44 +239,19 @@ contains
     string = "gosam"
   end function gosam_writer_type_name
 
-  subroutine gosam_writer_init (writer,model_name, prt_in, prt_out, filter) 
+  subroutine gosam_writer_init (writer, model_name, prt_in, prt_out, restrictions)
     class(gosam_writer_t), intent(inout) :: writer
     type(string_t), intent(in) :: model_name
     type(string_t), dimension(:), intent(in) :: prt_in, prt_out
-    type(string_t), dimension(2), intent(in), optional :: filter
-    integer :: i, unit
-
+    type(string_t), intent(in), optional :: restrictions
     writer%gosam_dir = GOSAM_DIR
-    writer%golem_dir = GOLEM_DIR 
+    writer%golem_dir = GOLEM_DIR
     writer%samurai_dir = SAMURAI_DIR
     writer%ninja_dir = NINJA_DIR
     writer%form_dir = FORM_DIR
     writer%qgraf_dir = QGRAF_DIR
-
-    writer%model_name = model_name
-
-    select case (size (prt_in))
-      case (1); writer%process_mode = " -decay"
-      case (2); writer%process_mode = " -scatter"
-    end select
-    associate (s => writer%process_string)
-      s = " '" 
-      do i = 1, size (prt_in)
-         if (i > 1) s = s // " "
-         s = s // prt_in(i)
-      end do
-      s = s // " ->"
-      do i = 1, size (prt_out)
-         s = s // " " // prt_out(i)
-      end do
-      s = s // "'"
-    end associate
-
-    unit = free_unit ()
-    open (unit, file = "golem.in", status = "replace", action = "write")
-    call writer%generate_configuration_file (unit, filter)
-    close(unit)
-  end subroutine gosam_writer_init  
+    call writer%base_init (model_name, prt_in, prt_out)
+  end subroutine gosam_writer_init
 
   function gosam_driver_type_name () result (string)
     type(string_t) :: string
@@ -280,13 +286,12 @@ contains
     call msg_message (char(msg_buffer))
     call dlaccess_init (dlaccess, var_str ("."), libname, os_data)
     success = .not. dlaccess_has_error (dlaccess)
-  end subroutine gosam_driver_init_dlaccess_to_library 
+  end subroutine gosam_driver_init_dlaccess_to_library
 
   subroutine gosam_writer_generate_configuration_file &
-          (object, unit, filter)
+          (object, unit)
       class(gosam_writer_t), intent(in) :: object
       integer, intent(in) :: unit
-      type(string_t), intent(in), dimension(2), optional :: filter
       type(string_t) :: fc_bin
       type(string_t) :: form_bin, qgraf_bin, haggies_bin
       type(string_t) :: fcflags_golem, ldflags_golem
@@ -318,35 +323,37 @@ contains
                         // "-I" // object%ninja_dir // "/include"
         ldflags_ninja = "-L" // object%ninja_dir // "/lib -lninja"
       end if
-      write (unit, "(A)") "+avh_olo.ldflags=" &
-            // char (ldflags_avh_olo) 
+      write (unit, "(A)") "#+avh_olo.ldflags=" &
+            // char (ldflags_avh_olo)
       write (unit, "(A)") "reduction_programs=golem95, samurai, ninja"
       write (unit, "(A)") "extensions=autotools"
-      write (unit, "(A)") "+qcdloop.ldflags=" &
+      write (unit, "(A)") "#+qcdloop.ldflags=" &
             // char (ldflags_qcdloop)
-      write (unit, "(A)") "+zzz.extensions=qcdloop, avh_olo"
-      write (unit, "(A)") "fc.bin=" // char (fc_bin)
+      write (unit, "(A)") "#+zzz.extensions=qcdloop, avh_olo"
+      write (unit, "(A)") "#fc.bin=" // char (fc_bin)
       write (unit, "(A)") "form.bin=" // char (form_bin)
       write (unit, "(A)") "qgraf.bin=" // char (qgraf_bin)
-      write (unit, "(A)") "golem95.fcflags=" // char (fcflags_golem)
-      write (unit, "(A)") "golem95.ldflags=" // char (ldflags_golem)
+      write (unit, "(A)") "#golem95.fcflags=" // char (fcflags_golem)
+      write (unit, "(A)") "#golem95.ldflags=" // char (ldflags_golem)
       write (unit, "(A)") "haggies.bin=" // char (haggies_bin)
-      write (unit, "(A)") "samurai.fcflags=" // char (fcflags_samurai)
-      write (unit, "(A)") "samurai.ldflags=" // char (ldflags_samurai)
-      write (unit, "(A)") "ninja.fcflags=" // char (fcflags_ninja)
-      write (unit, "(A)") "ninja.ldflags=" // char (ldflags_ninja)
+      write (unit, "(A)") "#samurai.fcflags=" // char (fcflags_samurai)
+      write (unit, "(A)") "#samurai.ldflags=" // char (ldflags_samurai)
+      write (unit, "(A)") "#ninja.fcflags=" // char (fcflags_ninja)
+      write (unit, "(A)") "#ninja.ldflags=" // char (ldflags_ninja)
       !!! This might collide with the mass-setup in the order-file
       !!! write (unit, "(A)") "zero=mU,mD,mC,mS,mB"
       !!! This is covered by the BLHA2 interface
       write (unit, "(A)") "PSP_check=False"
-      if (present (filter)) then
-         write (unit, "(A)") "filter.lo=" // char (filter(1))
-         write (unit, "(A)") "filter.nlo=" // char (filter(2))
-      end if
-      ! write (unit, "(A)") "filter.lo=lambda d: d.vertices(T, Tbar, A) > 0 or d.vertices(T, Tbar, Z) > 0"
-      ! write (unit, "(A)") "filter.nlo=lambda d: d.vertices(T, Tbar, A) > 0 or d.vertices(T, Tbar, Z) > 0"
-      ! write (unit, "(A)") "filter.lo=lambda d: d.iprop(H) == 0 and d.iprop(chi) == 0"
-      ! write (unit, "(A)") "filter.nlo=lambda d: d.iprop(H) == 0 and d.iprop(chi) == 0"
+      if (char (object%filter(1)) /= "") &
+         write (unit, "(A)") "filter.lo=" // char (object%filter(1))
+      if (char (object%filter(2)) /= "") &
+         write (unit, "(A)") "filter.nlo=" // char (object%filter(2))
+      if (char (object%symmetries) /= "") &
+         write (unit, "(A)") "symmetries=" // char(object%symmetries)
+      write (unit, "(A,I0)") "form.threads=", object%form_threads
+      write (unit, "(A,I0)") "form.workspace=", object%form_workspace
+      if (char (object%fc) /= "") &
+         write (unit, "(A)") "fc.bin=" // char(object%fc)
   end subroutine gosam_writer_generate_configuration_file
 
   subroutine gosam_driver_write_makefile (object, unit, libname)
@@ -379,6 +386,36 @@ contains
                dble (alpha_s), 0._double, ierr)
   end subroutine gosam_driver_set_alpha_s
 
+  subroutine gosam_driver_set_alpha_qed (driver, alpha)
+    class(gosam_driver_t), intent(inout) :: driver
+    real(default), intent(in) :: alpha
+    integer :: ierr
+    call driver%blha_olp_set_parameter &
+       (c_char_'alpha'//c_null_char, &
+        dble (alpha), 0._double, ierr)
+    if (ierr == 0) call parameter_error_message (var_str ('alpha'))
+  end subroutine gosam_driver_set_alpha_qed
+
+  subroutine gosam_driver_set_GF (driver, GF)
+    class(gosam_driver_t), intent(inout) :: driver
+    real(default), intent(in) :: GF
+    integer :: ierr 
+    call driver%blha_olp_set_parameter &
+       (c_char_'GF'//c_null_char, &
+        dble(GF), 0._double, ierr)
+    if (ierr == 0) call parameter_error_message (var_str ('GF'))
+  end subroutine gosam_driver_set_GF
+
+  subroutine gosam_driver_set_weinberg_angle (driver, sw2)
+    class(gosam_driver_t), intent(inout) :: driver
+    real(default), intent(in) :: sw2
+    integer :: ierr 
+    call driver%blha_olp_set_parameter &
+       (c_char_'sw2'//c_null_char, &
+        dble(sw2), 0._double, ierr)
+    if (ierr == 0) call parameter_error_message (var_str ('sw2'))
+  end subroutine gosam_driver_set_weinberg_angle
+
   subroutine gosam_driver_print_alpha_s (object)
     class(gosam_driver_t), intent(in) :: object
     call object%blha_olp_print_parameter (c_char_'alphaS'//c_null_char)
@@ -389,6 +426,10 @@ contains
     type(os_data_t), intent(in) :: os_data
     type(string_t), intent(in) :: libname
     logical :: lib_found
+    select type (writer => object%def%writer)
+    type is (gosam_writer_t)
+       call writer%write_config ()
+    end select
     call object%search_for_existing_library (os_data, lib_found)
     call object%create_olp_library (libname, lib_found)
     call object%load_driver (os_data, .not. lib_found)
@@ -454,10 +495,10 @@ contains
     logical, intent(in) :: store
     logical :: dl_success
     type(string_t) :: libname
-    
+
     select type (driver => object%driver)
     type is (gosam_driver_t)
-       call driver%load (os_data, dl_success) 
+       call driver%load (os_data, dl_success)
        if (.not. dl_success) &
           call msg_fatal ("Error: GoSam Libraries could not be loaded")
        if (store .and. dl_success) then
@@ -471,7 +512,7 @@ contains
 
   subroutine prc_gosam_start (object)
     class(prc_gosam_t), intent(inout) :: object
-    integer :: ierr 
+    integer :: ierr
     select type (driver => object%driver)
     type is (gosam_driver_t)
        call driver%blha_olp_start (char (driver%contract_file), ierr)
@@ -481,7 +522,7 @@ contains
   subroutine prc_gosam_write (object, unit)
     class(prc_gosam_t), intent(in) :: object
     integer, intent(in), optional :: unit
-    call msg_message ("GOSAM")
+    call msg_message (unit = unit, string = "GOSAM")
   end subroutine prc_gosam_write
 
   subroutine prc_gosam_init_driver (object, os_data)
@@ -508,7 +549,7 @@ contains
   subroutine prc_gosam_set_initialized (prc_gosam)
     class(prc_gosam_t), intent(inout) :: prc_gosam
     prc_gosam%initialized = .true.
-  end subroutine prc_gosam_set_initialized 
+  end subroutine prc_gosam_set_initialized
 
   subroutine prc_gosam_compute_sqme_born &
          (object, i_born, p, mu, sqme, bad_point)
@@ -519,18 +560,27 @@ contains
     real(default), intent(out) :: sqme
     logical, intent(out) :: bad_point
     real(double), dimension(5*object%n_particles) :: mom
-    real(default) :: acc_born 
+    real(default) :: acc_born
     real(double), dimension(OLP_RESULTS_LIMIT) :: r
+
     real(double) :: mu_dble
     real(double) :: acc_dble
+    real(default) :: alpha_s
 
     mom = object%create_momentum_array (p)
-    mu_dble = dble(mu)    
+    mu_dble = dble(mu)
+    alpha_s = object%qcd%alpha%get (mu)
 
     select type (driver => object%driver)
     type is (gosam_driver_t)
-       call driver%blha_olp_eval2 (i_born, mom, mu_dble, r, acc_dble)
-       sqme = r(4)
+       call driver%set_alpha_s (alpha_s)
+       if (allocated (object%i_born)) then
+          call driver%blha_olp_eval2 (object%i_born(i_born), mom, mu_dble, r, acc_dble)
+          sqme = r(4)
+       else
+          sqme = 0._default
+          acc_dble = 0._default
+       end if
     end select
     acc_born = acc_dble
     bad_point = acc_born > object%maximum_accuracy
@@ -551,7 +601,7 @@ contains
     real(double) :: acc_dble
     real(default) :: acc
     real(default) :: alpha_s
- 
+
     mom = object%create_momentum_array (p)
     if (vanishes (ren_scale)) then
        mu = sqrt (two * p(1)* p(2))
@@ -590,14 +640,14 @@ contains
     real(default) :: acc, ren_scale
     real(default) :: alpha_s
 
-    me_sc = cmplx(0,0,default)
+    me_sc = cmplx (zero ,zero)
     mom = object%create_momentum_array (p)
     if (vanishes (ren_scale_in)) then
-      ren_scale = sqrt (2 * p(1) * p(2))
+      ren_scale = sqrt (two * p(1) * p(2))
     else
       ren_scale = ren_scale_in
     end if
-    alpha_s = object%qcd%alpha%get (ren_scale)    
+    alpha_s = object%qcd%alpha%get (ren_scale)
     ren_scale_dble = dble (ren_scale)
     select type (driver => object%driver)
     type is (gosam_driver_t)
@@ -606,16 +656,16 @@ contains
             mom, ren_scale_dble, r, acc_dble)
     end select
 
-    igm1 = em-1
+    igm1 = em - 1
     n = size(p)
-    do i = 0, n-1
-      pos_real = 2*igm1 + 2*n*i + 1
+    do i = 0, n - 1
+      pos_real = 2 * igm1 + 2 * n*i + 1
       pos_imag = pos_real + 1
       me_sc = me_sc + cmplx (r(pos_real), r(pos_imag), default)
     end do
 
-    me_sc = -conjg(me_sc)/CA
-  
+    me_sc = - conjg(me_sc) / CA
+
     acc = acc_dble
     if (acc > object%maximum_accuracy) bad_point = .true.
   end subroutine prc_gosam_compute_sqme_sc
@@ -629,7 +679,7 @@ contains
   subroutine gosam_state_write (object, unit)
     class(gosam_state_t), intent(in) :: object
     integer, intent(in), optional :: unit
-    call msg_warning ("gosam_state_write: What to write?")
+    call msg_warning (unit = unit, string = "gosam_state_write: What to write?")
   end subroutine gosam_state_write
 
 

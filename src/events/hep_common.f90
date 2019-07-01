@@ -1,4 +1,4 @@
-! WHIZARD 2.2.7 Aug 11 2015
+! WHIZARD 2.2.8 Nov 22 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,11 +6,14 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
-!     Fabian Bach <fabian.bach@desy.de>
+!     Fabian Bach <fabian.bach@t-online.de>
+!     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
+!     Soyoung Shim <soyoung.shim@desy.de>
+!     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, Daniel Wiesler 
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -34,6 +37,7 @@ module hep_common
   
   use kinds, only: default
   use kinds, only: double
+  use constants
   use iso_varying_string, string_t => varying_string
   use io_units
   use diagnostics
@@ -141,6 +145,17 @@ module hep_common
   
   integer, dimension(NMXHEP) :: hepevt_pol
 
+  integer, public :: idruplh
+  
+  double precision, public :: eventweightlh
+
+  double precision, public :: alphaqedlh, alphaqcdlh
+
+  double precision, dimension(10), public :: scalelh
+
+  double precision, dimension (3,NMXHEP), public :: spinlh
+  integer, dimension (2,NMXHEP), public :: icolorflowlh
+  
   integer :: hepevt_n_out, hepevt_n_remnants
 
   double precision :: hepevt_weight, hepevt_function_value
@@ -162,6 +177,11 @@ module hep_common
        JMOHEP, JDAHEP, PHEP, VHEP
   save /HEPEVT/
   
+  common /HEPEV4/ &
+       eventweightlh, alphaqedlh, alphaqcdlh, scalelh, &
+       spinlh, icolorflowlh, idruplh
+  save /HEPEV4/
+       
 
 contains
   
@@ -383,7 +403,7 @@ contains
     call tag_gen_n%write (var_str ("WHIZARD"), unit)
     write (unit, *)
     write (unit, "(2x)", advance = "no")      
-    call tag_gen_v%write (var_str ("2.2.7"), unit)
+    call tag_gen_v%write (var_str ("2.2.8"), unit)
     write (unit, *)
     call tag_head%close (unit); write (unit, *)
     call tag_init%write (unit); write (unit, *)
@@ -702,36 +722,58 @@ contains
     integer, intent(in) :: n_tot, n_out
     NHEP              = n_tot
     NEVHEP            = 0
+    idruplh           = 0
     hepevt_n_out      = n_out
     hepevt_n_remnants = 0
     hepevt_weight     = 1
+    eventweightlh     = 1
     hepevt_function_value = 0
     hepevt_function_ratio = 1
+    alphaqcdlh        = -1
+    alphaqedlh        = -1
+    scalelh           = -1
   end subroutine hepevt_init
   
   subroutine hepevt_set_event_parameters &
-       (weight, function_value, function_ratio, i_evt)
+       (proc_id, weight, function_value, function_ratio, &
+       alpha_qcd, alpha_qed, scale, i_evt)
+    integer, intent(in), optional :: proc_id
     integer, intent(in), optional :: i_evt
     real(default), intent(in), optional :: weight, function_value, &
-       function_ratio
-    if (present (i_evt)) NEVHEP = i_evt
-    if (present (weight)) hepevt_weight = weight
+       function_ratio, alpha_qcd, alpha_qed, scale
+    if (present (proc_id))  idruplh = proc_id 
+    if (present (i_evt))  NEVHEP = i_evt
+    if (present (weight)) then
+       hepevt_weight = weight
+       eventweightlh = weight
+    end if
     if (present (function_value)) hepevt_function_value = &
          function_value
     if (present (function_ratio)) hepevt_function_ratio = &
          function_ratio
+    if (present (alpha_qcd))  alphaqcdlh = alpha_qcd
+    if (present (alpha_qed))  alphaqedlh = alpha_qed
+    if (present (scale))  scalelh(1) = scale
   end subroutine hepevt_set_event_parameters
 
   subroutine hepevt_set_particle &
-       (i, pdg, status, parent, child, p, m2, hel, vtx)
+       (i, pdg, status, parent, child, p, m2, hel, vtx, &
+       col, pol_status, pol, fill_hepev4)
     integer, intent(in) :: i
     integer, intent(in) :: pdg, status
     integer, dimension(:), intent(in) :: parent
     integer, dimension(:), intent(in) :: child
+    logical, intent(in), optional :: fill_hepev4
     type(vector4_t), intent(in) :: p
     real(default), intent(in) :: m2
+    integer, dimension(2), intent(in) :: col
+    integer, intent(in) :: pol_status
     integer, intent(in) :: hel
+    type(polarization_t), intent(in), optional :: pol
     type(vector4_t), intent(in) :: vtx
+    logical :: hepev4
+    real(default) :: r, theta, phi
+    hepev4 = .false.; if (present (fill_hepev4))  hepev4 = fill_hepev4
     IDHEP(i) = pdg
     select case (status)
       case (PRT_BEAM);      ISTHEP(i) = 2
@@ -757,6 +799,38 @@ contains
     VHEP(1:3,i) = vtx%p(1:3)
     VHEP(4,i) = vtx%p(0)
     hepevt_pol(i) = hel
+    if (hepev4) then
+       if (col(1) > 0) then
+          icolorflowlh(1,i) = 500 + col(1)
+       else
+          icolorflowlh(1,i) = 0
+       end if
+       if (col(2) > 0) then
+          icolorflowlh(2,i) = 500 + col(2)
+       else
+          icolorflowlh(2,i) = 0
+       end if
+       if (present (pol) .and. &
+            pol_status == PRT_GENERIC_POLARIZATION) then
+          if (polarization_is_polarized (pol)) then
+             call polarization_to_angles (pol, r, theta, phi)
+             spinlh(:,i) = [r, theta, phi]
+          end if
+       else
+          if (pol_status == PRT_DEFINITE_HELICITY) then
+             select case (hel)
+             case (1:)
+                spinlh(:,i) = [one, zero, zero]
+             case (:-1)
+                spinlh(:,i) = [one, PI, zero]
+             case (0)
+                spinlh(:,i) = [one, PI/2, zero]
+             end select
+          else
+             spinlh(:,i) = [zero, zero, zero]
+          end if
+       end if
+    end if
   end subroutine hepevt_set_particle
 
   subroutine hepevt_write_verbose (unit)
@@ -970,7 +1044,8 @@ contains
     end do
   end subroutine hepeup_read_lhef
 
-  subroutine hepeup_from_particle_set (pset_in, keep_beams, keep_remnants)
+  subroutine hepeup_from_particle_set (pset_in, &
+     keep_beams, keep_remnants)
     type(particle_set_t), intent(in) :: pset_in
     type(particle_set_t), target :: pset
     logical, intent(in), optional :: keep_beams
@@ -980,7 +1055,8 @@ contains
     logical :: activate_remnants
     activate_remnants = .true.
     if (present (keep_remnants))  activate_remnants = keep_remnants
-    call pset_in%apply_keep_beams (pset, keep_beams = keep_beams)
+    call pset_in%filter_particles (pset, real_parents = .true. , &
+       keep_beams = keep_beams, keep_virtuals = .false.)
     n_tot = pset%get_n_tot ()
     call hepeup_init (n_tot)
     do i = 1, n_tot
@@ -1075,19 +1151,21 @@ contains
   end subroutine hepeup_to_particle_set
   
   subroutine hepevt_from_particle_set &
-       (particle_set, keep_beams, keep_remnants, ensure_order)
+       (particle_set, keep_beams, keep_remnants, ensure_order, fill_hepev4)
     type(particle_set_t), intent(in) :: particle_set
     type(particle_set_t), target :: pset_hepevt, pset_tmp
     logical, intent(in), optional :: keep_beams
     logical, intent(in), optional :: keep_remnants
     logical, intent(in), optional :: ensure_order
+    logical, intent(in), optional :: fill_hepev4
     integer :: i, status, n_tot
     logical :: activate_remnants, ensure
     activate_remnants = .true.
     if (present (keep_remnants))  activate_remnants = keep_remnants
     ensure = .false.
     if (present (ensure_order))  ensure = ensure_order
-    call particle_set%apply_keep_beams (pset_tmp, keep_beams = keep_beams)
+    call particle_set%filter_particles (pset_tmp, real_parents = .true., &
+       keep_virtuals = .false., keep_beams = keep_beams)
     if (ensure) then
        call pset_tmp%to_hepevt_form (pset_hepevt)
     else
@@ -1102,14 +1180,33 @@ contains
               .and. status == PRT_BEAM_REMNANT &
               .and. prt%get_n_children () == 0) &
               status = PRT_OUTGOING
-         call hepevt_set_particle (i, &
-              prt%get_pdg (), status, &
-              prt%get_parents (), &
-              prt%get_children (), &
-              prt%get_momentum (), &
-              prt%get_p2 (), &
-              prt%get_helicity (), &
-              prt%get_vertex ())
+         select case (prt%get_polarization_status ())
+         case (PRT_GENERIC_POLARIZATION)
+            call hepevt_set_particle (i, &
+                 prt%get_pdg (), status, &
+                 prt%get_parents (), &
+                 prt%get_children (), &
+                 prt%get_momentum (), &
+                 prt%get_p2 (), &
+                 prt%get_helicity (), &
+                 prt%get_vertex (), &
+                 prt%get_color (), &
+                 prt%get_polarization_status (), &
+                 pol = prt%get_polarization (), &
+                 fill_hepev4 = fill_hepev4)
+         case default
+            call hepevt_set_particle (i, &
+                 prt%get_pdg (), status, &
+                 prt%get_parents (), &
+                 prt%get_children (), &
+                 prt%get_momentum (), &
+                 prt%get_p2 (), &
+                 prt%get_helicity (), &
+                 prt%get_vertex (), &
+                 prt%get_color (), &
+                 prt%get_polarization_status (), &
+                 fill_hepev4 = fill_hepev4)            
+         end select
        end associate
     end do
     call pset_hepevt%final ()

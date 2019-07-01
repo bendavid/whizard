@@ -81,6 +81,7 @@ n_events = 100
 | Events: generating 100 unweighted, unpolarized events ...
 | Events: event normalization mode '1'
 |         ... event sample complete.
+| Events: actual unweighting efficiency =  62.11 %
 | Events: closing raw file 'gaussian_2_p1.evx'
 gaussian_spread1 =  1.414213562373E-01
 gaussian_spread2 =  1.414213562373E-01
@@ -143,6 +144,7 @@ n_events = 100
 | Events: generating 100 unweighted, unpolarized events ...
 | Events: event normalization mode '1'
 |         ... event sample complete.
+| Events: actual unweighting efficiency =  44.05 %
 | Events: closing raw file 'gaussian_2_p2.evx'
 | WHIZARD run finished.
 |=============================================================================|

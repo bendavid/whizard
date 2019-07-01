@@ -1,4 +1,4 @@
-! WHIZARD 2.2.7 Aug 11 2015
+! WHIZARD 2.2.8 Nov 22 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,11 +6,14 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
-!     Fabian Bach <fabian.bach@desy.de>
+!     Fabian Bach <fabian.bach@t-online.de>
+!     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
+!     Soyoung Shim <soyoung.shim@desy.de>
+!     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, Daniel Wiesler 
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -73,6 +76,8 @@ module mci_base
      procedure (mci_write), deferred :: write
      procedure (mci_startup_message), deferred :: startup_message
      procedure :: base_startup_message => mci_startup_message
+     procedure(mci_write_log_entry), deferred :: write_log_entry
+     procedure(mci_compute_md5sum), deferred :: compute_md5sum
      procedure :: record_index => mci_record_index
      procedure :: set_dimensions => mci_set_dimensions
      procedure :: base_set_dimensions => mci_set_dimensions
@@ -95,6 +100,7 @@ module mci_base
      procedure (mci_generate), deferred :: generate_weighted_event
      procedure (mci_generate), deferred :: generate_unweighted_event
      procedure (mci_rebuild), deferred :: rebuild_event
+     procedure :: pacify => mci_pacify
      procedure :: get_integral => mci_get_integral
      procedure :: get_error => mci_get_error
      procedure :: get_efficiency => mci_get_efficiency
@@ -110,6 +116,7 @@ module mci_base
      integer :: selected_channel = 0
      real(default) :: mci_weight = 0
      real(default) :: integrand  = 0
+     logical :: negative_weights = .false.
    contains
      procedure (mci_instance_write), deferred :: write
      procedure (mci_instance_final), deferred :: final
@@ -152,6 +159,22 @@ module mci_base
      procedure (mci_results_record), deferred :: record
   end type mci_results_t
   
+
+  abstract interface
+     subroutine mci_write_log_entry (mci, u)
+       import
+       class(mci_t), intent(in) :: mci
+       integer, intent(in) :: u
+     end subroutine mci_write_log_entry
+  end interface
+       
+  abstract interface
+     subroutine mci_compute_md5sum (mci, pacify)
+       import
+       class(mci_t), intent(inout) :: mci
+       logical, intent(in), optional :: pacify
+     end subroutine mci_compute_md5sum
+  end interface
 
   abstract interface
      subroutine mci_declare_flat_dimensions (mci, dim_flat)
@@ -532,6 +555,11 @@ contains
     end do
   end subroutine mci_sampler_test
   
+  subroutine mci_pacify (object, efficiency_reset, error_reset)
+    class(mci_t), intent(inout) :: object
+    logical, intent(in), optional :: efficiency_reset, error_reset
+  end subroutine mci_pacify
+    
   function mci_get_integral (mci) result (integral)
     class(mci_t), intent(in) :: mci
     real(default) :: integral

@@ -1,4 +1,4 @@
-(* $Id: modellib_SM.mli 6465 2015-01-10 15:22:31Z jr_reuter $
+(* $Id: modellib_SM.mli 7377 2015-11-20 15:59:02Z jr_reuter $
 
    Copyright (C) 1999-2015 by
 
@@ -35,8 +35,9 @@ module type SM_flags =
     val triple_anom : bool
     val quartic_anom : bool
     val higgs_anom : bool
+    val dim6 : bool  
     val k_matrix : bool
-    val ckm_present : bool
+    val ckm_present : bool   
     val top_anom : bool
     val top_anom_4f : bool
     val tt_threshold : bool
@@ -50,18 +51,11 @@ module SM_anomalous_ckm : SM_flags
 module SM_Higgs : SM_flags
 module SM_anomalous_top : SM_flags
 module SM_tt_threshold : SM_flags
-
+module SM_dim6 : SM_flags
+  
 module SM : functor (F : SM_flags) -> Model.Gauge with module Ch = Charges.QQ
 
 module SM_Rxi : Model.T with module Ch = Charges.QQ
 
 module Groves : functor (M : Model.Gauge) -> Model.Gauge with module Ch = M.Ch
 module SM_clones : Model.Gauge with module Ch = Charges.QQ
-
-(*i
- *  Local Variables:
- *  mode:caml
- *  indent-tabs-mode:nil
- *  page-delimiter:"^(\\* .*\n"
- *  End:
-i*)

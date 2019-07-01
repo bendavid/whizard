@@ -1,5 +1,5 @@
 # Makefile.am --
-# $Id: Makefile.am 7137 2015-08-07 19:02:32Z jr_reuter $
+# $Id: Makefile.am 7291 2015-09-29 23:03:58Z jr_reuter $
 ##
 ## Process this file with automake to produce Makefile.in
 ##
@@ -28,7 +28,7 @@
 ########################################################################
 
 SOURCE_FILES = \
-  kinds.f90 circe1.f90
+  circe1.f90
 
 MODULE_FILES = \
   kinds.$(FC_MODULE_EXT) \
@@ -102,21 +102,22 @@ Makefile.depend: $(SOURCE_FILES)
 				 $(depend_filter_extra) ; \
 	done > $@
 
-DISTCLEANFILES = Makefile.depend
+DISTCLEANFILES = Makefile.depend kinds.f90
 
 ########################################################################
 ## Non-standard cleanup tasks
 ## Remove sources that can be recreated using NOWEB
+
 if NOWEB_AVAILABLE
 maintainer-clean-noweb:
-	-rm -f *.f90 *.c
+	-rm -f $(SOURCE_FILES)
 endif
 .PHONY: maintainer-clean-noweb
 
 ## Remove those sources also if builddir and srcdir are different
 if NOWEB_AVAILABLE
 clean-noweb:
-	test "$(srcdir)" != "." && rm -f *.f90 *.c || true
+	test "$(srcdir)" != "." && rm -f $(SOURCE_FILES) || true
 endif
 .PHONY: clean-noweb
 

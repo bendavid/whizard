@@ -1,4 +1,4 @@
-! WHIZARD 2.2.7 Aug 11 2015
+! WHIZARD 2.2.8 Nov 22 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,11 +6,14 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
-!     Fabian Bach <fabian.bach@desy.de>
+!     Fabian Bach <fabian.bach@t-online.de>
+!     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
+!     Soyoung Shim <soyoung.shim@desy.de>
+!     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, Daniel Wiesler 
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -1224,8 +1227,7 @@ contains
 
     call reset_interaction_counter ()
     
-    call beam_data_init_sqrts (beam_data, &
-         1000._default, [flv, flv])
+    call beam_data%init_sqrts (1000._default, [flv, flv])
 
     allocate (sf_test_data_t :: data_strfun)
     select type (data_strfun)
@@ -1316,8 +1318,7 @@ contains
 
     call reset_interaction_counter ()
     
-    call beam_data_init_sqrts (beam_data, &
-         1000._default, [flv, flv])
+    call beam_data%init_sqrts (1000._default, [flv, flv])
 
     allocate (sf_test_data_t :: data_strfun)
     select type (data_strfun)
@@ -1475,8 +1476,7 @@ contains
 
     call reset_interaction_counter ()
     
-    call beam_data_init_sqrts (beam_data, &
-         1000._default, [flv, flv])
+    call beam_data%init_sqrts (1000._default, [flv, flv])
 
     allocate (sf_test_data_t :: data_strfun)
     select type (data_strfun)
@@ -1571,8 +1571,7 @@ contains
 
     call reset_interaction_counter ()
     
-    call beam_data_init_sqrts (beam_data, &
-         1000._default, [flv, flv])
+    call beam_data%init_sqrts (1000._default, [flv, flv])
 
     allocate (sf_test_data_t :: data_strfun)
     select type (data_strfun)
@@ -1808,8 +1807,7 @@ contains
 
     call reset_interaction_counter ()
     
-    call beam_data_init_sqrts (beam_data, &
-         1000._default, [flv, flv])
+    call beam_data%init_sqrts (1000._default, [flv, flv])
 
     allocate (sf_test_data_t :: data)
     select type (data)
@@ -2045,8 +2043,7 @@ contains
 
     call reset_interaction_counter ()
     
-    call beam_data_init_sqrts (beam_data, &
-         1000._default, [flv, flv])
+    call beam_data%init_sqrts (1000._default, [flv, flv])
 
     allocate (sf_test_data_t :: data_strfun)
     select type (data_strfun)

@@ -1,4 +1,4 @@
-! WHIZARD 2.2.7 Aug 11 2015
+! WHIZARD 2.2.8 Nov 22 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,11 +6,14 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
-!     Fabian Bach <fabian.bach@desy.de>
+!     Fabian Bach <fabian.bach@t-online.de>
+!     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
+!     Soyoung Shim <soyoung.shim@desy.de>
+!     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, Daniel Wiesler 
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -32,6 +35,7 @@
 
 module iterations
 
+  use kinds, only: default
   use iso_varying_string, string_t => varying_string
   use io_units
   use diagnostics
@@ -40,6 +44,7 @@ module iterations
   private
 
   public :: iterations_list_t
+  public :: iteration_multipliers_t
 
   type :: iterations_spec_t
      private
@@ -61,11 +66,20 @@ module iterations
      procedure :: to_string => iterations_list_to_string
      procedure :: get_n_pass => iterations_list_get_n_pass
      procedure :: get_n_calls => iterations_list_get_n_calls
+     procedure :: set_n_calls => iterations_list_set_n_calls
      procedure :: adapt_grids => iterations_list_adapt_grids
      procedure :: adapt_weights => iterations_list_adapt_weights
      procedure :: get_n_it => iterations_list_get_n_it
   end type iterations_list_t
      
+  type :: iteration_multipliers_t
+    real(default) :: mult_real = 1._default
+    real(default) :: mult_virt = 1._default
+    real(default) :: mult_pdf = 1._default
+    real(default) :: mult_threshold = 1._default
+    integer, dimension(:), allocatable :: n_calls0 
+  end type iteration_multipliers_t
+
 
 contains
 
@@ -163,6 +177,12 @@ contains
        n_calls = 0
     end if
   end function iterations_list_get_n_calls
+
+  subroutine iterations_list_set_n_calls (it_list, pass, n_calls)
+    class(iterations_list_t), intent(inout) :: it_list
+    integer, intent(in) :: pass, n_calls
+    it_list%pass(pass)%n_calls = n_calls
+  end subroutine iterations_list_set_n_calls
 
   function iterations_list_adapt_grids (it_list, pass) result (flag)
     logical :: flag

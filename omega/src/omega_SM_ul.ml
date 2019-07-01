@@ -1,4 +1,4 @@
-(* $Id: omega_SM_ul.ml 6943 2015-05-01 10:53:21Z msekulla $
+(* $Id: omega_SM_ul.ml 7367 2015-11-13 17:28:39Z jr_reuter $
 
    Copyright (C) 1999-2015 by
 
@@ -6,7 +6,7 @@
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
        Juergen Reuter <juergen.reuter@desy.de>
        with contributions from
-       Marco Sekulla <sekulla@physik.uni-siegen.de>
+       Marco Sekulla <marco.sekulla@kit.edu>
        Christian Speckner <cnspeckn@googlemail.com>
 
    WHIZARD is free software; you can redistribute it and/or modify it

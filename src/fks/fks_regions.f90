@@ -1,4 +1,4 @@
-! WHIZARD 2.2.7 Aug 11 2015
+! WHIZARD 2.2.8 Nov 22 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,11 +6,14 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
-!     Fabian Bach <fabian.bach@desy.de>
+!     Fabian Bach <fabian.bach@t-online.de>
+!     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
+!     Soyoung Shim <soyoung.shim@desy.de>
+!     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, Daniel Wiesler 
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -52,7 +55,6 @@ module fks_regions
   public :: singular_region_t
   public :: fks_mapping_default_t
   public :: region_data_t
-  public :: fks_tree_to_position
 
   integer, parameter :: UNDEFINED_SPLITTING = 0
   integer, parameter :: Q_TO_QG = 1
@@ -139,6 +141,7 @@ module fks_regions
 
   type, extends (fks_mapping_t) :: fks_mapping_default_t
     real(default) :: exp_1, exp_2
+    integer :: n_in
   contains
     procedure :: set_parameter => fks_mapping_default_set_parameter
     procedure :: dij => fks_mapping_default_dij
@@ -158,6 +161,7 @@ module fks_regions
     integer :: n_emitters
     integer :: n_flv_born
     integer :: n_flv_real
+    integer :: n_in
     integer :: nlegs_born
     integer :: nlegs_real
     integer, dimension(:), allocatable :: underlying_borns
@@ -315,15 +319,15 @@ contains
     type(ftuple_list_t), pointer :: current
     select type (list)
     type is (ftuple_list_t)
-    current => list
-    do
-      call current%ftuple%write
-      if (associated (current%next)) then
-        current => current%next
-      else
-        exit
-      end if
-    end do
+       current => list
+       do
+          call current%ftuple%write
+          if (associated (current%next)) then
+             current => current%next
+          else
+             exit
+          end if
+       end do
     end select
   end subroutine ftuple_list_write
 
@@ -363,17 +367,21 @@ contains
     type(ftuple_list_t), pointer :: current
     select type (list)
     type is (ftuple_list_t)
-      current => list
-      n_tuples = 1
-      do
-        if (associated (current%next)) then
-          current => current%next
-          n_tuples = n_tuples + 1
-        else
-          exit
-        end if
-       end do
-    end select
+       current => list
+       if (current%index > 0) then
+          n_tuples = 1
+          do
+             if (associated (current%next)) then
+                current => current%next
+                n_tuples = n_tuples + 1
+             else
+                exit
+             end if
+          end do
+       else
+          n_tuples = 0
+       end if
+     end select
   end function ftuple_list_get_n_tuples
 
   function ftuple_list_get_entry(list, index) result(entry)
@@ -616,6 +624,8 @@ contains
                is_quark (abs(flst_alr%flst(n_alr-1))) .and. &
                flst_alr%flst(n_alr) + flst_alr%flst(n_alr-1) == 0) then
          flst_uborn = flst_alr%insert_particle(n_alr-1,n_alr,21)
+      else
+         call msg_fatal ("Create underlying Born: Unsupported splitting type.")    
       end if
      else
         if (flst_alr%flst(n_alr) == 21) then
@@ -687,7 +697,7 @@ contains
     if (region%double_fsr) then
       E_em = energy (p(region%emitter))
       E_rad = energy (p(region%flst_real%get_nlegs()))
-      val = 2*E_em/(E_em + E_rad)
+      val = 2*E_em / (E_em + E_rad)
     else
       val = 1._default
     end if
@@ -705,9 +715,10 @@ contains
     div = region%coll_divergence
   end function singular_region_has_collinear_divergence
 
-  subroutine region_data_init (reg_data, model, flavor_born, &
-                               flavor_real, mapping_type)
+  subroutine region_data_init (reg_data, n_in, model, flavor_born, &
+    flavor_real, mapping_type)
     class(region_data_t), intent(inout) :: reg_data
+    integer, intent(in) :: n_in
     type(model_data_t), intent(in) :: model
     integer, intent(inout), dimension(:,:), allocatable :: &
          flavor_born, flavor_real
@@ -717,6 +728,7 @@ contains
     integer, dimension(:), allocatable :: emitter
     type(flv_structure_t), dimension(:), allocatable :: flst_alr
     integer :: i
+    reg_data%n_in = n_in
     reg_data%n_flv_born = size(flavor_born(1,:))
     reg_data%n_flv_real = size(flavor_real(1,:))
     reg_data%nlegs_born = size(flavor_born(:,1))
@@ -825,8 +837,7 @@ contains
     type(flv_structure_t), dimension(:), allocatable :: flst_alr_tmp
     integer :: nreg, nborn, nreal
     integer :: nlegreal
-    integer :: n_gluon_real, n_gluon_born
-    integer, parameter :: maxnregions = 100
+    integer, parameter :: maxnregions = 200
     integer :: i, j, k, l, m, n
     logical :: valid1, valid2
 
@@ -841,24 +852,18 @@ contains
         n = 0
 
         ITERATE_REAL_FLAVOR: do l = 1, nreal
-           do i = 3, nlegreal
+           do i = reg_data%n_in + 1, nlegreal
               do j = i+1, nlegreal
                  do k = 1, nborn
-                    if (flv_real(l)%valid_pair(i,j, flv_born(k), model) &
-                         .or. flv_real(l)%valid_pair(j,i,flv_born(k), model)) then
+                    if (flv_real(l)%valid_pair(i, j, flv_born(k), model) &
+                         .or. flv_real(l)%valid_pair(j, i, flv_born(k), model)) then
                        n = n+1
-                       n_gluon_real = flv_real(l)%count_particle (GLUON)
-                       n_gluon_born = flv_born(k)%count_particle (GLUON)
-                       if (n_gluon_born - n_gluon_real < 0) then
-                          if(flv_real(l)%valid_pair(i,j, flv_born(k), model)) then
-                             flst_alr_tmp(n) = create_alr (flv_real(l),i,j)
-                          else
-                             flst_alr_tmp(n) = create_alr (flv_real(l),j,i)
-                          end if
+                       if(flv_real(l)%valid_pair(i, j, flv_born(k), model)) then
+                          flst_alr_tmp(n) = create_alr (flv_real(l), reg_data%n_in, i, j)
                        else
-                          flst_alr_tmp(n) = flv_real(l)
+                          flst_alr_tmp(n) = create_alr (flv_real(l), reg_data%n_in, j, i)
                        end if
-                       call current_ftuple%set (i,j)
+                       call current_ftuple%set (i, j)
                        call current_ftuple%determine_splitting_type_fsr (flv_real(l), i, j)
                        call ftuples(l)%append (current_ftuple)
                        emitter_tmp(n) = nlegreal - 1
@@ -867,10 +872,14 @@ contains
                  end do
               end do
            end do
-           do i = 3, nlegreal
+           do i = reg_data%n_in + 1, nlegreal
               do k = 1, nborn
-                 valid1 = flv_real(l)%valid_pair(1,i, flv_born(k), model)
-                 valid2 = flv_real(l)%valid_pair(2,i, flv_born(k), model)
+                 valid1 = flv_real(l)%valid_pair(1, i, flv_born(k), model)
+                 if (reg_data%n_in > 1) then
+                    valid2 = flv_real(l)%valid_pair(2, i, flv_born(k), model)
+                 else
+                    valid2 = .false.
+                 end if
                  if (valid1 .and. valid2) then
                     m = 0
                  else if (valid1 .and. .not. valid2) then
@@ -884,7 +893,7 @@ contains
                     call current_ftuple%determine_splitting_type_isr (flv_real(l), m, i)
                     call ftuples(l)%append (current_ftuple)
                     emitter_tmp(n) = m
-                    flst_alr_tmp(n) = create_alr (flv_real(l), m, i)
+                    flst_alr_tmp(n) = create_alr (flv_real(l), reg_data%n_in, m, i)
                     exit
                  end if
               end do
@@ -906,6 +915,7 @@ contains
      (reg_data, ftuples, emitter, flst_alr)
      class(region_data_t), intent(inout) :: reg_data
      type(ftuple_list_t), intent(inout), dimension(:), allocatable :: ftuples
+     integer :: n_valid_ftuples
      type(ftuple_list_t) :: current_region
      integer, intent(in), dimension(:), allocatable :: emitter
      type(flv_structure_t), intent(in), dimension(:), allocatable :: flst_alr
@@ -933,18 +943,27 @@ contains
      allocate (flst_emitter (maxregions))
      allocate (index (maxregions))
      allocate (region_to_ftuple (maxregions))
-     allocate (ftuple_limits (size (ftuples)))
      allocate (k_index (maxregions))
 
      mult = 0
-
+     n_valid_ftuples = 0
      do i = 1, size (ftuples)
-        ftuple_limits(i) = ftuples(i)%get_n_tuples ()
+        if (ftuples(i)%get_n_tuples() > 0) &
+           n_valid_ftuples = n_valid_ftuples + 1
+     end do
+     allocate (ftuple_limits (n_valid_ftuples))
+
+     j = 1
+     do i = 1, size (ftuples)
+        if (ftuples(i)%get_n_tuples() > 0) then
+           ftuple_limits(j) = ftuples(i)%get_n_tuples ()
+           j = j+ 1
+        end if
      end do
      if (.not. (sum (ftuple_limits) == maxregions)) &
         call msg_fatal ("Too many regions!")
      k = 1
-     do j = 1, size (ftuples)
+     do j = 1, n_valid_ftuples
         do i = 1, ftuple_limits(j)
            region_to_ftuple(k) = i
            k = k + 1
@@ -953,7 +972,7 @@ contains
      i_first = 1
      j_first = 1
      j = 1
-     SCAN_REGIONS: do l = 1, size (ftuples)
+     SCAN_REGIONS: do l = 1, n_valid_ftuples
         SCAN_FTUPLES: do i = i_first, i_first + ftuple_limits (l) -1
            equiv = .false.
            if (i==i_first) then
@@ -970,7 +989,7 @@ contains
            else
               !!! Check for equivalent flavor structures
               do k = j_first, j - 1
-                 if (emitter(i) == emitter(k) .and. emitter(i) > 2) then
+                 if (emitter(i) == emitter(k) .and. emitter(i) > reg_data%n_in) then
                     if (flst_alr(i) == flst_alr2(k) .and. &
                          flst_alr(i)%flst(nlegs-1) == flst_alr2(k)%flst(nlegs-1) &
                          .and. flst_alr(i)%flst(nlegs) == flst_alr2(k)%flst(nlegs)) then
@@ -980,7 +999,7 @@ contains
                          (k_index(k), region_to_ftuple(i))
                     exit
                  end if
-              else if (emitter(i) == emitter(k) .and. emitter(i) <= 2) then
+              else if (emitter(i) == emitter(k) .and. emitter(i) <= reg_data%n_in) then
                  if (flst_alr(i) == flst_alr2(k)) then
                     mult(k) = mult(k) + 1
                     equiv = .true.
@@ -1007,14 +1026,14 @@ contains
      i_first = i_first + ftuple_limits(l)
      j_first = j_first + j - 1
   end do SCAN_REGIONS
-     nregions = j-1
+     nregions = j - 1
      allocate (reg_data%regions (nregions))
      do j = 1, nregions
         do i = 1, reg_data%n_flv_born
            if (reg_data%flv_born (i) == flst_uborn (j)) then
               if (allocated (perm_list)) deallocate (perm_list)
               call fks_permute_born &
-                   (reg_data%flv_born (i), flst_uborn (j), perm_list)
+                   (reg_data%flv_born (i), reg_data%n_in, flst_uborn (j), perm_list)
               call fks_apply_perm (flst_alr2(j), flst_emitter(j), perm_list)
            end if
         end do
@@ -1197,7 +1216,6 @@ contains
         call write_separator ()
         write (u, '(I4)', advance = 'no') region%nregions
         call write_separator ()
-        !!! write ftuples
         nreg = region%nregions
         if (nreg == maxnregions) then
            nleft = 0
@@ -1296,30 +1314,32 @@ contains
     end do
   end function region_to_index
 
-  function create_alr (flv1,i_em,i_rad) result(flv2)
+  function create_alr (flv1, n_in, i_em, i_rad) result(flv2)
     type(flv_structure_t), intent(in) :: flv1
+    integer, intent(in) :: n_in
     integer, intent(in) :: i_em, i_rad
     type(flv_structure_t) :: flv2
     integer :: n
     n = size (flv1%flst)
     allocate (flv2%flst (n))
-    if (i_em > 2) then
+    if (i_em > n_in) then
        flv2%flst(1:2) = flv1%flst(1:2)
        flv2%flst(n-1) = flv1%flst(i_em)
        flv2%flst(n) = flv1%flst(i_rad)
-       call fill_remaining_flavors (.true.)
+       call fill_remaining_flavors (n_in, .true.)
     else
        flv2%flst(1:2) = flv1%flst(1:2)
        flv2%flst(n) = flv1%flst(i_rad)
-       call fill_remaining_flavors (.false.)
+       call fill_remaining_flavors (n_in, .false.)
     end if
   contains
-    subroutine fill_remaining_flavors (final_final)
+    subroutine fill_remaining_flavors (n_in, final_final)
+      integer, intent(in) :: n_in
       logical, intent(in) :: final_final
       integer :: i, j
       logical :: check
-      j = 3
-      do i = 3, n
+      j = n_in + 1
+      do i = n_in + 1, n
          if (final_final) then
             check = (i /= i_em .and. i /= i_rad)
          else
@@ -1333,8 +1353,9 @@ contains
     end subroutine fill_remaining_flavors
   end function create_alr
 
-  subroutine fks_permute_born (flv_in, flv_out, perm_list)
+  subroutine fks_permute_born (flv_in, n_in, flv_out, perm_list)
     type(flv_structure_t), intent(in) :: flv_in
+    integer, intent(in) :: n_in
     type(flv_structure_t), intent(inout) :: flv_out
     integer, intent(out), dimension(:,:), allocatable :: perm_list
     integer, dimension(:,:), allocatable :: perm_list_tmp
@@ -1348,9 +1369,9 @@ contains
     if (allocated (perm_list_tmp)) deallocate (perm_list_tmp)
     allocate (perm_list_tmp (n_perms_max,2))
     n_perms = 0
-    j_min = 3
+    j_min = n_in + 1
     nlegs = size (flv_in%flst)
-    do i = 3, nlegs
+    do i = n_in + 1, nlegs
        flv1 = flv_in%flst(i)
        do j = j_min, nlegs
           flv2 = flv_out%flst(j)
@@ -1387,35 +1408,11 @@ contains
     end do
   end subroutine fks_apply_perm
 
-  function fks_tree_to_position (k, n_tot) result(pos)
-    integer, intent(in) :: k, n_tot
-    integer :: pos
-    integer :: k_tot
-    k_tot = 2**(n_tot - 1)
-    !!! Inital-state particles
-    if (k == k_tot) then
-       pos = 1
-    else if (k == k_tot/2) then
-       pos = 2
-       !!! Final-state particles
-    else
-       ! pos = 3 + nint(log(k)/log(2))
-       pos = 3 + dual_log (k)
-    end if
-  contains
-    recursive function dual_log (x) result (ld)
-      integer, intent(in) :: x
-      integer :: ld
-      if (x == 1) then
-        ld = 0
-      else
-        ld = 1 + dual_log (x/2)
-      end if
-    end function dual_log
-  end function fks_tree_to_position
-  subroutine fks_mapping_default_set_parameter (map, dij_exp1, dij_exp2)
+  subroutine fks_mapping_default_set_parameter (map, n_in, dij_exp1, dij_exp2)
     class(fks_mapping_default_t), intent(inout) :: map
+    integer, intent(in) :: n_in
     real(default), intent(in) :: dij_exp1, dij_exp2
+    map%n_in = n_in
     map%exp_1 = dij_exp1
     map%exp_2 = dij_exp2
   end subroutine fks_mapping_default_set_parameter
@@ -1425,33 +1422,52 @@ contains
     type(vector4_t), intent(in), dimension(:) :: p
     integer, intent(in) :: i, j
     real(default) :: d
-    real(default) :: sqrts
-    real :: y
-    real :: E1, E2
+    real(default) :: y
+    real(default) :: E1, E2
 
-    if (i /= j .and. (i > 2 .or. j > 2)) then
-      if (i == 0 .or. j == 0) then
-        if (j == 0) then
-          E1 = energy (p(i))
-          y = polar_angle_ct (p(i))
+    !!! FSR Region
+    if (i /= j) then
+        if (i > map%n_in .and. j > map%n_in) then
+           E1 = p(i)%p(0); E2 = p(j)%p(0)
+           d = (2 * p(i) * p(j) * E1*E2 / (E1 + E2)**2)**map%exp_1
         else
-          E1 = energy (p(j))
-          y = polar_angle_ct(p(j))
+           select case (map%n_in)
+           case (1)
+              call get_emitter_variables (1, i, j, p, E1, y)
+              d = ( E1**2 * (one - y**2) )**map%exp_2 
+           case (2) 
+              if ((i == 0 .and. j > 2) .or. (j == 0 .and. i > 2)) then
+                 call get_emitter_variables (0, i, j, p, E1, y)
+                 d = ( E1**2 * (one - y**2) )**map%exp_2
+              else if ((i == 1 .and. j > 2) .or. (j == 1 .and. i > 2)) then
+                 call get_emitter_variables (1, i, j, p, E1, y)
+                 d = ( 2 * E1**2 * (one - y) )**map%exp_2
+              else if ((i == 2 .and. j > 2) .or. (j == 2 .and. i > 2)) then
+                 call get_emitter_variables (2, i, j, p, E1, y)
+                 d = (2 * E1**2 * (one + y) )**map%exp_2
+              else
+                 !!! case i,j <= 2 for scattering not yet implemented
+                 d = 0
+              end if
+           end select
         end if
-        d = (E1**2 * (1-y**2))**map%exp_2
-      else
-        E1 = energy(p(i))
-        E2 = energy(p(j))
-        y = enclosed_angle_ct (p(i), p(j))
-        sqrts = (p(1)+p(2))**1
-        d = (2*p(i)*p(j) * E1*E2 / (E1 + E2)**2)**map%exp_1
-      end if
-    else if (i == j) then
-      call msg_fatal ("Invalid FKS region: Emitter equals FKS parton!")
     else
-      !!! case i,j <= 2 not yet implemented
-      d = 0
+      call msg_fatal ("Invalid FKS region: Emitter equals FKS parton!")
     end if
+  contains
+    subroutine get_emitter_variables (i_check, i, j, p, E, y)
+       integer, intent(in) :: i_check, i, j
+       type(vector4_t), intent(in), dimension(:) :: p
+       real(default), intent(out) :: E, y
+       if (j == i_check) then
+           E = energy (p(i))
+           y = polar_angle_ct (p(i))
+       else
+           E = energy (p(j))
+           y = polar_angle_ct(p(j))
+       end if
+    end subroutine get_emitter_variables
+
   end function fks_mapping_default_dij
 
   function fks_mapping_default_compute_sumdij (map, sregion, p) result (d)
@@ -1462,10 +1478,10 @@ contains
     integer :: i, k, l
 
     associate (ftuples => sregion%flst_allreg)
-      d = 0
+      d = zero
       do i = 1, sregion%nregions
         call ftuples(i)%get (k, l)
-        d = d + 1.0/map%dij (p, k, l)
+        d = d + one / map%dij (p, k, l)
       end do
     end associate
 
@@ -1476,7 +1492,7 @@ contains
     type(vector4_t), intent(in), dimension(:) :: p
     integer, intent(in) :: i, j
     real(default) :: value
-    value = 1._default / (map%dij (p, i, j) * map%sumdij)
+    value = one / (map%dij (p, i, j) * map%sumdij)
   end function fks_mapping_default_svalue
 
   function fks_mapping_default_dij_soft (map, p_born, p_soft, em) result (d)
@@ -1486,18 +1502,25 @@ contains
     integer, intent(in) :: em
     real(default) :: d
     real(default) :: y
-    if (em <= 2) then
+    if (em <= map%n_in) then
        y = polar_angle_ct (p_soft)
-       select case (em)
-       case (0)
-          d = one-y**2
+       select case (map%n_in)
        case (1)
-          d = 2*(one-y)
+          d = one - y**2
+          !d = two * (one - y)
        case (2)
-          d = 2*(one+y)
+          select case (em)
+          case (0)
+             d = one - y**2
+          case (1)
+             d = two * (one - y)
+          case (2)
+             d = two * (one + y)
+          end select
        end select
+       d = d**map%exp_2
     else
-       d = (2*p_born(em)*p_soft / energy(p_born(em)))**map%exp_1
+       d = (two * p_born(em)*p_soft / energy(p_born(em)))**map%exp_1
     end if
   end function fks_mapping_default_dij_soft
 
@@ -1509,13 +1532,13 @@ contains
     real(default) :: d
     integer :: i, k, l
     integer :: nlegs
-    d = 0
+    d = zero
     nlegs = size (sregion%flst_real%flst)
     associate (ftuples => sregion%flst_allreg)
       do i = 1, sregion%nregions
         call ftuples(i)%get (k,l)
         if (l == nlegs) then
-          d = d + 1._default/map%dij_soft (p_born, p_soft, k)
+          d = d + one / map%dij_soft (p_born, p_soft, k)
         end if
       end do
     end associate
@@ -1527,7 +1550,7 @@ contains
     type(vector4_t), intent(in) :: p_soft
     integer, intent(in) :: em
     real(default) :: value
-    value = 1._default/(map%sumdij_soft*map%dij_soft (p_born, p_soft, em))
+    value = one / (map%sumdij_soft*map%dij_soft (p_born, p_soft, em))
   end function fks_mapping_default_svalue_soft
 
 

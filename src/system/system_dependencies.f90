@@ -36,73 +36,75 @@ module system_dependencies
   public
  
   ! Program version
-  character(*), parameter :: WHIZARD_VERSION = "2.2.7"
-  character(*), parameter :: WHIZARD_DATE = "Aug 11 2015"
+  character(*), parameter :: WHIZARD_VERSION = "2.2.8"
+  character(*), parameter :: WHIZARD_DATE = "Nov 22 2015"
 
   ! System paths
   ! These are used for testing without existing installation
   character(*), parameter :: WHIZARD_TEST_BASICS_MODPATH = &
-       "/Users/reuter/local/packages/whizard/trunk/build/src/basics"
+       "/Users/reuter/Physik/whizard/trunk/build/src/basics"
   character(*), parameter :: WHIZARD_TEST_UTILITIES_MODPATH = &
-       "/Users/reuter/local/packages/whizard/trunk/build/src/utilities"
+       "/Users/reuter/Physik/whizard/trunk/build/src/utilities"
   character(*), parameter :: WHIZARD_TEST_TESTING_MODPATH = &
-       "/Users/reuter/local/packages/whizard/trunk/build/src/testing"
+       "/Users/reuter/Physik/whizard/trunk/build/src/testing"
   character(*), parameter :: WHIZARD_TEST_COMBINATORICS_MODPATH = &
-       "/Users/reuter/local/packages/whizard/trunk/build/src/combinatorics"
+       "/Users/reuter/Physik/whizard/trunk/build/src/combinatorics"
   character(*), parameter :: WHIZARD_TEST_SYSTEM_MODPATH = &
-       "/Users/reuter/local/packages/whizard/trunk/build/src/system"
+       "/Users/reuter/Physik/whizard/trunk/build/src/system"
   character(*), parameter :: WHIZARD_TEST_PHYSICS_MODPATH = &
-       "/Users/reuter/local/packages/whizard/trunk/build/src/physics"
+       "/Users/reuter/Physik/whizard/trunk/build/src/physics"
   character(*), parameter :: WHIZARD_TEST_ME_MODPATH = &
-       "/Users/reuter/local/packages/whizard/trunk/build/src/matrix_elements"
+       "/Users/reuter/Physik/whizard/trunk/build/src/matrix_elements"
   character(*), parameter :: WHIZARD_TEST_MODELS_MODPATH = &
-       "/Users/reuter/local/packages/whizard/trunk/build/src/models"
+       "/Users/reuter/Physik/whizard/trunk/build/src/models"
+  character(*), parameter :: WHIZARD_TEST_THRESHOLD_MODPATH = &
+       "/Users/reuter/Physik/whizard/trunk/build/src/threshold"
   character(*), parameter :: WHIZARD_TEST_OMEGA_MODPATH = &
-       "/Users/reuter/local/packages/whizard/trunk/build/omega/src"
-  character(*), parameter :: WHIZARD_TEST_CORE_MODPATH = &
-       "/Users/reuter/local/packages/whizard/trunk/build/src/whizard-core"
+       "/Users/reuter/Physik/whizard/trunk/build/omega/src"
   character(*), parameter :: WHIZARD_TEST_CORE_LIBPATH = &
-       "/Users/reuter/local/packages/whizard/trunk/build/src/whizard-core"
+       "/Users/reuter/Physik/whizard/trunk/build/src/whizard-core"
   character(*), parameter :: WHIZARD_TEST_OMEGA_BINPATH = &
-       "/Users/reuter/local/packages/whizard/trunk/build/omega/bin"
+       "/Users/reuter/Physik/whizard/trunk/build/omega/bin"
   character(*), parameter :: WHIZARD_TEST_SRC_LIBPATH = &
-       "/Users/reuter/local/packages/whizard/trunk/build/src"
+       "/Users/reuter/Physik/whizard/trunk/build/src"
   character(*), parameter :: WHIZARD_TEST_HEPMC_LIBPATH = &
-       "/Users/reuter/local/packages/whizard/trunk/build/src/hepmc"
+       "/Users/reuter/Physik/whizard/trunk/build/src/hepmc"
   character(*), parameter :: WHIZARD_TEST_LCIO_LIBPATH = &
-       "/Users/reuter/local/packages/whizard/trunk/build/src/lcio"
+       "/Users/reuter/Physik/whizard/trunk/build/src/lcio"
   character(*), parameter :: WHIZARD_TEST_HOPPET_LIBPATH = &
-       "/Users/reuter/local/packages/whizard/trunk/build/src/hoppet"
+       "/Users/reuter/Physik/whizard/trunk/build/src/hoppet"
   character(*), parameter :: WHIZARD_TEST_LOOPTOOLS_LIBPATH = &
-       "/Users/reuter/local/packages/whizard/trunk/build/src/looptools"
+       "/Users/reuter/Physik/whizard/trunk/build/src/looptools"
   character(*), parameter :: WHIZARD_TEST_MODELPATH = &
-       "/Users/reuter/local/packages/whizard/trunk/share/models"
+       "/Users/reuter/Physik/whizard/trunk/share/models"
   character(*), parameter :: WHIZARD_TEST_MODELS_LIBPATH = &
-       "/Users/reuter/local/packages/whizard/trunk/build/src/models"
+       "/Users/reuter/Physik/whizard/trunk/build/src/models"
   character(*), parameter :: WHIZARD_TEST_SUSYPATH = &
-       "/Users/reuter/local/packages/whizard/trunk/share/susy"
+       "/Users/reuter/Physik/whizard/trunk/share/susy"
   character(*), parameter :: WHIZARD_TEST_GMLPATH= &
-       "/Users/reuter/local/packages/whizard/trunk/build/src/gamelan"
+       "/Users/reuter/Physik/whizard/trunk/build/src/gamelan"
   character(*), parameter :: WHIZARD_TEST_CUTSPATH = &
-       "/Users/reuter/local/packages/whizard/trunk/share/cuts"
+       "/Users/reuter/Physik/whizard/trunk/share/cuts"
+  character(*), parameter :: WHIZARD_TEST_SHAREPATH = &
+       "/Users/reuter/Physik/whizard/trunk/share"
   character(*), parameter :: WHIZARD_TEST_TESTDATAPATH = &
-       "/Users/reuter/local/packages/whizard/trunk/share/test"
+       "/Users/reuter/Physik/whizard/trunk/share/test"
   character(*), parameter :: WHIZARD_TEST_TEXPATH = &
-       "/Users/reuter/local/packages/whizard/trunk/src/feynmf"
+       "/Users/reuter/Physik/whizard/trunk/src/feynmf"
   character(*), parameter :: WHIZARD_TEST_CIRCE2PATH = &
-       "/Users/reuter/local/packages/whizard/trunk/circe2/share/data"
+       "/Users/reuter/Physik/whizard/trunk/circe2/share/data"
   character(*), parameter :: WHIZARD_TEST_BEAMSIMPATH = &
-       "/Users/reuter/local/packages/whizard/trunk/share/beam-sim"
+       "/Users/reuter/Physik/whizard/trunk/share/beam-sim"
   character(*), parameter :: WHIZARD_TEST_MULIPATH = &
-       "/Users/reuter/local/packages/whizard/trunk/share/muli"
+       "/Users/reuter/Physik/whizard/trunk/share/muli"
   character(*), parameter :: PDF_BUILTIN_TEST_DATAPATH = &
-       "/Users/reuter/local/packages/whizard/trunk/share/pdf_builtin"
+       "/Users/reuter/Physik/whizard/trunk/share/pdf_builtin"
 
   ! WHIZARD-specific include flags
   character(*), parameter :: WHIZARD_TEST_INCLUDES = &
       "-I" // WHIZARD_TEST_MODELS_MODPATH // " " // &
+      "-I" // WHIZARD_TEST_THRESHOLD_MODPATH // " " // &
       "-I" // WHIZARD_TEST_OMEGA_MODPATH // " " // &
-      "-I" // WHIZARD_TEST_CORE_MODPATH // " " // &
       "-I" // WHIZARD_TEST_ME_MODPATH // " " // &
       "-I" // WHIZARD_TEST_PHYSICS_MODPATH // " " // &
       "-I" // WHIZARD_TEST_SYSTEM_MODPATH // " " // &
@@ -121,11 +123,11 @@ module system_dependencies
       "-L" // WHIZARD_TEST_LOOPTOOLS_LIBPATH // " " // &
        "-lwhizard_main -lwhizard -lomega " // &
        "-lHepMC -llcio -L/usr/local//lib -lhoppet_v1 " // &
-       "-L/usr/local/lib -looptools"
+       "-L/usr/local/ -looptools"
 
   ! Libtool
   character(*), parameter :: WHIZARD_LIBTOOL_TEST = &
-       "/Users/reuter/local/packages/whizard/trunk/build/libtool"
+       "/Users/reuter/Physik/whizard/trunk/build/libtool"
 
 
   ! System paths
@@ -164,10 +166,10 @@ module system_dependencies
        PKGLIBDIR // "/mod/matrix_elements"
   character(*), parameter :: WHIZARD_MODELS_MODPATH = &
        PKGLIBDIR // "/mod/models"
+  character(*), parameter :: WHIZARD_THRESHOLD_MODPATH = &
+       PKGLIBDIR // "/mod/threshold"
   character(*), parameter :: WHIZARD_OMEGA_MODPATH = &
        INCLUDEDIR // "/omega"
-  character(*), parameter :: WHIZARD_CORE_MODPATH = &
-       PKGLIBDIR // "/mod/whizard-core"
   character(*), parameter :: WHIZARD_OMEGA_BINPATH = &
        BINDIR
   character(*), parameter :: WHIZARD_OMEGA_LIBPATH = &
@@ -180,6 +182,8 @@ module system_dependencies
        PKGDATADIR // "/susy"
   character(*), parameter :: WHIZARD_GMLPATH= &
        PKGLIBDIR // "/gamelan"
+  character(*), parameter :: WHIZARD_SHAREPATH = &
+       PKGDATADIR
   character(*), parameter :: WHIZARD_TESTDATAPATH = &
        PKGDATADIR // "/test"
   character(*), parameter :: WHIZARD_CUTSPATH = &
@@ -198,8 +202,8 @@ module system_dependencies
   ! WHIZARD-specific include flags
   character(*), parameter :: WHIZARD_INCLUDES = &
       "-I" // WHIZARD_MODELS_MODPATH // " " // &
+      "-I" // WHIZARD_THRESHOLD_MODPATH // " " // &
       "-I" // WHIZARD_OMEGA_MODPATH // " " // &
-      "-I" // WHIZARD_CORE_MODPATH // " " // &
       "-I" // WHIZARD_ME_MODPATH // " " // &
       "-I" // WHIZARD_PHYSICS_MODPATH // " " // &
       "-I" // WHIZARD_SYSTEM_MODPATH // " " // &
@@ -213,7 +217,7 @@ module system_dependencies
       "-L" // WHIZARD_OMEGA_LIBPATH // " " // &
        "-lwhizard_main -lwhizard -lomega " // &
        "-lHepMC -llcio -L/usr/local//lib -lhoppet_v1 " // &
-       "-L/usr/local/lib -looptools"
+       "-L/usr/local/ -looptools"
 
   ! Libtool
   character(*), parameter :: WHIZARD_LIBTOOL = &
@@ -229,7 +233,9 @@ module system_dependencies
        " -fno-common"
   character(*), parameter :: DEFAULT_FC_SRC_EXT = &
        ".f90"
-
+  character(*), parameter :: DEFAULT_FC_PRECISION = &
+       "double"
+  
   ! Fortran compiler
   character(*), parameter :: DEFAULT_CC = &
        "gcc"
@@ -237,14 +243,16 @@ module system_dependencies
        "-g -O2"
   character(*), parameter :: DEFAULT_CFLAGS_PIC = &
        ""
-
+  logical, parameter :: CC_IS_GNU = .true.
+  logical, parameter :: CC_HAS_QUADMATH = .true.
+  
   ! Object files
   character(*), parameter :: DEFAULT_OBJ_EXT = &
        ".o"
 
   ! Linker
   character(*), parameter :: DEFAULT_LD = &
-       "/opt/local/bin/ld"
+       "/usr/bin/ld"
   character(*), parameter :: DEFAULT_LDFLAGS = &
        ""
   character(*), parameter :: DEFAULT_LDFLAGS_SO = "-shared"
@@ -257,7 +265,7 @@ module system_dependencies
   character(*), parameter :: DEFAULT_LDFLAGS_HOPPET = &
        "-L/usr/local//lib -lhoppet_v1"
   character(*), parameter :: DEFAULT_LDFLAGS_LOOPTOOLS = &
-       "-L/usr/local/lib -looptools"
+       "-L/usr/local/ -looptools"
   character(*), parameter :: DEFAULT_SHRLIB_EXT = "dylib"
   character(*), parameter :: DEFAULT_FC_SHRLIB_EXT = "so"
 
@@ -267,7 +275,7 @@ module system_dependencies
 
   ! LHAPDF library
   character(*), parameter :: LHAPDF_PDFSETS_PATH = &
-       ""
+       "/usr/local/share/LHAPDF"
 
   ! Available methods for event analysis display
   character(*), parameter :: EVENT_ANALYSIS = &
@@ -321,13 +329,11 @@ module system_dependencies
 
   ! Misc
   logical, parameter :: LHAPDF5_AVAILABLE = .false.
-  logical, parameter :: LHAPDF6_AVAILABLE = .false.
+  logical, parameter :: LHAPDF6_AVAILABLE = .true.
   logical, parameter :: HOPPET_AVAILABLE = .true.
 
   logical, parameter :: PYTHIA6_AVAILABLE = .true.
   logical, parameter :: PYTHIA8_AVAILABLE = .true.
-
-  logical, parameter :: STDHEP_AVAILABLE = .true.
 
   logical, parameter :: GOSAM_AVAILABLE = .true.
   logical, parameter :: OPENLOOPS_AVAILABLE = .true.

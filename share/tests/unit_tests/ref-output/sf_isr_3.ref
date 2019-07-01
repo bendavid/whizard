@@ -36,8 +36,8 @@ f =  1.85232E-07
      order  =  3
      recoil =  F
  SF parameters:
-   x = 9.9999999657E-01
-   xb= 3.4327590472E-09
+   x = 9.99999997E-01
+   xb= 3.43275905E-09
  SF instance: [evaluated]
    beam      = 1
    incoming  = 1

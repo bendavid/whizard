@@ -53,6 +53,7 @@ n_events = 5
 | Events: generating 5 unweighted, unpolarized events ...
 | Events: event normalization mode '1'
 |         ... event sample complete.
+| Events: actual unweighting efficiency = 100.00 %
 | Events: closing raw file 'testproc_1_p1.evx'
 | There were no errors and    1 warning(s).
 | WHIZARD run finished.

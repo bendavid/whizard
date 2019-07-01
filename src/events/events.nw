@@ -30,8 +30,15 @@ These are the implementation modules:
 \item[eio\_checkpoints]
   Auxiliary output format.  The only purpose is to provide screen
   diagnostics during event output.
+\item[eio\_callback]
+  Auxiliary output format.  The only purpose is to execute a callback
+  procedure, so we have a hook for external access during event output.
 \item[eio\_weights]
   Print some event summary data, no details.  The main use if for
+  testing purposes.
+\item[eio\_dump]
+  Dump the contents of WHIZARD's [[particle_set]] internal record,
+  using the [[write]] method of that record as-is.  The main use if for
   testing purposes.
 \item[hep\_common]
   Implements traditional HEP common blocks that are (still) used by
@@ -67,8 +74,11 @@ the event implementation.
 
 module event_base
   
+  use system_defs, only: LF
 <<Use kinds>>
+  use kinds, only: i64
 <<Use strings>>
+  use io_units
   use string_utils, only: lower_case
   use diagnostics
   use model_data
@@ -90,6 +100,56 @@ contains
 
 end module event_base
 @ %def event_base
+@
+\subsection{NLO event information}
+This type stores information about fixed-order NLO events.
+<<Event base: parameters>>=
+  integer, parameter :: N_SUPPORTED_EVENT_FORMATS = 2
+<<Event base: types>>=
+  type :: nlo_event_info_t
+    logical :: nlo_event = .false.
+    type(string_t), dimension(N_SUPPORTED_EVENT_FORMATS) :: &
+       supported_event_formats
+  contains
+  <<Event base: nlo event info: TBP>>
+  end type nlo_event_info_t
+
+@ %def nlo_event_info_t
+@ Somehow, the use of the intrinsic [[var_str]] cannot be used in the type 
+specification in an array. Therefore, it has to be done separately.
+<<Event base: nlo event info: TBP>>=
+  procedure :: init_sample_formats => nlo_event_info_init_sample_formats
+<<Event base: procedures>>=
+  subroutine nlo_event_info_init_sample_formats (nlo_info)
+    class(nlo_event_info_t), intent(inout) :: nlo_info
+    nlo_info%supported_event_formats(1) = var_str ("hepmc")
+    nlo_info%supported_event_formats(2) = var_str ("debug")
+  end subroutine nlo_event_info_init_sample_formats
+
+@ %def nlo_event_info_init_sample_formats
+@
+<<Event base: nlo event info: TBP>>=
+  procedure :: check_supported_sample_formats &
+     => nlo_event_info_check_supported_sample_formats
+<<Event base: procedures>>=
+  subroutine nlo_event_info_check_supported_sample_formats (nlo_info, format)
+    class(nlo_event_info_t), intent(in) :: nlo_info
+    type(string_t), intent(in) :: format
+    logical :: value
+    type(string_t) :: err_message
+    integer :: i
+    value = any (nlo_info%supported_event_formats == format)
+    if (.not. value) then
+      err_message = var_str ("NLO event setup: sample_format ") // format // &
+            var_str (" is not supported yet. Please choose one of the following: ") // LF
+      do i = 1, N_SUPPORTED_EVENT_FORMATS
+         err_message = err_message // nlo_info%supported_event_formats (i) // LF
+      end do
+      call msg_fatal (char (err_message))
+    end if
+  end subroutine nlo_event_info_check_supported_sample_formats
+
+@ %def nlo_event_info_is_supported_sample_formats
 @
 \subsection{generic event type}
 <<Event base: public>>=
@@ -114,7 +174,7 @@ end module event_base
      real(default), dimension(:), allocatable :: sqme_alt
      logical :: weight_alt_known = .false.
      real(default), dimension(:), allocatable :: weight_alt
-     logical :: nlo_event = .false.
+     type(nlo_event_info_t) :: nlo_info
    contains
    <<Event base: generic event: TBP>>
   end type generic_event_t
@@ -662,6 +722,51 @@ are not deleted.  In particular, the initialization is kept.
 
 @ %def generic_event_pacify_particle_set
 @
+\subsection{NLO info}
+<<Event base: generic event: TBP>>=
+  procedure :: set_nlo_event => generic_event_set_nlo_event
+<<Event base: procedures>>=
+  subroutine generic_event_set_nlo_event (event, value)
+    class(generic_event_t), intent(inout) :: event
+    logical, intent(in) :: value
+    event%nlo_info%nlo_event = value
+  end subroutine generic_event_set_nlo_event
+
+@ %def generic_event_set_nlo_event
+@
+<<Event base: generic event: TBP>>=
+  procedure :: is_nlo_event => generic_event_is_nlo_event
+<<Event base: procedures>>=
+  function generic_event_is_nlo_event (event) result (value)
+    logical :: value
+    class(generic_event_t), intent(in) :: event
+    value = event%nlo_info%nlo_event
+  end function generic_event_is_nlo_event
+
+@ %def generic_event_is_nlo_event
+@
+<<Event base: generic event: TBP>>=
+  procedure :: init_sample_formats => generic_event_init_sample_formats
+<<Event base: procedures>>=
+  subroutine generic_event_init_sample_formats (event)
+    class(generic_event_t), intent(inout) :: event
+    call event%nlo_info%init_sample_formats ()
+  end subroutine generic_event_init_sample_formats
+
+@ %def generic_event_init_sample_formats
+@
+<<Event base: generic event: TBP>>=
+  procedure :: check_supported_sample_formats &
+     => generic_event_check_supported_sample_formats
+<<Event base: procedures>>=
+  subroutine generic_event_check_supported_sample_formats (event, format)
+    class(generic_event_t), intent(in) :: event
+    type(string_t), intent(in) :: format
+    call event%nlo_info%check_supported_sample_formats (format)
+  end subroutine generic_event_check_supported_sample_formats
+
+@ %def generic_event_check_supported_sample_formats
+@
 \subsection{Event normalization}
 The parameters for event normalization.  For unweighted events,
 [[NORM_UNIT]] is intended as default, while for weighted events, it is
@@ -756,6 +861,79 @@ data object.
   end subroutine event_normalization_update
   
 @ %def event_normalization_update
+@
+\subsection{Callback container}
+This derived type contains a callback procedure that can
+be executed during event I/O.  The callback procedure is given the
+event object (with class [[generic_event]]) and an event index.
+
+This is a simple wrapper.  The object is abstract, so the the actual
+procedure is introduced by overriding the deferred one.  We use the
+PASS attribute, so we may supplement runtime data in the callback object
+if desired.
+<<Event base: public>>=
+  public :: event_callback_t
+<<Event base: types>>=
+  type, abstract :: event_callback_t
+     private
+   contains
+     procedure(event_callback_write), deferred :: write
+     procedure(event_callback_proc), deferred :: proc
+  end type event_callback_t
+  
+@ %def event_callback_t
+@ Identify the callback procedure in output
+<<Event base: interfaces>>=
+  abstract interface
+     subroutine event_callback_write (event_callback, unit)
+       import
+       class(event_callback_t), intent(in) :: event_callback
+       integer, intent(in), optional :: unit
+     end subroutine event_callback_write
+  end interface
+  
+@ %def event_callback_write
+@ This is the procedure interface.
+<<Event base: interfaces>>=
+  abstract interface
+     subroutine event_callback_proc (event_callback, i, event)
+       import
+       class(event_callback_t), intent(in) :: event_callback
+       integer(i64), intent(in) :: i
+       class(generic_event_t), intent(in) :: event
+     end subroutine event_callback_proc
+  end interface
+  
+@ %def event_callback_proc
+@ A dummy implementation for testing and fallback.
+<<Event base: public>>=
+  public :: event_callback_nop_t
+<<Event base: types>>=
+  type, extends (event_callback_t) :: event_callback_nop_t
+     private
+   contains
+     procedure :: write => event_callback_nop_write
+     procedure :: proc => event_callback_nop
+  end type event_callback_nop_t
+  
+@ %def event_callback_t
+<<Event base: procedures>>=
+  subroutine event_callback_nop_write (event_callback, unit)
+    class(event_callback_nop_t), intent(in) :: event_callback
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = given_output_unit (unit)
+    write (u, "(1x,A)")  "NOP"
+  end subroutine event_callback_nop_write
+  
+  subroutine event_callback_nop (event_callback, i, event)
+    class(event_callback_nop_t), intent(in) :: event_callback
+    integer(i64), intent(in) :: i
+    class(generic_event_t), intent(in) :: event
+  end subroutine event_callback_nop
+  
+@ %def event_callback_nop_write
+@ %def event_callback_nop
 @
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Event Sample Data}
@@ -2243,6 +2421,197 @@ We test the implementation of all I/O methods.
   end subroutine eio_checkpoints_1
   
 @ %def eio_checkpoints_1
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+\section{Event Generation Callback}
+This is an output-only format.  Its only use is to write screen
+messages every $n$ events, to inform the user about progress.
+<<[[eio_callback.f90]]>>=
+<<File header>>
+
+module eio_callback
+  
+  use kinds, only: i64
+<<Use strings>>
+  use io_units
+  use diagnostics
+  use cputime
+  use event_base
+  use eio_data
+  use eio_base
+
+<<Standard module head>>
+
+<<EIO callback: public>>
+
+<<EIO callback: types>>
+
+contains
+  
+<<EIO callback: procedures>>
+
+end module eio_callback
+@ %def eio_callback
+@
+\subsection{Type}
+<<EIO callback: public>>=
+  public :: eio_callback_t
+<<EIO callback: types>>=
+  type, extends (eio_t) :: eio_callback_t
+     class(event_callback_t), allocatable :: callback
+     integer(i64) :: i_evt = 0
+     integer :: i_interval = 0
+     integer :: n_interval = 0
+!      type(timer_t) :: timer
+   contains
+   <<EIO callback: eio callback: TBP>>
+  end type eio_callback_t
+  
+@ %def eio_callback_t
+@
+\subsection{Specific Methods}
+Set parameters that are specifically used for callback: the procedure
+and the number of events to wait until the procedure is called (again).
+<<EIO callback: eio callback: TBP>>=
+  procedure :: set_parameters => eio_callback_set_parameters
+<<EIO callback: procedures>>=
+  subroutine eio_callback_set_parameters (eio, callback, count_interval)
+    class(eio_callback_t), intent(inout) :: eio
+    class(event_callback_t), intent(in) :: callback
+    integer, intent(in) :: count_interval
+    allocate (eio%callback, source = callback)
+    eio%n_interval = count_interval
+  end subroutine eio_callback_set_parameters
+  
+@ %def eio_callback_set_parameters
+@ 
+\subsection{Common Methods}
+Output.  This is not the actual event format, but a readable account
+of the current status.
+<<EIO callback: eio callback: TBP>>=
+  procedure :: write => eio_callback_write
+<<EIO callback: procedures>>=
+  subroutine eio_callback_write (object, unit)
+    class(eio_callback_t), intent(in) :: object
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = given_output_unit (unit)
+    write (u, "(1x,A)")  "Event-sample callback:"
+    write (u, "(3x,A,I0)")  "interval  = ", object%n_interval
+    write (u, "(3x,A,I0)")  "evt count = ", object%i_evt
+!        call object%timer%write (u)
+  end subroutine eio_callback_write
+  
+@ %def eio_callback_write
+@ Finalizer: trivial.
+<<EIO callback: eio callback: TBP>>=
+  procedure :: final => eio_callback_final
+<<EIO callback: procedures>>=
+  subroutine eio_callback_final (object)
+    class(eio_callback_t), intent(inout) :: object
+  end subroutine eio_callback_final
+  
+@ %def eio_callback_final
+@ Activate checkpointing for event generation or writing.
+<<EIO callback: eio callback: TBP>>=
+  procedure :: init_out => eio_callback_init_out
+<<EIO callback: procedures>>=
+  subroutine eio_callback_init_out (eio, sample, data, success, extension)
+    class(eio_callback_t), intent(inout) :: eio
+    type(string_t), intent(in) :: sample
+    type(string_t), intent(in), optional :: extension
+    type(event_sample_data_t), intent(in), optional :: data
+    logical, intent(out), optional :: success
+    eio%i_evt = 0
+    eiO%i_interval = 0
+    if (present (success))  success = .true.
+  end subroutine eio_callback_init_out
+    
+@ %def eio_callback_init_out
+@ No callback for event reading.
+<<EIO callback: eio callback: TBP>>=
+  procedure :: init_in => eio_callback_init_in
+<<EIO callback: procedures>>=
+  subroutine eio_callback_init_in (eio, sample, data, success, extension)
+    class(eio_callback_t), intent(inout) :: eio
+    type(string_t), intent(in) :: sample
+    type(string_t), intent(in), optional :: extension
+    type(event_sample_data_t), intent(inout), optional :: data
+    logical, intent(out), optional :: success
+    call msg_bug ("Event callback: event input not supported")
+    if (present (success))  success = .false.
+  end subroutine eio_callback_init_in
+    
+@ %def eio_callback_init_in
+@ Switch from input to output: also not supported.
+<<EIO callback: eio callback: TBP>>=
+  procedure :: switch_inout => eio_callback_switch_inout
+<<EIO callback: procedures>>=
+  subroutine eio_callback_switch_inout (eio, success)
+    class(eio_callback_t), intent(inout) :: eio
+    logical, intent(out), optional :: success
+    call msg_bug ("Event callback: in-out switch not supported")
+    if (present (success))  success = .false.
+  end subroutine eio_callback_switch_inout
+  
+@ %def eio_callback_switch_inout
+@ The actual callback.  First increment counters, then call the
+procedure if the counter hits the interval.
+<<EIO callback: eio callback: TBP>>=
+  procedure :: output => eio_callback_output
+<<EIO callback: procedures>>=
+  subroutine eio_callback_output (eio, event, i_prc, reading, passed, pacify)
+    class(eio_callback_t), intent(inout) :: eio
+    class(generic_event_t), intent(in), target :: event
+    integer, intent(in) :: i_prc
+    logical, intent(in), optional :: reading, passed, pacify
+    logical :: rd
+    eio%i_evt = eio%i_evt + 1
+    if (eio%n_interval > 0) then
+       eio%i_interval = eio%i_interval + 1
+       if (eio%i_interval >= eio%n_interval) then
+          call eio%callback%proc (eio%i_evt, event)
+          eio%i_interval = 0
+       end if
+    end if
+  end subroutine eio_callback_output
+
+@ %def eio_callback_output
+@ No input.
+<<EIO callback: eio callback: TBP>>=
+  procedure :: input_i_prc => eio_callback_input_i_prc
+  procedure :: input_event => eio_callback_input_event
+<<EIO callback: procedures>>=
+  subroutine eio_callback_input_i_prc (eio, i_prc, iostat)
+    class(eio_callback_t), intent(inout) :: eio
+    integer, intent(out) :: i_prc
+    integer, intent(out) :: iostat
+    call msg_bug ("Event callback: event input not supported")
+    i_prc = 0
+    iostat = 1
+  end subroutine eio_callback_input_i_prc
+
+  subroutine eio_callback_input_event (eio, event, iostat)
+    class(eio_callback_t), intent(inout) :: eio
+    class(generic_event_t), intent(inout), target :: event
+    integer, intent(out) :: iostat
+    call msg_bug ("Event callback: event input not supported")
+    iostat = 1
+  end subroutine eio_callback_input_event
+
+@ %def eio_callback_input_i_prc
+@ %def eio_callback_input_event
+@
+<<EIO callback: eio callback: TBP>>=
+  procedure :: skip => eio_callback_skip
+<<EIO callback: procedures>>=
+  subroutine eio_callback_skip (eio, iostat)
+    class(eio_callback_t), intent(inout) :: eio
+    integer, intent(out) :: iostat
+    iostat = 0
+  end subroutine eio_callback_skip
+
+@ %def eio_callback_skip
 @ 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
 \section{Event Weight Output}
@@ -2672,6 +3041,436 @@ We test the implementation of all I/O methods.
   end subroutine eio_weights_2
   
 @ %def eio_weights_2
+@ 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+\section{Event Dump Output}
+This is an output-only format.  We simply dump the contents of the
+[[particle_set]], using the [[write]] method of that type.  The
+event-format options are the options of that procedure.
+<<[[eio_dump.f90]]>>=
+<<File header>>
+
+module eio_dump
+
+  use, intrinsic :: iso_fortran_env, only: output_unit
+
+<<Use kinds>>
+  use kinds, only: i64
+<<Use strings>>
+  use format_utils, only: write_separator
+  use format_utils, only: pac_fmt
+  use format_defs, only: FMT_16, FMT_19
+  use io_units
+  use diagnostics
+  use event_base
+  use eio_data
+  use eio_base
+
+<<Standard module head>>
+
+<<EIO dump: public>>
+
+<<EIO dump: types>>
+
+contains
+  
+<<EIO dump: procedures>>
+
+end module eio_dump
+@ %def eio_dump
+@
+\subsection{Type}
+<<EIO dump: public>>=
+  public :: eio_dump_t
+<<EIO dump: types>>=
+  type, extends (eio_t) :: eio_dump_t
+     integer(i64) :: count = 0
+     integer :: unit = 0
+     logical :: writing = .false.
+     logical :: screen = .false.
+     logical :: pacify = .false.
+     logical :: weights = .false.
+     logical :: compressed = .false.
+     logical :: summary = .false.
+   contains
+   <<EIO dump: eio dump: TBP>>
+  end type eio_dump_t
+  
+@ %def eio_dump_t
+@
+\subsection{Specific Methods}
+Set pacify flags.
+<<EIO dump: eio dump: TBP>>=
+  procedure :: set_parameters => eio_dump_set_parameters
+<<EIO dump: procedures>>=
+  subroutine eio_dump_set_parameters (eio, extension, &
+       pacify, weights, compressed, summary, screen)
+    class(eio_dump_t), intent(inout) :: eio
+    type(string_t), intent(in), optional :: extension
+    logical, intent(in), optional :: pacify
+    logical, intent(in), optional :: weights
+    logical, intent(in), optional :: compressed
+    logical, intent(in), optional :: summary
+    logical, intent(in), optional :: screen
+    if (present (pacify))  eio%pacify = pacify
+    if (present (weights))  eio%weights = weights
+    if (present (compressed))  eio%compressed = compressed
+    if (present (summary))  eio%summary = summary
+    if (present (screen))  eio%screen = screen
+    eio%extension = "pset.dat"
+    if (present (extension))  eio%extension = extension
+  end subroutine eio_dump_set_parameters
+  
+@ %def eio_dump_set_parameters
+@ 
+\subsection{Common Methods}
+@ Output.  This is not the actual event format, but a readable account
+of the current object status.
+<<EIO dump: eio dump: TBP>>=
+  procedure :: write => eio_dump_write
+<<EIO dump: procedures>>=
+  subroutine eio_dump_write (object, unit)
+    class(eio_dump_t), intent(in) :: object
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = given_output_unit (unit)
+    write (u, "(1x,A)")  "Dump event stream:"
+    if (object%writing) then
+       write (u, "(3x,A,L1)") "Screen output     = ", object%screen
+       write (u, "(3x,A,A)")  "Writing to file   = ", char (object%filename)
+       write (u, "(3x,A,L1)") "Reduced I/O prec. = ", object%pacify 
+       write (u, "(3x,A,L1)") "Show weights/sqme = ", object%weights
+       write (u, "(3x,A,L1)") "Compressed        = ", object%compressed
+       write (u, "(3x,A,L1)") "Summary           = ", object%summary
+    else
+       write (u, "(3x,A)")  "[closed]"
+    end if
+  end subroutine eio_dump_write
+  
+@ %def eio_dump_write
+@ Finalizer: close any open file.
+<<EIO dump: eio dump: TBP>>=
+  procedure :: final => eio_dump_final
+<<EIO dump: procedures>>=
+  subroutine eio_dump_final (object)
+    class(eio_dump_t), intent(inout) :: object
+    if (object%screen) then
+       write (msg_buffer, "(A,A,A)")  "Events: display complete"
+       call msg_message ()
+       object%screen = .false.
+    end if
+    if (object%writing) then
+       write (msg_buffer, "(A,A,A)")  "Events: closing event dump file '", &
+            char (object%filename), "'"
+       call msg_message ()
+       close (object%unit)
+       object%writing = .false.
+    end if
+  end subroutine eio_dump_final
+  
+@ %def eio_dump_final
+@ Initialize event writing.
+<<EIO dump: eio dump: TBP>>=
+  procedure :: init_out => eio_dump_init_out
+<<EIO dump: procedures>>=
+  subroutine eio_dump_init_out (eio, sample, data, success, extension)
+    class(eio_dump_t), intent(inout) :: eio
+    type(string_t), intent(in) :: sample
+    type(string_t), intent(in), optional :: extension
+    type(event_sample_data_t), intent(in), optional :: data
+    logical, intent(out), optional :: success
+    if (present(extension)) then
+       eio%extension = extension
+    else 
+       eio%extension = "pset.dat"
+    end if
+    if (sample /= "") then
+       eio%filename = sample // "." // eio%extension
+       eio%unit = free_unit ()
+       write (msg_buffer, "(A,A,A)")  "Events: writing to event dump file '", &
+            char (eio%filename), "'"
+       call msg_message ()
+       eio%writing = .true.
+       open (eio%unit, file = char (eio%filename), &
+            action = "write", status = "replace")
+    end if
+    if (eio%screen) then
+       write (msg_buffer, "(A,A,A)")  "Events: display on standard output"
+       call msg_message ()
+    end if
+    eio%count = 0
+    if (present (success))  success = .true.
+  end subroutine eio_dump_init_out
+    
+@ %def eio_dump_init_out
+@ Initialize event reading.
+<<EIO dump: eio dump: TBP>>=
+  procedure :: init_in => eio_dump_init_in
+<<EIO dump: procedures>>=
+  subroutine eio_dump_init_in (eio, sample, data, success, extension)
+    class(eio_dump_t), intent(inout) :: eio
+    type(string_t), intent(in) :: sample
+    type(string_t), intent(in), optional :: extension
+    type(event_sample_data_t), intent(inout), optional :: data
+    logical, intent(out), optional :: success
+    call msg_bug ("Event dump: event input not supported")
+    if (present (success))  success = .false.
+  end subroutine eio_dump_init_in
+    
+@ %def eio_dump_init_in
+@ Switch from input to output: reopen the file for reading.
+<<EIO dump: eio dump: TBP>>=
+  procedure :: switch_inout => eio_dump_switch_inout
+<<EIO dump: procedures>>=
+  subroutine eio_dump_switch_inout (eio, success)
+    class(eio_dump_t), intent(inout) :: eio
+    logical, intent(out), optional :: success
+    call msg_bug ("Event dump: in-out switch not supported")
+    if (present (success))  success = .false.
+  end subroutine eio_dump_switch_inout
+  
+@ %def eio_dump_switch_inout
+@ Output an event.  Delegate the output call to the [[write]] method
+of the current particle set, if valid.  Output both to file (if defined)
+and to screen (if requested).
+<<EIO dump: eio dump: TBP>>=
+  procedure :: output => eio_dump_output
+<<EIO dump: procedures>>=
+  subroutine eio_dump_output (eio, event, i_prc, reading, passed, pacify)
+    class(eio_dump_t), intent(inout) :: eio
+    class(generic_event_t), intent(in), target :: event
+    integer, intent(in) :: i_prc
+    logical, intent(in), optional :: reading, passed, pacify
+    character(len=7) :: fmt
+    integer :: i
+    eio%count = eio%count + 1
+    call pac_fmt (fmt, FMT_19, FMT_16, pacify)
+    if (eio%writing)  call dump (eio%unit)
+    if (eio%screen) then
+       call dump (output_unit)
+       if (logfile_unit () > 0)  call dump (logfile_unit ())
+    end if
+  contains
+    subroutine dump (u)
+      integer, intent(in) :: u
+      call write_separator (u, 2)
+      write (u, "(1x,A,I0)")  "Event #", eio%count
+      if (eio%weights) then
+         call write_separator (u)
+         if (event%sqme_ref_known) then
+            write (u, "(1x,A," // fmt // ")")  "sqme (ref)   = ", &
+                 event%sqme_ref
+         else
+            write (u, "(1x,A)")  "sqme (ref)    = [undefined]"
+         end if
+         if (event%sqme_ref_known) then
+            write (u, "(1x,A," // fmt // ")")  "sqme (prc)   = ", &
+                 event%sqme_prc
+         else
+            write (u, "(1x,A)")  "sqme (prc)    = [undefined]"
+         end if
+         if (event%weight_ref_known) then
+            write (u, "(1x,A," // fmt // ")")  "weight (ref) = ", &
+                 event%weight_ref
+         else
+            write (u, "(1x,A)")  "weight (ref) = [undefined]"
+         end if
+         if (event%weight_prc_known) then
+            write (u, "(1x,A," // fmt // ")")  "weight (prc) = ", &
+                 event%weight_prc
+         else
+            write (u, "(1x,A)")  "weight (prc) = [undefined]"
+         end if
+         if (event%excess_prc_known) then
+            write (u, "(1x,A," // fmt // ")")  "excess (prc) = ", &
+                 event%excess_prc
+         else
+            write (u, "(1x,A)")  "excess (prc) = [undefined]"
+         end if
+         do i = 1, event%n_alt
+            if (event%sqme_ref_known) then
+               write (u, "(1x,A,I0,A," // fmt // ")")  "sqme (", i, ")     = ",&
+                    event%sqme_prc
+            else
+               write (u, "(1x,A,I0,A)")  "sqme (", i, ")    = [undefined]"
+            end if
+            if (event%weight_prc_known) then
+               write (u, "(1x,A,I0,A," // fmt // ")")  "weight (", i, ")   = ",&
+                    event%weight_prc
+            else
+               write (u, "(1x,A,I0,A)")  "weight (", i, ")   = [undefined]"
+            end if
+         end do
+      end if
+      call write_separator (u)
+      if (event%particle_set_is_valid) then
+         call event%particle_set%write (unit = u, &
+              summary = eio%summary, compressed = eio%compressed, &
+              testflag = eio%pacify)
+      else
+         write (u, "(1x,A)")  "Particle set: [invalid]"
+      end if
+    end subroutine dump
+  end subroutine eio_dump_output
+
+@ %def eio_dump_output
+@ Input an event.
+<<EIO dump: eio dump: TBP>>=
+  procedure :: input_i_prc => eio_dump_input_i_prc
+  procedure :: input_event => eio_dump_input_event
+<<EIO dump: procedures>>=
+  subroutine eio_dump_input_i_prc (eio, i_prc, iostat)
+    class(eio_dump_t), intent(inout) :: eio
+    integer, intent(out) :: i_prc
+    integer, intent(out) :: iostat
+    call msg_bug ("Dump stream: event input not supported")
+    i_prc = 0
+    iostat = 1
+  end subroutine eio_dump_input_i_prc
+
+  subroutine eio_dump_input_event (eio, event, iostat)
+    class(eio_dump_t), intent(inout) :: eio
+    class(generic_event_t), intent(inout), target :: event
+    integer, intent(out) :: iostat
+    call msg_bug ("Dump stream: event input not supported")
+    iostat = 1
+  end subroutine eio_dump_input_event
+
+@ %def eio_dump_input_i_prc
+@ %def eio_dump_input_event
+@
+<<EIO dump: eio dump: TBP>>=
+  procedure :: skip => eio_dump_skip
+<<EIO dump: procedures>>=
+  subroutine eio_dump_skip (eio, iostat)
+    class(eio_dump_t), intent(inout) :: eio
+    integer, intent(out) :: iostat
+    iostat = 0
+  end subroutine eio_dump_skip
+
+@ %def eio_dump_skip
+@
+\subsection{Unit tests}
+Test module, followed by the corresponding implementation module.
+<<[[eio_dump_ut.f90]]>>=
+<<File header>>
+
+module eio_dump_ut
+  use unit_tests
+  use eio_dump_uti
+  
+<<Standard module head>>
+
+<<EIO dump: public test>>
+
+contains
+  
+<<EIO dump: test driver>>
+
+end module eio_dump_ut
+@ %def eio_dump_ut
+@
+<<[[eio_dump_uti.f90]]>>=
+<<File header>>
+
+module eio_dump_uti
+
+<<Use kinds>>
+<<Use strings>>
+  use io_units
+  use event_base
+  use eio_data
+  use eio_base
+
+  use eio_dump
+  
+  use eio_base_ut, only: eio_prepare_test, eio_cleanup_test
+
+<<Standard module head>>
+
+<<EIO dump: test declarations>>
+
+contains
+
+<<EIO dump: tests>>
+
+end module eio_dump_uti
+@ %def eio_dump_ut
+@ API: driver for the unit tests below.
+<<EIO dump: public test>>=
+  public :: eio_dump_test
+<<EIO dump: test driver>>=
+  subroutine eio_dump_test (u, results)
+    integer, intent(in) :: u
+    type(test_results_t), intent(inout) :: results
+  <<EIO dump: execute tests>>
+  end subroutine eio_dump_test
+  
+@ %def eio_dump_test 
+@
+\subsubsection{Test I/O methods}
+We test the implementation of all I/O methods.
+<<EIO dump: execute tests>>=
+  call test (eio_dump_1, "eio_dump_1", &
+       "read and write event contents", &
+       u, results)
+<<EIO dump: test declarations>>=
+  public :: eio_dump_1
+<<EIO dump: tests>>=
+  subroutine eio_dump_1 (u)
+    integer, intent(in) :: u
+    class(generic_event_t), pointer :: event
+    class(eio_t), allocatable :: eio
+    integer :: u_file
+    character(80) :: buffer
+
+    write (u, "(A)")  "* Test output: eio_dump_1"
+    write (u, "(A)")  "*   Purpose: generate an event and dump to output"
+    write (u, "(A)")
+
+    write (u, "(A)")  "* Initialize test process"
+ 
+    call eio_prepare_test (event, unweighted = .false.)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Generate and write an event"
+    write (u, "(A)")
+ 
+    allocate (eio_dump_t :: eio)
+    select type (eio)
+    type is (eio_dump_t)
+       eio%unit = u
+       eio%writing = .true.
+       eio%weights = .true.
+    end select
+    
+    call eio%init_out (var_str (""))
+    call event%generate (1, [0._default, 0._default])
+
+    call eio%output (event, i_prc = 42)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Contents of eio_dump object"
+    write (u, "(A)")
+
+    call eio%write (u)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Cleanup"
+ 
+    select type (eio)
+    type is (eio_dump_t)
+       eio%writing = .false.
+    end select
+    call eio%final ()
+
+    call eio_cleanup_test (event) 
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: eio_dump_1"
+  end subroutine eio_dump_1
+  
+@ %def eio_dump_1
 @
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{ASCII File Formats}
@@ -4250,6 +5049,7 @@ module hep_common
   
 <<Use kinds>>
   use kinds, only: double
+  use constants
 <<Use strings>>
   use io_units
   use diagnostics
@@ -4941,8 +5741,7 @@ parameters.
   end subroutine hepeup_set_event_parameters
 
 @ %def hepeup_init hepeup_set_event_parameters
-@ 
-Extract event information.  The caller determines the parameters.
+@ Extract event information.  The caller determines the parameters.
 <<HEP common: public>>=
   public :: hepeup_get_event_parameters
 <<HEP common: procedures>>=
@@ -5125,7 +5924,7 @@ use the PDG code for this.
 
 @ %def hepeup_get_particle
 @
-\subsection{The HEPEVT common block}
+\subsection{The HEPEVT and HEPEV4 common block}
 
 For the LEP Monte Carlos, a standard common block has been proposed
 in AKV89.  We strongly recommend its use.  (The description is an
@@ -5216,6 +6015,36 @@ particles:
 
 @ %def hepevt_pol  
 @
+By this variable the identity of the current process is given, defined
+via the LPRUP codes.
+<<HEP common: variables>>=
+  integer, public :: idruplh
+  
+@ %def idruplh
+This is the event weight, i.e. the cross section divided by the total
+number of generated events for the output of the parton shower programs.
+<<HEP common: variables>>=
+  double precision, public :: eventweightlh
+
+@ %def eventweightlh
+@ There are the values for the electromagnetic and the strong coupling
+constants, $\alpha_{em}$ and $\alpha_s$.
+<<HEP common: variables>>=
+  double precision, public :: alphaqedlh, alphaqcdlh
+
+@ %def alphaqedlh, alphaqcdlh
+@ This is the squared scale $Q$ of the event.
+<<HEP common: variables>>=
+  double precision, dimension(10), public :: scalelh
+
+@ %def scalelh
+@ Finally, these variables contain the spin information and the
+color/anticolor flow of the particles.
+<<HEP common: variables>>=
+  double precision, dimension (3,NMXHEP), public :: spinlh
+  integer, dimension (2,NMXHEP), public :: icolorflowlh
+  
+@ %def spinlh icolorflowlh
 By convention, [[SHEP(4,N)]] is always 1. All this is taken from StdHep
 4.06 manual and written using Fortran90 conventions.
 <<HEP common: common blocks>>=
@@ -5237,6 +6066,16 @@ are not part of the HEPEVT common block.
   double precision :: hepevt_function_ratio
   
 @ %def hepevt_weight hepevt_function_value
+@ The HEPEV4 common block is an extension of the HEPEVT common block
+to allow for partonic colored events, including especially the color
+flow etc.
+<<HEP common: common blocks>>=
+  common /HEPEV4/ &
+       eventweightlh, alphaqedlh, alphaqcdlh, scalelh, &
+       spinlh, icolorflowlh, idruplh
+  save /HEPEV4/
+       
+@ %def HEPEV4
 @ Filling HEPEVT: If the event count is not provided, set [[NEVHEP]]
 to zero.  If the event count is [[-1]] or [[-2]], the record
 corresponds to initialization and finalization, and the event is
@@ -5245,6 +6084,9 @@ irrelevant.
 Note that the event count may be larger than $2^{31}$ (2 GEvents).  In
 that case, cut off the upper bits since [[NEVHEP]] is probably limited
 to default integer. 
+
+For the HEPEV4 common block, it is unclear why the [[scalelh]] variable
+is 10-dimensional. We choose to only set the first value of the array.
 <<HEP common: public>>=
   public :: hepevt_init
   public :: hepevt_set_event_parameters
@@ -5253,24 +6095,38 @@ to default integer.
     integer, intent(in) :: n_tot, n_out
     NHEP              = n_tot
     NEVHEP            = 0
+    idruplh           = 0
     hepevt_n_out      = n_out
     hepevt_n_remnants = 0
     hepevt_weight     = 1
+    eventweightlh     = 1
     hepevt_function_value = 0
     hepevt_function_ratio = 1
+    alphaqcdlh        = -1
+    alphaqedlh        = -1
+    scalelh           = -1
   end subroutine hepevt_init
   
   subroutine hepevt_set_event_parameters &
-       (weight, function_value, function_ratio, i_evt)
+       (proc_id, weight, function_value, function_ratio, &
+       alpha_qcd, alpha_qed, scale, i_evt)
+    integer, intent(in), optional :: proc_id
     integer, intent(in), optional :: i_evt
     real(default), intent(in), optional :: weight, function_value, &
-       function_ratio
-    if (present (i_evt)) NEVHEP = i_evt
-    if (present (weight)) hepevt_weight = weight
+       function_ratio, alpha_qcd, alpha_qed, scale
+    if (present (proc_id))  idruplh = proc_id 
+    if (present (i_evt))  NEVHEP = i_evt
+    if (present (weight)) then
+       hepevt_weight = weight
+       eventweightlh = weight
+    end if
     if (present (function_value)) hepevt_function_value = &
          function_value
     if (present (function_ratio)) hepevt_function_ratio = &
          function_ratio
+    if (present (alpha_qcd))  alphaqcdlh = alpha_qcd
+    if (present (alpha_qed))  alphaqedlh = alpha_qed
+    if (present (scale))  scalelh(1) = scale
   end subroutine hepevt_set_event_parameters
 
 @ %def hepevt_init hepevt_set_event_parameters
@@ -5280,15 +6136,23 @@ the exception of lifetime and spin, where default values are stored.
   public :: hepevt_set_particle
 <<HEP common: procedures>>=
   subroutine hepevt_set_particle &
-       (i, pdg, status, parent, child, p, m2, hel, vtx)
+       (i, pdg, status, parent, child, p, m2, hel, vtx, &
+       col, pol_status, pol, fill_hepev4)
     integer, intent(in) :: i
     integer, intent(in) :: pdg, status
     integer, dimension(:), intent(in) :: parent
     integer, dimension(:), intent(in) :: child
+    logical, intent(in), optional :: fill_hepev4
     type(vector4_t), intent(in) :: p
     real(default), intent(in) :: m2
+    integer, dimension(2), intent(in) :: col
+    integer, intent(in) :: pol_status
     integer, intent(in) :: hel
+    type(polarization_t), intent(in), optional :: pol
     type(vector4_t), intent(in) :: vtx
+    logical :: hepev4
+    real(default) :: r, theta, phi
+    hepev4 = .false.; if (present (fill_hepev4))  hepev4 = fill_hepev4
     IDHEP(i) = pdg
     select case (status)
       case (PRT_BEAM);      ISTHEP(i) = 2
@@ -5314,6 +6178,38 @@ the exception of lifetime and spin, where default values are stored.
     VHEP(1:3,i) = vtx%p(1:3)
     VHEP(4,i) = vtx%p(0)
     hepevt_pol(i) = hel
+    if (hepev4) then
+       if (col(1) > 0) then
+          icolorflowlh(1,i) = 500 + col(1)
+       else
+          icolorflowlh(1,i) = 0
+       end if
+       if (col(2) > 0) then
+          icolorflowlh(2,i) = 500 + col(2)
+       else
+          icolorflowlh(2,i) = 0
+       end if
+       if (present (pol) .and. &
+            pol_status == PRT_GENERIC_POLARIZATION) then
+          if (polarization_is_polarized (pol)) then
+             call polarization_to_angles (pol, r, theta, phi)
+             spinlh(:,i) = [r, theta, phi]
+          end if
+       else
+          if (pol_status == PRT_DEFINITE_HELICITY) then
+             select case (hel)
+             case (1:)
+                spinlh(:,i) = [one, zero, zero]
+             case (:-1)
+                spinlh(:,i) = [one, PI, zero]
+             case (0)
+                spinlh(:,i) = [one, PI/2, zero]
+             end select
+          else
+             spinlh(:,i) = [zero, zero, zero]
+          end if
+       end if
+    end if
   end subroutine hepevt_set_particle
 
 @ %def hepevt_set_particle
@@ -5598,7 +6494,8 @@ unique mother, and if its polarization is fully defined.
 <<HEP common: public>>=
   public :: hepeup_from_particle_set
 <<HEP common: procedures>>=
-  subroutine hepeup_from_particle_set (pset_in, keep_beams, keep_remnants)
+  subroutine hepeup_from_particle_set (pset_in, &
+     keep_beams, keep_remnants)
     type(particle_set_t), intent(in) :: pset_in
     type(particle_set_t), target :: pset
     logical, intent(in), optional :: keep_beams
@@ -5608,7 +6505,8 @@ unique mother, and if its polarization is fully defined.
     logical :: activate_remnants
     activate_remnants = .true.
     if (present (keep_remnants))  activate_remnants = keep_remnants
-    call pset_in%apply_keep_beams (pset, keep_beams = keep_beams)
+    call pset_in%filter_particles (pset, real_parents = .true. , &
+       keep_beams = keep_beams, keep_virtuals = .false.)
     n_tot = pset%get_n_tot ()
     call hepeup_init (n_tot)
     do i = 1, n_tot
@@ -5723,19 +6621,21 @@ its polarization is fully defined.
   public :: hepevt_from_particle_set
 <<HEP common: procedures>>=
   subroutine hepevt_from_particle_set &
-       (particle_set, keep_beams, keep_remnants, ensure_order)
+       (particle_set, keep_beams, keep_remnants, ensure_order, fill_hepev4)
     type(particle_set_t), intent(in) :: particle_set
     type(particle_set_t), target :: pset_hepevt, pset_tmp
     logical, intent(in), optional :: keep_beams
     logical, intent(in), optional :: keep_remnants
     logical, intent(in), optional :: ensure_order
+    logical, intent(in), optional :: fill_hepev4
     integer :: i, status, n_tot
     logical :: activate_remnants, ensure
     activate_remnants = .true.
     if (present (keep_remnants))  activate_remnants = keep_remnants
     ensure = .false.
     if (present (ensure_order))  ensure = ensure_order
-    call particle_set%apply_keep_beams (pset_tmp, keep_beams = keep_beams)
+    call particle_set%filter_particles (pset_tmp, real_parents = .true., &
+       keep_virtuals = .false., keep_beams = keep_beams)
     if (ensure) then
        call pset_tmp%to_hepevt_form (pset_hepevt)
     else
@@ -5750,14 +6650,33 @@ its polarization is fully defined.
               .and. status == PRT_BEAM_REMNANT &
               .and. prt%get_n_children () == 0) &
               status = PRT_OUTGOING
-         call hepevt_set_particle (i, &
-              prt%get_pdg (), status, &
-              prt%get_parents (), &
-              prt%get_children (), &
-              prt%get_momentum (), &
-              prt%get_p2 (), &
-              prt%get_helicity (), &
-              prt%get_vertex ())
+         select case (prt%get_polarization_status ())
+         case (PRT_GENERIC_POLARIZATION)
+            call hepevt_set_particle (i, &
+                 prt%get_pdg (), status, &
+                 prt%get_parents (), &
+                 prt%get_children (), &
+                 prt%get_momentum (), &
+                 prt%get_p2 (), &
+                 prt%get_helicity (), &
+                 prt%get_vertex (), &
+                 prt%get_color (), &
+                 prt%get_polarization_status (), &
+                 pol = prt%get_polarization (), &
+                 fill_hepev4 = fill_hepev4)
+         case default
+            call hepevt_set_particle (i, &
+                 prt%get_pdg (), status, &
+                 prt%get_parents (), &
+                 prt%get_children (), &
+                 prt%get_momentum (), &
+                 prt%get_p2 (), &
+                 prt%get_helicity (), &
+                 prt%get_vertex (), &
+                 prt%get_color (), &
+                 prt%get_polarization_status (), &
+                 fill_hepev4 = fill_hepev4)            
+         end select
        end associate
     end do
     call pset_hepevt%final ()
@@ -5765,7 +6684,7 @@ its polarization is fully defined.
 
 @ %def hepevt_from_particle_set
 @
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
 \section{HepMC events}
 This section provides the interface to the HepMC C++ library for handling
 Monte-Carlo events.
@@ -5802,6 +6721,8 @@ module hepmc_interface
 <<HepMC interface: public>>
 
 <<HepMC interface: types>>
+
+<<HepMC interface: parameters>>
 
 <<HepMC interface: interfaces>>
 
@@ -7278,6 +8199,11 @@ Fortran unit is obviously not possible.
      end subroutine gen_event_clear_weights
   end interface
 @ %def gen_event_set_alpha_qed
+@ The HepMC weights are measured in pb.
+<<HepMC interface: parameters>>=
+  real(default), parameter :: pb_per_fb = 1.e-3_default
+@ %def pb_per_fb
+@
 <<HepMC interface: public>>=
   public :: hepmc_event_clear_weights
 <<HepMC interface: procedures>>=
@@ -7305,7 +8231,6 @@ Fortran unit is obviously not possible.
     type(hepmc_event_t), intent(in) :: evt
     real(default), intent(in) :: weight
     real(c_double) :: w
-    real(default), parameter :: pb_per_fb = 1.e-3_default
     w = weight * pb_per_fb
     call gen_event_add_weight (evt%obj, w)
   end subroutine hepmc_event_add_weight
@@ -7350,7 +8275,7 @@ from zero.)
     integer, intent(in) :: index
     integer(c_int) :: i
     i = index - 1
-    weight = gen_event_weight (evt%obj, i)
+    weight = gen_event_weight (evt%obj, i) / pb_per_fb
   end function hepmc_event_get_weight
 
 @ %def hepmc_event_get_weight
@@ -9280,7 +10205,7 @@ necessary for communication between [[hepmc_event_t]] and
 module hep_events
   
 <<Use kinds>>
-<<Use strings>>  
+<<Use strings>>
   use diagnostics
   use lorentz
   use unit_tests, only: vanishes
@@ -9325,18 +10250,19 @@ Fill the HEPEUP block, given a \whizard\ event object.
     if (event%has_valid_particle_set ()) then
        particle_set => event%get_particle_set_ptr ()
        call hepeup_from_particle_set (particle_set, keep_beams, keep_remnants)
-       if (present (process_index)) &
-            call hepeup_set_event_parameters (proc_id = process_index)
+       if (present (process_index)) then
+          call hepeup_set_event_parameters (proc_id = process_index)
+       end if
        scale = event%get_fac_scale ()
-       if (.not. vanishes (scale)) &
-            call hepeup_set_event_parameters (scale = scale)
+       if (.not. vanishes (scale)) then
+          call hepeup_set_event_parameters (scale = scale)
+       end if
        alpha_qcd = event%get_alpha_s ()       
-       if (.not. vanishes(alpha_qcd)) &
-            call hepeup_set_event_parameters (alpha_qcd = alpha_qcd)
+       if (.not. vanishes (alpha_qcd)) then
+          call hepeup_set_event_parameters (alpha_qcd = alpha_qcd)
+       end if
        if (event%weight_prc_is_known ()) then
           call hepeup_set_event_parameters (weight = event%get_weight_prc ())
-       else
-          call msg_bug ("HEPEUP: process weight is unknown")
        end if
     else
        call msg_bug ("HEPEUP: event incomplete")
@@ -9389,37 +10315,53 @@ Note: setting of scale or alpha is not yet supported by the
   end subroutine hepeup_to_event
 
 @ %def hepeup_to_event
-@ Fill the HEPEVT (event) common block:
+@ Fill the HEPEVT (event) common block.
 <<HEP events: public>>=
   public :: hepevt_from_event
 <<HEP events: procedures>>=
   subroutine hepevt_from_event  &
-         (event, i_evt, keep_beams, keep_remnants, ensure_order)
+         (event, process_index, i_evt, keep_beams, keep_remnants, &
+          ensure_order, fill_hepev4)
     class(generic_event_t), intent(in), target :: event
-    integer, intent(in), optional :: i_evt
+    integer, intent(in), optional :: i_evt, process_index    
     logical, intent(in), optional :: keep_beams  
     logical, intent(in), optional :: keep_remnants
     logical, intent(in), optional :: ensure_order
+    logical, intent(in), optional :: fill_hepev4
     type(particle_set_t), pointer :: particle_set
+    real(default) :: alpha_qcd, scale
     if (event%has_valid_particle_set ()) then
        particle_set => event%get_particle_set_ptr ()
        call hepevt_from_particle_set (particle_set, keep_beams, &
-            keep_remnants, ensure_order)
-       if (event%weight_prc_is_known () .and. event%sqme_prc_is_known ()) then
-          call hepevt_set_event_parameters ( &
-               weight = event%get_weight_prc (), &
-               function_value = event%get_sqme_prc ())
-       else
-          call msg_bug ("HEPEVT: event weight and/or sqme unknown")
+            keep_remnants, ensure_order, fill_hepev4)
+       if (present (process_index)) then
+          call hepevt_set_event_parameters (proc_id = process_index)
+       end if       
+       if (event%weight_prc_is_known ()) then
+          call hepevt_set_event_parameters (weight = event%get_weight_prc ())
        end if
-       if (present (i_evt)) &
-            call hepevt_set_event_parameters (i_evt = i_evt)
+       if (event%sqme_prc_is_known ()) then
+          call hepevt_set_event_parameters &
+               (function_value = event%get_sqme_prc ())
+       end if
+       scale = event%get_fac_scale ()
+       if (.not. vanishes (scale)) then
+          call hepevt_set_event_parameters (scale = scale)
+       end if
+       alpha_qcd = event%get_alpha_s ()       
+       if (.not. vanishes (alpha_qcd)) then
+          call hepevt_set_event_parameters (alpha_qcd = alpha_qcd)
+       end if
+       if (present (i_evt)) then
+          call hepevt_set_event_parameters (i_evt = i_evt)
+       end if
     else
        call msg_bug ("HEPEVT: event incomplete")
     end if
   end subroutine hepevt_from_event
 
 @ %def hepevt_from_event
+@
 \subsubsection{HepMC format}
 The master output function fills a HepMC GenEvent object that is
 already initialized, but has no vertices in it.
@@ -9514,9 +10456,16 @@ http://herwig.hepforge.org/trac/wiki/FaQs.
        call hepmc_event_add_vertex (evt, v(i))
     end do
     allocate (is_beam (n_tot))
-    is_beam = particle_set%prt(1:n_tot)%get_status () == PRT_BEAM
+    !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
+    do i = 1, n_tot
+       is_beam(i) = particle_set%prt(i)%get_status () == PRT_BEAM
+    end do
+    !!! is_beam = particle_set%prt(1:n_tot)%get_status () == PRT_BEAM    
     if (.not. any (is_beam)) then
-       is_beam = particle_set%prt(1:n_tot)%get_status () == PRT_INCOMING
+       do i = 1, n_tot
+          is_beam(i) = particle_set%prt(i)%get_status () == PRT_INCOMING
+       end do
+       !!! is_beam = particle_set%prt(1:n_tot)%get_status () == PRT_INCOMING       
     end if
     if (count (is_beam) == 2) then
        hbeam = pack (hprt, is_beam)
@@ -9550,10 +10499,11 @@ bottleneck for large particle arrays.  If necessary, the barcode array
 could be replaced by a hash table.
 <<HEP events: procedures>>=
   subroutine particle_from_hepmc_particle &
-       (prt, hprt, model, polarization, barcode)
+       (prt, hprt, model, fallback_model, polarization, barcode)
     type(particle_t), intent(out) :: prt
     type(hepmc_particle_t), intent(in) :: hprt
     type(model_data_t), intent(in), target :: model
+    type(model_data_t), intent(in), target :: fallback_model
     type(hepmc_vertex_t) :: vtx
     integer, intent(in) :: polarization
     integer, dimension(:), intent(in) :: barcode
@@ -9573,7 +10523,7 @@ could be replaced by a hash table.
     case (3);  call prt%set_status (PRT_VIRTUAL)
     end select
     if (hepmc_particle_is_beam (hprt)) call prt%set_status (PRT_BEAM)
-    call flv%init (hepmc_particle_get_pdg (hprt), model)
+    call flv%init (hepmc_particle_get_pdg (hprt), model, fallback_model)
     call col%init (hepmc_particle_get_color (hprt))
     call prt%set_flavor (flv)   
     call prt%set_color (col)
@@ -9655,7 +10605,7 @@ then define an incoming particle as
     do i = 1, n_tot
        prt = hepmc_event_particle_iterator_get (it)
        call particle_from_hepmc_particle (particle_set%prt(i), &
-            prt, model, polarization, barcode)
+            prt, model, fallback_model, polarization, barcode)
        call hepmc_event_particle_iterator_advance (it)
     end do
     call hepmc_event_particle_iterator_final (it)
@@ -9699,10 +10649,11 @@ only allow to read in unweighted events.
   public :: hepmc_to_event
 <<HEP events: procedures>>=
   subroutine hepmc_to_event &
-       (event, hepmc_event, fallback_model, process_index, recover_beams, &
-       use_alpha_s, use_scale)
+       (event, hepmc_event, default_model, fallback_model, process_index, &
+       recover_beams, use_alpha_s, use_scale)
     class(generic_event_t), intent(inout), target :: event
     type(hepmc_event_t), intent(inout) :: hepmc_event
+    class(model_data_t), intent(in), target :: default_model
     class(model_data_t), intent(in), target :: fallback_model
     integer, intent(out), optional :: process_index
     logical, intent(in), optional :: recover_beams
@@ -9712,6 +10663,7 @@ only allow to read in unweighted events.
     real(default) :: scale, alpha_qcd
     type(particle_set_t) :: particle_set
     model => event%get_model_ptr ()
+    if (.not. associated (model))  model => default_model
     call hepmc_event_to_particle_set (particle_set, &
          hepmc_event, model, fallback_model, PRT_DEFINITE_HELICITY)
     call event%set_hard_particle_set (particle_set)
@@ -10293,6 +11245,7 @@ can store the version string with a default value.
      character(3) :: version = "1.0"
      logical :: keep_beams = .false.
      logical :: keep_remnants = .true.
+     logical :: keep_virtuals = .false.
      logical :: recover_beams = .true.
      logical :: unweighted = .true.
      logical :: write_sqme_ref = .false.
@@ -12238,6 +13191,14 @@ end module eio_stdhep
   
 @ %def eio_stdhep_hepeup_t
 @
+<<EIO stdhep: public>>=
+  public :: eio_stdhep_hepev4_t
+<<EIO stdhep: types>>=
+  type, extends (eio_stdhep_t) :: eio_stdhep_hepev4_t
+  end type eio_stdhep_hepev4_t
+  
+@ %def eio_stdhep_hepev4_t
+@
 \subsection{Specific Methods}
 Set parameters that are specifically used with STDHEP file formats.
 <<EIO stdhep: eio stdhep: TBP>>=
@@ -12268,6 +13229,8 @@ Set parameters that are specifically used with STDHEP file formats.
        select type (eio)
        type is (eio_stdhep_hepevt_t)
           eio%extension = "hep"
+       type is (eio_stdhep_hepev4_t)
+          eio%extension = "ev4.hep"          
        type is (eio_stdhep_hepeup_t)
           eio%extension = "up.hep"
        end select
@@ -12379,10 +13342,14 @@ the common block contents are still intact.)
                "WHIZARD <<Version>>", eio%n_events_expected)
           call stdhep_write (100)
           call stdhep_write (STDHEP_HEPRUP)
-       type is (eio_stdhep_hepevt_t)
+       type is (eio_stdhep_hepevt_t) 
           call stdhep_init_out (char (eio%filename), &
                "WHIZARD <<Version>>", eio%n_events_expected) 
           call stdhep_write (100)
+       type is (eio_stdhep_hepev4_t)
+          call stdhep_init_out (char (eio%filename), &
+               "WHIZARD <<Version>>", eio%n_events_expected) 
+          call stdhep_write (100)          
        end select
     end if
   end subroutine eio_stdhep_split_out
@@ -12430,6 +13397,10 @@ the common block contents are still intact.)
        call stdhep_init_out (char (eio%filename), &
             "WHIZARD <<Version>>", eio%n_events_expected) 
        call stdhep_write (100)
+    type is (eio_stdhep_hepev4_t)
+       call stdhep_init_out (char (eio%filename), &
+            "WHIZARD <<Version>>", eio%n_events_expected) 
+       call stdhep_write (100)       
     end select    
     if (present (success))  success = .true.
   end subroutine eio_stdhep_init_out
@@ -12509,7 +13480,16 @@ squared matrix element, then the particle set.
                keep_beams = eio%keep_beams, &
                keep_remnants = eio%keep_remnants, &
                ensure_order = eio%ensure_order)
-          call stdhep_write (STDHEP_HEPEVT)                              
+          call stdhep_write (STDHEP_HEPEVT)
+       type is (eio_stdhep_hepev4_t)
+          call hepevt_from_event (event, &
+               process_index = eio%proc_num_id (i_prc), &               
+               i_evt = event%get_index (), &                         
+               keep_beams = eio%keep_beams, &
+               keep_remnants = eio%keep_remnants, &
+               ensure_order = eio%ensure_order, &
+               fill_hepev4 = .true.)
+          call stdhep_write (STDHEP_HEPEV4)          
        end select       
     else
        call eio%write ()
@@ -12539,6 +13519,9 @@ the HEPEVT common block as there is no control on the process ID.
           proc_num_id = eio%proc_num_id (1)
           call stdhep_read (ilbl, lok)
        end if
+    type is (eio_stdhep_hepev4_t)
+       call stdhep_read (ilbl, lok)
+       proc_num_id = idruplh
     type is (eio_stdhep_hepeup_t)
        call stdhep_read (ilbl, lok)
        if (lok /= 0)  call msg_error ("Events: STDHEP appears to be " // &
@@ -12606,7 +13589,6 @@ the HEPEVT common block as there is no control on the process ID.
     character(len=*), intent(in) :: file, title
     integer(i64), intent(in) :: nevt
     integer(i32) :: nevt32
-    external stdxwinit, stdxwrt
     nevt32 = min (nevt, int (huge (1_i32), i64))
     call stdxwinit (file, title, nevt32, istr, lok)    
   end subroutine stdhep_init_out
@@ -12615,7 +13597,6 @@ the HEPEVT common block as there is no control on the process ID.
     character(len=*), intent(in) :: file
     integer(i64), intent(out) :: nevt
     integer(i32) :: nevt32
-    external stdxrinit, stdxrd
     call stdxrinit (file, nevt32, istr, lok)
     if (lok /= 0)  call msg_fatal ("STDHEP: error in reading file '" // &
          file // "'.")
@@ -12624,19 +13605,16 @@ the HEPEVT common block as there is no control on the process ID.
   
   subroutine stdhep_write (ilbl)
     integer, intent(in) :: ilbl
-    external stdxwrt
     call stdxwrt (ilbl, istr, lok)
   end subroutine stdhep_write
 
   subroutine stdhep_read (ilbl, lok)
     integer, intent(out) :: ilbl, lok
-    external stdxrd
     call stdxrd (ilbl, istr, lok)
     if (lok /= 0)  return
   end subroutine stdhep_read
   
   subroutine stdhep_end
-    external stdxend
     call stdxend (istr)
   end subroutine stdhep_end  
   
@@ -12646,7 +13624,8 @@ the HEPEVT common block as there is no control on the process ID.
 <<EIO stdhep: variables>>=
   integer, save :: istr, lok
   integer, parameter :: &
-       STDHEP_HEPEVT = 1, STDHEP_HEPEUP = 11, STDHEP_HEPRUP = 12
+       STDHEP_HEPEVT = 1, STDHEP_HEPEV4 = 4, &
+       STDHEP_HEPEUP = 11, STDHEP_HEPRUP = 12
 @
 @
 \subsection{Unit tests}
@@ -13211,6 +14190,7 @@ module eio_hepmc
   use string_utils
   use diagnostics
   use particles
+  use model_data
   use event_base
   use hep_events
   use eio_data
@@ -13255,6 +14235,7 @@ HepMC and this is written for every event, we make it optional with
      type(hepmc_iostream_t) :: iostream
      type(hepmc_event_t) :: hepmc_event
      integer, dimension(:), allocatable :: proc_num_id
+     class(model_data_t), pointer :: default_model => null ()
    contains
    <<EIO HepMC: eio hepmc: TBP>>
   end type eio_hepmc_t
@@ -13268,15 +14249,20 @@ Set parameters that are specifically used with HepMC.
 <<EIO HepMC: procedures>>=
   ! subroutine eio_hepmc_set_parameters (eio, keep_beams, recover_beams, extension)
   subroutine eio_hepmc_set_parameters &
-       (eio, recover_beams, use_alpha_s_from_file, use_scale_from_file, &
+       (eio, default_model, &
+       recover_beams, use_alpha_s_from_file, use_scale_from_file, &
        extension, output_cross_section)
     class(eio_hepmc_t), intent(inout) :: eio
+    class(model_data_t), intent(in), optional, target :: default_model
     logical, intent(in), optional :: recover_beams 
     logical, intent(in), optional :: use_alpha_s_from_file
     logical, intent(in), optional :: use_scale_from_file
     logical, intent(in), optional :: output_cross_section
     type(string_t), intent(in), optional :: extension    
-    if (present (recover_beams))  eio%recover_beams = recover_beams
+    if (present (default_model)) &
+         eio%default_model => default_model
+    if (present (recover_beams)) &
+         eio%recover_beams = recover_beams
     if (present (use_alpha_s_from_file)) &
          eio%use_alpha_s_from_file = use_alpha_s_from_file
     if (present (use_scale_from_file)) &
@@ -13537,7 +14523,8 @@ event files.
     iostat = 0
     call event%reset ()
     call event%select (1, 1, 1)
-    call hepmc_to_event (event, eio%hepmc_event, eio%fallback_model, &
+    call hepmc_to_event (event, eio%hepmc_event, &
+         eio%default_model, eio%fallback_model, &
          recover_beams = eio%recover_beams, &
          use_alpha_s = eio%use_alpha_s_from_file, &
          use_scale = eio%use_scale_from_file) 
@@ -13800,7 +14787,8 @@ We test the implementation of all I/O methods.
     allocate (eio_hepmc_t :: eio)
     select type (eio)
     type is (eio_hepmc_t)
-       call eio%set_parameters (recover_beams = .false.)
+       call eio%set_parameters (default_model = &
+            fallback_model, recover_beams = .false.)
     end select            
     call eio%set_fallback_model (fallback_model)
     

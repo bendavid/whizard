@@ -27,15 +27,13 @@
 
 ## The files in this directory end up in an auxiliary libtool library.
 
-if STDHEP_AVAILABLE
 noinst_PROGRAMS = stdhep_rd
 stdhep_rd_SOURCES = StdHepRdr.cpp
 stdhep_rd_LDADD = libWOStdHep.la
-endif
 
 FC_SOURCE = xdr_stdhep.f90
 noinst_LTLIBRARIES = libWOStdHep.la
-if STDHEP_AVAILABLE
+
 libWOStdHep_la_SOURCES = \
 	WOXDR.hh \
 	WOXDR.cpp \
@@ -44,12 +42,6 @@ libWOStdHep_la_SOURCES = \
 	WOStdHepRdr.h \
 	WOStdHepRdr.cpp \
 	$(FC_SOURCE)
-else
-libWOStdHep_la_SOURCES = \
-	WOStdHep_dummy.f90 \
-	$(FC_SOURCE)
-endif
-libWOStdHep_la_CPPFLAGS = 
 
 libWOStdHep_Modules = ${FC_SOURCE:.f90=}
 Modules: Makefile

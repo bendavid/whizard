@@ -7,7 +7,7 @@
 
  Event sample properties:
    MD5 sum (proc)   = '9DF2C4445E2B8C32C9412DAE96A91E87'
-   MD5 sum (config) = '185C1EB0C049C6ABE89557D815E5D68B'
+   MD5 sum (config) = 'D1B1F714D7049E259BC7F38036056FD5'
    unweighted       = T
    negative weights = F
    normalization    = '1'
@@ -40,7 +40,7 @@
    Sim. valid   = T
    Ev.file ver. = 2
    MD5 sum (proc)   = '9DF2C4445E2B8C32C9412DAE96A91E87'
-   MD5 sum (config) = '185C1EB0C049C6ABE89557D815E5D68B'
+   MD5 sum (config) = 'D1B1F714D7049E259BC7F38036056FD5'
    Events requested  = 3
    Events total      = 3
      generated       = 3

@@ -9,7 +9,8 @@ TESTS = \
   power.run resonance.run \
   multi.run delta.run \
   smooth.run oversmooth.run \
-  scale.run
+  scale.run 
+# generate.run
 
 XFAIL_TESTS =
 

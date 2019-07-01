@@ -45,9 +45,9 @@ let create n_bins x_min x_max =
     n_overflow = 0;
     overflow = 0.0;
     overflow2 = 0.0;
-    n = Array.create n_bins 0;
-    w = Array.create n_bins 0.0;
-    w2 = Array.create n_bins 0.0 }
+    n = Array.make n_bins 0;
+    w = Array.make n_bins 0.0;
+    w2 = Array.make n_bins 0.0 }
 
 let record h x f =
   let i =

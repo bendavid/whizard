@@ -7,6 +7,7 @@ model = "QED"
 ?openmp_logging = false
 ?vis_history = false
 ?integration_timer = false
+?pacify = true
 
 $method = "omega"
 process circe1_1_p1 = "e-", "e+" => "mu-", "mu+"

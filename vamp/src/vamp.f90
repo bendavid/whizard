@@ -33,6 +33,7 @@ module vamp_grid_type
      real(kind=default), dimension(:,:), pointer :: mu_xx => null ()
      real(kind=default), dimension(:,:), pointer :: sum_mu_xx => null ()
      real(kind=default), dimension(2) :: mu
+     real(kind=default), dimension(2) :: mu_plus, mu_minus
      real(kind=default) :: sum_integral, sum_weights, sum_chi2
      real(kind=default) :: calls, dv2g, jacobi
      real(kind=default) :: f_min, f_max
@@ -483,6 +484,8 @@ contains
     integer, intent(in), optional :: equivalent_to_ch, multiplicity
     character(len=*), parameter :: FN = "vamp_discard_integral"
     g%mu = 0.0
+    g%mu_plus = 0.0
+    g%mu_minus = 0.0
     g%mu_gi = 0.0
     g%sum_integral = 0.0
     g%sum_weights = 0.0
@@ -681,7 +684,10 @@ contains
       character(len=6) :: buffer
       integer :: j, k
       integer, dimension(size(g%div)) :: cell
-      real(kind=default) :: wgt, f, f2, sum_f, sum_f2, var_f
+      real(kind=default) :: wgt, f, f2
+      real(kind=default) :: sum_f, sum_f2, var_f
+      real(kind=default) :: sum_f_plus, sum_f2_plus, var_f_plus
+      real(kind=default) :: sum_f_minus, sum_f2_minus, var_f_minus
       real(kind=default), dimension(size(g%div)):: x, x_mid, wgts
       real(kind=default), dimension(size(g%div)):: r
       integer, dimension(size(g%div)) :: ia
@@ -696,6 +702,8 @@ contains
          return
       end if
       g%mu = 0.0
+      g%mu_plus = 0.0
+      g%mu_minus = 0.0
       cell = 1
       call clear_integral_and_variance (g%div)
       if (associated (g%mu_x)) then
@@ -707,7 +715,11 @@ contains
       end if
       loop_over_cells: do
          sum_f = 0.0
+         sum_f_plus = 0.0
+         sum_f_minus = 0.0
          sum_f2 = 0.0
+         sum_f2_plus = 0.0
+         sum_f2_minus = 0.0
          do k = 1, g%calls_per_cell
             call tao_random_number (rng, r)
             call inject_division (g%div, real (r, kind=default), &
@@ -726,16 +738,23 @@ contains
                f = wgt * func (x, data, weights, channel, grids)
             end if
             if (g%f_min > g%f_max) then
-               g%f_min = f * g%calls
-               g%f_max = f * g%calls
-            else if (f * g%calls < g%f_min) then
-               g%f_min = f * g%calls
-            else if (f * g%calls > g%f_max) then
-               g%f_max = f * g%calls
+               g%f_min = abs (f) * g%calls
+               g%f_max = abs (f) * g%calls
+            else if (abs (f) * g%calls < g%f_min) then
+               g%f_min = abs (f) * g%calls
+            else if (abs (f) * g%calls > g%f_max) then
+               g%f_max = abs (f) * g%calls
             end if
             f2 = f * f
             sum_f = sum_f + f
             sum_f2 = sum_f2 + f2
+            if (f > 0) then
+               sum_f_plus = sum_f_plus + f
+               sum_f2_plus = sum_f2_plus + f * f
+            else if (f < 0) then
+               sum_f_minus = sum_f_minus + f
+               sum_f2_minus = sum_f2_minus + f * f
+            end if
             call record_integral (g%div, ia, f)
             ! call record_efficiency (g%div, ia, f/g%f_max)
             if ((associated (g%mu_x)) .and. (.not. g%all_stratified)) then
@@ -747,10 +766,20 @@ contains
             end if
          end do
          var_f = sum_f2 * g%calls_per_cell - sum_f**2
+         var_f_plus = sum_f2_plus * g%calls_per_cell - sum_f_plus**2
+         var_f_minus = sum_f2_minus * g%calls_per_cell - sum_f_minus**2
          if (var_f <= 0.0) then 
             var_f = tiny (1.0_default)
          end if
+         if (sum_f_plus /= 0 .and. var_f_plus <= 0) then 
+            var_f_plus = tiny (1.0_default)
+         end if
+         if (sum_f_minus /= 0 .and. var_f_minus <= 0) then 
+            var_f_minus = tiny (1.0_default)
+         end if
          g%mu = g%mu + (/ sum_f, var_f /)
+         g%mu_plus = g%mu_plus + (/ sum_f_plus, var_f_plus /)
+         g%mu_minus = g%mu_minus + (/ sum_f_minus, var_f_minus /)
          call record_variance (g%div, ia, var_f)
          if ((associated (g%mu_x)) .and. g%all_stratified) then
             if (associated (g%map)) then
@@ -770,6 +799,16 @@ contains
       g%mu(2) = g%mu(2) * g%dv2g
       if (g%mu(2) < eps * max (g%mu(1)**2, 1._default)) then
          g%mu(2) = eps * max (g%mu(1)**2, 1._default)
+      end if
+      if (neg_w) then
+         g%mu_plus(2) = g%mu_plus(2) * g%dv2g
+         if (g%mu_plus(2) < eps * max (g%mu_plus(1)**2, 1._default)) then
+            g%mu_plus(2) = eps * max (g%mu_plus(1)**2, 1._default)
+         end if
+         g%mu_minus(2) = g%mu_minus(2) * g%dv2g
+         if (g%mu_minus(2) < eps * max (g%mu_minus(1)**2, 1._default)) then
+            g%mu_minus(2) = eps * max (g%mu_minus(1)**2, 1._default)
+         end if
       end if
       if (g%mu(1)>0) then
          g%sum_integral = g%sum_integral + g%mu(1) / g%mu(2)
@@ -1052,6 +1091,10 @@ contains
     end do
     gs%mu(1) = 0.0
     gs%mu(2) = 0.0
+    gs%mu_plus(1) = 0.0
+    gs%mu_plus(2) = 0.0
+    gs%mu_minus(1) = 0.0
+    gs%mu_minus(2) = 0.0
     gs%sum_integral = 0.0
     gs%sum_weights = 0.0
     gs%sum_chi2 = 0.0
@@ -1105,6 +1148,10 @@ contains
     g%f_max = maxval (gs%f_max * (g%jacobi * g%calls) / (gs%jacobi * gs%calls))
     g%mu(1) = sum (gs%mu(1))
     g%mu(2) = sum (gs%mu(2))
+    g%mu_plus(1) = sum (gs%mu_plus(1))
+    g%mu_plus(2) = sum (gs%mu_plus(2))
+    g%mu_minus(1) = sum (gs%mu_minus(1))
+    g%mu_minus(2) = sum (gs%mu_minus(2))
     g%mu_gi = sum (gs%mu_gi)
     g%sum_mu_gi = g%sum_mu_gi + g%mu_gi / g%mu(2)
     g%sum_integral = g%sum_integral + g%mu(1) / g%mu(2)
@@ -2336,13 +2383,14 @@ contains
     end do rejection
   end subroutine vamp_next_event_single
   subroutine vamp_next_event_multi &
-       (x, rng, g, func, data, phi, weight, excess, exc)
+       (x, rng, g, func, data, phi, weight, excess, positive, exc)
     real(kind=default), dimension(:), intent(out) :: x
     type(tao_random_state), intent(inout) :: rng
     type(vamp_grids), intent(inout) :: g
     class(vamp_data_t), intent(in) :: data
     real(kind=default), intent(out), optional :: weight
     real(kind=default), intent(out), optional :: excess
+    logical, intent(out), optional :: positive
     type(exception), intent(inout), optional :: exc
     interface
        function func (xi, data, weights, channel, grids) result (f)
@@ -2392,9 +2440,9 @@ contains
           weight = wgt * g%weights(channel) / weights(channel)
           exit rejection
        else
-          if (wgt > g%grids(channel)%f_max) then
+          if (abs (wgt) > g%grids(channel)%f_max) then
              if (present(excess)) then
-                excess = wgt/g%grids(channel)%f_max - 1
+                excess = abs (wgt) / g%grids(channel)%f_max - 1
              else
                call raise_exception (exc, EXC_WARN, FN, "weight > 1")
           !      print *, "weight > 1 (", wgt/g%grids(channel)%f_max, &
@@ -2406,7 +2454,8 @@ contains
              if (present(excess)) excess = 0
           end if
           call tao_random_number (rng, r)
-          if (r * g%grids(channel)%f_max <= wgt) then
+          if (r * g%grids(channel)%f_max <= abs (wgt)) then
+             if (present (positive))  positive = wgt >= 0
              exit rejection
           end if
        end if
@@ -2662,6 +2711,10 @@ contains
     write (unit = unit, fmt = logical_fmt) "quadrupole = ", g%quadrupole
     write (unit = unit, fmt = double_fmt) "mu(1) = ", g%mu(1)
     write (unit = unit, fmt = double_fmt) "mu(2) = ", g%mu(2)
+    write (unit = unit, fmt = double_fmt) "mu_plus(1) = ", g%mu_plus(1)
+    write (unit = unit, fmt = double_fmt) "mu_plus(2) = ", g%mu_plus(2)
+    write (unit = unit, fmt = double_fmt) "mu_minus(1) = ", g%mu_minus(1)
+    write (unit = unit, fmt = double_fmt) "mu_minus(2) = ", g%mu_minus(2)
     write (unit = unit, fmt = double_fmt) "sum_integral = ", g%sum_integral
     write (unit = unit, fmt = double_fmt) "sum_weights = ", g%sum_weights
     write (unit = unit, fmt = double_fmt) "sum_chi2 = ", g%sum_chi2
@@ -2737,6 +2790,10 @@ contains
     read (unit = unit, fmt = logical_fmt) chdum, g%quadrupole
     read (unit = unit, fmt = double_fmt) chdum, g%mu(1)
     read (unit = unit, fmt = double_fmt) chdum, g%mu(2)
+    read (unit = unit, fmt = double_fmt) chdum, g%mu_plus(1)
+    read (unit = unit, fmt = double_fmt) chdum, g%mu_plus(2)
+    read (unit = unit, fmt = double_fmt) chdum, g%mu_minus(1)
+    read (unit = unit, fmt = double_fmt) chdum, g%mu_minus(2)
     read (unit = unit, fmt = double_fmt) chdum, g%sum_integral
     read (unit = unit, fmt = double_fmt) chdum, g%sum_weights
     read (unit = unit, fmt = double_fmt) chdum, g%sum_chi2
@@ -2925,6 +2982,10 @@ contains
     write (unit = unit) g%quadrupole
     write (unit = unit) g%mu(1)
     write (unit = unit) g%mu(2)
+    write (unit = unit) g%mu_plus(1)
+    write (unit = unit) g%mu_plus(2)
+    write (unit = unit) g%mu_minus(1)
+    write (unit = unit) g%mu_minus(2)
     write (unit = unit) g%sum_integral
     write (unit = unit) g%sum_weights
     write (unit = unit) g%sum_chi2
@@ -2998,6 +3059,10 @@ contains
     read (unit = unit) g%quadrupole
     read (unit = unit) g%mu(1)
     read (unit = unit) g%mu(2)
+    read (unit = unit) g%mu_plus(1)
+    read (unit = unit) g%mu_plus(2)
+    read (unit = unit) g%mu_minus(1)
+    read (unit = unit) g%mu_minus(2)
     read (unit = unit) g%sum_integral
     read (unit = unit) g%sum_weights
     read (unit = unit) g%sum_chi2
@@ -3449,6 +3514,8 @@ contains
     integer :: ndim
     ndim = size (rhs%div)
     lhs%mu = rhs%mu
+    lhs%mu_plus = rhs%mu_plus
+    lhs%mu_minus = rhs%mu_minus
     lhs%sum_integral = rhs%sum_integral
     lhs%sum_weights = rhs%sum_weights
     lhs%sum_chi2 = rhs%sum_chi2

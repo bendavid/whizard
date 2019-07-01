@@ -51,6 +51,7 @@ $sample = "testproc_5a"
 | Events: generating 1 unweighted, unpolarized events ...
 | Events: event normalization mode '1'
 |         ... event sample complete.
+| Events: actual unweighting efficiency = 100.00 %
 | Events: closing weight stream file 'testproc_5a.weights.dat'
 | Events: closing raw file 'testproc_5a.evx'
 ?write_raw = false

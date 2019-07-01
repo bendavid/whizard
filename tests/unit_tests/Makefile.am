@@ -9,10 +9,10 @@
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
 #     with contributions from
-#     Fabian Bach <fabian.bach@desy.de>
+#     Fabian Bach <fabian.bach@t-online.de>
 #     Bijan Chokoufe <bijan.chokoufe@desy.de>
 #     Christian Speckner <cnspeckn@googlemail.com>
-#     Marco Sekulla <marco.sekulla@desy.de>
+#     Marco Sekulla <marco.sekulla@kit.edu>
 #     Christian Weiss <christian.weiss@desy.de>
 #     Felix Braam, Sebastian Schmidt
 #
@@ -68,6 +68,7 @@ UNIT_TESTS = \
     models.run \
     auto_components.run \
     radiation_generator.run \
+    blha.run \
     particles.run \
     beam_structures.run \
     sf_aux.run \
@@ -115,18 +116,20 @@ UNIT_TESTS = \
     eio_raw.run \
     eio_checkpoints.run \
     eio_lhef.run \
+    eio_stdhep.run \
     eio_ascii.run \
     eio_weights.run \
+    eio_dump.run \
     iterations.run \
     rt_data.run \
     dispatch.run \
     process_configurations.run \
     event_streams.run \
     integrations.run \
+    ttv_formfactors.run \
     simulations.run
 
-XFAIL_UNIT_TESTS = \
-    sm_physics.run
+XFAIL_UNIT_TESTS =
 
 UNIT_TESTS_REQ_GAMELAN = \
     commands.run
@@ -142,9 +145,6 @@ UNIT_TESTS_REQ_FASTJET = \
 UNIT_TESTS_REQ_HEPMC = \
     hepmc.run \
     eio_hepmc.run
-
-UNIT_TESTS_REQ_STDHEP = \
-    eio_stdhep.run
 
 UNIT_TESTS_REQ_LCIO = \
     lcio.run \
@@ -168,7 +168,6 @@ TEST_DRIVERS_RUN = \
     $(UNIT_TESTS_REQ_FASTJET) \
     $(UNIT_TESTS_REQ_LHAPDF5) \
     $(UNIT_TESTS_REQ_LHAPDF6) \
-    $(UNIT_TESTS_REQ_STDHEP) \
     $(UNIT_TESTS_REQ_OCAML)
 
 TEST_DRIVERS_SH = $(TEST_DRIVERS_RUN:.run=.sh)
@@ -185,7 +184,6 @@ UNIT_TESTS += $(UNIT_TESTS_REQ_HEPMC)
 UNIT_TESTS += $(UNIT_TESTS_REQ_LCIO)
 UNIT_TESTS += $(UNIT_TESTS_REQ_LHAPDF5)
 UNIT_TESTS += $(UNIT_TESTS_REQ_LHAPDF6)
-UNIT_TESTS += $(UNIT_TESTS_REQ_STDHEP)
 UNIT_TESTS += $(UNIT_TESTS_REQ_OCAML)
 UNIT_TESTS += $(UNIT_TESTS_REQ_EV_ANA)
 
@@ -240,7 +238,6 @@ endif
 
 BUILT_SOURCES = \
     TESTFLAG  \
-    STDHEP_FLAG \
     HEPMC_FLAG \
     LCIO_FLAG \
     FASTJET_FLAG \
@@ -259,11 +256,6 @@ BUILT_SOURCES = \
 # otherwise it uses the installed version
 TESTFLAG:
 	touch $@
-
-STDHEP_FLAG:
-if STDHEP_AVAILABLE
-	touch $@
-endif
 
 FASTJET_FLAG:
 if FASTJET_AVAILABLE
@@ -316,17 +308,9 @@ if STATIC_AVAILABLE
 endif
 
 # The reference output files are in the source directory.  Copy them here.
-if FC_EXT
 ref-output: $(top_srcdir)/share/tests/unit_tests/ref-output
 	mkdir -p ref-output
 	for f in $</*.ref; do cp $$f $@; done
-	for f in $</../ref-output-ext/*.ref; do cp $$f $@; done
-else
-ref-output: $(top_srcdir)/share/tests/unit_tests/ref-output
-	mkdir -p ref-output
-	for f in $</*.ref; do cp $$f $@; done
-	for f in $</../ref-output-double/*.ref; do cp $$f $@; done
-endif
 
 # The output files from self tests go here.
 err-output:
@@ -343,14 +327,15 @@ notestflag:
 ## Remove generated files
 clean-local:
 	rm -f gamelan.sty
-	rm -f TESTFLAG GAMELAN_FLAG STDHEP_FLAG 
+	rm -f TESTFLAG GAMELAN_FLAG 
 	rm -f OCAML_FLAG FASTJET_FLAG HEPMC_FLAG LCIO_FLAG 
 	rm -f EVENT_ANALYSIS_FLAG PYTHIA6_FLAG LHAPDF5_FLAG
 	rm -f LHAPDF6_FLAG STATIC_FLAG static_1.exe
 	rm -f *.run *.log slha_test.out
-	rm -f core* stdhep_rd
+	rm -f core* 
 	rm -f *.f90 *.c *.$(FC_MODULE_EXT) *.o *.la
 	rm -f *.makefile
+	rm -f *.grid
 	rm -rf err-output
 	rm -rf ref-output
 	rm -f *.sin *.hbc 
@@ -370,6 +355,3 @@ endif
 maintainer-clean-local: maintainer-clean-fc
 	-rm -f *~
 .PHONY: maintainer-clean-local
-
-
-

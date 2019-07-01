@@ -69,6 +69,7 @@ Warning: No cuts have been defined.
 | Events: generating 20 unweighted, unpolarized events ...
 | Events: event normalization mode '1'
 |         ... event sample complete.
+| Events: actual unweighting efficiency =  68.97 %
 Warning: Encountered events with excess weight: 3 events ( 15.000 %)
 | Maximum excess weight = 1.157E-01
 | Average excess weight = 1.100E-02

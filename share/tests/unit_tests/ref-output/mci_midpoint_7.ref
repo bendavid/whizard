@@ -13,7 +13,7 @@
 
  Single-channel midpoint rule integrator:
    Integral             = -3.4375000000E-01
-   Efficiency           =  2.5000000000E-01
+   Efficiency           =  5.0000000000E-01
    Number of channels   = 1
    Number of dimensions = 1
    Number of bins       = 2

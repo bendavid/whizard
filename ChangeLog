@@ -2,7 +2,52 @@ ChangeLog -- Summary of changes to the WHIZARD package
 
 Use svn log to see detailed changes.
 
-	Version 2.2.7
+	Version 2.2.8
+
+2015-11-22
+	RELEASE: version 2.2.8
+
+2015-11-21
+	Bugfix for fixed-order NLO events
+
+2015-11-20
+	Anomalous FCNC top-charm vertices
+	
+2015-11-19
+	StdHEP output via HEPEVT/HEPEV4 supported
+	
+2015-11-18
+	Full set of electroweak dim-6 operators included
+	
+2015-10-22
+	Polarized one-loop amplitudes supported
+	
+2015-10-21
+	Fixes for event formats for showered events
+
+2015-10-14
+	Callback mechanism for event output
+	
+2015-09-22
+	Bypass matrix elements in pure event sample rescans
+	StdHep frozen final version v5.06.01 included internally
+	
+2015-09-21
+	configure option --with-precision to
+	  demand 64bit, 80bit, or 128bit Fortran
+	  and bind C precision types
+	
+2015-09-07
+	More extensive tests of NLO 
+	   infrastructure and POWHEG matching
+	
+2015-09-01
+	NLO decay infrastructure
+	User-defined squared matrix elements
+	Inclusive FastJet algorithm plugin
+	Numerical improvement for small boosts
+	
+##################################################################
 
 2015-08-11
 	RELEASE: version 2.2.7

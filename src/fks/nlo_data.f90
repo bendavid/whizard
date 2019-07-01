@@ -1,4 +1,4 @@
-! WHIZARD 2.2.7 Aug 11 2015
+! WHIZARD 2.2.8 Nov 22 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,11 +6,14 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
-!     Fabian Bach <fabian.bach@desy.de>
+!     Fabian Bach <fabian.bach@t-online.de>
+!     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
+!     Soyoung Shim <soyoung.shim@desy.de>
+!     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, Daniel Wiesler 
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -35,7 +38,7 @@ module nlo_data
   use kinds, only: default
   use iso_varying_string, string_t => varying_string
   use diagnostics
-  use constants, only: one, two, twopi
+  use constants, only: zero, one, two, twopi
   use io_units
   use lorentz
 
@@ -63,6 +66,7 @@ module nlo_data
 
   type :: fks_template_t
     type(string_t) :: id
+    logical :: subtraction_disabled = .false.
     integer :: mapping_type
     logical :: count_kinematics = .false.
     real(default) :: fks_dij_exp1
@@ -72,6 +76,7 @@ module nlo_data
     procedure :: set_dij_exp => fks_template_set_dij_exp
     procedure :: set_mapping_type => fks_template_set_mapping_type
     procedure :: set_counter => fks_template_set_counter
+    procedure :: disable_subtraction => fks_template_disable_subtraction
   end type fks_template_t
 
   type :: real_jacobian_t
@@ -96,6 +101,7 @@ module nlo_data
     real(default) :: cms_energy2
     type(vector4_t), dimension(:), allocatable :: k_perp
   contains
+    procedure :: init => real_kinematics_init
     procedure :: write => real_kinematics_write
     procedure :: kt2 => real_kinematics_kt2
     procedure :: compute_k_perp_isr => real_kinematics_compute_k_perp_isr
@@ -103,6 +109,7 @@ module nlo_data
   end type real_kinematics_t
 
   type :: isr_kinematics_t
+    integer :: n_in
     real(default), dimension(2) :: x = 1._default
     real(default), dimension(2) :: z = 0._default
     real(default) :: sqrts_born = 0._default
@@ -163,7 +170,8 @@ module nlo_data
     complex(default), dimension(:), allocatable :: sqme_born_sc
     real(default) :: sqme_real_sum
     real(default), dimension(:), allocatable :: sqme_born_list
-    real(default), dimension(:), allocatable :: sqme_virt_list
+    real(default), dimension(:,:), allocatable :: sqme_virt_born_list
+    real(default), dimension(:,:), allocatable :: sqme_virt_list
   contains
     procedure :: get_sqme_sum => sqme_collector_get_sqme_sum
     procedure :: get_sqme_born => sqme_collector_get_sqme_born
@@ -212,6 +220,30 @@ contains
     object%count_kinematics = .true.
   end subroutine fks_template_set_counter
 
+  subroutine fks_template_disable_subtraction (object)
+    class(fks_template_t), intent(inout) :: object
+    object%subtraction_disabled = .true.
+  end subroutine fks_template_disable_subtraction
+
+  subroutine real_kinematics_init (r, n_tot)
+    class(real_kinematics_t), intent(inout) :: r
+    integer, intent(in) :: n_tot
+    allocate (r%xi_max (n_tot))
+    allocate (r%y (n_tot))
+    allocate (r%y_soft (n_tot))
+    allocate (r%p_born_cms (n_tot), &
+              r%p_born_lab (n_tot), &
+              r%p_real_cms (n_tot+1), &
+              r%p_real_lab (n_tot+1))
+    allocate (r%jac (n_tot), r%jac_rand (n_tot))
+    allocate (r%k_perp (n_tot))
+    r%xi_tilde = zero
+    r%xi_max = zero
+    r%y = zero
+    r%phi = zero
+    r%cms_energy2 = zero
+  end subroutine real_kinematics_init
+    
   subroutine real_kinematics_write (r, unit)
     class(real_kinematics_t), intent(in) :: r
     integer, intent(in), optional :: unit
@@ -391,9 +423,9 @@ contains
   end function sqme_collector_get_sqme_sum
 
   function sqme_collector_get_sqme_born (collector, i_flv) result (sqme)
+    real(default) :: sqme
     class(sqme_collector_t), intent(in) :: collector
     integer, intent(in) :: i_flv
-    real(default) :: sqme
     sqme = collector%sqme_born_list (i_flv)
   end function sqme_collector_get_sqme_born
 

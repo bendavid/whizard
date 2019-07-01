@@ -24,7 +24,7 @@
    Sim. valid   = T
    Ev.file ver. = 2
    MD5 sum (proc)   = '83BC374829CFF5757DD09A7F4EB4D131'
-   MD5 sum (config) = 'EBBC5D9EA2A6FC44D0BAB63E18AF6B08'
+   MD5 sum (config) = '9D5DE0F8CA94762033D7EE5C671C1B7E'
    Events requested  = 0
    Events total      = 0
      generated       = 0
@@ -75,7 +75,7 @@
 * Initialize raw event file
 
  MD5 sum (proc)   = '83BC374829CFF5757DD09A7F4EB4D131'
- MD5 sum (config) = 'EBBC5D9EA2A6FC44D0BAB63E18AF6B08'
+ MD5 sum (config) = '9D5DE0F8CA94762033D7EE5C671C1B7E'
 
 * Generate an event
 
@@ -99,7 +99,7 @@
    Sim. valid   = T
    Ev.file ver. = 2
    MD5 sum (proc)   = '67A2E69E1D7478773F310407A04B96C5'
-   MD5 sum (config) = '3FA8DB2B5BAF00C2CAD950A6B90AFD67'
+   MD5 sum (config) = '6DE460D68F693B68C86A3CA5FF67A3E5'
    Events requested  = 0
    Events total      = 0
      generated       = 0

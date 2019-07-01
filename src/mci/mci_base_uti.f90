@@ -1,4 +1,4 @@
-! WHIZARD 2.2.7 Aug 11 2015
+! WHIZARD 2.2.8 Nov 22 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,11 +6,14 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
-!     Fabian Bach <fabian.bach@desy.de>
+!     Fabian Bach <fabian.bach@t-online.de>
+!     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
+!     Soyoung Shim <soyoung.shim@desy.de>
+!     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, Daniel Wiesler 
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -64,6 +67,8 @@ module mci_base_uti
      procedure :: final => mci_test_final
      procedure :: write => mci_test_write
      procedure :: startup_message => mci_test_startup_message
+     procedure :: write_log_entry => mci_test_write_log_entry
+     procedure :: compute_md5sum => mci_test_compute_md5sum
      procedure :: declare_flat_dimensions => mci_test_ignore_flat_dimensions
      procedure :: declare_equivalences => mci_test_ignore_equivalences
      procedure :: set_divisions => mci_test_set_divisions
@@ -153,6 +158,16 @@ contains
     call msg_message (unit = unit)
   end subroutine mci_test_startup_message
   
+  subroutine mci_test_write_log_entry (mci, u)
+    class(mci_test_t), intent(in) :: mci
+    integer, intent(in) :: u
+  end subroutine mci_test_write_log_entry
+       
+  subroutine mci_test_compute_md5sum (mci, pacify)
+    class(mci_test_t), intent(inout) :: mci
+    logical, intent(in), optional :: pacify
+  end subroutine mci_test_compute_md5sum
+
   subroutine mci_test_ignore_flat_dimensions (mci, dim_flat)
     class(mci_test_t), intent(inout) :: mci
     integer, dimension(:), intent(in) :: dim_flat

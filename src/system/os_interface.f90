@@ -1,4 +1,4 @@
-! WHIZARD 2.2.7 Aug 11 2015
+! WHIZARD 2.2.8 Nov 22 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,11 +6,14 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
-!     Fabian Bach <fabian.bach@desy.de>
+!     Fabian Bach <fabian.bach@t-online.de>
+!     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
+!     Soyoung Shim <soyoung.shim@desy.de>
+!     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, Daniel Wiesler 
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -114,6 +117,7 @@ module os_interface
      type(string_t) :: whizard_gmlpath
      type(string_t) :: whizard_cutspath
      type(string_t) :: whizard_texpath
+     type(string_t) :: whizard_sharepath
      type(string_t) :: whizard_testdatapath
      type(string_t) :: whizard_modelpath_local
      type(string_t) :: whizard_models_libpath_local
@@ -274,6 +278,7 @@ contains
        os_data%whizard_gmlpath        = WHIZARD_TEST_GMLPATH
        os_data%whizard_cutspath       = WHIZARD_TEST_CUTSPATH
        os_data%whizard_texpath        = WHIZARD_TEST_TEXPATH
+       os_data%whizard_sharepath      = WHIZARD_TEST_SHAREPATH
        os_data%whizard_testdatapath   = WHIZARD_TEST_TESTDATAPATH
        os_data%whizard_circe2path     = WHIZARD_TEST_CIRCE2PATH
        os_data%whizard_beamsimpath    = WHIZARD_TEST_BEAMSIMPATH
@@ -298,6 +303,7 @@ contains
        os_data%whizard_gmlpath        = WHIZARD_GMLPATH
        os_data%whizard_cutspath       = WHIZARD_CUTSPATH
        os_data%whizard_texpath        = WHIZARD_TEXPATH
+       os_data%whizard_sharepath      = WHIZARD_SHAREPATH
        os_data%whizard_testdatapath   = WHIZARD_TESTDATAPATH
        os_data%whizard_circe2path     = WHIZARD_CIRCE2PATH
        os_data%whizard_beamsimpath    = WHIZARD_BEAMSIMPATH
@@ -347,6 +353,7 @@ contains
     call expand_paths (os_data%whizard_gmlpath)
     call expand_paths (os_data%whizard_cutspath)
     call expand_paths (os_data%whizard_texpath)
+    call expand_paths (os_data%whizard_sharepath)
     call expand_paths (os_data%whizard_testdatapath)
     call expand_paths (os_data%whizard_circe2path)
     call expand_paths (os_data%whizard_beamsimpath)
@@ -419,6 +426,8 @@ contains
     write (u, *) "whizard_circe2path     = ", char (os_data%whizard_circe2path)
     write (u, *) "whizard_beamsimpath    = ", char (os_data%whizard_beamsimpath)
     write (u, *) "whizard_mulipath    = ", char (os_data%whizard_mulipath)
+    write (u, *) "whizard_sharepath  = ", &
+         char (os_data%whizard_sharepath)
     write (u, *) "whizard_testdatapath  = ", &
          char (os_data%whizard_testdatapath)
     write (u, *) "whizard_modelpath_local      = ", &

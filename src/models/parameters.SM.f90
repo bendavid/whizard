@@ -4,7 +4,14 @@
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     Christian Speckner <cnspeckn@googlemail.com>
+!
+!     with contributions from
+!     Fabian Bach <fabian.bach@t-online.de>
+!     Bijan Chokoufe <bijan.chokoufe@desy.de>
+!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Weiss <christian.weiss@desy.de>
+!     and Hans-Werner Boschmann, Felix Braam, 
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -32,7 +39,7 @@ module parameters_sm
   real(default), public :: as
   complex(default), public :: gs, igs
 
-  real(default), public :: e, g, e_em
+  real(default), public :: e, g
   real(default), public :: sinthw, costhw, sin2thw, tanthw
   real(default), public :: qelep, qeup, qedwn
   complex(default), public :: qlep, qup, qdwn, gcc, qw, &
@@ -77,10 +84,6 @@ contains
        real(default) :: ee
     end type parameter_set
     type(parameter_set) :: par
-    !!! This corresponds to 1/alpha = 137.03598949333
-    real(default), parameter :: &
-         alpha = 1.0_default/137.03598949333_default
-    e_em = sqrt(4.0_default * PI * alpha)
     par%gf     = par_array(1)
     par%mZ     = par_array(2)
     par%mW     = par_array(3)

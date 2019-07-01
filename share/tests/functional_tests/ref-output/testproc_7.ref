@@ -55,6 +55,7 @@ n_events = 1
 | Events: generating 1 unweighted, unpolarized events ...
 | Events: event normalization mode '1'
 |         ... event sample complete.
+| Events: actual unweighting efficiency = 100.00 %
 | Events: closing raw file 'testproc_7_p1.evx'
 ?read_raw = true
 ?write_raw = true
@@ -91,6 +92,7 @@ n_events = 1
 | Events: generating 1 unweighted, unpolarized events ...
 | Events: event normalization mode '1'
 |         ... event sample complete.
+| Events: actual unweighting efficiency = 100.00 %
 | Events: closing raw file 'testproc_7_p1.evx'
 [user variable] i = 3
 | Starting simulation for process 'testproc_7_p1'
@@ -106,6 +108,7 @@ n_events = 1
 | Events: generating 1 unweighted, unpolarized events ...
 | Events: event normalization mode '1'
 |         ... event sample complete.
+| Events: actual unweighting efficiency = 100.00 %
 | Events: closing raw file 'testproc_7_p1.evx'
 | There were no errors and    1 warning(s).
 | WHIZARD run finished.

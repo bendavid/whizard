@@ -1,4 +1,4 @@
-! WHIZARD 2.2.7 Aug 11 2015
+! WHIZARD 2.2.8 Nov 22 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,11 +6,14 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
-!     Fabian Bach <fabian.bach@desy.de>
+!     Fabian Bach <fabian.bach@t-online.de>
+!     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
+!     Soyoung Shim <soyoung.shim@desy.de>
+!     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, Daniel Wiesler 
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -52,21 +55,6 @@ module beams
   private
 
   public :: beam_data_t
-  public :: beam_data_final
-  public :: beam_data_write
-  public :: beam_data_are_valid
-  public :: beam_data_check_scattering
-  public :: beam_data_get_n_in
-  public :: beam_data_get_flavor
-  public :: beam_data_get_energy
-  public :: beam_data_get_sqrts
-  public :: beam_data_cm_frame
-  public :: beam_data_get_md5sum
-  public :: beam_data_init_structure
-  public :: beam_data_init_sqrts
-  public :: beam_data_init_momenta
-  public :: beam_data_init_decay
-  public :: beam_data_masses_are_consistent
   public :: beam_t
   public :: beam_init
   public :: beam_final
@@ -89,7 +77,24 @@ module beams
      real(default) :: sqrts = 0
      character(32) :: md5sum = ""
    contains
+     procedure :: final => beam_data_final
      procedure :: write => beam_data_write
+     procedure :: are_valid => beam_data_are_valid
+     procedure :: check_scattering => beam_data_check_scattering
+     procedure :: get_n_in => beam_data_get_n_in
+     procedure :: get_flavor => beam_data_get_flavor
+     procedure :: get_energy => beam_data_get_energy
+     procedure :: get_sqrts => beam_data_get_sqrts
+     procedure :: cm_frame => beam_data_cm_frame
+     procedure :: get_helicity_state_matrix => beam_data_get_helicity_state_matrix
+     procedure :: is_initialized => beam_data_is_initialized 
+     procedure :: get_md5sum => beam_data_get_md5sum
+     procedure :: init_structure => beam_data_init_structure
+     procedure :: init_sqrts => beam_data_init_sqrts
+     procedure :: init_momenta => beam_data_init_momenta
+     procedure :: compute_md5sum => beam_data_compute_md5sum
+     procedure :: init_decay => beam_data_init_decay
+     procedure :: masses_are_consistent => beam_data_masses_are_consistent
   end type beam_data_t
 
   type :: beam_t
@@ -121,7 +126,7 @@ contains
   end subroutine beam_data_init
 
   subroutine beam_data_final (beam_data)
-    type(beam_data_t), intent(inout) :: beam_data
+    class(beam_data_t), intent(inout) :: beam_data
     beam_data%initialized = .false.
   end subroutine beam_data_final
 
@@ -206,13 +211,13 @@ contains
   end subroutine beam_data_write
 
   function beam_data_are_valid (beam_data) result (flag)
+    class(beam_data_t), intent(in) :: beam_data
     logical :: flag
-    type(beam_data_t), intent(in) :: beam_data
     flag = beam_data%initialized
   end function beam_data_are_valid
 
   subroutine beam_data_check_scattering (beam_data, sqrts)
-    type(beam_data_t), intent(in) :: beam_data
+    class(beam_data_t), intent(in) :: beam_data
     real(default), intent(in), optional :: sqrts
     if (beam_data_are_valid (beam_data)) then
        if (present (sqrts)) then
@@ -227,43 +232,69 @@ contains
   end subroutine beam_data_check_scattering
 
   function beam_data_get_n_in (beam_data) result (n_in)
+    class(beam_data_t), intent(in) :: beam_data
     integer :: n_in
-    type(beam_data_t), intent(in) :: beam_data
     n_in = beam_data%n
   end function beam_data_get_n_in
 
   function beam_data_get_flavor (beam_data) result (flv)
+    class(beam_data_t), intent(in) :: beam_data
     type(flavor_t), dimension(:), allocatable :: flv
-    type(beam_data_t), intent(in) :: beam_data
     allocate (flv (beam_data%n))
     flv = beam_data%flv
   end function beam_data_get_flavor
 
   function beam_data_get_energy (beam_data) result (e)
+    class(beam_data_t), intent(in) :: beam_data
     real(default), dimension(:), allocatable :: e
-    type(beam_data_t), intent(in) :: beam_data
+    !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
+    integer :: i
     allocate (e (beam_data%n))
     if (beam_data%initialized) then
-       e = energy (beam_data%p)
+       do i = 1, beam_data%n          
+          e(i) = energy (beam_data%p(i))
+       end do
+       !!! e = energy (beam_data%p)       
     else
        e = 0
     end if
   end function beam_data_get_energy
 
   function beam_data_get_sqrts (beam_data) result (sqrts)
+    class(beam_data_t), intent(in) :: beam_data
     real(default) :: sqrts
-    type(beam_data_t), intent(in) :: beam_data
     sqrts = beam_data%sqrts
   end function beam_data_get_sqrts
   
   function beam_data_cm_frame (beam_data) result (flag)
-    type(beam_data_t), intent(in) :: beam_data
+    class(beam_data_t), intent(in) :: beam_data
     logical :: flag
     flag = beam_data%lab_is_cm_frame
   end function beam_data_cm_frame
   
+  function beam_data_get_helicity_state_matrix (beam_data) result (state_hel)
+    type(state_matrix_t) :: state_hel
+    class(beam_data_t), intent(in) :: beam_data
+    type(polarization_t), dimension(:), allocatable :: pol
+    integer :: i
+    allocate (pol (beam_data%n))
+    do i = 1, beam_data%n
+       call polarization_init_pmatrix (pol(i), beam_data%pmatrix(i))
+    end do
+    call combine_polarization_states (pol, state_hel)
+    do i = 1, beam_data%n
+       call polarization_final (pol(i))
+    end do
+  end function beam_data_get_helicity_state_matrix
+
+  function beam_data_is_initialized (beam_data) result (initialized)
+    logical :: initialized
+    class(beam_data_t), intent(in) :: beam_data
+    initialized = any (beam_data%pmatrix%exists ())
+  end function beam_data_is_initialized
+
   function beam_data_get_md5sum (beam_data, sqrts) result (md5sum_beams)
-    type(beam_data_t), intent(in) :: beam_data
+    class(beam_data_t), intent(in) :: beam_data
     real(default), intent(in) :: sqrts
     character(32) :: md5sum_beams
     character(80) :: buffer
@@ -277,7 +308,7 @@ contains
 
   subroutine beam_data_init_structure &
        (beam_data, structure, sqrts, model, decay_rest_frame)
-    type(beam_data_t), intent(out) :: beam_data
+    class(beam_data_t), intent(out) :: beam_data
     type(beam_structure_t), intent(in) :: structure
     integer :: n_beam
     real(default), intent(in) :: sqrts
@@ -289,30 +320,28 @@ contains
     call flv%init (structure%get_prt (), model)
     if (structure%asymmetric ()) then
        if (structure%polarized ()) then
-          call beam_data_init_momenta (beam_data, &
-               structure%get_momenta (), flv, &
+          call beam_data%init_momenta (structure%get_momenta (), flv, &
                structure%get_smatrix (), structure%get_pol_f ())
        else
-          call beam_data_init_momenta (beam_data, &
-               structure%get_momenta (), flv)
+          call beam_data%init_momenta (structure%get_momenta (), flv)
        end if
     else
        select case (n_beam)
        case (1)
           if (structure%polarized ()) then
-             call beam_data_init_decay (beam_data, flv, &
+             call beam_data%init_decay (flv, &
                   structure%get_smatrix (), structure%get_pol_f (), &
                   rest_frame = decay_rest_frame)
           else
-             call beam_data_init_decay (beam_data, flv, &
+             call beam_data%init_decay (flv, &
                   rest_frame = decay_rest_frame)
           end if
        case (2)
           if (structure%polarized ()) then
-             call beam_data_init_sqrts (beam_data, sqrts, flv, &
+             call beam_data%init_sqrts (sqrts, flv, &
                   structure%get_smatrix (), structure%get_pol_f ())
           else
-             call beam_data_init_sqrts (beam_data, sqrts, flv)
+             call beam_data%init_sqrts (sqrts, flv)
           end if
        case default
           call msg_bug ("Beam data: invalid beam structure object")
@@ -321,7 +350,7 @@ contains
   end subroutine beam_data_init_structure
     
   subroutine beam_data_init_sqrts (beam_data, sqrts, flv, smatrix, pol_f)
-    type(beam_data_t), intent(out) :: beam_data
+    class(beam_data_t), intent(out) :: beam_data
     real(default), intent(in) :: sqrts
     type(flavor_t), dimension(:), intent(in) :: flv
     type(smatrix_t), dimension(:), intent(in), optional :: smatrix
@@ -343,7 +372,7 @@ contains
   end subroutine beam_data_init_sqrts
 
   subroutine beam_data_init_momenta (beam_data, p3, flv, smatrix, pol_f)
-    type(beam_data_t), intent(out) :: beam_data
+    class(beam_data_t), intent(out) :: beam_data
     type(vector3_t), dimension(:), intent(in) :: p3
     type(flavor_t), dimension(:), intent(in) :: flv
     type(smatrix_t), dimension(:), intent(in), optional :: smatrix
@@ -353,11 +382,17 @@ contains
     real(default), dimension(size(p3)) :: e
     real(default), dimension(size(flv)) :: m
     type(lorentz_transformation_t) :: L_boost, L_rot
+    !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
+    integer :: i
     call beam_data_init (beam_data, size (flv))
     m = flv%get_mass ()
     e = sqrt (p3 ** 2 + m ** 2)
     allocate (p (beam_data%n))
-    p = vector4_moving (e, p3)
+    !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
+    !!! p = vector4_moving (e, p3)
+    do i = 1, beam_data%n
+       p(i) = vector4_moving (e(i), p3(i))    
+    end do
     p0 = sum (p)
     beam_data%p = p
     beam_data%lab_is_cm_frame = .false.
@@ -406,15 +441,15 @@ contains
           call beam_data%pmatrix(i)%normalize (flv(i), 0._default)
        end if
     end do
-    call beam_data_compute_md5sum (beam_data)
+    call beam_data%compute_md5sum ()
   end subroutine beam_data_finish_initialization
 
   subroutine beam_data_compute_md5sum (beam_data)
-    type(beam_data_t), intent(inout) :: beam_data
+    class(beam_data_t), intent(inout) :: beam_data
     integer :: unit
     unit = free_unit ()
     open (unit = unit, status = "scratch", action = "readwrite")
-    call beam_data_write (beam_data, unit, write_md5sum = .false., &
+    call beam_data%write (unit, write_md5sum = .false., &
        verbose = .true.)
     rewind (unit)
     beam_data%md5sum = md5sum (unit)
@@ -422,7 +457,7 @@ contains
   end subroutine beam_data_compute_md5sum
 
   subroutine beam_data_init_decay (beam_data, flv, smatrix, pol_f, rest_frame)
-    type(beam_data_t), intent(out) :: beam_data
+    class(beam_data_t), intent(out) :: beam_data
     type(flavor_t), dimension(1), intent(in) :: flv
     type(smatrix_t), dimension(1), intent(in), optional :: smatrix
     real(default), dimension(:), intent(in), optional :: pol_f
@@ -430,16 +465,16 @@ contains
     real(default), dimension(1) :: m
     m = flv%get_mass ()
     if (present (smatrix)) then
-       call beam_data_init_sqrts (beam_data, m(1), flv, smatrix, pol_f)
+       call beam_data%init_sqrts (m(1), flv, smatrix, pol_f)
     else
-       call beam_data_init_sqrts (beam_data, m(1), flv, smatrix, pol_f)
+       call beam_data%init_sqrts (m(1), flv, smatrix, pol_f)
     end if
     if (present (rest_frame))  beam_data%lab_is_cm_frame = rest_frame
   end subroutine beam_data_init_decay
 
   function beam_data_masses_are_consistent (beam_data) result (flag)
     logical :: flag
-    type(beam_data_t), intent(in) :: beam_data
+    class(beam_data_t), intent(in) :: beam_data
     flag = all (nearly_equal (beam_data%mass, beam_data%flv%get_mass ()))
   end function beam_data_masses_are_consistent
 
@@ -450,21 +485,15 @@ contains
     type(state_matrix_t), target :: state_hel, state_fc, state_tmp
     type(state_iterator_t) :: it_hel, it_tmp
     type(quantum_numbers_t), dimension(:), allocatable :: qn
-    type(polarization_t), dimension(:), allocatable :: pol
+    !type(polarization_t), dimension(:), allocatable :: pol
     integer :: i
+    real(default), dimension(:,:), allocatable :: pol_matrix
     mask = quantum_numbers_mask (.false., .false., &
          .not. beam_data%pmatrix%is_polarized (), &
          mask_hd = beam_data%pmatrix%is_diagonal ())
     call beam%int%basic_init &
          (0, 0, beam_data%n, mask=mask, store_values=.true.)
-    allocate (pol (beam_data%n))
-    do i = 1, size (pol)
-       call polarization_init_pmatrix (pol(i), beam_data%pmatrix(i))
-    end do
-    call combine_polarization_states (pol, state_hel)
-    do i = 1, size (pol)
-       call polarization_final (pol(i))
-    end do
+    state_hel = beam_data%get_helicity_state_matrix ()
     allocate (qn (beam_data%n))
     call qn%init (beam_data%flv, color_from_flavor (beam_data%flv, 1))
     call state_fc%init ()

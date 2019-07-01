@@ -75,6 +75,7 @@ $sample = "hepmc_7a"
 | Events: generating 1 unweighted, unpolarized events ...
 | Events: event normalization mode '1'
 |         ... event sample complete.
+| Events: actual unweighting efficiency =   0.05 %
 | Events: closing HepMC file 'hepmc_7a.hepmc'
 | Events: closing weight stream file 'hepmc_7a.weights.dat'
 $rescan_input_format = "hepmc"

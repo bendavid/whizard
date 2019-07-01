@@ -1,4 +1,4 @@
-! WHIZARD 2.2.7 Aug 11 2015
+! WHIZARD 2.2.8 Nov 22 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,11 +6,14 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
-!     Fabian Bach <fabian.bach@desy.de>
+!     Fabian Bach <fabian.bach@t-online.de>
+!     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
+!     Soyoung Shim <soyoung.shim@desy.de>
+!     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, Daniel Wiesler 
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -51,6 +54,7 @@ module helicities
      procedure, private :: helicity_init2
      procedure :: undefine => helicity_undefine
      procedure :: diagonalize => helicity_diagonalize
+     procedure :: get_indices => helicity_get_indices
      procedure :: write => helicity_write
      procedure :: write_raw => helicity_write_raw
      procedure :: read_raw => helicity_read_raw
@@ -123,6 +127,12 @@ contains
     class(helicity_t), intent(inout) :: hel
     hel%h2 = hel%h1
   end subroutine helicity_diagonalize
+
+  subroutine helicity_get_indices (hel, h1, h2)
+    class(helicity_t), intent(in) :: hel
+    integer, intent(out) :: h1, h2
+    h1 = hel%h1; h2 = hel%h2
+   end subroutine helicity_get_indices
 
   subroutine helicity_write (hel, unit)
     class(helicity_t), intent(in) :: hel

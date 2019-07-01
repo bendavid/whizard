@@ -1641,7 +1641,7 @@ subroutine tao_random_test (name)
        NOT_OK = "(1x,f22.20,' is not ok, (A_2027082 ',f22.20,')!')"
   <<Parameters in [[tao_random_test]]>>
   real(kind=default), parameter :: &
-       A_2027082 = 0.36410514377569680455_default
+       A_2027082 = 0.36410514377569680455_tao_r64
   real(kind=default), dimension(N) :: a
   type(tao_random_state) :: s, t
   integer, dimension(:), allocatable :: ibuf

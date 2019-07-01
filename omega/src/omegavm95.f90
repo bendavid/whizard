@@ -1,11 +1,11 @@
-!  $Id: omegalib.nw 6943 2015-05-01 10:53:21Z msekulla $
+!  $Id: omegalib.nw 7369 2015-11-16 18:03:59Z jr_reuter $
 !
 !  Copyright (C) 1999-2015 by
 !      Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !      Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !      Juergen Reuter <juergen.reuter@desy.de>
 !      with contributions from                                                                                                                                    
-!      Fabian Bach <fabian.bach@desy.de>                                                                                                                 
+!      Fabian Bach <fabian.bach@t-online.de>                                                                                                                 
 !      Bijan Chokoufe Nejad <bijan.chokoufe@desy.de>                                                                                                              
 !      Christian Speckner <cnspeckn@googlemail.com>     
 !
@@ -527,7 +527,8 @@ contains
     write(vm%out_fh, *) 'vectors       = ', vm%vectors
     write(vm%out_fh, *) 'tensors_2     = ', vm%tensors_2
     write(vm%out_fh, *) 'tensors_1     = ', vm%tensors_1
-    write(vm%out_fh, *) 'vectorspinors = ', vm%vectorspinors
+    !!! !!! !!! Regression with ifort 16.0.0
+    !!! write(vm%out_fh, *) 'vectorspinors = ', vm%vectorspinors
     write(vm%out_fh, *) 'N_momenta       = ', vm%N_momenta
     write(vm%out_fh, *) 'N_particles     = ', vm%N_particles
     write(vm%out_fh, *) 'N_prt_in        = ', vm%N_prt_in

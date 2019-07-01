@@ -84,6 +84,7 @@ Warning: No cuts have been defined.
 | Events: generating 1000 unweighted, unpolarized events ...
 | Events: event normalization mode '1'
 |         ... event sample complete.
+| Events: actual unweighting efficiency =   9.54 %
 | Events: closing raw file 'smtest_1_nnh.evx'
 | There were no errors and    1 warning(s).
 | WHIZARD run finished.

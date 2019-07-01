@@ -1,4 +1,4 @@
-! WHIZARD 2.2.7 Aug 11 2015
+! WHIZARD 2.2.8 Nov 22 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,11 +6,14 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
-!     Fabian Bach <fabian.bach@desy.de>
+!     Fabian Bach <fabian.bach@t-online.de>
+!     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
+!     Soyoung Shim <soyoung.shim@desy.de>
+!     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, Daniel Wiesler 
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -112,23 +115,28 @@ contains
     allocate (pdg_in (2)); allocate (pdg_out (2))
     pdg_in(1) = 2; pdg_in(2) = -2
     pdg_out(1) = 11; pdg_out(2) = -11
-    call test_process (generator, pdg_in, pdg_out, u)
+    call test_process (generator, pdg_in, pdg_out, u, .true.)
     deallocate (pdg_out); deallocate (pdg_in)
 
     write (u, "(A)") "* Process 7: WZ production at hadron-colliders"
     allocate (pdg_in (2)); allocate (pdg_out (2))
     pdg_in(1) = 1; pdg_in(2) = -2
     pdg_out(1) = -24; pdg_out(2) = 23
-    call test_process (generator, pdg_in, pdg_out, u)
+    call test_process (generator, pdg_in, pdg_out, u, .true.)
     deallocate (pdg_out); deallocate (pdg_in)
 
   contains
-    subroutine test_process (generator, pdg_in, pdg_out, u)
+    subroutine test_process (generator, pdg_in, pdg_out, u, &
+       include_initial_state)
       type(radiation_generator_t), intent(inout) :: generator
       type(pdg_array_t), dimension(:), intent(in) :: pdg_in, pdg_out
       integer, intent(in) :: u
+      logical, intent(in), optional :: include_initial_state
       type(string_t), dimension(:), allocatable :: prt_strings_in
       type(string_t), dimension(:), allocatable :: prt_strings_out
+      logical :: yorn
+      yorn = .false.
+      if (present (include_initial_state)) yorn = include_initial_state
       write (u, "(A)") "* Leading order: "
       write (u, "(A)", advance = 'no') '* Incoming: '
       call write_pdg_array (pdg_in, u)
@@ -137,6 +145,7 @@ contains
 
       call generator%init (pdg_in, pdg_out, qcd = .true., qed = .false.)
       call generator%set_n (2, size(pdg_out), 0)
+      if (yorn) call generator%set_initial_state_emissions ()
       call generator%set_constraints (.false., .false., .true., .true.)
       call generator%setup_if_table ()
       call generator%generate (prt_strings_in, prt_strings_out)

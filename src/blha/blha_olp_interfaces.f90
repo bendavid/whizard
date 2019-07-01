@@ -1,4 +1,4 @@
-! WHIZARD 2.2.7 Aug 11 2015
+! WHIZARD 2.2.8 Nov 22 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,11 +6,14 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
-!     Fabian Bach <fabian.bach@desy.de>
+!     Fabian Bach <fabian.bach@t-online.de>
+!     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
+!     Soyoung Shim <soyoung.shim@desy.de>
+!     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, Daniel Wiesler 
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -38,7 +41,7 @@ module blha_olp_interfaces
   use kinds
   use iso_varying_string, string_t => varying_string
   use constants
-  use system_defs, only: TAB
+  use unit_tests, only: vanishes
   use io_units
   use string_utils
   use physics_defs
@@ -49,6 +52,7 @@ module blha_olp_interfaces
   use interactions
   use flavors
   use model_data
+  use pdg_arrays, only: is_gluon, is_quark
 
   use prclib_interfaces
   use process_libraries
@@ -79,11 +83,19 @@ module blha_olp_interfaces
   public :: olp_print_parameter
   public :: blha_result_array_size
 !  public :: create_blha_momentum_array
+  public :: parameter_error_message
 
   integer, parameter, public :: OLP_PARAMETER_LIMIT = 10
   integer, parameter, public :: OLP_MOMENTUM_LIMIT = 50
   integer, parameter, public :: OLP_RESULTS_LIMIT = 60
 
+
+  integer, parameter :: I_ALPHA = 1
+  integer, parameter :: I_GF = 2
+  integer, parameter :: I_SW2 = 3
+
+  integer, parameter :: LEN_MAX_FLAVOR_STRING = 100
+  integer, parameter :: N_MAX_FLAVORS = 20
 
   type :: blha_template_t
     integer :: I_BORN = 0
@@ -91,6 +103,7 @@ module blha_olp_interfaces
     integer :: I_LOOP = 2
     integer :: I_SUB = 3
     logical, dimension(0:3) :: compute_component
+    logical :: include_polarizations = .false.
   contains
     procedure :: init => blha_template_init
     procedure :: set_born => blha_template_set_born
@@ -106,25 +119,26 @@ module blha_olp_interfaces
   end type blha_template_t
 
   type, abstract, extends (prc_user_defined_base_t) :: prc_blha_t
-    type(qcd_t) :: qcd
-    integer :: n_flv
     integer :: n_particles
     real(default) :: maximum_accuracy = 10000.0
     integer, dimension(:), allocatable :: i_born, i_sc, i_cc
     integer, dimension(:), allocatable :: i_real
     integer, dimension(:), allocatable :: i_virt
+    integer, dimension(:,:), allocatable :: i_hel
+    logical, dimension(3) :: ew_parameter_mask
   contains
     procedure :: create_momentum_array => prc_blha_create_momentum_array
-    procedure :: update_alpha_s => prc_blha_update_alpha_s
-    procedure :: get_alpha_s => prc_blha_get_alpha_s
     procedure :: set_alpha_qed => prc_blha_set_alpha_qed
+    procedure :: set_GF => prc_blha_set_GF
+    procedure :: set_weinberg_angle => prc_blha_set_weinberg_angle
+    procedure :: set_electroweak_parameters => &
+       prc_blha_set_electroweak_parameters
     procedure :: read_contract_file => prc_blha_read_contract_file
     procedure :: print_parameter_file => prc_blha_print_parameter_file
     procedure :: compute_amplitude => prc_blha_compute_amplitude
      procedure :: init_blha => prc_blha_init_blha
-    procedure :: get_nflv => prc_blha_get_nflv
-    procedure :: set_parameters => prc_blha_set_parameters
     procedure :: set_particle_properties => prc_blha_set_particle_properties
+    procedure :: init_ew_parameters => prc_blha_init_ew_parameters
     procedure :: set_bquark_mass => prc_blha_set_bquark_mass
     procedure :: compute_sqme_virt => prc_blha_compute_sqme_virt
     procedure(prc_blha_compute_sqme_real), deferred :: &
@@ -132,12 +146,18 @@ module blha_olp_interfaces
     procedure(prc_blha_compute_sqme_born), deferred :: &
         compute_sqme_born
     procedure :: compute_sqme_cc => prc_blha_compute_sqme_cc
+    generic :: get_beam_helicities => get_beam_helicities_single
+    generic :: get_beam_helicities => get_beam_helicities_array
+    procedure :: get_beam_helicities_single => prc_blha_get_beam_helicities_single
+    procedure :: get_beam_helicities_array => prc_blha_get_beam_helicities_array
+    procedure :: includes_polarization => prc_blha_includes_polarization
     procedure(prc_blha_init_driver), deferred :: &
         init_driver
   end type prc_blha_t
 
-  type, abstract, extends (prc_core_driver_t) :: blha_driver_t 
+  type, abstract, extends (user_defined_driver_t) :: blha_driver_t 
     type(string_t) :: contract_file
+    logical :: include_polarizations = .false.
     procedure(olp_start),nopass,  pointer :: &
               blha_olp_start => null ()
     procedure(olp_eval), nopass, pointer :: &
@@ -156,14 +176,14 @@ module blha_olp_interfaces
               blha_olp_finalize => null ()
     procedure(olp_print_parameter), nopass, pointer :: &
               blha_olp_print_parameter => null ()
-    procedure(omega_update_alpha_s), nopass, pointer :: &
-              update_alpha_s => null ()
-    procedure(omega_is_allowed), nopass, pointer :: &
-              is_allowed => null ()
   contains
-    procedure :: set_alpha_qed => blha_driver_set_alpha_qed
+    procedure(blha_driver_set_GF), deferred :: &
+       set_GF
     procedure(blha_driver_set_alpha_s), deferred :: &
        set_alpha_s
+    procedure(blha_driver_set_weinberg_angle), deferred :: &
+       set_weinberg_angle
+    procedure(blha_driver_set_alpha_qed), deferred :: set_alpha_qed
     procedure(blha_driver_print_alpha_s), deferred :: &
        print_alpha_s
     procedure :: set_mass_and_width => blha_driver_set_mass_and_width
@@ -173,35 +193,21 @@ module blha_olp_interfaces
     procedure :: read_contract_file => blha_driver_read_contract_file
   end type blha_driver_t
 
-  type, abstract, extends (prc_writer_f_module_t) :: prc_blha_writer_t
+  type, abstract, extends (prc_user_defined_writer_t) :: prc_blha_writer_t
     type(blha_configuration_t) :: blha_cfg
-    type(string_t) :: model_name
-    type(string_t) :: process_mode
-    type(string_t) :: process_string
   contains
-    procedure :: write_wrapper => prc_blha_writer_write_wrapper
-    procedure :: write_interface => prc_blha_writer_write_interface
-    procedure :: write_source_code => prc_blha_writer_write_source_code
-    procedure :: write_makefile_code => prc_blha_writer_write_makefile_code
-    procedure, nopass:: get_procname => prc_blha_writer_writer_get_procname
-    procedure, nopass :: get_module_name => prc_blha_writer_get_module_name
     procedure :: write => prc_blha_writer_write
     procedure :: get_process_string => prc_blha_writer_get_process_string
     procedure :: get_n_proc => prc_blha_writer_get_n_proc
   end type prc_blha_writer_t
 
-  type, abstract, extends (prc_core_def_t) :: blha_def_t
-    type(string_t) :: basename
+  type, abstract, extends (user_defined_def_t) :: blha_def_t
     type(string_t) :: suffix
   contains
-    procedure, nopass :: needs_code => blha_def_needs_code
-    procedure, nopass :: get_features => blha_def_get_features
-    procedure :: connect => blha_def_connect
+  
   end type blha_def_t
 
-  type, abstract, extends (prc_core_state_t) :: blha_state_t
-    logical :: new_kinematics = .true.
-    real(default) :: alpha_qcd = -1
+  type, abstract, extends (user_defined_state_t) :: blha_state_t
   contains
     procedure :: reset_new_kinematics => blha_state_reset_new_kinematics
   end type blha_state_t
@@ -288,19 +294,12 @@ module blha_olp_interfaces
     end subroutine olp_print_parameter
   end interface
 
-  abstract interface
-     subroutine omega_update_alpha_s (alpha_s) bind(C)
-       import
-       real(c_default_float), intent(in) :: alpha_s
-     end subroutine omega_update_alpha_s
-  end interface
-  
-  abstract interface
-     subroutine omega_is_allowed (flv, hel, col, flag) bind(C)
-       import
-       integer(c_int), intent(in) :: flv, hel, col
-       logical(c_bool), intent(out) :: flag
-     end subroutine omega_is_allowed
+  abstract interface 
+    subroutine blha_driver_set_GF (driver, GF)
+      import
+      class(blha_driver_t), intent(inout) :: driver
+      real(default), intent(in) :: GF
+    end subroutine blha_driver_set_GF
   end interface
 
   abstract interface
@@ -309,6 +308,22 @@ module blha_olp_interfaces
        class(blha_driver_t), intent(inout) :: driver
        real(default), intent(in) :: alpha_s
     end subroutine blha_driver_set_alpha_s
+  end interface
+
+  abstract interface
+    subroutine blha_driver_set_weinberg_angle (driver, sw2)
+      import
+      class(blha_driver_t), intent(inout) :: driver
+      real(default), intent(in) :: sw2
+    end subroutine blha_driver_set_weinberg_angle
+  end interface
+
+  abstract interface
+    subroutine blha_driver_set_alpha_qed (driver, alpha)
+      import
+      class(blha_driver_t), intent(inout) :: driver
+      real(default), intent(in) :: alpha
+    end subroutine blha_driver_set_alpha_qed
   end interface
 
   abstract interface
@@ -363,48 +378,13 @@ module blha_olp_interfaces
     end subroutine prc_blha_init_driver
   end interface
 
+
 contains
 
   subroutine blha_state_reset_new_kinematics (object)
     class(blha_state_t), intent(inout) :: object
     object%new_kinematics = .true.
   end subroutine blha_state_reset_new_kinematics
-
-  function blha_def_needs_code () result (flag)
-    logical :: flag
-    flag = .true.
-  end function blha_def_needs_code
-
-  subroutine blha_def_get_features (features)
-    type(string_t), dimension(:), allocatable, intent(out) :: features
-    allocate (features (6))
-    features = [ &
-         var_str ("init"), &
-         var_str ("update_alpha_s"), &
-         var_str ("reset_helicity_selection"), &
-         var_str ("is_allowed"), &
-         var_str ("new_event"), &
-         var_str ("get_amplitude")]
-  end subroutine blha_def_get_features 
-
-  subroutine blha_def_connect (def, lib_driver, i, proc_driver)   
-    class(blha_def_t), intent(in) :: def
-    class(prclib_driver_t), intent(in) :: lib_driver
-    integer, intent(in) :: i
-    integer :: pid, fid
-    class(prc_core_driver_t), intent(inout) :: proc_driver
-    type(c_funptr) :: fptr
-    select type (proc_driver)
-    class is (blha_driver_t)       
-       pid = i
-       fid = 2
-       call lib_driver%get_fptr (pid, fid, fptr)
-       call c_f_procpointer (fptr, proc_driver%update_alpha_s)
-       fid = 4
-       call lib_driver%get_fptr (pid, fid, fptr)
-       call c_f_procpointer (fptr, proc_driver%is_allowed)
-    end select
-  end subroutine blha_def_connect
 
   pure function blha_result_array_size (n_part, amp_type) result (rsize)
     integer, intent(in) :: n_part, amp_type
@@ -418,6 +398,8 @@ contains
           rsize = n_part*(n_part-1)/2
        case (BLHA_AMP_SC)
           rsize = 2*n_part**2
+       case default
+          rsize = 0
      end select
   end function blha_result_array_size
 
@@ -428,7 +410,7 @@ contains
     integer :: n, i, k
 
     n = size (p)
-    if (n > 10) call msg_fatal ("Number of external particles exceeeds" &
+    if (n > 10) call msg_fatal ("Number of external particles exceeds" &
                                  // "size of BLHA-internal momentum array")
     mom = 0._default
     k = 1
@@ -440,9 +422,11 @@ contains
 !    mom (k:50) = 0.0
   end function prc_blha_create_momentum_array
 
-  subroutine blha_template_init (template)
+  subroutine blha_template_init (template, requires_polarizations)
     class(blha_template_t), intent(inout) :: template
+    logical, intent(in) :: requires_polarizations
     template%compute_component = .false.
+    template%include_polarizations = requires_polarizations
   end subroutine blha_template_init
 
   subroutine blha_template_set_born (template)
@@ -500,201 +484,6 @@ contains
     template%compute_component = .false.
   end subroutine blha_template_reset
 
-  subroutine prc_blha_writer_write_wrapper (writer, unit, id, feature)
-    class(prc_blha_writer_t), intent(in) :: writer
-    integer, intent(in) :: unit
-    type(string_t), intent(in) :: id, feature    
-    type(string_t) :: name
-    name = writer%get_c_procname (id, feature)
-    write (unit, *)
-    select case (char (feature))
-    case ("init")
-       write (unit, "(9A)")  "subroutine ", char (name), " (par) bind(C)"
-       write (unit, "(2x,9A)")  "use iso_c_binding"
-       write (unit, "(2x,9A)")  "use kinds"
-       write (unit, "(2x,9A)")  "use opr_", char (id)
-       write (unit, "(2x,9A)")  "real(c_default_float), dimension(*), &
-            &intent(in) :: par"
-       if (c_default_float == default) then
-          write (unit, "(2x,9A)")  "call ", char (feature), " (par)"
-       end if
-       write (unit, "(9A)")  "end subroutine ", char (name)
-    case ("update_alpha_s")
-       write (unit, "(9A)")  "subroutine ", char (name), " (alpha_s) bind(C)"
-       write (unit, "(2x,9A)")  "use iso_c_binding"
-       write (unit, "(2x,9A)")  "use kinds"
-       write (unit, "(2x,9A)")  "use opr_", char (id)
-       if (c_default_float == default) then
-          write (unit, "(2x,9A)")  "real(c_default_float), intent(in) &
-               &:: alpha_s"
-          write (unit, "(2x,9A)")  "call ", char (feature), " (alpha_s)"
-       end if
-       write (unit, "(9A)")  "end subroutine ", char (name)
-    case ("reset_helicity_selection")
-       write (unit, "(9A)")  "subroutine ", char (name), &
-            " (threshold, cutoff) bind(C)"
-       write (unit, "(2x,9A)")  "use iso_c_binding"
-       write (unit, "(2x,9A)")  "use kinds"
-       write (unit, "(2x,9A)")  "use opr_", char (id)
-       if (c_default_float == default) then
-          write (unit, "(2x,9A)")  "real(c_default_float), intent(in) &
-               &:: threshold"
-          write (unit, "(2x,9A)")  "integer(c_int), intent(in) :: cutoff"
-          write (unit, "(2x,9A)")  "call ", char (feature), &
-               " (threshold, int (cutoff))"
-       end if
-       write (unit, "(9A)")  "end subroutine ", char (name)
-    case ("is_allowed")
-       write (unit, "(9A)")  "subroutine ", char (name), &
-            " (flv, hel, col, flag) bind(C)"
-       write (unit, "(2x,9A)")  "use iso_c_binding"
-       write (unit, "(2x,9A)")  "use kinds"
-       write (unit, "(2x,9A)")  "use opr_", char (id)
-       write (unit, "(2x,9A)")  "integer(c_int), intent(in) :: flv, hel, col"
-       write (unit, "(2x,9A)")  "logical(c_bool), intent(out) :: flag"    
-       write (unit, "(2x,9A)")  "flag = ", char (feature), &
-            " (int (flv), int (hel), int (col))"
-       write (unit, "(9A)")  "end subroutine ", char (name)
-    case ("new_event")
-       write (unit, "(9A)")  "subroutine ", char (name), " (p) bind(C)"
-       write (unit, "(2x,9A)")  "use iso_c_binding"
-       write (unit, "(2x,9A)")  "use kinds"
-       write (unit, "(2x,9A)")  "use opr_", char (id)
-       if (c_default_float == default) then
-          write (unit, "(2x,9A)")  "real(c_default_float), dimension(0:3,*), &
-               &intent(in) :: p"
-          write (unit, "(2x,9A)")  "call ", char (feature), " (p)"
-       end if
-       write (unit, "(9A)")  "end subroutine ", char (name)
-    case ("get_amplitude")
-       write (unit, "(9A)")  "subroutine ", char (name), &
-            " (flv, hel, col, amp) bind(C)"
-       write (unit, "(2x,9A)")  "use iso_c_binding"
-       write (unit, "(2x,9A)")  "use kinds"
-       write (unit, "(2x,9A)")  "use opr_", char (id)
-       write (unit, "(2x,9A)")  "integer(c_int), intent(in) :: flv, hel, col"
-       write (unit, "(2x,9A)")  "complex(c_default_complex), intent(out) &
-            &:: amp"    
-       write (unit, "(2x,9A)")  "amp = ", char (feature), &
-            " (int (flv), int (hel), int (col))"
-       write (unit, "(9A)")  "end subroutine ", char (name)
-    end select
-
-  end subroutine prc_blha_writer_write_wrapper
-
-  subroutine prc_blha_writer_write_interface (writer, unit, id, feature)
-    class(prc_blha_writer_t), intent(in) :: writer
-    integer, intent(in) :: unit
-    type(string_t), intent(in) :: id
-    type(string_t), intent(in) :: feature
-    type(string_t) :: name
-    name = writer%get_c_procname (id, feature)
-    write (unit, "(2x,9A)")  "interface"
-    select case (char (feature))
-    case ("init")
-       write (unit, "(5x,9A)")  "subroutine ", char (name), " (par) bind(C)"
-       write (unit, "(7x,9A)")  "import"
-       write (unit, "(7x,9A)")  "real(c_default_float), dimension(*), &
-            &intent(in) :: par"
-       write (unit, "(5x,9A)")  "end subroutine ", char (name)
-    case ("update_alpha_s")
-       write (unit, "(5x,9A)")  "subroutine ", char (name), " (alpha_s) bind(C)"
-       write (unit, "(7x,9A)")  "import"
-       write (unit, "(7x,9A)")  "real(c_default_float), intent(in) :: alpha_s"
-       write (unit, "(5x,9A)")  "end subroutine ", char (name)
-    case ("reset_helicity_selection")
-       write (unit, "(5x,9A)")  "subroutine ", char (name), " &
-            &(threshold, cutoff) bind(C)"
-       write (unit, "(7x,9A)")  "import"
-       write (unit, "(7x,9A)")  "real(c_default_float), intent(in) :: threshold"
-       write (unit, "(7x,9A)")  "integer(c_int), intent(in) :: cutoff"
-       write (unit, "(5x,9A)")  "end subroutine ", char (name)
-    case ("is_allowed")
-       write (unit, "(5x,9A)")  "subroutine ", char (name), " &
-            &(flv, hel, col, flag) bind(C)"
-       write (unit, "(7x,9A)")  "import"
-       write (unit, "(7x,9A)")  "integer(c_int), intent(in) :: flv, hel, col"
-       write (unit, "(7x,9A)")  "logical(c_bool), intent(out) :: flag"    
-       write (unit, "(5x,9A)")  "end subroutine ", char (name)
-    case ("new_event")
-       write (unit, "(5x,9A)")  "subroutine ", char (name), " (p) bind(C)"
-       write (unit, "(7x,9A)")  "import"
-       write (unit, "(7x,9A)")  "real(c_default_float), dimension(0:3,*), &
-            &intent(in) :: p"
-       write (unit, "(5x,9A)")  "end subroutine ", char (name)
-    case ("get_amplitude")
-       write (unit, "(5x,9A)")  "subroutine ", char (name), " &
-            &(flv, hel, col, amp) bind(C)"
-       write (unit, "(7x,9A)")  "import"
-       write (unit, "(7x,9A)")  "integer(c_int), intent(in) :: flv, hel, col"
-       write (unit, "(7x,9A)")  "complex(c_default_complex), intent(out) &
-            &:: amp"    
-       write (unit, "(5x,9A)")  "end subroutine ", char (name)
-    end select
-    write (unit, "(2x,9A)")  "end interface"
-  end subroutine prc_blha_writer_write_interface
-
-  subroutine prc_blha_writer_write_source_code (writer, id)
-    class(prc_blha_writer_t), intent(in) :: writer
-    type(string_t), intent(in) :: id
-    !!! This is a dummy
-  end subroutine prc_blha_writer_write_source_code
-
-  subroutine prc_blha_writer_write_makefile_code (writer, unit, id, os_data, testflag)
-    class(prc_blha_writer_t), intent(in) :: writer
-    integer, intent(in) :: unit
-    type(string_t), intent(in) :: id
-    type(os_data_t), intent(in) :: os_data
-    logical, intent(in), optional :: testflag
-    type(string_t) :: omega_binary, omega_path
-    omega_binary = "omega_" // writer%model_name // ".opt"
-    omega_path = os_data%whizard_omega_binpath // "/" // omega_binary
-    write (unit, "(5A)")  "OBJECTS += ", char (id), ".lo"
-    write (unit, "(5A)")  char (id), ".f90:"
-    write (unit, "(99A)")  TAB, char (omega_path), &
-         " -o ", char (id), ".f90", &
-         " -target:whizard", &
-         " -target:parameter_module parameters_", char (writer%model_name), &
-         " -target:module opr_", char (id), &
-         " -target:md5sum '", writer%md5sum, "'", &
-         char (writer%process_mode), char (writer%process_string)
-    write (unit, "(5A)")  "clean-", char (id), ":"
-    write (unit, "(5A)")  TAB, "rm -f ", char (id), ".f90"
-    write (unit, "(5A)")  TAB, "rm -f opr_", char (id), ".mod"
-    write (unit, "(5A)")  TAB, "rm -f ", char (id), ".lo"
-    write (unit, "(5A)")  "CLEAN_SOURCES += ", char (id), ".f90"    
-    write (unit, "(5A)")  "CLEAN_OBJECTS += opr_", char (id), ".mod"       
-    write (unit, "(5A)")  "CLEAN_OBJECTS += ", char (id), ".lo"
-    write (unit, "(5A)")  char (id), ".lo: ", char (id), ".f90"
-    write (unit, "(5A)")  TAB, "$(LTFCOMPILE) $<"
-
-  end subroutine prc_blha_writer_write_makefile_code
-
-  function prc_blha_writer_writer_get_procname (feature) result (name)
-    type(string_t) :: name
-    type(string_t), intent(in) :: feature
-    select case (char (feature))
-    case ("n_in");   name = "number_particles_in"
-    case ("n_out");  name = "number_particles_out"
-    case ("n_flv");  name = "number_flavor_states"
-    case ("n_hel");  name = "number_spin_states"
-    case ("n_col");  name = "number_color_flows"
-    case ("n_cin");  name = "number_color_indices"
-    case ("n_cf");   name = "number_color_factors"
-    case ("flv_state");  name = "flavor_states"
-    case ("hel_state");  name = "spin_states"
-    case ("col_state");  name = "color_flows"
-    case default
-       name = feature
-    end select
-  end function prc_blha_writer_writer_get_procname
-
-  function prc_blha_writer_get_module_name (id) result (name)
-    type(string_t) :: name
-    type(string_t), intent(in) :: id
-    name = "opr_" // id
-  end function prc_blha_writer_get_module_name
-
   subroutine prc_blha_writer_write (writer, unit)
     class(prc_blha_writer_t), intent(in) :: writer
     integer, intent(in) :: unit    
@@ -704,7 +493,7 @@ contains
   function prc_blha_writer_get_process_string (writer) result (s_proc)
     class(prc_blha_writer_t), intent(in) :: writer
     type(string_t) :: s_proc
-    !!! This is a dummy
+    s_proc = var_str ("") 
   end function prc_blha_writer_get_process_string
 
   function prc_blha_writer_get_n_proc (writer) result (n_proc)
@@ -713,14 +502,15 @@ contains
     n_proc = blha_configuration_get_n_proc (writer%blha_cfg)
   end function prc_blha_writer_get_n_proc
 
-  subroutine blha_driver_set_alpha_qed (driver, alpha)
-    class(blha_driver_t), intent(inout) :: driver
-    real(default), intent(in) :: alpha
-    integer :: ierr
-    call driver%blha_olp_set_parameter &
-       (c_char_'alpha_qed'//c_null_char, &
-        dble (alpha), 0._double, ierr)
-  end subroutine blha_driver_set_alpha_qed
+  subroutine parameter_error_message (par)
+     type(string_t), intent(in) :: par
+     type(string_t) :: message
+     message = "Setting of parameter " // par &
+        // "failed. This happens because the chosen " &
+        // "EWScheme in the BLHA file does not fit " &
+        // "your parameter choice"
+     call msg_fatal (char (message))
+  end subroutine parameter_error_message
 
   subroutine blha_driver_set_mass_and_width (driver, &
                                        i_pdg, mass, width)
@@ -765,46 +555,46 @@ contains
 
     call object%init_dlaccess_to_library (os_data, dlaccess, init_success)
 
-       c_fptr = dlaccess_get_c_funptr (dlaccess, var_str ("OLP_Start"))
-       call c_f_procpointer (c_fptr, object%blha_olp_start)
-       call check_for_error (var_str ("OLP_Start"))
-       
-       c_fptr = dlaccess_get_c_funptr (dlaccess, var_str ("OLP_EvalSubProcess"))
-       call c_f_procpointer (c_fptr, object%blha_olp_eval)
-       call check_for_error (var_str ("OLP_EvalSubProcess"))
+    c_fptr = dlaccess_get_c_funptr (dlaccess, var_str ("OLP_Start"))
+    call c_f_procpointer (c_fptr, object%blha_olp_start)
+    call check_for_error (var_str ("OLP_Start"))
+    
+    c_fptr = dlaccess_get_c_funptr (dlaccess, var_str ("OLP_EvalSubProcess"))
+    call c_f_procpointer (c_fptr, object%blha_olp_eval)
+    call check_for_error (var_str ("OLP_EvalSubProcess"))
 
-       c_fptr = dlaccess_get_c_funptr (dlaccess, var_str ("OLP_Info"))
-       call c_f_procpointer (c_fptr, object%blha_olp_info)
-       call check_for_error (var_str ("OLP_Info"))
+    c_fptr = dlaccess_get_c_funptr (dlaccess, var_str ("OLP_Info"))
+    call c_f_procpointer (c_fptr, object%blha_olp_info)
+    call check_for_error (var_str ("OLP_Info"))
 
-       c_fptr = dlaccess_get_c_funptr (dlaccess, var_str ("OLP_SetParameter"))
-       call c_f_procpointer (c_fptr, object%blha_olp_set_parameter)
-       call check_for_error (var_str ("OLP_SetParameter"))
+    c_fptr = dlaccess_get_c_funptr (dlaccess, var_str ("OLP_SetParameter"))
+    call c_f_procpointer (c_fptr, object%blha_olp_set_parameter)
+    call check_for_error (var_str ("OLP_SetParameter"))
 
-       c_fptr = dlaccess_get_c_funptr (dlaccess, var_str ("OLP_EvalSubProcess2"))
-       call c_f_procpointer (c_fptr, object%blha_olp_eval2)
-       call check_for_error (var_str ("OLP_EvalSubProcess2"))
+    c_fptr = dlaccess_get_c_funptr (dlaccess, var_str ("OLP_EvalSubProcess2"))
+    call c_f_procpointer (c_fptr, object%blha_olp_eval2)
+    call check_for_error (var_str ("OLP_EvalSubProcess2"))
 
-       !!! Is OLP_Option really not implemented in OpenLoops?
-       !!! c_fptr = dlaccess_get_c_funptr (dlaccess, var_str ("OLP_Option"))
-       !!! call c_f_procpointer (c_fptr, object%blha_olp_option)
-       !!! call check_for_error (var_str ("OLP_Option"))
+    !!! Is OLP_Option really not implemented in OpenLoops?
+    !!! c_fptr = dlaccess_get_c_funptr (dlaccess, var_str ("OLP_Option"))
+    !!! call c_f_procpointer (c_fptr, object%blha_olp_option)
+    !!! call check_for_error (var_str ("OLP_Option"))
 
-       !!! Is OLP_Polvec really not implemented in OpenLoops?
-       !!! c_fptr = dlaccess_get_c_funptr (dlaccess, var_str ("OLP_Polvec"))
-       !!! call c_f_procpointer (c_fptr, object%blha_olp_polvec)
-       !!! call check_for_error (var_str ("OLP_Polvec"))
+    !!! Is OLP_Polvec really not implemented in OpenLoops?
+    !!! c_fptr = dlaccess_get_c_funptr (dlaccess, var_str ("OLP_Polvec"))
+    !!! call c_f_procpointer (c_fptr, object%blha_olp_polvec)
+    !!! call check_for_error (var_str ("OLP_Polvec"))
 
-       !!! Is OLP_Polvec really not implemented in OpenLoops?
-       !!! c_fptr = dlaccess_get_c_funptr (dlaccess, var_str ("OLP_Finalize"))
-       !!! call c_f_procpointer (c_fptr, object%blha_olp_finalize)
-       !!! call check_for_error (var_str ("OLP_Finalize"))
+    !!! Is OLP_Finalize really not implemented in OpenLoops?
+    !!! c_fptr = dlaccess_get_c_funptr (dlaccess, var_str ("OLP_Finalize"))
+    !!! call c_f_procpointer (c_fptr, object%blha_olp_finalize)
+    !!! call check_for_error (var_str ("OLP_Finalize"))
 
-       c_fptr = dlaccess_get_c_funptr (dlaccess, var_str ("OLP_PrintParameter"))
-       call c_f_procpointer (c_fptr, object%blha_olp_print_parameter)
-       call check_for_error (var_str ("OLP_PrintParameter"))
+    c_fptr = dlaccess_get_c_funptr (dlaccess, var_str ("OLP_PrintParameter"))
+    call c_f_procpointer (c_fptr, object%blha_olp_print_parameter)
+    call check_for_error (var_str ("OLP_PrintParameter"))
 
-       success = .true.
+    success = .true.
     contains
       subroutine check_for_error (function_name)
         type(string_t), intent(in) :: function_name
@@ -813,31 +603,37 @@ contains
      end subroutine check_for_error
   end subroutine blha_driver_load
 
-  subroutine blha_driver_read_contract_file (driver, flavors, amp_type, flv_index, label)
+  subroutine blha_driver_read_contract_file (driver, flavors, amp_type, flv_index, label, helicities)
     class(blha_driver_t), intent(inout) :: driver
     integer, intent(in), dimension(:,:) :: flavors
-    integer, intent(out), dimension(20) :: amp_type, flv_index, label
+    integer, intent(out), dimension(N_MAX_FLAVORS) :: amp_type, flv_index, label
+    integer, intent(out), dimension(N_MAX_FLAVORS,2) :: helicities
     integer :: unit, filestat
-    character(len=100) :: rd_line 
+    character(len=LEN_MAX_FLAVOR_STRING) :: rd_line 
     logical :: read_flavor, born_found
-    integer :: k, i_flv, i_part
+    integer :: k, i_flv
+    integer :: i_hel
     integer :: i_next, n_entries
     integer, dimension(size(flavors, 1) + 2) :: i_array
+    integer, dimension(size(flavors, 1) + 2) :: hel_array
     integer, parameter :: NO_NUMBER = -1000
     integer, parameter :: PROC_NOT_FOUND = -1001
 
     amp_type = -1; flv_index = -1; label = -1
+    helicities = 0
     n_entries = size(flavors, 1) + 2
     unit = free_unit ()
     open (unit, file=char(driver%contract_file), status="old") 
     read_flavor=.false.
     k = 1
+    i_hel = 0
     do
-      read (unit, '(A)', iostat = filestat) rd_line
+      read (unit, "(A)", iostat = filestat) rd_line
       if (filestat == iostat_end) then
          exit
       else
          if (rd_line(1:13) == 'AmplitudeType') then
+            if (i_hel > 3) i_hel = 0
             i_next = find_next_word_index (rd_line, 13) 
             if (rd_line(i_next:i_next+4) == 'Loop') then
                amp_type(k) = BLHA_AMP_LOOP
@@ -855,6 +651,12 @@ contains
          else if (read_flavor) then
             born_found = .false.
             i_array = create_flavor_string (rd_line, n_entries)           
+            if (driver%include_polarizations) then
+               hel_array = create_helicity_string (rd_line, n_entries)
+               call check_helicity_array (hel_array, n_entries)
+            else
+               hel_array = 0
+            end if
             if (all (i_array == PROC_NOT_FOUND)) &
                call msg_fatal ("The desired process has not been found ",  &
                     [var_str ("by the OLP-Provider. Maybe the value of alpha_power "), &
@@ -862,16 +664,21 @@ contains
                      var_str ("If you are using OpenLoops, you can set the option "), &
                      var_str ("openloops_verbosity to a value larger than 1 to obtain "),  &
                      var_str ("more information")])
-            do i_flv = 1, size (flavors, 2)
-               if (all (i_array (1:n_entries-2) == flavors (:,i_flv))) then
-                  label(k) = i_array (n_entries)
-                  flv_index (k) = i_flv
-                  born_found = .true.
-                  k = k+1
-                  read_flavor = .false.
-                  exit
-               end if
-            end do
+               do i_flv = 1, size (flavors, 2)
+                   if (all (i_array (1:n_entries-2) == flavors (:,i_flv))) then
+                      label(k) = i_array (n_entries)
+                      flv_index (k) = i_flv + i_hel
+                      if (driver%include_polarizations) then
+                         helicities (label(k), 1) = hel_array (1)
+                         helicities (label(k), 2) = hel_array (2)
+                         i_hel = i_hel + 1
+                      end if
+                      born_found = .true.
+                      k = k + 1
+                      read_flavor = .false.
+                      exit
+                   end if
+               end do
             if (.not. born_found) call msg_fatal & 
                      ("No underlying Born found")
          end if   
@@ -879,141 +686,253 @@ contains
     end do
     close(unit)
   contains
+
     function create_flavor_string (s, n_entries) result (i_array)
-      character(len=100), intent(in) :: s
+      character(len=LEN_MAX_FLAVOR_STRING), intent(in) :: s
       integer, intent(in) :: n_entries
       integer, dimension(n_entries) :: i_array
-      character(len=10) :: buf
       integer :: k, current_position
-      logical :: valid_buffer
       integer :: i_entry
       k = 1; current_position = 1
       do
-         if (current_position > 100) &
+         if (current_position > LEN_MAX_FLAVOR_STRING) &
             call msg_fatal ("Read OLC File: Current position exceeds maximum value")
          if (s(current_position:current_position) /= " ") then
-            call create_integer (s, i_entry, current_position)
+            call create_flavor (s, i_entry, current_position)
             if (i_entry /= NO_NUMBER .and. i_entry /= PROC_NOT_FOUND) then
                i_array(k) = i_entry
-               k = k+1
+               k = k + 1
                if (k > n_entries) then
                   return
                else
-                  current_position = find_next_word_index (s, current_position)
+                  call increment_current_position (s, current_position)
                end if
             else if (i_entry == PROC_NOT_FOUND) then
                i_array = PROC_NOT_FOUND
                return 
             else
-               current_position = find_next_word_index (s, current_position)
+               call increment_current_position (s, current_position)
             end if
          else
-            current_position = find_next_word_index (s, current_position)
+            call increment_current_position (s, current_position)
          end if
       end do
     end function create_flavor_string
-        
-    subroutine create_integer (s, i_particle, current_position)
-      character(len=100), intent(in) :: s
+
+    function create_helicity_string (s, n_entries) result (hel_array)
+      character(len=LEN_MAX_FLAVOR_STRING), intent(in) :: s
+      integer, intent(in) :: n_entries
+      integer, dimension(n_entries) :: hel_array
+      integer :: k, current_position
+      integer :: hel
+      k = 1; current_position = 1
+      do 
+         if (current_position > LEN_MAX_FLAVOR_STRING) &
+            call msg_fatal ("Read OLC File: Current position exceeds maximum value")
+         if (s(current_position:current_position) /= " ") then
+            call create_helicity (s, hel, current_position)
+            if (hel >= -1 .and. hel <= 1) then
+               hel_array(k) = hel
+               k = k + 1
+               if (k > n_entries) then
+                  return
+               else
+                  call increment_current_position (s, current_position)
+               end if
+            else
+               call increment_current_position (s, current_position)
+            end if
+         else
+            call increment_current_position (s, current_position)
+         end if
+      end do 
+    end function create_helicity_string
+
+    subroutine increment_current_position (s, current_position)
+      character(len=LEN_MAX_FLAVOR_STRING), intent(in) :: s
+      integer, intent(inout) :: current_position
+      current_position = find_next_word_index (s, current_position)
+    end subroutine increment_current_position
+
+    subroutine get_next_buffer (s, current_position, buf, last_buffer_index)
+      character(len=LEN_MAX_FLAVOR_STRING), intent(in) :: s
+      integer, intent(inout) :: current_position
+      character(len=10), intent(out) :: buf
+      integer, intent(out) :: last_buffer_index
+      integer :: i
+      i = 1; buf = ""
+      do
+         if (s(current_position:current_position) /= " ") then
+            buf(i:i) = s(current_position:current_position)
+            i = i + 1; current_position = current_position + 1
+         else
+            exit
+         end if
+      end do
+      last_buffer_index = i
+    end subroutine get_next_buffer
+
+    function is_particle_buffer (buf, i) result (valid)
+      logical :: valid
+      character(len=10), intent(in) :: buf
+      integer, intent(in) :: i
+      valid = (buf(1:i-1) /= "->" .and. buf(1:i-1) /= "|" &
+         .and. buf(1:i-1) /= "Process")
+    end function is_particle_buffer
+ 
+    subroutine create_flavor (s, i_particle, current_position)
+      character(len=LEN_MAX_FLAVOR_STRING), intent(in) :: s
       integer, intent(out) :: i_particle
       integer, intent(inout) :: current_position
       character(len=10) :: buf
-      integer :: i
-      logical :: valid
-      i = 1
-      do
-        if (s(current_position:current_position) /= " ") then
-           buf(i:i) = s(current_position:current_position)
-           i = i+1; current_position = current_position+1
-        else
-           exit
-        end if
-      end do
-      valid = (buf(1:i-1) /= "->" .and. buf(1:i-1) /= "|" &
-               .and. buf(1:i-1) /= "Process")
-      if (valid) then
+      integer :: i, last_buffer_index
+      call get_next_buffer (s, current_position, buf, last_buffer_index)
+      i = last_buffer_index
+      if (is_particle_buffer (buf, i)) then
+         call strip_helicity (buf, i)
          i_particle = read_ival (var_str (buf(1:i-1)))
       else if (buf(1:i-1) == "Process") then
          i_particle = PROC_NOT_FOUND
       else
          i_particle = NO_NUMBER
       end if
-    end subroutine create_integer
-            
-    function find_next_word_index (blub, i_start) result (i_next)
-      character(len=100), intent(in) :: blub
+    end subroutine create_flavor
+
+    subroutine create_helicity (s, helicity, current_position)
+      character(len=LEN_MAX_FLAVOR_STRING), intent(in) :: s
+      integer, intent(out) :: helicity
+      integer, intent(inout) :: current_position
+      character(len=10) :: buf
+      integer :: i, last_buffer_index
+      logical :: success
+      call get_next_buffer (s, current_position, buf, last_buffer_index)
+      i = last_buffer_index
+      if (is_particle_buffer (buf, i)) then
+         call strip_flavor (buf, i, helicity, success)
+      else
+         helicity = 0
+      end if
+    end subroutine create_helicity
+
+    subroutine strip_helicity (buf, i)
+      character(len=10), intent(in) :: buf
+      integer, intent(inout) :: i
+      integer :: i_last
+      i_last = i - 1
+      if (i_last < 4) return
+      if (buf(i_last-2:i_last) == "(1)") then
+         i = i - 3
+      else if (buf(i_last-3:i_last) == "(-1)") then
+         i = i - 4
+      end if
+    end subroutine strip_helicity  
+
+    subroutine strip_flavor (buf, i, helicity, success)
+      character(len=10), intent(in) :: buf
+      integer, intent(in) :: i
+      integer, intent(out) :: helicity
+      logical, intent(out) :: success
+      integer :: i_last
+      i_last = i - 1
+      helicity = 0
+      if (i_last < 4) return
+      if (buf(i_last-2:i_last) == "(1)") then
+         helicity = 1
+         success = .true.
+      else if (buf(i_last-3:i_last) == "(-1)") then
+         helicity = -1
+         success = .true.
+      else
+         success = .false.
+      end if
+    end subroutine strip_flavor
+         
+    function find_next_word_index (word, i_start) result (i_next)
+      character(len=LEN_MAX_FLAVOR_STRING), intent(in) :: word
       integer, intent(in) :: i_start
       integer :: i_next
       i_next = i_start + 1
       do
-         if (blub(i_next:i_next) /= " ") then
+         if (word(i_next:i_next) /= " ") then
             exit
          else
             i_next = i_next + 1
          end if
-         if (i_next > 100) call msg_fatal ("Find next word: line limit exceeded")
+         if (i_next > LEN_MAX_FLAVOR_STRING) &
+              call msg_fatal ("Find next word: line limit exceeded")
       end do
     end function find_next_word_index
 
+    subroutine check_helicity_array (hel_array, n_entries)
+      integer, intent(in), dimension(:) :: hel_array
+      integer, intent(in) :: n_entries
+      integer :: n_particles
+      logical :: valid
+      n_particles = n_entries - 2
+      valid = all (hel_array (3:n_particles) == 0)
+      valid = valid .and. &
+         (hel_array(1) == 1 .or. hel_array(1) == -1) .and. &
+         (hel_array(2) == 1 .or. hel_array(2) == -1)
+      if (.not. valid) &
+         call msg_fatal ("Invalid helicities encountered!")
+    end subroutine check_helicity_array
+
   end subroutine blha_driver_read_contract_file
-
-  subroutine prc_blha_update_alpha_s (object, core_state, fac_scale) 
-    class(prc_blha_t), intent(in) :: object
-    class(prc_core_state_t), intent(inout), allocatable :: core_state
-    real(default), intent(in) :: fac_scale
-    real(default) :: alpha_qcd
-    if (allocated (object%qcd%alpha)) then
-       alpha_qcd = object%qcd%alpha%get (fac_scale)
-       select type (driver => object%driver)
-       class is (blha_driver_t)
-          call driver%update_alpha_s (alpha_qcd)
-       end select 
-       select type (core_state)
-       class is (blha_state_t)
-          core_state%alpha_qcd = alpha_qcd
-       end select
-    end if
-  end subroutine prc_blha_update_alpha_s
-
-  function prc_blha_get_alpha_s (object, core_state) result (alpha)
-    class(prc_blha_t), intent(in) :: object
-    class(prc_core_state_t), intent(in), allocatable :: core_state
-    real(default) :: alpha
-    if (allocated (core_state)) then
-      select type (core_state)
-      class is (blha_state_t)
-        alpha = core_state%alpha_qcd
-      end select
-    else
-      alpha = 0._default 
-    end if
-  end function prc_blha_get_alpha_s
 
   subroutine prc_blha_set_alpha_qed (object, model)
     class(prc_blha_t), intent(inout) :: object
     type(model_data_t), intent(in), target :: model
     real(default) :: alpha
-    real(default) :: GF, MZ, MW
-    real(default) :: sw2
-    GF = model%get_real (var_str ('GF'))
-    MZ = model%get_real (var_str ('mZ'))
-    MW = model%get_real (var_str ('mW'))
-    sw2 = one - MW**2/MZ**2
-    alpha = sqrt(two)/pi * sw2*MW**2*GF
+   
+    alpha = one / model%get_real (var_str ('alpha_em_i'))
+
     select type (driver => object%driver)
     class is (blha_driver_t)
        call driver%set_alpha_qed (alpha)
     end select
   end subroutine prc_blha_set_alpha_qed
 
+  subroutine prc_blha_set_GF (object, model)
+    class(prc_blha_t), intent(inout) :: object
+    type(model_data_t), intent(in), target :: model
+    real(default) :: GF
+    
+    GF = model%get_real (var_str ('GF'))
+    select type (driver => object%driver)
+    class is (blha_driver_t)
+      call driver%set_GF (GF)
+    end select
+  end subroutine prc_blha_set_GF
+
+  subroutine prc_blha_set_weinberg_angle (object, model)
+    class(prc_blha_t), intent(inout) :: object
+    type(model_data_t), intent(in), target :: model
+    real(default) :: sw2
+    
+    sw2 = model%get_real (var_str ('sw2'))
+    select type (driver => object%driver)
+    class is (blha_driver_t)
+      call driver%set_weinberg_angle (sw2)
+    end select
+  end subroutine prc_blha_set_weinberg_angle
+
+  subroutine prc_blha_set_electroweak_parameters (object, model)
+     class(prc_blha_t), intent(inout) :: object
+     type(model_data_t), intent(in), target :: model
+     if (object%ew_parameter_mask (I_ALPHA)) call object%set_alpha_qed (model)
+     if (object%ew_parameter_mask (I_GF)) call object%set_GF (model)
+     if (object%ew_parameter_mask (I_SW2)) call object%set_weinberg_angle (model)
+  end subroutine prc_blha_set_electroweak_parameters
+
   subroutine prc_blha_read_contract_file (object, flavors)
     class(prc_blha_t), intent(inout) :: object
     integer, intent(in), dimension(:,:) :: flavors
-    integer, dimension(20) :: amp_type, flv_index, label
+    integer, dimension(N_MAX_FLAVORS) :: amp_type, flv_index, label
+    integer, dimension(N_MAX_FLAVORS,2) :: helicities
     integer :: i_proc
     select type (driver => object%driver)
     class is (blha_driver_t)
-       call driver%read_contract_file (flavors, amp_type, flv_index, label)
+       call driver%read_contract_file (flavors, amp_type, flv_index, label, helicities)
     end select
     do i_proc = 1, size (amp_type)
        if (amp_type (i_proc) < 0) exit
@@ -1026,29 +945,33 @@ contains
              object%i_real(flv_index(i_proc)) = label(i_proc)
           else 
              call msg_fatal ("Tree matrix element present, &
-                             &but neither Born nor real indices are allocated!")
+                  &but neither Born nor real indices are allocated!")
           end if
        case (BLHA_AMP_CC)
           if (allocated (object%i_cc)) then
              object%i_cc(flv_index(i_proc)) = label(i_proc)
           else
              call msg_fatal ("Color-correlated matrix element present, &
-                              &but cc-indices are not allocated!")
+                  &but cc-indices are not allocated!")
           end if
+          if (allocated (object%i_hel)) &
+             object%i_hel (flv_index(i_proc), :) = helicities (label(i_proc), :)
        case (BLHA_AMP_SC)
           if (allocated (object%i_sc)) then
              object%i_sc(flv_index(i_proc)) = label(i_proc)
           else
              call msg_fatal ("Spin-correlated matrix element present, &
-                             &but sc-indices are not allocated!")
+                  &but sc-indices are not allocated!")
           end if
        case (BLHA_AMP_LOOP)
           if (allocated (object%i_virt)) then
              object%i_virt(flv_index(i_proc)) = label(i_proc)
           else
              call msg_fatal ("Loop matrix element present, &
-                             &but virt-indices are not allocated!")
+                  &but virt-indices are not allocated!")
           end if
+          if (allocated (object%i_hel)) &
+             object%i_hel (flv_index(i_proc), :) = helicities (label(i_proc), :)
        case default
           call msg_fatal ("Undefined amplitude type")
        end select
@@ -1090,14 +1013,19 @@ contains
   subroutine prc_blha_init_blha (object, blha_template)
     class(prc_blha_t), intent(inout) :: object
     type(blha_template_t), intent(inout) :: blha_template
-    integer :: i_flv
-
+    logical :: include_polarizations 
     object%n_particles = size (object%data%flv_state, 1)
     object%n_flv = size (object%data%flv_state, 2)
-   
+    include_polarizations = blha_template%include_polarizations
     if (blha_template%compute_loop ()) then
-       allocate (object%i_virt (object%n_flv), &
-                 object%i_cc (object%n_flv))
+       if (include_polarizations) then
+          allocate (object%i_virt (object%n_flv * 4), &
+                    object%i_cc (object%n_flv * 4))
+          allocate (object%i_hel (object%n_flv * 4, 2))
+       else
+          allocate (object%i_virt (object%n_flv), &
+                    object%i_cc (object%n_flv))
+       end if
     else if (blha_template%compute_subtraction ()) then
        allocate (object%i_born (object%n_flv), &
                  object%i_cc (object%n_flv) , &
@@ -1107,21 +1035,14 @@ contains
     else if (blha_template%compute_born ()) then
        allocate (object%i_born (object%n_flv))
     end if
+
+    call object%init_ew_parameters ()
+
+    select type (driver => object%driver)
+    class is (blha_driver_t)
+       driver%include_polarizations = include_polarizations
+    end select
   end subroutine prc_blha_init_blha
-  function prc_blha_get_nflv (object) result (n_flv)
-    class(prc_blha_t), intent(in) :: object
-    integer :: n_flv
-    n_flv = object%n_flv
-  end function prc_blha_get_nflv
-
-  subroutine prc_blha_set_parameters (object, qcd, use_color_factors)
-    class(prc_blha_t), intent(inout) :: object
-    type(qcd_t), intent(in) :: qcd
-    logical, intent(in) :: use_color_factors
-    object%qcd = qcd
-    object%use_color_factors = use_color_factors
-
-  end subroutine prc_blha_set_parameters
 
   subroutine prc_blha_set_particle_properties (object, model) 
     class(prc_blha_t), intent(inout) :: object
@@ -1139,9 +1060,18 @@ contains
           call driver%set_mass_and_width (i_pdg, mass=mass, width=width)
           if (i_pdg == 5) call driver%blha_olp_set_parameter &
              ('yuk(5)'//c_null_char, dble(mass), 0._double, ierr)
+          if (i_pdg == 6) call driver%blha_olp_set_parameter &
+             ('yuk(6)'//c_null_char, dble(mass), 0._double, ierr)
        end select
     end do
   end subroutine prc_blha_set_particle_properties
+
+  subroutine prc_blha_init_ew_parameters (object)
+    class(prc_blha_t), intent(inout) :: object
+    object%ew_parameter_mask (I_ALPHA) = .true.
+    object%ew_parameter_mask (I_GF) = .true.
+    object%ew_parameter_mask (I_SW2) = .false.
+  end subroutine prc_blha_init_ew_parameters
 
   subroutine prc_blha_set_bquark_mass (object, model)
     class(prc_blha_t), intent(inout) :: object
@@ -1177,7 +1107,7 @@ contains
     real(default) :: alpha_s
 
     mom = object%create_momentum_array (p)
-    if (ren_scale == 0.0) then
+    if (vanishes (ren_scale)) then
       mu = sqrt (2* (p(1)*p(2)))
     else
       mu = ren_scale
@@ -1217,15 +1147,18 @@ contains
     real(double) :: acc_dble
     real(default) :: acc
     real(default) :: born
+    integer, dimension(:), allocatable :: flavors
 
     mom = object%create_momentum_array (p)
-    if (ren_scale == 0.0) then
+    if (vanishes (ren_scale)) then
        mu = sqrt (2*p(1)*p(2))
     else
        mu = ren_scale
     end if
     mu_dble = dble(mu)
     alpha_s = object%qcd%alpha%get (mu)
+    flavors = object%get_flv_state (i_flv)
+
     select type (driver => object%driver)
     class is (blha_driver_t)
        call driver%set_alpha_s (alpha_s)
@@ -1239,12 +1172,19 @@ contains
        call driver%blha_olp_eval2 (object%i_cc(i_flv), &
                                     mom, mu_dble, r, acc_dble)
     end select
+
     do j = 1, size (p)
       do i = 1, j
         if (i <= 2 .or. j <= 2) then
           born_cc (i,j) = 0._default
         else if (i == j) then
-          born_cc (i,j) = -cf*born
+          if (is_quark (abs(flavors (i)))) then
+             born_cc (i,j) = -cf*born 
+          else if (is_gluon (flavors (i))) then
+             born_cc (i,j) = -ca*born
+          else 
+             born_cc (i,j) = zero
+          end if
         else
           im1 = i-1; jm1 = j-1
           pos = im1 + jm1*(jm1-1)/2 + 1
@@ -1253,9 +1193,37 @@ contains
         born_cc (j,i) = born_cc (i,j)
       end do
     end do
+
     acc = acc_dble
     bad_point = bad_point2 .or. acc > object%maximum_accuracy
   end subroutine prc_blha_compute_sqme_cc
+
+  function prc_blha_get_beam_helicities_single (object, i) result (hel)
+    integer, dimension(2) :: hel
+    class(prc_blha_t), intent(in) :: object
+    integer, intent(in) :: i
+    hel = object%i_hel (i, :)
+  end function prc_blha_get_beam_helicities_single
+
+  function prc_blha_includes_polarization (object) result (polarized)
+    logical :: polarized
+    class(prc_blha_t), intent(in) :: object
+    select type (driver => object%driver)
+    class is (blha_driver_t) 
+       polarized = driver%include_polarizations
+    end select
+  end function prc_blha_includes_polarization
+
+  function prc_blha_get_beam_helicities_array (object) result (hel)
+    integer, dimension(:,:), allocatable :: hel
+    class(prc_blha_t), intent(in) :: object
+    integer :: i, n_hel
+    n_hel = object%n_flv * 4
+    allocate (hel (n_hel, 2))
+    do i = 1, n_hel 
+       hel(i,:) = object%get_beam_helicities (i)
+    end do
+  end function prc_blha_get_beam_helicities_array
 
 
 end module blha_olp_interfaces

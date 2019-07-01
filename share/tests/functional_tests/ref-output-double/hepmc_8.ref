@@ -72,6 +72,7 @@ Warning: No cuts have been defined.
 | Events: generating 1 unweighted, unpolarized events ...
 | Events: event normalization mode '1'
 |         ... event sample complete.
+| Events: actual unweighting efficiency =   0.31 %
 | Events: closing HepMC file 'hepmc_8a.hepmc'
 | Events: closing ASCII file 'hepmc_8a.evt'
 $rescan_input_format = "hepmc"

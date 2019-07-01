@@ -1,4 +1,4 @@
-! WHIZARD 2.2.7 Aug 11 2015
+! WHIZARD 2.2.8 Nov 22 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,11 +6,14 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
-!     Fabian Bach <fabian.bach@desy.de>
+!     Fabian Bach <fabian.bach@t-online.de>
+!     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
+!     Soyoung Shim <soyoung.shim@desy.de>
+!     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, Daniel Wiesler 
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -36,7 +39,7 @@ module sf_isr
   use iso_varying_string, string_t => varying_string
   use io_units
   use constants, only: pi
-  use format_defs, only: FMT_17, FMT_19
+  use format_defs, only: FMT_15, FMT_19
   use unit_tests, only: vanishes
   use diagnostics
   use physics_defs, only: PHOTON
@@ -276,8 +279,8 @@ contains
        call object%data%write (u)
        if (object%status >= SF_DONE_KINEMATICS) then
           write (u, "(1x,A)")  "SF parameters:"
-          write (u, "(3x,A," // FMT_17 // ")")  "x =", object%x
-          write (u, "(3x,A," // FMT_17 // ")")  "xb=", object%xb
+          write (u, "(3x,A," // FMT_15 // ")")  "x =", object%x
+          write (u, "(3x,A," // FMT_15 // ")")  "xb=", object%xb
        end if
        call object%base_write (u, testflag)
     else

@@ -69,6 +69,7 @@ openmp_num_threads = 1
 | Events: generating 1 unweighted, unpolarized events ...
 | Events: event normalization mode '1'
 |         ... event sample complete.
+| Events: actual unweighting efficiency =   2.13 %
 Warning: Encountered events with excess weight: 1 events (100.000 %)
 | Maximum excess weight = 1.254E+01
 | Average excess weight = 1.254E+01
@@ -85,6 +86,7 @@ $sample = "hepmc_3.2"
 | Events: generating 1 unweighted, unpolarized events ...
 | Events: event normalization mode '1'
 |         ... event sample complete.
+| Events: actual unweighting efficiency =   0.70 %
 Warning: Encountered events with excess weight: 1 events (100.000 %)
 | Maximum excess weight = 4.235E+00
 | Average excess weight = 4.235E+00

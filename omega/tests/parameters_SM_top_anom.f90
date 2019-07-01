@@ -4,8 +4,9 @@
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
-!     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
-!     Fabian Bach <fabian.bach@desy.de> (only this file)
+!     with contributions from
+!     Christian Speckner <cnspeckn@googlemail.com>
+!     Fabian Bach <fabian.bach@t-online.de> (only this file)
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -49,17 +50,19 @@ module parameters_sm_top_anom
        n_tvaa, n_vlrz, n_tvaz, n_vlrw, n_tlrw, n_tvag, n_sph
   complex(default), dimension(2), public :: &
        gncneu, gnclep, gncup, gncdwn, &
-       tvaa, tvaabb, vlrz, tvaz, tvazbb, vlrw, tlrw, tvag, sph, &
+       tvaa, tvaabb, vlrz, vlrcz, tvaz, tcvaz, tvazbb, tcvaa, &
+       vlrw, tlrw, tvag, tcvag, sph, &
        gvlr_qbub, gvlr_qbub_u, gvlr_qbub_d, gvlr_qbub_e, &
        gvlr_qgug, gslr_dbtr
   integer, public :: fun_flag
   logical, public :: bz=.false., bw=.false., ba=.false.
 
   public :: init_parameters, model_update_alpha_s, &
-       gmom, gtva_tta, gvlr_ttz, gtva_ttz, gvlr_btw, gvlr_tbw, &
+       gmom, gtva_tta, gtva_tca, &
+       gvlr_ttz, gvlr_tcz, gtva_ttz, gtva_tcz, gvlr_btw, gvlr_tbw, &
        gtlr_btw, gtrl_tbw, gtlr_btwz, gtrl_tbwz, gtlr_btwa, gtrl_tbwa, &
        gtva_ttww, gtva_bba, gtva_bbz, gtva_bbww, &
-       gtva_ttg, gtva_ttgg, gsp_tth
+       gtva_ttg, gtva_ttgg, gtva_tcg, gtva_tcgg, gsp_tth
 
   real(default), parameter :: &
           GF = 1.16639E-5_default   ! Fermi constant
@@ -74,17 +77,25 @@ contains
   subroutine init_parameters
 
     tvaa(1)     = 1
-    tvaa(2)     = 1 * (0,1)
+    tvaa(2)     = 1 * imago
+    tcvaa(1)    = 1
+    tcvaa(2)    = 1 * imago
     vlrz(1)     = 1
     vlrz(2)     = 1
+    vlrcz(1)    = 1
+    vlrcz(2)    = 1 * imago
     tvaz(1)     = 1
-    tvaz(2)     = 1 * (0,1)
-    vlrw(1)     = 1 + 1 * (0,1)
-    vlrw(2)     = 1 + 1 * (0,1)
-    tlrw(1)     = 1 + 1 * (0,1)
-    tlrw(2)     = 1 + 1 * (0,1)
+    tvaz(2)     = 1 * imago
+    tcvaz(1)    = 1
+    tcvaz(2)    = 1 * imago
+    vlrw(1)     = 1 + 1 * imago
+    vlrw(2)     = 1 + 1 * imago
+    tlrw(1)     = 1 + 1 * imago
+    tlrw(2)     = 1 + 1 * imago
     tvag(1)     = 1
-    tvag(2)     = 1 * (0,1)
+    tvag(2)     = 1 * imago
+    tcvag(1)    = 1
+    tcvag(2)    = 1 * imago
     sph(1)      = 0
     sph(2)      = 0
     lambda      = 2000
@@ -150,11 +161,11 @@ contains
     qup = - e * qeup
     qdwn = - e * qedwn
     qw = e
-    iqw = (0,1)*qw
+    iqw = imago*qw
     gzww = g * costhw
-    igzww = (0,1)*gzww
+    igzww = imago*gzww
     gwww = g
-    igwww = (0,1)*gwww
+    igwww = imago*gwww
     gw4 = gwww**2
     gzzww = gzww**2
     gazww = gzww * qw
@@ -208,9 +219,9 @@ contains
         print *, "  Inferring bottom couplings from tl_tbW"
 
         tvaabb(1) = real(tlrw(1))        * sinthw / sqrt(2.0_default)
-        tvaabb(2) = aimag(tlrw(1))*(0,1) * sinthw / sqrt(2.0_default)
+        tvaabb(2) = aimag(tlrw(1))*imago * sinthw / sqrt(2.0_default)
         tvazbb(1) = real(tlrw(1))        * costhw / sqrt(2.0_default)
-        tvazbb(2) = aimag(tlrw(1))*(0,1) * costhw / sqrt(2.0_default)
+        tvazbb(2) = aimag(tlrw(1))*imago * costhw / sqrt(2.0_default)
 
         print *, "  tv_bbA = ", real(tvaabb(1))/n_tvaa
         print *, "  ta_bbA = ", aimag(tvaabb(2))/n_tvaa
@@ -238,12 +249,12 @@ contains
 
         if ( ( bw.and.bz ).and..not.ba ) then
           tvaa(1) = ( real(tlrw(2))        - sqrt(2.0_default)*costhw*tvaz(1) ) / ( 2.0_default*sinthw )
-          tvaa(2) = ( aimag(tlrw(2))*(0,1) - sqrt(2.0_default)*costhw*tvaz(2) ) / ( 2.0_default*sinthw )
+          tvaa(2) = ( aimag(tlrw(2))*imago - sqrt(2.0_default)*costhw*tvaz(2) ) / ( 2.0_default*sinthw )
         else if ( bz.and..not.bw ) then
           tlrw(2) = sqrt(2.0_default)*costhw*( tvaz(1) + tvaz(2) ) + 2.0_default*sinthw*( tvaa(1) + tvaa(2) )
         else
           tvaz(1) = ( real(tlrw(2))        - 2.0_default*sinthw*tvaa(1) ) / ( sqrt(2.0_default)*costhw )
-          tvaz(2) = ( aimag(tlrw(2))*(0,1) - 2.0_default*sinthw*tvaa(2) ) / ( sqrt(2.0_default)*costhw )
+          tvaz(2) = ( aimag(tlrw(2))*imago - 2.0_default*sinthw*tvaa(2) ) / ( sqrt(2.0_default)*costhw )
         end if
 
         print *, "  tv_ttA = ", real(tvaa(1))/n_tvaa
@@ -287,7 +298,7 @@ contains
     igs = cmplx (0.0_default, 1.0_default, kind=default) * gs     
   end subroutine model_update_alpha_s
 
-  pure function gmom(k2, i, coeff, lam) result (c)
+  pure function gmom (k2, i, coeff, lam) result (c)
     complex(default) :: c
     real(default), intent(in) :: k2
     integer, intent(in) :: i
@@ -305,70 +316,91 @@ contains
     end select
   end function gmom
 
-  pure function gtva_tta(k2, i) result (c)
+  pure function gtva_tta (k2, i) result (c)
     complex(default) :: c
     real(default), intent(in) :: k2
     integer, intent(in) :: i
-    c = - gmom(k2, i, tvaa, lambda)
+    c = - gmom (k2, i, tvaa, lambda)
   end function gtva_tta
 
-  pure function gtva_bba(k2, i) result (c)
+  pure function gtva_tca (k2, i) result (c)
     complex(default) :: c
     real(default), intent(in) :: k2
     integer, intent(in) :: i
-    c = - gmom(k2, i, tvaabb, lambda)
+    c = - gmom (k2, i, tcvaa, lambda)
+  end function gtva_tca
+
+  pure function gtva_bba (k2, i) result (c)
+    complex(default) :: c
+    real(default), intent(in) :: k2
+    integer, intent(in) :: i
+    c = - gmom (k2, i, tvaabb, lambda)
   end function gtva_bba
 
-  pure function gvlr_ttz(k2, i) result (c)
+  pure function gvlr_ttz (k2, i) result (c)
     complex(default) :: c
     real(default), intent(in) :: k2
     integer, intent(in) :: i
-    c = - gmom(k2, i, vlrz, lambda)
+    c = - gmom (k2, i, vlrz, lambda)
   end function gvlr_ttz
 
-  pure function gtva_ttz(k2, i) result (c)
+  pure function gvlr_tcz (k2, i) result (c)
     complex(default) :: c
     real(default), intent(in) :: k2
     integer, intent(in) :: i
-    c = - gmom(k2, i, tvaz, lambda)
+    c = - gmom (k2, i, vlrcz, lambda)
+  end function gvlr_tcz
+
+  pure function gtva_ttz (k2, i) result (c)
+    complex(default) :: c
+    real(default), intent(in) :: k2
+    integer, intent(in) :: i
+    c = - gmom (k2, i, tvaz, lambda)
   end function gtva_ttz
 
-  pure function gtva_bbz(k2, i) result (c)
+  pure function gtva_tcz (k2, i) result (c)
     complex(default) :: c
     real(default), intent(in) :: k2
     integer, intent(in) :: i
-    c = - gmom(k2, i, tvazbb, lambda)
+    c = - gmom (k2, i, tcvaz, lambda)
+  end function gtva_tcz
+
+  pure function gtva_bbz (k2, i) result (c)
+    complex(default) :: c
+    real(default), intent(in) :: k2
+    integer, intent(in) :: i
+    c = - gmom (k2, i, tvazbb, lambda)
   end function gtva_bbz
 
-  pure function gvlr_btw(k2, i) result (c)
+  pure function gvlr_btw (k2, i) result (c)
     complex(default) :: c
     real(default), intent(in) :: k2
     integer, intent(in) :: i
-    c = - gmom(k2, i, vlrw, lambda)
+    c = - gmom (k2, i, vlrw, lambda)
   end function gvlr_btw
 
-  pure function gvlr_tbw(k2, i) result (c)
+  pure function gvlr_tbw (k2, i) result (c)
     complex(default) :: c
     real(default), intent(in) :: k2
     integer, intent(in) :: i
-    c = - gmom(k2, i, conjg(vlrw), lambda)
+    c = - gmom (k2, i, conjg(vlrw), lambda)
   end function gvlr_tbw
 
-  pure function gtlr_btw(k2, i) result (c)
+  pure function gtlr_btw (k2, i) result (c)
     complex(default) :: c
     real(default), intent(in) :: k2
     integer, intent(in) :: i
-    c = - gmom(k2, i, tlrw, lambda)
+    c = - gmom (k2, i, tlrw, lambda)
   end function gtlr_btw
 
-  pure function gtrl_tbw(k2, i) result (c)
+  pure function gtrl_tbw (k2, i) result (c)
     complex(default) :: c
     real(default), intent(in) :: k2
     integer, intent(in) :: i
-    c = - gmom(k2, i, conjg(tlrw), lambda)
+    c = - gmom (k2, i, conjg(tlrw), lambda)
   end function gtrl_tbw
 
-  pure function gtlr_btwa(k2, i) result (c)
+  pure function gtlr_btwa (k2, i) result (c)
     complex(default) :: c
     real(default), intent(in) :: k2
     integer, intent(in) :: i
@@ -376,7 +408,7 @@ contains
     c = - sinthw * gtlr_btw(k2, i)
   end function gtlr_btwa
 
-  pure function gtrl_tbwa(k2, i) result (c)
+  pure function gtrl_tbwa (k2, i) result (c)
     complex(default) :: c
     real(default), intent(in) :: k2
     integer, intent(in) :: i
@@ -384,7 +416,7 @@ contains
     c = - sinthw * gtrl_tbw(k2, i)
   end function gtrl_tbwa
 
-  pure function gtlr_btwz(k2, i) result (c)
+  pure function gtlr_btwz (k2, i) result (c)
     complex(default) :: c
     real(default), intent(in) :: k2
     integer, intent(in) :: i
@@ -392,7 +424,7 @@ contains
     c = - costhw * gtlr_btw(k2, i)
   end function gtlr_btwz
 
-  pure function gtrl_tbwz(k2, i) result (c)
+  pure function gtrl_tbwz (k2, i) result (c)
     complex(default) :: c
     real(default), intent(in) :: k2
     integer, intent(in) :: i
@@ -400,7 +432,7 @@ contains
     c = - costhw * gtrl_tbw(k2, i)
   end function gtrl_tbwz
 
-  pure function gtva_ttww(k2, i) result (c)
+  pure function gtva_ttww (k2, i) result (c)
     complex(default) :: c
     real(default), intent(in) :: k2
     integer, intent(in) :: i
@@ -409,31 +441,31 @@ contains
       case (1)
         c = - sqrt(2.0_default) * real(gtlr_btw(k2, 2))
       case (2)
-        c = - sqrt(2.0_default) * aimag(gtlr_btw(k2, 2)) * (0, 1)
+        c = - sqrt(2.0_default) * aimag(gtlr_btw(k2, 2)) * imago
     end select
   end function gtva_ttww
 
-  pure function gtva_bbww(k2, i) result (c)
+  pure function gtva_bbww (k2, i) result (c)
     complex(default) :: c
     real(default), intent(in) :: k2
     integer, intent(in) :: i
-    select case (i)
     !!! additional factor 2 wrt. ward relation to cancel explicit 1/2 in "gtlr"
+    select case (i)
       case (1)
         c = - sqrt(2.0_default) * real(gtlr_btw(k2, 1))
       case (2)
-        c =   sqrt(2.0_default) * aimag(gtlr_btw(k2, 1)) * (0, 1)
+        c =   sqrt(2.0_default) * aimag(gtlr_btw(k2, 1)) * imago
     end select
   end function gtva_bbww
 
-  pure function gtva_ttg(k2, i) result (c)
+  pure function gtva_ttg (k2, i) result (c)
     complex(default) :: c
     real(default), intent(in) :: k2
     integer, intent(in) :: i
-    c = - gmom(k2, i, tvag, lambda)
+    c = - gmom (k2, i, tvag, lambda)
   end function gtva_ttg
 
-  pure function gtva_ttgg(k2, i) result (c)
+  pure function gtva_ttgg (k2, i) result (c)
     complex(default) :: c
     real(default), intent(in) :: k2
     integer, intent(in) :: i
@@ -441,11 +473,26 @@ contains
     c = - gtva_ttg(k2, i)
   end function gtva_ttgg
 
-  pure function gsp_tth(k2, i) result (c)
+  pure function gtva_tcg (k2, i) result (c)
     complex(default) :: c
     real(default), intent(in) :: k2
     integer, intent(in) :: i
-    c = - gmom(k2, i, sph, lambda)
+    c = - gmom (k2, i, tcvag, lambda)
+  end function gtva_tcg
+
+  pure function gtva_tcgg (k2, i) result (c)
+    complex(default) :: c
+    real(default), intent(in) :: k2
+    integer, intent(in) :: i
+    !!! don't touch this relative factor: fixed by ward identity!
+    c = - gtva_tcg(k2, i)
+  end function gtva_tcgg
+
+  pure function gsp_tth (k2, i) result (c)
+    complex(default) :: c
+    real(default), intent(in) :: k2
+    integer, intent(in) :: i
+    c = - gmom (k2, i, sph, lambda)
   end function gsp_tth
 
 end module parameters_sm_top_anom

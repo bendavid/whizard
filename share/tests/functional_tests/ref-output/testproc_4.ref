@@ -51,6 +51,7 @@ n_events = 1
 | Events: generating 1 unweighted, unpolarized events ...
 | Events: event normalization mode '1'
 |         ... event sample complete.
+| Events: actual unweighting efficiency = 100.00 %
 | Events: closing raw file 'testproc_4_p1.evx'
 ?read_raw = true
 ?write_raw = true
@@ -80,6 +81,7 @@ n_events = 2
 | Events: appending to raw file 'testproc_4_p1.evx'
 | Generating remaining  1 events ...
 |         ... event sample complete.
+| Events: actual unweighting efficiency = 100.00 %
 | Events: closing raw file 'testproc_4_p1.evx'
 ?read_raw = false
 ?write_raw = false
@@ -92,6 +94,7 @@ n_events = 1
 | Events: generating 1 unweighted, unpolarized events ...
 | Events: event normalization mode '1'
 |         ... event sample complete.
+| Events: actual unweighting efficiency = 100.00 %
 ?read_raw = true
 ?write_raw = false
 n_events = 2

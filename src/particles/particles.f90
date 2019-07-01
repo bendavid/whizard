@@ -1,4 +1,4 @@
-! WHIZARD 2.2.7 Aug 11 2015
+! WHIZARD 2.2.8 Nov 22 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,11 +6,14 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
-!     Fabian Bach <fabian.bach@desy.de>
+!     Fabian Bach <fabian.bach@t-online.de>
+!     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
+!     Soyoung Shim <soyoung.shim@desy.de>
+!     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, Daniel Wiesler 
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -145,7 +148,10 @@ module particles
      procedure :: init_interaction => particle_set_init_interaction
      procedure :: set_model => particle_set_set_model
      procedure :: final => particle_set_final
-     procedure :: get_momenta => particle_set_get_momenta
+     generic :: get_momenta => get_momenta_all
+     generic :: get_momenta => get_momenta_indices
+     procedure :: get_momenta_all => particle_set_get_momenta_all
+     procedure :: get_momenta_indices => particle_set_get_momenta_indices
      procedure :: set_momenta => particle_set_set_momenta
      procedure :: parent_add_child => particle_set_parent_add_child
      procedure :: build_radiation => particle_set_build_radiation
@@ -170,7 +176,7 @@ module particles
      procedure :: remove_duplicates => particle_set_remove_duplicates
      procedure :: reset_status => particle_set_reset_status
      procedure :: reduce => particle_set_reduce
-     procedure :: apply_keep_beams => particle_set_apply_keep_beams
+     procedure :: filter_particles => particle_set_filter_particles
      procedure :: to_hepevt_form => particle_set_to_hepevt_form
      procedure :: fill_interaction => particle_set_fill_interaction
      procedure :: assign_vertices => particle_set_assign_vertices
@@ -843,12 +849,23 @@ contains
     call particle_set%correlated_state%final ()
   end subroutine particle_set_final
 
-  function particle_set_get_momenta (particle_set) result (p)
+  function particle_set_get_momenta_all (particle_set) result (p)
     class(particle_set_t), intent(in) :: particle_set
     type(vector4_t), dimension(:), allocatable :: p
     allocate (p (size (particle_set%prt)))
     p = particle_set%prt%p
-  end function particle_set_get_momenta
+  end function particle_set_get_momenta_all
+
+  function particle_set_get_momenta_indices (particle_set, indices) result (p)
+     type(vector4_t), dimension(:), allocatable :: p
+     class(particle_set_t), intent(in) :: particle_set
+     integer, intent(in), dimension(:), allocatable :: indices
+     integer :: i
+     allocate (p (size (indices)))
+     do i = 1, size (indices)
+        p(i) = particle_set%prt(indices(i))%p
+     end do
+  end function particle_set_get_momenta_indices
 
   pure subroutine particle_set_set_momenta (particle_set, p)
     class(particle_set_t), intent(inout) :: particle_set
@@ -876,65 +893,124 @@ contains
      real(default), intent(in) :: r_color
      type(particle_set_t) :: new_particle_set
      type(particle_t) :: new_particle
-     integer :: i, n_particles
+     integer :: i
      integer :: pdg_index_emitter, pdg_index_radiation
-     integer :: n_in, n_vir, n_out, n_tot
      integer, dimension(:), allocatable :: parents, children
      type(flavor_t) :: new_flv
+     logical, dimension(:), allocatable :: status_mask
+     integer, dimension(:), allocatable :: &
+          i_in1, i_beam1, i_remnant1, i_virt1, i_out1
+     integer, dimension(:), allocatable :: &
+          i_in2, i_beam2, i_remnant2, i_virt2, i_out2
+     integer :: n_in1, n_beam1, n_remnant1, n_virt1, n_out1
+     integer :: n_in2, n_beam2, n_remnant2, n_virt2, n_out2
+     integer :: n, n_tot
+     integer :: i_emitter
+     
+     n = particle_set%get_n_tot ()
+     allocate (status_mask (n))
+     !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
+     do i = 1, n
+        status_mask(i) = particle_set%prt(i)%get_status () == PRT_INCOMING
+     end do
+     !!! status_mask = particle_set%prt%get_status () == PRT_INCOMING     
+     n_in1 = count (status_mask)
+     allocate (i_in1 (n_in1))
+     i_in1 = particle_set%get_indices (status_mask)
+     do i = 1, n
+        status_mask(i) = particle_set%prt(i)%get_status () == PRT_BEAM
+     end do
+     n_beam1 = count (status_mask)
+     allocate (i_beam1 (n_beam1))
+     i_beam1 = particle_set%get_indices (status_mask)
+     do i = 1, n
+        status_mask(i) = particle_set%prt(i)%get_status () == PRT_BEAM_REMNANT
+     end do
+     n_remnant1 = count (status_mask)
+     allocate (i_remnant1 (n_remnant1))
+     i_remnant1 = particle_set%get_indices (status_mask)
+     do i = 1, n
+        status_mask(i) = particle_set%prt(i)%get_status () == PRT_VIRTUAL
+     end do
+     n_virt1 = count (status_mask)
+     allocate (i_virt1 (n_virt1))
+     i_virt1 = particle_set%get_indices (status_mask)
+     do i = 1, n
+        status_mask(i) = particle_set%prt(i)%get_status () == PRT_OUTGOING
+     end do
+     n_out1 = count (status_mask)
+     allocate (i_out1 (n_out1))
+     i_out1 = particle_set%get_indices (status_mask)
 
-     n_particles = size (particle_set%prt)
-     if (n_particles+1 /= size (p_radiated))  call msg_fatal &
-        ("Number of particles does not equal number of momenta")
+     n_in2 = n_in1; n_beam2 = n_beam1; n_remnant2 = n_remnant1
+     n_virt2 = n_virt1 + n_out1
+     n_out2 = n_out1 + 1
+     n_tot = n_in2 + n_beam2 + n_remnant2 + n_virt2 + n_out2
 
-     new_particle_set%n_beam = particle_set%n_beam
-     new_particle_set%n_in = particle_set%n_in
-     new_particle_set%n_vir = particle_set%n_vir
-     new_particle_set%n_out = particle_set%n_out+1
-     new_particle_set%n_tot = particle_set%n_tot+1
+     allocate (i_in2 (n_in2), i_beam2 (n_beam2), i_remnant2 (n_remnant2))
+     i_in2 = i_in1; i_beam2 = i_beam1; i_remnant2 = i_remnant1
+
+     allocate (i_virt2 (n_virt2))
+     i_virt2(1:n_virt1) = i_virt1
+     i_virt2(n_virt1+1:n_virt2) = i_out1 
+
+     allocate (i_out2 (n_out2))
+     i_out2(1:n_out1) = i_out1(1:n_out1) + n_out1
+     i_out2(n_out2) = n_tot 
+ 
+     new_particle_set%n_beam = n_beam2
+     new_particle_set%n_in = n_in2
+     new_particle_set%n_vir = n_virt2
+     new_particle_set%n_out = n_out2
+     new_particle_set%n_tot = n_tot
      new_particle_set%correlated_state = particle_set%correlated_state
-     allocate (new_particle_set%prt (new_particle_set%n_tot))
-     n_in = new_particle_set%n_in; n_vir = new_particle_set%n_vir
-     n_out = new_particle_set%n_out; n_tot = new_particle_set%n_tot
-     do i = 1, n_in
-        new_particle_set%prt(i) = particle_set%prt(i)
-        call new_particle_set%prt(i)%set_momentum (p_radiated(i))
-        call new_particle_set%prt(i)%reset_status (PRT_INCOMING)
-     end  do
-     do i = n_in+1, n_in+n_vir
-        new_particle_set%prt(i) = particle_set%prt(i)
-        call new_particle_set%prt(i)%set_momentum (particle_set%prt(i)%p)
-        call new_particle_set%prt(i)%reset_status (PRT_VIRTUAL)
+     allocate (new_particle_set%prt (n_tot))
+     new_particle_set%prt(i_beam2) = particle_set%prt(i_beam1)
+     new_particle_set%prt(i_remnant2) = particle_set%prt(i_remnant1)
+     new_particle_set%prt(i_virt2(1:n_virt1)) = particle_set%prt(i_virt1) 
+
+     do i = n_virt1 + 1, n_virt2
+        new_particle_set%prt(i_virt2(i)) = particle_set%prt(i_out1(i-n_virt1))
+        call new_particle_set%prt(i_virt2(i))%reset_status (PRT_VIRTUAL)
      end do
-     !!! Parents correct, care for children
-     allocate (children (n_out))
-     do i = 1, n_out
-        children(i) = n_in+n_vir+i
+     
+     do i = 1, n_in2
+        new_particle_set%prt(i_in2(i)) = particle_set%prt(i_in1(i))
+        new_particle_set%prt(i_in2(i))%p = p_radiated (i)
      end do
-     do i = n_in+1, n_in+n_vir
-        call new_particle_set%prt(i)%set_children (children)
+
+     do i = 1, n_out2-1
+        new_particle_set%prt(i_out2(i)) = particle_set%prt(i_out1(i))
+        new_particle_set%prt(i_out2(i))%p = p_radiated(i + n_in2)
+        call new_particle_set%prt(i_out2(i))%reset_status (PRT_OUTGOING)
      end do
-     do i = n_in+n_vir+1, n_tot-1
-        new_particle_set%prt(i) = particle_set%prt(i-n_vir)
-        call new_particle_set%prt(i)%set_momentum (p_radiated(i-n_vir))
-        call new_particle_set%prt(i)%reset_status (PRT_OUTGOING)
-     end do
+ 
      call new_particle%reset_status (PRT_OUTGOING)
-     call new_particle%set_momentum (p_radiated (n_tot-n_vir))
+     call new_particle%set_momentum (p_radiated (n_in2 + n_out2))
+
      !!! Helicity and polarization handling is missing at this point
-     pdg_index_emitter = flv_radiated (emitter)
-     pdg_index_radiation = flv_radiated (n_tot-n_vir)
-     call new_flv%init (pdg_index_radiation, model)
-     call reassign_colors (new_particle, new_particle_set%prt(n_vir+emitter), &
-                           pdg_index_radiation, pdg_index_emitter, r_color)
      !!! Also, no helicities or polarizations yet
+     pdg_index_emitter = flv_radiated (emitter)
+     pdg_index_radiation = flv_radiated (n_in2 + n_out2)
+     call new_flv%init (pdg_index_radiation, model)
+     i_emitter = emitter + n_virt2 + n_remnant2 + n_beam2
+
+     call reassign_colors (new_particle, new_particle_set%prt(i_emitter), &
+        pdg_index_radiation, pdg_index_emitter, r_color)
+
      call new_particle%set_flavor (new_flv)
      new_particle_set%prt(n_tot) = new_particle
-     !!! Set proper parents for outgoing particles
-     allocate (parents (n_in))
-     do i = 1, n_in
-        parents(i) = n_in+i
+
+     allocate (children (n_out2))
+     children = i_out2
+     do i = n_in2 + n_beam2 + n_remnant2 + n_virt1 + 1, n_in2 + n_beam2 + n_remnant2 + n_virt2
+        call new_particle_set%prt(i)%set_children (children)
      end do
-     do i = n_in+n_vir+1, n_tot
+          
+     !!! Set proper parents for outgoing particles
+     allocate (parents (n_out1))
+     parents = i_out1
+     do i = n_in2 + n_beam2 + n_remnant2 + n_virt2 + 1, n_tot
         call new_particle_set%prt(i)%set_parents (parents)
      end do
      !!! Overwrite old particle set
@@ -943,6 +1019,34 @@ contains
         particle_set = new_particle_set
      end select
   contains
+
+      subroutine set_color_offset (particle_set)
+        type(particle_set_t), intent(inout) :: particle_set
+        integer, dimension(2) :: color
+        integer :: i, i_color_max
+        type(color_t) :: new_color
+
+        i_color_max = 0
+        do i = 1, size (particle_set%prt)
+           associate (prt => particle_set%prt(i))
+              if (prt%get_status () <= PRT_INCOMING) cycle
+              color = prt%get_color ()
+              i_color_max = maxval([i_color_max, color(1), color(2)])
+           end associate
+        end do
+
+        
+        do i = 1, size (particle_set%prt)
+           associate (prt => particle_set%prt(i))
+              if (prt%get_status () /= PRT_OUTGOING) cycle
+              color = prt%get_color ()
+              where (color /= 0) color = color + i_color_max
+              call new_color%init_col_acl (color(1), color(2))
+              call prt%set_color (new_color)
+           end associate
+        end do
+      end subroutine set_color_offset
+
     subroutine reassign_colors (prt_radiated, prt_emitter, i_rad, i_em, r_col)
       type(particle_t), intent(inout) :: prt_radiated, prt_emitter
       integer, intent(in) :: i_rad, i_em
@@ -1131,7 +1235,11 @@ contains
     kb = .false.
     if (present (keep_beams)) kb = keep_beams
     allocate (is_real (pset%n_tot))
-    is_real = pset%prt%is_real (kb)
+    !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
+    do j = 1, pset%n_tot
+       is_real(j) = pset%prt(j)%is_real (kb)
+    end do
+    !!! is_real = pset%prt%is_real (kb)
     allocate (is_parent (pset%n_tot), is_real_parent (pset%n_tot))
     is_real_parent = .false.
     is_parent = .false.
@@ -1171,6 +1279,10 @@ contains
     kb = .false.
     if (present (keep_beams)) kb = keep_beams
     allocate (is_real (pset%n_tot))
+    !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
+    do j = 1, pset%n_tot
+       is_real(j) = pset%prt(j)%is_real (kb)
+    end do
     is_real = pset%prt%is_real (kb)
     allocate (is_child (pset%n_tot), is_real_child (pset%n_tot))
     is_real_child = .false.
@@ -1272,7 +1384,11 @@ contains
     end do
     n_particles = count (.not. particle_set%prt%is_hadronic_beam_remnant ())
     allocate (no_hadronic_remnants (particle_set%n_tot))
-    no_hadronic_remnants = .not. particle_set%prt%is_hadronic_beam_remnant ()
+    !!! !!! !!! Workaround for intel 16.0 standard-semantics bug
+    !!! no_hadronic_remnants = .not. particle_set%prt%is_hadronic_beam_remnant ()
+    do i = 1, particle_set%n_tot
+       no_hadronic_remnants(i) = .not. particle_set%prt(i)%is_hadronic_beam_remnant ()
+    end do
     allocate (particles (n_particles + n_extra))
     k = 1
     do i = 1, particle_set%n_tot
@@ -1566,7 +1682,11 @@ contains
     logical :: kb
     kb = .false.;  if (present (keep_beams))  kb = keep_beams
     allocate (status (pset_in%n_tot))    
-    status = pset_in%prt%get_status ()
+    !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
+    do i = 1, pset_in%n_tot
+       status(i) = pset_in%prt(i)%get_status ()
+    end do
+    !!! status = pset_in%prt%get_status ()
     if (kb)  pset_out%n_beam  = count (status == PRT_BEAM)
     pset_out%n_in  = count (status == PRT_INCOMING)
     pset_out%n_vir = count (status == PRT_RESONANT)
@@ -1612,41 +1732,33 @@ contains
     end subroutine copy_particles
   end subroutine particle_set_reduce
 
-  subroutine particle_set_apply_keep_beams &
-       (pset_in, pset_out, keep_beams, real_parents)
+  subroutine particle_set_filter_particles &
+       (pset_in, pset_out, keep_beams, real_parents, keep_virtuals)
     class(particle_set_t), intent(in) :: pset_in
     type(particle_set_t), intent(out) :: pset_out
-    logical, intent(in), optional :: keep_beams, real_parents
+    logical, intent(in), optional :: keep_beams, real_parents, keep_virtuals
     integer, dimension(:), allocatable :: status, map
+    logical, dimension(:), allocatable :: filter
     integer :: i, j
-    logical :: kb, rp
+    logical :: kb, rp, kv
     kb = .false.;  if (present (keep_beams))  kb = keep_beams
     rp = .false.; if (present (real_parents)) rp = real_parents
-    allocate (status (pset_in%n_tot))    
-    status = particle_get_status (pset_in%prt)
-    if (kb)  pset_out%n_beam  = count (status == PRT_BEAM)
-    pset_out%n_in  = count (status == PRT_INCOMING)
-    if (kb) then
-       pset_out%n_vir = count (status == PRT_VIRTUAL) + &
-            count (status == PRT_RESONANT) + &
-            count (status == PRT_BEAM_REMNANT)
-    else 
-       pset_out%n_vir = count (status == PRT_VIRTUAL) + &
-            count (status == PRT_RESONANT)
+    kv = .true.; if (present (keep_virtuals)) kv = keep_virtuals
+    call msg_debug (D_PARTICLES, "filter_particles")
+    if (debug2_active (D_PARTICLES)) then
+       print *, 'keep_beams =    ', kb
+       print *, 'real_parents =    ', rp
+       print *, 'keep_virtuals =    ', kv
+       print *, '>>> pset_in : '
+       call pset_in%write(compressed=.true.)
     end if
-    pset_out%n_out = count (status == PRT_OUTGOING)
-    pset_out%n_tot = &
-         pset_out%n_beam + pset_out%n_in + pset_out%n_vir + pset_out%n_out
-    allocate (pset_out%prt (pset_out%n_tot))
-    allocate (map (pset_in%n_tot))
+    call count_and_allocate()
     map = 0
     j = 0
-    if (kb) call copy_particles (PRT_BEAM)
-    call copy_particles (PRT_INCOMING)
-    if (kb) call copy_particles (PRT_BEAM_REMNANT)
-    call copy_particles (PRT_RESONANT)
-    call copy_particles (PRT_VIRTUAL)
-    call copy_particles (PRT_OUTGOING)
+    filter = .false.
+    if (.not. kb) filter = status == PRT_BEAM .or. status == PRT_BEAM_REMNANT
+    if (.not. kv) filter = filter .or. status == PRT_VIRTUAL
+    call copy_particles ()
     do i = 1, pset_in%n_tot
        if (map(i) == 0)  cycle
        if (rp) then
@@ -1661,19 +1773,53 @@ contains
                (map (pset_in%prt(i)%get_children ()))
        end if
     end do
+    if (debug2_active (D_PARTICLES)) then
+       print *, '>>> pset_out : '
+       call pset_out%write(compressed=.true.)
+    end if
   contains
-    subroutine copy_particles (stat)
-      integer, intent(in) :: stat
-      integer :: i
-      do i = 1, pset_in%n_tot
-         if (status(i) == stat) then
-            j = j + 1
-            map(i) = j
-            call particle_init_particle (pset_out%prt(j), pset_in%prt(i))
-         end if
-      end do
-    end subroutine copy_particles
-  end subroutine particle_set_apply_keep_beams
+        subroutine copy_particles ()
+          integer :: i
+          do i = 1, pset_in%n_tot
+             if (.not. filter(i)) then
+                j = j + 1
+                map(i) = j
+                call particle_init_particle (pset_out%prt(j), pset_in%prt(i))
+             end if
+          end do
+        end subroutine copy_particles
+
+      subroutine count_and_allocate
+        allocate (status (pset_in%n_tot))
+        !!! !!! !!! Workaround for ifort standard-semantics bug
+        do i = 1, pset_in%n_tot
+           status(i) = particle_get_status (pset_in%prt(i))
+        end do
+        !!! status = particle_get_status (pset_in%prt)
+        if (kb)  pset_out%n_beam  = count (status == PRT_BEAM)
+        pset_out%n_in  = count (status == PRT_INCOMING)
+        if (kb .and. kv) then
+           pset_out%n_vir = count (status == PRT_VIRTUAL) + &
+                count (status == PRT_RESONANT) + &
+                count (status == PRT_BEAM_REMNANT)
+        else if (kb .and. .not. kv) then
+           pset_out%n_vir = count (status == PRT_RESONANT) + &
+                count (status == PRT_BEAM_REMNANT)
+        else if (.not. kb .and. kv) then
+           pset_out%n_vir = count (status == PRT_VIRTUAL) + &
+                count (status == PRT_RESONANT)
+        else 
+           pset_out%n_vir = count (status == PRT_RESONANT)
+        end if
+        pset_out%n_out = count (status == PRT_OUTGOING)
+        pset_out%n_tot = &
+             pset_out%n_beam + pset_out%n_in + pset_out%n_vir + pset_out%n_out
+        allocate (pset_out%prt (pset_out%n_tot))
+        allocate (map (pset_in%n_tot))
+        allocate (filter (pset_in%n_tot))
+      end subroutine count_and_allocate
+
+  end subroutine particle_set_filter_particles
 
   subroutine particle_set_to_hepevt_form (pset_in, pset_out)
     class(particle_set_t), intent(in) :: pset_in
@@ -1843,7 +1989,11 @@ contains
       integer :: n_in_p, n_out_p
       integer :: i
       allocate (p_status (pset%n_tot), p_idx (pset%n_tot))
-      p_status = particle_get_status (pset%prt)
+      !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
+      !!! p_status = pset%prt%get_status ()
+      do i = 1, pset%n_tot
+         p_status(i) = pset%prt(i)%get_status ()
+      end do
       p_idx = [(i, i = 1, pset%n_tot)]
       n_in_p = count (p_status == PRT_INCOMING)
       allocate (p_in (n_in))
@@ -1872,8 +2022,13 @@ contains
       integer, dimension(:), allocatable, intent(out) :: pdg
       integer, dimension(:), allocatable :: pdg_p
       logical, dimension(:), allocatable :: mask_p
+      integer :: i
       allocate (pdg_p (pset%n_tot))
-      pdg_p = particle_get_pdg (pset%prt)
+      !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
+      !!! pdg_p = pset%prt%get_pdg ()
+      do i = 1, pset%n_tot
+         pdg_p(i) = pset%prt(i)%get_pdg ()      
+      end do
       allocate (mask_p (pset%n_tot), source = .false.)
       mask_p (p_in) = .true.
       mask_p (p_out) = .true.

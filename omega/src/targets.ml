@@ -1,4 +1,4 @@
-(* $Id: targets.ml 6943 2015-05-01 10:53:21Z msekulla $
+(* $Id: targets.ml 7372 2015-11-18 18:07:59Z jr_reuter $
 
    Copyright (C) 1999-2015 by
 
@@ -7,9 +7,10 @@
        Juergen Reuter <juergen.reuter@desy.de>
        with contributions from
        Christian Speckner <cnspeckn@googlemail.com>
-       Fabian Bach <fabian.bach@desy.de> (only parts of this file)
-       Marco Sekulla <sekulla@physik.uni-siegen.de> (only parts of this file)
+       Fabian Bach <fabian.bach@t-online.de> (only parts of this file)
+       Marco Sekulla <marco.sekulla@kit.edu> (only parts of this file)
        Bijan Chokoufe Nejad <bijan.chokoufe@desy.de> (only parts of this file)
+       Soyoung Shim <soyoung.shim@desy.de>
 
    WHIZARD is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by
@@ -26,9 +27,9 @@
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
 let rcs_file = RCS.parse "Targets" ["Code Generation"]
-    { RCS.revision = "$Revision: 6943 $";
-      RCS.date = "$Date: 2015-05-01 12:53:21 +0200 (Fri, 01 May 2015) $";
-      RCS.author = "$Author: msekulla $";
+    { RCS.revision = "$Revision: 7372 $";
+      RCS.date = "$Date: 2015-11-18 19:07:59 +0100 (Wed, 18 Nov 2015) $";
+      RCS.author = "$Author: jr_reuter $";
       RCS.source
         = "$URL: svn+ssh://jr_reuter@login.hepforge.org/hepforge/svn/whizard/trunk/omega/src/targets.ml $" }
 
@@ -1048,7 +1049,6 @@ module VM (Fusion_Maker : Fusion.Maker) (P : Momentum.T) (M : Model.T) =
               | _, Psibar, TLR, Psi | _, Psibar, TLRM, Psi
               | _, Psibar, TRL, Psi | _, Psibar, TRLM, Psi -> failwith
        "print_current: V3: Momentum dependent fermion couplings not implemented"
-
               | _, _, _, _ ->
                   ferm_print_current (coeff, fb, b, f) lhs c wf1 wf2 fusion
               end
@@ -1158,7 +1158,6 @@ module VM (Fusion_Maker : Fusion.Maker) (P : Momentum.T) (M : Model.T) =
               | (F21|F31) -> printc ovm_FUSE_G_GS_SKEW wf2 p1 wf1 p2 ~flip:(-1)
               end
 
-
           | Dim5_Scalar_Vector_Vector_T _ ->
               failwith "print_current: V3: not implemented"
 
@@ -1228,7 +1227,46 @@ module VM (Fusion_Maker : Fusion.Maker) (P : Momentum.T) (M : Model.T) =
           | TensorScalar_Scalar_Scalar_cf _ ->
               failwith "print_current: V3: not implemented"
 
-          end
+          | Dim6_Scalar_Vector_Vector_D _ ->
+              failwith "print_current: V3: not implemented"
+
+          | Dim6_Scalar_Vector_Vector_DP _ ->
+              failwith "print_current: V3: not implemented"
+
+          | Dim6_HAZ_D _ ->
+              failwith "print_current: V3: not implemented"
+
+          | Dim6_HAZ_DP _ ->
+              failwith "print_current: V3: not implemented"
+
+          | Dim6_HHH _ ->
+              failwith "print_current: V3: not implemented"  
+
+          | Dim6_Gauge_Gauge_Gauge_i _ ->
+              failwith "print_current: V3: not implemented"  
+
+          | Gauge_Gauge_Gauge_i _ ->
+              failwith "print_current: V3: not implemented"
+
+          | Dim6_GGG _ ->
+              failwith "print_current: V3: not implemented"	
+
+          | Dim6_AWW_DP _ ->
+              failwith "print_current: V3: not implemented"
+
+          | Dim6_AWW_DW _ ->
+              failwith "print_current: V3: not implemented"
+
+          | Dim6_WWZ_DPWDW _ ->
+              failwith "print_current: V3: not implemented"
+ 
+          | Dim6_WWZ_DW _ ->
+              failwith "print_current: V3: not implemented"
+ 
+          | Dim6_WWZ_D _ ->
+              failwith "print_current: V3: not implemented"
+
+   end
 
 (* Flip the sign in [c] to account for the~$\mathrm{i}^2$ relative to diagrams
    with only cubic couplings. *)
@@ -1284,6 +1322,40 @@ module VM (Fusion_Maker : Fusion.Maker) (P : Momentum.T) (M : Model.T) =
           | DScalar4 _
           | DScalar2_Vector2 _ ->
               failwith "print_current: V4: DScalars not implemented"
+          | Dim6_H4_P2 _ ->  
+              failwith "print_current: V3: not implemented"
+          | Dim6_AHWW_DPB _ ->
+              failwith "print_current: V3: not implemented"
+          | Dim6_AHWW_DPW _ ->
+              failwith "print_current: V3: not implemented"
+          | Dim6_AHWW_DW _ ->
+              failwith "print_current: V3: not implemented"
+          | Dim6_Vector4_DW _ ->
+              failwith "print_current: V3: not implemented"
+          | Dim6_Vector4_W _ ->
+              failwith "print_current: V3: not implemented"
+          | Dim6_Scalar2_Vector2_D _ ->
+              failwith "print_current: V3: not implemented"
+          | Dim6_Scalar2_Vector2_DP _ ->
+              failwith "print_current: V3: not implemented"
+          | Dim6_HWWZ_DW _ ->
+              failwith "print_current: V3: not implemented"
+          | Dim6_HWWZ_DPB _ ->
+              failwith "print_current: V3: not implemented"
+          | Dim6_HWWZ_DDPW _ ->
+              failwith "print_current: V3: not implemented"
+          | Dim6_HWWZ_DPW _ ->
+              failwith "print_current: V3: not implemented"
+          | Dim6_AHHZ_D _ ->
+              failwith "print_current: V3: not implemented"
+          | Dim6_AHHZ_DP _ ->
+              failwith "print_current: V3: not implemented"
+          | Dim6_AHHZ_PB _ ->
+              failwith "print_current: V3: not implemented"
+          | Dim6_Scalar2_Vector2_PB _ ->           
+              failwith "print_current: V3: not implemented"
+          | Dim6_HHZZ_T _ ->   
+              failwith "print_current: V3: not implemented"
           end
 
       | Vn (_, _, _) -> invalid_arg "Targets.print_current: n-ary fusion."
@@ -3355,6 +3427,143 @@ i*)
               | (F21|F31) -> printf "v_t2v_d7(%s,%s,%s,%s,%s)" c wf2 p2 wf1 p1
               end
 
+          | Dim6_Scalar_Vector_Vector_D coeff ->
+              let c = format_coupling coeff c in
+              begin match fusion with
+              | (F23|F32) -> printf "s_vv_6D(%s,%s,%s,%s,%s)" c wf1 p1 wf2 p2
+              | (F12|F13) -> printf "v_sv_6D(%s,%s,%s,%s,%s)" c wf1 p1 wf2 p2
+              | (F21|F31) -> printf "v_sv_6D(%s,%s,%s,%s,%s)" c wf2 p2 wf1 p1
+              end
+
+          | Dim6_Scalar_Vector_Vector_DP coeff ->
+              let c = format_coupling coeff c in
+              begin match fusion with
+              | (F23|F32) -> printf "s_vv_6DP(%s,%s,%s,%s,%s)" c wf1 p1 wf2 p2
+              | (F12|F13) -> printf "v_sv_6DP(%s,%s,%s,%s,%s)" c wf1 p1 wf2 p2
+              | (F21|F31) -> printf "v_sv_6DP(%s,%s,%s,%s,%s)" c wf2 p2 wf1 p1
+              end
+
+          | Dim6_HAZ_D coeff ->
+              let c = format_coupling coeff c in
+              begin match fusion with
+              | F23 -> printf "h_az_D(%s,%s,%s,%s,%s)" c wf1 p1 wf2 p2
+              | F32 -> printf "h_az_D(%s,%s,%s,%s,%s)" c wf2 p2 wf1 p1
+              | F13 -> printf "a_hz_D(%s,%s,%s,%s,%s)" c wf1 p1 wf2 p2
+              | F31 -> printf "a_hz_D(%s,%s,%s,%s,%s)" c wf2 p2 wf1 p1
+              | F12 -> printf "z_ah_D(%s,%s,%s,%s,%s)" c wf2 p2 wf1 p1
+              | F21 -> printf "z_ah_D(%s,%s,%s,%s,%s)" c wf1 p1 wf2 p2
+              end
+          | Dim6_HAZ_DP coeff ->
+              let c = format_coupling coeff c in
+              begin match fusion with
+              | F23 -> printf "h_az_DP(%s,%s,%s,%s,%s)" c wf1 p1 wf2 p2
+              | F32 -> printf "h_az_DP(%s,%s,%s,%s,%s)" c wf2 p2 wf1 p1
+              | F13 -> printf "a_hz_DP(%s,%s,%s,%s,%s)" c wf1 p1 wf2 p2
+              | F31 -> printf "a_hz_DP(%s,%s,%s,%s,%s)" c wf2 p2 wf1 p1
+              | F12 -> printf "z_ah_DP(%s,%s,%s,%s,%s)" c wf2 p2 wf1 p1
+              | F21 -> printf "z_ah_DP(%s,%s,%s,%s,%s)" c wf1 p1 wf2 p2
+              end
+          | Gauge_Gauge_Gauge_i coeff ->
+              let c = format_coupling coeff c in
+              begin match fusion with
+              | F23 -> printf "g_gg_23(%s,%s,%s,%s,%s)" c wf1 p1 wf2 p2
+              | F32 -> printf "g_gg_23(%s,%s,%s,%s,%s)" c wf2 p2 wf1 p1
+              | F13 -> printf "g_gg_13(%s,%s,%s,%s,%s)" c wf1 p1 wf2 p2
+              | F31 -> printf "g_gg_13(%s,%s,%s,%s,%s)" c wf2 p2 wf1 p1
+              | F12 -> printf "(-1) * g_gg_13(%s,%s,%s,%s,%s)" c wf1 p1 wf2 p2
+              | F21 -> printf "(-1) * g_gg_13(%s,%s,%s,%s,%s)" c wf2 p2 wf1 p1
+              end
+
+          | Dim6_GGG coeff ->
+              let c = format_coupling coeff c in
+              begin match fusion with
+              | F23 -> printf "g_gg_6(%s,%s,%s,%s,%s)" c wf1 p1 wf2 p2
+              | F32 -> printf "g_gg_6(%s,%s,%s,%s,%s)" c wf2 p2 wf1 p1
+              | F12 -> printf "g_gg_6(%s,%s,%s,%s,%s)" c wf1 p1 wf2 p2
+              | F21 -> printf "g_gg_6(%s,%s,%s,%s,%s)" c wf2 p2 wf1 p1
+              | F13 -> printf "(-1) * g_gg_6(%s,%s,%s,%s,%s)" c wf1 p1 wf2 p2
+              | F31 -> printf "(-1) * g_gg_6(%s,%s,%s,%s,%s)" c wf2 p2 wf1 p1
+              end 
+
+          | Dim6_AWW_DP coeff ->
+              let c = format_coupling coeff c in
+              begin match fusion with
+              | F23 -> printf "a_ww_DP(%s,%s,%s,%s,%s)" c wf1 p1 wf2 p2
+              | F32 -> printf "a_ww_DP(%s,%s,%s,%s,%s)" c wf2 p2 wf1 p1
+              | F13 -> printf "w_aw_DP(%s,%s,%s,%s,%s)" c wf1 p1 wf2 p2
+              | F31 -> printf "w_aw_DP(%s,%s,%s,%s,%s)" c wf2 p2 wf1 p1
+              | F12 -> printf "(-1) * w_aw_DP(%s,%s,%s,%s,%s)" c wf1 p1 wf2 p2
+              | F21 -> printf "(-1) * w_aw_DP(%s,%s,%s,%s,%s)" c wf2 p2 wf1 p1
+              end
+
+          | Dim6_AWW_DW coeff ->
+              let c = format_coupling coeff c in
+              begin match fusion with
+              | F23 -> printf "a_ww_DW(%s,%s,%s,%s,%s)" c wf1 p1 wf2 p2
+              | F32 -> printf "a_ww_DW(%s,%s,%s,%s,%s)" c wf2 p2 wf1 p1
+              | F13 -> printf "(-1) * a_ww_DW(%s,%s,%s,%s,%s)" c wf1 p1 wf2 p2
+              | F31 -> printf "(-1) * a_ww_DW(%s,%s,%s,%s,%s)" c wf2 p2 wf1 p1
+              | F12 -> printf "a_ww_DW(%s,%s,%s,%s,%s)" c wf1 p1 wf2 p2
+              | F21 -> printf "a_ww_DW(%s,%s,%s,%s,%s)" c wf2 p2 wf1 p1
+              end
+
+          | Dim6_Gauge_Gauge_Gauge_i coeff ->
+              let c = format_coupling coeff c in
+              begin match fusion with
+              | F23 | F31 | F12 ->
+                  printf "kg_kgkg_i(%s,%s,%s,%s,%s)" c wf1 p1 wf2 p2
+              | F32 | F13 | F21 ->
+                  printf "kg_kgkg_i(%s,%s,%s,%s,%s)" c wf2 p2 wf1 p1
+              end
+
+          | Dim6_HHH coeff ->
+              let c = format_coupling coeff c in
+              begin match fusion with
+              | (F23|F32|F12|F21|F13|F31) -> 
+		printf "h_hh_6(%s,%s,%s,%s,%s)" c wf1 p1 wf2 p2
+              end
+
+          | Dim6_WWZ_DPWDW coeff ->
+              let c = format_coupling coeff c in
+              begin match fusion with
+              | F23 -> printf "w_wz_DPW(%s,%s,%s,%s,%s)" c wf1 p1 wf2 p2
+              | F32 -> printf "w_wz_DPW(%s,%s,%s,%s,%s)" c wf2 p2 wf1 p1
+              | F13 -> printf "(-1) * w_wz_DPW(%s,%s,%s,%s,%s)" c wf1 p1 wf2 p2
+              | F31 -> printf "(-1) * w_wz_DPW(%s,%s,%s,%s,%s)" c wf2 p2 wf1 p1
+              | F12 -> printf "z_ww_DPW(%s,%s,%s,%s,%s)" c wf1 p1 wf2 p2
+              | F21 -> printf "z_ww_DPW(%s,%s,%s,%s,%s)" c wf2 p2 wf1 p1
+              end
+          | Dim6_WWZ_DW coeff ->
+              let c = format_coupling coeff c in
+              begin match fusion with
+              | F23 -> printf "w_wz_DW(%s,%s,%s,%s,%s)" c wf1 p1 wf2 p2
+              | F32 -> printf "w_wz_DW(%s,%s,%s,%s,%s)" c wf2 p2 wf1 p1
+              | F13 -> printf "(-1) * w_wz_DW(%s,%s,%s,%s,%s)" c wf1 p1 wf2 p2
+              | F31 -> printf "(-1) * w_wz_DW(%s,%s,%s,%s,%s)" c wf2 p2 wf1 p1
+              | F12 -> printf "z_ww_DW(%s,%s,%s,%s,%s)" c wf1 p1 wf2 p2
+              | F21 -> printf "z_ww_DW(%s,%s,%s,%s,%s)" c wf2 p2 wf1 p1
+              end
+          | Dim6_WWZ_D coeff ->
+              let c = format_coupling coeff c in
+              begin match fusion with
+              | F23 -> printf "w_wz_D(%s,%s,%s,%s,%s)" c wf1 p1 wf2 p2
+              | F32 -> printf "w_wz_D(%s,%s,%s,%s,%s)" c wf2 p2 wf1 p1
+              | F13 -> printf "(-1) * w_wz_D(%s,%s,%s,%s,%s)" c wf1 p1 wf2 p2
+              | F31 -> printf "(-1) * w_wz_D(%s,%s,%s,%s,%s)" c wf2 p2 wf1 p1
+              | F12 -> printf "z_ww_D(%s,%s,%s,%s,%s)" c wf1 p1 wf2 p2
+              | F21 -> printf "z_ww_D(%s,%s,%s,%s,%s)" c wf2 p2 wf1 p1
+              end
+(*i
+          | Dim6_Glu_Glu_Glu coeff ->
+              let c = format_coupling coeff c in
+              begin match fusion with
+              | (F23|F31|F12) -> 
+                   printf "g_gg_glu(%s,%s,%s,%s,%s)" c wf1 p1 wf2 p2
+              | (F32|F13|F21) -> 
+                   printf "g_gg_glu(%s,%s,%s,%s,%s)" c wf2 p2 wf1 p1
+              end   
+i*)
+
           end
 
 (* Flip the sign to account for the~$\mathrm{i}^2$ relative to diagrams
@@ -3547,6 +3756,1127 @@ i*)
           | GBBG (coeff, fb, b, f) ->
               Fermions.print_current_g4 (coeff, fb, b, f) c wf1 wf2 wf3
                    fusion
+
+          | Dim6_H4_P2 coeff ->
+              let c = format_coupling coeff c in
+                  begin match fusion with
+                      | F134 | F143 | F234 | F243 | F314 | F413 | F324 | F423
+                      | F341 | F431 | F342 | F432 | F312 | F321 | F412 | F421
+                      | F231 | F132 | F241 | F142 | F123 | F213 | F124 | F214 ->
+	                  printf "hhhh_p2 (%s,%s,%s,%s,%s,%s,%s)" 
+                              c wf1 p1 wf2 p2 wf3 p3
+                  end
+          | Dim6_AHWW_DPB coeff ->
+              let c = format_coupling coeff c in
+                  begin match fusion with
+                  | F234 -> 
+                      printf "a_hww_DPB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf2 p2 wf3 p3
+                  | F243 -> 
+                      printf "a_hww_DPB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf3 p3 wf2 p2
+                  | F342 -> 
+                      printf "a_hww_DPB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf1 p1 wf2 p2
+                  | F324 -> 
+                      printf "a_hww_DPB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf1 p1 wf3 p3
+                  | F423 -> 
+                      printf "a_hww_DPB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf3 p3 wf1 p1
+                  | F432 -> 
+                      printf "a_hww_DPB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf2 p2 wf1 p1
+                  | F134 ->
+                      printf "h_aww_DPB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf2 p2 wf3 p3
+                  | F143 ->
+                      printf "h_aww_DPB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf3 p3 wf2 p2
+                  | F341 ->
+                      printf "h_aww_DPB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf1 p1 wf2 p2
+                  | F314 ->
+                      printf "h_aww_DPB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf1 p1 wf3 p3
+                  | F413 ->
+                      printf "h_aww_DPB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf3 p3 wf1 p1
+                  | F431 ->
+                      printf "h_aww_DPB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf2 p2 wf1 p1
+                  | F124 ->
+                      printf "w_ahw_DPB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf2 p2 wf3 p3
+                  | F142 ->
+                      printf "w_ahw_DPB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf3 p3 wf2 p2
+                  | F241 ->
+                      printf "w_ahw_DPB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf1 p1 wf2 p2
+                  | F214 ->
+                      printf "w_ahw_DPB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf1 p1 wf3 p3
+                  | F412 ->
+                      printf "w_ahw_DPB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf3 p3 wf1 p1
+                  | F421 ->
+                      printf "w_ahw_DPB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf2 p2 wf1 p1
+                  | F123  ->
+                      printf "(-1)*w_ahw_DPB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf2 p2 wf3 p3
+                  | F132  ->
+                      printf "(-1)*w_ahw_DPB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf3 p3 wf2 p2
+                  | F231  ->
+                      printf "(-1)*w_ahw_DPB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf1 p1 wf2 p2
+                  | F213  ->
+                      printf "(-1)*w_ahw_DPB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf1 p1 wf3 p3
+                  | F312  ->
+                      printf "(-1)*w_ahw_DPB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf3 p3 wf1 p1
+                  | F321  ->
+                      printf "(-1)*w_ahw_DPB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf2 p2 wf1 p1
+		  end
+          | Dim6_AHWW_DPW coeff ->
+              let c = format_coupling coeff c in
+                  begin match fusion with
+                  | F234 -> 
+                      printf "a_hww_DPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf2 p2 wf3 p3
+                  | F243 -> 
+                      printf "a_hww_DPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf3 p3 wf2 p2
+                  | F342 -> 
+                      printf "a_hww_DPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf1 p1 wf2 p2
+                  | F324 -> 
+                      printf "a_hww_DPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf1 p1 wf3 p3
+                  | F423 -> 
+                      printf "a_hww_DPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf3 p3 wf1 p1
+                  | F432 -> 
+                      printf "a_hww_DPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf2 p2 wf1 p1
+                  | F134 ->
+                      printf "h_aww_DPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf2 p2 wf3 p3
+                  | F143 ->
+                      printf "h_aww_DPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf3 p3 wf2 p2
+                  | F341 ->
+                      printf "h_aww_DPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf1 p1 wf2 p2
+                  | F314 ->
+                      printf "h_aww_DPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf1 p1 wf3 p3
+                  | F413 ->
+                      printf "h_aww_DPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf3 p3 wf1 p1
+                  | F431 ->
+                      printf "h_aww_DPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf2 p2 wf1 p1
+                  | F124 ->
+                      printf "w_ahw_DPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf2 p2 wf3 p3
+                  | F142 ->
+                      printf "w_ahw_DPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf3 p3 wf2 p2
+                  | F241 ->
+                      printf "w_ahw_DPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf1 p1 wf2 p2
+                  | F214 ->
+                      printf "w_ahw_DPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf1 p1 wf3 p3
+                  | F412 ->
+                      printf "w_ahw_DPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf3 p3 wf1 p1
+                  | F421 ->
+                      printf "w_ahw_DPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf2 p2 wf1 p1
+                  | F123  ->
+                      printf "(-1)*w_ahw_DPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf2 p2 wf3 p3
+                  | F132  ->
+                      printf "(-1)*w_ahw_DPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf3 p3 wf2 p2
+                  | F231  ->
+                      printf "(-1)*w_ahw_DPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf1 p1 wf2 p2
+                  | F213  ->
+                      printf "(-1)*w_ahw_DPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf1 p1 wf3 p3
+                  | F312  ->
+                      printf "(-1)*w_ahw_DPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf3 p3 wf1 p1
+                  | F321  ->
+                      printf "(-1)*w_ahw_DPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf2 p2 wf1 p1
+		  end
+          | Dim6_AHWW_DW coeff ->
+              let c = format_coupling coeff c in
+                 begin match fusion with
+                  | F234 -> 
+                      printf "a_hww_DW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf2 p2 wf3 p3
+                  | F243 -> 
+                      printf "a_hww_DW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf3 p3 wf2 p2
+                  | F342 -> 
+                      printf "a_hww_DW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf1 p1 wf2 p2
+                  | F324 -> 
+                      printf "a_hww_DW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf1 p1 wf3 p3
+                  | F423 -> 
+                      printf "a_hww_DW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf3 p3 wf1 p1
+                  | F432 -> 
+                      printf "a_hww_DW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf2 p2 wf1 p1
+                  | F134 ->
+                      printf "h_aww_DW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf2 p2 wf3 p3
+                  | F143 ->
+                      printf "h_aww_DW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf3 p3 wf2 p2
+                  | F341 ->
+                      printf "h_aww_DW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf1 p1 wf2 p2
+                  | F314 ->
+                      printf "h_aww_DW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf1 p1 wf3 p3
+                  | F413 ->
+                      printf "h_aww_DW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf3 p3 wf1 p1
+                  | F431 ->
+                      printf "h_aww_DW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf2 p2 wf1 p1
+                  | F124 ->
+                      printf "w3_ahw_DW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf2 p2 wf3 p3
+                  | F142 ->
+                      printf "w3_ahw_DW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf3 p3 wf2 p2
+                  | F241 ->
+                      printf "w3_ahw_DW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf1 p1 wf2 p2
+                  | F214 ->
+                      printf "w3_ahw_DW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf1 p1 wf3 p3
+                  | F412 ->
+                      printf "w3_ahw_DW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf3 p3 wf1 p1
+                  | F421 ->
+                      printf "w3_ahw_DW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf2 p2 wf1 p1
+                  | F123  ->
+                      printf "w4_ahw_DW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf2 p2 wf3 p3
+                  | F132  ->
+                      printf "w4_ahw_DW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf3 p3 wf2 p2
+                  | F231  ->
+                      printf "w4_ahw_DW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf1 p1 wf2 p2
+                  | F213  ->
+                      printf "w4_ahw_DW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf1 p1 wf3 p3
+                  | F312  ->
+                      printf "w4_ahw_DW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf3 p3 wf1 p1
+                  | F321  ->
+                      printf "w4_ahw_DW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf2 p2 wf1 p1
+(*i               | F234 | F134 | F124 | F123 -> 
+                      printf "a_hww_DW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf2 p2 wf3 p3
+                  | F243 | F143 | F142 | F132 -> 
+                      printf "a_hww_DW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf3 p3 wf2 p2
+                  | F342 | F341 | F241 | F231 -> 
+                      printf "a_hww_DW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf1 p1 wf2 p2
+                  | F324 | F314 | F214 | F213 -> 
+                      printf "a_hww_DW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf1 p1 wf3 p3
+                  | F423 | F413 | F412 | F312 -> 
+                      printf "a_hww_DW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf3 p3 wf1 p1
+                  | F432 | F431 | F421 | F321 -> 
+                      printf "a_hww_DW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf2 p2 wf1 p1 i*)
+		  end
+            | Dim6_Scalar2_Vector2_D coeff ->
+              let c = format_coupling coeff c in
+                  begin match fusion with 
+                  | F234 | F134 ->
+                      printf "h_hww_D(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf2 p2 wf3 p3
+                  | F243 | F143 ->
+                      printf "h_hww_D(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf3 p3 wf2 p2
+                  | F342 | F341 -> 
+                      printf "h_hww_D(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf1 p1 wf2 p2
+                  | F324 | F314 ->
+                      printf "h_hww_D(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf1 p1 wf3 p3
+                  | F423 | F413 ->
+                      printf "h_hww_D(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf3 p3 wf1 p1
+                  | F432 | F431 ->
+                      printf "h_hww_D(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf2 p2 wf1 p1
+                  | F124 | F123  ->
+                      printf "w_hhw_D(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf2 p2 wf3 p3
+                  | F142 | F132  ->
+                      printf "w_hhw_D(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf3 p3 wf2 p2
+                  | F241 | F231  ->
+                      printf "w_hhw_D(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf1 p1 wf2 p2
+                  | F214 | F213  ->
+                      printf "w_hhw_D(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf1 p1 wf3 p3
+                  | F412 | F312 -> 
+                      printf "w_hhw_D(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf3 p3 wf1 p1
+                  | F421 | F321  ->
+                      printf "w_hhw_D(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf2 p2 wf1 p1
+                  end
+            | Dim6_Scalar2_Vector2_DP coeff ->
+              let c = format_coupling coeff c in
+                  begin match fusion with
+                  | F234 | F134 -> 
+                      printf "h_hww_DP(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf2 p2 wf3 p3
+                  | F342 | F341  ->
+                      printf "h_hww_DP(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf1 p1 wf2 p2
+                  | F423 | F413  ->
+                      printf "h_hww_DP(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf3 p3 wf1 p1
+                  | F243 | F143  ->
+                      printf "h_hww_DP(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf3 p3 wf2 p2
+                  | F324 | F314  ->
+                      printf "h_hww_DP(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf1 p1 wf3 p3
+                  | F432 | F431  ->
+                      printf "h_hww_DP(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf2 p2 wf1 p1
+                  | F123 | F124 -> 
+                      printf "w_hhw_DP(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf2 p2 wf3 p3
+                  | F231 | F241->
+                      printf "w_hhw_DP(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf1 p1 wf2 p2
+                  | F312 | F412 ->
+                      printf "w_hhw_DP(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf3 p3 wf1 p1
+                  | F132 | F142->
+                      printf "w_hhw_DP(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf3 p3 wf2 p2
+                  | F213 | F214 ->
+                      printf "w_hhw_DP(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf1 p1 wf3 p3
+                  | F321 | F421 ->
+                      printf "w_hhw_DP(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf2 p2 wf1 p1
+(*i               | F234 ->
+                      printf "h_hww_DPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf2 p2 wf3 p3
+                  | F243 ->
+                      printf "h_hww_DPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf3 p3 wf2 p2
+                  | F342  -> 
+                      printf "h_hww_DPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf1 p1 wf2 p2
+                  | F324 ->
+                      printf "h_hww_DPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf1 p1 wf3 p3
+                  | F423 ->
+                      printf "h_hww_DPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf3 p3 wf1 p1
+                  | F432 ->
+                      printf "h_hww_DPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf2 p2 wf1 p1
+                  | F124 ->
+                      printf "w_hhw_DPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf2 p2 wf3 p3
+                  | F142 ->
+                      printf "w_hhw_DPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf3 p3 wf2 p2
+                  | F241 ->
+                      printf "w_hhw_DPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf1 p1 wf2 p2
+                  | F214 ->
+                      printf "w_hhw_DPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf1 p1 wf3 p3
+                  | F412 -> 
+                      printf "w_hhw_DPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf3 p3 wf1 p1
+                  | F421 ->
+                      printf "w_hhw_DPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf2 p2 wf1 p1
+                  | F134 ->
+                      printf "h_hww_DPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf2 p2 wf3 p3
+                  | F143 ->
+                      printf "h_hww_DPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf3 p3 wf2 p2
+                  | F341 -> 
+                      printf "h_hww_DPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf1 p1 wf2 p2
+                  | F314 ->
+                      printf "h_hww_DPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf1 p1 wf3 p3
+                  | F413 ->
+                      printf "h_hww_DPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf3 p3 wf1 p1
+                  | F431 ->
+                      printf "h_hww_DPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf2 p2 wf1 p1
+                  | F123  ->
+                      printf "w_hhw_DPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf2 p2 wf3 p3
+                  | F132  ->
+                      printf "w_hhw_DPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf3 p3 wf2 p2
+                  | F231  ->
+                      printf "w_hhw_DPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf1 p1 wf2 p2
+                  | F213  ->
+                      printf "w_hhw_DPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf1 p1 wf3 p3
+                  | F312 -> 
+                      printf "w_hhw_DPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf3 p3 wf1 p1
+                  | F321  ->
+                      printf "w_hhw_DPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf2 p2 wf1 p1   i*)
+                  end
+          | Dim6_Scalar2_Vector2_PB coeff ->
+              let c = format_coupling coeff c in
+                  begin match fusion with
+                  | F234 | F134 -> 
+                      printf "h_hvv_PB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf2 p2 wf3 p3
+                  | F342 | F341  ->
+                      printf "h_hvv_PB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf1 p1 wf2 p2
+                  | F423 | F413  ->
+                      printf "h_hvv_PB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf3 p3 wf1 p1
+                  | F243 | F143  ->
+                      printf "h_hvv_PB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf3 p3 wf2 p2
+                  | F324 | F314  ->
+                      printf "h_hvv_PB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf1 p1 wf3 p3
+                  | F432 | F431  ->
+                      printf "h_hvv_PB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf2 p2 wf1 p1
+                  | F123 | F124 -> 
+                      printf "v_hhv_PB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf2 p2 wf3 p3
+                  | F231 | F241->
+                      printf "v_hhv_PB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf1 p1 wf2 p2
+                  | F312 | F412 ->
+                      printf "v_hhv_PB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf3 p3 wf1 p1
+                  | F132 | F142->
+                      printf "v_hhv_PB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf3 p3 wf2 p2
+                  | F213 | F214 ->
+                      printf "v_hhv_PB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf1 p1 wf3 p3
+                  | F321 | F421 ->
+                      printf "v_hhv_PB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf2 p2 wf1 p1
+                  end  
+
+          | Dim6_HHZZ_T coeff ->
+              let c = format_coupling coeff c in
+                  begin match fusion with
+                  | F234 | F134 -> 
+                      printf "(%s)*(%s)*(%s)*(%s)"  c wf1 wf2 wf3
+                  | F342 | F341  ->
+                      printf "(%s)*(%s)*(%s)*(%s)"  c wf3 wf1 wf2
+                  | F423 | F413  ->
+                      printf "(%s)*(%s)*(%s)*(%s)"  c wf2 wf3 wf1
+                  | F243 | F143  ->
+                      printf "(%s)*(%s)*(%s)*(%s)"  c wf1 wf3 wf2
+                  | F324 | F314  ->
+                      printf "(%s)*(%s)*(%s)*(%s)"  c wf2 wf1 wf3 
+                  | F432 | F431  ->
+                      printf "(%s)*(%s)*(%s)*(%s)"  c wf3 wf2 wf1
+                  | F123 | F124 | F231 | F241 | F312 | F412 ->
+                      printf "(%s)*(%s)*(%s)*(%s)"  c wf1 wf2 wf3
+                  | F132 | F142 | F213 | F214 | F321 | F421 ->
+                      printf "(%s)*(%s)*(%s)*(%s)"  c wf1 wf2 wf3
+                  end  
+          | Dim6_Vector4_DW coeff ->
+              let c = format_coupling coeff c in
+                  begin match fusion with
+                  | F234 | F134 -> 
+                      printf "a_aww_DW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf2 p2 wf3 p3
+                  | F342 | F341  ->
+                      printf "a_aww_DW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf1 p1 wf2 p2
+                  | F423 | F413  ->
+                      printf "a_aww_DW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf3 p3 wf1 p1
+                  | F243 | F143  ->
+                      printf "a_aww_DW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf3 p3 wf2 p2
+                  | F324 | F314  ->
+                      printf "a_aww_DW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf1 p1 wf3 p3 
+                  | F432 | F431  ->
+                      printf "a_aww_DW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf2 p2 wf1 p1
+                  | F124 | F123 -> 
+                      printf "w_aaw_DW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf2 p2 wf3 p3
+                  | F241 | F231 ->
+                      printf "w_aaw_DW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf1 p1 wf2 p2
+                  | F412 | F312 ->
+                      printf "w_aaw_DW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf3 p3 wf1 p1
+                  | F142 | F132 ->
+                      printf "w_aaw_DW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf3 p3 wf2 p2
+                  | F214 | F213 ->
+                      printf "w_aaw_DW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf1 p1 wf3 p3
+                  | F421 | F321 ->
+                      printf "w_aaw_DW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf2 p2 wf1 p1
+                  end
+          | Dim6_Vector4_W coeff ->
+              let c = format_coupling coeff c in
+                  begin match fusion with
+                  | F234 | F134 -> 
+                      printf "a_aww_W(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf2 p2 wf3 p3
+                  | F342 | F341  ->
+                      printf "a_aww_W(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf1 p1 wf2 p2
+                  | F423 | F413  ->
+                      printf "a_aww_W(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf3 p3 wf1 p1
+                  | F243 | F143  ->
+                      printf "a_aww_W(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf3 p3 wf2 p2
+                  | F324 | F314  ->
+                      printf "a_aww_W(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf1 p1 wf3 p3
+                  | F432 | F431  ->
+                      printf "a_aww_W(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf2 p2 wf1 p1
+                  | F123 | F124 -> 
+                      printf "w_aaw_W(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf2 p2 wf3 p3
+                  | F231 | F241->
+                      printf "w_aaw_W(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf1 p1 wf2 p2
+                  | F312 | F412 ->
+                      printf "w_aaw_W(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf3 p3 wf1 p1
+                  | F132 | F142->
+                      printf "w_aaw_W(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf3 p3 wf2 p2
+                  | F213 | F214 ->
+                      printf "w_aaw_W(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf1 p1 wf3 p3
+                  | F321 | F421 ->
+                      printf "w_aaw_W(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf2 p2 wf1 p1
+                  end  
+            | Dim6_HWWZ_DW coeff ->
+              let c = format_coupling coeff c in
+                  begin match fusion with 
+                  | F234 ->
+                      printf "h_wwz_DW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf2 p2 wf3 p3
+                  | F243 ->
+                      printf "h_wwz_DW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf3 p3 wf2 p2
+                  | F342  -> 
+                      printf "h_wwz_DW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf1 p1 wf2 p2
+                  | F324 ->
+                      printf "h_wwz_DW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf1 p1 wf3 p3
+                  | F423 ->
+                      printf "h_wwz_DW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf3 p3 wf1 p1
+                  | F432 ->
+                      printf "h_wwz_DW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf2 p2 wf1 p1
+                  | F124 ->
+                      printf "(-1)*w_hwz_DW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf2 p2 wf3 p3
+                  | F142 ->
+                      printf "(-1)*w_hwz_DW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf3 p3 wf2 p2
+                  | F241 ->
+                      printf "(-1)*w_hwz_DW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf1 p1 wf2 p2
+                  | F214 ->
+                      printf "(-1)*w_hwz_DW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf1 p1 wf3 p3
+                  | F412 -> 
+                      printf "(-1)*w_hwz_DW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf3 p3 wf1 p1
+                  | F421 ->
+                      printf "(-1)*w_hwz_DW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf2 p2 wf1 p1
+                  | F134 ->
+                      printf "w_hwz_DW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf2 p2 wf3 p3
+                  | F143 ->
+                      printf "w_hwz_DW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf3 p3 wf2 p2
+                  | F341 -> 
+                      printf "w_hwz_DW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf1 p1 wf2 p2
+                  | F314 ->
+                      printf "w_hwz_DW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf1 p1 wf3 p3
+                  | F413 ->
+                      printf "w_hwz_DW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf3 p3 wf1 p1
+                  | F431 ->
+                      printf "w_hwz_DW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf2 p2 wf1 p1
+                  | F123  ->
+                      printf "z_hww_DW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf2 p2 wf3 p3
+                  | F132  ->
+                      printf "z_hww_DW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf3 p3 wf2 p2
+                  | F231  ->
+                      printf "z_hww_DW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf1 p1 wf2 p2
+                  | F213  ->
+                      printf "z_hww_DW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf1 p1 wf3 p3
+                  | F312 -> 
+                      printf "z_hww_DW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf3 p3 wf1 p1
+                  | F321  ->
+                      printf "z_hww_DW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf2 p2 wf1 p1
+                  end
+            | Dim6_HWWZ_DPB coeff ->
+              let c = format_coupling coeff c in
+                  begin match fusion with 
+                  | F234 ->
+                      printf "h_wwz_DPB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf2 p2 wf3 p3
+                  | F243 ->
+                      printf "h_wwz_DPB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf3 p3 wf2 p2
+                  | F342  -> 
+                      printf "h_wwz_DPB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf1 p1 wf2 p2
+                  | F324 ->
+                      printf "h_wwz_DPB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf1 p1 wf3 p3
+                  | F423 ->
+                      printf "h_wwz_DPB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf3 p3 wf1 p1
+                  | F432 ->
+                      printf "h_wwz_DPB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf2 p2 wf1 p1
+                  | F124 ->
+                      printf "(-1)*w_hwz_DPB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf2 p2 wf3 p3
+                  | F142 ->
+                      printf "(-1)*w_hwz_DPB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf3 p3 wf2 p2
+                  | F241 ->
+                      printf "(-1)*w_hwz_DPB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf1 p1 wf2 p2
+                  | F214 ->
+                      printf "(-1)*w_hwz_DPB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf1 p1 wf3 p3
+                  | F412 -> 
+                      printf "(-1)*w_hwz_DPB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf3 p3 wf1 p1
+                  | F421 ->
+                      printf "(-1)*w_hwz_DPB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf2 p2 wf1 p1
+                  | F134 ->
+                      printf "w_hwz_DPB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf2 p2 wf3 p3
+                  | F143 ->
+                      printf "w_hwz_DPB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf3 p3 wf2 p2
+                  | F341 -> 
+                      printf "w_hwz_DPB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf1 p1 wf2 p2
+                  | F314 ->
+                      printf "w_hwz_DPB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf1 p1 wf3 p3
+                  | F413 ->
+                      printf "w_hwz_DPB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf3 p3 wf1 p1
+                  | F431 ->
+                      printf "w_hwz_DPB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf2 p2 wf1 p1
+                  | F123  ->
+                      printf "z_hww_DPB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf2 p2 wf3 p3
+                  | F132  ->
+                      printf "z_hww_DPB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf3 p3 wf2 p2
+                  | F231  ->
+                      printf "z_hww_DPB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf1 p1 wf2 p2
+                  | F213  ->
+                      printf "z_hww_DPB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf1 p1 wf3 p3
+                  | F312 -> 
+                      printf "z_hww_DPB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf3 p3 wf1 p1
+                  | F321  ->
+                      printf "z_hww_DPB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf2 p2 wf1 p1
+                  end
+            | Dim6_HWWZ_DDPW coeff ->
+              let c = format_coupling coeff c in
+                  begin match fusion with 
+                  | F234 ->
+                      printf "h_wwz_DDPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf2 p2 wf3 p3
+                  | F243 ->
+                      printf "h_wwz_DDPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf3 p3 wf2 p2
+                  | F342  -> 
+                      printf "h_wwz_DDPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf1 p1 wf2 p2
+                  | F324 ->
+                      printf "h_wwz_DDPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf1 p1 wf3 p3
+                  | F423 ->
+                      printf "h_wwz_DDPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf3 p3 wf1 p1
+                  | F432 ->
+                      printf "h_wwz_DDPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf2 p2 wf1 p1
+                  | F124 ->
+                      printf "(-1)*w_hwz_DDPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf2 p2 wf3 p3
+                  | F142 ->
+                      printf "(-1)*w_hwz_DDPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf3 p3 wf2 p2
+                  | F241 ->
+                      printf "(-1)*w_hwz_DDPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf1 p1 wf2 p2
+                  | F214 ->
+                      printf "(-1)*w_hwz_DDPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf1 p1 wf3 p3
+                  | F412 -> 
+                      printf "(-1)*w_hwz_DDPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf3 p3 wf1 p1
+                  | F421 ->
+                      printf "(-1)*w_hwz_DDPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf2 p2 wf1 p1
+                  | F134 ->
+                      printf "w_hwz_DDPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf2 p2 wf3 p3
+                  | F143 ->
+                      printf "w_hwz_DDPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf3 p3 wf2 p2
+                  | F341 -> 
+                      printf "w_hwz_DDPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf1 p1 wf2 p2
+                  | F314 ->
+                      printf "w_hwz_DDPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf1 p1 wf3 p3
+                  | F413 ->
+                      printf "w_hwz_DDPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf3 p3 wf1 p1
+                  | F431 ->
+                      printf "w_hwz_DDPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf2 p2 wf1 p1
+                  | F123  ->
+                      printf "z_hww_DDPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf2 p2 wf3 p3
+                  | F132  ->
+                      printf "z_hww_DDPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf3 p3 wf2 p2
+                  | F231  ->
+                      printf "z_hww_DDPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf1 p1 wf2 p2
+                  | F213  ->
+                      printf "z_hww_DDPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf1 p1 wf3 p3
+                  | F312 -> 
+                      printf "z_hww_DDPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf3 p3 wf1 p1
+                  | F321  ->
+                      printf "z_hww_DDPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf2 p2 wf1 p1
+                  end
+            | Dim6_HWWZ_DPW coeff ->
+              let c = format_coupling coeff c in
+                  begin match fusion with 
+                  | F234 ->
+                      printf "h_wwz_DPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf2 p2 wf3 p3
+                  | F243 ->
+                      printf "h_wwz_DPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf3 p3 wf2 p2
+                  | F342  -> 
+                      printf "h_wwz_DPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf1 p1 wf2 p2
+                  | F324 ->
+                      printf "h_wwz_DPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf1 p1 wf3 p3
+                  | F423 ->
+                      printf "h_wwz_DPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf3 p3 wf1 p1
+                  | F432 ->
+                      printf "h_wwz_DPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf2 p2 wf1 p1
+                  | F124 ->
+                      printf "(-1)*w_hwz_DPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf2 p2 wf3 p3
+                  | F142 ->
+                      printf "(-1)*w_hwz_DPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf3 p3 wf2 p2
+                  | F241 ->
+                      printf "(-1)*w_hwz_DPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf1 p1 wf2 p2
+                  | F214 ->
+                      printf "(-1)*w_hwz_DPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf1 p1 wf3 p3
+                  | F412 -> 
+                      printf "(-1)*w_hwz_DPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf3 p3 wf1 p1
+                  | F421 ->
+                      printf "(-1)*w_hwz_DPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf2 p2 wf1 p1
+                  | F134 ->
+                      printf "w_hwz_DPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf2 p2 wf3 p3
+                  | F143 ->
+                      printf "w_hwz_DPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf3 p3 wf2 p2
+                  | F341 -> 
+                      printf "w_hwz_DPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf1 p1 wf2 p2
+                  | F314 ->
+                      printf "w_hwz_DPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf1 p1 wf3 p3
+                  | F413 ->
+                      printf "w_hwz_DPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf3 p3 wf1 p1
+                  | F431 ->
+                      printf "w_hwz_DPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf2 p2 wf1 p1
+                  | F123  ->
+                      printf "z_hww_DPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf2 p2 wf3 p3
+                  | F132  ->
+                      printf "z_hww_DPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf3 p3 wf2 p2
+                  | F231  ->
+                      printf "z_hww_DPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf1 p1 wf2 p2
+                  | F213  ->
+                      printf "z_hww_DPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf1 p1 wf3 p3
+                  | F312 -> 
+                      printf "z_hww_DPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf3 p3 wf1 p1
+                  | F321  ->
+                      printf "z_hww_DPW(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf2 p2 wf1 p1
+                  end
+            | Dim6_AHHZ_D coeff ->
+              let c = format_coupling coeff c in
+                  begin match fusion with 
+                  | F234 ->
+                      printf "a_hhz_D(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf2 p2 wf3 p3
+                  | F243 ->
+                      printf "a_hhz_D(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf3 p3 wf2 p2
+                  | F342  -> 
+                      printf "a_hhz_D(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf1 p1 wf2 p2
+                  | F324 ->
+                      printf "a_hhz_D(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf1 p1 wf3 p3
+                  | F423 ->
+                      printf "a_hhz_D(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf3 p3 wf1 p1
+                  | F432 ->
+                      printf "a_hhz_D(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf2 p2 wf1 p1
+                  | F124 ->
+                      printf "h_ahz_D(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf2 p2 wf3 p3
+                  | F142 ->
+                      printf "h_ahz_D(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf3 p3 wf2 p2
+                  | F241 ->
+                      printf "h_ahz_D(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf1 p1 wf2 p2
+                  | F214 ->
+                      printf "h_ahz_D(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf1 p1 wf3 p3
+                  | F412 -> 
+                      printf "h_ahz_D(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf3 p3 wf1 p1
+                  | F421 ->
+                      printf "h_ahz_D(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf2 p2 wf1 p1
+                  | F134 ->
+                      printf "h_ahz_D(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf2 p2 wf3 p3
+                  | F143 ->
+                      printf "h_ahz_D(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf3 p3 wf2 p2
+                  | F341 -> 
+                      printf "h_ahz_D(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf1 p1 wf2 p2
+                  | F314 ->
+                      printf "h_ahz_D(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf1 p1 wf3 p3
+                  | F413 ->
+                      printf "h_ahz_D(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf3 p3 wf1 p1
+                  | F431 ->
+                      printf "h_ahz_D(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf2 p2 wf1 p1
+                  | F123  ->
+                      printf "z_ahh_D(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf2 p2 wf3 p3
+                  | F132  ->
+                      printf "z_ahh_D(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf3 p3 wf2 p2
+                  | F231  ->
+                      printf "z_ahh_D(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf1 p1 wf2 p2
+                  | F213  ->
+                      printf "z_ahh_D(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf1 p1 wf3 p3
+                  | F312 -> 
+                      printf "z_ahh_D(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf3 p3 wf1 p1
+                  | F321  ->
+                      printf "z_ahh_D(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf2 p2 wf1 p1
+                  end
+            | Dim6_AHHZ_DP coeff ->
+              let c = format_coupling coeff c in
+                  begin match fusion with 
+                  | F234 ->
+                      printf "a_hhz_DP(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf2 p2 wf3 p3
+                  | F243 ->
+                      printf "a_hhz_DP(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf3 p3 wf2 p2
+                  | F342  -> 
+                      printf "a_hhz_DP(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf1 p1 wf2 p2
+                  | F324 ->
+                      printf "a_hhz_DP(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf1 p1 wf3 p3
+                  | F423 ->
+                      printf "a_hhz_DP(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf3 p3 wf1 p1
+                  | F432 ->
+                      printf "a_hhz_DP(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf2 p2 wf1 p1
+                  | F124 ->
+                      printf "h_ahz_DP(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf2 p2 wf3 p3
+                  | F142 ->
+                      printf "h_ahz_DP(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf3 p3 wf2 p2
+                  | F241 ->
+                      printf "h_ahz_DP(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf1 p1 wf2 p2
+                  | F214 ->
+                      printf "h_ahz_DP(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf1 p1 wf3 p3
+                  | F412 -> 
+                      printf "h_ahz_DP(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf3 p3 wf1 p1
+                  | F421 ->
+                      printf "h_ahz_DP(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf2 p2 wf1 p1
+                  | F134 ->
+                      printf "h_ahz_DP(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf2 p2 wf3 p3
+                  | F143 ->
+                      printf "h_ahz_DP(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf3 p3 wf2 p2
+                  | F341 -> 
+                      printf "h_ahz_DP(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf1 p1 wf2 p2
+                  | F314 ->
+                      printf "h_ahz_DP(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf1 p1 wf3 p3
+                  | F413 ->
+                      printf "h_ahz_DP(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf3 p3 wf1 p1
+                  | F431 ->
+                      printf "h_ahz_DP(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf2 p2 wf1 p1
+                  | F123  ->
+                      printf "z_ahh_DP(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf2 p2 wf3 p3
+                  | F132  ->
+                      printf "z_ahh_DP(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf3 p3 wf2 p2
+                  | F231  ->
+                      printf "z_ahh_DP(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf1 p1 wf2 p2
+                  | F213  ->
+                      printf "z_ahh_DP(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf1 p1 wf3 p3
+                  | F312 -> 
+                      printf "z_ahh_DP(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf3 p3 wf1 p1
+                  | F321  ->
+                      printf "z_ahh_DP(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf2 p2 wf1 p1
+                  end
+            | Dim6_AHHZ_PB coeff ->
+              let c = format_coupling coeff c in
+                  begin match fusion with 
+                  | F234 ->
+                      printf "a_hhz_PB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf2 p2 wf3 p3
+                  | F243 ->
+                      printf "a_hhz_PB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf3 p3 wf2 p2
+                  | F342  -> 
+                      printf "a_hhz_PB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf1 p1 wf2 p2
+                  | F324 ->
+                      printf "a_hhz_PB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf1 p1 wf3 p3
+                  | F423 ->
+                      printf "a_hhz_PB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf3 p3 wf1 p1
+                  | F432 ->
+                      printf "a_hhz_PB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf2 p2 wf1 p1
+                  | F124 ->
+                      printf "h_ahz_PB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf2 p2 wf3 p3
+                  | F142 ->
+                      printf "h_ahz_PB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf3 p3 wf2 p2
+                  | F241 ->
+                      printf "h_ahz_PB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf1 p1 wf2 p2
+                  | F214 ->
+                      printf "h_ahz_PB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf1 p1 wf3 p3
+                  | F412 -> 
+                      printf "h_ahz_PB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf3 p3 wf1 p1
+                  | F421 ->
+                      printf "h_ahz_PB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf2 p2 wf1 p1
+                  | F134 ->
+                      printf "h_ahz_PB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf2 p2 wf3 p3
+                  | F143 ->
+                      printf "h_ahz_PB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf3 p3 wf2 p2
+                  | F341 -> 
+                      printf "h_ahz_PB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf1 p1 wf2 p2
+                  | F314 ->
+                      printf "h_ahz_PB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf1 p1 wf3 p3
+                  | F413 ->
+                      printf "h_ahz_PB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf3 p3 wf1 p1
+                  | F431 ->
+                      printf "h_ahz_PB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf2 p2 wf1 p1
+                  | F123  ->
+                      printf "z_ahh_PB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf2 p2 wf3 p3
+                  | F132  ->
+                      printf "z_ahh_PB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf3 p3 wf2 p2
+                  | F231  ->
+                      printf "z_ahh_PB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf1 p1 wf2 p2
+                  | F213  ->
+                      printf "z_ahh_PB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf1 p1 wf3 p3
+                  | F312 -> 
+                      printf "z_ahh_PB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf3 p3 wf1 p1
+                  | F321  ->
+                      printf "z_ahh_PB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf2 p2 wf1 p1
+                  end
+          | Dim6_Scalar2_Vector2_PB coeff ->
+              let c = format_coupling coeff c in
+                  begin match fusion with
+                  | F234 | F134 -> 
+                      printf "h_hvv_PB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf2 p2 wf3 p3
+                  | F342 | F341  ->
+                      printf "h_hvv_PB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf1 p1 wf2 p2
+                  | F423 | F413  ->
+                      printf "h_hvv_PB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf3 p3 wf1 p1
+                  | F243 | F143  ->
+                      printf "h_hvv_PB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf3 p3 wf2 p2
+                  | F324 | F314  ->
+                      printf "h_hvv_PB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf1 p1 wf3 p3
+                  | F432 | F431  ->
+                      printf "h_hvv_PB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf2 p2 wf1 p1
+                  | F123 | F124 -> 
+                      printf "v_hhv_PB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf2 p2 wf3 p3
+                  | F231 | F241->
+                      printf "v_hhv_PB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf1 p1 wf2 p2
+                  | F312 | F412 ->
+                      printf "v_hhv_PB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf3 p3 wf1 p1
+                  | F132 | F142->
+                      printf "v_hhv_PB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf1 p1 wf3 p3 wf2 p2
+                  | F213 | F214 ->
+                      printf "v_hhv_PB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf2 p2 wf1 p1 wf3 p3
+                  | F321 | F421 ->
+                      printf "v_hhv_PB(%s,%s,%s,%s,%s,%s,%s)"
+                          c wf3 p3 wf2 p2 wf1 p1
+                  end  
 
 (* \begin{dubious}
      In principle, [p4] could be obtained from the left hand side \ldots
@@ -5985,11 +7315,3 @@ module Ocaml = Dummy
 (* \thocwmodulesection{\LaTeX} *)
 
 module LaTeX = Dummy
-
-(*i
- *  Local Variables:
- *  mode:caml
- *  indent-tabs-mode:nil
- *  page-delimiter:"^(\\* .*\n"
- *  End:
-i*)

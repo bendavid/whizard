@@ -1,4 +1,4 @@
-! WHIZARD 2.2.7 Aug 11 2015
+! WHIZARD 2.2.8 Nov 22 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,11 +6,14 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
-!     Fabian Bach <fabian.bach@desy.de>
+!     Fabian Bach <fabian.bach@t-online.de>
+!     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
+!     Soyoung Shim <soyoung.shim@desy.de>
+!     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, Daniel Wiesler 
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -82,6 +85,7 @@ contains
     write (u, *)
     write (u, "(A,L1)")  "success = ", success
     deallocate (tag)
+    close (u_tmp)
     call cstream%final ()
     
     write (u, *)
@@ -112,6 +116,7 @@ contains
     write (u, *)
     write (u, "(A,L1)")  "success = ", success
     deallocate (tag)
+    close (u_tmp)
     call cstream%final ()
     
     write (u, *)
@@ -142,7 +147,9 @@ contains
     call tag%write (u)
     write (u, *)
     write (u, "(A,L1)")  "success = ", success
+    close (u_tmp)
     deallocate (tag)
+
     call cstream%final ()
     
     write (u, *)
@@ -170,6 +177,7 @@ contains
     write (u, *)
     write (u, "(A,L1)")  "success = ", success
     deallocate (tag)
+    close (u_tmp)
     call cstream%final ()
     
     write (u, "(A)")
@@ -223,6 +231,7 @@ contains
     write (u, *)
     write (u, "(A,L1)")  "success = ", success
     deallocate (tag1, tag2)
+    close (u_tmp)
     call cstream%final ()
     
     write (u, *)
@@ -257,6 +266,7 @@ contains
     write (u, *)
     write (u, "(A,L1)")  "success = ", success
     deallocate (tag1, tag2)
+    close (u_tmp)
     call cstream%final ()
     
     write (u, "(A)")
@@ -302,6 +312,7 @@ contains
     write (u, "(A,L1)")  "content = ", tag%has_content
     write (u, *)
     deallocate (tag)
+    close (u_tmp)
     call cstream%final ()
     
     write (u, "(A)")  "* Tag with content"
@@ -333,6 +344,7 @@ contains
     write (u, "(A,L1)")  "content = ", tag%has_content
     write (u, "(A,L1)")  "closing = ", closing
     deallocate (tag)
+    close (u_tmp)
     call cstream%final ()
     
     write (u, *)
@@ -372,6 +384,7 @@ contains
     write (u, "(A,L1)")  "success = ", success
     write (u, "(A,L1)")  "content = ", tag%has_content
     deallocate (tag)
+    close (u_tmp)
     call cstream%final ()
     
     write (u, "(A)")
@@ -417,6 +430,7 @@ contains
     call tag%write (u)
     write (u, *)
     deallocate (tag)
+    close (u_tmp)
     call cstream%final ()
     
     write (u, "(A)")

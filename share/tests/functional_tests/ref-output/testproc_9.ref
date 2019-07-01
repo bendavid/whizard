@@ -90,6 +90,7 @@ $sample = "testproc_9_1"
 | Events: generating 1 unweighted, unpolarized events ...
 | Events: event normalization mode '1'
 |         ... event sample complete.
+| Events: actual unweighting efficiency = 100.00 %
 | Events: closing ASCII file 'testproc_9_1.debug'
 $sample = "testproc_9_2"
 ?debug_process = true
@@ -105,6 +106,7 @@ $sample = "testproc_9_2"
 | Events: generating 1 unweighted, unpolarized events ...
 | Events: event normalization mode '1'
 |         ... event sample complete.
+| Events: actual unweighting efficiency = 100.00 %
 | Events: closing ASCII file 'testproc_9_2.debug'
 $sample = "testproc_9_3"
 ?debug_process = false
@@ -120,6 +122,7 @@ $sample = "testproc_9_3"
 | Events: generating 1 unweighted, unpolarized events ...
 | Events: event normalization mode '1'
 |         ... event sample complete.
+| Events: actual unweighting efficiency = 100.00 %
 | Events: closing ASCII file 'testproc_9_3.debug'
 | There were no errors and    2 warning(s).
 | WHIZARD run finished.

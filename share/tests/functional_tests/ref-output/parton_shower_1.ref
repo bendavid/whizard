@@ -81,6 +81,7 @@ $sample = "parton_shower_1"
 | Events: generating 1 unweighted, unpolarized events ...
 | Events: event normalization mode '1'
 |         ... event sample complete.
+| Events: actual unweighting efficiency = 100.00 %
 | Events: closing ASCII file 'parton_shower_1.evt'
 | Events: closing raw file 'parton_shower_1.evx'
 | WHIZARD run finished.

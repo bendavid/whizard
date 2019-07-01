@@ -6,10 +6,10 @@
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
-#     Fabian Bach <fabian.bach@desy.de>
+#     Fabian Bach <fabian.bach@t-online.de>
 #     Bijan Chokoufe <bijan.chokoufe@desy.de>
 #     Christian Speckner <cnspeckn@googlemail.com>
-#     Marco Sekulla <marco.sekulla@desy.de>
+#     Marco Sekulla <marco.sekulla@kit.edu>
 #     Christian Weiss <christian.weiss@desy.de>
 #     Felix Braam, Sebastian Schmidt,
 #     Hans-Werner Boschmann, Daniel Wiesler
@@ -39,6 +39,7 @@ check_LTLIBRARIES = libprocess_integration_ut.la
 libprocess_integration_la_SOURCES = \
   subevt_expr.f90 \
   parton_states.f90 \
+  pcm_base.f90 \
   processes.f90 \
   process_stacks.f90
 

@@ -1,4 +1,4 @@
-! WHIZARD 2.2.7 Aug 11 2015
+! WHIZARD 2.2.8 Nov 22 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,11 +6,14 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
-!     Fabian Bach <fabian.bach@desy.de>
+!     Fabian Bach <fabian.bach@t-online.de>
+!     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
+!     Soyoung Shim <soyoung.shim@desy.de>
+!     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, Daniel Wiesler 
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -63,6 +66,7 @@ module integrations_uti
   public :: integrations_6
   public :: integrations_7
   public :: integrations_8
+  public :: integrations_9
   public :: integrations_history_1
 
 contains
@@ -685,6 +689,81 @@ contains
     write (u, "(A)")  "* Test output end: integrations_8"
     
   end subroutine integrations_8
+  
+  subroutine integrations_9 (u)
+    integer, intent(in) :: u
+    type(string_t) :: libname, procname
+    type(rt_data_t), target :: global
+
+    type(string_t) :: wgt_expr_text
+    type(ifile_t) :: ifile
+    type(stream_t) :: stream
+    type(parse_tree_t) :: parse_tree
+    
+    write (u, "(A)")  "* Test output: integrations_9"
+    write (u, "(A)")  "*   Purpose: integrate test process"
+    write (u, "(A)")
+
+    call syntax_model_file_init ()
+
+    call global%global_init ()
+
+    write (u, "(A)")  "* Prepare a weight expression"
+    write (u, "(A)")
+
+    call syntax_pexpr_init ()
+    wgt_expr_text = "eval 2 * sgn (Pz) - 1 [s]"
+    call ifile_append (ifile, wgt_expr_text)
+    call stream_init (stream, ifile)
+    call parse_tree_init_expr (parse_tree, stream, .true.)
+    global%pn%weight_expr => parse_tree%get_root_ptr ()
+    
+    write (u, "(A)")  "* Build and evaluate a test process"
+    write (u, "(A)")
+
+    libname = "integration_9"
+    procname = "prc_config_a"
+    
+    call prepare_test_library (global, libname, 1)
+    call compile_library (libname, global)
+
+    call global%set_string (var_str ("$run_id"), &
+         var_str ("integrations1"), is_known = .true.)
+    call global%set_string (var_str ("$method"), &
+         var_str ("unit_test"), is_known = .true.)
+    call global%set_string (var_str ("$phs_method"), &
+         var_str ("single"), is_known = .true.)
+    call global%set_string (var_str ("$integration_method"),&
+         var_str ("midpoint"), is_known = .true.)
+    call global%set_log (var_str ("?vis_history"),&
+         .false., is_known = .true.)    
+    call global%set_log (var_str ("?integration_timer"),&
+         .false., is_known = .true.) 
+    call global%set_int (var_str ("seed"), &
+         0, is_known=.true.)    
+    
+    call global%set_real (var_str ("sqrts"),&
+         1000._default, is_known = .true.)
+
+    call global%it_list%init ([1], [1000])
+
+    call reset_interaction_counter ()
+    call integrate_process (procname, global, local_stack=.true.)
+
+    call global%write (u, vars = [ &
+         var_str ("$method"), &
+         var_str ("sqrts"), &
+         var_str ("$integration_method"), &
+         var_str ("$phs_method"), &
+         var_str ("$run_id")])
+    
+    call global%final ()
+    call syntax_model_file_final ()
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: integrations_9"
+    
+  end subroutine integrations_9
   
   subroutine integrations_history_1 (u)
     integer, intent(in) :: u

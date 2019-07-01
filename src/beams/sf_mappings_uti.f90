@@ -1,4 +1,4 @@
-! WHIZARD 2.2.7 Aug 11 2015
+! WHIZARD 2.2.8 Nov 22 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,11 +6,14 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
-!     Fabian Bach <fabian.bach@desy.de>
+!     Fabian Bach <fabian.bach@t-online.de>
+!     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
+!     Soyoung Shim <soyoung.shim@desy.de>
+!     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, Daniel Wiesler 
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -33,7 +36,7 @@
 module sf_mappings_uti
 
   use kinds, only: default
-  use format_defs, only: FMT_12, FMT_13, FMT_14, FMT_15, FMT_16
+  use format_defs, only: FMT_11, FMT_12, FMT_13, FMT_14, FMT_15, FMT_16
 
   use sf_mappings
 
@@ -595,13 +598,13 @@ contains
     write (u, "(A)")  "Probe at (0.9999,0.02):"
     p = [0.9999_default, 0.02_default]
     pb= [0.0001_default, 0.98_default]
-    call mapping%check (u, p, pb, FMT_15, FMT_12)
+    call mapping%check (u, p, pb, FMT_11, FMT_12)
 
     write (u, *)
     write (u, "(A)")  "Probe at (0.9999,0.98):"
     p = [0.9999_default, 0.98_default]
     pb= [0.0001_default, 0.02_default]
-    call mapping%check (u, p, pb, FMT_15, FMT_12)
+    call mapping%check (u, p, pb, FMT_11, FMT_12)
 
     write (u, *)
     write (u, "(A)")  "Compute integral:"

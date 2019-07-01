@@ -1,4 +1,4 @@
-! WHIZARD 2.2.7 Aug 11 2015
+! WHIZARD 2.2.8 Nov 22 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,11 +6,14 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
-!     Fabian Bach <fabian.bach@desy.de>
+!     Fabian Bach <fabian.bach@t-online.de>
+!     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
+!     Soyoung Shim <soyoung.shim@desy.de>
+!     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, Daniel Wiesler 
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -62,6 +65,7 @@ module mci_vamp_uti
   public :: mci_vamp_13
   public :: mci_vamp_14
   public :: mci_vamp_15
+  public :: mci_vamp_16
 
   type, extends (mci_sampler_t) :: test_sampler_1_t
      real(default), dimension(:), allocatable :: x
@@ -119,6 +123,8 @@ contains
        write (u, "(1x,A)") "Test sampler: f(x) = 11 x^10"
     case (3)
        write (u, "(1x,A)") "Test sampler: f(x) = 11 x^10 * 2 * cos^2 (2 pi y)"
+    case (4)
+       write (u, "(1x,A)") "Test sampler: f(x) = (1 - 3 x^2) theta(x - 1/2)"
     end select
   end subroutine test_sampler_1_write
   
@@ -139,6 +145,12 @@ contains
        sampler%val = 11 * x_in(1) ** 10
     case (3)
        sampler%val = 11 * x_in(1) ** 10 * 2 * cos (twopi * x_in(2)) ** 2
+    case (4)
+       if (x_in(1) >= .5_default) then
+          sampler%val = 1 - 3 * x_in(1) ** 2
+       else
+          sampler%val = 0
+       end if
     end select
     call sampler%fetch (val, x, f)
   end subroutine test_sampler_1_evaluate
@@ -1754,6 +1766,84 @@ contains
     write (u, "(A)")  "* Test output end: mci_vamp_15"
 
   end subroutine mci_vamp_15
+
+  subroutine mci_vamp_16 (u)
+    integer, intent(in) :: u
+    type(grid_parameters_t) :: grid_par
+    class(mci_t), allocatable, target :: mci
+    class(mci_instance_t), pointer :: mci_instance => null ()
+    class(mci_sampler_t), allocatable :: sampler
+    class(rng_t), allocatable :: rng
+    
+    write (u, "(A)")  "* Test output: mci_vamp_16"
+    write (u, "(A)")  "*   Purpose: integrate function in one dimension &
+         &(single channel)"
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Initialize integrator"
+    write (u, "(A)")
+
+    allocate (mci_vamp_t :: mci)
+    call mci%set_dimensions (1, 1)
+    select type (mci)
+    type is (mci_vamp_t)
+       grid_par%use_vamp_equivalences = .false.
+       call mci%set_grid_parameters (grid_par)
+       mci%negative_weights = .true.
+    end select
+    
+    allocate (rng_tao_t :: rng)
+    call rng%init ()
+    call mci%import_rng (rng)
+
+    call mci%write (u)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Initialize instance"
+    write (u, "(A)")
+    
+    call mci%allocate_instance (mci_instance)
+    call mci_instance%init (mci)
+    
+    write (u, "(A)")  "* Initialize test sampler"
+    write (u, "(A)")
+    
+    allocate (test_sampler_1_t :: sampler)
+    select type (sampler)
+    type is (test_sampler_1_t)
+       sampler%mode = 4
+    end select
+    call sampler%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Integrate with n_calls = 1000"
+    write (u, "(A)")  "   (lower precision to avoid"
+    write (u, "(A)")  "      numerical noise)"
+    write (u, "(A)")
+    
+    select type (mci)
+    type is (mci_vamp_t)
+       call mci%add_pass ()
+    end select
+    call mci%integrate (mci_instance, sampler, 1, 1000, pacify = .true.)
+    call mci%write (u, .true.)
+ 
+    write (u, "(A)")
+    write (u, "(A)")  "* Contents of mci_instance:"
+    write (u, "(A)")
+    
+    call mci_instance%write (u, .true.)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Cleanup"
+
+    call mci_instance%final ()
+    call mci%final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: mci_vamp_16"
+
+  end subroutine mci_vamp_16
 
 
 end module mci_vamp_uti

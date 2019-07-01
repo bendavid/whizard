@@ -239,6 +239,7 @@ $sample = "smtest_11a"
 | Events: generating 1 unweighted, unpolarized events ...
 | Events: event normalization mode '1'
 |         ... event sample complete.
+| Events: actual unweighting efficiency = 100.00 %
 | Events: closing ASCII file 'smtest_11a.mokka.evt'
 | Events: closing raw file 'smtest_11a.evx'
 ?hepevt_ensure_order = true
@@ -259,6 +260,7 @@ $sample = "smtest_11b"
 | Events: generating 1 unweighted, unpolarized events ...
 | Events: event normalization mode '1'
 |         ... event sample complete.
+| Events: actual unweighting efficiency =  33.33 %
 | Events: closing ASCII file 'smtest_11b.mokka.evt'
 | Events: closing raw file 'smtest_11b.evx'
 | There were no errors and    5 warning(s).

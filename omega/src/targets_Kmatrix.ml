@@ -1,4 +1,4 @@
-(* $Id: targets_Kmatrix.ml 6465 2015-01-10 15:22:31Z jr_reuter $
+(* $Id: targets_Kmatrix.ml 7367 2015-11-13 17:28:39Z jr_reuter $
 
    Copyright (C) 1999-2015 by
 
@@ -6,7 +6,7 @@
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
        Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
        with contributions from
-       Marco Sekulla <sekulla@physik.uni-siegen.de>
+       Marco Sekulla <marco.sekulla@kit.edu>
        Christian Speckner <christian.speckner@physik.uni-freiburg.de>
 
    WHIZARD is free software; you can redistribute it and/or modify it
@@ -24,8 +24,8 @@
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
 let rcs_file = RCS.parse "Targets_Kmatrix" ["K-Matrix Support routines"]
-    { RCS.revision = "$Revision: 6465 $";
-      RCS.date = "$Date: 2015-01-10 16:22:31 +0100 (Sat, 10 Jan 2015) $";
+    { RCS.revision = "$Revision: 7367 $";
+      RCS.date = "$Date: 2015-11-13 18:28:39 +0100 (Fri, 13 Nov 2015) $";
       RCS.author = "$Author: jr_reuter $";
       RCS.source
         = "$URL: svn+ssh://jr_reuter@login.hepforge.org/hepforge/svn/whizard/trunk/omega/src/targets_Kmatrix.ml $" }

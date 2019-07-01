@@ -1,4 +1,4 @@
-! WHIZARD 2.2.7 Aug 11 2015
+! WHIZARD 2.2.8 Nov 22 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,11 +6,14 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
-!     Fabian Bach <fabian.bach@desy.de>
+!     Fabian Bach <fabian.bach@t-online.de>
+!     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
+!     Soyoung Shim <soyoung.shim@desy.de>
+!     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, Daniel Wiesler 
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -37,6 +40,7 @@ module eio_hepmc
   use string_utils
   use diagnostics
   use particles
+  use model_data
   use event_base
   use hep_events
   use eio_data
@@ -60,6 +64,7 @@ module eio_hepmc
      type(hepmc_iostream_t) :: iostream
      type(hepmc_event_t) :: hepmc_event
      integer, dimension(:), allocatable :: proc_num_id
+     class(model_data_t), pointer :: default_model => null ()
    contains
      procedure :: set_parameters => eio_hepmc_set_parameters
      procedure :: write => eio_hepmc_write
@@ -80,15 +85,20 @@ contains
   
   ! subroutine eio_hepmc_set_parameters (eio, keep_beams, recover_beams, extension)
   subroutine eio_hepmc_set_parameters &
-       (eio, recover_beams, use_alpha_s_from_file, use_scale_from_file, &
+       (eio, default_model, &
+       recover_beams, use_alpha_s_from_file, use_scale_from_file, &
        extension, output_cross_section)
     class(eio_hepmc_t), intent(inout) :: eio
+    class(model_data_t), intent(in), optional, target :: default_model
     logical, intent(in), optional :: recover_beams 
     logical, intent(in), optional :: use_alpha_s_from_file
     logical, intent(in), optional :: use_scale_from_file
     logical, intent(in), optional :: output_cross_section
     type(string_t), intent(in), optional :: extension    
-    if (present (recover_beams))  eio%recover_beams = recover_beams
+    if (present (default_model)) &
+         eio%default_model => default_model
+    if (present (recover_beams)) &
+         eio%recover_beams = recover_beams
     if (present (use_alpha_s_from_file)) &
          eio%use_alpha_s_from_file = use_alpha_s_from_file
     if (present (use_scale_from_file)) &
@@ -298,7 +308,8 @@ contains
     iostat = 0
     call event%reset ()
     call event%select (1, 1, 1)
-    call hepmc_to_event (event, eio%hepmc_event, eio%fallback_model, &
+    call hepmc_to_event (event, eio%hepmc_event, &
+         eio%default_model, eio%fallback_model, &
          recover_beams = eio%recover_beams, &
          use_alpha_s = eio%use_alpha_s_from_file, &
          use_scale = eio%use_scale_from_file) 

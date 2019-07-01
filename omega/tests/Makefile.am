@@ -1,5 +1,5 @@
 # Makefile.am -- Makefile for O'Mega within and without WHIZARD
-# $Id: Makefile.am 7140 2015-08-07 21:11:59Z jr_reuter $
+# $Id: Makefile.am 7334 2015-10-26 18:21:22Z bchokoufe $
 ##
 ## Process this file with automake to produce Makefile.in
 ##
@@ -156,14 +156,16 @@ endif
 
 ########################################################################
 
+KINDS = $(top_builddir)/src/kinds.lo
+
 TESTS += test_omega95 test_omega95_bispinors
 EXTRA_PROGRAMS += test_omega95 test_omega95_bispinors
 
 test_omega95_SOURCES = test_omega95.f90 omega_testtools.f90
-test_omega95_LDADD = $(top_builddir)/src/libomega_core.la
+test_omega95_LDADD = $(KINDS) $(top_builddir)/src/libomega_core.la
 
 test_omega95_bispinors_SOURCES = test_omega95_bispinors.f90 omega_testtools.f90
-test_omega95_bispinors_LDADD = $(top_builddir)/src/libomega_core.la
+test_omega95_bispinors_LDADD = $(KINDS) $(top_builddir)/src/libomega_core.la
 
 test_omega95.o test_omega95_bispinors.o: omega_testtools.o
 
@@ -185,7 +187,7 @@ EXTRA_PROGRAMS += test_qed_eemm
 
 test_qed_eemm_SOURCES = test_qed_eemm.f90 parameters_QED.f90
 nodist_test_qed_eemm_SOURCES = amplitude_qed_eemm.f90
-test_qed_eemm_LDADD = $(top_builddir)/src/libomega_core.la
+test_qed_eemm_LDADD = $(KINDS) $(top_builddir)/src/libomega_core.la
 
 amplitude_qed_eemm.f90: $(OMEGA_QED) $(OMEGA_QED_CACHE) Makefile
 	$(OMEGA_QED) $(OMEGA_QED_OPTS) -target:module amplitude_qed_eemm \
@@ -218,7 +220,7 @@ ects.f90: ects_driver.sh $(EXTENDED_COLOR_TESTS)
 ects_SOURCES = color_test_lib.f90 \
 	parameters_SM.f90 parameters_QED.f90 parameters_QCD.f90 parameters_SYM.f90
 nodist_ects_SOURCES = ects.f90
-ects_LDADD = $(top_builddir)/src/libomega_core.la
+ects_LDADD = $(KINDS) $(top_builddir)/src/libomega_core.la
 
 ########################################################################
 
@@ -345,6 +347,7 @@ EXTRA_DIST += compare_driver_VM.sh compare_driver_VM_wrappers.sh
 EXTRA_DIST += comparisons_VM.list
 
 compare_amplitude_VM.f90: comparisons_VM.list comparisons_VM.wrappers.o
+	rm -f *.hbc
 	$(SHELL) $(srcdir)/compare_driver_VM.sh \
 	"$(OMEGA_XXX) " "$(OMEGA_XXX_VM) " "$(OMEGA_XXX_VM_PARAMS_OPTS)" < $< > $@
 

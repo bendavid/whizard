@@ -29,6 +29,7 @@
 \ifpdf
   \documentclass[12pt,a4paper]{article}
   \usepackage{type1cm}
+  %%% FIXME: hyperref doesn't work ...
   %usepackage[pdftex,colorlinks]{hyperref}
   \usepackage[pdftex]{graphics,emp}
   \DeclareGraphicsRule{*}{mps}{*}{}
@@ -46,6 +47,7 @@
 %HEVEA \newcommand{\tr}{\mathrm{tr}}
 %BEGIN LATEX
 \DeclareMathOperator{\tr}{tr}
+\providecommand{\dd}{\mathrm{d}}
 \allowdisplaybreaks
 \makeindex
 \IfFileExists{hevea.sty}%
@@ -225,6 +227,10 @@
     colliders.
 \end{itemize}
 \end{raggedright}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newpage
+\tableofcontents
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \newpage

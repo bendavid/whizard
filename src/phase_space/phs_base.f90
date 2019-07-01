@@ -1,4 +1,4 @@
-! WHIZARD 2.2.7 Aug 11 2015
+! WHIZARD 2.2.8 Nov 22 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,11 +6,14 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
-!     Fabian Bach <fabian.bach@desy.de>
+!     Fabian Bach <fabian.bach@t-online.de>
+!     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
+!     Soyoung Shim <soyoung.shim@desy.de>
+!     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, Daniel Wiesler 
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -196,6 +199,8 @@ module phs_base
      procedure :: set_incoming_momenta => phs_set_incoming_momenta
      procedure :: set_outgoing_momenta => phs_set_outgoing_momenta
      procedure :: get_outgoing_momenta => phs_get_outgoing_momenta
+     procedure :: is_cm_frame => phs_is_cm_frame
+     procedure :: get_lorentz_transformation => phs_get_lorentz_transformation
      procedure :: get_mcpar => phs_get_mcpar
      procedure :: get_f => phs_get_f
      procedure :: get_overall_factor => phs_get_overall_factor
@@ -776,6 +781,8 @@ contains
     type(vector4_t), dimension(:), intent(in) :: p
     type(vector4_t) :: p0, p1
     type(lorentz_transformation_t) :: lt0, lt0_inv, lt_inv
+    !!! !!! !!! Workaround for standard-semantics ifort 16.0 bug
+    integer :: i
     phs%p = p
     if (phs%config%cm_frame) then
        phs%sqrts_hat = phs%config%sqrts
@@ -792,15 +799,17 @@ contains
        case (1)
           phs%lt_cm_to_lab = lt0
        case (2)
-          !!! !!! !!! Workaround for standard-semantics ifort 16.0 bug          
+          !!! !!! !!! Workaround for standard-semantics ifort 16.0 bug
           lt0_inv = inverse (lt0)
           p1 = lt0_inv * p(1)
           !!! p1 = inverse (lt0) * p(1)
           phs%lt_cm_to_lab = lt0 * rotation_to_2nd (3, space_part (p1))
        end select
-       !!! !!! !!! Workaround for standard-semantics ifort 16.0 bug                 
+       !!! !!! !!! Workaround for standard-semantics ifort 16.0 bug
        lt_inv = inverse (phs%lt_cm_to_lab)
-       phs%p = lt_inv * p
+       do i = 1, size (p)
+          phs%p(i) = lt_inv * p(i)
+       end do
        !!! phs%p = inverse (phs%lt_cm_to_lab) * p       
     end if
     phs%p_defined = .true.
@@ -811,12 +820,15 @@ contains
     type(vector4_t), dimension(:), intent(in) :: q
     !!! !!! !!! Workaround for standard-semantics ifort 16.0 bug
     type(lorentz_transformation_t) :: l_inv
+    integer :: i
     if (phs%p_defined) then
        if (phs%config%cm_frame) then
           phs%q = q
        else
           l_inv = inverse (phs%lt_cm_to_lab)
-          phs%q = l_inv * q
+          do i = 1, size (q)
+             phs%q(i) = l_inv * q(i)
+          end do
           !!! phs%q = inverse (phs%lt_cm_to_lab) * q
        end if
        phs%q_defined = .true.
@@ -837,6 +849,18 @@ contains
     end if
   end subroutine phs_get_outgoing_momenta
   
+  function phs_is_cm_frame (phs) result (cm_frame)
+    logical :: cm_frame
+    class(phs_t), intent(in) :: phs
+    cm_frame = phs%config%cm_frame
+  end function phs_is_cm_frame
+
+  function phs_get_lorentz_transformation (phs) result (lt)
+    type(lorentz_transformation_t) :: lt
+    class(phs_t), intent(in) :: phs
+    lt = phs%lt_cm_to_lab
+  end function phs_get_lorentz_transformation
+
   subroutine phs_get_mcpar (phs, c, r)
     class(phs_t), intent(in) :: phs
     integer, intent(in) :: c

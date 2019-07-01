@@ -1057,6 +1057,8 @@ the flight direction, without rotation.
     type(vector4_t), dimension(:), intent(in) :: p
     type(vector4_t) :: p0, p1
     type(lorentz_transformation_t) :: lt0, lt0_inv, lt_inv
+    !!! !!! !!! Workaround for standard-semantics ifort 16.0 bug
+    integer :: i
     phs%p = p
     if (phs%config%cm_frame) then
        phs%sqrts_hat = phs%config%sqrts
@@ -1073,15 +1075,17 @@ the flight direction, without rotation.
        case (1)
           phs%lt_cm_to_lab = lt0
        case (2)
-          !!! !!! !!! Workaround for standard-semantics ifort 16.0 bug          
+          !!! !!! !!! Workaround for standard-semantics ifort 16.0 bug
           lt0_inv = inverse (lt0)
           p1 = lt0_inv * p(1)
           !!! p1 = inverse (lt0) * p(1)
           phs%lt_cm_to_lab = lt0 * rotation_to_2nd (3, space_part (p1))
        end select
-       !!! !!! !!! Workaround for standard-semantics ifort 16.0 bug                 
+       !!! !!! !!! Workaround for standard-semantics ifort 16.0 bug
        lt_inv = inverse (phs%lt_cm_to_lab)
-       phs%p = lt_inv * p
+       do i = 1, size (p)
+          phs%p(i) = lt_inv * p(i)
+       end do
        !!! phs%p = inverse (phs%lt_cm_to_lab) * p       
     end if
     phs%p_defined = .true.
@@ -1099,12 +1103,15 @@ c.m.\ to lab (inverse) to the momenta.
     type(vector4_t), dimension(:), intent(in) :: q
     !!! !!! !!! Workaround for standard-semantics ifort 16.0 bug
     type(lorentz_transformation_t) :: l_inv
+    integer :: i
     if (phs%p_defined) then
        if (phs%config%cm_frame) then
           phs%q = q
        else
           l_inv = inverse (phs%lt_cm_to_lab)
-          phs%q = l_inv * q
+          do i = 1, size (q)
+             phs%q(i) = l_inv * q(i)
+          end do
           !!! phs%q = inverse (phs%lt_cm_to_lab) * q
        end if
        phs%q_defined = .true.
@@ -1132,6 +1139,28 @@ necessary.
   end subroutine phs_get_outgoing_momenta
   
 @ %def phs_get_outgoing_momenta
+@
+<<PHS base: phs: TBP>>=
+  procedure :: is_cm_frame => phs_is_cm_frame
+<<PHS base: procedures>>=
+  function phs_is_cm_frame (phs) result (cm_frame)
+    logical :: cm_frame
+    class(phs_t), intent(in) :: phs
+    cm_frame = phs%config%cm_frame
+  end function phs_is_cm_frame
+
+@ %def phs_is_cm_frame
+@
+<<PHS base: phs: TBP>>=
+  procedure :: get_lorentz_transformation => phs_get_lorentz_transformation
+<<PHS base: procedures>>=
+  function phs_get_lorentz_transformation (phs) result (lt)
+    type(lorentz_transformation_t) :: lt
+    class(phs_t), intent(in) :: phs
+    lt = phs%lt_cm_to_lab
+  end function phs_get_lorentz_transformation
+
+@ %def phs_get_lorentz_transformation
 @ Return the input parameter array for a channel.
 <<PHS base: phs: TBP>>=
   procedure :: get_mcpar => phs_get_mcpar
@@ -9763,7 +9792,7 @@ possibly be any phase space.
     type(flavor_t), dimension(:,:), intent(in) :: flv
     real(default), dimension(:,:), allocatable :: mass
     real(default), dimension(:), allocatable :: mass_in, mass_out
-    integer :: n_prt, n_flv
+    integer :: n_prt, n_flv, i, j
     flag = .false.
     if (sqrts <= 0) then
        call msg_error ("Phase space vanishes (sqrts must be positive)")
@@ -9772,7 +9801,13 @@ possibly be any phase space.
     n_prt = size (flv, 1)
     n_flv = size (flv, 2)
     allocate (mass (n_prt, n_flv), mass_in (n_flv), mass_out (n_flv))
-    mass = flv%get_mass ()
+    !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
+    !!! mass = flv%get_mass ()
+    do i = 1, n_prt
+       do j = 1, n_flv
+          mass(i,j) = flv(i,j)%get_mass ()
+       end do
+    end do
     mass_in = sum (mass(:n_in,:), 1)
     mass_out = sum (mass(n_in+1:,:), 1)
     if (any (mass_in > sqrts)) then

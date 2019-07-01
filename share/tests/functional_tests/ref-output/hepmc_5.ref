@@ -68,6 +68,7 @@ openmp_num_threads = 1
 | Events: generating 10 unweighted, polarized events ...
 | Events: event normalization mode '1'
 |         ... event sample complete.
+| Events: actual unweighting efficiency =  24.39 %
 | Events: closing ASCII file 'hepmc_5_p.hepevt'
 | Events: closing HepMC file 'hepmc_5_p.hepmc'
 | Events: closing raw file 'hepmc_5_p.evx'

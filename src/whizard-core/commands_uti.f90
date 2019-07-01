@@ -1,4 +1,4 @@
-! WHIZARD 2.2.7 Aug 11 2015
+! WHIZARD 2.2.8 Nov 22 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,11 +6,14 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
-!     Fabian Bach <fabian.bach@desy.de>
+!     Fabian Bach <fabian.bach@t-online.de>
+!     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
+!     Soyoung Shim <soyoung.shim@desy.de>
+!     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, Daniel Wiesler 
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -33,6 +36,7 @@
 module commands_uti
   
     use kinds, only: default
+    use kinds, only: i64
     use iso_varying_string, string_t => varying_string
     use io_units
     use ifiles
@@ -44,6 +48,7 @@ module commands_uti
     use models
     use slha_interface
     use rt_data
+    use event_base, only: generic_event_t, event_callback_t
 
     use commands
     
@@ -83,6 +88,16 @@ module commands_uti
   public :: commands_31
   public :: commands_32
   public :: commands_33
+  public :: commands_34
+
+  type, extends (event_callback_t) :: event_callback_34_t
+     private
+     integer :: u = 0
+   contains
+     procedure :: write => event_callback_34_write
+     procedure :: proc => event_callback_34
+  end type event_callback_34_t
+  
 
 contains
 
@@ -2689,6 +2704,107 @@ contains
 
   end subroutine commands_33
 
+  subroutine commands_34 (u)
+    integer, intent(in) :: u
+    type(ifile_t) :: ifile
+    type(command_list_t), target :: command_list
+    type(rt_data_t), target :: global
+    type(parse_node_t), pointer :: pn_root
+    type(prclib_entry_t), pointer :: lib
+    type(event_callback_34_t) :: event_callback
+    integer :: u_file, iostat
+    logical :: exist
+    character(80) :: buffer
+
+    write (u, "(A)")  "* Test output: commands_34"
+    write (u, "(A)")  "*   Purpose: write analysis data"
+    write (u, "(A)")
+
+    write (u, "(A)")  "* Initialization: create observable"
+    write (u, "(A)")
+
+    call syntax_cmd_list_init ()
+    call global%global_init ()
+    
+    call syntax_model_file_init ()
+    call global%global_init ()
+    call global%init_fallback_model &
+         (var_str ("SM_hadrons"), var_str ("SM_hadrons.mdl"))
+
+    call global%var_list%set_string (var_str ("$method"), &
+         var_str ("unit_test"), is_known=.true.)
+    call global%var_list%set_string (var_str ("$phs_method"), &
+         var_str ("single"), is_known=.true.)
+    call global%var_list%set_string (var_str ("$integration_method"),&
+         var_str ("midpoint"), is_known=.true.)
+    call global%var_list%set_real (var_str ("sqrts"), &
+         1000._default, is_known=.true.)
+    call global%var_list%set_log (var_str ("?vis_history"),&
+         .false., is_known=.true.)    
+    call global%var_list%set_log (var_str ("?integration_timer"),&
+         .false., is_known = .true.)    
+
+    allocate (lib)
+    call lib%init (var_str ("lib_cmd34"))
+    call global%add_prclib (lib)
+    
+    write (u, "(A)")  "* Prepare callback for writing analysis to I/O unit"
+    write (u, "(A)")
+    
+    event_callback%u = u
+    call global%set_event_callback (event_callback)
+
+    write (u, "(A)")  "* Input file"
+    write (u, "(A)")
+    
+    call ifile_append (ifile, 'model = "Test"')
+    call ifile_append (ifile, 'process commands_34_p = s, s => s, s')
+    call ifile_append (ifile, 'compile')
+    call ifile_append (ifile, 'iterations = 1:1000')
+    call ifile_append (ifile, 'integrate (commands_34_p)')
+    call ifile_append (ifile, 'observable sq')
+    call ifile_append (ifile, 'analysis = record sq (sqrts)')
+    call ifile_append (ifile, 'n_events = 4')
+    call ifile_append (ifile, 'event_callback_interval = 3')
+    call ifile_append (ifile, 'simulate (commands_34_p)')
+    
+    call ifile_write (ifile, u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Parse file"
+    write (u, "(A)")
+    
+    call parse_ifile (ifile, pn_root)
+
+    write (u, "(A)")  "* Compile command list"
+    write (u, "(A)")
+
+    call command_list%compile (pn_root, global)
+
+    call command_list%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Execute command list"
+    write (u, "(A)")
+
+    call command_list%execute (global)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Cleanup"
+
+    call ifile_final (ifile)
+
+    call analysis_final ()
+    call command_list%final ()
+    call global%final ()
+    call syntax_cmd_list_final ()
+    call syntax_model_file_final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: commands_34"
+
+  end subroutine commands_34
+
 
   subroutine parse_ifile (ifile, pn_root, u)
     use ifiles
@@ -2714,6 +2830,18 @@ contains
     call lexer_final (lexer)
   end subroutine parse_ifile
 
+  subroutine event_callback_34_write (event_callback, unit)
+    class(event_callback_34_t), intent(in) :: event_callback
+    integer, intent(in), optional :: unit
+  end subroutine event_callback_34_write
+  
+  subroutine event_callback_34 (event_callback, i, event)
+    class(event_callback_34_t), intent(in) :: event_callback
+    integer(i64), intent(in) :: i
+    class(generic_event_t), intent(in) :: event
+    call analysis_write (event_callback%u)
+  end subroutine event_callback_34
+  
 
 end module commands_uti
   

@@ -1,5 +1,5 @@
 ## Makefile.am -- Makefile for WHIZARD
-# $Id: Makefile.am 7141 2015-08-08 08:56:21Z jr_reuter $
+# $Id: Makefile.am 7370 2015-11-16 18:05:50Z jr_reuter $
 ##
 ## Process this file with automake to produce Makefile.in
 ##
@@ -10,7 +10,13 @@
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
 #     with contributions from
+#     Fabian Bach <fabian.bach@t-online.de>
+#     Bijan Chokoufe <bijan.chokoufe@desy.de>
 #     Christian Speckner <cnspeckn@googlemail.com>
+#     Marco Sekulla <marco.sekulla@kit.edu>
+#     Christian Weiss <christian.weiss@desy.de>
+#     Felix Braam, Sebastian Schmidt,
+#     Hans-Werner Boschmann, Daniel Wiesler
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by 
@@ -33,8 +39,8 @@
 noinst_LTLIBRARIES = libpdf_builtin.la
 
 libpdf_builtin_la_SOURCES = \
-	cteq6pdf.f pdf_builtin.f90 mrst2004qed.f mstwpdf.f \
-	ct10pdf.f CJpdf.f ct14pdf.f
+	cteq6pdf.f90 pdf_builtin.f90 mrst2004qed.f90 mstwpdf.f90 \
+	ct10pdf.f90 CJpdf.f90 ct14pdf.f90
 
 $(libpdf_builtin_la_OBJECTS): \
 	../basics/kinds.$(FC_MODULE_EXT) \
@@ -43,12 +49,7 @@ $(libpdf_builtin_la_OBJECTS): \
 	../utilities/format_utils.$(FC_MODULE_EXT) \
 	../system/diagnostics.$(FC_MODULE_EXT)
 
-AM_FFLAGS = -I../basics -I../utilities -I../system
 AM_FCFLAGS = -I../basics -I../utilities -I../system
-
-# After hacking, those .f files are actually fixed-form F90 -> make sure they
-# get compiled with the appropiate compiler.
-F77 = $(FC)
 
 pdf_builtin.lo: cteq6pdf.lo mrst2004qed.lo mstwpdf.lo ct10pdf.lo CJpdf.lo ct14pdf.lo
 
@@ -57,13 +58,11 @@ pdf_builtin.lo: cteq6pdf.lo mrst2004qed.lo mstwpdf.lo ct10pdf.lo CJpdf.lo ct14pd
 
 ## Profiling
 if FC_USE_PROFILING
-AM_FFLAGS += $(FCFLAGS_PROFILING)
 AM_FCFLAGS += $(FCFLAGS_PROFILING)
 endif
 
 ## OpenMP
 if FC_USE_OPENMP
-AM_FFLAGS += $(FCFLAGS_OPENMP)
 AM_FCFLAGS += $(FCFLAGS_OPENMP)
 endif
 

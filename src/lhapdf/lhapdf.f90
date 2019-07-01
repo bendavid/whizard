@@ -8,7 +8,7 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     with contributions from
 !     Bijan Chokoufe <bijan.chokoufe@desy.de>
-!     Fabian Bach <fabian.bach@desy.de>
+!     Fabian Bach <fabian.bach@t-online.de>
 !     Christian Speckner <cnspeckn@googlemail.com>
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
@@ -290,9 +290,7 @@ contains
 
   subroutine lhapdf_final (pdf)
     class(lhapdf_pdf_t), intent(inout) :: pdf
-    if (c_associated (pdf%cptr)) then
-       call lhapdf_pdf_delete (pdf%cptr)
-    end if
+    call lhapdf_pdf_delete (pdf%cptr)
   end subroutine lhapdf_final
 
   subroutine lhapdf_copy_pointer (pdf_in, pdf_out)

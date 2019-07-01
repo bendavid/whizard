@@ -1,4 +1,4 @@
-! WHIZARD 2.2.7 Aug 11 2015
+! WHIZARD 2.2.8 Nov 22 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,11 +6,14 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
-!     Fabian Bach <fabian.bach@desy.de>
+!     Fabian Bach <fabian.bach@t-online.de>
+!     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
+!     Soyoung Shim <soyoung.shim@desy.de>
+!     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, Daniel Wiesler 
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -112,6 +115,8 @@ module radiation_generator
     generic :: init => init_pdg_list, init_pdg_array
     procedure :: init_pdg_list => radiation_generator_init_pdg_list
     procedure :: init_pdg_array => radiation_generator_init_pdg_array
+    procedure :: set_initial_state_emissions => &
+       radiation_generator_set_initial_state_emissions
     procedure :: setup_if_table => radiation_generator_setup_if_table
     generic :: reset_particle_content => reset_particle_content_pdg_array, &
                                          reset_particle_content_pdg_list
@@ -366,7 +371,11 @@ contains
     integer, dimension(:), allocatable :: i_pdg
     integer :: i
     allocate (i_pdg (size (pdg)))
-    i_pdg = pdg%get ()
+    !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
+    !!! i_pdg = pdg%get ()
+    do i = 1, size (pdg)
+       i_pdg(i) = pdg(i)%get ()
+    end do
     i_pdg = sort_abs (i_pdg)
     do i = 1, size (pdg)
        call pdg(i)%set (1, i_pdg(i))
@@ -442,8 +451,8 @@ contains
     generator%pl_out = pl_out
     generator%is_gluon = pl_in%search_for_particle (GLUON)
     generator%fs_gluon = pl_out%search_for_particle (GLUON)
-    generator%only_final_state = .not. (&
-       generator%qcd_enabled .and. pl_in%contains_colored_particles ())
+    !!!generator%only_final_state = .not. (&
+    !!!   generator%qcd_enabled .and. pl_in%contains_colored_particles ())
     generator%mass_sum = 0._default
     call generator%pdg_raw%init ()
   end subroutine radiation_generator_init_pdg_list
@@ -465,6 +474,11 @@ contains
     end do
     call generator%init (pl_in, pl_out, qcd, qed)
   end subroutine radiation_generator_init_pdg_array
+
+  subroutine radiation_generator_set_initial_state_emissions (generator)
+     class(radiation_generator_t), intent(inout) :: generator
+     generator%only_final_state = .false.
+  end subroutine radiation_generator_set_initial_state_emissions
 
   subroutine radiation_generator_setup_if_table (generator)
     class(radiation_generator_t), intent(inout) :: generator
@@ -577,7 +591,7 @@ contains
            do i = 1, generator%n_out
               call pl_insert%set(i, generator%pl_out%get(i))
            end do
-           last_index = generator%n_out
+           last_index = generator%n_out + 1
         else
            call generator%pl_in%create_antiparticles (pl_antiparticles, n_new_particles)
            call pl_insert%init (generator%n_tot+n_new_particles+1)
@@ -641,7 +655,7 @@ contains
        do i = 1, generator%if_table%get_length ()
           call generator%if_table%get_pdg_out (i, pdg_tmp)
           if (size (pdg_tmp) == generator%n_tot) then
-             call if_table%get_particle_string (i, 2, &
+             call if_table%get_particle_string (i, &
                 prt_in0(flv+1)%prt, prt_out0(flv+1)%prt)
              call pdg_reshuffle (pdg_out, pdg_tmp, reshuffle_list_local)
              call reshuffle_list%append (reshuffle_list_local)
@@ -688,17 +702,18 @@ contains
       integer, intent(out), dimension(:), allocatable :: list
       type(pdg_sorter_t), dimension(:), allocatable :: sort_born
       type(pdg_sorter_t), dimension(:), allocatable :: sort_real
-      integer :: i_min, n_born, n_real
+      integer :: i_min, n_in, n_born, n_real
       integer :: ib, ir
-      integer, parameter :: n_in = 2
  
-      n_born = size (pdg_born); n_real = size (pdg_real)
+      n_in = generator%n_in
+      n_born = size (pdg_born)
+      n_real = size (pdg_real)
       allocate (list (n_real-n_in))
       allocate (sort_born (n_born))
       allocate (sort_real (n_real-n_in))
 
       sort_born%pdg = pdg_born%get ()
-      sort_real%pdg = pdg_real(3:n_real)%get ()
+      sort_real%pdg = pdg_real(n_in+1:n_real)%get()
 
       do ib = 1, n_born
          if (any (sort_born(ib)%pdg == sort_real%pdg)) &
@@ -707,7 +722,7 @@ contains
 
       i_min = maxval (sort_real%associated_born) + 1
 
-      do ir = 1, n_real-2
+      do ir = 1, n_real-n_in
          if (sort_real(ir)%associated_born == 0) then
             sort_real(ir)%associated_born = i_min
             i_min = i_min+1
@@ -723,8 +738,8 @@ contains
       type(pdg_sorter_t), intent(inout), dimension(:) :: sort_real
       integer, intent(in) :: ib, n_real
       integer :: ir
-      
-      do ir = 1, n_real-2
+
+      do ir = 1, n_real-generator%n_in
          if (sort_born%pdg == sort_real(ir)%pdg &
             .and..not. sort_real(ir)%checked) then
             sort_real(ir)%associated_born = ib

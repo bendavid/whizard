@@ -2706,7 +2706,7 @@ which we can finalize explicitly.
 
     write (u, "(A)")  "* Print banner"
     call print_banner ()
-    
+
     write (u, *)
     write (u, "(A)")  "* Prepare input particles"
     allocate (prt (3))
@@ -2745,10 +2745,10 @@ which we can finalize explicitly.
           call constituents(j)%final ()
        end do
     end do
-    
+
     write (u, *)
     write (u, "(A)")  "* Cleanup"
-    
+
     do i = 1, size (prt)
        call prt(i)%final ()
     end do
@@ -2760,9 +2760,9 @@ which we can finalize explicitly.
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: jets_1"        
-    
+
   end subroutine jets_1
-  
+
 @ %def jets_1
 @
 \clearpage
@@ -5392,19 +5392,19 @@ results for underflow or overflow, respectively.
           call bin_write (h%bin(i), u)
        end do
     end if
-    write (u, *)
+    write (u, "(A)")
     write (u, "(A,1x,A)")  "#", "Underflow:"
     call bin_write (h%underflow, u)
-    write (u, *)
+    write (u, "(A)")
     write (u, "(A,1x,A)")  "#", "Overflow:"
     call bin_write (h%overflow, u)
-    write (u, *)
+    write (u, "(A)")
     write (u, "(A,1x,A)")  "#", "Summary: data within bounds"
     call observable_write (h%obs_within_bounds, u)
-    write (u, *)
+    write (u, "(A)")
     write (u, "(A,1x,A)")  "#", "Summary: all data"
     call observable_write (h%obs, u)
-    write (u, *)
+    write (u, "(A)")
   end subroutine histogram_write
 
 @ %def histogram_write

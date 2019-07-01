@@ -1,4 +1,4 @@
-! WHIZARD 2.2.7 Aug 11 2015
+! WHIZARD 2.2.8 Nov 22 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,11 +6,14 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
-!     Fabian Bach <fabian.bach@desy.de>
+!     Fabian Bach <fabian.bach@t-online.de>
+!     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
+!     Soyoung Shim <soyoung.shim@desy.de>
+!     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, Daniel Wiesler 
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -215,6 +218,7 @@ module sf_base
      procedure :: get_mcpar => sf_chain_instance_get_mcpar
      procedure :: get_f => sf_chain_instance_get_f
      procedure :: get_status => sf_chain_instance_get_status
+     procedure :: get_matrix_elements => sf_chain_instance_get_matrix_elements
   end type sf_chain_instance_t
      
 
@@ -833,7 +837,7 @@ contains
        if (object%n_par /= object%n_bound) then
           write (u, "(3x,A,I0)")  "n_bound   = ", object%n_bound
        end if
-       call beam_data_write (object%beam_data, u)
+       call object%beam_data%write (u)
        call write_separator (u)
        call beam_write (object%beam_t, u)
        if (allocated (object%sf)) then
@@ -859,7 +863,7 @@ contains
     type(sf_config_t), dimension(:), intent(in), optional, target :: sf_config
     integer :: i
     sf_chain%beam_data => beam_data
-    sf_chain%n_in = beam_data_get_n_in (beam_data)
+    sf_chain%n_in = beam_data%get_n_in ()
     call beam_init (sf_chain%beam_t, beam_data)
     if (present (sf_config)) then
        sf_chain%n_strfun = size (sf_config)
@@ -964,6 +968,7 @@ contains
     real(default), dimension(:), intent(in) :: x
     real(default), dimension(:), intent(in) :: f
     real(default), intent(in) :: sf_sum
+    real(default) :: sf_sum_pac, f_sf_sum_pac
     integer :: u, i
     if (sf_chain%trace_enable) then
        u = sf_chain%trace_unit
@@ -977,7 +982,11 @@ contains
           write (u, "(1x," // FMT_17 // ")", advance="no")  x(i)
        end do
        write (u, "(2x)", advance="no")
-       write (u, "(2(1x," // FMT_17 // "))")  sf_sum, f(c_sel) * sf_sum
+       sf_sum_pac = sf_sum
+       f_sf_sum_pac = f(c_sel) * sf_sum
+       call pacify (sf_sum_pac, 1.E-28_default)
+       call pacify (f_sf_sum_pac, 1.E-28_default)       
+       write (u, "(2(1x," // FMT_17 // "))")  sf_sum_pac, f_sf_sum_pac
     end if
   end subroutine sf_chain_trace
   
@@ -1600,5 +1609,15 @@ contains
     status = chain%status
   end function sf_chain_instance_get_status
   
+  subroutine sf_chain_instance_get_matrix_elements (chain, i, ff)
+     class(sf_chain_instance_t), intent(in) :: chain
+     integer, intent(in) :: i
+     real(default), intent(out), dimension(:), allocatable :: ff
+
+     associate (sf => chain%sf(i))
+        ff = real (sf%int%get_matrix_element ())
+     end associate
+  end subroutine sf_chain_instance_get_matrix_elements 
+
 
 end module sf_base

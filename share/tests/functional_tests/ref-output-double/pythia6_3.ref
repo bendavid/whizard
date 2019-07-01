@@ -90,6 +90,7 @@ $sample = "pythia6_3a"
 | Events: generating 1 unweighted, unpolarized events ...
 | Events: event normalization mode '1'
 |         ... event sample complete.
+| Events: actual unweighting efficiency =  12.50 %
 | Events: closing ASCII file 'pythia6_3a.debug'
 | Events: closing raw file 'pythia6_3a.evx'
 ?hadronization_active = true
@@ -109,6 +110,7 @@ $sample = "pythia6_3b"
 | Events: generating 1 unweighted, unpolarized events ...
 | Events: event normalization mode '1'
 |         ... event sample complete.
+| Events: actual unweighting efficiency =  50.00 %
 | Events: closing ASCII file 'pythia6_3b.debug'
 | Events: closing raw file 'pythia6_3b.evx'
 | WHIZARD run finished.

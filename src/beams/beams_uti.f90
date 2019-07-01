@@ -1,4 +1,4 @@
-! WHIZARD 2.2.7 Aug 11 2015
+! WHIZARD 2.2.8 Nov 22 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,11 +6,14 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
-!     Fabian Bach <fabian.bach@desy.de>
+!     Fabian Bach <fabian.bach@t-online.de>
+!     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
+!     Soyoung Shim <soyoung.shim@desy.de>
+!     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, Daniel Wiesler 
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -93,13 +96,13 @@ contains
 
     !!! 2.1 version:
     ! call polarization_init_transversal (pol(2), flv(2), 0._default, 1._default)
-    call beam_data_init_sqrts (beam_data, sqrts, flv, smatrix, pol_f)
-    call beam_data_write (beam_data, u)
+    call beam_data%init_sqrts (sqrts, flv, smatrix, pol_f)
+    call beam_data%write (u)
     write (u, "(A)")
     call beam_init (beam, beam_data)
     call beam_write (beam, u)
     call beam_final (beam)
-    call beam_data_final (beam_data)
+    call beam_data%final ()
     
     write (u, "(A)")
     write (u, "(A)")  "* 2: Decay"
@@ -111,8 +114,8 @@ contains
 
     !!! 2.1 version:
     ! call polarization_init_longitudinal (pol(1), flv(1), 0.4_default)
-    call beam_data_init_decay (beam_data, flv(1:1), smatrix(1:1), pol_f(1:1))
-    call beam_data_write (beam_data, u)
+    call beam_data%init_decay (flv(1:1), smatrix(1:1), pol_f(1:1))
+    call beam_data%write (u)
     write (u, "(A)")
     call beam_init (beam, beam_data)
     call beam_write (beam, u)
@@ -121,7 +124,7 @@ contains
     write (u, "(A)")  "* Cleanup"            
        
     call beam_final (beam)
-    call beam_data_final (beam_data)
+    call beam_data%final ()
 
     call model%final ()
 
@@ -173,15 +176,15 @@ contains
     call beam_structure%write (u)
     write (u, *)
     
-    call beam_data_init_structure (beam_data, beam_structure, sqrts, model)
-    call beam_data_write (beam_data, u)
+    call beam_data%init_structure (beam_structure, sqrts, model)
+    call beam_data%write (u)
     write (u, *)
  
     call beam_init (beam, beam_data)
     call beam_write (beam, u)
 
     call beam_final (beam)
-    call beam_data_final (beam_data)
+    call beam_data%final ()
     call beam_structure%final_pol ()
     call beam_structure%final_sf ()
     
@@ -200,8 +203,8 @@ contains
     call beam_structure%write (u)
     write (u, *)
     
-    call beam_data_init_structure (beam_data, beam_structure, sqrts, model)
-    call beam_data_write (beam_data, u)
+    call beam_data%init_structure (beam_structure, sqrts, model)
+    call beam_data%write (u)
     write (u, "(A)")
     call beam_init (beam, beam_data)
     call beam_write (beam, u)
@@ -210,7 +213,7 @@ contains
     write (u, "(A)")  "* Cleanup"            
        
     call beam_final (beam)
-    call beam_data_final (beam_data)
+    call beam_data%final ()
 
     call model%final ()
 
@@ -256,8 +259,10 @@ contains
     call beam_structure%write (u)
     write (u, *)
 
-    call beam_data_init_structure (beam_data, beam_structure, 0._default, model)
-    call beam_data_write (beam_data, u, verbose = .true.)
+    call beam_data%init_structure (beam_structure, 0._default, model)
+    call pacify (beam_data%l_cm_to_lab, 1e-20_default)
+    call beam_data%compute_md5sum ()
+    call beam_data%write (u, verbose = .true.)
     write (u, *)
  
     write (u, "(1x,A)")  "Beam momenta reconstructed from LT:"
@@ -271,7 +276,7 @@ contains
     call beam_write (beam, u)
 
     call beam_final (beam)
-    call beam_data_final (beam_data)
+    call beam_data%final ()
     call beam_structure%final_sf ()
     call beam_structure%final_mom ()
     
@@ -289,8 +294,8 @@ contains
     call beam_structure%write (u)
     write (u, *)
 
-    call beam_data_init_structure (beam_data, beam_structure, 0._default, model)
-    call beam_data_write (beam_data, u, verbose = .true.)
+    call beam_data%init_structure (beam_structure, 0._default, model)
+    call beam_data%write (u, verbose = .true.)
     write (u, "(A)")
 
     write (u, "(1x,A)")  "Beam momentum reconstructed from LT:"
@@ -306,7 +311,7 @@ contains
     write (u, "(A)")  "* Cleanup"            
        
     call beam_final (beam)
-    call beam_data_final (beam_data)
+    call beam_data%final ()
     call beam_structure%final_sf ()
     call beam_structure%final_mom ()
 

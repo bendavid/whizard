@@ -1,4 +1,4 @@
-! WHIZARD 2.2.7 Aug 11 2015
+! WHIZARD 2.2.8 Nov 22 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,11 +6,14 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
-!     Fabian Bach <fabian.bach@desy.de>
+!     Fabian Bach <fabian.bach@t-online.de>
+!     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
+!     Soyoung Shim <soyoung.shim@desy.de>
+!     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, Daniel Wiesler 
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -73,16 +76,20 @@ contains
     end if
   end subroutine selector_write
  
-  subroutine selector_init (selector, weight)
+  subroutine selector_init (selector, weight, negative_weights)
     class(selector_t), intent(out) :: selector
     real(default), dimension(:), intent(in) :: weight
+    logical, intent(in), optional :: negative_weights
     real(default) :: s
     integer :: n, i
+    logical :: neg_wgt
     logical, dimension(:), allocatable :: mask
     if (size (weight) == 0) &
          call msg_bug ("Selector init: zero-size weight array")
-    if (any (weight < 0)) &
-         call msg_bug ("Selector init: negative weight")
+    neg_wgt = .false.
+    if (present (negative_weights))  neg_wgt = negative_weights
+    if (.not. neg_wgt .and. any (weight < 0)) &
+         call msg_fatal ("Selector init: negative weight encountered")
     s = sum (weight)
     allocate (mask (size (weight)), &
          source = weight /= 0)
@@ -91,7 +98,7 @@ contains
        allocate (selector%map (n), &
             source = pack ([(i, i = 1, size (weight))], mask))
        allocate (selector%weight (n), &
-            source = pack (weight / s, mask))
+            source = pack (abs (weight) / s, mask))
        allocate (selector%acc (n))
        selector%acc(1) = selector%weight(1)
        do i = 2, n - 1

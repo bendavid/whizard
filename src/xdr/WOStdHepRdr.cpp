@@ -94,6 +94,20 @@ namespace WOUTIL{
     }
     else if ( blockid == 101 || blockid == 201 ) {
 
+      // Print out metadata information if HEPEV4 block is filled
+      if( _reader->isStdHepEv4() ){
+
+	int pid = _reader->idrup();
+	float weight = _reader->eventweight();
+	float scale = _reader->scale(0,0);
+	float aqed = _reader->alphaQED();
+	float aqcd = _reader->alphaQCD();
+
+	os << "Process ID = " <<  pid << "   Weight = " << weight << 
+	  "     Scale = " << scale << "     aQED = " << aqed << "     aQCD = " << 
+	  aqcd << std::endl;
+      }
+
       os << " Event #" << count << std::endl;
 
       int NHEP = _reader->nTracks();
@@ -137,10 +151,14 @@ namespace WOUTIL{
 
 	  // add spin and color flow information if available 
 	  if( _reader->isStdHepEv4() ){
-	    
-	    float spin[3] = { _reader->spinX( IHEP ) , _reader->spinY( IHEP ) ,  _reader->spinZ( IHEP )   } ;
-	    
-	    int colorFlow[2] = {  _reader->colorflow( IHEP , 0 ) , _reader->colorflow( IHEP , 1 ) } ;	  
+
+	    spin[0] = _reader->spinX( IHEP ); 
+	    spin[1] = _reader->spinY( IHEP ); 
+	    spin[2] = _reader->spinZ( IHEP );
+	  
+	    colorFlow[0] = _reader->colorflow( IHEP , 0 );
+	    colorFlow[1] = _reader->colorflow( IHEP , 1 );
+
 	  }
 	  
 	  int fd = _reader->daughter1(IHEP)%10000 - 1;

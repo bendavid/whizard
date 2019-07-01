@@ -1,4 +1,4 @@
-! WHIZARD 2.2.7 Aug 11 2015
+! WHIZARD 2.2.8 Nov 22 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,11 +6,14 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
-!     Fabian Bach <fabian.bach@desy.de>
+!     Fabian Bach <fabian.bach@t-online.de>
+!     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
+!     Soyoung Shim <soyoung.shim@desy.de>
+!     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, Daniel Wiesler 
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -42,6 +45,8 @@ module evt_nlo
   use processes
   use process_stacks
   use event_transforms
+
+  use nlo_data, only: sqme_collector_t
   use phs_fks
 
   implicit none
@@ -83,12 +88,14 @@ contains
     type(process_stack_t), intent(in), optional :: process_stack
     real(default) :: sqrts
     call msg_debug (D_TRANSFORMS, "evt_nlo_connect")
-    call evt%base_connect (process_instance, model, process_stack)
-    associate (generator => evt%phs_fks_generator, &
-               nlo_controller => process_instance%nlo_controller)
-       sqrts = process_instance%get_sqrts ()
-       call nlo_controller%setup_generator (generator, sqrts)
-    end associate
+    select type (pcm => process_instance%pcm)
+    class is (pcm_instance_nlo_t)
+       call evt%base_connect (process_instance, model, process_stack)
+       associate (generator => evt%phs_fks_generator)
+         sqrts = process_instance%get_sqrts ()
+         call pcm%controller%setup_generator (generator, sqrts)
+       end associate
+    end select
   end subroutine evt_nlo_connect
 
   subroutine evt_nlo_prepare_new_event (evt, i_mci, i_term)
@@ -135,21 +142,24 @@ contains
     real(default) :: r_col
     call msg_debug (D_TRANSFORMS, "evt_nlo_build_radiated_particle_set")
     call msg_debug (D_TRANSFORMS, "evt%i_evaluation", evt%i_evaluation)
-    evt%particle_set_radiated(i_event) = evt%particle_set
-    if (evt%i_evaluation /= 0) then
-       ! TODO: (bcn 2015-07-15) beware the intel
-       flv_radiated = evt%process_instance%nlo_controller%get_flv_state_real (1)
-       call evt%rng%generate (r_col)
-       call msg_debug2 (D_TRANSFORMS, "r_col", r_col)
-       if (debug2_active (D_TRANSFORMS))  print *, 'flv_radiated =    ', flv_radiated
-       emitter = evt%emitters (evt%i_evaluation)
-       call msg_debug (D_TRANSFORMS, "emitter", emitter)
-       ! TODO: (bcn 2015-07-15) beware the intel
-       p_new = evt%process_instance%nlo_controller%get_momenta (born_phsp = .false.)
-       call evt%particle_set_radiated(i_event)%build_radiation (p_new, emitter, flv_radiated, &
-            evt%process_instance%process%get_model_ptr (), r_col)
-    end if
-    evt%i_evaluation = evt%i_evaluation + 1
+    select type (pcm => evt%process_instance%pcm)
+    class is (pcm_instance_nlo_t)
+       evt%particle_set_radiated(i_event) = evt%particle_set
+       if (evt%i_evaluation /= 0) then
+          allocate (flv_radiated (size (pcm%controller%get_flv_state_real (1))))
+          flv_radiated = pcm%controller%get_flv_state_real (1)
+          call evt%rng%generate (r_col)
+          call msg_debug2 (D_TRANSFORMS, "r_col", r_col)
+          if (debug2_active (D_TRANSFORMS))  print *, 'flv_radiated =    ', flv_radiated
+          emitter = evt%emitters (evt%i_evaluation)
+          call msg_debug (D_TRANSFORMS, "emitter", emitter)
+          allocate (p_new (size (pcm%controller%get_momenta (born_phsp = .false.))))
+          p_new = pcm%controller%get_momenta (born_phsp = .false.)
+          call evt%particle_set_radiated(i_event)%build_radiation (p_new, emitter, flv_radiated, &
+               evt%process_instance%process%get_model_ptr (), r_col)
+       end if
+       evt%i_evaluation = evt%i_evaluation + 1
+    end select
   end subroutine evt_nlo_build_radiated_particle_set
 
   function evt_nlo_compute_subtraction_weights (evt) result (weight)
@@ -161,12 +171,12 @@ contains
     integer :: i, emitter
     call msg_debug (D_TRANSFORMS, "evt_nlo_compute_subtraction_weights")
     weight = zero
-    associate (instance => evt%process_instance)
-       ! TODO: (bcn 2015-07-15) beware the intel
-       emitters = instance%nlo_controller%get_emitter_list ()
-       ! TODO: (bcn 2015-07-15) beware the intel
-       x_rad = instance%nlo_controller%real_kinematics%x_rad
-       ! TODO: (bcn 2015-07-15) beware the intel
+    select type (pcm => evt%process_instance%pcm)
+    class is (pcm_instance_nlo_t)
+       allocate (emitters (size (pcm%controller%get_emitter_list ())))       
+       allocate (p_born (size (evt%particle_set%get_momenta ())))
+       emitters = pcm%controller%get_emitter_list ()
+       x_rad = pcm%controller%real_kinematics%x_rad
        p_born = evt%particle_set%get_momenta ()
        call evt%phs_fks_generator%set_beam_energy (p_born(1)%p(0))
        call evt%phs_fks_generator%generate_radiation_variables (x_rad, p_born)
@@ -175,20 +185,22 @@ contains
           if (emitter <= 2) then
              call msg_fatal ("NLO Events only for lepton collisions so far")
           else
+             allocate (p_real (size (evt%phs_fks_generator%generate_fsr_from_x &
+                  (x_rad, emitter, p_born))))
              p_real = evt%phs_fks_generator%generate_fsr_from_x &
                   (x_rad, emitter, p_born)
           end if
-          associate (nlo_controller => instance%nlo_controller)
-             call nlo_controller%set_momenta (p_born, p_real)
-             call nlo_controller%set_momenta (p_born, p_real, cms=.true.)
-          end associate
-          call instance%compute_sqme_real_sub (emitter, p_born, p_real)
+          call pcm%controller%set_momenta (p_born, p_real)
+          call pcm%controller%set_momenta (p_born, p_real, cms=.true.)
+          call evt%process_instance%compute_sqme_real_sub &
+               (emitter, p_born, p_real)
           call msg_debug (D_TRANSFORMS, &
                "instance%sqme_collector%sqme_real_per_emitter(1,emitter)", &
-               instance%sqme_collector%sqme_real_per_emitter(1,emitter))
-          weight = weight + instance%sqme_collector%sqme_real_per_emitter (1,emitter)
+               pcm%collector%sqme_real_per_emitter(1,emitter))
+          weight = weight + pcm%collector%sqme_real_per_emitter (1,emitter)
+          deallocate (p_real)
        end do
-    end associate
+    end select
   end function evt_nlo_compute_subtraction_weights
 
   subroutine evt_nlo_compute_real (evt, emitter)
@@ -197,26 +209,29 @@ contains
     type(vector4_t), dimension(:), allocatable :: p_born, p_real
     real(default), dimension(3) :: x_rad
     call msg_debug (D_TRANSFORMS, "evt_nlo_compute_real")
+    allocate (p_born (size (evt%particle_set%get_momenta ())))
     p_born = evt%particle_set%get_momenta ()
-    associate (instance => evt%process_instance)
-       x_rad = instance%nlo_controller%real_kinematics%x_rad
+    select type (pcm => evt%process_instance%pcm)
+    class is (pcm_instance_nlo_t)
+       x_rad = pcm%controller%real_kinematics%x_rad
        call evt%phs_fks_generator%generate_radiation_variables (x_rad, p_born)
        if (emitter <= 2) then
           call msg_fatal ("NLO Events only for lepton collisions so far")
        else
+          if (allocated (p_real))  deallocate (p_real)
+          allocate (p_real (size (evt%phs_fks_generator%generate_fsr_from_x &
+              (x_rad, emitter, p_born))))
           p_real = evt%phs_fks_generator%generate_fsr_from_x &
               (x_rad, emitter, p_born)
        end if
-       associate (nlo_controller => instance%nlo_controller)
-          call nlo_controller%set_momenta (p_born, p_real)
-          call nlo_controller%set_momenta (p_born, p_real, cms=.true.)
-       end associate
-       call instance%compute_sqme_real_rad (emitter, p_born, p_real)
+       call pcm%controller%set_momenta (p_born, p_real)
+       call pcm%controller%set_momenta (p_born, p_real, cms=.true.)
+       call evt%process_instance%compute_sqme_real_rad (emitter, p_born, p_real)
        call msg_debug (D_TRANSFORMS, &
             "instance%sqme_collector%sqme_real_per_emitter(1,emitter)", &
-            instance%sqme_collector%sqme_real_per_emitter(1,emitter))
-       evt%sqme_rad = instance%sqme_collector%sqme_real_per_emitter (1, emitter)
-    end associate
+            pcm%collector%sqme_real_per_emitter(1,emitter))
+       evt%sqme_rad = pcm%collector%sqme_real_per_emitter (1, emitter)
+    end select
   end subroutine evt_nlo_compute_real
 
 

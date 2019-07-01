@@ -106,6 +106,7 @@ n_events = 100
 | Events: generating 100 unweighted, unpolarized events ...
 | Events: event normalization mode '1'
 |         ... event sample complete.
+| Events: actual unweighting efficiency =  22.22 %
 Warning: Encountered events with excess weight: 1 events (  1.000 %)
 | Maximum excess weight = 1.897E-03
 | Average excess weight = 1.897E-05
@@ -129,6 +130,7 @@ n_events = 100
 | Events: generating 100 unweighted, unpolarized events ...
 | Events: event normalization mode '1'
 |         ... event sample complete.
+| Events: actual unweighting efficiency =  26.04 %
 Warning: Encountered events with excess weight: 2 events (  2.000 %)
 | Maximum excess weight = 1.722E-04
 | Average excess weight = 3.208E-06

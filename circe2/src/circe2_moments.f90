@@ -1,32 +1,3 @@
-module tao_random_objects
-  use kinds
-  use tao_random_numbers
-  use circe2
-  implicit none
-  private
-  public :: rng_tao
-  type, extends (rng_type) :: rng_tao
-     integer :: seed = 0
-     integer :: n_calls = 0
-     type(tao_random_state) :: state
-   contains
-     procedure :: generate => rng_tao_generate
-     procedure :: init => rng_tao_init
-  end type rng_tao
-contains
-  subroutine rng_tao_generate (rng_obj, u)
-    class(rng_tao), intent(inout) :: rng_obj
-    real(default), intent(out) :: u
-    call tao_random_number (rng_obj%state, u)
-    rng_obj%n_calls = rng_obj%n_calls + 1
-  end subroutine rng_tao_generate
-  subroutine rng_tao_init (rng_obj, seed)
-    class(rng_tao), intent(inout) :: rng_obj
-    integer, intent(in) :: seed
-    rng_obj%seed = seed
-    call tao_random_create (rng_obj%state, seed)
-  end subroutine rng_tao_init
-end module tao_random_objects
 module sampling
   use kinds
   implicit none
@@ -322,7 +293,7 @@ contains
     type(moment), dimension(0:,0:,0:,0:), intent(in) :: moments
     type(channel), dimension(:), intent(in) :: channels
     integer :: nx, mx, ny, my
-    real(kind=default) :: truth, estimate, sigma, pull
+    real(kind=default) :: truth, estimate, sigma, pull, eps
     do nx = lbound(moments,1), ubound(moments,1)
        do mx = lbound(moments,2), ubound(moments,2)
           do ny = lbound(moments,3), ubound(moments,3)
@@ -331,13 +302,15 @@ contains
                 estimate = mean_moment (moments(nx,mx,ny,my))
                 sigma = sqrt (variance_moment (moments(nx,mx,ny,my)))
                 pull = estimate - truth
-                if (pull /= 0.0_default) pull = pull / sigma
+                eps = pull / max (epsilon (1.0_default), epsilon (1.0_double))
+                if (sigma /= 0.0_default) pull = pull / sigma
                 write (*, "(' x^', I1, ' (1-x)^', I1, &
                            &' y^', I1, ' (1-y)^', I1, &
                            &': ', F8.5, ': est = ', F8.5, &
                            &' +/- ', F8.5,&
-                           &', pull = ', F5.2)") &
-                     nx, mx, ny, my, truth, estimate, sigma, pull
+                           &', pull = ', F8.2,&
+                           &', eps = ', F8.2)") &
+                     nx, mx, ny, my, truth, estimate, sigma, pull, eps
              end do
           end do
        end do
@@ -350,8 +323,11 @@ contains
     real(kind=default), intent(in), optional :: threshold, fraction
     logical :: results_ok
     integer :: nx, mx, ny, my, failures
-    real(kind=default) :: thr, frac
+    real(kind=default) :: thr, frac, eps
     real(kind=default) :: truth, estimate, sigma
+    ! we mut not expect to measure zero better than the
+    ! double precision used in the ocaml code:
+    eps = 200 * max (epsilon (1.0_default), epsilon (1.0_double))
     if (present(threshold)) then
        thr = threshold
     else
@@ -373,7 +349,7 @@ contains
                 if (.not. (      ieee_is_normal (truth) &
                            .and. ieee_is_normal (estimate) &
                            .and. ieee_is_normal (sigma)) &
-                    .or. abs (estimate - truth) > thr * sigma) then
+                    .or. abs (estimate - truth) > max (thr * sigma, eps)) then
                    failures = failures + 1
                 end if
              end do
@@ -401,7 +377,7 @@ contains
     call read_channels (channels)
     do i = 1, nevents
        call generate_beta_multi (rng, x, channels)
-       print *, x, 1.0_default
+       write (*, "(3(5x,F19.17))") x, 1.0_default
     end do
   end subroutine generate
   subroutine compare (rng, nevents, file)

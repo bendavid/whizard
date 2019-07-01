@@ -7,10 +7,10 @@
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
 #     with contributions from
-#     Fabian Bach <fabian.bach@desy.de>
+#     Fabian Bach <fabian.bach@t-online.de>
 #     Bijan Chokoufe <bijan.chokoufe@desy.de>
 #     Christian Speckner <cnspeckn@googlemail.com>
-#     Marco Sekulla <marco.sekulla@desy.de>
+#     Marco Sekulla <marco.sekulla@kit.edu>
 #     Christian Weiss <christian.weiss@desy.de>
 #     Felix Braam, Sebastian Schmidt,
 #     Hans-Werner Boschmann, Daniel Wiesler
@@ -42,7 +42,8 @@ libme_methods_la_SOURCES = \
   prc_core.f90 \
   prc_template_me.f90 \
   prc_omega.f90 \
-  prc_user_defined.f90
+  prc_user_defined.f90 \
+  prc_threshold.f90
 
 libme_methods_ut_la_SOURCES = \
   prc_template_me_uti.f90 prc_template_me_ut.f90 \
@@ -124,7 +125,7 @@ DISTCLEANFILES += Makefile.depend
 	@:
 #	touch $@
 
-AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system -I../combinatorics -I../parsing -I../physics -I../qft -I../expr_base -I../types -I../matrix_elements -I../particles -I../beams -I../fastjet
+AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system -I../combinatorics -I../parsing -I../physics -I../qft -I../expr_base -I../types -I../matrix_elements -I../particles -I../beams -I../fastjet -I../pdf_builtin -I../lhapdf
 
 
 ########################################################################

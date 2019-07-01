@@ -1,4 +1,4 @@
-# $Id: model_test.sin 7076 2015-06-29 00:09:21Z jr_reuter $
+# $Id: model_test.sin 7369 2015-11-16 18:03:59Z jr_reuter $
 # SINDARIN input for WHIZARD self-test
 
 library = "model_test_1_lib"
@@ -91,6 +91,10 @@ process models_ccww_sm_ac 	   = 	c, C	=>	Wp, Wm
 model = "SM_ac_CKM"
 mH = 125 GeV
 process models_ccww_sm_ac_ckm 	   = 	c, C	=>	Wp, Wm
+
+model = "SM_dim6"
+mH = 125 GeV
+process models_ccww_sm_dim6 	   = 	c, C	=>	Wp, Wm
 
 model = "SM_rx"
 mH = 125 GeV
@@ -196,24 +200,25 @@ integrate (models_ccww_sm)           { seed = 16 }
 integrate (models_ccww_sm_ckm)       { seed = 17 }
 integrate (models_ccww_sm_ac)        { seed = 18 }
 integrate (models_ccww_sm_ac_ckm)    { seed = 19 }
-integrate (models_wwww_sm_rx)        { seed = 20 }
-integrate (models_wwww_sm_ul)        { seed = 21 }
-integrate (models_wwww_noh_rx)       { seed = 22 }
-integrate (models_ccww_sm_top)       { seed = 23 }
-integrate (models_ccww_sm_top_anom)  { seed = 24 }
-integrate (models_ccww_sm_higgs)     { seed = 25 }
-integrate (models_ccww_sm_tt_thresh) { seed = 26 }
-integrate (models_ccww_simplest)     { seed = 27 }
-integrate (models_ccww_simplest_univ){ seed = 28 }
-integrate (models_ccww_template)     { seed = 29 }
-integrate (models_ccww_threeshl)     { seed = 30 }
-integrate (models_ccww_threeshl_nohf){ seed = 31 }
-integrate (models_ccww_ued)          { seed = 32 }
-integrate (models_wwww_ssc)          { seed = 33 }
-integrate (models_wwww_ssc_2)        { seed = 34 }
-integrate (models_wwww_ssc_altt)     { seed = 35 }
-integrate (models_wwww_alth)         { seed = 36 }
-integrate (models_ccww_xdim)         { seed = 37 }
-integrate (models_ccww_zprime)       { seed = 38 }
+integrate (models_ccww_sm_dim6)      { seed = 20 }
+integrate (models_wwww_sm_rx)        { seed = 21 }
+integrate (models_wwww_sm_ul)        { seed = 22 }
+integrate (models_wwww_noh_rx)       { seed = 23 }
+integrate (models_ccww_sm_top)       { seed = 24 }
+integrate (models_ccww_sm_top_anom)  { seed = 25 }
+integrate (models_ccww_sm_higgs)     { seed = 26 }
+integrate (models_ccww_sm_tt_thresh) { seed = 27 }
+integrate (models_ccww_simplest)     { seed = 28 }
+integrate (models_ccww_simplest_univ){ seed = 29 }
+integrate (models_ccww_template)     { seed = 30 }
+integrate (models_ccww_threeshl)     { seed = 31 }
+integrate (models_ccww_threeshl_nohf){ seed = 32 }
+integrate (models_ccww_ued)          { seed = 33 }
+integrate (models_wwww_ssc)          { seed = 34 }
+integrate (models_wwww_ssc_2)        { seed = 35 }
+integrate (models_wwww_ssc_altt)     { seed = 36 }
+integrate (models_wwww_alth)         { seed = 37 }
+integrate (models_ccww_xdim)         { seed = 38 }
+integrate (models_ccww_zprime)       { seed = 39 }
  
 show (results)

@@ -406,6 +406,21 @@ constructed.
     
 @ %def beam_structure_final_pol
 @ %def beam_structure_init_pol
+@ Check if polarized beams are used.
+<<Beam structures: beam structure: TBP>>=
+  procedure :: has_polarized_beams => beam_structure_has_polarized_beams
+<<Beam structures: procedures>>=
+  elemental function beam_structure_has_polarized_beams (beam_structure) result (pol)
+    logical :: pol
+    class(beam_structure_t), intent(in) :: beam_structure
+    if (allocated (beam_structure%pol_f)) then
+       pol = any (beam_structure%pol_f /= 0)
+    else
+       pol = .false.
+    end if
+  end function beam_structure_has_polarized_beams
+
+@ %def beam_structure_has_polarized_beams
 @ Directly copy the spin density matrices.
 <<Beam structures: beam structure: TBP>>=
   procedure :: set_smatrix => beam_structure_set_smatrix
@@ -709,6 +724,41 @@ is meaningful only if momenta and, optionally, angles have been set.
   end function beam_structure_get_momenta
     
 @ %def beam_structure_get_momenta
+@ Check for a complete beam structure.  The [[applies]] flag tells if
+the beam structure should actually be used for a process with the
+given [[n_in]] number of incoming particles.
+
+It set if the beam structure matches the process as either decay or
+scattering.  It is unset if beam structure references a scattering
+setup but the process is a decay.  It is also unset if the beam
+structure itself is empty.
+
+If the beam structure cannot be used, terminate with fatal error.
+<<Beam structures: beam structure: TBP>>=
+  procedure :: check_against_n_in => beam_structure_check_against_n_in
+<<Beam structures: procedures>>=
+  subroutine beam_structure_check_against_n_in (beam_structure, n_in, applies)
+    class(beam_structure_t), intent(in) :: beam_structure
+    integer, intent(in) :: n_in
+    logical, intent(out) :: applies
+    if (beam_structure%is_set ()) then
+       if (n_in == beam_structure%get_n_beam ()) then
+          applies = .true.
+       else if (beam_structure%get_n_beam () == 0) then
+          call msg_fatal &
+               ("Asymmetric beams: missing beam particle specification")
+          applies = .false.
+       else
+          call msg_fatal &
+               ("Mismatch of process and beam setup (scattering/decay)")
+          applies = .false.
+       end if
+    else
+       applies = .false.
+    end if
+  end subroutine beam_structure_check_against_n_in
+    
+@ %def beam_structure_check_against_n_in
 @ 
 \subsection{Unit Tests}
 Test module, followed by the corresponding implementation module.
@@ -1164,19 +1214,17 @@ below.  Initialize either for decay or for collision.
 
 @ %def beam_data_init
 @ Finalizer: needed for the polarization components of the beams.
-<<Beams: public>>=
-  public :: beam_data_final
+<<Beams: beam data: TBP>>=
+  procedure :: final => beam_data_final
 <<Beams: procedures>>=
   subroutine beam_data_final (beam_data)
-    type(beam_data_t), intent(inout) :: beam_data
+    class(beam_data_t), intent(inout) :: beam_data
     beam_data%initialized = .false.
   end subroutine beam_data_final
 
 @ %def beam_data_final
 @ The verbose (default) version is for debugging.  The short version
 is for screen output in the UI.
-<<Beams: public>>=
-  public :: beam_data_write
 <<Beams: beam data: TBP>>=
   procedure :: write => beam_data_write
 <<Beams: procedures>>=
@@ -1262,23 +1310,23 @@ is for screen output in the UI.
 
 @ %def beam_data_write
 @ Return initialization status:
-<<Beams: public>>=
-  public :: beam_data_are_valid
+<<Beams: beam data: TBP>>=
+  procedure :: are_valid => beam_data_are_valid
 <<Beams: procedures>>=
   function beam_data_are_valid (beam_data) result (flag)
+    class(beam_data_t), intent(in) :: beam_data
     logical :: flag
-    type(beam_data_t), intent(in) :: beam_data
     flag = beam_data%initialized
   end function beam_data_are_valid
 
 @ %def beam_data_are_valid
 @ Check whether beam data agree with the current values of relevant
 parameters.
-<<Beams: public>>=
-  public :: beam_data_check_scattering
+<<Beams: beam data: TBP>>=
+  procedure :: check_scattering => beam_data_check_scattering
 <<Beams: procedures>>=
   subroutine beam_data_check_scattering (beam_data, sqrts)
-    type(beam_data_t), intent(in) :: beam_data
+    class(beam_data_t), intent(in) :: beam_data
     real(default), intent(in), optional :: sqrts
     if (beam_data_are_valid (beam_data)) then
        if (present (sqrts)) then
@@ -1294,38 +1342,43 @@ parameters.
 
 @ %def beam_data_check_scattering
 @ Return the number of beams (1 for decays, 2 for collisions).
-<<Beams: public>>=
-  public :: beam_data_get_n_in
+<<Beams: beam data: TBP>>=
+  procedure :: get_n_in => beam_data_get_n_in
 <<Beams: procedures>>=
   function beam_data_get_n_in (beam_data) result (n_in)
+    class(beam_data_t), intent(in) :: beam_data
     integer :: n_in
-    type(beam_data_t), intent(in) :: beam_data
     n_in = beam_data%n
   end function beam_data_get_n_in
 
 @ %def beam_data_get_n_in
 @ Return the beam flavor
-<<Beams: public>>=
-  public :: beam_data_get_flavor
+<<Beams: beam data: TBP>>=
+  procedure :: get_flavor => beam_data_get_flavor
 <<Beams: procedures>>=
   function beam_data_get_flavor (beam_data) result (flv)
+    class(beam_data_t), intent(in) :: beam_data
     type(flavor_t), dimension(:), allocatable :: flv
-    type(beam_data_t), intent(in) :: beam_data
     allocate (flv (beam_data%n))
     flv = beam_data%flv
   end function beam_data_get_flavor
 
 @ %def beam_data_get_flavor
 @ Return the beam energies
-<<Beams: public>>=
-  public :: beam_data_get_energy
+<<Beams: beam data: TBP>>=
+  procedure :: get_energy => beam_data_get_energy
 <<Beams: procedures>>=
   function beam_data_get_energy (beam_data) result (e)
+    class(beam_data_t), intent(in) :: beam_data
     real(default), dimension(:), allocatable :: e
-    type(beam_data_t), intent(in) :: beam_data
+    !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
+    integer :: i
     allocate (e (beam_data%n))
     if (beam_data%initialized) then
-       e = energy (beam_data%p)
+       do i = 1, beam_data%n          
+          e(i) = energy (beam_data%p(i))
+       end do
+       !!! e = energy (beam_data%p)       
     else
        e = 0
     end if
@@ -1333,35 +1386,66 @@ parameters.
 
 @ %def beam_data_get_energy
 @ Return the c.m.\ energy.
-<<Beams: public>>=
-  public :: beam_data_get_sqrts
+<<Beams: beam data: TBP>>=
+  procedure :: get_sqrts => beam_data_get_sqrts
 <<Beams: procedures>>=
   function beam_data_get_sqrts (beam_data) result (sqrts)
+    class(beam_data_t), intent(in) :: beam_data
     real(default) :: sqrts
-    type(beam_data_t), intent(in) :: beam_data
     sqrts = beam_data%sqrts
   end function beam_data_get_sqrts
   
 @ %def beam_data_get_sqrts
 @ Return true if the lab and c.m.\ frame are specified as identical.
-<<Beams: public>>=
-  public :: beam_data_cm_frame
+<<Beams: beam data: TBP>>=
+  procedure :: cm_frame => beam_data_cm_frame
 <<Beams: procedures>>=
   function beam_data_cm_frame (beam_data) result (flag)
-    type(beam_data_t), intent(in) :: beam_data
+    class(beam_data_t), intent(in) :: beam_data
     logical :: flag
     flag = beam_data%lab_is_cm_frame
   end function beam_data_cm_frame
   
 @ %def beam_data_cm_frame
+@
+<<Beams: beam data: TBP>>=
+  procedure :: get_helicity_state_matrix => beam_data_get_helicity_state_matrix
+<<Beams: procedures>>=
+  function beam_data_get_helicity_state_matrix (beam_data) result (state_hel)
+    type(state_matrix_t) :: state_hel
+    class(beam_data_t), intent(in) :: beam_data
+    type(polarization_t), dimension(:), allocatable :: pol
+    integer :: i
+    allocate (pol (beam_data%n))
+    do i = 1, beam_data%n
+       call polarization_init_pmatrix (pol(i), beam_data%pmatrix(i))
+    end do
+    call combine_polarization_states (pol, state_hel)
+    do i = 1, beam_data%n
+       call polarization_final (pol(i))
+    end do
+  end function beam_data_get_helicity_state_matrix
+
+@ %def beam_data_get_helicity_state_matrix
+@
+<<Beams: beam data: TBP>>=
+  procedure :: is_initialized => beam_data_is_initialized 
+<<Beams: procedures>>=
+  function beam_data_is_initialized (beam_data) result (initialized)
+    logical :: initialized
+    class(beam_data_t), intent(in) :: beam_data
+    initialized = any (beam_data%pmatrix%exists ())
+  end function beam_data_is_initialized
+
+@ %def beam_data_is_initialized
 @ Return a MD5 checksum for beam data.  If no checksum is present
 (because beams have not been initialized), compute the checksum of the
 sqrts value.
-<<Beams: public>>=
-  public :: beam_data_get_md5sum
+<<Beams: beam data: TBP>>=
+  procedure :: get_md5sum => beam_data_get_md5sum
 <<Beams: procedures>>=
   function beam_data_get_md5sum (beam_data, sqrts) result (md5sum_beams)
-    type(beam_data_t), intent(in) :: beam_data
+    class(beam_data_t), intent(in) :: beam_data
     real(default), intent(in) :: sqrts
     character(32) :: md5sum_beams
     character(80) :: buffer
@@ -1378,12 +1462,12 @@ sqrts value.
 \subsection{Initializers: beam structure}
 Initialize the beam data object from a beam structure object, given energy and
 model.
-<<Beams: public>>=
-  public :: beam_data_init_structure
+<<Beams: beam data: TBP>>=
+  procedure :: init_structure => beam_data_init_structure
 <<Beams: procedures>>=
   subroutine beam_data_init_structure &
        (beam_data, structure, sqrts, model, decay_rest_frame)
-    type(beam_data_t), intent(out) :: beam_data
+    class(beam_data_t), intent(out) :: beam_data
     type(beam_structure_t), intent(in) :: structure
     integer :: n_beam
     real(default), intent(in) :: sqrts
@@ -1395,30 +1479,28 @@ model.
     call flv%init (structure%get_prt (), model)
     if (structure%asymmetric ()) then
        if (structure%polarized ()) then
-          call beam_data_init_momenta (beam_data, &
-               structure%get_momenta (), flv, &
+          call beam_data%init_momenta (structure%get_momenta (), flv, &
                structure%get_smatrix (), structure%get_pol_f ())
        else
-          call beam_data_init_momenta (beam_data, &
-               structure%get_momenta (), flv)
+          call beam_data%init_momenta (structure%get_momenta (), flv)
        end if
     else
        select case (n_beam)
        case (1)
           if (structure%polarized ()) then
-             call beam_data_init_decay (beam_data, flv, &
+             call beam_data%init_decay (flv, &
                   structure%get_smatrix (), structure%get_pol_f (), &
                   rest_frame = decay_rest_frame)
           else
-             call beam_data_init_decay (beam_data, flv, &
+             call beam_data%init_decay (flv, &
                   rest_frame = decay_rest_frame)
           end if
        case (2)
           if (structure%polarized ()) then
-             call beam_data_init_sqrts (beam_data, sqrts, flv, &
+             call beam_data%init_sqrts (sqrts, flv, &
                   structure%get_smatrix (), structure%get_pol_f ())
           else
-             call beam_data_init_sqrts (beam_data, sqrts, flv)
+             call beam_data%init_sqrts (sqrts, flv)
           end if
        case default
           call msg_bug ("Beam data: invalid beam structure object")
@@ -1432,11 +1514,11 @@ model.
 This is the simplest one: just the two flavors, c.m.\ energy,
 polarization.  Color is inferred from flavor.  Beam momenta and c.m.\
 momenta coincide.
-<<Beams: public>>=
-  public :: beam_data_init_sqrts
+<<Beams: beam data: TBP>>=
+  procedure :: init_sqrts => beam_data_init_sqrts
 <<Beams: procedures>>=
   subroutine beam_data_init_sqrts (beam_data, sqrts, flv, smatrix, pol_f)
-    type(beam_data_t), intent(out) :: beam_data
+    class(beam_data_t), intent(out) :: beam_data
     real(default), intent(in) :: sqrts
     type(flavor_t), dimension(:), intent(in) :: flv
     type(smatrix_t), dimension(:), intent(in), optional :: smatrix
@@ -1467,11 +1549,11 @@ in the calculation; instead, it will be recomputed for each event in
 the subroutine [[phs_set_incoming_momenta]].  We compute it here for
 the nominal beam setup nevertheless, so we can print it and, in
 particular, include it in the MD5 sum.
-<<Beams: public>>=
-  public :: beam_data_init_momenta
+<<Beams: beam data: TBP>>=
+  procedure :: init_momenta => beam_data_init_momenta
 <<Beams: procedures>>=
   subroutine beam_data_init_momenta (beam_data, p3, flv, smatrix, pol_f)
-    type(beam_data_t), intent(out) :: beam_data
+    class(beam_data_t), intent(out) :: beam_data
     type(vector3_t), dimension(:), intent(in) :: p3
     type(flavor_t), dimension(:), intent(in) :: flv
     type(smatrix_t), dimension(:), intent(in), optional :: smatrix
@@ -1481,11 +1563,17 @@ particular, include it in the MD5 sum.
     real(default), dimension(size(p3)) :: e
     real(default), dimension(size(flv)) :: m
     type(lorentz_transformation_t) :: L_boost, L_rot
+    !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
+    integer :: i
     call beam_data_init (beam_data, size (flv))
     m = flv%get_mass ()
     e = sqrt (p3 ** 2 + m ** 2)
     allocate (p (beam_data%n))
-    p = vector4_moving (e, p3)
+    !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
+    !!! p = vector4_moving (e, p3)
+    do i = 1, beam_data%n
+       p(i) = vector4_moving (e(i), p3(i))    
+    end do
     p0 = sum (p)
     beam_data%p = p
     beam_data%lab_is_cm_frame = .false.
@@ -1540,20 +1628,22 @@ the beam-data components.
           call beam_data%pmatrix(i)%normalize (flv(i), 0._default)
        end if
     end do
-    call beam_data_compute_md5sum (beam_data)
+    call beam_data%compute_md5sum ()
   end subroutine beam_data_finish_initialization
 
 @ %def beam_data_finish_initialization
 @
 The MD5 sum is stored within the beam-data record, so it can be
 checked for integrity in subsequent runs. 
+<<Beams: beam data: TBP>>=
+  procedure :: compute_md5sum => beam_data_compute_md5sum
 <<Beams: procedures>>=
   subroutine beam_data_compute_md5sum (beam_data)
-    type(beam_data_t), intent(inout) :: beam_data
+    class(beam_data_t), intent(inout) :: beam_data
     integer :: unit
     unit = free_unit ()
     open (unit = unit, status = "scratch", action = "readwrite")
-    call beam_data_write (beam_data, unit, write_md5sum = .false., &
+    call beam_data%write (unit, write_md5sum = .false., &
        verbose = .true.)
     rewind (unit)
     beam_data%md5sum = md5sum (unit)
@@ -1566,11 +1656,11 @@ checked for integrity in subsequent runs.
 This is the simplest one: decay in rest frame.  We need just flavor
 and polarization.  Color is inferred from flavor.  Beam momentum and
 c.m.\ momentum coincide.
-<<Beams: public>>=
-  public :: beam_data_init_decay
+<<Beams: beam data: TBP>>=
+  procedure :: init_decay => beam_data_init_decay
 <<Beams: procedures>>=
   subroutine beam_data_init_decay (beam_data, flv, smatrix, pol_f, rest_frame)
-    type(beam_data_t), intent(out) :: beam_data
+    class(beam_data_t), intent(out) :: beam_data
     type(flavor_t), dimension(1), intent(in) :: flv
     type(smatrix_t), dimension(1), intent(in), optional :: smatrix
     real(default), dimension(:), intent(in), optional :: pol_f
@@ -1578,9 +1668,9 @@ c.m.\ momentum coincide.
     real(default), dimension(1) :: m
     m = flv%get_mass ()
     if (present (smatrix)) then
-       call beam_data_init_sqrts (beam_data, m(1), flv, smatrix, pol_f)
+       call beam_data%init_sqrts (m(1), flv, smatrix, pol_f)
     else
-       call beam_data_init_sqrts (beam_data, m(1), flv, smatrix, pol_f)
+       call beam_data%init_sqrts (m(1), flv, smatrix, pol_f)
     end if
     if (present (rest_frame))  beam_data%lab_is_cm_frame = rest_frame
   end subroutine beam_data_init_decay
@@ -1590,12 +1680,12 @@ c.m.\ momentum coincide.
 \subsection{Sanity check}
 After the beams have been set, the initial-particle masses may have
 been modified.  This can be checked here.
-<<Beams: public>>=
-  public :: beam_data_masses_are_consistent
+<<Beams: beam data: TBP>>=
+  procedure :: masses_are_consistent => beam_data_masses_are_consistent
 <<Beams: procedures>>=
   function beam_data_masses_are_consistent (beam_data) result (flag)
     logical :: flag
-    type(beam_data_t), intent(in) :: beam_data
+    class(beam_data_t), intent(in) :: beam_data
     flag = all (nearly_equal (beam_data%mass, beam_data%flv%get_mass ()))
   end function beam_data_masses_are_consistent
 
@@ -1634,21 +1724,15 @@ with the associated values from the spin density matrix into the
     type(state_matrix_t), target :: state_hel, state_fc, state_tmp
     type(state_iterator_t) :: it_hel, it_tmp
     type(quantum_numbers_t), dimension(:), allocatable :: qn
-    type(polarization_t), dimension(:), allocatable :: pol
+    !type(polarization_t), dimension(:), allocatable :: pol
     integer :: i
+    real(default), dimension(:,:), allocatable :: pol_matrix
     mask = quantum_numbers_mask (.false., .false., &
          .not. beam_data%pmatrix%is_polarized (), &
          mask_hd = beam_data%pmatrix%is_diagonal ())
     call beam%int%basic_init &
          (0, 0, beam_data%n, mask=mask, store_values=.true.)
-    allocate (pol (beam_data%n))
-    do i = 1, size (pol)
-       call polarization_init_pmatrix (pol(i), beam_data%pmatrix(i))
-    end do
-    call combine_polarization_states (pol, state_hel)
-    do i = 1, size (pol)
-       call polarization_final (pol(i))
-    end do
+    state_hel = beam_data%get_helicity_state_matrix ()
     allocate (qn (beam_data%n))
     call qn%init (beam_data%flv, color_from_flavor (beam_data%flv, 1))
     call state_fc%init ()
@@ -1864,13 +1948,13 @@ end module beams_uti
 
     !!! 2.1 version:
     ! call polarization_init_transversal (pol(2), flv(2), 0._default, 1._default)
-    call beam_data_init_sqrts (beam_data, sqrts, flv, smatrix, pol_f)
-    call beam_data_write (beam_data, u)
+    call beam_data%init_sqrts (sqrts, flv, smatrix, pol_f)
+    call beam_data%write (u)
     write (u, "(A)")
     call beam_init (beam, beam_data)
     call beam_write (beam, u)
     call beam_final (beam)
-    call beam_data_final (beam_data)
+    call beam_data%final ()
     
     write (u, "(A)")
     write (u, "(A)")  "* 2: Decay"
@@ -1882,8 +1966,8 @@ end module beams_uti
 
     !!! 2.1 version:
     ! call polarization_init_longitudinal (pol(1), flv(1), 0.4_default)
-    call beam_data_init_decay (beam_data, flv(1:1), smatrix(1:1), pol_f(1:1))
-    call beam_data_write (beam_data, u)
+    call beam_data%init_decay (flv(1:1), smatrix(1:1), pol_f(1:1))
+    call beam_data%write (u)
     write (u, "(A)")
     call beam_init (beam, beam_data)
     call beam_write (beam, u)
@@ -1892,7 +1976,7 @@ end module beams_uti
     write (u, "(A)")  "* Cleanup"            
        
     call beam_final (beam)
-    call beam_data_final (beam_data)
+    call beam_data%final ()
 
     call model%final ()
 
@@ -1953,15 +2037,15 @@ end module beams_uti
     call beam_structure%write (u)
     write (u, *)
     
-    call beam_data_init_structure (beam_data, beam_structure, sqrts, model)
-    call beam_data_write (beam_data, u)
+    call beam_data%init_structure (beam_structure, sqrts, model)
+    call beam_data%write (u)
     write (u, *)
  
     call beam_init (beam, beam_data)
     call beam_write (beam, u)
 
     call beam_final (beam)
-    call beam_data_final (beam_data)
+    call beam_data%final ()
     call beam_structure%final_pol ()
     call beam_structure%final_sf ()
     
@@ -1980,8 +2064,8 @@ end module beams_uti
     call beam_structure%write (u)
     write (u, *)
     
-    call beam_data_init_structure (beam_data, beam_structure, sqrts, model)
-    call beam_data_write (beam_data, u)
+    call beam_data%init_structure (beam_structure, sqrts, model)
+    call beam_data%write (u)
     write (u, "(A)")
     call beam_init (beam, beam_data)
     call beam_write (beam, u)
@@ -1990,7 +2074,7 @@ end module beams_uti
     write (u, "(A)")  "* Cleanup"            
        
     call beam_final (beam)
-    call beam_data_final (beam_data)
+    call beam_data%final ()
 
     call model%final ()
 
@@ -2045,8 +2129,10 @@ end module beams_uti
     call beam_structure%write (u)
     write (u, *)
 
-    call beam_data_init_structure (beam_data, beam_structure, 0._default, model)
-    call beam_data_write (beam_data, u, verbose = .true.)
+    call beam_data%init_structure (beam_structure, 0._default, model)
+    call pacify (beam_data%l_cm_to_lab, 1e-20_default)
+    call beam_data%compute_md5sum ()
+    call beam_data%write (u, verbose = .true.)
     write (u, *)
  
     write (u, "(1x,A)")  "Beam momenta reconstructed from LT:"
@@ -2060,7 +2146,7 @@ end module beams_uti
     call beam_write (beam, u)
 
     call beam_final (beam)
-    call beam_data_final (beam_data)
+    call beam_data%final ()
     call beam_structure%final_sf ()
     call beam_structure%final_mom ()
     
@@ -2078,8 +2164,8 @@ end module beams_uti
     call beam_structure%write (u)
     write (u, *)
 
-    call beam_data_init_structure (beam_data, beam_structure, 0._default, model)
-    call beam_data_write (beam_data, u, verbose = .true.)
+    call beam_data%init_structure (beam_structure, 0._default, model)
+    call beam_data%write (u, verbose = .true.)
     write (u, "(A)")
 
     write (u, "(1x,A)")  "Beam momentum reconstructed from LT:"
@@ -2095,7 +2181,7 @@ end module beams_uti
     write (u, "(A)")  "* Cleanup"            
        
     call beam_final (beam)
-    call beam_data_final (beam_data)
+    call beam_data%final ()
     call beam_structure%final_sf ()
     call beam_structure%final_mom ()
 
@@ -5336,7 +5422,7 @@ direct use of both $p_i$ and $\bar p_i$ as appropriate.
        call compute_prec_xy_1 (r(1), rb(1), p(1), pb(1), p (2))
        call compute_prec_xy_1 (r(2), rb(2), p(1), pb(1), pb(2))
        factor = - log_prec (p(1), pb(1))
-    else if (p(1) > 0) then
+    else if (.not. vanishes (p(1))) then
        call compute_prec_xy_0 (r(1), rb(1), p(1), pb(1), p (2))
        call compute_prec_xy_0 (r(2), rb(2), p(1), pb(1), pb(2))
        factor = - log_prec (p(1), pb(1))
@@ -6261,7 +6347,7 @@ end module sf_mappings_ut
 module sf_mappings_uti
 
 <<Use kinds>>
-  use format_defs, only: FMT_12, FMT_13, FMT_14, FMT_15, FMT_16
+  use format_defs, only: FMT_11, FMT_12, FMT_13, FMT_14, FMT_15, FMT_16
 
   use sf_mappings
 
@@ -6948,13 +7034,13 @@ result is well-defined because we are not using random points.
     write (u, "(A)")  "Probe at (0.9999,0.02):"
     p = [0.9999_default, 0.02_default]
     pb= [0.0001_default, 0.98_default]
-    call mapping%check (u, p, pb, FMT_15, FMT_12)
+    call mapping%check (u, p, pb, FMT_11, FMT_12)
 
     write (u, *)
     write (u, "(A)")  "Probe at (0.9999,0.98):"
     p = [0.9999_default, 0.98_default]
     pb= [0.0001_default, 0.02_default]
-    call mapping%check (u, p, pb, FMT_15, FMT_12)
+    call mapping%check (u, p, pb, FMT_11, FMT_12)
 
     write (u, *)
     write (u, "(A)")  "Compute integral:"
@@ -8431,7 +8517,7 @@ object in generator mode.
        if (object%n_par /= object%n_bound) then
           write (u, "(3x,A,I0)")  "n_bound   = ", object%n_bound
        end if
-       call beam_data_write (object%beam_data, u)
+       call object%beam_data%write (u)
        call write_separator (u)
        call beam_write (object%beam_t, u)
        if (allocated (object%sf)) then
@@ -8466,7 +8552,7 @@ because the [[sf_int]] entries establish pointers to the configuration data.
     type(sf_config_t), dimension(:), intent(in), optional, target :: sf_config
     integer :: i
     sf_chain%beam_data => beam_data
-    sf_chain%n_in = beam_data_get_n_in (beam_data)
+    sf_chain%n_in = beam_data%get_n_in ()
     call beam_init (sf_chain%beam_t, beam_data)
     if (present (sf_config)) then
        sf_chain%n_strfun = size (sf_config)
@@ -8626,6 +8712,7 @@ structure function value times the mapping Jacobian.
     real(default), dimension(:), intent(in) :: x
     real(default), dimension(:), intent(in) :: f
     real(default), intent(in) :: sf_sum
+    real(default) :: sf_sum_pac, f_sf_sum_pac
     integer :: u, i
     if (sf_chain%trace_enable) then
        u = sf_chain%trace_unit
@@ -8639,7 +8726,11 @@ structure function value times the mapping Jacobian.
           write (u, "(1x," // FMT_17 // ")", advance="no")  x(i)
        end do
        write (u, "(2x)", advance="no")
-       write (u, "(2(1x," // FMT_17 // "))")  sf_sum, f(c_sel) * sf_sum
+       sf_sum_pac = sf_sum
+       f_sf_sum_pac = f(c_sel) * sf_sum
+       call pacify (sf_sum_pac, 1.E-28_default)
+       call pacify (f_sf_sum_pac, 1.E-28_default)       
+       write (u, "(2(1x," // FMT_17 // "))")  sf_sum_pac, f_sf_sum_pac
     end if
   end subroutine sf_chain_trace
   
@@ -9522,6 +9613,21 @@ zero-size [[r]] argument, so nothing to do then.
   
 @ %def sf_chain_instance_get_status
 @
+<<SF base: sf chain instance: TBP>>=
+  procedure :: get_matrix_elements => sf_chain_instance_get_matrix_elements
+<<SF base: procedures>>=
+  subroutine sf_chain_instance_get_matrix_elements (chain, i, ff)
+     class(sf_chain_instance_t), intent(in) :: chain
+     integer, intent(in) :: i
+     real(default), intent(out), dimension(:), allocatable :: ff
+
+     associate (sf => chain%sf(i))
+        ff = real (sf%int%get_matrix_element ())
+     end associate
+  end subroutine sf_chain_instance_get_matrix_elements 
+
+@ %def sf_chain_instance_get_matrix_elements
+@ 
 \subsection{Unit tests}
 Test module, followed by the corresponding implementation module.
 <<[[sf_base_ut.f90]]>>=
@@ -11623,8 +11729,7 @@ Probe a structure function directly.
 
     call reset_interaction_counter ()
     
-    call beam_data_init_sqrts (beam_data, &
-         1000._default, [flv, flv])
+    call beam_data%init_sqrts (1000._default, [flv, flv])
 
     allocate (sf_test_data_t :: data_strfun)
     select type (data_strfun)
@@ -11731,8 +11836,7 @@ skip this step and manually advance the status of the chain instead.
 
     call reset_interaction_counter ()
     
-    call beam_data_init_sqrts (beam_data, &
-         1000._default, [flv, flv])
+    call beam_data%init_sqrts (1000._default, [flv, flv])
 
     allocate (sf_test_data_t :: data_strfun)
     select type (data_strfun)
@@ -11905,8 +12009,7 @@ Again, we skip evaluators.
 
     call reset_interaction_counter ()
     
-    call beam_data_init_sqrts (beam_data, &
-         1000._default, [flv, flv])
+    call beam_data%init_sqrts (1000._default, [flv, flv])
 
     allocate (sf_test_data_t :: data_strfun)
     select type (data_strfun)
@@ -12015,8 +12118,7 @@ evaluate the matrix elements and their products.
 
     call reset_interaction_counter ()
     
-    call beam_data_init_sqrts (beam_data, &
-         1000._default, [flv, flv])
+    call beam_data%init_sqrts (1000._default, [flv, flv])
 
     allocate (sf_test_data_t :: data_strfun)
     select type (data_strfun)
@@ -12266,8 +12368,7 @@ two-particle mappings.
 
     call reset_interaction_counter ()
     
-    call beam_data_init_sqrts (beam_data, &
-         1000._default, [flv, flv])
+    call beam_data%init_sqrts (1000._default, [flv, flv])
 
     allocate (sf_test_data_t :: data)
     select type (data)
@@ -12529,8 +12630,7 @@ kinematics and evaluate the matrix elements and their products.
 
     call reset_interaction_counter ()
     
-    call beam_data_init_sqrts (beam_data, &
-         1000._default, [flv, flv])
+    call beam_data%init_sqrts (1000._default, [flv, flv])
 
     allocate (sf_test_data_t :: data_strfun)
     select type (data_strfun)
@@ -12606,7 +12706,7 @@ module sf_isr
 <<Use strings>>
   use io_units
   use constants, only: pi
-  use format_defs, only: FMT_17, FMT_19
+  use format_defs, only: FMT_15, FMT_19
   use unit_tests, only: vanishes
   use diagnostics
   use physics_defs, only: PHOTON
@@ -13058,8 +13158,8 @@ depends. Hence, a dummy routine.
        call object%data%write (u)
        if (object%status >= SF_DONE_KINEMATICS) then
           write (u, "(1x,A)")  "SF parameters:"
-          write (u, "(3x,A," // FMT_17 // ")")  "x =", object%x
-          write (u, "(3x,A," // FMT_17 // ")")  "xb=", object%xb
+          write (u, "(3x,A," // FMT_15 // ")")  "x =", object%x
+          write (u, "(3x,A," // FMT_15 // ")")  "xb=", object%xb
        end if
        call object%base_write (u, testflag)
     else
@@ -13996,12 +14096,12 @@ structure function.
     write (u, "(A)")
     write (u, "(A)")  "* Structure function #1"
     write (u, "(A)")
-    call sf_int(1)%write (u)
+    call sf_int(1)%write (u, testflag = .true.)
     
     write (u, "(A)")
     write (u, "(A)")  "* Structure function #2"
     write (u, "(A)")
-    call sf_int(2)%write (u)
+    call sf_int(2)%write (u, testflag = .true.)
     
     write (u, "(A)")
     write (u, "(A)")  "* Structure-function value, default order"
@@ -21045,6 +21145,8 @@ particles are ordered as (hadron, remnant, parton).
 Polarization is ignored completely.  The beam particle is colorless,
 while partons and beam remnant carry color.  The remnant gets a
 special flavor code.
+<<SF pdf builtin: public>>=
+  public :: pdf_builtin_t
 <<SF pdf builtin: types>>=
   type, extends (sf_int_t) :: pdf_builtin_t
      type(pdf_builtin_data_t), pointer :: data => null ()
@@ -22335,6 +22437,8 @@ particles are ordered as (hadron, remnant, parton).
 Polarization is ignored completely.  The beam particle is colorless,
 while partons and beam remnant carry color.  The remnant gets a
 special flavor code.
+<<SF lhapdf: public>>=
+  public :: lhapdf_t
 <<SF lhapdf: types>>=
   type, extends (sf_int_t) :: lhapdf_t
      type(lhapdf_data_t), pointer :: data => null ()

@@ -1,4 +1,4 @@
-! WHIZARD 2.2.7 Aug 11 2015
+! WHIZARD 2.2.8 Nov 22 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,11 +6,14 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
-!     Fabian Bach <fabian.bach@desy.de>
+!     Fabian Bach <fabian.bach@t-online.de>
+!     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
+!     Soyoung Shim <soyoung.shim@desy.de>
+!     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, Daniel Wiesler 
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -100,7 +103,8 @@ contains
 
   subroutine event_stream_array_init &
        (es_array, sample, stream_fmt, global, &
-       data, input, input_sample, input_data, allow_switch, checkpoint, &
+       data, input, input_sample, input_data, allow_switch, &
+       checkpoint, callback, &
        error)
     class(event_stream_array_t), intent(out) :: es_array
     type(string_t), intent(in) :: sample
@@ -112,15 +116,11 @@ contains
     type(event_sample_data_t), intent(inout), optional :: input_data
     logical, intent(in), optional :: allow_switch
     integer, intent(in), optional :: checkpoint
+    integer, intent(in), optional :: callback
     logical, intent(out), optional :: error
     type(string_t) :: sample_in
-    integer :: n, i
+    integer :: n, i, n_output, i_input, i_checkpoint, i_callback
     logical :: success, switch
-    if (present (input)) then
-       n = size (stream_fmt) + 1
-    else
-       n = size (stream_fmt)
-    end if
     if (present (input_sample)) then
        sample_in = input_sample
     else
@@ -134,23 +134,48 @@ contains
     if (present (error)) then
        error = .false.
     end if
-    if (present (checkpoint)) then
-       allocate (es_array%entry (n + 1))
-       call dispatch_eio &
-            (es_array%entry(n+1)%eio, var_str ("checkpoint"), global)
-       call es_array%entry(n+1)%eio%init_out (sample, data)
-    else
-       allocate (es_array%entry (n))
-    end if
+    n = size (stream_fmt)
+    n_output = n
     if (present (input)) then
-       call dispatch_eio (es_array%entry(n)%eio, input, global)
+       n = n + 1
+       i_input = n
+    else
+       i_input = 0
+    end if
+    if (present (checkpoint)) then
+       n = n + 1
+       i_checkpoint = n
+    else
+       i_checkpoint = 0
+    end if
+    if (present (callback)) then
+       n = n + 1
+       i_callback = n
+    else
+       i_callback = 0
+    end if
+    allocate (es_array%entry (n))
+    if (i_checkpoint > 0) then
+       call dispatch_eio &
+            (es_array%entry(i_checkpoint)%eio, var_str ("checkpoint"), global)
+       call es_array%entry(i_checkpoint)%eio%init_out (sample, data)
+    end if
+    if (i_callback > 0) then
+       call dispatch_eio &
+            (es_array%entry(i_callback)%eio, var_str ("callback"), global)
+       call es_array%entry(i_callback)%eio%init_out (sample, data)
+    end if
+    if (i_input > 0) then
+       call dispatch_eio (es_array%entry(i_input)%eio, input, global)
        if (present (input_data)) then
-          call es_array%entry(n)%eio%init_in (sample_in, input_data, success)
+          call es_array%entry(i_input)%eio%init_in &
+               (sample_in, input_data, success)
        else
-          call es_array%entry(n)%eio%init_in (sample_in, data, success)
+          call es_array%entry(i_input)%eio%init_in &
+               (sample_in, data, success)
        end if
        if (success) then
-          es_array%i_in = n
+          es_array%i_in = i_input
        else if (present (input_sample)) then
           if (present (error)) then
              error = .true.
@@ -161,14 +186,14 @@ contains
        else
           call msg_message ("Events: &
                &parameter mismatch, discarding old event set")
-          call es_array%entry(n)%eio%final ()
+          call es_array%entry(i_input)%eio%final ()
           if (switch) then
              call msg_message ("Events: generating new events")
-             call es_array%entry(n)%eio%init_out (sample, data)
+             call es_array%entry(i_input)%eio%init_out (sample, data)
           end if
        end if
     end if
-    do i = 1, size (stream_fmt)
+    do i = 1, n_output
        call dispatch_eio (es_array%entry(i)%eio, stream_fmt(i), global)
        call es_array%entry(i)%eio%init_out (sample, data)
     end do

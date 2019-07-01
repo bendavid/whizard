@@ -177,7 +177,7 @@ iterations = 1:1000
    sqrts = 1.000000000000E+03 GeV
    Azimuthal dependence    = F
    Lab frame is c.m. frame = T
-   MD5 sum (beams/strf) = 'A2B1699F398D66462554093B60EE7E64'
+   MD5 sum (beams/strf) = '80007D5E30CFD7B9BD09FF0704AAA3A6'
 ========================================================================
  Multi-channel integrator configurations:
 ------------------------------------------------------------------------
@@ -189,7 +189,7 @@ iterations = 1:1000
    Current pass          = 1
    Number of iterations  = 1
    Number of calls       = 1000
-   MD5 sum (components)  = '23F09BE4A5C2BD4A221F947974A7A35E'
+   MD5 sum (components)  = '47EBA7EEAFCA3FE2B3C687729EFA34C5'
  Single-channel midpoint rule integrator:
    Integral             =  7.7464622036E+03
    Efficiency           =  9.6824583655E-01

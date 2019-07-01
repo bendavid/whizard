@@ -285,7 +285,14 @@ or~\texttt{F}.
   Augment this datatype by
   [[real(kind=default), dimension(2) :: mu_plus, mu_minus]]
   to record positive and negative weight separately, so that we can
-  estimmate the efficiency for reweighting from indefinite weights to $\{+1,-1\}$.
+  estimmate the efficiency for reweighting from indefinite weights to
+  $\{+1,-1\}$.  [WK 2015/11/06: done.  Those values are recorded but
+  not used inside \texttt{vamp}.  They can be retrieved by the caller.]
+\end{dubious}
+\begin{dubious}
+  WK 2015/11/06:  [[f_min]] and [[f_max]] work with the absolute
+  value of the matrix element, so they record the minimum and maximum
+  absolute value.
 \end{dubious}
 <<Declaration of [[vamp_grid_type]] types>>=
 type, public :: vamp_grid
@@ -297,6 +304,7 @@ type, public :: vamp_grid
    real(kind=default), dimension(:,:), pointer :: mu_xx => null ()
    real(kind=default), dimension(:,:), pointer :: sum_mu_xx => null ()
    real(kind=default), dimension(2) :: mu
+   real(kind=default), dimension(2) :: mu_plus, mu_minus
    real(kind=default) :: sum_integral, sum_weights, sum_chi2
    real(kind=default) :: calls, dv2g, jacobi
    real(kind=default) :: f_min, f_max
@@ -466,6 +474,8 @@ pure subroutine vamp_discard_integral &
   integer, intent(in), optional :: equivalent_to_ch, multiplicity
   character(len=*), parameter :: FN = "vamp_discard_integral"
   g%mu = 0.0
+  g%mu_plus = 0.0
+  g%mu_minus = 0.0
   g%mu_gi = 0.0
   g%sum_integral = 0.0
   g%sum_weights = 0.0
@@ -801,6 +811,8 @@ exit loop_over_cells
 @
 <<Reset counters in [[vamp_sample_grid0]]>>=
 g%mu = 0.0
+g%mu_plus = 0.0
+g%mu_minus = 0.0
 cell = 1
 call clear_integral_and_variance (g%div)
 if (associated (g%mu_x)) then
@@ -823,13 +835,17 @@ integer, dimension(size(g%div)) :: cell
 @
 <<Sample [[calls_per_cell]] points in the current [[cell]]>>=
 sum_f = 0.0
+sum_f_plus = 0.0
+sum_f_minus = 0.0
 sum_f2 = 0.0
+sum_f2_plus = 0.0
+sum_f2_minus = 0.0
 do k = 1, g%calls_per_cell
    <<Get [[x]] in the current [[cell]]>>
    <<[[f = wgt * func (x, weights, channel)]], iff [[x]] inside [[true_domain]]>>
    <<Collect integration and grid optimization data for [[x]] from [[f]]>>
 end do
-@ %def sum_f sum_f2
+@ %def sum_f sum_f2 sum_f_plus sum_f_minus
 @ We are using the generic procedure [[tao_random_number]] from the
 [[tao_random_numbers]] module for generating an array of uniform
 deviates.
@@ -875,18 +891,25 @@ end if
 @ 
 <<Collect integration and grid optimization data for [[x]] from [[f]]>>=
 if (g%f_min > g%f_max) then
-   g%f_min = f * g%calls
-   g%f_max = f * g%calls
-else if (f * g%calls < g%f_min) then
-   g%f_min = f * g%calls
-else if (f * g%calls > g%f_max) then
-   g%f_max = f * g%calls
+   g%f_min = abs (f) * g%calls
+   g%f_max = abs (f) * g%calls
+else if (abs (f) * g%calls < g%f_min) then
+   g%f_min = abs (f) * g%calls
+else if (abs (f) * g%calls > g%f_max) then
+   g%f_max = abs (f) * g%calls
 end if
 @ 
 <<Collect integration and grid optimization data for [[x]] from [[f]]>>=
 f2 = f * f
 sum_f = sum_f + f
 sum_f2 = sum_f2 + f2
+if (f > 0) then
+   sum_f_plus = sum_f_plus + f
+   sum_f2_plus = sum_f2_plus + f * f
+else if (f < 0) then
+   sum_f_minus = sum_f_minus + f
+   sum_f2_minus = sum_f2_minus + f * f
+end if
 call record_integral (g%div, ia, f)
 ! call record_efficiency (g%div, ia, f/g%f_max)
 if ((associated (g%mu_x)) .and. (.not. g%all_stratified)) then
@@ -896,14 +919,20 @@ end if
 if (present (channel)) then
    g%mu_gi = g%mu_gi + f2
 end if
-@ %def f2 sum_f sum_f2
+@ %def f2 sum_f sum_f2 sum_f_plus sum_f_minus sum_f2_plus sum_f2_minus
 @ 
 <<Local variables in [[vamp_sample_grid0]]>>=
-real(kind=default) :: wgt, f, f2, sum_f, sum_f2, var_f
+real(kind=default) :: wgt, f, f2
+real(kind=default) :: sum_f, sum_f2, var_f
+real(kind=default) :: sum_f_plus, sum_f2_plus, var_f_plus
+real(kind=default) :: sum_f_minus, sum_f2_minus, var_f_minus
 real(kind=default), dimension(size(g%div)):: x, x_mid, wgts
 real(kind=default), dimension(size(g%div)):: r
 integer, dimension(size(g%div)) :: ia
-@ %def wgt f f2 sum_f sum_f2 var_f
+@ %def wgt f f2 
+@ %def sum_f sum_f2 var_f
+@ %def sum_f_plus sum_f2_plus var_f_plus
+@ %def sum_f_minus sum_f2_minus var_f_minus
 @ %def r x x_mid wgts wgt ia
 @
 \begin{equation}
@@ -915,10 +944,20 @@ integer, dimension(size(g%div)) :: ia
 \label{pg:var_f}
 <<Collect integration and grid optimization data for current [[cell]]>>=
 var_f = sum_f2 * g%calls_per_cell - sum_f**2
+var_f_plus = sum_f2_plus * g%calls_per_cell - sum_f_plus**2
+var_f_minus = sum_f2_minus * g%calls_per_cell - sum_f_minus**2
 if (var_f <= 0.0) then 
    var_f = tiny (1.0_default)
 end if
+if (sum_f_plus /= 0 .and. var_f_plus <= 0) then 
+   var_f_plus = tiny (1.0_default)
+end if
+if (sum_f_minus /= 0 .and. var_f_minus <= 0) then 
+   var_f_minus = tiny (1.0_default)
+end if
 g%mu = g%mu + (/ sum_f, var_f /)
+g%mu_plus = g%mu_plus + (/ sum_f_plus, var_f_plus /)
+g%mu_minus = g%mu_minus + (/ sum_f_minus, var_f_minus /)
 call record_variance (g%div, ia, var_f)
 if ((associated (g%mu_x)) .and. g%all_stratified) then
    if (associated (g%map)) then
@@ -938,10 +977,23 @@ end if
 \end{equation}
 where the~$N_{\text{calls}}^2$ cancels the corresponding factor in the
 Jacobian and the~$N_{\text{cells}}^{-2}$ is the result of stratification.
+In order to avoid numerical noise for some OS when using 80bit
+precision, we wrap the numerical resetting into a negative
+weights-only if-clause.
 <<Collect results of [[vamp_sample_grid0]]>>=
 g%mu(2) = g%mu(2) * g%dv2g
 if (g%mu(2) < eps * max (g%mu(1)**2, 1._default)) then
    g%mu(2) = eps * max (g%mu(1)**2, 1._default)
+end if
+if (neg_w) then
+   g%mu_plus(2) = g%mu_plus(2) * g%dv2g
+   if (g%mu_plus(2) < eps * max (g%mu_plus(1)**2, 1._default)) then
+      g%mu_plus(2) = eps * max (g%mu_plus(1)**2, 1._default)
+   end if
+   g%mu_minus(2) = g%mu_minus(2) * g%dv2g
+   if (g%mu_minus(2) < eps * max (g%mu_minus(1)**2, 1._default)) then
+      g%mu_minus(2) = eps * max (g%mu_minus(1)**2, 1._default)
+   end if
 end if
 @ 
 <<Collect results of [[vamp_sample_grid0]]>>=
@@ -1303,6 +1355,10 @@ end do
 <<Copy the rest of [[g]] to the [[gs]]>>=
 gs%mu(1) = 0.0
 gs%mu(2) = 0.0
+gs%mu_plus(1) = 0.0
+gs%mu_plus(2) = 0.0
+gs%mu_minus(1) = 0.0
+gs%mu_minus(2) = 0.0
 gs%sum_integral = 0.0
 gs%sum_weights = 0.0
 gs%sum_chi2 = 0.0
@@ -1409,6 +1465,10 @@ g%f_min = minval (gs%f_min * (g%jacobi * g%calls) / (gs%jacobi * gs%calls))
 g%f_max = maxval (gs%f_max * (g%jacobi * g%calls) / (gs%jacobi * gs%calls))
 g%mu(1) = sum (gs%mu(1))
 g%mu(2) = sum (gs%mu(2))
+g%mu_plus(1) = sum (gs%mu_plus(1))
+g%mu_plus(2) = sum (gs%mu_plus(2))
+g%mu_minus(1) = sum (gs%mu_minus(1))
+g%mu_minus(2) = sum (gs%mu_minus(2))
 g%mu_gi = sum (gs%mu_gi)
 g%sum_mu_gi = g%sum_mu_gi + g%mu_gi / g%mu(2)
 g%sum_integral = g%sum_integral + g%mu(1) / g%mu(2)
@@ -3088,13 +3148,14 @@ The non-trivial poblem is that the adaptive grid is diferent in each
 channel, so we can't just reject on~$w(x)$.
 <<Implementation of [[vamp]] procedures>>=
 subroutine vamp_next_event_multi &
-     (x, rng, g, func, data, phi, weight, excess, exc)
+     (x, rng, g, func, data, phi, weight, excess, positive, exc)
   real(kind=default), dimension(:), intent(out) :: x
   type(tao_random_state), intent(inout) :: rng
   type(vamp_grids), intent(inout) :: g
   class(vamp_data_t), intent(in) :: data
   real(kind=default), intent(out), optional :: weight
   real(kind=default), intent(out), optional :: excess
+  logical, intent(out), optional :: positive
   type(exception), intent(inout), optional :: exc
   <<Interface declaration for [[func]]>>
   <<Interface declaration for [[phi]]>>
@@ -3154,9 +3215,9 @@ weight = wgt * g%weights(channel) / weights(channel)
 exit rejection
 @
 <<Maybe accept unweighted multi channel event>>=
-if (wgt > g%grids(channel)%f_max) then
+if (abs (wgt) > g%grids(channel)%f_max) then
    if (present(excess)) then
-      excess = wgt/g%grids(channel)%f_max - 1
+      excess = abs (wgt) / g%grids(channel)%f_max - 1
    else
      call raise_exception (exc, EXC_WARN, FN, "weight > 1")
 !      print *, "weight > 1 (", wgt/g%grids(channel)%f_max, &
@@ -3168,7 +3229,8 @@ else
    if (present(excess)) excess = 0
 end if
 call tao_random_number (rng, r)
-if (r * g%grids(channel)%f_max <= wgt) then
+if (r * g%grids(channel)%f_max <= abs (wgt)) then
+   if (present (positive))  positive = wgt >= 0
    exit rejection
 end if
 @
@@ -3468,6 +3530,10 @@ subroutine write_grid_unit (g, unit, write_integrals)
   write (unit = unit, fmt = logical_fmt) "quadrupole = ", g%quadrupole
   write (unit = unit, fmt = double_fmt) "mu(1) = ", g%mu(1)
   write (unit = unit, fmt = double_fmt) "mu(2) = ", g%mu(2)
+  write (unit = unit, fmt = double_fmt) "mu_plus(1) = ", g%mu_plus(1)
+  write (unit = unit, fmt = double_fmt) "mu_plus(2) = ", g%mu_plus(2)
+  write (unit = unit, fmt = double_fmt) "mu_minus(1) = ", g%mu_minus(1)
+  write (unit = unit, fmt = double_fmt) "mu_minus(2) = ", g%mu_minus(2)
   write (unit = unit, fmt = double_fmt) "sum_integral = ", g%sum_integral
   write (unit = unit, fmt = double_fmt) "sum_weights = ", g%sum_weights
   write (unit = unit, fmt = double_fmt) "sum_chi2 = ", g%sum_chi2
@@ -3548,6 +3614,10 @@ subroutine read_grid_unit (g, unit, read_integrals)
   read (unit = unit, fmt = logical_fmt) chdum, g%quadrupole
   read (unit = unit, fmt = double_fmt) chdum, g%mu(1)
   read (unit = unit, fmt = double_fmt) chdum, g%mu(2)
+  read (unit = unit, fmt = double_fmt) chdum, g%mu_plus(1)
+  read (unit = unit, fmt = double_fmt) chdum, g%mu_plus(2)
+  read (unit = unit, fmt = double_fmt) chdum, g%mu_minus(1)
+  read (unit = unit, fmt = double_fmt) chdum, g%mu_minus(2)
   read (unit = unit, fmt = double_fmt) chdum, g%sum_integral
   read (unit = unit, fmt = double_fmt) chdum, g%sum_weights
   read (unit = unit, fmt = double_fmt) chdum, g%sum_chi2
@@ -3776,6 +3846,10 @@ subroutine write_grid_raw_unit (g, unit, write_integrals)
   write (unit = unit) g%quadrupole
   write (unit = unit) g%mu(1)
   write (unit = unit) g%mu(2)
+  write (unit = unit) g%mu_plus(1)
+  write (unit = unit) g%mu_plus(2)
+  write (unit = unit) g%mu_minus(1)
+  write (unit = unit) g%mu_minus(2)
   write (unit = unit) g%sum_integral
   write (unit = unit) g%sum_weights
   write (unit = unit) g%sum_chi2
@@ -3850,6 +3924,10 @@ subroutine read_grid_raw_unit (g, unit, read_integrals)
   read (unit = unit) g%quadrupole
   read (unit = unit) g%mu(1)
   read (unit = unit) g%mu(2)
+  read (unit = unit) g%mu_plus(1)
+  read (unit = unit) g%mu_plus(2)
+  read (unit = unit) g%mu_minus(1)
+  read (unit = unit) g%mu_minus(2)
   read (unit = unit) g%sum_integral
   read (unit = unit) g%sum_weights
   read (unit = unit) g%sum_chi2
@@ -4044,6 +4122,8 @@ end subroutine read_grids_raw_name
 
 @ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Marshaling}
+[WK] Note: [[mu_plus]] and [[mu_minus]] not transferred (hard-coded
+buffer indices)!
 <<Declaration of [[vamp]] procedures>>=
 public :: vamp_marshal_grid_size, vamp_marshal_grid, vamp_unmarshal_grid
 @ 
@@ -4320,6 +4400,8 @@ elemental subroutine vamp_copy_grid (lhs, rhs)
   integer :: ndim
   ndim = size (rhs%div)
   lhs%mu = rhs%mu
+  lhs%mu_plus = rhs%mu_plus
+  lhs%mu_minus = rhs%mu_minus
   lhs%sum_integral = rhs%sum_integral
   lhs%sum_weights = rhs%sum_weights
   lhs%sum_chi2 = rhs%sum_chi2

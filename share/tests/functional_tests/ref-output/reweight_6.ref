@@ -69,6 +69,7 @@ Warning: No cuts have been defined.
 | Events: generating 2 unweighted, unpolarized events ...
 | Events: event normalization mode '1'
 |         ... event sample complete.
+| Events: actual unweighting efficiency = 100.00 %
 | Events: closing weight stream file 'reweight_6a.weights.dat'
 | Events: closing raw file 'reweight_6a.evx'
 $sample = "reweight_6b"

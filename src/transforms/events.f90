@@ -1,4 +1,4 @@
-! WHIZARD 2.2.7 Aug 11 2015
+! WHIZARD 2.2.8 Nov 22 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,11 +6,14 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
-!     Fabian Bach <fabian.bach@desy.de>
+!     Fabian Bach <fabian.bach@t-online.de>
+!     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
+!     Soyoung Shim <soyoung.shim@desy.de>
+!     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, Daniel Wiesler 
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -138,6 +141,7 @@ module events
      procedure :: get_index => event_get_index
      procedure :: get_fac_scale => event_get_fac_scale
      procedure :: get_alpha_s => event_get_alpha_s
+     procedure :: get_actual_calls_total => event_get_actual_calls_total
   end type event_t
 
 
@@ -449,7 +453,7 @@ contains
        end do
        evt => event%transform_last
        if (associated (evt) .and. evt%particle_set_exists) then
-          if (event%nlo_event) then
+          if (event%is_nlo_event()) then
              select type (evt)
              type is (evt_nlo_t)
                 call evt%build_radiated_particle_set (event%i_event+1)
@@ -631,7 +635,7 @@ contains
        call event%instance%evaluate_event_data ()
        call event%instance%normalize_weight ()
     else
-       if (event%nlo_event) &
+       if (event%is_nlo_event()) &
           call event%process%deactivate_real_component ()
        if (generate_new) call event%process%generate_weighted_event (event%instance, i_mci)
        if (signal_is_pending ()) return
@@ -663,7 +667,9 @@ contains
        event%selected_i_term = i_term
        event%selected_channel = channel
     else
-       call msg_bug ("Event: select term: process instance undefined")
+       event%selected_i_mci = 0
+       event%selected_i_term = 0
+       event%selected_channel = 0
     end if
   end subroutine event_select
 
@@ -768,7 +774,11 @@ contains
   function event_get_model_ptr (event) result (model)
     class(event_t), intent(in) :: event
     class(model_data_t), pointer :: model
-    model => event%process%get_model_ptr ()
+    if (associated (event%process)) then
+       model => event%process%get_model_ptr ()
+    else
+       model => null ()
+    end if
   end function event_get_model_ptr
 
   function event_get_i_mci (event) result (i_mci)
@@ -834,6 +844,16 @@ contains
     alpha_s = event%instance%get_alpha_s (event%selected_i_term)
   end function event_get_alpha_s
 
+  elemental function event_get_actual_calls_total (event) result (n)
+    class(event_t), intent(in) :: event
+    integer :: n
+    if (associated (event%instance)) then
+       n = event%instance%get_actual_calls_total ()
+    else
+       n = 0
+    end if
+  end function event_get_actual_calls_total
+  
   subroutine pacify_event (event)
     class(event_t), intent(inout) :: event
     class(evt_t), pointer :: evt

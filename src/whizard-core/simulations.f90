@@ -1,4 +1,4 @@
-! WHIZARD 2.2.7 Aug 11 2015
+! WHIZARD 2.2.8 Nov 22 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,11 +6,14 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
-!     Fabian Bach <fabian.bach@desy.de>
+!     Fabian Bach <fabian.bach@t-online.de>
+!     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
+!     Soyoung Shim <soyoung.shim@desy.de>
+!     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, Daniel Wiesler 
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -47,9 +50,11 @@ module simulations
   use flavors
   use particles
   use state_matrices, only: FM_IGNORE_HELICITY
+  use beam_structures, only: beam_structure_t
   use beams
   use rng_base
   use selectors
+  use process_libraries, only: process_library_t
   use prc_core
   use processes
   use event_base
@@ -143,6 +148,8 @@ module simulations
      procedure :: set_active_real_component => entry_set_active_real_component
      procedure, private :: import_process_characteristics &
           => entry_import_process_characteristics
+     procedure, private :: import_process_def_characteristics &
+          => entry_import_process_def_characteristics
      procedure, private :: import_process_results &
           => entry_import_process_results
      procedure, private :: prepare_expressions &
@@ -171,6 +178,7 @@ module simulations
   
   type :: simulation_t
      private
+     type(rt_data_t), pointer :: local => null ()
      type(string_t) :: sample_id
      logical :: unweighted = .true.
      logical :: negative_weights = .false.
@@ -185,7 +193,7 @@ module simulations
      integer :: n_prc = 0
      integer :: n_alt = 0
      logical :: has_integral = .false.
-     logical :: valid
+     logical :: valid = .false.
      real(default) :: integral = 0
      real(default) :: error = 0
      integer :: version = 1
@@ -213,6 +221,7 @@ module simulations
      procedure :: final => simulation_final
      procedure :: init => simulation_init
      procedure :: compute_n_events => simulation_compute_n_events
+     procedure :: show_efficiency => simulation_show_efficiency
      procedure :: get_n_nlo_entries => simulation_get_n_nlo_entries
      procedure :: compute_md5sum => simulation_compute_md5sum
      procedure :: init_process_selector => simulation_init_process_selector
@@ -359,10 +368,10 @@ contains
   end subroutine mci_set_init
     
   subroutine prepare_process &
-       (process, process_id, integrate, local, global)
+       (process, process_id, use_process, integrate, local, global)
     type(process_t), pointer, intent(out) :: process
     type(string_t), intent(in) :: process_id
-    logical, intent(in) :: integrate
+    logical, intent(in) :: use_process, integrate
     type(rt_data_t), intent(inout), target :: local
     type(rt_data_t), intent(inout), optional, target :: global
     if (present (global)) then
@@ -370,7 +379,7 @@ contains
     else
        process => local%process_stack%get_process_ptr (process_id)
     end if
-    if (.not. associated (process)) then
+    if (use_process .and. .not. associated (process)) then
        if (integrate) then
           call msg_message ("Simulate: process '" &
                // char (process_id) // "' needs integration")
@@ -398,6 +407,10 @@ contains
           call msg_fatal ("Simulate: process '" &
                // char (process_id) // "' could not be initialized: aborting")
        end if
+    else if (.not. associated (process)) then
+       call msg_message &
+            ("Simulate: process '" &
+               // char (process_id) // "': enabled for rescan only")
     end if
   end subroutine prepare_process
     
@@ -475,11 +488,12 @@ contains
   end subroutine entry_copy_entry
 
   subroutine entry_init &
-       (entry, process_id, integrate, generate, update_sqme, &
+       (entry, process_id, &
+       use_process, integrate, generate, update_sqme, &
        local, global, n_alt)
     class(entry_t), intent(inout), target :: entry
     type(string_t), intent(in) :: process_id
-    logical, intent(in) :: integrate, generate, update_sqme
+    logical, intent(in) :: use_process, integrate, generate, update_sqme
     type(rt_data_t), intent(inout), target :: local
     type(rt_data_t), intent(inout), optional, target :: global
     integer, intent(in), optional :: n_alt
@@ -488,13 +502,23 @@ contains
     integer :: i
     logical :: combined_integration
 
-    call prepare_process (master_process, process_id, integrate, local, global)
+    call prepare_process &
+         (master_process, process_id, use_process, integrate, local, global)
     if (signal_is_pending ())  return
 
-    if (.not. master_process%has_matrix_element ()) then
-       entry%has_integral = .true.
+    if (associated (master_process)) then
+       if (.not. master_process%has_matrix_element ()) then
+          entry%has_integral = .true.
+          entry%process_id = process_id
+          entry%valid = .false.          
+          return
+       end if
+    else
+       call entry%basic_init (local%var_list)
+       entry%has_integral = .false.
        entry%process_id = process_id
-       entry%valid = .false.          
+       call entry%import_process_def_characteristics (local%prclib, process_id)
+       entry%valid = .true.
        return
     end if
     
@@ -526,14 +550,18 @@ contains
     do i = 1, size (entry%mci_set)
        call entry%mci_set(i)%init (i, master_process)
     end do
-    entry%nlo_event = local%get_lval (var_str ("?nlo_fixed_order"))
+    call entry%set_nlo_event (local%get_lval (var_str ("?nlo_fixed_order")))
+    if (entry%is_nlo_event()) then
+       call entry%init_sample_formats ()
+       call entry%check_supported_sample_formats (local%sample_fmt(1))
+    end if
 
     call entry%import_process_results (master_process)
     call entry%prepare_expressions (local)
 
     combined_integration = local%get_lval (var_str ("?combined_nlo_integration"))
     call prepare_process_instance (process_instance, process, local%model, &
-                                   combined_integration = combined_integration)
+       combined_integration = combined_integration, local = local)
     if (generate) then
        do i = 1, entry%n_mci
           call process%prepare_simulation (i)
@@ -545,8 +573,12 @@ contains
 
     call entry%connect_qcd ()
 
-    if (entry%nlo_event) &
-       call process_instance%nlo_controller%set_fixed_order_event_mode ()
+    if (entry%is_nlo_event ()) then
+       select type (pcm => process_instance%pcm)
+       class is (pcm_instance_nlo_t)
+          call pcm%controller%set_fixed_order_event_mode ()
+       end select
+    end if
 
     if (present (global)) then
        call entry%connect (process_instance, local%model, global%process_stack)
@@ -565,22 +597,25 @@ contains
     integer, intent(in) :: i_mci
     class(evt_t), pointer :: current_transform
     integer :: i
-    associate (instance => entry%instance)
-       instance%active_real_component = instance%process%get_associated_real_component (i_mci)
-       i = instance%active_real_component
+    select type (pcm => entry%instance%pcm)
+    class is (pcm_instance_nlo_t)
+       pcm%active_real_component = &
+            entry%instance%process%get_associated_real_component (i_mci)
+       i = pcm%active_real_component
        if (associated (entry%evt_powheg)) then
           select type (evt => entry%evt_powheg)
           type is (evt_shower_t)
-                if (instance%component(i)%get_component_type() == COMP_REAL_FIN) then
-                   call evt%disable_powheg_matching ()
-                else
-                   call evt%enable_powheg_matching ()
-                end if
+             if (entry%instance%component(i)%get_component_type() &
+                  == COMP_REAL_FIN) then
+                call evt%disable_powheg_matching ()
+             else
+                call evt%enable_powheg_matching ()
+             end if
           class default
              call msg_fatal ("powheg-evt should be evt_shower_t!")
           end select
        end if
-    end associate 
+    end select
   end subroutine entry_set_active_real_component
 
   subroutine prepare_local_process (process, process_id, local)
@@ -594,14 +629,19 @@ contains
     process => intg%get_process_ptr ()
   end subroutine prepare_local_process
   
-  subroutine prepare_process_instance (process_instance, process, model, combined_integration)
+  subroutine prepare_process_instance (process_instance, process, model, combined_integration, local)
     type(process_instance_t), pointer, intent(inout) :: process_instance
     type(process_t), intent(inout), target :: process
     class(model_data_t), intent(in), optional :: model
     logical, intent(in), optional :: combined_integration
+    type(rt_data_t), intent(in), optional, target :: local
     allocate (process_instance)
     if (process%is_nlo_calculation ()) then
        call process_instance%init (process, combined_integration = combined_integration)
+       if (process_instance%has_blha_component () .and. present (local)) then
+          call process_instance%create_blha_interface (local%beam_structure)
+          call process_instance%load_blha_libraries (local%os_data)
+       end if
        call setup_nlo_component_cores (process)
     else
        call process_instance%init (process)
@@ -616,6 +656,14 @@ contains
     entry%n_in = process%get_n_in ()
     entry%n_mci = process%get_n_mci ()
   end subroutine entry_import_process_characteristics
+
+  subroutine entry_import_process_def_characteristics (entry, prclib, id)
+    class(entry_t), intent(inout) :: entry
+    type(process_library_t), intent(in), target :: prclib
+    type(string_t), intent(in) :: id
+    entry%library = prclib%get_name ()
+    entry%n_in = prclib%get_n_in (id)
+  end subroutine entry_import_process_def_characteristics
 
   subroutine entry_import_process_results (entry, process)
     class(entry_t), intent(inout) :: entry
@@ -647,10 +695,11 @@ contains
     integer, dimension(:), allocatable :: emitters
     type(evt_nlo_t), pointer :: evt
     evt => null ()
-    associate (reg_data => entry%instance%nlo_controller%reg_data)
-       n_alr = reg_data%n_regions 
-       emitters = reg_data%emitters 
-    end associate
+    select type (pcm => entry%instance%pcm)
+    class is (pcm_instance_nlo_t)
+       n_alr = pcm%controller%reg_data%n_regions 
+       emitters = pcm%controller%reg_data%emitters 
+    end select
     select type (entry)
     type is (entry_t)
        current_entry => entry
@@ -658,7 +707,10 @@ contains
        evt => get_nlo_evt_ptr (current_entry)
        allocate (evt%emitters (n_alr))
        allocate (evt%particle_set_radiated (n_alr+1))
-       evt%emitters = entry%instance%nlo_controller%reg_data%get_emitter_list ()
+       select type (pcm => entry%instance%pcm)
+       class is (pcm_instance_nlo_t)
+          evt%emitters = pcm%controller%reg_data%get_emitter_list ()
+       end select
        evt%qcd => entry%qcd
        do i = 1, n_alr
           allocate (current_entry%next)
@@ -696,7 +748,7 @@ contains
     entry_out => null ()
     select type (entry)
     type is (entry_t)
-       if (entry%nlo_event) then
+       if (entry%is_nlo_event()) then
           entry_out => entry%first
        else
           entry_out => entry
@@ -802,8 +854,9 @@ contains
     end if
   end subroutine entry_setup_event_transforms
 
-  subroutine entry_init_mci_selector (entry)
+  subroutine entry_init_mci_selector (entry, negative_weights)
     class(entry_t), intent(inout), target :: entry
+    logical, intent(in), optional :: negative_weights
     type(entry_t), pointer :: current_entry
     integer :: i, j
     if (entry%has_integral) then
@@ -812,7 +865,8 @@ contains
           current_entry => entry
           do j = 1, current_entry%count_nlo_entries ()
              if (j > 1) current_entry => current_entry%get_next ()
-             call current_entry%mci_selector%init (current_entry%mci_set%integral)
+             call current_entry%mci_selector%init &
+                  (current_entry%mci_set%integral, negative_weights)
              do i = 1, current_entry%n_mci
                 current_entry%mci_set(i)%weight_mci = &
                    current_entry%mci_selector%get_weight (i)
@@ -836,7 +890,9 @@ contains
     weight = entry%get_weight_prc ()
     excess = entry%get_excess_prc ()
     call entry%counter%record (weight, excess, from_file)
-    call entry%mci_set(i_mci)%counter%record (weight, excess)
+    if (i_mci > 0) then
+       call entry%mci_set(i_mci)%counter%record (weight, excess)
+    end if
   end subroutine entry_record
     
   subroutine entry_update_process (entry, model, qcd, helicity_selection)
@@ -1123,7 +1179,9 @@ contains
     type(rt_data_t), dimension(:), intent(inout), optional, target :: alt_env
     class(rng_factory_t), allocatable :: rng_factory
     type(string_t) :: norm_string, version_string
+    logical :: use_process
     integer :: i, j
+    simulation%local => local
     simulation%sample_id = &
          local%get_sval (var_str ("$sample"))
     simulation%unweighted = &
@@ -1156,6 +1214,12 @@ contains
          local%get_lval (var_str ("?update_event"))
     simulation%recover_beams = &
          local%get_lval (var_str ("?recover_beams"))
+    use_process = &
+         integrate .or. generate &
+         .or. simulation%update_sqme &
+         .or. simulation%update_weight &
+         .or. simulation%update_event &
+         .or. present (alt_env)
     select case (size (process_id))
     case (0)
        call msg_error ("Simulation: no process selected")
@@ -1189,14 +1253,14 @@ contains
        simulation%n_alt = size (alt_env)
        do i = 1, simulation%n_prc
           call simulation%entry(i)%init (process_id(i), &
-               integrate, generate, &
+               use_process, integrate, generate, &
                simulation%update_sqme, &
                local, global, simulation%n_alt)
           if (signal_is_pending ())  return
        end do
-       if (.not. any (simulation%entry%valid)) then
+       simulation%valid = any (simulation%entry%valid)
+       if (.not. simulation%valid) then
           call msg_error ("Simulate: no process has a valid matrix element.")
-          simulation%valid = .false.
           return
        end if
        call simulation%update_processes ()
@@ -1215,22 +1279,25 @@ contains
        do i = 1, simulation%n_prc
           call simulation%entry(i)%init &
                (process_id(i), &
-               integrate, generate, simulation%update_sqme, &
+               use_process, integrate, generate, simulation%update_sqme, &
                local, global)
           call simulation%entry(i)%determine_if_powheg_matching ()
           if (signal_is_pending ())  return          
-          if (simulation%entry(i)%nlo_event) &
+          if (simulation%entry(i)%is_nlo_event()) &
              call simulation%entry(i)%setup_additional_entries ()
        end do
-       if (.not. any (simulation%entry%valid)) then
+       simulation%valid = any (simulation%entry%valid)
+       if (.not. simulation%valid) then
           call msg_error ("Simulate: " &
                // "no process has a valid matrix element.") 
-          simulation%valid = .false.
           return
        end if
     end if
-    call dispatch_rng_factory (rng_factory, local)
-    call rng_factory%make (simulation%rng)
+!!! if this becomes conditional, some ref files will need update (seed change)
+!    if (generate) then
+       call dispatch_rng_factory (rng_factory, local)
+       call rng_factory%make (simulation%rng)
+!    end if
     if (all (simulation%entry%has_integral)) then
        simulation%integral = sum (simulation%entry%integral)
        simulation%error = sqrt (sum (simulation%entry%error ** 2))
@@ -1244,7 +1311,7 @@ contains
              end if
           end do
        end if
-    else
+    else 
        if (integrate .and. generate) &
             call msg_error ("Simulation contains undefined integrals.")
     end if
@@ -1255,7 +1322,8 @@ contains
        call msg_error ("Simulate: " &
             // "sum of process integrals must be positive; skipping.")
        simulation%valid = .false.
-       return
+    else
+       simulation%valid = .true.
     end if
     if (simulation%valid)  call simulation%compute_md5sum ()
   end subroutine simulation_init
@@ -1301,6 +1369,20 @@ contains
     end if
   end subroutine simulation_compute_n_events
 
+  subroutine simulation_show_efficiency (simulation)
+    class(simulation_t), intent(inout) :: simulation
+    integer :: n_events, n_calls
+    real(default) :: eff
+    n_events = simulation%counter%generated
+    n_calls = sum (simulation%entry%get_actual_calls_total ())
+    if (n_calls > 0) then
+       eff = real (n_events, kind=default) / n_calls
+       write (msg_buffer, "(A,1x,F6.2,1x,A)") &
+            "Events: actual unweighting efficiency =", 100 * eff, "%"
+       call msg_message ()
+    end if
+  end subroutine simulation_show_efficiency
+  
   function simulation_get_n_nlo_entries (simulation, i_prc) result (n_extra)
     class(simulation_t), intent(in) :: simulation
     integer, intent(in) :: i_prc
@@ -1318,12 +1400,14 @@ contains
        do i = 1, simulation%n_prc
           if (.not. simulation%entry(i)%valid) cycle
           process => simulation%entry(i)%get_process_ptr ()
-          n_component = process%get_n_components ()
-          do i_component = 1, n_component
-             if (process%has_matrix_element (i_component)) then
-                buffer = buffer // process%get_md5sum_prc (i_component)
-             end if
-          end do
+          if (associated (process)) then
+             n_component = process%get_n_components ()
+             do i_component = 1, n_component
+                if (process%has_matrix_element (i_component)) then
+                   buffer = buffer // process%get_md5sum_prc (i_component)
+                end if
+             end do
+          end if
        end do
        simulation%md5sum_prc = md5sum (char (buffer))
     end if
@@ -1332,10 +1416,12 @@ contains
        do i = 1, simulation%n_prc
           if (.not. simulation%entry(i)%valid) cycle          
           process => simulation%entry(i)%get_process_ptr ()
-          n_mci = process%get_n_mci ()
-          do i_mci = 1, n_mci
-             buffer = buffer // process%get_md5sum_mci (i_mci)
-          end do
+          if (associated (process)) then
+             n_mci = process%get_n_mci ()
+             do i_mci = 1, n_mci
+                buffer = buffer // process%get_md5sum_mci (i_mci)
+             end do
+          end if
        end do
        simulation%md5sum_cfg = md5sum (char (buffer))
     end if
@@ -1344,7 +1430,9 @@ contains
           buffer = ""
           do i = 1, simulation%n_prc
              process => simulation%alt_entry(i,j)%get_process_ptr ()
-             buffer = buffer // process%get_md5sum_cfg ()
+             if (associated (process)) then
+                buffer = buffer // process%get_md5sum_cfg ()
+             end if
           end do
           simulation%md5sum_alt(j) = md5sum (char (buffer))
        end if
@@ -1355,7 +1443,8 @@ contains
     class(simulation_t), intent(inout) :: simulation
     integer :: i
     if (simulation%has_integral) then
-       call simulation%process_selector%init (simulation%entry%integral)
+       call simulation%process_selector%init (simulation%entry%integral, &
+            negative_weights = simulation%negative_weights)
        do i = 1, simulation%n_prc
           associate (entry => simulation%entry(i))
             if (.not. entry%valid) then
@@ -1363,7 +1452,7 @@ contains
                     "': matrix element vanishes, no events can be generated.")
                cycle
             end if
-            call entry%init_mci_selector ()
+            call entry%init_mci_selector (simulation%negative_weights)
             entry%process_weight = simulation%process_selector%get_weight (i)
           end associate
        end do
@@ -1452,7 +1541,7 @@ contains
                   if (current_entry%has_valid_particle_set ())  exit
                end do
             end do
-            if (entry%nlo_event) call entry%reset_nlo_counter ()
+            if (entry%is_nlo_event()) call entry%reset_nlo_counter ()
             if (.not. entry%has_valid_particle_set ()) then
                write (msg_buffer, "(A,I0,A)")  "Simulation: failed to &
                     &generate valid event after ", &
@@ -1504,6 +1593,7 @@ contains
        end if
     end do
     call msg_message ("        ... event sample complete.")
+    if (simulation%unweighted)  call simulation%show_efficiency ()
     call simulation%counter%show_excess ()
   end subroutine simulation_generate
   
@@ -1803,12 +1893,15 @@ contains
     type(event_sample_data_t) :: sdata
     type(process_t), pointer :: process
     type(beam_data_t), pointer :: beam_data
+    type(beam_structure_t), pointer :: beam_structure
     type(flavor_t), dimension(:), allocatable :: flv
     integer :: n, i
-    logical :: enable_alt
+    logical :: enable_alt, construct_beam_data
+    real(default) :: sqrts
+    class(model_data_t), pointer :: model
+    logical :: decay_rest_frame
+    type(string_t) :: process_id
     enable_alt = .true.;  if (present (alt))  enable_alt = alt    
-    process => simulation%entry(1)%get_process_ptr ()
-    beam_data => process%get_beam_data_ptr ()
     if (enable_alt) then
        call sdata%init (simulation%n_prc, simulation%n_alt)
        do i = 1, simulation%n_alt
@@ -1820,16 +1913,51 @@ contains
     sdata%unweighted = simulation%unweighted
     sdata%negative_weights = simulation%negative_weights
     sdata%norm_mode = simulation%norm_mode
-    n = beam_data_get_n_in (beam_data)
-    sdata%n_beam = n
-    allocate (flv (n))
-    flv = beam_data_get_flavor (beam_data)
-    sdata%pdg_beam(:n) = flv%get_pdg ()
-    sdata%energy_beam(:n) = beam_data_get_energy (beam_data)
+    process => simulation%entry(1)%get_process_ptr ()
+    if (associated (process)) then
+       beam_data => process%get_beam_data_ptr ()
+       construct_beam_data = .false.
+    else
+       n = simulation%entry(1)%n_in
+       sqrts = simulation%local%get_sqrts ()
+       beam_structure => simulation%local%beam_structure
+       call beam_structure%check_against_n_in (n, construct_beam_data)
+       if (construct_beam_data) then
+          allocate (beam_data)
+          model => simulation%local%model
+          decay_rest_frame = &
+               simulation%local%get_lval (var_str ("?decay_rest_frame"))    
+          call beam_data%init_structure (beam_structure, &
+               sqrts, model, decay_rest_frame)
+       else
+          beam_data => null ()
+       end if
+    end if
+    if (associated (beam_data)) then
+       n = beam_data%get_n_in ()
+       sdata%n_beam = n
+       allocate (flv (n))
+       flv = beam_data%get_flavor ()
+       sdata%pdg_beam(:n) = flv%get_pdg ()
+       sdata%energy_beam(:n) = beam_data%get_energy ()
+       if (construct_beam_data)  deallocate (beam_data)
+    else
+       n = simulation%entry(1)%n_in
+       sdata%n_beam = n
+       process_id = simulation%entry(1)%process_id
+       call simulation%local%prclib%get_pdg_in_1 &
+            (process_id, sdata%pdg_beam(:n))
+       sdata%energy_beam(:n) = sqrts / n
+    end if
     do i = 1, simulation%n_prc
        if (.not. simulation%entry(i)%valid) cycle
        process => simulation%entry(i)%get_process_ptr ()
-       sdata%proc_num_id(i) = process%get_num_id ()
+       if (associated (process)) then
+          sdata%proc_num_id(i) = process%get_num_id ()
+       else
+          process_id = simulation%entry(i)%process_id
+          sdata%proc_num_id(i) = simulation%local%prclib%get_num_id (process_id)
+       end if
        if (sdata%proc_num_id(i) == 0)  sdata%proc_num_id(i) = i
        if (simulation%entry(i)%has_integral) then
           sdata%cross_section(i) = simulation%entry(i)%integral

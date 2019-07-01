@@ -1,11 +1,11 @@
-!  $Id: omegalib.nw 6943 2015-05-01 10:53:21Z msekulla $
+!  $Id: omegalib.nw 7369 2015-11-16 18:03:59Z jr_reuter $
 !
 !  Copyright (C) 1999-2015 by
 !      Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !      Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !      Juergen Reuter <juergen.reuter@desy.de>
 !      with contributions from                                                                                                                                    
-!      Fabian Bach <fabian.bach@desy.de>                                                                                                                 
+!      Fabian Bach <fabian.bach@t-online.de>                                                                                                                 
 !      Bijan Chokoufe Nejad <bijan.chokoufe@desy.de>                                                                                                              
 !      Christian Speckner <cnspeckn@googlemail.com>     
 !

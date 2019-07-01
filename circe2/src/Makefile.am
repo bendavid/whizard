@@ -49,27 +49,36 @@ NOWEB_FILES += circe2.nw
 # otherwise provided by VAMP and/or WHIZARD
 ########################################################################
 
-EXTRA_SOURCE_FILES += kinds.f90.in
+EXTRA_SOURCE_FILES +=
 MODULE_FILES += kinds.$(FC_MODULE_EXT)
 
 lib_LTLIBRARIES += libtaorng.la
 libtaorng_la_SOURCES = tao_random_numbers.f90
 MODULE_FILES += tao_random_numbers.$(FC_MODULE_EXT)
 SOURCE_FILES += $(libtaorng_la_SOURCES)
-NOWEB_FILES += circe2_moments.nw
+
+lib_LTLIBRARIES += libtaorng_objs.la
+libtaorng_objs_la_SOURCES = tao_random_objects.f90
+MODULE_FILES += tao_random_objects.$(FC_MODULE_EXT)
+SOURCE_FILES += $(libtaorng_objs_la_SOURCES)
 
 ########################################################################
 # Testing and tools
 ########################################################################
 
-bin_PROGRAMS = circe2_moments circe2_ls
+bin_PROGRAMS = circe2_moments circe2_ls circe2_generate
+
 circe2_moments_SOURCES = circe2_moments.f90
-circe2_moments_LDADD = kinds.lo libcirce2.la libtaorng.la
+circe2_moments_LDADD = kinds.lo libcirce2.la libtaorng_objs.la libtaorng.la 
 circe2_moments.o: $(MODULE_FILES)
 
 circe2_ls_SOURCES = circe2_ls.f90
 circe2_ls_LDADD = kinds.lo libcirce2.la libtaorng.la
 circe2_ls.o: $(MODULE_FILES)
+
+circe2_generate_SOURCES = circe2_generate.f90
+circe2_generate_LDADD = kinds.lo libcirce2.la libtaorng_objs.la libtaorng.la 
+circe2_generate.o: $(MODULE_FILES)
 
 bin_SCRIPTS =
 
@@ -92,7 +101,8 @@ include $(top_srcdir)/src/Makefile.ocaml
 include $(top_srcdir)/src/Makefile.sources
 
 EXTRA_DIST = $(NOWEB_FILES) $(SOURCE_FILES) $(CIRCE2_CAML) \
-	$(EXTRA_SOURCE_FILES)
+	$(EXTRA_SOURCE_FILES) $(circe2_moments_SOURCES) \
+	$(circe2_ls_SOURCES)  $(circe2_generate_SOURCES)
 
 MYPRECIOUS = $(CIRCE2_DERIVED)
 
@@ -141,7 +151,13 @@ if NOWEB_AVAILABLE
 circe2_ls.f90: circe2.nw
 	cat $(WEBS) | $(NOTANGLE) -R'[[$@]]' | $(CPIF) $@
 
-taorng.f90: postlude.nw
+circe2_generate.f90: circe2.nw
+	cat $(WEBS) | $(NOTANGLE) -R'[[$@]]' | $(CPIF) $@
+
+circe2_moments.f90: circe2.nw
+	cat $(WEBS) | $(NOTANGLE) -R'[[$@]]' | $(CPIF) $@
+
+tao_random_objects.f90: circe2.nw
 	cat $(WEBS) | $(NOTANGLE) -R'[[$@]]' | $(CPIF) $@
 
 endif NOWEB_AVAILABLE
@@ -167,7 +183,7 @@ lexer.mli: lexer.ml parser.cmi
 ########################################################################
 @am__include@ @am__quote@Makefile.depend@am__quote@
 
-Makefile.depend: $(SOURCE_FILES) $(circe2_moments_SOURCES) $(circe2_ls_SOURCES)
+Makefile.depend: $(SOURCE_FILES) $(circe2_moments_SOURCES) $(circe2_ls_SOURCES)  $(circe2_generate_SOURCES)
 	@rm -f $@
 	for src in $^; do \
           module="`basename $$src | sed 's/\.f90//'`"; \
@@ -184,10 +200,10 @@ Makefile.depend: $(SOURCE_FILES) $(circe2_moments_SOURCES) $(circe2_ls_SOURCES)
 	          -e 's/, *only:.*//' \
 	          -e 's/, *&//' \
 	          -e 's/, *.*=>.*//' \
-	          -e 's/ *$$/.mod/'; \
+	          -e 's/ *$$/.$$(FC_MODULE_EXT)/'; \
 	done > $@
 
-DISTCLEANFILES = Makefile.depend
+DISTCLEANFILES = Makefile.depend kinds.f90
 
 if OCAML_AVAILABLE
 
@@ -221,14 +237,14 @@ endif OCAML_AVAILABLE
 
 if NOWEB_AVAILABLE
 maintainer-clean-noweb:
-	-rm -f *.f90
+	-rm -f $(SOURCE_FILES) $(circe2_moments_SOURCES) $(circe2_ls_SOURCES)  $(circe2_generate_SOURCES)
 endif
 .PHONY: maintainer-clean-noweb
 
 ## Remove those sources also if builddir and srcdir are different
 if NOWEB_AVAILABLE
 clean-noweb:
-	test "$(srcdir)" != "." && rm -f *.f90 || true
+	test "$(srcdir)" != "." && rm -f $(SOURCE_FILES) $(circe2_moments_SOURCES) $(circe2_ls_SOURCES)  $(circe2_generate_SOURCES) || true
 endif
 .PHONY: clean-noweb
 

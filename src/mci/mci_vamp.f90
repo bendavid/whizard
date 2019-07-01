@@ -1,4 +1,4 @@
-! WHIZARD 2.2.7 Aug 11 2015
+! WHIZARD 2.2.8 Nov 22 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,11 +6,14 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
-!     Fabian Bach <fabian.bach@desy.de>
+!     Fabian Bach <fabian.bach@t-online.de>
+!     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
+!     Soyoung Shim <soyoung.shim@desy.de>
+!     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, Daniel Wiesler 
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -36,6 +39,7 @@ module mci_vamp
   use iso_varying_string, string_t => varying_string
   use io_units
   use format_utils, only: pac_fmt
+  use format_utils, only: write_separator
   use format_defs, only: FMT_12, FMT_14, FMT_17, FMT_19
   use diagnostics
   use md5
@@ -136,6 +140,7 @@ module mci_vamp
      procedure :: compute_md5sum => mci_vamp_compute_md5sum
      procedure :: get_md5sum => mci_vamp_get_md5sum
      procedure :: startup_message => mci_vamp_startup_message
+     procedure :: write_log_entry => mci_vamp_write_log_entry
      procedure :: record_index => mci_vamp_record_index
      procedure :: set_grid_parameters => mci_vamp_set_grid_parameters
      procedure :: set_history_parameters => mci_vamp_set_history_parameters
@@ -183,7 +188,6 @@ module mci_vamp
      logical :: enable_adapt_weights = .false.
      logical :: allow_adapt_grids = .false.
      logical :: allow_adapt_weights = .false.
-     logical :: negative_weights = .false.
      integer :: n_adapt_grids = 0
      integer :: n_adapt_weights = 0
      logical :: generating_events = .false.
@@ -674,6 +678,22 @@ contains
     call msg_message (unit = unit)
   end subroutine mci_vamp_startup_message
     
+  subroutine mci_vamp_write_log_entry (mci, u)
+    class(mci_vamp_t), intent(in) :: mci
+    integer, intent(in) :: u
+    write (u, "(1x,A)")  "MC Integrator is VAMP"       
+    call write_separator (u)
+    call mci%write_history (u)
+    call write_separator (u)       
+    if (mci%grid_par%use_vamp_equivalences) then
+       call vamp_equivalences_write (mci%equivalences, u)          
+    else
+       write (u, "(3x,A)") "No VAMP equivalences have been used"
+    end if
+    call write_separator (u)
+    call mci%write_chain_weights (u) 
+  end subroutine mci_vamp_write_log_entry
+       
   subroutine mci_vamp_record_index (mci, i_mci)
     class(mci_vamp_t), intent(inout) :: mci
     integer, intent(in) :: i_mci
@@ -1328,6 +1348,7 @@ contains
     class(mci_instance_t), intent(inout), target :: instance
     class(mci_sampler_t), intent(inout), target :: sampler
     class(vamp_data_t), allocatable :: data
+    logical :: positive
     type(exception) :: vamp_exception
     select type (instance)
     type is (mci_vamp_instance_t)
@@ -1350,12 +1371,20 @@ contains
                      data, &
                      phi = phi_trivial, &
                      excess = instance%vamp_excess, &
+                     positive = positive, &
                      exc = vamp_exception)
                 if (signal_is_pending ())  return
                 if (sampler%is_valid ())  exit REJECTION
              end do REJECTION
              call handle_vamp_exception (vamp_exception, mci%verbose)
-             instance%vamp_weight = 1
+             if (positive) then
+                instance%vamp_weight = 1
+             else if (instance%negative_weights) then
+                instance%vamp_weight = -1
+             else
+                call msg_fatal ("VAMP: event with negative weight generated")
+                instance%vamp_weight = 0
+             end if
              instance%vamp_weight_set = .true.
           else
              call msg_bug ("VAMP: generate event: grids undefined")
@@ -1716,11 +1745,21 @@ contains
     class(mci_vamp_instance_t), intent(in) :: mci
     real(default), dimension(:), allocatable :: efficiency
     allocate (efficiency (mci%mci%n_channel))
-    where (mci%grids%grids%f_max /= 0)
-       efficiency = mci%grids%grids%mu(1) / abs (mci%grids%grids%f_max)
-    elsewhere
-       efficiency = 0
-    end where
+    if (.not. mci%negative_weights) then
+       where (mci%grids%grids%f_max /= 0)
+          efficiency = mci%grids%grids%mu(1) / abs (mci%grids%grids%f_max)
+       elsewhere
+          efficiency = 0
+       end where
+    else
+       where (mci%grids%grids%f_max /= 0)
+          efficiency = &
+               (mci%grids%grids%mu_plus(1) - mci%grids%grids%mu_minus(1)) &
+               / abs (mci%grids%grids%f_max)
+       elsewhere
+          efficiency = 0
+       end where
+    end if
   end function mci_vamp_instance_get_efficiency_array
 
   function mci_vamp_instance_get_efficiency (mci) result (efficiency)

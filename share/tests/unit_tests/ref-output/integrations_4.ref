@@ -80,6 +80,8 @@ model "Test"
  Event reweighting factor: [undefined]
 ------------------------------------------------------------------------
  Event analysis: [undefined]
+------------------------------------------------------------------------
+ Event callback: [undefined]
 ========================================================================
  Process stack:
 ========================================================================
@@ -183,7 +185,7 @@ model "Test"
    sqrts = 1.000000000000E+03 GeV
    Azimuthal dependence    = F
    Lab frame is c.m. frame = T
-   MD5 sum (beams/strf) = 'A2B1699F398D66462554093B60EE7E64'
+   MD5 sum (beams/strf) = '80007D5E30CFD7B9BD09FF0704AAA3A6'
 ========================================================================
  Multi-channel integrator configurations:
 ------------------------------------------------------------------------
@@ -195,7 +197,7 @@ model "Test"
    Current pass          = 1
    Number of iterations  = 1
    Number of calls       = 1000
-   MD5 sum (components)  = '90B4E8062018FEFBF0500EA9C3431AD4'
+   MD5 sum (components)  = '951F788A07D22464806684E45658E41B'
  VAMP integrator:
    Integral             =  7.7464622036E+03
    Error                =  0.0000000000E+00
@@ -223,7 +225,7 @@ model "Test"
    adapt weights = F
    Results:  [it, calls, integral, error, efficiency]
      1 800  7.7464622036E+03  0.0000000000E+00  1.0000000000E+00
- MD5 sum (including results) = 'C7598AFD57821B36DA654350027A44C6'
+ MD5 sum (including results) = '61C8285B7606EDABDE8795E6D413D4A2'
  Call statistics (current run):
    total       = 800
    failed kin. = 0

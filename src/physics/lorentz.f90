@@ -1,4 +1,4 @@
-! WHIZARD 2.2.7 Aug 11 2015
+! WHIZARD 2.2.8 Nov 22 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,11 +6,14 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
-!     Fabian Bach <fabian.bach@desy.de>
+!     Fabian Bach <fabian.bach@t-online.de>
+!     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
+!     Soyoung Shim <soyoung.shim@desy.de>
+!     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, Daniel Wiesler 
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -34,8 +37,8 @@ module lorentz
 
   use kinds, only: default, double
   use io_units
-  use constants, only: pi, twopi, degree, zero, one, eps0, tiny_07
-  use format_defs, only: FMT_13, FMT_15, FMT_19
+  use constants, only: pi, twopi, degree, zero, one, two, eps0, tiny_07
+  use format_defs, only: FMT_11, FMT_13, FMT_15, FMT_19
   use format_utils, only: pac_fmt
   use diagnostics
   use c_particles
@@ -562,23 +565,35 @@ contains
     end if
   end function vector3_get_direction
 
-  subroutine vector4_write (p, unit, show_mass, testflag, compressed)
+  subroutine vector4_write &
+         (p, unit, show_mass, testflag, compressed, ultra)
     class(vector4_t), intent(in) :: p
     integer, intent(in), optional :: unit
-    logical, intent(in), optional :: show_mass, testflag, compressed
-    logical :: comp, sm
+    logical, intent(in), optional :: show_mass, testflag, compressed, ultra
+    logical :: comp, sm, tf, extreme
     integer :: u
     character(len=7) :: fmt
+    real(default) :: m
     comp = .false.; if (present (compressed))  comp = compressed
     sm = .false.;  if (present (show_mass))  sm = show_mass
-    call pac_fmt (fmt, FMT_19, FMT_13, testflag)
+    tf = .false.;  if (present (testflag))  tf = testflag
+    extreme = .false.; if (present (ultra))  extreme = ultra
+    if (extreme) then
+       call pac_fmt (fmt, FMT_19, FMT_11, testflag)
+    else
+       call pac_fmt (fmt, FMT_19, FMT_13, testflag)
+    end if
     u = given_output_unit (unit);  if (u < 0)  return
     if (comp) then
        write (u, "(4(F12.3,1X))", advance="no")  p%p(0:3)
     else
        write(u, "(1x,A,1x," // fmt // ")") 'E = ', p%p(0)
        write(u, "(1x,A,3(1x," // fmt // "))") 'P = ', p%p(1:)
-       if (sm)  write (u, "(1x,A,1x," // fmt // ")") 'M = ', p**1
+       if (sm) then
+          m = p**1
+          if (tf)  call pacify (m, tolerance = 1E-6_default)
+          write (u, "(1x,A,1x," // fmt // ")") 'M = ', m
+       end if
     end if
   end subroutine vector4_write
 
@@ -1228,20 +1243,24 @@ contains
        bg2 = beta_gamma**2
     else
        bg2 = 0
+       L = identity
+       return
     end if
     if (bg2 > eps0) then
        g = sqrt(1 + bg2);  c = (g-1)/bg2
-       L%L(0,0)  = g
-       L%L(0,1:) = beta_gamma%p
-       L%L(1:,0) = L%L(0,1:)
-       do i=1,3
-          do j=1,3
-             L%L(i,j) = delta_three(i,j) + c*beta_gamma%p(i)*beta_gamma%p(j)
-          end do
-       end do
     else
-       L = identity
+       !!!L = identity
+       g = one + bg2 / two
+       c = one / two
     end if
+    L%L(0,0)  = g
+    L%L(0,1:) = beta_gamma%p
+    L%L(1:,0) = L%L(0,1:)
+    do i=1,3
+       do j=1,3
+          L%L(i,j) = delta_three(i,j) + c*beta_gamma%p(i)*beta_gamma%p(j)
+       end do
+    end do
   end function boost_from_rest_frame_vector3
   elemental function boost_canonical (beta_gamma, k) result (L)
     type(lorentz_transformation_t) :: L
@@ -1548,37 +1567,53 @@ contains
   end subroutine vector_set_reshuffle
 
   function vector_set_is_cms (p) result (is_cms)
-    type(vector4_t), dimension(:), intent(in) :: p
     logical :: is_cms
-    is_cms = abs((p(1)+p(2))**1 - 2*p(1)%p(0)) < tiny_07
+    type(vector4_t), dimension(:), intent(in) :: p
+    integer :: i
+    type(vector4_t) :: p_sum
+    p_sum%p = 0._default
+    do i = 1, size (p)
+       p_sum = p_sum + p(i)
+    end do
+    is_cms = p_sum%p(0) > zero .and. all (abs (p_sum%p(1:3)) < tiny_07)
   end function vector_set_is_cms
 
   subroutine vector4_write_set (p, unit, show_mass, testflag, &
-        check_conservation)
+        check_conservation, ultra, n_in)
     type(vector4_t), intent(in), dimension(:) :: p
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: show_mass
-    logical, intent(in), optional :: testflag
+    logical, intent(in), optional :: testflag, ultra
     logical, intent(in), optional :: check_conservation
+    integer, intent(in), optional :: n_in
+    logical :: extreme
     integer :: i, j
     real(default), dimension(0:3) :: p_tot
     character(len=7) :: fmt
     integer :: u
     logical :: yorn
+    integer :: n
+    extreme = .false.; if (present (ultra))  extreme = ultra
     u = given_output_unit (unit);  if (u < 0)  return
+    n = 2; if (present (n_in)) n = n_in
     p_tot = 0
     yorn = .false.; if (present (check_conservation)) yorn = check_conservation
     do i = 1, size (p)
-      if (yorn .and. i>2) then
+      if (yorn .and. i > n) then
          forall (j=0:3) p_tot(j) = p_tot(j) - p(i)%p(j)
       else
          forall (j=0:3) p_tot(j) = p_tot(j) + p(i)%p(j)
       end if
-      call vector4_write (p(i), u, show_mass, testflag)
-    end do
-    call pac_fmt (fmt, FMT_19, FMT_15, testflag)
+      call vector4_write (p(i), u, show_mass=show_mass, &
+           testflag=testflag, ultra=ultra)
+    end do 
+    if (extreme) then
+       call pac_fmt (fmt, FMT_19, FMT_11, testflag)
+    else
+       call pac_fmt (fmt, FMT_19, FMT_15, testflag)
+    end if
     if (present (testflag)) then
-       if (testflag)  call pacify (p_tot, 1.E-10_default)
+       if (testflag)  call pacify (p_tot, 1.E-9_default)
     end if
     write (u, "(A5)") 'Total: '
     write (u, "(1x,A,1x," // fmt // ")")    "E = ", p_tot(0)

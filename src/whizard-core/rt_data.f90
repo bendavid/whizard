@@ -1,4 +1,4 @@
-! WHIZARD 2.2.7 Aug 11 2015
+! WHIZARD 2.2.8 Nov 22 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,11 +6,14 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
-!     Fabian Bach <fabian.bach@desy.de>
+!     Fabian Bach <fabian.bach@t-online.de>
+!     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
+!     Soyoung Shim <soyoung.shim@desy.de>
+!     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, Daniel Wiesler 
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -52,6 +55,7 @@ module rt_data
   use prclib_stacks
   use prc_core, only: helicity_selection_t
   use beam_structures
+  use event_base, only: event_callback_t
   use user_files
   use process_stacks
   use iterations
@@ -95,11 +99,13 @@ module rt_data
      type(rt_parse_nodes_t) :: pn
      type(process_stack_t) :: process_stack
      type(string_t), dimension(:), allocatable :: sample_fmt
+     class(event_callback_t), allocatable :: event_callback
      type(file_list_t), pointer :: out_files => null ()
      logical :: quit = .false.
      integer :: quit_code = 0
      type(string_t) :: logfile 
-     logical :: nlo_calculation = .false.
+     logical :: nlo_fixed_order = .false.
+     logical :: nlo_threshold_matching = .false.
      logical, dimension(4) :: active_nlo_components
    contains
      procedure :: write => rt_data_write
@@ -160,6 +166,9 @@ module rt_data
      procedure :: pacify => rt_data_pacify
      procedure :: set_me_method => rt_data_set_me_method
      procedure :: get_me_method => rt_data_get_me_method
+     procedure :: set_event_callback => rt_data_set_event_callback
+     procedure :: has_event_callback => rt_data_has_event_callback
+     procedure :: get_event_callback => rt_data_get_event_callback
   end type rt_data_t
 
 
@@ -308,6 +317,13 @@ contains
           write (u, "(A)", advance="no")  char (object%sample_fmt(i))
        end do
        write (u, "(A)")
+    end if
+    call write_separator (u)
+    write (u, "(1x,A)", advance="no")  "Event callback:"
+    if (allocated (object%event_callback)) then
+       call object%event_callback%write (u)
+    else
+       write (u, "(1x,A)")  "[undefined]"
     end if
     call object%process_stack%write (u, pacify)
     write (u, "(1x,A,1x,L1)")  "quit     :", object%quit
@@ -759,10 +775,10 @@ contains
          (global%var_list, var_str ("?vis_history"), .true., &
           intrinsic=.true.)       
     call var_list_append_log &
-         (global%var_list, var_str ("?diags"), .false., &
+         (global%var_list, var_str ("?vis_diags"), .false., &
           intrinsic=.true.)
     call var_list_append_log &
-         (global%var_list, var_str ("?diags_color"), .false., &
+         (global%var_list, var_str ("?vis_diags_color"), .false., &
           intrinsic=.true.)    
     call var_list_append_log &
          (global%var_list, var_str ("?check_event_file"), .true., &
@@ -927,6 +943,9 @@ contains
     call var_list_append_int (global%var_list, &
          var_str ("checkpoint"), 0, &
          intrinsic = .true.)
+    call var_list_append_int (global%var_list, &
+         var_str ("event_callback_interval"), 0, &
+         intrinsic = .true.)
     call var_list_append_log &
          (global%var_list, var_str ("?pacify"), .false., &
          intrinsic=.true.)
@@ -1006,6 +1025,12 @@ contains
     call var_list_append_real (global%var_list, &
          var_str ("jet_r"), 0._default, &
          intrinsic = .true.)
+    call var_list_append_real (global%var_list, &
+         var_str ("jet_p"), 0._default, &
+         intrinsic = .true.)
+    call var_list_append_real (global%var_list, &
+         var_str ("jet_ycut"), 0._default, &
+         intrinsic = .true.)
     call var_list_append_log &
          (global%var_list, var_str ("?polarized_events"), .false., &
             intrinsic=.true.)
@@ -1020,54 +1045,7 @@ contains
          (global%var_list, var_str ("$pdf_builtin_set"), var_str ("CTEQ6L"), &
          intrinsic=.true.)
     call set_openmp_defaults ()
-    call var_list_append_string &
-       (global%var_list, var_str ("$born_me_method"), &
-        var_str ("omega"), intrinsic = .true.)
-    call var_list_append_string &
-       (global%var_list, var_str ("$loop_me_method"), &
-        var_str ("gosam"), intrinsic = .true.)
-    call var_list_append_string &
-       (global%var_list, var_str ("$correlation_me_method"), &
-        var_str ("omega"), intrinsic = .true.)
-    call var_list_append_string &
-       (global%var_list, var_str ("$real_tree_me_method"), &
-        var_str ("omega"), intrinsic = .true.)
-    call var_list_append_int &
-       (global%var_list, var_str ("openloops_verbosity"), 1, &
-        intrinsic = .true.)
-    call var_list_append_real &
-        (global%var_list, var_str ("fks_dij_exp1"), &
-         1._default, intrinsic = .true.)
-    call var_list_append_real &
-        (global%var_list, var_str ("fks_dij_exp2"), &
-         1._default, intrinsic = .true.)
-    call var_list_append_int &
-        (global%var_list, var_str ("fks_mapping_type"), &
-         1, intrinsic = .true.)
-    call var_list_append_log &
-        (global%var_list, var_str ("?fks_count_kinematics"), &
-         .false., intrinsic = .true.)
-    call var_list_append_int &
-        (global%var_list, var_str ("alpha_power"), &
-         2, intrinsic = .true.)
-    call var_list_append_int &
-        (global%var_list, var_str ("alphas_power"), &
-         0, intrinsic = .true.)
-    call var_list_append_log &
-        (global%var_list, var_str ("?combined_nlo_integration"), &
-         .false., intrinsic = .true.)
-    call var_list_append_log &
-        (global%var_list, var_str ("?nlo_fixed_order"), &
-         .false., intrinsic = .true.)
-    call var_list_append_int &
-        (global%var_list, var_str ("gks_multiplicity"), &
-         0, intrinsic = .true.)
-    call var_list_append_string &
-        (global%var_list, var_str ("$gosam_filters_lo"), &
-         var_str (""), intrinsic = .true.)
-    call var_list_append_string &
-         (global%var_list, var_str ("$gosam_filters_nlo"), &
-         var_str (""), intrinsic = .true.)
+    call set_nlo_defaults ()
     call global%init_pointer_variables ()
     call global%process_stack%init_var_list (global%var_list)
 
@@ -1128,6 +1106,21 @@ contains
       call var_list_append_log &
            (global%var_list, var_str ("?debug_verbose"), .true., &
             intrinsic=.true.)
+      call var_list_append_string &
+           (global%var_list, var_str ("$dump_extension"), var_str ("pset"), &
+            intrinsic=.true.)
+      call var_list_append_log &
+           (global%var_list, var_str ("?dump_compressed"), .true., &
+            intrinsic=.true.)
+      call var_list_append_log &
+           (global%var_list, var_str ("?dump_weights"), .false., &
+            intrinsic=.true.)
+      call var_list_append_log &
+           (global%var_list, var_str ("?dump_summary"), .false., &
+            intrinsic=.true.)
+      call var_list_append_log &
+           (global%var_list, var_str ("?dump_screen"), .false., &
+            intrinsic=.true.)
       call var_list_append_log &
            (global%var_list, var_str ("?hepevt_ensure_order"), .false., &
             intrinsic=.true.)
@@ -1179,6 +1172,9 @@ contains
       call var_list_append_string &
            (global%var_list, var_str ("$extension_stdhep_up"), &
             var_str ("up.hep"), intrinsic=.true.)
+      call var_list_append_string &
+           (global%var_list, var_str ("$extension_stdhep_ev4"), &
+            var_str ("ev4.hep"), intrinsic=.true.)    
       call var_list_append_string &
            (global%var_list, var_str ("$extension_hepevt_verb"), &
             var_str ("hepevt.verb"), intrinsic=.true.)
@@ -1341,6 +1337,87 @@ contains
            .true., intrinsic=.true.)
     end subroutine set_openmp_defaults
 
+    subroutine set_nlo_defaults ()
+      call var_list_append_string &
+           (global%var_list, var_str ("$born_me_method"), &
+           var_str ("omega"), intrinsic = .true.)
+      call var_list_append_string &
+           (global%var_list, var_str ("$loop_me_method"), &
+           var_str ("gosam"), intrinsic = .true.)
+      call var_list_append_string &
+           (global%var_list, var_str ("$correlation_me_method"), &
+           var_str ("omega"), intrinsic = .true.)
+      call var_list_append_string &
+           (global%var_list, var_str ("$real_tree_me_method"), &
+           var_str ("omega"), intrinsic = .true.)
+      call var_list_append_int &
+           (global%var_list, var_str ("openloops_verbosity"), 1, &
+           intrinsic = .true.)
+      call var_list_append_int &
+           (global%var_list, var_str ("openloops_phs_tolerance"), 7, &
+           intrinsic = .true.)
+      call var_list_append_log &
+           (global%var_list, var_str ("?openloops_top_signal"), &
+           .false., intrinsic = .true.)
+      call var_list_append_log &
+           (global%var_list, var_str ("?disable_subtraction"), &
+           .false., intrinsic = .true.)
+      call var_list_append_real &
+           (global%var_list, var_str ("fks_dij_exp1"), &
+           1._default, intrinsic = .true.)
+      call var_list_append_real &
+           (global%var_list, var_str ("fks_dij_exp2"), &
+           1._default, intrinsic = .true.)
+      call var_list_append_int &
+           (global%var_list, var_str ("fks_mapping_type"), &
+           1, intrinsic = .true.)
+      call var_list_append_log &
+           (global%var_list, var_str ("?fks_count_kinematics"), &
+           .false., intrinsic = .true.)
+      call var_list_append_int &
+           (global%var_list, var_str ("alpha_power"), &
+           2, intrinsic = .true.)
+      call var_list_append_int &
+           (global%var_list, var_str ("alphas_power"), &
+           0, intrinsic = .true.)
+      call var_list_append_log &
+           (global%var_list, var_str ("?combined_nlo_integration"), &
+           .false., intrinsic = .true.)
+      call var_list_append_log &
+           (global%var_list, var_str ("?nlo_fixed_order"), &
+           .false., intrinsic = .true.)
+      call var_list_append_int &
+           (global%var_list, var_str ("gks_multiplicity"), &
+           0, intrinsic = .true.)
+      call var_list_append_string &
+           (global%var_list, var_str ("$gosam_filter_lo"), &
+           var_str (""), intrinsic = .true.)
+      call var_list_append_string &
+           (global%var_list, var_str ("$gosam_filter_nlo"), &
+           var_str (""), intrinsic = .true.)
+      call var_list_append_string &
+           (global%var_list, var_str ("$gosam_symmetries"), &
+           var_str ("family,generation"), intrinsic = .true.)
+      call var_list_append_int &
+           (global%var_list, var_str ("form_threads"), &
+           2, intrinsic = .true.)
+      call var_list_append_int &
+           (global%var_list, var_str ("form_workspace"), &
+           1000, intrinsic = .true.)
+      call var_list_append_string &
+           (global%var_list, var_str ("$gosam_fc"), &
+           var_str (""), intrinsic = .true.)
+      call var_list_append_real (global%var_list, &
+           var_str ("mult_call_real"), 1._default, &
+           intrinsic = .true.)
+      call var_list_append_real (global%var_list, &
+           var_str ("mult_call_virt"), 1._default, &
+           intrinsic = .true.)
+      call var_list_append_real (global%var_list, &
+           var_str ("mult_call_pdf"), 1._default, &
+           intrinsic = .true.)
+    end subroutine set_nlo_defaults
+
 
   end subroutine rt_data_global_init
 
@@ -1364,6 +1441,9 @@ contains
     local%model => global%model
     if (associated (local%model)) then
        call local%model%link_var_list (local%var_list)
+    end if
+    if (allocated (global%event_callback)) then
+       allocate (local%event_callback, source = global%event_callback)
     end if
   end subroutine rt_data_local_init
 
@@ -2036,5 +2116,26 @@ contains
     me_method = global%var_list%get_sval (var_str ("$method"))
   end function rt_data_get_me_method
 
+  subroutine rt_data_set_event_callback (global, callback)
+    class(rt_data_t), intent(inout) :: global
+    class(event_callback_t), intent(in) :: callback
+    if (allocated (global%event_callback))  deallocate (global%event_callback)
+    allocate (global%event_callback, source = callback)
+  end subroutine rt_data_set_event_callback
+  
+  function rt_data_has_event_callback (global) result (flag)
+    class(rt_data_t), intent(in) :: global
+    logical :: flag
+    flag = allocated (global%event_callback)
+  end function rt_data_has_event_callback
+  
+  function rt_data_get_event_callback (global) result (callback)
+    class(rt_data_t), intent(in) :: global
+    class(event_callback_t), allocatable :: callback
+    if (allocated (global%event_callback)) then
+       allocate (callback, source = global%event_callback)
+    end if
+  end function rt_data_get_event_callback
+  
 
 end module rt_data

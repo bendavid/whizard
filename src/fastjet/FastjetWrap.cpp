@@ -1,5 +1,6 @@
 #include "fastjet/ClusterSequence.hh"
 #include <iostream>
+#include "fastjet/EECambridgePlugin.hh"
 
 using namespace fastjet;
 using namespace std;
@@ -19,7 +20,7 @@ extern "C" {
     PseudoJet* j = new PseudoJet(px_in, py_in, pz_in, E_in);
     return j;
   }
-    
+
   void pseudojet_delete (PseudoJet *j) {
     delete j;
   }
@@ -64,7 +65,6 @@ extern "C" {
 
   vector<PseudoJet>* new_pseudojet_vector (const PseudoJet *j[], const int n) {
     vector<PseudoJet>* jv = new vector<PseudoJet>;
-
     for (int i = 0; i < n; i++) {
       jv->push_back( *j[i] );
     }
@@ -91,8 +91,19 @@ extern "C" {
     return sjv;
   }
 
-  JetDefinition* new_jet_definition (const JetAlgorithm jet_alg, const double R) {
-    JetDefinition* jet_def = new JetDefinition (jet_alg, R);
+  JetDefinition* new_jet_definition (const JetAlgorithm jet_alg, const double R,
+      const double p, const double jet_ycut) {
+    JetDefinition *  jet_def;
+    if (jet_alg==plugin_algorithm) {
+      EECambridgePlugin *eec = new EECambridgePlugin (jet_ycut);
+      jet_def = new JetDefinition (eec);
+    }
+    else if (jet_alg == ee_genkt_algorithm) {
+      jet_def = new JetDefinition (jet_alg, R, p);
+    }
+    else{
+      jet_def = new JetDefinition (jet_alg, R);
+    }
     return jet_def;
   }
 
@@ -109,8 +120,8 @@ extern "C" {
     return s;
   }
 
-  ClusterSequence* new_cluster_sequence (const vector<PseudoJet>* particles, JetDefinition* jet_def) {
-
+  ClusterSequence* new_cluster_sequence (const vector<PseudoJet>* particles,
+      JetDefinition* jet_def) {
     // run the clustering, extract the jets
     ClusterSequence* cs = new ClusterSequence (*particles, *jet_def);
     return cs;
@@ -126,7 +137,8 @@ extern "C" {
     return jets;
   }
 
-  vector<int>* cluster_sequence_get_jet_indices (const ClusterSequence* cs, const vector<PseudoJet>* jets) {
+  vector<int>* cluster_sequence_get_jet_indices (const ClusterSequence* cs,
+      const vector<PseudoJet>* jets) {
     vector<int>* idx = new vector<int>;
     *idx = cs->particle_jet_indices(*jets);
     return idx;

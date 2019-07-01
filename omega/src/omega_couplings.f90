@@ -1,11 +1,11 @@
-!  $Id: omegalib.nw 6943 2015-05-01 10:53:21Z msekulla $
+!  $Id: omegalib.nw 7369 2015-11-16 18:03:59Z jr_reuter $
 !
 !  Copyright (C) 1999-2015 by
 !      Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !      Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !      Juergen Reuter <juergen.reuter@desy.de>
 !      with contributions from                                                                                                                                    
-!      Fabian Bach <fabian.bach@desy.de>                                                                                                                 
+!      Fabian Bach <fabian.bach@t-online.de>                                                                                                                 
 !      Bijan Chokoufe Nejad <bijan.chokoufe@desy.de>                                                                                                              
 !      Christian Speckner <cnspeckn@googlemail.com>     
 !
@@ -41,6 +41,19 @@ module omega_couplings
   public :: dv_vv, v_dvv, dv_vv_cf, v_dvv_cf
   public :: dv_phi2,phi_dvphi, dv_phi2_cf, phi_dvphi_cf
   public :: phi_vv, v_phiv, phi_u_vv, v_u_phiv
+  public :: s_vv_6D, v_sv_6D, s_vv_6DP, v_sv_6DP, a_hz_D, h_az_D, z_ah_D, &
+       a_hz_DP, h_az_DP, z_ah_DP, h_hh_6
+  public :: g_gg_13, g_gg_23, g_gg_6, kg_kgkg_i
+  public ::a_ww_DP, w_aw_DP, a_ww_DW
+  public :: w_wz_DPW, z_ww_DPW, w_wz_DW, z_ww_DW, w_wz_D, z_ww_D
+  public :: hhhh_p2, a_hww_DPB, h_aww_DPB, w_ahw_DPB, a_hww_DPW, h_aww_DPW, &
+       w_ahw_DPW, a_hww_DW, h_aww_DW, w3_ahw_DW, w4_ahw_DW
+  public ::a_aww_DW, w_aaw_DW, a_aww_W, w_aaw_W
+  public :: h_hww_D, w_hhw_D, h_hww_DP, w_hhw_DP, h_hvv_PB, v_hhv_PB
+  public :: a_hhz_D, h_ahz_D, z_ahh_D, a_hhz_DP, h_ahz_DP, z_ahh_DP, &
+       a_hhz_PB, h_ahz_PB, z_ahh_PB
+  public :: h_wwz_DW, w_hwz_DW, z_hww_DW, h_wwz_DPB, w_hwz_DPB, z_hww_DPB 
+  public :: h_wwz_DDPW, w_hwz_DDPW, z_hww_DDPW, h_wwz_DPW, w_hwz_DPW, z_hww_DPW
   public :: phi_dim5s2
   public :: tphi_ss, tphi_ss_cf, s_tphis, s_tphis_cf
   public :: phi_phi2v_1, v_phi2v_1, phi_phi2v_2, v_phi2v_2
@@ -359,6 +372,570 @@ contains
          ((-(k1+k2))*v)*k1 + &
          ((k1*k1)*v))
   end function v_u_phiv
+  pure function s_vv_6D (g, v1, k1, v2, k2) result (phi)
+    complex(kind=default), intent(in) :: g
+    type(vector), intent(in) :: v1, v2
+    type(momentum), intent(in) :: k1, k2
+    complex(kind=default) :: phi
+    phi =  g * (-(k1 * v1) * (k1 * v2) - (k2 * v1) * (k2 * v2) &
+         + ((k1 * k1) + (k2 * k2)) * (v1 * v2))
+  end function s_vv_6D
+  pure function v_sv_6D (g, phi, kphi, v, kv) result (vout)
+    complex(kind=default), intent(in) :: g
+    complex(kind=default), intent(in) :: phi
+    type(vector), intent(in) :: v
+    type(momentum), intent(in) :: kphi, kv
+    type(vector) :: vout
+    vout = g * ( - phi * (kv * v) * kv - phi * ((kphi + kv) * v) * (kphi + kv) &
+         + phi * (kv * kv) * v + phi * ((kphi + kv)*(kphi + kv)) * v)
+  end function v_sv_6D
+  pure function s_vv_6DP (g, v1, k1, v2, k2) result (phi)
+    complex(kind=default), intent(in) :: g
+    type(vector), intent(in) :: v1, v2
+    type(momentum), intent(in) :: k1, k2
+    complex(kind=default) :: phi
+    phi = g * ( (-(k1+k2)*v1) * (k1*v2) - ((k1+k2)*v2) * (k2*v1) + &
+         ((k1+k2)*(k1+k2))*(v1*v2) )
+  end function s_vv_6DP
+  pure function v_sv_6DP (g, phi, kphi, v, kv) result (vout)
+    complex(kind=default), intent(in) :: g
+    complex(kind=default), intent(in) :: phi
+    type(vector), intent(in) :: v
+    type(momentum), intent(in) :: kphi, kv
+    type(vector) :: vout
+    vout = g * phi * ((-(kphi + kv)*v) * kphi + (kphi * v) * kv + &
+         (kphi*kphi) * v )
+  end function v_sv_6DP 
+  pure function a_hz_D (g, h1, k1, v2, k2) result (vout)
+    complex(kind=default), intent(in) :: g
+    complex(kind=default), intent(in) :: h1
+    type(vector), intent(in) :: v2
+    type(momentum), intent(in) :: k1, k2
+    type(vector) :: vout
+    vout = g * h1 * (((k1 + k2) * v2) * (k1 + k2) + &
+         ((k1 + k2) * (k1 + k2)) * v2)
+  end function a_hz_D
+  pure function h_az_D (g, v1, k1, v2, k2) result (hout)
+    complex(kind=default), intent(in) :: g
+    type(vector), intent(in) :: v1, v2
+    type(momentum), intent(in) :: k1, k2
+    complex(kind=default) :: hout
+    hout = g * ((k1 * v1) * (k1 * v2) + (k1 * k1) * (v1 * v2))
+  end function h_az_D
+  pure function z_ah_D (g, v1, k1, h2, k2) result (vout)
+    complex(kind=default), intent(in) :: g
+    complex(kind=default), intent(in) :: h2
+    type(vector), intent(in) :: v1
+    type(momentum), intent(in) :: k1, k2
+    type(vector) :: vout
+    vout = g * h2 * ((k1 * v1) * k1 + ((k1 * k1)) *v1)
+  end function z_ah_D
+  pure function a_hz_DP (g, h1, k1, v2, k2) result (vout)
+    complex(kind=default), intent(in) :: g
+    complex(kind=default), intent(in) :: h1
+    type(vector), intent(in) :: v2
+    type(momentum), intent(in) :: k1, k2
+    type(vector) :: vout
+    vout = g * ((- h1 * (k1 + k2) * v2) * (k1) &
+         + h1 * ((k1 + k2) * (k1)) *v2)
+  end function a_hz_DP
+  pure function h_az_DP (g, v1, k1, v2, k2) result (hout)
+    complex(kind=default), intent(in) :: g
+    type(vector), intent(in) :: v1, v2
+    type(momentum), intent(in) :: k1, k2
+    complex(kind=default) :: hout
+    hout = g * (- (k1 * v2) * ((k1 + k2) * v1) + (k1 * (k1 + k2)) * (v1 * v2))
+  end function h_az_DP
+  pure function z_ah_DP (g, v1, k1, h2, k2) result (vout)
+    complex(kind=default), intent(in) :: g
+    complex(kind=default), intent(in) :: h2
+    type(vector), intent(in) :: v1
+    type(momentum), intent(in) :: k1, k2
+    type(vector) :: vout
+    vout = g * h2* ((k2 * v1) * k1 - (k1 * k2) * v1)
+  end function z_ah_DP
+  pure function h_hh_6 (g, h1, k1, h2, k2) result (hout)
+    complex(kind=default), intent(in) :: g
+    complex(kind=default), intent(in) :: h1, h2
+    type(momentum), intent(in) :: k1, k2
+    complex(kind=default) :: hout
+    hout =  g * ((k1* k1) + (k2 * k2) + (k1* k2)) * h1 * h2
+  end function h_hh_6
+  pure function g_gg_23 (g, v1, k1, v2, k2) result (vout)
+    complex(kind=default), intent(in) :: g
+    type(vector), intent(in) :: v1, v2
+    type(momentum), intent(in) :: k1, k2
+    type(vector) :: vout
+    vout = g * (v1 * (-2*(k1*v2)) + v2 * (2*k2 * v1) + (k1 - k2) * (v1*v2))
+  end function g_gg_23
+  pure function g_gg_13 (g, v1, k1, v2, k2) result (vout)
+    complex(kind=default), intent(in) :: g
+    type(vector), intent(in) :: v1, v2
+    type(momentum), intent(in) :: k1, k2
+    type(vector) :: vout
+    vout = g * (v1 * (2*(k1 + k2)*v2) - v2 * ((k1 + 2*k2) * v1) + 2*k2 * (v1 * v2))
+  end function g_gg_13
+  pure function g_gg_6 (g, v1, k1, v2, k2) result (vout)
+    complex(kind=default), intent(in) :: g
+    type(vector), intent(in) :: v1, v2
+    type(momentum), intent(in) :: k1, k2
+    type(vector) :: vout
+    vout = g * &
+         ( k1 * ((-(k1 + k2) * v2) * (k2 * v1) + ((k1 + k2) * k2) * (v1 * v2)) &
+         + k2 * (((k1 + k2) * v1) * (k1 * v2) - ((k1 + k2) * k1) * (v1 * v2)) &
+         + v1 * (-((k1 + k2) * k2) * (k1 * v2) + (k1 * k2) * ((k1 + k2) * v2)) &
+         + v2 * (((k1 + k2) * k1) * (k2 * v1) - (k1 * k2) * ((k1 + k2) * v1)))
+  end function g_gg_6
+  pure function kg_kgkg_i (g, a1, k1, a2, k2) result (a)
+    complex(kind=default), intent(in) :: g
+    type(vector), intent(in) :: a1, a2
+    type(momentum), intent(in) :: k1, k2
+    type(vector) :: a
+    real(kind=default) :: k1k1, k2k2, k1k2, kk1, kk2
+    complex(kind=default) :: a1a2, k2a1, ka1, k1a2, ka2
+    k1k1 = k1 * k1
+    k1k2 = k1 * k2
+    k2k2 = k2 * k2
+    kk1 = k1k1 + k1k2
+    kk2 = k1k2 + k2k2
+    k2a1 = k2 * a1
+    ka1 = k2a1 + k1 * a1
+    k1a2 = k1 * a2
+    ka2 = k1a2 + k2 * a2
+    a1a2 = a1 * a2
+    a = (-1) * g * (   (kk2  * k1a2 - k1k2 * ka2 ) * a1 &
+         + (k1k2 * ka1  - kk1  * k2a1) * a2 &
+         + (ka2  * k2a1 - kk2  * a1a2) * k1 &
+         + (kk1  * a1a2 - ka1  * k1a2) * k2 )
+  end function kg_kgkg_i
+  pure function a_ww_DP (g, v1, k1, v2, k2) result (vout)
+    complex(kind=default), intent(in) :: g
+    type(vector), intent(in) :: v1, v2
+    type(momentum), intent(in) :: k1, k2
+    type(vector) :: vout
+    vout = g * ( - ((k1 + k2) * v2) * v1 + ((k1 + k2) * v1) * v2)
+  end function a_ww_DP
+  pure function w_aw_DP (g, v1, k1, v2, k2) result (vout)
+    complex(kind=default), intent(in) :: g
+    type(vector), intent(in) :: v1, v2
+    type(momentum), intent(in) :: k1, k2
+    type(vector) :: vout
+    vout = g * ((k1 * v2) * v1 - (v1 * v2) * k1)
+  end function w_aw_DP
+  pure function a_ww_DW (g, v1, k1, v2, k2) result (vout)
+    complex(kind=default), intent(in) :: g
+    type(vector), intent(in) :: v1, v2
+    type(momentum), intent(in) :: k1, k2
+    type(vector) :: vout
+    vout = g * (v1 * (- (4*k1 + 2*k2) * v2) &
+         + v2 * ( (2*k1 + 4*k2) * v1) &
+         + (k1 - k2) * (2*v1*v2))
+  end function a_ww_DW
+  pure function w_wz_DPW (g, v1, k1, v2, k2) result (vout)
+    complex(kind=default), intent(in) :: g
+    type(vector), intent(in) :: v1, v2
+    type(momentum), intent(in) :: k1, k2
+    type(vector) :: vout
+    vout = g * (v1 * (-(k1+k2)*v2 - k1*v2) + v2 * ((k1+k2)*v1) + k1 * (v1*v2))
+  end function w_wz_DPW
+  pure function z_ww_DPW (g, v1, k1, v2, k2) result (vout)
+    complex(kind=default), intent(in) :: g
+    type(vector), intent(in) :: v1, v2
+    type(momentum), intent(in) :: k1, k2
+    type(vector) :: vout
+    vout = g * (k1*(v1*v2) - k2*(v1*v2) - v1*(k1*v2) + v2*(k2*v1))
+  end function z_ww_DPW
+  pure function w_wz_DW (g, v1, k1, v2, k2) result (vout)
+    complex(kind=default), intent(in) :: g
+    type(vector), intent(in) :: v1, v2
+    type(momentum), intent(in) :: k1, k2
+    type(vector) :: vout
+    vout = g * (v2 * (v1 * k2) - k2 * (v1 * v2))
+  end function w_wz_DW
+  pure function z_ww_DW (g, v1, k1, v2, k2) result (vout)
+    complex(kind=default), intent(in) :: g
+    type(vector), intent(in) :: v1, v2
+    type(momentum), intent(in) :: k1, k2
+    type(vector) :: vout
+    vout = g * (v1 * ((-1)*(k1+k2) * v2) + v2 * ((k1+k2) * v1))
+  end function z_ww_DW
+  pure function w_wz_D (g, v1, k1, v2, k2) result (vout)
+    complex(kind=default), intent(in) :: g
+    type(vector), intent(in) :: v1, v2
+    type(momentum), intent(in) :: k1, k2
+    type(vector) :: vout
+    vout = g * (v2 * (k2*v1) - k2 * (v1*v2))
+  end function w_wz_D
+  pure function z_ww_D (g, v1, k1, v2, k2) result (vout)
+    complex(kind=default), intent(in) :: g
+    type(vector), intent(in) :: v1, v2
+    type(momentum), intent(in) :: k1, k2
+    type(vector) :: vout
+    vout = g * (v1 * (- (k1 + k2) * v2) + v2 * ((k1 + k2) * v1))
+  end function z_ww_D
+
+  pure function hhhh_p2 (g, h1, k1, h2, k2, h3, k3) result (hout)
+    complex(kind=default), intent(in) :: g
+    complex(kind=default), intent(in) :: h1, h2, h3
+    type(momentum), intent(in) :: k1, k2, k3
+    complex(kind=default) :: hout
+    hout = g * h1*h2*h3* (k1*k1 + k2*k2 +k3*k3 + k1*k3 + k1*k2 + k2*k3)
+  end function hhhh_p2
+  pure function a_hww_DPB (g, h1, k1, v2, k2, v3, k3) result (vout)
+    complex(kind=default), intent(in) :: g
+    complex(kind=default), intent(in) :: h1
+    type(vector), intent(in) :: v2, v3
+    type(momentum), intent(in) :: k1, k2, k3
+    type(vector) :: vout
+    vout = g * h1 * (v3*((k1+k2+k3)*v2) - v2*((k1+k2+k3)*v3))
+  end function a_hww_DPB
+  pure function h_aww_DPB (g, v1, k1, v2, k2, v3, k3) result (hout)
+    complex(kind=default), intent(in) :: g
+    type(vector), intent(in) :: v1, v2, v3
+    type(momentum), intent(in) :: k1, k2, k3
+    complex(kind=default) :: hout
+    hout = g * ((k1 * v3) * (v1 * v2) - (k1 * v2) * (v1 * v3))
+  end function h_aww_DPB
+  pure function w_ahw_DPB (g, v1, k1, h2, k2, v3, k3) result (vout)
+    complex(kind=default), intent(in) :: g
+    complex(kind=default), intent(in) :: h2
+    type(vector), intent(in) :: v1, v3
+    type(momentum), intent(in) :: k1, k2, k3
+    type(vector) :: vout
+    vout = g * h2 * (v1 * (k1 * v3) - k1 * (v1 * v3))
+  end function w_ahw_DPB
+  pure function a_hww_DPW (g, h1, k1, v2, k2, v3, k3) result (vout)
+    complex(kind=default), intent(in) :: g
+    complex(kind=default), intent(in) :: h1
+    type(vector), intent(in) :: v2, v3
+    type(momentum), intent(in) :: k1, k2, k3
+    type(vector) :: vout
+    vout = g * h1 * (v3 * ((2*k1+k2+k3)*v2) - v2 * ((2*k1+k2+k3)*v3))
+  end function a_hww_DPW
+  pure function h_aww_DPW (g, v1, k1, v2, k2, v3, k3) result (hout)
+    complex(kind=default), intent(in) :: g
+    type(vector), intent(in) :: v1, v2, v3
+    type(momentum), intent(in) :: k1, k2, k3
+    complex(kind=default) :: hout
+    hout = g * ((-(2*k1+k2+k3)*v2)*(v1*v3)+((2*k1+k2+k3)*v3)*(v1*v2))
+  end function h_aww_DPW
+  pure function w_ahw_DPW (g, v1, k1, h2, k2, v3, k3) result (vout)
+    complex(kind=default), intent(in) :: g
+    complex(kind=default), intent(in) :: h2
+    type(vector), intent(in) :: v1, v3
+    type(momentum), intent(in) :: k1, k2, k3
+    type(vector) :: vout
+    vout = g * h2 * ((k2 - k1) * (v1 * v3) + v1 * ((k1 - k2) * v3))
+  end function w_ahw_DPW
+  pure function a_hww_DW (g, h1, k1, v2, k2, v3, k3) result (vout)
+    complex(kind=default), intent(in) :: g
+    complex(kind=default), intent(in) :: h1
+    type(vector), intent(in) :: v2, v3
+    type(momentum), intent(in) :: k1, k2, k3
+    type(vector) :: vout
+    vout = g * h1 * ( v2 * (-(3*k1 + 4*k2 + 4*k3) * v3) &
+         + v3 * ((3*k1 + 2*k2 + 4*k3) * v2)  &
+         + (k2 - k3) *2*(v2 * v3))
+  end function a_hww_DW
+  pure function h_aww_DW (g, v1, k1, v2, k2, v3, k3) result (hout)
+    complex(kind=default), intent(in) :: g
+    type(vector), intent(in) :: v1, v2, v3
+    type(momentum), intent(in) :: k1, k2, k3
+    complex(kind=default) :: hout
+    hout = g * ((v1*v2) * ((3*k1 - k2 - k3)*v3) &
+         + (v1*v3) * ((-3*k1 - k2 + k3)*v2) &
+         + (v2*v3) * (2*(k2-k3)*v1))
+  end function h_aww_DW
+  pure function w3_ahw_DW (g, v1, k1, h2, k2, v3, k3) result (vout)
+    complex(kind=default), intent(in) :: g
+    complex(kind=default), intent(in) :: h2
+    type(vector), intent(in) :: v1, v3
+    type(momentum), intent(in) :: k1, k2, k3
+    type(vector) :: vout
+    vout = g * h2 * (v1 * ((4*k1 + k2) * v3) &
+         +v3 * (-2*(k1 + k2 + 2*k3) * v1) &
+         +(-2*k1 + k2 + 2*k3) * (v1*v3))
+  end function w3_ahw_DW
+  pure function w4_ahw_DW (g, v1, k1, h2, k2, v3, k3) result (vout)
+    complex(kind=default), intent(in) :: g
+    complex(kind=default), intent(in) :: h2
+    type(vector), intent(in) :: v1, v3
+    type(momentum), intent(in) :: k1, k2, k3
+    type(vector) :: vout
+    vout = g * h2 * (v1 * (-(4*k1 + k2 + 2*k3) * v3) &
+         + v3 * (2*(k1 + k2 + 2*k3) * v1) &
+         +(4*k1 + k2) * (v1*v3))
+  end function w4_ahw_DW
+  pure function a_aww_DW (g, v1, k1, v2, k2, v3, k3) result (vout)
+    complex(kind=default), intent(in) :: g
+    type(vector), intent(in) :: v1, v2, v3
+    type(momentum), intent(in) :: k1, k2, k3
+    type(vector) :: vout
+    vout = g * (2*v1*(v2*v3) - v2*(v1*v3) - v3*(v1*v2))
+  end function a_aww_DW
+  pure function w_aaw_DW (g, v1, k1, v2, k2, v3, k3) result (vout)
+    complex(kind=default), intent(in) :: g
+    type(vector), intent(in) :: v1, v2, v3
+    type(momentum), intent(in) :: k1, k2, k3
+    type(vector) :: vout
+    vout = g * (2*v3*(v1*v2) - v2*(v1*v3) - v1*(v2*v3))
+  end function w_aaw_DW
+  pure function a_aww_W (g, v1, k1, v2, k2, v3, k3) result (vout)
+    complex(kind=default), intent(in) :: g
+    type(vector), intent(in) :: v1, v2, v3
+    type(momentum), intent(in) :: k1, k2, k3
+    type(vector) :: vout
+    vout = g * (v1*((-(k2+k3)*v2)*(k2*v3) + (-(k2+k3)*v3)*(k3*v2)) &
+         +v2*((-((k2-k3)*v1)*(k1+k2+k3)*v3) - (k1*v3)*(k2*v1) &
+         + ((k1+k2+k3)*v1)*(k2*v3)) &
+         +v3*(((k2-k3)*v1)*((k1+k2+k3)*v2) - (k1*v2)*(k3*v1) &
+         + ((k1+k2+k3)*v1)*(k3*v2)) &
+         +(v1*v2)*(((2*k1+k2+k3)*v3)*k2 - (k2*v3)*k1 -(k1*v3)*k3) &
+         +(v1*v3)*(((2*k1+k2+k3)*v2)*k3 - (k3*v2)*k1 - (k1*v2)*k3) &
+         +(v2*v3)*((-(k1+k2+k3)*v1)*(k2+k3) + ((k2+k3)*v1)*k1) &
+         +(-(k1+k2+k3)*k3 +k1*k2)*((v1*v3)*v2 - (v2*v3)*v1) &
+         +(-(k1+k2+k3)*k2 + k1*k3)*((v1*v2)*v3 - (v2*v3)*v1))
+  end function a_aww_W
+  pure function w_aaw_W (g, v1, k1, v2, k2, v3, k3) result (vout)
+    complex(kind=default), intent(in) :: g
+    type(vector), intent(in) :: v1, v2, v3
+    type(momentum), intent(in) :: k1, k2, k3
+    type(vector) :: vout
+    vout = g * (v1*((k1*v3)*(-(k1+k2+2*k3)*v2) + (k2*v3)*((k1+k2+k3)*v2) &
+         + (k1*v2)*((k1+k2+k3)*v3)) &
+         + v2*(((k1-k2)*v3)*((k1+k2+k3)*v1) - (k2*v3)*(k3*v1) &
+         + (k2*v1)*((k1+k2+k3)*v3)) &
+         + v3*((k1*v2)*(-(k1+k2)*v1) + (k2*v1)*(-(k1+k2)*v2)) &
+         + (v1*v2)*((k1+k2)*(-(k1+k2+k3)*v3) + k3*((k1+k2)*v3))&
+         + (v1*v3)*(-k2*(k3*v2) - k3*(k1*v2) + k1*((k1+k2+2*k3)*v2)) &
+         + (v2*v3)*(-k1*(k3*v1) - k3*(k2*v1) + k2*((k1+k2+2*k3)*v1)) &
+         + (-k2*(k1+k2+k3) + k1*k3)*(v1*(v2*v3) - v3*(v1*v2)) &
+         + (-k1*(k1+k2+k3) + k2*k3)*(v2*(v1*v3) - v3*(v1*v2)) )
+  end function w_aaw_W
+  pure function h_hww_D (g, h1, k1, v2, k2, v3, k3) result (hout)
+    complex(kind=default), intent(in) :: g
+    complex(kind=default), intent(in) :: h1 
+    type(vector), intent(in) :: v2, v3
+    type(momentum), intent(in) :: k1, k2, k3
+    complex(kind=default) :: hout
+    hout = g * h1 * ((v2*v3)*((k2*k2)+(k3*k3)) - (k2*v2)*(k2*v3) &
+         - (k3*v2)*(k3*v3))
+  end function h_hww_D
+  pure function w_hhw_D (g, h1, k1, h2, k2, v3, k3) result (vout)
+    complex(kind=default), intent(in) :: g
+    complex(kind=default), intent(in) :: h1, h2 
+    type(vector), intent(in) :: v3
+    type(momentum), intent(in) :: k1, k2, k3
+    type(vector) :: vout
+    vout = g * h1 * h2 * (v3 * ((k1+k2+k3)*(k1+k2+k3)+(k3*k3)) &
+         - (k1+k2+k3) * ((k1+k2+k3)*v3) - k3 * (k3*v3))
+  end function w_hhw_D
+  pure function h_hww_DP (g, h1, k1, v2, k2, v3, k3) result (hout)
+    complex(kind=default), intent(in) :: g
+    complex(kind=default), intent(in) :: h1 
+    type(vector), intent(in) :: v2, v3
+    type(momentum), intent(in) :: k1, k2, k3
+    complex(kind=default) :: hout
+    hout = g * h1 * (-((k2+k3)*v2)*(k2*v3) - &
+         ((k2+k3)*v3)*(k3*v2)+ (v2*v3)*((k2+k3)*(k2+k3)))
+  end function h_hww_DP
+  pure function w_hhw_DP (g, h1, k1, h2, k2, v3, k3) result (vout)
+    complex(kind=default), intent(in) :: g
+    complex(kind=default), intent(in) :: h1, h2 
+    type(vector), intent(in) :: v3
+    type(momentum), intent(in) :: k1, k2, k3
+    type(vector) :: vout
+    vout = g * h1 * h2 * (k3*((k1+k2)*v3) + (k1+k2)*(-(k1+k2+k3)*v3) &
+         + v3*((k1+k2)*(k1+k2)))
+  end function w_hhw_DP
+  pure function h_hvv_PB (g, h1, k1, v2, k2, v3, k3) result (hout)
+    complex(kind=default), intent(in) :: g
+    complex(kind=default), intent(in) :: h1 
+    type(vector), intent(in) :: v2, v3
+    type(momentum), intent(in) :: k1, k2, k3
+    complex(kind=default) :: hout
+    hout = g * h1 * ((k2*v3)*(k3*v2) - (k2*k3)*(v2*v3))
+  end function h_hvv_PB
+  pure function v_hhv_PB (g, h1, k1, h2, k2, v3, k3) result (vout)
+    complex(kind=default), intent(in) :: g
+    complex(kind=default), intent(in) :: h1, h2 
+    type(vector), intent(in) :: v3
+    type(momentum), intent(in) :: k1, k2, k3
+    type(vector) :: vout
+    vout = g * h1 * h2 * ((-(k1+k2+k3)*v3)*k3 + ((k1+k2+k3)*k3)*v3)
+  end function v_hhv_PB
+  pure function a_hhz_D (g, h1, k1, h2, k2, v3, k3) result (vout)
+    complex(kind=default), intent(in) :: g
+    complex(kind=default), intent(in) :: h1, h2
+    type(vector), intent(in) :: v3
+    type(momentum), intent(in) :: k1, k2, k3
+    type(vector) :: vout
+    vout = g * h1 * h2 * ((k1+k2+k3) * ((k1+k2+k3)*v3) &
+         - v3 * ((k1+k2+k3)*(k1+k2+k3)))
+  end function a_hhz_D
+  pure function h_ahz_D (g, v1, k1, h2, k2, v3, k3) result (hout)
+    complex(kind=default), intent(in) :: g
+    complex(kind=default), intent(in) :: h2 
+    type(vector), intent(in) :: v1, v3
+    type(momentum), intent(in) :: k1, k2, k3
+    complex(kind=default) :: hout
+    hout = g * h2 * ((k1*v1)*(k1*v3) - (k1*k1)*(v1*v3))
+  end function h_ahz_D
+  pure function z_ahh_D (g, v1, k1, h2, k2, h3, k3) result (vout)
+    complex(kind=default), intent(in) :: g
+    type(vector), intent(in) :: v1
+    complex(kind=default), intent(in) :: h2, h3 
+    type(momentum), intent(in) :: k1, k2, k3
+    type(vector) :: vout
+    vout = g * h2 * h3 * ((k1*v1)*k1 - (k1*k1)*v1)
+  end function z_ahh_D
+  pure function a_hhz_DP (g, h1, k1, h2, k2, v3, k3) result (vout)
+    complex(kind=default), intent(in) :: g
+    complex(kind=default), intent(in) :: h1, h2
+    type(vector), intent(in) :: v3
+    type(momentum), intent(in) :: k1, k2, k3
+    type(vector) :: vout
+    vout = g * h1 * h2 * ((-(k1+k2+k3)*v3)*(k1+k2) + ((k1+k2+k3)*(k1+k2))*v3)
+  end function a_hhz_DP
+  pure function h_ahz_DP (g, v1, k1, h2, k2, v3, k3) result (hout)
+    complex(kind=default), intent(in) :: g
+    complex(kind=default), intent(in) :: h2 
+    type(vector), intent(in) :: v1, v3
+    type(momentum), intent(in) :: k1, k2, k3
+    complex(kind=default) :: hout
+    hout = g * h2 * ( (k1*v3)*(-(k1+k3)*v1) + (k1*(k1+k3))*(v1*v3) )
+  end function h_ahz_DP
+  pure function z_ahh_DP (g, v1, k1, h2, k2, h3, k3) result (vout)
+    complex(kind=default), intent(in) :: g
+    type(vector), intent(in) :: v1
+    complex(kind=default), intent(in) :: h2, h3 
+    type(momentum), intent(in) :: k1, k2, k3
+    type(vector) :: vout
+    vout = g * h2 * h3 * (k1*((k2+k3)*v1) - v1*(k1*(k2+k3)))
+  end function z_ahh_DP
+  pure function a_hhz_PB (g, h1, k1, h2, k2, v3, k3) result (vout)
+    complex(kind=default), intent(in) :: g
+    complex(kind=default), intent(in) :: h1, h2
+    type(vector), intent(in) :: v3
+    type(momentum), intent(in) :: k1, k2, k3
+    type(vector) :: vout
+    vout = g * h1 * h2 * (k3*((k1+k2+k3)*v3) - v3*((k1+k2+k3)*k3))
+  end function a_hhz_PB
+  pure function h_ahz_PB (g, v1, k1, h2, k2, v3, k3) result (hout)
+    complex(kind=default), intent(in) :: g
+    complex(kind=default), intent(in) :: h2 
+    type(vector), intent(in) :: v1, v3
+    type(momentum), intent(in) :: k1, k2, k3
+    complex(kind=default) :: hout
+    hout = g * h2 * ((-k1*v3)*(k3*v1) + (k1*k3)*(v1*v3))
+  end function h_ahz_PB
+  pure function z_ahh_PB (g, v1, k1, h2, k2, h3, k3) result (vout)
+    complex(kind=default), intent(in) :: g
+    type(vector), intent(in) :: v1
+    complex(kind=default), intent(in) :: h2, h3 
+    type(momentum), intent(in) :: k1, k2, k3
+    type(vector) :: vout
+    vout = g * h2 * h3 * (k1*((k1+k2+k3)*v1) - v1*(k1*(k1+k2+k3)))
+  end function z_ahh_PB
+  pure function h_wwz_DW (g, v1, k1, v2, k2, v3, k3) result (hout)
+    complex(kind=default), intent(in) :: g
+    type(vector), intent(in) :: v1, v2, v3
+    type(momentum), intent(in) :: k1, k2, k3
+    complex(kind=default) :: hout
+    hout = g * (((k1-k2)*v3)*(v1*v2)-((2*k1+k2)*v2)*(v1*v3) + &
+         ((k1+2*k2)*v1)*(v2*v3))
+  end function h_wwz_DW
+  pure function w_hwz_DW (g, h1, k1, v2, k2, v3, k3) result (vout)
+    complex(kind=default), intent(in) :: g
+    complex(kind=default), intent(in) :: h1
+    type(vector), intent(in) :: v2, v3
+    type(momentum), intent(in) :: k1, k2, k3
+    type(vector) :: vout
+    vout = g * h1 * ( v2*(-(k1+2*k2+k3)*v3) + v3*((2*k1+k2+2*k3)*v2) - &
+         (k1 - k2 + k3)*(v2*v3))
+  end function w_hwz_DW
+  pure function z_hww_DW (g, h1, k1, v2, k2, v3, k3) result (vout)
+    complex(kind=default), intent(in) :: g
+    complex(kind=default), intent(in) :: h1
+    type(vector), intent(in) :: v2, v3
+    type(momentum), intent(in) :: k1, k2, k3
+    type(vector) :: vout
+    vout = g * h1 * ((k2-k3)*(v2*v3) - v2*((2*k2+k3)*v3) + v3*((k2+2*k3)*v2))
+  end function z_hww_DW
+  pure function h_wwz_DPB (g, v1, k1, v2, k2, v3, k3) result (hout)
+    complex(kind=default), intent(in) :: g
+    type(vector), intent(in) :: v1, v2, v3
+    type(momentum), intent(in) :: k1, k2, k3
+    complex(kind=default) :: hout
+    hout = g * ((k3*v1)*(v2*v3) - (k3*v2)*(v1*v3))
+  end function h_wwz_DPB
+  pure function w_hwz_DPB (g, h1, k1, v2, k2, v3, k3) result (vout)
+    complex(kind=default), intent(in) :: g
+    complex(kind=default), intent(in) :: h1
+    type(vector), intent(in) :: v2, v3
+    type(momentum), intent(in) :: k1, k2, k3
+    type(vector) :: vout
+    vout = g * h1 * (k3*(v2*v3) - v3*(k3*v2))
+  end function w_hwz_DPB
+  pure function z_hww_DPB (g, h1, k1, v2, k2, v3, k3) result (vout)
+    complex(kind=default), intent(in) :: g
+    complex(kind=default), intent(in) :: h1
+    type(vector), intent(in) :: v2, v3
+    type(momentum), intent(in) :: k1, k2, k3
+    type(vector) :: vout
+    vout = g * h1 * (((k1+k2+k3)*v3)*v2 - ((k1+k2+k3)*v2)*v3)
+  end function z_hww_DPB
+  pure function h_wwz_DDPW (g, v1, k1, v2, k2, v3, k3) result (hout)
+    complex(kind=default), intent(in) :: g
+    type(vector), intent(in) :: v1, v2, v3
+    type(momentum), intent(in) :: k1, k2, k3
+    complex(kind=default) :: hout
+    hout = g * (((k1-k2)*v3)*(v1*v2)-((k1-k3)*v2)*(v1*v3)+((k2-k3)*v1)*(v2*v3))
+  end function h_wwz_DDPW
+  pure function w_hwz_DDPW (g, h1, k1, v2, k2, v3, k3) result (vout)
+    complex(kind=default), intent(in) :: g
+    complex(kind=default), intent(in) :: h1
+    type(vector), intent(in) :: v2, v3
+    type(momentum), intent(in) :: k1, k2, k3
+    type(vector) :: vout
+    vout = g * h1 * ((-(k1+2*k2+k3)*v3)*v2 + ((k1+k2+2*k3)*v2)*v3 + &
+         (v2*v3)*(k2-k3))
+  end function w_hwz_DDPW
+  pure function z_hww_DDPW (g, h1, k1, v2, k2, v3, k3) result (vout)
+    complex(kind=default), intent(in) :: g
+    complex(kind=default), intent(in) :: h1
+    type(vector), intent(in) :: v2, v3
+    type(momentum), intent(in) :: k1, k2, k3
+    type(vector) :: vout
+    vout = g * h1 * ((v2*v3)*(k2-k3) - ((k1+2*k2+k3)*v3) *v2 + &
+         ((k1+k2+2*k3)*v2)*v3 )
+  end function z_hww_DDPW
+  pure function h_wwz_DPW (g, v1, k1, v2, k2, v3, k3) result (hout)
+    complex(kind=default), intent(in) :: g
+    type(vector), intent(in) :: v1, v2, v3
+    type(momentum), intent(in) :: k1, k2, k3
+    complex(kind=default) :: hout
+    hout = g * (((k1-k2)*v3)*(v1*v2) + (-(2*k1+k2+k3)*v2)*(v1*v3) + &
+         ((k1+2*k2+k3)*v1)*(v2*v3))
+  end function h_wwz_DPW
+  pure function w_hwz_DPW (g, h1, k1, v2, k2, v3, k3) result (vout)
+    complex(kind=default), intent(in) :: g
+    complex(kind=default), intent(in) :: h1
+    type(vector), intent(in) :: v2, v3
+    type(momentum), intent(in) :: k1, k2, k3
+    type(vector) :: vout
+    vout = g * h1 * ((-(k1+2*k2+k3)*v3)*v2 + ((2*k1+k2+k3)*v2)*v3 + &
+         (v2*v3)*(k2-k1))
+  end function w_hwz_DPW
+  pure function z_hww_DPW (g, h1, k1, v2, k2, v3, k3) result (vout)
+    complex(kind=default), intent(in) :: g
+    complex(kind=default), intent(in) :: h1
+    type(vector), intent(in) :: v2, v3
+    type(momentum), intent(in) :: k1, k2, k3
+    type(vector) :: vout
+    vout = g * h1 * ((v2*v3)*(k2-k3) + ((k1-k2)*v3)*v2 + ((k3-k1)*v2)*v3)
+  end function z_hww_DPW
+
   pure function phi_dim5s2 (g, phi2, k2, phi3, k3) result (phi1)
     complex(kind=default), intent(in) :: g, phi2, phi3
     type(momentum), intent(in) :: k2, k3

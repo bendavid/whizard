@@ -129,8 +129,8 @@ error_goal =  0.000000000000E+00
 relative_error_goal =  0.000000000000E+00
 error_threshold =  0.000000000000E+00
 ?vis_history = true
-?diags = false
-?diags_color = false
+?vis_diags = false
+?vis_diags_color = false
 ?check_event_file = true
 $event_file_version = ""
 n_events = 0
@@ -171,6 +171,11 @@ $debug_extension = "debug"
 ?debug_transforms = true
 ?debug_decay = true
 ?debug_verbose = true
+$dump_extension = "pset"
+?dump_compressed = true
+?dump_weights = false
+?dump_summary = false
+?dump_screen = false
 ?hepevt_ensure_order = false
 $extension_hepevt = "hepevt"
 $extension_ascii_short = "short.evt"
@@ -188,6 +193,7 @@ $extension_hepmc = "hepmc"
 $extension_lcio = "slcio"
 $extension_stdhep = "hep"
 $extension_stdhep_up = "up.hep"
+$extension_stdhep_ev4 = "ev4.hep"
 $extension_hepevt_verb = "hepevt.verb"
 $extension_lha_verb = "lha.verb"
 n_bins = 20
@@ -222,6 +228,7 @@ $gmlcode_fg = ""
 ?analysis_file_only = false
 tolerance =  0.000000000000E+00
 checkpoint = 0
+event_callback_interval = 0
 ?pacify = false
 $out_file = ""
 ?out_advance = true
@@ -241,6 +248,8 @@ plugin_algorithm* = 99
 undefined_jet_algorithm* = 999
 jet_algorithm = 999
 jet_r =  0.000000000000E+00
+jet_p =  0.000000000000E+00
+jet_ycut =  0.000000000000E+00
 ?polarized_events = false
 ?allow_shower = true
 ?ps_fsr_active = false
@@ -302,6 +311,9 @@ $loop_me_method = "gosam"
 $correlation_me_method = "omega"
 $real_tree_me_method = "omega"
 openloops_verbosity = 1
+openloops_phs_tolerance = 7
+?openloops_top_signal = false
+?disable_subtraction = false
 fks_dij_exp1 =  1.000000000000E+00
 fks_dij_exp2 =  1.000000000000E+00
 fks_mapping_type = 1
@@ -311,8 +323,15 @@ alphas_power = 0
 ?combined_nlo_integration = false
 ?nlo_fixed_order = false
 gks_multiplicity = 0
-$gosam_filters_lo = ""
-$gosam_filters_nlo = ""
+$gosam_filter_lo = ""
+$gosam_filter_nlo = ""
+$gosam_symmetries = "family,generation"
+form_threads = 2
+form_workspace = 1000
+$gosam_fc = ""
+mult_call_real =  1.000000000000E+00
+mult_call_virt =  1.000000000000E+00
+mult_call_pdf =  1.000000000000E+00
 $fc => "Fortran-compiler"
 $fcflags => "Fortran-flags"
 ========================================================================
@@ -387,6 +406,8 @@ model "Test"
  Event analysis: [undefined]
 ------------------------------------------------------------------------
  Event sample formats = foo_fmt, bar_fmt
+------------------------------------------------------------------------
+ Event callback: [undefined]
 ========================================================================
  Process stack: [empty]
 ========================================================================

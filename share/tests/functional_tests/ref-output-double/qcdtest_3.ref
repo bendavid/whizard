@@ -79,6 +79,7 @@ $sample = "qcdtest_3a"
 | Events: generating 1 unweighted, unpolarized events ...
 | Events: event normalization mode '1'
 |         ... event sample complete.
+| Events: actual unweighting efficiency =   3.33 %
 | Events: closing weight stream file 'qcdtest_3a.weights.dat'
 | Events: closing raw file 'qcdtest_3a.evx'
 ?write_raw = false

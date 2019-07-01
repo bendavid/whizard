@@ -1,7 +1,6 @@
 ########################################################################
 # Standard Model (unitary gauge) with anomalous couplings,
 # CKM matrix and K-Matrix unitarization
-# Default Higgs mass is very large
 model "SSC_AltT"
 
 # Independent parameters
@@ -211,6 +210,13 @@ particle SSC_PHI_PP 48
   tex_anti "\phi^{--}"
   mass mkm_p width wkm_p
 
+# Resonance Scalar IsoTensor(scalar)
+particle SSC_PHI_SN 49
+  spin 0
+  name "Rphis0" Rphisn
+  tex_name "\phi_s^0"
+  mass mkm_p width wkm_p
+
 #Resonance Tensor Isoscalar
 particle SSC_f 52
   spin 2
@@ -261,6 +267,13 @@ particle SSC_f 58
   name Rfphi
   tex_name "f^s"
   mass mkm_f width wkm_f
+
+# Resonance Tensor IsoTensor (scalar)
+particle SSC_T_SN 59
+  spin 2
+  name "Rts0" Rtsn
+  tex_name "t_s^0"
+  mass mkm_t width wkm_t
 
 # Hadrons
 particle PROTON 2212
@@ -405,6 +418,8 @@ vertex Rfphi H H
 # Tensor t - vector boson
 vertex Rtn Wp Wm
 vertex Rtn Z Z
+vertex Rtsn Wp Wm
+vertex Rtsn Z Z
 vertex Rtp Wm Z
 vertex Rtpp Wm Wm
 vertex Rtm Wp Z

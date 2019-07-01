@@ -1,4 +1,4 @@
-! WHIZARD 2.2.7 Aug 11 2015
+! WHIZARD 2.2.8 Nov 22 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,11 +6,14 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
-!     Fabian Bach <fabian.bach@desy.de>
+!     Fabian Bach <fabian.bach@t-online.de>
+!     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
+!     Soyoung Shim <soyoung.shim@desy.de>
+!     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, Daniel Wiesler 
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -95,7 +98,12 @@ module state_matrices
      procedure :: get_depth => state_matrix_get_depth
      procedure :: get_norm => state_matrix_get_norm
      procedure :: get_quantum_numbers => state_matrix_get_quantum_numbers
-     procedure :: get_matrix_element => state_matrix_get_matrix_element
+     generic :: get_matrix_element => get_matrix_element_single
+     generic :: get_matrix_element => get_matrix_element_array
+     procedure :: get_matrix_element_single => &
+       state_matrix_get_matrix_element_single
+     procedure :: get_matrix_element_array => &
+       state_matrix_get_matrix_element_array
      procedure :: get_max_color_value => state_matrix_get_max_color_value
      procedure :: add_state => state_matrix_add_state
      procedure :: collapse => state_matrix_collapse
@@ -129,6 +137,8 @@ module state_matrices
      procedure :: evaluate_sum => state_matrix_evaluate_sum
      procedure :: evaluate_me_sum => state_matrix_evaluate_me_sum
      procedure :: factorize => state_matrix_factorize
+     procedure :: get_polarization_density_matrix &
+        => state_matrix_get_polarization_density_matrix
   end type state_matrix_t
 
   type :: state_iterator_t
@@ -556,7 +566,7 @@ contains
     end do
   end function state_matrix_get_quantum_numbers
 
-  function state_matrix_get_matrix_element (state, i) result (me)
+  elemental function state_matrix_get_matrix_element_single (state, i) result (me)
     complex(default) :: me
     class(state_matrix_t), intent(in) :: state
     integer, intent(in) :: i
@@ -565,7 +575,18 @@ contains
     else
        me = 0
     end if
-  end function state_matrix_get_matrix_element
+  end function state_matrix_get_matrix_element_single
+
+  function state_matrix_get_matrix_element_array (state) result (me)
+     complex(default), dimension(:), allocatable :: me
+     class(state_matrix_t), intent(in) :: state
+     if (allocated (state%me)) then
+        allocate (me (size (state%me)))
+        me = state%me
+     else
+        me = 0
+     end if
+  end function state_matrix_get_matrix_element_array
 
   function state_matrix_get_max_color_value (state) result (cmax)
     integer :: cmax
@@ -1344,7 +1365,11 @@ contains
     do while (it%is_valid ())
        qn1 = it%get_quantum_numbers ()
        if (all (qn .match. qn1)) then
-          diagonal = qn1%are_diagonal ()
+          !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
+          !!! diagonal = qn1%are_diagonal ()
+          do i = 1, depth
+             diagonal(i) = qn1(i)%are_diagonal ()
+          end do
           value = it%get_matrix_element ()
           select case (mode)
           case (FM_IGNORE_HELICITY)  ! trace over diagonal states that match qn
@@ -1373,6 +1398,23 @@ contains
     if (present (correlated_state)) &
          call correlated_state%freeze ()
   end subroutine state_matrix_factorize
+
+  function state_matrix_get_polarization_density_matrix (state) result (pol_matrix)
+    real(default), dimension(:,:), allocatable :: pol_matrix
+    class(state_matrix_t), intent(in) :: state
+    type(node_t), pointer :: current => null ()
+    !!! What's the generic way to allocate the matrix?
+    allocate (pol_matrix (4,4)); pol_matrix = 0
+    if (associated (state%root%child_first)) then
+       current => state%root%child_first
+       do while (associated (current))
+         call current%qn%write ()
+         current => current%next
+       end do
+    else
+       call msg_fatal ("Polarization state not allocated!")
+    end if 
+  end function state_matrix_get_polarization_density_matrix
 
   subroutine state_flv_content_write (state_flv, unit)
     class(state_flv_content_t), intent(in), target :: state_flv
@@ -1426,7 +1468,7 @@ contains
     integer, dimension(:), allocatable :: pdg, pdg_subset
     integer, dimension(:), allocatable :: idx, map_subset, idx_subset, map
     type(quantum_numbers_t), dimension(:), allocatable :: qn
-    integer :: n, d, c, i
+    integer :: n, d, c, i, j
     call state_tmp%init ()
     d = state_full%get_depth ()
     allocate (flv (d), qn (d), pdg (d), idx (d), map (d))
@@ -1447,7 +1489,11 @@ contains
     do while (it%is_valid ())
        i = i + 1
        flv = it%get_flavor ()
-       pdg = flv%get_pdg ()
+       !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
+       !!! pdg = flv%get_pdg ()
+       do j = 1, d
+          pdg(j) = flv(j)%get_pdg ()          
+       end do
        idx_subset = pack (idx, mask)
        pdg_subset = pack (pdg, mask)
        map_subset = order_abs (pdg_subset)

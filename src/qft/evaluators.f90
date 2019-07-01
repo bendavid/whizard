@@ -1,4 +1,4 @@
-! WHIZARD 2.2.7 Aug 11 2015
+! WHIZARD 2.2.8 Nov 22 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,11 +6,14 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
-!     Fabian Bach <fabian.bach@desy.de>
+!     Fabian Bach <fabian.bach@t-online.de>
+!     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
+!     Soyoung Shim <soyoung.shim@desy.de>
+!     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, Daniel Wiesler 
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -553,9 +556,10 @@ contains
     integer, dimension(:,:), allocatable :: connection_index
     type(index_map_t), dimension(2) :: prt_map_in
     type(index_map_t) :: prt_map_conn
-    type(prt_mask_t), dimension(2) :: prt_is_connected
+    type(prt_mask_t), dimension(2) :: prt_is_connected    
+    !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
     type(quantum_numbers_mask_t), dimension(:), allocatable :: &
-         qn_mask_conn_initial
+         qn_mask_conn_initial, int_in1_mask, int_in2_mask
 
     integer :: i
 
@@ -592,10 +596,17 @@ contains
        prt_is_connected(i)%entry = .true.
        prt_is_connected(i)%entry(connection_index(:,i)) = .false.
     end do
-    allocate (qn_mask_conn_initial (n_conn))
-    qn_mask_conn_initial = &
-         int_in1%get_mask (connection_index(:,1)) .or. &
-         int_in2%get_mask (connection_index(:,2))
+    !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug    
+    allocate (qn_mask_conn_initial (n_conn), &
+         int_in1_mask (n_conn), int_in2_mask (n_conn))
+    int_in1_mask = int_in1%get_mask (connection_index(:,1))
+    int_in2_mask = int_in2%get_mask (connection_index(:,2))    
+    do i = 1, n_conn
+       qn_mask_conn_initial(i) = int_in1_mask(i) .or. int_in2_mask(i)
+    end do
+    !!! qn_mask_conn_initial = &
+    !!!      int_in1%get_mask (connection_index(:,1)) .or. &
+    !!!      int_in2%get_mask (connection_index(:,2))
     allocate (qn_mask_in(1)%mask (int_in1%get_n_tot ()))
     allocate (qn_mask_in(2)%mask (int_in2%get_n_tot ()))
     qn_mask_in(1)%mask = int_in1%get_mask ()
@@ -1726,16 +1737,6 @@ contains
     end subroutine record_links
 
   end subroutine evaluator_init_color_contractions
-
-  function parity (mask)
-    logical :: parity
-    logical, dimension(:) :: mask
-    integer :: i
-    parity = .false.
-    do i = 1, size (mask)
-       if (mask(i))  parity = .not. parity
-    end do
-  end function parity
 
   subroutine evaluator_reassign_links_eval (eval, eval_src, eval_target)
     type(evaluator_t), intent(inout) :: eval

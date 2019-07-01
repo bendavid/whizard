@@ -1,4 +1,4 @@
-! WHIZARD 2.2.7 Aug 11 2015
+! WHIZARD 2.2.8 Nov 22 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,11 +6,14 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
-!     Fabian Bach <fabian.bach@desy.de>
+!     Fabian Bach <fabian.bach@t-online.de>
+!     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
+!     Soyoung Shim <soyoung.shim@desy.de>
+!     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, Daniel Wiesler 
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -49,6 +52,7 @@ module eio_stdhep
   public :: eio_stdhep_t
   public :: eio_stdhep_hepevt_t
   public :: eio_stdhep_hepeup_t
+  public :: eio_stdhep_hepev4_t
   public :: stdhep_init_out
   public :: stdhep_init_in
   public :: stdhep_write 
@@ -87,10 +91,14 @@ module eio_stdhep
   type, extends (eio_stdhep_t) :: eio_stdhep_hepeup_t
   end type eio_stdhep_hepeup_t
   
+  type, extends (eio_stdhep_t) :: eio_stdhep_hepev4_t
+  end type eio_stdhep_hepev4_t
+  
 
   integer, save :: istr, lok
   integer, parameter :: &
-       STDHEP_HEPEVT = 1, STDHEP_HEPEUP = 11, STDHEP_HEPRUP = 12
+       STDHEP_HEPEVT = 1, STDHEP_HEPEV4 = 4, &
+       STDHEP_HEPEUP = 11, STDHEP_HEPRUP = 12
 
 contains
   
@@ -119,6 +127,8 @@ contains
        select type (eio)
        type is (eio_stdhep_hepevt_t)
           eio%extension = "hep"
+       type is (eio_stdhep_hepev4_t)
+          eio%extension = "ev4.hep"          
        type is (eio_stdhep_hepeup_t)
           eio%extension = "up.hep"
        end select
@@ -202,13 +212,17 @@ contains
        select type (eio)
        type is (eio_stdhep_hepeup_t)
           call stdhep_init_out (char (eio%filename), &
-               "WHIZARD 2.2.7", eio%n_events_expected)
+               "WHIZARD 2.2.8", eio%n_events_expected)
           call stdhep_write (100)
           call stdhep_write (STDHEP_HEPRUP)
-       type is (eio_stdhep_hepevt_t)
+       type is (eio_stdhep_hepevt_t) 
           call stdhep_init_out (char (eio%filename), &
-               "WHIZARD 2.2.7", eio%n_events_expected) 
+               "WHIZARD 2.2.8", eio%n_events_expected) 
           call stdhep_write (100)
+       type is (eio_stdhep_hepev4_t)
+          call stdhep_init_out (char (eio%filename), &
+               "WHIZARD 2.2.8", eio%n_events_expected) 
+          call stdhep_write (100)          
        end select
     end if
   end subroutine eio_stdhep_split_out
@@ -244,13 +258,17 @@ contains
                error = data%error(i))          
        end do
        call stdhep_init_out (char (eio%filename), &
-            "WHIZARD 2.2.7", eio%n_events_expected)
+            "WHIZARD 2.2.8", eio%n_events_expected)
        call stdhep_write (100)
        call stdhep_write (STDHEP_HEPRUP)
     type is (eio_stdhep_hepevt_t)
        call stdhep_init_out (char (eio%filename), &
-            "WHIZARD 2.2.7", eio%n_events_expected) 
+            "WHIZARD 2.2.8", eio%n_events_expected) 
        call stdhep_write (100)
+    type is (eio_stdhep_hepev4_t)
+       call stdhep_init_out (char (eio%filename), &
+            "WHIZARD 2.2.8", eio%n_events_expected) 
+       call stdhep_write (100)       
     end select    
     if (present (success))  success = .true.
   end subroutine eio_stdhep_init_out
@@ -314,7 +332,16 @@ contains
                keep_beams = eio%keep_beams, &
                keep_remnants = eio%keep_remnants, &
                ensure_order = eio%ensure_order)
-          call stdhep_write (STDHEP_HEPEVT)                              
+          call stdhep_write (STDHEP_HEPEVT)
+       type is (eio_stdhep_hepev4_t)
+          call hepevt_from_event (event, &
+               process_index = eio%proc_num_id (i_prc), &               
+               i_evt = event%get_index (), &                         
+               keep_beams = eio%keep_beams, &
+               keep_remnants = eio%keep_remnants, &
+               ensure_order = eio%ensure_order, &
+               fill_hepev4 = .true.)
+          call stdhep_write (STDHEP_HEPEV4)          
        end select       
     else
        call eio%write ()
@@ -337,6 +364,9 @@ contains
           proc_num_id = eio%proc_num_id (1)
           call stdhep_read (ilbl, lok)
        end if
+    type is (eio_stdhep_hepev4_t)
+       call stdhep_read (ilbl, lok)
+       proc_num_id = idruplh
     type is (eio_stdhep_hepeup_t)
        call stdhep_read (ilbl, lok)
        if (lok /= 0)  call msg_error ("Events: STDHEP appears to be " // &
@@ -391,7 +421,6 @@ contains
     character(len=*), intent(in) :: file, title
     integer(i64), intent(in) :: nevt
     integer(i32) :: nevt32
-    external stdxwinit, stdxwrt
     nevt32 = min (nevt, int (huge (1_i32), i64))
     call stdxwinit (file, title, nevt32, istr, lok)    
   end subroutine stdhep_init_out
@@ -400,7 +429,6 @@ contains
     character(len=*), intent(in) :: file
     integer(i64), intent(out) :: nevt
     integer(i32) :: nevt32
-    external stdxrinit, stdxrd
     call stdxrinit (file, nevt32, istr, lok)
     if (lok /= 0)  call msg_fatal ("STDHEP: error in reading file '" // &
          file // "'.")
@@ -409,19 +437,16 @@ contains
   
   subroutine stdhep_write (ilbl)
     integer, intent(in) :: ilbl
-    external stdxwrt
     call stdxwrt (ilbl, istr, lok)
   end subroutine stdhep_write
 
   subroutine stdhep_read (ilbl, lok)
     integer, intent(out) :: ilbl, lok
-    external stdxrd
     call stdxrd (ilbl, istr, lok)
     if (lok /= 0)  return
   end subroutine stdhep_read
   
   subroutine stdhep_end
-    external stdxend
     call stdxend (istr)
   end subroutine stdhep_end  
   

@@ -2,25 +2,25 @@
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
-! Copyright (C) 1999-2015 by 
+! Copyright (C) 1999-2015 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     with contributions from
-!     Fabian Bach <fabian.bach@desy.de>
+!     Fabian Bach <fabian.bach@t-online.de>
 !     Christian Speckner <cnspeckn@googlemail.com>
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam,
-!     Sebastian Schmidt, Daniel Wiesler 
+!     Sebastian Schmidt, Daniel Wiesler
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -51,7 +51,7 @@ module fastjet
   public :: print_banner
   public :: sorted_by_pt
   public :: assignment(=)
-  
+
   ! Public parameters
   public :: kt_algorithm
   public :: cambridge_algorithm
@@ -73,7 +73,7 @@ module fastjet
      enumerator :: ee_kt_algorithm = 50
      enumerator :: ee_genkt_algorithm = 53
      enumerator :: plugin_algorithm = 99
-     enumerator :: undefined_jet_algorithm = 999  
+     enumerator :: undefined_jet_algorithm = 999
   end enum
   integer, parameter :: jet_algorithm_kind = c_int
 
@@ -279,10 +279,12 @@ module fastjet
   end interface
 
   interface
-     function new_jet_definition (jet_alg, r) bind (C) result (jet_def)
+     function new_jet_definition (jet_alg, r, p, jet_ycut) bind (C) result (jet_def)
        import
        integer(jet_algorithm_kind), intent(in), value :: jet_alg
        real(c_double), intent(in), value :: r
+       real(c_double), intent(in), value :: p
+       real(c_double), intent(in), value :: jet_ycut
        type(c_ptr) :: jet_def
      end function new_jet_definition
   end interface
@@ -438,7 +440,7 @@ contains
     class(pseudojet_t), intent(in) :: j
     type(pseudojet_vector_t) :: prt
     prt%cptr = pseudojet_get_constituents (j%cptr)
-  end function 
+  end function
 
   function pseudojet_contains_prt (j, prt) result (flag)
     class(pseudojet_t), intent(in) :: j
@@ -502,12 +504,23 @@ contains
 
 
   ! Procedures for jet definitions
-  subroutine jet_definition_init (jet_def, jet_alg, r)
+  subroutine jet_definition_init (jet_def, jet_alg, r, p, jet_ycut)
     class(jet_definition_t), intent(out) :: jet_def
     integer(jet_algorithm_kind), intent(in) :: jet_alg
     real(default), intent(in) :: r
+    real(default), intent(in), optional :: p
+    real(default), intent(in), optional :: jet_ycut
     type(cpp_string_t) :: description_str
-    jet_def%cptr = new_jet_definition (jet_alg, real (r, c_double))
+    real(default) :: ycut = -1._default
+    real(default) :: pp = -1._default
+    if (present (jet_ycut)) then
+       ycut = jet_ycut
+    end if
+    if (present (p)) then
+       pp = p
+    end if
+    jet_def%cptr = new_jet_definition (jet_alg, real (r, c_double), &
+         real (pp, c_double), real (ycut, c_double))
     call jet_def%description_str%init &
          (jet_definition_get_description (jet_def%cptr))
     jet_def%description_strlen = len (jet_def%description_str)

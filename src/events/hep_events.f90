@@ -1,4 +1,4 @@
-! WHIZARD 2.2.7 Aug 11 2015
+! WHIZARD 2.2.8 Nov 22 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -6,11 +6,14 @@
 !     Juergen Reuter <juergen.reuter@desy.de>
 !     
 !     with contributions from
-!     Fabian Bach <fabian.bach@desy.de>
+!     Fabian Bach <fabian.bach@t-online.de>
+!     Bijan Chokoufe <bijan.chokoufe@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
+!     Soyoung Shim <soyoung.shim@desy.de>
+!     Florian Staub <florian.staub@cern.ch>  
 !     Christian Weiss <christian.weiss@desy.de>
 !     and Hans-Werner Boschmann, Felix Braam, 
-!     Sebastian Schmidt, Daniel Wiesler 
+!     Sebastian Schmidt, So-young Shim, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -33,7 +36,7 @@
 module hep_events
   
   use kinds, only: default
-  use iso_varying_string, string_t => varying_string  
+  use iso_varying_string, string_t => varying_string
   use diagnostics
   use lorentz
   use unit_tests, only: vanishes
@@ -79,18 +82,19 @@ contains
     if (event%has_valid_particle_set ()) then
        particle_set => event%get_particle_set_ptr ()
        call hepeup_from_particle_set (particle_set, keep_beams, keep_remnants)
-       if (present (process_index)) &
-            call hepeup_set_event_parameters (proc_id = process_index)
+       if (present (process_index)) then
+          call hepeup_set_event_parameters (proc_id = process_index)
+       end if
        scale = event%get_fac_scale ()
-       if (.not. vanishes (scale)) &
-            call hepeup_set_event_parameters (scale = scale)
+       if (.not. vanishes (scale)) then
+          call hepeup_set_event_parameters (scale = scale)
+       end if
        alpha_qcd = event%get_alpha_s ()       
-       if (.not. vanishes(alpha_qcd)) &
-            call hepeup_set_event_parameters (alpha_qcd = alpha_qcd)
+       if (.not. vanishes (alpha_qcd)) then
+          call hepeup_set_event_parameters (alpha_qcd = alpha_qcd)
+       end if
        if (event%weight_prc_is_known ()) then
           call hepeup_set_event_parameters (weight = event%get_weight_prc ())
-       else
-          call msg_bug ("HEPEUP: process weight is unknown")
        end if
     else
        call msg_bug ("HEPEUP: event incomplete")
@@ -131,26 +135,41 @@ contains
   end subroutine hepeup_to_event
 
   subroutine hepevt_from_event  &
-         (event, i_evt, keep_beams, keep_remnants, ensure_order)
+         (event, process_index, i_evt, keep_beams, keep_remnants, &
+          ensure_order, fill_hepev4)
     class(generic_event_t), intent(in), target :: event
-    integer, intent(in), optional :: i_evt
+    integer, intent(in), optional :: i_evt, process_index    
     logical, intent(in), optional :: keep_beams  
     logical, intent(in), optional :: keep_remnants
     logical, intent(in), optional :: ensure_order
+    logical, intent(in), optional :: fill_hepev4
     type(particle_set_t), pointer :: particle_set
+    real(default) :: alpha_qcd, scale
     if (event%has_valid_particle_set ()) then
        particle_set => event%get_particle_set_ptr ()
        call hepevt_from_particle_set (particle_set, keep_beams, &
-            keep_remnants, ensure_order)
-       if (event%weight_prc_is_known () .and. event%sqme_prc_is_known ()) then
-          call hepevt_set_event_parameters ( &
-               weight = event%get_weight_prc (), &
-               function_value = event%get_sqme_prc ())
-       else
-          call msg_bug ("HEPEVT: event weight and/or sqme unknown")
+            keep_remnants, ensure_order, fill_hepev4)
+       if (present (process_index)) then
+          call hepevt_set_event_parameters (proc_id = process_index)
+       end if       
+       if (event%weight_prc_is_known ()) then
+          call hepevt_set_event_parameters (weight = event%get_weight_prc ())
        end if
-       if (present (i_evt)) &
-            call hepevt_set_event_parameters (i_evt = i_evt)
+       if (event%sqme_prc_is_known ()) then
+          call hepevt_set_event_parameters &
+               (function_value = event%get_sqme_prc ())
+       end if
+       scale = event%get_fac_scale ()
+       if (.not. vanishes (scale)) then
+          call hepevt_set_event_parameters (scale = scale)
+       end if
+       alpha_qcd = event%get_alpha_s ()       
+       if (.not. vanishes (alpha_qcd)) then
+          call hepevt_set_event_parameters (alpha_qcd = alpha_qcd)
+       end if
+       if (present (i_evt)) then
+          call hepevt_set_event_parameters (i_evt = i_evt)
+       end if
     else
        call msg_bug ("HEPEVT: event incomplete")
     end if
@@ -225,9 +244,16 @@ contains
        call hepmc_event_add_vertex (evt, v(i))
     end do
     allocate (is_beam (n_tot))
-    is_beam = particle_set%prt(1:n_tot)%get_status () == PRT_BEAM
+    !!! !!! !!! Workaround for ifort 16.0 standard-semantics bug
+    do i = 1, n_tot
+       is_beam(i) = particle_set%prt(i)%get_status () == PRT_BEAM
+    end do
+    !!! is_beam = particle_set%prt(1:n_tot)%get_status () == PRT_BEAM    
     if (.not. any (is_beam)) then
-       is_beam = particle_set%prt(1:n_tot)%get_status () == PRT_INCOMING
+       do i = 1, n_tot
+          is_beam(i) = particle_set%prt(i)%get_status () == PRT_INCOMING
+       end do
+       !!! is_beam = particle_set%prt(1:n_tot)%get_status () == PRT_INCOMING       
     end if
     if (count (is_beam) == 2) then
        hbeam = pack (hprt, is_beam)
@@ -252,10 +278,11 @@ contains
   end subroutine hepmc_event_from_particle_set
   
   subroutine particle_from_hepmc_particle &
-       (prt, hprt, model, polarization, barcode)
+       (prt, hprt, model, fallback_model, polarization, barcode)
     type(particle_t), intent(out) :: prt
     type(hepmc_particle_t), intent(in) :: hprt
     type(model_data_t), intent(in), target :: model
+    type(model_data_t), intent(in), target :: fallback_model
     type(hepmc_vertex_t) :: vtx
     integer, intent(in) :: polarization
     integer, dimension(:), intent(in) :: barcode
@@ -275,7 +302,7 @@ contains
     case (3);  call prt%set_status (PRT_VIRTUAL)
     end select
     if (hepmc_particle_is_beam (hprt)) call prt%set_status (PRT_BEAM)
-    call flv%init (hepmc_particle_get_pdg (hprt), model)
+    call flv%init (hepmc_particle_get_pdg (hprt), model, fallback_model)
     call col%init (hepmc_particle_get_color (hprt))
     call prt%set_flavor (flv)   
     call prt%set_color (col)
@@ -345,7 +372,7 @@ contains
     do i = 1, n_tot
        prt = hepmc_event_particle_iterator_get (it)
        call particle_from_hepmc_particle (particle_set%prt(i), &
-            prt, model, polarization, barcode)
+            prt, model, fallback_model, polarization, barcode)
        call hepmc_event_particle_iterator_advance (it)
     end do
     call hepmc_event_particle_iterator_final (it)
@@ -381,10 +408,11 @@ contains
   end subroutine hepmc_event_to_particle_set
 
   subroutine hepmc_to_event &
-       (event, hepmc_event, fallback_model, process_index, recover_beams, &
-       use_alpha_s, use_scale)
+       (event, hepmc_event, default_model, fallback_model, process_index, &
+       recover_beams, use_alpha_s, use_scale)
     class(generic_event_t), intent(inout), target :: event
     type(hepmc_event_t), intent(inout) :: hepmc_event
+    class(model_data_t), intent(in), target :: default_model
     class(model_data_t), intent(in), target :: fallback_model
     integer, intent(out), optional :: process_index
     logical, intent(in), optional :: recover_beams
@@ -394,6 +422,7 @@ contains
     real(default) :: scale, alpha_qcd
     type(particle_set_t) :: particle_set
     model => event%get_model_ptr ()
+    if (.not. associated (model))  model => default_model
     call hepmc_event_to_particle_set (particle_set, &
          hepmc_event, model, fallback_model, PRT_DEFINITE_HELICITY)
     call event%set_hard_particle_set (particle_set)

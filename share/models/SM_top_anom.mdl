@@ -29,13 +29,19 @@ parameter xipm   = 0.000        # R_xi parameter for W-boson
 # General set of parameters for anomalous top-gauge and top-Higgs vertices
 parameter tv_ttA    = 0.000     # vector coeff. of ttA tensor coupling
 parameter ta_ttA    = 0.000     # axial coeff. (*i) of ttA tensor cpl.
+parameter tcv_ttA   = 0.000	# vector coeff. of tcA tensor coupling
+parameter tca_ttA   = 0.000     # axial coeff. (*i) of tcA tensor cpl.
 parameter vl_ttZ    = 0.000     # left-handed coeff. of ttZ vector cpl.
                                 # FIXED by gauge inv. !
 parameter vr_ttZ    = 0.000     # right-handed coeff. of ttZ vector cpl.
+parameter vl_tcZ    = 0.000	# left-handed coeff. of tcZ vector cpl.
+parameter vr_tcZ    = 0.000	# right-handed coeff. of tcZ vector cpl.
 parameter tv_ttZ    = 0.000     # vector coeff. of ttZ tensor cpl.
                                 # FIXED by gauge inv. !
 parameter ta_ttZ    = 0.000     # axial coeff. (*i) of ttZ tensor cpl.
                                 # FIXED by gauge inv. !
+parameter tv_tcZ    = 0.000     # vector coeff. of tcZ tensor cpl.
+parameter ta_tcZ    = 0.000     # axial coeff. of tcZ tensor cpl. 
 parameter vl_tbW_Re = 0.000     # left-handed coeff. of tbW vector cpl.
 parameter vl_tbW_Im = 0.000
 parameter vr_tbW_Re = 0.000     # right-handed coeff. of tbW vector cpl.
@@ -46,6 +52,8 @@ parameter tr_tbW_Re = 0.000     # right-handed coeff. of bbarW- tensor cpl.
 parameter tr_tbW_Im = 0.000
 parameter tv_ttG    = 0.000     # vector coeff. of ttg tensor cpl.
 parameter ta_ttG    = 0.000     # axial coeff. (*i) of ttg tensor cpl.
+parameter tcv_ttG   = 0.000     # vector coeff. of tcg tensor cpl.
+parameter tca_ttG   = 0.000     # axial coeff. (*i) of tcg tensor cpl.
 parameter s_ttH     = 0.000     # scalar coeff. of ttH cpl.
 parameter p_ttH     = 0.000     # pseudo scalar coeff. of ttH  cpl.
 parameter Lambda    = 2000      # effective energy scale in [GeV]
@@ -285,6 +293,8 @@ vertex S s A
 vertex C c A 
 vertex B b A 
 vertex T t A 
+vertex T c A
+vertex C t A
 
 vertex E1 e1 A 
 vertex E2 e2 A 

@@ -46,7 +46,7 @@ dnl If PYTHIA8 is found and functional, the variables PYTHIA8_CXXFLAGS
 dnl and PYTHIA8_LIBS are set
 AC_DEFUN([ACX_CHECK_PYTHIA8],
 [
-dnl ckeck if a directory is specified for FastJet
+dnl ckeck if a directory is specified for PYTHIA8
 AC_ARG_WITH(pythia8,
             [AC_HELP_STRING([--with-pythia8=dir], 
                             [assume the given directory for PYTHIA8])])

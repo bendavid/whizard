@@ -41,13 +41,23 @@ parameter FF     =  1           # form factor type:
                  #  0: p0-dependent resummed FF (no matching)
                  #  1: p0-constant resummed FF (release 2.2.3 status)
                  #  2: relativistic O(alphas^1) FF
-                 #  3: nonrelativistic O(alphas^1) FF (no resummation)
-                 #  4: tree level
-parameter v1     = 0.5          # for switch-off function f: vary between [0.45,0.55]
-parameter v2     = 0.8          # for switch-off function f
+                 #  3: p0-dependent nonrelativistic O(alphas^1) FF (no resummation)
+                 #  4: p0-constant nonrelativistic O(alphas^1) FF (no resummation)
+                 #  5: ?
+                 #  6: p0-dependent analytic LL
+                 # >6: tree level
+parameter v1     = 0.1          # for switch-off function f
+parameter v2     = 0.3          # for switch-off function f
+parameter sqrtsmin = 340.0      # minimal value of sqrts for TOPPIK grids
+parameter sqrtsmax = 400.0      # maximal value of sqrts for TOPPIK grids
+parameter sqrtsstepsize = 0.1   # stepsize of sqrts for TOPPIK grids
 
 # DON'T TOUCH: switch off threshold initialization to speed up self-tests
-parameter test   = -1           # set > 0 to switch off
+parameter test        = -1           # set > 0 to switch on
+# Disable complete axial current. Mainly for comparison with analytic computation
+parameter no_pwave    = -1           # set > 0 to switch on
+# Disable computation of mpole and set it to m1S everywhere
+parameter mpole_fixed = -1           # set > 0 to switch on
 
 # Dependent parameters
 derived ee    = sqrt(4*pi/alpha_em_i)         # em-coupling
