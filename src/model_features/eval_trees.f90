@@ -1,4 +1,4 @@
-! WHIZARD 2.2.6 May 02 2015
+! WHIZARD 2.2.7 Aug 11 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -36,9 +36,8 @@ module eval_trees
   use kinds, only: default
   use iso_varying_string, string_t => varying_string
   use io_units
-  use constants
+  use constants, only: DEGREE, IMAGO, PI
   use format_defs, only: FMT_19
-  use unit_tests
   use diagnostics
   use lorentz
   use md5
@@ -61,6 +60,9 @@ module eval_trees
   implicit none
   private
 
+  public :: eval_node_t
+  public :: syntax_expr
+  public :: syntax_pexpr
   public :: syntax_expr_init
   public :: syntax_pexpr_init
   public :: syntax_expr_final
@@ -82,7 +84,6 @@ module eval_trees
   public :: eval_string
   public :: eval_numeric
   public :: eval_tree_factory_t
-  public :: expressions_test
 
   integer, parameter :: EN_UNKNOWN = 0, EN_UNARY = 1, EN_BINARY = 2
   integer, parameter :: EN_CONSTANT = 3, EN_VARIABLE = 4
@@ -150,6 +151,10 @@ module eval_trees
      procedure(binary_cut),  nopass, pointer :: op2_cut  => null ()
      procedure(binary_evi),  nopass, pointer :: op2_evi  => null ()
      procedure(binary_evr),  nopass, pointer :: op2_evr  => null ()
+   contains
+     procedure :: final_rec => eval_node_final_rec
+     procedure :: write => eval_node_write
+     procedure :: test_obs => eval_node_test_obs
   end type eval_node_t
 
   type, extends (expr_t) :: eval_tree_t
@@ -158,6 +163,7 @@ module eval_trees
      type(var_list_t) :: var_list
      type(eval_node_t), pointer :: root => null ()
    contains
+     procedure :: init_stream => eval_tree_init_stream
      procedure :: init_expr  => eval_tree_init_expr
      procedure :: init_lexpr => eval_tree_init_lexpr
      procedure :: init_pexpr => eval_tree_init_pexpr
@@ -342,8 +348,6 @@ module eval_trees
   end interface
 
 
-  logical, parameter :: debug = .false.
-
   type(syntax_t), target, save :: syntax_expr
   type(syntax_t), target, save :: syntax_pexpr
 
@@ -351,7 +355,7 @@ module eval_trees
 contains
 
   recursive subroutine eval_node_final_rec (node)
-    type(eval_node_t), intent(inout) :: node
+    class(eval_node_t), intent(inout) :: node
     select case (node%type)
     case (EN_UNARY)
        call eval_node_final_rec (node%arg1)
@@ -997,7 +1001,7 @@ contains
   end subroutine eval_node_set_observables
 
   subroutine eval_node_write (node, unit, indent)
-    type(eval_node_t), intent(in) :: node
+    class(eval_node_t), intent(in) :: node
     integer, intent(in), optional :: unit
     integer, intent(in), optional :: indent
     integer :: u, ind
@@ -2597,7 +2601,7 @@ contains
     type(parse_node_t), intent(in) :: pn
     type(var_list_t), intent(in), target :: var_list
     integer, intent(in), optional :: result_type
-    if (debug) then
+    if (debug_active (D_MODEL_F)) then
        print *, "read genexpr";  call parse_node_write (pn)
     end if
     if (present (result_type)) then
@@ -2616,7 +2620,7 @@ contains
     else
        call eval_node_compile_expr  (en, pn, var_list)
     end if
-    if (debug) then
+    if (debug_active (D_MODEL_F)) then
        call eval_node_write (en)
        print *, "done genexpr"
     end if
@@ -2630,7 +2634,7 @@ contains
     type(eval_node_t), pointer :: en1, en2
     type(string_t) :: key
     integer :: t1, t2, t
-    if (debug) then
+    if (debug_active (D_MODEL_F)) then
        print *, "read expr";  call parse_node_write (pn)
     end if
     pn_term => parse_node_get_sub_ptr (pn)
@@ -2762,7 +2766,7 @@ contains
        end if
        pn_addition => parse_node_get_next_ptr (pn_addition)
     end do
-    if (debug) then
+    if (debug_active (D_MODEL_F)) then
        call eval_node_write (en)
        print *, "done expr"
     end if
@@ -2776,7 +2780,7 @@ contains
     type(eval_node_t), pointer :: en1, en2
     type(string_t) :: key
     integer :: t1, t2, t
-    if (debug) then
+    if (debug_active (D_MODEL_F)) then
        print *, "read term";  call parse_node_write (pn)
     end if
     pn_factor => parse_node_get_sub_ptr (pn, tag="factor")
@@ -2890,7 +2894,7 @@ contains
        end if
        pn_multiplication => parse_node_get_next_ptr (pn_multiplication)
     end do
-    if (debug) then
+    if (debug_active (D_MODEL_F)) then
        call eval_node_write (en)
        print *, "done term"
     end if
@@ -2904,7 +2908,7 @@ contains
     type(eval_node_t), pointer :: en1, en2
     type(string_t) :: key
     integer :: t1, t2, t
-    if (debug) then
+    if (debug_active (D_MODEL_F)) then
        print *, "read factor";  call parse_node_write (pn)
     end if
     pn_value => parse_node_get_sub_ptr (pn)
@@ -2968,7 +2972,7 @@ contains
           end select
        end if
     end if
-    if (debug) then
+    if (debug_active (D_MODEL_F)) then
        call eval_node_write (en)
        print *, "done factor"
     end if
@@ -2981,7 +2985,7 @@ contains
     type(parse_node_t), pointer :: pn_arg
     type(eval_node_t), pointer :: en1
     integer :: t
-    if (debug) then
+    if (debug_active (D_MODEL_F)) then
        print *, "read signed value";  call parse_node_write (pn)
     end if
     select case (char (parse_node_get_rule_key (pn)))
@@ -3009,7 +3013,7 @@ contains
     case default
        call eval_node_compile_value (en, pn, var_list)
     end select
-    if (debug) then
+    if (debug_active (D_MODEL_F)) then
        call eval_node_write (en)
        print *, "done signed value"
     end if
@@ -3019,7 +3023,7 @@ contains
     type(eval_node_t), pointer :: en
     type(parse_node_t), intent(in) :: pn
     type(var_list_t), intent(in), target :: var_list
-    if (debug) then
+    if (debug_active (D_MODEL_F)) then
        print *, "read value";  call parse_node_write (pn)
     end if
     select case (char (parse_node_get_rule_key (pn)))
@@ -3055,7 +3059,7 @@ contains
              "expr|block_expr|conditional_expr|" // &
              "unary_function|binary_function|numeric_pexpr", pn)
     end select
-    if (debug) then
+    if (debug_active (D_MODEL_F)) then
        call eval_node_write (en)
        print *, "done value"
     end if
@@ -3174,7 +3178,7 @@ contains
   subroutine eval_node_compile_constant (en, pn)
     type(eval_node_t), pointer :: en
     type(parse_node_t), intent(in) :: pn
-    if (debug) then
+    if (debug_active (D_MODEL_F)) then
        print *, "read constant";  call parse_node_write (pn)
     end if
     allocate (en)
@@ -3184,7 +3188,7 @@ contains
     case default
        call parse_node_mismatch ("pi or I", pn)
     end select
-    if (debug) then
+    if (debug_active (D_MODEL_F)) then
        call eval_node_write (en)
        print *, "done constant"
     end if
@@ -3209,7 +3213,6 @@ contains
     integer, pointer :: iptr
     real(default), pointer :: rptr
     complex(default), pointer :: cptr
-    type(pdg_array_t), pointer :: aptr
     type(subevt_t), pointer :: pptr
     type(string_t), pointer :: sptr
     procedure(obs_unary_int), pointer :: obs1_iptr
@@ -3217,7 +3220,7 @@ contains
     procedure(obs_binary_int), pointer :: obs2_iptr
     procedure(obs_binary_real), pointer :: obs2_rptr
     type(prt_t), pointer :: p1, p2
-    if (debug) then
+    if (debug_active (D_MODEL_F)) then
        print *, "read variable";  call parse_node_write (pn)
     end if
     if (present (var_type)) then
@@ -3321,7 +3324,7 @@ contains
           end if
        end if
     end select
-    if (debug) then
+    if (debug_active (D_MODEL_F)) then
        call eval_node_write (en)
        print *, "done variable"
     end if
@@ -3395,7 +3398,7 @@ contains
     integer, pointer :: iptr
     real(default), pointer :: rptr
     logical, pointer :: known
-    if (debug) then
+    if (debug_active (D_MODEL_F)) then
        print *, "read result";  call parse_node_write (pn)
     end if
     pn_key => parse_node_get_sub_ptr (pn)
@@ -3417,7 +3420,7 @@ contains
        call msg_fatal ("Result variable '" // char (var_name) &
             // "' is undefined (call 'integrate' before use)")
     end if
-    if (debug) then
+    if (debug_active (D_MODEL_F)) then
        call eval_node_write (en)
        print *, "done result"
     end if
@@ -3433,7 +3436,7 @@ contains
     type(string_t) :: var_name
     integer :: type
     logical :: defined
-    if (debug) then
+    if (debug_active (D_MODEL_F)) then
        print *, "read user observable";  call parse_node_write (pn)
     end if
     pn_key => parse_node_get_sub_ptr (pn)
@@ -3468,7 +3471,7 @@ contains
        call parse_node_write (pn)
        call msg_error ("This variable is undefined at this point")
     end if
-    if (debug) then
+    if (debug_active (D_MODEL_F)) then
        call eval_node_write (en)
        print *, "done user observable"
     end if
@@ -3482,7 +3485,7 @@ contains
     type(eval_node_t), pointer :: en1
     type(string_t) :: key
     integer :: t
-    if (debug) then
+    if (debug_active (D_MODEL_F)) then
        print *, "read unary function";  call parse_node_write (pn)
     end if
     pn_fname => parse_node_get_sub_ptr (pn)
@@ -3759,7 +3762,7 @@ contains
           call parse_node_mismatch ("function name", pn_fname)
        end select
     end if
-    if (debug) then
+    if (debug_active (D_MODEL_F)) then
        call eval_node_write (en)
        print *, "done function"
     end if
@@ -3773,7 +3776,7 @@ contains
     type(eval_node_t), pointer :: en1, en2
     type(string_t) :: key
     integer :: t1, t2
-    if (debug) then
+    if (debug_active (D_MODEL_F)) then
        print *, "read binary function";  call parse_node_write (pn)
     end if
     pn_fname => parse_node_get_sub_ptr (pn)
@@ -3928,7 +3931,7 @@ contains
           call parse_node_mismatch ("function name", pn_fname)
        end select
     end if
-    if (debug) then
+    if (debug_active (D_MODEL_F)) then
        call eval_node_write (en)
        print *, "done function"
     end if
@@ -3947,7 +3950,7 @@ contains
     type(eval_node_t), pointer :: en1, en2
     integer :: var_type
     logical :: new
-    if (debug) then
+    if (debug_active (D_MODEL_F)) then
        print *, "read block expr";  call parse_node_write (pn)
     end if
     new = .false.
@@ -4005,7 +4008,7 @@ contains
     call eval_node_init_block (en, var_name, var_type, en1, var_list)
     call eval_node_compile_genexpr (en2, pn_expr, en%var_list, result_type)
     call eval_node_set_expr (en, en2)
-    if (debug) then
+    if (debug_active (D_MODEL_F)) then
        call eval_node_write (en)
        print *, "done block expr"
     end if
@@ -4070,7 +4073,7 @@ contains
     type(parse_node_t), pointer :: pn_maybe_else, pn_else_branch, pn_else_expr
     type(eval_node_t), pointer :: en0, en1, en2
     integer :: restype
-    if (debug) then
+    if (debug_active (D_MODEL_F)) then
        print *, "read conditional";  call parse_node_write (pn)
     end if
     pn_condition => parse_node_get_sub_ptr (pn, 2, tag="lexpr")
@@ -4123,7 +4126,7 @@ contains
     end select
     call eval_node_create_conditional (en, en0, en1, en2, restype)
     call conditional_insert_conversion_nodes (en, restype)
-    if (debug) then
+    if (debug_active (D_MODEL_F)) then
        call eval_node_write (en)
        print *, "done conditional"
     end if
@@ -4261,7 +4264,7 @@ contains
     type(var_list_t), intent(in), target :: var_list
     type(parse_node_t), pointer :: pn_term, pn_sequel, pn_arg
     type(eval_node_t), pointer :: en1, en2
-    if (debug) then
+    if (debug_active (D_MODEL_F)) then
        print *, "read lexpr";  call parse_node_write (pn)
     end if
     pn_term => parse_node_get_sub_ptr (pn, tag="lsinglet")
@@ -4284,7 +4287,7 @@ contains
        end if
        pn_sequel => parse_node_get_next_ptr (pn_sequel)
     end do
-    if (debug) then
+    if (debug_active (D_MODEL_F)) then
        call eval_node_write (en)
        print *, "done lexpr"
     end if
@@ -4296,7 +4299,7 @@ contains
     type(var_list_t), intent(in), target :: var_list
     type(parse_node_t), pointer :: pn_term, pn_alternative, pn_arg
     type(eval_node_t), pointer :: en1, en2
-    if (debug) then
+    if (debug_active (D_MODEL_F)) then
        print *, "read lsinglet";  call parse_node_write (pn)
     end if
     pn_term => parse_node_get_sub_ptr (pn, tag="lterm")
@@ -4319,7 +4322,7 @@ contains
        end if
        pn_alternative => parse_node_get_next_ptr (pn_alternative)
     end do
-    if (debug) then
+    if (debug_active (D_MODEL_F)) then
        call eval_node_write (en)
        print *, "done lsinglet"
     end if
@@ -4331,7 +4334,7 @@ contains
     type(var_list_t), intent(in), target :: var_list
     type(parse_node_t), pointer :: pn_term, pn_coincidence, pn_arg
     type(eval_node_t), pointer :: en1, en2
-    if (debug) then
+    if (debug_active (D_MODEL_F)) then
        print *, "read lterm";  call parse_node_write (pn)
     end if
     pn_term => parse_node_get_sub_ptr (pn)
@@ -4354,7 +4357,7 @@ contains
        end if
        pn_coincidence => parse_node_get_next_ptr (pn_coincidence)
     end do
-    if (debug) then
+    if (debug_active (D_MODEL_F)) then
        call eval_node_write (en)
        print *, "done lterm"
     end if
@@ -4364,7 +4367,7 @@ contains
     type(eval_node_t), pointer :: en
     type(parse_node_t), intent(in) :: pn
     type(var_list_t), intent(in), target :: var_list
-    if (debug) then
+    if (debug_active (D_MODEL_F)) then
        print *, "read lvalue";  call parse_node_write (pn)
     end if
     select case (char (parse_node_get_rule_key (pn)))
@@ -4398,7 +4401,7 @@ contains
              "lexpr|block_lexpr|conditional_lexpr|" // &
              "compared_expr|compared_sexpr|logical_pexpr", pn)
     end select
-    if (debug) then
+    if (debug_active (D_MODEL_F)) then
        call eval_node_write (en)
        print *, "done lvalue"
     end if
@@ -4410,7 +4413,7 @@ contains
     type(var_list_t), intent(in), target :: var_list
     type(parse_node_t), pointer :: pn_arg
     type(eval_node_t), pointer :: en1
-    if (debug) then
+    if (debug_active (D_MODEL_F)) then
        print *, "read negation";  call parse_node_write (pn)
     end if
     pn_arg => parse_node_get_sub_ptr (pn, 2)
@@ -4424,7 +4427,7 @@ contains
        call eval_node_init_branch (en, var_str ("not"), V_LOG, en1)
        call eval_node_set_op1_log (en, not_l)
     end if
-    if (debug) then
+    if (debug_active (D_MODEL_F)) then
        call eval_node_write (en)
        print *, "done negation"
     end if
@@ -4437,7 +4440,7 @@ contains
     integer, intent(in) :: type
     type(parse_node_t), pointer :: pn_comparison, pn_expr1
     type(eval_node_t), pointer :: en0, en1, en2
-    if (debug) then
+    if (debug_active (D_MODEL_F)) then
        print *, "read comparison";  call parse_node_write (pn)
     end if
     select case (type)
@@ -4504,7 +4507,7 @@ contains
     if (en%type == EN_CONSTANT .and. associated (en2)) then
        call eval_node_final_rec (en2);  deallocate (en2)
     end if
-    if (debug) then
+    if (debug_active (D_MODEL_F)) then
        call eval_node_write (en)
        print *, "done compared_expr"
     end if
@@ -4729,7 +4732,7 @@ contains
     type(parse_node_t), pointer :: pn_arg1, pn_arg2, pn_arg3, pn_arg4
     type(eval_node_t), pointer :: en0, en1, en2, en3, en4
     real(default), pointer :: event_weight
-    if (debug) then
+    if (debug_active (D_MODEL_F)) then
        print *, "read record_cmd";  call parse_node_write (pn)
     end if
     pn_key => parse_node_get_sub_ptr (pn)
@@ -4786,7 +4789,7 @@ contains
     else
        call eval_node_init_record_cmd (en, event_weight, en0)
     end if
-    if (debug) then
+    if (debug_active (D_MODEL_F)) then
        call eval_node_write (en)
        print *, "done record_cmd"
     end if
@@ -4799,7 +4802,7 @@ contains
     type(parse_node_t), pointer :: pn_pterm, pn_concatenation, pn_op, pn_arg
     type(eval_node_t), pointer :: en1, en2
     type(subevt_t) :: subevt
-    if (debug) then
+    if (debug_active (D_MODEL_F)) then
        print *, "read pexpr";  call parse_node_write (pn)
     end if
     pn_pterm => parse_node_get_sub_ptr (pn)
@@ -4825,7 +4828,7 @@ contains
        end if
        pn_concatenation => parse_node_get_next_ptr (pn_concatenation)
     end do
-    if (debug) then
+    if (debug_active (D_MODEL_F)) then
        call eval_node_write (en)
        print *, "done pexpr"
     end if
@@ -4838,7 +4841,7 @@ contains
     type(parse_node_t), pointer :: pn_pvalue, pn_combination, pn_op, pn_arg
     type(eval_node_t), pointer :: en1, en2
     type(subevt_t) :: subevt
-    if (debug) then
+    if (debug_active (D_MODEL_F)) then
        print *, "read pterm";  call parse_node_write (pn)
     end if
     pn_pvalue => parse_node_get_sub_ptr (pn)
@@ -4864,7 +4867,7 @@ contains
        end if
        pn_combination => parse_node_get_next_ptr (pn_combination)
     end do
-    if (debug) then
+    if (debug_active (D_MODEL_F)) then
        call eval_node_write (en)
        print *, "done pterm"
     end if
@@ -4879,7 +4882,7 @@ contains
     type(string_t) :: key
     type(subevt_t), pointer :: evt_ptr
     logical, pointer :: known
-    if (debug) then
+    if (debug_active (D_MODEL_F)) then
        print *, "read pvalue";  call parse_node_write (pn)
     end if
     select case (char (parse_node_get_rule_key (pn)))
@@ -4925,7 +4928,7 @@ contains
              "grouped_pexpr|block_pexpr|conditional_pexpr|" // &
              "prt_function", pn)
     end select
-    if (debug) then
+    if (debug_active (D_MODEL_F)) then
        call eval_node_write (en)
        print *, "done pvalue"
     end if
@@ -4939,7 +4942,7 @@ contains
     type(parse_node_t), pointer :: pn_arg0, pn_arg1, pn_arg2
     type(eval_node_t), pointer :: en0, en1, en2
     type(string_t) :: key
-    if (debug) then
+    if (debug_active (D_MODEL_F)) then
        print *, "read prt_function";  call parse_node_write (pn)
     end if
     pn_clause => parse_node_get_sub_ptr (pn)
@@ -5005,7 +5008,7 @@ contains
        end select
        en%arg0 => en0
     end if
-    if (debug) then
+    if (debug_active (D_MODEL_F)) then
        call eval_node_write (en)
        print *, "done prt_function"
     end if
@@ -5018,7 +5021,7 @@ contains
     type(parse_node_t), pointer :: pn_key, pn_arg0, pn_args, pn_arg1, pn_arg2
     type(eval_node_t), pointer :: en0, en1, en2
     type(string_t) :: key
-    if (debug) then
+    if (debug_active (D_MODEL_F)) then
        print *, "read eval_function";  call parse_node_write (pn)
     end if
     pn_key => parse_node_get_sub_ptr (pn)
@@ -5040,7 +5043,7 @@ contains
     if (en0%result_type /= V_REAL) &
          call msg_fatal (" 'eval' function does not result in real value")
     call eval_node_set_expr (en, en0)
-    if (debug) then
+    if (debug_active (D_MODEL_F)) then
        call eval_node_write (en)
        print *, "done eval_function"
     end if
@@ -5054,7 +5057,7 @@ contains
     type(parse_node_t), pointer :: pn_arg0, pn_args, pn_arg1, pn_arg2
     type(eval_node_t), pointer :: en0, en1, en2
     type(string_t) :: key
-    if (debug) then
+    if (debug_active (D_MODEL_F)) then
        print *, "read log_function";  call parse_node_write (pn)
     end if
     select case (char (parse_node_get_rule_key (pn)))
@@ -5117,7 +5120,7 @@ contains
        end select
        call eval_node_set_expr (en, en0, V_LOG)
     end if
-    if (debug) then
+    if (debug_active (D_MODEL_F)) then
        call eval_node_write (en)
        print *, "done log_function"
     end if
@@ -5131,7 +5134,7 @@ contains
     type(parse_node_t), pointer :: pn_arg0, pn_arg1, pn_arg2
     type(eval_node_t), pointer :: en0, en1, en2
     type(string_t) :: key
-    if (debug) then
+    if (debug_active (D_MODEL_F)) then
        print *, "read numeric_function";  call parse_node_write (pn)
     end if
     select case (char (parse_node_get_rule_key (pn)))
@@ -5187,7 +5190,7 @@ contains
           call eval_node_set_expr (en, en0, V_REAL)
        end select
     end if
-    if (debug) then
+    if (debug_active (D_MODEL_F)) then
        call eval_node_write (en)
        print *, "done numeric_function"
     end if
@@ -5199,7 +5202,7 @@ contains
     type(var_list_t), intent(in), target :: var_list
     type(parse_node_t), pointer :: pn_avalue, pn_prt
     type(string_t) :: key
-    if (debug) then
+    if (debug_active (D_MODEL_F)) then
        print *, "read prefix_cexpr";  call parse_node_write (pn)
     end if
     pn_avalue => parse_node_get_sub_ptr (pn)
@@ -5216,7 +5219,7 @@ contains
             ("incoming_prt|outgoing_prt", &
              pn_avalue)
     end select
-    if (debug) then
+    if (debug_active (D_MODEL_F)) then
        call eval_node_write (en)
        print *, "done prefix_cexpr"
     end if
@@ -5229,7 +5232,7 @@ contains
     type(parse_node_t), pointer :: pn_prt, pn_concatenation
     type(eval_node_t), pointer :: en1, en2
     type(pdg_array_t) :: aval
-    if (debug) then
+    if (debug_active (D_MODEL_F)) then
        print *, "read cexpr";  call parse_node_write (pn)
     end if
     pn_prt => parse_node_get_sub_ptr (pn)
@@ -5252,7 +5255,7 @@ contains
        end if
        pn_concatenation => parse_node_get_next_ptr (pn_concatenation)
     end do
-    if (debug) then
+    if (debug_active (D_MODEL_F)) then
        call eval_node_write (en)
        print *, "done cexpr"
     end if
@@ -5262,7 +5265,7 @@ contains
     type(eval_node_t), pointer :: en
     type(parse_node_t), intent(in) :: pn
     type(var_list_t), intent(in), target :: var_list
-    if (debug) then
+    if (debug_active (D_MODEL_F)) then
        print *, "read avalue";  call parse_node_write (pn)
     end if
     select case (char (parse_node_get_rule_key (pn)))
@@ -5281,7 +5284,7 @@ contains
             ("grouped_cexpr|block_cexpr|conditional_cexpr|" // &
              "pdg_code|cvariable|prt_name", pn)
     end select
-    if (debug) then
+    if (debug_active (D_MODEL_F)) then
        call eval_node_write (en)
        print *, "done avalue"
     end if
@@ -5296,7 +5299,7 @@ contains
     type(string_t) :: key
     type(pdg_array_t) :: aval
     integer :: t
-    if (debug) then
+    if (debug_active (D_MODEL_F)) then
        print *, "read PDG code";  call parse_node_write (pn)
     end if
     pn_arg => parse_node_get_sub_ptr (pn, 2)
@@ -5320,7 +5323,7 @@ contains
        case default;  call eval_type_error (pn, char (key), t)
        end select
     end if
-    if (debug) then
+    if (debug_active (D_MODEL_F)) then
        call eval_node_write (en)
        print *, "done function"
     end if
@@ -5336,7 +5339,7 @@ contains
     type(pdg_array_t), target, save :: no_aval
     logical, pointer :: known
     logical, target, save :: unknown = .false.
-    if (debug) then
+    if (debug_active (D_MODEL_F)) then
        print *, "read cvariable";  call parse_node_write (pn)
     end if
     pn_name => pn
@@ -5350,7 +5353,7 @@ contains
        call msg_error ("This PDG-array variable is undefined at this point")
        call eval_node_init_pdg_array_ptr (en, var_name, no_aval, unknown)
     end if
-    if (debug) then
+    if (debug_active (D_MODEL_F)) then
        call eval_node_write (en)
        print *, "done cvariable"
     end if
@@ -5363,7 +5366,7 @@ contains
     type(parse_node_t), pointer :: pn_svalue, pn_concatenation, pn_op, pn_arg
     type(eval_node_t), pointer :: en1, en2
     type(string_t) :: string
-    if (debug) then
+    if (debug_active (D_MODEL_F)) then
        print *, "read sexpr";  call parse_node_write (pn)
     end if
     pn_svalue => parse_node_get_sub_ptr (pn)
@@ -5389,7 +5392,7 @@ contains
        end if
        pn_concatenation => parse_node_get_next_ptr (pn_concatenation)
     end do
-    if (debug) then
+    if (debug_active (D_MODEL_F)) then
        call eval_node_write (en)
        print *, "done sexpr"
     end if
@@ -5399,7 +5402,7 @@ contains
     type(eval_node_t), pointer :: en
     type(parse_node_t), intent(in) :: pn
     type(var_list_t), intent(in), target :: var_list
-    if (debug) then
+    if (debug_active (D_MODEL_F)) then
        print *, "read svalue";  call parse_node_write (pn)
     end if
     select case (char (parse_node_get_rule_key (pn)))
@@ -5422,7 +5425,7 @@ contains
              "grouped_sexpr|block_sexpr|conditional_sexpr|" // &
              "string_function|string_literal", pn)
     end select
-    if (debug) then
+    if (debug_active (D_MODEL_F)) then
        call eval_node_write (en)
        print *, "done svalue"
     end if
@@ -5437,7 +5440,7 @@ contains
     type(eval_node_t), pointer :: en0, en1
     integer :: n_args
     type(string_t) :: key
-    if (debug) then
+    if (debug_active (D_MODEL_F)) then
        print *, "read sprintf_fun";  call parse_node_write (pn)
     end if
     pn_clause => parse_node_get_sub_ptr (pn)
@@ -5454,7 +5457,7 @@ contains
     allocate (en)
     key = parse_node_get_key (pn_key)
     call eval_node_init_format_string (en, en0, en1, key, n_args)
-    if (debug) then
+    if (debug_active (D_MODEL_F)) then
        call eval_node_write (en)
        print *, "done sprintf_fun"
     end if
@@ -5960,12 +5963,22 @@ contains
           end if
        end if
     end select
-    if (debug) then
+    if (debug_active (D_MODEL_F)) then
        print *, "evaluated"
        call eval_node_write (en)
     end if
   end subroutine eval_node_evaluate
 
+  subroutine eval_node_test_obs (node, var_list, var_name)
+    class(eval_node_t), intent(inout) :: node
+    type(var_list_t), intent(in) :: var_list
+    type(string_t), intent(in) :: var_name
+    procedure(obs_unary_int), pointer :: obs1_iptr
+    type(prt_t), pointer :: p1
+    call var_list%get_obs1_iptr (var_name, obs1_iptr, p1)
+    call eval_node_init_obs1_int_ptr (node, var_name, obs1_iptr, p1)
+  end subroutine eval_node_test_obs
+  
   subroutine syntax_expr_init ()
     type(ifile_t) :: ifile
     call define_expr_syntax (ifile, particles=.false., analysis=.false.)
@@ -6487,7 +6500,7 @@ contains
 
   subroutine eval_tree_init_stream &
        (eval_tree, stream, var_list, subevt, result_type)
-    type(eval_tree_t), intent(out), target :: eval_tree
+    class(eval_tree_t), intent(out), target :: eval_tree
     type(stream_t), intent(inout), target :: stream
     type(var_list_t), intent(in), target :: var_list
     type(subevt_t), intent(in), target, optional :: subevt
@@ -6508,7 +6521,7 @@ contains
     case (V_STR)
        call parse_tree_init_sexpr (parse_tree, stream, present (subevt))
     end select
-    nd_root => parse_tree_get_root_ptr (parse_tree)
+    nd_root => parse_tree%get_root_ptr ()
     if (associated (nd_root)) then
        select case (type)
        case (V_INT, V_REAL, V_CMPLX)
@@ -7113,243 +7126,5 @@ contains
     end if
   end subroutine eval_tree_factory_build
   
-  subroutine expressions_test (u, results)
-    integer, intent(in) :: u
-    type (test_results_t), intent(inout) :: results
-    call test (expressions_1, "expressions_1", &
-         "check simple observable", &
-         u, results) 
-    call test (expressions_2, "expressions_2", &
-         "check expression transfer to parse tree", &
-         u, results) 
-    call test (expressions_3, "expressions_3", &
-         "check subevent expressions", &
-         u, results) 
-    call test (expressions_4, "expressions_4", &
-         "check pdg array expressions", &
-         u, results)   
-  end subroutine expressions_test
-
-
-  subroutine expressions_1 (u)
-    integer, intent(in) :: u
-    type(var_list_t), pointer :: var_list => null ()
-    type(eval_node_t), pointer :: node => null ()
-    type(prt_t), pointer :: prt => null ()
-    type(string_t) :: var_name
-    procedure(obs_unary_int), pointer :: obs1_iptr
-    type(prt_t), pointer :: p1
-
-    write (u, "(A)")  "* Test output: Expressions"
-    write (u, "(A)")  "*   Purpose: test simple observable and node evaluation"
-    write (u, "(A)")       
-
-    write (u, "(A)")  "* Setting a unary observable:"
-    write (u, "(A)")    
-    
-    allocate (var_list)
-    allocate (prt)
-    call var_list_set_observables_unary (var_list, prt)
-    call var_list_write (var_list, u)
-    
-    write (u, "(A)")  "* Evaluating the observable node:"
-    write (u, "(A)")        
-    
-    var_name = "PDG"
-
-    allocate (node)
-    call var_list%get_obs1_iptr (var_name, obs1_iptr, p1)
-    call eval_node_init_obs1_int_ptr (node, var_name, obs1_iptr, p1)
-    call eval_node_write (node, u)
-
-    write (u, "(A)")  "* Cleanup"
-    write (u, "(A)")        
-    
-    call eval_node_final_rec (node)
-    deallocate (node)
-    call var_list%final ()
-    deallocate (var_list)
-    deallocate (prt)
-       
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: expressions_1"        
-    
-  end subroutine expressions_1
-  
-  subroutine expressions_2 (u)
-    integer, intent(in) :: u
-    type(ifile_t) :: ifile
-    type(stream_t) :: stream
-    type(eval_tree_t) :: eval_tree
-    type(string_t) :: expr_text
-    type(var_list_t), pointer :: var_list => null ()
-    
-    write (u, "(A)")  "* Test output: Expressions"
-    write (u, "(A)")  "*   Purpose: test parse routines"
-    write (u, "(A)")       
-    
-    call syntax_expr_init ()
-    call syntax_write (syntax_expr, u)     
-    allocate (var_list)
-    call var_list_append_real (var_list, var_str ("tolerance"), 0._default)
-    call var_list_append_real (var_list, var_str ("x"), -5._default)
-    call var_list_append_int  (var_list, var_str ("foo"), -27)
-    call var_list_append_real (var_list, var_str ("mb"), 4._default)
-    expr_text = &
-         "let real twopi = 2 * pi in" // &
-         "  twopi * sqrt (25.d0 - mb^2)" // &
-         "  / (let int mb_or_0 = max (mb, 0) in" // &
-         "       1 + (if -1 TeV <= x < mb_or_0 then abs(x) else x endif))"
-    call ifile_append (ifile, expr_text)
-    call stream_init (stream, ifile)
-    call var_list_write (var_list, unit = u)
-    call eval_tree_init_stream (eval_tree, stream, var_list=var_list)
-    call eval_tree_evaluate (eval_tree)
-    call eval_tree_write (eval_tree, u)
-    
-    write (u, "(A)")  "* Input string:"
-    write (u, "(A,A)")  "     ", char (expr_text)
-    write (u, "(A)") 
-    write (u, "(A)")  "* Cleanup"
-    
-    call stream_final (stream) 
-    call ifile_final (ifile)
-    call eval_tree_final (eval_tree)
-    call var_list%final ()
-    deallocate (var_list)
-    call syntax_expr_final ()     
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: expressions_2"        
-    
-  end subroutine expressions_2 
-  
-  subroutine expressions_3 (u)
-    integer, intent(in) :: u
-    type(subevt_t) :: subevt
-
-    write (u, "(A)")  "* Test output: Expressions"
-    write (u, "(A)")  "*   Purpose: test subevent expressions"
-    write (u, "(A)")       
-
-    write (u, "(A)")  "* Initialize subevent:"
-    write (u, "(A)")       
-            
-    call subevt_init (subevt)
-    call subevt_reset (subevt, 1)
-    call subevt_set_incoming (subevt, 1, &
-         22, vector4_moving (1.e3_default, 1.e3_default, 1), &
-         0._default, [2])
-    call subevt_write (subevt, u)
-    call subevt_reset (subevt, 4)
-    call subevt_reset (subevt, 3)
-    call subevt_set_incoming (subevt, 1, &
-         21, vector4_moving (1.e3_default, 1.e3_default, 3), &
-         0._default, [1])
-    call subevt_polarize (subevt, 1, -1)
-    call subevt_set_outgoing (subevt, 2, &
-         1, vector4_moving (0._default, 1.e3_default, 3), &
-         -1.e6_default, [7])
-    call subevt_set_composite (subevt, 3, &
-         vector4_moving (-1.e3_default, 0._default, 3), &
-         [2, 7])
-    call subevt_write (subevt, u)
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: expressions_3"        
-    
-  end subroutine expressions_3
-  
-  subroutine expressions_4 (u)
-    integer, intent(in) :: u
-    type(subevt_t), target :: subevt
-    type(string_t) :: expr_text
-    type(ifile_t) :: ifile
-    type(stream_t) :: stream
-    type(eval_tree_t) :: eval_tree
-    type(var_list_t), pointer :: var_list => null ()
-    type(pdg_array_t) :: aval
-
-    write (u, "(A)")  "* Test output: Expressions"
-    write (u, "(A)")  "*   Purpose: test pdg array expressions"
-    write (u, "(A)")       
-
-    write (u, "(A)")  "* Initialization:"
-    write (u, "(A)")       
-    
-    call syntax_pexpr_init ()
-    call syntax_write (syntax_pexpr, u)
-    allocate (var_list)
-    call var_list_append_real (var_list, var_str ("tolerance"), 0._default)
-    aval = 0
-    call var_list_append_pdg_array (var_list, var_str ("particle"), aval)
-    aval = [11,-11]
-    call var_list_append_pdg_array (var_list, var_str ("lepton"), aval)
-    aval = 22
-    call var_list_append_pdg_array (var_list, var_str ("photon"), aval)
-    aval = 1
-    call var_list_append_pdg_array (var_list, var_str ("u"), aval)
-    call subevt_init (subevt)
-    call subevt_reset (subevt, 6)
-    call subevt_set_incoming (subevt, 1, &
-         1, vector4_moving (1._default, 1._default, 1), 0._default)
-    call subevt_set_incoming (subevt, 2, &
-         -1, vector4_moving (2._default, 2._default, 1), 0._default)
-    call subevt_set_outgoing (subevt, 3, &
-         22, vector4_moving (3._default, 3._default, 1), 0._default)
-    call subevt_set_outgoing (subevt, 4, &
-         22, vector4_moving (4._default, 4._default, 1), 0._default)
-    call subevt_set_outgoing (subevt, 5, &
-         11, vector4_moving (5._default, 5._default, 1), 0._default)
-    call subevt_set_outgoing (subevt, 6, &
-         -11, vector4_moving (6._default, 6._default, 1), 0._default)
-    write (u, "(A)")
-    write (u, "(A)")  "* Expression:"
-    expr_text = &
-         "let alias quark = pdg(1):pdg(2):pdg(3) in" // &
-         "  any E > 3 GeV " // &
-         "    [sort by - Pt " // &
-         "       [select if Index < 6 " // &
-         "          [photon:pdg(-11):pdg(3):quark " // &
-         "           & incoming particle]]]" // &
-         "  and" // &
-         "  eval Theta [extract index -1 [photon]] > 45 degree" // &
-         "  and" // &
-         "  count [incoming photon] * 3 > 0"
-    write (u, "(A,A)")  "     ", char (expr_text)
-    write (u, "(A)")
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Extract the evaluation tree:"
-    write (u, "(A)")
-    
-    call ifile_append (ifile, expr_text)
-    call stream_init (stream, ifile)
-    call eval_tree_init_stream (eval_tree, stream, var_list, subevt, V_LOG)
-    call eval_tree_write (eval_tree, u)
-    call eval_tree_evaluate (eval_tree)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Evaluate the tree:"
-    write (u, "(A)")
-
-    call eval_tree_write (eval_tree, u)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Cleanup"
-    write (u, "(A)")
-    
-    call stream_final (stream)
-    call ifile_final (ifile)
-    call eval_tree_final (eval_tree)
-    call var_list%final ()
-    deallocate (var_list)
-    call syntax_pexpr_final ()  
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: expressions_4"        
-        
-  end subroutine expressions_4
-
 
 end module eval_trees

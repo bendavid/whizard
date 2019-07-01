@@ -194,7 +194,11 @@ This procedure takes a test routine as an argument.  It runs the test,
 output directed to a temporary file.  Then, it compares the file
 against a reference file.
 
-The test routine must take the output unit as argument.
+The test routine must take the output unit as argument.  We export
+this abstract interface, so the test drivers can reference it for
+declaring the actual test routines.
+<<Tests: public>>=
+  public :: unit_test
 <<Tests: interfaces>>=
   abstract interface
      subroutine unit_test (u)

@@ -1,4 +1,4 @@
-! WHIZARD 2.2.6 May 02 2015
+! WHIZARD 2.2.7 Aug 11 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -84,7 +84,7 @@
     call stream_init (stream, cmds)
     call lexer_assign_stream (lexer, stream)
     call parse_tree_init (parse_tree, syntax_cmd_list, lexer)
-    pn_root => parse_tree_get_root_ptr (parse_tree)
+    pn_root => parse_tree%get_root_ptr ()
   
     if (associated (pn_root)) then
        call cmd_list%compile (pn_root, whizard_instance%global)
@@ -119,7 +119,8 @@
     logical :: interactive
     logical :: banner
     type(string_t) :: files, this, model, default_lib, library, libraries
-    type(string_t) :: check, checks, logfile
+!     type(string_t) :: check, checks
+    type(string_t) :: logfile
     type(test_results_t) :: test_results
     logical :: success
     logical :: user_code_enable = .false.
@@ -148,8 +149,8 @@
     banner = .true.
     logging = .true.
     logfile = "whizard.log"
-    check = ""
-    checks = ""
+!     check = ""
+!     checks = ""
     user_src = ""
     user_lib = ""
     rebuild_library = .false.
@@ -179,16 +180,16 @@
     allocate (whizard_instance)
     call whizard_instance%init (options, paths)
       
-    if (checks /= "") then
-       checks = trim (adjustl (checks))
-       RUN_CHECKS: do while (checks /= "")
-          call split (checks, check, " ")
-          call whizard_check (check, test_results)
-       end do RUN_CHECKS
-       call test_results%wrapup (6, success)
-       if (.not. success)  quit_code = 7
-       quit = .true.
-    end if
+!     if (checks /= "") then
+!        checks = trim (adjustl (checks))
+!        RUN_CHECKS: do while (checks /= "")
+!           call split (checks, check, " ")
+!           call whizard_check (check, test_results)
+!        end do RUN_CHECKS
+!        call test_results%wrapup (6, success)
+!        if (.not. success)  quit_code = 7
+!        quit = .true.
+!     end if
     
     w_c_instance = c_loc (whizard_instance)
               
@@ -428,7 +429,7 @@
     call stream_init (stream, sim_str)
     call lexer_assign_stream (lexer, stream)
     call parse_tree_init (parse_tree, syntax_cmd_list, lexer)
-    pn_root => parse_tree_get_root_ptr (parse_tree)
+    pn_root => parse_tree%get_root_ptr ()
    
     allocate (cmd_list)
     if (associated (pn_root)) then

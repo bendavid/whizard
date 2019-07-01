@@ -72,3 +72,6 @@ maintainer-clean-local:
 ## Remove module files
 clean-local:
 	-rm -f $(MODULES)
+if FC_SUBMODULES
+	-rm -f *.smod
+endif

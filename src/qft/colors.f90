@@ -1,4 +1,4 @@
-! WHIZARD 2.2.6 May 02 2015
+! WHIZARD 2.2.7 Aug 11 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -50,7 +50,6 @@ module colors
   public :: color_translate
   public :: compute_color_factor
   public :: count_color_loops
-  public :: color_test
 
   type :: color_t
      private
@@ -895,71 +894,6 @@ contains
       call msg_bug (" Color flow mismatch (color loops should be closed)")
     end subroutine color_mismatch
   end function count_color_loops
-
-  subroutine color_test (u, results)
-    integer, intent(in) :: u
-    type(test_results_t), intent(inout) :: results
-    call test (color_1, "color_1", &
-         "check color counting", &
-         u, results)  
-  end subroutine color_test
-  
-
-  subroutine color_1 (u)
-    integer, intent(in) :: u
-    type(color_t), dimension(4) :: col1, col2, col
-    type(color_t), dimension(:), allocatable :: col3
-    type(color_t), dimension(:,:), allocatable :: col_array
-    integer :: count, i
-    call col1%init_col_acl ([1, 0, 2, 3], [0, 1, 3, 2])
-    col2 = col1
-    call color_write (col1, u)
-    write (u, "(A)")
-    call color_write (col2, u)
-    write (u, "(A)")
-    col = col1 .merge. col2
-    call color_write (col, u)
-    write (u, "(A)")
-    count = count_color_loops (col)
-    write (u, "(A,I1)") "Number of color loops (3): ", count
-    call col2%init_col_acl ([1, 0, 2, 3], [0, 2, 3, 1])
-    call color_write (col1, u)
-    write (u, "(A)")
-    call color_write (col2, u)
-    write (u, "(A)")
-    col = col1 .merge. col2
-    call color_write (col, u)
-    write (u, "(A)")
-    count = count_color_loops (col)
-    write (u, "(A,I1)")  "Number of color loops (2): ", count
-    write (u, "(A)")
-    allocate (col3 (4))
-    call color_init_from_array (col3, &
-         reshape ([1, 0,   0, -1,  2, -3,  3, -2], & 
-                  [2, 4]))
-    call color_write (col3, u)
-    write (u, "(A)")
-    call color_array_make_contractions (col3, col_array)
-    write (u, "(A)")  "Contractions:"
-    do i = 1, size (col_array, 2)
-       call color_write (col_array(:,i), u)
-       write (u, "(A)")
-    end do
-    deallocate (col3)
-    write (u, "(A)")
-    allocate (col3 (6))
-    call color_init_from_array (col3, &
-         reshape ([1, -2,   3, 0,  0, -1,  2, -4,  -3, 0,  4, 0], & 
-                  [2, 6]))
-    call color_write (col3, u)
-    write (u, "(A)")
-    call color_array_make_contractions (col3, col_array)
-    write (u, "(A)")  "Contractions:"
-    do i = 1, size (col_array, 2)
-       call color_write (col_array(:,i), u)
-       write (u, "(A)")
-    end do
-  end subroutine color_1
 
 
 end module colors

@@ -1,4 +1,4 @@
-! WHIZARD 2.2.6 May 02 2015
+! WHIZARD 2.2.7 Aug 11 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -34,8 +34,8 @@ module lorentz
 
   use kinds, only: default, double
   use io_units
-  use constants, only: pi, twopi, degree, zero, one, eps0
-  use format_defs, only: FMT_13, FMT_15, FMT_17, FMT_19
+  use constants, only: pi, twopi, degree, zero, one, eps0, tiny_07
+  use format_defs, only: FMT_13, FMT_15, FMT_19
   use format_utils, only: pac_fmt
   use diagnostics
   use c_particles
@@ -70,6 +70,7 @@ module lorentz
   public :: identity
   public :: space_reflection
   public :: vector_set_reshuffle
+  public :: vector_set_is_cms
   public :: vector4_write_set
   public :: spinor_product
 
@@ -313,7 +314,8 @@ module lorentz
      module procedure enclosed_angle_deg_rest_frame_vector4
   end interface
   interface transverse_part
-     module procedure transverse_part_vector4
+     module procedure transverse_part_vector4_beam_axis
+     module procedure transverse_part_vector4_vector4
   end interface
   interface longitudinal_part
      module procedure longitudinal_part_vector4
@@ -815,12 +817,17 @@ contains
     p%p(1:3) = a
   end subroutine vector3_from_array
 
-  pure function vector4_to_pythia6 (vector4) result (p)
+  pure function vector4_to_pythia6 (vector4, m) result (p)
     real(double), dimension(1:5) :: p
     class(vector4_t), intent(in) :: vector4
+    real(default), intent(in), optional :: m
     p(1:3) = vector4%p(1:3)
     p(4) = vector4%p(0)
-    p(5) = vector4 ** 2
+    if (present (m)) then
+       p(5) = m
+    else
+       p(5) = vector4 ** 1
+    end if
   end function vector4_to_pythia6
 
   pure subroutine vector4_from_c_prt (p, c_prt)
@@ -1018,11 +1025,23 @@ contains
     theta = enclosed_angle_rest_frame (p, q) / degree
   end function enclosed_angle_deg_rest_frame_vector4
 
-  elemental function transverse_part_vector4 (p) result (pT)
+  elemental function transverse_part_vector4_beam_axis (p) result (pT)
     real(default) :: pT
     type(vector4_t), intent(in) :: p
     pT = sqrt(p%p(1)**2 + p%p(2)**2)
-  end function transverse_part_vector4
+  end function transverse_part_vector4_beam_axis
+
+  elemental function transverse_part_vector4_vector4 (p1, p2) result (pT)
+    real(default) :: pT
+    type(vector4_t), intent(in) :: p1, p2
+    real(default) :: p1_norm, p2_norm, p1p2, pT2
+    p1_norm = space_part_norm(p1)**2
+    p2_norm = space_part_norm(p2)**2
+!    p1p2 = p1%p(1:3)*p2%p(1:3)
+    p1p2 = vector4_get_space_part(p1) * vector4_get_space_part(p2)
+    pT2 = (p1_norm*p2_norm - p1p2)/p1_norm
+    pT = sqrt (pT2)
+  end function transverse_part_vector4_vector4
 
   elemental function longitudinal_part_vector4 (p) result (pL)
     real(default) :: pL
@@ -1528,19 +1547,33 @@ contains
     end do
   end subroutine vector_set_reshuffle
 
-  subroutine vector4_write_set (p, unit, show_mass, testflag)
+  function vector_set_is_cms (p) result (is_cms)
+    type(vector4_t), dimension(:), intent(in) :: p
+    logical :: is_cms
+    is_cms = abs((p(1)+p(2))**1 - 2*p(1)%p(0)) < tiny_07
+  end function vector_set_is_cms
+
+  subroutine vector4_write_set (p, unit, show_mass, testflag, &
+        check_conservation)
     type(vector4_t), intent(in), dimension(:) :: p
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: show_mass
     logical, intent(in), optional :: testflag
+    logical, intent(in), optional :: check_conservation
     integer :: i, j
-    real(default), dimension(4) :: p_tot
+    real(default), dimension(0:3) :: p_tot
     character(len=7) :: fmt
     integer :: u
+    logical :: yorn
     u = given_output_unit (unit);  if (u < 0)  return
     p_tot = 0
+    yorn = .false.; if (present (check_conservation)) yorn = check_conservation
     do i = 1, size (p)
-      forall (j=1:4) p_tot(j) = p_tot(j) + vector4_get_component(p(i),j-1)
+      if (yorn .and. i>2) then
+         forall (j=0:3) p_tot(j) = p_tot(j) - p(i)%p(j)
+      else
+         forall (j=0:3) p_tot(j) = p_tot(j) + p(i)%p(j)
+      end if
       call vector4_write (p(i), u, show_mass, testflag)
     end do
     call pac_fmt (fmt, FMT_19, FMT_15, testflag)
@@ -1548,8 +1581,8 @@ contains
        if (testflag)  call pacify (p_tot, 1.E-10_default)
     end if
     write (u, "(A5)") 'Total: '
-    write (u, "(1x,A,1x," // fmt // ")")    "E = ", p_tot(1)
-    write (u, "(1x,A,3(1x," // fmt // "))") "P = ", p_tot(2:)
+    write (u, "(1x,A,1x," // fmt // ")")    "E = ", p_tot(0)
+    write (u, "(1x,A,3(1x," // fmt // "))") "P = ", p_tot(1:)
   end subroutine vector4_write_set
 
   subroutine spinor_product (p1, p2, prod1, prod2)

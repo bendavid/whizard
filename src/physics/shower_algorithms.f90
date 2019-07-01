@@ -1,4 +1,4 @@
-! WHIZARD 2.2.6 May 02 2015
+! WHIZARD 2.2.7 Aug 11 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -33,14 +33,14 @@
 module shower_algorithms
 
   use kinds, only: default
+  use diagnostics
   use constants
-  use unit_tests
   use rng_base
 
   implicit none
   private
 
-  public :: shower_algorithms_test
+
 
   interface
     pure function XXX_function (x)
@@ -80,40 +80,14 @@ contains
     end do
   end subroutine generate_vetoed
 
-  pure subroutine generate_on_hypersphere (x, overestimator, scale)
+  subroutine generate_on_hypersphere (x, overestimator, scale)
     real(default), dimension(:), intent(out) :: x
     procedure(XXX_function), pointer, intent(in) :: overestimator
     real(default), intent(in) :: scale
+    call msg_bug ("generate_on_hypersphere: not implemented")
   end subroutine generate_on_hypersphere
 
 
-  subroutine shower_algorithms_test (u, results)
-    integer, intent(in) :: u
-    type(test_results_t), intent(inout) :: results
-    call test (shower_algorithms_1, "shower_algorithms_1", &
-         "veto technique", &
-         u, results)
-  end subroutine shower_algorithms_test
-
-  subroutine shower_algorithms_1 (u)
-    integer, intent(in) :: u
-
-    write (u, "(A)")  "* Test output: shower_algorithms_1"
-    write (u, "(A)")  "*   Purpose: check veto technique"
-    write (u, "(A)")
-
-    write (u, "(A)")  "* Splitting functions:"
-    write (u, "(A)")
-
-    !call assert (u, vanishes (p_qqg_pol (z, +1, -1, +1)))
-    !call assert (u, nearly_equal ( &
-         !p_qqg_pol (z, +1, +1, -1) + p_qqg_pol (z, +1, +1, +1),
-         !p_qqg (z))
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: shower_algorithms_1"
-
-  end subroutine shower_algorithms_1
 
 
 end module shower_algorithms

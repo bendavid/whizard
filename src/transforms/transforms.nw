@@ -1,4 +1,4 @@
-% -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*- 
+% -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*-
 % WHIZARD event transforms and event API
 
 @
@@ -27,6 +27,9 @@ We have the following modules:
   (not implemented yet) Apply hadronization to the partonic events,
   interleaved with hadron decays.  (The current setup relies on
   hadronizing partonic events externally.)
+\item[tau\_decays]
+  (not implemented yet) Let $\tau$ leptons decay taking full spin
+  correlations into account.
 \item[events]
   Combine all pieces to generate full events.
 \item[eio\_raw]
@@ -45,27 +48,15 @@ module event_transforms
 <<Use strings>>
   use io_units
   use format_utils, only: write_separator
-  use unit_tests
   use diagnostics
-  use os_interface
-  use sm_qcd
   use model_data
-  use state_matrices
   use interactions
   use particles
   use subevents
-  use process_libraries
-  use prc_core
-  use prc_test
   use rng_base
-  use mci_base
-  use mci_midpoint
-  use phs_base
-  use phs_single
   use processes
   use process_stacks
-  use powheg
-  
+
 <<Standard module head>>
 
 <<Event transforms: public>>
@@ -77,8 +68,6 @@ module event_transforms
 contains
 
 <<Event transforms: procedures>>
-
-<<Event transforms: tests>>
 
 end module event_transforms
 
@@ -110,10 +99,12 @@ We will collect event transforms in a list, therefore we include
      type(particle_set_t) :: particle_set
      class(evt_t), pointer :: previous => null ()
      class(evt_t), pointer :: next => null ()
+     real(default) :: weight = 0._default
+     logical :: only_weighted_events = .false.
    contains
    <<Event transforms: evt: TBP>>
   end type evt_t
-  
+
 @ %def evt_t
 @ Finalizer.  In any case, we finalize the r.n.g.  The process
 instance is a pointer and should not be finalized here.
@@ -121,13 +112,13 @@ instance is a pointer and should not be finalized here.
   procedure :: final => evt_final
   procedure :: base_final => evt_final
 <<Event transforms: procedures>>=
-  subroutine evt_final (object)
-    class(evt_t), intent(inout) :: object
-    if (allocated (object%rng))  call object%rng%final ()
-    if (object%particle_set_exists) &
-         call object%particle_set%final ()
+  subroutine evt_final (evt)
+    class(evt_t), intent(inout) :: evt
+    if (allocated (evt%rng))  call evt%rng%final ()
+    if (evt%particle_set_exists) &
+         call evt%particle_set%final ()
   end subroutine evt_final
-  
+
 @ %def evt_final
 <<Event transforms: evt: TBP>>=
   procedure (evt_write), deferred :: write
@@ -169,7 +160,7 @@ instance is a pointer and should not be finalized here.
        end if
     end if
   end subroutine evt_base_write
-  
+
 @ %def evt_base_write
 @ Connect the transform with a process instance (and thus with the
 associated process).  Use this to allocate the master random-number
@@ -191,7 +182,7 @@ implementation-specific methods.
     evt%model => model
     call evt%process%make_rng (evt%rng)
   end subroutine evt_connect
-  
+
 @ %def evt_connect
 @ Reset internal state.
 <<Event transforms: evt: TBP>>=
@@ -203,7 +194,7 @@ implementation-specific methods.
     evt%rejection_count = 0
     evt%particle_set_exists = .false.
   end subroutine evt_reset
-  
+
 @ %def evt_reset
 @ Prepare for a new event: reset internal state, if necessary.  We
 provide MCI and term index of the parent process.
@@ -217,7 +208,7 @@ provide MCI and term index of the parent process.
        integer, intent(in) :: i_mci, i_term
      end subroutine evt_prepare_new_event
   end interface
-       
+
 @ %def evt_prepare_new_event
 @ Generate a weighted event, using a valid initiator event in the
 process instance, and the random-number generator.  The returned event
@@ -230,10 +221,10 @@ rejection.
      subroutine evt_generate_weighted (evt, probability)
        import
        class(evt_t), intent(inout) :: evt
-       real(default), intent(out) :: probability
+       real(default), intent(inout) :: probability
      end subroutine evt_generate_weighted
   end interface
-  
+
 @ %def evt_generate_weighted
 @ The unweighted event generation routine is actually implemented.  It
 uses the random-number generator for simple rejection.  Of course, the
@@ -255,7 +246,7 @@ generating an unweighted event.
        if (x < p)  exit REJECTION
     end do REJECTION
   end subroutine evt_generate_unweighted
-    
+
 @ %def evt_generate_unweighted
 @ Make a particle set.  This should take the most recent evaluator (or
 whatever stores the event), factorize the density matrix if necessary,
@@ -279,7 +270,7 @@ detail, e.g., bypassing the random-number generator.
        real(default), dimension(:), intent(in), optional :: r
      end subroutine evt_make_particle_set
   end interface
-       
+
 @ %def evt_make_particle_set
 @ Copy an existing particle set into the event record.  This bypasses
 all methods to evaluate the internal state, but may be sufficient for
@@ -295,7 +286,7 @@ further processing.
     evt%particle_set = particle_set
     evt%particle_set_exists = .true.
   end subroutine evt_set_particle_set
-    
+
 @ %def evt_set_particle_set
 @ This procedure can help in the previous task, if the particles are
 available in the form of an interaction object.  (We need two
@@ -329,7 +320,7 @@ the state.  For testing purposes, we can provide those numbers explicitly.
          keep_correlations, keep_virtual=.true.)
     evt%particle_set_exists = .true.
   end subroutine evt_factorize_interactions
-  
+
 @ %def evt_factorize_interactions
 @ Mark the incoming particles as incoming in the particle set.  This
 is necessary because in the interaction objects they are usually
@@ -389,7 +380,7 @@ instance.  The [[generate]] methods do nothing.
     call write_separator (u)
     call evt%base_write (u, testflag = testflag)
   end subroutine evt_trivial_write
-  
+
 @ %def evt_trivial_write
 @ Nothing to do here:
 <<Event transforms: evt trivial: TBP>>=
@@ -400,7 +391,7 @@ instance.  The [[generate]] methods do nothing.
     integer, intent(in) :: i_mci, i_term
     call evt%reset ()
   end subroutine evt_trivial_prepare_new_event
-  
+
 @ %def evt_trivial_prepare_new_event
 @ The weighted generator is, surprisingly, trivial.
 <<Event transforms: evt trivial: TBP>>=
@@ -408,10 +399,10 @@ instance.  The [[generate]] methods do nothing.
 <<Event transforms: procedures>>=
   subroutine evt_trivial_generate_weighted (evt, probability)
     class(evt_trivial_t), intent(inout) :: evt
-    real(default), intent(out) :: probability
+    real(default), intent(inout) :: probability
     probability = 1
   end subroutine evt_trivial_generate_weighted
-    
+
 @ %def evt_trivial_generate_weighted
 @ This routine makes a particle set, using the associated process
 instance as-is.
@@ -437,19 +428,77 @@ instance as-is.
        call msg_bug ("Event factorization: event is incomplete")
     end if
   end subroutine evt_trivial_make_particle_set
-    
+
 @ %def event_trivial_make_particle_set
 @
 \subsection{Unit tests}
-<<Event transforms: public>>=
+Test module, followed by the corresponding implementation module.
+<<[[event_transforms_ut.f90]]>>=
+<<File header>>
+
+module event_transforms_ut
+  use unit_tests
+  use event_transforms_uti
+
+<<Standard module head>>
+
+<<Event transforms: public test>>
+
+contains
+
+<<Event transforms: test driver>>
+
+end module event_transforms_ut
+@ %def event_transforms_ut
+@
+<<[[event_transforms_uti.f90]]>>=
+<<File header>>
+
+module event_transforms_uti
+
+<<Use kinds>>
+<<Use strings>>
+  use format_utils, only: write_separator
+  use os_interface
+  use sm_qcd
+  use model_data
+  use state_matrices, only: FM_IGNORE_HELICITY
+  use interactions, only: reset_interaction_counter
+  use process_libraries
+  use rng_base
+  use mci_base
+  use mci_midpoint
+  use phs_base
+  use phs_single
+  use prc_core
+  use prc_test, only: prc_test_create_library
+  use processes
+
+  use event_transforms
+
+  use rng_base_ut, only: rng_test_factory_t
+
+<<Standard module head>>
+
+<<Event transforms: test declarations>>
+
+contains
+
+<<Event transforms: tests>>
+
+end module event_transforms_uti
+
+@ %def event_transforms_uti
+@ API: driver for the unit tests below.
+<<Event transforms: public test>>=
   public :: event_transforms_test
-<<Event transforms: tests>>=
+<<Event transforms: test driver>>=
   subroutine event_transforms_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
   <<Event transforms: execute tests>>
   end subroutine event_transforms_test
-  
+
 @ %def event_transforms_test
 @
 \subsubsection{Test trivial event transform}
@@ -459,6 +508,8 @@ nothing but to trigger event generation for an elementary process.
   call test (event_transforms_1, "event_transforms_1", &
        "trivial event transform", &
        u, results)
+<<Event transforms: test declarations>>=
+  public :: event_transforms_1
 <<Event transforms: tests>>=
   subroutine event_transforms_1 (u)
     integer, intent(in) :: u
@@ -502,7 +553,7 @@ nothing but to trigger event generation for an elementary process.
     allocate (process)
     call process%init &
          (procname1, run_id, lib, os_data, qcd, rng_factory, model)
-    
+
     allocate (test_t :: core_template)
     allocate (mci_midpoint_t :: mci_template)
     allocate (phs_single_config_t :: phs_config_template)
@@ -533,13 +584,13 @@ nothing but to trigger event generation for an elementary process.
     allocate (evt_trivial_t :: evt)
     model => process%get_model_ptr ()
     call evt%connect (process_instance, model)
-    
+
     write (u, "(A)")  "* Generate event and subsequent transform"
     write (u, "(A)")
-    
+
     call process%generate_unweighted_event (process_instance, 1)
     call process_instance%evaluate_event_data ()
-    
+
     call evt%prepare_new_event (1, 1)
     call evt%generate_unweighted ()
 
@@ -550,10 +601,10 @@ nothing but to trigger event generation for an elementary process.
     write (u, "(A)")
     write (u, "(A)")  "* Obtain particle set"
     write (u, "(A)")
-    
+
     factorization_mode = FM_IGNORE_HELICITY
     keep_correlations = .false.
-    
+
     call evt%make_particle_set (factorization_mode, keep_correlations)
 
     call write_separator (u, 2)
@@ -566,12 +617,12 @@ nothing but to trigger event generation for an elementary process.
     call evt%final ()
     call process_instance%final ()
     deallocate (process_instance)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: event_transforms_1"
-    
+
   end subroutine event_transforms_1
-  
+
 @ %def event_transforms_1
 @
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -581,7 +632,7 @@ nothing but to trigger event generation for an elementary process.
 
 module hadrons
 
-<<Use kinds>>
+<<Use kinds with double>>
 <<Use strings>>
   use io_units
   use format_utils, only: write_separator
@@ -614,15 +665,20 @@ end module hadrons
 @
 \subsection{Hadronization implementations}
 <<Hadrons: public>>=
-  public :: HADRONS_PYTHIA6, HADRONS_PYTHIA8
+  public :: HADRONS_PYTHIA6, HADRONS_PYTHIA8, HADRONS_UNDEFINED
 <<Hadrons: parameters>>=
   integer, parameter :: HADRONS_PYTHIA6 = 1
   integer, parameter :: HADRONS_PYTHIA8 = 2
   integer, parameter :: HADRONS_UNDEFINED = 17
 @ %def HADRONS_PYTHIA6 HADRONS_PYTHIA8 HADRONS_UNDEFINED
 @ A dictionary
-<<Hadrons: public>>=
-  public :: hadrons_method_of_string
+<<Shower base: public>>=
+  public :: hadrons_method
+<<Shower base: interfaces>>=
+  interface hadrons_method
+     module procedure hadrons_method_of_string
+     module procedure hadrons_method_to_string
+  end interface
 <<Hadrons: procedures>>=
   elemental function hadrons_method_of_string (string) result (i)
     integer :: i
@@ -637,11 +693,6 @@ end module hadrons
     end select
   end function hadrons_method_of_string
 
-@ %def hadrons_method_of_string
-@
-<<Hadrons: public>>=
-  public :: hadrons_method_to_string
-<<Hadrons: procedures>>=
   elemental function hadrons_method_to_string (i) result (string)
     type(string_t) :: string
     integer, intent(in) :: i
@@ -655,13 +706,13 @@ end module hadrons
     end select
   end function hadrons_method_to_string
 
-@ %def hadrons_method_to_string
+@ %def hadrons_method
 @
 \subsection{Abstract Hadronization Type}
 The [[model]] is the fallback model including all hadrons
 <<Hadrons: types>>=
   type, abstract :: hadrons_t
-   type(shower_settings_t), pointer :: settings
+   type(shower_settings_t) :: settings
    type(model_t), pointer :: model => null()
    contains
    <<Hadrons: hadrons: TBP>>
@@ -676,7 +727,7 @@ The [[model]] is the fallback model including all hadrons
     subroutine hadrons_init (hadrons, settings, model_hadrons)
       import
       class(hadrons_t), intent(out) :: hadrons
-      type(shower_settings_t), target, intent(in) :: settings
+      type(shower_settings_t), intent(in) :: settings
       type(model_t), target, intent(in) :: model_hadrons
     end subroutine hadrons_init
    end interface
@@ -687,8 +738,7 @@ The [[model]] is the fallback model including all hadrons
   procedure (hadrons_hadronize), deferred :: hadronize
 <<Hadrons: interfaces>>=
   abstract interface
-     subroutine hadrons_hadronize &
-          (hadrons, particle_set, valid)
+     subroutine hadrons_hadronize (hadrons, particle_set, valid)
        import
        class(hadrons_t), intent(inout) :: hadrons
        type(particle_set_t), intent(in) :: particle_set
@@ -728,11 +778,11 @@ hadronization within \whizard.
 <<Hadrons: procedures>>=
   subroutine hadrons_pythia6_init (hadrons, settings, model_hadrons)
     class(hadrons_pythia6_t), intent(out) :: hadrons
-    type(shower_settings_t), target, intent(in) :: settings
+    type(shower_settings_t), intent(in) :: settings
     type(model_t), intent(in), target :: model_hadrons
     logical :: pygive_not_set_by_shower
     hadrons%model => model_hadrons
-    hadrons%settings => settings
+    hadrons%settings = settings
     pygive_not_set_by_shower = .not. (settings%method == PS_PYTHIA6 &
          .and. (settings%isr_active .or. settings%fsr_active))
     if (pygive_not_set_by_shower) then
@@ -753,11 +803,24 @@ transferred there by the WHIZARD or PYTHIA6 shower routines.
     class(hadrons_pythia6_t), intent(inout) :: hadrons
     type(particle_set_t), intent(in) :: particle_set
     logical, intent(out) :: valid
+    integer :: N, NPAD, K
+    real(double) :: P, V
+    common /PYJETS/ N, NPAD, K(4000,5), P(4000,5), V(4000,5)
+    save /PYJETS/
     if (signal_is_pending ()) return
+    call msg_debug (D_TRANSFORMS, "hadrons_pythia6_hadronize")
     call pygive ("MSTP(111)=1")    !!! Switch on hadronization and decays
     call pygive ("MSTJ(1)=1")      !!! String fragmentation
     call pygive ("MSTJ(21)=2")     !!! String fragmentation keeping resonance momentum
+    if (debug_active (D_TRANSFORMS)) then
+       call msg_debug (D_TRANSFORMS, "N", N)
+       call pylist(2)
+       print *, ' line 7 : ', k(7,1:5), p(7,1:5)
+    end if
+    call pyedit (12)
+    call pythia6_set_last_treated_line (N)
     call pyexec ()
+    call pyedit (12)
     valid = .true.
   end subroutine hadrons_pythia6_hadronize
 
@@ -776,7 +839,7 @@ transferred there by the WHIZARD or PYTHIA6 shower routines.
     valid = pythia6_handle_errors ()
     if (valid) then
        call pythia6_combine_with_particle_set &
-            (particle_set, model, hadrons%model)
+            (particle_set, model, hadrons%model, hadrons%settings)
     end if
   end subroutine hadrons_pythia6_make_particle_set
 
@@ -798,9 +861,10 @@ transferred there by the WHIZARD or PYTHIA6 shower routines.
 <<Hadrons: procedures>>=
   subroutine hadrons_pythia8_init (hadrons, settings, model_hadrons)
     class(hadrons_pythia8_t), intent(out) :: hadrons
-    type(shower_settings_t), target, intent(in) :: settings
+    type(shower_settings_t), intent(in) :: settings
     type(model_t), intent(in), target :: model_hadrons
     logical :: options_not_set_by_shower
+    hadrons%settings = settings
     options_not_set_by_shower = .not. (settings%method == PS_PYTHIA8 &
          .and. (settings%isr_active .or. settings%fsr_active))
     if (options_not_set_by_shower) then
@@ -822,6 +886,7 @@ transferred there by the WHIZARD or PYTHIA6 shower routines.
     type(particle_set_t), intent(in) :: particle_set
     logical, intent(out) :: valid
     ! call pythia8_hadronize
+    valid = .true.
   end subroutine hadrons_pythia8_hadronize
 
 @ %def hadrons_pythia8_hadronize
@@ -836,6 +901,7 @@ transferred there by the WHIZARD or PYTHIA6 shower routines.
     class(model_data_t), intent(in), target :: model
     logical, intent(out) :: valid
     ! call pythia8_combine_particle_set
+    valid = .true.
   end subroutine hadrons_pythia8_make_particle_set
 
 @ %def hadrons_pythia8_make_particle_set
@@ -849,9 +915,9 @@ depend on the specific hadronization implementation of
 <<Hadrons: types>>=
   type, extends (evt_t) :: evt_hadrons_t
      class(hadrons_t), allocatable :: hadrons
-     type(shower_settings_t) :: settings
      type(model_t), pointer :: model_hadrons => null()
      type(qcd_t), pointer :: qcd_t => null()
+     logical :: is_first_event
    contains
    <<Hadrons: evt hadrons: TBP>>
   end type evt_hadrons_t
@@ -865,10 +931,9 @@ shower.
 <<Hadrons: procedures>>=
   subroutine evt_hadrons_init (evt, settings, model_hadrons, method)
     class(evt_hadrons_t), intent(out) :: evt
-    type(shower_settings_t), target, intent(in) :: settings
+    type(shower_settings_t), intent(in) :: settings
     type(model_t), intent(in), target :: model_hadrons
     type(string_t), intent(in) :: method
-    evt%settings = settings
     evt%model_hadrons => model_hadrons
     !!! TODO: (bcn 2015-03-27) method should be part of hadronization settings
     select case (char (method))
@@ -880,7 +945,8 @@ shower.
        call msg_fatal ("Hadronization method " // char (method) // &
             " not implemented.")
     end select
-    call evt%hadrons%init (evt%settings, model_hadrons)
+    call evt%hadrons%init (settings, model_hadrons)
+    evt%is_first_event = .true.
   end subroutine evt_hadrons_init
 
 @ %def evt_hadrons_init
@@ -902,10 +968,35 @@ shower.
          call evt%particle_set%write &
          (u, summary = .true., compressed = .true., testflag = testflag)
     call write_separator (u)
-    call evt%settings%write (u)
+    call evt%hadrons%settings%write (u)
   end subroutine evt_hadrons_write
 
 @ %def evt_hadrons_write
+@
+<<Hadrons: evt hadrons: TBP>>=
+  procedure :: first_event => evt_hadrons_first_event
+<<Hadrons: procedures>>=
+  subroutine evt_hadrons_first_event (evt)
+    class(evt_hadrons_t), intent(inout) :: evt
+    call msg_debug (D_TRANSFORMS, "evt_hadrons_first_event")
+    associate (settings => evt%hadrons%settings)
+       settings%hadron_collision = .false.
+       if (all (evt%particle_set%prt(1:2)%flv%get_pdg_abs () <= 18)) then
+          settings%hadron_collision = .false.
+       else if (all (evt%particle_set%prt(1:2)%flv%get_pdg_abs () >= 1000)) then
+          settings%hadron_collision = .true.
+       else
+          call msg_fatal ("evt_hadrons didn't recognize beams setup")
+       end if
+       call msg_debug (D_TRANSFORMS, "hadron_collision", settings%hadron_collision)
+       if (.not. (settings%isr_active .or. settings%fsr_active)) then
+          call msg_fatal ("Hadronization without shower is not supported")
+       end if
+    end associate
+    evt%is_first_event = .false.
+  end subroutine evt_hadrons_first_event
+
+@ %def evt_hadrons_first_event
 @ Here we take the particle set from the previous event transform and
 apply the hadronization.  The result is stored in the [[evt%hadrons]]
 object.  We always return a probability of unity as we don't have the
@@ -917,16 +1008,16 @@ invalid.
 <<Hadrons: procedures>>=
   subroutine evt_hadrons_generate_weighted (evt, probability)
     class(evt_hadrons_t), intent(inout) :: evt
-    real(default), intent(out) :: probability
+    real(default), intent(inout) :: probability
     logical :: valid
-    if (evt%previous%particle_set_exists) then
-       evt%particle_set = evt%previous%particle_set
-       call evt%hadrons%hadronize (evt%particle_set, valid)
-       probability = 1
-       evt%particle_set_exists = valid
-    else
-       call msg_bug ("Hadrons: input particle set does not exist")
+    if (signal_is_pending ())  return
+    evt%particle_set = evt%previous%particle_set
+    if (evt%is_first_event) then
+       call evt%first_event ()
     end if
+    call evt%hadrons%hadronize (evt%particle_set, valid)
+    probability = 1
+    evt%particle_set_exists = valid
   end subroutine evt_hadrons_generate_weighted
 
 @ %def evt_hadrons_generate_weighted
@@ -959,6 +1050,114 @@ invalid.
 @ %def evt_hadrons_prepare_new_event
 @
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Tau decays}
+<<[[tau_decays.f90]]>>=
+<<File header>>
+
+module tau_decays
+
+<<Use kinds>>
+  use io_units
+  use format_utils, only: write_separator
+  use sm_qcd
+  use model_data
+  use models
+  use event_transforms
+
+<<Standard module head>>
+
+<<Tau decays: public>>
+
+<<Tau decays: types>>
+
+contains
+
+<<Tau decays: procedures>>
+
+end module tau_decays
+@ %def tau_decays
+\subsection{Tau Decays Event Transform}
+This is the type for the tau decay event transform.
+<<Tau decays: public>>=
+  public :: evt_tau_decays_t
+<<Tau decays: types>>=
+  type, extends (evt_t) :: evt_tau_decays_t
+     type(model_t), pointer :: model_hadrons => null()
+     type(qcd_t), pointer :: qcd_t => null()
+   contains
+   <<Tau decays: evt tau decays: TBP>>
+  end type evt_tau_decays_t
+
+@ %def evt_tau_decays_t
+@ Output.
+<<Tau decays: evt tau decays: TBP>>=
+  procedure :: write => evt_tau_decays_write
+<<Tau decays: procedures>>=
+  subroutine evt_tau_decays_write (evt, unit, verbose, more_verbose, testflag)
+    class(evt_tau_decays_t), intent(in) :: evt
+    integer, intent(in), optional :: unit
+    logical, intent(in), optional :: verbose, more_verbose, testflag
+    integer :: u
+    u = given_output_unit (unit)
+    call write_separator (u, 2)
+    write (u, "(1x,A)")  "Event transform: tau decays"
+    call write_separator (u)
+    call evt%base_write (u, testflag = testflag, show_set = .false.)
+    if (evt%particle_set_exists)  &
+         call evt%particle_set%write &
+         (u, summary = .true., compressed = .true., testflag = testflag)
+    call write_separator (u)
+  end subroutine evt_tau_decays_write
+
+@ %def evt_tau_decays_write
+@ Here we take the particle set from the previous event transform and
+apply the tau decays. What probability should be given back, the
+product of branching ratios of the corresponding tau decays?
+<<Tau decays: evt tau decays: TBP>>=
+  procedure :: generate_weighted => evt_tau_decays_generate_weighted
+<<Tau decays: procedures>>=
+  subroutine evt_tau_decays_generate_weighted (evt, probability)
+    class(evt_tau_decays_t), intent(inout) :: evt
+    real(default), intent(inout) :: probability
+    logical :: valid
+    evt%particle_set = evt%previous%particle_set
+    !!! To be checked or expanded
+    probability = 1
+    valid = .true.
+    evt%particle_set_exists = valid
+  end subroutine evt_tau_decays_generate_weighted
+
+@ %def evt_tau_decays_generate_weighted
+@ The factorization parameters are irrelevant.
+<<Tau decays: evt tau decays: TBP>>=
+  procedure :: make_particle_set => evt_tau_decays_make_particle_set
+<<Tau decays: procedures>>=
+  subroutine evt_tau_decays_make_particle_set &
+       (evt, factorization_mode, keep_correlations, r)
+    class(evt_tau_decays_t), intent(inout) :: evt
+    integer, intent(in) :: factorization_mode
+    logical, intent(in) :: keep_correlations
+    real(default), dimension(:), intent(in), optional :: r
+    logical :: valid
+    !!! to be checked and expanded
+    valid = .true.
+    evt%particle_set_exists = evt%particle_set_exists .and. valid
+  end subroutine evt_tau_decays_make_particle_set
+
+@ %def event_tau_decays_make_particle_set
+@
+<<Tau decays: evt tau decays: TBP>>=
+  procedure :: prepare_new_event => evt_tau_decays_prepare_new_event
+<<Tau decays: procedures>>=
+  subroutine evt_tau_decays_prepare_new_event (evt, i_mci, i_term)
+    class(evt_tau_decays_t), intent(inout) :: evt
+    integer, intent(in) :: i_mci, i_term
+    call evt%reset ()
+  end subroutine evt_tau_decays_prepare_new_event
+
+@ %def evt_tau_decays_prepare_new_event
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Decays}
 <<[[decays.f90]]>>=
 <<File header>>
@@ -970,32 +1169,21 @@ module decays
   use io_units
   use format_utils, only: write_indent, write_separator
   use format_defs, only: FMT_15
-  use unit_tests
+  use unit_tests, only: nearly_equal, vanishes
   use diagnostics
-  use os_interface
-  use sm_qcd
   use flavors
   use helicities
   use quantum_numbers
-  use state_matrices
   use interactions
   use evaluators
-  use variables
   use model_data
   use rng_base
   use selectors
-  use prc_core
-  use prc_test
-  use process_libraries
-  use mci_base
-  use mci_midpoint
-  use phs_base
-  use phs_single
   use parton_states
   use processes
   use process_stacks
   use event_transforms
-  
+
 <<Standard module head>>
 
 <<Decays: public>>
@@ -1008,8 +1196,6 @@ contains
 
 <<Decays: procedures>>
 
-<<Decays: tests>>
-
 end module decays
 
 @ %def decays
@@ -1020,6 +1206,7 @@ empty abstract type as the parent of both, with holds just the flavor
 information.
 <<Decays: types>>=
   type, abstract :: any_config_t
+     private
    contains
    <<Decays: any config: TBP>>
   end type any_config_t
@@ -1035,7 +1222,7 @@ information.
        class(any_config_t), intent(inout) :: object
      end subroutine any_config_final
   end interface
-  
+
 @ %def any_config_final
 @ The output is also deferred:
 <<Decays: any config: TBP>>=
@@ -1056,9 +1243,10 @@ We need this wrapper for preparing arrays that mix stable and unstable
 particles.
 <<Decays: types>>=
   type :: particle_config_t
+     private
      class(any_config_t), allocatable :: c
   end type particle_config_t
-  
+
 @ %def particle_config_t
 @
 \subsection{Final-State Particle}
@@ -1069,10 +1257,11 @@ wrapper for particle objects as above.  This also works
 around a compiler bug in gfortran.
 <<Decays: types>>=
   type, abstract :: any_t
+     private
    contains
    <<Decays: any: TBP>>
   end type any_t
-  
+
 @ %def any_t
 @ Finalizer, depends on the implementation.
 <<Decays: any: TBP>>=
@@ -1084,7 +1273,7 @@ around a compiler bug in gfortran.
        class(any_t), intent(inout) :: object
      end subroutine any_final
   end interface
-  
+
 @ %def any_final
 @ The output is also deferred:
 <<Decays: any: TBP>>=
@@ -1104,22 +1293,24 @@ We need this wrapper for preparing arrays that mix stable and unstable
 particles.
 <<Decays: types>>=
   type :: particle_out_t
+     private
      class(any_t), allocatable :: c
   end type particle_out_t
-  
+
 @ %def particle_config_t
-@ 
+@
 \subsection{Decay Term Configuration}
 A decay term is a distinct final state, corresponding to a process
 term.  Each decay process may give rise to several terms with,
 possibly, differing flavor content.
 <<Decays: types>>=
   type :: decay_term_config_t
+     private
      type(particle_config_t), dimension(:), allocatable :: prt
    contains
    <<Decays: decay term config: TBP>>
   end type decay_term_config_t
-  
+
 @ %def decay_term_config_t
 @ Finalizer, recursive.
 <<Decays: decay term config: TBP>>=
@@ -1134,7 +1325,7 @@ possibly, differing flavor content.
        end do
     end if
   end subroutine decay_term_config_final
-  
+
 @ %def decay_term_config_final
 @ Output, with optional indentation
 <<Decays: decay term config: TBP>>=
@@ -1215,7 +1406,7 @@ decay product is itself stable.
        end associate
     end do
   end subroutine decay_term_config_init
-  
+
 @ %def decay_term_config_init
 @ Recursively compute widths and branching ratios for all unstable particles.
 <<Decays: decay term config: TBP>>=
@@ -1231,7 +1422,7 @@ decay product is itself stable.
        end select
     end do
   end subroutine decay_term_config_compute
-  
+
 @ %def decay_term_config_compute
 @
 \subsection{Decay Term}
@@ -1241,6 +1432,7 @@ process instance.  When evaluated, it triggers further decays down the chain.
 Only unstable products are allocated as child particles.
 <<Decays: types>>=
   type :: decay_term_t
+     private
      type(decay_term_config_t), pointer :: config => null ()
      type(particle_out_t), dimension(:), allocatable :: particle_out
    contains
@@ -1261,7 +1453,7 @@ Only unstable products are allocated as child particles.
        end do
     end if
   end subroutine decay_term_final
-  
+
 @ %def decay_term_final
 @ Output.
 <<Decays: decay term: TBP>>=
@@ -1296,7 +1488,7 @@ Only unstable products are allocated as child particles.
        end select
     end do
   end subroutine decay_term_write_process_instances
-  
+
 @ %def decay_term_write_process_instances
 @ Initialization, using the configuration object.  We allocate
 particle objects in parallel to the particle configuration objects
@@ -1346,7 +1538,7 @@ which we use to initialize them, one at a time.
        end select
     end do
   end subroutine decay_term_make_rng
-    
+
 @ %def decay_term_make_rng
 @ Link the interactions for unstable decay products to the
 interaction of the parent process.
@@ -1364,7 +1556,7 @@ interaction of the parent process.
        end select
     end do
   end subroutine decay_term_link_interactions
-  
+
 @ %def decay_term_link_interactions
 @ Recursively generate a decay chain, for each of the unstable
 particles in the final state.
@@ -1404,8 +1596,11 @@ particles in the final state.
 \subsection{Decay Root Configuration}
 At the root of a decay chain, there is a parent process.  The decay root
 stores a pointer to the parent process and the set of decay configurations.
+<<Decays: public>>=
+  public :: decay_root_config_t
 <<Decays: types>>=
   type :: decay_root_config_t
+     private
      type(string_t) :: process_id
      type(process_t), pointer :: process => null ()
      class(model_data_t), pointer :: model => null ()
@@ -1413,7 +1608,7 @@ stores a pointer to the parent process and the set of decay configurations.
    contains
    <<Decays: decay root config: TBP>>
   end type decay_root_config_t
-  
+
 @ %def decay_root_config_t
 @ The finalizer is recursive since there may be cascade decays.
 <<Decays: decay root config: TBP>>=
@@ -1428,7 +1623,7 @@ stores a pointer to the parent process and the set of decay configurations.
        end do
     end if
   end subroutine decay_root_config_final
-  
+
 @ %def decay_root_config_final
 @ The output routine is also recursive, and it contains an adjustable
 indentation.
@@ -1464,7 +1659,7 @@ indentation.
     end if
 3   format (3x,A,2(1x,A))
   end subroutine decay_root_config_write_header
-    
+
   recursive subroutine decay_root_config_write_terms &
        (object, unit, indent, verbose)
     class(decay_root_config_t), intent(in) :: object
@@ -1481,7 +1676,7 @@ indentation.
        end do
     end if
   end subroutine decay_root_config_write_terms
-    
+
 @ %def decay_root_config_write
 @ Initialize for a named process and (optionally) a pre-determined
 number of terms.
@@ -1499,7 +1694,7 @@ number of terms.
        allocate (decay%term_config (n_terms))
     end if
   end subroutine decay_root_config_init
-       
+
 @ %def decay_root_config_init
 @ Declare a decay term, given an array of flavors.
 <<Decays: decay root config: TBP>>=
@@ -1515,7 +1710,7 @@ number of terms.
     type(process_stack_t), intent(in), optional :: process_stack
     call decay%term_config(i)%init (flv, stable, model, process_stack)
   end subroutine decay_root_config_init_term
-  
+
 @ %def decay_root_config_init_term
 @ Connect the decay root configuration with a process object (which should
 represent the parent process).  This includes initialization, therefore
@@ -1566,14 +1761,16 @@ versions are available for comparison.
        else
           call process%get_term_flv_out (i, flv)
        end if
+       allocate (m_prod (size (flv(:,1)%get_mass ())))
        m_prod = flv(:,1)%get_mass ()
        call flv%set_model (model)
+       allocate (m_dec (size (flv(:,1)%get_mass ())))
        m_dec = flv(:,1)%get_mass ()
        allocate (stable (size (flv, 1)))
        stable = flv(:,1)%is_stable ()
        call check_masses ()
        call decay%init_term (i, flv, stable, model, process_stack)
-       deallocate (flv, stable)
+       deallocate (flv, stable, m_prod, m_dec)
     end do
     decay%process => process
   contains
@@ -1583,7 +1780,7 @@ versions are available for comparison.
       ok = .true.
       do i = 1, size (m_prod)
          if (.not. stable(i)) then
-            if (m_prod(i) /= m_dec(i)) then
+            if (.not. nearly_equal (m_prod(i), m_dec(i))) then
                write (msg_buffer, "(A,A,A)")  "particle '", &
                     char (flv(i,1)%get_name ()), "':"
                call msg_message
@@ -1612,7 +1809,7 @@ versions are available for comparison.
        call decay%term_config(i)%compute ()
     end do
   end subroutine decay_root_config_compute
-  
+
 @ %def decay_root_config_compute
 @
 \subsection{Decay Root Instance}
@@ -1621,6 +1818,7 @@ points to the parent process.  The model pointer is separate because particle
 settings may be updated w.r.t.\ the parent process object.
 <<Decays: types>>=
   type, abstract :: decay_gen_t
+     private
      type(decay_term_t), dimension(:), allocatable :: term
      type(process_instance_t), pointer :: process_instance => null ()
      integer :: selected_mci = 0
@@ -1628,20 +1826,23 @@ settings may be updated w.r.t.\ the parent process object.
    contains
    <<Decays: decay gen: TBP>>
   end type decay_gen_t
-  
+
 @ %def decay_gen_t
 @
 The decay root represents the parent process.  When an event is generated, the
 generator selects the term to which the decay chain applies (if possible).
 
 The process instance is just a pointer.
+<<Decays: public>>=
+  public :: decay_root_t
 <<Decays: types>>=
   type, extends (decay_gen_t) :: decay_root_t
+     private
      type(decay_root_config_t), pointer :: config => null ()
    contains
    <<Decays: decay root: TBP>>
   end type decay_root_t
-  
+
 @ %def decay_root_t
 @ The finalizer has to recursively finalize the terms, but we can skip the
 process instance which is not explicitly allocated.
@@ -1656,8 +1857,8 @@ process instance which is not explicitly allocated.
           call object%term(i)%final ()
        end do
     end if
-  end subroutine decay_gen_final    
-  
+  end subroutine decay_gen_final
+
 @ %def decay_gen_final
 @ No extra finalization for the decay root.
 <<Decays: decay root: TBP>>=
@@ -1666,8 +1867,8 @@ process instance which is not explicitly allocated.
   subroutine decay_root_final (object)
     class(decay_root_t), intent(inout) :: object
     call object%base_final ()
-  end subroutine decay_root_final    
-  
+  end subroutine decay_root_final
+
 @ %def decay_gen_final
 @ Output.
 <<Decays: decay root: TBP>>=
@@ -1718,7 +1919,7 @@ process instance which is not explicitly allocated.
        call decay%term(decay%selected_term)%write_process_instances (unit, verb)
     end if
   end subroutine decay_gen_write_process_instances
-    
+
 @ %def decay_gen_write_process_instances
 @ Generic initializer.  All can be done recursively.
 <<Decays: decay gen: TBP>>=
@@ -1754,6 +1955,41 @@ link the child interactions to the parent process.
   end subroutine decay_root_init
 
 @ %def decay_root_init
+@ Explicitly set/get mci and term indices.  (Used in unit test.)
+<<Decays: decay gen: TBP>>=
+  procedure :: set_mci => decay_gen_set_mci
+  procedure :: set_term => decay_gen_set_term
+  procedure :: get_mci => decay_gen_get_mci
+  procedure :: get_term => decay_gen_get_term
+<<Decays: procedures>>=
+  subroutine decay_gen_set_mci (decay, i)
+    class(decay_gen_t), intent(inout) :: decay
+    integer, intent(in) :: i
+    decay%selected_mci = i
+  end subroutine decay_gen_set_mci
+
+  subroutine decay_gen_set_term (decay, i)
+    class(decay_gen_t), intent(inout) :: decay
+    integer, intent(in) :: i
+    decay%selected_term = i
+  end subroutine decay_gen_set_term
+
+  function decay_gen_get_mci (decay) result (i)
+    class(decay_gen_t), intent(inout) :: decay
+    integer :: i
+    i = decay%selected_mci
+  end function decay_gen_get_mci
+
+  function decay_gen_get_term (decay) result (i)
+    class(decay_gen_t), intent(inout) :: decay
+    integer :: i
+    i = decay%selected_term
+  end function decay_gen_get_term
+
+@ %def decay_gen_set_mci
+@ %def decay_gen_set_term
+@ %def decay_gen_get_mci
+@ %def decay_gen_get_term
 @ Implement random-number generators for unstable decay selection in
 all terms.  This is not recursive.
 
@@ -1771,7 +2007,7 @@ rng-spawning method, but not the pointer.
        call decay%term(i)%make_rng (process)
     end do
   end subroutine decay_gen_make_term_rng
-    
+
 @ %def decay_gen_make_term_rng
 @ Recursively link interactions of the enclosed decay terms to the
 corresponding terms in the current process instance.
@@ -1845,6 +2081,7 @@ The flavor component should be identical to the flavor component of the parent
 particle ([[unstable]] object).
 <<Decays: types>>=
   type, extends (decay_root_config_t) :: decay_config_t
+     private
      type(flavor_t) :: flv
      real(default) :: weight = 0
      real(default) :: integral = 0
@@ -1854,7 +2091,7 @@ particle ([[unstable]] object).
    contains
    <<Decays: decay config: TBP>>
   end type decay_config_t
-  
+
 @ %def decay_config_t
 @ The output routine extends the decay-root writer by listing numerical
 component values.
@@ -1883,7 +2120,7 @@ component values.
 2   format (3x,A,F11.6,1x,'%')
     call object%write_terms (unit, indent, verbose)
   end subroutine decay_config_write
-    
+
 @ %def decay_config_write
 @ Connect a decay configuration with a process object (which should
 represent the decay).  This includes initialization, therefore
@@ -1931,7 +2168,7 @@ particle.
     type(flavor_t), intent(in) :: flv
     decay%flv = flv
   end subroutine decay_config_set_flv
-  
+
 @ %def decay_config_set_flv
 @ Compute embedded branchings and the relative error.  This method does not
 apply to the decay root.
@@ -1947,7 +2184,7 @@ apply to the decay root.
        decay%rel_error = 0
     end if
   end subroutine decay_config_compute
-  
+
 @ %def decay_config_compute
 @
 \subsection{Decay Instance}
@@ -1959,12 +2196,13 @@ The process instance object is allocated via a pointer, so it automatically
 behaves as a target.
 <<Decays: types>>=
   type, extends (decay_gen_t) :: decay_t
+     private
      type(decay_config_t), pointer :: config => null ()
      class(rng_t), allocatable :: rng
    contains
    <<Decays: decay: TBP>>
   end type decay_t
-     
+
 @ %def decay_t
 @ The finalizer is recursive.
 <<Decays: decay: TBP>>=
@@ -1980,7 +2218,7 @@ behaves as a target.
     call object%process_instance%final ()
     deallocate (object%process_instance)
   end subroutine decay_final
-  
+
 @ %def decay_final
 @ Output.
 <<Decays: decay: TBP>>=
@@ -2057,7 +2295,7 @@ for the outgoing particles.
          n_in + n_vir + i_prt)
     call decay%link_term_interactions ()
   end subroutine decay_link_interactions
-    
+
 @ %def decay_link_interactions
 @ Determine a decay chain.  For each unstable particle we select one
 of the possible decay modes, and for each decay process we select one
@@ -2078,7 +2316,7 @@ generators.  We do not generate momenta, yet.
        call decay%term(i)%select_chain ()
     end do
   end subroutine decay_select_chain
-  
+
 @ %def decay_select_chain
 @ Generate a decay.  We first receive the beam momenta from the parent
 process (assuming that this is properly linked), then call the
@@ -2109,13 +2347,14 @@ chain afterwards.
        if (signal_is_pending ())  return
     end do
   end subroutine decay_generate
-    
+
 @ %def decay_generate
 @
 \subsection{Stable Particles}
 This is a stable particle.  The flavor can be ambiguous (e.g., partons).
 <<Decays: types>>=
   type, extends (any_config_t) :: stable_config_t
+     private
      type(flavor_t), dimension(:), allocatable :: flv
    contains
    <<Decays: stable config: TBP>>
@@ -2129,7 +2368,7 @@ This is a stable particle.  The flavor can be ambiguous (e.g., partons).
   subroutine stable_config_final (object)
     class(stable_config_t), intent(inout) :: object
   end subroutine stable_config_final
-  
+
 @ %def stable_config_final
 @ Output.
 <<Decays: stable config: TBP>>=
@@ -2151,7 +2390,7 @@ This is a stable particle.  The flavor can be ambiguous (e.g., partons).
     end do
     write (u, *)
   end subroutine stable_config_write
-  
+
 @ %def stable_config_write
 @ Initializer.  We are presented with an array of flavors, but there may be
 double entries which we remove, so we store only the distinct flavors.
@@ -2172,12 +2411,13 @@ double entries which we remove, so we store only the distinct flavors.
     allocate (config%flv (count (mask)))
     config%flv = pack (flv, mask)
   end subroutine stable_config_init
-  
+
 @ %def stable_config_init
 @ Here is the corresponding object instance.  Except for the pointer
 to the configuration, there is no content.
 <<Decays: types>>=
   type, extends (any_t) :: stable_t
+     private
      type(stable_config_t), pointer :: config => null ()
    contains
    <<Decays: stable: TBP>>
@@ -2202,7 +2442,7 @@ to the configuration, there is no content.
     integer, intent(in), optional :: unit, indent
     call object%config%write (unit, indent)
   end subroutine stable_write
-  
+
 @ %def stable_write
 @ Initializer: just assign the configuration.
 <<Decays: stable: TBP>>=
@@ -2213,7 +2453,7 @@ to the configuration, there is no content.
     type(stable_config_t), intent(in), target :: config
     stable%config => config
   end subroutine stable_init
-  
+
 @ %def stable_init
 @
 \subsection{Unstable Particles}
@@ -2225,8 +2465,11 @@ The total width, absolute and relative error are stored as
 [[integral]], [[abs_error]], and [[rel_error]], respectively.
 
 The flavor must be unique in this case.
+<<Decays: public>>=
+  public :: unstable_config_t
 <<Decays: types>>=
   type, extends (any_config_t) :: unstable_config_t
+     private
      type(flavor_t) :: flv
      real(default) :: integral = 0
      real(default) :: abs_error = 0
@@ -2236,7 +2479,7 @@ The flavor must be unique in this case.
    contains
    <<Decays: unstable config: TBP>>
   end type unstable_config_t
-  
+
 @ %def unstable_config_t
 @ Finalizer.  The branching configuration can be a recursive structure.
 <<Decays: unstable config: TBP>>=
@@ -2282,18 +2525,25 @@ The flavor must be unique in this case.
        end do
     end if
   end subroutine unstable_config_write
-  
+
 @ %def unstable_config_write
 @ Initializer.  For the unstable particle, the flavor is unique.
 <<Decays: unstable config: TBP>>=
   procedure :: init => unstable_config_init
 <<Decays: procedures>>=
-  subroutine unstable_config_init (config, flv)
-    class(unstable_config_t), intent(out) :: config
+  subroutine unstable_config_init (unstable, flv, set_decays, model)
+    class(unstable_config_t), intent(out) :: unstable
     type(flavor_t), intent(in) :: flv
-    config%flv = flv
+    logical, intent(in), optional :: set_decays
+    class(model_data_t), intent(in), optional, target :: model
+    type(string_t), dimension(:), allocatable :: decay
+    unstable%flv = flv
+    if (present (set_decays)) then
+       call unstable%flv%get_decays (decay)
+       call unstable%init_decays (decay, model)
+    end if
   end subroutine unstable_config_init
-  
+
 @ %def unstable_config_init
 @ Further initialization: determine the number of decay modes.  We can assume
 that the flavor of the particle has been set already.
@@ -2324,8 +2574,24 @@ process names.
        end associate
     end do
   end subroutine unstable_config_init_decays
-  
+
 @ %def unstable_config_init
+@ Explicitly connect a specific decay with a process.  This is used only in
+unit tests.
+<<Decays: unstable config: TBP>>=
+  procedure :: connect_decay => unstable_config_connect_decay
+<<Decays: procedures>>=
+  subroutine unstable_config_connect_decay (unstable, i, process, model)
+    class(unstable_config_t), intent(inout) :: unstable
+    integer, intent(in) :: i
+    type(process_t), intent(in), target :: process
+    class(model_data_t), intent(in), target :: model
+    associate (decay => unstable%decay_config(i))
+      call decay%connect (process, model)
+    end associate
+  end subroutine unstable_config_connect_decay
+
+@ %def unstable_config_connect_decay
 @ Compute the total width and branching ratios, initializing the decay
 selector.
 <<Decays: unstable config: TBP>>=
@@ -2350,12 +2616,15 @@ selector.
             = unstable%selector%get_weight (i)
     end do
   end subroutine unstable_config_compute
-    
+
 @ %def unstable_config_compute
 @
 Now we define the instance of an unstable particle.
+<<Decays: public>>=
+  public :: unstable_t
 <<Decays: types>>=
   type, extends (any_t) :: unstable_t
+     private
      type(unstable_config_t), pointer :: config => null ()
      class(rng_t), allocatable :: rng
      integer :: selected_decay = 0
@@ -2363,7 +2632,7 @@ Now we define the instance of an unstable particle.
    contains
    <<Decays: unstable: TBP>>
   end type unstable_t
-  
+
 @ %def unstable_t
 @ Recursive finalizer.
 <<Decays: unstable: TBP>>=
@@ -2378,7 +2647,7 @@ Now we define the instance of an unstable particle.
        end do
     end if
   end subroutine unstable_final
-  
+
 @ %def unstable_final
 @ Output.
 <<Decays: unstable: TBP>>=
@@ -2402,7 +2671,7 @@ Now we define the instance of an unstable particle.
        write (u, "(5x,A)")  "Sel. decay  = [undefined]"
     end if
   end subroutine unstable_write
-    
+
 @ %def unstable_write
 @ Write the embedded process instances.
 <<Decays: unstable: TBP>>=
@@ -2418,7 +2687,7 @@ Now we define the instance of an unstable particle.
             write_process_instances (unit, verbose)
     end if
   end subroutine unstable_write_process_instances
-  
+
 @ %def unstable_write_process_instances
 @ Initialization, using the configuration object.
 <<Decays: unstable: TBP>>=
@@ -2434,7 +2703,7 @@ Now we define the instance of an unstable particle.
        call unstable%decay(i)%init (config%decay_config(i))
     end do
   end subroutine unstable_init
-  
+
 @ %def unstable_init
 @ Recursively link interactions to the parent process.  [[i_prt]] is
 the index of the current outgoing particle in the parent interaction.
@@ -2450,7 +2719,7 @@ the index of the current outgoing particle in the parent interaction.
        call unstable%decay(i)%link_interactions (i_prt, trace)
     end do
   end subroutine unstable_link_interactions
-    
+
 @ %def unstable_link_interactions
 @ Import the random-number generator state.
 <<Decays: unstable: TBP>>=
@@ -2461,7 +2730,7 @@ the index of the current outgoing particle in the parent interaction.
     class(rng_t), intent(inout), allocatable :: rng
     call move_alloc (from = rng, to = unstable%rng)
   end subroutine unstable_import_rng
-  
+
 @ %def unstable_import_rng
 @ Generate a decay chain.  First select a decay mode, then call the
 [[select_chain]] method of the selected mode.
@@ -2475,7 +2744,7 @@ the index of the current outgoing particle in the parent interaction.
     unstable%selected_decay = unstable%config%selector%select (x)
     call unstable%decay(unstable%selected_decay)%select_chain ()
   end subroutine unstable_select_chain
-    
+
 @ %def unstable_select_chain
 @ Generate a decay event.
 <<Decays: unstable: TBP>>=
@@ -2485,7 +2754,7 @@ the index of the current outgoing particle in the parent interaction.
     class(unstable_t), intent(inout) :: unstable
     call unstable%decay(unstable%selected_decay)%generate ()
   end subroutine unstable_generate
-    
+
 @ %def unstable_generate
 @
 \subsection{Decay Chain}
@@ -2509,17 +2778,18 @@ include information from the associated decay object for easier
 debugging.  This is a decay chain entry:
 <<Decays: types>>=
   type, extends (connected_state_t) :: decay_chain_entry_t
+     private
      integer :: index = 0
      type(decay_config_t), pointer :: config => null ()
      integer :: selected_mci = 0
      integer :: selected_term = 0
      type(decay_chain_entry_t), pointer :: previous => null ()
   end type decay_chain_entry_t
-     
+
 @ %def decay_chain_entry_t
 @ This is the complete chain; we need just a pointer to the last
 entry.  We also include a pointer to the master process instance,
-which serves as the seed for the decay chain.  
+which serves as the seed for the decay chain.
 
 The evaluator [[correlated_trace]] traces over all quantum numbers
 for the final spin-correlated (but color-summed) evaluator of the
@@ -2531,8 +2801,11 @@ Note: This trace is summed over color, so color is treated exactly
 when computing spin correlations.  However, we do not keep
 non-diagonal color correlations.  When an event is accepted, we
 compute probabilities for all color states and can choose one of them.
+<<Decays: public>>=
+  public :: decay_chain_t
 <<Decays: types>>=
   type :: decay_chain_t
+     private
      type(process_instance_t), pointer :: process_instance => null ()
      integer :: selected_term = 0
      type(evaluator_t) :: correlated_trace
@@ -2540,7 +2813,7 @@ compute probabilities for all color states and can choose one of them.
    contains
    <<Decays: decay chain: TBP>>
   end type decay_chain_t
-  
+
 @ %def decay_chain_t
 @ The finalizer recursively deletes and deallocates the entries.
 <<Decays: decay chain: TBP>>=
@@ -2557,7 +2830,7 @@ compute probabilities for all color states and can choose one of them.
     end do
     call object%correlated_trace%final ()
   end subroutine decay_chain_final
-  
+
 @ %def decay_chain_final
 @ Doing output recursively allows us to display the chain in
 chronological order.
@@ -2592,7 +2865,7 @@ chronological order.
       end if
     end subroutine write_entries
   end subroutine decay_chain_write
-    
+
 @ %def decay_chain_write
 @
 Build a decay chain, recursively following the selected decays and
@@ -2617,7 +2890,7 @@ any previous contents.
     call qn_mask%init (mask_f = .true., mask_c = .true., mask_h = .true.)
     call chain%correlated_trace%init_qn_sum (int_last_decay, qn_mask)
   end subroutine decay_chain_build
-    
+
 @ %def decay_chain_build
 @ Build the entries that correspond to a decay term.  We have to scan
 all unstable particles.
@@ -2638,7 +2911,7 @@ all unstable particles.
        end select
     end do
   end subroutine decay_chain_build_term_entries
-  
+
 @ %def decay_chain_build_term_entries
 @ Build the entries that correspond to a specific decay.  The
 decay term should have been determined, so we allocate a decay chain
@@ -2706,7 +2979,7 @@ in the decay chain generation.
     chain%last => entry
     call chain%build_term_entries (decay%term(decay%selected_term))
   end subroutine decay_chain_build_decay_entries
-    
+
 @ %def decay_chain_build_decay_entries
 @ Recursively fill the decay chain with momenta and evaluate the
 matrix elements.  Since all evaluators should have correct source
@@ -2736,7 +3009,7 @@ state, which is taken for the convolution).
       end if
     end subroutine evaluate
   end subroutine decay_chain_evaluate
-  
+
 @ %def decay_chain_evaluate
 @ Return the probability of a decay chain.  This is given as the trace
 of the density matrix with intermediate helicity correlations,
@@ -2752,7 +3025,7 @@ matrix element, and this must be real.
     real(default) :: x
     x = real (chain%correlated_trace%get_matrix_element (1))
   end function decay_chain_get_probability
-  
+
 @ %def decay_chain_get_probability
 @
 \subsection{Decay as Event Transform}
@@ -2763,13 +3036,14 @@ transform) abstract type.
   public :: evt_decay_t
 <<Decays: types>>=
   type, extends (evt_t) :: evt_decay_t
+     private
      type(decay_root_config_t) :: decay_root_config
      type(decay_root_t) :: decay_root
      type(decay_chain_t) :: decay_chain
    contains
    <<Decays: evt decay: TBP>>
   end type evt_decay_t
-  
+
 @ %def evt_decay_t
 @ Output.  We display the currently selected decay tree, which
 includes configuration data, and the decay chain, i.e., the evaluators.
@@ -2800,7 +3074,7 @@ includes configuration data, and the decay chain, i.e., the evaluators.
        call write_separator (u, 2)
     end if
   end subroutine evt_decay_write
-    
+
 @ %def evt_decay_write
 @ Connect with a process instance and process.  This initializes the
 decay configuration.  The process stack is used to look for process
@@ -2823,7 +3097,7 @@ the decay tree.  This is done once for all events.
     call evt%decay_root_config%compute ()
     call evt%decay_root%init (evt%decay_root_config, evt%process_instance)
   end subroutine evt_decay_connect
-  
+
 @ %def evt_decay_connect
 @ Prepare a new event: Select a decay chain and build the corresponding chain
 object.
@@ -2839,7 +3113,7 @@ object.
     call evt%decay_root%select_chain ()
     call evt%decay_chain%build (evt%decay_root)
   end subroutine evt_decay_prepare_new_event
-  
+
 @ %def evt_decay_prepare_new_event
 @ Generate a weighted event and assign the resulting weight
 (probability).  We use a chain initialized by the preceding
@@ -2849,13 +3123,13 @@ subroutine, fill it with momenta and evaluate.
 <<Decays: procedures>>=
   subroutine evt_decay_generate_weighted (evt, probability)
     class(evt_decay_t), intent(inout) :: evt
-    real(default), intent(out) :: probability
+    real(default), intent(inout) :: probability
     call evt%decay_root%generate ()
     if (signal_is_pending ())  return
     call evt%decay_chain%evaluate ()
     probability = evt%decay_chain%get_probability ()
   end subroutine evt_decay_generate_weighted
-  
+
 @ %def evt_decay_generate_weighted
 @ To create a usable event, we have to transform the interaction into a
 particle set; this requires factorization for the correlated density matrix,
@@ -2878,69 +3152,194 @@ according to the factorization mode.
          factorization_mode, keep_correlations, r)
     call evt%tag_incoming ()
   end subroutine evt_decay_make_particle_set
-    
+
 @ %def event_decay_make_particle_set
 @
+\subsubsection{Auxiliary}
 Eliminate numerical noise for the associated process instances.
 <<Decays: public>>=
   public :: pacify
 <<Decays: interfaces>>=
   interface pacify
      module procedure pacify_decay
+     module procedure pacify_decay_gen
+     module procedure pacify_term
+     module procedure pacify_unstable
   end interface pacify
 <<Decays: procedures>>=
   subroutine pacify_decay (evt)
     class(evt_decay_t), intent(inout) :: evt
     call pacify_decay_gen (evt%decay_root)
-  contains
-    recursive subroutine pacify_decay_gen (decay)
-      class(decay_gen_t), intent(inout) :: decay
-      if (associated (decay%process_instance)) then
-         call pacify (decay%process_instance)
-      end if
-      if (decay%selected_term > 0) then
-         call pacify_term (decay%term(decay%selected_term))
-      end if
-    end subroutine pacify_decay_gen
-    recursive subroutine pacify_term (term)
-      class(decay_term_t), intent(inout) :: term
-      integer :: i
-      do i = 1, size (term%particle_out)
-         select type (unstable => term%particle_out(i)%c)
-         type is (unstable_t);  call pacify_unstable (unstable)
-         end select
-      end do
-    end subroutine pacify_term
-    recursive subroutine pacify_unstable (unstable)
-      class(unstable_t), intent(inout) :: unstable
-      if (unstable%selected_decay > 0) then
-         call pacify_decay_gen (unstable%decay(unstable%selected_decay))
-      end if
-    end subroutine pacify_unstable
   end subroutine pacify_decay
-  
+
+  recursive subroutine pacify_decay_gen (decay)
+    class(decay_gen_t), intent(inout) :: decay
+    if (associated (decay%process_instance)) then
+       call pacify (decay%process_instance)
+    end if
+    if (decay%selected_term > 0) then
+       call pacify_term (decay%term(decay%selected_term))
+    end if
+  end subroutine pacify_decay_gen
+
+  recursive subroutine pacify_term (term)
+    class(decay_term_t), intent(inout) :: term
+    integer :: i
+    do i = 1, size (term%particle_out)
+       select type (unstable => term%particle_out(i)%c)
+       type is (unstable_t);  call pacify_unstable (unstable)
+       end select
+    end do
+  end subroutine pacify_term
+
+  recursive subroutine pacify_unstable (unstable)
+    class(unstable_t), intent(inout) :: unstable
+    if (unstable%selected_decay > 0) then
+       call pacify_decay_gen (unstable%decay(unstable%selected_decay))
+    end if
+  end subroutine pacify_unstable
+
 @ %def pacify
+@ Prepare specific configurations for use in unit tests.
+<<Decays: unstable config: TBP>>=
+  procedure :: init_test_case1
+  procedure :: init_test_case2
+<<Decays: procedures>>=
+  subroutine init_test_case1 (unstable, i, flv, integral, relerr, model)
+    class(unstable_config_t), intent(inout) :: unstable
+    integer, intent(in) :: i
+    type(flavor_t), dimension(:,:), intent(in) :: flv
+    real(default), intent(in) :: integral
+    real(default), intent(in) :: relerr
+    class(model_data_t), intent(in), target :: model
+    associate (decay => unstable%decay_config(i))
+      allocate (decay%term_config (1))
+      call decay%init_term (1, flv, stable = [.true., .true.], model=model)
+      decay%integral = integral
+      decay%abs_error = integral * relerr
+    end associate
+  end subroutine init_test_case1
+
+  subroutine init_test_case2 (unstable, flv1, flv21, flv22, model)
+    class(unstable_config_t), intent(inout) :: unstable
+    type(flavor_t), dimension(:,:), intent(in) :: flv1, flv21, flv22
+    class(model_data_t), intent(in), target :: model
+    associate (decay => unstable%decay_config(1))
+      decay%integral = 1.e-3_default
+      decay%abs_error = decay%integral * .01_default
+
+      allocate (decay%term_config (1))
+      call decay%init_term (1, flv1, stable = [.false., .true.], model=model)
+
+      select type (w => decay%term_config(1)%prt(1)%c)
+      type is (unstable_config_t)
+
+         associate (w_decay => w%decay_config(1))
+           w_decay%integral = 2._default
+           allocate (w_decay%term_config (1))
+           call w_decay%init_term (1, flv21, stable = [.true., .true.], &
+                model=model)
+         end associate
+         associate (w_decay => w%decay_config(2))
+           w_decay%integral = 1._default
+           allocate (w_decay%term_config (1))
+           call w_decay%init_term (1, flv22, stable = [.true., .true.], &
+                model=model)
+         end associate
+         call w%compute ()
+
+      end select
+    end associate
+  end subroutine init_test_case2
+
+@ %def init_test_case1
+@ %def init_test_case2
 @
 \subsection{Unit tests}
-<<Decays: public>>=
+Test module, followed by the corresponding implementation module.
+<<[[decays_ut.f90]]>>=
+<<File header>>
+
+module decays_ut
+  use unit_tests
+  use decays_uti
+
+<<Standard module head>>
+
+<<Decays: public test>>
+
+<<Decays: public test auxiliary>>
+
+contains
+
+<<Decays: test driver>>
+
+end module decays_ut
+@ %def decays_ut
+@
+<<[[decays_uti.f90]]>>=
+<<File header>>
+
+module decays_uti
+
+<<Use kinds>>
+<<Use strings>>
+  use os_interface
+  use sm_qcd
+  use model_data
+  use state_matrices, only: FM_IGNORE_HELICITY
+  use interactions, only: reset_interaction_counter
+  use flavors
+  use process_libraries
+  use rng_base
+  use mci_base
+  use mci_midpoint
+  use phs_base
+  use phs_single
+  use prc_core
+  use prc_test, only: prc_test_create_library
+  use processes
+  use process_stacks
+
+  use decays
+
+  use rng_base_ut, only: rng_test_t, rng_test_factory_t
+
+<<Standard module head>>
+
+<<Decays: public test auxiliary>>
+
+<<Decays: test declarations>>
+
+contains
+
+<<Decays: tests>>
+
+<<Decays: test auxiliary>>
+
+end module decays_uti
+
+@ %def decays_uti
+@ API: driver for the unit tests below.
+<<Decays: public test>>=
   public :: decays_test
-<<Decays: tests>>=
+<<Decays: test driver>>=
   subroutine decays_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
   <<Decays: execute tests>>
   end subroutine decays_test
-  
+
 @ %def decays_test
 @
 \subsubsection{Testbed}
 As a variation of the [[prepare_test_process]] routine used elsewhere, we
 define here a routine that creates two processes (scattering $ss\to ss$ and
 decay $s\to f\bar f$), compiles and integrates them and prepares for event
-generation. 
-<<Decays: public>>=
+generation.
+<<Decays: public test auxiliary>>=
   public :: prepare_testbed
-<<Decays: tests>>=
+<<Decays: test auxiliary>>=
   subroutine prepare_testbed &
        (lib, process_stack, prefix, os_data, &
         scattering, decay, decay_rest_frame)
@@ -2978,7 +3377,7 @@ generation.
        field_data => model%get_field_ptr (25)
        call field_data%set (p_is_stable = .false.)
     end if
-    
+
     call prc_test_create_library (libname, lib, &
          scattering = .true., decay = .true., &
          procname1 = procname1, procname2 = procname2)
@@ -3021,7 +3420,7 @@ generation.
        call process%prepare_simulation (1)
        call process_stack%push (process)
     end if
-    
+
     if (decay) then
        allocate (rng_test_factory_t :: rng_factory)
        allocate (model_copy)
@@ -3056,7 +3455,7 @@ generation.
        call process%prepare_simulation (1)
        call process_stack%push (process)
     end if
-    
+
     call model%final ()
 
   end subroutine prepare_testbed
@@ -3070,13 +3469,13 @@ integral values by hand, so we do not need to evaluate processes, yet.
   call test (decays_1, "decays_1", &
        "branching and decay configuration", &
        u, results)
+<<Decays: test declarations>>=
+  public :: decays_1
 <<Decays: tests>>=
   subroutine decays_1 (u)
     integer, intent(in) :: u
     type(os_data_t) :: os_data
     type(model_data_t), target :: model
-!    type(model_t), pointer :: model
-!    type(model_list_t) :: model_list
     type(flavor_t) :: flv_h
     type(flavor_t), dimension(2,1) :: flv_hbb, flv_hgg
     type(unstable_config_t), allocatable :: unstable
@@ -3090,8 +3489,6 @@ integral values by hand, so we do not need to evaluate processes, yet.
 
     call os_data_init (os_data)
     call model%init_sm_test ()
-!    call model_list%read_model (var_str ("SM"), &
-!         var_str ("SM.mdl"), os_data, model)
 
     call flv_h%init (25, model)
     call flv_hbb(:,1)%init ([5, -5], model)
@@ -3101,37 +3498,29 @@ integral values by hand, so we do not need to evaluate processes, yet.
     write (u, "(A)")
 
     allocate (unstable)
-    unstable%flv = flv_h
+    call unstable%init (flv_h)
     call unstable%init_decays ([var_str ("h_bb"), var_str ("h_gg")], model)
-    
-    associate (decay => unstable%decay_config(1))
-      allocate (decay%term_config (1))
-      call decay%init_term (1, flv_hbb, stable = [.true., .true.], model=model)
-      decay%integral = 1.234e-3_default
-      decay%abs_error = decay%integral * .02_default
-    end associate
-    
-    associate (decay => unstable%decay_config(2))
-      allocate (decay%term_config (1))
-      call decay%init_term (1, flv_hgg, stable = [.true., .true.], model=model)
-      decay%integral = 3.085e-4_default
-      decay%abs_error = decay%integral * .08_default
-    end associate
-    
+
+    call unstable%init_test_case1 &
+         (1, flv_hbb, 1.234e-3_default, .02_default, model)
+
+    call unstable%init_test_case1 &
+         (2, flv_hgg, 3.085e-4_default, .08_default, model)
+
     call unstable%compute ()
     call unstable%write (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
 
     call unstable%final ()
     call model%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: decays_1"
-    
+
   end subroutine decays_1
-  
+
 @ %def decays_1
 @
 \subsubsection{Cascade decay configuration}
@@ -3141,17 +3530,16 @@ by another branching.
   call test (decays_2, "decays_2", &
        "cascade decay configuration", &
        u, results)
+<<Decays: test declarations>>=
+  public :: decays_2
 <<Decays: tests>>=
   subroutine decays_2 (u)
     integer, intent(in) :: u
     type(os_data_t) :: os_data
-!    type(model_t), pointer :: model
-!    type(model_list_t) :: model_list
     type(model_data_t), target :: model
     type(flavor_t) :: flv_h, flv_wp, flv_wm
     type(flavor_t), dimension(2,1) :: flv_hww, flv_wud, flv_wen
     type(unstable_config_t), allocatable :: unstable
-    type(string_t), dimension(:), allocatable :: decay
 
     write (u, "(A)")  "* Test output: decays_2"
     write (u, "(A)")  "*   Purpose: Set up cascade branching"
@@ -3160,10 +3548,7 @@ by another branching.
     write (u, "(A)")  "* Initialize environment"
     write (u, "(A)")
 
-!    call syntax_model_file_init ()
     call os_data_init (os_data)
-!    call model_list%read_model (var_str ("SM"), &
-!         var_str ("SM.mdl"), os_data, model)
     call model%init_sm_test ()
 
     call model%set_unstable (25, [var_str ("h_ww")])
@@ -3175,61 +3560,30 @@ by another branching.
     call flv_wm%init (-24, model)
     call flv_wud(:,1)%init ([2, -1], model)
     call flv_wen(:,1)%init ([-11, 12], model)
-    
+
 
     write (u, "(A)")  "* Set up branching and decay"
     write (u, "(A)")
 
     allocate (unstable)
-    unstable%flv = flv_h
-    call unstable%flv%get_decays (decay)
-    call unstable%init_decays (decay, model)
-    
-    associate (decay => unstable%decay_config(1))
+    call unstable%init (flv_h, set_decays=.true., model=model)
 
-      decay%integral = 1.e-3_default
-      decay%abs_error = decay%integral * .01_default
+    call unstable%init_test_case2 (flv_hww, flv_wud, flv_wen, model)
 
-      allocate (decay%term_config (1))
-      call decay%init_term (1, flv_hww, stable = [.false., .true.], model=model)
-
-      select type (w => decay%term_config(1)%prt(1)%c)
-      type is (unstable_config_t)
-
-         associate (w_decay => w%decay_config(1))
-           w_decay%integral = 2._default
-           allocate (w_decay%term_config (1))
-           call w_decay%init_term (1, flv_wud, stable = [.true., .true.], &
-                model=model)
-         end associate
-         associate (w_decay => w%decay_config(2))
-           w_decay%integral = 1._default
-           allocate (w_decay%term_config (1))
-           call w_decay%init_term (1, flv_wen, stable = [.true., .true.], &
-                model=model)
-         end associate
-         call w%compute ()
-
-      end select
-      
-    end associate
-    
     call unstable%compute ()
     call unstable%write (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
 
     call unstable%final ()
     call model%final ()
-!    call model_list%final ()
-!    call syntax_model_file_final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: decays_2"
-    
+
   end subroutine decays_2
-  
+
 @ %def decays_2
 @
 \subsubsection{Decay and Process Object}
@@ -3239,6 +3593,8 @@ with an actual process object.
   call test (decays_3, "decays_3", &
        "associate process", &
        u, results)
+<<Decays: test declarations>>=
+  public :: decays_3
 <<Decays: tests>>=
   subroutine decays_3 (u)
     integer, intent(in) :: u
@@ -3250,6 +3606,7 @@ with an actual process object.
     type(process_stack_t) :: process_stack
     type(process_t), pointer :: process
     type(unstable_config_t), allocatable :: unstable
+    type(flavor_t) :: flv
 
     write (u, "(A)")  "* Test output: decays_3"
     write (u, "(A)")  "*   Purpose: Connect a decay configuration &
@@ -3270,25 +3627,25 @@ with an actual process object.
     process => process_stack%get_process_ptr (procname2)
     model => process%get_model_ptr ()
     call process%write (.false., u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Set up branching and decay"
     write (u, "(A)")
 
+    call flv%init (25, model)
+
     allocate (unstable)
-    call unstable%flv%init (25, model)
+    call unstable%init (flv)
     call unstable%init_decays ([procname2], model)
-    
+
     write (u, "(A)")  "* Connect decay with process object"
     write (u, "(A)")
 
-    associate (decay => unstable%decay_config(1))
-      call decay%connect (process, model)
-    end associate
-    
+    call unstable%connect_decay (1, process, model)
+
     call unstable%compute ()
     call unstable%write (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
 
@@ -3297,7 +3654,7 @@ with an actual process object.
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: decays_3"
-    
+
   end subroutine decays_3
 
 @ %def decays_3
@@ -3309,6 +3666,8 @@ decay event.
   call test (decays_4, "decays_4", &
        "decay instance", &
        u, results)
+<<Decays: test declarations>>=
+  public :: decays_4
 <<Decays: tests>>=
   subroutine decays_4 (u)
     integer, intent(in) :: u
@@ -3320,6 +3679,7 @@ decay event.
     type(process_stack_t) :: process_stack
     type(process_t), pointer :: process
     type(unstable_config_t), allocatable, target :: unstable
+    type(flavor_t) :: flv
     type(unstable_t), allocatable :: instance
 
     write (u, "(A)")  "* Test output: decays_4"
@@ -3342,16 +3702,16 @@ decay event.
     process => process_stack%get_process_ptr (procname2)
     model => process%get_model_ptr ()
 
+    call flv%init (25, model)
+
     allocate (unstable)
-    call unstable%flv%init (25, model)
+    call unstable%init (flv)
     call unstable%init_decays ([procname2], model)
-    
+
     call model%set_unstable (25, [procname2])
 
-    associate (decay => unstable%decay_config(1))
-      call decay%connect (process, model)
-    end associate
-    
+    call unstable%connect_decay (1, process, model)
+
     call unstable%compute ()
 
     allocate (rng_test_t :: rng)
@@ -3366,17 +3726,17 @@ decay event.
 
     write (u, *)
     call instance%write_process_instances (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
 
     call instance%final ()
     call process_stack%final ()
     call unstable%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: decays_4"
-    
+
   end subroutine decays_4
 
 @ %def decays_4
@@ -3388,6 +3748,8 @@ f$.
   call test (decays_5, "decays_5", &
        "parent process and decay", &
        u, results)
+<<Decays: test declarations>>=
+  public :: decays_5
 <<Decays: tests>>=
   subroutine decays_5 (u)
     integer, intent(in) :: u
@@ -3447,14 +3809,14 @@ f$.
     write (u, "(A)")  "* Select decay chain"
     write (u, "(A)")
 
-    decay_root%selected_mci = 1
+    call decay_root%set_mci (1)
     !!! Not yet implemented; there is only one term anyway:
     ! call process_instance%select_i_term (decay_root%selected_term)
-    decay_root%selected_term = 1
+    call decay_root%set_term (1)
     call decay_root%select_chain ()
 
     call decay_chain%build (decay_root)
-    
+
     call decay_root%write (u)
 
     write (u, "(A)")
@@ -3462,31 +3824,22 @@ f$.
     write (u, "(A)")
 
     call process%generate_unweighted_event (process_instance, &
-         decay_root%selected_mci)
+         decay_root%get_mci ())
     call process_instance%evaluate_event_data ()
-    
+
     call decay_root%generate ()
-    
-    associate (term => decay_root%term(1))
-      do i = 1, 2
-         select type (unstable => term%particle_out(i)%c)
-         type is (unstable_t)
-            associate (decay => unstable%decay(1))
-              call pacify (decay%process_instance)
-            end associate
-         end select
-      end do
-    end associate
-    
+
+    call pacify (decay_root)
+
     write (u, "(A)")  "* Process instances"
     write (u, "(A)")
-    
+
     call decay_root%write_process_instances (u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Generate decay chain"
     write (u, "(A)")
-    
+
     call decay_chain%evaluate ()
     call decay_chain%write (u)
 
@@ -3502,13 +3855,13 @@ f$.
     call decay_root_config%final ()
     call process_instance%final ()
     deallocate (process_instance)
-    
+
     call process%final ()
     call process_stack%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: decays_5"
-    
+
   end subroutine decays_5
 
 @ %def decays_5
@@ -3520,6 +3873,8 @@ $s\to f\bar f$.
   call test (decays_6, "decays_6", &
        "evt_decay object", &
        u, results)
+<<Decays: test declarations>>=
+  public :: decays_6
 <<Decays: tests>>=
   subroutine decays_6 (u)
     integer, intent(in) :: u
@@ -3560,7 +3915,7 @@ $s\to f\bar f$.
     call process_instance%init (process)
     call process_instance%setup_event_data ()
     call process_instance%init_simulation (1)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Initialize decay object"
 
@@ -3591,12 +3946,12 @@ $s\to f\bar f$.
     call evt_decay%final ()
     call process_instance%final ()
     deallocate (process_instance)
-    
+
     call process_stack%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: decays_6"
-    
+
   end subroutine decays_6
 
 @ %def decays_6
@@ -3609,51 +3964,30 @@ the shower in the sense of matching as well as merging.
 
 module shower
 
-<<Use kinds with double>>
+<<Use kinds>>
 <<Use strings>>
   use io_units
-  use constants, only: pi, twopi, zero
   use format_utils, only: write_separator
-  use string_utils
-  use unit_tests
   use system_defs, only: LF
   use os_interface
   use diagnostics
   use lorentz
-  use system_dependencies, only: LHAPDF5_AVAILABLE, LHAPDF6_AVAILABLE
-  use lhapdf !NODEP!
-  use pdf_builtin !NODEP!
-  
+  use pdf
+  use subevents, only: PRT_BEAM_REMNANT, PRT_INCOMING, PRT_OUTGOING
+
   use shower_base
-  use shower_partons
-  use shower_core
-  use shower_pythia6
-  use mlm_matching
-  use ckkw_base
-  use ckkw_matching
-  use powheg
-  
+  use matching_base
+  use powheg_matching, only: powheg_matching_t
+
   use sm_qcd
-  use particles
-  use state_matrices, only: FM_IGNORE_HELICITY
   use model_data
-  use variables
-  use beam_structures
-  use process_libraries
   use rng_base
-  use mci_base
-  use phs_base
 
   use event_transforms
   use models
   use hep_common
   use processes
   use process_stacks
-  use rng_tao
-  use mci_midpoint
-  use phs_single
-  use prc_core
-  use prc_omega
 
 <<Standard module head>>
 
@@ -3667,8 +4001,6 @@ contains
 
 <<Shower: procedures>>
 
-<<Shower: tests>>
-
 end module shower
 @ %def shower
 @
@@ -3676,12 +4008,9 @@ end module shower
 [[POWHEG_TESTING]] allows to disable the parton shower for validation
 and testing of the POWHEG procedure.
 <<Shower: parameters>>=
-  logical, parameter :: DEBUG_EVT_SHOWER = .false.
   logical, parameter :: POWHEG_TESTING = .false.
-  logical, parameter :: TEST_SUDAKOV = .false.
-  logical, parameter :: TO_FILE = .false.
 
-@ %def DEBUG_EVT_SHOWER POWHEG_TESTING TO_FILE
+@ %def POWHEG_TESTING
 @
 \subsection{Event Transform}
 The event transforms can do more than mere showering.  Especially, it
@@ -3692,19 +4021,17 @@ hadrons that can be generated in the shower.
   public :: evt_shower_t
 <<Shower: types>>=
   type, extends (evt_t) :: evt_shower_t
-     type(shower_settings_t) :: settings
      class(shower_base_t), allocatable :: shower
+     class(matching_t), allocatable :: matching
      type(model_t), pointer :: model_hadrons => null ()
-     type(powheg_t) :: powheg
-     class(matching_settings_t), allocatable :: matching_settings
-     class(matching_data_t), allocatable :: data
      type(qcd_t), pointer :: qcd => null()
-     type(pdf_data_t) :: pdf_data     
-     type(os_data_t) :: os_data     
+     type(pdf_data_t) :: pdf_data
+     type(os_data_t) :: os_data
+     logical :: is_first_event
    contains
    <<Shower: evt shower: TBP>>
   end type evt_shower_t
-  
+
 @ %def evt_shower_t
 @ Output.
 <<Shower: evt shower: TBP>>=
@@ -3723,9 +4050,9 @@ hadrons that can be generated in the shower.
     if (evt%particle_set_exists)  call evt%particle_set%write &
          (u, summary = .true., compressed = .true., testflag = testflag)
     call write_separator (u)
-    call evt%settings%write (u)
+    call evt%shower%settings%write (u)
   end subroutine evt_shower_write
-    
+
 @ %def evt_shower_write
 <<Shower: evt shower: TBP>>=
   procedure :: connect => evt_shower_connect
@@ -3738,33 +4065,28 @@ hadrons that can be generated in the shower.
     type(process_stack_t), intent(in), optional :: process_stack
     call evt%base_connect (process_instance, model, process_stack)
     call evt%make_rng (evt%process)
-    if (evt%settings%powheg_matching) then
-       call evt%powheg%connect (process_instance)
-       call evt%powheg%setup_grids ()
+    if (allocated (evt%matching)) then
+       call evt%matching%connect (process_instance, model, evt%shower)
     end if
   end subroutine evt_shower_connect
 
 @ %def evt_shower_connect
-@ Initialize the event transformation. This will be executed once
-during dispatching. The [[model_hadrons]] is supposed to be the SM
+@ Initialize the event transformation.  This will be executed once
+during dispatching.  The [[model_hadrons]] is supposed to be the SM
 variant that contains all hadrons that may be generated in the
-shower. 
+shower.
 <<Shower: evt shower: TBP>>=
   procedure :: init => evt_shower_init
 <<Shower: procedures>>=
-  subroutine evt_shower_init &
-       (evt, settings, model_hadrons, os_data, powheg)
+  subroutine evt_shower_init (evt, model_hadrons, os_data)
     class(evt_shower_t), intent(out) :: evt
-    type(shower_settings_t), intent(in) :: settings
     type(model_t), intent(in), target :: model_hadrons
-    type(os_data_t), intent(in) :: os_data    
-    type(powheg_t), intent(in), optional :: powheg
-    evt%settings = settings
+    type(os_data_t), intent(in) :: os_data
     evt%os_data = os_data
     evt%model_hadrons => model_hadrons
-    if (present (powheg))  evt%powheg = powheg
+    evt%is_first_event = .true.
   end subroutine evt_shower_init
-  
+
 @ %def evt_shower_init
 @ Create RNG instances, spawned by the process object.
 <<Shower: evt shower: TBP>>=
@@ -3776,62 +4098,13 @@ shower.
     class(rng_t), allocatable :: rng
     call process%make_rng (rng)
     call evt%shower%import_rng (rng)
-    if (evt%settings%powheg_matching) then
+    if (allocated (evt%matching)) then
        call process%make_rng (rng)
-       call evt%powheg%import_rng (rng)
+       call evt%matching%import_rng (rng)
     end if
   end subroutine evt_shower_make_rng
 
 @ %def evt_shower_make_rng
-@ Use the process and beam structure to determine PDF parameters.  Will
-be performed during dispatching.
-<<Shower: evt shower: TBP>>=
-  procedure :: setup_pdf => evt_shower_setup_pdf
-<<Shower: procedures>>=
-  subroutine evt_shower_setup_pdf (evt, process, beam_structure, lhapdf_member)
-    class(evt_shower_t), intent(inout) :: evt
-    type(process_t), intent(in) :: process
-    type(beam_structure_t), intent(in) :: beam_structure
-    integer, intent(in) :: lhapdf_member
-    real(default) :: xmin, xmax, q2min, q2max
-    if (beam_structure%contains ("lhapdf")) then
-       if (LHAPDF6_AVAILABLE) then
-          evt%pdf_data%type = STRF_LHAPDF6
-       else if (LHAPDF5_AVAILABLE) then
-          evt%pdf_data%type = STRF_LHAPDF5
-       end if
-       evt%pdf_data%set = process%get_pdf_set ()
-       write (msg_buffer, "(A,I0)")  "Shower: interfacing LHAPDF set #", &
-            evt%pdf_data%set
-       call msg_message ()
-    else if (beam_structure%contains ("pdf_builtin")) then
-       evt%pdf_data%type = STRF_PDF_BUILTIN
-       evt%pdf_data%set = process%get_pdf_set ()
-       write (msg_buffer, "(A,I0)")  "Shower: interfacing PDF builtin set #", &
-            evt%pdf_data%set
-       call msg_message ()
-    end if
-    select case (evt%pdf_data%type)
-    case (STRF_LHAPDF6)
-       evt%pdf_data%xmin = evt%pdf_data%pdf%getxmin ()
-       evt%pdf_data%xmax = evt%pdf_data%pdf%getxmax ()
-       evt%pdf_data%qmin = sqrt(evt%pdf_data%pdf%getq2min ())
-       evt%pdf_data%qmax = sqrt(evt%pdf_data%pdf%getq2max ())
-    case (STRF_LHAPDF5)
-       if (LHAPDF5_AVAILABLE) then
-          call GetXminM (1, lhapdf_member, xmin)
-          call GetXmaxM (1, lhapdf_member, xmax)
-          call GetQ2minM (1, lhapdf_member, q2min)
-          call GetQ2maxM (1, lhapdf_member, q2max)
-          evt%pdf_data%xmin = xmin
-          evt%pdf_data%xmax = xmax
-          evt%pdf_data%qmin = sqrt(q2min)
-          evt%pdf_data%qmax = sqrt(q2max)
-       end if
-    end select
-  end subroutine evt_shower_setup_pdf
-    
-@ %def evt_shower_setup_pdf
 @ Things we want to do for a new event before the whole event
 transformation chain is evaluated.
 <<Shower: evt shower: TBP>>=
@@ -3841,12 +4114,55 @@ transformation chain is evaluated.
     class(evt_shower_t), intent(inout) :: evt
     integer, intent(in) :: i_mci, i_term
     call evt%reset ()
-    if (.not. evt%settings%active .or. signal_is_pending ()) then
-       return
-    end if
+    call evt%shower%prepare_new_event ()
   end subroutine evt_shower_prepare_new_event
 
 @ %def evt_shower_prepare_new_event
+@
+<<Shower: evt shower: TBP>>=
+  procedure :: first_event => evt_shower_first_event
+<<Shower: procedures>>=
+  subroutine evt_shower_first_event (evt)
+    class(evt_shower_t), intent(inout) :: evt
+    real(default) :: pdftest
+    call msg_debug (D_TRANSFORMS, "evt_shower_first_event")
+    associate (settings => evt%shower%settings)
+       settings%hadron_collision = .false.
+       if (all (evt%particle_set%prt(1:2)%flv%get_pdg_abs () <= 18)) then
+          settings%hadron_collision = .false.
+       else if (all (evt%particle_set%prt(1:2)%flv%get_pdg_abs () >= 1000)) then
+          settings%hadron_collision = .true.
+       else
+          call msg_fatal ("evt_shower didn't recognize beams setup")
+       end if
+       call msg_debug (D_TRANSFORMS, "hadron_collision", settings%hadron_collision)
+       if (allocated (evt%matching)) then
+          evt%matching%is_hadron_collision = settings%hadron_collision
+          call evt%matching%first_event ()
+       end if
+       if (.not. settings%hadron_collision .and. settings%isr_active) then
+          call msg_fatal ("?ps_isr_active is only intended for hadron-collisions")
+       end if
+       if (evt%pdf_data%type == STRF_LHAPDF5) then
+          if (settings%isr_active .and. settings%hadron_collision) then
+             call GetQ2max (0, pdftest)
+             if (pdftest < epsilon (pdftest)) then
+                call msg_bug ("ISR QCD shower enabled, but LHAPDF not" // &
+                     "initialized," // LF // "     aborting simulation")
+                return
+             end if
+          end if
+       else if (evt%pdf_data%type == STRF_PDF_BUILTIN .and. &
+                settings%method == PS_PYTHIA6) then
+          call msg_fatal ("Builtin PDFs cannot be used for PYTHIA showers," &
+               // LF // "     aborting simulation")
+          return
+       end if
+    end associate
+    evt%is_first_event = .false.
+  end subroutine evt_shower_first_event
+
+@ %def evt_shower_first_event
 @ Here we take the particle set from the previous event transform
 (assuming that there is always one) and apply the shower algorithm.  The
 result is stored in the event transform of the current object.  We
@@ -3854,123 +4170,46 @@ always return a probability of unity as we don't have the analytic
 weight of the combination of shower, MLM matching and hadronization.  A
 subdivision into multiple event transformations is under construction.
 Invalid or vetoed events have to be discarded by the caller which is why
-we mark the particle set as invalid. This procedure directly takes the 
+we mark the particle set as invalid. This procedure directly takes the
 (MLM) matching into account.
 <<Shower: evt shower: TBP>>=
   procedure :: generate_weighted => evt_shower_generate_weighted
 <<Shower: procedures>>=
   subroutine evt_shower_generate_weighted (evt, probability)
     class(evt_shower_t), intent(inout) :: evt
-    real(default), intent(out) :: probability
+    real(default), intent(inout) :: probability
     logical :: valid, vetoed
-    logical, save :: matching_disabled = .false.    
-    integer :: i
-    type(particle_t), dimension(1:2) :: prt_in    
-    real(kind=double) :: pdftest    
-    valid = .true.
-    vetoed = .false.
-    if (evt%previous%particle_set_exists) then
-       evt%particle_set = evt%previous%particle_set
-       if (evt%settings%powheg_matching) then
-          call evt%powheg%update (evt%particle_set)
-          if (TEST_SUDAKOV) then
-             call evt%powheg%test_sudakov ()
-             stop
-          end if
-          call evt%powheg%generate_emission (particle_set = evt%particle_set)
-          if (DEBUG_EVT_SHOWER) call evt%powheg%write ()
-       end if       
-       if (evt%settings%method == PS_PYTHIA6 .or. &
-           evt%settings%hadronization_active) then
+    call msg_debug (D_TRANSFORMS, "evt_shower_generate_weighted")
+    if (signal_is_pending ())  return
+    evt%particle_set = evt%previous%particle_set
+    valid = .true.;  vetoed = .false.
+    if (evt%is_first_event) then
+       call evt%first_event ()
+    end if
+    call evt%shower%import_particle_set (evt%particle_set, evt%os_data)
+    if (allocated (evt%matching)) then
+       call evt%matching%before_shower (evt%particle_set, vetoed)
+       if (msg_level(D_TRANSFORMS) >= DEBUG) then
+          call msg_debug (D_TRANSFORMS, "Matching before generate emissions")
+          call evt%matching%write ()
+       end if
+    end if
+    if (.not. (vetoed .or. POWHEG_TESTING)) then
+       if (evt%shower%settings%method == PS_PYTHIA6 .or. &
+           evt%shower%settings%hadronization_active) then
           call assure_heprup (evt%particle_set)
        end if
-       if (evt%settings%ckkw_matching) then
-          select type (data => evt%data)
-          type is (ckkw_matching_data_t)
-             call ckkw_pseudo_shower_weights_init (data%ckkw_weights)
-             call ckkw_fake_pseudo_shower_weights (evt%matching_settings, &
-                  data%ckkw_weights, evt%particle_set)
-          end select
-       end if
-       if (evt%settings%fsr_active .or. &
-            evt%settings%isr_active .or. &
-            evt%settings%hadronization_active .or. &
-            evt%settings%mlm_matching .and. &
-            .not. POWHEG_TESTING) then
-          do i = 1, 2
-             prt_in(i) = evt%particle_set%get_particle (i)
-          end do
-          ! ensure that lhapdf is initialized
-          if (evt%pdf_data%type .eq. STRF_LHAPDF5) then
-             if (evt%settings%isr_active .and. &
-                  (all (abs (prt_in%get_pdg ()) >= 1000))) then
-                call GetQ2max (0, pdftest)
-                if (pdftest < epsilon(pdftest)) then
-                   call msg_fatal ("ISR QCD shower enabled, but LHAPDF not" // &
-                        "initialized," // LF // "     aborting simulation")
-                   return
-                end if
-             end if
-          else if (evt%pdf_data%type == STRF_PDF_BUILTIN .and. &
-             evt%settings%method == PS_PYTHIA6) then
-             call msg_fatal ("Builtin PDFs cannot be used for PYTHIA showers," &
-                  // LF // "     aborting simulation")
-             return
-          end if
-          if (.not. matching_disabled .and. allocated (evt%data)) then
-             if (DEBUG_EVT_SHOWER)  &
-                  print *, "Shower: Set up beam type for mlm_matching"
-             if (all (abs (prt_in%get_pdg ()) <= 18)) then
-                evt%data%is_hadron_collision = .false.
-             else if (all (abs (prt_in%get_pdg ()) >= 1000)) then
-                evt%data%is_hadron_collision = .true.
-             else 
-                call msg_error (" Matching didn't recognize beams setup," // &
-                     LF // "     disabling matching")
-                matching_disabled = .true.
-                return
-             end if
-          end if              
-          call evt%shower%generate_emissions (evt%particle_set, &
-               evt%model, evt%model_hadrons, evt%os_data, &
-               evt%matching_settings, evt%data, valid, vetoed)
-          if (evt%settings%mlm_matching .and. &
-               (.not. matching_disabled)) then
-             !!! MLM stage 2 -> PS jets and momenta
-             select type (data => evt%data)
-             type is (mlm_matching_data_t)
-                select type (ms => evt%matching_settings)
-                type is (mlm_matching_settings_t)
-                   call matching_transfer_PS (data, evt%particle_set, ms)
-                   !!! MLM stage 3 -> reconstruct and possibly reject
-                   call mlm_matching_apply (data, ms, vetoed)
-                   call mlm_matching_data_final (data)
-                end select
-             end select
-          end if
-          if (DEBUG_EVT_SHOWER)  print *, "SHOWER+MATCHING finished"          
-       end if          
-       if (DEBUG_EVT_SHOWER) then
-          print *, "Shower: obtained particle set after SHOWER"
-          call evt%particle_set%write (summary=.true., &
-                                                compressed=.true.)
-       end if
-       probability = 1
-       if (valid .and. .not. vetoed) then
-          evt%particle_set_exists = .true.
-       else
-          evt%particle_set_exists = .false.
-       end if
-    else
-       call msg_bug ("Shower: input particle set does not exist")
+       call evt%shower%generate_emissions (valid)
     end if
+    probability = 1
+    evt%particle_set_exists = valid .and. .not. vetoed
   end subroutine evt_shower_generate_weighted
 
 @ %def evt_shower_generate_weighted
-@ Here we fill the particle set with the partons from the shower. The
-particle set was already made by the routine above (or the event was
-vetoed).  So we do nothing here.  The factorization parameters are
-irrelevant.  
+@ Here, we fill the particle set with the partons from the shower.
+The factorization parameters are irrelevant.
+We make a sanity check that the initial energy lands either in the
+outgoing particles or add to the beam remnant.
 <<Shower: evt shower: TBP>>=
   procedure :: make_particle_set => evt_shower_make_particle_set
 <<Shower: procedures>>=
@@ -3980,90 +4219,168 @@ irrelevant.
     integer, intent(in) :: factorization_mode
     logical, intent(in) :: keep_correlations
     real(default), dimension(:), intent(in), optional :: r
+    type(vector4_t) :: sum_vec_in, sum_vec_out, sum_vec_beamrem, &
+         sum_vec_beamrem_before
+    logical :: vetoed, sane
+    if (evt%particle_set_exists) then
+       vetoed = .false.
+       sum_vec_beamrem_before = sum (evt%particle_set%prt%p, &
+            mask=evt%particle_set%prt%get_status () == PRT_BEAM_REMNANT)
+       call evt%shower%make_particle_set (evt%particle_set, &
+            evt%model, evt%model_hadrons)
+       if (allocated (evt%matching)) then
+          call evt%matching%after_shower (evt%particle_set, vetoed)
+       end if
+       if (debug_active (D_TRANSFORMS)) then
+          call msg_debug (D_TRANSFORMS, &
+               "Shower: obtained particle set after shower + matching")
+          call evt%particle_set%write (summary = .true., compressed = .true.)
+       end if
+       sum_vec_in = sum (evt%particle_set%prt%p, &
+            mask=evt%particle_set%prt%get_status () == PRT_INCOMING)
+       sum_vec_out = sum (evt%particle_set%prt%p, &
+            mask=evt%particle_set%prt%get_status () == PRT_OUTGOING)
+       sum_vec_beamrem = sum (evt%particle_set%prt%p, &
+            mask=evt%particle_set%prt%get_status () == PRT_BEAM_REMNANT)
+       sum_vec_beamrem = sum_vec_beamrem - sum_vec_beamrem_before
+       sane = abs(sum_vec_out%p(0) - sum_vec_in%p(0)) < &
+            sum_vec_in%p(0) / 10 .or. &
+            abs((sum_vec_out%p(0) + sum_vec_beamrem%p(0)) - sum_vec_in%p(0)) < &
+            sum_vec_in%p(0) / 10
+       sane = .true.
+       evt%particle_set_exists = .not. vetoed .and. sane
+    end if
   end subroutine evt_shower_make_particle_set
 
 @ %def event_shower_make_particle_set
 @
 <<Shower: evt shower: TBP>>=
+  procedure :: contains_powheg_matching => evt_shower_contains_powheg_matching
+<<Shower: procedures>>=
+  function evt_shower_contains_powheg_matching (evt) result (val)
+     logical :: val
+     class(evt_shower_t), intent(in) :: evt
+     val = .false.
+     if (allocated (evt%matching)) &
+        val = evt%matching%get_method () == "POWHEG" 
+  end function evt_shower_contains_powheg_matching
+
+@ %def evt_shower_contains_powheg_matching
+@ 
+<<Shower: evt shower: TBP>>=
+  procedure :: disable_powheg_matching => evt_shower_disable_powheg_matching
+<<Shower: procedures>>=
+  subroutine evt_shower_disable_powheg_matching (evt)
+     class(evt_shower_t), intent(inout) :: evt
+     select type (matching => evt%matching)
+     type is (powheg_matching_t)
+        matching%active = .false.
+     class default 
+        call msg_fatal ("Trying to disable powheg but no powheg matching is allocated!")
+     end select
+  end subroutine evt_shower_disable_powheg_matching
+
+@ %def evt_shower_disable_powheg_matching
+@
+<<Shower: evt shower: TBP>>=
+  procedure :: enable_powheg_matching => evt_shower_enable_powheg_matching
+<<Shower: procedures>>=
+  subroutine evt_shower_enable_powheg_matching (evt)
+     class(evt_shower_t), intent(inout) :: evt
+     select type (matching => evt%matching)
+     type is (powheg_matching_t)
+        matching%active = .true.
+     class default 
+        call msg_fatal ("Trying to enable powheg but no powheg matching is allocated!")
+     end select
+  end subroutine evt_shower_enable_powheg_matching
+
+@ %def evt_shower_enable_powheg_matching
+@
+<<Shower: evt shower: TBP>>=
   procedure :: final => evt_shower_final
 <<Shower: procedures>>=
-  subroutine evt_shower_final (object)
-    class(evt_shower_t), intent(inout) :: object
-    if (object%settings%powheg_matching) &
-         call object%powheg%write_statistics ()
+  subroutine evt_shower_final (evt)
+    class(evt_shower_t), intent(inout) :: evt
+    call evt%base_final ()
+    if (allocated (evt%matching))  call evt%matching%final ()
   end subroutine evt_shower_final
 
 @ %def evt_shower_final
 @
-\subsubsection{Matching functions}
-@ Generate fake ckkw weights. This can be dropped, once information
-from the matrix element generation is available.
-<<Shower: public>>=
-  public :: ckkw_fake_pseudo_shower_weights
-<<Shower: procedures>>=
-  subroutine ckkw_fake_pseudo_shower_weights &
-       (settings, &
-        ckkw_pseudo_shower_weights, particle_set)
-    class(matching_settings_t), intent(inout) :: settings
-    type(ckkw_pseudo_shower_weights_t), intent(inout) :: &
-         ckkw_pseudo_shower_weights
-    type(particle_set_t), intent(in) :: particle_set
-    type(particle_t) :: prt
-    integer :: i, j
-    integer :: n
-    type(vector4_t) :: momentum
+\subsection{Unit tests}
+Test module, followed by the corresponding implementation module.
+<<[[shower_ut.f90]]>>=
+<<File header>>
 
-    select type (settings)
-    type is (ckkw_matching_settings_t)    
-       settings%alphaS = 1.0_default
-       settings%Qmin = 1.0_default
-       settings%n_max_jets = 3
-    class default
-       call msg_fatal ("CKKW matching called with wrong data.")
-    end select
-       
-    n = 2**particle_set%get_n_tot()
-    if (allocated (ckkw_pseudo_shower_weights%weights)) then 
-       deallocate (ckkw_pseudo_shower_weights%weights)
-    end if
-    allocate (ckkw_pseudo_shower_weights%weights (1:n))
-    do i = 1, n
-       momentum = vector4_null
-       do j = 1, particle_set%get_n_tot ()
-          if (btest (i,j-1)) then
-             prt = particle_set%get_particle (j) 
-             momentum = momentum + prt%get_momentum ()
-          end if
-       end do
-       if (momentum**1 > 0.0) then
-          ckkw_pseudo_shower_weights%weights(i) = 1.0 / (momentum**2)
-       end if
-    end do
-    ! equally distribute the weights by type
-    if (allocated (ckkw_pseudo_shower_weights%weights_by_type)) then
-       deallocate (ckkw_pseudo_shower_weights%weights_by_type)
-    end if
-    allocate (ckkw_pseudo_shower_weights%weights_by_type (1:n, 0:4))
-    do i = 1, n
-       do j = 0, 4
-          ckkw_pseudo_shower_weights%weights_by_type(i,j) = &
-               0.2 * ckkw_pseudo_shower_weights%weights(i)
-       end do
-    end do
-  end subroutine ckkw_fake_pseudo_shower_weights
-  
-@ %def ckkw_fake_pseudo_shower_weights
+module shower_ut
+  use unit_tests
+  use shower_uti
+
+<<Standard module head>>
+
+<<Shower: public test>>
+
+contains
+
+<<Shower: test driver>>
+
+end module shower_ut
+@ %def shower_ut
 @
-\subsection{Unit Tests}
-<<Shower: public>>=
+<<[[shower_uti.f90]]>>=
+<<File header>>
+
+module shower_uti
+
+<<Use kinds>>
+<<Use strings>>
+  use format_utils, only: write_separator
+  use os_interface
+  use sm_qcd
+  use model_data
+  use state_matrices, only: FM_IGNORE_HELICITY
+  use process_libraries
+  use rng_base
+  use rng_tao
+  use mci_base
+  use mci_midpoint
+  use phs_base
+  use phs_single
+  use prc_core
+  use prc_omega
+  use variables
+  use models
+  use processes
+  use event_transforms
+
+  use pdf
+  use shower_base
+  use shower_core
+
+  use shower
+
+<<Standard module head>>
+
+<<Shower: test declarations>>
+
+contains
+
+<<Shower: tests>>
+
+end module shower_uti
+
+@ %def shower_uti
+@ API: driver for the unit tests below.
+<<Shower: public test>>=
   public :: shower_test
-<<Shower: tests>>=
+<<Shower: test driver>>=
   subroutine shower_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
   <<Shower: execute tests>>
   end subroutine shower_test
-  
+
 @ %def shower_test
 @
 \subsubsection{Testbed}
@@ -4097,14 +4414,14 @@ This sequence sets up a two-jet process, ready for generating events.
     libname = prefix // "_lib"
     procname = prefix // "p"
     run_id = "1"
-    
+
     call os_data_init (os_data)
     allocate (rng_tao_factory_t :: rng_factory)
     allocate (model_tmp)
     call model_list%read_model (model_name, model_name // ".mdl", &
          os_data, model_tmp)
     model_vars => model_tmp%get_var_list_ptr ()
-    call var_list_set_real (model_vars, var_str ("me"), 0._default, &
+    call model_vars%set_real (var_str ("me"), 0._default, &
          is_known = .true.)
     model => model_tmp
 
@@ -4125,10 +4442,10 @@ This sequence sets up a two-jet process, ready for generating events.
     call lib%clean (os_data, distclean = .false.)
     call lib%write_driver (force = .true.)
     call lib%load (os_data)
-    
+
     call process%init (procname, run_id, lib, os_data, &
          qcd, rng_factory, model)
-    
+
     allocate (prc_omega_t :: core_template)
     allocate (mci_midpoint_t :: mci_template)
     allocate (phs_single_config_t :: phs_config_template)
@@ -4147,7 +4464,7 @@ This sequence sets up a two-jet process, ready for generating events.
     call process%configure_phs ()
     call process%setup_mci ()
     call process%setup_terms ()
-    
+
     call process_instance%init (process)
     call process%integrate (process_instance, 1, 1, 1000)
     call process%final_integration (1)
@@ -4168,6 +4485,8 @@ in disabled mode.
   call test (shower_1, "shower_1", &
        "disabled shower", &
        u, results)
+<<Shower: test declarations>>=
+  public :: shower_1
 <<Shower: tests>>=
   subroutine shower_1 (u)
     integer, intent(in) :: u
@@ -4202,7 +4521,7 @@ in disabled mode.
 
     write (u, "(A)")  "* Set up trivial transform"
     write (u, "(A)")
-    
+
     allocate (evt_trivial_t :: evt_trivial)
     model => process%get_model_ptr ()
     call evt_trivial%connect (process_instance, model)
@@ -4226,10 +4545,10 @@ in disabled mode.
     allocate (evt_shower_t :: evt_shower)
     select type (evt_shower)
     type is (evt_shower_t)
-       call evt_shower%init (settings, model_hadrons, os_data)
+       call evt_shower%init (model_hadrons, os_data)
        allocate (shower_t :: evt_shower%shower)
-       call evt_shower%shower%init (evt_shower%settings, pdf_data)
-       call evt_shower%connect (process_instance, model)		
+       call evt_shower%shower%init (settings, pdf_data)
+       call evt_shower%connect (process_instance, model)
     end select
 
     evt_trivial%next => evt_shower
@@ -4256,12 +4575,12 @@ in disabled mode.
     call model_hadrons%final ()
     deallocate (model_hadrons)
     call syntax_model_file_final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: shower_1"
-    
+
   end subroutine shower_1
-  
+
 @ %def shower_1
 @
 \subsubsection{FSR Shower}
@@ -4270,6 +4589,8 @@ We generate a two-jet event and shower it with the Whizard FSR shower.
   call test (shower_2, "shower_2", &
        "final-state shower", &
        u, results)
+<<Shower: test declarations>>=
+  public :: shower_2
 <<Shower: tests>>=
   subroutine shower_2 (u)
     integer, intent(in) :: u
@@ -4302,10 +4623,10 @@ We generate a two-jet event and shower it with the Whizard FSR shower.
     call setup_testbed (var_str ("shower_2"), &
          os_data, lib, model_list, process, process_instance)
     model => process%get_model_ptr ()
-    
+
     write (u, "(A)")  "* Set up trivial transform"
     write (u, "(A)")
-    
+
     allocate (evt_trivial_t :: evt_trivial)
     call evt_trivial%connect (process_instance, model)
     call evt_trivial%prepare_new_event (1, 1)
@@ -4330,10 +4651,10 @@ We generate a two-jet event and shower it with the Whizard FSR shower.
     allocate (evt_shower_t :: evt_shower)
     select type (evt_shower)
     type is (evt_shower_t)
-       call evt_shower%init (settings, model_hadrons, os_data)
+       call evt_shower%init (model_hadrons, os_data)
        allocate (shower_t :: evt_shower%shower)
-       call evt_shower%shower%init (evt_shower%settings, pdf_data)
-       call evt_shower%connect (process_instance, model)       
+       call evt_shower%shower%init (settings, pdf_data)
+       call evt_shower%connect (process_instance, model)
     end select
 
     evt_trivial%next => evt_shower
@@ -4360,15 +4681,295 @@ We generate a two-jet event and shower it with the Whizard FSR shower.
     call model_hadrons%final ()
     deallocate (model_hadrons)
     call syntax_model_file_final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: shower_2"
-    
+
   end subroutine shower_2
-  
+
 @ %def shower_2
 @
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Fixed Order NLO Events}
+This section deals with the generation of weighted event samples which
+take into account next-to-leading order corrections. An approach
+generating unweighted events is not possible here, because negative
+weights might occur due to subtraction. Note that the events produced
+this way are not physical in the sense that they will not keep
+NLO-accuracy when interfaced to a parton shower. They are rather
+useful for theoretical consistency checks and a fast estimate of
+NLO effects.\\
+We generate NLO events in the following way: First, the integration
+is carried out using the complete divergence-subtracted NLO matrix
+element. In the subsequent simulation, $N$-particle kinematics
+are generated using $\mathcal{B}+\mathcal{V}+\mathcal{C}$ as weight.
+After that, the program loops over all singular regions and for each
+of them generates an event with $N+1$-particle kinematics.
+The weight for those events corresponds to the real matrix
+element $\mathcal{R}^\alpha$ evaluated at the $\alpha$-region's
+emitter's phase space point, multiplied with $S_\alpha$.
+This procedure is implemented using the [[evt_nlo]] transform.
+
+<<[[evt_nlo.f90]]>>=
+<<File header>>
+
+module evt_nlo
+
+<<Use kinds>>
+  use constants
+  use lorentz
+  use diagnostics
+  use sm_qcd
+  use model_data
+  use particles
+  use processes
+  use process_stacks
+  use event_transforms
+  use phs_fks
+
+<<Standard module head>>
+
+<<Evt Nlo: public>>
+
+<<Evt Nlo: types>>
+
+contains
+
+<<Evt Nlo: procedures>>
+
+end module evt_nlo
+
+@ %def evt_nlo
+@ This event transformation is for the generation of fixed-order NLO events. It
+takes an event with Born kinematics and creates $N_\alpha + 1$ modified weighted events.
+The first one has Born kinematics and its weight is the sum of Born, Real and subtraction
+matrix elements. The other $N_\alpha$ events have a weight which is equal to the real matrix
+element, evaluated with the phase space corresponding to the emitter of the $\alpha$-region.
+All NLO event objects share the same event transformation. For this reason, we save the
+particle set of the current $\alpha$-region in the array [[particle_set_radiated]]. Otherwise
+it would be unretrievable if the usual particle set of the event object was used.@
+<<Evt Nlo: public>>=
+  public :: evt_nlo_t
+<<Evt Nlo: types>>=
+  type, extends (evt_t) :: evt_nlo_t
+    type(phs_fks_generator_t) :: phs_fks_generator
+    real(default) :: sqme_rad
+    integer :: i_evaluation
+    integer, dimension(:), allocatable :: emitters
+    type(particle_set_t), dimension(:), allocatable :: particle_set_radiated
+    type(qcd_t), pointer :: qcd => null ()
+  contains
+  <<Evt Nlo: evt nlo: TBP>>
+  end type evt_nlo_t
+
+@ %def evt_nlo_t
+@
+<<Evt Nlo: evt nlo: TBP>>=
+  procedure :: write => evt_nlo_write
+<<Evt Nlo: procedures>>=
+  subroutine evt_nlo_write (evt, unit, verbose, more_verbose, testflag)
+    class(evt_nlo_t), intent(in) :: evt
+    integer, intent(in), optional :: unit
+    logical, intent(in), optional :: verbose, more_verbose, testflag
+  end subroutine evt_nlo_write
+
+@ %def evt_nlo_write
+@ Connects the event transform to the process. Here also the phase space
+is set up by making [[real_kinematics]] point to the corresponding
+object in [[nlo_controller]].
+<<Evt Nlo: evt nlo: TBP>>=
+  procedure :: connect => evt_nlo_connect
+<<Evt Nlo: procedures>>=
+  subroutine evt_nlo_connect (evt, process_instance, model, process_stack)
+    class(evt_nlo_t), intent(inout), target :: evt
+    type(process_instance_t), intent(in), target :: process_instance
+    class(model_data_t), intent(in), target :: model
+    type(process_stack_t), intent(in), optional :: process_stack
+    real(default) :: sqrts
+    call msg_debug (D_TRANSFORMS, "evt_nlo_connect")
+    call evt%base_connect (process_instance, model, process_stack)
+    associate (generator => evt%phs_fks_generator, &
+               nlo_controller => process_instance%nlo_controller)
+       sqrts = process_instance%get_sqrts ()
+       call nlo_controller%setup_generator (generator, sqrts)
+    end associate
+  end subroutine evt_nlo_connect
+
+@ %def evt_nlo_connect
+@
+<<Evt Nlo: evt nlo: TBP>>=
+  procedure :: prepare_new_event => evt_nlo_prepare_new_event
+<<Evt Nlo: procedures>>=
+  subroutine evt_nlo_prepare_new_event (evt, i_mci, i_term)
+    class(evt_nlo_t), intent(inout) :: evt
+    integer, intent(in) :: i_mci, i_term
+  end subroutine evt_nlo_prepare_new_event
+
+@ %def evt_nlo_prepare_new_event
+@ The event transform has a variable which counts the number of times it
+has already been called for one generation point. If [[i_evaluation]] is
+zero, this means that [[evt_nlo_generate]] is called for the first time,
+so that the generation of an $N$-particle event is required.  In all
+other cases, emission events are generated.\\
+Note that for the first event, the computed weights are added to
+[[probability]], which at this point is equal to $\mathcal{B} +
+\mathcal{V}$, whereas for all other runs [[probability]] is replaced.
+To keep $<\sum{w_i}>=N\times\sigma$ as it is for weighted LO
+events, we have to multiply by $N_{\alpha_r} + 1$ since the cross section
+is distributed over the real and Born subevents.
+<<Evt Nlo: evt nlo: TBP>>=
+  procedure :: generate_weighted => evt_nlo_generate_weighted
+<<Evt Nlo: procedures>>=
+  subroutine evt_nlo_generate_weighted (evt, probability)
+    class(evt_nlo_t), intent(inout) :: evt
+    real(default), intent(inout) :: probability
+    real(default) :: weight
+    integer :: emitter
+    call msg_debug (D_TRANSFORMS, "evt_nlo_generate_weighted")
+    call msg_debug (D_TRANSFORMS, "probability (before)", probability)
+    call msg_debug (D_TRANSFORMS, "evt%i_evaluation", evt%i_evaluation)
+    evt%particle_set = evt%previous%particle_set
+    if (evt%i_evaluation == 0) then
+       weight = evt%compute_subtraction_weights ()
+       probability = probability + weight
+    else
+       emitter = evt%emitters (evt%i_evaluation)
+       call evt%compute_real (emitter)
+       probability = evt%sqme_rad
+    end if
+    probability = probability * (size (evt%emitters) + 1)
+    call msg_debug (D_TRANSFORMS, "probability (after)", probability)
+    evt%particle_set_exists = .true.
+  end subroutine evt_nlo_generate_weighted
+
+@ %def evt_nlo_generate_weighted
+@
+<<Evt Nlo: evt nlo: TBP>>=
+  procedure :: make_particle_set => evt_nlo_make_particle_set
+<<Evt Nlo: procedures>>=
+  subroutine evt_nlo_make_particle_set &
+       (evt, factorization_mode, keep_correlations, r)
+    class(evt_nlo_t), intent(inout) :: evt
+    integer, intent(in) :: factorization_mode
+    logical, intent(in) :: keep_correlations
+    real(default), dimension(:), intent(in), optional :: r
+  end subroutine evt_nlo_make_particle_set
+
+@ %def evt_nlo_make_particle_set
+@ Create the particle set corresponding to a radiation event, if
+necessary.
+This involves setting the phase space as well as rearranging the
+mother-daughter relations and color information.
+<<Evt Nlo: evt nlo: TBP>>=
+  procedure :: build_radiated_particle_set => evt_nlo_build_radiated_particle_set
+<<Evt Nlo: procedures>>=
+  subroutine evt_nlo_build_radiated_particle_set (evt, i_event)
+    class(evt_nlo_t), intent(inout) :: evt
+    integer, intent(in) :: i_event
+    integer :: emitter
+    type(vector4_t), dimension(:), allocatable :: p_new
+    integer, dimension(:), allocatable :: flv_radiated
+    real(default) :: r_col
+    call msg_debug (D_TRANSFORMS, "evt_nlo_build_radiated_particle_set")
+    call msg_debug (D_TRANSFORMS, "evt%i_evaluation", evt%i_evaluation)
+    evt%particle_set_radiated(i_event) = evt%particle_set
+    if (evt%i_evaluation /= 0) then
+       ! TODO: (bcn 2015-07-15) beware the intel
+       flv_radiated = evt%process_instance%nlo_controller%get_flv_state_real (1)
+       call evt%rng%generate (r_col)
+       call msg_debug2 (D_TRANSFORMS, "r_col", r_col)
+       if (debug2_active (D_TRANSFORMS))  print *, 'flv_radiated =    ', flv_radiated
+       emitter = evt%emitters (evt%i_evaluation)
+       call msg_debug (D_TRANSFORMS, "emitter", emitter)
+       ! TODO: (bcn 2015-07-15) beware the intel
+       p_new = evt%process_instance%nlo_controller%get_momenta (born_phsp = .false.)
+       call evt%particle_set_radiated(i_event)%build_radiation (p_new, emitter, flv_radiated, &
+            evt%process_instance%process%get_model_ptr (), r_col)
+    end if
+    evt%i_evaluation = evt%i_evaluation + 1
+  end subroutine evt_nlo_build_radiated_particle_set
+
+@ %def evt_nlo_build_radiated_particle_set
+@ This routine calls the evaluation of the singular regions only for the
+subtraction terms.
+<<Evt Nlo: evt nlo: TBP>>=
+  procedure :: compute_subtraction_weights => evt_nlo_compute_subtraction_weights
+<<Evt Nlo: procedures>>=
+  function evt_nlo_compute_subtraction_weights (evt) result (weight)
+    class(evt_nlo_t), intent(inout) :: evt
+    real(default) :: weight
+    type(vector4_t), dimension(:), allocatable :: p_born, p_real
+    integer, dimension(:), allocatable :: emitters
+    real(default), dimension(3) :: x_rad
+    integer :: i, emitter
+    call msg_debug (D_TRANSFORMS, "evt_nlo_compute_subtraction_weights")
+    weight = zero
+    associate (instance => evt%process_instance)
+       ! TODO: (bcn 2015-07-15) beware the intel
+       emitters = instance%nlo_controller%get_emitter_list ()
+       ! TODO: (bcn 2015-07-15) beware the intel
+       x_rad = instance%nlo_controller%real_kinematics%x_rad
+       ! TODO: (bcn 2015-07-15) beware the intel
+       p_born = evt%particle_set%get_momenta ()
+       call evt%phs_fks_generator%set_beam_energy (p_born(1)%p(0))
+       call evt%phs_fks_generator%generate_radiation_variables (x_rad, p_born)
+       do i = 1, size (emitters)
+          emitter = emitters(i)
+          if (emitter <= 2) then
+             call msg_fatal ("NLO Events only for lepton collisions so far")
+          else
+             p_real = evt%phs_fks_generator%generate_fsr_from_x &
+                  (x_rad, emitter, p_born)
+          end if
+          associate (nlo_controller => instance%nlo_controller)
+             call nlo_controller%set_momenta (p_born, p_real)
+             call nlo_controller%set_momenta (p_born, p_real, cms=.true.)
+          end associate
+          call instance%compute_sqme_real_sub (emitter, p_born, p_real)
+          call msg_debug (D_TRANSFORMS, &
+               "instance%sqme_collector%sqme_real_per_emitter(1,emitter)", &
+               instance%sqme_collector%sqme_real_per_emitter(1,emitter))
+          weight = weight + instance%sqme_collector%sqme_real_per_emitter (1,emitter)
+       end do
+    end associate
+  end function evt_nlo_compute_subtraction_weights
+
+@ %def evt_nlo_compute_subtraction_weights
+@ This routine calls the evaluation of the singular regions only for
+emission matrix elements.
+<<Evt Nlo: evt nlo: TBP>>=
+  procedure :: compute_real => evt_nlo_compute_real
+<<Evt Nlo: procedures>>=
+  subroutine evt_nlo_compute_real (evt, emitter)
+    class(evt_nlo_t), intent(inout) :: evt
+    integer, intent(in) :: emitter
+    type(vector4_t), dimension(:), allocatable :: p_born, p_real
+    real(default), dimension(3) :: x_rad
+    call msg_debug (D_TRANSFORMS, "evt_nlo_compute_real")
+    p_born = evt%particle_set%get_momenta ()
+    associate (instance => evt%process_instance)
+       x_rad = instance%nlo_controller%real_kinematics%x_rad
+       call evt%phs_fks_generator%generate_radiation_variables (x_rad, p_born)
+       if (emitter <= 2) then
+          call msg_fatal ("NLO Events only for lepton collisions so far")
+       else
+          p_real = evt%phs_fks_generator%generate_fsr_from_x &
+              (x_rad, emitter, p_born)
+       end if
+       associate (nlo_controller => instance%nlo_controller)
+          call nlo_controller%set_momenta (p_born, p_real)
+          call nlo_controller%set_momenta (p_born, p_real, cms=.true.)
+       end associate
+       call instance%compute_sqme_real_rad (emitter, p_born, p_real)
+       call msg_debug (D_TRANSFORMS, &
+            "instance%sqme_collector%sqme_real_per_emitter(1,emitter)", &
+            instance%sqme_collector%sqme_real_per_emitter(1,emitter))
+       evt%sqme_rad = instance%sqme_collector%sqme_real_per_emitter (1, emitter)
+    end associate
+  end subroutine evt_nlo_compute_real
+
+@ %def evt_nlo_compute_real
+@
 \section{Complete Events}
 
 This module combines hard processes with decay chains, shower, and
@@ -4378,7 +4979,7 @@ manages the input and output of event records in various formats.
 <<File header>>
 
 module events
-  
+
 <<Use kinds>>
 <<Use strings>>
   use constants, only: one
@@ -4387,22 +4988,20 @@ module events
   use format_defs, only: FMT_12, FMT_14, FMT_19
   use unit_tests
   use diagnostics
-  use os_interface
-  use subevents
   use variables
   use expr_base
   use model_data
-  use state_matrices
+  use state_matrices, only: &
+       FM_IGNORE_HELICITY, FM_SELECT_HELICITY, FM_FACTOR_HELICITY
   use particles
-  use interactions
   use subevt_expr
   use rng_base
-  use process_libraries
   use processes
   use process_stacks
   use event_base
   use event_transforms
   use decays
+  use evt_nlo
 
 <<Standard module head>>
 
@@ -4413,10 +5012,8 @@ module events
 <<Events: interfaces>>
 
 contains
-  
-<<Events: procedures>>
 
-<<Events: tests>>
+<<Events: procedures>>
 
 end module events
 @ %def events
@@ -4500,7 +5097,7 @@ so the actual nodes are not stored inside the event object.
        end if
     end if
   end subroutine event_config_write
-  
+
 @ %def event_config_write
 @
 \subsection{The event type}
@@ -4563,6 +5160,7 @@ and should be written to file, including copies of [[sqme]] and [[weight]].
      real(default), allocatable :: scale_forced
      real(default) :: reweight = 1
      logical :: analysis_flag = .false.
+     integer :: i_event = 0
    contains
    <<Events: event: TBP>>
   end type event_t
@@ -4584,7 +5182,7 @@ and should be written to file, including copies of [[sqme]] and [[weight]].
        deallocate (evt)
     end do
   end subroutine event_final
-    
+
 @ %def event_final
 @ Output.
 
@@ -4602,7 +5200,7 @@ should suffice to print the latter.
     logical, intent(in), optional :: testflag
     logical :: prc, trans, dec, verb
     class(evt_t), pointer :: evt
-    character(len=7) :: fmt   
+    character(len=7) :: fmt
     integer :: u, i
     call pac_fmt (fmt, FMT_19, FMT_14, testflag)
     u = given_output_unit (unit)
@@ -4746,7 +5344,7 @@ first one.
     allocate (evt_trivial_t :: event%transform_first)
     event%transform_last => event%transform_first
   end subroutine event_init
-    
+
 @ %def event_init
 @ Set the [[sigma]] and [[n]] values in the configuration record that
 determine non-standard event normalizations.  If these numbers are not
@@ -4767,7 +5365,7 @@ renormalization has no effect.
     integer, intent(in) :: n
     event%config%n = n
   end subroutine event_set_n
-  
+
 @ %def event_set_n
 @ Append an event transform (decays, etc.).  The transform is not yet
 connected to a process.  The transform is then considered to belong to
@@ -4787,7 +5385,7 @@ event object, at least.
     event%transform_last => evt
     evt => null ()
   end subroutine event_import_transform
-    
+
 @ %def event_import_transform
 @
 We link the event to an existing process instance.  This
@@ -4857,7 +5455,7 @@ parse-node pointers may be null.
     class(expr_factory_t), intent(in) :: ef_analysis
     allocate (event%config%ef_analysis, source = ef_analysis)
   end subroutine event_set_analysis
-  
+
 @ %def event_set_selection
 @ %def event_set_reweight
 @ %def event_set_analysis
@@ -4872,7 +5470,7 @@ required because the expressions contain pointers to event subobjects.
     call event%expr%setup_analysis (event%config%ef_analysis)
     call event%expr%setup_reweight (event%config%ef_reweight)
   end subroutine event_setup_expressions
-  
+
 @ %def event_setup_expressions
 @
 \subsection{Evaluation}
@@ -4901,7 +5499,9 @@ For testing purpose, we allow for providing them explicitly, as an option.
     class(event_t), intent(inout) :: event
     real(default), dimension(:), intent(in), optional :: r
     class(evt_t), pointer :: evt
+    real(default) :: sigma_over_sqme
     integer :: i_term
+    call msg_debug (D_TRANSFORMS, "event_evaluate_transforms")
     call event%discard_particle_set ()
     call event%check ()
     if (event%instance%is_complete_event ()) then
@@ -4914,8 +5514,17 @@ For testing purpose, we allow for providing them explicitly, as an option.
           evt => evt%next
        end do
        evt => event%transform_first
+       call msg_debug (D_TRANSFORMS, "Before event transformations")
+       call msg_debug (D_TRANSFORMS, "event%weight_prc", event%weight_prc)
+       call msg_debug (D_TRANSFORMS, "event%sqme_prc", event%sqme_prc)
        do while (associated (evt))
-          call evt%generate_unweighted ()
+          if (evt%only_weighted_events) then
+             sigma_over_sqme = event%weight_prc / event%sqme_prc
+             call evt%generate_weighted (event%sqme_prc)
+             event%weight_prc = sigma_over_sqme * event%sqme_prc
+          else
+             call evt%generate_unweighted ()
+          end if
           if (signal_is_pending ())  return
           call evt%make_particle_set (event%config%factorization_mode, &
                event%config%keep_correlations)
@@ -4925,11 +5534,23 @@ For testing purpose, we allow for providing them explicitly, as an option.
        end do
        evt => event%transform_last
        if (associated (evt) .and. evt%particle_set_exists) then
-          call event%link_particle_set (evt%particle_set)
+          if (event%nlo_event) then
+             select type (evt)
+             type is (evt_nlo_t)
+                call evt%build_radiated_particle_set (event%i_event+1)
+                call event%link_particle_set &
+                   (evt%particle_set_radiated(event%i_event+1))
+             end select
+          else
+             call event%link_particle_set (evt%particle_set)
+          end if
        end if
+       call msg_debug (D_TRANSFORMS, "After event transformations")
+       call msg_debug (D_TRANSFORMS, "event%weight_prc", event%weight_prc)
+       call msg_debug (D_TRANSFORMS, "event%sqme_prc", event%sqme_prc)
     end if
   end subroutine event_evaluate_transforms
-    
+
 @ %def event_evaluate_transforms
 @
 Evaluate the event-related expressions, given a valid
@@ -4970,7 +5591,7 @@ version corrupts its memory.
        event%selection_evaluated = .true.
     end if
   end subroutine event_evaluate_expressions
-  
+
 @ %def event_evaluate_expressions
 @ Report the result of the [[selection]] evaluation.
 <<Events: event: TBP>>=
@@ -4981,7 +5602,7 @@ version corrupts its memory.
     logical :: flag
     flag = event%passed
   end function event_passed_selection
-  
+
 @ %def event_passed_selection
 @ Set alternate sqme and weight arrays.  This should be merged with
 the previous routine, if the expressions are allowed to refer to these
@@ -4998,7 +5619,7 @@ values.
        call event%expr%set (sqme_alt = event%get_sqme_alt ())
     end if
   end subroutine event_store_alt_values
-  
+
 @ %def event_store_alt_values
 @
 \subsection{Reset to empty state}
@@ -5030,7 +5651,7 @@ are not deleted.  In particular, the initialization is kept.
        evt => evt%next
     end do
   end subroutine event_reset
-  
+
 @ %def event_reset
 @
 \subsection{Squared Matrix Element and Weight}
@@ -5051,7 +5672,7 @@ event record header.
        end if
     end if
   end subroutine event_import_instance_results
-  
+
 @ %def event_import_instance_results
 @ Duplicate the instance result / the reference result in the event
 record.
@@ -5067,28 +5688,28 @@ record.
        call event%set (sqme_prc = event%get_sqme_ref ())
     end if
   end subroutine event_accept_sqme_ref
-  
+
   subroutine event_accept_sqme_prc (event)
     class(event_t), intent(inout) :: event
     if (event%sqme_prc_is_known ()) then
        call event%set (sqme_ref = event%get_sqme_prc ())
     end if
   end subroutine event_accept_sqme_prc
-  
+
   subroutine event_accept_weight_ref (event)
     class(event_t), intent(inout) :: event
     if (event%weight_ref_is_known ()) then
        call event%set (weight_prc = event%get_weight_ref ())
     end if
   end subroutine event_accept_weight_ref
-  
+
   subroutine event_accept_weight_prc (event)
     class(event_t), intent(inout) :: event
     if (event%weight_prc_is_known ()) then
        call event%set (weight_ref = event%get_weight_prc ())
     end if
   end subroutine event_accept_weight_prc
-  
+
 @ %def event_accept_sqme_ref
 @ %def event_accept_sqme_prc
 @ %def event_accept_weight_ref
@@ -5125,7 +5746,7 @@ configuration record.
          mode_old = mode_old)
     call event%set_excess_prc (excess)
   end subroutine event_update_normalization
-  
+
 @ %def event_update_normalization
 @
 The event is complete if it has a particle set plus valid entries for
@@ -5146,9 +5767,9 @@ the sqme and weight values.
             .and. event%weight_alt_is_known ()
     end if
   end subroutine event_check
-  
+
 @ %def event_check
-@ 
+@
 @
 \subsection{Generation}
 Assuming that we have a valid process associated to the event, we
@@ -5166,11 +5787,14 @@ for deterministic testing.
 <<Events: event: TBP>>=
   procedure :: generate => event_generate
 <<Events: procedures>>=
-  subroutine event_generate (event, i_mci, r)
+  subroutine event_generate (event, i_mci, r, i_nlo)
     class(event_t), intent(inout) :: event
     integer, intent(in) :: i_mci
     real(default), dimension(:), intent(in), optional :: r
-    call event%reset ()
+    integer, intent(in), optional :: i_nlo
+    logical :: generate_new = .true.
+    if (present (i_nlo)) generate_new = (i_nlo == 1)
+    if (generate_new) call event%reset ()
     event%selected_i_mci = i_mci
     if (event%config%unweighted) then
        call event%process%generate_unweighted_event (event%instance, i_mci)
@@ -5178,7 +5802,9 @@ for deterministic testing.
        call event%instance%evaluate_event_data ()
        call event%instance%normalize_weight ()
     else
-       call event%process%generate_weighted_event (event%instance, i_mci)
+       if (event%nlo_event) &
+          call event%process%deactivate_real_component ()
+       if (generate_new) call event%process%generate_weighted_event (event%instance, i_mci)
        if (signal_is_pending ()) return
        call event%instance%evaluate_event_data ()
     end if
@@ -5191,7 +5817,7 @@ for deterministic testing.
     if (signal_is_pending ())  return
     call event%check ()
   end subroutine event_generate
-  
+
 @ %def event_generate
 @ Get a copy of the particle set belonging to the hard process.
 <<Events: event: TBP>>=
@@ -5204,7 +5830,7 @@ for deterministic testing.
     evt => event%transform_first
     pset = evt%particle_set
   end subroutine event_get_hard_particle_set
-    
+
 @ %def event_get_hard_particle_set
 @
 \subsection{Recovering an event}
@@ -5225,7 +5851,7 @@ Select MC group, term, and integration channel.
   end subroutine event_select
 
 @ %def event_select
-@ 
+@
 Copy a particle set into the event record.
 
 We deliberately use the first (the trivial) transform for this, i.e.,
@@ -5271,7 +5897,7 @@ process core.
        allocate (event%alpha_qcd_forced, source = alpha_qcd)
     end if
   end subroutine event_set_alpha_qcd_forced
-  
+
 @ %def event_set_alpha_qcd_forced
 @
 Analogously, for the common scale.  This forces also renormalization and
@@ -5288,7 +5914,7 @@ factorization scale.
        allocate (event%scale_forced, source = scale)
     end if
   end subroutine event_set_scale_forced
-  
+
 @ %def event_set_scale_forced
 @
 Here we try to recover an event from the [[particle_set]] subobject
@@ -5341,7 +5967,7 @@ Evaluating event expressions must also be done separately.
                (i_term, event%alpha_qcd_forced)
        end if
        call event%instance%recover (channel, i_term, update_sqme, &
-            event%scale_forced) 
+            event%scale_forced)
        if (signal_is_pending ())  return
        if (update_sqme .and. present (weight_factor)) then
           call event%instance%evaluate_event_data &
@@ -5368,7 +5994,7 @@ Evaluating event expressions must also be done separately.
        call msg_bug ("Event: can't recalculate, particle set is undefined")
     end if
   end subroutine event_recalculate
-  
+
 @ %def event_recalculate
 @
 \subsection{Access content}
@@ -5413,19 +6039,19 @@ to the current process instance.
     integer :: i_mci
     i_mci = event%selected_i_mci
   end function event_get_i_mci
-  
+
   function event_get_i_term (event) result (i_term)
     class(event_t), intent(in) :: event
     integer :: i_term
     i_term = event%selected_i_term
   end function event_get_i_term
-  
+
   function event_get_channel (event) result (channel)
     class(event_t), intent(in) :: event
     integer :: channel
     channel = event%selected_channel
   end function event_get_channel
-  
+
 @ %def event_get_i_mci
 @ %def event_get_i_term
 @ %def event_get_channel
@@ -5444,7 +6070,7 @@ events with additional transforms.
        flag = .false.
     end if
   end function event_has_transform
-  
+
 @ %def event_has_transform
 @ Return the currently selected normalization mode, or alternate
 normalization mode.
@@ -5456,7 +6082,7 @@ normalization mode.
     integer :: norm_mode
     norm_mode = event%config%norm_mode
   end function event_get_norm_mode
-  
+
 @ %def event_get_norm_mode
 @ Return the kinematical weight, defined as the ratio of event weight
 and squared matrix element.
@@ -5473,7 +6099,7 @@ and squared matrix element.
        f = 0
     end if
   end function event_get_kinematical_weight
-    
+
 @ %def event_get_kinematical_weight
 @ Return data used by external event formats.
 <<Events: event: TBP>>=
@@ -5486,19 +6112,19 @@ and squared matrix element.
     integer :: index
     index = event%expr%index
   end function event_get_index
-    
+
   function event_get_fac_scale (event) result (fac_scale)
     class(event_t), intent(in) :: event
     real(default) :: fac_scale
     fac_scale = event%instance%get_fac_scale (event%selected_i_term)
   end function event_get_fac_scale
-    
+
   function event_get_alpha_s (event) result (alpha_s)
     class(event_t), intent(in) :: event
     real(default) :: alpha_s
     alpha_s = event%instance%get_alpha_s (event%selected_i_term)
   end function event_get_alpha_s
-    
+
 @ %def event_get_index
 @ %def event_get_fac_scale
 @ %def event_get_alpha_s
@@ -5525,19 +6151,69 @@ transforms (which includes associated process instances).
        evt => evt%next
     end do
   end subroutine pacify_event
-  
+
 @ %def pacify
 @
 \subsection{Unit tests}
-<<Events: public>>=
+Test module, followed by the corresponding implementation module.
+<<[[events_ut.f90]]>>=
+<<File header>>
+
+module events_ut
+  use unit_tests
+  use events_uti
+
+<<Standard module head>>
+
+<<Events: public test>>
+
+contains
+
+<<Events: test driver>>
+
+end module events_ut
+@ %def events_ut
+@
+<<[[events_uti.f90]]>>=
+<<File header>>
+
+module events_uti
+
+<<Use kinds>>
+<<Use strings>>
+  use os_interface
+  use model_data
+  use particles
+  use process_libraries
+  use processes
+  use process_stacks
+  use event_transforms
+  use decays
+  use decays_ut, only: prepare_testbed
+
+  use events
+
+<<Standard module head>>
+
+<<Events: test declarations>>
+
+contains
+
+<<Events: tests>>
+
+end module events_uti
+
+@ %def events_uti
+@ API: driver for the unit tests below.
+<<Events: public test>>=
   public :: events_test
-<<Events: tests>>=
+<<Events: test driver>>=
   subroutine events_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
   <<Events: execute tests>>
   end subroutine events_test
-  
+
 @ %def events_test
 @
 \subsubsection{Empty event record}
@@ -5545,6 +6221,8 @@ transforms (which includes associated process instances).
   call test (events_1, "events_1", &
        "empty event record", &
        u, results)
+<<Events: test declarations>>=
+  public :: events_1
 <<Events: tests>>=
   subroutine events_1 (u)
     integer, intent(in) :: u
@@ -5555,12 +6233,12 @@ transforms (which includes associated process instances).
     write (u, "(A)")
 
     call event%write (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: events_1"
-    
+
   end subroutine events_1
-  
+
 @ %def events_1
 @
 \subsubsection{Simple event}
@@ -5568,8 +6246,11 @@ transforms (which includes associated process instances).
   call test (events_2, "events_2", &
        "generate event", &
        u, results)
+<<Events: test declarations>>=
+  public :: events_2
 <<Events: tests>>=
   subroutine events_2 (u)
+    use processes_ut, only: prepare_test_process
     integer, intent(in) :: u
     type(event_t), allocatable, target :: event
     type(process_t), allocatable, target :: process
@@ -5595,7 +6276,7 @@ transforms (which includes associated process instances).
     allocate (event)
     call event%basic_init ()
     call event%connect (process_instance, process%get_model_ptr ())
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Generate test process event"
 
@@ -5618,16 +6299,14 @@ transforms (which includes associated process instances).
     call cleanup_test_process (process, process_instance)
     deallocate (process_instance)
     deallocate (process)
-    
-!    call model_list%final ()
-!    call syntax_model_file_final ()
+
     call model%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: events_2"
-    
+
   end subroutine events_2
-  
+
 @ %def events_2
 @
 \subsubsection{Recovering an event}
@@ -5640,8 +6319,11 @@ memory corruption in gfortran 4.7.
   call test (events_4, "events_4", &
        "recover event", &
        u, results)
+<<Events: test declarations>>=
+  public :: events_4
 <<Events: tests>>=
   subroutine events_4 (u)
+    use processes_ut, only: prepare_test_process
     integer, intent(in) :: u
     type(event_t), allocatable, target :: event
     type(process_t), allocatable, target :: process
@@ -5667,11 +6349,11 @@ memory corruption in gfortran 4.7.
     allocate (event)
     call event%basic_init ()
     call event%connect (process_instance, process%get_model_ptr ())
-    
+
     call event%generate (1, [0.4_default, 0.4_default])
     call event%evaluate_expressions ()
     call event%write (u)
-    
+
     particle_set_ptr => event%get_particle_set_ptr ()
     particle_set = particle_set_ptr
 
@@ -5685,7 +6367,7 @@ memory corruption in gfortran 4.7.
     write (u, "(A)")
     write (u, "(A)")  "* Recover event from particle set"
     write (u, "(A)")
-    
+
     allocate (process)
     allocate (process_instance)
     call prepare_test_process (process, process_instance, model)
@@ -5694,7 +6376,7 @@ memory corruption in gfortran 4.7.
     allocate (event)
     call event%basic_init ()
     call event%connect (process_instance, process%get_model_ptr ())
-    
+
     call event%select (1, 1, 1)
     call event%set_hard_particle_set (particle_set)
     call event%recalculate (update_sqme = .true.)
@@ -5703,13 +6385,13 @@ memory corruption in gfortran 4.7.
     write (u, "(A)")
     write (u, "(A)")  "* Transfer sqme and evaluate expressions"
     write (u, "(A)")
-    
+
     call event%accept_sqme_prc ()
     call event%accept_weight_prc ()
     call event%check ()
     call event%evaluate_expressions ()
     call event%write (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Reset contents"
     write (u, "(A)")
@@ -5729,16 +6411,14 @@ memory corruption in gfortran 4.7.
     call cleanup_test_process (process, process_instance)
     deallocate (process_instance)
     deallocate (process)
-    
-!    call model_list%final ()
-!    call syntax_model_file_final ()
+
     call model%final ()
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: events_4"
-    
+
   end subroutine events_4
-  
+
 @ %def events_4
 @
 \subsubsection{Partially Recovering an event}
@@ -5749,8 +6429,11 @@ without recomputing the squared matrix element.
   call test (events_5, "events_5", &
        "partially recover event", &
        u, results)
+<<Events: test declarations>>=
+  public :: events_5
 <<Events: tests>>=
   subroutine events_5 (u)
+    use processes_ut, only: prepare_test_process
     integer, intent(in) :: u
     type(event_t), allocatable, target :: event
     type(process_t), allocatable, target :: process
@@ -5777,11 +6460,11 @@ without recomputing the squared matrix element.
     allocate (event)
     call event%basic_init ()
     call event%connect (process_instance, process%get_model_ptr ())
-    
+
     call event%generate (1, [0.4_default, 0.4_default])
     call event%evaluate_expressions ()
     call event%write (u)
-    
+
     particle_set_ptr => event%get_particle_set_ptr ()
     particle_set = particle_set_ptr
     sqme = event%get_sqme_ref ()
@@ -5797,7 +6480,7 @@ without recomputing the squared matrix element.
     write (u, "(A)")
     write (u, "(A)")  "* Recover event from particle set"
     write (u, "(A)")
-    
+
     allocate (process)
     allocate (process_instance)
     call prepare_test_process (process, process_instance, model)
@@ -5806,7 +6489,7 @@ without recomputing the squared matrix element.
     allocate (event)
     call event%basic_init ()
     call event%connect (process_instance, process%get_model_ptr ())
-    
+
     call event%select (1, 1, 1)
     call event%set_hard_particle_set (particle_set)
     call event%recalculate (update_sqme = .false.)
@@ -5815,13 +6498,13 @@ without recomputing the squared matrix element.
     write (u, "(A)")
     write (u, "(A)")  "* Manually set sqme and evaluate expressions"
     write (u, "(A)")
-    
+
     call event%set (sqme_ref = sqme, weight_ref = weight)
     call event%accept_sqme_ref ()
     call event%accept_weight_ref ()
     call event%evaluate_expressions ()
     call event%write (u)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
 
@@ -5833,16 +6516,14 @@ without recomputing the squared matrix element.
     call cleanup_test_process (process, process_instance)
     deallocate (process_instance)
     deallocate (process)
-    
-!    call model_list%final ()
-!    call syntax_model_file_final ()
+
     call model%final ()
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: events_5"
-    
+
   end subroutine events_5
-  
+
 @ %def events_5
 @
 \subsubsection{Decays}
@@ -5851,6 +6532,8 @@ Generate an event with subsequent decays.
   call test (events_6, "events_6", &
        "decays", &
        u, results)
+<<Events: test declarations>>=
+  public :: events_6
 <<Events: tests>>=
   subroutine events_6 (u)
     integer, intent(in) :: u
@@ -5896,7 +6579,7 @@ Generate an event with subsequent decays.
 
     allocate (evt_decay_t :: evt_decay)
     call evt_decay%connect (process_instance, model, process_stack)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Initialize event object"
     write (u, "(A)")
@@ -5905,9 +6588,9 @@ Generate an event with subsequent decays.
     call event%basic_init ()
     call event%connect (process_instance, model)
     call event%import_transform (evt_decay)
-    
+
     call event%write (u, show_decay = .true.)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Generate event"
     write (u, "(A)")
@@ -5926,12 +6609,12 @@ Generate an event with subsequent decays.
     deallocate (process_instance)
 
     call process_stack%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: events_6"
-    
+
   end subroutine events_6
-  
+
 @ %def events_6
 @
 \subsubsection{Decays}
@@ -5940,6 +6623,8 @@ Generate a decay event with varying options.
   call test (events_7, "events_7", &
        "decay options", &
        u, results)
+<<Events: test declarations>>=
+  public :: events_7
 <<Events: tests>>=
   subroutine events_7 (u)
     integer, intent(in) :: u
@@ -6027,17 +6712,17 @@ Generate a decay event with varying options.
 
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
-    
+
     call process_stack%final ()
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: events_7"
-    
+
   end subroutine events_7
-  
+
 @ %def events_7
 @
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Raw Event I/O}
 The raw format is for internal use only.  All data are stored
 unformatted, so they can be efficiently be re-read on the same
@@ -6050,15 +6735,11 @@ access only the methods that are defined in [[event_base]].
 <<File header>>
 
 module eio_raw
-  
-  use kinds
-  use io_units
-<<Use strings>>
-  use unit_tests
-  use diagnostics
 
-  use lorentz
-  use variables
+<<Use kinds>>
+<<Use strings>>
+  use io_units
+  use diagnostics
   use model_data
   use particles
   use event_base
@@ -6075,16 +6756,14 @@ module eio_raw
 <<EIO raw: types>>
 
 contains
-  
-<<EIO raw: procedures>>
 
-<<EIO raw: tests>>
+<<EIO raw: procedures>>
 
 end module eio_raw
 @ %def eio_raw
 @
 \subsection{File Format Version}
-This is the current default file version. 
+This is the current default file version.
 <<EIO raw: parameters>>=
   integer, parameter :: CURRENT_FILE_VERSION = 2
 
@@ -6123,7 +6802,7 @@ initialization, which should enforce some compatibility mode.
    contains
    <<EIO raw: eio raw: TBP>>
   end type eio_raw_t
-  
+
 @ %def eio_raw_t
 @ Output.  This is not the actual event format, but a readable account
 of the current object status.
@@ -6148,7 +6827,7 @@ of the current object status.
        write (u, "(3x,A)")  "[closed]"
     end if
   end subroutine eio_raw_write
-  
+
 @ %def eio_raw_write
 @ Finalizer: close any open file.
 <<EIO raw: eio raw: TBP>>=
@@ -6165,7 +6844,7 @@ of the current object status.
        object%writing = .false.
     end if
   end subroutine eio_raw_final
-  
+
 @ %def eio_raw_final
 @ Set the [[check]] flag which determines whether we compare checksums on input.
 <<EIO raw: eio raw: TBP>>=
@@ -6175,7 +6854,7 @@ of the current object status.
     class(eio_raw_t), intent(inout) :: eio
     logical, intent(in), optional :: check
     type(string_t), intent(in), optional :: version_string
-    type(string_t), intent(in), optional :: extension 
+    type(string_t), intent(in), optional :: extension
     if (present (check))  eio%check = check
     if (present (version_string)) then
        select case (char (version_string))
@@ -6195,7 +6874,7 @@ of the current object status.
        eio%extension = "evx"
     end if
   end subroutine eio_raw_set_parameters
-    
+
 @ %def eio_raw_set_parameters
 @ Initialize event writing.
 <<EIO raw: eio raw: TBP>>=
@@ -6232,7 +6911,7 @@ of the current object status.
           !!! !!! !!! Workaround for gfortran 5.0 ICE
           allocate (md5sum_alt (data%n_alt))
           md5sum_alt = data%md5sum_alt
-          !!! allocate (md5sum_alt (data%n_alt), source = data%md5sum_alt) 
+          !!! allocate (md5sum_alt (data%n_alt), source = data%md5sum_alt)
        end if
     else
        md5sum_prc = ""
@@ -6247,12 +6926,14 @@ of the current object status.
     write (eio%unit)  md5sum_cfg
     write (eio%unit)  eio%norm_mode
     write (eio%unit)  eio%n_alt
-    do i = 1, eio%n_alt
-       write (eio%unit)  md5sum_alt(i)
-    end do
+    if (allocated (md5sum_alt)) then
+       do i = 1, eio%n_alt
+          write (eio%unit)  md5sum_alt(i)
+       end do
+    end if
     if (present (success))  success = .true.
   end subroutine eio_raw_init_out
-    
+
 @ %def eio_raw_init_out
 @ Initialize event reading.
 <<EIO raw: eio raw: TBP>>=
@@ -6302,7 +6983,7 @@ of the current object status.
     read (eio%unit)  eio%n_alt
     if (present (data)) then
        if (eio%n_alt /= data%n_alt) then
-          if (present (success))  success = .false. !
+          if (present (success))  success = .false.
           return
        end if
     end if
@@ -6330,7 +7011,7 @@ of the current object status.
        end if
     end if
   end subroutine eio_raw_init_in
-    
+
 @ %def eio_raw_init_in
 @ Switch from input to output: reopen the file for reading.
 <<EIO raw: eio raw: TBP>>=
@@ -6349,7 +7030,7 @@ of the current object status.
     eio%writing = .true.
     if (present (success))  success = .true.
   end subroutine eio_raw_switch_inout
-  
+
 @ %def eio_raw_switch_inout
 @ Output an event.  Write first the event indices, then weight and
 squared matrix element, then the particle set.
@@ -6519,17 +7200,79 @@ a different version of [[event%set_hard_particle_set]].
 @ %def eio_raw_input_i_prc
 @ %def eio_raw_input_event
 @
+<<EIO raw: eio raw: TBP>>=
+  procedure :: skip => eio_raw_skip
+<<EIO raw: procedures>>=
+  subroutine eio_raw_skip (eio, iostat)
+    class(eio_raw_t), intent(inout) :: eio
+    integer, intent(out) :: iostat
+    if (eio%reading) then
+       read (eio%unit, iostat = iostat)
+    else
+       call eio%write ()
+       call msg_fatal ("Raw event file is not open for reading")
+    end if
+  end subroutine eio_raw_skip
+
+@ %def eio_raw_skip
+@
 \subsection{Unit tests}
-<<EIO raw: public>>=
+Test module, followed by the corresponding implementation module.
+<<[[eio_raw_ut.f90]]>>=
+<<File header>>
+
+module eio_raw_ut
+  use unit_tests
+  use eio_raw_uti
+
+<<Standard module head>>
+
+<<EIO raw: public test>>
+
+contains
+
+<<EIO raw: test driver>>
+
+end module eio_raw_ut
+@ %def eio_raw_ut
+@
+<<[[eio_raw_uti.f90]]>>=
+<<File header>>
+
+module eio_raw_uti
+
+<<Use kinds>>
+<<Use strings>>
+  use model_data
+  use variables
+  use events
+  use eio_data
+  use eio_base
+
+  use eio_raw
+
+<<Standard module head>>
+
+<<EIO raw: test declarations>>
+
+contains
+
+<<EIO raw: tests>>
+
+end module eio_raw_uti
+
+@ %def eio_raw_uti
+@ API: driver for the unit tests below.
+<<EIO raw: public test>>=
   public :: eio_raw_test
-<<EIO raw: tests>>=
+<<EIO raw: test driver>>=
   subroutine eio_raw_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
   <<EIO raw: execute tests>>
   end subroutine eio_raw_test
-  
-@ %def eio_raw_test 
+
+@ %def eio_raw_test
 @
 \subsubsection{Test I/O methods}
 We test the implementation of all I/O methods.
@@ -6537,9 +7280,12 @@ We test the implementation of all I/O methods.
   call test (eio_raw_1, "eio_raw_1", &
        "read and write event contents", &
        u, results)
+<<EIO raw: test declarations>>=
+  public :: eio_raw_1
 <<EIO raw: tests>>=
   subroutine eio_raw_1 (u)
     use processes
+    use processes_ut, only: prepare_test_process
     integer, intent(in) :: u
     type(model_data_t), target :: model
     type(event_t), allocatable, target :: event
@@ -6554,26 +7300,26 @@ We test the implementation of all I/O methods.
     write (u, "(A)")
 
     write (u, "(A)")  "* Initialize test process"
- 
+
     call model%init_test ()
 
     allocate (process)
     allocate (process_instance)
     call prepare_test_process (process, process_instance, model)
     call process_instance%setup_event_data ()
- 
+
     allocate (event)
     call event%basic_init ()
     call event%connect (process_instance, process%get_model_ptr ())
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Generate and write an event"
     write (u, "(A)")
- 
+
     sample = "eio_raw_1"
- 
+
     allocate (eio_raw_t :: eio)
-    
+
     call eio%init_out (sample)
     call event%generate (1, [0._default, 0._default])
     call event%evaluate_expressions ()
@@ -6588,11 +7334,11 @@ We test the implementation of all I/O methods.
     deallocate (event)
     call process_instance%final ()
     deallocate (process_instance)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Re-read the event"
     write (u, "(A)")
-    
+
     call eio%init_in (sample)
 
     allocate (process_instance)
@@ -6601,13 +7347,13 @@ We test the implementation of all I/O methods.
     allocate (event)
     call event%basic_init ()
     call event%connect (process_instance, process%get_model_ptr ())
-    
+
     call eio%input_i_prc (i_prc, iostat)
     if (iostat /= 0)  write (u, "(A,I0)")  "I/O error (i_prc):", iostat
     call eio%input_event (event, iostat)
     if (iostat /= 0)  write (u, "(A,I0)")  "I/O error (event):", iostat
     call eio%write (u)
-    
+
     write (u, "(A)")
     write (u, "(1x,A,I0)")  "i_prc = ", i_prc
     write (u, "(A)")
@@ -6616,7 +7362,7 @@ We test the implementation of all I/O methods.
     write (u, "(A)")
     write (u, "(A)")  "* Generate and append another event"
     write (u, "(A)")
-    
+
     call eio%switch_inout ()
     call event%generate (1, [0._default, 0._default])
     call event%evaluate_expressions ()
@@ -6626,16 +7372,16 @@ We test the implementation of all I/O methods.
     call eio%output (event, i_prc = 5)
     call eio%write (u)
     call eio%final ()
-    
+
     call event%final ()
     deallocate (event)
     call process_instance%final ()
     deallocate (process_instance)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Re-read both events"
     write (u, "(A)")
-    
+
     call eio%init_in (sample)
 
     allocate (process_instance)
@@ -6644,7 +7390,7 @@ We test the implementation of all I/O methods.
     allocate (event)
     call event%basic_init ()
     call event%connect (process_instance, process%get_model_ptr ())
-    
+
     call eio%input_i_prc (i_prc, iostat)
     if (iostat /= 0)  write (u, "(A,I0)")  "I/O error (i_prc/1):", iostat
     call eio%input_event (event, iostat)
@@ -6654,7 +7400,7 @@ We test the implementation of all I/O methods.
     call eio%input_event (event, iostat)
     if (iostat /= 0)  write (u, "(A,I0)")  "I/O error (event/2):", iostat
     call eio%write (u)
-    
+
     write (u, "(A)")
     write (u, "(1x,A,I0)")  "i_prc = ", i_prc
     write (u, "(A)")
@@ -6662,24 +7408,24 @@ We test the implementation of all I/O methods.
 
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
- 
+
     call eio%final ()
     deallocate (eio)
- 
+
     call event%final ()
     deallocate (event)
- 
+
     call cleanup_test_process (process, process_instance)
     deallocate (process_instance)
     deallocate (process)
-    
+
     call model%final ()
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: eio_raw_1"
-    
+
   end subroutine eio_raw_1
-  
+
 @ %def eio_raw_1
 @
 \subsubsection{Test I/O methods}
@@ -6688,9 +7434,12 @@ We test the implementation of all I/O methods.
   call test (eio_raw_2, "eio_raw_2", &
        "handle multiple weights", &
        u, results)
+<<EIO raw: test declarations>>=
+  public :: eio_raw_2
 <<EIO raw: tests>>=
   subroutine eio_raw_2 (u)
     use processes
+    use processes_ut, only: prepare_test_process
     integer, intent(in) :: u
     type(model_data_t), target :: model
     type(var_list_t) :: var_list
@@ -6710,12 +7459,12 @@ We test the implementation of all I/O methods.
     call model%init_test ()
 
     write (u, "(A)")  "* Initialize test process"
- 
+
     allocate (process)
     allocate (process_instance)
     call prepare_test_process (process, process_instance, model)
     call process_instance%setup_event_data ()
- 
+
     call data%init (n_proc = 1, n_alt = 2)
 
     call var_list_append_log (var_list, var_str ("?unweighted"), .false., &
@@ -6728,15 +7477,15 @@ We test the implementation of all I/O methods.
     allocate (event)
     call event%basic_init (var_list, n_alt = 2)
     call event%connect (process_instance, process%get_model_ptr ())
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Generate and write an event"
     write (u, "(A)")
- 
+
     sample = "eio_raw_2"
- 
+
     allocate (eio_raw_t :: eio)
-    
+
     call eio%init_out (sample, data)
     call event%generate (1, [0._default, 0._default])
     call event%evaluate_expressions ()
@@ -6757,11 +7506,11 @@ We test the implementation of all I/O methods.
     deallocate (event)
     call process_instance%final ()
     deallocate (process_instance)
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* Re-read the event"
     write (u, "(A)")
-    
+
     call eio%init_in (sample, data)
 
     allocate (process_instance)
@@ -6770,13 +7519,13 @@ We test the implementation of all I/O methods.
     allocate (event)
     call event%basic_init (var_list, n_alt = 2)
     call event%connect (process_instance, process%get_model_ptr ())
-    
+
     call eio%input_i_prc (i_prc, iostat)
     if (iostat /= 0)  write (u, "(A,I0)")  "I/O error (i_prc):", iostat
     call eio%input_event (event, iostat)
     if (iostat /= 0)  write (u, "(A,I0)")  "I/O error (event):", iostat
     call eio%write (u)
-    
+
     write (u, "(A)")
     write (u, "(1x,A,I0)")  "i_prc = ", i_prc
     write (u, "(A)")
@@ -6784,23 +7533,23 @@ We test the implementation of all I/O methods.
 
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
- 
+
     call eio%final ()
     deallocate (eio)
- 
+
     call event%final ()
     deallocate (event)
- 
+
     call cleanup_test_process (process, process_instance)
     deallocate (process_instance)
     deallocate (process)
-    
+
     call model%final ()
 
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: eio_raw_2"
-    
+
   end subroutine eio_raw_2
-  
+
 @ %def eio_raw_2
-@ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+@ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

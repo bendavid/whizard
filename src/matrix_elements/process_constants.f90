@@ -1,4 +1,4 @@
-! WHIZARD 2.2.6 May 02 2015
+! WHIZARD 2.2.7 Aug 11 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -78,66 +78,86 @@ contains
   function process_constants_get_flv_state (prc_const) result (flv_state)
     class(process_constants_t), intent(in) :: prc_const
     integer, dimension(:,:), allocatable :: flv_state
+    allocate (flv_state (size (prc_const%flv_state, 1), &
+         size (prc_const%flv_state, 2)))
     flv_state = prc_const%flv_state
   end function process_constants_get_flv_state
 
   subroutine process_constants_get_hel_state (prc_const, hel_state)
     class(process_constants_t), intent(in) :: prc_const
     integer, dimension(:,:), allocatable :: hel_state
+    allocate (hel_state (size (prc_const%hel_state, 1), &
+         size (prc_const%hel_state, 2)))
     hel_state = prc_const%hel_state
   end subroutine process_constants_get_hel_state
 
   subroutine process_constants_get_col_state (prc_const, col_state)
     class(process_constants_t), intent(in) :: prc_const
     integer, dimension(:,:,:), allocatable :: col_state
+    allocate (col_state (size (prc_const%col_state, 1), &
+         size (prc_const%col_state, 2), size (prc_const%col_state, 3)))
     col_state = prc_const%col_state
   end subroutine process_constants_get_col_state
 
   function process_constants_get_ghost_flag (prc_const) result(ghost_flag)
    class(process_constants_t), intent(in) :: prc_const
    logical, dimension(:,:), allocatable :: ghost_flag
+    allocate (ghost_flag (size (prc_const%ghost_flag, 1), &
+         size (prc_const%ghost_flag, 2)))
    ghost_flag = prc_const%ghost_flag
   end function process_constants_get_ghost_flag
 
   subroutine process_constants_get_color_factors (prc_const, col_facts)
    class(process_constants_t), intent(in) :: prc_const
    complex(default), intent(inout), dimension(:), allocatable :: col_facts
+   allocate (col_facts (size (prc_const%color_factors)))
    col_facts = prc_const%color_factors
   end subroutine process_constants_get_color_factors
 
   subroutine process_constants_get_cf_index (prc_const, cf_index)
     class(process_constants_t), intent(in) :: prc_const
     integer, intent(inout), dimension(:,:), allocatable :: cf_index
+    allocate (cf_index (size (prc_const%cf_index, 1), &
+         size (prc_const%cf_index, 2)))    
     cf_index = prc_const%cf_index
   end subroutine process_constants_get_cf_index
 
   subroutine process_constants_set_flv_state (prc_const, flv_state)
     class(process_constants_t), intent(inout) :: prc_const
     integer, intent(in), dimension(:,:), allocatable :: flv_state
+    allocate (prc_const%flv_state (size (flv_state, 1), &
+         size (flv_state, 2)))
     prc_const%flv_state = flv_state
   end subroutine process_constants_set_flv_state
 
   subroutine process_constants_set_col_state (prc_const, col_state)
     class(process_constants_t), intent(inout) :: prc_const
     integer, intent(in), dimension(:,:,:), allocatable :: col_state
-    prc_const%col_state = col_state
+    allocate (prc_const%col_state (size (col_state, 1), &
+         size (col_state, 2), size (col_state, 3)))
+    prc_const%col_state = col_state    
   end subroutine process_constants_set_col_state
 
   subroutine process_constants_set_cf_index (prc_const, cf_index)
     class(process_constants_t), intent(inout) :: prc_const
     integer, dimension(:,:), intent(in), allocatable :: cf_index
+    allocate (prc_const%cf_index (size (cf_index, 1), &
+         size (cf_index, 2)))
     prc_const%cf_index = cf_index
   end subroutine process_constants_set_cf_index
 
   subroutine process_constants_set_color_factors (prc_const, color_factors)
     class(process_constants_t), intent(inout) :: prc_const
     complex(default), dimension(:), intent(in), allocatable :: color_factors
+    allocate (prc_const%color_factors (size (color_factors)))
     prc_const%color_factors = color_factors
   end subroutine process_constants_set_color_factors
 
   subroutine process_constants_set_ghost_flag (prc_const, ghost_flag)
     class(process_constants_t), intent(inout) :: prc_const
     logical, intent(in), dimension(:,:), allocatable :: ghost_flag
+    allocate (prc_const%ghost_flag (size (ghost_flag, 1), &
+         size (ghost_flag, 2)))
     prc_const%ghost_flag = ghost_flag
   end subroutine process_constants_set_ghost_flag
 

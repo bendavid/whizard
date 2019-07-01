@@ -1,4 +1,4 @@
-! WHIZARD 2.2.6 May 02 2015
+! WHIZARD 2.2.7 Aug 11 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -32,10 +32,10 @@
 
 module eio_data
   
-  use kinds
-  use io_units
+  use kinds, only: default
   use iso_varying_string, string_t => varying_string
-  use unit_tests
+  use io_units
+  use unit_tests, only: vanishes
   use diagnostics
 
   use event_base
@@ -44,7 +44,6 @@ module eio_data
   private
 
   public :: event_sample_data_t
-  public :: eio_data_test
 
   type :: event_sample_data_t
      character(32) :: md5sum_prc = ""
@@ -57,6 +56,7 @@ module eio_data
      real(default), dimension(2) :: energy_beam = 0
      integer :: n_proc = 0
      integer :: n_evt = 0
+     integer :: nlo_multiplier = 1
      integer :: split_n_evt = 0
      integer :: split_n_kbytes = 0
      integer :: split_index = 0
@@ -109,7 +109,7 @@ contains
     if (data%n_evt > 0) then
        write (u, "(3x,A,I0)")  "number of events = ", data%n_evt
     end if
-    if (data%total_cross_section /= 0) then
+    if (.not. vanishes (data%total_cross_section)) then
        write (u, "(3x,A,ES19.12)")  "total cross sec. = ", &
             data%total_cross_section
     end if
@@ -133,185 +133,5 @@ contains
     end if
   end subroutine event_sample_data_write
     
-
-  subroutine eio_data_test (u, results)
-    integer, intent(in) :: u
-    type(test_results_t), intent(inout) :: results
-    call test (eio_data_1, "eio_data_1", &
-         "event sample data", &
-         u, results)
-    call test (eio_data_2, "eio_data_2", &
-         "event normalization", &
-         u, results)
-  end subroutine eio_data_test
-  
-  subroutine eio_data_1 (u)
-    integer, intent(in) :: u
-    type(event_sample_data_t) :: data
-
-    write (u, "(A)")  "* Test output: eio_data_1"
-    write (u, "(A)")  "*   Purpose:  display event sample data"
-    write (u, "(A)")
-
-    write (u, "(A)")  "* Decay process, one component"
-    write (u, "(A)")
- 
-    call data%init (1, 1)
-    data%n_beam = 1
-    data%pdg_beam(1) = 25
-    data%energy_beam(1) = 125
-
-    data%norm_mode = NORM_UNIT
-    
-    data%proc_num_id = [42]
-    data%cross_section = [1.23e-4_default]
-    data%error = 5e-6_default
-    
-    data%md5sum_prc = "abcdefghijklmnopabcdefghijklmnop"
-    data%md5sum_cfg = "12345678901234561234567890123456"
-    data%md5sum_alt(1) = "uuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuu"
-    
-    call data%write (u)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Scattering process, two components"
-    write (u, "(A)")
-    
-    call data%init (2)
-    data%n_beam = 2
-    data%pdg_beam = [2212, -2212]
-    data%energy_beam = [8._default, 10._default]
-    
-    data%norm_mode = NORM_SIGMA
-    
-    data%proc_num_id = [12, 34]
-    data%cross_section = [100._default, 88._default]
-    data%error = [1._default, 0.1_default]
-    
-    call data%write (u)
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: eio_data_1"
-    
-  end subroutine eio_data_1
-  
-  subroutine eio_data_2 (u)
-    integer, intent(in) :: u
-    type(string_t) :: s
-    logical :: unweighted
-    real(default) :: w, w0, sigma
-    integer :: n
-
-    write (u, "(A)")  "* Test output: eio_data_2"
-    write (u, "(A)")  "*   Purpose:  handle event normalization"
-    write (u, "(A)")
-
-    write (u, "(A)")  "* Normalization strings"
-    write (u, "(A)")
-
-    s = "auto"
-    unweighted = .true.
-    write (u, "(1x,A,1x,L1,1x,A)")  char (s), unweighted, &
-         char (event_normalization_string &
-         (event_normalization_mode (s, unweighted)))
-    s = "AUTO"
-    unweighted = .false.
-    write (u, "(1x,A,1x,L1,1x,A)")  char (s), unweighted, &
-         char (event_normalization_string &
-         (event_normalization_mode (s, unweighted)))
-
-    unweighted = .true.
-    
-    s = "1"
-    write (u, "(2(1x,A))") char (s), char (event_normalization_string &
-         (event_normalization_mode (s, unweighted)))
-    s = "1/n"
-    write (u, "(2(1x,A))") char (s), char (event_normalization_string &
-         (event_normalization_mode (s, unweighted)))
-    s = "Sigma"
-    write (u, "(2(1x,A))") char (s), char (event_normalization_string &
-         (event_normalization_mode (s, unweighted)))
-    s = "sigma/N"
-    write (u, "(2(1x,A))") char (s), char (event_normalization_string &
-         (event_normalization_mode (s, unweighted)))
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Normalization update"
-    write (u, "(A)")
-    
-    sigma = 5
-    n = 2
-
-    w0 = 1
-
-    w = w0
-    call event_normalization_update (w, sigma, n, NORM_UNIT, NORM_UNIT)
-    write (u, "(2(F6.3))")  w0, w
-    w = w0
-    call event_normalization_update (w, sigma, n, NORM_N_EVT, NORM_UNIT)
-    write (u, "(2(F6.3))")  w0, w
-    w = w0
-    call event_normalization_update (w, sigma, n, NORM_SIGMA, NORM_UNIT)
-    write (u, "(2(F6.3))")  w0, w
-    w = w0
-    call event_normalization_update (w, sigma, n, NORM_S_N, NORM_UNIT)
-    write (u, "(2(F6.3))")  w0, w
-
-    write (u, *)
-    
-    w0 = 0.5
-
-    w = w0
-    call event_normalization_update (w, sigma, n, NORM_UNIT, NORM_N_EVT)
-    write (u, "(2(F6.3))")  w0, w
-    w = w0
-    call event_normalization_update (w, sigma, n, NORM_N_EVT, NORM_N_EVT)
-    write (u, "(2(F6.3))")  w0, w
-    w = w0
-    call event_normalization_update (w, sigma, n, NORM_SIGMA, NORM_N_EVT)
-    write (u, "(2(F6.3))")  w0, w
-    w = w0
-    call event_normalization_update (w, sigma, n, NORM_S_N, NORM_N_EVT)
-    write (u, "(2(F6.3))")  w0, w
-    
-    write (u, *)
-    
-    w0 = 5.0
-
-    w = w0
-    call event_normalization_update (w, sigma, n, NORM_UNIT, NORM_SIGMA)
-    write (u, "(2(F6.3))")  w0, w
-    w = w0
-    call event_normalization_update (w, sigma, n, NORM_N_EVT, NORM_SIGMA)
-    write (u, "(2(F6.3))")  w0, w
-    w = w0
-    call event_normalization_update (w, sigma, n, NORM_SIGMA, NORM_SIGMA)
-    write (u, "(2(F6.3))")  w0, w
-    w = w0
-    call event_normalization_update (w, sigma, n, NORM_S_N, NORM_SIGMA)
-    write (u, "(2(F6.3))")  w0, w
-    
-    write (u, *)
-    
-    w0 = 2.5
-
-    w = w0
-    call event_normalization_update (w, sigma, n, NORM_UNIT, NORM_S_N)
-    write (u, "(2(F6.3))")  w0, w
-    w = w0
-    call event_normalization_update (w, sigma, n, NORM_N_EVT, NORM_S_N)
-    write (u, "(2(F6.3))")  w0, w
-    w = w0
-    call event_normalization_update (w, sigma, n, NORM_SIGMA, NORM_S_N)
-    write (u, "(2(F6.3))")  w0, w
-    w = w0
-    call event_normalization_update (w, sigma, n, NORM_S_N, NORM_S_N)
-    write (u, "(2(F6.3))")  w0, w
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: eio_data_2"
-    
-  end subroutine eio_data_2
-  
 
 end module eio_data

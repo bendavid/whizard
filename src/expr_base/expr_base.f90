@@ -1,4 +1,4 @@
-! WHIZARD 2.2.6 May 02 2015
+! WHIZARD 2.2.7 Aug 11 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -33,7 +33,6 @@
 module expr_base
 
   use kinds, only: default
-  use iso_varying_string, string_t => varying_string
   use var_base
 
   implicit none

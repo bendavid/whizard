@@ -1,0 +1,1776 @@
+! WHIZARD 2.2.7 Aug 11 2015
+! 
+! Copyright (C) 1999-2015 by 
+!     Wolfgang Kilian <kilian@physik.uni-siegen.de>
+!     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
+!     Juergen Reuter <juergen.reuter@desy.de>
+!     
+!     with contributions from
+!     Fabian Bach <fabian.bach@desy.de>
+!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Weiss <christian.weiss@desy.de>
+!     and Hans-Werner Boschmann, Felix Braam, 
+!     Sebastian Schmidt, Daniel Wiesler 
+!
+! WHIZARD is free software; you can redistribute it and/or modify it
+! under the terms of the GNU General Public License as published by 
+! the Free Software Foundation; either version 2, or (at your option)
+! any later version.
+!
+! WHIZARD is distributed in the hope that it will be useful, but
+! WITHOUT ANY WARRANTY; without even the implied warranty of
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! GNU General Public License for more details.
+!
+! You should have received a copy of the GNU General Public License
+! along with this program; if not, write to the Free Software
+! Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! This file has been stripped of most comments.  For documentation, refer
+! to the source 'whizard.nw'
+
+module powheg_matching
+
+  use, intrinsic :: iso_fortran_env
+
+  use kinds, only: default
+  use iso_varying_string, string_t => varying_string
+  use diagnostics
+  use constants, only: ZERO, ONE, TWO, FIVE
+  use constants, only: TINY_07
+  use constants, only: PI, TWOPI
+  use unit_tests, only: nearly_equal, assert_equal
+  use io_units, only: given_output_unit, free_unit
+  use format_utils, only: write_separator
+  use format_defs, only: FMT_16, FMT_19
+  use string_utils, only: str
+  use os_interface, only: os_file_exist
+  use physics_defs, only: CA
+  use lorentz
+  use sm_qcd, only: qcd_t, alpha_qcd_from_scale_t, alpha_qcd_from_lambda_t
+  use sm_physics, only: Li2
+  use colors
+  use particles
+  use grids
+  use solver
+  use rng_base
+  use variables
+
+  use nlo_data, only: compute_dalitz_bounds, FSR_SIMPLE, FSR_MASSIVE
+  use phs_fks
+  use matching_base
+
+  implicit none
+  private
+
+  public :: powheg_settings_t
+  public :: powheg_testing_t
+  public :: radiation_t
+  public :: process_deps_t
+  public :: event_deps_t
+  public :: sudakov_t
+  public :: sudakov_wrapper_t
+  public :: sudakov_simple_fsr_t
+  public :: sudakov_eeqq_fsr_t
+  public :: sudakov_massive_fsr_t
+  public :: powheg_matching_t
+
+  integer, parameter :: UBF_SIMPLE = 1
+  integer, parameter :: UBF_EEQQ = 2
+  integer, parameter :: UBF_MASSIVE = 3
+  real(default), parameter :: b0rad = (33 - 2 * 5) / (12 * pi)
+
+  type :: powheg_settings_t
+     real(default) :: pt2_min = zero
+     real(default) :: lambda = zero
+     integer :: n_init = 0
+     integer :: size_grid_xi = 0
+     integer :: size_grid_y = 0
+     integer :: upper_bound_func = UBF_SIMPLE
+     logical :: rebuild_grids = .false.
+     logical :: test_sudakov = .false.
+     logical :: singular_jacobian = .false.
+  contains
+     procedure :: init => powheg_settings_init
+     procedure :: write => powheg_settings_write
+  end type powheg_settings_t
+
+  type :: powheg_testing_t
+     integer :: n_alr, n_in, n_out_born, n_out_real
+     real(default) :: sqme_born
+     logical :: active = .false.
+  end type powheg_testing_t
+
+  type :: radiation_t
+    real(default) :: xi, y, phi, pt2
+    integer :: alr
+    logical :: valid = .false.
+  contains
+    procedure :: write => radiation_write
+  end type radiation_t
+
+  type :: process_deps_t
+     real(default) :: lambda2_gen, sqrts
+     integer :: n_alr
+  contains
+     procedure :: write => process_deps_write
+  end type process_deps_t
+
+  type :: event_deps_t
+     real(default) :: s_hat
+     type(vector4_t), dimension(:), allocatable :: p_born
+     type(vector4_t), dimension(:), allocatable :: p_real
+     real(default) :: sqme_born
+  contains
+     procedure :: write => event_deps_write
+     procedure :: update => event_deps_update
+     procedure :: set_cms => event_deps_set_cms
+  end type event_deps_t
+
+  type :: veto_counter_t
+    integer :: n_ubf = 0
+    integer :: n_first_fail = 0
+    integer :: n_alpha_s = 0
+    integer :: n_xi_max = 0
+    integer :: n_norm = 0
+    integer :: n_sqme = 0
+    integer :: veto_ubf = 0
+    integer :: veto_alpha_s = 0
+    integer :: veto_xi_max = 0
+    integer :: veto_norm = 0
+    integer :: veto_sqme = 0
+    integer :: n_veto_fail = 0
+  contains
+    procedure :: record_ubf => veto_counter_record_ubf
+    procedure :: record_first_fail => veto_counter_record_first_fail
+    procedure :: record_alpha_s => veto_counter_record_alpha_s
+    procedure :: record_xi_max => veto_counter_record_xi_max
+    procedure :: record_norm => veto_counter_record_norm
+    procedure :: record_sqme => veto_counter_record_sqme
+    procedure :: record_fail => veto_counter_record_fail
+    procedure :: write => veto_counter_write
+  end type veto_counter_t
+
+  type, abstract, extends (solver_function_t) :: sudakov_t
+     type(process_deps_t), pointer :: process_deps => null()
+     type(event_deps_t), pointer :: event_deps => null()
+     type(powheg_settings_t), pointer :: powheg_settings => null()
+     type(phs_fks_generator_t), pointer :: phs_fks_generator => null()
+     type(qcd_t), pointer :: qcd => null()
+     class(rng_t), pointer :: rng => null()
+     real(default) :: xi2_max = 0
+     real(default) :: norm_max = 0
+     real(default) :: current_pt2_max = 0
+     real(default) :: last_log = 0
+     real(default) :: random = 0
+     type(veto_counter_t) :: veto_counter
+     integer :: associated_emitter = -1
+  contains
+     procedure :: write => sudakov_write
+     procedure :: init => sudakov_init
+     procedure :: set_normalization => sudakov_set_normalization
+     procedure :: update => sudakov_update
+     procedure (sudakov_upper_bound_func), deferred :: upper_bound_func
+     procedure (sudakov_log_integrated_ubf), deferred :: log_integrated_ubf
+     procedure (sudakov_generate_xi_and_y_and_phi), deferred :: generate_xi_and_y_and_phi
+     procedure (sudakov_kt2), deferred :: kt2
+     procedure (sudakov_kt2_max), deferred :: kt2_max
+     procedure (sudakov_reweight_ubf), deferred :: reweight_ubf
+     procedure (sudakov_reweight_xi_max), deferred :: reweight_xi_max
+     procedure :: alpha_s => sudakov_alpha_s
+     procedure :: generate_pt2 => sudakov_generate_pt2
+     procedure :: check_solution_interval => sudakov_check_solution_interval
+     procedure :: generate_emission => sudakov_generate_emission
+     procedure :: evaluate => sudakov_evaluate
+     procedure :: alpha_s_rad => sudakov_alpha_s_rad
+     procedure :: reweight_alpha_s => sudakov_reweight_alpha_s
+  end type sudakov_t
+
+  type :: sudakov_wrapper_t
+     class(sudakov_t), allocatable :: s
+  end type sudakov_wrapper_t
+
+  type, extends (sudakov_t) :: sudakov_simple_fsr_t
+  contains
+     procedure :: upper_bound_func => sudakov_simple_fsr_upper_bound_func
+     procedure :: kt2 => sudakov_simple_fsr_kt2
+     procedure :: kt2_max => sudakov_simple_fsr_kt2_max
+     procedure :: log_integrated_ubf => sudakov_simple_fsr_log_integrated_ubf
+     procedure :: reweight_ubf => sudakov_simple_fsr_reweight_ubf
+     procedure :: reweight_xi_max => sudakov_simple_fsr_reweight_xi_max
+     procedure :: generate_xi_and_y_and_phi => sudakov_simple_fsr_generate_xi_and_y_and_phi
+     procedure :: generate_xi => sudakov_simple_fsr_generate_xi
+  end type sudakov_simple_fsr_t
+
+  type, extends (sudakov_t) :: sudakov_eeqq_fsr_t
+  contains
+     procedure :: kt2 => sudakov_eeqq_fsr_kt2
+     procedure :: kt2_max => sudakov_eeqq_fsr_kt2_max
+     procedure :: upper_bound_func => sudakov_eeqq_fsr_upper_bound_func
+     procedure :: log_integrated_ubf => sudakov_eeqq_fsr_log_integrated_ubf
+     procedure :: reweight_ubf => sudakov_eeqq_fsr_reweight_ubf
+     procedure :: reweight_xi_max => sudakov_eeqq_fsr_reweight_xi_max
+     procedure :: generate_xi_and_y_and_phi => sudakov_eeqq_fsr_generate_xi_and_y_and_phi
+  end type sudakov_eeqq_fsr_t
+
+  type, extends (sudakov_t) :: sudakov_massive_fsr_t
+    real(default) :: z, z1, z2 = 0._default
+    real(default) :: xi_1, xi_min, xi_m = 0._default
+    real(default) :: xi_max_extended = 1._default
+  contains
+    procedure :: compute_xi_max_extended &
+       => sudakov_massive_fsr_compute_xi_max_extended
+    procedure :: generate_xi => sudakov_massive_fsr_generate_xi
+    procedure :: generate_xi_and_y_and_phi => sudakov_massive_fsr_generate_xi_and_y_and_phi
+    procedure :: kt2 => sudakov_massive_fsr_kt2
+    procedure :: kt2_max => sudakov_massive_fsr_kt2_max
+    procedure :: upper_bound_func => sudakov_massive_fsr_upper_bound_func
+    procedure :: log_integrated_ubf => sudakov_massive_fsr_log_integrated_ubf
+    procedure :: reweight_ubf => sudakov_massive_fsr_reweight_ubf
+    procedure :: reweight_xi_max => sudakov_massive_fsr_reweight_xi_max
+  end type sudakov_massive_fsr_t
+
+  type, extends(matching_t) :: powheg_matching_t
+     type(grid_t) :: grid
+     type(phs_fks_generator_t) :: phs_fks_generator
+     type(powheg_settings_t) :: settings
+     type(powheg_testing_t) :: testing
+     type(event_deps_t) :: event_deps
+     type(process_deps_t) :: process_deps
+     type(sudakov_wrapper_t), dimension(:), allocatable :: sudakov
+     integer :: n_emissions = 0
+     logical :: active = .true.
+   contains
+     procedure :: get_method => powheg_matching_get_method
+     procedure :: before_shower => powheg_matching_before_shower
+     procedure :: after_shower => powheg_matching_after_shower
+     procedure :: display_grid_startup_message => &
+                         powheg_display_grid_startup_message
+     procedure :: write => powheg_write
+     procedure :: final => powheg_matching_final
+     procedure :: first_event => powheg_setup_grids
+     procedure :: setup_grids => powheg_setup_grids
+     procedure :: setup_sudakovs => powheg_setup_sudakovs
+     procedure :: init => powheg_matching_init
+     generic :: update => update_momenta, &
+                          update_particle_set
+     procedure :: update_momenta => powheg_update_momenta
+     procedure :: update_particle_set => powheg_update_particle_set
+     procedure :: reweight_matrix_elements => powheg_reweight_matrix_elements
+     procedure :: compute_sqme_real => powheg_compute_sqme_real
+     procedure :: set_scale => powheg_set_scale
+     procedure :: fill_grids => powheg_fill_grids
+     procedure :: generate_xi_and_y_for_grids => powheg_generate_xi_and_y_for_grids
+     procedure :: prepare_momenta_for_fill_grids => powheg_prepare_momenta_for_fill_grids
+     procedure :: above_pt2_min => powheg_above_pt2_min
+     procedure :: update_sudakovs => powheg_update_sudakovs
+     procedure :: import_norms_from_grid => powheg_import_norms_from_grid
+     procedure :: save_grids => powheg_save_grids
+     procedure :: load_grids => powheg_load_grids
+     procedure :: requires_new_grids => powheg_requires_new_grids
+     procedure :: generate_emission => powheg_generate_emission
+     procedure :: build_particle_set => powheg_build_particle_set
+     procedure :: reweight_norm => powheg_reweight_norm
+     procedure :: norm_from_xi_and_y => powheg_norm_from_xi_and_y
+     procedure :: prepare_for_events => powheg_prepare_for_events
+     procedure :: compute_lambda2_gen => powheg_matching_compute_lambda2_gen
+     procedure :: setup_nlo_environment => powheg_matching_setup_nlo_environment
+     procedure :: copy_momenta => powheg_matching_copy_momenta
+     procedure :: test_sudakov => powheg_test_sudakov
+  end type powheg_matching_t
+
+
+  abstract interface
+     pure function sudakov_upper_bound_func (sudakov, xi, y, alpha_s) result (u)
+       import
+       real(default) :: u
+       class(sudakov_t), intent(in) :: sudakov
+       real(default), intent(in) :: xi, y, alpha_s
+     end function sudakov_upper_bound_func
+  end interface
+
+  abstract interface
+     pure function sudakov_log_integrated_ubf (sudakov, pt2) result (y)
+       import
+       real(default) :: y
+       class(sudakov_t), intent(in) :: sudakov
+       real(default), intent(in) :: pt2
+     end function sudakov_log_integrated_ubf
+  end interface
+
+  abstract interface
+     subroutine sudakov_generate_xi_and_y_and_phi (sudakov, r)
+       import
+       class(sudakov_t), intent(inout) :: sudakov
+       type(radiation_t), intent(inout) :: r
+     end subroutine sudakov_generate_xi_and_y_and_phi
+  end interface
+
+  abstract interface
+     function sudakov_kt2 (sudakov, xi, y) result (kt2)
+       import
+       real(default) :: kt2
+       class(sudakov_t), intent(in) :: sudakov
+       real(default), intent(in) :: xi, y
+     end function sudakov_kt2
+  end interface
+
+  abstract interface
+     pure function sudakov_kt2_max (sudakov, s_hat) result (kt2_max)
+        import
+        real(default) :: kt2_max
+        class(sudakov_t), intent(in) :: sudakov
+        real(default), intent(in) :: s_hat
+    end function sudakov_kt2_max
+  end interface
+
+  abstract interface
+     function sudakov_reweight_ubf (sudakov, pt2) result (accepted)
+       import
+       logical :: accepted
+       class(sudakov_t), intent(inout) :: sudakov
+       real(default), intent(in) :: pt2
+    end function sudakov_reweight_ubf
+  end interface
+
+  abstract interface
+     function sudakov_reweight_xi_max (sudakov, xi) result (accepted)
+       import
+       logical :: accepted
+       class(sudakov_t), intent(in) :: sudakov
+       real(default), intent(in) :: xi
+     end function sudakov_reweight_xi_max
+  end interface
+
+
+contains
+
+  subroutine powheg_settings_init (settings, var_list)
+    class(powheg_settings_t), intent(out) :: settings
+    type(var_list_t), intent(in) :: var_list
+    settings%size_grid_xi = &
+         var_list%get_ival (var_str ("powheg_grid_size_xi"))
+    settings%size_grid_y = &
+         var_list%get_ival (var_str ("powheg_grid_size_y"))
+    settings%n_init = &
+         var_list%get_ival (var_str ("powheg_grid_sampling_points"))
+    settings%pt2_min = &
+         var_list%get_rval (var_str ("powheg_pt_min"))**2
+    settings%lambda = var_list%get_rval (var_str ("powheg_lambda"))
+    settings%rebuild_grids = &
+         var_list%get_lval (var_str ("?powheg_rebuild_grids"))
+    settings%singular_jacobian = &
+         var_list%get_lval (var_str ("?powheg_use_singular_jacobian"))
+    settings%test_sudakov = &
+         var_list%get_lval (var_str ("?powheg_test_sudakov"))
+  end subroutine powheg_settings_init
+
+  subroutine powheg_settings_write (powheg_settings, unit)
+    class(powheg_settings_t), intent(in) :: powheg_settings
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = given_output_unit (unit);  if (u < 0)  return
+    write (u, "(1X,A)") "POWHEG settings:"
+    write (u, "(3X,A," // FMT_16 //")") "pt2_min = ", powheg_settings%pt2_min
+    write (u, "(3X,A," // FMT_16 //")") "lambda = ", powheg_settings%lambda
+    write (u, "(3X,A,I12)") "n_init = ", powheg_settings%n_init
+    write (u, "(3X,A,I12)") "size_grid_xi = ", powheg_settings%size_grid_xi
+    write (u, "(3X,A,I12)") "size_grid_y = ", powheg_settings%size_grid_y
+    write (u, "(3X,A,I12)") "upper_bound_func = ", powheg_settings%upper_bound_func
+  end subroutine powheg_settings_write
+
+  subroutine radiation_write (radiation, unit)
+    class(radiation_t), intent(in) :: radiation
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = given_output_unit (unit);  if (u < 0)  return
+    write (u, "(1X, A)") "Radiation:"
+    write (u, "(3X, A," // FMT_16 // ")") "xi = ", radiation%xi
+    write (u, "(3X, A," // FMT_16 // ")") "y = ", radiation%y
+    write (u, "(3X, A," // FMT_16 // ")") "phi = ", radiation%phi
+    write (u, "(3X, A," // FMT_16 // ")") "pt2 = ", radiation%pt2
+    write (u, "(3X, A, I12)") "alr = ", radiation%alr
+  end subroutine radiation_write
+
+  subroutine process_deps_write (process_deps, unit)
+    class(process_deps_t), intent(in) :: process_deps
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = given_output_unit (unit);  if (u < 0)  return
+    write (u, "(1X,A)") "Process dependencies:"
+    write (u, "(3X,A," // FMT_19 // ")") "lambda2_gen = ", process_deps%lambda2_gen
+    write (u, "(3X,A, I12)") "n_alr = ", process_deps%n_alr
+  end subroutine process_deps_write
+
+  subroutine event_deps_write (event_deps, unit)
+    class(event_deps_t), intent(in) :: event_deps
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = given_output_unit (unit);  if (u < 0)  return
+    write (u, "(1X,A)") "Event dependencies:"
+    write (u, "(3X,A," // FMT_19 // ")") "s_hat = ", event_deps%s_hat
+    write (u, "(3X,A," // FMT_19 // ")") "sqme_born = ", event_deps%sqme_born
+  end subroutine event_deps_write
+
+  subroutine event_deps_update (event_deps, sqme_born, p_born)
+    class(event_deps_t), intent(inout) :: event_deps
+    real(default), intent(in) :: sqme_born
+    type(vector4_t), dimension(:), intent(in) :: p_born
+    event_deps%sqme_born = sqme_born
+    if (debug_active (D_MATCHING)) then
+       if (size (p_born) /= size (event_deps%p_born)) then
+          call msg_fatal ("event_deps_update: number of born_momenta has changed")
+       end if
+    end if
+    event_deps%p_born = p_born
+    call event_deps%set_cms ()
+  end subroutine event_deps_update
+
+  pure subroutine event_deps_set_cms (event_deps)
+    class(event_deps_t), intent(inout) :: event_deps
+    event_deps%s_hat = &
+         (event_deps%p_born(1) + event_deps%p_born(2))**2
+  end subroutine event_deps_set_cms
+
+  pure subroutine veto_counter_record_ubf (counter, vetoed)
+    class(veto_counter_t), intent(inout) :: counter
+    logical, intent(in) :: vetoed
+    counter%n_ubf = counter%n_ubf + 1
+    if (vetoed) counter%veto_ubf = counter%veto_ubf + 1
+  end subroutine veto_counter_record_ubf
+
+  subroutine veto_counter_record_first_fail (counter)
+    class(veto_counter_t), intent(inout) :: counter
+    counter%n_first_fail = counter%n_first_fail + 1
+  end subroutine veto_counter_record_first_fail
+
+  subroutine veto_counter_record_alpha_s (counter, vetoed)
+    class(veto_counter_t), intent(inout) :: counter
+    logical, intent(in) :: vetoed
+    counter%n_alpha_s = counter%n_alpha_s + 1
+    if (vetoed) counter%veto_alpha_s = counter%veto_alpha_s + 1
+  end subroutine veto_counter_record_alpha_s
+
+  subroutine veto_counter_record_xi_max (counter, vetoed)
+    class(veto_counter_t), intent(inout) :: counter
+    logical, intent(in) :: vetoed
+    counter%n_xi_max = counter%n_xi_max + 1
+    if (vetoed) counter%veto_xi_max = counter%veto_xi_max + 1
+  end subroutine veto_counter_record_xi_max
+
+  subroutine veto_counter_record_norm (counter, vetoed)
+    class(veto_counter_t), intent(inout) :: counter
+    logical, intent(in) :: vetoed
+    counter%n_norm = counter%n_norm + 1
+    if (vetoed) counter%veto_norm = counter%veto_norm + 1
+  end subroutine veto_counter_record_norm
+
+  subroutine veto_counter_record_sqme (counter, vetoed)
+    class(veto_counter_t), intent(inout) :: counter
+    logical, intent(in) :: vetoed
+    counter%n_sqme = counter%n_sqme + 1
+    if (vetoed) counter%veto_sqme = counter%veto_sqme + 1
+  end subroutine veto_counter_record_sqme
+
+  subroutine veto_counter_record_fail (counter)
+    class(veto_counter_t), intent(inout) :: counter
+    counter%n_veto_fail = counter%n_veto_fail + 1
+  end subroutine veto_counter_record_fail
+
+  subroutine veto_counter_write (counter, unit)
+    class(veto_counter_t), intent(in) :: counter
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = given_output_unit (unit); if (u < 0) return
+    write (u, "(A,I12)") "Nr. of ubf-veto calls: ", counter%n_ubf
+    write (u, "(A,I12)") "Nr. of ubf-vetos: ", counter%veto_ubf
+    if (counter%n_ubf > 0) &
+       write (u, "(A,F4.2)") "Fraction of vetoed points: ", &
+                            one*counter%veto_ubf / counter%n_ubf
+    call write_separator (u)
+
+    write (u, "(A,I12)") "Nr. of alpha_s-veto calls: ", counter%n_alpha_s
+    write (u, "(A,I12)") "Nr. of alpha_s-vetos: ", counter%veto_alpha_s
+    if (counter%n_alpha_s > 0) &
+       write (u, "(A,F4.2)") "Fraction of vetoed points: ", &
+                            one*counter%veto_alpha_s / counter%n_alpha_s
+    call write_separator (u)
+
+    write (u, "(A,I12)") "Nr. of xi_max-veto calls: ", counter%n_xi_max
+    write (u, "(A,I12)") "Nr. of xi_max-vetos: ", counter%veto_xi_max
+    if (counter%n_alpha_s > 0) &
+       write (u, "(A,F4.2)") "Fraction of vetoed points: ", &
+                            one*counter%veto_xi_max / counter%n_xi_max
+    call write_separator (u)
+
+    write (u, "(A,I0)") "Nr. of norm-veto calls: ", counter%n_norm
+    write (u, "(A,I0)") "Nr. of norm-vetos: ", counter%veto_norm
+    if (counter%n_norm > 0) &
+       write (u, "(A,F4.2)") "Fraction of vetoed points: ", &
+                            one*counter%veto_norm / counter%n_norm
+    call write_separator (u)
+
+    write (u, "(A,I0)") "Nr. of sqme-veto calls: ", counter%n_sqme
+    write (u, "(A,I0)") "Nr. of sqme-vetos: ", counter%veto_sqme
+    if (counter%n_sqme > 0) &
+       write (u, "(A,F4.2)") "Fraction of vetoed points: ", &
+                            one*counter%veto_sqme / counter%n_sqme
+    call write_separator (u)
+    write (u, "(A,I0)") "Nr. of upper-bound failures: ", &
+                        counter%n_veto_fail
+  end subroutine veto_counter_write
+
+  subroutine sudakov_write (sudakov, unit)
+    class(sudakov_t), intent(in) :: sudakov
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = given_output_unit (unit);  if (u < 0)  return
+    write (u, "(3X,A," // FMT_19 // ")")  "xi2_max = ", sudakov%xi2_max
+    write (u, "(3X,A," // FMT_19 // ")")  "norm_max = ", sudakov%norm_max
+    write (u, "(3X,A," // FMT_19 // ")")  &
+         "current_pt2_max = ", sudakov%current_pt2_max
+    write (u, "(3X,A," // FMT_19 // ")")  "last_log = ", sudakov%last_log
+    write (u, "(3X,A," // FMT_19 // ")")  "random = ", sudakov%random
+  end subroutine sudakov_write
+
+  subroutine sudakov_init (sudakov, process_deps, event_deps, &
+         powheg_settings, phs_fks_generator, qcd, rng)
+    class(sudakov_t), intent(out) :: sudakov
+    type(process_deps_t), target, intent(in) :: process_deps
+    type(event_deps_t), target, intent(in) :: event_deps
+    type(powheg_settings_t), target, intent(in) :: powheg_settings
+    type(phs_fks_generator_t), target, intent(in) :: phs_fks_generator
+    type(qcd_t), target, intent(in) :: qcd
+    class(rng_t), target, intent(in) :: rng
+    sudakov%process_deps => process_deps
+    sudakov%event_deps => event_deps
+    sudakov%powheg_settings => powheg_settings
+    sudakov%phs_fks_generator => phs_fks_generator
+    sudakov%qcd => qcd
+    sudakov%rng => rng
+  end subroutine sudakov_init
+
+  pure subroutine sudakov_set_normalization (sudakov, norm_max)
+    class(sudakov_t), intent(inout) :: sudakov
+    real(default), intent(in) :: norm_max
+    sudakov%norm_max = norm_max
+  end subroutine sudakov_set_normalization
+
+  pure subroutine sudakov_update (sudakov, xi2_max)
+    class(sudakov_t), intent(inout) :: sudakov
+    real(default), intent(in) :: xi2_max
+    sudakov%xi2_max = xi2_max
+  end subroutine sudakov_update
+
+  function sudakov_alpha_s (sudakov, kT2, use_correct) result (a)
+    real(default) :: a
+    class(sudakov_t), intent(in) :: sudakov
+    real(default), intent(in) :: kT2
+    logical, intent(in), optional :: use_correct
+    logical :: yorn
+    yorn = .false.; if (present (use_correct)) yorn = use_correct
+    if (yorn) then
+       a = get_alpha (sudakov%qcd, kT2)
+    else
+       a = sudakov%alpha_s_rad (kT2)
+    end if
+  end function sudakov_alpha_s
+
+  function sudakov_generate_pt2 (sudakov) result (pt2)
+    real(default) :: pt2
+    class(sudakov_t), intent(inout) :: sudakov
+    logical :: success
+    success = .false.
+    if (sudakov%current_pt2_max > sudakov%powheg_settings%pt2_min) then
+       call sudakov%rng%generate (sudakov%random)
+       sudakov%last_log = sudakov%last_log + log(sudakov%random)
+       pt2 = solve_interval (sudakov, &
+            sudakov%powheg_settings%pt2_min, &
+            sudakov%current_pt2_max, success, &
+            0.001_default)
+       !sudakov%last_log = sudakov%norm_max * sudakov%log_integrated_ubf (pt2)
+              !sudakov%last_log + &
+    end if
+    if (.not. success) then
+       pt2 = sudakov%powheg_settings%pt2_min
+    end if
+  end function sudakov_generate_pt2
+
+  subroutine sudakov_check_solution_interval (sudakov)
+    class(sudakov_t), intent(inout) :: sudakov
+    real(default) :: r
+    real(default), parameter :: dr = 0.05
+    real(default) :: pt2
+    logical :: success
+    r = 0._default
+    do
+       r = r+dr
+       sudakov%random = r
+       pt2 = solve_interval (sudakov, &
+         sudakov%powheg_settings%pt2_min, &
+         sudakov%current_pt2_max, success, &
+         0.001_default)
+      if (success) then
+         print *, 'r: ', r, ' zero found'
+      else
+         print *, 'r: ', r, 'no zero found'
+      end if
+      if (r >= 1._default) exit
+    end do
+  end subroutine sudakov_check_solution_interval
+
+  subroutine sudakov_generate_emission (sudakov, r)
+    class(sudakov_t), intent(inout) :: sudakov
+    type(radiation_t), intent(inout) :: r
+    logical :: accepted
+    sudakov%current_pt2_max = r%pt2
+    call sudakov%generate_xi_and_y_and_phi (r)
+    !sudakov%last_log = sudakov%norm_max * &
+         !sudakov%log_integrated_ubf (sudakov%current_pt2_max)
+    call msg_debug2 (D_MATCHING, "sudakov_generate_emission")
+    call msg_debug2 (D_MATCHING, "sqrt (sudakov%current_pt2_max)", &
+         sqrt (sudakov%current_pt2_max))
+    call msg_debug2 (D_MATCHING, "sudakov%last_log", sudakov%last_log)
+    LOOP_UNTIL_ACCEPTED: do
+       if (signal_is_pending ())  return
+       r%valid = .false.
+       r%pt2 = sudakov%generate_pt2 ()
+       call msg_debug2 (D_MATCHING, "sudakov_generate_emission: after generate_pt2")
+       call msg_debug2 (D_MATCHING, "sqrt (r%pt2)", sqrt (r%pt2))
+       call msg_debug2 (D_MATCHING, "sudakov%last_log", sudakov%last_log)
+       if (r%pt2 <= sudakov%powheg_settings%pt2_min) then
+          exit
+       end if
+       accepted = sudakov%reweight_ubf (r%pt2)
+       call sudakov%veto_counter%record_ubf (.not. accepted)
+       if (.not. accepted) then
+          sudakov%current_pt2_max = r%pt2
+          cycle
+       end if
+       accepted = sudakov%reweight_alpha_s (r%pt2)
+       call sudakov%veto_counter%record_alpha_s (.not. accepted)
+       if (.not. accepted) then
+          sudakov%current_pt2_max = r%pt2
+          cycle
+       end if
+       call sudakov%generate_xi_and_y_and_phi (r)
+       accepted = sudakov%reweight_xi_max (r%xi)
+       call sudakov%veto_counter%record_xi_max (.not. accepted)
+       if (.not. accepted) then
+          sudakov%current_pt2_max = r%pt2
+          cycle
+       end if
+       if (debug_active (D_MATCHING)) then
+          call assert_equal (OUTPUT_UNIT, r%pt2, &
+               sudakov%kt2 (r%xi, r%y), &
+               "sudakov_generate_xi_and_y_and_phi: pt2 inconsistency")
+          ! for this we have to recompute z?
+          !call msg_bug ()
+       end if
+       r%valid = .true.
+       exit
+    end do LOOP_UNTIL_ACCEPTED
+  end subroutine sudakov_generate_emission
+
+  pure function sudakov_evaluate (solver_f, x) result (f)
+    complex(default) :: f
+    class(sudakov_t), intent(in) :: solver_f
+    real(default), intent(in) :: x
+    f = solver_f%last_log + solver_f%norm_max * solver_f%log_integrated_ubf (x)
+    !f = log (solver_f%random) + solver_f%norm_max * solver_f%log_integrated_ubf (x) &
+         !- solver_f%last_log
+  end function sudakov_evaluate
+
+  pure function sudakov_simple_fsr_upper_bound_func (sudakov, xi, y, alpha_s) result (u)
+    real(default) :: u
+    class(sudakov_simple_fsr_t), intent(in) :: sudakov
+    real(default), intent(in) :: xi, y, alpha_s
+    u = alpha_s / (xi * (1 - y))
+  end function sudakov_simple_fsr_upper_bound_func
+
+  function sudakov_simple_fsr_kt2 (sudakov, xi, y) result (kt2)
+    real(default) :: kt2
+    class(sudakov_simple_fsr_t), intent(in) :: sudakov
+    real(default), intent(in) :: xi, y
+    kt2 = sudakov%phs_fks_generator%real_kinematics%kt2 &
+          (sudakov%associated_emitter, FSR_SIMPLE, xi, y)
+  end function sudakov_simple_fsr_kt2
+
+  pure function sudakov_simple_fsr_kt2_max (sudakov, s_hat) result (kt2_max)
+     real(default) :: kt2_max
+     class(sudakov_simple_fsr_t), intent(in) :: sudakov
+     real(default), intent(in) :: s_hat
+     kt2_max = sudakov%xi2_max * s_hat
+  end function sudakov_simple_fsr_kt2_max
+
+  pure function sudakov_simple_fsr_log_integrated_ubf (sudakov, pt2) result (y)
+    real(default) :: y
+    class(sudakov_simple_fsr_t), intent(in) :: sudakov
+    real(default), intent(in) :: pt2
+    real(default) :: xm2s, xm2sl, pt2l
+    logical :: within_boundaries
+    within_boundaries = pt2 / sudakov%event_deps%s_hat <= sudakov%xi2_max &
+         .and. pt2 >= sudakov%powheg_settings%pt2_min
+    if (within_boundaries) then
+       xm2s = sudakov%xi2_max * sudakov%event_deps%s_hat
+       xm2sl = xm2s / sudakov%process_deps%lambda2_gen
+       pt2l = pt2 / sudakov%process_deps%lambda2_gen
+       y = pi / b0rad * (log (xm2sl) * &
+            log (log (xm2sl) / log (pt2l)) - &
+            log (xm2s / pt2))
+    else
+       y = 0
+    end if
+  end function sudakov_simple_fsr_log_integrated_ubf
+
+  function sudakov_simple_fsr_reweight_ubf (sudakov, pt2) result (accepted)
+    logical :: accepted
+    class(sudakov_simple_fsr_t), intent(inout) :: sudakov
+    real(default), intent(in) :: pt2
+    accepted = .true.
+  end function sudakov_simple_fsr_reweight_ubf
+
+  function sudakov_simple_fsr_reweight_xi_max (sudakov, xi) result (accepted)
+     logical :: accepted
+     class(sudakov_simple_fsr_t), intent(in) :: sudakov
+     real(default), intent(in) :: xi
+     accepted = .true.
+  end function sudakov_simple_fsr_reweight_xi_max
+
+  subroutine sudakov_simple_fsr_generate_xi_and_y_and_phi (sudakov, r)
+    class(sudakov_simple_fsr_t), intent(inout) :: sudakov
+    type(radiation_t), intent(inout) :: r
+    real(default) :: s
+    s = sudakov%event_deps%s_hat
+    call sudakov%generate_xi (r)
+    r%y = one - (two * r%pt2) / (s * r%xi**2)
+    call sudakov%rng%generate (sudakov%random)
+    r%phi = sudakov%random * twopi
+  end subroutine sudakov_simple_fsr_generate_xi_and_y_and_phi
+
+  subroutine sudakov_simple_fsr_generate_xi (sudakov, r)
+    class(sudakov_simple_fsr_t), intent(inout) :: sudakov
+    type(radiation_t), intent(inout) :: r
+    real(default) :: s, xi2_max
+    s = sudakov%event_deps%s_hat
+    xi2_max = sudakov%xi2_max
+    call sudakov%rng%generate (sudakov%random)
+    r%xi = exp (((one - sudakov%random) * log (r%pt2 / s) + &
+         sudakov%random * log (xi2_max)) / two)
+  end subroutine sudakov_simple_fsr_generate_xi
+
+  function sudakov_eeqq_fsr_kt2 (sudakov, xi, y) result (kt2)
+    real(default) :: kt2
+    class(sudakov_eeqq_fsr_t), intent(in) :: sudakov
+    real(default), intent(in) :: xi, y
+    kt2 = sudakov%event_deps%s_hat / 2 * xi**2 * (1 - y**2) / 2
+    ! TODO: (bcn 2015-07-13) call here phs_fks_generator%real_kinematics%kt2
+  end function sudakov_eeqq_fsr_kt2
+
+  pure function sudakov_eeqq_fsr_kt2_max (sudakov, s_hat) result (kt2_max)
+     real(default) :: kt2_max
+     class(sudakov_eeqq_fsr_t), intent(in) :: sudakov
+     real(default), intent(in) :: s_hat
+     kt2_max = sudakov%xi2_max * s_hat
+  end function sudakov_eeqq_fsr_kt2_max
+
+  pure function sudakov_eeqq_fsr_upper_bound_func (sudakov, xi, y, alpha_s) result (u)
+    real(default) :: u
+    class(sudakov_eeqq_fsr_t), intent(in) :: sudakov
+    real(default), intent(in) :: xi, y, alpha_s
+    u = alpha_s / (xi * (1 - y**2))
+  end function sudakov_eeqq_fsr_upper_bound_func
+
+  pure function sudakov_eeqq_fsr_log_integrated_ubf (sudakov, pt2) result (y)
+    real(default) :: y
+    class(sudakov_eeqq_fsr_t), intent(in) :: sudakov
+    real(default), intent(in) :: pt2
+    logical :: within_boundaries
+    within_boundaries = pt2 / sudakov%event_deps%s_hat <= sudakov%xi2_max &
+         .and. pt2 >= sudakov%powheg_settings%pt2_min
+    if (within_boundaries) then
+       !xm2s = sudakov%xi2_max * sudakov%event_deps%s_hat
+       !xm2sl = xm2s / sudakov%process_deps%lambda2_gen
+       !pt2l = pt2 / sudakov%process_deps%lambda2_gen
+       !y = pi / b0rad * (log (xm2sl) * &
+            !log (log (xm2sl) / log (pt2l)) - &
+            !log (xm2s / pt2))
+    else
+       y = 0
+    end if
+  end function sudakov_eeqq_fsr_log_integrated_ubf
+
+  function sudakov_eeqq_fsr_reweight_ubf (sudakov, pt2) result (accepted)
+    logical :: accepted
+    class(sudakov_eeqq_fsr_t), intent(inout) :: sudakov
+    real(default), intent(in) :: pt2
+    accepted = .false.
+  end function sudakov_eeqq_fsr_reweight_ubf
+
+  function sudakov_eeqq_fsr_reweight_xi_max (sudakov, xi) result (accepted)
+     logical :: accepted
+     class(sudakov_eeqq_fsr_t), intent(in) :: sudakov
+     real(default), intent(in) :: xi
+     accepted = .true.
+  end function sudakov_eeqq_fsr_reweight_xi_max
+
+  subroutine sudakov_eeqq_fsr_generate_xi_and_y_and_phi (sudakov, r)
+    class(sudakov_eeqq_fsr_t), intent(inout) :: sudakov
+    type(radiation_t), intent(inout) :: r
+    real(default) :: s
+    s = sudakov%event_deps%s_hat
+    !r%xi = sudakov%generate_xi (r)
+    !r%y = one - (two * r%pt2) / (s * r%xi**2)
+    call sudakov%rng%generate (sudakov%random)
+    r%phi = sudakov%random * twopi
+  end subroutine sudakov_eeqq_fsr_generate_xi_and_y_and_phi
+
+  subroutine sudakov_massive_fsr_compute_xi_max_extended (sudakov)
+     class(sudakov_massive_fsr_t), intent(inout) :: sudakov
+     real(default) :: m, mrec
+     real(default) :: q0
+     q0 = sqrt(sudakov%event_deps%s_hat)
+     associate (p => sudakov%event_deps%p_born(sudakov%associated_emitter))
+        m = p**1
+        mrec = sqrt ((q0-p%p(0))**2 - p%p(1)**2 - p%p(2)**2 - p%p(3)**2)
+     end associate
+     sudakov%xi_max_extended = one - (m + mrec)**2 / q0**2
+  end subroutine sudakov_massive_fsr_compute_xi_max_extended
+
+  subroutine sudakov_massive_fsr_generate_xi (sudakov, r)
+    class(sudakov_massive_fsr_t), intent(inout) :: sudakov
+    type(radiation_t), intent(inout) :: r
+    real(default) :: pt2, q0, q02
+    real(default) :: E_em, xi_max
+    real(default) :: xi_1, xi_min, xi_m
+    pt2 = r%pt2
+    E_em = energy (sudakov%event_deps%p_born(sudakov%associated_emitter))
+    q02 = sudakov%event_deps%s_hat; q0 = sqrt(q02)
+    !xi_max = sqrt (sudakov%xi2_max)
+    xi_max = sudakov%xi_max_extended
+    associate (z1 => sudakov%z1, z2 => sudakov%z2)
+       xi_1 = (sqrt(pt2 * (pt2*z1**2 + 8*E_em*q0*(one-z1))) - pt2*z1) / &
+         (2*q02*(one-z1))
+       xi_min = (sqrt(pt2 * (pt2*z2**2 + 8*E_em*q0*(one-z2))) - pt2*z2) / &
+         (2*q02*(one-z2))
+    end associate
+    xi_m = min (xi_max, xi_1)
+    call sudakov%rng%generate (sudakov%random)
+    r%xi = (exp (log(xi_min*q02 - pt2) + sudakov%random * &
+          log((xi_m*q02 - pt2) / (xi_min*q02 - pt2))) + pt2) / q02
+  end subroutine sudakov_massive_fsr_generate_xi
+
+  subroutine sudakov_massive_fsr_generate_xi_and_y_and_phi (sudakov, r)
+    class(sudakov_massive_fsr_t), intent(inout) :: sudakov
+    type(radiation_t), intent(inout) :: r
+    real(default) :: q0
+    real(default) :: m2, mrec2, k0_rec_max
+    real(default) :: E_em
+    type(vector4_t) :: p_emitter
+
+    q0 = sqrt (sudakov%event_deps%s_hat)
+    p_emitter = sudakov%event_deps%p_born(sudakov%associated_emitter)
+    associate (p => p_emitter%p)
+      mrec2 = (q0 - p(0))**2 - p(1)**2 - p(2)**2 - p(3)**2
+      E_em = p(0)
+    end associate
+    m2 = p_emitter**2
+    call compute_dalitz_bounds (q0, m2, mrec2, sudakov%z1, sudakov%z2, k0_rec_max)
+    call sudakov%generate_xi (r)
+
+    sudakov%z = (2*r%pt2*E_em - r%xi**2*q0**3) / (r%pt2*r%xi*q0 - r%xi**2*q0**3)
+    sudakov%xi2_max = - (q0**2*sudakov%z**2 - two*q0*k0_rec_max*sudakov%z + mrec2) / &
+                        (q0**2*sudakov%z*(one-sudakov%z))
+    sudakov%xi2_max = sudakov%xi2_max**2
+    r%y = two*(sudakov%z2-sudakov%z)/(sudakov%z2-sudakov%z1) - one
+    call sudakov%rng%generate (sudakov%random)
+    r%phi = sudakov%random * twopi
+  end subroutine sudakov_massive_fsr_generate_xi_and_y_and_phi
+
+  function sudakov_massive_fsr_kt2 (sudakov, xi, y) result (kt2)
+    real(default) :: kt2
+    class(sudakov_massive_fsr_t), intent(in) :: sudakov
+    real(default), intent(in) :: xi, y
+    kt2 = sudakov%phs_fks_generator%real_kinematics%kt2 &
+          (sudakov%associated_emitter, FSR_MASSIVE, xi, y)
+  end function sudakov_massive_fsr_kt2
+
+  pure function sudakov_massive_fsr_kt2_max (sudakov, s_hat) result (kt2_max)
+     real(default) :: kt2_max
+     class(sudakov_massive_fsr_t), intent(in) :: sudakov
+     real(default), intent(in) :: s_hat
+     real(default) :: q, E_em, xi_max, z2
+     q = sqrt(s_hat)
+     E_em = energy (sudakov%event_deps%p_born (sudakov%associated_emitter))
+     !xi_max = sqrt(sudakov%xi2_max)
+     xi_max = sudakov%xi_max_extended
+     z2 = sudakov%z2
+     kt2_max = (xi_max**2*q**3*(one-z2)) / (2*E_em - z2*xi_max*q)
+  end function sudakov_massive_fsr_kt2_max
+
+  pure function sudakov_massive_fsr_upper_bound_func (sudakov, xi, y, alpha_s) result (u)
+    real(default) :: u
+    class(sudakov_massive_fsr_t), intent(in) :: sudakov
+    real(default), intent(in) :: xi, y, alpha_s
+    real(default) :: q, p_em
+    q = sqrt (sudakov%event_deps%s_hat)
+    p_em = space_part_norm (sudakov%event_deps%p_born(sudakov%associated_emitter))
+    u = alpha_s * q/p_em * one/(xi*(one-sudakov%z))
+  end function sudakov_massive_fsr_upper_bound_func
+
+  pure function sudakov_massive_fsr_log_integrated_ubf (sudakov, pt2) result (y)
+    real(default) :: y
+    class(sudakov_massive_fsr_t), intent(in) :: sudakov
+    real(default), intent(in) :: pt2
+    real(default) :: xi, xi_max, xi_1, xi_min
+    real(default) :: q0, p_em, E_em
+    real(default) :: y1, y2
+    q0 = sqrt (sudakov%event_deps%s_hat)
+    E_em = energy (sudakov%event_deps%p_born(sudakov%associated_emitter))
+    p_em = space_part_norm (sudakov%event_deps%p_born(sudakov%associated_emitter))
+    xi_max = sudakov%xi_max_extended
+    associate (z1 => sudakov%z1, z2 => sudakov%z2)
+       xi_1 = (sqrt (pt2*(pt2*z1**2 + 8*E_em*q0*(one-z1))) - pt2*z1) / (2*q0**2*(one-z1))
+       xi_min = (sqrt (pt2*(pt2*z2**2 + 8*E_em*q0*(one-z2))) - pt2*z2) / (2*q0**2*(one-z2))
+       xi = min (xi_1, xi_max)
+       y1 = log(xi)*log((one-z2)*q0/pt2) + log(xi)**2/two + G_FSR(-pt2,q0**2,xi) - G_FSR(2*E_em,-q0,xi)
+       xi = xi_min
+       y2 = log(xi)*log((one-z2)*q0/pt2) + log(xi)**2/two + G_FSR(-pt2,q0**2,xi) - G_FSR(2*E_em,-q0,xi)
+       y = y1 - y2
+       if (xi_max > xi_1) &
+          y = y + log(xi_max/xi_1)*log((one-z2)/(one-z1))
+       y = twopi*q0/p_em * y
+    end associate
+  end function sudakov_massive_fsr_log_integrated_ubf
+
+  function sudakov_massive_fsr_reweight_ubf (sudakov, pt2) result (accepted)
+    logical :: accepted
+    class(sudakov_massive_fsr_t), intent(inout) :: sudakov
+    real(default), intent(in) :: pt2
+    accepted = .true.
+  end function sudakov_massive_fsr_reweight_ubf
+
+  function sudakov_massive_fsr_reweight_xi_max (sudakov, xi) result (accepted)
+    logical :: accepted
+    class(sudakov_massive_fsr_t), intent(in) :: sudakov
+    real(default), intent(in) :: xi
+    accepted = xi < sqrt (sudakov%xi2_max)
+  end function sudakov_massive_fsr_reweight_xi_max
+
+  elemental function G_FSR (a,b,xi)
+    real(default) :: G_FSR
+    real(default), intent(in) :: a, b, xi
+    if (a > 0) then
+       G_FSR = G_FSR_Plus (a,b,xi)
+    else if (a < 0) then
+       G_FSR = G_FSR_Minus (a,b,xi)
+    !!! a == 0 ?
+    end if
+  end function G_FSR
+
+  elemental function G_FSR_Minus (a,b,xi)
+    real(default) :: G_FSR_Minus
+    real(default), intent(in) :: a, b, xi
+    G_FSR_Minus = log(a+b*xi)*log(one - (a+b*xi)/a) + Li2((a+b*xi)/a)
+  end function G_FSR_Minus
+
+  elemental function G_FSR_Plus (a,b,xi)
+    real(default) :: G_FSR_Plus
+    real(default), intent(in) :: a, b, xi
+    G_FSR_Plus = log(abs(b*xi/a))*log(a) - Li2(-b*xi/a) + pi**2/6
+  end function G_FSR_Plus
+
+  function powheg_matching_get_method (matching) result (method)
+     type(string_t) :: method
+     class(powheg_matching_t), intent(in) :: matching
+     method = matching_method (MATCH_POWHEG) 
+  end function powheg_matching_get_method
+
+  subroutine powheg_matching_before_shower &
+         (matching, particle_set, vetoed)
+    class(powheg_matching_t), intent(inout) :: matching
+    type(particle_set_t), intent(inout) :: particle_set
+    logical, intent(out) :: vetoed
+    if (signal_is_pending ())  return
+    if (.not. matching%active)  return
+    call matching%update (particle_set)
+    if (matching%settings%test_sudakov) then
+       call matching%test_sudakov ()
+       stop
+    end if
+    call matching%generate_emission (particle_set = particle_set)
+    vetoed = .false.
+  end subroutine powheg_matching_before_shower
+
+  subroutine powheg_matching_after_shower (matching, particle_set, vetoed)
+    class(powheg_matching_t), intent(inout) :: matching
+    type(particle_set_t), intent(inout) :: particle_set
+    logical, intent(out) :: vetoed
+    vetoed = .false.
+  end subroutine powheg_matching_after_shower
+
+  subroutine powheg_display_grid_startup_message (powheg)
+    class(powheg_matching_t), intent(in) :: powheg
+    real(default) :: points_per_cell
+    write (msg_buffer, "(A,A,A)") "POWHEG: Generating grid for process '", &
+                               char (powheg%process_name), "'"
+    call msg_message ()
+    associate (settings => powheg%settings)
+       write (msg_buffer, "(A,I10)") "Number of xi-points: ", &
+                                      settings%size_grid_xi
+       call msg_message ()
+       write (msg_buffer, "(A,I10)") "Number of y-points: ", &
+                                      settings%size_grid_y
+       call msg_message ()
+       write (msg_buffer, "(A,I10,A)") "Using ", settings%n_init , &
+                                       " sampling points"
+       call msg_message ()
+       points_per_cell =  settings%n_init*one / &
+                          (settings%size_grid_xi * settings%size_grid_y)
+       write (msg_buffer, "(A,F10.2,A)") "Average: ", points_per_cell, &
+                                        " points per cell"
+       call msg_message ()
+       call msg_message ("Progress:")
+    end associate
+  end subroutine powheg_display_grid_startup_message
+
+  subroutine powheg_write (matching, unit)
+    class(powheg_matching_t), intent(in) :: matching
+    integer, intent(in), optional :: unit
+    integer :: u, alr
+    u = given_output_unit (unit);  if (u < 0)  return
+    call write_separator (u, 2)
+    write (u, "(1X,A)") "POWHEG Emission Generator"
+    write (u, "(1X,A)") "Process name: " // char (matching%process_name)
+    if (allocated (matching%rng)) then
+       call matching%rng%write (u)
+    else
+       write (u, "(1X,A)") "RNG not allocated"
+    end if
+    if (associated (matching%qcd)) then
+       call matching%qcd%write (u)
+    else
+       write (u, "(1X,A)") "QCD not associated"
+    end if
+    call matching%settings%write (u)
+    call matching%event_deps%write (u)
+    call matching%process_deps%write (u)
+    do alr = 1, size (matching%sudakov)
+       call write_separator (u)
+       write (u, "(1X,A,I12,A)") "sudakov (alr = ", alr, ")"
+       call matching%sudakov(alr)%s%write (u)
+    end do
+    call write_separator (u, 2)
+  end subroutine powheg_write
+
+  subroutine powheg_matching_final (matching)
+    class(powheg_matching_t), intent(in) :: matching
+    integer :: u, alr
+    type(string_t) :: filename
+    u = free_unit ()
+    filename = matching%process_name // "_veto.log"
+    open (file=char(filename), unit=u, action='write')
+    write (u, '(A)') "Summary of POWHEG veto procedure"
+    do alr = 1, matching%process_deps%n_alr
+       write(u,'(A,I0)') 'alr: ', alr
+       call matching%sudakov(alr)%s%veto_counter%write (u)
+       call write_separator (u)
+    end do
+    write (u,'(A,I0)') "Total number of events which radiate a gluon: ", &
+                       matching%n_emissions
+  end subroutine powheg_matching_final
+
+  subroutine powheg_setup_grids (matching)
+    class(powheg_matching_t), intent(inout), target :: matching
+    call matching%prepare_for_events ()
+    if (matching%requires_new_grids ()) then
+       call matching%fill_grids ()
+       call matching%save_grids ()
+    else
+       call matching%load_grids ()
+    end if
+    call matching%grid%compute_and_write_mean_and_max ()
+    call matching%import_norms_from_grid ()
+  end subroutine powheg_setup_grids
+
+  subroutine powheg_setup_sudakovs (powheg)
+    class(powheg_matching_t), intent(inout), target :: powheg
+    integer :: alr, emitter
+    logical :: is_fsr, is_massive
+    integer :: ubf_type
+    allocate (powheg%sudakov (powheg%process_deps%n_alr))
+    is_fsr = .true.
+    do alr = 1, powheg%process_deps%n_alr
+       if (is_fsr) then
+          ubf_type = powheg%settings%upper_bound_func
+          if (.not. powheg%testing%active) then
+             emitter = powheg%process_instance%nlo_controller%get_emitter (alr)
+             is_massive = powheg%phs_fks_generator%is_massive (emitter)
+          else
+             emitter = 1
+             is_massive = .false.
+          end if
+          if (is_massive) ubf_type = UBF_MASSIVE
+          select case (ubf_type)
+          case (UBF_SIMPLE)
+             allocate (sudakov_simple_fsr_t :: powheg%sudakov(alr)%s)
+          case (UBF_EEQQ)
+             allocate (sudakov_eeqq_fsr_t :: powheg%sudakov(alr)%s)
+          case (UBF_MASSIVE)
+             allocate (sudakov_massive_fsr_t :: powheg%sudakov(alr)%s)
+          case default
+             call msg_fatal ("powheg_setup_sudakovs: Please choose upper bounding function!")
+          end select
+       else
+          call msg_fatal ("powheg_setup_sudakovs: ISR not implemented yet!")
+       end if
+
+       call powheg%sudakov(alr)%s%init (powheg%process_deps, &
+            powheg%event_deps, powheg%settings, &
+            powheg%phs_fks_generator, powheg%qcd, powheg%rng)
+
+       powheg%sudakov(alr)%s%associated_emitter = emitter
+    end do
+  end subroutine powheg_setup_sudakovs
+
+  subroutine powheg_matching_init (matching, var_list, process_name)
+    class(powheg_matching_t), intent(out) :: matching
+    type(var_list_t), intent(in) :: var_list
+    type(string_t), intent(in) :: process_name
+    call msg_debug (D_MATCHING, "matching_init")
+    call matching%settings%init (var_list)
+    matching%process_name = process_name
+  end subroutine powheg_matching_init
+
+  subroutine powheg_update_momenta (powheg, p_born)
+    class(powheg_matching_t), intent(inout) :: powheg
+    type(vector4_t), dimension(:), intent(in) :: p_born
+    if (.not. powheg%testing%active) then
+       call powheg%event_deps%update &
+            (powheg%process_instance%sqme_collector%get_sqme_born(1), p_born)
+    else
+       call powheg%event_deps%update &
+            (powheg%testing%sqme_born, p_born)
+    end if
+  end subroutine powheg_update_momenta
+
+  subroutine powheg_update_particle_set (powheg, particle_set)
+    class(powheg_matching_t), intent(inout) :: powheg
+    type(particle_set_t), intent(in) :: particle_set
+    call powheg%update_momenta (particle_set%get_momenta())
+  end subroutine powheg_update_particle_set
+
+  function powheg_reweight_matrix_elements (powheg, r) result (accepted)
+    logical :: accepted
+    class(powheg_matching_t), intent(inout) :: powheg
+    type(radiation_t), intent(in) :: r
+    integer :: emitter
+    real(default) :: sqme_real_x_jacobian, sqme_born
+    real(default) :: norm, ubf, ubound, random, weight
+    real(default) :: alpha_s
+    call msg_debug (D_MATCHING, "reweight_matrix_elements")
+    call powheg%rng%generate (random)
+    emitter = powheg%process_instance%nlo_controller%get_emitter (r%alr)
+    powheg%event_deps%p_real = &
+         powheg%phs_fks_generator%generate_fsr_from_xi_and_y (r%xi, &
+                          r%y, r%phi, emitter, powheg%event_deps%p_born)
+    call powheg%copy_momenta ()
+    norm = powheg%norm_from_xi_and_y (r)
+    associate (s => powheg%sudakov(r%alr)%s)
+       alpha_s = s%alpha_s (s%kt2 (r%xi, r%y), use_correct=.true.)
+       ubf = s%upper_bound_func (r%xi, r%y, alpha_s)
+       sqme_real_x_jacobian = powheg%compute_sqme_real (r%alr, alpha_s)
+       sqme_born = powheg%event_deps%sqme_born
+       ubound = sqme_born * ubf * norm
+       weight = sqme_real_x_jacobian / ubound
+       if (weight > 1) call s%veto_counter%record_fail()
+       if (debug_active (D_MATCHING)) then
+          if (weight < 0) call msg_warning ("R/B < 0!")
+       end if
+       accepted = random < weight
+    end associate
+    if (debug_active (D_MATCHING)) then
+       print *, '  r%alr =    ',   r%alr
+       print *, '  r%xi =    ', r%xi
+       print *, '  r%y =    ', r%y
+       print *, '  emitter =    ', emitter
+       print *, '  random =    ', random
+       print *, '  sqme_real_x_jacobian =    ', sqme_real_x_jacobian
+       print *, '  sqme_born =    ', sqme_born
+       print *, '  ubf =    ', ubf
+       print *, '  norm =    ',   norm
+       print *, '  ubound =    ', ubound
+       print *, '  matrix element  accepted =    ', accepted
+    end if
+  end function powheg_reweight_matrix_elements
+
+  function powheg_compute_sqme_real (powheg, alr, alpha_s) result (sqme)
+    class(powheg_matching_t), intent(inout) :: powheg
+    integer, intent(in) :: alr
+    real(default), intent(in) :: alpha_s
+    integer :: emitter
+    real(default) :: sqme
+    if (.not. powheg%testing%active) then
+       associate (instance => powheg%process_instance)
+          emitter = instance%nlo_controller%get_emitter (alr)
+          call instance%compute_sqme_real_rad (emitter, &
+               powheg%event_deps%p_born, powheg%event_deps%p_real, alpha_s)
+          sqme = instance%sqme_collector%sqme_real_per_emitter (1, emitter)
+       end associate
+    else
+       sqme = one
+    end if
+  end function powheg_compute_sqme_real
+
+  subroutine powheg_set_scale (powheg, pT2)
+    class(powheg_matching_t), intent(inout) :: powheg
+    real(default), intent(in) :: pT2
+    call powheg%process_instance%set_fac_scale (sqrt(pT2))
+  end subroutine powheg_set_scale
+
+  subroutine powheg_fill_grids (powheg)
+    class(powheg_matching_t), intent(inout) :: powheg
+    real(default), dimension(3) :: radiation_variables
+    real(default) :: f_alr, xi, y, norm, real_me, ubf
+    integer :: alr
+    integer :: n, n_points
+    real(default) :: alpha_s
+    call msg_debug (D_MATCHING, "powheg_fill_grids")
+    call powheg%display_grid_startup_message()
+    n_points = powheg%settings%n_init
+    call msg_debug (D_MATCHING, "n_points", n_points)
+    UNTIL_ACCEPTED: do
+       EVALUATE_GRID_POINTS: do n = 1, n_points
+          if (signal_is_pending ())  return
+          call powheg%prepare_momenta_for_fill_grids (radiation_variables)
+          do alr = 1, powheg%process_deps%n_alr
+             call powheg%generate_xi_and_y_for_grids &
+                  (radiation_variables, alr, xi, y)
+             associate (s => powheg%sudakov(alr)%s)
+                alpha_s = s%alpha_s (s%kt2(xi, y), use_correct=.true.)
+                ubf = s%upper_bound_func (xi, y, alpha_s)
+             end associate
+             real_me = powheg%compute_sqme_real (alr, alpha_s)
+             norm = real_me / (powheg%event_deps%sqme_born * ubf)
+             f_alr = (one * alr) / powheg%process_deps%n_alr - tiny_07
+             call powheg%grid%update_maxima &
+                  ([radiation_variables(I_XI:I_Y), f_alr], norm)
+             call msg_show_progress (n, n_points)
+             if (debug2_active (D_MATCHING))  call show_vars ()
+          end do
+       end do EVALUATE_GRID_POINTS
+       if (powheg%grid%is_non_zero_everywhere () .or. &
+            n_points <= 0) then
+          return
+       else
+          n_points = powheg%settings%n_init / 5
+          write (msg_buffer, '(A,I12,A)') 'POWHEG: Number of points for grid ' // &
+               'initialization was not enough. Run continues with ', &
+               n_points, ' additional points to fill empty segments.'
+          call msg_warning ()
+       end if
+    end do UNTIL_ACCEPTED
+
+  contains
+
+    subroutine show_vars ()
+      if (norm > 1E5_default) then
+         call msg_debug2 (D_MATCHING, "alr", alr)
+         call msg_debug2 (D_MATCHING, "f_alr", f_alr)
+         call msg_debug2 (D_MATCHING, "radiation_variables(1)", &
+              radiation_variables(1))
+         call msg_debug2 (D_MATCHING, "radiation_variables(2)", &
+              radiation_variables(2))
+         call msg_debug2 (D_MATCHING, "radiation_variables(3)", &
+              radiation_variables(3))
+         call msg_debug2 (D_MATCHING, "xi", xi)
+         call msg_debug2 (D_MATCHING, "y", y)
+         call msg_debug2 (D_MATCHING, "powheg%sudakov(alr)%s%kt2(xi,y)", &
+              powheg%sudakov(alr)%s%kt2(xi,y))
+         call msg_debug2 (D_MATCHING, "powheg%event_deps%sqme_born", &
+              powheg%event_deps%sqme_born)
+         call msg_debug2 (D_MATCHING, "alpha_s", alpha_s)
+         call msg_debug2 (D_MATCHING, "real_me", real_me)
+         call msg_debug2 (D_MATCHING, "ubf", ubf)
+         call msg_debug2 (D_MATCHING, "norm", norm)
+         call msg_debug2 (D_MATCHING, "")
+      end if
+    end subroutine show_vars
+
+  end subroutine powheg_fill_grids
+
+  subroutine powheg_generate_xi_and_y_for_grids (powheg, &
+                                       radiation_randoms, alr, xi, y)
+    class(powheg_matching_t), intent(inout) :: powheg
+    integer, intent(in) :: alr
+    real(default), dimension(:), intent(in) :: radiation_randoms
+    real(default), intent(out) :: xi, y
+    integer :: emitter
+    if (.not. powheg%testing%active) then
+       associate (nlo => powheg%process_instance%nlo_controller, &
+                  fks => powheg%phs_fks_generator)
+          emitter = nlo%get_emitter (alr)
+          powheg%event_deps%p_real = fks%generate_fsr_from_x &
+                 (radiation_randoms, emitter, powheg%event_deps%p_born)
+          call powheg%copy_momenta ()
+          call fks%get_radiation_variables (emitter, xi, y)
+       end associate
+    else
+       xi = radiation_randoms (I_XI)
+       y = radiation_randoms (I_Y)
+    end if
+  end subroutine powheg_generate_xi_and_y_for_grids
+
+  subroutine powheg_prepare_momenta_for_fill_grids (powheg, &
+                                                      radiation_randoms)
+    real(default), dimension(3), intent(out) :: radiation_randoms
+    class(powheg_matching_t), intent(inout) :: powheg
+    if (.not. powheg%testing%active) then
+       associate (nlo => powheg%process_instance%nlo_controller, &
+                  fks => powheg%phs_fks_generator, &
+                  process => powheg%process_instance%process)
+          do
+             call process%generate_weighted_event (powheg%process_instance, 1)
+             call powheg%update (nlo%int_born%get_momenta ())
+             call powheg%rng%generate (radiation_randoms)
+             call fks%generate_radiation_variables &
+                  (radiation_randoms, powheg%event_deps%p_born)
+             call powheg%update_sudakovs (fks%real_kinematics%y)
+             if (powheg%above_pt2_min ()) exit
+          end do
+       end associate
+    else
+       call powheg%rng%generate (radiation_randoms)
+    end if
+  end subroutine powheg_prepare_momenta_for_fill_grids
+
+  function powheg_above_pt2_min (powheg) result (above)
+    logical :: above
+    class(powheg_matching_t), intent(in) :: powheg
+    integer :: alr, emitter
+    real(default) :: xi, y
+    above = .true.
+    associate (nlo => powheg%process_instance%nlo_controller, &
+                      fks => powheg%phs_fks_generator)
+       do alr = 1, powheg%process_deps%n_alr
+          emitter = nlo%get_emitter (alr)
+          call fks%get_radiation_variables (emitter, xi, y)
+          above = powheg%sudakov(alr)%s%kt2 (xi, y) >= powheg%settings%pt2_min
+          if (.not. above) exit
+       end do
+    end associate
+  end function powheg_above_pt2_min
+
+  subroutine powheg_update_sudakovs (powheg, y)
+    class(powheg_matching_t), intent(inout) :: powheg
+    real(default), dimension(:), intent(in) :: y
+    integer :: alr, emitter
+    real(default) :: q0, m2, mrec2, k0_rec_max
+    type(vector4_t) :: p_emitter
+    do alr = 1, powheg%process_deps%n_alr
+       select type (s => powheg%sudakov(alr)%s)
+       type is (sudakov_massive_fsr_t)
+          emitter = s%associated_emitter
+          q0 = sqrt (s%event_deps%s_hat)
+          p_emitter = s%event_deps%p_born (emitter)
+          associate (p => p_emitter%p)
+             mrec2 = (q0 - p(0))**2 - p(1)**2 - p(2)**2 - p(3)**2
+          end associate
+          m2 = p_emitter**2
+          call compute_dalitz_bounds (q0, m2, mrec2, s%z1, s%z2, k0_rec_max)
+          s%z = s%z2 - (s%z2-s%z1)*(one+y(emitter))/two
+       end select
+    end do
+  end subroutine powheg_update_sudakovs
+
+  subroutine powheg_import_norms_from_grid (powheg)
+    class(powheg_matching_t), intent(inout) :: powheg
+    integer :: alr
+    real(default) :: norm_max
+    do alr = 1, powheg%process_deps%n_alr
+       norm_max = powheg%grid%get_maximum_in_3d (alr)
+       call powheg%sudakov(alr)%s%set_normalization (norm_max)
+    end do
+  end subroutine powheg_import_norms_from_grid
+
+  subroutine powheg_save_grids (powheg)
+    class(powheg_matching_t), intent(inout) :: powheg
+    type(string_t) :: filename, n_points
+    n_points = str (powheg%settings%n_init)
+    filename = powheg%process_name // "_" // n_points // "_powheg_grids.dat"
+    call powheg%grid%save_to_file (char (filename))
+  end subroutine powheg_save_grids
+
+  subroutine powheg_load_grids (powheg)
+    class(powheg_matching_t), intent(inout) :: powheg
+    type(string_t) :: filename, n_points
+    n_points = str (powheg%settings%n_init)
+    filename = powheg%process_name // "_" // n_points // "_powheg_grids.dat"
+    call powheg%grid%load_from_file (char (filename))
+    write (msg_buffer, "(A,A,A)") "POWHEG: using grids from file '", &
+                               char (filename), "'"
+    call msg_message ()
+  end subroutine powheg_load_grids
+
+  function powheg_requires_new_grids (powheg) result (requires)
+    logical :: requires
+    class(powheg_matching_t), intent(in) :: powheg
+    type(string_t) :: filename, n_points
+    n_points = str (powheg%settings%n_init)
+    filename = powheg%process_name // "_" // n_points // "_powheg_grids.dat"
+    requires = .not. os_file_exist (filename) .or. powheg%settings%rebuild_grids
+  end function powheg_requires_new_grids
+
+  subroutine powheg_generate_emission (powheg, particle_set, pt2_generated)
+    class(powheg_matching_t), intent(inout) :: powheg
+    type(particle_set_t), intent(inout), optional :: particle_set
+    real(default), intent(out), optional :: pt2_generated
+    type(radiation_t) :: r, r_max
+    real(default) :: xi2_max
+    integer :: alr
+    logical :: accepted
+    type(vector4_t), dimension(:), allocatable :: p_real_max
+    if (signal_is_pending ())  return
+    r_max%pt2 = zero
+    r_max%alr = 0
+    call msg_debug (D_MATCHING, "powheg_generate_emission")
+    associate (nlo => powheg%process_instance%nlo_controller)
+      allocate (p_real_max (nlo%get_n_particles_real ()))
+      do alr = 1, powheg%process_deps%n_alr
+         if (signal_is_pending ())  return
+         associate (sudakov => powheg%sudakov(alr)%s)
+           xi2_max = nlo%get_xi_max (alr)**2
+           call sudakov%update (xi2_max)
+           select type (sudakov)
+           type is (sudakov_massive_fsr_t)
+              call sudakov%compute_xi_max_extended ()
+           end select
+           r%alr = alr
+           r%pt2 = sudakov%kt2_max (powheg%event_deps%s_hat)
+           sudakov%last_log = 0
+           call msg_debug (D_MATCHING, "Starting evolution at r%pt2", r%pt2)
+           PT_EVOLUTION: do
+              if (signal_is_pending ())  return
+              call sudakov%generate_emission (r)
+              if (signal_is_pending ())  return
+              if (r%valid) then
+                 accepted = powheg%reweight_norm (r)
+                 call sudakov%veto_counter%record_norm (.not. accepted)
+                 if (.not. accepted) cycle PT_EVOLUTION
+                 accepted = powheg%reweight_matrix_elements (r)
+                 call sudakov%veto_counter%record_sqme (.not. accepted)
+                 if (.not. accepted) cycle PT_EVOLUTION
+              end if
+              exit
+           end do PT_EVOLUTION
+           if (r%pt2 > r_max%pt2 .and. r%valid) then
+              r_max = r
+              p_real_max = powheg%event_deps%p_real
+           end if
+         end associate
+      end do
+      if (r_max%pt2 > powheg%settings%pt2_min) then
+         powheg%n_emissions = powheg%n_emissions + 1
+         call powheg%set_scale (r_max%pt2)
+         if (present (particle_set)) &
+              call powheg%build_particle_set (particle_set, &
+              powheg%event_deps%p_born, &
+              p_real_max, nlo%get_emitter (r_max%alr))
+         if (present (pt2_generated)) pt2_generated = r_max%pt2
+      else
+         call powheg%set_scale (powheg%settings%pt2_min)
+         if (present (pt2_generated)) pt2_generated = powheg%settings%pt2_min
+      end if
+    end associate
+  end subroutine powheg_generate_emission
+
+  subroutine powheg_build_particle_set &
+       (powheg, particle_set, p_born, p_real, emitter)
+    class(powheg_matching_t), intent(inout) :: powheg
+    type(particle_set_t), intent(inout) :: particle_set
+    type(vector4_t), dimension(:), intent(in) :: p_born, p_real
+    integer, intent(in) :: emitter
+    integer, dimension(:), allocatable :: flv_radiated
+    real(default) :: r_col
+    flv_radiated = powheg%process_instance%nlo_controller%get_flv_state_real (1)
+    call powheg%rng%generate (r_col)
+    call particle_set%build_radiation (p_real, emitter, flv_radiated, &
+         powheg%process_instance%process%get_model_ptr (), r_col)
+  end subroutine powheg_build_particle_set
+
+  function powheg_reweight_norm (powheg, r) result (accepted)
+    logical :: accepted
+    class(powheg_matching_t), intent(inout) :: powheg
+    type(radiation_t), intent(in) :: r
+    real(default) :: random, norm_max, norm_true
+    call msg_debug2 (D_MATCHING, "reweight_norm")
+    call powheg%rng%generate (random)
+    norm_true = powheg%norm_from_xi_and_y (r)
+    norm_max = powheg%sudakov(r%alr)%s%norm_max
+    accepted = random < norm_true / norm_max
+    if (debug2_active (D_MATCHING)) then
+       print *, '  r%alr =    ', r%alr
+       print *, '  random =    ', random
+       print *, '  norm_true =    ', norm_true
+       print *, '  norm_max =    ', norm_max
+       print *, '  norm accepted =    ', accepted
+    end if
+    if (debug_active (D_MATCHING)) then
+       if (.not. (zero < r%xi .and. &
+                  r%xi < sqrt(powheg%sudakov(r%alr)%s%xi2_max))) then
+          call msg_bug ("powheg_reweight_norm: xi is out of bounds")
+       end if
+       if (norm_true > norm_max) then
+          call msg_bug ("powheg_reweight_norm: norm shouldnt be larger than norm_max")
+       end if
+    end if
+  end function powheg_reweight_norm
+
+  function powheg_norm_from_xi_and_y (powheg, r) result (norm_true)
+    real(default) :: norm_true
+    class(powheg_matching_t), intent(inout) :: powheg
+    type(radiation_t), intent(in) :: r
+    real(default) :: f_alr
+    real(default), dimension(2) :: rands
+    real(default) :: beta
+    f_alr = (one*r%alr) / powheg%process_deps%n_alr - tiny_07
+    rands(I_XI) = r%xi / sqrt (powheg%sudakov(r%alr)%s%xi2_max)
+    select type (s => powheg%sudakov(r%alr)%s)
+    type is (sudakov_simple_fsr_t)
+       rands(I_Y) = (one - r%y) / two
+    type is (sudakov_massive_fsr_t)
+       beta = beta_emitter (sqrt (powheg%event_deps%s_hat), &
+          powheg%event_deps%p_born (s%associated_emitter))
+       rands(I_Y) = - log((one-r%y*beta)/(one+beta)) / log((one+beta)/(one-beta))
+    end select
+    norm_true = powheg%grid%get_value ([rands, f_alr])
+  end function powheg_norm_from_xi_and_y
+
+  subroutine powheg_prepare_for_events (matching)
+    class(powheg_matching_t), intent(inout), target :: matching
+    call msg_debug (D_MATCHING, "powheg_prepare_for_events")
+    call matching%setup_nlo_environment ()
+    call matching%grid%init ([matching%settings%size_grid_xi, &
+                              matching%settings%size_grid_y, &
+                              matching%process_deps%n_alr])
+    call matching%compute_lambda2_gen ()
+    call matching%setup_sudakovs ()
+  end subroutine powheg_prepare_for_events
+
+  subroutine powheg_matching_compute_lambda2_gen (matching)
+    class(powheg_matching_t), intent(inout) :: matching
+    real(default) :: scale_to_relate2, alpha_s
+    scale_to_relate2 = matching%settings%pt2_min
+    alpha_s = get_alpha (matching%qcd, scale_to_relate2)
+    matching%process_deps%lambda2_gen = exp (- one / (b0rad * alpha_s)) * &
+         scale_to_relate2
+  end subroutine powheg_matching_compute_lambda2_gen
+
+  subroutine powheg_matching_setup_nlo_environment (matching)
+    class(powheg_matching_t), intent(inout) :: matching
+    integer :: n_in, n_out_born, n_out_real
+    call msg_debug (D_MATCHING, "powheg_matching_setup_nlo_environment")
+    if (.not. matching%testing%active) then
+       associate (nlo_controller => matching%process_instance%nlo_controller)
+          matching%process_deps%n_alr = nlo_controller%get_n_alr ()
+          n_in = nlo_controller%particle_data%n_in
+          n_out_born = nlo_controller%particle_data%n_out_born
+          n_out_real = nlo_controller%particle_data%n_out_real
+          matching%process_deps%sqrts = matching%process_instance%get_sqrts ()
+          call nlo_controller%setup_generator &
+               (matching%phs_fks_generator, &
+               matching%process_deps%sqrts, &
+               matching%settings%singular_jacobian)
+       end associate
+    else
+       matching%process_deps%n_alr = matching%testing%n_alr
+       n_in = matching%testing%n_in
+       n_out_born = matching%testing%n_out_born
+       n_out_real = matching%testing%n_out_real
+    end if
+    allocate (matching%event_deps%p_born (n_in + n_out_born))
+    allocate (matching%event_deps%p_real (n_in + n_out_real))
+  end subroutine powheg_matching_setup_nlo_environment
+
+  subroutine powheg_matching_copy_momenta (matching)
+     class(powheg_matching_t), intent(inout) :: matching
+     associate (real_kinematics => matching%process_instance%nlo_controller%real_kinematics)
+        real_kinematics%p_real_cms = matching%event_deps%p_real
+        real_kinematics%p_real_lab = matching%event_deps%p_real
+     end associate
+  end subroutine powheg_matching_copy_momenta
+
+  function get_alpha (qcd, scale2) result (alpha_s)
+    real(default) :: alpha_s
+    class(qcd_t), intent(in) :: qcd
+    real(default), intent(in) :: scale2
+    integer :: nf, order
+    ! TODO: (bcn 2015-01-30) implement variable flavor alpha_s
+    alpha_s = qcd%alpha%get (sqrt(scale2))
+    select type (alpha => qcd%alpha)
+    type is (alpha_qcd_from_scale_t)
+       nf = alpha%nf
+       order = alpha%order
+    type is (alpha_qcd_from_lambda_t)
+       nf = alpha%nf
+       order = alpha%order
+    class default
+       call msg_warning ("get_alpha: QCD type is not running!" // &
+            "Assuming 5-flavors and LO (1-loop) running!")
+       nf = 5
+       order = 0
+    end select
+    if (order > 0) alpha_s = improve_nll_accuracy (alpha_s, nf)
+  end function get_alpha
+
+  pure function improve_nll_accuracy (alpha_s, n_flavors) result (alpha_s_imp)
+    real(default) :: alpha_s_imp
+    real(default), intent(in) :: alpha_s
+    integer, intent(in) :: n_flavors
+      alpha_s_imp = alpha_s * (one + alpha_s / (two*pi) * &
+           ((67.0_default/18 - pi**2/6) * CA - five/9 * n_flavors))
+  end function improve_nll_accuracy
+
+  elemental function sudakov_alpha_s_rad (sudakov, scale2) result (y)
+    real(default) :: y
+    class(sudakov_t), intent(in) :: sudakov
+    real(default), intent(in) :: scale2
+    y = one / (b0rad * log (scale2 / sudakov%process_deps%lambda2_gen))
+  end function sudakov_alpha_s_rad
+
+  function sudakov_reweight_alpha_s (sudakov, pt2) result (accepted)
+    logical :: accepted
+    class(sudakov_t), intent(inout) :: sudakov
+    real(default), intent(in) :: pt2
+    real(default) :: alpha_s_true, alpha_s_rad
+    logical :: alpha_s_equal
+    call msg_debug2 (D_MATCHING, "reweight_alpha_s")
+    alpha_s_true = get_alpha (sudakov%qcd, pt2)
+    alpha_s_rad = sudakov%alpha_s_rad (pt2)
+    call sudakov%rng%generate (sudakov%random)
+    alpha_s_equal = nearly_equal (alpha_s_true, alpha_s_rad)
+    accepted = alpha_s_equal .or. sudakov%random < alpha_s_true / alpha_s_rad
+    if (debug2_active (D_MATCHING)) then
+       print *, '  sudakov%random =    ', sudakov%random
+       print *, '  alpha_s_true =    ', alpha_s_true
+       print *, '  alpha_s_rad =    ', alpha_s_rad
+       print *, '  alpha_s accepted =    ', accepted
+       if (alpha_s_rad < alpha_s_true .and. .not. alpha_s_equal) then
+          print *, 'pt2 =    ', pt2
+          print *, 'sudakov%process_deps%lambda2_gen =    ', &
+               sudakov%process_deps%lambda2_gen
+          call msg_fatal ("sudakov_reweight_alpha_s: This should never happen. &
+                           &Have you chosen a running alpha_s?")
+       end if
+    end if
+  end function sudakov_reweight_alpha_s
+
+  subroutine powheg_test_sudakov (powheg)
+    class(powheg_matching_t), intent(inout) :: powheg
+    integer :: n_calls1, n_calls2
+    integer, parameter :: n_bins = 20
+    real(default) :: sqme_real_x_jacobian, sqme_born
+    type(vector4_t), dimension(:), allocatable :: p_born
+    real(default), dimension(3) :: random
+    real(default) :: xi, y, phi
+    integer :: i_call, i_bin, alr, emitter
+    real(default) :: alpha_s, kT2, weight
+    real(default) :: pt2_min, s, random_jacobian
+    real(default), dimension(n_bins) :: histo1, histo2, histo1sq
+    real(default), dimension(n_bins) :: average, average_sq, error
+    real(default), dimension(n_bins) :: &
+         sudakov_0, sudakov_p, sudakov_m, rel_error
+    integer :: u
+
+    p_born = powheg%event_deps%p_born
+    sqme_born = powheg%event_deps%sqme_born
+    s = powheg%event_deps%s_hat
+    pt2_min = powheg%settings%pt2_min
+    n_calls1 = 100000; n_calls2 = 1000000
+    histo1 = zero; histo2 = zero; histo1sq = zero
+
+    write (msg_buffer, "(A)") "POWHEG: test_sudakov: Computing integrals"
+    call msg_message ()
+    associate (nlo => powheg%process_instance%nlo_controller, &
+               fks => powheg%phs_fks_generator)
+       do i_call = 1, n_calls1
+          do alr = 1, powheg%process_deps%n_alr
+             call powheg%rng%generate (random)
+             emitter = nlo%get_emitter (alr)
+             powheg%event_deps%p_real = fks%generate_fsr_from_x (random, emitter, p_born)
+             call powheg%copy_momenta ()
+             call fks%get_radiation_variables (emitter, xi, y, phi)
+             kT2 = powheg%sudakov(alr)%s%kt2(xi, y)
+             if (kT2 > pt2_min .and. xi < one - 1000*tiny_07) then
+                alpha_s = get_alpha (powheg%qcd, kT2)
+                sqme_real_x_jacobian = powheg%compute_sqme_real (alr, alpha_s)
+                random_jacobian = nlo%real_kinematics%jac_rand (emitter)
+                weight = sqme_real_x_jacobian * random_jacobian / sqme_born
+                do i_bin = 1, n_bins
+                   if (kT2 > binning(i_bin)) then
+                      histo1(i_bin) = histo1(i_bin) + weight
+                      histo1sq(i_bin) = histo1sq(i_bin) + weight**2
+                   end if
+                end do
+             end if
+             ! Do not cycle since there is a Heaviside in the exponent
+          end do
+          call msg_show_progress (i_call, n_calls1)
+       end do
+    end associate
+    average = histo1 / n_calls1
+    average_sq = histo1sq / n_calls1
+    error = sqrt ((average_sq - average**2) / n_calls1)
+    sudakov_0 = exp(-average)
+    sudakov_p = exp(-(average + error))
+    sudakov_m = exp(-(average - error))
+    rel_error = (sudakov_0 - sudakov_p + sudakov_m - sudakov_0) / &
+         (2 * sudakov_0) * 100
+
+    write (msg_buffer, "(A)") "POWHEG: test_sudakov: Generating emissions"
+    call msg_message ()
+    do i_call = 1, n_calls2
+       if (signal_is_pending ())  return
+       call powheg%generate_emission (pt2_generated = kT2)
+       do i_bin = 1, n_bins
+          if (kT2 > binning(i_bin)) then
+              histo2(i_bin) = histo2(i_bin) + one
+          end if
+       end do
+       call msg_show_progress (i_call, n_calls2)
+    end do
+    histo2 = histo2 / n_calls2
+    histo2 = one - histo2
+
+    u = free_unit ()
+    open (file='test_sudakov_data', unit=u, action='write')
+    print *, 'exp(-Integrated R/B)-distribution: '
+    print *, 'pT2  sudakov_+  sudakov_0  sudakov_-  rel_err[%]: '
+    do i_bin = 1, n_bins
+       print *, binning (i_bin), &
+            sudakov_p (i_bin), sudakov_0 (i_bin), sudakov_m (i_bin), &
+            rel_error (i_bin)
+       write (u, "(5(" // FMT_16 // ",2X))") binning (i_bin), &
+            sudakov_p (i_bin), sudakov_0 (i_bin), sudakov_m (i_bin), &
+            histo2 (i_bin)
+    end do
+    close (u)
+    print *, '*******************************'
+    print *, 'Noemission probability: '
+    do i_bin = 1, n_bins
+       print *, binning (i_bin), histo2 (i_bin)
+    end do
+
+  contains
+
+    pure function binning (i) result (pt2)
+      real(default) :: pt2
+      integer, intent(in) :: i
+      !pt2 = pt2_min + (s-pt2_min) * (i-1) / (n_bins-1)
+      pt2 = pt2_min * exp (log (s / pt2_min) * (i-1) / (n_bins-1))
+    end function
+  end subroutine powheg_test_sudakov
+
+
+end module powheg_matching

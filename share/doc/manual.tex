@@ -267,7 +267,7 @@ Parameter & Value & Default & Description \\
 }
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %END LATEX
-\newcommand{\thisversion}{2.2.6}
+\newcommand{\thisversion}{2.2.7}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -363,7 +363,7 @@ initial and final states.  Quark or lepton flavors can be
 summed over automatically where needed.  
 \\[\baselineskip]
 For hadron collider physics, we ship the package with the most recent
-PDF sets from the MSTW/MMHT and CTEQ/CT10/CJ12
+PDF sets from the MSTW/MMHT and CTEQ/CT10/CJ12/CT14
 collaborations. Furthermore, an interface to the \lhapdf\ library is
 provided. 
 \\[\baselineskip]
@@ -558,7 +558,7 @@ versions of the \whizard\ generator itself: the multi-channel adaptive
 Monte-Carlo integration package \vamp\ has been released mid
 1998~\cite{VAMP}. The dedicated packages for the simulation of linear
 lepton collider beamstrahlung and the option for a photon collider on
-Compton backscattering (\ttt{Circe1/2}) date back even to mid
+Compton backscattering (\ttt{CIRCE1/2}) date back even to mid
 1996~\cite{CIRCE}. Also parts of the code for \whizard's internal
 graphical analysis (the \gamelan\ module) came into existence already
 around 1998. 
@@ -602,7 +602,7 @@ of \whizard:
   1.00 & 12/2000 & First public version \\\hline
   1.10 & 03/2001 & Libraries; \pythiasix\ interface \\ 
   1.11 & 04/2001 & PDF support; anomalous couplings \\ \hline
-  1.20 & 02/2002 & \oMega\ matrix elements; \ttt{Circe} support\\
+  1.20 & 02/2002 & \oMega\ matrix elements; \ttt{CIRCE} support\\
   1.22 & 03/2002 & QED ISR; beam remnants, phase space improvements \\
   1.25 & 05/2003 & MSSM; weighted events; user-code plug-in \\
   1.28 & 04/2004 & Improved phase space; SLHA interface; signal catching
@@ -637,8 +637,10 @@ of \whizard:
   2.2.3 & 11/2014 & O'Mega virtual machine; lepton collider top
   pair threshold; Higgs singlet extension \\
   2.2.4 & 02/2015 & LCIO support; progress on NLO; many technical
-  bug fixes
-  \\\hline  
+  bug fixes \\
+  2.2.7 & 08/2015 & progress on POWHEG; fixed-order NLO events;
+  revalidation of ILC event chain
+  \\\hline 
 \end{tabular}
 \end{center}
 
@@ -1584,10 +1586,8 @@ than in the 2.2.1 release.
 There are additional, quite extensiv numerical tests for validation
 and backwards compatibility checks for SM and MSSM processes. As a
 standard, these extended self tests are not invoked. However, they can
-be enabled by setting the configure option
-\ttt{--enable-extnum-checks}. On the other hand, the standard
-self-consistency checks can be completely disabled with the option
-\ttt{--disable-default-checks}. 
+be enabled by executing the corresponding specific \ttt{make check} 
+operations in the subdirectories for these extensive tests.
 
 As the new \whizard\ testsuite does very thorough and scrupulous tests
 of the whole \whizard\ structure, it is always possible that some
@@ -2380,7 +2380,7 @@ named \verb|hello.sin|.
 		|        M. Moretti, T. Ohl, J. Reuter, arXiv: hep-ph/0102195                 |
 		|                                                                             |
 		|=============================================================================|
-		|                               WHIZARD 2.2.6
+		|                               WHIZARD 2.2.7
 		|=============================================================================|
 		| Reading model file '/usr/local/share/whizard/models/SM.mdl'
 		| Preloaded model: SM
@@ -2411,7 +2411,7 @@ including the \whizard\ banner is shown in Fig.~\ref{fig:helloworld})
 \centerline{[... here a banner is displayed]}
 \begin{Verbatim}
 |=============================================================================|
-|                               WHIZARD 2.2.6
+|                               WHIZARD 2.2.7
 |=============================================================================|
 | Reading model file '/usr/local/share/whizard/models/SM.mdl'
 | Preloaded model: SM
@@ -2470,7 +2470,7 @@ This produces a lot of output which looks similar to this:
  | Writing log to 'whizard.log'
 [... banner ...]
  |=============================================================================|
- |                               WHIZARD 2.2.6
+ |                               WHIZARD 2.2.7
  |=============================================================================|
  | Reading model file '/usr/local/share/whizard/models/SM.mdl'
  | Preloaded model: SM
@@ -5571,6 +5571,15 @@ Tag & Name & Notes & References \\\hline\hline
 \texttt{mmht2014nnlo} & MMHT2014NNLO & \mbox{}\hfill---\hfill\mbox{} &
    \cite{Harland-Lang:2014zoa} \\\hline
 \hline
+\texttt{CT14LL} & CT14LLO & \mbox{}\hfill---\hfill\mbox{} &
+   \cite{Dulat:2015mca} \\\hline
+\texttt{CT14L} & CT14LO & \mbox{}\hfill---\hfill\mbox{} &
+   \cite{Dulat:2015mca} \\\hline
+\texttt{CT14N} & CT1414NLO & \mbox{}\hfill---\hfill\mbox{} &
+   \cite{Dulat:2015mca} \\\hline
+\texttt{CT14NN} & CT14NNLO & \mbox{}\hfill---\hfill\mbox{} &
+   \cite{Dulat:2015mca} \\\hline
+\hline
 %
 \end{tabular}}
 \caption{All PDF sets available as builtin sets. The two MRST2004QED
@@ -5942,6 +5951,29 @@ reuse the same file again from the beginning. If the available data
 points in the beam events file are not big enough, this could result
 in an insufficient sampling of the beam spectrum.   
 
+%%%%%%%%%%%%%%%
+
+\subsection{Gaussian beam-energy spread}
+\label{sec:gaussian}
+
+Real beams have a small energy spread.  If beamstrahlung is small, the spread
+may be approximately described as Gaussian.  As a replacement for the full
+simulation that underlies \ttt{CIRCE2} spectra, it is possible to
+impose a Gaussian distributed beam energy, separately for each beam.
+\begin{quote}
+\begin{footnotesize}
+\begin{Verbatim}
+beams = e1, E1 => gaussian
+gaussian_spread_1 = 0.1\%
+gaussian_spread_2 = 0.2\%
+\end{Verbatim}
+\end{footnotesize}%$
+\end{quote}
+(Note that the \% sign means multiplication by 0.01, as it should.)  The
+spread values are defined as the $\sigma$ value of the Gaussian distribution,
+i.e., $2/3$ of the events are within $\pm 1\sigma$ for each beam,
+respectively.
+
 %%%%%%%%%%%%%%%%
 
 \subsection{Equivalent photon approximation}
@@ -5984,8 +6016,8 @@ Parameter & Default & Meaning \\\hline\hline
 \\\hline
 \ttt{epa\_x\_min} & \ttt{0.} & soft photon cutoff in $x$ (mandatory)
 \\\hline
-\ttt{epa\_q\_min} & \ttt{0.} & minimal $\gamma$ momentum transfer (mandatory) \\\hline
-\ttt{epa\_mass} & \ttt{0}/intrinsic & mass of the radiating fermion  \\\hline
+\ttt{epa\_q\_min} & \ttt{0.} & minimal $\gamma$ momentum transfer \\\hline
+\ttt{epa\_mass} & \ttt{0}/intrinsic & mass of the radiating fermion (mandatory)  \\\hline
 \ttt{epa\_e\_max} & \ttt{0}/$\sqrt{s}$ & upper cutoff for EPA \\\hline
 \ttt{?epa\_recoil} & \ttt{false} & flag to switch on recoil/$p_T$ 
 \\\hline
@@ -9373,7 +9405,7 @@ This is the modern version of the Les Houches accord event format
 <LesHouchesEvents version="1.0">
 <header>
   <generator_name>WHIZARD</generator_name>
-  <generator_version>2.2.6</generator_version>
+  <generator_version>2.2.7</generator_version>
 </header>
 <init>
  25 25  5.0000000000E+02  5.0000000000E+02 -1 -1 -1 -1 3 1
@@ -14535,6 +14567,21 @@ e.g. \ttt{int i = floor (4.56789)} gives \ttt{i = 4}. (cf. also
 \ttt{int}, \ttt{nint}, \ttt{ceiling})
 %%%%%
 \item
+\ttt{gaussian} \newline
+Beam structure specifier that imposes a Gaussian energy distribution,
+separately for each beam.  The $\sigma$ values are set by
+\ttt{gaussian\_spread1} and \ttt{gaussian\_spread2}, respectively.
+%%%%%
+\item
+\ttt{gaussian\_spread1} (default: 0)\newline 
+Parameter that sets the energy spread ($\sigma$ value) of the first beam for a
+Gaussian spectrum.  (cf. \ttt{gaussian})
+%%%%%
+\item
+\ttt{gaussian\_spread2} (default: 0)\newline 
+Ditto, for the second beam.
+%%%%%
+\item
 \ttt{genkt\_algorithm} \newline
 Specifies a jet algorithm for the ($\to$) \ttt{jet\_algorithm}
 command, used in the ($\to$) \ttt{cluster} subevent function. At the
@@ -14687,11 +14734,25 @@ generation of the extended or verbose version of HEPEVT ASCII event
 files. (cf. also \ttt{\$sample}, \ttt{sample\_format}) 
 %%%%%
 \item
+\ttt{?hepevt\_ensure\_order} \qquad (default: \ttt{false}) \newline
+Flag to ensure that the particle set confirms the HEPEVT standard. This involves
+some copying and reordering to guarantee that mothers and daughters are always
+next to each other. Usually this is not necessary.
+%%%%%
+\item
 \ttt{hepmc} \newline 
 Specifier for the \ttt{sample\_format} command to demand the
 generation of HepMC ASCII event files. Note that this is only
 available if the HepMC package is installed and correctly
-linked. (cf. also \ttt{\$sample}, \ttt{sample\_format}) 
+linked. (cf. also \ttt{\$sample}, \ttt{sample\_format},
+\ttt{?hepmc\_output\_cross\_section})
+%%%%%
+\item
+\ttt{?hepmc\_output\_cross\_section} \qquad (default: \ttt{false}) \newline 
+Flag for the HepMC event format that allows to write out the cross section (and
+error) from the integration together with each HepMC event. This can be used by
+programs like Rivet to scale histograms according to the cross section. (cf.
+also \ttt{hepmc})
 %%%%%
 \item
 \ttt{histogram} \newline
@@ -16175,7 +16236,7 @@ when reading event/rescanning files into \whizard. (cf. \ttt{rescan},
 \ttt{relative\_error\_goal} \qquad (default: \ttt{0.}/off) \newline
 Real parameter that allows the user to set a minimal relative error
 that should be achieved in the Monte-Carlo integration of a certain 
-process. If that goal is reached, grid and weight adapation stop, and
+process. If that goal is reached, grid and weight adaptation stop, and
 this result is used for simulation. (cf. also \ttt{integrate},
 \ttt{iterations}, \ttt{accuracy\_goal}, \ttt{error\_goal},
 \ttt{error\_threshold}) 
@@ -17506,6 +17567,12 @@ respectively.
   %``Parton distributions in the LHC era: MMHT 2014 PDFs,''
   arXiv:1412.3989 [hep-ph].
   %%CITATION = ARXIV:1412.3989;%%
+%\cite{Dulat:2015mca}
+\bibitem{Dulat:2015mca} 
+  S.~Dulat {\it et al.},
+  %``The CT14 Global Analysis of Quantum Chromodynamics,''
+  arXiv:1506.07443 [hep-ph].
+  %%CITATION = ARXIV:1506.07443;%%
 
 
 %\cite{Salam:2008qg}

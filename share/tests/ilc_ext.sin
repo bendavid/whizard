@@ -1,0 +1,93 @@
+# $Id: ilc_ext.sin 7075 2015-06-27 23:44:37Z jr_reuter $
+# SINDARIN input for WHIZARD self-test
+
+model = SM
+
+process smext_sm_proc_01 =	e1, E1	=>  b, B, u, D, d, U
+process smext_sm_proc_02 = 	e1, E1	=>  b, B, u, U, g, g
+process smext_sm_proc_03 = 	e1, E1	=>  b, B, g, g, g, g
+process smext_sm_proc_04 =	e1, E1	=>  b, B, u, D, e1, N1
+process smext_sm_proc_05 = 	e1, E1	=>  b, B, E1, n1, e1, N1
+process smext_sm_proc_06 = 	e1, E1	=>  b, B, E1, n1, e2, N2
+process smext_sm_proc_07 =	e1, E1	=>  b, B, E2, n2, e2, N2
+
+compile
+
+!---------------------------------------------
+
+mW = 80.419
+wW = 2.12
+mZ = 91.1882
+wZ = 2.4952
+GF = 1.16639E-5
+me = 0
+mmu = 0.1056583
+mtau = 1.777
+ms = 0.2
+mc = 1.3
+mb = 4.8
+mtop = 174.3
+wtop = 1.6
+mH = 130 GeV
+wH = 0.00429 
+
+seed = 0
+
+alias lepton = e1:e2:e3:E1:E2:E3
+alias neutrino = n1:n2:n3:N1:N2:N3
+alias jet = u:d:s:c:b:U:D:S:C:B:g
+
+cuts = all E > 10 GeV [jet] and
+       all E > 10 GeV [lepton] and
+       all M > 10 GeV [combine [jet, jet]] and
+       all 5 degree < Theta < 175 degree [jet] and
+       all 5 degree < Theta < 175 degree [lepton] and
+       all 5 degree < Theta < 175 degree [lepton, lepton] and
+       all 5 degree < Theta < 175 degree [jet, lepton] 
+	   
+
+!!! 360 GeV
+alphas = 0.0925
+
+sqrts = 360 GeV
+beams = e1, E1
+
+integrate (smext_sm_proc_01,
+	   smext_sm_proc_02,
+	   smext_sm_proc_03,
+	   smext_sm_proc_04,
+	   smext_sm_proc_05,
+	   smext_sm_proc_06,
+	   smext_sm_proc_07
+) { iterations = 6:100000, 2:200000 }
+
+tolerance = 3*0.33
+expect (integral (smext_sm_proc_01) == 32.73 )
+tolerance = 3*0.12
+expect (integral (smext_sm_proc_02) == 11.22 )
+tolerance = 3*0.09
+expect (integral (smext_sm_proc_03) == 18.69 )
+tolerance = 3*0.08
+expect (integral (smext_sm_proc_04) == 11.37 )
+
+
+show (results)
+
+
+
+!!! 500 GeV
+alphas = 0.0891
+
+sqrts = 500 GeV
+beams = e1, E1
+
+integrate (smext_sm_proc_01,
+	   smext_sm_proc_02,
+	   smext_sm_proc_03,
+	   smext_sm_proc_04,
+	   smext_sm_proc_05,
+	   smext_sm_proc_06,
+	   smext_sm_proc_07
+) { iterations = 6:100000 }
+
+show (results)

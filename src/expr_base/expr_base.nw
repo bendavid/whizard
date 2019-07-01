@@ -278,7 +278,6 @@ Unit tests are deferred to implementations.
 module expr_base
 
 <<Use kinds>>
-<<Use strings>>
   use var_base
 
 <<Standard module head>>

@@ -1,4 +1,4 @@
-! WHIZARD 2.2.6 May 02 2015
+! WHIZARD 2.2.7 Aug 11 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -36,7 +36,7 @@ module phs_forests
   use kinds, only: TC
   use iso_varying_string, string_t => varying_string
   use io_units
-  use format_defs, only: FMT_12, FMT_19
+  use format_defs, only: FMT_19
   use diagnostics
   use lorentz
   use unit_tests
@@ -91,7 +91,6 @@ module phs_forests
   public :: phs_forest_evaluate_selected_channel
   public :: phs_forest_evaluate_other_channels
   public :: phs_forest_recover_channel
-  public :: phs_forest_test
 
   type :: phs_parameters_t
      real(default) :: sqrts = 0
@@ -1334,142 +1333,6 @@ contains
          (forest%grove(g)%tree(t), &
          forest%prt, phs_factor(channel), sqrts, x(:,channel))
   end subroutine phs_forest_recover_channel
-
-  subroutine phs_forest_test (u, results)
-    integer, intent(in) :: u
-    type(test_results_t), intent(inout) :: results
-    call test (phs_forest_1, "phs_forest_1", &
-         "check phs forest setup", &
-         u, results)  
-  end subroutine phs_forest_test
-  
-
-  subroutine phs_forest_1 (u)
-    use os_interface
-    integer, intent(in) :: u
-    type(phs_forest_t) :: forest
-    type(phs_channel_t), dimension(:), allocatable :: channel
-    type(model_data_t), target :: model
-    type(string_t) :: process_id
-    type(flavor_t), dimension(5) :: flv
-    type(string_t) :: filename
-    type(interaction_t) :: int
-    integer, parameter :: unit_fix = 20
-    type(mapping_defaults_t) :: mapping_defaults
-    logical :: found_process, ok
-    integer :: n_channel, ch, i
-    logical, dimension(4) :: active = .true.
-    real(default) :: sqrts = 1000
-    real(default), dimension(5,4) :: x
-    real(default), dimension(4) :: factor
-    real(default) :: volume
-
-    write (u, "(A)")  "* Test output: PHS forest"
-    write (u, "(A)")  "*   Purpose: test PHS forest routines"
-    write (u, "(A)")      
-    
-    write (u, "(A)")  "* Reading model file"
-    
-    call model%init_sm_test ()
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Create phase-space file 'phs_forest_test.phs'"
-    write (u, "(A)")
-    
-    call flv%init ([11, -11, 11, -11, 22], model)
-    open (file="phs_forest_test.phs", unit=unit_fix, action="write")
-    write (unit_fix, *) "process foo"
-    write (unit_fix, *) 'md5sum_process    = "6ABA33BC2927925D0F073B1C1170780A"'
-    write (unit_fix, *) 'md5sum_model_par  = "1A0B151EE6E2DEB92D880320355A3EAB"'
-    write (unit_fix, *) 'md5sum_phs_config = "B6A8877058809A8BDD54753CDAB83ACE"'
-    write (unit_fix, *) "sqrts         =    100.00000000000000"     
-    write (unit_fix, *) "m_threshold_s =    50.000000000000000"     
-    write (unit_fix, *) "m_threshold_t =    100.00000000000000"     
-    write (unit_fix, *) "off_shell =            2"
-    write (unit_fix, *) "t_channel =            6"
-    write (unit_fix, *) "keep_nonresonant =  F"
-    write (unit_fix, *) ""
-    write (unit_fix, *) "  grove"
-    write (unit_fix, *) "    tree 3 7"
-    write (unit_fix, *) "      map 3 s_channel 23"
-    write (unit_fix, *) "    tree 5 7"
-    write (unit_fix, *) "    tree 6 7"
-    write (unit_fix, *) "  grove"
-    write (unit_fix, *) "    tree 9 11"
-    write (unit_fix, *) "      map 9 t_channel 22"
-    close (unit_fix)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Read phase-space file 'phs_forest_test.phs'"
-
-    call syntax_phs_forest_init ()
-    process_id = "foo"
-    filename = "phs_forest_test.phs"
-    call phs_forest_read &
-         (forest, filename, process_id, 2, 3, model, found_process)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Set parameters, flavors, equiv, momenta"
-    write (u, "(A)") 
-    
-    call phs_forest_set_flavors (forest, flv)
-    call phs_forest_set_parameters (forest, mapping_defaults, .false.)
-    call phs_forest_setup_prt_combinations (forest)
-    call phs_forest_set_equivalences (forest)
-    call int%basic_init (2, 0, 3)
-    call int%set_momentum &
-         (vector4_moving (500._default, 500._default, 3), 1)
-    call int%set_momentum &
-         (vector4_moving (500._default,-500._default, 3), 2)
-    call phs_forest_set_prt_in (forest, int)
-    n_channel = 2
-    x = 0
-    x(:,n_channel) = [0.3, 0.4, 0.1, 0.9, 0.6]
-    write (u, "(A)")  "   Input values:"
-    write (u, "(3x,5(1x," // FMT_12 // "))")  x(:,n_channel)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Evaluating phase space"
-
-    call phs_forest_evaluate_selected_channel (forest, &
-         n_channel, active, sqrts, x, factor, volume, ok)
-    call phs_forest_evaluate_other_channels (forest, &
-         n_channel, active, sqrts, x, factor, combine=.true.)
-    call phs_forest_get_prt_out (forest, int)
-    write (u, "(A)")  "   Output values:"
-    do ch = 1, 4
-       write (u, "(3x,5(1x," // FMT_12 // "))")  x(:,ch)
-    end do
-    call int%basic_write (u)
-    write (u, "(A)")  "   Factors:"
-    write (u, "(3x,5(1x," // FMT_12 // "))")  factor
-    write (u, "(A)")  "   Volume:"
-    write (u, "(3x,5(1x," // FMT_12 // "))")  volume
-    call phs_forest_write (forest, u)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Compute equivalences"
-
-    n_channel = 4
-    allocate (channel (n_channel))
-    call phs_forest_get_equivalences (forest, &
-         channel, .true.)
-    do i = 1, n_channel
-       write (u, "(1x,I0,':')", advance = "no")  ch       
-       call channel(i)%write (u)
-    end do
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Cleanup"
-
-    call model%final ()
-    call phs_forest_final (forest)
-    call syntax_phs_forest_final ()
-        
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: phs_forest_1"    
-
-  end subroutine phs_forest_1
 
 
 end module phs_forests

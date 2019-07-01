@@ -1,0 +1,43 @@
+* Test output: object_container_3
+*   Purpose: construct expressions from code
+
+* Prepare repository
+
+object repository ||abstract|| {
+   M1: object integer ||abstract||
+   M2: object container ||operator|binary|abstract||
+ }
+
+* Construct object: list
+
+container container ||operator|binary|constant|| {
+   O1: ,
+   A1: integer item1 ||constant|| = 71
+   A2: integer item2 ||constant|| = 72
+ } = (<>, <>)
+
+* Code from object
+
+ c= 100  vt= 3  nv= 1  att= 2 1 0 2 2 0
+     202
+ c= 100  vt= 2  nv= 1  att= 1 1 0 0 0 0
+     item1
+ c= 2  vt= 3  nv= 1
+     71
+ c= 100  vt= 2  nv= 1  att= 1 1 0 0 0 0
+     item2
+ c= 2  vt= 3  nv= 1
+     72
+ c= 90  vt= 0  nv= 0  att= 2
+
+* Reconstruct object from code
+
+container container ||operator|binary|constant|| {
+   O1: ,
+   A1: integer item1 ||constant|| = 71
+   A2: integer item2 ||constant|| = 72
+ } = (<>, <>)
+
+* Cleanup
+
+* Test output end: object_container_3

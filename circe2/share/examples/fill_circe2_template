@@ -20,7 +20,7 @@ shift
 template=$1
 shift
 if test "X$template" = "X"; then
-  echo "usage: fill_circe2_template GP++-output template" 1>&2
+  echo "usage: $0 GP++-output template [parameter=value ...]" 1>&2
   exit 1
 fi
 

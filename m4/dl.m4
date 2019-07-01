@@ -63,7 +63,7 @@ AM_CONDITIONAL([DL_AVAILABLE], [test "$enable_dl" = "yes"])
 ### care of library interdependencies on MAC OS X
 case $host in
   *-darwin*)
-     DYLD_FLAGS="DYLD_LIBRARY_PATH=\$(pwd)/../src/.libs:\$(pwd)/../omega/src/.libs:\${DYLD_LIBRARY_PATH}; export DYLD_LIBRARY_PATH" ;; 
+     DYLD_FLAGS="DYLD_LIBRARY_PATH=\$(pwd)/../../src/.libs:\$(pwd)/../../src/whizard-core/.libs:\$(pwd)/../../omega/src/.libs:\${DYLD_LIBRARY_PATH}; export DYLD_LIBRARY_PATH" ;; 
   *)
      DYLD_FLAGS="" ;;
 esac

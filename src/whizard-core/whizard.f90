@@ -1,4 +1,4 @@
-! WHIZARD 2.2.6 May 02 2015
+! WHIZARD 2.2.7 Aug 11 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -34,117 +34,21 @@ module whizard
 
   use io_units
   use iso_varying_string, string_t => varying_string
-  use unit_tests
   use system_defs, only: VERSION_STRING
   use system_defs, only: EOF, BACKSLASH
   use diagnostics
   use os_interface
-  use formats
-  use md5
-  use sorting
-  use codes
-  use object_base
-  use object_builder
-  use object_logical
-  use object_integer
-  use sindarin_parser
-  use grids
-  use solver
-  use cputime
-  use sm_qcd
   use ifiles
   use lexers
   use parser
-  use xml
-  use colors
-  use state_matrices
-  use analysis
   use variables
-  use model_testbed
-  use user_code_interface
   use eval_trees
-  use particles
   use models
-  use auto_components
-  use radiation_generator
-  use evaluators
   use phs_forests
-  use beams
-  use polarizations
-  use sf_aux
-  use sf_mappings
-  use sf_base
-  use sf_pdf_builtin
-  use sf_lhapdf
-  use sf_circe1
-  use sf_circe2
-  use sf_isr
-  use sf_epa
-  use sf_ewa
-  use sf_escan
-  use sf_beam_events
-  use sf_user
-  use phs_base
-  use phs_single
-  use phs_wood
-  use phs_fks
-  use rng_base
-  use rng_tao
-  use selectors
-  use mci_base
-  use mci_midpoint
-  use mci_vamp
-  use prclib_interfaces
-  use particle_specifiers
-  use process_libraries
   use prclib_stacks
-  use hepmc_interface
-  use lcio_interface
-  use jets
-  use pdg_arrays
-  use interactions
   use slha_interface
-  use cascades
-  use blha_driver
   use blha_config
-  use prc_core
-  use prc_test
-  use prc_template_me
-  use prc_omega
-  use subevt_expr
-  use processes
-  use process_stacks
-  use event_transforms
-  use decays
-  use powheg
-  use shower
-  use events
-
-  use hep_events
-  use eio_data
-  use eio_base
-  use eio_raw
-  use eio_checkpoints
-  use eio_lhef
-  use eio_hepmc
-  use eio_lcio
-  use eio_stdhep
-  use eio_ascii
-  use eio_weights
-
-  use iterations
-  use beam_structures
   use rt_data
-  use dispatch
-  use process_configurations
-  use compilations
-  use integrations
-  use event_streams
-  use simulations
-  use nlo_controller
-
-  use expr_tests
-
   use commands
 
   implicit none
@@ -155,7 +59,6 @@ module whizard
   public :: init_syntax_tables
   public :: final_syntax_tables
   public :: write_syntax_tables
-  public :: whizard_check
 
   type :: whizard_options_t
      type(string_t) :: preload_model
@@ -264,6 +167,9 @@ contains
            intrinsic=.true.)
       call var_list_append_log &
            (var_list, var_str ("?rebuild_grids"), options%rebuild_grids, &
+           intrinsic=.true.)
+      call var_list_append_log &
+           (var_list, var_str ("?powheg_rebuild_grids"), options%rebuild_grids, &
            intrinsic=.true.)
       call var_list_append_log &
            (var_list, var_str ("?rebuild_events"), options%rebuild_events, &
@@ -441,9 +347,9 @@ contains
     call lexer_assign_stream (lexer, stream)
     call whizard%pt_stack%push (parse_tree)
     call parse_tree_init (parse_tree, syntax_cmd_list, lexer)
-    if (associated (parse_tree_get_root_ptr (parse_tree))) then
+    if (associated (parse_tree%get_root_ptr ())) then
        whizard%global%lexer => lexer
-       call command_list%compile (parse_tree_get_root_ptr (parse_tree), &
+       call command_list%compile (parse_tree%get_root_ptr (), &
             whizard%global)
     end if
     call whizard%global%activate ()
@@ -494,423 +400,6 @@ contains
     print *
     call lexer_final (lexer)
   end subroutine whizard_shell
-
-  subroutine prepare_eio_test (event, unweighted, n_alt)
-    use variables
-    use model_data
-    use event_base
-    class(generic_event_t), intent(inout), pointer :: event
-    logical, intent(in), optional :: unweighted
-    integer, intent(in), optional :: n_alt
-    type(model_data_t), pointer :: model
-    type(var_list_t) :: var_list
-    type(process_t), pointer :: process
-    type(process_instance_t), pointer :: process_instance
-
-    allocate (model)
-    call model%init_test ()
-
-    allocate (process)
-    allocate (process_instance)
-
-    call prepare_test_process (process, process_instance, model)
-    call process_instance%setup_event_data ()
- 
-    call model%final ()
-    deallocate (model)
-
-    allocate (event_t :: event)
-    select type (event)
-    type is (event_t)
-       if (present (unweighted)) then
-          call var_list_append_log (var_list, &
-               var_str ("?unweighted"), unweighted, &
-               intrinsic = .true.)
-       else
-          call var_list_append_log (var_list, &
-               var_str ("?unweighted"), .true., &
-               intrinsic = .true.)
-       end if
-       call var_list_append_string (var_list, &
-            var_str ("$sample_normalization"), &
-            var_str ("auto"), intrinsic = .true.)
-       call event%basic_init (var_list, n_alt)
-       call event%connect (process_instance, process%get_model_ptr ())
-       call var_list%final ()
-    end select
-  end subroutine prepare_eio_test
-    
-  subroutine cleanup_eio_test (event)
-    use model_data
-    use event_base
-    class(generic_event_t), intent(inout), pointer :: event
-    type(process_t), pointer :: process
-    type(process_instance_t), pointer :: process_instance
-    select type (event)
-    type is (event_t)
-       process => event%get_process_ptr ()
-       process_instance => event%get_process_instance_ptr ()
-       call cleanup_test_process (process, process_instance)
-       deallocate (process_instance)
-       deallocate (process)
-       call event%final ()
-    end select
-    deallocate (event)
-  end subroutine cleanup_eio_test
-    
-  subroutine prepare_whizard_model (model, name, vars)
-    use iso_varying_string, string_t => varying_string
-    use os_interface
-    use model_data
-    use var_base
-    use models
-    class(model_data_t), intent(inout), pointer :: model
-    type(string_t), intent(in) :: name
-    class(vars_t), pointer, intent(out), optional :: vars
-    type(os_data_t) :: os_data
-    call syntax_model_file_init ()
-    call os_data_init (os_data)
-    allocate (model_t :: model)
-    select type (model)
-    type is (model_t)
-       call model%read (name // ".mdl", os_data)
-       if (present (vars)) then
-          vars => model%get_var_list_ptr ()
-       end if
-    end select
-  end subroutine prepare_whizard_model
-    
-  subroutine cleanup_whizard_model (model)
-    use model_data
-    use models
-    class(model_data_t), intent(inout), pointer :: model
-    call model%final ()
-    deallocate (model)
-    call syntax_model_file_final ()
-  end subroutine cleanup_whizard_model
-    
-  subroutine prepare_fallback_model (model)
-    use model_data
-    class(model_data_t), intent(inout), pointer :: model
-    call prepare_whizard_model (model, var_str ("SM_hadrons"))
-  end subroutine prepare_fallback_model
-    
-  subroutine whizard_check (check, results)
-    type(string_t), intent(in) :: check
-    type(test_results_t), intent(inout) :: results
-    type(os_data_t) :: os_data
-    integer :: u
-    call os_data_init (os_data)
-    u = free_unit ()
-    open (u, file="whizard_check." // char (check) // ".log", &
-         action="write", status="replace")
-    call msg_message (repeat ('=', 76), 0)
-    call msg_message ("Running self-test: " // char (check), 0)
-    call msg_message (repeat ('-', 76), 0)
-    eio_prepare_test => prepare_eio_test
-    eio_cleanup_test => cleanup_eio_test
-    prepare_model => prepare_whizard_model
-    cleanup_model => cleanup_whizard_model
-    eio_prepare_fallback_model => prepare_fallback_model
-    eio_cleanup_fallback_model => cleanup_model
-    select case (char (check))
-    case ("analysis")
-       call analysis_test (u, results)
-    case ("beams")
-       call beam_test (u, results)
-    case ("cascades")
-       call cascade_test (u, results)
-    case ("colors")
-       call color_test (u, results)
-    case ("evaluators")
-      call evaluator_test (u, results)
-    case ("expressions")
-       call expressions_test (u, results)
-    case ("formats")
-       call format_test (u, results)
-    case ("hepmc")
-       call hepmc_test (u, results)
-    case ("lcio")
-       call lcio_test (u, results)
-    case ("jets")
-       call jets_test (u, results)
-    case ("pdg_arrays")
-       call pdg_arrays_test (u, results)
-    case ("interactions")
-       call interaction_test (u, results)
-    case ("lexers")
-       call lexer_test (u, results)
-    case ("os_interface") 
-       call os_interface_test (u, results)
-    case ("cputime") 
-       call cputime_test (u, results)
-    case ("parser")
-       call parse_test (u, results)       
-    case ("sorting")
-       call sorting_test (u, results)
-    case ("codes")
-       call codes_test (u, results)
-    case ("object_base")
-       call object_base_test (u, results)
-    case ("object_builder")
-       call object_builder_test (u, results)
-    case ("object_logical")
-       call object_logical_test (u, results)
-    case ("object_integer")
-       call object_integer_test (u, results)
-    case ("sindarin_parser")
-       call sindarin_parser_test (u, results)
-    case ("grids")
-       call grids_test (u, results)
-    case ("solver")
-       call solver_test (u, results)
-    case ("md5")       
-       call md5_test (u, results)       
-    case ("xml")
-       call xml_test (u, results)
-    case ("sm_qcd")
-       call sm_qcd_test (u, results)
-    case ("models")
-       call models_test (u, results)
-    case ("auto_components")
-       call auto_components_test (u, results)
-    case ("radiation_generator")
-       call radiation_generator_test (u, results)
-    case ("particles")
-       call particles_test (u, results)
-    case ("polarizations")
-       call polarization_test (u, results)
-    case ("sf_aux")
-       call sf_aux_test (u, results)
-    case ("sf_mappings")
-       call sf_mappings_test (u, results)
-    case ("sf_base")
-       call sf_base_test (u, results)
-    case ("sf_pdf_builtin")
-       call sf_pdf_builtin_test (u, results)
-    case ("sf_lhapdf")
-       call sf_lhapdf_test (u, results)
-    case ("sf_isr")
-       call sf_isr_test (u, results)
-    case ("sf_epa")
-       call sf_epa_test (u, results)
-    case ("sf_ewa")
-       call sf_ewa_test (u, results)
-    case ("sf_circe1")
-       call sf_circe1_test (u, results)
-    case ("sf_circe2")
-       call sf_circe2_test (u, results)
-    case ("sf_beam_events")
-       call sf_beam_events_test (u, results)
-    case ("sf_escan")
-       call sf_escan_test (u, results)
-    case ("phs_base")
-       call phs_base_test (u, results)
-    case ("phs_single")
-       call phs_single_test (u, results)
-    case ("phs_forests")
-       call phs_forest_test (u, results)       
-    case ("phs_wood")
-       call phs_wood_test (u, results)
-    case ("phs_wood_vis")
-       call phs_wood_vis_test (u, results)
-    case ("phs_fks_generator")
-       call phs_fks_generator_test (u, results)
-    case ("mci_base")
-       call mci_base_test (u, results)
-    case ("rng_base")
-       call rng_base_test (u, results)
-    case ("rng_tao")
-       call rng_tao_test (u, results)
-    case ("selectors")
-       call selectors_test (u, results)
-    case ("mci_midpoint")
-       call mci_midpoint_test (u, results)
-    case ("mci_vamp")
-       call mci_vamp_test (u, results)
-    case ("prclib_interfaces")
-       call prclib_interfaces_test (u, results)
-    case ("particle_specifiers")
-       call particle_specifiers_test (u, results)
-    case ("process_libraries")
-       call process_libraries_test (u, results)
-    case ("prclib_stacks")
-       call prclib_stacks_test (u, results)
-    case ("slha_interface")
-       call slha_test (u, results)
-    case ("state_matrices")
-       call state_matrix_test (u, results)
-    case ("prc_test")
-       call prc_test_test (u, results)
-    case ("subevt_expr")
-       call subevt_expr_test (u, results)
-    case ("processes")
-       call processes_test (u, results)       
-    case ("process_stacks")
-       call process_stacks_test (u, results)   
-    case ("event_transforms")
-       call event_transforms_test (u, results)       
-    case ("decays")
-       call decays_test (u, results)       
-    case ("powheg")
-       call powheg_test (u, results)
-    case ("shower")
-       call shower_test (u, results)       
-    case ("events")
-       call events_test (u, results)
-    case ("prc_template_me")
-       call prc_template_me_test (u, results)              
-    case ("prc_omega")
-       call prc_omega_test (u, results)
-    case ("prc_omega_diags")
-       call prc_omega_diags_test (u, results)       
-    case ("hep_events")
-       call hep_events_test (u, results)       
-    case ("eio_data")       
-       call eio_data_test (u, results)
-    case ("eio_base")
-       call eio_base_test (u, results)
-    case ("eio_raw")
-       call eio_raw_test (u, results)
-    case ("eio_checkpoints")
-       call eio_checkpoints_test (u, results)
-    case ("eio_lhef")
-       call eio_lhef_test (u, results)
-    case ("eio_hepmc")
-       call eio_hepmc_test (u, results)
-    case ("eio_lcio")
-       call eio_lcio_test (u, results)
-    case ("eio_stdhep")
-       call eio_stdhep_test (u, results)
-    case ("eio_ascii")
-       call eio_ascii_test (u, results)       
-    case ("eio_weights")
-       call eio_weights_test (u, results)
-    case ("iterations")
-       call iterations_test (u, results)
-    case ("beam_structures")
-       call beam_structures_test (u, results)
-    case ("rt_data")
-       call rt_data_test (u, results)
-    case ("dispatch")
-       call dispatch_test (u, results)
-    case ("process_configurations")
-       call process_configurations_test (u, results)
-    case ("compilations")
-       call compilations_test (u, results)
-    case ("compilations_static")
-       call compilations_static_test (u, results)
-    case ("integrations")
-       call integrations_test (u, results)
-    case ("integrations_history")
-       call integrations_history_test (u, results)
-    case ("event_streams")
-       call event_streams_test (u, results)
-    case ("simulations")
-       call simulations_test (u, results)
-    case ("commands")
-       call commands_test (u, results)
-    case ("all")
-       call analysis_test (u, results)
-       call beam_test (u, results)
-       call md5_test (u, results)
-       call lexer_test (u, results)
-       call sorting_test (u, results)
-       call codes_test (u, results)
-       call object_base_test (u, results)
-       call object_builder_test (u, results)
-       call object_logical_test (u, results)
-       call object_integer_test (u, results)
-       call sindarin_parser_test (u, results)
-       call solver_test (u, results)
-       call grids_test (u, results)
-       call parse_test (u, results)
-       call color_test (u, results)
-       call evaluator_test (u, results)
-       call expressions_test (u, results)
-       call format_test (u, results)
-       call hepmc_test (u, results)
-       call lcio_test (u, results)
-       call jets_test (u, results)
-       call os_interface_test (u, results)
-       call cputime_test (u, results)
-       call interaction_test (u, results)
-       call xml_test (u, results)
-       call sm_qcd_test (u, results)
-       call models_test (u, results)
-       call auto_components_test (u, results)
-       call particles_test (u, results)
-       call polarization_test (u, results)
-       call sf_aux_test (u, results)
-       call sf_mappings_test (u, results)
-       call sf_base_test (u, results)
-       call sf_pdf_builtin_test (u, results)
-       call sf_lhapdf_test (u, results)
-       call sf_isr_test (u, results)
-       call sf_epa_test (u, results)
-       call sf_ewa_test (u, results)
-       call sf_circe1_test (u, results)
-       call sf_circe2_test (u, results)
-       call sf_beam_events_test (u, results)
-       call sf_escan_test (u, results)
-       call phs_base_test (u, results)
-       call phs_single_test (u, results)
-       call phs_forest_test (u, results)
-       call phs_wood_test (u, results)
-       call phs_wood_vis_test (u, results)
-       call rng_base_test (u, results)
-       call cascade_test (u, results)
-       call rng_tao_test (u, results)
-       call selectors_test (u, results)
-       call mci_base_test (u, results)
-       call mci_midpoint_test (u, results)
-       call mci_vamp_test (u, results)
-       call prclib_interfaces_test (u, results)
-       call particle_specifiers_test (u, results)
-       call process_libraries_test (u, results)
-       call prclib_stacks_test (u, results)
-       call slha_test (u, results)
-       call state_matrix_test (u, results)
-       call prc_test_test (u, results)
-       call subevt_expr_test (u, results)
-       call processes_test (u, results)
-       call process_stacks_test (u, results)   
-       call event_transforms_test (u, results)
-       call decays_test (u, results)
-       call powheg_test (u, results)
-       call shower_test (u, results)
-       call events_test (u, results)
-       call prc_omega_test (u, results)
-       call prc_omega_diags_test (u, results)
-       call prc_template_me_test (u, results)
-       call hep_events_test (u, results)
-       call eio_data_test (u, results)
-       call eio_base_test (u, results)
-       call eio_raw_test (u, results)
-       call eio_checkpoints_test (u, results)
-       call eio_lhef_test (u, results)
-       call eio_hepmc_test (u, results)
-       call eio_lcio_test (u, results)
-       call eio_stdhep_test (u, results)
-       call eio_ascii_test (u, results)
-       call eio_weights_test (u, results)
-       call iterations_test (u, results)
-       call beam_structures_test (u, results)
-       call rt_data_test (u, results)
-       call dispatch_test (u, results)
-       call process_configurations_test (u, results)
-       call compilations_test (u, results)
-       call compilations_static_test (u, results)
-       call integrations_test (u, results)
-       call integrations_history_test (u, results)       
-       call event_streams_test (u, results)
-       call simulations_test (u, results)
-       call commands_test (u, results)
-    case default
-       call msg_fatal ("Self-test '" // char (check) // "' not implemented.")
-    end select
-    close (u)
-  end subroutine whizard_check
 
 
 end module whizard

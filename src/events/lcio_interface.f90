@@ -1,4 +1,4 @@
-! WHIZARD 2.2.6 May 02 2015
+! WHIZARD 2.2.7 Aug 11 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -36,16 +36,12 @@ module lcio_interface
   
   use kinds, only: default
   use iso_varying_string, string_t => varying_string
-  use io_units
-  use constants
-  use lorentz
-  use unit_tests
+  use constants, only: PI
   use diagnostics
-  use model_data
+  use lorentz
   use flavors
   use colors
   use helicities
-  use quantum_numbers
   use polarizations
 
   implicit none
@@ -98,7 +94,6 @@ module lcio_interface
   public :: lcio_event_get_alphas
   public :: lcio_event_get_scaleval  
   public :: lcio_event_get_particle
-  public :: lcio_test
 
   type :: lcio_run_header_t
      private
@@ -462,12 +457,11 @@ contains
   subroutine lcio_run_header_init (runhdr, proc_id, run_id)
     type(lcio_run_header_t), intent(out) :: runhdr
     integer, intent(in), optional :: proc_id, run_id
-    integer(c_int) :: pid, rid
-    pid = 0;  if (present (proc_id))  pid = proc_id
+    integer(c_int) :: rid
     rid = 0; if (present (run_id))  rid = run_id
     runhdr%obj = new_lcio_run_header (rid)
     call run_header_set_simstring (runhdr%obj, &
-         "WHIZARD version:" // "2.2.6")
+         "WHIZARD version:" // "2.2.7")
   end subroutine lcio_run_header_init
 
   subroutine lcio_run_header_write (wrt, hdr)
@@ -611,7 +605,7 @@ contains
   end function lcio_particle_get_time
   
   subroutine lcio_polarization_init_pol (prt, pol)
-    type(lcio_particle_t), intent(out) :: prt
+    type(lcio_particle_t), intent(inout) :: prt
     type(polarization_t), intent(in) :: pol
     real(default) :: r, theta, phi
     if (polarization_is_polarized (pol)) then
@@ -622,7 +616,7 @@ contains
   end subroutine lcio_polarization_init_pol
 
   subroutine lcio_polarization_init_hel (prt, hel)
-    type(lcio_particle_t), intent(out) :: prt
+    type(lcio_particle_t), intent(inout) :: prt
     type(helicity_t), intent(in) :: hel
     integer, dimension(2) :: h
     if (hel%is_defined ()) then
@@ -642,7 +636,7 @@ contains
   end subroutine lcio_polarization_init_hel
 
   subroutine lcio_polarization_init_int (prt, hel)
-    type(lcio_particle_t), intent(out) :: prt
+    type(lcio_particle_t), intent(inout) :: prt
     integer, intent(in) :: hel
     select case (hel)
     case (1:)
@@ -687,7 +681,7 @@ contains
   end subroutine lcio_particle_set_vtx
 
   subroutine lcio_particle_set_t (prt, t)
-    type(lcio_particle_t), intent(out) :: prt
+    type(lcio_particle_t), intent(inout) :: prt
     real(default), intent(in) :: t
     call lcio_particle_set_time (prt%obj, real(t, c_double))
   end subroutine lcio_particle_set_t
@@ -804,161 +798,5 @@ contains
     type(lcio_particle_t) :: prt
     prt%obj = lcio_event_particle_k (evt%obj, int (n, c_int))
   end function lcio_event_get_particle
-  subroutine lcio_test (u, results)
-    integer, intent(in) :: u
-    type(test_results_t), intent(inout) :: results
-    call test (lcio_interface_1, "lcio_interface_1", &
-         "check LCIO interface", &
-         u, results)
-  end subroutine lcio_test
-  
-
-  subroutine lcio_interface_1 (u)
-    use physics_defs, only: VECTOR
-    use model_data, only: field_data_t
-    integer, intent(in) :: u
-    integer :: u_file, iostat
-    type(lcio_event_t) :: evt
-    type(lcio_particle_t) :: prt1, prt2, prt3, prt4, prt5, prt6, prt7, prt8
-    type(flavor_t) :: flv
-    type(color_t) :: col
-    type(polarization_t) :: pol
-    type(field_data_t), target :: photon_data
-    character(220) :: buffer    
-
-    write (u, "(A)")  "* Test output: LCIO interface"
-    write (u, "(A)")  "*   Purpose: test LCIO interface"
-    write (u, "(A)")      
-    
-    write (u, "(A)")  "* Initialization"
-    write (u, "(A)")
-    
-    ! Initialize a photon flavor object and some polarization
-    call photon_data%init (var_str ("PHOTON"), 22)
-    call photon_data%set (spin_type=VECTOR)
-    call photon_data%freeze ()
-    call flv%init (photon_data)
-    call polarization_init_angles &
-         (pol, flv, 0.6_default, 1._default, 0.5_default)
-
-    ! Event initialization
-    call lcio_event_init (evt, 20, 1, 42)
-
-    write (u, "(A)")  "* p -> q splitting"
-    write (u, "(A)")
-            
-    ! $p\to q$ splittings
-    call particle_init (prt1, &
-         0._default, 0._default, 7000._default, 7000._default, &
-         2212, 3)
-    call particle_init (prt2, &
-         0._default, 0._default,-7000._default, 7000._default, &
-         2212, 3)
-    call particle_init (prt3, &
-          .750_default, -1.569_default, 32.191_default, 32.238_default, &
-          1, 3)
-    call color_init_from_array (col, [501])
-    call lcio_particle_set_color (prt3, col)
-    call lcio_particle_set_parent (prt3, prt1)
-    call lcio_particle_set_parent (prt3, prt2)
-    call particle_init (prt4, &
-         -3.047_default, -19._default, -54.629_default, 57.920_default, &
-         -2, 3)
-    call color_init_from_array (col, [-501])
-    call lcio_particle_set_color (prt4, col)
-    call lcio_particle_set_parent (prt4, prt1)
-    call lcio_particle_set_parent (prt4, prt2)
-    
-    write (u, "(A)")  "* Hard interaction"
-    write (u, "(A)")
-        
-    ! Hard interaction
-    call particle_init (prt6, &
-         -3.813_default, 0.113_default, -1.833_default, 4.233_default, &
-         22, 1)
-    call lcio_polarization_init (prt6, pol)
-    call particle_init (prt5, &
-         1.517_default, -20.68_default, -20.605_default, 85.925_default, &
-         -24, 3)
-    call lcio_particle_set_parent (prt5, prt3)
-    call lcio_particle_set_parent (prt5, prt4)
-    call lcio_particle_set_parent (prt6, prt3)
-    call lcio_particle_set_parent (prt6, prt4)    
-    
-    ! $W^-$ decay    
-    call particle_init (prt7, &
-         -2.445_default, 28.816_default, 6.082_default, 29.552_default, &
-         1, 1)
-    call particle_init (prt8, &
-         3.962_default, -49.498_default, -26.687_default, 56.373_default, &
-         -2, 1)
-    call lcio_particle_set_t (prt7, 0.12_default)
-    call lcio_particle_set_t (prt8, 0.12_default)    
-    call lcio_particle_set_vtx &
-         (prt7, vector3_moving ([-0.3_default, 0.05_default, 0.004_default]))
-    call lcio_particle_set_vtx &
-         (prt8, vector3_moving ([-0.3_default, 0.05_default, 0.004_default]))
-    call lcio_particle_set_parent (prt7, prt5)
-    call lcio_particle_set_parent (prt8, prt5)
-    call lcio_particle_add_to_evt_coll (prt1, evt)
-    call lcio_particle_add_to_evt_coll (prt2, evt)
-    call lcio_particle_add_to_evt_coll (prt3, evt)
-    call lcio_particle_add_to_evt_coll (prt4, evt)
-    call lcio_particle_add_to_evt_coll (prt5, evt)
-    call lcio_particle_add_to_evt_coll (prt6, evt)
-    call lcio_particle_add_to_evt_coll (prt7, evt)
-    call lcio_particle_add_to_evt_coll (prt8, evt)    
-    call lcio_event_add_coll (evt)
-    
-    ! Event output
-    write (u, "(A)")  "Writing in ASCII form to file 'lcio_test.slcio'"
-    write (u, "(A)")
-    
-    call write_lcio_event (evt, var_str ("lcio_test.slcio"))
-    
-    write (u, "(A)")  "Writing completed"
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* File contents:"
-    write (u, "(A)")
-    
-    u_file = free_unit ()
-    open (u_file, file = "lcio_test.slcio", &
-         action = "read", status = "old")
-    do
-       read (u_file, "(A)", iostat = iostat)  buffer
-       if (trim (buffer) == "")  cycle
-       if (buffer(1:12) == " - timestamp")  buffer = "[...]"
-       if (buffer(1:6) == " date:")  buffer = "[...]"
-       if (iostat /= 0)  exit
-       write (u, "(A)") trim (buffer)
-    end do
-    close (u_file)
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Cleanup"
-    write (u, "(A)")
-        
-    ! Wrapup
-    call polarization_final (pol)
-    call lcio_event_final (evt)
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: lcio_interface_1"
-    
-  contains
-
-    subroutine particle_init &
-         (prt, px, py, pz, E, pdg, status)
-      type(lcio_particle_t), intent(out) :: prt
-      real(default), intent(in) :: px, py, pz, E
-      integer, intent(in) :: pdg, status
-      type(vector4_t) :: p
-      p = vector4_moving (E, vector3_moving ([px, py, pz]))
-      call lcio_particle_init (prt, p, pdg, status)
-    end subroutine particle_init
-
-  end subroutine lcio_interface_1
-
 
 end module lcio_interface

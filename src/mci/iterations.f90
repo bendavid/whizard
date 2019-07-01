@@ -1,4 +1,4 @@
-! WHIZARD 2.2.6 May 02 2015
+! WHIZARD 2.2.7 Aug 11 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -34,14 +34,12 @@ module iterations
 
   use iso_varying_string, string_t => varying_string
   use io_units
-  use unit_tests
   use diagnostics
 
   implicit none
   private
 
   public :: iterations_list_t
-  public :: iterations_test
 
   type :: iterations_spec_t
      private
@@ -199,73 +197,5 @@ contains
     end if
   end function iterations_list_get_n_it
 
-
-  subroutine iterations_test (u, results)
-    integer, intent(in) :: u
-    type(test_results_t), intent(inout) :: results
-    call test (iterations_1, "iterations_1", &
-         "empty iterations list", &
-         u, results)
-    call test (iterations_2, "iterations_2", &
-         "create iterations list", &
-         u, results)
-end subroutine iterations_test
-
-  subroutine iterations_1 (u)
-    integer, intent(in) :: u
-    type(iterations_list_t) :: it_list
-    
-    write (u, "(A)")  "* Test output: iterations_1"
-    write (u, "(A)")  "*   Purpose: display empty iterations list"
-    write (u, "(A)")
-
-    call it_list%write (u)
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: iterations_1"
-    
-  end subroutine iterations_1
-  
-  subroutine iterations_2 (u)
-    integer, intent(in) :: u
-    type(iterations_list_t) :: it_list
-    
-    write (u, "(A)")  "* Test output: iterations_2"
-    write (u, "(A)")  "*   Purpose: fill and display iterations list"
-    write (u, "(A)")
-
-    write (u, "(A)")  "* Minimal setup (2 passes)"
-    write (u, "(A)")
-
-    call it_list%init ([2, 4], [5000, 20000])
-
-    call it_list%write (u)
-    call it_list%clear ()
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Setup with flags (3 passes)"
-    write (u, "(A)")
-
-    call it_list%init ([2, 4, 5], [5000, 20000, 400], &
-         [.false., .true., .true.], &
-         [var_str (""), var_str ("g"), var_str ("wg")])
-
-    call it_list%write (u)
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Extract data"
-    write (u, "(A)")
-    
-    write (u, "(A,I0)")  "n_pass = ", it_list%get_n_pass ()
-    write (u, "(A)")
-    write (u, "(A,I0)")  "n_calls(2) = ", it_list%get_n_calls (2)
-    write (u, "(A)")
-    write (u, "(A,I0)")  "n_it(3) = ", it_list%get_n_it (3)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: iterations_2"
-    
-  end subroutine iterations_2
-  
 
 end module iterations

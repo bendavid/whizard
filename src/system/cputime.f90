@@ -1,4 +1,4 @@
-! WHIZARD 2.2.6 May 02 2015
+! WHIZARD 2.2.7 Aug 11 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -35,7 +35,6 @@ module cputime
   use kinds, only: default
   use io_units
   use iso_varying_string, string_t => varying_string
-  use unit_tests
   use diagnostics
 
   implicit none
@@ -44,7 +43,6 @@ module cputime
   public :: time_t
   public :: assignment(=)
   public :: timer_t
-  public :: cputime_test
 
   type :: time_t
      private
@@ -82,7 +80,9 @@ module cputime
      procedure :: start => timer_start
      procedure :: restart => timer_restart
      procedure :: stop => timer_stop
-     procedure, private :: evaluate => timer_evaluate
+     procedure :: set_test_time1 => timer_set_test_time1
+     procedure :: set_test_time2 => timer_set_test_time2
+     procedure :: evaluate => timer_evaluate
   end type timer_t
   
 
@@ -304,225 +304,22 @@ contains
     call timer%evaluate ()
   end subroutine timer_stop
   
+  subroutine timer_set_test_time1 (timer, t)
+    class(timer_t), intent(inout) :: timer
+    integer, intent(in) :: t
+    timer%t1 = t
+  end subroutine timer_set_test_time1
+  
+  subroutine timer_set_test_time2 (timer, t)
+    class(timer_t), intent(inout) :: timer
+    integer, intent(in) :: t
+    timer%t2 = t
+  end subroutine timer_set_test_time2
+  
   subroutine timer_evaluate (timer)
     class(timer_t), intent(inout) :: timer
     timer%time_t = timer%t2 - timer%t1
   end subroutine timer_evaluate
-  
-
-  subroutine cputime_test (u, results)
-    integer, intent(in) :: u
-    type(test_results_t), intent(inout) :: results
-    call test (cputime_1, "cputime_1", &
-         "time operations", &
-         u, results)
-    call test (cputime_2, "cputime_2", &
-         "timer", &
-         u, results)
-  end subroutine cputime_test
-  
-  subroutine cputime_1 (u)
-    integer, intent(in) :: u
-    type(time_t) :: time, time1, time2
-    real :: t
-    integer :: d, h, m, s
-
-    write (u, "(A)")  "* Test output: cputime_1"
-    write (u, "(A)")  "*   Purpose: check time operations"
-    write (u, "(A)")      
-    
-    write (u, "(A)") "* Undefined time"
-    write (u, *)
-
-    call time%write (u)
-
-    write (u, *)
-    write (u, "(A)") "* Set time to zero"
-    write (u, *)
-
-    time = 0
-    call time%write (u)
-
-    write (u, *)
-    write (u, "(A)") "* Set time to 1.234 s"
-    write (u, *)
-
-    time = 1.234
-    call time%write (u)
-
-    t = time
-    write (u, "(1x,A,F6.3)")  "Time as real =", t
-
-    write (u, *)
-    write (u, "(A)") "* Compute time difference"
-    write (u, *)
-    
-    time1 = 5.33
-    time2 = 7.55
-    time = time2 - time1
-    
-    call time1%write (u)
-    call time2%write (u)
-    call time%write (u)
-
-    write (u, *)
-    write (u, "(A)") "* Compute time sum"
-    write (u, *)
-    
-    time = time2 + time1
-    
-    call time1%write (u)
-    call time2%write (u)
-    call time%write (u)
-
-    write (u, *)
-    write (u, "(A)") "* Expand time"
-    write (u, *)
-    
-    time1 = ((24 + 1) * 60 + 1) * 60 + 1
-    time2 = ((3 * 24 + 23) * 60 + 59) * 60 + 59
-    
-    call time1%expand (s)
-    write (u, 1)  "s =", s
-    call time1%expand (m,s)
-    write (u, 1)  "ms =", m, s
-    call time1%expand (h,m,s)
-    write (u, 1)  "hms =", h, m, s
-    call time1%expand (d,h,m,s)
-    write (u, 1)  "dhms =", d, h, m, s
-    
-    call time2%expand (s)
-    write (u, 1)  "s =", s
-    call time2%expand (m,s)
-    write (u, 1)  "ms =", m, s
-    call time2%expand (h,m,s)
-    write (u, 1)  "hms =", h, m, s
-    call time2%expand (d,h,m,s)
-    write (u, 1)  "dhms =", d, h, m, s
-    
-    write (u, *)
-    write (u, "(A)") "* Expand negative time"
-    write (u, *)
-    
-    time1 = - (((24 + 1) * 60 + 1) * 60 + 1)
-    time2 = - (((3 * 24 + 23) * 60 + 59) * 60 + 59)
-    
-    call time1%expand (s)
-    write (u, 1)  "s =", s
-    call time1%expand (m,s)
-    write (u, 1)  "ms =", m, s
-    call time1%expand (h,m,s)
-    write (u, 1)  "hms =", h, m, s
-    call time1%expand (d,h,m,s)
-    write (u, 1)  "dhms =", d, h, m, s
-    
-    call time2%expand (s)
-    write (u, 1)  "s =", s
-    call time2%expand (m,s)
-    write (u, 1)  "ms =", m, s
-    call time2%expand (h,m,s)
-    write (u, 1)  "hms =", h, m, s
-    call time2%expand (d,h,m,s)
-    write (u, 1)  "dhms =", d, h, m, s
-    
-1   format (1x,A,1x,4(I0,:,':'))
-
-    write (u, *)
-    write (u, "(A)") "* String from time"
-    write (u, *)
-    
-    time1 = ((24 + 1) * 60 + 1) * 60 + 1
-    time2 = ((3 * 24 + 23) * 60 + 59) * 60 + 59
-    
-    write (u, "(A)")  char (time1%to_string_s ())
-    write (u, "(A)")  char (time1%to_string_ms ())
-    write (u, "(A)")  char (time1%to_string_hms ())
-    write (u, "(A)")  char (time1%to_string_dhms ())
-
-    write (u, "(A)")  char (time2%to_string_s ())
-    write (u, "(A)")  char (time2%to_string_ms ())
-    write (u, "(A)")  char (time2%to_string_hms ())
-    write (u, "(A)")  char (time2%to_string_dhms ())
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Blanking out the last second entry"
-    write (u, "(A)")
-    
-    write (u, "(A)")  char (time1%to_string_ms ())
-    write (u, "(A)")  char (time1%to_string_ms (.true.))
-        
-    write (u, *)
-    write (u, "(A)") "* String from negative time"
-    write (u, *)
-    
-    time1 = -(((24 + 1) * 60 + 1) * 60 + 1)
-    time2 = -(((3 * 24 + 23) * 60 + 59) * 60 + 59)
-    
-    write (u, "(A)")  char (time1%to_string_s ())
-    write (u, "(A)")  char (time1%to_string_ms ())
-    write (u, "(A)")  char (time1%to_string_hms ())
-    write (u, "(A)")  char (time1%to_string_dhms ())
-
-    write (u, "(A)")  char (time2%to_string_s ())
-    write (u, "(A)")  char (time2%to_string_ms ())
-    write (u, "(A)")  char (time2%to_string_hms ())
-    write (u, "(A)")  char (time2%to_string_dhms ())
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: cputime_1"    
-
-  end subroutine cputime_1
-  
-  subroutine cputime_2 (u)
-    integer, intent(in) :: u
-    type(timer_t) :: timer
-
-    write (u, "(A)")  "* Test output: cputime_2"
-    write (u, "(A)")  "*   Purpose: check timer"
-    write (u, "(A)")      
-    
-    write (u, "(A)") "* Undefined timer"
-    write (u, *)
-
-    call timer%write (u)
-
-    write (u, *)
-    write (u, "(A)") "* Start timer"
-    write (u, *)
-
-    call timer%start ()
-    call timer%write (u)
-
-    write (u, *)
-    write (u, "(A)") "* Stop timer (injecting fake timings)"
-    write (u, *)
-
-    call timer%stop ()
-    timer%t1 = 2
-    timer%t2 = 5
-    call timer%evaluate ()
-    call timer%write (u)
-
-    write (u, *)
-    write (u, "(A)") "* Restart timer"
-    write (u, *)
-
-    call timer%restart ()
-    call timer%write (u)
-
-    write (u, *)
-    write (u, "(A)") "* Stop timer again (injecting fake timing)"
-    write (u, *)
-
-    call timer%stop ()
-    timer%t2 = 10
-    call timer%evaluate ()
-    call timer%write (u)
-
-    write (u, *)
-    write (u, "(A)")  "* Test output end: cputime_2"    
-
-  end subroutine cputime_2
   
 
 end module cputime

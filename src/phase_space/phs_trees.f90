@@ -1,4 +1,4 @@
-! WHIZARD 2.2.6 May 02 2015
+! WHIZARD 2.2.7 Aug 11 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -121,8 +121,6 @@ module phs_trees
      logical :: real_phsp = .false.
      integer(TC) :: emitter = 0
      integer, dimension(:), allocatable :: momentum_link
-   contains
-   
   end type phs_tree_t
 
 
@@ -192,7 +190,6 @@ contains
 
   elemental subroutine phs_prt_check (prt)
     type(phs_prt_t), intent(inout) :: prt
-    real(default), parameter :: eps = 1E-9
     if (prt%p2 < 0._default) then
        prt%p2 = 0._default
     end if

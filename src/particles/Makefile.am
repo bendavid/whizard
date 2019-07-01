@@ -30,16 +30,23 @@
 
 ## We create a library which is still to be combined with auxiliary libs.
 noinst_LTLIBRARIES = libparticles.la
+check_LTLIBRARIES = libparticles_ut.la
 
 libparticles_la_SOURCES = \
   polarizations.f90 \
   particles.f90
 
+libparticles_ut_la_SOURCES = \
+  polarizations_uti.f90 polarizations_ut.f90 \
+  particles_uti.f90 particles_ut.f90
+
 ## Omitting this would exclude it from the distribution
 dist_noinst_DATA = particles.nw
 
 # Dump module names into file Modules
-libparticles_Modules = ${libparticles_la_SOURCES:.f90=}
+libparticles_Modules = \
+  ${libparticles_la_SOURCES:.f90=} \
+  ${libparticles_ut_la_SOURCES:.f90=}
 Modules: Makefile
 	@for module in $(libparticles_Modules); do \
           echo $$module >> $@.new; \
@@ -87,7 +94,7 @@ DISTCLEANFILES = Module_dependencies.sed
 @am__include@ @am__quote@Makefile.depend@am__quote@
 
 Makefile.depend: Module_dependencies.sed
-Makefile.depend: $(libparticles_la_SOURCES)
+Makefile.depend: $(libparticles_la_SOURCES) $(libparticles_ut_la_SOURCES)
 	@rm -f $@
 	for src in $^; do \
 	  module="`basename $$src | sed 's/\.f[90][0358]//'`"; \
@@ -137,12 +144,14 @@ POSTLUDE = $(top_srcdir)/src/noweb-frame/whizard-postlude.nw
 particles.stamp: $(PRELUDE) $(srcdir)/particles.nw $(POSTLUDE)
 	@rm -f particles.tmp
 	@touch particles.tmp
-	for src in $(libparticles_la_SOURCES); do \
+	for src in \
+	  $(libparticles_la_SOURCES) \
+	  $(libparticles_ut_la_SOURCES); do \
 	  $(NOTANGLE) -R[[$$src]] $^ | $(CPIF) $$src; \
         done
 	@mv -f particles.tmp particles.stamp
 
-$(libparticles_la_SOURCES): particles.stamp
+$(libparticles_la_SOURCES) $(libparticles_ut_la_SOURCES): particles.stamp
 ## Recover from the removal of $@
 	@if test -f $@; then :; else \
 	  rm -f particles.stamp; \
@@ -172,6 +181,9 @@ endif
 clean-local: clean-noweb
 	-rm -f particles.stamp particles.tmp
 	-rm -f *.$(FC_MODULE_EXT)
+if FC_SUBMODULES
+	-rm -f *.smod
+endif
 
 ## Remove backup files
 maintainer-clean-backup:

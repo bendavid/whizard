@@ -1,0 +1,108 @@
+* Test output: object_container_4
+*   Purpose: construct and encode range containers
+
+* Prepare repository
+
+object repository ||abstract|| {
+   M1: object integer ||abstract||
+   M2: object container ||operator|binary|abstract||
+ }
+
+* Create expressions
+
+container a1 ||operator|binary|constant|| {
+   A1: integer undef ||constant|| = ???
+   O2: =>
+   A2: integer undef ||constant|| = ???
+   O3: /+
+   A3: integer undef ||constant|| = ???
+ } = (<>, <>, <>)
+
+container a2 ||operator|binary|constant|| {
+   A1: integer item1 ||constant|| = 10
+   O2: =>
+   A2: integer item2 ||constant|| = 0
+   O3: /-
+   A3: integer item3 ||constant|| = 1
+ } = (<>, <>, <>)
+
+container a3 ||operator|binary|constant|| {
+   A1: integer item1 ||constant|| = 1
+   O2: =>
+   A2: integer undef ||constant|| = ???
+   O3: /*
+   A3: integer item3 ||constant|| = 2
+ } = (<>, <>, <>)
+
+container a4 ||operator|binary|constant|| {
+   A1: integer item1 ||constant|| = 20
+   O2: =>
+   A2: integer item2 ||constant|| = 2
+   O3: //
+   A3: integer item3 ||constant|| = 1
+ } = (<>, <>, <>)
+
+container a5 ||operator|binary|constant|| {
+   A1: integer item1 ||constant|| = 0
+   O2: =>
+   A2: integer item2 ||constant|| = 100
+   O3: +/+
+   A3: integer item3 ||constant|| = 10
+ } = (<>, <>, <>)
+
+container a6 ||operator|binary|constant|| {
+   A1: integer item1 ||constant|| = 1
+   O2: =>
+   A2: integer item2 ||constant|| = 200
+   O3: */*
+   A3: integer item3 ||constant|| = 5
+ } = (<>, <>, <>)
+
+??? => ??? /+ ???
+10 => 0 /- 1
+1 => ??? /* 2
+20 => 2 // 1
+0 => 100 +/+ 10
+1 => 200 */* 5
+
+* Construct object: range
+
+container container ||operator|binary|constant|| {
+   A1: integer item1 ||constant|| = 11
+   O2: =>
+   A2: integer item2 ||constant|| = 33
+   O3: /+
+   A3: integer item3 ||constant|| = 22
+ } = (<>, <>, <>)
+
+* Code from object
+
+ c= 100  vt= 3  nv= 1  att= 2 1 0 3 3 0
+     210
+ c= 100  vt= 2  nv= 1  att= 1 1 0 0 0 0
+     item1
+ c= 2  vt= 3  nv= 1
+     11
+ c= 100  vt= 2  nv= 1  att= 1 1 0 0 0 0
+     item2
+ c= 2  vt= 3  nv= 1
+     33
+ c= 100  vt= 2  nv= 1  att= 1 1 0 0 0 0
+     item3
+ c= 2  vt= 3  nv= 1
+     22
+ c= 90  vt= 0  nv= 0  att= 3
+
+* Construct object from code
+
+container container ||operator|binary|constant|| {
+   A1: integer item1 ||constant|| = 11
+   O2: =>
+   A2: integer item2 ||constant|| = 33
+   O3: /+
+   A3: integer item3 ||constant|| = 22
+ } = (<>, <>, <>)
+
+* Cleanup
+
+* Test output end: object_container_4

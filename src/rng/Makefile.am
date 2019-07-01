@@ -29,17 +29,23 @@
 
 ## We create a library which is still to be combined with auxiliary libs.
 noinst_LTLIBRARIES = librng.la
+check_LTLIBRARIES = librng_ut.la
 
 librng_la_SOURCES = \
   rng_base.f90 \
   selectors.f90 \
   rng_tao.f90
 
+librng_ut_la_SOURCES = \
+  rng_base_uti.f90 rng_base_ut.f90 \
+  selectors_uti.f90 selectors_ut.f90 \
+  rng_tao_uti.f90 rng_tao_ut.f90
+
 ## Omitting this would exclude it from the distribution
 dist_noinst_DATA = rng.nw
 
 # Dump module names into file Modules
-librng_Modules = ${librng_la_SOURCES:.f90=}
+librng_Modules = ${librng_la_SOURCES:.f90=} ${librng_ut_la_SOURCES:.f90=}
 Modules: Makefile
 	@for module in $(librng_Modules); do \
           echo $$module >> $@.new; \
@@ -84,7 +90,7 @@ DISTCLEANFILES = Module_dependencies.sed
 @am__include@ @am__quote@Makefile.depend@am__quote@
 
 Makefile.depend: Module_dependencies.sed
-Makefile.depend: $(librng_la_SOURCES)
+Makefile.depend: $(librng_la_SOURCES) $(librng_ut_la_SOURCES)
 	@rm -f $@
 	for src in $^; do \
 	  module="`basename $$src | sed 's/\.f[90][0358]//'`"; \
@@ -138,12 +144,12 @@ POSTLUDE = $(top_srcdir)/src/noweb-frame/whizard-postlude.nw
 rng.stamp: $(PRELUDE) $(srcdir)/rng.nw $(POSTLUDE)
 	@rm -f rng.tmp
 	@touch rng.tmp
-	for src in $(librng_la_SOURCES); do \
+	for src in $(librng_la_SOURCES) $(librng_ut_la_SOURCES); do \
 	  $(NOTANGLE) -R[[$$src]] $^ | $(CPIF) $$src; \
         done
 	@mv -f rng.tmp rng.stamp
 
-$(librng_la_SOURCES): rng.stamp
+$(librng_la_SOURCES) $(librng_ut_la_SOURCES): rng.stamp
 ## Recover from the removal of $@
 	@if test -f $@; then :; else \
 	  rm -f rng.stamp; \
@@ -173,6 +179,9 @@ endif
 clean-local: clean-noweb
 	-rm -f rng.stamp rng.tmp
 	-rm -f *.$(FC_MODULE_EXT)
+if FC_SUBMODULES
+	-rm -f *.smod
+endif
 
 ## Remove backup files
 maintainer-clean-backup:

@@ -1,4 +1,4 @@
-! WHIZARD 2.2.6 May 02 2015
+! WHIZARD 2.2.7 Aug 11 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -42,6 +42,7 @@ module unit_tests
   private
 
   public :: test_results_t
+  public :: unit_test
   public :: test
   public :: assert
   public:: assert_equal

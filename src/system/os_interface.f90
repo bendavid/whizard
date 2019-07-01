@@ -1,4 +1,4 @@
-! WHIZARD 2.2.6 May 02 2015
+! WHIZARD 2.2.7 Aug 11 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -36,7 +36,6 @@ module os_interface
 
   use iso_varying_string, string_t => varying_string
   use io_units
-  use unit_tests
   use diagnostics
   use system_defs, only: DLERROR_LEN, ENVVAR_LEN
   use system_dependencies
@@ -64,7 +63,6 @@ module os_interface
   public :: os_link_static
   public :: os_get_dlname
   public :: openmp_set_num_threads_verbose
-  public :: os_interface_test
 
   type :: paths_t
      type(string_t) :: prefix
@@ -94,6 +92,7 @@ module os_interface
      type(string_t) :: ldflags_so
      type(string_t) :: ldflags_static
      type(string_t) :: ldflags_hepmc
+     type(string_t) :: ldflags_lcio
      type(string_t) :: ldflags_hoppet
      type(string_t) :: ldflags_looptools
      type(string_t) :: shrlib_ext
@@ -244,6 +243,7 @@ contains
     os_data%ldflags_so     = DEFAULT_LDFLAGS_SO
     os_data%ldflags_static = DEFAULT_LDFLAGS_STATIC
     os_data%ldflags_hepmc  = DEFAULT_LDFLAGS_HEPMC
+    os_data%ldflags_lcio   = DEFAULT_LDFLAGS_LCIO
     os_data%ldflags_hoppet = DEFAULT_LDFLAGS_HOPPET
     os_data%ldflags_looptools = DEFAULT_LDFLAGS_LOOPTOOLS
     os_data%shrlib_ext     = DEFAULT_SHRLIB_EXT
@@ -391,6 +391,7 @@ contains
     write (u, *) "ldflags_so     = ", char (os_data%ldflags_so)
     write (u, *) "ldflags_static = ", char (os_data%ldflags_static)
     write (u, *) "ldflags_hepmc  = ", char (os_data%ldflags_hepmc)
+    write (u, *) "ldflags_lcio   = ", char (os_data%ldflags_lcio)    
     write (u, *) "ldflags_hoppet = ", char (os_data%ldflags_hoppet)
     write (u, *) "ldflags_looptools = ", char (os_data%ldflags_looptools) 
     write (u, *) "shrlib_ext     = ", char (os_data%shrlib_ext)
@@ -647,6 +648,7 @@ contains
             "-o '" // exec_name // "' " // &
             objlist // " " // &
             os_data%ldflags_hepmc // " " // &
+            os_data%ldflags_lcio // " " // &            
             os_data%ldflags_hoppet // " " // &
             os_data%ldflags_looptools
     else
@@ -660,6 +662,7 @@ contains
             "-o '" // exec_name // "' " // &
             objlist // " " // &
             os_data%ldflags_hepmc // " " // &
+            os_data%ldflags_lcio // " " // &            
             os_data%ldflags_hoppet // " " // &
             os_data%ldflags_looptools
     end if
@@ -782,93 +785,6 @@ contains
        end if
     end if
   end subroutine openmp_set_num_threads_verbose
-
-  subroutine os_interface_test (u, results)
-    integer, intent(in) :: u
-    type(test_results_t), intent(inout) :: results
-    call test (os_interface_1, "os_interface_1", &
-         "check OS interface routines", &
-         u, results)
-  end subroutine os_interface_test
-
-
-  subroutine os_interface_1 (u)
-    integer, intent(in) :: u
-    type(dlaccess_t) :: dlaccess
-    type(string_t) :: fname, libname, ext
-    type(os_data_t) :: os_data
-    type(string_t) :: filename_src, filename_obj
-    abstract interface
-       function so_test_proc (i) result (j) bind(C)
-         import c_int
-         integer(c_int), intent(in) :: i
-         integer(c_int) :: j
-       end function so_test_proc
-    end interface
-    procedure(so_test_proc), pointer :: so_test => null ()
-    type(c_funptr) :: c_fptr
-    integer :: unit
-    integer(c_int) :: i
-    call os_data_init (os_data)
-    fname = "so_test"
-    filename_src = fname // os_data%fc_src_ext
-    if (os_data%use_libtool) then
-       ext = ".lo"
-    else
-       ext = os_data%obj_ext
-    end if
-    filename_obj = fname // ext
-    libname = fname // '.' // os_data%fc_shrlib_ext
-    
-    write (u, "(A)")  "* Test output: OS interface"
-    write (u, "(A)")  "*   Purpose: check os_interface routines"
-    write (u, "(A)")      
-            
-    write (u, "(A)")  "* write source file 'so_test.f90'"
-    write (u, "(A)")
-    unit = free_unit ()
-    open (unit=unit, file=char(filename_src), action="write")
-    write (unit, "(A)")  "function so_test (i) result (j) bind(C)"
-    write (unit, "(A)")  "  use iso_c_binding"
-    write (unit, "(A)")  "  integer(c_int), intent(in) :: i"
-    write (unit, "(A)")  "  integer(c_int) :: j"
-    write (unit, "(A)")  "  j = 2 * i"
-    write (unit, "(A)")  "end function so_test"
-    close (unit)
-    write (u, "(A)")  "* compile and link as 'so_test.so/dylib'"
-    write (u, "(A)")
-    call os_compile_shared (fname, os_data)
-    call os_link_shared (filename_obj, fname, os_data)
-    write (u, "(A)")  "* load library 'so_test.so/dylib'"
-    write (u, "(A)")
-    call dlaccess_init (dlaccess, var_str ("."), libname, os_data)
-    if (dlaccess_is_open (dlaccess)) then
-       write (u, "(A)") "     success"
-    else
-       write (u, "(A)") "     failure"
-    end if
-    write (u, "(A)")  "* load symbol 'so_test'"
-    write (u, "(A)")
-    c_fptr = dlaccess_get_c_funptr (dlaccess, fname)
-    if (c_associated (c_fptr)) then
-       write (u, "(A)") "     success"
-    else
-       write (u, "(A)") "     failure"
-    end if
-    call c_f_procpointer (c_fptr, so_test)
-    write (u, "(A)") "* Execute function from 'so_test.so/dylib'"
-    i = 7
-    write (u, "(A,1x,I1)")  "     input  = ", i
-    write (u, "(A,1x,I1)")  "     result = ", so_test(i)
-    if (so_test(i) / i .ne. 2) then
-       write (u, "(A)")  "* Compiling and linking ISO C functions failed."
-    else
-       write (u, "(A)")  "* Successful."
-    end if
-    write (u, "(A)")
-    write (u, "(A)")  "* Cleanup"
-    call dlaccess_final (dlaccess)
-  end subroutine os_interface_1
 
 
 end module os_interface

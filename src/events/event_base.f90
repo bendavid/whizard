@@ -1,4 +1,4 @@
-! WHIZARD 2.2.6 May 02 2015
+! WHIZARD 2.2.7 Aug 11 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -32,7 +32,7 @@
 
 module event_base
   
-  use kinds
+  use kinds, only: default
   use iso_varying_string, string_t => varying_string
   use string_utils, only: lower_case
   use diagnostics
@@ -55,7 +55,7 @@ module event_base
 
 
   type, abstract :: generic_event_t
-     private
+     !private
      logical :: particle_set_is_valid = .false.
      type(particle_set_t), pointer :: particle_set => null ()
      logical :: sqme_ref_known = .false.
@@ -73,6 +73,7 @@ module event_base
      real(default), dimension(:), allocatable :: sqme_alt
      logical :: weight_alt_known = .false.
      real(default), dimension(:), allocatable :: weight_alt
+     logical :: nlo_event = .false.
    contains
      procedure :: base_init => generic_event_init
      procedure :: has_valid_particle_set => generic_event_has_valid_particle_set
@@ -145,11 +146,12 @@ module event_base
   end interface
 
   abstract interface
-     subroutine generic_event_generate (event, i_mci, r)
+     subroutine generic_event_generate (event, i_mci, r, i_nlo)
        import
        class(generic_event_t), intent(inout) :: event
        integer, intent(in) :: i_mci
        real(default), dimension(:), intent(in), optional :: r
+       integer, intent(in), optional :: i_nlo
      end subroutine generic_event_generate
   end interface
      

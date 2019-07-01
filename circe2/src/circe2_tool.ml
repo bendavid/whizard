@@ -375,7 +375,7 @@ let _ =
   let usage = "usage: " ^ Sys.argv.(0) ^ " [options]" in
   let nbins = ref 100
   and triangle = ref false
-  and shrink = ref true
+  and shrink = ref false
   and verbose = ref false
   and action = ref Nothing
   and suffix = ref ".histo"
@@ -423,8 +423,8 @@ let _ =
      ("-h", Arg.Unit (fun () ->
        histogram_to_file := Histogram.as_bins_to_file), "");
      ("-b", Arg.Int (fun n -> nbins := n), "#bins");
-     ("-s", Arg.Set shrink, "shrinkwrap interval [default]");
-     ("-S", Arg.Clear shrink, "don't shrinkwrap interval");
+     ("-s", Arg.Set shrink, "shrinkwrap interval");
+     ("-S", Arg.Clear shrink, "don't shrinkwrap interval [default]");
      ("-t", Arg.Set triangle,
       "project symmetrical distribution onto triangle");
      ("-v", Arg.Set verbose, "verbose");

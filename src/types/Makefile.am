@@ -30,6 +30,7 @@
 
 ## We create a library which is still to be combined with auxiliary libs.
 noinst_LTLIBRARIES = libtypes.la
+check_LTLIBRARIES = libtypes_ut.la
 
 libtypes_la_SOURCES = \
   particle_specifiers.f90 \
@@ -38,11 +39,17 @@ libtypes_la_SOURCES = \
   jets.f90 \
   subevents.f90
 
+libtypes_ut_la_SOURCES = \
+  particle_specifiers_uti.f90 particle_specifiers_ut.f90 \
+  analysis_uti.f90 analysis_ut.f90 \
+  pdg_arrays_uti.f90 pdg_arrays_ut.f90 \
+  jets_uti.f90 jets_ut.f90
+
 ## Omitting this would exclude it from the distribution
 dist_noinst_DATA = types.nw
 
 # Dump module names into file Modules
-libtypes_Modules = ${libtypes_la_SOURCES:.f90=}
+libtypes_Modules = ${libtypes_la_SOURCES:.f90=} ${libtypes_ut_la_SOURCES:.f90=}
 Modules: Makefile
 	@for module in $(libtypes_Modules); do \
           echo $$module >> $@.new; \
@@ -91,7 +98,7 @@ DISTCLEANFILES = Module_dependencies.sed
 @am__include@ @am__quote@Makefile.depend@am__quote@
 
 Makefile.depend: Module_dependencies.sed
-Makefile.depend: $(libtypes_la_SOURCES)
+Makefile.depend: $(libtypes_la_SOURCES) $(libtypes_ut_la_SOURCES)
 	@rm -f $@
 	for src in $^; do \
 	  module="`basename $$src | sed 's/\.f[90][0358]//'`"; \
@@ -145,12 +152,12 @@ POSTLUDE = $(top_srcdir)/src/noweb-frame/whizard-postlude.nw
 types.stamp: $(PRELUDE) $(srcdir)/types.nw $(POSTLUDE)
 	@rm -f types.tmp
 	@touch types.tmp
-	for src in $(libtypes_la_SOURCES); do \
+	for src in $(libtypes_la_SOURCES) $(libtypes_ut_la_SOURCES); do \
 	  $(NOTANGLE) -R[[$$src]] $^ | $(CPIF) $$src; \
         done
 	@mv -f types.tmp types.stamp
 
-$(libtypes_la_SOURCES): types.stamp
+$(libtypes_la_SOURCES) $(libtypes_ut_la_SOURCES): types.stamp
 ## Recover from the removal of $@
 	@if test -f $@; then :; else \
 	  rm -f types.stamp; \
@@ -180,6 +187,9 @@ endif
 clean-local: clean-noweb
 	-rm -f types.stamp types.tmp
 	-rm -f *.$(FC_MODULE_EXT)
+if FC_SUBMODULES
+	-rm -f *.smod
+endif
 
 ## Remove backup files
 maintainer-clean-backup:

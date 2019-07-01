@@ -1,4 +1,4 @@
-! WHIZARD 2.2.6 May 02 2015
+! WHIZARD 2.2.7 Aug 11 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -37,6 +37,7 @@ module diagnostics
 
   use kinds, only: default
   use iso_varying_string, string_t => varying_string
+  use string_utils, only: str
   use io_units
 
   use system_dependencies
@@ -45,6 +46,11 @@ module diagnostics
   implicit none
   private
 
+  public :: RESULT, DEBUG, DEBUG2
+  public :: d_area
+  public :: D_ALL, D_PARTICLES, D_EVENTS, D_SHOWER, D_MODEL_F, &
+       D_MATCHING, D_TRANSFORMS, D_SUBTRACTION, D_VIRTUAL, D_THRESHOLD
+  public :: msg_level
   public :: mask_fatal_errors
   public :: msg_count
   public :: msg_list_clear
@@ -53,7 +59,11 @@ module diagnostics
   public :: msg_buffer
   public :: msg_terminate
   public :: msg_bug, msg_fatal, msg_error, msg_warning
-  public :: msg_message, msg_result, msg_debug
+  public :: msg_message, msg_result
+  public :: msg_debug
+  public :: msg_debug2
+  public :: debug_active
+  public :: debug2_active
   public :: msg_show_progress
   public :: msg_banner
   public :: logging
@@ -80,9 +90,13 @@ module diagnostics
   public :: signal_is_pending
   public :: terminate_now_if_signal
 
-  integer, parameter :: &
-       & TERMINATE=-2, BUG=-1, &
-       & FATAL=1, ERROR=2, WARNING=3, MESSAGE=4, RESULT=5, DEBUG=6
+  integer, parameter :: TERMINATE=-2, BUG=-1, FATAL=1, &
+       ERROR=2, WARNING=3, MESSAGE=4, RESULT=5, &
+       DEBUG=6, DEBUG2=7
+  integer, parameter :: D_ALL=0, D_PARTICLES=1, D_EVENTS=2, &
+       D_SHOWER=3, D_MODEL_F=4, &
+       D_MATCHING=5, D_TRANSFORMS=6, &
+       D_SUBTRACTION=7, D_VIRTUAL=8, D_THRESHOLD=9
   integer, parameter :: TERM_STOP = 0, TERM_EXIT = 1, TERM_CRASH = 2
 
   type :: string_list
@@ -94,10 +108,10 @@ module diagnostics
   end type string_list_pointer
   
 
-  integer, save :: msg_level = RESULT
+  integer, save, dimension(D_ALL:20) :: msg_level = RESULT
   logical, save :: mask_fatal_errors = .false.
   integer, save :: handle_fatal_errors = TERM_EXIT
-  integer, dimension(TERMINATE:DEBUG), save :: msg_count = 0
+  integer, dimension(TERMINATE:WARNING), save :: msg_count = 0
   type(string_list_pointer), dimension(TERMINATE:WARNING), save :: &
        & msg_list = string_list_pointer (null(), null())
   character(len=BUFFER_SIZE), save :: msg_buffer = " "
@@ -112,6 +126,22 @@ module diagnostics
   integer(c_int), bind(C), volatile :: wo_sigxfsz = 0
 
 
+  interface d_area
+     module procedure d_area_of_string
+     module procedure d_area_to_string
+  end interface
+  interface msg_debug
+     module procedure msg_debug_none
+     module procedure msg_debug_logical
+     module procedure msg_debug_integer
+     module procedure msg_debug_real
+  end interface
+  interface msg_debug2
+     module procedure msg_debug2_none
+     module procedure msg_debug2_logical
+     module procedure msg_debug2_integer
+     module procedure msg_debug2_real
+  end interface
   interface
      subroutine exit (status) bind (C)
        use iso_c_binding !NODEP!
@@ -174,6 +204,64 @@ module diagnostics
 
 
 contains
+
+  elemental function d_area_of_string (string) result (i)
+    integer :: i
+    type(string_t), intent(in) :: string
+    select case (char (string))
+    case ("all")
+       i = D_ALL
+    case ("particles")
+       i = D_PARTICLES
+    case ("events")
+       i = D_EVENTS
+    case ("shower")
+       i = D_SHOWER
+    case ("model_features")
+       i = D_MODEL_F
+    case ("matching")
+       i = D_MATCHING
+    case ("transforms")
+       i = D_TRANSFORMS
+    case ("subtraction")
+       i = D_SUBTRACTION
+    case ("virtual")
+       i = D_VIRTUAL
+    case ("threshold")
+       i = D_THRESHOLD
+    case default
+       i = D_ALL
+    end select
+  end function d_area_of_string
+
+  elemental function d_area_to_string (i) result (string)
+    type(string_t) :: string
+    integer, intent(in) :: i
+    select case (i)
+    case (D_ALL)
+       string = "all"
+    case (D_PARTICLES)
+       string = "particles"
+    case (D_EVENTS)
+       string = "events"
+    case (D_SHOWER)
+       string = "shower"
+    case (D_MODEL_F)
+       string = "model_features"
+    case (D_MATCHING)
+       string = "matching"
+    case (D_TRANSFORMS)
+       string = "transforms"
+    case (D_SUBTRACTION)
+       string = "subtraction"
+    case (D_VIRTUAL)
+       string = "virtual"
+    case (D_THRESHOLD)
+       string = "threshold"
+    case default
+       string = "undefined"
+    end select
+  end function d_area_to_string
 
   subroutine msg_add (level)
     integer, intent(in) :: level
@@ -250,19 +338,22 @@ contains
     msg_buffer = " "
   end subroutine buffer_clear
 
-  subroutine message_print (level, string, str_arr, unit, logfile)
+  subroutine message_print (level, string, str_arr, unit, logfile, area)
     integer, intent(in) :: level
     character(len=*), intent(in), optional :: string
     type(string_t), dimension(:), intent(in), optional :: str_arr
     integer, intent(in), optional :: unit
-    logical, intent(in), optional :: logfile   
-    type(string_t) :: prep_string, aux_string, head_footer
-    integer :: lu, i
+    logical, intent(in), optional :: logfile
+    integer, intent(in), optional :: area
+    type(string_t) :: prep_string, aux_string, head_footer, app_string
+    integer :: lu, i, ar
     logical :: severe, is_error
+    ar = D_ALL; if (present (area))  ar = area
     severe = .false.
     head_footer  = "******************************************************************************"
     aux_string = ""
     is_error = .false.
+    app_string = ""
     select case (level)
     case (TERMINATE)
        prep_string = ""
@@ -282,8 +373,11 @@ contains
        is_error = .true.
     case (WARNING)
        prep_string = "Warning: "
-    case (MESSAGE, DEBUG)
+    case (MESSAGE)
        prep_string = "| "
+    case (DEBUG, DEBUG2)
+       prep_string = achar(27) // "[34mD: "
+       app_string = achar(27) // "[0m"
     case default
        prep_string = ""
     end select
@@ -293,7 +387,8 @@ contains
        if (unit /= output_unit) then
           if (severe) write (unit, "(A)") char(head_footer) 
           if (is_error) write (unit, "(A)") char(head_footer) 
-          write (unit, "(A,A)") char(prep_string), trim(msg_buffer)
+          write (unit, "(A,A,A)") char(prep_string), trim(msg_buffer), &
+               char(app_string)
           if (present (str_arr)) then
              do i = 1, size(str_arr)
                 write (unit, "(A,A)") char(aux_string), char(trim(str_arr(i)))
@@ -303,10 +398,11 @@ contains
           if (severe) write (unit, "(A)") char(head_footer)
           flush (unit)
           lu = -1
-       else if (level <= msg_level) then
+       else if (level <= msg_level(ar)) then
           if (severe) print "(A)", char(head_footer) 
           if (is_error) print "(A)", char(head_footer) 
-          print "(A,A)", char(prep_string), trim(msg_buffer)
+          print "(A,A,A)", char(prep_string), trim(msg_buffer), &
+               char(app_string)
           if (present (str_arr)) then
              do i = 1, size(str_arr)
                 print "(A,A)", char(aux_string), char(trim(str_arr(i)))
@@ -317,10 +413,11 @@ contains
           flush (output_unit)
           if (unit == log_unit)  lu = -1
        end if
-    else if (level <= msg_level) then
+    else if (level <= msg_level(ar)) then
        if (severe) print "(A)", char(head_footer) 
        if (is_error) print "(A)", char(head_footer) 
-       print "(A,A)", char(prep_string), trim(msg_buffer)
+       print "(A,A,A)", char(prep_string), trim(msg_buffer), &
+               char(app_string)
           if (present (str_arr)) then
              do i = 1, size(str_arr)
                 print "(A,A)", char(aux_string), char(trim(str_arr(i)))
@@ -336,7 +433,8 @@ contains
     if (logging .and. lu >= 0) then
        if (severe) write (lu, "(A)") char(head_footer) 
        if (is_error) write (lu, "(A)") char(head_footer) 
-       write (lu, "(A,A)")  char(prep_string), trim(msg_buffer)
+       write (lu, "(A,A,A)")  char(prep_string), trim(msg_buffer), &
+               char(app_string)
        if (present (str_arr)) then
           do i = 1, size(str_arr)
              write (lu, "(A,A)") char(aux_string), char(trim(str_arr(i)))
@@ -465,12 +563,73 @@ contains
     call message_print (RESULT, string, arr, unit, logfile)
   end subroutine msg_result
 
-  subroutine msg_debug (string, arr, unit)
-    integer, intent(in), optional :: unit
+  subroutine msg_debug_none (area, string)
+    integer, intent(in) :: area
     character(len=*), intent(in), optional :: string
-    type(string_t), dimension(:), intent(in), optional :: arr
-    call message_print (DEBUG, string, arr, unit)
-  end subroutine msg_debug
+    call message_print (DEBUG, string, unit=output_unit, &
+         area=area, logfile=.false.)
+  end subroutine msg_debug_none
+
+  subroutine msg_debug_logical (area, string, value)
+    integer, intent(in) :: area
+    character(len=*), intent(in) :: string
+    logical, intent(in) :: value
+    call msg_debug_none (area, char (string // " = " // str (value)))
+  end subroutine msg_debug_logical
+
+  subroutine msg_debug_integer (area, string, value)
+    integer, intent(in) :: area
+    character(len=*), intent(in) :: string
+    integer, intent(in) :: value
+    call msg_debug_none (area, char (string // " = " // str (value)))
+  end subroutine msg_debug_integer
+
+  subroutine msg_debug_real (area, string, value)
+    integer, intent(in) :: area
+    character(len=*), intent(in) :: string
+    real(default), intent(in) :: value
+    call msg_debug_none (area, char (string // " = " // str (value)))
+  end subroutine msg_debug_real
+
+  subroutine msg_debug2_none (area, string)
+    integer, intent(in) :: area
+    character(len=*), intent(in), optional :: string
+    call message_print (DEBUG2, string, unit=output_unit, &
+         area=area, logfile=.false.)
+  end subroutine msg_debug2_none
+
+  subroutine msg_debug2_logical (area, string, value)
+    integer, intent(in) :: area
+    character(len=*), intent(in) :: string
+    logical, intent(in) :: value
+    call msg_debug2_none (area, char (string // " = " // str (value)))
+  end subroutine msg_debug2_logical
+
+  subroutine msg_debug2_integer (area, string, value)
+    integer, intent(in) :: area
+    character(len=*), intent(in) :: string
+    integer, intent(in) :: value
+    call msg_debug2_none (area, char (string // " = " // str (value)))
+  end subroutine msg_debug2_integer
+
+  subroutine msg_debug2_real (area, string, value)
+    integer, intent(in) :: area
+    character(len=*), intent(in) :: string
+    real(default), intent(in) :: value
+    call msg_debug2_none (area, char (string // " = " // str (value)))
+  end subroutine msg_debug2_real
+
+  elemental function debug_active (area) result (active)
+    logical :: active
+    integer, intent(in) :: area
+    active = msg_level(area) >= DEBUG
+  end function debug_active
+
+  elemental function debug2_active (area) result (active)
+    logical :: active
+    integer, intent(in) :: area
+    active = msg_level(area) >= DEBUG2
+  end function debug2_active
 
   subroutine msg_show_progress (i_call, n_calls)
     integer, intent(in) :: i_call, n_calls
@@ -487,7 +646,6 @@ contains
 
   subroutine msg_banner (unit)
     integer, intent(in), optional :: unit
-    integer :: n_proc
     call message_print (0, "|=============================================================================|", unit=unit)
     call message_print (0, "|                                                                             |", unit=unit)
     call message_print (0, "|    WW             WW  WW   WW  WW  WWWWWW      WW      WWWWW    WWWW        |", unit=unit)
@@ -689,7 +847,6 @@ contains
   end subroutine pacify_complex_default  
 
   subroutine mask_term_signals ()
-    integer(c_int) :: status
     logical :: ok
     wo_sigint = 0
     ok = wo_mask_sigint () == 0
@@ -706,7 +863,6 @@ contains
   end subroutine mask_term_signals
 
   subroutine release_term_signals ()
-    integer(c_int) :: status
     logical :: ok
     ok = wo_release_sigint () == 0
     if (.not. ok)  call msg_error ("Releasing SIGINT failed")

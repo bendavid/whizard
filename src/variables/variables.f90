@@ -1,4 +1,4 @@
-! WHIZARD 2.2.6 May 02 2015
+! WHIZARD 2.2.7 Aug 11 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -77,13 +77,6 @@ module variables
   public :: var_list_append_obs2_rptr
   public :: var_list_append_uobs_int
   public :: var_list_append_uobs_real
-  public :: var_list_set_log
-  public :: var_list_set_int
-  public :: var_list_set_real
-  public :: var_list_set_cmplx
-  public :: var_list_set_subevt
-  public :: var_list_set_pdg_array
-  public :: var_list_set_string
   public :: var_list_import
   public :: var_list_undefine
   public :: var_list_init_snapshot
@@ -131,6 +124,7 @@ module variables
    contains
      procedure :: link => var_list_link
      procedure :: final => var_list_final
+     procedure :: write => var_list_write
      procedure :: get_type => var_list_get_type
      procedure :: contains => var_list_exists
      procedure :: is_intrinsic => var_list_is_intrinsic
@@ -161,6 +155,13 @@ module variables
      procedure :: set_cval => var_list_set_cval
      procedure :: set_lval => var_list_set_lval
      procedure :: set_sval => var_list_set_sval
+     procedure :: set_log => var_list_set_log
+     procedure :: set_int => var_list_set_int
+     procedure :: set_real => var_list_set_real
+     procedure :: set_cmplx => var_list_set_cmplx
+     procedure :: set_subevt => var_list_set_subevt
+     procedure :: set_pdg_array => var_list_set_pdg_array
+     procedure :: set_string => var_list_set_string
   end type var_list_t
 
 
@@ -970,7 +971,6 @@ contains
   subroutine var_entry_copy_value (var, original)
     type(var_entry_t), intent(inout) :: var
     type(var_entry_t), intent(in), target :: original
-    type(string_t) :: name
     if (var_entry_is_known (original)) then
        select case (original%type)
        case (V_LOG)
@@ -1309,7 +1309,7 @@ contains
   recursive subroutine var_list_write &
        (var_list, unit, follow_link, only_type, prefix, model_name, &
         intrinsic, pacified)
-    type(var_list_t), intent(in), target :: var_list
+    class(var_list_t), intent(in), target :: var_list
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: follow_link
     integer, intent(in), optional :: only_type
@@ -1845,7 +1845,7 @@ contains
     if (.not. associated (var)) then
        call var_list_append_int (var_list, var_name, ival, intrinsic=.true.)
     else if (present (ival)) then
-       call var_list_set_int (var_list, var_name, ival, is_known=.true.)
+       call var_list%set_int (var_name, ival, is_known=.true.)
     end if
   end subroutine var_list_set_procvar_int
 
@@ -1861,7 +1861,7 @@ contains
     if (.not. associated (var)) then
        call var_list_append_real (var_list, var_name, rval, intrinsic=.true.)
     else if (present (rval)) then
-       call var_list_set_real (var_list, var_name, rval, is_known=.true.)
+       call var_list%set_real (var_name, rval, is_known=.true.)
     end if
   end subroutine var_list_set_procvar_real
 
@@ -2016,7 +2016,7 @@ contains
   
   subroutine var_list_set_log &
        (var_list, name, lval, is_known, ignore, force, verbose, model_name)
-    type(var_list_t), intent(inout), target :: var_list
+    class(var_list_t), intent(inout), target :: var_list
     type(string_t), intent(in) :: name
     logical, intent(in) :: lval
     logical, intent(in) :: is_known
@@ -2042,7 +2042,7 @@ contains
           
   subroutine var_list_set_int &
        (var_list, name, ival, is_known, ignore, force, verbose, model_name)
-    type(var_list_t), intent(inout), target :: var_list
+    class(var_list_t), intent(inout), target :: var_list
     type(string_t), intent(in) :: name
     integer, intent(in) :: ival
     logical, intent(in) :: is_known
@@ -2069,7 +2069,7 @@ contains
   subroutine var_list_set_real &
        (var_list, name, rval, is_known, ignore, force, &
         verbose, model_name, pacified)
-    type(var_list_t), intent(inout), target :: var_list
+    class(var_list_t), intent(inout), target :: var_list
     type(string_t), intent(in) :: name
     real(default), intent(in) :: rval
     logical, intent(in) :: is_known
@@ -2097,7 +2097,7 @@ contains
   subroutine var_list_set_cmplx &
        (var_list, name, cval, is_known, ignore, force, &
         verbose, model_name, pacified)
-    type(var_list_t), intent(inout), target :: var_list
+    class(var_list_t), intent(inout), target :: var_list
     type(string_t), intent(in) :: name
     complex(default), intent(in) :: cval
     logical, intent(in) :: is_known
@@ -2124,7 +2124,7 @@ contains
           
   subroutine var_list_set_pdg_array &
        (var_list, name, aval, is_known, ignore, force, verbose, model_name)
-    type(var_list_t), intent(inout), target :: var_list
+    class(var_list_t), intent(inout), target :: var_list
     type(string_t), intent(in) :: name
     type(pdg_array_t), intent(in) :: aval
     logical, intent(in) :: is_known
@@ -2151,7 +2151,7 @@ contains
           
   subroutine var_list_set_subevt &
        (var_list, name, pval, is_known, ignore, force, verbose, model_name)
-    type(var_list_t), intent(inout), target :: var_list
+    class(var_list_t), intent(inout), target :: var_list
     type(string_t), intent(in) :: name
     type(subevt_t), intent(in) :: pval
     logical, intent(in) :: is_known
@@ -2178,7 +2178,7 @@ contains
           
   subroutine var_list_set_string &
        (var_list, name, sval, is_known, ignore, force, verbose, model_name)
-    type(var_list_t), intent(inout), target :: var_list
+    class(var_list_t), intent(inout), target :: var_list
     type(string_t), intent(in) :: name
     type(string_t), intent(in) :: sval
     logical, intent(in) :: is_known
@@ -2231,7 +2231,6 @@ contains
     type(var_list_t), intent(inout) :: var_list
     type(var_list_t), intent(in) :: src_list
     type(var_entry_t), pointer :: var, src
-    type(string_t) :: name
     var => var_list%first
     do while (associated (var))
        src => var_list_get_var_ptr (src_list, var%name)

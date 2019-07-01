@@ -1,0 +1,30 @@
+* Test output: sindarin_parser_7
+*   Purpose: parse a simple script
+
+* Create script
+
+a = 1, 2, 3
+b = 1:2, 3
+c = 1, 2:3
+d = (1, 2):3
+e = 1, 2 => 3, 4:5, 6 => 7
+
+* Parse script
+
+* Setup decoder (see 'sindarin_parser_7.pt.dat')
+
+* Decode (see 'sindarin_parser_7.code.dat')
+
+* Create object tree
+
+object script ||abstract|| {
+   P1: a = 1, 2, 3
+   P2: b = 1:2, 3
+   P3: c = 1, 2:3
+   P4: d = (1, 2):3
+   P5: e = 1, 2 => 3, 4:5, 6 => 7
+ }
+
+* Cleanup
+
+* Test output end: sindarin_parser_7

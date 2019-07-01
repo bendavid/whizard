@@ -1,4 +1,4 @@
-! WHIZARD 2.2.6 May 02 2015
+! WHIZARD 2.2.7 Aug 11 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -35,7 +35,6 @@ module lexers
   use iso_varying_string, string_t => varying_string
   use io_units
   use string_utils
-  use unit_tests
   use system_defs, only: EOF, EOR
   use system_defs, only: LF
   use system_defs, only: WHITESPACE_CHARS, LCLETTERS, UCLETTERS, DIGITS
@@ -76,7 +75,6 @@ module lexers
   public :: lexer_put_back
   public :: lexer_write_setup
   public :: lexer_show_location
-  public :: lexer_test
 
   integer, parameter :: T_KEYWORD = 1
   integer, parameter :: T_IDENTIFIER = 2, T_QUOTED = 3, T_NUMERIC = 4
@@ -926,39 +924,6 @@ contains
             (char (stream_get_source_info_string (lexer%stream)) // ":")
     end if
   end subroutine lexer_show_source
-
-  subroutine lexer_test (u, results)
-    integer, intent(in) :: u
-    type(test_results_t), intent(inout) :: results
-    call test (lexer_1, "lexer_1", &
-         "check lexer", u, results)
-  end subroutine lexer_test
-
-
-  subroutine lexer_1 (u)
-    integer, intent(in) :: u
-    type(lexer_t), target :: lexer
-    type(stream_t), target :: stream
-    type(string_t) :: string
-    type(lexeme_t) :: lexeme
-    string = "abcdefghij"
-    call lexer_init (lexer, &
-       comment_chars = "", &
-       quote_chars = "<'""", &
-       quote_match = ">'""", &
-       single_chars = "?*+|=,()", &
-       special_class = ["."], &
-       keyword_list = null ())
-    call stream_init (stream, string)
-    call lexer_assign_stream (lexer, stream)
-    do
-       call lex (lexeme, lexer)
-       call lexeme_write (lexeme, u)
-       if (lexeme_is_break (lexeme))  exit
-    end do
-    call stream_final (stream)
-    call lexer_final (lexer)
-  end subroutine lexer_1
 
 
 end module lexers

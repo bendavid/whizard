@@ -1,4 +1,4 @@
-! WHIZARD 2.2.6 May 02 2015
+! WHIZARD 2.2.7 Aug 11 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -73,10 +73,10 @@ module virtual
     procedure :: compute_Q => virtual_compute_Q
     procedure :: compute_I => virtual_compute_I
   end type virtual_t
-  
+
 
 contains
- 
+
  subroutine virtual_init (object, flv_born)
     class(virtual_t), intent(inout) :: object
     integer, intent(in), dimension(:,:) :: flv_born
@@ -94,7 +94,7 @@ contains
           object%n_is_neutrinos(i_flv) = object%n_is_neutrinos(i_flv) + 1
        if (is_neutrino (flv_born(2, i_flv))) &
           object%n_is_neutrinos(i_flv) = object%n_is_neutrinos(i_flv) + 1
-    end do 
+    end do
   contains
     function is_neutrino (flv) result (neutrino)
       integer, intent(in) :: flv
@@ -107,7 +107,7 @@ contains
     class(virtual_t), intent(inout) :: object
     integer, intent(in), dimension(:,:) :: flv_born
     integer :: i_part, i_flv
-    integer, parameter :: nf = 1 
+    integer, parameter :: nf = 1
     do i_flv = 1, size (flv_born, 2)
        do i_part = 1, size (flv_born, 1)
           if (is_gluon (flv_born(i_part, i_flv))) then
@@ -126,7 +126,7 @@ contains
        end do
     end do
   end subroutine virtual_init_constants
-  
+
   subroutine virtual_set_ren_scale (object, p, ren_scale)
     class(virtual_t), intent(inout) :: object
     type(vector4_t), dimension(:), intent(in) :: p
@@ -137,7 +137,7 @@ contains
       object%ren_scale2 = (p(1)+p(2))**2
     end if
   end subroutine virtual_set_ren_scale
-  
+
   subroutine virtual_set_fac_scale (object, p, fac_scale)
     class(virtual_t), intent(inout) :: object
     type(vector4_t), dimension(:), intent(in) :: p
@@ -160,31 +160,49 @@ contains
     real(default), intent(in), dimension(:,:,:), allocatable :: b_ij
     integer :: i, j, alr
     real(default) :: BI
-    if (object%bad_point) then
-       object%sqme_virt = 0
-    else
-       BI = 0
-       alr = find_first_matching_uborn (reg_data, i_flv)
-       associate (flst_born => reg_data%regions(alr)%flst_uborn)
-         call object%compute_Q (p_born, i_flv, flst_born%massive)
-         do i = 1, object%nlegs
-           do j = 1, object%nlegs
-             if (i /= j) then
-                if (flst_born%colored(i) .and. flst_born%colored(j)) then
-                  call object%compute_I (p_born, flst_born%massive, i, j)
-                  BI = BI + b_ij (i,j,reg_data%regions(alr)%uborn_index) * &
-                                  object%I(i,j)
-               end if
+    object%sqme_virt = 0._default
+    if (object%bad_point) return
+    BI = 0
+    alr = find_first_matching_uborn (reg_data, i_flv)
+    associate (flst_born => reg_data%regions(alr)%flst_uborn)
+       call object%compute_Q (p_born, i_flv, flst_born%massive)
+
+       if (debug_active (D_VIRTUAL)) then
+         call msg_debug (D_VIRTUAL, "Compute Q")
+         print *, 'massive flavors: ', flst_born%massive
+         print *, 'Q: ', object%Q
+      end if
+
+      do i = 1, object%nlegs
+        do j = 1, object%nlegs
+          if (i /= j) then
+             if (flst_born%colored(i) .and. flst_born%colored(j)) then
+               call object%compute_I (p_born, flst_born%massive, i, j)
+               BI = BI + b_ij (i,j,reg_data%regions(alr)%uborn_index) * &
+                               object%I(i,j)
+
+               if (debug_active (D_VIRTUAL)) &
+                   print *, 'b_ij: ', b_ij (i,j, reg_data%regions(alr)%uborn_index), &
+                            'I_ij: ', object%I(i,j)
              end if
-           end do
-         end do
-       end associate
-       if (object%use_internal_color_correlations) BI = BI*born
-       !!! A factor of alpha_s/twopi is assumed to be included in vfin
-       object%sqme_virt = alpha_s/twopi * (object%Q*born + BI) + object%vfin
-       if (object%n_is_neutrinos(i_flv) > 0) &
-          object%sqme_virt = object%sqme_virt * object%n_is_neutrinos(i_flv)*2
+          end if
+        end do
+      end do
+    end associate
+    if (object%use_internal_color_correlations) BI = BI*born
+    !!! A factor of alpha_s/twopi is assumed to be included in vfin
+    object%sqme_virt = alpha_s/twopi * (object%Q*born + BI) + object%vfin
+
+    if (debug_active (D_VIRTUAL)) then
+       call msg_debug (D_VIRTUAL, "virtual-subtracted matrix element: ")
+       print *, 'Q*born: ', object%q*born
+       print *, 'BI: ', BI
+       print *, 'vfin: ', object%vfin
+       print *, 'Result: ', object%sqme_virt
     end if
+
+    if (object%n_is_neutrinos(i_flv) > 0) &
+        object%sqme_virt = object%sqme_virt * object%n_is_neutrinos(i_flv)*2
   contains
     function find_first_matching_uborn (reg_data, i_proc) result (alr_out)
        type(region_data_t), intent(in) :: reg_data
@@ -252,7 +270,7 @@ contains
        end if
     end do
   end subroutine virtual_compute_Q
-  
+
   subroutine virtual_compute_I (object, p_born, massive, i, j)
     class(virtual_t), intent(inout) :: object
     type(vector4_t), intent(in), dimension(:) :: p_born
@@ -280,7 +298,7 @@ contains
     real(default) :: s1, s2, s3, s4, s5
     real(default) :: arglog
     real(default), parameter :: tiny_value = epsilon(1.0)
-    !!! ----NOTE: As above, only lepton collisions. Therefore, the 
+    !!! ----NOTE: As above, only lepton collisions. Therefore, the
     !!!           first and second summand are not taken into account.
 
     s1 = 0; s2 = 0; s3 = 0; s4 = 0; s5 = 0
@@ -323,7 +341,7 @@ contains
     s2 = 0.5*I_mm_eps(pi, pj)
     I = s1 - s2
   end function compute_Imm
-  
+
   function I_m_eps (p) result (I)
     type(vector4_t), intent(in) :: p
     real(default) :: I
@@ -338,18 +356,18 @@ contains
     type(vector4_t) :: pp, kp
     real(default) :: beta
 
-    pp = p/energy(p); kp = k/energy(k) 
-  
+    pp = p/energy(p); kp = k/energy(k)
+
     beta = sqrt (1-kp*kp)
     I = -2*(log((1-beta)/(1+beta))**2/4 + log((pp*kp)/(1+beta))*log((pp*kp)/(1-beta)) &
         + Li2(1-(pp*kp)/(1+beta)) + Li2(1-(pp*kp)/(1-beta)))
   end function I_0m_eps
-    
+
   function I_0m_0 (p, k) result (I)
     type(vector4_t), intent(in) :: p, k
     real(default) :: I
     type(vector4_t) :: pp, kp
-    
+
     pp = p/energy(p); kp = k/energy(k)
     I = log((pp*kp)**2/kp**2)
   end function I_0m_0
@@ -362,7 +380,7 @@ contains
     real(default) :: zp, zm, z1, z2, x1, x2
     real(default) :: zmb, z1b
     real(default) :: K1, K2
-   
+
     beta1 = space_part (p1)/energy(p1)
     beta2 = space_part (p2)/energy(p2)
     a = beta1**2 + beta2**2 - 2*beta1*beta2

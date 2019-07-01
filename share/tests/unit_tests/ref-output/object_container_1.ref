@@ -1,0 +1,99 @@
+* Test output: object_container_1
+*   Purpose: construct containers
+
+* Create expression prototype: container
+
+object container ||operator|binary|abstract||
+
+* Create expressions
+
+container a1 ||operator|binary|constant|| = ()
+
+container a2 ||operator|binary|constant|| {
+   O1: :
+   A1: integer item1 ||constant|| = 1
+ } = (<>)
+
+container a3 ||operator|binary|constant|| {
+   O1: :
+   A1: integer item1 ||constant|| = 1
+   A2: logical item2 ||constant|| = true
+ } = (<>, <>)
+
+container a4 ||operator|binary|constant|| {
+   O1: :
+   A1: integer item1 ||constant|| = 1
+   A2: logical item2 ||constant|| = true
+   A3: integer undef ||constant|| = ???
+ } = (<>, <>, <>)
+
+container a5 ||operator|binary|constant|| {
+   O1: ,
+   A1: integer item1 ||constant|| = 1
+   A2: logical item2 ||constant|| = true
+ } = (<>, <>)
+
+container a6 ||operator|binary|constant|| {
+   O1: =>
+   A1: integer item1 ||constant|| = 1
+   A2: logical item2 ||constant|| = true
+ } = (<>, <>)
+
+(:)
+(:1)
+1:true
+1:true:???
+1, true
+1 => true
+
+* Resolve and evaluate
+
+success = T
+success = T
+success = T
+success = T
+success = T
+success = T
+
+container a1 ||operator|binary|constant|| = ()
+
+container a2 ||operator|binary|constant|| {
+   O1: :
+   A1: integer item1 ||constant|| = 1
+ } = (1)
+
+container a3 ||operator|binary|constant|| {
+   O1: :
+   A1: integer item1 ||constant|| = 1
+   A2: logical item2 ||constant|| = true
+ } = (1, true)
+
+container a4 ||operator|binary|constant|| {
+   O1: :
+   A1: integer item1 ||constant|| = 1
+   A2: logical item2 ||constant|| = true
+   A3: integer undef ||constant|| = ???
+ } = (1, true, ???)
+
+container a5 ||operator|binary|constant|| {
+   O1: ,
+   A1: integer item1 ||constant|| = 1
+   A2: logical item2 ||constant|| = true
+ } = (1, true)
+
+container a6 ||operator|binary|constant|| {
+   O1: =>
+   A1: integer item1 ||constant|| = 1
+   A2: logical item2 ||constant|| = true
+ } = (1, true)
+
+(:)
+(:1)
+1:true
+1:true:???
+1, true
+1 => true
+
+* Cleanup
+
+* Test output end: object_container_1

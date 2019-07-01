@@ -1,4 +1,4 @@
-! WHIZARD 2.2.6 May 02 2015
+! WHIZARD 2.2.7 Aug 11 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -33,69 +33,58 @@
 module dispatch
   
   use kinds, only: default
-  use kinds, only: i16, double
+  use kinds, only: i16
   use iso_varying_string, string_t => varying_string
   use constants, only: PI
-  use system_dependencies, only: LHAPDF5_AVAILABLE
-  use system_dependencies, only: LHAPDF6_AVAILABLE
-  use system_defs, only: LF
   use io_units
-  use format_utils, only: write_separator
-  use unit_tests
   use diagnostics
+  use system_defs, only: LF  
+  use system_dependencies, only: LHAPDF6_AVAILABLE
   use os_interface
+  use physics_defs, only: PHOTON
   use physics_defs, only: MZ_REF, ALPHA_QCD_MZ_REF
-  use physics_defs, only: PROTON, PHOTON, ELECTRON
-  use sm_qcd
-  use pdg_arrays
+  use physics_defs, only: BORN
   use variables
+  use sm_qcd
   use model_data
-  use flavors
-  use interactions
-  use models
-  use process_constants
-  use pdf_builtin !NODEP!
-  use lhapdf !NODEP!  
-  use sf_mappings
+  use prc_core_def
+  use prc_core
+  use prc_template_me
+  use prc_test
+  use prc_omega
+  use prc_gosam
+  use prc_openloops
+  use processes
+  use unit_tests, only: vanishes
+  use pdg_arrays
   use sf_base
-  use sf_pdf_builtin
-  use sf_lhapdf
-  use sf_circe1
-  use sf_circe2
+  use sf_mappings
   use sf_isr
   use sf_epa
   use sf_ewa
   use sf_escan
+  use sf_gaussian
   use sf_beam_events
-  use sf_user
+  use sf_circe1
+  use sf_circe2
+  use sf_pdf_builtin
+  use sf_lhapdf
+  use flavors
+  use beam_structures
+  use models
   use rng_base
   use rng_tao
   use mci_base
   use mci_midpoint
   use mci_vamp
-  use phs_base
   use mappings
-  use phs_forests
+  use phs_forests, only: phs_parameters_t
+  use phs_base
   use phs_single
   use phs_wood
-  use prc_core_def
-  use prc_test
-  use beams
-  use prc_omega
-  use prc_template_me
-  use prc_core
-  use processes
-  use powheg
-  use shower_base
-  use shower_core
-  use shower_pythia6
-  use mlm_matching
-  use ckkw_base
-  use shower
-  use event_transforms
-  use decays
-  use hadrons
-  use beam_structures
+  use nlo_data
+  use phs_fks
+  use rt_data
   use eio_base
   use eio_raw
   use eio_checkpoints
@@ -105,12 +94,18 @@ module dispatch
   use eio_stdhep
   use eio_ascii
   use eio_weights
-  use rt_data
-  use prc_gosam
-  use prc_openloops
-  use phs_fks
-  use nlo_data
-
+  use shower_base
+  use shower_core
+  use shower
+  use shower_pythia6
+  use mlm_matching
+  use powheg_matching
+  use ckkw_matching
+  use event_transforms
+  use decays
+  use hadrons
+  use evt_nlo
+  
   implicit none
   private
 
@@ -122,56 +117,36 @@ module dispatch
   public :: dispatch_phs
   public :: dispatch_fks
   public :: dispatch_rng_factory
+  public :: dispatch_rng_factory_extra
   public :: sf_prop_t
   public :: dispatch_sf_data
+  public :: dispatch_sf_data_extra
   public :: dispatch_sf_config
   public :: dispatch_sf_channels
   public :: dispatch_eio
   public :: dispatch_qcd
+  public :: dispatch_evt_nlo
   public :: dispatch_evt_decay
   public :: dispatch_evt_shower
+  public :: dispatch_matching
   public :: dispatch_evt_hadrons
   public :: dispatch_slha
-  public :: dispatch_test
 
   type :: sf_prop_t
      real(default), dimension(2) :: isr_eps = 1
   end type sf_prop_t
   
 
-  interface
-     subroutine GetXminM (set, mem, xmin)
-       integer, intent(in) :: set, mem
-       double precision, intent(out) :: xmin
-     end subroutine GetXminM
-  end interface
-
-  interface
-     subroutine GetXmaxM (set, mem, xmax)
-       integer, intent(in) :: set, mem
-       double precision, intent(out) :: xmax
-     end subroutine GetXmaxM
-  end interface
-
-  interface
-     subroutine GetQ2minM (set, mem, q2min)
-       integer, intent(in) :: set, mem
-       double precision, intent(out) :: q2min
-     end subroutine GetQ2minM
-  end interface
-
-  interface
-     subroutine GetQ2maxM (set, mem, q2max)
-       integer, intent(in) :: set, mem
-       double precision, intent(out) :: q2max
-     end subroutine GetQ2maxM
-  end interface
-
+  procedure (dispatch_rng_factory), pointer :: &
+       dispatch_rng_factory_extra => null ()
+  procedure (dispatch_sf_data), pointer :: &
+       dispatch_sf_data_extra => null ()
 
 contains
   
   subroutine dispatch_core_def (core_def, prt_in, prt_out, &
                                 global, id, nlo_type)
+
     class(prc_core_def_t), allocatable, intent(inout) :: core_def
     type(string_t), dimension(:), intent(in) :: prt_in
     type(string_t), dimension(:), intent(in) :: prt_out
@@ -186,6 +161,7 @@ contains
     logical :: diags, diags_color
     type(string_t) :: extra_options
     type(model_t), pointer :: model
+
     model => global%model
     associate (var_list => global%get_var_list_ptr ())
       method = var_list%get_sval (var_str ("$method"))
@@ -258,8 +234,17 @@ contains
         select type (core_def)
         type is (gosam_def_t)
           if (present (id)) then
-             call core_def%init (id, model_name, prt_in, &
-                                 prt_out, nlo_type)
+             if (present (nlo_type)) then
+                call core_def%init (id, model_name, prt_in, &
+                   prt_out, nlo_type, &
+                   filter = [var_list%get_sval (var_str ("$gosam_filter_lo")), &
+                             var_list%get_sval (var_str ("$gosam_filter_nlo"))])
+             else
+                call core_def%init (id, model_name, prt_in, &
+                   prt_out, BORN, &
+                   filter = [var_list%get_sval (var_str ("$gosam_filter_lo")), &
+                             var_list%get_sval (var_str ("$gosam_filter_nlo"))])
+             end if
           else
              call msg_fatal ("Dispatch GoSam def: No id!")
           end if
@@ -269,8 +254,13 @@ contains
          select type (core_def)
          type is (openloops_def_t)
             if (present (id)) then
-               call core_def%init (id, model_name, prt_in, &
-                                   prt_out, nlo_type)
+               if (present (nlo_type)) then
+                  call core_def%init (id, model_name, prt_in, &
+                     prt_out, nlo_type)
+               else
+                  call core_def%init (id, model_name, prt_in, &
+                     prt_out, BORN)
+               end if
             else
                call msg_fatal ("Dispatch OpenLoops def: No id!")
             end if
@@ -284,12 +274,14 @@ contains
     
   subroutine dispatch_core (core, core_def, model, &
        helicity_selection, qcd, use_color_factors)
+    
     class(prc_core_t), allocatable, intent(inout) :: core
     class(prc_core_def_t), intent(in) :: core_def
     class(model_data_t), intent(in), target, optional :: model
     type(helicity_selection_t), intent(in), optional :: helicity_selection
     type(qcd_t), intent(in), optional :: qcd
     logical, intent(in), optional :: use_color_factors
+
     select type (core_def)
     type is (prc_test_def_t)
        allocate (test_t :: core)
@@ -325,11 +317,13 @@ contains
 
   subroutine dispatch_core_update (core, model, helicity_selection, qcd, &
        saved_core)
+    
     class(prc_core_t), allocatable, intent(inout) :: core
     class(model_data_t), intent(in), optional, target :: model
     type(helicity_selection_t), intent(in), optional :: helicity_selection
     type(qcd_t), intent(in), optional :: qcd
     class(prc_core_t), allocatable, intent(inout), optional :: saved_core
+
     if (present (saved_core)) then
        allocate (saved_core, source = core)
     end if
@@ -346,8 +340,10 @@ contains
   end subroutine dispatch_core_update
 
   subroutine dispatch_core_restore (core, saved_core)
+    
     class(prc_core_t), allocatable, intent(inout) :: core
     class(prc_core_t), allocatable, intent(inout) :: saved_core
+
     call move_alloc (from = saved_core, to = core)
     select type (core)
     type is (test_t)
@@ -358,8 +354,10 @@ contains
     end select
   end subroutine dispatch_core_restore
 
-  subroutine dispatch_mci (mci, global, process_id)
+  subroutine dispatch_mci (mci, global, process_id, is_nlo)
+    
     class(mci_t), allocatable, intent(inout) :: mci
+    logical, intent(in), optional :: is_nlo
     type(rt_data_t), intent(in) :: global
     type(string_t), intent(in) :: process_id
     type(string_t) :: run_id
@@ -367,6 +365,9 @@ contains
     type(grid_parameters_t) :: grid_par
     type(history_parameters_t) :: history_par
     logical :: rebuild_grids, check_grid_file, negative_weights, verbose
+    logical :: neg_w
+
+    neg_w = .false.; if (present (is_nlo)) neg_w = is_nlo
     integration_method = &
          global%var_list%get_sval (var_str ("$integration_method"))
     select case (char (integration_method))
@@ -413,7 +414,7 @@ contains
          rebuild_grids = &
               var_list%get_lval (var_str ("?rebuild_grids"))
          negative_weights = &
-              var_list%get_lval (var_str ("?negative_weights"))
+              var_list%get_lval (var_str ("?negative_weights")) .or. neg_w
        end associate
        allocate (mci_vamp_t :: mci)
        select type (mci)
@@ -437,6 +438,7 @@ contains
   
   subroutine dispatch_phs (phs, global, process_id, mapping_defaults, phs_par, &
                            phs_method_in)
+    
     class(phs_config_t), allocatable, intent(inout) :: phs
     type(rt_data_t), intent(in) :: global
     type(string_t), intent(in) :: process_id
@@ -447,6 +449,7 @@ contains
     logical :: use_equivalences, vis_channels, fatal_beam_decay
     integer :: u_phs
     logical :: exist
+
     if (present (phs_method_in)) then
        phs_method = phs_method_in
     else
@@ -508,10 +511,12 @@ contains
   end subroutine dispatch_phs
   
   subroutine dispatch_fks (fks_template, global)
+    
     type(fks_template_t), intent(inout) :: fks_template
     type(rt_data_t), intent(in) :: global
     real(default) :: fks_dij_exp1, fks_dij_exp2
     integer :: fks_mapping_type
+    logical :: kinematics_counter_active 
     
     fks_dij_exp1 = &
          global%var_list%get_rval (var_str ("fks_dij_exp1"))
@@ -519,6 +524,8 @@ contains
          global%var_list%get_rval (var_str ("fks_dij_exp2")) 
     fks_mapping_type = &
          global%var_list%get_ival (var_str ("fks_mapping_type"))
+    kinematics_counter_active = &
+         global%var_list%get_lval (var_str ("?fks_count_kinematics"))
 
     call fks_template%set_dij_exp (fks_dij_exp1, fks_dij_exp2)
     call fks_template%set_mapping_type (fks_mapping_type)
@@ -545,26 +552,29 @@ contains
          local%var_list%get_ival (var_str ("seed"))
     s = int (mod (seed, 32768), i16)
     select case (char (rng_method))
-    case ("unit_test")
-       allocate (rng_test_factory_t :: rng_factory)
-       call msg_message ("RNG: Initializing Test random-number generator")
     case ("tao")
        allocate (rng_tao_factory_t :: rng_factory)
        call msg_message ("RNG: Initializing TAO random-number generator")       
     case default
-       call msg_fatal ("Random-number generator '" &
-            // char (rng_method) // "' not implemented")
+       if (associated (dispatch_rng_factory_extra)) then
+          call dispatch_rng_factory_extra (rng_factory, global, local_input)
+       end if
+       if (.not. allocated (rng_factory)) then
+          call msg_fatal ("Random-number generator '" &
+               // char (rng_method) // "' not implemented")
+       end if
     end select
     write (buffer, "(I0)")  s
     call msg_message ("RNG: Setting seed for random-number generator to " &
             // trim (buffer))
     call rng_factory%init (s)
-    call var_list_set_int (global%var_list, var_str ("seed"), seed + 1, &
+    call global%set_int (var_str ("seed"), seed + 1, &
          is_known = .true.)
   end subroutine dispatch_rng_factory
   
   subroutine dispatch_sf_data (data, sf_method, i_beam, sf_prop, global, &
-       pdg_in, pdg_prc)
+       pdg_in, pdg_prc, polarized)
+    
     class(sf_data_t), allocatable, intent(inout) :: data
     type(string_t), intent(in) :: sf_method
     integer, dimension(:), intent(in) :: i_beam
@@ -572,6 +582,7 @@ contains
     type(pdg_array_t), dimension(:,:), intent(in) :: pdg_prc
     type(sf_prop_t), intent(inout) :: sf_prop
     type(rt_data_t), intent(inout) :: global
+    logical, intent(in) :: polarized
     type(model_t), pointer :: model
     type(pdg_array_t), dimension(:), allocatable :: pdg_out
     real(default) :: sqrts, isr_alpha, isr_q_max, isr_mass
@@ -597,9 +608,11 @@ contains
     character(6) :: circe1_accelerator
     logical :: circe2_polarized
     type(string_t) :: circe2_design, circe2_file
+    real(default), dimension(2) :: gaussian_spread
     logical :: beam_events_warn_eof
     type(string_t) :: beam_events_dir, beam_events_file
     logical :: escan_normalize
+    
     lhapdf_photon_sets = [var_str ("DOG0.LHgrid"), var_str ("DOG1.LHgrid"), &
          var_str ("DGG.LHgrid"), var_str ("LACG.LHgrid"), &
          var_str ("GSG0.LHgrid"), var_str ("GSG1.LHgrid"), &
@@ -611,16 +624,6 @@ contains
     sqrts = global%get_sqrts ()
     associate (var_list => global%get_var_list_ptr ())
       select case (char (sf_method))
-      case ("sf_test_0", "sf_test_1")
-         allocate (sf_test_data_t :: data)
-         select type (data)
-         type is (sf_test_data_t)
-            select case (char (sf_method))
-            case ("sf_test_0");  call data%init (model, pdg_in(i_beam(1)))
-            case ("sf_test_1");  call data%init (model, pdg_in(i_beam(1)), &
-                 mode = 1)
-            end select
-         end select
       case ("pdf_builtin")
          allocate (pdf_builtin_data_t :: data)
          select type (data)
@@ -796,7 +799,7 @@ contains
                  circe1_version, circe1_revision, circe1_accelerator, &
                  circe1_chattiness, circe1_with_radiation)
             if (circe1_generate) then
-               call msg_message ("Circe1: activating generator mode")
+               call msg_message ("CIRCE1: activating generator mode")
                call dispatch_rng_factory (rng_factory, global)
                call data%set_generator_mode (rng_factory)
             end if
@@ -812,10 +815,20 @@ contains
             circe2_design = &
                  var_list%get_sval (var_str ("$circe2_design"))
             call data%init (global%os_data, model, pdg_in, sqrts, &
-                 circe2_polarized, circe2_file, circe2_design)
-            call msg_message ("Circe2: activating generator mode")
+                 circe2_polarized, polarized, circe2_file, circe2_design)
+            call msg_message ("CIRCE2: activating generator mode")
             call dispatch_rng_factory (rng_factory, global)
             call data%set_generator_mode (rng_factory)
+         end select
+      case ("gaussian")
+         allocate (gaussian_data_t :: data)
+         select type (data)
+         type is (gaussian_data_t)
+            gaussian_spread = &
+                 [var_list%get_rval (var_str ("gaussian_spread1")), &
+                 var_list%get_rval (var_str ("gaussian_spread2"))]
+            call dispatch_rng_factory (rng_factory, global)
+            call data%init (model, pdg_in, gaussian_spread, rng_factory)
          end select
       case ("beam_events")
          allocate (beam_events_data_t :: data)
@@ -842,8 +855,15 @@ contains
             end if
          end select
       case default
-         call msg_bug ("Structure function '" &
-              // char (sf_method) // "' not implemented yet")
+         if (associated (dispatch_sf_data_extra)) then
+            call dispatch_sf_data_extra (data, &
+                 sf_method, i_beam, sf_prop, global, &
+                 pdg_in, pdg_prc, polarized)
+         end if
+         if (.not. allocated (data)) then
+            call msg_fatal ("Structure function '" &
+                 // char (sf_method) // "' not implemented")
+         end if
       end select
     end associate
     if (allocated (data)) then
@@ -868,17 +888,21 @@ contains
        n = 1
     case ("circe1", "circe2")
        n = 2
+    case ("gaussian")
+       n = 2
     case ("beam_events")
        n = 2
     case ("energy_scan")
        n = 2
     case default
+       n = -1
        call msg_bug ("Structure function '" // char (name) &
             // "' not supported yet")
     end select
   end function strfun_mode
     
   subroutine dispatch_sf_config (sf_config, sf_prop, global, pdg_prc)
+
     type(sf_config_t), dimension(:), allocatable, intent(out) :: sf_config
     type(sf_prop_t), intent(out) :: sf_prop
     type(rt_data_t), intent(inout) :: global
@@ -889,6 +913,7 @@ contains
     type(pdg_array_t), dimension(:), allocatable :: pdg_in
     type(flavor_t) :: flv_in
     integer :: n_beam, n_record, i
+
     beam_structure = global%beam_structure
     call beam_structure%expand (strfun_mode)
     n_record = beam_structure%get_n_record ()
@@ -910,13 +935,15 @@ contains
        call dispatch_sf_data (sf_data, &
             beam_structure%get_name (i), &
             beam_structure%get_i_entry (i), &
-            sf_prop, global, pdg_in, pdg_prc)
+            sf_prop, global, pdg_in, pdg_prc, &
+            beam_structure%polarized ())
        call sf_config(i)%init (beam_structure%get_i_entry (i), sf_data)
        deallocate (sf_data)
     end do
   end subroutine dispatch_sf_config
     
   subroutine dispatch_sf_channels (sf_channel, sf_string, sf_prop, coll, global)
+    
     type(sf_channel_t), dimension(:), allocatable, intent(out) :: sf_channel
     type(string_t), intent(out) :: sf_string
     type(sf_prop_t), intent(in) :: sf_prop
@@ -1081,14 +1108,14 @@ contains
        if (circe1_generate) then
           allocate (single_mapping (2), source = [2, 3])
        else
-          call msg_fatal ("Circe/EPA: supported with ?circe1_generate=true &
+          call msg_fatal ("CIRCE/EPA: supported with ?circe1_generate=true &
                &only")
        end if
     case ("circe1 => ewa, none => none, ewa")
        if (circe1_generate) then
           allocate (single_mapping (2), source = [2, 3])
        else 
-          call msg_fatal ("Circe/EWA: supported with ?circe1_generate=true &
+          call msg_fatal ("CIRCE/EWA: supported with ?circe1_generate=true &
                &only")
        end if
     case ("circe1 => epa, none", &
@@ -1096,7 +1123,7 @@ contains
        if (circe1_generate) then
           allocate (single_mapping (1), source = [2])
        else
-          call msg_fatal ("Circe/EPA: supported with ?circe1_generate=true &
+          call msg_fatal ("CIRCE/EPA: supported with ?circe1_generate=true &
                &only")
        end if
     case ("circe1 => epa, none => none, isr", &
@@ -1106,29 +1133,38 @@ contains
        if (circe1_generate) then
           allocate (single_mapping (2), source = [2, 3])
        else
-          call msg_fatal ("Circe/EPA: supported with ?circe1_generate=true &
+          call msg_fatal ("CIRCE/EPA: supported with ?circe1_generate=true &
                &only")
        end if
     case ("circe2", &
+         "gaussian", &
          "beam_events")
        !!! no mapping
     case ("circe2 => isr, none => none, isr", &
+       "gaussian => isr, none => none, isr", &
        "beam_events => isr, none => none, isr")
        allocate (s_mapping (2), source = [2, 3])
        power_mapping = .true.
        power_mapping_eps = minval (sf_prop%isr_eps)
     case ("circe2 => isr, none", &
          "circe2 => none, isr", &
+         "gaussian => isr, none", &
+         "gaussian => none, isr", &
          "beam_events => isr, none", &
          "beam_events => none, isr")
        allocate (single_mapping (1), source = [2])
     case ("circe2 => epa, none => none, epa", &
+         "gaussian => epa, none => none, epa", &
          "beam_events => epa, none => none, epa")
        allocate (single_mapping (2), source = [2, 3])
     case ("circe2 => epa, none", &
          "circe2 => none, epa", &
          "circe2 => ewa, none", &
          "circe2 => none, ewa", &
+         "gaussian => epa, none", &
+         "gaussian => none, epa", &
+         "gaussian => ewa, none", &
+         "gaussian => none, ewa", &
          "beam_events => epa, none", &
          "beam_events => none, epa", &
          "beam_events => ewa, none", &
@@ -1138,6 +1174,10 @@ contains
          "circe2 => isr, none => none, epa", &
          "circe2 => ewa, none => none, isr", &
          "circe2 => isr, none => none, ewa", &
+         "gaussian => epa, none => none, isr", &
+         "gaussian => isr, none => none, epa", &
+         "gaussian => ewa, none => none, isr", &
+         "gaussian => isr, none => none, ewa", &
          "beam_events => epa, none => none, isr", &
          "beam_events => isr, none => none, epa", &
          "beam_events => ewa, none => none, isr", &
@@ -1253,12 +1293,14 @@ contains
   end subroutine dispatch_sf_channels
     
   subroutine dispatch_eio (eio, method, global)
+    
     class(eio_t), intent(inout), allocatable :: eio
     type(string_t), intent(in) :: method
     type(rt_data_t), intent(in) :: global
     logical :: check, keep_beams, keep_remnants, recover_beams
     logical :: use_alpha_s_from_file, use_scale_from_file
     logical :: write_sqme_prc, write_sqme_ref, write_sqme_alt
+    logical :: output_cross_section, ensure_order
     type(string_t) :: lhef_version, lhef_extension, raw_version
     type(string_t) :: extension_default, debug_extension, extension_hepmc, &
          extension_lha, extension_hepevt, extension_ascii_short, &
@@ -1266,7 +1308,19 @@ contains
          extension_stdhep, extension_stdhep_up, extension_raw, &
          extension_hepevt_verb, extension_lha_verb, extension_lcio
     integer :: checkpoint
-    logical :: show_process, show_transforms, show_decay, verbose, pacify
+    logical :: show_process, show_transforms, show_decay, verbose, pacified
+    keep_beams = &
+         global%var_list%get_lval (var_str ("?keep_beams"))
+    keep_remnants = &
+         global%var_list%get_lval (var_str ("?keep_remnants"))
+    ensure_order = &
+         global%var_list%get_lval (var_str ("?hepevt_ensure_order"))
+    recover_beams = &
+         global%var_list%get_lval (var_str ("?recover_beams"))
+    use_alpha_s_from_file = &
+         global%var_list%get_lval (var_str ("?use_alpha_s_from_file"))
+    use_scale_from_file = &
+         global%var_list%get_lval (var_str ("?use_scale_from_file"))
     select case (char (method))
     case ("raw")
        allocate (eio_raw_t :: eio)
@@ -1286,24 +1340,14 @@ contains
        type is (eio_checkpoints_t)
           checkpoint = &
                global%var_list%get_ival (var_str ("checkpoint"))
-          pacify = &
+          pacified = &
                global%var_list%get_lval (var_str ("?pacify"))
-          call eio%set_parameters (checkpoint, blank = pacify)
+          call eio%set_parameters (checkpoint, blank = pacified)
        end select
     case ("lhef")
        allocate (eio_lhef_t :: eio)
        select type (eio)
        type is (eio_lhef_t)
-          keep_beams = &
-               global%var_list%get_lval (var_str ("?keep_beams"))
-          keep_remnants = &
-               global%var_list%get_lval (var_str ("?keep_remnants"))
-          recover_beams = &
-               global%var_list%get_lval (var_str ("?recover_beams"))
-          use_alpha_s_from_file = &
-               global%var_list%get_lval (var_str ("?use_alpha_s_from_file"))
-          use_scale_from_file = &
-               global%var_list%get_lval (var_str ("?use_scale_from_file"))
           lhef_version = &
                global%var_list%get_sval (var_str ("$lhef_version"))
           lhef_extension = &
@@ -1324,33 +1368,19 @@ contains
        allocate (eio_hepmc_t :: eio)
        select type (eio)
        type is (eio_hepmc_t)
-          ! keep_beams = &
-          !      global%var_list%get_lval (var_str ("?keep_beams"))
-          use_alpha_s_from_file = &
-               global%var_list%get_lval (var_str ("?use_alpha_s_from_file"))
-          use_scale_from_file = &
-               global%var_list%get_lval (var_str ("?use_scale_from_file"))
-          recover_beams = &
-               global%var_list%get_lval (var_str ("?recover_beams"))
+          output_cross_section = &
+               global%var_list%get_lval (var_str ("?hepmc_output_cross_section"))
           extension_hepmc = &
                global%var_list%get_sval (var_str ("$extension_hepmc"))          
           ! call eio%set_parameters (keep_beams, recover_beams, extension_hepmc)
           call eio%set_parameters (recover_beams, &
                use_alpha_s_from_file, use_scale_from_file, &
-               extension_hepmc)
+               extension_hepmc, output_cross_section)
        end select
     case ("lcio")
        allocate (eio_lcio_t :: eio)
        select type (eio)
        type is (eio_lcio_t)
-          ! keep_beams = &
-          !      global%var_list%get_lval (var_str ("?keep_beams"))
-          use_alpha_s_from_file = &
-               global%var_list%get_lval (var_str ("?use_alpha_s_from_file"))
-          use_scale_from_file = &
-               global%var_list%get_lval (var_str ("?use_scale_from_file"))
-          recover_beams = &
-               global%var_list%get_lval (var_str ("?recover_beams"))
           extension_lcio = &
                global%var_list%get_sval (var_str ("$extension_lcio"))
           ! call eio%set_parameters &
@@ -1363,39 +1393,19 @@ contains
        allocate (eio_stdhep_hepevt_t :: eio)
        select type (eio)
        type is (eio_stdhep_hepevt_t)                   
-          keep_beams = &
-               global%var_list%get_lval (var_str ("?keep_beams"))
-          keep_remnants = &
-               global%var_list%get_lval (var_str ("?keep_remnants"))
-          use_alpha_s_from_file = &
-               global%var_list%get_lval (var_str ("?use_alpha_s_from_file"))
-          use_scale_from_file = &
-               global%var_list%get_lval (var_str ("?use_scale_from_file"))
-          recover_beams = &
-               global%var_list%get_lval (var_str ("?recover_beams"))          
           extension_stdhep = &
                global%var_list%get_sval (var_str ("$extension_stdhep"))
           call eio%set_parameters &
-               (keep_beams, keep_remnants, recover_beams, &
+               (keep_beams, keep_remnants, ensure_order, recover_beams, &
                 use_alpha_s_from_file, use_scale_from_file, extension_stdhep)
        end select
     case ("stdhep_up")
        allocate (eio_stdhep_hepeup_t :: eio)
        select type (eio)
        type is (eio_stdhep_hepeup_t)          
-          keep_beams = &
-               global%var_list%get_lval (var_str ("?keep_beams"))
-          keep_remnants = &
-               global%var_list%get_lval (var_str ("?keep_remnants"))
-          use_alpha_s_from_file = &
-               global%var_list%get_lval (var_str ("?use_alpha_s_from_file"))
-          use_scale_from_file = &
-               global%var_list%get_lval (var_str ("?use_scale_from_file"))
-          recover_beams = &
-               global%var_list%get_lval (var_str ("?recover_beams"))          
           extension_stdhep_up = &
                global%var_list%get_sval (var_str ("$extension_stdhep_up")) 
-          call eio%set_parameters (keep_beams, keep_remnants, &
+          call eio%set_parameters (keep_beams, keep_remnants, ensure_order, &
                recover_beams, use_alpha_s_from_file, &
                use_scale_from_file, extension_stdhep_up)          
        end select       
@@ -1403,27 +1413,19 @@ contains
        allocate (eio_ascii_ascii_t :: eio)
        select type (eio)
        type is (eio_ascii_ascii_t)
-          keep_beams = &
-               global%var_list%get_lval (var_str ("?keep_beams"))
-          keep_remnants = &
-               global%var_list%get_lval (var_str ("?keep_remnants"))
           extension_default = &
                global%var_list%get_sval (var_str ("$extension_default"))
           call eio%set_parameters &
-               (keep_beams, keep_remnants, extension_default)
+               (keep_beams, keep_remnants, ensure_order, extension_default)
        end select       
     case ("athena")   
        allocate (eio_ascii_athena_t :: eio)
        select type (eio)
        type is (eio_ascii_athena_t)
-          keep_beams = &
-               global%var_list%get_lval (var_str ("?keep_beams"))
-          keep_remnants = &
-               global%var_list%get_lval (var_str ("?keep_remnants"))
           extension_athena = &
                global%var_list%get_sval (var_str ("$extension_athena"))
           call eio%set_parameters &
-               (keep_beams, keep_remnants, extension_athena)
+               (keep_beams, keep_remnants, ensure_order, extension_athena)
        end select              
     case ("debug")   
        allocate (eio_ascii_debug_t :: eio)
@@ -1446,104 +1448,76 @@ contains
                show_decay = show_decay, &
                verbose = verbose)
        end select
-    case ("hepevt")   
+    case ("hepevt")
        allocate (eio_ascii_hepevt_t :: eio)
        select type (eio)
        type is (eio_ascii_hepevt_t)
-          keep_beams = &
-               global%var_list%get_lval (var_str ("?keep_beams"))
-          keep_remnants = &
-               global%var_list%get_lval (var_str ("?keep_remnants"))
           extension_hepevt = &
                global%var_list%get_sval (var_str ("$extension_hepevt"))
           call eio%set_parameters &
-               (keep_beams, keep_remnants, extension_hepevt)
+               (keep_beams, keep_remnants, ensure_order, extension_hepevt)
        end select              
     case ("hepevt_verb")   
        allocate (eio_ascii_hepevt_verb_t :: eio)
        select type (eio)
        type is (eio_ascii_hepevt_verb_t)
-          keep_beams = &
-               global%var_list%get_lval (var_str ("?keep_beams"))
-          keep_remnants = &
-               global%var_list%get_lval (var_str ("?keep_remnants"))
           extension_hepevt_verb = &
                global%var_list%get_sval (var_str ("$extension_hepevt_verb"))
           call eio%set_parameters &
-               (keep_beams, keep_remnants, extension_hepevt_verb)
+               (keep_beams, keep_remnants, ensure_order, extension_hepevt_verb)
        end select                     
     case ("lha")   
        allocate (eio_ascii_lha_t :: eio)
        select type (eio)
        type is (eio_ascii_lha_t)
-          keep_beams = &
-               global%var_list%get_lval (var_str ("?keep_beams"))
-          keep_remnants = &
-               global%var_list%get_lval (var_str ("?keep_remnants"))
           extension_lha = &
                global%var_list%get_sval (var_str ("$extension_lha"))
           call eio%set_parameters &
-               (keep_beams, keep_remnants, extension_lha)
+               (keep_beams, keep_remnants, ensure_order, extension_lha)
        end select                     
     case ("lha_verb")   
        allocate (eio_ascii_lha_verb_t :: eio)
        select type (eio)
        type is (eio_ascii_lha_verb_t)
-          keep_beams = &
-               global%var_list%get_lval (var_str ("?keep_beams"))
-          keep_remnants = &
-               global%var_list%get_lval (var_str ("?keep_remnants"))
           extension_lha_verb = global%var_list%get_sval ( &
-               var_str ("$extension_lha_verb"))          
+               var_str ("$extension_lha_verb"))
           call eio%set_parameters &
-               (keep_beams, keep_remnants, extension_lha_verb)
-       end select                            
-    case ("long")   
+               (keep_beams, keep_remnants, ensure_order, extension_lha_verb)
+       end select
+    case ("long")
        allocate (eio_ascii_long_t :: eio)
        select type (eio)
        type is (eio_ascii_long_t)
-          keep_beams = &
-               global%var_list%get_lval (var_str ("?keep_beams"))
-          keep_remnants = &
-               global%var_list%get_lval (var_str ("?keep_remnants"))
           extension_ascii_long = &
                global%var_list%get_sval (var_str ("$extension_ascii_long"))
           call eio%set_parameters &
-               (keep_beams, keep_remnants, extension_ascii_long)
+               (keep_beams, keep_remnants, ensure_order, extension_ascii_long)
        end select              
     case ("mokka")   
        allocate (eio_ascii_mokka_t :: eio)
        select type (eio)
        type is (eio_ascii_mokka_t)
-          keep_beams = &
-               global%var_list%get_lval (var_str ("?keep_beams"))
-          keep_remnants = &
-               global%var_list%get_lval (var_str ("?keep_remnants"))
           extension_mokka = &
                global%var_list%get_sval (var_str ("$extension_mokka"))          
           call eio%set_parameters &
-               (keep_beams, keep_remnants, extension_mokka)
+               (keep_beams, keep_remnants, ensure_order, extension_mokka)
        end select                     
     case ("short")   
        allocate (eio_ascii_short_t :: eio)
        select type (eio)
        type is (eio_ascii_short_t)
-          keep_beams = &
-               global%var_list%get_lval (var_str ("?keep_beams"))
-          keep_remnants = &
-               global%var_list%get_lval (var_str ("?keep_remnants"))
           extension_ascii_short = &
                global%var_list%get_sval (var_str ("$extension_ascii_short"))
           call eio%set_parameters &
-               (keep_beams, keep_remnants, extension_ascii_short)
+               (keep_beams, keep_remnants, ensure_order, extension_ascii_short)
        end select                     
     case ("weight_stream")
        allocate (eio_weights_t :: eio)
        select type (eio)
        type is (eio_weights_t)
-          pacify = &
+          pacified = &
                global%var_list%get_lval (var_str ("?pacify"))
-          call eio%set_parameters (pacify = pacify)       
+          call eio%set_parameters (pacify = pacified)       
        end select
     case default
        call msg_fatal ("Event I/O method '" // char (method) &
@@ -1553,46 +1527,44 @@ contains
   end subroutine dispatch_eio
   
   subroutine dispatch_qcd (qcd, global)
+
     type(qcd_t), intent(inout) :: qcd
     type(rt_data_t), intent(in), target :: global
-    type(var_list_t), pointer :: var_list
     logical :: fixed, from_mz, from_pdf_builtin, from_lhapdf, from_lambda_qcd
     real(default) :: mz, alpha_val, lambda
     integer :: nf, order, lhapdf_member
     type(string_t) :: pdfset, lhapdf_dir, lhapdf_file
-    var_list => global%get_var_list_ptr ()
     fixed = &
-         var_list%get_lval (var_str ("?alpha_s_is_fixed"))
+         global%get_lval (var_str ("?alpha_s_is_fixed"))
     from_mz = &
-         var_list%get_lval (var_str ("?alpha_s_from_mz"))
+         global%get_lval (var_str ("?alpha_s_from_mz"))
     from_pdf_builtin = &
-         var_list%get_lval (var_str ("?alpha_s_from_pdf_builtin"))
+         global%get_lval (var_str ("?alpha_s_from_pdf_builtin"))
     from_lhapdf = &
-         var_list%get_lval (var_str ("?alpha_s_from_lhapdf"))
+         global%get_lval (var_str ("?alpha_s_from_lhapdf"))
     from_lambda_qcd = &
-         var_list%get_lval (var_str ("?alpha_s_from_lambda_qcd"))
+         global%get_lval (var_str ("?alpha_s_from_lambda_qcd"))
     pdfset = &
-         var_list%get_sval (var_str ("$pdf_builtin_set"))    
+         global%get_sval (var_str ("$pdf_builtin_set"))    
     lambda = &
-         var_list%get_rval (var_str ("lambda_qcd"))
+         global%get_rval (var_str ("lambda_qcd"))
     nf = &
-         var_list%get_ival (var_str ("alpha_s_nf"))
+         global%get_ival (var_str ("alpha_s_nf"))
     order = &
-         var_list%get_ival (var_str ("alpha_s_order"))
+         global%get_ival (var_str ("alpha_s_order"))
     lhapdf_dir = &
-         var_list%get_sval (var_str ("$lhapdf_dir"))
+         global%get_sval (var_str ("$lhapdf_dir"))
     lhapdf_file = &
-         var_list%get_sval (var_str ("$lhapdf_file"))
+         global%get_sval (var_str ("$lhapdf_file"))
     lhapdf_member = &
-         var_list%get_ival (var_str ("lhapdf_member"))         
-    var_list => global%get_var_list_ptr ()
-    if (var_list%contains (var_str ("mZ"))) then
-       mz = var_list%get_rval (var_str ("mZ"))
+         global%get_ival (var_str ("lhapdf_member"))         
+    if (global%contains (var_str ("mZ"))) then
+       mz = global%get_rval (var_str ("mZ"))
     else
        mz = MZ_REF
     end if
-    if (var_list%contains (var_str ("alphas"))) then
-       alpha_val = var_list%get_rval (var_str ("alphas"))
+    if (global%contains (var_str ("alphas"))) then
+       alpha_val = global%get_rval (var_str ("alphas"))
     else
        alpha_val = ALPHA_QCD_MZ_REF
     end if
@@ -1645,16 +1617,17 @@ contains
     end select
   end subroutine dispatch_qcd
   
-  subroutine dispatch_powheg (powheg, global, process_name)
-    type(powheg_t), intent(inout) :: powheg 
-    type(powheg_settings_t) :: settings
-    type(rt_data_t), intent(in), target :: global
-    type(string_t), intent(in) :: process_name
-    type(var_list_t), pointer :: var_list    
-    var_list => global%get_var_list_ptr ()
-    call settings%init (var_list)
-    call powheg%init (settings, process_name)
-  end subroutine dispatch_powheg
+  subroutine dispatch_evt_nlo (evt)
+    class(evt_t), intent(out), pointer :: evt
+    call msg_message ("Simuate: activating fixed-order NLO events")
+    allocate (evt_nlo_t :: evt)
+    evt%only_weighted_events = .true.
+    select type (evt)
+    type is (evt_nlo_t)
+       evt%i_evaluation = 0
+    end select
+  end subroutine dispatch_evt_nlo
+
   subroutine dispatch_evt_decay (evt, global)
     class(evt_t), intent(out), pointer :: evt
     type(rt_data_t), intent(in) :: global
@@ -1669,88 +1642,103 @@ contains
     end if
   end subroutine dispatch_evt_decay
 
-  subroutine dispatch_evt_shower (evt, rt_data, process)
+  subroutine dispatch_evt_shower (evt, global, process)
+
     class(evt_t), intent(out), pointer :: evt
-    type(rt_data_t), intent(in), target :: rt_data
-    type(process_t), intent(in), optional, target :: process
-    type(var_list_t), pointer :: var_list
-    type(powheg_t) :: powheg
+    type(rt_data_t), intent(in), target :: global
+    type(process_t), intent(in), optional :: process
     type(string_t) :: lhapdf_file, lhapdf_dir, process_name
     integer :: lhapdf_member
     type(shower_settings_t) :: settings
-    var_list => rt_data%get_var_list_ptr ()
-    lhapdf_dir = &
-         var_list%get_sval (var_str ("$lhapdf_dir"))
-    lhapdf_file = &
-         var_list%get_sval (var_str ("$lhapdf_file"))
-    lhapdf_member = &
-         var_list%get_ival (var_str ("lhapdf_member"))
-    allocate (evt_shower_t :: evt)
+    type(var_list_t), pointer :: var_list
+
     call msg_message ("Simulate: activating parton shower")
+    var_list => global%get_var_list_ptr ()
+    allocate (evt_shower_t :: evt)
     call settings%init (var_list)
     if (present (process)) then
        process_name = process%get_id ()
-       if (settings%powheg_matching) then
-          call dispatch_powheg (powheg, rt_data, process_name)
-       end if
-    end if
-    if (settings%mlm_matching .and. settings%ckkw_matching) then
-       call msg_fatal ("Both MLM and CKKW matching activated," // &
-            LF // "     aborting simulation")
+    else
+       process_name = 'dispatch_testing'
     end if
     select type (evt)
     type is (evt_shower_t)
-       call evt%init (settings, rt_data%fallback_model, rt_data%os_data, &
-            powheg)
-       if (settings%mlm_matching) then
-          call msg_message ("Simulate: applying MLM matching")
-          allocate (mlm_matching_settings_t :: evt%matching_settings)
-          allocate (mlm_matching_data_t :: evt%data)
-       end if
-       if (settings%ckkw_matching) then
-          call msg_warning ("Simulate: CKKW(-L) matching not yet supported")
-          allocate (ckkw_matching_settings_t :: evt%matching_settings)
-          allocate (ckkw_matching_data_t :: evt%data)
-       end if
-       if (allocated (evt%matching_settings)) &
-            call evt%matching_settings%init (var_list)
+       call evt%init (global%fallback_model, global%os_data)
+       lhapdf_member = &
+            global%get_ival (var_str ("lhapdf_member"))
        if (LHAPDF6_AVAILABLE) then
+          lhapdf_dir = &
+               global%get_sval (var_str ("$lhapdf_dir"))
+          lhapdf_file = &
+               global%get_sval (var_str ("$lhapdf_file"))
           call lhapdf_initialize &
                (1, lhapdf_dir, lhapdf_file, lhapdf_member, evt%pdf_data%pdf)
        end if
-       if (present (process)) &
-            call evt%setup_pdf &
-            (process, rt_data%beam_structure, lhapdf_member)
-       select case (evt%settings%method)
+       if (present (process))  call evt%pdf_data%setup ("Shower", &
+            global%beam_structure, lhapdf_member, process%get_pdf_set ())
+       select case (settings%method)
        case (PS_WHIZARD)
           allocate (shower_t :: evt%shower)
        case (PS_PYTHIA6)
           allocate (shower_pythia6_t :: evt%shower)
        case default
           call msg_fatal ('Shower: Method ' // &
-            char (var_list%get_sval (var_str ("$shower_method"))) // &
+            char (global%get_sval (var_str ("$shower_method"))) // &
             'not implemented!')
        end select
-       call evt%shower%init (evt%settings, evt%pdf_data)
+       call evt%shower%init (settings, evt%pdf_data)
     end select
+    call dispatch_matching (evt, settings, var_list, process_name)
   end subroutine dispatch_evt_shower
 
+  subroutine dispatch_matching (evt, settings, var_list, process_name)
+    
+    class(evt_t), intent(inout) :: evt
+    type(var_list_t), intent(in) :: var_list
+    type(string_t), intent(in) :: process_name
+    type(shower_settings_t), intent(in) :: settings
+    
+    select type (evt)
+    type is (evt_shower_t)
+       if (settings%mlm_matching .and. settings%ckkw_matching) then
+          call msg_fatal ("Both MLM and CKKW matching activated," // &
+               LF // "     aborting simulation")
+       end if
+       ! TODO: (bcn 2015-05-04) Change interface to '$matching_method'
+       if (settings%powheg_matching) then
+          call msg_message ("Simulate: applying POWHEG matching")
+          allocate (powheg_matching_t :: evt%matching)
+       end if
+       if (settings%mlm_matching) then
+          call msg_message ("Simulate: applying MLM matching")
+          allocate (mlm_matching_t :: evt%matching)
+       end if
+       if (settings%ckkw_matching) then
+          call msg_warning ("Simulate: CKKW(-L) matching not yet supported")
+          allocate (ckkw_matching_t :: evt%matching)
+       end if
+       if (allocated (evt%matching)) &
+            call evt%matching%init (var_list, process_name)
+    end select
+  end subroutine dispatch_matching
+
   subroutine dispatch_evt_hadrons (evt, global, process)
+
     class(evt_t), intent(out), pointer :: evt
     type(rt_data_t), intent(in), target :: global
     type(process_t), intent(in), optional, target :: process
     type(string_t) :: method
-    type(var_list_t), pointer :: var_list
     type(shower_settings_t) :: settings
+    type(var_list_t), pointer :: var_list
+    
     var_list => global%get_var_list_ptr ()
     method = &
-         var_list%get_sval (var_str ("$hadronization_method"))
+         global%get_sval (var_str ("$hadronization_method"))
     allocate (evt_hadrons_t :: evt)
     call msg_message ("Simulate: activating hadronization")
     call settings%init (var_list)
     select type (evt)
     type is (evt_hadrons_t)
-       call settings%init (var_list)
        call evt%init (settings, global%fallback_model, method)
     end select
   end subroutine dispatch_evt_hadrons
@@ -1759,1023 +1747,12 @@ contains
     type(rt_data_t), intent(inout), target :: global
     logical, intent(out) :: input, spectrum, decays
     input = &
-         global%var_list%get_lval (var_str ("?slha_read_input"))
+         global%get_lval (var_str ("?slha_read_input"))
     spectrum = &
-         global%var_list%get_lval (var_str ("?slha_read_spectrum"))
+         global%get_lval (var_str ("?slha_read_spectrum"))
     decays = &
-         global%var_list%get_lval (var_str ("?slha_read_decays"))    
+         global%get_lval (var_str ("?slha_read_decays"))    
   end subroutine dispatch_slha
 
-
-  subroutine dispatch_test (u, results)
-    integer, intent(in) :: u
-    type(test_results_t), intent(inout) :: results
-    call test (dispatch_1, "dispatch_1", &
-         "process configuration method", &
-         u, results)
-    call test (dispatch_2, "dispatch_2", &
-         "process core", &
-         u, results)
-    call test (dispatch_3, "dispatch_3", &
-         "integration method", &
-         u, results)
-    call test (dispatch_4, "dispatch_4", &
-         "phase-space configuration", &
-         u, results)
-    call test (dispatch_5, "dispatch_5", &
-         "random-number generator", &
-         u, results)
-    call test (dispatch_6, "dispatch_6", &
-         "configure phase space using file", &
-         u, results)
-    call test (dispatch_7, "dispatch_7", &
-         "structure-function data", &
-         u, results)
-    call test (dispatch_8, "dispatch_8", &
-         "beam structure", &
-         u, results)
-    call test (dispatch_9, "dispatch_9", &
-         "event I/O", &
-         u, results)
-    call test (dispatch_10, "dispatch_10", &
-         "process core update", &
-         u, results)
-    call test (dispatch_11, "dispatch_11", &
-         "QCD coupling", &
-         u, results)
-    call test (dispatch_12, "dispatch_12", &
-         "Shower settings", &
-         u, results)
-    call test (dispatch_13, "dispatch_13", &
-         "event transforms", &
-         u, results)
-    call test (dispatch_14, "dispatch_14", &
-         "SLHA interface", &
-         u, results)
-  end subroutine dispatch_test
-
-  subroutine dispatch_1 (u)
-    integer, intent(in) :: u
-    type(string_t), dimension(2) :: prt_in, prt_out
-    type(rt_data_t), target :: global
-    class(prc_core_def_t), allocatable :: core_def
-    
-    write (u, "(A)")  "* Test output: dispatch_1"
-    write (u, "(A)")  "*   Purpose: select process configuration method"
-    write (u, "(A)")
-
-    call global%global_init ()
-    
-    call var_list_set_log (global%var_list, var_str ("?omega_openmp"), &
-         .false., is_known = .true.)
-
-    prt_in = [var_str ("a"), var_str ("b")]
-    prt_out = [var_str ("c"), var_str ("d")]
-
-    write (u, "(A)")  "* Allocate core_def as prc_test_def"
-
-    call var_list_set_string (global%var_list, var_str ("$method"), &
-         var_str ("unit_test"), is_known = .true.)
-    call dispatch_core_def (core_def, prt_in, prt_out, global)
-    select type (core_def)
-    type is (prc_test_def_t)
-       call core_def%write (u)
-    end select
-    
-    deallocate (core_def)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Allocate core_def as omega_def"
-    write (u, "(A)")
-
-    call var_list_set_string (global%var_list, var_str ("$method"), &
-         var_str ("omega"), is_known = .true.)
-    call dispatch_core_def (core_def, prt_in, prt_out, global)
-    select type (core_def)
-    type is (omega_omega_def_t)
-       call core_def%write (u)
-    end select
-    
-    call global%final ()
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: dispatch_1"
-    
-  end subroutine dispatch_1
-  
-  subroutine dispatch_2 (u)
-    integer, intent(in) :: u
-    type(string_t), dimension(2) :: prt_in, prt_out
-    type(rt_data_t), target :: global
-    class(prc_core_def_t), allocatable :: core_def
-    class(prc_core_t), allocatable :: core
-    
-    write (u, "(A)")  "* Test output: dispatch_2"
-    write (u, "(A)")  "*   Purpose: select process configuration method"
-    write (u, "(A)")  "             and allocate process core"
-    write (u, "(A)")
-
-    call syntax_model_file_init ()
-    call global%global_init ()
-
-    prt_in = [var_str ("a"), var_str ("b")]
-    prt_out = [var_str ("c"), var_str ("d")]
-
-    write (u, "(A)")  "* Allocate core as test_t"
-    write (u, "(A)")
-
-    call var_list_set_string (global%var_list, var_str ("$method"), &
-         var_str ("unit_test"), is_known = .true.)
-    call dispatch_core_def (core_def, prt_in, prt_out, global)
-    call dispatch_core (core, core_def)
-    select type (core)
-    type is (test_t)
-       call core%write (u)
-    end select
-    
-    deallocate (core)
-    deallocate (core_def)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Allocate core as prc_omega_t"
-    write (u, "(A)")
-
-    call var_list_set_string (global%var_list, var_str ("$method"), &
-         var_str ("omega"), is_known = .true.)
-    call dispatch_core_def (core_def, prt_in, prt_out, global)
-
-    call global%select_model (var_str ("Test"))
-
-    call var_list_set_log (global%var_list, &
-         var_str ("?helicity_selection_active"), &
-         .true., is_known = .true.)
-    call var_list_set_real (global%var_list, &
-         var_str ("helicity_selection_threshold"), &
-         1e9_default, is_known = .true.)
-    call var_list_set_int (global%var_list, &
-         var_str ("helicity_selection_cutoff"), &
-         10, is_known = .true.)
-    
-    call dispatch_core (core, core_def, &
-         global%model, global%get_helicity_selection ())
-    call core_def%allocate_driver (core%driver, var_str (""))
-
-    select type (core)
-    type is (prc_omega_t)
-       call core%write (u)
-    end select
-    
-    call global%final ()
-    call syntax_model_file_final ()
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: dispatch_2"
-    
-  end subroutine dispatch_2
-  
-  subroutine dispatch_3 (u)
-    integer, intent(in) :: u
-    type(rt_data_t), target :: global
-    class(mci_t), allocatable :: mci
-    type(string_t) :: process_id
-    
-    write (u, "(A)")  "* Test output: dispatch_3"
-    write (u, "(A)")  "*   Purpose: select integration method"
-    write (u, "(A)")
-
-    call global%global_init ()
-    process_id = "dispatch_3"
-
-    write (u, "(A)")  "* Allocate MCI as midpoint_t"
-    write (u, "(A)")
-
-    call var_list_set_string (global%var_list, &
-         var_str ("$integration_method"), &
-         var_str ("midpoint"), is_known = .true.)
-    call dispatch_mci (mci, global, process_id)
-    select type (mci)
-    type is (mci_midpoint_t)
-       call mci%write (u)
-    end select
-
-    call mci%final ()
-    deallocate (mci)
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Allocate MCI as vamp_t"
-    write (u, "(A)")
-
-    call var_list_set_string (global%var_list, &
-         var_str ("$integration_method"), &
-         var_str ("vamp"), is_known = .true.)
-    call var_list_set_int (global%var_list, var_str ("threshold_calls"), &
-         1, is_known = .true.)
-    call var_list_set_int (global%var_list, var_str ("min_calls_per_channel"), &
-         2, is_known = .true.)
-    call var_list_set_int (global%var_list, var_str ("min_calls_per_bin"), &
-         3, is_known = .true.)
-    call var_list_set_int (global%var_list, var_str ("min_bins"), &
-         4, is_known = .true.)
-    call var_list_set_int (global%var_list, var_str ("max_bins"), &
-         5, is_known = .true.)
-    call var_list_set_log (global%var_list, var_str ("?stratified"), &
-         .false., is_known = .true.)
-    call var_list_set_log (global%var_list, var_str ("?use_vamp_equivalences"),&
-         .false., is_known = .true.)
-    call var_list_set_real (global%var_list, var_str ("channel_weights_power"),&
-         4._default, is_known = .true.)
-    call var_list_set_log (global%var_list, &
-         var_str ("?vamp_history_global_verbose"), &
-         .true., is_known = .true.)
-    call var_list_set_log (global%var_list, &
-         var_str ("?vamp_history_channels"), &
-         .true., is_known = .true.)
-    call var_list_set_log (global%var_list, &
-         var_str ("?vamp_history_channels_verbose"), &
-         .true., is_known = .true.)
-    call var_list_set_log (global%var_list, var_str ("?stratified"), &
-         .false., is_known = .true.)
-
-    call dispatch_mci (mci, global, process_id)
-    select type (mci)
-    type is (mci_vamp_t)
-       call mci%write (u)
-       call mci%write_history_parameters (u)
-    end select
-
-    call mci%final ()
-    deallocate (mci)
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Allocate MCI as vamp_t, allow for negative weights"
-    write (u, "(A)")    
-    
-    call var_list_set_string (global%var_list, &
-         var_str ("$integration_method"), &
-         var_str ("vamp"), is_known = .true.)
-    call var_list_set_log (global%var_list, var_str ("?negative_weights"), &
-         .true., is_known = .true.)
-    
-    call dispatch_mci (mci, global, process_id)
-    select type (mci)       
-    type is (mci_vamp_t)
-       call mci%write (u)
-       call mci%write_history_parameters (u)
-    end select
-    
-    call mci%final ()
-    deallocate (mci)
-    
-    call global%final ()
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: dispatch_3"
-    
-  end subroutine dispatch_3
-  
-  subroutine dispatch_4 (u)
-    integer, intent(in) :: u
-    type(rt_data_t), target :: global
-    class(phs_config_t), allocatable :: phs
-    type(phs_parameters_t) :: phs_par
-    type(mapping_defaults_t) :: mapping_defs
-    
-    write (u, "(A)")  "* Test output: dispatch_4"
-    write (u, "(A)")  "*   Purpose: select phase-space configuration method"
-    write (u, "(A)")
-
-    call global%global_init ()
-
-    write (u, "(A)")  "* Allocate PHS as phs_single_t"
-    write (u, "(A)")
-
-    call var_list_set_string (global%var_list, &
-         var_str ("$phs_method"), &
-         var_str ("single"), is_known = .true.)
-    call dispatch_phs (phs, global, var_str ("dispatch_4"))
-    call phs%write (u)
-
-    call phs%final ()
-    deallocate (phs)
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Allocate PHS as phs_wood_t"
-    write (u, "(A)")
-
-    call var_list_set_string (global%var_list, &
-         var_str ("$phs_method"), &
-         var_str ("wood"), is_known = .true.)
-    call dispatch_phs (phs, global, var_str ("dispatch_4"))
-    call phs%write (u)
-          
-    call phs%final ()
-    deallocate (phs)
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Setting parameters for phs_wood_t"
-    write (u, "(A)")        
-
-    phs_par%m_threshold_s = 123
-    phs_par%m_threshold_t = 456
-    phs_par%t_channel = 42
-    phs_par%off_shell = 17
-    phs_par%keep_nonresonant = .false.    
-    mapping_defs%energy_scale = 987
-    mapping_defs%invariant_mass_scale = 654
-    mapping_defs%momentum_transfer_scale = 321
-    mapping_defs%step_mapping = .false.   
-    mapping_defs%step_mapping_exp = .false.       
-    mapping_defs%enable_s_mapping = .true.       
-    call dispatch_phs (phs, global, var_str ("dispatch_4"), &
-         mapping_defs, phs_par)    
-    call phs%write (u)    
-        
-    call phs%final ()
-
-    call global%final ()
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: dispatch_4"
-    
-  end subroutine dispatch_4
-  
-  subroutine dispatch_5 (u)
-    integer, intent(in) :: u
-    type(rt_data_t), target :: global
-    class(rng_factory_t), allocatable :: rng_factory
-    
-    write (u, "(A)")  "* Test output: dispatch_5"
-    write (u, "(A)")  "*   Purpose: select random-number generator"
-    write (u, "(A)")
-
-    call global%global_init ()
-
-    write (u, "(A)")  "* Allocate RNG factory as rng_test_factory_t"
-    write (u, "(A)")
-
-    call var_list_set_string (global%var_list, &
-         var_str ("$rng_method"), &
-         var_str ("unit_test"), is_known = .true.)
-    call var_list_set_int (global%var_list, &
-         var_str ("seed"), 1, is_known = .true.)
-    call dispatch_rng_factory (rng_factory, global)
-    call rng_factory%write (u)
-    deallocate (rng_factory)
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Allocate RNG factory as rng_tao_factory_t"
-    write (u, "(A)")
-
-    call var_list_set_string (global%var_list, &
-         var_str ("$rng_method"), &
-         var_str ("tao"), is_known = .true.)
-    call dispatch_rng_factory (rng_factory, global)
-    call rng_factory%write (u)
-    deallocate (rng_factory)
-    
-    call global%final ()
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: dispatch_5"
-    
-  end subroutine dispatch_5
-  
-  subroutine dispatch_6 (u)
-    integer, intent(in) :: u
-    type(rt_data_t), target :: global
-    type(os_data_t) :: os_data
-    type(process_constants_t) :: process_data
-    class(phs_config_t), allocatable :: phs
-    integer :: u_phs
-    
-    write (u, "(A)")  "* Test output: dispatch_6"
-    write (u, "(A)")  "*   Purpose: select 'wood' phase-space &
-         &for a test process"
-    write (u, "(A)")  "*            and read phs configuration from file"
-    write (u, "(A)")
-
-    write (u, "(A)")  "* Initialize a process"
-    write (u, "(A)")
-
-    call global%global_init ()
-
-    call os_data_init (os_data)
-    call syntax_model_file_init ()
-    call global%select_model (var_str ("Test"))
-
-    call syntax_phs_forest_init ()
-    
-    call init_test_process_data (var_str ("dispatch_6"), process_data)
-
-    write (u, "(A)")  "* Write phase-space file"
-
-    u_phs = free_unit ()
-    open (u_phs, file = "dispatch_6.phs", action = "write", status = "replace")
-    call write_test_phs_file (u_phs, var_str ("dispatch_6"))
-    close (u_phs)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Allocate PHS as phs_wood_t"
-    write (u, "(A)")
-
-    call var_list_set_string (global%var_list, &
-         var_str ("$phs_method"), &
-         var_str ("wood"), is_known = .true.)
-    call var_list_set_string (global%var_list, &
-         var_str ("$phs_file"), &
-         var_str ("dispatch_6.phs"), is_known = .true.)
-    call dispatch_phs (phs, global, var_str ("dispatch_6"))
-
-    call phs%init (process_data, global%model)
-    call phs%configure (sqrts = 1000._default)
-
-    call phs%write (u)
-    write (u, "(A)")
-    select type (phs)
-    type is (phs_wood_config_t)
-       call phs%write_forest (u)
-    end select
-
-    call phs%final ()
-
-    call global%final ()
-    call syntax_model_file_final ()
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: dispatch_6"
-    
-  end subroutine dispatch_6
-  
-  subroutine dispatch_7 (u)
-    integer, intent(in) :: u
-    type(rt_data_t), target :: global
-    type(os_data_t) :: os_data
-    type(string_t) :: prt, sf_method
-    type(sf_prop_t) :: sf_prop
-    class(sf_data_t), allocatable :: data
-    type(pdg_array_t), dimension(1) :: pdg_in
-    type(pdg_array_t), dimension(1,1) :: pdg_prc
-    type(pdg_array_t), dimension(1) :: pdg_out
-    integer, dimension(:), allocatable :: pdg1
-    
-    write (u, "(A)")  "* Test output: dispatch_7"
-    write (u, "(A)")  "*   Purpose: select and configure &
-         &structure function data"
-    write (u, "(A)")
-
-    call global%global_init ()
-    
-    call os_data_init (os_data)
-    call syntax_model_file_init ()
-    call global%select_model (var_str ("QCD"))
-    
-    call reset_interaction_counter ()
-    call var_list_set_real (global%var_list, var_str ("sqrts"), &
-         14000._default, is_known = .true.)
-    prt = "p"
-    call global%beam_structure%init_sf ([prt, prt], [1])
-    pdg_in = 2212
-    
-    write (u, "(A)")  "* Allocate data as sf_pdf_builtin_t"
-    write (u, "(A)")
-
-    sf_method = "pdf_builtin"
-    call dispatch_sf_data &
-         (data, sf_method, [1], sf_prop, global, pdg_in, pdg_prc)
-    call data%write (u)
-
-    call data%get_pdg_out (pdg_out)
-    pdg1 = pdg_out(1)
-    write (u, "(A)")
-    write (u, "(1x,A,99(1x,I0))")  "PDG(out) = ", pdg1
-
-    deallocate (data)
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Allocate data for different PDF set"
-    write (u, "(A)")
-
-    pdg_in = 2212
-    
-    call var_list_set_string (global%var_list, var_str ("$pdf_builtin_set"), &
-         var_str ("CTEQ6M"), is_known = .true.)
-    sf_method = "pdf_builtin"
-    call dispatch_sf_data &
-         (data, sf_method, [1], sf_prop, global, pdg_in, pdg_prc)
-    call data%write (u)
-
-    call data%get_pdg_out (pdg_out)
-    pdg1 = pdg_out(1)
-    write (u, "(A)")
-    write (u, "(1x,A,99(1x,I0))")  "PDG(out) = ", pdg1
-
-    deallocate (data)
-    
-    call global%final ()
-    call syntax_model_file_final ()
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: dispatch_7"
-    
-  end subroutine dispatch_7
-  
-  subroutine dispatch_8 (u)
-    integer, intent(in) :: u
-    type(rt_data_t), target :: global
-    type(os_data_t) :: os_data
-    type(flavor_t), dimension(2) :: flv
-    type(sf_config_t), dimension(:), allocatable :: sf_config
-    type(sf_prop_t) :: sf_prop
-    type(sf_channel_t), dimension(:), allocatable :: sf_channel
-    type(phs_channel_collection_t) :: coll
-    type(string_t) :: sf_string
-    integer :: i
-    type(pdg_array_t), dimension (2,1) :: pdg_prc
-    
-    write (u, "(A)")  "* Test output: dispatch_8"
-    write (u, "(A)")  "*   Purpose: configure a structure-function chain"
-    write (u, "(A)")
-
-    call global%global_init ()
-    
-    call os_data_init (os_data)
-    call syntax_model_file_init ()
-    call global%select_model (var_str ("QCD"))
-    
-    write (u, "(A)")  "* Allocate LHC beams with PDF builtin"
-    write (u, "(A)")
-
-    call flv(1)%init (PROTON, global%model)
-    call flv(2)%init (PROTON, global%model)
-
-    call reset_interaction_counter ()
-    call var_list_set_real (global%var_list, var_str ("sqrts"), &
-         14000._default, is_known = .true.)
-         
-    call global%beam_structure%init_sf (flv%get_name (), [1])
-    call global%beam_structure%set_sf (1, 1, var_str ("pdf_builtin"))
-    
-    call dispatch_sf_config (sf_config, sf_prop, global, pdg_prc)
-    do i = 1, size (sf_config)
-       call sf_config(i)%write (u)
-    end do
-
-    call dispatch_sf_channels (sf_channel, sf_string, sf_prop, coll, global)
-    write (u, "(1x,A)")  "Mapping configuration:"
-    do i = 1, size (sf_channel)
-       write (u, "(2x)", advance = "no")
-       call sf_channel(i)%write (u)
-    end do
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Allocate ILC beams with CIRCE1"
-    write (u, "(A)")
-
-    call global%select_model (var_str ("QED"))
-    call flv(1)%init ( ELECTRON, global%model)
-    call flv(2)%init (-ELECTRON, global%model)
-
-    call reset_interaction_counter ()
-    call var_list_set_real (global%var_list, var_str ("sqrts"), &
-         500._default, is_known = .true.)
-    call var_list_set_log (global%var_list, var_str ("?circe1_generate"), &
-         .false., is_known = .true.)
-         
-    call global%beam_structure%init_sf (flv%get_name (), [1])
-    call global%beam_structure%set_sf (1, 1, var_str ("circe1"))
-    
-    call dispatch_sf_config (sf_config, sf_prop, global, pdg_prc)
-    do i = 1, size (sf_config)
-       call sf_config(i)%write (u)
-    end do
-
-    call dispatch_sf_channels (sf_channel, sf_string, sf_prop, coll, global)
-    write (u, "(1x,A)")  "Mapping configuration:"
-    do i = 1, size (sf_channel)
-       write (u, "(2x)", advance = "no")
-       call sf_channel(i)%write (u)
-    end do
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Cleanup"
-
-    call global%final ()
-    call syntax_model_file_final ()
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: dispatch_8"
-    
-  end subroutine dispatch_8
-  
-  subroutine dispatch_9 (u)
-    integer, intent(in) :: u
-    type(rt_data_t), target :: global
-    class(eio_t), allocatable :: eio
-    
-    write (u, "(A)")  "* Test output: dispatch_9"
-    write (u, "(A)")  "*   Purpose: allocate an event I/O (eio) stream"
-    write (u, "(A)")
-
-    call syntax_model_file_init ()
-    call global%global_init ()
-    call global%init_fallback_model &
-         (var_str ("SM_hadrons"), var_str ("SM_hadrons.mdl"))
-    
-    write (u, "(A)")  "* Allocate as raw"
-    write (u, "(A)")
-    
-    call dispatch_eio (eio, var_str ("raw"), global)
-
-    call eio%write (u)
-
-    call eio%final ()
-    deallocate (eio)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Allocate as checkpoints:"
-    write (u, "(A)")
-    
-    call dispatch_eio (eio, var_str ("checkpoint"), global)
-
-    call eio%write (u)
-
-    call eio%final ()
-    deallocate (eio)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Allocate as LHEF:"
-    write (u, "(A)")
-    
-    call var_list_set_string (global%var_list, var_str ("$lhef_extension"), &
-         var_str ("lhe_custom"), is_known = .true.)
-    call dispatch_eio (eio, var_str ("lhef"), global)
-
-    call eio%write (u)
-
-    call eio%final ()
-    deallocate (eio)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Allocate as HepMC:"
-    write (u, "(A)")
-    
-    call dispatch_eio (eio, var_str ("hepmc"), global)
-
-    call eio%write (u)
-
-    call eio%final ()
-    deallocate (eio)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Allocate as weight_stream"
-    write (u, "(A)")
-    
-    call dispatch_eio (eio, var_str ("weight_stream"), global)
-
-    call eio%write (u)
-
-    call eio%final ()
-    deallocate (eio)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Allocate as debug format"
-    write (u, "(A)")
-    
-    call var_list_set_log (global%var_list, var_str ("?debug_verbose"), &
-         .false., is_known = .true.)
-    call dispatch_eio (eio, var_str ("debug"), global)
-
-    call eio%write (u)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Cleanup"
-
-    call eio%final ()
-    call global%final ()
-    call syntax_model_file_final ()
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: dispatch_9"
-    
-  end subroutine dispatch_9
-  
-  subroutine dispatch_10 (u)
-    integer, intent(in) :: u
-    type(string_t), dimension(2) :: prt_in, prt_out
-    type(rt_data_t), target :: global
-    class(prc_core_def_t), allocatable :: core_def
-    class(prc_core_t), allocatable :: core, saved_core
-    type(var_list_t), pointer :: var_list
-    
-    write (u, "(A)")  "* Test output: dispatch_10"
-    write (u, "(A)")  "*   Purpose: select process configuration method,"
-    write (u, "(A)")  "             allocate process core,"
-    write (u, "(A)")  "             temporarily reset parameters"
-    write (u, "(A)")
-
-    call syntax_model_file_init ()
-    call global%global_init ()
-
-    prt_in = [var_str ("a"), var_str ("b")]
-    prt_out = [var_str ("c"), var_str ("d")]
-
-    write (u, "(A)")  "* Allocate core as prc_omega_t"
-    write (u, "(A)")
-
-    call var_list_set_string (global%var_list, var_str ("$method"), &
-         var_str ("omega"), is_known = .true.)
-    call dispatch_core_def (core_def, prt_in, prt_out, global)
-
-    call global%select_model (var_str ("Test"))
-
-    call dispatch_core (core, core_def, global%model)
-    call core_def%allocate_driver (core%driver, var_str (""))
-
-    select type (core)
-    type is (prc_omega_t)
-       call core%write (u)
-    end select
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Update core with modified model and helicity selection"
-    write (u, "(A)")
-
-    var_list => global%get_var_list_ptr ()
-    call var_list_set_real (var_list, var_str ("gy"), 2._default, &
-         is_known = .true.)
-    call global%model%update_parameters ()
-
-    call var_list_set_log (global%var_list, &
-         var_str ("?helicity_selection_active"), &
-         .true., is_known = .true.)
-    call var_list_set_real (global%var_list, &
-         var_str ("helicity_selection_threshold"), &
-         2e10_default, is_known = .true.)
-    call var_list_set_int (global%var_list, &
-         var_str ("helicity_selection_cutoff"), &
-         5, is_known = .true.)
-    
-    call dispatch_core_update (core, global%model, &
-         global%get_helicity_selection (), &
-         saved_core = saved_core)
-    select type (core)
-    type is (prc_omega_t)
-       call core%write (u)
-    end select
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Restore core from save"
-    write (u, "(A)")
-
-    call dispatch_core_restore (core, saved_core)
-    select type (core)
-    type is (prc_omega_t)
-       call core%write (u)
-    end select
-    
-    call global%final ()
-    call syntax_model_file_final ()
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: dispatch_10"
-    
-  end subroutine dispatch_10
-  
-  subroutine dispatch_11 (u)
-    integer, intent(in) :: u
-    type(rt_data_t), target :: global
-    type(qcd_t) :: qcd
-    type(var_list_t), pointer :: model_vars
-    
-    write (u, "(A)")  "* Test output: dispatch_11"
-    write (u, "(A)")  "*   Purpose: select QCD coupling formula"
-    write (u, "(A)")
-
-    call syntax_model_file_init ()
-    call global%global_init ()
-    call global%select_model (var_str ("SM"))
-    model_vars => global%get_var_list_ptr ()
-
-    write (u, "(A)")  "* Allocate alpha_s as fixed"
-    write (u, "(A)")
-
-    call var_list_set_log (global%var_list, var_str ("?alpha_s_is_fixed"), &
-         .true., is_known = .true.)
-    call dispatch_qcd (qcd, global)
-    call qcd%write (u)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Allocate alpha_s as running (built-in)"
-    write (u, "(A)")
-    
-    call var_list_set_log (global%var_list, var_str ("?alpha_s_is_fixed"), &
-         .false., is_known = .true.)
-    call var_list_set_log (global%var_list, var_str ("?alpha_s_from_mz"), &
-         .true., is_known = .true.)
-    call var_list_set_int &
-         (global%var_list, var_str ("alpha_s_order"), 1, is_known = .true.)
-    call var_list_set_real &
-         (model_vars, var_str ("alphas"), 0.1234_default, &
-          is_known=.true.)
-    call var_list_set_real &
-         (model_vars, var_str ("mZ"), 91.234_default, &
-          is_known=.true.)
-    call dispatch_qcd (qcd, global)
-    call qcd%write (u)
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Allocate alpha_s as running (built-in, Lambda defined)"
-    write (u, "(A)")
-    
-    call var_list_set_log (global%var_list, var_str ("?alpha_s_from_mz"), &
-         .false., is_known = .true.)
-    call var_list_set_log (global%var_list, &
-         var_str ("?alpha_s_from_lambda_qcd"), &
-         .true., is_known = .true.)
-    call var_list_set_real &
-         (global%var_list, var_str ("lambda_qcd"), 250.e-3_default, &
-          is_known=.true.)
-    call var_list_set_int &
-         (global%var_list, var_str ("alpha_s_order"), 2, is_known = .true.)
-    call var_list_set_int &
-         (global%var_list, var_str ("alpha_s_nf"), 4, is_known = .true.)
-    call dispatch_qcd (qcd, global)
-    call qcd%write (u)
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Allocate alpha_s as running (using builtin PDF set)"
-    write (u, "(A)")
-    
-    call var_list_set_log (global%var_list, &
-         var_str ("?alpha_s_from_lambda_qcd"), &
-         .false., is_known = .true.)
-    call var_list_set_log &
-         (global%var_list, var_str ("?alpha_s_from_pdf_builtin"), &
-         .true., is_known = .true.)
-    call dispatch_qcd (qcd, global)
-    call qcd%write (u)
-    
-    call global%final ()
-    call syntax_model_file_final ()
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: dispatch_11"
-    
-  end subroutine dispatch_11
-  
-  subroutine dispatch_12 (u)
-    integer, intent(in) :: u
-    type(rt_data_t), target :: global
-    type(var_list_t), pointer :: var_list
-    type(shower_settings_t) :: shower_settings
-    
-    write (u, "(A)")  "* Test output: dispatch_12"
-    write (u, "(A)")  "*   Purpose: setting ISR/FSR shower"
-    write (u, "(A)")
-
-    write (u, "(A)")  "* Default settings"    
-    write (u, "(A)")    
-    
-    call global%global_init ()
-    call var_list_set_log (global%var_list, var_str ("?alpha_s_is_fixed"), &
-         .true., is_known = .true.)
-    var_list => global%get_var_list_ptr ()
-    call shower_settings%init (var_list)
-    call write_separator (u)
-    call shower_settings%write (u)
-    call write_separator (u)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Switch on ISR/FSR showers, hadronization"
-    write (u, "(A)")  "      and MLM matching"
-    write (u, "(A)")
-    
-    call var_list_set_string (global%var_list, var_str ("$shower_method"), &
-         var_str ("PYTHIA6"), is_known = .true.)
-    call var_list_set_log (global%var_list, var_str ("?ps_fsr_active"), &
-         .true., is_known = .true.)
-    call var_list_set_log (global%var_list, var_str ("?ps_isr_active"), &
-         .true., is_known = .true.)
-    call var_list_set_log (global%var_list, var_str ("?hadronization_active"), &
-         .true., is_known = .true.)    
-    call var_list_set_log (global%var_list, var_str ("?mlm_matching"), &
-         .true., is_known = .true.)        
-    call var_list_set_int &
-         (global%var_list, var_str ("ps_max_n_flavors"), 4, is_known = .true.)
-    call var_list_set_real &
-         (global%var_list, var_str ("ps_isr_z_cutoff"), 0.1234_default, &
-          is_known=.true.)
-    call var_list_set_real (global%var_list, &
-         var_str ("mlm_etamax"), 3.456_default, is_known=.true.)
-    call var_list_set_string (global%var_list, &
-         var_str ("$ps_PYTHIA_PYGIVE"), var_str ("abcdefgh"), is_known=.true.)    
-    call shower_settings%init (var_list)
-    call write_separator (u)
-    call shower_settings%write (u)
-    call write_separator (u)
-    
-    call global%final ()
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: dispatch_12"
-    
-  end subroutine dispatch_12
-  
-  subroutine dispatch_13 (u)
-    integer, intent(in) :: u
-    type(rt_data_t), target :: global
-    class(evt_t), pointer :: evt
-    type(var_list_t), pointer :: model_vars
-    
-    write (u, "(A)")  "* Test output: dispatch_13"
-    write (u, "(A)")  "*   Purpose: configure event transform"
-    write (u, "(A)")
-
-    call syntax_model_file_init ()
-    call global%global_init ()
-    call global%init_fallback_model &
-         (var_str ("SM_hadrons"), var_str ("SM_hadrons.mdl"))
-    model_vars => global%get_var_list_ptr ()    
-
-    write (u, "(A)")  "* Partonic decays"
-    write (u, "(A)")
-
-    call dispatch_evt_decay (evt, global)
-    call evt%write (u, verbose = .true., more_verbose = .true.)
-
-    call evt%final ()
-    deallocate (evt)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Shower"
-    write (u, "(A)")
-
-    call var_list_set_log (global%var_list, var_str ("?allow_shower"), .true., &
-         is_known = .true.)
-    call var_list_set_string (global%var_list, var_str ("$shower_method"), &
-         var_str ("WHIZARD"), is_known = .true.)
-    call dispatch_evt_shower (evt, global)
-    call evt%write (u)
-    call write_separator (u, 2)
-
-    call evt%final ()
-    deallocate (evt)
-
-    call global%final ()
-    call syntax_model_file_final ()
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: dispatch_13"
-    
-  end subroutine dispatch_13
-  
-  subroutine dispatch_14 (u)
-    integer, intent(in) :: u
-    type(rt_data_t), target :: global
-    logical :: input, spectrum, decays
-    
-    write (u, "(A)")  "* Test output: dispatch_14"
-    write (u, "(A)")  "*   Purpose: SLHA interface settings"
-    write (u, "(A)")
-
-    write (u, "(A)")  "* Default settings"    
-    write (u, "(A)")    
-    
-    call global%global_init ()
-    call dispatch_slha (global, &
-         input = input, spectrum = spectrum, decays = decays)
-
-    write (u, "(A,1x,L1)")  " slha_read_input     =", input
-    write (u, "(A,1x,L1)")  " slha_read_spectrum  =", spectrum   
-    write (u, "(A,1x,L1)")  " slha_read_decays    =", decays
-
-    call global%final ()
-    call global%global_init ()
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Set all entries to [false]"    
-    write (u, "(A)")        
-            
-    call var_list_set_log (global%var_list, var_str ("?slha_read_input"), &
-         .false., is_known = .true.)
-    call var_list_set_log (global%var_list, var_str ("?slha_read_spectrum"), &
-         .false., is_known = .true.)
-    call var_list_set_log (global%var_list, var_str ("?slha_read_decays"), &
-         .false., is_known = .true.)    
-
-    call dispatch_slha (global, &
-         input = input, spectrum = spectrum, decays = decays)
-
-    write (u, "(A,1x,L1)")  " slha_read_input     =", input
-    write (u, "(A,1x,L1)")  " slha_read_spectrum  =", spectrum   
-    write (u, "(A,1x,L1)")  " slha_read_decays    =", decays
-    
-    call global%final ()
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: dispatch_14"
-    
-  end subroutine dispatch_14
-  
 
 end module dispatch

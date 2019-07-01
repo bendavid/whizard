@@ -78,6 +78,9 @@ endif
 ## Non-standard cleanup tasks
 clean-local:
 	-rm -f *.$(FC_MODULE_EXT)
+if FC_SUBMODULES
+	-rm -f *.smod
+endif
 
 ## Remove backup files
 maintainer-clean-local:

@@ -1,4 +1,4 @@
-! WHIZARD 2.2.6 May 02 2015
+! WHIZARD 2.2.7 Aug 11 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -31,7 +31,7 @@
 ! to the source 'whizard.nw'
 
 module events
-  
+
   use kinds, only: default
   use iso_varying_string, string_t => varying_string
   use constants, only: one
@@ -40,29 +40,26 @@ module events
   use format_defs, only: FMT_12, FMT_14, FMT_19
   use unit_tests
   use diagnostics
-  use os_interface
-  use subevents
   use variables
   use expr_base
   use model_data
-  use state_matrices
+  use state_matrices, only: &
+       FM_IGNORE_HELICITY, FM_SELECT_HELICITY, FM_FACTOR_HELICITY
   use particles
-  use interactions
   use subevt_expr
   use rng_base
-  use process_libraries
   use processes
   use process_stacks
   use event_base
   use event_transforms
   use decays
+  use evt_nlo
 
   implicit none
   private
 
   public :: event_t
   public :: pacify
-  public :: events_test
 
   type :: event_config_t
      logical :: unweighted = .false.
@@ -97,6 +94,7 @@ module events
      real(default), allocatable :: scale_forced
      real(default) :: reweight = 1
      logical :: analysis_flag = .false.
+     integer :: i_event = 0
    contains
      procedure :: final => event_final
      procedure :: write => event_write
@@ -148,7 +146,7 @@ module events
   end interface pacify
 
 contains
-  
+
   subroutine event_config_write (object, unit, show_expressions)
     class(event_config_t), intent(in) :: object
     integer, intent(in), optional :: unit
@@ -192,7 +190,7 @@ contains
        end if
     end if
   end subroutine event_config_write
-  
+
   subroutine event_final (object)
     class(event_t), intent(inout) :: object
     class(evt_t), pointer :: evt
@@ -205,7 +203,7 @@ contains
        deallocate (evt)
     end do
   end subroutine event_final
-    
+
   subroutine event_write (object, unit, show_process, show_transforms, &
        show_decay, verbose, testflag)
     class(event_t), intent(in) :: object
@@ -215,7 +213,7 @@ contains
     logical, intent(in), optional :: testflag
     logical :: prc, trans, dec, verb
     class(evt_t), pointer :: evt
-    character(len=7) :: fmt   
+    character(len=7) :: fmt
     integer :: u, i
     call pac_fmt (fmt, FMT_19, FMT_14, testflag)
     u = given_output_unit (unit)
@@ -341,7 +339,7 @@ contains
     allocate (evt_trivial_t :: event%transform_first)
     event%transform_last => event%transform_first
   end subroutine event_init
-    
+
   elemental subroutine event_set_sigma (event, sigma)
     class(event_t), intent(inout) :: event
     real(default), intent(in) :: sigma
@@ -353,7 +351,7 @@ contains
     integer, intent(in) :: n
     event%config%n = n
   end subroutine event_set_n
-  
+
   subroutine event_import_transform (event, evt)
     class(event_t), intent(inout) :: event
     class(evt_t), intent(inout), pointer :: evt
@@ -362,7 +360,7 @@ contains
     event%transform_last => evt
     evt => null ()
   end subroutine event_import_transform
-    
+
   subroutine event_connect (event, process_instance, model, process_stack)
     class(event_t), intent(inout), target :: event
     type(process_instance_t), intent(in), target :: process_instance
@@ -404,19 +402,21 @@ contains
     class(expr_factory_t), intent(in) :: ef_analysis
     allocate (event%config%ef_analysis, source = ef_analysis)
   end subroutine event_set_analysis
-  
+
   subroutine event_setup_expressions (event)
     class(event_t), intent(inout), target :: event
     call event%expr%setup_selection (event%config%ef_selection)
     call event%expr%setup_analysis (event%config%ef_analysis)
     call event%expr%setup_reweight (event%config%ef_reweight)
   end subroutine event_setup_expressions
-  
+
   subroutine event_evaluate_transforms (event, r)
     class(event_t), intent(inout) :: event
     real(default), dimension(:), intent(in), optional :: r
     class(evt_t), pointer :: evt
+    real(default) :: sigma_over_sqme
     integer :: i_term
+    call msg_debug (D_TRANSFORMS, "event_evaluate_transforms")
     call event%discard_particle_set ()
     call event%check ()
     if (event%instance%is_complete_event ()) then
@@ -429,8 +429,17 @@ contains
           evt => evt%next
        end do
        evt => event%transform_first
+       call msg_debug (D_TRANSFORMS, "Before event transformations")
+       call msg_debug (D_TRANSFORMS, "event%weight_prc", event%weight_prc)
+       call msg_debug (D_TRANSFORMS, "event%sqme_prc", event%sqme_prc)
        do while (associated (evt))
-          call evt%generate_unweighted ()
+          if (evt%only_weighted_events) then
+             sigma_over_sqme = event%weight_prc / event%sqme_prc
+             call evt%generate_weighted (event%sqme_prc)
+             event%weight_prc = sigma_over_sqme * event%sqme_prc
+          else
+             call evt%generate_unweighted ()
+          end if
           if (signal_is_pending ())  return
           call evt%make_particle_set (event%config%factorization_mode, &
                event%config%keep_correlations)
@@ -440,11 +449,23 @@ contains
        end do
        evt => event%transform_last
        if (associated (evt) .and. evt%particle_set_exists) then
-          call event%link_particle_set (evt%particle_set)
+          if (event%nlo_event) then
+             select type (evt)
+             type is (evt_nlo_t)
+                call evt%build_radiated_particle_set (event%i_event+1)
+                call event%link_particle_set &
+                   (evt%particle_set_radiated(event%i_event+1))
+             end select
+          else
+             call event%link_particle_set (evt%particle_set)
+          end if
        end if
+       call msg_debug (D_TRANSFORMS, "After event transformations")
+       call msg_debug (D_TRANSFORMS, "event%weight_prc", event%weight_prc)
+       call msg_debug (D_TRANSFORMS, "event%sqme_prc", event%sqme_prc)
     end if
   end subroutine event_evaluate_transforms
-    
+
   subroutine event_evaluate_expressions (event)
     class(event_t), intent(inout) :: event
     type(particle_set_t), pointer :: particle_set
@@ -473,13 +494,13 @@ contains
        event%selection_evaluated = .true.
     end if
   end subroutine event_evaluate_expressions
-  
+
   function event_passed_selection (event) result (flag)
     class(event_t), intent(in) :: event
     logical :: flag
     flag = event%passed
   end function event_passed_selection
-  
+
   subroutine event_store_alt_values (event)
     class(event_t), intent(inout) :: event
     if (event%weight_alt_is_known ()) then
@@ -489,7 +510,7 @@ contains
        call event%expr%set (sqme_alt = event%get_sqme_alt ())
     end if
   end subroutine event_store_alt_values
-  
+
   subroutine event_reset (event)
     class(event_t), intent(inout) :: event
     class(evt_t), pointer :: evt
@@ -513,7 +534,7 @@ contains
        evt => evt%next
     end do
   end subroutine event_reset
-  
+
   subroutine event_import_instance_results (event)
     class(event_t), intent(inout) :: event
     if (associated (event%instance)) then
@@ -526,35 +547,35 @@ contains
        end if
     end if
   end subroutine event_import_instance_results
-  
+
   subroutine event_accept_sqme_ref (event)
     class(event_t), intent(inout) :: event
     if (event%sqme_ref_is_known ()) then
        call event%set (sqme_prc = event%get_sqme_ref ())
     end if
   end subroutine event_accept_sqme_ref
-  
+
   subroutine event_accept_sqme_prc (event)
     class(event_t), intent(inout) :: event
     if (event%sqme_prc_is_known ()) then
        call event%set (sqme_ref = event%get_sqme_prc ())
     end if
   end subroutine event_accept_sqme_prc
-  
+
   subroutine event_accept_weight_ref (event)
     class(event_t), intent(inout) :: event
     if (event%weight_ref_is_known ()) then
        call event%set (weight_prc = event%get_weight_ref ())
     end if
   end subroutine event_accept_weight_ref
-  
+
   subroutine event_accept_weight_prc (event)
     class(event_t), intent(inout) :: event
     if (event%weight_prc_is_known ()) then
        call event%set (weight_ref = event%get_weight_prc ())
     end if
   end subroutine event_accept_weight_prc
-  
+
   subroutine event_update_normalization (event, mode_ref)
     class(event_t), intent(inout) :: event
     integer, intent(in), optional :: mode_ref
@@ -580,7 +601,7 @@ contains
          mode_old = mode_old)
     call event%set_excess_prc (excess)
   end subroutine event_update_normalization
-  
+
   subroutine event_check (event)
     class(event_t), intent(inout) :: event
     event%is_complete = event%has_valid_particle_set () &
@@ -594,12 +615,15 @@ contains
             .and. event%weight_alt_is_known ()
     end if
   end subroutine event_check
-  
-  subroutine event_generate (event, i_mci, r)
+
+  subroutine event_generate (event, i_mci, r, i_nlo)
     class(event_t), intent(inout) :: event
     integer, intent(in) :: i_mci
     real(default), dimension(:), intent(in), optional :: r
-    call event%reset ()
+    integer, intent(in), optional :: i_nlo
+    logical :: generate_new = .true.
+    if (present (i_nlo)) generate_new = (i_nlo == 1)
+    if (generate_new) call event%reset ()
     event%selected_i_mci = i_mci
     if (event%config%unweighted) then
        call event%process%generate_unweighted_event (event%instance, i_mci)
@@ -607,7 +631,9 @@ contains
        call event%instance%evaluate_event_data ()
        call event%instance%normalize_weight ()
     else
-       call event%process%generate_weighted_event (event%instance, i_mci)
+       if (event%nlo_event) &
+          call event%process%deactivate_real_component ()
+       if (generate_new) call event%process%generate_weighted_event (event%instance, i_mci)
        if (signal_is_pending ()) return
        call event%instance%evaluate_event_data ()
     end if
@@ -620,7 +646,7 @@ contains
     if (signal_is_pending ())  return
     call event%check ()
   end subroutine event_generate
-  
+
   subroutine event_get_hard_particle_set (event, pset)
     class(event_t), intent(in) :: event
     type(particle_set_t), intent(out) :: pset
@@ -628,7 +654,7 @@ contains
     evt => event%transform_first
     pset = evt%particle_set
   end subroutine event_get_hard_particle_set
-    
+
   subroutine event_select (event, i_mci, i_term, channel)
     class(event_t), intent(inout) :: event
     integer, intent(in) :: i_mci, i_term, channel
@@ -665,7 +691,7 @@ contains
        allocate (event%alpha_qcd_forced, source = alpha_qcd)
     end if
   end subroutine event_set_alpha_qcd_forced
-  
+
   subroutine event_set_scale_forced (event, scale)
     class(event_t), intent(inout) :: event
     real(default), intent(in) :: scale
@@ -675,7 +701,7 @@ contains
        allocate (event%scale_forced, source = scale)
     end if
   end subroutine event_set_scale_forced
-  
+
   subroutine event_recalculate &
        (event, update_sqme, weight_factor, recover_beams)
     class(event_t), intent(inout) :: event
@@ -699,7 +725,7 @@ contains
                (i_term, event%alpha_qcd_forced)
        end if
        call event%instance%recover (channel, i_term, update_sqme, &
-            event%scale_forced) 
+            event%scale_forced)
        if (signal_is_pending ())  return
        if (update_sqme .and. present (weight_factor)) then
           call event%instance%evaluate_event_data &
@@ -726,7 +752,7 @@ contains
        call msg_bug ("Event: can't recalculate, particle set is undefined")
     end if
   end subroutine event_recalculate
-  
+
   function event_get_process_ptr (event) result (ptr)
     class(event_t), intent(in) :: event
     type(process_t), pointer :: ptr
@@ -750,19 +776,19 @@ contains
     integer :: i_mci
     i_mci = event%selected_i_mci
   end function event_get_i_mci
-  
+
   function event_get_i_term (event) result (i_term)
     class(event_t), intent(in) :: event
     integer :: i_term
     i_term = event%selected_i_term
   end function event_get_i_term
-  
+
   function event_get_channel (event) result (channel)
     class(event_t), intent(in) :: event
     integer :: channel
     channel = event%selected_channel
   end function event_get_channel
-  
+
   function event_has_transform (event) result (flag)
     class(event_t), intent(in) :: event
     logical :: flag
@@ -772,13 +798,13 @@ contains
        flag = .false.
     end if
   end function event_has_transform
-  
+
   elemental function event_get_norm_mode (event) result (norm_mode)
     class(event_t), intent(in) :: event
     integer :: norm_mode
     norm_mode = event%config%norm_mode
   end function event_get_norm_mode
-  
+
   function event_get_kinematical_weight (event) result (f)
     class(event_t), intent(in) :: event
     real(default) :: f
@@ -789,25 +815,25 @@ contains
        f = 0
     end if
   end function event_get_kinematical_weight
-    
+
   function event_get_index (event) result (index)
     class(event_t), intent(in) :: event
     integer :: index
     index = event%expr%index
   end function event_get_index
-    
+
   function event_get_fac_scale (event) result (fac_scale)
     class(event_t), intent(in) :: event
     real(default) :: fac_scale
     fac_scale = event%instance%get_fac_scale (event%selected_i_term)
   end function event_get_fac_scale
-    
+
   function event_get_alpha_s (event) result (alpha_s)
     class(event_t), intent(in) :: event
     real(default) :: alpha_s
     alpha_s = event%instance%get_alpha_s (event%selected_i_term)
   end function event_get_alpha_s
-    
+
   subroutine pacify_event (event)
     class(event_t), intent(inout) :: event
     class(evt_t), pointer :: evt
@@ -821,469 +847,6 @@ contains
        evt => evt%next
     end do
   end subroutine pacify_event
-  
 
-  subroutine events_test (u, results)
-    integer, intent(in) :: u
-    type(test_results_t), intent(inout) :: results
-    call test (events_1, "events_1", &
-         "empty event record", &
-         u, results)
-    call test (events_2, "events_2", &
-         "generate event", &
-         u, results)
-    call test (events_4, "events_4", &
-         "recover event", &
-         u, results)
-    call test (events_5, "events_5", &
-         "partially recover event", &
-         u, results)
-    call test (events_6, "events_6", &
-         "decays", &
-         u, results)
-    call test (events_7, "events_7", &
-         "decay options", &
-         u, results)
-  end subroutine events_test
-  
-  subroutine events_1 (u)
-    integer, intent(in) :: u
-    type(event_t), target :: event
-
-    write (u, "(A)")  "* Test output: events_1"
-    write (u, "(A)")  "*   Purpose: display an empty event object"
-    write (u, "(A)")
-
-    call event%write (u)
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: events_1"
-    
-  end subroutine events_1
-  
-  subroutine events_2 (u)
-    integer, intent(in) :: u
-    type(event_t), allocatable, target :: event
-    type(process_t), allocatable, target :: process
-    type(process_instance_t), allocatable, target :: process_instance
-    type(model_data_t), target :: model
-
-    write (u, "(A)")  "* Test output: events_2"
-    write (u, "(A)")  "*   Purpose: generate and display an event"
-    write (u, "(A)")
-
-    call model%init_test ()
-
-    write (u, "(A)")  "* Generate test process event"
-
-    allocate (process)
-    allocate (process_instance)
-    call prepare_test_process (process, process_instance, model)
-    call process_instance%setup_event_data ()
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Initialize event object"
-
-    allocate (event)
-    call event%basic_init ()
-    call event%connect (process_instance, process%get_model_ptr ())
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Generate test process event"
-
-    call process%generate_weighted_event (process_instance, 1)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Fill event object"
-    write (u, "(A)")
-
-    call event%generate (1, [0.4_default, 0.4_default])
-    call event%evaluate_expressions ()
-    call event%write (u)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Cleanup"
-
-    call event%final ()
-    deallocate (event)
-
-    call cleanup_test_process (process, process_instance)
-    deallocate (process_instance)
-    deallocate (process)
-    
-!    call model_list%final ()
-!    call syntax_model_file_final ()
-    call model%final ()
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: events_2"
-    
-  end subroutine events_2
-  
-  subroutine events_4 (u)
-    integer, intent(in) :: u
-    type(event_t), allocatable, target :: event
-    type(process_t), allocatable, target :: process
-    type(process_instance_t), allocatable, target :: process_instance
-    type(particle_set_t) :: particle_set
-    type(particle_set_t), pointer :: particle_set_ptr
-    type(model_data_t), target :: model
-
-    write (u, "(A)")  "* Test output: events_4"
-    write (u, "(A)")  "*   Purpose: generate and recover an event"
-    write (u, "(A)")
-
-    call model%init_test ()
-
-    write (u, "(A)")  "* Generate test process event and save particle set"
-    write (u, "(A)")
-
-    allocate (process)
-    allocate (process_instance)
-    call prepare_test_process (process, process_instance, model)
-    call process_instance%setup_event_data ()
-
-    allocate (event)
-    call event%basic_init ()
-    call event%connect (process_instance, process%get_model_ptr ())
-    
-    call event%generate (1, [0.4_default, 0.4_default])
-    call event%evaluate_expressions ()
-    call event%write (u)
-    
-    particle_set_ptr => event%get_particle_set_ptr ()
-    particle_set = particle_set_ptr
-
-    call event%final ()
-    deallocate (event)
-
-    call cleanup_test_process (process, process_instance)
-    deallocate (process_instance)
-    deallocate (process)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Recover event from particle set"
-    write (u, "(A)")
-    
-    allocate (process)
-    allocate (process_instance)
-    call prepare_test_process (process, process_instance, model)
-    call process_instance%setup_event_data ()
-
-    allocate (event)
-    call event%basic_init ()
-    call event%connect (process_instance, process%get_model_ptr ())
-    
-    call event%select (1, 1, 1)
-    call event%set_hard_particle_set (particle_set)
-    call event%recalculate (update_sqme = .true.)
-    call event%write (u)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Transfer sqme and evaluate expressions"
-    write (u, "(A)")
-    
-    call event%accept_sqme_prc ()
-    call event%accept_weight_prc ()
-    call event%check ()
-    call event%evaluate_expressions ()
-    call event%write (u)
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Reset contents"
-    write (u, "(A)")
-
-    call event%reset ()
-    event%transform_first%particle_set_exists = .false.
-    call event%write (u)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Cleanup"
-
-    call particle_set%final ()
-
-    call event%final ()
-    deallocate (event)
-
-    call cleanup_test_process (process, process_instance)
-    deallocate (process_instance)
-    deallocate (process)
-    
-!    call model_list%final ()
-!    call syntax_model_file_final ()
-    call model%final ()
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: events_4"
-    
-  end subroutine events_4
-  
-  subroutine events_5 (u)
-    integer, intent(in) :: u
-    type(event_t), allocatable, target :: event
-    type(process_t), allocatable, target :: process
-    type(process_instance_t), allocatable, target :: process_instance
-    type(particle_set_t) :: particle_set
-    type(particle_set_t), pointer :: particle_set_ptr
-    real(default) :: sqme, weight
-    type(model_data_t), target :: model
-
-    write (u, "(A)")  "* Test output: events_5"
-    write (u, "(A)")  "*   Purpose: generate and recover an event"
-    write (u, "(A)")
-
-    call model%init_test ()
-
-    write (u, "(A)")  "* Generate test process event and save particle set"
-    write (u, "(A)")
-
-    allocate (process)
-    allocate (process_instance)
-    call prepare_test_process (process, process_instance, model)
-    call process_instance%setup_event_data ()
-
-    allocate (event)
-    call event%basic_init ()
-    call event%connect (process_instance, process%get_model_ptr ())
-    
-    call event%generate (1, [0.4_default, 0.4_default])
-    call event%evaluate_expressions ()
-    call event%write (u)
-    
-    particle_set_ptr => event%get_particle_set_ptr ()
-    particle_set = particle_set_ptr
-    sqme = event%get_sqme_ref ()
-    weight = event%get_weight_ref ()
-
-    call event%final ()
-    deallocate (event)
-
-    call cleanup_test_process (process, process_instance)
-    deallocate (process_instance)
-    deallocate (process)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Recover event from particle set"
-    write (u, "(A)")
-    
-    allocate (process)
-    allocate (process_instance)
-    call prepare_test_process (process, process_instance, model)
-    call process_instance%setup_event_data ()
-
-    allocate (event)
-    call event%basic_init ()
-    call event%connect (process_instance, process%get_model_ptr ())
-    
-    call event%select (1, 1, 1)
-    call event%set_hard_particle_set (particle_set)
-    call event%recalculate (update_sqme = .false.)
-    call event%write (u)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Manually set sqme and evaluate expressions"
-    write (u, "(A)")
-    
-    call event%set (sqme_ref = sqme, weight_ref = weight)
-    call event%accept_sqme_ref ()
-    call event%accept_weight_ref ()
-    call event%evaluate_expressions ()
-    call event%write (u)
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Cleanup"
-
-    call particle_set%final ()
-
-    call event%final ()
-    deallocate (event)
-
-    call cleanup_test_process (process, process_instance)
-    deallocate (process_instance)
-    deallocate (process)
-    
-!    call model_list%final ()
-!    call syntax_model_file_final ()
-    call model%final ()
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: events_5"
-    
-  end subroutine events_5
-  
-  subroutine events_6 (u)
-    integer, intent(in) :: u
-    type(os_data_t) :: os_data
-    class(model_data_t), pointer :: model
-    type(string_t) :: prefix, procname1, procname2
-    type(process_library_t), target :: lib
-    type(process_stack_t) :: process_stack
-    class(evt_t), pointer :: evt_decay
-    type(event_t), allocatable, target :: event
-    type(process_t), pointer :: process
-    type(process_instance_t), allocatable, target :: process_instance
-
-    write (u, "(A)")  "* Test output: events_6"
-    write (u, "(A)")  "*   Purpose: generate an event with subsequent decays"
-    write (u, "(A)")
-
-    write (u, "(A)")  "* Generate test process and decay"
-    write (u, "(A)")
-
-    call os_data_init (os_data)
-
-    prefix = "events_6"
-    procname1 = prefix // "_p"
-    procname2 = prefix // "_d"
-    call prepare_testbed &
-         (lib, process_stack, prefix, os_data, &
-         scattering=.true., decay=.true.)
-
-    write (u, "(A)")  "* Initialize decay process"
-
-    process => process_stack%get_process_ptr (procname1)
-    model => process%get_model_ptr ()
-    call model%set_unstable (25, [procname2])
-
-    allocate (process_instance)
-    call process_instance%init (process)
-    call process_instance%setup_event_data ()
-    call process_instance%init_simulation (1)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Initialize event transform: decay"
-
-    allocate (evt_decay_t :: evt_decay)
-    call evt_decay%connect (process_instance, model, process_stack)
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Initialize event object"
-    write (u, "(A)")
-
-    allocate (event)
-    call event%basic_init ()
-    call event%connect (process_instance, model)
-    call event%import_transform (evt_decay)
-    
-    call event%write (u, show_decay = .true.)
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Generate event"
-    write (u, "(A)")
-
-    call event%generate (1, [0.4_default, 0.4_default])
-    call event%evaluate_expressions ()
-    call event%write (u)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Cleanup"
-
-    call event%final ()
-    deallocate (event)
-
-    call process_instance%final ()
-    deallocate (process_instance)
-
-    call process_stack%final ()
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: events_6"
-    
-  end subroutine events_6
-  
-  subroutine events_7 (u)
-    integer, intent(in) :: u
-    type(os_data_t) :: os_data
-    class(model_data_t), pointer :: model
-    type(string_t) :: prefix, procname2
-    type(process_library_t), target :: lib
-    type(process_stack_t) :: process_stack
-    type(process_t), pointer :: process
-    type(process_instance_t), allocatable, target :: process_instance
-
-    write (u, "(A)")  "* Test output: events_7"
-    write (u, "(A)")  "*   Purpose: check decay options"
-    write (u, "(A)")
-
-    write (u, "(A)")  "* Prepare test process"
-    write (u, "(A)")
-
-    call os_data_init (os_data)
-
-    prefix = "events_7"
-    procname2 = prefix // "_d"
-    call prepare_testbed &
-         (lib, process_stack, prefix, os_data, &
-         scattering=.false., decay=.true.)
-
-    write (u, "(A)")  "* Generate decay event, default options"
-    write (u, "(A)")
-
-    process => process_stack%get_process_ptr (procname2)
-    model => process%get_model_ptr ()
-    call model%set_unstable (25, [procname2])
-
-    allocate (process_instance)
-    call process_instance%init (process)
-    call process_instance%setup_event_data (model)
-    call process_instance%init_simulation (1)
-
-    call process%generate_weighted_event (process_instance, 1)
-    call process_instance%write (u)
-
-    call process_instance%final ()
-    deallocate (process_instance)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Generate decay event, helicity-diagonal decay"
-    write (u, "(A)")
-
-    process => process_stack%get_process_ptr (procname2)
-    model => process%get_model_ptr ()
-    call model%set_unstable (25, [procname2], diagonal = .true.)
-
-    allocate (process_instance)
-    call process_instance%init (process)
-    call process_instance%setup_event_data (model)
-    call process_instance%init_simulation (1)
-
-    call process%generate_weighted_event (process_instance, 1)
-    call process_instance%write (u)
-
-    call process_instance%final ()
-    deallocate (process_instance)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Generate decay event, isotropic decay, &
-         &polarized final state"
-    write (u, "(A)")
-
-    process => process_stack%get_process_ptr (procname2)
-    model => process%get_model_ptr ()
-    call model%set_unstable (25, [procname2], isotropic = .true.)
-    call model%set_polarized (6)
-    call model%set_polarized (-6)
-
-    allocate (process_instance)
-    call process_instance%init (process)
-    call process_instance%setup_event_data (model)
-    call process_instance%init_simulation (1)
-
-    call process%generate_weighted_event (process_instance, 1)
-    call process_instance%write (u)
-
-    call process_instance%final ()
-    deallocate (process_instance)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Cleanup"
-    
-    call process_stack%final ()
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: events_7"
-    
-  end subroutine events_7
-  
 
 end module events

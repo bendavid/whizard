@@ -32,7 +32,8 @@ The events can be written to file in HepMC, LHEF, LCIO or ASCII format.
 Tree-level matrix elements are generated automatically for arbitrary
 partonic processes by calling the O'Mega matrix element generator.
 Matrix elements obtained by alternative methods (e.g., including loop
-corrections) may be interfaced as well.  
+corrections) may be interfaced as well via the BLHA interface, from 
+external packages like e.g. GoSam and OpenLoops.
 
 The program is able to calculate numerically stable signal and
 background cross sections and generate unweighted event samples with

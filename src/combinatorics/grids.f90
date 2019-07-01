@@ -1,4 +1,4 @@
-! WHIZARD 2.2.6 May 02 2015
+! WHIZARD 2.2.7 Aug 11 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -33,18 +33,15 @@
 module grids
 
   use kinds, only: default
-  use unit_tests
-  use constants
+  use constants, only: zero, one, tiny_07
   use io_units
-  use format_defs
-  use file_utils
+  use format_defs, only: FMT_16
   use diagnostics
 
   implicit none
   private
 
   public :: grid_t
-  public :: grids_test
 
 
 
@@ -52,12 +49,14 @@ module grids
   character(len=*), parameter :: DEFAULT_OUTPUT_PRECISION = FMT_16
 
   type :: grid_t
-     real(default), dimension(:), allocatable, private :: values
-     integer, dimension(:), allocatable, private :: points
+     private
+     real(default), dimension(:), allocatable :: values
+     integer, dimension(:), allocatable :: points
   contains
      generic :: init => init_base, init_simple
      procedure :: init_base => grid_init_base
      procedure :: init_simple => grid_init_simple
+     procedure :: set_values => grid_set_values
      procedure :: final => grid_final
      generic :: get_value => get_value_from_x, get_value_from_indices
      procedure :: get_value_from_x => grid_get_value_from_x
@@ -95,6 +94,12 @@ contains
     grid%values = zero
   end subroutine grid_init_simple
 
+  subroutine grid_set_values (grid, values)
+    class(grid_t), intent(inout) :: grid
+    real(default), dimension(:), intent(in) :: values
+    grid%values = values
+  end subroutine grid_set_values
+  
   pure subroutine grid_final (grid)
     class(grid_t), intent(inout) :: grid
     if (allocated (grid%values)) then
@@ -131,12 +136,17 @@ contains
     do dim = 1, size (grid%points)
        segment_width = one / grid%points (dim)
        SEARCH: do i = 1, grid%points (dim)
-          if (x (dim) <= i * segment_width) then
+          if (x (dim) <= i * segment_width + tiny_07) then
              grid_get_segment (dim) = i
              exit SEARCH
           end if
        end do SEARCH
        if (grid_get_segment (dim) == 0) then
+          do i = 1, size(x)
+             write (msg_buffer, "(A," // DEFAULT_OUTPUT_PRECISION // ")") &
+                  "x[i] = ", x(i)
+             call msg_message ()
+          end do
           call msg_error ("grid_get_segment: Did not find x in [0,1]^d", &
                unit=unit)
        end if
@@ -225,21 +235,28 @@ contains
     u = given_output_unit (unit);  if (u < 0)  return
     mean = zero
     maximum = zero
-    n_values = size (grid%values)
-    do i = 1, n_values
-       val = grid%values (i)
-       mean = mean + val / n_values
-       if (val > maximum) then
-          maximum = val
+    if (allocated (grid%values)) then
+       n_values = size (grid%values)
+       do i = 1, n_values
+          val = grid%values (i)
+          mean = mean + val / n_values
+          if (val > maximum) then
+             maximum = val
+          end if
+       end do
+       write (msg_buffer, "(A," // DEFAULT_OUTPUT_PRECISION // ")") &
+            "Grid: Mean value of the grid: ", mean
+       call msg_message ()
+       write (msg_buffer, "(A," // DEFAULT_OUTPUT_PRECISION // ")") &
+            "Grid: Max value of the grid: ", maximum
+       call msg_message ()
+       if (maximum > zero) then
+          write (msg_buffer, "(A," // DEFAULT_OUTPUT_PRECISION // ")") &
+               "Grid: Mean/Max value of the grid: ", mean / maximum
+          call msg_message ()
        end if
-    end do
-    write (u, "(2X,A," // DEFAULT_OUTPUT_PRECISION // ")") &
-         "Mean value of the grid: ", mean
-    write (u, "(2X,A," // DEFAULT_OUTPUT_PRECISION // ")") &
-         "Max value of the grid: ", maximum
-    if (maximum > zero) then
-       write (u, "(2X,A," // DEFAULT_OUTPUT_PRECISION // ")") &
-            "Mean/Max value of the grid: ", mean / maximum
+    else
+       call msg_warning ("Grid: Grid is not allocated!")
     end if
   end subroutine grid_compute_and_write_mean_and_max
 
@@ -294,198 +311,6 @@ contains
     end if
     close (u)
   end subroutine grid_load_from_file
-
-  subroutine grids_test (u, results)
-    integer, intent(in) :: u
-    type(test_results_t), intent(inout) :: results
-    call test(grids_1, "grids_1", &
-         "Test Index Function", u, results)
-    call test(grids_2, "grids_2", &
-              "Saving and Loading", u, results)
-    call test(grids_3, "grids_3", &
-              "Get Segments", u, results)
-    call test(grids_4, "grids_4", &
-              "Update Maxima", u, results)
-    call test(grids_5, "grids_5", &
-              "Finding and checking", u, results)
-  end subroutine grids_test
-
-  subroutine grids_1 (u)
-    integer, intent(in) :: u
-    type(grid_t) :: grid
-    write (u, "(A)")  "* Test output: grids_1"
-    write (u, "(A)")  "*   Purpose: Test Index Function"
-    write (u, "(A)")
-
-    call grid%init ([3])
-    call grid%write(u)
-    call assert (u, grid%get_index([1]) == 1, "grid%get_index(1) == 1")
-    call assert (u, grid%get_index([2]) == 2, "grid%get_index(2) == 2")
-    call assert (u, grid%get_index([3]) == 3, "grid%get_index(3) == 3")
-    call grid%final ()
-
-    call grid%init ([3,3])
-    call grid%write(u)
-    call assert (u, grid%get_index([1,1]) == 1, "grid%get_index(1,1) == 1")
-    call assert (u, grid%get_index([2,1]) == 2, "grid%get_index(2,1) == 2")
-    call assert (u, grid%get_index([3,1]) == 3, "grid%get_index(3,1) == 3")
-    call assert (u, grid%get_index([1,2]) == 4, "grid%get_index(1,2) == 4")
-    call assert (u, grid%get_index([2,2]) == 5, "grid%get_index(2,2) == 5")
-    call assert (u, grid%get_index([3,2]) == 6, "grid%get_index(3,2) == 6")
-    call assert (u, grid%get_index([1,3]) == 7, "grid%get_index(1,3) == 7")
-    call assert (u, grid%get_index([2,3]) == 8, "grid%get_index(2,3) == 8")
-    call assert (u, grid%get_index([3,3]) == 9, "grid%get_index(3,3) == 9")
-    call grid%final ()
-
-    call grid%init ([3,3,2])
-    call grid%write(u)
-    call assert (u, grid%get_index([1,1,1]) == 1,   "grid%get_index(1,1,1) == 1")
-    call assert (u, grid%get_index([2,1,2]) == 2+9, "grid%get_index(2,1,2) == 2+9")
-    call assert (u, grid%get_index([3,3,1]) == 9,   "grid%get_index(3,3,1) == 3")
-    call assert (u, grid%get_index([3,1,2]) == 3+9, "grid%get_index(3,1,2) == 4+9")
-    call assert (u, grid%get_index([2,2,1]) == 5,   "grid%get_index(2,2,1) == 5")
-    call assert (u, grid%get_index([3,2,2]) == 6+9, "grid%get_index(3,2,2) == 6+9")
-    call assert (u, grid%get_index([1,3,1]) == 7,   "grid%get_index(1,3,1) == 7")
-    call assert (u, grid%get_index([2,3,2]) == 8+9, "grid%get_index(2,3,2) == 8+9")
-    call assert (u, grid%get_index([3,3,2]) == 9+9, "grid%get_index(3,3,2) == 9+9")
-    call grid%final ()
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: grids_1"
-  end subroutine grids_1
-
-  subroutine grids_2 (u)
-    integer, intent(in) :: u
-    type(grid_t) :: grid
-    write (u, "(A)")  "* Test output: grids_2"
-    write (u, "(A)")  "*   Purpose: Saving and Loading"
-    write (u, "(A)")
-
-    call grid%init ([3])
-    grid%values = [one, two, three]
-    call grid%save_to_file ('grids_2_test')
-    call grid%final ()
-
-    call grid%load_from_file ('grids_2_test')
-    call grid%write (u)
-    call assert (u, nearly_equal (grid%get_value([1]), one),   "grid%get_value(1) == 1")
-    call assert (u, nearly_equal (grid%get_value([2]), two),   "grid%get_value(2) == 2")
-    call assert (u, nearly_equal (grid%get_value([3]), three), "grid%get_value(3) == 3")
-    call grid%final ()
-
-    call grid%init ([3,3])
-    grid%values = [one, two, three, four, zero, zero, zero, zero, zero]
-    call grid%save_to_file ('grids_2_test')
-    call grid%final ()
-
-    call grid%load_from_file ('grids_2_test')
-    call grid%write (u)
-    call assert (u, nearly_equal (grid%get_value([1,1]), one),   "grid%get_value(1,1) == 1")
-    call assert (u, nearly_equal (grid%get_value([2,1]), two),   "grid%get_value(2,1) == 2")
-    call assert (u, nearly_equal (grid%get_value([3,1]), three), "grid%get_value(3,1) == 3")
-    call assert (u, nearly_equal (grid%get_value([1,2]), four),  "grid%get_value(1,2) == 4")
-    call delete_file ('grids_2_test')
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: grids_2"
-  end subroutine grids_2
-
-  subroutine grids_3 (u)
-    integer, intent(in) :: u
-    type(grid_t) :: grid
-    integer, dimension(2) :: fail
-    write (u, "(A)")  "* Test output: grids_3"
-    write (u, "(A)")  "*   Purpose: Get Segments"
-    write (u, "(A)")
-
-    call grid%init ([3])
-    call assert (u, all(grid%get_segment([0.00_default]) == [1]), &
-                   "all(grid%get_segment([0.00_default]) == [1])")
-    call assert (u, all(grid%get_segment([0.32_default]) == [1]), &
-                   "all(grid%get_segment([0.32_default]) == [1])")
-    call assert (u, all(grid%get_segment([0.52_default]) == [2]), &
-                   "all(grid%get_segment([0.52_default]) == [2])")
-    call assert (u, all(grid%get_segment([1.00_default]) == [3]), &
-                   "all(grid%get_segment([1.00_default]) == [3])")
-    call grid%final ()
-
-    call grid%init ([3,3])
-    call assert (u, all(grid%get_segment([0.00_default,0.00_default]) == [1,1]), &
-                   "all(grid%get_segment([0.00_default,0.00_default]) == [1,1])")
-    call assert (u, all(grid%get_segment([0.32_default,0.32_default]) == [1,1]), &
-                   "all(grid%get_segment([0.32_default,0.32_default]) == [1,1])")
-    call assert (u, all(grid%get_segment([0.52_default,0.52_default]) == [2,2]), &
-                   "all(grid%get_segment([0.52_default,0.52_default]) == [2,2])")
-    call assert (u, all(grid%get_segment([1.00_default,1.00_default]) == [3,3]), &
-                   "all(grid%get_segment([1.00_default,1.00_default]) == [3,3])")
-    write (u, "(A)")  "* A double error is expected"
-    fail = grid%get_segment([1.10_default,1.10_default], u)
-    call grid%final ()
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: grids_3"
-  end subroutine grids_3
-
-  subroutine grids_4 (u)
-    integer, intent(in) :: u
-    type(grid_t) :: grid
-    write (u, "(A)")  "* Test output: grids_4"
-    write (u, "(A)")  "*   Purpose: Update Maxima"
-    write (u, "(A)")
-
-    call grid%init ([4,4])
-    call grid%update_maxima ([0.1_default, 0.0_default], 0.3_default)
-    call grid%update_maxima ([0.9_default, 0.95_default], 1.7_default)
-    call grid%write (u)
-    call assert_equal (u, grid%get_value([1,1]), 0.3_default, &
-               "grid%get_value([1,1]")
-    call assert_equal (u, grid%get_value([2,2]), 0.0_default, &
-               "grid%get_value([2,2]")
-    call assert_equal (u, grid%get_value([4,4]), 1.7_default, &
-               "grid%get_value([4,4]")
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: grids_4"
-  end subroutine grids_4
-
-  subroutine grids_5 (u)
-    integer, intent(in) :: u
-    type(grid_t) :: grid
-    real(default) :: first, second
-    write (u, "(A)")  "* Test output: grids_5"
-    write (u, "(A)")  "*   Purpose: Finding and checking"
-    write (u, "(A)")
-
-    call grid%init ([2,2,2])
-    first = one / two - tiny_07
-    second = two / two - tiny_07
-    call grid%update_maxima ([0.1_default, 0.0_default, first], 0.3_default)
-    call grid%update_maxima ([0.9_default, 0.95_default, second], 1.7_default)
-    call grid%write (u)
-    call assert (u, .not. grid%is_non_zero_everywhere (), &
-               ".not. grid%is_non_zero_everywhere (")
-    call assert_equal (u, grid%get_maximum_in_3d (1), 0.3_default, &
-         "grid%get_maximum_in_3d (1)")
-    call assert_equal (u, grid%get_maximum_in_3d (2), 1.7_default, &
-         "grid%get_maximum_in_3d (2)")
-
-    call grid%update_maxima ([0.9_default, 0.95_default, first], 1.8_default)
-    call grid%update_maxima ([0.1_default, 0.95_default, first], 1.5_default)
-    call grid%update_maxima ([0.9_default, 0.15_default, first], 1.5_default)
-    call grid%update_maxima ([0.1_default, 0.0_default, second], 0.2_default)
-    call grid%update_maxima ([0.1_default, 0.9_default, second], 0.2_default)
-    call grid%update_maxima ([0.9_default, 0.0_default, second], 0.2_default)
-    call grid%write (u)
-    call assert (u, grid%is_non_zero_everywhere (), &
-               "grid%is_non_zero_everywhere (")
-    call assert_equal (u, grid%get_maximum_in_3d (1), 1.8_default, &
-         "grid%get_maximum_in_3d (1)")
-    call assert_equal (u, grid%get_maximum_in_3d (2), 1.7_default, &
-         "grid%get_maximum_in_3d (2)")
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: grids_5"
-  end subroutine grids_5
 
 
 end module grids

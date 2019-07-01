@@ -1,0 +1,118 @@
+* Test output: object_comparison_1
+*   Purpose: check integer comparison operators
+
+* Create expression prototype: compare
+
+logical compare ||operator|binary|abstract||
+
+* Create expressions
+
+success = T
+success = T
+success = T
+success = T
+success = T
+success = T
+
+success = T
+success = T
+success = T
+success = T
+success = T
+success = T
+
+logical compare ||operator|binary|constant|| {
+   A1: integer i ||constant|| = 2
+   O2: ==
+   A2: integer j ||constant|| = 3
+ } = ???
+logical compare ||operator|binary|constant|| {
+   A1: integer i ||constant|| = 2
+   O2: <>
+   A2: integer j ||constant|| = 3
+ } = ???
+logical compare ||operator|binary|constant|| {
+   A1: integer i ||constant|| = 2
+   O2: <
+   A2: integer j ||constant|| = 3
+ } = ???
+logical compare ||operator|binary|constant|| {
+   A1: integer i ||constant|| = 2
+   O2: >
+   A2: integer j ||constant|| = 3
+ } = ???
+logical compare ||operator|binary|constant|| {
+   A1: integer i ||constant|| = 2
+   O2: <=
+   A2: integer j ||constant|| = 3
+ } = ???
+logical compare ||operator|binary|constant|| {
+   A1: integer i ||constant|| = 2
+   O2: >=
+   A2: integer j ||constant|| = 3
+ } = ???
+
+2 == 3
+2 <> 3
+2 < 3
+2 > 3
+2 <= 3
+2 >= 3
+
+2 == 2
+2 <> 2
+2 < 2
+2 > 2
+2 <= 2
+2 >= 2
+
+* Evaluate
+
+logical compare ||operator|binary|constant|| {
+   A1: integer i ||constant|| = 2
+   O2: ==
+   A2: integer j ||constant|| = 3
+ } = false
+logical compare ||operator|binary|constant|| {
+   A1: integer i ||constant|| = 2
+   O2: <>
+   A2: integer j ||constant|| = 3
+ } = true
+logical compare ||operator|binary|constant|| {
+   A1: integer i ||constant|| = 2
+   O2: <
+   A2: integer j ||constant|| = 3
+ } = true
+logical compare ||operator|binary|constant|| {
+   A1: integer i ||constant|| = 2
+   O2: >
+   A2: integer j ||constant|| = 3
+ } = false
+logical compare ||operator|binary|constant|| {
+   A1: integer i ||constant|| = 2
+   O2: <=
+   A2: integer j ||constant|| = 3
+ } = true
+logical compare ||operator|binary|constant|| {
+   A1: integer i ||constant|| = 2
+   O2: >=
+   A2: integer j ||constant|| = 3
+ } = false
+
+false
+true
+true
+false
+true
+false
+
+true
+false
+false
+false
+true
+true
+
+* Cleanup
+
+* Test output end: object_comparison_1

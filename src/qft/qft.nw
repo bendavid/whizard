@@ -63,13 +63,9 @@ module model_data
 
 <<Model data: types>>
 
-<<Model data: interfaces>>
-
 contains
 
 <<Model data: procedures>>
-
-<<Model data: tests>>
 
 end module model_data
 @ %def model_data
@@ -1613,19 +1609,19 @@ thus avoid keeping track of TARGET attributes.
     if (show_par) then
        do i = 1, size (model%par_real)
           call model%par_real(i)%write (u)
-          write (u, *)
+          write (u, "(A)")  
        end do
        do i = 1, size (model%par_complex)
           call model%par_complex(i)%write (u)
-          write (u, *)
+          write (u, "(A)")  
        end do
     end if
     if (show_prt) then
-       write (u, *)
+       write (u, "(A)")  
        call model%write_fields (u)
     end if
     if (show_vtx) then
-       write (u, *)
+       write (u, "(A)")
        call model%write_vertices (u, verbose)
     end if
   end subroutine model_data_write
@@ -3046,8 +3042,6 @@ contains
 
 <<Colors: procedures>>
 
-<<Colors: tests>>
-
 end module colors
 @ %def colors
 @ 
@@ -4109,9 +4103,46 @@ their corresponding anticolors of outgoing particles.
 @ %def count_color_loops
 @ 
 \subsection{Unit tests}
-<<Colors: public>>=
+Test module, followed by the corresponding implementation module.
+<<[[colors_ut.f90]]>>=
+<<File header>>
+
+module colors_ut
+  use unit_tests
+  use colors_uti
+  
+<<Standard module head>>
+
+<<Colors: public test>>
+
+contains
+  
+<<Colors: test driver>>
+
+end module colors_ut
+@ %def colors_ut
+@
+<<[[colors_uti.f90]]>>=
+<<File header>>
+
+module colors_uti
+
+  use colors
+
+<<Standard module head>>
+
+<<Colors: test declarations>>
+
+contains
+
+<<Colors: tests>>
+
+end module colors_uti
+@ %def colors_ut
+@ API: driver for the unit tests below.
+<<Colors: public test>>=
   public :: color_test
-<<Colors: procedures>>=  
+<<Colors: test driver>>=
   subroutine color_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
@@ -4124,6 +4155,8 @@ their corresponding anticolors of outgoing particles.
   call test (color_1, "color_1", &
        "check color counting", &
        u, results)
+<<Colors: test declarations>>=  
+  public :: color_1
 <<Colors: tests>>=  
   subroutine color_1 (u)
     integer, intent(in) :: u
@@ -6298,7 +6331,6 @@ module state_matrices
   use io_units
   use format_utils, only: pac_fmt
   use format_defs, only: FMT_17, FMT_19
-  use unit_tests
   use diagnostics
   use sorting
   use model_data
@@ -6320,8 +6352,6 @@ module state_matrices
 contains
 
 <<State matrices: procedures>>
-
-<<State matrices: tests>>
 
 end module state_matrices
 @ %def state_matrices
@@ -8112,7 +8142,6 @@ the original state to the sorted state is given by the index array
   subroutine state_flv_content_write (state_flv, unit)
     class(state_flv_content_t), intent(in), target :: state_flv
     integer, intent(in), optional :: unit
-    type(state_iterator_t) :: it
     integer :: u, n, d, i, j
     u = given_output_unit (unit)
     d = size (state_flv%pdg, 1)
@@ -8280,9 +8309,54 @@ must be equal to the length $d$ of the individual flavor-state entries.
 @ %def pacify_complex
 @ 
 \subsection{Unit tests}
-<<State matrices: public>>=
+Test module, followed by the corresponding implementation module.
+<<[[state_matrices_ut.f90]]>>=
+<<File header>>
+
+module state_matrices_ut
+  use unit_tests
+  use state_matrices_uti
+  
+<<Standard module head>>
+
+<<State matrices: public test>>
+
+contains
+  
+<<State matrices: test driver>>
+
+end module state_matrices_ut
+@ %def state_matrices_ut
+@
+<<[[state_matrices_uti.f90]]>>=
+<<File header>>
+
+module state_matrices_uti
+
+<<Use kinds>>
+  use io_units
+  use format_defs, only: FMT_19
+  use flavors
+  use colors
+  use helicities
+  use quantum_numbers
+
+  use state_matrices
+
+<<Standard module head>>
+
+<<State matrices: test declarations>>
+
+contains
+
+<<State matrices: tests>>
+
+end module state_matrices_uti
+@ %def state_matrices_ut
+@ API: driver for the unit tests below.
+<<State matrices: public test>>=
   public :: state_matrix_test
-<<State matrices: procedures>>=
+<<State matrices: test driver>>=
   subroutine state_matrix_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
@@ -8295,6 +8369,8 @@ must be equal to the length $d$ of the individual flavor-state entries.
   call test (state_matrix_1, "state_matrix_1", &
        "check merge of quantum states of equal depth", &
        u, results)
+<<State matrices: test declarations>>=  
+  public :: state_matrix_1
 <<State matrices: tests>>=  
   subroutine state_matrix_1 (u)
     integer, intent(in) :: u
@@ -8373,6 +8449,8 @@ must be equal to the length $d$ of the individual flavor-state entries.
   call test (state_matrix_2, "state_matrix_2", &
        "check factorizing 3-particle state matrix", &
        u, results)
+<<State matrices: test declarations>>=  
+  public :: state_matrix_2
 <<State matrices: tests>>=  
   subroutine state_matrix_2 (u)
     integer, intent(in) :: u
@@ -8462,6 +8540,8 @@ must be equal to the length $d$ of the individual flavor-state entries.
   call test (state_matrix_3, "state_matrix_3", &
        "check factorizing 3-particle state matrix", &
        u, results)
+<<State matrices: test declarations>>=  
+  public :: state_matrix_3
 <<State matrices: tests>>=  
   subroutine state_matrix_3 (u)
     use physics_defs, only: HADRON_REMNANT_TRIPLET, HADRON_REMNANT_OCTET
@@ -8523,6 +8603,8 @@ and read again.
   call test (state_matrix_4, "state_matrix_4", &
        "check raw I/O", &
        u, results)
+<<State matrices: test declarations>>=  
+  public :: state_matrix_4
 <<State matrices: tests>>=  
   subroutine state_matrix_4 (u)
     integer, intent(in) :: u
@@ -8612,6 +8694,8 @@ against trial flavor (i.e., PDG) strings.
   call test (state_matrix_5, "state_matrix_5", &
        "check flavor content", &
        u, results)
+<<State matrices: test declarations>>=  
+  public :: state_matrix_5
 <<State matrices: tests>>=
   subroutine state_matrix_5 (u)
     integer, intent(in) :: u
@@ -8786,7 +8870,6 @@ module interactions
 
 <<Use kinds>>
   use io_units
-  use unit_tests
   use diagnostics
   use sorting
   use lorentz
@@ -8807,8 +8890,6 @@ module interactions
 contains
 
 <<Interactions: procedures>>
-
-<<Interactions: tests>>
 
 end module interactions
 @ %def interactions
@@ -10494,9 +10575,54 @@ may be out of order.)
 @ %def find_connections
 @ 
 \subsection{Unit tests}
-<<Interactions: public>>=
+Test module, followed by the corresponding implementation module.
+<<[[interactions_ut.f90]]>>=
+<<File header>>
+
+module interactions_ut
+  use unit_tests
+  use interactions_uti
+  
+<<Standard module head>>
+
+<<Interactions: public test>>
+
+contains
+  
+<<Interactions: test driver>>
+
+end module interactions_ut
+@ %def interactions_ut
+@
+<<[[interactions_uti.f90]]>>=
+<<File header>>
+
+module interactions_uti
+
+<<Use kinds>>
+  use lorentz
+  use flavors
+  use colors
+  use helicities
+  use quantum_numbers
+  use state_matrices
+
+  use interactions
+
+<<Standard module head>>
+
+<<Interactions: test declarations>>
+
+contains
+
+<<Interactions: tests>>
+
+end module interactions_uti
+@ %def interactions_ut
+@ API: driver for the unit tests below.
+<<Interactions: public test>>=
   public :: interaction_test
-<<Interactions: procedures>>=
+<<Interactions: test driver>>=
   subroutine interaction_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
@@ -10515,6 +10641,8 @@ splitting.
   call test (interaction_1, "interaction_1", &
        "check interaction setup", &
        u, results)
+<<Interactions: test declarations>>=  
+  public :: interaction_1
 <<Interactions: tests>>=  
   subroutine interaction_1 (u)
     integer, intent(in) :: u
@@ -10635,7 +10763,6 @@ module evaluators
 <<Use strings>>
   use io_units
   use format_defs, only: FMT_19
-  use unit_tests
   use diagnostics
   use lorentz
   use model_data
@@ -10659,8 +10786,6 @@ module evaluators
 contains
 
 <<Evaluators: procedures>>
-
-<<Evaluators: tests>>
 
 end module evaluators
 @ %def evaluators
@@ -12811,7 +12936,7 @@ elements, the pairing array is not used and does not have to be set up.
   end subroutine evaluator_init_identity
 
 @ %def evaluator_init_identity
-
+@
 \subsection {Creating an evaluator: quantum number sum}
 This evaluator operates on the diagonal of a density matrix and sums over the
 quantum numbers specified by the mask. The optional argument [[drop]] allows to
@@ -12829,8 +12954,7 @@ entries and normalization (in the corresponding evaluation routine below).
     type(quantum_numbers_mask_t), dimension(:), intent(in) :: qn_mask
     logical, intent(in), optional, dimension(:) :: drop
     type(state_iterator_t) :: it_old, it_new
-    integer, dimension(:,:), allocatable :: pairing_proto
-    integer, dimension(:), allocatable :: pairing_sizes
+    integer, dimension(:), allocatable :: pairing_size, pairing_target, i_new
     integer, dimension(:), allocatable :: map
     integer :: n_in, n_out, n_vir, n_tot, n_me_old, n_me_new
     integer :: i, j
@@ -12892,9 +13016,9 @@ entries and normalization (in the corresponding evaluation routine below).
     call int%transfer_relations (eval, map)
 
     n_me_old = int%get_n_matrix_elements ()
-    allocate (pairing_proto(n_me_old, n_me_old))
-    allocate (pairing_sizes(n_me_old))
-    pairing_sizes = 0
+    allocate (pairing_size (n_me_old), source = 0)
+    allocate (pairing_target (n_me_old), source = 0)
+    pairing_size = 0
     state_old => int%get_state_matrix_ptr ()
     state_new => eval%get_state_matrix_ptr ()
     call it_old%init (state_old)
@@ -12923,28 +13047,32 @@ entries and normalization (in the corresponding evaluation routine below).
           call eval%add_state (qn(inotdropped))
           i = eval%get_n_matrix_elements ()
        end if
-       pairing_sizes(i) = pairing_sizes(i) + 1
-       pairing_proto(pairing_sizes(i), i) = it_old%get_me_index ()
-       ! print *, &                         !!! Debugging
-       !     i, pairing_sizes(i), it_old%get_me_index ()
+       pairing_size(i) = pairing_size(i) + 1
+       pairing_target(it_old%get_me_index ()) = i
        call it_old%advance ()
     end do
     call eval%freeze ()
 
     n_me_new = eval%get_n_matrix_elements ()
-    allocate (eval%pairing_array(n_me_new))
+    allocate (eval%pairing_array (n_me_new))
     do i = 1, n_me_new
-       ! print *, i, pairing_sizes(i)     !!! Debugging
        call pairing_array_init (eval%pairing_array(i), &
-          pairing_sizes(i), .false., .false.)
-       eval%pairing_array(i)%i1 = pairing_proto(:pairing_sizes(i), i) 
+            pairing_size(i), .false., .false.)
+    end do
+
+    allocate (i_new (n_me_new), source = 0)
+    do i = 1, n_me_old
+       j = pairing_target(i)
+       if (j > 0) then
+          i_new(j) = i_new(j) + 1
+          eval%pairing_array(j)%i1(i_new(j)) = i
+       end if
     end do
 
   end subroutine evaluator_init_qn_sum
 
 @ %def evaluator_init_qn_sum
 @
-
 \subsection{Evaluation}
 When the input interactions (which are pointed to in the pairings
 stored within the evaluator) are filled with values, we can activate
@@ -13001,15 +13129,55 @@ marked as [[pure]].
 @ %def evaluator_evaluate
 @ 
 \subsection{Unit tests}
-Test: Create two interactions.  The interactions are twofold
-connected.  The first connection has a helicity index that is kept,
-the second connection has a helicity index that is summed over.
-Concatenate the interactions in an evaluator, which thus contains a
-result interaction.  Fill the input interactions with values, activate
-the evaluator and print the result.
-<<Evaluators: public>>=
+Test module, followed by the corresponding implementation module.
+<<[[evaluators_ut.f90]]>>=
+<<File header>>
+
+module evaluators_ut
+  use unit_tests
+  use evaluators_uti
+  
+<<Standard module head>>
+
+<<Evaluators: public test>>
+
+contains
+  
+<<Evaluators: test driver>>
+
+end module evaluators_ut
+@ %def evaluators_ut
+@
+<<[[evaluators_uti.f90]]>>=
+<<File header>>
+
+module evaluators_uti
+
+<<Use kinds>>
+  use lorentz
+  use flavors
+  use colors
+  use helicities
+  use quantum_numbers
+  use interactions
+  use model_data
+
+  use evaluators
+
+<<Standard module head>>
+
+<<Evaluators: test declarations>>
+
+contains
+
+<<Evaluators: tests>>
+
+end module evaluators_uti
+@ %def evaluators_ut
+@ API: driver for the unit tests below.
+<<Evaluators: public test>>=
   public :: evaluator_test
-<<Evaluators: procedures>>=
+<<Evaluators: test driver>>=
   subroutine evaluator_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
@@ -13017,10 +13185,18 @@ the evaluator and print the result.
   end subroutine evaluator_test
 
 @ %def evaluator_test
+@ Test: Create two interactions.  The interactions are twofold
+connected.  The first connection has a helicity index that is kept,
+the second connection has a helicity index that is summed over.
+Concatenate the interactions in an evaluator, which thus contains a
+result interaction.  Fill the input interactions with values, activate
+the evaluator and print the result.
 <<Evaluators: execute tests>>=
   call test (evaluator_1, "evaluator_1", &
        "check evaluators (1)", &
        u, results)
+<<Evaluators: test declarations>>=  
+  public :: evaluator_1
 <<Evaluators: tests>>=
   subroutine evaluator_1 (u) 
     integer, intent(in) :: u
@@ -13179,6 +13355,8 @@ the evaluator and print the result.
   call test (evaluator_2, "evaluator_2", &
        "check evaluators (2)", &
        u, results)
+<<Evaluators: test declarations>>=  
+  public :: evaluator_2
 <<Evaluators: tests>>=  
   subroutine evaluator_2 (u)
     integer, intent(in) :: u
@@ -13258,6 +13436,8 @@ the evaluator and print the result.
   call test (evaluator_3, "evaluator_3", &
        "check evaluators (3)", &
        u, results)
+<<Evaluators: test declarations>>=  
+  public :: evaluator_3
 <<Evaluators: tests>>=  
   subroutine evaluator_3 (u)   
     integer, intent(in) :: u
@@ -13359,6 +13539,8 @@ filters for the linked entry.
   call test (evaluator_4, "evaluator_4", &
        "check evaluator product with filter", &
        u, results)
+<<Evaluators: test declarations>>=  
+  public :: evaluator_4
 <<Evaluators: tests>>=  
   subroutine evaluator_4 (u)   
     integer, intent(in) :: u

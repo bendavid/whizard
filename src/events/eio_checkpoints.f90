@@ -1,4 +1,4 @@
-! WHIZARD 2.2.6 May 02 2015
+! WHIZARD 2.2.7 Aug 11 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -32,14 +32,10 @@
 
 module eio_checkpoints
   
-  use kinds
-  use io_units
   use iso_varying_string, string_t => varying_string
-  use unit_tests
+  use io_units
   use diagnostics
-
   use cputime
-  use model_data
   use event_base
   use eio_data
   use eio_base
@@ -48,7 +44,6 @@ module eio_checkpoints
   private
 
   public :: eio_checkpoints_t
-  public :: eio_checkpoints_test
 
   character(*), parameter :: &
      checkpoint_head = "| % complete | events generated | events remaining &
@@ -81,6 +76,7 @@ module eio_checkpoints
      procedure :: shutdown => eio_checkpoints_shutdown
      procedure :: input_i_prc => eio_checkpoints_input_i_prc
      procedure :: input_event => eio_checkpoints_input_event
+     procedure :: skip => eio_checkpoints_skip
   end type eio_checkpoints_t
   
 
@@ -128,7 +124,7 @@ contains
           eio%active = .true.
           eio%i_evt = 0
           eio%n_read = 0
-          eio%n_events = data%n_evt
+          eio%n_events = data%n_evt * data%nlo_multiplier
        end if
     end if
     if (present (success))  success = .true.
@@ -235,71 +231,11 @@ contains
     iostat = 1
   end subroutine eio_checkpoints_input_event
 
+  subroutine eio_checkpoints_skip (eio, iostat)
+    class(eio_checkpoints_t), intent(inout) :: eio
+    integer, intent(out) :: iostat
+    iostat = 0
+  end subroutine eio_checkpoints_skip
 
-  subroutine eio_checkpoints_test (u, results)
-    integer, intent(in) :: u
-    type(test_results_t), intent(inout) :: results
-    call test (eio_checkpoints_1, "eio_checkpoints_1", &
-         "read and write event contents", &
-         u, results)
-  end subroutine eio_checkpoints_test
-  
-  subroutine eio_checkpoints_1 (u)
-    integer, intent(in) :: u
-    class(generic_event_t), pointer :: event
-    class(eio_t), allocatable :: eio
-    type(event_sample_data_t) :: data
-    type(string_t) :: sample
-    integer :: i, n_events
-
-    write (u, "(A)")  "* Test output: eio_checkpoints_1"
-    write (u, "(A)")  "*   Purpose: generate a number of events &
-         &with screen output"
-    write (u, "(A)")
-
-    write (u, "(A)")  "* Initialize test process"
- 
-    call eio_prepare_test (event)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Generate events"
-    write (u, "(A)")
- 
-    sample = "eio_checkpoints_1"
- 
-    allocate (eio_checkpoints_t :: eio)
-
-    n_events = 10
-    call data%init (1, 0)
-    data%n_evt = n_events
-
-    select type (eio)
-    type is (eio_checkpoints_t)
-       call eio%set_parameters (checkpoint = 4)
-    end select
-
-    call eio%init_out (sample, data)
-
-    do i = 1, n_events
-       call event%generate (1, [0._default, 0._default])
-       call eio%output (event, i_prc = 0)
-    end do
-    
-    write (u, "(A)")  "* Checkpointing status"
-    write (u, "(A)")
-
-    call eio%write (u)
-    call eio%final ()
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Cleanup"
- 
-    call eio_cleanup_test (event)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: eio_checkpoints_1"
-    
-  end subroutine eio_checkpoints_1
-  
 
 end module eio_checkpoints

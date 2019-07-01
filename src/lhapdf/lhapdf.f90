@@ -168,7 +168,7 @@ module lhapdf
      function lhapdf_alphaspdf (pdf, q) bind (C) result (as)
        import
        type(c_ptr), intent(in), value :: pdf
-       real(c_double), intent(in) :: q
+       real(c_double), intent(in), value :: q
        real(c_double) :: as
      end function lhapdf_alphaspdf
   end interface
@@ -285,11 +285,7 @@ contains
     real(double) :: as
     real(c_double) :: c_q = 0
     c_q = q
-    !!! Problems with -O0:
-    !!! Without this print statement, c_q is undefined when called from
-    !!! sf_lhapdf and LHAPDF6 gives an error and the test sf_lhapdf_3 fails
-    !!! print *, c_q
-    as = lhapdf_alphaspdf (pdf%cptr, real(q, kind=c_double))
+    as = lhapdf_alphaspdf (pdf%cptr, c_q)
   end function lhapdf_alphas_pdf
 
   subroutine lhapdf_final (pdf)

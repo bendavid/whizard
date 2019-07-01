@@ -29,6 +29,7 @@
 
 ## We create a library which is still to be combined with auxiliary libs.
 noinst_LTLIBRARIES = libcombinatorics.la
+check_LTLIBRARIES = libcombinatorics_ut.la
 
 libcombinatorics_la_SOURCES = \
   bytes.f90 \
@@ -39,13 +40,23 @@ libcombinatorics_la_SOURCES = \
   grids.f90 \
   solver.f90
 
+libcombinatorics_ut_la_SOURCES = \
+  md5_uti.f90 md5_ut.f90 \
+  sorting_uti.f90 sorting_ut.f90 \
+  grids_uti.f90 grids_ut.f90 \
+  solver_uti.f90 solver_ut.f90
+
 ## Omitting this would exclude it from the distribution
 dist_noinst_DATA = combinatorics.nw
 
 # Dump module names into file Modules
-libcombinatorics_Modules = ${libcombinatorics_la_SOURCES:.f90=}
+libcombinatorics_Modules = \
+  ${libcombinatorics_la_SOURCES:.f90=} \
+  ${libcombinatorics_ut_la_SOURCES:.f90=}
 Modules: Makefile
-	@for module in $(libcombinatorics_Modules); do \
+	@for module in \
+	  $(libcombinatorics_Modules) \
+	  $(libcombinatorics_ut_Modules); do \
           echo $$module >> $@.new; \
         done
 	@if diff $@ $@.new -q >/dev/null; then \
@@ -88,7 +99,9 @@ DISTCLEANFILES = Module_dependencies.sed
 @am__include@ @am__quote@Makefile.depend@am__quote@
 
 Makefile.depend: Module_dependencies.sed
-Makefile.depend: $(libcombinatorics_la_SOURCES)
+Makefile.depend: \
+  $(libcombinatorics_la_SOURCES) \
+  $(libcombinatorics_ut_la_SOURCES)
 	@rm -f $@
 	for src in $^; do \
 	  module="`basename $$src | sed 's/\.f[90][0358]//'`"; \
@@ -140,12 +153,14 @@ POSTLUDE = $(top_srcdir)/src/noweb-frame/whizard-postlude.nw
 combinatorics.stamp: $(PRELUDE) $(srcdir)/combinatorics.nw $(POSTLUDE)
 	@rm -f combinatorics.tmp
 	@touch combinatorics.tmp
-	for src in $(libcombinatorics_la_SOURCES); do \
+	for src in \
+	  $(libcombinatorics_la_SOURCES) \
+	  $(libcombinatorics_ut_la_SOURCES); do \
 	  $(NOTANGLE) -R[[$$src]] $^ | $(CPIF) $$src; \
         done
 	@mv -f combinatorics.tmp combinatorics.stamp
 
-$(libcombinatorics_la_SOURCES): combinatorics.stamp
+$(libcombinatorics_la_SOURCES) $(libcombinatorics_ut_la_SOURCES): combinatorics.stamp
 ## Recover from the removal of $@
 	@if test -f $@; then :; else \
 	  rm -f combinatorics.stamp; \
@@ -175,6 +190,9 @@ endif
 clean-local: clean-noweb
 	-rm -f combinatorics.stamp combinatorics.tmp
 	-rm -f *.$(FC_MODULE_EXT)
+if FC_SUBMODULES
+	-rm -f *.smod
+endif
 
 ## Remove backup files
 maintainer-clean-backup:

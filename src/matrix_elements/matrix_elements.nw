@@ -111,6 +111,8 @@ types, no type-bound procedures.
   function process_constants_get_flv_state (prc_const) result (flv_state)
     class(process_constants_t), intent(in) :: prc_const
     integer, dimension(:,:), allocatable :: flv_state
+    allocate (flv_state (size (prc_const%flv_state, 1), &
+         size (prc_const%flv_state, 2)))
     flv_state = prc_const%flv_state
   end function process_constants_get_flv_state
 
@@ -122,6 +124,8 @@ types, no type-bound procedures.
   subroutine process_constants_get_hel_state (prc_const, hel_state)
     class(process_constants_t), intent(in) :: prc_const
     integer, dimension(:,:), allocatable :: hel_state
+    allocate (hel_state (size (prc_const%hel_state, 1), &
+         size (prc_const%hel_state, 2)))
     hel_state = prc_const%hel_state
   end subroutine process_constants_get_hel_state
 
@@ -133,6 +137,8 @@ types, no type-bound procedures.
   subroutine process_constants_get_col_state (prc_const, col_state)
     class(process_constants_t), intent(in) :: prc_const
     integer, dimension(:,:,:), allocatable :: col_state
+    allocate (col_state (size (prc_const%col_state, 1), &
+         size (prc_const%col_state, 2), size (prc_const%col_state, 3)))
     col_state = prc_const%col_state
   end subroutine process_constants_get_col_state
 
@@ -144,6 +150,8 @@ types, no type-bound procedures.
   function process_constants_get_ghost_flag (prc_const) result(ghost_flag)
    class(process_constants_t), intent(in) :: prc_const
    logical, dimension(:,:), allocatable :: ghost_flag
+    allocate (ghost_flag (size (prc_const%ghost_flag, 1), &
+         size (prc_const%ghost_flag, 2)))
    ghost_flag = prc_const%ghost_flag
   end function process_constants_get_ghost_flag
 
@@ -155,6 +163,7 @@ types, no type-bound procedures.
   subroutine process_constants_get_color_factors (prc_const, col_facts)
    class(process_constants_t), intent(in) :: prc_const
    complex(default), intent(inout), dimension(:), allocatable :: col_facts
+   allocate (col_facts (size (prc_const%color_factors)))
    col_facts = prc_const%color_factors
   end subroutine process_constants_get_color_factors
 
@@ -166,6 +175,8 @@ types, no type-bound procedures.
   subroutine process_constants_get_cf_index (prc_const, cf_index)
     class(process_constants_t), intent(in) :: prc_const
     integer, intent(inout), dimension(:,:), allocatable :: cf_index
+    allocate (cf_index (size (prc_const%cf_index, 1), &
+         size (prc_const%cf_index, 2)))    
     cf_index = prc_const%cf_index
   end subroutine process_constants_get_cf_index
 
@@ -177,6 +188,8 @@ types, no type-bound procedures.
   subroutine process_constants_set_flv_state (prc_const, flv_state)
     class(process_constants_t), intent(inout) :: prc_const
     integer, intent(in), dimension(:,:), allocatable :: flv_state
+    allocate (prc_const%flv_state (size (flv_state, 1), &
+         size (flv_state, 2)))
     prc_const%flv_state = flv_state
   end subroutine process_constants_set_flv_state
 
@@ -188,7 +201,9 @@ types, no type-bound procedures.
   subroutine process_constants_set_col_state (prc_const, col_state)
     class(process_constants_t), intent(inout) :: prc_const
     integer, intent(in), dimension(:,:,:), allocatable :: col_state
-    prc_const%col_state = col_state
+    allocate (prc_const%col_state (size (col_state, 1), &
+         size (col_state, 2), size (col_state, 3)))
+    prc_const%col_state = col_state    
   end subroutine process_constants_set_col_state
 
 @ %def process_constants_set_col_state
@@ -199,6 +214,8 @@ types, no type-bound procedures.
   subroutine process_constants_set_cf_index (prc_const, cf_index)
     class(process_constants_t), intent(inout) :: prc_const
     integer, dimension(:,:), intent(in), allocatable :: cf_index
+    allocate (prc_const%cf_index (size (cf_index, 1), &
+         size (cf_index, 2)))
     prc_const%cf_index = cf_index
   end subroutine process_constants_set_cf_index
 
@@ -210,6 +227,7 @@ types, no type-bound procedures.
   subroutine process_constants_set_color_factors (prc_const, color_factors)
     class(process_constants_t), intent(inout) :: prc_const
     complex(default), dimension(:), intent(in), allocatable :: color_factors
+    allocate (prc_const%color_factors (size (color_factors)))
     prc_const%color_factors = color_factors
   end subroutine process_constants_set_color_factors
 
@@ -221,6 +239,8 @@ types, no type-bound procedures.
   subroutine process_constants_set_ghost_flag (prc_const, ghost_flag)
     class(process_constants_t), intent(inout) :: prc_const
     logical, intent(in), dimension(:,:), allocatable :: ghost_flag
+    allocate (prc_const%ghost_flag (size (ghost_flag, 1), &
+         size (ghost_flag, 2)))
     prc_const%ghost_flag = ghost_flag
   end subroutine process_constants_set_ghost_flag
 @ %def process_constants_set_ghost_flag
@@ -320,8 +340,8 @@ module prclib_interfaces
   use kinds
 <<Use strings>>
   use io_units
-  use unit_tests
   use system_defs, only: TAB
+  use string_utils, only: lower_case
   use diagnostics
   use os_interface
 
@@ -333,13 +353,9 @@ module prclib_interfaces
 
 <<Prclib interfaces: interfaces>>
 
-<<Prclib interfaces: test types>>
-
 contains
   
 <<Prclib interfaces: procedures>>
-
-<<Prclib interfaces: tests>>
 
 end module prclib_interfaces
 @ %def prclib_interfaces
@@ -561,6 +577,8 @@ version.
 
 The type is still abstract, all methods must be implemented explicitly
 for a specific matrix-element variant.
+<<Prclib interfaces: public>>=
+  public :: prc_writer_c_lib_t
 <<Prclib interfaces: types>>=
   type, extends (prc_writer_t), abstract :: prc_writer_c_lib_t
    contains
@@ -2738,7 +2756,7 @@ pointer to a named procedure.
     type(string_t), intent(in) :: feature
     type(c_funptr) :: c_fptr
     type(string_t) :: prefix, full_name
-    prefix = driver%basename // "_"
+    prefix = lower_case (driver%basename) // "_"
     full_name = prefix // feature
     c_fptr = dlaccess_get_c_funptr (driver%dlaccess, full_name)
     call driver%check_dlerror ()
@@ -2849,11 +2867,63 @@ Recall the MD5 sum written in the Makefile
     
 @ %def prclib_driver_get_md5sum_source
 @
-\subsection{Test}
-This is the master for calling self-test procedures.
-<<Prclib interfaces: public>>=
+\subsection{Unit Test}
+Test module, followed by the corresponding implementation module.
+<<[[prclib_interfaces_ut.f90]]>>=
+<<File header>>
+
+module prclib_interfaces_ut
+  use unit_tests
+  use prclib_interfaces_uti
+  
+<<Standard module head>>
+
+<<Prclib interfaces: public test>>
+
+<<Prclib interfaces: public test auxiliary>>
+
+contains
+  
+<<Prclib interfaces: test driver>>
+
+end module prclib_interfaces_ut
+@ %def prclib_interfaces_ut
+@
+<<[[prclib_interfaces_uti.f90]]>>=
+<<File header>>
+
+module prclib_interfaces_uti
+
+  use, intrinsic :: iso_c_binding !NODEP!
+  
+  use kinds
+<<Use strings>>
+  use io_units
+  use system_defs, only: TAB
+  use os_interface
+
+  use prclib_interfaces
+
+<<Standard module head>>
+
+<<Prclib interfaces: public test auxiliary>>
+
+<<Prclib interfaces: test declarations>>
+
+<<Prclib interfaces: test types>>
+
+contains
+
+<<Prclib interfaces: tests>>
+
+<<Prclib interfaces: test auxiliary>>
+
+end module prclib_interfaces_uti
+@ %def prclib_interfaces_ut
+@ API: driver for the unit tests below.
+<<Prclib interfaces: public test>>=
   public :: prclib_interfaces_test
-<<Prclib interfaces: tests>>=
+<<Prclib interfaces: test driver>>=
   subroutine prclib_interfaces_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
@@ -2870,6 +2940,8 @@ does nothing useful.
   call test (prclib_interfaces_1, "prclib_interfaces_1", &
        "create driver object", &
        u, results)
+<<Prclib interfaces: test declarations>>=
+  public :: prclib_interfaces_1
 <<Prclib interfaces: tests>>=
   subroutine prclib_interfaces_1 (u)
     integer, intent(in) :: u
@@ -2928,7 +3000,7 @@ NOTE: temporarily made public.
   
 @ %def test_writer_1
 @ 
-<<Prclib interfaces: tests>>=
+<<Prclib interfaces: test auxiliary>>=
   function test_writer_1_type_name () result (string)
     type(string_t) :: string
     string = "test_1"
@@ -3002,6 +3074,8 @@ wrappers (Fortran module library).
   call test (prclib_interfaces_2, "prclib_interfaces_2", &
        "write driver file", &
        u, results)
+<<Prclib interfaces: test declarations>>=
+  public :: prclib_interfaces_2
 <<Prclib interfaces: tests>>=
   subroutine prclib_interfaces_2 (u)
     integer, intent(in) :: u
@@ -3059,7 +3133,7 @@ lines.  Since all procedures are NOPASS, we can reuse two of the TBP.
   
 @ %def test_writer_2
 @ 
-<<Prclib interfaces: tests>>=
+<<Prclib interfaces: test auxiliary>>=
   function test_writer_2_type_name () result (string)
     type(string_t) :: string
     string = "test_2"
@@ -3111,6 +3185,8 @@ components of [[os_data]] to known values.
   call test (prclib_interfaces_3, "prclib_interfaces_3", &
        "write makefile", &
        u, results)
+<<Prclib interfaces: test declarations>>=
+  public :: prclib_interfaces_3
 <<Prclib interfaces: tests>>=
   subroutine prclib_interfaces_3 (u)
     integer, intent(in) :: u
@@ -3184,6 +3260,8 @@ the featured procedure.
   call test (prclib_interfaces_4, "prclib_interfaces_4", &
        "compile and link (Fortran module)", &
        u, results)
+<<Prclib interfaces: test declarations>>=
+  public :: prclib_interfaces_4
 <<Prclib interfaces: tests>>=
   subroutine prclib_interfaces_4 (u)
     integer, intent(in) :: u
@@ -3346,9 +3424,8 @@ result.
 The stored MD5 sum may be modified.
 
 We will reuse this later, therefore public.
-<<Prclib interfaces: public>>=
+<<Prclib interfaces: public test auxiliary>>=
   public :: test_writer_4_t
-@ 
 <<Prclib interfaces: test types>>=
   type, extends (prc_writer_f_module_t) :: test_writer_4_t
    contains
@@ -3363,7 +3440,7 @@ We will reuse this later, therefore public.
   
 @ %def test_writer_4
 @ 
-<<Prclib interfaces: tests>>=
+<<Prclib interfaces: test auxiliary>>=
   function test_writer_4_type_name () result (string)
     type(string_t) :: string
     string = "test_4"
@@ -3436,7 +3513,7 @@ We need a test module file (actually, one for each process in the test
 above) that allows us to check compilation and linking.  The test
 module implements a colorless $1\to 2$ process, and it implements one
 additional function (feature), the name given as an argument.
-<<Prclib interfaces: tests>>=
+<<Prclib interfaces: test auxiliary>>=
   subroutine write_test_module_file (basename, feature, md5sum)
     type(string_t), intent(in) :: basename
     type(string_t), intent(in) :: feature
@@ -3479,7 +3556,7 @@ The following two subroutines provide building blocks for a
 matrix-element source code file, useful only for testing the
 workflow.  The first routine writes the header part, the other routine
 the implementation of the procedures listed in the header.
-<<Prclib interfaces: tests>>=
+<<Prclib interfaces: test auxiliary>>=
   subroutine write_test_me_code_1 (u)
     integer, intent(in) :: u
     write (u, "(2x,A)")  "public :: md5sum"
@@ -3583,6 +3660,8 @@ These procedures are bind(C).
   call test (prclib_interfaces_5, "prclib_interfaces_5", &
        "compile and link (Fortran library)", &
        u, results)
+<<Prclib interfaces: test declarations>>=
+  public :: prclib_interfaces_5
 <<Prclib interfaces: tests>>=
   subroutine prclib_interfaces_5 (u)
     integer, intent(in) :: u
@@ -3722,7 +3801,7 @@ so no wrapper is needed.
   
 @ %def test_writer_5
 @ The 
-<<Prclib interfaces: tests>>=
+<<Prclib interfaces: test auxiliary>>=
   function test_writer_5_type_name () result (string)
     type(string_t) :: string
     string = "test_5"
@@ -3774,7 +3853,7 @@ We need a test module file (actually, one for each process in the test
 above) that allows us to check compilation and linking.  The test
 module implements a colorless $1\to 2$ process, and it implements one
 additional function (feature), the name given as an argument.
-<<Prclib interfaces: tests>>=
+<<Prclib interfaces: test auxiliary>>=
   subroutine write_test_f_lib_file (basename, feature)
     type(string_t), intent(in) :: basename
     type(string_t), intent(in) :: feature
@@ -3802,7 +3881,7 @@ additional function (feature), the name given as an argument.
 The following matrix-element source code is identical to the previous
 one, but modified such as to provide independent procedures without a
 module envelope.
-<<Prclib interfaces: tests>>=
+<<Prclib interfaces: test auxiliary>>=
   subroutine write_test_me_code_3 (u, id)
     integer, intent(in) :: u
     character(*), intent(in) :: id
@@ -3936,6 +4015,8 @@ These procedures should match the Fortran bind(C) interface.
   call test (prclib_interfaces_6, "prclib_interfaces_6", &
        "compile and link (C library)", &
        u, results)
+<<Prclib interfaces: test declarations>>=
+  public :: prclib_interfaces_6
 <<Prclib interfaces: tests>>=
   subroutine prclib_interfaces_6 (u)
     integer, intent(in) :: u
@@ -4078,7 +4159,7 @@ Makefile writer.
   
 @ %def test_writer_6
 @ 
-<<Prclib interfaces: tests>>=
+<<Prclib interfaces: test auxiliary>>=
   function test_writer_6_type_name () result (string)
     type(string_t) :: string
     string = "test_6"
@@ -4108,7 +4189,7 @@ We need a test module file (actually, one for each process in the test
 above) that allows us to check compilation and linking.  The test
 module implements a colorless $1\to 2$ process, and it implements one
 additional function (feature), the name given as an argument.
-<<Prclib interfaces: tests>>=
+<<Prclib interfaces: test auxiliary>>=
   subroutine write_test_c_lib_file (basename, feature)
     type(string_t), intent(in) :: basename
     type(string_t), intent(in) :: feature
@@ -4133,7 +4214,7 @@ additional function (feature), the name given as an argument.
 @
 The following matrix-element source code is equivalent to the code in
 the previous example, but coded in C.
-<<Prclib interfaces: tests>>=
+<<Prclib interfaces: test auxiliary>>=
   subroutine write_test_me_code_4 (u, id)
     integer, intent(in) :: u
     character(*), intent(in) :: id
@@ -4226,6 +4307,8 @@ driver) and properly clean up all generated files.
   call test (prclib_interfaces_7, "prclib_interfaces_7", &
        "cleanup", &
        u, results)
+<<Prclib interfaces: test declarations>>=
+  public :: prclib_interfaces_7
 <<Prclib interfaces: tests>>=
   subroutine prclib_interfaces_7 (u)
     integer, intent(in) :: u
@@ -4324,7 +4407,7 @@ driver) and properly clean up all generated files.
   
 @ %def prclib_interfaces_7
 @ Auxiliary routine: check and report existence of a file
-<<Prclib interfaces: tests>>=
+<<Prclib interfaces: test auxiliary>>=
   subroutine check_file (u, file)
     integer, intent(in) :: u
     character(*), intent(in) :: file
@@ -4620,6 +4703,20 @@ performed by the external library driver instead.
   
 @ %def process_driver_fill_constants
 @
+\subsection{Process driver for user-defined processes}
+This is another abstract extension of the driver type. It links user-defined
+matrix element methods like BLHA, which also allow the dircet calculation of 
+squared matrix elements.
+<<Prc core def: public>>=
+  public :: prc_user_defined_base_driver_t
+<<Prc core def: types>>=
+  type, abstract, extends (prc_core_driver_t) :: prc_user_defined_base_driver_t 
+  contains
+  <<Prc core def: prc user defined base driver: TBP>>
+  end type prc_user_defined_base_driver_t
+
+@ %def prc_user_defined_base_driver_t
+@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Process library access}
 \label{sec:process_libraries}
@@ -4650,16 +4747,15 @@ configuration data records from the process library.
 
 module process_libraries
 
-  use iso_c_binding !NODEP!
-  use kinds
+  use, intrinsic :: iso_c_binding !NODEP!
+  
 <<Use strings>>
   use io_units
-  use unit_tests
   use diagnostics
   use md5
-  use physics_defs
+  use physics_defs, only: BORN, NLO_REAL, NLO_VIRTUAL, NLO_PDF
+  use physics_defs, only: NLO_SUBTRACTION, GKS
   use os_interface
-  use lexers
   use model_data
   use particle_specifiers
   use process_constants
@@ -4674,15 +4770,9 @@ module process_libraries
 
 <<Process libraries: types>>
 
-<<Process libraries: interfaces>>
-
-<<Process libraries: test declarations>>
-
 contains
 
 <<Process libraries: procedures>>
-
-<<Process libraries: tests>>
 
 end module process_libraries
 @ %def process_libraries
@@ -4690,16 +4780,18 @@ end module process_libraries
 \subsection{Auxiliary stuff}
 Here is a small subroutine that strips the left-hand side and the
 equals sign off an equation.
+<<Process libraries: public>>=
+  public :: strip_equation_lhs
 <<Process libraries: procedures>>=
-  subroutine strip_prefix (buffer)
+  subroutine strip_equation_lhs (buffer)
     character(*), intent(inout) :: buffer
     type(string_t) :: string, prefix
     string = buffer
     call split (string, prefix, "=")
     buffer = string
-  end subroutine strip_prefix
+  end subroutine strip_equation_lhs
     
-@ %def strip_prefix
+@ %def strip_equation_lhs
 @
 \subsection{Process definition objects}
 We collect process configuration data in a derived type,
@@ -4765,11 +4857,9 @@ We assume that no finalizer is needed.
      class(prc_core_def_t), allocatable :: core_def
      character(32) :: md5sum = ""
      integer :: nlo_type = BORN
-     integer :: associated_born = 0
-     integer :: associated_real = 0
-     integer :: associated_virt = 0
-     integer :: associated_sub = 0
+     integer, dimension(N_ASSOCIATED_COMPONENTS) :: associated_components = 0
      logical :: active_nlo_component
+     integer :: fixed_emitter = -1
    contains
    <<Process libraries: process component def: TBP>>
   end type process_component_def_t
@@ -4833,15 +4923,15 @@ the provided templates.
     type(string_t) :: variant_type
     
     read (unit, "(A)")  buffer
-    call strip_prefix (buffer)
+    call strip_equation_lhs (buffer)
     component%basename = trim (adjustl (buffer))
     
     read (unit, "(A)")  buffer
-    call strip_prefix (buffer)
+    call strip_equation_lhs (buffer)
     read (buffer, *)  component%initial
     
     read (unit, "(A)")  buffer
-    call strip_prefix (buffer)
+    call strip_equation_lhs (buffer)
     read (buffer, *)  component%n_in, component%n_out, component%n_tot
     
     call get (unit, var_buffer)
@@ -4859,13 +4949,13 @@ the provided templates.
     end if
     
     read (unit, "(A)")  buffer
-    call strip_prefix (buffer)
+    call strip_equation_lhs (buffer)
     component%method = trim (adjustl (buffer))
     if (component%method == "[undefined]") &
          component%method = ""
     
     read (unit, "(A)")  buffer
-    call strip_prefix (buffer)
+    call strip_equation_lhs (buffer)
     variant_type = trim (adjustl (buffer))
     call allocate_core_def &
          (core_def_templates, variant_type, component%core_def)
@@ -4874,7 +4964,7 @@ the provided templates.
     end if
 
     read (unit, "(A)")  buffer
-    call strip_prefix (buffer)
+    call strip_equation_lhs (buffer)
     read (buffer(3:34), "(A32)")  component%md5sum
     
   end subroutine process_component_def_read
@@ -5102,6 +5192,10 @@ abstract type.
   procedure :: get_nlo_type => process_component_def_get_nlo_type
   procedure :: get_associated_born &
                => process_component_def_get_associated_born
+  procedure :: get_associated_real_fin &
+               => process_component_def_get_associated_real_fin
+  procedure :: get_associated_real_sing &
+               => process_component_def_get_associated_real_sing
   procedure :: get_association_list &
                => process_component_def_get_association_list
   procedure :: is_active_nlo_component &
@@ -5117,8 +5211,21 @@ abstract type.
   function process_component_def_get_associated_born (component) result (i_born)
     class(process_component_def_t), intent(in) :: component
     integer :: i_born
-    i_born = component%associated_born
+    i_born = component%associated_components(ASSOCIATED_BORN)
   end function process_component_def_get_associated_born
+
+  function process_component_def_get_associated_real_fin (component) result (i_rfin)
+    class(process_component_def_t), intent(in) :: component
+    integer :: i_rfin
+    i_rfin = component%associated_components(ASSOCIATED_REAL_FIN)
+  end function process_component_def_get_associated_real_fin
+
+  function process_component_def_get_associated_real_sing (component) result (i_rsing)
+    class(process_component_def_t), intent(in) :: component
+    integer :: i_rsing
+    i_rsing = component%associated_components(ASSOCIATED_REAL_SING)
+  end function process_component_def_get_associated_real_sing
+
 
   function process_component_def_is_active_nlo_component (component) result (active)
     class(process_component_def_t), intent(in) :: component
@@ -5126,25 +5233,51 @@ abstract type.
     active = component%active_nlo_component
   end function process_component_def_is_active_nlo_component
 
-  function process_component_def_get_association_list (component) result (list)
+  function process_component_def_get_association_list (component, i_skip_in) result (list)
     class(process_component_def_t), intent(in) :: component
-    integer, dimension(4) :: list
-    list(1) = component%associated_born
-    list(2) = component%associated_real
-    list(3) = component%associated_virt
-    list(4) = component%associated_sub
+    integer, intent(in), optional :: i_skip_in
+    integer, dimension(:), allocatable :: list
+    integer :: i, j, n, i_skip
+    logical :: valid
+    i_skip = 0; if (present (i_skip_in)) i_skip = i_skip_in
+
+    n = count (component%associated_components /= 0) - 1
+    if (i_skip > 0) n = n-1
+    allocate (list (n))
+
+    j = 1
+    do i = 1, N_ASSOCIATED_COMPONENTS 
+       valid = component%associated_components(i) /= 0 &
+               .and. i /= ASSOCIATED_SUB .and. i /= i_skip
+       if (valid) then
+          list(j) = component%associated_components(i)
+          j = j+1
+       end if
+    end do
   end function process_component_def_get_association_list
 
   function process_component_def_get_associated_real (component) result (i_real)
     class(process_component_def_t), intent(in) :: component
     integer :: i_real
-    i_real = component%associated_real
+    i_real = component%associated_components(ASSOCIATED_REAL)
   end function process_component_def_get_associated_real
 
 @ %def process_component_def_get_nlo_type, process_component_def_get_associated_born
 @ %def process_component_def_is_active_nlo_component
 @ %def process_component_def_get_association_list
 @ %def process_component_def_get_associated_real
+@ %def process_component_def_get_associated_real_fin
+@
+<<Process libraries: process component def: TBP>>=
+  procedure :: get_fixed_emitter => process_component_def_get_fixed_emitter
+<<Process libraries: procedures>>=
+  function process_component_def_get_fixed_emitter (component) result (emitter)
+     integer :: emitter
+     class(process_component_def_t), intent(in) :: component
+     emitter = component%fixed_emitter
+  end function process_component_def_get_fixed_emitter
+     
+@ %def process_component_def_get_fixed_emitter
 @
 \subsubsection{Process definition}
 The process component definitions are collected in a common process
@@ -5178,7 +5311,6 @@ The [[md5sum]] is used to verify the integrity of the configuration.
      type(process_component_def_t), dimension(:), allocatable :: extra
      character(32) :: md5sum = ""
      logical :: nlo_process = .false.
-     logical :: combined_nlo_integration = .false.
    contains
    <<Process libraries: process def: TBP>>
   end type process_def_t
@@ -5238,7 +5370,7 @@ The [[md5sum]] is used to verify the integrity of the configuration.
     integer :: i, i1, i2
     character(80) :: buffer, ref
     read (unit, "(A)")  buffer
-    call strip_prefix (buffer)
+    call strip_equation_lhs (buffer)
     i1 = scan (buffer, "'")
     i2 = scan (buffer, "'", back=.true.)
     if (i2 > i1) then
@@ -5256,20 +5388,20 @@ The [[md5sum]] is used to verify the integrity of the configuration.
     end select
 
     read (unit, "(A)")  buffer
-    call strip_prefix (buffer)
+    call strip_equation_lhs (buffer)
     object%model_name = trim (adjustl (buffer))
     if (object%model_name == "[undefined]")  object%model_name = ""
           
     read (unit, "(A)")  buffer
-    call strip_prefix (buffer)
+    call strip_equation_lhs (buffer)
     read (buffer, *)  object%n_initial
 
     read (unit, "(A)")  buffer
-    call strip_prefix (buffer)
+    call strip_equation_lhs (buffer)
     read (buffer, *)  object%n_extra
 
     read (unit, "(A)")  buffer
-    call strip_prefix (buffer)
+    call strip_equation_lhs (buffer)
     read (buffer(3:34), "(A32)")  object%md5sum
     
     if (object%n_initial > 0) then
@@ -5371,6 +5503,17 @@ suffix which we increment for each component.
   end subroutine process_def_init
   
 @ %def process_def_init
+@ Explicitly set the model name (for unit test).
+<<Process libraries: process def: TBP>>=
+  procedure :: set_model_name => process_def_set_model_name
+<<Process libraries: procedures>>=
+  subroutine process_def_set_model_name (def, model_name)
+    class(process_def_t), intent(inout) :: def
+    type(string_t), intent(in) :: model_name
+    def%model_name = model_name
+  end subroutine process_def_set_model_name
+  
+@ %def process_def_set_model_name
 @ Initialize an initial component.  The particle content
 must be specified.  The process core block is not (yet) allocated.
 
@@ -5462,9 +5605,11 @@ allocation is moved, so the original allocated object is returned empty.
       case (NLO_VIRTUAL)
          nlo_type_string = 'Virtual'
       case (NLO_PDF)
-         nlo_type_string  = 'Pdf'
+         nlo_type_string  = 'PDF'
       case (NLO_SUBTRACTION)
          nlo_type_string = 'Subtraction'
+      case (GKS)
+         nlo_type_string = 'GKS'
       end select
     end function get_nlo_type_string
   end subroutine process_def_import_component
@@ -5483,20 +5628,39 @@ allocation is moved, so the original allocated object is returned empty.
 @ %def process_def_get_n_components
 @ 
 <<Process libraries: process def: TBP>>=
+  procedure :: set_fixed_emitter => process_def_set_fixed_emitter
+<<Process libraries: procedures>>=
+  subroutine process_def_set_fixed_emitter (def, i, emitter)
+    class(process_def_t), intent(inout) :: def
+    integer, intent(in) :: i, emitter
+    def%initial(i)%fixed_emitter = emitter
+  end subroutine process_def_set_fixed_emitter 
+
+@ %def process_def_set_fixed_emitter
+@
+<<Process libraries: process def: TBP>>=
   procedure :: set_associated_components => &
                    process_def_set_associated_components
 <<Process libraries: procedures>>=
   subroutine process_def_set_associated_components (def, i, &
-                     i_born, i_real, i_virt, i_sub)
+                     i_born, i_real, i_virt, i_sub, &
+                     i_pdf, i_rsing, i_rfin)
     class(process_def_t), intent(inout) :: def
     integer, intent(in) :: i
     integer, intent(in) :: i_born, i_real
     integer, intent(in) :: i_virt, i_sub
-    associate (comp => def%initial(i))
-       comp%associated_born = i_born
-       comp%associated_real = i_real
-       comp%associated_virt = i_virt
-       comp%associated_sub = i_sub
+    integer, intent(in), optional :: i_pdf, i_rsing, i_rfin
+    associate (comp => def%initial(i)%associated_components)
+       comp(ASSOCIATED_BORN) = i_born
+       comp(ASSOCIATED_REAL) = i_real
+       comp(ASSOCIATED_VIRT) = i_virt
+       comp(ASSOCIATED_SUB) = i_sub
+       if (present (i_pdf)) &
+          comp(ASSOCIATED_PDF) = i_pdf
+       if (present (i_rsing)) &
+          comp(ASSOCIATED_REAL_SING) = i_rsing
+       if (present (i_rfin)) &
+          comp(ASSOCIATED_REAL_FIN) = i_rfin
     end associate
   end subroutine process_def_set_associated_components
 
@@ -5543,6 +5707,19 @@ model name.  All other data part of the component definitions.
   end function process_def_get_md5sum
   
 @ %def process_def_get_md5sum
+@ Return a pointer to the definition of a particular component (for
+test purposes).
+<<Process libraries: process def: TBP>>=
+  procedure :: get_core_def_ptr => process_def_get_core_def_ptr
+<<Process libraries: procedures>>=
+  function process_def_get_core_def_ptr (def, i_component) result (ptr)
+    class(process_def_t), intent(in), target :: def
+    integer, intent(in) :: i_component
+    class(prc_core_def_t), pointer :: ptr
+    ptr => def%initial(i_component)%get_core_def_ptr ()
+  end function process_def_get_core_def_ptr
+    
+@ %def process_def_get_core_def_ptr
 @
 This query tells whether a specific process component relies on
 external code.  This includes all traditional WHIZARD matrix elements
@@ -5583,6 +5760,8 @@ definition directly.
   
 @ %def process_def_entry_t
 @ This is the type for the list itself.
+<<Process libraries: public>>=
+  public :: process_def_list_t
 <<Process libraries: types>>=
   type :: process_def_list_t
      private
@@ -6041,13 +6220,22 @@ definitions may be added.  After configuration, the process content is fixed
 and the status becomes [[CONFIGURED]].  The further states are as above,
 always referring to the lowest status among the process entries.
 <<Process libraries: parameters>>=
-  integer, parameter :: STAT_UNKNOWN = 0
-  integer, parameter :: STAT_OPEN = 1
-  integer, parameter :: STAT_CONFIGURED = 2
-  integer, parameter :: STAT_SOURCE = 3
-  integer, parameter :: STAT_COMPILED = 4
-  integer, parameter :: STAT_LINKED = 5
-  integer, parameter :: STAT_ACTIVE = 6
+  integer, parameter, public :: STAT_UNKNOWN = 0
+  integer, parameter, public :: STAT_OPEN = 1
+  integer, parameter, public :: STAT_CONFIGURED = 2
+  integer, parameter, public :: STAT_SOURCE = 3
+  integer, parameter, public :: STAT_COMPILED = 4
+  integer, parameter, public :: STAT_LINKED = 5
+  integer, parameter, public :: STAT_ACTIVE = 6
+
+  integer, parameter, public :: ASSOCIATED_BORN = 1
+  integer, parameter, public :: ASSOCIATED_REAL = 2
+  integer, parameter, public :: ASSOCIATED_VIRT = 3
+  integer, parameter, public :: ASSOCIATED_SUB = 4
+  integer, parameter, public :: ASSOCIATED_PDF = 5
+  integer, parameter, public :: ASSOCIATED_REAL_SING = 6
+  integer, parameter, public :: ASSOCIATED_REAL_FIN = 7
+  integer, parameter, public :: N_ASSOCIATED_COMPONENTS = 7
 
 @ %def STAT_UNKNOWN STAT_OPEN STAT_CONFIGURED 
 @ %def STAT_SOURCE STAT_COMPILED STAT_LINKED STAT_ACTIVE
@@ -6093,16 +6281,21 @@ of the associated process definition, finally the library index, if available.
   procedure :: init => process_library_entry_init
 <<Process libraries: procedures>>=
   subroutine process_library_entry_init (object, &
-       status, def, i_component, i_external)
+       status, def, i_component, i_external, driver_template)
     class(process_library_entry_t), intent(out) :: object
     integer, intent(in) :: status
     type(process_def_t), target, intent(in) :: def
     integer, intent(in) :: i_component
     integer, intent(in) :: i_external
+    class(prc_core_driver_t), intent(inout), allocatable, optional &
+         :: driver_template
     object%status = status
     object%def => def
     object%i_component = i_component
     object%i_external = i_external
+    if (present (driver_template)) then
+       call move_alloc (driver_template, object%driver)
+    end if
   end subroutine process_library_entry_init
   
 @ %def process_library_entry_init
@@ -6308,9 +6501,9 @@ components are ignored.
        end do
        def_entry => def_entry%next
     end do
-    lib%n_entries = n_entries
 
-    allocate (lib%entry (n_entries))
+    call lib%allocate_entries (n_entries)
+
     i_entry = 0
     i_external = 0
     def_entry => lib%first
@@ -6365,6 +6558,37 @@ components are ignored.
   end subroutine process_library_configure
   
 @ %def process_library_configure
+@ Basic setup: allocate the [[entry]] array.
+<<Process libraries: process library: TBP>>=
+  procedure :: allocate_entries => process_library_allocate_entries
+<<Process libraries: procedures>>=
+  subroutine process_library_allocate_entries (lib, n_entries)
+    class(process_library_t), intent(inout) :: lib
+    integer, intent(in) :: n_entries
+    lib%n_entries = n_entries
+    allocate (lib%entry (n_entries))
+  end subroutine process_library_allocate_entries
+  
+@ %def process_library_allocate_entries
+@ Initialize an entry with data (used by unit tests).
+<<Process libraries: process library: TBP>>=
+  procedure :: init_entry => process_library_init_entry
+<<Process libraries: procedures>>=
+  subroutine process_library_init_entry (lib, i, &
+       status, def, i_component, i_external, driver_template)
+    class(process_library_t), intent(inout) :: lib
+    integer, intent(in) :: i
+    integer, intent(in) :: status
+    type(process_def_t), target, intent(in) :: def
+    integer, intent(in) :: i_component
+    integer, intent(in) :: i_external
+    class(prc_core_driver_t), intent(inout), allocatable, optional &
+         :: driver_template
+    call lib%entry(i)%init (status, def, i_component, i_external, &
+         driver_template)
+  end subroutine process_library_init_entry
+  
+@ %def process_library_init_entry
 @ Compute the MD5 sum.  We concatenate the individual MD5 sums of all
 processes (which, in turn, are derived from the MD5 sums of their
 components) and compute the MD5 sum of that.
@@ -6846,6 +7070,51 @@ accessing the matrix elements.
   end function process_library_is_active
   
 @ %def process_library_is_active
+@ Return the current status code of the library.  If an index is
+provided, return the status of that entry.
+<<Process libraries: process library: TBP>>=
+  procedure :: get_status => process_library_get_status
+<<Process libraries: procedures>>=
+  function process_library_get_status (lib, i) result (status)
+    class(process_library_t), intent(in) :: lib
+    integer, intent(in), optional :: i
+    integer :: status
+    if (present (i)) then
+       status = lib%entry(i)%status
+    else
+       status = lib%status
+    end if
+  end function process_library_get_status
+  
+@ %def process_library_get_status
+@ Manually set the current status code of the library.  If the
+optional flag is set, set also the entry status codes.  This is used
+for unit tests.
+<<Process libraries: process library: TBP>>=
+  procedure :: set_status => process_library_set_status
+<<Process libraries: procedures>>=
+  subroutine process_library_set_status (lib, status, entries)
+    class(process_library_t), intent(inout) :: lib
+    integer, intent(in) :: status
+    logical, intent(in), optional :: entries
+    lib%status = status
+    if (present (entries)) then
+       if (entries)  lib%entry%status = status
+    end if
+  end subroutine process_library_set_status
+  
+@ %def process_library_set_status
+@ Return the load status of the associated driver.
+<<Process libraries: process library: TBP>>=
+  procedure :: is_loaded => process_library_is_loaded
+<<Process libraries: procedures>>=
+  function process_library_is_loaded (lib) result (flag)
+    class(process_library_t), intent(in) :: lib
+    logical :: flag
+    flag = lib%driver%loaded
+  end function process_library_is_loaded
+  
+@ %def process_library_is_loaded
 @ Retrieve constants using the process library driver.  We assume that
 the process code has been loaded, if external.
 <<Process libraries: process library entry: TBP>>=
@@ -6911,6 +7180,20 @@ scan the process entries until we have found a match.
 
 @ %def process_library_connect_process
 @
+Shortcut for use in unit tests: fetch the MD5sum from a specific
+library entry and inject it into the writer of a specific record.
+<<Process libraries: process library: TBP>>=
+  procedure :: test_transfer_md5sum => process_library_test_transfer_md5sum
+<<Process libraries: procedures>>=
+  subroutine process_library_test_transfer_md5sum (lib, r, e, c)
+    class(process_library_t), intent(inout) :: lib
+    integer, intent(in) :: r, e, c
+    associate (writer => lib%driver%record(r)%writer)
+       writer%md5sum = lib%entry(e)%def%get_md5sum (c)
+    end associate
+  end subroutine process_library_test_transfer_md5sum
+
+@ %def process_library_test_transfer_md5sum
 @
 \subsection{Collect model-specific libraries}
 This returns appropriate linker flags for the model parameter libraries that
@@ -7029,11 +7312,63 @@ Extra models in the local user space need to be treated individually.
 
 @ %def process_library_get_static_modelname
 @
-\subsection{Test}
-This is the master for calling self-test procedures.
-<<Process libraries: public>>=
+\subsection{Unit Test}
+Test module, followed by the corresponding implementation module.
+<<[[process_libraries_ut.f90]]>>=
+<<File header>>
+
+module process_libraries_ut
+  use unit_tests
+  use process_libraries_uti
+  
+<<Standard module head>>
+
+<<Process libraries: public test>>
+
+contains
+  
+<<Process libraries: test driver>>
+
+end module process_libraries_ut
+@ %def process_libraries_ut
+@
+<<[[process_libraries_uti.f90]]>>=
+<<File header>>
+
+module process_libraries_uti
+
+  use, intrinsic :: iso_c_binding !NODEP!
+  
+<<Use strings>>
+  use io_units
+  use os_interface
+  use particle_specifiers, only: new_prt_spec
+  use process_constants
+  use prclib_interfaces
+  use prc_core_def
+
+  use process_libraries
+  
+  use prclib_interfaces_ut, only: test_writer_4_t
+
+<<Standard module head>>
+
+<<Process libraries: test declarations>>
+
+<<Process libraries: test types>>
+
+contains
+
+<<Process libraries: tests>>
+
+<<Process libraries: test auxiliary>>
+
+end module process_libraries_uti
+@ %def process_libraries_ut
+@ API: driver for the unit tests below.
+<<Process libraries: public test>>=
   public :: process_libraries_test
-<<Process libraries: tests>>=
+<<Process libraries: test driver>>=
   subroutine process_libraries_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
@@ -7048,6 +7383,8 @@ Test 1: Write an empty process list.
   call test (process_libraries_1, "process_libraries_1", &
        "empty process list", &
        u, results)
+<<Process libraries: test declarations>>=
+  public :: process_libraries_1
 <<Process libraries: tests>>=
   subroutine process_libraries_1 (u)
     integer, intent(in) :: u
@@ -7072,7 +7409,7 @@ Finalize and delete the list after use.
 
 We define a trivial 'test' type for the process variant.  The test
 type contains just one (meaningless) data item, which is an integer.
-<<Process libraries: test declarations>>=
+<<Process libraries: test types>>=
   type, extends (prc_core_def_t) :: prcdef_2_t
      integer :: data = 0
      logical :: file = .false.
@@ -7084,7 +7421,7 @@ type contains just one (meaningless) data item, which is an integer.
 @ The process variant is named 'test'.
 <<Process libraries: prcdef 2: TBP>>=
   procedure, nopass :: type_string => prcdef_2_type_string
-<<Process libraries: tests>>=
+<<Process libraries: test auxiliary>>=
   function prcdef_2_type_string () result (string)
     type(string_t) :: string
     string = "test"
@@ -7094,7 +7431,7 @@ type contains just one (meaningless) data item, which is an integer.
 @ Write the contents (the integer value).
 <<Process libraries: prcdef 2: TBP>>=
   procedure :: write => prcdef_2_write
-<<Process libraries: tests>>=
+<<Process libraries: test auxiliary>>=
   subroutine prcdef_2_write (object, unit)
     class(prcdef_2_t), intent(in) :: object
     integer, intent(in) :: unit
@@ -7105,13 +7442,13 @@ type contains just one (meaningless) data item, which is an integer.
 @ Recover the integer value.
 <<Process libraries: prcdef 2: TBP>>=
   procedure :: read => prcdef_2_read
-<<Process libraries: tests>>=
+<<Process libraries: test auxiliary>>=
   subroutine prcdef_2_read (object, unit)
     class(prcdef_2_t), intent(out) :: object
     integer, intent(in) :: unit
     character(80) :: buffer
     read (unit, "(A)")  buffer
-    call strip_prefix (buffer)
+    call strip_equation_lhs (buffer)
     read (buffer, *)  object%data
   end subroutine prcdef_2_read
   
@@ -7119,7 +7456,7 @@ type contains just one (meaningless) data item, which is an integer.
 @ No external procedures.
 <<Process libraries: prcdef 2: TBP>>=
   procedure, nopass :: get_features => prcdef_2_get_features
-<<Process libraries: tests>>=
+<<Process libraries: test auxiliary>>=
   subroutine prcdef_2_get_features (features)
     type(string_t), dimension(:), allocatable, intent(out) :: features
     allocate (features (0))
@@ -7129,7 +7466,7 @@ type contains just one (meaningless) data item, which is an integer.
 @ No code generated.
 <<Process libraries: prcdef 2: TBP>>=
   procedure :: generate_code => prcdef_2_generate_code
-<<Process libraries: tests>>=
+<<Process libraries: test auxiliary>>=
   subroutine prcdef_2_generate_code (object, &
        basename, model_name, prt_in, prt_out)
     class(prcdef_2_t), intent(in) :: object
@@ -7143,7 +7480,7 @@ type contains just one (meaningless) data item, which is an integer.
 @ Allocate the driver with the appropriate type.
 <<Process libraries: prcdef 2: TBP>>=
   procedure :: allocate_driver => prcdef_2_allocate_driver
-<<Process libraries: tests>>=
+<<Process libraries: test auxiliary>>=
   subroutine prcdef_2_allocate_driver (object, driver, basename)
     class(prcdef_2_t), intent(in) :: object
     class(prc_core_driver_t), intent(out), allocatable :: driver
@@ -7155,7 +7492,7 @@ type contains just one (meaningless) data item, which is an integer.
 @ Nothing to connect.
 <<Process libraries: prcdef 2: TBP>>=
   procedure :: connect => prcdef_2_connect
-<<Process libraries: tests>>=
+<<Process libraries: test auxiliary>>=
   subroutine prcdef_2_connect (def, lib_driver, i, proc_driver)
     class(prcdef_2_t), intent(in) :: def
     class(prclib_driver_t), intent(in) :: lib_driver
@@ -7165,7 +7502,7 @@ type contains just one (meaningless) data item, which is an integer.
 
 @ %def prcdef_2_connect
 @ The associated driver type.
-<<Process libraries: types>>=
+<<Process libraries: test types>>=
   type, extends (process_driver_internal_t) :: prctest_2_t
    contains
    <<Process libraries: prctest 2: TBP>>
@@ -7175,7 +7512,7 @@ type contains just one (meaningless) data item, which is an integer.
 @ Return the type name.
 <<Process libraries: prctest 2: TBP>>=
   procedure, nopass :: type_name => prctest_2_type_name
-<<Process libraries: procedures>>=
+<<Process libraries: test auxiliary>>=
   function prctest_2_type_name () result (type)
     type(string_t) :: type
     type = "test"
@@ -7186,7 +7523,7 @@ type contains just one (meaningless) data item, which is an integer.
 however, therefore nothing done.
 <<Process libraries: prctest 2: TBP>>=
   procedure :: fill_constants => prctest_2_fill_constants
-<<Process libraries: procedures>>=
+<<Process libraries: test auxiliary>>=
   subroutine prctest_2_fill_constants (driver, data)
     class(prctest_2_t), intent(in) :: driver
     type(process_constants_t), intent(out) :: data
@@ -7204,6 +7541,8 @@ template for the 'test' variant.
   call test (process_libraries_2, "process_libraries_2", &
        "process definition list", &
        u, results)
+<<Process libraries: test declarations>>=
+  public :: process_libraries_2
 <<Process libraries: tests>>=
   subroutine process_libraries_2 (u)
     integer, intent(in) :: u
@@ -7300,11 +7639,14 @@ routine.
   call test (process_libraries_3, "process_libraries_3", &
        "recover process definition list from file", &
        u, results)
+<<Process libraries: test declarations>>=
+  public :: process_libraries_3
 <<Process libraries: tests>>=
   subroutine process_libraries_3 (u)
     integer, intent(in) :: u
     type(process_library_t) :: lib
     type(process_def_entry_t), pointer :: entry
+    class(prc_core_driver_t), allocatable :: driver_template
 
     write (u, "(A)")  "* Test output: process_libraries_3"
     write (u, "(A)")  "* Purpose: Construct a process library object &
@@ -7319,26 +7661,27 @@ routine.
 
     call lib%init (var_str ("testlib"))
 
-    lib%status = STAT_ACTIVE
-    lib%n_entries = 5
-    allocate (lib%entry (lib%n_entries))
+    call lib%set_status (STAT_ACTIVE)
+    call lib%allocate_entries (5)
    
     allocate (entry)
     call entry%init (var_str ("test_a"), n_in = 2, n_components = 2)
-    call lib%entry(3)%init (STAT_SOURCE, entry%process_def_t, 2, 2)
-    allocate (prctest_2_t :: lib%entry(3)%driver)
-    call lib%entry(4)%init (STAT_COMPILED, entry%process_def_t, 1, 0)
+    allocate (prctest_2_t :: driver_template)
+    call lib%init_entry (3, STAT_SOURCE, entry%process_def_t, 2, 2, &
+         driver_template)
+    call lib%init_entry (4, STAT_COMPILED, entry%process_def_t, 1, 0)
     call lib%append (entry)
 
     allocate (entry)
     call entry%init (var_str ("test_b"), n_in = 2, n_components = 1)
-    call lib%entry(2)%init (STAT_CONFIGURED, entry%process_def_t, 1, 1)
+    call lib%init_entry (2, STAT_CONFIGURED, entry%process_def_t, 1, 1)
     call lib%append (entry)
 
     allocate (entry)
     call entry%init (var_str ("test_c"), n_in = 2, n_components = 1)
-    call lib%entry(5)%init (STAT_LINKED, entry%process_def_t, 1, 3)
-    allocate (prctest_2_t :: lib%entry(5)%driver)
+    allocate (prctest_2_t :: driver_template)
+    call lib%init_entry (5, STAT_LINKED, entry%process_def_t, 1, 3, &
+         driver_template)
     call lib%append (entry)
     
     call lib%write (u)
@@ -7357,6 +7700,8 @@ with a test matrix element type that needs no code written on file.
   call test (process_libraries_4, "process_libraries_4", &
        "build and load internal process library", &
        u, results)
+<<Process libraries: test declarations>>=
+  public :: process_libraries_4
 <<Process libraries: tests>>=
   subroutine process_libraries_4 (u)
     integer, intent(in) :: u
@@ -7430,7 +7775,7 @@ Test 5: We write source code for a dummy process.
 
 We define another trivial type for the process variant.  The test
 type contains just no variable data, but produces code on file.
-<<Process libraries: test declarations>>=
+<<Process libraries: test types>>=
   type, extends (prc_core_def_t) :: prcdef_5_t
    contains
    <<Process libraries: prcdef 5: TBP>>
@@ -7440,7 +7785,7 @@ type contains just no variable data, but produces code on file.
 @ The process variant is named [[test_file]].
 <<Process libraries: prcdef 5: TBP>>=
   procedure, nopass :: type_string => prcdef_5_type_string
-<<Process libraries: tests>>=
+<<Process libraries: test auxiliary>>=
   function prcdef_5_type_string () result (string)
     type(string_t) :: string
     string = "test_file"
@@ -7450,7 +7795,7 @@ type contains just no variable data, but produces code on file.
 @ We reuse the writer [[test_writer_4]] from the previous module.
 <<Process libraries: prcdef 5: TBP>>=
   procedure :: init => prcdef_5_init
-<<Process libraries: tests>>=
+<<Process libraries: test auxiliary>>=
   subroutine prcdef_5_init (object)
     class(prcdef_5_t), intent(out) :: object
     allocate (test_writer_4_t :: object%writer)
@@ -7460,7 +7805,7 @@ type contains just no variable data, but produces code on file.
 @ Nothing to write.
 <<Process libraries: prcdef 5: TBP>>=
   procedure :: write => prcdef_5_write
-<<Process libraries: tests>>=
+<<Process libraries: test auxiliary>>=
   subroutine prcdef_5_write (object, unit)
     class(prcdef_5_t), intent(in) :: object
     integer, intent(in) :: unit
@@ -7470,7 +7815,7 @@ type contains just no variable data, but produces code on file.
 @ Nothing to read.
 <<Process libraries: prcdef 5: TBP>>=
   procedure :: read => prcdef_5_read
-<<Process libraries: tests>>=
+<<Process libraries: test auxiliary>>=
   subroutine prcdef_5_read (object, unit)
     class(prcdef_5_t), intent(out) :: object
     integer, intent(in) :: unit
@@ -7480,7 +7825,7 @@ type contains just no variable data, but produces code on file.
 @ Allocate the driver with the appropriate type.
 <<Process libraries: prcdef 5: TBP>>=
   procedure :: allocate_driver => prcdef_5_allocate_driver
-<<Process libraries: tests>>=
+<<Process libraries: test auxiliary>>=
   subroutine prcdef_5_allocate_driver (object, driver, basename)
     class(prcdef_5_t), intent(in) :: object
     class(prc_core_driver_t), intent(out), allocatable :: driver
@@ -7492,7 +7837,7 @@ type contains just no variable data, but produces code on file.
 @ This time we need code:
 <<Process libraries: prcdef 5: TBP>>=
   procedure, nopass :: needs_code => prcdef_5_needs_code
-<<Process libraries: tests>>=
+<<Process libraries: test auxiliary>>=
   function prcdef_5_needs_code () result (flag)
     logical :: flag
     flag = .true.
@@ -7502,7 +7847,7 @@ type contains just no variable data, but produces code on file.
 @ For the test case, we implement a single feature [[proc1]].
 <<Process libraries: prcdef 5: TBP>>=
   procedure, nopass :: get_features => prcdef_5_get_features
-<<Process libraries: tests>>=
+<<Process libraries: test auxiliary>>=
   subroutine prcdef_5_get_features (features)
     type(string_t), dimension(:), allocatable, intent(out) :: features
     allocate (features (1))
@@ -7513,7 +7858,7 @@ type contains just no variable data, but produces code on file.
 @ Nothing to connect.
 <<Process libraries: prcdef 5: TBP>>=
   procedure :: connect => prcdef_5_connect
-<<Process libraries: tests>>=
+<<Process libraries: test auxiliary>>=
   subroutine prcdef_5_connect (def, lib_driver, i, proc_driver)
     class(prcdef_5_t), intent(in) :: def
     class(prclib_driver_t), intent(in) :: lib_driver
@@ -7523,7 +7868,7 @@ type contains just no variable data, but produces code on file.
 
 @ %def prcdef_5_connect
 @ The driver type.
-<<Process libraries: types>>=
+<<Process libraries: test types>>=
   type, extends (prc_core_driver_t) :: prctest_5_t
    contains
    <<Process libraries: prctest 5: TBP>>
@@ -7533,7 +7878,7 @@ type contains just no variable data, but produces code on file.
 @ Return the type name.
 <<Process libraries: prctest 5: TBP>>=
   procedure, nopass :: type_name => prctest_5_type_name
-<<Process libraries: tests>>=
+<<Process libraries: test auxiliary>>=
   function prctest_5_type_name () result (type)
     type(string_t) :: type
     type = "test_file"
@@ -7546,6 +7891,8 @@ Here is the actual test:
   call test (process_libraries_5, "process_libraries_5", &
        "build external process library", &
        u, results)
+<<Process libraries: test declarations>>=
+  public :: process_libraries_5
 <<Process libraries: tests>>=
   subroutine process_libraries_5 (u)
     integer, intent(in) :: u
@@ -7624,7 +7971,7 @@ Test 6: We write source code for a dummy process.
 
 This process variant is identical to the previous case, but it
 supports a driver for the test procedure 'proc1'.
-<<Process libraries: test declarations>>=
+<<Process libraries: test types>>=
   type, extends (prc_core_def_t) :: prcdef_6_t
    contains
    <<Process libraries: prcdef 6: TBP>>
@@ -7634,7 +7981,7 @@ supports a driver for the test procedure 'proc1'.
 @ The process variant is named [[test_file]].
 <<Process libraries: prcdef 6: TBP>>=
   procedure, nopass :: type_string => prcdef_6_type_string
-<<Process libraries: tests>>=
+<<Process libraries: test auxiliary>>=
   function prcdef_6_type_string () result (string)
     type(string_t) :: string
     string = "test_file"
@@ -7644,7 +7991,7 @@ supports a driver for the test procedure 'proc1'.
 @ We reuse the writer [[test_writer_4]] from the previous module.
 <<Process libraries: prcdef 6: TBP>>=
   procedure :: init => prcdef_6_init
-<<Process libraries: tests>>=
+<<Process libraries: test auxiliary>>=
   subroutine prcdef_6_init (object)
     class(prcdef_6_t), intent(out) :: object
     allocate (test_writer_4_t :: object%writer)
@@ -7655,7 +8002,7 @@ supports a driver for the test procedure 'proc1'.
 @ Nothing to write.
 <<Process libraries: prcdef 6: TBP>>=
   procedure :: write => prcdef_6_write
-<<Process libraries: tests>>=
+<<Process libraries: test auxiliary>>=
   subroutine prcdef_6_write (object, unit)
     class(prcdef_6_t), intent(in) :: object
     integer, intent(in) :: unit
@@ -7665,7 +8012,7 @@ supports a driver for the test procedure 'proc1'.
 @ Nothing to read.
 <<Process libraries: prcdef 6: TBP>>=
   procedure :: read => prcdef_6_read
-<<Process libraries: tests>>=
+<<Process libraries: test auxiliary>>=
   subroutine prcdef_6_read (object, unit)
     class(prcdef_6_t), intent(out) :: object
     integer, intent(in) :: unit
@@ -7675,7 +8022,7 @@ supports a driver for the test procedure 'proc1'.
 @ Allocate the driver with the appropriate type.
 <<Process libraries: prcdef 6: TBP>>=
   procedure :: allocate_driver => prcdef_6_allocate_driver
-<<Process libraries: tests>>=
+<<Process libraries: test auxiliary>>=
   subroutine prcdef_6_allocate_driver (object, driver, basename)
     class(prcdef_6_t), intent(in) :: object
     class(prc_core_driver_t), intent(out), allocatable :: driver
@@ -7687,7 +8034,7 @@ supports a driver for the test procedure 'proc1'.
 @ This time we need code:
 <<Process libraries: prcdef 6: TBP>>=
   procedure, nopass :: needs_code => prcdef_6_needs_code
-<<Process libraries: tests>>=
+<<Process libraries: test auxiliary>>=
   function prcdef_6_needs_code () result (flag)
     logical :: flag
     flag = .true.
@@ -7697,7 +8044,7 @@ supports a driver for the test procedure 'proc1'.
 @ For the test case, we implement a single feature [[proc1]].
 <<Process libraries: prcdef 6: TBP>>=
   procedure, nopass :: get_features => prcdef_6_get_features
-<<Process libraries: tests>>=
+<<Process libraries: test auxiliary>>=
   subroutine prcdef_6_get_features (features)
     type(string_t), dimension(:), allocatable, intent(out) :: features
     allocate (features (1))
@@ -7706,7 +8053,7 @@ supports a driver for the test procedure 'proc1'.
 
 @ %def prcdef_6_get_features
 @ The interface of the only specific feature.
-<<Process libraries: interfaces>>=
+<<Process libraries: test types>>=
   abstract interface
      subroutine proc1_t (n) bind(C)
        import
@@ -7718,7 +8065,7 @@ supports a driver for the test procedure 'proc1'.
 @ Connect the feature [[proc1]] with the process driver.
 <<Process libraries: prcdef 6: TBP>>=
   procedure :: connect => prcdef_6_connect
-<<Process libraries: tests>>=
+<<Process libraries: test auxiliary>>=
   subroutine prcdef_6_connect (def, lib_driver, i, proc_driver)
     class(prcdef_6_t), intent(in) :: def
     class(prclib_driver_t), intent(in) :: lib_driver
@@ -7738,7 +8085,7 @@ supports a driver for the test procedure 'proc1'.
 @ %def prcdef_6_connect
 @
 The driver type.
-<<Process libraries: types>>=
+<<Process libraries: test types>>=
   type, extends (prc_core_driver_t) :: prctest_6_t
      procedure(proc1_t), nopass, pointer :: proc1 => null ()
    contains
@@ -7749,7 +8096,7 @@ The driver type.
 @ Return the type name.
 <<Process libraries: prctest 6: TBP>>=
   procedure, nopass :: type_name => prctest_6_type_name
-<<Process libraries: tests>>=
+<<Process libraries: test auxiliary>>=
   function prctest_6_type_name () result (type)
     type(string_t) :: type
     type = "test_file"
@@ -7762,6 +8109,8 @@ Here is the actual test:
   call test (process_libraries_6, "process_libraries_6", &
        "build and load external process library", &
        u, results)
+<<Process libraries: test declarations>>=
+  public :: process_libraries_6
 <<Process libraries: tests>>=
   subroutine process_libraries_6 (u)
     integer, intent(in) :: u
@@ -7906,12 +8255,15 @@ Check MD5 sum calculation.
   call test (process_libraries_7, "process_libraries_7", &
        "process definition list", &
        u, results)
+<<Process libraries: test declarations>>=
+  public :: process_libraries_7
 <<Process libraries: tests>>=
   subroutine process_libraries_7 (u)
     integer, intent(in) :: u
     type(prc_template_t), dimension(:), allocatable :: process_core_templates
-    type(process_def_entry_t) :: entry
+    type(process_def_entry_t), target :: entry
     class(prc_core_def_t), allocatable :: test_def
+    class(prc_core_def_t), pointer :: def
 
     write (u, "(A)")  "* Test output: process_libraries_7"
     write (u, "(A)")  "* Purpose: Construct a process definition list &
@@ -7965,9 +8317,10 @@ Check MD5 sum calculation.
     write (u, "(A)")  "* Modify a component and recalculate MD5 sums"
     write (u, "(A)")
 
-    select type (test_def => entry%initial(2)%core_def)
+    def => entry%get_core_def_ptr (2)
+    select type (def)
     type is (prcdef_2_t)
-       test_def%data = 54
+       def%data = 54
     end select
     call entry%compute_md5sum ()
     call entry%write (u)
@@ -7976,7 +8329,7 @@ Check MD5 sum calculation.
     write (u, "(A)")  "* Modify the model and recalculate MD5 sums"
     write (u, "(A)")
 
-    entry%model_name = "foo"
+    call entry%set_model_name (var_str ("foo"))
     call entry%compute_md5sum ()
     call entry%write (u)
 
@@ -7991,6 +8344,8 @@ Here is the actual test:
   call test (process_libraries_8, "process_libraries_8", &
        "library status checks", &
        u, results)
+<<Process libraries: test declarations>>=
+  public :: process_libraries_8
 <<Process libraries: tests>>=
   subroutine process_libraries_8 (u)
     integer, intent(in) :: u
@@ -8033,16 +8388,11 @@ Here is the actual test:
     call lib%configure (os_data)
     call lib%compute_md5sum ()
     
-    associate (def => lib%entry(1)%def%initial(1))
-      select type (writer => lib%driver%record(1)%writer)
-      type is (test_writer_4_t)
-         writer%md5sum = def%md5sum
-      end select
-    end associate
+    call lib%test_transfer_md5sum (1, 1, 1)
 
-    write (u, "(1x,A,L1)")  "library loaded = ", lib%driver%loaded
-    write (u, "(1x,A,I0)")  "lib status   = ", lib%status
-    write (u, "(1x,A,I0)")  "proc1 status = ", lib%entry(1)%status
+    write (u, "(1x,A,L1)")  "library loaded = ", lib%is_loaded ()
+    write (u, "(1x,A,I0)")  "lib status   = ", lib%get_status ()
+    write (u, "(1x,A,I0)")  "proc1 status = ", lib%get_status (1)
 
     write (u, "(A)")
     write (u, "(A)")  "* Write makefile"
@@ -8053,9 +8403,9 @@ Here is the actual test:
     write (u, "(A)")
     
     call lib%update_status (os_data)
-    write (u, "(1x,A,L1)")  "library loaded = ", lib%driver%loaded
-    write (u, "(1x,A,I0)")  "lib status   = ", lib%status
-    write (u, "(1x,A,I0)")  "proc1 status = ", lib%entry(1)%status
+    write (u, "(1x,A,L1)")  "library loaded = ", lib%is_loaded ()
+    write (u, "(1x,A,I0)")  "lib status   = ", lib%get_status ()
+    write (u, "(1x,A,I0)")  "proc1 status = ", lib%get_status (1)
     
     write (u, "(A)")
     write (u, "(A)")  "* Write driver source code"
@@ -8066,18 +8416,18 @@ Here is the actual test:
     write (u, "(A)")
     call lib%make_source (os_data)
 
-    write (u, "(1x,A,L1)")  "library loaded = ", lib%driver%loaded
-    write (u, "(1x,A,I0)")  "lib status   = ", lib%status
-    write (u, "(1x,A,I0)")  "proc1 status = ", lib%entry(1)%status
+    write (u, "(1x,A,L1)")  "library loaded = ", lib%is_loaded ()
+    write (u, "(1x,A,I0)")  "lib status   = ", lib%get_status ()
+    write (u, "(1x,A,I0)")  "proc1 status = ", lib%get_status (1)
 
     write (u, "(A)")
     write (u, "(A)")  "* Compile and load"
     write (u, "(A)")
 
     call lib%load (os_data)
-    write (u, "(1x,A,L1)")  "library loaded = ", lib%driver%loaded
-    write (u, "(1x,A,I0)")  "lib status   = ", lib%status
-    write (u, "(1x,A,I0)")  "proc1 status = ", lib%entry(1)%status
+    write (u, "(1x,A,L1)")  "library loaded = ", lib%is_loaded ()
+    write (u, "(1x,A,I0)")  "lib status   = ", lib%get_status ()
+    write (u, "(1x,A,I0)")  "proc1 status = ", lib%get_status (1)
 
     write (u, "(A)")
     write (u, "(A)")  "* Append process and reconfigure"
@@ -8102,70 +8452,64 @@ Here is the actual test:
 
     call lib%configure (os_data)
     call lib%compute_md5sum ()
-    associate (def => lib%entry(2)%def%initial(1))
-      select type (writer => lib%driver%record(2)%writer)
-      type is (test_writer_4_t)
-         writer%md5sum = def%md5sum
-      end select
-    end associate
+    call lib%test_transfer_md5sum (2, 2, 1)
     call lib%write_makefile (os_data, force = .false.)
     call lib%write_driver (force = .false.)
 
-    write (u, "(1x,A,L1)")  "library loaded = ", lib%driver%loaded
-    write (u, "(1x,A,I0)")  "lib status   = ", lib%status
-    write (u, "(1x,A,I0)")  "proc1 status = ", lib%entry(1)%status
-    write (u, "(1x,A,I0)")  "proc2 status = ", lib%entry(2)%status
+    write (u, "(1x,A,L1)")  "library loaded = ", lib%is_loaded ()
+    write (u, "(1x,A,I0)")  "lib status   = ", lib%get_status ()
+    write (u, "(1x,A,I0)")  "proc1 status = ", lib%get_status (1)
+    write (u, "(1x,A,I0)")  "proc2 status = ", lib%get_status (2)
 
     write (u, "(A)")
     write (u, "(A)")  "* Update status"
     write (u, "(A)")
     
     call lib%update_status (os_data)
-    write (u, "(1x,A,L1)")  "library loaded = ", lib%driver%loaded
-    write (u, "(1x,A,I0)")  "lib status   = ", lib%status
-    write (u, "(1x,A,I0)")  "proc1 status = ", lib%entry(1)%status
-    write (u, "(1x,A,I0)")  "proc2 status = ", lib%entry(2)%status
+    write (u, "(1x,A,L1)")  "library loaded = ", lib%is_loaded ()
+    write (u, "(1x,A,I0)")  "lib status   = ", lib%get_status ()
+    write (u, "(1x,A,I0)")  "proc1 status = ", lib%get_status (1)
+    write (u, "(1x,A,I0)")  "proc2 status = ", lib%get_status (2)
     
     write (u, "(A)")
     write (u, "(A)")  "* Write source code"
     write (u, "(A)")
     
     call lib%make_source (os_data)
-    write (u, "(1x,A,L1)")  "library loaded = ", lib%driver%loaded
-    write (u, "(1x,A,I0)")  "lib status   = ", lib%status
-    write (u, "(1x,A,I0)")  "proc1 status = ", lib%entry(1)%status
-    write (u, "(1x,A,I0)")  "proc2 status = ", lib%entry(2)%status
+    write (u, "(1x,A,L1)")  "library loaded = ", lib%is_loaded ()
+    write (u, "(1x,A,I0)")  "lib status   = ", lib%get_status ()
+    write (u, "(1x,A,I0)")  "proc1 status = ", lib%get_status (1)
+    write (u, "(1x,A,I0)")  "proc2 status = ", lib%get_status (2)
     
     write (u, "(A)")
     write (u, "(A)")  "* Reset status"
     write (u, "(A)")
     
-    lib%status = STAT_CONFIGURED
-    lib%entry%status = STAT_CONFIGURED
-    write (u, "(1x,A,L1)")  "library loaded = ", lib%driver%loaded
-    write (u, "(1x,A,I0)")  "lib status   = ", lib%status
-    write (u, "(1x,A,I0)")  "proc1 status = ", lib%entry(1)%status
-    write (u, "(1x,A,I0)")  "proc2 status = ", lib%entry(2)%status
+    call lib%set_status (STAT_CONFIGURED, entries=.true.)
+    write (u, "(1x,A,L1)")  "library loaded = ", lib%is_loaded ()
+    write (u, "(1x,A,I0)")  "lib status   = ", lib%get_status ()
+    write (u, "(1x,A,I0)")  "proc1 status = ", lib%get_status (1)
+    write (u, "(1x,A,I0)")  "proc2 status = ", lib%get_status (2)
     
     write (u, "(A)")
     write (u, "(A)")  "* Update status"
     write (u, "(A)")
     
     call lib%update_status (os_data)
-    write (u, "(1x,A,L1)")  "library loaded = ", lib%driver%loaded
-    write (u, "(1x,A,I0)")  "lib status   = ", lib%status
-    write (u, "(1x,A,I0)")  "proc1 status = ", lib%entry(1)%status
-    write (u, "(1x,A,I0)")  "proc2 status = ", lib%entry(2)%status
+    write (u, "(1x,A,L1)")  "library loaded = ", lib%is_loaded ()
+    write (u, "(1x,A,I0)")  "lib status   = ", lib%get_status ()
+    write (u, "(1x,A,I0)")  "proc1 status = ", lib%get_status (1)
+    write (u, "(1x,A,I0)")  "proc2 status = ", lib%get_status (2)
     
     write (u, "(A)")
     write (u, "(A)")  "* Partial cleanup"
     write (u, "(A)")
 
     call lib%clean (os_data, distclean = .false.)
-    write (u, "(1x,A,L1)")  "library loaded = ", lib%driver%loaded
-    write (u, "(1x,A,I0)")  "lib status   = ", lib%status
-    write (u, "(1x,A,I0)")  "proc1 status = ", lib%entry(1)%status
-    write (u, "(1x,A,I0)")  "proc2 status = ", lib%entry(2)%status
+    write (u, "(1x,A,L1)")  "library loaded = ", lib%is_loaded ()
+    write (u, "(1x,A,I0)")  "lib status   = ", lib%get_status ()
+    write (u, "(1x,A,I0)")  "proc1 status = ", lib%get_status (1)
+    write (u, "(1x,A,I0)")  "proc2 status = ", lib%get_status (2)
     
 
     write (u, "(A)")
@@ -8173,10 +8517,10 @@ Here is the actual test:
     write (u, "(A)")
     
     call lib%update_status (os_data)
-    write (u, "(1x,A,L1)")  "library loaded = ", lib%driver%loaded
-    write (u, "(1x,A,I0)")  "lib status   = ", lib%status
-    write (u, "(1x,A,I0)")  "proc1 status = ", lib%entry(1)%status
-    write (u, "(1x,A,I0)")  "proc2 status = ", lib%entry(2)%status
+    write (u, "(1x,A,L1)")  "library loaded = ", lib%is_loaded ()
+    write (u, "(1x,A,I0)")  "lib status   = ", lib%get_status ()
+    write (u, "(1x,A,I0)")  "proc1 status = ", lib%get_status (1)
+    write (u, "(1x,A,I0)")  "proc2 status = ", lib%get_status (2)
     
     write (u, "(A)")
     write (u, "(A)")  "* Complete cleanup"
@@ -8203,8 +8547,6 @@ module prclib_stacks
 <<Use strings>>
   use io_units
   use format_utils, only: write_separator
-  use unit_tests
-  use os_interface
   use process_libraries
 
 <<Standard module head>>
@@ -8216,8 +8558,6 @@ module prclib_stacks
 contains
   
 <<Prclib stacks: procedures>>
-
-<<Prclib stacks: tests>>
 
 end module prclib_stacks
 @ %def prclib_stacks
@@ -8379,9 +8719,48 @@ entry is listed last.
 @ %def prclib_stack_get_library_ptr
 @
 \subsection{Unit tests}
-<<Prclib stacks: public>>=
+Test module, followed by the corresponding implementation module.
+<<[[prclib_stacks_ut.f90]]>>=
+<<File header>>
+
+module prclib_stacks_ut
+  use unit_tests
+  use prclib_stacks_uti
+  
+<<Standard module head>>
+
+<<Prclib stacks: public test>>
+
+contains
+  
+<<Prclib stacks: test driver>>
+
+end module prclib_stacks_ut
+@ %def prclib_stacks_ut
+@
+<<[[prclib_stacks_uti.f90]]>>=
+<<File header>>
+
+module prclib_stacks_uti
+
+<<Use strings>>
+
+  use prclib_stacks
+
+<<Standard module head>>
+
+<<Prclib stacks: test declarations>>
+
+contains
+
+<<Prclib stacks: tests>>
+
+end module prclib_stacks_uti
+@ %def prclib_stacks_ut
+@ API: driver for the unit tests below.
+<<Prclib stacks: public test>>=
   public :: prclib_stacks_test
-<<Prclib stacks: tests>>=
+<<Prclib stacks: test driver>>=
   subroutine prclib_stacks_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
@@ -8396,6 +8775,8 @@ The most trivial test is to write an uninitialized process library stack.
   call test (prclib_stacks_1, "prclib_stacks_1", &
        "write an empty process library stack", &
        u, results)
+<<Prclib stacks: test declarations>>=
+  public :: prclib_stacks_1
 <<Prclib stacks: tests>>=
   subroutine prclib_stacks_1 (u)
     integer, intent(in) :: u
@@ -8420,6 +8801,8 @@ Fill a process library stack with two (identical) processes.
   call test (prclib_stacks_2, "prclib_stacks_2", &
        "fill a process library stack", &
        u, results)
+<<Prclib stacks: test declarations>>=
+  public :: prclib_stacks_2
 <<Prclib stacks: tests>>=
   subroutine prclib_stacks_2 (u)
     integer, intent(in) :: u
@@ -8475,16 +8858,15 @@ of [[s]] into a pair of colored fermions [[f]].
 
 module prc_test
   
-  use iso_c_binding !NODEP!
-  use kinds
+  use, intrinsic :: iso_c_binding !NODEP!
+  
+<<Use kinds>>
 <<Use strings>>
-  use unit_tests
   use os_interface
-
   use process_constants
   use prclib_interfaces
   use prc_core_def
-  use particle_specifiers
+  use particle_specifiers, only: new_prt_spec
   use process_libraries
 
 <<Standard module head>>
@@ -8496,8 +8878,6 @@ module prc_test
 contains
   
 <<Test ME: procedures>>
-
-<<Test ME: tests>>
 
 end module prc_test
 @ %def prc_test
@@ -8783,11 +9163,55 @@ the driver.
   
 @ %def prc_test_create_library
 @
-\subsection{Test}
-This is the master for calling self-test procedures.
-<<Test ME: public>>=
+\subsection{Unit Test}
+Test module, followed by the corresponding implementation module.
+<<[[prc_test_ut.f90]]>>=
+<<File header>>
+
+module prc_test_ut
+  use unit_tests
+  use prc_test_uti
+  
+<<Standard module head>>
+
+<<Test ME: public test>>
+
+contains
+  
+<<Test ME: test driver>>
+
+end module prc_test_ut
+@ %def prc_test_ut
+@
+<<[[prc_test_uti.f90]]>>=
+<<File header>>
+
+module prc_test_uti
+
+<<Use kinds>>
+<<Use strings>>
+  use os_interface
+  use particle_specifiers, only: new_prt_spec
+  use process_constants
+  use prc_core_def
+  use process_libraries
+
+  use prc_test
+
+<<Standard module head>>
+
+<<Test ME: test declarations>>
+
+contains
+
+<<Test ME: tests>>
+
+end module prc_test_uti
+@ %def prc_test_ut
+@ API: driver for the unit tests below.
+<<Test ME: public test>>=
   public :: prc_test_test
-<<Test ME: tests>>=
+<<Test ME: test driver>>=
   subroutine prc_test_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
@@ -8806,6 +9230,8 @@ independent of angle.)  The matrix element is equal to unity.
   call test (prc_test_1, "prc_test_1", &
        "build and load trivial process", &
        u, results)
+<<Test ME: test declarations>>=
+  public :: prc_test_1
 <<Test ME: tests>>=
   subroutine prc_test_1 (u)
     integer, intent(in) :: u
@@ -8933,6 +9359,8 @@ command.  This is handy for other modules which use the test process.
   call test (prc_test_2, "prc_test_2", &
        "build and load trivial process using shortcut", &
        u, results)
+<<Test ME: test declarations>>=
+  public :: prc_test_2
 <<Test ME: tests>>=
   subroutine prc_test_2 (u)
     integer, intent(in) :: u
@@ -8987,6 +9415,8 @@ independent of angle.)  The matrix element is equal to unity.
   call test (prc_test_3, "prc_test_3", &
        "build and load trivial decay", &
        u, results)
+<<Test ME: test declarations>>=
+  public :: prc_test_3
 <<Test ME: tests>>=
   subroutine prc_test_3 (u)
     integer, intent(in) :: u
@@ -9013,7 +9443,7 @@ independent of angle.)  The matrix element is equal to unity.
     call lib%init (var_str ("prc_test3"))
 
     model_name = "Test"
-    allocate (prt_in (2), prt_out (2))
+    allocate (prt_in (1), prt_out (2))
     prt_in  = [var_str ("s")]
     prt_out = [var_str ("f"), var_str ("F")]
     
@@ -9114,6 +9544,8 @@ command.  This is handy for other modules which use the test process.
   call test (prc_test_4, "prc_test_4", &
        "build and load trivial decay using shortcut", &
        u, results)
+<<Test ME: test declarations>>=
+  public :: prc_test_4
 <<Test ME: tests>>=
   subroutine prc_test_4 (u)
     integer, intent(in) :: u

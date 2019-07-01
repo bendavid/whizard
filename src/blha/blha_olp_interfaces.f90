@@ -1,4 +1,4 @@
-! WHIZARD 2.2.6 May 02 2015
+! WHIZARD 2.2.7 Aug 11 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -37,6 +37,7 @@ module blha_olp_interfaces
 
   use kinds
   use iso_varying_string, string_t => varying_string
+  use constants
   use system_defs, only: TAB
   use io_units
   use string_utils
@@ -53,6 +54,8 @@ module blha_olp_interfaces
   use process_libraries
   use prc_core_def
   use prc_core
+
+  use prc_user_defined
 
   use blha_config
 
@@ -83,23 +86,26 @@ module blha_olp_interfaces
 
 
   type :: blha_template_t
+    integer :: I_BORN = 0
     integer :: I_REAL = 1
     integer :: I_LOOP = 2
     integer :: I_SUB = 3
-    logical, dimension(3) :: compute_component
+    logical, dimension(0:3) :: compute_component
   contains
     procedure :: init => blha_template_init
+    procedure :: set_born => blha_template_set_born
+    procedure :: set_real_trees => blha_template_set_real_trees
     procedure :: set_loop => blha_template_set_loop
     procedure :: set_subtraction => blha_template_set_subtraction
-    procedure :: set_real_trees => blha_template_set_real_trees
+    procedure :: compute_born => blha_template_compute_born
+    procedure :: compute_real_trees => blha_template_compute_real_trees
     procedure :: compute_loop => blha_template_compute_loop
     procedure :: compute_subtraction => blha_template_compute_subtraction
-    procedure :: compute_real_trees => blha_template_compute_real_trees
     procedure :: check => blha_template_check
     procedure :: reset => blha_template_reset
   end type blha_template_t
 
-  type, abstract, extends (prc_core_t) :: prc_blha_t
+  type, abstract, extends (prc_user_defined_base_t) :: prc_blha_t
     type(qcd_t) :: qcd
     integer :: n_flv
     integer :: n_particles
@@ -109,18 +115,12 @@ module blha_olp_interfaces
     integer, dimension(:), allocatable :: i_virt
   contains
     procedure :: create_momentum_array => prc_blha_create_momentum_array
-    procedure :: needs_mcset => prc_blha_needs_mcset
-    procedure :: get_n_terms => prc_blha_get_n_terms
-    procedure :: is_allowed => prc_blha_is_allowed
     procedure :: update_alpha_s => prc_blha_update_alpha_s
     procedure :: get_alpha_s => prc_blha_get_alpha_s
     procedure :: set_alpha_qed => prc_blha_set_alpha_qed
     procedure :: read_contract_file => prc_blha_read_contract_file
     procedure :: print_parameter_file => prc_blha_print_parameter_file
-    procedure :: compute_hard_kinematics => prc_blha_compute_hard_kinematics
-    procedure :: compute_eff_kinematics => prc_blha_compute_eff_kinematics
     procedure :: compute_amplitude => prc_blha_compute_amplitude
-    procedure :: recover_kinematics => prc_blha_recover_kinematics
      procedure :: init_blha => prc_blha_init_blha
     procedure :: get_nflv => prc_blha_get_nflv
     procedure :: set_parameters => prc_blha_set_parameters
@@ -132,8 +132,6 @@ module blha_olp_interfaces
     procedure(prc_blha_compute_sqme_born), deferred :: &
         compute_sqme_born
     procedure :: compute_sqme_cc => prc_blha_compute_sqme_cc
-    procedure(prc_blha_compute_sqme_sc), deferred :: &
-        compute_sqme_sc
     procedure(prc_blha_init_driver), deferred :: &
         init_driver
   end type prc_blha_t
@@ -346,29 +344,16 @@ module blha_olp_interfaces
 
   abstract interface
     subroutine prc_blha_compute_sqme_born (object, i_born, &
-          mom, mu, sqme, acc_born)
+          p, mu, sqme, bad_point)
       import
       class(prc_blha_t), intent(inout) :: object
       integer, intent(in) :: i_born
-      real(double), intent(in), dimension(5*object%n_particles) :: mom
-      real(double), intent(in) :: mu
+      type(vector4_t), dimension(:), intent(in) :: p
+      real(default), intent(in) :: mu
       real(default), intent(out) :: sqme
-      real(default), intent(out) :: acc_born
+      logical, intent(out) :: bad_point
     end subroutine prc_blha_compute_sqme_born
   end interface 
-
-  abstract interface
-    subroutine prc_blha_compute_sqme_sc (object, &
-         i_flv, em, p, ren_scale_in, me_sc, bad_point)
-      import
-      class(prc_blha_t), intent(inout) :: object
-      integer, intent(in) :: i_flv, em
-      type(vector4_t), intent(in), dimension(:) :: p
-      real(default), intent(in) :: ren_scale_in
-      complex(default), intent(out) :: me_sc
-      logical, intent(out) :: bad_point 
-    end subroutine prc_blha_compute_sqme_sc
-  end interface
 
   abstract interface
     subroutine prc_blha_init_driver (object, os_data)
@@ -444,7 +429,8 @@ contains
 
     n = size (p)
     if (n > 10) call msg_fatal ("Number of external particles exceeeds" &
-                                 // "size of GoSam-internal momentum array")
+                                 // "size of BLHA-internal momentum array")
+    mom = 0._default
     k = 1
     do i = 1, n
        mom(k:k+3) = vector4_get_components (p(i))
@@ -459,6 +445,16 @@ contains
     template%compute_component = .false.
   end subroutine blha_template_init
 
+  subroutine blha_template_set_born (template)
+    class(blha_template_t), intent(inout) :: template
+    template%compute_component (template%I_BORN) = .true.
+  end subroutine blha_template_set_born
+
+  subroutine blha_template_set_real_trees (template)
+    class(blha_template_t), intent(inout) :: template
+    template%compute_component (template%I_REAL) = .true.
+  end subroutine blha_template_set_real_trees
+
   subroutine blha_template_set_loop (template)
     class(blha_template_t), intent(inout) :: template
     template%compute_component(template%I_LOOP) = .true.
@@ -469,10 +465,17 @@ contains
     template%compute_component (template%I_SUB) = .true.
   end subroutine blha_template_set_subtraction
 
-  subroutine blha_template_set_real_trees (template)
-    class(blha_template_t), intent(inout) :: template
-    template%compute_component (template%I_REAL) = .true.
-  end subroutine blha_template_set_real_trees
+  function blha_template_compute_born (template) result (val)
+    class(blha_template_t), intent(in) :: template
+    logical :: val
+    val = template%compute_component (template%I_BORN)
+  end function blha_template_compute_born
+
+  function blha_template_compute_real_trees (template) result (val)
+    class(blha_template_t), intent(in) :: template
+    logical :: val
+    val = template%compute_component (template%I_REAL)
+  end function blha_template_compute_real_trees
 
   function blha_template_compute_loop (template) result (val)
     class(blha_template_t), intent(in) :: template
@@ -485,12 +488,6 @@ contains
     logical :: val
     val = template%compute_component (template%I_SUB)
   end function blha_template_compute_subtraction
-
-  function blha_template_compute_real_trees (template) result (val)
-    class(blha_template_t), intent(in) :: template
-    logical :: val
-    val = template%compute_component (template%I_REAL)
-  end function blha_template_compute_real_trees
 
   function blha_template_check (template) result (val)
     class(blha_template_t), intent(in) :: template
@@ -827,6 +824,7 @@ contains
     integer :: i_next, n_entries
     integer, dimension(size(flavors, 1) + 2) :: i_array
     integer, parameter :: NO_NUMBER = -1000
+    integer, parameter :: PROC_NOT_FOUND = -1001
 
     amp_type = -1; flv_index = -1; label = -1
     n_entries = size(flavors, 1) + 2
@@ -857,6 +855,13 @@ contains
          else if (read_flavor) then
             born_found = .false.
             i_array = create_flavor_string (rd_line, n_entries)           
+            if (all (i_array == PROC_NOT_FOUND)) &
+               call msg_fatal ("The desired process has not been found ",  &
+                    [var_str ("by the OLP-Provider. Maybe the value of alpha_power "), &
+                     var_str ("or alphas_power does not correspond to the process. "), &
+                     var_str ("If you are using OpenLoops, you can set the option "), &
+                     var_str ("openloops_verbosity to a value larger than 1 to obtain "),  &
+                     var_str ("more information")])
             do i_flv = 1, size (flavors, 2)
                if (all (i_array (1:n_entries-2) == flavors (:,i_flv))) then
                   label(k) = i_array (n_entries)
@@ -888,7 +893,7 @@ contains
             call msg_fatal ("Read OLC File: Current position exceeds maximum value")
          if (s(current_position:current_position) /= " ") then
             call create_integer (s, i_entry, current_position)
-            if (i_entry /= NO_NUMBER) then
+            if (i_entry /= NO_NUMBER .and. i_entry /= PROC_NOT_FOUND) then
                i_array(k) = i_entry
                k = k+1
                if (k > n_entries) then
@@ -896,6 +901,9 @@ contains
                else
                   current_position = find_next_word_index (s, current_position)
                end if
+            else if (i_entry == PROC_NOT_FOUND) then
+               i_array = PROC_NOT_FOUND
+               return 
             else
                current_position = find_next_word_index (s, current_position)
             end if
@@ -921,9 +929,12 @@ contains
            exit
         end if
       end do
-      valid = (buf(1:i-1) /= "->" .and. buf(1:i-1) /= "|")
+      valid = (buf(1:i-1) /= "->" .and. buf(1:i-1) /= "|" &
+               .and. buf(1:i-1) /= "Process")
       if (valid) then
          i_particle = read_ival (var_str (buf(1:i-1)))
+      else if (buf(1:i-1) == "Process") then
+         i_particle = PROC_NOT_FOUND
       else
          i_particle = NO_NUMBER
       end if
@@ -946,34 +957,6 @@ contains
 
   end subroutine blha_driver_read_contract_file
 
-  function prc_blha_needs_mcset (object) result (flag)
-    class(prc_blha_t), intent(in) :: object
-    logical :: flag
-    flag = .true.
-  end function prc_blha_needs_mcset
-
-  function prc_blha_get_n_terms (object) result (n)
-    class(prc_blha_t), intent(in) :: object
-    integer :: n
-    n = 1
-  end function prc_blha_get_n_terms
-
-  function prc_blha_is_allowed (object, i_term, f, h, c) result (flag)
-    class(prc_blha_t), intent(in) :: object
-    integer, intent(in) :: i_term, f, h, c
-    logical :: flag
-    logical(c_bool) :: cflag
-    select type (driver => object%driver)
-    class is (blha_driver_t)
-!       call driver%is_allowed (f, h, c, cflag)
-!       flag = cflag
-       flag = .true.
-    class default
-       call msg_fatal &
-            ("BLHA instance created, but driver is not a BLHA driver!")
-    end select
-  end function prc_blha_is_allowed
-
   subroutine prc_blha_update_alpha_s (object, core_state, fac_scale) 
     class(prc_blha_t), intent(in) :: object
     class(prc_core_state_t), intent(inout), allocatable :: core_state
@@ -985,6 +968,10 @@ contains
        class is (blha_driver_t)
           call driver%update_alpha_s (alpha_qcd)
        end select 
+       select type (core_state)
+       class is (blha_state_t)
+          core_state%alpha_qcd = alpha_qcd
+       end select
     end if
   end subroutine prc_blha_update_alpha_s
 
@@ -1002,9 +989,17 @@ contains
     end if
   end function prc_blha_get_alpha_s
 
-  subroutine prc_blha_set_alpha_qed (object, alpha)
+  subroutine prc_blha_set_alpha_qed (object, model)
     class(prc_blha_t), intent(inout) :: object
-    real(default), intent(in) :: alpha
+    type(model_data_t), intent(in), target :: model
+    real(default) :: alpha
+    real(default) :: GF, MZ, MW
+    real(default) :: sw2
+    GF = model%get_real (var_str ('GF'))
+    MZ = model%get_real (var_str ('mZ'))
+    MW = model%get_real (var_str ('mW'))
+    sw2 = one - MW**2/MZ**2
+    alpha = sqrt(two)/pi * sw2*MW**2*GF
     select type (driver => object%driver)
     class is (blha_driver_t)
        call driver%set_alpha_qed (alpha)
@@ -1074,30 +1069,6 @@ contains
     end select
   end subroutine prc_blha_print_parameter_file
 
-  subroutine prc_blha_compute_hard_kinematics &
-       (object, p_seed, i_term, int_hard, core_state)
-    class(prc_blha_t), intent(in) :: object
-    type(vector4_t), dimension(:), intent(in) :: p_seed
-    integer, intent(in) :: i_term
-    type(interaction_t), intent(inout) :: int_hard
-    class(prc_core_state_t), intent(inout), allocatable :: core_state 
-    call int_hard%set_momenta (p_seed)
-    if (allocated (core_state)) then
-      select type (core_state)
-      class is (blha_state_t); core_state%new_kinematics = .true.
-      end select
-    end if
-  end subroutine prc_blha_compute_hard_kinematics
-
-  subroutine prc_blha_compute_eff_kinematics &
-       (object, i_term, int_hard, int_eff, core_state)
-    class(prc_blha_t), intent(in) :: object
-    integer, intent(in) :: i_term
-    type(interaction_t), intent(in) :: int_hard
-    type(interaction_t), intent(inout) :: int_eff
-    class(prc_core_state_t), intent(inout), allocatable :: core_state
-  end subroutine prc_blha_compute_eff_kinematics
-
   function prc_blha_compute_amplitude &
        (object, j, p, f, h, c, fac_scale, ren_scale, alpha_qcd_forced, &
        core_state)  result (amp)
@@ -1116,18 +1087,6 @@ contains
     amp = 0.0
   end function prc_blha_compute_amplitude
 
-  subroutine prc_blha_recover_kinematics &
-       (object, p_seed, int_hard, int_eff, core_state)
-    class(prc_blha_t), intent(in) :: object
-    type(vector4_t), dimension(:), intent(inout) :: p_seed
-    type(interaction_t), intent(inout) :: int_hard, int_eff
-    class(prc_core_state_t), intent(inout), allocatable :: core_state
-    integer :: n_in
-    n_in = int_eff%get_n_in ()
-    call int_eff%set_momenta (p_seed(1:n_in), outgoing = .false.)
-    p_seed(n_in+1:) = int_eff%get_momenta (outgoing = .true.)
-  end subroutine prc_blha_recover_kinematics
-
   subroutine prc_blha_init_blha (object, blha_template)
     class(prc_blha_t), intent(inout) :: object
     type(blha_template_t), intent(inout) :: blha_template
@@ -1145,6 +1104,8 @@ contains
                  object%i_sc (object%n_flv))
     else if (blha_template%compute_real_trees ()) then
        allocate (object%i_real (object%n_flv))
+    else if (blha_template%compute_born ()) then
+       allocate (object%i_born (object%n_flv))
     end if
   end subroutine prc_blha_init_blha
   function prc_blha_get_nflv (object) result (n_flv)
@@ -1168,6 +1129,7 @@ contains
     integer :: i, i_pdg
     type(flavor_t) :: flv
     real(default) :: mass, width
+    integer :: ierr
     do i = 1, OLP_N_MASSIVE_PARTICLES
        i_pdg = OLP_MASSIVE_PARTICLES(i)
        call flv%init (i_pdg, model)
@@ -1175,6 +1137,8 @@ contains
        select type (driver => object%driver)
        class is (blha_driver_t)
           call driver%set_mass_and_width (i_pdg, mass=mass, width=width)
+          if (i_pdg == 5) call driver%blha_olp_set_parameter &
+             ('yuk(5)'//c_null_char, dble(mass), 0._double, ierr)
        end select
     end do
   end subroutine prc_blha_set_particle_properties
@@ -1228,11 +1192,7 @@ contains
     end select
     acc = acc_dble
     sqme = r(1:4)
-    if (acc > object%maximum_accuracy) then
-       bad_point = .true.
-    else
-       bad_point = .false.
-    end if
+    bad_point = acc > object%maximum_accuracy
   end subroutine prc_blha_compute_sqme_virt
 
   subroutine prc_blha_compute_sqme_cc &
@@ -1253,8 +1213,9 @@ contains
     real(default) :: alpha_s
     integer :: i, j, pos
     integer :: im1, jm1
+    logical :: bad_point2 = .false.
     real(double) :: acc_dble
-    real(default) :: acc1, acc2
+    real(default) :: acc
     real(default) :: born
 
     mom = object%create_momentum_array (p)
@@ -1269,11 +1230,10 @@ contains
     class is (blha_driver_t)
        call driver%set_alpha_s (alpha_s)
        if (allocated (object%i_born)) then
-       call object%compute_sqme_born (object%i_born(i_flv), &
-                                      mom, mu_dble, born, acc1)
+          call object%compute_sqme_born (i_flv, p, mu, born, bad_point2)
        else
           born = 0._default
-          acc1 = 0._default
+          acc = 0._default
        end if
        if (present (born_out)) born_out = born
        call driver%blha_olp_eval2 (object%i_cc(i_flv), &
@@ -1293,11 +1253,8 @@ contains
         born_cc (j,i) = born_cc (i,j)
       end do
     end do
-    acc2 = acc_dble
-    if (acc1 > object%maximum_accuracy .or. &
-        acc2 > object%maximum_accuracy) then
-      bad_point = .true.
-    end if
+    acc = acc_dble
+    bad_point = bad_point2 .or. acc > object%maximum_accuracy
   end subroutine prc_blha_compute_sqme_cc
 
 

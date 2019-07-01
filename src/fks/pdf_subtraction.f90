@@ -1,4 +1,4 @@
-! WHIZARD 2.2.6 May 02 2015
+! WHIZARD 2.2.7 Aug 11 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -36,21 +36,17 @@ module pdf_subtraction
   use iso_varying_string, string_t => varying_string
   use system_dependencies, only: LHAPDF6_AVAILABLE
   use diagnostics
-  use shower_base
   use constants
   use physics_defs
   use pdg_arrays
   use sf_lhapdf
+  use pdf
   use nlo_data
 
   implicit none
   private
 
   public :: pdf_subtraction_t
-
-  type :: pdf_container_t
-     real(default), dimension(-6:6) :: f
-  end type pdf_container_t
 
   type :: pdf_subtraction_t
     type(pdf_data_t) :: pdf_data
@@ -135,7 +131,7 @@ contains
           pdf_data%qmax = sqrt(pdf_data%pdf%getq2max ())
        end associate
     else
-       call msg_fatal ("Real subtraction: PDFs could not be initialized")
+       call msg_fatal ("PDF subtraction: PDFs could not be initialized")
     end if
   end subroutine pdf_subtraction_init_pdfs
 
@@ -207,42 +203,42 @@ contains
     sb = pdf_sub%isr_kinematics%sqrts_born**2
     tmp = 0._default
     fac_scale2 = pdf_sub%isr_kinematics%fac_scale**2
-   
+
     call pdf_sub%compute_pdfs ()
 
     do emitter = 1, 2
-      associate (z => pdf_sub%isr_kinematics%z(emitter))
-        jac = pdf_sub%isr_kinematics%jacobian(emitter)
-        onemz = one - z
-        factor = log(sb/z/fac_scale2)/onemz + 2*log(onemz)/onemz 
-        factor_soft = log(sb/fac_scale2)/onemz + 2*log(onemz)/onemz
+       associate (z => pdf_sub%isr_kinematics%z(emitter))
+          jac = pdf_sub%isr_kinematics%jacobian(emitter)
+          onemz = one - z
+          factor = log(sb/z/fac_scale2)/onemz + 2*log(onemz)/onemz
+          factor_soft = log(sb/fac_scale2)/onemz + 2*log(onemz)/onemz
 
-        xb = pdf_sub%isr_kinematics%x(emitter)
-        remnant = log(1-xb)*log(sb/fac_scale2) + log(1-xb)**2
+          xb = pdf_sub%isr_kinematics%x(emitter)
+          remnant = log(1-xb)*log(sb/fac_scale2) + log(1-xb)**2
 
-        if (is_gluon(pdf_sub%flv_in(emitter))) then
-          pdfs = pdf_sub%get_gluon_pdf (emitter, scaled = .true.)
-          pdfb = pdf_sub%get_gluon_pdf (emitter, scaled = .false.)
-          tmp(emitter) = p_hat_gg(z) * factor/z * pdfs/pdfb * jac &
-                       - p_hat_gg(one) * factor_soft * jac &
-                       + p_hat_gg(one) * remnant 
-          pdfs = pdf_sub%get_summed_quark_pdf (emitter)
-          tmp(emitter) = tmp(emitter) + (p_hat_qg(z)*factor - p_derived_qg(z))/z * pdfs/pdfb * jac
-        else if (is_quark(abs(pdf_sub%flv_in(emitter)))) then
-          pdfs = pdf_sub%get_quark_pdf (emitter, pdf_sub%flv_in(emitter), scaled = .true.)
-          pdfb = pdf_sub%get_quark_pdf (emitter, pdf_sub%flv_in(emitter), scaled = .false.)
-          if (pdfb == 0._default) then
-             sqme_born = 0._default
-             return
+          if (is_gluon(pdf_sub%flv_in(emitter))) then
+             pdfs = pdf_sub%get_gluon_pdf (emitter, scaled = .true.)
+             pdfb = pdf_sub%get_gluon_pdf (emitter, scaled = .false.)
+             tmp(emitter) = p_hat_gg(z) * factor/z * pdfs/pdfb * jac &
+                  - p_hat_gg(one) * factor_soft * jac &
+                  + p_hat_gg(one) * remnant
+             pdfs = pdf_sub%get_summed_quark_pdf (emitter)
+             tmp(emitter) = tmp(emitter) + (p_hat_qg(z)*factor - p_derived_qg(z))/z * pdfs/pdfb * jac
+          else if (is_quark(abs(pdf_sub%flv_in(emitter)))) then
+             pdfs = pdf_sub%get_quark_pdf (emitter, pdf_sub%flv_in(emitter), scaled = .true.)
+             pdfb = pdf_sub%get_quark_pdf (emitter, pdf_sub%flv_in(emitter), scaled = .false.)
+             if (pdfb == 0._default) then
+                sqme_born = 0._default
+                return
+             end if
+             tmp(emitter) = p_hat_qq(z) * factor/z * pdfs/pdfb * jac &
+                  - p_derived_qq(z)/z * pdfs/pdfb * jac &
+                  - p_hat_qq(one) * factor_soft * jac &
+                  + p_hat_qq(one) * remnant
+             pdfs = pdf_sub%get_gluon_pdf (emitter, scaled = .true.)
+             tmp(emitter) = tmp(emitter) + (p_hat_gq(z)*factor - p_derived_gq(z))/z * pdfs/pdfb * jac
           end if
-          tmp(emitter) = p_hat_qq(z) * factor/z * pdfs/pdfb * jac &
-                       - p_derived_qq(z)/z * pdfs/pdfb * jac &
-                       - p_hat_qq(one) * factor_soft * jac &
-                       + p_hat_qq(one) * remnant
-          pdfs = pdf_sub%get_gluon_pdf (emitter, scaled = .true.)
-          tmp(emitter) = tmp(emitter) + (p_hat_gq(z)*factor - p_derived_gq(z))/z * pdfs/pdfb * jac
-        end if
-      end associate
+       end associate
     end do
     sqme_born = alpha_s/twopi * (tmp(1)+tmp(2)) * sqme_born
   end subroutine pdf_subtraction_evaluate
@@ -302,7 +298,7 @@ contains
     onemz = one - z
     p_derived_gq = -2*TR*z*onemz
   end function p_derived_gq
- 
+
   function p_derived_qq (z)
     real(default) :: p_derived_qq
     real(default), intent(in) :: z

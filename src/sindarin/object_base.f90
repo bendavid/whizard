@@ -1,4 +1,4 @@
-! WHIZARD 2.2.6 May 02 2015
+! WHIZARD 2.2.7 Aug 11 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -33,7 +33,7 @@
 module object_base
 
   use iso_varying_string, string_t => varying_string
-  use unit_tests
+
   use format_utils
   use io_units
   use diagnostics
@@ -50,11 +50,11 @@ module object_base
   public :: id_t
   public :: wrapper_t
   public :: reference_t
+  public :: ref_array_t
   public :: composite_t
   public :: composite_next_position
   public :: repository_t
   public :: object_iterator_t
-  public :: object_base_test
 
   integer, parameter, public :: MODE_ABSTRACT = 0
   integer, parameter, public :: MODE_CONSTANT = 1
@@ -89,7 +89,8 @@ module object_base
      procedure :: has_id => object_has_id
      procedure :: get_id_ptr => object_get_id_ptr
      procedure :: has_value => object_has_value
-     procedure :: is_value => object_is_value
+     procedure :: is_literal => object_is_literal
+     procedure :: has_literal => object_has_literal
      procedure :: has_mantle => object_has_mantle
      procedure :: get_n_members => object_get_n_members
      procedure :: get_n_arguments => object_get_n_arguments
@@ -124,7 +125,7 @@ module object_base
      logical :: defined = .false.
    contains
      procedure :: get_signature => value_get_signature
-     procedure :: is_value => value_is_value
+     procedure :: is_literal => value_is_literal
      procedure :: is_defined => value_is_defined
      procedure(value_init_from_code), deferred :: init_from_code
      procedure :: set_defined => value_set_defined
@@ -182,6 +183,7 @@ module object_base
      procedure :: get_name => reference_get_name
      procedure :: get_signature => reference_get_signature
      procedure :: is_reference => reference_is_reference
+     procedure :: is_associated => reference_is_associated
      procedure :: has_id => reference_has_id
      procedure :: get_id_ptr => reference_get_id_ptr
      procedure :: instantiate => reference_instantiate
@@ -192,6 +194,25 @@ module object_base
      procedure :: get_code => reference_get_code
      procedure :: dereference => reference_dereference
   end type reference_t
+  
+  type, extends (object_t) :: ref_array_t
+     private
+     type(reference_t), dimension(:), pointer :: item => null ()
+   contains
+     procedure :: final => ref_array_final
+     procedure :: write_expression => ref_array_write_expression
+     procedure :: write_value => ref_array_write_value
+     procedure :: get_name => ref_array_get_name
+     procedure :: get_signature => ref_array_get_signature
+     procedure :: is_expression => ref_array_is_expression
+     procedure :: is_defined => ref_array_is_defined
+     procedure :: get_item_ptr => ref_array_get_item_ptr
+     procedure :: instantiate => ref_array_instantiate
+     procedure :: init => ref_array_init
+     procedure :: associate => ref_array_associate
+     procedure :: get_code => ref_array_get_code
+     procedure :: init_from_code => ref_array_init_from_code
+  end type ref_array_t
   
   type, extends (wrapper_t) :: composite_t
      private
@@ -214,6 +235,7 @@ module object_base
      procedure :: get_prototype => composite_get_prototype
      procedure :: get_signature => composite_get_signature
      procedure :: has_value => composite_has_value
+     procedure :: has_literal => composite_has_literal
      procedure :: is_defined => composite_is_defined
      procedure :: has_mantle => composite_has_mantle
      procedure :: get_n_members => composite_get_n_members
@@ -221,6 +243,8 @@ module object_base
      procedure :: get_n_primers => composite_get_n_primers
      procedure :: get_member_ptr => composite_get_member_ptr
      procedure :: get_primer_ptr => composite_get_primer_ptr
+     procedure :: show_opname => composite_show_opname
+     procedure :: get_opname => composite_get_opname
      procedure :: get_prototype_ptr => composite_get_prototype_ptr
      procedure :: check_mode => composite_check_mode
      procedure :: check_role => composite_check_role
@@ -453,12 +477,11 @@ contains
   end subroutine object_write_as_statement
   
   recursive subroutine object_write_as_expression (object, unit, indent, &
-       priority, lr)
+       priority)
     class(object_t), intent(in) :: object
     integer, intent(in), optional :: unit
     integer, intent(in), optional :: indent
     integer, intent(in), optional :: priority
-    logical, intent(in), optional :: lr
     class(object_t), pointer :: member
     logical :: paren
     integer :: u, i, ind, n_mem, n_arg
@@ -467,16 +490,12 @@ contains
     paren = .false.
     if (object%is_expression ()) then
        if (present (priority)) then
-          if (lr) then
-             paren = priority > object%get_priority ()
-          else
-             paren = priority >= object%get_priority ()
-          end if
+          paren = priority >= object%get_priority ()
        end if
        if (paren)  write (u, "('(')", advance="no")
        call object%write_expression (u, indent)
        if (paren)  write (u, "(')')", advance="no")
-    else if (object%is_value ()) then
+    else if (object%is_literal ()) then
        if (object%is_defined ()) then
           call object%write_expression (u, indent)
        else
@@ -510,7 +529,7 @@ contains
     u = given_output_unit (unit)
     ind = 0;  if (present (indent))  ind = indent
     if (object%is_expression () &
-         .or. object%is_value () .or. object%has_value ()) then
+         .or. object%is_literal () .or. object%has_value ()) then
        if (object%is_defined ()) then
           call object%write_value (u, indent)
        else
@@ -614,11 +633,17 @@ contains
     flag = .false.
   end function object_has_value
   
-  pure function object_is_value (object) result (flag)
+  pure function object_is_literal (object) result (flag)
     class(object_t), intent(in) :: object
     logical :: flag
     flag = .false.
-  end function object_is_value
+  end function object_is_literal
+  
+  pure function object_has_literal (object) result (flag)
+    class(object_t), intent(in) :: object
+    logical :: flag
+    flag = .false.
+  end function object_has_literal
   
   pure function object_has_mantle (object) result (flag)
     class(object_t), intent(in) :: object
@@ -678,10 +703,10 @@ contains
     class(object_t), intent(out), pointer :: object
     type(code_t), intent(in) :: code
     type(repository_t), intent(in) :: repository
-    integer :: prototype_index, mode
-    select case (code%cat)
+    integer :: prototype_index
+    select case (code%get_cat ())
     case (CAT_COMPOSITE)
-       prototype_index = code%att(1)
+       prototype_index = code%get_att (1)
        if (prototype_index > 0) then
           call repository%spawn (prototype_index, object)
        else
@@ -699,6 +724,8 @@ contains
        end select
     case (CAT_REFERENCE)
        allocate (reference_t :: object)
+    case (CAT_REF_ARRAY)
+       allocate (ref_array_t :: object)
     case default
        object => null ()
     end select
@@ -751,7 +778,7 @@ contains
     class(object_t), pointer :: lhs, rhs, rhs_context
     class(value_t), pointer :: lval, rval
     type(position_t) :: position
-    integer :: part, i
+    integer :: i
     logical :: mutable, required
     lhs => ref
     rhs => source
@@ -865,7 +892,7 @@ contains
     class(tag_t), intent(in), target :: object
     type(repository_t), intent(in), optional :: repository
     type(code_t) :: code
-    code%cat = CAT_TAG
+    call code%set (CAT_TAG)
   end function tag_get_code
   
   pure function value_get_signature (object, verbose) result (signature)
@@ -881,11 +908,11 @@ contains
     end if
   end function value_get_signature
   
-  pure function value_is_value (object) result (flag)
+  pure function value_is_literal (object) result (flag)
     class(value_t), intent(in) :: object
     logical :: flag
     flag = .true.
-  end function value_is_value
+  end function value_is_literal
   
   pure function value_is_defined (object) result (flag)
     class(value_t), intent(in) :: object
@@ -930,7 +957,7 @@ contains
     class(id_t), intent(in) :: object
     integer, intent(in), optional :: unit
     integer, intent(in), optional :: indent
-    integer :: u, i
+    integer :: u
     u = given_output_unit (unit)
     if (allocated (object%path)) then
        write (u, "(A)", advance="no")  char (object%get_path_string ())
@@ -980,27 +1007,18 @@ contains
     class(id_t), intent(in), target :: object
     type(repository_t), intent(in), optional :: repository
     type(code_t) :: code
-    integer :: nval, i
-    code%cat = CAT_ID
+    call code%set (CAT_ID)
     if (allocated (object%path)) then
-       nval = size (object%path)
-       call code%create_val (code%val, VT_STRING, nval)
-       select type (val => code%val)
-       type is (val_string_t)
-          do i = 1, nval
-             val%x(i) = object%path(i)
-          end do
-       end select
+       call code%create_string_val (object%path)
     end if
   end function id_get_code
   
   subroutine id_init_from_code (object, code)
     class(id_t), intent(out) :: object
     type(code_t), intent(in) :: code
-    select type (val => code%val)
-    type is (val_string_t)
-       call object%init (val%x)
-    end select
+    logical :: success
+    call code%get_string_array (object%path, success)
+    call object%set_defined (success)
   end subroutine id_init_from_code
     
   subroutine id_init_path (object, path)
@@ -1142,7 +1160,7 @@ contains
     class(wrapper_t), intent(in), target :: object
     type(repository_t), intent(in), optional :: repository
     type(code_t) :: code
-    code%cat = 0
+    call code%set (0)
   end function wrapper_get_code
   
   subroutine wrapper_next_position &
@@ -1268,6 +1286,12 @@ contains
     flag = .true.
   end function reference_is_reference
   
+  elemental function reference_is_associated (object) result (flag)
+    class(reference_t), intent(in) :: object
+    logical :: flag
+    flag = associated (object%core)
+  end function reference_is_associated
+  
   pure function reference_has_id (object) result (flag)
     class(reference_t), intent(in) :: object
     logical :: flag
@@ -1337,7 +1361,7 @@ contains
     class(reference_t), intent(in), target :: object
     type(repository_t), intent(in), optional :: repository
     type(code_t) :: code
-    code%cat = CAT_REFERENCE
+    call code%set (CAT_REFERENCE)
   end function reference_get_code
   
   recursive function reference_dereference (object) result (remote)
@@ -1350,6 +1374,143 @@ contains
     end if
   end function reference_dereference
 
+  recursive subroutine ref_array_final (object)
+    class(ref_array_t), intent(inout) :: object
+    integer :: i
+    if (associated (object%item)) then
+       do i = 1, size (object%item)
+          call object%item(i)%final ()
+       end do
+       deallocate (object%item)
+    end if
+  end subroutine ref_array_final
+  
+  subroutine ref_array_write_expression (object, unit, indent)
+    class(ref_array_t), intent(in) :: object
+    integer, intent(in), optional :: unit
+    integer, intent(in), optional :: indent
+    class(object_t), pointer :: item
+    integer :: u, i
+    u = given_output_unit (unit)
+    if (associated (object%item)) then
+       write (u, "('(')", advance="no")
+       do i = 1, size (object%item)
+          if (i > 1)  write (u, "(',',1x)", advance="no")
+          if (object%item(i)%is_associated ()) then
+             call object%item(i)%get_core_ptr (item)
+             call item%write_as_expression (u, priority=0)
+          else
+             write (u, "('<>')", advance="no")
+          end if
+       end do
+       write (u, "(')')", advance="no")
+    else
+       write (u, "('???')", advance="no")
+    end if
+  end subroutine ref_array_write_expression
+       
+  subroutine ref_array_write_value (object, unit, indent)
+    class(ref_array_t), intent(in) :: object
+    integer, intent(in), optional :: unit
+    integer, intent(in), optional :: indent
+    class(object_t), pointer :: item
+    integer :: u, i
+    u = given_output_unit (unit)
+    if (associated (object%item)) then
+       write (u, "('(')", advance="no")
+       do i = 1, size (object%item)
+          if (i > 1)  write (u, "(',',1x)", advance="no")
+          if (object%item(i)%is_associated ()) then
+             call object%item(i)%get_core_ptr (item)
+             call item%write_as_value (u)
+          else
+             write (u, "('<>')", advance="no")
+          end if
+       end do
+       write (u, "(')')", advance="no")
+    else
+       write (u, "('???')", advance="no")
+    end if
+  end subroutine ref_array_write_value
+       
+  pure function ref_array_get_name (object) result (name)
+    class(ref_array_t), intent(in) :: object
+    type(string_t) :: name
+    name = "<ref array>"
+  end function ref_array_get_name
+  
+  pure function ref_array_get_signature (object, verbose) result (signature)
+    class(ref_array_t), intent(in) :: object
+    logical, intent(in), optional :: verbose
+    type(string_t) :: signature
+    signature = ""
+  end function ref_array_get_signature
+  
+  pure function ref_array_is_expression (object) result (flag)
+    class(ref_array_t), intent(in) :: object
+    logical :: flag
+    flag = .true.
+  end function ref_array_is_expression
+  
+  pure function ref_array_is_defined (object) result (flag)
+    class(ref_array_t), intent(in) :: object
+    logical :: flag
+    if (associated (object%item)) then
+       flag = all (object%item%is_associated ())
+    else
+       flag = .false.
+    end if
+  end function ref_array_is_defined
+  
+  subroutine ref_array_get_item_ptr (object, i, item)
+    class(ref_array_t), intent(in) :: object
+    integer, intent(in) :: i
+    class(object_t), intent(out), pointer :: item
+    if (associated (object%item)) then
+       call object%item(i)%get_core_ptr (item)
+    else
+       item => null ()
+    end if
+  end subroutine ref_array_get_item_ptr
+  
+  subroutine ref_array_instantiate (object, instance)
+    class(ref_array_t), intent(inout), target :: object
+    class(object_t), intent(out), pointer :: instance
+    allocate (ref_array_t :: instance)
+  end subroutine ref_array_instantiate
+    
+  subroutine ref_array_init (object, n_item)
+    class(ref_array_t), intent(inout) :: object
+    integer, intent(in) :: n_item
+    allocate (object%item (n_item))
+  end subroutine ref_array_init
+  
+  subroutine ref_array_associate (object, i, remote)
+    class(ref_array_t), intent(inout) :: object
+    integer, intent(in) :: i
+    class(object_t), intent(inout), target :: remote
+    call object%item(i)%link_core (remote)
+  end subroutine ref_array_associate
+  
+  function ref_array_get_code (object, repository) result (code)
+    class(ref_array_t), intent(in), target :: object
+    type(repository_t), intent(in), optional :: repository
+    type(code_t) :: code
+    if (associated (object%item)) then
+       call code%set (CAT_REF_ARRAY, [size (object%item)])
+    else
+       call code%set (CAT_REF_ARRAY)
+    end if
+  end function ref_array_get_code
+  
+  subroutine ref_array_init_from_code (object, code)
+    class(ref_array_t), intent(inout) :: object
+    type(code_t), intent(in) :: code
+    if (code%get_n_att () > 0) then
+       call object%init (code%get_att (1))
+    end if
+  end subroutine ref_array_init_from_code
+    
   recursive subroutine composite_final (object)
     class(composite_t), intent(inout) :: object
     integer :: i
@@ -1396,6 +1557,12 @@ contains
     ind = 0;  if (present (indent))  ind = indent
     if (associated (object%member)) then
        do i = 1, size (object%member)
+          if (object%show_opname(i)) then
+             call write_indent (u, ind)
+             write (u, "('O')", advance="no")
+             write (u, "(I0,':',1x)", advance="no") i
+             write (u, "(A)")  char (object%get_opname (i))
+          end if
           call write_indent (u, ind)
           if (object%member_is_argument (i)) then
              write (u, "('A')", advance="no")
@@ -1517,6 +1684,16 @@ contains
     end if
   end function composite_has_value
   
+  pure function composite_has_literal (object) result (flag)
+    class(composite_t), intent(in) :: object
+    logical :: flag
+    if (object%has_value ()) then
+       flag = object%core%is_literal ()
+    else
+       flag = .false.
+    end if
+  end function composite_has_literal
+  
   pure function composite_is_defined (object) result (flag)
     class(composite_t), intent(in) :: object
     logical :: flag
@@ -1593,6 +1770,20 @@ contains
     end if
   end subroutine composite_get_primer_ptr
   
+  pure function composite_show_opname (object, i) result (flag)
+    class(composite_t), intent(in) :: object
+    integer, intent(in), optional :: i
+    logical :: flag
+    flag = .false.
+  end function composite_show_opname
+    
+  function composite_get_opname (object, i) result (name)
+    class(composite_t), intent(in) :: object
+    integer, intent(in), optional :: i
+    type(string_t) :: name
+    name = object%get_name ()
+  end function composite_get_opname
+    
   subroutine composite_get_prototype_ptr (object, prototype)
     class(composite_t), intent(in) :: object
     class(composite_t), intent(out), pointer :: prototype
@@ -1651,45 +1842,41 @@ contains
     class(composite_t), intent(in), target :: object
     type(code_t), intent(inout) :: code
     type(repository_t), intent(in), optional :: repository
-    code%cat = CAT_COMPOSITE
-    code%natt = 6
+    integer, dimension(6) :: att
+    att = 0
     if (present (repository)) then
-       code%att(1) = object%get_prototype_index (repository)
+       att(1) = object%get_prototype_index (repository)
     end if
-    code%att(2) = object%mode
+    att(2) = object%mode
     if (.not. object%intrinsic) then
-       code%att(3) = 1
+       att(3) = 1
     end if
-    code%att(4) = object%get_n_members ()
-    code%att(5) = object%get_n_arguments ()
-    code%att(6) = object%get_n_primers ()
+    att(4) = object%get_n_members ()
+    att(5) = object%get_n_arguments ()
+    att(6) = object%get_n_primers ()
+    call code%set (CAT_COMPOSITE, att)
   end subroutine composite_get_base_code
   
   subroutine composite_get_name_code (object, code)
     class(composite_t), intent(in), target :: object
     type(code_t), intent(inout) :: code
-    call code%create_string_val (object%get_name ())
+    call code%create_string_val ([object%get_name ()])
   end subroutine composite_get_name_code
   
   subroutine composite_init_from_code (object, code)
     class(composite_t), intent(inout) :: object
     type(code_t), intent(in) :: code
     type(string_t) :: name
-    if (allocated (code%val)) then
-       select type (val => code%val)
-       type is (val_string_t);  name = val%x(1)
-       class default;  name = ""
-       end select
-    else
-       name = ""
-    end if
+    logical :: success
+    call code%get_string (name, success)
+    if (.not. success)  name = ""
     call object%init ( &
          name = name, &
-         mode = code%att(2), &
-         n_members = code%att(4), &
-         n_arguments = code%att(5), &
-         n_primers = code%att(6))
-    call object%set_intrinsic (code%att(3) == 0)
+         mode = code%get_att (2), &
+         n_members = code%get_att (4), &
+         n_arguments = code%get_att (5), &
+         n_primers = code%get_att (6))
+    call object%set_intrinsic (code%get_att (3) == 0)
   end subroutine composite_init_from_code
 
   subroutine composite_init &
@@ -1949,7 +2136,6 @@ contains
     class(repository_t), intent(inout), target :: repository
     class(object_t), intent(inout), target :: object
     type(wrapper_t), dimension(:), pointer :: new_member
-    logical, dimension(:), allocatable :: member_is_argument
     class(object_t), pointer :: ref
     integer :: n
     n = size (repository%member) 
@@ -2004,7 +2190,6 @@ contains
     
   subroutine object_iterator_final (it)
     class(object_iterator_t), intent(inout) :: it
-    type(position_entry_t), pointer :: entry
     do while (associated (it%current))
        call it%pop ()
     end do
@@ -2184,811 +2369,6 @@ contains
        end if
     end select
   end subroutine object_iterator_to_primer
-
-  subroutine object_base_test (u, results)
-    integer, intent(in) :: u
-    type(test_results_t), intent(inout) :: results
-    call test (object_base_1, "object_base_1", &
-         "object and prototype", &
-         u, results)
-    call test (object_base_2, "object_base_2", &
-         "composite object", &
-         u, results)
-    call test (object_base_3, "object_base_3", &
-         "object path search", &
-         u, results)
-    call test (object_base_4, "object_base_4", &
-         "object references and copies", &
-         u, results)
-    call test (object_base_5, "object_base_5", &
-         "object iterator", &
-         u, results)
-    call test (object_base_6, "object_base_6", &
-         "prototype repository", &
-         u, results)
-    call test (object_base_7, "object_base_7", &
-         "build composite using code", &
-         u, results)
-    call test (object_base_8, "object_base_8", &
-         "named reference", &
-         u, results)  
-  end subroutine object_base_test
-  
-
-  subroutine object_base_1 (u)
-    integer, intent(in) :: u
-    class(object_t), pointer :: obj1, obj2
-    type(code_t) :: code
-
-    write (u, "(A)")  "* Test output: object_base_1"
-    write (u, "(A)")  "*   Purpose: elementary operations with objects"
-    write (u, "(A)")      
-    
-    write (u, "(A)")  "* Trivial object (tag): create, instantiate, display"
-
-    allocate (tag_t :: obj1)
-    call obj1%instantiate (obj2)
-    
-    write (u, "(A)")
-    call obj1%write (u, refcount=.true.)
-    call obj2%write (u, refcount=.true.)
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Object code:"
-    write (u, "(A)")
-
-    code = obj1%get_code ()
-    call code%write (u, verbose=.true.)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Cleanup:"
-
-    call remove_object (obj1)
-    call remove_object (obj2)
-
-    write (u, "(A)")
-    write (u, "(A,1x,L1)")  "obj1 allocated =", associated (obj1)
-    write (u, "(A,1x,L1)")  "obj2 allocated =", associated (obj2)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: object_base_1"
-    
-    end subroutine object_base_1
-
-  subroutine object_base_2 (u)
-    integer, intent(in) :: u
-    class(object_t), pointer :: tag, prototype, object1, object2, object3
-    class(object_t), pointer :: member
-    type(code_t) :: code
-
-    write (u, "(A)")  "* Test output: object_base_2"
-    write (u, "(A)")  "*   Purpose: build composite objects"
-
-    write (u, "(A)")      
-    write (u, "(A)")  "* Create tag prototype"
-    
-    allocate (tag_t :: tag)
-    
-    allocate (composite_t :: prototype)
-    select type (prototype)
-    type is (composite_t)
-       call prototype%init (name = var_str ("tag"))
-       call prototype%import_core (tag)
-    end select
-
-    write (u, "(A)")
-    call prototype%write (u, refcount=.true.)
-    
-    write (u, "(A)")      
-    write (u, "(A)")  "* Instantiate as composite without members"
-    
-    call prototype%instantiate (object1)
-    select type (object1)
-    class is (composite_t)
-       call object1%init (name = var_str ("obj1"))
-    end select
-   
-    write (u, "(A)")
-    call object1%write (u, refcount=.true.)
-    
-    write (u, "(A)")      
-    write (u, "(A)")  "* Prototype status"
-    
-    write (u, "(A)")
-    call prototype%write (u, refcount=.true.)
-
-    write (u, "(A)")      
-    write (u, "(A)")  "* Instantiate as composite with two members"
-    
-    call prototype%instantiate (object2)
-    select type (object2)
-    class is (composite_t)
-       call object2%tag_non_intrinsic ()
-       call object2%init (name = var_str ("obj2"), n_members = 2)
-       call prototype%instantiate (member)
-       select type (member)
-       type is (composite_t);  call member%init (name = var_str ("foo"))
-       end select
-       call object2%import_member (1, member)
-       call prototype%instantiate (member)
-       select type (member)
-       type is (composite_t);  call member%init (name = var_str ("bar"))
-       end select
-       call object2%import_member (2, member)
-    end select
-    
-    write (u, "(A)")
-    call object2%write (u, refcount=.true.)
-    
-    write (u, "(A)")      
-    write (u, "(A)")  "* Code of obj2"
-    
-    code = object2%get_code ()
-
-    write (u, "(A)")
-    call code%write (u, verbose=.true.)
-
-    
-    write (u, "(A)")      
-    write (u, "(A)")  "* Prototype status"
-    
-    write (u, "(A)")
-    call prototype%write (u, refcount=.true.)
-    call object1%write (u, refcount=.true.)
-    
-    write (u, "(A)")      
-    write (u, "(A)")  "* Instantiate further with additional member"
-    
-    call object2%instantiate (object3)
-    select type (object3)
-    class is (composite_t)
-       call object3%init (name = var_str ("obj3"), n_members = 1)
-       call prototype%instantiate (member)
-       select type (member)
-       type is (composite_t);  call member%init (name = var_str ("new"))
-       end select
-       call object3%import_member (1, member)
-    end select
-    
-    write (u, "(A)")
-    call object3%write (u, refcount=.true.)
-    
-    write (u, "(A)")      
-    write (u, "(A)")  "* Prototype status"
-    
-    write (u, "(A)")
-    call prototype%write (u, refcount=.true.)
-    call object1%write (u, refcount=.true.)
-    call object2%write (u, refcount=.true.)
-    
-    write (u, "(A)")      
-    write (u, "(A)")  "* Remove obj3"
-    
-    call remove_object (object3)
-    
-    write (u, "(A)")      
-    write (u, "(A)")  "* Prototype status"
-    
-    write (u, "(A)")
-    call prototype%write (u, refcount=.true.)
-    call object1%write (u, refcount=.true.)
-    call object2%write (u, refcount=.true.)
-    
-    write (u, "(A)")      
-    write (u, "(A)")  "* Remove obj2"
-    
-    call remove_object (object2)
-    
-    write (u, "(A)")      
-    write (u, "(A)")  "* Prototype status"
-    
-    write (u, "(A)")
-    call prototype%write (u, refcount=.true.)
-    call object1%write (u, refcount=.true.)
-    
-    write (u, "(A)")      
-    write (u, "(A)")  "* Remove obj1"
-    
-    call remove_object (object1)
-
-    write (u, "(A)")      
-    write (u, "(A)")  "* Prototype status"
-    
-    write (u, "(A)")
-    call prototype%write (u, refcount=.true.)
-
-    call remove_object (prototype)
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Cleanup:"
-
-    write (u, "(A)")
-    write (u, "(A,1x,L1)")  "tag allocated =", associated (tag)
-    write (u, "(A,1x,L1)")  "prototype allocated =", associated (prototype)
-    write (u, "(A,1x,L1)")  "obj1 allocated =", associated (object1)
-    write (u, "(A,1x,L1)")  "obj2 allocated =", associated (object2)
-    write (u, "(A,1x,L1)")  "obj3 allocated =", associated (object3)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: object_base_2"
-    
-    end subroutine object_base_2
-
-  subroutine object_base_3 (u)
-    integer, intent(in) :: u
-    class(object_t), pointer :: tag, prototype, member
-    class(object_t), pointer :: object1, object2, object3, foo, bar
-
-    write (u, "(A)")  "* Test output: object_base_3"
-    write (u, "(A)")  "*   Purpose: find objects by path"
-
-    write (u, "(A)")      
-    write (u, "(A)")  "* Create prototypes for tag and tag composite"
-
-    allocate (tag_t :: tag)
-    
-    allocate (composite_t :: prototype)
-    select type (prototype)
-    type is (composite_t)
-       call prototype%init (name = var_str ("tag"))
-       call prototype%import_core (tag)
-    end select
-
-    write (u, "(A)")      
-    write (u, "(A)")  "* Create nested composite"
-    
-    call prototype%instantiate (object1)
-    select type (object1)
-    class is (composite_t)
-       call object1%tag_non_intrinsic ()
-       call object1%init (name = var_str ("obj1"), n_members = 1)
-       call prototype%instantiate (member)
-       select type (member)
-       type is (composite_t);  call member%init (name = var_str ("foo"))
-       end select
-       call object1%import_member (1, member)
-    end select
-
-    call object1%instantiate (object2)
-    select type (object2)
-    class is (composite_t)
-       call object2%init (name = var_str ("obj2"))
-    end select
-
-    call prototype%instantiate (object3)
-    select type (object3)
-    class is (composite_t)
-       call object3%init (name = var_str ("obj3"), n_members = 3)
-       call object3%import_member (1, object1)
-       call object3%import_member (2, object2)
-       call prototype%instantiate (member)
-       select type (member)
-       type is (composite_t);  call member%init (name = var_str ("bar"))
-       end select
-       call object3%import_member (3, member)
-    end select
-    
-    write (u, "(A)")
-    call object3%write (u, refcount=.true.)
-    
-    write (u, "(A)")      
-    write (u, "(A)")  "* Return pointer to obj1"
-
-    object1 => null ()
-    select type (object3)
-    class is (composite_t)
-       call object3%find_member (var_str ("obj1"), object1)
-    end select
-
-    write (u, "(A)")
-    call object1%write (u, refcount=.true.)
-    
-    write (u, "(A)")      
-    write (u, "(A)")  "* Return pointer to obj1.foo"
-
-    foo => null ()
-    call object3%find ([var_str ("obj1"), var_str ("foo")], foo)
-
-    if (associated (foo)) then
-       write (u, "(A)")
-       call foo%write (u, refcount=.true.)
-    end if
-    
-    write (u, "(A)")      
-    write (u, "(A)")  "* Return pointer to obj2.foo"
-
-    foo => null ()
-    call object3%find ([var_str ("obj2"), var_str ("foo")], foo)
-
-    if (associated (foo)) then
-       write (u, "(A)")
-       call foo%write (u, refcount=.true.)
-    end if
-    
-    write (u, "(A)")      
-    write (u, "(A)")  "* Starting at obj1, return pointer to obj2"
-
-    object2 => null ()
-    call object1%find ([var_str ("obj2")], object2)
-
-    if (associated (object2)) then
-       write (u, "(A)")
-       call object2%write (u, refcount=.true.)
-    end if
-    
-    write (u, "(A)")      
-    write (u, "(A)")  "* Starting at obj1, return pointer to obj2.foo"
-
-    foo => null ()
-    call object1%find ([var_str ("obj2"), var_str ("foo")], foo)
-
-    if (associated (foo)) then
-       write (u, "(A)")
-       call foo%write (u, refcount=.true.)
-    end if
-    
-    write (u, "(A)")      
-    write (u, "(A)")  "* Starting at obj1, return pointer to bar"
-
-    bar => null ()
-    call object1%find ([var_str ("bar")], bar)
-
-    if (associated (bar)) then
-       write (u, "(A)")
-       call bar%write (u, refcount=.true.)
-    end if
-    
-    write (u, "(A)")      
-    write (u, "(A)")  "* Starting at bar, return pointer to obj1.foo"
-
-    foo => null ()
-    call bar%find ([var_str ("obj1"), var_str ("foo")], foo)
-
-    if (associated (foo)) then
-       write (u, "(A)")
-       call foo%write (u, refcount=.true.)
-    end if
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Cleanup"
- 
-    call remove_object (object3)
-
-    call remove_object (prototype)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: object_base_3"
-    
-    end subroutine object_base_3
-
-  subroutine object_base_4 (u)
-    integer, intent(in) :: u
-    class(object_t), pointer :: tag, prototype
-    class(object_t), pointer :: obj, ref
-
-    write (u, "(A)")  "* Test output: object_base_4"
-    write (u, "(A)")  "*   Purpose: create references and copies"
-
-    write (u, "(A)")      
-    write (u, "(A)")  "* Create prototype"
-
-    allocate (tag_t :: tag)
-    
-    allocate (composite_t :: prototype)
-    select type (prototype)
-    type is (composite_t)
-       call prototype%init (name = var_str ("tag"))
-       call prototype%import_core (tag)
-    end select
-
-    write (u, "(A)")      
-    call prototype%write (u, refcount=.true.)
-    
-    write (u, "(A)")      
-    write (u, "(A)")  "* Create object"
-    
-    call prototype%instantiate (obj)
-    select type (obj)
-    class is (composite_t)
-       call obj%init (name = var_str ("obj"))
-    end select
-    
-    write (u, "(A)")      
-    call prototype%write (u, refcount=.true.)
-    call obj%write (u, refcount=.true.)
-    
-    write (u, "(A)")      
-    write (u, "(A)")  "* Create reference"
-
-    call obj%make_reference (ref)
-
-    write (u, "(A)")      
-    call prototype%write (u, refcount=.true.)
-    call obj%write (u, refcount=.true.)
-    call ref%write (u, refcount=.true.)
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Cleanup"
- 
-    call remove_object (ref)
-    call remove_object (obj)
-    call remove_object (prototype)
-    call remove_object (tag)
-
-    write (u, "(A)")
-    write (u, "(A,1x,L1)")  "tag allocated =", associated (tag)
-    write (u, "(A,1x,L1)")  "prototype allocated =", associated (prototype)
-    write (u, "(A,1x,L1)")  "obj allocated =", associated (obj)
-    write (u, "(A,1x,L1)")  "ref allocated =", associated (ref)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: object_base_4"
-    
-  end subroutine object_base_4
-
-  subroutine object_base_5 (u)
-    integer, intent(in) :: u
-    class(object_t), pointer :: tag, prototype, member
-    class(object_t), pointer :: object1, object2, object3, ptr
-    type(object_iterator_t) :: it
-
-    write (u, "(A)")  "* Test output: object_base_5"
-    write (u, "(A)")  "*   Purpose: use iterator"
-
-    write (u, "(A)")      
-    write (u, "(A)")  "* Create prototypes for tag and tag composite"
-
-    allocate (tag_t :: tag)
-    
-    allocate (composite_t :: prototype)
-    select type (prototype)
-    type is (composite_t)
-       call prototype%init (name = var_str ("tag"))
-       call prototype%import_core (tag)
-    end select
-
-    write (u, "(A)")      
-    write (u, "(A)")  "* Create nested composite"
-    
-    call prototype%instantiate (object1)
-    select type (object1)
-    class is (composite_t)
-       call object1%tag_non_intrinsic ()
-       call object1%init (name = var_str ("obj1"), n_members = 1)
-       call prototype%instantiate (member)
-       select type (member)
-       type is (composite_t);  call member%init (name = var_str ("foo"))
-       end select
-       call object1%import_member (1, member)
-    end select
-
-    call object1%instantiate (object2)
-    select type (object2)
-    class is (composite_t)
-       call object2%init (name = var_str ("obj2"))
-    end select
-
-    call prototype%instantiate (object3)
-    select type (object3)
-    class is (composite_t)
-       call object3%init (name = var_str ("obj3"), n_members = 3)
-       call object3%import_member (1, object1)
-       call object3%import_member (2, object2)
-       call prototype%instantiate (member)
-       select type (member)
-       type is (composite_t);  call member%init (name = var_str ("bar"))
-       end select
-       call object3%import_member (3, member)
-    end select
-    
-    write (u, "(A)")
-    call object3%write (u)
-    
-    write (u, "(A)")      
-    write (u, "(A)")  "* Iterate through obj3"
-    write (u, "(A)")      
-
-    call it%init (object3)
-    do while (it%is_valid ())
-       call it%get_object (ptr)
-       call ptr%write (u, mantle=.false.)
-       call it%write (u)
-       write (u, *)
-       call it%advance ()
-    end do
-
-    write (u, "(A)")      
-    write (u, "(A)")  "* Iterate through obj3, skipping obj2"
-    write (u, "(A)")      
-
-    call it%init (object3)
-    do while (it%is_valid ())
-       call it%get_object (ptr)
-       if (ptr%get_name () == "obj2") then
-          call it%skip ()
-          cycle
-       end if
-       call ptr%write (u, mantle=.false.)
-       call it%write (u)
-       write (u, *)
-       call it%advance ()
-    end do
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Cleanup"
- 
-    call remove_object (object3)
-    call remove_object (prototype)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: object_base_5"
-    
-    end subroutine object_base_5
-
-  subroutine object_base_6 (u)
-    integer, intent(in) :: u
-    class(object_t), pointer :: tag, prototype
-    class(object_t), pointer :: object1, object2, object3, member
-    type(repository_t), target :: repository
-    type(code_t) :: code
-
-    write (u, "(A)")  "* Test output: object_base_6"
-    write (u, "(A)")  "*   Purpose: use prototype repository"
-
-    write (u, "(A)")      
-    write (u, "(A)")  "* Create repository with tag prototype"
-
-    allocate (tag_t :: tag)
-    
-    allocate (composite_t :: prototype)
-    select type (prototype)
-    type is (composite_t)
-       call prototype%init (name = var_str ("tag"))
-       call prototype%import_core (tag)
-    end select
-    
-    call repository%init (name = var_str ("repo"), n_members = 1)
-    call repository%import_member (1, prototype)
-
-    write (u, "(A)")
-    call repository%write (u, refcount=.true.)
-
-    write (u, "(A)")      
-    write (u, "(A)")  "* Create composite with member of type tag"
-     
-    call repository%spawn (var_str ("tag"), object1)
-    select type (object1)
-    class is (composite_t)
-       call object1%tag_non_intrinsic ()
-       call object1%init (name = var_str ("obj1"), n_members = 1)
-       call repository%spawn (1, member)
-       select type (member)
-       type is (composite_t);  call member%init (name = var_str ("foo"))
-       end select
-       call object1%import_member (1, member)
-    end select
- 
-    write (u, "(A)")
-    call object1%write (u, refcount=.true.)
-
-    write (u, "(A)")      
-    code = object1%get_code (repository)
-    call code%write (u, verbose=.true.)
-
-    write (u, "(A)")      
-    write (u, "(A)")  "* Repository state"
-     
-    write (u, "(A)")
-    call repository%write (u, refcount=.true.)
-
-    write (u, "(A)")      
-    write (u, "(A)")  "* Create extension of object1"
-    
-    call repository%include (object1)
-    call repository%spawn (var_str ("obj1"), object2)
-    select type (object2)
-    class is (composite_t)
-       call object2%init (name = var_str ("obj2"), n_members = 1)
-       call repository%spawn (var_str ("tag"), member)
-       select type (member)
-       type is (composite_t);  call member%init (name = var_str ("bar"))
-       end select
-       call object2%import_member (1, member)
-    end select
-       
-    write (u, "(A)")
-    call object2%write (u, refcount=.true.)
-    
-    write (u, "(A)")      
-    code = object2%get_code (repository)
-    call code%write (u, verbose=.true.)
-
-    write (u, "(A)")      
-    write (u, "(A)")  "* Repository state"
-     
-    write (u, "(A)")
-    call repository%write (u, refcount=.true.)
-
-    write (u, "(A)")      
-    write (u, "(A)")  "* Cleanup"
-
-    call remove_object (object2)
-    call remove_object (object1)
-
-    call repository%final ()
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: object_base_6"
-    
-    end subroutine object_base_6
-
-  subroutine object_base_7 (u)
-    integer, intent(in) :: u
-    class(object_t), pointer :: tag, prototype
-    class(object_t), pointer :: main, object
-    type(repository_t), target :: repository
-    integer, parameter :: ncode = 4
-    integer :: utmp, i
-    type(code_t), dimension(ncode) :: code
-    type(object_iterator_t) :: it
-
-    write (u, "(A)")  "* Test output: object_base_7"
-    write (u, "(A)")  "*   Purpose: object building using code and iterator"
-
-    write (u, "(A)")      
-    write (u, "(A)")  "* Create repository with tag prototype"
-
-    allocate (tag_t :: tag)
-    
-    allocate (composite_t :: prototype)
-    select type (prototype)
-    type is (composite_t)
-       call prototype%init (name = var_str ("tag"))
-       call prototype%import_core (tag)
-    end select
-    
-    call repository%init (name = var_str ("repo"), n_members = 1)
-    call repository%import_member (1, prototype)
-
-    write (u, "(A)")
-    call repository%write (u)
-    
-    write (u, "(A)")      
-    write (u, "(A)")  "* Create anonymous wrapper"
-    
-    allocate (wrapper_t :: main)
-
-    write (u, "(A)")
-    call main%write (u)
-
-    write (u, "(A)")      
-    write (u, "(A)")  "* Code array for composite with member"
-     
-    utmp = free_unit ()
-    open (utmp, status="scratch")
-    ! Composite with 1 member, named 'obj1'
-    write (utmp, "(A)")  "100 2 1 6 1 0 0 1 0 0"
-    write (utmp, "(A)")  " obj1"
-    ! Member: composite named 'foo'
-    write (utmp, "(A)")  "100 2 1 6 1 0 0 0 0 0"
-    write (utmp, "(A)")  " foo"
-    ! Member core: tag
-    write (utmp, "(A)")  "  1 0 0 0"
-    ! Parent core: tag
-    write (utmp, "(A)")  "  1 0 0 0"
-
-    rewind (utmp)
-    write (u, "(A)")
-    do i = 1, ncode
-       call code(i)%read (utmp)
-       call code(i)%write (u, verbose=.true.)
-    end do
-    close (utmp)
-
-    write (u, "(A)")      
-    write (u, "(A)")  "* Build composite using code array"
-     
-    call it%init (main)
-    do i = 1, ncode
-       call build_object (object, code(i), repository)
-       if (associated (object)) then
-          call it%advance (import_object = object)
-       else
-          call it%advance ()
-       end if
-    end do
-
-    write (u, "(A)")
-    select type (main)
-    class is (wrapper_t)
-       if (associated (main%core)) then
-          call main%core%write (u)
-       end if
-    end select
-    
-    write (u, "(A)")      
-    write (u, "(A)")  "* Cleanup"
-
-    call remove_object (main)
-
-    call repository%final ()
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: object_base_7"
-    
-    end subroutine object_base_7
-
-  subroutine object_base_8 (u)
-    integer, intent(in) :: u
-    class(object_t), pointer :: tag, prototype
-    class(object_t), pointer :: main, foo, ref
-    logical :: success
-
-    write (u, "(A)")  "* Test output: object_base_8"
-    write (u, "(A)")  "*   Purpose: resolve reference by ID"
-
-    write (u, "(A)")      
-    write (u, "(A)")  "* Create prototype"
-
-    allocate (tag_t :: tag)
-    
-    allocate (composite_t :: prototype)
-    select type (prototype)
-    type is (composite_t)
-       call prototype%init (name = var_str ("tag"))
-       call prototype%import_core (tag)
-    end select
-
-    write (u, "(A)")      
-    call prototype%write (u)
-    
-    write (u, "(A)")      
-    write (u, "(A)")  "* Create main"
-
-    call prototype%instantiate (foo)
-    select type (foo)
-    class is (composite_t)
-       call foo%init (name = var_str ("foo"))
-    end select
-    
-    allocate (reference_t :: ref)
-    select type (ref)
-    class is (reference_t)
-       call ref%set_path ([var_str ("foo")])
-    end select
-
-    allocate (composite_t :: main)
-    select type (main)
-    class is (composite_t)
-       call main%init (name = var_str ("main"), n_members = 2)
-       call main%import_member (1, foo)
-       call main%import_member (2, ref)
-    end select
-    
-    write (u, "(A)")      
-    call main%write (u)
-    
-    write (u, "(A)")      
-    write (u, "(A)")  "* Resolve reference"
-
-    call main%resolve (success)
-
-    write (u, "(A)")      
-    write (u, "(A,1x,L1)")  "success =", success
-
-    write (u, "(A)")      
-    call main%write (u)
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Cleanup"
- 
-    call remove_object (main)
-    call remove_object (prototype)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: object_base_8"
-    
-  end subroutine object_base_8
 
 
 end module object_base

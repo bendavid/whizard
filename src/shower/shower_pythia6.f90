@@ -1,4 +1,4 @@
-! WHIZARD 2.2.6 May 02 2015
+! WHIZARD 2.2.7 Aug 11 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -34,20 +34,18 @@ module shower_pythia6
 
   use kinds, only: default, double
   use iso_varying_string, string_t => varying_string
-  use unit_tests, only: vanishes, nearly_equal
   use constants
   use io_units
   use physics_defs
   use diagnostics
-  use system_defs, only: LF
   use os_interface
   use lorentz
   use subevents
-  use mlm_matching
   use shower_base
   use particles
   use model_data
   use hep_common
+  use pdf
 
   implicit none
   private
@@ -61,16 +59,22 @@ module shower_pythia6
   public :: pythia6_get_error
   public :: pythia6_handle_errors
   public :: pythia6_set_verbose
+  public :: pythia6_set_last_treated_line
+  integer :: N_old
 
   type, extends (shower_base_t) :: shower_pythia6_t
      integer :: initialized_for_NPRUP = 0
      logical :: warning_given = .false.
    contains
        procedure :: init => shower_pythia6_init
+       procedure :: prepare_new_event => shower_pythia6_prepare_new_event
+       procedure :: import_particle_set => shower_pythia6_import_particle_set
        procedure :: generate_emissions => shower_pythia6_generate_emissions
+       procedure :: make_particle_set => shower_pythia6_make_particle_set
        procedure :: transfer_settings => shower_pythia6_transfer_settings
        procedure :: combine_with_particle_set => &
             shower_pythia6_combine_with_particle_set
+       procedure :: get_final_colored_ME_momenta => shower_pythia6_get_final_colored_ME_momenta
   end type shower_pythia6_t
 
 
@@ -80,8 +84,7 @@ contains
     class(shower_pythia6_t), intent(out) :: shower
     type(shower_settings_t), intent(in) :: settings
     type(pdf_data_t), intent(in) :: pdf_data
-    if (DEBUG_SHOWER) print *,  &
-         "Transfer settings from shower_settings to shower"
+    call msg_debug (D_SHOWER, "shower_pythia6_init")
     shower%settings = settings
     call pythia6_set_verbose (settings%verbose)
     call shower%pdf_data%init (pdf_data)
@@ -89,75 +92,93 @@ contains
     call shower%write_msg ()
   end subroutine shower_pythia6_init
 
-  subroutine shower_pythia6_generate_emissions ( &
-       shower, particle_set, model, model_hadrons, &
-       os_data, matching_settings, data, valid, vetoed, number_of_emissions)
+  pure subroutine shower_pythia6_prepare_new_event (shower)
+    class(shower_pythia6_t), intent(inout) :: shower
+  end subroutine shower_pythia6_prepare_new_event
+
+  subroutine shower_pythia6_import_particle_set &
+         (shower, particle_set, os_data)
+    class(shower_pythia6_t), target, intent(inout) :: shower
+    type(particle_set_t), intent(in) :: particle_set
+    type(os_data_t), intent(in) :: os_data
+    type(particle_set_t) :: pset_reduced
+    call msg_debug (D_SHOWER, "shower_pythia6_import_particle_set")
+    if (debug_active (D_SHOWER)) then
+       print *, 'IDBMUP(1:2) =    ', IDBMUP(1:2)
+       print *, 'EBMUP, PDFGUP =    ', EBMUP, PDFGUP
+       print *, 'PDFSUP, IDWTUP =    ', PDFSUP, IDWTUP
+       print *, "NPRUP = ", NPRUP
+       call particle_set%write (summary=.true., compressed=.true.)
+    end if
+    call particle_set%reduce (pset_reduced)
+    if (debug2_active (D_SHOWER)) then
+       print *, 'After particle_set%reduce: pset_reduced'
+       call pset_reduced%write (summary=.true., compressed=.true.)
+    end if
+    call hepeup_from_particle_set (pset_reduced)
+    call hepeup_set_event_parameters (proc_id=1)
+  end subroutine shower_pythia6_import_particle_set
+
+  subroutine shower_pythia6_generate_emissions &
+         (shower, valid, number_of_emissions)
+    class(shower_pythia6_t), intent(inout), target :: shower
+    logical, intent(out) :: valid
+    integer, optional, intent(in) :: number_of_emissions
     integer :: N, NPAD, K
     real(double) :: P, V
     common /PYJETS/ N, NPAD, K(4000,5), P(4000,5), V(4000,5)
     save /PYJETS/
-    class(shower_pythia6_t), intent(inout), target :: shower
-    type(particle_set_t), intent(inout) :: particle_set
-    class(model_data_t), intent(in), target :: model
-    class(model_data_t), intent(in), target :: model_hadrons
-    class(matching_settings_t), intent(in), allocatable :: matching_settings
-    class(matching_data_t), intent(inout), allocatable :: data
-    type(os_data_t), intent(in) :: os_data
-    logical, intent(inout) :: valid
-    logical, intent(inout) :: vetoed
-    integer, optional, intent(in) :: number_of_emissions
-    type(particle_set_t) :: pset_reduced
     integer :: u_W2P
-    logical :: varying_energy = .true.
-
+    integer :: i
+    real(double) :: beta_z, pz_in, E_in
+    integer, parameter :: lower = 5
+    real(double), parameter :: beta_x = 0.0_double
+    real(double), parameter :: beta_y = 0.0_double
+    real(double), parameter :: theta = 0.0_double
+    real(double), parameter :: phi = 0.0_double
     if (signal_is_pending ()) return
-    if (DEBUG_SHOWER) then
-       print *, "pythia6_generate_emissions"
-       print *, 'IDBMUP(1:2) =    ', IDBMUP(1:2)
-       print *, 'EBMUP, PDFGUP, PDFSUP, IDWTUP =    ', &
-            EBMUP, PDFGUP, PDFSUP, IDWTUP
-       print *, "NPRUP = ", NPRUP
-    end if
-    if (any (abs(IDBMUP) <= 8)) then
-       if (.not. shower%warning_given) then
-          call msg_error ("PYTHIA doesn't support quarks as beam particles," &
-               // LF // "     neglecting ISR, FSR and hadronization")
-          shower%warning_given = .true.
-       end if
-       return
-    end if
-    call particle_set%reduce (pset_reduced)
-    call hepeup_from_particle_set (pset_reduced)
-    call hepeup_set_event_parameters (proc_id=1)
     call pythia6_setup_lhe_io_units (u_W2P)
     call w2p_write_lhef_event (u_W2P)
     rewind (u_W2P)
+    call pythia6_set_last_treated_line(6)
     call shower%transfer_settings ()
-
-    if (DEBUG_SHOWER)  write (*, "(A)")  "calling pyevnt"
-    if (varying_energy) then
-          P(1,1:5) = pset_reduced%prt(1)%p%to_pythia6 ()
-          P(2,1:5) = pset_reduced%prt(2)%p%to_pythia6 ()
-    end if
+    call msg_debug (D_SHOWER, "calling pyevnt")
+    ! TODO: (bcn 2015-04-24) doesnt change anything I think
+    ! P(1,1:5) = pset_reduced%prt(1)%momentum_to_pythia6 ()
+    ! P(2,1:5) = pset_reduced%prt(2)%momentum_to_pythia6 ()
     call pyevnt ()
-
-    call shower%combine_with_particle_set (particle_set, model, model_hadrons)
-
-    !!! Transfer momenta of the partons in the final state of
-    !!!     the hard initeraction
-    if (shower%settings%mlm_matching .and. allocated (data)) then
-       select type (data)
-       type is (mlm_matching_data_t)
-          call get_ME_momenta_from_PYTHIA (data%P_ME)
-       class default
-          call msg_fatal ("MLM matching called with wrong data.")
-       end select
+    call pyedit(12)
+    do i = 1, n
+      if (K(i,1) == 14 .and. abs(K(i,2)) >= 11 .and. abs(K(i,2)) <= 16) then
+        if (K(i,4) > 0 .and. K(i,5) > 0 .and. K(i,4) < N .and. K(i,5) < N) then
+          K(i,1) = 11
+          K(i,4) = K(K(i,4),3)
+          K(i,5) = K(K(i,5),3)
+        end if
+      end if
+    end do
+    if (.not. shower%settings%hadron_collision) then
+       pz_in = pup(3,1) + pup(3,2)
+       E_in = pup(4,1) + pup(4,2)
+       beta_z = pz_in / E_in
+       call pyrobo (lower, N, theta, phi, beta_x, beta_y, beta_z)
     end if
-
-    valid = pythia6_handle_errors ()
+    if (debug_active (D_SHOWER)) then
+       print *, ' After pyevnt, after boosting :'
+       call pylist(2)
+    end if
     close (u_W2P)
-
+    valid = pythia6_handle_errors ()
   end subroutine shower_pythia6_generate_emissions
+
+  subroutine shower_pythia6_make_particle_set &
+         (shower, particle_set, model, model_hadrons)
+    class(shower_pythia6_t), intent(in) :: shower
+    type(particle_set_t), intent(inout) :: particle_set
+    class(model_data_t), intent(in), target :: model
+    class(model_data_t), intent(in), target :: model_hadrons
+    call shower%combine_with_particle_set (particle_set, model, model_hadrons)
+  end subroutine shower_pythia6_make_particle_set
 
   subroutine shower_pythia6_transfer_settings (shower)
     class(shower_pythia6_t), intent(inout) :: shower
@@ -180,10 +201,10 @@ contains
     call pygive ("MSTP(171)=1")     !!! Allow variable energies
 
     if (shower%initialized_for_NPRUP >= NPRUP) then
-       if (DEBUG_SHOWER)  print *, "calling upinit"
+       call msg_debug (D_SHOWER, "calling upinit")
        call upinit
     else
-       write (buffer, "(F10.5)") sqrt (abs (shower%settings%d_min_t))
+       write (buffer, "(F10.5)") sqrt (abs (shower%settings%min_virtuality))
        call pygive ("PARJ(82)=" // buffer)
        write (buffer, "(F10.5)") shower%settings%isr_tscalefactor
        call pygive ("PARP(71)=" // buffer)
@@ -222,7 +243,7 @@ contains
           call pygive ("MSTP(62)=2")
           call pygive ("MSTP(67)=0")
        end if
-       if (DEBUG_SHOWER)  print *, "calling pyinit"
+       call msg_debug (D_SHOWER, "calling pyinit")
        call PYINIT ("USER", "", "", 0D0)
        call shower%rng%generate (rand)
        write (buffer, "(I10)") floor (rand*900000000)
@@ -235,28 +256,30 @@ contains
 
   subroutine shower_pythia6_combine_with_particle_set &
          (shower, particle_set, model_in, model_hadrons)
-    class(shower_pythia6_t), intent(inout) :: shower
+    class(shower_pythia6_t), intent(in) :: shower
     type(particle_set_t), intent(inout) :: particle_set
     class(model_data_t), intent(in), target :: model_in
     class(model_data_t), intent(in), target :: model_hadrons
     call pythia6_combine_with_particle_set &
-         (particle_set, model_in, model_hadrons)
+         (particle_set, model_in, model_hadrons, shower%settings)
   end subroutine shower_pythia6_combine_with_particle_set
 
-  subroutine pythia6_combine_with_particle_set (particle_set, model_in, model_hadrons)
+  subroutine pythia6_combine_with_particle_set (particle_set, model_in, &
+       model_hadrons, settings)
     type(particle_set_t), intent(inout) :: particle_set
     class(model_data_t), intent(in), target :: model_in
     class(model_data_t), intent(in), target :: model_hadrons
+    type(shower_settings_t), intent(in) :: settings
     class(model_data_t), pointer :: model
     type(vector4_t) :: momentum
-    type(particle_t), dimension(:), allocatable :: particles
+    type(particle_t), dimension(:), allocatable :: particles, beams
+    type(particle_t), dimension(2) :: incomings
     integer :: dangling_col, dangling_anti_col, color, anti_color
     integer :: i, j, py_entries, next_color, n_tot_old, parent, real_parent
     integer :: pdg, status, child, hadro_start
-    integer, allocatable, dimension(:) :: old_index, new_index, backup_parents
-    logical, allocatable, dimension(:) :: pythia_particle, valid
-    type(lorentz_transformation_t) :: L
-    logical :: boost_required
+    integer, allocatable, dimension(:) :: old_index, new_index, &
+         backup_parents, incoming_ids
+    logical, allocatable, dimension(:) :: valid
     real(default), parameter :: py_tiny = 1E-10_default
     integer :: N, NPAD, K
     real(double) :: P, V
@@ -265,38 +288,53 @@ contains
     integer, parameter :: KSUSY1 = 1000000, KSUSY2 = 2000000
 
     if (signal_is_pending ()) return
-    if (DEBUG_SHOWER) then
-       print *, 'Combine PYTHIA6 with particle set'
-       print *, 'Particle set before replacing'
+    if (debug_active (D_SHOWER)) then
+       call msg_debug (D_SHOWER, 'Combine PYTHIA6 with particle set')
+       call msg_debug (D_SHOWER, 'Particle set before replacing')
        call particle_set%write (summary=.true., compressed=.true.)
        call pylist (2)
+       call msg_debug (D_SHOWER, "settings%hadron_collision", settings%hadron_collision)
     end if
-    call determine_boost ()
+    if (settings%method == PS_PYTHIA6 .and. settings%hadron_collision) then
+       call pythia6_set_last_treated_line(2)
+       allocate (beams(2))
+       beams = particle_set%prt(1:2)
+       call particle_set%replace (beams)
+       if (debug_active (D_SHOWER)) then
+         call msg_debug (D_SHOWER, 'Resetting particle set to')
+         call particle_set%write (summary=.true., compressed=.true.)
+       end if
+    end if
     call count_valid_entries_in_pythia_record ()
     call particle_set%without_hadronic_remnants &
          (particles, n_tot_old, py_entries)
-    if (DEBUG_SHOWER) then
+    if (debug_active (D_SHOWER)) then
        print *, 'n_tot_old =    ', n_tot_old
        print *, 'py_entries =    ', py_entries
     end if
-    call prepare_temporary_objects_and_particles ()
     call add_particles_of_pythia ()
-    if (boost_required) then
-       where (pythia_particle)  particles%p = L * particles%p
-    end if
     call particle_set%replace (particles)
-    call set_parent_child_relations_of_known_pythia_parents ()
-    call set_parent_child_relations_of_color_strings_to_hadrons ()
-    call give_orphans_backup_parents ()
+    if (settings%hadron_collision) then
+       call set_parent_child_relations_from_K ()
+       call set_parent_child_relations_of_color_strings_to_hadrons ()
+       !!! call particle_set%remove_duplicates (py_tiny * 100.0_default)
+    else
+       call set_parent_child_relations_from_hepevt ()
+    end if
+    if (settings%method == PS_WHIZARD) then
+       call fudge_whizard_partons_in_hadro ()
+    end if
     where ((particle_set%prt%status == PRT_OUTGOING .or. &
             particle_set%prt%status == PRT_VIRTUAL .or. &
             particle_set%prt%status == PRT_BEAM_REMNANT) .and. &
             particle_set%prt%has_children ()) &
             particle_set%prt%status = PRT_RESONANT
-    if (DEBUG_SHOWER) then
+    if (debug_active (D_SHOWER)) then
        print *, 'Particle set after replacing'
        call particle_set%write (summary=.true., compressed=.true.)
+       print *, ' pythia6_set_last_treated_line will set to: ', N
     end if
+    call pythia6_set_last_treated_line(N)
 
   contains
 
@@ -311,34 +349,34 @@ contains
             exit FIND
          end if
       end do FIND
-      do i = 5, N
+      do i = N, N_old+1, -1
          status = K(i,1)
-         if (any (P(i,1:4) > 1E5_default * py_tiny) .and. (status >= 1 .and. status <= 21)) then
-            pset_idx = find_pythia_particle (i)
+         if (any (P(i,1:4) > 1E-8_default * P(1,4)) .and. (status >= 1 .and. status <= 21)) then
+            pset_idx = find_pythia_particle (i, more_fuzzy=.false.)
             if (pset_idx == 0) then
-               valid (i) = .true.
+               valid(i) = .true.
             end if
          end if
       end do
       py_entries = count (valid)
       allocate (old_index (py_entries))
       allocate (new_index (N))
+      new_index = 0
     end subroutine count_valid_entries_in_pythia_record
 
-    subroutine prepare_temporary_objects_and_particles ()
-      allocate (pythia_particle (n_tot_old + py_entries))
-      pythia_particle = .false.
-      backup_parents = pack ([(i, i=1, size (particles))], &
-           (particles%get_status () == PRT_INCOMING .or. &
-            particles%get_status () == PRT_OUTGOING))
-    end subroutine prepare_temporary_objects_and_particles
     subroutine add_particles_of_pythia ()
       integer :: whizard_status
+      integer :: pset_idx, start_in_py
       dangling_col = 0
       dangling_anti_col = 0
       next_color = 500
       j = 1
-      do i = 5, N
+      if (settings%method == PS_PYTHIA6 .and. settings%hadron_collision) then
+         start_in_py = 3
+      else
+         start_in_py = 7
+      end if
+      do i = start_in_py, N
          status = K(i,1)
          if (valid(i)) then
             call assign_colors (color, anti_color)
@@ -346,52 +384,26 @@ contains
             pdg = K(i,2)
             parent = K(i,3)
             call find_model (model, pdg, model_in, model_hadrons)
-            if (status <= 10) then
-               whizard_status = PRT_OUTGOING
+            if (i <= 4) then
+               whizard_status = PRT_INCOMING
             else
-               whizard_status = PRT_VIRTUAL
+               if (status <= 10) then
+                  whizard_status = PRT_OUTGOING
+               else
+                  whizard_status = PRT_VIRTUAL
+               end if
             end if
-            call particles(n_tot_old + j)%init &
+            call particles(n_tot_old+j)%init &
                  (whizard_status, pdg, model, color, anti_color, momentum)
             old_index(j) = i
             new_index(i) = n_tot_old + j
-            pythia_particle(n_tot_old + j) = .true.
             j = j + 1
+         else
+            pset_idx = find_pythia_particle (i, more_fuzzy=.true.)
+            new_index(i) = pset_idx
          end if
       end do
     end subroutine add_particles_of_pythia
-
-    subroutine determine_boost ()
-      type(vector4_t) :: sum_vec_in, sum_vec_out
-      boost_required = .false.
-      if (all (particle_set%prt(1:2)%flv%get_pdg_abs () >= ELECTRON .and. &
-           particle_set%prt(1:2)%flv%get_pdg_abs () <= TAU)) then
-         sum_vec_in = sum (particle_set%prt%p, &
-              mask=particle_set%prt%get_status () == PRT_INCOMING)
-         sum_vec_out = [zero, zero, zero, zero]
-         do i = 1, N
-            if (K(i,1) <= 10) then
-               momentum = real ([P(i,4), P(i,1:3)], kind=default)
-               sum_vec_out = sum_vec_out + momentum
-            end if
-         end do
-         !sum_vec_out = sum (particles%p, &
-              !mask=particles%get_status () == PRT_OUTGOING)
-         if (DEBUG_SHOWER) then
-            print *, 'sum_vec_in%p =    ', sum_vec_in%p
-            print *, 'sum_vec_out%p =    ', sum_vec_out%p
-         end if
-         if (.not. nearly_equal (sum_vec_in%p(3), sum_vec_out%p(3), &
-              abs_smallness = 1E-9_default, &
-              rel_smallness = 1E-6_default)) then
-            boost_required = .true.
-            L = boost (sum_vec_in, sum_vec_out%p(0))
-         end if
-      end if
-      if (DEBUG_SHOWER) then
-         print *, 'boost_required =    ', boost_required
-      end if
-    end subroutine determine_boost
 
     subroutine assign_colors (color, anti_color)
       integer, intent(out) :: color, anti_color
@@ -449,7 +461,76 @@ contains
       end if
     end subroutine assign_colors
 
-    subroutine set_parent_child_relations_of_known_pythia_parents ()
+    subroutine set_parent_child_relations_from_hepevt ()
+      integer, allocatable, dimension(:) :: parents
+      integer:: parent2, parent1, npar
+      integer, parameter :: NMXHEP = 4000
+      integer :: NEVHEP
+      integer :: NHEP
+      integer, dimension(NMXHEP) :: ISTHEP
+      integer, dimension(NMXHEP) :: IDHEP
+      integer, dimension(2, NMXHEP) :: JMOHEP
+      integer, dimension(2, NMXHEP) :: JDAHEP
+      double precision, dimension(5, NMXHEP) :: PHEP
+      double precision, dimension(4, NMXHEP) :: VHEP
+      common /HEPEVT/ &
+       NEVHEP, NHEP, ISTHEP, IDHEP, &
+       JMOHEP, JDAHEP, PHEP, VHEP
+      save /HEPEVT/
+      integer :: i,j
+      call msg_debug (D_SHOWER, &
+           "set_parent_child_relations_from_hepevt")
+      call pyhepc(1)
+      do i = 1, NHEP
+        if (JDAHEP(1,i) > 0) then
+           if (count (JDAHEP(1,i:NHEP) == JDAHEP(1,i)) > 1) then
+             if (JMOHEP(2,JDAHEP(1,i)) == 0) then
+               if (JMOHEP(1,JDAHEP(1,i)) /= i ) then
+                  call msg_error('problem in set_parent_child_' // &
+                       'relations_of_known_pythia_parents')
+               end if
+               JMOHEP(1,JDAHEP(1,i)) = i
+               do j = i + 1, NHEP
+                 if (JDAHEP(1,j) == JDAHEP(1,i)) then
+                    JMOHEP(2,JDAHEP(1,i)) = j
+                 end if
+               end do
+             end if
+           end if
+        end if
+      end do
+      if (debug_active (D_SHOWER)) then
+         print *, '  NHEP, n, py_entries:' , NHEP, n, py_entries
+      end if
+      do j = 1, py_entries
+         parent1 = JMOHEP(1,old_index(j))
+         parent2 = parent1
+         if (JMOHEP(2,old_index(j)) > 0 ) then
+           parent2 = JMOHEP(2,old_index(j))
+         end if
+         allocate (parents(parent2-parent1+1))
+         child = n_tot_old + j
+         npar = 0
+         do parent = parent1, parent2
+            if (parent > 0) then
+               if (parent >= 1 .and. parent <= 2) then
+                  call particle_set%parent_add_child (parent, child)
+               else
+                  if (new_index(parent) > 0 ) then
+                     npar = npar + 1
+                     parents(npar) = new_index(parent)
+                     call particle_set%prt(new_index(parent) )%add_child (child)
+                  end if
+               end if
+            end if
+         end do
+         if (npar > 0) call particle_set%prt(child)%set_parents (parents)
+         deallocate (parents)
+      end do
+      NHEP = 0
+    end subroutine set_parent_child_relations_from_hepevt
+
+    subroutine set_parent_child_relations_from_K ()
       do j = 1, py_entries
          parent = K(old_index(j),3)
          child = n_tot_old + j
@@ -457,18 +538,20 @@ contains
             if (parent >= 1 .and. parent <= 2) then
                call particle_set%parent_add_child (parent, child)
             else
-               real_parent = find_pythia_particle (parent)
+               real_parent = new_index (parent)
                if (real_parent > 0 .and. real_parent /= child) then
                   call particle_set%parent_add_child (real_parent, child)
                end if
             end if
          end if
       end do
-    end subroutine set_parent_child_relations_of_known_pythia_parents
+    end subroutine set_parent_child_relations_from_K
 
     subroutine set_parent_child_relations_of_color_strings_to_hadrons ()
       integer :: begin_string, end_string, old_start, next_start, real_child
       integer, allocatable, dimension(:) :: parents
+      call msg_debug (D_SHOWER, "set_parent_child_relations_of_color_strings_to_hadrons")
+      call msg_debug (D_SHOWER, "hadro_start", hadro_start)
       if (hadro_start > 0) then
          old_start = hadro_start
          do
@@ -480,6 +563,7 @@ contains
                end if
             end do FIND
             begin_string = K(old_start,3)
+            end_string = N
             do i = begin_string, N
                if (K(i,1) == 11) then
                   end_string = i
@@ -488,9 +572,9 @@ contains
             end do
             allocate (parents (end_string - begin_string + 1))
             parents = 0
-            real_child = find_pythia_particle (old_start)
+            real_child = new_index (old_start)
             do i = begin_string, end_string
-               real_parent = find_pythia_particle (i)
+               real_parent = new_index (i)
                if (real_parent > 0) then
                   call particle_set%prt(real_parent)%add_child (real_child)
                   parents (i - begin_string + 1) = real_parent
@@ -504,51 +588,49 @@ contains
       end if
     end subroutine set_parent_child_relations_of_color_strings_to_hadrons
 
-    function find_pythia_particle (i) result (j)
+    function find_pythia_particle (i, more_fuzzy) result (j)
       integer :: j
       integer, intent(in) :: i
+      logical, intent(in) :: more_fuzzy
+      real(default) :: rel_small
       pdg = K(i,2)
       momentum = real([P(i,4), P(i,1:3)], kind=default)
-      if (boost_required) then
-         momentum = L * momentum
+      if (more_fuzzy) then
+         rel_small = 1E-6_default
+      else
+         rel_small = 1E-10_default
       end if
-      j = particle_set%find_particle (pdg, momentum, &
+      j = particle_set%reverse_find_particle (pdg, momentum, &
            abs_smallness = py_tiny, &
-           rel_smallness = 1E3_default * py_tiny)
+           rel_smallness = rel_small)
     end function find_pythia_particle
 
-    subroutine give_orphans_backup_parents ()
+    subroutine fudge_whizard_partons_in_hadro ()
       do i = 1, size (particle_set%prt)
-         if ((particle_set%prt(i)%status == PRT_OUTGOING .or. &
-              particle_set%prt(i)%status == PRT_VIRTUAL .or. &
-              particle_set%prt(i)%status == PRT_RESONANT) .and. .not. &
-              particle_set%prt(i)%has_parents ()) then
-            call particle_set%prt(i)%set_parents (backup_parents)
-            do j = 1, size(backup_parents)
-               call particle_set%prt(backup_parents(j))%add_child (i)
-            end do
+         if (particle_set%prt(i)%status == PRT_OUTGOING .and. &
+             (particle_set%prt(i)%flv%get_pdg () == GLUON .or. &
+              particle_set%prt(i)%flv%get_pdg_abs () < 6)  .or. &
+             particle_set%prt(i)%status == PRT_BEAM_REMNANT) then
+            particle_set%prt(i)%status = PRT_VIRTUAL
          end if
       end do
-    end subroutine give_orphans_backup_parents
+    end subroutine fudge_whizard_partons_in_hadro
 
 
   end subroutine pythia6_combine_with_particle_set
 
-  subroutine get_ME_momenta_from_PYTHIA (jets_me)
-    IMPLICIT DOUBLE PRECISION(A-H, O-Z)
-    IMPLICIT INTEGER(I-N)
+  subroutine shower_pythia6_get_final_colored_ME_momenta &
+         (shower, momenta)
+    class(shower_pythia6_t), intent(in) :: shower
+    type(vector4_t), dimension(:), allocatable, intent(out) :: momenta
+    integer :: N, NPAD, K
+    real(double) :: P, V
     COMMON/PYJETS/N,NPAD,K(4000,5),P(4000,5),V(4000,5)
     SAVE /PYJETS/
-
-    type(vector4_t), dimension(:), allocatable :: jets_me
     integer :: i, j, n_jets
-
-    if (allocated (jets_me))  deallocate (jets_me)
-
     if (signal_is_pending ()) return
-    !!! final ME partons start in 7th row of event record
-    i = 7
-    !!! find number of jets
+
+    i = 7 !!! final ME partons start in 7th row of event record
     n_jets = 0
     do
        if (K(I,1) /= 21) exit
@@ -557,22 +639,19 @@ contains
        end if
        i = i + 1
     end do
-
     if (n_jets == 0) return
-    allocate (jets_me(1:n_jets))
-
-    !!! transfer jets
+    allocate (momenta(1:n_jets))
     i = 7
     j = 1
     do
        if (K(I,1) /= 21) exit
        if ((K(I,2) == 21) .or. (abs(K(I,2)) <= 6)) then
-          jets_me(j) = real ([P(i,4), P(i,1:3)], kind=default)
+          momenta(j) = real ([P(i,4), P(i,1:3)], kind=default)
           j = j + 1
        end if
        i = i + 1
     end do
-  end subroutine get_ME_momenta_from_PYTHIA
+  end subroutine shower_pythia6_get_final_colored_ME_momenta
 
 !!!!!!!!!!PYTHIA STYLE!!!!!!!!!!!!!
 !!! originally PYLHEF subroutine from PYTHIA 6.4.22
@@ -755,7 +834,7 @@ contains
     integer, intent(out), optional :: u_P2W
     character(len=10) :: buffer
     u_W2P = free_unit ()
-    if (DEBUG_SHOWER) then
+    if (debug_active (D_SHOWER)) then
        open (unit=u_W2P, status="replace", file="whizardout.lhe", &
             action="readwrite")
     else
@@ -768,7 +847,7 @@ contains
        u_P2W = free_unit ()
        write (buffer, "(I10)")  u_P2W
        call pygive ("MSTP(163)=" // buffer)
-       if (DEBUG_SHOWER) then
+       if (debug_active (D_SHOWER)) then
           open (unit=u_P2W, file="pythiaout2.lhe", status="replace", &
                action="readwrite")
        else
@@ -828,6 +907,11 @@ contains
        call pygive ('MSTU(13)=0')     !!! No information is written
     end if
   end subroutine pythia6_set_verbose
+
+  subroutine pythia6_set_last_treated_line (last_line)
+    integer,intent(in) :: last_line
+    N_old = last_line
+  end subroutine pythia6_set_last_treated_line
 
 
   end module shower_pythia6

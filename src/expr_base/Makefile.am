@@ -166,6 +166,9 @@ endif
 clean-local: clean-noweb
 	-rm -f expr_base.stamp expr_base.tmp
 	-rm -f *.$(FC_MODULE_EXT)
+if FC_SUBMODULES
+	-rm -f *.smod
+endif
 
 ## Remove backup files
 maintainer-clean-backup:

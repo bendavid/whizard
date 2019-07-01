@@ -1,4 +1,4 @@
-! WHIZARD 2.2.6 May 02 2015
+! WHIZARD 2.2.7 Aug 11 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -40,6 +40,9 @@ program main
   use os_interface
   use whizard
 
+  use cmdline_options
+  use features
+
   implicit none
 
   integer, parameter :: CMDLINE_ARG_LEN = 1000
@@ -48,14 +51,12 @@ program main
   character(CMDLINE_ARG_LEN) :: arg
   character(2) :: option
   type(string_t) :: long_option, value
-  integer :: i, j, arg_len, arg_status
+  integer :: i, j, arg_len, arg_status, area
   logical :: look_for_options
   logical :: interactive
   logical :: banner
   type(string_t) :: files, this, model, default_lib, library, libraries
-  type(string_t) :: check, checks, logfile
-  type(test_results_t) :: test_results
-  logical :: success
+  type(string_t) :: logfile
   logical :: user_code_enable = .false.
   integer :: n_user_src = 0, n_user_lib = 0
   type(string_t) :: user_src, user_lib, user_target
@@ -83,9 +84,8 @@ program main
   libraries = ""  
   banner = .true.
   logging = .true.
+  msg_level = RESULT
   logfile = "whizard.log"
-  check = ""
-  checks = ""
   user_src = ""
   user_lib = ""
   user_target = ""
@@ -98,6 +98,7 @@ program main
   call paths_init (paths)
 
   ! Read and process options
+  call init_options (print_usage)
   i = 0
   SCAN_CMDLINE: do
      i = i + 1
@@ -123,7 +124,7 @@ program main
               call print_usage (); stop
            case ("--prefix")
               paths%prefix = get_option_value (i, long_option, value)
-              cycle SCAN_CMDLINE
+              cycle scan_cmdline
            case ("--exec-prefix")
               paths%exec_prefix = get_option_value (i, long_option, value)
               cycle SCAN_CMDLINE
@@ -146,9 +147,12 @@ program main
               paths%lhapdfdir = get_option_value (i, long_option, value)
               cycle SCAN_CMDLINE
            case ("--check")
-              check = get_option_value (i, long_option, value)
-              checks = checks // " " // check
-              cycle SCAN_CMDLINE
+              call print_usage ()
+              call msg_fatal ("Option --check not supported &
+                   &(for unit tests, run whizard_ut instead)")
+           case ("--show-config")
+              call no_option_value (long_option, value)
+              call print_features (); stop
            case ("--execute")
               command = get_option_value (i, long_option, value)
               call ifile_append (commands, command)
@@ -184,6 +188,24 @@ program main
            case ("--no-logging")
               call no_option_value (long_option, value)
               logging = .false.
+              cycle SCAN_CMDLINE
+           case ("--debug")
+              call no_option_value (long_option, value)
+              area = d_area (get_option_value (i, long_option, value))
+              if (area == D_ALL) then
+                 msg_level = DEBUG
+              else
+                 msg_level(area) = DEBUG
+              end if
+              cycle SCAN_CMDLINE
+           case ("--debug2")
+              call no_option_value (long_option, value)
+              area = d_area (get_option_value (i, long_option, value))
+              if (area == D_ALL) then
+                 msg_level = DEBUG2
+              else
+                 msg_level(area) = DEBUG2
+              end if
               cycle SCAN_CMDLINE
            case ("--banner")
               call no_option_value (long_option, value)
@@ -348,18 +370,6 @@ program main
   ! Overall initialization
   if (logfile /= "")  call logfile_init (logfile)
   if (banner)  call msg_banner ()
-  
-   ! Run any self-checks (and no commands)
-   if (checks /= "") then
-      checks = trim (adjustl (checks))
-      RUN_CHECKS: do while (checks /= "")
-         call split (checks, check, " ")
-         call whizard_check (check, test_results)
-      end do RUN_CHECKS
-      call test_results%wrapup (6, success)
-      if (.not. success)  quit_code = 7
-      quit = .true.
-   end if
    
    allocate (options)
    allocate (whizard_instance)
@@ -425,49 +435,6 @@ program main
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 contains
 
-  subroutine no_option_value (option, value)
-    type(string_t), intent(in) :: option, value
-    if (value /= "") then
-       call msg_error (" Option '" // char (option) // "' should have no value")
-    end if
-  end subroutine no_option_value
-
-  function get_option_value (i, option, value) result (string)
-    type(string_t) :: string
-    integer, intent(inout) :: i
-    type(string_t), intent(in) :: option
-    type(string_t), intent(in), optional :: value
-    character(CMDLINE_ARG_LEN) :: arg
-    character(CMDLINE_ARG_LEN) :: arg_value
-    integer :: arg_len, arg_status
-    logical :: has_value
-    if (present (value)) then
-       has_value = value /= ""
-    else
-       has_value = .false.
-    end if
-    if (has_value) then
-       string = value
-    else
-       i = i + 1 
-       call get_command_argument (i, arg_value, arg_len, arg_status)
-       select case (arg_status)
-       case (0)
-       case (-1)
-          call msg_error (" Option value truncated: '" // arg // "'")
-       case default
-          call print_usage ()
-          call msg_fatal (" Option '" // char (option) // "' needs a value")
-       end select
-       select case (arg(1:1))
-       case ("-")
-          call print_usage ()
-          call msg_fatal (" Option '" // char (option) // "' needs a value")
-       end select
-       string = trim (arg_value)
-    end if
-  end function get_option_value
-
   subroutine print_version ()
     print "(A)", "WHIZARD " // WHIZARD_VERSION 
     print "(A)", "Copyright (C) 1999-2015 Wolfgang Kilian, Thorsten Ohl, Juergen Reuter"
@@ -494,6 +461,9 @@ contains
     print "(A)", "Other options:"
     print "(A)", "-h, --help            display this help and exit"
     print "(A)", "    --banner          display banner at startup (default)"
+    print "(A)", "    --debug AREA      switch on debug output for AREA."
+    print "(A)", "                      AREA can be one of Whizard's src dirs or 'all'"
+    print "(A)", "    --debug2 AREA     switch on more verbose debug output for AREA."
     print "(A)", "-e, --execute CMDS    execute SINDARIN CMDS before reading FILE(s)"
     print "(A)", "-i, --interactive     run interactively after reading FILE(s)"
     print "(A)", "-l, --library         preload process library NAME"
@@ -517,6 +487,7 @@ contains
     print "(A)", "    --rebuild-grids   rebuild integration grids"
     print "(A)", "    --rebuild-events  rebuild event samples"
     print "(A)", "    --recompile       recompile process code"
+    print "(A)", "    --show-config     show build-time configuration"
     print "(A)", "-u  --user            enable user-provided code"
     print "(A)", "    --user-src FILE   user-provided source file"
     print "(A)", "    --user-lib FILE   user-provided library file"

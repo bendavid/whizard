@@ -1,4 +1,4 @@
-! WHIZARD 2.2.6 May 02 2015
+! WHIZARD 2.2.7 Aug 11 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -35,16 +35,13 @@ module models
   use, intrinsic :: iso_c_binding !NODEP!
   
   use kinds, only: default
-  use kinds, only: i8, i32
   use kinds, only: c_default_float
   use iso_varying_string, string_t => varying_string
-  use format_defs, only: FMT_19
   use io_units
-  use unit_tests
   use diagnostics
   use md5
   use os_interface
-  use physics_defs, only: UNDEFINED, SCALAR, SPINOR
+  use physics_defs, only: UNDEFINED
   use model_data
   
   use ifiles
@@ -66,7 +63,6 @@ module models
   public :: model_list_t
 !   public :: model_pointer_to_instance
 !   public :: model_pointer_delete_instance
-  public :: models_test
 
   integer, parameter :: PAR_NONE = 0
   integer, parameter :: PAR_INDEPENDENT = 1, PAR_DERIVED = 2
@@ -115,11 +111,11 @@ module models
      procedure :: show_polarized => model_show_polarized
      procedure :: show_unpolarized => model_show_unpolarized
      procedure :: get_md5sum => model_get_md5sum
-     procedure, private :: &
+     procedure :: &
           set_parameter_constant => model_set_parameter_constant
      procedure, private :: &
           set_parameter_parse_node => model_set_parameter_parse_node
-     procedure, private :: &
+     procedure :: &
           set_parameter_external => model_set_parameter_external
      procedure, private :: copy_parameter => model_copy_parameter
      procedure :: update_parameters => model_parameters_update
@@ -154,7 +150,7 @@ module models
      procedure :: write => model_list_write
      procedure :: link => model_list_link
      procedure, private :: import => model_list_import
-     procedure, private :: add => model_list_add
+     procedure :: add => model_list_add
      procedure :: read_model => model_list_read_model
      procedure :: append_copy => model_list_append_copy
      procedure :: model_exists => model_list_model_exists
@@ -378,7 +374,7 @@ contains
     if (show_md5 .and. model%md5sum /= "") &
          write (u, "(1x,A,A,A)") "! md5sum = '", model%md5sum, "'"
     if (show_par) then
-       write (u, *)
+       write (u, "(A)")
        do i = 1, size (model%par)
           call model%par(i)%write (u, write_defs=verbose)
        end do
@@ -389,7 +385,7 @@ contains
          show_particles=show_particles, &
          show_vertices=show_vertices)
     if (show_var) then
-       write (u, *)
+       write (u, "(A)")
        call var_list_write (model%var_list, unit, follow_link=.false.)
     end if
   end subroutine model_write
@@ -674,7 +670,7 @@ contains
     type(string_t), intent(in) :: name
     real(default), intent(in) :: rval
     logical, intent(in), optional :: verbose, pacified
-    call var_list_set_real (model%var_list, name, rval, &
+    call model%var_list%set_real (name, rval, &
          is_known=.true., ignore=.false., &
          verbose=verbose, model_name=model%get_name (), pacified=pacified)
     call model%update_parameters ()
@@ -844,7 +840,7 @@ contains
     call parse_tree_init (model%parse_tree, syntax_model_file, lexer)
     call stream_final (stream)
     call lexer_final (lexer)
-    nd_model_def => parse_tree_get_root_ptr (model%parse_tree)
+    nd_model_def => model%parse_tree%get_root_ptr ()
     nd_model_name_def => parse_node_get_sub_ptr (nd_model_def)
     model_name = parse_node_get_string &
          (parse_node_get_sub_ptr (nd_model_name_def, 2))
@@ -1380,308 +1376,5 @@ contains
 !     end if
 !   end subroutine model_pointer_delete_instance
     
-
-  subroutine models_test (u, results)
-    integer, intent(in) :: u
-    type(test_results_t), intent(inout) :: results
-    call test (models_1, "models_1", &
-         "construct model", &
-         u, results)
-    call test (models_2, "models_2", &
-         "read model", &
-         u, results)
-    call test (models_3, "models_3", &
-         "model instance", &
-         u, results)
-    call test (models_4, "models_4", &
-         "handle decays and polarization", &
-         u, results)
-    call test (models_5, "models_5", &
-         "handle parameters", &
-         u, results)
-  end subroutine models_test
-
-  subroutine models_1 (u)
-    integer, intent(in) :: u
-    type(os_data_t) :: os_data
-    type(model_list_t) :: model_list
-    type(model_t), pointer :: model
-    type(string_t) :: model_name
-    type(string_t) :: x_longname
-    type(string_t), dimension(2) :: parname
-    type(string_t), dimension(2) :: x_name
-    type(string_t), dimension(1) :: x_anti
-    type(string_t) :: x_tex_name, x_tex_anti
-    type(string_t) :: y_longname
-    type(string_t), dimension(2) :: y_name
-    type(string_t) :: y_tex_name
-    type(field_data_t), pointer :: field
-
-    write (u, "(A)")  "* Test output: models_1"
-    write (u, "(A)")  "*   Purpose: create a model"
-    write (u, *)
-
-    model_name = "Test model"
-    call model_list%add (model_name, os_data, 2, 2, 3, model)
-    parname(1) = "mx"
-    parname(2) = "coup"
-    call model%set_parameter_constant (1, parname(1), 10._default)
-    call model%set_parameter_constant (2, parname(2), 1.3_default)
-    x_longname = "X_LEPTON"
-    x_name(1) = "X"
-    x_name(2) = "x"
-    x_anti(1) = "Xbar"
-    x_tex_name = "X^+"
-    x_tex_anti = "X^-"
-    field => model%get_field_ptr_by_index (1)
-    call field%init (x_longname, 99)
-    call field%set ( &
-         .true., .false., .false., .false., .false., &
-         name=x_name, anti=x_anti, tex_name=x_tex_name, tex_anti=x_tex_anti, &
-         spin_type=SPINOR, isospin_type=-3, charge_type=2, &
-         mass_data=model%get_par_data_ptr (parname(1)))
-    y_longname = "Y_COLORON"
-    y_name(1) = "Y"
-    y_name(2) = "yc"
-    y_tex_name = "Y^0"
-    field => model%get_field_ptr_by_index (2)
-    call field%init (y_longname, 97)
-    call field%set ( &
-          .false., .false., .true., .false., .false., &
-          name=y_name, tex_name=y_tex_name, &
-          spin_type=SCALAR, isospin_type=2, charge_type=1, color_type=8)
-    call model%set_vertex (1, [99, 99, 99])
-    call model%set_vertex (2, [99, 99, 99, 99])
-    call model%set_vertex (3, [99, 97, 99])
-    call model_list%write (u)
-
-    call model_list%final ()
-
-    write (u, *)
-    write (u, "(A)")  "* Test output end: models_1"
-
-  end subroutine models_1
-
-  subroutine models_2 (u)
-    integer, intent(in) :: u
-    type(os_data_t) :: os_data
-    type(model_list_t) :: model_list
-    type(model_t), pointer :: model
-
-    write (u, "(A)")  "* Test output: models_2"
-    write (u, "(A)")  "*   Purpose: read a model from file"
-    write (u, *)
-
-    call syntax_model_file_init ()
-    call os_data_init (os_data)
-
-    call model_list%read_model (var_str ("Test"), var_str ("Test.mdl"), &
-         os_data, model)
-    call model_list%write (u)
-    
-    write (u, *)
-    write (u, "(A)")  "* Variable list"
-    write (u, *)
-    
-    call var_list_write (model%var_list, u)
-
-    write (u, *)
-    write (u, "(A)")  "* Cleanup"
-    
-    call model_list%final ()
-    call syntax_model_file_final ()
-
-    write (u, *)
-    write (u, "(A)")  "* Test output end: models_2"
-
-  end subroutine models_2
-
-  subroutine models_3 (u)
-    integer, intent(in) :: u
-    type(os_data_t) :: os_data
-    type(model_list_t) :: model_list
-    type(model_t), pointer :: model
-    type(model_t), pointer :: instance
-
-    write (u, "(A)")  "* Test output: models_3"
-    write (u, "(A)")  "*   Purpose: create a model instance"
-    write (u, *)
-
-    call syntax_model_file_init ()
-    call os_data_init (os_data)
-
-    call model_list%read_model (var_str ("Test"), var_str ("Test.mdl"), &
-         os_data, model)
-    allocate (instance)
-    call instance%init_instance (model)
-    
-    call model%write (u)
-    
-    write (u, *)
-    write (u, "(A)")  "* Variable list"
-    write (u, *)
-    
-    call var_list_write (instance%var_list, u)
-
-    write (u, *)
-    write (u, "(A)")  "* Cleanup"
-    
-    call instance%final ()
-    deallocate (instance)
-    
-    call model_list%final ()
-    call syntax_model_file_final ()
-
-    write (u, *)
-    write (u, "(A)")  "* Test output end: models_3"
-
-  end subroutine models_3
-
-  subroutine models_4 (u)
-    integer, intent(in) :: u
-    type(os_data_t) :: os_data
-    type(model_list_t) :: model_list
-    type(model_t), pointer :: model, model_instance
-    character(32) :: md5sum
-
-    write (u, "(A)")  "* Test output: models_4"
-    write (u, "(A)")  "*   Purpose: set and unset decays and polarization"
-    write (u, *)
-
-    call syntax_model_file_init ()
-    call os_data_init (os_data)
-
-    write (u, "(A)")  "* Read model from file"
-
-    call model_list%read_model (var_str ("Test"), var_str ("Test.mdl"), &
-         os_data, model)
-
-    md5sum = model%get_parameters_md5sum ()
-    write (u, *)
-    write (u, "(1x,3A)")  "MD5 sum (parameters) = '", md5sum, "'"
-
-    write (u, *)
-    write (u, "(A)")  "* Set particle decays and polarization"
-    write (u, *)
-
-    call model%set_unstable (25, [var_str ("dec1"), var_str ("dec2")])
-    call model%set_polarized (6)
-    call model%set_unstable (-6, [var_str ("fdec")])
-
-    call model%write (u)
-
-    md5sum = model%get_parameters_md5sum ()
-    write (u, *)
-    write (u, "(1x,3A)")  "MD5 sum (parameters) = '", md5sum, "'"
-
-    write (u, *)
-    write (u, "(A)")  "* Create a model instance"
-
-    allocate (model_instance)
-    call model_instance%init_instance (model)
-
-    write (u, *)
-    write (u, "(A)")  "* Revert particle decays and polarization"
-    write (u, *)
-
-    call model%set_stable (25)
-    call model%set_unpolarized (6)
-    call model%set_stable (-6)
-
-    call model%write (u)
-    
-    md5sum = model%get_parameters_md5sum ()
-    write (u, *)
-    write (u, "(1x,3A)")  "MD5 sum (parameters) = '", md5sum, "'"
-
-    write (u, *)
-    write (u, "(A)")  "* Show the model instance"
-    write (u, *)
-
-    call model_instance%write (u)
-
-    md5sum = model_instance%get_parameters_md5sum ()
-    write (u, *)
-    write (u, "(1x,3A)")  "MD5 sum (parameters) = '", md5sum, "'"
-
-    write (u, *)
-    write (u, "(A)")  "* Cleanup"
-    
-    call model_instance%final ()
-    deallocate (model_instance)
-    call model_list%final ()
-    call syntax_model_file_final ()
-
-    write (u, *)
-    write (u, "(A)")  "* Test output end: models_4"
-
-  end subroutine models_4
-
-  subroutine models_5 (u)
-    integer, intent(in) :: u
-    type(os_data_t) :: os_data
-    type(model_list_t) :: model_list
-    type(model_t), pointer :: model, model_instance
-    character(32) :: md5sum
-
-    write (u, "(A)")  "* Test output: models_5"
-    write (u, "(A)")  "*   Purpose: access and modify model variables"
-    write (u, *)
-
-    call syntax_model_file_init ()
-    call os_data_init (os_data)
-
-    write (u, "(A)")  "* Read model from file"
-
-    call model_list%read_model (var_str ("Test"), var_str ("Test.mdl"), &
-         os_data, model)
-
-    write (u, *)
-
-    call model%write (u, &
-         show_md5sum = .true., &
-         show_variables = .true., &
-         show_parameters = .true., &
-         show_particles = .false., &
-         show_vertices = .false.)
-
-    write (u, *)
-    write (u, "(A)")  "* Check parameter status"
-    write (u, *)
-
-    write (u, "(1x,A,L1)") "xy exists = ", model%var_exists (var_str ("xx"))
-    write (u, "(1x,A,L1)") "ff exists = ", model%var_exists (var_str ("ff"))
-    write (u, "(1x,A,L1)") "mf exists = ", model%var_exists (var_str ("mf"))
-    write (u, "(1x,A,L1)") "ff locked = ", model%var_is_locked (var_str ("ff"))
-    write (u, "(1x,A,L1)") "mf locked = ", model%var_is_locked (var_str ("mf"))
-
-    write (u, *)
-    write (u, "(1x,A,F6.2)") "ff = ", model%get_rval (var_str ("ff"))
-    write (u, "(1x,A,F6.2)") "mf = ", model%get_rval (var_str ("mf"))
-
-    write (u, *)
-    write (u, "(A)")  "* Modify parameter"
-    write (u, *)
-    
-    call model%set_real (var_str ("ff"), 1._default)
-
-    call model%write (u, &
-         show_md5sum = .true., &
-         show_variables = .true., &
-         show_parameters = .true., &
-         show_particles = .false., &
-         show_vertices = .false.)
-
-    write (u, *)
-    write (u, "(A)")  "* Cleanup"
-    
-    call model_list%final ()
-    call syntax_model_file_final ()
-
-    write (u, *)
-    write (u, "(A)")  "* Test output end: models_5"
-
-  end subroutine models_5
-
 
 end module models

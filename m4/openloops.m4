@@ -39,6 +39,14 @@ else
 fi
 
 AC_SUBST([OPENLOOPS_DIR])
+
+if test "$enable_openloops" = "yes"; then
+   OPENLOOPS_AVAILABLE_FLAG=".true."
+else
+   OPENLOOPS_AVAILABLE_FLAG=".false."
+fi
+AC_SUBST([OPENLOOPS_AVAILABLE_FLAG])
+
 AM_CONDITIONAL([OPENLOOPS_AVAILABLE], [test "$enable_openloops" = "yes"])
 
 ]) dnl WO_PROG_OPENLOOPS

@@ -36,20 +36,32 @@
 
 ## We create a library which is still to be combined with auxiliary libs.
 noinst_LTLIBRARIES = libtransforms.la
+check_LTLIBRARIES = libtransforms_ut.la
 
 libtransforms_la_SOURCES = \
    event_transforms.f90 \
    hadrons.f90 \
+   tau_decays.f90 \
    decays.f90 \
    shower.f90 \
+   evt_nlo.f90 \
    events.f90 \
    eio_raw.f90
+
+libtransforms_ut_la_SOURCES = \
+   event_transforms_uti.f90 event_transforms_ut.f90 \
+   decays_uti.f90 decays_ut.f90 \
+   shower_uti.f90 shower_ut.f90 \
+   events_uti.f90 events_ut.f90 \
+   eio_raw_uti.f90 eio_raw_ut.f90
 
 ## Omitting this would exclude it from the distribution
 dist_noinst_DATA = transforms.nw
 
 # Dump module names into file Modules
-libtransforms_Modules = ${libtransforms_la_SOURCES:.f90=}
+libtransforms_Modules = \
+  ${libtransforms_la_SOURCES:.f90=} \
+  ${libtransforms_ut_la_SOURCES:.f90=}
 Modules: Makefile
 	@for module in $(libtransforms_Modules); do \
           echo $$module >> $@.new; \
@@ -78,13 +90,14 @@ module_lists = \
   ../mci/Modules \
   ../phase_space/Modules \
   ../process_integration/Modules \
-  ../powheg/Modules \
+  ../matching/Modules \
   ../model_features/Modules \
   ../events/Modules \
   ../shower/Modules \
   ../expr_base/Modules \
   ../variables/Modules \
-  ../beams/Modules
+  ../beams/Modules \
+  ../fks/Modules
 
 # Explicit dependencies, not automatically generated
 event_transforms.lo:  ../../vamp/src/vamp.$(FC_MODULE_EXT)
@@ -116,7 +129,7 @@ DISTCLEANFILES = Module_dependencies.sed
 @am__include@ @am__quote@Makefile.depend@am__quote@
 
 Makefile.depend: Module_dependencies.sed
-Makefile.depend: $(libtransforms_la_SOURCES)
+Makefile.depend: $(libtransforms_la_SOURCES) $(libtransforms_ut_la_SOURCES)
 	@rm -f $@
 	for src in $^; do \
 	  module="`basename $$src | sed 's/\.f[90][0358]//'`"; \
@@ -133,7 +146,7 @@ DISTCLEANFILES += Makefile.depend
 	@:
 #	touch $@
 
-AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system  -I../combinatorics -I../parsing -I../physics -I../qft -I../particles -I../types -I../matrix_elements -I../me_methods -I../rng -I../mci -I../phase_space -I../process_integration -I../powheg -I../model_features -I../events -I../shower -I../expr_base -I../variables -I../muli -I../beams -I../blha -I../fks -I../openloops -I../gosam -I../fastjet -I../lhapdf -I../pdf_builtin -I../../vamp/src -I../user
+AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system  -I../combinatorics -I../parsing -I../physics -I../qft -I../particles -I../types -I../matrix_elements -I../me_methods -I../rng -I../mci -I../phase_space -I../process_integration -I../matching -I../model_features -I../events -I../shower -I../expr_base -I../variables -I../muli -I../beams -I../blha -I../fks -I../openloops -I../gosam -I../fastjet -I../lhapdf -I../pdf_builtin -I../../vamp/src -I../user
 
 
 ########################################################################
@@ -166,12 +179,14 @@ POSTLUDE = $(top_srcdir)/src/noweb-frame/whizard-postlude.nw
 transforms.stamp: $(PRELUDE) $(srcdir)/transforms.nw $(POSTLUDE)
 	@rm -f transforms.tmp
 	@touch transforms.tmp
-	for src in $(libtransforms_la_SOURCES); do \
+	for src in \
+          $(libtransforms_la_SOURCES) \
+          $(libtransforms_ut_la_SOURCES); do \
 	  $(NOTANGLE) -R[[$$src]] $^ | $(CPIF) $$src; \
         done
 	@mv -f transforms.tmp transforms.stamp
 
-$(libtransforms_la_SOURCES): transforms.stamp
+$(libtransforms_la_SOURCES) $(libtransforms_ut_la_SOURCES): transforms.stamp
 ## Recover from the removal of $@
 	@if test -f $@; then :; else \
 	  rm -f transforms.stamp; \
@@ -201,6 +216,9 @@ endif
 clean-local: clean-noweb
 	-rm -f transforms.stamp transforms.tmp
 	-rm -f *.$(FC_MODULE_EXT)
+if FC_SUBMODULES
+	-rm -f *.smod
+endif
 
 ## Remove backup files
 maintainer-clean-backup:

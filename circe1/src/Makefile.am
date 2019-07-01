@@ -1,5 +1,5 @@
 # Makefile.am --
-# $Id: Makefile.am 6465 2015-01-10 15:22:31Z jr_reuter $
+# $Id: Makefile.am 7137 2015-08-07 19:02:32Z jr_reuter $
 ##
 ## Process this file with automake to produce Makefile.in
 ##
@@ -123,6 +123,9 @@ endif
 ## Remove F90 module files
 clean-local: clean-noweb
 	-rm -f *.$(FC_MODULE_EXT) *.g90
+if FC_SUBMODULES
+	-rm -f *.smod
+endif
 
 ## Remove backup files
 maintainer-clean-backup:

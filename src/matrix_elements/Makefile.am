@@ -30,6 +30,7 @@
 
 ## We create a library which is still to be combined with auxiliary libs.
 noinst_LTLIBRARIES = libmatrix_elements.la
+check_LTLIBRARIES = libmatrix_elements_ut.la
 
 libmatrix_elements_la_SOURCES = \
   process_constants.f90 \
@@ -39,11 +40,19 @@ libmatrix_elements_la_SOURCES = \
   prclib_stacks.f90 \
   prc_test.f90
 
+libmatrix_elements_ut_la_SOURCES = \
+  prclib_interfaces_uti.f90 prclib_interfaces_ut.f90 \
+  process_libraries_uti.f90 process_libraries_ut.f90 \
+  prclib_stacks_uti.f90 prclib_stacks_ut.f90 \
+  prc_test_uti.f90 prc_test_ut.f90
+
 ## Omitting this would exclude it from the distribution
 dist_noinst_DATA = matrix_elements.nw
 
 # Dump module names into file Modules
-libmatrix_elements_Modules = ${libmatrix_elements_la_SOURCES:.f90=}
+libmatrix_elements_Modules = \
+  ${libmatrix_elements_la_SOURCES:.f90=} \
+  ${libmatrix_elements_ut_la_SOURCES:.f90=}
 Modules: Makefile
 	@for module in $(libmatrix_elements_Modules); do \
           echo $$module >> $@.new; \
@@ -93,7 +102,9 @@ DISTCLEANFILES = Module_dependencies.sed
 @am__include@ @am__quote@Makefile.depend@am__quote@
 
 Makefile.depend: Module_dependencies.sed
-Makefile.depend: $(libmatrix_elements_la_SOURCES)
+Makefile.depend: \
+  $(libmatrix_elements_la_SOURCES) \
+  $(libmatrix_elements_ut_la_SOURCES)
 	@rm -f $@
 	for src in $^; do \
 	  module="`basename $$src | sed 's/\.f[90][0358]//'`"; \
@@ -144,12 +155,14 @@ POSTLUDE = $(top_srcdir)/src/noweb-frame/whizard-postlude.nw
 matrix_elements.stamp: $(PRELUDE) $(srcdir)/matrix_elements.nw $(POSTLUDE)
 	@rm -f matrix_elements.tmp
 	@touch matrix_elements.tmp
-	for src in $(libmatrix_elements_la_SOURCES); do \
+	for src in \
+	  $(libmatrix_elements_la_SOURCES) \
+	  $(libmatrix_elements_ut_la_SOURCES); do \
 	  $(NOTANGLE) -R[[$$src]] $^ | $(CPIF) $$src; \
         done
 	@mv -f matrix_elements.tmp matrix_elements.stamp
 
-$(libmatrix_elements_la_SOURCES): matrix_elements.stamp
+$(libmatrix_elements_la_SOURCES) $(libmatrix_elements_ut_la_SOURCES): matrix_elements.stamp
 ## Recover from the removal of $@
 	@if test -f $@; then :; else \
 	  rm -f matrix_elements.stamp; \
@@ -179,6 +192,9 @@ endif
 clean-local: clean-noweb
 	-rm -f matrix_elements.stamp matrix_elements.tmp
 	-rm -f *.$(FC_MODULE_EXT)
+if FC_SUBMODULES
+	-rm -f *.smod
+endif
 
 ## Remove backup files
 maintainer-clean-backup:

@@ -1,4 +1,4 @@
-! WHIZARD 2.2.6 May 02 2015
+! WHIZARD 2.2.7 Aug 11 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -32,7 +32,7 @@
 
 module hadrons
 
-  use kinds, only: default
+  use kinds, only: default, double
   use iso_varying_string, string_t => varying_string
   use io_units
   use format_utils, only: write_separator
@@ -49,14 +49,12 @@ module hadrons
   implicit none
   private
 
-  public :: HADRONS_PYTHIA6, HADRONS_PYTHIA8
-  public :: hadrons_method_of_string
-  public :: hadrons_method_to_string
+  public :: HADRONS_PYTHIA6, HADRONS_PYTHIA8, HADRONS_UNDEFINED
   public :: hadrons_pythia8_t
   public :: evt_hadrons_t
 
   type, abstract :: hadrons_t
-   type(shower_settings_t), pointer :: settings
+   type(shower_settings_t) :: settings
    type(model_t), pointer :: model => null()
    contains
      procedure (hadrons_init), deferred :: init
@@ -80,12 +78,13 @@ module hadrons
 
   type, extends (evt_t) :: evt_hadrons_t
      class(hadrons_t), allocatable :: hadrons
-     type(shower_settings_t) :: settings
      type(model_t), pointer :: model_hadrons => null()
      type(qcd_t), pointer :: qcd_t => null()
+     logical :: is_first_event
    contains
      procedure :: init => evt_hadrons_init
      procedure :: write => evt_hadrons_write
+     procedure :: first_event => evt_hadrons_first_event
      procedure :: generate_weighted => evt_hadrons_generate_weighted
      procedure :: make_particle_set => evt_hadrons_make_particle_set
      procedure :: prepare_new_event => evt_hadrons_prepare_new_event
@@ -96,14 +95,13 @@ module hadrons
     subroutine hadrons_init (hadrons, settings, model_hadrons)
       import
       class(hadrons_t), intent(out) :: hadrons
-      type(shower_settings_t), target, intent(in) :: settings
+      type(shower_settings_t), intent(in) :: settings
       type(model_t), target, intent(in) :: model_hadrons
     end subroutine hadrons_init
    end interface
 
   abstract interface
-     subroutine hadrons_hadronize &
-          (hadrons, particle_set, valid)
+     subroutine hadrons_hadronize (hadrons, particle_set, valid)
        import
        class(hadrons_t), intent(inout) :: hadrons
        type(particle_set_t), intent(in) :: particle_set
@@ -156,11 +154,11 @@ contains
 
   subroutine hadrons_pythia6_init (hadrons, settings, model_hadrons)
     class(hadrons_pythia6_t), intent(out) :: hadrons
-    type(shower_settings_t), target, intent(in) :: settings
+    type(shower_settings_t), intent(in) :: settings
     type(model_t), intent(in), target :: model_hadrons
     logical :: pygive_not_set_by_shower
     hadrons%model => model_hadrons
-    hadrons%settings => settings
+    hadrons%settings = settings
     pygive_not_set_by_shower = .not. (settings%method == PS_PYTHIA6 &
          .and. (settings%isr_active .or. settings%fsr_active))
     if (pygive_not_set_by_shower) then
@@ -175,11 +173,24 @@ contains
     class(hadrons_pythia6_t), intent(inout) :: hadrons
     type(particle_set_t), intent(in) :: particle_set
     logical, intent(out) :: valid
+    integer :: N, NPAD, K
+    real(double) :: P, V
+    common /PYJETS/ N, NPAD, K(4000,5), P(4000,5), V(4000,5)
+    save /PYJETS/
     if (signal_is_pending ()) return
+    call msg_debug (D_TRANSFORMS, "hadrons_pythia6_hadronize")
     call pygive ("MSTP(111)=1")    !!! Switch on hadronization and decays
     call pygive ("MSTJ(1)=1")      !!! String fragmentation
     call pygive ("MSTJ(21)=2")     !!! String fragmentation keeping resonance momentum
+    if (debug_active (D_TRANSFORMS)) then
+       call msg_debug (D_TRANSFORMS, "N", N)
+       call pylist(2)
+       print *, ' line 7 : ', k(7,1:5), p(7,1:5)
+    end if
+    call pyedit (12)
+    call pythia6_set_last_treated_line (N)
     call pyexec ()
+    call pyedit (12)
     valid = .true.
   end subroutine hadrons_pythia6_hadronize
 
@@ -193,15 +204,16 @@ contains
     valid = pythia6_handle_errors ()
     if (valid) then
        call pythia6_combine_with_particle_set &
-            (particle_set, model, hadrons%model)
+            (particle_set, model, hadrons%model, hadrons%settings)
     end if
   end subroutine hadrons_pythia6_make_particle_set
 
   subroutine hadrons_pythia8_init (hadrons, settings, model_hadrons)
     class(hadrons_pythia8_t), intent(out) :: hadrons
-    type(shower_settings_t), target, intent(in) :: settings
+    type(shower_settings_t), intent(in) :: settings
     type(model_t), intent(in), target :: model_hadrons
     logical :: options_not_set_by_shower
+    hadrons%settings = settings
     options_not_set_by_shower = .not. (settings%method == PS_PYTHIA8 &
          .and. (settings%isr_active .or. settings%fsr_active))
     if (options_not_set_by_shower) then
@@ -218,6 +230,7 @@ contains
     type(particle_set_t), intent(in) :: particle_set
     logical, intent(out) :: valid
     ! call pythia8_hadronize
+    valid = .true.
   end subroutine hadrons_pythia8_hadronize
 
   pure subroutine hadrons_pythia8_make_particle_set &
@@ -227,14 +240,14 @@ contains
     class(model_data_t), intent(in), target :: model
     logical, intent(out) :: valid
     ! call pythia8_combine_particle_set
+    valid = .true.
   end subroutine hadrons_pythia8_make_particle_set
 
   subroutine evt_hadrons_init (evt, settings, model_hadrons, method)
     class(evt_hadrons_t), intent(out) :: evt
-    type(shower_settings_t), target, intent(in) :: settings
+    type(shower_settings_t), intent(in) :: settings
     type(model_t), intent(in), target :: model_hadrons
     type(string_t), intent(in) :: method
-    evt%settings = settings
     evt%model_hadrons => model_hadrons
     !!! TODO: (bcn 2015-03-27) method should be part of hadronization settings
     select case (char (method))
@@ -246,7 +259,8 @@ contains
        call msg_fatal ("Hadronization method " // char (method) // &
             " not implemented.")
     end select
-    call evt%hadrons%init (evt%settings, model_hadrons)
+    call evt%hadrons%init (settings, model_hadrons)
+    evt%is_first_event = .true.
   end subroutine evt_hadrons_init
 
   subroutine evt_hadrons_write (evt, unit, verbose, more_verbose, testflag)
@@ -263,21 +277,41 @@ contains
          call evt%particle_set%write &
          (u, summary = .true., compressed = .true., testflag = testflag)
     call write_separator (u)
-    call evt%settings%write (u)
+    call evt%hadrons%settings%write (u)
   end subroutine evt_hadrons_write
+
+  subroutine evt_hadrons_first_event (evt)
+    class(evt_hadrons_t), intent(inout) :: evt
+    call msg_debug (D_TRANSFORMS, "evt_hadrons_first_event")
+    associate (settings => evt%hadrons%settings)
+       settings%hadron_collision = .false.
+       if (all (evt%particle_set%prt(1:2)%flv%get_pdg_abs () <= 18)) then
+          settings%hadron_collision = .false.
+       else if (all (evt%particle_set%prt(1:2)%flv%get_pdg_abs () >= 1000)) then
+          settings%hadron_collision = .true.
+       else
+          call msg_fatal ("evt_hadrons didn't recognize beams setup")
+       end if
+       call msg_debug (D_TRANSFORMS, "hadron_collision", settings%hadron_collision)
+       if (.not. (settings%isr_active .or. settings%fsr_active)) then
+          call msg_fatal ("Hadronization without shower is not supported")
+       end if
+    end associate
+    evt%is_first_event = .false.
+  end subroutine evt_hadrons_first_event
 
   subroutine evt_hadrons_generate_weighted (evt, probability)
     class(evt_hadrons_t), intent(inout) :: evt
-    real(default), intent(out) :: probability
+    real(default), intent(inout) :: probability
     logical :: valid
-    if (evt%previous%particle_set_exists) then
-       evt%particle_set = evt%previous%particle_set
-       call evt%hadrons%hadronize (evt%particle_set, valid)
-       probability = 1
-       evt%particle_set_exists = valid
-    else
-       call msg_bug ("Hadrons: input particle set does not exist")
+    if (signal_is_pending ())  return
+    evt%particle_set = evt%previous%particle_set
+    if (evt%is_first_event) then
+       call evt%first_event ()
     end if
+    call evt%hadrons%hadronize (evt%particle_set, valid)
+    probability = 1
+    evt%particle_set_exists = valid
   end subroutine evt_hadrons_generate_weighted
 
   subroutine evt_hadrons_make_particle_set &

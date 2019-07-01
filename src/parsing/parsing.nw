@@ -492,7 +492,6 @@ module lexers
 <<Use strings>>
   use io_units
   use string_utils
-  use unit_tests
   use system_defs, only: EOF, EOR
   use system_defs, only: LF
   use system_defs, only: WHITESPACE_CHARS, LCLETTERS, UCLETTERS, DIGITS
@@ -514,8 +513,6 @@ module lexers
 contains
 
 <<Lexer: procedures>>
-
-<<Lexer: tests>>
 
 end module lexers
 @ %def lexers
@@ -1721,9 +1718,48 @@ and a pointer to the current column within the line.
 @ %def lexer_show_source
 @ 
 \subsection{Unit tests}
-<<Lexer: public>>=
+Test module, followed by the corresponding implementation module.
+<<[[lexers_ut.f90]]>>=
+<<File header>>
+
+module lexers_ut
+  use unit_tests
+  use lexers_uti
+  
+<<Standard module head>>
+
+<<Lexer: public test>>
+
+contains
+  
+<<Lexer: test driver>>
+
+end module lexers_ut
+@ %def lexers_ut
+@
+<<[[lexers_uti.f90]]>>=
+<<File header>>
+
+module lexers_uti
+
+<<Use strings>>
+
+  use lexers
+
+<<Standard module head>>
+
+<<Lexer: test declarations>>
+
+contains
+
+<<Lexer: tests>>
+
+end module lexers_uti
+@ %def lexers_ut
+@ API: driver for the unit tests below.
+<<Lexer: public test>>=
   public :: lexer_test
-<<Lexer: procedures>>=
+<<Lexer: test driver>>=
   subroutine lexer_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
@@ -1736,6 +1772,8 @@ one per line, using preset conventions.
 <<Lexer: execute tests>>=
   call test (lexer_1, "lexer_1", &
        "check lexer", u, results)
+<<Lexer: test declarations>>=
+  public :: lexer_1
 <<Lexer: tests>>=
   subroutine lexer_1 (u)
     integer, intent(in) :: u
@@ -2719,7 +2757,6 @@ module parser
 <<Use strings>>
   use io_units
   use format_defs, only: FMT_19
-  use unit_tests
   use system_defs, only: DIGITS
   use diagnostics
   use md5
@@ -2737,8 +2774,6 @@ module parser
 contains
 
 <<Parser: procedures>>
-
-<<Parser: tests>>
 
 end module parser
 @ %def parser
@@ -3321,13 +3356,32 @@ value.  Only one of the optional values should be provided.
   end subroutine parse_node_create_branch
     
 @ %def parse_node_create_branch
+@ Copy a node.  This is a shallow copy.  Note that we have to nullify the
+[[next]] pointer if we don't want to inherit the context of the original node.
+<<Parser: parse node: TBP>>=
+  procedure :: copy => parse_node_copy
+<<Parser: procedures>>=
+  subroutine parse_node_copy (node, copy)
+    class(parse_node_t), intent(in) :: node
+    type(parse_node_t), pointer, intent(out) :: copy
+    allocate (copy)
+    select type (node)
+    type is (parse_node_t)
+       copy = node
+    end select
+    copy%next => null ()
+  end subroutine parse_node_copy
+  
+@ %def parse_node_copy
 @ Append a sub-node.  The sub-node must exist and be a valid target,
 otherwise nothing is done.
 <<Parser: public>>=
   public :: parse_node_append_sub
+<<Parser: parse node: TBP>>=
+  procedure :: append_sub => parse_node_append_sub
 <<Parser: procedures>>=
   subroutine parse_node_append_sub (node, sub)
-    type(parse_node_t), intent(inout) :: node
+    class(parse_node_t), intent(inout) :: node
     type(parse_node_t), pointer :: sub
     if (associated (sub)) then
        if (associated (node%sub_last)) then
@@ -3569,6 +3623,8 @@ actual nodes do not match
   procedure :: get_real => parse_node_get_real
   procedure :: get_cmplx => parse_node_get_cmplx
   procedure :: get_string => parse_node_get_string
+  procedure :: get_key => parse_node_get_key
+  procedure :: get_rule_key => parse_node_get_rule_key
 <<Parser: procedures>>=
   function parse_node_get_logical (node) result (lval)
     class(parse_node_t), intent(in), target :: node
@@ -3601,14 +3657,14 @@ actual nodes do not match
   end function parse_node_get_string
 
   function parse_node_get_key (node) result (kval)
+    class(parse_node_t), intent(in), target :: node
     type(string_t) :: kval
-    type(parse_node_t), intent(in), target :: node
     kval = token_get_key (parse_node_get_token_ptr (node))
   end function parse_node_get_key
 
   function parse_node_get_rule_key (node) result (kval)
+    class(parse_node_t), intent(in), target :: node
     type(string_t) :: kval
-    type(parse_node_t), intent(in), target :: node
     kval = syntax_rule_get_key (parse_node_get_rule_ptr (node))
   end function parse_node_get_rule_key
 
@@ -4006,8 +4062,6 @@ a bug.
 \subsection{Access the parser}
 For scanning the parse tree we give access to the top node, as a node
 pointer.  Of course, there should be no write access.
-<<Parser: public>>=
-  public :: parse_tree_get_root_ptr
 <<Parser: parse tree: TBP>>=
   procedure :: get_root_ptr => parse_tree_get_root_ptr
 <<Parser: procedures>>=
@@ -4104,7 +4158,7 @@ unassociated.
     type(parse_node_t), pointer :: node_root, node_process_def
     type(parse_node_t), pointer :: node_process_phs, node_process_list
     integer :: j
-    node_root => parse_tree_get_root_ptr (parse_tree)
+    node_root => parse_tree%get_root_ptr ()
     if (associated (node_root)) then
        node_process_phs => parse_node_get_sub_ptr (node_root)
        SCAN_FILE: do while (associated (node_process_phs))
@@ -4129,9 +4183,48 @@ unassociated.
 @ %def parse_tree_get_process_ptr
 @ 
 \subsection{Unit tests}
-<<Parser: public>>=
+Test module, followed by the corresponding implementation module.
+<<[[parser_ut.f90]]>>=
+<<File header>>
+
+module parser_ut
+  use unit_tests
+  use parser_uti
+  
+<<Standard module head>>
+
+<<Parser: public test>>
+
+contains
+  
+<<Parser: test driver>>
+
+end module parser_ut
+@ %def parser_ut
+@
+<<[[parser_uti.f90]]>>=
+<<File header>>
+
+module parser_uti
+
+  use syntax_rules
+
+  use parser
+
+<<Standard module head>>
+
+<<Parser: test declarations>>
+
+contains
+
+<<Parser: tests>>
+
+end module parser_uti
+@ %def parser_ut
+@ API: driver for the unit tests below.
+<<Parser: public test>>=
   public :: parse_test
-<<Parser: procedures>>=
+<<Parser: test driver>>=
   subroutine parse_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
@@ -4144,6 +4237,8 @@ unassociated.
   call test (parse_1, "parse_1", &
        "check the parser", &
        u, results)
+<<Parser: test declarations>>=
+  public :: parse_1
 <<Parser: tests>>=
   subroutine parse_1 (u)
     use ifiles
@@ -4254,7 +4349,6 @@ module xml
 
 <<Use strings>>
   use io_units
-  use unit_tests
   use system_defs, only: BLANK, TAB
   use diagnostics
   use ifiles
@@ -4269,8 +4363,6 @@ module xml
 contains
 
 <<XML: procedures>>
-
-<<XML: tests>>
 
 end module xml
 @ %def xml
@@ -4812,9 +4904,51 @@ content.
 @ %def tag_read_content
 @
 \subsection{Unit tests}
-<<XML: public>>=
+Test module, followed by the corresponding implementation module.
+<<[[xml_ut.f90]]>>=
+<<File header>>
+
+module xml_ut
+  use unit_tests
+  use xml_uti
+  
+<<Standard module head>>
+
+<<XML: public test>>
+
+contains
+  
+<<XML: test driver>>
+
+end module xml_ut
+@ %def xml_ut
+@
+<<[[xml_uti.f90]]>>=
+<<File header>>
+
+module xml_uti
+
+<<Use strings>>
+  use io_units
+
+  use xml
+
+<<Standard module head>>
+
+<<XML: test declarations>>
+
+contains
+
+<<XML: tests>>
+
+<<XML: test auxiliary>>
+
+end module xml_uti
+@ %def xml_ut
+@ API: driver for the unit tests below.
+<<XML: public test>>=
   public :: xml_test
-<<XML: tests>>=
+<<XML: test driver>>=
   subroutine xml_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
@@ -4825,7 +4959,7 @@ end subroutine xml_test
 @
 \subsection{Auxiliary Routines}
 Show the contents of a temporary file, i.e., open unit.
-<<XML: tests>>=
+<<XML: test auxiliary>>=
   subroutine show (u_tmp, u)
     integer, intent(in) :: u_tmp, u
     character (80) :: buffer
@@ -4848,6 +4982,8 @@ Write a tag and read it again, using a temporary file.
   call test (xml_1, "xml_1", &
        "basic I/O", &
        u, results)
+<<XML: test declarations>>=
+  public :: xml_1
 <<XML: tests>>=
   subroutine xml_1 (u)
     integer, intent(in) :: u
@@ -4987,6 +5123,8 @@ Write and read two tags, one of them optional.
   call test (xml_2, "xml_2", &
        "optional tag", &
        u, results)
+<<XML: test declarations>>=
+  public :: xml_2
 <<XML: tests>>=
   subroutine xml_2 (u)
     integer, intent(in) :: u
@@ -5083,6 +5221,8 @@ Write and read a tag with single-line content.
   call test (xml_3, "xml_3", &
        "content", &
        u, results)
+<<XML: test declarations>>=
+  public :: xml_3
 <<XML: tests>>=
   subroutine xml_3 (u)
     integer, intent(in) :: u
@@ -5207,6 +5347,8 @@ Write a tag and read it again, using a temporary file.
   call test (xml_4, "xml_4", &
        "attributes", &
        u, results)
+<<XML: test declarations>>=
+  public :: xml_4
 <<XML: tests>>=
   subroutine xml_4 (u)
     integer, intent(in) :: u

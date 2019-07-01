@@ -36,17 +36,25 @@
 
 ## We create a library which is still to be combined with auxiliary libs.
 noinst_LTLIBRARIES = libme_methods.la
+check_LTLIBRARIES = libme_methods_ut.la
 
 libme_methods_la_SOURCES = \
   prc_core.f90 \
   prc_template_me.f90 \
-  prc_omega.f90
+  prc_omega.f90 \
+  prc_user_defined.f90
+
+libme_methods_ut_la_SOURCES = \
+  prc_template_me_uti.f90 prc_template_me_ut.f90 \
+  prc_omega_uti.f90 prc_omega_ut.f90
 
 ## Omitting this would exclude it from the distribution
 dist_noinst_DATA = me_methods.nw
 
 # Dump module names into file Modules
-libme_methods_Modules = ${libme_methods_la_SOURCES:.f90=}
+libme_methods_Modules = \
+  ${libme_methods_la_SOURCES:.f90=}\
+  ${libme_methods_ut_la_SOURCES:.f90=}
 Modules: Makefile
 	@for module in $(libme_methods_Modules); do \
           echo $$module >> $@.new; \
@@ -99,7 +107,7 @@ DISTCLEANFILES = Module_dependencies.sed
 @am__include@ @am__quote@Makefile.depend@am__quote@
 
 Makefile.depend: Module_dependencies.sed
-Makefile.depend: $(libme_methods_la_SOURCES)
+Makefile.depend: $(libme_methods_la_SOURCES) $(libme_methods_ut_la_SOURCES)
 	@rm -f $@
 	for src in $^; do \
 	  module="`basename $$src | sed 's/\.f[90][0358]//'`"; \
@@ -145,12 +153,14 @@ POSTLUDE = $(top_srcdir)/src/noweb-frame/whizard-postlude.nw
 me_methods.stamp: $(PRELUDE) $(srcdir)/me_methods.nw $(POSTLUDE)
 	@rm -f me_methods.tmp
 	@touch me_methods.tmp
-	for src in $(libme_methods_la_SOURCES); do \
+	for src in \
+	  $(libme_methods_la_SOURCES) \
+	  $(libme_methods_ut_la_SOURCES); do \
 	  $(NOTANGLE) -R[[$$src]] $^ | $(CPIF) $$src; \
         done
 	@mv -f me_methods.tmp me_methods.stamp
 
-$(libme_methods_la_SOURCES): me_methods.stamp
+$(libme_methods_la_SOURCES) $(libme_methods_ut_la_SOURCES): me_methods.stamp
 ## Recover from the removal of $@
 	@if test -f $@; then :; else \
 	  rm -f me_methods.stamp; \
@@ -180,6 +190,9 @@ endif
 clean-local: clean-noweb
 	-rm -f me_methods.stamp me_methods.tmp
 	-rm -f *.$(FC_MODULE_EXT)
+if FC_SUBMODULES
+	-rm -f *.smod
+endif
 
 ## Remove backup files
 maintainer-clean-backup:

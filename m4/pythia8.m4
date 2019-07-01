@@ -25,6 +25,13 @@ fi
 AC_SUBST([PYTHIA8_CXXFLAGS])
 AC_SUBST([PYTHIA8_LIBS])
 
+if test "$enable_pythia8" = "yes"; then
+   PYTHIA8_AVAILABLE_FLAG=".true."
+else
+   PYTHIA8_AVAILABLE_FLAG=".false."
+fi
+AC_SUBST([PYTHIA8_AVAILABLE_FLAG])
+
 AM_CONDITIONAL([PYTHIA8_AVAILABLE], [test "$enable_pythia8" = "yes"])
 ])
 

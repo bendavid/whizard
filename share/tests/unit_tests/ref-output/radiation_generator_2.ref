@@ -1,0 +1,43 @@
+* Test output: radiation_generator_2
+* Purpose: Test the repeated application of a radiation generator splitting
+* Only Final state emissions!
+
+* Loading radiation model: SM_rad.mdl
+* Success
+* Leading order
+* Incoming: PDG(11)PDG(-11)
+* Outgoing: PDG(2)PDG(-2)
+------------------------------------------------------------------------
+Generate higher-multiplicity states
+Desired multiplicity: 10
+ 1: u ubar gl
+ 2: u u ubar ubar
+ 3: u ubar gl gl
+ 4: u u ubar ubar gl
+ 5: u ubar gl gl gl
+ 6: u u u ubar ubar ubar
+ 7: u u ubar ubar gl gl
+ 8: u ubar gl gl gl gl
+ 9: u u u ubar ubar ubar gl
+10: u u ubar ubar gl gl gl
+11: u ubar gl gl gl gl gl
+12: u u u u ubar ubar ubar ubar
+13: u u u ubar ubar ubar gl gl
+14: u u ubar ubar gl gl gl gl
+15: u ubar gl gl gl gl gl gl
+16: u u u u ubar ubar ubar ubar gl
+17: u u u ubar ubar ubar gl gl gl
+18: u u ubar ubar gl gl gl gl gl
+19: u ubar gl gl gl gl gl gl gl
+20: u u u u u ubar ubar ubar ubar ubar
+21: u u u u ubar ubar ubar ubar gl gl
+22: u u u ubar ubar ubar gl gl gl gl
+23: u u ubar ubar gl gl gl gl gl gl
+24: u ubar gl gl gl gl gl gl gl gl
+------------------------------------------------------------------------
+Number of higher-multiplicity states: 24
+Check that no particle state occurs twice or more
+SUCCESS
+------------------------------------------------------------------------
+Check that there are 10 particles in the last entry:
+SUCCESS

@@ -1,0 +1,9 @@
+process tag         xsection         error
+
+Warning: these are not verified against publicated data
+
+extra_shower_2      32804.84         192.18
+extra_nlo_tt        617.732078175    0.0202981489447
+extra_nlo_uu        732.467055573    0.132886748263
+extra_nlo_uu_powheg 730.209153069    0.1009087196441
+extra_nlo_methods   732.383935058    0.1431430868632

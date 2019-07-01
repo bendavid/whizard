@@ -42,11 +42,9 @@ generation.
 module mci_base
 
   use kinds
-<<Use strings>>
   use io_units
   use format_utils, only: pac_fmt
   use format_defs, only: FMT_14, FMT_17
-  use unit_tests
   use diagnostics
   use cputime
   use phs_base
@@ -60,13 +58,9 @@ module mci_base
 
 <<MCI base: interfaces>>
 
-<<MCI base: test types>>
-
 contains
   
 <<MCI base: procedures>>
-
-<<MCI base: tests>>
 
 end module mci_base
 @ %def mci_base
@@ -1081,9 +1075,60 @@ integrator.
 @ %def mci_results_record
 @
 \subsection{Unit tests}
-<<MCI base: public>>=
+Test module, followed by the corresponding implementation module.
+<<[[mci_base_ut.f90]]>>=
+<<File header>>
+
+module mci_base_ut
+  use unit_tests
+  use mci_base_uti
+  
+<<Standard module head>>
+
+<<MCI base: public test>>
+
+<<MCI base: public test auxiliary>>
+
+contains
+  
+<<MCI base: test driver>>
+
+end module mci_base_ut
+@ %def mci_base_ut
+@
+<<[[mci_base_uti.f90]]>>=
+<<File header>>
+
+module mci_base_uti
+
+<<Use kinds>>
+  use io_units
+  use diagnostics
+  use phs_base
+  use rng_base
+  
+  use mci_base
+
+  use rng_base_ut, only: rng_test_t
+
+<<Standard module head>>
+
+<<MCI base: public test auxiliary>>
+
+<<MCI base: test declarations>>
+
+<<MCI base: test types>>
+
+contains
+
+<<MCI base: tests>>
+
+end module mci_base_uti
+@ %def mci_base_ut
+@ API: driver for the unit tests below.
+<<MCI base: public test>>=
   public :: mci_base_test
-<<MCI base: tests>>=
+<<MCI base: test driver>>=
   subroutine mci_base_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
@@ -1100,7 +1145,7 @@ The [[max_factor]] entry is set for the actual test integration, where the
 integrand is not unity but some other constant value.  This value should be
 set here, such that the actual maximum of the integrand is known when
 vetoing unweighted events.
-<<MCI base: public>>=
+<<MCI base: public test auxiliary>>=
   public :: mci_test_t
 <<MCI base: test types>>=
   type, extends (mci_t) :: mci_test_t
@@ -1414,7 +1459,7 @@ probability $g$.
 
 We also store the result (product of integrand and MCI weight), the
 expected maximum for the result in each channel.
-<<MCI base: public>>=
+<<XXX MCI base: public>>=
   public :: mci_test_instance_t
 <<MCI base: test types>>=
   type, extends (mci_instance_t) :: mci_test_instance_t
@@ -1750,6 +1795,8 @@ Construct and display a test integrator configuration object.
   call test (mci_base_1, "mci_base_1", &
        "integrator configuration", &
        u, results)
+<<MCI base: test declarations>>=
+  public :: mci_base_1
 <<MCI base: tests>>=
   subroutine mci_base_1 (u)
     integer, intent(in) :: u
@@ -1846,6 +1893,8 @@ Use the MCI approach to compute a trivial one-dimensional integral.
   call test (mci_base_2, "mci_base_2", &
        "integration", &
        u, results)
+<<MCI base: test declarations>>=
+  public :: mci_base_2
 <<MCI base: tests>>=
   subroutine mci_base_2 (u)
     integer, intent(in) :: u
@@ -1909,6 +1958,8 @@ two channels.
   call test (mci_base_3, "mci_base_3", &
        "integration (two channels)", &
        u, results)
+<<MCI base: test declarations>>=
+  public :: mci_base_3
 <<MCI base: tests>>=
   subroutine mci_base_3 (u)
     integer, intent(in) :: u
@@ -1981,6 +2032,8 @@ generate events immediately.
   call test (mci_base_4, "mci_base_4", &
        "event generation (two channels)", &
        u, results)
+<<MCI base: test declarations>>=
+  public :: mci_base_4
 <<MCI base: tests>>=
   subroutine mci_base_4 (u)
     integer, intent(in) :: u
@@ -2058,6 +2111,8 @@ those data to recover the event, as far as the MCI record is concerned.
   call test (mci_base_5, "mci_base_5", &
        "store and recall", &
        u, results)
+<<MCI base: test declarations>>=
+  public :: mci_base_5
 <<MCI base: tests>>=
   subroutine mci_base_5 (u)
     integer, intent(in) :: u
@@ -2144,6 +2199,8 @@ their weights equal.
   call test (mci_base_6, "mci_base_6", &
        "chained channels", &
        u, results)
+<<MCI base: test declarations>>=
+  public :: mci_base_6
 <<MCI base: tests>>=
   subroutine mci_base_6 (u)
     integer, intent(in) :: u
@@ -2182,6 +2239,8 @@ Compute a simple two-dimensional integral and record the result.
   call test (mci_base_7, "mci_base_7", &
        "recording results", &
        u, results)
+<<MCI base: test declarations>>=
+  public :: mci_base_7
 <<MCI base: tests>>=
   subroutine mci_base_7 (u)
     integer, intent(in) :: u
@@ -2250,6 +2309,8 @@ Simple checks for the embedded timer.
   call test (mci_base_8, "mci_base_8", &
        "timer", &
        u, results)
+<<MCI base: test declarations>>=
+  public :: mci_base_8
 <<MCI base: tests>>=
   subroutine mci_base_8 (u)
     integer, intent(in) :: u
@@ -2322,7 +2383,6 @@ module iterations
 
 <<Use strings>>
   use io_units
-  use unit_tests
   use diagnostics
 
 <<Standard module head>>
@@ -2334,8 +2394,6 @@ module iterations
 contains
 
 <<Iterations: procedures>>
-
-<<Iterations: tests>>
 
 end module iterations
 @ %def iterations
@@ -2552,11 +2610,50 @@ flags for a specific pass.
 
 @ %def iterations_list_get_n_it
 @
-\subsection{Test}
-This is the master for calling self-test procedures.
-<<Iterations: public>>=
+@
+\subsection{Unit tests}
+Test module, followed by the corresponding implementation module.
+<<[[iterations_ut.f90]]>>=
+<<File header>>
+
+module iterations_ut
+  use unit_tests
+  use iterations_uti
+  
+<<Standard module head>>
+
+<<Iterations: public test>>
+
+contains
+  
+<<Iterations: test driver>>
+
+end module iterations_ut
+@ %def iterations_ut
+@
+<<[[iterations_uti.f90]]>>=
+<<File header>>
+
+module iterations_uti
+
+<<Use strings>>
+
+  use iterations
+
+<<Standard module head>>
+
+<<Iterations: test declarations>>
+
+contains
+
+<<Iterations: tests>>
+
+end module iterations_uti
+@ %def iterations_ut
+@ API: driver for the unit tests below.
+<<Iterations: public test>>=
   public :: iterations_test
-<<Iterations: tests>>=
+<<Iterations: test driver>>=
   subroutine iterations_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
@@ -2570,6 +2667,8 @@ end subroutine iterations_test
   call test (iterations_1, "iterations_1", &
        "empty iterations list", &
        u, results)
+<<Iterations: test declarations>>=
+  public :: iterations_1
 <<Iterations: tests>>=
   subroutine iterations_1 (u)
     integer, intent(in) :: u
@@ -2593,6 +2692,8 @@ end subroutine iterations_test
   call test (iterations_2, "iterations_2", &
        "create iterations list", &
        u, results)
+<<Iterations: test declarations>>=
+  public :: iterations_2
 <<Iterations: tests>>=
   subroutine iterations_2 (u)
     integer, intent(in) :: u
@@ -4112,14 +4213,11 @@ limit the dimension.
 
 module mci_midpoint
 
-  use kinds
-<<Use strings>>
+<<Use kinds>>
   use io_units
-  use unit_tests
   use diagnostics
-
   use phs_base
-  use rng_base
+
   use mci_base
   
 <<Standard module head>>
@@ -4128,13 +4226,9 @@ module mci_midpoint
 
 <<MCI midpoint: types>>
 
-<<MCI midpoint: test types>>
-
 contains
   
 <<MCI midpoint: procedures>>
-
-<<MCI midpoint: tests>>
 
 end module mci_midpoint
 @ %def mci_midpoint
@@ -4537,7 +4631,7 @@ is filled when generating events.
 @ The finalizer is empty.
 <<MCI midpoint: mci midpoint instance: TBP>>=
   procedure :: final => mci_midpoint_instance_final
-<<MCI midpoint: tests>>=
+<<MCI midpoint: procedures>>=
   subroutine mci_midpoint_instance_final (object)
     class(mci_midpoint_instance_t), intent(inout) :: object
   end subroutine mci_midpoint_instance_final
@@ -4686,9 +4780,55 @@ efficiency value.
 @ %def mci_midpoint_instance_get_event_excess
 @
 \subsection{Unit tests}
-<<MCI midpoint: public>>=
+Test module, followed by the corresponding implementation module.
+<<[[mci_midpoint_ut.f90]]>>=
+<<File header>>
+
+module mci_midpoint_ut
+  use unit_tests
+  use mci_midpoint_uti
+  
+<<Standard module head>>
+
+<<MCI midpoint: public test>>
+
+contains
+  
+<<MCI midpoint: test driver>>
+
+end module mci_midpoint_ut
+@ %def mci_midpoint_ut
+@
+<<[[mci_midpoint_uti.f90]]>>=
+<<File header>>
+
+module mci_midpoint_uti
+
+<<Use kinds>>
+  use io_units
+  use rng_base
+  use mci_base
+  
+  use mci_midpoint
+
+  use rng_base_ut, only: rng_test_t
+
+<<Standard module head>>
+
+<<MCI midpoint: test declarations>>
+
+<<MCI midpoint: test types>>
+
+contains
+
+<<MCI midpoint: tests>>
+
+end module mci_midpoint_uti
+@ %def mci_midpoint_ut
+@ API: driver for the unit tests below.
+<<MCI midpoint: public test>>=
   public :: mci_midpoint_test
-<<MCI midpoint: tests>>=
+<<MCI midpoint: test driver>>=
   subroutine mci_midpoint_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
@@ -4720,7 +4860,7 @@ and result inside the sampler, so we can [[fetch]] results.
 @ Output: There is nothing stored inside, so just print an informative line.
 <<MCI midpoint: test sampler 1: TBP>>=
   procedure :: write => test_sampler_1_write
-<<MCI midpoint: procedures>>=
+<<MCI midpoint: tests>>=
   subroutine test_sampler_1_write (object, unit, testflag)
     class(test_sampler_1_t), intent(in) :: object
     integer, intent(in), optional :: unit
@@ -4735,7 +4875,7 @@ and result inside the sampler, so we can [[fetch]] results.
 (only one channel) is identical to the input $x$, and the Jacobian is 1.
 <<MCI midpoint: test sampler 1: TBP>>=
   procedure :: evaluate => test_sampler_1_evaluate
-<<MCI midpoint: procedures>>=
+<<MCI midpoint: tests>>=
   subroutine test_sampler_1_evaluate (sampler, c, x_in, val, x, f)
     class(test_sampler_1_t), intent(inout) :: sampler
     integer, intent(in) :: c
@@ -4765,7 +4905,7 @@ and result inside the sampler, so we can [[fetch]] results.
 @ Rebuild: compute all but the function value.
 <<MCI midpoint: test sampler 1: TBP>>=
   procedure :: rebuild => test_sampler_1_rebuild
-<<MCI midpoint: procedures>>=
+<<MCI midpoint: tests>>=
   subroutine test_sampler_1_rebuild (sampler, c, x_in, val, x, f)
     class(test_sampler_1_t), intent(inout) :: sampler
     integer, intent(in) :: c
@@ -4785,7 +4925,7 @@ and result inside the sampler, so we can [[fetch]] results.
 @ Extract the results.
 <<MCI midpoint: test sampler 1: TBP>>=
   procedure :: fetch => test_sampler_1_fetch
-<<MCI midpoint: procedures>>=
+<<MCI midpoint: tests>>=
   subroutine test_sampler_1_fetch (sampler, val, x, f)
     class(test_sampler_1_t), intent(in) :: sampler
     real(default), intent(out) :: val
@@ -4812,7 +4952,7 @@ f(x,y)\,dx\,dy=2$ and maximum $f(1)=5$.
 @ Output: There is nothing stored inside, so just print an informative line.
 <<MCI midpoint: test sampler 2: TBP>>=
   procedure :: write => test_sampler_2_write
-<<MCI midpoint: procedures>>=
+<<MCI midpoint: tests>>=
   subroutine test_sampler_2_write (object, unit, testflag)
     class(test_sampler_2_t), intent(in) :: object
     integer, intent(in), optional :: unit
@@ -4827,7 +4967,7 @@ f(x,y)\,dx\,dy=2$ and maximum $f(1)=5$.
 (only one channel) is identical to the input $x$, and the Jacobian is 1.
 <<MCI midpoint: test sampler 2: TBP>>=
   procedure :: evaluate => test_sampler_2_evaluate
-<<MCI midpoint: procedures>>=
+<<MCI midpoint: tests>>=
   subroutine test_sampler_2_evaluate (sampler, c, x_in, val, x, f)
     class(test_sampler_2_t), intent(inout) :: sampler
     integer, intent(in) :: c
@@ -4855,7 +4995,7 @@ f(x,y)\,dx\,dy=2$ and maximum $f(1)=5$.
 @ Rebuild: compute all but the function value.
 <<MCI midpoint: test sampler 2: TBP>>=
   procedure :: rebuild => test_sampler_2_rebuild
-<<MCI midpoint: procedures>>=
+<<MCI midpoint: tests>>=
   subroutine test_sampler_2_rebuild (sampler, c, x_in, val, x, f)
     class(test_sampler_2_t), intent(inout) :: sampler
     integer, intent(in) :: c
@@ -4872,7 +5012,7 @@ f(x,y)\,dx\,dy=2$ and maximum $f(1)=5$.
 @ %def test_sampler_2_rebuild
 <<MCI midpoint: test sampler 2: TBP>>=
   procedure :: fetch => test_sampler_2_fetch
-<<MCI midpoint: procedures>>=
+<<MCI midpoint: tests>>=
   subroutine test_sampler_2_fetch (sampler, val, x, f)
     class(test_sampler_2_t), intent(in) :: sampler
     real(default), intent(out) :: val
@@ -4901,7 +5041,7 @@ extended as a constant in the other dimension(s).
 @ Output: There is nothing stored inside, so just print an informative line.
 <<MCI midpoint: test sampler 4: TBP>>=
   procedure :: write => test_sampler_4_write
-<<MCI midpoint: procedures>>=
+<<MCI midpoint: tests>>=
   subroutine test_sampler_4_write (object, unit, testflag)
     class(test_sampler_4_t), intent(in) :: object
     integer, intent(in), optional :: unit
@@ -4916,7 +5056,7 @@ extended as a constant in the other dimension(s).
 (only one channel) is identical to the input $x$, and the Jacobian is 1.
 <<MCI midpoint: test sampler 4: TBP>>=
   procedure :: evaluate => test_sampler_4_evaluate
-<<MCI midpoint: procedures>>=
+<<MCI midpoint: tests>>=
   subroutine test_sampler_4_evaluate (sampler, c, x_in, val, x, f)
     class(test_sampler_4_t), intent(inout) :: sampler
     integer, intent(in) :: c
@@ -4949,7 +5089,7 @@ extended as a constant in the other dimension(s).
 @ Rebuild: compute all but the function value.
 <<MCI midpoint: test sampler 4: TBP>>=
   procedure :: rebuild => test_sampler_4_rebuild
-<<MCI midpoint: procedures>>=
+<<MCI midpoint: tests>>=
   subroutine test_sampler_4_rebuild (sampler, c, x_in, val, x, f)
     class(test_sampler_4_t), intent(inout) :: sampler
     integer, intent(in) :: c
@@ -4966,7 +5106,7 @@ extended as a constant in the other dimension(s).
 @ %def test_sampler_4_rebuild
 <<MCI midpoint: test sampler 4: TBP>>=
   procedure :: fetch => test_sampler_4_fetch
-<<MCI midpoint: procedures>>=
+<<MCI midpoint: tests>>=
   subroutine test_sampler_4_fetch (sampler, val, x, f)
     class(test_sampler_4_t), intent(in) :: sampler
     real(default), intent(out) :: val
@@ -4985,6 +5125,8 @@ Construct an integrator and use it for a one-dimensional sampler.
   call test (mci_midpoint_1, "mci_midpoint_1", &
        "one-dimensional integral", &
        u, results)
+<<MCI midpoint: test declarations>>=
+  public :: mci_midpoint_1
 <<MCI midpoint: tests>>=
   subroutine mci_midpoint_1 (u)
     integer, intent(in) :: u
@@ -5061,6 +5203,8 @@ Construct an integrator and use it for a two-dimensional sampler.
   call test (mci_midpoint_2, "mci_midpoint_2", &
        "two-dimensional integral", &
        u, results)
+<<MCI midpoint: test declarations>>=
+  public :: mci_midpoint_2
 <<MCI midpoint: tests>>=
   subroutine mci_midpoint_2 (u)
     integer, intent(in) :: u
@@ -5124,6 +5268,8 @@ where the function is constant in the second dimension.
   call test (mci_midpoint_3, "mci_midpoint_3", &
        "two-dimensional integral with flat dimension", &
        u, results)
+<<MCI midpoint: test declarations>>=
+  public :: mci_midpoint_3
 <<MCI midpoint: tests>>=
   subroutine mci_midpoint_3 (u)
     integer, intent(in) :: u
@@ -5190,6 +5336,8 @@ Construct an integrator and use it for a one-dimensional sampler.
   call test (mci_midpoint_4, "mci_midpoint_4", &
        "integrand with sign flip", &
        u, results)
+<<MCI midpoint: test declarations>>=
+  public :: mci_midpoint_4
 <<MCI midpoint: tests>>=
   subroutine mci_midpoint_4 (u)
     integer, intent(in) :: u
@@ -5255,6 +5403,8 @@ dimensions.
   call test (mci_midpoint_5, "mci_midpoint_5", &
        "weighted events", &
        u, results)
+<<MCI midpoint: test declarations>>=
+  public :: mci_midpoint_5
 <<MCI midpoint: tests>>=
   subroutine mci_midpoint_5 (u)
     integer, intent(in) :: u
@@ -5349,6 +5499,8 @@ Generate unweighted events.  The integrand has a sign flip in it.
   call test (mci_midpoint_6, "mci_midpoint_6", &
        "unweighted events", &
        u, results)
+<<MCI midpoint: test declarations>>=
+  public :: mci_midpoint_6
 <<MCI midpoint: tests>>=
   subroutine mci_midpoint_6 (u)
     integer, intent(in) :: u
@@ -5418,6 +5570,8 @@ maximum of the integrand is too low, and we produce excess weight.
   call test (mci_midpoint_7, "mci_midpoint_7", &
        "excess weight", &
        u, results)
+<<MCI midpoint: test declarations>>=
+  public :: mci_midpoint_7
 <<MCI midpoint: tests>>=
   subroutine mci_midpoint_7 (u)
     integer, intent(in) :: u
@@ -5539,23 +5693,20 @@ averaged for the final result.
 
 module mci_vamp
 
-  use kinds
+<<Use kinds>>
 <<Use strings>>
   use io_units
-  use constants
   use format_utils, only: pac_fmt
   use format_defs, only: FMT_12, FMT_14, FMT_17, FMT_19
-  use unit_tests
   use diagnostics
   use md5
-
   use phs_base
   use rng_base
   use rng_tao
-  use mci_base
-  
   use vamp !NODEP!
   use exceptions !NODEP!
+  
+  use mci_base
   
 <<Standard module head>>
 
@@ -5565,13 +5716,9 @@ module mci_vamp
 
 <<MCI vamp: interfaces>>
 
-<<MCI vamp: test types>>
-
 contains
   
 <<MCI vamp: procedures>>
-
-<<MCI vamp: tests>>
 
 end module mci_vamp
 @ %def mci_vamp
@@ -7253,7 +7400,7 @@ history, which is then just transient.
 @ Finalizer: the history arrays are pointer arrays and need finalization.
 <<MCI vamp: mci vamp instance: TBP>>=
   procedure :: final => mci_vamp_instance_final
-<<MCI vamp: tests>>=
+<<MCI vamp: procedures>>=
   subroutine mci_vamp_instance_final (object)
     class(mci_vamp_instance_t), intent(inout) :: object
     if (object%allocate_global_history) then
@@ -7488,6 +7635,7 @@ channel weights are reduced accordingly.
     if (instance%enable_adapt_weights .and. instance%allow_adapt_weights) then
        associate (mci => instance%mci)
          if (instance%grids_defined) then
+            allocate (weights (size (instance%grids%weights)))
             weights = instance%grids%weights &
                  * vamp_get_variance (instance%grids%grids) &
                  ** mci%grid_par%channel_weights_power
@@ -7868,9 +8016,58 @@ handled by the correct termination routine.
 @ %def handle_vamp_exception
 @
 \subsection{Unit tests}
-<<MCI vamp: public>>=
+Test module, followed by the corresponding implementation module.
+<<[[mci_vamp_ut.f90]]>>=
+<<File header>>
+
+module mci_vamp_ut
+  use unit_tests
+  use mci_vamp_uti
+  
+<<Standard module head>>
+
+<<MCI vamp: public test>>
+
+contains
+  
+<<MCI vamp: test driver>>
+
+end module mci_vamp_ut
+@ %def mci_vamp_ut
+@
+<<[[mci_vamp_uti.f90]]>>=
+<<File header>>
+
+module mci_vamp_uti
+
+<<Use kinds>>
+<<Use strings>>
+  use io_units
+  use constants, only: PI, TWOPI
+  use rng_base
+  use rng_tao
+  use phs_base
+  use mci_base
+  use vamp, only: vamp_write_grids !NODEP!
+
+  use mci_vamp
+
+<<Standard module head>>
+
+<<MCI vamp: test declarations>>
+
+<<MCI vamp: test types>>
+
+contains
+
+<<MCI vamp: tests>>
+
+end module mci_vamp_uti
+@ %def mci_vamp_ut
+@ API: driver for the unit tests below.
+<<MCI vamp: public test>>=
   public :: mci_vamp_test
-<<MCI vamp: tests>>=
+<<MCI vamp: test driver>>=
   subroutine mci_vamp_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
@@ -8070,7 +8267,7 @@ The Jacobian is
     sampler%x(:,2) = [uu, vv]
   end subroutine test_sampler_2_compute
 
-@ %def test_sampler_kineamtics
+@ %def test_sampler_kinematics
 @ Evaluation: compute the function value.  The output $x$ parameter
 (only one channel) is identical to the input $x$, and the Jacobian is 1.
 <<MCI vamp: test sampler 2: TBP>>=
@@ -8282,6 +8479,8 @@ results.
   call test (mci_vamp_1, "mci_vamp_1", &
        "one-dimensional integral", &
        u, results)
+<<MCI vamp: test declarations>>=
+  public :: mci_vamp_1
 <<MCI vamp: tests>>=
   subroutine mci_vamp_1 (u)
     integer, intent(in) :: u
@@ -8365,6 +8564,8 @@ Integrate with five iterations without grid adaptation.
   call test (mci_vamp_2, "mci_vamp_2", &
        "multiple iterations", &
        u, results)
+<<MCI vamp: test declarations>>=
+  public :: mci_vamp_2
 <<MCI vamp: tests>>=
   subroutine mci_vamp_2 (u)
     integer, intent(in) :: u
@@ -8441,6 +8642,8 @@ Integrate with three iterations and in-between grid adaptations.
   call test (mci_vamp_3, "mci_vamp_3", &
        "grid adaptation", &
        u, results)
+<<MCI vamp: test declarations>>=
+  public :: mci_vamp_3
 <<MCI vamp: tests>>=
   subroutine mci_vamp_3 (u)
     integer, intent(in) :: u
@@ -8518,6 +8721,8 @@ Integrate with three iterations and in-between grid adaptations.
   call test (mci_vamp_4, "mci_vamp_4", &
        "two-dimensional integration", &
        u, results)
+<<MCI vamp: test declarations>>=
+  public :: mci_vamp_4
 <<MCI vamp: tests>>=
   subroutine mci_vamp_4 (u)
     integer, intent(in) :: u
@@ -8597,6 +8802,8 @@ Integrate with three iterations and in-between grid adaptations.
   call test (mci_vamp_5, "mci_vamp_5", &
        "two-dimensional integration", &
        u, results)
+<<MCI vamp: test declarations>>=
+  public :: mci_vamp_5
 <<MCI vamp: tests>>=
   subroutine mci_vamp_5 (u)
     integer, intent(in) :: u
@@ -8673,6 +8880,8 @@ Integrate with three iterations and in-between weight adaptations.
   call test (mci_vamp_6, "mci_vamp_6", &
        "weight adaptation", &
        u, results)
+<<MCI vamp: test declarations>>=
+  public :: mci_vamp_6
 <<MCI vamp: tests>>=
   subroutine mci_vamp_6 (u)
     integer, intent(in) :: u
@@ -8802,6 +9011,8 @@ without equivalences.
   call test (mci_vamp_7, "mci_vamp_7", &
        "use channel equivalences", &
        u, results)
+<<MCI vamp: test declarations>>=
+  public :: mci_vamp_7
 <<MCI vamp: tests>>=
   subroutine mci_vamp_7 (u)
     integer, intent(in) :: u
@@ -8998,6 +9209,8 @@ adaptation.
   call test (mci_vamp_8, "mci_vamp_8", &
        "integration passes", &
        u, results)
+<<MCI vamp: test declarations>>=
+  public :: mci_vamp_8
 <<MCI vamp: tests>>=
   subroutine mci_vamp_8 (u)
     integer, intent(in) :: u
@@ -9111,6 +9324,8 @@ channels.  Integrate and generate a weighted event.
   call test (mci_vamp_9, "mci_vamp_9", &
        "weighted event", &
        u, results)
+<<MCI vamp: test declarations>>=
+  public :: mci_vamp_9
 <<MCI vamp: tests>>=
   subroutine mci_vamp_9 (u)
     integer, intent(in) :: u
@@ -9187,6 +9402,8 @@ them in again and compare.
   call test (mci_vamp_10, "mci_vamp_10", &
        "grids I/O", &
        u, results)
+<<MCI vamp: test declarations>>=
+  public :: mci_vamp_10
 <<MCI vamp: tests>>=
   subroutine mci_vamp_10 (u)
     integer, intent(in) :: u
@@ -9336,6 +9553,8 @@ the grids from file.
  call test (mci_vamp_11, "mci_vamp_11", &
       "weighted events with grid I/O", &
       u, results)
+<<MCI vamp: test declarations>>=
+  public :: mci_vamp_11
 <<MCI vamp: tests>>=
   subroutine mci_vamp_11 (u)
     integer, intent(in) :: u
@@ -9413,6 +9632,8 @@ the grids from file.
  call test (mci_vamp_12, "mci_vamp_12", &
       "unweighted events with grid I/O", &
       u, results)
+<<MCI vamp: test declarations>>=
+  public :: mci_vamp_12
 <<MCI vamp: tests>>=
   subroutine mci_vamp_12 (u)
     integer, intent(in) :: u
@@ -9493,6 +9714,8 @@ successful.
   call test (mci_vamp_13, "mci_vamp_13", &
        "updating integration results", &
        u, results)
+<<MCI vamp: test declarations>>=
+  public :: mci_vamp_13
 <<MCI vamp: tests>>=
   subroutine mci_vamp_13 (u)
     integer, intent(in) :: u
@@ -9696,6 +9919,8 @@ been reached.
   call test (mci_vamp_14, "mci_vamp_14", &
        "accuracy goal", &
        u, results)
+<<MCI vamp: test declarations>>=
+  public :: mci_vamp_14
 <<MCI vamp: tests>>=
   subroutine mci_vamp_14 (u)
     integer, intent(in) :: u
@@ -9768,6 +9993,8 @@ adaptation.  Then show the VAMP history.
   call test (mci_vamp_15, "mci_vamp_15", &
        "VAMP history", &
        u, results)
+<<MCI vamp: test declarations>>=
+  public :: mci_vamp_15
 <<MCI vamp: tests>>=
   subroutine mci_vamp_15 (u)
     integer, intent(in) :: u

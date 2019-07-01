@@ -1,4 +1,4 @@
-! WHIZARD 2.2.6 May 02 2015
+! WHIZARD 2.2.7 Aug 11 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -151,8 +151,7 @@ module blha_config
   end type blha_flv_state_t
 
   type :: blha_master_t
-    integer, dimension(3) :: blha_mode
-!    integer, dimension(:,:), allocatable :: flv_born, flv_real
+    integer, dimension(4) :: blha_mode
     integer :: n_in, n_out
     logical :: compute_loops = .true.
     logical :: compute_correlations = .false.
@@ -182,14 +181,15 @@ contains
 
   subroutine blha_master_init (master, basename, model, &
                                n_in, n_out, &
-                               cmp_loops, cmp_corr, cmp_real, &
+                               cmp_borns, cmp_loops, &
+                               cmp_corr, cmp_real, &
                                alpha_power, alphas_power, &
                                flv_born, flv_real)
     class(blha_master_t), intent(inout) :: master
     type(string_t), intent(in) :: basename
     class(model_data_t), intent(in), target :: model
     integer, intent(in) :: n_in, n_out
-    logical, intent(in) :: cmp_loops, cmp_corr, cmp_real
+    logical, intent(in) :: cmp_borns, cmp_loops, cmp_corr, cmp_real
     integer, intent(in) :: alpha_power, alphas_power
     integer, dimension(:,:), allocatable, intent(in) :: &
                              flv_born, flv_real
@@ -198,9 +198,12 @@ contains
     integer :: i, i_flv
     integer :: i_file
     integer, dimension(:), allocatable :: amp_type
+    integer :: n_flv_born 
 
     n_proc = 0; n_flv = 1; n_proc_real = 0
+    n_flv_born = size (flv_born, 2)
     master%compute_real_trees = cmp_real
+    if (cmp_borns) master%n_files = master%n_files+1
     if (cmp_loops) master%n_files = master%n_files+1
     if (cmp_corr) master%n_files = master%n_files+1
     if (cmp_real) then
@@ -212,7 +215,7 @@ contains
     end if
     allocate (master%blha_cfg (master%n_files))
     allocate (master%suffix (master%n_files))
-    i_file = 1
+    i_file = 1          
     if (cmp_loops) then
        if (allocated (flv_born)) then
           allocate (blha_flavor (size (flv_born, 2)))
@@ -226,7 +229,7 @@ contains
                                   basename, model, master%blha_mode(1))
           i_file = i_file+1
         else
-          call msg_fatal ("GoSam Loops requested but " &
+          call msg_fatal ("BLHA Loops requested but " &
                            // "Born flavor not existing")
         end if
     end if
@@ -244,7 +247,7 @@ contains
                                   basename, model, master%blha_mode(2))
           i_file = i_file+1
        else
-          call msg_fatal ("GoSam Correlations requested but "&
+          call msg_fatal ("BLHA Correlations requested but "&
                            // "Born flavor not existing")
        end if
     end if
@@ -260,9 +263,24 @@ contains
           call blha_init_real (master%blha_cfg(i_file), blha_flavor, &
                                   alpha_power, alphas_power, &
                                   basename, model, master%blha_mode(3))
+          i_file = i_file+1
        else
-          call msg_fatal ("GoSam Trees requested but "&
+          call msg_fatal ("BLHA Trees requested but "&
                            // "Real flavor not existing")
+       end if
+    end if
+    if (allocated (blha_flavor)) deallocate (blha_flavor)
+    if (cmp_borns) then
+       if (allocated (flv_born)) then
+          allocate (blha_flavor (n_flv_born))
+          do i_flv = 1, n_flv_born
+             blha_flavor(i_flv)%flavors = flv_born(:,i_flv)
+             blha_flavor(i_flv)%flv_mult = 1
+          end do
+          master%suffix(i_file) = "_BORN"
+          call blha_init_born (master%blha_cfg(i_file), blha_flavor, &
+                               alpha_power, alphas_power, &
+                               basename, model, master%blha_mode(4))
        end if
     end if
   end subroutine blha_master_init
@@ -278,6 +296,39 @@ contains
     integer, intent(in) :: i
     master%blha_mode(i) = BLHA_MODE_OPENLOOPS
   end subroutine blha_master_set_openloops
+
+  subroutine blha_init_born (blha_cfg, blha_flavor, ap, asp, basename, model, blha_mode)
+    type(blha_configuration_t), intent(inout) :: blha_cfg
+    type(blha_flv_state_t), intent(in), dimension(:) :: blha_flavor
+    integer, intent(in) :: ap, asp
+    type(string_t), intent(in) :: basename
+    type(model_data_t), intent(in), target :: model
+    integer, intent(in) :: blha_mode
+    integer, dimension(:), allocatable :: amp_type
+    integer :: i, ew_scheme
+
+    allocate (amp_type (size (blha_flavor)))
+    do i = 1, size (blha_flavor)
+       amp_type(2*i-1) = BLHA_AMP_TREE
+    end do
+    call blha_configuration_init (blha_cfg, basename // "_BORN" , &
+                                  model, blha_mode)
+    call blha_configuration_append_processes (blha_cfg, &
+                                  blha_flavor, amp_type)
+    select case (blha_cfg%mode)
+    case (BLHA_MODE_GOSAM)
+       ew_scheme = BLHA_EW_GF
+    case (BLHA_MODE_OPENLOOPS)
+       ew_scheme = BLHA_EW_0
+    end select 
+    call blha_configuration_set (blha_cfg, BLHA_VERSION_2, &
+                                 correction_type = BLHA_CT_QCD, &
+                                 irreg = BLHA_IRREG_CDR, &
+                                 alphas_power = asp, &
+                                 alpha_power = ap, &
+                                 ew_scheme = ew_scheme, &
+                                 debug = blha_mode == BLHA_MODE_GOSAM)
+  end subroutine blha_init_born
 
   subroutine blha_init_virtual (blha_cfg, blha_flavor, ap, asp, basename, model, blha_mode)
     type(blha_configuration_t), intent(inout) :: blha_cfg
@@ -304,7 +355,7 @@ contains
     case (BLHA_MODE_OPENLOOPS)
        ew_scheme = BLHA_EW_0
     end select 
-    call blha_configuration_set (blha_cfg, 2, &
+    call blha_configuration_set (blha_cfg, BLHA_VERSION_2, &
                                  correction_type = BLHA_CT_QCD, &
                                  irreg = BLHA_IRREG_CDR, &
                                  alphas_power = asp, &
@@ -339,7 +390,7 @@ contains
     case (BLHA_MODE_OPENLOOPS)
        ew_scheme = BLHA_EW_0
     end select 
-    call blha_configuration_set (blha_cfg, 2, &
+    call blha_configuration_set (blha_cfg, BLHA_VERSION_2, &
                                  correction_type = BLHA_CT_QCD, &
                                  irreg = BLHA_IRREG_CDR, &
                                  alphas_power = asp, &
@@ -373,7 +424,7 @@ contains
     case (BLHA_MODE_OPENLOOPS)
        ew_scheme = BLHA_EW_0
     end select 
-    call blha_configuration_set (blha_cfg, 2, &
+    call blha_configuration_set (blha_cfg, BLHA_VERSION_2, &
                                  correction_type = BLHA_CT_QCD, &
                                  irreg = BLHA_IRREG_CDR, &
                                  alphas_power = asp+1, &
@@ -827,12 +878,14 @@ contains
     character(len=25), parameter :: pad = ""
     integer, dimension(:), allocatable :: i_massive
     logical :: massive_particles
+    logical :: write_process 
+
     u = given_output_unit (unit)
     full = .true.; if (present (internal)) full = .not. internal
     if (full .and. cfg%dirty) call msg_bug ( &
        "BUG: attempted to write out a dirty BLHA configuration")
     if (full) then
-       write (u,'(A)') "# BLHA order written by WHIZARD 2.2.6"
+       write (u,'(A)') "# BLHA order written by WHIZARD 2.2.7"
        write (u,'(A)')
     end if
     select case (cfg%mode)
@@ -931,16 +984,12 @@ contains
     endselect
     select case (cfg%mode)
     case (BLHA_MODE_GOSAM)
-       call blha_configuration_get_massive_particles &
-           (cfg, massive_particles, i_massive)
-       if (massive_particles) then
-          write (u, '(A25)', advance='no') "MassiveParticles " // pad
-          do i = 1, size (OLP_MASSIVE_PARTICLES)
-              if (OLP_MASSIVE_PARTICLES(i) > 0) &
-                 write (u, '(I2,1X)', advance='no') OLP_MASSIVE_PARTICLES(i)
-          end do
-          write (u,*) 
-       end if
+       write (u, '(A25)', advance='no') "MassiveParticles " // pad
+       do i = 1, size (OLP_MASSIVE_PARTICLES)
+          if (OLP_MASSIVE_PARTICLES(i) > 0) &
+             write (u, '(I2,1X)', advance='no') OLP_MASSIVE_PARTICLES(i)
+       end do
+       write (u,*) 
     case (BLHA_MODE_OPENLOOPS)
        write (u, '(A25,I1)') "extra use_cms " // pad, 0
     end select
@@ -964,27 +1013,32 @@ contains
     write (u, *)
     node => cfg%processes
     do while (associated (node))
+       write_process = .true.
        select case (node%amplitude_type)
          case (BLHA_AMP_LOOP); buf = "Loop"
          case (BLHA_AMP_CC); buf = "ccTree"
-         case (BLHA_AMP_SC); buf = "scTree"
+         case (BLHA_AMP_SC) 
+            buf = "scTree"
+            if (cfg%mode == BLHA_MODE_OPENLOOPS) write_process = .false. 
          case (BLHA_AMP_TREE); buf = "Tree"
          case (BLHA_AMP_LOOPINDUCED); buf = "LoopInduced"
        end select
-       write (u, '(A25, A)') "AmplitudeType " // pad, char (buf)
-
-       buf = ""
-       do i = 1, size (node%pdg_in)
-          write (pdg_char,'(I3)') node%pdg_in(i)
-          buf = (buf // pdg_char) // " "
-       end do
-       buf = buf // "-> "
-       do i = 1, size (node%pdg_out)
-          write (pdg_char,'(I3)') node%pdg_out(i)
-          buf = (buf // pdg_char) // " "
-       end do
-       write (u,'(A)') char (trim (buf))
-       write (u, *)
+       if (write_process) then
+          write (u, '(A25, A)') "AmplitudeType " // pad, char (buf)
+   
+          buf = ""
+          do i = 1, size (node%pdg_in)
+             write (pdg_char,'(I3)') node%pdg_in(i)
+             buf = (buf // pdg_char) // " "
+          end do
+          buf = buf // "-> "
+          do i = 1, size (node%pdg_out)
+             write (pdg_char,'(I3)') node%pdg_out(i)
+             buf = (buf // pdg_char) // " "
+          end do
+          write (u,'(A)') char (trim (buf))
+          write (u, *)
+       end if
        node => node%next
     end do
 
@@ -1089,7 +1143,7 @@ contains
     logical, dimension(2) :: flags
     type(pdg_array_t), dimension(:), allocatable :: pdg_in, pdg_out
     ok = .true.
-    pn_root => parse_tree_get_root_ptr (parse_tree)
+    pn_root => parse_tree%get_root_ptr ()
     pn_line => parse_node_get_sub_ptr (pn_root)
     do while (associated (pn_line))
        pn_request => parse_node_get_sub_ptr (pn_line)

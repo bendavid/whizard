@@ -1,4 +1,4 @@
-! WHIZARD 2.2.6 May 02 2015
+! WHIZARD 2.2.7 Aug 11 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -33,7 +33,8 @@
 module string_utils
   
   use, intrinsic :: iso_c_binding
-  use kinds, only: default  
+
+  use kinds, only: default
   use iso_varying_string, string_t => varying_string
 
   implicit none
@@ -56,7 +57,7 @@ module string_utils
      module procedure string_f2c_char, string_f2c_var_str
   end interface string_f2c
   interface str
-     module procedure str_int, str_real
+     module procedure str_log, str_int, str_real
   end interface
 
 contains
@@ -117,6 +118,16 @@ contains
     o = char (i) // c_null_char
   end function string_f2c_var_str
 
+  function str_log (l) result (s)
+    logical, intent(in) :: l
+    type(string_t) :: s
+    if (l) then
+       s = "True"
+    else
+       s = "False"
+    end if
+  end function str_log
+  
   function str_int (i) result (s)
     integer, intent(in) :: i
     type(string_t) :: s

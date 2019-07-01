@@ -32,6 +32,8 @@ These are the implementation modules, the concrete counterparts of
   Effective $W$ (and $Z$) approximation.
 \item[sf\_escan]
   Energy spectrum that emulates a uniform energy scan.
+\item[sf\_gaussian]
+  Gaussian beam spread
 \item[sf\_beam\_events]
   Beam-event generator that reads its input from an external file.
 \item[sf\_circe1]
@@ -65,7 +67,6 @@ module beam_structures
 <<Use strings>>
   use io_units
   use format_defs, only: FMT_19
-  use unit_tests
   use diagnostics
   use lorentz
   use polarizations
@@ -81,8 +82,6 @@ module beam_structures
 contains
   
 <<Beam structures: procedures>>
-
-<<Beam structures: tests>>
 
 end module beam_structures
 @ %def beam_structures
@@ -712,9 +711,51 @@ is meaningful only if momenta and, optionally, angles have been set.
 @ %def beam_structure_get_momenta
 @ 
 \subsection{Unit Tests}
-<<Beam structures: public>>=
+Test module, followed by the corresponding implementation module.
+<<[[beam_structures_ut.f90]]>>=
+<<File header>>
+
+module beam_structures_ut
+  use unit_tests
+  use beam_structures_uti
+  
+<<Standard module head>>
+
+<<Beam structures: public test>>
+
+contains
+  
+<<Beam structures: test driver>>
+
+end module beam_structures_ut
+@ %def beam_structures_ut
+@
+<<[[beam_structures_uti.f90]]>>=
+<<File header>>
+
+module beam_structures_uti
+
+<<Use kinds>>
+<<Use strings>>
+
+  use beam_structures
+
+<<Standard module head>>
+
+<<Beam structures: test declarations>>
+
+contains
+
+<<Beam structures: tests>>
+
+<<Beam structures: test auxiliary>>
+
+end module beam_structures_uti
+@ %def beam_structures_ut
+@ API: driver for the unit tests below.
+<<Beam structures: public test>>=
   public :: beam_structures_test
-<<Beam structures: tests>>=
+<<Beam structures: test driver>>=
   subroutine beam_structures_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
@@ -728,6 +769,8 @@ end subroutine beam_structures_test
   call test (beam_structures_1, "beam_structures_1", &
        "empty beam structure record", &
        u, results)
+<<Beam structures: test declarations>>=
+  public :: beam_structures_1
 <<Beam structures: tests>>=
   subroutine beam_structures_1 (u)
     integer, intent(in) :: u
@@ -751,6 +794,8 @@ end subroutine beam_structures_test
   call test (beam_structures_2, "beam_structures_2", &
        "beam structure records", &
        u, results)
+<<Beam structures: test declarations>>=
+  public :: beam_structures_2
 <<Beam structures: tests>>=
   subroutine beam_structures_2 (u)
     integer, intent(in) :: u
@@ -799,7 +844,7 @@ end subroutine beam_structures_test
 Provide a function that tells, for the dummy structure function names
 used here, whether they are considered a two-particle spectrum or a
 single-particle structure function:
-<<Beam structures: tests>>=
+<<Beam structures: test auxiliary>>=
   function test_strfun_mode (name) result (n)
     type(string_t), intent(in) :: name
     integer :: n
@@ -816,6 +861,8 @@ single-particle structure function:
   call test (beam_structures_3, "beam_structures_3", &
        "beam structure expansion", &
        u, results)
+<<Beam structures: test declarations>>=
+  public :: beam_structures_3
 <<Beam structures: tests>>=
   subroutine beam_structures_3 (u)
     integer, intent(in) :: u
@@ -895,6 +942,8 @@ contents.
   call test (beam_structures_4, "beam_structures_4", &
        "beam structure contents", &
        u, results)
+<<Beam structures: test declarations>>=
+  public :: beam_structures_4
 <<Beam structures: tests>>=
   subroutine beam_structures_4 (u)
     integer, intent(in) :: u
@@ -947,6 +996,8 @@ The polarization properties are independent from the structure-function setup.
   call test (beam_structures_5, "beam_structures_5", &
        "polarization", &
        u, results)
+<<Beam structures: test declarations>>=
+  public :: beam_structures_5
 <<Beam structures: tests>>=
   subroutine beam_structures_5 (u)
     integer, intent(in) :: u
@@ -994,6 +1045,8 @@ The momenta are independent from the structure-function setup.
   call test (beam_structures_6, "beam_structures_6", &
        "momenta", &
        u, results)
+<<Beam structures: test declarations>>=
+  public :: beam_structures_6
 <<Beam structures: tests>>=
   subroutine beam_structures_6 (u)
     integer, intent(in) :: u
@@ -1040,15 +1093,13 @@ module beams
 <<Use kinds>>
 <<Use strings>>
   use io_units
-  use constants
   use format_defs, only: FMT_19
-  use unit_tests
+  use unit_tests, only: nearly_equal
   use diagnostics
   use md5
   use lorentz
   use model_data
   use flavors
-  use colors
   use quantum_numbers
   use state_matrices
   use interactions
@@ -1066,8 +1117,6 @@ module beams
 contains
 
 <<Beams: procedures>>
-
-<<Beams: tests>>
 
 end module beams
 @ %def beams
@@ -1233,7 +1282,7 @@ parameters.
     real(default), intent(in), optional :: sqrts
     if (beam_data_are_valid (beam_data)) then
        if (present (sqrts)) then
-          if (sqrts /= beam_data%sqrts) then
+          if (.not. nearly_equal (sqrts, beam_data%sqrts)) then
              call msg_error ("Current setting of sqrts is inconsistent " &
                   // "with beam setup (ignored).")
           end if
@@ -1547,7 +1596,7 @@ been modified.  This can be checked here.
   function beam_data_masses_are_consistent (beam_data) result (flag)
     logical :: flag
     type(beam_data_t), intent(in) :: beam_data
-    flag = all (beam_data%mass == beam_data%flv%get_mass ())
+    flag = all (nearly_equal (beam_data%mass, beam_data%flv%get_mass ()))
   end function beam_data_masses_are_consistent
 
 @ %def beam_data_masses_are_consistent
@@ -1708,22 +1757,70 @@ Return the interaction component -- as a pointer, to avoid any copying.
   end subroutine beam_set_momenta
 
 @ %def beam_set_momenta
+@
 \subsection{Unit tests}
-<<Beams: public>>=
-  public :: beam_test
-<<Beams: procedures>>=
-  subroutine beam_test (u, results)
+Test module, followed by the corresponding implementation module.
+<<[[beams_ut.f90]]>>=
+<<File header>>
+
+module beams_ut
+  use unit_tests
+  use beams_uti
+  
+<<Standard module head>>
+
+<<Beams: public test>>
+
+contains
+  
+<<Beams: test driver>>
+
+end module beams_ut
+@ %def beams_ut
+@
+<<[[beams_uti.f90]]>>=
+<<File header>>
+
+module beams_uti
+
+<<Use kinds>>
+  use lorentz
+  use flavors
+  use interactions, only: reset_interaction_counter
+  use polarizations, only: smatrix_t
+  use model_data
+  use beam_structures
+
+  use beams
+
+<<Standard module head>>
+
+<<Beams: test declarations>>
+
+contains
+
+<<Beams: tests>>
+
+end module beams_uti
+@ %def beams_ut
+@ API: driver for the unit tests below.
+<<Beams: public test>>=
+  public :: beams_test
+<<Beams: test driver>>=
+  subroutine beams_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
   <<Beams: execute tests>>
-  end subroutine beam_test
+  end subroutine beams_test
 
-@  %def beam_test
+@  %def beams_test
 @ Test the basic beam setup.
 <<Beams: execute tests>>=
   call test (beam_1, "beam_1", &
        "check basic beam setup", &
        u, results)
+<<Beams: test declarations>>=
+  public :: beam_1
 <<Beams: tests>>=
   subroutine beam_1 (u)
     integer, intent(in) :: u
@@ -1810,6 +1907,8 @@ Return the interaction component -- as a pointer, to avoid any copying.
   call test (beam_2, "beam_2", &
        "beam initialization", &
        u, results)
+<<Beams: test declarations>>=
+  public :: beam_2
 <<Beams: tests>>=
   subroutine beam_2 (u)
     integer, intent(in) :: u
@@ -1906,6 +2005,8 @@ Return the interaction component -- as a pointer, to avoid any copying.
   call test (beam_3, "beam_3", &
        "generic beam momenta", &
        u, results)
+<<Beams: test declarations>>=
+  public :: beam_3
 <<Beams: tests>>=
   subroutine beam_3 (u)
     integer, intent(in) :: u
@@ -2021,7 +2122,7 @@ module sf_aux
 <<Use kinds>>
   use io_units
   use constants, only: twopi
-  use unit_tests
+  use unit_tests, only: vanishes
 
   use lorentz
 
@@ -2036,8 +2137,6 @@ module sf_aux
 contains
 
 <<SF aux: procedures>>
-
-<<SF aux: tests>>
 
 end module sf_aux
 
@@ -2127,11 +2226,13 @@ If all is massless, i.e., $s=u=0$, this simplifies to
 
 Here is the implementation.  First, we define a container for the
 kinematical integration limits and some further data.
+
+Note: contents are public only for easy access in unit test.
 <<SF aux: public>>=
   public :: splitting_data_t
 <<SF aux: types>>=
   type :: splitting_data_t
-     private
+!     private
      logical :: collinear = .false.
      real(default) :: x0 = 0
      real(default) :: x1
@@ -2385,7 +2486,7 @@ for dropping the on-shell condition here.
     real(default) :: tt0, tt1, den
     type(vector3_t) :: kk, q1, q2
     if (d%collinear) then
-       if (d%s == 0 .and. d%u == 0) then
+       if (vanishes (d%s) .and. vanishes(d%u)) then
           q(1) = d%xb * k
           q(2) = d%x * k
        else
@@ -2515,12 +2616,12 @@ deduce the splitting parameters $x$, $t$, and $\phi$.
        end if
        ct2 = 1 - st2
        ct = sqrt (max (ct2, 0._default))
-       if (ct /= -1) then
+       if (.not. vanishes (1 + ct)) then
           d%t = d%t1 - 2 * d%xb * d%p * d%pb * st2 / (1 + ct)
        else
           d%t = d%t0
        end if
-       if (p1 /= 0 .or. p2 /= 0) then
+       if (.not. vanishes (p1) .or. .not. vanishes (p2)) then
           d%phi = atan2 (-p2, -p1)
        else
           d%phi = 0
@@ -2543,9 +2644,49 @@ deduce the splitting parameters $x$, $t$, and $\phi$.
 @ %def splitting_get_x
 @
 \subsection{Unit tests}
-<<SF aux: public>>=
+Test module, followed by the corresponding implementation module.
+<<[[sf_aux_ut.f90]]>>=
+<<File header>>
+
+module sf_aux_ut
+  use unit_tests
+  use sf_aux_uti
+  
+<<Standard module head>>
+
+<<SF aux: public test>>
+
+contains
+  
+<<SF aux: test driver>>
+
+end module sf_aux_ut
+@ %def sf_aux_ut
+@
+<<[[sf_aux_uti.f90]]>>=
+<<File header>>
+
+module sf_aux_uti
+
+<<Use kinds>>
+  use lorentz
+
+  use sf_aux
+
+<<Standard module head>>
+
+<<SF aux: test declarations>>
+
+contains
+
+<<SF aux: tests>>
+
+end module sf_aux_uti
+@ %def sf_aux_ut
+@ API: driver for the unit tests below.
+<<SF aux: public test>>=
   public :: sf_aux_test
-<<SF aux: tests>>=
+<<SF aux: test driver>>=
   subroutine sf_aux_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
@@ -2565,6 +2706,8 @@ input values.
   call test (sf_aux_1, "sf_aux_1", &
        "massless radiation", &
        u, results)
+<<SF aux: test declarations>>=
+  public :: sf_aux_1
 <<SF aux: tests>>=
   subroutine sf_aux_1 (u)
     integer, intent(in) :: u
@@ -2870,6 +3013,8 @@ input values.
   call test (sf_aux_2, "sf_aux_2", &
        "massless parton", &
        u, results)
+<<SF aux: test declarations>>=
+  public :: sf_aux_2
 <<SF aux: tests>>=
   subroutine sf_aux_2 (u)
     integer, intent(in) :: u
@@ -3178,6 +3323,8 @@ is not possible.
   call test (sf_aux_3, "sf_aux_3", &
        "massless parton", &
        u, results)
+<<SF aux: test declarations>>=
+  public :: sf_aux_3
 <<SF aux: tests>>=
   subroutine sf_aux_3 (u)
     integer, intent(in) :: u
@@ -3501,8 +3648,7 @@ module sf_mappings
   use kinds, only: double
   use io_units
   use constants, only: pi, zero, one
-  use format_defs, only: FMT_12, FMT_13, FMT_14, FMT_15, FMT_16
-  use unit_tests
+  use unit_tests, only: vanishes
   use diagnostics
 
 <<Standard module head>>
@@ -3518,8 +3664,6 @@ module sf_mappings
 contains
 
 <<SF mappings: procedures>>
-
-<<SF mappings: tests>>
 
 end module sf_mappings
 @ %def sf_mappings
@@ -5129,7 +5273,7 @@ and for the default case $\alpha=1$:
           factor = factor * power * xx / p(1)
        end if
     end if
-    if (xx /= 0) then
+    if (.not. vanishes (xx)) then
        r(1) = xx ** yy
        r(2) = xx / r(1)
        factor = factor * abs (log (xx))
@@ -5149,9 +5293,9 @@ and for the default case $\alpha=1$:
     real(kind=default) :: lg, xx, yy
     factor = 1
     xx = r(1) * r(2)
-    if (xx /= 0) then
+    if (.not. vanishes (xx)) then
        lg = log (xx)
-       if (lg /= 0) then
+       if (.not. vanishes (lg)) then
           yy = log (r(1)) / lg
        else
           yy = 0
@@ -5373,6 +5517,11 @@ it is returned zero.
 The parameter [[x_free]], if present, rescales the total energy.  If
 it is less than one, the rescaled mass parameter $m^2$ should be increased
 accordingly.
+
+Public for access in unit test.
+<<SF mappings: public>>=
+  public :: map_on_shell
+  public :: map_on_shell_inverse
 <<SF mappings: procedures>>=
   subroutine map_on_shell (r, factor, p, lm2, x_free)
     real(default), dimension(2), intent(out) :: r
@@ -6087,9 +6236,49 @@ the index array is allocated properly.
 @ %def sf_channel_set_par_index
 @
 \subsection{Unit tests}
-<<SF mappings: public>>=
+Test module, followed by the corresponding implementation module.
+<<[[sf_mappings_ut.f90]]>>=
+<<File header>>
+
+module sf_mappings_ut
+  use unit_tests
+  use sf_mappings_uti
+  
+<<Standard module head>>
+
+<<SF mappings: public test>>
+
+contains
+  
+<<SF mappings: test driver>>
+
+end module sf_mappings_ut
+@ %def sf_mappings_ut
+@
+<<[[sf_mappings_uti.f90]]>>=
+<<File header>>
+
+module sf_mappings_uti
+
+<<Use kinds>>
+  use format_defs, only: FMT_12, FMT_13, FMT_14, FMT_15, FMT_16
+
+  use sf_mappings
+
+<<Standard module head>>
+
+<<SF mappings: test declarations>>
+
+contains
+
+<<SF mappings: tests>>
+
+end module sf_mappings_uti
+@ %def sf_mappings_ut
+@ API: driver for the unit tests below.
+<<SF mappings: public test>>=
   public :: sf_mappings_test
-<<SF mappings: tests>>=
+<<SF mappings: test driver>>=
   subroutine sf_mappings_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
@@ -6107,6 +6296,8 @@ random points.
   call test (sf_mappings_1, "sf_mappings_1", &
        "standard pair mapping", &
        u, results)
+<<SF mappings: test declarations>>=
+  public :: sf_mappings_1
 <<SF mappings: tests>>=
   subroutine sf_mappings_1 (u)
     integer, intent(in) :: u
@@ -6200,6 +6391,8 @@ Construct channel entries and print them.
   call test (sf_mappings_2, "sf_mappings_2", &
        "structure-function mapping channels", &
        u, results)
+<<SF mappings: test declarations>>=
+  public :: sf_mappings_2
 <<SF mappings: tests>>=
   subroutine sf_mappings_2 (u)
     integer, intent(in) :: u
@@ -6253,6 +6446,8 @@ The resonance mass is at $1/2$ the energy, the width is $1/10$.
   call test (sf_mappings_3, "sf_mappings_3", &
        "resonant pair mapping", &
        u, results)
+<<SF mappings: test declarations>>=
+  public :: sf_mappings_3
 <<SF mappings: tests>>=
   subroutine sf_mappings_3 (u)
     integer, intent(in) :: u
@@ -6320,6 +6515,8 @@ energy.
   call test (sf_mappings_4, "sf_mappings_4", &
        "on-shell pair mapping", &
        u, results)
+<<SF mappings: test declarations>>=
+  public :: sf_mappings_4
 <<SF mappings: tests>>=
   subroutine sf_mappings_4 (u)
     integer, intent(in) :: u
@@ -6382,6 +6579,8 @@ random points.
   call test (sf_mappings_5, "sf_mappings_5", &
        "endpoint pair mapping", &
        u, results)
+<<SF mappings: test declarations>>=
+  public :: sf_mappings_5
 <<SF mappings: tests>>=
   subroutine sf_mappings_5 (u)
     integer, intent(in) :: u
@@ -6441,6 +6640,8 @@ Probe the endpoint mapping with resonance.  Also calculates integrals.
   call test (sf_mappings_6, "sf_mappings_6", &
        "endpoint resonant mapping", &
        u, results)
+<<SF mappings: test declarations>>=
+  public :: sf_mappings_6
 <<SF mappings: tests>>=
   subroutine sf_mappings_6 (u)
     integer, intent(in) :: u
@@ -6541,6 +6742,8 @@ integrals.
   call test (sf_mappings_7, "sf_mappings_7", &
        "endpoint on-shell mapping", &
        u, results)
+<<SF mappings: test declarations>>=
+  public :: sf_mappings_7
 <<SF mappings: tests>>=
   subroutine sf_mappings_7 (u)
     integer, intent(in) :: u
@@ -6603,6 +6806,8 @@ random points.
   call test (sf_mappings_8, "sf_mappings_8", &
        "power pair mapping", &
        u, results)
+<<SF mappings: test declarations>>=
+  public :: sf_mappings_8
 <<SF mappings: tests>>=
   subroutine sf_mappings_8 (u)
     integer, intent(in) :: u
@@ -6687,6 +6892,8 @@ result is well-defined because we are not using random points.
   call test (sf_mappings_9, "sf_mappings_9", &
        "power resonance mapping", &
        u, results)
+<<SF mappings: test declarations>>=
+  public :: sf_mappings_9
 <<SF mappings: tests>>=
   subroutine sf_mappings_9 (u)
     integer, intent(in) :: u
@@ -6822,6 +7029,8 @@ using random points.
   call test (sf_mappings_10, "sf_mappings_10", &
        "power on-shell mapping", &
        u, results)
+<<SF mappings: test declarations>>=
+  public :: sf_mappings_10
 <<SF mappings: tests>>=
   subroutine sf_mappings_10 (u)
     integer, intent(in) :: u
@@ -6879,6 +7088,8 @@ Probe the mapping for the beamstrahlung/ISR combination.
   call test (sf_mappings_11, "sf_mappings_11", &
        "endpoint/power combined mapping", &
        u, results)
+<<SF mappings: test declarations>>=
+  public :: sf_mappings_11
 <<SF mappings: tests>>=
   subroutine sf_mappings_11 (u)
     integer, intent(in) :: u
@@ -6938,6 +7149,8 @@ Probe the mapping for the beamstrahlung/ISR combination.
   call test (sf_mappings_12, "sf_mappings_12", &
        "endpoint/power resonant combined mapping", &
        u, results)
+<<SF mappings: test declarations>>=
+  public :: sf_mappings_12
 <<SF mappings: tests>>=
   subroutine sf_mappings_12 (u)
     integer, intent(in) :: u
@@ -6998,6 +7211,8 @@ Probe the mapping for the beamstrahlung/ISR combination.
   call test (sf_mappings_13, "sf_mappings_13", &
        "endpoint/power on-shell combined mapping", &
        u, results)
+<<SF mappings: test declarations>>=
+  public :: sf_mappings_13
 <<SF mappings: tests>>=
   subroutine sf_mappings_13 (u)
     integer, intent(in) :: u
@@ -7057,6 +7272,8 @@ Check the rescaling factor in on-shell basic mapping.
   call test (sf_mappings_14, "sf_mappings_14", &
        "rescaled on-shell mapping", &
        u, results)
+<<SF mappings: test declarations>>=
+  public :: sf_mappings_14
 <<SF mappings: tests>>=
   subroutine sf_mappings_14 (u)
     integer, intent(in) :: u
@@ -7107,19 +7324,12 @@ module sf_base
   use io_units
   use format_utils, only: write_separator
   use format_defs, only: FMT_17, FMT_19
-  use unit_tests
   use diagnostics
   use lorentz
-  use model_data
-  use flavors
-  use colors
-  use helicities
   use quantum_numbers
-  use state_matrices
   use interactions
   use evaluators
   use pdg_arrays
-  use particles
   use beams
   use sf_aux
   use sf_mappings
@@ -7134,13 +7344,9 @@ module sf_base
 
 <<SF base: interfaces>>
 
-<<SF base: test types>>
-
 contains
 
 <<SF base: procedures>>
-
-<<SF base: tests>>
 
 end module sf_base
 @ %def sf_base
@@ -8063,7 +8269,7 @@ the matrix elements are real, so we take the real part.
     integer :: i
     if (sf_int%status >= SF_EVALUATED) then
        do i = 1, size (value)
-          value(i) = sf_int%get_matrix_element (i)
+          value(i) = real (sf_int%get_matrix_element (i))
        end do
     else
        value = 0
@@ -9193,7 +9399,7 @@ functions in the chain.
                 end associate
              end do
              out_int => chain%get_out_int_ptr ()
-             sf_sum = out_int%sum ()
+             sf_sum = real (out_int%sum ())
              call chain%config%trace &
                   (chain%selected_channel, chain%p, chain%x, chain%f, sf_sum)
           end if
@@ -9317,9 +9523,74 @@ zero-size [[r]] argument, so nothing to do then.
 @ %def sf_chain_instance_get_status
 @
 \subsection{Unit tests}
-<<SF base: public>>=
+Test module, followed by the corresponding implementation module.
+<<[[sf_base_ut.f90]]>>=
+<<File header>>
+
+module sf_base_ut
+  use unit_tests
+  use sf_base_uti
+  
+<<Standard module head>>
+
+<<SF base: public test auxiliary>>
+
+<<SF base: public test>>
+
+contains
+  
+<<SF base: test driver>>
+
+end module sf_base_ut
+@ %def sf_base_ut
+@
+<<[[sf_base_uti.f90]]>>=
+<<File header>>
+
+module sf_base_uti
+
+<<Use kinds>>
+<<Use strings>>
+  use io_units
+  use format_defs, only: FMT_19
+  use format_utils, only: write_separator
+  use diagnostics
+  use lorentz
+  use pdg_arrays
+  use flavors
+  use colors
+  use helicities
+  use quantum_numbers
+  use state_matrices, only: FM_IGNORE_HELICITY
+  use interactions
+  use particles
+  use model_data
+  use beams
+  use sf_aux
+  use sf_mappings
+
+  use sf_base
+
+<<Standard module head>>
+
+<<SF base: test declarations>>
+
+<<SF base: public test auxiliary>>
+
+<<SF base: test types>>
+
+contains
+
+<<SF base: tests>>
+
+<<SF base: test auxiliary>>
+
+end module sf_base_uti
+@ %def sf_base_ut
+@ API: driver for the unit tests below.
+<<SF base: public test>>=
   public :: sf_base_test
-<<SF base: tests>>=
+<<SF base: test driver>>=
   subroutine sf_base_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
@@ -9337,7 +9608,7 @@ The test structure function uses the [[Test]] model.  It describes a
 scalar within an arbitrary initial particle, which is given in the
 initialization.  The radiated particle is also a scalar, the same one,
 but we set its mass artificially to zero.
-<<SF base: public>>=
+<<SF base: public test auxiliary>>=
   public :: sf_test_data_t
 <<SF base: test types>>=
   type, extends (sf_data_t) :: sf_test_data_t
@@ -9357,7 +9628,7 @@ but we set its mass artificially to zero.
 @ Output.
 <<SF base: sf test data: TBP>>=
   procedure :: write => sf_test_data_write
-<<SF base: procedures>>=
+<<SF base: test auxiliary>>=
   subroutine sf_test_data_write (data, unit, verbose)
     class(sf_test_data_t), intent(in) :: data
     integer, intent(in), optional :: unit
@@ -9384,7 +9655,7 @@ but we set its mass artificially to zero.
 @ Initialization.
 <<SF base: sf test data: TBP>>=
   procedure :: init => sf_test_data_init
-<<SF base: procedures>>=
+<<SF base: test auxiliary>>=
   subroutine sf_test_data_init (data, model, pdg_in, collinear, qbounds, mode)
     class(sf_test_data_t), intent(out) :: data
     class(model_data_t), intent(in), target :: model
@@ -9413,7 +9684,7 @@ but we set its mass artificially to zero.
 splitting, 3 otherwise.
 <<SF base: sf test data: TBP>>=
   procedure :: get_n_par => sf_test_data_get_n_par
-<<SF base: procedures>>=
+<<SF base: test auxiliary>>=
   function sf_test_data_get_n_par (data) result (n)
     class(sf_test_data_t), intent(in) :: data
     integer :: n
@@ -9428,7 +9699,7 @@ splitting, 3 otherwise.
 @ Return the outgoing particle PDG code: 25
 <<SF base: sf test data: TBP>>=
   procedure :: get_pdg_out => sf_test_data_get_pdg_out
-<<SF base: procedures>>=
+<<SF base: test auxiliary>>=
   subroutine sf_test_data_get_pdg_out (data, pdg_out)
     class(sf_test_data_t), intent(in) :: data
     type(pdg_array_t), dimension(:), intent(inout) :: pdg_out
@@ -9439,7 +9710,7 @@ splitting, 3 otherwise.
 @ Allocate the matching interaction.
 <<SF base: sf test data: TBP>>=
   procedure :: allocate_sf_int => sf_test_data_allocate_sf_int
-<<SF base: procedures>>=
+<<SF base: test auxiliary>>=
   subroutine sf_test_data_allocate_sf_int (data, sf_int)
     class(sf_test_data_t), intent(in) :: data
     class(sf_int_t), intent(inout), allocatable :: sf_int
@@ -9461,7 +9732,7 @@ splitting, 3 otherwise.
 @ Type string: constant
 <<SF base: sf test int: TBP>>=
   procedure :: type_string => sf_test_type_string
-<<SF base: procedures>>=
+<<SF base: test auxiliary>>=
   function sf_test_type_string (object) result (string)
     class(sf_test_t), intent(in) :: object
     type(string_t) :: string
@@ -9472,7 +9743,7 @@ splitting, 3 otherwise.
 @ Output.  Call the interaction routine after displaying the configuration.
 <<SF base: sf test int: TBP>>=
   procedure :: write => sf_test_write
-<<SF base: procedures>>=
+<<SF base: test auxiliary>>=
   subroutine sf_test_write (object, unit, testflag)
     class(sf_test_t), intent(in) :: object
     integer, intent(in), optional :: unit
@@ -9498,7 +9769,7 @@ Optionally, we can provide minimum and maximum values for the momentum
 transfer.
 <<SF base: sf test int: TBP>>=
   procedure :: init => sf_test_init
-<<SF base: procedures>>=
+<<SF base: test auxiliary>>=
   subroutine sf_test_init (sf_int, data)
     class(sf_test_t), intent(out) :: sf_int
     class(sf_data_t), intent(in), target :: data
@@ -9540,7 +9811,7 @@ If [[map]] is set, we are asked to provide an efficient mapping.
 For the test case, we set $x=r^2$ and consequently $f(r)=2r$.
 <<SF base: sf test int: TBP>>=
   procedure :: complete_kinematics => sf_test_complete_kinematics
-<<SF base: procedures>>=
+<<SF base: test auxiliary>>=
   subroutine sf_test_complete_kinematics (sf_int, x, f, r, rb, map)
     class(sf_test_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(out) :: x
@@ -9571,7 +9842,7 @@ compute the ``input'' $r$ values and the Jacobian $f$.  After this, we
 can set momenta by the same formula as for normal kinematics.
 <<SF base: sf test int: TBP>>=
   procedure :: inverse_kinematics => sf_test_inverse_kinematics
-<<SF base: procedures>>=
+<<SF base: test auxiliary>>=
   subroutine sf_test_inverse_kinematics (sf_int, x, f, r, rb, map, set_momenta)
     class(sf_test_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(in) :: x
@@ -9610,7 +9881,7 @@ If the [[mode]] indicator is one, the matrix element is equal to the
 parameter~$x$.
 <<SF base: sf test int: TBP>>=
   procedure :: apply => sf_test_apply
-<<SF base: procedures>>=
+<<SF base: test auxiliary>>=
   subroutine sf_test_apply (sf_int, scale)
     class(sf_test_t), intent(inout) :: sf_int
     real(default), intent(in) :: scale
@@ -9653,7 +9924,7 @@ We have two versions, one with radiated particles, one without.
 @ Output.
 <<SF base: sf test spectrum data: TBP>>=
   procedure :: write => sf_test_spectrum_data_write
-<<SF base: procedures>>=
+<<SF base: test auxiliary>>=
   subroutine sf_test_spectrum_data_write (data, unit, verbose)
     class(sf_test_spectrum_data_t), intent(in) :: data
     integer, intent(in), optional :: unit
@@ -9675,7 +9946,7 @@ We have two versions, one with radiated particles, one without.
 @ Initialization.
 <<SF base: sf test spectrum data: TBP>>=
   procedure :: init => sf_test_spectrum_data_init
-<<SF base: procedures>>=
+<<SF base: test auxiliary>>=
   subroutine sf_test_spectrum_data_init (data, model, pdg_in, with_radiation)
     class(sf_test_spectrum_data_t), intent(out) :: data
     class(model_data_t), intent(in), target :: model
@@ -9699,7 +9970,7 @@ We have two versions, one with radiated particles, one without.
 splitting here.
 <<SF base: sf test spectrum data: TBP>>=
   procedure :: get_n_par => sf_test_spectrum_data_get_n_par
-<<SF base: procedures>>=
+<<SF base: test auxiliary>>=
   function sf_test_spectrum_data_get_n_par (data) result (n)
     class(sf_test_spectrum_data_t), intent(in) :: data
     integer :: n
@@ -9710,7 +9981,7 @@ splitting here.
 @ Return the outgoing particle PDG codes: 25
 <<SF base: sf test spectrum data: TBP>>=
   procedure :: get_pdg_out => sf_test_spectrum_data_get_pdg_out
-<<SF base: procedures>>=
+<<SF base: test auxiliary>>=
   subroutine sf_test_spectrum_data_get_pdg_out (data, pdg_out)
     class(sf_test_spectrum_data_t), intent(in) :: data
     type(pdg_array_t), dimension(:), intent(inout) :: pdg_out
@@ -9723,7 +9994,7 @@ splitting here.
 <<SF base: sf test spectrum data: TBP>>=
   procedure :: allocate_sf_int => &
        sf_test_spectrum_data_allocate_sf_int
-<<SF base: procedures>>=
+<<SF base: test auxiliary>>=
   subroutine sf_test_spectrum_data_allocate_sf_int (data, sf_int)
     class(sf_test_spectrum_data_t), intent(in) :: data
     class(sf_int_t), intent(inout), allocatable :: sf_int
@@ -9743,7 +10014,7 @@ splitting here.
 @ %def sf_test_spectrum_t
 <<SF base: sf test spectrum: TBP>>=
   procedure :: type_string => sf_test_spectrum_type_string
-<<SF base: procedures>>=
+<<SF base: test auxiliary>>=
   function sf_test_spectrum_type_string (object) result (string)
     class(sf_test_spectrum_t), intent(in) :: object
     type(string_t) :: string
@@ -9754,7 +10025,7 @@ splitting here.
 @ Output.  Call the interaction routine after displaying the configuration.
 <<SF base: sf test spectrum: TBP>>=
   procedure :: write => sf_test_spectrum_write
-<<SF base: procedures>>=
+<<SF base: test auxiliary>>=
   subroutine sf_test_spectrum_write (object, unit, testflag)
     class(sf_test_spectrum_t), intent(in) :: object
     integer, intent(in), optional :: unit
@@ -9780,7 +10051,7 @@ Optionally, we can provide minimum and maximum values for the momentum
 transfer.
 <<SF base: sf test spectrum: TBP>>=
   procedure :: init => sf_test_spectrum_init
-<<SF base: procedures>>=
+<<SF base: test auxiliary>>=
   subroutine sf_test_spectrum_init (sf_int, data)
     class(sf_test_spectrum_t), intent(out) :: sf_int
     class(sf_data_t), intent(in), target :: data
@@ -9840,7 +10111,7 @@ and consequently $f(r)=4r_1r_2$.
 
 <<SF base: sf test spectrum: TBP>>=
   procedure :: complete_kinematics => sf_test_spectrum_complete_kinematics
-<<SF base: procedures>>=
+<<SF base: test auxiliary>>=
   subroutine sf_test_spectrum_complete_kinematics (sf_int, x, f, r, rb, map)
     class(sf_test_spectrum_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(out) :: x
@@ -9873,7 +10144,7 @@ compute the ``input'' $r$ values and the Jacobian $f$.  After this, we
 can set momenta by the same formula as for normal kinematics.
 <<SF base: sf test spectrum: TBP>>=
   procedure :: inverse_kinematics => sf_test_spectrum_inverse_kinematics
-<<SF base: procedures>>=
+<<SF base: test auxiliary>>=
   subroutine sf_test_spectrum_inverse_kinematics &
        (sf_int, x, f, r, rb, map, set_momenta)
     class(sf_test_spectrum_t), intent(inout) :: sf_int
@@ -9912,7 +10183,7 @@ can set momenta by the same formula as for normal kinematics.
 the application always succeeds.
 <<SF base: sf test spectrum: TBP>>=
   procedure :: apply => sf_test_spectrum_apply
-<<SF base: procedures>>=
+<<SF base: test auxiliary>>=
   subroutine sf_test_spectrum_apply (sf_int, scale)
     class(sf_test_spectrum_t), intent(inout) :: sf_int
     real(default), intent(in) :: scale
@@ -9947,7 +10218,7 @@ We have two versions, one with radiated particles, one without.
 @ Output.
 <<SF base: sf test generator data: TBP>>=
   procedure :: write => sf_test_generator_data_write
-<<SF base: procedures>>=
+<<SF base: test auxiliary>>=
   subroutine sf_test_generator_data_write (data, unit, verbose)
     class(sf_test_generator_data_t), intent(in) :: data
     integer, intent(in), optional :: unit
@@ -9967,7 +10238,7 @@ We have two versions, one with radiated particles, one without.
 @ Initialization.
 <<SF base: sf test generator data: TBP>>=
   procedure :: init => sf_test_generator_data_init
-<<SF base: procedures>>=
+<<SF base: test auxiliary>>=
   subroutine sf_test_generator_data_init (data, model, pdg_in)
     class(sf_test_generator_data_t), intent(out) :: data
     class(model_data_t), intent(in), target :: model
@@ -9985,7 +10256,7 @@ We have two versions, one with radiated particles, one without.
 @ This structure function is a generator.
 <<SF base: sf test generator data: TBP>>=
   procedure :: is_generator => sf_test_generator_data_is_generator
-<<SF base: procedures>>=
+<<SF base: test auxiliary>>=
   function sf_test_generator_data_is_generator (data) result (flag)
     class(sf_test_generator_data_t), intent(in) :: data
     logical :: flag
@@ -9997,7 +10268,7 @@ We have two versions, one with radiated particles, one without.
 splitting here.
 <<SF base: sf test generator data: TBP>>=
   procedure :: get_n_par => sf_test_generator_data_get_n_par
-<<SF base: procedures>>=
+<<SF base: test auxiliary>>=
   function sf_test_generator_data_get_n_par (data) result (n)
     class(sf_test_generator_data_t), intent(in) :: data
     integer :: n
@@ -10008,7 +10279,7 @@ splitting here.
 @ Return the outgoing particle PDG codes: 25
 <<SF base: sf test generator data: TBP>>=
   procedure :: get_pdg_out => sf_test_generator_data_get_pdg_out
-<<SF base: procedures>>=
+<<SF base: test auxiliary>>=
   subroutine sf_test_generator_data_get_pdg_out (data, pdg_out)
     class(sf_test_generator_data_t), intent(in) :: data
     type(pdg_array_t), dimension(:), intent(inout) :: pdg_out
@@ -10021,7 +10292,7 @@ splitting here.
 <<SF base: sf test generator data: TBP>>=
   procedure :: allocate_sf_int => &
        sf_test_generator_data_allocate_sf_int
-<<SF base: procedures>>=
+<<SF base: test auxiliary>>=
   subroutine sf_test_generator_data_allocate_sf_int (data, sf_int)
     class(sf_test_generator_data_t), intent(in) :: data
     class(sf_int_t), intent(inout), allocatable :: sf_int
@@ -10041,7 +10312,7 @@ splitting here.
 @ %def sf_test_generator_t
 <<SF base: sf test generator: TBP>>=
   procedure :: type_string => sf_test_generator_type_string
-<<SF base: procedures>>=
+<<SF base: test auxiliary>>=
   function sf_test_generator_type_string (object) result (string)
     class(sf_test_generator_t), intent(in) :: object
     type(string_t) :: string
@@ -10052,7 +10323,7 @@ splitting here.
 @ Output.  Call the interaction routine after displaying the configuration.
 <<SF base: sf test generator: TBP>>=
   procedure :: write => sf_test_generator_write
-<<SF base: procedures>>=
+<<SF base: test auxiliary>>=
   subroutine sf_test_generator_write (object, unit, testflag)
     class(sf_test_generator_t), intent(in) :: object
     integer, intent(in), optional :: unit
@@ -10075,7 +10346,7 @@ For this implementation, we set the incoming and outgoing masses equal
 to the physical particle mass.  No radiation.
 <<SF base: sf test generator: TBP>>=
   procedure :: init => sf_test_generator_init
-<<SF base: procedures>>=
+<<SF base: test auxiliary>>=
   subroutine sf_test_generator_init (sf_int, data)
     class(sf_test_generator_t), intent(out) :: sf_int
     class(sf_data_t), intent(in), target :: data
@@ -10109,7 +10380,7 @@ to the physical particle mass.  No radiation.
 @ This structure function is a generator.
 <<SF base: sf test generator: TBP>>=
   procedure :: is_generator => sf_test_generator_is_generator
-<<SF base: procedures>>=
+<<SF base: test auxiliary>>=
   function sf_test_generator_is_generator (sf_int) result (flag)
     class(sf_test_generator_t), intent(in) :: sf_int
     logical :: flag
@@ -10121,7 +10392,7 @@ to the physical particle mass.  No radiation.
 nubmers 0.8 and 0.5.
 <<SF base: sf test generator: TBP>>=
   procedure :: generate_free => sf_test_generator_generate_free
-<<SF base: procedures>>=
+<<SF base: test auxiliary>>=
   subroutine sf_test_generator_generate_free (sf_int, r, rb,  x_free)
     class(sf_test_generator_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(out) :: r, rb
@@ -10135,7 +10406,7 @@ nubmers 0.8 and 0.5.
 @ Recover momentum fractions.  Since the x values are free, we also set the [[x_free]] parameter.
 <<SF base: sf test generator: TBP>>=
   procedure :: recover_x => sf_test_generator_recover_x
-<<SF base: procedures>>=
+<<SF base: test auxiliary>>=
   subroutine sf_test_generator_recover_x (sf_int, x, x_free)
     class(sf_test_generator_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(out) :: x
@@ -10148,7 +10419,7 @@ nubmers 0.8 and 0.5.
 @ Set kinematics.  Since this is a generator, just transfer input to output.
 <<SF base: sf test generator: TBP>>=
   procedure :: complete_kinematics => sf_test_generator_complete_kinematics
-<<SF base: procedures>>=
+<<SF base: test auxiliary>>=
   subroutine sf_test_generator_complete_kinematics (sf_int, x, f, r, rb, map)
     class(sf_test_generator_t), intent(inout) :: sf_int
     real(default), dimension(:), intent(out) :: x
@@ -10167,7 +10438,7 @@ compute the ``input'' $r$ values and the Jacobian $f$.  After this, we
 can set momenta by the same formula as for normal kinematics.
 <<SF base: sf test generator: TBP>>=
   procedure :: inverse_kinematics => sf_test_generator_inverse_kinematics
-<<SF base: procedures>>=
+<<SF base: test auxiliary>>=
   subroutine sf_test_generator_inverse_kinematics &
        (sf_int, x, f, r, rb, map, set_momenta)
     class(sf_test_generator_t), intent(inout) :: sf_int
@@ -10190,7 +10461,7 @@ can set momenta by the same formula as for normal kinematics.
 the application always succeeds.
 <<SF base: sf test generator: TBP>>=
   procedure :: apply => sf_test_generator_apply
-<<SF base: procedures>>=
+<<SF base: test auxiliary>>=
   subroutine sf_test_generator_apply (sf_int, scale)
     class(sf_test_generator_t), intent(inout) :: sf_int
     real(default), intent(in) :: scale
@@ -10207,6 +10478,8 @@ Construct and display a test structure function data object.
   call test (sf_base_1, "sf_base_1", &
        "structure function configuration", &
        u, results)
+<<SF base: test declarations>>=
+  public :: sf_base_1
 <<SF base: tests>>=
   subroutine sf_base_1 (u)
     integer, intent(in) :: u
@@ -10255,6 +10528,8 @@ structure function.
   call test (sf_base_2, "sf_base_2", &
        "structure function instance", &
        u, results)
+<<SF base: test declarations>>=
+  public :: sf_base_2
 <<SF base: tests>>=
   subroutine sf_base_2 (u)
     integer, intent(in) :: u
@@ -10413,6 +10688,8 @@ projections, collinear case.
   call test (sf_base_3, "sf_base_3", &
        "alternatives for collinear kinematics", &
        u, results)
+<<SF base: test declarations>>=
+  public :: sf_base_3
 <<SF base: tests>>=
   subroutine sf_base_3 (u)
     integer, intent(in) :: u
@@ -10667,6 +10944,8 @@ projections, non-collinear case.
   call test (sf_base_4, "sf_base_4", &
        "alternatives for non-collinear kinematics", &
        u, results)
+<<SF base: test declarations>>=
+  public :: sf_base_4
 <<SF base: tests>>=
   subroutine sf_base_4 (u)
     integer, intent(in) :: u
@@ -10935,6 +11214,8 @@ Construct and display a structure function object for a pair spectrum
   call test (sf_base_5, "sf_base_5", &
        "pair spectrum with radiation", &
        u, results)
+<<SF base: test declarations>>=
+  public :: sf_base_5
 <<SF base: tests>>=
   subroutine sf_base_5 (u)
     integer, intent(in) :: u
@@ -11075,6 +11356,8 @@ Construct and display a structure function object for a pair spectrum
   call test (sf_base_6, "sf_base_6", &
        "pair spectrum without radiation", &
        u, results)
+<<SF base: test declarations>>=
+  public :: sf_base_6
 <<SF base: tests>>=
   subroutine sf_base_6 (u)
     integer, intent(in) :: u
@@ -11189,6 +11472,8 @@ Probe a structure function directly.
   call test (sf_base_7, "sf_base_7", &
        "direct access", &
        u, results)
+<<SF base: test declarations>>=
+  public :: sf_base_7
 <<SF base: tests>>=
   subroutine sf_base_7 (u)
     integer, intent(in) :: u
@@ -11311,6 +11596,8 @@ Probe a structure function directly.
   call test (sf_base_8, "sf_base_8", &
        "structure function chain configuration", &
        u, results)
+<<SF base: test declarations>>=
+  public :: sf_base_8
 <<SF base: tests>>=
   subroutine sf_base_8 (u)
     integer, intent(in) :: u
@@ -11411,6 +11698,8 @@ skip this step and manually advance the status of the chain instead.
   call test (sf_base_9, "sf_base_9", &
        "structure function chain instance", &
        u, results)
+<<SF base: test declarations>>=
+  public :: sf_base_9
 <<SF base: tests>>=
   subroutine sf_base_9 (u)
     integer, intent(in) :: u
@@ -11586,6 +11875,8 @@ Again, we skip evaluators.
  call test (sf_base_10, "sf_base_10", &
       "structure function chain mapping", &
       u, results)
+<<SF base: test declarations>>=
+  public :: sf_base_10
 <<SF base: tests>>=
   subroutine sf_base_10 (u)
     integer, intent(in) :: u
@@ -11691,6 +11982,8 @@ evaluate the matrix elements and their products.
   call test (sf_base_11, "sf_base_11", &
        "structure function chain evaluation", &
        u, results)
+<<SF base: test declarations>>=
+  public :: sf_base_11
 <<SF base: tests>>=
   subroutine sf_base_11 (u)
     integer, intent(in) :: u
@@ -11942,6 +12235,8 @@ two-particle mappings.
   call test (sf_base_12, "sf_base_12", &
        "multi-channel structure function chain", &
        u, results)
+<<SF base: test declarations>>=
+  public :: sf_base_12
 <<SF base: tests>>=
   subroutine sf_base_12 (u)
     integer, intent(in) :: u
@@ -12079,6 +12374,8 @@ which is evaluated as a beam-event generator.
   call test (sf_base_13, "sf_base_13", &
        "pair spectrum generator", &
        u, results)
+<<SF base: test declarations>>=
+  public :: sf_base_13
 <<SF base: tests>>=
   subroutine sf_base_13 (u)
     integer, intent(in) :: u
@@ -12202,6 +12499,8 @@ kinematics and evaluate the matrix elements and their products.
   call test (sf_base_14, "sf_base_14", &
        "structure function generator evaluation", &
        u, results)
+<<SF base: test declarations>>=
+  public :: sf_base_14
 <<SF base: tests>>=
   subroutine sf_base_14 (u)
     integer, intent(in) :: u
@@ -12307,10 +12606,10 @@ module sf_isr
 <<Use strings>>
   use io_units
   use constants, only: pi
-  use format_defs, only: FMT_12, FMT_17, FMT_19
-  use unit_tests
+  use format_defs, only: FMT_17, FMT_19
+  use unit_tests, only: vanishes
   use diagnostics
-  use physics_defs, only: ELECTRON, PHOTON
+  use physics_defs, only: PHOTON
   use lorentz
   use sm_physics, only: Li2
   use pdg_arrays
@@ -12319,10 +12618,8 @@ module sf_isr
   use colors
   use quantum_numbers
   use state_matrices
-  use interactions
   use polarizations
   use sf_mappings
-  use sf_aux
   use sf_base
 
 <<Standard module head>>
@@ -12336,8 +12633,6 @@ module sf_isr
 contains
 
 <<SF isr: procedures>>
-
-<<SF isr: tests>>
 
 end module sf_isr
 @ %def sf_isr
@@ -12561,7 +12856,7 @@ singularity which should in principle be resummed.
           data%error = MASS_MIX;  return
        end if
     end if
-    if (data%mass == 0) then
+    if (vanishes (data%mass)) then
        data%error = ZERO_MASS;  return
     else if (data%mass >= data%q_max) then
        data%error = Q_MAX_TOO_SMALL;  return
@@ -12720,8 +13015,11 @@ Polarization is carried through, i.e., we retain the polarization of
 the incoming particle and treat the emitted photon as unpolarized.
 Color is trivially carried through.  This implies that particles 1 and
 3 should be locked together. For ISR we don't need the q variable.
+<<SF isr: public>>=
+  public :: isr_t
 <<SF isr: types>>=
   type, extends (sf_int_t) :: isr_t
+     private
      type(isr_data_t), pointer :: data => null ()
      real(default) :: x = 0
      real(default) :: xb= 0
@@ -12770,6 +13068,17 @@ depends. Hence, a dummy routine.
   end subroutine isr_write
     
 @ %def isr_write
+@ Explicitly set ISR order (for unit test).
+<<SF isr: isr: TBP>>=
+  procedure :: set_order => isr_set_order
+<<SF isr: procedures>>=
+  subroutine isr_set_order (object, order)
+    class(isr_t), intent(inout) :: object
+    integer, intent(in) :: order
+    call object%data%set_order (order)
+  end subroutine isr_set_order
+
+@ %def isr_set_order
 @
 \subsection{Kinematics}
 Set kinematics.  If [[map]] is unset, the $r$ and $x$ values
@@ -13024,9 +13333,61 @@ choose to conserve momentum, so energy conservation may be violated.
 @ %def isr_apply
 @
 \subsection{Unit tests}
-<<SF isr: public>>=
+Test module, followed by the corresponding implementation module.
+<<[[sf_isr_ut.f90]]>>=
+<<File header>>
+
+module sf_isr_ut
+  use unit_tests
+  use sf_isr_uti
+  
+<<Standard module head>>
+
+<<SF isr: public test>>
+
+contains
+  
+<<SF isr: test driver>>
+
+end module sf_isr_ut
+@ %def sf_isr_ut
+@
+<<[[sf_isr_uti.f90]]>>=
+<<File header>>
+
+module sf_isr_uti
+
+<<Use kinds>>
+<<Use strings>>
+  use io_units
+  use format_defs, only: FMT_12
+  use physics_defs, only: ELECTRON
+  use lorentz
+  use pdg_arrays
+  use flavors
+  use interactions, only: reset_interaction_counter
+  use interactions, only: interaction_pacify_momenta
+  use model_data
+  use sf_aux, only: KEEP_ENERGY
+  use sf_mappings
+  use sf_base
+
+  use sf_isr
+
+<<Standard module head>>
+
+<<SF isr: test declarations>>
+
+contains
+
+<<SF isr: tests>>
+
+end module sf_isr_uti
+@ %def sf_isr_ut
+@ API: driver for the unit tests below.
+<<SF isr: public test>>=
   public :: sf_isr_test
-<<SF isr: tests>>=
+<<SF isr: test driver>>=
   subroutine sf_isr_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
@@ -13041,6 +13402,8 @@ Construct and display a test structure function data object.
   call test (sf_isr_1, "sf_isr_1", &
        "structure function configuration", &
        u, results)
+<<SF isr: test declarations>>=
+  public :: sf_isr_1
 <<SF isr: tests>>=
   subroutine sf_isr_1 (u)
     integer, intent(in) :: u
@@ -13099,6 +13462,8 @@ structure function.  The parameter pair is mapped in the calling program.
   call test (sf_isr_2, "sf_isr_2", &
        "no ISR mapping", &
        u, results)
+<<SF isr: test declarations>>=
+  public :: sf_isr_2
 <<SF isr: tests>>=
   subroutine sf_isr_2 (u)
     integer, intent(in) :: u
@@ -13199,7 +13564,7 @@ structure function.  The parameter pair is mapped in the calling program.
     
     select type (sf_int)
     type is (isr_t)
-       sf_int%data%order = 0
+       call sf_int%set_order (0)
     end select
     call sf_int%apply (scale = 100._default)
     f_isr = sf_int%get_matrix_element (1)
@@ -13227,6 +13592,8 @@ structure function.
   call test (sf_isr_3, "sf_isr_3", &
        "ISR mapping", &
        u, results)
+<<SF isr: test declarations>>=
+  public :: sf_isr_3
 <<SF isr: tests>>=
   subroutine sf_isr_3 (u)
     integer, intent(in) :: u
@@ -13327,7 +13694,7 @@ structure function.
     
     select type (sf_int)
     type is (isr_t)
-       sf_int%data%order = 0
+       call sf_int%set_order (0)
     end select
     call sf_int%apply (scale = 100._default)
     f_isr = sf_int%get_matrix_element (1)
@@ -13355,6 +13722,8 @@ structure function. We blank out numerical fluctuations for 32bit.
   call test (sf_isr_4, "sf_isr_4", &
        "ISR non-collinear", &
        u, results)
+<<SF isr: test declarations>>=
+  public :: sf_isr_4
 <<SF isr: tests>>=
   subroutine sf_isr_4 (u)
     integer, intent(in) :: u
@@ -13500,6 +13869,8 @@ structure function.
   call test (sf_isr_5, "sf_isr_5", &
        "ISR pair mapping", &
        u, results)
+<<SF isr: test declarations>>=
+  public :: sf_isr_5
 <<SF isr: tests>>=
   subroutine sf_isr_5 (u)
     integer, intent(in) :: u
@@ -13541,7 +13912,7 @@ structure function.
     type is (sf_ip_mapping_t)
        select type (data)
        type is (isr_data_t)
-          call mapping%init (eps = data%eps)
+          call mapping%init (eps = data%get_eps ())
        end select
        call mapping%set_index (1, 1)
        call mapping%set_index (2, 2)
@@ -13676,7 +14047,7 @@ module sf_epa
   use format_defs, only: FMT_17, FMT_19
   use unit_tests
   use diagnostics
-  use physics_defs, only: ELECTRON, PHOTON
+  use physics_defs, only: PHOTON
   use lorentz
   use pdg_arrays
   use model_data
@@ -13686,7 +14057,6 @@ module sf_epa
   use state_matrices
   use polarizations
   use interactions
-  use sf_aux
   use sf_base
   
 <<Standard module head>>
@@ -13700,8 +14070,6 @@ module sf_epa
 contains
 
 <<SF epa: procedures>>
-
-<<SF epa: tests>>
 
 end module sf_epa
 @ %def sf_epa
@@ -13848,7 +14216,7 @@ particle mass.
     data%E_max = E_max
     data%x_min = x_min
     data%x_max = 1
-    if (data%x_min == 0) then
+    if (vanishes (data%x_min)) then
        data%error = ZERO_XMIN;  return
     end if
     data%q_min = q_min
@@ -14309,9 +14677,57 @@ generated $x$ values are identical.
 @ %def epa_apply
 @
 \subsection{Unit tests}
-<<SF epa: public>>=
+Test module, followed by the corresponding implementation module.
+<<[[sf_epa_ut.f90]]>>=
+<<File header>>
+
+module sf_epa_ut
+  use unit_tests
+  use sf_epa_uti
+  
+<<Standard module head>>
+
+<<SF epa: public test>>
+
+contains
+  
+<<SF epa: test driver>>
+
+end module sf_epa_ut
+@ %def sf_epa_ut
+@
+<<[[sf_epa_uti.f90]]>>=
+<<File header>>
+
+module sf_epa_uti
+
+<<Use kinds>>
+  use physics_defs, only: ELECTRON
+  use lorentz
+  use pdg_arrays
+  use flavors
+  use interactions, only: reset_interaction_counter
+  use interactions, only: interaction_pacify_momenta
+  use model_data
+  use sf_aux
+  use sf_base
+
+  use sf_epa
+
+<<Standard module head>>
+
+<<SF epa: test declarations>>
+
+contains
+
+<<SF epa: tests>>
+
+end module sf_epa_uti
+@ %def sf_epa_ut
+@ API: driver for the unit tests below.
+<<SF epa: public test>>=
   public :: sf_epa_test
-<<SF epa: tests>>=
+<<SF epa: test driver>>=
   subroutine sf_epa_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
@@ -14326,6 +14742,8 @@ Construct and display a test structure function data object.
   call test (sf_epa_1, "sf_epa_1", &
        "structure function configuration", &
        u, results)
+<<SF epa: test declarations>>=
+  public :: sf_epa_1
 <<SF epa: tests>>=
   subroutine sf_epa_1 (u)
     integer, intent(in) :: u
@@ -14384,6 +14802,8 @@ structure function.
   call test (sf_epa_2, "sf_epa_2", &
        "structure function instance", &
        u, results)
+<<SF epa: test declarations>>=
+  public :: sf_epa_2
 <<SF epa: tests>>=
   subroutine sf_epa_2 (u)
     integer, intent(in) :: u
@@ -14503,6 +14923,8 @@ structure function, applying the standard single-particle mapping.
   call test (sf_epa_3, "sf_epa_3", &
        "apply mapping", &
        u, results)
+<<SF epa: test declarations>>=
+  public :: sf_epa_3
 <<SF epa: tests>>=
   subroutine sf_epa_3 (u)
     integer, intent(in) :: u
@@ -14622,6 +15044,8 @@ structure function.
   call test (sf_epa_4, "sf_epa_4", &
        "non-collinear", &
        u, results)
+<<SF epa: test declarations>>=
+  public :: sf_epa_4
 <<SF epa: tests>>=
   subroutine sf_epa_4 (u)
     integer, intent(in) :: u
@@ -14747,6 +15171,8 @@ non-uniform charge.
   call test (sf_epa_5, "sf_epa_5", &
        "multiple flavors", &
        u, results)
+<<SF epa: test declarations>>=
+  public :: sf_epa_5
 <<SF epa: tests>>=
   subroutine sf_epa_5 (u)
     integer, intent(in) :: u
@@ -14849,7 +15275,7 @@ module sf_ewa
   use io_units
   use constants, only: pi
   use format_defs, only: FMT_17, FMT_19
-  use unit_tests
+  use unit_tests, only: vanishes
   use diagnostics
   use physics_defs, only: W_BOSON, Z_BOSON
   use lorentz
@@ -14875,8 +15301,6 @@ module sf_ewa
 contains
 
 <<SF ewa: procedures>>
-
-<<SF ewa: tests>>
 
 end module sf_ewa
 @ %def sf_ewa
@@ -15057,7 +15481,7 @@ set the upper bound for $x$, $x_{\rm max}$, but we fix it to one here.
     data%sqrts = sqrts
     data%x_min = x_min
     data%x_max = 1
-    if (data%x_min == 0) then
+    if (vanishes (data%x_min)) then
        data%error = ZERO_XMIN;  return
     end if    
     select case (char (data%model%get_name ()))
@@ -15683,7 +16107,7 @@ generated $x$ values are identical.
          fL = data%coeff * &
               (cv**2 + ca**2) * (2 * xb / x) * c2       
          f = fp + fm + fL
-         if (f /= 0) then
+         if (.not. vanishes (f)) then
             fp = fp / f
             fm = fm / f
             fL = fL / f      
@@ -15697,9 +16121,56 @@ generated $x$ values are identical.
 @ %def ewa_apply
 @
 \subsection{Unit tests}
-<<SF ewa: public>>=
+Test module, followed by the corresponding implementation module.
+<<[[sf_ewa_ut.f90]]>>=
+<<File header>>
+
+module sf_ewa_ut
+  use unit_tests
+  use sf_ewa_uti
+  
+<<Standard module head>>
+
+<<SF ewa: public test>>
+
+contains
+  
+<<SF ewa: test driver>>
+
+end module sf_ewa_ut
+@ %def sf_ewa_ut
+@
+<<[[sf_ewa_uti.f90]]>>=
+<<File header>>
+
+module sf_ewa_uti
+
+<<Use kinds>>
+  use lorentz
+  use pdg_arrays
+  use flavors
+  use interactions, only: reset_interaction_counter
+  use interactions, only: interaction_pacify_momenta
+  use model_data
+  use sf_aux
+  use sf_base
+
+  use sf_ewa
+
+<<Standard module head>>
+
+<<SF ewa: test declarations>>
+
+contains
+
+<<SF ewa: tests>>
+
+end module sf_ewa_uti
+@ %def sf_ewa_ut
+@ API: driver for the unit tests below.
+<<SF ewa: public test>>=
   public :: sf_ewa_test
-<<SF ewa: tests>>=
+<<SF ewa: test driver>>=
   subroutine sf_ewa_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
@@ -15714,6 +16185,8 @@ Construct and display a test structure function data object.
   call test (sf_ewa_1, "sf_ewa_1", &
        "structure function configuration", &
        u, results)
+<<SF ewa: test declarations>>=
+  public :: sf_ewa_1
 <<SF ewa: tests>>=
   subroutine sf_ewa_1 (u)
     integer, intent(in) :: u
@@ -15795,6 +16268,8 @@ structure function.
   call test (sf_ewa_2, "sf_ewa_2", &
        "structure function instance", &
        u, results)
+<<SF ewa: test declarations>>=
+  public :: sf_ewa_2
 <<SF ewa: tests>>=
   subroutine sf_ewa_2 (u)
     integer, intent(in) :: u
@@ -15918,6 +16393,8 @@ structure function, applying the standard single-particle mapping.
   call test (sf_ewa_3, "sf_ewa_3", &
        "apply mapping", &
        u, results)
+<<SF ewa: test declarations>>=
+  public :: sf_ewa_3
 <<SF ewa: tests>>=
   subroutine sf_ewa_3 (u)
     integer, intent(in) :: u
@@ -16041,6 +16518,8 @@ structure function.
   call test (sf_ewa_4, "sf_ewa_4", &
        "non-collinear", &
        u, results)
+<<SF ewa: test declarations>>=
+  public :: sf_ewa_4
 <<SF ewa: tests>>=
   subroutine sf_ewa_4 (u)
     integer, intent(in) :: u
@@ -16166,6 +16645,8 @@ non-uniform quantum numbers.
   call test (sf_ewa_5, "sf_ewa_5", &
        "structure function instance", &
        u, results)
+<<SF ewa: test declarations>>=
+  public :: sf_ewa_5
 <<SF ewa: tests>>=
   subroutine sf_ewa_5 (u)
     integer, intent(in) :: u
@@ -16293,20 +16774,15 @@ module sf_escan
 <<Use strings>>
   use io_units
   use format_defs, only: FMT_12
-  use unit_tests
+  use unit_tests, only: nearly_equal
   use diagnostics
   use lorentz
-  use physics_defs, only: ELECTRON
   use pdg_arrays
   use model_data
   use flavors
-  use helicities
-  use colors
   use quantum_numbers
   use state_matrices
   use polarizations
-  use interactions
-  use sf_aux
   use sf_base
   
 <<Standard module head>>
@@ -16318,8 +16794,6 @@ module sf_escan
 contains
 
 <<SF escan: procedures>>
-
-<<SF escan: tests>>
 
 end module sf_escan
 @ %def sf_escan
@@ -16362,7 +16836,7 @@ $\hat\sigma$ as a function of $\sqrt{\hat s}$.
     end do
     m2 = data%flv_in(1,:)%get_mass ()
     do i = 1, 2
-       if (any (data%flv_in(1:data%n_flv(i),i)%get_mass () /= m2(i))) then
+       if (.not. any (nearly_equal (data%flv_in(1:data%n_flv(i),i)%get_mass (), m2(i)))) then
           call msg_fatal ("Energy scan: incoming particle mass must be uniform")
        end if
     end do
@@ -16639,9 +17113,56 @@ Here, we insert the predefined norm.
 @ %def escan_apply
 @
 \subsection{Unit tests}
-<<SF escan: public>>=
+Test module, followed by the corresponding implementation module.
+<<[[sf_escan_ut.f90]]>>=
+<<File header>>
+
+module sf_escan_ut
+  use unit_tests
+  use sf_escan_uti
+  
+<<Standard module head>>
+
+<<SF escan: public test>>
+
+contains
+  
+<<SF escan: test driver>>
+
+end module sf_escan_ut
+@ %def sf_escan_ut
+@
+<<[[sf_escan_uti.f90]]>>=
+<<File header>>
+
+module sf_escan_uti
+
+<<Use kinds>>
+  use physics_defs, only: ELECTRON
+  use lorentz
+  use pdg_arrays
+  use flavors
+  use interactions, only: reset_interaction_counter
+  use model_data
+  use sf_aux
+  use sf_base
+
+  use sf_escan
+
+<<Standard module head>>
+
+<<SF escan: test declarations>>
+
+contains
+
+<<SF escan: tests>>
+
+end module sf_escan_uti
+@ %def sf_escan_ut
+@ API: driver for the unit tests below.
+<<SF escan: public test>>=
   public :: sf_escan_test
-<<SF escan: tests>>=
+<<SF escan: test driver>>=
   subroutine sf_escan_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
@@ -16656,6 +17177,8 @@ Construct and display a test structure function data object.
   call test (sf_escan_1, "sf_escan_1", &
        "structure function configuration", &
        u, results)
+<<SF escan: test declarations>>=
+  public :: sf_escan_1
 <<SF escan: tests>>=
   subroutine sf_escan_1 (u)
     integer, intent(in) :: u
@@ -16705,6 +17228,8 @@ Active the beam event reader, generate an event.
   call test (sf_escan_2, "sf_escan_2", &
        "generate event", &
        u, results)
+<<SF escan: test declarations>>=
+  public :: sf_escan_2
 <<SF escan: tests>>=
   subroutine sf_escan_2 (u)
     integer, intent(in) :: u
@@ -16806,6 +17331,617 @@ Active the beam event reader, generate an event.
 
 @ %def sf_escan_2
 @ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Gaussian beam spread}
+
+Instead of an analytic beam description, beam data may be provided in
+form of an event file.  In its most simple form, the event file
+contains pairs of $x$ values, relative to nominal beam energies.  More
+advanced formats may include polarization, etc.  The current
+implementation carries beam polarization through, if specified.
+
+The code is very similar to the energy scan described above.
+
+However, we must include a file-handle manager for the beam-event
+files.  Two different processes may access a given beam-event file at
+the same time (i.e., serially but alternating).  Accessing an open
+file from two different units is non-standard and not supported by all
+compilers.  Therefore, we keep a global registry of open files,
+associated units, and reference counts.  The [[gaussian_t]] objects
+act as proxies to this registry.
+<<[[sf_gaussian.f90]]>>=
+<<File header>>
+
+module sf_gaussian
+
+<<Use kinds>>
+<<Use strings>>
+  use io_units
+  use format_defs, only: FMT_12
+  use file_registries
+  use diagnostics
+  use lorentz
+  use rng_base
+  use pdg_arrays
+  use model_data
+  use flavors
+  use quantum_numbers
+  use state_matrices
+  use polarizations
+  use sf_base
+
+<<Standard module head>>
+
+<<SF gaussian: public>>
+
+<<SF gaussian: types>>
+
+contains
+
+<<SF gaussian: procedures>>
+
+end module sf_gaussian
+@ %def sf_gaussian
+@
+\subsection{The beam-data file registry}
+We manage data files via the [[file_registries]] module.  To this end,
+we keep the registry as a private module variable here.
+<<CCC SF gaussian: variables>>=
+  type(file_registry_t), save :: beam_file_registry
+
+@ %def beam_file_registry
+@ 
+\subsection{Data type}
+We store the spread for each beam, as a relative number related to the beam
+energy.  For the actual generation, we include an (abstract) random-number
+generator factory.
+<<SF gaussian: public>>=
+  public :: gaussian_data_t
+<<SF gaussian: types>>=
+  type, extends(sf_data_t) :: gaussian_data_t
+     private
+     type(flavor_t), dimension(2) :: flv_in
+     real(default), dimension(2) :: spread
+     class(rng_factory_t), allocatable :: rng_factory
+   contains
+   <<SF gaussian: gaussian data: TBP>>
+  end type gaussian_data_t
+
+@  %def gaussian_data_t
+<<SF gaussian: gaussian data: TBP>>=
+  procedure :: init => gaussian_data_init
+<<SF gaussian: procedures>>=
+  subroutine gaussian_data_init (data, model, pdg_in, spread, rng_factory)
+    class(gaussian_data_t), intent(out) :: data
+    class(model_data_t), intent(in), target :: model
+    type(pdg_array_t), dimension(2), intent(in) :: pdg_in
+    real(default), dimension(2), intent(in) :: spread
+    class(rng_factory_t), intent(inout), allocatable :: rng_factory
+    if (any (spread < 0)) then
+       call msg_fatal ("Gaussian beam spread: must not be negative")
+    end if
+    call data%flv_in(1)%init (pdg_array_get (pdg_in(1), 1), model)
+    call data%flv_in(2)%init (pdg_array_get (pdg_in(2), 1), model)
+    data%spread = spread
+    call move_alloc (from = rng_factory, to = data%rng_factory)
+  end subroutine gaussian_data_init
+
+@ %def gaussian_data_init
+@ Return true since this spectrum is always in generator mode.
+<<SF gaussian: gaussian data: TBP>>=
+  procedure :: is_generator => gaussian_data_is_generator
+<<SF gaussian: procedures>>=
+  function gaussian_data_is_generator (data) result (flag)
+    class(gaussian_data_t), intent(in) :: data
+    logical :: flag
+    flag = .true.
+  end function gaussian_data_is_generator
+  
+@ %def gaussian_data_is_generator
+@ The number of parameters is two.  They are free parameters.
+<<SF gaussian: gaussian data: TBP>>=
+  procedure :: get_n_par => gaussian_data_get_n_par
+<<SF gaussian: procedures>>=
+  function gaussian_data_get_n_par (data) result (n)
+    class(gaussian_data_t), intent(in) :: data
+    integer :: n
+    n = 2
+  end function gaussian_data_get_n_par
+  
+@ %def gaussian_data_get_n_par
+<<SF gaussian: gaussian data: TBP>>=  
+  procedure :: get_pdg_out => gaussian_data_get_pdg_out
+<<SF gaussian: procedures>>=
+  subroutine gaussian_data_get_pdg_out (data, pdg_out)
+    class(gaussian_data_t), intent(in) :: data
+    type(pdg_array_t), dimension(:), intent(inout) :: pdg_out
+    integer :: i, n
+    n = 2
+    do i = 1, n
+       pdg_out(i) = data%flv_in(i)%get_pdg ()
+    end do
+  end subroutine gaussian_data_get_pdg_out
+  
+@ %def gaussian_data_get_pdg_out
+@ Allocate the interaction record.
+<<SF gaussian: gaussian data: TBP>>=
+  procedure :: allocate_sf_int => gaussian_data_allocate_sf_int
+<<SF gaussian: procedures>>=
+  subroutine gaussian_data_allocate_sf_int (data, sf_int)
+    class(gaussian_data_t), intent(in) :: data
+    class(sf_int_t), intent(inout), allocatable :: sf_int
+    allocate (gaussian_t :: sf_int)
+  end subroutine gaussian_data_allocate_sf_int
+  
+@ %def gaussian_data_allocate_sf_int 
+@ Output
+<<SF gaussian: gaussian data: TBP>>=
+  procedure :: write => gaussian_data_write
+<<SF gaussian: procedures>>=
+  subroutine gaussian_data_write (data, unit, verbose) 
+    class(gaussian_data_t), intent(in) :: data
+    integer, intent(in), optional :: unit
+    logical, intent(in), optional :: verbose        
+    integer :: u
+    u = given_output_unit (unit);  if (u < 0)  return
+    write (u, "(1x,A)") "Gaussian beam spread data:"
+    write (u, "(3x,A,A,A,A)") "prt_in = ", &
+         char (data%flv_in(1)%get_name ()), &
+         ", ", char (data%flv_in(2)%get_name ())    
+    write (u, "(3x,A,2(1x," // FMT_12 // "))") "spread =", data%spread
+    call data%rng_factory%write (u)
+  end subroutine gaussian_data_write
+
+@ %def gaussian_data_write
+@
+\subsection{The gaussian object}
+Flavor and polarization carried through, no radiated particles.  The generator
+needs a random-number generator, obviously.
+<<SF gaussian: public>>=
+  public :: gaussian_t
+<<SF gaussian: types>>=
+  type, extends (sf_int_t) :: gaussian_t
+     type(gaussian_data_t), pointer :: data => null ()
+     class(rng_t), allocatable :: rng
+   contains
+   <<SF gaussian: gaussian: TBP>>
+  end type gaussian_t 
+  
+@ %def gaussian_t
+@ Type string: show gaussian file.
+<<SF gaussian: gaussian: TBP>>=
+  procedure :: type_string => gaussian_type_string
+<<SF gaussian: procedures>>=
+  function gaussian_type_string (object) result (string)
+    class(gaussian_t), intent(in) :: object
+    type(string_t) :: string
+    if (associated (object%data)) then
+       string = "Gaussian: gaussian beam-energy spread"
+    else
+       string = "Gaussian: [undefined]"
+    end if
+  end function gaussian_type_string
+  
+@ %def gaussian_type_string
+@ Output.  Call the interaction routine after displaying the configuration.
+<<SF gaussian: gaussian: TBP>>=
+  procedure :: write => gaussian_write
+<<SF gaussian: procedures>>=
+  subroutine gaussian_write (object, unit, testflag)
+    class(gaussian_t), intent(in) :: object
+    integer, intent(in), optional :: unit
+    logical, intent(in), optional :: testflag
+    integer :: u
+    u = given_output_unit (unit)
+    if (associated (object%data)) then
+       call object%data%write (u)
+       call object%rng%write (u)
+       call object%base_write (u, testflag)
+    else
+       write (u, "(1x,A)")  "gaussian data: [undefined]"
+    end if
+  end subroutine gaussian_write
+    
+@ %def gaussian_write
+@
+<<SF gaussian: gaussian: TBP>>=
+  procedure :: init => gaussian_init
+<<SF gaussian: procedures>>=
+  subroutine gaussian_init (sf_int, data)
+    class(gaussian_t), intent(out) :: sf_int
+    class(sf_data_t), intent(in), target :: data
+    real(default), dimension(2) :: m2
+    real(default), dimension(0) :: mr2
+    type(quantum_numbers_mask_t), dimension(4) :: mask
+    integer, dimension(4) :: hel_lock
+    type(quantum_numbers_t), dimension(4) :: qn_fc, qn_hel, qn
+    type(polarization_t) :: pol1, pol2
+    type(state_iterator_t) :: it_hel1, it_hel2
+    integer :: i
+    select type (data)
+    type is (gaussian_data_t)
+       m2 = data%flv_in%get_mass () ** 2
+       hel_lock = [3, 4, 1, 2]
+       mask = quantum_numbers_mask (.false., .false., .false.)
+       call sf_int%base_init (mask, m2, mr2, m2, hel_lock = hel_lock)
+       sf_int%data => data
+       do i = 1, 2
+          call qn_fc(i)%init ( &
+               flv = data%flv_in(i), &
+               col = color_from_flavor (data%flv_in(i)))
+          call qn_fc(i+2)%init ( &
+               flv = data%flv_in(i), &
+               col = color_from_flavor (data%flv_in(i)))
+       end do
+       call polarization_init_generic (pol1, data%flv_in(1))
+       call it_hel1%init (pol1%state)
+       do while (it_hel1%is_valid ())
+          qn_hel(1:1) = it_hel1%get_quantum_numbers ()
+          qn_hel(3:3) = it_hel1%get_quantum_numbers ()
+          call polarization_init_generic (pol2, data%flv_in(2))
+          call it_hel2%init (pol2%state)
+          do while (it_hel2%is_valid ())
+             qn_hel(2:2) = it_hel2%get_quantum_numbers ()
+             qn_hel(4:4) = it_hel2%get_quantum_numbers ()
+             qn = qn_hel .merge. qn_fc
+             call sf_int%add_state (qn)
+             call it_hel2%advance ()
+          end do
+          call polarization_final (pol2)
+          call it_hel1%advance ()
+       end do
+       call polarization_final (pol2)
+       call sf_int%freeze ()
+       call sf_int%set_incoming ([1,2])
+       call sf_int%set_outgoing ([3,4])
+       sf_int%status = SF_INITIAL
+    end select
+    call sf_int%data%rng_factory%make (sf_int%rng)
+  end subroutine gaussian_init
+    
+@ %def gaussian_init
+@ This spectrum type needs a finalizer, which closes the data file.
+<<SF gaussian: gaussian: TBP>>=
+  procedure :: final => sf_gaussian_final
+<<SF gaussian: procedures>>=
+  subroutine sf_gaussian_final (object)
+    class(gaussian_t), intent(inout) :: object
+    call object%interaction_t%final ()
+  end subroutine sf_gaussian_final
+
+@ %def sf_gaussian_final
+@
+\subsection{Kinematics}
+Refer to the [[data]] component.
+<<SF gaussian: gaussian: TBP>>=
+  procedure :: is_generator => gaussian_is_generator
+<<SF gaussian: procedures>>=
+  function gaussian_is_generator (sf_int) result (flag)
+    class(gaussian_t), intent(in) :: sf_int
+    logical :: flag
+    flag = sf_int%data%is_generator ()
+  end function gaussian_is_generator
+  
+@ %def gaussian_is_generator
+@ Generate free parameters.  The $x$ value should be distributed with mean $1$
+and $\sigma$ given by the spread.  We reject negative $x$ values.  (This
+cut slightly biases the distribution, but for reasonable (small)
+spreads negative $r$ should not occur.
+<<SF gaussian: gaussian: TBP>>=
+  procedure :: generate_free => gaussian_generate_free
+<<SF gaussian: procedures>>=
+  subroutine gaussian_generate_free (sf_int, r, rb, x_free)
+    class(gaussian_t), intent(inout) :: sf_int
+    real(default), dimension(:), intent(out) :: r, rb
+    real(default), intent(inout) :: x_free
+    real(default), dimension(size(r)) :: z
+    associate (data => sf_int%data)
+      do
+         call sf_int%rng%generate_gaussian (z)
+         rb = z * data%spread
+         r = 1 - rb
+         x_free = x_free * product (r)
+         if (all (r > 0))  exit
+      end do
+    end associate
+  end subroutine gaussian_generate_free
+    
+@ %def gaussian_generate_free
+@ Set kinematics.  Trivial transfer since this is a pure generator.
+The [[map]] flag doesn't apply.
+<<SF gaussian: gaussian: TBP>>=
+  procedure :: complete_kinematics => gaussian_complete_kinematics
+<<SF gaussian: procedures>>=
+  subroutine gaussian_complete_kinematics (sf_int, x, f, r, rb, map)
+    class(gaussian_t), intent(inout) :: sf_int
+    real(default), dimension(:), intent(out) :: x
+    real(default), intent(out) :: f
+    real(default), dimension(:), intent(in) :: r
+    real(default), dimension(:), intent(in) :: rb
+    logical, intent(in) :: map
+    if (map) then
+       call msg_fatal ("gaussian: map flag not supported")
+    else
+       x = r
+       f = 1
+    end if
+    call sf_int%reduce_momenta (x)
+  end subroutine gaussian_complete_kinematics
+
+@ %def gaussian_complete_kinematics
+@ Compute inverse kinematics.  Trivial in this case.
+<<SF gaussian: gaussian: TBP>>=
+  procedure :: inverse_kinematics => gaussian_inverse_kinematics
+<<SF gaussian: procedures>>=
+  subroutine gaussian_inverse_kinematics &
+       (sf_int, x, f, r, rb, map, set_momenta)
+    class(gaussian_t), intent(inout) :: sf_int
+    real(default), dimension(:), intent(in) :: x
+    real(default), intent(out) :: f
+    real(default), dimension(:), intent(out) :: r
+    real(default), dimension(:), intent(out) :: rb
+    logical, intent(in) :: map
+    logical, intent(in), optional :: set_momenta
+    logical :: set_mom
+    set_mom = .false.;  if (present (set_momenta))  set_mom = set_momenta
+    if (map) then
+       call msg_fatal ("gaussian: map flag not supported")
+    else
+       r = x
+       f = 1
+    end if
+    rb = 1 - r
+    if (set_mom) then
+       call sf_int%reduce_momenta (x)
+    end if
+  end subroutine gaussian_inverse_kinematics
+
+@ %def gaussian_inverse_kinematics
+@
+\subsection{gaussian application}
+Trivial, just set the unit weight.
+<<SF gaussian: gaussian: TBP>>=
+  procedure :: apply => gaussian_apply
+<<SF gaussian: procedures>>=
+  subroutine gaussian_apply (sf_int, scale)
+    class(gaussian_t), intent(inout) :: sf_int
+    real(default), intent(in) :: scale
+    real(default) :: f
+    f = 1
+    call sf_int%set_matrix_element (cmplx (f, kind=default))        
+    sf_int%status = SF_EVALUATED
+  end subroutine gaussian_apply
+
+@ %def gaussian_apply
+@
+\subsection{Unit tests}
+Test module, followed by the corresponding implementation module.
+<<[[sf_gaussian_ut.f90]]>>=
+<<File header>>
+
+module sf_gaussian_ut
+  use unit_tests
+  use sf_gaussian_uti
+  
+<<Standard module head>>
+
+<<SF gaussian: public test>>
+
+contains
+  
+<<SF gaussian: test driver>>
+
+end module sf_gaussian_ut
+@ %def sf_gaussian_ut
+@
+<<[[sf_gaussian_uti.f90]]>>=
+<<File header>>
+
+module sf_gaussian_uti
+
+<<Use kinds>>
+  use physics_defs, only: ELECTRON
+  use lorentz
+  use pdg_arrays
+  use flavors
+  use interactions, only: reset_interaction_counter
+  use model_data
+  use rng_base
+  use sf_aux
+  use sf_base
+
+  use sf_gaussian
+  
+  use rng_base_ut, only: rng_test_factory_t
+
+<<Standard module head>>
+
+<<SF gaussian: test declarations>>
+
+contains
+
+<<SF gaussian: tests>>
+
+end module sf_gaussian_uti
+@ %def sf_gaussian_ut
+@ API: driver for the unit tests below.
+<<SF gaussian: public test>>=
+  public :: sf_gaussian_test
+<<SF gaussian: test driver>>=
+  subroutine sf_gaussian_test (u, results)
+    integer, intent(in) :: u
+    type(test_results_t), intent(inout) :: results
+  <<SF gaussian: execute tests>>
+  end subroutine sf_gaussian_test
+  
+@ %def sf_gaussian_test
+@
+\subsubsection{Test structure function data}
+Construct and display a test structure function data object.
+<<SF gaussian: execute tests>>=
+  call test (sf_gaussian_1, "sf_gaussian_1", &
+       "structure function configuration", &
+       u, results)
+<<SF gaussian: test declarations>>=
+  public :: sf_gaussian_1
+<<SF gaussian: tests>>=
+  subroutine sf_gaussian_1 (u)
+    integer, intent(in) :: u
+    type(model_data_t), target :: model
+    type(pdg_array_t), dimension(2) :: pdg_in
+    type(pdg_array_t), dimension(2) :: pdg_out
+    integer, dimension(:), allocatable :: pdg1, pdg2
+    class(sf_data_t), allocatable :: data
+    class(rng_factory_t), allocatable :: rng_factory
+    
+    write (u, "(A)")  "* Test output: sf_gaussian_1"
+    write (u, "(A)")  "*   Purpose: initialize and display &
+         &gaussian-spread structure function data"
+    write (u, "(A)")
+    
+    call model%init_qed_test ()
+    pdg_in(1) = ELECTRON
+    pdg_in(2) = -ELECTRON
+
+    allocate (gaussian_data_t :: data)
+    allocate (rng_test_factory_t :: rng_factory)
+    select type (data)
+    type is (gaussian_data_t)
+       call data%init (model, pdg_in, [1e-2_default, 2e-2_default], rng_factory)
+    end select
+
+    call data%write (u)
+
+    write (u, "(A)")
+
+    write (u, "(1x,A)")  "Outgoing particle codes:"
+    call data%get_pdg_out (pdg_out)
+    pdg1 = pdg_out(1)
+    pdg2 = pdg_out(2)
+    write (u, "(2x,99(1x,I0))")  pdg1, pdg2
+
+    call model%final ()
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: sf_gaussian_1"
+
+  end subroutine sf_gaussian_1
+
+@ %def sf_gaussian_1
+@
+\subsubsection{Probe the structure-function object}
+Active the beam event reader, generate an event.
+<<SF gaussian: execute tests>>=
+  call test (sf_gaussian_2, "sf_gaussian_2", &
+       "generate event", &
+       u, results)
+<<SF gaussian: test declarations>>=
+  public :: sf_gaussian_2
+<<SF gaussian: tests>>=
+  subroutine sf_gaussian_2 (u)
+    integer, intent(in) :: u
+    type(model_data_t), target :: model
+    type(flavor_t), dimension(2) :: flv
+    type(pdg_array_t), dimension(2) :: pdg_in
+    class(sf_data_t), allocatable, target :: data
+    class(rng_factory_t), allocatable :: rng_factory
+    class(sf_int_t), allocatable :: sf_int
+    type(vector4_t) :: k1, k2
+    real(default) :: E
+    real(default), dimension(:), allocatable :: r, rb, x
+    real(default) :: x_free, f
+    integer :: i
+    
+    write (u, "(A)")  "* Test output: sf_gaussian_2"
+    write (u, "(A)")  "*   Purpose: initialize and display &
+         &gaussian-spread structure function data"
+    write (u, "(A)")
+    
+    call model%init_qed_test ()
+    call flv(1)%init (ELECTRON, model)
+    call flv(2)%init (-ELECTRON, model)
+    pdg_in(1) = ELECTRON
+    pdg_in(2) = -ELECTRON
+
+    call reset_interaction_counter ()
+    
+    allocate (gaussian_data_t :: data)
+    allocate (rng_test_factory_t :: rng_factory)
+    select type (data)
+    type is (gaussian_data_t)
+       call data%init (model, pdg_in, [1e-2_default, 2e-2_default], rng_factory)
+    end select
+       
+    write (u, "(A)")  "* Initialize structure-function object"
+    write (u, "(A)")
+    
+    call data%allocate_sf_int (sf_int)
+    call sf_int%init (data)
+    call sf_int%set_beam_index ([1,2])
+
+    write (u, "(A)")  "* Initialize incoming momentum with E=500"
+    write (u, "(A)")
+    E = 250
+    k1 = vector4_moving (E, sqrt (E**2 - flv(1)%get_mass ()**2), 3)
+    k2 = vector4_moving (E,-sqrt (E**2 - flv(2)%get_mass ()**2), 3)
+    call vector4_write (k1, u)
+    call vector4_write (k2, u)
+    call sf_int%seed_kinematics ([k1, k2])
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Set dummy parameters and generate x."
+    write (u, "(A)")
+
+    allocate (r (data%get_n_par ()))
+    allocate (rb(size (r)))
+    allocate (x (size (r)))
+
+    r  = 0
+    rb = 0
+    x_free = 1
+    call sf_int%generate_free (r, rb, x_free)
+    call sf_int%complete_kinematics (x, f, r, rb, map=.false.)
+    call pacify (rb, 1.e-8_default)
+    
+    write (u, "(A,9(1x,F10.7))")  "r =", r
+    write (u, "(A,9(1x,F10.7))")  "rb=", rb
+    write (u, "(A,9(1x,F10.7))")  "x =", x
+    write (u, "(A,9(1x,F10.7))")  "f =", f
+    write (u, "(A,9(1x,F10.7))")  "xf=", x_free
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Evaluate"
+    write (u, "(A)")
+
+    call sf_int%apply (scale = 0._default)
+    call sf_int%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Generate more events"
+    write (u, "(A)")
+
+    select type (sf_int)
+    type is (gaussian_t)	
+       do i = 1, 3
+          call sf_int%generate_free (r, rb, x_free)
+          write (u, "(A,9(1x,F10.7))")  "r =", r
+       end do
+    end select
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Cleanup"
+
+    call sf_int%final ()
+    call model%final ()
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: sf_gaussian_2"
+
+  end subroutine sf_gaussian_2
+
+@ %def sf_gaussian_2
+@
+\clearpage
+@ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Using beam event data}
 
 Instead of an analytic beam description, beam data may be provided in
@@ -16832,20 +17968,14 @@ module sf_beam_events
 <<Use strings>>
   use io_units
   use file_registries
-  use unit_tests
   use diagnostics
-  use physics_defs, only: ELECTRON
   use lorentz
   use pdg_arrays
   use model_data
   use flavors
-  use helicities
-  use colors
   use quantum_numbers
   use state_matrices
   use polarizations
-  use interactions
-  use sf_aux
   use sf_base
 
 <<Standard module head>>
@@ -16860,14 +17990,16 @@ contains
 
 <<SF beam events: procedures>>
 
-<<SF beam events: tests>>
-
 end module sf_beam_events
 @ %def sf_beam_events
 @
 \subsection{The beam-data file registry}
 We manage data files via the [[file_registries]] module.  To this end,
 we keep the registry as a private module variable here.
+
+This is public only for the unit tests.
+<<SF beam events: public>>=
+  public :: beam_file_registry
 <<SF beam events: variables>>=
   type(file_registry_t), save :: beam_file_registry
 
@@ -17029,6 +18161,8 @@ given system directory.
 @
 \subsection{The beam events object}
 Flavor and polarization carried through, no radiated particles.
+<<SF beam events: public>>=
+  public :: beam_events_t
 <<SF beam events: types>>=
   type, extends (sf_int_t) :: beam_events_t
      type(beam_events_data_t), pointer :: data => null ()
@@ -17195,9 +18329,7 @@ Refer to the [[data]] component.
     
 @ %def beam_events_generate_free
 @ Set kinematics.  Trivial transfer since this is a pure generator.
-
-If [[map]] is set, we are asked to provide an efficient mapping.
-For the test case, we set $x=r^2$ and consequently $f(r)=2r$.
+The [[map]] flag doesn't apply.
 <<SF beam events: beam events: TBP>>=
   procedure :: complete_kinematics => beam_events_complete_kinematics
 <<SF beam events: procedures>>=
@@ -17264,9 +18396,58 @@ Trivial, just set the unit weight.
 @ %def beam_events_apply
 @
 \subsection{Unit tests}
-<<SF beam events: public>>=
+Test module, followed by the corresponding implementation module.
+<<[[sf_beam_events_ut.f90]]>>=
+<<File header>>
+
+module sf_beam_events_ut
+  use unit_tests
+  use sf_beam_events_uti
+  
+<<Standard module head>>
+
+<<SF beam events: public test>>
+
+contains
+  
+<<SF beam events: test driver>>
+
+end module sf_beam_events_ut
+@ %def sf_beam_events_ut
+@
+<<[[sf_beam_events_uti.f90]]>>=
+<<File header>>
+
+module sf_beam_events_uti
+
+<<Use kinds>>
+<<Use strings>>
+  use io_units
+  use physics_defs, only: ELECTRON
+  use lorentz
+  use pdg_arrays
+  use flavors
+  use interactions, only: reset_interaction_counter
+  use model_data
+  use sf_aux
+  use sf_base
+
+  use sf_beam_events
+
+<<Standard module head>>
+
+<<SF beam events: test declarations>>
+
+contains
+
+<<SF beam events: tests>>
+
+end module sf_beam_events_uti
+@ %def sf_beam_events_ut
+@ API: driver for the unit tests below.
+<<SF beam events: public test>>=
   public :: sf_beam_events_test
-<<SF beam events: tests>>=
+<<SF beam events: test driver>>=
   subroutine sf_beam_events_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
@@ -17281,6 +18462,8 @@ Construct and display a test structure function data object.
   call test (sf_beam_events_1, "sf_beam_events_1", &
        "structure function configuration", &
        u, results)
+<<SF beam events: test declarations>>=
+  public :: sf_beam_events_1
 <<SF beam events: tests>>=
   subroutine sf_beam_events_1 (u)
     integer, intent(in) :: u
@@ -17330,6 +18513,8 @@ Active the beam event reader, generate an event.
   call test (sf_beam_events_2, "sf_beam_events_2", &
        "generate event", &
        u, results)
+<<SF beam events: test declarations>>=
+  public :: sf_beam_events_2
 <<SF beam events: tests>>=
   subroutine sf_beam_events_2 (u)
     integer, intent(in) :: u
@@ -17443,6 +18628,8 @@ Open and close some files, checking the registry contents.
   call test (sf_beam_events_3, "sf_beam_events_3", &
        "check registry", &
        u, results)
+<<SF beam events: test declarations>>=
+  public :: sf_beam_events_3
 <<SF beam events: tests>>=
   subroutine sf_beam_events_3 (u)
     integer, intent(in) :: u
@@ -17537,9 +18724,8 @@ module sf_circe1
 <<Use strings>>
   use io_units
   use format_defs, only: FMT_17, FMT_19
-  use unit_tests
   use diagnostics
-  use physics_defs, only: UNDEFINED, ELECTRON, PHOTON
+  use physics_defs, only: ELECTRON, PHOTON
   use lorentz
   use rng_base
   use pdg_arrays
@@ -17549,9 +18735,7 @@ module sf_circe1
   use quantum_numbers
   use state_matrices
   use polarizations
-  use interactions
   use sf_mappings
-  use sf_aux
   use sf_base
   use circe1, circe1_rng_t => rng_type !NODEP!
 
@@ -17564,8 +18748,6 @@ module sf_circe1
 contains
 
 <<SF circe1: procedures>>
-
-<<SF circe1: tests>>
 
 end module sf_circe1
 @ %def sf_circe1
@@ -17861,6 +19043,8 @@ and 4, respectively, and 5 and 6 are the outgoing ones (triggering the
 hard scattering process), while in the case of no radiation, the
 outgoing particles are 3 and 4, respectively. In the case of the
 electron being the radiated particle, helicity is not kept.
+<<SF circe1: public>>=
+  public :: circe1_t
 <<SF circe1: types>>=
   type, extends (sf_int_t) :: circe1_t
      type(circe1_data_t), pointer :: data => null ()
@@ -18252,9 +19436,59 @@ this reduces to one.
 @ %def peak
 @
 \subsection{Unit tests}
-<<SF circe1: public>>=
+Test module, followed by the corresponding implementation module.
+<<[[sf_circe1_ut.f90]]>>=
+<<File header>>
+
+module sf_circe1_ut
+  use unit_tests
+  use sf_circe1_uti
+  
+<<Standard module head>>
+
+<<SF circe1: public test>>
+
+contains
+  
+<<SF circe1: test driver>>
+
+end module sf_circe1_ut
+@ %def sf_circe1_ut
+@
+<<[[sf_circe1_uti.f90]]>>=
+<<File header>>
+
+module sf_circe1_uti
+
+<<Use kinds>>
+  use physics_defs, only: ELECTRON
+  use lorentz
+  use pdg_arrays
+  use flavors
+  use interactions, only: reset_interaction_counter
+  use model_data
+  use rng_base
+  use sf_aux
+  use sf_base
+
+  use sf_circe1
+  
+  use rng_base_ut, only: rng_test_factory_t
+
+<<Standard module head>>
+
+<<SF circe1: test declarations>>
+
+contains
+
+<<SF circe1: tests>>
+
+end module sf_circe1_uti
+@ %def sf_circe1_ut
+@ API: driver for the unit tests below.
+<<SF circe1: public test>>=
   public :: sf_circe1_test
-<<SF circe1: tests>>=
+<<SF circe1: test driver>>=
   subroutine sf_circe1_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
@@ -18269,6 +19503,8 @@ Construct and display a test structure function data object.
   call test (sf_circe1_1, "sf_circe1_1", &
        "structure function configuration", &
        u, results)
+<<SF circe1: test declarations>>=
+  public :: sf_circe1_1
 <<SF circe1: tests>>=
   subroutine sf_circe1_1 (u)
     integer, intent(in) :: u
@@ -18336,6 +19572,8 @@ structure function.
   call test (sf_circe1_2, "sf_circe1_2", &
        "structure function instance", &
        u, results)
+<<SF circe1: test declarations>>=
+  public :: sf_circe1_2
 <<SF circe1: tests>>=
   subroutine sf_circe1_2 (u)
     integer, intent(in) :: u
@@ -18460,6 +19698,8 @@ Construct and evaluate a structure function object in generator mode.
   call test (sf_circe1_3, "sf_circe1_3", &
        "generator mode", &
        u, results)
+<<SF circe1: test declarations>>=
+  public :: sf_circe1_3
 <<SF circe1: tests>>=
   subroutine sf_circe1_3 (u)
     integer, intent(in) :: u
@@ -18574,14 +19814,13 @@ Construct and evaluate a structure function object in generator mode.
 module sf_circe2
 
 <<Use kinds>>
-  use kinds, only: double
 <<Use strings>>
   use io_units
   use format_defs, only: FMT_19
-  use unit_tests
+  use unit_tests, only: vanishes
   use diagnostics
   use os_interface
-  use physics_defs, only: UNDEFINED, PHOTON, ELECTRON
+  use physics_defs, only: PHOTON, ELECTRON
   use lorentz
   use rng_base
   use selectors
@@ -18593,8 +19832,6 @@ module sf_circe2
   use quantum_numbers
   use state_matrices
   use polarizations
-  use interactions
-  use sf_aux
   use sf_base
   use circe2, circe2_rng_t => rng_type !NODEP!
 
@@ -18607,8 +19844,6 @@ module sf_circe2
 contains
 
 <<SF circe2: procedures>>
-
-<<SF circe2: tests>>
 
 end module sf_circe2
 @ %def sf_circe2
@@ -18633,6 +19868,7 @@ The CIRCE2 parameters are: file and collider specification, incoming
      integer, dimension(2) :: pdg_in
      real(default) :: sqrts = 0
      logical :: polarized = .false.
+     logical :: beams_polarized = .false.
      class(rng_factory_t), allocatable :: rng_factory
      type(string_t) :: filename
      type(string_t) :: file 
@@ -18655,13 +19891,13 @@ The CIRCE2 parameters are: file and collider specification, incoming
   procedure :: init => circe2_data_init
 <<SF circe2: procedures>>=
   subroutine circe2_data_init (data, os_data, model, pdg_in, &
-       sqrts, polarized, file, design)
+       sqrts, polarized, beam_pol, file, design)
     class(circe2_data_t), intent(out) :: data
     type(os_data_t), intent(in) :: os_data
     class(model_data_t), intent(in), target :: model
     type(pdg_array_t), dimension(2), intent(in) :: pdg_in
     real(default), intent(in) :: sqrts
-    logical, intent(in) :: polarized
+    logical, intent(in) :: polarized, beam_pol
     type(string_t), intent(in) :: file, design
     integer :: h
     data%model => model
@@ -18673,13 +19909,17 @@ The CIRCE2 parameters are: file and collider specification, incoming
     data%pdg_in = data%flv_in%get_pdg ()
     data%sqrts = sqrts
     data%polarized = polarized
+    data%beams_polarized = beam_pol
     data%filename = file
     data%design = design
     call data%check_file (os_data)
     call circe2_load (circe2_global_state, trim (char(data%file)), &
             trim (char(data%design)), data%sqrts, data%error)
-    data%lumi = circe2_luminosity (circe2_global_state, data%pdg_in, [0, 0])
     call data%check ()
+    data%lumi = circe2_luminosity (circe2_global_state, data%pdg_in, [0, 0])
+    if (vanishes (data%lumi)) then
+       call msg_fatal ("CIRCE2: luminosity vanishes for specified beams.")
+    end if
     if (data%polarized) then
        do h = 1, 4
           data%lumi_hel_frac(h) = &
@@ -18755,15 +19995,12 @@ in the current directory.
     case (-1)
        call msg_fatal ("CIRCE2: data file not found.")
     case (-2)
-       call msg_fatal ("CIRCE2: beam parameters do not match data file.")
+       call msg_fatal ("CIRCE2: beam setup does not match data file.")
     case (-3)
        call msg_fatal ("CIRCE2: invalid format of data file.")
     case (-4)
        call msg_fatal ("CIRCE2: data file too large.")
     end select
-    if (data%lumi == 0) then
-       call msg_fatal ("CIRCE2: luminosity vanishes for specified beams.")
-    end if
   end subroutine circe2_data_check
   
 @ %def circe2_data_check 
@@ -18785,6 +20022,7 @@ in the current directory.
          char (data%flv_in(1)%get_name ()), &
          ", ", char (data%flv_in(2)%get_name ())    
     write (u, "(3x,A,L1)")      "polarized  = ", data%polarized
+    write (u, "(3x,A,L1)")      "beams pol. = ", data%beams_polarized    
     write (u, "(3x,A," // FMT_19 // ")") "luminosity = ", data%lumi
     if (data%polarized) then
        do h = 1, 4
@@ -18893,6 +20131,8 @@ are four entries.  If the generator is used, only one entry is nonzero
 in each call.  Which one, is determined by comparing with a previously
 (randomly, distributed by relative luminosity) selected pair of
 helicities.
+<<SF circe2: public>>=
+  public :: circe2_t
 <<SF circe2: types>>=
   type, extends (sf_int_t) :: circe2_t
      type(circe2_data_t), pointer :: data => null ()
@@ -18955,29 +20195,50 @@ helicities.
     integer :: h
     select type (data)
     type is (circe2_data_t)
-       mask_h(1:2) = .true.
-       mask_h(3:4) = .not. data%polarized       
+       if (data%polarized .and. data%beams_polarized) then
+          call msg_fatal ("CIRCE2: Beam polarization can't be set &
+               &for polarized data file")
+       else if (data%beams_polarized) then
+          call msg_warning ("CIRCE2: User-defined beam polarization set &
+               &for unpolarized CIRCE2 data file")
+       end if
+       mask_h(1:2) = .not. data%beams_polarized
+       mask_h(3:4) = .not. (data%polarized .or. data%beams_polarized)
        mask = quantum_numbers_mask (.false., .false., mask_h)
        call sf_int%base_init (mask, [0._default, 0._default], &
             null_array, [0._default, 0._default])    
        sf_int%data => data              
        if (data%polarized) then
-          if (sum (data%lumi_hel_frac) == 0 .or. &
+          if (vanishes (sum (data%lumi_hel_frac)) .or. &
                any (data%lumi_hel_frac < 0)) then
-             call msg_fatal ("Circe2: Helicity-dependent lumi " &
+             call msg_fatal ("CIRCE2: Helicity-dependent lumi " &
                   // "fractions all vanish or",  &
                   [var_str ("are negative: Please inspect the " &
                   // "CIRCE2 file or "), &
                    var_str ("switch off the polarized" // &
-                  " option for Circe2.")])
+                  " option for CIRCE2.")])
           else             
              call sf_int%selector%init (data%lumi_hel_frac)
           end if
        end if
        call col0%init ()
-       call qn(1)%init (flv = data%flv_in(1), col = col0)
-       call qn(2)%init (flv = data%flv_in(2), col = col0)
-       if (data%polarized) then
+       if (data%beams_polarized) then
+          do h = 1, 4
+             call hel%init (data%h1(h))
+             call qn(1)%init &
+                  (flv = data%flv_in(1), col = col0, hel = hel)
+             call qn(3)%init &
+                  (flv = data%flv_in(1), col = col0, hel = hel)
+             call hel%init (data%h2(h))
+             call qn(2)%init &
+                  (flv = data%flv_in(2), col = col0, hel = hel)
+             call qn(4)%init &
+                  (flv = data%flv_in(2), col = col0, hel = hel)
+             call sf_int%add_state (qn)
+          end do
+       else if (data%polarized) then
+          call qn(1)%init (flv = data%flv_in(1), col = col0)
+          call qn(2)%init (flv = data%flv_in(2), col = col0)
           do h = 1, 4
              call hel%init (data%h1(h))
              call qn(3)%init &
@@ -18988,9 +20249,10 @@ helicities.
              call sf_int%add_state (qn)
           end do
        else
+          call qn(1)%init (flv = data%flv_in(1), col = col0)
+          call qn(2)%init (flv = data%flv_in(2), col = col0)
           call qn(3)%init (flv = data%flv_in(1), col = col0)
           call qn(4)%init (flv = data%flv_in(2), col = col0)
-          call qn(3:4)%tag_radiated ()
           call sf_int%add_state (qn)
        end if
        call sf_int%freeze ()
@@ -19109,17 +20371,17 @@ the interaction has only one entry, and the factor is unity.
 <<SF circe2: procedures>>=
   subroutine circe2_apply (sf_int, scale)
     class(circe2_t), intent(inout) :: sf_int
-    real(default), intent(in) :: scale    
+    real(default), intent(in) :: scale
     complex(default) :: f
-    integer :: h
     associate (data => sf_int%data)
       f = 1
-      if (data%polarized) then
-         h = sf_int%h_sel
+      if (data%beams_polarized) then
+         call sf_int%set_matrix_element (f)
+      else if (data%polarized) then
+         call sf_int%set_matrix_element (sf_int%h_sel, f)
       else
-         h = 1
+         call sf_int%set_matrix_element (1, f)
       end if
-      call sf_int%set_matrix_element (h, f)
     end associate
     sf_int%status = SF_EVALUATED
   end subroutine circe2_apply
@@ -19127,9 +20389,61 @@ the interaction has only one entry, and the factor is unity.
 @ %def circe2_apply
 @
 \subsection{Unit tests}
-<<SF circe2: public>>=
+Test module, followed by the corresponding implementation module.
+<<[[sf_circe2_ut.f90]]>>=
+<<File header>>
+
+module sf_circe2_ut
+  use unit_tests
+  use sf_circe2_uti
+  
+<<Standard module head>>
+
+<<SF circe2: public test>>
+
+contains
+  
+<<SF circe2: test driver>>
+
+end module sf_circe2_ut
+@ %def sf_circe2_ut
+@
+<<[[sf_circe2_uti.f90]]>>=
+<<File header>>
+
+module sf_circe2_uti
+
+<<Use kinds>>
+<<Use strings>>
+  use os_interface
+  use physics_defs, only: PHOTON
+  use lorentz
+  use pdg_arrays
+  use flavors
+  use interactions, only: reset_interaction_counter
+  use model_data
+  use rng_base
+  use sf_aux
+  use sf_base
+
+  use sf_circe2
+
+  use rng_base_ut, only: rng_test_factory_t
+
+<<Standard module head>>
+
+<<SF circe2: test declarations>>
+
+contains
+
+<<SF circe2: tests>>
+
+end module sf_circe2_uti
+@ %def sf_circe2_ut
+@ API: driver for the unit tests below.
+<<SF circe2: public test>>=
   public :: sf_circe2_test
-<<SF circe2: tests>>=
+<<SF circe2: test driver>>=
   subroutine sf_circe2_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
@@ -19144,6 +20458,8 @@ Construct and display a test structure function data object.
   call test (sf_circe2_1, "sf_circe2_1", &
        "structure function configuration", &
        u, results)
+<<SF circe2: test declarations>>=
+  public :: sf_circe2_1
 <<SF circe2: tests>>=
   subroutine sf_circe2_1 (u)
     integer, intent(in) :: u
@@ -19180,6 +20496,7 @@ Construct and display a test structure function data object.
        call data%init (os_data, model, pdg_in, &
             sqrts = 500._default, &
             polarized = .false., &
+            beam_pol = .false., &
             file = var_str ("teslagg_500_polavg.circe"), &
             design = var_str ("TESLA/GG"))
        call data%set_generator_mode (rng_factory)
@@ -19206,6 +20523,7 @@ Construct and display a test structure function data object.
        call data%init (os_data, model, pdg_in, &
             sqrts = 500._default, &
             polarized = .true., &
+            beam_pol = .false., &
             file = var_str ("teslagg_500.circe"), &
             design = var_str ("TESLA/GG"))
        call data%set_generator_mode (rng_factory)
@@ -19228,6 +20546,8 @@ Construct and evaluate a structure function object in generator mode.
   call test (sf_circe2_2, "sf_circe2_2", &
        "generator, unpolarized", &
        u, results)
+<<SF circe2: test declarations>>=
+  public :: sf_circe2_2
 <<SF circe2: tests>>=
   subroutine sf_circe2_2 (u)
     integer, intent(in) :: u
@@ -19267,7 +20587,8 @@ Construct and evaluate a structure function object in generator mode.
        call data%init (os_data, model, pdg_in, &
             sqrts = 500._default, &
             polarized = .false., &
-            file = var_str ("teslagg_500_polavg.circe"), &
+            beam_pol = .false., &
+            file = var_str ("teslagg_500_polavg.circe"), &            
             design = var_str ("TESLA/GG"))
        call data%set_generator_mode (rng_factory)
     end select
@@ -19336,6 +20657,8 @@ Construct and evaluate a structure function object in generator mode.
   call test (sf_circe2_3, "sf_circe2_3", &
        "generator, polarized", &
        u, results)
+<<SF circe2: test declarations>>=
+  public :: sf_circe2_3
 <<SF circe2: tests>>=
   subroutine sf_circe2_3 (u)
     integer, intent(in) :: u
@@ -19375,6 +20698,7 @@ Construct and evaluate a structure function object in generator mode.
        call data%init (os_data, model, pdg_in, &
             sqrts = 500._default, &
             polarized = .true., &
+            beam_pol = .false., &
             file = var_str ("teslagg_500.circe"), &
             design = var_str ("TESLA/GG"))
        call data%set_generator_mode (rng_factory)
@@ -19491,7 +20815,6 @@ module sf_pdf_builtin
 <<Use strings>>
   use io_units
   use format_defs, only: FMT_17
-  use unit_tests
   use diagnostics
   use os_interface
   use physics_defs, only: PROTON, PHOTON, GLUON
@@ -19507,8 +20830,6 @@ module sf_pdf_builtin
   use quantum_numbers
   use state_matrices
   use polarizations
-  use interactions
-  use sf_aux
   use sf_base
   use pdf_builtin !NODEP!
   use hoppet_interface
@@ -19524,8 +20845,6 @@ module sf_pdf_builtin
 contains
 
 <<SF pdf builtin: procedures>>
-
-<<SF pdf builtin: tests>>
 
 end module sf_pdf_builtin
 @ %def sf_pdf_builtin
@@ -20036,9 +21355,58 @@ Initialization.  We need to access the global initialization status.
 @ %def alpha_qcd_pdf_builtin_init
 @
 \subsection{Unit tests}
-<<SF pdf builtin: public>>=
+Test module, followed by the corresponding implementation module.
+<<[[sf_pdf_builtin_ut.f90]]>>=
+<<File header>>
+
+module sf_pdf_builtin_ut
+  use unit_tests
+  use sf_pdf_builtin_uti
+  
+<<Standard module head>>
+
+<<SF pdf builtin: public test>>
+
+contains
+  
+<<SF pdf builtin: test driver>>
+
+end module sf_pdf_builtin_ut
+@ %def sf_pdf_builtin_ut
+@
+<<[[sf_pdf_builtin_uti.f90]]>>=
+<<File header>>
+
+module sf_pdf_builtin_uti
+
+<<Use kinds>>
+<<Use strings>>
+  use os_interface
+  use physics_defs, only: PROTON
+  use sm_qcd
+  use lorentz
+  use pdg_arrays
+  use flavors
+  use interactions, only: reset_interaction_counter
+  use model_data
+  use sf_base
+
+  use sf_pdf_builtin
+
+<<Standard module head>>
+
+<<SF pdf builtin: test declarations>>
+
+contains
+
+<<SF pdf builtin: tests>>
+
+end module sf_pdf_builtin_uti
+@ %def sf_pdf_builtin_ut
+@ API: driver for the unit tests below.
+<<SF pdf builtin: public test>>=
   public :: sf_pdf_builtin_test
-<<SF pdf builtin: tests>>=
+<<SF pdf builtin: test driver>>=
   subroutine sf_pdf_builtin_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
@@ -20053,6 +21421,8 @@ Construct and display a test structure function data object.
   call test (sf_pdf_builtin_1, "sf_pdf_builtin_1", &
        "structure function configuration", &
        u, results)
+<<SF pdf builtin: test declarations>>=
+  public :: sf_pdf_builtin_1
 <<SF pdf builtin: tests>>=
   subroutine sf_pdf_builtin_1 (u)
     integer, intent(in) :: u
@@ -20117,6 +21487,8 @@ structure function.
   call test (sf_pdf_builtin_2, "sf_pdf_builtin_2", &
        "structure function instance", &
        u, results)
+<<SF pdf builtin: test declarations>>=
+  public :: sf_pdf_builtin_2
 <<SF pdf builtin: tests>>=
   subroutine sf_pdf_builtin_2 (u)
     integer, intent(in) :: u
@@ -20238,6 +21610,8 @@ type.
   call test (sf_pdf_builtin_3, "sf_pdf_builtin_3", &
        "running alpha_s", &
        u, results)
+<<SF pdf builtin: test declarations>>=
+  public :: sf_pdf_builtin_3
 <<SF pdf builtin: tests>>=
   subroutine sf_pdf_builtin_3 (u)
     integer, intent(in) :: u
@@ -20298,7 +21672,6 @@ module sf_lhapdf
 <<Use strings>>
   use format_defs, only: FMT_17, FMT_19
   use io_units
-  use unit_tests
   use system_dependencies, only: LHAPDF_PDFSETS_PATH
   use system_dependencies, only: LHAPDF5_AVAILABLE
   use system_dependencies, only: LHAPDF6_AVAILABLE  
@@ -20316,8 +21689,6 @@ module sf_lhapdf
   use quantum_numbers
   use state_matrices
   use polarizations
-  use interactions
-  use sf_aux
   use sf_base
   use lhapdf !NODEP!
   use hoppet_interface
@@ -20337,8 +21708,6 @@ module sf_lhapdf
 contains
 
 <<SF lhapdf: procedures>>
-
-<<SF lhapdf: tests>>
 
 end module sf_lhapdf
 @ %def sf_lhapdf
@@ -20476,7 +21845,7 @@ object of type [[lhapdf_status_t]], which acts as a proxy.
 
 @ %def lhapdf_global_status_t
 <<SF lhapdf: variables>>=
-  type(lhapdf_global_status_t) :: lhapdf_global_status
+  type(lhapdf_global_status_t), save :: lhapdf_global_status
 @ %def lhapdf_global_status
 <<SF lhapdf: procedures>>=
   function lhapdf_global_status_is_initialized (set) result (flag)
@@ -20569,8 +21938,10 @@ outsourced to a separate module (inc. [[lhapdf_status]] etc.).
        end if
        call InitPDFM (set, member)
     else if (LHAPDF6_AVAILABLE) then
-       if (lhapdf_global_status_is_initialized (set) .and. &
-            pdf%is_associated ()) return
+    ! TODO: (bcn 2015-07-07) we should have a closer look why this global 
+    !                        check must not be executed
+    !   if (lhapdf_global_status_is_initialized (set) .and. &
+    !        pdf%is_associated ()) return
        if (file == "") then
           select case (set)
           case (1);  file = LHAPDF6_DEFAULT_PROTON
@@ -21098,10 +22469,10 @@ to $x=1$).  We set these unphysical values to zero.
       sf_int%q = scale
       x = sf_int%x
       s = sf_int%s
+      xx = x
       qq = min (data% qmax, scale)
       qq = max (data% qmin, qq)
       if (.not. data% photon) then
-         xx = x
          if (data% invert) then
             if (data%has_photon) then
                if (LHAPDF5_AVAILABLE) then
@@ -21250,9 +22621,62 @@ Initialization.  We need to access the (quasi-global) initialization status.
 @ %def alpha_qcd_lhapdf_init
 @
 \subsection{Unit tests}
-<<SF lhapdf: public>>=
+Test module, followed by the corresponding implementation module.
+<<[[sf_lhapdf_ut.f90]]>>=
+<<File header>>
+
+module sf_lhapdf_ut
+  use unit_tests
+  use system_dependencies, only: LHAPDF5_AVAILABLE
+  use system_dependencies, only: LHAPDF6_AVAILABLE  
+  use sf_lhapdf_uti
+  
+<<Standard module head>>
+
+<<SF lhapdf: public test>>
+
+contains
+  
+<<SF lhapdf: test driver>>
+
+end module sf_lhapdf_ut
+@ %def sf_lhapdf_ut
+@
+<<[[sf_lhapdf_uti.f90]]>>=
+<<File header>>
+
+module sf_lhapdf_uti
+
+<<Use kinds>>
+<<Use strings>>
+  use system_dependencies, only: LHAPDF5_AVAILABLE
+  use system_dependencies, only: LHAPDF6_AVAILABLE  
+  use os_interface
+  use physics_defs, only: PROTON
+  use sm_qcd
+  use lorentz
+  use pdg_arrays
+  use flavors
+  use interactions, only: reset_interaction_counter
+  use model_data
+  use sf_base
+
+  use sf_lhapdf
+
+<<Standard module head>>
+
+<<SF lhapdf: test declarations>>
+
+contains
+
+<<SF lhapdf: tests>>
+
+end module sf_lhapdf_uti
+@ %def sf_lhapdf_ut
+@ API: driver for the unit tests below.
+<<SF lhapdf: public test>>=
   public :: sf_lhapdf_test
-<<SF lhapdf: tests>>=
+<<SF lhapdf: test driver>>=
   subroutine sf_lhapdf_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
@@ -21273,6 +22697,8 @@ Construct and display a test structure function data object.
           "structure function configuration", &
           u, results)
   end if
+<<SF lhapdf: test declarations>>=
+  public :: sf_lhapdf_1
 <<SF lhapdf: tests>>=
   subroutine sf_lhapdf_1 (u)
     integer, intent(in) :: u
@@ -21336,6 +22762,8 @@ structure function.
           "structure function instance", &
           u, results)     
   end if
+<<SF lhapdf: test declarations>>=
+  public :: sf_lhapdf_2
 <<SF lhapdf: tests>>=
   subroutine sf_lhapdf_2 (u)
     integer, intent(in) :: u
@@ -21458,6 +22886,8 @@ type.
           "running alpha_s", &
           u, results)     
   end if
+<<SF lhapdf: test declarations>>=
+  public :: sf_lhapdf_3
 <<SF lhapdf: tests>>=
   subroutine sf_lhapdf_3 (u)
     integer, intent(in) :: u
@@ -21509,3 +22939,166 @@ type.
   end subroutine sf_lhapdf_3
 
 @ %def sf_lhapdf_3
+@
+\section{Easy PDF Access}
+For the shower, subtraction and matching, it is very useful to have
+direct access to $f(x,Q)$ independently of the used library.
+<<[[pdf.f90]]>>=
+<<File header>>
+
+module pdf
+
+<<Use kinds with double>>
+  use io_units
+  use system_dependencies, only: LHAPDF5_AVAILABLE, LHAPDF6_AVAILABLE
+  use diagnostics
+  use beam_structures
+  use lhapdf !NODEP!
+  use pdf_builtin !NODEP!
+
+<<Standard module head>>
+
+<<PDF: public>>
+
+<<PDF: parameters>>
+
+<<PDF: types>>
+
+contains
+
+<<PDF: procedures>>
+
+end module pdf
+@ %def pdf
+We support the following implementations:
+<<PDF: parameters>>=
+  integer, parameter, public :: STRF_NONE = 0
+  integer, parameter, public :: STRF_LHAPDF6 = 1
+  integer, parameter, public :: STRF_LHAPDF5 = 2
+  integer, parameter, public :: STRF_PDF_BUILTIN = 3
+
+@ %def STRF_NONE STRF_LHAPDF6 STRF_LHAPDF5 STRF_PDF_BUILTIN
+@ A container to bundle all necessary PDF data. Could be moved to a more
+central location.
+<<PDF: public>>=
+  public :: pdf_data_t
+<<PDF: types>>=
+  type :: pdf_data_t
+    type(lhapdf_pdf_t) :: pdf
+    real(default) :: xmin, xmax, qmin, qmax
+    integer :: type = STRF_NONE
+    integer :: set = 0
+   contains
+   <<PDF: pdf data: TBP>>
+  end type pdf_data_t
+
+@ %def pdf_data
+@
+<<PDF: pdf data: TBP>>=
+  procedure :: init => pdf_data_init
+<<PDF: procedures>>=
+  subroutine pdf_data_init (pdf_data, pdf_data_in)
+    class(pdf_data_t), intent(out) :: pdf_data
+    type(pdf_data_t), target, intent(in) :: pdf_data_in
+    pdf_data%xmin = pdf_data_in%xmin
+    pdf_data%xmax = pdf_data_in%xmax
+    pdf_data%qmin = pdf_data_in%qmin
+    pdf_data%qmax = pdf_data_in%qmax
+    pdf_data%set = pdf_data_in%set
+    pdf_data%type = pdf_data_in%type
+    if (pdf_data%type == STRF_LHAPDF6) then
+       if (pdf_data_in%pdf%is_associated ()) then
+          call lhapdf_copy_pointer (pdf_data_in%pdf, pdf_data%pdf)
+       else
+          call msg_bug ('pdf_data_init: pdf_data%pdf was not associated!')
+       end if
+    end if
+  end subroutine pdf_data_init
+
+@ %def pdf_data_init
+@
+<<PDF: pdf data: TBP>>=
+  procedure :: write => pdf_data_write
+<<PDF: procedures>>=
+  subroutine pdf_data_write (pdf_data, unit)
+    class(pdf_data_t), intent(in) :: pdf_data
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = given_output_unit (unit); if (u < 0) return
+    write (u, "(3x,A,I0)") "PDF set  = ", pdf_data%set
+    write (u, "(3x,A,I0)") "PDF type = ", pdf_data%type
+  end subroutine pdf_data_write
+
+@ %def pdf_data_write
+@
+<<PDF: pdf data: TBP>>=
+  procedure :: setup => pdf_data_setup
+<<PDF: procedures>>=
+  subroutine pdf_data_setup (pdf_data, caller, beam_structure, lhapdf_member, set)
+    class(pdf_data_t), intent(inout) :: pdf_data
+    character(len=*), intent(in) :: caller
+    type(beam_structure_t), intent(in) :: beam_structure
+    integer, intent(in) :: lhapdf_member, set
+    real(default) :: xmin, xmax, q2min, q2max
+    pdf_data%set = set
+    if (beam_structure%contains ("lhapdf")) then
+       if (LHAPDF6_AVAILABLE) then
+          pdf_data%type = STRF_LHAPDF6
+       else if (LHAPDF5_AVAILABLE) then
+          pdf_data%type = STRF_LHAPDF5
+       end if
+       write (msg_buffer, "(A,I0)")  caller &
+            // ": interfacing LHAPDF set #", pdf_data%set
+       call msg_message ()
+    else if (beam_structure%contains ("pdf_builtin")) then
+       pdf_data%type = STRF_PDF_BUILTIN
+       write (msg_buffer, "(A,I0)")  caller &
+            // ": interfacing PDF builtin set #", pdf_data%set
+       call msg_message ()
+    end if
+    select case (pdf_data%type)
+    case (STRF_LHAPDF6)
+       pdf_data%xmin = pdf_data%pdf%getxmin ()
+       pdf_data%xmax = pdf_data%pdf%getxmax ()
+       pdf_data%qmin = sqrt(pdf_data%pdf%getq2min ())
+       pdf_data%qmax = sqrt(pdf_data%pdf%getq2max ())
+    case (STRF_LHAPDF5)
+       call GetXminM (1, lhapdf_member, xmin)
+       call GetXmaxM (1, lhapdf_member, xmax)
+       call GetQ2minM (1, lhapdf_member, q2min)
+       call GetQ2maxM (1, lhapdf_member, q2max)
+       pdf_data%xmin = xmin
+       pdf_data%xmax = xmax
+       pdf_data%qmin = sqrt(q2min)
+       pdf_data%qmax = sqrt(q2max)
+    end select
+  end subroutine pdf_data_setup
+
+@ %def pdf_data_setup
+@ This could be overloaded with a version that only asks for a specific
+flavor as it is supported by LHAPDF6.
+<<PDF: pdf data: TBP>>=
+  procedure :: evolve => pdf_data_evolve
+<<PDF: procedures>>=
+  subroutine pdf_data_evolve (pdf_data, x, q_in, f)
+    class(pdf_data_t), intent(inout) :: pdf_data
+    real(double), intent(in) :: x, q_in
+    real(double), dimension(-6:6), intent(out) :: f
+    real(double) :: q
+    select case (pdf_data%type)
+    case (STRF_PDF_BUILTIN)
+       call pdf_evolve_LHAPDF (pdf_data%set, x, q_in, f)
+    case (STRF_LHAPDF6)
+       q = min (pdf_data%qmax, q_in)
+       q = max (pdf_data%qmin, q)
+       call pdf_data%pdf%evolve_pdfm (x, q, f)
+    case (STRF_LHAPDF5)
+       q = min (pdf_data%qmax, q_in)
+       q = max (pdf_data%qmin, q)
+       call evolvePDFM (pdf_data%set, x, q, f)
+    case default
+       call msg_fatal ("PDF function: unknown PDF method.")
+    end select
+  end subroutine pdf_data_evolve
+@ %def pdf_data_evolve
+@

@@ -34,6 +34,7 @@
 
 ## We create a library which is still to be combined with auxiliary libs.
 noinst_LTLIBRARIES = libprocess_integration.la
+check_LTLIBRARIES = libprocess_integration_ut.la
 
 libprocess_integration_la_SOURCES = \
   subevt_expr.f90 \
@@ -41,11 +42,17 @@ libprocess_integration_la_SOURCES = \
   processes.f90 \
   process_stacks.f90
 
+libprocess_integration_ut_la_SOURCES = \
+  processes_uti.f90 processes_ut.f90 \
+  process_stacks_uti.f90 process_stacks_ut.f90
+
 ## Omitting this would exclude it from the distribution
 dist_noinst_DATA = process_integration.nw
 
 # Dump module names into file Modules
-libprocess_integration_Modules = ${libprocess_integration_la_SOURCES:.f90=}
+libprocess_integration_Modules = \
+  ${libprocess_integration_la_SOURCES:.f90=} \
+  ${libprocess_integration_ut_la_SOURCES:.f90=}
 Modules: Makefile
 	@for module in $(libprocess_integration_Modules); do \
           echo $$module >> $@.new; \
@@ -112,7 +119,9 @@ DISTCLEANFILES = Module_dependencies.sed
 @am__include@ @am__quote@Makefile.depend@am__quote@
 
 Makefile.depend: Module_dependencies.sed
-Makefile.depend: $(libprocess_integration_la_SOURCES)
+Makefile.depend: \
+  $(libprocess_integration_la_SOURCES) \
+  $(libprocess_integration_ut_la_SOURCES)
 	@rm -f $@
 	for src in $^; do \
 	  module="`basename $$src | sed 's/\.f[90][0358]//'`"; \
@@ -157,12 +166,14 @@ POSTLUDE = $(top_srcdir)/src/noweb-frame/whizard-postlude.nw
 process_integration.stamp: $(PRELUDE) $(srcdir)/process_integration.nw $(POSTLUDE)
 	@rm -f process_integration.tmp
 	@touch process_integration.tmp
-	for src in $(libprocess_integration_la_SOURCES); do \
+	for src in \
+          $(libprocess_integration_la_SOURCES) \
+          $(libprocess_integration_ut_la_SOURCES); do \
 	  $(NOTANGLE) -R[[$$src]] $^ | $(CPIF) $$src; \
         done
 	@mv -f process_integration.tmp process_integration.stamp
 
-$(libprocess_integration_la_SOURCES): process_integration.stamp
+$(libprocess_integration_la_SOURCES) $(libprocess_integration_ut_la_SOURCES): process_integration.stamp
 ## Recover from the removal of $@
 	@if test -f $@; then :; else \
 	  rm -f process_integration.stamp; \
@@ -192,6 +203,9 @@ endif
 clean-local: clean-noweb
 	-rm -f process_integration.stamp process_integration.tmp
 	-rm -f *.$(FC_MODULE_EXT)
+if FC_SUBMODULES
+	-rm -f *.smod
+endif
 
 ## Remove backup files
 maintainer-clean-backup:

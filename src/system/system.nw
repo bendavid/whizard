@@ -286,6 +286,7 @@ module diagnostics
 
 <<Use kinds>>
 <<Use strings>>
+  use string_utils, only: str
   use io_units
 
   use system_dependencies
@@ -311,13 +312,97 @@ end module diagnostics
 @ %def diagnostics
 @
 Diagnostics levels:
+<<Diagnostics: public>>=
+  public :: RESULT, DEBUG, DEBUG2
 <<Diagnostics: parameters>>=
-  integer, parameter :: &
-       & TERMINATE=-2, BUG=-1, &
-       & FATAL=1, ERROR=2, WARNING=3, MESSAGE=4, RESULT=5, DEBUG=6
-@ %def FATAL ERROR WARNING MESSAGE RESULT DEBUG
+  integer, parameter :: TERMINATE=-2, BUG=-1, FATAL=1, &
+       ERROR=2, WARNING=3, MESSAGE=4, RESULT=5, &
+       DEBUG=6, DEBUG2=7
+@ %def FATAL ERROR WARNING MESSAGE RESULT DEBUG DEBUG2
+Diagnostics areas:
+<<Diagnostics: public>>=
+  public :: d_area
+<<Diagnostics: interfaces>>=
+  interface d_area
+     module procedure d_area_of_string
+     module procedure d_area_to_string
+  end interface
+<<Diagnostics: procedures>>=
+  elemental function d_area_of_string (string) result (i)
+    integer :: i
+    type(string_t), intent(in) :: string
+    select case (char (string))
+    case ("all")
+       i = D_ALL
+    case ("particles")
+       i = D_PARTICLES
+    case ("events")
+       i = D_EVENTS
+    case ("shower")
+       i = D_SHOWER
+    case ("model_features")
+       i = D_MODEL_F
+    case ("matching")
+       i = D_MATCHING
+    case ("transforms")
+       i = D_TRANSFORMS
+    case ("subtraction")
+       i = D_SUBTRACTION
+    case ("virtual")
+       i = D_VIRTUAL
+    case ("threshold")
+       i = D_THRESHOLD
+    case default
+       i = D_ALL
+    end select
+  end function d_area_of_string
+
+  elemental function d_area_to_string (i) result (string)
+    type(string_t) :: string
+    integer, intent(in) :: i
+    select case (i)
+    case (D_ALL)
+       string = "all"
+    case (D_PARTICLES)
+       string = "particles"
+    case (D_EVENTS)
+       string = "events"
+    case (D_SHOWER)
+       string = "shower"
+    case (D_MODEL_F)
+       string = "model_features"
+    case (D_MATCHING)
+       string = "matching"
+    case (D_TRANSFORMS)
+       string = "transforms"
+    case (D_SUBTRACTION)
+       string = "subtraction"
+    case (D_VIRTUAL)
+       string = "virtual"
+    case (D_THRESHOLD)
+       string = "threshold"
+    case default
+       string = "undefined"
+    end select
+  end function d_area_to_string
+
+@ %def d_area
+@
+<<Diagnostics: public>>=
+  public :: D_ALL, D_PARTICLES, D_EVENTS, D_SHOWER, D_MODEL_F, &
+       D_MATCHING, D_TRANSFORMS, D_SUBTRACTION, D_VIRTUAL, D_THRESHOLD
+<<Diagnostics: parameters>>=
+  integer, parameter :: D_ALL=0, D_PARTICLES=1, D_EVENTS=2, &
+       D_SHOWER=3, D_MODEL_F=4, &
+       D_MATCHING=5, D_TRANSFORMS=6, &
+       D_SUBTRACTION=7, D_VIRTUAL=8, D_THRESHOLD=9
+@ %def D_ALL D_PARTICLES D_EVENTS
+@ %def D_SHOWER D_MODEL_F D_MATCHING D_TRANSFORMS
+@ %def D_SUBTRACTION D_VIRTUAL D_THRESHOLD
+<<Diagnostics: public>>=
+  public :: msg_level
 <<Diagnostics: variables>>=
-  integer, save :: msg_level = RESULT
+  integer, save, dimension(D_ALL:20) :: msg_level = RESULT
 @ %def msg_level
 @ 
 Mask fatal errors so that are treated as normal errors.  Useful for
@@ -343,7 +428,7 @@ double counting.
 <<Diagnostics: public>>=
   public :: msg_count
 <<Diagnostics: variables>>=
-  integer, dimension(TERMINATE:DEBUG), save :: msg_count = 0
+  integer, dimension(TERMINATE:WARNING), save :: msg_count = 0
 @ %def msg_count
 @ Keep a list of all errors and warnings.  Since we do not know the number of
 entries beforehand, we use a linked list.
@@ -476,19 +561,22 @@ messages and warnings, an additional exclamation mark and a blank is
 prepended.  Furthermore, each message is appended to the internal
 message list (without prepending anything).
 <<Diagnostics: procedures>>=
-  subroutine message_print (level, string, str_arr, unit, logfile)
+  subroutine message_print (level, string, str_arr, unit, logfile, area)
     integer, intent(in) :: level
     character(len=*), intent(in), optional :: string
     type(string_t), dimension(:), intent(in), optional :: str_arr
     integer, intent(in), optional :: unit
-    logical, intent(in), optional :: logfile   
-    type(string_t) :: prep_string, aux_string, head_footer
-    integer :: lu, i
+    logical, intent(in), optional :: logfile
+    integer, intent(in), optional :: area
+    type(string_t) :: prep_string, aux_string, head_footer, app_string
+    integer :: lu, i, ar
     logical :: severe, is_error
+    ar = D_ALL; if (present (area))  ar = area
     severe = .false.
     head_footer  = "******************************************************************************"
     aux_string = ""
     is_error = .false.
+    app_string = ""
     select case (level)
     case (TERMINATE)
        prep_string = ""
@@ -508,8 +596,11 @@ message list (without prepending anything).
        is_error = .true.
     case (WARNING)
        prep_string = "Warning: "
-    case (MESSAGE, DEBUG)
+    case (MESSAGE)
        prep_string = "| "
+    case (DEBUG, DEBUG2)
+       prep_string = achar(27) // "[34mD: "
+       app_string = achar(27) // "[0m"
     case default
        prep_string = ""
     end select
@@ -519,7 +610,8 @@ message list (without prepending anything).
        if (unit /= output_unit) then
           if (severe) write (unit, "(A)") char(head_footer) 
           if (is_error) write (unit, "(A)") char(head_footer) 
-          write (unit, "(A,A)") char(prep_string), trim(msg_buffer)
+          write (unit, "(A,A,A)") char(prep_string), trim(msg_buffer), &
+               char(app_string)
           if (present (str_arr)) then
              do i = 1, size(str_arr)
                 write (unit, "(A,A)") char(aux_string), char(trim(str_arr(i)))
@@ -529,10 +621,11 @@ message list (without prepending anything).
           if (severe) write (unit, "(A)") char(head_footer)
           flush (unit)
           lu = -1
-       else if (level <= msg_level) then
+       else if (level <= msg_level(ar)) then
           if (severe) print "(A)", char(head_footer) 
           if (is_error) print "(A)", char(head_footer) 
-          print "(A,A)", char(prep_string), trim(msg_buffer)
+          print "(A,A,A)", char(prep_string), trim(msg_buffer), &
+               char(app_string)
           if (present (str_arr)) then
              do i = 1, size(str_arr)
                 print "(A,A)", char(aux_string), char(trim(str_arr(i)))
@@ -543,10 +636,11 @@ message list (without prepending anything).
           flush (output_unit)
           if (unit == log_unit)  lu = -1
        end if
-    else if (level <= msg_level) then
+    else if (level <= msg_level(ar)) then
        if (severe) print "(A)", char(head_footer) 
        if (is_error) print "(A)", char(head_footer) 
-       print "(A,A)", char(prep_string), trim(msg_buffer)
+       print "(A,A,A)", char(prep_string), trim(msg_buffer), &
+               char(app_string)
           if (present (str_arr)) then
              do i = 1, size(str_arr)
                 print "(A,A)", char(aux_string), char(trim(str_arr(i)))
@@ -562,7 +656,8 @@ message list (without prepending anything).
     if (logging .and. lu >= 0) then
        if (severe) write (lu, "(A)") char(head_footer) 
        if (is_error) write (lu, "(A)") char(head_footer) 
-       write (lu, "(A,A)")  char(prep_string), trim(msg_buffer)
+       write (lu, "(A,A,A)")  char(prep_string), trim(msg_buffer), &
+               char(app_string)
        if (present (str_arr)) then
           do i = 1, size(str_arr)
              write (lu, "(A,A)") char(aux_string), char(trim(str_arr(i)))
@@ -576,7 +671,7 @@ message list (without prepending anything).
     call buffer_clear
   end subroutine message_print
 
-@ %def message_print_array
+@ %def message_print
 @
 The number of non-fatal errors that we allow before stopping the
 program.  We might trade this later for an adjustable number.
@@ -592,7 +687,7 @@ but this may change.
 <<Diagnostics: public>>=
   public :: msg_terminate
   public :: msg_bug, msg_fatal, msg_error, msg_warning
-  public :: msg_message, msg_result, msg_debug
+  public :: msg_message, msg_result
 <<Diagnostics: procedures>>=
   subroutine msg_terminate (string, unit, quit_code)
     integer, intent(in), optional :: unit
@@ -709,14 +804,108 @@ but this may change.
     call message_print (RESULT, string, arr, unit, logfile)
   end subroutine msg_result
 
-  subroutine msg_debug (string, arr, unit)
-    integer, intent(in), optional :: unit
+@ %def msg_warning msg_message msg_result
+@
+<<Diagnostics: public>>=
+  public :: msg_debug
+<<Diagnostics: interfaces>>=
+  interface msg_debug
+     module procedure msg_debug_none
+     module procedure msg_debug_logical
+     module procedure msg_debug_integer
+     module procedure msg_debug_real
+  end interface
+<<Diagnostics: procedures>>=
+  subroutine msg_debug_none (area, string)
+    integer, intent(in) :: area
     character(len=*), intent(in), optional :: string
-    type(string_t), dimension(:), intent(in), optional :: arr
-    call message_print (DEBUG, string, arr, unit)
-  end subroutine msg_debug
+    call message_print (DEBUG, string, unit=output_unit, &
+         area=area, logfile=.false.)
+  end subroutine msg_debug_none
 
-@ %def msg_warning msg_message msg_result msg_debug
+  subroutine msg_debug_logical (area, string, value)
+    integer, intent(in) :: area
+    character(len=*), intent(in) :: string
+    logical, intent(in) :: value
+    call msg_debug_none (area, char (string // " = " // str (value)))
+  end subroutine msg_debug_logical
+
+  subroutine msg_debug_integer (area, string, value)
+    integer, intent(in) :: area
+    character(len=*), intent(in) :: string
+    integer, intent(in) :: value
+    call msg_debug_none (area, char (string // " = " // str (value)))
+  end subroutine msg_debug_integer
+
+  subroutine msg_debug_real (area, string, value)
+    integer, intent(in) :: area
+    character(len=*), intent(in) :: string
+    real(default), intent(in) :: value
+    call msg_debug_none (area, char (string // " = " // str (value)))
+  end subroutine msg_debug_real
+
+@ %def msg_debug
+@
+<<Diagnostics: public>>=
+  public :: msg_debug2
+<<Diagnostics: interfaces>>=
+  interface msg_debug2
+     module procedure msg_debug2_none
+     module procedure msg_debug2_logical
+     module procedure msg_debug2_integer
+     module procedure msg_debug2_real
+  end interface
+<<Diagnostics: procedures>>=
+  subroutine msg_debug2_none (area, string)
+    integer, intent(in) :: area
+    character(len=*), intent(in), optional :: string
+    call message_print (DEBUG2, string, unit=output_unit, &
+         area=area, logfile=.false.)
+  end subroutine msg_debug2_none
+
+  subroutine msg_debug2_logical (area, string, value)
+    integer, intent(in) :: area
+    character(len=*), intent(in) :: string
+    logical, intent(in) :: value
+    call msg_debug2_none (area, char (string // " = " // str (value)))
+  end subroutine msg_debug2_logical
+
+  subroutine msg_debug2_integer (area, string, value)
+    integer, intent(in) :: area
+    character(len=*), intent(in) :: string
+    integer, intent(in) :: value
+    call msg_debug2_none (area, char (string // " = " // str (value)))
+  end subroutine msg_debug2_integer
+
+  subroutine msg_debug2_real (area, string, value)
+    integer, intent(in) :: area
+    character(len=*), intent(in) :: string
+    real(default), intent(in) :: value
+    call msg_debug2_none (area, char (string // " = " // str (value)))
+  end subroutine msg_debug2_real
+
+@ %def msg_debug2
+<<Diagnostics: public>>=
+  public :: debug_active
+<<Diagnostics: procedures>>=
+  elemental function debug_active (area) result (active)
+    logical :: active
+    integer, intent(in) :: area
+    active = msg_level(area) >= DEBUG
+  end function debug_active
+
+@ %def debug_active
+@
+<<Diagnostics: public>>=
+  public :: debug2_active
+<<Diagnostics: procedures>>=
+  elemental function debug2_active (area) result (active)
+    logical :: active
+    integer, intent(in) :: area
+    active = msg_level(area) >= DEBUG2
+  end function debug2_active
+
+@ %def debug2_active
 @ Show the progress of a loop in steps of 10 \%.  Could be generalized
 to other step sizes with an optional argument.
 <<Diagnostics: public>>=
@@ -752,7 +941,6 @@ to other step sizes with an optional argument.
 <<Diagnostics: procedures>>=
   subroutine msg_banner (unit)
     integer, intent(in), optional :: unit
-    integer :: n_proc
     call message_print (0, "|=============================================================================|", unit=unit)
     call message_print (0, "|                                                                             |", unit=unit)
     call message_print (0, "|    WW             WW  WW   WW  WW  WWWWWW      WW      WWWWW    WWWW        |", unit=unit)
@@ -1096,7 +1284,6 @@ signals and terminates the program if requested..
   public :: mask_term_signals
 <<Diagnostics: procedures>>=
   subroutine mask_term_signals ()
-    integer(c_int) :: status
     logical :: ok
     wo_sigint = 0
     ok = wo_mask_sigint () == 0
@@ -1140,7 +1327,6 @@ signals and terminates the program if requested..
   public :: release_term_signals
 <<Diagnostics: procedures>>=
   subroutine release_term_signals ()
-    integer(c_int) :: status
     logical :: ok
     ok = wo_release_sigint () == 0
     if (.not. ok)  call msg_error ("Releasing SIGINT failed")
@@ -1228,7 +1414,6 @@ module os_interface
 
 <<Use strings>>
   use io_units
-  use unit_tests
   use diagnostics
   use system_defs, only: DLERROR_LEN, ENVVAR_LEN
   use system_dependencies
@@ -1244,8 +1429,6 @@ module os_interface
 contains
 
 <<OS interface: procedures>>
-
-<<OS interface: tests>>
 
 end module os_interface
 @ %def os_interface
@@ -1313,6 +1496,7 @@ for linking. The default for the Fortran compiler on most systems is
      type(string_t) :: ldflags_so
      type(string_t) :: ldflags_static
      type(string_t) :: ldflags_hepmc
+     type(string_t) :: ldflags_lcio
      type(string_t) :: ldflags_hoppet
      type(string_t) :: ldflags_looptools
      type(string_t) :: shrlib_ext
@@ -1401,6 +1585,7 @@ necessary.
     os_data%ldflags_so     = DEFAULT_LDFLAGS_SO
     os_data%ldflags_static = DEFAULT_LDFLAGS_STATIC
     os_data%ldflags_hepmc  = DEFAULT_LDFLAGS_HEPMC
+    os_data%ldflags_lcio   = DEFAULT_LDFLAGS_LCIO
     os_data%ldflags_hoppet = DEFAULT_LDFLAGS_HOPPET
     os_data%ldflags_looptools = DEFAULT_LDFLAGS_LOOPTOOLS
     os_data%shrlib_ext     = DEFAULT_SHRLIB_EXT
@@ -1559,6 +1744,7 @@ of each other.    %% Fooling Noweb Emacs mode: $
     write (u, *) "ldflags_so     = ", char (os_data%ldflags_so)
     write (u, *) "ldflags_static = ", char (os_data%ldflags_static)
     write (u, *) "ldflags_hepmc  = ", char (os_data%ldflags_hepmc)
+    write (u, *) "ldflags_lcio   = ", char (os_data%ldflags_lcio)    
     write (u, *) "ldflags_hoppet = ", char (os_data%ldflags_hoppet)
     write (u, *) "ldflags_looptools = ", char (os_data%ldflags_looptools) 
     write (u, *) "shrlib_ext     = ", char (os_data%shrlib_ext)
@@ -1982,6 +2168,7 @@ installed, this rpath is irrelevant.
             "-o '" // exec_name // "' " // &
             objlist // " " // &
             os_data%ldflags_hepmc // " " // &
+            os_data%ldflags_lcio // " " // &            
             os_data%ldflags_hoppet // " " // &
             os_data%ldflags_looptools
     else
@@ -1995,6 +2182,7 @@ installed, this rpath is irrelevant.
             "-o '" // exec_name // "' " // &
             objlist // " " // &
             os_data%ldflags_hepmc // " " // &
+            os_data%ldflags_lcio // " " // &            
             os_data%ldflags_hoppet // " " // &
             os_data%ldflags_looptools
     end if
@@ -2137,9 +2325,51 @@ diagnostics.
 @ %def openmp_set_num_threads_verbose
 @
 \subsection{Unit tests}
-<<OS interface: public>>=
+Test module, followed by the corresponding implementation module.
+<<[[os_interface_ut.f90]]>>=
+<<File header>>
+
+module os_interface_ut
+  use unit_tests
+  use os_interface_uti
+  
+<<Standard module head>>
+
+<<OS interface: public test>>
+
+contains
+  
+<<OS interface: test driver>>
+
+end module os_interface_ut
+@ %def os_interface_ut
+@
+<<[[os_interface_uti.f90]]>>=
+<<File header>>
+
+module os_interface_uti
+
+  use, intrinsic :: iso_c_binding !NODEP!
+
+<<Use strings>>
+  use io_units
+
+  use os_interface
+
+<<Standard module head>>
+
+<<OS interface: test declarations>>
+
+contains
+
+<<OS interface: tests>>
+
+end module os_interface_uti
+@ %def os_interface_ut
+@ API: driver for the unit tests below.
+<<OS interface: public test>>=
   public :: os_interface_test
-<<OS interface: procedures>>=
+<<OS interface: test driver>>=
   subroutine os_interface_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
@@ -2153,7 +2383,8 @@ it, and execute the contained function.
   call test (os_interface_1, "os_interface_1", &
        "check OS interface routines", &
        u, results)
-@ 
+<<OS interface: test declarations>>=
+  public :: os_interface_1
 <<OS interface: tests>>=
   subroutine os_interface_1 (u)
     integer, intent(in) :: u
@@ -2261,7 +2492,6 @@ module formats
 <<Use kinds>>
 <<Use strings>>
   use io_units
-  use unit_tests
   use diagnostics
 
 <<Standard module head>>
@@ -2277,8 +2507,6 @@ module formats
 contains
 
 <<Formats: procedures>>
-
-<<Formats: tests>>
 
 end module formats
 @ %def formats
@@ -2301,11 +2529,11 @@ specifiers against the actual arguments.
 This is a polymorphic type that can hold integer, real (double), and string
 arguments.
 <<Formats: parameters>>=
-  integer, parameter :: ARGTYPE_NONE = 0
-  integer, parameter :: ARGTYPE_LOG = 1
-  integer, parameter :: ARGTYPE_INT = 2
-  integer, parameter :: ARGTYPE_REAL = 3
-  integer, parameter :: ARGTYPE_STR = 4
+  integer, parameter, public :: ARGTYPE_NONE = 0
+  integer, parameter, public :: ARGTYPE_LOG = 1
+  integer, parameter, public :: ARGTYPE_INT = 2
+  integer, parameter, public :: ARGTYPE_REAL = 3
+  integer, parameter, public :: ARGTYPE_STR = 4
 
 @ %def ARGTYPE_NONE ARGTYPE_LOG ARGTYPE_INT ARGTYPE_REAL ARGTYPE_STRING
 @ The integer and real entries are actually scalars, but we avoid relying on
@@ -2683,10 +2911,52 @@ argument.
 
 @ %def sprintf
 @
-\subsection{Test}
-<<Formats: public>>=
+\subsection{Unit tests}
+Test module, followed by the corresponding implementation module.
+<<[[formats_ut.f90]]>>=
+<<File header>>
+
+module formats_ut
+  use unit_tests
+  use formats_uti
+  
+<<Standard module head>>
+
+<<Formats: public test>>
+
+contains
+  
+<<Formats: test driver>>
+
+end module formats_ut
+@ %def formats_ut
+@
+<<[[formats_uti.f90]]>>=
+<<File header>>
+
+module formats_uti
+
+<<Use kinds>>
+<<Use strings>>
+
+  use formats
+
+<<Standard module head>>
+
+<<Formats: test declarations>>
+
+<<Formats: test types>>
+
+contains
+
+<<Formats: tests>>
+
+end module formats_uti
+@ %def formats_ut
+@ API: driver for the unit tests below.
+<<Formats: public test>>=
   public :: format_test
-<<Formats: procedures>>=
+<<Formats: test driver>>=
   subroutine format_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
@@ -2698,6 +2968,8 @@ argument.
   call test (format_1, "format_1", &
        "check formatting routines", &
        u, results)
+<<Formats: test declarations>>=     
+  public :: format_1
 <<Formats: tests>>=     
   subroutine format_1 (u)
     integer, intent(in) :: u
@@ -2764,7 +3036,6 @@ module cputime
 <<Use kinds>>
   use io_units
 <<Use strings>>
-  use unit_tests
   use diagnostics
 
 <<Standard module head>>
@@ -2778,8 +3049,6 @@ module cputime
 contains
 
 <<CPU time: procedures>>
-
-<<CPU time: tests>>
 
 end module cputime
 @ %def cputime
@@ -3109,9 +3378,28 @@ the status, and compute the elapsed time.
   end subroutine timer_stop
   
 @ %def timer_stop
+@ Manually set the time (for unit test)
+<<CPU time: timer: TBP>>=
+  procedure :: set_test_time1 => timer_set_test_time1
+  procedure :: set_test_time2 => timer_set_test_time2
+<<CPU time: procedures>>=
+  subroutine timer_set_test_time1 (timer, t)
+    class(timer_t), intent(inout) :: timer
+    integer, intent(in) :: t
+    timer%t1 = t
+  end subroutine timer_set_test_time1
+  
+  subroutine timer_set_test_time2 (timer, t)
+    class(timer_t), intent(inout) :: timer
+    integer, intent(in) :: t
+    timer%t2 = t
+  end subroutine timer_set_test_time2
+  
+@ %def timer_set_test_time1
+@ %def timer_set_test_time2
 @ This is separate, available for the unit test.
 <<CPU time: timer: TBP>>=
-  procedure, private :: evaluate => timer_evaluate
+  procedure :: evaluate => timer_evaluate
 <<CPU time: procedures>>=
   subroutine timer_evaluate (timer)
     class(timer_t), intent(inout) :: timer
@@ -3121,9 +3409,48 @@ the status, and compute the elapsed time.
 @ %def timer_evaluate
 @
 \subsection{Unit tests}
-<<CPU time: public>>=
+Test module, followed by the corresponding implementation module.
+<<[[cputime_ut.f90]]>>=
+<<File header>>
+
+module cputime_ut
+  use unit_tests
+  use cputime_uti
+  
+<<Standard module head>>
+
+<<CPU time: public test>>
+
+contains
+  
+<<CPU time: test driver>>
+
+end module cputime_ut
+@ %def cputime_ut
+@
+<<[[cputime_uti.f90]]>>=
+<<File header>>
+
+module cputime_uti
+
+<<Use strings>>
+
+  use cputime
+
+<<Standard module head>>
+
+<<CPU time: test declarations>>
+
+contains
+
+<<CPU time: tests>>
+
+end module cputime_uti
+@ %def cputime_ut
+@ API: driver for the unit tests below.
+<<CPU time: public test>>=
   public :: cputime_test
-<<CPU time: tests>>=
+<<CPU time: test driver>>=
   subroutine cputime_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
@@ -3141,6 +3468,8 @@ and operations.
   call test (cputime_1, "cputime_1", &
        "time operations", &
        u, results)
+<<CPU time: test declarations>>=
+  public :: cputime_1
 <<CPU time: tests>>=
   subroutine cputime_1 (u)
     integer, intent(in) :: u
@@ -3302,6 +3631,8 @@ Check a timer object.
   call test (cputime_2, "cputime_2", &
        "timer", &
        u, results)
+<<CPU time: test declarations>>=
+  public :: cputime_2
 <<CPU time: tests>>=
   subroutine cputime_2 (u)
     integer, intent(in) :: u
@@ -3328,8 +3659,8 @@ Check a timer object.
     write (u, *)
 
     call timer%stop ()
-    timer%t1 = 2
-    timer%t2 = 5
+    call timer%set_test_time1 (2)
+    call timer%set_test_time2 (5)
     call timer%evaluate ()
     call timer%write (u)
 
@@ -3345,7 +3676,7 @@ Check a timer object.
     write (u, *)
 
     call timer%stop ()
-    timer%t2 = 10
+    call timer%set_test_time2 (10)
     call timer%evaluate ()
     call timer%write (u)
 

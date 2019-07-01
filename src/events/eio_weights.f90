@@ -1,4 +1,4 @@
-! WHIZARD 2.2.6 May 02 2015
+! WHIZARD 2.2.7 Aug 11 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -31,16 +31,11 @@
 ! to the source 'whizard.nw'
 
 module eio_weights
-  
-  use kinds
-  use io_units
-  use iso_varying_string, string_t => varying_string
-  use unit_tests
-  use diagnostics
 
-  use lorentz
-  use model_data
-  use particles
+  use kinds, only: default
+  use iso_varying_string, string_t => varying_string
+  use io_units
+  use diagnostics
   use event_base
   use eio_data
   use eio_base
@@ -49,7 +44,6 @@ module eio_weights
   private
 
   public :: eio_weights_t
-  public :: eio_weights_test
 
   type, extends (eio_t) :: eio_weights_t
      logical :: writing = .false.
@@ -65,6 +59,7 @@ module eio_weights
      procedure :: output => eio_weights_output
      procedure :: input_i_prc => eio_weights_input_i_prc
      procedure :: input_event => eio_weights_input_event
+     procedure :: skip => eio_weights_skip
   end type eio_weights_t
   
 
@@ -194,131 +189,11 @@ contains
     iostat = 1
   end subroutine eio_weights_input_event
 
+  subroutine eio_weights_skip (eio, iostat)
+    class(eio_weights_t), intent(inout) :: eio
+    integer, intent(out) :: iostat
+    iostat = 0
+  end subroutine eio_weights_skip
 
-  subroutine eio_weights_test (u, results)
-    integer, intent(in) :: u
-    type(test_results_t), intent(inout) :: results
-    call test (eio_weights_1, "eio_weights_1", &
-         "read and write event contents", &
-         u, results)
-    call test (eio_weights_2, "eio_weights_2", &
-         "multiple weights", &
-         u, results)
-  end subroutine eio_weights_test
-  
-  subroutine eio_weights_1 (u)
-    integer, intent(in) :: u
-    class(generic_event_t), pointer :: event
-    class(eio_t), allocatable :: eio
-    type(string_t) :: sample
-    integer :: u_file
-    character(80) :: buffer
-
-    write (u, "(A)")  "* Test output: eio_weights_1"
-    write (u, "(A)")  "*   Purpose: generate an event and write weight to file"
-    write (u, "(A)")
-
-    write (u, "(A)")  "* Initialize test process"
- 
-    call eio_prepare_test (event, unweighted = .false.)
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Generate and write an event"
-    write (u, "(A)")
- 
-    sample = "eio_weights_1"
- 
-    allocate (eio_weights_t :: eio)
-    
-    call eio%init_out (sample)
-    call event%generate (1, [0._default, 0._default])
-
-    call eio%output (event, i_prc = 42)
-    call eio%write (u)
-    call eio%final ()
-
-    write (u, "(A)")
-    write (u, "(A)")  "* File contents: &
-         &(weight, sqme(evt), sqme(prc), i_prc, i_mci, i_term)"
-    write (u, "(A)")
-
-    u_file = free_unit ()
-    open (u_file, file = "eio_weights_1.weights.dat", &
-         action = "read", status = "old")
-    read (u_file, "(A)")  buffer
-    write (u, "(A)") trim (buffer)
-    close (u_file)
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Cleanup"
- 
-    call eio_cleanup_test (event) 
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: eio_weights_1"
-  end subroutine eio_weights_1
-  
-  subroutine eio_weights_2 (u)
-    integer, intent(in) :: u
-    class(generic_event_t), pointer :: event
-    class(eio_t), allocatable :: eio
-    type(string_t) :: sample
-    integer :: u_file, i
-    character(80) :: buffer
-
-    write (u, "(A)")  "* Test output: eio_weights_2"
-    write (u, "(A)")  "*   Purpose: generate an event and write weight to file"
-    write (u, "(A)")
-
-    write (u, "(A)")  "* Initialize test process"
- 
-    call eio_prepare_test (event, unweighted = .false., n_alt = 2)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Generate and write an event"
-    write (u, "(A)")
- 
-    sample = "eio_weights_2"
- 
-    allocate (eio_weights_t :: eio)
-    
-    call eio%init_out (sample)
-    select type (eio)
-    type is (eio_weights_t)
-       call eio%set_parameters (pacify = .true.)
-    end select
-    call event%generate (1, [0._default, 0._default])
-    call event%set (sqme_alt = [2._default, 3._default])
-    call event%set (weight_alt = &
-         [2 * event%get_weight_prc (), 3 * event%get_weight_prc ()])
-
-    call eio%output (event, i_prc = 42)
-    call eio%write (u)
-    call eio%final ()
-
-    write (u, "(A)") 
-    write (u, "(A)")  "* File contents: &
-         &(weight, sqme(evt), sqme(prc), i_prc, i_mci, i_term)"
-    write (u, "(A)")
-
-    u_file = free_unit ()
-    open (u_file, file = "eio_weights_2.weights.dat", &
-         action = "read", status = "old")
-    do i = 1, 3
-       read (u_file, "(A)")  buffer
-       write (u, "(A)") trim (buffer)
-    end do
-    close (u_file)
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Cleanup"
- 
-    call eio_cleanup_test (event)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: eio_weights_2"
-    
-  end subroutine eio_weights_2
-  
 
 end module eio_weights

@@ -30,6 +30,7 @@
 
 ## We create a library which is still to be combined with auxiliary libs.
 noinst_LTLIBRARIES = libmci.la
+check_LTLIBRARIES = libmci_ut.la
 
 libmci_la_SOURCES = \
   mci_base.f90 \
@@ -38,11 +39,17 @@ libmci_la_SOURCES = \
   mci_midpoint.f90 \
   mci_vamp.f90
 
+libmci_ut_la_SOURCES = \
+  mci_base_uti.f90 mci_base_ut.f90 \
+  iterations_uti.f90 iterations_ut.f90 \
+  mci_midpoint_uti.f90 mci_midpoint_ut.f90 \
+  mci_vamp_uti.f90 mci_vamp_ut.f90
+
 ## Omitting this would exclude it from the distribution
 dist_noinst_DATA = mci.nw
 
 # Dump module names into file Modules
-libmci_Modules = ${libmci_la_SOURCES:.f90=}
+libmci_Modules = ${libmci_la_SOURCES:.f90=} ${libmci_ut_la_SOURCES:.f90=}
 Modules: Makefile
 	@for module in $(libmci_Modules); do \
           echo $$module >> $@.new; \
@@ -91,7 +98,7 @@ DISTCLEANFILES = Module_dependencies.sed
 @am__include@ @am__quote@Makefile.depend@am__quote@
 
 Makefile.depend: Module_dependencies.sed
-Makefile.depend: $(libmci_la_SOURCES)
+Makefile.depend: $(libmci_la_SOURCES) $(libmci_ut_la_SOURCES)
 	@rm -f $@
 	for src in $^; do \
 	  module="`basename $$src | sed 's/\.f[90][0358]//'`"; \
@@ -144,12 +151,12 @@ POSTLUDE = $(top_srcdir)/src/noweb-frame/whizard-postlude.nw
 mci.stamp: $(PRELUDE) $(srcdir)/mci.nw $(POSTLUDE)
 	@rm -f mci.tmp
 	@touch mci.tmp
-	for src in $(libmci_la_SOURCES); do \
+	for src in $(libmci_la_SOURCES) $(libmci_ut_la_SOURCES); do \
 	  $(NOTANGLE) -R[[$$src]] $^ | $(CPIF) $$src; \
         done
 	@mv -f mci.tmp mci.stamp
 
-$(libmci_la_SOURCES): mci.stamp
+$(libmci_la_SOURCES) $(libmci_ut_la_SOURCES): mci.stamp
 ## Recover from the removal of $@
 	@if test -f $@; then :; else \
 	  rm -f mci.stamp; \
@@ -179,6 +186,9 @@ endif
 clean-local: clean-noweb
 	-rm -f mci.stamp mci.tmp
 	-rm -f *.$(FC_MODULE_EXT)
+if FC_SUBMODULES
+	-rm -f *.smod
+endif
 
 ## Remove backup files
 maintainer-clean-backup:

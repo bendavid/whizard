@@ -67,7 +67,7 @@ the event implementation.
 
 module event_base
   
-  use kinds
+<<Use kinds>>
 <<Use strings>>
   use string_utils, only: lower_case
   use diagnostics
@@ -96,7 +96,7 @@ end module event_base
   public :: generic_event_t
 <<Event base: types>>=
   type, abstract :: generic_event_t
-     private
+     !private
      logical :: particle_set_is_valid = .false.
      type(particle_set_t), pointer :: particle_set => null ()
      logical :: sqme_ref_known = .false.
@@ -114,6 +114,7 @@ end module event_base
      real(default), dimension(:), allocatable :: sqme_alt
      logical :: weight_alt_known = .false.
      real(default), dimension(:), allocatable :: weight_alt
+     logical :: nlo_event = .false.
    contains
    <<Event base: generic event: TBP>>
   end type generic_event_t
@@ -504,11 +505,12 @@ the generator needs, the event object should contain its own generator.
   procedure (generic_event_generate), deferred :: generate
 <<Event base: interfaces>>=
   abstract interface
-     subroutine generic_event_generate (event, i_mci, r)
+     subroutine generic_event_generate (event, i_mci, r, i_nlo)
        import
        class(generic_event_t), intent(inout) :: event
        integer, intent(in) :: i_mci
        real(default), dimension(:), intent(in), optional :: r
+       integer, intent(in), optional :: i_nlo
      end subroutine generic_event_generate
   end interface
      
@@ -764,10 +766,10 @@ associated with an event sample.
 
 module eio_data
   
-  use kinds
-  use io_units
+<<Use kinds>>
 <<Use strings>>
-  use unit_tests
+  use io_units
+  use unit_tests, only: vanishes
   use diagnostics
 
   use event_base
@@ -781,8 +783,6 @@ module eio_data
 contains
   
 <<EIO data: procedures>>
-
-<<EIO data: tests>>
 
 end module eio_data
 @ %def eio_data
@@ -816,6 +816,7 @@ there is a configuration MD5 sum for each of them.
      real(default), dimension(2) :: energy_beam = 0
      integer :: n_proc = 0
      integer :: n_evt = 0
+     integer :: nlo_multiplier = 1
      integer :: split_n_evt = 0
      integer :: split_n_kbytes = 0
      integer :: split_index = 0
@@ -874,7 +875,7 @@ there is a configuration MD5 sum for each of them.
     if (data%n_evt > 0) then
        write (u, "(3x,A,I0)")  "number of events = ", data%n_evt
     end if
-    if (data%total_cross_section /= 0) then
+    if (.not. vanishes (data%total_cross_section)) then
        write (u, "(3x,A,ES19.12)")  "total cross sec. = ", &
             data%total_cross_section
     end if
@@ -901,9 +902,50 @@ there is a configuration MD5 sum for each of them.
 @ %def event_sample_data_write
 @
 \subsection{Unit tests}
-<<EIO data: public>>=
+Test module, followed by the corresponding implementation module.
+<<[[eio_data_ut.f90]]>>=
+<<File header>>
+
+module eio_data_ut
+  use unit_tests
+  use eio_data_uti
+  
+<<Standard module head>>
+
+<<EIO data: public test>>
+
+contains
+  
+<<EIO data: test driver>>
+
+end module eio_data_ut
+@ %def eio_data_ut
+@
+<<[[eio_data_uti.f90]]>>=
+<<File header>>
+
+module eio_data_uti
+
+<<Use kinds>>
+<<Use strings>>
+  use event_base
+
+  use eio_data
+
+<<Standard module head>>
+
+<<EIO data: test declarations>>
+
+contains
+
+<<EIO data: tests>>
+
+end module eio_data_uti
+@ %def eio_data_ut
+@ API: driver for the unit tests below.
+<<EIO data: public test>>=
   public :: eio_data_test
-<<EIO data: tests>>=
+<<EIO data: test driver>>=
   subroutine eio_data_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
@@ -918,6 +960,8 @@ Print the contents of a sample data block.
   call test (eio_data_1, "eio_data_1", &
        "event sample data", &
        u, results)
+<<EIO data: test declarations>>=
+  public :: eio_data_1
 <<EIO data: tests>>=
   subroutine eio_data_1 (u)
     integer, intent(in) :: u
@@ -977,6 +1021,8 @@ Check the functions for translating modes and updating weights.
   call test (eio_data_2, "eio_data_2", &
        "event normalization", &
        u, results)
+<<EIO data: test declarations>>=
+  public :: eio_data_2
 <<EIO data: tests>>=
   subroutine eio_data_2 (u)
     integer, intent(in) :: u
@@ -1124,14 +1170,11 @@ Optionally, output files can be split in chunks of well-defined size.  The
 
 module eio_base
   
-  use kinds
-  use io_units
+  use kinds, only: i64
 <<Use strings>>
-  use unit_tests
+  use io_units
   use diagnostics
-  use lorentz
   use model_data
-  use particles
   use event_base
   use eio_data
 
@@ -1143,13 +1186,9 @@ module eio_base
 
 <<EIO base: interfaces>>
 
-<<EIO base: test types>>
-
 contains
   
 <<EIO base: procedures>>
-
-<<EIO base: tests>>
 
 end module eio_base
 @ %def eio_base
@@ -1420,10 +1459,79 @@ requires, negative for EOF and positive for error.
   
 @ %def eio_input
 @
+<<EIO base: eio: TBP>>=
+  procedure (eio_skip), deferred :: skip
+<<EIO base: interfaces>>=
+  abstract interface
+     subroutine eio_skip (eio, iostat)
+       import
+       class(eio_t), intent(inout) :: eio
+       integer, intent(out) :: iostat
+     end subroutine eio_skip
+  end interface
+
+@ %def eio_skip
+@
 \subsection{Unit tests}
-<<EIO base: public>>=
+Test module, followed by the corresponding implementation module.
+<<[[eio_base_ut.f90]]>>=
+<<File header>>
+
+module eio_base_ut
+  use unit_tests
+  use eio_base_uti
+  
+<<Standard module head>>
+
+<<EIO base: public test>>
+
+<<EIO base: public test auxiliary>>
+
+contains
+  
+<<EIO base: test driver>>
+
+end module eio_base_ut
+@ %def eio_base_ut
+@
+<<[[eio_base_uti.f90]]>>=
+<<File header>>
+
+module eio_base_uti
+
+<<Use kinds>>
+<<Use strings>>
+  use io_units
+  use lorentz
+  use model_data
+  use particles
+  use event_base
+  use eio_data
+
+  use eio_base
+
+<<Standard module head>>
+
+<<EIO base: public test auxiliary>>
+
+<<EIO base: test declarations>>
+
+<<EIO base: test types>>
+
+<<EIO base: test variables>>
+
+contains
+
+<<EIO base: tests>>
+
+<<EIO base: test auxiliary>>
+
+end module eio_base_uti
+@ %def eio_base_ut
+@ API: driver for the unit tests below.
+<<EIO base: public test>>=
   public :: eio_base_test
-<<EIO base: tests>>=
+<<EIO base: test driver>>=
   subroutine eio_base_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
@@ -1433,7 +1541,7 @@ requires, negative for EOF and positive for error.
 @ %def eio_base_test 
 @ The caller has to provide procedures that prepare and cleanup the test
 environment.  They depend on modules that are not available here.
-<<EIO base: interfaces>>=
+<<EIO base: test types>>=
   abstract interface
      subroutine eio_prepare_event (event, unweighted, n_alt)
        import
@@ -1453,7 +1561,7 @@ environment.  They depend on modules that are not available here.
 @ We store pointers to the test-environment handlers as module variables.
 This allows us to call them from the test routines themselves, which don't
 allow for extra arguments.
-<<EIO base: public>>=
+<<EIO base: public test auxiliary>>=
   public :: eio_prepare_test, eio_cleanup_test
 <<EIO base: test types>>=
   procedure(eio_prepare_event), pointer :: eio_prepare_test => null ()
@@ -1461,7 +1569,7 @@ allow for extra arguments.
   
 @ %def eio_prepare_test eio_cleanup_test
 @ Similarly, for the fallback (hadron) model that some eio tests require:
-<<EIO base: interfaces>>=
+<<EIO base: test types>>=
   abstract interface
      subroutine eio_prepare_model (model)
        import
@@ -1476,9 +1584,9 @@ allow for extra arguments.
      end subroutine eio_cleanup_model
   end interface
   
-<<EIO base: public>>=
+<<EIO base: public test auxiliary>>=
   public :: eio_prepare_fallback_model, eio_cleanup_fallback_model
-<<EIO base: test types>>=
+<<EIO base: test variables>>=
   procedure(eio_prepare_model), pointer :: eio_prepare_fallback_model => null ()
   procedure(eio_cleanup_model), pointer :: eio_cleanup_fallback_model => null ()
   
@@ -1504,7 +1612,7 @@ to the current event, [[event_n]] is the total number of stored events.
 @ Write to screen.  Pretend that this is an actual event format.
 <<EIO base: eio test: TBP>>=
   procedure :: write => eio_test_write
-<<EIO base: procedures>>=
+<<EIO base: test auxiliary>>=
   subroutine eio_test_write (object, unit)
     class(eio_test_t), intent(in) :: object
     integer, intent(in), optional :: unit
@@ -1526,7 +1634,7 @@ would be stored on an external medium, so we would delete the object
 contents.
 <<EIO base: eio test: TBP>>=
   procedure :: final => eio_test_final
-<<EIO base: procedures>>=
+<<EIO base: test auxiliary>>=
   subroutine eio_test_final (object)
     class(eio_test_t), intent(inout) :: object
     object%event_i = 0
@@ -1539,7 +1647,7 @@ fixed maximum size of 10 events, 2 momenta each.  There is only a single
 process.
 <<EIO base: eio test: TBP>>=
   procedure :: init_out => eio_test_init_out
-<<EIO base: procedures>>=
+<<EIO base: test auxiliary>>=
   subroutine eio_test_init_out (eio, sample, data, success, extension)
     class(eio_test_t), intent(inout) :: eio
     type(string_t), intent(in) :: sample
@@ -1557,7 +1665,7 @@ process.
 @ Initialization for input.  Nothing to do for the test type.
 <<EIO base: eio test: TBP>>=
   procedure :: init_in => eio_test_init_in
-<<EIO base: procedures>>=
+<<EIO base: test auxiliary>>=
   subroutine eio_test_init_in (eio, sample, data, success, extension)
     class(eio_test_t), intent(inout) :: eio
     type(string_t), intent(in) :: sample
@@ -1571,7 +1679,7 @@ process.
 @ Switch from output to input.  Again, nothing to do for the test type.
 <<EIO base: eio test: TBP>>=
   procedure :: switch_inout => eio_test_switch_inout
-<<EIO base: procedures>>=
+<<EIO base: test auxiliary>>=
   subroutine eio_test_switch_inout (eio, success)
     class(eio_test_t), intent(inout) :: eio
     logical, intent(out), optional :: success
@@ -1583,7 +1691,7 @@ process.
 event.
 <<EIO base: eio test: TBP>>=
   procedure :: output => eio_test_output
-<<EIO base: procedures>>=
+<<EIO base: test auxiliary>>=
   subroutine eio_test_output (eio, event, i_prc, reading, passed, pacify)
     class(eio_test_t), intent(inout) :: eio
     class(generic_event_t), intent(in), target :: event
@@ -1607,7 +1715,7 @@ event.  For the test case, we do not actually modify the current event.
 <<EIO base: eio test: TBP>>=
   procedure :: input_i_prc => eio_test_input_i_prc
   procedure :: input_event => eio_test_input_event
-<<EIO base: procedures>>=
+<<EIO base: test auxiliary>>=
   subroutine eio_test_input_i_prc (eio, i_prc, iostat)
     class(eio_test_t), intent(inout) :: eio
     integer, intent(out) :: i_prc
@@ -1627,11 +1735,24 @@ event.  For the test case, we do not actually modify the current event.
 @ %def eio_test_input_i_prc
 @ %def eio_test_input_event
 @
+<<EIO base: eio test: TBP>>=
+  procedure :: skip => eio_test_skip
+<<EIO base: test auxiliary>>=
+  subroutine eio_test_skip (eio, iostat)
+    class(eio_test_t), intent(inout) :: eio
+    integer, intent(out) :: iostat
+    iostat = 0
+  end subroutine eio_test_skip
+
+@ %def eio_test_skip
+@
 \subsubsection{Test I/O methods}
 <<EIO base: execute tests>>=
   call test (eio_base_1, "eio_base_1", &
        "read and write event contents", &
        u, results)
+<<EIO base: test declarations>>=
+  public :: eio_base_1
 <<EIO base: tests>>=
   subroutine eio_base_1 (u)
     integer, intent(in) :: u
@@ -1720,14 +1841,10 @@ messages every $n$ events, to inform the user about progress.
 
 module eio_checkpoints
   
-  use kinds
-  use io_units
 <<Use strings>>
-  use unit_tests
+  use io_units
   use diagnostics
-
   use cputime
-  use model_data
   use event_base
   use eio_data
   use eio_base
@@ -1743,8 +1860,6 @@ module eio_checkpoints
 contains
   
 <<EIO checkpoints: procedures>>
-
-<<EIO checkpoints: tests>>
 
 end module eio_checkpoints
 @ %def eio_checkpoints
@@ -1769,7 +1884,7 @@ end module eio_checkpoints
 @ %def eio_checkpoints_t
 @
 \subsection{Specific Methods}
-Set parameters that are specifically used with LHEF.
+Set parameters that are specifically used for checkpointing.
 <<EIO checkpoints: eio checkpoints: TBP>>=
   procedure :: set_parameters => eio_checkpoints_set_parameters
 <<EIO checkpoints: procedures>>=
@@ -1833,7 +1948,7 @@ of the current status.
           eio%active = .true.
           eio%i_evt = 0
           eio%n_read = 0
-          eio%n_events = data%n_evt
+          eio%n_events = data%n_evt * data%nlo_multiplier
        end if
     end if
     if (present (success))  success = .true.
@@ -1978,6 +2093,17 @@ of the current status.
 @ %def eio_checkpoints_input_i_prc
 @ %def eio_checkpoints_input_event
 @
+<<EIO checkpoints: eio checkpoints: TBP>>=
+  procedure :: skip => eio_checkpoints_skip
+<<EIO checkpoints: procedures>>=
+  subroutine eio_checkpoints_skip (eio, iostat)
+    class(eio_checkpoints_t), intent(inout) :: eio
+    integer, intent(out) :: iostat
+    iostat = 0
+  end subroutine eio_checkpoints_skip
+
+@ %def eio_checkpoints_skip
+@
 \subsection{Message header}
 <<EIO checkpoints: parameters>>=
   character(*), parameter :: &
@@ -1994,9 +2120,54 @@ of the current status.
 @ %def checkpointing_t
 @
 \subsection{Unit tests}
-<<EIO checkpoints: public>>=
+Test module, followed by the corresponding implementation module.
+<<[[eio_checkpoints_ut.f90]]>>=
+<<File header>>
+
+module eio_checkpoints_ut
+  use unit_tests
+  use eio_checkpoints_uti
+  
+<<Standard module head>>
+
+<<EIO checkpoints: public test>>
+
+contains
+  
+<<EIO checkpoints: test driver>>
+
+end module eio_checkpoints_ut
+@ %def eio_checkpoints_ut
+@
+<<[[eio_checkpoints_uti.f90]]>>=
+<<File header>>
+
+module eio_checkpoints_uti
+
+<<Use kinds>>
+<<Use strings>>
+  use event_base
+  use eio_data
+  use eio_base
+
+  use eio_checkpoints
+
+  use eio_base_ut, only: eio_prepare_test, eio_cleanup_test
+
+<<Standard module head>>
+
+<<EIO checkpoints: test declarations>>
+
+contains
+
+<<EIO checkpoints: tests>>
+
+end module eio_checkpoints_uti
+@ %def eio_checkpoints_ut
+@ API: driver for the unit tests below.
+<<EIO checkpoints: public test>>=
   public :: eio_checkpoints_test
-<<EIO checkpoints: tests>>=
+<<EIO checkpoints: test driver>>=
   subroutine eio_checkpoints_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
@@ -2011,6 +2182,8 @@ We test the implementation of all I/O methods.
   call test (eio_checkpoints_1, "eio_checkpoints_1", &
        "read and write event contents", &
        u, results)
+<<EIO checkpoints: test declarations>>=
+  public :: eio_checkpoints_1
 <<EIO checkpoints: tests>>=
   subroutine eio_checkpoints_1 (u)
     integer, intent(in) :: u
@@ -2081,16 +2254,11 @@ the event weight.
 <<File header>>
 
 module eio_weights
-  
-  use kinds
-  use io_units
-<<Use strings>>
-  use unit_tests
-  use diagnostics
 
-  use lorentz
-  use model_data
-  use particles
+<<Use kinds>>
+<<Use strings>>
+  use io_units
+  use diagnostics
   use event_base
   use eio_data
   use eio_base
@@ -2104,8 +2272,6 @@ module eio_weights
 contains
   
 <<EIO weights: procedures>>
-
-<<EIO weights: tests>>
 
 end module eio_weights
 @ %def eio_weights
@@ -2302,10 +2468,67 @@ a new calculation, and thus qualifies as [[sqme_prc]].
 @ %def eio_weights_input_i_prc
 @ %def eio_weights_input_event
 @
+<<EIO weights: eio weights: TBP>>=
+  procedure :: skip => eio_weights_skip
+<<EIO weights: procedures>>=
+  subroutine eio_weights_skip (eio, iostat)
+    class(eio_weights_t), intent(inout) :: eio
+    integer, intent(out) :: iostat
+    iostat = 0
+  end subroutine eio_weights_skip
+
+@ %def eio_weights_skip
+@
 \subsection{Unit tests}
-<<EIO weights: public>>=
+Test module, followed by the corresponding implementation module.
+<<[[eio_weights_ut.f90]]>>=
+<<File header>>
+
+module eio_weights_ut
+  use unit_tests
+  use eio_weights_uti
+  
+<<Standard module head>>
+
+<<EIO weights: public test>>
+
+contains
+  
+<<EIO weights: test driver>>
+
+end module eio_weights_ut
+@ %def eio_weights_ut
+@
+<<[[eio_weights_uti.f90]]>>=
+<<File header>>
+
+module eio_weights_uti
+
+<<Use kinds>>
+<<Use strings>>
+  use io_units
+  use event_base
+  use eio_data
+  use eio_base
+
+  use eio_weights
+  
+  use eio_base_ut, only: eio_prepare_test, eio_cleanup_test
+
+<<Standard module head>>
+
+<<EIO weights: test declarations>>
+
+contains
+
+<<EIO weights: tests>>
+
+end module eio_weights_uti
+@ %def eio_weights_ut
+@ API: driver for the unit tests below.
+<<EIO weights: public test>>=
   public :: eio_weights_test
-<<EIO weights: tests>>=
+<<EIO weights: test driver>>=
   subroutine eio_weights_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
@@ -2320,6 +2543,8 @@ We test the implementation of all I/O methods.
   call test (eio_weights_1, "eio_weights_1", &
        "read and write event contents", &
        u, results)
+<<EIO weights: test declarations>>=
+  public :: eio_weights_1
 <<EIO weights: tests>>=
   subroutine eio_weights_1 (u)
     integer, intent(in) :: u
@@ -2381,6 +2606,8 @@ We test the implementation of all I/O methods.
   call test (eio_weights_2, "eio_weights_2", &
        "multiple weights", &
        u, results)
+<<EIO weights: test declarations>>=
+  public :: eio_weights_2
 <<EIO weights: tests>>=
   subroutine eio_weights_2 (u)
     integer, intent(in) :: u
@@ -2455,20 +2682,14 @@ switch between them using flags.
 
 module eio_ascii
   
-  use kinds
-  use io_units
 <<Use strings>>
-  use unit_tests
+  use io_units
   use diagnostics
-
-  use lorentz
-  use model_data
-  use particles
   use event_base
-  use hep_common
-  use hep_events
   use eio_data
   use eio_base
+  use hep_common
+  use hep_events
 
 <<Standard module head>>
 
@@ -2480,8 +2701,6 @@ contains
   
 <<EIO ascii: procedures>>
 
-<<EIO ascii: tests>>
-
 end module eio_ascii
 @ %def eio_ascii
 @
@@ -2492,8 +2711,9 @@ end module eio_ascii
   type, abstract, extends (eio_t) :: eio_ascii_t
      logical :: writing = .false.
      integer :: unit = 0
-     logical :: keep_beams = .false.     
+     logical :: keep_beams = .false.
      logical :: keep_remnants = .true.
+     logical :: ensure_order = .false.
    contains
    <<EIO ascii: eio ascii: TBP>>
   end type eio_ascii_t
@@ -2592,16 +2812,18 @@ particular, this is the file extension.
   procedure :: set_parameters => eio_ascii_set_parameters
 <<EIO ascii: procedures>>=
   subroutine eio_ascii_set_parameters (eio, &
-       keep_beams, keep_remnants, extension, &
+       keep_beams, keep_remnants, ensure_order, extension, &
        show_process, show_transforms, show_decay, verbose)
     class(eio_ascii_t), intent(inout) :: eio
     logical, intent(in), optional :: keep_beams
     logical, intent(in), optional :: keep_remnants
+    logical, intent(in), optional :: ensure_order
     type(string_t), intent(in), optional :: extension
     logical, intent(in), optional :: show_process, show_transforms, show_decay
     logical, intent(in), optional :: verbose
     if (present (keep_beams))  eio%keep_beams = keep_beams
     if (present (keep_remnants))  eio%keep_remnants = keep_remnants
+    if (present (ensure_order))  eio%ensure_order = ensure_order
     if (present (extension)) then
        eio%extension = extension
     else
@@ -2619,7 +2841,7 @@ particular, this is the file extension.
        type is (eio_ascii_lha_t)
           eio%extension = "lha"
        type is (eio_ascii_lha_verb_t)
-          eio%extension = "lha.verb"          
+          eio%extension = "lha.verb"
        type is (eio_ascii_long_t)
           eio%extension = "long.evt"
        type is (eio_ascii_mokka_t)
@@ -2896,7 +3118,8 @@ squared matrix element, then the particle set.
           call hepevt_from_event (event, &
                i_evt = event%get_index (), &          
                keep_beams = eio%keep_beams, &
-               keep_remnants = eio%keep_remnants)
+               keep_remnants = eio%keep_remnants, &
+               ensure_order = eio%ensure_order)
           call hepevt_write_athena (eio%unit)                    
        type is (eio_ascii_debug_t)
           call event%write (eio%unit, &
@@ -2909,31 +3132,36 @@ squared matrix element, then the particle set.
           call hepevt_from_event (event, &
                i_evt = event%get_index (), &                         
                keep_beams = eio%keep_beams, &
-               keep_remnants = eio%keep_remnants)
+               keep_remnants = eio%keep_remnants, &
+               ensure_order = eio%ensure_order)
           call hepevt_write_hepevt (eio%unit)                              
        type is (eio_ascii_hepevt_verb_t)
           call hepevt_from_event (event, &
                i_evt = event%get_index (), &                         
                keep_beams = eio%keep_beams, &
-               keep_remnants = eio%keep_remnants)
+               keep_remnants = eio%keep_remnants, &
+               ensure_order = eio%ensure_order)
           call hepevt_write_verbose (eio%unit)
        type is (eio_ascii_long_t)
           call hepevt_from_event (event, &
                i_evt = event%get_index (), & 
                keep_beams = eio%keep_beams, &
-               keep_remnants = eio%keep_remnants)
+               keep_remnants = eio%keep_remnants, &
+               ensure_order = eio%ensure_order)
           call hepevt_write_ascii (eio%unit, .true.)                           
        type is (eio_ascii_mokka_t)
           call hepevt_from_event (event, &
                i_evt = event%get_index (), &                         
                keep_beams = eio%keep_beams, &
-               keep_remnants = eio%keep_remnants)
+               keep_remnants = eio%keep_remnants, &
+               ensure_order = eio%ensure_order)
           call hepevt_write_mokka (eio%unit)                              
        type is (eio_ascii_short_t)
           call hepevt_from_event (event, &
                i_evt = event%get_index (), &  
                keep_beams = eio%keep_beams, &
-               keep_remnants = eio%keep_remnants)
+               keep_remnants = eio%keep_remnants, &
+               ensure_order = eio%ensure_order)
           call hepevt_write_ascii (eio%unit, .false.)                    
        end select       
     else
@@ -2968,10 +3196,68 @@ squared matrix element, then the particle set.
 @ %def eio_ascii_input_i_prc
 @ %def eio_ascii_input_event
 @
+<<EIO ascii: eio ascii: TBP>>=
+  procedure :: skip => eio_ascii_skip
+<<EIO ascii: procedures>>=
+  subroutine eio_ascii_skip (eio, iostat)
+     class(eio_ascii_t), intent(inout) :: eio
+     integer, intent(out) :: iostat
+     iostat = 0
+  end subroutine eio_ascii_skip
+
+@ %def eio_asciii_skip
+@
 \subsection{Unit tests}
-<<EIO ascii: public>>=
+Test module, followed by the corresponding implementation module.
+<<[[eio_ascii_ut.f90]]>>=
+<<File header>>
+
+module eio_ascii_ut
+  use unit_tests
+  use eio_ascii_uti
+  
+<<Standard module head>>
+
+<<EIO ascii: public test>>
+
+contains
+  
+<<EIO ascii: test driver>>
+
+end module eio_ascii_ut
+@ %def eio_ascii_ut
+@
+<<[[eio_ascii_uti.f90]]>>=
+<<File header>>
+
+module eio_ascii_uti
+
+<<Use kinds>>
+<<Use strings>>
+  use io_units
+  use model_data
+  use event_base
+  use eio_data
+  use eio_base
+
+  use eio_ascii
+
+  use eio_base_ut, only: eio_prepare_test, eio_cleanup_test
+
+<<Standard module head>>
+
+<<EIO ascii: test declarations>>
+
+contains
+
+<<EIO ascii: tests>>
+
+end module eio_ascii_uti
+@ %def eio_ascii_uti
+@ API: driver for the unit tests below.
+<<EIO ascii: public test>>=
   public :: eio_ascii_test
-<<EIO ascii: tests>>=
+<<EIO ascii: test driver>>=
   subroutine eio_ascii_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
@@ -2986,6 +3272,8 @@ We test the implementation of all I/O methods, method [[ascii]]:
   call test (eio_ascii_1, "eio_ascii_1", &
        "read and write event contents, format [ascii]", &
        u, results)
+<<EIO ascii: test declarations>>=
+  public :: eio_ascii_1
 <<EIO ascii: tests>>=
   subroutine eio_ascii_1 (u)
     integer, intent(in) :: u
@@ -3079,6 +3367,8 @@ We test the implementation of all I/O methods, method [[athena]]:
   call test (eio_ascii_2, "eio_ascii_2", &
        "read and write event contents, format [athena]", &
        u, results)
+<<EIO ascii: test declarations>>=
+  public :: eio_ascii_2
 <<EIO ascii: tests>>=
   subroutine eio_ascii_2 (u)
     integer, intent(in) :: u
@@ -3172,6 +3462,8 @@ We test the implementation of all I/O methods, method [[debug]]:
   call test (eio_ascii_3, "eio_ascii_3", &
        "read and write event contents, format [debug]", &
        u, results)
+<<EIO ascii: test declarations>>=
+  public :: eio_ascii_3
 <<EIO ascii: tests>>=
   subroutine eio_ascii_3 (u)
     integer, intent(in) :: u
@@ -3265,6 +3557,8 @@ We test the implementation of all I/O methods, method [[hepevt]]:
   call test (eio_ascii_4, "eio_ascii_4", &
        "read and write event contents, format [hepevt]", &
        u, results)
+<<EIO ascii: test declarations>>=
+  public :: eio_ascii_4
 <<EIO ascii: tests>>=
   subroutine eio_ascii_4 (u)
     integer, intent(in) :: u
@@ -3358,6 +3652,8 @@ We test the implementation of all I/O methods, method [[lha]] (old LHA):
   call test (eio_ascii_5, "eio_ascii_5", &
        "read and write event contents, format [lha]", &
        u, results)
+<<EIO ascii: test declarations>>=
+  public :: eio_ascii_5
 <<EIO ascii: tests>>=
   subroutine eio_ascii_5 (u)
     integer, intent(in) :: u
@@ -3451,6 +3747,8 @@ We test the implementation of all I/O methods, method [[long]]:
   call test (eio_ascii_6, "eio_ascii_6", &
        "read and write event contents, format [long]", &
        u, results)
+<<EIO ascii: test declarations>>=
+  public :: eio_ascii_6
 <<EIO ascii: tests>>=
   subroutine eio_ascii_6 (u)
     integer, intent(in) :: u
@@ -3544,10 +3842,11 @@ We test the implementation of all I/O methods, method [[mokka]]:
   call test (eio_ascii_7, "eio_ascii_7", &
        "read and write event contents, format [mokka]", &
        u, results)
+<<EIO ascii: test declarations>>=
+  public :: eio_ascii_7
 <<EIO ascii: tests>>=
   subroutine eio_ascii_7 (u)
     integer, intent(in) :: u
-    type(model_data_t), target :: model
     class(generic_event_t), pointer :: event
     type(event_sample_data_t) :: data
     class(eio_t), allocatable :: eio
@@ -3638,6 +3937,8 @@ We test the implementation of all I/O methods, method [[short]]:
   call test (eio_ascii_8, "eio_ascii_8", &
        "read and write event contents, format [short]", &
        u, results)
+<<EIO ascii: test declarations>>=
+  public :: eio_ascii_8
 <<EIO ascii: tests>>=
   subroutine eio_ascii_8 (u)
     integer, intent(in) :: u
@@ -3732,6 +4033,8 @@ LHA) in verbose version:
   call test (eio_ascii_9, "eio_ascii_9", &
        "read and write event contents, format [lha_verb]", &
        u, results)
+<<EIO ascii: test declarations>>=
+  public :: eio_ascii_9
 <<EIO ascii: tests>>=
   subroutine eio_ascii_9 (u)
     integer, intent(in) :: u
@@ -3825,6 +4128,8 @@ We test the implementation of all I/O methods, method [[hepevt_verb]]:
   call test (eio_ascii_10, "eio_ascii_10", &
        "read and write event contents, format [hepevt_verb]", &
        u, results)
+<<EIO ascii: test declarations>>=
+  public :: eio_ascii_10
 <<EIO ascii: tests>>=
   subroutine eio_ascii_10 (u)
     integer, intent(in) :: u
@@ -3943,10 +4248,12 @@ does not (yet) provide unit tests.
 
 module hep_common
   
-  use kinds
-  use io_units
+<<Use kinds>>
+  use kinds, only: double
 <<Use strings>>
+  use io_units
   use diagnostics
+  use unit_tests, only: nearly_equal
   use physics_defs, only: HADRON_REMNANT
   use physics_defs, only: HADRON_REMNANT_SINGLET
   use physics_defs, only: HADRON_REMNANT_TRIPLET
@@ -3958,8 +4265,9 @@ module hep_common
   use polarizations
   use model_data
   use particles
-  use subevents
-  use unit_tests, only: nearly_equal
+  use subevents, only: PRT_BEAM, PRT_INCOMING, PRT_OUTGOING
+  use subevents, only: PRT_UNDEFINED
+  use subevents, only: PRT_VIRTUAL, PRT_RESONANT, PRT_BEAM_REMNANT
 
 <<Standard module head>>
 
@@ -4349,6 +4657,7 @@ mother-daughter relations are transferred to the existing particles.
     integer, intent(in) :: unit
     type(xml_tag_t), allocatable :: tag_lhef, tag_head, tag_init, &
          tag_event, tag_gen_n, tag_gen_v
+    call msg_debug (D_EVENTS, "w2p_write_lhef_event")
     allocate (tag_lhef, tag_head, tag_init, tag_event, &
          tag_gen_n, tag_gen_v)
     call tag_lhef%init (var_str ("LesHouchesEvents"), &
@@ -5130,12 +5439,20 @@ uses the current contents of the HEPEUP block.
     integer, intent(in), optional :: unit
     integer :: u, i
     u = given_output_unit (unit);  if (u < 0)  return
+    call msg_debug (D_EVENTS, "hepeup_write_lhef")
+    call msg_debug2 (D_EVENTS, "ID IST MOTH ICOL P VTIM SPIN")
     write (u, "(2(1x,I0),4(1x,ES17.10))") &
          NUP, IDPRUP, XWGTUP, SCALUP, AQEDUP, AQCDUP
     do i = 1, NUP
        write (u, "(6(1x,I0),7(1x,ES17.10))") &
             IDUP(i), ISTUP(i), MOTHUP(:,i), ICOLUP(:,i), &
             PUP(:,i), VTIMUP(i), SPINUP(i)
+       if (debug2_active (D_EVENTS)) then
+          write (msg_buffer, "(6(1x,I0),7(1x,ES17.10))") &
+               IDUP(i), ISTUP(i), MOTHUP(:,i), ICOLUP(:,i), &
+               PUP(:,i), VTIMUP(i), SPINUP(i)
+          call msg_message ()
+       end if
     end do
   end subroutine hepeup_write_lhef
 
@@ -5406,16 +5723,24 @@ its polarization is fully defined.
   public :: hepevt_from_particle_set
 <<HEP common: procedures>>=
   subroutine hepevt_from_particle_set &
-       (particle_set, keep_beams, keep_remnants)
+       (particle_set, keep_beams, keep_remnants, ensure_order)
     type(particle_set_t), intent(in) :: particle_set
-    type(particle_set_t), target :: pset_hepevt
+    type(particle_set_t), target :: pset_hepevt, pset_tmp
     logical, intent(in), optional :: keep_beams
     logical, intent(in), optional :: keep_remnants
+    logical, intent(in), optional :: ensure_order
     integer :: i, status, n_tot
-    logical :: activate_remnants
+    logical :: activate_remnants, ensure
     activate_remnants = .true.
     if (present (keep_remnants))  activate_remnants = keep_remnants
-    call particle_set%to_hepevt_form (pset_hepevt, keep_beams)
+    ensure = .false.
+    if (present (ensure_order))  ensure = ensure_order
+    call particle_set%apply_keep_beams (pset_tmp, keep_beams = keep_beams)
+    if (ensure) then
+       call pset_tmp%to_hepevt_form (pset_hepevt)
+    else
+       pset_hepevt = pset_tmp
+    end if
     n_tot = pset_hepevt%get_n_tot ()
     call hepevt_init (n_tot, pset_hepevt%get_n_out ())
     do i = 1, n_tot
@@ -5465,15 +5790,11 @@ module hepmc_interface
   
 <<Use kinds>>
 <<Use strings>>
-  use io_units
-  use constants
+  use constants, only: PI
   use lorentz
-  use unit_tests
-  use model_data
   use flavors
   use colors
   use helicities
-  use quantum_numbers
   use polarizations
 
 <<Standard module head>>
@@ -5487,8 +5808,6 @@ module hepmc_interface
 contains
 
 <<HepMC interface: procedures>>
-
-<<HepMC interface: tests>>
 
 end module hepmc_interface
 @ %def hepmc_interface
@@ -6977,7 +7296,8 @@ Fortran unit is obviously not possible.
        real(c_double), value :: w
      end subroutine gen_event_add_weight
   end interface
-@ %def gen_event_set_alpha_qed
+@ %def gen_event_add_weight
+@
 <<HepMC interface: public>>=
   public :: hepmc_event_add_weight
 <<HepMC interface: procedures>>=
@@ -6985,7 +7305,8 @@ Fortran unit is obviously not possible.
     type(hepmc_event_t), intent(in) :: evt
     real(default), intent(in) :: weight
     real(c_double) :: w
-    w = weight
+    real(default), parameter :: pb_per_fb = 1.e-3_default
+    w = weight * pb_per_fb
     call gen_event_add_weight (evt%obj, w)
   end subroutine hepmc_event_add_weight
 
@@ -7389,6 +7710,62 @@ the file is done by the constructor, closing by the destructor.
 @ %def hepmc_iostream_read_event
 @ 
 \subsection{Unit tests}
+Test module, followed by the corresponding implementation module.
+<<[[hepmc_interface_ut.f90]]>>=
+<<File header>>
+
+module hepmc_interface_ut
+  use unit_tests
+  use hepmc_interface_uti
+  
+<<Standard module head>>
+
+<<HepMC interface: public test>>
+
+contains
+  
+<<HepMC interface: test driver>>
+
+end module hepmc_interface_ut
+@ %def hepmc_interface_ut
+@
+<<[[hepmc_interface_uti.f90]]>>=
+<<File header>>
+
+module hepmc_interface_uti
+
+<<Use kinds>>
+<<Use strings>>
+  use io_units
+  use lorentz
+  use flavors
+  use colors
+  use polarizations
+
+  use hepmc_interface
+
+<<Standard module head>>
+
+<<HepMC interface: test declarations>>
+
+contains
+
+<<HepMC interface: tests>>
+
+end module hepmc_interface_uti
+@ %def hepmc_interface_ut
+@ API: driver for the unit tests below.
+<<HepMC interface: public test>>=
+  public :: hepmc_interface_test
+<<HepMC interface: test driver>>=
+  subroutine hepmc_interface_test (u, results)
+    integer, intent(in) :: u
+    type(test_results_t), intent(inout) :: results
+  <<HepMC interface: execute tests>>
+  end subroutine hepmc_interface_test
+  
+@  %def hepmc_test
+@ 
 This test example is an abridged version from the build-from-scratch
 example in the HepMC distribution.  We create two vertices for $p\to
 q$ PDF splitting, then a vertex for a $qq\to W^-g$ hard-interaction
@@ -7399,21 +7776,12 @@ Extending the original example, we set color flow for the incoming
 quarks and polarization for the outgoing photon.  For the latter, we
 have to define a particle-data object for the photon, so a flavor
 object can be correctly initialized.
-<<HepMC interface: public>>=
-  public :: hepmc_test
-<<HepMC interface: procedures>>=
-  subroutine hepmc_test (u, results)
-    integer, intent(in) :: u
-    type(test_results_t), intent(inout) :: results
-  <<HepMC interface: execute tests>>
-  end subroutine hepmc_test
-  
-@  %def hepmc_test
-@ 
 <<HepMC interface: execute tests>>=
   call test (hepmc_interface_1, "hepmc_interface_1", &
        "check HepMC interface", &
        u, results)
+<<HepMC interface: test declarations>>=
+  public :: hepmc_interface_1
 <<HepMC interface: tests>>=
   subroutine hepmc_interface_1 (u)
     use physics_defs, only: VECTOR
@@ -7595,16 +7963,12 @@ module lcio_interface
   
 <<Use kinds>>
 <<Use strings>>
-  use io_units
-  use constants
-  use lorentz
-  use unit_tests
+  use constants, only: PI
   use diagnostics
-  use model_data
+  use lorentz
   use flavors
   use colors
   use helicities
-  use quantum_numbers
   use polarizations
 
 <<Standard module head>>
@@ -7618,8 +7982,6 @@ module lcio_interface
 contains
 
 <<LCIO interface: procedures>>
-
-<<LCIO interface: tests>>
 
 end module lcio_interface
 @ %def lcio_interface
@@ -7679,8 +8041,7 @@ The Fortran version has initializer form.
   subroutine lcio_run_header_init (runhdr, proc_id, run_id)
     type(lcio_run_header_t), intent(out) :: runhdr
     integer, intent(in), optional :: proc_id, run_id
-    integer(c_int) :: pid, rid
-    pid = 0;  if (present (proc_id))  pid = proc_id
+    integer(c_int) :: rid
     rid = 0; if (present (run_id))  rid = run_id
     runhdr%obj = new_lcio_run_header (rid)
     call run_header_set_simstring (runhdr%obj, &
@@ -8153,7 +8514,7 @@ not specified in the HepMC format).
   end interface
 <<LCIO interface: procedures>>=
   subroutine lcio_polarization_init_pol (prt, pol)
-    type(lcio_particle_t), intent(out) :: prt
+    type(lcio_particle_t), intent(inout) :: prt
     type(polarization_t), intent(in) :: pol
     real(default) :: r, theta, phi
     if (polarization_is_polarized (pol)) then
@@ -8164,7 +8525,7 @@ not specified in the HepMC format).
   end subroutine lcio_polarization_init_pol
 
   subroutine lcio_polarization_init_hel (prt, hel)
-    type(lcio_particle_t), intent(out) :: prt
+    type(lcio_particle_t), intent(inout) :: prt
     type(helicity_t), intent(in) :: hel
     integer, dimension(2) :: h
     if (hel%is_defined ()) then
@@ -8184,7 +8545,7 @@ not specified in the HepMC format).
   end subroutine lcio_polarization_init_hel
 
   subroutine lcio_polarization_init_int (prt, hel)
-    type(lcio_particle_t), intent(out) :: prt
+    type(lcio_particle_t), intent(inout) :: prt
     integer, intent(in) :: hel
     select case (hel)
     case (1:)
@@ -8292,7 +8653,7 @@ $\cos\theta$ is relevant, mapped to positive/negative helicity.
   public :: lcio_particle_set_t 
 <<LCIO interface: procedures>>=
   subroutine lcio_particle_set_t (prt, t)
-    type(lcio_particle_t), intent(out) :: prt
+    type(lcio_particle_t), intent(inout) :: prt
     real(default), intent(in) :: t
     call lcio_particle_set_time (prt%obj, real(t, c_double))
   end subroutine lcio_particle_set_t
@@ -8692,31 +9053,68 @@ RUN ID as well as in an additional event parameter.
 @ %def lcio_event_get_particle
 @
 \subsection{Unit tests}
-This test example is an abridged version from the build-from-scratch
-example in the HepMC distribution, translated to LCIO. 
-There are three different branchings for $p\to q$ PDF splitting, then a
-branching for a $qq\to W^-g$ hard-interaction process, and finally a 
-branching for $W^-\to qq$ decay.  The setup is for LHC kinematics.
+Test module, followed by the corresponding implementation module.
+<<[[lcio_interface_ut.f90]]>>=
+<<File header>>
 
-Extending the original example, we set color flow for the incoming
-quarks and polarization for the outgoing photon.  For the latter, we
-have to define a particle-data object for the photon, so a flavor
-object can be correctly initialized.
-<<LCIO interface: public>>=
-  public :: lcio_test
-<<LCIO interface: procedures>>=
-  subroutine lcio_test (u, results)
+module lcio_interface_ut
+  use unit_tests
+  use lcio_interface_uti
+  
+<<Standard module head>>
+
+<<LCIO interface: public test>>
+
+contains
+  
+<<LCIO interface: test driver>>
+
+end module lcio_interface_ut
+@ %def lcio_interface_ut
+@
+<<[[lcio_interface_uti.f90]]>>=
+<<File header>>
+
+module lcio_interface_uti
+
+<<Use kinds>>
+<<Use strings>>
+  use io_units
+  use lorentz
+  use flavors
+  use colors
+  use polarizations
+
+  use lcio_interface
+
+<<Standard module head>>
+
+<<LCIO interface: test declarations>>
+
+contains
+
+<<LCIO interface: tests>>
+
+end module lcio_interface_uti
+@ %def lcio_interface_ut
+@ API: driver for the unit tests below.
+<<LCIO interface: public test>>=
+  public :: lcio_interface_test
+<<LCIO interface: test driver>>=
+  subroutine lcio_interface_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
   <<LCIO interface: execute tests>>
-  end subroutine lcio_test
+  end subroutine lcio_interface_test
   
-@  %def lcio_test
+@  %def lcio_interface_test
 @ 
 <<LCIO interface: execute tests>>=
   call test (lcio_interface_1, "lcio_interface_1", &
        "check LCIO interface", &
        u, results)
+<<LCIO interface: test declarations>>=
+  public :: lcio_interface_1
 <<LCIO interface: tests>>=
   subroutine lcio_interface_1 (u)
     use physics_defs, only: VECTOR
@@ -8881,23 +9279,19 @@ necessary for communication between [[hepmc_event_t]] and
 
 module hep_events
   
-  use kinds
-  use io_units
+<<Use kinds>>
 <<Use strings>>  
   use diagnostics
   use lorentz
-  use unit_tests
-  
+  use unit_tests, only: vanishes
   use flavors
   use colors
   use helicities
-  use quantum_numbers
-  use interactions
-  use state_matrices
-  use evaluators
   use polarizations
   use model_data
-  use subevents
+  use subevents, only: PRT_BEAM, PRT_INCOMING, PRT_OUTGOING
+  use subevents, only: PRT_UNDEFINED
+  use subevents, only: PRT_VIRTUAL, PRT_RESONANT, PRT_BEAM_REMNANT
   use particles
   use hep_common
   use hepmc_interface
@@ -8911,8 +9305,6 @@ module hep_events
 contains
   
 <<HEP events: procedures>>
-
-<<HEP events: tests>>
 
 end module hep_events
 @ %def hep_events
@@ -8936,10 +9328,10 @@ Fill the HEPEUP block, given a \whizard\ event object.
        if (present (process_index)) &
             call hepeup_set_event_parameters (proc_id = process_index)
        scale = event%get_fac_scale ()
-       if (scale /= 0) &
+       if (.not. vanishes (scale)) &
             call hepeup_set_event_parameters (scale = scale)
        alpha_qcd = event%get_alpha_s ()       
-       if (alpha_qcd /= 0) &
+       if (.not. vanishes(alpha_qcd)) &
             call hepeup_set_event_parameters (alpha_qcd = alpha_qcd)
        if (event%weight_prc_is_known ()) then
           call hepeup_set_event_parameters (weight = event%get_weight_prc ())
@@ -9001,15 +9393,18 @@ Note: setting of scale or alpha is not yet supported by the
 <<HEP events: public>>=
   public :: hepevt_from_event
 <<HEP events: procedures>>=
-  subroutine hepevt_from_event (event, i_evt, keep_beams, keep_remnants)
+  subroutine hepevt_from_event  &
+         (event, i_evt, keep_beams, keep_remnants, ensure_order)
     class(generic_event_t), intent(in), target :: event
     integer, intent(in), optional :: i_evt
     logical, intent(in), optional :: keep_beams  
     logical, intent(in), optional :: keep_remnants
+    logical, intent(in), optional :: ensure_order
     type(particle_set_t), pointer :: particle_set
     if (event%has_valid_particle_set ()) then
        particle_set => event%get_particle_set_ptr ()
-       call hepevt_from_particle_set (particle_set, keep_beams, keep_remnants)
+       call hepevt_from_particle_set (particle_set, keep_beams, &
+            keep_remnants, ensure_order)
        if (event%weight_prc_is_known () .and. event%sqme_prc_is_known ()) then
           call hepevt_set_event_parameters ( &
                weight = event%get_weight_prc (), &
@@ -9085,9 +9480,11 @@ http://herwig.hepforge.org/trac/wiki/FaQs.
 <<HEP events: public>>=
   public :: hepmc_event_from_particle_set 
 <<HEP events: procedures>>=
-  subroutine hepmc_event_from_particle_set (evt, particle_set)
+  subroutine hepmc_event_from_particle_set &
+         (evt, particle_set, cross_section, error)
     type(hepmc_event_t), intent(inout) :: evt
     type(particle_set_t), intent(in) :: particle_set
+    real(default), intent(in), optional :: cross_section, error
     type(hepmc_vertex_t), dimension(:), allocatable :: v
     type(hepmc_particle_t), dimension(:), allocatable :: hprt
     type(hepmc_particle_t), dimension(2) :: hbeam
@@ -9108,8 +9505,10 @@ http://herwig.hepforge.org/trac/wiki/FaQs.
              vtx(v_to(i)) = particle_set%prt(i)%get_vertex ()
           end if
        end if
-    end do       
-    allocate (v (n_vertices))    
+    end do  
+    if (present (cross_section) .and. present(error)) &
+       call hepmc_event_set_cross_section (evt, cross_section, error)
+    allocate (v (n_vertices))
     do i = 1, n_vertices
        call hepmc_vertex_init (v(i), vtx(i))
        call hepmc_event_add_vertex (evt, v(i))
@@ -9223,6 +9622,8 @@ information is not available.
 There is some complication in reconstructing incoming particles and
 beam remnants.  First of all, they all will be tagged as virtual.  We
 then define an incoming particle as 
+<<HEP events: public>>=
+  public :: hepmc_event_to_particle_set
 <<HEP events: procedures>>=
   subroutine hepmc_event_to_particle_set &
        (particle_set, evt, model, fallback_model, polarization)
@@ -9235,8 +9636,7 @@ then define an incoming particle as
     type(hepmc_vertex_particle_in_iterator_t) :: v_it
     type(hepmc_particle_t) :: prt
     integer, dimension(:), allocatable :: barcode
-    integer :: n_tot, i, j, bc
-    logical :: has_parents, has_children
+    integer :: n_tot, i, bc
     n_tot = 0
     call hepmc_event_particle_iterator_init (it, evt)
     do while (hepmc_event_particle_iterator_is_valid (it))
@@ -9291,8 +9691,10 @@ then define an incoming particle as
   end subroutine hepmc_event_to_particle_set
 
 @ %def hepmc_event_to_particle_set
-@ Fill a WHIZARD event from a HepMC event record.  Recall that
-HepMC events are always unweighted, so the weight is unity.
+@ Fill a WHIZARD event from a HepMC event record.  In HepMC the weights
+are in a weight container.  If the size of this container is larger than
+one, it is ambiguous to assign the event a specific weight.  For now we
+only allow to read in unweighted events.
 <<HEP events: public>>=
   public :: hepmc_to_event
 <<HEP events: procedures>>=
@@ -9307,7 +9709,7 @@ HepMC events are always unweighted, so the weight is unity.
     logical, intent(in), optional :: use_alpha_s
     logical, intent(in), optional :: use_scale
     class(model_data_t), pointer :: model
-    real(default) :: weight, scale, alpha_qcd
+    real(default) :: scale, alpha_qcd
     type(particle_set_t) :: particle_set
     model => event%get_model_ptr ()
     call hepmc_event_to_particle_set (particle_set, &
@@ -9410,14 +9812,12 @@ necessary for making a fully qualified flavor component.
     type(lcio_particle_t), intent(in) :: lprt
     type(model_data_t), intent(in), target :: model
     integer, dimension(:), intent(in) :: daughters, parents    
-    type(vector3_t) :: vtx3
     type(vector4_t) :: vtx4
     type(flavor_t) :: flv
     type(color_t) :: col
     type(helicity_t) :: hel
     type(polarization_t) :: pol
     integer, intent(in) :: polarization
-    integer :: i
     select case (lcio_particle_get_status (lprt))
     case (1);  call prt%set_status (PRT_OUTGOING)
     case (2);  call prt%set_status (PRT_RESONANT)
@@ -9457,9 +9857,7 @@ necessary for making a fully qualified flavor component.
     type(lcio_event_t), intent(inout) :: evt
     type(particle_set_t), intent(in) :: particle_set
     type(lcio_particle_t), dimension(:), allocatable :: lprt
-    type(lcio_particle_t), dimension(2) :: lbeam
-    integer, dimension(:), allocatable :: parent, child    
-    logical, dimension(:), allocatable :: is_beam
+    integer, dimension(:), allocatable :: parent    
     integer :: n_tot, i, j, n_parents
     n_tot = particle_set%n_tot
     allocate (lprt (n_tot))
@@ -9554,7 +9952,7 @@ information is not available.
     logical, intent(in), optional :: use_alpha_s
     logical, intent(in), optional :: use_scale
     class(model_data_t), pointer :: model
-    real(default) :: weight, scale, alpha_qcd
+    real(default) :: scale, alpha_qcd
     type(particle_set_t) :: particle_set
     model => event%get_model_ptr ()
     call lcio_event_to_particle_set (particle_set, &
@@ -9576,11 +9974,62 @@ information is not available.
 @ %def lcio_to_event
 @
 \subsection{Unit tests}
-Set up a chain of production and decay and factorize the result into
-particles.  The process is $d\bar d \to Z \to q\bar q$.
-<<HEP events: public>>=
+Test module, followed by the corresponding implementation module.
+<<[[hep_events_ut.f90]]>>=
+<<File header>>
+
+module hep_events_ut
+  use unit_tests
+  use hepmc_interface, only: HEPMC_IS_AVAILABLE
+  use hep_events_uti
+  
+<<Standard module head>>
+
+<<HEP events: public test>>
+
+contains
+  
+<<HEP events: test driver>>
+
+end module hep_events_ut
+@ %def hep_events_ut
+@
+<<[[hep_events_uti.f90]]>>=
+<<File header>>
+
+module hep_events_uti
+
+<<Use kinds>>
+<<Use strings>>
+  use lorentz
+  use flavors
+  use colors
+  use helicities
+  use quantum_numbers
+  use state_matrices, only: FM_SELECT_HELICITY, FM_FACTOR_HELICITY
+  use interactions
+  use evaluators
+  use model_data
+  use particles
+  use subevents
+  use hepmc_interface
+
+  use hep_events
+
+<<Standard module head>>
+
+<<HEP events: test declarations>>
+
+contains
+
+<<HEP events: tests>>
+
+end module hep_events_uti
+@ %def hep_events_ut
+@ API: driver for the unit tests below.
+<<HEP events: public test>>=
   public :: hep_events_test
-<<HEP events: procedures>>=
+<<HEP events: test driver>>=
   subroutine hep_events_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
@@ -9589,12 +10038,17 @@ particles.  The process is $d\bar d \to Z \to q\bar q$.
 
 @  %def particles_test  
 @ If [[HepMC]] is available, check the routines via [[HepMC]].
+
+Set up a chain of production and decay and factorize the result into
+particles.  The process is $d\bar d \to Z \to q\bar q$.
 <<HEP events: execute tests>>=
   if (hepmc_is_available ()) then
      call test (hep_events_1, "hep_events_1", &
           "check HepMC event routines", &
           u, results)
   end if
+<<HEP events: test declarations>>=
+  public :: hep_events_1
 <<HEP events: tests>>=
   subroutine hep_events_1 (u)
     use os_interface
@@ -9606,16 +10060,16 @@ particles.  The process is $d\bar d \to Z \to q\bar q$.
     type(quantum_numbers_t), dimension(3) :: qn
     type(vector4_t), dimension(3) :: p
     type(interaction_t), target :: int1, int2
-    type(quantum_numbers_mask_t) :: qn_mask_conn, qn_rest
+    type(quantum_numbers_mask_t) :: qn_mask_conn
     type(evaluator_t), target :: eval
     type(interaction_t), pointer :: int
     type(particle_set_t) :: particle_set1, particle_set2
-    type(particle_set_t) :: particle_set3, particle_set4
     type(subevt_t) :: subevt
-    logical :: ok
-    integer :: unit, iostat      
     type(hepmc_event_t) :: hepmc_event
-    type(hepmc_iostream_t) :: iostream    
+    type(hepmc_iostream_t) :: iostream
+    real(default) :: cross_section, error, weight
+    logical :: ok
+    integer :: unit, iostat
 
     write (u, "(A)")  "* Test output: HEP events"
     write (u, "(A)")  "*   Purpose: test HepMC event routines"
@@ -9742,8 +10196,13 @@ particles.  The process is $d\bar d \to Z \to q\bar q$.
     write (u, "(A)")  "        hep_events.hepmc.dat"
     write (u, "(A)")
     
+    cross_section = 42.0_default
+    error = 17.0_default
+    weight = 1.0_default
     call hepmc_event_init (hepmc_event, 11, 127)
-    call hepmc_event_from_particle_set (hepmc_event, particle_set2)
+    call hepmc_event_from_particle_set (hepmc_event, particle_set2, &
+         cross_section, error)
+    call hepmc_event_add_weight (hepmc_event, weight)
     call hepmc_event_print (hepmc_event)
     call hepmc_iostream_open_out &
          (iostream , var_str ("hep_events.hepmc.dat"))
@@ -9777,7 +10236,7 @@ particles.  The process is $d\bar d \to Z \to q\bar q$.
     call model%final ()
        
     write (u, "(A)")
-    write (u, "(A)")  "* Test output end: particles_2"
+    write (u, "(A)")  "* Test output end: hep_events_1"
 
   end subroutine hep_events_1
   
@@ -9792,18 +10251,14 @@ our best at using it for both input and output.
 
 module eio_lhef
   
-  use kinds
-  use io_units
+<<Use kinds>>
 <<Use strings>>
+  use io_units
   use string_utils
   use unit_tests
   use diagnostics
   use os_interface
-
   use xml
-  use lorentz
-  use model_data
-  use particles
   use event_base
   use eio_data
   use eio_base
@@ -9816,13 +10271,9 @@ module eio_lhef
 
 <<EIO LHEF: types>>
 
-<<EIO LHEF: interfaces>>
-
 contains
   
 <<EIO LHEF: procedures>>
-
-<<EIO LHEF: tests>>
 
 end module eio_lhef
 @ %def eio_lhef
@@ -10438,7 +10889,6 @@ the matrix element.
     class(eio_lhef_t), intent(inout) :: eio
     class(generic_event_t), intent(inout), target :: event
     integer, intent(out) :: iostat
-    type(particle_set_t), pointer :: pset
     type(string_t) :: s
     logical :: closing
     iostat = 0
@@ -10466,6 +10916,22 @@ the matrix element.
 
 @ %def eio_lhef_input_event
 @ 
+<<EIO LHEF: eio lhef: TBP>>=
+  procedure :: skip => eio_lhef_skip
+<<EIO LHEF: procedures>>=
+  subroutine eio_lhef_skip (eio, iostat)
+    class(eio_lhef_t), intent(inout) :: eio
+    integer, intent(out) :: iostat
+    if (eio%reading) then
+       read (eio%unit, iostat = iostat)
+    else
+       call eio%write ()
+       call msg_fatal ("Raw event file is not open for reading")
+    end if
+  end subroutine eio_lhef_skip
+
+@ %def eio_lhef_skip
+@
 \subsection{Les Houches Event File: header/footer}
 These two routines write the header and footer for the Les Houches
 Event File format (LHEF).
@@ -10946,9 +11412,57 @@ tags written by the above writer, are skipped.
 @ %def eio_lhef_read_event_30
 @
 \subsection{Unit tests}
-<<EIO LHEF: public>>=
+Test module, followed by the corresponding implementation module.
+<<[[eio_lhef_ut.f90]]>>=
+<<File header>>
+
+module eio_lhef_ut
+  use unit_tests
+  use eio_lhef_uti
+  
+<<Standard module head>>
+
+<<EIO LHEF: public test>>
+
+contains
+  
+<<EIO LHEF: test driver>>
+
+end module eio_lhef_ut
+@ %def eio_lhef_ut
+@
+<<[[eio_lhef_uti.f90]]>>=
+<<File header>>
+
+module eio_lhef_uti
+
+<<Use kinds>>
+<<Use strings>>
+  use io_units
+  use model_data
+  use event_base
+  use eio_data
+  use eio_base
+  
+  use eio_lhef
+
+  use eio_base_ut, only: eio_prepare_test, eio_cleanup_test
+  use eio_base_ut, only: eio_prepare_fallback_model, eio_cleanup_fallback_model
+
+<<Standard module head>>
+
+<<EIO LHEF: test declarations>>
+
+contains
+
+<<EIO LHEF: tests>>
+
+end module eio_lhef_uti
+@ %def eio_lhef_ut
+@ API: driver for the unit tests below.
+<<EIO LHEF: public test>>=
   public :: eio_lhef_test
-<<EIO LHEF: tests>>=
+<<EIO LHEF: test driver>>=
   subroutine eio_lhef_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
@@ -10964,6 +11478,8 @@ according to version 1.0.
   call test (eio_lhef_1, "eio_lhef_1", &
        "write version 1.0", &
        u, results)
+<<EIO LHEF: test declarations>>=
+  public :: eio_lhef_1
 <<EIO LHEF: tests>>=
   subroutine eio_lhef_1 (u)
     integer, intent(in) :: u
@@ -11064,6 +11580,8 @@ implement some of them.
   call test (eio_lhef_2, "eio_lhef_2", &
        "write version 2.0", &
        u, results)
+<<EIO LHEF: test declarations>>=
+  public :: eio_lhef_2
 <<EIO LHEF: tests>>=
   subroutine eio_lhef_2 (u)
     integer, intent(in) :: u
@@ -11149,6 +11667,8 @@ and suggests a new treatment of weights.
   call test (eio_lhef_3, "eio_lhef_3", &
        "write version 3.0", &
        u, results)
+<<EIO LHEF: test declarations>>=
+  public :: eio_lhef_3
 <<EIO LHEF: tests>>=
   subroutine eio_lhef_3 (u)
     integer, intent(in) :: u
@@ -11232,6 +11752,8 @@ Check input of a version-1.0 conforming LHEF file.
   call test (eio_lhef_4, "eio_lhef_4", &
        "read version 1.0", &
        u, results)
+<<EIO LHEF: test declarations>>=
+  public :: eio_lhef_4
 <<EIO LHEF: tests>>=
   subroutine eio_lhef_4 (u)
     integer, intent(in) :: u
@@ -11369,6 +11891,8 @@ Check input of a version-2.0 conforming LHEF file.
   call test (eio_lhef_5, "eio_lhef_5", &
        "read version 2.0", &
        u, results)
+<<EIO LHEF: test declarations>>=
+  public :: eio_lhef_5
 <<EIO LHEF: tests>>=
   subroutine eio_lhef_5 (u)
     integer, intent(in) :: u
@@ -11506,6 +12030,8 @@ Check input of a version-3.0 conforming LHEF file.
   call test (eio_lhef_6, "eio_lhef_6", &
        "read version 3.0", &
        u, results)
+<<EIO LHEF: test declarations>>=
+  public :: eio_lhef_6
 <<EIO LHEF: tests>>=
   subroutine eio_lhef_6 (u)
     integer, intent(in) :: u
@@ -11648,20 +12174,14 @@ The second one is actually the standard STDHEP format.
 
 module eio_stdhep
   
-  use kinds
-  use io_units
+  use kinds, only: i32, i64
 <<Use strings>>
+  use io_units
   use string_utils
-  use unit_tests
   use diagnostics
-
-  use lorentz
-  use model_data
-  use particles
   use event_base
   use hep_common
   use hep_events
-  use xdr_stdhep
   use eio_data
   use eio_base
 
@@ -11677,8 +12197,6 @@ contains
   
 <<EIO stdhep: procedures>>
 
-<<EIO stdhep: tests>>
-
 end module eio_stdhep
 @ %def eio_stdhep
 @
@@ -11692,6 +12210,7 @@ end module eio_stdhep
      integer :: unit = 0
      logical :: keep_beams = .false.     
      logical :: keep_remnants = .true.
+     logical :: ensure_order = .false.
      logical :: recover_beams = .false.
      logical :: use_alpha_s_from_file = .false.
      logical :: use_scale_from_file = .false.
@@ -11725,17 +12244,19 @@ Set parameters that are specifically used with STDHEP file formats.
   procedure :: set_parameters => eio_stdhep_set_parameters
 <<EIO stdhep: procedures>>=
   subroutine eio_stdhep_set_parameters (eio, &
-       keep_beams, keep_remnants, recover_beams, use_alpha_s_from_file, &
-       use_scale_from_file, extension)
+       keep_beams, keep_remnants, ensure_order, recover_beams, &
+       use_alpha_s_from_file, use_scale_from_file, extension)
     class(eio_stdhep_t), intent(inout) :: eio
     logical, intent(in), optional :: keep_beams
     logical, intent(in), optional :: keep_remnants
+    logical, intent(in), optional :: ensure_order
     logical, intent(in), optional :: recover_beams
     logical, intent(in), optional :: use_alpha_s_from_file
     logical, intent(in), optional :: use_scale_from_file
     type(string_t), intent(in), optional :: extension
     if (present (keep_beams))  eio%keep_beams = keep_beams
     if (present (keep_remnants))  eio%keep_remnants = keep_remnants
+    if (present (ensure_order))  eio%ensure_order = ensure_order
     if (present (recover_beams))  eio%recover_beams = recover_beams
     if (present (use_alpha_s_from_file)) &
          eio%use_alpha_s_from_file = use_alpha_s_from_file
@@ -11986,7 +12507,8 @@ squared matrix element, then the particle set.
           call hepevt_from_event (event, &
                i_evt = event%get_index (), &                         
                keep_beams = eio%keep_beams, &
-               keep_remnants = eio%keep_remnants)
+               keep_remnants = eio%keep_remnants, &
+               ensure_order = eio%ensure_order)
           call stdhep_write (STDHEP_HEPEVT)                              
        end select       
     else
@@ -12047,6 +12569,7 @@ the HEPEVT common block as there is no control on the process ID.
     class(eio_stdhep_t), intent(inout) :: eio
     class(generic_event_t), intent(inout), target :: event
     integer, intent(out) :: iostat
+    iostat = 0
     call event%reset ()
     call event%select (1, 1, 1)
     call hepeup_to_event (event, eio%fallback_model, &
@@ -12057,6 +12580,21 @@ the HEPEVT common block as there is no control on the process ID.
 
 @ %def eio_stdhep_input_i_prc
 @ %def eio_stdhep_input_event
+<<EIO stdhep: eio stdhep: TBP>>=
+  procedure :: skip => eio_stdhep_skip
+<<EIO stdhep: procedures>>=
+  subroutine eio_stdhep_skip (eio, iostat)
+    class(eio_stdhep_t), intent(inout) :: eio
+    integer, intent(out) :: iostat
+    if (eio%reading) then
+       read (eio%unit, iostat = iostat)
+    else
+       call eio%write ()
+       call msg_fatal ("Raw event file is not open for reading")
+    end if
+  end subroutine eio_stdhep_skip
+
+@ %def eio_stdhep_skip
 @ STDHEP speficic routines.
 <<EIO stdhep: public>>=
   public :: stdhep_init_out
@@ -12112,9 +12650,58 @@ the HEPEVT common block as there is no control on the process ID.
 @
 @
 \subsection{Unit tests}
-<<EIO stdhep: public>>=
+Test module, followed by the corresponding implementation module.
+<<[[eio_stdhep_ut.f90]]>>=
+<<File header>>
+
+module eio_stdhep_ut
+  use unit_tests
+  use eio_stdhep_uti
+  
+<<Standard module head>>
+
+<<EIO stdhep: public test>>
+
+contains
+  
+<<EIO stdhep: test driver>>
+
+end module eio_stdhep_ut
+@ %def eio_stdhep_ut
+@
+<<[[eio_stdhep_uti.f90]]>>=
+<<File header>>
+
+module eio_stdhep_uti
+
+<<Use kinds>>
+<<Use strings>>
+  use io_units
+  use model_data
+  use event_base
+  use eio_data
+  use eio_base
+  use xdr_stdhep
+
+  use eio_stdhep
+
+  use eio_base_ut, only: eio_prepare_test, eio_cleanup_test
+  use eio_base_ut, only: eio_prepare_fallback_model, eio_cleanup_fallback_model
+
+<<Standard module head>>
+
+<<EIO stdhep: test declarations>>
+
+contains
+
+<<EIO stdhep: tests>>
+
+end module eio_stdhep_uti
+@ %def eio_stdhep_ut
+@ API: driver for the unit tests below.
+<<EIO stdhep: public test>>=
   public :: eio_stdhep_test
-<<EIO stdhep: tests>>=
+<<EIO stdhep: test driver>>=
   subroutine eio_stdhep_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
@@ -12129,6 +12716,8 @@ We test the implementation of the STDHEP HEPEVT I/O method:
   call test (eio_stdhep_1, "eio_stdhep_1", &
        "read and write event contents, format [stdhep]", &
        u, results)
+<<EIO stdhep: test declarations>>=
+  public :: eio_stdhep_1
 <<EIO stdhep: tests>>=
   subroutine eio_stdhep_1 (u)
     integer, intent(in) :: u
@@ -12239,6 +12828,8 @@ We test the implementation of the STDHEP HEPEUP I/O method:
   call test (eio_stdhep_2, "eio_stdhep_2", &
        "read and write event contents, format [stdhep]", &
        u, results)
+<<EIO stdhep: test declarations>>=
+  public :: eio_stdhep_2
 <<EIO stdhep: tests>>=
   subroutine eio_stdhep_2 (u)
     integer, intent(in) :: u
@@ -12352,6 +12943,8 @@ Check input from a StdHep file, HEPEVT block.
   call test (eio_stdhep_3, "eio_stdhep_3", &
        "read StdHep file, HEPEVT block", &
        u, results)
+<<EIO stdhep: test declarations>>=
+  public :: eio_stdhep_3
 <<EIO stdhep: tests>>=
   subroutine eio_stdhep_3 (u)
     integer, intent(in) :: u
@@ -12360,7 +12953,7 @@ Check input from a StdHep file, HEPEVT block.
     type(event_sample_data_t) :: data
     class(eio_t), allocatable :: eio
     type(string_t) :: sample
-    integer :: u_file, iostat, i_prc
+    integer :: iostat, i_prc
 
     write (u, "(A)")  "* Test output: eio_stdhep_3"
     write (u, "(A)")  "*   Purpose: read a StdHep file, HEPEVT block"
@@ -12479,6 +13072,8 @@ Check input from a StdHep file, HEPEVT block.
   call test (eio_stdhep_4, "eio_stdhep_4", &
        "read StdHep file, HEPRUP/HEPEUP block", &
        u, results)
+<<EIO stdhep: test declarations>>=
+  public :: eio_stdhep_4
 <<EIO stdhep: tests>>=
   subroutine eio_stdhep_4 (u)
     integer, intent(in) :: u
@@ -12487,7 +13082,7 @@ Check input from a StdHep file, HEPEVT block.
     type(event_sample_data_t) :: data
     class(eio_t), allocatable :: eio
     type(string_t) :: sample
-    integer :: u_file, iostat, i_prc
+    integer :: iostat, i_prc
 
     write (u, "(A)")  "* Test output: eio_stdhep_3"
     write (u, "(A)")  "*   Purpose: read a StdHep file, HEPRUP/HEPEUP block"
@@ -12611,17 +13206,11 @@ our best at using it for both input and output.
 
 module eio_hepmc
   
-  use kinds
-  use io_units
 <<Use strings>>
+  use io_units
   use string_utils
-  use unit_tests
   use diagnostics
-  use os_interface
-  use lorentz
-  use model_data
   use particles
-  use subevents
   use event_base
   use hep_events
   use eio_data
@@ -12634,13 +13223,9 @@ module eio_hepmc
 
 <<EIO HepMC: types>>
 
-<<EIO HepMC: interfaces>>
-
 contains
   
 <<EIO HepMC: procedures>>
-
-<<EIO HepMC: tests>>
 
 end module eio_hepmc
 @ %def eio_hepmc
@@ -12651,17 +13236,22 @@ data, particularly for splitting the reading into read out of the process
 index and the proper event data.
 
 Note: the [[keep_beams]] flag is not supported.  Beams will always
-be written.
+be written.  Tools like \texttt{Rivet} can use the cross section
+information of a HepMC file for scaling plots.  As there is no header in
+HepMC and this is written for every event, we make it optional with
+[[output_cross_section]].
 <<EIO HepMC: public>>=
   public :: eio_hepmc_t
 <<EIO HepMC: types>>=
   type, extends (eio_t) :: eio_hepmc_t
      logical :: writing = .false.
      logical :: reading = .false.
+     type(event_sample_data_t) :: data
      ! logical :: keep_beams = .false.
      logical :: recover_beams = .false.
      logical :: use_alpha_s_from_file = .false.
      logical :: use_scale_from_file = .false.
+     logical :: output_cross_section = .false.
      type(hepmc_iostream_t) :: iostream
      type(hepmc_event_t) :: hepmc_event
      integer, dimension(:), allocatable :: proc_num_id
@@ -12679,11 +13269,12 @@ Set parameters that are specifically used with HepMC.
   ! subroutine eio_hepmc_set_parameters (eio, keep_beams, recover_beams, extension)
   subroutine eio_hepmc_set_parameters &
        (eio, recover_beams, use_alpha_s_from_file, use_scale_from_file, &
-       extension)
+       extension, output_cross_section)
     class(eio_hepmc_t), intent(inout) :: eio
     logical, intent(in), optional :: recover_beams 
     logical, intent(in), optional :: use_alpha_s_from_file
     logical, intent(in), optional :: use_scale_from_file
+    logical, intent(in), optional :: output_cross_section
     type(string_t), intent(in), optional :: extension    
     if (present (recover_beams))  eio%recover_beams = recover_beams
     if (present (use_alpha_s_from_file)) &
@@ -12695,6 +13286,8 @@ Set parameters that are specifically used with HepMC.
     else
        eio%extension = "hepmc"
     end if
+    if (present (output_cross_section)) &
+         eio%output_cross_section = output_cross_section
   end subroutine eio_hepmc_set_parameters
   
 @ %def eio_hepmc_set_parameters
@@ -12787,16 +13380,16 @@ one.  If the file needs a header, repeat it for the new file.
     type(event_sample_data_t), intent(in), optional :: data
     if (.not. present (data)) &
          call msg_bug ("HepMC initialization: missing data")
+    eio%data = data
     if (data%n_beam /= 2) &
          call msg_fatal ("HepMC: defined for scattering processes only")    
+    ! We could relax this condition now with weighted hepmc events
     if (data%unweighted) then
        select case (data%norm_mode)
        case (NORM_UNIT)
        case default; call msg_fatal &
             ("HepMC: normalization for unweighted events must be '1'")
        end select
-    else
-       call msg_fatal ("HepMC: events must be unweighted")    
     end if
     eio%sample = sample    
     if (present (extension)) then
@@ -12817,7 +13410,7 @@ one.  If the file needs a header, repeat it for the new file.
     type(string_t), intent(in), optional :: extension
     type(event_sample_data_t), intent(in), optional :: data
     logical, intent(out), optional :: success
-    call eio%set_splitting (data)    
+    call eio%set_splitting (data)
     call eio%common_init (sample, data, extension)
     write (msg_buffer, "(A,A,A)")  "Events: writing to HepMC file '", &
          char (eio%filename), "'"
@@ -12883,9 +13476,16 @@ event files.
        call hepmc_event_init (eio%hepmc_event, &
             proc_id = eio%proc_num_id (i_prc), &
             event_id = event%get_index ())
-       call hepmc_event_from_particle_set (eio%hepmc_event, pset_ptr)
+       if (eio%output_cross_section) then
+          call hepmc_event_from_particle_set (eio%hepmc_event, pset_ptr, &
+               eio%data%cross_section(i_prc), eio%data%error(i_prc))
+       else 
+          call hepmc_event_from_particle_set (eio%hepmc_event, pset_ptr)
+       end if
        call hepmc_event_set_scale (eio%hepmc_event, event%get_fac_scale ())
        call hepmc_event_set_alpha_qcd (eio%hepmc_event, event%get_alpha_s ())
+       if (.not. eio%data%unweighted) &
+          call hepmc_event_add_weight (eio%hepmc_event, event%weight_prc)
        call hepmc_iostream_write_event (eio%iostream, eio%hepmc_event)
        call hepmc_event_final (eio%hepmc_event)
     else
@@ -12934,8 +13534,6 @@ event files.
     class(eio_hepmc_t), intent(inout) :: eio
     class(generic_event_t), intent(inout), target :: event
     integer, intent(out) :: iostat
-    type(particle_set_t), pointer :: pset
-    logical :: ok    
     iostat = 0
     call event%reset ()
     call event%select (1, 1, 1)
@@ -12949,10 +13547,69 @@ event files.
 @ %def eio_hepmc_input_i_prc
 @ %def eio_hepmc_input_event
 @
+<<EIO HepMC: eio hepmc: TBP>>=
+  procedure :: skip => eio_hepmc_skip
+<<EIO HepMC: procedures>>=
+  subroutine eio_hepmc_skip (eio, iostat)
+    class(eio_hepmc_t), intent(inout) :: eio
+    integer, intent(out) :: iostat
+    iostat = 0
+  end subroutine eio_hepmc_skip
+
+@ %def eio_hepmc_skip
+@
 \subsection{Unit tests}
-<<EIO HepMC: public>>=
+Test module, followed by the corresponding implementation module.
+<<[[eio_hepmc_ut.f90]]>>=
+<<File header>>
+
+module eio_hepmc_ut
+  use unit_tests
+  use eio_hepmc_uti
+  
+<<Standard module head>>
+
+<<EIO HepMC: public test>>
+
+contains
+  
+<<EIO HepMC: test driver>>
+
+end module eio_hepmc_ut
+@ %def eio_hepmc_ut
+@
+<<[[eio_hepmc_uti.f90]]>>=
+<<File header>>
+
+module eio_hepmc_uti
+
+<<Use kinds>>
+<<Use strings>>
+  use io_units
+  use model_data
+  use event_base
+  use eio_data
+  use eio_base
+
+  use eio_hepmc
+
+  use eio_base_ut, only: eio_prepare_test, eio_cleanup_test
+  use eio_base_ut, only: eio_prepare_fallback_model, eio_cleanup_fallback_model
+
+<<Standard module head>>
+
+<<EIO HepMC: test declarations>>
+
+contains
+
+<<EIO HepMC: tests>>
+
+end module eio_hepmc_uti
+@ %def eio_hepmc_ut
+@ API: driver for the unit tests below.
+<<EIO HepMC: public test>>=
   public :: eio_hepmc_test
-<<EIO HepMC: tests>>=
+<<EIO HepMC: test driver>>=
   subroutine eio_hepmc_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
@@ -12967,6 +13624,8 @@ We test the implementation of all I/O methods.
   call test (eio_hepmc_1, "eio_hepmc_1", &
        "write event contents", &
        u, results)
+<<EIO HepMC: test declarations>>=
+  public :: eio_hepmc_1
 <<EIO HepMC: tests>>=
   subroutine eio_hepmc_1 (u)
     integer, intent(in) :: u
@@ -13086,6 +13745,8 @@ We test the implementation of all I/O methods.
   call test (eio_hepmc_2, "eio_hepmc_2", &
        "read event contents", &
        u, results)
+<<EIO HepMC: test declarations>>=
+  public :: eio_hepmc_2
 <<EIO HepMC: tests>>=
   subroutine eio_hepmc_2 (u)
     integer, intent(in) :: u
@@ -13207,17 +13868,11 @@ for both input and output.
 
 module eio_lcio
   
-  use kinds
-  use io_units
 <<Use strings>>
+  use io_units
   use string_utils
-  use unit_tests
   use diagnostics
-  use os_interface
-  use lorentz
-  use model_data
   use particles
-  use subevents
   use event_base
   use hep_events
   use eio_data
@@ -13230,13 +13885,9 @@ module eio_lcio
 
 <<EIO LCIO: types>>
 
-<<EIO LCIO: interfaces>>
-
 contains
   
 <<EIO LCIO: procedures>>
-
-<<EIO LCIO: tests>>
 
 end module eio_lcio
 @ %def eio_lcio
@@ -13530,8 +14181,6 @@ event files.
     class(eio_lcio_t), intent(inout) :: eio
     class(generic_event_t), intent(inout), target :: event
     integer, intent(out) :: iostat
-    type(particle_set_t), pointer :: pset
-    logical :: ok    
     iostat = 0
     call event%reset ()
     call event%select (1, 1, 1)
@@ -13545,10 +14194,72 @@ event files.
 @ %def eio_lcio_input_i_prc
 @ %def eio_lcio_input_event
 @
+<<EIO LCIO: eio lcio: TBP>>=
+  procedure :: skip => eio_lcio_skip
+<<EIO LCIO: procedures>>=
+  subroutine eio_lcio_skip (eio, iostat)
+    class(eio_lcio_t), intent(inout) :: eio
+    integer, intent(out) :: iostat
+    iostat = 0
+  end subroutine eio_lcio_skip
+
+@ %def eio_lcio_skip
+@
 \subsection{Unit tests}
-<<EIO LCIO: public>>=
+Test module, followed by the corresponding implementation module.
+<<[[eio_lcio_ut.f90]]>>=
+<<File header>>
+
+module eio_lcio_ut
+  use unit_tests
+  use eio_lcio_uti
+  
+<<Standard module head>>
+
+<<EIO LCIO: public test>>
+
+contains
+  
+<<EIO LCIO: test driver>>
+
+end module eio_lcio_ut
+@ %def eio_lcio_ut
+@
+<<[[eio_lcio_uti.f90]]>>=
+<<File header>>
+
+module eio_lcio_uti
+
+<<Use kinds>>
+<<Use strings>>
+  use io_units
+  use model_data
+  use particles
+  use event_base
+  use eio_data
+  use eio_base
+  use hep_events
+  use lcio_interface
+
+  use eio_lcio
+
+  use eio_base_ut, only: eio_prepare_test, eio_cleanup_test
+  use eio_base_ut, only: eio_prepare_fallback_model, eio_cleanup_fallback_model
+
+<<Standard module head>>
+
+<<EIO LCIO: test declarations>>
+
+contains
+
+<<EIO LCIO: tests>>
+
+end module eio_lcio_uti
+@ %def eio_lcio_ut
+@ API: driver for the unit tests below.
+<<EIO LCIO: public test>>=
   public :: eio_lcio_test
-<<EIO LCIO: tests>>=
+<<EIO LCIO: test driver>>=
   subroutine eio_lcio_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
@@ -13563,6 +14274,8 @@ We test the implementation of all I/O methods.
   call test (eio_lcio_1, "eio_lcio_1", &
        "write event contents", &
        u, results)
+<<EIO LCIO: test declarations>>=
+  public :: eio_lcio_1
 <<EIO LCIO: tests>>=
   subroutine eio_lcio_1 (u)
     integer, intent(in) :: u
@@ -13676,6 +14389,8 @@ We test the implementation of all I/O methods.
   call test (eio_lcio_2, "eio_lcio_2", &
        "read event contents", &
        u, results)
+<<EIO LCIO: test declarations>>=
+  public :: eio_lcio_2
 <<EIO LCIO: tests>>=
   subroutine eio_lcio_2 (u)
     integer, intent(in) :: u
@@ -13684,7 +14399,7 @@ We test the implementation of all I/O methods.
     type(event_sample_data_t) :: data
     class(eio_t), allocatable :: eio
     type(string_t) :: sample
-    integer :: u_file, iostat, i_prc
+    integer :: iostat, i_prc
 
     write (u, "(A)")  "* Test output: eio_lcio_2"
     write (u, "(A)")  "*   Purpose: read a LCIO event"

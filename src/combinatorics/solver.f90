@@ -1,4 +1,4 @@
-! WHIZARD 2.2.6 May 02 2015
+! WHIZARD 2.2.7 Aug 11 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -33,8 +33,8 @@
 module solver
 
   use kinds, only: default
-  use constants
-  use unit_tests
+  use constants, only: tiny_10
+  use unit_tests, only: vanishes
   use diagnostics
 
   implicit none
@@ -44,35 +44,14 @@ module solver
   public :: solve_secant
   public :: solve_interval
   public :: solve_qgaus
-  public :: solver_test
 
-  real(default), parameter :: DEFAULT_PRECISION = tiny_10
+  real(default), parameter, public :: DEFAULT_PRECISION = tiny_10
   integer, parameter :: MAX_TRIES = 10000
 
   type, abstract :: solver_function_t
   contains
     procedure(solver_function_evaluate), deferred :: evaluate
   end type solver_function_t
-
-  type, extends (solver_function_t) :: test_function_1_t
-  contains
-    procedure :: evaluate => test_func_1
-  end type test_function_1_t
-
-  type, extends (solver_function_t) :: test_function_2_t
-  contains
-    procedure :: evaluate => test_func_2
-  end type test_function_2_t
-
-  type, extends (solver_function_t) :: test_function_3_t
-  contains
-    procedure :: evaluate => test_func_3
-  end type test_function_3_t
-
-  type, extends (solver_function_t) :: test_function_4_t
-  contains
-    procedure :: evaluate => test_func_4
-  end type test_function_4_t
 
 
   abstract interface
@@ -146,7 +125,7 @@ contains
     f_low = real( func%evaluate (x_low) )
     f_high = real( func%evaluate (x_high) )
     if (f_low * f_high > 0) return
-    if (x_low > x_high) call msg_fatal ("Interval solver: Upper bound must be&
+    if (x_low > x_high) call msg_fatal ("Interval solver: Upper bound must be &
                                         &greater than lower bound")
     n_iter = 0
     do n_iter = 1, MAX_TRIES
@@ -208,75 +187,6 @@ contains
       end do
     end do
   end function solve_qgaus
-
-  function test_func_1 (solver_f, x) result (f)
-    complex(default) :: f
-    class(test_function_1_t), intent(in) :: solver_f
-    real(default), intent(in) :: x
-    f = x
-  end function test_func_1
-
-  function test_func_2 (solver_f, x) result (f)
-    complex(default) :: f
-    class(test_function_2_t), intent(in) :: solver_f
-    real(default), intent(in) :: x
-    f = x ** 2
-  end function test_func_2
-
-  function test_func_3 (solver_f, x) result (f)
-    complex(default) :: f
-    class(test_function_3_t), intent(in) :: solver_f
-    real(default), intent(in) :: x
-    f = x ** 3
-  end function test_func_3
-
-  function test_func_4 (solver_f, x) result (f)
-    complex(default) :: f
-    class(test_function_4_t), intent(in) :: solver_f
-    real(default), intent(in) :: x
-    real(default) :: s, cutoff
-    s = 100.0_default
-    cutoff = 1.01_default
-    if (x < cutoff) then
-       f = - (log (s) * log (log (s) / log(cutoff**2)) - log (s / cutoff**2)) - &
-         log (one/two)
-    else
-       f = - (log (s) * log (log (s) / log(x**2)) - log (s / x**2)) - &
-            log (one/two)
-    end if
-  end function test_func_4
-
-  subroutine solver_test (u, results)
-    integer, intent(in) :: u
-    type(test_results_t), intent(inout) :: results
-    call test(solver_1, "solver_1", &
-              "Solve trivial functions", u, results)
-  end subroutine solver_test
-
-  subroutine solver_1 (u)
-    integer, intent(in) :: u
-    real(default) :: zero_position
-    logical :: success
-    type(test_function_1_t) :: test_func_1
-    type(test_function_2_t) :: test_func_2
-    type(test_function_3_t) :: test_func_3
-    type(test_function_4_t) :: test_func_4
-    write (u, "(A)")  "* Test output: solver_1"
-    write (u, "(A)")  "*   Purpose: Solve trivial functions"
-    write (u, "(A)")
-
-    zero_position = solve_interval (test_func_1, -one, one, success)
-    call assert (u, success, "success")
-    call assert_equal (u, zero_position, zero, "test_func_1: zero_position")
-
-    zero_position = solve_interval (test_func_4, two, 10.0_default, success)
-    call assert (u, success, "success")
-    call assert_equal (u, zero_position, 3.5216674014805425_default, &
-         "test_func_4: zero_position", rel_smallness=1000*DEFAULT_PRECISION)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: solver_1"
-  end subroutine solver_1
 
 
 end module solver

@@ -1,4 +1,4 @@
-! WHIZARD 2.2.6 May 02 2015
+! WHIZARD 2.2.7 Aug 11 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -33,7 +33,6 @@
 module object_expr
 
   use iso_varying_string, string_t => varying_string
-  use unit_tests
   use format_utils
   use io_units
   use diagnostics
@@ -49,8 +48,6 @@ module object_expr
   public :: operator_t
   public :: operator_unary_t
   public :: operator_binary_t
-
-
 
   type, extends (composite_t), abstract :: statement_t
      private
@@ -107,6 +104,9 @@ module object_expr
      private
    contains
      procedure :: get_prototype => operator_get_prototype
+     procedure :: get_opname => operator_get_opname
+     procedure :: space_left => operator_space_left
+     procedure :: space_right => operator_space_right
      procedure :: init_args => operator_init_args
   end type operator_t
   
@@ -126,10 +126,11 @@ module object_expr
   
 
   abstract interface
-     subroutine expression_init_args (object, n_arg)
+     subroutine expression_init_args (object, n_arg, check)
        import
        class(expression_t), intent(inout) :: object
        integer, intent(in) :: n_arg
+       logical, intent(in), optional :: check
      end subroutine expression_init_args
   end interface
 
@@ -168,7 +169,7 @@ contains
     integer, intent(in), optional :: unit
     integer, intent(in), optional :: indent
     class(object_t), pointer :: rhs
-    integer :: u, i
+    integer :: u
     u = given_output_unit (unit)
     if (associated (object%id)) then
        if (object%id%is_defined ()) then
@@ -194,7 +195,7 @@ contains
     integer, intent(in), optional :: indent
     logical, intent(in), optional :: refcount
     class(object_t), pointer :: rhs
-    integer :: u, i, ind
+    integer :: u, ind
     u = given_output_unit (unit)
     ind = 0;  if (present (indent))  ind = indent
     call write_indent (u, ind)
@@ -282,12 +283,14 @@ contains
   function assignment_get_code (object, repository) result (code)
     class(assignment_t), intent(in), target :: object
     type(repository_t), intent(in), optional :: repository
+    integer :: prototype_index
     type(code_t) :: code
-    code%cat = CAT_COMPOSITE
-    code%natt = 1
     if (present (repository)) then
-       code%att(1) = object%get_prototype_index (repository)
+       prototype_index = object%get_prototype_index (repository)
+    else
+       prototype_index = 0
     end if
+    call code%set (CAT_COMPOSITE, [prototype_index])
   end function assignment_get_code
   
   subroutine assignment_init_from_code (object, code)
@@ -438,9 +441,9 @@ contains
   subroutine expression_init_from_code (object, code)
     class(expression_t), intent(inout) :: object
     type(code_t), intent(in) :: code
-    call object%set_mode (mode = code%att(2))
-    call object%init_args (n_arg = code%att(5))
-    call object%set_intrinsic (intrinsic = code%att(3) == 0)
+    call object%set_mode (mode = code%get_att (2))
+    call object%init_args (n_arg = code%get_att (5))
+    call object%set_intrinsic (intrinsic = code%get_att (3) == 0)
   end subroutine expression_init_from_code
 
   recursive subroutine operator_unary_write_expression (object, unit, indent)
@@ -451,12 +454,11 @@ contains
     integer :: u, priority
     u = given_output_unit (unit)
     priority = object%get_priority ()
-    write (u, "(A,1x)", advance="no")  char (object%get_name ())
+    write (u, "(A,1x)", advance="no")  char (object%get_opname ())
     call object%get_member_ptr (1, arg)
     if (associated (arg)) then
        arg => arg%dereference ()
-       call arg%write_as_expression &
-            (unit, indent, priority=priority, lr=.true.)
+       call arg%write_as_expression (unit, indent, priority=priority)
     else
        write (u, "(A)", advance="no") "???"
     end if
@@ -466,23 +468,41 @@ contains
     class(operator_binary_t), intent(in) :: object
     integer, intent(in), optional :: unit
     integer, intent(in), optional :: indent
-    class(object_t), pointer :: arg
-    integer :: u, priority, i
+    integer :: u, priority, i, n_members
     u = given_output_unit (unit)
     priority = object%get_priority ()
-    do i = 1, object%get_n_members ()
-       if (i > 1) then
-          write (u, "(1x,A,1x)", advance="no")  char (object%get_name ())
-       end if
-       call object%get_member_ptr (i, arg)
-       if (associated (arg)) then
-          arg => arg%dereference ()
-          call arg%write_as_expression &
-               (unit, indent, priority=priority, lr=.true.)
-       else
-          write (u, "(A)", advance="no") "???"
-       end if
-    end do
+    n_members = object%get_n_members ()
+    select case (n_members)
+    case (0)
+       write (u, "('(',A,')')", advance="no")  char (object%get_opname (0))
+    case (1)
+       write (u, "('(')", advance="no")
+       write (u, "(A)", advance="no")  char (object%get_opname (1))
+       if (object%space_right ())  write (u, "(1x)", advance="no")
+       call write_member (1)
+       write (u, "(')')", advance="no")
+    case default
+       do i = 1, object%get_n_members ()
+          if (i > 1) then
+             if (object%space_left ())  write (u, "(1x)", advance="no")
+             write (u, "(A)", advance="no")  char (object%get_opname (i))
+             if (object%space_right ())  write (u, "(1x)", advance="no")
+          end if
+          call write_member (i)
+       end do
+    end select
+  contains
+    recursive subroutine write_member (i)
+      integer, intent(in) :: i
+      class(object_t), pointer :: arg
+      call object%get_member_ptr (i, arg)
+      if (associated (arg)) then
+         arg => arg%dereference ()
+         call arg%write_as_expression (unit, indent, priority=priority)
+      else
+         write (u, "(A)", advance="no") "???"
+      end if
+     end subroutine write_member
   end subroutine operator_binary_write_expression
     
   recursive function operator_get_prototype (object) result (prototype)
@@ -528,21 +548,45 @@ contains
     end if
   end function operator_binary_get_signature
        
-  subroutine operator_init_args (object, n_arg)
+  function operator_get_opname (object, i) result (name)
+    class(operator_t), intent(in) :: object
+    integer, intent(in), optional :: i
+    type(string_t) :: name
+    name = object%get_name ()
+  end function operator_get_opname
+    
+  function operator_space_left (object) result (flag)
+    class(operator_t), intent(in) :: object
+    logical :: flag
+    flag = .true.
+  end function operator_space_left
+  
+  function operator_space_right (object) result (flag)
+    class(operator_t), intent(in) :: object
+    logical :: flag
+    flag = .true.
+  end function operator_space_right
+  
+  subroutine operator_init_args (object, n_arg, check)
     class(operator_t), intent(inout) :: object
     integer, intent(in) :: n_arg
-    select type (object)
-    class is (operator_unary_t)
-       if (n_arg /= 1) then
-          call object%write ()
-          call msg_bug ("Unary operator: number of arguments must be one")
-       end if
-    class is (operator_binary_t)
-       if (n_arg < 2) then
-          call object%write ()
-          call msg_bug ("Binary operator: number of arguments less than two")
-       end if
-    end select
+    logical, intent(in), optional :: check
+    logical :: check_args
+    check_args = .true.;  if (present (check))  check_args = check
+    if (check_args) then
+       select type (object)
+       class is (operator_unary_t)
+          if (n_arg /= 1) then
+             call object%write ()
+             call msg_bug ("Unary operator: number of arguments must be one")
+          end if
+       class is (operator_binary_t)
+          if (n_arg < 2) then
+             call object%write ()
+             call msg_bug ("Binary operator: number of arguments less than two")
+          end if
+       end select
+    end if
     call object%init_members (n_members = n_arg, n_arguments = n_arg)
   end subroutine operator_init_args
 

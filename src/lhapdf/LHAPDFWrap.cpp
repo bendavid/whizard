@@ -16,20 +16,20 @@ extern "C" {
     delete pdf;
   }
 
-  double lhapdf_pdf_getxmin (const LHAPDF::PDF* pdf) {
-    return pdf->info().get_entry_as<double>("XMin");
+  double lhapdf_pdf_getxmin (LHAPDF::PDF* pdf) {
+    return pdf->xMin();
   }
 
-  double lhapdf_pdf_getxmax (const LHAPDF::PDF* pdf) {
-    return pdf->info().get_entry_as<double>("XMax");
+  double lhapdf_pdf_getxmax (LHAPDF::PDF* pdf) {
+    return pdf->xMax();
   }
 
-  double lhapdf_pdf_getq2min (const LHAPDF::PDF* pdf) {
-    return LHAPDF::sqr(pdf->info().get_entry_as<double>("QMin"));
+  double lhapdf_pdf_getq2min (LHAPDF::PDF* pdf) {
+    return pdf->q2Min();
   }
 
-  double lhapdf_pdf_getq2max (const LHAPDF::PDF* pdf) {
-    return LHAPDF::sqr(pdf->info().get_entry_as<double>("QMax"));
+  double lhapdf_pdf_getq2max (LHAPDF::PDF* pdf) {
+    return pdf->q2Max();
   }
   
   bool lhapdf_has_photon (const LHAPDF::PDF* pdf) {

@@ -57,10 +57,10 @@ parameter fac_gh3  = 1		  # gh3 / gh3_SM
 parameter fghgaga  = 1		  # ghgaga / ghgaga_SM
 parameter fghgaz   = 1		  # ghgaz / ghgaz_SM
 parameter lambda_h = 5.e3         # scale for anom. Higgs couplings
-parameter fw       = 0		  # anomlous Higgs coupling
-parameter fww      = 0		  # anomlous Higgs coupling
-parameter fb       = 0		  # anomlous Higgs coupling
-parameter fbb      = 0		  # anomlous Higgs coupling
+parameter fw       = 0		  # anomalous Higgs coupling
+parameter fww      = 0		  # anomalous Higgs coupling
+parameter fb       = 0		  # anomalous Higgs coupling
+parameter fbb      = 0		  # anomalous Higgs coupling
 	
 # Dependent parameters
 derived v     = 1 / sqrt (sqrt (2.) * GF)     # v (Higgs vev)

@@ -1,4 +1,4 @@
-! WHIZARD 2.2.6 May 02 2015
+! WHIZARD 2.2.7 Aug 11 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -47,6 +47,7 @@ module prc_core_def
   public :: allocate_core_def
   public :: prc_core_driver_t
   public :: process_driver_internal_t
+  public :: prc_user_defined_base_driver_t
 
   type, abstract :: prc_core_def_t
      class(prc_writer_t), allocatable :: writer
@@ -76,6 +77,11 @@ module prc_core_def
      procedure(process_driver_fill_constants), deferred :: fill_constants
   end type process_driver_internal_t
   
+  type, abstract, extends (prc_core_driver_t) :: prc_user_defined_base_driver_t 
+  contains
+  
+  end type prc_user_defined_base_driver_t
+
 
   abstract interface
      function prc_core_def_get_string () result (string)

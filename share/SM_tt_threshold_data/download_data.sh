@@ -1,4 +1,4 @@
-#!/bin/bassh
+#!/bin/bash
 ### download script for external data needed for 'SM_tt_threshold' model
 ### when coninuum matching is enabled
 

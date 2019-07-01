@@ -1,4 +1,4 @@
-! WHIZARD 2.2.6 May 02 2015
+! WHIZARD 2.2.7 Aug 11 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -32,20 +32,14 @@
 
 module eio_stdhep
   
-  use kinds
-  use io_units
+  use kinds, only: i32, i64
   use iso_varying_string, string_t => varying_string
+  use io_units
   use string_utils
-  use unit_tests
   use diagnostics
-
-  use lorentz
-  use model_data
-  use particles
   use event_base
   use hep_common
   use hep_events
-  use xdr_stdhep
   use eio_data
   use eio_base
 
@@ -59,7 +53,6 @@ module eio_stdhep
   public :: stdhep_init_in
   public :: stdhep_write 
   public :: stdhep_end  
-  public :: eio_stdhep_test
 
   type, abstract, extends (eio_t) :: eio_stdhep_t
      logical :: writing = .false.
@@ -67,6 +60,7 @@ module eio_stdhep
      integer :: unit = 0
      logical :: keep_beams = .false.     
      logical :: keep_remnants = .true.
+     logical :: ensure_order = .false.
      logical :: recover_beams = .false.
      logical :: use_alpha_s_from_file = .false.
      logical :: use_scale_from_file = .false.
@@ -84,6 +78,7 @@ module eio_stdhep
      procedure :: output => eio_stdhep_output
      procedure :: input_i_prc => eio_stdhep_input_i_prc
      procedure :: input_event => eio_stdhep_input_event
+     procedure :: skip => eio_stdhep_skip
   end type eio_stdhep_t
   
   type, extends (eio_stdhep_t) :: eio_stdhep_hepevt_t
@@ -100,17 +95,19 @@ module eio_stdhep
 contains
   
   subroutine eio_stdhep_set_parameters (eio, &
-       keep_beams, keep_remnants, recover_beams, use_alpha_s_from_file, &
-       use_scale_from_file, extension)
+       keep_beams, keep_remnants, ensure_order, recover_beams, &
+       use_alpha_s_from_file, use_scale_from_file, extension)
     class(eio_stdhep_t), intent(inout) :: eio
     logical, intent(in), optional :: keep_beams
     logical, intent(in), optional :: keep_remnants
+    logical, intent(in), optional :: ensure_order
     logical, intent(in), optional :: recover_beams
     logical, intent(in), optional :: use_alpha_s_from_file
     logical, intent(in), optional :: use_scale_from_file
     type(string_t), intent(in), optional :: extension
     if (present (keep_beams))  eio%keep_beams = keep_beams
     if (present (keep_remnants))  eio%keep_remnants = keep_remnants
+    if (present (ensure_order))  eio%ensure_order = ensure_order
     if (present (recover_beams))  eio%recover_beams = recover_beams
     if (present (use_alpha_s_from_file)) &
          eio%use_alpha_s_from_file = use_alpha_s_from_file
@@ -205,12 +202,12 @@ contains
        select type (eio)
        type is (eio_stdhep_hepeup_t)
           call stdhep_init_out (char (eio%filename), &
-               "WHIZARD 2.2.6", eio%n_events_expected)
+               "WHIZARD 2.2.7", eio%n_events_expected)
           call stdhep_write (100)
           call stdhep_write (STDHEP_HEPRUP)
        type is (eio_stdhep_hepevt_t)
           call stdhep_init_out (char (eio%filename), &
-               "WHIZARD 2.2.6", eio%n_events_expected) 
+               "WHIZARD 2.2.7", eio%n_events_expected) 
           call stdhep_write (100)
        end select
     end if
@@ -247,12 +244,12 @@ contains
                error = data%error(i))          
        end do
        call stdhep_init_out (char (eio%filename), &
-            "WHIZARD 2.2.6", eio%n_events_expected)
+            "WHIZARD 2.2.7", eio%n_events_expected)
        call stdhep_write (100)
        call stdhep_write (STDHEP_HEPRUP)
     type is (eio_stdhep_hepevt_t)
        call stdhep_init_out (char (eio%filename), &
-            "WHIZARD 2.2.6", eio%n_events_expected) 
+            "WHIZARD 2.2.7", eio%n_events_expected) 
        call stdhep_write (100)
     end select    
     if (present (success))  success = .true.
@@ -315,7 +312,8 @@ contains
           call hepevt_from_event (event, &
                i_evt = event%get_index (), &                         
                keep_beams = eio%keep_beams, &
-               keep_remnants = eio%keep_remnants)
+               keep_remnants = eio%keep_remnants, &
+               ensure_order = eio%ensure_order)
           call stdhep_write (STDHEP_HEPEVT)                              
        end select       
     else
@@ -369,6 +367,7 @@ contains
     class(eio_stdhep_t), intent(inout) :: eio
     class(generic_event_t), intent(inout), target :: event
     integer, intent(out) :: iostat
+    iostat = 0
     call event%reset ()
     call event%select (1, 1, 1)
     call hepeup_to_event (event, eio%fallback_model, &
@@ -376,6 +375,17 @@ contains
          use_alpha_s = eio%use_alpha_s_from_file, &
          use_scale = eio%use_scale_from_file)    
   end subroutine eio_stdhep_input_event
+
+  subroutine eio_stdhep_skip (eio, iostat)
+    class(eio_stdhep_t), intent(inout) :: eio
+    integer, intent(out) :: iostat
+    if (eio%reading) then
+       read (eio%unit, iostat = iostat)
+    else
+       call eio%write ()
+       call msg_fatal ("Raw event file is not open for reading")
+    end if
+  end subroutine eio_stdhep_skip
 
   subroutine stdhep_init_out (file, title, nevt)
     character(len=*), intent(in) :: file, title
@@ -414,470 +424,6 @@ contains
     external stdxend
     call stdxend (istr)
   end subroutine stdhep_end  
-  
-
-  subroutine eio_stdhep_test (u, results)
-    integer, intent(in) :: u
-    type(test_results_t), intent(inout) :: results
-    call test (eio_stdhep_1, "eio_stdhep_1", &
-         "read and write event contents, format [stdhep]", &
-         u, results)
-    call test (eio_stdhep_2, "eio_stdhep_2", &
-         "read and write event contents, format [stdhep]", &
-         u, results)
-    call test (eio_stdhep_3, "eio_stdhep_3", &
-         "read StdHep file, HEPEVT block", &
-         u, results)
-    call test (eio_stdhep_4, "eio_stdhep_4", &
-         "read StdHep file, HEPRUP/HEPEUP block", &
-         u, results)
-  end subroutine eio_stdhep_test
-  
-  subroutine eio_stdhep_1 (u)
-    integer, intent(in) :: u
-    class(generic_event_t), pointer :: event
-    type(event_sample_data_t) :: data
-    class(eio_t), allocatable :: eio
-    type(string_t) :: sample
-    integer :: u_file, iostat
-    character(215) :: buffer
-
-    write (u, "(A)")  "* Test output: eio_stdhep_1"
-    write (u, "(A)")  "*   Purpose: generate an event in STDHEP HEPEVT format"
-    write (u, "(A)")  "*      and write weight to file"
-    write (u, "(A)")
-
-    write (u, "(A)")  "* Initialize test process"
- 
-    call eio_prepare_test (event)
-    
-    call data%init (1)
-    data%n_evt = 1
-    data%n_beam = 2
-    data%pdg_beam = 25
-    data%energy_beam = 500
-    data%proc_num_id = [42]
-    data%cross_section(1) = 100
-    data%error(1) = 1
-    data%total_cross_section = sum (data%cross_section)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Generate and write an event"
-    write (u, "(A)")
- 
-    sample = "eio_stdhep_1"
- 
-    allocate (eio_stdhep_hepevt_t :: eio)
-    select type (eio)
-    type is (eio_stdhep_hepevt_t)
-       call eio%set_parameters ()
-    end select
-    
-    call eio%init_out (sample, data)
-    call event%generate (1, [0._default, 0._default])
-    call event%evaluate_expressions ()
-    call event%pacify_particle_set ()
-    
-    call eio%output (event, i_prc = 1)
-    call eio%write (u)
-    call eio%final ()
-    
-    write (u, "(A)") 
-    write (u, "(A)")  "* Write STDHEP file contents to ASCII file"
-    write (u, "(A)")
-
-    call write_stdhep_event &
-         (sample // ".hep", var_str ("test_1.hep"), 1)
-        
-    write (u, "(A)") 
-    write (u, "(A)")  "* Read in ASCII contents of STDHEP file"
-    write (u, "(A)")    
-    
-    u_file = free_unit ()
-    open (u_file, file = "test_1.hep", &
-         action = "read", status = "old")
-    do
-       read (u_file, "(A)", iostat = iostat)  buffer
-       if (iostat /= 0)  exit
-       if (trim (buffer) == "")  cycle
-       if (buffer(1:18) == "    total blocks: ")  &
-            buffer = "    total blocks: [...]"
-       if (buffer(1:25) == "           title: WHIZARD")  &
-            buffer = "           title: WHIZARD [version]"
-       if (buffer(1:17) == "            date:")  &
-            buffer = "            date: [...]"
-       if (buffer(1:17) == "    closing date:")  &
-            buffer = "    closing date: [...]"       
-       write (u, "(A)") trim (buffer)
-    end do
-    close (u_file)    
-        
-    write (u, "(A)")
-    write (u, "(A)")  "* Reset data"
-    write (u, "(A)")
- 
-    deallocate (eio)
-    allocate (eio_stdhep_hepevt_t :: eio)
-    
-    select type (eio)
-    type is (eio_stdhep_hepevt_t)
-       call eio%set_parameters (keep_beams = .true.)
-    end select
-    call eio%write (u)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Cleanup"
- 
-    call eio_cleanup_test (event)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: eio_stdhep_1"
-    
-  end subroutine eio_stdhep_1
-  
-  subroutine eio_stdhep_2 (u)
-    integer, intent(in) :: u
-    class(generic_event_t), pointer :: event
-    type(event_sample_data_t) :: data
-    class(model_data_t), pointer :: fallback_model
-    class(eio_t), allocatable :: eio
-    type(string_t) :: sample
-    integer :: u_file, iostat
-    character(215) :: buffer
-
-    write (u, "(A)")  "* Test output: eio_stdhep_2"
-    write (u, "(A)")  "*   Purpose: generate an event in STDHEP HEPEUP format"
-    write (u, "(A)")  "*      and write weight to file"
-    write (u, "(A)")
-
-    write (u, "(A)")  "* Initialize test process"
- 
-    call eio_prepare_fallback_model (fallback_model)
-    call eio_prepare_test (event, unweighted = .false.)
-    
-    call data%init (1)
-    data%n_evt = 1
-    data%n_beam = 2
-    data%pdg_beam = 25
-    data%energy_beam = 500
-    data%proc_num_id = [42]
-    data%cross_section(1) = 100
-    data%error(1) = 1
-    data%total_cross_section = sum (data%cross_section)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Generate and write an event"
-    write (u, "(A)")
- 
-    sample = "eio_stdhep_2"
- 
-    allocate (eio_stdhep_hepeup_t :: eio)
-    select type (eio)
-    type is (eio_stdhep_hepeup_t)
-       call eio%set_parameters ()
-    end select  
-    call eio%set_fallback_model (fallback_model)
-    
-    call eio%init_out (sample, data)
-    call event%generate (1, [0._default, 0._default])
-    call event%evaluate_expressions ()
-
-    call eio%output (event, i_prc = 1)
-    call eio%write (u)
-    call eio%final ()
-
-    write (u, "(A)") 
-    write (u, "(A)")  "* Write STDHEP file contents to ASCII file"
-    write (u, "(A)")
-
-    call write_stdhep_event & 
-         (sample // ".up.hep", var_str ("test_2.hep"), 2)
-        
-    write (u, "(A)") 
-    write (u, "(A)")  "* Read in ASCII contents of STDHEP file"
-    write (u, "(A)")    
-    
-    u_file = free_unit ()
-    open (u_file, file = "test_2.hep", &
-         action = "read", status = "old")
-    do
-       read (u_file, "(A)", iostat = iostat)  buffer
-       if (iostat /= 0)  exit
-       if (trim (buffer) == "")  cycle
-       if (buffer(1:18) == "    total blocks: ")  &
-            buffer = "    total blocks: [...]"       
-       if (buffer(1:25) == "           title: WHIZARD")  &
-            buffer = "           title: WHIZARD [version]"
-       if (buffer(1:17) == "            date:")  &
-            buffer = "            date: [...]"
-       if (buffer(1:17) == "    closing date:")  &
-            buffer = "    closing date: [...]"       
-       write (u, "(A)") trim (buffer)
-    end do
-    close (u_file)    
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Reset data"
-    write (u, "(A)")
- 
-    deallocate (eio)
-    allocate (eio_stdhep_hepeup_t :: eio)
-    
-    select type (eio)
-    type is (eio_stdhep_hepeup_t)
-       call eio%set_parameters (keep_beams = .true.)
-    end select
-    call eio%write (u)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Cleanup"
- 
-    call eio_cleanup_test (event)
-    call eio_cleanup_fallback_model (fallback_model)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: eio_stdhep_2"
-    
-  end subroutine eio_stdhep_2
-  
-  subroutine eio_stdhep_3 (u)
-    integer, intent(in) :: u
-    class(model_data_t), pointer :: fallback_model
-    class(generic_event_t), pointer :: event
-    type(event_sample_data_t) :: data
-    class(eio_t), allocatable :: eio
-    type(string_t) :: sample
-    integer :: u_file, iostat, i_prc
-
-    write (u, "(A)")  "* Test output: eio_stdhep_3"
-    write (u, "(A)")  "*   Purpose: read a StdHep file, HEPEVT block"
-    write (u, "(A)")
-
-    write (u, "(A)")  "* Write a StdHep data file, HEPEVT block"
-    write (u, "(A)")
- 
-    call eio_prepare_fallback_model (fallback_model)    
-    call eio_prepare_test (event)
-    
-    call data%init (1)
-    data%n_evt = 1
-    data%n_beam = 2
-    data%pdg_beam = 25
-    data%energy_beam = 500
-    data%proc_num_id = [42]
-    data%cross_section(1) = 100
-    data%error(1) = 1
-    data%total_cross_section = sum (data%cross_section)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Generate and write an event"
-    write (u, "(A)")
- 
-    sample = "eio_stdhep_3"
- 
-    allocate (eio_stdhep_hepevt_t :: eio)
-    select type (eio)
-    type is (eio_stdhep_hepevt_t)
-       call eio%set_parameters ()
-    end select  
-    call eio%set_fallback_model (fallback_model)
-    
-    call eio%init_out (sample, data)
-    call event%generate (1, [0._default, 0._default])
-    call event%evaluate_expressions ()
-
-    call eio%output (event, i_prc = 1)
-    call eio%write (u)
-    call eio%final ()
-
-    call eio_cleanup_test (event)
-    call eio_cleanup_fallback_model (fallback_model)    
-    deallocate (eio)
-    
-    write (u, "(A)")  "* Initialize test process"
-    write (u, "(A)")
-
-    call eio_prepare_fallback_model (fallback_model)
-    call eio_prepare_test (event, unweighted = .false.)
-
-    allocate (eio_stdhep_hepevt_t :: eio)
-    select type (eio)
-    type is (eio_stdhep_hepevt_t)
-       call eio%set_parameters (recover_beams = .false.)
-    end select
-    call eio%set_fallback_model (fallback_model)
-    
-    call data%init (1)
-    data%n_beam = 2
-    data%unweighted = .true.
-    data%norm_mode = NORM_UNIT
-    data%pdg_beam = 25
-    data%energy_beam = 500
-    data%proc_num_id = [42]
-    call data%write (u)
-    write (u, *)
-
-    write (u, "(A)")  "* Initialize"
-    write (u, "(A)")
-
-    call eio%init_in (sample, data)
-    call eio%write (u)
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Read event"
-    write (u, "(A)")
-
-    call eio%input_i_prc (i_prc, iostat)
-    
-    select type (eio)
-    type is (eio_stdhep_hepevt_t)
-       write (u, "(A,I0,A,I0)")  "Found process #", i_prc, &
-            " with ID = ", eio%proc_num_id(i_prc)
-    end select
-
-    call eio%input_event (event, iostat)
-
-    call event%write (u)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Read closing"
-    write (u, "(A)")
-
-    call eio%input_i_prc (i_prc, iostat)
-    write (u, "(A,I0)")  "iostat = ", iostat
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Cleanup"
- 
-    call eio%final ()
-
-    call eio_cleanup_test (event)
-    call eio_cleanup_fallback_model (fallback_model)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: eio_stdhep_3"
-    
-  end subroutine eio_stdhep_3
-  
-  subroutine eio_stdhep_4 (u)
-    integer, intent(in) :: u
-    class(model_data_t), pointer :: fallback_model
-    class(generic_event_t), pointer :: event
-    type(event_sample_data_t) :: data
-    class(eio_t), allocatable :: eio
-    type(string_t) :: sample
-    integer :: u_file, iostat, i_prc
-
-    write (u, "(A)")  "* Test output: eio_stdhep_3"
-    write (u, "(A)")  "*   Purpose: read a StdHep file, HEPRUP/HEPEUP block"
-    write (u, "(A)")
-
-    write (u, "(A)")  "* Write a StdHep data file, HEPRUP/HEPEUP block"
-    write (u, "(A)")
- 
-    call eio_prepare_fallback_model (fallback_model)    
-    call eio_prepare_test (event)
-    
-    call data%init (1)
-    data%n_evt = 1
-    data%n_beam = 2
-    data%pdg_beam = 25
-    data%energy_beam = 500
-    data%proc_num_id = [42]
-    data%cross_section(1) = 100
-    data%error(1) = 1
-    data%total_cross_section = sum (data%cross_section)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Generate and write an event, HEPEUP/HEPRUP"
-    write (u, "(A)")
- 
-    sample = "eio_stdhep_4"
- 
-    allocate (eio_stdhep_hepeup_t :: eio)
-    select type (eio)
-    type is (eio_stdhep_hepeup_t)
-       call eio%set_parameters ()
-    end select  
-    call eio%set_fallback_model (fallback_model)
-    
-    call eio%init_out (sample, data)
-    call event%generate (1, [0._default, 0._default])
-    call event%evaluate_expressions ()
-    call event%pacify_particle_set ()    
-
-    call eio%output (event, i_prc = 1)
-    call eio%write (u)
-    call eio%final ()
-
-    call eio_cleanup_test (event)
-    call eio_cleanup_fallback_model (fallback_model)    
-    deallocate (eio)
-    
-    write (u, "(A)")  "* Initialize test process"
-    write (u, "(A)")
-
-    call eio_prepare_fallback_model (fallback_model)
-    call eio_prepare_test (event, unweighted = .false.)
-
-    allocate (eio_stdhep_hepeup_t :: eio)
-    select type (eio)
-    type is (eio_stdhep_hepeup_t)
-       call eio%set_parameters (recover_beams = .false.)
-    end select
-    call eio%set_fallback_model (fallback_model)
-    
-    call data%init (1)
-    data%n_beam = 2
-    data%unweighted = .true.
-    data%norm_mode = NORM_UNIT
-    data%pdg_beam = 25
-    data%energy_beam = 500
-    data%proc_num_id = [42]
-    call data%write (u)
-    write (u, *)
-
-    write (u, "(A)")  "* Initialize"
-    write (u, "(A)")
-
-    call eio%init_in (sample, data)
-    call eio%write (u)
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Read event"
-    write (u, "(A)")
-
-    call eio%input_i_prc (i_prc, iostat)
-    
-    select type (eio)
-    type is (eio_stdhep_hepeup_t)
-       write (u, "(A,I0,A,I0)")  "Found process #", i_prc, &
-            " with ID = ", eio%proc_num_id(i_prc)
-    end select
-
-    call eio%input_event (event, iostat)
-
-    call event%write (u)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Read closing"
-    write (u, "(A)")
-
-    call eio%input_i_prc (i_prc, iostat)
-    write (u, "(A,I0)")  "iostat = ", iostat
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Cleanup"
- 
-    call eio%final ()
-
-    call eio_cleanup_test (event)
-    call eio_cleanup_fallback_model (fallback_model)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: eio_stdhep_4"
-    
-  end subroutine eio_stdhep_4
   
 
 end module eio_stdhep

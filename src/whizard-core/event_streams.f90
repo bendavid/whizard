@@ -1,4 +1,4 @@
-! WHIZARD 2.2.6 May 02 2015
+! WHIZARD 2.2.7 Aug 11 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -32,26 +32,20 @@
 
 module event_streams
   
-  use kinds, only: default
   use iso_varying_string, string_t => varying_string
   use io_units
-  use unit_tests
   use diagnostics
-  use variables
-  use model_data
-  use models
-  use processes
   use events
   use eio_data
   use eio_base
   use rt_data
-  use dispatch
+
+  use dispatch, only: dispatch_eio
   
   implicit none
   private
 
   public :: event_stream_array_t
-  public :: event_streams_test
 
   type :: event_stream_entry_t
      class(eio_t), allocatable :: eio
@@ -68,317 +62,12 @@ module event_streams
      procedure :: output => event_stream_array_output
      procedure :: input_i_prc => event_stream_array_input_i_prc
      procedure :: input_event => event_stream_array_input_event
+     procedure :: skip_eio_entry => event_stream_array_skip_eio_entry
      procedure :: has_input => event_stream_array_has_input
   end type event_stream_array_t
   
 
 contains
-
-  subroutine event_streams_test (u, results)
-    integer, intent(in) :: u
-    type(test_results_t), intent(inout) :: results
-    call test (event_streams_1, "event_streams_1", &
-         "empty event stream array", &
-         u, results)
-    call test (event_streams_2, "event_streams_2", &
-         "nontrivial event stream array", &
-         u, results)
-    call test (event_streams_3, "event_streams_3", &
-         "switch input/output", &
-         u, results)
-    call test (event_streams_4, "event_streams_4", &
-         "check MD5 sum", &
-         u, results)
-  end subroutine event_streams_test
-  
-  subroutine event_streams_1 (u)
-    integer, intent(in) :: u
-    type(event_stream_array_t) :: es_array
-    type(rt_data_t) :: global
-    type(event_t) :: event
-    type(string_t) :: sample
-    type(string_t), dimension(0) :: empty_string_array
-
-    write (u, "(A)")  "* Test output: event_streams_1"
-    write (u, "(A)")  "*   Purpose: handle empty event stream array"
-    write (u, "(A)")
-
-    sample = "event_streams_1"
-
-    call es_array%init (sample, empty_string_array, global)
-    call es_array%output (event, 42, 1)
-    call es_array%write (u)
-    call es_array%final ()
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: event_streams_1"
-    
-  end subroutine event_streams_1
-  
-  subroutine event_streams_2 (u)
-    integer, intent(in) :: u
-    type(event_stream_array_t) :: es_array
-    type(rt_data_t) :: global
-    type(model_data_t), target :: model
-    type(event_t), allocatable, target :: event
-    type(process_t), allocatable, target :: process
-    type(process_instance_t), allocatable, target :: process_instance
-    type(string_t) :: sample
-    type(string_t), dimension(0) :: empty_string_array
-    integer :: i_prc, iostat
-
-    write (u, "(A)")  "* Test output: event_streams_2"
-    write (u, "(A)")  "*   Purpose: handle empty event stream array"
-    write (u, "(A)")
-
-    call syntax_model_file_init ()
-    call global%global_init ()
-    call global%init_fallback_model &
-         (var_str ("SM_hadrons"), var_str ("SM_hadrons.mdl"))
-
-    call model%init_test ()
-
-    write (u, "(A)")  "* Generate test process event"
-    write (u, "(A)")
-
-    allocate (process)
-    allocate (process_instance)
-    call prepare_test_process (process, process_instance, model)
-    call process_instance%setup_event_data ()
-
-    allocate (event)
-    call event%basic_init ()
-    call event%connect (process_instance, process%get_model_ptr ())
-    call event%generate (1, [0.4_default, 0.4_default])
-    call event%evaluate_expressions ()
-    call event%write (u)
-
-    write (u, "(A)")
-    write (u, "(A)") "* Allocate raw eio stream and write event to file"
-    write (u, "(A)")
-
-    sample = "event_streams_2"
-
-    call es_array%init (sample, [var_str ("raw")], global)
-    call es_array%output (event, 1, 1)
-    call es_array%write (u)
-    call es_array%final ()
-    
-    write (u, "(A)")
-    write (u, "(A)") "* Reallocate raw eio stream for reading"
-    write (u, "(A)")
-
-    sample = "foo"
-    call es_array%init (sample, empty_string_array, global, &
-         input = var_str ("raw"), input_sample = var_str ("event_streams_2"))
-    call es_array%write (u)
-
-    write (u, "(A)")
-    write (u, "(A)") "* Reread event"
-    write (u, "(A)")
-    
-    call es_array%input_i_prc (i_prc, iostat)
-    
-    write (u, "(1x,A,I0)")  "i_prc = ", i_prc
-    write (u, "(A)")
-    call es_array%input_event (event, iostat)
-    call es_array%final ()
-    
-    call event%write (u)
-    
-    call global%final ()
-
-    call model%final ()
-    call syntax_model_file_final ()
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: event_streams_2"
-    
-  end subroutine event_streams_2
-  
-  subroutine event_streams_3 (u)
-    integer, intent(in) :: u
-    type(event_stream_array_t) :: es_array
-    type(rt_data_t) :: global
-    type(model_data_t), target :: model
-    type(event_t), allocatable, target :: event
-    type(process_t), allocatable, target :: process
-    type(process_instance_t), allocatable, target :: process_instance
-    type(string_t) :: sample
-    type(string_t), dimension(0) :: empty_string_array
-    integer :: i_prc, iostat
-
-    write (u, "(A)")  "* Test output: event_streams_3"
-    write (u, "(A)")  "*   Purpose: handle in/out switching"
-    write (u, "(A)")
-
-    call syntax_model_file_init ()
-    call global%global_init ()
-    call global%init_fallback_model &
-         (var_str ("SM_hadrons"), var_str ("SM_hadrons.mdl"))
-
-    call model%init_test ()
-
-    write (u, "(A)")  "* Generate test process event"
-    write (u, "(A)")
-
-    allocate (process)
-    allocate (process_instance)
-    call prepare_test_process (process, process_instance, model)
-    call process_instance%setup_event_data ()
-
-    allocate (event)
-    call event%basic_init ()
-    call event%connect (process_instance, process%get_model_ptr ())
-    call event%generate (1, [0.4_default, 0.4_default])
-    call event%evaluate_expressions ()
-
-    write (u, "(A)") "* Allocate raw eio stream and write event to file"
-    write (u, "(A)")
-
-    sample = "event_streams_3"
-
-    call es_array%init (sample, [var_str ("raw")], global)
-    call es_array%output (event, 1, 1)
-    call es_array%write (u)
-    call es_array%final ()
-    
-    write (u, "(A)")
-    write (u, "(A)") "* Reallocate raw eio stream for reading"
-    write (u, "(A)")
-
-    call es_array%init (sample, empty_string_array, global, &
-         input = var_str ("raw"))
-    call es_array%write (u)
-
-    write (u, "(A)")
-    write (u, "(A)") "* Reread event"
-    write (u, "(A)")
-    
-    call es_array%input_i_prc (i_prc, iostat)
-    call es_array%input_event (event, iostat)
-
-    write (u, "(A)") "* Attempt to read another event (fail), then generate"
-    write (u, "(A)")
-    
-    call es_array%input_i_prc (i_prc, iostat)
-    if (iostat < 0) then
-       call es_array%switch_inout ()
-       call event%generate (1, [0.3_default, 0.3_default])
-       call event%evaluate_expressions ()
-       call es_array%output (event, 1, 2)
-    end if
-    call es_array%write (u)
-    call es_array%final ()
-    
-    write (u, "(A)")
-    call event%write (u)
-
-    write (u, "(A)")
-    write (u, "(A)") "* Reallocate raw eio stream for reading"
-    write (u, "(A)")
-
-    call es_array%init (sample, empty_string_array, global, &
-         input = var_str ("raw"))
-    call es_array%write (u)
-
-    write (u, "(A)")
-    write (u, "(A)") "* Reread two events and display 2nd event"
-    write (u, "(A)")
-    
-    call es_array%input_i_prc (i_prc, iostat)
-    call es_array%input_event (event, iostat)
-    call es_array%input_i_prc (i_prc, iostat)
-    
-    call es_array%input_event (event, iostat)
-    call es_array%final ()
-
-    call event%write (u)
-    
-    call global%final ()
-    
-    call model%final ()
-    call syntax_model_file_final ()
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: event_streams_3"
-    
-  end subroutine event_streams_3
-  
-  subroutine event_streams_4 (u)
-    integer, intent(in) :: u
-    type(event_stream_array_t) :: es_array
-    type(rt_data_t) :: global
-    type(process_t), allocatable, target :: process
-    type(string_t) :: sample
-    type(string_t), dimension(0) :: empty_string_array
-    type(event_sample_data_t) :: data
-
-    write (u, "(A)")  "* Test output: event_streams_4"
-    write (u, "(A)")  "*   Purpose: handle in/out switching"
-    write (u, "(A)")
-
-    write (u, "(A)")  "* Generate test process event"
-    write (u, "(A)")
-
-    call syntax_model_file_init ()
-    call global%global_init ()
-    call global%init_fallback_model &
-         (var_str ("SM_hadrons"), var_str ("SM_hadrons.mdl"))
-    
-    call global%set_log (var_str ("?check_event_file"), &
-         .true., is_known = .true.)
-
-    allocate (process)
-
-    write (u, "(A)") "* Allocate raw eio stream for writing"
-    write (u, "(A)")
-
-    sample = "event_streams_4"
-    data%md5sum_cfg = "1234567890abcdef1234567890abcdef"
-
-    call es_array%init (sample, [var_str ("raw")], global, data)
-    call es_array%write (u)
-    call es_array%final ()
-    
-    write (u, "(A)")
-    write (u, "(A)") "* Reallocate raw eio stream for reading"
-    write (u, "(A)")
-
-    call es_array%init (sample, empty_string_array, global, &
-         data, input = var_str ("raw"))
-    call es_array%write (u)
-    call es_array%final ()
-
-    write (u, "(A)")
-    write (u, "(A)") "* Reallocate modified raw eio stream for reading (fail)"
-    write (u, "(A)")
-
-    data%md5sum_cfg = "1234567890______1234567890______"
-    call es_array%init (sample, empty_string_array, global, &
-         data, input = var_str ("raw"))
-    call es_array%write (u)
-    call es_array%final ()
-    
-    write (u, "(A)")
-    write (u, "(A)") "* Repeat ignoring checksum"
-    write (u, "(A)")
-
-    call global%set_log (var_str ("?check_event_file"), &
-         .false., is_known = .true.)
-    call es_array%init (sample, empty_string_array, global, &
-         data, input = var_str ("raw"))
-    call es_array%write (u)
-    call es_array%final ()
-    
-    call global%final ()
-    call syntax_model_file_final ()
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: event_streams_4"
-    
-  end subroutine event_streams_4
-  
 
   subroutine event_stream_array_write (object, unit)
     class(event_stream_array_t), intent(in) :: object
@@ -552,6 +241,18 @@ contains
     end if
   end subroutine event_stream_array_input_event
   
+  subroutine event_stream_array_skip_eio_entry (es_array, iostat)
+    class(event_stream_array_t), intent(inout) :: es_array
+    integer, intent(out) :: iostat
+    integer :: n
+    if (es_array%has_input ()) then
+       n = es_array%i_in
+       call es_array%entry(n)%eio%skip (iostat)
+    else
+       call msg_fatal ("Reading events: no input stream selected")
+    end if
+  end subroutine event_stream_array_skip_eio_entry
+
   function event_stream_array_has_input (es_array) result (flag)
     class(event_stream_array_t), intent(in) :: es_array
     logical :: flag

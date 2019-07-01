@@ -1,4 +1,4 @@
-! WHIZARD 2.2.6 May 02 2015
+! WHIZARD 2.2.7 Aug 11 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -49,7 +49,6 @@ module sm_qcd
   public :: alpha_qcd_from_scale_t
   public :: alpha_qcd_from_lambda_t
   public :: qcd_t
-  public :: sm_qcd_test
 
   type, abstract :: alpha_qcd_t
    contains
@@ -204,139 +203,6 @@ contains
     class(qcd_t), intent(inout) :: qcd
     md5sum = qcd%md5sum
   end function qcd_get_md5sum
-
-
-  subroutine sm_qcd_test (u, results)
-    integer, intent(in) :: u
-    type(test_results_t), intent(inout) :: results
-    call test (sm_qcd_1, "sm_qcd_1", &
-         "running alpha_s", &
-         u, results)
-  end subroutine sm_qcd_test
-
-  subroutine sm_qcd_1 (u)
-    integer, intent(in) :: u
-    type(qcd_t) :: qcd
-
-    write (u, "(A)")  "* Test output: sm_qcd_1"
-    write (u, "(A)")  "*   Purpose: compute running alpha_s"
-    write (u, "(A)")
-
-    write (u, "(A)")  "* Fixed:"
-    write (u, "(A)")
-
-    allocate (alpha_qcd_fixed_t :: qcd%alpha)
-    call qcd%compute_alphas_md5sum ()
-
-    call qcd%write (u)
-    write (u, *)
-    write (u, "(1x,A,F10.7)")  "alpha_s (mz)    =", &
-         qcd%alpha%get (MZ_REF)
-    write (u, "(1x,A,F10.7)")  "alpha_s (1 TeV) =", &
-         qcd%alpha%get (1000._default)
-    write (u, *)
-    deallocate (qcd%alpha)
-
-    write (u, "(A)")  "* Running from MZ (LO):"
-    write (u, "(A)")
-
-    allocate (alpha_qcd_from_scale_t :: qcd%alpha)
-    call qcd%compute_alphas_md5sum ()
-
-    call qcd%write (u)
-    write (u, *)
-    write (u, "(1x,A,F10.7)")  "alpha_s (mz)    =", &
-         qcd%alpha%get (MZ_REF)
-    write (u, "(1x,A,F10.7)")  "alpha_s (1 TeV) =", &
-         qcd%alpha%get (1000._default)
-    write (u, *)
-
-    write (u, "(A)")  "* Running from MZ (NLO):"
-    write (u, "(A)")
-
-    select type (alpha => qcd%alpha)
-    type is (alpha_qcd_from_scale_t)
-       alpha%order = 1
-    end select
-    call qcd%compute_alphas_md5sum ()
-
-    call qcd%write (u)
-    write (u, *)
-    write (u, "(1x,A,F10.7)")  "alpha_s (mz)    =", &
-         qcd%alpha%get (MZ_REF)
-    write (u, "(1x,A,F10.7)")  "alpha_s (1 TeV) =", &
-         qcd%alpha%get (1000._default)
-    write (u, *)
-
-    write (u, "(A)")  "* Running from MZ (NNLO):"
-    write (u, "(A)")
-
-    select type (alpha => qcd%alpha)
-    type is (alpha_qcd_from_scale_t)
-       alpha%order = 2
-    end select
-    call qcd%compute_alphas_md5sum ()
-
-    call qcd%write (u)
-    write (u, *)
-    write (u, "(1x,A,F10.7)")  "alpha_s (mz)    =", &
-         qcd%alpha%get (MZ_REF)
-    write (u, "(1x,A,F10.7)")  "alpha_s (1 TeV) =", &
-         qcd%alpha%get (1000._default)
-    write (u, *)
-
-    deallocate (qcd%alpha)
-    write (u, "(A)")  "* Running from Lambda_QCD (LO):"
-    write (u, "(A)")
-
-    allocate (alpha_qcd_from_lambda_t :: qcd%alpha)
-    call qcd%compute_alphas_md5sum ()
-
-    call qcd%write (u)
-    write (u, *)
-    write (u, "(1x,A,F10.7)")  "alpha_s (mz)    =", &
-         qcd%alpha%get (MZ_REF)
-    write (u, "(1x,A,F10.7)")  "alpha_s (1 TeV) =", &
-         qcd%alpha%get (1000._default)
-    write (u, *)
-
-    write (u, "(A)")  "* Running from Lambda_QCD (NLO):"
-    write (u, "(A)")
-
-    select type (alpha => qcd%alpha)
-    type is (alpha_qcd_from_lambda_t)
-       alpha%order = 1
-    end select
-    call qcd%compute_alphas_md5sum ()
-
-    call qcd%write (u)
-    write (u, *)
-    write (u, "(1x,A,F10.7)")  "alpha_s (mz)    =", &
-         qcd%alpha%get (MZ_REF)
-    write (u, "(1x,A,F10.7)")  "alpha_s (1 TeV) =", &
-         qcd%alpha%get (1000._default)
-    write (u, *)
-
-    write (u, "(A)")  "* Running from Lambda_QCD (NNLO):"
-    write (u, "(A)")
-
-    select type (alpha => qcd%alpha)
-    type is (alpha_qcd_from_lambda_t)
-       alpha%order = 2
-    end select
-    call qcd%compute_alphas_md5sum ()
-
-    call qcd%write (u)
-    write (u, *)
-    write (u, "(1x,A,F10.7)")  "alpha_s (mz)    =", &
-         qcd%alpha%get (MZ_REF)
-    write (u, "(1x,A,F10.7)")  "alpha_s (1 TeV) =", &
-         qcd%alpha%get (1000._default)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: sm_qcd_1"
-
-  end subroutine sm_qcd_1
 
 
 end module sm_qcd

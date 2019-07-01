@@ -1,4 +1,4 @@
-! WHIZARD 2.2.6 May 02 2015
+! WHIZARD 2.2.7 Aug 11 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -34,28 +34,25 @@ module compilations
 
   use iso_varying_string, string_t => varying_string
   use io_units
-  use unit_tests
   use system_defs, only: TAB
   use diagnostics
   use os_interface
-  use md5
   use variables
   use model_data
-  use models
   use process_libraries
   use prclib_stacks
   use rt_data
-  use process_configurations
 
   implicit none
   private
 
+  public :: compilation_item_t
   public :: compile_library
+  public :: compilation_t
   public :: compile_executable
-  public :: compilations_test
-  public :: compilations_static_test
 
   type :: compilation_item_t
+     private
      type(string_t) :: libname
      type(string_t) :: static_external_tag
      type(process_library_t), pointer :: lib => null ()
@@ -280,6 +277,7 @@ contains
     write (u, "(A)") "LDFLAGS = " // char (os_data%ldflags)
     write (u, "(A)") "LDFLAGS_STATIC = " // char (os_data%ldflags_static)   
     write (u, "(A)") "LDFLAGS_HEPMC = " // char (os_data%ldflags_hepmc)
+    write (u, "(A)") "LDFLAGS_LCIO = " // char (os_data%ldflags_lcio)
     write (u, "(A)") "LDFLAGS_HOPPET = " // char (os_data%ldflags_hoppet)    
     write (u, "(A)") "LDFLAGS_LOOPTOOLS = " // char (os_data%ldflags_looptools)
     write (u, "(A)") "LDWHIZARD = " // char (os_data%whizard_ldflags)
@@ -314,8 +312,8 @@ contains
     write (u, "(A)") TAB // "$(LINK) $(FC) -static-libtool-libs $(FCFLAGS) \"
     write (u, "(A)") TAB // "   $(LDWHIZARD) $(LDFLAGS) \" 
     write (u, "(A)") TAB // "   -o $(EXE) $^ \"
-    write (u, "(A)") TAB // "   $(LDFLAGS_HEPMC) $(LDFLAGS_HOPPET) $(LDFLAGS_LOOPTOOLS) \"
-    write (u, "(A)") TAB // "   $(LDFLAGS_STATIC)" // char (ext_tag)
+    write (u, "(A)") TAB // "   $(LDFLAGS_HEPMC) $(LDFLAGS_LCIO) $(LDFLAGS_HOPPET) \"
+    write (u, "(A)") TAB // "   $(LDFLAGS_LOOPTOOLS) $(LDFLAGS_STATIC)" // char (ext_tag)
     write (u, "(A)") ""
     write (u, "(A)") "# Main targets"
     write (u, "(A)") "link: compile $(EXE)"
@@ -392,303 +390,5 @@ contains
     call compilation%make_link (global%os_data)
   end subroutine compile_executable
 
-
-  subroutine compilations_test (u, results)
-    integer, intent(in) :: u
-    type(test_results_t), intent(inout) :: results
-    call test (compilations_1, "compilations_1", &
-         "intrinsic test processes", &
-         u, results)
-    call test (compilations_2, "compilations_2", &
-         "external process (omega)", &
-         u, results)
-    call test (compilations_3, "compilations_3", &
-         "static executable: driver", &
-         u, results)
-end subroutine compilations_test
-
-  subroutine compilations_1 (u)
-    integer, intent(in) :: u
-    type(string_t) :: libname, procname
-    type(rt_data_t), target :: global
-    
-    write (u, "(A)")  "* Test output: compilations_1"
-    write (u, "(A)")  "*   Purpose: configure and compile test process"
-    write (u, "(A)")
-
-    call syntax_model_file_init ()
-
-    call global%global_init ()
-
-    libname = "compilation_1"
-    procname = "prc_comp_1"
-    call prepare_test_library (global, libname, 1, [procname])
-
-    call compile_library (libname, global)
-    
-    call global%write_libraries (u)
-
-    call global%final ()
-    call syntax_model_file_final ()
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: compilations_1"
-    
-  end subroutine compilations_1
-  
-  subroutine compilations_2 (u)
-    integer, intent(in) :: u
-    type(string_t) :: libname, procname
-    type(rt_data_t), target :: global
-    
-    write (u, "(A)")  "* Test output: compilations_2"
-    write (u, "(A)")  "*   Purpose: configure and compile test process"
-    write (u, "(A)")
-
-    call syntax_model_file_init ()
-
-    call global%global_init ()
-    call var_list_set_log (global%var_list, var_str ("?omega_openmp"), &
-         .false., is_known = .true.)
-
-    libname = "compilation_2"
-    procname = "prc_comp_2"
-    call prepare_test_library (global, libname, 2, [procname,procname])
-
-    call compile_library (libname, global)
-    
-    call global%write_libraries (u, libpath = .false.)
-
-    call global%final ()
-    call syntax_model_file_final ()
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: compilations_2"
-    
-  end subroutine compilations_2
-  
-  subroutine compilations_3 (u)
-    integer, intent(in) :: u
-    type(string_t) :: libname, procname, exename
-    type(rt_data_t), target :: global
-    type(compilation_t) :: compilation
-    integer :: u_file
-    character(80) :: buffer
-
-    write (u, "(A)")  "* Test output: compilations_3"
-    write (u, "(A)")  "*   Purpose: make static executable"
-    write (u, "(A)")
-
-    write (u, "(A)")  "* Initialize library"
-    write (u, "(A)")
-
-    call syntax_model_file_init ()
-
-    call global%global_init ()
-    call var_list_set_log (global%var_list, var_str ("?omega_openmp"), &
-         .false., is_known = .true.)
-
-    libname = "compilations_3_lib"
-    procname = "prc_comp_3"
-    exename = "compilations_3"
-    
-    call prepare_test_library (global, libname, 2, [procname,procname])
-
-    call compilation%init (exename, [libname])
-    call compilation%write (u)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Write dispatcher"
-    write (u, "(A)")
-
-    call compilation%write_dispatcher ()
-
-    u_file = free_unit ()
-    open (u_file, file = char (exename) // "_prclib_dispatcher.f90", &
-         status = "old", action = "read")
-    do
-       read (u_file, "(A)", end = 1)  buffer
-       write (u, "(A)")  trim (buffer)
-    end do
-1   close (u_file)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Write Makefile"
-    write (u, "(A)")
-
-    associate (os_data => global%os_data)
-      os_data%fc = "fortran-compiler"
-      os_data%whizard_includes = "my-includes"
-      os_data%fcflags = "my-fcflags"
-      os_data%ldflags = "my-ldflags"
-      os_data%ldflags_static = "my-ldflags-static"
-      os_data%ldflags_hepmc = "my-ldflags-hepmc"
-      os_data%ldflags_hoppet = "my-ldflags-hoppet"      
-      os_data%ldflags_looptools = "my-ldflags-looptools"
-      os_data%whizard_ldflags = "my-ldwhizard"
-      os_data%whizard_libtool = "my-libtool"
-    end associate
-
-    call compilation%write_makefile (global%os_data)
-
-    open (u_file, file = char (exename) // ".makefile", &
-         status = "old", action = "read")
-    do
-       read (u_file, "(A)", end = 2)  buffer
-       write (u, "(A)")  trim (buffer)
-    end do
-2   close (u_file)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Cleanup"
-
-    call global%final ()
-    call syntax_model_file_final ()
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: compilations_3"
-    
-  end subroutine compilations_3
-  
-  subroutine compilations_static_test (u, results)
-    integer, intent(in) :: u
-    type(test_results_t), intent(inout) :: results
-    call test (compilations_static_1, "compilations_static_1", &
-         "static executable: compilation", &
-         u, results)
-    call test (compilations_static_2, "compilations_static_2", &
-         "static executable: shortcut", &
-         u, results)
-end subroutine compilations_static_test
-
-  subroutine compilations_static_1 (u)
-    integer, intent(in) :: u
-    type(string_t) :: libname, procname, exename
-    type(rt_data_t), target :: global
-    type(compilation_item_t) :: item
-    type(compilation_t) :: compilation
-    logical :: exist
-
-    write (u, "(A)")  "* Test output: compilations_static_1"
-    write (u, "(A)")  "*   Purpose: make static executable"
-    write (u, "(A)")
-
-    write (u, "(A)")  "* Initialize library"
-
-    call syntax_model_file_init ()
-
-    call global%global_init ()
-    call var_list_set_log (global%var_list, var_str ("?omega_openmp"), &
-         .false., is_known = .true.)
-
-    libname = "compilations_static_1_lib"
-    procname = "prc_comp_stat_1"
-    exename = "compilations_static_1"
-    
-    call prepare_test_library (global, libname, 2, [procname,procname])
-
-    call compilation%init (exename, [libname])
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Write dispatcher"
-
-    call compilation%write_dispatcher ()
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Write Makefile"
-
-    call compilation%write_makefile (global%os_data)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Build libraries"
-
-    call item%init (libname, global%prclib_stack, global%var_list)
-    call item%compile &
-         (global%model, global%os_data, force=.true., recompile=.false.)
-    call item%success ()
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Check executable (should be absent)"
-    write (u, "(A)")
-    
-    call compilation%make_clean_exe (global%os_data)
-    inquire (file = char (exename), exist = exist)
-    write (u, "(A,A,L1)")  char (exename), " exists = ", exist
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Build executable"
-    write (u, "(A)")
-
-    call compilation%make_compile (global%os_data)
-    call compilation%make_link (global%os_data)
-
-    write (u, "(A)")  "* Check executable (should be present)"
-    write (u, "(A)")
-    
-    inquire (file = char (exename), exist = exist)
-    write (u, "(A,A,L1)")  char (exename), " exists = ", exist
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Cleanup"
-
-    call compilation%make_clean_exe (global%os_data)
-
-    call global%final ()
-    call syntax_model_file_final ()
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: compilations_static_1"
-    
-  end subroutine compilations_static_1
-  
-  subroutine compilations_static_2 (u)
-    integer, intent(in) :: u
-    type(string_t) :: libname, procname, exename
-    type(rt_data_t), target :: global
-    logical :: exist
-    integer :: u_file
-
-    write (u, "(A)")  "* Test output: compilations_static_2"
-    write (u, "(A)")  "*   Purpose: make static executable"
-    write (u, "(A)")
-
-    write (u, "(A)")  "* Initialize library and compile"
-    write (u, "(A)")
-
-    call syntax_model_file_init ()
-
-    call global%global_init ()
-    call var_list_set_log (global%var_list, var_str ("?omega_openmp"), &
-         .false., is_known = .true.)
-
-    libname = "compilations_static_2_lib"
-    procname = "prc_comp_stat_2"
-    exename = "compilations_static_2"
-    
-    call prepare_test_library (global, libname, 2, [procname,procname])
-
-    call compile_executable (exename, [libname], global)
-
-    write (u, "(A)")  "* Check executable (should be present)"
-    write (u, "(A)")
-    
-    inquire (file = char (exename), exist = exist)
-    write (u, "(A,A,L1)")  char (exename), " exists = ", exist
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Cleanup"
-
-    u_file = free_unit ()
-    open (u_file, file = char (exename), status = "old", action = "write")
-    close (u_file, status = "delete")
-
-    call global%final ()
-    call syntax_model_file_final ()
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: compilations_static_2"
-    
-  end subroutine compilations_static_2
-  
 
 end module compilations

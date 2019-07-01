@@ -1,4 +1,4 @@
-! WHIZARD 2.2.6 May 02 2015
+! WHIZARD 2.2.7 Aug 11 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -35,21 +35,17 @@ module radiation_generator
   use kinds, only: default
   use iso_varying_string, string_t => varying_string
   use diagnostics
-  use format_utils, only: write_separator
-  use os_interface
-  use models
+  use io_units
+  use physics_defs, only: PHOTON, GLUON
   use pdg_arrays
-  use particle_specifiers
+  use flavors
   use model_data
   use auto_components
-  use physics_defs
-  use unit_tests
 
   implicit none
   private
 
   public :: radiation_generator_t
-  public :: radiation_generator_test
   
   type :: pdg_sorter_t
      integer :: pdg
@@ -66,6 +62,25 @@ module radiation_generator
     procedure :: add => pdg_states_add
     procedure :: get_n_states => pdg_states_get_n_states
   end type pdg_states_t
+
+  type :: prt_queue_t
+    type(string_t), dimension(:), allocatable :: prt_string
+    type(prt_queue_t), pointer :: next => null ()
+    type(prt_queue_t), pointer :: previous => null ()
+    type(prt_queue_t), pointer :: front => null ()
+    type(prt_queue_t), pointer :: current_prt => null ()
+    type(prt_queue_t), pointer :: back => null ()
+    integer :: n_lists = 0
+  contains
+    procedure :: null => prt_queue_null
+    procedure :: append => prt_queue_append
+    procedure :: get => prt_queue_get 
+    procedure :: get_last => prt_queue_get_last
+    procedure :: reset => prt_queue_reset
+    procedure :: check_for_same_prt_strings => prt_queue_check_for_same_prt_strings
+    procedure :: contains => prt_queue_contains
+    procedure :: write => prt_queue_write
+  end type prt_queue_t
 
   type :: reshuffle_list_t
      integer, dimension(:), allocatable :: ii
@@ -89,68 +104,40 @@ module radiation_generator
     integer :: n_light_quarks
     real(default) :: mass_sum
     class(model_data_t), pointer :: radiation_model
+    type(prt_queue_t) :: prt_queue
     type(pdg_states_t) :: pdg_raw
     type(pdg_array_t), dimension(:), allocatable :: pdg_in_born, pdg_out_born
+    type(if_table_t) :: if_table
   contains
     generic :: init => init_pdg_list, init_pdg_array
     procedure :: init_pdg_list => radiation_generator_init_pdg_list
     procedure :: init_pdg_array => radiation_generator_init_pdg_array
+    procedure :: setup_if_table => radiation_generator_setup_if_table
+    generic :: reset_particle_content => reset_particle_content_pdg_array, &
+                                         reset_particle_content_pdg_list
+    procedure :: reset_particle_content_pdg_list => & 
+      radiation_generator_reset_particle_content_pdg_list
+    procedure :: reset_particle_content_pdg_array => &
+      radiation_generator_reset_particle_content_pdg_array
     procedure :: init_radiation_model => &
                       radiation_generator_init_radiation_model
     procedure :: set_n => radiation_generator_set_n
     procedure :: set_constraints => radiation_generator_set_constraints
     procedure :: generate => radiation_generator_generate
+    procedure :: generate_multiple => radiation_generator_generate_multiple
+    procedure :: first_emission => radiation_generator_first_emission
+    procedure :: append_emissions => radiation_generator_append_emissions 
+    procedure :: reset_queue => radiation_generator_reset_queue
+    procedure :: get_n_gks_states => radiation_generator_get_n_gks_states
+    procedure :: get_next_state => radiation_generator_get_next_state 
+    procedure :: get_emitter_indices => radiation_generator_get_emitter_indices
     procedure :: get_raw_states => radiation_generator_get_raw_states
     procedure :: save_born_raw => radiation_generator_save_born_raw
     procedure :: get_born_raw => radiation_generator_get_born_raw
   end type radiation_generator_t
 
 
-
-
 contains
-
-  subroutine reshuffle_list_append (rlist, ii) 
-     class(reshuffle_list_t), intent(inout) :: rlist
-     integer, dimension(:), allocatable :: ii
-     type(reshuffle_list_t), pointer :: current
-     if (associated (rlist%next)) then
-        current => rlist%next
-        do
-           if (associated (current%next)) then
-              current => current%next
-           else
-              allocate (current%next)
-              current%next%ii = ii
-              exit
-           end if
-        end do
-     else
-        allocate (rlist%next)
-        rlist%next%ii = ii
-     end if
-   end subroutine reshuffle_list_append
-
-  function reshuffle_list_get (rlist, index) result (ii)
-    class(reshuffle_list_t), intent(inout) :: rlist
-    integer, intent(in) :: index
-    integer, dimension(:), allocatable :: ii
-    type(reshuffle_list_t), pointer :: current
-    integer :: i
-    if (associated (rlist%next)) then
-       current => rlist%next
-    else
-       call msg_fatal ("Reshuffle list is emtpy")
-    end if
-    do i = 1, index-1
-       if (associated (current%next)) then
-          current => current%next
-       else
-          call msg_fatal ("Index exceeds size of reshuffling list")
-       end if
-    end do
-    ii = current%ii
-  end function reshuffle_list_get
 
   subroutine pdg_states_init (states)
     class(pdg_states_t), intent(inout) :: states
@@ -196,6 +183,254 @@ contains
     end select
   end function pdg_states_get_n_states
 
+  subroutine prt_queue_null (queue)
+    class(prt_queue_t), intent(out) :: queue
+    queue%next => null ()
+    queue%previous => null ()
+    queue%front => null ()
+    queue%current_prt => null ()
+    queue%back => null ()
+    queue%n_lists = 0
+    if (allocated (queue%prt_string))  deallocate (queue%prt_string)
+  end subroutine prt_queue_null
+
+  subroutine prt_queue_append (queue, prt_string)
+    class(prt_queue_t), intent(inout) :: queue
+    type(string_t), intent(in), dimension(:) :: prt_string
+    type(prt_queue_t), pointer :: new_element => null ()
+    type(prt_queue_t), pointer :: current_back => null ()
+    allocate (new_element)
+    allocate (new_element%prt_string(size (prt_string)))
+    new_element%prt_string = prt_string
+    if (associated (queue%back)) then
+       current_back => queue%back
+       current_back%next => new_element
+       new_element%previous => current_back
+       queue%back => new_element
+    else
+       !!! Initial entry
+       queue%front => new_element
+       queue%back => queue%front
+       queue%current_prt => queue%front
+    end if
+    queue%n_lists = queue%n_lists + 1
+  end subroutine prt_queue_append
+
+  subroutine prt_queue_get (queue, prt_string)
+    class(prt_queue_t), intent(inout) :: queue
+    type(string_t), dimension(:), allocatable, intent(out) :: prt_string
+    if (associated (queue%current_prt)) then
+       allocate (prt_string(size (queue%current_prt%prt_string)))
+       prt_string = queue%current_prt%prt_string
+       if (associated (queue%current_prt%next)) &
+          queue%current_prt => queue%current_prt%next
+    else
+       prt_string = " "
+    end if
+  end subroutine prt_queue_get
+
+  subroutine prt_queue_get_last (queue, prt_string)
+    class(prt_queue_t), intent(in) :: queue
+    type(string_t), dimension(:), allocatable, intent(out) :: prt_string
+    if (associated (queue%back)) then
+       allocate (prt_string(size (queue%back%prt_string)))
+       prt_string = queue%back%prt_string
+    else
+       prt_string = " "
+    end if
+  end subroutine prt_queue_get_last
+
+  subroutine prt_queue_reset (queue)
+    class(prt_queue_t), intent(inout) :: queue
+    queue%current_prt => queue%front
+  end subroutine prt_queue_reset
+
+  function prt_queue_check_for_same_prt_strings (queue) result (val)
+    class(prt_queue_t), intent(inout) :: queue
+    logical :: val
+    type(string_t), dimension(:), allocatable :: prt_string
+    integer, dimension(:,:), allocatable :: i_particle
+    integer :: n_u, n_ubar, n_gl
+    integer :: i, j
+    call queue%reset ()
+    allocate (i_particle (queue%n_lists, 3))   
+    do i = 1, queue%n_lists
+       call queue%get (prt_string)
+       n_u = count_particle (prt_string, 2)
+       n_ubar = count_particle (prt_string, -2)
+       n_gl = count_particle (prt_string, 21)
+       i_particle (i, 1) = n_u
+       i_particle (i, 2) = n_ubar
+       i_particle (i, 3) = n_gl
+    end do
+    val = .false.
+    do i = 1, queue%n_lists
+       do j = 1, queue%n_lists
+          if  (i == j) cycle
+          val = val .or. all (i_particle (i,:) == i_particle(j,:))
+       end do
+    end do
+  contains
+    function count_particle (prt_string, pdg) result (n)
+      type(string_t), dimension(:), intent(in) :: prt_string
+      integer, intent(in) :: pdg
+      integer :: n
+      integer :: i
+      type(string_t) :: prt_ref
+      n = 0
+      select case (pdg)
+      case (2)
+         prt_ref = "u"
+      case (-2)
+         prt_ref = "ubar"
+      case (21) 
+         prt_ref = "gl"
+      end select
+      do i = 1, size (prt_string)
+         if (prt_string(i) == prt_ref) n = n+1
+      end do
+    end function count_particle
+
+  end function prt_queue_check_for_same_prt_strings
+
+  function prt_queue_contains (queue, prt_string) result (val)
+    class(prt_queue_t), intent(in) :: queue
+    type(string_t), intent(in), dimension(:) :: prt_string
+    logical :: val
+    type(prt_queue_t), pointer :: current => null()
+    if (associated (queue%front)) then
+       current => queue%front
+    else
+       call msg_fatal ("Trying to access empty particle queue")
+    end if
+    val = .false.
+    do 
+       if (size (current%prt_string) == size (prt_string)) then
+          if (all (current%prt_string == prt_string)) then
+             val = .true.
+             exit
+          end if
+       end if
+       if (associated (current%next)) then
+          current => current%next
+       else
+          exit
+       end if
+    end do
+  end function prt_queue_contains
+
+  subroutine prt_queue_write (queue, unit)
+    class(prt_queue_t), intent(in) :: queue
+    integer, optional :: unit
+    type(prt_queue_t), pointer :: current => null ()
+    integer :: i, j, u
+    u = given_output_unit (unit)
+    if (associated (queue%front)) then
+       current => queue%front
+    else
+       write (u, "(A)") "[Particle queue is empty]"
+       return
+    end if
+    j = 1
+    do
+       write (u, "(I2,A,1X)", advance = 'no') j , ":"
+       do i = 1, size (current%prt_string)
+          write (u, "(A,1X)", advance = 'no') char (current%prt_string(i))
+       end do
+       write (u, "(A)") 
+       if (associated (current%next)) then
+          current => current%next
+          j = j+1
+       else
+          exit
+       end if
+    end do
+  end subroutine prt_queue_write
+
+  subroutine sort_prt (prt, radiation_model)
+    type(string_t), dimension(:), intent(inout) :: prt
+    class(model_data_t), intent(in), target :: radiation_model
+    type(pdg_array_t), dimension(:), allocatable :: pdg
+    type(flavor_t) :: flv
+    integer :: i
+    call create_pdg_array (prt, radiation_model, pdg)
+    call sort_pdg (pdg)
+    do i = 1, size (pdg)
+       call flv%init (pdg(i)%get(), radiation_model)
+       prt(i) = flv%get_name ()
+    end do
+  end subroutine sort_prt
+    
+  subroutine sort_pdg (pdg)
+    type(pdg_array_t), dimension(:), intent(inout) :: pdg
+    integer, dimension(:), allocatable :: i_pdg
+    integer :: i
+    allocate (i_pdg (size (pdg)))
+    i_pdg = pdg%get ()
+    i_pdg = sort_abs (i_pdg)
+    do i = 1, size (pdg)
+       call pdg(i)%set (1, i_pdg(i))
+    end do
+  end subroutine sort_pdg
+ 
+  subroutine create_pdg_array (prt, radiation_model, pdg)
+    type (string_t), dimension(:), intent(in) :: prt
+    class (model_data_t), intent(in), target :: radiation_model
+    type(pdg_array_t), dimension(:), allocatable, intent(out) :: pdg
+    type(flavor_t) :: flv
+    integer :: i
+    allocate (pdg (size (prt)))
+    do i = 1, size (prt) 
+       call flv%init (prt(i), radiation_model)
+       pdg(i) = flv%get_pdg ()
+    end do
+  end subroutine create_pdg_array
+
+  subroutine reshuffle_list_append (rlist, ii) 
+     class(reshuffle_list_t), intent(inout) :: rlist
+     integer, dimension(:), allocatable, intent(in) :: ii
+     type(reshuffle_list_t), pointer :: current
+     if (associated (rlist%next)) then
+        current => rlist%next
+        do
+           if (associated (current%next)) then
+              current => current%next
+           else
+              allocate (current%next)
+              allocate (current%next%ii (size (ii)))
+              current%next%ii = ii
+              exit
+           end if
+        end do
+     else
+        allocate (rlist%next)
+        allocate (rlist%next%ii (size (ii)))
+        rlist%next%ii = ii
+     end if
+   end subroutine reshuffle_list_append
+
+  function reshuffle_list_get (rlist, index) result (ii)
+    class(reshuffle_list_t), intent(inout) :: rlist
+    integer, intent(in) :: index
+    integer, dimension(:), allocatable :: ii
+    type(reshuffle_list_t), pointer :: current => null ()
+    integer :: i
+    if (associated (rlist%next)) then
+       current => rlist%next
+    else
+       call msg_fatal ("Reshuffle list is emtpy")
+    end if
+    do i = 1, index-1
+       if (associated (current%next)) then
+          current => current%next
+       else
+          call msg_fatal ("Index exceeds size of reshuffling list")
+       end if
+    end do
+    allocate (ii (size (current%ii))) 
+    ii = current%ii
+  end function reshuffle_list_get
+
   subroutine radiation_generator_init_pdg_list &
        (generator, pl_in, pl_out, qcd, qed)
     class(radiation_generator_t), intent(inout) :: generator
@@ -231,6 +466,38 @@ contains
     call generator%init (pl_in, pl_out, qcd, qed)
   end subroutine radiation_generator_init_pdg_array
 
+  subroutine radiation_generator_setup_if_table (generator)
+    class(radiation_generator_t), intent(inout) :: generator
+    type(pdg_list_t), dimension(:), allocatable :: pl_in, pl_out
+
+    allocate (pl_in(1), pl_out(1))
+
+    pl_in(1) = generator%pl_in
+    pl_out(1) = generator%pl_out
+
+    call generator%if_table%init &
+       (generator%radiation_model, pl_in, pl_out, generator%constraints)
+  end subroutine radiation_generator_setup_if_table
+
+  subroutine radiation_generator_reset_particle_content_pdg_list (generator, pl)
+    class(radiation_generator_t), intent(inout) :: generator
+    type(pdg_list_t), intent(in) :: pl
+    generator%pl_out = pl
+    generator%fs_gluon = pl%search_for_particle (GLUON)
+  end subroutine radiation_generator_reset_particle_content_pdg_list
+
+  subroutine radiation_generator_reset_particle_content_pdg_array (generator, pdg)
+    class(radiation_generator_t), intent(inout) :: generator
+    type(pdg_array_t), intent(in), dimension(:) :: pdg
+    type(pdg_list_t) :: pl
+    integer :: i
+    call pl%init (size (pdg))
+    do i = 1, size (pdg)
+       call pl%set (i, pdg(i))
+    end do
+    call generator%reset_particle_content (pl)
+  end subroutine radiation_generator_reset_particle_content_pdg_array
+
   subroutine radiation_generator_init_radiation_model (generator, model)
     class(radiation_generator_t), intent(inout) :: generator
     class(model_data_t), intent(in), target :: model
@@ -259,10 +526,13 @@ contains
     type(pdg_list_t) :: pl_antiparticles
     type(pdg_array_t) :: pdg_gluon, pdg_photon
     type(pdg_array_t) :: pdg_add, pdg_tmp
-    integer :: i_skip, last_index
-    integer :: n_new_particles
-    i_skip = -1
+    integer :: last_index
+    integer :: n_new_particles, n_skip
+    integer, dimension(:), allocatable :: i_skip
     
+    allocate (i_skip (generator%n_tot))
+    i_skip = -1
+
     n_constraints = 1 + count([set_n_loop, set_mass_sum, &
          set_selected_particles, set_required_particles])
     associate (constraints => generator%constraints)
@@ -283,17 +553,20 @@ contains
            do i = 1, generator%n_out
               pdg_tmp = generator%pl_out%get(i)
               if (pdg_tmp%search_for_particle (GLUON)) then
-                 i_skip = i
-                 exit
+                 i_skip(i) = i
               end if
            end do
-           call pl_req%init (generator%n_out-1)
+
+           n_skip = count (i_skip > 0)
+           call pl_req%init (generator%n_out-n_skip)
         else
            call pl_req%init (generator%n_out)
         end if
+        j = 1
         do i = 1, generator%n_out
-           if (i == i_skip) cycle
-           call pl_req%set (i, generator%pl_out%get(i))
+           if (any (i == i_skip)) cycle
+           call pl_req%set (j, generator%pl_out%get(i))
+           j = j+1
         end do          
         call constraints%set (n, constrain_require (pl_req))
         n = n+1
@@ -341,14 +614,12 @@ contains
     type(prt_array_t), dimension(n_flv_max) :: prt_in, prt_out
     type(prt_array_t), dimension(n_flv_max) :: prt_out0, prt_in0
     type(pdg_array_t), dimension(:), allocatable :: pdg_tmp, pdg_out, pdg_in
-    type(if_table_t) :: if_table
     type(pdg_list_t), dimension(:), allocatable :: pl_in, pl_out
     integer :: i, j
     integer, dimension(:), allocatable :: reshuffle_list_local
     type(reshuffle_list_t) :: reshuffle_list
     logical :: found
     integer :: flv
-    integer :: n_out
     type(string_t), dimension(:), allocatable :: buf
     integer :: i_buf
 
@@ -362,21 +633,23 @@ contains
     call pl_in(1)%create_pdg_array (pdg_in)
     call pl_out(1)%create_pdg_array (pdg_out)
 
-    call if_table%init &
-         (generator%radiation_model, pl_in, pl_out, generator%constraints)
-    call if_table%radiate (generator%constraints)
+    !!!call if_table%init &
+    !!!     (generator%radiation_model, pl_in, pl_out, generator%constraints)
+    associate (if_table => generator%if_table)
+       call if_table%radiate (generator%constraints)
 
-    do i = 1, if_table%get_length ()
-      call if_table%get_pdg_out (i, pdg_tmp)
-      if (size (pdg_tmp) == generator%n_tot) then
-         call if_table%get_particle_string (i, 2, &
-            prt_in0(flv+1)%prt, prt_out0(flv+1)%prt)
-         call pdg_reshuffle (pdg_out, pdg_tmp, reshuffle_list_local)
-         call reshuffle_list%append (reshuffle_list_local)
-         found = .true.
-         flv = flv+1
-      end if
-    end do
+       do i = 1, generator%if_table%get_length ()
+          call generator%if_table%get_pdg_out (i, pdg_tmp)
+          if (size (pdg_tmp) == generator%n_tot) then
+             call if_table%get_particle_string (i, 2, &
+                prt_in0(flv+1)%prt, prt_out0(flv+1)%prt)
+             call pdg_reshuffle (pdg_out, pdg_tmp, reshuffle_list_local)
+             call reshuffle_list%append (reshuffle_list_local)
+             found = .true.
+             flv = flv+1
+          end if
+       end do
+    end associate
 
     if (found) then
       do i = 1, flv
@@ -395,7 +668,7 @@ contains
          end do
       end do
       prt_tot_in = buf(1:generator%n_in)
-
+      
       do j = 1, flv
          reshuffle_list_local = reshuffle_list%get(j)
          do i = 1, size (reshuffle_list_local)
@@ -415,10 +688,8 @@ contains
       integer, intent(out), dimension(:), allocatable :: list
       type(pdg_sorter_t), dimension(:), allocatable :: sort_born
       type(pdg_sorter_t), dimension(:), allocatable :: sort_real
-      integer :: i, i_min
-      integer :: n_born, n_real
+      integer :: i_min, n_born, n_real
       integer :: ib, ir
-      logical :: check
       integer, parameter :: n_in = 2
  
       n_born = size (pdg_born); n_real = size (pdg_real)
@@ -467,7 +738,7 @@ contains
       type(string_t), intent(inout) :: buffer
       type(string_t), intent(in) :: particle
       logical :: particle_present
-      if (len(buffer) > 0) then
+      if (len (buffer) > 0) then
          particle_present = check_for_substring (char(buffer), char(particle))
          if (.not. particle_present) buffer = buffer // ":" // particle
       else
@@ -503,6 +774,131 @@ contains
       end do
     end function check_for_substring
   end subroutine radiation_generator_generate
+
+  subroutine radiation_generator_generate_multiple (generator, max_multiplicity)
+    class(radiation_generator_t), intent(inout) :: generator
+    integer, intent(in) :: max_multiplicity
+    if (max_multiplicity <= generator%n_out) &
+       call msg_fatal ("GKS states: Multiplicity is not large enough!")
+    call generator%first_emission ()
+    if (max_multiplicity - generator%n_out > 1) then
+       call generator%append_emissions (max_multiplicity)
+    end if
+  end subroutine radiation_generator_generate_multiple
+
+  subroutine radiation_generator_first_emission (generator)
+    class(radiation_generator_t), intent(inout) :: generator
+    type(string_t), dimension(:), allocatable :: prt_in, prt_out
+    call generator%setup_if_table ()
+    call generator%generate (prt_in, prt_out)
+    call generator%prt_queue%null ()
+    call generator%prt_queue%append (prt_out)
+  end subroutine radiation_generator_first_emission
+
+  subroutine radiation_generator_append_emissions (generator, max_multiplicity)
+    class(radiation_generator_t), intent(inout) :: generator
+    integer, intent(in) :: max_multiplicity
+    type(string_t), dimension(:), allocatable :: prt_fetched
+    type(string_t), dimension(:), allocatable :: prt_in
+    type(string_t), dimension(:), allocatable :: prt_out1, prt_out2
+    type(pdg_array_t), dimension(:), allocatable :: pdg_new_out
+    integer :: current_multiplicity
+    do 
+       call generator%prt_queue%get (prt_fetched)
+       current_multiplicity = size (prt_fetched)
+       if (current_multiplicity == max_multiplicity) exit
+       call create_pdg_array (prt_fetched, generator%radiation_model, &
+            pdg_new_out)
+       call generator%reset_particle_content (pdg_new_out)
+       call generator%set_n (2, current_multiplicity, 0)
+       call generator%set_constraints (.false., .false., .true., .true.)
+       call generator%setup_if_table ()
+       call generator%generate (prt_in, prt_out1)
+       call separate_particles (prt_out1, prt_out2)
+       call sort_prt (prt_out2, generator%radiation_model)
+       if (.not. generator%prt_queue%contains (prt_out2)) &
+          call generator%prt_queue%append (prt_out2)
+       if (.not. any (prt_out1 == " ")) then
+          call sort_prt (prt_out1, generator%radiation_model)
+          if (.not. generator%prt_queue%contains (prt_out1)) &
+             call generator%prt_queue%append (prt_out1) 
+       end if
+    end do
+
+  contains
+  
+    subroutine separate_particles (prt1, prt2)
+      type(string_t), intent(inout), dimension(:) :: prt1
+      type(string_t), intent(out), dimension(:), allocatable :: prt2
+      integer :: i
+      logical, dimension(:), allocatable :: tuples_occured
+      allocate (prt2 (size (prt1)))
+      allocate (tuples_occured (size (prt1)))
+      do i = 1, size (prt1)
+         call split (prt1(i), prt2(i), var_str (":"))
+         tuples_occured(i) = prt1(i) /= " " .and. prt2(i) /= " "
+      end do
+      if (any (tuples_occured)) then
+         do i = 1, size (prt1)
+            if (.not. tuples_occured (i)) prt1(i) = prt2(i)
+         end do
+      end if
+    end subroutine separate_particles
+
+  end subroutine radiation_generator_append_emissions
+
+  subroutine radiation_generator_reset_queue (generator)
+    class(radiation_generator_t), intent(inout) :: generator
+    call generator%prt_queue%reset ()
+  end subroutine radiation_generator_reset_queue
+
+  function radiation_generator_get_n_gks_states (generator) result (n)
+    class(radiation_generator_t), intent(in) :: generator
+    integer :: n
+    n = generator%prt_queue%n_lists
+  end function radiation_generator_get_n_gks_states
+
+  function radiation_generator_get_next_state (generator) result (prt_string)
+    class(radiation_generator_t), intent(inout) :: generator
+    type(string_t), dimension(:), allocatable :: prt_string
+    call generator%prt_queue%get (prt_string)
+  end function radiation_generator_get_next_state
+
+  function radiation_generator_get_emitter_indices (generator) result (indices)
+     integer, dimension(:), allocatable :: indices
+     class(radiation_generator_t), intent(in) :: generator
+     type(pdg_array_t), dimension(:), allocatable :: pdg_in, pdg_out
+     integer, dimension(:), allocatable :: flv_in, flv_out
+     integer, dimension(:), allocatable :: emitters
+     integer :: i, j
+     integer :: n_in, n_out
+     
+     call generator%pl_in%create_pdg_array (pdg_in)
+     call generator%pl_out%create_pdg_array (pdg_out)
+
+     n_in = size (pdg_in); n_out = size (pdg_out)
+     allocate (flv_in (n_in), flv_out (n_out))
+     forall (i=1:n_in) flv_in(i) = pdg_in(i)%get()
+     forall (i=1:n_out) flv_out(i) = pdg_out(i)%get()
+
+     emitters = generator%if_table%get_emitters (generator%constraints) 
+     allocate (indices (size (emitters)))
+     
+     j = 1
+     do i = 1, n_in + n_out
+        if (i <= n_in) then
+           if (any (flv_in(i) == emitters)) then
+              indices (j) = i
+              j = j+1
+           end if
+        else
+           if (any (flv_out(i-n_in) == emitters)) then
+              indices (j) = i
+              j = j+1
+           end if
+        end if
+     end do
+  end function radiation_generator_get_emitter_indices
 
   function radiation_generator_get_raw_states (generator) result (raw_states)
     class(radiation_generator_t), intent(in), target :: generator
@@ -549,137 +945,6 @@ contains
       flv_born(i_part, 1) = generator%pdg_out_born(i_part-2)%get ()
     end do
   end function radiation_generator_get_born_raw
-
-  subroutine radiation_generator_test (u, results)
-    integer, intent(in) :: u
-    type(test_results_t), intent(inout) :: results
-    call test(radiation_generator_1, "radiation_generator_1", &
-       "Test the generator of N+1-particle flavor structures", &
-       u, results)
-  end subroutine radiation_generator_test
-
-  subroutine radiation_generator_1 (u)
-    integer, intent(in) :: u
-    type (radiation_generator_t) :: generator
-    type(pdg_array_t), dimension(:), allocatable :: pdg_in, pdg_out
-    type(string_t), dimension(:), allocatable :: prt_strings_in
-    type(string_t), dimension(:), allocatable :: prt_strings_out
-    type(os_data_t) :: os_data
-    type(model_list_t) :: model_list
-    type(model_t), pointer :: radiation_model => null ()
-    integer :: i
-    
-    write (u, "(A)") "* Test output: radiation_generator_1"
-    write (u, "(A)") "* Purpose: Create N+1-particle flavor structures from predefined N-particle flavor structures"
-    write (u, "(A)") "* One additional strong coupling, no additional electroweak coupling"
-    write (u, "(A)")
-    write (u, "(A)") "* Loading radiation model: SM_rad.mdl"
-
-    call syntax_model_file_init ()
-    call os_data_init (os_data)
-    call model_list%read_model &
-       (var_str ("SM_rad"), var_str ("SM_rad.mdl"), &
-        os_data, radiation_model)
-    call generator%init_radiation_model (radiation_model)
-    write (u, "(A)") "* Success"    
-
-    allocate (pdg_in (2))
-    pdg_in(1) = 11; pdg_in(2) = -11    
-    
-    write (u, "(A)") "* Start checking processes"
-    call write_separator (u)    
-
-    write (u, "(A)") "* Process 1: Quark-antiquark production"
-    allocate (pdg_out(2))
-    pdg_out(1) = 2; pdg_out(2) = -2
-    call test_process (generator, pdg_in, pdg_out, u)
-    deallocate (pdg_out)
-
-    write (u, "(A)") "* Process 2: Quark-antiquark production with additional gluon"
-    allocate (pdg_out(3))
-    pdg_out(1) = 2; pdg_out(2) = -2; pdg_out(3) = 21 
-    call test_process (generator, pdg_in, pdg_out, u)
-    deallocate (pdg_out)
-
-    write (u, "(A)") "* Process 3: Z + jets"
-    allocate (pdg_out(3))
-    pdg_out(1) = 2; pdg_out(2) = -2; pdg_out(3) = 23
-    call test_process (generator, pdg_in, pdg_out, u)
-    deallocate (pdg_out)
-    
-    write (u, "(A)") "* Process 4: Top Decay"
-    allocate (pdg_out(4))
-    pdg_out(1) = 24; pdg_out(2) = -24
-    pdg_out(3) = 5; pdg_out(4) = -5
-    call test_process (generator, pdg_in, pdg_out, u)
-    deallocate (pdg_out)
-
-    write (u, "(A)") "* Process 5: Production of four quarks"
-    allocate (pdg_out(4))
-    pdg_out(1) = 2; pdg_out(2) = -2;
-    pdg_out(3) = 2; pdg_out(4) = -2
-    call test_process (generator, pdg_in, pdg_out, u)
-    deallocate (pdg_out); deallocate (pdg_in)
-
-    write (u, "(A)") "* Process 6: Drell-Yan lepto-production"
-    allocate (pdg_in (2)); allocate (pdg_out (2))
-    pdg_in(1) = 2; pdg_in(2) = -2
-    pdg_out(1) = 11; pdg_out(2) = -11
-    call test_process (generator, pdg_in, pdg_out, u)
-    deallocate (pdg_out); deallocate (pdg_in)
-
-    write (u, "(A)") "* Process 7: WZ production at hadron-colliders"
-    allocate (pdg_in (2)); allocate (pdg_out (2))
-    pdg_in(1) = 1; pdg_in(2) = -2
-    pdg_out(1) = -24; pdg_out(2) = 23
-    call test_process (generator, pdg_in, pdg_out, u)
-    deallocate (pdg_out); deallocate (pdg_in)
-
-  contains
-    subroutine test_process (generator, pdg_in, pdg_out, u)
-      type(radiation_generator_t), intent(inout) :: generator
-      type(pdg_array_t), dimension(:), intent(in) :: pdg_in, pdg_out
-      integer, intent(in) :: u
-      type(string_t), dimension(:), allocatable :: prt_strings_in
-      type(string_t), dimension(:), allocatable :: prt_strings_out
-      write (u, "(A)") "* Leading order: "
-      write (u, "(A)", advance = 'no') '* Incoming: '
-      call write_pdg_array (pdg_in, u)
-      write (u, "(A)", advance = 'no') '* Outgoing: '
-      call write_pdg_array (pdg_out, u)
-
-      call generator%init (pdg_in, pdg_out, qcd = .true., qed = .false.)
-      call generator%set_n (2, size(pdg_out), 0)
-      call generator%set_constraints (.false., .false., .true., .true.)
-      call generator%generate (prt_strings_in, prt_strings_out)
-      write (u, "(A)") "* Additional radiation: "
-      write (u, "(A)") "* Incoming: "
-      call write_particle_string (prt_strings_in, u)
-      write (u, "(A)") "* Outgoing: "
-      call write_particle_string (prt_strings_out, u) 
-      call write_separator(u)
-    end subroutine test_process
-
-    subroutine write_pdg_array (pdg, u)
-      type(pdg_array_t), dimension(:), intent(in) :: pdg
-      integer, intent(in) :: u
-      integer :: i
-      do i = 1, size (pdg)
-         call pdg(i)%write (u)
-      end do
-      write (u, "(A)")
-    end subroutine write_pdg_array
- 
-    subroutine write_particle_string (prt, u)
-      type(string_t), dimension(:), intent(in) :: prt
-      integer, intent(in) :: u
-      integer :: i
-      do i = 1, size (prt)
-         write (u, "(A,1X)", advance = "no") char (prt(i))
-      end do
-      write (u, "(A)") 
-    end subroutine write_particle_string
-  end subroutine radiation_generator_1
 
 
 end module radiation_generator

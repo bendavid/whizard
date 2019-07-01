@@ -90,18 +90,24 @@ let copy_suite =
 
 let fold_left ?inf ?sup f x a =
   let acc = ref x in
-  for i = decode_inf ?inf a to decode_sup ?sup a do
-    acc := f !acc a.(i)
-  done;
-  !acc
+  try
+    for i = decode_inf ?inf a to decode_sup ?sup a do
+      acc := f !acc a.(i)
+    done;
+    !acc
+  with
+  | Out_of_bounds (_, _) -> x
 
 let iter ?inf ?sup f a =
   fold_left ?inf ?sup (fun () x -> f x) () a
 
 let iter ?inf ?sup f a =
-  for i = decode_inf ?inf a to decode_sup ?sup a do
-    f a.(i)
-  done
+  try
+    for i = decode_inf ?inf a to decode_sup ?sup a do
+      f a.(i)
+    done
+  with
+  | Out_of_bounds (_, _) -> ()
 
 let sum_float ?inf ?sup a =
   fold_left ?inf ?sup (+.) 0.0 a

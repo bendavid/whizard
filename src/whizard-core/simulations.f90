@@ -1,4 +1,4 @@
-! WHIZARD 2.2.6 May 02 2015
+! WHIZARD 2.2.7 Aug 11 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -37,48 +37,47 @@ module simulations
   use io_units
   use format_utils, only: write_separator
   use format_defs, only: FMT_19
-  use unit_tests
+  use unit_tests, only: vanishes
   use diagnostics
   use sm_qcd
   use md5
-  use ifiles
-  use lexers
-  use parser
   use variables
   use eval_trees
   use model_data
   use flavors
   use particles
-  use state_matrices
-  use interactions
-  use models
+  use state_matrices, only: FM_IGNORE_HELICITY
   use beams
-  use phs_forests
   use rng_base
   use selectors
   use prc_core
-  use prclib_stacks
   use processes
   use event_base
   use events
   use event_transforms
-  use decays
   use shower
   use eio_data
   use eio_base
-  use eio_raw
-  use eio_ascii
   use rt_data
-  use dispatch
-  use process_configurations
-  use compilations
+
+  use dispatch, only: dispatch_qcd
+  use dispatch, only: dispatch_rng_factory
+  use dispatch, only: dispatch_core_update, dispatch_core_restore
+  use dispatch, only: dispatch_evt_decay
+  use dispatch, only: dispatch_evt_shower
+  use dispatch, only: dispatch_evt_hadrons
+
   use integrations
   use event_streams
+
+  use evt_nlo
+  use dispatch, only: dispatch_evt_nlo
+
   implicit none
   private
 
   public :: simulation_t
-  public :: simulations_test
+  public :: pacify
 
   type :: counter_t
      integer :: total = 0
@@ -133,17 +132,27 @@ module simulations
      type(core_safe_t), dimension(:), allocatable :: core_safe
      class(model_data_t), pointer :: model => null ()
      type(qcd_t) :: qcd
-     logical :: nlo_event = .false.
+     type(entry_t), pointer :: first => null ()
+     type(entry_t), pointer :: next => null ()
+     class(evt_t), pointer :: evt_powheg => null ()
    contains
      procedure :: write_config => entry_write_config
      procedure :: final => entry_final
+     procedure :: copy_entry => entry_copy_entry
      procedure :: init => entry_init
+     procedure :: set_active_real_component => entry_set_active_real_component
      procedure, private :: import_process_characteristics &
           => entry_import_process_characteristics
      procedure, private :: import_process_results &
           => entry_import_process_results
      procedure, private :: prepare_expressions &
           => entry_prepare_expressions
+     procedure :: setup_additional_entries => entry_setup_additional_entries
+     procedure :: get_first => entry_get_first
+     procedure :: get_next => entry_get_next
+     procedure :: count_nlo_entries => entry_count_nlo_entries
+     procedure :: reset_nlo_counter => entry_reset_nlo_counter 
+     procedure :: determine_if_powheg_matching => entry_determine_if_powheg_matching
      procedure, private :: setup_event_transforms &
           => entry_setup_event_transforms
      procedure :: init_mci_selector => entry_init_mci_selector
@@ -151,7 +160,6 @@ module simulations
      procedure :: record => entry_record
      procedure :: update_process => entry_update_process
      procedure :: restore_process => entry_restore_process
-     procedure :: combine_mci_sets => entry_combine_mci_sets
      procedure :: connect_qcd => entry_connect_qcd
   end type entry_t
 
@@ -205,6 +213,7 @@ module simulations
      procedure :: final => simulation_final
      procedure :: init => simulation_init
      procedure :: compute_n_events => simulation_compute_n_events
+     procedure :: get_n_nlo_entries => simulation_get_n_nlo_entries
      procedure :: compute_md5sum => simulation_compute_md5sum
      procedure :: init_process_selector => simulation_init_process_selector
      procedure :: select_prc => simulation_select_prc
@@ -229,6 +238,7 @@ module simulations
      procedure :: get_data => simulation_get_data
      procedure :: get_default_sample_name => simulation_get_default_sample_name
      procedure :: is_valid => simulation_is_valid
+     procedure :: evaluate_expressions => simulation_evaluate_expressions
   end type simulation_t
   
 
@@ -435,6 +445,35 @@ contains
     call object%event_t%final ()
   end subroutine entry_final
   
+  subroutine entry_copy_entry (entry1, entry2)
+    class(entry_t), intent(in) :: entry1
+    type(entry_t), intent(inout) :: entry2
+    entry2%event_t = entry1%event_t
+    entry2%process_id = entry1%process_id
+    entry2%library = entry1%library
+    entry2%run_id = entry1%run_id 
+    entry2%has_integral = entry1%has_integral
+    entry2%integral = entry1%integral
+    entry2%error = entry1%error
+    entry2%process_weight = entry1%process_weight
+    entry2%valid = entry1%valid
+    entry2%counter = entry1%counter
+    entry2%n_in = entry1%n_in
+    entry2%n_mci = entry1%n_mci
+    if (allocated (entry1%mci_set)) then
+       allocate (entry2%mci_set (size (entry1%mci_set)))
+       entry2%mci_set = entry1%mci_set
+    end if
+    entry2%mci_selector = entry1%mci_selector
+    if (allocated (entry1%core_safe)) then
+       allocate (entry2%core_safe (size (entry1%core_safe)))
+       entry2%core_safe = entry1%core_safe
+    end if
+    entry2%model => entry1%model
+    entry2%qcd = entry1%qcd
+!    entry2%first => entry1%first
+  end subroutine entry_copy_entry
+
   subroutine entry_init &
        (entry, process_id, integrate, generate, update_sqme, &
        local, global, n_alt)
@@ -487,10 +526,7 @@ contains
     do i = 1, size (entry%mci_set)
        call entry%mci_set(i)%init (i, master_process)
     end do
-    if (process%is_nlo_calculation ()) then
-      entry%nlo_event = .true.
-      call entry%combine_mci_sets ()
-    end if
+    entry%nlo_event = local%get_lval (var_str ("?nlo_fixed_order"))
 
     call entry%import_process_results (master_process)
     call entry%prepare_expressions (local)
@@ -509,6 +545,9 @@ contains
 
     call entry%connect_qcd ()
 
+    if (entry%nlo_event) &
+       call process_instance%nlo_controller%set_fixed_order_event_mode ()
+
     if (present (global)) then
        call entry%connect (process_instance, local%model, global%process_stack)
     else
@@ -521,6 +560,29 @@ contains
     
   end subroutine entry_init
     
+  subroutine entry_set_active_real_component (entry, i_mci)
+    class(entry_t), intent(inout) :: entry
+    integer, intent(in) :: i_mci
+    class(evt_t), pointer :: current_transform
+    integer :: i
+    associate (instance => entry%instance)
+       instance%active_real_component = instance%process%get_associated_real_component (i_mci)
+       i = instance%active_real_component
+       if (associated (entry%evt_powheg)) then
+          select type (evt => entry%evt_powheg)
+          type is (evt_shower_t)
+                if (instance%component(i)%get_component_type() == COMP_REAL_FIN) then
+                   call evt%disable_powheg_matching ()
+                else
+                   call evt%enable_powheg_matching ()
+                end if
+          class default
+             call msg_fatal ("powheg-evt should be evt_shower_t!")
+          end select
+       end if
+    end associate 
+  end subroutine entry_set_active_real_component
+
   subroutine prepare_local_process (process, process_id, local)
     type(process_t), pointer, intent(inout) :: process
     type(string_t), intent(in) :: process_id
@@ -578,15 +640,150 @@ contains
     call entry%set_analysis (expr_factory)
   end subroutine entry_prepare_expressions
 
+  subroutine entry_setup_additional_entries (entry)
+    class(entry_t), intent(inout), target :: entry
+    type(entry_t), pointer :: current_entry
+    integer :: i, n_alr
+    integer, dimension(:), allocatable :: emitters
+    type(evt_nlo_t), pointer :: evt
+    evt => null ()
+    associate (reg_data => entry%instance%nlo_controller%reg_data)
+       n_alr = reg_data%n_regions 
+       emitters = reg_data%emitters 
+    end associate
+    select type (entry)
+    type is (entry_t)
+       current_entry => entry
+       current_entry%first => entry
+       evt => get_nlo_evt_ptr (current_entry)
+       allocate (evt%emitters (n_alr))
+       allocate (evt%particle_set_radiated (n_alr+1))
+       evt%emitters = entry%instance%nlo_controller%reg_data%get_emitter_list ()
+       evt%qcd => entry%qcd
+       do i = 1, n_alr
+          allocate (current_entry%next)
+          current_entry%next%first => current_entry%first
+          current_entry => current_entry%next
+          call entry%copy_entry (current_entry)
+          current_entry%i_event = i
+       end do
+    end select
+  contains
+    function get_nlo_evt_ptr (entry) result (evt)
+      type(entry_t), intent(in), target :: entry
+      type(evt_nlo_t), pointer :: evt
+      class(evt_t), pointer :: current_evt
+      evt => null ()
+      current_evt => entry%transform_first
+      do
+         select type (current_evt)
+         type is (evt_nlo_t)
+            evt => current_evt 
+            exit
+         end select
+         if (associated (current_evt%next)) then 
+            current_evt => current_evt%next
+         else
+            call msg_fatal ("evt_nlo not in list of event transforms")
+         end if
+      end do
+    end function get_nlo_evt_ptr
+  end subroutine entry_setup_additional_entries
+
+  function entry_get_first (entry) result (entry_out)
+    class(entry_t), intent(in), target :: entry
+    type(entry_t), pointer :: entry_out
+    entry_out => null ()
+    select type (entry)
+    type is (entry_t)
+       if (entry%nlo_event) then
+          entry_out => entry%first
+       else
+          entry_out => entry
+       end if
+    end select
+  end function entry_get_first
+
+  function entry_get_next (entry) result (next_entry)
+     class(entry_t), intent(in) :: entry
+     type(entry_t), pointer :: next_entry
+     next_entry => null ()
+     if (associated (entry%next)) then
+        next_entry => entry%next
+     else
+        call msg_fatal ("Get next entry: No next entry")
+     end if
+  end function entry_get_next 
+
+  function entry_count_nlo_entries (entry) result (n)
+    class(entry_t), intent(in), target :: entry
+    integer :: n
+    type(entry_t), pointer :: current_entry
+    n = 1
+    if (.not. associated (entry%next)) then
+       return
+    else
+       current_entry => entry%next
+       do
+          n = n+1
+          if (.not. associated (current_entry%next)) exit
+          current_entry => current_entry%next
+       end do
+    end if
+  end function entry_count_nlo_entries
+
+  subroutine entry_reset_nlo_counter (entry)
+    class(entry_t), intent(inout) :: entry
+    class(evt_t), pointer :: evt
+    evt => entry%transform_first
+    do 
+       select type (evt)
+       type is (evt_nlo_t)
+          evt%i_evaluation = 0
+          exit
+       end select
+       if (associated (evt%next)) evt => evt%next
+   end do
+  end subroutine entry_reset_nlo_counter
+
+  subroutine entry_determine_if_powheg_matching (entry)
+     class(entry_t), intent(inout) :: entry
+     class(evt_t), pointer :: current_transform
+     if (associated (entry%transform_first)) then
+        current_transform => entry%transform_first
+        do
+           select type (current_transform)
+           type is (evt_shower_t)
+              if (current_transform%contains_powheg_matching ()) &
+                  entry%evt_powheg => current_transform
+              exit
+           end select
+           if (associated (current_transform%next)) then
+              current_transform => current_transform%next
+           else
+              exit
+           end if
+        end do
+     end if
+  end subroutine entry_determine_if_powheg_matching
+  
   subroutine entry_setup_event_transforms (entry, process, local)
     class(entry_t), intent(inout) :: entry
     type(process_t), intent(inout), target :: process
     type(rt_data_t), intent(in), target :: local
     class(evt_t), pointer :: evt
-    logical :: enable_shower
+    logical :: enable_fixed_order, enable_shower
     if (process%contains_unstable (local%model)) then
        call dispatch_evt_decay (evt, local)
        if (associated (evt))  call entry%import_transform (evt)
+    end if
+    enable_fixed_order = local%get_lval (var_str ("?nlo_fixed_order"))
+    if (enable_fixed_order) then
+       if (local%get_lval (var_str ("?unweighted"))) &
+          call msg_fatal ("NLO Fixed Order events have to be generated with &
+                          &?unweighted = false")
+       call dispatch_evt_nlo (evt)
+       call entry%import_transform (evt)
     end if
     enable_shower = local%get_lval (var_str ("?allow_shower")) .and. &
             (local%get_lval (var_str ("?ps_isr_active")) &
@@ -606,13 +803,22 @@ contains
   end subroutine entry_setup_event_transforms
 
   subroutine entry_init_mci_selector (entry)
-    class(entry_t), intent(inout) :: entry
-    integer :: i
+    class(entry_t), intent(inout), target :: entry
+    type(entry_t), pointer :: current_entry
+    integer :: i, j
     if (entry%has_integral) then
-       call entry%mci_selector%init (entry%mci_set%integral)
-       do i = 1, entry%n_mci
-          entry%mci_set(i)%weight_mci = entry%mci_selector%get_weight (i)
-       end do
+       select type (entry)
+       type is (entry_t)
+          current_entry => entry
+          do j = 1, current_entry%count_nlo_entries ()
+             if (j > 1) current_entry => current_entry%get_next ()
+             call current_entry%mci_selector%init (current_entry%mci_set%integral)
+             do i = 1, current_entry%n_mci
+                current_entry%mci_set(i)%weight_mci = &
+                   current_entry%mci_selector%get_weight (i)
+             end do
+          end do
+       end select
     end if
   end subroutine entry_init_mci_selector
 
@@ -684,21 +890,6 @@ contains
     deallocate (entry%core_safe)
   end subroutine entry_restore_process
   
-  subroutine entry_combine_mci_sets (entry)
-    class(entry_t), intent(inout) :: entry
-    integer :: n_components_lo, i_component, i_virt
-    n_components_lo = entry%n_mci / 3
-    do i_component = 1, n_components_lo
-      i_virt = i_component + 2*n_components_lo
-      entry%mci_set(i_component)%integral = &
-        entry%mci_set(i_component)%integral + entry%mci_set(i_virt)%integral
-      entry%mci_set(i_component)%error = sqrt (&
-        entry%mci_set(i_component)%error**2 + entry%mci_set(i_virt)%error**2)
-      entry%mci_set(i_virt)%integral = 0._default
-      entry%mci_set(i_virt)%has_integral = .false.
-    end do
-  end subroutine entry_combine_mci_sets
- 
   subroutine entry_connect_qcd (entry)
     class(entry_t), intent(inout), target :: entry
     class(evt_t), pointer :: evt
@@ -707,9 +898,8 @@ contains
        select type (evt)
        type is (evt_shower_t)
           evt%qcd => entry%qcd
-          if (evt%settings%powheg_matching) then
-             evt%powheg%qcd => entry%qcd
-             call evt%powheg%compute_lambda2_gen ()
+          if (allocated (evt%matching)) then
+             evt%matching%qcd => entry%qcd
           end if
        end select
        evt => evt%next
@@ -1027,7 +1217,10 @@ contains
                (process_id(i), &
                integrate, generate, simulation%update_sqme, &
                local, global)
+          call simulation%entry(i)%determine_if_powheg_matching ()
           if (signal_is_pending ())  return          
+          if (simulation%entry(i)%nlo_event) &
+             call simulation%entry(i)%setup_additional_entries ()
        end do
        if (.not. any (simulation%entry%valid)) then
           call msg_error ("Simulate: " &
@@ -1108,6 +1301,13 @@ contains
     end if
   end subroutine simulation_compute_n_events
 
+  function simulation_get_n_nlo_entries (simulation, i_prc) result (n_extra)
+    class(simulation_t), intent(in) :: simulation
+    integer, intent(in) :: i_prc
+    integer :: n_extra
+    n_extra = simulation%entry(i_prc)%count_nlo_entries ()
+  end function simulation_get_n_nlo_entries
+
   subroutine simulation_compute_md5sum (simulation)
     class(simulation_t), intent(inout) :: simulation
     type(process_t), pointer :: process
@@ -1179,19 +1379,23 @@ contains
   function simulation_select_mci (simulation) result (i_mci)
     class(simulation_t), intent(inout) :: simulation
     integer :: i_mci
+    i_mci = 0
     if (simulation%i_prc /= 0) then
        i_mci = simulation%entry(simulation%i_prc)%select_mci ()
     end if
   end function simulation_select_mci
 
   subroutine simulation_generate (simulation, n, es_array)
-    class(simulation_t), intent(inout) :: simulation
+    class(simulation_t), intent(inout), target :: simulation
     integer, intent(in) :: n
     type(event_stream_array_t), intent(inout), optional :: es_array
     type(string_t) :: str1, str2, str3
     logical :: generate_new, passed
-    integer :: i, j
+    integer :: i, j, k
+    type(entry_t), pointer :: current_entry
+    integer :: n_events
     simulation%n_evt_requested = n
+    n_events = n * simulation%get_n_nlo_entries (1)
     call simulation%entry%set_n (n)
     if (simulation%n_alt > 0)  call simulation%alt_entry%set_n (n)
     str1 = "Events: generating"
@@ -1209,8 +1413,13 @@ contains
     else 
        str3 = ", polarized"
     end if    
-    write (msg_buffer, "(A,1x,I0,1x,A,1x,A)")  char (str1), n, &
-         char (str2) // char(str3), "events ..."
+    if (n_events == n) then
+       write (msg_buffer, "(A,1x,I0,1x,A,1x,A)")  char (str1), n, &
+            char (str2) // char(str3), "events ..."
+    else
+       write (msg_buffer, "(A,1x,I0,1x,A,1x,A)") char (str1), n_events, &
+            char (str2) // char(str3), "NLO events ..."
+    end if 
     call msg_message ()
     write (msg_buffer, "(A,1x,A)") "Events: event normalization mode", &
          char (event_normalization_string (simulation%norm_mode))
@@ -1225,21 +1434,36 @@ contains
           simulation%i_prc = simulation%select_prc ()
           simulation%i_mci = simulation%select_mci ()
           associate (entry => simulation%entry(simulation%i_prc))
-            do j = 1, simulation%n_max_tries
-               if (.not. entry%valid)  call msg_warning &
-                       ("Process '" // char (entry%process_id) // "': " // &
-                       "matrix element vanishes, no events can be generated.")
-               call entry%generate (simulation%i_mci)
-               if (signal_is_pending ()) return
-               if (entry%has_valid_particle_set ())  exit
+            call entry%set_active_real_component (simulation%i_mci)
+            current_entry => entry%get_first ()
+            do k = 1, current_entry%count_nlo_entries ()
+               if (k > 1) then
+                  current_entry => current_entry%get_next ()
+                  current_entry%particle_set => current_entry%first%particle_set
+                  current_entry%particle_set_is_valid &
+                     = current_entry%first%particle_set_is_valid
+               end if
+               do j = 1, simulation%n_max_tries
+                  if (.not. current_entry%valid)  call msg_warning &
+                          ("Process '" // char (current_entry%process_id) // "': " // &
+                          "matrix element vanishes, no events can be generated.")
+                  call current_entry%generate (simulation%i_mci, i_nlo=k)
+                  if (signal_is_pending ()) return
+                  if (current_entry%has_valid_particle_set ())  exit
+               end do
             end do
+            if (entry%nlo_event) call entry%reset_nlo_counter ()
             if (.not. entry%has_valid_particle_set ()) then
                write (msg_buffer, "(A,I0,A)")  "Simulation: failed to &
                     &generate valid event after ", &
                     simulation%n_max_tries, " tries (sample_max_tries)"
                call msg_fatal ()
             end if
-            call entry%evaluate_expressions ()
+            current_entry => entry%get_first ()
+            do k = 1, current_entry%count_nlo_entries ()
+               if (k > 1) current_entry => current_entry%get_next ()
+               call current_entry%evaluate_expressions ()
+            end do
             if (signal_is_pending ()) return
             if (entry%passed_selection ()) then
                simulation%weight = entry%get_weight_ref ()
@@ -1461,15 +1685,21 @@ contains
   end subroutine simulation_read_event_eio
 
   subroutine simulation_write_event_es_array (object, es_array, passed)
-    class(simulation_t), intent(in) :: object
+    class(simulation_t), intent(in), target :: object
     class(event_stream_array_t), intent(inout) :: es_array
     logical, intent(in), optional :: passed
     integer :: i_prc, event_index
+    integer :: i
+    type(entry_t), pointer :: current_entry
     i_prc = object%i_prc
     if (i_prc > 0) then
        event_index = object%counter%total
-       call es_array%output (object%entry(i_prc)%event_t, i_prc, &
-            event_index, passed = passed, pacify = object%pacify)
+       current_entry => object%entry(i_prc)%get_first ()
+       do i = 1, current_entry%count_nlo_entries ()
+          if (i > 1) current_entry => current_entry%get_next ()
+          call es_array%output (current_entry%event_t, i_prc, &
+             event_index, passed = passed, pacify = object%pacify)
+       end do
     else
        call msg_fatal ("Simulation: write event: no process selected")
     end if
@@ -1477,18 +1707,27 @@ contains
 
   subroutine simulation_read_event_es_array (object, es_array, enable_switch, &
        fail)
-    class(simulation_t), intent(inout) :: object
-    class(event_stream_array_t), intent(inout) :: es_array
+    class(simulation_t), intent(inout), target :: object
+    class(event_stream_array_t), intent(inout), target :: es_array
     logical, intent(in) :: enable_switch
     logical, intent(out) :: fail
     integer :: iostat, i_prc
+    type(entry_t), pointer :: current_entry => null ()
+    integer :: i
     if (es_array%has_input ()) then
        fail = .false.
        call es_array%input_i_prc (i_prc, iostat)
        select case (iostat)
        case (0)
           object%i_prc = i_prc
-          call es_array%input_event (object%entry(i_prc)%event_t, iostat)
+          current_entry => object%entry(i_prc)
+          do i = 1, current_entry%count_nlo_entries ()
+             if (i > 1) then
+                call es_array%skip_eio_entry (iostat)
+                current_entry => current_entry%get_next ()
+             end if
+             call es_array%input_event (current_entry%event_t, iostat)
+          end do
        case (:-1)
           write (msg_buffer, "(A,1x,I0,1x,A)")  &
                "... event file terminates after", &
@@ -1638,1514 +1877,10 @@ contains
     end if
   end subroutine pacify_simulation
   
-
-  subroutine simulations_test (u, results)
-    integer, intent(in) :: u
-    type(test_results_t), intent(inout) :: results
-    call test (simulations_1, "simulations_1", &
-         "initialization", &
-         u, results)
-    call test (simulations_2, "simulations_2", &
-         "weighted events", &
-         u, results)
-    call test (simulations_3, "simulations_3", &
-         "unweighted events", &
-         u, results)
-    call test (simulations_4, "simulations_4", &
-         "process with structure functions", &
-         u, results)
-    call test (simulations_5, "simulations_5", &
-         "raw event I/O", &
-         u, results)
-    call test (simulations_6, "simulations_6", &
-         "raw event I/O with structure functions", &
-         u, results)
-    call test (simulations_7, "simulations_7", &
-         "automatic raw event I/O", &
-         u, results)
-    call test (simulations_8, "simulations_8", &
-         "rescan raw event file", &
-         u, results)
-    call test (simulations_9, "simulations_9", &
-         "rescan mismatch", &
-         u, results)
-    call test (simulations_10, "simulations_10", &
-         "alternative weight", &
-         u, results)
-    call test (simulations_11, "simulations_11", &
-         "decay", &
-         u, results)
-    call test (simulations_12, "simulations_12", &
-         "split event files", &
-         u, results)
-  end subroutine simulations_test
-
-  subroutine simulations_1 (u)
-    integer, intent(in) :: u
-    type(string_t) :: libname, procname1, procname2
-    type(rt_data_t), target :: global
-    type(simulation_t), target :: simulation
-    
-    write (u, "(A)")  "* Test output: simulations_1"
-    write (u, "(A)")  "*   Purpose: initialize simulation"
-    write (u, "(A)")
-
-    write (u, "(A)")  "* Initialize processes"
-    write (u, "(A)")
-
-    call syntax_model_file_init ()
-
-    call global%global_init ()
-    call global%set_log (var_str ("?omega_openmp"), &
-         .false., is_known = .true.)
-    call global%set_int (var_str ("seed"), &
-         0, is_known = .true.)    
-    
-    libname = "simulation_1a"
-    procname1 = "simulation_1p"
-    
-    call prepare_test_library (global, libname, 1, [procname1])
-    call compile_library (libname, global)
-
-    call global%set_string (var_str ("$method"), &
-         var_str ("unit_test"), is_known = .true.)
-    call global%set_string (var_str ("$phs_method"), &
-         var_str ("single"), is_known = .true.)
-    call global%set_string (var_str ("$integration_method"),&
-         var_str ("midpoint"), is_known = .true.)
-    call global%set_log (var_str ("?vis_history"),&
-         .false., is_known = .true.)    
-    call global%set_log (var_str ("?integration_timer"),&
-         .false., is_known = .true.)    
-    call global%set_log (var_str ("?recover_beams"), &
-         .false., is_known = .true.)
-    
-    call global%set_real (var_str ("sqrts"),&
-         1000._default, is_known = .true.)
-
-    call global%it_list%init ([1], [1000])
-
-    call global%set_string (var_str ("$run_id"), &
-         var_str ("simulations1"), is_known = .true.)
-    call integrate_process (procname1, global, local_stack=.true.)
-
-    procname2 = "sim_extra"
-    
-    call prepare_test_library (global, libname, 1, [procname2])
-    call compile_library (libname, global)
-    call global%set_string (var_str ("$run_id"), &
-         var_str ("simulations2"), is_known = .true.)
-
-
-    write (u, "(A)")  "* Initialize event generation"
-    write (u, "(A)")
-
-    call global%set_string (var_str ("$sample"), &
-         var_str ("sim1"), is_known = .true.)
-    call integrate_process (procname2, global, local_stack=.true.)
-
-    call simulation%init ([procname1, procname2], .false., .true., global)
-    call simulation%init_process_selector ()
-    call simulation%write (u)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Write the event record for the first process"
-    write (u, "(A)")
-    
-    call simulation%write_event (u, i_prc = 1)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Cleanup"
-
-    call simulation%final ()
-    call global%final ()
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: simulations_1"
-    
-  end subroutine simulations_1
-  
-  subroutine simulations_2 (u)
-    integer, intent(in) :: u
-    type(string_t) :: libname, procname1
-    type(rt_data_t), target :: global
-    type(simulation_t), target :: simulation
-    type(event_sample_data_t) :: data
-    
-    write (u, "(A)")  "* Test output: simulations_2"
-    write (u, "(A)")  "*   Purpose: generate events for a single process"
-    write (u, "(A)")
-
-    write (u, "(A)")  "* Initialize processes"
-    write (u, "(A)")
-
-    call syntax_model_file_init ()
-
-    call global%global_init ()
-    call global%set_log (var_str ("?omega_openmp"), &
-         .false., is_known = .true.)
-    call global%set_int (var_str ("seed"), &
-         0, is_known = .true.)    
-    
-    libname = "simulation_2a"
-    procname1 = "simulation_2p"
-    
-    call prepare_test_library (global, libname, 1, [procname1])
-    call compile_library (libname, global)
-
-    call global%append_log (&
-         var_str ("?rebuild_events"), .true., intrinsic = .true.)
-
-    call global%set_string (var_str ("$method"), &
-         var_str ("unit_test"), is_known = .true.)
-    call global%set_string (var_str ("$phs_method"), &
-         var_str ("single"), is_known = .true.)
-    call global%set_string (var_str ("$integration_method"),&
-         var_str ("midpoint"), is_known = .true.)
-    call global%set_log (var_str ("?vis_history"),&
-         .false., is_known = .true.)    
-    call global%set_log (var_str ("?integration_timer"),&
-         .false., is_known = .true.)    
-    call global%set_log (var_str ("?recover_beams"), &
-         .false., is_known = .true.)
-
-    call global%set_real (var_str ("sqrts"),&
-         1000._default, is_known = .true.)
-
-    call global%it_list%init ([1], [1000])
-
-    call global%set_string (var_str ("$run_id"), &
-         var_str ("simulations1"), is_known = .true.)
-    call integrate_process (procname1, global, local_stack=.true.)
-
-    write (u, "(A)")  "* Initialize event generation"
-    write (u, "(A)")
-
-    call global%set_log (var_str ("?unweighted"), &
-         .false., is_known = .true.)
-    call simulation%init ([procname1], .true., .true., global)
-    call simulation%init_process_selector ()
-
-    data = simulation%get_data ()
-    call data%write (u)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Generate three events"
-    write (u, "(A)")
-
-    call simulation%generate (3)
-    call simulation%write (u)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Write the event record for the last event"
-    write (u, "(A)")
-    
-    call simulation%write_event (u)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Cleanup"
-
-    call simulation%final ()
-    call global%final ()
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: simulations_2"
-    
-  end subroutine simulations_2
-  
-  subroutine simulations_3 (u)
-    integer, intent(in) :: u
-    type(string_t) :: libname, procname1
-    type(rt_data_t), target :: global
-    type(simulation_t), target :: simulation
-    type(event_sample_data_t) :: data
-    
-    write (u, "(A)")  "* Test output: simulations_3"
-    write (u, "(A)")  "*   Purpose: generate unweighted events &
-         &for a single process"
-    write (u, "(A)")
-
-    write (u, "(A)")  "* Initialize processes"
-    write (u, "(A)")
-
-    call syntax_model_file_init ()
-
-    call global%global_init ()
-    call global%set_log (var_str ("?omega_openmp"), &
-         .false., is_known = .true.)
-    call global%set_int (var_str ("seed"), &
-         0, is_known = .true.)    
-    
-    libname = "simulation_3a"
-    procname1 = "simulation_3p"
-    
-    call prepare_test_library (global, libname, 1, [procname1])
-    call compile_library (libname, global)
-
-    call global%append_log (&
-         var_str ("?rebuild_events"), .true., intrinsic = .true.)
-
-    call global%set_string (var_str ("$method"), &
-         var_str ("unit_test"), is_known = .true.)
-    call global%set_string (var_str ("$phs_method"), &
-         var_str ("single"), is_known = .true.)
-    call global%set_string (var_str ("$integration_method"),&
-         var_str ("midpoint"), is_known = .true.)
-    call global%set_log (var_str ("?vis_history"),&
-         .false., is_known = .true.)    
-    call global%set_log (var_str ("?integration_timer"),&
-         .false., is_known = .true.)    
-    call global%set_log (var_str ("?recover_beams"), &
-         .false., is_known = .true.)
-
-    call global%set_real (var_str ("sqrts"),&
-         1000._default, is_known = .true.)
-
-    call global%it_list%init ([1], [1000])
-
-    call global%set_string (var_str ("$run_id"), &
-         var_str ("simulations1"), is_known = .true.)
-    call integrate_process (procname1, global, local_stack=.true.)
-
-    write (u, "(A)")  "* Initialize event generation"
-    write (u, "(A)")
-
-    call simulation%init ([procname1], .true., .true., global)
-    call simulation%init_process_selector ()
-
-    data = simulation%get_data ()
-    call data%write (u)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Generate three events"
-    write (u, "(A)")
-
-    call simulation%generate (3)
-    call simulation%write (u)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Write the event record for the last event"
-    write (u, "(A)")
-    
-    call simulation%write_event (u)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Cleanup"
-
-    call simulation%final ()
-    call global%final ()
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: simulations_3"
-    
-  end subroutine simulations_3
-  
-  subroutine simulations_4 (u)
-    integer, intent(in) :: u
-    type(string_t) :: libname, procname1
-    type(rt_data_t), target :: global
-    type(flavor_t) :: flv
-    type(string_t) :: name
-    type(simulation_t), target :: simulation
-    type(event_sample_data_t) :: data
-    
-    write (u, "(A)")  "* Test output: simulations_4"
-    write (u, "(A)")  "*   Purpose: generate events for a single process &
-         &with structure functions"
-    write (u, "(A)")
-
-    write (u, "(A)")  "* Initialize processes"
-    write (u, "(A)")
-
-    call syntax_model_file_init ()
-    call syntax_phs_forest_init ()
-
-    call global%global_init ()
-    call global%set_log (var_str ("?omega_openmp"), &
-         .false., is_known = .true.)
-    call global%set_int (var_str ("seed"), &
-         0, is_known = .true.)    
-    
-    libname = "simulation_4a"
-    procname1 = "simulation_4p"
-    
-    call prepare_test_library (global, libname, 1, [procname1])
-    call compile_library (libname, global)
-
-    call global%append_log (&
-         var_str ("?rebuild_phase_space"), .true., intrinsic = .true.)
-    call global%append_log (&
-         var_str ("?rebuild_grids"), .true., intrinsic = .true.)
-    call global%append_log (&
-         var_str ("?rebuild_events"), .true., intrinsic = .true.)
-
-    call global%set_string (var_str ("$run_id"), &
-         var_str ("r1"), is_known = .true.)
-    call global%set_string (var_str ("$method"), &
-         var_str ("unit_test"), is_known = .true.)
-    call global%set_string (var_str ("$phs_method"), &
-         var_str ("wood"), is_known = .true.)
-    call global%set_string (var_str ("$integration_method"),&
-         var_str ("vamp"), is_known = .true.)
-    call global%set_log (var_str ("?use_vamp_equivalences"),&
-         .true., is_known = .true.)
-    call global%set_real (var_str ("sqrts"),&
-         1000._default, is_known = .true.)
-    call global%model_set_real (var_str ("ms"), &
-         0._default)
-    call global%set_log (var_str ("?vis_history"),&
-         .false., is_known = .true.)    
-    call global%set_log (var_str ("?integration_timer"),&
-         .false., is_known = .true.)    
-    call global%set_log (var_str ("?recover_beams"), &
-         .false., is_known = .true.)
-    
-    call reset_interaction_counter ()
-
-    call flv%init (25, global%model)
-    name = flv%get_name ()
-    
-    call global%beam_structure%init_sf ([name, name], [1])
-    call global%beam_structure%set_sf (1, 1, var_str ("sf_test_1"))
-
-    write (u, "(A)")  "* Integrate"
-    write (u, "(A)")
-
-    call global%it_list%init ([1], [1000])
-
-    call global%set_string (var_str ("$run_id"), &
-         var_str ("r1"), is_known = .true.)
-    call integrate_process (procname1, global, local_stack=.true.)
-
-    write (u, "(A)")  "* Initialize event generation"
-    write (u, "(A)")
-
-    call global%set_log (var_str ("?unweighted"), &
-         .false., is_known = .true.)
-    call global%set_string (var_str ("$sample"), &
-         var_str ("simulations4"), is_known = .true.)
-    call simulation%init ([procname1], .true., .true., global)
-    call simulation%init_process_selector ()
-
-    data = simulation%get_data ()
-    call data%write (u)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Generate three events"
-    write (u, "(A)")
-
-    call simulation%generate (3)
-    call simulation%write (u)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Write the event record for the last event"
-    write (u, "(A)")
-    
-    call simulation%write_event (u)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Cleanup"
-
-    call simulation%final ()
-    call global%final ()
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: simulations_4"
-    
-  end subroutine simulations_4
-  
-  subroutine simulations_5 (u)
-    integer, intent(in) :: u
-    type(string_t) :: libname, procname1, sample
-    type(rt_data_t), target :: global
-    class(eio_t), allocatable :: eio
-    type(simulation_t), allocatable, target :: simulation
-    
-    write (u, "(A)")  "* Test output: simulations_5"
-    write (u, "(A)")  "*   Purpose: generate events for a single process"
-    write (u, "(A)")  "*            write to file and reread"
-    write (u, "(A)")
-
-    write (u, "(A)")  "* Initialize processes"
-    write (u, "(A)")
-
-    call syntax_model_file_init ()
-
-    call global%global_init ()
-    call global%set_log (var_str ("?omega_openmp"), &
-         .false., is_known = .true.)
-    call global%set_int (var_str ("seed"), &
-         0, is_known = .true.)    
-    
-    libname = "simulation_5a"
-    procname1 = "simulation_5p"
-    
-    call prepare_test_library (global, libname, 1, [procname1])
-    call compile_library (libname, global)
-
-    call global%append_log (&
-         var_str ("?rebuild_events"), .true., intrinsic = .true.)
-
-    call global%set_string (var_str ("$method"), &
-         var_str ("unit_test"), is_known = .true.)
-    call global%set_string (var_str ("$phs_method"), &
-         var_str ("single"), is_known = .true.)
-    call global%set_string (var_str ("$integration_method"),&
-         var_str ("midpoint"), is_known = .true.)   
-    call global%set_log (var_str ("?vis_history"),&
-         .false., is_known = .true.)    
-    call global%set_log (var_str ("?integration_timer"),&
-         .false., is_known = .true.)    
-    call global%set_log (var_str ("?recover_beams"), &
-         .false., is_known = .true.)
-
-    call global%set_real (var_str ("sqrts"),&
-         1000._default, is_known = .true.)
-
-    call global%it_list%init ([1], [1000])
-
-    call global%set_string (var_str ("$run_id"), &
-         var_str ("simulations5"), is_known = .true.)
-    call integrate_process (procname1, global, local_stack=.true.)
-
-    write (u, "(A)")  "* Initialize event generation"
-    write (u, "(A)")
-
-    call global%set_log (var_str ("?unweighted"), &
-         .false., is_known = .true.)
-    sample = "simulations5"
-    call global%set_string (var_str ("$sample"), &
-         sample, is_known = .true.)
-    allocate (simulation)
-    call simulation%init ([procname1], .true., .true., global)
-    call simulation%init_process_selector ()
-
-    write (u, "(A)")  "* Initialize raw event file"
-    write (u, "(A)")
-
-    allocate (eio_raw_t :: eio)
-    call eio%init_out (sample)
-    
-    write (u, "(A)")  "* Generate an event"
-    write (u, "(A)")
-
-    call simulation%generate (1)
-    call simulation%write_event (u)
-    call simulation%write_event (eio)
-
-    call eio%final ()
-    deallocate (eio)
-    call simulation%final ()
-    deallocate (simulation)
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Re-read the event from file"
-    write (u, "(A)")
-    
-    call global%set_log (var_str ("?update_sqme"), &
-         .true., is_known = .true.)
-    call global%set_log (var_str ("?update_weight"), &
-         .true., is_known = .true.)
-    call global%set_log (var_str ("?recover_beams"), &
-         .false., is_known = .true.)
-
-    allocate (simulation)
-    call simulation%init ([procname1], .true., .true., global)
-    call simulation%init_process_selector ()
-    allocate (eio_raw_t :: eio)
-    call eio%init_in (sample)
-    
-    call simulation%read_event (eio)
-    call simulation%write_event (u)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Recalculate process instance"
-    write (u, "(A)")
-
-    call simulation%recalculate ()
+  subroutine simulation_evaluate_expressions (simulation)
+    class(simulation_t), intent(inout) :: simulation
     call simulation%entry(simulation%i_prc)%evaluate_expressions ()
-    call simulation%write_event (u)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Cleanup"
-
-    call eio%final ()
-    call simulation%final ()
-    call global%final ()
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: simulations_5"
-    
-  end subroutine simulations_5
+  end subroutine simulation_evaluate_expressions
   
-  subroutine simulations_6 (u)
-    integer, intent(in) :: u
-    type(string_t) :: libname, procname1, sample
-    type(rt_data_t), target :: global
-    class(eio_t), allocatable :: eio
-    type(simulation_t), allocatable, target :: simulation
-    type(flavor_t) :: flv
-    type(string_t) :: name
-    
-    write (u, "(A)")  "* Test output: simulations_6"
-    write (u, "(A)")  "*   Purpose: generate events for a single process"
-    write (u, "(A)")  "*            write to file and reread"
-    write (u, "(A)")
-
-    write (u, "(A)")  "* Initialize process and integrate"
-    write (u, "(A)")
-
-    call syntax_model_file_init ()
-
-    call global%global_init ()
-    call global%set_log (var_str ("?omega_openmp"), &
-         .false., is_known = .true.)
-    call global%set_int (var_str ("seed"), &
-         0, is_known = .true.)    
-    
-    libname = "simulation_6"
-    procname1 = "simulation_6p"
-    
-    call prepare_test_library (global, libname, 1, [procname1])
-    call compile_library (libname, global)
-
-    call global%append_log (&
-         var_str ("?rebuild_phase_space"), .true., intrinsic = .true.)
-    call global%append_log (&
-         var_str ("?rebuild_grids"), .true., intrinsic = .true.)
-    call global%append_log (&
-         var_str ("?rebuild_events"), .true., intrinsic = .true.)
-
-    call global%set_string (var_str ("$method"), &
-         var_str ("unit_test"), is_known = .true.)
-    call global%set_string (var_str ("$phs_method"), &
-         var_str ("wood"), is_known = .true.)
-    call global%set_string (var_str ("$integration_method"),&
-         var_str ("vamp"), is_known = .true.)
-    call global%set_log (var_str ("?use_vamp_equivalences"),&
-         .true., is_known = .true.)
-    call global%set_log (var_str ("?vis_history"),&
-         .false., is_known = .true.)    
-    call global%set_log (var_str ("?integration_timer"),&
-         .false., is_known = .true.)    
-    call global%set_log (var_str ("?recover_beams"), &
-         .false., is_known = .true.)
-
-    call global%set_real (var_str ("sqrts"),&
-         1000._default, is_known = .true.)
-    call global%model_set_real (var_str ("ms"), &
-         0._default)
-
-    call flv%init (25, global%model)
-    name = flv%get_name ()
-    
-    call global%beam_structure%init_sf ([name, name], [1])
-    call global%beam_structure%set_sf (1, 1, var_str ("sf_test_1"))
-
-    call global%it_list%init ([1], [1000])
-
-    call global%set_string (var_str ("$run_id"), &
-         var_str ("r1"), is_known = .true.)
-    call integrate_process (procname1, global, local_stack=.true.)
-
-    write (u, "(A)")  "* Initialize event generation"
-    write (u, "(A)")
-
-    call reset_interaction_counter ()
-    
-    call global%set_log (var_str ("?unweighted"), &
-         .false., is_known = .true.)
-    sample = "simulations6"
-    call global%set_string (var_str ("$sample"), &
-         sample, is_known = .true.)
-    allocate (simulation)
-    call simulation%init ([procname1], .true., .true., global)
-    call simulation%init_process_selector ()
-
-    write (u, "(A)")  "* Initialize raw event file"
-    write (u, "(A)")
-
-    allocate (eio_raw_t :: eio)
-    call eio%init_out (sample)
-    
-    write (u, "(A)")  "* Generate an event"
-    write (u, "(A)")
-
-    call simulation%generate (1)
-    call pacify (simulation%entry(simulation%i_prc))
-    call simulation%write_event (u, verbose = .true., testflag = .true.)
-    call simulation%write_event (eio)
-
-    call eio%final ()
-    deallocate (eio)
-    call simulation%final ()
-    deallocate (simulation)
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Re-read the event from file"
-    write (u, "(A)")
-    
-    call reset_interaction_counter ()
-    
-    call global%set_log (var_str ("?update_sqme"), &
-         .true., is_known = .true.)
-    call global%set_log (var_str ("?update_weight"), &
-         .true., is_known = .true.)
-
-    allocate (simulation)
-    call simulation%init ([procname1], .true., .true., global)
-    call simulation%init_process_selector ()
-    allocate (eio_raw_t :: eio)
-    call eio%init_in (sample)
-    
-    call simulation%read_event (eio)
-    call simulation%write_event (u, verbose = .true., testflag = .true.)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Recalculate process instance"
-    write (u, "(A)")
-
-    call simulation%recalculate ()
-    call simulation%entry(simulation%i_prc)%evaluate_expressions ()
-    call simulation%write_event (u, verbose = .true., testflag = .true.)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Cleanup"
-
-    call eio%final ()
-    call simulation%final ()
-    call global%final ()
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: simulations_6"
-    
-  end subroutine simulations_6
-  
-  subroutine simulations_7 (u)
-    integer, intent(in) :: u
-    type(string_t) :: libname, procname1, sample
-    type(rt_data_t), target :: global
-    type(string_t), dimension(0) :: empty_string_array
-    type(event_sample_data_t) :: data
-    type(event_stream_array_t) :: es_array
-    type(simulation_t), allocatable, target :: simulation
-    type(flavor_t) :: flv
-    type(string_t) :: name
-    
-    write (u, "(A)")  "* Test output: simulations_7"
-    write (u, "(A)")  "*   Purpose: generate events for a single process"
-    write (u, "(A)")  "*            write to file and reread"
-    write (u, "(A)")
-
-    write (u, "(A)")  "* Initialize process and integrate"
-    write (u, "(A)")
-
-    call syntax_model_file_init ()
-
-    call global%global_init ()
-    call global%init_fallback_model &
-         (var_str ("SM_hadrons"), var_str ("SM_hadrons.mdl"))
-
-    call global%set_log (var_str ("?omega_openmp"), &
-         .false., is_known = .true.)
-    call global%set_int (var_str ("seed"), &
-         0, is_known = .true.)    
-    
-    libname = "simulation_7"
-    procname1 = "simulation_7p"
-    
-    call prepare_test_library (global, libname, 1, [procname1])
-    call compile_library (libname, global)
-
-    call global%append_log (&
-         var_str ("?rebuild_phase_space"), .true., intrinsic = .true.)
-    call global%append_log (&
-         var_str ("?rebuild_grids"), .true., intrinsic = .true.)
-    call global%append_log (&
-         var_str ("?rebuild_events"), .true., intrinsic = .true.)
-
-    call global%set_string (var_str ("$method"), &
-         var_str ("unit_test"), is_known = .true.)
-    call global%set_string (var_str ("$phs_method"), &
-         var_str ("wood"), is_known = .true.)
-    call global%set_string (var_str ("$integration_method"),&
-         var_str ("vamp"), is_known = .true.)
-    call global%set_log (var_str ("?use_vamp_equivalences"),&
-         .true., is_known = .true.)
-    call global%set_log (var_str ("?vis_history"),&
-         .false., is_known = .true.)    
-    call global%set_log (var_str ("?integration_timer"),&
-         .false., is_known = .true.)    
-    call global%set_log (var_str ("?recover_beams"), &
-         .false., is_known = .true.)
-
-    call global%set_real (var_str ("sqrts"),&
-         1000._default, is_known = .true.)
-    call global%model_set_real (var_str ("ms"), &
-         0._default)
-
-    call flv%init (25, global%model)
-    name = flv%get_name ()
-    
-    call global%beam_structure%init_sf ([name, name], [1])
-    call global%beam_structure%set_sf (1, 1, var_str ("sf_test_1"))
-
-    call global%it_list%init ([1], [1000])
-
-    call global%set_string (var_str ("$run_id"), &
-         var_str ("r1"), is_known = .true.)
-    call integrate_process (procname1, global, local_stack=.true.)
-
-    write (u, "(A)")  "* Initialize event generation"
-    write (u, "(A)")
-
-    call reset_interaction_counter ()
-    
-    call global%set_log (var_str ("?unweighted"), &
-         .false., is_known = .true.)
-    sample = "simulations7"
-    call global%set_string (var_str ("$sample"), &
-         sample, is_known = .true.)
-    allocate (simulation)
-    call simulation%init ([procname1], .true., .true., global)
-    call simulation%init_process_selector ()
-
-    write (u, "(A)")  "* Initialize raw event file"
-    write (u, "(A)")
-
-    data%md5sum_prc = simulation%get_md5sum_prc ()
-    data%md5sum_cfg = simulation%get_md5sum_cfg ()
-    call es_array%init (sample, [var_str ("raw")], global, data)
-    
-    write (u, "(A)")  "* Generate an event"
-    write (u, "(A)")
-
-    call simulation%generate (1, es_array)
-
-    call es_array%final ()
-    call simulation%final ()
-    deallocate (simulation)
-    
-    write (u, "(A)")  "* Re-read the event from file and generate another one"
-    write (u, "(A)")
-    
-    call global%set_log (&
-         var_str ("?rebuild_events"), .false., is_known = .true.)
-
-    call reset_interaction_counter ()
-    
-    allocate (simulation)
-    call simulation%init ([procname1], .true., .true., global)
-    call simulation%init_process_selector ()
-
-    data%md5sum_prc = simulation%get_md5sum_prc ()
-    data%md5sum_cfg = simulation%get_md5sum_cfg ()
-    call es_array%init (sample, empty_string_array, global, data, &
-         input = var_str ("raw"))
-    
-    call simulation%generate (2, es_array)
-    
-    call pacify (simulation%entry(simulation%i_prc))
-    call simulation%write_event (u, verbose = .true.)
-
-    call es_array%final ()
-    call simulation%final ()
-    deallocate (simulation)
-    
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Re-read both events from file"
-    write (u, "(A)")
-    
-    call reset_interaction_counter ()
-    
-    allocate (simulation)
-    call simulation%init ([procname1], .true., .true., global)
-    call simulation%init_process_selector ()
-
-    data%md5sum_prc = simulation%get_md5sum_prc ()
-    data%md5sum_cfg = simulation%get_md5sum_cfg ()
-    call es_array%init (sample, empty_string_array, global, data, &
-         input = var_str ("raw"))
-
-    call simulation%generate (2, es_array)
-    
-    call pacify (simulation%entry(simulation%i_prc))
-    call simulation%write_event (u, verbose = .true.)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Cleanup"
-
-    call es_array%final ()
-    call simulation%final ()
-    call global%final ()
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: simulations_7"
-    
-  end subroutine simulations_7
-  
-  subroutine simulations_8 (u)
-    integer, intent(in) :: u
-    type(string_t) :: libname, procname1, sample
-    type(rt_data_t), target :: global
-    type(string_t), dimension(0) :: empty_string_array
-    type(event_sample_data_t) :: data
-    type(event_stream_array_t) :: es_array
-    type(simulation_t), allocatable, target :: simulation
-    type(flavor_t) :: flv
-    type(string_t) :: name
-    
-    write (u, "(A)")  "* Test output: simulations_8"
-    write (u, "(A)")  "*   Purpose: generate events for a single process"
-    write (u, "(A)")  "*            write to file and rescan"
-    write (u, "(A)")
-
-    write (u, "(A)")  "* Initialize process and integrate"
-    write (u, "(A)")
-
-    call syntax_model_file_init ()
-
-    call global%global_init ()
-    call global%init_fallback_model &
-         (var_str ("SM_hadrons"), var_str ("SM_hadrons.mdl"))
-
-    call global%set_log (var_str ("?omega_openmp"), &
-         .false., is_known = .true.)
-    call global%set_int (var_str ("seed"), &
-         0, is_known = .true.)        
-
-    libname = "simulation_8"
-    procname1 = "simulation_8p"
-    
-    call prepare_test_library (global, libname, 1, [procname1])
-    call compile_library (libname, global)
-
-    call global%append_log (&
-         var_str ("?rebuild_phase_space"), .true., intrinsic = .true.)
-    call global%append_log (&
-         var_str ("?rebuild_grids"), .true., intrinsic = .true.)
-    call global%append_log (&
-         var_str ("?rebuild_events"), .true., intrinsic = .true.)
-
-    call global%set_string (var_str ("$method"), &
-         var_str ("unit_test"), is_known = .true.)
-    call global%set_string (var_str ("$phs_method"), &
-         var_str ("wood"), is_known = .true.)
-    call global%set_string (var_str ("$integration_method"),&
-         var_str ("vamp"), is_known = .true.)
-    call global%set_log (var_str ("?use_vamp_equivalences"),&
-         .true., is_known = .true.)   
-    call global%set_log (var_str ("?vis_history"),&
-         .false., is_known = .true.)    
-    call global%set_log (var_str ("?integration_timer"),&
-         .false., is_known = .true.)    
-    call global%set_log (var_str ("?recover_beams"), &
-         .false., is_known = .true.)
-
-    call global%set_real (var_str ("sqrts"),&
-         1000._default, is_known = .true.)
-    call global%model_set_real (var_str ("ms"), &
-         0._default)
-
-    call flv%init (25, global%model)
-    name = flv%get_name ()
-    
-    call global%beam_structure%init_sf ([name, name], [1])
-    call global%beam_structure%set_sf (1, 1, var_str ("sf_test_1"))
-
-    call global%it_list%init ([1], [1000])
-
-    call global%set_string (var_str ("$run_id"), &
-         var_str ("r1"), is_known = .true.)
-    call integrate_process (procname1, global, local_stack=.true.)
-
-    write (u, "(A)")  "* Initialize event generation"
-    write (u, "(A)")
-
-    call reset_interaction_counter ()
-    
-    call global%set_log (var_str ("?unweighted"), &
-         .false., is_known = .true.)
-    sample = "simulations8"
-    call global%set_string (var_str ("$sample"), &
-         sample, is_known = .true.)
-    allocate (simulation)
-    call simulation%init ([procname1], .true., .true., global)
-    call simulation%init_process_selector ()
-
-    write (u, "(A)")  "* Initialize raw event file"
-    write (u, "(A)")
-
-    data%md5sum_prc = simulation%get_md5sum_prc ()
-    data%md5sum_cfg = simulation%get_md5sum_cfg ()
-    write (u, "(1x,A,A,A)")  "MD5 sum (proc)   = '", data%md5sum_prc, "'"
-    write (u, "(1x,A,A,A)")  "MD5 sum (config) = '", data%md5sum_cfg, "'"
-    call es_array%init (sample, [var_str ("raw")], global, &
-         data)
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Generate an event"
-    write (u, "(A)")
-
-    call simulation%generate (1, es_array)
-
-    call pacify (simulation%entry(simulation%i_prc))
-    call simulation%write_event (u, verbose = .true., testflag = .true.)
-
-    call es_array%final ()
-    call simulation%final ()
-    deallocate (simulation)
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Re-read the event from file"
-    write (u, "(A)")
-    
-    call reset_interaction_counter ()
-    
-    allocate (simulation)
-    call simulation%init ([procname1], .false., .false., global)
-    call simulation%init_process_selector ()
-
-    data%md5sum_prc = simulation%get_md5sum_prc ()
-    data%md5sum_cfg = ""
-    write (u, "(1x,A,A,A)")  "MD5 sum (proc)   = '", data%md5sum_prc, "'"
-    write (u, "(1x,A,A,A)")  "MD5 sum (config) = '", data%md5sum_cfg, "'"
-    call es_array%init (sample, empty_string_array, global, data, &
-         input = var_str ("raw"), input_sample = sample, allow_switch = .false.)
-    
-    call simulation%rescan (1, es_array, global = global)
-    
-    write (u, "(A)")
-
-    call pacify (simulation%entry(simulation%i_prc))
-    call simulation%write_event (u, verbose = .true., testflag = .true.)
-
-    call es_array%final ()
-    call simulation%final ()
-    deallocate (simulation)
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Re-read again and recalculate"
-    write (u, "(A)")
-    
-    call reset_interaction_counter ()
-    
-    call global%set_log (var_str ("?update_sqme"), &
-         .true., is_known = .true.)
-    call global%set_log (var_str ("?update_event"), &
-         .true., is_known = .true.)
-
-    allocate (simulation)
-    call simulation%init ([procname1], .false., .false., global)
-    call simulation%init_process_selector ()
-
-    data%md5sum_prc = simulation%get_md5sum_prc ()
-    data%md5sum_cfg = ""
-    write (u, "(1x,A,A,A)")  "MD5 sum (proc)   = '", data%md5sum_prc, "'"
-    write (u, "(1x,A,A,A)")  "MD5 sum (config) = '", data%md5sum_cfg, "'"
-    call es_array%init (sample, empty_string_array, global, data, &
-         input = var_str ("raw"), input_sample = sample, allow_switch = .false.)
-    
-    call simulation%rescan (1, es_array, global = global)
-    
-    write (u, "(A)")
-
-    call pacify (simulation%entry(simulation%i_prc))
-    call simulation%write_event (u, verbose = .true., testflag = .true.)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Cleanup"
-
-    call es_array%final ()
-    call simulation%final ()
-    call global%final ()
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: simulations_8"
-    
-  end subroutine simulations_8
-  
-  subroutine simulations_9 (u)
-    integer, intent(in) :: u
-    type(string_t) :: libname, procname1, sample
-    type(rt_data_t), target :: global
-    type(string_t), dimension(0) :: empty_string_array
-    type(event_sample_data_t) :: data
-    type(event_stream_array_t) :: es_array
-    type(simulation_t), allocatable, target :: simulation
-    type(flavor_t) :: flv
-    type(string_t) :: name
-    logical :: error
-    
-    write (u, "(A)")  "* Test output: simulations_9"
-    write (u, "(A)")  "*   Purpose: generate events for a single process"
-    write (u, "(A)")  "*            write to file and rescan"
-    write (u, "(A)")
-
-    write (u, "(A)")  "* Initialize process and integrate"
-    write (u, "(A)")
-
-    call syntax_model_file_init ()
-
-    call global%global_init ()
-    call global%init_fallback_model &
-         (var_str ("SM_hadrons"), var_str ("SM_hadrons.mdl"))
-
-    call global%set_log (var_str ("?omega_openmp"), &
-         .false., is_known = .true.)
-    call global%set_int (var_str ("seed"), &
-         0, is_known = .true.)    
-    
-    libname = "simulation_9"
-    procname1 = "simulation_9p"
-    
-    call prepare_test_library (global, libname, 1, [procname1])
-    call compile_library (libname, global)
-
-    call global%append_log (&
-         var_str ("?rebuild_phase_space"), .true., intrinsic = .true.)
-    call global%append_log (&
-         var_str ("?rebuild_grids"), .true., intrinsic = .true.)
-    call global%append_log (&
-         var_str ("?rebuild_events"), .true., intrinsic = .true.)
-
-    call global%set_string (var_str ("$method"), &
-         var_str ("unit_test"), is_known = .true.)
-    call global%set_string (var_str ("$phs_method"), &
-         var_str ("wood"), is_known = .true.)
-    call global%set_string (var_str ("$integration_method"),&
-         var_str ("vamp"), is_known = .true.)
-    call global%set_log (var_str ("?use_vamp_equivalences"),&
-         .true., is_known = .true.)
-    call global%set_log (var_str ("?vis_history"),&
-         .false., is_known = .true.)    
-    call global%set_log (var_str ("?integration_timer"),&
-         .false., is_known = .true.)    
-    call global%set_log (var_str ("?recover_beams"), &
-         .false., is_known = .true.)
-
-    call global%set_real (var_str ("sqrts"),&
-         1000._default, is_known = .true.)
-    call global%model_set_real (var_str ("ms"), &
-         0._default)
-
-    call flv%init (25, global%model)
-    name = flv%get_name ()
-    
-    call global%beam_structure%init_sf ([name, name], [1])
-    call global%beam_structure%set_sf (1, 1, var_str ("sf_test_1"))
-
-    call global%it_list%init ([1], [1000])
-
-    call global%set_string (var_str ("$run_id"), &
-         var_str ("r1"), is_known = .true.)
-    call integrate_process (procname1, global, local_stack=.true.)
-
-    write (u, "(A)")  "* Initialize event generation"
-    write (u, "(A)")
-
-    call reset_interaction_counter ()
-    
-    call global%set_log (var_str ("?unweighted"), &
-         .false., is_known = .true.)
-    sample = "simulations9"
-    call global%set_string (var_str ("$sample"), &
-         sample, is_known = .true.)
-    allocate (simulation)
-    call simulation%init ([procname1], .true., .true., global)
-    call simulation%init_process_selector ()
-
-    call simulation%write (u)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Initialize raw event file"
-    write (u, "(A)")
-
-    data%md5sum_prc = simulation%get_md5sum_prc ()
-    data%md5sum_cfg = simulation%get_md5sum_cfg ()
-    write (u, "(1x,A,A,A)")  "MD5 sum (proc)   = '", data%md5sum_prc, "'"
-    write (u, "(1x,A,A,A)")  "MD5 sum (config) = '", data%md5sum_cfg, "'"
-    call es_array%init (sample, [var_str ("raw")], global, &
-         data)
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Generate an event"
-    write (u, "(A)")
-
-    call simulation%generate (1, es_array)
-
-    call es_array%final ()
-    call simulation%final ()
-    deallocate (simulation)
-    
-    write (u, "(A)")  "* Initialize event generation for different parameters"
-    write (u, "(A)")
-    
-    call reset_interaction_counter ()
-    
-    allocate (simulation)
-    call simulation%init ([procname1, procname1], .false., .false., global)
-    call simulation%init_process_selector ()
-    
-    call simulation%write (u)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Attempt to re-read the events (should fail)"
-    write (u, "(A)")
-
-    data%md5sum_prc = simulation%get_md5sum_prc ()
-    data%md5sum_cfg = ""
-    write (u, "(1x,A,A,A)")  "MD5 sum (proc)   = '", data%md5sum_prc, "'"
-    write (u, "(1x,A,A,A)")  "MD5 sum (config) = '", data%md5sum_cfg, "'"
-    call es_array%init (sample, empty_string_array, global, data, &
-         input = var_str ("raw"), input_sample = sample, &
-         allow_switch = .false., error = error)
-    
-    write (u, "(1x,A,L1)")  "error = ", error
-    
-    call simulation%rescan (1, es_array, global = global)
-
-    call es_array%final ()
-    call simulation%final ()
-    call global%final ()
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: simulations_9"
-    
-  end subroutine simulations_9
-  
-  subroutine simulations_10 (u)
-    integer, intent(in) :: u
-    type(string_t) :: libname, procname1, expr_text
-    type(rt_data_t), target :: global
-    type(rt_data_t), dimension(1), target :: alt_env
-    type(ifile_t) :: ifile
-    type(stream_t) :: stream
-    type(parse_tree_t) :: pt_weight
-    type(simulation_t), target :: simulation
-    type(event_sample_data_t) :: data
-    
-    write (u, "(A)")  "* Test output: simulations_10"
-    write (u, "(A)")  "*   Purpose: reweight event"
-    write (u, "(A)")
-
-    write (u, "(A)")  "* Initialize processes"
-    write (u, "(A)")
-
-    call syntax_model_file_init ()
-    call syntax_pexpr_init ()
-
-    call global%global_init ()
-    call global%set_log (var_str ("?omega_openmp"), &
-         .false., is_known = .true.)
-    call global%set_int (var_str ("seed"), &
-         0, is_known = .true.)    
-    
-    libname = "simulation_10a"
-    procname1 = "simulation_10p"
-    
-    call prepare_test_library (global, libname, 1, [procname1])
-    call compile_library (libname, global)
-
-    call global%append_log (&
-         var_str ("?rebuild_phase_space"), .true., intrinsic = .true.)
-    call global%append_log (&
-         var_str ("?rebuild_grids"), .true., intrinsic = .true.)
-    call global%append_log (&
-         var_str ("?rebuild_events"), .true., intrinsic = .true.)
-
-    call global%set_string (var_str ("$method"), &
-         var_str ("unit_test"), is_known = .true.)
-    call global%set_string (var_str ("$phs_method"), &
-         var_str ("single"), is_known = .true.)
-    call global%set_string (var_str ("$integration_method"),&
-         var_str ("midpoint"), is_known = .true.)
-    call global%set_log (var_str ("?vis_history"),&
-         .false., is_known = .true.)    
-    call global%set_log (var_str ("?integration_timer"),&
-         .false., is_known = .true.)    
-    call global%set_log (var_str ("?recover_beams"), &
-         .false., is_known = .true.)
-
-    call global%set_real (var_str ("sqrts"),&
-         1000._default, is_known = .true.)
-
-    call global%it_list%init ([1], [1000])
-
-    call global%set_string (var_str ("$run_id"), &
-         var_str ("simulations1"), is_known = .true.)
-    call integrate_process (procname1, global, local_stack=.true.)
-
-    write (u, "(A)")  "* Initialize alternative environment with custom weight"
-    write (u, "(A)")
-    
-    call alt_env(1)%local_init (global)
-    call alt_env(1)%activate ()
-
-    expr_text = "2"
-    write (u, "(A,A)")  "weight = ", char (expr_text)
-    write (u, *)
-    
-    call ifile_clear (ifile)
-    call ifile_append (ifile, expr_text)
-    call stream_init (stream, ifile)
-    call parse_tree_init_expr (pt_weight, stream, .true.)
-    call stream_final (stream)
-    alt_env(1)%pn%weight_expr => parse_tree_get_root_ptr (pt_weight)
-    call alt_env(1)%write_expr (u)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Initialize event generation"
-    write (u, "(A)")
-
-    call global%set_log (var_str ("?unweighted"), &
-         .false., is_known = .true.)
-    call simulation%init ([procname1], .true., .true., global, alt_env=alt_env)
-    call simulation%init_process_selector ()
-
-    data = simulation%get_data ()
-    call data%write (u)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Generate an event"
-    write (u, "(A)")
-
-    call simulation%generate (1)
-    call simulation%write (u)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Write the event record for the last event"
-    write (u, "(A)")
-    
-    call simulation%write_event (u)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Write the event record for the alternative setup"
-    write (u, "(A)")
-    
-    call simulation%write_alt_event (u)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Cleanup"
-
-    call simulation%final ()
-    call global%final ()
-    
-    call syntax_model_file_final ()
-    call syntax_pexpr_final ()
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: simulations_10"
-    
-  end subroutine simulations_10
-  
-  subroutine simulations_11 (u)
-    integer, intent(in) :: u
-    type(rt_data_t), target :: global
-    type(prclib_entry_t), pointer :: lib
-    type(string_t) :: prefix, procname1, procname2
-    type(simulation_t), target :: simulation
-    
-    write (u, "(A)")  "* Test output: simulations_11"
-    write (u, "(A)")  "*   Purpose: apply decay"
-    write (u, "(A)")
-
-    write (u, "(A)")  "* Initialize processes"
-    write (u, "(A)")
-
-    call syntax_model_file_init ()
-        
-    call global%global_init ()
-    allocate (lib)
-    call global%add_prclib (lib)
-
-    call global%set_int (var_str ("seed"), &
-         0, is_known = .true.)        
-    call global%set_log (var_str ("?recover_beams"), &
-         .false., is_known = .true.)
-    
-    prefix = "simulation_11"
-    procname1 = prefix // "_p"
-    procname2 = prefix // "_d"
-    call prepare_testbed &
-         (global%prclib, global%process_stack, &
-         prefix, global%os_data, &
-         scattering=.true., decay=.true.)
-
-    call global%select_model (var_str ("Test"))
-    call global%model%set_par (var_str ("ff"), 0.4_default)
-    call global%model%set_par (var_str ("mf"), &
-         global%model%get_real (var_str ("ff")) &
-         * global%model%get_real (var_str ("ms")))
-    call global%model%set_unstable (25, [procname2])
-
-    write (u, "(A)")  "* Initialize simulation object"
-    write (u, "(A)")
-
-    call simulation%init ([procname1], .true., .true., global)
-    call simulation%init_process_selector ()
-
-    write (u, "(A)")  "* Generate event"
-    write (u, "(A)")
-
-    call simulation%generate (1)
-    call simulation%write (u)
-
-    write (u, *)
-    
-    call simulation%write_event (u)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Cleanup"
-    write (u, "(A)")
-
-    call simulation%final ()
-    call global%final ()
-    
-    call syntax_model_file_final ()
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: simulations_11"
-    
-  end subroutine simulations_11
-  
-  subroutine simulations_12 (u)
-    integer, intent(in) :: u
-    type(string_t) :: libname, procname1, sample
-    type(rt_data_t), target :: global
-    class(eio_t), allocatable :: eio
-    type(simulation_t), allocatable, target :: simulation
-    type(flavor_t) :: flv
-    integer :: i_evt
-    
-    write (u, "(A)")  "* Test output: simulations_12"
-    write (u, "(A)")  "*   Purpose: generate events for a single process"
-    write (u, "(A)")  "*            and write to split event files"
-    write (u, "(A)")
-
-    write (u, "(A)")  "* Initialize process and integrate"
-    write (u, "(A)")
-
-    call syntax_model_file_init ()
-
-    call global%global_init ()
-    call global%set_log (var_str ("?omega_openmp"), &
-         .false., is_known = .true.)
-    call global%set_int (var_str ("seed"), &
-         0, is_known = .true.)    
-    
-    libname = "simulation_12"
-    procname1 = "simulation_12p"
-    
-    call prepare_test_library (global, libname, 1, [procname1])
-    call compile_library (libname, global)
-
-    call global%append_log (&
-         var_str ("?rebuild_phase_space"), .true., intrinsic = .true.)
-    call global%append_log (&
-         var_str ("?rebuild_grids"), .true., intrinsic = .true.)
-    call global%append_log (&
-         var_str ("?rebuild_events"), .true., intrinsic = .true.)
-
-    call global%set_string (var_str ("$method"), &
-         var_str ("unit_test"), is_known = .true.)
-    call global%set_string (var_str ("$phs_method"), &
-         var_str ("single"), is_known = .true.)
-    call global%set_string (var_str ("$integration_method"),&
-         var_str ("midpoint"), is_known = .true.)
-    call global%set_log (var_str ("?vis_history"),&
-         .false., is_known = .true.)    
-    call global%set_log (var_str ("?integration_timer"),&
-         .false., is_known = .true.)    
-    call global%set_log (var_str ("?recover_beams"), &
-         .false., is_known = .true.)
-
-    call global%set_real (var_str ("sqrts"),&
-         1000._default, is_known = .true.)
-    call global%model_set_real (var_str ("ms"), &
-         0._default)
-
-    call flv%init (25, global%model)
-
-    call global%it_list%init ([1], [1000])
-
-    call global%set_string (var_str ("$run_id"), &
-         var_str ("r1"), is_known = .true.)
-    call integrate_process (procname1, global, local_stack=.true.)
-
-    write (u, "(A)")  "* Initialize event generation"
-    write (u, "(A)")
-
-    call global%set_log (var_str ("?unweighted"), &
-         .false., is_known = .true.)
-    sample = "simulations_12"
-    call global%set_string (var_str ("$sample"), &
-         sample, is_known = .true.)
-    call global%set_int (var_str ("sample_split_n_evt"), &
-         2, is_known = .true.)
-    call global%set_int (var_str ("sample_split_index"), &
-         42, is_known = .true.)
-    allocate (simulation)
-    call simulation%init ([procname1], .true., .true., global)
-    call simulation%init_process_selector ()
-
-    call simulation%write (u)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Initialize ASCII event file"
-    write (u, "(A)")
-
-    allocate (eio_ascii_short_t :: eio)
-    select type (eio)
-    class is (eio_ascii_t);  call eio%set_parameters ()
-    end select
-    call eio%init_out (sample, data = simulation%get_data ())
-    
-    write (u, "(A)")  "* Generate 5 events, distributed among three files"
-
-    do i_evt = 1, 5
-       call simulation%generate (1)
-       call simulation%write_event (eio)
-    end do
-
-    call eio%final ()
-    deallocate (eio)
-    call simulation%final ()
-    deallocate (simulation)
-    
-    write (u, *)
-    call display_file ("simulations_12.42.short.evt", u)
-    write (u, *)
-    call display_file ("simulations_12.43.short.evt", u)
-    write (u, *)
-    call display_file ("simulations_12.44.short.evt", u)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Cleanup"
-
-    call global%final ()
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: simulations_12"
-    
-  end subroutine simulations_12
-  
-  subroutine display_file (file, u)
-    character(*), intent(in) :: file
-    integer, intent(in) :: u
-    character(256) :: buffer
-    integer :: u_file
-    write (u, "(3A)")  "* Contents of file '", file, "':"
-    write (u, *)
-    u_file = free_unit ()
-    open (u_file, file = file, action = "read", status = "old")
-    do
-       read (u_file, "(A)", end = 1)  buffer
-       write (u, "(A)")  trim (buffer)
-    end do
-1   continue
-  end subroutine display_file
-
 
 end module simulations

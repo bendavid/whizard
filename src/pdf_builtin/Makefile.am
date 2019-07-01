@@ -1,5 +1,5 @@
 ## Makefile.am -- Makefile for WHIZARD
-# $Id: Makefile.am 6465 2015-01-10 15:22:31Z jr_reuter $
+# $Id: Makefile.am 7141 2015-08-08 08:56:21Z jr_reuter $
 ##
 ## Process this file with automake to produce Makefile.in
 ##
@@ -34,7 +34,7 @@ noinst_LTLIBRARIES = libpdf_builtin.la
 
 libpdf_builtin_la_SOURCES = \
 	cteq6pdf.f pdf_builtin.f90 mrst2004qed.f mstwpdf.f \
-	ct10pdf.f CJpdf.f
+	ct10pdf.f CJpdf.f ct14pdf.f
 
 $(libpdf_builtin_la_OBJECTS): \
 	../basics/kinds.$(FC_MODULE_EXT) \
@@ -50,7 +50,7 @@ AM_FCFLAGS = -I../basics -I../utilities -I../system
 # get compiled with the appropiate compiler.
 F77 = $(FC)
 
-pdf_builtin.lo: cteq6pdf.lo mrst2004qed.lo mstwpdf.lo ct10pdf.lo CJpdf.lo
+pdf_builtin.lo: cteq6pdf.lo mrst2004qed.lo mstwpdf.lo ct10pdf.lo CJpdf.lo ct14pdf.lo
 
 ########################################################################
 ## Default Fortran compiler options
@@ -73,6 +73,9 @@ endif
 ## Remove F90 module files
 clean-local:
 	-rm -f *.$(FC_MODULE_EXT)
+if FC_SUBMODULES
+	-rm -f *.smod
+endif
 
 ## Remove backup files
 maintainer-clean-local:

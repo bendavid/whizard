@@ -43,5 +43,25 @@ subroutine pystop ()
   write (0, "(A)")  "**************************************************************"
   stop  
 end subroutine pystop
-
-
+subroutine pyrobo (imi, ima, the, phi, bex, bey, bez)
+  integer, intent(in) :: imi, ima
+  double precision, intent(in) :: the, phi, bex, bey, bez
+  write (0, "(A)")  "**************************************************************"
+  write (0, "(A)")  "*** Error: PYTHIA6 has not been enabled, WHIZARD terminates ***"
+  write (0, "(A)")  "**************************************************************"
+  stop  
+end subroutine pyrobo
+subroutine pyedit (medit)
+  integer, intent(in) :: medit
+  write (0, "(A)")  "**************************************************************"
+  write (0, "(A)")  "*** Error: PYTHIA6 has not been enabled, WHIZARD terminates ***"
+  write (0, "(A)")  "**************************************************************"
+  stop  
+end subroutine pyedit
+subroutine pyhepc (mconv)
+  integer, intent(in) :: mconv
+  write (0, "(A)")  "**************************************************************"
+  write (0, "(A)")  "*** Error: PYTHIA6 has not been enabled, WHIZARD terminates ***"
+  write (0, "(A)")  "**************************************************************"
+  stop  
+end subroutine pyhepc

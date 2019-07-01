@@ -101,6 +101,14 @@ else
 fi
 
 AC_SUBST([GOSAM_DIR])
+
+if test "$enable_gosam" = "yes"; then
+   GOSAM_AVAILABLE_FLAG=".true."
+else
+   GOSAM_AVAILABLE_FLAG=".false."
+fi
+AC_SUBST([GOSAM_AVAILABLE_FLAG])
+
 AM_CONDITIONAL([GOSAM_AVAILABLE], [test "$enable_gosam" = "yes"])
 
 ]) dnl WO_PROG_GOSAM

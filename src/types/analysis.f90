@@ -1,4 +1,4 @@
-! WHIZARD 2.2.6 May 02 2015
+! WHIZARD 2.2.7 Aug 11 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -36,7 +36,6 @@ module analysis
   use iso_varying_string, string_t => varying_string
   use io_units
   use format_utils, only: quote_underscore, tex_format
-  use format_defs, only: FMT_19
   use system_defs, only: TAB
   use unit_tests
   use diagnostics
@@ -84,7 +83,6 @@ module analysis
   public :: analysis_compile_tex
   public :: analysis_get_header
   public :: analysis_write_makefile
-  public :: analysis_test
 
   character(*), parameter, public :: HISTOGRAM_HEAD_FORMAT = "1x,A15,3x"
   character(*), parameter, public :: HISTOGRAM_INTG_FORMAT = "3x,I9,3x"
@@ -794,7 +792,7 @@ contains
     avg = observable_get_average (obs)
     err = observable_get_error (obs)
     if (avg /= 0) then
-       relerr = err / avg
+       relerr = err / abs (avg)
     else
        relerr = 0
     end if
@@ -2608,7 +2606,6 @@ contains
     type(string_t), intent(in) :: file
     logical, intent(in) :: has_gmlcode
     type(os_data_t), intent(in) :: os_data
-    type(string_t) :: setenv
     integer :: status
     if (os_data%event_analysis_ps) then
        call os_system_call ("make compile " // os_data%makeflags // " -f " // &
@@ -2638,7 +2635,6 @@ contains
     integer, intent(in) :: unit
     logical, intent(in) :: has_gmlcode
     type(os_data_t), intent(in) :: os_data
-    type(string_t) :: setenv
     write (unit, "(3A)")  "# WHIZARD: Makefile for analysis '", &
          char (filename), "'"
     write (unit, "(A)")  "# Automatically generated file, do not edit"
@@ -2709,102 +2705,6 @@ contains
     write (unit, "(A)")  "clean: clean-objects"
     write (unit, "(A)")  ".PHONY: clean" 
   end subroutine analysis_write_makefile
-
-  subroutine analysis_test (u, results)
-    integer, intent(in) :: u
-    type(test_results_t), intent(inout) :: results
-    call test (analysis_1, "analysis_1", &
-         "check elementary analysis building blocks", &
-         u, results)  
-  end subroutine analysis_test
-
-
-  subroutine analysis_1 (u)
-    integer, intent(in) :: u
-    type(string_t) :: id1, id2, id3, id4
-    integer :: i
-    id1 = "foo"
-    id2 = "bar"
-    id3 = "hist"
-    id4 = "plot"
-    
-    write (u, "(A)")  "* Test output: Analysis"
-    write (u, "(A)")  "*   Purpose: test the analysis routines"
-    write (u, "(A)")        
-    
-    call analysis_init_observable (id1)
-    call analysis_init_observable (id2)
-    call analysis_init_histogram_bin_width &
-         (id3, 0.5_default, 5.5_default, 1._default, normalize_bins=.false.)
-    call analysis_init_plot (id4)
-    do i = 1, 3
-       write (u, "(A,1x," // FMT_19 // ")")  "data = ", real(i,default)
-       call analysis_record_data (id1, real(i,default))
-       call analysis_record_data (id2, real(i,default), &
-                                        weight=real(i,default))
-       call analysis_record_data (id3, real(i,default))
-       call analysis_record_data (id4, real(i,default), real(i,default)**2)
-    end do
-    write (u, "(A,10(1x,I5))") "n_entries = ", &
-         analysis_get_n_entries (id1), &
-         analysis_get_n_entries (id2), &
-         analysis_get_n_entries (id3), &
-         analysis_get_n_entries (id3, within_bounds = .true.), &
-         analysis_get_n_entries (id4), &
-         analysis_get_n_entries (id4, within_bounds = .true.)
-    write (u, "(A,10(1x," // FMT_19 // "))")  "average   = ", &
-         analysis_get_average (id1), &
-         analysis_get_average (id2), &
-         analysis_get_average (id3), &
-         analysis_get_average (id3, within_bounds = .true.)
-    write (u, "(A,10(1x," // FMT_19 // "))")  "error     = ", &
-         analysis_get_error (id1), &
-         analysis_get_error (id2), &
-         analysis_get_error (id3), &
-         analysis_get_error (id3, within_bounds = .true.)
-
-    write (u, "(A)")
-    write (u, "(A)") "* Clear analysis #2"
-    write (u, "(A)")
-    
-    call analysis_clear (id2)
-    do i = 4, 6
-       print *, "data = ", real(i,default)
-       call analysis_record_data (id1, real(i,default))
-       call analysis_record_data (id2, real(i,default), &
-                                        weight=real(i,default))
-       call analysis_record_data (id3, real(i,default))
-       call analysis_record_data (id4, real(i,default), real(i,default)**2)
-    end do
-    write (u, "(A,10(1x,I5))")  "n_entries = ", &
-         analysis_get_n_entries (id1), &
-         analysis_get_n_entries (id2), &
-         analysis_get_n_entries (id3), &
-         analysis_get_n_entries (id3, within_bounds = .true.), &
-         analysis_get_n_entries (id4), &
-         analysis_get_n_entries (id4, within_bounds = .true.)
-    write (u, "(A,10(1x," // FMT_19 // "))")  "average   = ", &
-         analysis_get_average (id1), &
-         analysis_get_average (id2), &
-         analysis_get_average (id3), &
-         analysis_get_average (id3, within_bounds = .true.)
-    write (u, "(A,10(1x," // FMT_19 // "))")  "error     = ", &
-         analysis_get_error (id1), &
-         analysis_get_error (id2), &
-         analysis_get_error (id3), &
-         analysis_get_error (id3, within_bounds = .true.)
-    write (u, "(A)")
-    call analysis_write (u)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Cleanup"    
-       
-    call analysis_clear ()
-    call analysis_final ()
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: analysis_1"            
-  end subroutine analysis_1
 
 
 end module analysis

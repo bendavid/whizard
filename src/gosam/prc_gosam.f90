@@ -1,4 +1,4 @@
-! WHIZARD 2.2.6 May 02 2015
+! WHIZARD 2.2.7 Aug 11 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -39,6 +39,7 @@ module prc_gosam
   use iso_varying_string, string_t => varying_string  
   use io_units
   use constants
+  use unit_tests, only: vanishes
   use system_defs, only: TAB
   use system_dependencies
   use file_utils
@@ -121,6 +122,7 @@ module prc_gosam
   type, extends (prc_blha_t) :: prc_gosam_t
     logical :: initialized = .false.
   contains
+    procedure :: prepare_library => prc_gosam_prepare_library
     procedure :: search_for_existing_library => &
                         prc_gosam_search_for_existing_library
     procedure :: write_makefile => prc_gosam_write_makefile
@@ -148,15 +150,18 @@ module prc_gosam
 contains
 
   subroutine gosam_def_init (object, basename, model_name, &
-                             prt_in, prt_out, nlo_type)
+                             prt_in, prt_out, nlo_type, filter)
     class(gosam_def_t), intent(inout) :: object
     type(string_t), intent(in) :: model_name
     type(string_t), intent(in) :: basename
     type(string_t), dimension(:), intent(in) :: prt_in, prt_out
     integer, intent(in) :: nlo_type
+    type(string_t), dimension(2), intent(in), optional :: filter 
     object%basename = basename
     allocate (gosam_writer_t :: object%writer)
     select case (nlo_type)
+    case (BORN)
+       object%suffix = '_BORN'
     case (NLO_REAL)
        object%suffix = '_REAL'
     case (NLO_VIRTUAL)
@@ -166,7 +171,7 @@ contains
     end select
     select type (writer => object%writer)
     type is (gosam_writer_t)
-      call writer%init (model_name, prt_in, prt_out)
+      call writer%init (model_name, prt_in, prt_out, filter)
     end select
   end subroutine gosam_def_init
 
@@ -203,10 +208,11 @@ contains
     string = "gosam"
   end function gosam_writer_type_name
 
-  subroutine gosam_writer_init (writer,model_name, prt_in, prt_out) 
+  subroutine gosam_writer_init (writer,model_name, prt_in, prt_out, filter) 
     class(gosam_writer_t), intent(inout) :: writer
     type(string_t), intent(in) :: model_name
     type(string_t), dimension(:), intent(in) :: prt_in, prt_out
+    type(string_t), dimension(2), intent(in), optional :: filter
     integer :: i, unit
 
     writer%gosam_dir = GOSAM_DIR
@@ -237,7 +243,7 @@ contains
 
     unit = free_unit ()
     open (unit, file = "golem.in", status = "replace", action = "write")
-    call writer%generate_configuration_file (unit)
+    call writer%generate_configuration_file (unit, filter)
     close(unit)
   end subroutine gosam_writer_init  
 
@@ -268,7 +274,7 @@ contains
     type(string_t) :: libname, msg_buffer
     libname = object%olp_dir // '/.libs/libgolem_olp.' // &
       os_data%shrlib_ext
-    msg_buffer = "USING GOSAM"
+    msg_buffer = "One-Loop-Provider: Using Gosam"
     call msg_message (char(msg_buffer))
     msg_buffer = "Loading library: " // libname
     call msg_message (char(msg_buffer))
@@ -277,9 +283,10 @@ contains
   end subroutine gosam_driver_init_dlaccess_to_library 
 
   subroutine gosam_writer_generate_configuration_file &
-          (object, unit)
+          (object, unit, filter)
       class(gosam_writer_t), intent(in) :: object
       integer, intent(in) :: unit
+      type(string_t), intent(in), dimension(2), optional :: filter
       type(string_t) :: fc_bin
       type(string_t) :: form_bin, qgraf_bin, haggies_bin
       type(string_t) :: fcflags_golem, ldflags_golem
@@ -330,9 +337,16 @@ contains
       write (unit, "(A)") "ninja.ldflags=" // char (ldflags_ninja)
       !!! This might collide with the mass-setup in the order-file
       !!! write (unit, "(A)") "zero=mU,mD,mC,mS,mB"
+      !!! This is covered by the BLHA2 interface
       write (unit, "(A)") "PSP_check=False"
-      write (unit, "(A)") "filter.lo=lambda d: d.iprop(H) == 0 and d.iprop(chi) == 0"
-      write (unit, "(A)") "filter.nlo=lambda d: d.iprop(H) == 0 and d.iprop(chi) == 0"
+      if (present (filter)) then
+         write (unit, "(A)") "filter.lo=" // char (filter(1))
+         write (unit, "(A)") "filter.nlo=" // char (filter(2))
+      end if
+      ! write (unit, "(A)") "filter.lo=lambda d: d.vertices(T, Tbar, A) > 0 or d.vertices(T, Tbar, Z) > 0"
+      ! write (unit, "(A)") "filter.nlo=lambda d: d.vertices(T, Tbar, A) > 0 or d.vertices(T, Tbar, Z) > 0"
+      ! write (unit, "(A)") "filter.lo=lambda d: d.iprop(H) == 0 and d.iprop(chi) == 0"
+      ! write (unit, "(A)") "filter.nlo=lambda d: d.iprop(H) == 0 and d.iprop(chi) == 0"
   end subroutine gosam_writer_generate_configuration_file
 
   subroutine gosam_driver_write_makefile (object, unit, libname)
@@ -369,6 +383,16 @@ contains
     class(gosam_driver_t), intent(in) :: object
     call object%blha_olp_print_parameter (c_char_'alphaS'//c_null_char)
   end subroutine gosam_driver_print_alpha_s
+
+  subroutine prc_gosam_prepare_library (object, os_data, libname)
+    class(prc_gosam_t), intent(inout) :: object
+    type(os_data_t), intent(in) :: os_data
+    type(string_t), intent(in) :: libname
+    logical :: lib_found
+    call object%search_for_existing_library (os_data, lib_found)
+    call object%create_olp_library (libname, lib_found)
+    call object%load_driver (os_data, .not. lib_found)
+  end subroutine prc_gosam_prepare_library
 
   subroutine prc_gosam_search_for_existing_library (object, os_data, found)
     class(prc_gosam_t), intent(inout) :: object
@@ -463,10 +487,7 @@ contains
   subroutine prc_gosam_init_driver (object, os_data)
     class(prc_gosam_t), intent(inout) :: object
     type(os_data_t), intent(in) :: os_data
-    logical :: dl_success
     type(string_t) :: olp_file, olc_file, olp_dir
-    integer(c_int) :: success
-    logical :: found = .false.
 
     select type (def => object%def)
     type is (gosam_def_t)
@@ -490,23 +511,29 @@ contains
   end subroutine prc_gosam_set_initialized 
 
   subroutine prc_gosam_compute_sqme_born &
-         (object, i_born, mom, mu, sqme, acc_born)
+         (object, i_born, p, mu, sqme, bad_point)
     class(prc_gosam_t), intent(inout) :: object
     integer, intent(in) :: i_born
-    real(double), intent(in), dimension(5*object%n_particles) :: mom
-    real(double), intent(in) :: mu
+    type(vector4_t), dimension(:), intent(in) :: p
+    real(default), intent(in) :: mu
     real(default), intent(out) :: sqme
-    real(default), intent(out) :: acc_born
-    
+    logical, intent(out) :: bad_point
+    real(double), dimension(5*object%n_particles) :: mom
+    real(default) :: acc_born 
     real(double), dimension(OLP_RESULTS_LIMIT) :: r
+    real(double) :: mu_dble
     real(double) :: acc_dble
-    
+
+    mom = object%create_momentum_array (p)
+    mu_dble = dble(mu)    
+
     select type (driver => object%driver)
     type is (gosam_driver_t)
-       call driver%blha_olp_eval2 (i_born, mom, mu, r, acc_dble)
+       call driver%blha_olp_eval2 (i_born, mom, mu_dble, r, acc_dble)
        sqme = r(4)
     end select
     acc_born = acc_dble
+    bad_point = acc_born > object%maximum_accuracy
   end subroutine prc_gosam_compute_sqme_born
 
   subroutine prc_gosam_compute_sqme_real &
@@ -526,8 +553,8 @@ contains
     real(default) :: alpha_s
  
     mom = object%create_momentum_array (p)
-    if (ren_scale == 0.0) then
-       mu = sqrt (2*p(1)*p(2))
+    if (vanishes (ren_scale)) then
+       mu = sqrt (two * p(1)* p(2))
     else
       mu = ren_scale
     end if
@@ -554,7 +581,7 @@ contains
     real(default), intent(in) :: ren_scale_in
     complex(default), intent(out) :: me_sc
     logical, intent(out) :: bad_point
-    real(double), dimension(OLP_MOMENTUM_LIMIT) :: mom
+    real(double), dimension(5*object%n_particles) :: mom
     real(double), dimension(OLP_RESULTS_LIMIT) :: r
     real(double) :: ren_scale_dble
     integer :: i, igm1, n
@@ -565,8 +592,8 @@ contains
 
     me_sc = cmplx(0,0,default)
     mom = object%create_momentum_array (p)
-    if (ren_scale_in == 0.0) then
-      ren_scale = sqrt (2*p(1)*p(2))
+    if (vanishes (ren_scale_in)) then
+      ren_scale = sqrt (2 * p(1) * p(2))
     else
       ren_scale = ren_scale_in
     end if

@@ -900,8 +900,6 @@ contains
 
 <<MD5: procedures>>
 
-<<MD5: tests>>
-
 end module md5
 @ %def md5
 @
@@ -1474,9 +1472,48 @@ integers) and computes the MD5 sum.
 @ %def md5sum_from_unit
 @
 \subsection{Unit tests}
-<<MD5: public>>=
+Test module, followed by the corresponding implementation module.
+<<[[md5_ut.f90]]>>=
+<<File header>>
+
+module md5_ut
+  use unit_tests
+  use md5_uti
+  
+<<Standard module head>>
+
+<<MD5: public test>>
+
+contains
+  
+<<MD5: test driver>>
+
+end module md5_ut
+@ %def md5_ut
+@
+<<[[md5_uti.f90]]>>=
+<<File header>>
+
+module md5_uti
+
+  use diagnostics
+
+  use md5
+
+<<Standard module head>>
+
+<<MD5: test declarations>>
+
+contains
+
+<<MD5: tests>>
+
+end module md5_uti
+@ %def md5_ut
+@ API: driver for the unit tests below.
+<<MD5: public test>>=
   public :: md5_test
-<<MD5: procedures>>=
+<<MD5: test driver>>=
   subroutine md5_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
@@ -1490,6 +1527,8 @@ certain strings and comparing them with the known values.
   call test (md5_1, "md5_1", &
        "check MD5 sums", &
        u, results)
+<<MD5: test declarations>>=
+  public :: md5_1
 <<MD5: tests>>=
   subroutine md5_1 (u)
     integer, intent(in) :: u
@@ -1893,7 +1932,6 @@ arrays.
 module sorting
 
 <<Use kinds>>
-  use unit_tests
   use diagnostics
 
 <<Standard module head>>
@@ -1905,8 +1943,6 @@ module sorting
 contains
 
 <<Sorting: procedures>>
-
-<<Sorting: tests>>
 
 end module sorting
 @ %def sorting
@@ -2133,9 +2169,48 @@ Not precisely a sorting function, but useful: Concatenate two arrays.
   val12(size(val1)+1:) = val2
 @
 \subsection{Unit tests}
-<<Sorting: public>>=
+Test module, followed by the corresponding implementation module.
+<<[[sorting_ut.f90]]>>=
+<<File header>>
+
+module sorting_ut
+  use unit_tests
+  use sorting_uti
+  
+<<Standard module head>>
+
+<<Sorting: public test>>
+
+contains
+  
+<<Sorting: test driver>>
+
+end module sorting_ut
+@ %def sorting_ut
+@
+<<[[sorting_uti.f90]]>>=
+<<File header>>
+
+module sorting_uti
+
+<<Use kinds>>
+
+  use sorting
+
+<<Standard module head>>
+
+<<Sorting: test declarations>>
+
+contains
+
+<<Sorting: tests>>
+
+end module sorting_uti
+@ %def sorting_ut
+@ API: driver for the unit tests below.
+<<Sorting: public test>>=
   public :: sorting_test
-<<Sorting: procedures>>=
+<<Sorting: test driver>>=
   subroutine sorting_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
@@ -2148,6 +2223,8 @@ Not precisely a sorting function, but useful: Concatenate two arrays.
   call test (sorting_1, "sorting_1", &
        "check sorting routines", &
        u, results)
+<<Sorting: test declarations>>=
+  public :: sorting_1
 <<Sorting: tests>>=
   subroutine sorting_1 (u)
     integer, intent(in) :: u
@@ -2267,11 +2344,9 @@ Not precisely a sorting function, but useful: Concatenate two arrays.
 module grids
 
 <<Use kinds>>
-  use unit_tests
-  use constants
+  use constants, only: zero, one, tiny_07
   use io_units
-  use format_defs
-  use file_utils
+  use format_defs, only: FMT_16
   use diagnostics
 
 <<Standard module head>>
@@ -2318,8 +2393,9 @@ The following might be implemented in the future
   public :: grid_t
 <<grids: types>>=
   type :: grid_t
-     real(default), dimension(:), allocatable, private :: values
-     integer, dimension(:), allocatable, private :: points
+     private
+     real(default), dimension(:), allocatable :: values
+     integer, dimension(:), allocatable :: points
   contains
    <<grids: grid: TBP>>
   end type grid_t
@@ -2356,6 +2432,17 @@ default number of points is used then for each dimension.
   end subroutine grid_init_simple
 
 @ %def grid_init_simple
+@ Manual assignment (tests)
+<<grids: grid: TBP>>=
+  procedure :: set_values => grid_set_values
+<<grids: procedures>>=
+  subroutine grid_set_values (grid, values)
+    class(grid_t), intent(inout) :: grid
+    real(default), dimension(:), intent(in) :: values
+    grid%values = values
+  end subroutine grid_set_values
+  
+@ %def grid_set_values
 @ A reasonable default
 <<grids: parameters>>=
   integer, parameter :: DEFAULT_POINTS_PER_DIMENSION = 100
@@ -2426,12 +2513,17 @@ $\mathcal{O}(\log{N})$ behavior instead of $\mathcal{O}({N})$.
     do dim = 1, size (grid%points)
        segment_width = one / grid%points (dim)
        SEARCH: do i = 1, grid%points (dim)
-          if (x (dim) <= i * segment_width) then
+          if (x (dim) <= i * segment_width + tiny_07) then
              grid_get_segment (dim) = i
              exit SEARCH
           end if
        end do SEARCH
        if (grid_get_segment (dim) == 0) then
+          do i = 1, size(x)
+             write (msg_buffer, "(A," // DEFAULT_OUTPUT_PRECISION // ")") &
+                  "x[i] = ", x(i)
+             call msg_message ()
+          end do
           call msg_error ("grid_get_segment: Did not find x in [0,1]^d", &
                unit=unit)
        end if
@@ -2564,21 +2656,28 @@ $f(x_i)\geq y_i\;\forall \{x_i, y_i\}$.
     u = given_output_unit (unit);  if (u < 0)  return
     mean = zero
     maximum = zero
-    n_values = size (grid%values)
-    do i = 1, n_values
-       val = grid%values (i)
-       mean = mean + val / n_values
-       if (val > maximum) then
-          maximum = val
+    if (allocated (grid%values)) then
+       n_values = size (grid%values)
+       do i = 1, n_values
+          val = grid%values (i)
+          mean = mean + val / n_values
+          if (val > maximum) then
+             maximum = val
+          end if
+       end do
+       write (msg_buffer, "(A," // DEFAULT_OUTPUT_PRECISION // ")") &
+            "Grid: Mean value of the grid: ", mean
+       call msg_message ()
+       write (msg_buffer, "(A," // DEFAULT_OUTPUT_PRECISION // ")") &
+            "Grid: Max value of the grid: ", maximum
+       call msg_message ()
+       if (maximum > zero) then
+          write (msg_buffer, "(A," // DEFAULT_OUTPUT_PRECISION // ")") &
+               "Grid: Mean/Max value of the grid: ", mean / maximum
+          call msg_message ()
        end if
-    end do
-    write (u, "(2X,A," // DEFAULT_OUTPUT_PRECISION // ")") &
-         "Mean value of the grid: ", mean
-    write (u, "(2X,A," // DEFAULT_OUTPUT_PRECISION // ")") &
-         "Max value of the grid: ", maximum
-    if (maximum > zero) then
-       write (u, "(2X,A," // DEFAULT_OUTPUT_PRECISION // ")") &
-            "Mean/Max value of the grid: ", mean / maximum
+    else
+       call msg_warning ("Grid: Grid is not allocated!")
     end if
   end subroutine grid_compute_and_write_mean_and_max
 
@@ -2652,9 +2751,51 @@ $f(x_i)\geq y_i\;\forall \{x_i, y_i\}$.
 @ %def grid_load_from_file
 @
 \subsection{Unit tests}
-<<grids: public>>=
+Test module, followed by the corresponding implementation module.
+<<[[grids_ut.f90]]>>=
+<<File header>>
+
+module grids_ut
+  use unit_tests
+  use grids_uti
+  
+<<Standard module head>>
+
+<<grids: public test>>
+
+contains
+  
+<<grids: test driver>>
+
+end module grids_ut
+@ %def grids_ut
+@
+<<[[grids_uti.f90]]>>=
+<<File header>>
+
+module grids_uti
+
+<<Use kinds>>
+  use constants, only: zero, one, two, three, four, tiny_07
+  use file_utils, only: delete_file
+  use unit_tests, only: nearly_equal, assert, assert_equal
+
+  use grids
+
+<<Standard module head>>
+
+<<grids: test declarations>>
+
+contains
+
+<<grids: tests>>
+
+end module grids_uti
+@ %def grids_ut
+@ API: driver for the unit tests below.
+<<grids: public test>>=
   public :: grids_test
-<<grids: procedures>>=
+<<grids: test driver>>=
   subroutine grids_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
@@ -2667,7 +2808,9 @@ $f(x_i)\geq y_i\;\forall \{x_i, y_i\}$.
 <<grids: execute tests>>=
   call test(grids_1, "grids_1", &
        "Test Index Function", u, results)
-<<grids: procedures>>=
+<<grids: test declarations>>=
+  public :: grids_1
+<<grids: tests>>=
   subroutine grids_1 (u)
     integer, intent(in) :: u
     type(grid_t) :: grid
@@ -2718,7 +2861,9 @@ $f(x_i)\geq y_i\;\forall \{x_i, y_i\}$.
 <<grids: execute tests>>=
   call test(grids_2, "grids_2", &
             "Saving and Loading", u, results)
-<<grids: procedures>>=
+<<grids: test declarations>>=
+  public :: grids_2
+<<grids: tests>>=
   subroutine grids_2 (u)
     integer, intent(in) :: u
     type(grid_t) :: grid
@@ -2727,7 +2872,7 @@ $f(x_i)\geq y_i\;\forall \{x_i, y_i\}$.
     write (u, "(A)")
 
     call grid%init ([3])
-    grid%values = [one, two, three]
+    call grid%set_values ([one, two, three])
     call grid%save_to_file ('grids_2_test')
     call grid%final ()
 
@@ -2739,7 +2884,7 @@ $f(x_i)\geq y_i\;\forall \{x_i, y_i\}$.
     call grid%final ()
 
     call grid%init ([3,3])
-    grid%values = [one, two, three, four, zero, zero, zero, zero, zero]
+    call grid%set_values ([one, two, three, four, zero, zero, zero, zero, zero])
     call grid%save_to_file ('grids_2_test')
     call grid%final ()
 
@@ -2761,7 +2906,9 @@ $f(x_i)\geq y_i\;\forall \{x_i, y_i\}$.
 <<grids: execute tests>>=
   call test(grids_3, "grids_3", &
             "Get Segments", u, results)
-<<grids: procedures>>=
+<<grids: test declarations>>=
+  public :: grids_3
+<<grids: tests>>=
   subroutine grids_3 (u)
     integer, intent(in) :: u
     type(grid_t) :: grid
@@ -2804,7 +2951,9 @@ $f(x_i)\geq y_i\;\forall \{x_i, y_i\}$.
 <<grids: execute tests>>=
   call test(grids_4, "grids_4", &
             "Update Maxima", u, results)
-<<grids: procedures>>=
+<<grids: test declarations>>=
+  public :: grids_4
+<<grids: tests>>=
   subroutine grids_4 (u)
     integer, intent(in) :: u
     type(grid_t) :: grid
@@ -2833,7 +2982,9 @@ $f(x_i)\geq y_i\;\forall \{x_i, y_i\}$.
 <<grids: execute tests>>=
   call test(grids_5, "grids_5", &
             "Finding and checking", u, results)
-<<grids: procedures>>=
+<<grids: test declarations>>=
+  public :: grids_5
+<<grids: tests>>=
   subroutine grids_5 (u)
     integer, intent(in) :: u
     type(grid_t) :: grid
@@ -2881,8 +3032,8 @@ $f(x_i)\geq y_i\;\forall \{x_i, y_i\}$.
 module solver
 
 <<Use kinds>>
-  use constants
-  use unit_tests
+  use constants, only: tiny_10
+  use unit_tests, only: vanishes
   use diagnostics
 
 <<Standard module head>>
@@ -2994,7 +3145,7 @@ end if
     f_low = real( func%evaluate (x_low) )
     f_high = real( func%evaluate (x_high) )
     if (f_low * f_high > 0) return
-    if (x_low > x_high) call msg_fatal ("Interval solver: Upper bound must be&
+    if (x_low > x_high) call msg_fatal ("Interval solver: Upper bound must be &
                                         &greater than lower bound")
     n_iter = 0
     do n_iter = 1, MAX_TRIES
@@ -3065,7 +3216,7 @@ end if
 @ %def solve_qgaus
 @
 <<solver: parameters>>=
-  real(default), parameter :: DEFAULT_PRECISION = tiny_10
+  real(default), parameter, public :: DEFAULT_PRECISION = tiny_10
 @ %def name
 @
 <<solver: parameters>>=
@@ -3073,7 +3224,64 @@ end if
 @ %def MAX_TRIES
 @
 \subsection{Unit tests}
-<<solver: types>>=
+Test module, followed by the corresponding implementation module.
+<<[[solver_ut.f90]]>>=
+<<File header>>
+
+module solver_ut
+  use unit_tests
+  use solver_uti
+  
+<<Standard module head>>
+
+<<solver: public test>>
+
+contains
+  
+<<solver: test driver>>
+
+end module solver_ut
+@ %def solver_ut
+@
+<<[[solver_uti.f90]]>>=
+<<File header>>
+
+module solver_uti
+
+<<Use kinds>>
+  use constants, only: zero, one, two
+  use unit_tests, only: assert, assert_equal
+  
+  use solver
+
+<<Standard module head>>
+
+<<solver: test declarations>>
+
+<<solver: test types>>
+
+contains
+
+<<solver: tests>>
+
+<<solver: test auxiliary>>
+
+end module solver_uti
+@ %def solver_ut
+@ API: driver for the unit tests below.
+<<solver: public test>>=
+  public :: solver_test
+<<solver: test driver>>=
+  subroutine solver_test (u, results)
+    integer, intent(in) :: u
+    type(test_results_t), intent(inout) :: results
+  <<solver: execute tests>>
+  end subroutine solver_test
+
+@ %def solver_test
+@
+\subsubsection{Test functions}
+<<solver: test types>>=
   type, extends (solver_function_t) :: test_function_1_t
   contains
     procedure :: evaluate => test_func_1
@@ -3081,7 +3289,7 @@ end if
 
 @ %def test_function_1_t
 @
-<<solver: types>>=
+<<solver: test types>>=
   type, extends (solver_function_t) :: test_function_2_t
   contains
     procedure :: evaluate => test_func_2
@@ -3089,7 +3297,7 @@ end if
 
 @ %def test_function_2_t
 @
-<<solver: types>>=
+<<solver: test types>>=
   type, extends (solver_function_t) :: test_function_3_t
   contains
     procedure :: evaluate => test_func_3
@@ -3097,7 +3305,7 @@ end if
 
 @ %def test_function_3_t
 @
-<<solver: types>>=
+<<solver: test types>>=
   type, extends (solver_function_t) :: test_function_4_t
   contains
     procedure :: evaluate => test_func_4
@@ -3105,7 +3313,7 @@ end if
 
 @ %def test_function_4_t
 @
-<<solver: procedures>>=
+<<solver: test auxiliary>>=
   function test_func_1 (solver_f, x) result (f)
     complex(default) :: f
     class(test_function_1_t), intent(in) :: solver_f
@@ -3144,22 +3352,14 @@ end if
   end function test_func_4
 
 @ %def test_func_1
-<<solver: public>>=
-  public :: solver_test
-<<solver: procedures>>=
-  subroutine solver_test (u, results)
-    integer, intent(in) :: u
-    type(test_results_t), intent(inout) :: results
-  <<solver: execute tests>>
-  end subroutine solver_test
-
-@ %def solver_test
 @
 \subsubsection{Solve trivial functions}
 <<solver: execute tests>>=
   call test(solver_1, "solver_1", &
             "Solve trivial functions", u, results)
-<<solver: procedures>>=
+<<solver: test declarations>>=
+  public :: solver_1
+<<solver: tests>>=
   subroutine solver_1 (u)
     integer, intent(in) :: u
     real(default) :: zero_position

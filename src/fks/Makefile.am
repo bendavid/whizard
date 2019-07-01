@@ -29,6 +29,7 @@
 
 ## We create a library which is still to be combined with auxiliary libs.
 noinst_LTLIBRARIES = libfks.la
+check_LTLIBRARIES = libfks_ut.la
 
 libfks_la_SOURCES = \
   fks_regions.f90 \
@@ -39,11 +40,14 @@ libfks_la_SOURCES = \
   nlo_controller.f90 \
   phs_fks.f90
 
+libfks_ut_la_SOURCES = \
+  phs_fks_uti.f90 phs_fks_ut.f90
+
 ## Omitting this would exclude it from the distribution
 dist_noinst_DATA = fks.nw
 
 # Dump module names into file Modules
-libfks_Modules = ${libfks_la_SOURCES:.f90=}
+libfks_Modules = ${libfks_la_SOURCES:.f90=} ${libfks_ut_la_SOURCES:.f90=}
 Modules: Makefile
 	@for module in $(libfks_Modules); do \
           echo $$module >> $@.new; \
@@ -72,7 +76,6 @@ module_lists = \
   ../beams/Modules \
   ../me_methods/Modules \
   ../phase_space/Modules \
-  ../shower/Modules \
   ../variables/Modules
 
 $(module_lists):
@@ -100,7 +103,7 @@ DISTCLEANFILES = Module_dependencies.sed
 @am__include@ @am__quote@Makefile.depend@am__quote@
 
 Makefile.depend: Module_dependencies.sed
-Makefile.depend: $(libfks_la_SOURCES)
+Makefile.depend: $(libfks_la_SOURCES) ${libfks_ut_la_SOURCES}
 	@rm -f $@
 	for src in $^; do \
 	  module="`basename $$src | sed 's/\.f[90][0358]//'`"; \
@@ -117,7 +120,7 @@ DISTCLEANFILES += Makefile.depend
 	@:
 #	touch $@
 
-AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system -I../combinatorics -I../parsing -I../rng -I../physics -I../qft -I../expr_base -I../types -I../particles -I../matrix_elements -I../beams -I../me_methods -I../phase_space -I../shower -I../variables -I../lhapdf -I../pdf_builtin -I../fastjet
+AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system -I../combinatorics -I../parsing -I../rng -I../physics -I../qft -I../expr_base -I../types -I../particles -I../matrix_elements -I../beams -I../me_methods -I../phase_space -I../variables -I../lhapdf -I../pdf_builtin -I../fastjet
 
 
 ########################################################################
@@ -146,12 +149,12 @@ POSTLUDE = $(top_srcdir)/src/noweb-frame/whizard-postlude.nw
 fks.stamp: $(PRELUDE) $(srcdir)/fks.nw $(POSTLUDE)
 	@rm -f fks.tmp
 	@touch fks.tmp
-	for src in $(libfks_la_SOURCES); do \
+	for src in $(libfks_la_SOURCES) $(libfks_ut_la_SOURCES); do \
 	  $(NOTANGLE) -R[[$$src]] $^ | $(CPIF) $$src; \
         done
 	@mv -f fks.tmp fks.stamp
 
-$(libfks_la_SOURCES): fks.stamp
+$(libfks_la_SOURCES) $(libfks_ut_la_SOURCES): fks.stamp
 ## Recover from the removal of $@
 	@if test -f $@; then :; else \
 	  rm -f fks.stamp; \
@@ -181,6 +184,9 @@ endif
 clean-local: clean-noweb
 	-rm -f fks.stamp fks.tmp
 	-rm -f *.$(FC_MODULE_EXT)
+if FC_SUBMODULES
+	-rm -f *.smod
+endif
 
 ## Remove backup files
 maintainer-clean-backup:

@@ -30,6 +30,7 @@
 
 ## We create a library which is still to be combined with auxiliary libs.
 noinst_LTLIBRARIES = libphysics.la
+check_LTLIBRARIES = libphysics_ut.la
 
 libphysics_la_SOURCES = \
   physics_defs.f90 \
@@ -39,11 +40,17 @@ libphysics_la_SOURCES = \
   sm_qcd.f90 \
   shower_algorithms.f90
 
+libphysics_ut_la_SOURCES = \
+  sm_physics_uti.f90 sm_physics_ut.f90 \
+  sm_qcd_uti.f90 sm_qcd_ut.f90
+
 ## Omitting this would exclude it from the distribution
 dist_noinst_DATA = physics.nw
 
 # Dump module names into file Modules
-libphysics_Modules = ${libphysics_la_SOURCES:.f90=}
+libphysics_Modules = \
+  ${libphysics_la_SOURCES:.f90=} \
+  ${libphysics_ut_la_SOURCES:.f90=}
 Modules: Makefile
 	@for module in $(libphysics_Modules); do \
           echo $$module >> $@.new; \
@@ -90,7 +97,7 @@ DISTCLEANFILES = Module_dependencies.sed
 @am__include@ @am__quote@Makefile.depend@am__quote@
 
 Makefile.depend: Module_dependencies.sed
-Makefile.depend: $(libphysics_la_SOURCES)
+Makefile.depend: $(libphysics_la_SOURCES) $(libphysics_ut_la_SOURCES)
 	@rm -f $@
 	for src in $^; do \
 	  module="`basename $$src | sed 's/\.f[90][0358]//'`"; \
@@ -144,12 +151,12 @@ POSTLUDE = $(top_srcdir)/src/noweb-frame/whizard-postlude.nw
 physics.stamp: $(PRELUDE) $(srcdir)/physics.nw $(POSTLUDE)
 	@rm -f physics.tmp
 	@touch physics.tmp
-	for src in $(libphysics_la_SOURCES); do \
+	for src in $(libphysics_la_SOURCES) $(libphysics_ut_la_SOURCES); do \
 	  $(NOTANGLE) -R[[$$src]] $^ | $(CPIF) $$src; \
         done
 	@mv -f physics.tmp physics.stamp
 
-$(libphysics_la_SOURCES): physics.stamp
+$(libphysics_la_SOURCES) $(libphysics_ut_la_SOURCES): physics.stamp
 ## Recover from the removal of $@
 	@if test -f $@; then :; else \
 	  rm -f physics.stamp; \
@@ -179,6 +186,9 @@ endif
 clean-local: clean-noweb
 	-rm -f physics.stamp physics.tmp
 	-rm -f *.$(FC_MODULE_EXT)
+if FC_SUBMODULES
+	-rm -f *.smod
+endif
 
 ## Remove backup files
 maintainer-clean-backup:

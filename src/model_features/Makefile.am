@@ -29,6 +29,7 @@
 
 ## We create a library which is still to be combined with auxiliary libs.
 noinst_LTLIBRARIES = libmodel_features.la
+check_LTLIBRARIES = libmodel_features_ut.la
 
 libmodel_features_la_SOURCES = \
   auto_components.f90 \
@@ -37,11 +38,20 @@ libmodel_features_la_SOURCES = \
   models.f90 \
   slha_interface.f90
 
+libmodel_features_ut_la_SOURCES = \
+  auto_components_uti.f90 auto_components_ut.f90 \
+  radiation_generator_uti.f90 radiation_generator_ut.f90 \
+  eval_trees_uti.f90 eval_trees_ut.f90 \
+  models_uti.f90 models_ut.f90 \
+  slha_interface_uti.f90 slha_interface_ut.f90
+
 ## Omitting this would exclude it from the distribution
 dist_noinst_DATA = model_features.nw
 
 # Dump module names into file Modules
-libmodel_features_Modules = ${libmodel_features_la_SOURCES:.f90=}
+libmodel_features_Modules = \
+  ${libmodel_features_la_SOURCES:.f90=} \
+  ${libmodel_features_ut_la_SOURCES:.f90=}
 Modules: Makefile
 	@for module in $(libmodel_features_Modules); do \
           echo $$module >> $@.new; \
@@ -95,7 +105,9 @@ DISTCLEANFILES = Module_dependencies.sed
 @am__include@ @am__quote@Makefile.depend@am__quote@
 
 Makefile.depend: Module_dependencies.sed
-Makefile.depend: $(libmodel_features_la_SOURCES)
+Makefile.depend: \
+  $(libmodel_features_la_SOURCES) \
+  $(libmodel_features_ut_la_SOURCES)
 	@rm -f $@
 	for src in $^; do \
 	  module="`basename $$src | sed 's/\.f[90][0358]//'`"; \
@@ -141,12 +153,14 @@ POSTLUDE = $(top_srcdir)/src/noweb-frame/whizard-postlude.nw
 model_features.stamp: $(PRELUDE) $(srcdir)/model_features.nw $(POSTLUDE)
 	@rm -f model_features.tmp
 	@touch model_features.tmp
-	for src in $(libmodel_features_la_SOURCES); do \
+	for src in \
+          $(libmodel_features_la_SOURCES) \
+          $(libmodel_features_ut_la_SOURCES); do \
 	  $(NOTANGLE) -R[[$$src]] $^ | $(CPIF) $$src; \
         done
 	@mv -f model_features.tmp model_features.stamp
 
-$(libmodel_features_la_SOURCES): model_features.stamp
+$(libmodel_features_la_SOURCES) $(libmodel_features_ut_la_SOURCES): model_features.stamp
 ## Recover from the removal of $@
 	@if test -f $@; then :; else \
 	  rm -f model_features.stamp; \
@@ -176,6 +190,9 @@ endif
 clean-local: clean-noweb
 	-rm -f model_features.stamp model_features.tmp
 	-rm -f *.$(FC_MODULE_EXT)
+if FC_SUBMODULES
+	-rm -f *.smod
+endif
 
 ## Remove backup files
 maintainer-clean-backup:

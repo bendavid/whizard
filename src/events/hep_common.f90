@@ -1,4 +1,4 @@
-! WHIZARD 2.2.6 May 02 2015
+! WHIZARD 2.2.7 Aug 11 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -32,10 +32,12 @@
 
 module hep_common
   
-  use kinds
-  use io_units
+  use kinds, only: default
+  use kinds, only: double
   use iso_varying_string, string_t => varying_string
+  use io_units
   use diagnostics
+  use unit_tests, only: nearly_equal
   use physics_defs, only: HADRON_REMNANT
   use physics_defs, only: HADRON_REMNANT_SINGLET
   use physics_defs, only: HADRON_REMNANT_TRIPLET
@@ -47,8 +49,9 @@ module hep_common
   use polarizations
   use model_data
   use particles
-  use subevents
-  use unit_tests, only: nearly_equal
+  use subevents, only: PRT_BEAM, PRT_INCOMING, PRT_OUTGOING
+  use subevents, only: PRT_UNDEFINED
+  use subevents, only: PRT_VIRTUAL, PRT_RESONANT, PRT_BEAM_REMNANT
 
   implicit none
   private
@@ -364,6 +367,7 @@ contains
     integer, intent(in) :: unit
     type(xml_tag_t), allocatable :: tag_lhef, tag_head, tag_init, &
          tag_event, tag_gen_n, tag_gen_v
+    call msg_debug (D_EVENTS, "w2p_write_lhef_event")
     allocate (tag_lhef, tag_head, tag_init, tag_event, &
          tag_gen_n, tag_gen_v)
     call tag_lhef%init (var_str ("LesHouchesEvents"), &
@@ -379,7 +383,7 @@ contains
     call tag_gen_n%write (var_str ("WHIZARD"), unit)
     write (unit, *)
     write (unit, "(2x)", advance = "no")      
-    call tag_gen_v%write (var_str ("2.2.6"), unit)
+    call tag_gen_v%write (var_str ("2.2.7"), unit)
     write (unit, *)
     call tag_head%close (unit); write (unit, *)
     call tag_init%write (unit); write (unit, *)
@@ -856,12 +860,20 @@ contains
     integer, intent(in), optional :: unit
     integer :: u, i
     u = given_output_unit (unit);  if (u < 0)  return
+    call msg_debug (D_EVENTS, "hepeup_write_lhef")
+    call msg_debug2 (D_EVENTS, "ID IST MOTH ICOL P VTIM SPIN")
     write (u, "(2(1x,I0),4(1x,ES17.10))") &
          NUP, IDPRUP, XWGTUP, SCALUP, AQEDUP, AQCDUP
     do i = 1, NUP
        write (u, "(6(1x,I0),7(1x,ES17.10))") &
             IDUP(i), ISTUP(i), MOTHUP(:,i), ICOLUP(:,i), &
             PUP(:,i), VTIMUP(i), SPINUP(i)
+       if (debug2_active (D_EVENTS)) then
+          write (msg_buffer, "(6(1x,I0),7(1x,ES17.10))") &
+               IDUP(i), ISTUP(i), MOTHUP(:,i), ICOLUP(:,i), &
+               PUP(:,i), VTIMUP(i), SPINUP(i)
+          call msg_message ()
+       end if
     end do
   end subroutine hepeup_write_lhef
 
@@ -1063,16 +1075,24 @@ contains
   end subroutine hepeup_to_particle_set
   
   subroutine hepevt_from_particle_set &
-       (particle_set, keep_beams, keep_remnants)
+       (particle_set, keep_beams, keep_remnants, ensure_order)
     type(particle_set_t), intent(in) :: particle_set
-    type(particle_set_t), target :: pset_hepevt
+    type(particle_set_t), target :: pset_hepevt, pset_tmp
     logical, intent(in), optional :: keep_beams
     logical, intent(in), optional :: keep_remnants
+    logical, intent(in), optional :: ensure_order
     integer :: i, status, n_tot
-    logical :: activate_remnants
+    logical :: activate_remnants, ensure
     activate_remnants = .true.
     if (present (keep_remnants))  activate_remnants = keep_remnants
-    call particle_set%to_hepevt_form (pset_hepevt, keep_beams)
+    ensure = .false.
+    if (present (ensure_order))  ensure = ensure_order
+    call particle_set%apply_keep_beams (pset_tmp, keep_beams = keep_beams)
+    if (ensure) then
+       call pset_tmp%to_hepevt_form (pset_hepevt)
+    else
+       pset_hepevt = pset_tmp
+    end if
     n_tot = pset_hepevt%get_n_tot ()
     call hepevt_init (n_tot, pset_hepevt%get_n_out ())
     do i = 1, n_tot

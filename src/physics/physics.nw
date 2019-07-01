@@ -210,8 +210,9 @@ matrix element.
   integer, parameter, public :: NLO_VIRTUAL = 2
   integer, parameter, public :: NLO_PDF = 3
   integer, parameter, public :: NLO_SUBTRACTION = 4
+  integer, parameter, public :: GKS = 5
 
-@ % def BORN, NLO_REAL, NLO_VIRTUAL, NLO_SUBTRACTION
+@ % def BORN, NLO_REAL, NLO_VIRTUAL, NLO_SUBTRACTION, GKS
 @
 \clearpage
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -301,8 +302,8 @@ module lorentz
 
 <<Use kinds with double>>
   use io_units
-  use constants, only: pi, twopi, degree, zero, one, eps0
-  use format_defs, only: FMT_13, FMT_15, FMT_17, FMT_19
+  use constants, only: pi, twopi, degree, zero, one, eps0, tiny_07
+  use format_defs, only: FMT_13, FMT_15, FMT_19
   use format_utils, only: pac_fmt
   use diagnostics
   use c_particles
@@ -1077,12 +1078,17 @@ second version for an array of four-vectors.
 <<Lorentz: vector4: TBP>>=
   procedure :: to_pythia6 => vector4_to_pythia6
 <<Lorentz: procedures>>=
-  pure function vector4_to_pythia6 (vector4) result (p)
+  pure function vector4_to_pythia6 (vector4, m) result (p)
     real(double), dimension(1:5) :: p
     class(vector4_t), intent(in) :: vector4
+    real(default), intent(in), optional :: m
     p(1:3) = vector4%p(1:3)
     p(4) = vector4%p(0)
-    p(5) = vector4 ** 2
+    if (present (m)) then
+       p(5) = m
+    else
+       p(5) = vector4 ** 1
+    end if
   end function vector4_to_pythia6
 
 @ %def vector4_to_pythia6
@@ -1435,14 +1441,27 @@ The scalar transverse momentum (assuming the $z$ axis is longitudinal)
   public :: transverse_part
 <<Lorentz: interfaces>>=
   interface transverse_part
-     module procedure transverse_part_vector4
+     module procedure transverse_part_vector4_beam_axis
+     module procedure transverse_part_vector4_vector4
   end interface
 <<Lorentz: procedures>>=
-  elemental function transverse_part_vector4 (p) result (pT)
+  elemental function transverse_part_vector4_beam_axis (p) result (pT)
     real(default) :: pT
     type(vector4_t), intent(in) :: p
     pT = sqrt(p%p(1)**2 + p%p(2)**2)
-  end function transverse_part_vector4
+  end function transverse_part_vector4_beam_axis
+
+  elemental function transverse_part_vector4_vector4 (p1, p2) result (pT)
+    real(default) :: pT
+    type(vector4_t), intent(in) :: p1, p2
+    real(default) :: p1_norm, p2_norm, p1p2, pT2
+    p1_norm = space_part_norm(p1)**2
+    p2_norm = space_part_norm(p2)**2
+!    p1p2 = p1%p(1:3)*p2%p(1:3)
+    p1p2 = vector4_get_space_part(p1) * vector4_get_space_part(p2)
+    pT2 = (p1_norm*p2_norm - p1p2)/p1_norm
+    pT = sqrt (pT2)
+  end function transverse_part_vector4_vector4
 
 @ %def transverse_part
 @ The scalar longitudinal momentum (assuming the $z$ axis is
@@ -2339,21 +2358,40 @@ transformations.
 @ %def vector_set_reshuffle
 @
 <<Lorentz: public>>=
+  public :: vector_set_is_cms
+<<Lorentz: procedures>>=
+  function vector_set_is_cms (p) result (is_cms)
+    type(vector4_t), dimension(:), intent(in) :: p
+    logical :: is_cms
+    is_cms = abs((p(1)+p(2))**1 - 2*p(1)%p(0)) < tiny_07
+  end function vector_set_is_cms
+
+@ %def vector_set_is_cms
+@
+<<Lorentz: public>>=
   public :: vector4_write_set
 <<Lorentz: procedures>>=
-  subroutine vector4_write_set (p, unit, show_mass, testflag)
+  subroutine vector4_write_set (p, unit, show_mass, testflag, &
+        check_conservation)
     type(vector4_t), intent(in), dimension(:) :: p
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: show_mass
     logical, intent(in), optional :: testflag
+    logical, intent(in), optional :: check_conservation
     integer :: i, j
-    real(default), dimension(4) :: p_tot
+    real(default), dimension(0:3) :: p_tot
     character(len=7) :: fmt
     integer :: u
+    logical :: yorn
     u = given_output_unit (unit);  if (u < 0)  return
     p_tot = 0
+    yorn = .false.; if (present (check_conservation)) yorn = check_conservation
     do i = 1, size (p)
-      forall (j=1:4) p_tot(j) = p_tot(j) + vector4_get_component(p(i),j-1)
+      if (yorn .and. i>2) then
+         forall (j=0:3) p_tot(j) = p_tot(j) - p(i)%p(j)
+      else
+         forall (j=0:3) p_tot(j) = p_tot(j) + p(i)%p(j)
+      end if
       call vector4_write (p(i), u, show_mass, testflag)
     end do
     call pac_fmt (fmt, FMT_19, FMT_15, testflag)
@@ -2361,8 +2399,8 @@ transformations.
        if (testflag)  call pacify (p_tot, 1.E-10_default)
     end if
     write (u, "(A5)") 'Total: '
-    write (u, "(1x,A,1x," // fmt // ")")    "E = ", p_tot(1)
-    write (u, "(1x,A,3(1x," // fmt // "))") "P = ", p_tot(2:)
+    write (u, "(1x,A,1x," // fmt // ")")    "E = ", p_tot(0)
+    write (u, "(1x,A,3(1x," // fmt // "))") "P = ", p_tot(1:)
   end subroutine vector4_write_set
 
 @ %def vector4_write_set
@@ -2439,8 +2477,6 @@ module sm_physics
 contains
 
 <<SM physics: procedures>>
-
-<<SM physics: tests>>
 
 end module sm_physics
 @ %def sm_physics
@@ -2657,7 +2693,7 @@ than $1.10$, but $\frac{1.10^{19}}{19!}{\rm Bernoulli}_{19}=2.7\times
 <<SM physics: public>>=
   public :: Li2
 <<SM physics: procedures>>=
-  function Li2 (x)
+  elemental function Li2 (x)
       use kinds, only: double
       real(default), intent(in) :: x
       real(default) :: Li2
@@ -2667,7 +2703,7 @@ than $1.10$, but $\frac{1.10^{19}}{19!}{\rm Bernoulli}_{19}=2.7\times
 @ %def: Li2
 @
 <<SM physics: procedures>>=
-  function Li2_double (x)  result (Li2)
+  elemental function Li2_double (x)  result (Li2)
     use kinds, only: double
     real(kind=double), intent(in) :: x
     real(kind=double) :: Li2
@@ -2685,7 +2721,7 @@ than $1.10$, but $\frac{1.10^{19}}{19!}{\rm Bernoulli}_{19}=2.7\times
        Li2 = Li2_restricted (x)
     end if
   contains
-    function Li2_restricted (x) result (Li2)
+    elemental function Li2_restricted (x) result (Li2)
       real(kind=double), intent(in) :: x
       real(kind=double) :: Li2
       real(kind=double) :: tmp, z, z2
@@ -3577,9 +3613,49 @@ emission and the gluon is preferably polarized in the branching plane
 
 @
 \subsection{Unit tests}
-<<SM physics: public>>=
+Test module, followed by the corresponding implementation module.
+<<[[sm_physics_ut.f90]]>>=
+<<File header>>
+
+module sm_physics_ut
+  use unit_tests
+  use sm_physics_uti
+  
+<<Standard module head>>
+
+<<SM physics: public test>>
+
+contains
+  
+<<SM physics: test driver>>
+
+end module sm_physics_ut
+@ %def sm_physics_ut
+@
+<<[[sm_physics_uti.f90]]>>=
+<<File header>>
+
+module sm_physics_uti
+
+<<Use kinds>>
+  use unit_tests, only: nearly_equal, vanishes, assert
+
+  use sm_physics
+
+<<Standard module head>>
+
+<<SM physics: test declarations>>
+
+contains
+
+<<SM physics: tests>>
+
+end module sm_physics_uti
+@ %def sm_physics_ut
+@ API: driver for the unit tests below.
+<<SM physics: public test>>=
   public :: sm_physics_test
-<<SM physics: tests>>=
+<<SM physics: test driver>>=
   subroutine sm_physics_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
@@ -3593,6 +3669,8 @@ emission and the gluon is preferably polarized in the branching plane
   call test (sm_physics_1, "sm_physics_1", &
        "Splitting functions", &
        u, results)
+<<SM physics: test declarations>>=
+  public :: sm_physics_1
 <<SM physics: tests>>=
   subroutine sm_physics_1 (u)
     integer, intent(in) :: u
@@ -3655,8 +3733,6 @@ module sm_qcd
 contains
 
 <<SM qcd: procedures>>
-
-<<SM qcd: tests>>
 
 end module sm_qcd
 @ %def sm_qcd
@@ -3917,9 +3993,49 @@ done by writing them to a temporary file, using a standard format.
 @ %def qcd_get_md5sum
 @
 \subsection{Unit tests}
-<<SM qcd: public>>=
+Test module, followed by the corresponding implementation module.
+<<[[sm_qcd_ut.f90]]>>=
+<<File header>>
+
+module sm_qcd_ut
+  use unit_tests
+  use sm_qcd_uti
+  
+<<Standard module head>>
+
+<<SM qcd: public test>>
+
+contains
+  
+<<SM qcd: test driver>>
+
+end module sm_qcd_ut
+@ %def sm_qcd_ut
+@
+<<[[sm_qcd_uti.f90]]>>=
+<<File header>>
+
+module sm_qcd_uti
+
+<<Use kinds>>
+  use physics_defs, only: MZ_REF
+
+  use sm_qcd
+
+<<Standard module head>>
+
+<<SM qcd: test declarations>>
+
+contains
+
+<<SM qcd: tests>>
+
+end module sm_qcd_uti
+@ %def sm_qcd_ut
+@ API: driver for the unit tests below.
+<<SM qcd: public test>>=
   public :: sm_qcd_test
-<<SM qcd: tests>>=
+<<SM qcd: test driver>>=
   subroutine sm_qcd_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
@@ -3934,6 +4050,8 @@ We check two different implementations of the abstract QCD coupling.
   call test (sm_qcd_1, "sm_qcd_1", &
        "running alpha_s", &
        u, results)
+<<SM qcd: test declarations>>=
+  public :: sm_qcd_1
 <<SM qcd: tests>>=
   subroutine sm_qcd_1 (u)
     integer, intent(in) :: u
@@ -4071,8 +4189,8 @@ We check two different implementations of the abstract QCD coupling.
 module shower_algorithms
 
 <<Use kinds>>
+  use diagnostics
   use constants
-  use unit_tests
   use rng_base
 
 <<Standard module head>>
@@ -4127,10 +4245,11 @@ emission is rejected.
 @ %def generate_vetoed
 @
 <<shower algorithms: procedures>>=
-  pure subroutine generate_on_hypersphere (x, overestimator, scale)
+  subroutine generate_on_hypersphere (x, overestimator, scale)
     real(default), dimension(:), intent(out) :: x
     procedure(XXX_function), pointer, intent(in) :: overestimator
     real(default), intent(in) :: scale
+    call msg_bug ("generate_on_hypersphere: not implemented")
   end subroutine generate_on_hypersphere
 
 @ %def generate_on_hypersphere
@@ -4152,9 +4271,10 @@ emission is rejected.
   end interface
 @
 \subsection{Unit tests}
-<<shower algorithms: public>>=
+(Currently unused.)
+<<XXX shower algorithms: public>>=
   public :: shower_algorithms_test
-<<shower algorithms: tests>>=
+<<XXX shower algorithms: tests>>=
   subroutine shower_algorithms_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
@@ -4164,11 +4284,11 @@ emission is rejected.
 @ %def shower_algorithms_test
 @
 \subsubsection{Splitting functions}
-<<shower algorithms: execute tests>>=
+<<XXX shower algorithms: execute tests>>=
   call test (shower_algorithms_1, "shower_algorithms_1", &
        "veto technique", &
        u, results)
-<<shower algorithms: tests>>=
+<<XXX shower algorithms: tests>>=
   subroutine shower_algorithms_1 (u)
     integer, intent(in) :: u
 

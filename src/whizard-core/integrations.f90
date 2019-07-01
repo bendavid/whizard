@@ -1,4 +1,4 @@
-! WHIZARD 2.2.6 May 02 2015
+! WHIZARD 2.2.7 Aug 11 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -35,29 +35,20 @@ module integrations
   use kinds, only: default
   use iso_varying_string, string_t => varying_string
   use io_units
-  use unit_tests
   use diagnostics
   use os_interface
   use cputime
   use sm_qcd
   use physics_defs
-  use ifiles
-  use lexers
-  use parser
   use model_data
-  use flavors
   use pdg_arrays
   use variables
-  use expr_base
   use eval_trees
-  use models
-  use interactions
   use sf_mappings
   use sf_base
   use phs_base
   use mappings
-  use phs_forests
-  use phs_wood
+  use phs_forests, only: phs_parameters_t
   use rng_base
   use mci_base
   use process_libraries
@@ -67,13 +58,18 @@ module integrations
   use models
   use iterations
   use rt_data
-  use dispatch
-  use process_configurations
-  use compilations
+  
+  use dispatch, only: dispatch_qcd
+  use dispatch, only: dispatch_rng_factory
+  use dispatch, only: dispatch_core
+  use dispatch, only: sf_prop_t
+  use dispatch, only: dispatch_sf_channels, dispatch_sf_config
+  use dispatch, only: dispatch_phs
+  use dispatch, only: dispatch_mci
 
-  use process_constants
-  use prc_omega
-  use prc_gosam
+  use compilations, only: compile_library
+
+  use dispatch, only: dispatch_fks
   use blha_olp_interfaces
   use nlo_data
 
@@ -82,8 +78,6 @@ module integrations
 
   public :: integration_t
   public :: integrate_process
-  public :: integrations_test
-  public :: integrations_history_test    
 
   type :: integration_t
     private
@@ -182,7 +176,7 @@ contains
     integer :: n_components, n_in, i_component
     type(pdg_array_t), dimension(:,:), allocatable :: pdg_prc
     type(process_component_def_t), pointer :: config
-    type(helicity_selection_t), allocatable :: helicity_selection
+    type(helicity_selection_t) :: helicity_selection
     real(default) :: sqrts
     logical :: decay_rest_frame, use_color_factors
     type(sf_config_t), dimension(:), allocatable :: sf_config
@@ -192,11 +186,12 @@ contains
     logical :: sf_trace
     type(string_t) :: sf_string, sf_trace_file
     logical :: verb
-    integer :: i_born
     type(fks_template_t) :: fks_template
     type(blha_template_t) :: blha_template
     type(string_t) :: me_method
     type(eval_tree_factory_t) :: expr_factory
+    logical :: use_powheg_damping_factors
+    integer :: i = 0
   
     verb = .true.; if (present (verbose))  verb = verbose
     
@@ -249,7 +244,8 @@ contains
        intg%log_filename = intg%process_id // ".log"
     end if
 
-    call dispatch_mci (mci_template, local, intg%process_id)
+    call dispatch_mci (mci_template, local, intg%process_id, &
+       intg%process%is_nlo_calculation ())
 
     if (verb) then
        call msg_message ("Initializing integration for process " &
@@ -293,6 +289,7 @@ contains
             call intg%process%set_component_type (i_component, COMP_VIRT)
        case (NLO_REAL)
          me_method = var_list%get_sval (var_str ("$real_tree_me_method"))
+         use_powheg_damping_factors = var_list%get_lval (var_str ("?use_powheg_damping"))
          select case (char (me_method))
          case ('gosam', 'openloops')
             call blha_template%set_real_trees ()
@@ -305,8 +302,18 @@ contains
             (i_component, core_template, mci_template, &
              phs_config_template_other, fks_template = fks_template, &
              blha_template = blha_template)
-         if (intg%combined_integration) &
-            call intg%process%set_component_type (i_component, COMP_REAL)
+         if (intg%combined_integration) then
+            if (use_powheg_damping_factors) then
+               if (i == 0) then
+                  call intg%process%set_component_type (i_component, COMP_REAL_SING)
+                  i = i + 1
+               else
+                  call intg%process%set_component_type (i_component, COMP_REAL_FIN)
+               end if
+            else
+               call intg%process%set_component_type (i_component, COMP_REAL)
+            end if
+         end if
        case (NLO_PDF)
          call dispatch_phs (phs_config_template_other, local, &
              intg%process_id, mapping_defs, phs_par, &
@@ -316,9 +323,17 @@ contains
          if (intg%combined_integration) &
             call intg%process%set_component_type (i_component, COMP_PDF)
        case (BORN)
-         call intg%process%init_component &
-            (i_component, core_template, mci_template, phs_config_template)
-         i_born = config%get_associated_born ()
+         me_method = var_list%get_sval (var_str ("$born_me_method"))
+         select case (char (me_method))
+         case ('gosam', 'openloops')
+            call blha_template%set_born ()
+            call intg%process%init_component &
+               (i_component, core_template, mci_template, phs_config_template, &
+                blha_template = blha_template)
+         case default
+            call intg%process%init_component &
+               (i_component, core_template, mci_template, phs_config_template)
+         end select
          if (intg%combined_integration) &
             call intg%process%set_component_type (i_component, COMP_MASTER)
        case (NLO_SUBTRACTION)
@@ -332,6 +347,9 @@ contains
               blha_template = blha_template)
          if (intg%combined_integration) &
             call intg%process%set_component_type (i_component, COMP_SUB)
+       case (GKS)
+         call intg%process%init_component &
+             (i_component, core_template, mci_template, phs_config_template) 
        case default
          call msg_fatal ("setup_process: NLO type not implemented!")
        end select
@@ -512,6 +530,7 @@ contains
     type(iterations_list_t) :: it_list
     logical :: pacify
     integer :: pass, i_mci, n_mci, n_pass
+    integer :: i_component
     integer :: nlo_type
     logical :: display_summed
     logical :: use_internal_color_correlations
@@ -529,7 +548,6 @@ contains
     if (process_instance%has_nlo_component ()) then
        call process_instance%create_blha_interface ()
        call process_instance%load_blha_libraries (local%os_data)
-       call process_instance%set_blha_constants (var_list)
     end if
 
     call openmp_set_num_threads_verbose &
@@ -548,7 +566,10 @@ contains
     call intg%setup_component_cores ()
 
     do i_mci = 1, n_mci
-       if (intg%process%is_active_nlo_component (i_mci)) then
+       i_component = intg%process%i_mci_to_i_component (i_mci)
+       if (intg%process%is_active_nlo_component (i_component)) then
+         if (process_instance%collect_matrix_elements) &
+            call process_instance%nlo_controller%sqme_collector%reset ()
          if (n_mci > 1) then
             write (msg_buffer, "(A,A,A,I0)") &
                  "Starting integration for process '", &
@@ -718,756 +739,5 @@ contains
 
   end subroutine integrate_process
 
-
-  subroutine integrations_test (u, results)
-    integer, intent(in) :: u
-    type(test_results_t), intent(inout) :: results
-    call test (integrations_1, "integrations_1", &
-         "intrinsic test process", &
-         u, results)
-    call test (integrations_2, "integrations_2", &
-         "intrinsic test process with cut", &
-         u, results)
-    call test (integrations_3, "integrations_3", &
-         "standard phase space", &
-         u, results)
-    call test (integrations_4, "integrations_4", &
-         "VAMP integration (one iteration)", &
-         u, results)
-    call test (integrations_5, "integrations_5", &
-         "VAMP integration (three iterations)", &
-         u, results)
-    call test (integrations_6, "integrations_6", &
-         "VAMP integration (three passes)", &
-         u, results)
-    call test (integrations_7, "integrations_7", &
-         "VAMP integration with wood phase space", &
-         u, results)
-    call test (integrations_8, "integrations_8", &
-         "integration with structure function", &
-         u, results)
-  end subroutine integrations_test
-
-  subroutine integrations_history_test (u, results)
-    integer, intent(in) :: u
-    type(test_results_t), intent(inout) :: results
-    call test (integrations_history_1, "integrations_history_1", &
-         "Test integration history files", &
-         u, results)
-  end subroutine integrations_history_test  
-
-  subroutine integrations_1 (u)
-    integer, intent(in) :: u
-    type(string_t) :: libname, procname
-    type(rt_data_t), target :: global
-    
-    write (u, "(A)")  "* Test output: integrations_1"
-    write (u, "(A)")  "*   Purpose: integrate test process"
-    write (u, "(A)")
-
-    call syntax_model_file_init ()
-
-    call global%global_init ()
-
-    libname = "integration_1"
-    procname = "prc_config_a"
-    
-    call prepare_test_library (global, libname, 1)
-    call compile_library (libname, global)
-
-    call global%set_string (var_str ("$run_id"), &
-         var_str ("integrations1"), is_known = .true.)
-    call global%set_string (var_str ("$method"), &
-         var_str ("unit_test"), is_known = .true.)
-    call global%set_string (var_str ("$phs_method"), &
-         var_str ("single"), is_known = .true.)
-    call global%set_string (var_str ("$integration_method"),&
-         var_str ("midpoint"), is_known = .true.)
-    call global%set_log (var_str ("?vis_history"),&
-         .false., is_known = .true.)    
-    call global%set_log (var_str ("?integration_timer"),&
-         .false., is_known = .true.) 
-    call global%set_int (var_str ("seed"), &
-         0, is_known=.true.)    
-    
-    call global%set_real (var_str ("sqrts"),&
-         1000._default, is_known = .true.)
-
-    call global%it_list%init ([1], [1000])
-
-    call reset_interaction_counter ()
-    call integrate_process (procname, global, local_stack=.true.)
-
-    call global%write (u, vars = [ &
-         var_str ("$method"), &
-         var_str ("sqrts"), &
-         var_str ("$integration_method"), &
-         var_str ("$phs_method"), &
-         var_str ("$run_id")])
-    
-    call global%final ()
-    call syntax_model_file_final ()
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: integrations_1"
-    
-  end subroutine integrations_1
-  
-  subroutine integrations_2 (u)
-    integer, intent(in) :: u
-    type(string_t) :: libname, procname
-    type(rt_data_t), target :: global
-
-    type(string_t) :: cut_expr_text
-    type(ifile_t) :: ifile
-    type(stream_t) :: stream
-    type(parse_tree_t) :: parse_tree
-    
-    type(string_t), dimension(0) :: empty_string_array
-
-    write (u, "(A)")  "* Test output: integrations_2"
-    write (u, "(A)")  "*   Purpose: integrate test process with cut"
-    write (u, "(A)")
-
-    call syntax_model_file_init ()
-
-    call global%global_init ()
-
-    write (u, "(A)")  "* Prepare a cut expression"
-    write (u, "(A)")
-
-    call syntax_pexpr_init ()
-    cut_expr_text = "all Pt > 100 [s]"
-    call ifile_append (ifile, cut_expr_text)
-    call stream_init (stream, ifile)
-    call parse_tree_init_lexpr (parse_tree, stream, .true.)
-    global%pn%cuts_lexpr => parse_tree_get_root_ptr (parse_tree)
-    
-    write (u, "(A)")  "* Build and initialize a test process"
-    write (u, "(A)")
-
-    libname = "integration_3"
-    procname = "prc_config_a"
-    
-    call prepare_test_library (global, libname, 1)
-    call compile_library (libname, global)
-
-    call global%set_string (var_str ("$run_id"), &
-         var_str ("integrations1"), is_known = .true.)
-    call global%set_string (var_str ("$method"), &
-         var_str ("unit_test"), is_known = .true.)
-    call global%set_string (var_str ("$phs_method"), &
-         var_str ("single"), is_known = .true.)
-    call global%set_string (var_str ("$integration_method"),&
-         var_str ("midpoint"), is_known = .true.)
-    call global%set_log (var_str ("?vis_history"),&
-         .false., is_known = .true.)    
-    call global%set_log (var_str ("?integration_timer"),&
-         .false., is_known = .true.)  
-    call global%set_int (var_str ("seed"), &
-         0, is_known=.true.)    
-
-    call global%set_real (var_str ("sqrts"),&
-         1000._default, is_known = .true.)
-
-    call global%it_list%init ([1], [1000])
-    
-    call reset_interaction_counter ()
-    call integrate_process (procname, global, local_stack=.true.)
-    
-    call global%write (u, vars = empty_string_array)
-    
-    call global%final ()
-    call syntax_model_file_final ()
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: integrations_2"
-    
-  end subroutine integrations_2
-  
-  subroutine integrations_3 (u)
-    integer, intent(in) :: u
-    type(string_t) :: libname, procname
-    type(rt_data_t), target :: global
-    integer :: u_phs
-    
-    write (u, "(A)")  "* Test output: integrations_3"
-    write (u, "(A)")  "*   Purpose: integrate test process"
-    write (u, "(A)")
-
-    write (u, "(A)")  "* Initialize process and parameters"
-    write (u, "(A)")
-
-    call syntax_model_file_init ()
-    call syntax_phs_forest_init ()
-
-    call global%global_init ()
-
-    libname = "integration_3"
-    procname = "prc_config_a"
-    
-    call prepare_test_library (global, libname, 1)
-    call compile_library (libname, global)
-
-    call global%set_string (var_str ("$run_id"), &
-         var_str ("integrations1"), is_known = .true.)
-    call global%set_string (var_str ("$method"), &
-         var_str ("unit_test"), is_known = .true.)
-    call global%set_string (var_str ("$phs_method"), &
-         var_str ("default"), is_known = .true.)
-    call global%set_string (var_str ("$integration_method"),&
-         var_str ("midpoint"), is_known = .true.)
-    call global%set_log (var_str ("?vis_history"),&
-         .false., is_known = .true.)    
-    call global%set_log (var_str ("?integration_timer"),&
-         .false., is_known = .true.)    
-    call global%set_log (var_str ("?phs_s_mapping"),&
-         .false., is_known = .true.)   
-    call global%set_int (var_str ("seed"), &
-         0, is_known=.true.)    
-    
-    call global%set_real (var_str ("sqrts"),&
-         1000._default, is_known = .true.)
-
-    write (u, "(A)")  "* Create a scratch phase-space file"
-    write (u, "(A)")
-
-    u_phs = free_unit ()
-    open (u_phs, file = "integrations_3.phs", &
-         status = "replace", action = "write")
-    call write_test_phs_file (u_phs, var_str ("prc_config_a_i1"))
-    close (u_phs)
-
-    call global%set_string (var_str ("$phs_file"),&
-         var_str ("integrations_3.phs"), is_known = .true.)
-
-    call global%it_list%init ([1], [1000])
-
-    write (u, "(A)")  "* Integrate"
-    write (u, "(A)")
-
-    call reset_interaction_counter ()
-    call integrate_process (procname, global, local_stack=.true.)
-    
-    call global%write (u, vars = [ &
-         var_str ("$phs_method"), &
-         var_str ("$phs_file")])
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Cleanup"
-
-    call global%final ()
-    call syntax_phs_forest_final ()
-    call syntax_model_file_final ()
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: integrations_3"
-    
-  end subroutine integrations_3
-  
-  subroutine integrations_4 (u)
-    integer, intent(in) :: u
-    type(string_t) :: libname, procname
-    type(rt_data_t), target :: global
-    
-    write (u, "(A)")  "* Test output: integrations_4"
-    write (u, "(A)")  "*   Purpose: integrate test process using VAMP"
-    write (u, "(A)")
-
-    write (u, "(A)")  "* Initialize process and parameters"
-    write (u, "(A)")
-
-    call syntax_model_file_init ()
-
-    call global%global_init ()
-
-    libname = "integrations_4_lib"
-    procname = "integrations_4"
-    
-    call prepare_test_library (global, libname, 1, [procname])
-    call compile_library (libname, global)
-
-    call global%append_log (&
-         var_str ("?rebuild_grids"), .true., intrinsic = .true.)
-
-    call global%set_string (var_str ("$run_id"), &
-         var_str ("r1"), is_known = .true.)
-    call global%set_string (var_str ("$method"), &
-         var_str ("unit_test"), is_known = .true.)
-    call global%set_string (var_str ("$phs_method"), &
-         var_str ("single"), is_known = .true.)
-    call global%set_string (var_str ("$integration_method"),&
-         var_str ("vamp"), is_known = .true.)
-    call global%set_log (var_str ("?use_vamp_equivalences"),&
-         .false., is_known = .true.)
-    call global%set_log (var_str ("?vis_history"),&
-         .false., is_known = .true.)    
-    call global%set_log (var_str ("?integration_timer"),&
-         .false., is_known = .true.)    
-    call global%set_int (var_str ("seed"), &
-         0, is_known=.true.)    
-    
-    call global%set_real (var_str ("sqrts"),&
-         1000._default, is_known = .true.)
-
-    call global%it_list%init ([1], [1000])
-
-    write (u, "(A)")  "* Integrate"
-    write (u, "(A)")
-
-    call reset_interaction_counter ()
-    call integrate_process (procname, global, local_stack=.true.)
-    
-    call global%pacify (efficiency_reset = .true., error_reset = .true.)
-    call global%write (u, vars = [var_str ("$integration_method")], &
-            pacify = .true.)
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Cleanup"
-
-    call global%final ()
-    call syntax_model_file_final ()
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: integrations_4"
-    
-  end subroutine integrations_4
-  
-  subroutine integrations_5 (u)
-    integer, intent(in) :: u
-    type(string_t) :: libname, procname
-    type(rt_data_t), target :: global
-    
-    write (u, "(A)")  "* Test output: integrations_5"
-    write (u, "(A)")  "*   Purpose: integrate test process using VAMP"
-    write (u, "(A)")
-
-    write (u, "(A)")  "* Initialize process and parameters"
-    write (u, "(A)")
-
-    call syntax_model_file_init ()
-
-    call global%global_init ()
-
-    libname = "integrations_5_lib"
-    procname = "integrations_5"
-    
-    call prepare_test_library (global, libname, 1, [procname])
-    call compile_library (libname, global)
-
-    call global%append_log (&
-         var_str ("?rebuild_grids"), .true., intrinsic = .true.)
-
-    call global%set_string (var_str ("$run_id"), &
-         var_str ("r1"), is_known = .true.)
-    call global%set_string (var_str ("$method"), &
-         var_str ("unit_test"), is_known = .true.)
-    call global%set_string (var_str ("$phs_method"), &
-         var_str ("single"), is_known = .true.)
-    call global%set_string (var_str ("$integration_method"),&
-         var_str ("vamp"), is_known = .true.)
-    call global%set_log (var_str ("?use_vamp_equivalences"),&
-         .false., is_known = .true.)
-    call global%set_log (var_str ("?vis_history"),&
-         .false., is_known = .true.)    
-    call global%set_log (var_str ("?integration_timer"),&
-         .false., is_known = .true.)    
-    call global%set_int (var_str ("seed"), &
-         0, is_known=.true.)
-    
-    call global%set_real (var_str ("sqrts"),&
-         1000._default, is_known = .true.)
-
-    call global%it_list%init ([3], [1000])
-
-    write (u, "(A)")  "* Integrate"
-    write (u, "(A)")
-
-    call reset_interaction_counter ()
-    call integrate_process (procname, global, local_stack=.true.)
-    
-    call global%pacify (efficiency_reset = .true., error_reset = .true.)
-    call global%write (u, vars = [var_str ("$integration_method")], &
-            pacify = .true.)
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Cleanup"
-
-    call global%final ()
-    call syntax_model_file_final ()
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: integrations_5"
-    
-  end subroutine integrations_5
-  
-  subroutine integrations_6 (u)
-    integer, intent(in) :: u
-    type(string_t) :: libname, procname
-    type(rt_data_t), target :: global
-    type(string_t), dimension(0) :: no_vars
-    
-    write (u, "(A)")  "* Test output: integrations_6"
-    write (u, "(A)")  "*   Purpose: integrate test process using VAMP"
-    write (u, "(A)")
-
-    write (u, "(A)")  "* Initialize process and parameters"
-    write (u, "(A)")
-
-    call syntax_model_file_init ()
-
-    call global%global_init ()
-
-    libname = "integrations_6_lib"
-    procname = "integrations_6"
-    
-    call prepare_test_library (global, libname, 1, [procname])
-    call compile_library (libname, global)
-
-    call global%append_log (&
-         var_str ("?rebuild_grids"), .true., intrinsic = .true.)
-
-    call global%set_string (var_str ("$run_id"), &
-         var_str ("r1"), is_known = .true.)
-    call global%set_string (var_str ("$method"), &
-         var_str ("unit_test"), is_known = .true.)
-    call global%set_string (var_str ("$phs_method"), &
-         var_str ("single"), is_known = .true.)
-    call global%set_string (var_str ("$integration_method"),&
-         var_str ("vamp"), is_known = .true.)
-    call global%set_log (var_str ("?use_vamp_equivalences"),&
-         .false., is_known = .true.)
-    call global%set_log (var_str ("?vis_history"),&
-         .false., is_known = .true.)    
-    call global%set_log (var_str ("?integration_timer"),&
-         .false., is_known = .true.)    
-    call global%set_int (var_str ("seed"), &
-         0, is_known=.true.)    
-    
-    call global%set_real (var_str ("sqrts"),&
-         1000._default, is_known = .true.)
-
-    call global%it_list%init ([3, 3, 3], [1000, 1000, 1000], &
-         adapt = [.true., .true., .false.], &
-         adapt_code = [var_str ("wg"), var_str ("g"), var_str ("")])
-
-    write (u, "(A)")  "* Integrate"
-    write (u, "(A)")
-
-    call reset_interaction_counter ()
-    call integrate_process (procname, global, local_stack=.true.)
-    
-    call global%pacify (efficiency_reset = .true., error_reset = .true.)
-    call global%write (u, vars = no_vars, pacify = .true.)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Cleanup"
-
-    call global%final ()
-    call syntax_model_file_final ()
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: integrations_6"
-    
-  end subroutine integrations_6
-  
-  subroutine integrations_7 (u)
-    integer, intent(in) :: u
-    type(string_t) :: libname, procname
-    type(rt_data_t), target :: global
-    type(string_t), dimension(0) :: no_vars
-    integer :: iostat, u_phs
-    character(95) :: buffer
-    type(string_t) :: phs_file
-    logical :: exist
-    
-    write (u, "(A)")  "* Test output: integrations_7"
-    write (u, "(A)")  "*   Purpose: integrate test process using VAMP"
-    write (u, "(A)")
-
-    write (u, "(A)")  "* Initialize process and parameters"
-    write (u, "(A)")
-
-    call syntax_model_file_init ()
-    call syntax_phs_forest_init ()
-
-    call global%global_init ()
-
-    libname = "integrations_7_lib"
-    procname = "integrations_7"
-    
-    call prepare_test_library (global, libname, 1, [procname])
-    call compile_library (libname, global)
-
-    call global%append_log (&
-         var_str ("?rebuild_phase_space"), .true., intrinsic = .true.)
-    call global%append_log (&
-         var_str ("?rebuild_grids"), .true., intrinsic = .true.)
-
-    call global%set_string (var_str ("$run_id"), &
-         var_str ("r1"), is_known = .true.)
-    call global%set_string (var_str ("$method"), &
-         var_str ("unit_test"), is_known = .true.)
-    call global%set_string (var_str ("$phs_method"), &
-         var_str ("wood"), is_known = .true.)
-    call global%set_string (var_str ("$integration_method"),&
-         var_str ("vamp"), is_known = .true.)
-    call global%set_log (var_str ("?use_vamp_equivalences"),&
-         .true., is_known = .true.)
-    call global%set_log (var_str ("?vis_history"),&
-         .false., is_known = .true.)    
-    call global%set_log (var_str ("?integration_timer"),&
-         .false., is_known = .true.)    
-    call global%set_log (var_str ("?phs_s_mapping"),&
-         .false., is_known = .true.)    
-    call global%set_int (var_str ("seed"), &
-         0, is_known=.true.)
-    
-    call global%set_real (var_str ("sqrts"),&
-         1000._default, is_known = .true.)
-
-    call global%it_list%init ([3, 3, 3], [1000, 1000, 1000], &
-         adapt = [.true., .true., .false.], &
-         adapt_code = [var_str ("wg"), var_str ("g"), var_str ("")])
-
-    write (u, "(A)")  "* Integrate"
-    write (u, "(A)")
-
-    call reset_interaction_counter ()
-    call integrate_process (procname, global, local_stack=.true.)
-    
-    call global%pacify (efficiency_reset = .true., error_reset = .true.)
-    call global%write (u, vars = no_vars, pacify = .true.)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Cleanup"
-
-    call global%final ()
-    call syntax_phs_forest_final ()
-    call syntax_model_file_final ()
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Generated phase-space file"
-    write (u, "(A)")
-
-    phs_file = procname // "_i1.r1.phs"
-    inquire (file = char (phs_file), exist = exist)
-    if (exist) then
-       u_phs = free_unit ()
-       open (u_phs, file = char (phs_file), action = "read", status = "old")
-       iostat = 0
-       do while (iostat == 0)
-          read (u_phs, "(A)", iostat = iostat)  buffer
-          if (iostat == 0)  write (u, "(A)")  trim (buffer)
-       end do
-       close (u_phs)
-    else
-       write (u, "(A)")  "[file is missing]"
-    end if
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: integrations_7"
-    
-  end subroutine integrations_7
-  
-  subroutine integrations_8 (u)
-    integer, intent(in) :: u
-    type(string_t) :: libname, procname
-    type(rt_data_t), target :: global
-    type(flavor_t) :: flv
-    type(string_t) :: name
-    
-    write (u, "(A)")  "* Test output: integrations_8"
-    write (u, "(A)")  "*   Purpose: integrate test process using VAMP &
-         &with structure function"
-    write (u, "(A)")
-
-    write (u, "(A)")  "* Initialize process and parameters"
-    write (u, "(A)")
-
-    call syntax_model_file_init ()
-    call syntax_phs_forest_init ()
-
-    call global%global_init ()
-
-    libname = "integrations_8_lib"
-    procname = "integrations_8"
-    
-    call prepare_test_library (global, libname, 1, [procname])
-    call compile_library (libname, global)
-
-    call global%append_log (&
-         var_str ("?rebuild_phase_space"), .true., intrinsic = .true.)
-    call global%append_log (&
-         var_str ("?rebuild_grids"), .true., intrinsic = .true.)
-
-    call global%set_string (var_str ("$run_id"), &
-         var_str ("r1"), is_known = .true.)
-    call global%set_string (var_str ("$method"), &
-         var_str ("unit_test"), is_known = .true.)
-    call global%set_string (var_str ("$phs_method"), &
-         var_str ("wood"), is_known = .true.)
-    call global%set_string (var_str ("$integration_method"),&
-         var_str ("vamp"), is_known = .true.)
-    call global%set_log (var_str ("?use_vamp_equivalences"),&
-         .true., is_known = .true.)
-    call global%set_log (var_str ("?vis_history"),&
-         .false., is_known = .true.)    
-    call global%set_log (var_str ("?integration_timer"),&
-         .false., is_known = .true.)    
-    call global%set_log (var_str ("?phs_s_mapping"),&
-         .false., is_known = .true.)  
-    call global%set_int (var_str ("seed"), &
-         0, is_known=.true.)    
-    
-    call global%set_real (var_str ("sqrts"),&
-         1000._default, is_known = .true.)
-    call global%model_set_real (var_str ("ms"), 0._default)
-
-    call reset_interaction_counter ()
-
-    call flv%init (25, global%model)
-         
-    name = flv%get_name ()
-    call global%beam_structure%init_sf ([name, name], [1])
-    call global%beam_structure%set_sf (1, 1, var_str ("sf_test_1"))
-
-    write (u, "(A)")  "* Integrate"
-    write (u, "(A)")
-
-    call global%it_list%init ([1], [1000])
-    call integrate_process (procname, global, local_stack=.true.)
-    
-    call global%write (u, vars = [var_str ("ms")])
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Cleanup"
-
-    call global%final ()
-    call syntax_phs_forest_final ()
-    call syntax_model_file_final ()
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: integrations_8"
-    
-  end subroutine integrations_8
-  
-  subroutine integrations_history_1 (u)
-    integer, intent(in) :: u
-    type(string_t) :: libname, procname
-    type(rt_data_t), target :: global
-    type(string_t), dimension(0) :: no_vars
-    integer :: iostat, u_his
-    character(91) :: buffer
-    type(string_t) :: his_file, ps_file, pdf_file
-    logical :: exist, exist_ps, exist_pdf
-    
-    write (u, "(A)")  "* Test output: integrations_history_1"
-    write (u, "(A)")  "*   Purpose: test integration history files"
-    write (u, "(A)")
-
-    write (u, "(A)")  "* Initialize process and parameters"
-    write (u, "(A)")
-
-    call syntax_model_file_init ()
-    call syntax_phs_forest_init ()
-
-    call global%global_init ()
-
-    libname = "integrations_history_1_lib"
-    procname = "integrations_history_1"
-
-    call global%set_log (var_str ("?vis_history"), &
-         .true., is_known = .true.)        
-    call global%set_log (var_str ("?integration_timer"),&
-         .false., is_known = .true.)    
-    call global%set_log (var_str ("?phs_s_mapping"),&
-         .false., is_known = .true.)    
-    
-    call prepare_test_library (global, libname, 1, [procname])
-    call compile_library (libname, global)
-
-    call global%append_log (&
-         var_str ("?rebuild_phase_space"), .true., intrinsic = .true.)
-    call global%append_log (&
-         var_str ("?rebuild_grids"), .true., intrinsic = .true.)
-
-    call global%set_string (var_str ("$run_id"), &
-         var_str ("r1"), is_known = .true.)
-    call global%set_string (var_str ("$method"), &
-         var_str ("unit_test"), is_known = .true.)
-    call global%set_string (var_str ("$phs_method"), &
-         var_str ("wood"), is_known = .true.)
-    call global%set_string (var_str ("$integration_method"),&
-         var_str ("vamp"), is_known = .true.)
-    call global%set_log (var_str ("?use_vamp_equivalences"),&
-         .true., is_known = .true.)
-    call global%set_real (var_str ("error_threshold"),&
-         5E-6_default, is_known = .true.)
-    call global%set_int (var_str ("seed"), &
-         0, is_known=.true.)    
-
-    call global%set_real (var_str ("sqrts"),&
-         1000._default, is_known = .true.)
-
-    call global%it_list%init ([2, 2, 2], [1000, 1000, 1000], &
-         adapt = [.true., .true., .false.], &
-         adapt_code = [var_str ("wg"), var_str ("g"), var_str ("")])
-
-    write (u, "(A)")  "* Integrate"
-    write (u, "(A)")
-
-    call reset_interaction_counter ()
-    call integrate_process (procname, global, local_stack=.true., &
-         eff_reset = .true.)
-    
-    call global%pacify (efficiency_reset = .true., error_reset = .true.)
-    call global%write (u, vars = no_vars, pacify = .true.)
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Generated history files"
-    write (u, "(A)")
-
-    his_file = procname // ".r1-history.tex"
-    ps_file  = procname // ".r1-history.ps"
-    pdf_file = procname // ".r1-history.pdf"
-    inquire (file = char (his_file), exist = exist)
-    if (exist) then
-       u_his = free_unit ()
-       open (u_his, file = char (his_file), action = "read", status = "old")
-       iostat = 0
-       do while (iostat == 0)
-          read (u_his, "(A)", iostat = iostat)  buffer
-          if (iostat == 0)  write (u, "(A)")  trim (buffer)
-       end do
-       close (u_his)
-    else
-       write (u, "(A)")  "[History LaTeX file is missing]"
-    end if
-    inquire (file = char (ps_file), exist = exist_ps)
-    if (exist_ps) then
-       write (u, "(A)")  "[History Postscript file exists and is nonempty]"
-    else
-       write (u, "(A)")  "[History Postscript file is missing/non-regular]"
-    end if
-    inquire (file = char (pdf_file), exist = exist_pdf)
-    if (exist_pdf) then
-       write (u, "(A)")  "[History PDF file exists and is nonempty]"
-    else
-       write (u, "(A)")  "[History PDF file is missing/non-regular]"
-    end if    
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Cleanup"
-
-    call global%final ()
-    call syntax_phs_forest_final ()
-    call syntax_model_file_final ()    
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: integrations_history_1"
-    
-  end subroutine integrations_history_1
-  
 
 end module integrations

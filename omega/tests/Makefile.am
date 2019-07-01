@@ -1,5 +1,5 @@
 # Makefile.am -- Makefile for O'Mega within and without WHIZARD
-# $Id: Makefile.am 6465 2015-01-10 15:22:31Z jr_reuter $
+# $Id: Makefile.am 7140 2015-08-07 21:11:59Z jr_reuter $
 ##
 ## Process this file with automake to produce Makefile.in
 ##
@@ -533,7 +533,11 @@ clean-local: clean-macosx
 	rm -f a.out gmon.out *.$(FC_MODULE_EXT) \
 		*.o *.cmi *.cmo *.cmx amplitude_*.f90 *.$(OMEGA_CACHE_SUFFIX) \
 		$(EXTRA_PROGRAMS) ects.f90 ward.f90 compare_*.f90 \
-		omega_testtools.f90 test_omega95*.f90 benchmark*.f90 *.hbc *wrappers.f90
+		omega_testtools.f90 test_omega95*.f90 benchmark*.f90 \
+		*.hbc *wrappers.f90
+if FC_SUBMODULES
+	-rm -f *.smod
+endif
 
 ########################################################################
 ## The End.

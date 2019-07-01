@@ -36,10 +36,10 @@
 
 ## We create a library which is still to be combined with auxiliary libs.
 noinst_LTLIBRARIES = libqft.la
+check_LTLIBRARIES = libqft_ut.la
 
 libqft_la_SOURCES = \
   model_data.f90 \
-  model_testbed.f90 \
   helicities.f90 \
   colors.f90 \
   flavors.f90 \
@@ -48,11 +48,18 @@ libqft_la_SOURCES = \
   interactions.f90 \
   evaluators.f90
 
+libqft_ut_la_SOURCES = \
+  model_testbed.f90 \
+  colors_uti.f90 colors_ut.f90 \
+  state_matrices_uti.f90 state_matrices_ut.f90 \
+  interactions_uti.f90 interactions_ut.f90 \
+  evaluators_uti.f90 evaluators_ut.f90
+
 ## Omitting this would exclude it from the distribution
 dist_noinst_DATA = qft.nw
 
 # Dump module names into file Modules
-libqft_Modules = ${libqft_la_SOURCES:.f90=}
+libqft_Modules = ${libqft_la_SOURCES:.f90=} ${libqft_ut_la_SOURCES:.f90=}
 Modules: Makefile
 	@for module in $(libqft_Modules); do \
           echo $$module >> $@.new; \
@@ -100,7 +107,7 @@ DISTCLEANFILES = Module_dependencies.sed
 @am__include@ @am__quote@Makefile.depend@am__quote@
 
 Makefile.depend: Module_dependencies.sed
-Makefile.depend: $(libqft_la_SOURCES)
+Makefile.depend: $(libqft_la_SOURCES) $(libqft_ut_la_SOURCES)
 	@rm -f $@
 	for src in $^; do \
 	  module="`basename $$src | sed 's/\.f[90][0358]//'`"; \
@@ -150,12 +157,12 @@ POSTLUDE = $(top_srcdir)/src/noweb-frame/whizard-postlude.nw
 qft.stamp: $(PRELUDE) $(srcdir)/qft.nw $(POSTLUDE)
 	@rm -f qft.tmp
 	@touch qft.tmp
-	for src in $(libqft_la_SOURCES); do \
+	for src in $(libqft_la_SOURCES) $(libqft_ut_la_SOURCES); do \
 	  $(NOTANGLE) -R[[$$src]] $^ | $(CPIF) $$src; \
         done
 	@mv -f qft.tmp qft.stamp
 
-$(libqft_la_SOURCES): qft.stamp
+$(libqft_la_SOURCES) $(libqft_ut_la_SOURCES): qft.stamp
 ## Recover from the removal of $@
 	@if test -f $@; then :; else \
 	  rm -f qft.stamp; \
@@ -185,6 +192,9 @@ endif
 clean-local: clean-noweb
 	-rm -f qft.stamp qft.tmp
 	-rm -f *.$(FC_MODULE_EXT)
+if FC_SUBMODULES
+	-rm -f *.smod
+endif
 
 ## Remove backup files
 maintainer-clean-backup:

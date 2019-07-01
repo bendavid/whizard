@@ -45,7 +45,6 @@ module particle_specifiers
 
 <<Use strings>>
   use io_units
-  use unit_tests
   use diagnostics
 
 <<Standard module head>>
@@ -59,8 +58,6 @@ module particle_specifiers
 contains
 
 <<Particle specifiers: procedures>>
-
-<<Particle specifiers: tests>>
 
 end module particle_specifiers
 @ %def particle_specifiers
@@ -769,11 +766,49 @@ We assume that subexpressions are filled, i.e., arrays are allocated.
 
 @ %def prt_expr_expand
 @
-\subsection{Test}
-This is the master for calling self-test procedures.
-<<Particle specifiers: public>>=
+\subsection{Unit Tests}
+Test module, followed by the corresponding implementation module.
+<<[[particle_specifiers_ut.f90]]>>=
+<<File header>>
+
+module particle_specifiers_ut
+  use unit_tests
+  use particle_specifiers_uti
+  
+<<Standard module head>>
+
+<<Particle specifiers: public test>>
+
+contains
+  
+<<Particle specifiers: test driver>>
+
+end module particle_specifiers_ut
+@ %def particle_specifiers_ut
+@
+<<[[particle_specifiers_uti.f90]]>>=
+<<File header>>
+
+module particle_specifiers_uti
+
+<<Use strings>>
+
+  use particle_specifiers
+
+<<Standard module head>>
+
+<<Particle specifiers: test declarations>>
+
+contains
+
+<<Particle specifiers: tests>>
+
+end module particle_specifiers_uti
+@ %def particle_specifiers_ut
+@ API: driver for the unit tests below.
+<<Particle specifiers: public test>>=
   public :: particle_specifiers_test
-<<Particle specifiers: tests>>=
+<<Particle specifiers: test driver>>=
   subroutine particle_specifiers_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
@@ -788,6 +823,8 @@ Define, read and write an array of particle specifiers.
   call test (particle_specifiers_1, "particle_specifiers_1", &
        "Handle particle specifiers", &
        u, results)
+<<Particle specifiers: test declarations>>=
+  public :: particle_specifiers_1
 <<Particle specifiers: tests>>=
   subroutine particle_specifiers_1 (u)
     integer, intent(in) :: u
@@ -843,6 +880,8 @@ Nested expressions (only basic particles, no decay specs).
   call test (particle_specifiers_2, "particle_specifiers_2", &
        "Particle specifier expressions", &
        u, results)
+<<Particle specifiers: test declarations>>=
+  public :: particle_specifiers_2
 <<Particle specifiers: tests>>=
   subroutine particle_specifiers_2 (u)
     integer, intent(in) :: u
@@ -1056,7 +1095,6 @@ For defining aliases, we introduce a special type which holds a set of
 module pdg_arrays
 
   use io_units
-  use unit_tests
   use sorting
   use physics_defs, only: UNDEFINED
 
@@ -1071,8 +1109,6 @@ module pdg_arrays
 contains
 
 <<PDG arrays: procedures>>
-
-<<PDG arrays: tests>>
 
 end module pdg_arrays
 @ %def pdg_arrays
@@ -2128,9 +2164,46 @@ intent(out) or as function result, so be conservative here:
 @ %def pdg_list_contains_colored_particles
 @
 \subsection{Unit tests}
-<<PDG arrays: public>>=
-  public :: pdg_arrays_test 
-<<PDG arrays: procedures>>=
+Test module, followed by the corresponding implementation module.
+<<[[pdg_arrays_ut.f90]]>>=
+<<File header>>
+
+module pdg_arrays_ut
+  use unit_tests
+  use pdg_arrays_uti
+  
+<<Standard module head>>
+
+<<PDG arrays: public test>>
+
+contains
+  
+<<PDG arrays: test driver>>
+
+end module pdg_arrays_ut
+@ %def pdg_arrays_ut
+@
+<<[[pdg_arrays_uti.f90]]>>=
+<<File header>>
+
+module pdg_arrays_uti
+
+  use pdg_arrays
+
+<<Standard module head>>
+
+<<PDG arrays: test declarations>>
+
+contains
+
+<<PDG arrays: tests>>
+
+end module pdg_arrays_uti
+@ %def pdg_arrays_ut
+@ API: driver for the unit tests below.
+<<PDG arrays: public test>>=
+  public :: pdg_arrays_test
+<<PDG arrays: test driver>>=
   subroutine pdg_arrays_test (u, results)
     integer, intent(in) :: u
     type (test_results_t), intent(inout) :: results
@@ -2143,6 +2216,8 @@ intent(out) or as function result, so be conservative here:
   call test (pdg_arrays_1, "pdg_arrays_1", &
        "create and sort PDG array", &
        u, results) 
+<<PDG arrays: test declarations>>=
+  public :: pdg_arrays_1
 <<PDG arrays: tests>>=     
   subroutine pdg_arrays_1 (u)
     integer, intent(in) :: u
@@ -2256,6 +2331,8 @@ intent(out) or as function result, so be conservative here:
   call test (pdg_arrays_2, "pdg_arrays_2", &
        "create and sort PDG lists", &
        u, results) 
+<<PDG arrays: test declarations>>=
+  public :: pdg_arrays_2
 <<PDG arrays: tests>>=     
   subroutine pdg_arrays_2 (u)
     integer, intent(in) :: u
@@ -2319,6 +2396,8 @@ must not overlap, unless they are identical.
   call test (pdg_arrays_3, "pdg_arrays_3", &
        "check PDG lists", &
        u, results) 
+<<PDG arrays: test declarations>>=
+  public :: pdg_arrays_3
 <<PDG arrays: tests>>=     
   subroutine pdg_arrays_3 (u)
     integer, intent(in) :: u
@@ -2366,6 +2445,8 @@ non-overlapping (or identical) entries.
   call test (pdg_arrays_4, "pdg_arrays_4", &
        "compare PDG lists", &
        u, results) 
+<<PDG arrays: test declarations>>=
+  public :: pdg_arrays_4
 <<PDG arrays: tests>>=     
   subroutine pdg_arrays_4 (u)
     integer, intent(in) :: u
@@ -2434,6 +2515,8 @@ matching entries of the second list, if there is a match.
   call test (pdg_arrays_5, "pdg_arrays_5", &
        "match PDG lists", &
        u, results) 
+<<PDG arrays: test declarations>>=
+  public :: pdg_arrays_5
 <<PDG arrays: tests>>=     
   subroutine pdg_arrays_5 (u)
     integer, intent(in) :: u
@@ -2494,8 +2577,6 @@ and tests.
 
 module jets
     
-<<Use kinds>>
-  use unit_tests
   use fastjet !NODEP!
   
 <<Standard module head>>
@@ -2505,8 +2586,6 @@ module jets
 contains
   
 <<Jets: procedures>>
-
-<<Jets: tests>>
 
 end module jets
 @ %def jets
@@ -2546,9 +2625,49 @@ re-export some symbols.
   
 @ 
 \subsection{Unit tests}
-<<Jets: public>>=
-  public :: jets_test 
-<<Jets: procedures>>=
+Test module, followed by the corresponding implementation module.
+<<[[jets_ut.f90]]>>=
+<<File header>>
+
+module jets_ut
+  use unit_tests
+  use jets_uti
+  
+<<Standard module head>>
+
+<<Jets: public test>>
+
+contains
+  
+<<Jets: test driver>>
+
+end module jets_ut
+@ %def jets_ut
+@
+<<[[jets_uti.f90]]>>=
+<<File header>>
+
+module jets_uti
+
+<<Use kinds>>
+  use fastjet !NODEP!
+
+  use jets
+
+<<Standard module head>>
+
+<<Jets: test declarations>>
+
+contains
+
+<<Jets: tests>>
+
+end module jets_uti
+@ %def jets_ut
+@ API: driver for the unit tests below.
+<<Jets: public test>>=
+  public :: jets_test
+<<Jets: test driver>>=
   subroutine jets_test (u, results)
     integer, intent(in) :: u
     type (test_results_t), intent(inout) :: results
@@ -2568,6 +2687,8 @@ which we can finalize explicitly.
   call test (jets_1, "jets_1", &
        "basic FastJet functionality", &
        u, results) 
+<<Jets: test declarations>>=
+  public :: jets_1
 <<Jets: tests>>=     
   subroutine jets_1 (u)
     integer, intent(in) :: u
@@ -3958,7 +4079,6 @@ module analysis
 <<Use strings>>
   use io_units
   use format_utils, only: quote_underscore, tex_format
-  use format_defs, only: FMT_19
   use system_defs, only: TAB
   use unit_tests
   use diagnostics
@@ -3980,8 +4100,6 @@ module analysis
 contains
 
 <<Analysis: procedures>>
-
-<<Analysis: tests>>
 
 end module analysis
 @ %def analysis
@@ -4725,7 +4843,7 @@ sums which are necessary for proper averaging.
     avg = observable_get_average (obs)
     err = observable_get_error (obs)
     if (avg /= 0) then
-       relerr = err / avg
+       relerr = err / abs (avg)
     else
        relerr = 0
     end if
@@ -7155,7 +7273,6 @@ has wrong type, the iterator will be invalid.
     type(string_t), intent(in) :: file
     logical, intent(in) :: has_gmlcode
     type(os_data_t), intent(in) :: os_data
-    type(string_t) :: setenv
     integer :: status
     if (os_data%event_analysis_ps) then
        call os_system_call ("make compile " // os_data%makeflags // " -f " // &
@@ -7195,7 +7312,6 @@ has wrong type, the iterator will be invalid.
     integer, intent(in) :: unit
     logical, intent(in) :: has_gmlcode
     type(os_data_t), intent(in) :: os_data
-    type(string_t) :: setenv
     write (unit, "(3A)")  "# WHIZARD: Makefile for analysis '", &
          char (filename), "'"
     write (unit, "(A)")  "# Automatically generated file, do not edit"
@@ -7270,9 +7386,50 @@ has wrong type, the iterator will be invalid.
 @ %def analysis_write_makefile
 @ 
 \subsection{Unit tests}
-<<Analysis: public>>=
+Test module, followed by the corresponding implementation module.
+<<[[analysis_ut.f90]]>>=
+<<File header>>
+
+module analysis_ut
+  use unit_tests
+  use analysis_uti
+  
+<<Standard module head>>
+
+<<Analysis: public test>>
+
+contains
+  
+<<Analysis: test driver>>
+
+end module analysis_ut
+@ %def analysis_ut
+@
+<<[[analysis_uti.f90]]>>=
+<<File header>>
+
+module analysis_uti
+
+<<Use kinds>>
+<<Use strings>>
+  use format_defs, only: FMT_19
+
+  use analysis
+
+<<Standard module head>>
+
+<<Analysis: test declarations>>
+
+contains
+
+<<Analysis: tests>>
+
+end module analysis_uti
+@ %def analysis_ut
+@ API: driver for the unit tests below.
+<<Analysis: public test>>=
   public :: analysis_test
-<<Analysis: procedures>>=
+<<Analysis: test driver>>=
   subroutine analysis_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
@@ -7284,6 +7441,8 @@ has wrong type, the iterator will be invalid.
   call test (analysis_1, "analysis_1", &
        "check elementary analysis building blocks", &
        u, results)
+<<Analysis: test declarations>>=
+  public :: analysis_1
 <<Analysis: tests>>=
   subroutine analysis_1 (u)
     integer, intent(in) :: u
@@ -7300,7 +7459,7 @@ has wrong type, the iterator will be invalid.
     
     call analysis_init_observable (id1)
     call analysis_init_observable (id2)
-    call analysis_init_histogram_bin_width &
+    call analysis_init_histogram &
          (id3, 0.5_default, 5.5_default, 1._default, normalize_bins=.false.)
     call analysis_init_plot (id4)
     do i = 1, 3

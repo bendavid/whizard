@@ -1,4 +1,4 @@
-! WHIZARD 2.2.6 May 02 2015
+! WHIZARD 2.2.7 Aug 11 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -32,23 +32,19 @@
 
 module hep_events
   
-  use kinds
-  use io_units
+  use kinds, only: default
   use iso_varying_string, string_t => varying_string  
   use diagnostics
   use lorentz
-  use unit_tests
-  
+  use unit_tests, only: vanishes
   use flavors
   use colors
   use helicities
-  use quantum_numbers
-  use interactions
-  use state_matrices
-  use evaluators
   use polarizations
   use model_data
-  use subevents
+  use subevents, only: PRT_BEAM, PRT_INCOMING, PRT_OUTGOING
+  use subevents, only: PRT_UNDEFINED
+  use subevents, only: PRT_VIRTUAL, PRT_RESONANT, PRT_BEAM_REMNANT
   use particles
   use hep_common
   use hepmc_interface
@@ -62,13 +58,13 @@ module hep_events
   public :: hepeup_to_event
   public :: hepevt_from_event
   public :: hepmc_event_from_particle_set 
+  public :: hepmc_event_to_particle_set
   public :: hepmc_to_event
   public :: particle_to_lcio
   public :: particle_from_lcio_particle
   public :: lcio_event_from_particle_set 
   public :: lcio_event_to_particle_set
   public :: lcio_to_event
-  public :: hep_events_test
 
 contains
   
@@ -86,10 +82,10 @@ contains
        if (present (process_index)) &
             call hepeup_set_event_parameters (proc_id = process_index)
        scale = event%get_fac_scale ()
-       if (scale /= 0) &
+       if (.not. vanishes (scale)) &
             call hepeup_set_event_parameters (scale = scale)
        alpha_qcd = event%get_alpha_s ()       
-       if (alpha_qcd /= 0) &
+       if (.not. vanishes(alpha_qcd)) &
             call hepeup_set_event_parameters (alpha_qcd = alpha_qcd)
        if (event%weight_prc_is_known ()) then
           call hepeup_set_event_parameters (weight = event%get_weight_prc ())
@@ -134,15 +130,18 @@ contains
     end if
   end subroutine hepeup_to_event
 
-  subroutine hepevt_from_event (event, i_evt, keep_beams, keep_remnants)
+  subroutine hepevt_from_event  &
+         (event, i_evt, keep_beams, keep_remnants, ensure_order)
     class(generic_event_t), intent(in), target :: event
     integer, intent(in), optional :: i_evt
     logical, intent(in), optional :: keep_beams  
     logical, intent(in), optional :: keep_remnants
+    logical, intent(in), optional :: ensure_order
     type(particle_set_t), pointer :: particle_set
     if (event%has_valid_particle_set ()) then
        particle_set => event%get_particle_set_ptr ()
-       call hepevt_from_particle_set (particle_set, keep_beams, keep_remnants)
+       call hepevt_from_particle_set (particle_set, keep_beams, &
+            keep_remnants, ensure_order)
        if (event%weight_prc_is_known () .and. event%sqme_prc_is_known ()) then
           call hepevt_set_event_parameters ( &
                weight = event%get_weight_prc (), &
@@ -192,9 +191,11 @@ contains
     end select
   end subroutine particle_to_hepmc
 
-  subroutine hepmc_event_from_particle_set (evt, particle_set)
+  subroutine hepmc_event_from_particle_set &
+         (evt, particle_set, cross_section, error)
     type(hepmc_event_t), intent(inout) :: evt
     type(particle_set_t), intent(in) :: particle_set
+    real(default), intent(in), optional :: cross_section, error
     type(hepmc_vertex_t), dimension(:), allocatable :: v
     type(hepmc_particle_t), dimension(:), allocatable :: hprt
     type(hepmc_particle_t), dimension(2) :: hbeam
@@ -215,8 +216,10 @@ contains
              vtx(v_to(i)) = particle_set%prt(i)%get_vertex ()
           end if
        end if
-    end do       
-    allocate (v (n_vertices))    
+    end do  
+    if (present (cross_section) .and. present(error)) &
+       call hepmc_event_set_cross_section (evt, cross_section, error)
+    allocate (v (n_vertices))
     do i = 1, n_vertices
        call hepmc_vertex_init (v(i), vtx(i))
        call hepmc_event_add_vertex (evt, v(i))
@@ -323,8 +326,7 @@ contains
     type(hepmc_vertex_particle_in_iterator_t) :: v_it
     type(hepmc_particle_t) :: prt
     integer, dimension(:), allocatable :: barcode
-    integer :: n_tot, i, j, bc
-    logical :: has_parents, has_children
+    integer :: n_tot, i, bc
     n_tot = 0
     call hepmc_event_particle_iterator_init (it, evt)
     do while (hepmc_event_particle_iterator_is_valid (it))
@@ -389,7 +391,7 @@ contains
     logical, intent(in), optional :: use_alpha_s
     logical, intent(in), optional :: use_scale
     class(model_data_t), pointer :: model
-    real(default) :: weight, scale, alpha_qcd
+    real(default) :: scale, alpha_qcd
     type(particle_set_t) :: particle_set
     model => event%get_model_ptr ()
     call hepmc_event_to_particle_set (particle_set, &
@@ -459,14 +461,12 @@ contains
     type(lcio_particle_t), intent(in) :: lprt
     type(model_data_t), intent(in), target :: model
     integer, dimension(:), intent(in) :: daughters, parents    
-    type(vector3_t) :: vtx3
     type(vector4_t) :: vtx4
     type(flavor_t) :: flv
     type(color_t) :: col
     type(helicity_t) :: hel
     type(polarization_t) :: pol
     integer, intent(in) :: polarization
-    integer :: i
     select case (lcio_particle_get_status (lprt))
     case (1);  call prt%set_status (PRT_OUTGOING)
     case (2);  call prt%set_status (PRT_RESONANT)
@@ -501,9 +501,7 @@ contains
     type(lcio_event_t), intent(inout) :: evt
     type(particle_set_t), intent(in) :: particle_set
     type(lcio_particle_t), dimension(:), allocatable :: lprt
-    type(lcio_particle_t), dimension(2) :: lbeam
-    integer, dimension(:), allocatable :: parent, child    
-    logical, dimension(:), allocatable :: is_beam
+    integer, dimension(:), allocatable :: parent    
     integer :: n_tot, i, j, n_parents
     n_tot = particle_set%n_tot
     allocate (lprt (n_tot))
@@ -585,7 +583,7 @@ contains
     logical, intent(in), optional :: use_alpha_s
     logical, intent(in), optional :: use_scale
     class(model_data_t), pointer :: model
-    real(default) :: weight, scale, alpha_qcd
+    real(default) :: scale, alpha_qcd
     type(particle_set_t) :: particle_set
     model => event%get_model_ptr ()
     call lcio_event_to_particle_set (particle_set, &
@@ -603,202 +601,6 @@ contains
             call event%set_scale_forced (scale)
     end if
   end subroutine lcio_to_event
-  
-  subroutine hep_events_test (u, results)
-    integer, intent(in) :: u
-    type(test_results_t), intent(inout) :: results
-    if (hepmc_is_available ()) then
-       call test (hep_events_1, "hep_events_1", &
-            "check HepMC event routines", &
-            u, results)
-    end if  
-  end subroutine hep_events_test
-
-
-  subroutine hep_events_1 (u)
-    use os_interface
-    integer, intent(in) :: u
-    type(model_data_t), target :: model
-    type(flavor_t), dimension(3) :: flv
-    type(color_t), dimension(3) :: col
-    type(helicity_t), dimension(3) :: hel
-    type(quantum_numbers_t), dimension(3) :: qn
-    type(vector4_t), dimension(3) :: p
-    type(interaction_t), target :: int1, int2
-    type(quantum_numbers_mask_t) :: qn_mask_conn, qn_rest
-    type(evaluator_t), target :: eval
-    type(interaction_t), pointer :: int
-    type(particle_set_t) :: particle_set1, particle_set2
-    type(particle_set_t) :: particle_set3, particle_set4
-    type(subevt_t) :: subevt
-    logical :: ok
-    integer :: unit, iostat      
-    type(hepmc_event_t) :: hepmc_event
-    type(hepmc_iostream_t) :: iostream    
-
-    write (u, "(A)")  "* Test output: HEP events"
-    write (u, "(A)")  "*   Purpose: test HepMC event routines"
-    write (u, "(A)")      
-
-    write (u, "(A)")  "* Reading model file"
-
-    call model%init_sm_test ()
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Initializing production process"
-
-    call int1%basic_init (2, 0, 1, set_relations=.true.)
-    call flv%init ([1, -1, 23], model)
-    call col%init_col_acl ([0, 0, 0], [0, 0, 0])
-    call hel(3)%init ( 1, 1)
-    call qn%init (flv, col, hel)
-    call int1%add_state (qn, value=(0.25_default, 0._default))
-    call hel(3)%init ( 1,-1)
-    call qn%init (flv, col, hel)
-    call int1%add_state (qn, value=(0._default, 0.25_default))
-    call hel(3)%init (-1, 1)
-    call qn%init (flv, col, hel)
-    call int1%add_state (qn, value=(0._default,-0.25_default))
-    call hel(3)%init (-1,-1)
-    call qn%init (flv, col, hel)
-    call int1%add_state (qn, value=(0.25_default, 0._default))
-    call hel(3)%init ( 0, 0)
-    call qn%init (flv, col, hel)
-    call int1%add_state (qn, value=(0.5_default, 0._default))
-    call int1%freeze ()
-    p(1) = vector4_moving (45._default, 45._default, 3)
-    p(2) = vector4_moving (45._default,-45._default, 3)
-    p(3) = p(1) + p(2)
-    call int1%set_momenta (p)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Setup decay process"
-
-    call int2%basic_init (1, 0, 2, set_relations=.true.)
-    call flv%init ([23, 1, -1], model)
-    call col%init_col_acl ([0, 501, 0], [0, 0, 501])
-    call hel%init ([1, 1, 1], [1, 1, 1])
-    call qn%init (flv, col, hel)
-    call int2%add_state (qn, value=(1._default, 0._default))
-    call hel%init ([1, 1, 1], [-1,-1,-1])
-    call qn%init (flv, col, hel)
-    call int2%add_state (qn, value=(0._default, 0.1_default))
-    call hel%init ([-1,-1,-1], [1, 1, 1])
-    call qn%init (flv, col, hel)
-    call int2%add_state (qn, value=(0._default,-0.1_default))
-    call hel%init ([-1,-1,-1], [-1,-1,-1])
-    call qn%init (flv, col, hel)
-    call int2%add_state (qn, value=(1._default, 0._default))
-    call hel%init ([0, 1,-1], [0, 1,-1])
-    call qn%init (flv, col, hel)
-    call int2%add_state (qn, value=(4._default, 0._default))
-    call hel%init ([0,-1, 1], [0, 1,-1])
-    call qn%init (flv, col, hel)
-    call int2%add_state (qn, value=(2._default, 0._default))
-    call hel%init ([0, 1,-1], [0,-1, 1])
-    call qn%init (flv, col, hel)
-    call int2%add_state (qn, value=(2._default, 0._default))
-    call hel%init ([0,-1, 1], [0,-1, 1])
-    call qn%init (flv, col, hel)
-    call int2%add_state (qn, value=(4._default, 0._default))
-    call flv%init ([23, 2, -2], model)
-    call hel%init ([0, 1,-1], [0, 1,-1])
-    call qn%init (flv, col, hel)
-    call int2%add_state (qn, value=(0.5_default, 0._default))
-    call hel%init ([0,-1, 1], [0,-1, 1])
-    call qn%init (flv, col, hel)
-    call int2%add_state (qn, value=(0.5_default, 0._default))
-    call int2%freeze ()
-    p(2) = vector4_moving (45._default, 45._default, 2)
-    p(3) = vector4_moving (45._default,-45._default, 2)
-    call int2%set_momenta (p)
-    call int2%set_source_link (1, int1, 3)
-    call int1%basic_write (u)
-    call int2%basic_write (u)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Concatenate production and decay"
-
-    call eval%init_product (int1, int2, qn_mask_conn, &
-         connections_are_resonant=.true.)
-    call eval%receive_momenta ()
-    call eval%evaluate ()
-    call eval%write (u)
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Factorize as subevent (complete, polarized)"
-    write (u, "(A)")
-    
-    int => eval%interaction_t
-    call particle_set1%init &
-         (ok, int, int, FM_FACTOR_HELICITY, &
-          [0.2_default, 0.2_default], .false., .true.)
-    call particle_set1%write (u)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Factorize as subevent (in/out only, selected helicity)"
-    write (u, "(A)")
-    
-    int => eval%interaction_t
-    call particle_set2%init &
-         (ok, int, int, FM_SELECT_HELICITY, &
-          [0.9_default, 0.9_default], .false., .false.)
-    call particle_set2%write (u)
-    call particle_set2%final ()
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Factorize as subevent (complete, selected helicity)"
-    write (u, "(A)") 
-    
-    int => eval%interaction_t
-    call particle_set2%init &
-         (ok, int, int, FM_SELECT_HELICITY, &
-          [0.7_default, 0.7_default], .false., .true.)
-    call particle_set2%write (u)      
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Transfer particle_set to HepMC, print, and output to"
-    write (u, "(A)")  "        hep_events.hepmc.dat"
-    write (u, "(A)")
-    
-    call hepmc_event_init (hepmc_event, 11, 127)
-    call hepmc_event_from_particle_set (hepmc_event, particle_set2)
-    call hepmc_event_print (hepmc_event)
-    call hepmc_iostream_open_out &
-         (iostream , var_str ("hep_events.hepmc.dat"))
-    call hepmc_iostream_write_event (iostream, hepmc_event)
-    call hepmc_iostream_close (iostream)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Recover from HepMC file"
-    write (u, "(A)")
-    
-    call particle_set2%final ()
-    call hepmc_event_final (hepmc_event)
-    call hepmc_event_init (hepmc_event)
-    call hepmc_iostream_open_in &
-         (iostream , var_str ("hep_events.hepmc.dat"))
-    call hepmc_iostream_read_event (iostream, hepmc_event, ok)
-    call hepmc_iostream_close (iostream)
-    call hepmc_event_to_particle_set (particle_set2, &
-         hepmc_event, model, model, PRT_DEFINITE_HELICITY)
-    call particle_set2%write (u)   
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Cleanup"
-    
-    call particle_set1%final ()
-    call particle_set2%final ()
-    call eval%final ()
-    call int1%final ()
-    call int2%final ()
-    call hepmc_event_final (hepmc_event)            
-    call model%final ()
-       
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: particles_2"
-
-  end subroutine hep_events_1
   
 
 end module hep_events

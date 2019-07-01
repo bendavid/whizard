@@ -1,4 +1,4 @@
-! WHIZARD 2.2.6 May 02 2015
+! WHIZARD 2.2.7 Aug 11 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -36,7 +36,6 @@ module parser
   use iso_varying_string, string_t => varying_string
   use io_units
   use format_defs, only: FMT_19
-  use unit_tests
   use system_defs, only: DIGITS
   use diagnostics
   use md5
@@ -79,10 +78,8 @@ module parser
   public :: parse_tree_final
   public :: parse_tree_write
   public :: parse_tree_bug
-  public :: parse_tree_get_root_ptr
   public :: parse_tree_reduce
   public :: parse_tree_get_process_ptr
-  public :: parse_test
 
   type :: token_t
      private
@@ -106,6 +103,8 @@ module parser
      type(parse_node_t), pointer :: next => null ()
    contains
      procedure :: write => parse_node_write_rec
+     procedure :: copy => parse_node_copy
+     procedure :: append_sub => parse_node_append_sub
      procedure :: get_rule_ptr => parse_node_get_rule_ptr
      procedure :: get_n_sub => parse_node_get_n_sub
      procedure :: get_sub_ptr => parse_node_get_sub_ptr
@@ -115,6 +114,8 @@ module parser
      procedure :: get_real => parse_node_get_real
      procedure :: get_cmplx => parse_node_get_cmplx
      procedure :: get_string => parse_node_get_string
+     procedure :: get_key => parse_node_get_key
+     procedure :: get_rule_key => parse_node_get_rule_key
   end type parse_node_t
 
   type :: parse_node_p
@@ -563,8 +564,19 @@ contains
     node%rule => rule
   end subroutine parse_node_create_branch
     
+  subroutine parse_node_copy (node, copy)
+    class(parse_node_t), intent(in) :: node
+    type(parse_node_t), pointer, intent(out) :: copy
+    allocate (copy)
+    select type (node)
+    type is (parse_node_t)
+       copy = node
+    end select
+    copy%next => null ()
+  end subroutine parse_node_copy
+  
   subroutine parse_node_append_sub (node, sub)
-    type(parse_node_t), intent(inout) :: node
+    class(parse_node_t), intent(inout) :: node
     type(parse_node_t), pointer :: sub
     if (associated (sub)) then
        if (associated (node%sub_last)) then
@@ -756,14 +768,14 @@ contains
   end function parse_node_get_string
 
   function parse_node_get_key (node) result (kval)
+    class(parse_node_t), intent(in), target :: node
     type(string_t) :: kval
-    type(parse_node_t), intent(in), target :: node
     kval = token_get_key (parse_node_get_token_ptr (node))
   end function parse_node_get_key
 
   function parse_node_get_rule_key (node) result (kval)
+    class(parse_node_t), intent(in), target :: node
     type(string_t) :: kval
-    type(parse_node_t), intent(in), target :: node
     kval = syntax_rule_get_key (parse_node_get_rule_ptr (node))
   end function parse_node_get_rule_key
 
@@ -1115,7 +1127,7 @@ contains
     type(parse_node_t), pointer :: node_root, node_process_def
     type(parse_node_t), pointer :: node_process_phs, node_process_list
     integer :: j
-    node_root => parse_tree_get_root_ptr (parse_tree)
+    node_root => parse_tree%get_root_ptr ()
     if (associated (node_root)) then
        node_process_phs => parse_node_get_sub_ptr (node_root)
        SCAN_FILE: do while (associated (node_process_phs))
@@ -1137,103 +1149,5 @@ contains
     end if
   end function parse_tree_get_process_ptr
 
-  subroutine parse_test (u, results)
-    integer, intent(in) :: u
-    type(test_results_t), intent(inout) :: results
-    call test (parse_1, "parse_1", &
-         "check the parser", &
-         u, results)  
-  end subroutine parse_test
-  
-
-  subroutine parse_1 (u)
-    use ifiles
-    use lexers
-    integer, intent(in) :: u    
-
-    type(ifile_t) :: ifile
-    type(syntax_t), target :: syntax
-    type(lexer_t) :: lexer
-    type(stream_t), target :: stream
-    type(parse_tree_t), target :: parse_tree
-    
-    write (u, "(A)")  "* Test output: Parsing"
-    write (u, "(A)")  "*   Purpose: test parse routines"
-    write (u, "(A)")      
-    
-    call ifile_append (ifile, "SEQ expr = term addition*")
-    call ifile_append (ifile, "SEQ addition = plus_or_minus term")
-    call ifile_append (ifile, "SEQ term = factor multiplication*")
-    call ifile_append (ifile, "SEQ multiplication = times_or_over factor")
-    call ifile_append (ifile, "SEQ factor = atom exponentiation*")
-    call ifile_append (ifile, "SEQ exponentiation = '^' atom")
-    call ifile_append (ifile, "ALT atom = real | delimited_expr")
-    call ifile_append (ifile, "GRO delimited_expr = ( expr )")
-    call ifile_append (ifile, "ALT plus_or_minus = '+' | '-'")
-    call ifile_append (ifile, "ALT times_or_over = '*' | '/'")
-    call ifile_append (ifile, "KEY '+'")
-    call ifile_append (ifile, "KEY '-'")
-    call ifile_append (ifile, "KEY '*'")
-    call ifile_append (ifile, "KEY '/'")
-    call ifile_append (ifile, "KEY '^'")
-    call ifile_append (ifile, "REA real")
-    
-    write (u, "(A)")  "* File contents (syntax definition):"
-    call ifile_write (ifile, u)
-    write (u, "(A)")  "EOF"
-    write (u, "(A)")
-    
-    call syntax_init (syntax, ifile)
-    call ifile_final (ifile)
-    call syntax_write (syntax, u)
-    write (u, "(A)")
-    
-    call lexer_init (lexer, &
-         comment_chars = "", &
-         quote_chars = "'", &
-         quote_match = "'", &
-         single_chars = "+-*/^()", &
-         special_class = [""] , &
-         keyword_list = syntax_get_keyword_list_ptr (syntax))
-    call lexer_write_setup (lexer, u)
-    write (u, "(A)")
-    
-    call ifile_append (ifile, "(27+8^3-2/3)*(4+7)^2*99")
-    write (u, "(A)")  "* File contents (input file):"
-    call ifile_write (ifile, u)
-    write (u, "(A)")  "EOF"
-    print *
-    
-    call stream_init (stream, ifile)
-    call lexer_assign_stream (lexer, stream)
-    call parse_tree_init (parse_tree, syntax, lexer)
-    call stream_final (stream)
-    call parse_tree_write (parse_tree, u, .true.)
-    print *
-    
-    write (u, "(A)")  "* Cleanup, everything should now be empty:"
-    write (u, "(A)")
-    
-    call parse_tree_final (parse_tree)
-    call parse_tree_write (parse_tree, u, .true.)
-    write (u, "(A)")
-    
-    call lexer_final (lexer)
-    call lexer_write_setup (lexer, u)
-    write (u, "(A)")
-    
-    call ifile_final (ifile)
-    write (u, "(A)")  "* File contents:"
-    call ifile_write (ifile, u)
-    write (u, "(A)")  "EOF"
-    write (u, "(A)")
-    
-    call syntax_final (syntax)
-    call syntax_write (syntax, u)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: parser_1"    
-    
-  end subroutine parse_1
 
 end module parser

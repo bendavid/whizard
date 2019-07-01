@@ -139,7 +139,7 @@ if NOWEB_AVAILABLE
 	$(NOTANGLE_IT)
 
 circe2_ls.f90: circe2.nw
-	$(NOTANGLE_IT)
+	cat $(WEBS) | $(NOTANGLE) -R'[[$@]]' | $(CPIF) $@
 
 taorng.f90: postlude.nw
 	cat $(WEBS) | $(NOTANGLE) -R'[[$@]]' | $(CPIF) $@
@@ -236,6 +236,9 @@ endif
 clean-local: clean-noweb
 	-rm -f *.cm[aiox] *.cmxa *.[ao] *.l[oa] *.$(FC_MODULE_EXT) \
 	*.g90 $(CIRCE2_NATIVE) $(CIRCE2_BYTECODE) $(CIRCE2_DERIVED)
+if FC_SUBMODULES
+	-rm -f *.smod
+endif
 
 ## Remove backup files
 maintainer-clean-backup:

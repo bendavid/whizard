@@ -37,13 +37,11 @@ noinst_LTLIBRARIES = libshower.la
 
 libshower_la_SOURCES = \
    pythia6_up.f \
+   ktclus.f90 \
    shower_base.f90 \
    shower_partons.f90 \
-   ckkw_base.f90 \
-   mlm_matching.f90 \
    shower_core.f90 \
-   shower_pythia6.f90 \
-   ckkw_matching.f90
+   shower_pythia6.f90
 
 ## Omitting this would exclude it from the distribution
 dist_noinst_DATA = shower.nw
@@ -79,7 +77,8 @@ module_lists = \
   ../variables/Modules \
   ../model_features/Modules \
   ../muli/Modules \
-  ../events/Modules
+  ../events/Modules \
+  ../beams/Modules
 
 include_modules_bare = ${module_lists:/Modules=}
 include_modules = ${include_modules_bare:../%=-I../%}
@@ -198,6 +197,9 @@ endif
 clean-local: clean-noweb
 	-rm -f shower.stamp shower.tmp
 	-rm -f *.$(FC_MODULE_EXT)
+if FC_SUBMODULES
+	-rm -f *.smod
+endif
 
 ## Remove backup files
 maintainer-clean-backup:

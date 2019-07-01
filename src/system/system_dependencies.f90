@@ -30,14 +30,14 @@ module system_dependencies
   ! configure.
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-  use, intrinsic :: omp_lib
+  
 
   implicit none
   public
  
   ! Program version
-  character(*), parameter :: WHIZARD_VERSION = "2.2.6"
-  character(*), parameter :: WHIZARD_DATE = "May 02 2015"
+  character(*), parameter :: WHIZARD_VERSION = "2.2.7"
+  character(*), parameter :: WHIZARD_DATE = "Aug 11 2015"
 
   ! System paths
   ! These are used for testing without existing installation
@@ -120,7 +120,7 @@ module system_dependencies
       "-L" // WHIZARD_TEST_HOPPET_LIBPATH // " " // &
       "-L" // WHIZARD_TEST_LOOPTOOLS_LIBPATH // " " // &
        "-lwhizard_main -lwhizard -lomega " // &
-       "-lHepMC -llcio -L/usr/local/lib -lhoppet_v1 " // &
+       "-lHepMC -llcio -L/usr/local//lib -lhoppet_v1 " // &
        "-L/usr/local/lib -looptools"
 
   ! Libtool
@@ -212,7 +212,7 @@ module system_dependencies
   character(*), parameter :: WHIZARD_LDFLAGS = &
       "-L" // WHIZARD_OMEGA_LIBPATH // " " // &
        "-lwhizard_main -lwhizard -lomega " // &
-       "-lHepMC -llcio -L/usr/local/lib -lhoppet_v1 " // &
+       "-lHepMC -llcio -L/usr/local//lib -lhoppet_v1 " // &
        "-L/usr/local/lib -looptools"
 
   ! Libtool
@@ -224,7 +224,7 @@ module system_dependencies
   character(*), parameter :: DEFAULT_FC = &
        "gfortran"
   character(*), parameter :: DEFAULT_FCFLAGS = &
-       " -fopenmp -g -O2"
+       "  -g -O2"
   character(*), parameter :: DEFAULT_FCFLAGS_PIC = &
        " -fno-common"
   character(*), parameter :: DEFAULT_FC_SRC_EXT = &
@@ -255,7 +255,7 @@ module system_dependencies
   character(*), parameter :: DEFAULT_LDFLAGS_LCIO = &
        "-llcio"
   character(*), parameter :: DEFAULT_LDFLAGS_HOPPET = &
-       "-L/usr/local/lib -lhoppet_v1"
+       "-L/usr/local//lib -lhoppet_v1"
   character(*), parameter :: DEFAULT_LDFLAGS_LOOPTOOLS = &
        "-L/usr/local/lib -looptools"
   character(*), parameter :: DEFAULT_SHRLIB_EXT = "dylib"
@@ -267,7 +267,7 @@ module system_dependencies
 
   ! LHAPDF library
   character(*), parameter :: LHAPDF_PDFSETS_PATH = &
-       "/usr/local/share/LHAPDF"
+       ""
 
   ! Available methods for event analysis display
   character(*), parameter :: EVENT_ANALYSIS = &
@@ -321,7 +321,16 @@ module system_dependencies
 
   ! Misc
   logical, parameter :: LHAPDF5_AVAILABLE = .false.
-  logical, parameter :: LHAPDF6_AVAILABLE = .true.
+  logical, parameter :: LHAPDF6_AVAILABLE = .false.
+  logical, parameter :: HOPPET_AVAILABLE = .true.
+
+  logical, parameter :: PYTHIA6_AVAILABLE = .true.
+  logical, parameter :: PYTHIA8_AVAILABLE = .true.
+
+  logical, parameter :: STDHEP_AVAILABLE = .true.
+
+  logical, parameter :: GOSAM_AVAILABLE = .true.
+  logical, parameter :: OPENLOOPS_AVAILABLE = .true.
 
 contains
 
@@ -330,30 +339,30 @@ contains
   ! OpenMP wrapper routines, work independent of OpenMP status
   function openmp_is_active () result (flag)
     logical :: flag
-    flag = .true.
-!    flag = .false.
+!    flag = .true.
+    flag = .false.
   end function openmp_is_active
 
   subroutine openmp_set_num_threads (num)
     integer, intent(in) :: num
-    call omp_set_num_threads (num)
+!    call omp_set_num_threads (num)
   end subroutine openmp_set_num_threads
   
   function openmp_get_num_threads () result (num)
     integer :: num
-    num = omp_get_num_threads ()
-!    num = 1
+!    num = omp_get_num_threads ()
+    num = 1
   end function openmp_get_num_threads
   
   function openmp_get_max_threads () result (num)
     integer :: num
-    num = omp_get_max_threads ()
-!    num = 1
+!    num = omp_get_max_threads ()
+    num = 1
   end function openmp_get_max_threads
   
   function openmp_get_default_max_threads () result (num)
     integer :: num
-    num = 8
+    num = 1
   end function openmp_get_default_max_threads
 
 end module system_dependencies

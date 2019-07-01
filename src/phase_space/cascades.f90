@@ -1,4 +1,4 @@
-! WHIZARD 2.2.6 May 02 2015
+! WHIZARD 2.2.7 Aug 11 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -58,7 +58,6 @@ module cascades
   public :: cascade_set_write_graph_format
   public :: cascade_set_write
   public :: cascade_set_generate
-  public :: cascade_test
 
   integer, parameter :: &
        & EXTERNAL_PRT = -1, &
@@ -746,7 +745,10 @@ contains
           fmt_head = fmt_head // ",1x,'  '"
        end if
     end do
-    fmt_proc = fmt_proc // ")"
+    !!! !!! !!! Workaround for standard-semantics ifort 16.0 bug              
+    do i = 1, n_tot
+       fmt_proc(i) = fmt_proc(i) // ")"
+    end do
     fmt_head = fmt_head // ")"
     write (u, char (fmt_head))  bincode
     do f = 1, n_flv
@@ -805,7 +807,7 @@ contains
              if (cascade%grove == grove) then
                 if (first_in_grove) then
                    first_in_grove = .false.
-                   write (u, *)
+                   write (u, "(A)")
                    write (u, "(1x,'!',1x,A,1x,I0,A)", advance='no') &
                       'Multiplicity =', cascade%multiplicity, ","
                    select case (cascade%n_resonances)
@@ -1982,62 +1984,5 @@ contains
     end if
   end function phase_space_vanishes
        
-  subroutine cascade_test (u, results)
-    integer, intent(in) :: u
-    type(test_results_t), intent(inout) :: results
-    call test (cascade_1, "cascade_1", &
-         "check cascade setup", &
-         u, results)
-  end subroutine cascade_test
-
-
-  subroutine cascade_1 (u)  
-    integer, intent(in) :: u
-    type(model_data_t), target :: model
-    type(flavor_t), dimension(5,2) :: flv
-    type(cascade_set_t) :: cascade_set
-    type(phs_parameters_t) :: phs_par
-
-    write (u, "(A)")  "* Test output: Cascades"
-    write (u, "(A)")  "*   Purpose: test cascade phase space functions"
-    write (u, "(A)")  
-    
-    write (u, "(A)")  "* Initializing"
-    write (u, "(A)")    
-    
-    call model%init_sm_test ()
-
-    call flv(1,1)%init ( 2, model)
-    call flv(2,1)%init (-2, model)
-    call flv(3,1)%init ( 1, model)
-    call flv(4,1)%init (-1, model)
-    call flv(5,1)%init (21, model)
-    call flv(1,2)%init ( 2, model)
-    call flv(2,2)%init (-2, model)
-    call flv(3,2)%init ( 2, model)
-    call flv(4,2)%init (-2, model)
-    call flv(5,2)%init (21, model)
-    phs_par%sqrts = 1000._default
-    phs_par%off_shell = 2
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Generating the cascades"
-    write (u, "(A)")
-    
-    call cascade_set_generate (cascade_set, model, 2, 3, flv, phs_par,.true.)
-    call cascade_set_write (cascade_set, u)
-    call cascade_set_write_file_format (cascade_set, u)
-
-    write (u, "(A)")  "* Cleanup"
-    write (u, "(A)")
-    
-    call cascade_set_final (cascade_set)
-    call model%final ()
-    
-    write (u, *)
-    write (u, "(A)")  "* Test output end: cascade_1"
-        
-  end subroutine cascade_1
-
 
 end module cascades

@@ -29,6 +29,7 @@
 
 ## We create a library which is still to be combined with auxiliary libs.
 noinst_LTLIBRARIES = libparsing.la
+check_LTLIBRARIES = libparsing_ut.la
 
 libparsing_la_SOURCES = \
   ifiles.f90 \
@@ -37,11 +38,18 @@ libparsing_la_SOURCES = \
   parser.f90 \
   xml.f90
 
+libparsing_ut_la_SOURCES = \
+  lexers_uti.f90 lexers_ut.f90 \
+  parser_uti.f90 parser_ut.f90 \
+  xml_uti.f90 xml_ut.f90
+
 ## Omitting this would exclude it from the distribution
 dist_noinst_DATA = parsing.nw
 
 # Dump module names into file Modules
-libparsing_Modules = ${libparsing_la_SOURCES:.f90=}
+libparsing_Modules = \
+  ${libparsing_la_SOURCES:.f90=} \
+  ${libparsing_ut_la_SOURCES:.f90=}
 Modules: Makefile
 	@for module in $(libparsing_Modules); do \
           echo $$module >> $@.new; \
@@ -87,7 +95,7 @@ DISTCLEANFILES = Module_dependencies.sed
 @am__include@ @am__quote@Makefile.depend@am__quote@
 
 Makefile.depend: Module_dependencies.sed
-Makefile.depend: $(libparsing_la_SOURCES)
+Makefile.depend: $(libparsing_la_SOURCES) $(libparsing_ut_la_SOURCES)
 	@rm -f $@
 	for src in $^; do \
 	  module="`basename $$src | sed 's/\.f[90][0358]//'`"; \
@@ -137,12 +145,12 @@ POSTLUDE = $(top_srcdir)/src/noweb-frame/whizard-postlude.nw
 parsing.stamp: $(PRELUDE) $(srcdir)/parsing.nw $(POSTLUDE)
 	@rm -f parsing.tmp
 	@touch parsing.tmp
-	for src in $(libparsing_la_SOURCES); do \
+	for src in $(libparsing_la_SOURCES) $(libparsing_ut_la_SOURCES); do \
 	  $(NOTANGLE) -R[[$$src]] $^ | $(CPIF) $$src; \
         done
 	@mv -f parsing.tmp parsing.stamp
 
-$(libparsing_la_SOURCES): parsing.stamp
+$(libparsing_la_SOURCES) $(libparsing_ut_la_SOURCES): parsing.stamp
 ## Recover from the removal of $@
 	@if test -f $@; then :; else \
 	  rm -f parsing.stamp; \
@@ -172,6 +180,9 @@ endif
 clean-local: clean-noweb
 	-rm -f parsing.stamp parsing.tmp
 	-rm -f *.$(FC_MODULE_EXT)
+if FC_SUBMODULES
+	-rm -f *.smod
+endif
 
 ## Remove backup files
 maintainer-clean-backup:

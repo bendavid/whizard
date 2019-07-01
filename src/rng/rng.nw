@@ -37,10 +37,9 @@ in different places of the event-generation chain.
 
 module rng_base
 
-  use kinds
-  use io_units
-  use format_utils, only: write_indent
-  use unit_tests
+<<Use kinds>>
+  use kinds, only: i16
+  use constants, only: TWOPI
 
 <<Standard module head>>
 
@@ -50,11 +49,9 @@ module rng_base
 
 <<RNG base: interfaces>>
 
-<<RNG base: test types>>
-
 contains
 
-<<RNG base: tests>>
+<<RNG base: procedures>>
 
 end module rng_base
 @ %def rng_base
@@ -114,8 +111,8 @@ for another call of [[init]] to reset the generator.
   end interface
   
 @ %def rng_write
-@ These routines generate a single and an array of default-precision
-random numbers, respectively.
+@ These routines generate a single and an array of uniformly distributed
+default-precision random numbers, respectively.
 <<RNG base: rng: TBP>>=
   generic :: generate => generate_single, generate_array
   procedure (rng_generate_single), deferred :: generate_single
@@ -138,6 +135,37 @@ random numbers, respectively.
   end interface
   
 @ %def generate_single generate_array
+@ These routines generate a single and an array of Gaussian (normal)
+distributed default-precision random numbers, respectively.  Mean is 0 and
+$\sigma=1$.  Note that $z=\mu + \sigma x$ then distributes with mean $\mu$ and
+variance $\sigma^2$.
+
+The algorithm uses twice as much uniformly distributed random numbers, taken
+from the PDG review.
+<<RNG base: rng: TBP>>=
+  generic :: generate_gaussian => &
+       rng_generate_gaussian_single, rng_generate_gaussian_array
+  procedure, private :: rng_generate_gaussian_single
+  procedure, private :: rng_generate_gaussian_array
+<<RNG base: procedures>>=
+  subroutine rng_generate_gaussian_single (rng, x)
+    class(rng_t), intent(inout) :: rng
+    real(default), intent(out) :: x
+    real(default), dimension(2) :: u
+    call rng%generate (u)
+    x = sin (twopi * u(1)) * sqrt (- 2 * log (u(2)))
+  end subroutine rng_generate_gaussian_single
+  
+  subroutine rng_generate_gaussian_array (rng, x)
+    class(rng_t), intent(inout) :: rng
+    real(default), dimension(:), intent(out) :: x
+    integer :: i
+    do i = 1, size (x)
+       call rng%generate_gaussian (x(i))
+    end do
+  end subroutine rng_generate_gaussian_array
+  
+@ %def generate_gaussian_single generate_gaussian_array
 @
 \subsection{RNG Factory}
 A factory object has a [[make]] method that allocates and initializes
@@ -197,9 +225,59 @@ state.  The default seed should be 0.
 @ %def rng_factory_make
 @
 \subsection{Unit tests}
-<<RNG base: public>>=
+Test module, followed by the corresponding implementation module.
+<<[[rng_base_ut.f90]]>>=
+<<File header>>
+
+module rng_base_ut
+  use unit_tests
+  use rng_base_uti
+  
+<<Standard module head>>
+
+<<RNG base: public test>>
+
+<<RNG base: public test auxiliary>>
+
+contains
+  
+<<RNG base: test driver>>
+
+end module rng_base_ut
+@ %def rng_base_ut
+@
+<<[[rng_base_uti.f90]]>>=
+<<File header>>
+
+module rng_base_uti
+
+<<Use kinds>>
+  use kinds, only: i16
+  use format_utils, only: write_indent
+  use io_units
+
+  use rng_base
+
+<<Standard module head>>
+
+<<RNG base: public test auxiliary>>
+
+<<RNG base: test declarations>>
+
+<<RNG base: test types>>
+
+contains
+
+<<RNG base: tests>>
+
+<<RNG base: test auxiliary>>
+
+end module rng_base_uti
+@ %def rng_base_ut
+@ API: driver for the unit tests below.
+<<RNG base: public test>>=
   public :: rng_base_test
-<<RNG base: tests>>=
+<<RNG base: test driver>>=
   subroutine rng_base_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
@@ -212,7 +290,7 @@ state.  The default seed should be 0.
 The test 'mock' random generator generates a repeating series with the numbers
 $0.1, 0.3, 0.5, 0.7, 0.9$.  It has an integer stored as state.  The
 integer must be one of $1,3,5,7,9$.
-<<RNG base: public>>=
+<<RNG base: public test auxiliary>>=
   public :: rng_test_t
 <<RNG base: test types>>=
   type, extends (rng_t) :: rng_test_t
@@ -227,7 +305,7 @@ integer must be one of $1,3,5,7,9$.
   
 @ %def rng_test_t
 @ Output.  The state is a single number, so print it.
-<<RNG base: tests>>=
+<<RNG base: test auxiliary>>=
   subroutine rng_test_write (rng, unit, indent)
     class(rng_test_t), intent(in) :: rng
     integer, intent(in), optional :: unit, indent
@@ -241,7 +319,7 @@ integer must be one of $1,3,5,7,9$.
   
 @ %def rng_test_write
 @ The default seed is 1.
-<<RNG base: tests>>=
+<<RNG base: test auxiliary>>=
   subroutine rng_test_init (rng, seed)
     class(rng_test_t), intent(out) :: rng
     integer, intent(in), optional :: seed
@@ -250,14 +328,14 @@ integer must be one of $1,3,5,7,9$.
   
 @ %def rng_test_init
 @ Nothing to finalize:
-<<RNG base: tests>>=
+<<RNG base: test auxiliary>>=
   subroutine rng_test_final (rng)
     class(rng_test_t), intent(inout) :: rng
   end subroutine rng_test_final
   
 @ %def rng_test_final
 @ Generate a single number and advance the state.
-<<RNG base: tests>>=
+<<RNG base: test auxiliary>>=
   subroutine rng_test_generate_single (rng, x)
     class(rng_test_t), intent(inout) :: rng
     real(default), intent(out) :: x
@@ -267,7 +345,7 @@ integer must be one of $1,3,5,7,9$.
   
 @ %def rng_generate_single
 @ The array generator calls the single-item generator multiple times.
-<<RNG base: tests>>=
+<<RNG base: test auxiliary>>=
   subroutine rng_test_generate_array (rng, x)
     class(rng_test_t), intent(inout) :: rng
     real(default), dimension(:), intent(out) :: x
@@ -283,7 +361,7 @@ integer must be one of $1,3,5,7,9$.
 This factory makes [[rng_test_t]] generators, initialized with
 integers 1, 3, 5, 7, 9 if given the input 0, 1, 2, 3, 4.  The
 generators within one sequence are all identical, however.
-<<RNG base: public>>=
+<<RNG base: public test auxiliary>>=
   public :: rng_test_factory_t
 <<RNG base: test types>>=
   type, extends (rng_factory_t) :: rng_test_factory_t
@@ -296,7 +374,7 @@ generators within one sequence are all identical, however.
 @ Output.
 <<RNG base: rng test factory: TBP>>=
   procedure :: write => rng_test_factory_write
-<<RNG base: tests>>=
+<<RNG base: test auxiliary>>=
   subroutine rng_test_factory_write (object, unit)
     class(rng_test_factory_t), intent(in) :: object
     integer, intent(in), optional :: unit
@@ -309,7 +387,7 @@ generators within one sequence are all identical, however.
 @ Initialize, translating the given seed.
 <<RNG base: rng test factory: TBP>>=
   procedure :: init => rng_test_factory_init
-<<RNG base: tests>>=
+<<RNG base: test auxiliary>>=
   subroutine rng_test_factory_init (factory, seed)
     class(rng_test_factory_t), intent(out) :: factory
     integer(i16), intent(in), optional :: seed
@@ -319,7 +397,7 @@ generators within one sequence are all identical, however.
 @ %def rng_test_factory_init
 <<RNG base: rng test factory: TBP>>=
   procedure :: make => rng_test_factory_make
-<<RNG base: tests>>=
+<<RNG base: test auxiliary>>=
   subroutine rng_test_factory_make (factory, rng)
     class(rng_test_factory_t), intent(inout) :: factory
     class(rng_t), intent(out), allocatable :: rng
@@ -338,6 +416,8 @@ Initialize the generator and draw random numbers.
   call test (rng_base_1, "rng_base_1", &
        "rng initialization and call", &
        u, results)
+<<RNG base: test declarations>>=
+  public :: rng_base_1
 <<RNG base: tests>>=
   subroutine rng_base_1 (u)
     integer, intent(in) :: u
@@ -391,6 +471,8 @@ Set up a factory and spawn generators.
   call test (rng_base_2, "rng_base_2", &
        "rng factory", &
        u, results)
+<<RNG base: test declarations>>=
+  public :: rng_base_2
 <<RNG base: tests>>=
   subroutine rng_base_2 (u)
     integer, intent(in) :: u
@@ -434,9 +516,8 @@ Set up a factory and spawn generators.
 
 module selectors
 
-  use kinds
+<<Use kinds>>
   use io_units
-  use unit_tests
   use diagnostics
   use rng_base
 
@@ -449,8 +530,6 @@ module selectors
 contains
   
 <<Selectors: procedures>>
-
-<<Selectors: tests>>
 
 end module selectors
 @ %def selectors
@@ -595,9 +674,51 @@ an issue for this function.
 @ %def selector_get_weight
 @
 \subsection{Unit tests}
-<<Selectors: public>>=
+Test module, followed by the corresponding implementation module.
+<<[[selectors_ut.f90]]>>=
+<<File header>>
+
+module selectors_ut
+  use unit_tests
+  use selectors_uti
+  
+<<Standard module head>>
+
+<<Selectors: public test>>
+
+contains
+  
+<<Selectors: test driver>>
+
+end module selectors_ut
+@ %def selectors_ut
+@
+<<[[selectors_uti.f90]]>>=
+<<File header>>
+
+module selectors_uti
+
+<<Use kinds>>
+  use rng_base
+
+  use selectors
+  
+  use rng_base_ut, only: rng_test_t
+
+<<Standard module head>>
+
+<<Selectors: test declarations>>
+
+contains
+
+<<Selectors: tests>>
+
+end module selectors_uti
+@ %def selectors_ut
+@ API: driver for the unit tests below.
+<<Selectors: public test>>=
   public :: selectors_test
-<<Selectors: tests>>=
+<<Selectors: test driver>>=
   subroutine selectors_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
@@ -612,6 +733,8 @@ Initialize the selector and draw random numbers.
   call test (selectors_1, "selectors_1", &
        "rng initialization and call", &
        u, results)
+<<Selectors: test declarations>>=
+  public :: selectors_1
 <<Selectors: tests>>=
   subroutine selectors_1 (u)
     integer, intent(in) :: u
@@ -680,10 +803,9 @@ which is available via the VAMP package.
 
 module rng_tao
 
-  use kinds
+<<Use kinds>>
   use io_units
   use format_utils, only: write_indent
-  use unit_tests
   use tao_random_numbers !NODEP!
 
   use rng_base
@@ -697,8 +819,6 @@ module rng_tao
 contains
   
 <<RNG tao: procedures>>
-
-<<RNG tao: tests>>
 
 end module rng_tao
 @ %def rng_tao
@@ -862,9 +982,50 @@ starting with zero.
 @ %def rng_tao_factory_make
 @
 \subsection{Unit tests}
-<<RNG tao: public>>=
+Test module, followed by the corresponding implementation module.
+<<[[rng_tao_ut.f90]]>>=
+<<File header>>
+
+module rng_tao_ut
+  use unit_tests
+  use rng_tao_uti
+  
+<<Standard module head>>
+
+<<RNG tao: public test>>
+
+contains
+  
+<<RNG tao: test driver>>
+
+end module rng_tao_ut
+@ %def rng_tao_ut
+@
+<<[[rng_tao_uti.f90]]>>=
+<<File header>>
+
+module rng_tao_uti
+
+<<Use kinds>>
+  use kinds, only: i16
+  use rng_base
+
+  use rng_tao
+
+<<Standard module head>>
+
+<<RNG tao: test declarations>>
+
+contains
+
+<<RNG tao: tests>>
+
+end module rng_tao_uti
+@ %def rng_tao_ut
+@ API: driver for the unit tests below.
+<<RNG tao: public test>>=
   public :: rng_tao_test
-<<RNG tao: tests>>=
+<<RNG tao: test driver>>=
   subroutine rng_tao_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
@@ -879,6 +1040,8 @@ Initialize the generator and draw random numbers.
   call test (rng_tao_1, "rng_tao_1", &
        "rng initialization and call", &
        u, results)
+<<RNG tao: test declarations>>=
+  public :: rng_tao_1
 <<RNG tao: tests>>=
   subroutine rng_tao_1 (u)
     integer, intent(in) :: u
@@ -935,6 +1098,8 @@ Set up a factory and spawn generators.
   call test (rng_tao_2, "rng_tao_2", &
        "rng factory", &
        u, results)
+<<RNG tao: test declarations>>=
+  public :: rng_tao_2
 <<RNG tao: tests>>=
   subroutine rng_tao_2 (u)
     integer, intent(in) :: u

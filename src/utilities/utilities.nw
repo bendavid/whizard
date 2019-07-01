@@ -337,7 +337,8 @@ This module provides tools associated with strings
 module string_utils
   
   use, intrinsic :: iso_c_binding
-<<Use kinds>>  
+
+<<Use kinds>>
 <<Use strings>>
 
 <<Standard module head>>
@@ -442,9 +443,19 @@ and variable format for integers.
   public :: str
 <<String utils: interfaces>>=
   interface str
-     module procedure str_int, str_real
+     module procedure str_log, str_int, str_real
   end interface
 <<String utils: procedures>>=
+  function str_log (l) result (s)
+    logical, intent(in) :: l
+    type(string_t) :: s
+    if (l) then
+       s = "True"
+    else
+       s = "False"
+    end if
+  end function str_log
+  
   function str_int (i) result (s)
     integer, intent(in) :: i
     type(string_t) :: s
@@ -461,7 +472,7 @@ and variable format for integers.
     s = var_str (trim (adjustl (buffer)))
   end function str_real
   
-@ %def str str_int str_real
+@ %def str
 @ Auxiliary: Read real, integer, string value.
 <<String utils: public>>=
   public :: read_rval

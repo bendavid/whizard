@@ -31,7 +31,8 @@
 noinst_PROGRAMS = c_example cpp_example
 
 c_example_SOURCES = c_test.c
-c_example_LDADD  = $(top_builddir)/src/libwhizard.la
+c_example_LDADD  = $(FCLIBS)
+c_example_LDADD += $(top_builddir)/src/libwhizard.la
 c_example_LDADD += $(top_builddir)/src/prebuilt/libwhizard_prebuilt.la
 c_example_LDADD += $(LDFLAGS_LHAPDF)
 c_example_LDADD += $(LDFLAGS_STDHEP)
@@ -41,7 +42,8 @@ c_example_LDADD += $(LDFLAGS_HOPPET)
 c_example_LDADD += $(LDFLAGS_LOOPTOOLS)
 
 cpp_example_SOURCES = cpp_whizard.cc cpp_test.cc cpp_whizard.h
-cpp_example_LDADD  = $(top_builddir)/src/libwhizard.la
+cpp_example_LDADD  = $(FCLIBS)
+cpp_example_LDADD += $(top_builddir)/src/libwhizard.la
 cpp_example_LDADD += $(top_builddir)/src/prebuilt/libwhizard_prebuilt.la
 cpp_example_LDADD += $(LDFLAGS_LHAPDF)
 cpp_example_LDADD += $(LDFLAGS_STDHEP)
@@ -49,6 +51,7 @@ cpp_example_LDADD += $(LDFLAGS_HEPMC)
 cpp_example_LDADD += $(LDFLAGS_LCIO)
 cpp_example_LDADD += $(LDFLAGS_HOPPET)
 cpp_example_LDADD += $(LDFLAGS_LOOPTOOLS)
+cpp_example_LDADD += $(LDFLAGS_IFCORE)
 
 SUFFIXES: .c .cc .py
 

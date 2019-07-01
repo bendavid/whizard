@@ -1,0 +1,81 @@
+?openmp_logging = false
+?vis_history = false
+?integration_timer = false
+?pacify = true
+$loop_me_method = "omega"
+openmp_num_threads = 1
+| Process library 'smtest_16_lib': recorded process 'smtest_16_p1'
+seed = 0
+sqrts =  2.5000000E+02
+| Integrate: current process library needs compilation
+| Process library 'smtest_16_lib': compiling ...
+| Process library 'smtest_16_lib': writing makefile
+| Process library 'smtest_16_lib': removing old files
+| Process library 'smtest_16_lib': writing driver
+| Process library 'smtest_16_lib': creating source code
+| Process library 'smtest_16_lib': compiling sources
+| Process library 'smtest_16_lib': linking
+| Process library 'smtest_16_lib': loading
+| Process library 'smtest_16_lib': ... success.
+| Integrate: compilation done
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 0
+| Initializing integration for process smtest_16_p1:
+| ------------------------------------------------------------------------
+| Process [scattering]: 'smtest_16_p1'
+|   Library name  = 'smtest_16_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'smtest_16_p1_i1':   e-, e+ => u, ubar [omega]
+|     2: 'smtest_16_p1_i2':   e-, e+ => u, ubar, gl [omega], [Real]
+|     3: 'smtest_16_p1_i3':   e-, e+ => u, ubar [omega], [Virtual]
+|     4: 'smtest_16_p1_i4':   e-, e+ => u, ubar [omega], [Subtraction]
+| ------------------------------------------------------------------------
+| Beam structure: [any particles]
+| Beam data (collision):
+|   e-  (mass = 5.1099700E-04 GeV)
+|   e+  (mass = 5.1099700E-04 GeV)
+|   sqrts = 2.500000000000E+02 GeV
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'smtest_16_p1_i1.phs'
+| Phase space: 2 channels, 2 dimensions
+| Phase space: found 2 channels, collected in 2 groves.
+| Phase space: Using 2 equivalences between channels.
+| Phase space: wood
+| Phase space: 2 channels, 5 dimensions
+| Phase space: found 2 channels, collected in 2 groves.
+| Phase space: no equivalences between channels used.
+| Phase space: wood
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'smtest_16_p1_i3.phs'
+| Phase space: 2 channels, 2 dimensions
+| Phase space: found 2 channels, collected in 2 groves.
+| Phase space: Using 2 equivalences between channels.
+| Phase space: wood
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'smtest_16_p1_i4.phs'
+| Phase space: 2 channels, 2 dimensions
+| Phase space: found 2 channels, collected in 2 groves.
+| Phase space: Using 2 equivalences between channels.
+| Phase space: wood
+Warning: No cuts have been defined.
+| Starting integration for process 'smtest_16_p1' part 2
+| Integrate: iterations = 2:9000
+| Integrator: 2 chains, 2 channels, 5 dimensions
+| Integrator: Using VAMP channel equivalences
+| Integrator: 9000 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1       9000     2.300E+02   3.26E+00    1.42    1.34     2.2
+   2       9000     2.314E+02   2.69E+00    1.16    1.10     2.1
+|-----------------------------------------------------------------------------|
+   2      18000     2.308E+02   2.07E+00    0.90    1.21     2.1    0.10   2
+|=============================================================================|
+| There were no errors and    1 warning(s).
+| WHIZARD run finished.
+|=============================================================================|

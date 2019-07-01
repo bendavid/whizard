@@ -1,4 +1,4 @@
-! WHIZARD 2.2.6 May 02 2015
+! WHIZARD 2.2.7 Aug 11 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -291,8 +291,6 @@ module model_data
      procedure :: init_sm_test => model_data_init_sm_test
   end type model_data_t
      
-
-
 
 contains
 
@@ -1404,19 +1402,19 @@ contains
     if (show_par) then
        do i = 1, size (model%par_real)
           call model%par_real(i)%write (u)
-          write (u, *)
+          write (u, "(A)")  
        end do
        do i = 1, size (model%par_complex)
           call model%par_complex(i)%write (u)
-          write (u, *)
+          write (u, "(A)")  
        end do
     end if
     if (show_prt) then
-       write (u, *)
+       write (u, "(A)")  
        call model%write_fields (u)
     end if
     if (show_vtx) then
-       write (u, *)
+       write (u, "(A)")
        call model%write_vertices (u, verbose)
     end if
   end subroutine model_data_write
@@ -2182,7 +2180,5 @@ contains
     call model%freeze_vertices ()
   end subroutine model_data_init_sm_test
   
-
-
 
 end module model_data

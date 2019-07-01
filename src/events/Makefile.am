@@ -30,6 +30,7 @@
 
 ## We create a library which is still to be combined with auxiliary libs.
 noinst_LTLIBRARIES = libevents.la
+check_LTLIBRARIES = libevents_ut.la
 
 libevents_la_SOURCES = \
   event_base.f90 \
@@ -47,11 +48,27 @@ libevents_la_SOURCES = \
   eio_hepmc.f90 \
   eio_lcio.f90
 
+libevents_ut_la_SOURCES = \
+  eio_data_uti.f90 eio_data_ut.f90 \
+  eio_base_uti.f90 eio_base_ut.f90 \
+  eio_checkpoints_uti.f90 eio_checkpoints_ut.f90 \
+  eio_weights_uti.f90 eio_weights_ut.f90 \
+  hepmc_interface_uti.f90 hepmc_interface_ut.f90 \
+  lcio_interface_uti.f90 lcio_interface_ut.f90 \
+  hep_events_uti.f90 hep_events_ut.f90 \
+  eio_ascii_uti.f90 eio_ascii_ut.f90 \
+  eio_lhef_uti.f90 eio_lhef_ut.f90 \
+  eio_stdhep_uti.f90 eio_stdhep_ut.f90 \
+  eio_hepmc_uti.f90 eio_hepmc_ut.f90 \
+  eio_lcio_uti.f90 eio_lcio_ut.f90
+
 ## Omitting this would exclude it from the distribution
 dist_noinst_DATA = events.nw
 
 # Dump module names into file Modules
-libevents_Modules = ${libevents_la_SOURCES:.f90=}
+libevents_Modules = \
+  ${libevents_la_SOURCES:.f90=} \
+  ${libevents_ut_la_SOURCES:.f90=}
 Modules: Makefile
 	@for module in $(libevents_Modules); do \
           echo $$module >> $@.new; \
@@ -102,7 +119,7 @@ DISTCLEANFILES = Module_dependencies.sed
 @am__include@ @am__quote@Makefile.depend@am__quote@
 
 Makefile.depend: Module_dependencies.sed
-Makefile.depend: $(libevents_la_SOURCES)
+Makefile.depend: $(libevents_la_SOURCES) $(libevents_ut_la_SOURCES)
 	@rm -f $@
 	for src in $^; do \
 	  module="`basename $$src | sed 's/\.f[90][0358]//'`"; \
@@ -152,12 +169,12 @@ POSTLUDE = $(top_srcdir)/src/noweb-frame/whizard-postlude.nw
 events.stamp: $(PRELUDE) $(srcdir)/events.nw $(POSTLUDE)
 	@rm -f events.tmp
 	@touch events.tmp
-	for src in $(libevents_la_SOURCES); do \
+	for src in $(libevents_la_SOURCES) $(libevents_ut_la_SOURCES); do \
 	  $(NOTANGLE) -R[[$$src]] $^ | $(CPIF) $$src; \
         done
 	@mv -f events.tmp events.stamp
 
-$(libevents_la_SOURCES): events.stamp
+$(libevents_la_SOURCES) $(libevents_ut_la_SOURCES): events.stamp
 ## Recover from the removal of $@
 	@if test -f $@; then :; else \
 	  rm -f events.stamp; \
@@ -187,6 +204,9 @@ endif
 clean-local: clean-noweb
 	-rm -f events.stamp events.tmp
 	-rm -f *.$(FC_MODULE_EXT)
+if FC_SUBMODULES
+	-rm -f *.smod
+endif
 
 ## Remove backup files
 maintainer-clean-backup:

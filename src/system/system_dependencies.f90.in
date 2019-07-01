@@ -322,6 +322,15 @@ module system_dependencies
   ! Misc
   logical, parameter :: LHAPDF5_AVAILABLE = @LHAPDF5_AVAILABLE_FLAG@
   logical, parameter :: LHAPDF6_AVAILABLE = @LHAPDF6_AVAILABLE_FLAG@
+  logical, parameter :: HOPPET_AVAILABLE = @HOPPET_AVAILABLE_FLAG@
+
+  logical, parameter :: PYTHIA6_AVAILABLE = @PYTHIA6_AVAILABLE_FLAG@
+  logical, parameter :: PYTHIA8_AVAILABLE = @PYTHIA8_AVAILABLE_FLAG@
+
+  logical, parameter :: STDHEP_AVAILABLE = @STDHEP_AVAILABLE_FLAG@
+
+  logical, parameter :: GOSAM_AVAILABLE = @GOSAM_AVAILABLE_FLAG@
+  logical, parameter :: OPENLOOPS_AVAILABLE = @OPENLOOPS_AVAILABLE_FLAG@
 
 contains
 

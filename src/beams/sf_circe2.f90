@@ -1,4 +1,4 @@
-! WHIZARD 2.2.6 May 02 2015
+! WHIZARD 2.2.7 Aug 11 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -33,14 +33,13 @@
 module sf_circe2
 
   use kinds, only: default
-  use kinds, only: double
   use iso_varying_string, string_t => varying_string
   use io_units
   use format_defs, only: FMT_19
-  use unit_tests
+  use unit_tests, only: vanishes
   use diagnostics
   use os_interface
-  use physics_defs, only: UNDEFINED, PHOTON, ELECTRON
+  use physics_defs, only: PHOTON, ELECTRON
   use lorentz
   use rng_base
   use selectors
@@ -52,8 +51,6 @@ module sf_circe2
   use quantum_numbers
   use state_matrices
   use polarizations
-  use interactions
-  use sf_aux
   use sf_base
   use circe2, circe2_rng_t => rng_type !NODEP!
 
@@ -61,7 +58,7 @@ module sf_circe2
   private
 
   public :: circe2_data_t
-  public :: sf_circe2_test
+  public :: circe2_t
 
   type, extends (sf_data_t) :: circe2_data_t
      private
@@ -70,6 +67,7 @@ module sf_circe2
      integer, dimension(2) :: pdg_in
      real(default) :: sqrts = 0
      logical :: polarized = .false.
+     logical :: beams_polarized = .false.
      class(rng_factory_t), allocatable :: rng_factory
      type(string_t) :: filename
      type(string_t) :: file 
@@ -119,13 +117,13 @@ module sf_circe2
 contains
 
   subroutine circe2_data_init (data, os_data, model, pdg_in, &
-       sqrts, polarized, file, design)
+       sqrts, polarized, beam_pol, file, design)
     class(circe2_data_t), intent(out) :: data
     type(os_data_t), intent(in) :: os_data
     class(model_data_t), intent(in), target :: model
     type(pdg_array_t), dimension(2), intent(in) :: pdg_in
     real(default), intent(in) :: sqrts
-    logical, intent(in) :: polarized
+    logical, intent(in) :: polarized, beam_pol
     type(string_t), intent(in) :: file, design
     integer :: h
     data%model => model
@@ -137,13 +135,17 @@ contains
     data%pdg_in = data%flv_in%get_pdg ()
     data%sqrts = sqrts
     data%polarized = polarized
+    data%beams_polarized = beam_pol
     data%filename = file
     data%design = design
     call data%check_file (os_data)
     call circe2_load (circe2_global_state, trim (char(data%file)), &
             trim (char(data%design)), data%sqrts, data%error)
-    data%lumi = circe2_luminosity (circe2_global_state, data%pdg_in, [0, 0])
     call data%check ()
+    data%lumi = circe2_luminosity (circe2_global_state, data%pdg_in, [0, 0])
+    if (vanishes (data%lumi)) then
+       call msg_fatal ("CIRCE2: luminosity vanishes for specified beams.")
+    end if
     if (data%polarized) then
        do h = 1, 4
           data%lumi_hel_frac(h) = &
@@ -202,15 +204,12 @@ contains
     case (-1)
        call msg_fatal ("CIRCE2: data file not found.")
     case (-2)
-       call msg_fatal ("CIRCE2: beam parameters do not match data file.")
+       call msg_fatal ("CIRCE2: beam setup does not match data file.")
     case (-3)
        call msg_fatal ("CIRCE2: invalid format of data file.")
     case (-4)
        call msg_fatal ("CIRCE2: data file too large.")
     end select
-    if (data%lumi == 0) then
-       call msg_fatal ("CIRCE2: luminosity vanishes for specified beams.")
-    end if
   end subroutine circe2_data_check
   
   subroutine circe2_data_write (data, unit, verbose) 
@@ -227,6 +226,7 @@ contains
          char (data%flv_in(1)%get_name ()), &
          ", ", char (data%flv_in(2)%get_name ())    
     write (u, "(3x,A,L1)")      "polarized  = ", data%polarized
+    write (u, "(3x,A,L1)")      "beams pol. = ", data%beams_polarized    
     write (u, "(3x,A," // FMT_19 // ")") "luminosity = ", data%lumi
     if (data%polarized) then
        do h = 1, 4
@@ -310,29 +310,50 @@ contains
     integer :: h
     select type (data)
     type is (circe2_data_t)
-       mask_h(1:2) = .true.
-       mask_h(3:4) = .not. data%polarized       
+       if (data%polarized .and. data%beams_polarized) then
+          call msg_fatal ("CIRCE2: Beam polarization can't be set &
+               &for polarized data file")
+       else if (data%beams_polarized) then
+          call msg_warning ("CIRCE2: User-defined beam polarization set &
+               &for unpolarized CIRCE2 data file")
+       end if
+       mask_h(1:2) = .not. data%beams_polarized
+       mask_h(3:4) = .not. (data%polarized .or. data%beams_polarized)
        mask = quantum_numbers_mask (.false., .false., mask_h)
        call sf_int%base_init (mask, [0._default, 0._default], &
             null_array, [0._default, 0._default])    
        sf_int%data => data              
        if (data%polarized) then
-          if (sum (data%lumi_hel_frac) == 0 .or. &
+          if (vanishes (sum (data%lumi_hel_frac)) .or. &
                any (data%lumi_hel_frac < 0)) then
-             call msg_fatal ("Circe2: Helicity-dependent lumi " &
+             call msg_fatal ("CIRCE2: Helicity-dependent lumi " &
                   // "fractions all vanish or",  &
                   [var_str ("are negative: Please inspect the " &
                   // "CIRCE2 file or "), &
                    var_str ("switch off the polarized" // &
-                  " option for Circe2.")])
+                  " option for CIRCE2.")])
           else             
              call sf_int%selector%init (data%lumi_hel_frac)
           end if
        end if
        call col0%init ()
-       call qn(1)%init (flv = data%flv_in(1), col = col0)
-       call qn(2)%init (flv = data%flv_in(2), col = col0)
-       if (data%polarized) then
+       if (data%beams_polarized) then
+          do h = 1, 4
+             call hel%init (data%h1(h))
+             call qn(1)%init &
+                  (flv = data%flv_in(1), col = col0, hel = hel)
+             call qn(3)%init &
+                  (flv = data%flv_in(1), col = col0, hel = hel)
+             call hel%init (data%h2(h))
+             call qn(2)%init &
+                  (flv = data%flv_in(2), col = col0, hel = hel)
+             call qn(4)%init &
+                  (flv = data%flv_in(2), col = col0, hel = hel)
+             call sf_int%add_state (qn)
+          end do
+       else if (data%polarized) then
+          call qn(1)%init (flv = data%flv_in(1), col = col0)
+          call qn(2)%init (flv = data%flv_in(2), col = col0)
           do h = 1, 4
              call hel%init (data%h1(h))
              call qn(3)%init &
@@ -343,9 +364,10 @@ contains
              call sf_int%add_state (qn)
           end do
        else
+          call qn(1)%init (flv = data%flv_in(1), col = col0)
+          call qn(2)%init (flv = data%flv_in(2), col = col0)
           call qn(3)%init (flv = data%flv_in(1), col = col0)
           call qn(4)%init (flv = data%flv_in(2), col = col0)
-          call qn(3:4)%tag_radiated ()
           call sf_int%add_state (qn)
        end if
        call sf_int%freeze ()
@@ -428,308 +450,20 @@ contains
 
   subroutine circe2_apply (sf_int, scale)
     class(circe2_t), intent(inout) :: sf_int
-    real(default), intent(in) :: scale    
+    real(default), intent(in) :: scale
     complex(default) :: f
-    integer :: h
     associate (data => sf_int%data)
       f = 1
-      if (data%polarized) then
-         h = sf_int%h_sel
+      if (data%beams_polarized) then
+         call sf_int%set_matrix_element (f)
+      else if (data%polarized) then
+         call sf_int%set_matrix_element (sf_int%h_sel, f)
       else
-         h = 1
+         call sf_int%set_matrix_element (1, f)
       end if
-      call sf_int%set_matrix_element (h, f)
     end associate
     sf_int%status = SF_EVALUATED
   end subroutine circe2_apply
-
-
-  subroutine sf_circe2_test (u, results)
-    integer, intent(in) :: u
-    type(test_results_t), intent(inout) :: results
-    call test (sf_circe2_1, "sf_circe2_1", &
-         "structure function configuration", &
-         u, results)
-    call test (sf_circe2_2, "sf_circe2_2", &
-         "generator, unpolarized", &
-         u, results)
-    call test (sf_circe2_3, "sf_circe2_3", &
-         "generator, polarized", &
-         u, results)
-  end subroutine sf_circe2_test
-  
-  subroutine sf_circe2_1 (u)
-    integer, intent(in) :: u
-    type(os_data_t) :: os_data
-    type(model_data_t), target :: model
-    type(pdg_array_t), dimension(2) :: pdg_in
-    type(pdg_array_t), dimension(2) :: pdg_out
-    integer, dimension(:), allocatable :: pdg1, pdg2
-    class(sf_data_t), allocatable :: data
-    class(rng_factory_t), allocatable :: rng_factory
-    
-    write (u, "(A)")  "* Test output: sf_circe2_1"
-    write (u, "(A)")  "*   Purpose: initialize and display &
-         &CIRCE structure function data"
-    write (u, "(A)")
-    
-    write (u, "(A)")  "* Create empty data object"
-    write (u, "(A)")
-
-    call os_data_init (os_data)
-    call model%init_qed_test ()
-    pdg_in(1) = PHOTON
-    pdg_in(2) = PHOTON
-
-    allocate (circe2_data_t :: data)
-    allocate (rng_test_factory_t :: rng_factory)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Initialize (unpolarized)"
-    write (u, "(A)")
-
-    select type (data)
-    type is (circe2_data_t)
-       call data%init (os_data, model, pdg_in, &
-            sqrts = 500._default, &
-            polarized = .false., &
-            file = var_str ("teslagg_500_polavg.circe"), &
-            design = var_str ("TESLA/GG"))
-       call data%set_generator_mode (rng_factory)
-    end select
-
-    call data%write (u)
-
-    write (u, "(A)")
-
-    write (u, "(1x,A)")  "Outgoing particle codes:"
-    call data%get_pdg_out (pdg_out)
-    pdg1 = pdg_out(1)
-    pdg2 = pdg_out(2)
-    write (u, "(2x,99(1x,I0))")  pdg1, pdg2
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Initialize (polarized)"
-    write (u, "(A)")
-
-    allocate (rng_test_factory_t :: rng_factory)
-
-    select type (data)
-    type is (circe2_data_t)
-       call data%init (os_data, model, pdg_in, &
-            sqrts = 500._default, &
-            polarized = .true., &
-            file = var_str ("teslagg_500.circe"), &
-            design = var_str ("TESLA/GG"))
-       call data%set_generator_mode (rng_factory)
-    end select
-
-    call data%write (u)
-
-    call model%final ()
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: sf_circe2_1"
-
-  end subroutine sf_circe2_1
-
-  subroutine sf_circe2_2 (u)
-    integer, intent(in) :: u
-    type(os_data_t) :: os_data
-    type(model_data_t), target :: model
-    type(flavor_t), dimension(2) :: flv
-    type(pdg_array_t), dimension(2) :: pdg_in
-    class(sf_data_t), allocatable, target :: data
-    class(rng_factory_t), allocatable :: rng_factory
-    class(sf_int_t), allocatable :: sf_int
-    type(vector4_t) :: k1, k2
-    real(default) :: E
-    real(default), dimension(:), allocatable :: r, rb, x
-    real(default) :: f, x_free
-    
-    write (u, "(A)")  "* Test output: sf_circe2_2"
-    write (u, "(A)")  "*   Purpose: initialize and fill &
-         &circe2 structure function object"
-    write (u, "(A)")
-    
-    write (u, "(A)")  "* Initialize configuration data"
-    write (u, "(A)")
-
-    call os_data_init (os_data)
-    call model%init_qed_test ()
-    call flv(1)%init (PHOTON, model)
-    call flv(2)%init (PHOTON, model)
-    pdg_in(1) = PHOTON
-    pdg_in(2) = PHOTON
-
-    call reset_interaction_counter ()
-    
-    allocate (circe2_data_t :: data)
-    allocate (rng_test_factory_t :: rng_factory)
-    select type (data)
-    type is (circe2_data_t)
-       call data%init (os_data, model, pdg_in, &
-            sqrts = 500._default, &
-            polarized = .false., &
-            file = var_str ("teslagg_500_polavg.circe"), &
-            design = var_str ("TESLA/GG"))
-       call data%set_generator_mode (rng_factory)
-    end select
-       
-    write (u, "(A)")  "* Initialize structure-function object"
-    write (u, "(A)")
-    
-    call data%allocate_sf_int (sf_int)
-    call sf_int%init (data)
-    call sf_int%set_beam_index ([1,2])
-    select type (sf_int)
-    type is (circe2_t)
-       call sf_int%rng_obj%rng%init (3)
-    end select
-
-    write (u, "(A)")  "* Initialize incoming momentum with E=500"
-    write (u, "(A)")
-    E = 250
-    k1 = vector4_moving (E, sqrt (E**2 - flv(1)%get_mass ()**2), 3)
-    k2 = vector4_moving (E,-sqrt (E**2 - flv(2)%get_mass ()**2), 3)
-    call vector4_write (k1, u)
-    call vector4_write (k2, u)
-    call sf_int%seed_kinematics ([k1, k2])
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Generate x"
-    write (u, "(A)")
-
-    allocate (r (data%get_n_par ()))
-    allocate (rb(size (r)))
-    allocate (x (size (r)))
-
-    r  = 0
-    rb = 0
-    x_free = 1
-    call sf_int%generate_free (r, rb, x_free)
-    call sf_int%complete_kinematics (x, f, r, rb, map=.false.)
-
-    write (u, "(A,9(1x,F10.7))")  "x =", x
-    write (u, "(A,9(1x,F10.7))")  "f =", f
-    write (u, "(A,9(1x,F10.7))")  "xf=", x_free
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Evaluate"
-    write (u, "(A)")
-
-    call sf_int%apply (scale = 0._default)
-    call sf_int%write (u)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Cleanup"
-
-    call sf_int%final ()
-    call model%final ()
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: sf_circe2_2"
-
-  end subroutine sf_circe2_2
-
-  subroutine sf_circe2_3 (u)
-    integer, intent(in) :: u
-    type(os_data_t) :: os_data
-    type(model_data_t), target :: model
-    type(flavor_t), dimension(2) :: flv
-    type(pdg_array_t), dimension(2) :: pdg_in
-    class(sf_data_t), allocatable, target :: data
-    class(rng_factory_t), allocatable :: rng_factory
-    class(sf_int_t), allocatable :: sf_int
-    type(vector4_t) :: k1, k2
-    real(default) :: E
-    real(default), dimension(:), allocatable :: r, rb, x
-    real(default) :: f, x_free
-    
-    write (u, "(A)")  "* Test output: sf_circe2_3"
-    write (u, "(A)")  "*   Purpose: initialize and fill &
-         &circe2 structure function object"
-    write (u, "(A)")
-    
-    write (u, "(A)")  "* Initialize configuration data"
-    write (u, "(A)")
-
-    call os_data_init (os_data)
-    call model%init_qed_test ()
-    call flv(1)%init (PHOTON, model)
-    call flv(2)%init (PHOTON, model)
-    pdg_in(1) = PHOTON
-    pdg_in(2) = PHOTON
-
-    call reset_interaction_counter ()
-    
-    allocate (circe2_data_t :: data)
-    allocate (rng_test_factory_t :: rng_factory)
-    select type (data)
-    type is (circe2_data_t)
-       call data%init (os_data, model, pdg_in, &
-            sqrts = 500._default, &
-            polarized = .true., &
-            file = var_str ("teslagg_500.circe"), &
-            design = var_str ("TESLA/GG"))
-       call data%set_generator_mode (rng_factory)
-    end select
-       
-    write (u, "(A)")  "* Initialize structure-function object"
-    write (u, "(A)")
-    
-    call data%allocate_sf_int (sf_int)
-    call sf_int%init (data)
-    call sf_int%set_beam_index ([1,2])
-    select type (sf_int)
-    type is (circe2_t)
-       call sf_int%rng_obj%rng%init (3)
-    end select
-
-    write (u, "(A)")  "* Initialize incoming momentum with E=500"
-    write (u, "(A)")
-    E = 250
-    k1 = vector4_moving (E, sqrt (E**2 - flv(1)%get_mass ()**2), 3)
-    k2 = vector4_moving (E,-sqrt (E**2 - flv(2)%get_mass ()**2), 3)
-    call vector4_write (k1, u)
-    call vector4_write (k2, u)
-    call sf_int%seed_kinematics ([k1, k2])
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Generate x"
-    write (u, "(A)")
-
-    allocate (r (data%get_n_par ()))
-    allocate (rb(size (r)))
-    allocate (x (size (r)))
-
-    r  = 0
-    rb = 0
-    x_free = 1
-    call sf_int%generate_free (r, rb, x_free)
-    call sf_int%complete_kinematics (x, f, r, rb, map=.false.)
-
-    write (u, "(A,9(1x,F10.7))")  "x =", x
-    write (u, "(A,9(1x,F10.7))")  "f =", f
-    write (u, "(A,9(1x,F10.7))")  "xf=", x_free
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Evaluate"
-    write (u, "(A)")
-
-    call sf_int%apply (scale = 0._default)
-    call sf_int%write (u)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Cleanup"
-
-    call sf_int%final ()
-    call model%final ()
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: sf_circe2_3"
-
-  end subroutine sf_circe2_3
 
 
 end module sf_circe2

@@ -1,4 +1,4 @@
-! WHIZARD 2.2.6 May 02 2015
+! WHIZARD 2.2.7 Aug 11 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -32,10 +32,9 @@
 
 module rng_tao
 
-  use kinds
+  use kinds, only: default
   use io_units
   use format_utils, only: write_indent
-  use unit_tests
   use tao_random_numbers !NODEP!
 
   use rng_base
@@ -45,7 +44,6 @@ module rng_tao
 
   public :: rng_tao_t
   public :: rng_tao_factory_t
-  public :: rng_tao_test
 
   type, extends (rng_t) :: rng_tao_t
      integer :: seed = 0
@@ -144,134 +142,5 @@ contains
     end select
   end subroutine rng_tao_factory_make
 
-
-  subroutine rng_tao_test (u, results)
-    integer, intent(in) :: u
-    type(test_results_t), intent(inout) :: results
-    call test (rng_tao_1, "rng_tao_1", &
-         "rng initialization and call", &
-         u, results)
-    call test (rng_tao_2, "rng_tao_2", &
-         "rng factory", &
-         u, results)
-  end subroutine rng_tao_test
-  
-  subroutine rng_tao_1 (u)
-    integer, intent(in) :: u
-    class(rng_t), allocatable, target :: rng
-
-    real(default) :: x
-    real(default), dimension(2) :: x2
-    
-    write (u, "(A)")  "* Test output: rng_tao_1"
-    write (u, "(A)")  "*   Purpose: initialize and call the TAO random-number &
-         &generator"
-    write (u, "(A)")
-    
-    write (u, "(A)")  "* Initialize generator (default seed)"
-    write (u, "(A)")
-
-    allocate (rng_tao_t :: rng)
-    call rng%init ()
-    
-    call rng%write (u)
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Get random number"
-    write (u, "(A)")
-    
-    call rng%generate (x)
-    write (u, "(A,2(1x,F9.7))")  "x =", x
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Get random number pair"
-    write (u, "(A)")
-    
-    call rng%generate (x2)
-    write (u, "(A,2(1x,F9.7))")  "x =", x2
-    
-    write (u, "(A)")
-    call rng%write (u)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Cleanup"
-        
-    call rng%final ()
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: rng_tao_1"
-    
-  end subroutine rng_tao_1
-    
-  subroutine rng_tao_2 (u)
-    integer, intent(in) :: u
-    type(rng_tao_factory_t) :: rng_factory
-    class(rng_t), allocatable :: rng
-    real(default) :: x
-    
-    write (u, "(A)")  "* Test output: rng_tao_2"
-    write (u, "(A)")  "*   Purpose: initialize and use a rng factory"
-    write (u, "(A)")
-    
-    write (u, "(A)")  "* Initialize factory"
-    write (u, "(A)")
-
-    call rng_factory%init ()
-    call rng_factory%write (u)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Make a generator"
-    write (u, "(A)")
-
-    call rng_factory%make (rng)
-    call rng%write (u)
-    call rng%generate (x)
-    write (u, *)
-    write (u, "(1x,A,F7.5)")  "x = ", x
-    call rng%final ()
-    deallocate (rng)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Repeat"
-    write (u, "(A)")
-
-    call rng_factory%make (rng)
-    call rng%write (u)
-    call rng%generate (x)
-    write (u, *)
-    write (u, "(1x,A,F7.5)")  "x = ", x
-    call rng%final ()
-    deallocate (rng)
-
-    write (u, *)
-    call rng_factory%write (u)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Initialize factory with different seed"
-    write (u, "(A)")
-
-    call rng_factory%init (1_i16)
-    call rng_factory%write (u)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Make a generator"
-    write (u, "(A)")
-
-    call rng_factory%make (rng)
-    call rng%write (u)
-    call rng%generate (x)
-    write (u, *)
-    write (u, "(1x,A,F7.5)")  "x = ", x
-    call rng%final ()
-    deallocate (rng)
-    
-    write (u, *)
-    call rng_factory%write (u)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: rng_tao_2"
-    
-  end subroutine rng_tao_2
-    
 
 end module rng_tao

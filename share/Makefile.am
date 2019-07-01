@@ -107,7 +107,8 @@ dist_examples_DATA = \
   examples/eeww_polarized.sin \
   examples/circe1.sin \
   examples/HERA_DIS.sin \
-  examples/NLO_eettbar.sin \
+  examples/NLO_eettbar_GoSam.sin \
+  examples/NLO_eettbar_OpenLoops.sin \
   examples/DrellYanMatchingP.sin \
   examples/DrellYanMatchingW.sin \
   examples/DrellYanNoMatchingP.sin \
@@ -141,7 +142,11 @@ dist_pdf_DATA = \
 	pdf_builtin/CJ12_min_00.tbl \
 	pdf_builtin/mmht2014lo.00.dat \
 	pdf_builtin/mmht2014nlo.00.dat \
-	pdf_builtin/mmht2014nnlo.00.dat
+	pdf_builtin/mmht2014nnlo.00.dat \
+	pdf_builtin/CT14llo.pds \
+	pdf_builtin/CT14lo.pds \
+	pdf_builtin/CT14n.00.pds \
+	pdf_builtin/CT14nn.00.pds
 
 ## Files containing precompiled cross sections for muli
 ## to be installed with the 'muli' prefix kept

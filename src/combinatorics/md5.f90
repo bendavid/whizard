@@ -1,4 +1,4 @@
-! WHIZARD 2.2.6 May 02 2015
+! WHIZARD 2.2.7 Aug 11 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -44,7 +44,6 @@ module md5
   private
 
   public :: md5sum
-  public :: md5_test
 
   type :: block_t
      private
@@ -498,56 +497,6 @@ contains
     call message_digest (m, digest)
     call message_clear (m)
   end function md5sum_from_unit
-
-  subroutine md5_test (u, results)
-    integer, intent(in) :: u
-    type(test_results_t), intent(inout) :: results
-    call test (md5_1, "md5_1", &
-         "check MD5 sums", &
-         u, results)
-  end subroutine md5_test
-
-
-  subroutine md5_1 (u)
-    integer, intent(in) :: u
-    character(32) :: s
-    integer, parameter :: n = 7
-    integer :: i
-    character(80), dimension(n) :: teststring
-    data teststring(1) /""/
-    data teststring(2) /"a"/
-    data teststring(3) /"abc"/
-    data teststring(4) /"message digest"/
-    data teststring(5) /"abcdefghijklmnopqrstuvwxyz"/
-    data teststring(6) /"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"/
-    data teststring(7) /"12345678901234567890123456789012345678901234567890123456789012345678901234567890"/
-    character(32), dimension(n) :: result
-    data result(1) /"D41D8CD98F00B204E9800998ECF8427E"/
-    data result(2) /"0CC175B9C0F1B6A831C399E269772661"/
-    data result(3) /"900150983CD24FB0D6963F7D28E17F72"/
-    data result(4) /"F96B697D7CB7938D525A2F31AAF161D0"/
-    data result(5) /"C3FCD3D76192E4007DFB496CCA67E13B"/
-    data result(6) /"D174AB98D277D9F5A5611C2C9F419D9F"/
-    data result(7) /"57EDF4A22BE3C955AC49DA2E2107B67A"/
-
-    write (u, "(A)")  "* Test output: MD5"
-    write (u, "(A)")  "*   Purpose: test MD5 sums"
-    write (u, "(A)")
-
-    do i = 1, n
-       write (u, "(A)") "MD5 test string = " // '"'// &
-            trim (teststring(i)) // '"'
-       s = md5sum (trim (teststring(i)))
-       write (u, "(A)") "MD5 check sum   = " // trim (s)
-       write (u, "(A)") "Ref check sum   = " // result(i)
-       if (s == result(i)) then
-          call msg_message ("=> ok", u)
-       else
-          call msg_message ("=> MD5 sum self-test failed", u)
-       end if
-    end do
-    call msg_message ("=============================================================================|", unit=u)
-  end subroutine md5_1
 
 
 end module md5

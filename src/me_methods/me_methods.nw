@@ -64,10 +64,7 @@ module prc_core
 <<Use strings>>
   use io_units
   use diagnostics
-  use os_interface
   use lorentz
-  use model_data
-  use model_testbed
   use interactions
 
   use process_constants
@@ -80,8 +77,6 @@ module prc_core
 <<Prc core: public>>
 
 <<Prc core: types>>
-
-<<Prc core: variables>>
 
 <<Prc core: interfaces>>
 
@@ -468,25 +463,23 @@ to the templates (via the makefile) and the driver.
 
 module prc_template_me
   
-  use iso_c_binding !NODEP!
+  use, intrinsic ::  iso_c_binding !NODEP!
+
   use kinds
-  use io_units
 <<Use strings>>
-  use unit_tests
+  use io_units
   use system_defs, only: TAB
   use diagnostics
   use os_interface
   use lorentz
   use flavors
-  use sm_qcd
   use interactions
   use model_data
-  use model_testbed
 
+  use particle_specifiers, only: new_prt_spec
   use process_constants
   use prclib_interfaces
   use prc_core_def
-  use particle_specifiers
   use process_libraries
   use prc_core
 
@@ -501,8 +494,6 @@ module prc_template_me
 contains
   
 <<Template matrix elements: procedures>>
-
-<<Template matrix elements: tests>>
 
 end module prc_template_me
 @ %def prc_template_me
@@ -602,7 +593,7 @@ Also set any data for this process that the writer needs.
 <<Template matrix elements: procedures>>=
   subroutine template_me_def_get_features (features)
     type(string_t), dimension(:), allocatable, intent(out) :: features
-    allocate (features (6))
+    allocate (features (5))
     features = [ &
          var_str ("init"), &
          var_str ("update_alpha_s"), &
@@ -1332,6 +1323,8 @@ NOTE: The case [[c_default_float]] $\neq$ [[default]] is not yet covered.
 @ %def template_me_write_wrapper
 @ 
 \subsection{Driver}
+<<Template matrix elements: public>>=
+  public :: template_me_driver_t
 <<Template matrix elements: types>>=
   type, extends (prc_core_driver_t) :: template_me_driver_t
      procedure(init_t), nopass, pointer :: &
@@ -1637,7 +1630,7 @@ effective momenta.  The effective interaction is a pointer to the hard
 interaction, so the latter is ignored.
 <<Template matrix elements: prc template ME: TBP>>=
   procedure :: recover_kinematics => prc_template_me_recover_kinematics
-<<Template matrix elements: tests>>=
+<<Template matrix elements: procedures>>=
   subroutine prc_template_me_recover_kinematics &
        (object, p_seed, int_hard, int_eff, core_state)
     class(prc_template_me_t), intent(in) :: object
@@ -1710,13 +1703,59 @@ unset the [[new_kinematics]] flag.
 @ %def prc_template_me_compute_amplitude
 @ We do not overwrite the [[prc_core_t]] routine for $\alpha_s$. 
 
-\subsection{Test}
-This is the master for calling self-test procedures. There is a
-separate test for testing \oMega\ diagram generation as this depends on
-a working analysis setup.
-<<Template matrix elements: public>>=
+\subsection{Unit Test}
+Test module, followed by the corresponding implementation module.
+<<[[prc_template_me_ut.f90]]>>=
+<<File header>>
+
+module prc_template_me_ut
+  use unit_tests
+  use prc_template_me_uti
+  
+<<Standard module head>>
+
+<<Template matrix elements: public test>>
+
+contains
+  
+<<Template matrix elements: test driver>>
+
+end module prc_template_me_ut
+@ %def prc_template_me_ut
+@
+<<[[prc_template_me_uti.f90]]>>=
+<<File header>>
+
+module prc_template_me_uti
+
+  use, intrinsic :: iso_c_binding !NODEP!
+
+  use kinds
+<<Use strings>>
+  use os_interface
+  use particle_specifiers, only: new_prt_spec
+  use model_data
+  use prc_core_def
+  use process_constants
+  use process_libraries
+  use model_testbed, only: prepare_model, cleanup_model
+
+  use prc_template_me
+
+<<Standard module head>>
+
+<<Template matrix elements: test declarations>>
+
+contains
+
+<<Template matrix elements: tests>>
+
+end module prc_template_me_uti
+@ %def prc_template_me_ut
+@ API: driver for the unit tests below.
+<<Template matrix elements: public test>>=
   public :: prc_template_me_test
-<<Template matrix elements: tests>>=
+<<Template matrix elements: test driver>>=
   subroutine prc_template_me_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
@@ -1740,6 +1779,8 @@ parallel make.
   call test (prc_template_me_1, "prc_template_me_1", &
        "build and load simple template process", &
        u, results)
+<<Template matrix elements: test declarations>>=
+  public :: prc_template_me_1
 <<Template matrix elements: tests>>=
   subroutine prc_template_me_1 (u)
     integer, intent(in) :: u
@@ -1906,6 +1947,8 @@ parallel make.
   call test (prc_template_me_2, "prc_template_me_2", &
        "build and load simple template_unity process", &
        u, results)
+<<Template matrix elements: test declarations>>=
+  public :: prc_template_me_2
 <<Template matrix elements: tests>>=
   subroutine prc_template_me_2 (u)
     integer, intent(in) :: u
@@ -2091,8 +2134,6 @@ module prc_omega
   use kinds
 <<Use strings>>
   use io_units
-  use file_utils, only: delete_file
-  use unit_tests
   use system_defs, only: TAB
   use diagnostics
   use os_interface
@@ -2100,13 +2141,11 @@ module prc_omega
   use sm_qcd
   use interactions
   use model_data
-  use var_base
-  use model_testbed
 
+  use particle_specifiers, only: new_prt_spec
   use process_constants
   use prclib_interfaces
   use prc_core_def
-  use particle_specifiers
   use process_libraries
   use prc_core
 
@@ -2121,8 +2160,6 @@ module prc_omega
 contains
   
 <<Omega interface: procedures>>
-
-<<Omega interface: tests>>
 
 end module prc_omega
 @ %def prc_omega
@@ -2887,6 +2924,8 @@ NOTE: The case [[c_default_float]] $\neq$ [[default]] is not yet covered.
 @ %def omega_write_wrapper
 @ 
 \subsection{Driver}
+<<Omega interface: public>>=
+  public :: omega_driver_t
 <<Omega interface: types>>=
   type, extends (prc_core_driver_t) :: omega_driver_t
      procedure(init_t), nopass, pointer :: &
@@ -3216,7 +3255,7 @@ effective momenta.  The effective interaction is a pointer to the hard
 interaction, so the latter is ignored.
 <<Omega interface: prc omega: TBP>>=
   procedure :: recover_kinematics => prc_omega_recover_kinematics
-<<Omega interface: tests>>=
+<<Omega interface: procedures>>=
   subroutine prc_omega_recover_kinematics &
        (object, p_seed, int_hard, int_eff, core_state)
     class(prc_omega_t), intent(in) :: object
@@ -3363,13 +3402,67 @@ $\alpha_s$.  This works only if $\alpha_s$ varies, and if the workspace
   
 @ %def prc_omega_get_alpha_s
 @
-\subsection{Test}
-This is the master for calling self-test procedures. There is a
-separate test for testing \oMega\ diagram generation as this depends on
-a working analysis setup.
-<<Omega interface: public>>=
+\subsection{Unit Test}
+Test module, followed by the corresponding implementation module.
+There is a separate test for testing \oMega\ diagram generation as
+this depends on a working analysis setup.
+<<[[prc_omega_ut.f90]]>>=
+<<File header>>
+
+module prc_omega_ut
+  use unit_tests
+  use prc_omega_uti
+  
+<<Standard module head>>
+
+<<Omega interface: public test>>
+
+contains
+  
+<<Omega interface: test driver>>
+
+end module prc_omega_ut
+@ %def prc_omega_ut
+@
+<<[[prc_omega_uti.f90]]>>=
+<<File header>>
+
+module prc_omega_uti
+
+  use, intrinsic :: iso_c_binding !NODEP!
+
+  use kinds
+<<Use strings>>
+  use io_units
+  use file_utils, only: delete_file
+  use os_interface
+  use sm_qcd
+  use lorentz
+  use model_data
+  use var_base
+  use particle_specifiers, only: new_prt_spec
+  use prc_core_def
+  use process_constants
+  use process_libraries
+  use prc_core
+  use model_testbed, only: prepare_model, cleanup_model
+
+  use prc_omega
+
+<<Standard module head>>
+
+<<Omega interface: test declarations>>
+
+contains
+
+<<Omega interface: tests>>
+
+end module prc_omega_uti
+@ %def prc_omega_ut
+@ API: driver for the unit tests below.
+<<Omega interface: public test>>=
   public :: prc_omega_test
-<<Omega interface: tests>>=
+<<Omega interface: test driver>>=
   subroutine prc_omega_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
@@ -3378,9 +3471,9 @@ end subroutine prc_omega_test
 
 @ %def prc_omega_test
 @
-<<Omega interface: public>>=
+<<Omega interface: public test>>=
   public :: prc_omega_diags_test
-<<Omega interface: tests>>=
+<<Omega interface: test driver>>=
   subroutine prc_omega_diags_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
@@ -3404,6 +3497,8 @@ parallel make.
   call test (prc_omega_1, "prc_omega_1", &
        "build and load simple OMega process", &
        u, results)
+<<Omega interface: test declarations>>=
+  public :: prc_omega_1
 <<Omega interface: tests>>=
   subroutine prc_omega_1 (u)
     integer, intent(in) :: u
@@ -3576,6 +3671,8 @@ parallel make.
   call test (prc_omega_2, "prc_omega_2", &
        "OMega option passing", &
        u, results)
+<<Omega interface: test declarations>>=
+  public :: prc_omega_2
 <<Omega interface: tests>>=
   subroutine prc_omega_2 (u)
     integer, intent(in) :: u
@@ -3802,6 +3899,8 @@ irrelevant helicities.
   call test (prc_omega_3, "prc_omega_3", &
        "helicity selection", &
        u, results)
+<<Omega interface: test declarations>>=
+  public :: prc_omega_3
 <<Omega interface: tests>>=
   subroutine prc_omega_3 (u)
     integer, intent(in) :: u
@@ -4000,6 +4099,8 @@ parallel make.
   call test (prc_omega_4, "prc_omega_4", &
        "update QCD alpha", &
        u, results)
+<<Omega interface: test declarations>>=
+  public :: prc_omega_4
 <<Omega interface: tests>>=
   subroutine prc_omega_4 (u)
     integer, intent(in) :: u
@@ -4140,6 +4241,8 @@ method [[compute_amplitude]].
   call test (prc_omega_5, "prc_omega_5", &
        "running QCD alpha", &
        u, results)
+<<Omega interface: test declarations>>=
+  public :: prc_omega_5
 <<Omega interface: tests>>=
   subroutine prc_omega_5 (u)
     integer, intent(in) :: u
@@ -4297,6 +4400,8 @@ possible.
   call test (prc_omega_diags_1, "prc_omega_diags_1", &
        "generate Feynman diagrams", &
        u, results)
+<<Omega interface: test declarations>>=
+  public :: prc_omega_diags_1
 <<Omega interface: tests>>=
   subroutine prc_omega_diags_1 (u)
     integer, intent(in) :: u
@@ -4400,3 +4505,187 @@ possible.
   end subroutine prc_omega_diags_1
   
 @ %def prc_omega_diags_1
+@ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+/section{User-defined matrix elements}
+For certain applications, only the squared matrix elements instead of the pure amplitude can be obtained, e.g. for BLHA One-Loop providers or for the QCD-resummed top-threshold calculation. This is enabled by the [[prc_user_defined_base_t]]-type.
+<<[[prc_user_defined.f90]]>>=
+<<File header>>
+module prc_user_defined
+
+  use, intrinsic :: iso_c_binding !NODEP!
+<<Use kinds>>
+<<Use strings>>
+  use diagnostics
+  use lorentz
+  use interactions
+
+  use prc_core_def
+  use prc_core
+ 
+<<Standard module head>>
+
+<<Prc User: public>>
+
+<<Prc User: types>>
+
+<<Prc User: interfaces>>
+
+contains
+
+<<Prc User: procedures>>
+
+end module prc_user_defined
+@ %def prc_user_defined
+@
+<<Prc User: public>>=
+  public :: prc_user_defined_base_t
+<<Prc User: types>>=
+  type, abstract, extends (prc_core_t) :: prc_user_defined_base_t
+  contains
+  <<Prc User: prc user defined base: TBP>>
+  end type prc_user_defined_base_t
+
+@ %def prc_user_defined_base_t
+@
+<<Prc User: types>>=
+  type, abstract, extends (prc_core_state_t) :: user_defined_state_t
+    logical :: new_kinematics = .true.
+    real(default) :: alpha_qcd = -1
+  contains
+  <<Prc User: blha state: TBP>>
+  end type user_defined_state_t
+
+@ %def user_defined_state_t
+@
+<<Prc User: public>>=
+  public :: prc_tt_threshold_t
+<<Prc User: types>>=
+  type, extends (prc_user_defined_base_t) :: prc_tt_threshold_t
+  contains
+  <<Prc User: prc tt threshold: TBP>>
+  end type prc_tt_threshold_t
+
+@ %def prc_tt_threshold_t
+@
+<<Prc User: prc user defined base: TBP>>=
+  procedure :: needs_mcset => prc_user_defined_base_needs_mcset
+<<Prc User: procedures>>=
+  function prc_user_defined_base_needs_mcset (object) result (flag)
+    class(prc_user_defined_base_t), intent(in) :: object
+    logical :: flag
+    flag = .true.
+  end function prc_user_defined_base_needs_mcset
+
+@
+@ %def prc_user_defined_base_needs_mc_set
+<<Prc User: prc user defined base: TBP>>=
+  procedure :: get_n_terms => prc_user_defined_base_get_n_terms
+<<Prc User: procedures>>=
+  function prc_user_defined_base_get_n_terms (object) result (n)
+    class(prc_user_defined_base_t), intent(in) :: object
+    integer :: n
+    n = 1
+  end function prc_user_defined_base_get_n_terms
+
+@  
+@ %def prc_user_defined_base_get_n_terms
+<<Prc User: prc user defined base: TBP>>=
+  procedure :: is_allowed => prc_user_defined_base_is_allowed
+<<Prc User: procedures>>=
+  function prc_user_defined_base_is_allowed (object, i_term, f, h, c) result (flag)
+    class(prc_user_defined_base_t), intent(in) :: object
+    integer, intent(in) :: i_term, f, h, c
+    logical :: flag
+    logical(c_bool) :: cflag
+    select type (driver => object%driver)
+    class is (prc_core_driver_t)
+!       call driver%is_allowed (f, h, c, cflag)
+!       flag = cflag
+       flag = .true.
+    end select
+  end function prc_user_defined_base_is_allowed
+
+@
+@ %def prc_user_defined_base_is_allowed
+<<Prc User: prc user defined base: TBP>>=
+  procedure :: compute_hard_kinematics => prc_user_defined_base_compute_hard_kinematics
+<<Prc User: procedures>>=
+  subroutine prc_user_defined_base_compute_hard_kinematics &
+       (object, p_seed, i_term, int_hard, core_state)
+    class(prc_user_defined_base_t), intent(in) :: object
+    type(vector4_t), dimension(:), intent(in) :: p_seed
+    integer, intent(in) :: i_term
+    type(interaction_t), intent(inout) :: int_hard
+    class(prc_core_state_t), intent(inout), allocatable :: core_state 
+    call int_hard%set_momenta (p_seed)
+    if (allocated (core_state)) then
+      select type (core_state)
+      class is (user_defined_state_t); core_state%new_kinematics = .true.
+      end select
+    end if
+  end subroutine prc_user_defined_base_compute_hard_kinematics
+
+@ 
+@ %def prc_user_defined_base_compute_hard_kinematics
+<<Prc User: prc user defined base: TBP>>=
+  procedure :: compute_eff_kinematics => prc_user_defined_base_compute_eff_kinematics
+<<Prc User: procedures>>=
+  subroutine prc_user_defined_base_compute_eff_kinematics &
+       (object, i_term, int_hard, int_eff, core_state)
+    class(prc_user_defined_base_t), intent(in) :: object
+    integer, intent(in) :: i_term
+    type(interaction_t), intent(in) :: int_hard
+    type(interaction_t), intent(inout) :: int_eff
+    class(prc_core_state_t), intent(inout), allocatable :: core_state
+  end subroutine prc_user_defined_base_compute_eff_kinematics
+
+@
+@ %def prc_user_defined_base_compute_eff_kinematics
+<<Prc User: prc user defined base: TBP>>=
+  procedure :: recover_kinematics => prc_user_defined_base_recover_kinematics
+<<Prc User: procedures>>=
+  subroutine prc_user_defined_base_recover_kinematics &
+       (object, p_seed, int_hard, int_eff, core_state)
+    class(prc_user_defined_base_t), intent(in) :: object
+    type(vector4_t), dimension(:), intent(inout) :: p_seed
+    type(interaction_t), intent(inout) :: int_hard, int_eff
+    class(prc_core_state_t), intent(inout), allocatable :: core_state
+    integer :: n_in
+    n_in = int_eff%get_n_in ()
+    call int_eff%set_momenta (p_seed(1:n_in), outgoing = .false.)
+    p_seed(n_in+1:) = int_eff%get_momenta (outgoing = .true.)
+  end subroutine prc_user_defined_base_recover_kinematics
+
+@ 
+@ %def prc_user_defined_base_recover_kinematics
+<<Prc User: prc tt threshold: TBP>>=
+  procedure :: write => prc_tt_threshold_write 
+<<Prc User: procedures>>=
+  subroutine prc_tt_threshold_write (object, unit)
+    class(prc_tt_threshold_t), intent(in) :: object
+    integer, intent(in), optional :: unit
+    call msg_message ("tt-threshold")
+  end subroutine prc_tt_threshold_write
+
+@ %def prc_tt_threshold_write
+@
+<<Prc User: prc tt threshold: TBP>>=
+  procedure :: compute_amplitude => prc_tt_threshold_compute_amplitude
+<<Prc User: procedures>>=
+  function prc_tt_threshold_compute_amplitude &
+       (object, j, p, f, h, c, fac_scale, ren_scale, alpha_qcd_forced, &
+       core_state)  result (amp)
+    class(prc_tt_threshold_t), intent(in) :: object
+    integer, intent(in) :: j
+    type(vector4_t), dimension(:), intent(in) :: p
+    integer, intent(in) :: f, h, c
+    real(default), intent(in) :: fac_scale, ren_scale
+    real(default), intent(in), allocatable :: alpha_qcd_forced
+    class(prc_core_state_t), intent(inout), allocatable, optional :: core_state
+    complex(default) :: amp
+    !!! Intentionally left empty
+  end function prc_tt_threshold_compute_amplitude
+
+@
+@ %def prc_tt_threshold_compute_amplitude
+

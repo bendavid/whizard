@@ -1,5 +1,5 @@
 # Makefile.am -- Makefile for O'Mega within and without WHIZARD
-# $Id: Makefile.am 6465 2015-01-10 15:22:31Z jr_reuter $
+# $Id: Makefile.am 7140 2015-08-07 21:11:59Z jr_reuter $
 ##
 ## Process this file with automake to produce Makefile.in
 ##
@@ -192,6 +192,9 @@ endif OCAML_AVAILABLE
 clean-local:
 	rm -f *.cm[aiox] *.cmxa *.[ao] *.l[oa] *.$(FC_MODULE_EXT) \
 		$(OMEGA_DERIVED_CAML) omegalib.stamp
+if FC_SUBMODULES
+	-rm -f *.smod
+endif
 
 distclean-local:
 	-test "$(srcdir)" != "." && rm -f config.mli

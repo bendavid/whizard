@@ -30,6 +30,7 @@
 
 ## We create a library which is still to be combined with auxiliary libs.
 noinst_LTLIBRARIES = libphase_space.la
+check_LTLIBRARIES = libphase_space_ut.la
 
 libphase_space_la_SOURCES = \
   phs_base.f90 \
@@ -38,11 +39,20 @@ libphase_space_la_SOURCES = \
   cascades.f90 \
   phs_wood.f90
 
+libphase_space_ut_la_SOURCES = \
+  phs_base_uti.f90 phs_base_ut.f90 \
+  phs_single_uti.f90 phs_single_ut.f90 \
+  phs_forests_uti.f90 phs_forests_ut.f90 \
+  cascades_uti.f90 cascades_ut.f90 \
+  phs_wood_uti.f90 phs_wood_ut.f90
+
 ## Omitting this would exclude it from the distribution
 dist_noinst_DATA = phase_space.nw
 
 # Dump module names into file Modules
-libphase_space_Modules = ${libphase_space_la_SOURCES:.f90=}
+libphase_space_Modules = \
+  ${libphase_space_la_SOURCES:.f90=} \
+  ${libphase_space_ut_la_SOURCES:.f90=}
 Modules: Makefile
 	@for module in $(libphase_space_Modules); do \
           echo $$module >> $@.new; \
@@ -94,7 +104,7 @@ DISTCLEANFILES = Module_dependencies.sed
 @am__include@ @am__quote@Makefile.depend@am__quote@
 
 Makefile.depend: Module_dependencies.sed
-Makefile.depend: $(libphase_space_la_SOURCES)
+Makefile.depend: $(libphase_space_la_SOURCES) $(libphase_space_ut_la_SOURCES)
 	@rm -f $@
 	for src in $^; do \
 	  module="`basename $$src | sed 's/\.f[90][0358]//'`"; \
@@ -144,12 +154,14 @@ POSTLUDE = $(top_srcdir)/src/noweb-frame/whizard-postlude.nw
 phase_space.stamp: $(PRELUDE) $(srcdir)/phase_space.nw $(POSTLUDE)
 	@rm -f phase_space.tmp
 	@touch phase_space.tmp
-	for src in $(libphase_space_la_SOURCES); do \
+	for src in \
+	  $(libphase_space_la_SOURCES) \
+	  $(libphase_space_ut_la_SOURCES); do \
 	  $(NOTANGLE) -R[[$$src]] $^ | $(CPIF) $$src; \
         done
 	@mv -f phase_space.tmp phase_space.stamp
 
-$(libphase_space_la_SOURCES): phase_space.stamp
+$(libphase_space_la_SOURCES) $(libphase_space_ut_la_SOURCES): phase_space.stamp
 ## Recover from the removal of $@
 	@if test -f $@; then :; else \
 	  rm -f phase_space.stamp; \
@@ -179,6 +191,9 @@ endif
 clean-local: clean-noweb
 	-rm -f phase_space.stamp phase_space.tmp
 	-rm -f *.$(FC_MODULE_EXT)
+if FC_SUBMODULES
+	-rm -f *.smod
+endif
 
 ## Remove backup files
 maintainer-clean-backup:

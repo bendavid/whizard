@@ -1,4 +1,4 @@
-! WHIZARD 2.2.6 May 02 2015
+! WHIZARD 2.2.7 Aug 11 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -32,7 +32,7 @@
 
 module shower_partons
 
-  use kinds, only: default
+  use kinds, only: default, double
   use io_units
   use constants
   use system_defs, only: TAB
@@ -53,6 +53,7 @@ module shower_partons
 
   public :: parton_t
   public :: parton_pointer_t
+  public :: parton_of_particle
   public :: parton_copy
   public :: parton_set_parent
   public :: parton_get_parent
@@ -60,10 +61,8 @@ module shower_partons
   public :: parton_get_initial
   public :: parton_set_child
   public :: parton_get_child
-  public :: parton_mass
   public :: P_prt_to_child1
   public :: thetabar
-  public :: parton_apply_z
   public :: parton_apply_costheta
   public :: parton_apply_lorentztrafo
   public :: parton_apply_lorentztrafo_recursive
@@ -76,6 +75,7 @@ module shower_partons
      type(shower_settings_t), pointer :: settings => null()
      type(vector4_t) :: momentum = vector4_null
      real(default) :: t  = zero
+     real(default) :: mass2  = zero
      real(default) :: scale = zero
      real(default) :: z = zero
      real(default) :: costheta = zero
@@ -111,7 +111,9 @@ module shower_partons
      procedure :: is_gluino => parton_is_gluino
      procedure :: is_proton => parton_is_proton
      procedure :: is_colored => parton_is_colored
+     procedure :: mass => parton_mass
      procedure :: mass_squared => parton_mass_squared
+     procedure :: momentum_to_pythia6 => parton_momentum_to_pythia6
      procedure :: generate_ps => parton_generate_ps
      procedure :: generate_ps_ini => parton_generate_ps_ini
      procedure :: next_t_ana => parton_next_t_ana
@@ -134,6 +136,23 @@ contains
     call particle%init (parton%to_status (from_hard_int), parton%type, &
          model, col, anti_col, parton%momentum)
   end function parton_to_particle
+
+ ! pure
+  function parton_of_particle (particle, nr) result (parton)
+    type(parton_t) :: parton
+    type(particle_t), intent(in) :: particle
+    integer, intent(in) :: nr
+    integer, dimension(2) :: col_array
+    parton%nr = nr
+    parton%momentum = particle%p
+    parton%t = particle%p2
+    parton%type = particle%flv%get_pdg ()
+    col_array = particle%get_color ()
+    parton%c1 = col_array (1)
+    parton%c2 = col_array (2)
+    parton%interactionnr = 1
+    parton%mass2 = particle%flv%get_mass () ** 2
+  end function parton_of_particle
 
   pure function parton_to_status (parton, from_hard_int) result (status)
     integer :: status
@@ -179,6 +198,7 @@ contains
     prt2%type = prt1%type
     prt2%momentum = prt1%momentum
     prt2%t = prt1%t
+    prt2%mass2 = prt1%mass2
     prt2%scale = prt1%scale
     prt2%z = prt1%z
     prt2%costheta = prt1%costheta
@@ -282,9 +302,9 @@ contains
                                prt%momentum%p(2), TAB, &
                                prt%momentum%p(3)
     write (u, "(1x,9A)") "<p4square>", TAB // TAB, "<t>", TAB // TAB, &
-         "<scale>", TAB // TAB, "<c1>", TAB, "<c2>"
+         "<scale>", TAB // TAB, "<c1>", TAB, "<c2>", TAB, "<mass2>"
     write (u, "(1x,3(ES12.5,A))", advance = "no") &
-         prt%momentum ** 2, TAB // TAB, prt%t, TAB, prt%scale, TAB
+         prt%momentum ** 2, TAB // TAB, prt%t, TAB, prt%scale, TAB, prt%mass2
     write (u, "(2(I4,A))") prt%c1, TAB, prt%c2, TAB
     if (prt%is_branched ()) then
        if (prt%belongstoFSR) then
@@ -463,17 +483,28 @@ contains
     is_colored = parton_is_quark (parton) .or. parton_is_gluon (parton)
   end function parton_is_colored
 
-  function parton_mass (prt) result (mass)
-    type(parton_t), intent(in) :: prt
+  elemental function parton_mass (prt) result (mass)
+    class(parton_t), intent(in) :: prt
     real(default) :: mass
-    mass = mass_type (prt%type)
+    mass = mass_type (prt%type, prt%mass2)
   end function parton_mass
 
-  function parton_mass_squared (prt) result (mass_squared)
+  elemental function parton_mass_squared (prt) result (mass_squared)
     class(parton_t), intent(in) :: prt
     real(default) :: mass_squared
-    mass_squared = mass_squared_type (prt%type)
+    mass_squared = mass_squared_type (prt%type, prt%mass2)
   end function parton_mass_squared
+
+  pure function parton_momentum_to_pythia6 (prt) result (p)
+    real(double), dimension(1:5) :: p
+    class(parton_t), intent(in) :: prt
+    real(default) :: mass
+    !!! gfortran 5.1 complains about 'ELEMENTAL procedure pointer
+    !!! component ‘mass’ is not allowed as an actual argument'
+    !!! p = prt%momentum%to_pythia6 (prt%mass ())
+    mass = prt%mass ()
+    p = prt%momentum%to_pythia6 (mass)
+  end function parton_momentum_to_pythia6
 
   function P_prt_to_child1 (prt) result (retvalue)
     type(parton_t), intent(in) :: prt
@@ -520,7 +551,7 @@ contains
           !!! check angular ordering
           if (associated (prt%child1)) then
              if (associated (prt%child1%child2)) then
-                ctheta = (E3**2 - p1**2 - p4**2 +prt%t) / (two * p1 * p4)
+                ctheta = (E3**2 - p1**2 - p4**2 + prt%t) / (two * p1 * p4)
                 cthetachild1 = (prt%child1%momentum%p(0)**2 - &
                      space_part (prt%child1%child1%momentum)**2 &
                      - space_part (prt%child1%child2%momentum)**2 + prt%child1%t) &
@@ -535,27 +566,17 @@ contains
     end if
   end function thetabar
 
-  recursive subroutine parton_apply_z(prt, newz)
-    type(parton_t), intent(inout) :: prt
-    real(default), intent(in) :: newz
-    if (DEBUG_WHIZ_SHOWER) print *, "D: old z = ", prt%z , " new z = ", newz
-    prt%z = newz
-    if (associated (prt%child1) .and. associated (prt%child2)) then
-       prt%child1%momentum%p(0) = newz * prt%momentum%p(0)
-       call parton_apply_z (prt%child1, prt%child1%z)
-       prt%child2%momentum%p(0) = (one - newz) * prt%momentum%p(0)
-       call parton_apply_z (prt%child2, prt%child2%z)
-    end if
-  end subroutine parton_apply_z
-
   recursive subroutine parton_apply_costheta (prt, rng)
     type(parton_t), intent(inout) :: prt
     class(rng_t), intent(inout), allocatable :: rng
-    if (DEBUG_WHIZ_SHOWER) print *, "D: parton_apply_costheta for parton " , prt%nr
+    if (debug2_active (D_SHOWER)) then
+       print *, "D: parton_apply_costheta for parton " , prt%nr
+       print *, 'prt%momentum%p =    ', prt%momentum%p
+       call msg_debug2 (D_SHOWER, "prt%type", prt%type)
+    end if
     prt%z = 0.5_default * (one + prt%get_beta () * prt%costheta)
-    if (associated (prt%child1) .and. associated (prt%child2) ) then
-       if (prt%child1%simulated .and. &
-           prt%child2%simulated) then
+    if (associated (prt%child1) .and. associated (prt%child2)) then
+       if (prt%child1%simulated .and. prt%child2%simulated) then
           prt%z = 0.5_default * (one + (prt%child1%t - prt%child2%t) / &
                prt%t + prt%get_beta () * prt%costheta * &
                 sqrt((prt%t - prt%child1%t - prt%child2%t)**2 - &
@@ -613,11 +634,10 @@ contains
     real(default), dimension(1:3) :: momentum
     type(vector3_t) :: pchild1_direction
     type(lorentz_transformation_t) :: L, rotation
-    if (DEBUG_WHIZ_SHOWER) print *, "D: parton_generate_ps for parton " , prt%nr
-    if (ENSURE) then
+    if (debug2_active (D_SHOWER)) print *, "D: parton_generate_ps for parton " , prt%nr
+    if (debug_active (D_SHOWER)) then
        if (.not. (associated (prt%child1) .and. associated (prt%child2))) then
-          print *, "no children for generate_ps"
-          stop 1
+          call msg_fatal ("no children for generate_ps")
        end if
     end if
     !!! test if parton is a virtual parton from the imagined parton shower history
@@ -690,7 +710,7 @@ contains
        pabs = space_part_norm (prt%momentum)
        if ((prt%child1%momentum%p(0)**2 - prt%child1%t < 0) .or. &
            (prt%child2%momentum%p(0)**2 - prt%child2%t < 0)) then
-          if (DEBUG_WHIZ_SHOWER) print *, "D: generate_ps error at E^2 < t"
+          call msg_debug(D_SHOWER, "generate_ps error at E^2 < t")
           return
        end if
        p1abs = sqrt (prt%child1%momentum%p(0)**2 - prt%child1%t)
@@ -698,7 +718,7 @@ contains
        x = (pabs**2 + p1abs**2 - p2abs**2) / (two * pabs)
        if (pabs > p1abs + p2abs .or. &
             pabs < abs(p1abs - p2abs)) then
-          if (DEBUG_WHIZ_SHOWER) then
+          if (debug_active (D_SHOWER)) then
              print *, "D: parton_generate_ps Dreiecksungleichung error &
                   &for parton ", prt%nr, " ", &
                   space_part_norm (prt%momentum), " ", p1abs, " ", p2abs
@@ -733,11 +753,10 @@ contains
     integer :: i,j
     real(default) :: scproduct, pabs, p1abs, p2abs, x, ptabs, phi
     real(default), dimension(1:3) :: momentum
-    if (DEBUG_WHIZ_SHOWER) print *, "D: parton_generate_ps_ini: for parton " , prt%nr
-    if (ENSURE) then
+    if (debug_active (D_SHOWER)) print *, "D: parton_generate_ps_ini: for parton " , prt%nr
+    if (debug_active (D_SHOWER)) then
        if (.not. (associated (prt%child1) .and. associated (prt%child2))) then
-          print *, "no children for generate_ps"
-          stop 1
+          call msg_fatal ("no children for generate_ps")
        end if
     end if
 
@@ -781,17 +800,17 @@ contains
             prt%child2%t))
 
        x = (pabs**2 + p1abs**2 - p2abs**2) / (two * pabs)
-       if (ENSURE) then
+       if (debug_active (D_SHOWER)) then
           if (pabs > p1abs + p2abs .or. pabs < abs(p1abs - p2abs)) then
              print *, "error at generate_ps, Dreiecksungleichung for parton ", &
                   prt%nr, " ", pabs," ",p1abs," ",p2abs
              call prt%write ()
              call prt%child1%write ()
              call prt%child2%write ()
-             stop 1
+             call msg_fatal ("parton_generate_ps_ini: Dreiecksungleichung")
           end if
        end if
-       if (DEBUG_WHIZ_SHOWER) print *, "D: parton_generate_ps_ini: x = ", x
+       if (debug_active (D_SHOWER)) print *, "D: parton_generate_ps_ini: x = ", x
        ptabs = sqrt (p1abs * p1abs - x**2)
        call rng%generate (phi)
        phi = twopi * phi
@@ -816,24 +835,18 @@ contains
     class(rng_t), intent(inout), allocatable :: rng
     integer :: gtoqq
     real(default) :: integral, random
-
     if (signal_is_pending ()) return
-    if (DEBUG_WHIZ_SHOWER) then
-       print *, "D: parton_next_t_ana: for parton " , prt%nr
-    end if
-
+    call msg_debug (D_SHOWER, "next_t_ana")
     ! check if branchings are possible at all
     if (min (prt%t, prt%momentum%p(0)**2) < &
-         prt%mass_squared () + prt%settings%d_min_t) then
+         prt%mass_squared () + prt%settings%min_virtuality) then
        prt%t = prt%mass_squared ()
        call prt%set_simulated ()
        return
     end if
-
     integral = zero
     call rng%generate (random)
     do
-       if (signal_is_pending ()) return
        call parton_simulate_stept (prt, rng, integral, random, gtoqq, .false.)
        if (prt%simulated) then
           if (prt%is_gluon ()) then
@@ -848,25 +861,20 @@ contains
     end do
   end subroutine parton_next_t_ana
 
-  pure function cmax (prt, tt) result (cma)
+  function cmax (prt, tt) result (cmaxx)
     type(parton_t), intent(in) :: prt
     real(default), intent(in), optional :: tt
-    real(default) :: cma
-    real(default) :: t, cost
-
-    if (present(tt)) then
-       t = tt
-    else
-       t = prt%t
-    end if
-
+    real(default) :: t, cost, cmaxx, radicand
+    t = prt%t;  if (present (tt))  t = tt
     if (associated (prt%parent)) then
        cost = prt%parent%get_costheta ()
-       cma = min (0.99999_default, sqrt( max(zero, one - t/ &
-              (prt%get_beta () * prt%momentum%p(0))**2 * &
-              (one + cost) / (one - cost))))
+       radicand = max(zero, one - &
+            t / (prt%get_beta () * prt%momentum%p(0))**2 * &
+            (one + cost) / (one - cost))
+       call msg_debug2 (D_SHOWER, "cmax: sqrt (radicand)", sqrt (radicand))
+       cmaxx = min (0.99999_default, sqrt (radicand))
     else
-       cma = 0.99999_default
+       cmaxx = 0.99999_default
     end if
   end function cmax
 
@@ -896,6 +904,7 @@ contains
     real(default), parameter :: cstepmin = 0.03_default
 
     if (signal_is_pending ()) return
+    call msg_debug (D_SHOWER, "parton_simulate_stept")
     gtoqq = 111 ! illegal value
     call prt%set_simulated (.false.)
 
@@ -914,7 +923,7 @@ contains
        exit SET_SISTER
     end do SET_SISTER
 
-    tmin = prt%settings%d_min_t + prt%mass_squared ()
+    tmin = prt%settings%min_virtuality + prt%mass_squared ()
     if (prt%is_quark ()) then
        to_integral = three *pi * log(one / random)
     else if (prt%is_gluon ()) then
@@ -951,7 +960,7 @@ contains
          0.5_default * tstep, prt%momentum%p(0)) * c
     if (prt%is_gluon ()) then
        P(3) = P_ggg (z(3)) + P_gqq (z(3)) * number_of_flavors &
-            (prt%t, prt%settings%max_n_flavors, prt%settings%d_min_t)
+            (prt%t, prt%settings%max_n_flavors, prt%settings%min_virtuality)
     else
        P(3) = P_qqg (z(3))
     end if
@@ -978,9 +987,9 @@ contains
        P(1) = P(3)
        if (prt%is_gluon ()) then
           P(2) = P_ggg(z(2)) + P_gqq(z(2)) * number_of_flavors &
-               (prt%t, prt%settings%max_n_flavors, prt%settings%d_min_t)
+               (prt%t, prt%settings%max_n_flavors, prt%settings%min_virtuality)
           P(3) = P_ggg(z(3)) + P_gqq(z(3)) * number_of_flavors &
-               (prt%t, prt%settings%max_n_flavors, prt%settings%d_min_t)
+               (prt%t, prt%settings%max_n_flavors, prt%settings%min_virtuality)
        else
           P(2) = P_qqg(z(2))
           P(3) = P_qqg(z(3))
@@ -1023,7 +1032,7 @@ contains
           prt%costheta = c + (0.5_default - temprand) * cstep
           call prt%set_simulated ()
 
-          if (prt%t < prt%settings%d_min_t + prt%mass_squared ()) then
+          if (prt%t < prt%settings%min_virtuality + prt%mass_squared ()) then
              prt%t = prt%mass_squared ()
           end if
           if (abs(prt%costheta) > cmax_t) then
@@ -1044,12 +1053,13 @@ contains
              call rng%generate (temprand)
              if (P_ggg(z(1)) > temprand * (P_ggg (z(1)) + P_gqq (z(1)) * &
                   number_of_flavors(prt%t, prt%settings%max_n_flavors, &
-                  prt%settings%d_min_t))) then
+                  prt%settings%min_virtuality))) then
                 gtoqq = 0
              else
                 call rng%generate (temprand)
                 gtoqq = 1 + int (temprand * number_of_flavors &
-                     (prt%t, prt%settings%max_n_flavors, prt%settings%d_min_t))
+                     (prt%t, prt%settings%max_n_flavors, &
+                      prt%settings%min_virtuality))
              end if
           end if
        else
@@ -1059,7 +1069,7 @@ contains
     end do
     if (integral <= to_integral) then
        prt%t = prt%t - tstep
-       if (prt%t < prt%settings%d_min_t + prt%mass_squared ()) then
+       if (prt%t < prt%settings%min_virtuality + prt%mass_squared ()) then
           prt%t = prt%mass_squared ()
           call prt%set_simulated ()
        end if

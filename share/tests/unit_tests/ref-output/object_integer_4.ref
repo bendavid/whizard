@@ -1,0 +1,46 @@
+* Test output: object_integer_4
+*   Purpose: check integer operators
+
+* Create expression prototype: minus
+
+integer minus ||operator|unary|abstract||
+
+* Create expressions
+
+success = T
+success = T
+success = T
+
+integer minus ||operator|unary|constant|| {
+   A1: integer i ||constant|| = 42
+ } = ???
+integer minus ||operator|unary|constant|| {
+   A1: integer i ||constant|| = -1234567890
+ } = ???
+integer minus ||operator|unary|constant|| {
+   A1: integer undef ||constant|| = ???
+ } = ???
+
+-(42)
+-(-1234567890)
+-(???)
+
+* Evaluate
+
+integer minus ||operator|unary|constant|| {
+   A1: integer i ||constant|| = 42
+ } = -42
+integer minus ||operator|unary|constant|| {
+   A1: integer i ||constant|| = -1234567890
+ } = 1234567890
+integer minus ||operator|unary|constant|| {
+   A1: integer undef ||constant|| = ???
+ } = ???
+
+-42
+1234567890
+???
+
+* Cleanup
+
+* Test output end: object_integer_4

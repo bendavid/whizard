@@ -2,7 +2,46 @@ ChangeLog -- Summary of changes to the WHIZARD package
 
 Use svn log to see detailed changes.
 
-	Version 2.2.6
+	Version 2.2.7
+
+2015-08-11
+	RELEASE: version 2.2.7
+	
+2015-08-10
+	Infrastructure for damped POWHEG
+	Massive emitters in POWHEG
+	Born matrix elements via BLHA
+	GoSam filters via SINDARIN
+	Minor running coupling bug fixes
+	Fixed-order NLO events
+
+2015-08-06
+	CT14 PDFs included (LO, NLO, NNLL)
+
+2015-07-07
+	Revalidation of ILC WHIZARD-PYTHIA event chain
+	Extended test suite for showered events
+	Alpha version of massive FSR for POWHEG
+	
+2015-06-09
+	Fix memory leak in interaction for long cascades
+	Catch mismatch between beam definition and CIRCE2 spectrum
+	
+2015-06-08
+	Automated POWHEG matching: beta version
+	Infrastructure for GKS matching
+	Alpha version of fixed-order NLO events
+	CIRCE2 polarization averaged spectra with
+	   explicitly polarized beams
+	
+2015-05-12
+	Abstract matching type: OO structure for matching/merging
+	
+2015-05-07
+	Bug fix in event record WHIZARD-PYTHIA6 transferral
+	Gaussian beam spectra for lepton colliders
+	
+##################################################################
 
 2015-05-02
 	RELEASE: version 2.2.6
@@ -19,7 +58,7 @@ Use svn log to see detailed changes.
 2015-03-19
 	POWHEG matching: alpha version
 	
-##################################################################	
+##################################################################
 	
 2015-02-27
 	RELEASE: version 2.2.5

@@ -337,7 +337,7 @@ extern "C" MCParticleImpl* lcio_particle_set_spin
   mcp->setSpin( spin );
 }
 
-extern "C" MCParticleImpl* lcio_particle_set_time 
+extern "C" MCParticleImpl* lcio_particle_set_time
 (MCParticleImpl* mcp, const double t) {
   mcp->setTime( t );
 }

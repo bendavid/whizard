@@ -30,7 +30,7 @@
 
 module ttv_formfactors
   use kinds
-  use constants, only: imago, one, pi, tiny_10, tiny_07
+  use constants
   use physics_defs, only: CF, CA, TR
   use sm_physics
   use interpolation !NODEP!
@@ -39,7 +39,7 @@ module ttv_formfactors
   use iso_varying_string, string_t => varying_string !NODEP!
   use system_dependencies !NODEP!
   use iso_fortran_env !NODEP!
-  use diagnostics, msg => msg_message, warning => msg_warning, abort => msg_fatal !NODEP!
+  use diagnostics !NODEP!
   use solver, only: solver_function_t, solve_qgaus
   implicit none
   save
@@ -76,9 +76,9 @@ module ttv_formfactors
 
   !!! explicit range and step size of the sqrts-grid relative to 2*m1S:
   !!! step size should be reduced to 0.1 before release
-  real(default), parameter :: sqrts_lo=-4.0_default, sqrts_hi=96.0_default, sqrts_it=0.5_default
+!  real(default), parameter :: sqrts_lo=-4.0_default, sqrts_hi=96.0_default, sqrts_it=0.5_default
   !!! fast setup for sqrts = 2*m1S, sufficient to run SM_tt_threshold_test.sin
-!  real(default), parameter :: sqrts_lo=-0.1_default, sqrts_hi=0.1_default, sqrts_it=0.1_default
+  real(default), parameter :: sqrts_lo=-10.0_default, sqrts_hi=20.0_default, sqrts_it=0.2_default
 
 
   interface char
@@ -157,11 +157,11 @@ contains
     init_pars = .false.
     m1s = m1s_in
     !!! compute the total LO top width from t->bW decay plus optional invisible width
-    gam = total_top_width_LO (1./aemi, sw, Vtb, m1s, mw, mb) + gam_inv
+    gam = total_top_width_LO (one / aemi, sw, Vtb, m1s, mw, mb) + gam_inv
     gam_out = gam
     nloop = 1
     if ( int(nloop_in) > nloop ) then
-      call warning ("reset to highest available nloop = " // char(nloop))
+      call msg_warning ("reset to highest available nloop = " // char(nloop))
     else
       nloop = int(nloop_in)
     end if
@@ -214,9 +214,9 @@ contains
     matching_version = 0
     if ( ff_in < 0.0_default ) matching_version = int(-ff_in)
     match_to_NLO = ( matching_version == 1 ) .or. ( matching_version == 2 )
-    need_ff = ( ff_type <= 1 )
-    need_J0 = ( ff_type == 2 ) .or. ( match_to_NLO .and. .not.ext_NLO ) .or. ( ff_type == 5 )
-    need_p0 = ( ff_type == 0 ) .or. need_J0
+    need_ff = ff_type <= 1
+    need_J0 = ff_type == 2 .or. (match_to_NLO .and. .not. ext_NLO) .or. ff_type == 5
+    need_p0 = ff_type == 0 .or. need_J0
     ext_Vinput = ext_Vinput .and. ( nloop > 0 )
 
     init_pars = .true.
@@ -225,10 +225,10 @@ contains
   subroutine init_threshold_grids (test)
     real(default), intent(in) :: test
     if ( test > 0.0_default ) then
-      call msg ("TESTING ONLY: Skip threshold initialization and use tree-level SM.")
+      call msg_message ("TESTING ONLY: Skip threshold initialization and use tree-level SM.")
       return
     end if
-    if ( .not.init_pars ) call abort ("init_threshold_grid: parameters not initialized!")
+    if ( .not.init_pars ) call msg_fatal ("init_threshold_grid: parameters not initialized!")
     if ( parameters_ref == parameters_string () ) return
     call dealloc_grids ()
     if ( need_ff ) call init_formfactor_grid ()
@@ -241,9 +241,9 @@ contains
     integer, intent(in) :: i
     complex(default) :: c
     c = one
-    if ( .not.init_pars ) return
+    if (.not. init_pars) return
     !!! on-shell veto
-    if ( ps%onshell ) return
+    if (ps%onshell) return
     select case (ff_type)
       case (0)
         c = matched_formfactor (ps, i)
@@ -349,24 +349,25 @@ contains
 
   subroutine init_formfactor_grid ()
     type(string_t) :: ff_file
+    call msg_debug (D_THRESHOLD, "init_formfactor_grid")
     init_ff = .false.
     ff_file = "SM_tt_threshold.grid"
-    call msg ()
-    call msg ("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%")
-    call msg (" Initialize e+e- => ttbar threshold resummation:")
-    call msg (" Use analytic (LL) or TOPPIK (NLL) form factors for ttA/ttZ vector")
-    call msg (" and axial vector couplings (S/P-wave) in the threshold region.")
-    call msg (" Cf. threshold shapes from A. Hoang et al.: [arXiv:hep-ph/0107144],")
-    call msg (" [arXiv:1309.6323].")
+    call msg_message ()
+    call msg_message ("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%")
+    call msg_message (" Initialize e+e- => ttbar threshold resummation:")
+    call msg_message (" Use analytic (LL) or TOPPIK (NLL) form factors for ttA/ttZ vector")
+    call msg_message (" and axial vector couplings (S/P-wave) in the threshold region.")
+    call msg_message (" Cf. threshold shapes from A. Hoang et al.: [arXiv:hep-ph/0107144],")
+    call msg_message (" [arXiv:1309.6323].")
     if ( nloop > 0 ) then
-      call msg (" Numerical NLL solutions calculated with TOPPIK [arXiv:hep-ph/9904468]")
-      call msg (" by M. Jezabek, T. Teubner.")
+      call msg_message (" Numerical NLL solutions calculated with TOPPIK [arXiv:hep-ph/9904468]")
+      call msg_message (" by M. Jezabek, T. Teubner.")
     end if
-    call msg ("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%")
-    call msg ()
+    call msg_message ("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%")
+    call msg_message ()
     call read_formfactor_grid (ff_file)
-    if ( .not.init_ff ) then
-      if ( .not.init_ps ) call init_threshold_phase_space_grid ()
+    if (.not. init_ff) then
+      if (.not. init_ps) call init_threshold_phase_space_grid ()
       call scan_formfactor_over_phase_space_grid ()
       call write_formfactor_grid (ff_file)
     end if
@@ -379,37 +380,38 @@ contains
     integer :: u, st
     logical :: ex
     integer, dimension(4) :: ff_shape
+    call msg_debug (D_THRESHOLD, "read_formfactor_grid")
     inquire (file=char(ff_file), exist=ex)
-    if ( .not.ex ) return
+    if (.not. ex) return
     u = free_unit ()
+    call msg_message ("Opening grid file: " // char(ff_file))
     open (unit=u, status='old', file=char(ff_file), form='unformatted', iostat=st)
-    if ( st /= 0 ) call abort ("open " // char(ff_file) // ": iostat = " // char(st))
+    if (st /= 0) call msg_fatal ("iostat = " // char(st))
     read (u) parameters
     read (u) ff_shape
-    if ( ff_shape(4) /= 2 ) call abort ("read_formfactor_grid: i = " // char(ff_shape(4)))
-    if ( parameters /= parameters_string () ) then
-      call msg ("Threshold setup has changed: recalculate threshold grid.")
-      close (unit=u, status='delete')
-      return
+    if (ff_shape(4) /= 2)  call msg_fatal ("read_formfactor_grid: i = " // char(ff_shape(4)))
+    if (parameters /= parameters_string ()) then
+       call msg_message ("Threshold setup has changed: recalculate threshold grid.")
+       close (unit=u, status='delete')
+       return
     end if
-    call msg ("Threshold setup unchanged: reusing existing threshold grid.")
+    call msg_message ("Threshold setup unchanged: reusing existing threshold grid.")
     n_sq = ff_shape(1)
-    allocate( sq_grid(n_sq) )
+    allocate (sq_grid(n_sq))
     read (u) sq_grid
-    allocate( p_grid(n_p) )
+    allocate (p_grid(n_p))
     read (u) p_grid
-    if ( need_p0 ) then
-      n_p0 = ff_shape(3)
-      call init_p0_grid (p_grid, n_p0)
+    if (need_p0) then
+       n_p0 = ff_shape(3)
+       call init_p0_grid (p_grid, n_p0)
     end if
-    allocate( ff_grid_sp(n_sq,n_p,n_p0,2) )
+    allocate (ff_grid_sp(n_sq,n_p,n_p0,2))
     read (u) ff_grid_sp
-    !!! not required in Fortran 2008:
-    allocate( ff_grid(n_sq,n_p,n_p0,2) )
-    ff_grid = cmplx(ff_grid_sp, kind=default)
-    deallocate( ff_grid_sp )
+    allocate (ff_grid(n_sq,n_p,n_p0,2))
+    ff_grid = cmplx (ff_grid_sp, kind=default)
+    deallocate (ff_grid_sp)
     close (u, iostat=st)
-    if ( st > 0 ) call abort ("close " // char(ff_file) // ": iostat = " // char(st))
+    if (st > 0)  call msg_fatal ("close " // char(ff_file) // ": iostat = " // char(st))
     init_ps = .true.
     init_ff = .true.
   end subroutine read_formfactor_grid
@@ -417,20 +419,20 @@ contains
   subroutine write_formfactor_grid (ff_file)
     type(string_t), intent(in) :: ff_file
     integer :: u, st
-    if ( .not.init_ff ) then
-      call warning ("write_formfactor_grid: no grids initialized!")
+    if (.not. init_ff) then
+      call msg_warning ("write_formfactor_grid: no grids initialized!")
       return
     end if
     u = free_unit ()
     open (unit=u, status='replace', file=char(ff_file), form='unformatted', iostat=st)
-    if ( st /= 0 ) call abort ("open " // char(ff_file) // ": iostat = " // char(st))
+    if (st /= 0)  call msg_fatal ("open " // char(ff_file) // ": iostat = " // char(st))
     write (u) parameters_string ()
     write (u) shape(ff_grid)
     write (u) sq_grid
     write (u) p_grid
     write (u) cmplx(ff_grid, kind=single)
     close (u, iostat=st)
-    if ( st > 0 ) call abort ("close " // char(ff_file) // ": iostat = " // char(st))
+    if (st > 0)  call msg_fatal ("close " // char(ff_file) // ": iostat = " // char(st))
   end subroutine write_formfactor_grid
 
   pure function parameters_string () result (str)
@@ -444,9 +446,8 @@ contains
   subroutine update_soft_parameters (sqrts)
     real(default), intent(in) :: sqrts
     real(default) :: nusoft
-    integer :: i
-    if ( .not.nustar_dynamic .and. mtpole > 0.0_default ) return
-    if ( init_pars .and. is_equal (sqrts, sqrts_ref) ) return
+    if (.not. nustar_dynamic .and. mtpole > 0.0_default) return
+    if (init_pars .and. is_equal (sqrts, sqrts_ref)) return
     sqrts_ref = sqrts
     !!! (ultra)soft scales and alphas values required by threshold code
     nusoft = f * nustar (sqrts)
@@ -480,7 +481,7 @@ contains
     end select
   end function xc
 
-  pure function current_coeff (a_hard, a_soft, a_usoft, i) result (coeff)
+  function current_coeff (a_hard, a_soft, a_usoft, i) result (coeff)
     real(default), intent(in) :: a_hard
     real(default), intent(in) :: a_soft
     real(default), intent(in) :: a_usoft
@@ -498,6 +499,8 @@ contains
         matching_c = one - 2.*(CF/pi) * a_hard
       case (2)
         matching_c = one -    (CF/pi) * a_hard
+     case default
+        call msg_fatal ("current_coeff: unknown coeff i = " // char(i))
     end select
     !!! current coefficient c1, cf. arXiv:hep-ph/0609151, Eq. (62)
     c1 = exp( a_hard * pi * ( aa2(i)*(1.-z) + aa3(i)*log(z) + &
@@ -590,7 +593,7 @@ contains
       case (4)
         call match_resummed_formfactor_Max (ff, ps, i, match_to_NLO)
       case default
-        call abort ("match_resummed_formfactor: invalid matching_version = " &
+        call msg_fatal ("match_resummed_formfactor: invalid matching_version = " &
                           // char(matching_version))
     end select
   end subroutine match_resummed_formfactor
@@ -655,7 +658,7 @@ contains
       case (2)
         c = G0p_ax (CF*a_soft, en, p, mtpole, gam) / G0p_tree (en, p, mtpole, gam)
       case default
-        call abort ("unknown ttZ/ttA vertex component i = " // char(i))
+        call msg_fatal ("unknown ttZ/ttA vertex component i = " // char(i))
     end select
   end function formfactor_LL_analytic
 
@@ -735,7 +738,7 @@ contains
 !        c = formfactor_LL_analytic_p0_pwave (CF*a_soft, en, p, p0, mtpole, gam)
         c = one
       case default
-        call abort ("unknown ttZ/ttA vertex component i = " // char(i))
+        call msg_fatal ("unknown ttZ/ttA vertex component i = " // char(i))
     end select
   end function formfactor_LL_analytic_p0
 
@@ -832,9 +835,10 @@ contains
     integer, intent(in) :: i_sq
     real(default) :: sqrts
     sqrts = 2.*m1s + sqrts_lo - sqrts_it + &
-            (sqrts_hi-sqrts_lo+2.*sqrts_it)*real(i_sq-1)/real(n_sq-1)
+            (sqrts_hi-sqrts_lo+2.*sqrts_it) * real(i_sq-1) / real(n_sq-1)
   end function sqrts_iter
 
+  ! TODO: (bcn 2015-07-31) this is unstable for small b. Take nearly_equal instead
   pure function is_equal (a, b) result (flag)
     real(default), intent(in) :: a
     real(default), intent(in) :: b
@@ -876,7 +880,7 @@ contains
     complex*16 :: zff(nmax)
     integer :: np, jknflg, jgcflg, jvflg
 
-    if ( n_p > nmax-40 ) call abort ("TOPPIK: n_p must be <=" // char(nmax-40))
+    if ( n_p > nmax-40 ) call msg_fatal ("TOPPIK: n_p must be <=" // char(nmax-40))
     ff_toppik = (/ (0.0_default, i_p=1, n_p) /)
     mpole = mtpole
     if ( present(mpole_in) ) mpole = mpole_in
@@ -917,7 +921,7 @@ contains
         !!! 1st ~10 TOPPIK p-wave entries are ff_unstable: discard them
         zff(1:10) = (/ (zff(11), i_p=1, 10) /)
       case default
-        call abort ("unknown ttZ/ttA vertex component i = " // char(i))
+        call msg_fatal ("unknown ttZ/ttA vertex component i = " // char(i))
     end select
 
     if ( present(p_grid_out) ) then
@@ -928,7 +932,9 @@ contains
     !!! keep track of TOPPIK instabilities and try to repair later
     if ( np < 0 ) then
       ff_toppik(1) = 2.d30
-      call warning ("caught TOPPIK instability at sqrts = " // char(sqrts))
+      if (debug_active (D_THRESHOLD)) then
+         call msg_warning ("caught TOPPIK instability at sqrts = " // char(sqrts))
+      end if
       return
     end if
     p_toppik = xpp(1:n_p)
@@ -938,9 +944,9 @@ contains
     else
       !!! TOPPIK output p-grid scales with en above ~ 4 GeV:
       !!! interpolate for global sqrts/p grid
-      if ( .not. is_equal (p_toppik(42), p_grid(42)) ) then
+      if (.not. is_equal (p_toppik(42), p_grid(42))) then
         call toppik_spline%init (p_toppik, ff_toppik)
-        ff_toppik(2:n_p) = (/ (toppik_spline%interpolate (p_grid(i_p)), i_p=2, n_p) /)
+        ff_toppik(2:n_p) = [(toppik_spline%interpolate (p_grid(i_p)), i_p=2, n_p)]
         call toppik_spline%dealloc ()
       end if
       !!! TOPPIK output includes tree level ~ 1, a_soft @ LL in current coefficient!
@@ -960,7 +966,7 @@ contains
       case (1)
         ff = scan_formfactor_over_p_TOPPIK (a_soft, sqrts, i)
       case default
-        call abort ("nloop = " // char(nloop))
+        call msg_fatal ("nloop = " // char(nloop))
     end select
   end function scan_formfactor_over_p
 
@@ -968,47 +974,64 @@ contains
     real(default) :: a_soft
     integer :: i_sq, i
     logical, dimension(:,:), allocatable :: ff_unstable
-!    real(default) :: t1, t2, t3
-    allocate( ff_grid(n_sq,n_p,n_p0,2) )
-    allocate( ff_unstable(n_sq,2) )
-    !!! global energy scan
-    do i_sq=1, n_sq
+    real(default) :: t1, t2, t3, t_toppik, t_p0_dep
+    call msg_debug (D_THRESHOLD, "scan_formfactor_over_phase_space_grid")
+    allocate (ff_grid(n_sq,n_p,n_p0,2))
+    allocate (ff_unstable(n_sq,2))
+    t_toppik = zero
+    t_p0_dep = zero
+    call msg_message ("Scanning over requested energy range")
+    ENERGY_SCAN: do i_sq = 1, n_sq
       call update_soft_parameters (sq_grid(i_sq))
       a_soft = as
       !!! vector and axial vector
-      do i=1, 2
-!        call cpu_time (t1)
-        ff_grid(i_sq,:,1,i) = scan_formfactor_over_p (a_soft, sq_grid(i_sq), i)
-        ff_unstable(i_sq,i) = ( abs(ff_grid(i_sq,1,1,i)) > 1.d30 )
-        if ( ff_unstable(i_sq,i) ) cycle
-!        call cpu_time (t2)
+      do i = 1, 2
+        call cpu_time (t1)
+        UNTIL_STABLE: do
+           ff_grid(i_sq,:,1,i) = scan_formfactor_over_p (a_soft, sq_grid(i_sq), i)
+           ff_unstable(i_sq,i) = abs(ff_grid(i_sq,1,1,i)) > 1.d30
+           if (ff_unstable(i_sq,i))  cycle
+           exit
+        end do UNTIL_STABLE
+        call cpu_time (t2)
         !!!  include p0 dependence by an integration over the p0-independent FF
-        if ( need_p0 ) ff_grid(i_sq,1:n_p_p0dep,:,i) = &
-          scan_formfactor_over_p_p0 (a_soft, sq_grid(i_sq), i)
-!        call cpu_time (t3)
-!        print *, "time for TOPPIK call:   ", t2-t1," seconds."
-!        print *, "time for p0 dependence: ", t3-t2," seconds."
-        if ( need_p0 ) call ff_p_spline%dealloc ()
+        if (need_p0)  ff_grid(i_sq,1:n_p_p0dep,:,i) = &
+             scan_formfactor_over_p_p0 (a_soft, sq_grid(i_sq), i)
+        call cpu_time (t3)
+        t_toppik = t_toppik + t2 - t1
+        t_p0_dep = t_p0_dep + t3 - t2
+        if (need_p0)  call ff_p_spline%dealloc ()
       end do
-    end do
-    if ( any(ff_unstable) ) call handle_TOPPIK_instabilities (ff_grid, ff_unstable)
-    deallocate( ff_unstable )
-    if ( allocated(Vmatrix) ) deallocate( Vmatrix )
-    if ( allocated(q_grid) ) deallocate( q_grid )
-    if ( need_p0 ) call trim_p_grid (n_p_p0dep)
+      call msg_show_progress (i_sq, n_sq)
+    end do ENERGY_SCAN
+    if (debug_active (D_THRESHOLD)) then
+       print *, "time for TOPPIK call:   ", t2 - t1, " seconds."
+       print *, "time for p0 dependence: ", t3 - t2, " seconds."
+    end if
+    if (any (ff_unstable))  call handle_TOPPIK_instabilities (ff_grid, ff_unstable)
+    deallocate (ff_unstable)
+    if (allocated(Vmatrix))  deallocate(Vmatrix)
+    if (allocated(q_grid))  deallocate(q_grid)
+    if (need_p0)  call trim_p_grid (n_p_p0dep)
     init_ff = .true.
   end subroutine scan_formfactor_over_phase_space_grid
 
   subroutine init_threshold_phase_space_grid ()
     integer :: i_sq
-    n_sq = int((sqrts_hi-sqrts_lo)/sqrts_it+tiny_07)+1 +2
-    allocate( sq_grid(n_sq) )
-    sq_grid = (/ (sqrts_iter (i_sq), i_sq=1, n_sq) /)
+    call msg_debug (D_THRESHOLD, "init_threshold_phase_space_grid")
+    n_sq = int ((sqrts_hi - sqrts_lo) / sqrts_it + tiny_07) + 1 + 2
+    call msg_debug (D_THRESHOLD, "Number of sqrts grid points: n_sq", n_sq)
+    call msg_debug (D_THRESHOLD, "sqrts_hi", sqrts_hi)
+    call msg_debug (D_THRESHOLD, "sqrts_lo", sqrts_lo)
+    call msg_debug (D_THRESHOLD, "sqrts_it", sqrts_it)
+    allocate (sq_grid(n_sq))
+    sq_grid = [(sqrts_iter (i_sq), i_sq=1, n_sq)]
     n_p = 360
-    allocate( p_grid(n_p) )
+    allocate (p_grid(n_p))
     p_grid = p_grid_from_TOPPIK ()
-    if ( need_p0 ) then
-      if ( ff_type == 0 .and. ext_Vinput ) then
+    if (need_p0) then
+      if (ff_type == 0 .and. ext_Vinput) then
+        ! TODO: (bcn 2015-07-30) why is mpole hard coded here?
         p_grid = p_grid_from_TOPPIK (173.0_default)
         call import_Vmatrices ()
       else
@@ -1019,16 +1042,19 @@ contains
     else
       n_p0 = 1
     end if
-    if ( need_J0 ) call finer_grid (p_grid(1:n_p_p0dep), p_grid_fine)
+    if (need_J0) call finer_grid (p_grid(1:n_p_p0dep), p_grid_fine)
     init_ps = .true.
   end subroutine init_threshold_phase_space_grid
 
   subroutine init_p0_grid (p_in, n)
     real(default), dimension(:), allocatable, intent(in) :: p_in
     integer, intent(in) :: n
-    if ( .not.allocated(p_in) ) call abort ("init_p0_grid: p_in not allocated!")
-    if ( allocated(p0_grid) ) deallocate( p0_grid )
-    allocate( p0_grid(n) )
+    call msg_debug (D_THRESHOLD, "init_p0_grid")
+    call msg_debug (D_THRESHOLD, "n", n)
+    call msg_debug (D_THRESHOLD, "size(p_in)", size(p_in))
+    if (.not. allocated (p_in))  call msg_fatal ("init_p0_grid: p_in not allocated!")
+    if (allocated (p0_grid))  deallocate (p0_grid)
+    allocate (p0_grid(n))
     p0_grid(1) = 0.0_default
     p0_grid(2:n) = p_in(1:n-1)
   end subroutine init_p0_grid
@@ -1071,7 +1097,7 @@ contains
     real(default), dimension(n_p_new) :: p_save
     complex(default), dimension(n_sq,n_p_new,n_p0,2) :: ff_save
     if ( n_p_new > n_p ) then
-      call abort ("trim_p_grid: new size larger than old size.")
+      call msg_fatal ("trim_p_grid: new size larger than old size.")
       return
     end if
     p_save = p_grid(1:n_p_new)
@@ -1103,7 +1129,7 @@ contains
       end do
     end do
     if ( .not.interrupt ) return
-    call abort ("Too many TOPPIK instabilities! Check your parameter setup " &
+    call msg_fatal ("Too many TOPPIK instabilities! Check your parameter setup " &
                      // "or slightly vary the scales sh and/or sf.")
   end subroutine handle_TOPPIK_instabilities
 
@@ -1145,7 +1171,6 @@ contains
     real(default), intent(out) :: k2
     real(default), intent(out) :: q2
     complex(default), intent(out), optional :: m2
-    real(default) :: m
     p2 = (sqrts/2.+p0)**2 - p**2
     k2 = (sqrts/2.-p0)**2 - p**2
     q2 = sqrts**2
@@ -1193,13 +1218,13 @@ contains
             v = CF*a * ( 2.*(4.*pi+a1*a)*(log_mppp-log_mmpm) &
                       +b0*a*((log_mmpm-log_mu_s)**2-(log_mppp-log_mu_s)**2) ) * q/(4.*p)
           case default
-            call abort ("nloop = " // char(nloop))
+            call msg_fatal ("nloop = " // char(nloop))
         end select
       case (2)
         !!! not implemented yet
         v = 0.0_default
       case default
-        call abort ("unknown ttZ/ttA vertex component i = " // char(i))
+        call msg_fatal ("unknown ttZ/ttA vertex component i = " // char(i))
     end select
   end function minus_q2_V
 
@@ -1214,60 +1239,59 @@ contains
     real(default) :: en, p, p0
     type(phase_space_point_t) :: ps
     type(p0_q_integrand_t) :: q_integrand
-    complex(default) :: q_integral, ff, ffm, ffa
+    complex(default) :: q_integral, ff
     real(default) :: current_c1
-    real(default) :: t1, t2, t3
-    if ( i==2 ) return
+    if (i==2) return
     en = sqrts_to_en (sqrts, mtpole)
-    if ( ext_Vinput ) then
-      allocate( Vmat(n_p0,n_p_p0dep,n_q) )
-      allocate( Tvec(n_q) )
+    if (ext_Vinput) then
+      allocate (Vmat(n_p0,n_p_p0dep,n_q))
+      allocate (Tvec(n_q))
       select case (nloop)
-        case (0)
-          Vmat = Vmatrix(0,i,:,:,:) * a_soft
-        case (1)
-          Vmat = Vmatrix(0,i,:,:,:) * (a_soft + a_soft**2 *b0*log(mu_s)/(2*pi)) + &
-                 Vmatrix(1,i,:,:,:) * a_soft**2
-        case default
-          call abort ("nloop = " // char(nloop))
+         case (0)
+           Vmat = Vmatrix(0,i,:,:,:) * a_soft
+         case (1)
+           Vmat = Vmatrix(0,i,:,:,:) * (a_soft + a_soft**2 *b0*log(mu_s)/(2*pi)) + &
+                  Vmatrix(1,i,:,:,:) * a_soft**2
+         case default
+           call msg_fatal ("nloop = " // char(nloop))
       end select
-      do i_q=1, n_q
-        Tvec(i_q) = ff_p_spline%interpolate(q_grid(i_q)) * &
-                    G0p_tree(en,q_grid(i_q),mtpole,gam)
-!        Tvec(i_q) = formfactor_LL_analytic (a_soft, sqrts, q_grid(i_q), i) * &
-!                    G0p_tree(en,q_grid(i_q),mtpole,gam)
+      do i_q = 1, n_q
+         Tvec(i_q) = ff_p_spline%interpolate(q_grid(i_q)) * &
+              G0p_tree(en,q_grid(i_q),mtpole,gam)
+!         Tvec(i_q) = formfactor_LL_analytic (a_soft, sqrts, q_grid(i_q), i) * &
+!                     G0p_tree(en,q_grid(i_q),mtpole,gam)
       end do
     end if
     !!! a_soft @ LL in current coefficient!
     current_c1 = current_coeff (ah, asLL, au, i)
     !!! integrate over q for each p, p0:
-    do i_p=1, n_p_p0dep
-      p = p_grid(i_p)
-      do i_p0=1, n_p0
-        p0 = p0_grid(i_p0)
-        call ps%init_nonrel (sqrts, p, p0)
-        if ( ext_Vinput ) then
-          !!! Andre's matrix summation
-          q_integral = sum( Vmat(i_p0,i_p,:) * Tvec )
-        else  if ( nloop > 0 ) then
-          !!! numerical integration using NR's Gaussian summation
-          call compute_support_points (en, i_p, i_p0, 10)
-!          q_integral = 1./(2.*pi)**2 * nr_qgaus (integrand, q_grid)
-          call q_integrand%update (a_soft, ps, i)
-          q_integral = 1./(2.*pi)**2 * solve_qgaus (q_integrand, q_grid)
-        else
-          !!! analytic FF incl. p0 dependence @ LL
-          q_integral = formfactor_LL_analytic (a_soft, ps, i) - one
-        end if
-        !!! q_integral is a pure correction of O(alphas): add tree level ~ 1 again
-        ff = current_c1 * ( one + q_integral )
-        if ( matching_version > 0 ) call match_resummed_formfactor (ff, ps, i)
-        ff_p0(i_p,i_p0) = ff
-      end do
+    do i_p = 1, n_p_p0dep
+       p = p_grid(i_p)
+       do i_p0 = 1, n_p0
+          p0 = p0_grid(i_p0)
+          call ps%init_nonrel (sqrts, p, p0)
+          if (ext_Vinput) then
+             !!! Andre's matrix summation
+             q_integral = sum (Vmat(i_p0,i_p,:) * Tvec)
+          else if (nloop > 0) then
+             !!! numerical integration using NR's Gaussian summation
+             call compute_support_points (en, i_p, i_p0, 10)
+!             q_integral = 1./(2.*pi)**2 * nr_qgaus (integrand, q_grid)
+             call q_integrand%update (a_soft, ps, i)
+             q_integral = 1./(2.*pi)**2 * solve_qgaus (q_integrand, q_grid)
+          else
+             !!! analytic FF incl. p0 dependence @ LL
+             q_integral = formfactor_LL_analytic (a_soft, ps, i) - one
+          end if
+          !!! q_integral is a pure correction of O(alphas): add tree level ~ 1 again
+          ff = current_c1 * (one + q_integral)
+          if (matching_version > 0)  call match_resummed_formfactor (ff, ps, i)
+          ff_p0(i_p,i_p0) = ff
+       end do
     end do
-    if ( ext_Vinput ) then
-      deallocate( Vmat )
-      deallocate( Tvec )
+    if (ext_Vinput) then
+       deallocate(Vmat)
+       deallocate(Tvec)
     end if
   end function scan_formfactor_over_p_p0
 
@@ -1281,7 +1305,7 @@ contains
     real(default) :: p, p0
     real(default), dimension(4) :: sing_vals
     integer :: n_sing, i_q
-    if ( mod(n_p,n_trim) /= 0 ) call abort ("trim p-grid for q-integration: n_p = " &
+    if ( mod(n_p,n_trim) /= 0 ) call msg_fatal ("trim p-grid for q-integration: n_p = " &
                                   // char(n_p) // " and n_trim = " // char(n_trim))
     n_q = n_p/n_trim + merge(0,1,n_trim==1)
     p = p_grid(i_p)
@@ -1319,76 +1343,78 @@ contains
     real(single) :: re, im
     type(string_t) :: Vpath, Vfile
     Vpath = PREFIX // "/share/whizard/SM_tt_threshold_data/SM_tt_threshold_Vmatrices/"
-    do i=1, 2
-      if ( i==2 ) return
-      do i_loop = 0, nloop
-        select case (10*i+i_loop)
-          case (10)
-            Vfile = Vpath // "Vmatrix_s-wave_LO.dat"
-          case (11)
-            Vfile = Vpath // "Vmatrix_s-wave_NLO.dat"
-          case (20)
-            Vfile = Vpath // "Vmatrix_p-wave_LO.dat"
-          case (21)
-            Vfile = Vpath // "Vmatrix_p-wave_NLO.dat"
-          case default
-            call abort ("import Vmatrix: no input file for i_loop = "  &
-                              // char(i_loop) // " and i = " // char(i))
-        end select
-        inquire (file=char(Vfile), exist=ex)
-        if ( .not.ex ) then
-          call msg ("Input data missing. You may choose to:")
-          call msg (" (d)ownload files from whizard.hepforge.org (180/590 MB packed/unpacked);")
-          call msg (" (c)ompute data on the fly (may take 1-3 hours to initialize).")
-          call msg (" Please enter d/c:")
-          read (input_unit, *) flag
-          select case (flag)
-            case ("d")
-              call msg ("===> Please run the download script:")
-              call msg (PREFIX // "/share/whizard/SM_tt_threshold_data/download_data.sh")
-              call msg ("and restart WHIZARD.")
-              call msg_terminate ()
-            case ("c")
-              ext_Vinput = .false.
-              return
-            case default
-              call abort ("unknown option " // flag)
+    do i = 1, 2
+       ! TODO: (bcn 2015-07-31) I suppose this should be removed at some point?!
+       if (i==2) return
+       do i_loop = 0, nloop
+          select case (10*i+i_loop)
+             case (10)
+               Vfile = Vpath // "Vmatrix_s-wave_LO.dat"
+             case (11)
+               Vfile = Vpath // "Vmatrix_s-wave_NLO.dat"
+             case (20)
+               Vfile = Vpath // "Vmatrix_p-wave_LO.dat"
+             case (21)
+               Vfile = Vpath // "Vmatrix_p-wave_NLO.dat"
+             case default
+               call msg_fatal ("import Vmatrix: no input file for i_loop = "  &
+                                 // char(i_loop) // " and i = " // char(i))
           end select
-        end if
-        i_line = 1
-        u = free_unit ()
-        open (u, file=char(Vfile), status='old', action='read', iostat=st)
-        if ( st /= 0 ) call abort ("open " // char(Vfile) // ": iostat = " // char(st))
-        do
-          if ( i_line == 1 ) then
-            read (u, *, iostat=st) n_p0, n_p_p0dep, n_q
-            if ( st /= 0 ) exit
-            if ( .not.allocated(q_grid) ) allocate( q_grid(n_q) )
-            allocate( mat_1d(n_p0*n_p_p0dep*n_q) )
-          else if ( i_line <= n_q+1 ) then
-            read (u, *, iostat=st) q_grid(i_line-1)
-            if ( st /= 0 ) exit
-          else
-            read (u, *, iostat=st) re, im
-            if ( st /= 0 ) exit
-            mat_1d(i_line-n_q-1) = cmplx (re, im, kind=default)
+          inquire (file=char(Vfile), exist=ex)
+          call msg_message ("Trying to load " // char(Vfile))
+          if (.not.ex) then
+             call msg_message ("Input data missing. You may choose to:")
+             call msg_message (" (d)ownload files from whizard.hepforge.org (180/590 MB packed/unpacked);")
+             call msg_message (" (c)ompute data on the fly (may take 1-3 hours to initialize).")
+             call msg_message (" Please enter d/c:")
+             read (input_unit, *) flag
+             select case (flag)
+               case ("d")
+                 call msg_message ("===> Please run the download script:")
+                 call msg_message (PREFIX // "/share/whizard/SM_tt_threshold_data/download_data.sh")
+                 call msg_message ("and restart WHIZARD.")
+                 call msg_terminate ()
+               case ("c")
+                 ext_Vinput = .false.
+                 return
+               case default
+                 call msg_fatal ("unknown option " // flag)
+             end select
           end if
-          i_line = i_line+1
-        end do
-        if ( st > 0 ) call abort ("import " // char(Vfile) // ": read line " &
-                        // char(i_line) // ": iostat = " // char(st))
-        close (u, iostat=st)
-        if ( st > 0 ) call abort ("close " // char(Vfile) // ": iostat = " // char(st))
-        if ( i_line-n_q-2 /= size(mat_1d) ) &
-          call abort ("import Vmatrix: inconsistent input file " // char(Vfile))
-        if ( .not.allocated(Vmatrix) ) then
-          allocate( Vmatrix(0:nloop,2,n_p0,n_p_p0dep,n_q) )
-        else if ( any( (/n_p0,n_p_p0dep,n_q/) /= shape(Vmatrix(0,1,:,:,:)) ) ) then
-          call abort ("import Vmatrix: incompatible shape in file " // char(Vfile))
-        end if
-        Vmatrix(i_loop,i,:,:,:) = reshape (mat_1d, (/ n_p0, n_p_p0dep, n_q /))
-        deallocate( mat_1d )
-      end do
+          i_line = 1
+          u = free_unit ()
+          open (u, file=char(Vfile), status='old', action='read', iostat=st)
+          if (st /= 0) call msg_fatal ("open " // char(Vfile) // ": iostat = " // char(st))
+          PARSE: do
+             if (i_line == 1) then
+                read (u, *, iostat=st) n_p0, n_p_p0dep, n_q
+                if (st /= 0) exit PARSE
+                if (.not. allocated (q_grid)) allocate (q_grid(n_q))
+                allocate (mat_1d(n_p0*n_p_p0dep*n_q))
+             else if (i_line <= n_q+1) then
+                read (u, *, iostat=st) q_grid(i_line-1)
+                if (st /= 0)  exit PARSE
+             else
+                read (u, *, iostat=st) re, im
+                if (st /= 0)  exit PARSE
+                mat_1d(i_line-n_q-1) = cmplx (re, im, kind=single)
+             end if
+             i_line = i_line + 1
+          end do PARSE
+          if (st > 0)  call msg_fatal ("import " // char(Vfile) // ": read line " &
+                          // char(i_line) // ": iostat = " // char(st))
+          close (u, iostat=st)
+          if (st > 0)  call msg_fatal ("close " // char(Vfile) // ": iostat = " // char(st))
+          if (i_line-n_q-2 /= size(mat_1d)) &
+               call msg_fatal ("import Vmatrix: inconsistent input file " // char(Vfile))
+          if (.not. allocated (Vmatrix)) then
+             allocate (Vmatrix(0:nloop,2,n_p0,n_p_p0dep,n_q))
+          else if (any ([n_p0,n_p_p0dep,n_q] /= shape (Vmatrix(0,1,:,:,:)))) then
+             call msg_fatal ("import Vmatrix: incompatible shape in file " // char(Vfile))
+          end if
+          Vmatrix(i_loop,i,:,:,:) = reshape (mat_1d, (/ n_p0, n_p_p0dep, n_q /))
+          deallocate (mat_1d)
+       end do
     end do
   end subroutine import_Vmatrices
 
@@ -1505,11 +1531,11 @@ contains
     complex(default) :: J0
     complex(default) :: J0_LoopTools
     external J0_LoopTools
-    if ( .not.init_ps ) call init_threshold_phase_space_grid ()
-    if ( .not.allocated(J0_grid) ) allocate( J0_grid(n_sq,size(p_grid_fine),n_p0) )
-    do i_sq=1, n_sq
-      do i_p=1, size(p_grid_fine)
-        do i_p0=1, n_p0
+    if (.not.init_ps)  call init_threshold_phase_space_grid ()
+    if (.not.allocated(J0_grid))  allocate (J0_grid(n_sq,size(p_grid_fine),n_p0))
+    do i_sq = 1, n_sq
+      do i_p = 1, size(p_grid_fine)
+        do i_p0 = 1, n_p0
           call ps%init_nonrel (sq_grid(i_sq), p_grid_fine(i_p), p0_grid(i_p0))
 !          J0_grid(i_sq,i_p,i_p0) = J0_LoopTools (ps%p2, ps%k2, ps%q2, ps%m2)
           J0 = J0_LoopTools (ps%p2, ps%k2, ps%q2, ps%m2)
@@ -1547,12 +1573,11 @@ contains
     real(default), dimension(n_p) :: p_toppik
     real(default) :: mpole
     complex(default), dimension(n_p) :: ff_dummy
-    mpole = mtpole
-    if ( present(mpole_in) ) mpole = mpole_in
+    mpole = mtpole;  if (present (mpole_in))  mpole = mpole_in
     ff_dummy = scan_formfactor_over_p_TOPPIK &
-                 (alphas_soft(2.*m1s,nloop), 2.*m1s, 1, p_toppik, mpole)
-    if ( .not.strictly_monotonous(p_toppik) ) &
-      call abort ("p_grid NOT strictly monotonous!")
+                 (alphas_soft(2. * m1s, nloop), 2. * m1s, 1, p_toppik, mpole)
+    if (.not. strictly_monotonous (p_toppik)) &
+      call msg_fatal ("p_grid NOT strictly monotonous!")
   end function p_grid_from_TOPPIK
 
   pure function int_to_char (i) result (c)

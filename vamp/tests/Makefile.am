@@ -79,6 +79,9 @@ clean-local:
 	rm -f $(EXTRA_PROGRAMS)
 	rm -f *.$(FC_MODULE_EXT) *.g90
 	rm -f *.mod tmp.tao *.d *.grid *.grids
+if FC_SUBMODULES
+	-rm -f *.smod
+endif
 
 ########################################################################
 # The End.

@@ -1,4 +1,4 @@
-! WHIZARD 2.2.6 May 02 2015
+! WHIZARD 2.2.7 Aug 11 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -43,7 +43,6 @@ module nlo_controller
   use sm_physics
   use os_interface
   use model_data
-  use parser
   use pdg_arrays
   use particle_specifiers
   use phs_single
@@ -51,13 +50,12 @@ module nlo_controller
   use interactions
   use lorentz
   use prc_core
-  use pdg_arrays
   use sf_base
   use colors
+  use phs_fks
   use flavors
   use fks_regions
   use nlo_data
-  use phs_fks
   use virtual
   use real_subtraction
   use pdf_subtraction
@@ -74,12 +72,12 @@ module nlo_controller
     type(ftuple_color_map_t), pointer :: prev
   contains
     procedure :: init => ftuple_color_map_init
-    procedure :: present => ftuple_color_map_present  
-    procedure :: append => ftuple_color_map_append  
+    procedure :: present => ftuple_color_map_present
+    procedure :: append => ftuple_color_map_append
     procedure :: get_n_entries => ftuple_color_map_get_n_entries
-    procedure :: get_index_array => ftuple_color_map_get_index_array  
-    procedure :: get_entry => ftuple_color_map_get_entry  
-    procedure :: create_map => ftuple_color_map_create_map  
+    procedure :: get_index_array => ftuple_color_map_get_index_array
+    procedure :: get_entry => ftuple_color_map_get_entry
+    procedure :: create_map => ftuple_color_map_create_map
   end type ftuple_color_map_t
 
   type color_data_t
@@ -102,12 +100,14 @@ module nlo_controller
   end type color_data_t
 
   type :: nlo_controller_t
+    logical :: needs_initialization = .true.
     type(region_data_t) :: reg_data
     type(nlo_particle_data_t) :: particle_data
     type(nlo_states_t) :: particle_states
     type(sqme_collector_t) :: sqme_collector
     integer :: n_allowed_born
     integer :: active_emitter
+    integer :: active_flavor_structure_real
     complex(default), dimension(:), allocatable :: amp_born
     type(color_data_t) :: color_data
     type(real_kinematics_t), pointer :: real_kinematics => null()
@@ -119,21 +119,28 @@ module nlo_controller
     logical :: alpha_s_born_set
     complex(default) :: me_sc
     type(interaction_t), public :: int_born
+    type(sf_chain_instance_t), pointer :: sf_born => null ()
     type(kinematics_counter_t), public :: counter
-    logical, public :: counter_exists = .false.
+    logical, public :: counter_active = .false.
     logical :: use_internal_color_correlations = .true.
     logical :: use_internal_spin_correlations = .false.
-    logical :: combined_nlo_integration = .false.
+    class(powheg_damping_t), allocatable :: powheg_damping
   contains
+    procedure :: compute_k_perp => nlo_controller_compute_k_perp
+    procedure :: get_k_perp => nlo_controller_get_k_perp
     procedure :: compute_sqme_real_fin => nlo_controller_compute_sqme_real_fin
     procedure :: has_massive_emitter => nlo_controller_has_massive_emitter
-    procedure :: get_mass_info => nlo_controller_get_mass_info 
+    procedure :: get_mass_info => nlo_controller_get_mass_info
+    procedure :: set_fixed_order_event_mode => nlo_controller_set_fixed_order_event_mode
+    procedure :: set_powheg_mode => nlo_controller_set_powheg_mode
     procedure :: init => nlo_controller_init
     procedure :: set_flv_states => nlo_controller_set_flv_states
     procedure :: get_flv_state_real => nlo_controller_get_flv_state_real
     procedure :: set_particle_data => nlo_controller_set_particle_data
     procedure :: setup_matrix_elements => nlo_controller_setup_matrix_elements
+    procedure :: setup_generator => nlo_controller_setup_generator
     procedure :: get_n_particles_real => nlo_controller_get_n_particles_real
+    procedure :: get_n_particles => nlo_controller_get_n_particles
     procedure :: get_n_flv_born => nlo_controller_get_n_flv_born
     procedure :: get_n_flv_real => nlo_controller_get_n_flv_real
     procedure :: get_n_alr => nlo_controller_get_n_alr
@@ -141,15 +148,17 @@ module nlo_controller
     procedure :: get_xi_max => nlo_controller_get_xi_max
     procedure :: init_born_amps => nlo_controller_init_born_amps
     procedure :: set_internal_procedures => nlo_controller_set_internal_procedures
+    procedure :: set_x_rad => nlo_controller_set_x_rad
     procedure :: init_virtual => nlo_controller_init_virtual
     procedure :: init_pdf_subtraction => nlo_controller_init_pdf_subtraction
     procedure :: pdf_subtraction_is_required => nlo_controller_pdf_subtraction_is_required
-    procedure :: evaluate_pdf_subtraction => nlo_controller_evaluate_pdf_subtraction 
+    procedure :: evaluate_pdf_subtraction => nlo_controller_evaluate_pdf_subtraction
     procedure :: get_emitter_list => nlo_controller_get_emitter_list
     procedure :: get_emitter => nlo_controller_get_emitter
     procedure :: set_active_emitter => nlo_controller_set_active_emitter
     procedure :: get_active_emitter => nlo_controller_get_active_emitter
     procedure :: disable_subtraction => nlo_controller_disable_subtraction
+    procedure :: enable_subtraction => nlo_controller_enable_subtraction
     procedure :: is_subtraction_active => nlo_controller_is_subtraction_active
     procedure :: disable_sqme_np1 => nlo_controller_disable_sqme_np1
     procedure :: set_alr => nlo_controller_set_alr
@@ -162,11 +171,11 @@ module nlo_controller
     procedure :: set_alpha_s_born => nlo_controller_set_alpha_s_born
     procedure :: init_real_kinematics => nlo_controller_init_real_kinematics
     procedure :: init_isr_kinematics => nlo_controller_init_isr_kinematics
-    procedure :: set_real_kinematics => nlo_controller_set_real_kinematics 
+    procedure :: set_real_kinematics => nlo_controller_set_real_kinematics
     procedure :: get_real_kinematics => nlo_controller_get_real_kinematics
-    procedure :: set_real_momenta => nlo_controller_set_real_momenta 
-    procedure :: get_real_momenta => nlo_controller_get_real_momenta
-    procedure :: set_fac_scale => nlo_controller_set_fac_scale 
+    procedure :: set_momenta => nlo_controller_set_momenta
+    procedure :: get_momenta => nlo_controller_get_momenta
+    procedure :: set_fac_scale => nlo_controller_set_fac_scale
     procedure :: compute_virt => nlo_controller_compute_virt
     procedure :: requires_spin_correlation => &
                     nlo_controller_requires_spin_correlation
@@ -174,7 +183,7 @@ module nlo_controller
 
 
 contains
- 
+
   subroutine ftuple_color_map_init (icm)
     class(ftuple_color_map_t), intent(inout), target :: icm
     icm%index = 0
@@ -205,7 +214,7 @@ contains
       end if
     end do
     end select
-  end function ftuple_color_map_present        
+  end function ftuple_color_map_present
 
   subroutine ftuple_color_map_append (icm, val)
     class(ftuple_color_map_t), intent(inout), target :: icm
@@ -213,20 +222,20 @@ contains
     type(ftuple_color_map_t), pointer :: current
     select type (icm)
     type is (ftuple_color_map_t)
-    if (.not. icm%present (val)) then 
+    if (.not. icm%present (val)) then
       if (icm%index == 0) then
         nullify(icm%next)
         icm%index = 1
         icm%color_index = val
       else
         current => icm
-        do 
+        do
           if (associated (current%next)) then
             current => current%next
           else
             allocate (current%next)
             nullify (current%next%next)
-            current%next%prev => current 
+            current%next%prev => current
             current%next%index = current%index + 1
             current%next%color_index = val
             exit
@@ -245,7 +254,7 @@ contains
     type is (ftuple_color_map_t)
     current => icm
     n_entries = 0
-    do 
+    do
       if (associated (current%next)) then
         current => current%next
       else
@@ -297,7 +306,7 @@ contains
     else
       entry = 0
     end if
-    end select 
+    end select
   end function ftuple_color_map_get_entry
 
   recursive subroutine ftuple_color_map_create_map (icm, flst, &
@@ -350,9 +359,9 @@ contains
            splitting_type_flv = 2
         else if (is_gluon (flv_em) .and. is_gluon (flv_rad)) then
            splitting_type_flv = 3
-        else 
+        else
           splitting_type_flv = 0
-        end if 
+        end if
         do i = 1, n_col_real
            col_em = color_states_real(:,emitter,i)
            col_rad = color_states_real(:,p_rad,i)
@@ -373,14 +382,14 @@ contains
               splitting_type_flv /= 0) then
             call icm%append (i)
           end if
-        end do    
-      end if  
+        end do
+      end if
     end do
   contains
     function is_color_singlet (c1, c2) result (singlet)
       integer, intent(in) :: c1, c2
       logical :: singlet
-      singlet = (c1 == 0 .and. c2 /= 0) .or. (c1 /= 0 .and. c2 == 0) 
+      singlet = (c1 == 0 .and. c2 /= 0) .or. (c1 /= 0 .and. c2 == 0)
     end function is_color_singlet
     function is_color_doublet (c1, c2) result (doublet)
       integer, intent(in) :: c1, c2
@@ -408,6 +417,12 @@ contains
     call prc_constants(1)%get_color_factors (color_data%color_factors_born)
     color_data%n_col_born = size (color_data%col_state_born(1,1,:))
     color_data%n_col_real = size (color_data%col_state_real(1,1,:))
+    allocate (color_data%ghost_flag_born &
+         (size (prc_constants(1)%get_ghost_flag (), 1), &
+          size (prc_constants(1)%get_ghost_flag ())))
+    allocate (color_data%ghost_flag_real &
+         (size (prc_constants(2)%get_ghost_flag (), 1), &
+          size (prc_constants(2)%get_ghost_flag ())))    
     color_data%ghost_flag_born = prc_constants(1)%get_ghost_flag ()
     color_data%ghost_flag_real = prc_constants(2)%get_ghost_flag ()
     allocate (color_data%color_real (nlegs_real, color_data%n_col_real))
@@ -417,7 +432,7 @@ contains
            color_data%col_state_real (:,:,i), &
            color_data%ghost_flag_real (:,i))
       n_in = prc_constants(1)%n_in
-      call color_data%color_real (1:n_in,i)%invert () 
+      call color_data%color_real (1:n_in,i)%invert ()
     end do
     do i = 1, size(reg_data%regions)
       call color_data%icm(i)%init
@@ -502,7 +517,7 @@ contains
           else
             check (i) = .false.
           end if
-        else 
+        else
           if (bcheck < tol) then
             check (i) = .true.
           else
@@ -562,7 +577,7 @@ contains
              i1 = i1+1
           end if
           col1 = color_data%col_state_real (:, em2, i)
-          if (share_line (col1, col2)) then 
+          if (share_line (col1, col2)) then
              map_em_col_tmp(2,i2) = i
              i2 = i2 + 1
           end if
@@ -572,11 +587,11 @@ contains
        map_em_col2 = map_em_col_tmp (2,1:i2-1)
 
        i_reg = 1
-    
+
        do i = 1, reg_data%n_regions
            if (uborn_index == reg_data%regions(i)%uborn_index) then
              if (em1 == reg_data%regions(i)%emitter .or. &
-                 (em1 <= 2 .and. reg_data%regions(i)%emitter == 0)) then
+                  (em1 <= 2 .and. reg_data%regions(i)%emitter == 0)) then
                reg(1,i_reg(1)) = reg_data%regions(i)
                i_reg(1) = i_reg(1)+1
                found(1) = .true.
@@ -598,41 +613,52 @@ contains
          do j = 1, i_reg(2)-1
            icm1 = color_data%icm (reg(1,i)%alr)
            icm2 = color_data%icm (reg(2,j)%alr)
-       
+
+           allocate (iarray1 (size (icm1%get_index_array ())))
+           allocate (iarray2 (size (icm2%get_index_array ())))           
+           
            iarray1 = icm1%get_index_array ()
            iarray2 = icm2%get_index_array ()
-       
+
+           allocate (iisec1 (count (iarray1 == map_em_col1)))
+           allocate (iisec2 (count (iarray2 == map_em_col2)))           
+           
            iisec1 = pack (iarray1, [ (any(iarray1(i) == map_em_col1), &
                 i = 1, size(iarray1)) ])
            iisec2 = pack (iarray2, [ (any(iarray2(i) == map_em_col2), &
                 i = 1, size(iarray2)) ])
-       
+
+           allocate (cf_present (size (color_index_present &
+                (color_data%cf_index_real), 1), size (color_index_present &
+                (color_data%cf_index_real), 2)))
+           
            cf_present = color_index_present (color_data%cf_index_real)
-       
+
            do k = 1, size (iisec1)
-             do l = 1, size (iisec2)
-               i1 = iisec1(k)
-               i2 = iisec2(l)
-               if (cf_present (i1, i2)) then
-                 if (is_gluon (flst_real%flst (em1)) .or. &
-                     is_gluon (flst_real%flst (em2))) then
-                   sign = get_sign (color_data%col_state_real (:,:,i1)) * &
-                        get_sign (color_data%col_state_real (:,:,i2))
-                 else
-                   sign = 1
-                 end if
-                   color_factor = color_factor + sign*compute_color_factor &
+              do l = 1, size (iisec2)
+                 i1 = iisec1(k)
+                 i2 = iisec2(l)
+                 if (cf_present (i1,i2)) then
+                    if (is_gluon (flst_real%flst (em1)) .or. &
+                         is_gluon (flst_real%flst (em2))) then
+                       sign = get_sign (color_data%col_state_real (:,:,i1)) * &
+                            get_sign (color_data%col_state_real (:,:,i2))
+                    else
+                       sign = 1
+                    end if
+                    color_factor = color_factor + sign*compute_color_factor &
                          (color_data%color_real(:,i1), &
-                          color_data%color_real(:,i2))
-               end if
-             end do
-           end do       
-         end do
-       end do
-       !!! The real color factor always differs from the Born one 
-       !!! by one vertex factor. Thus, apply the factor 1/2  
-       bij = color_factor / (2 * color_factor_born) 
-    end if
+                         color_data%color_real(:,i2))
+                 end if
+              end do
+           end do
+        end do
+     end do
+     deallocate (iarray1, iarray2, iisec1, iisec2, cf_present)
+     !!! The real color factor always differs from the Born one
+     !!! by one vertex factor. Thus, apply the factor 1/2
+     bij = color_factor / (2 * color_factor_born)
+  end if
 
   contains
     function share_line (col1, col2) result (share)
@@ -662,7 +688,7 @@ contains
       p1 = 2; p2 = 2
       iref1 = 0; iperm1 = 0; i_first = 0
       do i = 1, size(col(1,:))
-        if (.not. all (col(:,i) == 0)) then 
+        if (.not. all (col(:,i) == 0)) then
           if (col(1,i) == 0) then
             i1 = col(2,i)
             iref1 = i; iperm1 = i
@@ -714,14 +740,14 @@ contains
             end if
           end do
           i2 = iperm(i)
-          iperm(i) = iperm(i1) 
+          iperm(i) = iperm(i1)
           iperm(i1) = i2
           sign = -sign
         end if
-      end do 
+      end do
     end function get_sign
- 
-    function color_index_present (cf_index) result (cf_present) 
+
+    function color_index_present (cf_index) result (cf_present)
       integer, intent(in), dimension(:,:), allocatable :: cf_index
       logical, dimension(:,:), allocatable :: cf_present
       integer :: n_col
@@ -770,6 +796,26 @@ contains
     end if
   end subroutine color_data_write
 
+  subroutine nlo_controller_compute_k_perp (nlo_controller)
+    class(nlo_controller_t), intent(inout) :: nlo_controller
+    integer :: emitter
+    associate (real_kin => nlo_controller%real_kinematics)
+       do emitter = 1, size (real_kin%p_born_cms)
+          if (emitter <= 2) then
+             call real_kin%compute_k_perp_isr (emitter)
+          else
+             call real_kin%compute_k_perp_fsr (emitter)
+          end if
+       end do
+    end associate
+  end subroutine nlo_controller_compute_k_perp
+
+  function nlo_controller_get_k_perp (nlo_controller) result (k_perp)
+    type(vector4_t), dimension(:), allocatable :: k_perp
+    class(nlo_controller_t), intent(in) :: nlo_controller
+    k_perp = nlo_controller%real_kinematics%k_perp
+  end function nlo_controller_get_k_perp
+
   function nlo_controller_compute_sqme_real_fin &
        (nlo_controller, weight, p_real) result (sqme_fin)
     class(nlo_controller_t), intent(inout) :: nlo_controller
@@ -777,23 +823,23 @@ contains
     type(vector4_t), intent(inout), dimension(:), allocatable :: p_real
     type(vector4_t), dimension(:), allocatable :: p_born
     real(default) :: sqme_fin
-    integer :: emitter
+    integer :: emitter, i_flv
     if (.not. nlo_controller%alpha_s_born_set) &
       call msg_fatal ("Strong coupling not set for real calculation")
     emitter = nlo_controller%get_active_emitter ()
     p_born = nlo_controller%int_born%get_momenta ()
-    call nlo_controller%real_terms%set_momenta (p_born, p_real)
+    i_flv = nlo_controller%active_flavor_structure_real
     call nlo_controller%real_terms%set_real_kinematics &
          (nlo_controller%real_kinematics)
     call nlo_controller%real_terms%set_isr_kinematics &
          (nlo_controller%isr_kinematics)
     sqme_fin = nlo_controller%real_terms%compute &
-         (emitter, nlo_controller%alpha_s_born)
+         (emitter, i_flv, nlo_controller%alpha_s_born)
     sqme_fin = sqme_fin * weight
   end function nlo_controller_compute_sqme_real_fin
 
   function nlo_controller_has_massive_emitter (nlo_controller) result (val)
-    class(nlo_controller_t), intent(inout) :: nlo_controller
+    class(nlo_controller_t), intent(in) :: nlo_controller
     logical :: val
     integer :: n_tot, i
     val = .false.
@@ -810,8 +856,19 @@ contains
     class(nlo_controller_t), intent(in) :: nlo_controller
     integer, intent(in) :: i_flv
     logical, dimension(:), allocatable :: massive
+    allocate (massive (size (nlo_controller%reg_data%flv_born(i_flv)%massive)))    
     massive = nlo_controller%reg_data%flv_born(i_flv)%massive
-  end function nlo_controller_get_mass_info 
+  end function nlo_controller_get_mass_info
+
+  subroutine nlo_controller_set_fixed_order_event_mode (nlo_controller)
+    class(nlo_controller_t), intent(inout) :: nlo_controller
+    nlo_controller%real_terms%purpose = FIXED_ORDER_EVENTS
+  end subroutine nlo_controller_set_fixed_order_event_mode
+
+  subroutine nlo_controller_set_powheg_mode (nlo_controller)
+    class(nlo_controller_t), intent(inout) :: nlo_controller
+    nlo_controller%real_terms%purpose = POWHEG
+  end subroutine nlo_controller_set_powheg_mode
 
   subroutine nlo_controller_init (nlo_controller, prc_constants, template, model)
      class(nlo_controller_t), intent(inout) :: nlo_controller
@@ -832,16 +889,23 @@ contains
                                        particle_data%n_in + particle_data%n_out_real, &
                                        nlo_controller%sqme_collector)
      end associate
-     nlo_controller%counter_exists = template%count_kinematics
-     if (nlo_controller%counter_exists) call nlo_controller%counter%init(20)
+     nlo_controller%counter_active = template%count_kinematics
+     if (nlo_controller%counter_active) call nlo_controller%counter%init(20)
+     allocate (powheg_damping_simple_t :: nlo_controller%powheg_damping)
    end subroutine nlo_controller_init
 
   subroutine nlo_controller_set_flv_states (nlo_controller, prc_constants)
     class(nlo_controller_t), intent(inout) :: nlo_controller
     type(process_constants_t), intent(in), dimension(2) :: prc_constants
     associate (states => nlo_controller%particle_states)
-       states%flv_state_born = prc_constants(1)%get_flv_state ()
-       states%flv_state_real = prc_constants(2)%get_flv_state ()
+      allocate (states%flv_state_born &
+           (size (prc_constants(1)%get_flv_state (), 1), &
+            size (prc_constants(1)%get_flv_state (), 2)))
+      allocate (states%flv_state_real &
+           (size (prc_constants(2)%get_flv_state (), 1), &
+            size (prc_constants(2)%get_flv_state (), 2)))      
+      states%flv_state_born = prc_constants(1)%get_flv_state ()
+      states%flv_state_real = prc_constants(2)%get_flv_state ()
     end associate
   end subroutine nlo_controller_set_flv_states
 
@@ -870,8 +934,11 @@ contains
     associate (collector => nlo_controller%sqme_collector, &
                particle_data => nlo_controller%particle_data)
        allocate (collector%sqme_born_list (particle_data%n_flv_born))
+       allocate (collector%sqme_virt_list (particle_data%n_flv_born))
        allocate (collector%sqme_real_non_sub (particle_data%n_flv_real))
-       allocate (collector%sqme_real_per_emitter (particle_data%n_in + particle_data%n_out_born))
+       allocate (collector%sqme_real_per_emitter &
+          (nlo_controller%reg_data%n_flv_real, &
+           particle_data%n_in + particle_data%n_out_born))
        n_tot_born = particle_data%n_in + particle_data%n_out_born
        allocate (collector%sqme_born_cc (n_tot_born, n_tot_born, particle_data%n_flv_born))
        allocate (collector%sqme_born_sc (particle_data%n_flv_born))
@@ -880,14 +947,44 @@ contains
        collector%sqme_real_per_emitter = 0._default
        collector%sqme_born_cc = 0._default
        collector%sqme_born_sc = cmplx (0._default, 0._default, kind=default)
-    end associate                       
+       collector%current_sqme_real = 0._default
+       collector%sqme_real_sum = 0._default
+       collector%sqme_virt_list = 0._default
+    end associate
   end subroutine nlo_controller_setup_matrix_elements
+
+  subroutine nlo_controller_setup_generator &
+         (nlo_controller, generator, sqrts, singular_jacobian)
+    class(nlo_controller_t), intent(in) :: nlo_controller
+    type(phs_fks_generator_t), intent(out) :: generator
+    real(default), intent(in) :: sqrts
+    logical, intent(in), optional :: singular_jacobian
+    logical :: yorn
+    yorn = .false.; if (present (singular_jacobian)) yorn = singular_jacobian
+    call generator%connect_kinematics (nlo_controller%isr_kinematics, &
+         nlo_controller%real_kinematics, &
+         nlo_controller%has_massive_emitter ())
+    call generator%set_beam_energy (sqrts)
+    call generator%set_emitters (nlo_controller%reg_data%emitters)
+    call generator%setup_masses (nlo_controller%particle_data%n_in + &
+                           nlo_controller%particle_data%n_out_born)
+    generator%is_massive = nlo_controller%get_mass_info(1)
+    generator%singular_jacobian = yorn
+  end subroutine nlo_controller_setup_generator
 
   pure function nlo_controller_get_n_particles_real (nlo_controller) result (n_particles)
     integer :: n_particles
     class(nlo_controller_t), intent(in) :: nlo_controller
     n_particles = nlo_controller%particle_data%n_in + nlo_controller%particle_data%n_out_real
   end function nlo_controller_get_n_particles_real
+
+  elemental function nlo_controller_get_n_particles (nlo_controller) result (n)
+    integer :: n
+    class(nlo_controller_t), intent(in) :: nlo_controller
+    associate (particle_data => nlo_controller%particle_data)
+       n = particle_data%n_in + particle_data%n_out_born
+    end associate
+  end function nlo_controller_get_n_particles
 
   elemental function nlo_controller_get_n_flv_born (nlo_controller) result (n_flv)
     class(nlo_controller_t), intent(in) :: nlo_controller
@@ -949,6 +1046,15 @@ contains
     nlo_controller%use_internal_spin_correlations = flag_spin
   end subroutine nlo_controller_set_internal_procedures
 
+  subroutine nlo_controller_set_x_rad (controller, x_rad)
+    class(nlo_controller_t), intent(inout) :: controller
+    real(default), intent(in), dimension(:) :: x_rad
+    integer :: n_par
+    n_par = size (x_rad)
+    if (associated (controller%real_kinematics)) &
+       controller%real_kinematics%x_rad = x_rad (n_par-2:n_par)
+  end subroutine nlo_controller_set_x_rad
+
   subroutine nlo_controller_init_virtual (nlo_controller)
     class(nlo_controller_t), intent(inout) :: nlo_controller
     call nlo_controller%virtual_terms%init (nlo_controller%particle_states%flv_state_born)
@@ -977,7 +1083,7 @@ contains
         call msg_fatal ("Strong coupling not set for pdf subtraction")
     call nlo_controller%pdf_terms%evaluate (nlo_controller%alpha_s_born, sqme, 1)
   end subroutine nlo_controller_evaluate_pdf_subtraction
-    
+
   pure function nlo_controller_get_emitter_list (nlo_controller) result(emitters)
     class(nlo_controller_t), intent(in) :: nlo_controller
     integer, dimension(:), allocatable :: emitters
@@ -1005,9 +1111,14 @@ contains
 
   subroutine nlo_controller_disable_subtraction (nlo_controller)
     class(nlo_controller_t), intent(inout) :: nlo_controller
-    nlo_controller%real_terms%sqme_np1_active = .true.
+    nlo_controller%real_terms%radiation_active = .true.
     nlo_controller%real_terms%subtraction_active = .false.
   end subroutine nlo_controller_disable_subtraction
+
+  subroutine nlo_controller_enable_subtraction (nlo_controller)
+    class(nlo_controller_t), intent(inout) :: nlo_controller
+    nlo_controller%real_terms%subtraction_active = .true.
+  end subroutine nlo_controller_enable_subtraction
 
   function nlo_controller_is_subtraction_active (nlo_controller) result (active)
     class(nlo_controller_t), intent(in) :: nlo_controller
@@ -1017,8 +1128,8 @@ contains
 
   subroutine nlo_controller_disable_sqme_np1 (nlo_controller)
     class(nlo_controller_t), intent(inout) :: nlo_controller
-    nlo_controller%real_terms%sqme_np1_active = .false.
-    nlo_controller%real_terms%subtraction_active = .false.
+    nlo_controller%real_terms%radiation_active = .false.
+    nlo_controller%real_terms%subtraction_active = .true.
   end subroutine nlo_controller_disable_sqme_np1
 
   subroutine nlo_controller_set_alr (nlo_controller, alr)
@@ -1034,7 +1145,7 @@ contains
        allocate (states%flv_born (size (flv_in)))
        states%flv_born = flv_in
     end associate
-  end subroutine nlo_controller_set_flv_born 
+  end subroutine nlo_controller_set_flv_born
 
   subroutine nlo_controller_set_hel_born (nlo_controller, hel_in)
     class(nlo_controller_t), intent(inout) :: nlo_controller
@@ -1043,7 +1154,7 @@ contains
        allocate (states%hel_born (size (hel_in)))
        states%hel_born = hel_in
     end associate
-  end subroutine nlo_controller_set_hel_born 
+  end subroutine nlo_controller_set_hel_born
 
   subroutine nlo_controller_set_col_born (nlo_controller, col_in)
     class(nlo_controller_t), intent(inout) :: nlo_controller
@@ -1059,14 +1170,14 @@ contains
     integer, intent(in) :: i
     integer :: flv
     flv = nlo_controller%particle_states%flv_born(i)
-  end function nlo_controller_get_flv_born 
+  end function nlo_controller_get_flv_born
 
   elemental function nlo_controller_get_hel_born (nlo_controller, i) result (hel)
     class(nlo_controller_t), intent(in) :: nlo_controller
     integer, intent(in) :: i
     integer :: hel
     hel = nlo_controller%particle_states%hel_born (i)
-  end function nlo_controller_get_hel_born 
+  end function nlo_controller_get_hel_born
 
   elemental function nlo_controller_get_col_born (nlo_controller, i) result (col)
     class(nlo_controller_t), intent(in) :: nlo_controller
@@ -1094,13 +1205,17 @@ contains
        allocate (real_kinematics%y (n_tot))
        allocate (real_kinematics%y_soft (n_tot))
        allocate (real_kinematics%jac_rand (n_tot))
-       allocate (real_kinematics%p_real (n_tot+1))
+       allocate (real_kinematics%p_born_cms (n_tot), &
+                 real_kinematics%p_born_lab (n_tot))
+       allocate (real_kinematics%p_real_cms (n_tot+1), &
+                 real_kinematics%p_real_lab (n_tot+1))
        allocate (real_kinematics%jac (n_tot))
        real_kinematics%xi_tilde = 0
        real_kinematics%y = 0
        real_kinematics%xi_max = 0
        real_kinematics%phi = 0
        real_kinematics%cms_energy2 = 0
+       allocate (real_kinematics%k_perp (n_tot))
     end associate
   end subroutine nlo_controller_init_real_kinematics
 
@@ -1116,7 +1231,7 @@ contains
     real(default), dimension(:), allocatable :: xi_max, y
     real(default), intent(in) :: xi_tilde
     real(default), intent(in) :: phi
-    real(default), intent(in), dimension(3) :: jac
+    real(default), intent(in), dimension(4) :: jac
     real(default), intent(in), dimension(:), allocatable :: jac_rand
     nlo_controller%real_kinematics%xi_tilde = xi_tilde
     nlo_controller%real_kinematics%y = y
@@ -1131,8 +1246,8 @@ contains
     class(nlo_controller_t), intent(in) :: nlo_controller
     integer, intent(in) :: em
     real(default), intent(out) :: xi_tilde, y, xi_max
-    real(default), intent(out), dimension(3), optional :: jac
-    !!! For most applications, phi is not relevant. Thus, it is not 
+    real(default), intent(out), dimension(4), optional :: jac
+    !!! For most applications, phi is not relevant. Thus, it is not
     !!! always transferred as a dummy-variable
     real(default), intent(out), optional :: phi
     real(default), intent(out), dimension(:), optional :: jac_rand
@@ -1144,17 +1259,60 @@ contains
     if (present (jac_rand)) jac_rand = nlo_controller%real_kinematics%jac_rand
   end subroutine nlo_controller_get_real_kinematics
 
-  subroutine nlo_controller_set_real_momenta (nlo_controller, p)
+  subroutine nlo_controller_set_momenta (nlo_controller, p_born, p_real, cms)
     class(nlo_controller_t), intent(inout) :: nlo_controller
-    type(vector4_t), intent(in), dimension(:) :: p
-    nlo_controller%real_kinematics%p_real = p
-  end subroutine nlo_controller_set_real_momenta
+    type(vector4_t), dimension(:), intent(in) :: p_born, p_real
+    logical, intent(in), optional :: cms
+    logical :: yorn
+    yorn = .false.; if (present (cms)) yorn = cms
+    associate (kinematics => nlo_controller%real_kinematics)
+       if (yorn) then
+          if (.not. allocated (kinematics%p_born_cms)) then
+             allocate (kinematics%p_born_cms (size (p_born)))
+          end if
+          if (.not. allocated (kinematics%p_real_cms)) then
+             allocate (kinematics%p_real_cms (size (p_real)))
+          end if
+          kinematics%p_born_cms = p_born
+          kinematics%p_real_cms = p_real
+       else
+          if (.not. allocated (kinematics%p_born_lab)) then
+             allocate (kinematics%p_born_lab (size (p_born)))
+          end if
+          if (.not. allocated (kinematics%p_real_lab)) then
+             allocate (kinematics%p_real_lab (size (p_real)))
+          end if
+          kinematics%p_born_lab = p_born
+          kinematics%p_real_lab = p_real
+       end if
+    end associate
+  end subroutine nlo_controller_set_momenta
 
-  function nlo_controller_get_real_momenta (nlo_controller) result (p)
+  function nlo_controller_get_momenta (nlo_controller, born_phsp, cms) result (p)
     class(nlo_controller_t), intent(inout) :: nlo_controller
+    logical, intent(in) :: born_phsp
+    logical, intent(in), optional :: cms
     type(vector4_t), dimension(:), allocatable :: p
-    p = nlo_controller%real_kinematics%p_real
-  end function nlo_controller_get_real_momenta
+    logical :: yorn
+    yorn = .false.; if (present (cms)) yorn = cms
+    if (born_phsp) then
+       if (yorn) then
+          allocate (p(1:size(nlo_controller%real_kinematics%p_born_cms)), &
+               source = nlo_controller%real_kinematics%p_born_cms)
+       else
+          allocate (p(1:size(nlo_controller%real_kinematics%p_born_lab)), &
+               source = nlo_controller%real_kinematics%p_born_lab)
+       end if
+    else
+       if (yorn) then
+          allocate (p(1:size(nlo_controller%real_kinematics%p_real_cms)), &
+               source = nlo_controller%real_kinematics%p_real_cms)
+       else
+          allocate (p(1:size(nlo_controller%real_kinematics%p_real_lab)), &
+               source = nlo_controller%real_kinematics%p_real_lab)
+       end if
+    end if
+  end function nlo_controller_get_momenta
 
   subroutine nlo_controller_set_fac_scale (nlo_controller, fac_scale)
     class(nlo_controller_t), intent(inout) :: nlo_controller
@@ -1176,13 +1334,13 @@ contains
           call nlo_controller%virtual_terms%evaluate &
                (nlo_controller%reg_data, &
                i_flv, nlo_controller%alpha_s_born, &
-               p_born, collector%current_sqme_born, &
+               p_born, collector%sqme_born_list (i_flv), &
                nlo_controller%color_data%beta_ij)
        else
           call nlo_controller%virtual_terms%evaluate &
                (nlo_controller%reg_data, &
                i_flv, nlo_controller%alpha_s_born, &
-               p_born, collector%current_sqme_born, &
+               p_born, collector%sqme_born_list (i_flv), &
                collector%sqme_born_cc)
        end if
     end associate

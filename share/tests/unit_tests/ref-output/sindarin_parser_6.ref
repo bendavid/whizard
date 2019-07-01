@@ -1,0 +1,32 @@
+* Test output: sindarin_parser_6
+*   Purpose: parse a simple script
+
+* Create script
+
+integer i = if true then 22 endif
+integer j = if false then 23 else 34 endif
+integer k = if false then 24 elsif true then 35 endif
+integer l = if false then 25 elsif false then 36 elsif false then 45 else 56 end
+
+* Parse script
+
+* Setup decoder (see 'sindarin_parser_6.pt.dat')
+
+* Decode (see 'sindarin_parser_6.code.dat')
+
+* Create object tree
+
+object script ||abstract|| {
+   M1: integer i ||variable|| = ???
+   M2: integer j ||variable|| = ???
+   M3: integer k ||variable|| = ???
+   M4: integer l ||variable|| = ???
+   P1: i = if true then 22 else ??? endif
+   P2: j = if false then 23 else 34 endif
+   P3: k = if false then 24 elsif true then 35 else ??? endif
+   P4: l = if false then 25 elsif false then 36 elsif false then 45 else 56 endif
+ }
+
+* Cleanup
+
+* Test output end: sindarin_parser_6

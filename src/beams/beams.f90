@@ -1,4 +1,4 @@
-! WHIZARD 2.2.6 May 02 2015
+! WHIZARD 2.2.7 Aug 11 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -35,15 +35,13 @@ module beams
   use kinds, only: default
   use iso_varying_string, string_t => varying_string
   use io_units
-  use constants
   use format_defs, only: FMT_19
-  use unit_tests
+  use unit_tests, only: nearly_equal
   use diagnostics
   use md5
   use lorentz
   use model_data
   use flavors
-  use colors
   use quantum_numbers
   use state_matrices
   use interactions
@@ -77,7 +75,6 @@ module beams
   public :: interaction_set_source_link
   public :: beam_get_int_ptr
   public :: beam_set_momenta
-  public :: beam_test
 
   type :: beam_data_t
      logical :: initialized = .false.
@@ -219,7 +216,7 @@ contains
     real(default), intent(in), optional :: sqrts
     if (beam_data_are_valid (beam_data)) then
        if (present (sqrts)) then
-          if (sqrts /= beam_data%sqrts) then
+          if (.not. nearly_equal (sqrts, beam_data%sqrts)) then
              call msg_error ("Current setting of sqrts is inconsistent " &
                   // "with beam setup (ignored).")
           end if
@@ -443,7 +440,7 @@ contains
   function beam_data_masses_are_consistent (beam_data) result (flag)
     logical :: flag
     type(beam_data_t), intent(in) :: beam_data
-    flag = all (beam_data%mass == beam_data%flv%get_mass ())
+    flag = all (nearly_equal (beam_data%mass, beam_data%flv%get_mass ()))
   end function beam_data_masses_are_consistent
 
   subroutine beam_init (beam, beam_data)
@@ -532,287 +529,6 @@ contains
     type(vector4_t), dimension(:), intent(in) :: p
     call beam%int%set_momenta (p)
   end subroutine beam_set_momenta
-
-  subroutine beam_test (u, results)
-    integer, intent(in) :: u
-    type(test_results_t), intent(inout) :: results
-    call test (beam_1, "beam_1", &
-         "check basic beam setup", &
-         u, results)
-    call test (beam_2, "beam_2", &
-         "beam initialization", &
-         u, results)
-    call test (beam_3, "beam_3", &
-         "generic beam momenta", &
-         u, results)
-  end subroutine beam_test
-
-
-  subroutine beam_1 (u)
-    integer, intent(in) :: u
-    type(beam_data_t), target :: beam_data
-    type(beam_t) :: beam
-    real(default) :: sqrts
-    type(flavor_t), dimension(2) :: flv
-    type(smatrix_t), dimension(2) :: smatrix
-    real(default), dimension(2) :: pol_f
-    type(model_data_t), target :: model
-    
-    write (u, "(A)")  "* Test output: beam_1"
-    write (u, "(A)")  "*   Purpose: test basic beam setup"
-    write (u, "(A)")      
-        
-    write (u, "(A)")  "* Reading model file"
-    write (u, "(A)") 
-
-    call reset_interaction_counter ()
-
-    call model%init_sm_test ()
-
-    write (u, "(A)")  "* 1: Scattering process"
-    write (u, "(A)")
-    
-    sqrts = 500
-    call flv%init ([1,-1], model)
-
-    call smatrix(1)%init (2, 1)
-    call smatrix(1)%set_entry (1, [1,1], (1._default, 0._default))
-    pol_f(1) = 0.5_default
-
-    !!! 2.1 version:
-    ! call polarization_init_circular (pol(1), flv(1), 0.5_default)
-
-    call smatrix(2)%init (2, 3)
-    call smatrix(2)%set_entry (1, [1,1], (1._default, 0._default))
-    call smatrix(2)%set_entry (2, [-1,-1], (1._default, 0._default))
-    call smatrix(2)%set_entry (3, [-1,1], (1._default, 0._default))
-    pol_f(2) = 1._default
-
-    !!! 2.1 version:
-    ! call polarization_init_transversal (pol(2), flv(2), 0._default, 1._default)
-    call beam_data_init_sqrts (beam_data, sqrts, flv, smatrix, pol_f)
-    call beam_data_write (beam_data, u)
-    write (u, "(A)")
-    call beam_init (beam, beam_data)
-    call beam_write (beam, u)
-    call beam_final (beam)
-    call beam_data_final (beam_data)
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* 2: Decay"
-    write (u, "(A)")
-    call flv(1)%init (23, model)
-    call smatrix(1)%init (2, 1)
-    call smatrix(1)%set_entry (1, [0,0], (1._default, 0._default))
-    pol_f(1) = 0.4_default
-
-    !!! 2.1 version:
-    ! call polarization_init_longitudinal (pol(1), flv(1), 0.4_default)
-    call beam_data_init_decay (beam_data, flv(1:1), smatrix(1:1), pol_f(1:1))
-    call beam_data_write (beam_data, u)
-    write (u, "(A)")
-    call beam_init (beam, beam_data)
-    call beam_write (beam, u)
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Cleanup"            
-       
-    call beam_final (beam)
-    call beam_data_final (beam_data)
-
-    call model%final ()
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: beam_1"        
-    
-  end subroutine beam_1
-
-  subroutine beam_2 (u)
-    integer, intent(in) :: u
-    type(beam_data_t), target :: beam_data
-    type(beam_t) :: beam
-    real(default) :: sqrts
-    type(flavor_t), dimension(2) :: flv
-    integer, dimension(0) :: no_records
-    type(beam_structure_t) :: beam_structure
-    type(model_data_t), target :: model
-    
-    write (u, "(A)")  "* Test output: beam_2"
-    write (u, "(A)")  "*   Purpose: transfer beam polarization using &
-         &beam structure"
-    write (u, "(A)")      
-        
-    write (u, "(A)")  "* Reading model file"
-    write (u, "(A)") 
-
-    call reset_interaction_counter ()
-
-    call model%init_sm_test ()
-
-    write (u, "(A)")  "* 1: Scattering process"
-    write (u, "(A)")
-    
-    sqrts = 500
-    call flv%init ([1,-1], model)
-    call beam_structure%init_sf (flv%get_name (), no_records)
-
-    call beam_structure%init_pol (2)
-
-    call beam_structure%init_smatrix (1, 1)
-    call beam_structure%set_sentry (1, 1, [1,1], (1._default, 0._default))
-
-    call beam_structure%init_smatrix (2, 3)
-    call beam_structure%set_sentry (2, 1, [1,1], (1._default, 0._default))
-    call beam_structure%set_sentry (2, 2, [-1,-1], (1._default, 0._default))
-    call beam_structure%set_sentry (2, 3, [-1,1], (1._default, 0._default))
-
-    call beam_structure%set_pol_f ([0.5_default, 1._default])
-    call beam_structure%write (u)
-    write (u, *)
-    
-    call beam_data_init_structure (beam_data, beam_structure, sqrts, model)
-    call beam_data_write (beam_data, u)
-    write (u, *)
- 
-    call beam_init (beam, beam_data)
-    call beam_write (beam, u)
-
-    call beam_final (beam)
-    call beam_data_final (beam_data)
-    call beam_structure%final_pol ()
-    call beam_structure%final_sf ()
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* 2: Decay"
-    write (u, "(A)")
-
-    call flv(1)%init (23, model)
-    call beam_structure%init_sf ([flv(1)%get_name ()], no_records)
-
-    call beam_structure%init_pol (1)
-
-    call beam_structure%init_smatrix (1, 1)
-    call beam_structure%set_sentry (1, 1, [0,0], (1._default, 0._default))
-    call beam_structure%set_pol_f ([0.4_default])
-    call beam_structure%write (u)
-    write (u, *)
-    
-    call beam_data_init_structure (beam_data, beam_structure, sqrts, model)
-    call beam_data_write (beam_data, u)
-    write (u, "(A)")
-    call beam_init (beam, beam_data)
-    call beam_write (beam, u)
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Cleanup"            
-       
-    call beam_final (beam)
-    call beam_data_final (beam_data)
-
-    call model%final ()
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: beam_2"        
-    
-  end subroutine beam_2
-
-  subroutine beam_3 (u)
-    integer, intent(in) :: u
-    type(beam_data_t), target :: beam_data
-    type(beam_t) :: beam
-    type(flavor_t), dimension(2) :: flv
-    integer, dimension(0) :: no_records
-    type(model_data_t), target :: model
-    type(beam_structure_t) :: beam_structure
-    type(vector3_t), dimension(2) :: p3
-    type(vector4_t), dimension(2) :: p
-    
-    write (u, "(A)")  "* Test output: beam_3"
-    write (u, "(A)")  "*   Purpose: set up beams with generic momenta"
-    write (u, "(A)")      
-        
-    write (u, "(A)")  "* Reading model file"
-    write (u, "(A)") 
-
-    call reset_interaction_counter ()
-
-    call model%init_sm_test ()
-
-    write (u, "(A)")  "* 1: Scattering process"
-    write (u, "(A)")
-    
-    call flv%init ([2212,2212], model)
-
-    p3(1) = vector3_moving ([5._default, 0._default, 10._default])
-    p3(2) = -vector3_moving ([1._default, 1._default, -10._default])
-
-    call beam_structure%init_sf (flv%get_name (), no_records)
-    call beam_structure%set_momentum (p3 ** 1)
-    call beam_structure%set_theta (polar_angle (p3))
-    call beam_structure%set_phi (azimuthal_angle (p3))
-    call beam_structure%write (u)
-    write (u, *)
-
-    call beam_data_init_structure (beam_data, beam_structure, 0._default, model)
-    call beam_data_write (beam_data, u, verbose = .true.)
-    write (u, *)
- 
-    write (u, "(1x,A)")  "Beam momenta reconstructed from LT:"
-    p = beam_data%L_cm_to_lab * beam_data%p_cm
-    call pacify (p, 1e-12_default)
-    call vector4_write (p(1), u)
-    call vector4_write (p(2), u)
-    write (u, "(A)")
-
-    call beam_init (beam, beam_data)
-    call beam_write (beam, u)
-
-    call beam_final (beam)
-    call beam_data_final (beam_data)
-    call beam_structure%final_sf ()
-    call beam_structure%final_mom ()
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* 2: Decay"
-    write (u, "(A)")
-
-    call flv(1)%init (23, model)
-    p3(1) = vector3_moving ([10._default, 5._default, 50._default])
-    
-    call beam_structure%init_sf ([flv(1)%get_name ()], no_records)
-    call beam_structure%set_momentum ([p3(1) ** 1])
-    call beam_structure%set_theta ([polar_angle (p3(1))])
-    call beam_structure%set_phi ([azimuthal_angle (p3(1))])
-    call beam_structure%write (u)
-    write (u, *)
-
-    call beam_data_init_structure (beam_data, beam_structure, 0._default, model)
-    call beam_data_write (beam_data, u, verbose = .true.)
-    write (u, "(A)")
-
-    write (u, "(1x,A)")  "Beam momentum reconstructed from LT:"
-    p(1) = beam_data%L_cm_to_lab * beam_data%p_cm(1)
-    call pacify (p(1), 1e-12_default)
-    call vector4_write (p(1), u)
-    write (u, "(A)")
-
-    call beam_init (beam, beam_data)
-    call beam_write (beam, u)
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Cleanup"            
-       
-    call beam_final (beam)
-    call beam_data_final (beam_data)
-    call beam_structure%final_sf ()
-    call beam_structure%final_mom ()
-
-    call model%final ()
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: beam_3"        
-    
-  end subroutine beam_3
 
 
 end module beams

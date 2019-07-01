@@ -9269,18 +9269,21 @@ C...For gamma-p or gamma-gamma first pick between alternatives.
         MINT(122)=IGA
  
 C...For real gamma + gamma with different nature, flip at random.
+C...JRR: due to ifort/gfortran differences: PYR in new if-clause.
         IF(MINT(11).EQ.22.AND.MINT(12).EQ.22.AND.MINT(123).GE.4.AND.
-     &  MSTP(14).LE.10.AND.PYR(0).GT.0.5D0) THEN
-          MINTSV=MINT(41)
-          MINT(41)=MINT(42)
-          MINT(42)=MINTSV
-          MINTSV=MINT(45)
-          MINT(45)=MINT(46)
-          MINT(46)=MINTSV
-          MINTSV=MINT(107)
-          MINT(107)=MINT(108)
-          MINT(108)=MINTSV
-          IF(MINT(47).EQ.2.OR.MINT(47).EQ.3) MINT(47)=5-MINT(47)
+     &  MSTP(14).LE.10) THEN 
+           IF(PYR(0).GT.0.5D0) THEN
+              MINTSV=MINT(41)
+              MINT(41)=MINT(42)
+              MINT(42)=MINTSV
+              MINTSV=MINT(45)
+              MINT(45)=MINT(46)
+              MINT(46)=MINTSV
+              MINTSV=MINT(107)
+              MINT(107)=MINT(108)
+              MINT(108)=MINTSV
+              IF(MINT(47).EQ.2.OR.MINT(47).EQ.3) MINT(47)=5-MINT(47)
+           ENDIF
         ENDIF
  
 C...Pick process type, possibly by user process machinery.
@@ -14682,9 +14685,18 @@ C...qbar -> g + qbar.
           ID1=IT
           ID2=IS(JT)
 C...g -> g + g; g -> q + qbar.
-        ELSEIF((K(IT,2).EQ.21.AND.PYR(0).GT.0.5D0).OR.K(IT,2).LT.0) THEN
-          ID1=IS(JT)
-          ID2=IT
+C...JRR: due to ifort/gfortran differences: PYR in new if-clause.
+        ELSEIF(K(IT,2).LT.0) THEN
+           ID1=IS(JT)
+           ID2=IT
+        ELSEIF(K(IT,2).EQ.21) THEN 
+           IF(PYR(0).GT.0.5D0) THEN
+              ID1=IS(JT)
+              ID2=IT
+           ELSE
+              ID1=IT
+              ID2=IS(JT)
+           ENDIF
         ELSE
           ID1=IT
           ID2=IS(JT)
@@ -42937,15 +42949,24 @@ C...Preliminaries. Parton composition.
         IF(MINT(105).EQ.333) KFL(2)=3
         IF(MINT(105).EQ.443) KFL(2)=4
         KFL(3)=KFL(2)
-      ELSEIF((KFA.EQ.111.OR.KFA.EQ.113).AND.PYR(0).GT.0.5D0) THEN
-        KFL(2)=2
-        KFL(3)=2
-      ELSEIF(KFA.EQ.223.AND.PYR(0).GT.0.5D0) THEN
-        KFL(2)=1
-        KFL(3)=1
-      ELSEIF((KFA.EQ.130.OR.KFA.EQ.310).AND.PYR(0).GT.0.5D0) THEN
-        KFL(2)=MOD(KFA/10,10)
-        KFL(3)=MOD(KFA/100,10)
+C...JRR: due to ifort/gfortran differences: PYR in new if-clause.
+      ELSEIF((KFA.EQ.111.OR.KFA.EQ.113)) THEN 
+         IF(PYR(0).GT.0.5D0) THEN
+            KFL(2)=2
+            KFL(3)=2
+         ENDIF
+C...JRR: due to ifort/gfortran differences: PYR in new if-clause.
+      ELSEIF(KFA.EQ.223) THEN 
+         IF(PYR(0).GT.0.5D0) THEN
+            KFL(2)=1
+            KFL(3)=1
+         ENDIF
+C...JRR: due to ifort/gfortran differences: PYR in new if-clause.
+      ELSEIF((KFA.EQ.130.OR.KFA.EQ.310)) THEN 
+         IF(PYR(0).GT.0.5D0) THEN
+            KFL(2)=MOD(KFA/10,10)
+            KFL(3)=MOD(KFA/100,10)
+         ENDIF
       ENDIF
       IF(KFLIN.NE.21.AND.KFLIN.NE.22.AND.KFLIN.NE.23) THEN
         KFLR=KFLIN*KFS
@@ -43001,9 +43022,12 @@ C...Subdivide meson.
           KFLSP=KFL(3)
         ELSEIF(KFLR.EQ.KFL(3)) THEN
           KFLSP=KFL(2)
-        ELSEIF(KFLR.EQ.21.AND.PYR(0).GT.0.5D0) THEN
-          KFLSP=KFL(2)
-          KFLCH=KFL(3)
+C...JRR: due to ifort/gfortran differences: PYR in new if-clause.
+        ELSEIF(KFLR.EQ.21) THEN 
+           IF(PYR(0).GT.0.5D0) THEN
+              KFLSP=KFL(2)
+              KFLCH=KFL(3)
+           ENDIF
         ELSEIF(KFLR.EQ.21) THEN
           KFLSP=KFL(3)
           KFLCH=KFL(2)
@@ -43061,7 +43085,10 @@ C...Subdivide baryon.
         ID2=6-IAGR-ID1
         KSP=3
         IF(MOD(KFA,10).EQ.2.AND.KFL(1).EQ.KFL(2)) THEN
-          IF(IAGR.NE.3.AND.PYR(0).GT.0.25D0) KSP=1
+C...JRR: due to ifort/gfortran differences: PYR in new if-clause.
+          IF(IAGR.NE.3) THEN 
+             IF(PYR(0).GT.0.25D0) KSP=1
+          ENDIF
         ELSEIF(MOD(KFA,10).EQ.2.AND.KFL(2).GE.KFL(3)) THEN
           IF(IAGR.NE.1.AND.PYR(0).GT.0.25D0) KSP=1
         ELSEIF(MOD(KFA,10).EQ.2) THEN
@@ -68546,7 +68573,10 @@ C.. Stick to started popcorn system, else pick side at random
   330   JT=2
         JT2=3
         JT3=4
-        IF(NQ.EQ.4.AND.PYR(0).LT.PARJ(66)) JT=4
+C...JRR: due to ifort/gfortran differences: PYR in new if-clause.
+        IF(NQ.EQ.4) THEN 
+           IF(PYR(0).LT.PARJ(66)) JT=4
+        ENDIF
         IF(JT.EQ.4.AND.ISIGN(1,KFL1(1)*(10-IABS(KFL1(1))))*
      &  ISIGN(1,KFL1(JT)*(10-IABS(KFL1(JT)))).GT.0) JT=3
         IF(JT.EQ.3) JT2=2
@@ -69226,7 +69256,13 @@ C...Meson/baryon choice. Set number of mesons if starting a popcorn
 C...system.
   110 MBARY=0
       IF(KF1A.LE.10.AND.MSTJ(12).GT.0)THEN
-         IF(MSTU(121).EQ.-1.OR.(1D0+PARJ(1))*PYR(0).GT.1D0)THEN
+C...JRR: due to ifort/gfortran differences: PYR in new if-clause.
+         IF(MSTU(121).NE.-1) THEN 
+            IF((1D0+PARJ(1))*PYR(0).GT.1D0)THEN
+               MBARY=1
+               CALL PYNMES(0)
+            ENDIF
+         ELSE
             MBARY=1
             CALL PYNMES(0)
          ENDIF
@@ -70891,7 +70927,10 @@ C...Select z value of branching: q -> qg, g -> gg, g -> qqbar.
       ELSEIF(MSTJ(49).NE.1.AND.KFL(1).NE.21) THEN
         Z=1D0-(1D0-ZC)*(ZC/(1D0-ZC))**PYR(0)
 C...Only do z weighting when no ME correction afterwards.
-        IF(M3JC.EQ.0.AND.1D0+Z**2.LT.2D0*PYR(0)) GOTO 410
+C...JRR: due to ifort/gfortran differences: PYR in new if-clause.
+        IF(M3JC.EQ.0) THEN 
+           IF(1D0+Z**2.LT.2D0*PYR(0)) GOTO 410
+        ENDIF
         K(IEP(1),5)=21
       ELSEIF(MSTJ(49).EQ.0.AND.MSTJ(45)*0.5D0.LT.PYR(0)*FBR) THEN
         Z=(1D0-ZC)*(ZC/(1D0-ZC))**PYR(0)
@@ -71563,8 +71602,10 @@ C...Reconstruct string drawing information.
         ELSEIF(K(MOD(K(I,4),MSTU(5))+1,2).NE.22) THEN
           ID1=MOD(K(I,4),MSTU(5))
           IF(KQ.EQ.1.AND.K(I,2).GT.0) ID1=MOD(K(I,4),MSTU(5))+1
-          IF(KQ.EQ.2.AND.(K(ID1,2).EQ.21.OR.K(ID1+1,2).EQ.21).AND.
-     &    PYR(0).GT.0.5D0) ID1=MOD(K(I,4),MSTU(5))+1
+C...JRR: due to ifort/gfortran differences: PYR in new if-clause.
+          IF(KQ.EQ.2.AND.(K(ID1,2).EQ.21.OR.K(ID1+1,2).EQ.21)) THEN
+             IF(PYR(0).GT.0.5D0) ID1=MOD(K(I,4),MSTU(5))+1
+          ENDIF
           ID2=2*MOD(K(I,4),MSTU(5))+1-ID1
           K(I,4)=MSTU(5)*(K(I,4)/MSTU(5))+ID1
           K(I,5)=MSTU(5)*(K(I,5)/MSTU(5))+ID2

@@ -1,4 +1,4 @@
-! WHIZARD 2.2.6 May 02 2015
+! WHIZARD 2.2.7 Aug 11 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -35,10 +35,7 @@ module prc_core
   use iso_varying_string, string_t => varying_string
   use io_units
   use diagnostics
-  use os_interface
   use lorentz
-  use model_data
-  use model_testbed
   use interactions
 
   use process_constants
@@ -95,8 +92,6 @@ module prc_core
      procedure :: write => helicity_selection_write
   end type helicity_selection_t
      
-
-
 
   abstract interface
      subroutine prc_core_write (object, unit)

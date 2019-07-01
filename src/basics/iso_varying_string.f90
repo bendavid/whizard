@@ -2497,7 +2497,7 @@ contains
     type(varying_string), intent(out), optional :: separator
     logical, intent(in), optional               :: back
 
-! Split a varying string into two verying strings
+! Split a varying string into two varying strings
 
     call split_CH(string, word, char(set), separator, back)
 
@@ -2520,7 +2520,7 @@ contains
     logical                                     :: back_
     integer                                     :: i_separator
 
-! Split a varying string into two verying strings
+! Split a varying string into two varying strings
 
     if(PRESENT(back)) then
        back_ = back

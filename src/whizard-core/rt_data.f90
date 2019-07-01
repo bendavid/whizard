@@ -1,4 +1,4 @@
-! WHIZARD 2.2.6 May 02 2015
+! WHIZARD 2.2.7 Aug 11 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -36,38 +36,30 @@ module rt_data
   use iso_varying_string, string_t => varying_string
   use io_units
   use format_utils, only: write_separator
-  use unit_tests
+  use format_defs, only: FMT_19, FMT_12
   use system_dependencies
   use diagnostics
-  use pdf_builtin !NODEP!
-  use sf_lhapdf !NODEP!
   use os_interface
-  use ifiles
   use lexers
   use parser
+  use physics_defs, only: LAMBDA_QCD_REF
   use models
-  use flavors
   use jets
   use subevents
   use pdg_arrays
   use variables
-  use eval_trees
-  use polarizations
-  use beams
   use process_libraries
   use prclib_stacks
-  use prc_core
+  use prc_core, only: helicity_selection_t
   use beam_structures
   use user_files
   use process_stacks
   use iterations
-  use physics_defs
 
   implicit none
   private
 
   public :: rt_data_t
-  public :: rt_data_test
 
   type :: rt_parse_nodes_t
      type(parse_node_t), pointer :: cuts_lexpr => null ()
@@ -133,7 +125,6 @@ module rt_data
      procedure :: select_model => rt_data_select_model
      procedure :: unselect_model => rt_data_unselect_model
      procedure :: ensure_model_copy => rt_data_ensure_model_copy
-   !   procedure :: delete_model_copy => rt_data_delete_model_copy
      procedure :: model_set_real => rt_data_model_set_real
      procedure :: modify_particle => rt_data_modify_particle
      procedure :: get_var_list_ptr => rt_data_get_var_list_ptr
@@ -160,6 +151,7 @@ module rt_data
      procedure :: get_pval => rt_data_get_pval
      procedure :: get_aval => rt_data_get_aval
      procedure :: get_sval => rt_data_get_sval
+     procedure :: contains => rt_data_contains
      procedure :: add_prclib => rt_data_add_prclib
      procedure :: update_prclib => rt_data_update_prclib
      procedure :: get_helicity_selection => rt_data_get_helicity_selection
@@ -167,7 +159,7 @@ module rt_data
      procedure :: get_sqrts => rt_data_get_sqrts
      procedure :: pacify => rt_data_pacify
      procedure :: set_me_method => rt_data_set_me_method
-     procedure :: fix_system_dependencies => rt_data_fix_system_dependencies
+     procedure :: get_me_method => rt_data_get_me_method
   end type rt_data_t
 
 
@@ -594,6 +586,12 @@ contains
     call var_list_append_string &    
          (global%var_list, var_str ("$circe2_design"), var_str ("*"), &
           intrinsic=.true.)               
+    call var_list_append_real &    
+         (global%var_list, var_str ("gaussian_spread1"), 0._default, &
+          intrinsic=.true.)      
+    call var_list_append_real &    
+         (global%var_list, var_str ("gaussian_spread2"), 0._default, &
+          intrinsic=.true.)      
     call var_list_append_string &    
          (global%var_list, var_str ("$beam_events_file"), &
           intrinsic=.true.)      
@@ -832,111 +830,7 @@ contains
     call var_list_append_int &
          (global%var_list, var_str ("decay_helicity"), &
           intrinsic=.true.)
-    call var_list_append_string &
-         (global%var_list, var_str ("$sample"), var_str (""), &
-          intrinsic=.true.)
-    call var_list_append_string &
-         (global%var_list, var_str ("$sample_normalization"), var_str ("auto"),&
-          intrinsic=.true.)       
-    call var_list_append_log &
-         (global%var_list, var_str ("?sample_pacify"), .false., &
-          intrinsic=.true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?sample_select"), .true., &
-          intrinsic=.true.)
-    call var_list_append_int &
-         (global%var_list, var_str ("sample_max_tries"), 10000, &
-         intrinsic = .true.)
-    call var_list_append_int &
-         (global%var_list, var_str ("sample_split_n_evt"), 0, &
-         intrinsic = .true.)
-    call var_list_append_int &
-         (global%var_list, var_str ("sample_split_n_kbytes"), 0, &
-         intrinsic = .true.)
-    call var_list_append_int &
-         (global%var_list, var_str ("sample_split_index"), 0, &
-         intrinsic = .true.)
-    call var_list_append_string &
-         (global%var_list, var_str ("$rescan_input_format"), var_str ("raw"), &
-          intrinsic=.true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?read_raw"), .true., &
-          intrinsic=.true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?write_raw"), .true., &
-          intrinsic=.true.)
-    call var_list_append_string &
-         (global%var_list, var_str ("$extension_raw"), var_str ("evx"), &
-         intrinsic=.true.)
-    call var_list_append_string &
-         (global%var_list, var_str ("$extension_default"), var_str ("evt"), &
-         intrinsic=.true.)
-    call var_list_append_string &
-         (global%var_list, var_str ("$debug_extension"), var_str ("debug"), &
-          intrinsic=.true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?debug_process"), .true., &
-          intrinsic=.true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?debug_transforms"), .true., &
-          intrinsic=.true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?debug_decay"), .true., &
-          intrinsic=.true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?debug_verbose"), .true., &
-          intrinsic=.true.)
-    call var_list_append_string &
-         (global%var_list, var_str ("$extension_hepevt"), var_str ("hepevt"), &
-          intrinsic=.true.)
-    call var_list_append_string &
-         (global%var_list, var_str ("$extension_ascii_short"), &
-          var_str ("short.evt"), intrinsic=.true.)
-    call var_list_append_string &
-         (global%var_list, var_str ("$extension_ascii_long"), &
-          var_str ("long.evt"), intrinsic=.true.)        
-    call var_list_append_string &
-         (global%var_list, var_str ("$extension_athena"), &
-          var_str ("athena.evt"), intrinsic=.true.) 
-    call var_list_append_string &
-          (global%var_list, var_str ("$extension_mokka"), &
-           var_str ("mokka.evt"), intrinsic=.true.)       
-    call var_list_append_string &
-         (global%var_list, var_str ("$lhef_version"), var_str ("2.0"), &
-         intrinsic = .true.)
-    call var_list_append_string &
-         (global%var_list, var_str ("$lhef_extension"), var_str ("lhe"), &
-          intrinsic=.true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?lhef_write_sqme_prc"), .true., &
-         intrinsic = .true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?lhef_write_sqme_ref"), .false., &
-         intrinsic = .true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?lhef_write_sqme_alt"), .true., &
-         intrinsic = .true.)
-    call var_list_append_string &
-         (global%var_list, var_str ("$extension_lha"), var_str ("lha"), &
-          intrinsic=.true.)
-    call var_list_append_string &
-         (global%var_list, var_str ("$extension_hepmc"), var_str ("hepmc"), &
-          intrinsic=.true.)
-    call var_list_append_string &
-         (global%var_list, var_str ("$extension_lcio"), var_str ("slcio"), &
-          intrinsic=.true.)    
-    call var_list_append_string &
-         (global%var_list, var_str ("$extension_stdhep"), var_str ("hep"), &
-          intrinsic=.true.)
-    call var_list_append_string &
-         (global%var_list, var_str ("$extension_stdhep_up"), &
-          var_str ("up.hep"), intrinsic=.true.)
-    call var_list_append_string &
-         (global%var_list, var_str ("$extension_hepevt_verb"), &
-          var_str ("hepevt.verb"), intrinsic=.true.)
-    call var_list_append_string &
-         (global%var_list, var_str ("$extension_lha_verb"), &
-          var_str ("lha.verb"), intrinsic=.true.)
+    call set_eio_defaults ()
     call var_list_append_int (global%var_list, &
          var_str ("n_bins"), 20, &
          intrinsic=.true.)
@@ -1127,6 +1021,9 @@ contains
          intrinsic=.true.)
     call set_openmp_defaults ()
     call var_list_append_string &
+       (global%var_list, var_str ("$born_me_method"), &
+        var_str ("omega"), intrinsic = .true.)
+    call var_list_append_string &
        (global%var_list, var_str ("$loop_me_method"), &
         var_str ("gosam"), intrinsic = .true.)
     call var_list_append_string &
@@ -1135,6 +1032,9 @@ contains
     call var_list_append_string &
        (global%var_list, var_str ("$real_tree_me_method"), &
         var_str ("omega"), intrinsic = .true.)
+    call var_list_append_int &
+       (global%var_list, var_str ("openloops_verbosity"), 1, &
+        intrinsic = .true.)
     call var_list_append_real &
         (global%var_list, var_str ("fks_dij_exp1"), &
          1._default, intrinsic = .true.)
@@ -1144,6 +1044,9 @@ contains
     call var_list_append_int &
         (global%var_list, var_str ("fks_mapping_type"), &
          1, intrinsic = .true.)
+    call var_list_append_log &
+        (global%var_list, var_str ("?fks_count_kinematics"), &
+         .false., intrinsic = .true.)
     call var_list_append_int &
         (global%var_list, var_str ("alpha_power"), &
          2, intrinsic = .true.)
@@ -1153,11 +1056,136 @@ contains
     call var_list_append_log &
         (global%var_list, var_str ("?combined_nlo_integration"), &
          .false., intrinsic = .true.)
+    call var_list_append_log &
+        (global%var_list, var_str ("?nlo_fixed_order"), &
+         .false., intrinsic = .true.)
+    call var_list_append_int &
+        (global%var_list, var_str ("gks_multiplicity"), &
+         0, intrinsic = .true.)
+    call var_list_append_string &
+        (global%var_list, var_str ("$gosam_filters_lo"), &
+         var_str (""), intrinsic = .true.)
+    call var_list_append_string &
+         (global%var_list, var_str ("$gosam_filters_nlo"), &
+         var_str (""), intrinsic = .true.)
     call global%init_pointer_variables ()
     call global%process_stack%init_var_list (global%var_list)
 
   contains
 
+    subroutine set_eio_defaults ()
+      call var_list_append_string &
+           (global%var_list, var_str ("$sample"), var_str (""), &
+            intrinsic=.true.)
+      call var_list_append_string &
+           (global%var_list, var_str ("$sample_normalization"), var_str ("auto"),&
+            intrinsic=.true.)
+      call var_list_append_log &
+           (global%var_list, var_str ("?sample_pacify"), .false., &
+            intrinsic=.true.)
+      call var_list_append_log &
+           (global%var_list, var_str ("?sample_select"), .true., &
+            intrinsic=.true.)
+      call var_list_append_int &
+           (global%var_list, var_str ("sample_max_tries"), 10000, &
+           intrinsic = .true.)
+      call var_list_append_int &
+           (global%var_list, var_str ("sample_split_n_evt"), 0, &
+           intrinsic = .true.)
+      call var_list_append_int &
+           (global%var_list, var_str ("sample_split_n_kbytes"), 0, &
+           intrinsic = .true.)
+      call var_list_append_int &
+           (global%var_list, var_str ("sample_split_index"), 0, &
+           intrinsic = .true.)
+      call var_list_append_string &
+           (global%var_list, var_str ("$rescan_input_format"), var_str ("raw"), &
+            intrinsic=.true.)
+      call var_list_append_log &
+           (global%var_list, var_str ("?read_raw"), .true., &
+            intrinsic=.true.)
+      call var_list_append_log &
+           (global%var_list, var_str ("?write_raw"), .true., &
+            intrinsic=.true.)
+      call var_list_append_string &
+           (global%var_list, var_str ("$extension_raw"), var_str ("evx"), &
+           intrinsic=.true.)
+      call var_list_append_string &
+           (global%var_list, var_str ("$extension_default"), var_str ("evt"), &
+           intrinsic=.true.)
+      call var_list_append_string &
+           (global%var_list, var_str ("$debug_extension"), var_str ("debug"), &
+            intrinsic=.true.)
+      call var_list_append_log &
+           (global%var_list, var_str ("?debug_process"), .true., &
+            intrinsic=.true.)
+      call var_list_append_log &
+           (global%var_list, var_str ("?debug_transforms"), .true., &
+            intrinsic=.true.)
+      call var_list_append_log &
+           (global%var_list, var_str ("?debug_decay"), .true., &
+            intrinsic=.true.)
+      call var_list_append_log &
+           (global%var_list, var_str ("?debug_verbose"), .true., &
+            intrinsic=.true.)
+      call var_list_append_log &
+           (global%var_list, var_str ("?hepevt_ensure_order"), .false., &
+            intrinsic=.true.)
+      call var_list_append_string &
+           (global%var_list, var_str ("$extension_hepevt"), var_str ("hepevt"), &
+            intrinsic=.true.)
+      call var_list_append_string &
+           (global%var_list, var_str ("$extension_ascii_short"), &
+            var_str ("short.evt"), intrinsic=.true.)
+      call var_list_append_string &
+           (global%var_list, var_str ("$extension_ascii_long"), &
+            var_str ("long.evt"), intrinsic=.true.)
+      call var_list_append_string &
+           (global%var_list, var_str ("$extension_athena"), &
+            var_str ("athena.evt"), intrinsic=.true.)
+      call var_list_append_string &
+            (global%var_list, var_str ("$extension_mokka"), &
+             var_str ("mokka.evt"), intrinsic=.true.)
+      call var_list_append_string &
+           (global%var_list, var_str ("$lhef_version"), var_str ("2.0"), &
+           intrinsic = .true.)
+      call var_list_append_string &
+           (global%var_list, var_str ("$lhef_extension"), var_str ("lhe"), &
+            intrinsic=.true.)
+      call var_list_append_log &
+           (global%var_list, var_str ("?lhef_write_sqme_prc"), .true., &
+           intrinsic = .true.)
+      call var_list_append_log &
+           (global%var_list, var_str ("?lhef_write_sqme_ref"), .false., &
+           intrinsic = .true.)
+      call var_list_append_log &
+           (global%var_list, var_str ("?lhef_write_sqme_alt"), .true., &
+           intrinsic = .true.)
+      call var_list_append_string &
+           (global%var_list, var_str ("$extension_lha"), var_str ("lha"), &
+            intrinsic=.true.)
+      call var_list_append_string &
+           (global%var_list, var_str ("$extension_hepmc"), var_str ("hepmc"), &
+            intrinsic=.true.)
+      call var_list_append_log &
+           (global%var_list, var_str ("?hepmc_output_cross_section"), .false., &
+           intrinsic = .true.)
+      call var_list_append_string &
+           (global%var_list, var_str ("$extension_lcio"), var_str ("slcio"), &
+            intrinsic=.true.)
+      call var_list_append_string &
+           (global%var_list, var_str ("$extension_stdhep"), var_str ("hep"), &
+            intrinsic=.true.)
+      call var_list_append_string &
+           (global%var_list, var_str ("$extension_stdhep_up"), &
+            var_str ("up.hep"), intrinsic=.true.)
+      call var_list_append_string &
+           (global%var_list, var_str ("$extension_hepevt_verb"), &
+            var_str ("hepevt.verb"), intrinsic=.true.)
+      call var_list_append_string &
+           (global%var_list, var_str ("$extension_lha_verb"), &
+            var_str ("lha.verb"), intrinsic=.true.)
+    end subroutine set_eio_defaults
     subroutine set_shower_defaults ()
       call var_list_append_log &
            (global%var_list, var_str ("?allow_shower"), .true., &
@@ -1244,8 +1272,8 @@ contains
            ("mlm_Rclusfactor"), 1._default, intrinsic = .true.)
       call var_list_append_real (global%var_list, var_str &
            ("mlm_Eclusfactor"), 1._default, intrinsic = .true.)
-      
-    end subroutine set_mlm_matching_defaults 
+
+    end subroutine set_mlm_matching_defaults
     subroutine set_powheg_matching_defaults ()
       call var_list_append_log &
           (global%var_list, var_str ("?powheg_matching"), &
@@ -1271,12 +1299,18 @@ contains
       call var_list_append_log &
            (global%var_list, var_str ("?powheg_rebuild_grids"), &
             .false., intrinsic = .true.)
-    end subroutine set_powheg_matching_defaults 
-      
+      call var_list_append_log &
+           (global%var_list, var_str ("?use_powheg_damping"), &
+            .false., intrinsic = .true.)
+      call var_list_append_log &
+           (global%var_list, var_str ("?powheg_test_sudakov"), &
+            .false., intrinsic = .true.)
+    end subroutine set_powheg_matching_defaults
+
     subroutine set_hadronization_defaults ()
       call var_list_append_log &
            (global%var_list, var_str ("?allow_hadronization"), .true., &
-              intrinsic=.true.)    
+              intrinsic=.true.)
       call var_list_append_log &
            (global%var_list, var_str ("?hadronization_active"), .false., &
               intrinsic=.true.)
@@ -1299,13 +1333,13 @@ contains
            openmp_get_default_max_threads (), &
            locked=.true., intrinsic=.true.)
       call var_list_append_int &
-           (global%var_list, var_str ("openmp_num_threads"), &        
+           (global%var_list, var_str ("openmp_num_threads"), &
            openmp_get_max_threads (), &
            intrinsic=.true.)
       call var_list_append_log &
            (global%var_list, var_str ("?openmp_logging"), &
-           .true., intrinsic=.true.)    
-    end subroutine set_openmp_defaults 
+           .true., intrinsic=.true.)
+    end subroutine set_openmp_defaults
 
 
   end subroutine rt_data_global_init
@@ -1376,10 +1410,10 @@ contains
     end if
     if (associated (local%model)) then
        call local%model%link_var_list (local%var_list)
-       call var_list_set_string (local%var_list, var_str ("$model_name"), &
+       call local%var_list%set_string (var_str ("$model_name"), &
             local%model%get_name (), is_known = .true.)
     else
-       call var_list_set_string (local%var_list, var_str ("$model_name"), &
+       call local%var_list%set_string (var_str ("$model_name"), &
             var_str (""), is_known = .false.)
     end if
   end subroutine rt_data_activate
@@ -1434,7 +1468,6 @@ contains
     class(rt_data_t), intent(inout) :: global
     call global%process_stack%final ()
     call global%prclib_stack%final ()
-!    call global%delete_model_copy ()
     call global%model_list%final ()
     call global%var_list%final (follow_link=.false.)
     if (associated (global%out_files)) then
@@ -1446,7 +1479,6 @@ contains
   subroutine rt_data_local_final (local)
     class(rt_data_t), intent(inout) :: local
     call local%process_stack%clear ()
-!    call local%delete_model_copy ()
     call local%model_list%final ()
     call local%var_list%final (follow_link=.false.)
   end subroutine rt_data_local_final
@@ -1485,7 +1517,6 @@ contains
        same_model = .false.
     end if
     if (.not. same_model) then
-!       call global%delete_model_copy () 
        global%model => global%model_list%get_model_ptr (name)
        if (.not. associated (global%model)) then
           call global%read_model (name, global%model)
@@ -1499,11 +1530,11 @@ contains
     end if
     if (associated (global%model)) then
        call global%model%link_var_list (global%var_list)
-       call var_list_set_string (global%var_list, var_str ("$model_name"), &
+       call global%var_list%set_string (var_str ("$model_name"), &
             name, is_known = .true.)
        call msg_message ("Switching to model '" // char (name) // "'")
     else
-       call var_list_set_string (global%var_list, var_str ("$model_name"), &
+       call global%var_list%set_string (var_str ("$model_name"), &
             var_str (""), is_known = .false.)
     end if
   end subroutine rt_data_select_model
@@ -1511,10 +1542,9 @@ contains
   subroutine rt_data_unselect_model (global)
     class(rt_data_t), intent(inout), target :: global
     if (associated (global%model)) then
-!       call global%delete_model_copy ()
        global%model => null ()
        global%model_is_copy = .false.
-       call var_list_set_string (global%var_list, var_str ("$model_name"), &
+       call global%var_list%set_string (var_str ("$model_name"), &
             var_str (""), is_known = .false.)
     end if
   end subroutine rt_data_unselect_model
@@ -1529,16 +1559,6 @@ contains
        end if
     end if
   end subroutine rt_data_ensure_model_copy
-
-!   subroutine rt_data_delete_model_copy (global)
-!     class(rt_data_t), intent(inout), target :: global
-!     if (global%model_is_copy) then
-!        call model_pointer_delete_instance (global%model)
-!        global%model_is_copy = .false.
-!     else
-!        global%model => null ()
-!     end if
-!   end subroutine rt_data_delete_model_copy
 
   subroutine rt_data_model_set_real (global, name, rval, verbose, pacified)
     class(rt_data_t), intent(inout), target :: global
@@ -1671,7 +1691,7 @@ contains
     logical, intent(in) :: lval
     logical, intent(in) :: is_known
     logical, intent(in), optional :: verbose
-    call var_list_set_log (global%var_list, name, lval, is_known, &
+    call global%var_list%set_log (name, lval, is_known, &
          verbose=verbose)
   end subroutine rt_data_set_log
 
@@ -1681,7 +1701,7 @@ contains
     integer, intent(in) :: ival
     logical, intent(in) :: is_known
     logical, intent(in), optional :: verbose
-    call var_list_set_int (global%var_list, name, ival, is_known, &
+    call global%var_list%set_int (name, ival, is_known, &
          verbose=verbose)
   end subroutine rt_data_set_int
 
@@ -1691,7 +1711,7 @@ contains
     real(default), intent(in) :: rval
     logical, intent(in) :: is_known
     logical, intent(in), optional :: verbose, pacified
-    call var_list_set_real (global%var_list, name, rval, is_known, &
+    call global%var_list%set_real (name, rval, is_known, &
          verbose=verbose, pacified=pacified)
   end subroutine rt_data_set_real
 
@@ -1701,7 +1721,7 @@ contains
     complex(default), intent(in) :: cval
     logical, intent(in) :: is_known
     logical, intent(in), optional :: verbose, pacified
-    call var_list_set_cmplx (global%var_list, name, cval, is_known, &
+    call global%var_list%set_cmplx (name, cval, is_known, &
          verbose=verbose, pacified=pacified)
   end subroutine rt_data_set_cmplx
 
@@ -1711,7 +1731,7 @@ contains
     type(subevt_t), intent(in) :: pval
     logical, intent(in) :: is_known
     logical, intent(in), optional :: verbose
-    call var_list_set_subevt (global%var_list, name, pval, is_known, &
+    call global%var_list%set_subevt (name, pval, is_known, &
          verbose=verbose)
   end subroutine rt_data_set_subevt
 
@@ -1721,7 +1741,7 @@ contains
     type(pdg_array_t), intent(in) :: aval
     logical, intent(in) :: is_known
     logical, intent(in), optional :: verbose
-    call var_list_set_pdg_array (global%var_list, name, aval, is_known, &
+    call global%var_list%set_pdg_array (name, aval, is_known, &
          verbose=verbose)
   end subroutine rt_data_set_pdg_array
 
@@ -1731,7 +1751,7 @@ contains
     type(string_t), intent(in) :: sval
     logical, intent(in) :: is_known
     logical, intent(in), optional :: verbose
-    call var_list_set_string (global%var_list, name, sval, is_known, &
+    call global%var_list%set_string (name, sval, is_known, &
          verbose=verbose)
   end subroutine rt_data_set_string
 
@@ -1798,6 +1818,15 @@ contains
     sval = var_list%get_sval (name)
   end function rt_data_get_sval
   
+  function rt_data_contains (global, name) result (lval)
+    logical :: lval
+    class(rt_data_t), intent(in) :: global
+    type(string_t), intent(in) :: name
+    type(var_list_t), pointer :: var_list
+    var_list => global%get_var_list_ptr ()
+    lval = var_list%contains (name)
+  end function rt_data_contains
+
   subroutine rt_data_add_prclib (global, prclib_entry)
     class(rt_data_t), intent(inout) :: global
     type(prclib_entry_t), intent(inout), pointer :: prclib_entry
@@ -1811,8 +1840,7 @@ contains
     global%prclib => lib
     if (global%var_list%contains (&
          var_str ("$library_name"), follow_link = .false.)) then
-       call var_list_set_string (global%var_list, &
-            var_str ("$library_name"), &
+       call global%var_list%set_string (var_str ("$library_name"), &
             global%prclib%get_name (), is_known=.true.)
     else
        call var_list_append_string (global%var_list, &
@@ -1845,7 +1873,7 @@ contains
     associate (beams => rt_data%beam_structure, var_list => rt_data%var_list)
       call beams%write (u)
       if (.not. beams%asymmetric () .and. beams%get_n_beam () == 2) then
-         write (u, "(2x,A,ES19.12,1x,'GeV')") "sqrts =", &
+         write (u, "(2x,A," // FMT_19 // ",1x,'GeV')") "sqrts =", &
               var_list%get_rval (var_str ("sqrts"))         
       end if
       if (beams%contains ("pdf_builtin")) then
@@ -1888,11 +1916,11 @@ contains
          end if
       end if
       if (beams%contains ("isr")) then
-         write (u, "(2x,A,ES19.12)") "ISR alpha =", &
+         write (u, "(2x,A," // FMT_19 // ")") "ISR alpha =", &
               var_list%get_rval (var_str ("isr_alpha"))
-         write (u, "(2x,A,ES19.12)") "ISR Q max =", &
+         write (u, "(2x,A," // FMT_19 // ")") "ISR Q max =", &
               var_list%get_rval (var_str ("isr_q_max"))
-         write (u, "(2x,A,ES19.12)") "ISR mass  =", &
+         write (u, "(2x,A," // FMT_19 // ")") "ISR mass  =", &
               var_list%get_rval (var_str ("isr_mass"))
          write (u, "(2x,A,1x,I0)") "ISR order  =", &
               var_list%get_ival (var_str ("isr_order"))
@@ -1900,25 +1928,25 @@ contains
               var_list%get_lval (var_str ("?isr_recoil"))
       end if
       if (beams%contains ("epa")) then
-         write (u, "(2x,A,ES19.12)") "EPA alpha  =", &
+         write (u, "(2x,A," // FMT_19 // ")") "EPA alpha  =", &
               var_list%get_rval (var_str ("epa_alpha"))
-         write (u, "(2x,A,ES19.12)") "EPA x min  =", &
+         write (u, "(2x,A," // FMT_19 // ")") "EPA x min  =", &
               var_list%get_rval (var_str ("epa_x_min"))
-         write (u, "(2x,A,ES19.12)") "EPA Q min  =", &
+         write (u, "(2x,A," // FMT_19 // ")") "EPA Q min  =", &
               var_list%get_rval (var_str ("epa_q_min"))
-         write (u, "(2x,A,ES19.12)") "EPA E max  =", &
+         write (u, "(2x,A," // FMT_19 // ")") "EPA E max  =", &
               var_list%get_rval (var_str ("epa_e_max"))
-         write (u, "(2x,A,ES19.12)") "EPA mass   =", &
+         write (u, "(2x,A," // FMT_19 // ")") "EPA mass   =", &
               var_list%get_rval (var_str ("epa_mass"))
          write (u, "(2x,A,1x,L1)") "EPA recoil =", &
               var_list%get_lval (var_str ("?epa_recoil"))
       end if
       if (beams%contains ("ewa")) then
-         write (u, "(2x,A,ES19.12)") "EWA x min       =", &
+         write (u, "(2x,A," // FMT_19 // ")") "EWA x min       =", &
               var_list%get_rval (var_str ("ewa_x_min"))
-         write (u, "(2x,A,ES19.12)") "EWA Pt max      =", &
+         write (u, "(2x,A," // FMT_19 // ")") "EWA Pt max      =", &
               var_list%get_rval (var_str ("ewa_pt_max"))
-         write (u, "(2x,A,ES19.12)") "EWA mass        =", &
+         write (u, "(2x,A," // FMT_19 // ")") "EWA mass        =", &
               var_list%get_rval (var_str ("ewa_mass"))
          write (u, "(2x,A,1x,L1)") "EWA mom cons.   =", &
               var_list%get_lval (&
@@ -1936,9 +1964,9 @@ contains
          write (u, "(2x,A,1x,A)") "CIRCE1 acceler.   =", char (s)
          write (u, "(2x,A,1x,I0)") "CIRCE1 chattin.   =", &
               var_list%get_ival (var_str ("circe1_chat"))
-         write (u, "(2x,A,ES19.12)") "CIRCE1 sqrts      =", &
+         write (u, "(2x,A," // FMT_19 // ")") "CIRCE1 sqrts      =", &
               var_list%get_rval (var_str ("circe1_sqrts"))
-         write (u, "(2x,A,ES19.12)") "CIRCE1 epsil.     =", &
+         write (u, "(2x,A," // FMT_19 // ")") "CIRCE1 epsil.     =", &
               var_list%get_rval (var_str ("circe1_eps"))
          write (u, "(2x,A,1x,L1)") "CIRCE1 phot. 1  =", &
               var_list%get_lval (var_str ("?circe1_photon1"))
@@ -1948,7 +1976,7 @@ contains
               var_list%get_lval (var_str ("?circe1_generate"))
          write (u, "(2x,A,1x,L1)") "CIRCE1 mapping  =", &
               var_list%get_lval (var_str ("?circe1_map"))
-         write (u, "(2x,A,ES19.12)") "CIRCE1 map. slope =", &
+         write (u, "(2x,A," // FMT_19 // ")") "CIRCE1 map. slope =", &
               var_list%get_rval (var_str ("circe1_mapping_slope"))
          write (u, "(2x,A,1x,L1)") "CIRCE recoil photon =", &
               var_list%get_lval (var_str ("?circe1_with_radiation"))
@@ -1960,6 +1988,12 @@ contains
          write (u, "(2x,A,1x,A)") "CIRCE2 file     =", char (s)
          write (u, "(2x,A,1x,L1)") "CIRCE2 polarized =", &
               var_list%get_lval (var_str ("?circe2_polarized"))
+      end if
+      if (beams%contains ("gaussian")) then
+         write (u, "(2x,A,1x," // FMT_12 // ")") "Gaussian spread 1    =", &
+              var_list%get_rval (var_str ("gaussian_spread1"))
+         write (u, "(2x,A,1x," // FMT_12 // ")") "Gaussian spread 2    =", &
+              var_list%get_rval (var_str ("gaussian_spread2"))
       end if
       if (beams%contains ("beam_events")) then
          s = var_list%get_sval (var_str ("$beam_events_file"))
@@ -1996,694 +2030,11 @@ contains
       call global%var_list%set_sval (var_str ("$method"), me_method)
  end subroutine rt_data_set_me_method
  
+  function rt_data_get_me_method (global) result (me_method)
+    type(string_t) :: me_method
+    class(rt_data_t), intent(in) :: global
+    me_method = global%var_list%get_sval (var_str ("$method"))
+  end function rt_data_get_me_method
 
-  subroutine rt_data_test (u, results)
-    integer, intent(in) :: u
-    type(test_results_t), intent(inout) :: results
-    call test (rt_data_1, "rt_data_1", &
-         "initialize", &
-         u, results)
-    call test (rt_data_2, "rt_data_2", &
-         "fill", &
-         u, results)
-    call test (rt_data_3, "rt_data_3", &
-         "save/restore", &
-         u, results)
-    call test (rt_data_4, "rt_data_4", &
-         "show variables", &
-         u, results)
-    call test (rt_data_5, "rt_data_5", &
-         "show parts", &
-         u, results)
-    call test (rt_data_6, "rt_data_6", &
-         "local model", &
-         u, results)
-    call test (rt_data_7, "rt_data_7", &
-         "result variables", &
-         u, results)
-    call test (rt_data_8, "rt_data_8", &
-         "beam energy", &
-         u, results)
-    call test (rt_data_9, "rt_data_9", &
-         "local variables", &
-         u, results)
-  end subroutine rt_data_test
-
-  subroutine rt_data_fix_system_dependencies (rt_data)
-    class(rt_data_t), intent(inout), target :: rt_data
-    type(var_list_t), pointer :: var_list
-    var_list => rt_data%var_list
-    call var_list_set_log (var_list, var_str ("?omega_openmp"), &
-         .false., is_known = .true., force=.true.) 
-    call var_list_set_log (var_list, var_str ("?openmp_is_active"), &
-         .false., is_known = .true., force=.true.)
-    call var_list_set_int (var_list, var_str ("openmp_num_threads_default"), &
-         1, is_known = .true., force=.true.)
-    call var_list_set_int (var_list, var_str ("openmp_num_threads"), &
-         1, is_known = .true., force=.true.)        
-    call var_list_set_int (var_list, var_str ("real_range"), &
-         307, is_known = .true., force=.true.)
-    call var_list_set_int (var_list, var_str ("real_precision"), &
-         15, is_known = .true., force=.true.)    
-    call var_list_set_real (var_list, var_str ("real_epsilon"), &
-         1.e-16_default, is_known = .true., force=.true.)
-    call var_list_set_real (var_list, var_str ("real_tiny"), &
-         1.e-300_default, is_known = .true., force=.true.)     
-    
-    rt_data%os_data%fc = "Fortran-compiler"
-    rt_data%os_data%fcflags = "Fortran-flags"
-        
-  end subroutine rt_data_fix_system_dependencies
-  
-  subroutine rt_data_1 (u)
-    integer, intent(in) :: u
-    type(rt_data_t), target :: rt_data
-    
-    write (u, "(A)")  "* Test output: rt_data_1"
-    write (u, "(A)")  "*   Purpose: initialize global runtime data"
-    write (u, "(A)")
-
-    call rt_data%global_init (logfile = var_str ("rt_data.log"))
-
-    call rt_data%fix_system_dependencies ()
-    call rt_data%set_int (var_str ("seed"), 0, is_known=.true.)            
-
-    call rt_data%it_list%init ([2, 3], [5000, 20000])
-
-    call rt_data%write (u)
-
-    call rt_data%final ()
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: rt_data_1"
-    
-  end subroutine rt_data_1
-  
-  subroutine rt_data_2 (u)
-    integer, intent(in) :: u
-    type(rt_data_t), target :: rt_data
-    type(flavor_t), dimension(2) :: flv
-    type(string_t) :: cut_expr_text
-    type(ifile_t) :: ifile
-    type(stream_t) :: stream
-    type(parse_tree_t) :: parse_tree
-    
-    write (u, "(A)")  "* Test output: rt_data_2"
-    write (u, "(A)")  "*   Purpose: initialize global runtime data &
-         &and fill contents"
-    write (u, "(A)")
-
-    call syntax_model_file_init ()
-
-    call rt_data%global_init ()
-    call rt_data%fix_system_dependencies ()
-
-    call rt_data%select_model (var_str ("Test"))
-
-    call rt_data%set_real (var_str ("sqrts"), &
-         1000._default, is_known = .true.)
-    call rt_data%set_int (var_str ("seed"), &
-         0, is_known=.true.)        
-    call flv%init ([25,25], rt_data%model)
-    
-    call rt_data%set_string (var_str ("$run_id"), &
-         var_str ("run1"), is_known = .true.)
-    call rt_data%set_real (var_str ("luminosity"), &
-         33._default, is_known = .true.)
-    
-    call syntax_pexpr_init ()
-    cut_expr_text = "all Pt > 100 [s]"
-    call ifile_append (ifile, cut_expr_text)
-    call stream_init (stream, ifile)
-    call parse_tree_init_lexpr (parse_tree, stream, .true.)
-    rt_data%pn%cuts_lexpr => parse_tree_get_root_ptr (parse_tree)
-    
-    allocate (rt_data%sample_fmt (2))
-    rt_data%sample_fmt(1) = "foo_fmt"
-    rt_data%sample_fmt(2) = "bar_fmt"
-    
-    call rt_data%write (u)
-
-    call parse_tree_final (parse_tree)
-    call stream_final (stream)
-    call ifile_final (ifile)
-    call syntax_pexpr_final ()
-
-    call rt_data%final ()
-    call syntax_model_file_final ()
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: rt_data_2"
-    
-  end subroutine rt_data_2
-  
-  subroutine rt_data_3 (u)
-    integer, intent(in) :: u
-    type(rt_data_t), target :: rt_data, local
-    type(flavor_t), dimension(2) :: flv
-    type(string_t) :: cut_expr_text
-    type(ifile_t) :: ifile
-    type(stream_t) :: stream
-    type(parse_tree_t) :: parse_tree
-    type(prclib_entry_t), pointer :: lib
-    
-    write (u, "(A)")  "* Test output: rt_data_3"
-    write (u, "(A)")  "*   Purpose: initialize global runtime data &
-         &and fill contents;"
-    write (u, "(A)")  "*            copy to local block and back"
-    write (u, "(A)")
-
-    write (u, "(A)")  "* Init global data"
-    write (u, "(A)")
-
-    call syntax_model_file_init ()
-
-    call rt_data%global_init ()
-    call rt_data%fix_system_dependencies ()
-    call rt_data%set_int (var_str ("seed"), &
-         0, is_known=.true.)        
-
-    call rt_data%select_model (var_str ("Test"))
-
-    call rt_data%set_real (var_str ("sqrts"),&
-         1000._default, is_known = .true.)
-    call flv%init ([25,25], rt_data%model)
-    
-    call rt_data%beam_structure%init_sf (flv%get_name (), [1])
-    call rt_data%beam_structure%set_sf (1, 1, var_str ("pdf_builtin"))
-
-    call rt_data%set_string (var_str ("$run_id"), &
-         var_str ("run1"), is_known = .true.)
-    call rt_data%set_real (var_str ("luminosity"), &
-         33._default, is_known = .true.)
-    
-    call syntax_pexpr_init ()
-    cut_expr_text = "all Pt > 100 [s]"
-    call ifile_append (ifile, cut_expr_text)
-    call stream_init (stream, ifile)
-    call parse_tree_init_lexpr (parse_tree, stream, .true.)
-    rt_data%pn%cuts_lexpr => parse_tree_get_root_ptr (parse_tree)
-    
-    allocate (rt_data%sample_fmt (2))
-    rt_data%sample_fmt(1) = "foo_fmt"
-    rt_data%sample_fmt(2) = "bar_fmt"
-
-    allocate (lib)
-    call lib%init (var_str ("library_1"))
-    call rt_data%add_prclib (lib)
-
-    write (u, "(A)")  "* Init and modify local data"
-    write (u, "(A)")
-
-    call local%local_init (rt_data)
-    call local%append_string (var_str ("$integration_method"), intrinsic=.true.)
-    call local%append_string (var_str ("$phs_method"), intrinsic=.true.)
-
-    call local%activate ()
-
-    write (u, "(1x,A,L1)")  "model associated   = ", associated (local%model)
-    write (u, "(1x,A,L1)")  "library associated = ", associated (local%prclib)
-    write (u, *)
-
-    call local%model_set_real (var_str ("ms"), 150._default)
-    call local%set_string (var_str ("$integration_method"), &
-         var_str ("midpoint"), is_known = .true.)
-    call local%set_string (var_str ("$phs_method"), &
-         var_str ("single"), is_known = .true.)
-
-    local%os_data%fc = "Local compiler"
-    
-    allocate (lib)
-    call lib%init (var_str ("library_2"))
-    call local%add_prclib (lib)
-
-    call local%write (u)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Restore global data"
-    write (u, "(A)")
-    
-    call local%deactivate (rt_data)
-
-    write (u, "(1x,A,L1)")  "model associated   = ", associated (rt_data%model)
-    write (u, "(1x,A,L1)")  "library associated = ", associated (rt_data%prclib)
-    write (u, *)
-
-    call rt_data%write (u)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Cleanup"
-    
-    call parse_tree_final (parse_tree)
-    call stream_final (stream)
-    call ifile_final (ifile)
-    call syntax_pexpr_final ()
-
-    call rt_data%final ()
-    call syntax_model_file_final ()
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: rt_data_3"
-    
-  end subroutine rt_data_3
-  
-  subroutine rt_data_4 (u)
-    integer, intent(in) :: u
-    type(rt_data_t), target :: rt_data
-    
-    type(string_t), dimension(0) :: empty_string_array
-
-    write (u, "(A)")  "* Test output: rt_data_4"
-    write (u, "(A)")  "*   Purpose: display selected variables"
-    write (u, "(A)")
-
-    call rt_data%global_init ()
-
-    write (u, "(A)")  "* No variables:"
-    write (u, "(A)")
-
-    call rt_data%write_vars (u, empty_string_array)
-
-    write (u, "(A)")  "* Two variables:"
-    write (u, "(A)")
-
-    call rt_data%write_vars (u, &
-         [var_str ("?unweighted"), var_str ("$phs_method")])
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Display whole record with selected variables"
-    write (u, "(A)")
-
-    call rt_data%write (u, &
-         vars = [var_str ("?unweighted"), var_str ("$phs_method")])
-
-    call rt_data%final ()
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: rt_data_4"
-    
-  end subroutine rt_data_4
-  
-  subroutine rt_data_5 (u)
-    integer, intent(in) :: u
-    type(rt_data_t), target :: rt_data
-    
-    write (u, "(A)")  "* Test output: rt_data_5"
-    write (u, "(A)")  "*   Purpose: display parts of rt data"
-    write (u, "(A)")
-
-    call rt_data%global_init ()
-    call rt_data%write_libraries (u)
-
-    write (u, "(A)")
-
-    call rt_data%write_beams (u)
-
-    write (u, "(A)")
-
-    call rt_data%write_process_stack (u)
-
-    call rt_data%final ()
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: rt_data_5"
-    
-  end subroutine rt_data_5
-  
-  function is_stable (pdg, rt_data) result (flag)
-    integer, intent(in) :: pdg
-    type(rt_data_t), intent(in) :: rt_data
-    logical :: flag
-    type(flavor_t) :: flv
-    call flv%init (pdg, rt_data%model)
-    flag = flv%is_stable ()
-  end function is_stable
-   
-  function is_polarized (pdg, rt_data) result (flag)
-    integer, intent(in) :: pdg
-    type(rt_data_t), intent(in) :: rt_data
-    logical :: flag
-    type(flavor_t) :: flv
-    call flv%init (pdg, rt_data%model)
-    flag = flv%is_polarized ()
-  end function is_polarized
-    
-  subroutine rt_data_6 (u)
-    integer, intent(in) :: u
-    type(rt_data_t), target :: rt_data, local
-    type(var_list_t), pointer :: model_vars
-    type(string_t) :: var_name
-
-    write (u, "(A)")  "* Test output: rt_data_6"
-    write (u, "(A)")  "*   Purpose: apply and keep local modifications to model"
-    write (u, "(A)")
-
-    call syntax_model_file_init ()
-
-    call rt_data%global_init ()
-    call rt_data%select_model (var_str ("Test"))
-    
-    write (u, "(A)")  "* Original model"
-    write (u, "(A)")
-
-    call rt_data%write_model_list (u)
-    write (u, *)
-    write (u, "(A,L1)")  "s is stable    = ", is_stable (25, rt_data)
-    write (u, "(A,L1)")  "f is polarized = ", is_polarized (6, rt_data)
-
-    write (u, *)
-
-    var_name = "ff"
-
-    write (u, "(A)", advance="no")  "Global model variable: "
-    model_vars => rt_data%model%get_var_list_ptr ()
-    call var_list_write_var (model_vars, var_name, u)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Apply local modifications: unstable"
-    write (u, "(A)")
-
-    call local%local_init (rt_data)
-    call local%activate ()
-
-    call local%model_set_real (var_name, 0.4_default)
-    call local%modify_particle (25, stable = .false., decay = [var_str ("d1")])
-    call local%modify_particle (6, stable = .false., &
-         decay = [var_str ("f1")], isotropic_decay = .true.)
-    call local%modify_particle (-6, stable = .false., &
-         decay = [var_str ("f2"), var_str ("f3")], diagonal_decay = .true.)
-
-    call local%model%write (u)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Further modifications"
-    write (u, "(A)")
-
-    call local%modify_particle (6, stable = .false., &
-         decay = [var_str ("f1")], &
-         diagonal_decay = .true., isotropic_decay = .false.)
-    call local%modify_particle (-6, stable = .false., &
-         decay = [var_str ("f2"), var_str ("f3")], &
-         diagonal_decay = .false., isotropic_decay = .true.)
-    call local%model%write (u)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Further modifications: f stable but polarized"
-    write (u, "(A)")
-
-    call local%modify_particle (6, stable = .true., polarized = .true.)
-    call local%modify_particle (-6, stable = .true.)
-    call local%model%write (u)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Global model"
-    write (u, "(A)")
-
-    call rt_data%model%write (u)
-    write (u, *)
-    write (u, "(A,L1)")  "s is stable    = ", is_stable (25, rt_data)
-    write (u, "(A,L1)")  "f is polarized = ", is_polarized (6, rt_data)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Local model"
-    write (u, "(A)")
-
-    call local%model%write (u)
-    write (u, *)
-    write (u, "(A,L1)")  "s is stable    = ", is_stable (25, local)
-    write (u, "(A,L1)")  "f is polarized = ", is_polarized (6, local)
-
-    write (u, *)
-
-    write (u, "(A)", advance="no")  "Global model variable: "
-    model_vars => rt_data%model%get_var_list_ptr ()
-    call var_list_write_var (model_vars, var_name, u)
-
-    write (u, "(A)", advance="no")  "Local model variable: "
-    call var_list_write_var (local%model%get_var_list_ptr (), &
-         var_name, u)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Restore global"
-
-    call local%deactivate (rt_data, keep_local = .true.)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Global model"
-    write (u, "(A)")
-
-    call rt_data%model%write (u)
-    write (u, *)
-    write (u, "(A,L1)")  "s is stable    = ", is_stable (25, rt_data)
-    write (u, "(A,L1)")  "f is polarized = ", is_polarized (6, rt_data)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Local model"
-    write (u, "(A)")
-
-    call local%model%write (u)
-    write (u, *)
-    write (u, "(A,L1)")  "s is stable    = ", is_stable (25, local)
-    write (u, "(A,L1)")  "f is polarized = ", is_polarized (6, local)
-
-    write (u, *)
-
-    write (u, "(A)", advance="no")  "Global model variable: "
-    model_vars => rt_data%model%get_var_list_ptr ()
-    call var_list_write_var (model_vars, var_name, u)
-
-    write (u, "(A)", advance="no")  "Local model variable: "
-    call var_list_write_var (local%model%get_var_list_ptr (), &
-         var_name, u)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Cleanup"
-
-    call local%model%final ()
-    deallocate (local%model)
-    
-    call rt_data%final ()
-    call syntax_model_file_final ()
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: rt_data_6"
-    
-  end subroutine rt_data_6
-  
-  subroutine rt_data_7 (u)
-    integer, intent(in) :: u
-    type(rt_data_t), target :: rt_data
-
-    write (u, "(A)")  "* Test output: rt_data_7"
-    write (u, "(A)")  "*   Purpose: set and access result variables"
-    write (u, "(A)")
-
-    write (u, "(A)")  "* Initialize process variables"
-    write (u, "(A)")
-
-    call rt_data%global_init ()
-    call rt_data%process_stack%init_result_vars (var_str ("testproc"))
-    
-    call var_list_write_var (rt_data%var_list, &
-         var_str ("integral(testproc)"), u)
-    call var_list_write_var (rt_data%var_list, &
-         var_str ("error(testproc)"), u)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Cleanup"
-    
-    call rt_data%final ()
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: rt_data_7"
-    
-  end subroutine rt_data_7
-  
-  subroutine rt_data_8 (u)
-    integer, intent(in) :: u
-    type(rt_data_t), target :: rt_data
-
-    write (u, "(A)")  "* Test output: rt_data_8"
-    write (u, "(A)")  "*   Purpose: get correct collision energy"
-    write (u, "(A)")
-
-    write (u, "(A)")  "* Initialize"
-    write (u, "(A)")
-
-    call rt_data%global_init ()
-
-    write (u, "(A)")  "* Set sqrts"
-    write (u, "(A)")
-
-    call var_list_set_real (rt_data%var_list, var_str ("sqrts"), &
-         1000._default, is_known = .true.)
-    write (u, "(1x,A,ES19.12)")  "sqrts =", rt_data%get_sqrts ()
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Cleanup"
-    
-    call rt_data%final ()
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: rt_data_8"
-    
-  end subroutine rt_data_8
-  
-  subroutine rt_data_9 (u)
-    integer, intent(in) :: u
-    type(rt_data_t), target :: global, local
-    type(var_list_t), pointer :: var_list
-
-    write (u, "(A)")  "* Test output: rt_data_9"
-    write (u, "(A)")  "*   Purpose: handle local variables"
-    write (u, "(A)")
-
-    call syntax_model_file_init ()
-
-    write (u, "(A)")  "* Initialize global record and set some variables"
-    write (u, "(A)")
-
-    call global%global_init ()
-    call global%select_model (var_str ("Test"))
-    
-    call global%set_real (var_str ("sqrts"), 17._default, is_known = .true.)
-    call global%set_real (var_str ("luminosity"), 2._default, is_known = .true.)
-    call global%model_set_real (var_str ("ff"), 0.5_default)
-    call global%model_set_real (var_str ("gy"), 1.2_default)
-
-    var_list => global%get_var_list_ptr ()
-
-    call var_list_write_var (var_list, var_str ("sqrts"), u)
-    call var_list_write_var (var_list, var_str ("luminosity"), u)
-    call var_list_write_var (var_list, var_str ("ff"), u)
-    call var_list_write_var (var_list, var_str ("gy"), u)
-    call var_list_write_var (var_list, var_str ("mf"), u)
-    call var_list_write_var (var_list, var_str ("x"), u)
-
-    write (u, "(A)")
-    
-    write (u, "(1x,A,1x,F5.2)")  "sqrts      = ", &
-         global%get_rval (var_str ("sqrts"))
-    write (u, "(1x,A,1x,F5.2)")  "luminosity = ", &
-         global%get_rval (var_str ("luminosity"))
-    write (u, "(1x,A,1x,F5.2)")  "ff         = ", &
-         global%get_rval (var_str ("ff"))
-    write (u, "(1x,A,1x,F5.2)")  "gy         = ", &
-         global%get_rval (var_str ("gy"))
-    write (u, "(1x,A,1x,F5.2)")  "mf         = ", &
-         global%get_rval (var_str ("mf"))
-    write (u, "(1x,A,1x,F5.2)")  "x          = ", &
-         global%get_rval (var_str ("x"))
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Create local record with local variables"
-    write (u, "(A)")
-
-    call local%local_init (global)
-
-    call local%append_real (var_str ("luminosity"), intrinsic = .true.)
-    call local%append_real (var_str ("x"), user = .true.)
-
-    call local%activate ()
-
-    var_list => local%get_var_list_ptr ()
-
-    call var_list_write_var (var_list, var_str ("sqrts"), u)
-    call var_list_write_var (var_list, var_str ("luminosity"), u)
-    call var_list_write_var (var_list, var_str ("ff"), u)
-    call var_list_write_var (var_list, var_str ("gy"), u)
-    call var_list_write_var (var_list, var_str ("mf"), u)
-    call var_list_write_var (var_list, var_str ("x"), u)
-
-    write (u, "(A)")
-    
-    write (u, "(1x,A,1x,F5.2)")  "sqrts      = ", &
-         local%get_rval (var_str ("sqrts"))
-    write (u, "(1x,A,1x,F5.2)")  "luminosity = ", &
-         local%get_rval (var_str ("luminosity"))
-    write (u, "(1x,A,1x,F5.2)")  "ff         = ", &
-         local%get_rval (var_str ("ff"))
-    write (u, "(1x,A,1x,F5.2)")  "gy         = ", &
-         local%get_rval (var_str ("gy"))
-    write (u, "(1x,A,1x,F5.2)")  "mf         = ", &
-         local%get_rval (var_str ("mf"))
-    write (u, "(1x,A,1x,F5.2)")  "x          = ", &
-         local%get_rval (var_str ("x"))
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Modify some local variables"
-    write (u, "(A)")
-
-    call local%set_real (var_str ("luminosity"), 42._default, is_known=.true.)
-    call local%set_real (var_str ("x"), 6.66_default, is_known=.true.)
-    call local%model_set_real (var_str ("ff"), 0.7_default)
-
-    var_list => local%get_var_list_ptr ()
-
-    call var_list_write_var (var_list, var_str ("sqrts"), u)
-    call var_list_write_var (var_list, var_str ("luminosity"), u)
-    call var_list_write_var (var_list, var_str ("ff"), u)
-    call var_list_write_var (var_list, var_str ("gy"), u)
-    call var_list_write_var (var_list, var_str ("mf"), u)
-    call var_list_write_var (var_list, var_str ("x"), u)
-
-    write (u, "(A)")
-    
-    write (u, "(1x,A,1x,F5.2)")  "sqrts      = ", &
-         local%get_rval (var_str ("sqrts"))
-    write (u, "(1x,A,1x,F5.2)")  "luminosity = ", &
-         local%get_rval (var_str ("luminosity"))
-    write (u, "(1x,A,1x,F5.2)")  "ff         = ", &
-         local%get_rval (var_str ("ff"))
-    write (u, "(1x,A,1x,F5.2)")  "gy         = ", &
-         local%get_rval (var_str ("gy"))
-    write (u, "(1x,A,1x,F5.2)")  "mf         = ", &
-         local%get_rval (var_str ("mf"))
-    write (u, "(1x,A,1x,F5.2)")  "x          = ", &
-         local%get_rval (var_str ("x"))
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Restore globals"
-    write (u, "(A)")
-
-    call local%deactivate (global)
-    
-    var_list => global%get_var_list_ptr ()
-
-    call var_list_write_var (var_list, var_str ("sqrts"), u)
-    call var_list_write_var (var_list, var_str ("luminosity"), u)
-    call var_list_write_var (var_list, var_str ("ff"), u)
-    call var_list_write_var (var_list, var_str ("gy"), u)
-    call var_list_write_var (var_list, var_str ("mf"), u)
-    call var_list_write_var (var_list, var_str ("x"), u)
-
-    write (u, "(A)")
-    
-    write (u, "(1x,A,1x,F5.2)")  "sqrts      = ", &
-         global%get_rval (var_str ("sqrts"))
-    write (u, "(1x,A,1x,F5.2)")  "luminosity = ", &
-         global%get_rval (var_str ("luminosity"))
-    write (u, "(1x,A,1x,F5.2)")  "ff         = ", &
-         global%get_rval (var_str ("ff"))
-    write (u, "(1x,A,1x,F5.2)")  "gy         = ", &
-         global%get_rval (var_str ("gy"))
-    write (u, "(1x,A,1x,F5.2)")  "mf         = ", &
-         global%get_rval (var_str ("mf"))
-    write (u, "(1x,A,1x,F5.2)")  "x          = ", &
-         global%get_rval (var_str ("x"))
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Cleanup"
-
-    call local%local_final ()
-
-    call global%final ()
-    call syntax_model_file_final ()
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: rt_data_9"
-    
-  end subroutine rt_data_9
-  
 
 end module rt_data

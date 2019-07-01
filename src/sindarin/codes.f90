@@ -1,4 +1,4 @@
-! WHIZARD 2.2.6 May 02 2015
+! WHIZARD 2.2.7 Aug 11 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -33,8 +33,6 @@
 module codes
   
   use iso_varying_string, string_t => varying_string
-  use kinds, only: default
-  use unit_tests
   use io_units
 
   implicit none
@@ -45,7 +43,6 @@ module codes
   public :: val_logical_t
   public :: val_string_t
   public :: val_integer_t
-  public :: codes_test
 
   integer, parameter, public :: POS_NONE = -1
   integer, parameter, public :: POS_HERE = 0
@@ -59,13 +56,46 @@ module codes
   integer, parameter, public :: CAT_ID = 3
 
   integer, parameter, public :: CAT_REFERENCE = 99
+  integer, parameter, public :: CAT_REF_ARRAY = 90
 
   integer, parameter, public :: CAT_COMPOSITE = 100
+
+  integer, parameter, public :: CMP_NONE = 0
+  integer, parameter, public :: CMP_EQ = 1
+  integer, parameter, public :: CMP_NE = 2
+  integer, parameter, public :: CMP_LT = 3
+  integer, parameter, public :: CMP_GT = 4
+  integer, parameter, public :: CMP_LE = 5
+  integer, parameter, public :: CMP_GE = 6
+  
+  integer, parameter, public :: CT_TUPLE = 201
+  integer, parameter, public :: CT_LIST = 202
+  integer, parameter, public :: CT_SEQUENCE = 203
+
+  integer, parameter, public :: CT_ADD = 210
+  integer, parameter, public :: CT_SUB = 211
+  integer, parameter, public :: CT_MUL = 212
+  integer, parameter, public :: CT_DIV = 213
+  integer, parameter, public :: CT_LIN = 214
+  integer, parameter, public :: CT_LOG = 215
+  
+  integer, parameter, public :: PRIO_POWER = -71
+  integer, parameter, public :: PRIO_MULTIPLY = -72
+  integer, parameter, public :: PRIO_MINUS = -73 
+  integer, parameter, public :: PRIO_ADD = -74
+  
+  integer, parameter, public :: PRIO_COMPARE = -95
 
   integer, parameter, public :: PRIO_NOT = -100
   integer, parameter, public :: PRIO_AND = -101
   integer, parameter, public :: PRIO_OR  = -102
   
+  integer, parameter, public :: PRIO_COLON = -80
+  integer, parameter, public :: PRIO_COMMA = -121
+  integer, parameter, public :: PRIO_ARROW = -122
+  
+  integer, parameter, public :: PRIO_CONDITIONAL = -200
+
   integer, parameter :: NATT_MAX = 16
   integer, parameter :: NAME_LEN_MAX = 256
   
@@ -81,6 +111,7 @@ module codes
   end type position_t
 
   type, abstract :: val_t
+     private
    contains
      procedure(val_get_type), deferred :: get_type
      procedure(val_init), deferred :: init
@@ -90,6 +121,7 @@ module codes
   end type val_t
   
   type :: code_t
+     private
      integer :: cat = 0
      integer :: natt = 0
      integer, dimension(NATT_MAX) :: att = 0
@@ -97,13 +129,24 @@ module codes
    contains
      procedure :: read => code_read
      procedure :: write => code_write
+     procedure :: set
+     procedure :: get_cat
+     procedure :: get_n_att
+     procedure :: get_att
      procedure :: create_logical_val
+     procedure :: get_logical_array
+     procedure :: get_logical
      procedure :: create_string_val
+     procedure :: get_string_array
+     procedure :: get_string
      procedure :: create_integer_val
+     procedure :: get_integer_array
+     procedure :: get_integer
      procedure, nopass :: create_val
   end type code_t
      
   type, extends (val_t) :: val_logical_t
+     private
      logical, dimension(:), allocatable :: x
    contains
      procedure :: get_type => val_logical_get_type
@@ -114,6 +157,7 @@ module codes
   end type val_logical_t
      
   type, extends (val_t) :: val_string_t
+     private
      type(string_t), dimension(:), allocatable :: x
    contains
      procedure :: get_type => val_string_get_type
@@ -124,6 +168,7 @@ module codes
   end type val_string_t
      
   type, extends (val_t) :: val_integer_t
+     private
      integer, dimension(:), allocatable :: x
    contains
      procedure :: get_type => val_integer_get_type
@@ -264,8 +309,45 @@ contains
        if (verb)  write (u, "(5x)", advance="no")
        call code%val%write (u, i)
     end do
+    if (present (iostat))  iostat = 0
   end subroutine code_write
     
+  subroutine set (code, cat, att)
+    class(code_t), intent(inout) :: code
+    integer, intent(in) :: cat
+    integer, dimension(:), optional, intent(in) :: att
+    code%cat = cat
+    if (present (att)) then
+       code%natt = size (att)
+       code%att(1:code%natt) = att
+    else
+       code%natt = 0
+    end if
+  end subroutine set
+   
+  function get_cat (code) result (cat)
+    class(code_t), intent(in) :: code
+    integer :: cat
+    cat = code%cat
+  end function get_cat
+
+  function get_n_att (code) result (n)
+    class(code_t), intent(in) :: code
+    integer :: n
+    n = code%natt
+  end function get_n_att
+  
+  function get_att (code, i) result (att)
+    class(code_t), intent(in) :: code
+    integer, intent(in) :: i
+    integer :: att
+    if (i <= code%natt) then
+       att = code%att(i)
+    else
+       att = 0
+    end if
+  end function get_att
+  
   function val_logical_get_type (val) result (type)
     class(val_logical_t), intent(in) :: val
     integer :: type
@@ -307,12 +389,43 @@ contains
        
   subroutine create_logical_val (code, item)
     class(code_t), intent(inout) :: code
-    logical, intent(in) :: item
-    call create_val (code%val, VT_LOGICAL, 1)
+    logical, dimension(:), intent(in) :: item
+    call create_val (code%val, VT_LOGICAL, size (item))
     select type (val => code%val)
-    type is (val_logical_t);  val%x(1) = item
+    type is (val_logical_t);  val%x = item
     end select
   end subroutine create_logical_val
+  
+  subroutine get_logical_array (code, item, success)
+    class(code_t), intent(in) :: code
+    logical, dimension(:), intent(out), allocatable :: item
+    logical, intent(out) :: success
+    if (allocated (code%val)) then
+       select type (val => code%val)
+       type is (val_logical_t)
+          allocate (item (size (val%x)))
+          item = val%x
+          success = .true.;  return
+       end select
+    end if
+    success = .false.
+  end subroutine get_logical_array
+  
+  subroutine get_logical (code, item, success)
+    class(code_t), intent(in) :: code
+    logical, intent(out) :: item
+    logical, intent(out) :: success
+    if (allocated (code%val)) then
+       select type (val => code%val)
+       type is (val_logical_t)
+          if (size (val%x) == 1) then
+             item = val%x(1)
+             success = .true.;  return
+          end if
+       end select
+    end if
+    success = .false.
+  end subroutine get_logical
   
   function val_string_get_type (val) result (type)
     class(val_string_t), intent(in) :: val
@@ -357,12 +470,43 @@ contains
        
   subroutine create_string_val (code, item)
     class(code_t), intent(inout) :: code
-    type(string_t), intent(in) :: item
-    call create_val (code%val, VT_STRING, 1)
+    type(string_t), dimension(:), intent(in) :: item
+    call create_val (code%val, VT_STRING, size (item))
     select type (val => code%val)
-    type is (val_string_t);  val%x(1) = item
+    type is (val_string_t);  val%x = item
     end select
   end subroutine create_string_val
+  
+  subroutine get_string_array (code, item, success)
+    class(code_t), intent(in) :: code
+    type(string_t), dimension(:), intent(out), allocatable :: item
+    logical, intent(out) :: success
+    if (allocated (code%val)) then
+       select type (val => code%val)
+       type is (val_string_t)
+          allocate (item (size (val%x)))
+          item = val%x
+          success = .true.;  return
+       end select
+    end if
+    success = .false.
+  end subroutine get_string_array
+  
+  subroutine get_string (code, item, success)
+    class(code_t), intent(in) :: code
+    type(string_t), intent(out) :: item
+    logical, intent(out) :: success
+    if (allocated (code%val)) then
+       select type (val => code%val)
+       type is (val_string_t)
+          if (size (val%x) == 1) then
+             item = val%x(1)
+             success = .true.;  return
+          end if
+       end select
+    end if
+    success = .false.
+  end subroutine get_string
   
   function val_integer_get_type (val) result (type)
     class(val_integer_t), intent(in) :: val
@@ -405,16 +549,48 @@ contains
        
   subroutine create_integer_val (code, item)
     class(code_t), intent(inout) :: code
-    integer, intent(in) :: item
-    call create_val (code%val, VT_INTEGER, 1)
+    integer, dimension(:), intent(in) :: item
+    call create_val (code%val, VT_INTEGER, size (item))
     select type (val => code%val)
-    type is (val_integer_t);  val%x(1) = item
+    type is (val_integer_t);  val%x = item
     end select
   end subroutine create_integer_val
+  
+  subroutine get_integer_array (code, item, success)
+    class(code_t), intent(in) :: code
+    integer, dimension(:), intent(out), allocatable :: item
+    logical, intent(out) :: success
+    if (allocated (code%val)) then
+       select type (val => code%val)
+       type is (val_integer_t)
+          allocate (item (size (val%x)))
+          item = val%x
+          success = .true.;  return
+       end select
+    end if
+    success = .false.
+  end subroutine get_integer_array
+  
+  subroutine get_integer (code, item, success)
+    class(code_t), intent(in) :: code
+    integer, intent(out) :: item
+    logical, intent(out) :: success
+    if (allocated (code%val)) then
+       select type (val => code%val)
+       type is (val_integer_t)
+          if (size (val%x) == 1) then
+             item = val%x(1)
+             success = .true.;  return
+          end if
+       end select
+    end if
+    success = .false.
+  end subroutine get_integer
   
   subroutine create_val (val, vt, nval)
     class(val_t), allocatable, intent(out) :: val
     integer, intent(in) :: vt, nval
+    if (allocated (val))  deallocate (val)    
     select case (vt)
     case (VT_LOGICAL);  allocate (val_logical_t :: val)
     case (VT_STRING);  allocate (val_string_t :: val)
@@ -423,68 +599,5 @@ contains
     call val%init (nval)
   end subroutine create_val
   
-  subroutine codes_test (u, results)
-    integer, intent(in) :: u
-    type(test_results_t), intent(inout) :: results
-    call test (codes_1, "codes_1", &
-         "object codes: I/O", &
-         u, results)  
-  end subroutine codes_test
-  
-
-  subroutine codes_1 (u)
-    integer, intent(in) :: u
-    integer :: utmp, i
-    type(code_t) :: code
-    character(256) :: buffer
-
-    write (u, "(A)")  "* Test output: codes_1"
-    write (u, "(A)")  "*   Purpose: check code I/O"
-    write (u, "(A)")      
-
-    utmp = free_unit ()
-    open (utmp, status="scratch", action="readwrite")
-
-    write (utmp, "(1x,A)")  "4 0 0 0"
-    write (utmp, "(1x,A)")  "5 2 1 3 5 6 7"
-    write (utmp, "(1x,A)")  "foo"
-    write (utmp, "(1x,A)")  "7 1 2 0"
-    write (utmp, "(1x,A)")  "T"
-    write (utmp, "(1x,A)")  "F"
-    write (utmp, "(1x,A)")  "42 3 3 0"
-    write (utmp, "(1x,A)")  "0"
-    write (utmp, "(1x,A)")  "12345"
-    write (utmp, "(1x,A)")  "-987654321"
-    
-    rewind (utmp)
-    do
-       read (utmp, "(A)", end=1)  buffer
-       write (u, "(A)") trim (buffer)
-    end do
-1   continue
-    
-    rewind (utmp)
-    write (u, *)
-
-    do i = 1, 4
-       call code%read (utmp)
-       call code%write (u, verbose=.true.)
-    end do
-
-    rewind (utmp)
-    write (u, *)
-
-    do i = 1, 4
-       call code%read (utmp)
-       call code%write (u)
-    end do
-
-    close (utmp)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: codes_1"
-    
-    end subroutine codes_1
-
 
 end module codes

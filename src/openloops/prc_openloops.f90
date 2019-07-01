@@ -1,4 +1,4 @@
-! WHIZARD 2.2.6 May 02 2015
+! WHIZARD 2.2.7 Aug 11 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -37,14 +37,18 @@ module prc_openloops
   use kinds
   use io_units
   use iso_varying_string, string_t => varying_string
+  use constants
+  use unit_tests, only: vanishes
   use system_defs, only: TAB
   use diagnostics
   use system_dependencies
   use physics_defs
+  use variables
   use os_interface
   use lorentz
   use interactions
   use sm_qcd
+  use model_data
 
   use prclib_interfaces
   use prc_core_def
@@ -69,6 +73,8 @@ module prc_openloops
   real(default), parameter :: openloops_default_higgsmass = 125._default
   real(default), parameter :: openloops_default_higgswidth = 0._default
 
+  integer :: N_EXTERNAL = 0
+
 
   type, extends (prc_blha_writer_t) :: openloops_writer_t
   contains
@@ -86,12 +92,16 @@ module prc_openloops
   end type openloops_def_t
 
   type, extends (blha_driver_t) :: openloops_driver_t 
+    integer :: n_external = 0
     type(string_t) :: olp_file
+    procedure(ol_evaluate_sc), nopass, pointer :: &
+       evaluate_spin_correlations => null ()
   contains
     procedure :: init_dlaccess_to_library => openloops_driver_init_dlaccess_to_library
     procedure :: set_alpha_s => openloops_driver_set_alpha_s
     procedure :: print_alpha_s => openloops_driver_print_alpha_s
     procedure, nopass :: type_name => openloops_driver_type_name
+    procedure :: load_sc_procedure => openloops_driver_load_sc_procedure
   end type openloops_driver_t 
 
   type, extends (blha_state_t) :: openloops_state_t
@@ -104,8 +114,10 @@ module prc_openloops
     procedure :: allocate_workspace => prc_openloops_allocate_workspace
     procedure :: init_driver => prc_openloops_init_driver
     procedure :: write => prc_openloops_write
+    procedure :: prepare_library => prc_openloops_prepare_library
     procedure :: load_driver => prc_openloops_load_driver
     procedure :: start => prc_openloops_start
+    procedure :: set_n_external => prc_openloops_set_n_external
     procedure :: reset_parameters => prc_openloops_reset_parameters
     procedure :: set_verbosity => prc_openloops_set_verbosity
     procedure :: compute_sqme_born => prc_openloops_compute_sqme_born
@@ -119,6 +131,15 @@ module prc_openloops
        import
        real(c_default_float), intent(in) :: alpha_s
      end subroutine omega_update_alpha_s
+  end interface
+
+  abstract interface
+     subroutine ol_evaluate_sc (id, pp, emitter, polvect, res) bind(C)
+       import
+       integer(kind=c_int), value :: id, emitter
+       real(kind=c_double), intent(in) :: pp(5*N_EXTERNAL), polvect(4)
+       real(kind=c_double), intent(out) :: res(N_EXTERNAL)
+     end subroutine ol_evaluate_sc
   end interface
 
 
@@ -164,6 +185,8 @@ contains
     object%basename = basename
     allocate (openloops_writer_t :: object%writer)
     select case (nlo_type)
+    case (BORN)
+       object%suffix = '_BORN'
     case (NLO_REAL)
        object%suffix = '_REAL'
     case (NLO_VIRTUAL)
@@ -197,12 +220,12 @@ contains
     type(string_t) :: ol_library, msg_buffer
     ol_library = OPENLOOPS_DIR // '/lib/libopenloops.' // &
          os_data%shrlib_ext
-    msg_buffer = "USING OPENLOOPS"
+    msg_buffer = "One-Loop-Provider: Using OpenLoops"
     call msg_message (char(msg_buffer))
     msg_buffer = "Loading library: " // ol_library
     call msg_message (char(msg_buffer))
     if (os_file_exist (ol_library)) then
-       call dlaccess_init (dlaccess, var_str ("."), ol_library, os_data)
+       call dlaccess_init (dlaccess, var_str (""), ol_library, os_data)
     else
        call msg_fatal ("Link OpenLoops: library not found")
     end if
@@ -227,6 +250,24 @@ contains
     type(string_t) :: type
     type = "OpenLoops"
   end function openloops_driver_type_name
+
+  subroutine openloops_driver_load_sc_procedure (object, os_data, success)
+    class(openloops_driver_t), intent(inout) :: object
+    type(os_data_t), intent(in) :: os_data
+    logical, intent(out) :: success
+    type(dlaccess_t) :: dlaccess
+    type(c_funptr) :: c_fptr
+    logical :: init_success
+
+    call object%init_dlaccess_to_library (os_data, dlaccess, init_success)
+  
+    c_fptr = dlaccess_get_c_funptr (dlaccess, var_str ("ol_evaluate_sc"))
+    call c_f_procpointer (c_fptr, object%evaluate_spin_correlations)
+    if (dlaccess_has_error (dlaccess)) &
+       call msg_fatal ("Could not load Openloops spin correlations!")
+
+    success = .true.
+  end subroutine openloops_driver_load_sc_procedure 
 
   subroutine openloops_def_read (object, unit)
     class(openloops_def_t), intent(out) :: object
@@ -279,6 +320,20 @@ contains
     call msg_message ("OpenLoops")
   end subroutine prc_openloops_write
 
+  subroutine prc_openloops_prepare_library (object, os_data, model, var_list)
+    class(prc_openloops_t), intent(inout) :: object
+    type(os_data_t), intent(in) :: os_data
+    type(model_data_t), intent(in), target :: model
+    type(var_list_t), intent(in) :: var_list
+    integer :: verbosity
+    call object%load_driver (os_data)
+    call object%reset_parameters ()
+    call object%set_particle_properties (model)
+    call object%set_alpha_qed (model)
+    verbosity = var_list%get_ival (var_str ("openloops_verbosity"))
+    call object%set_verbosity (verbosity)
+  end subroutine prc_openloops_prepare_library
+
   subroutine prc_openloops_load_driver (object, os_data)
     class(prc_openloops_t), intent(inout) :: object
     type(os_data_t), intent(in) :: os_data
@@ -286,6 +341,7 @@ contains
     select type (driver => object%driver)
     type is (openloops_driver_t)
        call driver%load (os_data, success)
+       call driver%load_sc_procedure (os_data, success)
     end select
   end subroutine prc_openloops_load_driver
 
@@ -297,6 +353,12 @@ contains
        call driver%blha_olp_start (char (driver%olp_file)//c_null_char, ierr)
     end select
   end subroutine prc_openloops_start
+
+  subroutine prc_openloops_set_n_external (object, n)
+    class(prc_openloops_t), intent(inout) :: object
+    integer, intent(in) :: n
+    N_EXTERNAL = n
+  end subroutine prc_openloops_set_n_external
 
   subroutine prc_openloops_reset_parameters (object)
     class(prc_openloops_t), intent(inout) :: object
@@ -336,24 +398,36 @@ contains
   end subroutine prc_openloops_set_verbosity
 
   subroutine prc_openloops_compute_sqme_born &
-         (object, i_born, mom, mu, sqme, acc_born)
+         (object, i_born, p, mu, sqme, bad_point)
     class(prc_openloops_t), intent(inout) :: object
     integer, intent(in) :: i_born
-    real(double), intent(in), dimension(5*object%n_particles) :: mom
-    real(double), intent(in) :: mu
+    type(vector4_t), dimension(:), intent(in) :: p
+    real(default), intent(in) :: mu
     real(default), intent(out) :: sqme
-    real(default), intent(out) :: acc_born
-    
+    logical, intent(out) :: bad_point
+    real(double), dimension(5*object%n_particles) :: mom
+    real(default) :: acc_born 
     real(double), dimension(blha_result_array_size (object%n_particles, &
-                                                    BLHA_AMP_TREE)) :: r
+                                                        BLHA_AMP_TREE)) :: r
+    real(double) :: mu_dble
     real(double) :: acc_dble
-    
+
+    mom = object%create_momentum_array (p) 
+    mu_dble = dble(mu)    
+
     select type (driver => object%driver)
     type is (openloops_driver_t)
-       call driver%blha_olp_eval2 (i_born, mom, mu, r, acc_dble)
-       sqme = r(1)
+       if (allocated (object%i_born)) then
+          call driver%blha_olp_eval2 &
+             (object%i_born(i_born), mom, mu_dble, r, acc_dble)
+          sqme = r(1)
+       else
+          sqme = 0._default
+          acc_dble = 0._default
+       end if
     end select
     acc_born = acc_dble
+    bad_point = acc_born > object%maximum_accuracy
   end subroutine prc_openloops_compute_sqme_born
 
   subroutine prc_openloops_compute_sqme_real &
@@ -367,23 +441,26 @@ contains
     real(double), dimension(5*object%n_particles) :: mom
     real(double), dimension(blha_result_array_size (object%n_particles, &
                                                     BLHA_AMP_TREE)) :: r
-    real(double) :: mu
+    real(double) :: mu_dble
+    real(default) :: mu
     real(double) :: acc_dble
     real(default) :: acc
     real(default) :: alpha_s
  
     mom = object%create_momentum_array (p)
-    if (ren_scale == 0.0) then
-       mu = sqrt (2*p(1)*p(2))
+    if (vanishes (ren_scale)) then
+       mu = sqrt (two * p(1) * p(2))
     else
       mu = ren_scale
     end if
-    alpha_s = object%qcd%alpha%get (ren_scale)
+    mu_dble = dble(mu)
+
+    alpha_s = object%qcd%alpha%get (mu)
     select type (driver => object%driver)
     type is (openloops_driver_t)
        call driver%set_alpha_s (alpha_s)
        call driver%blha_olp_eval2 (object%i_real(i_flv), mom, &
-                                    mu, r, acc_dble)
+                                    mu_dble, r, acc_dble)
        sqme = r(1)
     end select
     acc = acc_dble
@@ -391,18 +468,47 @@ contains
   end subroutine prc_openloops_compute_sqme_real
 
   subroutine prc_openloops_compute_sqme_sc (object, &
-                i_flv, em, p, ren_scale_in, &
+                i_flv, em, p, ren_scale_in, pol_vects, &
             me_sc, bad_point)
     class(prc_openloops_t), intent(inout) :: object
     integer, intent(in) :: i_flv
     integer, intent(in) :: em
     type(vector4_t), intent(in), dimension(:) :: p
     real(default), intent(in) :: ren_scale_in
+    type(vector4_t), dimension(:) :: pol_vects
     complex(default), intent(out) :: me_sc
     logical, intent(out) :: bad_point
+    real(double), dimension(5*N_EXTERNAL) :: mom
+    real(double), dimension(N_EXTERNAL) :: r
+    real(double) :: ren_scale_dble
+    real(double) :: acc_dble
+    real(default) :: ren_scale, alpha_s
+    real(double), dimension(4) :: polvect
+    integer :: i
     
-    call msg_fatal ("Spin-correlated matrix elements with the BLHA-"&
-                    &"interface are not possible yet with OpenLoops")
+    mom = object%create_momentum_array (p)
+    me_sc = 0
+    if (vanishes (ren_scale_in)) then
+       ren_scale = sqrt (2*p(1)*p(2))
+    else
+       ren_scale = ren_scale_in
+    end if
+    alpha_s = object%qcd%alpha%get (ren_scale)
+    ren_scale_dble = dble (ren_scale)
+
+    forall(i=1:4) polvect(i) = pol_vects(em)%p(i-1)
+
+    select type (driver => object%driver)
+    type is (openloops_driver_t)
+       call driver%set_alpha_s (alpha_s)
+       call driver%evaluate_spin_correlations (1, mom, em, polvect, r)
+    end select
+    do i = 1, N_EXTERNAL
+       if (i /= em) me_sc = me_sc + r(i)
+    end do
+
+    me_sc = me_sc/CA
+
   end subroutine prc_openloops_compute_sqme_sc
 
 

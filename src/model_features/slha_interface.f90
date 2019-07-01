@@ -1,4 +1,4 @@
-! WHIZARD 2.2.6 May 02 2015
+! WHIZARD 2.2.7 Aug 11 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -56,9 +56,10 @@ module slha_interface
   public :: syntax_slha_final
   public :: syntax_slha_write
   public :: lexer_init_slha 
+  public :: slha_interpret_parse_tree
+  public :: slha_parse_file
   public :: slha_read_file
   public :: slha_write_file
-  public :: slha_test
 
   integer, parameter :: MODE_SKIP = 0, MODE_DATA = 1, MODE_INFO = 2
 
@@ -222,7 +223,7 @@ contains
     type(string_t), intent(in) :: block_name
     logical, intent(in) :: required
     type(parse_node_t), pointer :: pn_root, pn_block_spec, pn_block_name
-    pn_root => parse_tree_get_root_ptr (parse_tree)
+    pn_root => parse_tree%get_root_ptr ()
     pn_block => parse_node_get_sub_ptr (pn_root)
     do while (associated (pn_block))
        select case (char (parse_node_get_rule_key (pn_block)))
@@ -245,7 +246,7 @@ contains
     type(parse_node_t), pointer :: pn_decay
     type(parse_tree_t), intent(in) :: parse_tree
     type(parse_node_t), pointer :: pn_root
-    pn_root => parse_tree_get_root_ptr (parse_tree)
+    pn_root => parse_tree%get_root_ptr ()
     pn_decay => parse_node_get_sub_ptr (pn_root)
     do while (associated (pn_decay))
        select case (char (parse_node_get_rule_key (pn_decay)))
@@ -401,8 +402,7 @@ contains
     type(parse_node_t), pointer :: pn_data, pn_item
     call slha_find_index_ptr (pn_block, pn_data, pn_item, code)
     if (associated (pn_item)) then
-       call var_list_set_real &
-            (var_list, name,  get_real_parameter (pn_item), &
+       call var_list%set_real (name,  get_real_parameter (pn_item), &
              is_known=.true., ignore=.true.)
     end if
   end subroutine set_data_item
@@ -415,8 +415,7 @@ contains
     type(parse_node_t), pointer :: pn_data, pn_item
     call slha_find_index_pair_ptr (pn_block, pn_data, pn_item, code1, code2)
     if (associated (pn_item)) then
-       call var_list_set_real &
-            (var_list, name,  get_real_parameter (pn_item), &
+       call var_list%set_real (name, get_real_parameter (pn_item), &
              is_known=.true., ignore=.true.)
     end if
   end subroutine set_matrix_element
@@ -747,13 +746,13 @@ contains
     if (2*cw_sw <= 1) then
        cw2 = (1 + sqrt (1 - 4 * cw_sw**2)) / 2
        mW = mZ * sqrt (cw2)
-       call var_list_set_real (var_list, var_str ("GF"), GF, .true.)
-       call var_list_set_real (var_list, var_str ("mZ"), mZ, .true.)
-       call var_list_set_real (var_list, var_str ("mW"), mW, .true.)
-       call var_list_set_real (var_list, var_str ("mtau"), mtau, .true.)
-       call var_list_set_real (var_list, var_str ("mb"), mb, .true.)
-       call var_list_set_real (var_list, var_str ("mtop"), mtop, .true.)
-       call var_list_set_real (var_list, var_str ("alphas"), alphas, .true.)
+       call var_list%set_real (var_str ("GF"), GF, .true.)
+       call var_list%set_real (var_str ("mZ"), mZ, .true.)
+       call var_list%set_real (var_str ("mW"), mW, .true.)
+       call var_list%set_real (var_str ("mtau"), mtau, .true.)
+       call var_list%set_real (var_str ("mb"), mb, .true.)
+       call var_list%set_real (var_str ("mtop"), mtop, .true.)
+       call var_list%set_real (var_str ("alphas"), alphas, .true.)
     else
        call msg_fatal ("SLHA: Unphysical SM parameter values")
        return
@@ -789,8 +788,8 @@ contains
     type(var_list_t), pointer :: var_list
     type(parse_node_t), pointer :: pn_block
     var_list => model%get_var_list_ptr ()
-    call var_list_set_real (var_list, &
-         var_str ("mtype"),  real(mssm_type, default), is_known=.true.)
+    call var_list%set_real &
+         (var_str ("mtype"),  real(mssm_type, default), is_known=.true.)
     pn_block => slha_get_block_ptr &
          (parse_tree, var_str ("MINPAR"), required=.true.)
     select case (mssm_type)
@@ -952,7 +951,7 @@ contains
     pn_item => parse_node_get_sub_ptr (pn_line)
     if (associated (pn_item)) then
        al_h = get_real_parameter (pn_item)
-       call var_list_set_real (var_list, var_str ("al_h"), al_h, &
+       call var_list%set_real (var_str ("al_h"), al_h, &
             is_known=.true., ignore=.true.)
     end if
   end subroutine slha_handle_ALPHA
@@ -1033,7 +1032,7 @@ contains
     logical, intent(in) :: input, spectrum, decays
     type(parse_tree_t) :: parse_tree
     call slha_parse_file (file, os_data, parse_tree)
-    if (associated (parse_tree_get_root_ptr (parse_tree))) then
+    if (associated (parse_tree%get_root_ptr ())) then
        call slha_interpret_parse_tree &
             (parse_tree, model, input, spectrum, decays)
        call parse_tree_final (parse_tree)
@@ -1065,14 +1064,6 @@ contains
     end if
     close (u)
   end subroutine slha_write_file
-
-  subroutine slha_test (u, results)
-    integer, intent(in) :: u
-    type(test_results_t), intent(inout) :: results
-    call test (slha_1, "slha_1", &
-         "check SLHA interface", &
-         u, results)  
-  end subroutine slha_test
 
 
   subroutine slha_1 (u) 

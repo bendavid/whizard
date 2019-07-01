@@ -553,6 +553,54 @@ AC_DEFUN([WO_FC_CHECK_ISO_FORTRAN_ENV],
   ]
 )
 
+
+### Check for the TR19767 extensions (submodules)
+AC_DEFUN([WO_FC_CHECK_TR19767],
+[AC_CACHE_CHECK([whether $FC supports submodules (F2008)],
+[wo_cv_fc_submodules],
+[dnl
+AC_REQUIRE([AC_PROG_FC])
+AC_LANG([Fortran])
+AC_COMPILE_IFELSE([dnl
+  module conftest_mod
+    type :: point
+       real :: x, y
+    end type point
+  
+    interface
+       module function point_dist(a, b) result(distance)
+         type(point), intent(in) :: a, b
+         real :: distance
+       end function point_dist
+    end interface
+  end module conftest_mod
+  
+  submodule (conftest_mod) conftest_mod_a
+  contains
+    module function point_dist(a, b) result(distance)
+      type(point), intent(in) :: a, b
+      real :: distance
+      distance = sqrt((a%x - b%x)**2 + (a%y - b%y)**2)
+    end function point_dist
+  end submodule conftest_mod_a
+
+  program conftest
+    use conftest_mod
+  end program conftest
+  ],
+  [wo_cv_fc_submodules="yes"],
+  [wo_cv_fc_submodules="no"])
+])
+rm -f conftest_mod.*
+FC_SUPPORTS_SUBMODULES="$wo_cv_fc_submodules"
+AC_SUBST([FC_SUPPORTS_SUBMODULES])
+AM_CONDITIONAL([FC_SUBMODULES],
+	[test "$wo_cv_fc_submodules" = "yes"])
+if test "$FC_SUPPORTS_SUBMODULES" = "no"; then
+AC_MSG_NOTICE([NOTE: Fortran compiler does not support submodules (F2008).])
+fi])
+### end WO_FC_CHECK_TR19767
+
 ### Check for wrapping of linker flags 
 ### (nagfor 'feature': must be wrapped twice)
 AC_DEFUN([WO_FC_CHECK_LDFLAGS_WRAPPING],

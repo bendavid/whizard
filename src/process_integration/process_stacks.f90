@@ -1,4 +1,4 @@
-! WHIZARD 2.2.6 May 02 2015
+! WHIZARD 2.2.7 Aug 11 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -35,7 +35,6 @@ module process_stacks
   use iso_varying_string, string_t => varying_string
   use io_units
   use format_utils, only: write_separator
-  use unit_tests
   use diagnostics
   use os_interface
   use sm_qcd
@@ -44,7 +43,6 @@ module process_stacks
   use variables
   use observables
   use process_libraries
-  use prc_test
   use processes
 
   implicit none
@@ -52,7 +50,6 @@ module process_stacks
 
   public :: process_entry_t
   public :: process_stack_t
-  public :: process_stacks_test
 
   type, extends (process_t) :: process_entry_t
      type(process_entry_t), pointer :: next => null ()
@@ -235,221 +232,5 @@ contains
     if (associated (stack%next))  ptr => stack%next%get_process_ptr (id)
   end function process_stack_get_process_ptr
 
-
-  subroutine process_stacks_test (u, results)
-    integer, intent(in) :: u
-    type(test_results_t), intent(inout) :: results
-    call test (process_stacks_1, "process_stacks_1", &
-         "write an empty process stack", &
-         u, results)
-    call test (process_stacks_2, "process_stacks_2", &
-         "fill a process stack", &
-         u, results)
-    call test (process_stacks_3, "process_stacks_3", &
-         "process variables", &
-         u, results)
-    call test (process_stacks_4, "process_stacks_4", &
-         "linked stacks", &
-         u, results)
-  end subroutine process_stacks_test
-  
-  subroutine process_stacks_1 (u)
-    integer, intent(in) :: u
-    type(process_stack_t) :: stack
-
-    write (u, "(A)")  "* Test output: process_stacks_1"
-    write (u, "(A)")  "*   Purpose: display an empty process stack"
-    write (u, "(A)")
-
-    call stack%write (u)
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: process_stacks_1"
-    
-  end subroutine process_stacks_1
-  
-  subroutine process_stacks_2 (u)
-    integer, intent(in) :: u
-    type(process_stack_t) :: stack
-    type(process_library_t), target :: lib
-    type(string_t) :: libname
-    type(string_t) :: procname
-    type(string_t) :: run_id
-    type(os_data_t) :: os_data
-    type(qcd_t) :: qcd
-    class(rng_factory_t), allocatable :: rng_factory
-    class(model_data_t), pointer :: model
-    type(process_entry_t), pointer :: process => null ()
-
-    write (u, "(A)")  "* Test output: process_stacks_2"
-    write (u, "(A)")  "*   Purpose: fill a process stack"
-    write (u, "(A)")
-
-    write (u, "(A)")  "* Build, initialize and store two test processes"
-    write (u, "(A)")
-
-    libname = "process_stacks2"
-    procname = libname
-    call os_data_init (os_data)
-    allocate (rng_test_factory_t :: rng_factory)
-    call prc_test_create_library (libname, lib)
-
-    allocate (model)
-    call model%init_test ()
-
-    allocate (process)
-    run_id = "run1"
-    call process%init &
-         (procname, run_id, lib, os_data, qcd, rng_factory, model) 
-    call stack%push (process)
-    
-    allocate (model)
-    call model%init_test ()
-
-    allocate (process)
-    run_id = "run2"
-    call process%init &
-         (procname, run_id, lib, os_data, qcd, rng_factory, model) 
-    call stack%push (process)
-    
-    call stack%write (u)
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Cleanup"
-
-    call stack%final ()
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: process_stacks_2"
-    
-  end subroutine process_stacks_2
-  
-  subroutine process_stacks_3 (u)
-    integer, intent(in) :: u
-    type(process_stack_t) :: stack
-    type(model_data_t), target :: model
-    type(string_t) :: procname
-    type(process_entry_t), pointer :: process => null ()
-    type(process_instance_t), target :: process_instance
-
-    write (u, "(A)")  "* Test output: process_stacks_3"
-    write (u, "(A)")  "*   Purpose: setup process variables"
-    write (u, "(A)")
-
-    write (u, "(A)")  "* Initialize process variables"
-    write (u, "(A)")
-
-    procname = "processes_test"
-    call model%init_test ()
-
-    write (u, "(A)")  "* Initialize process variables"
-    write (u, "(A)")
-
-    call stack%init_var_list ()
-    call stack%init_result_vars (procname)
-    call stack%write_var_list (u)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Build and integrate a test process"
-    write (u, "(A)")
-
-    allocate (process)
-    call prepare_test_process (process%process_t, process_instance, model)
-    call process%integrate (process_instance, 1, 1, 1000)
-    call process_instance%final ()
-    call process%final_integration (1)
-    call stack%push (process)
-    
-    write (u, "(A)")  "* Fill process variables"
-    write (u, "(A)")
-
-    call stack%fill_result_vars (procname)
-    call stack%write_var_list (u)
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Cleanup"
-
-    call stack%final ()
-
-    call model%final ()
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: process_stacks_3"
-    
-  end subroutine process_stacks_3
-  
-  subroutine process_stacks_4 (u)
-    integer, intent(in) :: u
-    type(process_library_t), target :: lib
-    type(process_stack_t), target :: stack1, stack2
-    class(model_data_t), pointer :: model
-    type(string_t) :: libname
-    type(string_t) :: procname
-    type(string_t) :: run_id
-    type(os_data_t) :: os_data
-    type(qcd_t) :: qcd
-    class(rng_factory_t), allocatable :: rng_factory
-    type(process_entry_t), pointer :: process => null ()
-
-    write (u, "(A)")  "* Test output: process_stacks_4"
-    write (u, "(A)")  "*   Purpose: link process stacks"
-    write (u, "(A)")
-
-    write (u, "(A)")  "* Initialize process variables"
-    write (u, "(A)")
-
-    libname = "process_stacks_4_lib"
-    procname = "process_stacks_4a"
-
-    call os_data_init (os_data)
-    allocate (rng_test_factory_t :: rng_factory)
-
-    write (u, "(A)")  "* Initialize first process"
-    write (u, "(A)")
-
-    call prc_test_create_library (procname, lib)
-
-    allocate (model)
-    call model%init_test ()
-
-    allocate (process)
-    run_id = "run1"
-    call process%init &
-         (procname, run_id, lib, os_data, qcd, rng_factory, model) 
-    call stack1%push (process)
-    
-    write (u, "(A)")  "* Initialize second process"
-    write (u, "(A)")
-
-    call stack2%link (stack1)
-
-    procname = "process_stacks_4b"
-    call prc_test_create_library (procname, lib)
-
-    allocate (model)
-    call model%init_test ()
-
-    allocate (process)
-    run_id = "run2"
-    call process%init &
-         (procname, run_id, lib, os_data, qcd, rng_factory, model) 
-    call stack2%push (process)
-    
-    write (u, "(A)")  "* Show linked stacks"
-    write (u, "(A)")
-
-    call stack2%write (u)
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Cleanup"
-
-    call stack2%final ()
-    call stack1%final ()
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: process_stacks_4"
-    
-  end subroutine process_stacks_4
-  
 
 end module process_stacks

@@ -1,4 +1,4 @@
-! WHIZARD 2.2.6 May 02 2015
+! WHIZARD 2.2.7 Aug 11 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -123,6 +123,7 @@ module physics_defs
   integer, parameter, public :: NLO_VIRTUAL = 2
   integer, parameter, public :: NLO_PDF = 3
   integer, parameter, public :: NLO_SUBTRACTION = 4
+  integer, parameter, public :: GKS = 5
 
 
 end module physics_defs

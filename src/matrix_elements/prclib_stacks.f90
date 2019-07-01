@@ -1,4 +1,4 @@
-! WHIZARD 2.2.6 May 02 2015
+! WHIZARD 2.2.7 Aug 11 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -35,8 +35,6 @@ module prclib_stacks
   use iso_varying_string, string_t => varying_string
   use io_units
   use format_utils, only: write_separator
-  use unit_tests
-  use os_interface
   use process_libraries
 
   implicit none
@@ -44,7 +42,6 @@ module prclib_stacks
 
   public :: prclib_entry_t
   public :: prclib_stack_t
-  public :: prclib_stacks_test
 
   type, extends (process_library_t) :: prclib_entry_t
      type(prclib_entry_t), pointer :: next => null ()
@@ -150,65 +147,5 @@ contains
     ptr => null ()
   end function prclib_stack_get_library_ptr
 
-
-  subroutine prclib_stacks_test (u, results)
-    integer, intent(in) :: u
-    type(test_results_t), intent(inout) :: results
-    call test (prclib_stacks_1, "prclib_stacks_1", &
-         "write an empty process library stack", &
-         u, results)
-    call test (prclib_stacks_2, "prclib_stacks_2", &
-         "fill a process library stack", &
-         u, results)
-  end subroutine prclib_stacks_test
-  
-  subroutine prclib_stacks_1 (u)
-    integer, intent(in) :: u
-    type(prclib_stack_t) :: stack
-
-    write (u, "(A)")  "* Test output: prclib_stacks_1"
-    write (u, "(A)")  "*   Purpose: display an empty process library stack"
-    write (u, "(A)")
-
-    call stack%write (u)
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: prclib_stacks_1"
-    
-  end subroutine prclib_stacks_1
-  
-  subroutine prclib_stacks_2 (u)
-    integer, intent(in) :: u
-    type(prclib_stack_t) :: stack
-    type(prclib_entry_t), pointer :: lib
-
-    write (u, "(A)")  "* Test output: prclib_stacks_2"
-    write (u, "(A)")  "*   Purpose: fill a process library stack"
-    write (u, "(A)")
-
-    write (u, "(A)")  "* Initialize two (empty) libraries &
-         &and push them on the stack"
-    write (u, "(A)")
-
-    allocate (lib)
-    call lib%init (var_str ("lib1"))
-    call stack%push (lib)
-
-    allocate (lib)
-    call lib%init (var_str ("lib2"))
-    call stack%push (lib)
-
-    call stack%write (u)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Cleanup"
-
-    call stack%final ()
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: prclib_stacks_2"
-    
-  end subroutine prclib_stacks_2
-  
 
 end module prclib_stacks

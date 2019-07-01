@@ -1,4 +1,4 @@
-! WHIZARD 2.2.6 May 02 2015
+! WHIZARD 2.2.7 Aug 11 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -31,15 +31,11 @@
 ! to the source 'whizard.nw'
 
 module eio_raw
-  
-  use kinds
-  use io_units
-  use iso_varying_string, string_t => varying_string
-  use unit_tests
-  use diagnostics
 
-  use lorentz
-  use variables
+  use kinds, only: default
+  use iso_varying_string, string_t => varying_string
+  use io_units
+  use diagnostics
   use model_data
   use particles
   use event_base
@@ -51,7 +47,6 @@ module eio_raw
   private
 
   public :: eio_raw_t
-  public :: eio_raw_test
 
   integer, parameter :: CURRENT_FILE_VERSION = 2
 
@@ -76,11 +71,12 @@ module eio_raw
      procedure :: output => eio_raw_output
      procedure :: input_i_prc => eio_raw_input_i_prc
      procedure :: input_event => eio_raw_input_event
+     procedure :: skip => eio_raw_skip
   end type eio_raw_t
-  
+
 
 contains
-  
+
   subroutine eio_raw_write (object, unit)
     class(eio_raw_t), intent(in) :: object
     integer, intent(in), optional :: unit
@@ -99,7 +95,7 @@ contains
        write (u, "(3x,A)")  "[closed]"
     end if
   end subroutine eio_raw_write
-  
+
   subroutine eio_raw_final (object)
     class(eio_raw_t), intent(inout) :: object
     if (object%reading .or. object%writing) then
@@ -111,12 +107,12 @@ contains
        object%writing = .false.
     end if
   end subroutine eio_raw_final
-  
+
   subroutine eio_raw_set_parameters (eio, check, version_string, extension)
     class(eio_raw_t), intent(inout) :: eio
     logical, intent(in), optional :: check
     type(string_t), intent(in), optional :: version_string
-    type(string_t), intent(in), optional :: extension 
+    type(string_t), intent(in), optional :: extension
     if (present (check))  eio%check = check
     if (present (version_string)) then
        select case (char (version_string))
@@ -136,7 +132,7 @@ contains
        eio%extension = "evx"
     end if
   end subroutine eio_raw_set_parameters
-    
+
   subroutine eio_raw_init_out (eio, sample, data, success, extension)
     class(eio_raw_t), intent(inout) :: eio
     type(string_t), intent(in) :: sample
@@ -168,7 +164,7 @@ contains
           !!! !!! !!! Workaround for gfortran 5.0 ICE
           allocate (md5sum_alt (data%n_alt))
           md5sum_alt = data%md5sum_alt
-          !!! allocate (md5sum_alt (data%n_alt), source = data%md5sum_alt) 
+          !!! allocate (md5sum_alt (data%n_alt), source = data%md5sum_alt)
        end if
     else
        md5sum_prc = ""
@@ -183,12 +179,14 @@ contains
     write (eio%unit)  md5sum_cfg
     write (eio%unit)  eio%norm_mode
     write (eio%unit)  eio%n_alt
-    do i = 1, eio%n_alt
-       write (eio%unit)  md5sum_alt(i)
-    end do
+    if (allocated (md5sum_alt)) then
+       do i = 1, eio%n_alt
+          write (eio%unit)  md5sum_alt(i)
+       end do
+    end if
     if (present (success))  success = .true.
   end subroutine eio_raw_init_out
-    
+
   subroutine eio_raw_init_in (eio, sample, data, success, extension)
     class(eio_raw_t), intent(inout) :: eio
     type(string_t), intent(in) :: sample
@@ -233,7 +231,7 @@ contains
     read (eio%unit)  eio%n_alt
     if (present (data)) then
        if (eio%n_alt /= data%n_alt) then
-          if (present (success))  success = .false. !
+          if (present (success))  success = .false.
           return
        end if
     end if
@@ -261,7 +259,7 @@ contains
        end if
     end if
   end subroutine eio_raw_init_in
-    
+
   subroutine eio_raw_switch_inout (eio, success)
     class(eio_raw_t), intent(inout) :: eio
     logical, intent(out), optional :: success
@@ -275,7 +273,7 @@ contains
     eio%writing = .true.
     if (present (success))  success = .true.
   end subroutine eio_raw_switch_inout
-  
+
   subroutine eio_raw_output (eio, event, i_prc, reading, passed, pacify)
     class(eio_raw_t), intent(inout) :: eio
     class(generic_event_t), intent(in), target :: event
@@ -415,272 +413,16 @@ contains
     end if
   end subroutine eio_raw_input_event
 
+  subroutine eio_raw_skip (eio, iostat)
+    class(eio_raw_t), intent(inout) :: eio
+    integer, intent(out) :: iostat
+    if (eio%reading) then
+       read (eio%unit, iostat = iostat)
+    else
+       call eio%write ()
+       call msg_fatal ("Raw event file is not open for reading")
+    end if
+  end subroutine eio_raw_skip
 
-  subroutine eio_raw_test (u, results)
-    integer, intent(in) :: u
-    type(test_results_t), intent(inout) :: results
-    call test (eio_raw_1, "eio_raw_1", &
-         "read and write event contents", &
-         u, results)
-    call test (eio_raw_2, "eio_raw_2", &
-         "handle multiple weights", &
-         u, results)
-  end subroutine eio_raw_test
-  
-  subroutine eio_raw_1 (u)
-    use processes
-    integer, intent(in) :: u
-    type(model_data_t), target :: model
-    type(event_t), allocatable, target :: event
-    type(process_t), allocatable, target :: process
-    type(process_instance_t), allocatable, target :: process_instance
-    class(eio_t), allocatable :: eio
-    integer :: i_prc, iostat
-    type(string_t) :: sample
-
-    write (u, "(A)")  "* Test output: eio_raw_1"
-    write (u, "(A)")  "*   Purpose: generate and read/write an event"
-    write (u, "(A)")
-
-    write (u, "(A)")  "* Initialize test process"
- 
-    call model%init_test ()
-
-    allocate (process)
-    allocate (process_instance)
-    call prepare_test_process (process, process_instance, model)
-    call process_instance%setup_event_data ()
- 
-    allocate (event)
-    call event%basic_init ()
-    call event%connect (process_instance, process%get_model_ptr ())
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Generate and write an event"
-    write (u, "(A)")
- 
-    sample = "eio_raw_1"
- 
-    allocate (eio_raw_t :: eio)
-    
-    call eio%init_out (sample)
-    call event%generate (1, [0._default, 0._default])
-    call event%evaluate_expressions ()
-    call event%write (u)
-    write (u, "(A)")
-
-    call eio%output (event, i_prc = 42)
-    call eio%write (u)
-    call eio%final ()
-
-    call event%final ()
-    deallocate (event)
-    call process_instance%final ()
-    deallocate (process_instance)
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Re-read the event"
-    write (u, "(A)")
-    
-    call eio%init_in (sample)
-
-    allocate (process_instance)
-    call process_instance%init (process)
-    call process_instance%setup_event_data ()
-    allocate (event)
-    call event%basic_init ()
-    call event%connect (process_instance, process%get_model_ptr ())
-    
-    call eio%input_i_prc (i_prc, iostat)
-    if (iostat /= 0)  write (u, "(A,I0)")  "I/O error (i_prc):", iostat
-    call eio%input_event (event, iostat)
-    if (iostat /= 0)  write (u, "(A,I0)")  "I/O error (event):", iostat
-    call eio%write (u)
-    
-    write (u, "(A)")
-    write (u, "(1x,A,I0)")  "i_prc = ", i_prc
-    write (u, "(A)")
-    call event%write (u)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Generate and append another event"
-    write (u, "(A)")
-    
-    call eio%switch_inout ()
-    call event%generate (1, [0._default, 0._default])
-    call event%evaluate_expressions ()
-    call event%write (u)
-    write (u, "(A)")
-
-    call eio%output (event, i_prc = 5)
-    call eio%write (u)
-    call eio%final ()
-    
-    call event%final ()
-    deallocate (event)
-    call process_instance%final ()
-    deallocate (process_instance)
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Re-read both events"
-    write (u, "(A)")
-    
-    call eio%init_in (sample)
-
-    allocate (process_instance)
-    call process_instance%init (process)
-    call process_instance%setup_event_data ()
-    allocate (event)
-    call event%basic_init ()
-    call event%connect (process_instance, process%get_model_ptr ())
-    
-    call eio%input_i_prc (i_prc, iostat)
-    if (iostat /= 0)  write (u, "(A,I0)")  "I/O error (i_prc/1):", iostat
-    call eio%input_event (event, iostat)
-    if (iostat /= 0)  write (u, "(A,I0)")  "I/O error (event/1):", iostat
-    call eio%input_i_prc (i_prc, iostat)
-    if (iostat /= 0)  write (u, "(A,I0)")  "I/O error (i_prc/2):", iostat
-    call eio%input_event (event, iostat)
-    if (iostat /= 0)  write (u, "(A,I0)")  "I/O error (event/2):", iostat
-    call eio%write (u)
-    
-    write (u, "(A)")
-    write (u, "(1x,A,I0)")  "i_prc = ", i_prc
-    write (u, "(A)")
-    call event%write (u)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Cleanup"
- 
-    call eio%final ()
-    deallocate (eio)
- 
-    call event%final ()
-    deallocate (event)
- 
-    call cleanup_test_process (process, process_instance)
-    deallocate (process_instance)
-    deallocate (process)
-    
-    call model%final ()
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: eio_raw_1"
-    
-  end subroutine eio_raw_1
-  
-  subroutine eio_raw_2 (u)
-    use processes
-    integer, intent(in) :: u
-    type(model_data_t), target :: model
-    type(var_list_t) :: var_list
-    type(event_t), allocatable, target :: event
-    type(process_t), allocatable, target :: process
-    type(process_instance_t), allocatable, target :: process_instance
-    type(event_sample_data_t) :: data
-    class(eio_t), allocatable :: eio
-    integer :: i_prc, iostat
-    type(string_t) :: sample
-
-    write (u, "(A)")  "* Test output: eio_raw_2"
-    write (u, "(A)")  "*   Purpose: generate and read/write an event"
-    write (u, "(A)")  "*            with multiple weights"
-    write (u, "(A)")
-
-    call model%init_test ()
-
-    write (u, "(A)")  "* Initialize test process"
- 
-    allocate (process)
-    allocate (process_instance)
-    call prepare_test_process (process, process_instance, model)
-    call process_instance%setup_event_data ()
- 
-    call data%init (n_proc = 1, n_alt = 2)
-
-    call var_list_append_log (var_list, var_str ("?unweighted"), .false., &
-         intrinsic = .true.)
-    call var_list_append_string (var_list, var_str ("$sample_normalization"), &
-         var_str ("auto"), intrinsic = .true.)
-    call var_list_append_real (var_list, var_str ("safety_factor"), &
-         1._default, intrinsic = .true.)
-
-    allocate (event)
-    call event%basic_init (var_list, n_alt = 2)
-    call event%connect (process_instance, process%get_model_ptr ())
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Generate and write an event"
-    write (u, "(A)")
- 
-    sample = "eio_raw_2"
- 
-    allocate (eio_raw_t :: eio)
-    
-    call eio%init_out (sample, data)
-    call event%generate (1, [0._default, 0._default])
-    call event%evaluate_expressions ()
-    call event%set (sqme_alt = [2._default, 3._default])
-    call event%set (weight_alt = &
-         [2 * event%get_weight_ref (), 3 * event%get_weight_ref ()])
-    call event%store_alt_values ()
-    call event%check ()
-
-    call event%write (u)
-    write (u, "(A)")
-
-    call eio%output (event, i_prc = 42)
-    call eio%write (u)
-    call eio%final ()
-
-    call event%final ()
-    deallocate (event)
-    call process_instance%final ()
-    deallocate (process_instance)
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Re-read the event"
-    write (u, "(A)")
-    
-    call eio%init_in (sample, data)
-
-    allocate (process_instance)
-    call process_instance%init (process)
-    call process_instance%setup_event_data ()
-    allocate (event)
-    call event%basic_init (var_list, n_alt = 2)
-    call event%connect (process_instance, process%get_model_ptr ())
-    
-    call eio%input_i_prc (i_prc, iostat)
-    if (iostat /= 0)  write (u, "(A,I0)")  "I/O error (i_prc):", iostat
-    call eio%input_event (event, iostat)
-    if (iostat /= 0)  write (u, "(A,I0)")  "I/O error (event):", iostat
-    call eio%write (u)
-    
-    write (u, "(A)")
-    write (u, "(1x,A,I0)")  "i_prc = ", i_prc
-    write (u, "(A)")
-    call event%write (u)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Cleanup"
- 
-    call eio%final ()
-    deallocate (eio)
- 
-    call event%final ()
-    deallocate (event)
- 
-    call cleanup_test_process (process, process_instance)
-    deallocate (process_instance)
-    deallocate (process)
-    
-    call model%final ()
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: eio_raw_2"
-    
-  end subroutine eio_raw_2
-  
 
 end module eio_raw
