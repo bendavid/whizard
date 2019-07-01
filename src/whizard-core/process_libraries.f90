@@ -1,11 +1,11 @@
-! WHIZARD 2.0.3 Tue Aug 10 2010
+! WHIZARD 2.0.4 Tue Oct 26 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
-!     with contributions by Christian Speckner, Sebastian Schmidt, 
-!     Daniel Wiesler, Felix Braam
+!     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+!     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -499,7 +499,6 @@ contains
     type(process_configuration_t), pointer :: current
     character(32) :: old_md5sum
     integer :: old_status
-    integer :: old_method
     logical :: keep_status
     logical :: msg
     keep_status = .true.;  if (present (rebuild_library))  keep_status = .not. rebuild_library
@@ -508,9 +507,8 @@ contains
     if (associated (current)) then
        old_md5sum = current%md5sum
        old_status = current%status
-       old_method = current%method
        call process_configuration_init &
-            (current, prc_id, model, prt_in, prt_out, old_method, status, &
+            (current, prc_id, model, prt_in, prt_out, method, status, &
              restrictions, known_md5sum)
        if (size (prt_in) == 0) then
           call msg_warning ("Process '" // char (prc_id) &
@@ -993,7 +991,7 @@ contains
     write (u, "(A)") "  public :: number_color_flows, color_flows"
     write (u, "(A)") "  public :: number_color_indices, number_color_factors, &"
     write (u, "(A)") "     color_factors, color_sum"
-    write (u, "(A)") "  public :: init, final"  
+    write (u, "(A)") "  public :: init, final, update_alpha_s"  
     write (u, "(A)") "  public :: reset_helicity_selection"
     write (u, "(A)") "                                         "    
     write (u, "(A)") "  public :: new_event, is_allowed, get_amplitude"        
@@ -1081,6 +1079,10 @@ contains
     write (u, "(A)") "                                           " 
     write (u, "(A)") "  subroutine final ()" 
     write (u, "(A)") "  end subroutine final" 
+    write (u, "(A)") "                                           " 
+    write (u, "(A)") "  subroutine update_alpha_s (alpha_s)" 
+    write (u, "(A)") "    real(default), intent(in) :: alpha_s"        
+    write (u, "(A)") "  end subroutine update_alpha_s" 
     write (u, "(A)") "                                           " 
     write (u, "(A)") "  pure function number_particles_in () result (n)"
     write (u, "(A)") "    integer :: n"    

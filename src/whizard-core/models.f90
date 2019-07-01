@@ -1,11 +1,11 @@
-! WHIZARD 2.0.3 Tue Aug 10 2010
+! WHIZARD 2.0.4 Tue Oct 26 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
-!     with contributions by Christian Speckner, Sebastian Schmidt, 
-!     Daniel Wiesler, Felix Braam
+!     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+!     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -125,7 +125,7 @@ module models
   integer, parameter, public :: Z_BOSON = 23
   integer, parameter, public :: W_BOSON = 24
 
-  integer, parameter, public :: PROTON = 2212
+  integer, parameter, public :: PROTON = 2212 
   integer, parameter, public :: PION = 111
   integer, parameter, public :: PIPLUS = 211
   integer, parameter, public :: PIMINUS = - PIPLUS
@@ -1318,7 +1318,7 @@ contains
           end if
        end do
        if (.not. associated (prt)) then
-          write (msg_buffer, "(1x,A,1x,I7)")  "PDG code =", pdg
+          write (msg_buffer, "(1x,A,1x,I0)")  "PDG code =", pdg
           call msg_message
           call msg_fatal (" Model '" // char (model%name) // "'" // &
                " has no particle with this PDG code")

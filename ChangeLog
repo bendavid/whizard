@@ -1,6 +1,49 @@
 ChangeLog -- Summary of changes to the WHIZARD package
-
+	
 Use svn log to see detailed changes.
+
+        Version 2.0.4
+
+2010-10-26 
+	RELEASE: version 2.0.4
+
+2010-10-06
+	Bug fix in MSSM implementation
+	
+2010-10-01
+	Update to libtool 2.4
+	
+2010-09-29
+	Support for anomalous top couplings (form factors etc.)
+	Bug fix for running gauge Yukawa SUSY couplings
+
+2010-09-28 
+	RELEASE: version 1.96
+
+2010-09-21 
+	Beam remnants and pT spectra for lepton collider re-enabled
+	Restructuring subevt class 
+	
+2010-09-16 
+	Shower and matching are disabled by default
+	PYTHIA as a conditional on these two options
+	
+2010-09-14 
+	Possibility to read in beam spectra re-enabled (e.g. Guinea
+	   Pig)
+	
+2010-09-13 
+	Energy scan as (pseudo-) structure functions re-implemented
+	
+2010-09-10 
+	CIRCE2 included again in WHIZARD 2 and validated
+
+2010-09-02 
+	Re-implementation of asymmetric beam energies and collision
+	  angles, e-p collisions work, inclusion of a HERA DIS test 
+	  case
+	
+##################################################################
 
 	Version 2.0.3
 

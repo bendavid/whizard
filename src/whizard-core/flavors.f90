@@ -1,11 +1,11 @@
-! WHIZARD 2.0.3 Tue Aug 10 2010
+! WHIZARD 2.0.4 Tue Oct 26 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
-!     with contributions by Christian Speckner, Sebastian Schmidt, 
-!     Daniel Wiesler, Felix Braam
+!     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+!     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -199,6 +199,7 @@ contains
   elemental subroutine flavor_undefine (flv)
     type(flavor_t), intent(inout) :: flv
     flv%f = UNDEFINED
+    flv%prt => null ()
   end subroutine flavor_undefine
 
   subroutine flavor_write (flv, unit)
@@ -272,10 +273,14 @@ contains
   elemental function flavor_get_pdg_anti (flv) result (f)
     integer :: f
     type(flavor_t), intent(in) :: flv
-    if (particle_data_has_antiparticle (flv%prt)) then
-       f = -flv%f
+    if (associated (flv%prt)) then
+       if (particle_data_has_antiparticle (flv%prt)) then
+          f = -flv%f
+       else
+          f = flv%f
+       end if
     else
-       f = flv%f
+       f = 0
     end if
   end function flavor_get_pdg_anti
 
@@ -288,13 +293,21 @@ contains
   elemental function flavor_is_visible (flv) result (flag)
     logical :: flag
     type(flavor_t), intent(in) :: flv
-    flag = particle_data_is_visible (flv%prt)
+    if (associated (flv%prt)) then
+       flag = particle_data_is_visible (flv%prt)
+    else
+       flag = .false.
+    end if
   end function flavor_is_visible
 
   elemental function flavor_is_parton (flv) result (flag)
     logical :: flag
     type(flavor_t), intent(in) :: flv
-    flag = particle_data_is_parton (flv%prt)
+    if (associated (flv%prt)) then
+       flag = particle_data_is_parton (flv%prt)
+    else
+       flag = .false.
+    end if
   end function flavor_is_parton
 
   elemental function flavor_is_beam_remnant (flv) result (flag)
@@ -312,26 +325,38 @@ contains
   elemental function flavor_is_gauge (flv) result (flag)
     logical :: flag
     type(flavor_t), intent(in) :: flv
-    flag = particle_data_is_gauge (flv%prt)
+    if (associated (flv%prt)) then
+       flag = particle_data_is_gauge (flv%prt)
+    else
+       flag = .false.
+    end if
   end function flavor_is_gauge
 
   elemental function flavor_is_left_handed (flv) result (flag)
     logical :: flag
     type(flavor_t), intent(in) :: flv
-    if (flv%f > 0) then
-       flag = particle_data_is_left_handed (flv%prt)
+    if (associated (flv%prt)) then
+       if (flv%f > 0) then
+          flag = particle_data_is_left_handed (flv%prt)
+       else
+          flag = particle_data_is_right_handed (flv%prt)
+       end if
     else
-       flag = particle_data_is_right_handed (flv%prt)
+       flag = .false.
     end if
   end function flavor_is_left_handed
 
   elemental function flavor_is_right_handed (flv) result (flag)
     logical :: flag
     type(flavor_t), intent(in) :: flv
-    if (flv%f > 0) then
-       flag = particle_data_is_right_handed (flv%prt)
+    if (associated (flv%prt)) then
+       if (flv%f > 0) then
+          flag = particle_data_is_right_handed (flv%prt)
+       else
+          flag = particle_data_is_left_handed (flv%prt)
+       end if
     else
-       flag = particle_data_is_left_handed (flv%prt)
+       flag = .false.
     end if
   end function flavor_is_right_handed
 
@@ -344,31 +369,51 @@ contains
   elemental function flavor_has_antiparticle (flv) result (flag)
     logical :: flag
     type(flavor_t), intent(in) :: flv
-    flag = particle_data_has_antiparticle (flv%prt)
+    if (associated (flv%prt)) then
+       flag = particle_data_has_antiparticle (flv%prt)
+    else
+       flag = .false.
+    end if
   end function flavor_has_antiparticle
 
   elemental function flavor_is_stable (flv) result (flag)
     logical :: flag
     type(flavor_t), intent(in) :: flv
-    flag = particle_data_is_stable (flv%prt, anti = flv%f < 0)
+    if (associated (flv%prt)) then
+       flag = particle_data_is_stable (flv%prt, anti = flv%f < 0)
+    else
+       flag = .true.
+    end if
   end function flavor_is_stable
 
   elemental function flavor_decays_isotropically (flv) result (flag)
     logical :: flag
     type(flavor_t), intent(in) :: flv
-    flag = particle_data_decays_isotropically (flv%prt, anti = flv%f < 0)
+    if (associated (flv%prt)) then
+       flag = particle_data_decays_isotropically (flv%prt, anti = flv%f < 0)
+    else
+       flag = .true.
+    end if
   end function flavor_decays_isotropically
 
   elemental function flavor_decays_diagonal (flv) result (flag)
     logical :: flag
     type(flavor_t), intent(in) :: flv
-    flag = particle_data_decays_diagonal (flv%prt, anti = flv%f < 0)
+    if (associated (flv%prt)) then
+       flag = particle_data_decays_diagonal (flv%prt, anti = flv%f < 0)
+    else
+       flag = .true.
+    end if
   end function flavor_decays_diagonal
 
   elemental function flavor_is_polarized (flv) result (flag)
     logical :: flag
     type(flavor_t), intent(in) :: flv
-    flag = particle_data_is_polarized (flv%prt, anti = flv%f < 0)
+    if (associated (flv%prt)) then
+       flag = particle_data_is_polarized (flv%prt, anti = flv%f < 0)
+    else
+       flag = .false.
+    end if
   end function flavor_is_polarized
 
   elemental function flavor_get_name (flv) result (name)
@@ -394,34 +439,54 @@ contains
   elemental function flavor_get_spin_type (flv) result (type)
     integer :: type
     type(flavor_t), intent(in) :: flv
-    type = particle_data_get_spin_type (flv%prt)
+    if (associated (flv%prt)) then
+       type = particle_data_get_spin_type (flv%prt)
+    else
+       type = 1
+    end if
   end function flavor_get_spin_type
 
   elemental function flavor_get_multiplicity (flv) result (type)
     integer :: type
     type(flavor_t), intent(in) :: flv
-    type = particle_data_get_multiplicity (flv%prt)
+    if (associated (flv%prt)) then
+       type = particle_data_get_multiplicity (flv%prt)
+    else
+       type = 1
+    end if
   end function flavor_get_multiplicity
 
   elemental function flavor_get_isospin_type (flv) result (type)
     integer :: type
     type(flavor_t), intent(in) :: flv
-    type = particle_data_get_isospin_type (flv%prt)
+    if (associated (flv%prt)) then
+       type = particle_data_get_isospin_type (flv%prt)
+    else
+       type = 1
+    end if
   end function flavor_get_isospin_type
 
   elemental function flavor_get_charge_type (flv) result (type)
     integer :: type
     type(flavor_t), intent(in) :: flv
-    type = particle_data_get_charge_type (flv%prt)
+    if (associated (flv%prt)) then
+       type = particle_data_get_charge_type (flv%prt)
+    else
+       type = 1
+    end if
   end function flavor_get_charge_type
 
   elemental function flavor_get_color_type (flv) result (type)
     integer :: type
     type(flavor_t), intent(in) :: flv
-    if (flavor_is_antiparticle (flv)) then
-       type = - particle_data_get_color_type (flv%prt)
+    if (associated (flv%prt)) then
+       if (flavor_is_antiparticle (flv)) then
+          type = - particle_data_get_color_type (flv%prt)
+       else
+          type = particle_data_get_color_type (flv%prt)
+       end if
     else
-       type = particle_data_get_color_type (flv%prt)
+       type = 1
     end if
   end function flavor_get_color_type
 

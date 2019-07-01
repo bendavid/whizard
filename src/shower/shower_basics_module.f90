@@ -22,7 +22,7 @@
 
 module shower_basics_module
 
-  use kinds, only: double !NODEP!
+  use kinds, only: default !NODEP!
   use constants, only : pi, twopi !NODEP!
   use tao_random_numbers !NODEP!
 
@@ -32,10 +32,10 @@ module shower_basics_module
   logical, parameter :: D_print=.false.	   ! decides whether to print out additional information
 
   ! physical parameters
-  real(kind=double) :: D_Min_t=1._double 	! cut-off scale t_cut, given in GeV^2  !! PARJ(82)
-  real(Kind=Double) :: D_min_scale=0.5_double 	! Cut-Off Scale For Pt^2 Ordered Shower, Given In Gev^2
-  real(kind=double) :: D_Lambda_fsr=0.29_double         !! PARP(72)
-  real(kind=double) :: D_Lambda_isr=0.29_double         !! PARP(61)
+  real(default) :: D_Min_t=1._default 	! cut-off scale t_cut, given in GeV^2  !! PARJ(82)
+  real(default) :: D_min_scale=0.5_default 	! Cut-Off Scale For Pt^2 Ordered Shower, Given In Gev^2
+  real(default) :: D_Lambda_fsr=0.29_default         !! PARP(72)
+  real(default) :: D_Lambda_isr=0.29_default         !! PARP(61)
 
   ! settings
   integer :: D_Nf=5	           ! maximum number of flavours in gluon decay to quarks  !! MSTJ(45)
@@ -43,25 +43,25 @@ module shower_basics_module
   logical ::  D_running_alpha_s_fsr=.true.
   ! decides whether to use constant or running alpha_s -> see function D_alpha_s(t) !! MSTJ(44) + MSTP(64)
   logical ::  D_running_alpha_s_isr=.true.
-  real(kind=double) :: D_constalpha_s = 0.20_double  !! PARU(111)
+  real(default) :: D_constalpha_s = 0.20_default  !! PARU(111)
   logical :: isr_pt_ordered = .false.
   !! set emitted timelike partons in spacelike shower on shell, true corresponds to MSTP(63)=0
   logical :: isr_only_onshell_emitted_partons = .true.
   logical :: isr_angular_ordered = .true.       ! whether isr is angular ordered, MSTP(62)
 
   ! varying parameters
-  real(kind=double) :: primordial_kt_width=1.5_double   ! width of Gaussian primordial kt distribution   !! PARP(91)
-  real(kind=double) :: primordial_kt_cutoff=5._double   ! cutoff for Gaussian primordial kt distribution !! PARP(93)
-  real(kind=double) :: maxz_isr=0.999_double  ! should be a parameter        !! PARP(66)
-  real(kind=double) :: minenergy_timelike=1._double    ! min energy of emitted timelike parton in isr  !! PARP(65)
-  real(kind=double) :: tscalefactor_isr=0.075_double    ! factor for first scale, default=1  ! should be a parameter
+  real(default) :: primordial_kt_width=1.5_default   ! width of Gaussian primordial kt distribution   !! PARP(91)
+  real(default) :: primordial_kt_cutoff=5._default   ! cutoff for Gaussian primordial kt distribution !! PARP(93)
+  real(default) :: maxz_isr=0.999_default  ! should be a parameter        !! PARP(66)
+  real(default) :: minenergy_timelike=1._default    ! min energy of emitted timelike parton in isr  !! PARP(65)
+  real(default) :: tscalefactor_isr=1._default    ! factor for first scale, default=1  ! should be a parameter
   ! factor, by which the integral in the sudhakov-factor is suppressed for the respective first scale in isr
   ! higher values -> more activity
-  real(kind=double) :: first_integral_suppression_factor=2._double 
+  real(default) :: first_integral_suppression_factor=2._default 
 
   ! auxiliary and temporaily paramters
-  real(kind=double) :: scalefactor1 = 0.02_double      ! temporary for Pt-ordered shower
-  real(kind=double) :: scalefactor2 = 0.02_double      ! temporary for Pt-ordered shower
+  real(default) :: scalefactor1 = 0.02_default      ! temporary for Pt-ordered shower
+  real(default) :: scalefactor2 = 0.02_default      ! temporary for Pt-ordered shower
 
 contains
 
@@ -78,34 +78,34 @@ contains
   end subroutine randomseed
 
   function D_alpha_s_isr(tin) result(alpha_s)
-    real(kind=double), intent(in) :: tin
-    real(kind=double) :: b,t
-    real(kind=double) :: alpha_s
+    real(default), intent(in) :: tin
+    real(default) :: b,t
+    real(default) :: alpha_s
 
 !    arbitrary lower cut off for scale
-!    t=MAX(max(1._double*D_Min_t, 1.1_double*D_Lambda**2), ABS(tin))
-    t=max(max(0.1_double*D_Min_t, 1.1_double*D_Lambda_isr**2), abs(tin))
+!    t=MAX(max(1._default*D_Min_t, 1.1_default*D_Lambda**2), ABS(tin))
+    t=max(max(0.1_default*D_Min_t, 1.1_default*D_Lambda_isr**2), abs(tin))
 
     if(D_running_alpha_s_isr) then
-       b=(33._double-2._double*number_of_flavors(t))/(12._double*pi)
-       alpha_s=1._double/(b*log(t/(D_Lambda_isr**2)))
+       b=(33._default-2._default*number_of_flavors(t))/(12._default*pi)
+       alpha_s=1._default/(b*log(t/(D_Lambda_isr**2)))
     else
        alpha_s = D_constalpha_s
     end if
   end function D_alpha_s_isr
 
   function D_alpha_s_fsr(tin) result(alpha_s)
-    real(kind=double), intent(in) :: tin
-    real(kind=double) :: b,t
-    real(kind=double) :: alpha_s
+    real(default), intent(in) :: tin
+    real(default) :: b,t
+    real(default) :: alpha_s
 
 !    arbitrary lower cut off for scale
-!    t=MAX(max(1._double*D_Min_t, 1.1_double*D_Lambda**2), ABS(tin))
-    t=max(max(0.1_double*D_Min_t, 1.1_double*D_Lambda_fsr**2), abs(tin))
+!    t=MAX(max(1._default*D_Min_t, 1.1_default*D_Lambda**2), ABS(tin))
+    t=max(max(0.1_default*D_Min_t, 1.1_default*D_Lambda_fsr**2), abs(tin))
 
     if(D_running_alpha_s_fsr) then
-       b=(33._double-2._double*number_of_flavors(t))/(12._double*pi)
-       alpha_s=1._double/(b*log(t/(D_Lambda_fsr**2)))
+       b=(33._default-2._default*number_of_flavors(t))/(12._default*pi)
+       alpha_s=1._default/(b*log(t/(D_Lambda_fsr**2)))
     else
        alpha_s = D_constalpha_s
     end if
@@ -113,26 +113,26 @@ contains
 
   function mass_typ(typ) result(mass)   ! mass in GeV
     integer, intent(in) :: typ
-    real(kind=double) :: mass
+    real(default) :: mass
 
 !!$    SELECT CASE(ABS(typ))
 !!$        ! It is assumed that quark masses are ordered mass(1)<mass(2)<mass(3)<...
 !!$    CASE (1) !d 
-!!$       mass_typ=0.330_double
+!!$       mass_typ=0.330_default
 !!$    CASE (2) !u
-!!$       mass_typ=0.330_double
+!!$       mass_typ=0.330_default
 !!$    CASE (3) !s
-!!$       mass_typ=0.500_double
+!!$       mass_typ=0.500_default
 !!$    CASE (4) !c
-!!$       mass_typ=1.500_double
+!!$       mass_typ=1.500_default
 !!$    CASE (5) !b
-!!$       mass_typ=4.800_double
+!!$       mass_typ=4.800_default
 !!$    CASE (6) !t
-!!$       mass_typ=175.00_double
+!!$       mass_typ=175.00_default
 !!$    CASE (2212) !proton
-!!$       mass_typ=0.93827_double
+!!$       mass_typ=0.93827_default
 !!$    CASE default !others not implemented
-!!$       mass_typ=0.0_double
+!!$       mass_typ=0.0_default
 !!$    END SELECT
 
     mass = sqrt(mass_squared_typ(typ))   ! mass_typ probably not needed
@@ -140,46 +140,46 @@ contains
 
   function mass_squared_typ(typ) result(mass2)
     integer, intent(in) :: typ
-    real(kind=double) :: mass2
+    real(default) :: mass2
 
     select case(abs(typ))
         ! It is assumed that quark masses are ordered mass(1)<mass(2)<mass(3)<...
     case (1) !d 
-       mass2=0.330_double**2
+       mass2=0.330_default**2
     case (2) !u
-       mass2=0.330_double**2
+       mass2=0.330_default**2
     case (3) !s
-       mass2=0.500_double**2
+       mass2=0.500_default**2
     case (4) !c
-       mass2=1.500_double**2
+       mass2=1.500_default**2
     case (5) !b
-       mass2=4.800_double**2
+       mass2=4.800_default**2
     case (6) !t
-       mass2=175.00_double**2
+       mass2=175.00_default**2
     case (2212) !proton
-       mass2=0.93827_double**2
+       mass2=0.93827_default**2
     case (21) ! Gluon
-       mass2=0.0_double
+       mass2=0.0_default
     case (0) ! I take 0 to be partons whose type is not yet clear
-       mass2=0.0_double
+       mass2=0.0_default
     case (9999) ! beam remnant
-       mass2 = 0.0_double ! don't know how to handle the beamremnant
+       mass2 = 0.0_default ! don't know how to handle the beamremnant
     case default !others not implemented
-       mass2=0.0_double
+       mass2=0.0_default
 !       print *, " error in mass_squared_typ: typ not known"
     end select
   end function mass_squared_typ
 
   function number_of_flavors(t) result(nr)		! number of flavours allowed in an actual g->qq decay
-    real(kind=double), intent(in) :: t
+    real(default), intent(in) :: t
     integer :: nr
 
     integer :: i
 
     nr=0
-    if(t < 0.25_double*D_Min_t) return   ! arbitrary cut off ?WRONG?
+    if(t < 0.25_default*D_Min_t) return   ! arbitrary cut off ?WRONG?
     do i=1,min(D_Nf,3)    ! to do: take heavier quarks(-> cuts on allowed costheta in g->qq) into account
-       if( (4._double*mass_squared_typ(i)+D_Min_t) < t ) then
+       if( (4._default*mass_squared_typ(i)+D_Min_t) < t ) then
           nr=i
        else
           exit
@@ -188,44 +188,44 @@ contains
   end function number_of_flavors
 
   function P_qqg(z) result(P)               ! quark => quark + gluon
-    real(kind=double), intent(in) :: z
-    real(kind=double) :: P
+    real(default), intent(in) :: z
+    real(default) :: P
     
-    P=(4._double/3._double)*(1._double+z**2)/(1._double-z)
+    P=(4._default/3._default)*(1._default+z**2)/(1._default-z)
   end function P_qqg
 
   function P_gqq(z) result(P)               ! gluon => quark + antiquark
-    real(kind=double), intent(in) :: z
-    real(kind=double) :: P
+    real(default), intent(in) :: z
+    real(default) :: P
     
-    P=0.5_double*(z**2+(1._double-z)**2)
+    P=0.5_default*(z**2+(1._default-z)**2)
     ! anti-symmetrized version -> needs change of first and second daughter in 50% of branchings
-    !    P=(1._double-z)**2
+    !    P=(1._default-z)**2
   end function P_gqq
 
   function P_ggg(z) result(P)               ! gluon => gluon + gluon
-    real(kind=double), intent(in) :: z
-    real(kind=double) :: P
+    real(default), intent(in) :: z
+    real(default) :: P
     
-    P=3._double*( (1._double-z)/z + z/(1._double-z) + z*(1._double-z) )
+    P=3._default*( (1._default-z)/z + z/(1._default-z) + z*(1._default-z) )
     ! anti-symmetrized version -> needs to by symmetrized in color connections
-    !    P=3._double*( 2._double*z/(1._double-z) + z*(1._double-z) )
+    !    P=3._default*( 2._default*z/(1._default-z) + z*(1._default-z) )
   end function P_ggg
 
   !! methods to set parameters -> better interface?
 
   subroutine shower_set_D_Min_t(input)
-    real(kind=double) :: input
+    real(default) :: input
     D_Min_t = input
   end subroutine shower_set_D_Min_t
 
   subroutine shower_set_D_Lambda_fsr(input)
-    real(kind=double) :: input
+    real(default) :: input
     D_Lambda_fsr = input
   end subroutine shower_set_D_Lambda_fsr
 
   subroutine shower_set_D_Lambda_isr(input)
-    real(kind=double) :: input
+    real(default) :: input
     D_Lambda_isr = input
   end subroutine shower_set_D_Lambda_isr
 
@@ -245,7 +245,7 @@ contains
   end subroutine shower_set_D_running_alpha_s_isr
 
   subroutine shower_set_D_constantalpha_s(input)
-    real(kind=double) :: input
+    real(default) :: input
     D_constalpha_s = input
   end subroutine shower_set_D_constantalpha_s
 
@@ -260,24 +260,29 @@ contains
   end subroutine shower_set_isr_angular_ordered
 
   subroutine shower_set_primordial_kt_width(input)
-    real(kind=double) :: input
+    real(default) :: input
     primordial_kt_width = input
   end subroutine shower_set_primordial_kt_width
 
   subroutine shower_set_primordial_kt_cutoff(input)
-    real(kind=double) :: input
+    real(default) :: input
     primordial_kt_cutoff = input
   end subroutine shower_set_primordial_kt_cutoff
 
   subroutine shower_set_maxz_isr(input)
-    real(kind=double) :: input
+    real(default) :: input
     maxz_isr = input
   end subroutine shower_set_maxz_isr
 
   subroutine shower_set_minenergy_timelike(input)
-    real(kind=double) :: input
+    real(default) :: input
     minenergy_timelike = input
   end subroutine shower_set_minenergy_timelike
+
+  subroutine shower_set_tscalefactor_isr(input)
+    real(default) :: input
+    tscalefactor_isr = input
+  end subroutine shower_set_tscalefactor_isr
 
   subroutine shower_set_isr_only_onshell_emitted_partons(input)
     logical :: input

@@ -4,6 +4,7 @@
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+!     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -2198,6 +2199,26 @@ subroutine model_update_alpha_s (alpha_s)
   !!!Glu Glu Squarks
   !!!!!!!!!!!!!!!!
   g_gg_sqsq = (gssq**2)    
+  !!!!!!!!!!!!!!!
+  !!!!!!Gluino_Quark_SQuark
+  !!!!!!!!!!!!!!!
+   do gen = 1,3
+      do sfm1 = 1,2
+         g_yuk_gluino_usu(1,gen,sfm1) = &
+              ( - (mix_su(gen,sfm1,2) * (gs / sqrt (2.0_default))))
+         g_yuk_gluino_usu(2,gen,sfm1) = & 
+              (mix_su(gen,sfm1,1) * (gs / sqrt (2.0_default)))    
+         
+         g_yuk_gluino_dsd(1,gen,sfm1) = &
+              ( - (mix_sd(gen,sfm1,2) * (gs / sqrt (2.0_default))))
+         g_yuk_gluino_dsd(2,gen,sfm1) = & 
+              (mix_sd(gen,sfm1,1) * (gs / sqrt (2.0_default)))    
+      end do
+   end do
+   g_yuk_gluino_usu_c(1,:,:) =  g_yuk_gluino_usu(2,:,:) 
+   g_yuk_gluino_usu_c(2,:,:) =  g_yuk_gluino_usu(1,:,:)    
+   g_yuk_gluino_dsd_c(1,:,:) =  g_yuk_gluino_dsd(2,:,:) 
+   g_yuk_gluino_dsd_c(2,:,:) =  g_yuk_gluino_dsd(1,:,:) 
 end subroutine model_update_alpha_s
 end module parameters_nmssm_ckm
 

@@ -1,4 +1,4 @@
-# $Id: Threeshl.mdl 1561 2010-01-21 13:31:01Z cnspeckn $
+# $Id: Threeshl.mdl 2795 2010-09-14 16:27:35Z cnspeckn $
 
 ########################################################################
 # Three-site higgsless model (unitary gauge)
@@ -9,12 +9,12 @@ model "Threeshl"
 parameter me		= 0.
 parameter mmu		= 0.106
 parameter mtau		= 1.78
-parameter mu		= 0.
-parameter md		= 0.
-parameter mc		= 1.25
-parameter ms		= 0.95
-parameter mt		= 174.
-parameter mb		= 4.2
+parameter muq		= 0.
+parameter mdq		= 0.
+parameter mcq		= 1.25
+parameter msq		= 0.95
+parameter mtq		= 174.
+parameter mbq		= 4.2
 parameter mw		= 80.403
 parameter mz		= 91.188
 
@@ -24,7 +24,7 @@ parameter ww		= 2.049
 parameter wz		= 2.443
 
 # Elementary charge
-parameter e			= 0.313329
+parameter em		= 0.313329
 
 # Strong coupling at the Z pole
 parameter alphas	= 0.1178
@@ -93,33 +93,33 @@ particle D_QUARK 1 parton
 	name d
 	anti dbar
 	tex_anti "\bar{d}"
-	mass md
+	mass mdq
 particle U_QUARK 2 parton
 	spin 1/2  charge 2/3  color 3
 	name u
 	anti ubar
 	tex_anti "\bar{u}"
-	mass mu
+	mass muq
 particle S_QUARK 3 like D_QUARK
 	name s
 	anti sbar
 	tex_anti "\bar{s}"
-	mass ms
+	mass msq
 particle C_QUARK 4 like U_QUARK
 	name c
 	anti cbar
 	tex_anti "\bar{c}"
-	mass mc
+	mass mcq
 particle B_QUARK 5 like D_QUARK
 	name b
 	anti bbar
 	tex_anti "\bar{b}"
-	mass mb
+	mass mbq
 particle T_QUARK 6 like U_QUARK
 	name t
 	anti tbar
 	tex_anti "\bar{t}"
-	mass mt
+	mass mtq
 	width wt
 
 # KK-light leptons and neutrinos

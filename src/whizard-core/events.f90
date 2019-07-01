@@ -1,11 +1,11 @@
-! WHIZARD 2.0.3 Tue Aug 10 2010
+! WHIZARD 2.0.4 Tue Oct 26 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
-!     with contributions by Christian Speckner, Sebastian Schmidt, 
-!     Daniel Wiesler, Felix Braam
+!     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+!     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -37,7 +37,7 @@ module events
   use os_interface
   use lexers
   use parser
-  use prt_lists
+  use subevents
   use variables
   use expressions
   use models
@@ -259,6 +259,7 @@ contains
   subroutine event_recover_process (event)
     type(event_t), intent(inout) :: event
     call process_recover_kinematics (event%process, event%particle_set)
+    call process_fill_subevt (event%process)
   end subroutine event_recover_process
 
   subroutine event_compute_scale (event)
@@ -296,25 +297,25 @@ contains
     event%vars%weight = event%vars%weight * factor
   end subroutine event_renormalize_weight
 
-  subroutine event_reweight (event, prt_list, reweight_expr)
+  subroutine event_reweight (event, subevt, reweight_expr)
     type(event_t), intent(inout), target :: event
-    type(prt_list_t), intent(inout), target :: prt_list
+    type(subevt_t), intent(inout), target :: subevt
     type(eval_tree_t), intent(inout), target :: reweight_expr
     real(default) :: factor
     if (event%is_valid .and. eval_tree_is_defined (reweight_expr)) then
-       call particle_set_to_prt_list (event%particle_set, prt_list)
+       call particle_set_to_subevt (event%particle_set, subevt)
        call eval_tree_evaluate (reweight_expr)
        factor = eval_tree_get_real (reweight_expr)
        call event_renormalize_weight (event, factor)
     end if
   end subroutine event_reweight
 
-  subroutine event_do_analysis (event, prt_list, analysis_expr)
+  subroutine event_do_analysis (event, subevt, analysis_expr)
     type(event_t), intent(inout), target :: event
-    type(prt_list_t), intent(inout), target :: prt_list
+    type(subevt_t), intent(inout), target :: subevt
     type(eval_tree_t), intent(inout), target :: analysis_expr
     if (event%is_valid .and. eval_tree_is_defined (analysis_expr)) then
-       call particle_set_to_prt_list (event%particle_set, prt_list)
+       call particle_set_to_subevt (event%particle_set, subevt)
        call eval_tree_evaluate (analysis_expr)
     end if
   end subroutine event_do_analysis
@@ -693,6 +694,7 @@ contains
     call beam_data_init_sqrts (beam_data, 1000._default, flv, pol)
     call process_setup_beams (process, beam_data, 0, 0)
     call process_connect_strfun (process)
+    call process_setup_subevt (process)
     print *
     print *, "* Phase space setup"
     call process_setup_phase_space (process, rebuild_phs, &

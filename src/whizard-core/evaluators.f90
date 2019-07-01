@@ -1,11 +1,11 @@
-! WHIZARD 2.0.3 Tue Aug 10 2010
+! WHIZARD 2.0.4 Tue Oct 26 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
-!     with contributions by Christian Speckner, Sebastian Schmidt, 
-!     Daniel Wiesler, Felix Braam
+!     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+!     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -187,69 +187,74 @@ contains
     if (has_factor)  allocate (pa%factor (n))
   end subroutine pairing_array_init
 
-  subroutine evaluator_write (eval, unit, verbose, show_momentum_sum, show_mass)
+  subroutine evaluator_write (eval, unit, &
+       verbose, show_momentum_sum, show_mass, show_state, show_table)
     type(evaluator_t), intent(in) :: eval
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: verbose, show_momentum_sum, show_mass
-    logical :: conjugate, square
+    logical, intent(in), optional :: show_state, show_table
+    logical :: conjugate, square, show_tab
     integer :: u, i, j
     u = output_unit (unit);  if (u < 0)  return
+    show_tab = .true.;  if (present (show_table))  show_tab = .false.
     write (u, "(A)")  "Evaluator:"
     call interaction_write &
-         (eval%int, unit, verbose, show_momentum_sum, show_mass)
-    write (u, "(1x,A)")  "Matrix-element multiplication"
-    write (u, "(2x,A)", advance="no")  "Input interaction 1:"
-    if (associated (eval%int_in1)) then
-       write (u, "(1x,I0)")  interaction_get_tag (eval%int_in1)
-    else
-       write (u, *)  " [undefined]"
-    end if
-    write (u, "(2x,A)", advance="no")  "Input interaction 2:"
-    if (associated (eval%int_in2)) then
-       write (u, *)  interaction_get_tag (eval%int_in2)
-    else
-       write (u, *)  " [undefined]"
-    end if
-    select case (eval%type)
-    case (EVAL_SQUARED_FLOWS, EVAL_SQUARE_WITH_COLOR_FACTORS)
-       conjugate = .true.
-       square = .true.
-    case default
-       conjugate = .false.
-       square = .false.
-    end select
-    if (allocated (eval%pairing_array)) then
-       do i = 1, size (eval%pairing_array)
-          write (u, "(2x,A,I0,A)")  "ME(", i, ") = "
-          do j = 1, size (eval%pairing_array(i)%i1)
-             write (u, "(4x,A)", advance="no")  "+"
-             if (allocated (eval%pairing_array(i)%i2)) then
-                write (u, "(1x,A,I0,A)", advance="no")  &
-                  "ME1(", eval%pairing_array(i)%i1(j), ")"
-                if (conjugate) then
-                   write (u, "(A)", advance="no")  "* x"
+         (eval%int, unit, verbose, show_momentum_sum, show_mass, show_state)
+    if (show_tab) then
+       write (u, "(1x,A)")  "Matrix-element multiplication"
+       write (u, "(2x,A)", advance="no")  "Input interaction 1:"
+       if (associated (eval%int_in1)) then
+          write (u, "(1x,I0)")  interaction_get_tag (eval%int_in1)
+       else
+          write (u, *)  " [undefined]"
+       end if
+       write (u, "(2x,A)", advance="no")  "Input interaction 2:"
+       if (associated (eval%int_in2)) then
+          write (u, *)  interaction_get_tag (eval%int_in2)
+       else
+          write (u, *)  " [undefined]"
+       end if
+       select case (eval%type)
+       case (EVAL_SQUARED_FLOWS, EVAL_SQUARE_WITH_COLOR_FACTORS)
+          conjugate = .true.
+          square = .true.
+       case default
+          conjugate = .false.
+          square = .false.
+       end select
+       if (allocated (eval%pairing_array)) then
+          do i = 1, size (eval%pairing_array)
+             write (u, "(2x,A,I0,A)")  "ME(", i, ") = "
+             do j = 1, size (eval%pairing_array(i)%i1)
+                write (u, "(4x,A)", advance="no")  "+"
+                if (allocated (eval%pairing_array(i)%i2)) then
+                   write (u, "(1x,A,I0,A)", advance="no")  &
+                        "ME1(", eval%pairing_array(i)%i1(j), ")"
+                   if (conjugate) then
+                      write (u, "(A)", advance="no")  "* x"
+                   else
+                      write (u, "(A)", advance="no")  " x"
+                   end if
+                   write (u, "(1x,A,I0,A)", advance="no")  &
+                        "ME2(", eval%pairing_array(i)%i2(j), ")"
+                else if (square) then
+                   write (u, "(1x,A)", advance="no")  "|"
+                   write (u, "(A,I0,A)", advance="no")  &
+                        "ME1(", eval%pairing_array(i)%i1(j), ")"
+                   write (u, "(A)", advance="no")  "|^2"
                 else
-                   write (u, "(A)", advance="no")  " x"
+                   write (u, "(1x,A,I0,A)", advance="no")  &
+                        "ME1(", eval%pairing_array(i)%i1(j), ")"
                 end if
-                write (u, "(1x,A,I0,A)", advance="no")  &
-                  "ME2(", eval%pairing_array(i)%i2(j), ")"
-             else if (square) then
-                write (u, "(1x,A)", advance="no")  "|"
-                write (u, "(A,I0,A)", advance="no")  &
-                  "ME1(", eval%pairing_array(i)%i1(j), ")"
-                write (u, "(A)", advance="no")  "|^2"
-             else
-                write (u, "(1x,A,I0,A)", advance="no")  &
-                  "ME1(", eval%pairing_array(i)%i1(j), ")"
-             end if
-             if (allocated (eval%pairing_array(i)%factor)) then
-                write (u, "(1x,A)", advance="no")  "x"
-                write (u, *)  eval%pairing_array(i)%factor(j)
-             else
-                write (u, *)
-             end if
+                if (allocated (eval%pairing_array(i)%factor)) then
+                   write (u, "(1x,A)", advance="no")  "x"
+                   write (u, *)  eval%pairing_array(i)%factor(j)
+                else
+                   write (u, *)
+                end if
+             end do
           end do
-       end do
+       end if
     end if
   end subroutine evaluator_write
 
@@ -608,13 +613,13 @@ contains
     qn_mask_in(2)%mask = interaction_get_mask (int_in2)
 
     call connection_table_init (connection_table, &
-         interaction_get_state_matrix (int_in1), &
-         interaction_get_state_matrix (int_in2), &
+         interaction_get_state_matrix_ptr (int_in1), &
+         interaction_get_state_matrix_ptr (int_in2), &
          qn_mask_conn_initial,  &
          n_conn, connection_index, n_rest)
     call connection_table_fill (connection_table, &
-         interaction_get_state_matrix (int_in1), &
-         interaction_get_state_matrix (int_in2), &
+         interaction_get_state_matrix_ptr (int_in1), &
+         interaction_get_state_matrix_ptr (int_in2), &
          connection_index, prt_is_connected)
     call make_product_interaction (eval%int, &
          n_in, n_vir, n_out, &
@@ -1116,7 +1121,7 @@ contains
          (qn_mask_initial, sum_colors, mask_cg=.false.)
     if (sum_colors) then
        call color_table_init &
-            (color_table, interaction_get_state_matrix (int_in), n_tot)
+            (color_table, interaction_get_state_matrix_ptr (int_in), n_tot)
        if (present (col_flow_index) .and. present (col_factor) &
            .and. present (col_index_hi)) then
           call color_table_set_color_factors &
@@ -1126,9 +1131,10 @@ contains
     end if
 
     call connection_table_init (connection_table, &
-         interaction_get_state_matrix (int_in), qn_mask_initial, qn_mask, n_tot)
+         interaction_get_state_matrix_ptr (int_in), &
+         qn_mask_initial, qn_mask, n_tot)
     call connection_table_fill (connection_table, &
-         interaction_get_state_matrix (int_in))
+         interaction_get_state_matrix_ptr (int_in))
     call make_squared_interaction (eval%int, &
          n_in, n_vir, n_out, n_tot, &
          connection_table, sum_colors, qn_mask_initial .or. qn_mask)
@@ -1411,7 +1417,7 @@ contains
          (qn_mask_initial, sum_colors, mask_cg=.false.)
     if (sum_colors) then
        call color_table_init &
-            (color_table, interaction_get_state_matrix (int_in), n_tot)
+            (color_table, interaction_get_state_matrix_ptr (int_in), n_tot)
        if (present (col_flow_index) .and. present (col_factor) &
            .and. present (col_index_hi)) then
           call color_table_set_color_factors &
@@ -1421,9 +1427,10 @@ contains
     end if
 
     call connection_table_init (connection_table, &
-         interaction_get_state_matrix (int_in), qn_mask_initial, qn_mask, n_tot)
+         interaction_get_state_matrix_ptr (int_in), &
+         qn_mask_initial, qn_mask, n_tot)
     call connection_table_fill (connection_table, &
-         interaction_get_state_matrix (int_in))
+         interaction_get_state_matrix_ptr (int_in))
     call make_squared_interaction (eval%int, &
          n_in, n_vir, n_out, n_tot, &
          connection_table, sum_colors, qn_mask_initial .or. qn_mask)
@@ -1672,7 +1679,7 @@ contains
     type(evaluator_t), intent(out), target :: eval
     type(interaction_t), intent(in), target :: int_in
     integer :: n_in, n_vir, n_out, n_tot
-    type(state_matrix_t), target :: state_with_contractions
+    type(state_matrix_t), pointer :: state_with_contractions => null ()
     integer, dimension(:), allocatable :: me_index
     integer, dimension(:), allocatable :: result_index
     eval%type = EVAL_COLOR_CONTRACTION
@@ -1684,7 +1691,7 @@ contains
     n_vir = interaction_get_n_vir (int_in)
     n_out = interaction_get_n_out (int_in)
     n_tot = interaction_get_n_tot (int_in)
-    state_with_contractions = interaction_get_state_matrix (int_in)
+    state_with_contractions => interaction_get_state_matrix_ptr (int_in)
     call state_matrix_add_color_contractions (state_with_contractions)
     call make_contracted_interaction (eval%int, &
          me_index, result_index, &
@@ -1692,7 +1699,6 @@ contains
          state_with_contractions, interaction_get_mask (int_in))
     call make_pairing_array (eval%pairing_array, me_index, result_index)
     call record_links (eval%int, int_in, n_tot)
-    call state_matrix_final (state_with_contractions)
 !     print *, "Result evaluator:"
 !     call evaluator_write (eval)
 

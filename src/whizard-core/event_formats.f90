@@ -1,11 +1,11 @@
-! WHIZARD 2.0.3 Tue Aug 10 2010
+! WHIZARD 2.0.4 Tue Oct 26 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
-!     with contributions by Christian Speckner, Sebastian Schmidt, 
-!     Daniel Wiesler, Felix Braam
+!     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+!     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -32,7 +32,7 @@ module event_formats
   use constants, only: pb_per_fb !NODEP!
   use file_utils !NODEP!
   use lorentz !NODEP!
-  use prt_lists
+  use subevents
   use flavors
   use colors
   use helicities
@@ -145,7 +145,7 @@ contains
     write (u, *) '<LesHouchesEvents version="1.0">'
     write (u, *) '<header>'
     write (u, *) '  <generator_name>WHIZARD</generator_name>'
-    write (u, *) '  <generator_version>2.0.3</generator_version>'
+    write (u, *) '  <generator_version>2.0.4</generator_version>'
     write (u, *) '</header>'
   end subroutine les_houches_events_write_header
 

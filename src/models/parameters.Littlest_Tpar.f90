@@ -1,9 +1,10 @@
 ! $Id: parameters.LittlestTpar.f90,v 1.9 2005/10/25 09:21:48 kilian Exp $
 !
-! Copyright (C) 1999-2009 by 
+! Copyright (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+!     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -369,7 +370,6 @@ contains
     ghcc = - mass(4) / vev
     ghtautau = - mass(15) / vev
     gh3 = - 3 * mass(25)**2 / vev
-    !!! gh4 = mass(25) / vev !!! Old SM3
     gh4 = - 3 * mass(25)**2 / vev**2
     !!! Color flow basis, divide by sqrt(2)
     gs = sqrt(2.0_default * PI * par%alphas)

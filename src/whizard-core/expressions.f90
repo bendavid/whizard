@@ -1,11 +1,11 @@
-! WHIZARD 2.0.3 Tue Aug 10 2010
+! WHIZARD 2.0.4 Tue Oct 26 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
-!     with contributions by Christian Speckner, Sebastian Schmidt, 
-!     Daniel Wiesler, Felix Braam
+!     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+!     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -41,7 +41,7 @@ module expressions
   use parser
   use analysis
   use pdg_arrays
-  use prt_lists
+  use subevents
   use variables
 
   implicit none
@@ -78,13 +78,13 @@ module expressions
   public :: eval_tree_get_real
   public :: eval_tree_get_cmplx
   public :: eval_tree_get_pdg_array
-  public :: eval_tree_get_prt_list
+  public :: eval_tree_get_subevt
   public :: eval_tree_get_string
   public :: eval_tree_get_log_ptr
   public :: eval_tree_get_int_ptr
   public :: eval_tree_get_real_ptr
   public :: eval_tree_get_cmplx_ptr  
-  public :: eval_tree_get_prt_list_ptr
+  public :: eval_tree_get_subevt_ptr
   public :: eval_tree_get_pdg_array_ptr
   public :: eval_tree_get_string_ptr
   public :: eval_tree_write
@@ -92,7 +92,7 @@ module expressions
   public :: eval_int
   public :: eval_real
   public :: eval_cmplx
-  public :: eval_prt_list
+  public :: eval_subevt
   public :: eval_pdg_array
   public :: eval_string
   public :: eval_numeric
@@ -122,7 +122,7 @@ module expressions
      integer,           pointer :: ival => null ()
      real(default),     pointer :: rval => null ()
      complex(default),  pointer :: cval => null ()
-     type(prt_list_t),  pointer :: pval => null ()
+     type(subevt_t),  pointer :: pval => null ()
      type(pdg_array_t), pointer :: aval => null ()
      type(string_t),    pointer :: sval => null ()
      type(eval_node_t), pointer :: arg0 => null ()
@@ -144,7 +144,7 @@ module expressions
      procedure(unary_real), nopass, pointer :: op1_real => null ()
      procedure(unary_cmplx), nopass, pointer :: op1_cmplx => null ()
      procedure(unary_pdg),  nopass, pointer :: op1_pdg  => null ()
-     procedure(unary_ptl),  nopass, pointer :: op1_ptl  => null ()
+     procedure(unary_sev),  nopass, pointer :: op1_sev  => null ()
      procedure(unary_str),  nopass, pointer :: op1_str  => null ()
      procedure(unary_cut),  nopass, pointer :: op1_cut  => null ()
      procedure(unary_num),  nopass, pointer :: op1_num  => null ()
@@ -153,7 +153,7 @@ module expressions
      procedure(binary_real), nopass, pointer :: op2_real => null ()
      procedure(binary_cmplx), nopass, pointer :: op2_cmplx => null ()
      procedure(binary_pdg),  nopass, pointer :: op2_pdg  => null ()
-     procedure(binary_ptl),  nopass, pointer :: op2_ptl  => null ()
+     procedure(binary_sev),  nopass, pointer :: op2_sev  => null ()
      procedure(binary_str),  nopass, pointer :: op2_str  => null ()
      procedure(binary_cut),  nopass, pointer :: op2_cut  => null ()
      procedure(binary_num),  nopass, pointer :: op2_num  => null ()
@@ -201,13 +201,13 @@ module expressions
      end subroutine unary_pdg
   end interface
   abstract interface
-     subroutine unary_ptl (prt_list, arg, arg0)
-       import prt_list_t
+     subroutine unary_sev (subevt, arg, arg0)
+       import subevt_t
        import eval_node_t
-       type(prt_list_t), intent(inout) :: prt_list
+       type(subevt_t), intent(inout) :: subevt
        type(eval_node_t), intent(in) :: arg
        type(eval_node_t), intent(inout), optional :: arg0
-     end subroutine unary_ptl
+     end subroutine unary_sev
   end interface
   abstract interface
      subroutine unary_str (string, arg)
@@ -267,13 +267,13 @@ module expressions
      end subroutine binary_pdg
   end interface
   abstract interface
-     subroutine binary_ptl (prt_list, arg1, arg2, arg0)
-       import prt_list_t
+     subroutine binary_sev (subevt, arg1, arg2, arg0)
+       import subevt_t
        import eval_node_t
-       type(prt_list_t), intent(inout) :: prt_list
+       type(subevt_t), intent(inout) :: subevt
        type(eval_node_t), intent(in) :: arg1, arg2
        type(eval_node_t), intent(inout), optional :: arg0
-     end subroutine binary_ptl
+     end subroutine binary_sev
   end interface
   abstract interface
      subroutine binary_str (string, arg1, arg2)
@@ -360,7 +360,7 @@ contains
        case (V_INT);  deallocate (node%ival)
        case (V_REAL); deallocate (node%rval)
        case (V_CMPLX); deallocate (node%cval)
-       case (V_PTL);  deallocate (node%pval)
+       case (V_SEV);  deallocate (node%pval)
        case (V_PDG);  deallocate (node%aval)
        case (V_STR);  deallocate (node%sval)
        end select
@@ -408,15 +408,15 @@ contains
     node%value_is_known = .true.
   end subroutine eval_node_init_cmplx
 
-  subroutine eval_node_init_prt_list (node, pval)
+  subroutine eval_node_init_subevt (node, pval)
     type(eval_node_t), intent(out) :: node
-    type(prt_list_t), intent(in) :: pval
+    type(subevt_t), intent(in) :: pval
     node%type = EN_CONSTANT
-    node%result_type = V_PTL
+    node%result_type = V_SEV
     allocate (node%pval, node%value_is_known)
     node%pval = pval
     node%value_is_known = .true.
-  end subroutine eval_node_init_prt_list
+  end subroutine eval_node_init_subevt
 
   subroutine eval_node_init_pdg_array (node, aval)
     type(eval_node_t), intent(out) :: node
@@ -486,17 +486,17 @@ contains
     node%value_is_known => is_known
   end subroutine eval_node_init_cmplx_ptr
 
-  subroutine eval_node_init_prt_list_ptr (node, name, pval, is_known)
+  subroutine eval_node_init_subevt_ptr (node, name, pval, is_known)
     type(eval_node_t), intent(out) :: node
     type(string_t), intent(in) :: name
-    type(prt_list_t), intent(in), target :: pval
+    type(subevt_t), intent(in), target :: pval
     logical, intent(in), target :: is_known
     node%type = EN_VARIABLE
     node%tag = name
-    node%result_type = V_PTL
+    node%result_type = V_SEV
     node%pval => pval
     node%value_is_known => is_known
-  end subroutine eval_node_init_prt_list_ptr
+  end subroutine eval_node_init_subevt_ptr
 
   subroutine eval_node_init_pdg_array_ptr (node, name, aval, is_known)
     type(eval_node_t), intent(out) :: node
@@ -585,8 +585,8 @@ contains
     case (V_REAL); allocate (node%rval)
     case (V_CMPLX); allocate (node%cval)
     case (V_PDG);  allocate (node%aval)
-    case (V_PTL);  allocate (node%pval)
-       call prt_list_init (node%pval)
+    case (V_SEV);  allocate (node%pval)
+       call subevt_init (node%pval)
     case (V_STR);  allocate (node%sval)
     end select
     allocate (node%value_is_known)
@@ -617,8 +617,8 @@ contains
        case (V_PDG)
           call var_list_append_pdg_array &
                (node%var_list, name, var_def%aval)
-       case (V_PTL)
-          call var_list_append_prt_list &
+       case (V_SEV)
+          call var_list_append_subevt &
                (node%var_list, name, var_def%pval)
        case (V_STR)
           call var_list_append_string (node%var_list, name, var_def%sval)
@@ -635,7 +635,7 @@ contains
             (node%var_list, name, var_def%cval, var_def%value_is_known)
        case (V_PDG);  call var_list_append_pdg_array_ptr &
             (node%var_list, name, var_def%aval, var_def%value_is_known)
-       case (V_PTL); call var_list_append_prt_list_ptr &
+       case (V_SEV); call var_list_append_subevt_ptr &
             (node%var_list, name, var_def%pval, var_def%value_is_known)
        case (V_STR); call var_list_append_string_ptr &
             (node%var_list, name, var_def%sval, var_def%value_is_known)
@@ -698,32 +698,32 @@ contains
     type(eval_node_t), intent(out) :: node
     type(eval_node_t), intent(in), target :: arg1
     type(string_t), intent(in) :: name
-    procedure(unary_ptl) :: proc
+    procedure(unary_sev) :: proc
     node%type = EN_PRT_FUN_UNARY
     node%tag = name
-    node%result_type = V_PTL
+    node%result_type = V_SEV
     call eval_node_allocate_value (node)
     node%arg1 => arg1
     allocate (node%index)
     allocate (node%prt1)
-    node%op1_ptl => proc
+    node%op1_sev => proc
   end subroutine eval_node_init_prt_fun_unary
 
   subroutine eval_node_init_prt_fun_binary (node, arg1, arg2, name, proc)
     type(eval_node_t), intent(out) :: node
     type(eval_node_t), intent(in), target :: arg1, arg2
     type(string_t), intent(in) :: name
-    procedure(binary_ptl) :: proc
+    procedure(binary_sev) :: proc
     node%type = EN_PRT_FUN_BINARY
     node%tag = name
-    node%result_type = V_PTL
+    node%result_type = V_SEV
     call eval_node_allocate_value (node)
     node%arg1 => arg1
     node%arg2 => arg2
     allocate (node%index)
     allocate (node%prt1)
     allocate (node%prt2)
-    node%op2_ptl => proc
+    node%op2_sev => proc
   end subroutine eval_node_init_prt_fun_binary
 
   subroutine eval_node_init_eval_fun_unary (node, arg1, name)
@@ -907,14 +907,14 @@ contains
        else
           write (u, *) "[unknown complex]"
        end if
-    case (V_PTL)
+    case (V_SEV)
        if (char (node%tag) == "@evt") then
-          write (u, *) "[event particle list]"
+          write (u, *) "[event subevent]"
        else if (node%value_is_known) then
-          call prt_list_write &
+          call subevt_write &
                (node%pval, unit, prefix = repeat ("|  ", ind + 1))
        else
-          write (u, *) "[unknown particle list]"
+          write (u, *) "[unknown subevent]"
        end if
     case (V_PDG)
        call pdg_array_write (node%aval, u);  write (u, *)
@@ -1008,11 +1008,11 @@ contains
     en%op1_pdg => op
   end subroutine eval_node_set_op1_pdg
 
-  subroutine eval_node_set_op1_ptl (en, op)
+  subroutine eval_node_set_op1_sev (en, op)
     type(eval_node_t), intent(inout) :: en
-    procedure(unary_ptl) :: op
-    en%op1_ptl => op
-  end subroutine eval_node_set_op1_ptl
+    procedure(unary_sev) :: op
+    en%op1_sev => op
+  end subroutine eval_node_set_op1_sev
 
   subroutine eval_node_set_op1_str (en, op)
     type(eval_node_t), intent(inout) :: en
@@ -1050,11 +1050,11 @@ contains
     en%op2_pdg => op
   end subroutine eval_node_set_op2_pdg
 
-  subroutine eval_node_set_op2_ptl (en, op)
+  subroutine eval_node_set_op2_sev (en, op)
     type(eval_node_t), intent(inout) :: en
-    procedure(binary_ptl) :: op
-    en%op2_ptl => op
-  end subroutine eval_node_set_op2_ptl
+    procedure(binary_sev) :: op
+    en%op2_sev => op
+  end subroutine eval_node_set_op2_sev
 
   subroutine eval_node_set_op2_str (en, op)
     type(eval_node_t), intent(inout) :: en
@@ -1712,50 +1712,50 @@ contains
     pdg_array = en1%aval // en2%aval
   end subroutine concat_cc
 
-  subroutine collect_p (prt_list, en1, en0)
-    type(prt_list_t), intent(inout) :: prt_list
+  subroutine collect_p (subevt, en1, en0)
+    type(subevt_t), intent(inout) :: subevt
     type(eval_node_t), intent(in) :: en1
     type(eval_node_t), intent(inout), optional :: en0
     logical, dimension(:), allocatable :: mask1
     integer :: n, i
-    n = prt_list_get_length (en1%pval)
+    n = subevt_get_length (en1%pval)
     allocate (mask1 (n))
     if (present (en0)) then
        do i = 1, n
           en0%index = i
-          en0%prt1 = prt_list_get_prt (en1%pval, i)
+          en0%prt1 = subevt_get_prt (en1%pval, i)
           call eval_node_evaluate (en0)
           mask1(i) = en0%lval
        end do
     else
        mask1 = .true.
     end if
-    call prt_list_collect (prt_list, en1%pval, mask1)
+    call subevt_collect (subevt, en1%pval, mask1)
   end subroutine collect_p
 
-  subroutine select_p (prt_list, en1, en0)
-    type(prt_list_t), intent(inout) :: prt_list
+  subroutine select_p (subevt, en1, en0)
+    type(subevt_t), intent(inout) :: subevt
     type(eval_node_t), intent(in) :: en1
     type(eval_node_t), intent(inout), optional :: en0
     logical, dimension(:), allocatable :: mask1
     integer :: n, i
-    n = prt_list_get_length (en1%pval)
+    n = subevt_get_length (en1%pval)
     allocate (mask1 (n))
     if (present (en0)) then
-       do i = 1, prt_list_get_length (en1%pval)
+       do i = 1, subevt_get_length (en1%pval)
           en0%index = i
-          en0%prt1 = prt_list_get_prt (en1%pval, i)
+          en0%prt1 = subevt_get_prt (en1%pval, i)
           call eval_node_evaluate (en0)
           mask1(i) = en0%lval
        end do
     else
        mask1 = .true.
     end if
-    call prt_list_select (prt_list, en1%pval, mask1)
+    call subevt_select (subevt, en1%pval, mask1)
   end subroutine select_p
 
-  subroutine extract_p (prt_list, en1, en0)
-    type(prt_list_t), intent(inout) :: prt_list
+  subroutine extract_p (subevt, en1, en0)
+    type(subevt_t), intent(inout) :: subevt
     type(eval_node_t), intent(in) :: en1
     type(eval_node_t), intent(inout), optional :: en0
     integer :: index
@@ -1770,17 +1770,17 @@ contains
     else
        index = 1
     end if
-    call prt_list_extract (prt_list, en1%pval, index)
+    call subevt_extract (subevt, en1%pval, index)
   end subroutine extract_p
 
-  subroutine sort_p (prt_list, en1, en0)
-    type(prt_list_t), intent(inout) :: prt_list
+  subroutine sort_p (subevt, en1, en0)
+    type(subevt_t), intent(inout) :: subevt
     type(eval_node_t), intent(in) :: en1
     type(eval_node_t), intent(inout), optional :: en0
     integer, dimension(:), allocatable :: ival
     real(default), dimension(:), allocatable :: rval
     integer :: i, n
-    n = prt_list_get_length (en1%pval)
+    n = subevt_get_length (en1%pval)
     if (present (en0)) then
        select case (en0%result_type)
        case (V_INT);  allocate (ival (n))
@@ -1788,7 +1788,7 @@ contains
        end select
        do i = 1, n
           en0%index = i
-          en0%prt1 = prt_list_get_prt (en1%pval, i)
+          en0%prt1 = subevt_get_prt (en1%pval, i)
           call eval_node_evaluate (en0)
           select case (en0%result_type)
           case (V_INT);  ival(i) = en0%ival
@@ -1796,11 +1796,11 @@ contains
           end select
        end do
        select case (en0%result_type)
-       case (V_INT);  call prt_list_sort (prt_list, en1%pval, ival)
-       case (V_REAL); call prt_list_sort (prt_list, en1%pval, rval)
+       case (V_INT);  call subevt_sort (subevt, en1%pval, ival)
+       case (V_REAL); call subevt_sort (subevt, en1%pval, rval)
        end select
     else
-       call prt_list_sort (prt_list, en1%pval)
+       call subevt_sort (subevt, en1%pval)
     end if
   end subroutine sort_p
 
@@ -1809,11 +1809,11 @@ contains
     type(eval_node_t), intent(in) :: en1
     type(eval_node_t), intent(inout) :: en0
     integer :: i, n
-    n = prt_list_get_length (en1%pval)
+    n = subevt_get_length (en1%pval)
     lval = .true.
     do i = 1, n
        en0%index = i
-       en0%prt1 = prt_list_get_prt (en1%pval, i)
+       en0%prt1 = subevt_get_prt (en1%pval, i)
        call eval_node_evaluate (en0)
        lval = en0%lval
        if (.not. lval)  exit
@@ -1825,11 +1825,11 @@ contains
     type(eval_node_t), intent(in) :: en1
     type(eval_node_t), intent(inout) :: en0
     integer :: i, n
-    n = prt_list_get_length (en1%pval)
+    n = subevt_get_length (en1%pval)
     lval = .false.
     do i = 1, n
        en0%index = i
-       en0%prt1 = prt_list_get_prt (en1%pval, i)
+       en0%prt1 = subevt_get_prt (en1%pval, i)
        call eval_node_evaluate (en0)
        lval = en0%lval
        if (lval)  exit
@@ -1841,11 +1841,11 @@ contains
     type(eval_node_t), intent(in) :: en1
     type(eval_node_t), intent(inout) :: en0
     integer :: i, n
-    n = prt_list_get_length (en1%pval)
+    n = subevt_get_length (en1%pval)
     lval = .true.
     do i = 1, n
        en0%index = i
-       en0%prt1 = prt_list_get_prt (en1%pval, i)
+       en0%prt1 = subevt_get_prt (en1%pval, i)
        call eval_node_evaluate (en0)
        lval = .not. en0%lval
        if (lval)  exit
@@ -1857,12 +1857,12 @@ contains
     type(eval_node_t), intent(in) :: en1
     type(eval_node_t), intent(inout), optional :: en0
     integer :: i, n, count
-    n = prt_list_get_length (en1%pval)
+    n = subevt_get_length (en1%pval)
     if (present (en0)) then
        count = 0
        do i = 1, n
           en0%index = i
-          en0%prt1 = prt_list_get_prt (en1%pval, i)
+          en0%prt1 = subevt_get_prt (en1%pval, i)
           call eval_node_evaluate (en0)
           if (en0%lval)  count = count + 1
        end do
@@ -1872,112 +1872,112 @@ contains
     end if
   end subroutine count_a
        
-  subroutine join_pp (prt_list, en1, en2, en0)
-    type(prt_list_t), intent(inout) :: prt_list
+  subroutine join_pp (subevt, en1, en2, en0)
+    type(subevt_t), intent(inout) :: subevt
     type(eval_node_t), intent(in) :: en1, en2
     type(eval_node_t), intent(inout), optional :: en0
     logical, dimension(:), allocatable :: mask2
     integer :: i, j, n1, n2
-    n1 = prt_list_get_length (en1%pval)
-    n2 = prt_list_get_length (en2%pval)
+    n1 = subevt_get_length (en1%pval)
+    n2 = subevt_get_length (en2%pval)
     allocate (mask2 (n2))
     mask2 = .true.
     if (present (en0)) then
        do i = 1, n1
           en0%index = i
-          en0%prt1 = prt_list_get_prt (en1%pval, i)
+          en0%prt1 = subevt_get_prt (en1%pval, i)
           do j = 1, n2
-             en0%prt2 = prt_list_get_prt (en2%pval, j)
+             en0%prt2 = subevt_get_prt (en2%pval, j)
              call eval_node_evaluate (en0)
              mask2(j) = mask2(j) .and. en0%lval
           end do
        end do
     end if
-    call prt_list_join (prt_list, en1%pval, en2%pval, mask2)
+    call subevt_join (subevt, en1%pval, en2%pval, mask2)
   end subroutine join_pp
 
-  subroutine combine_pp (prt_list, en1, en2, en0)
-    type(prt_list_t), intent(inout) :: prt_list
+  subroutine combine_pp (subevt, en1, en2, en0)
+    type(subevt_t), intent(inout) :: subevt
     type(eval_node_t), intent(in) :: en1, en2
     type(eval_node_t), intent(inout), optional :: en0
     logical, dimension(:,:), allocatable :: mask12
     integer :: i, j, n1, n2
-    n1 = prt_list_get_length (en1%pval)
-    n2 = prt_list_get_length (en2%pval)
+    n1 = subevt_get_length (en1%pval)
+    n2 = subevt_get_length (en2%pval)
     if (present (en0)) then
        allocate (mask12 (n1, n2))
        do i = 1, n1
           en0%index = i
-          en0%prt1 = prt_list_get_prt (en1%pval, i)
+          en0%prt1 = subevt_get_prt (en1%pval, i)
           do j = 1, n2
-             en0%prt2 = prt_list_get_prt (en2%pval, j)
+             en0%prt2 = subevt_get_prt (en2%pval, j)
              call eval_node_evaluate (en0)
              mask12(i,j) = en0%lval
           end do
        end do
-       call prt_list_combine (prt_list, en1%pval, en2%pval, mask12)
+       call subevt_combine (subevt, en1%pval, en2%pval, mask12)
     else
-       call prt_list_combine (prt_list, en1%pval, en2%pval)
+       call subevt_combine (subevt, en1%pval, en2%pval)
     end if
   end subroutine combine_pp
 
-  subroutine collect_pp (prt_list, en1, en2, en0)
-    type(prt_list_t), intent(inout) :: prt_list
+  subroutine collect_pp (subevt, en1, en2, en0)
+    type(subevt_t), intent(inout) :: subevt
     type(eval_node_t), intent(in) :: en1, en2
     type(eval_node_t), intent(inout), optional :: en0
     logical, dimension(:), allocatable :: mask1
     integer :: i, j, n1, n2
-    n1 = prt_list_get_length (en1%pval)
-    n2 = prt_list_get_length (en2%pval)
+    n1 = subevt_get_length (en1%pval)
+    n2 = subevt_get_length (en2%pval)
     allocate (mask1 (n1))
     mask1 = .true.
     if (present (en0)) then
        do i = 1, n1
           en0%index = i
-          en0%prt1 = prt_list_get_prt (en1%pval, i)
+          en0%prt1 = subevt_get_prt (en1%pval, i)
           do j = 1, n2
-             en0%prt2 = prt_list_get_prt (en2%pval, j)
+             en0%prt2 = subevt_get_prt (en2%pval, j)
              call eval_node_evaluate (en0)
              mask1(i) = mask1(i) .and. en0%lval
           end do
        end do
     end if
-    call prt_list_collect (prt_list, en1%pval, mask1)
+    call subevt_collect (subevt, en1%pval, mask1)
   end subroutine collect_pp
 
-  subroutine select_pp (prt_list, en1, en2, en0)
-    type(prt_list_t), intent(inout) :: prt_list
+  subroutine select_pp (subevt, en1, en2, en0)
+    type(subevt_t), intent(inout) :: subevt
     type(eval_node_t), intent(in) :: en1, en2
     type(eval_node_t), intent(inout), optional :: en0
     logical, dimension(:), allocatable :: mask1
     integer :: i, j, n1, n2
-    n1 = prt_list_get_length (en1%pval)
-    n2 = prt_list_get_length (en2%pval)
+    n1 = subevt_get_length (en1%pval)
+    n2 = subevt_get_length (en2%pval)
     allocate (mask1 (n1))
     mask1 = .true.
     if (present (en0)) then
        do i = 1, n1
           en0%index = i
-          en0%prt1 = prt_list_get_prt (en1%pval, i)
+          en0%prt1 = subevt_get_prt (en1%pval, i)
           do j = 1, n2
-             en0%prt2 = prt_list_get_prt (en2%pval, j)
+             en0%prt2 = subevt_get_prt (en2%pval, j)
              call eval_node_evaluate (en0)
              mask1(i) = mask1(i) .and. en0%lval
           end do
        end do
     end if
-    call prt_list_select (prt_list, en1%pval, mask1)
+    call subevt_select (subevt, en1%pval, mask1)
   end subroutine select_pp
 
-  subroutine sort_pp (prt_list, en1, en2, en0)
-    type(prt_list_t), intent(inout) :: prt_list
+  subroutine sort_pp (subevt, en1, en2, en0)
+    type(subevt_t), intent(inout) :: subevt
     type(eval_node_t), intent(in) :: en1, en2
     type(eval_node_t), intent(inout), optional :: en0
     integer, dimension(:), allocatable :: ival
     real(default), dimension(:), allocatable :: rval
     integer :: i, n1, n2
-    n1 = prt_list_get_length (en1%pval)
-    n2 = prt_list_get_length (en2%pval)
+    n1 = subevt_get_length (en1%pval)
+    n2 = subevt_get_length (en2%pval)
     if (present (en0)) then
        select case (en0%result_type)
        case (V_INT);  allocate (ival (n1))
@@ -1985,8 +1985,8 @@ contains
        end select
        do i = 1, n1
           en0%index = i
-          en0%prt1 = prt_list_get_prt (en1%pval, i)
-          en0%prt2 = prt_list_get_prt (en2%pval, 1)
+          en0%prt1 = subevt_get_prt (en1%pval, i)
+          en0%prt2 = subevt_get_prt (en2%pval, 1)
           call eval_node_evaluate (en0)
           select case (en0%result_type)
           case (V_INT);  ival(i) = en0%ival
@@ -1994,11 +1994,11 @@ contains
           end select
        end do
        select case (en0%result_type)
-       case (V_INT);  call prt_list_sort (prt_list, en1%pval, ival)
-       case (V_REAL); call prt_list_sort (prt_list, en1%pval, rval)
+       case (V_INT);  call subevt_sort (subevt, en1%pval, ival)
+       case (V_REAL); call subevt_sort (subevt, en1%pval, rval)
        end select
     else
-       call prt_list_sort (prt_list, en1%pval)
+       call subevt_sort (subevt, en1%pval)
     end if
   end subroutine sort_pp
 
@@ -2007,14 +2007,14 @@ contains
     type(eval_node_t), intent(in) :: en1, en2
     type(eval_node_t), intent(inout) :: en0
     integer :: i, j, n1, n2
-    n1 = prt_list_get_length (en1%pval)
-    n2 = prt_list_get_length (en2%pval)
+    n1 = subevt_get_length (en1%pval)
+    n2 = subevt_get_length (en2%pval)
     lval = .true.
     LOOP1: do i = 1, n1
        en0%index = i
-       en0%prt1 = prt_list_get_prt (en1%pval, i)
+       en0%prt1 = subevt_get_prt (en1%pval, i)
        do j = 1, n2
-          en0%prt2 = prt_list_get_prt (en2%pval, j)
+          en0%prt2 = subevt_get_prt (en2%pval, j)
           if (are_disjoint (en0%prt1, en0%prt2)) then
              call eval_node_evaluate (en0)
              lval = en0%lval
@@ -2029,14 +2029,14 @@ contains
     type(eval_node_t), intent(in) :: en1, en2
     type(eval_node_t), intent(inout) :: en0
     integer :: i, j, n1, n2
-    n1 = prt_list_get_length (en1%pval)
-    n2 = prt_list_get_length (en2%pval)
+    n1 = subevt_get_length (en1%pval)
+    n2 = subevt_get_length (en2%pval)
     lval = .false.
     LOOP1: do i = 1, n1
        en0%index = i
-       en0%prt1 = prt_list_get_prt (en1%pval, i)
+       en0%prt1 = subevt_get_prt (en1%pval, i)
        do j = 1, n2
-          en0%prt2 = prt_list_get_prt (en2%pval, j)
+          en0%prt2 = subevt_get_prt (en2%pval, j)
           if (are_disjoint (en0%prt1, en0%prt2)) then
              call eval_node_evaluate (en0)
              lval = en0%lval
@@ -2051,14 +2051,14 @@ contains
     type(eval_node_t), intent(in) :: en1, en2
     type(eval_node_t), intent(inout) :: en0
     integer :: i, j, n1, n2
-    n1 = prt_list_get_length (en1%pval)
-    n2 = prt_list_get_length (en2%pval)
+    n1 = subevt_get_length (en1%pval)
+    n2 = subevt_get_length (en2%pval)
     lval = .true.
     LOOP1: do i = 1, n1
        en0%index = i
-       en0%prt1 = prt_list_get_prt (en1%pval, i)
+       en0%prt1 = subevt_get_prt (en1%pval, i)
        do j = 1, n2
-          en0%prt2 = prt_list_get_prt (en2%pval, j)
+          en0%prt2 = subevt_get_prt (en2%pval, j)
           if (are_disjoint (en0%prt1, en0%prt2)) then
              call eval_node_evaluate (en0)
              lval = .not. en0%lval
@@ -2073,15 +2073,15 @@ contains
     type(eval_node_t), intent(in) :: en1, en2
     type(eval_node_t), intent(inout), optional :: en0
     integer :: i, j, n1, n2, count
-    n1 = prt_list_get_length (en1%pval)
-    n2 = prt_list_get_length (en2%pval)
+    n1 = subevt_get_length (en1%pval)
+    n2 = subevt_get_length (en2%pval)
     if (present (en0)) then
        count = 0
        do i = 1, n1
           en0%index = i
-          en0%prt1 = prt_list_get_prt (en1%pval, i)
+          en0%prt1 = subevt_get_prt (en1%pval, i)
           do j = 1, n2
-             en0%prt2 = prt_list_get_prt (en2%pval, j)
+             en0%prt2 = subevt_get_prt (en2%pval, j)
              if (are_disjoint (en0%prt1, en0%prt2)) then
                 call eval_node_evaluate (en0)
                 if (en0%lval)  count = count + 1
@@ -2092,8 +2092,8 @@ contains
        count = 0
        do i = 1, n1
           do j = 1, n2
-             if (are_disjoint (prt_list_get_prt (en1%pval, i), &
-                               prt_list_get_prt (en2%pval, j))) then
+             if (are_disjoint (subevt_get_prt (en1%pval, i), &
+                               subevt_get_prt (en2%pval, j))) then
                 count = count + 1
              end if
           end do
@@ -2102,14 +2102,14 @@ contains
     ival = count
   end subroutine count_pp
        
-  subroutine select_pdg_ca (prt_list, en1, en2, en0)
-    type(prt_list_t), intent(inout) :: prt_list
+  subroutine select_pdg_ca (subevt, en1, en2, en0)
+    type(subevt_t), intent(inout) :: subevt
     type(eval_node_t), intent(in) :: en1, en2
     type(eval_node_t), intent(inout), optional :: en0
     if (present (en0)) then
-       call prt_list_select_pdg_code (prt_list, en1%aval, en2%pval, en0%ival)
+       call subevt_select_pdg_code (subevt, en1%aval, en2%pval, en0%ival)
     else
-       call prt_list_select_pdg_code (prt_list, en1%aval, en2%pval)
+       call subevt_select_pdg_code (subevt, en1%aval, en2%pval)
     end if
   end subroutine select_pdg_ca
 
@@ -2134,7 +2134,7 @@ contains
           call eval_node_compile_expr  (en, pn, var_list)
        case (V_LOG)
           call eval_node_compile_lexpr (en, pn, var_list)
-       case (V_PTL)
+       case (V_SEV)
           call eval_node_compile_pexpr (en, pn, var_list)
        case (V_PDG)
           call eval_node_compile_cexpr (en, pn, var_list)
@@ -2726,7 +2726,7 @@ contains
     type(var_entry_t), pointer :: var
     logical, target, save :: no_lval
     real(default), target, save :: no_rval
-    type(prt_list_t), target, save :: no_pval
+    type(subevt_t), target, save :: no_pval
     type(string_t), target, save :: no_sval
     logical, target, save :: unknown = .false.
     if (debug) then
@@ -2757,7 +2757,7 @@ contains
        if (present (var_type)) then
           select case (var_type)
           case (V_LOG);  var_name = "?" // var_name
-          case (V_PTL);  var_name = "@" // var_name
+          case (V_SEV);  var_name = "@" // var_name
           case (V_STR);  var_name = "$" // var_name   ! $ sign
           end select
        end if
@@ -2782,8 +2782,8 @@ contains
              call eval_node_init_cmplx_ptr &
                   (en, var_entry_get_name (var), var_entry_get_cval_ptr (var), &
                    var_entry_get_known_ptr (var))
-          case (V_PTL)
-             call eval_node_init_prt_list_ptr &
+          case (V_SEV)
+             call eval_node_init_subevt_ptr &
                   (en, var_entry_get_name (var), var_entry_get_pval_ptr (var), &
                    var_entry_get_known_ptr (var))
           case (V_STR)
@@ -2800,8 +2800,8 @@ contains
                 select case (var_type)
                 case (V_LOG)
                    call eval_node_init_log_ptr (en, var_name, no_lval, unknown)
-                case (V_PTL)
-                   call eval_node_init_prt_list_ptr &
+                case (V_SEV)
+                   call eval_node_init_subevt_ptr &
                         (en, var_name, no_pval, unknown)
                 case (V_STR)
                    call eval_node_init_string_ptr &
@@ -2818,8 +2818,8 @@ contains
              select case (var_type)
              case (V_LOG)
                 call eval_node_init_log_ptr (en, var_name, no_lval, unknown)
-             case (V_PTL)
-                call eval_node_init_prt_list_ptr &
+             case (V_SEV)
+                call eval_node_init_subevt_ptr &
                      (en, var_name, no_pval, unknown)
              case (V_STR)
                 call eval_node_init_string_ptr (en, var_name, no_sval, unknown)
@@ -2850,9 +2850,9 @@ contains
              call msg_fatal ("Variable type is invalid (should be logical)")
              ok = .false.
           end select
-       case (V_PTL)
+       case (V_SEV)
           select case (type_actual)
-          case (V_PTL)
+          case (V_SEV)
           case default
              call parse_node_write (pn)
              call msg_fatal &
@@ -3406,11 +3406,11 @@ contains
        pn_var_name => parse_node_get_sub_ptr (pn_var_subspec, 2)
     case ("var_logical_spec");  var_type = V_LOG
        pn_var_name => parse_node_get_sub_ptr (pn_var_spec, 2)
-    case ("var_plist_new");    var_type = V_PTL
+    case ("var_plist_new");    var_type = V_SEV
        new = .true.
        pn_var_subspec => parse_node_get_sub_ptr (pn_var_spec, 2)
        pn_var_name => parse_node_get_sub_ptr (pn_var_subspec, 2)
-    case ("var_plist_spec");    var_type = V_PTL
+    case ("var_plist_spec");    var_type = V_SEV
        new = .true.
        pn_var_name => parse_node_get_sub_ptr (pn_var_spec, 2)
     case ("var_alias");    var_type = V_PDG
@@ -3431,7 +3431,7 @@ contains
     var_name = parse_node_get_string (pn_var_name)
     select case (var_type)
     case (V_LOG);  var_name = "?" // var_name
-    case (V_PTL);  var_name = "@" // var_name
+    case (V_SEV);  var_name = "@" // var_name
     case (V_STR);  var_name = "$" // var_name    ! $ sign
     end select
     call var_list_check_user_var (var_list, var_name, var_type, new)
@@ -3582,7 +3582,7 @@ contains
   subroutine eval_node_compile_default_else (en, result_type)
     type(eval_node_t), pointer :: en
     integer, intent(in) :: result_type
-    type(prt_list_t) :: pval_empty
+    type(subevt_t) :: pval_empty
     type(pdg_array_t) :: aval_undefined
     allocate (en)
     select case (result_type)
@@ -3591,9 +3591,9 @@ contains
     case (V_REAL);  call eval_node_init_real (en, 0._default)
     case (V_CMPLX)
          call eval_node_init_cmplx (en, (0._default, 0._default))
-    case (V_PTL)
-       call prt_list_init (pval_empty)
-       call eval_node_init_prt_list (en, pval_empty)
+    case (V_SEV)
+       call subevt_init (pval_empty)
+       call eval_node_init_subevt (en, pval_empty)
     case (V_PDG)
        call eval_node_init_pdg_array  (en, aval_undefined)
     case (V_STR)
@@ -4299,7 +4299,7 @@ contains
     type(var_list_t), intent(in), target :: var_list
     type(parse_node_t), pointer :: pn_pvalue, pn_concatenation, pn_op, pn_arg
     type(eval_node_t), pointer :: en1, en2
-    type(prt_list_t) :: prt_list
+    type(subevt_t) :: subevt
     if (debug) then
        print *, "read pexpr";  call parse_node_write (pn)
     end if
@@ -4314,15 +4314,15 @@ contains
        call eval_node_compile_pvalue (en2, pn_arg, var_list)
        allocate (en)
        if (en1%type == EN_CONSTANT .and. en2%type == EN_CONSTANT) then
-          call prt_list_join (prt_list, en1%pval, en2%pval)
-          call eval_node_init_prt_list (en, prt_list)
+          call subevt_join (subevt, en1%pval, en2%pval)
+          call eval_node_init_subevt (en, subevt)
           call eval_node_final_rec (en1)
           call eval_node_final_rec (en2)
           deallocate (en1, en2)
        else   
           call eval_node_init_branch &
-               (en, var_str ("combine"), V_PTL, en1, en2)
-          call eval_node_set_op2_ptl (en, combine_pp)
+               (en, var_str ("combine"), V_SEV, en1, en2)
+          call eval_node_set_op2_sev (en, combine_pp)
        end if
        pn_concatenation => parse_node_get_next_ptr (pn_concatenation)
     end do
@@ -4350,12 +4350,12 @@ contains
        allocate (en2)
        var => var_list_get_var_ptr (var_list, var_str ("@evt"))
        if (associated (var)) then
-          call eval_node_init_prt_list_ptr &
+          call eval_node_init_subevt_ptr &
                (en2, var_str ("@evt"), var_entry_get_pval_ptr (var), known)
           allocate (en)
           call eval_node_init_branch &
-               (en, var_str ("prt_selection"), V_PTL, en1, en2)
-          call eval_node_set_op2_ptl (en, select_pdg_ca)
+               (en, var_str ("prt_selection"), V_SEV, en1, en2)
+          call eval_node_set_op2_sev (en, select_pdg_ca)
           allocate (en0)
           pn_prefix_cexpr => parse_node_get_sub_ptr (pn)
           key = parse_node_get_rule_key (pn_prefix_cexpr)
@@ -4372,13 +4372,13 @@ contains
           call msg_bug (" Missing event data while compiling pvalue")
        end if
     case ("pvariable")
-       call eval_node_compile_variable (en, pn, var_list, V_PTL)
+       call eval_node_compile_variable (en, pn, var_list, V_SEV)
     case ("pexpr")
        call eval_node_compile_pexpr (en, pn, var_list)
     case ("block_pexpr")
-       call eval_node_compile_block_expr (en, pn, var_list, V_PTL)
+       call eval_node_compile_block_expr (en, pn, var_list, V_SEV)
     case ("conditional_pexpr")
-       call eval_node_compile_conditional (en, pn, var_list, V_PTL)
+       call eval_node_compile_conditional (en, pn, var_list, V_SEV)
     case ("join_fun", "combine_fun", "collect_fun", "select_fun", &
           "extract_fun", "sort_fun")
        call eval_node_compile_prt_function (en, pn, var_list)
@@ -5045,11 +5045,11 @@ contains
           case (V_CMPLX); en%cval = en% op1_cmplx (en%arg1)          
           case (V_PDG);  
              call en% op1_pdg  (en%aval, en%arg1)
-          case (V_PTL)
+          case (V_SEV)
              if (associated (en%arg0)) then
-                call en% op1_ptl (en%pval, en%arg1, en%arg0)
+                call en% op1_sev (en%pval, en%arg1, en%arg0)
              else
-                call en% op1_ptl (en%pval, en%arg1)
+                call en% op1_sev (en%pval, en%arg1)
              end if
           case (V_STR)
              call en% op1_str (en%sval, en%arg1)
@@ -5072,11 +5072,11 @@ contains
           case (V_CMPLX); en%cval = en% op2_cmplx (en%arg1, en%arg2)          
           case (V_PDG)
              call en% op2_pdg  (en%aval, en%arg1, en%arg2)
-          case (V_PTL)
+          case (V_SEV)
              if (associated (en%arg0)) then
-                call en% op2_ptl (en%pval, en%arg1, en%arg2, en%arg0)
+                call en% op2_sev (en%pval, en%arg1, en%arg2, en%arg0)
              else
-                call en% op2_ptl (en%pval, en%arg1, en%arg2)
+                call en% op2_sev (en%pval, en%arg1, en%arg2)
              end if
           case (V_STR)
              call en% op2_str (en%sval, en%arg1, en%arg2)
@@ -5097,7 +5097,7 @@ contains
           case (V_REAL); en%rval = en%arg0%rval
           case (V_CMPLX); en%cval = en%arg0%cval          
           case (V_PDG);  en%aval = en%arg0%aval
-          case (V_PTL);  en%pval = en%arg0%pval
+          case (V_SEV);  en%pval = en%arg0%pval
           case (V_STR);  en%sval = en%arg0%sval
           end select
        end if
@@ -5119,7 +5119,7 @@ contains
                 case (V_REAL); en%rval = en%arg1%rval
                 case (V_CMPLX); en%cval = en%arg1%cval                
                 case (V_PDG);  en%aval = en%arg1%aval
-                case (V_PTL);  en%pval = en%arg1%pval
+                case (V_SEV);  en%pval = en%arg1%pval
                 case (V_STR);  en%sval = en%arg1%sval
                 end select
              end if
@@ -5133,7 +5133,7 @@ contains
                 case (V_REAL); en%rval = en%arg2%rval
                 case (V_CMPLX); en%cval = en%arg2%cval                
                 case (V_PDG);  en%aval = en%arg2%aval
-                case (V_PTL);  en%pval = en%arg2%pval
+                case (V_SEV);  en%pval = en%arg2%pval
                 case (V_STR);  en%sval = en%arg2%sval
                 end select
              end if
@@ -5244,9 +5244,9 @@ contains
           if (associated (en%arg0)) then
              en%arg0%index => en%index
              en%arg0%prt1 => en%prt1
-             call en% op1_ptl (en%pval, en%arg1, en%arg0)
+             call en% op1_sev (en%pval, en%arg1, en%arg0)
           else
-             call en% op1_ptl (en%pval, en%arg1)
+             call en% op1_sev (en%pval, en%arg1)
           end if
        end if
     case (EN_PRT_FUN_BINARY)
@@ -5259,19 +5259,19 @@ contains
              en%arg0%index => en%index
              en%arg0%prt1 => en%prt1
              en%arg0%prt2 => en%prt2
-             call en% op2_ptl (en%pval, en%arg1, en%arg2, en%arg0)
+             call en% op2_sev (en%pval, en%arg1, en%arg2, en%arg0)
           else
-             call en% op2_ptl (en%pval, en%arg1, en%arg2)
+             call en% op2_sev (en%pval, en%arg1, en%arg2)
           end if
        end if
     case (EN_EVAL_FUN_UNARY)
        call eval_node_evaluate (en%arg1)
-       en%value_is_known = prt_list_is_nonempty (en%arg1%pval)
+       en%value_is_known = subevt_is_nonempty (en%arg1%pval)
        if (en%value_is_known) then
           en%arg0%index => en%index
           en%index = 1
           en%arg0%prt1 => en%prt1
-          en%prt1 = prt_list_get_prt (en%arg1%pval, 1)
+          en%prt1 = subevt_get_prt (en%arg1%pval, 1)
           call eval_node_evaluate (en%arg0)
           en%rval = en%arg0%rval
        end if
@@ -5279,15 +5279,15 @@ contains
        call eval_node_evaluate (en%arg1)
        call eval_node_evaluate (en%arg2)
        en%value_is_known = &
-            prt_list_is_nonempty (en%arg1%pval) .and. &
-            prt_list_is_nonempty (en%arg2%pval)
+            subevt_is_nonempty (en%arg1%pval) .and. &
+            subevt_is_nonempty (en%arg2%pval)
        if (en%value_is_known) then
           en%arg0%index => en%index
           en%arg0%prt1 => en%prt1
           en%arg0%prt2 => en%prt2
           en%index = 1
-          en%prt1 = prt_list_get_prt (en%arg1%pval, 1)
-          en%prt2 = prt_list_get_prt (en%arg2%pval, 1)
+          en%prt1 = subevt_get_prt (en%arg1%pval, 1)
+          en%prt2 = subevt_get_prt (en%arg2%pval, 1)
           call eval_node_evaluate (en%arg0)
           en%rval = en%arg0%rval
        end if
@@ -5872,11 +5872,11 @@ contains
   end subroutine parse_tree_init_sexpr
 
   subroutine eval_tree_init_stream &
-       (eval_tree, stream, var_list, prt_list, result_type)
+       (eval_tree, stream, var_list, subevt, result_type)
     type(eval_tree_t), intent(out), target :: eval_tree
     type(stream_t), intent(inout), target :: stream
     type(var_list_t), intent(in), target :: var_list
-    type(prt_list_t), intent(in), target, optional :: prt_list
+    type(subevt_t), intent(in), target, optional :: subevt
     integer, intent(in), optional :: result_type
     type(parse_tree_t) :: parse_tree
     type(parse_node_t), pointer :: nd_root
@@ -5884,91 +5884,91 @@ contains
     type = V_REAL;  if (present (result_type))  type = result_type
     select case (type)
     case (V_INT, V_REAL, V_CMPLX)
-       call parse_tree_init_expr (parse_tree, stream, present (prt_list))
+       call parse_tree_init_expr (parse_tree, stream, present (subevt))
     case (V_LOG)
-       call parse_tree_init_lexpr (parse_tree, stream, present (prt_list))
-    case (V_PTL)
+       call parse_tree_init_lexpr (parse_tree, stream, present (subevt))
+    case (V_SEV)
        call parse_tree_init_pexpr (parse_tree, stream)
     case (V_PDG)
        call parse_tree_init_cexpr (parse_tree, stream)
     case (V_STR)
-       call parse_tree_init_sexpr (parse_tree, stream, present (prt_list))
+       call parse_tree_init_sexpr (parse_tree, stream, present (subevt))
     end select
     call parse_tree_write (parse_tree)
     nd_root => parse_tree_get_root_ptr (parse_tree)
     if (associated (nd_root)) then
        select case (type)
        case (V_INT, V_REAL, V_CMPLX)
-          call eval_tree_init_expr (eval_tree, nd_root, var_list, prt_list)
+          call eval_tree_init_expr (eval_tree, nd_root, var_list, subevt)
        case (V_LOG)
-          call eval_tree_init_lexpr (eval_tree, nd_root, var_list, prt_list)
-       case (V_PTL)
-          call eval_tree_init_pexpr (eval_tree, nd_root, var_list, prt_list)
+          call eval_tree_init_lexpr (eval_tree, nd_root, var_list, subevt)
+       case (V_SEV)
+          call eval_tree_init_pexpr (eval_tree, nd_root, var_list, subevt)
        case (V_PDG)
-          call eval_tree_init_cexpr (eval_tree, nd_root, var_list, prt_list)
+          call eval_tree_init_cexpr (eval_tree, nd_root, var_list, subevt)
        case (V_STR)
-          call eval_tree_init_sexpr (eval_tree, nd_root, var_list, prt_list)
+          call eval_tree_init_sexpr (eval_tree, nd_root, var_list, subevt)
        end select
     end if
     call parse_tree_final (parse_tree)
   end subroutine eval_tree_init_stream
 
   subroutine eval_tree_init_expr &
-      (eval_tree, parse_node, var_list, prt_list, event_vars)
+      (eval_tree, parse_node, var_list, subevt, event_vars)
     type(eval_tree_t), intent(out), target :: eval_tree
     type(parse_node_t), intent(in), target :: parse_node
     type(var_list_t), intent(in), target :: var_list
-    type(prt_list_t), intent(in), optional, target :: prt_list
+    type(subevt_t), intent(in), optional, target :: subevt
     type(event_vars_t), intent(in), optional, target :: event_vars
-    call eval_tree_set_var_list (eval_tree, var_list, prt_list, event_vars)
+    call eval_tree_set_var_list (eval_tree, var_list, subevt, event_vars)
     call eval_node_compile_expr &
          (eval_tree%root, parse_node, eval_tree%var_list)
   end subroutine eval_tree_init_expr
     
   subroutine eval_tree_init_lexpr &
-      (eval_tree, parse_node, var_list, prt_list, event_vars)
+      (eval_tree, parse_node, var_list, subevt, event_vars)
     type(eval_tree_t), intent(out), target :: eval_tree
     type(parse_node_t), intent(in), target :: parse_node
     type(var_list_t), intent(in), target :: var_list
-    type(prt_list_t), intent(in), optional, target :: prt_list
+    type(subevt_t), intent(in), optional, target :: subevt
     type(event_vars_t), intent(in), optional, target :: event_vars
-    call eval_tree_set_var_list (eval_tree, var_list, prt_list, event_vars)
+    call eval_tree_set_var_list (eval_tree, var_list, subevt, event_vars)
     call eval_node_compile_lexpr &
          (eval_tree%root, parse_node, eval_tree%var_list)
   end subroutine eval_tree_init_lexpr
 
   subroutine eval_tree_init_pexpr &
-      (eval_tree, parse_node, var_list, prt_list, event_vars)
+      (eval_tree, parse_node, var_list, subevt, event_vars)
     type(eval_tree_t), intent(out), target :: eval_tree
     type(parse_node_t), intent(in), target :: parse_node
     type(var_list_t), intent(in), target :: var_list
-    type(prt_list_t), intent(in), optional, target :: prt_list
+    type(subevt_t), intent(in), optional, target :: subevt
     type(event_vars_t), intent(in), optional, target :: event_vars
-    call eval_tree_set_var_list (eval_tree, var_list, prt_list, event_vars)
+    call eval_tree_set_var_list (eval_tree, var_list, subevt, event_vars)
     call eval_node_compile_pexpr &
          (eval_tree%root, parse_node, eval_tree%var_list)
   end subroutine eval_tree_init_pexpr
 
   subroutine eval_tree_init_cexpr &
-      (eval_tree, parse_node, var_list, prt_list, event_vars)
+      (eval_tree, parse_node, var_list, subevt, event_vars)
     type(eval_tree_t), intent(out), target :: eval_tree
     type(parse_node_t), intent(in), target :: parse_node
     type(var_list_t), intent(in), target :: var_list
-    type(prt_list_t), intent(in), optional, target :: prt_list
+    type(subevt_t), intent(in), optional, target :: subevt
     type(event_vars_t), intent(in), optional, target :: event_vars
-    call eval_tree_set_var_list (eval_tree, var_list, prt_list, event_vars)
+    call eval_tree_set_var_list (eval_tree, var_list, subevt, event_vars)
     call eval_node_compile_cexpr &
          (eval_tree%root, parse_node, eval_tree%var_list)
   end subroutine eval_tree_init_cexpr
 
   subroutine eval_tree_init_sexpr &
-      (eval_tree, parse_node, var_list, prt_list, event_vars)
+      (eval_tree, parse_node, var_list, subevt, event_vars)
     type(eval_tree_t), intent(out), target :: eval_tree
     type(parse_node_t), intent(in), target :: parse_node
     type(var_list_t), intent(in), target :: var_list
-    type(prt_list_t), intent(in), optional, target :: prt_list
+    type(subevt_t), intent(in), optional, target :: subevt
     type(event_vars_t), intent(in), optional, target :: event_vars
-    call eval_tree_set_var_list (eval_tree, var_list, prt_list, event_vars)
+    call eval_tree_set_var_list (eval_tree, var_list, subevt, event_vars)
     call eval_node_compile_sexpr &
          (eval_tree%root, parse_node, eval_tree%var_list)
   end subroutine eval_tree_init_sexpr
@@ -5980,15 +5980,15 @@ contains
   end subroutine eval_tree_init_numeric_value
 
   subroutine eval_tree_set_var_list &
-      (eval_tree, var_list, prt_list, event_vars)
+      (eval_tree, var_list, subevt, event_vars)
     type(eval_tree_t), intent(inout), target :: eval_tree
     type(var_list_t), intent(in), target :: var_list
-    type(prt_list_t), intent(in), optional, target :: prt_list
+    type(subevt_t), intent(in), optional, target :: subevt
     type(event_vars_t), intent(in), optional, target :: event_vars
     logical, save, target :: known = .true.
     call var_list_link (eval_tree%var_list, var_list)
-    if (present (prt_list))  call var_list_append_prt_list_ptr &
-         (eval_tree%var_list, var_str ("@evt"), prt_list, known, &
+    if (present (subevt))  call var_list_append_subevt_ptr &
+         (eval_tree%var_list, var_str ("@evt"), subevt, known, &
          intrinsic=.true.)
     if (present (event_vars)) &
          call var_list_append_event_vars (eval_tree%var_list, event_vars)
@@ -6125,13 +6125,13 @@ contains
     end if
   end function eval_tree_get_pdg_array
 
-  function eval_tree_get_prt_list (eval_tree) result (pval)
-    type(prt_list_t) :: pval
+  function eval_tree_get_subevt (eval_tree) result (pval)
+    type(subevt_t) :: pval
     type(eval_tree_t), intent(in) :: eval_tree
     if (associated (eval_tree%root)) then
        pval = eval_tree%root%pval
     end if
-  end function eval_tree_get_prt_list
+  end function eval_tree_get_subevt
 
   function eval_tree_get_string (eval_tree) result (sval)
     type(string_t) :: sval
@@ -6181,15 +6181,15 @@ contains
     end if
   end function eval_tree_get_cmplx_ptr
 
-  function eval_tree_get_prt_list_ptr (eval_tree) result (pval)
-    type(prt_list_t), pointer :: pval
+  function eval_tree_get_subevt_ptr (eval_tree) result (pval)
+    type(subevt_t), pointer :: pval
     type(eval_tree_t), intent(in) :: eval_tree
     if (associated (eval_tree%root)) then
        pval => eval_tree%root%pval
     else
        pval => null ()
     end if
-  end function eval_tree_get_prt_list_ptr
+  end function eval_tree_get_subevt_ptr
     
   function eval_tree_get_pdg_array_ptr (eval_tree) result (aval)
     type(pdg_array_t), pointer :: aval
@@ -6229,16 +6229,16 @@ contains
   end subroutine eval_tree_write
 
   function eval_log &
-       (parse_node, var_list, prt_list, event_vars, is_known) result (lval)
+       (parse_node, var_list, subevt, event_vars, is_known) result (lval)
     logical :: lval
     type(parse_node_t), intent(in), target :: parse_node
     type(var_list_t), intent(in), target :: var_list
-    type(prt_list_t), intent(in), optional, target :: prt_list
+    type(subevt_t), intent(in), optional, target :: subevt
     type(event_vars_t), intent(in), optional, target :: event_vars
     logical, intent(out), optional :: is_known
     type(eval_tree_t), target :: eval_tree
     call eval_tree_init_lexpr &
-         (eval_tree, parse_node, var_list, prt_list, event_vars)
+         (eval_tree, parse_node, var_list, subevt, event_vars)
     call eval_tree_evaluate (eval_tree)
     if (eval_tree_result_is_known (eval_tree)) then
        if (present (is_known))  is_known = .true.
@@ -6253,16 +6253,16 @@ contains
   end function eval_log
 
   function eval_int &
-       (parse_node, var_list, prt_list, event_vars, is_known) result (ival)
+       (parse_node, var_list, subevt, event_vars, is_known) result (ival)
     integer :: ival
     type(parse_node_t), intent(in), target :: parse_node
     type(var_list_t), intent(in), target :: var_list
-    type(prt_list_t), intent(in), optional, target :: prt_list
+    type(subevt_t), intent(in), optional, target :: subevt
     type(event_vars_t), intent(in), optional, target :: event_vars
     logical, intent(out), optional :: is_known
     type(eval_tree_t), target :: eval_tree
     call eval_tree_init_expr &
-         (eval_tree, parse_node, var_list, prt_list, event_vars)
+         (eval_tree, parse_node, var_list, subevt, event_vars)
     call eval_tree_evaluate (eval_tree)
     if (eval_tree_result_is_known (eval_tree)) then
        if (present (is_known))  is_known = .true.
@@ -6277,16 +6277,16 @@ contains
   end function eval_int
 
   function eval_real &
-       (parse_node, var_list, prt_list, event_vars, is_known) result (rval)
+       (parse_node, var_list, subevt, event_vars, is_known) result (rval)
     real(default) :: rval
     type(parse_node_t), intent(in), target :: parse_node
     type(var_list_t), intent(in), target :: var_list
-    type(prt_list_t), intent(in), optional, target :: prt_list
+    type(subevt_t), intent(in), optional, target :: subevt
     type(event_vars_t), intent(in), optional, target :: event_vars
     logical, intent(out), optional :: is_known
     type(eval_tree_t), target :: eval_tree
     call eval_tree_init_expr &
-         (eval_tree, parse_node, var_list, prt_list, event_vars)
+         (eval_tree, parse_node, var_list, subevt, event_vars)
     call eval_tree_evaluate (eval_tree)
     if (eval_tree_result_is_known (eval_tree)) then
        if (present (is_known))  is_known = .true.
@@ -6301,16 +6301,16 @@ contains
   end function eval_real
 
   function eval_cmplx &
-       (parse_node, var_list, prt_list, event_vars, is_known) result (cval)
+       (parse_node, var_list, subevt, event_vars, is_known) result (cval)
     complex(default) :: cval
     type(parse_node_t), intent(in), target :: parse_node
     type(var_list_t), intent(in), target :: var_list
-    type(prt_list_t), intent(in), optional, target :: prt_list
+    type(subevt_t), intent(in), optional, target :: subevt
     type(event_vars_t), intent(in), optional, target :: event_vars
     logical, intent(out), optional :: is_known
     type(eval_tree_t), target :: eval_tree
     call eval_tree_init_expr &
-         (eval_tree, parse_node, var_list, prt_list, event_vars)
+         (eval_tree, parse_node, var_list, subevt, event_vars)
     call eval_tree_evaluate (eval_tree)
     if (eval_tree_result_is_known (eval_tree)) then
        if (present (is_known))  is_known = .true.
@@ -6324,40 +6324,40 @@ contains
     call eval_tree_final (eval_tree)
   end function eval_cmplx
 
-  function eval_prt_list &
-       (parse_node, var_list, prt_list, event_vars, is_known) result (pval)
-    type(prt_list_t) :: pval
+  function eval_subevt &
+       (parse_node, var_list, subevt, event_vars, is_known) result (pval)
+    type(subevt_t) :: pval
     type(parse_node_t), intent(in), target :: parse_node
     type(var_list_t), intent(in), target :: var_list
-    type(prt_list_t), intent(in), optional, target :: prt_list
+    type(subevt_t), intent(in), optional, target :: subevt
     type(event_vars_t), intent(in), optional, target :: event_vars
     logical, intent(out), optional :: is_known
     type(eval_tree_t), target :: eval_tree
     call eval_tree_init_pexpr &
-         (eval_tree, parse_node, var_list, prt_list, event_vars)
+         (eval_tree, parse_node, var_list, subevt, event_vars)
     call eval_tree_evaluate (eval_tree)
     if (eval_tree_result_is_known (eval_tree)) then
        if (present (is_known))  is_known = .true.
-       pval = eval_tree_get_prt_list (eval_tree)
+       pval = eval_tree_get_subevt (eval_tree)
     else if (present (is_known)) then
        is_known = .false.
     else
        call eval_tree_unknown (eval_tree, parse_node)
     end if
     call eval_tree_final (eval_tree)
-  end function eval_prt_list
+  end function eval_subevt
 
   function eval_pdg_array &
-       (parse_node, var_list, prt_list, event_vars, is_known) result (aval)
+       (parse_node, var_list, subevt, event_vars, is_known) result (aval)
     type(pdg_array_t) :: aval
     type(parse_node_t), intent(in), target :: parse_node
     type(var_list_t), intent(in), target :: var_list
-    type(prt_list_t), intent(in), optional, target :: prt_list
+    type(subevt_t), intent(in), optional, target :: subevt
     type(event_vars_t), intent(in), optional, target :: event_vars
     logical, intent(out), optional :: is_known
     type(eval_tree_t), target :: eval_tree
     call eval_tree_init_cexpr &
-         (eval_tree, parse_node, var_list, prt_list, event_vars)
+         (eval_tree, parse_node, var_list, subevt, event_vars)
     call eval_tree_evaluate (eval_tree)
     if (eval_tree_result_is_known (eval_tree)) then
        if (present (is_known))  is_known = .true.
@@ -6371,16 +6371,16 @@ contains
   end function eval_pdg_array
 
   function eval_string &
-       (parse_node, var_list, prt_list, event_vars, is_known) result (sval)
+       (parse_node, var_list, subevt, event_vars, is_known) result (sval)
     type(string_t) :: sval
     type(parse_node_t), intent(in), target :: parse_node
     type(var_list_t), intent(in), target :: var_list
-    type(prt_list_t), intent(in), optional, target :: prt_list
+    type(subevt_t), intent(in), optional, target :: subevt
     type(event_vars_t), intent(in), optional, target :: event_vars
     logical, intent(out), optional :: is_known
     type(eval_tree_t), target :: eval_tree
     call eval_tree_init_sexpr &
-         (eval_tree, parse_node, var_list, prt_list, event_vars)
+         (eval_tree, parse_node, var_list, subevt, event_vars)
     call eval_tree_evaluate (eval_tree)
     if (eval_tree_result_is_known (eval_tree)) then
        if (present (is_known))  is_known = .true.
@@ -6395,11 +6395,11 @@ contains
   end function eval_string
 
   subroutine eval_numeric &
-       (parse_node, var_list, prt_list, event_vars, ival, rval, cval, &
+       (parse_node, var_list, subevt, event_vars, ival, rval, cval, &
         is_known, result_type)
     type(parse_node_t), intent(in), target :: parse_node
     type(var_list_t), intent(in), target :: var_list
-    type(prt_list_t), intent(in), optional, target :: prt_list
+    type(subevt_t), intent(in), optional, target :: subevt
     type(event_vars_t), intent(in), optional, target :: event_vars
     integer, intent(out), optional :: ival
     real(default), intent(out), optional :: rval
@@ -6408,7 +6408,7 @@ contains
     integer, intent(out), optional :: result_type
     type(eval_tree_t), target :: eval_tree
     call eval_tree_init_expr &
-         (eval_tree, parse_node, var_list, prt_list, event_vars)
+         (eval_tree, parse_node, var_list, subevt, event_vars)
     call eval_tree_evaluate (eval_tree)
     if (eval_tree_result_is_known (eval_tree)) then
        if (present (ival))  ival = eval_tree_get_int (eval_tree)
@@ -6490,30 +6490,30 @@ contains
 !   end subroutine expressions_test1
 
 !   subroutine expressions_test2 ()
-!     type(prt_list_t) :: prt_list
-!     call prt_list_init (prt_list)
-!     call prt_list_reset (prt_list, 1)
-!     call prt_list_set_incoming (prt_list, 1, &
+!     type(subevt_t) :: subevt
+!     call subevt_init (subevt)
+!     call subevt_reset (subevt, 1)
+!     call subevt_set_incoming (subevt, 1, &
 !          22, vector4_moving (1.e3_default, 1.e3_default, 1), &
 !          0._default, (/ 2 /))
-!     call prt_list_write (prt_list)
-!     call prt_list_reset (prt_list, 4)
-!     call prt_list_reset (prt_list, 3)
-!     call prt_list_set_incoming (prt_list, 1, &
+!     call subevt_write (subevt)
+!     call subevt_reset (subevt, 4)
+!     call subevt_reset (subevt, 3)
+!     call subevt_set_incoming (subevt, 1, &
 !          21, vector4_moving (1.e3_default, 1.e3_default, 3), &
 !          0._default, (/ 1 /))
-!     call prt_list_polarize (prt_list, 1, -1)
-!     call prt_list_set_outgoing (prt_list, 2, &
+!     call subevt_polarize (subevt, 1, -1)
+!     call subevt_set_outgoing (subevt, 2, &
 !          1, vector4_moving (0._default, 1.e3_default, 3), &
 !          -1.e6_default, (/ 7 /))
-!     call prt_list_set_composite (prt_list, 3, &
+!     call subevt_set_composite (subevt, 3, &
 !          vector4_moving (-1.e3_default, 0._default, 3), &
 !          (/ 2, 7 /))
-!     call prt_list_write (prt_list)
+!     call subevt_write (subevt)
 !   end subroutine expressions_test2
 
 !   subroutine expressions_test3 ()
-!     type(prt_list_t), target :: prt_list
+!     type(subevt_t), target :: subevt
 !     type(string_t) :: expr_text
 !     type(ifile_t) :: ifile
 !     type(stream_t) :: stream
@@ -6528,19 +6528,19 @@ contains
 !     call var_list_append_pdg_array (var_list, var_str ("photon"), aval)
 !     aval = 1
 !     call var_list_append_pdg_array (var_list, var_str ("u"), aval)
-!     call prt_list_init (prt_list)
-!     call prt_list_reset (prt_list, 6)
-!     call prt_list_set_incoming (prt_list, 1, &
+!     call subevt_init (subevt)
+!     call subevt_reset (subevt, 6)
+!     call subevt_set_incoming (subevt, 1, &
 !          1, vector4_moving (1._default, 1._default, 1), 0._default)
-!     call prt_list_set_incoming (prt_list, 2, &
+!     call subevt_set_incoming (subevt, 2, &
 !          -1, vector4_moving (2._default, 2._default, 1), 0._default)
-!     call prt_list_set_outgoing (prt_list, 3, &
+!     call subevt_set_outgoing (subevt, 3, &
 !          22, vector4_moving (3._default, 3._default, 1), 0._default)
-!     call prt_list_set_outgoing (prt_list, 4, &
+!     call subevt_set_outgoing (subevt, 4, &
 !          22, vector4_moving (4._default, 4._default, 1), 0._default)
-!     call prt_list_set_outgoing (prt_list, 5, &
+!     call subevt_set_outgoing (subevt, 5, &
 !          11, vector4_moving (5._default, 5._default, 1), 0._default)
-!     call prt_list_set_outgoing (prt_list, 6, &
+!     call subevt_set_outgoing (subevt, 6, &
 !          -11, vector4_moving (6._default, 6._default, 1), 0._default)
 !     print *
 !     print *, "Expression:"
@@ -6559,7 +6559,7 @@ contains
 !     print *
 !     call ifile_append (ifile, expr_text)
 !     call stream_init (stream, ifile)
-!     call eval_tree_init_stream (eval_tree, stream, var_list, prt_list, V_LOG)
+!     call eval_tree_init_stream (eval_tree, stream, var_list, subevt, V_LOG)
 !     print *
 !     call eval_tree_write (eval_tree)
 !     call eval_tree_evaluate (eval_tree)

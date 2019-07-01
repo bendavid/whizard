@@ -1,9 +1,10 @@
 ! $Id: parameters.SM_ac.f90,v 1.4 2006/06/16 13:31:48 kilian Exp $
 !
-! Copyright (C) 1999-2009 by 
+! Copyright (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+!     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -33,12 +34,9 @@ module parameters_sm_ac
   real(default), public :: e, g, e_em
   real(default), public :: sinthw, costhw, sin2thw, tanthw
   real(default), public :: qelep, qeup, qedwn
-  real(default), public :: ttop, tbot, tch, ttau, tw
-  real(default), public :: ltop, lbot, lc, ltau, lw
   complex(default), public :: qlep, qup, qdwn, gcc, qw, &
        gzww, gwww, ghww, ghhww, ghzz, ghhzz, &
-       ghbb, ghtt, ghcc, ghtautau, gh3, gh4, &
-       ghgaga, ghgaz, ghgg, ghmm, & 		
+       ghbb, ghtt, ghcc, ghtautau, gh3, gh4, ghmm, & 		
        iqw, igzww, igwww, gw4, gzzww, gazww, gaaww
   real(default), public :: vev
   complex(default), dimension(2), public :: &
@@ -203,16 +201,8 @@ contains
     gazww = gzww * qw
     gaaww = qw**2
     ghww = mass(24) * g
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    !!! This is for the old SM3:
-    !!! ghhww = (0,1) * g / Sqrt(2.0_default)
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     ghhww = g**2 / 2.0_default
     ghzz = mass(23) * g / costhw
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    !!! This is for the old SM3:
-    !!! ghhzz = (0,1) * g / costhw / Sqrt(2.0_default)
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     ghhzz = g**2 / 2.0_default / costhw**2
     ghtt = - mass(6) / vev
     ghbb = - mass(5) / vev
@@ -220,7 +210,6 @@ contains
     ghtautau = - mass(15) / vev
     ghmm = - mass(13) / vev
     gh3 = - 3 * mass(25)**2 / vev
-    !!! gh4 = mass(25) / vev !!! Old SM3
     gh4 = - 3 * mass(25)**2 / vev**2
     !!! Color flow basis, divide by sqrt(2)
     gs = sqrt(2.0_default*PI*par%alphas)
@@ -259,6 +248,5 @@ contains
     real(default), intent(in) :: alpha_s
     gs = sqrt(2.0_default*PI*alpha_s)
     igs = cmplx(0.0_default, 1.0_default, kind=default) * gs     
-    !!! The Hgg coupling should not get a running alpha_s
   end subroutine model_update_alpha_s
 end module parameters_sm_ac

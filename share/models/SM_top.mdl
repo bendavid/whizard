@@ -1,5 +1,5 @@
 ########################################################################
-# Standard Model with trivial CKM matrix
+# Standard Model with charge -4/3 top
 model "SM_top"
 
 # Independent parameters
@@ -230,10 +230,6 @@ vertex Wp Wm Z A
 vertex Wp Wm A A
 
 # Higgs - vector boson
-#vertex H Z A
-#vertex H A A
-#vertex H g g 
-
 vertex H Wp Wm
 vertex H Z Z
 vertex H H Wp Wm

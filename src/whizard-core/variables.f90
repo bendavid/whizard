@@ -1,11 +1,11 @@
-! WHIZARD 2.0.3 Tue Aug 10 2010
+! WHIZARD 2.0.4 Tue Oct 26 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
-!     with contributions by Christian Speckner, Sebastian Schmidt, 
-!     Daniel Wiesler, Felix Braam
+!     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+!     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -33,7 +33,7 @@ module variables
   use diagnostics !NODEP!
   use lorentz !NODEP!
   use pdg_arrays
-  use prt_lists
+  use subevents
 
   implicit none
   private
@@ -48,14 +48,14 @@ module variables
   public :: var_entry_init_real
   public :: var_entry_init_cmplx
   public :: var_entry_init_pdg_array
-  public :: var_entry_init_prt_list
+  public :: var_entry_init_subevt
   public :: var_entry_init_string
   public :: var_entry_init_log_ptr
   public :: var_entry_init_int_ptr
   public :: var_entry_init_real_ptr
   public :: var_entry_init_cmplx_ptr
   public :: var_entry_init_pdg_array_ptr
-  public :: var_entry_init_prt_list_ptr
+  public :: var_entry_init_subevt_ptr
   public :: var_entry_init_string_ptr
   public :: var_entry_final
   public :: var_entry_write
@@ -92,7 +92,7 @@ module variables
   public :: var_entry_set_real
   public :: var_entry_set_cmplx
   public :: var_entry_set_pdg_array
-  public :: var_entry_set_prt_list
+  public :: var_entry_set_subevt
   public :: var_entry_set_string
   public :: var_list_t
   public :: var_list_link
@@ -100,7 +100,7 @@ module variables
   public :: var_list_append_int
   public :: var_list_append_real
   public :: var_list_append_cmplx
-  public :: var_list_append_prt_list
+  public :: var_list_append_subevt
   public :: var_list_append_pdg_array
   public :: var_list_append_string
   public :: var_list_append_log_ptr
@@ -108,7 +108,7 @@ module variables
   public :: var_list_append_real_ptr
   public :: var_list_append_cmplx_ptr
   public :: var_list_append_pdg_array_ptr
-  public :: var_list_append_prt_list_ptr
+  public :: var_list_append_subevt_ptr
   public :: var_list_append_string_ptr
   public :: var_list_final
   public :: var_list_write
@@ -140,7 +140,7 @@ module variables
   public :: var_list_set_int
   public :: var_list_set_real
   public :: var_list_set_cmplx
-  public :: var_list_set_prt_list
+  public :: var_list_set_subevt
   public :: var_list_set_pdg_array
   public :: var_list_set_string
   public :: var_list_init_copy
@@ -153,7 +153,7 @@ module variables
   public :: var_list_check_user_var
 
   integer, parameter, public :: V_NONE = 0, V_LOG = 1, V_INT = 2, V_REAL = 3
-  integer, parameter, public :: V_CMPLX = 4, V_PTL = 5, V_PDG = 6, V_STR = 7
+  integer, parameter, public :: V_CMPLX = 4, V_SEV = 5, V_PDG = 6, V_STR = 7
   integer, parameter, public :: V_OBS1_INT = 11, V_OBS2_INT = 12
   integer, parameter, public :: V_OBS1_REAL = 21, V_OBS2_REAL = 22
 
@@ -174,7 +174,7 @@ module variables
      integer,           pointer :: ival => null ()
      real(default),     pointer :: rval => null ()
      complex(default), pointer :: cval => null ()
-     type(prt_list_t),  pointer :: pval => null ()
+     type(subevt_t),  pointer :: pval => null ()
      type(pdg_array_t), pointer :: aval => null ()
      type(string_t),    pointer :: sval => null ()
      procedure(obs_unary_int),   nopass, pointer :: obs1_int  => null ()
@@ -231,6 +231,67 @@ module variables
        real(default) :: rval
        type(prt_t), intent(in) :: prt1, prt2
      end function obs_binary_real
+  end interface
+
+  interface var_list_append_log
+     module procedure var_list_append_log_s
+     module procedure var_list_append_log_c
+  end interface
+  interface var_list_append_int
+     module procedure var_list_append_int_s
+     module procedure var_list_append_int_c
+  end interface
+  interface var_list_append_real
+     module procedure var_list_append_real_s
+     module procedure var_list_append_real_c
+  end interface
+  interface var_list_append_cmplx
+     module procedure var_list_append_cmplx_s
+     module procedure var_list_append_cmplx_c
+  end interface
+  interface var_list_append_subevt
+     module procedure var_list_append_subevt_s
+     module procedure var_list_append_subevt_c
+  end interface
+  interface var_list_append_pdg_array
+     module procedure var_list_append_pdg_array_s
+     module procedure var_list_append_pdg_array_c
+  end interface
+  interface var_list_append_string
+     module procedure var_list_append_string_s
+     module procedure var_list_append_string_c
+  end interface
+  interface var_list_is_known 
+     module procedure var_list_is_known_s
+     module procedure var_list_is_known_c
+  end interface
+  interface var_list_get_lval
+     module procedure var_list_get_lval_s
+     module procedure var_list_get_lval_c
+  end interface
+  interface var_list_get_ival
+     module procedure var_list_get_ival_s
+     module procedure var_list_get_ival_c
+  end interface
+  interface var_list_get_rval
+     module procedure var_list_get_rval_s
+     module procedure var_list_get_rval_c
+  end interface
+  interface var_list_get_cval
+     module procedure var_list_get_cval_s
+     module procedure var_list_get_cval_c
+  end interface
+  interface var_list_get_pval
+     module procedure var_list_get_pval_s
+     module procedure var_list_get_pval_c
+  end interface
+  interface var_list_get_aval
+     module procedure var_list_get_aval_s
+     module procedure var_list_get_aval_c
+  end interface
+  interface var_list_get_sval
+     module procedure var_list_get_sval_s
+     module procedure var_list_get_sval_c
   end interface
 
 
@@ -316,13 +377,13 @@ contains
     var%is_allocated = .true.
   end subroutine var_entry_init_cmplx
 
-  subroutine var_entry_init_prt_list (var, name, pval, intrinsic, user)
+  subroutine var_entry_init_subevt (var, name, pval, intrinsic, user)
     type(var_entry_t), intent(out) :: var
     type(string_t), intent(in) :: name
-    type(prt_list_t), intent(in), optional :: pval
+    type(subevt_t), intent(in), optional :: pval
     logical, intent(in), optional :: intrinsic, user
     var%name = name
-    var%type = V_PTL
+    var%type = V_SEV
     allocate (var%pval, var%is_known)
     if (present (pval)) then
        var%pval = pval
@@ -334,7 +395,7 @@ contains
     if (present (intrinsic))  var%is_intrinsic = intrinsic
     if (present (user))  var%is_user_var = user
     var%is_allocated = .true.
-  end subroutine var_entry_init_prt_list
+  end subroutine var_entry_init_subevt
 
   subroutine var_entry_init_pdg_array (var, name, aval, intrinsic, user)
     type(var_entry_t), intent(out) :: var
@@ -446,19 +507,19 @@ contains
     var%is_defined = .true.
   end subroutine var_entry_init_pdg_array_ptr
 
-  subroutine var_entry_init_prt_list_ptr (var, name, pval, is_known, intrinsic)
+  subroutine var_entry_init_subevt_ptr (var, name, pval, is_known, intrinsic)
     type(var_entry_t), intent(out) :: var
     type(string_t), intent(in) :: name
-    type(prt_list_t), intent(in), target :: pval
+    type(subevt_t), intent(in), target :: pval
     logical, intent(in), target :: is_known
     logical, intent(in), optional :: intrinsic
     var%name = name
-    var%type = V_PTL
+    var%type = V_SEV
     var%pval => pval
     var%is_known => is_known
     if (present (intrinsic))  var%is_intrinsic = intrinsic
     var%is_defined = .true.
-  end subroutine var_entry_init_prt_list_ptr
+  end subroutine var_entry_init_subevt_ptr
 
   subroutine var_entry_init_string_ptr (var, name, sval, is_known, intrinsic)
     type(var_entry_t), intent(out) :: var
@@ -512,7 +573,7 @@ contains
        case (V_INT); deallocate (var%ival)
        case (V_REAL);deallocate (var%rval)
        case (V_CMPLX);deallocate (var%cval)
-       case (V_PTL); deallocate (var%pval)
+       case (V_SEV); deallocate (var%pval)
        case (V_PDG); deallocate (var%aval)
        case (V_STR); deallocate (var%sval)
        end select
@@ -582,11 +643,11 @@ contains
        else
           write (u, "(A)")  "[unknown complex]"
        end if
-    case (V_PTL)
+    case (V_SEV)
        if (var%is_known) then
-          call prt_list_write (var%pval, unit, prefix="       ")
+          call subevt_write (var%pval, unit, prefix="       ")
        else
-          write (u, "(A)")  "[unknown particle list]"
+          write (u, "(A)")  "[unknown subevent]"
        end if
     case (V_PDG)
        if (var%is_known) then
@@ -686,7 +747,7 @@ contains
   end function var_entry_get_aval
 
   function var_entry_get_pval (var) result (pval)
-    type(prt_list_t) :: pval
+    type(subevt_t) :: pval
     type(var_entry_t), intent(in) :: var
     pval = var%pval
   end function var_entry_get_pval
@@ -728,7 +789,7 @@ contains
   end function var_entry_get_cval_ptr
 
   function var_entry_get_pval_ptr (var) result (ptr)
-    type(prt_list_t), pointer :: ptr
+    type(subevt_t), pointer :: ptr
     type(var_entry_t), intent(in), target :: var
     ptr => var%pval
   end function var_entry_get_pval_ptr
@@ -906,10 +967,10 @@ contains
     end if
   end subroutine var_entry_set_pdg_array
 
-  recursive subroutine var_entry_set_prt_list &
+  recursive subroutine var_entry_set_subevt &
        (var, pval, is_known, verbose, model_name)
     type(var_entry_t), intent(inout) :: var
-    type(prt_list_t), intent(in) :: pval
+    type(subevt_t), intent(in) :: pval
     logical, intent(in) :: is_known
     logical, intent(in), optional :: verbose
     type(string_t), intent(in), optional :: model_name
@@ -919,7 +980,7 @@ contains
     var%is_known = is_known
     var%is_defined = .true.
     if (associated (var%original)) then
-       call var_entry_set_prt_list (var%original, pval, is_known)
+       call var_entry_set_subevt (var%original, pval, is_known)
     end if
     if (present (verbose)) then
        if (verbose) then
@@ -928,7 +989,7 @@ contains
           if (u >= 0) flush (u)
        end if
     end if
-  end subroutine var_entry_set_prt_list
+  end subroutine var_entry_set_subevt
 
   recursive subroutine var_entry_set_string &
        (var, sval, is_known, verbose, model_name)
@@ -971,8 +1032,8 @@ contains
        call var_entry_init_real (var, name, intrinsic=intrinsic, user=user)
     case (V_CMPLX)
        call var_entry_init_cmplx (var, name, intrinsic=intrinsic, user=user)
-    case (V_PTL)
-       call var_entry_init_prt_list (var, name, intrinsic=intrinsic, user=user)
+    case (V_SEV)
+       call var_entry_init_subevt (var, name, intrinsic=intrinsic, user=user)
     case (V_PDG)
        call var_entry_init_pdg_array (var, name, intrinsic=intrinsic, user=user)
     case (V_STR)
@@ -1003,7 +1064,7 @@ contains
 !             original%rval, original%is_known)
 !        case (V_CMPLX); call var_entry_init_cmplx_ptr (var, name, &
 !             original%cval, original%is_known)
-!        case (V_PTL);  call var_entry_init_prt_list_ptr (var, name, &
+!        case (V_SEV);  call var_entry_init_subevt_ptr (var, name, &
 !             original%pval, original%is_known)
 !        case (V_PDG);  call var_entry_init_pdg_array_ptr (var, name, &
 !             original%aval, original%is_known)
@@ -1029,7 +1090,7 @@ contains
           case (V_INT);  var%ival = var%original%ival
           case (V_REAL); var%rval = var%original%rval
           case (V_CMPLX); var%cval = var%original%cval
-          case (V_PTL);  var%pval = var%original%pval
+          case (V_SEV);  var%pval = var%original%pval
           case (V_PDG);  var%aval = var%original%aval
           case (V_STR);  var%sval = var%original%sval
           end select
@@ -1048,7 +1109,7 @@ contains
           case (V_INT);  var%original%ival = var%ival
           case (V_REAL); var%original%rval = var%rval
           case (V_CMPLX); var%original%cval = var%cval
-          case (V_PTL);  var%original%pval = var%pval
+          case (V_SEV);  var%original%pval = var%pval
           case (V_PDG);  var%original%aval = var%aval
           case (V_STR);  var%original%sval = var%sval
           end select
@@ -1077,7 +1138,7 @@ contains
     end if
   end subroutine var_list_append
 
-  subroutine var_list_append_log &
+  subroutine var_list_append_log_s &
        (var_list, name, lval, locked, verbose, intrinsic, user)
     type(var_list_t), intent(inout) :: var_list
     type(string_t), intent(in) :: name
@@ -1088,9 +1149,9 @@ contains
     call var_entry_init_log (var, name, lval, intrinsic, user)
     if (present (locked))  call var_entry_lock (var, locked)
     call var_list_append (var_list, var, verbose)
-  end subroutine var_list_append_log
+  end subroutine var_list_append_log_s
 
-  subroutine var_list_append_int &
+  subroutine var_list_append_int_s &
        (var_list, name, ival, locked, verbose, intrinsic, user)
     type(var_list_t), intent(inout) :: var_list
     type(string_t), intent(in) :: name
@@ -1101,9 +1162,9 @@ contains
     call var_entry_init_int (var, name, ival, intrinsic, user)
     if (present (locked))  call var_entry_lock (var, locked)
     call var_list_append (var_list, var, verbose)
-  end subroutine var_list_append_int
+  end subroutine var_list_append_int_s
 
-  subroutine var_list_append_real &
+  subroutine var_list_append_real_s &
        (var_list, name, rval, locked, verbose, intrinsic, user)
     type(var_list_t), intent(inout) :: var_list
     type(string_t), intent(in) :: name
@@ -1114,9 +1175,9 @@ contains
     call var_entry_init_real (var, name, rval, intrinsic, user)
     if (present (locked))  call var_entry_lock (var, locked)
     call var_list_append (var_list, var, verbose)
-  end subroutine var_list_append_real
+  end subroutine var_list_append_real_s
   
-  subroutine var_list_append_cmplx &
+  subroutine var_list_append_cmplx_s &
        (var_list, name, cval, locked, verbose, intrinsic, user)
     type(var_list_t), intent(inout) :: var_list
     type(string_t), intent(in) :: name
@@ -1127,22 +1188,22 @@ contains
     call var_entry_init_cmplx (var, name, cval, intrinsic, user)
     if (present (locked))  call var_entry_lock (var, locked)
     call var_list_append (var_list, var, verbose)
-  end subroutine var_list_append_cmplx
+  end subroutine var_list_append_cmplx_s
 
-  subroutine var_list_append_prt_list &
+  subroutine var_list_append_subevt_s &
        (var_list, name, pval, locked, verbose, intrinsic, user)
     type(var_list_t), intent(inout) :: var_list
     type(string_t), intent(in) :: name
-    type(prt_list_t), intent(in), optional :: pval
+    type(subevt_t), intent(in), optional :: pval
     logical, intent(in), optional :: locked, verbose, intrinsic, user
     type(var_entry_t), pointer :: var
     allocate (var)
-    call var_entry_init_prt_list (var, name, pval, intrinsic, user)
+    call var_entry_init_subevt (var, name, pval, intrinsic, user)
     if (present (locked))  call var_entry_lock (var, locked)
     call var_list_append (var_list, var, verbose)
-  end subroutine var_list_append_prt_list
+  end subroutine var_list_append_subevt_s
 
-  subroutine var_list_append_pdg_array &
+  subroutine var_list_append_pdg_array_s &
        (var_list, name, aval, locked, verbose, intrinsic, user)
     type(var_list_t), intent(inout) :: var_list
     type(string_t), intent(in) :: name
@@ -1153,9 +1214,9 @@ contains
     call var_entry_init_pdg_array (var, name, aval, intrinsic, user)
     if (present (locked))  call var_entry_lock (var, locked)
     call var_list_append (var_list, var, verbose)
-  end subroutine var_list_append_pdg_array
+  end subroutine var_list_append_pdg_array_s
 
-  subroutine var_list_append_string &
+  subroutine var_list_append_string_s &
        (var_list, name, sval, locked, verbose, intrinsic, user)
     type(var_list_t), intent(inout) :: var_list
     type(string_t), intent(in) :: name
@@ -1166,7 +1227,84 @@ contains
     call var_entry_init_string (var, name, sval, intrinsic, user)
     if (present (locked))  call var_entry_lock (var, locked)
     call var_list_append (var_list, var, verbose)
-  end subroutine var_list_append_string
+  end subroutine var_list_append_string_s
+
+  subroutine var_list_append_log_c &
+       (var_list, name, lval, locked, verbose, intrinsic, user)
+    type(var_list_t), intent(inout) :: var_list
+    character(*), intent(in) :: name
+    logical, intent(in), optional :: lval
+    logical, intent(in), optional :: locked, verbose, intrinsic, user
+    call var_list_append_log_s &
+         (var_list, var_str (name), lval, locked, verbose, intrinsic, user)
+  end subroutine var_list_append_log_c
+
+  subroutine var_list_append_int_c &
+       (var_list, name, ival, locked, verbose, intrinsic, user)
+    type(var_list_t), intent(inout) :: var_list
+    character(*), intent(in) :: name
+    integer, intent(in), optional :: ival
+    logical, intent(in), optional :: locked, verbose, intrinsic, user
+    call var_list_append_int_s &
+         (var_list, var_str (name), ival, locked, verbose, intrinsic, user)
+  end subroutine var_list_append_int_c
+
+  subroutine var_list_append_real_c &
+       (var_list, name, rval, locked, verbose, intrinsic, user)
+    type(var_list_t), intent(inout) :: var_list
+    character(*), intent(in) :: name
+    real(default), intent(in), optional :: rval
+    logical, intent(in), optional :: locked, verbose, intrinsic, user
+    call var_list_append_real_s &
+         (var_list, var_str (name), rval, locked, verbose, intrinsic, user)
+  end subroutine var_list_append_real_c
+  
+  subroutine var_list_append_cmplx_c &
+       (var_list, name, cval, locked, verbose, intrinsic, user)
+    type(var_list_t), intent(inout) :: var_list
+    character(*), intent(in) :: name
+    complex(default), intent(in), optional :: cval
+    logical, intent(in), optional :: locked, verbose, intrinsic, user
+    call var_list_append_cmplx_s &
+         (var_list, var_str (name), cval, locked, verbose, intrinsic, user)
+  end subroutine var_list_append_cmplx_c
+
+  subroutine var_list_append_subevt_c &
+       (var_list, name, pval, locked, verbose, intrinsic, user)
+    type(var_list_t), intent(inout) :: var_list
+    character(*), intent(in) :: name
+    type(subevt_t), intent(in), optional :: pval
+    logical, intent(in), optional :: locked, verbose, intrinsic, user
+    call var_list_append_subevt_s &
+         (var_list, var_str (name), pval, locked, verbose, intrinsic, user)
+  end subroutine var_list_append_subevt_c
+
+  subroutine var_list_append_pdg_array_c &
+       (var_list, name, aval, locked, verbose, intrinsic, user)
+    type(var_list_t), intent(inout) :: var_list
+    character(*), intent(in) :: name
+    type(pdg_array_t), intent(in), optional :: aval
+    logical, intent(in), optional :: locked, verbose, intrinsic, user
+    call var_list_append_pdg_array_s &
+         (var_list, var_str (name), aval, locked, verbose, intrinsic, user)
+  end subroutine var_list_append_pdg_array_c
+
+  subroutine var_list_append_string_c &
+       (var_list, name, sval, locked, verbose, intrinsic, user)
+    type(var_list_t), intent(inout) :: var_list
+    character(*), intent(in) :: name
+    character(*), intent(in), optional :: sval
+    logical, intent(in), optional :: locked, verbose, intrinsic, user
+    if (present (sval)) then
+       call var_list_append_string_s &
+            (var_list, var_str (name), var_str (sval), &
+            locked, verbose, intrinsic, user)
+    else
+       call var_list_append_string_s &
+            (var_list, var_str (name), &
+            locked=locked, verbose=verbose, intrinsic=intrinsic, user=user)
+    end if
+  end subroutine var_list_append_string_c
 
   subroutine var_list_append_log_ptr &
        (var_list, name, lval, is_known, locked, verbose, intrinsic)
@@ -1238,19 +1376,19 @@ contains
     call var_list_append (var_list, var, verbose)
   end subroutine var_list_append_pdg_array_ptr
 
-  subroutine var_list_append_prt_list_ptr &
+  subroutine var_list_append_subevt_ptr &
        (var_list, name, pval, is_known, locked, verbose, intrinsic)
     type(var_list_t), intent(inout) :: var_list
     type(string_t), intent(in) :: name
-    type(prt_list_t), intent(in), target :: pval
+    type(subevt_t), intent(in), target :: pval
     logical, intent(in), target :: is_known
     logical, intent(in), optional :: locked, verbose, intrinsic
     type(var_entry_t), pointer :: var
     allocate (var)
-    call var_entry_init_prt_list_ptr (var, name, pval, is_known, intrinsic)
+    call var_entry_init_subevt_ptr (var, name, pval, is_known, intrinsic)
     if (present (locked))  call var_entry_lock (var, locked)
     call var_list_append (var_list, var, verbose)
-  end subroutine var_list_append_prt_list_ptr
+  end subroutine var_list_append_subevt_ptr
 
   subroutine var_list_append_string_ptr &
        (var_list, name, sval, is_known, locked, verbose, intrinsic)
@@ -1425,7 +1563,7 @@ contains
     end if
   end function var_list_is_intrinsic
 
-  function var_list_is_known (var_list, name, follow_link) result (flag)
+  function var_list_is_known_s (var_list, name, follow_link) result (flag)
     logical :: flag
     type(string_t), intent(in) :: name
     type(var_list_t), intent(in), target :: var_list
@@ -1437,7 +1575,15 @@ contains
     else
        flag = .false.
     end if
-  end function var_list_is_known
+  end function var_list_is_known_s
+
+  function var_list_is_known_c (var_list, name, follow_link) result (flag)
+    logical :: flag
+    character(*), intent(in) :: name
+    type(var_list_t), intent(in), target :: var_list
+    logical, intent(in), optional :: follow_link
+    flag = var_list_is_known_s (var_list, var_str (name), follow_link)
+  end function var_list_is_known_c
 
   function var_list_is_locked (var_list, name, follow_link) result (flag)
     logical :: flag
@@ -1453,7 +1599,7 @@ contains
     end if
   end function var_list_is_locked
 
-  function var_list_get_lval (var_list, name, follow_link) result (lval)
+  function var_list_get_lval_s (var_list, name, follow_link) result (lval)
     logical :: lval
     type(string_t), intent(in) :: name
     type(var_list_t), intent(in), target :: var_list
@@ -1461,14 +1607,18 @@ contains
     type(var_entry_t), pointer :: var
     var => var_list_get_var_ptr &
          (var_list, name, V_LOG, follow_link, defined=.true.)
-    if (var_has_value (var)) then
-       lval = var%lval
+    if (associated (var)) then
+       if (var_has_value (var)) then
+          lval = var%lval
+       else
+          lval = .false.
+       end if
     else
        lval = .false.
     end if
-  end function var_list_get_lval
+  end function var_list_get_lval_s
   
-  function var_list_get_ival (var_list, name, follow_link) result (ival)
+  function var_list_get_ival_s (var_list, name, follow_link) result (ival)
     integer :: ival
     type(string_t), intent(in) :: name
     type(var_list_t), intent(in), target :: var_list
@@ -1476,14 +1626,18 @@ contains
     type(var_entry_t), pointer :: var
     var => var_list_get_var_ptr &
          (var_list, name, V_INT, follow_link, defined=.true.)
-    if (var_has_value (var)) then
-       ival = var%ival
+    if (associated (var)) then
+       if (var_has_value (var)) then
+          ival = var%ival
+       else
+          ival = 0
+       end if
     else
        ival = 0
     end if
-  end function var_list_get_ival
+  end function var_list_get_ival_s
   
-  function var_list_get_rval (var_list, name, follow_link) result (rval)
+  function var_list_get_rval_s (var_list, name, follow_link) result (rval)
     real(default) :: rval
     type(string_t), intent(in) :: name
     type(var_list_t), intent(in), target :: var_list
@@ -1491,14 +1645,18 @@ contains
     type(var_entry_t), pointer :: var
     var => var_list_get_var_ptr &
          (var_list, name, V_REAL, follow_link, defined=.true.)
-    if (var_has_value (var)) then
-       rval = var%rval
+    if (associated (var)) then
+       if (var_has_value (var)) then
+          rval = var%rval
+       else
+          rval = 0
+       end if
     else
        rval = 0
     end if
-  end function var_list_get_rval
+  end function var_list_get_rval_s
     
-  function var_list_get_cval (var_list, name, follow_link) result (cval)
+  function var_list_get_cval_s (var_list, name, follow_link) result (cval)
     complex(default) :: cval
     type(string_t), intent(in) :: name
     type(var_list_t), intent(in), target :: var_list
@@ -1506,14 +1664,18 @@ contains
     type(var_entry_t), pointer :: var
     var => var_list_get_var_ptr &
          (var_list, name, V_CMPLX, follow_link, defined=.true.)
-    if (var_has_value (var)) then
-       cval = var%cval
+    if (associated (var)) then
+       if (var_has_value (var)) then
+          cval = var%cval
+       else
+          cval = 0
+       end if
     else
        cval = 0
     end if
-  end function var_list_get_cval
+  end function var_list_get_cval_s
 
-  function var_list_get_aval (var_list, name, follow_link) result (aval)
+  function var_list_get_aval_s (var_list, name, follow_link) result (aval)
     type(pdg_array_t) :: aval
     type(string_t), intent(in) :: name
     type(var_list_t), intent(in), target :: var_list
@@ -1521,25 +1683,29 @@ contains
     type(var_entry_t), pointer :: var
     var => var_list_get_var_ptr &
          (var_list, name, V_PDG, follow_link, defined=.true.)
-    if (var_has_value (var)) then
-       aval = var%aval
-    end if       
-  end function var_list_get_aval
+    if (associated (var)) then
+       if (var_has_value (var)) then
+          aval = var%aval
+       end if
+    end if    
+  end function var_list_get_aval_s
   
-  function var_list_get_pval (var_list, name, follow_link) result (pval)
-    type(prt_list_t) :: pval
+  function var_list_get_pval_s (var_list, name, follow_link) result (pval)
+    type(subevt_t) :: pval
     type(string_t), intent(in) :: name
     type(var_list_t), intent(in), target :: var_list
     logical, intent(in), optional :: follow_link
     type(var_entry_t), pointer :: var
     var => var_list_get_var_ptr &
-         (var_list, name, V_PTL, follow_link, defined=.true.)
-    if (var_has_value (var)) then
-       pval = var%pval
+         (var_list, name, V_SEV, follow_link, defined=.true.)
+    if (associated (var)) then
+       if (var_has_value (var)) then
+          pval = var%pval
+       end if
     end if
-  end function var_list_get_pval
+  end function var_list_get_pval_s
   
-  function var_list_get_sval (var_list, name, follow_link) result (sval)
+  function var_list_get_sval_s (var_list, name, follow_link) result (sval)
     type(string_t) :: sval
     type(string_t), intent(in) :: name
     type(var_list_t), intent(in), target :: var_list
@@ -1547,12 +1713,72 @@ contains
     type(var_entry_t), pointer :: var
     var => var_list_get_var_ptr &
          (var_list, name, V_STR, follow_link, defined=.true.)
-    if (var_has_value (var)) then
-       sval = var%sval
+    if (associated (var)) then
+       if (var_has_value (var)) then
+          sval = var%sval
+       else
+          sval = ""
+       end if
     else
        sval = ""
     end if
-  end function var_list_get_sval
+  end function var_list_get_sval_s
+  
+  function var_list_get_lval_c (var_list, name, follow_link) result (lval)
+    logical :: lval
+    character(*), intent(in) :: name
+    type(var_list_t), intent(in), target :: var_list
+    logical, intent(in), optional :: follow_link
+    lval = var_list_get_lval_s (var_list, var_str (name), follow_link)
+  end function var_list_get_lval_c
+  
+  function var_list_get_ival_c (var_list, name, follow_link) result (ival)
+    integer :: ival
+    character(*), intent(in) :: name
+    type(var_list_t), intent(in), target :: var_list
+    logical, intent(in), optional :: follow_link
+    ival = var_list_get_ival_s (var_list, var_str (name), follow_link)
+  end function var_list_get_ival_c
+  
+  function var_list_get_rval_c (var_list, name, follow_link) result (rval)
+    real(default) :: rval
+    character(*), intent(in) :: name
+    type(var_list_t), intent(in), target :: var_list
+    logical, intent(in), optional :: follow_link
+    rval = var_list_get_rval_s (var_list, var_str (name), follow_link)
+  end function var_list_get_rval_c
+    
+  function var_list_get_cval_c (var_list, name, follow_link) result (cval)
+    complex(default) :: cval
+    character(*), intent(in) :: name
+    type(var_list_t), intent(in), target :: var_list
+    logical, intent(in), optional :: follow_link
+    cval = var_list_get_cval_s (var_list, var_str (name), follow_link)
+  end function var_list_get_cval_c
+
+  function var_list_get_aval_c (var_list, name, follow_link) result (aval)
+    type(pdg_array_t) :: aval
+    character(*), intent(in) :: name
+    type(var_list_t), intent(in), target :: var_list
+    logical, intent(in), optional :: follow_link
+    aval = var_list_get_aval_s (var_list, var_str (name), follow_link)
+  end function var_list_get_aval_c
+  
+  function var_list_get_pval_c (var_list, name, follow_link) result (pval)
+    type(subevt_t) :: pval
+    character(*), intent(in) :: name
+    type(var_list_t), intent(in), target :: var_list
+    logical, intent(in), optional :: follow_link
+    pval = var_list_get_pval_s (var_list, var_str (name), follow_link)
+  end function var_list_get_pval_c
+  
+  function var_list_get_sval_c (var_list, name, follow_link) result (sval)
+    type(string_t) :: sval
+    character(*), intent(in) :: name
+    type(var_list_t), intent(in), target :: var_list
+    logical, intent(in), optional :: follow_link
+    sval = var_list_get_sval_s (var_list, var_str (name), follow_link)
+  end function var_list_get_sval_c
   
   function var_has_value (var) result (valid)
     logical :: valid
@@ -2194,21 +2420,21 @@ contains
     end if
   end subroutine var_list_set_pdg_array
           
-  subroutine var_list_set_prt_list &
+  subroutine var_list_set_subevt &
        (var_list, name, pval, is_known, ignore, verbose, model_name)
     type(var_list_t), intent(inout), target :: var_list
     type(string_t), intent(in) :: name
-    type(prt_list_t), intent(in) :: pval
+    type(subevt_t), intent(in) :: pval
     logical, intent(in) :: is_known
     logical, intent(in), optional :: ignore, verbose
     type(string_t), intent(in), optional :: model_name
     type(var_entry_t), pointer :: var
-    var => var_list_get_var_ptr (var_list, name, V_PTL)
+    var => var_list_get_var_ptr (var_list, name, V_SEV)
     if (associated (var)) then
        if (.not. var_entry_is_locked (var)) then
           select case (var%type)
-          case (V_PTL)
-             call var_entry_set_prt_list &
+          case (V_SEV)
+             call var_entry_set_subevt &
                   (var, pval, is_known, verbose, model_name)
           case default
              call var_mismatch_error (name)
@@ -2219,7 +2445,7 @@ contains
     else
        call var_missing_error (name, ignore)
     end if
-  end subroutine var_list_set_prt_list
+  end subroutine var_list_set_subevt
           
   subroutine var_list_set_string &
        (var_list, name, sval, is_known, ignore, verbose, model_name)

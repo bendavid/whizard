@@ -1,5 +1,5 @@
 # Makefile.am -- Makefile for O'Mega within and without WHIZARD
-# $Id: Makefile.am 2387 2010-04-22 09:45:27Z cnspeckn $
+# $Id: Makefile.am 2798 2010-09-15 13:36:15Z jr_reuter $
 ##
 ## Process this file with automake to produce Makefile.in
 ##
@@ -9,6 +9,7 @@
 #     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+#     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by 

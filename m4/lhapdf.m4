@@ -40,9 +40,24 @@ if test "$enable_lhapdf" = "yes"; then
     fi
     AC_MSG_RESULT([$LHAPDF_PDFSETS_PATH])
 
+    AC_MSG_CHECKING([the standard PDF sets])
+    if test -f "$LHAPDF_PDFSETS_PATH/cteq61.LHpdf" -a -f "$LHAPDF_PDFSETS_PATH/cteq5l.LHgrid" -a -f "$LHAPDF_PDFSETS_PATH/GSG961.LHgrid" -a -f "$LHAPDF_PDFSETS_PATH/cteq6ll.LHpdf"; then
+       AC_MSG_RESULT([ all standard PDF sets installed])
+    else	  
+       AC_MSG_RESULT([ not all standard PDF sets installed])     
+       AC_MSG_NOTICE([error: *************************************************************])
+       AC_MSG_NOTICE([error: LHAPDF standard PDF sets not installed, please install these ])
+       AC_MSG_NOTICE([error:    PDF sets: cteq61.LHpdf, cteq6ll.LHpdf, cteq5l.LHgrid,     ])
+       AC_MSG_NOTICE([error:	GSG961.LHgrid.     ])
+       AC_MSG_NOTICE([error: *************************************************************])
+       enable_lhapdf="no"
+       AC_MSG_CHECKING([for LHAPDF])
+       AC_MSG_RESULT([(disabled)])
+    fi
   else
     enable_lhapdf="no"
   fi
+  
 else
   AC_MSG_CHECKING([for LHAPDF])
   AC_MSG_RESULT([(disabled)])

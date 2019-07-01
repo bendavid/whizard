@@ -1,11 +1,11 @@
-! WHIZARD 2.0.3 Tue Aug 10 2010
+! WHIZARD 2.0.4 Tue Oct 26 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
-!     with contributions by Christian Speckner, Sebastian Schmidt, 
-!     Daniel Wiesler, Felix Braam
+!     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+!     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -28,12 +28,13 @@
 module shower_interface
 
   use kinds, only: default !NODEP!
+  use kinds, only: double !NODEP!
   use shower_basics_module !NODEP!
   use shower_module !NODEP!
   use flavors
   use colors
   use particles
-  use prt_lists
+  use subevents
   use models
   use variables
   use iso_varying_string, string_t => varying_string !NODEP!
@@ -56,19 +57,20 @@ module shower_interface
      logical :: ps_use_PYTHIA_shower = .false.
 
      ! values present in PYTHIA and WHIZARDs PS, comments denote corresponding PYTHIA values
-     real(kind=double) :: ps_mass_cutoff = 1._double      ! PARJ(82)
-     real(kind=double) :: ps_fsr_lambda = 0.29_double     ! PARP(72)
-     real(kind=double) :: ps_isr_lambda = 0.29_double     ! PARP(61)
+     real(default) :: ps_mass_cutoff = 1._default      ! PARJ(82)
+     real(default) :: ps_fsr_lambda = 0.29_default     ! PARP(72)
+     real(default) :: ps_isr_lambda = 0.29_default     ! PARP(61)
      integer :: ps_max_n_flavors = 5            ! MSTJ(45)
      logical :: ps_isr_alpha_s_running = .true.           ! MSTP(64)
      logical :: ps_fsr_alpha_s_running = .true.           ! MSTJ(44)
-     real(kind=double) :: ps_fixed_alpha_s = 0._double    ! PARU(111)
+     real(default) :: ps_fixed_alpha_s = 0._default    ! PARU(111)
      logical :: ps_isr_pt_ordered = .false.
      logical :: ps_isr_angular_ordered = .true.           ! MSTP(62)
-     real(kind=double) :: ps_isr_primordial_kt_width = 0._double  ! PARP(91)
-     real(kind=double) :: ps_isr_primordial_kt_cutoff = 5._double ! PARP(93)
-     real(kind=double) :: ps_isr_z_cutoff = 0.999_double  ! 1-PARP(66)
-     real(kind=double) :: ps_isr_minenergy = 2            ! PARP(65)
+     real(default) :: ps_isr_primordial_kt_width = 0._default  ! PARP(91)
+     real(default) :: ps_isr_primordial_kt_cutoff = 5._default ! PARP(93)
+     real(default) :: ps_isr_z_cutoff = 0.999_default  ! 1-PARP(66)
+     real(default) :: ps_isr_minenergy = 2._default            ! PARP(65)
+     real(default) :: ps_isr_tscalefactor = 1._default
      logical :: ps_isr_only_onshell_emitted_partons = .true.  ! MSTP(63)
   end type shower_settings_t
 
@@ -101,6 +103,7 @@ contains
     shower_settings%ps_isr_primordial_kt_cutoff = var_list_get_rval(var_list, var_str("ps_isr_primordial_kt_cutoff"))
     shower_settings%ps_isr_z_cutoff = var_list_get_rval(var_list, var_str("ps_isr_z_cutoff"))
     shower_settings%ps_isr_minenergy = var_list_get_rval(var_list, var_str("ps_isr_minenergy"))
+    shower_settings%ps_isr_tscalefactor = var_list_get_rval(var_list, var_str("ps_isr_tscalefactor"))
     shower_settings%ps_isr_only_onshell_emitted_partons = &
                 var_list_get_lval(var_list, var_str("?ps_isr_only_onshell_emitted_partons"))
   end subroutine shower_settings_init
@@ -120,17 +123,19 @@ contains
     end if
     if(shower_settings%ps_isr_active) then
        write (u, "(A)")  "  ISR Settings:"
+       write (u, *) "ps_isr_pt_ordered           = ", shower_settings%ps_isr_pt_ordered
        write (u, *) "ps_isr_lambda               = ", shower_settings%ps_isr_lambda
        write (u, *) "ps_isr_alpha_s_running      = ", shower_settings%ps_isr_alpha_s_running
        write (u, *) "ps_isr_primordial_kt_width  = ", shower_settings%ps_isr_primordial_kt_width
        write (u, *) "ps_isr_primordial_kt_cutoff = ", shower_settings%ps_isr_primordial_kt_cutoff
        write (u, *) "ps_isr_z_cutoff             = ", shower_settings%ps_isr_z_cutoff
        write (u, *) "ps_isr_minenergy            = ", shower_settings%ps_isr_minenergy
+       write (u, *) "ps_isr_tscalefactor         = ", shower_settings%ps_isr_tscalefactor
     end if
     if(shower_settings%ps_fsr_active) then
        write (u, "(A)")  "  FSR Settings:"
-       write (u, *) "ps_fsr_lambda               = ", shower_settings%ps_isr_lambda
-       write (u, *) "ps_fsr_alpha_s_running      = ", shower_settings%ps_isr_alpha_s_running
+       write (u, *) "ps_fsr_lambda               = ", shower_settings%ps_fsr_lambda
+       write (u, *) "ps_fsr_alpha_s_running      = ", shower_settings%ps_fsr_alpha_s_running
     end if
   end subroutine shower_settings_write
 
@@ -138,7 +143,7 @@ subroutine event_apply_shower_particle_set(particle_set, shower_settings, model)
   type(particle_set_t), intent(inout) :: particle_set
   type(shower_settings_t), intent(in) :: shower_settings
   type(model_t), pointer, intent(in) :: model
-  type(parton_t), dimension(:), allocatable, target :: partons, hadrons
+  type(parton_t), dimension(:), allocatable, target :: partons
   type(parton_pointer_t), dimension(:), allocatable :: parton_pointers, final_partons
   integer, dimension(:), allocatable :: connections
   integer :: i, j, u
@@ -190,6 +195,7 @@ subroutine event_apply_shower_particle_set(particle_set, shower_settings, model)
      call shower_set_primordial_kt_cutoff(shower_settings%ps_isr_primordial_kt_cutoff)
      call shower_set_maxz_isr(shower_settings%ps_isr_z_cutoff)
      call shower_set_minenergy_timelike(shower_settings%ps_isr_minenergy)
+     call shower_set_tscalefactor_isr(shower_settings%ps_isr_tscalefactor)
      call shower_set_isr_only_onshell_emitted_partons( &
             shower_settings%ps_isr_only_onshell_emitted_partons)
 
@@ -336,6 +342,10 @@ subroutine event_apply_shower_particle_set(particle_set, shower_settings, model)
      end do
 
      call particle_set_replace(particle_set, temp_prt)
+     deallocate(connections)
+     deallocate(partons)
+     deallocate(parton_pointers)
+     deallocate(final_partons)
      deallocate(temp_prt)
 
      call particle_set_write(particle_set)
@@ -433,7 +443,7 @@ end subroutine event_apply_shower_particle_set
     close(u1)
   end subroutine event_apply_PYTHIAshower_particle_set
 
-  subroutine shower_add_lhef_to_particle_set(particle_set, u, model)
+  subroutine shower_add_lhef_to_particle_set (particle_set, u, model)
     type(particle_set_t), intent(inout) :: particle_set
     integer, intent(in) :: u
     type(model_t), intent(in), pointer :: model
@@ -458,7 +468,7 @@ end subroutine event_apply_shower_particle_set
     !! set the outgoing particles of the particle_set to be virtual
     ! add outgoing particles from /HEPEVT/ to the particle_set as outgoing particles
 
-    print *, "shower_add_lhef_to_particle_set finished"
+    print *, "shower_add_lhef_to_particle_set"
     call particle_set_write(particle_set)
 
     rewind(u)
@@ -487,6 +497,9 @@ end subroutine event_apply_shower_particle_set
     allocate(temp_prt(1:newsize))
     do i=1, particle_set_get_n_tot(particle_set)
        temp_prt(i) = particle_set_get_particle(particle_set, i)
+       if(particle_get_status(temp_prt(i)) == PRT_OUTGOING .or. particle_get_status(temp_prt(i))==PRT_BEAM_REMNANT) then
+          call particle_reset_status(temp_prt(i), PRT_VIRTUAL)
+       end if
     end do
 
     ! transfer particles from lhef to particle_set
@@ -876,50 +889,57 @@ end subroutine event_apply_shower_particle_set
       NNEXTC = 1   ! TODO find next free color number ??
       DO I=1,N
          if((K(I,1).eq.1) .or. (K(I,1).eq.2)) then
-            if(P(I,4) < 1D-10) cycle
-            if(NDANGLING_COLOR.eq.0 .and. NDANGLING_ANTIC.eq.0) then
-               ! new color string
-               if(K(I,2).eq.21 .or. K(I,2).eq.1000021) then  ! Gluon and gluino only color octets implemented so far
-                  NCOLOR = NNEXTC
-                  NDANGLING_COLOR = NCOLOR
-                  NNEXTC = NNEXTC + 1
-                  NANTIC = NNEXTC
-                  NDANGLING_ANTIC = NANTIC
-                  NNEXTC = NNEXTC + 1
-               elseif(K(I,2) .gt. 0) then  ! particles to have color
-                  NCOLOR = NNEXTC
-                  NDANGLING_COLOR = NCOLOR
-                  NANTIC = 0
-                  NNEXTC = NNEXTC + 1
-               elseif(K(I,2) .lt. 0) then  ! antiparticles to have anticolor
-                  NANTIC = NNEXTC
-                  NDANGLING_ANTIC = NANTIC
-                  NCOLOR = 0
-                  NNEXTC = NNEXTC + 1
-               end if
-            else if(K(I,1).eq.1) then
-               ! end of string
-               NCOLOR = NDANGLING_ANTIC
-               NANTIC = NDANGLING_COLOR
-               NDANGLING_COLOR = 0
-               NDANGLING_ANTIC = 0
-            else
-               ! inside the string
-               if(NDANGLING_COLOR .ne. 0) then
-                  NANTIC = NDANGLING_COLOR
-                  NCOLOR = NNEXTC
-                  NDANGLING_COLOR = NNEXTC
-                  NNEXTC = NNEXTC +1
-               else if(NDANGLING_ANTIC .ne. 0) then
+            if(P(I,4) < 1D-10) cycle   ! workaround for zero energy photon in electron ISR
+            if((K(I,2).eq.21).or.(IABS(K(I,2)).le.8).or.(IABS(K(I,2)).GE.KSUSY1+1.AND.IABS(K(I,2)).LE.KSUSY1+8).OR. &
+                 (IABS(K(I,2)).GE.KSUSY2+1.AND.IABS(K(I,2)).LE.KSUSY2+8).or. &
+                 (IABS(K(I,2)).GE.1000.AND.IABS(K(I,2)).le.9999) ) then
+               if(NDANGLING_COLOR.eq.0 .and. NDANGLING_ANTIC.eq.0) then
+                  ! new color string
+                  if(K(I,2).eq.21 .or. K(I,2).eq.1000021) then  ! Gluon and gluino only color octets implemented so far
+                     NCOLOR = NNEXTC
+                     NDANGLING_COLOR = NCOLOR
+                     NNEXTC = NNEXTC + 1
+                     NANTIC = NNEXTC
+                     NDANGLING_ANTIC = NANTIC
+                     NNEXTC = NNEXTC + 1
+                  elseif(K(I,2) .gt. 0) then  ! particles to have color
+                     NCOLOR = NNEXTC
+                     NDANGLING_COLOR = NCOLOR
+                     NANTIC = 0
+                     NNEXTC = NNEXTC + 1
+                  elseif(K(I,2) .lt. 0) then  ! antiparticles to have anticolor
+                     NANTIC = NNEXTC
+                     NDANGLING_ANTIC = NANTIC
+                     NCOLOR = 0
+                     NNEXTC = NNEXTC + 1
+                  end if
+               else if(K(I,1).eq.1) then
+                  ! end of string
                   NCOLOR = NDANGLING_ANTIC
-                  NANTIC = NNEXTC
-                  NDANGLING_ANTIC = NNEXTC
-                  NNEXTC = NNEXTC +1
+                  NANTIC = NDANGLING_COLOR
+                  NDANGLING_COLOR = 0
+                  NDANGLING_ANTIC = 0
                else
-                  print *, "ERROR IN PYLHEO"
+                  ! inside the string
+                  if(NDANGLING_COLOR .ne. 0) then
+                     NANTIC = NDANGLING_COLOR
+                     NCOLOR = NNEXTC
+                     NDANGLING_COLOR = NNEXTC
+                     NNEXTC = NNEXTC +1
+                  else if(NDANGLING_ANTIC .ne. 0) then
+                     NCOLOR = NDANGLING_ANTIC
+                     NANTIC = NNEXTC
+                     NDANGLING_ANTIC = NNEXTC
+                     NNEXTC = NNEXTC +1
+                  else
+                     print *, "ERROR IN PYLHEO"
+                  end if
                end if
+            else
+               NCOLOR = 0
+               NANTIC = 0
             end if
-               
+
             !! mothers = 1, 2 ??
             WRITE(MSTP(163),*)  K(I,2),1,1,2,NCOLOR,NANTIC,(P(I,J),J=1,5),0, -9
          end if

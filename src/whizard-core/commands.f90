@@ -1,11 +1,11 @@
-! WHIZARD 2.0.3 Tue Aug 10 2010
+! WHIZARD 2.0.4 Tue Oct 26 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
-!     with contributions by Christian Speckner, Sebastian Schmidt, 
-!     Daniel Wiesler, Felix Braam
+!     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+!     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -47,7 +47,7 @@ module commands
   use parser
   use analysis
   use pdg_arrays
-  use prt_lists
+  use subevents
   use variables
   use expressions
   use models
@@ -66,6 +66,7 @@ module commands
   use slha_interface
   use cputime
   use iterations
+  use beam_polarizations
   use strfun_config
   use event_files
   use user_files
@@ -297,7 +298,6 @@ module commands
      type(string_t), dimension(:), allocatable :: prt
      type(command_list_t), pointer :: options => null ()
      type(rt_data_t) :: local
-     logical :: use_sqrts = .true.
      integer :: n_strfun = 0
      type(strfun_pair_t), dimension(:), allocatable :: strfun_pair
   end type cmd_beams_t
@@ -2179,6 +2179,10 @@ contains
        strfun_def%type = STRF_CIRCE1       
     case ("circe2")
        strfun_def%type = STRF_CIRCE2
+    case ("energy_scan")
+       strfun_def%type = STRF_ESCAN
+    case ("beam_events")
+       strfun_def%type = STRF_BEVT
     end select
     call rt_data_local_init (strfun_def%local, global)
     if (associated (pn_opt)) then
@@ -2192,11 +2196,16 @@ contains
   subroutine cmd_beams_execute (beams, global)
     type(cmd_beams_t), intent(inout), target :: beams
     type(rt_data_t), intent(inout), target :: global
-    real(default) :: sqrts, p_cm, p_cm_theta, p_cm_phi
+    logical, dimension(2) :: p_known
+    real(default), dimension(2) :: p
+    logical :: sqrts_known, alpha_known, theta_known, phi_known
+    real(default) :: sqrts, alpha, theta, phi
+    real(default) :: beams_theta, beams_phi
     type(pdg_array_t), dimension(2) :: aval
     type(flavor_t), dimension(:), allocatable :: flv_tmp
     type(flavor_t), dimension(2) :: flv
-    type(beam_polarization_t), dimension(2) :: pol
+    type(beam_polarization_t), dimension(2) :: bp
+    type(polarization_t), dimension(2) :: pol
     integer :: i, u
     logical :: polarized
     u = logfile_unit ()
@@ -2220,7 +2229,7 @@ contains
        beams%prt(i) = flavor_get_name (flv(i))
        if (polarized .and. associated (beams%local%beam_polarization)) then
           if (size (beams%local%beam_polarization) == beams%n_in) then
-             pol(1:beams%n_in) = beams%local%beam_polarization
+             bp(1:beams%n_in) = beams%local%beam_polarization
           else
              call msg_error ("the number of incoming particles differs " &
                 // "between beam and polarization setup - ignoring polarization")
@@ -2230,44 +2239,74 @@ contains
           polarized = .false.
           select case (beams%n_in)
           case (1)
-             call beam_polarization_init_trivial (pol(i))
+             call beam_polarization_init_trivial (bp(i))
           case (2)
-             call beam_polarization_init_none (pol(i))
+             call beam_polarization_init_none (bp(i))
           end select
        end if
+       pol(i) = beam_polarization2polarization (bp(i), flv(i), &
+            decay=(size (bp) == 1))
     end do
-    p_cm = var_list_get_rval (beams%local%var_list, var_str ("cm_momentum"))
-    p_cm_theta = &
-         var_list_get_rval (beams%local%var_list, var_str ("cm_theta"))
-    p_cm_phi = &
-         var_list_get_rval (beams%local%var_list, var_str ("cm_phi"))
+    sqrts_known = var_list_is_known (beams%local%var_list, "sqrts")
+    p_known(1) = var_list_is_known (beams%local%var_list, "beam1_momentum")
+    p_known(2) = var_list_is_known (beams%local%var_list, "beam2_momentum")
+    alpha_known = var_list_is_known (beams%local%var_list, "crossing_angle")
+    theta_known = var_list_is_known (beams%local%var_list, "beams_theta")
+    phi_known = var_list_is_known (beams%local%var_list, "beams_phi")
+    sqrts = var_list_get_rval (beams%local%var_list, "sqrts")
+    p(1) = var_list_get_rval (beams%local%var_list, "beam1_momentum")
+    p(2) = var_list_get_rval (beams%local%var_list, "beam2_momentum")
+    alpha = var_list_get_rval (beams%local%var_list, "crossing_angle")
+    theta = var_list_get_rval (beams%local%var_list, "beams_theta")
+    phi = var_list_get_rval (beams%local%var_list, "beams_phi")
+    select case (beams%n_in)
+    case (2)
+       if (sqrts_known) then
+          if (any (p_known))  call msg_error &
+               ("Beam setup: sqrts and beam momenta must not be set " &
+               // "simultaneously; using sqrts only")
+          if (alpha_known)  call msg_fatal &
+               ("Beam setup: sqrts and crossing angle must not be set " &
+               // "simultaneously (set beam1_momentum and beam2_momentum " &
+               // "instead)")
+       else
+          if (.not. all (p_known))  call msg_fatal &
+               ("Beam setup: either sqrts or both beam momenta must be set.")
+       end if
+    end select
     select case (beams%n_in)
     case (1)
-       if (p_cm == 0 .and. p_cm_theta == 0) then
-          call beam_data_init_decay (global%beam_data, flv, pol(1:1))
-       else
+       if (p_known(1) .or. theta_known .or. phi_known) then
           call beam_data_init_decay &
-               (global%beam_data, flv, pol(1:1), p_cm, p_cm_theta, p_cm_phi)
+               (global%beam_data, flv, pol(1:1), p(1), theta, phi)
+       else
+          call beam_data_init_decay (global%beam_data, flv, pol(1:1))
        end if
     case (2)
-       if (beams%use_sqrts) then
-          sqrts = var_list_get_rval (beams%local%var_list, var_str ("sqrts"))
-          if (sqrts > 0) then
-             if (p_cm == 0 .and. p_cm_theta == 0) then
-                call beam_data_init_sqrts (global%beam_data, sqrts, flv, pol)
-             else
-                call beam_data_init_sqrts (global%beam_data, &
-                     sqrts, flv, pol, p_cm, p_cm_theta, p_cm_phi)
-             end if
+       if (sqrts_known) then
+          if (theta_known .or. phi_known) then
+             call beam_data_init_sqrts (global%beam_data, &
+                  sqrts, flv, pol, 0._default, theta=theta, phi=phi)
           else
-             call msg_fatal ("Beam setup: value of sqrts " &
-                  // "must be set and positive")
-             if (u >= 0) flush (u)
-             call rt_data_restore (global, beams%local)
-             return
+             call beam_data_init_sqrts (global%beam_data, &
+                  sqrts, flv, pol)
+          end if
+       else if (alpha_known) then
+          if (theta_known .or. phi_known) then
+             call beam_data_init_momenta (global%beam_data, &
+                  p, flv, pol, alpha, theta, phi)
+          else          
+             call beam_data_init_momenta (global%beam_data, &
+                  p, flv, pol, alpha)
           end if
        else
-          call msg_bug ("Beam setup: individual beam setup not supported yet")
+          if (theta_known .or. phi_known) then
+             call beam_data_init_momenta (global%beam_data, &
+                  p, flv, pol, theta=theta, phi=phi)
+          else          
+             call beam_data_init_momenta (global%beam_data, &
+                  p, flv, pol)
+          end if
        end if
        if (global%sf_list_allocated) then
           call sf_list_final (global%sf_list)
@@ -2318,26 +2357,43 @@ contains
     logical, dimension(2), intent(in) :: affects_beam
     type(rt_data_t), intent(inout), target :: global
     type(sf_data_t), pointer :: sf_data
-    type(string_t) :: lhapdf_file, circe2_file, circe2_design
+    type(string_t) :: lhapdf_file
     integer :: lhapdf_member, lhapdf_photon_scheme
     real(default) :: isr_alpha, isr_q_max, isr_mass
     integer :: isr_order
+    logical :: isr_recoil
     real(default) :: epa_alpha, epa_x_min, epa_q_min, epa_e_max, epa_mass
     real(default) :: ewa_x_min, ewa_q_min, ewa_pt_max, ewa_mass, ewa_sqrts    
-    logical :: ewa_keep_momentum, ewa_keep_energy
-    real(default) :: circe1_sqrts, circe2_sqrts
-    logical, dimension(2) :: circe1_photon, circe2_photon
-    logical :: circe1_generate, circe1_map, circe2_generate, circe2_map
-    integer :: circe1_ver, circe1_rev, circe1_acc, circe1_chat, &
-               circe2_ver              
+    logical :: ewa_keep_momentum, ewa_keep_energy, epa_recoil
+    real(default) :: circe1_sqrts
+    logical, dimension(2) :: circe1_photon
+    logical :: circe1_generate, circe1_map
+    integer :: circe1_ver, circe1_rev, circe1_acc, circe1_chat
+    real(default) :: circe2_sqrts
+    logical :: circe2_generate, circe2_map, circe2_polarized
+    type(string_t) :: circe2_file, circe2_design
+    real(default) :: escan_sqrts
+    type(string_t) :: beam_events_file
+    logical :: beam_events_warn_eof
+    logical :: exist
     call rt_data_link (strfun_def%local, global)
     if (associated (strfun_def%options)) then
        call command_list_execute (strfun_def%options, strfun_def%local)
     end if
     if (strfun_def%type /= STRF_NONE) then
        select case (strfun_def%type)
+       case (STRF_ISR)
+          isr_recoil = var_list_get_lval (strfun_def%local%var_list, &
+               var_str ("?isr_recoil"))
+          if (isr_recoil)  strfun_def%n_parameters = 3
+       case (STRF_EPA)
+          epa_recoil = var_list_get_lval (strfun_def%local%var_list, &
+               var_str ("?epa_recoil"))
+          if (epa_recoil)  strfun_def%n_parameters = 3
        case (STRF_CIRCE1, STRF_CIRCE2)
           strfun_def%n_parameters = 2
+       case (STRF_BEVT)
+          strfun_def%n_parameters = 0
        end select
        call sf_list_append (global%sf_list, &
             strfun_def%type, affects_beam, strfun_def%n_parameters, sf_data)
@@ -2362,8 +2418,7 @@ contains
           isr_q_max = var_list_get_rval (strfun_def%local%var_list, &
                var_str ("isr_q_max"))
           if (isr_q_max == 0) then
-             isr_q_max = var_list_get_rval (strfun_def%local%var_list, &
-                  var_str ("sqrts"))
+             isr_q_max = global%beam_data%sqrts
           end if
           isr_mass = var_list_get_rval (strfun_def%local%var_list, &
                var_str ("isr_mass"))
@@ -2392,8 +2447,7 @@ contains
           epa_e_max = var_list_get_rval (strfun_def%local%var_list, &
                var_str ("epa_e_max"))
           if (epa_e_max == 0) then
-             epa_e_max = var_list_get_rval (strfun_def%local%var_list, &
-                  var_str ("sqrts"))
+             epa_e_max = global%beam_data%sqrts
           end if
           epa_mass = var_list_get_rval (strfun_def%local%var_list, &
                var_str ("epa_mass"))
@@ -2415,13 +2469,11 @@ contains
           ewa_pt_max = var_list_get_rval (strfun_def%local%var_list, &
                var_str ("ewa_pt_max"))
           if (ewa_pt_max == 0) then
-             ewa_pt_max = var_list_get_rval (strfun_def%local%var_list, &
-                  var_str ("sqrts"))
+             ewa_pt_max = global%beam_data%sqrts
           end if
           ewa_mass = var_list_get_rval (strfun_def%local%var_list, &
                var_str ("ewa_mass"))
-          ewa_sqrts = var_list_get_rval (strfun_def%local%var_list, &
-               var_str ("sqrts"))               
+          ewa_sqrts = global%beam_data%sqrts
           ewa_keep_momentum = var_list_get_lval (strfun_def%local%var_list, &
                     var_str ("?ewa_keep_momentum"))
           ewa_keep_energy = var_list_get_lval (strfun_def%local%var_list, &
@@ -2476,29 +2528,43 @@ contains
           else
              circe2_sqrts = global%beam_data%sqrts
           end if       
-          circe2_photon(1) = var_list_get_lval (strfun_def%local%var_list, &
-               var_str ("?circe2_photon1"))
-          circe2_photon(2) = var_list_get_lval (strfun_def%local%var_list, &
-               var_str ("?circe2_photon2"))
           circe2_generate = var_list_get_lval (strfun_def%local%var_list, &
                var_str ("?circe2_generate"))
           circe2_map = var_list_get_lval (strfun_def%local%var_list, &
                var_str ("?circe2_map"))      
-          circe2_ver = var_list_get_ival (strfun_def%local%var_list, &
-               var_str ("circe2_ver"))         
+          circe2_polarized = var_list_get_lval (strfun_def%local%var_list, &
+               var_str ("?circe2_polarized"))        
           circe2_file = var_list_get_sval (strfun_def%local%var_list, &
                var_str ("$circe2_file"))  ! $
+          if (circe2_file == "")   call msg_fatal &
+               ("CIRCE2: Data file $circe2_file must be specified")
           circe2_file = global%os_data%whizard_circe2path // "/" // circe2_file 
           circe2_design = var_list_get_sval (strfun_def%local%var_list, &
                var_str ("$circe2_design"))  ! $        
-          if (any ((abs (flavor_get_pdg (global%beam_data%flv)) /= ELECTRON) .and. &
-              (abs (flavor_get_pdg (global%beam_data%flv)) /= PHOTON))) &
-             call msg_fatal ("CIRCE2 for beamstrahlung only applicable for " &
-                // "incoming electrons/positrons and photons.")
           call sf_data_init_circe2 (sf_data, &
-               global%model, global%beam_data%flv, circe2_sqrts, circe2_photon, &
-               circe2_generate, global%rng, circe2_map, circe2_ver, &
-               circe2_file, circe2_design)
+               global%beam_data%flv, circe2_generate, global%rng, &
+               circe2_map, circe2_file, circe2_design, circe2_sqrts, &
+               circe2_polarized)
+       case (STRF_ESCAN)
+          escan_sqrts = global%beam_data%sqrts
+          call sf_data_init_escan (sf_data, global%beam_data%flv, escan_sqrts)
+       case (STRF_BEVT)
+          beam_events_file = var_list_get_sval (strfun_def%local%var_list, &
+               var_str ("$beam_events_file"))  ! $
+          beam_events_warn_eof = var_list_get_lval (strfun_def%local%var_list, &
+               var_str ("?beam_events_warn_eof"))
+          inquire (file = char (beam_events_file), exist = exist)
+          if (.not. exist) then
+             beam_events_file = global%os_data%whizard_beamsimpath & 
+                  // "/" // beam_events_file
+             inquire (file = char (beam_events_file), exist = exist)
+             if (.not. exist) then
+                call msg_fatal ("Beam simulation data file '" &
+                     // char (beam_events_file) // "' not found.")
+             end if
+          end if
+          call sf_data_init_beam_events (sf_data, &
+               global%beam_data%flv, beam_events_file, beam_events_warn_eof)
        end select
     end if
     call rt_data_restore (global, strfun_def%local)
@@ -2684,6 +2750,7 @@ contains
   subroutine cmd_beam_polarization_execute (bp, global)
     type(cmd_beam_polarization_t), pointer, intent(inout) :: bp
     type(rt_data_t), intent(inout), target :: global
+    type(polarization_t), dimension(:), allocatable :: pol
     integer :: i, j, k, ulog
     ulog = logfile_unit ()
     call rt_data_link (bp%local, global)
@@ -2792,8 +2859,13 @@ contains
           call msg_error ("the number of incoming particles differs " &
              // "between beam and polarization setup - ignoring polarization")
        else
-          call beam_data_set_polarization (global%beam_data, &
-             bp%beam_polarization, decay=(bp%n == 1))
+          allocate (pol (bp%n))
+          do i = 1, bp%n
+             pol(i) = beam_polarization2polarization &
+                  (bp%beam_polarization(i), global%beam_data%flv(i), &
+                   decay=(bp%n == 1))
+          end do
+          call beam_data_set_polarization (global%beam_data, pol)
        end if
     else
        if (global%environment /= CMD_BEAMS) call msg_warning ( &
@@ -5715,10 +5787,10 @@ contains
     call ifile_append (ifile, "KEY weight")
     call ifile_append (ifile, "KEY reweight")
     call ifile_append (ifile, "SEQ cmd_process = process process_id '=' " &
-         // "prt_list '=>' prt_list options?")   
+         // "process_prt '=>' process_prt options?")     
     call ifile_append (ifile, "KEY process")
     call ifile_append (ifile, "KEY '=>'")
-    call ifile_append (ifile, "LIS prt_list = cexpr+")
+    call ifile_append (ifile, "LIS process_prt = cexpr+")
     call ifile_append (ifile, "SEQ cmd_compile = compile_cmd options?")
     call ifile_append (ifile, "SEQ compile_cmd = compile_clause compile_arg?")
     call ifile_append (ifile, "SEQ compile_clause = compile exec_name_spec?")
@@ -5743,14 +5815,17 @@ contains
     call ifile_append (ifile, "LIS strfun_pair = strfun_def, strfun_def?")
     call ifile_append (ifile, "SEQ strfun_def = strfun_id options?")
     call ifile_append (ifile, "ALT strfun_id = " &
-          // "none | lhapdf | isr | epa | ewa | circe1 | circe2 ")
+          // "none | lhapdf | isr | epa | ewa | " &
+          // "circe1 | circe2 | energy_scan | beam_events")
     call ifile_append (ifile, "KEY none")
     call ifile_append (ifile, "KEY lhapdf")
     call ifile_append (ifile, "KEY isr")
     call ifile_append (ifile, "KEY epa")
     call ifile_append (ifile, "KEY ewa")    
     call ifile_append (ifile, "KEY circe1")        
-    call ifile_append (ifile, "KEY circe2")        
+    call ifile_append (ifile, "KEY circe2")
+    call ifile_append (ifile, "KEY energy_scan")
+    call ifile_append (ifile, "KEY beam_events")
     call ifile_append (ifile, "SEQ cmd_integrate = " &
          // "integrate proc_arg options?") 
     call ifile_append (ifile, "KEY integrate")
@@ -5762,8 +5837,8 @@ contains
          // "iterations '=' iterations_list")
     call ifile_append (ifile, "KEY iterations")
     call ifile_append (ifile, "LIS iterations_list = iterations_spec+")
-    call ifile_append (ifile, "ALT iterations_spec = it_spec | calls_spec")
-    call ifile_append (ifile, "SEQ it_spec = expr calls_spec?")
+    call ifile_append (ifile, "ALT iterations_spec = it_spec")
+    call ifile_append (ifile, "SEQ it_spec = expr calls_spec")
     call ifile_append (ifile, "SEQ calls_spec = ':' expr")
     call ifile_append (ifile, "SEQ cmd_sample_format = " &
          // "sample_format '=' event_format_list")

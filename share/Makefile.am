@@ -3,7 +3,7 @@
 ## Process this file with automake to produce Makefile.in
 
 ## Subdirectories to configure
-SUBDIRS = doc susy models cuts test examples
+SUBDIRS = doc susy models cuts beam-sim test examples
 
 ## Data files needed for running WHIZARD
 ## to be installed with the 'models' prefix kept
@@ -28,8 +28,10 @@ dist_models_DATA = \
   models/SM_CKM.mdl \
   models/SM_km.mdl \
   models/SM_top.mdl \
+  models/SM_top_anom.mdl \
   models/SM.mdl \
   models/SM_triangle_higgs.mdl \
+  models/SM_hadrons.mdl \
   models/Template.mdl \
   models/UED.mdl \
   models/Xdim.mdl \
@@ -52,6 +54,12 @@ cutsdir = $(pkgdatadir)/cuts
 dist_cuts_DATA = \
   cuts/default_cuts.sin
 
+## Files containing predefined beam simulation files
+## to be installed with the 'beam-sim' prefix kept
+beamsimdir = $(pkgdatadir)/beam-sim
+dist_beamsim_DATA = \
+  beam-sim/uniform_spread_2.5%.dat
+
 ## Files containing complete examples
 examplesdir = $(pkgdatadir)/examples
 dist_examples_DATA = \
@@ -62,4 +70,5 @@ dist_examples_DATA = \
   examples/LEP_higgs.sin \
   examples/LEP_cc10.sin \
   examples/eeww_polarized.sin \
-  examples/LEP_jets.sin
+  examples/LEP_jets.sin \
+  examples/HERA_DIS.sin

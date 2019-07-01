@@ -1,11 +1,11 @@
-! WHIZARD 2.0.3 Tue Aug 10 2010
+! WHIZARD 2.0.4 Tue Oct 26 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
-!     with contributions by Christian Speckner, Sebastian Schmidt, 
-!     Daniel Wiesler, Felix Braam
+!     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+!     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -121,7 +121,12 @@ contains
     tp = -2 * xb * d%E**2 + d%s + d%u
     tm = -2 * xb * d%p * d%pb
     d%t0 = tp + tm
-    d%t1 = tp - tm
+!    d%t1 = tp - tm
+    if (d%xb /= 0) then
+       d%t1 = x * (d%s - d%u / d%xb)
+    else
+       d%t1 = 0
+    end if
   end subroutine splitting_set_t_bounds
 
   subroutine splitting_narrow_t_bounds (d, qmin, qmax)
@@ -135,10 +140,16 @@ contains
     type(splitting_data_t), intent(inout) :: d
     real(default), intent(in) :: r
     real(default), intent(in), optional :: t0, t1
-    real(default) :: tt0, tt1
+    real(default) :: tt0, tt1, tt0m, tt1m
     tt0 = d%t0;  if (present (t0))  tt0 = max (t0, tt0)
     tt1 = d%t1;  if (present (t1))  tt1 = min (t1, tt1)
-    d%t = d%m2 + (tt0 - d%m2) * exp (r * log ((tt1 - d%m2) / (tt0 - d%m2)))
+    tt0m = tt0 - d%m2
+    tt1m = tt1 - d%m2
+    if (tt0m < 0 .and. tt1m < 0) then
+       d%t = d%m2 + tt0m * exp (r * log (tt1m / tt0m))
+    else
+       d%t = tt1
+    end if
   end subroutine splitting_sample_t
 
   elemental subroutine splitting_set_collinear (d)

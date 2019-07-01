@@ -4,6 +4,7 @@
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+!     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -36,9 +37,9 @@ module parameters_gravtest
   real(default), public :: ltop, lbot, lc, ltau, lw
   complex(default), public :: qlep, qup, qdwn, gcc, qw, &
        gzww, gwww, ghww, ghhww, ghzz, ghhzz, &
-       ghbb, ghtt, ghcc, ghtautau, gh3, gh4, &
-       ghgaga, ghgaz, ghgg, ghmm, & 		
+       ghbb, ghtt, ghcc, ghtautau, gh3, gh4, ghmm, & 		
        iqw, igzww, igwww, gw4, gzzww, gazww, gaaww
+  complex(default), public :: ghgaga, ghgaz, ghgg 
   complex(default), public :: ggrav
   real(default), public :: vev
   complex(default), dimension(2), public :: &

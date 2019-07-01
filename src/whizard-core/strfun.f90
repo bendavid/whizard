@@ -1,11 +1,11 @@
-! WHIZARD 2.0.3 Tue Aug 10 2010
+! WHIZARD 2.0.4 Tue Oct 26 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
-!     with contributions by Christian Speckner, Sebastian Schmidt, 
-!     Daniel Wiesler, Felix Braam
+!     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+!     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -42,18 +42,13 @@ module strfun
   use sf_ewa
   use sf_circe1
   use sf_circe2
+  use sf_escan
+  use sf_beam_events
   use sf_lhapdf
 
   implicit none
   private
 
-!  public :: strfun_t
-!  public :: strfun_init
-!  public :: strfun_final
-!  public :: strfun_write
-!  public :: strfun_get_name
-!  public :: strfun_set_kinematics
-!  public :: strfun_apply
   public :: strfun_chain_t
   public :: strfun_chain_init
   public :: strfun_chain_set_beam_momenta
@@ -78,7 +73,8 @@ module strfun
 
   integer, parameter, public :: STRF_NONE = 0
   integer, parameter, public :: STRF_LHAPDF = 1, STRF_ISR = 2, &
-       STRF_EPA = 3, STRF_EWA = 4, STRF_CIRCE1 = 5, STRF_CIRCE2 = 6
+       STRF_EPA = 3, STRF_EWA = 4, STRF_CIRCE1 = 5, STRF_CIRCE2 = 6, &
+       STRF_ESCAN = 7, STRF_BEVT = 8
   
   integer, parameter, public :: SFM_NONE = 0
   integer, parameter, public :: SFM_PDFPAIR = 1
@@ -99,6 +95,8 @@ module strfun
      type(ewa_data_t), dimension(:), allocatable :: ewa_data     
      type(circe1_data_t), dimension(:), allocatable :: circe1_data     
      type(circe2_data_t), dimension(:), allocatable :: circe2_data     
+     type(escan_data_t), dimension(:), allocatable :: escan_data     
+     type(beam_events_data_t), dimension(:), allocatable :: beam_events_data
      real(default) :: x = 0, f = 1, s = 0
      real(default) :: scale = 0
   end type strfun_t
@@ -134,8 +132,14 @@ module strfun
      module procedure strfun_init_ewa
      module procedure strfun_init_circe1
      module procedure strfun_init_circe2
+     module procedure strfun_init_escan
+     module procedure strfun_init_beam_events
   end interface
 
+  interface strfun_final
+     module procedure strfun_final0
+     module procedure strfun_final1
+  end interface
   interface assignment(=)
      module procedure strfun_chain_assign
   end interface
@@ -147,6 +151,8 @@ module strfun
      module procedure strfun_chain_set_ewa     
      module procedure strfun_chain_set_circe1     
      module procedure strfun_chain_set_circe2     
+     module procedure strfun_chain_set_escan
+     module procedure strfun_chain_set_beam_events
   end interface
 
 contains
@@ -213,7 +219,35 @@ contains
     call interaction_init_circe2 (strfun%int, circe2_data)
   end subroutine strfun_init_circe2
 
-  elemental subroutine strfun_final (strfun)
+  subroutine strfun_init_escan (strfun, escan_data)
+    type(strfun_t), intent(out) :: strfun
+    type(escan_data_t), intent(in) :: escan_data
+    strfun%type = STRF_ESCAN
+    strfun%name = "Energy scan"
+    allocate (strfun%escan_data (1))
+    strfun%escan_data = escan_data
+    call interaction_init_escan (strfun%int, escan_data)
+  end subroutine strfun_init_escan
+
+  subroutine strfun_init_beam_events (strfun, beam_events_data)
+    type(strfun_t), intent(out) :: strfun
+    type(beam_events_data_t), intent(in) :: beam_events_data
+    strfun%type = STRF_BEVT
+    strfun%name = "Energy scan"
+    allocate (strfun%beam_events_data (1))
+    strfun%beam_events_data = beam_events_data
+    call interaction_init_beam_events (strfun%int, beam_events_data)
+  end subroutine strfun_init_beam_events
+
+  subroutine strfun_final1 (strfun)
+    type(strfun_t), dimension(:), intent(inout) :: strfun
+    integer :: i
+    do i = 1, size (strfun)
+       call strfun_final0 (strfun(i))
+    end do
+  end subroutine strfun_final1
+
+  subroutine strfun_final0 (strfun)
     type(strfun_t), intent(inout) :: strfun
     select case (strfun%type)
     case (STRF_ISR)
@@ -226,12 +260,17 @@ contains
        deallocate (strfun%circe1_data)
     case (STRF_CIRCE2)
        deallocate (strfun%circe2_data)
+    case (STRF_ESCAN)
+       deallocate (strfun%escan_data)
+    case (STRF_BEVT)
+       call beam_events_data_close (strfun%beam_events_data(1))
+       deallocate (strfun%beam_events_data)
     case (STRF_LHAPDF)
        deallocate (strfun%lhapdf_data)
     end select
     call interaction_final (strfun%int)
     strfun%type = STRF_NONE
-  end subroutine strfun_final
+  end subroutine strfun_final0
 
   subroutine strfun_write (strfun, unit, verbose, show_momentum_sum, show_mass)
     type(strfun_t), intent(in) :: strfun
@@ -259,6 +298,10 @@ contains
           call circe1_data_write (strfun%circe1_data(1), u)
        case (STRF_CIRCE2)
           call circe2_data_write (strfun%circe2_data(1), u)
+       case (STRF_ESCAN)
+          call escan_data_write (strfun%escan_data(1), u)
+       case (STRF_BEVT)
+          call beam_events_data_write (strfun%beam_events_data(1), u)
        end select
        call interaction_write &
             (strfun%int, unit, verbose, show_momentum_sum, show_mass)
@@ -273,23 +316,38 @@ contains
     name = strfun%name
   end function strfun_get_name
 
-  subroutine strfun_set_kinematics (strfun, r)
+  function strfun_get_type (strfun) result (type)
+    integer :: type
+    type(strfun_t), intent(in) :: strfun
+    type = strfun%type
+  end function strfun_get_type
+
+  subroutine strfun_set_kinematics (strfun, r, no_map)
     type(strfun_t), intent(inout) :: strfun
     real(default), dimension(:), intent(in) :: r
+    logical, intent(in) :: no_map
     select case (strfun%type)
     case (STRF_LHAPDF)
        call interaction_set_kinematics_lhapdf (strfun%int, &
             strfun%x, strfun%f, strfun%s, r(1), strfun%lhapdf_data(1))
     case (STRF_ISR)
-       call interaction_apply_isr (strfun%int, r, strfun%isr_data(1))
+       call interaction_apply_isr (strfun%int, r, strfun%isr_data(1), no_map)
     case (STRF_EPA)
-       call interaction_apply_epa (strfun%int, r, strfun%epa_data)
+       call interaction_apply_epa (strfun%int, r, strfun%epa_data, no_map)
     case (STRF_EWA)
-       call interaction_apply_ewa (strfun%int, r, strfun%ewa_data)
+       call interaction_apply_ewa (strfun%int, r, strfun%ewa_data, no_map)
     case (STRF_CIRCE1)
-       call interaction_apply_circe1 (strfun%int, r, strfun%circe1_data(1))
+       call interaction_apply_circe1 &
+            (strfun%int, r, strfun%circe1_data(1), no_map)
     case (STRF_CIRCE2)
-       call interaction_apply_circe2 (strfun%int, r, strfun%circe2_data)
+       call interaction_apply_circe2 &
+            (strfun%int, r, strfun%circe2_data(1), no_map)
+    case (STRF_ESCAN)
+       call interaction_apply_escan &
+            (strfun%int, r, strfun%escan_data(1))
+    case (STRF_BEVT)
+       call interaction_apply_beam_events &
+            (strfun%int, strfun%beam_events_data(1))
     end select
   end subroutine strfun_set_kinematics
 
@@ -634,8 +692,36 @@ contains
     type(circe2_data_t), intent(in) :: circe2_data
     call strfun_init (sfchain%strfun(i), circe2_data)
     sfchain%n_parameters(i) = n_parameters
-    call strfun_chain_link (sfchain, i, line, (/1/), (/3/))
+    call strfun_chain_link (sfchain, i, line, (/1, 2/), (/3, 4/))
   end subroutine strfun_chain_set_circe2
+
+  subroutine strfun_chain_set_escan &
+       (sfchain, i, line, escan_data, n_parameters)
+    type(strfun_chain_t), intent(inout), target :: sfchain
+    integer, intent(in) :: i, line, n_parameters
+    type(escan_data_t), intent(in) :: escan_data
+    call strfun_init (sfchain%strfun(i), escan_data)
+    sfchain%n_parameters(i) = n_parameters
+    if (line == 0) then
+       call strfun_chain_link (sfchain, i, line, (/1, 2/), (/3, 4/))
+    else
+       call strfun_chain_link (sfchain, i, line, (/1/), (/2/))
+    end if
+  end subroutine strfun_chain_set_escan
+
+  subroutine strfun_chain_set_beam_events &
+       (sfchain, i, line, beam_events_data, n_parameters)
+    type(strfun_chain_t), intent(inout), target :: sfchain
+    integer, intent(in) :: i, line, n_parameters
+    type(beam_events_data_t), intent(in) :: beam_events_data
+    call strfun_init (sfchain%strfun(i), beam_events_data)
+    sfchain%n_parameters(i) = n_parameters
+    if (line == 0) then
+       call strfun_chain_link (sfchain, i, line, (/1, 2/), (/3, 4/))
+    else
+       call strfun_chain_link (sfchain, i, line, (/1/), (/2/))
+    end if
+  end subroutine strfun_chain_set_beam_events
 
   subroutine strfun_chain_link (sfchain, i, line, in_index, out_index)
     type(strfun_chain_t), intent(inout), target :: sfchain
@@ -718,10 +804,17 @@ contains
     if (size (sfchain%strfun) /= 0) then    
        do j = 1, size (sfchain%coll_index)
           last = sfchain%last_strfun(j)
-          sf_int => sfchain%strfun(last)%int
-          eval_int => evaluator_get_int_ptr (sfchain%eval(last))
-          out_index = sfchain%out_index(j)
-          coll_index = interaction_find_link (eval_int, sf_int, out_index)
+          select case (last)
+          case (0)
+             eval_int => beam_get_int_ptr (sfchain%beam)
+             out_index = sfchain%out_index(j)
+             coll_index = out_index
+          case default
+             sf_int => sfchain%strfun(last)%int
+             eval_int => evaluator_get_int_ptr (sfchain%eval(last))
+             out_index = sfchain%out_index(j)
+             coll_index = interaction_find_link (eval_int, sf_int, out_index)
+          end select
           if (coll_index /= 0) then
              do i = last + 1, size (sfchain%strfun)
                 out_index = coll_index
@@ -744,28 +837,51 @@ contains
     if (present (ok))  ok = .true.
   end subroutine strfun_chain_make_evaluators
 
-  subroutine strfun_chain_set_kinematics (sfchain, r)
+  subroutine strfun_chain_set_kinematics (sfchain, r, global_mapping, ok)
     type(strfun_chain_t), intent(inout) :: sfchain
     real(default), dimension(:), intent(in) :: r
+    logical, intent(in), optional :: global_mapping
+    logical, intent(out), optional :: ok
     real(default), dimension(size(r)) :: x
-    integer :: i, n, n1
+    integer :: i, n, n1, n_sf
+    real(default) :: xprod
+    logical :: map_s
+    map_s = .false.;  if (present (global_mapping))  map_s = global_mapping
+    n_sf = size (sfchain%strfun)
     if (size (r) == sfchain%n_parameters_tot) then
        x = r
        sfchain%mapping_factor = 1
-       do i = 1, size (sfchain%sf_mapping)
-          call strfun_mapping_apply &
-               (sfchain%sf_mapping(i), x, sfchain%mapping_factor)
-       end do
+       if (.not. map_s) then
+          do i = 1, size (sfchain%sf_mapping)
+             call strfun_mapping_apply &
+                  (sfchain%sf_mapping(i), x, sfchain%mapping_factor)
+          end do
+       end if
        n = 0
        do i = 1, size (sfchain%strfun)
           call interaction_receive_momenta (sfchain%strfun(i)%int)
           n1 = sfchain%n_parameters(i)
-          call strfun_set_kinematics (sfchain%strfun(i), x(n+1:n+n1))
+          if (i == size (sfchain%strfun) .and. map_s) then
+             if (strfun_get_type (sfchain%strfun(i)) == STRF_BEVT) &
+                  map_s = .false.
+             if (map_s) then
+                xprod = product (x(1:n))
+                if (x(n+1) < xprod) then
+                   x(n+1) = x(n+1) / xprod
+                   sfchain%mapping_factor = sfchain%mapping_factor / xprod
+                else
+                   if (present (ok))  ok = .false.
+                   return
+                end if
+             end if
+          end if
+          call strfun_set_kinematics (sfchain%strfun(i), x(n+1:n+n1), map_s)
           n = n + n1
        end do
        do i = 1, size (sfchain%strfun)
           call evaluator_receive_momenta (sfchain%eval(i))
        end do
+       if (present (ok))  ok = .true.
     else
        call msg_bug ("Structure functions: mismatch in number of parameters")
     end if

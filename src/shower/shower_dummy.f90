@@ -1,0 +1,343 @@
+! Dummy replacement routines
+
+module pythia_dummy
+  public :: pyinit
+  public :: pygive
+  public :: pylist
+  public :: pyevnt
+contains  
+  subroutine pylist (i)
+    integer, intent(in) :: i
+    write (0, "(A)")  "**************************************************************"
+    write (0, "(A)")  "*** Error: Shower has not been enabled, WHIZARD terminates ***"
+    write (0, "(A)")  "**************************************************************"
+    stop      
+  end subroutine pylist
+
+  subroutine pyinit (frame, beam, target, win)
+    character*(*), intent(in) ::  frame, beam, target
+    double precision, intent(in) :: win
+    write (0, "(A)")  "**************************************************************"
+    write (0, "(A)")  "*** Error: Shower has not been enabled, WHIZARD terminates ***"
+    write (0, "(A)")  "**************************************************************"
+    stop      
+  end subroutine pyinit
+  
+  subroutine pygive (chin)
+    character chin*(*)
+    write (0, "(A)")  "**************************************************************"
+    write (0, "(A)")  "*** Error: Shower has not been enabled, WHIZARD terminates ***"
+    write (0, "(A)")  "**************************************************************"
+    stop      
+  end subroutine pygive
+  subroutine pyevnt()
+    write (0, "(A)")  "**************************************************************"
+    write (0, "(A)")  "*** Error: Shower has not been enabled, WHIZARD terminates ***"
+    write (0, "(A)")  "**************************************************************"
+    stop      
+  end subroutine pyevnt
+end module pythia_dummy
+
+module shower_basics_module
+  use kinds, only: default
+  public :: shower_set_minenergy_timelike  
+  public :: shower_set_d_min_t
+  public :: shower_set_d_nf
+  public :: shower_set_d_running_alpha_s_fsr
+  public :: shower_set_d_running_alpha_s_isr
+  public :: shower_set_d_lambda_fsr
+  public :: shower_set_d_lambda_isr
+  public :: shower_set_d_constantalpha_s
+  public :: shower_set_maxz_isr
+  public :: shower_set_isr_pt_ordered
+  public :: shower_set_isr_angular_ordered
+  public :: shower_set_primordial_kt_width
+  public :: shower_set_primordial_kt_cutoff
+  public :: shower_set_tscalefactor_isr
+  public :: shower_set_isr_only_onshell_emitted_partons
+contains
+  subroutine shower_set_minenergy_timelike (input)
+    real(default), intent(in) :: input
+    write (0, "(A)")  "**************************************************************"
+    write (0, "(A)")  "*** Error: Shower has not been enabled, WHIZARD terminates ***"
+    write (0, "(A)")  "**************************************************************"
+    stop      
+  end subroutine shower_set_minenergy_timelike
+  subroutine shower_set_d_min_t (input)
+    real(default), intent(in) :: input
+    write (0, "(A)")  "**************************************************************"
+    write (0, "(A)")  "*** Error: Shower has not been enabled, WHIZARD terminates ***"
+    write (0, "(A)")  "**************************************************************"
+    stop      
+  end subroutine shower_set_d_min_t
+  subroutine shower_set_d_nf (input)
+    integer, intent(in) :: input
+    write (0, "(A)")  "**************************************************************"
+    write (0, "(A)")  "*** Error: Shower has not been enabled, WHIZARD terminates ***"
+    write (0, "(A)")  "**************************************************************"
+    stop      
+  end subroutine shower_set_d_nf
+  subroutine shower_set_isr_pt_ordered (input)
+    logical, intent(in) :: input
+    write (0, "(A)")  "**************************************************************"
+    write (0, "(A)")  "*** Error: Shower has not been enabled, WHIZARD terminates ***"
+    write (0, "(A)")  "**************************************************************"
+    stop      
+  end subroutine shower_set_isr_pt_ordered
+  subroutine shower_set_isr_angular_ordered (input)
+    logical, intent(in) :: input
+    write (0, "(A)")  "**************************************************************"
+    write (0, "(A)")  "*** Error: Shower has not been enabled, WHIZARD terminates ***"
+    write (0, "(A)")  "**************************************************************"
+    stop      
+  end subroutine shower_set_isr_angular_ordered
+  subroutine shower_set_d_lambda_fsr (input)
+    real(default), intent(in) :: input
+    write (0, "(A)")  "**************************************************************"
+    write (0, "(A)")  "*** Error: Shower has not been enabled, WHIZARD terminates ***"
+    write (0, "(A)")  "**************************************************************"
+    stop      
+  end subroutine shower_set_d_lambda_fsr
+  subroutine shower_set_d_lambda_isr (input)
+    real(default), intent(in) :: input
+    write (0, "(A)")  "**************************************************************"
+    write (0, "(A)")  "*** Error: Shower has not been enabled, WHIZARD terminates ***"
+    write (0, "(A)")  "**************************************************************"
+    stop      
+  end subroutine shower_set_d_lambda_isr
+  subroutine shower_set_d_running_alpha_s_fsr (input)
+    logical, intent(in) :: input
+    write (0, "(A)")  "**************************************************************"
+    write (0, "(A)")  "*** Error: Shower has not been enabled, WHIZARD terminates ***"
+    write (0, "(A)")  "**************************************************************"
+    stop      
+  end subroutine shower_set_d_running_alpha_s_fsr
+  subroutine shower_set_d_running_alpha_s_isr (input)
+    logical, intent(in) :: input
+    write (0, "(A)")  "**************************************************************"
+    write (0, "(A)")  "*** Error: Shower has not been enabled, WHIZARD terminates ***"
+    write (0, "(A)")  "**************************************************************"
+    stop      
+  end subroutine shower_set_d_running_alpha_s_isr
+  subroutine shower_set_d_constantalpha_s (input)
+    real(default), intent(in) :: input
+    write (0, "(A)")  "**************************************************************"
+    write (0, "(A)")  "*** Error: Shower has not been enabled, WHIZARD terminates ***"
+    write (0, "(A)")  "**************************************************************"
+    stop      
+  end subroutine shower_set_d_constantalpha_s
+  subroutine shower_set_maxz_isr (input)
+    real(default), intent(in) :: input
+    write (0, "(A)")  "**************************************************************"
+    write (0, "(A)")  "*** Error: Shower has not been enabled, WHIZARD terminates ***"
+    write (0, "(A)")  "**************************************************************"
+    stop      
+  end subroutine shower_set_maxz_isr
+  subroutine shower_set_primordial_kt_width (input)
+    real(default), intent(in) :: input
+    write (0, "(A)")  "**************************************************************"
+    write (0, "(A)")  "*** Error: Shower has not been enabled, WHIZARD terminates ***"
+    write (0, "(A)")  "**************************************************************"
+    stop      
+  end subroutine shower_set_primordial_kt_width
+  subroutine shower_set_primordial_kt_cutoff (input)
+    real(default), intent(in) :: input
+    write (0, "(A)")  "**************************************************************"
+    write (0, "(A)")  "*** Error: Shower has not been enabled, WHIZARD terminates ***"
+    write (0, "(A)")  "**************************************************************"
+    stop      
+  end subroutine shower_set_primordial_kt_cutoff
+  subroutine shower_set_tscalefactor_isr (input)
+    real(default), intent(in) :: input
+    write (0, "(A)")  "**************************************************************"
+    write (0, "(A)")  "*** Error: Shower has not been enabled, WHIZARD terminates ***"
+    write (0, "(A)")  "**************************************************************"
+    stop      
+  end subroutine shower_set_tscalefactor_isr
+  subroutine shower_set_isr_only_onshell_emitted_partons (input)
+    logical, intent(in) :: input
+    write (0, "(A)")  "**************************************************************"
+    write (0, "(A)")  "*** Error: Shower has not been enabled, WHIZARD terminates ***"
+    write (0, "(A)")  "**************************************************************"
+    stop      
+  end subroutine shower_set_isr_only_onshell_emitted_partons
+end module shower_basics_module
+
+module shower_parton_module
+  use kinds, only: default
+  use lorentz !NODEP!
+  public :: parton_t, parton_pointer_t
+  type :: parton_t
+!     private
+     integer :: nr=0 
+     integer :: typ=0  
+     type(vector4_t) :: momentum = vector4_null
+     real(default) :: t  = 0._default
+     real(default) :: scale = 0._default  
+     real(default) :: z = 0._default
+     real(default) :: costheta = 0._default
+     real(default) :: x=0._default
+     logical :: simulated=.false.
+     logical :: belongstoFSR=.true.
+     logical :: belongstointeraction=.false.
+     type(parton_t), pointer :: parent => null ()
+     type(parton_t), pointer :: child1 => null ()
+     type(parton_t), pointer :: child2 => null ()
+     type(parton_t), pointer :: initial => null ()
+     integer :: c1 = 0, c2 = 0
+     integer :: aux_pt = 0             
+  end type parton_t
+  type :: parton_pointer_t
+     type(parton_t), pointer :: p => null ()
+  end type parton_pointer_t
+end module shower_parton_module
+
+module shower_module
+  use kinds, only: default
+  use shower_basics_module
+  use shower_parton_module
+  use pythia_dummy
+  public :: shower_t
+  public :: shower_get_next_free_nr
+  public :: shower_generate_next_isr_branching
+  public :: shower_generate_fsr_for_partons_emitted_in_isr
+  public :: interaction_generate_primordial_kt
+  public :: shower_generate_primordial_kt
+  public :: shower_interaction_generate_fsr2ton
+  public :: shower_set_next_color_nr
+  public :: shower_execute_next_isr_branching
+  public :: shower_update_beamremnants
+  public :: shower_add_interaction2ton
+  public :: shower_boost_to_labframe
+  public :: shower_get_final_partons
+  public :: shower_print
+  public :: shower_create
+  Public :: shower_final
+  type :: my_interaction_t
+     type(parton_pointer_t) :: in1, in2
+     type(parton_pointer_t), dimension(:), allocatable :: partons
+  end type my_interaction_t
+  type :: interaction_pointer_t
+     type(my_interaction_t), pointer :: i => null()
+  end type interaction_pointer_t
+  type :: shower_t
+     type(interaction_pointer_t), dimension(:), allocatable :: interactions
+     type(parton_pointer_t), dimension(:), allocatable :: partons
+     integer :: next_free_nr
+     integer :: next_color_nr
+  end type shower_t
+contains
+    function shower_get_next_free_nr(shower) result(next_number)
+      type(shower_t), intent(inout) :: shower
+      integer :: next_number
+      write (0, "(A)")  "**************************************************************"
+      write (0, "(A)")  "*** Error: Shower has not been enabled, WHIZARD terminates ***"
+      write (0, "(A)")  "**************************************************************"
+      stop      
+    end function shower_get_next_free_nr
+    function shower_generate_next_isr_branching (shower) result (next_brancher)
+      type(shower_t), intent(inout) :: shower
+      type(parton_pointer_t) :: next_brancher
+      write (0, "(A)")  "**************************************************************"
+      write (0, "(A)")  "*** Error: Shower has not been enabled, WHIZARD terminates ***"
+      write (0, "(A)")  "**************************************************************"
+      stop      
+    end function shower_generate_next_isr_branching
+    subroutine shower_generate_fsr_for_partons_emitted_in_isr (shower)
+      type(shower_t), intent(inout) :: shower
+      write (0, "(A)")  "**************************************************************"
+      write (0, "(A)")  "*** Error: Shower has not been enabled, WHIZARD terminates ***"
+      write (0, "(A)")  "**************************************************************"
+      stop      
+    end subroutine shower_generate_fsr_for_partons_emitted_in_isr
+    subroutine interaction_generate_primordial_kt (interaction)
+      type(my_interaction_t), intent(inout) :: interaction
+      write (0, "(A)")  "**************************************************************"
+      write (0, "(A)")  "*** Error: Shower has not been enabled, WHIZARD terminates ***"
+      write (0, "(A)")  "**************************************************************"
+      stop            
+    end subroutine interaction_generate_primordial_kt
+    subroutine shower_generate_primordial_kt (shower)
+      type(shower_t), intent(inout) :: shower
+      write (0, "(A)")  "**************************************************************"
+      write (0, "(A)")  "*** Error: Shower has not been enabled, WHIZARD terminates ***"
+      write (0, "(A)")  "**************************************************************"
+      stop            
+    end subroutine shower_generate_primordial_kt
+    subroutine shower_interaction_generate_fsr2ton (shower, interaction)
+      type(shower_t), intent(inout) :: shower
+      type(my_interaction_t), intent(inout) :: interaction
+      write (0, "(A)")  "**************************************************************"
+      write (0, "(A)")  "*** Error: Shower has not been enabled, WHIZARD terminates ***"
+      write (0, "(A)")  "**************************************************************"
+      stop      
+    end subroutine shower_interaction_generate_fsr2ton
+    subroutine shower_execute_next_isr_branching (shower, prtp)
+      type(shower_t), intent(inout) :: shower
+      type(parton_pointer_t), intent(inout) :: prtp
+      write (0, "(A)")  "**************************************************************"
+      write (0, "(A)")  "*** Error: Shower has not been enabled, WHIZARD terminates ***"
+      write (0, "(A)")  "**************************************************************"
+      stop      
+    end subroutine shower_execute_next_isr_branching
+    subroutine shower_boost_to_labframe (shower)
+      type(shower_t), intent(inout) :: shower
+      write (0, "(A)")  "**************************************************************"
+      write (0, "(A)")  "*** Error: Shower has not been enabled, WHIZARD terminates ***"
+      write (0, "(A)")  "**************************************************************"
+      stop      
+    end subroutine shower_boost_to_labframe
+    subroutine shower_get_final_partons (shower, partons, include_remnants)
+      type(shower_t), intent(in) :: shower
+      type(parton_pointer_t), dimension(:), allocatable, intent(inout) :: partons
+      logical, intent(in), optional :: include_remnants
+      write (0, "(A)")  "**************************************************************"
+      write (0, "(A)")  "*** Error: Shower has not been enabled, WHIZARD terminates ***"
+      write (0, "(A)")  "**************************************************************"
+      stop            
+    end subroutine shower_get_final_partons
+    subroutine shower_print (shower)
+      type(shower_t), intent(inout) :: shower
+      write (0, "(A)")  "**************************************************************"
+      write (0, "(A)")  "*** Error: Shower has not been enabled, WHIZARD terminates ***"
+      write (0, "(A)")  "**************************************************************"
+      stop      
+    end subroutine shower_print
+    subroutine shower_add_interaction2ton (shower, partons)
+      type(shower_t), intent(inout) :: shower
+      type(parton_pointer_t), intent(inout), dimension(:), allocatable :: partons
+      write (0, "(A)")  "**************************************************************"
+      write (0, "(A)")  "*** Error: Shower has not been enabled, WHIZARD terminates ***"
+      write (0, "(A)")  "**************************************************************"
+      stop      
+    end subroutine shower_add_interaction2ton
+    subroutine shower_update_beamremnants (shower)
+      type(shower_t), intent(in) :: shower
+      write (0, "(A)")  "**************************************************************"
+      write (0, "(A)")  "*** Error: Shower has not been enabled, WHIZARD terminates ***"
+      write (0, "(A)")  "**************************************************************"
+      stop      
+    end subroutine shower_update_beamremnants
+    subroutine shower_set_next_color_nr (shower, index)
+      type(shower_t), intent(in) :: shower
+      integer, intent(in) :: index
+      write (0, "(A)")  "**************************************************************"
+      write (0, "(A)")  "*** Error: Shower has not been enabled, WHIZARD terminates ***"
+      write (0, "(A)")  "**************************************************************"
+      stop      
+    end subroutine shower_set_next_color_nr
+    subroutine shower_create (shower)
+      type(shower_t), intent(inout) :: shower
+      write (0, "(A)")  "**************************************************************"
+      write (0, "(A)")  "*** Error: Shower has not been enabled, WHIZARD terminates ***"
+      write (0, "(A)")  "**************************************************************"
+      stop      
+    end subroutine shower_create
+    subroutine shower_final (shower)
+      type(shower_t), intent(inout) :: shower
+      write (0, "(A)")  "**************************************************************"
+      write (0, "(A)")  "*** Error: Shower has not been enabled, WHIZARD terminates ***"
+      write (0, "(A)")  "**************************************************************"
+      stop      
+    end subroutine shower_final
+end module shower_module

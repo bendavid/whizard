@@ -4,8 +4,8 @@
 
 ## Subdirectories to configure
 SUBDIRS = \
-  matching hepmc lhapdf stdhep circe1 \
-  circe2 misc vamp miisr whizard-core prebuilt \
+  pythia matching hepmc lhapdf stdhep circe1 \
+  circe2 misc vamp shower whizard-core prebuilt \
   omega models 
 if MPOST_AVAILABLE
 SUBDIRS += gamelan feynmf
@@ -28,8 +28,14 @@ libwhizard_la_LIBADD = \
   vamp/src/libvamp.la \
   circe1/src/libcirce1.la \
   circe2/src/libcirce2.la \
-  miisr/libshower.la \
   misc/libaux.la
+if SHOWER_AVAILABLE
+libwhizard_la_LIBADD += \
+  shower/libshower.la 
+else 
+libwhizard_la_LIBADD += \
+  shower/libshower_dummy.la
+endif 
 
 if HEPMC_AVAILABLE
 libwhizard_la_LIBADD += hepmc/libHepMCWrap.la

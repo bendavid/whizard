@@ -1,11 +1,11 @@
-! WHIZARD 2.0.3 Tue Aug 10 2010
+! WHIZARD 2.0.4 Tue Oct 26 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
-!     with contributions by Christian Speckner, Sebastian Schmidt, 
-!     Daniel Wiesler, Felix Braam
+!     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+!     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -100,7 +100,8 @@ module os_interface
      type(string_t) :: whizard_modelpath_local
      type(string_t) :: whizard_models_libpath_local
      type(string_t) :: whizard_omega_binpath_local
-     type(string_t) :: whizard_circe2path     
+     type(string_t) :: whizard_circe2path
+     type(string_t) :: whizard_beamsimpath
      logical :: event_analysis_ps  = .false.
      logical :: event_analysis_pdf = .false.
      type(string_t) :: latex
@@ -183,10 +184,14 @@ contains
     os_data%use_libtool = .true.
     inquire (file = "TESTFLAG", exist = os_data%use_testfiles)
     call get_environment_variable ("HOME", home)
-    if (paths%localprefix == "") then
-       localprefix = trim (home) // "/.whizard"
+    if(present(paths)) then
+       if (paths%localprefix == "") then
+          localprefix = trim (home) // "/.whizard"
+       else
+          localprefix = paths%localprefix
+       end if
     else
-       localprefix = paths%localprefix
+       localprefix = trim (home) // "/.whizard"
     end if
     local_includes = localprefix // "/lib/whizard/mod/models"
     os_data%whizard_modelpath_local = localprefix // "/share/whizard/models"
@@ -229,6 +234,7 @@ contains
        os_data%whizard_texpath        = WHIZARD_TEST_TEXPATH
        os_data%whizard_testdatapath   = WHIZARD_TEST_TESTDATAPATH
        os_data%whizard_circe2path     = WHIZARD_TEST_CIRCE2PATH
+       os_data%whizard_beamsimpath    = WHIZARD_TEST_BEAMSIMPATH
     else
        if (os_dir_exist (local_includes)) then
           os_data%whizard_includes = "-I" // local_includes // " "// &
@@ -247,6 +253,7 @@ contains
        os_data%whizard_texpath        = WHIZARD_TEXPATH
        os_data%whizard_testdatapath   = WHIZARD_TESTDATAPATH
        os_data%whizard_circe2path     = WHIZARD_CIRCE2PATH       
+       os_data%whizard_beamsimpath    = WHIZARD_BEAMSIMPATH
     end if
     os_data%event_analysis_ps  = EVENT_ANALYSIS_PS  == "yes"
     os_data%event_analysis_pdf = EVENT_ANALYSIS_PDF == "yes"
@@ -280,6 +287,7 @@ contains
     call expand_paths (os_data%whizard_texpath)
     call expand_paths (os_data%whizard_testdatapath)
     call expand_paths (os_data%whizard_circe2path)
+    call expand_paths (os_data%whizard_beamsimpath)
     call expand_paths (os_data%whizard_models_libpath_local)
     call expand_paths (os_data%whizard_modelpath_local)
     call expand_paths (os_data%whizard_omega_binpath_local)
@@ -331,11 +339,12 @@ contains
          char (os_data%whizard_modelpath)
     write (u, *) "whizard_models_libpath = ", &
          char (os_data%whizard_modelpath)
-    write (u, *) "whizard_susypath       = ", char (os_data%whizard_includes)
-    write (u, *) "whizard_gmlpath        = ", char (os_data%whizard_includes)
-    write (u, *) "whizard_cutspath       = ", char (os_data%whizard_includes)
-    write (u, *) "whizard_texpath        = ", char (os_data%whizard_includes)
-    write (u, *) "whizard_circe2path     = ", char (os_data%whizard_includes)    
+    write (u, *) "whizard_susypath       = ", char (os_data%whizard_susypath)
+    write (u, *) "whizard_gmlpath        = ", char (os_data%whizard_gmlpath)
+    write (u, *) "whizard_cutspath       = ", char (os_data%whizard_cutspath)
+    write (u, *) "whizard_texpath        = ", char (os_data%whizard_texpath)
+    write (u, *) "whizard_circe2path     = ", char (os_data%whizard_circe2path)
+    write (u, *) "whizard_beamsimpath    = ", char (os_data%whizard_beamsimpath)
     write (u, *) "whizard_testdatapath  = ", &
          char (os_data%whizard_testdatapath)
     write (u, *) "whizard_modelpath_local      = ", &

@@ -1,4 +1,4 @@
-!  $Id: omegalib.nw 2453 2010-05-01 06:02:28Z jr_reuter $
+!  $Id: omegalib.nw 2848 2010-10-07 14:26:20Z jr_reuter $
 !
 !  Copyright (C) 1999-2009 by 
 !      Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
@@ -32,9 +32,9 @@ module omega_spinor_couplings
   public :: u, ubar, v, vbar
   private :: chi_plus, chi_minus
   public :: brs_u, brs_ubar, brs_v, brs_vbar
-  public :: va_ff, v_ff, a_ff, vl_ff, vr_ff, vlr_ff, grav_ff, va2_ff
-  public :: f_vaf, f_vf, f_af, f_vlf, f_vrf, f_vlrf, f_va2f
-  public :: f_fva, f_fv, f_fa, f_fvl, f_fvr, f_fvlr, f_fva2
+  public :: va_ff, v_ff, a_ff, vl_ff, vr_ff, vlr_ff, grav_ff, va2_ff, tva_ff, tlr_ff
+  public :: f_vaf, f_vf, f_af, f_vlf, f_vrf, f_vlrf, f_va2f, f_tvaf, f_tlrf
+  public :: f_fva, f_fv, f_fa, f_fvl, f_fvr, f_fvlr, f_fva2, f_ftva, f_ftlr
   public :: sp_ff, s_ff, p_ff, sl_ff, sr_ff, slr_ff
   public :: f_spf, f_sf, f_pf, f_slf, f_srf, f_slrf
   public :: f_fsp, f_fs, f_fp, f_fsl, f_fsr, f_fslr
@@ -230,6 +230,49 @@ contains
     j%x(2) = (gr * ( - g14 + g23) + gl * (   g32 - g41)) * (0, 1)
     j%x(3) =  gr * (   g13 - g24) + gl * ( - g31 + g42)
   end function va2_ff
+  pure function tva_ff (gv, ga, psibar, psi, p) result (j)
+    type(vector) :: j
+    complex(kind=default), intent(in) :: gv, ga
+    type(conjspinor), intent(in) :: psibar
+    type(spinor), intent(in) :: psi
+    type(momentum), intent(in) :: p
+    complex(kind=default) :: gl, gr
+    type(vector) :: k
+    complex(kind=default) :: kp, km, k12, k12s
+    complex(kind=default) :: g12, g21, g1m2, g34, g43, g3m4
+    gl     = gv + ga
+    gr     = gv - ga
+    k%t    = p%t
+    k%x(1) = p%x(1)
+    k%x(2) = p%x(2) * (0,1)
+    k%x(3) = p%x(3)
+    kp     = k%t    + k%x(3)
+    km     = k%t    - k%x(3)
+    k12    = k%x(1) + k%x(2)
+    k12s   = k%x(1) - k%x(2)
+    g12    = psibar%a(1)*psi%a(2)
+    g21    = psibar%a(2)*psi%a(1)
+    g1m2   = psibar%a(1)*psi%a(1) - psibar%a(2)*psi%a(2)
+    g34    = psibar%a(3)*psi%a(4)
+    g43    = psibar%a(4)*psi%a(3)
+    g3m4   = psibar%a(3)*psi%a(3) - psibar%a(4)*psi%a(4)
+    j%t    =   gr * ( - k12s*g12 - k12 *g21 - k%x(3)*g1m2 ) &
+             + gl * (   k12s*g34 + k12 *g43 + k%x(3)*g3m4 )
+    j%x(1) =   gr * ( - km  *g12 - kp  *g21 - k%x(2)*g1m2 ) &
+             + gl * (   kp  *g34 + km  *g43 - k%x(2)*g3m4 )
+    j%x(2) =  (gr * (   km  *g12 - kp  *g21 + k%x(1)*g1m2 ) &
+             + gl * ( - kp  *g34 + km  *g43 + k%x(1)*g3m4 ))*(0,1)
+    j%x(3) =   gr * ( - k12s*g12 + k12 *g21 - k%t   *g1m2 ) &
+             + gl * ( - k12s*g34 + k12 *g43 + k%t   *g3m4 )
+  end function tva_ff
+  pure function tlr_ff (gl, gr, psibar, psi, p) result (j)
+    type(vector) :: j
+    complex(kind=default), intent(in) :: gl, gr
+    type(conjspinor), intent(in) :: psibar
+    type(spinor), intent(in) :: psi
+    type(momentum), intent(in) :: p
+    j = tva_ff (gl+gr, gr-gl, psibar, psi, p)
+  end function tlr_ff
   pure function v_ff (gv, psibar, psi) result (j)
     type(vector) :: j
     complex(kind=default), intent(in) :: gv
@@ -367,6 +410,41 @@ contains
     vpsi%a(3) = gl * (   vp  * psi%a(1) + v12s * psi%a(2))
     vpsi%a(4) = gl * (   v12 * psi%a(1) + vm   * psi%a(2))
   end function f_va2f
+  pure function f_tvaf (gv, ga, v, psi, k) result (vpsi)
+    type(spinor) :: vpsi
+    complex(kind=default), intent(in) :: gv, ga
+    type(vector), intent(in) :: v
+    type(spinor), intent(in) :: psi
+    type(momentum), intent(in) :: k
+    complex(kind=default) :: gl, gr
+    complex(kind=default) :: vp, vm, v12, v12s, kp, km, k12, k12s
+    gl   = gv + ga
+    gr   = gv - ga
+    vp   = v%t    + v%x(3)
+    vm   = v%t    - v%x(3)
+    v12  = v%x(1) + v%x(2)*(0,1)
+    v12s = v%x(1) - v%x(2)*(0,1)
+    kp   = k%t    + k%x(3)
+    km   = k%t    - k%x(3)
+    k12  = k%x(1) + k%x(2)*(0,1)
+    k12s = k%x(1) - k%x(2)*(0,1)
+    vpsi%a(1) = gr*( psi%a(1)*( v12s*k12  - v12 *k12s + vp*km - vm*kp )*(0.5,0) &
+                    +psi%a(2)*( v12s*km   - vm  *k12s                 )          )
+    vpsi%a(2) = gr*( psi%a(1)*( v12 *kp   - vp  *k12                  )         &
+                    +psi%a(2)*( v12 *k12s - v12s*k12  + vm*kp - vp*km )*(0.5,0)  )
+    vpsi%a(3) = gl*( psi%a(3)*( v12s*k12  - v12 *k12s + vm*kp - vp*km )*(0.5,0) &
+                    +psi%a(4)*( vp  *k12s - v12s*kp                   )          )
+    vpsi%a(4) = gl*( psi%a(3)*( vm  *k12  - v12 *km                   )         &
+                    +psi%a(4)*( v12 *k12s - v12s*k12  + vp*km - vm*kp )*(0.5,0)  )
+  end function f_tvaf
+  pure function f_tlrf (gl, gr, v, psi, k) result (vpsi)
+    type(spinor) :: vpsi
+    complex(kind=default), intent(in) :: gl, gr
+    type(vector), intent(in) :: v
+    type(spinor), intent(in) :: psi
+    type(momentum), intent(in) :: k
+    vpsi = f_tvaf (gl+gr, gr-gl, v, psi, k)
+  end function f_tlrf
   pure function f_vf (gv, v, psi) result (vpsi)
     type(spinor) :: vpsi
     complex(kind=default), intent(in) :: gv
@@ -474,6 +552,41 @@ contains
     psibarv%a(3) = gr * (   psibar%a(1) * vm   - psibar%a(2) * v12)
     psibarv%a(4) = gr * ( - psibar%a(1) * v12s + psibar%a(2) * vp )
   end function f_fva2
+  pure function f_ftva (gv, ga, psibar, v, k) result (psibarv)
+    type(conjspinor) :: psibarv
+    complex(kind=default), intent(in) :: gv, ga
+    type(conjspinor), intent(in) :: psibar
+    type(vector), intent(in) :: v
+    type(momentum), intent(in) :: k
+    complex(kind=default) :: gl, gr
+    complex(kind=default) :: vp, vm, v12, v12s, kp, km, k12, k12s
+    gl   = gv + ga
+    gr   = gv - ga
+    vp   = v%t    + v%x(3)
+    vm   = v%t    - v%x(3)
+    v12  = v%x(1) + v%x(2)*(0,1)
+    v12s = v%x(1) - v%x(2)*(0,1)
+    kp   = k%t    + k%x(3)
+    km   = k%t    - k%x(3)
+    k12  = k%x(1) + k%x(2)*(0,1)
+    k12s = k%x(1) - k%x(2)*(0,1)
+    psibarv%a(1) = gr*( psibar%a(1)*(v12s*k12 -v12 *k12s+vp*km-vm*kp)*(0.5,0) &
+                       +psibar%a(2)*(v12 *kp  -vp  *k12             )          )
+    psibarv%a(2) = gr*( psibar%a(1)*(v12s*km  -vm  *k12s            )         &
+                       +psibar%a(2)*(v12 *k12s-v12s*k12 +vm*kp-vp*km)*(0.5,0)  )
+    psibarv%a(3) = gl*( psibar%a(3)*(v12s*k12 -v12 *k12s+vm*kp-vp*km)*(0.5,0) &
+                       +psibar%a(4)*(vm  *k12 -v12 *km              )          )
+    psibarv%a(4) = gl*( psibar%a(3)*(vp  *k12s-v12s*kp              )         &
+                       +psibar%a(4)*(v12 *k12s-v12s*k12 +vp*km-vm*kp)*(0.5,0)  )
+  end function f_ftva
+  pure function f_ftlr (gl, gr, psibar, v, k) result (psibarv)
+    type(conjspinor) :: psibarv
+    complex(kind=default), intent(in) :: gl, gr
+    type(conjspinor), intent(in) :: psibar
+    type(vector), intent(in) :: v
+    type(momentum), intent(in) :: k
+    psibarv = f_ftva (gl+gr, gr-gl, psibar, v, k)
+  end function f_ftlr
   pure function f_fv (gv, psibar, v) result (psibarv)
     type(conjspinor) :: psibarv
     complex(kind=default), intent(in) :: gv

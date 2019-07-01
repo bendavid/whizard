@@ -1,4 +1,4 @@
-!  $Id: omegalib.nw 2453 2010-05-01 06:02:28Z jr_reuter $
+!  $Id: omegalib.nw 2848 2010-10-07 14:26:20Z jr_reuter $
 !
 !  Copyright (C) 1999-2009 by 
 !      Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
@@ -43,8 +43,8 @@ program test_omega95
   pabs = 42 
   qabs = 137
   call random_number (r)
-  vtest%t = cmplx (10.0_default * r(0))
-  vtest%x(1:3) = cmplx (10.0_default * r(1:3))
+  vtest%t = cmplx (10.0_default * r(0), kind=default)
+  vtest%x(1:3) = cmplx (10.0_default * r(1:3), kind=default)
   ttest = vtest.tprod.vtest
   call random_momentum (p, pabs, m)
   call random_momentum (q, qabs, m)
@@ -86,6 +86,15 @@ program test_omega95
      call expect ((vp-vq)*a_ff(c_one,vbar(m,p,+1),v(m,q,+1)), 0, "d(vbar(+).A.v(+))=0", passed)
      call expect ((vp-vq)*a_ff(c_one,vbar(m,p,-1),v(m,q,-1)), 0, "d(vbar(-).A.v(-))=0", passed)
   end if
+  print *, "*** Checking implementation of the sigma vertex ***:"
+  call expect ((vp*tva_ff(c_one,c_one,ubar(m,p,+1),u(m,q,+1),q)-2*(m**2-p*q)*(ubar(m,p,+1)*u(m,q,+1))), 0, &
+               "(ubar(p,+).p*sigma*q.u(q,+))=ubar(p,+).(p-q)**2.u(q,+)")
+  call expect ((vp*tva_ff(c_one,c_one,ubar(m,p,-1),u(m,q,-1),q)-2*(m**2-p*q)*(ubar(m,p,-1)*u(m,q,-1))), 0, &
+               "(ubar(p,-).p*sigma*q.u(q,-))=ubar(p,-).(p-q)**2.u(q,-)")
+  call expect ((vp*tva_ff(c_one,c_one,vbar(m,p,+1),v(m,q,+1),q)-2*(m**2-p*q)*(vbar(m,p,+1)*v(m,q,+1))), 0, &
+               "(vbar(p,+).p*sigma*q.v(+,q))=vbar(p,+).(p-q)**2.v(+,q)")
+  call expect ((vp*tva_ff(c_one,c_one,vbar(m,p,-1),v(m,q,-1),q)-2*(m**2-p*q)*(vbar(m,p,-1)*v(m,q,-1))), 0, &
+               "(vbar(p,-).p*sigma*q.v(-,q))=vbar(p,-).(p-q)**2.v(-,q)")
   print *, "*** Checking polarisation vectors: ***"
   call expect (conjg(eps(m,p, 1))*eps(m,p, 1), -1, "e( 1).e( 1)=-1", passed)
   call expect (conjg(eps(m,p, 1))*eps(m,p,-1),  0, "e( 1).e(-1)= 0", passed)

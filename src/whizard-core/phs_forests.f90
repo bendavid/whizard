@@ -1,11 +1,11 @@
-! WHIZARD 2.0.3 Tue Aug 10 2010
+! WHIZARD 2.0.4 Tue Oct 26 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
-!     with contributions by Christian Speckner, Sebastian Schmidt, 
-!     Daniel Wiesler, Felix Braam
+!     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+!     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -53,6 +53,7 @@ module phs_forests
   public :: phs_parameters_read
   public :: phs_forest_t
   public :: phs_forest_init
+  public :: phs_forest_set_global_mappings
   public :: phs_forest_final
   public :: phs_forest_write
   public :: assignment(=)
@@ -61,6 +62,7 @@ module phs_forests
   public :: phs_forest_get_n_groves
   public :: phs_forest_get_grove_bounds
   public :: phs_forest_get_n_equivalences
+  public :: phs_forest_tree_has_global_mapping
   public :: syntax_phs_forest_init
   public :: syntax_phs_forest_final
   public :: syntax_phs_forest_write
@@ -116,6 +118,7 @@ module phs_forests
      type(phs_prt_t), dimension(:), allocatable :: prt_in
      type(phs_prt_t), dimension(:), allocatable :: prt_out
      type(phs_prt_t), dimension(:), allocatable :: prt
+     type(mapping_t), dimension(:), allocatable :: global_mapping
   end type phs_forest_t
 
   interface operator(==)
@@ -320,6 +323,19 @@ contains
     end do
   end subroutine phs_grove_assign1
 
+  subroutine phs_grove_assign_global_mappings (grove, mapping)
+    type(phs_grove_t), intent(in) :: grove
+    type(mapping_t), dimension(:), intent(out) :: mapping
+    integer :: i
+    if (size (mapping) == size (grove%tree)) then
+       do i = 1, size (mapping)
+          call phs_tree_assign_global_mapping (grove%tree(i), mapping(i))
+       end do
+    else
+       call msg_bug ("phs_grove_assign_global_mappings: array size mismatch")
+    end if
+  end subroutine phs_grove_assign_global_mappings
+
   subroutine phs_forest_init (forest, n_tree, n_in, n_out)
     type(phs_forest_t), intent(inout) :: forest
     integer, dimension(:), intent(in) :: n_tree
@@ -346,7 +362,18 @@ contains
     allocate (forest%prt_in  (n_in))
     allocate (forest%prt_out (n_out))
     allocate (forest%prt (2**forest%n_tot - 1))
+    allocate (forest%global_mapping (forest%n_trees))
   end subroutine phs_forest_init
+
+  subroutine phs_forest_set_global_mappings (forest)
+    type(phs_forest_t), intent(inout) :: forest
+    integer :: g, i0, i1, n
+    do g = 1, size (forest%grove)
+       call phs_forest_get_grove_bounds (forest, g, i0, i1, n)
+       call phs_grove_assign_global_mappings &
+            (forest%grove(g), forest%global_mapping(i0:i1))
+    end do
+  end subroutine phs_forest_set_global_mappings
 
   subroutine phs_forest_final (forest)
     type(phs_forest_t), intent(inout) :: forest
@@ -356,6 +383,7 @@ contains
     end if
     if (allocated (forest%grove_lookup))  deallocate (forest%grove_lookup)
     if (allocated (forest%prt))  deallocate (forest%prt)
+    if (allocated (forest%global_mapping))  deallocate (forest%global_mapping)
   end subroutine phs_forest_final
 
   subroutine phs_forest_write (forest, unit)
@@ -392,6 +420,18 @@ contains
        write (u, *) "  [empty]"
     end if
     write (u, *) "Total number of equivalences: ", forest%n_equivalences
+    write (u, *)
+    write (u, *) "Global s-channel mappings:"
+    if (allocated (forest%global_mapping)) then
+       do i = 1, size (forest%global_mapping)
+          if (mapping_is_s_channel (forest%global_mapping(i))) then
+             write (u, "(1x,I0,':',1x)", advance="no")  i
+             call mapping_write (forest%global_mapping(i), unit)
+          end if
+       end do
+    else
+       write (u, *) "  [empty]"
+    end if
     write (u, *)
     write (u, *) "Incoming particles:"
     if (allocated (forest%prt_in)) then
@@ -491,6 +531,10 @@ contains
        allocate (forest_out%prt (size (forest_in%prt)))
        forest_out%prt = forest_in%prt
     end if
+    if (allocated (forest_in%global_mapping)) then
+       allocate (forest_out%global_mapping (size (forest_in%global_mapping)))
+       forest_out%global_mapping = forest_in%global_mapping
+    end if
   end subroutine phs_forest_assign
 
   function phs_forest_get_n_parameters (forest) result (n)
@@ -525,6 +569,13 @@ contains
     type(phs_forest_t), intent(in) :: forest
     n = forest%n_equivalences
   end function phs_forest_get_n_equivalences
+
+  function phs_forest_tree_has_global_mapping (forest, channel) result (flag)
+    logical :: flag
+    type(phs_forest_t), intent(in) :: forest
+    integer, intent(in) :: channel
+    flag = mapping_is_s_channel (forest%global_mapping(channel))
+  end function phs_forest_tree_has_global_mapping
 
   subroutine define_phs_forest_syntax (ifile)
     type(ifile_t) :: ifile

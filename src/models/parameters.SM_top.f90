@@ -1,9 +1,10 @@
 ! $Id: parameters.SM_top.omega.f90,v 1.4 2006/06/16 13:31:48 kilian Exp $
 !
-! Copyright (C) 1999-2009 by 
+! Copyright (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+!     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -33,12 +34,9 @@ module parameters_sm_top
   real(default), public :: e, g, e_em
   real(default), public :: sinthw, costhw, sin2thw, tanthw
   real(default), public :: qelep, qeup, qedwn, qetop
-  real(default), public :: ttop, tbot, tch, ttau, tw
-  real(default), public :: ltop, lbot, lc, ltau, lw
   complex(default), public :: qlep, qup, qdwn, qtop, gcc, qw, &
        gzww, gwww, ghww, ghhww, ghzz, ghhzz, &
-       ghbb, ghtt, ghcc, ghtautau, gh3, gh4, &
-       ghgaga, ghgaz, ghgg, ghmm, &             
+       ghbb, ghtt, ghcc, ghtautau, gh3, gh4, ghmm, &             
        iqw, igzww, igwww, gw4, gzzww, gazww, gaaww
   real(default), public :: vev
   complex(default), dimension(2), public :: &
@@ -127,16 +125,6 @@ contains
     width(26) =  0
     mass(27) =  par%xipm * mass(24)
     width(27) =  0
-    ttop = 4.0_default * mass(6)**2 / mass(25)**2
-    tbot = 4.0_default * mass(5)**2 / mass(25)**2
-    tch  = 4.0_default * mass(4)**2 / mass(25)**2
-    ttau = 4.0_default * mass(15)**2 / mass(25)**2
-    tw   = 4.0_default * mass(24)**2 / mass(25)**2  
-    ltop = 4.0_default * mass(6)**2 / mass(23)**2
-    lbot = 4.0_default * mass(5)**2 / mass(23)**2  
-    lc   = 4.0_default * mass(4)**2 / mass(23)**2
-    ltau = 4.0_default * mass(15)**2 / mass(23)**2
-    lw   = 4.0_default * mass(24)**2 / mass(23)**2
     vev = par%v
     e = par%ee
     sinthw = par%sw
@@ -174,16 +162,8 @@ contains
     gazww = gzww * qw
     gaaww = qw**2
     ghww = mass(24) * g
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    !!! This is for the old SM3:
-    !!! ghhww = (0,1) * g / Sqrt(2.0_default)
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     ghhww = g**2 / 2.0_default
     ghzz = mass(23) * g / costhw
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    !!! This is for the old SM3:
-    !!! ghhzz = (0,1) * g / costhw / Sqrt(2.0_default)
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     ghhzz = g**2 / 2.0_default / costhw**2
     ghtt = - mass(6) / vev
     ghbb = - mass(5) / vev
@@ -191,44 +171,10 @@ contains
     ghtautau = - mass(15) / vev
     ghmm = - mass(13) / vev
     gh3 = - 3 * mass(25)**2 / vev
-    !!! gh4 = mass(25) / vev !!! Old SM3
     gh4 = - 3 * mass(25)**2 / vev**2
     !!! Color flow basis, divide by sqrt(2)
     gs = sqrt(2.0_default*PI*par%alphas)
     igs = cmplx (0.0_default, 1.0_default, kind=default) * gs    
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    !!! Higgs anomaly couplings
-    !!! SM LO loop factor (top,bottom,W)
-    ghgaga = alpha / vev / 2.0_default / PI * &
-         abs(( 4.0_default * (fonehalf(ttop) + fonehalf(tch)) &
-         + fonehalf(tbot)) / 3.0_default + fonehalf(ttau) + fone(tw)) &
-         * sqrt(par%khgaga)
-    !!! asymptotic limit:
-    !!! ghgaga = (par%ee)**2 / vev / &
-    !!!      9.0_default / pi**2
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    !!! SM LO loop factor (only top and W)
-    ghgaz = e * e_em / 8.0_default / PI**2 / vev * abs( &
-          ( - 2.0_default + &
-          16.0_default/3.0_default * sin2thw) * &
-          (tri_i1(ttop,ltop) - tri_i2(ttop,ltop)) / costhw & 
-          + ( - 1.0_default + &
-          4.0_default/3.0_default * sin2thw) & 
-          * (tri_i1(tbot,lbot) - tri_i2(tbot,lbot)) / costhw &
-           - costhw * ( 4.0_default * (3.0_default - tanthw**2) * &
-           tri_i2(tw,lw) + ((1 + 2.0_default/tw) * tanthw**2 - ( &
-           5.0_default + 2.0_default/tw)) * tri_i1(tw,lw))) &
-           /sinthw * sqrt(par%khgaz)
-    !!! SM LO order loop factor with 
-    !!! N(N)LO K factor = 2.1 (only top)
-    !!! Limit of infinite top quark mass:
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    !!! We use par%gg because of sqrt(2) above
-    ghgg = par%alphas / vev / 4.0_default / PI * &
-         abs(fonehalf(ttop) + fonehalf(tbot) + fonehalf(tch)) * &
-         sqrt(par%khgg)
-    !!! ghgg   = par%alphas / 3.0_default &
-    !!!      / vev / pi * 2.1_default
   end subroutine import_from_whizard
 
   subroutine model_update_alpha_s (alpha_s)

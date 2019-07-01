@@ -1,10 +1,12 @@
-(* $Id: targets.ml 2592 2010-06-01 14:59:26Z ohl $
+(* $Id: targets.ml 2838 2010-09-29 15:52:35Z jr_reuter $
 
-   Copyright (C) 1999-2009 by
+   Copyright (C) 1999-2010 by
 
        Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
        Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+       Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+       Fabian Bach <fabian.bach@cern.ch> (only parts of this file)
 
    WHIZARD is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by
@@ -21,9 +23,9 @@
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
 let rcs_file = RCS.parse "Targets" ["Code Generation"]
-    { RCS.revision = "$Revision: 2592 $";
-      RCS.date = "$Date: 2010-06-01 16:59:26 +0200 (Tue, 01 Jun 2010) $";
-      RCS.author = "$Author: ohl $";
+    { RCS.revision = "$Revision: 2838 $";
+      RCS.date = "$Date: 2010-09-29 17:52:35 +0200 (Wed, 29 Sep 2010) $";
+      RCS.author = "$Author: jr_reuter $";
       RCS.source
         = "$URL: svn+ssh://jr_reuter@login.hepforge.org/hepforge/svn/whizard/trunk/src/omega/src/targets.ml $" }
 
@@ -79,6 +81,9 @@ module type Fermions =
     val grav_gauss : string
     val print_current : int * fermionbar * boson * fermion ->
       string -> string -> string -> fuse2 -> unit
+    val print_current_mom : int * fermionbar * boson * fermion ->
+      string -> string -> string -> string -> string -> string 
+      -> fuse2 -> unit
     val print_current_p : int * fermion * boson * fermion ->
       string -> string -> string -> fuse2 -> unit
     val print_current_b : int * fermionbar * boson * fermionbar ->
@@ -154,7 +159,7 @@ module Fortran_Fermions : Fermions =
      JR's coupling constant HACK, necessitated by tho's bad design descition.
    \end{dubious} *)
 
-    let fastener s i = 
+    let fastener s i ?p () = 
       try 
         let offset = (String.index s '(') in
         if ((String.get s (String.length s - 1)) != ')') then
@@ -174,7 +179,9 @@ module Fortran_Fermions : Fermions =
           if (String.contains s ')') then
 	    failwith "fastener: wrong usage of parentheses"
           else
-	    s ^ "(" ^ string_of_int i ^ ")"
+            match p with
+            | None -> s ^ "(" ^ string_of_int i ^ ")"
+            | Some p -> s ^ "(" ^ p ^ "*" ^ p ^ "," ^ string_of_int i ^ ")"
 
     let print_fermion_current coeff f c wf1 wf2 fusion =
       let c = format_coupling coeff c in
@@ -202,8 +209,8 @@ module Fortran_Fermions : Fermions =
 
     let print_fermion_current2 coeff f c wf1 wf2 fusion =
       let c = format_coupling_2 coeff c in
-      let c1 = fastener c 1
-      and c2 = fastener c 2 in 
+      let c1 = fastener c 1 ()
+      and c2 = fastener c 2 () in 
       match fusion with
       | F13 -> printf "%s_ff(%s,%s,%s,%s)" f c1 c2 wf1 wf2
       | F31 -> printf "%s_ff(%s,%s,%s,%s)" f c1 c2 wf2 wf1
@@ -211,10 +218,34 @@ module Fortran_Fermions : Fermions =
       | F32 -> printf "f_%sf(%s,%s,%s,%s)" f c1 c2 wf2 wf1
       | F12 -> printf "f_f%s(%s,%s,%s,%s)" f c1 c2 wf1 wf2
       | F21 -> printf "f_f%s(%s,%s,%s,%s)" f c1 c2 wf2 wf1
+
+    let print_fermion_current_mom1 coeff f c wf1 wf2 p1 p2 p12 fusion =
+      let c = format_coupling coeff c in
+      let c1 = fastener c 1 and
+          c2 = fastener c 2 in 
+      match fusion with
+      | F13 -> printf "%s_ff(%s,%s,%s,%s)" f (c1 ~p:p12 ()) (c2 ~p:p12 ()) wf1 wf2
+      | F31 -> printf "%s_ff(%s,%s,%s,%s)" f (c1 ~p:p12 ()) (c2 ~p:p12 ()) wf2 wf1
+      | F23 -> printf "f_%sf(%s,%s,%s,%s)" f (c1 ~p:p1 ()) (c2 ~p:p1 ()) wf1 wf2
+      | F32 -> printf "f_%sf(%s,%s,%s,%s)" f (c1 ~p:p2 ()) (c2 ~p:p2 ()) wf2 wf1
+      | F12 -> printf "f_f%s(%s,%s,%s,%s)" f (c1 ~p:p2 ()) (c2 ~p:p2 ()) wf1 wf2
+      | F21 -> printf "f_f%s(%s,%s,%s,%s)" f (c1 ~p:p1 ()) (c2 ~p:p1 ()) wf2 wf1
+
+    let print_fermion_current_mom2 coeff f c wf1 wf2 p1 p2 p12 fusion =
+      let c = format_coupling coeff c in
+      let c1 = fastener c 1 and
+          c2 = fastener c 2 in 
+      match fusion with
+      | F13 -> printf "%s_ff(%s,%s,%s,%s,%s)" f (c1 ~p:p12 ()) (c2 ~p:p12 ()) wf1 wf2 p12 
+      | F31 -> printf "%s_ff(%s,%s,%s,%s,%s)" f (c1 ~p:p12 ()) (c2 ~p:p12 ()) wf2 wf1 p12
+      | F23 -> printf "f_%sf(%s,%s,%s,%s,%s)" f (c1 ~p:p1 ()) (c2 ~p:p1 ()) wf1 wf2 p1
+      | F32 -> printf "f_%sf(%s,%s,%s,%s,%s)" f (c1 ~p:p2 ()) (c2 ~p:p2 ()) wf2 wf1 p2
+      | F12 -> printf "f_f%s(%s,%s,%s,%s,%s)" f (c1 ~p:p2 ()) (c2 ~p:p2 ()) wf1 wf2 p2
+      | F21 -> printf "f_f%s(%s,%s,%s,%s,%s)" f (c1 ~p:p1 ()) (c2 ~p:p1 ()) wf2 wf1 p1
   
     let print_current = function
       | coeff, Psibar, VA, Psi -> print_fermion_current2 coeff "va"
-		| coeff, Psibar, VA2, Psi -> print_fermion_current coeff "va2"
+      | coeff, Psibar, VA2, Psi -> print_fermion_current coeff "va2"
       | coeff, Psibar, V, Psi -> print_fermion_current coeff "v"
       | coeff, Psibar, A, Psi -> print_fermion_current coeff "a"
       | coeff, Psibar, VL, Psi -> print_fermion_current coeff "vl"
@@ -228,6 +259,17 @@ module Fortran_Fermions : Fermions =
       | coeff, Psibar, SLR, Psi -> print_fermion_current2 coeff "slr"
       | coeff, Psibar, _, Psi -> invalid_arg
             "Targets.Fortran_Fermions: no superpotential here"
+      | _, Chibar, _, _ | _, _, _, Chi -> invalid_arg
+            "Targets.Fortran_Fermions: Majorana spinors not handled"
+      | _, Gravbar, _, _ | _, _, _, Grav -> invalid_arg
+            "Targets.Fortran_Fermions: Gravitinos not handled"
+
+    let print_current_mom = function
+      | coeff, Psibar, VLRM, Psi -> print_fermion_current_mom1 coeff "vlr"
+      | coeff, Psibar, TVAM, Psi -> print_fermion_current_mom2 coeff "tva"
+      | coeff, Psibar, TLRM, Psi -> print_fermion_current_mom2 coeff "tlr"
+      | coeff, Psibar, _, Psi -> invalid_arg
+            "Targets.Fortran_Fermions: only sigma tensor coupling here"
       | _, Chibar, _, _ | _, _, _, Chi -> invalid_arg
             "Targets.Fortran_Fermions: Majorana spinors not handled"
       | _, Gravbar, _, _ | _, _, _, Grav -> invalid_arg
@@ -1037,7 +1079,22 @@ i*)
    choice of Feynman rules: Dirac or Majorana. *)
 
           | FBF (coeff, fb, b, f) ->
-              Fermions.print_current (coeff, fb, b, f) c wf1 wf2 fusion
+              begin match coeff, fb, b, f with
+              | _, Psibar, VLRM, Psi -> let p12 =
+                  Printf.sprintf "(-%s-%s)" p1 p2 in
+                  Fermions.print_current_mom (coeff, fb, b, f) c wf1 wf2 p1 p2 
+                      p12 fusion
+              | _, Psibar, TVAM, Psi -> let p12 =
+                  Printf.sprintf "(-%s-%s)" p1 p2 in
+                  Fermions.print_current_mom (coeff, fb, b, f) c wf1 wf2 p1 p2 
+                      p12 fusion
+              | _, Psibar, TLRM, Psi -> let p12 =
+                  Printf.sprintf "(-%s-%s)" p1 p2 in
+                  Fermions.print_current_mom (coeff, fb, b, f) c wf1 wf2 p1 p2 
+                      p12 fusion
+              | _, _, _, _ ->
+                  Fermions.print_current (coeff, fb, b, f) c wf1 wf2 fusion
+              end
           | PBP (coeff, f1, b, f2) ->
               Fermions.print_current_p (coeff, f1, b, f2) c wf1 wf2 fusion
           | BBB (coeff, fb1, b, fb2) -> 
@@ -1863,7 +1920,10 @@ i*)
       String.concat " " (List.map color_to_string (CFlow.in_to_lists cflow)) ^ " -> " ^
       String.concat " " (List.map color_to_string (CFlow.out_to_lists cflow))
 
-    let print_spin_table abbrev name = function
+    let protected = ""
+    let protected = ", protected" (* Fortran 2003! *)
+
+    let print_spin_table_old abbrev name = function
       | [] ->
           printf "  @[<2>integer, dimension(n_prt,0) ::";
           printf "@ table_spin_%s" name; nl ()
@@ -1881,11 +1941,23 @@ i*)
             printf ",@ %s%04d" abbrev i; succ i) 2 tuples');
           printf "@ /), (/ n_prt, n_hel /) )"; nl ()
 
+    let print_spin_table name tuples =
+      printf "  @[<2>integer, dimension(n_prt,n_hel), save%s :: table_spin_%s"
+        protected name; nl();
+      match tuples with
+      | [] -> ()
+      | _ ->
+          ignore (List.fold_left (fun i (tuple1, tuple2) ->
+            printf "  @[<2>data table_spin_%s(:,%4d) / %s /" name i
+              (String.concat ", " (List.map (Printf.sprintf "%2d") (tuple1 @ tuple2)));
+            nl (); succ i) 1 tuples)
+
     let print_spin_tables amplitudes =
-      print_spin_table "s" "states" (CF.helicities amplitudes);
+      (* [print_spin_table_old "s" "states_old" (CF.helicities amplitudes);] *)
+      print_spin_table "states" (CF.helicities amplitudes);
       nl ()
 
-    let print_flavor_table n abbrev name = function
+    let print_flavor_table_old n abbrev name = function
       | [] ->
           printf "  @[<2>integer, dimension(n_prt,0) ::";
           printf "@ table_flavor_%s" name; nl ()
@@ -1906,16 +1978,31 @@ i*)
             printf ",@ %s%04d" abbrev i; succ i) 2 tuples');
           printf "@ /), (/ n_prt, n_flv /) )"; nl ()
 
+    let print_flavor_table n name tuples =
+      printf "  @[<2>integer, dimension(n_prt,n_flv), save%s :: table_flavor_%s"
+        protected name; nl();
+      match tuples with
+      | [] -> ()
+      | _ ->
+          ignore (List.fold_left (fun i tuple ->
+            printf "  @[<2>data table_flavor_%s(:,%4d) / %s / ! %s" name i
+              (String.concat ", "
+                 (List.map (fun f -> Printf.sprintf "%3d" (M.pdg f)) tuple))
+              (String.concat " " (List.map M.flavor_to_string tuple));
+            nl (); succ i) 1 tuples)
+
     let print_flavor_tables amplitudes =
       let n = num_particles amplitudes in
-      print_flavor_table n "f" "states"
+      (* [print_flavor_table_old n "f" "states_old"
+        (List.map (fun (fin, fout) -> fin @ fout) (CF.flavors amplitudes));] *)
+      print_flavor_table n "states"
         (List.map (fun (fin, fout) -> fin @ fout) (CF.flavors amplitudes));
       nl ()
 
     let num_flavors amplitudes =
       List.length (CF.flavors amplitudes)
 
-    let print_color_flows_table abbrev = function
+    let print_color_flows_table_old abbrev = function
       | [] ->
           printf "  @[<2>integer, dimension(n_cindex, n_prt, n_cflow) ::";
           printf "@ table_color_flows"; nl ()
@@ -1935,13 +2022,13 @@ i*)
             nl (); succ i) 1 tuples);
           printf
             "  @[<2>integer, dimension(n_cindex, n_prt, n_cflow), parameter ::";
-          printf "@ table_color_flows =@ reshape ( (/";
+          printf "@ table_color_flows_old =@ reshape ( (/";
           printf "@ %s%04d" abbrev 1;
           ignore (List.fold_left (fun i tuple ->
             printf ",@ %s%04d" abbrev i; succ i) 2 tuples');
           printf "@ /),@ (/ n_cindex, n_prt, n_cflow /) )"; nl ()
 
-    let print_ghost_flags_table abbrev = function
+    let print_ghost_flags_table_old abbrev = function
       | [] ->
           printf "  @[<2>logical, dimension(n_prt, n_cflow) ::";
           printf "@ table_ghost_flags"; nl ()
@@ -1960,11 +2047,49 @@ i*)
             nl (); succ i) 1 tuples);
           printf
             "  @[<2>logical, dimension(n_prt, n_cflow), parameter ::";
-          printf "@ table_ghost_flags =@ reshape ( (/";
+          printf "@ table_ghost_flags_old =@ reshape ( (/";
           printf "@ %s%04d" abbrev 1;
           ignore (List.fold_left (fun i tuple ->
             printf ",@ %s%04d" abbrev i; succ i) 2 tuples');
           printf "@ /),@ (/ n_prt, n_cflow /) )"; nl ()
+
+    let print_color_flows_table tuples =
+      printf
+        "  @[<2>integer, dimension(n_cindex,n_prt,n_cflow), save%s :: table_color_flows"
+        protected; nl ();
+      match tuples with
+      | [] -> ()
+      | _ :: tuples' as tuples ->
+          ignore (List.fold_left (fun i tuple ->
+            begin match CFlow.to_lists tuple with
+            | [] -> ()
+            | cf1 :: cfn ->
+                printf "  @[<2>data table_color_flows(:,:,%4d) /" i;
+                printf "@ %s" (String.concat "," (List.map string_of_int cf1));
+                List.iter (function cf ->
+                  printf ",@  %s" (String.concat "," (List.map string_of_int cf))) cfn;
+                printf "@ /"; nl ()
+            end;
+            succ i) 1 tuples)
+
+    let print_ghost_flags_table tuples =
+      printf
+        "  @[<2>logical, dimension(n_prt,n_cflow), save%s :: table_ghost_flags"
+        protected; nl ();
+      match tuples with
+      | [] -> ()
+      | _ ->
+          ignore (List.fold_left (fun i tuple ->
+            begin match CFlow.ghost_flags tuple with
+            | [] -> ()
+            | gf1 :: gfn ->
+                printf "  @[<2>data table_ghost_flags(:,%4d) /" i;
+                printf "@ %s" (if gf1 then "T" else "F");
+                List.iter (function gf -> printf ",@  %s" (if gf then "T" else "F")) gfn;
+                printf " /";
+                nl ()
+            end;
+            succ i) 1 tuples)
 
     let format_power_of x
         { Color.Flow.num = num; Color.Flow.den = den; Color.Flow.power = pwr } =
@@ -2012,7 +2137,7 @@ i*)
       | [] -> "zero"
       | powers -> String.concat "" (List.map (format_power_of x) powers)
 
-    let print_color_factor_table abbrev table =
+    let print_color_factor_table_old table =
       let n_cflow = Array.length table in
       let n_cfactors = ref 0 in
       for c1 = 0 to pred n_cflow do
@@ -2046,18 +2171,57 @@ i*)
         printf "@ /)"; nl ()
       end
 
+(* \begin{dubious}
+     We can optimize the following slightly by reusing common color factor [parameter]s.
+   \end{dubious} *)
+
+    let print_color_factor_table table =
+      let n_cflow = Array.length table in
+      let n_cfactors = ref 0 in
+      for c1 = 0 to pred n_cflow do
+        for c2 = 0 to pred n_cflow do
+          match table.(c1).(c2) with
+          | [] -> ()
+          | _ -> incr n_cfactors
+        done
+      done;
+      print_integer_parameter "n_cfactors"  !n_cfactors;
+      printf "  @[<2>type(%s), dimension(n_cfactors), save%s ::"
+        omega_color_factor_abbrev protected;
+      printf "@ table_color_factors"; nl ();
+      let i = ref 1 in
+      if n_cflow > 0 then begin
+        for c1 = 0 to pred n_cflow do
+          for c2 = 0 to pred n_cflow do
+            match table.(c1).(c2) with
+            | [] -> ()
+            | cf -> 
+                printf "  @[<2>real(kind=%s), parameter, private :: color_factor_%06d = %s"
+                  !kind !i (format_powers_of nc_parameter cf);
+                nl ();
+                printf "  @[<2>data table_color_factors(%6d) / %s(%d,%d,color_factor_%06d) /"
+                  !i omega_color_factor_abbrev (succ c1) (succ c2) !i;
+                incr i;
+                nl ();
+          done
+        done
+      end
+
     let print_color_tables amplitudes =
       let cflows =  CF.color_flows amplitudes
       and cfactors = CF.color_factors amplitudes in
-      print_color_flows_table "c" cflows; nl ();
-      print_ghost_flags_table "g" cflows; nl ();
-      print_color_factor_table "k" cfactors; nl ()
+      (* [print_color_flows_table_old "c" cflows; nl ();] *)
+      print_color_flows_table cflows; nl ();
+      (* [print_ghost_flags_table_old "g" cflows; nl ();] *)
+      print_ghost_flags_table cflows; nl ();
+      (* [print_color_factor_table_old cfactors; nl ();] *)
+      print_color_factor_table cfactors; nl ()
 
     let option_to_logical = function
       | Some _ -> "T"
       | None -> "F"
 
-    let print_flavor_color_table abbrev n_flv n_cflow table =
+    let print_flavor_color_table_old abbrev n_flv n_cflow table =
       if n_flv <= 0 or n_cflow <= 0 then begin
         printf "  @[<2>logical, dimension(n_flv, n_cflow) ::";
         printf "@ flv_col_is_allowed"; nl ()
@@ -2073,15 +2237,34 @@ i*)
         done;
         printf
           "  @[<2>logical, dimension(n_flv, n_cflow), parameter ::";
-        printf "@ flv_col_is_allowed =@ reshape ( (/@ %s%04d" abbrev 1;
+        printf "@ flv_col_is_allowed_old =@ reshape ( (/@ %s%04d" abbrev 1;
         for c = 1 to pred n_cflow do
           printf ",@ %s%04d" abbrev (succ c)
         done;
         printf "@ /),@ (/ n_flv, n_cflow /) )"; nl ()
       end
 
+    let print_flavor_color_table n_flv n_cflow table =
+      printf
+        "  @[<2>logical, dimension(n_flv, n_cflow), save%s :: @ flv_col_is_allowed"
+        protected; nl ();
+      if n_flv > 0 then begin
+        for c = 0 to pred n_cflow do
+          printf
+            "  @[<2>data flv_col_is_allowed(:,%4d) /" (succ c);
+          printf "@ %s" (option_to_logical table.(0).(c));
+          for f = 1 to pred n_flv do
+            printf ",@ %s" (option_to_logical table.(f).(c))
+          done;
+          printf "@ /"; nl ()
+        done;
+      end
+
     let print_amplitude_table a =
-      print_flavor_color_table "a"
+      (* [print_flavor_color_table_old "a"
+        (num_flavors a) (List.length (CF.color_flows a)) (CF.process_table a);
+      nl ();] *)
+      print_flavor_color_table
         (num_flavors a) (List.length (CF.color_flows a)) (CF.process_table a);
       nl ();
       printf
@@ -3101,6 +3284,18 @@ module Fortran_Majorana_Fermions : Fermions =
       | F12 -> printf "f_%sf(%s,%s,%s,%s,%s)" f c1 c2 wf2 wf1 p2
       | F21 -> printf "f_%sf(%s,%s,%s,%s,%s)" f c1 c2 wf1 wf2 p1
 
+    let print_fermion_current_mom_vector coeff f c wf1 wf2 p1 p2 p12 fusion =
+      let c = format_coupling_mom coeff c in
+      let c1 = fastener c 1 and
+          c2 = fastener c 2 in 
+      match fusion with
+      | F13 -> printf "%s_ff(%s,%s,%s,%s,%s)" f c1 c2 wf1 wf2 p12 
+      | F31 -> printf "%s_ff(-%s,%s,%s,%s,%s)" f c1 c2 wf1 wf2 p12
+      | F23 -> printf "f_%sf(%s,%s,%s,%s,%s)" f c1 c2 wf1 wf2 p1
+      | F32 -> printf "f_%sf(%s,%s,%s,%s,%s)" f c1 c2 wf2 wf1 p2 
+      | F12 -> printf "f_%sf(-%s,%s,%s,%s,%s)" f c1 c2 wf2 wf1 p2
+      | F21 -> printf "f_%sf(-%s,%s,%s,%s,%s)" f c1 c2 wf1 wf2 p1
+
     let print_fermion_current_mom_sign coeff f c wf1 wf2 p1 p2 p12 fusion =
       let c = format_coupling_mom coeff c in
       let c1 = fastener c 1 and
@@ -3222,6 +3417,10 @@ module Fortran_Majorana_Fermions : Fermions =
       | coeff, _, POT, Grav -> print_fermion_g_current_vector_rev coeff "pot"
       | coeff, _, _, _ -> invalid_arg
           "Targets.Fortran_Majorana_Fermions: not used in the models"
+
+    let print_current_mom = function
+      | coeff, _, _, _ -> invalid_arg
+            "Targets.Fortran_Majorana_Fermions: Not needed in the models"
 
 (* We need support for dimension-5 vertices with two fermions and two 
    bosons, appearing in theories of supergravity and also together with in

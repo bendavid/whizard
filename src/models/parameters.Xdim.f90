@@ -1,9 +1,10 @@
 ! $Id: parameters.Xdim.f90,v 1.1 2006/06/16 13:31:48 kilian Exp $
 !
-! Copyright (C) 1999-2009 by 
+! Copyright (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+!     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -178,23 +179,14 @@ contains
     gazww = gzww * qw
     gaaww = qw**2
     ghww = mass(24) * g
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    !!! This is for the old SM3:
-    !!! ghhww = (0,1) * g / Sqrt(2.0_default)
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     ghhww = g**2 / 2.0_default
     ghzz = mass(23) * g / costhw
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    !!! This is for the old SM3:
-    !!! ghhzz = (0,1) * g / costhw / Sqrt(2.0_default)
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     ghhzz = g**2 / 2.0_default / costhw**2
     ghtt = - mass(6) / v
     ghbb = - mass(5) / v
     ghcc = - mass(4) / v
     ghtautau = - mass(15) / v
     gh3 = - 3 * mass(25)**2 / v
-    !!! gh4 = mass(25) / v !!! Old SM3
     gh4 = - 3 * mass(25)**2 / v**2
     !!! color flow basis, gs divided by sqrt(2)
     gs = sqrt(2.0_default*PI*par%alphas)

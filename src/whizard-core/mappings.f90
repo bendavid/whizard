@@ -1,11 +1,11 @@
-! WHIZARD 2.0.3 Tue Aug 10 2010
+! WHIZARD 2.0.4 Tue Oct 26 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
-!     with contributions by Christian Speckner, Sebastian Schmidt, 
-!     Daniel Wiesler, Felix Braam
+!     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+!     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -46,6 +46,7 @@ module mappings
   public :: mapping_write
   public :: mapping_init
   public :: mapping_set_parameters
+  public :: mapping_is_s_channel
   public :: operator(==)
   public :: mapping_compute_msq_from_x
   public :: mapping_compute_x_from_msq
@@ -168,6 +169,12 @@ contains
        end select
     end if
   end subroutine mapping_set_parameters
+
+  function mapping_is_s_channel (mapping) result (flag)
+    logical :: flag
+    type(mapping_t), intent(in) :: mapping
+    flag = mapping%type == S_CHANNEL
+  end function mapping_is_s_channel
 
   function mapping_equal (m1, m2) result (equal)
     type(mapping_t), intent(in) :: m1, m2

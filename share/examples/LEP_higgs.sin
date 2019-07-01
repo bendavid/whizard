@@ -79,10 +79,7 @@ histogram m_bb (70 GeV, 130 GeV, 0.5 GeV)
 analysis = record m_invisible (eval M [n,N]);
 	   record m_bb (eval M [b,B])
 
-# To speed things up we use weighted events for demonstration purposes.
-?unweighted = false
-
-luminosity = 100
+luminosity = 10
 
 simulate (nnbb) 
 

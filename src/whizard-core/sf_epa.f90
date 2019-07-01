@@ -1,11 +1,11 @@
-! WHIZARD 2.0.3 Tue Aug 10 2010
+! WHIZARD 2.0.4 Tue Oct 26 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
-!     with contributions by Christian Speckner, Sebastian Schmidt, 
-!     Daniel Wiesler, Felix Braam
+!     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+!     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -159,7 +159,6 @@ contains
     type(flavor_t) :: flv_photon
     type(quantum_numbers_t) :: qn_photon, qn
     type(state_iterator_t) :: it_hel
-    integer :: i
     mask = new_quantum_numbers_mask (.false., .false., &
          mask_h = (/ .false., .false., .true. /))
     lock = (/ 2, 1, 0 /)
@@ -181,27 +180,38 @@ contains
     call interaction_freeze (int)
   end subroutine interaction_init_epa
     
-  elemental subroutine strfun (f, x, xb, r, E, data)
+  elemental subroutine strfun (f, x, xb, r, E, data, no_map)
     real(default), intent(out) :: f, x, xb
     real(default), intent(in) :: r, E
     type(epa_data_t), intent(in) :: data
+    logical, intent(in) :: no_map
     real(default) :: rb, lx0, lx1, lx, d, den
     real(default) :: qmaxsq, qminsq
     f = 0
     rb = 1 - r
-    lx0 = log (data%x_min)
-    lx1 = log (data%x_max)
-    d = data%log ** 2 &
-         -  4 * (r * lx1 * (data%log - lx1) + rb * lx0 * (data%log - lx0))
-    if (d <= 0) then
-       return
+    if (no_map) then
+       x = r
+       if (data%x_min < x .and. x < data%x_max) then
+          den = (log (data%x_max) * (data%log - log (data%x_max)) &
+               - log (data%x_min) * (data%log - log (data%x_min))) / x
+       else
+          den = 0
+       end if
     else
-       lx = (data%log - sqrt (d)) / 2
+       lx0 = log (data%x_min)
+       lx1 = log (data%x_max)
+       d = data%log ** 2 &
+            -  4 * (r * lx1 * (data%log - lx1) + rb * lx0 * (data%log - lx0))
+       if (d <= 0) then
+          return
+       else
+          lx = (data%log - sqrt (d)) / 2
+       end if
+       x = exp (lx)
+       den = data%log - 2 * lx
     end if
-    x = exp (lx)
-    xb = 1 - x
-    den = data%log - 2 * lx
     if (den <= 0)  return
+    xb = 1 - x
     qminsq = max (x ** 2 / xb * data%mass ** 2, data%q_min ** 2)
     qmaxsq = min (4 * E ** 2, data%q_max ** 2)
     if (qminsq < qmaxsq) then
@@ -213,16 +223,17 @@ contains
     end if
   end subroutine strfun
 
-  subroutine interaction_apply_epa (int, r, epa_data)
+  subroutine interaction_apply_epa (int, r, epa_data, no_map)
     type(interaction_t), intent(inout) :: int
     real(default), dimension(:), intent(in) :: r
     type(epa_data_t), dimension(:), intent(in) :: epa_data
+    logical, intent(in) :: no_map
     type(vector4_t) :: k
     type(splitting_data_t) :: sd
     real(default), dimension(size(epa_data)) :: f, x, xb
     k = interaction_get_momentum (int, 1)
-    sd = new_splitting_data (k, k**2, epa_data(1)%mass**2, 0._default)
-    call strfun (f, x, xb, r(1), energy (k), epa_data)
+    sd = new_splitting_data (k, 0._default, epa_data(1)%mass**2, 0._default)
+    call strfun (f, x, xb, r(1), energy (k), epa_data, no_map)
     call interaction_set_flavored_values &
          (int, cmplx (f, kind=default), epa_data%flv, 2)
     call splitting_set_t_bounds (sd, x(1), xb(1))

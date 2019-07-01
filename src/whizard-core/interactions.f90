@@ -1,11 +1,11 @@
-! WHIZARD 2.0.3 Tue Aug 10 2010
+! WHIZARD 2.0.4 Tue Oct 26 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
-!     with contributions by Christian Speckner, Sebastian Schmidt, 
-!     Daniel Wiesler, Felix Braam
+!     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+!     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -31,7 +31,8 @@ module interactions
   use file_utils !NODEP!
   use diagnostics !NODEP!
   use lorentz !NODEP!
-  use prt_lists
+  use sorting
+  use subevents
   use expressions
   use flavors
   use colors
@@ -74,9 +75,9 @@ module interactions
   public :: interaction_get_n_out
   public :: interaction_get_momenta
   public :: interaction_get_momentum
-  public :: interaction_init_prt_list
-  public :: interaction_momenta_to_prt_list
-  public :: interaction_get_state_matrix
+  public :: interaction_to_subevt
+  public :: interaction_momenta_to_subevt
+  public :: interaction_get_state_matrix_ptr
   public :: interaction_get_resonance_flags
   public :: interaction_get_mask
   public :: interaction_get_s
@@ -153,6 +154,10 @@ module interactions
      module procedure interaction_set_matrix_element_all
      module procedure interaction_set_matrix_element_array 
      module procedure interaction_set_matrix_element_single
+  end interface
+  interface interaction_get_momenta
+     module procedure interaction_get_momenta_all
+     module procedure interaction_get_momenta_idx
   end interface
   interface interaction_get_mask
      module procedure interaction_get_mask_all
@@ -356,15 +361,18 @@ contains
   end subroutine interaction_final
 
   subroutine interaction_write &
-       (int, unit, verbose, show_momentum_sum, show_mass)
+       (int, unit, verbose, show_momentum_sum, show_mass, show_state)
     type(interaction_t), intent(in) :: int
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: verbose, show_momentum_sum, show_mass
+    logical, intent(in), optional :: show_state
     integer :: u
     integer :: i, index_link
     type(internal_link_t), pointer :: link
     type(interaction_t), pointer :: int_link
+    logical :: show_st
     u = output_unit (unit);  if (u < 0)  return
+    show_st = .true.;  if (present (show_state))  show_st = show_state
     if (int%tag /= 0) then
        write (u, *)  "Interaction:", int%tag
        do i = 1, int%n_tot
@@ -446,8 +454,10 @@ contains
              write (u, *)
           end if
        end if
-       call state_matrix_write (int%state_matrix, &
-            write_value_list=verbose, verbose=verbose, unit=unit)
+       if (show_st) then
+          call state_matrix_write (int%state_matrix, &
+               write_value_list=verbose, verbose=verbose, unit=unit)
+       end if
     else
        write (u, *) "Interaction: [empty]"
     end if
@@ -748,7 +758,7 @@ contains
     end if
   end function idx
 
-  function interaction_get_momenta (int, outgoing) result (p)
+  function interaction_get_momenta_all (int, outgoing) result (p)
     type(vector4_t), dimension(:), allocatable :: p
     type(interaction_t), intent(in) :: int
     logical, intent(in), optional :: outgoing
@@ -765,7 +775,15 @@ contains
     do i = 1, size (p)
        p(i) = int%p(idx (int, i, outgoing))
     end do
-  end function interaction_get_momenta
+  end function interaction_get_momenta_all
+
+  function interaction_get_momenta_idx (int, jj) result (p)
+    type(vector4_t), dimension(:), allocatable :: p
+    type(interaction_t), intent(in) :: int
+    integer, dimension(:), intent(in) :: jj
+    allocate (p (size (jj)))
+    p = int%p(jj)
+  end function interaction_get_momenta_idx
 
   function interaction_get_momentum (int, i, outgoing) result (p)
     type(vector4_t) :: p
@@ -775,42 +793,58 @@ contains
     p = int%p(idx (int, i, outgoing))
   end function interaction_get_momentum
 
-  subroutine interaction_init_prt_list (int, prt_list)
+  subroutine interaction_to_subevt (int, j_beam, j_in, j_out, subevt)
     type(interaction_t), intent(in), target :: int
-    type(prt_list_t), intent(out) :: prt_list
+    integer, dimension(:), intent(in) :: j_beam, j_in, j_out
+    type(subevt_t), intent(out) :: subevt
     type(flavor_t), dimension(:), allocatable :: flv
-    integer :: i
+    integer :: n_beam, n_in, n_out, i, j
     allocate (flv (int%n_tot))
     flv = quantum_numbers_get_flavor (interaction_get_quantum_numbers (int, 1))
-    call prt_list_init (prt_list, int%n_in + int%n_out)
-    do i = 1, int%n_in
-       call prt_list_set_incoming (prt_list, i, &
-            flavor_get_pdg (flv(i)), &
+    n_beam = size (j_beam)
+    n_in = size (j_in)
+    n_out = size (j_out)
+    call subevt_init (subevt, n_beam + n_in + n_out)
+    do i = 1, n_beam
+       j = j_beam(i)
+       call subevt_set_beam (subevt, i, &
+            flavor_get_pdg (flv(j)), &
             vector4_null, &
-            flavor_get_mass (flv(i)) ** 2)
+            flavor_get_mass (flv(j)) ** 2)
     end do
-    do i = 1, int%n_out
-       call prt_list_set_outgoing (prt_list, int%n_in+i, &
-            flavor_get_pdg (flv(int%n_in+int%n_vir+i)), &
+    do i = 1, n_in
+       j = j_in(i)
+       call subevt_set_incoming (subevt, n_beam + i, &
+            flavor_get_pdg (flv(j)), &
             vector4_null, &
-            flavor_get_mass (flv(int%n_in+int%n_vir+i)) ** 2)
+            flavor_get_mass (flv(j)) ** 2)
     end do
-  end subroutine interaction_init_prt_list
+    do i = 1, n_out
+       j = j_out(i)
+       call subevt_set_outgoing (subevt, n_beam + n_in + i, &
+            flavor_get_pdg (flv(j)), &
+            vector4_null, &
+            flavor_get_mass (flv(j)) ** 2)
+    end do
+  end subroutine interaction_to_subevt
 
-  subroutine interaction_momenta_to_prt_list (int, prt_list)
+  subroutine interaction_momenta_to_subevt (int, j_beam, j_in, j_out, subevt)
     type(interaction_t), intent(in) :: int
-    type(prt_list_t), intent(inout) :: prt_list
-    call prt_list_set_p_incoming &
-         (prt_list, - interaction_get_momenta (int, outgoing=.false.))
-    call prt_list_set_p_outgoing &
-         (prt_list, interaction_get_momenta (int, outgoing=.true.))
-  end subroutine interaction_momenta_to_prt_list
+    integer, dimension(:), intent(in) :: j_beam, j_in, j_out
+    type(subevt_t), intent(inout) :: subevt
+    call subevt_set_p_beam &
+         (subevt, - interaction_get_momenta (int, j_beam))
+    call subevt_set_p_incoming &
+         (subevt, - interaction_get_momenta (int, j_in))
+    call subevt_set_p_outgoing &
+         (subevt, interaction_get_momenta (int, j_out))
+  end subroutine interaction_momenta_to_subevt
 
-  function interaction_get_state_matrix (int) result (state)
-    type(state_matrix_t) :: state
-    type(interaction_t), intent(in) :: int
-    state = int%state_matrix
-  end function interaction_get_state_matrix
+  function interaction_get_state_matrix_ptr (int) result (state)
+    type(state_matrix_t), pointer :: state
+    type(interaction_t), intent(in), target :: int
+    state => int%state_matrix
+  end function interaction_get_state_matrix_ptr
 
   function interaction_get_resonance_flags (int) result (resonant)
     type(interaction_t), intent(in) :: int
@@ -1124,6 +1158,8 @@ contains
     type(interaction_t), intent(in) :: int1, int2
     integer, intent(out) :: n
     integer, dimension(:,:), intent(out), allocatable :: connection_index
+    integer, dimension(:,:), allocatable :: conn_index_tmp
+    integer, dimension(:), allocatable :: ordering
     integer :: i, j, k
     type(external_link_t) :: link2, link1
     type(interaction_t), pointer :: int_link, int_link1
@@ -1150,7 +1186,7 @@ contains
           end if
        end if
     end do
-    allocate (connection_index (n, 2))
+    allocate (conn_index_tmp (n, 2))
     n = 0
     do i = 1, size (int2%source)
        link2 = interaction_get_ultimate_source (int2, i)
@@ -1158,8 +1194,8 @@ contains
           int_link => external_link_get_ptr (link2)
           if (int_link%tag == int1%tag) then
              n = n + 1
-             connection_index(n,1) = external_link_get_index (int2%source(i))
-             connection_index(n,2) = i
+             conn_index_tmp(n,1) = external_link_get_index (int2%source(i))
+             conn_index_tmp(n,2) = i
           else
              k = external_link_get_index (link2)
              do j = 1, size (int1%source)
@@ -1169,8 +1205,8 @@ contains
                    if (int_link1%tag == int_link%tag) then
                       if (external_link_get_index (link1) == k) then
                          n = n + 1
-                         connection_index(n,1) = j
-                         connection_index(n,2) = i
+                         conn_index_tmp(n,1) = j
+                         conn_index_tmp(n,2) = i
                       end if
                    end if
                 end if
@@ -1178,6 +1214,14 @@ contains
           end if
        end if
     end do
+    allocate (connection_index (n, 2))
+    if (n > 1) then
+       allocate (ordering (n))
+       ordering = order (conn_index_tmp(:,1))
+       connection_index = conn_index_tmp(ordering,:)
+    else               
+       connection_index = conn_index_tmp
+    end if
   end subroutine find_connections
 
   subroutine interaction_test ()

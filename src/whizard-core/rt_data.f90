@@ -1,11 +1,11 @@
-! WHIZARD 2.0.3 Tue Aug 10 2010
+! WHIZARD 2.0.4 Tue Oct 26 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
-!     with contributions by Christian Speckner, Sebastian Schmidt, 
-!     Daniel Wiesler, Felix Braam
+!     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+!     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -40,6 +40,7 @@ module rt_data
   use beams
   use process_libraries
   use iterations
+  use beam_polarizations
   use strfun_config
   use user_files
 
@@ -102,18 +103,12 @@ contains
     call var_list_append_int_ptr &
          (global%var_list, var_str ("seed_value"), global%seed, known, &
           intrinsic=.true.)
-    call var_list_append_real &
-         (global%var_list, var_str ("sqrts"), 0._default, &
-          intrinsic=.true.)
     call var_list_append_string &
          (global%var_list, var_str ("$model_name"), &
           intrinsic=.true.)
     call var_list_append_string &
          (global%var_list, var_str ("$restrictions"), var_str (""), &
           intrinsic=.true.)
-    call var_list_append_string &
-         (global%var_list, var_str ("$method"), var_str ("omega"), &
-          intrinsic=.true.)       
     call var_list_append_string &
          (global%var_list, var_str ("$method"), var_str ("omega"), &
           intrinsic=.true.)       
@@ -133,13 +128,22 @@ contains
          (global%var_list, var_str ("$library_name"), &
           intrinsic=.true.)
     call var_list_append_real &
-         (global%var_list, var_str ("cm_momentum"), 0._default, &
+         (global%var_list, var_str ("sqrts"), &
           intrinsic=.true.)
     call var_list_append_real &
-         (global%var_list, var_str ("cm_theta"), 0._default, &
+         (global%var_list, var_str ("beam1_momentum"), &
           intrinsic=.true.)
     call var_list_append_real &
-         (global%var_list, var_str ("cm_phi"), 0._default, &
+         (global%var_list, var_str ("beam2_momentum"), &
+          intrinsic=.true.)
+    call var_list_append_real &
+         (global%var_list, var_str ("crossing_angle"), &
+          intrinsic=.true.)
+    call var_list_append_real &
+         (global%var_list, var_str ("beams_theta"), &
+          intrinsic=.true.)
+    call var_list_append_real &
+         (global%var_list, var_str ("beams_phi"), &
           intrinsic=.true.)
     call var_list_append_real &
          (global%var_list, var_str ("luminosity"), 0._default, &
@@ -165,6 +169,9 @@ contains
     call var_list_append_int &
          (global%var_list, var_str ("isr_order"), 3, &
           intrinsic=.true.)
+    call var_list_append_log &
+         (global%var_list, var_str ("?isr_recoil"), .false., &
+          intrinsic=.true.)
     call var_list_append_real &
          (global%var_list, var_str ("epa_alpha"), 0._default, &
           intrinsic=.true.)
@@ -179,6 +186,9 @@ contains
           intrinsic=.true.)
     call var_list_append_real &
          (global%var_list, var_str ("epa_mass"), 0._default, &
+          intrinsic=.true.)
+    call var_list_append_log &
+         (global%var_list, var_str ("?epa_recoil"), .false., &
           intrinsic=.true.)
     call var_list_append_real &
          (global%var_list, var_str ("ewa_x_min"), 0._default, &
@@ -225,24 +235,25 @@ contains
          (global%var_list, var_str ("circe2_sqrts"), &
           intrinsic=.true.)   
     call var_list_append_log &
-         (global%var_list, var_str ("?circe2_photon1"), .false., &
-          intrinsic=.true.)     
-    call var_list_append_log &
-         (global%var_list, var_str ("?circe2_photon2"), .false., &
-          intrinsic=.true.)               
-    call var_list_append_int &
-         (global%var_list, var_str ("circe2_ver"), 0, intrinsic=.true.)           
-    call var_list_append_log &
          (global%var_list, var_str ("?circe2_generate"), .true., &
           intrinsic=.true.)        
     call var_list_append_log &
          (global%var_list, var_str ("?circe2_map"), .true., &
           intrinsic=.true.)               
+    call var_list_append_log &
+         (global%var_list, var_str ("?circe2_polarized"), .true., &
+          intrinsic=.true.)               
     call var_list_append_string &    
-         (global%var_list, var_str ("$circe2_file"), var_str (""), &
+         (global%var_list, var_str ("$circe2_file"), &
           intrinsic=.true.)      
     call var_list_append_string &    
          (global%var_list, var_str ("$circe2_design"), var_str ("*"), &
+          intrinsic=.true.)               
+    call var_list_append_string &    
+         (global%var_list, var_str ("$beam_events_file"), &
+          intrinsic=.true.)      
+    call var_list_append_log &
+         (global%var_list, var_str ("?beam_events_warn_eof"), .true., &
           intrinsic=.true.)               
     call var_list_append_log &
          (global%var_list, var_str ("?alpha_s_is_fixed"), .true., &
@@ -328,6 +339,9 @@ contains
           intrinsic=.true.)
     call var_list_append_real &
          (global%var_list, var_str ("phs_q_scale"), 10._default, &
+          intrinsic=.true.)
+    call var_list_append_log &
+         (global%var_list, var_str ("?allow_global_mapping"), .false., &
           intrinsic=.true.)
     call var_list_append_log &
          (global%var_list, var_str ("?adapt_final_grids"), .true., &
@@ -594,6 +608,8 @@ contains
     call var_list_append_real (global%var_list, var_str ("ps_isr_z_cutoff"), &
          0.999_default, intrinsic = .true.)
     call var_list_append_real (global%var_list, var_str ("ps_isr_minenergy"), &
+         1._default, intrinsic = .true.)
+    call var_list_append_real (global%var_list, var_str ("ps_isr_tscalefactor"), &
          1._default, intrinsic = .true.)
     call var_list_append_log &
          (global%var_list, var_str ("?ps_isr_only_onshell_emitted_partons"), .false., &

@@ -5,10 +5,11 @@
 ##
 ########################################################################
 #
-# Copyright (C) 1999-2009 by 
+# Copyright (C) 1999-2010 by 
 #     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+#     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by 

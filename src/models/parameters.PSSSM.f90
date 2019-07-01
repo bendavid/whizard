@@ -1,9 +1,10 @@
 ! $Id: parameters.PSSSM.f90,v 1.1 2005/10/25 09:21:48 reuter Exp $
 !
-! Copyright (C) 1999-2009 by 
+! Copyright (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+!     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -3518,37 +3519,6 @@ subroutine model_update_alpha_s (alpha_s)
   igs = cmplx(0.0_default, 1.0_default, kind=default) * gs
   gssq = (gs / sqrt (2.0_default))
   !!!!!!!!!!!!!!!
-  !!!W Photon SQuarks
-  !!!!!!!!!!!!!!!
-      do gen1 = 1,3
-       do gen2 = 1,3
-        do sfm1 = 1,2
-         do sfm2 = 1,2
-           g_wA_susd(gen1,gen2,sfm1,sfm2) = &
-              ((gcc * e * (2.0_default / 3.0_default) * vckm(gen1,gen2) *  &
-              conjg (mix_su(gen1,sfm1,1)) * mix_sd(gen2,sfm2,1)))
-         end do
-        end do
-       end do
-      end do
-           g_wA_susd_c = conjg(g_wA_susd)  
-  !!!!!!!!!!!!!!!
-  !!!W Z SQuarks
-  !!!!!!!!!!!!!!!
-      do gen1 = 1,3
-       do gen2 = 1,3
-        do sfm1 = 1,2
-         do sfm2 = 1,2
-           g_wz_susd(gen1,gen2,sfm1,sfm2) = &
-             ( - (gcc * gz * (2.0_default / 3.0_default) * &
-             sin2thw * vckm(gen1,gen2) *  &
-             conjg (mix_su(gen1,sfm1,1)) * mix_sd(gen2,sfm2,1)))
-         end do
-        end do
-       end do
-      end do
-           g_wz_susd_c = conjg(g_wz_susd)
-  !!!!!!!!!!!!!!!
   !!!Gluon W SQuarks
   !!!!!!!!!!!!!!!
            do gen1 = 1,3
@@ -3588,6 +3558,26 @@ subroutine model_update_alpha_s (alpha_s)
   !!!Glu Glu Squarks
   !!!!!!!!!!!!!!!!
       g_gg_sqsq = (gssq**2)    
+  !!!!!!!!!!!!!!!
+  !!!!!!Gluino_Quark_SQuark
+  !!!!!!!!!!!!!!!
+   do gen = 1,3
+      do sfm1 = 1,2
+         g_yuk_gluino_usu(1,gen,sfm1) = &
+              ( - (mix_su(gen,sfm1,2) * (gs / sqrt (2.0_default))))
+         g_yuk_gluino_usu(2,gen,sfm1) = & 
+              (mix_su(gen,sfm1,1) * (gs / sqrt (2.0_default)))    
+         
+         g_yuk_gluino_dsd(1,gen,sfm1) = &
+              ( - (mix_sd(gen,sfm1,2) * (gs / sqrt (2.0_default))))
+         g_yuk_gluino_dsd(2,gen,sfm1) = & 
+              (mix_sd(gen,sfm1,1) * (gs / sqrt (2.0_default)))    
+      end do
+   end do
+   g_yuk_gluino_usu_c(1,:,:) =  g_yuk_gluino_usu(2,:,:) 
+   g_yuk_gluino_usu_c(2,:,:) =  g_yuk_gluino_usu(1,:,:)    
+   g_yuk_gluino_dsd_c(1,:,:) =  g_yuk_gluino_dsd(2,:,:) 
+   g_yuk_gluino_dsd_c(2,:,:) =  g_yuk_gluino_dsd(1,:,:) 
 end subroutine model_update_alpha_s
 end module parameters_psssm
 

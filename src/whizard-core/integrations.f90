@@ -1,11 +1,11 @@
-! WHIZARD 2.0.3 Tue Aug 10 2010
+! WHIZARD 2.0.4 Tue Oct 26 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
-!     with contributions by Christian Speckner, Sebastian Schmidt, 
-!     Daniel Wiesler, Felix Braam
+!     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+!     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -73,11 +73,13 @@ module integrations
     logical :: helicity_selection_active = .false.
     real(default) :: helicity_selection_threshold = -1
     integer :: helicity_selection_cutoff = 1000
+    logical :: sqrts_known = .false.
     real(default) :: sqrts = -1
     real(default) :: alpha_s = -1
     logical :: time_estimate = .false.
     type(beam_data_t) :: beam_data
     logical :: use_beams = .false.
+    logical :: allow_global_mapping = .false.
     type(sf_list_t), pointer :: sf_list => null ()
     logical :: use_strfun = .false.
     type(iterations_list_t) :: it_list
@@ -151,6 +153,8 @@ contains
          var_list_get_rval (var_list, var_str ("phs_m_scale"))
     intg%mapping_defaults%momentum_transfer_scale = &
          var_list_get_rval (var_list, var_str ("phs_q_scale"))
+    intg%allow_global_mapping = &
+         var_list_get_lval (var_list, var_str ("?allow_global_mapping"))
     intg%rebuild_grids = &
          var_list_get_lval (var_list, var_str ("?rebuild_grids"))
     intg%adapt_final_grids = &
@@ -185,8 +189,8 @@ contains
     if (var_list_is_known (var_list, var_str ("alphas"))) then
        intg%alpha_s = var_list_get_rval (var_list, var_str ("alphas"))
     end if
-    intg%sqrts = &
-         var_list_get_rval (var_list, var_str ("sqrts"))
+    intg%sqrts_known = var_list_is_known (var_list, "sqrts")
+    intg%sqrts = var_list_get_rval (var_list, "sqrts")
     intg%time_estimate = &
          var_list_get_lval (var_list, var_str ("?time_estimate"))
   end subroutine integration_basic_init
@@ -223,7 +227,8 @@ contains
     logical, intent(out) :: ok
     call process_store_init_process (intg%process, &
          prc_lib, intg%process_id, model, lhapdf_status, var_list, &
-         use_beams = intg%use_beams)
+         use_beams = intg%use_beams, &
+         allow_global_mapping = intg%allow_global_mapping)
     if (.not. process_is_valid (intg%process)) then
        call msg_fatal ("Process '" &
             // char (intg%process_id) // "': " &
@@ -270,9 +275,12 @@ contains
                   var_str ("mismatch between beams and hard interaction.") /) )
           ok = .false.
        end if
-    else
+    else if (intg%sqrts_known) then
        call process_setup_beams &
             (intg%process, intg%beam_data, 0, 0, sqrts = intg%sqrts)
+    else
+       call process_setup_beams &
+            (intg%process, intg%beam_data, 0, 0)
     end if
     if (ok)  call process_connect_strfun (intg%process, ok)
     if (.not. ok) then
@@ -368,6 +376,11 @@ contains
     end if
     intg%md5sum%mappings = mapping_defaults_md5sum (intg%mapping_defaults)
   end subroutine integration_collect_md5sums
+
+  subroutine integration_setup_subevt (intg)
+    type(integration_t), intent(inout) :: intg
+    call process_setup_subevt (intg%process)
+  end subroutine integration_setup_subevt
 
   subroutine integration_setup_cuts (intg, pn_cuts_lexpr, verbose)
     type(integration_t), intent(inout) :: intg
@@ -605,6 +618,7 @@ contains
                (intg, global%it_list, global%it_list_default, ok, verbose)
        end if
        if (ok) then
+          call integration_setup_subevt (intg)
           call integration_setup_cuts (intg, global%pn_cuts_lexpr, verbose)
           call integration_setup_scale (intg, global%pn_scale_expr, verbose)
           call integration_setup_weight (intg, global%pn_weight_expr, verbose)

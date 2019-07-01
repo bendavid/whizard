@@ -1,11 +1,11 @@
-! WHIZARD 2.0.3 Tue Aug 10 2010
+! WHIZARD 2.0.4 Tue Oct 26 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
-!     with contributions by Christian Speckner, Sebastian Schmidt, 
-!     Daniel Wiesler, Felix Braam
+!     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+!     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -33,7 +33,7 @@ use iso_fortran_env, only: iostat_end, iostat_eor !NODEP!
 
   integer, parameter, public :: VERSION_STRLEN = 255
   character(len=VERSION_STRLEN), parameter, public :: &
-       & VERSION_STRING = "WHIZARD version 2.0.3 (Tue Aug 10 2010)"
+       & VERSION_STRING = "WHIZARD version 2.0.4 (Tue Oct 26 2010)"
   integer, parameter, public :: MIN_UNIT = 11, MAX_UNIT = 99
   integer, parameter, public :: ENVVAR_LEN = 1000
   integer, parameter, public :: DLERROR_LEN = 160
@@ -69,10 +69,10 @@ use iso_fortran_env, only: iostat_end, iostat_eor !NODEP!
   integer, parameter, public :: MAX_TRIES_FOR_SINGLE_EVENT = 100000
   character(*), parameter, public :: &
        DEFAULT_ANALYSIS_FILENAME = "whizard_analysis.dat"
-  character(len=1), dimension(1), parameter, public :: &
-       FORBIDDEN_ENDINGS1 = (/ "o" /)
-  character(len=2), dimension(3), parameter, public :: &       
-       FORBIDDEN_ENDINGS2 = (/ "mp", "ps", "vg" /)
+  character(len=1), dimension(2), parameter, public :: &
+       FORBIDDEN_ENDINGS1 = (/ "o", "a" /)
+  character(len=2), dimension(5), parameter, public :: &       
+       FORBIDDEN_ENDINGS2 = (/ "mp", "ps", "vg", "lo", "la" /)
   character(len=3), dimension(12), parameter, public :: &
        FORBIDDEN_ENDINGS3 = (/ "aux", "dvi", "evx", "f03", "f90", "log", &
           "ltp", "mpx", "pdf", "phs", "sin", "tex" /)

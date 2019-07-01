@@ -1,0 +1,25 @@
+model = SM
+
+process test_me_eemm = e1, E1 => e2, E2 { $method = "test" }
+process test_me_unit = e1, E1 => e2, E2 { $method = "unit" }
+
+compile
+
+sqrts = 100 GeV
+
+me = 0
+mmu = 0
+
+seed = 0
+integrate (test_me_eemm) 
+printf "Expecting 1.000"
+tolerance = 3*0.01
+expect (integral (test_me_eemm) ==~ 1.000)
+
+seed = 0
+integrate (test_me_unit) 
+printf "Expecting 1.000"
+tolerance = 3*1.0
+expect (integral (test_me_unit) ==~ 774646)
+
+show (results)

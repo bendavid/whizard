@@ -67,7 +67,8 @@ MISC_TESTS_SIN = \
     static.sin static2.sin \
     susyhit.sin \
     sm_ext.sin \
-    models.sin
+    models.sin \
+    test_me.sin
 
 MSSM_EXT_M4 = \
     mssm_ext-ee.m4 mssm_ext-ee2.m4 \

@@ -1,11 +1,11 @@
-! WHIZARD 2.0.3 Tue Aug 10 2010
+! WHIZARD 2.0.4 Tue Oct 26 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
-!     with contributions by Christian Speckner, Sebastian Schmidt, 
-!     Daniel Wiesler, Felix Braam
+!     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+!     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -63,6 +63,7 @@ module phs_trees
   public :: phs_tree_canonicalize
   public :: phs_tree_init_mapping
   public :: phs_tree_set_mapping_parameters
+  public :: phs_tree_assign_global_mapping
   public :: phs_tree_set_mass_sum
   public :: phs_tree_equivalent
   public :: phs_tree_find_msq_permutation
@@ -442,6 +443,12 @@ contains
             (tree%mapping(k), mapping_defaults, variable_limits) 
     end do
   end subroutine phs_tree_set_mapping_parameters
+
+  subroutine phs_tree_assign_global_mapping (tree, mapping)
+    type(phs_tree_t), intent(in) :: tree
+    type(mapping_t), intent(out) :: mapping
+    mapping = tree%mapping(tree%mask_out)
+  end subroutine phs_tree_assign_global_mapping
 
   subroutine phs_tree_set_mass_sum (tree, flv)
     type(phs_tree_t), intent(inout) :: tree

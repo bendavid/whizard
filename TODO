@@ -1,14 +1,12 @@
 WHIZARD Core
-* Release 2.0.3
+* Release 2.0.5
   - 2->1 processes ?
-  - reactivate CIRCE2/pT distribution
   - profiling/optimization
   - Library API (bind(C))
   - Behavior in batch environment, large event numbers
 
 * 2.1
   - EWA implementation
-  - pT for EWA, EPA etc.
   - reconsider structure function mappings for optimization
   - integration of multiple observables
   - jet finder
@@ -38,17 +36,17 @@ O'Mega
   - helicity optimization (numerically done/analytically pending)
 
 Models
-* Release 2.0.4
+* Release 2.0.5
   - more self-checks (trivial processes + all kinds of commands)
   - Tests for 7, 8 fermions ... 
 
 * 2.1
-  - Top-quark anomalous couplings (partially done)
+  - Top-quark anomalous couplings (now partially included)
   - W-gamma couplings to resonances
   - W'
 
 VAMP
-* 2.0.4
+* 2.0.5
   - unify naming conventions for types with WHIZARD (JR will do, 
 	e.g. type :: division -> division_t (partially done)
 * 2.1
@@ -59,7 +57,7 @@ configure
   - Windows support?
 
 Misc
-* Release 2.0.4
+* Release 2.0.5
   - ATLAS/CMS software environment
   - Manual + Paper (partially done)
 

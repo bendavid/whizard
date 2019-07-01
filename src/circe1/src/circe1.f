@@ -1,6 +1,6 @@
 c circe1.f -- canonical beam spectra for linear collider physics
 c $Id: circe.nw 67 2002-03-28 17:13:06Z ohl $
-c   Copyright (C) 1996-2002 by Thorsten Ohl <ohl@hep.tu-darmstadt.de>
+c   Copyright (C) 1996-2010 by Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 c
 c   Circe is free software; you can redistribute it and/or modify it
 c   under the terms of the GNU General Public License as published by
@@ -869,10 +869,6 @@ c   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
       if ((ver .eq. 1) .or. (ver .eq. 0)) then
       if (rev .eq. 0) then
          r = 0
-      call circem ('WARNING', '*************************************')
-      call circem ('WARNING', '* This release is not official yet, *')
-      call circem ('WARNING', '* do not use it in publications!    *')
-      call circem ('WARNING', '*************************************')
       elseif (rev .ge. 1997 04 17) then
          r = 5
       elseif (rev .ge. 1996 09 02) then
@@ -954,10 +950,6 @@ c   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
          ver = 1
       if (rev .eq. 0) then
          r = 0
-      call circem ('WARNING', '*************************************')
-      call circem ('WARNING', '* This release is not official yet, *')
-      call circem ('WARNING', '* do not use it in publications!    *')
-      call circem ('WARNING', '*************************************')
       elseif (rev .ge. 1997 04 17) then
          r = 5
          if (ver34 .eq. 3) then
@@ -1042,10 +1034,6 @@ c   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
          ver = 1
       if (rev .eq. 0) then
          r = 0
-      call circem ('WARNING', '*************************************')
-      call circem ('WARNING', '* This release is not official yet, *')
-      call circem ('WARNING', '* do not use it in publications!    *')
-      call circem ('WARNING', '*************************************')
       elseif (rev .ge. 1998 05 05) then
          r = 1
       elseif (rev .lt. 1998 05 05) then
@@ -1121,10 +1109,6 @@ c   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
          ver = 1
       if (rev .eq. 0) then
          r = 0
-      call circem ('WARNING', '*************************************')
-      call circem ('WARNING', '* This release is not official yet, *')
-      call circem ('WARNING', '* do not use it in publications!    *')
-      call circem ('WARNING', '*************************************')
       elseif (rev .ge. 1999 04 15) then
          r = 1
       elseif (rev .lt. 1999 04 15) then
@@ -1194,10 +1178,6 @@ c   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
          ver = 1
       if (rev .eq. 0) then
          r = 0
-      call circem ('WARNING', '*************************************')
-      call circem ('WARNING', '* This release is not official yet, *')
-      call circem ('WARNING', '* do not use it in publications!    *')
-      call circem ('WARNING', '*************************************')
       elseif (rev .ge. 2000 04 26) then
          r = 1
       elseif (rev .lt. 2000 04 26) then
@@ -1314,10 +1294,6 @@ c   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
          ver = 1
       if (rev .eq. 0) then
          r = 0
-      call circem ('WARNING', '*************************************')
-      call circem ('WARNING', '* This release is not official yet, *')
-      call circem ('WARNING', '* do not use it in publications!    *')
-      call circem ('WARNING', '*************************************')
       elseif (rev .ge. 2001 06 17) then
          r = 1
       elseif (rev .lt. 2001 06 17) then
@@ -1437,10 +1413,6 @@ c   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
          ver = 1
       if (rev .eq. 0) then
          r = 0
-      call circem ('WARNING', '*************************************')
-      call circem ('WARNING', '* This release is not official yet, *')
-      call circem ('WARNING', '* do not use it in publications!    *')
-      call circem ('WARNING', '*************************************')
       elseif (rev .ge. 2002 03 28) then
          r = 1
       elseif (rev .lt. 2002 03 28) then

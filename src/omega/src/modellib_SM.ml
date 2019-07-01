@@ -1,10 +1,12 @@
-(* $Id: modellib_SM.ml 2743 2010-08-08 14:06:26Z ohl $
+(* $Id: modellib_SM.ml 2856 2010-10-14 12:50:05Z fbach $
 
    Copyright (C) 1999-2010 by
 
        Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
        Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+       Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+       Fabian Bach <fabian.bach@cern.ch> (only parts of this file)
 
    WHIZARD is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by
@@ -21,9 +23,9 @@
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
 let rcs_file = RCS.parse "Modellib_SM" ["Lagragians"]
-    { RCS.revision = "$Revision: 2743 $";
-      RCS.date = "$Date: 2010-08-08 16:06:26 +0200 (Sun, 08 Aug 2010) $";
-      RCS.author = "$Author: ohl $";
+    { RCS.revision = "$Revision: 2856 $";
+      RCS.date = "$Date: 2010-10-14 14:50:05 +0200 (Thu, 14 Oct 2010) $";
+      RCS.author = "$Author: fbach $";
       RCS.source
         = "$URL: svn+ssh://jr_reuter@login.hepforge.org/hepforge/svn/whizard/trunk/src/omega/src/modellib_SM.ml $" }
 
@@ -509,6 +511,7 @@ module type SM_flags =
     val higgs_anom : bool
     val k_matrix : bool
     val ckm_present : bool
+    val top_anom : bool
   end
 
 module SM_no_anomalous : SM_flags =
@@ -519,6 +522,7 @@ module SM_no_anomalous : SM_flags =
     let higgs_anom = false
     let k_matrix = false
     let ckm_present = false
+    let top_anom = false
   end
 
 module SM_no_anomalous_ckm : SM_flags =
@@ -529,6 +533,7 @@ module SM_no_anomalous_ckm : SM_flags =
     let higgs_anom = false
     let k_matrix = false
     let ckm_present = true
+    let top_anom = false
   end
 
 module SM_anomalous : SM_flags =
@@ -539,6 +544,7 @@ module SM_anomalous : SM_flags =
     let higgs_anom = true
     let k_matrix = false
     let ckm_present = false
+    let top_anom = false
   end
 
 module SM_anomalous_ckm : SM_flags =
@@ -549,6 +555,7 @@ module SM_anomalous_ckm : SM_flags =
     let higgs_anom = true
     let k_matrix = false
     let ckm_present = true
+    let top_anom = false
   end
 
 module SM_k_matrix : SM_flags =
@@ -559,6 +566,7 @@ module SM_k_matrix : SM_flags =
     let higgs_anom = false
     let k_matrix = true
     let ckm_present = false
+    let top_anom = false
   end
 
 module SM_Hgg : SM_flags =
@@ -569,6 +577,18 @@ module SM_Hgg : SM_flags =
     let higgs_anom = false
     let k_matrix = false
     let ckm_present = false
+    let top_anom = false
+  end
+
+module SM_anomalous_top : SM_flags =
+  struct
+    let higgs_triangle = false
+    let triple_anom = false
+    let quartic_anom = false
+    let higgs_anom = false
+    let k_matrix = false
+    let ckm_present = false
+    let top_anom = true
   end
 
 (* \thocwmodulesection{Complete Minimal Standard Model (including some extensions)} *)
@@ -796,7 +816,11 @@ module SM (Flags : SM_flags) =
       | Unit | Pi | Alpha_QED | Sin2thw
       | Sinthw | Costhw | E | G_weak | Vev
       | Q_lepton | Q_up | Q_down | G_CC | G_CCQ of int*int
-      | G_NC_neutrino | G_NC_lepton | G_NC_up | G_NC_down
+      | G_NC_neutrino | G_NC_lepton | G_NC_up | G_NC_down 
+      | G_TVA_ttA 
+      | G_VLR_ttZ | G_TVA_ttZ 
+      | G_VLR_tbW | G_TLR_tbW 
+      | G_TVA_ttG
       | I_Q_W | I_G_ZWW
       | G_WWWW | G_ZZWW | G_AZWW | G_AAWW
       | I_G1_AWW | I_G1_ZWW
@@ -954,11 +978,36 @@ module SM (Flags : SM_flags) =
         [ ((L (-n), Ga, L n), FBF (1, Psibar, V, Psi), Q_lepton);
           ((U (-n), Ga, U n), FBF (1, Psibar, V, Psi), Q_up);
           ((D (-n), Ga, D n), FBF (1, Psibar, V, Psi), Q_down) ]
+
+(* \begin{equation}
+     \Delta\mathcal{L}_{tt\gamma} =
+        - e \frac{\upsilon}{\Lambda^2}
+            \bar{t} i\sigma^{\mu\nu} k_\nu (d_V(k^2) + i d_A(k^2) \gamma_5) t A_\mu
+   \end{equation} *)
+
+    let anomalous_ttA =
+      if Flags.top_anom then
+        [ ((M (U (-3)), G Ga, M (U 3)), FBF (1, Psibar, TVAM, Psi), G_TVA_ttA) ]
+      else
+        []
         
     let color_currents n =
       List.map mgm
         [ ((U (-n), Gl, U n), FBF ((-1), Psibar, V, Psi), Gs);
           ((D (-n), Gl, D n), FBF ((-1), Psibar, V, Psi), Gs) ]
+
+(* \begin{equation}
+     \Delta\mathcal{L}_{ttg} =
+        - g_s \frac{\upsilon}{\Lambda^2}
+            \bar{t}\lambda^a i\sigma^{\mu\nu}k_\nu
+                (d_V(k^2)+id_A(k^2)\gamma_5)tG^a_\mu
+   \end{equation} *)
+
+    let anomalous_ttG =
+      if Flags.top_anom then
+        [ ((M (U (-3)), G Gl, M (U 3)), FBF (1, Psibar, TVAM, Psi), G_TVA_ttG) ]
+      else
+        []
 
 (* \begin{equation}
      \mathcal{L}_{\textrm{NC}} =
@@ -972,6 +1021,21 @@ module SM (Flags : SM_flags) =
           ((N (-n), Z, N n), FBF (1, Psibar, VA, Psi), G_NC_neutrino);
           ((U (-n), Z, U n), FBF (1, Psibar, VA, Psi), G_NC_up);
           ((D (-n), Z, D n), FBF (1, Psibar, VA, Psi), G_NC_down) ] 
+
+(* \begin{equation}
+     \Delta\mathcal{L}_{ttZ} =
+        - \frac{g}{2 c_W} \frac{\upsilon^2}{\Lambda^2}\left\lbrack
+              \bar{t} \fmslash{Z} (X_L(k^2) P_L + X_R(k^2) P_R) t
+            - \bar{t}\frac{i\sigma^{\mu\nu}k_\nu}{m_Z}
+                  (d_V(k^2)+id_A(k^2)\gamma_5)tZ_\mu\right\rbrack
+   \end{equation} *)
+
+    let anomalous_ttZ =
+      if Flags.top_anom then
+        [ ((M (U (-3)), G Z, M (U 3)), FBF (1, Psibar, VLRM, Psi), G_VLR_ttZ);
+          ((M (U (-3)), G Z, M (U 3)), FBF (1, Psibar, TVAM, Psi), G_TVA_ttZ) ]
+      else
+        []
 
 (* \begin{equation}
      \mathcal{L}_{\textrm{CC}} =
@@ -1000,6 +1064,24 @@ module SM (Flags : SM_flags) =
             ((U (-n1), Wp, D n2), FBF (1, Psibar, VL, Psi), G_CCQ (n1,n2)) ] in
       ThoList.flatmap charged_currents' [1;2;3] @ 
       List.flatten (Product.list2 charged_currents_2 [1;2;3] [1;2;3])
+
+(* \begin{equation}
+     \Delta\mathcal{L}_{tbW} =
+        - frac{g}{\sqrt{2}} \frac{\upsilon^2}{\Lambda^2}\left\lbrack
+            \bar{b}\fmslash{W}^-(V_L(k^2) P_L+V_R(k^2) P_R) t
+          - \bar{b}\frac{i\sigma^{\mu\nu}k_\nu}{m_W}
+                (g_L(k^2)P_L+g_R(k^2)P_R\gamma_5)tW^-_\mu\right\rbrack
+        + \textnormal{H.c.}
+   \end{equation} *)
+
+    let anomalous_tbW =
+      if Flags.top_anom then
+        [ ((M (D (-3)), G Wm, M (U 3)), FBF (1, Psibar, VLRM, Psi), G_VLR_tbW);
+          ((M (U (-3)), G Wp, M (D 3)), FBF (1, Psibar, VLRM, Psi), G_VLR_tbW);
+          ((M (D (-3)), G Wm, M (U 3)), FBF (1, Psibar, TLRM, Psi), G_TLR_tbW);
+          ((M (U (-3)), G Wp, M (D 3)), FBF (1, Psibar, TLRM, Psi), G_TLR_tbW) ]
+      else
+        []
 
     let yukawa =
       [ ((M (U (-3)), O H, M (U 3)), FBF (1, Psibar, S, Psi), G_Htt);
@@ -1463,6 +1545,8 @@ i*)
 
     let vertices3 =
       (ThoList.flatmap electromagnetic_currents [1;2;3] @
+       anomalous_ttA @ anomalous_ttZ @ anomalous_tbW @
+       anomalous_ttG @
        ThoList.flatmap color_currents [1;2;3] @
        ThoList.flatmap neutral_currents [1;2;3] @
        (if Flags.ckm_present then
@@ -1639,6 +1723,10 @@ i*)
       | Q_lepton -> "qlep" | Q_up -> "qup" | Q_down -> "qdwn"
       | G_NC_lepton -> "gnclep" | G_NC_neutrino -> "gncneu"
       | G_NC_up -> "gncup" | G_NC_down -> "gncdwn"
+      | G_TVA_ttA -> "gtva_tta" 
+      | G_VLR_ttZ -> "gvlr_ttz" | G_TVA_ttZ -> "gtva_ttz"
+      | G_VLR_tbW -> "gvlr_tbw" | G_TLR_tbW -> "gtlr_tbw"
+      | G_TVA_ttG -> "gtva_ttg"
       | G_CC -> "gcc"
       | G_CCQ (n1,n2) -> "gccq" ^ string_of_int n1 ^ string_of_int n2
       | I_Q_W -> "iqw" | I_G_ZWW -> "igzww" 

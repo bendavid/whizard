@@ -27,6 +27,16 @@ subroutine numberPDFM (set, n_members)
   stop
 end subroutine numberPDFM
 
+subroutine evolvePDF (x, q, ff)
+  double precision, intent(in) :: x, q
+  double precision, dimension(-6:6), intent(out) :: ff
+  ff = 0
+  write (0, "(A)")  "*************************************************************"
+  write (0, "(A)")  "*** LHAPDF: Error: library not linked, WHIZARD terminates ***"
+  write (0, "(A)")  "*************************************************************"
+  stop
+end subroutine evolvePDF
+
 subroutine evolvePDFM (set, x, q, ff)
   integer, intent(in) :: set
   double precision, intent(in) :: x, q

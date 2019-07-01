@@ -33,7 +33,8 @@ TESTS_DEFAULT = \
     md5.run \
     errors.run \
     extpar.run \
-    susyhit.run
+    susyhit.run \
+    test_me.run
 XFAIL_TESTS_DEFAULT = \
     errors.run
 
@@ -48,7 +49,6 @@ TESTS_REQ_OCAML = \
     alphas.run \
     colors.run \
     cuts.run \
-    lhapdf.run \
     ilc.run \
     mssmtest.run \
     models.run

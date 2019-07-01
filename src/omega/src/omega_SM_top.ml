@@ -1,25 +1,34 @@
-(* $Id: omega_SM:top.ml,v 1.3.10.2 2006/05/15 09:06:23 ohl Exp $ *)
-(* Copyright (C) 2000-2004 by Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
-   O'Mega is free software; you can redistribute it and/or modify it
-   under the terms of the GNU General Public License as published by 
+(* $Id: omega_SM_top.ml,v 1.3.10.2 2006/05/15 09:06:23 ohl Exp $ 
+
+   Copyright (C) 1999-2010 by
+
+       Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+       Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
+       Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+       Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+
+   WHIZARD is free software; you can redistribute it and/or modify it
+   under the terms of the GNU General Public License as published by
    the Free Software Foundation; either version 2, or (at your option)
    any later version.
-   O'Mega is distributed in the hope that it will be useful, but
+
+   WHIZARD is distributed in the hope that it will be useful, but
    WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
    GNU General Public License for more details.
+
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
-   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)  
+   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
-let rcs_file = RCS.parse "omega_SM_top" ["Standard Model with anomalous top"]
+let rcs_file = RCS.parse "omega_SM_top" ["Standard Model with charge -4/3 top"]
     { RCS.revision = "$Revision: $";
       RCS.date = "$Date: 2009/05/08 16:35:21 $";
       RCS.author = "$Author: jr_reuter $";
       RCS.source
         = "$Source: xxx $" }
 
-(* \thocwmodulesection{SM with anomalous top} *)
+(* \thocwmodulesection{SM with charge $_4/3$ top} *)
 
 module type SM_flags =
   sig
@@ -195,8 +204,69 @@ module Anomtop (Flags : SM_flags) =
           end
       | O _ -> 0
 
-    module Ch = Charges.Null
-    let charges _ = ()
+    (* Electrical charge, lepton number, baryon number.  We could avoid the
+       rationals altogether by multiplying the first and last by 3 \ldots *)
+
+    module Ch = Charges.QQ
+    let ( // ) = Algebra.Small_Rational.make
+
+    let generation' = function
+      |  1 -> [ 1//1;  0//1;  0//1]
+      |  2 -> [ 0//1;  1//1;  0//1]
+      |  3 -> [ 0//1;  0//1;  1//1]
+      | -1 -> [-1//1;  0//1;  0//1]
+      | -2 -> [ 0//1; -1//1;  0//1]
+      | -3 -> [ 0//1;  0//1; -1//1]
+      |  n -> invalid_arg ("SM_top.generation': " ^ string_of_int n)
+
+    let generation f =
+      match f with
+      | M (L n | N n | U n | D n) -> generation' n
+      | G _ | O _ -> [0//1; 0//1; 0//1]
+
+    let charge = function
+      | M f ->
+          begin match f with
+          | L n -> if n > 0 then -1//1 else  1//1
+          | N n -> 0//1
+          | U (1|2) -> 2//3 
+          | U ((-1)|(-2)) -> -2//3
+          | U 3 -> -4//3
+          | U (-3) -> 4//3
+          | U n -> invalid_arg ("SM_top.charge: up quark " ^ string_of_int n)
+          | D n -> if n > 0 then -1//3 else  1//3
+          end
+      | G f ->
+          begin match f with
+          | Gl | Ga | Z -> 0//1
+          | Wp ->  1//1
+          | Wm -> -1//1
+          end
+      | O f ->
+          begin match f with
+          | H | Phi0 ->  0//1
+          | Phip ->  1//1
+          | Phim -> -1//1
+          end
+
+    let lepton = function
+      | M f ->
+          begin match f with
+          | L n | N n -> if n > 0 then 1//1 else -1//1
+          | U _ | D _ -> 0//1
+          end
+      | G _ | O _ -> 0//1
+
+    let baryon = function
+      | M f ->
+          begin match f with
+          | L _ | N _ -> 0//1
+          | U n | D n -> if n > 0 then 1//1 else -1//1
+          end
+      | G _ | O _ -> 0//1
+
+    let charges f = 
+      [ charge f; lepton f; baryon f] @ generation f
 
     type constant =
       | Unit | Pi | Alpha_QED | Sin2thw

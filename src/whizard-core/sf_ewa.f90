@@ -1,11 +1,11 @@
-! WHIZARD 2.0.3 Tue Aug 10 2010
+! WHIZARD 2.0.4 Tue Oct 26 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
-!     with contributions by Christian Speckner, Sebastian Schmidt, 
-!     Daniel Wiesler, Felix Braam
+!     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+!     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -260,12 +260,13 @@ contains
     call interaction_freeze (int)
   end subroutine interaction_init_ewa
     
-  elemental subroutine strfun (f, fp, fm, fL, x, xb, r, E, data)  
+  elemental subroutine strfun (f, fp, fm, fL, x, xb, r, E, data, no_map)  
     real(default), intent(out) :: f, fm, fp, fL
     real(default) :: fsum
     real(default), intent(out) :: x, xb
     real(default), intent(in) :: r, E
     type(ewa_data_t), intent(in) :: data
+    logical, intent(in) :: no_map
     real(default) :: x0, x1
     real(default) :: rb, lx0, lx1, lx, d, den
     real(default) :: c1, c2, pt2
@@ -341,10 +342,11 @@ contains
     end select   
   end subroutine strfun
        
-  subroutine interaction_apply_ewa (int, r, ewa_data)
+  subroutine interaction_apply_ewa (int, r, ewa_data, no_map)
     type(interaction_t), intent(inout) :: int
     real(default), dimension(:), intent(in) :: r
     type(ewa_data_t), dimension(:), intent(in) :: ewa_data
+    logical, intent(in) :: no_map
     type(vector4_t) :: k
     type(vector4_t), dimension(2) :: k_split
     type(splitting_data_t) :: sd
@@ -357,7 +359,7 @@ contains
     case (24) 
        sd = new_splitting_data (k, k**2, ewa_data(1)%mass**2, ewa_data(1)%mw)    
     end select   
-    call strfun (f, fp, fm, fL, x, xb, r(1), energy (k), ewa_data(1))
+    call strfun (f, fp, fm, fL, x, xb, r(1), energy (k), ewa_data(1), no_map)
     call interaction_set_flavored_values &
          (int, cmplx (f, kind=default), ewa_data%flv, 2)
     call splitting_set_t_bounds (sd, x(1), xb(1))

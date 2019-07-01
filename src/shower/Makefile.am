@@ -3,16 +3,19 @@
 ## Process this file with automake to produce Makefile.in
 
 ## The files in this directory end up in an auxiliary libtool library.
+if SHOWER_AVAILABLE
 noinst_LTLIBRARIES = libshower.la
+else
+noinst_LTLIBRARIES = libshower_dummy.la
+endif
 
-if PYTHIA_AVAILABLE
+## If shower is enabled, pythia is enabled automatically
+
 if FC_IS_NAG
 AM_FFLAGS = -dcfuns -w
 endif
-libshower_la_SOURCES = pythia_up.f ../matching/pythia.f shower_basics_module.f90 shower_parton_module.f90 shower_module.f90
-else
-libshower_la_SOURCES = pythia_dummy.f90 shower_basics_module.f90 shower_parton_module.f90 shower_module.f90
-endif
+libshower_la_SOURCES = pythia_up.f shower_basics_module.f90 shower_parton_module.f90 shower_module.f90
+libshower_dummy_la_SOURCES = shower_dummy.f90
 
 ## Fortran module dependencies
 # The following line just says
@@ -38,7 +41,9 @@ DISTCLEANFILES = Makefile.depend
 ## Dependency libaux (kinds, strings)
 $(libvamp_la_OBJECTS): ../misc/kinds.$(FC_MODULE_EXT)
 
-AM_FCFLAGS = -I../misc -I../vamp/src/
+AM_FCFLAGS = -I../misc -I../vamp/src/ -I../pythia
+
+libshower_la_LIBADD = ../pythia/libpythia_wo.la
 
 ## OpenMP
 AM_LDFLAGS =

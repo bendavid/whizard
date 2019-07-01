@@ -1,11 +1,11 @@
-! WHIZARD 2.0.3 Tue Aug 10 2010
+! WHIZARD 2.0.4 Tue Oct 26 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
-!     with contributions by Christian Speckner, Sebastian Schmidt, 
-!     Daniel Wiesler, Felix Braam
+!     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+!     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -69,6 +69,7 @@ module hard_interactions
   public :: hard_interaction_get_flv_states
   public :: hard_interaction_get_n_cf
   public :: hard_interaction_get_first_pdg_in
+  public :: hard_interaction_get_first_pdg_out
   public :: hard_interaction_get_unstable_products
   public :: hard_interaction_init_trace
   public :: hard_interaction_init_sqme
@@ -549,6 +550,17 @@ contains
     end if
   end function hard_interaction_get_first_pdg_in
 
+  function hard_interaction_get_first_pdg_out (hi) result (pdg)
+    integer, dimension(:), allocatable :: pdg
+    type(hard_interaction_t), intent(in) :: hi
+    allocate (pdg (hi%data%n_out))
+    if (hi%data%n_flv > 0) then
+       pdg = hi%data%flv_state (hi%data%n_in+1:hi%data%n_tot, 1)
+    else
+       pdg = 0
+    end if
+  end function hard_interaction_get_first_pdg_out
+
   subroutine hard_interaction_get_unstable_products (hi, flv_unstable)
     type(hard_interaction_t), intent(in) :: hi
     type(flavor_t), dimension(:), intent(out), allocatable :: flv_unstable
@@ -768,15 +780,13 @@ contains
   end subroutine hard_interaction_recover_kinematics
 
   subroutine hard_interaction_write_state_summary (hi, unit)
-    type(hard_interaction_t), intent(in) :: hi
+    type(hard_interaction_t), intent(in), target :: hi
     integer, intent(in), optional :: unit
-    type(state_matrix_t) :: state
     type(state_iterator_t) :: it
     integer :: u, i, f, h, c
     character(1) :: sgn
     u = output_unit (unit)
-    state = interaction_get_state_matrix (hi%int)
-    call state_iterator_init (it, state)
+    call state_iterator_init (it, interaction_get_state_matrix_ptr (hi%int))
     do while (state_iterator_is_valid (it))
        i = state_iterator_get_me_index (it)
        f = hi%flv(i)

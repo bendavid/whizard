@@ -22,7 +22,7 @@
 
 module shower_module
 
-  use kinds, only: double !NODEP!
+  use kinds, only: default !NODEP!
   use constants, only: pi, twopi !NODEP!
   use shower_basics_module
   use shower_parton_module
@@ -57,8 +57,9 @@ module shower_module
   public :: shower_get_next_free_nr
   public :: shower_get_next_color_nr
   public :: shower_get_final_partons
+  public :: shower_generate_next_isr_branching
 
-  contains
+contains
 
     subroutine shower_add_interaction2ton(shower, partons)
       type(shower_t), intent(inout) :: shower
@@ -66,8 +67,8 @@ module shower_module
 
       integer :: n_partons_initial, n_partons, n_out, n_partons_shower
       integer :: i,j, imin, jmin
-      real(kind=double) :: y, ymin ! the jet measure
-      real(kind=double) :: s ! s of the interaction
+      real(default) :: y, ymin ! the jet measure
+      real(default) :: s ! s of the interaction
       type(parton_pointer_t), dimension(:), allocatable :: new_partons
       type(parton_t), pointer :: prt
       integer :: n_interactions
@@ -145,15 +146,15 @@ module shower_module
          ! search for the partons to be clustered together
          n_partons = size(partons)
          n_out = n_partons-2
-         ymin=0._double
+         ymin=0._default
          outer: do i = 3, n_partons-1
             inner: do j = i+1, n_partons
                ! calculate the jet measure
                if(.not. shower_clustering_allowed(shower, partons, i,j)) cycle inner
                ! Durham jet-measure
-               y = 2._double*min(parton_get_energy(partons(i)%p), parton_get_energy(partons(j)%p))* &
-                    (1._double -enclosed_angle_ct(partons(i)%p%momentum,partons(j)%p%momentum)) / s
-               if(y<ymin .or. ymin==0._double) then
+               y = 2._default*min(parton_get_energy(partons(i)%p), parton_get_energy(partons(j)%p))* &
+                    (1._default -enclosed_angle_ct(partons(i)%p%momentum,partons(j)%p%momentum)) / s
+               if(y<ymin .or. ymin==0._default) then
                   ymin = y
                   imin = i
                   jmin = j
@@ -179,18 +180,17 @@ module shower_module
          prt%momentum = partons(imin)%p%momentum + partons(jmin)%p%momentum
          prt%t = prt%momentum**2
          ! TODO -> calculate costheta and store it for later use in generate_ps
-         prtmomentum = prt%momentum
-         childmomentum = prt%child1%momentum
 
          if(space_part_norm(prt%momentum) > 1D-10) then
-         
-            prtmomentum = boost(-parton_get_beta(prt)/sqrt(1._double-(parton_get_beta(prt))**2), & 
+            prtmomentum = prt%momentum
+            childmomentum = prt%child1%momentum
+            prtmomentum = boost(-parton_get_beta(prt)/sqrt(1._default-(parton_get_beta(prt))**2), & 
                  space_part(prt%momentum)/space_part_norm(prt%momentum)) * prtmomentum 
-            childmomentum = boost(-parton_get_beta(prt)/sqrt(1._double-(parton_get_beta(prt))**2), &
+            childmomentum = boost(-parton_get_beta(prt)/sqrt(1._default-(parton_get_beta(prt))**2), &
                  space_part(prt%momentum)/space_part_norm(prt%momentum)) * childmomentum
-            prt%costheta = enclosed_angle_ct(prt%momentum, childmomentum)
+            prt%costheta = enclosed_angle_ct(prtmomentum, childmomentum)
          else
-            prt%costheta=-1._double
+            prt%costheta=-1._default
          end if
 
          prt%belongstointeraction = .true.
@@ -282,7 +282,7 @@ module shower_module
 
       recursive function get_starting_scale(prt) result(scale)
         type(parton_t), pointer :: prt
-        real(kind=double) :: scale
+        real(default) :: scale
 
         scale = 1D6
         if(prt%t > 1D-10) then
@@ -298,7 +298,7 @@ module shower_module
         
       recursive subroutine set_starting_scale(prt, scale)
         type(parton_t), pointer :: prt
-        real(kind=double) :: scale
+        real(default) :: scale
 
         if(prt%typ .ne. 94) then
            if(scale > D_Min_t + parton_mass_squared(prt)) then
@@ -639,10 +639,10 @@ module shower_module
     function shower_get_total_momentum(shower, c) result (mom)
       type(shower_t), intent(in) :: shower
       integer, intent(in) :: c
-      real(kind=double) :: mom
+      real(default) :: mom
       integer :: i
 
-      mom=0._double
+      mom=0._default
       do i=1, size(shower%partons)
          if(.not. associated(shower%partons(i)%p)) cycle
          if(parton_is_final(shower%partons(i)%p)) then
@@ -664,19 +664,19 @@ module shower_module
 
     function shower_get_nr_of_partons(shower, mine, include_remnants) result(nr)
       type(shower_t), intent(in) :: shower
-      real(kind=double), intent(in), optional :: mine
+      real(default), intent(in), optional :: mine
       logical, intent(in), optional :: include_remnants
       integer :: nr
 
       integer :: i
       type(parton_t), pointer :: prt
-      real(kind=double) :: minenergy
+      real(default) :: minenergy
 
       nr = 0
       if(present(mine)) then
          minenergy=mine
       else
-         minenergy = 0._double
+         minenergy = 0._default
       end if
 
       do i=1, size(shower%partons)
@@ -808,12 +808,12 @@ module shower_module
          if(.not. associated(shower%partons(i)%p)) cycle
          prt=>shower%partons(i)%p
          if(isr_pt_ordered) then
-            if((prt%belongstoFSR.eqv..false.) .and. (parton_is_simulated(prt).eqv..false.) .and. (prt%scale>0._double)) then
+            if((prt%belongstoFSR.eqv..false.) .and. (parton_is_simulated(prt).eqv..false.) .and. (prt%scale>0._default)) then
                finished=.false.
                exit
             end if
          else
-            if((prt%belongstoFSR.eqv..false.) .and. (parton_is_simulated(prt).eqv..false.) .and. (prt%t<0._double)) then
+            if((prt%belongstoFSR.eqv..false.) .and. (parton_is_simulated(prt).eqv..false.) .and. (prt%t<0._default)) then
                finished=.false.
                exit
             end if
@@ -961,13 +961,13 @@ module shower_module
       beta=prt1%momentum+prt2%momentum
       beta=beta/vector4_get_component(beta,0)
 
-      if(beta**2>1._double) then
+      if(beta**2>1._default) then
          print *, " BUG: beta > 1"
          return
       end if
       if(space_part(beta)**2>1D-14) then
          call interaction_apply_lorentztrafo(interaction, boost(space_part(beta)**1 / &
-              sqrt(1._double-space_part(beta)**2), -direction(beta)))
+              sqrt(1._default-space_part(beta)**2), -direction(beta)))
       end if
     end subroutine interaction_boost_to_CMframe
     
@@ -1008,7 +1008,8 @@ module shower_module
       beta=vector3_canonical(3) * & 
            ( (prt1%x*vector4_get_component(prt2%momentum, 0)-prt2%x*vector4_get_component(prt1%momentum, 0))/ &
              (prt1%x*vector4_get_component(prt2%momentum, 3)-prt2%x*vector4_get_component(prt1%momentum, 3)) )
-      if(beta**1 > 1D-10) call interaction_apply_lorentztrafo(interaction, boost(beta**1/sqrt(1._double-beta**2), -direction(beta)))
+      if (beta**1 > 1D-10) &
+           call interaction_apply_lorentztrafo(interaction, boost(beta**1/sqrt(1._default-beta**2), -direction(beta)))
     end subroutine interaction_boost_to_labframe
 
     subroutine interaction_rotate_to_z(interaction)
@@ -1020,7 +1021,7 @@ module shower_module
       ! only rotate to z if inital hadrons are given (and they are assumed to be aligned along the z-axis)
       if(associated(prt1%initial)) then
          call interaction_apply_lorentztrafo(interaction, rotation_to_2nd( space_part(prt1%momentum), &
-              vector3_canonical(3) * sign(1._double, vector4_get_component(prt1%initial%momentum,3)) ) )
+              vector3_canonical(3) * sign(1._default, vector4_get_component(prt1%initial%momentum,3)) ) )
       end if
     end subroutine interaction_rotate_to_z
 
@@ -1040,13 +1041,13 @@ module shower_module
       type(parton_t), pointer :: had1, had2
       type(vector4_t) :: momenta(2)
       type(vector3_t) :: beta
-      real(kind=double) :: pt (2), phi(2)
-      real(kind=double) :: shat
+      real(default) :: pt (2), phi(2)
+      real(default) :: shat
       ! variables for boosting and rotating
-      real(kind=double) :: btheta, bphi
+      real(default) :: btheta, bphi
       integer :: i
 
-      if(primordial_kt_width .eq. 0._double) then
+      if(primordial_kt_width .eq. 0._default) then
          return
       end if
 
@@ -1084,15 +1085,15 @@ module shower_module
            vector3_moving( (/pt(2)*cos(phi(2)),pt(2)*sin(phi(2)),vector4_get_component(momenta(2),3)/) ) )
 
       beta=vector3_moving( (/ vector4_get_component(momenta(1),1)+vector4_get_component(momenta(2), 1) , &
-           vector4_get_component(momenta(1),2)+vector4_get_component(momenta(2), 2), 0._double /) )/sqrt(shat)
+           vector4_get_component(momenta(1),2)+vector4_get_component(momenta(2), 2), 0._default /) )/sqrt(shat)
 
-      momenta(1)=boost(beta**1/sqrt(1._double-beta**2), -direction(beta))*momenta(1)
+      momenta(1)=boost(beta**1/sqrt(1._default-beta**2), -direction(beta))*momenta(1)
       bphi=azimuthal_angle(momenta(1))
       btheta=polar_angle(momenta(1))
 
       call interaction_apply_lorentztrafo(interaction, rotation(cos(bphi), sin(bphi), 3)*rotation(cos(btheta), & 
            sin(btheta), 2)*rotation(cos(-bphi), sin(-bphi), 3))
-      call interaction_apply_lorentztrafo(interaction, boost(beta**1/sqrt(1._double-beta**2), -direction(beta)))
+      call interaction_apply_lorentztrafo(interaction, boost(beta**1/sqrt(1._default-beta**2), -direction(beta)))
     end subroutine interaction_generate_primordial_kt
 
     subroutine shower_generate_primordial_kt(shower)
@@ -1209,10 +1210,10 @@ module shower_module
       remnant=> prt%initial%child2
       remnant%typ= 9999
       remnant%momentum = prt%parent%momentum - prt%momentum
-      remnant%x = 1._double - prt%x
+      remnant%x = 1._default - prt%x
       remnant%parent=>prt%initial
 
-      remnant%t = 0._double ! ??   ! todo: mass of beamremnant ? t of beamremnant ? decomposition into quarks/diquarks...
+      remnant%t = 0._default ! ??   ! todo: mass of beamremnant ? t of beamremnant ? decomposition into quarks/diquarks...
 
       !      print *, "  shower_replace_parent_by_hadron finished"
     end subroutine shower_replace_parent_by_hadron
@@ -1220,12 +1221,12 @@ module shower_module
 !!$    subroutine shower_get_first_ISR_scale_for_parton(shower, prt, tmax)
 !!$      type(shower_t), intent(inout) :: shower
 !!$      type(parton_t), intent(inout), target :: prt
-!!$      real(kind=double), intent(in), optional :: tmax
+!!$      real(default), intent(in), optional :: tmax
 !!$      type(parton_t), pointer :: otherprt, otherprt1, otherprt2
-!!$      real(kind=double) :: t,tstep, zufall, integral, temp1
+!!$      real(default) :: t,tstep, zufall, integral, temp1
 !!$      integer :: i
 !!$      logical :: goon
-!!$      real(kind=double) :: temprand
+!!$      real(default) :: temprand
 !!$
 !!$      if(present(tmax)) then
 !!$         t=max(-tscalefactor_isr*parton_get_energy(prt)**2, -abs(tmax))
@@ -1235,7 +1236,7 @@ module shower_module
 !!$      call tao_random_number(zufall)
 !!$      zufall=-twopi*log(zufall)  ! compare Integral and log(zufall) instead of zufall and exp(-Integral)
 !!$      zufall=zufall/first_integral_suppression_factor 
-!!$      integral=0._double
+!!$      integral=0._default
 !!$      call parton_set_simulated(prt, .false.)
 !!$
 !!$      do_interactions: do i=1, size(shower%interactions)
@@ -1273,17 +1274,17 @@ module shower_module
 !!$
 !!$      do
 !!$         call tao_random_number(temprand)
-!!$         tstep=max(abs(0.01_double*t)*temprand, 0.1_double*D_Min_t)
-!!$         if(t+0.5_double*tstep>-D_Min_t) then
+!!$         tstep=max(abs(0.01_default*t)*temprand, 0.1_default*D_Min_t)
+!!$         if(t+0.5_default*tstep>-D_Min_t) then
 !!$            prt%t=parton_mass_squared(prt)
 !!$            call parton_set_simulated(prt)
 !!$            exit
 !!$         end if
-!!$         prt%t=t+0.5_double*tstep
+!!$         prt%t=t+0.5_default*tstep
 !!$         temp1=integral_over_z_simple(prt, (zufall-integral)/tstep)
 !!$         integral=integral+tstep*temp1
 !!$         if(integral>zufall) then
-!!$            prt%t=t+0.5_double*tstep
+!!$            prt%t=t+0.5_default*tstep
 !!$            exit
 !!$         end if
 !!$         t=t+tstep
@@ -1301,17 +1302,17 @@ module shower_module
 !!$
 !!$        function integral_over_z_simple(prt, ende) result(integral)
 !!$          type(parton_t), intent(inout) :: prt
-!!$!          real(kind=double), intent(in) :: shat,s,
-!!$          real(kind=double), intent(in) :: ende
-!!$          real(kind=double) :: integral
+!!$!          real(default), intent(in) :: shat,s,
+!!$          real(default), intent(in) :: ende
+!!$          real(default) :: integral
 !!$          
-!!$          real(kind=double), parameter :: zstepfactor = 1._double
-!!$          real(kind=double), parameter :: zstepmin = 0.0001_double
-!!$          real(kind=double) :: z, zstep, minz, maxz
-!!$          real(kind=double) :: pdfsum
+!!$          real(default), parameter :: zstepfactor = 1._default
+!!$          real(default), parameter :: zstepmin = 0.0001_default
+!!$          real(default) :: z, zstep, minz, maxz
+!!$          real(default) :: pdfsum
 !!$          integer :: quark
 !!$          
-!!$          integral=0._double
+!!$          integral=0._default
 !!$          if(D_print) then
 !!$             print *, "integral_over_z_simple for t=", prt%t
 !!$          end if
@@ -1326,10 +1327,10 @@ module shower_module
 !!$             ! gluon coming from g->gg
 !!$             do
 !!$                call tao_random_number(temprand)
-!!$                zstep=max(zstepmin, temprand*zstepfactor*z*(1._double-z))
+!!$                zstep=max(zstepmin, temprand*zstepfactor*z*(1._default-z))
 !!$                zstep=min(zstep, maxz-z)
-!!$                integral=integral+zstep*(D_alpha_s_isr((1._double-(z+0.5_double*zstep))*abs(prt%t))/(abs(prt%t)))* & 
-!!$                     P_ggg(z+0.5_double*zstep)*get_pdf(prt%initial%typ, prt%x/(z+0.5_double*zstep), abs(prt%t), 21)
+!!$                integral=integral+zstep*(D_alpha_s_isr((1._default-(z+0.5_default*zstep))*abs(prt%t))/(abs(prt%t)))* & 
+!!$                     P_ggg(z+0.5_default*zstep)*get_pdf(prt%initial%typ, prt%x/(z+0.5_default*zstep), abs(prt%t), 21)
 !!$                if(integral>ende) then
 !!$                   exit
 !!$                end if
@@ -1344,14 +1345,14 @@ module shower_module
 !!$                z=minz
 !!$                do
 !!$                   call tao_random_number(temprand)
-!!$                   zstep=max(zstepmin, temprand*zstepfactor*z*(1._double-z))
+!!$                   zstep=max(zstepmin, temprand*zstepfactor*z*(1._default-z))
 !!$                   zstep=min(zstep, maxz-z)
-!!$                   pdfsum=0._double
+!!$                   pdfsum=0._default
 !!$                   do quark=-D_Nf, D_Nf
-!!$                      pdfsum=pdfsum + get_pdf(prt%initial%typ, prt%x/(z+0.5_double*zstep), abs(prt%t), quark)
+!!$                      pdfsum=pdfsum + get_pdf(prt%initial%typ, prt%x/(z+0.5_default*zstep), abs(prt%t), quark)
 !!$                   end do
-!!$                   integral=integral+zstep*(D_alpha_s_isr((z+0.5_double*zstep)*abs(prt%t))/(abs(prt%t)))* & 
-!!$                        P_qqg(1._double-(z+0.5_double*zstep))*pdfsum
+!!$                   integral=integral+zstep*(D_alpha_s_isr((z+0.5_default*zstep)*abs(prt%t))/(abs(prt%t)))* & 
+!!$                        P_qqg(1._default-(z+0.5_default*zstep))*pdfsum
 !!$                   if(integral>ende) then
 !!$                      exit
 !!$                   end if
@@ -1365,10 +1366,10 @@ module shower_module
 !!$             ! quark coming from q->qg
 !!$             do
 !!$                call tao_random_number(temprand)
-!!$                zstep=max(zstepmin, temprand*zstepfactor*z*(1._double-z))
+!!$                zstep=max(zstepmin, temprand*zstepfactor*z*(1._default-z))
 !!$                zstep=min(zstep, maxz-z)
-!!$                integral=integral+zstep*(D_alpha_s_isr((1._double-(z+0.5_double*zstep))*abs(prt%t))/(abs(prt%t)))* &
-!!$                     P_qqg(z+0.5_double*zstep)*get_pdf(prt%initial%typ, prt%x/(z+0.5_double*zstep), abs(prt%t), prt%typ)
+!!$                integral=integral+zstep*(D_alpha_s_isr((1._default-(z+0.5_default*zstep))*abs(prt%t))/(abs(prt%t)))* &
+!!$                     P_qqg(z+0.5_default*zstep)*get_pdf(prt%initial%typ, prt%x/(z+0.5_default*zstep), abs(prt%t), prt%typ)
 !!$                if(integral>ende) then
 !!$                   exit
 !!$                end if
@@ -1383,10 +1384,10 @@ module shower_module
 !!$                z=minz
 !!$                do
 !!$                   call tao_random_number(temprand)
-!!$                   zstep=max(zstepmin, temprand*zstepfactor*z*(1._double-z))
+!!$                   zstep=max(zstepmin, temprand*zstepfactor*z*(1._default-z))
 !!$                   zstep=min(zstep, maxz-z)
-!!$                   integral=integral+zstep*(D_alpha_s_isr((1._double-(z+0.5_double*zstep))*abs(prt%t))/(abs(prt%t)))* &
-!!$                        P_ggg(z+0.5_double*zstep)*get_pdf(prt%initial%typ, prt%x/(z+0.5_double*zstep), abs(prt%t), 21)
+!!$                   integral=integral+zstep*(D_alpha_s_isr((1._default-(z+0.5_default*zstep))*abs(prt%t))/(abs(prt%t)))* &
+!!$                        P_ggg(z+0.5_default*zstep)*get_pdf(prt%initial%typ, prt%x/(z+0.5_default*zstep), abs(prt%t), 21)
 !!$                   if(integral>ende) then
 !!$                      exit
 !!$                   end if
@@ -1405,7 +1406,7 @@ module shower_module
     subroutine shower_prepare_for_simulate_isr_pt(shower, interaction)
       type(shower_t), intent(inout) :: shower
       type(my_interaction_t), intent(inout) :: interaction
-      real(kind=double) :: s
+      real(default) :: s
 
 !      print *, " shower_prepare_for_simulate_isr_pt"
 
@@ -1413,17 +1414,17 @@ module shower_module
 
       s = (interaction%in1%p%momentum + interaction%in2%p%momentum)**2
 
-      interaction%in1%p%scale = tscalefactor_isr * 0.25_double * s
-      interaction%in2%p%scale = tscalefactor_isr * 0.25_double * s
+      interaction%in1%p%scale = tscalefactor_isr * 0.25_default * s
+      interaction%in2%p%scale = tscalefactor_isr * 0.25_default * s
 
 !!$      call shower_add_parent(shower, interaction%in1%p)
 !!$      call shower_add_parent(shower, interaction%in2%p)
 !!$      
-!!$      interaction%in1%p%parent%scale = 0.5_double * sqrts
+!!$      interaction%in1%p%parent%scale = 0.5_default * sqrts
 !!$      interaction%in1%p%parent%momentum = interaction%in1%p%momentum
 !!$      interaction%in1%p%parent%belongstoFSR = .false.
 !!$      interaction%in1%p%parent%initial => interaction%in1%p%initial
-!!$      interaction%in2%p%parent%scale = 0.5_double * sqrts
+!!$      interaction%in2%p%parent%scale = 0.5_default * sqrts
 !!$      interaction%in2%p%parent%momentum = interaction%in2%p%momentum
 !!$      interaction%in2%p%parent%belongstoFSR = .false.
 !!$      interaction%in2%p%parent%initial => interaction%in2%p%initial
@@ -1437,7 +1438,8 @@ module shower_module
       type(shower_t), intent(inout) :: shower
       type(parton_t), intent(inout), target :: prt1, prt2
       type(parton_t), pointer :: prt
-      real(kind=double) ::  pini(0:3), scale, factor
+      real(default) ::  pini(0:3), scale, factor
+      real(default) :: oldscales(1:2)
       type(parton_pointer_t) :: temppp
       integer :: i
 
@@ -1476,7 +1478,7 @@ module shower_module
 
       call parton_set_simulated(prt1)
       prt1%parent%typ=prt1%typ
-      prt1%parent%z=1._double
+      prt1%parent%z=1._default
       prt1%parent%momentum = prt1%momentum
       prt1%parent%t=scale
       prt1%parent%x=prt1%x
@@ -1488,7 +1490,7 @@ module shower_module
 
       call parton_set_simulated(prt2)
       prt2%parent%typ=prt2%typ
-      prt2%parent%z=1._double
+      prt2%parent%z=1._default
       prt2%parent%momentum = prt2%momentum
       prt2%parent%t=scale
       prt2%parent%x=prt2%x
@@ -1499,6 +1501,8 @@ module shower_module
       call shower_add_child(shower, prt2%parent, 2)
 
       first_branchings: do
+         oldscales(1)=prt1%parent%t
+         oldscales(2)=prt2%parent%t
          if (abs(prt1%parent%t) > abs(prt2%parent%t)) then
             temppp%p => prt1%parent
          else
@@ -1508,7 +1512,7 @@ module shower_module
             call shower_isr_step(shower, temppp%p)
             if(parton_is_simulated(temppp%p)) then
 !               call parton_generate_ps_ini(prt2%parent)
-               if(temppp%p%t<0._double) then
+               if(temppp%p%t<0._default) then
                   call shower_execute_next_isr_branching(shower, temppp)
 !                  call shower_print(shower)
                else
@@ -1517,8 +1521,7 @@ module shower_module
             end if
          end if
 
-         if( (parton_is_simulated(prt1%parent).or.parton_is_hadron(prt1%parent)) .and. &
-             (parton_is_simulated(prt2%parent).or.parton_is_hadron(prt2%parent)) ) then
+         if(oldscales(1)==prt1%parent%t .and. oldscales(2)==prt2%parent%t) then
             exit first_branchings
          end if
       end do first_branchings
@@ -1526,53 +1529,53 @@ module shower_module
       !      print *, "  shower_prepare_for_simulate_isr_ana finished"
     end subroutine shower_prepare_for_simulate_isr_ana
 
-    subroutine shower_prepare_for_simulate_fsr_ana(shower, prt1, prt2)
-      type(shower_t), intent(inout) :: shower
-      type(parton_t), pointer :: prt1, prt2
-      real(kind=double) ::  pini(4)
-      integer i
-
-      !      print *, "shower_prepare_for_simulate_fsr_ana" 
-
-      ! Define imagined single initiator of shower 
-      call shower_add_child(shower, prt1, 1)
-      do i=1,4
-         pini(i)=parton_get_momentum(prt1, i-1)+parton_get_momentum(prt2, i-1)
-      end do
-      call parton_set_simulated(prt1)
-      call parton_set_child(prt1, prt1%child1, 1)
-      call parton_set_child(prt1, prt1%child1, 2)
-      call parton_set_simulated(prt2)
-      call parton_set_child(prt2, prt1%child1, 1)
-      call parton_set_child(prt2, prt1%child1, 2)
-
-      prt1%child1%typ=94
-      prt1%child1%z=parton_get_energy(prt1) / (parton_get_energy(prt1)+parton_get_energy(prt2))
-      call parton_set_simulated(prt1%child1)
-      call parton_set_parent(prt1%child1, prt1)
-      call parton_set_momentum(prt1%child1, pini(1), pini(2), pini(3), pini(4))
-      prt1%child1%t=parton_p4square(prt1%child1)
-      prt1%child1%costheta=-1._double
-
-      call shower_add_child(shower, prt1%child1, 1)
-      call shower_add_child(shower, prt1%child1, 2)
-
-      prt1%child1%child1%typ=prt1%typ
-      prt1%child1%child1%momentum=prt1%momentum
-      prt1%child1%child1%t=prt1%child1%t
-      call parton_set_parent(prt1%child1%child1, prt1%child1)
-      prt1%child1%child1%c1=prt1%c1
-      prt1%child1%child1%c2=prt1%c2
-
-      prt1%child1%child2%typ=prt2%typ
-      prt1%child1%child2%momentum=prt2%momentum
-      prt1%child1%child2%t=prt2%child1%t
-      call parton_set_parent(prt1%child1%child2, prt1%child1)
-      prt1%child1%child2%c1=prt2%c1
-      prt1%child1%child2%c2=prt2%c2
-
-      !      print *, "  shower_prepare_for_simulate_fsr_ana finished"
-    end subroutine shower_prepare_for_simulate_fsr_ana
+!!$    subroutine shower_prepare_for_simulate_fsr_ana(shower, prt1, prt2)
+!!$      type(shower_t), intent(inout) :: shower
+!!$      type(parton_t), pointer :: prt1, prt2
+!!$      real(default) ::  pini(4)
+!!$      integer i
+!!$
+!!$      !      print *, "shower_prepare_for_simulate_fsr_ana" 
+!!$
+!!$      ! Define imagined single initiator of shower 
+!!$      call shower_add_child(shower, prt1, 1)
+!!$      do i=1,4
+!!$         pini(i)=parton_get_momentum(prt1, i-1)+parton_get_momentum(prt2, i-1)
+!!$      end do
+!!$      call parton_set_simulated(prt1)
+!!$      call parton_set_child(prt1, prt1%child1, 1)
+!!$      call parton_set_child(prt1, prt1%child1, 2)
+!!$      call parton_set_simulated(prt2)
+!!$      call parton_set_child(prt2, prt1%child1, 1)
+!!$      call parton_set_child(prt2, prt1%child1, 2)
+!!$
+!!$      prt1%child1%typ=94
+!!$      prt1%child1%z=parton_get_energy(prt1) / (parton_get_energy(prt1)+parton_get_energy(prt2))
+!!$      call parton_set_simulated(prt1%child1)
+!!$      call parton_set_parent(prt1%child1, prt1)
+!!$      call parton_set_momentum(prt1%child1, pini(1), pini(2), pini(3), pini(4))
+!!$      prt1%child1%t=parton_p4square(prt1%child1)
+!!$      prt1%child1%costheta=-1._default
+!!$
+!!$      call shower_add_child(shower, prt1%child1, 1)
+!!$      call shower_add_child(shower, prt1%child1, 2)
+!!$
+!!$      prt1%child1%child1%typ=prt1%typ
+!!$      prt1%child1%child1%momentum=prt1%momentum
+!!$      prt1%child1%child1%t=prt1%child1%t
+!!$      call parton_set_parent(prt1%child1%child1, prt1%child1)
+!!$      prt1%child1%child1%c1=prt1%c1
+!!$      prt1%child1%child1%c2=prt1%c2
+!!$
+!!$      prt1%child1%child2%typ=prt2%typ
+!!$      prt1%child1%child2%momentum=prt2%momentum
+!!$      prt1%child1%child2%t=prt2%child1%t
+!!$      call parton_set_parent(prt1%child1%child2, prt1%child1)
+!!$      prt1%child1%child2%c1=prt2%c1
+!!$      prt1%child1%child2%c2=prt2%c2
+!!$
+!!$      !      print *, "  shower_prepare_for_simulate_fsr_ana finished"
+!!$    end subroutine shower_prepare_for_simulate_fsr_ana
 
     subroutine shower_add_children_of_emitted_timelike_parton(shower, prt)
       type(shower_t), intent(inout) :: shower
@@ -1587,7 +1590,7 @@ module shower_module
             prt%child1%t= prt%t
             call shower_add_child(shower, prt,2)
             prt%child2%typ=21
-            call parton_set_energy(prt%child2, (1._double-prt%z)*parton_get_energy(prt))
+            call parton_set_energy(prt%child2, (1._default-prt%z)*parton_get_energy(prt))
             prt%child2%t= prt%t
          else
             if(int(prt%x)>0) then
@@ -1597,7 +1600,7 @@ module shower_module
                prt%child1%t= prt%t
                call shower_add_child(shower, prt,2)
                prt%child2%typ=-int(prt%x)
-               call parton_set_energy(prt%child2, (1._double-prt%z)*parton_get_energy(prt))
+               call parton_set_energy(prt%child2, (1._default-prt%z)*parton_get_energy(prt))
                prt%child2%t= prt%t
             else
                call shower_add_child(shower, prt, 1)
@@ -1606,7 +1609,7 @@ module shower_module
                prt%child1%t=prt%t
                call shower_add_child(shower, prt, 2)
                prt%child2%typ=21
-               call parton_set_energy(prt%child2, (1._double-prt%z)*parton_get_energy(prt))
+               call parton_set_energy(prt%child2, (1._default-prt%z)*parton_get_energy(prt))
                prt%child2%t= prt%t
             end if
          end if
@@ -1616,7 +1619,7 @@ module shower_module
     subroutine shower_simulate_children_ana(shower,prt)
       type(shower_t), intent(inout) :: shower
       type(parton_t), intent(inout) :: prt
-      real(kind=double), dimension(1:2) :: t, zufall, integral
+      real(default), dimension(1:2) :: t, zufall, integral
       integer, dimension(1:2) :: gtoqq
       integer :: daughter
       type(parton_t), pointer :: daughterprt
@@ -1646,14 +1649,14 @@ module shower_module
          call parton_set_simulated(prt%child2)
       end if
 
-      integral(1)=0._double
-      integral(2)=0._double
+      integral(1)=0._default
+      integral(2)=0._default
 
       ! impose constraints by angular ordering -> cf. (26) of Gaining analytic control
       ! check if no branchings are possible
       if(prt%child1%simulated .eqv. .false.) then
          prt%child1%t = min(prt%child1%t, & 
-              0.5_double*parton_get_energy(prt%child1)**2*(1._double-parton_get_costheta(prt)) )
+              0.5_default*parton_get_energy(prt%child1)**2*(1._default-parton_get_costheta(prt)) )
          if(min(prt%child1%t, parton_get_energy(prt%child1)**2)<parton_mass_squared(prt%child1)+D_Min_t) then
             prt%child1%t=parton_mass_squared(prt%child1)
             call parton_set_simulated(prt%child1)
@@ -1661,7 +1664,7 @@ module shower_module
       end if
       if(prt%child2%simulated .eqv. .false.) then
          prt%child2%t = min(prt%child2%t, & 
-              0.5_double*parton_get_energy(prt%child2)**2*(1._double-parton_get_costheta(prt)) )
+              0.5_default*parton_get_energy(prt%child2)**2*(1._default-parton_get_costheta(prt)) )
          if(min(prt%child2%t, parton_get_energy(prt%child2)**2)<parton_mass_squared(prt%child2)+D_Min_t) then
             prt%child2%t=parton_mass_squared(prt%child2)
             call parton_set_simulated(prt%child2)
@@ -1702,25 +1705,25 @@ module shower_module
                   ! reset child2
                   call parton_set_simulated(prt%child2, .false.)
                   prt%child2%t=min(prt%child1%t,(sqrt(prt%t) - sqrt(prt%child1%t))**2)
-                  integral(2)=0._double
+                  integral(2)=0._default
                   call tao_random_number(zufall(2))
                else if(prt%child2%typ.eq.94) then
                   ! reset child1
                   call parton_set_simulated(prt%child1, .false.)
                   prt%child1%t=min(prt%child2%t,(sqrt(prt%t) - sqrt(prt%child2%t))**2)
-                  integral(1)=0._double
+                  integral(1)=0._default
                   call tao_random_number(zufall(1))
                elseif(prt%child1%t-parton_mass_squared(prt%child1)>prt%child2%t-parton_mass_squared(prt%child2)) then
                   ! reset child2
                   call parton_set_simulated(prt%child2, .false.)
                   prt%child2%t=min(prt%child1%t,(sqrt(prt%t) - sqrt(prt%child1%t))**2)
-                  integral(2)=0._double
+                  integral(2)=0._default
                   call tao_random_number(zufall(2))
                else
                   ! reset child1
                   call parton_set_simulated(prt%child1, .false.)
                   prt%child1%t=min(prt%child2%t,(sqrt(prt%t) - sqrt(prt%child2%t))**2)
-                  integral(1)=0._double
+                  integral(1)=0._default
                   call tao_random_number(zufall(1))
                end if
             else
@@ -1752,7 +1755,7 @@ module shower_module
             daughterprt%child1%t= daughterprt%t
             call shower_add_child(shower, daughterprt,2)
             daughterprt%child2%typ=21
-            call parton_set_energy(daughterprt%child2, (1._double-daughterprt%z)*parton_get_energy(daughterprt))
+            call parton_set_energy(daughterprt%child2, (1._default-daughterprt%z)*parton_get_energy(daughterprt))
             daughterprt%child2%t= daughterprt%t
          else if(parton_is_gluon(daughterprt)) then
             if(gtoqq(daughter)>0) then
@@ -1762,7 +1765,7 @@ module shower_module
                daughterprt%child1%t= daughterprt%t
                call shower_add_child(shower, daughterprt,2)
                daughterprt%child2%typ=-gtoqq(daughter)
-               call parton_set_energy(daughterprt%child2, (1._double-daughterprt%z)*parton_get_energy(daughterprt))
+               call parton_set_energy(daughterprt%child2, (1._default-daughterprt%z)*parton_get_energy(daughterprt))
                daughterprt%child2%t= daughterprt%t
             else
                call shower_add_child(shower, daughterprt, 1)
@@ -1771,7 +1774,7 @@ module shower_module
                daughterprt%child1%t=daughterprt%t
                call shower_add_child(shower, daughterprt, 2)
                daughterprt%child2%typ=21
-               call parton_set_energy(daughterprt%child2, (1._double-daughterprt%z)*parton_get_energy(daughterprt))
+               call parton_set_energy(daughterprt%child2, (1._default-daughterprt%z)*parton_get_energy(daughterprt))
                daughterprt%child2%t= daughterprt%t
             end if
          end if
@@ -1813,9 +1816,9 @@ module shower_module
       type(parton_t), target, intent(inout) :: prt
       type(parton_t), pointer :: otherprt   ! recoiler
 
-      real(kind=double) :: scale, scalestep
-      real(kind=double) :: integral, zufall, factor
-      real(kind=double) :: temprand1, temprand2
+      real(default) :: scale, scalestep
+      real(default) :: integral, zufall, factor
+      real(default) :: temprand1, temprand2
 
       otherprt => shower_find_recoiler(shower, prt)
 
@@ -1825,20 +1828,20 @@ module shower_module
       scalestep=max(abs(scalefactor1*scale)*temprand1, scalefactor2*temprand2*D_Min_scale)
       call tao_random_number(zufall)
       zufall=-twopi*log(zufall)  ! compare Integral and log(zufall) instead of zufall and exp(-Integral)
-      integral=0._double
+      integral=0._default
 
-      if(scale - 0.5_double*scalestep < D_Min_scale) then   ! close enough to cut-off scale -> ignore
-         prt%scale = 0._double
+      if(scale - 0.5_default*scalestep < D_Min_scale) then   ! close enough to cut-off scale -> ignore
+         prt%scale = 0._default
          prt%t=parton_mass_squared(prt)
          call parton_set_simulated(prt)
       else
-         prt%scale=scale-0.5_double*scalestep
+         prt%scale=scale-0.5_default*scalestep
          factor = scalestep * (D_alpha_s_isr(prt%scale)/(prt%scale*get_pdf(prt%initial%typ, prt%x, prt%scale, prt%typ)))
          integral=integral+ factor * integral_over_z_isr_pt(prt, otherprt,(zufall-integral)/factor)
          if(integral>zufall) then
             ! prt%scale set above and prt%z set in integral_over_z_isr_pt
             call parton_set_simulated(prt)
-            prt%t = - prt%scale / (1._double - prt%z)
+            prt%t = - prt%scale / (1._default - prt%z)
          else
             prt%scale=scale-scalestep
          end if
@@ -1848,46 +1851,46 @@ module shower_module
 
       function integral_over_z_isr_pt(prt, otherprt, ende) result(integral)
         type(parton_t), intent(inout) :: prt, otherprt
-        real(kind=double), intent(in) :: ende
-        real(kind=double) :: integral
-        real(kind=double) :: mbr, r
-        real(kind=double) :: zmin, zmax, z, zstep
+        real(default), intent(in) :: ende
+        real(default) :: integral
+        real(default) :: mbr, r
+        real(default) :: zmin, zmax, z, zstep
         integer :: n_bin
         integer, parameter :: n_total_bins = 100 
-        real(kind=double) :: quarkpdfsum
-        real(kind=double) :: temprand
+        real(default) :: quarkpdfsum
+        real(default) :: temprand
         integer :: quark
         
         if(D_print) then
            print *, "integral_over_z_isr_pt for scale=", prt%scale
         end if
         
-        integral = 0._double
+        integral = 0._default
         mbr = (prt%momentum + otherprt%momentum)**1
         zmin = prt%x
-        zmax = min(1._double - (sqrt(prt%scale)/mbr) * & 
-             ( sqrt(1._double + 0.25_double*prt%scale/mbr**2) - 0.25_double*sqrt(prt%scale)/mbr) , maxz_isr)
+        zmax = min(1._default - (sqrt(prt%scale)/mbr) * & 
+             ( sqrt(1._default + 0.25_default*prt%scale/mbr**2) - 0.25_default*sqrt(prt%scale)/mbr) , maxz_isr)
         zstep = (zmax - zmin)/n_total_bins
         
         if(zmin>zmax) then
 !           print *, " error in integral_over_z_isr_pt: zmin > zmax ", zmin, zmax, prt%scale, mbr
-           integral = 0._double
+           integral = 0._default
            return
         end if
         
         ! divide the range [zmin:zmax] in n_total_bins -> 
         bins: do n_bin = 1, n_total_bins
-           z = zmin + zstep * (n_bin -0.5_double)   ! z-value in the middle of the bin
+           z = zmin + zstep * (n_bin -0.5_default)   ! z-value in the middle of the bin
            
            if(parton_is_gluon(prt)) then
-              quarkpdfsum = 0._double
+              quarkpdfsum = 0._default
               quarks: do quark = -D_Nf, D_Nf
                  if(quark .eq. 0) cycle quarks
                  quarkpdfsum = quarkpdfsum + get_pdf(prt%initial%typ, prt%x/z, prt%scale, quark)
               end do quarks
               ! g -> gg or q -> gq
-              integral = integral + (zstep/z) * ( (P_ggg(z)+P_ggg(1._double-z))* & 
-                   get_pdf(prt%initial%typ, prt%x/z, prt%scale, 21) + P_qqg(1._double-z)*quarkpdfsum )
+              integral = integral + (zstep/z) * ( (P_ggg(z)+P_ggg(1._default-z))* & 
+                   get_pdf(prt%initial%typ, prt%x/z, prt%scale, 21) + P_qqg(1._default-z)*quarkpdfsum )
            else if(parton_is_quark(prt)) then
               ! q -> qg or g -> qq
               integral = integral + (zstep/z) * ( & 
@@ -1901,9 +1904,9 @@ module shower_module
               call tao_random_number(temprand)
               ! decide typ of father partons
               if(parton_is_gluon(prt)) then
-                 if(temprand > ( P_qqg(1._double-z)*quarkpdfsum ) / &
-                      ( (P_ggg(z)+P_ggg(1._double-z))*get_pdf(prt%initial%typ, prt%x/z, prt%scale, 21) &
-                      + P_qqg(1._double-z)*quarkpdfsum )) then
+                 if(temprand > ( P_qqg(1._default-z)*quarkpdfsum ) / &
+                      ( (P_ggg(z)+P_ggg(1._default-z))*get_pdf(prt%initial%typ, prt%x/z, prt%scale, 21) &
+                      + P_qqg(1._default-z)*quarkpdfsum )) then
                     ! gluon => gluon + gluon
                     prt%aux_pt = 21
                  else
@@ -1995,9 +1998,9 @@ module shower_module
       type(shower_t), intent(inout) :: shower
       type(parton_t), target, intent(inout) :: prt
       type(parton_t), pointer :: otherprt => null()
-      real(kind=double) :: t, tstep
-      real(kind=double) :: integral, zufall
-      real(kind=double) :: temprand1, temprand2
+      real(default) :: t, tstep
+      real(default) :: integral, zufall
+      real(default) :: temprand1, temprand2
 
 !      print *, "shower_isr_step for parton ", prt%nr
 
@@ -2010,18 +2013,18 @@ module shower_module
       t=max(prt%t, prt%child1%t)
       call tao_random_number(zufall)
       zufall=-twopi*log(zufall)  ! compare Integral and log(zufall) instead of zufall and exp(-Integral)
-      integral=0._double
+      integral=0._default
       call tao_random_number(temprand1)
       call tao_random_number(temprand2)
-      tstep=max(abs(0.02_double*t)*temprand1, 0.02_double*temprand2*D_Min_t)
-      if(t+0.5_double*tstep>-D_Min_t) then
+      tstep=max(abs(0.02_default*t)*temprand1, 0.02_default*temprand2*D_Min_t)
+      if(t+0.5_default*tstep>-D_Min_t) then
          prt%t=parton_mass_squared(prt)
          call parton_set_simulated(prt)
       else
-         prt%t=t+0.5_double*tstep
+         prt%t=t+0.5_default*tstep
          integral=integral+tstep*integral_over_z_isr(prt, otherprt,(zufall-integral)/tstep)
          if(integral>zufall) then
-            prt%t=t+0.5_double*tstep
+            prt%t=t+0.5_default*tstep
             prt%x=prt%child1%x/prt%z
             call parton_set_simulated(prt)
          else
@@ -2034,10 +2037,10 @@ module shower_module
     contains
       function integral_over_z_isr(prt, otherprt, ende) result(integral)
         type(parton_t), intent(inout) :: prt, otherprt
-        real(kind=double), intent(in) :: ende
-        real(kind=double) integral
+        real(default), intent(in) :: ende
+        real(default) integral
         
-        real(kind=double) :: minz, maxz, z, shat,s
+        real(default) :: minz, maxz, z, shat,s
         integer :: quark
     
         ! calculate shat -> s of parton-parton system
@@ -2045,7 +2048,7 @@ module shower_module
         ! calculate s -> s of hadron-hadron system
         s=(otherprt%initial%momentum + prt%initial%momentum)**2
         
-        integral=0._double
+        integral=0._default
 
         minz=prt%child1%x
         maxz=maxzz(shat, s)
@@ -2101,22 +2104,22 @@ module shower_module
       
       subroutine integral_over_z_part_isr(prt, otherprt, shat ,minz, maxz, retvalue, ende)
         type(parton_t), intent(inout) :: prt, otherprt
-        real(kind=double), intent(in) :: shat, minz, maxz, ende
-        real(kind=double), intent(inout) :: retvalue
-        real(kind=double) :: z, zstep
-        real(kind=double) :: r1,r3,s1,s3
-        real(kind=double) :: pdf_divisor
-        real(kind=double) :: temprand
+        real(default), intent(in) :: shat, minz, maxz, ende
+        real(default), intent(inout) :: retvalue
+        real(default) :: z, zstep
+        real(default) :: r1,r3,s1,s3
+        real(default) :: pdf_divisor
+        real(default) :: temprand
         
-        real(kind=double), parameter :: zstepfactor = 0.1_double
-        real(kind=double), parameter :: zstepmin = 0.0001_double
+        real(default), parameter :: zstepfactor = 0.1_default
+        real(default), parameter :: zstepmin = 0.0001_default
             
         if(D_print) print *, "integral_over_z_part_isr"
         
         pdf_divisor=get_pdf(prt%initial%typ, prt%child1%x, prt%t, prt%child1%typ)
         z=minz
         s1=shat+abs(otherprt%t)+abs(prt%child1%t)
-        r1=sqrt(s1**2-4._double*abs(otherprt%t*prt%child1%t))
+        r1=sqrt(s1**2-4._default*abs(otherprt%t*prt%child1%t))
         zloop: do
            if(z.ge.maxz) then
               exit
@@ -2125,10 +2128,10 @@ module shower_module
            if(parton_is_gluon(prt%child1)) then
               if(parton_is_gluon(prt)) then
                  ! g-> gg -> divergencies at z->0 and z->1
-                 zstep=max(zstepmin, temprand*zstepfactor*z*(1._double-z))
+                 zstep=max(zstepmin, temprand*zstepfactor*z*(1._default-z))
               else
                  ! q-> gq -> divergencies at z->0
-                 zstep=max(zstepmin, temprand*zstepfactor*(1._double-z))
+                 zstep=max(zstepmin, temprand*zstepfactor*(1._default-z))
               end if
            else
               if(parton_is_gluon(prt)) then
@@ -2136,14 +2139,14 @@ module shower_module
                  zstep=max(zstepmin, temprand*zstepfactor)
               else
                  ! q-> qg -> divergencies at z->1
-                 zstep=max(zstepmin, temprand*zstepfactor*(1._double-z))
+                 zstep=max(zstepmin, temprand*zstepfactor*(1._default-z))
               end if
            end if
            zstep=min(zstep, maxz-z)
-           prt%z=z+0.5_double*zstep
+           prt%z=z+0.5_default*zstep
            s3=shat/prt%z+abs(otherprt%t)+abs(prt%t)
-           r3=sqrt(s3**2-4._double*abs(otherprt%t*prt%t))
-           prt%child2%t=min((s1*s3-r1*r3)/(2._double*abs(otherprt%t))-abs(prt%child1%t)-abs(prt%t),abs(prt%child1%t))
+           r3=sqrt(s3**2-4._default*abs(otherprt%t*prt%t))
+           prt%child2%t=min((s1*s3-r1*r3)/(2._default*abs(otherprt%t))-abs(prt%child1%t)-abs(prt%t),abs(prt%child1%t))
            do
               call parton_set_energy(prt%child2, sqrt(abs(prt%child2%t)))
               if(isr_only_onshell_emitted_partons) then
@@ -2153,7 +2156,7 @@ module shower_module
               end if
               if(otherprt%belongstointeraction.eqv..false.) then
                  ! take limits by recoiler into account
-                 call parton_set_energy(prt, (shat/prt%z+abs(otherprt%t)-abs(prt%child1%t)-prt%child2%t)/(2._double*sqrt(shat)) )
+                 call parton_set_energy(prt, (shat/prt%z+abs(otherprt%t)-abs(prt%child1%t)-prt%child2%t)/(2._default*sqrt(shat)) )
               else
                  ! first branching of ISR backwards evolution -> ignore recoiler ?????????????????
                  call parton_set_energy(prt, parton_get_energy(prt%child1)/prt%z)
@@ -2169,8 +2172,8 @@ module shower_module
                  exit
               end if
            end do
-           if(thetabar(prt) .and. pdf_divisor>0._double .and. parton_get_energy(prt%child2)>0._double) then
-              retvalue=retvalue+(zstep/prt%z)*(D_alpha_s_isr((1._double-prt%z)*prt%t)*P_prt_to_child1(prt)* &
+           if(thetabar(prt) .and. pdf_divisor>0._default .and. parton_get_energy(prt%child2)>0._default) then
+              retvalue=retvalue+(zstep/prt%z)*(D_alpha_s_isr((1._default-prt%z)*prt%t)*P_prt_to_child1(prt)* &
                    get_pdf(prt%initial%typ, prt%child1%x/prt%z, prt%t, prt%typ))/(abs(prt%t)*pdf_divisor)
            end if
            if (retvalue>ende) then
@@ -2189,7 +2192,7 @@ module shower_module
 
       integer i, index
       type(parton_t),  pointer :: prt
-      real(kind=double) :: maxscale
+      real(default) :: maxscale
 
       next_brancher%p=> null()
 
@@ -2198,7 +2201,7 @@ module shower_module
 
          ! find mother with highest |t| or pt to be simulated
          index=0
-         maxscale = 0._double
+         maxscale = 0._default
          call shower_sort_partons(shower)
          do i=1,size(shower%partons)
             prt=> shower%partons(i)%p
@@ -2227,7 +2230,7 @@ module shower_module
             call shower_isr_step(shower, prt)
          end if
          if(parton_is_simulated(prt)) then
-            if(prt%t<0._double) then
+            if(prt%t<0._default) then
                next_brancher%p=>prt
                if (isr_pt_ordered .eqv. .false.) call parton_generate_ps_ini(prt)
                exit
@@ -2293,8 +2296,8 @@ module shower_module
       type(parton_pointer_t), intent(inout) :: prtp
       type(parton_t), pointer :: prt, otherprt
       type(parton_t), pointer :: prta, prtb, prtc, prtr
-      real(kind=double) :: mar, mbr
-      real(kind=double) :: phirand
+      real(default) :: mar, mbr
+      real(default) :: phirand
 
 !      print *, "shower_execute_next_isr_branching"
       if(.not. associated(prtp%p)) then
@@ -2364,22 +2367,22 @@ module shower_module
          prta%scale=prtb%scale
          prta%x = prtb%x / prtb%z
 
-         prtb%momentum = vector4_moving( (mbr**2+prtb%t)/(2._double*mbr), vector3_canonical(3) * &
-              sign( (mbr**2-prtb%t)/(2._double*mbr) , vector4_get_component(prtb%momentum, 3)))
-         prtr%momentum = vector4_moving( (mbr**2-prtb%t)/(2._double*mbr), vector3_canonical(3) * &
-              sign( (mbr**2-prtb%t)/(2._double*mbr) , vector4_get_component(prtr%momentum, 3)))
+         prtb%momentum = vector4_moving( (mbr**2+prtb%t)/(2._default*mbr), vector3_canonical(3) * &
+              sign( (mbr**2-prtb%t)/(2._default*mbr) , vector4_get_component(prtb%momentum, 3)))
+         prtr%momentum = vector4_moving( (mbr**2-prtb%t)/(2._default*mbr), vector3_canonical(3) * &
+              sign( (mbr**2-prtb%t)/(2._default*mbr) , vector4_get_component(prtr%momentum, 3)))
 
-         prta%momentum = vector4_moving ( (0.5_double/mbr)*( (mbr**2/prtb%z) + prtb%t - parton_mass_squared(prtc) ), &
+         prta%momentum = vector4_moving ( (0.5_default/mbr)*( (mbr**2/prtb%z) + prtb%t - parton_mass_squared(prtc) ), &
               vector3_null)
          prta%momentum = vector4_moving ( parton_get_energy(prta) , vector3_canonical(3) * &
-              (0.5_double/vector4_get_component(prtb%momentum, 3))*((mbr**2/prtb%z) - 2._double & 
+              (0.5_default/vector4_get_component(prtb%momentum, 3))*((mbr**2/prtb%z) - 2._default & 
               * parton_get_energy(prtr)*parton_get_energy(prta) ) )
          if(parton_get_energy(prta)**2 - vector4_get_component(prta%momentum,3)**2 - parton_mass_squared(prtc) &
-              .ge. 0._double) then
+              .ge. 0._default) then
             ! This SHOULD be always fulfilled???
             prta%momentum = vector4_moving ( parton_get_energy(prta) , vector3_moving( &
                  (/ sqrt(parton_get_energy(prta)**2 - vector4_get_component(prta%momentum,3)**2 - & 
-                 parton_mass_squared(prtc)), 0._double, vector4_get_component(prta%momentum, 3) /) ) )
+                 parton_mass_squared(prtc)), 0._default, vector4_get_component(prta%momentum, 3) /) ) )
          end if
          prtc%momentum = prta%momentum - prtb%momentum
 
@@ -2509,8 +2512,8 @@ module shower_module
 
     subroutine shower_set_max_ISR_scale(shower, newscale)
       type(shower_t), intent(inout) :: shower
-      real(kind=double), intent(in) :: newscale
-      real(kind=double) :: scale
+      real(default), intent(in) :: newscale
+      real(default) :: scale
       type(parton_t), pointer :: prt
       
       integer :: i,j
@@ -2674,7 +2677,7 @@ module shower_module
   recursive subroutine shower_parton_update_color_connections(shower, prt)
     type(shower_t), intent(inout) :: shower
     type(parton_t), intent(inout) :: prt
-    real(kind=double) :: temprand
+    real(default) :: temprand
 
     if( (.not. associated(prt%child1)) .or. (.not. associated(prt%child2)) ) return
 
@@ -2693,7 +2696,7 @@ module shower_module
        else
           ! g -> gg splitting -> random choosing of partners
           call tao_random_number(temprand)
-          if(temprand > 0.5_double) then
+          if(temprand > 0.5_default) then
              prt%child1%c1=prt%c1
              prt%child1%c2=shower_get_next_color_nr(shower)
              prt%child2%c1=prt%child1%c2
@@ -2742,32 +2745,32 @@ module shower_module
 !!!!!!!!!!!!!!!!!!!!!!!!!
 
   function get_pdf(mother, x, Q2, daughter) result(pdf)
- ! wrapper function to return momentum densities
+ ! wrapper function to return parton densities
  !   type(shower_t), intent(in), pointer :: shower
     integer, intent(in) :: mother, daughter
-    real(kind=double), intent(in) :: x, Q2
-    real(kind=double) :: pdf
+    real(default), intent(in) :: x, Q2
+    real(default) :: pdf
 
-    real*8, save :: f(-6:6) = 0.0
-    real(kind=double), save :: lastx, lastQ2 =0._double
+    real(kind=default), save :: f(-6:6) = 0.0
+    real(default), save :: lastx, lastQ2 =0._default
 
     if(abs(mother)/=2212) then
        stop "Bug: pdf only implemented for (anti-)proton"
     else
-       if(x>0._double .and. x<1._double) then
+       if(x>0._default .and. x<1._default) then
           if(Q2 .ne. lastQ2 .or. x .ne. lastx) then
              call evolvePDF(x,sqrt(abs(Q2)),f)
           end if
           if (abs(daughter)>=1 .and. abs(daughter)<=6) then
-             pdf=f(daughter*sign(1,mother))
+             pdf=f(daughter*sign(1,mother))/x
           else if(daughter==21) then
-             pdf=f(0)
+             pdf=f(0)/x
           else
              print *, "error in pdf"
-             pdf=0._double
+             pdf=0._default
           end if
        else
-          pdf=0._double
+          pdf=0._default
        end if
     end if
     lastQ2 = Q2

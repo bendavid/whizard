@@ -1,11 +1,11 @@
-! WHIZARD 2.0.3 Tue Aug 10 2010
+! WHIZARD 2.0.4 Tue Oct 26 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
-!     with contributions by Christian Speckner, Sebastian Schmidt, 
-!     Daniel Wiesler, Felix Braam
+!     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+!     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -37,7 +37,7 @@ module simulations
   use md5
   use parser
   use variables
-  use prt_lists
+  use subevents
   use expressions
   use flavors
   use state_matrices
@@ -132,7 +132,7 @@ module simulations
     real(default) :: luminosity = 0
     type(eval_tree_t) :: reweight_expr
     type(eval_tree_t) :: analysis_expr
-    type(prt_list_t) :: prt_list
+    type(subevt_t) :: subevt
     type(event_vars_t) :: event_vars
     logical :: allow_decays = .true.
     type(decay_tree_t), dimension(:), allocatable :: decay_tree
@@ -685,15 +685,19 @@ contains
        sim%luminosity = 0
        sim%norm_weight = 0
     else
-       luminosity = var_list_get_rval (sim%var_list, var_str ("luminosity"))
-       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-       !!! To be discussed for 2.0.4
-       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-       !!! if (sim%spar%unweighted) then
-       !!!    luminosity = var_list_get_rval (sim%var_list, var_str ("luminosity"))
-       !!! else
-       !!!    luminosity = 0
-       !!! end if
+       luminosity = var_list_get_rval (sim%var_list, var_str ("luminosity"))       
+       if (.not.sim%spar%unweighted) then
+          if (luminosity > 0) then        
+            if (n_events == 0) then      
+               call msg_fatal ("Setting a luminosity is only allowed for " // & 
+                               "unweighted events. Please set n_events.")   
+            else
+               call msg_warning ("Setting a luminosity is only allowed for " // & 
+                               "unweighted events. Luminosity will be ignored.")   
+            end if
+            luminosity = 0           
+          end if
+       end if
        sim%n_events = max (nint (luminosity * sim%integral_sum), n_events)
        sim%luminosity = max (luminosity, sim%n_events / sim%integral_sum)
        sim%norm_weight = simulation_parameters_get_norm &
@@ -766,7 +770,7 @@ contains
     end if
     if (associated (pn_reweight_expr)) then
        call eval_tree_init_expr (sim%reweight_expr, &
-            pn_reweight_expr, sim%var_list, sim%prt_list, &
+            pn_reweight_expr, sim%var_list, sim%subevt, &
             sim%event_vars)
     end if
   end subroutine simulation_setup_reweight
@@ -786,7 +790,7 @@ contains
     end if
     if (associated (pn_analysis_lexpr)) then
        call eval_tree_init_lexpr (sim%analysis_expr, &
-            pn_analysis_lexpr, sim%var_list, sim%prt_list, &
+            pn_analysis_lexpr, sim%var_list, sim%subevt, &
             sim%event_vars)
     end if
   end subroutine simulation_setup_analysis
@@ -948,8 +952,8 @@ contains
 
   subroutine simulation_handle_event (sim)
     type(simulation_t), intent(inout), target :: sim
-    call event_reweight (sim%event, sim%prt_list, sim%reweight_expr)
-    call event_do_analysis (sim%event, sim%prt_list, sim%analysis_expr)
+    call event_reweight (sim%event, sim%subevt, sim%reweight_expr)
+    call event_do_analysis (sim%event, sim%subevt, sim%analysis_expr)
     call event_file_list_write_event (sim%event_file_list, sim%event, i_evt=sim%i_evt)
     if (sim%write_raw .and. .not. sim%read_raw) &
          call event_write_raw (sim%event, sim%u_raw)

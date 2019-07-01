@@ -4,6 +4,7 @@
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+!     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -2292,7 +2293,7 @@ subroutine setup_parameters9 ()
     !!! g_h3112slsl = - (imago * ((g * mass(11) * (( &
     !!!   conjg (al_1) * tanb) + mu)) / (2.0_default * mass(24))))
     !!! g_h3121slsl = conjg (g_h3112slsl)
-    g_h4111slsn = ((g / (sqrt (2.0_default) * mass(24))) * (mass(24)**2) * sin2be)
+    g_h4111slsn = ((- g / (sqrt (2.0_default) * mass(24))) * (mass(24)**2) * sin2be)
     !!! g_h4112slsn = (sqrt (2.0_default) * ((g * mass(11) * ((conjg ( &
     !!!   al_1) * sinbe) + (mu * cosbe))) /  &
     !!!   (2.0_default * mass(24) * cosbe)))
@@ -2344,7 +2345,7 @@ end subroutine setup_parameters9
     !!!   conjg (al_2) * sinbe) + (mu * cosbe))) /  &
     !!!   (2.0_default * mass(24) * cosbe)))
     !!! g_h3221slsl = conjg (g_h3212slsl)
-    g_h4211slsn = ((g / (sqrt (2.0_default) * mass(24))) * (mass(24)**2) * sin2be)
+    g_h4211slsn = ((- g / (sqrt (2.0_default) * mass(24))) * (mass(24)**2) * sin2be)
     !!! g_h4212slsn = (sqrt (2.0_default) * ((g * mass(13) * ((conjg ( &
     !!!   al_2) * sinbe) + (mu * cosbe))) /  &
     !!!   (2.0_default * mass(24) * cosbe)))
@@ -3761,7 +3762,6 @@ subroutine setup_parameters13 ()
     g_yuk_n4_sd2_3_c(2) = conjg (g_yuk_n4_sd2_3(1))
     !!! For the diagram-wise color calculation this has not to be
     !!! divided by an additional factor of sqrt(2) 
-    !!! These couplings do not get a running alpha_s
     g_yuk_gsu1_3(1) = ( - (mix_su312 * (gs / sqrt (2.0_default))))
     g_yuk_gsu1_3(2) = (mix_su311 * (gs / sqrt (2.0_default)))
     g_yuk_gsu1_3_c(1) = conjg (g_yuk_gsu1_3(2))
@@ -3786,6 +3786,22 @@ end subroutine import_from_whizard
     gs = sqrt(2.0_default * PI * alpha_s)
     igs = cmplx(0.0_default, 1.0_default, kind=default) * gs
     gssq = (gs / sqrt (2.0_default))
+    g_yuk_gsu1_3(1) = ( - (mix_su312 * (gs / sqrt (2.0_default))))
+    g_yuk_gsu1_3(2) = (mix_su311 * (gs / sqrt (2.0_default)))
+    g_yuk_gsu1_3_c(1) = conjg (g_yuk_gsu1_3(2))
+    g_yuk_gsu1_3_c(2) = conjg (g_yuk_gsu1_3(1))
+    g_yuk_gsd1_3(1) = ( - (mix_sd312 * (gs / sqrt (2.0_default))))
+    g_yuk_gsd1_3(2) = (mix_sd311 * (gs / sqrt (2.0_default)))
+    g_yuk_gsd1_3_c(1) = conjg (g_yuk_gsd1_3(2))
+    g_yuk_gsd1_3_c(2) = conjg (g_yuk_gsd1_3(1))
+    g_yuk_gsu2_3(1) = ( - (mix_su322 * (gs / sqrt (2.0_default))))
+    g_yuk_gsu2_3(2) = (mix_su321 * (gs / sqrt (2.0_default)))
+    g_yuk_gsu2_3_c(1) = conjg (g_yuk_gsu2_3(2))
+    g_yuk_gsu2_3_c(2) = conjg (g_yuk_gsu2_3(1))
+    g_yuk_gsd2_3(1) = ( - (mix_sd322 * (gs / sqrt (2.0_default))))
+    g_yuk_gsd2_3(2) = (mix_sd321 * (gs / sqrt (2.0_default)))
+    g_yuk_gsd2_3_c(1) = conjg (g_yuk_gsd2_3(2))
+    g_yuk_gsd2_3_c(2) = conjg (g_yuk_gsd2_3(1))
     gglglsqsq = (gs**2)
     gglpsqsq = 2.0_default * e * gs / 3.0_default
     gglsu1su1_1 = (gz * gs * (((1.0_default / 2.0_default) *  &

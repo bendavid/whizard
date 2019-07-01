@@ -1,11 +1,11 @@
-! WHIZARD 2.0.3 Tue Aug 10 2010
+! WHIZARD 2.0.4 Tue Oct 26 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
-!     with contributions by Christian Speckner, Sebastian Schmidt, 
-!     Daniel Wiesler, Felix Braam
+!     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+!     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -142,13 +142,13 @@ contains
     integer :: u
     u = output_unit (unit);  if (u < 0)  return
     write (u, *) "ISR data:"
-    write (u, *) "  prt   = ", char (flavor_get_name (data%flv))
-    write (u, *) "  alpha = ", data%alpha
-    write (u, *) "  q_max = ", data%q_max
-    write (u, *) "  mass  = ", data%mass
-    write (u, *) "  eps   = ", data%eps
-    write (u, *) "  log   = ", data%log
-    write (u, *) "  order = ", data%order
+    write (u, *) "  prt    = ", char (flavor_get_name (data%flv))
+    write (u, *) "  alpha  = ", data%alpha
+    write (u, *) "  q_max  = ", data%q_max
+    write (u, *) "  mass   = ", data%mass
+    write (u, *) "  eps    = ", data%eps
+    write (u, *) "  log    = ", data%log
+    write (u, *) "  order  = ", data%order
   end subroutine isr_data_write
 
   subroutine interaction_init_isr (int, data)
@@ -182,10 +182,11 @@ contains
     call interaction_freeze (int)
   end subroutine interaction_init_isr
     
-  subroutine strfun (f, x, xb, r, data)
+  subroutine strfun (f, x, xb, r, data, no_map)
     real(default), intent(out) :: f, x, xb
     real(default), intent(in) :: r
     type(isr_data_t), intent(in) :: data
+    logical, intent(in) :: no_map
     real(default) :: eps
     real(default) :: rb, log_x, log_xb, x_2
     real(default), parameter :: &
@@ -198,53 +199,58 @@ contains
          & g3 = (27 - 24*pi**2 + 128*zeta3) / 384._default
     eps = data%eps
     rb = 1 - r
-    if (rb < tiny(1._default)**eps) then
-       xb = 0
+    if (no_map) then
+       xb = rb
+       f = xb ** (-1 + eps)
     else
-       xb = rb**(1/eps)
+       if (rb < tiny(1._default)**eps) then
+          xb = 0
+       else
+          xb = rb**(1/eps)
+       end if
+       f = 1
     end if
     x = 1 - xb
     if (data%order > 0) then
-       f = 1 + g1 * eps
+       f = f * (1 + g1 * eps)
        x_2 = x*x
-       if (rb>0)  f = f - (1-x_2) / (2 * rb)
+       if (rb>0)  f = f * (1 - (1-x_2) / (2 * rb))
        if (data%order > 1) then
-          f = f + g2 * eps**2
+          f = f * (1 + g2 * eps**2)
           if (rb>0 .and. xb>0 .and. x>xmin) then
              log_x = log (x)
              log_xb = log (xb)
-             f = f - ((1+3*x_2)*log_x + xb * (4*(1+x)*log_xb + 5 + x)) &
-                  & / ( 8 * rb) * eps
+             f = f * (1 - ((1+3*x_2)*log_x + xb * (4*(1+x)*log_xb + 5 + x)) &
+                  / ( 8 * rb) * eps)
           end if
           if (data%order > 2) then
-             f = f + g3 * eps**3
+             f = f * (1 + g3 * eps**3)
              if (rb > 0 .and. xb > 0 .and. x > xmin) then
-                f = f - ((1+x) * xb &
+                f = f * (1 - ((1+x) * xb &
                          * (6 * Li2(x) + 12 * log_xb**2 - 3 * pi**2) &
                          + 1.5_default * (1 + 8*x + 3*x_2) * log_x &
                          + 6 * (x+5) * xb * log_xb &
                          + 12 * (1+x_2) * log_x * log_xb &
                          - (1 + 7*x_2) * log_x**2 / 2 &
                          + (39 - 24*x - 15*x_2) / 4) &
-                        / ( 48 * rb) * eps**2
+                        / ( 48 * rb) * eps**2)
              end if
           end if
        end if
-    else
-       f = 1
     end if
   end subroutine strfun
 
-  subroutine interaction_apply_isr (int, r, isr_data)
+  subroutine interaction_apply_isr (int, r, isr_data, no_map)
     type(interaction_t), intent(inout) :: int
     real(default), dimension(:), intent(in) :: r
     type(isr_data_t), intent(in) :: isr_data
+    logical, intent(in) :: no_map
     type(vector4_t) :: k
     type(splitting_data_t) :: sd
     real(default) :: f, x, xb
     k = interaction_get_momentum (int, 1)
-    sd = new_splitting_data (k, k**2, 0._default, isr_data%mass)
-    call strfun (f, x, xb, r(1), isr_data)
+    sd = new_splitting_data (k, isr_data%mass**2, 0._default, isr_data%mass)
+    call strfun (f, x, xb, r(1), isr_data, no_map)
     call interaction_set_matrix_element (int, cmplx (f, kind=default))
     call splitting_set_t_bounds (sd, x, xb)
     select case (size (r))

@@ -393,19 +393,12 @@ clean-local:
 ### 	fit.21 fit.22 fit.23 fit.24 fit.25 fit.26 fit.27 fit.28 \
 ### 	dist.1 dist.2 dist.3 dist.4 dist.5 dist.6
 ### 
-### tar: circe.tar.gz
-### circe.tar.gz: $(TAR)
-### 	tar cf - $(TAR) | gzip -9 >$@
-### 
 ### test.tar: tar
 ### 	rm -fr tmp
 ### 	mkdir tmp
 ### 	zcat circe.tar.gz | (cd tmp; tar xf -)
 ### 	cd tmp; make pv
 ### 
-### disk: circe.f circe.h sample.f circe.tar.gz manual.ps.gz circe.ps.gz
-### 	tar cvvf /dev/fd0 circe.f circe.h sample.f \
-### 		circe.tar.gz manual.ps.gz circe.ps.gz
 ### 
 ### hep-ph.tar.gz: manual.tex fit.mp dist.mp figures.mp
 ### 	rm -fr public

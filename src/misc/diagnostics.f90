@@ -1,11 +1,11 @@
-! WHIZARD 2.0.3 Tue Aug 10 2010
+! WHIZARD 2.0.4 Tue Oct 26 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
-!     with contributions by Christian Speckner, Sebastian Schmidt, 
-!     Daniel Wiesler, Felix Braam
+!     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+!     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -495,9 +495,10 @@ subroutine message_print (level, string, str_arr, unit, logfile)
     call message_print (0, "|                                                                             |", unit=unit)
     call message_print (0, "|                                                                             |", unit=unit)
     call message_print (0, "|                                                                             |", unit=unit)
-    call message_print (0, "|  by:   Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>                    |", unit=unit)
-    call message_print (0, "|        Thorsten Ohl    <ohl@physik.uni-wuerzburg.de>                        |", unit=unit)
-    call message_print (0, "|        Juergen Reuter  <reuter@physik.uni-freiburg.de>                      |", unit=unit)
+    call message_print (0, "|  by:   Wolfgang Kilian    <kilian@hep.physik.uni-siegen.de>                 |", unit=unit)
+    call message_print (0, "|        Thorsten Ohl       <ohl@physik.uni-wuerzburg.de>                     |", unit=unit)
+    call message_print (0, "|        Juergen Reuter     <reuter@physik.uni-freiburg.de>                   |", unit=unit)
+    call message_print (0, "|        Christian Speckner <christian.speckner@physik.uni-freiburg.de>       |", unit=unit)
     call message_print (0, "|                                                                             |", unit=unit)
     call message_print (0, "|  if you use WHIZARD please cite:                                            |", unit=unit)   
     call message_print (0, "|        W. Kilian, T. Ohl, J. Reuter,  arXiv: 0708.4233 [hep-ph]             |", unit=unit)   

@@ -1,11 +1,11 @@
-! WHIZARD 2.0.3 Tue Aug 10 2010
+! WHIZARD 2.0.4 Tue Oct 26 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
-!     with contributions by Christian Speckner, Sebastian Schmidt, 
-!     Daniel Wiesler, Felix Braam
+!     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+!     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -43,7 +43,7 @@ module processes
   use lexers
   use parser
   use lorentz !NODEP!
-  use prt_lists
+  use subevents
   use variables
   use expressions
   use models
@@ -59,6 +59,8 @@ module processes
   use sf_ewa
   use sf_circe1
   use sf_circe2
+  use sf_escan
+  use sf_beam_events
   use sf_lhapdf
   use strfun
   use mappings
@@ -99,6 +101,7 @@ module processes
   public :: process_get_n_flv
   public :: process_get_beam_index
   public :: process_get_incoming_parton_index
+  public :: process_get_outgoing_parton_index
   public :: process_get_beam_flv
   public :: process_get_beam_energy
   public :: process_get_n_parameters
@@ -130,9 +133,11 @@ module processes
   public :: process_set_beam_momenta
   public :: process_set_strfun
   public :: process_set_strfun_mapping
+  public :: process_allow_global_mapping
   public :: process_connect_strfun
   public :: process_check_beam_setup
   public :: process_setup_phase_space
+  public :: process_setup_subevt
   public :: process_setup_cuts
   public :: process_setup_weight
   public :: process_setup_scale
@@ -140,6 +145,7 @@ module processes
   public :: process_setup_grids
   public :: process_reset_helicity_selection
   public :: process_recover_kinematics
+  public :: process_fill_subevt
   public :: process_compute_reweighting_factor
   public :: process_compute_scale
   public :: process_update_parameters
@@ -224,6 +230,7 @@ module processes
      logical :: has_extra_evaluators = .true.
      logical :: beams_are_set = .false.
      type(flavor_t), dimension(:), allocatable :: flv_in
+     type(flavor_t), dimension(:), allocatable :: flv_out
      type(beam_data_t) :: beam_data
      type(string_t) :: id
      character(32) :: md5sum = ""
@@ -272,6 +279,7 @@ module processes
      real(default) :: lambda_qcd = 0
      real(default) :: alpha_s_at_scale = 0
      logical :: alpha_s_from_lhapdf = .false.
+     logical :: allow_s_channel_mapping = .false.
      type(strfun_chain_t) :: sfchain
      type(hard_interaction_t) :: hi
      type(evaluator_t) :: eval_trace
@@ -282,7 +290,10 @@ module processes
      type(phs_forest_t) :: forest
      character(32) :: md5sum_phs = ""
      type(vamp_equivalences_t) :: vamp_eq
-     type(prt_list_t) :: prt_list
+     integer, dimension(:), allocatable :: j_beam
+     integer, dimension(:), allocatable :: j_in
+     integer, dimension(:), allocatable :: j_out
+     type(subevt_t) :: subevt
      type(var_list_t) :: var_list
      type(eval_tree_t) :: cut_expr
      type(eval_tree_t) :: reweighting_expr
@@ -346,6 +357,8 @@ module processes
      module procedure process_set_strfun_ewa     
      module procedure process_set_strfun_circe1     
      module procedure process_set_strfun_circe2     
+     module procedure process_set_strfun_escan
+     module procedure process_set_strfun_beam_events
   end interface
 
   interface operator(==)
@@ -1040,6 +1053,7 @@ contains
     type(var_list_t), intent(in), optional, target :: var_list
     logical, intent(in), optional :: use_beams
     integer :: n_in, n_out, n_tot
+    integer :: n_beam
     integer :: lhapdf_set, lhapdf_member
     type(string_t) :: lhapdf_prefix, lhapdf_file
     process%prc_lib => prc_lib
@@ -1074,13 +1088,19 @@ contains
     case (1);  process%type = PRC_DECAY
     case (2);  process%type = PRC_SCATTERING
     end select
-    allocate (process%flv_in (n_in), process%mass_in (n_in))
+    allocate (process%flv_in (n_in))
     call flavor_init (process%flv_in, &
          hard_interaction_get_first_pdg_in (process%hi), process%model)
+    allocate (process%flv_out (n_out))
+    call flavor_init (process%flv_out, &
+         hard_interaction_get_first_pdg_out (process%hi), process%model)
+    allocate (process%mass_in (n_in))
     process%mass_in = flavor_get_mass (process%flv_in)
     if (process%use_beams) then
+       n_beam = n_in
        process%averaging_factor = 1
     else
+       n_beam = 0
        process%averaging_factor = &
             1._default / product (flavor_get_multiplicity (process%flv_in))
     end if
@@ -1138,8 +1158,10 @@ contains
     call var_list_append_real_ptr (process%var_list, &
          var_str ("sqrts_hat"), process%sqrts_hat, process%sqrts_hat_known, &
          intrinsic=.true.)
-    call interaction_init_prt_list &
-         (hard_interaction_get_int_ptr (process%hi), process%prt_list)
+    allocate (process%j_beam (n_beam))
+    allocate (process%j_in (n_in))
+    allocate (process%j_out (n_out))
+    call subevt_init (process%subevt, n_beam + n_in + n_out)
 !    call integration_results_init (process%results)
     call shower_settings_init(process%shower_settings, process%var_list)
     process%initialized = .true.
@@ -1317,6 +1339,9 @@ contains
     if (process%use_beams) then
        call strfun_chain_write &
             (process%sfchain, unit, verbose, show_momentum_sum, show_mass)
+       write (u, *)
+       write (u, *) "Allow s-channel mapping = ", &
+            process%allow_s_channel_mapping
        write (u, "(A)")  repeat ("-", 72)
        write (u, "(A)") "Incoming beams with all color contractions"
        call evaluator_write &
@@ -1344,7 +1369,29 @@ contains
     write (u, "(A)")  repeat ("-", 72)
     call vamp_equivalences_write (process%vamp_eq, unit)
     write (u, "(A)")  repeat ("-", 72)
-    call prt_list_write (process%prt_list, unit)
+    write (u, "(A)")  "Subevent used by cuts, weight, and scale:"
+    write (u, "(A)", advance="no") &
+         "  Beam indices (in the trace evaluator): "
+    if (allocated (process%j_beam)) then
+       write (u, *)  process%j_beam
+    else
+       write (u, *) "[undefined]"
+    end if
+    write (u, "(A)", advance="no") &
+         "  In-parton indices (in the trace evaluator): "
+    if (allocated (process%j_out)) then
+       write (u, *)  process%j_in
+    else
+       write (u, *) "[undefined]"
+    end if
+    write (u, "(A)", advance="no") &
+         "  Out-parton indices (in the trace evaluator): "
+    if (allocated (process%j_out)) then
+       write (u, *)  process%j_out
+    else
+       write (u, *) "[undefined]"
+    end if
+    call subevt_write (process%subevt, unit)
     write (u, "(A)")  repeat ("-", 72)
     call var_list_write (process%var_list, unit)
     write (u, "(A)")  repeat ("-", 72)
@@ -1565,26 +1612,23 @@ contains
   subroutine process_get_beam_index (process, index)
     type(process_t), intent(in) :: process
     integer, dimension(:), allocatable, intent(out) :: index
-    if (process%use_beams) then
-       allocate (index (process_get_n_in (process)))
-       select case (size (index))
-       case (1);  index = (/ 1 /)
-       case (2);  index = (/ 1, 2 /)
-       end select
-    end if
+    allocate (index (size (process%j_beam)))
+    index = process%j_beam
   end subroutine process_get_beam_index
 
   subroutine process_get_incoming_parton_index (process, index)
     type(process_t), intent(in) :: process
     integer, dimension(:), allocatable, intent(out) :: index
-    allocate (index (process_get_n_in (process)))
-    select case (size (index))
-    case (1);  index = (/ 1 /)
-    case (2);  index = (/ 1, 2 /)
-    end select
-    if (process%use_beams) &
-         index = index + strfun_chain_get_n_vir (process%sfchain)
+    allocate (index (size (process%j_in)))
+    index = process%j_in
   end subroutine process_get_incoming_parton_index
+
+  subroutine process_get_outgoing_parton_index (process, index)
+    type(process_t), intent(in) :: process
+    integer, dimension(:), allocatable, intent(out) :: index
+    allocate (index (size (process%j_out)))
+    index = process%j_out
+  end subroutine process_get_outgoing_parton_index
 
   function process_get_beam_flv (process) result (flv_in)
     type(flavor_t), dimension(:), allocatable :: flv_in
@@ -1873,7 +1917,6 @@ contains
        (process, i, line, circe1_data, n_parameters)
     type(process_t), intent(inout), target :: process
     integer, intent(in) :: i, line, n_parameters
-!    type(circe1_data_t), dimension(:), intent(in) :: circe1_data
     type(circe1_data_t), intent(in) :: circe1_data
     if (process%use_beams) then
        call strfun_chain_set_strfun &
@@ -1885,13 +1928,34 @@ contains
        (process, i, line, circe2_data, n_parameters)
     type(process_t), intent(inout), target :: process
     integer, intent(in) :: i, line, n_parameters
-!    type(circe2_data_t), dimension(:), intent(in) :: circe2_data
     type(circe2_data_t), intent(in) :: circe2_data
     if (process%use_beams) then
        call strfun_chain_set_strfun &
             (process%sfchain, i, line, circe2_data, n_parameters)
     end if
   end subroutine process_set_strfun_circe2
+
+  subroutine process_set_strfun_escan &
+       (process, i, line, escan_data, n_parameters)
+    type(process_t), intent(inout), target :: process
+    integer, intent(in) :: i, line, n_parameters
+    type(escan_data_t), intent(in) :: escan_data
+    if (process%use_beams) then
+       call strfun_chain_set_strfun &
+            (process%sfchain, i, line, escan_data, n_parameters)
+    end if
+  end subroutine process_set_strfun_escan
+
+  subroutine process_set_strfun_beam_events &
+       (process, i, line, beam_events_data, n_parameters)
+    type(process_t), intent(inout), target :: process
+    integer, intent(in) :: i, line, n_parameters
+    type(beam_events_data_t), intent(in) :: beam_events_data
+    if (process%use_beams) then
+       call strfun_chain_set_strfun &
+            (process%sfchain, i, line, beam_events_data, n_parameters)
+    end if
+  end subroutine process_set_strfun_beam_events
 
   subroutine process_set_strfun_mapping (process, i, index, type, par)
     type(process_t), intent(inout) :: process
@@ -1903,6 +1967,11 @@ contains
        call strfun_chain_set_mapping (process%sfchain, i, index, type, par)
     end if
   end subroutine process_set_strfun_mapping
+
+  subroutine process_allow_global_mapping (process)
+    type(process_t), intent(inout) :: process
+    process%allow_s_channel_mapping = .true.
+  end subroutine process_allow_global_mapping
 
   subroutine process_connect_strfun (process, ok)
     type(process_t), intent(inout), target :: process
@@ -1972,12 +2041,18 @@ contains
   subroutine process_check_beam_setup (process, var_list)
     type(process_t), intent(in) :: process
     type(var_list_t), intent(in) :: var_list
+    logical :: sqrts_known
     real(default) :: sqrts
-    sqrts = var_list_get_rval (var_list, var_str ("sqrts"))
+    sqrts_known = var_list_is_known (var_list, "sqrts")
+    sqrts = var_list_get_rval (var_list, "sqrts")
     if (process%use_beams) then
        select case (process%type)
        case (PRC_SCATTERING)
-          call beam_data_check_scattering (process%beam_data, sqrts)
+          if (sqrts_known) then
+             call beam_data_check_scattering (process%beam_data, sqrts)
+          else
+             call beam_data_check_scattering (process%beam_data)
+          end if
        end select
     end if
   end subroutine process_check_beam_setup
@@ -2207,6 +2282,7 @@ contains
     process%phs_factor = 0
     allocate (process%active_channel (process%n_channels))
     process%active_channel = .true.
+    call phs_forest_set_global_mappings (process%forest)
     write (msg_buffer, "(A,I0,A,I0,A)")  "... found ", process%n_channels, &
          " phase space channels, collected in ", &
          phs_forest_get_n_groves (process%forest), &
@@ -2222,11 +2298,38 @@ contains
     if (present (ok))  ok = .true.
   end subroutine process_setup_phase_space
 
+  subroutine process_setup_subevt (process)
+    type(process_t), intent(inout), target :: process
+    type(interaction_t), pointer :: int
+    integer :: n_beam, n_in, n_out
+    integer :: i
+    if (process%use_beams) then
+       int => evaluator_get_int_ptr (process%eval_trace)
+    else
+       int => hard_interaction_get_int_ptr (process%hi)
+    end if
+    n_beam = size (process%j_beam)
+    n_in = size (process%j_in)
+    n_out = size (process%j_out)
+    process%j_beam = (/ (i, i = 1, n_beam) /)
+    process%j_in = (/ (i + strfun_chain_get_n_vir (process%sfchain), &
+                       i = 1, n_in) /)
+    process%j_out = interaction_get_children (int, process%j_in(1))
+    call interaction_to_subevt (int, &
+         process%j_beam, process%j_in, process%j_out, process%subevt)
+    call subevt_set_pdg_beam (process%subevt, &
+         flavor_get_pdg (beam_data_get_flavor (process%beam_data)))
+    call subevt_set_pdg_incoming (process%subevt, &
+         flavor_get_pdg (process%flv_in))
+    call subevt_set_pdg_outgoing (process%subevt, &
+         flavor_get_pdg (process%flv_out))
+  end subroutine process_setup_subevt
+
   subroutine process_setup_cuts (process, parse_node)
     type(process_t), intent(inout), target :: process
     type(parse_node_t), intent(in), target :: parse_node
     call eval_tree_init_lexpr &
-         (process%cut_expr, parse_node, process%var_list, process%prt_list)
+         (process%cut_expr, parse_node, process%var_list, process%subevt)
   end subroutine process_setup_cuts
 
   subroutine process_setup_weight (process, parse_node)
@@ -2234,14 +2337,14 @@ contains
     type(parse_node_t), intent(in), target :: parse_node
     call eval_tree_init_expr &
          (process%reweighting_expr, parse_node, process%var_list, &
-          process%prt_list)
+          process%subevt)
   end subroutine process_setup_weight
 
   subroutine process_setup_scale (process, parse_node)
     type(process_t), intent(inout), target :: process
     type(parse_node_t), intent(in), target :: parse_node
     call eval_tree_init_expr &
-         (process%scale_expr, parse_node, process%var_list, process%prt_list)
+         (process%scale_expr, parse_node, process%var_list, process%subevt)
   end subroutine process_setup_scale
 
   subroutine grid_parameters_write (grid_par, unit)
@@ -2355,7 +2458,15 @@ contains
     int => hard_interaction_get_int_ptr (process%hi)
     eval => hard_interaction_get_eval_trace_ptr (process%hi)
     if (process%use_beams) then
-       call strfun_chain_set_kinematics (process%sfchain, process%x_strfun)
+       if (process%allow_s_channel_mapping) then
+          call strfun_chain_set_kinematics (process%sfchain, process%x_strfun, &
+               phs_forest_tree_has_global_mapping (process%forest, channel), &
+               ok)
+       else
+          call strfun_chain_set_kinematics (process%sfchain, process%x_strfun, &
+               ok=ok)
+       end if
+       if (.not. ok)  return
        call interaction_receive_momenta (int)
        process%beams_are_set = .true.
        process%sqrts_hat = sqrt (max (interaction_get_s (int), 0._default))
@@ -2407,8 +2518,6 @@ contains
           call phs_forest_get_prt_out &
                (process%forest, int, process%lt_cm_to_lab)
        end if
-       call interaction_momenta_to_prt_list (int, process%prt_list)
-       call process_compute_scale (process)
     end if
     call evaluator_receive_momenta (eval)
     if (process%use_beams) &
@@ -2453,34 +2562,22 @@ contains
        call phs_forest_set_prt_in (process%forest, int)
     end if
 
-    call interaction_momenta_to_prt_list (int, process%prt_list)
-
     eval => hard_interaction_get_eval_trace_ptr (process%hi)
     call evaluator_receive_momenta (eval)
     
   end subroutine process_recover_kinematics
 
-  subroutine process_compute_vamp_phs_factor (process, weights)
+  subroutine process_fill_subevt (process)
     type(process_t), intent(inout), target :: process
-    real(default), dimension(:), intent(in) :: weights
-    real(default), dimension(process%n_channels) :: vamp_prob
-    real(default) :: dp
-    integer :: i
-    do i = 1, process%n_channels
-       if (process%active_channel(i)) then
-          vamp_prob(i) = &
-               vamp_probability (process%grids%grids(i), process%x(:,i))
-       else
-          vamp_prob(i) = 0
-       end if
-    end do
-    dp = dot_product (weights, vamp_prob / process%phs_factor)
-    if (dp /= 0) then
-       process%vamp_phs_factor = vamp_prob(process%channel) / dp
+    type(interaction_t), pointer :: int
+    if (process%use_beams) then
+       int => evaluator_get_int_ptr (process%eval_trace)
     else
-       process%vamp_phs_factor = 0
+       int => hard_interaction_get_int_ptr (process%hi)
     end if
-  end subroutine process_compute_vamp_phs_factor
+    call interaction_momenta_to_subevt &
+         (int, process%j_beam, process%j_in, process%j_out, process%subevt)
+  end subroutine process_fill_subevt
 
   function process_passes_cuts (process) result (flag)
     logical :: flag
@@ -2525,6 +2622,28 @@ contains
        process%scale = process%sqrts_hat
     end if
   end subroutine process_compute_scale
+
+  subroutine process_compute_vamp_phs_factor (process, weights)
+    type(process_t), intent(inout), target :: process
+    real(default), dimension(:), intent(in) :: weights
+    real(default), dimension(process%n_channels) :: vamp_prob
+    real(default) :: dp
+    integer :: i
+    do i = 1, process%n_channels
+       if (process%active_channel(i)) then
+          vamp_prob(i) = &
+               vamp_probability (process%grids%grids(i), process%x(:,i))
+       else
+          vamp_prob(i) = 0
+       end if
+    end do
+    dp = dot_product (weights, vamp_prob / process%phs_factor)
+    if (dp /= 0) then
+       process%vamp_phs_factor = vamp_prob(process%channel) / dp
+    else
+       process%vamp_phs_factor = 0
+    end if
+  end subroutine process_compute_vamp_phs_factor
 
   subroutine process_update_parameters (process)
     type(process_t), intent(inout) :: process
@@ -3129,7 +3248,7 @@ contains
   subroutine process_set_particles (process, particle_set)
     type(process_t), intent(inout) :: process
     type(particle_set_t), intent(in) :: particle_set
-    call particle_set_to_prt_list (particle_set, process%prt_list)
+    call particle_set_to_subevt (particle_set, process%subevt)
   end subroutine process_set_particles
 
   subroutine process_results_write_header (process, unit, logfile)
@@ -3262,7 +3381,13 @@ contains
     !  copy%eval_flows = original%eval_flows
     copy%forest = original%forest
     copy%vamp_eq = original%vamp_eq
-    copy%prt_list = original%prt_list
+    allocate (copy%j_beam (size (original%j_beam)))
+    copy%j_beam = original%j_beam
+    allocate (copy%j_in (size (original%j_in)))
+    copy%j_in = original%j_in
+    allocate (copy%j_out (size (original%j_out)))
+    copy%j_out = original%j_out
+    copy%subevt = original%subevt
     copy%var_list = original%var_list
     copy%cut_expr = original%cut_expr
     copy%reweighting_expr = original%reweighting_expr
@@ -3576,14 +3701,15 @@ contains
   end function process_store_get_fresh_process_ptr
 
   subroutine process_store_init_process (process, &
-       prc_lib, process_id, model, lhapdf_status, var_list, use_beams)
+       prc_lib, process_id, model, lhapdf_status, var_list, &
+       use_beams, allow_global_mapping)
     type(process_t), pointer :: process
     type(process_library_t), intent(inout), target :: prc_lib
     type(string_t), intent(in) :: process_id
     type(model_t), intent(in), target :: model
     type(lhapdf_status_t), intent(inout) :: lhapdf_status
     type(var_list_t), intent(in), optional, target :: var_list
-    logical, intent(in), optional :: use_beams
+    logical, intent(in), optional :: use_beams, allow_global_mapping
     integer :: process_lib_index, process_store_index
     procedure(prclib_unload_hook), pointer :: unload_hook
     procedure(prclib_reload_hook), pointer :: reload_hook
@@ -3604,6 +3730,9 @@ contains
     call process_init &
          (process, prc_lib, process_lib_index, process_store_index, &
           process_id, model, lhapdf_status, var_list, use_beams)
+    if (present (allow_global_mapping)) then
+       if (allow_global_mapping)  call process_allow_global_mapping (process)
+    end if
   end subroutine process_store_init_process
 
   function sample_function (xi, prc_index, weights, channel, grids) result (f)
@@ -3618,10 +3747,14 @@ contains
     call terminate_now_if_signal ()
     process => process_get_working_copy_ptr (store%proc(prc_index)%ptr)
     call process_set_kinematics (process, xi, channel, ok)
-    if (ok)  ok = process_passes_cuts (process)
+    if (ok) then
+       call process_fill_subevt (process)
+       ok = process_passes_cuts (process)
+    end if
     call terminate_now_if_signal ()
     if (ok) then
        call process_compute_vamp_phs_factor (process, weights)
+       call process_compute_scale (process)
        call process_update_alpha_s (process)
        call process_evaluate (process)
        call process_compute_reweighting_factor (process)
@@ -3984,6 +4117,7 @@ contains
     call process_set_strfun (process, 1, 1, data(1), 1) 
     call process_set_strfun (process, 2, 2, data(2), 1)
     call process_connect_strfun (process)
+    call process_setup_subevt (process)
     print *
     print *, "* Phase space setup"
     call process_setup_phase_space (process, rebuild_phs, &

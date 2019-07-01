@@ -6,6 +6,7 @@
 #     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+#     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by 
@@ -35,7 +36,7 @@ libwhizard_core_la_SOURCES = \
   permutations.f90 sorting.f90 ifiles.f90 \
   lexers.f90 syntax_rules.f90 parser.f90 \
   analysis.f90 \
-  pdg_arrays.f90 prt_lists.f90 variables.f90 expressions.f90 \
+  pdg_arrays.f90 subevents.f90 variables.f90 expressions.f90 \
   models.f90 \
   helicities.f90 colors.f90 flavors.f90 quantum_numbers.f90 \
   state_matrices.f90 interactions.f90 evaluators.f90 \
@@ -44,14 +45,15 @@ libwhizard_core_la_SOURCES = \
   particles.f90 \
   beams.f90 \
   sf_aux.f90 sf_isr.f90 sf_epa.f90 sf_ewa.f90 sf_circe1.f90 \
-  sf_circe2.f90 sf_lhapdf.f90 strfun.f90 \
+  sf_circe2.f90 sf_escan.f90 sf_beam_events.f90 sf_lhapdf.f90 strfun.f90 \
   mappings.f90 phs_trees.f90 phs_forests.f90 \
   cascades.f90 \
   prclib_interfaces.f90 \
   process_libraries.f90 hard_interactions.f90 processes.f90 \
   decays.f90 shower_interface.f90 events.f90 \
   slha_interface.f90 \
-  iterations.f90 strfun_config.f90 event_files.f90 user_files.f90 \
+  iterations.f90 beam_polarizations.f90 strfun_config.f90 \
+  event_files.f90 user_files.f90 \
   rt_data.f90 \
   compilations.f90 integrations.f90 simulations.f90 \
   commands.f90 whizard.f90
@@ -102,9 +104,9 @@ $(libwhizard_core_la_OBJECTS): \
   ../vamp/src/vamp.$(FC_MODULE_EXT)
 ## Dependency libshower (kinds, constants, strings) and VAMP
 #$(libwhizard_core_la_OBJECTS): \
-  ../miisr/shower_module.$(FC_MODULE_EXT) \
-  ../miisr/shower_particle.$(FC_MODULE_EXT) \
-  ../miisr/shower_basics.$(FC_MODULE_EXT)
+  ../shower/shower_module.$(FC_MODULE_EXT) \
+  ../shower/shower_particle.$(FC_MODULE_EXT) \
+  ../shower/shower_basics.$(FC_MODULE_EXT)
 
 SUFFIXES = .lo .$(FC_MODULE_EXT)
 # Fortran90 module files are generated at the same time as object files
@@ -112,7 +114,7 @@ SUFFIXES = .lo .$(FC_MODULE_EXT)
 	@:
 #	touch $@
 
-AM_FCFLAGS = -I../misc -I../vamp/src -I../miisr
+AM_FCFLAGS = -I../misc -I../vamp/src -I../shower
 
 ## OpenMP
 AM_LDFLAGS =

@@ -1,11 +1,11 @@
-! WHIZARD 2.0.3 Tue Aug 10 2010
+! WHIZARD 2.0.4 Tue Oct 26 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
-!     with contributions by Christian Speckner, Sebastian Schmidt, 
-!     Daniel Wiesler, Felix Braam
+!     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+!     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -120,7 +120,7 @@ contains
   subroutine circe1_data_init &
        (data, model, flv, sqrts, out_photon, generate, rng, map, &
         ver, rev, acc, chat)
-    type(circe1_data_t), intent(inout) :: data 
+    type(circe1_data_t), intent(out) :: data 
     type(model_t), intent(in), target :: model
     type(flavor_t), dimension(2), intent(in) :: flv
     real(default), intent(in) :: sqrts 
@@ -273,19 +273,20 @@ contains
     call interaction_freeze (int) 
   end subroutine interaction_init_circe1 
 
-  subroutine strfun (f, x, xb, r, circe1_data) 
+  subroutine strfun (f, x, xb, r, circe1_data, no_map)
     real(default), intent(out) :: f
     real(default), dimension(2), intent(out) :: x, xb
     real(default), dimension(2), intent(in) :: r
-    type(circe1_data_t), intent(in) :: circe1_data 
+    type(circe1_data_t), intent(in) :: circe1_data
+    logical, intent(in) :: no_map
     real(kind=default), parameter :: eps = CIRCE1_EPSILON
     real(default), dimension(2) :: fi
-    if (circe1_data%generate) then
+    if (circe1_data%generate .and. .not. no_map) then
        call circe_generate &
             (x, circe1_data%rng, circe1_data%pdg_in < 0, circe1_data%photon)
        xb = 1 - x
        f = 1
-    else if (circe1_data%map) then
+    else if (circe1_data%map .and. .not. no_map) then
        call circe_map_p (fi, x, xb, r, eps, &
             circe1_data%beta, circe1_data%gamma, circe1_data%photon)
        f = product (fi) * strfun_circe1 (x, circe1_data%pdg_in)
@@ -425,10 +426,11 @@ contains
     end if
   end function strfun_circe1
 
-  subroutine interaction_apply_circe1 (int, r, circe1_data) 
+  subroutine interaction_apply_circe1 (int, r, circe1_data, no_map) 
     type(interaction_t), intent(inout) :: int 
     real(default), dimension(2), intent(in) :: r 
     type(circe1_data_t), intent(in) :: circe1_data 
+    logical, intent(in) :: no_map
     type(vector4_t), dimension(2) :: k
     type(splitting_data_t), dimension(2) :: sd
     real(default), dimension(2) :: m_in, x, xb
@@ -438,7 +440,7 @@ contains
     k(2) = interaction_get_momentum (int, 2) 
     m_in = circe1_data%m_in
     sd = new_splitting_data (k, m_in**2, m_in**2, m_in) 
-    call strfun (f, x, xb, r, circe1_data)
+    call strfun (f, x, xb, r, circe1_data, no_map)
     call interaction_set_matrix_element (int, cmplx (f, kind=default)) 
     call splitting_set_t_bounds (sd, x, xb) 
     call splitting_set_collinear (sd)

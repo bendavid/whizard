@@ -1,5 +1,5 @@
 # Makefile.sources -- Makefile component for O'Mega
-# $Id: Makefile.sources 2695 2010-07-08 22:15:33Z ohl $
+# $Id: Makefile.sources 2838 2010-09-29 15:52:35Z jr_reuter $
 ##
 ## Process Makefile.am with automake to include this file in Makefile.in
 ##
@@ -9,6 +9,7 @@
 #     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+#     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by 
@@ -151,7 +152,8 @@ OMEGA_APPLICATIONS_ML = \
     omega_SM_ac.ml \
     omega_SM_ac_CKM.ml \
     omega_SM_top.ml \
-	 omega_SM_triangle_higgs.ml \
+    omega_SM_top_anom.ml \
+    omega_SM_triangle_higgs.ml \
     omega_MSSM.ml \
     omega_MSSM_CKM.ml \
     omega_MSSM_Grav.ml \

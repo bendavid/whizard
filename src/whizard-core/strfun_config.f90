@@ -1,11 +1,11 @@
-! WHIZARD 2.0.3 Tue Aug 10 2010
+! WHIZARD 2.0.4 Tue Oct 26 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
-!     with contributions by Christian Speckner, Sebastian Schmidt, 
-!     Daniel Wiesler, Felix Braam
+!     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+!     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -40,6 +40,8 @@ module strfun_config
   use sf_ewa
   use sf_circe1
   use sf_circe2
+  use sf_escan
+  use sf_beam_events
   use sf_lhapdf
   use strfun
   use processes
@@ -54,6 +56,8 @@ module strfun_config
   public :: STRF_EWA
   public :: STRF_CIRCE1
   public :: STRF_CIRCE2
+  public :: STRF_ESCAN
+  public :: STRF_BEVT
   public :: sf_data_t
   public :: sf_data_init_lhapdf
   public :: sf_data_init_isr
@@ -61,6 +65,8 @@ module strfun_config
   public :: sf_data_init_ewa
   public :: sf_data_init_circe1
   public :: sf_data_init_circe2
+  public :: sf_data_init_escan
+  public :: sf_data_init_beam_events
   public :: sf_list_t
   public :: sf_list_append
   public :: sf_list_freeze
@@ -91,6 +97,8 @@ module strfun_config
      type(ewa_data_t), dimension(2) :: ewa     
      type(circe1_data_t) :: circe1         
      type(circe2_data_t) :: circe2
+     type(escan_data_t) :: escan
+     type(beam_events_data_t) :: beam_events
      logical :: has_mapping = .false.
      type(sf_mapping_t) :: mapping
      type(sf_data_t), pointer :: next => null ()
@@ -156,7 +164,11 @@ contains
     case (STRF_CIRCE1)
        call circe1_data_write (sf_data%circe1, unit)
     case (STRF_CIRCE2)
-!        call circe2_data_write (sf_data%circe2, unit)
+       call circe2_data_write (sf_data%circe2, unit)
+    case (STRF_ESCAN)
+       call escan_data_write (sf_data%escan, unit)
+    case (STRF_BEVT)
+       call beam_events_data_write (sf_data%beam_events, unit)
     end select
     write (u, *)  "affects beams = ", sf_data%affects_beam
     write (u, *)  "n_parameters  = ", sf_data%n_parameters
@@ -304,29 +316,38 @@ contains
   end subroutine sf_data_init_circe1
 
   subroutine sf_data_init_circe2 (sf_data, &
-        model, flv, sqrts, photon, generate, rng, map, ver, &
-        file, design)
+        flv, generate, rng, map, file, design, sqrts, polarized)
     type(sf_data_t), intent(inout) :: sf_data
-    type(model_t), intent(in), target :: model
     type(flavor_t), dimension(2), intent(in) :: flv
-    real(default), intent(in) :: sqrts
-    logical, dimension(2), intent(in) :: photon
-    logical, intent(in) :: generate, map
+    logical, intent(in) :: generate
     type(tao_random_state), intent(in), target :: rng
+    logical, intent(in) :: map
     type(string_t), intent(in) :: file, design
-    integer, intent(in) :: ver
+    real(default), intent(in) :: sqrts
+    logical, intent(in) :: polarized
     if (all (sf_data%affects_beam)) then
-    call circe2_data_init (sf_data%circe2, &
-         model, flv, photon, rng, sqrts, file, design)
-!       allocate (sf_data%mapping%index (2))
-!       sf_data%mapping%index = (/1, sf_data%n_parameters+1/)
-!       sf_data%mapping%type = SFM_CIRCE1PAIR
-!       allocate (sf_data%mapping%par (1))
-!       sf_data%mapping%par = 1._default
-!       sf_data%has_mapping = .true.
-!       call circe2_data_check (sf_data%circe2)
+       call circe2_data_init (sf_data%circe2, &
+            flv, generate, rng, map, file, design, sqrts, polarized)
     end if
   end subroutine sf_data_init_circe2
+
+  subroutine sf_data_init_escan (sf_data, flv, sqrts)
+    type(sf_data_t), intent(inout) :: sf_data
+    type(flavor_t), dimension(2), intent(in) :: flv
+    real(default), intent(in) :: sqrts
+    call escan_data_init (sf_data%escan, &
+         sf_data%affects_beam, flv, sqrts)
+  end subroutine sf_data_init_escan
+
+  subroutine sf_data_init_beam_events (sf_data, flv, file, warn_eof)
+    type(sf_data_t), intent(inout) :: sf_data
+    type(flavor_t), dimension(2), intent(in) :: flv
+    type(string_t), intent(in) :: file
+    logical, intent(in) :: warn_eof
+    call beam_events_data_init (sf_data%beam_events, &
+         sf_data%affects_beam, flv, file, warn_eof)
+    call beam_events_data_open (sf_data%beam_events)
+  end subroutine sf_data_init_beam_events
 
   subroutine sf_list_write (sf_list, unit)
     type(sf_list_t), intent(in) :: sf_list
@@ -363,7 +384,7 @@ contains
     end if
     sf_list%last => current
     select case (current%type)
-    case (STRF_CIRCE1, STRF_CIRCE2)
+    case (STRF_CIRCE1, STRF_CIRCE2, STRF_ESCAN, STRF_BEVT)
        sf_list%n_strfun = sf_list%n_strfun + 1
     case default   
        sf_list%n_strfun = sf_list%n_strfun + count (affects_beam)
@@ -450,6 +471,32 @@ contains
           i_sf = i_sf + 1
           call process_set_strfun &
                (process, i_sf, 0, current%circe2, current%n_parameters)
+          i_par = i_par + current%n_parameters
+       case (STRF_ESCAN)
+          i_sf = i_sf + 1
+          if (all (current%affects_beam)) then
+             call process_set_strfun &
+                  (process, i_sf, 0, current%escan, current%n_parameters)
+          else if (current%affects_beam(1)) then
+             call process_set_strfun &
+                  (process, i_sf, 1, current%escan, current%n_parameters)
+          else if (current%affects_beam(2)) then
+             call process_set_strfun &
+                  (process, i_sf, 2, current%escan, current%n_parameters)
+          end if
+          i_par = i_par + current%n_parameters
+       case (STRF_BEVT)
+          i_sf = i_sf + 1
+          if (all (current%affects_beam)) then
+             call process_set_strfun &
+                  (process, i_sf, 0, current%beam_events, current%n_parameters)
+          else if (current%affects_beam(1)) then
+             call process_set_strfun &
+                  (process, i_sf, 1, current%beam_events, current%n_parameters)
+          else if (current%affects_beam(2)) then
+             call process_set_strfun &
+                  (process, i_sf, 2, current%beam_events, current%n_parameters)
+          end if
           i_par = i_par + current%n_parameters
        case default
           do j = 1, 2

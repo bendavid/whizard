@@ -10,7 +10,7 @@ c $Id: circe.nw 67 2002-03-28 17:13:06Z ohl $
 is going to hijack such code.  But let us include it anyway to spread
 the gospel of free software:
 <<Copyleft notice>>=
-c   Copyright (C) 1996-2002 by Thorsten Ohl <ohl@hep.tu-darmstadt.de>
+c   Copyright (C) 1996-2010 by Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 c
 c   Circe is free software; you can redistribute it and/or modify it
 c   under the terms of the GNU General Public License as published by
@@ -321,7 +321,6 @@ all negative variables to ensure initialization:
 <<Update version 1 derived parameters in [[/circom/]]>>=
       if (rev .eq. 0) then
          r = 0
-<<Warn that this revision has not been released yet>>
       elseif (rev .ge. 1997 04 17) then
          r = 5
       elseif (rev .ge. 1996 09 02) then
@@ -349,12 +348,6 @@ all negative variables to ensure initialization:
          write (msgbuf, 2000) rev, r
          call circem ('MESSAGE', msgbuf)
       endif
-@
-<<Warn that this revision has not been released yet>>=
-      call circem ('WARNING', '*************************************')
-      call circem ('WARNING', '* This release is not official yet, *')
-      call circem ('WARNING', '* do not use it in publications!    *')
-      call circem ('WARNING', '*************************************')
 @
 <<Update version 1 derived parameters in [[/circom/]]>>=
 <<Map [[roots]] to [[e]]>>
@@ -937,7 +930,6 @@ where the distributions are
 <<Update version 3 and 4 derived parameters in [[/circom/]]>>=
       if (rev .eq. 0) then
          r = 0
-<<Warn that this revision has not been released yet>>
       elseif (rev .ge. 1997 04 17) then
          r = 5
          if (ver34 .eq. 3) then
@@ -1043,7 +1035,6 @@ where the distributions are
 <<Update version 5 derived parameters in [[/circom/]]>>=
       if (rev .eq. 0) then
          r = 0
-<<Warn that this revision has not been released yet>>
       elseif (rev .ge. 1998 05 05) then
          r = 1
       elseif (rev .lt. 1998 05 05) then
@@ -1122,7 +1113,6 @@ unfortunately.
 <<Update version 6 derived parameters in [[/circom/]]>>=
       if (rev .eq. 0) then
          r = 0
-<<Warn that this revision has not been released yet>>
       elseif (rev .ge. 1999 04 15) then
          r = 1
       elseif (rev .lt. 1999 04 15) then
@@ -1233,7 +1223,6 @@ unfortunately.
 <<Update version 7 derived parameters in [[/circom/]]>>=
       if (rev .eq. 0) then
          r = 0
-<<Warn that this revision has not been released yet>>
       elseif (rev .ge. 2000 04 26) then
          r = 1
       elseif (rev .lt. 2000 04 26) then
@@ -1444,7 +1433,6 @@ parameters!
 <<Update version 8 derived parameters in [[/circom/]]>>=
       if (rev .eq. 0) then
          r = 0
-<<Warn that this revision has not been released yet>>
       elseif (rev .ge. 2001 06 17) then
          r = 1
       elseif (rev .lt. 2001 06 17) then
@@ -1541,7 +1529,6 @@ parameters!
 <<Update version 9 derived parameters in [[/circom/]]>>=
       if (rev .eq. 0) then
          r = 0
-         <<Warn that this revision has not been released yet>>
       elseif (rev .ge. 2002 03 28) then
          r = 1
       elseif (rev .lt. 2002 03 28) then

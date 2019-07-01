@@ -1,11 +1,11 @@
-! WHIZARD 2.0.3 Tue Aug 10 2010
+! WHIZARD 2.0.4 Tue Oct 26 2010
 ! 
 ! (C) 1999-2010 by 
 !     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
-!     with contributions by Christian Speckner, Sebastian Schmidt, 
-!     Daniel Wiesler, Felix Braam
+!     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+!     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -47,7 +47,7 @@ module sm_physics
   public :: running_as, running_as_lam 
   public :: gamma_g, k_g
   public :: Li2
-public :: faux
+  public :: faux
   public :: fonehalf
   public :: fonehalf_pseudo
   public :: fone
@@ -320,15 +320,23 @@ contains
   elemental function tri_i1 (a,b) result (y)
     real(default), intent(in) :: a,b
     complex(default) :: y
-    y = a*b/2.0_default/(a-b) + a**2 * b**2/2.0_default/(a-b)**2 * &
-         (faux(a) - faux(b)) + &
-         a**2 * b/(a-b)**2 * (gaux(a) - gaux(b))
+    if (a < epsilon(a) .or. b < epsilon (b)) then
+       y = 0
+    else
+       y = a*b/2.0_default/(a-b) + a**2 * b**2/2.0_default/(a-b)**2 * &
+            (faux(a) - faux(b)) + &
+            a**2 * b/(a-b)**2 * (gaux(a) - gaux(b))
+    end if
   end function tri_i1
 
   elemental function tri_i2 (a,b) result (y) 
     real(default), intent(in) :: a,b
     complex(default) :: y
-    y = - a * b / 2.0_default / (a-b) * (faux(a) - faux(b)) 
+    if (a < epsilon (a) .or. b < epsilon(b)) then
+       y = 0
+    else
+       y = - a * b / 2.0_default / (a-b) * (faux(a) - faux(b)) 
+    end if
   end function tri_i2
 
   elemental function run_b0 (nf) result (bnull)
