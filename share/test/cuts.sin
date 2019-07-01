@@ -13,6 +13,9 @@ compile
 
 int ncalls = 15
 
+!!! Tests should be run single-threaded 
+openmp_num_threads = 1
+
 # Check observables
 cuts = all Pt > 100 GeV [lepton]
 integrate (cuts_cc) { iterations = 1: ncalls }

@@ -1,4 +1,4 @@
-! WHIZARD 2.0.5 Tue May 10 2011
+! WHIZARD 2.0.6 Wed Dec 7 2011
 ! 
 ! Copyright (C) 1999-2011 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -67,7 +67,7 @@ contains
     type(flavor_t), dimension(2), intent(in) :: flv_in
     real(default), intent(in) :: sqrts
     data%affects_beam = affects_beam
-    where (data%affects_beam)  data%flv = flv_in
+    data%flv = flv_in
     data%mass = flavor_get_mass (data%flv)
     data%sqrts = sqrts
   end subroutine escan_data_init
@@ -79,13 +79,6 @@ contains
     logical, intent(in), optional :: md5
     u = output_unit (unit);  if (u < 0)  return
     write (u, *) "Energy-scan data:"
-    if (all (data%affects_beam)) then
-       write (u, *) "  [both beams]"
-    else if (data%affects_beam(1)) then
-       write (u, *) "  [first beam]"
-    else if (data%affects_beam(2)) then
-       write (u, *) "  [second beam]"
-    end if
     write (u, *) "  prt_in  = ", char (flavor_get_name (data%flv(1))), &
          ", ", char (flavor_get_name (data%flv(2)))    
   end subroutine escan_data_write

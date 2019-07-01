@@ -1,10 +1,11 @@
 #/bin/sh
 ########################################################################
 #
-# Copyright (C) 1999-2010 by 
-#     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+# Copyright (C) 1999-2011 by 
+#     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
-#     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+#     Juergen Reuter <juergen.reuter@desy.de>
+#     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by 
@@ -85,8 +86,8 @@ test -z "$SED"   && SED=sed
 test -z "$MP"    && MP=mpost
 test -z "$LATEX" && LATEX=latex
 
-BUILDDIR=/afs/desy.de/group/theorie/software/packages/whizard_elf64/build
-PKGLIBDIR=/afs/desy.de/group/theorie/software/ELF64/lib/whizard
+BUILDDIR=/data/reuter/trunk/build
+PKGLIBDIR=/data/reuter/trunk/inst/lib/whizard
 
 if test -z "$GMLDIR"; then
   if test -f ./gamelan.mem; then

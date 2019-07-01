@@ -18,6 +18,9 @@ iterations = 4:500, 2:500
 
 sample_format = lhef
 
+!!! Tests should be run single-threaded 
+openmp_num_threads = 1
+
 integrate (drell_yan)
 
 beams = u, U

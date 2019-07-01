@@ -47,7 +47,7 @@ libaux_la_SOURCES = \
   limits.f90 \
   file_utils.f90 \
   diagnostics.f90 signal_interface.c \
-  lorentz.f90 \
+  c_particles.f90 lorentz.f90 \
   sm_physics.f90 \
   $(sources_extra)
 
@@ -55,7 +55,7 @@ WHIZARD_SRC_FROM_WHIZARD_NW = \
   limits.f90 \
   file_utils.f90 \
   diagnostics.f90 signal_interface.c \
-  lorentz.f90 sm_physics.f90
+  c_particles.f90 lorentz.f90 sm_physics.f90
 
 ## Explicit dependencies:
 limits.lo: $(iso_fortran_env_depend)
@@ -64,7 +64,8 @@ file_utils.lo: kinds.lo iso_varying_string.lo limits.lo \
   $(iso_fortran_env_depend)
 diagnostics.lo: kinds.lo iso_varying_string.lo system_dependencies.lo \
   file_utils.lo limits.lo $(iso_fortran_env_depend)
-lorentz.lo: kinds.lo file_utils.lo constants.lo diagnostics.lo
+c_particles.lo: file_utils.lo
+lorentz.lo: kinds.lo file_utils.lo constants.lo diagnostics.lo c_particles.lo
 sm_physics.lo: kinds.lo file_utils.lo constants.lo lorentz.lo diagnostics.lo
 
 ## Install the modules used by generated matrix element code
@@ -77,6 +78,7 @@ nodist_execmod_HEADERS = \
   limits.$(FC_MODULE_EXT) \
   file_utils.$(FC_MODULE_EXT) \
   diagnostics.$(FC_MODULE_EXT) \
+  c_particles.$(FC_MODULE_EXT) \
   lorentz.$(FC_MODULE_EXT) \
   sm_physics.$(FC_MODULE_EXT) \
   $(modules_extra)

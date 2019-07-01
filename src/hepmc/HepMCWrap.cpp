@@ -94,6 +94,18 @@ extern "C" void gen_event_set_signal_process_vertex
   evt->set_signal_process_vertex( v );
 }
 
+extern "C" bool gen_event_set_beam_particles
+( GenEvent* evt, GenParticle* prt1, GenParticle* prt2) {
+  evt->set_beam_particles( prt1, prt2 );
+}
+
+extern "C" void gen_event_set_cross_section
+( GenEvent* evt, double xs, double xs_err) {
+  GenCrossSection xsec;
+  xsec.set_cross_section (xs, xs_err);
+  evt->set_cross_section( xsec );
+}
+
 //////////////////////////////////////////////////////////////////////////
 // GenEvent particle iterator functions
 

@@ -1,4 +1,4 @@
-! WHIZARD 2.0.5 Tue May 10 2011
+! WHIZARD 2.0.6 Wed Dec 7 2011
 ! 
 ! Copyright (C) 1999-2011 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -27,8 +27,10 @@
 
 module subevents
 
+  use iso_c_binding !NODEP!
   use kinds, only: default !NODEP!
   use file_utils !NODEP!
+  use c_particles !NODEP!
   use lorentz !NODEP!
   use sorting
   use pdg_arrays
@@ -43,6 +45,7 @@ module subevents
   public :: prt_get_msq
   public :: prt_is_polarized
   public :: prt_get_helicity
+  public :: c_prt
   public :: prt_write
   public :: are_disjoint
   public :: subevt_t
@@ -99,12 +102,21 @@ module subevents
   end type subevt_t
 
 
+  interface c_prt
+     module procedure c_prt_from_prt
+  end interface
+
   interface operator(.match.)
      module procedure prt_match
   end interface
 
   interface assignment(=)
      module procedure subevt_assign
+  end interface
+
+  interface c_prt
+     module procedure c_prt_from_subevt
+     module procedure c_prt_array_from_subevt
   end interface
 
   interface subevt_sort
@@ -232,6 +244,24 @@ contains
     prt%polarized = .true.
     prt%h = h
   end subroutine prt_polarize
+
+  elemental function c_prt_from_prt (prt) result (c_prt)
+    type(c_prt_t) :: c_prt
+    type(prt_t), intent(in) :: prt
+    c_prt%type = prt%type
+    c_prt%pdg = prt%pdg
+    if (prt%polarized) then
+       c_prt%polarized = 1
+    else
+       c_prt%polarized = 0
+    end if
+    c_prt%h = prt%h
+    c_prt%pe = energy (prt%p)
+    c_prt%px = vector4_get_component (prt%p, 1)
+    c_prt%py = vector4_get_component (prt%p, 2)
+    c_prt%pz = vector4_get_component (prt%p, 3)
+    c_prt%p2 = prt%p2
+  end function c_prt_from_prt
 
   subroutine prt_write (prt, unit)
     type(prt_t), intent(in) :: prt
@@ -548,6 +578,19 @@ contains
     prt = subevt%prt(i)
   end function subevt_get_prt
 
+  function c_prt_from_subevt (subevt, i) result (c_prt)
+    type(c_prt_t) :: c_prt
+    type(subevt_t), intent(in) :: subevt
+    integer, intent(in) :: i
+    c_prt = c_prt_from_prt (subevt%prt(i))
+  end function c_prt_from_subevt
+
+  function c_prt_array_from_subevt (subevt) result (c_prt_array)
+    type(subevt_t), intent(in) :: subevt
+    type(c_prt_t), dimension(subevt%n_tot) :: c_prt_array
+    c_prt_array = c_prt_from_prt (subevt%prt(1:subevt%n_tot))
+  end function c_prt_array_from_subevt
+
   subroutine subevt_join (subevt, pl1, pl2, mask2)
     type(subevt_t), intent(inout) :: subevt
     type(subevt_t), intent(in) :: pl1, pl2
@@ -560,21 +603,35 @@ contains
     n = n1
     if (present (mask2)) then
        do i = 1, pl2%n_tot
-          if (mask2(i) &
-               .and. .not. any (pl2%prt(i) .match. pl1%prt(:pl1%n_tot))) then
-             n = n + 1
-             subevt%prt(n) = pl2%prt(i)
+          if (mask2(i)) then
+             if (disjoint (i)) then
+                n = n + 1
+                subevt%prt(n) = pl2%prt(i)
+             end if
           end if
        end do
     else
        do i = 1, pl2%n_tot
-          if (any (pl2%prt(i) .match. pl1%prt(:pl1%n_tot))) then
+          if (disjoint (i)) then
              n = n + 1
              subevt%prt(n) = pl2%prt(i)
           end if
        end do
     end if
     subevt%n_tot = n
+  contains
+    function disjoint (i) result (flag)
+      integer, intent(in) :: i
+      logical :: flag
+      integer :: j
+      do j = 1, pl1%n_tot
+         if (.not. are_disjoint (pl1%prt(j), pl2%prt(i))) then
+            flag = .false.
+            return
+         end if
+      end do
+      flag = .true.
+    end function disjoint
   end subroutine subevt_join
 
   subroutine subevt_combine (subevt, pl1, pl2, mask12)

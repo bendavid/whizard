@@ -1,4 +1,4 @@
-! WHIZARD 2.0.5 Tue May 10 2011
+! WHIZARD 2.0.6 Wed Dec 7 2011
 ! 
 ! Copyright (C) 1999-2011 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -42,15 +42,25 @@ module whizard
   use state_matrices
   use analysis
   use variables
+  use user_code_interface
   use expressions
+  use particles
   use models
+  use sorting
   use evaluators
   use phs_forests
   use hard_interactions
+  use beams
+  use polarizations
   use processes
   use decays
   use process_libraries
+  use hepmc_interface
+  use interactions
+  use strfun
   use slha_interface
+  use cascades
+  use events
   use rt_data
   use commands
   use vamp !NODEP!
@@ -77,20 +87,43 @@ contains
 
   subroutine whizard_init &
        (preload_model, preload_libs, default_lib, &
-        rebuild_library, rebuild_phs, rebuild_grids, rebuild_events, &
+        rebuild_library, rebuild_user, &
+        rebuild_phs, rebuild_grids, rebuild_events, &
         recompile_library, &
         time_estimate, &
-        paths)
+        paths, &
+        user_code_enable, &
+        n_user_src, user_src, &
+        n_user_lib, user_lib)
     type(string_t), intent(in) :: preload_model, preload_libs
     type(string_t), intent(in) :: default_lib
-    logical, intent(in) :: rebuild_library, rebuild_phs, rebuild_grids
+    logical, intent(in) :: rebuild_library, rebuild_user
+    logical, intent(in) :: rebuild_phs, rebuild_grids
     logical, intent(in) :: rebuild_events
     logical, intent(in) :: recompile_library
     logical, intent(in) :: time_estimate
     type(paths_t), intent(in), optional :: paths
+    integer, intent(in), optional :: n_user_src, n_user_lib
+    logical, intent(in), optional :: user_code_enable
+    type(string_t), intent(in), optional :: user_src, user_lib
     type(string_t) :: filename, libname, libs
     type(var_list_t), pointer :: model_vars
+    logical :: user
+    integer :: n_src, n_lib
+    type(string_t), dimension(:), allocatable :: src, lib
+    integer :: i
     call rt_data_global_init (global, paths)
+    user = .false.
+    if (present (user_code_enable))  user = user_code_enable
+    n_src = 0
+    if (present (n_user_src) .and. present (user_src))  n_src = n_user_src
+    n_lib = 0
+    if (present (n_user_lib) .and. present (user_lib))  n_lib = n_user_lib
+    if (user) then
+       call splice (user_src, n_src, src)
+       call splice (user_lib, n_lib, lib)
+       call user_code_init (src, lib, rebuild_user, global%os_data)
+    end if
     call var_list_append_log &
          (global%var_list, var_str ("?rebuild_library"), rebuild_library, &
           intrinsic=.true.)
@@ -146,6 +179,19 @@ contains
        call var_list_set_string (global%var_list, var_str ("$model_name"), &
             model_get_name (global%model), is_known=.true.)
     end if
+  contains
+    subroutine splice (string, n, array)
+      type(string_t), intent(in) :: string
+      integer :: n
+      type(string_t), dimension(:), allocatable :: array
+      integer :: i
+      type(string_t) :: buffer
+      allocate (array (n))
+      buffer = string
+      do i = 1, n
+         call split (buffer, array(i), " ")
+      end do
+    end subroutine splice
   end subroutine whizard_init
 
   subroutine init_syntax_tables ()
@@ -206,6 +252,7 @@ contains
 
   subroutine whizard_final ()
     call rt_data_global_final (global)
+    call user_code_final ()
     call decay_store_final ()
     call process_store_final ()
     call model_list_final ()
@@ -322,21 +369,41 @@ contains
     call lexer_final (lexer)
   end subroutine whizard_shell
 
-  subroutine whizard_check (check)
+  subroutine whizard_check (check, lhapdf_present)
     type(string_t), intent(in) :: check
+    logical, intent(in) :: lhapdf_present
+    type(lexer_t), target :: lexer
+    global%lexer => lexer
     call msg_message (repeat ('=', 76), 0)
     call msg_message ("Running self-test: " // char (check), 0)
     call msg_message (repeat ('-', 76), 0)
     select case (char (check))
-    case ("formats");  call format_test ()
-    case ("md5");  call md5_test ()
-    case ("colors");  call color_test ()
-    case ("state_matrices");  call state_matrix_test ()
     case ("analysis");  call analysis_test ()
-    case ("expressions");  call expressions_test ()
-    case ("hard_interactions");  call hard_interaction_test (global%model)
+    case ("beams"); call beam_test ()
+    case ("cascades"); call cascade_test ()
+    case ("colors");  call color_test ()
+    case ("commands"); call command_test ()
     case ("evaluators");  call evaluator_test (global%model)
+    case ("events"); call event_test ()
+    case ("expressions");  call expressions_test ()
+    case ("formats");  call format_test ()
+    case ("hard_interactions");  call hard_interaction_test (global%model)
+    case ("hepmc"); call hepmc_test ()
+    case ("interactions"); call interaction_test ()
+    case ("lexers"); call lexer_test (lexer, 6)
+    case ("md5");  call md5_test ()
+    case ("models"); call models_test ()
+    case ("os_interface"); call os_interface_test ()
+    case ("parser"); call parse_test ()       
+    case ("particles"); call particles_test ()
+    case ("phs_forests"); call phs_forest_test ()
+    case ("polarizations"); call polarization_test ()
+    case ("processes"); call process_test ()       
+    case ("process_libraries"); call process_libraries_test ()
     case ("slha_interface");  call slha_test ()
+    case ("sorting"); call sorting_test ()
+    case ("state_matrices");  call state_matrix_test ()
+    case ("strfun"); call strfun_test (lhapdf_present)
     case default
        call msg_error ("Self-test '" // char (check) // "' not implemented.")
     end select

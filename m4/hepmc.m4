@@ -44,7 +44,12 @@ if test "$enable_hepmc" = "yes"; then
    ### This is only necessary for MAC OS X and BSD-like OS
    case $host in
      *-darwin*)
-	wo_ldflags_stdcpp="-lstdc++-static" ;;
+        case "$XCODE_VERSION" in
+          1.*|2.*|3.*)
+   	wo_ldflags_stdcpp="-lstdc++-static" ;;
+          *)
+           wo_ldflags_stdcpp="-lstdc++" ;;
+        esac ;;
      *-*-freebsd2*|*-*-freebsd3.0*|*-*-freebsdelf3.0*)
 	wo_ldflags_stdcpp="-lstdc++-static" ;;
      *)

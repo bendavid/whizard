@@ -27,33 +27,71 @@
 #
 ########################################################################
 
+bin_SCRIPTS = 
+
+if OCAML_AVAILABLE
+if CAMLP4_AVAILABLE
+bin_SCRIPTS += $(CIRCE2_NATIVE)
+endif CAMLP4_AVAILABLE
+endif OCAML_AVAILABLE
+
+$(CIRCE2_NATIVE): $(CIRCE2_CMXA)
+$(CIRCE2_BYTECODE): $(CIRCE2_CMA)
+
+# Compiled interfaces and libraries for out-of-tree compilation of models
+if OCAML_AVAILABLE
+if CAMLP4_AVAILABLE
+camllibdir = $(pkglibdir)/caml
+nodist_camllib_DATA = \
+	division.cmi events.cmi grid.cmi histogram.cmi \
+	commands.cmi float.cmi diffmap.cmi \
+	circe2_tool.cmxa circe2_tool.a 
+endif CAMLP4_AVAILABLE
+endif OCAML_AVAILABLE
+
+if OCAML_AVAILABLE
+if CAMLP4_AVAILABLE
+all-local: $(CIRCE2_CMXA) $(CIRCE2TOOL_CMX)
+bytecode: $(CIRCE2_CMA) $(CIRCE2TOOL_CMO)
+else
+all-local:
+bytecode:
+endif 
+endif
+
+include $(top_srcdir)/src/Makefile.ocaml
 include $(top_srcdir)/src/Makefile.sources
 
 SOURCE_FILES = \
-  circe2.f 
+  kinds.f90 circe2.f90 taorng.f90
 
-EXTRA_SOURCE_FILES = \
-  taorng.f \
-  sample_taorng.f
+EXTRA_SOURCE_FILES = 
 
 MODULE_FILES = \
+  kinds.$(FC_MODULE_EXT) \
   circe2.$(FC_MODULE_EXT) \
-  taorng.$(FC_MODULE_EXT) 
-#  kinds.$(FC_MODULE_EXT)
+  circe2d.$(FC_MODULE_EXT) 
 
 NOWEB_FILES = \
     prelude.nw postlude.nw circe2.nw
 
 EXTRA_DIST = $(NOWEB_FILES) $(SOURCE_FILES) $(CIRCE2_CAML) \
-	$(EXTRA_SOURCE_FILES)
+	$(EXTRA_SOURCE_FILES) circe2d.f90
 
 # Fortran90 module files are generated at the same time as object files
 .lo.$(FC_MODULE_EXT):
 	@:
 #	touch $@
 
-lib_LTLIBRARIES = libcirce2.la
+lib_LTLIBRARIES = libcirce2.la libcirce2d.la libcirce2_c.la 
+if CXX_AVAILABLE
+lib_LTLIBRARIES += libcirce2_cpp.la
+endif CXX_AVAILABLE
 libcirce2_la_SOURCES = $(SOURCE_FILES)
+libcirce2d_la_SOURCES = circe2d.f90
+libcirce2_c_la_SOURCES = circe2_c.c
+libcirce2_cpp_la_SOURCES = circe2_cpp.cc
+
 # There are no module files for the FORTRAN 77 code
 # pkginclude_DATA = $(MODULE_FILES)
 
@@ -81,20 +119,47 @@ endif
 
 TRIPLE = $(srcdir)/prelude.nw $< $(srcdir)/postlude.nw
 WEBS = $(srcdir)/prelude.nw $(srcdir)/circe2.nw $(srcdir)/postlude.nw
-FTANGLE = sed 's/^[     ]*<</<</' | $(NOTANGLE)
 NOTANGLE_IT = \
-  cat $(TRIPLE) | $(FTANGLE) -R'[[$@]]' | $(CPIF) $@
+  cat $(TRIPLE) | $(NOTANGLE) -R'[[$@]]' | $(CPIF) $@
 
-SUFFIXES = .nw 
+SUFFIXES += .nw .$(FC_MODULE_EXT)
 
-.nw.f:
+if NOWEB_AVAILABLE
+.nw.f90:
 	$(NOTANGLE_IT)
 
-taorng.f: postlude.nw
-	cat $(WEBS) | $(FTANGLE) -R'[[$@]]' | $(CPIF) $@
+circe2d.f90: $(WEBS)
+	cat $(WEBS) | $(NOTANGLE) -R'[[$@]]' | $(CPIF) $@
 
-sample_taorng.f: postlude.nw
-	cat $(WEBS) | $(FTANGLE) -R'[[$@]]' | $(CPIF) $@
+taorng.f90: postlude.nw
+	cat $(WEBS) | $(NOTANGLE) -R'[[$@]]' | $(CPIF) $@
+
+circe2_c.c: $(WEBS)
+	cat $(WEBS) | $(NOTANGLE) -R'[[$@]]' | $(CPIF) $@
+
+circe2_cpp.cc: $(WEBS)
+	cat $(WEBS) | $(NOTANGLE) -R'[[$@]]' | $(CPIF) $@
+endif NOWEB_AVAILABLE
+
+########################################################################
+# O'Caml
+########################################################################
+
+CIRCE2_CMXA = circe2_tool.cmxa
+CIRCE2_CMA = $(CIRCE2_CMXA:.cmxa=.cma)
+
+if OCAML_AVAILABLE
+if CAMLP4_AVAILABLE
+circe2_tool.a: circe2_tool.cmxa
+circe2_tool.cmxa: $(CIRCE2TOOLLIB_CMX) $(CIRCE2TOOL_CMX)
+	$(OCAMLOPT) $(OCAMLFLAGS) $(OCAMLOPTFLAGS) -a -o $@ $^
+circe2_tool.cma: $(CIRCE2TOOLLIB_CMO)
+	$(OCAMLC) $(OCAMLFLAGS) -a -o $@ $^
+circe2.top: $(CIRCE2TOOLLIB_CMO)
+	$(OCAMLMKTOP) $(OCAMLFLAGS) -o $@ \
+		unix.cma bigarray.cma $(CIRCE2TOOLLIB_CMO)
+endif CAMLP4_AVAILABLE
+endif OCAML_AVAILABLE
 
 ########################################################################
 # The following line just says
@@ -106,7 +171,7 @@ sample_taorng.f: postlude.nw
 Makefile.depend: $(SOURCE_FILES)
 	@rm -f $@
 	for src in $^; do \
-          module="`basename $$src | sed 's/\.f//'`"; \
+          module="`basename $$src | sed 's/\.f90//'`"; \
 	  grep '^ *use ' $$src \
 	    | grep -v '!NODEP!' \
 	    | sed -e 's/^ *use */'$$module'.lo: /' \
@@ -123,20 +188,43 @@ if OCAML_AVAILABLE
 
 @am__include@ @am__quote@Makefile.depend_ocaml@am__quote@
 
-PARSERS = cascade comphep vertex model_file
-
 Makefile.depend_ocaml: $(CIRCE2_CAML)
 	@rm -f $@
-	$(OCAMLDEP) -I $(srcdir) $^ $(OMEGA_DERIVED_CAML) \
-	  | sed 's,[^ 	]*/,,g' > $@
+	$(OCAMLDEP) $(STREAM_PARSER) -I $(srcdir) $^ \
+	  $(CIRCE2_DERIVED_CAML) | sed 's,[^ 	]*/,,g' > $@
 
 DISTCLEANFILES += Makefile.depend_ocaml
 
 endif OCAML_AVAILABLE
 
-clean-local:
-	rm -f *.$(FC_MODULE_EXT) *.g90
+########################################################################
+## Non-standard cleanup tasks
+## Remove sources that can be recreated using NOWEB
+if NOWEB_AVAILABLE
+maintainer-clean-noweb:
+	-rm -f *.f90 *.c *.cc
+endif
+.PHONY: maintainer-clean-noweb
 
+## Remove those sources also if builddir and srcdir are different
+if NOWEB_AVAILABLE
+clean-noweb:
+	test "$(srcdir)" != "." && rm -f *.f90 *.c *.cc || true
+endif
+.PHONY: clean-noweb
+
+## Remove F90 module files
+clean-local: clean-noweb
+	-rm -f *.cm[aiox] *.cmxa *.[ao] *.l[oa] *.$(FC_MODULE_EXT) \
+	*.g90 $(CIRCE2_NATIVE) $(CIRCE2_BYTECODE)
+
+## Remove backup files
+maintainer-clean-backup:
+	-rm -f *~
+.PHONY: maintainer-clean-backup
+
+## Register additional clean targets
+maintainer-clean-local: maintainer-clean-noweb maintainer-clean-backup
 
 ###           module="`basename $$src | sed 's/\.f[90][0358]//'`"; 
 ########################################################################
@@ -147,487 +235,3 @@ clean-local:
 ### MPIFC = mpif90
 ### MPIFCFLAGS = # -mismatch_all
 
-
-### ### OLD Makefile from ThO's CIRCE2 distribution
-###    JRR removes those things which have been transferred to the new
-###	automake structure or are irrelevant for it
-### 
-### # $Id: Makefile 172 2010-05-21 12:58:31Z ohl $
-### ########################################################################
-### 
-### GV_OK = yes
-### 
-### HTML_DIR = $(HOME)/public_html/circe2
-### 
-### IO = binary
-### # IO = ascii
-### 
-### MODE = unweighted
-### # MODE = weighted
-### 
-### # OPTIONS = triangle
-### # OPTIONS = triangle bins = 20  map = id { 50 [0.75,0.85] } map = id { 5 [0.85,1] }
-### OPTIONS = bins = 10  map = id { 40 [0.75,1] }
-### 
-### EVENTS = foo
-### NEVENTS = 1000000
-### 
-### ########################################################################
-### 
-### CC = gcc
-### CFLAGS = -Wall -O2 -mieee-fp
-### 
-### FC = g77
-### FFLAGS = -Wall -O2 -mieee-fp
-### 
-### STREAM_PARSER = -pp camlp4o
-### 
-### HALFWIDTH = 14.8cm
-### GHOSTVIEW = gv
-### 
-### HEVEAOPTS = -nosymb -exec xxdate.exe article.hva fancysection.hva mathaccents.hva
-### CUSTOM_HEVEA = custom.hva
-### HACHAOPTS = -tocbis
-### 
-### ########################################################################
-### 
-### LIB_SRC = circe2.f
-### LIB_OBJ = $(LIB_SRC:.f=.o)
-### 
-### LIBD_SRC = circe2d.f
-### LIBD_OBJ = $(LIBD_SRC:.f=.o)
-### 
-### LIB_SRC_C = circe2_c.c
-### LIB_OBJ_C = $(LIB_SRC_C:.c=.o)
-### 
-### LIB_SRC_CPP = circe2_cpp.c
-### LIB_OBJ_CPP = $(LIB_SRC_CPP:.cpp=.o)
-### 
-### SAMPLE_SRC = sample.f circe2ls.f
-### SAMPLE_OBJ = $(SAMPLE_SRC:.f=.o)
-### SAMPLE_BIN = $(SAMPLE_SRC:.f=)
-### 
-### XTRA_SRC = write3_ascii.f write3_binary.c
-### XTRA_OBJ = write3_ascii.o write3_binary.o
-### 
-### TARS = Makefile $(LIB_SRC) $(XTRA_SRC) $(SAMPLES_SRC) $(WEBS) \
-### 	$(TOOLLIB_SRC) $(TOOL_SRC) circe2.ps .depend
-### 
-### all: lib
-### world: samples opt ps manual.ps
-### samples: sample sample_binary circe2ls
-### lib: libcirce2.a libcirce2d.a
-### 
-### opt: circe2_tool
-### bin: circe2_tool.bin
-### 
-### ps: circe2.ps
-### psv: circe2.psv
-### dvi: circe2.dvi
-### pdf: manual.pdf
-### pdfv: manual.pdfv
-### 
-### www: index.html
-### 
-### ########################################################################
-### 
-### libcirce2.a: $(LIB_OBJ)
-### 	ar cr $@  $(LIB_OBJ)
-### 	ranlib $@
-### 
-### libcirce2_c.a: $(LIB_OBJ_C)
-### 	ar cr $@  $(LIB_OBJ_C)
-### 	ranlib $@
-### 
-### libcirce2_cpp.a: $(LIB_OBJ_CPP)
-### 	ar cr $@  $(LIB_OBJ_CPP)
-### 	ranlib $@
-### 
-### libcirce2d.a: $(LIBD_OBJ)
-### 	ar cr $@  $(LIBD_OBJ)
-### 	ranlib $@
-### 
-### sample: sample.o write3_ascii.o taorng.o libcirce2.a
-### 	$(FC) $(FFLAGS) -o $@ sample.o write3_ascii.o taorng.o -L. -lcirce2
-### 
-### sample_binary: sample.o write3_binary.o taorng.o libcirce2.a
-### 	$(FC) $(FFLAGS) -o $@ sample.o write3_binary.o taorng.o -L. -lcirce2
-### 
-### %.o: %.f
-### 	$(FC) $(FFLAGS) -c $<
-### 
-### %.o: %.c
-### 	$(CC) $(CFLAGS) -c $<
-### 
-### %.o: %.cpp
-### 	$(CPP) $(CFLAGS) -c $<
-### 
-### sample.o: sample.f
-### write3_ascii.o: write3_ascii.f
-### write3_binary.o: write3_binary.c
-### taorng.o: taorng.f
-### 
-### circe2.f: $(WEBS)
-### 	cat $(WEBS) | $(FTANGLE) -R'[[$@]]' | $(CPIF) $@
-### 
-### circe2_c.c: $(WEBS)
-### 	cat $(WEBS) | $(FTANGLE) -R'[[$@]]' | $(CPIF) $@
-### 
-### circe2_cpp.cpp: $(WEBS)
-### 	cat $(WEBS) | $(FTANGLE) -R'[[$@]]' | $(CPIF) $@
-### 
-### circe2d.f: $(WEBS)
-### 	cat $(WEBS) | $(FTANGLE) -R'[[$@]]' | $(CPIF) $@
-### 
-### sample.f: $(WEBS)
-### 	cat $(WEBS) | $(FTANGLE) -R'[[$@]]' | $(CPIF) $@
-### 
-### write3_ascii.f: $(WEBS)
-### 	cat $(WEBS) | $(FTANGLE) -R'[[$@]]' | $(CPIF) $@
-### 
-### write3_binary.c: $(WEBS)
-### 	cat $(WEBS) | $(TANGLE) -R'[[$@]]' | $(CPIF) $@
-### 
-### circe2ls.f: $(WEBS)
-### 	cat $(WEBS) | $(FTANGLE) -R'[[$@]]' | $(CPIF) $@
-### 
-### ########################################################################
-### 
-### manual.tex: prelude.nw 
-### 	($(WEAVE) -delay prelude.nw \
-### 	  | sed -e '/documentclass/s/a4paper/12pt,a4paper/' \
-###                 -e '/usepackage.*thopp/s/^/%%%/'; \
-###          echo '%BEGIN IMAGE'; \
-###          echo '\end{empfile}'; \
-###          echo '%END IMAGE'; \
-###          echo '\end{document}'; ) | $(CPIF) $@
-### 
-### circe2.tex: $(WEBS)
-### 	$(WEAVE) -delay -index $(WEBS) | $(CPIF) $@
-### 
-### circe2.dvi: $(TOOLLIB_INTERFACE) $(TOOLLIB_IMPLEMENTATION) \
-### 		$(TOOL_IMPLEMENTATION) index.tex
-### 
-### index.html: manual.html
-### 	$(HACHA) $(HACHAOPTS) -o $@ $<
-### 
-### %.html: %.tex
-### 	$(HEVEA) $(HEVEAOPTS) $(CUSTOM_HEVEA) $<
-### #	$(METAPOST) $*pics.mp
-### 	$(IMAGEN) $*
-### 	TEX=latex $(METAPOST) $*.image.mp
-### 	$(IMAGEN) $*
-### 	$(HEVEA) -fix $(HEVEAOPTS) $(CUSTOM_HEVEA) $<
-### 
-### ########################################################################
-### 
-### circe2_tool: $(TOOLLIB_CMX) $(TOOL_CMX)
-### 	$(OCAMLOPT) $(OCAMLFLAGS) $(OCAMLOPTFLAGS) -o $@ \
-### 		unix.cmxa bigarray.cmxa $(TOOLLIB_CMX) $(TOOL_CMX)
-### 
-### circe2_tool.bin: $(TOOLLIB_CMO) $(TOOL_CMO)
-### 	$(OCAMLC) -custom $(OCAMLFLAGS) -o $@ \
-### 		unix.cma bigarray.cma $(TOOLLIB_CMO) $(TOOL_CMO)
-### 
-### circe2.top: $(TOOLLIB_CMO)
-### 	$(OCAMLMKTOP) $(OCAMLFLAGS) -o $@ \
-### 		unix.cma bigarray.cma $(TOOLLIB_CMO)
-### 
-### %.cmo: %.ml
-### 	@rm -f $@
-### 	$(OCAMLC) $(OCAMLFLAGS) -c $<
-### 
-### %.cmx: %.ml
-### 	@rm -f $@
-### 	$(OCAMLOPT) $(OCAMLFLAGS) $(OCAMLOPTFLAGS) -c $<
-### 
-### %.cmi: %.mli
-### 	@rm -f $*.cmi
-### 	$(OCAMLCI) $(OCAMLFLAGS) -c $<
-### 
-### 
-### ########################################################################
-### 
-### %.dvi: %.tex
-### 	-$(LATEX) $<
-### 	makeindex -o $*.ind $*.idx
-### 	TEX=$(LATEX) $(METAPOST) $*.mp
-### 	$(LATEX) $<
-### 	if grep -s 'Rerun to get cross-references right.' $*.log; then \
-### 	  $(LATEX) $<; \
-### 	fi
-### 
-### %.pdf: %.tex
-### 	@rm -f $*.aux
-### 	-$(PDFLATEX) $<
-### 	makeindex -o $*.ind $*.idx
-### 	TEX=$(LATEX) $(METAPOST) $*.mp
-### 	$(PDFLATEX) $<
-### 	if grep -s 'Rerun to get cross-references right.' $*.log; then \
-### 	  $(PDFLATEX) $<; \
-### 	fi
-### 
-### %.dvj: %.dvi
-### #	dvidvi -m '2:0,1($(HALFWIDTH),0)' $< $@
-### 	dvitodvi '2:0+1($(HALFWIDTH),0)' $< > $@
-### 	@echo
-### 
-### %.lpr: %.dvj
-### 	$(DVIPS) -t landscape -t a4 -o $@ $<
-### 
-### ifeq ($(GV_OK),yes)
-### 
-### %.ps: %.dvj
-### 	$(DVIPS) -t landscape -t a4 -o $@ $<
-### 
-### %.psv: %.ps
-### 	nohup sh -c '$(GHOSTVIEW) -media a4 -landscape -swap $< &' 2>/dev/null 1>/dev/null
-### 
-### else
-### 
-### %.ps: %.dvj
-### 	$(DVIPS) -t a4r -o $@ $<
-### 
-### %.psv: %.ps
-### 	nohup sh -c '$(GHOSTVIEW) -media a4r -portrait $< &' 2>/dev/null 1>/dev/null
-### 
-### endif
-### 
-### %.pdfv: %.pdf
-### 	acroread $<
-### 
-### manual.ps: manual.dvi
-### 	$(DVIPS) -t a4 -o $@ $<
-### 
-### manual.psv: manual.ps
-### 	nohup sh -c '$(GHOSTVIEW) -media a4 -portrait $< &' 2>/dev/null 1>/dev/null
-### 
-### clean:
-### 	rm -f *~ *.o *.tex *.toc *.aux *.dv[ij] *.log *.rcs \
-### 		*.mp *.mpx circe2.[0-9]* manual.[0-9]* *.idx *.ilg *.ind \
-### 		*.implementation *.interface *.cm[iox] \
-### 		*.new.* *.new-w.* manual.out *.lpr
-### 
-### realclean: clean
-### 	rm -f sample* circe2_tool \
-### 		*.aux *.ind *.bin *.top *.a *.f *.c *.ps circe2.tar.gz \
-### 		manual.pdf
-### 
-### tar: circe2.tar.gz
-### circe2.tar.gz: $(TARS)
-### 	tar cf - $(TARS) | gzip -9 >$@
-### 
-### ########################################################################
-### 
-### demo%.f: manual.tex
-### 	 sed -n -e '/^      program demo$*$$/,/^      end$$/p' \
-### 		-e '/^      subroutine random/,/^      end$$/p' $< >$@
-### 
-### DEMOS = demo1 demo2 demo3 demo4 demo5 demo6 demo7 demo8 demo9
-### .PHONY: demos
-### demos: $(DEMOS)
-### 
-### demo%: demo%.f
-### 	$(FC) $(FFLAGS) -o $@ $< -L. -lcirce2
-### 
-### export: indent circe2.ps manual.pdf manual.ps $(DEMOS:=.f)
-### 	scp -p circe2.f heplix:/usr/local/ftp/pub/ohl/circe2
-### 	gzip -9 <circe2.ps >circe2.ps.gz
-### 	gzip -9 <manual.ps >manual.ps.gz
-### 	scp -p circe2.ps.gz manual.ps.gz manual.pdf \
-### 		heplix:/usr/local/ftp/pub/ohl/circe2/doc
-### 	scp -p circe2ls.f $(DEMOS:=.f) \
-### 		heplix:/usr/local/ftp/pub/ohl/circe2/demos
-### 
-### export.www: www
-### 	install -m 444 *_motif.gif manual*.gif index.html manual?*.html \
-### 		$(HTML_DIR)
-### 
-### ########################################################################
-### 
-### .PHONY: indent
-### indent: circe2.f circe2d.f circe2ls.f sample.f write3_ascii.f
-### 	for f in $<; do \
-### 	  emacs -q -batch $$f \
-### 	    -eval '(progn \
-### 		     (fortran-mode) \
-### 		     (mark-whole-buffer) \
-###                      (indent-region (point-min) (point-max) nil) \
-###                      (save-buffer))'; \
-### 	done
-### 
-### CHOP_CIRCULAR = \
-### 	perl -pe '\
-### 		if (s/\\$$//) { chomp; $$_.=<>; } \
-### 		($$t) = split (/:/); \
-### 		s/ $$t//g; \
-### 		s/ +/ /g;'
-### 
-### .PHONY: depend
-### depend:
-### 	$(OCAMLDEP) *.mli *.ml | $(CHOP_CIRCULAR) >.depend
-### 
-### include .depend
-### ########################################################################
-### 
-### .PHONY: test
-### 
-### test: xy.histo
-### 	./circe2_tool -c '\
-###           { file = "$(EVENTS).circe" \
-###             { design = "*" roots = 500 comment = "Circe2 trivial self test" \
-###               { pid = gamma events = "$(EVENTS).map" binary $(OPTIONS) } } }'
-### ifeq ($(IO),binary)
-### 	echo "'$(EVENTS).circe' '*' 500 22 0 22 0 'unweighted' $(NEVENTS)" \
-### 		| ./sample_binary > $(EVENTS).new.map
-### 	echo "'$(EVENTS).circe' '*' 500 22 0 22 0 'weighted' $(NEVENTS)" \
-### 		| ./sample_binary > $(EVENTS).new-w.map
-### else
-### 	echo "'$(EVENTS).circe' '*' 500 22 0 22 0 'unweighted' $(NEVENTS)" \
-### 		| ./sample | ./circe2_tool -ob $(EVENTS).new.map
-### 	echo "'$(EVENTS).circe' '*' 500 22 0 22 0 'weighted' $(NEVENTS)" \
-### 		| ./sample | ./circe2_tool -ob $(EVENTS).new-w.map
-### endif
-### 	./circe2_tool -hb $(EVENTS).new.map -p .new.histo
-### 	./circe2_tool -hb $(EVENTS).new-w.map -p .new-w.histo
-### 
-### xy.histo: $(EVENTS).map
-### 	./circe2_tool -hb $< -p .histo
-### 
-### %.map: %.events
-### 	./circe2_tool -ia $< -ob $@
-### 
-### ########################################################################
-### 
-### test-block-data:
-### 	./circe2_tool -c '\
-###           { file = "foo.circe" block_data = "foo.f" \
-###             { design = "*" roots = 500 \
-###               { pid = gamma events = "foo.map" binary bins = 50 iterations = 1 } } }'
-### 
-### test-parser1:
-### 	./circe2_tool -c '\
-###           { file = "foo.circe" \
-###             { design = "*" roots = 500 \
-###               { pid = gamma events = "foo.1" binary \
-###                 bins/1 = 1 bins/2 = 20 \
-###                 map/1 = id { 1 [0.2,0.4] } \
-###                 map/1 = id { 1 [0.5,0.6] } } } }'
-### 
-### test-parser2:
-### 	./circe2_tool -c '\
-###           { file = "foo.circe" \
-###             { design = "*" roots = 500 \
-###               { pid = gamma events = "foo.1" binary \
-###                 bins/1 = 10 \
-###                 map/1 = id { 10 [0.2,0.4] } \
-###                 map/1 = power { 10 [0.5,0.6] beta = -0.3 eta = 0 } \
-###                 bins/2 = 20 } } }'
-### 
-### test-parser3:
-### 	./circe2_tool -c '\
-###           { file = "foo.circe" \
-###             { design = "*" roots = 500 \
-###               { pid = gamma events = "foo.1" binary \
-###                 bins/1 = 10 \
-###                 map/1 = id { 10 [0.2,0.4] } \
-###                 map/1 = power { 10 [0.5,0.6] beta = -1.3 eta = 0 } \
-###                 bins/2 = 20 } } }'
-### 
-### test-parser4:
-### 	./circe2_tool -c '\
-###           { file = "foo.circe" \
-###             { design = "*" roots = 500 \
-###               { pid = gamma events = "foo.1" binary \
-###                 bins/1 = 1 \
-###                 map/1 = id { 1 [0.2,0.4] } \
-###                 map/1 = resonance { 1 [0.5,0.6] center = 0 width = 1 } \
-###                 bins/2 = 20 } } }'
-### 
-### big-test:
-### 	./circe2_tool -c '\
-###           { file = "foo.circe" \
-###             { design = "test/bins=10" roots = 500 \
-###               { pid = gamma events = "foo.map" binary bins = 10 $(OPTIONS) } } \
-###             { design = "test/bins=20" roots = 500 \
-###               { pid = gamma events = "foo.map" binary bins = 20 $(OPTIONS) } } \
-###             { design = "test/bins=50" roots = 500 \
-###               { pid = gamma events = "foo.map" binary bins = 50 $(OPTIONS) } } \
-###             { design = "test/bins=100" roots = 500 \
-###               { pid = gamma events = "foo.map" binary bins = 100 $(OPTIONS) } } \
-###             { design = "test/bins=10/t" roots = 500 \
-###               { pid = gamma events = "foo.map" binary bins = 10 triangle $(OPTIONS) } } \
-###             { design = "test/bins=20/t" roots = 500 \
-###               { pid = gamma events = "foo.map" binary bins = 20 triangle $(OPTIONS) } } \
-###             { design = "test/bins=50/t" roots = 500 \
-###               { pid = gamma events = "foo.map" binary bins = 50 triangle $(OPTIONS) } } \
-###             { design = "test/bins=100/t" roots = 500 \
-###               { pid = gamma events = "foo.map" binary bins = 100 triangle $(OPTIONS) } } }'
-### 
-### ########################################################################
-### 
-### NBINS = 50
-### 
-### daniel: $(TOOLLIB_CMX) daniel.cmx
-### 	$(OCAMLOPT) $(OCAMLOPTFLAGS) -o $@ unix.cmxa bigarray.cmxa $^
-### 
-### valery: valery.ml
-### 	$(OCAMLOPT) $(OCAMLOPTFLAGS) -o $@ unix.cmxa bigarray.cmxa $<
-### 
-### valery-data-boot:
-### 	zcat valery_data/fort.1.gz | tail -c +5 >teslagg_200.events
-### 	zcat valery_data/fort.2.gz | tail -c +5 >teslagg_500.events
-### 	zcat valery_data/fort.3.gz | tail -c +5 >teslagg_800.events
-### 	zcat valery_data/fort.4.gz | tail -c +5 >teslage_500.events
-### 
-### valery-data-split:
-### 	./valery -r 200 -D 'TESLA/GG' -b $(NBINS) -d teslagg_200 \
-### 		-o teslagg_200.circe >teslagg_200.commands
-### 	./valery -r 500 -D 'TESLA/GG' -b $(NBINS) -d teslagg_500 \
-### 		-o teslagg_500.circe >teslagg_500.commands
-### 	./valery -r 800 -D 'TESLA/GG' -b $(NBINS) -d teslagg_800 \
-### 		-o teslagg_800.circe >teslagg_800.commands
-### 	./valery -r 500 -D 'TESLA/GE' -b $(NBINS) -d teslage_500 \
-### 		-o teslage_500.circe >teslage_500.commands
-### 
-### valery-data-split-polavg:
-### 	./valery -polavg -r 200 -D 'TESLA/GG' -b $(NBINS) -d teslagg_200 \
-### 		-o teslagg_200_polavg.circe >teslagg_200_polavg.commands
-### 	./valery -polavg -r 500 -D 'TESLA/GG' -b $(NBINS) -d teslagg_500 \
-### 		-o teslagg_500_polavg.circe >teslagg_500_polavg.commands
-### 	./valery -polavg -r 800 -D 'TESLA/GG' -b $(NBINS) -d teslagg_800 \
-### 		-o teslagg_800_polavg.circe >teslagg_800_polavg.commands
-### 	./valery -polavg -r 500 -D 'TESLA/GE' -b $(NBINS) -d teslage_500 \
-### 		-o teslage_500_polavg.circe >teslage_500_polavg.commands
-### 
-### valery-data-commands:
-### 	./valery -n -r 200 -D 'TESLA/GG' -b $(NBINS) -d teslagg_200 \
-### 		-o teslagg_200.circe >teslagg_200.commands
-### 	./valery -n -r 500 -D 'TESLA/GG' -b $(NBINS) -d teslagg_500 \
-### 		-o teslagg_500.circe >teslagg_500.commands
-### 	./valery -n -r 800 -D 'TESLA/GG' -b $(NBINS) -d teslagg_800 \
-### 		-o teslagg_800.circe >teslagg_800.commands
-### 	./valery -n -r 500 -D 'TESLA/GE' -b $(NBINS) -d teslage_500 \
-### 		-o teslage_500.circe >teslage_500.commands
-### 
-### valery-data-commands-polavg:
-### 	./valery -n -polavg -r 200 -D 'TESLA/GG' -b $(NBINS) -d teslagg_200 \
-### 		-o teslagg_200_polavg.circe >teslagg_200_polavg.commands
-### 	./valery -n -polavg -r 500 -D 'TESLA/GG' -b $(NBINS) -d teslagg_500 \
-### 		-o teslagg_500_polavg.circe >teslagg_500_polavg.commands
-### 	./valery -n -polavg -r 800 -D 'TESLA/GG' -b $(NBINS) -d teslagg_800 \
-### 		-o teslagg_800_polavg.circe >teslagg_800_polavg.commands
-### 	./valery -n -polavg -r 500 -D 'TESLA/GE' -b $(NBINS) -d teslage_500 \
-### 		-o teslage_500_polavg.circe >teslage_500_polavg.commands
-### 
-### valery-data-circe2:
-### 	./circe2_tool -f teslagg_200.commands
-### 	./circe2_tool -f teslagg_500.commands
-### 	./circe2_tool -f teslagg_800.commands
-### 	./circe2_tool -f teslage_500.commands
-### 
-### valery-data-circe2-polavg:
-### 	./circe2_tool -f teslagg_200_polavg.commands
-### 	./circe2_tool -f teslagg_500_polavg.commands
-### 	./circe2_tool -f teslagg_800_polavg.commands
-### 	./circe2_tool -f teslage_500_polavg.commands

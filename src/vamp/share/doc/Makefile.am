@@ -49,6 +49,9 @@ LATEX_STYLES = \
     feynmp.sty feynmp.mp \
     noweb.sty emp.sty flex.cls thohacks.sty thophys.sty
 
+TEX_FLAGS = "$$TEXINPUTS:$(top_srcdir)/share/doc"
+MP_FLAGS  = "$$MPINPUTS:$(top_srcdir)/share/doc"
+
 EXTRA_DIST = \
   tex-comments.sh \
   vegas.d vamp.d \
@@ -89,25 +92,35 @@ vamp.data: vamp.d
 
 SUFFIXES = .tex .pdf
 
-MPOST_LATEX = TEX=$(LATEX) $(MPOST)
+MPOST_LATEX = TEX=$(LATEX) TEXINPUTS=$(TEX_FLAGS) $(MPOST)
 
 if DISTRIBUTION
 if PDFLATEX_AVAILABLE
 if MPOST_AVAILABLE
 if SUPP_PDF_AVAILABLE
+if MAKEINDEX_AVAILABLE
 .tex.pdf:
-	-pdflatex $<
-	makeindex -o $*.ind $*.idx
+	-TEXINPUTS=$(TEX_FLAGS) $(PDFLATEX) $<
+	$(MAKEINDEX) -o $*.ind $*.idx
 	-test -r $*.mp && $(MPOST_LATEX) $*
-	-test -r $*pics.mp && $(MPOST) $*pics
-	pdflatex $<
+	-test -r $*pics.mp && MPINPUTS=$(MP_FLAGS) $(MPOST) $*pics
+	TEXINPUTS=$(TEX_FLAGS) $(PDFLATEX) $<
 	if grep -s 'Rerun to get cross-references right.' $*.log; then \
-	  pdflatex $<; \
+	  TEXINPUTS=$(TEX_FLAGS) $(PDFLATEX) $<; \
 	fi
-endif
-endif
-endif
-endif
+else
+	-TEXINPUTS=$(TEX_FLAGS) $(PDFLATEX) $<
+	-test -r $*.mp && $(MPOST_LATEX) $*
+	-test -r $*pics.mp && MPINPUTS=$(MP_FLAGS) $(MPOST) $*pics
+	TEXINPUTS=$(TEX_FLAGS) $(PDFLATEX) $<
+	if grep -s 'Rerun to get cross-references right.' $*.log; then \
+	  TEXINPUTS=$(TEX_FLAGS) $(PDFLATEX) $<; \
+	fi
+endif 
+endif SUPP_PDF_AVAILABLE
+endif MPOST_AVAILABLE
+endif PDFLATEX_AVAILABLE
+endif DISTRIBUTION
 
 ## Cleanup tasks
 mostlyclean-latex:
@@ -153,9 +166,6 @@ uninstall-hook:
 	-rm -f $(DESTDIR)/$(datarootdir)/doc/vamp/preview.pdf 
 	-rm -f $(DESTDIR)/$(datarootdir)/doc/vamp/preview2.pdf
 endif
-
-distclean-local:
-	-test "$(srcdir)" != "." && rm -f $(LATEX_STYLES)
 
 ########################################################################
 ## The End.

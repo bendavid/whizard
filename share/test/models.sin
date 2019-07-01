@@ -63,11 +63,17 @@ process models_ccww_sm_ac_ckm 	   = 	c, C	=>	Wp, Wm
 model = SM_km
 process models_ccww_sm_km 	   = 	Wp, Wm	=>	Wp, Wm
 
+model = SM_QCD
+process models_ccuu_sm_qcd 	   = 	c, C	=>	u, U
+
 model = SM_top
 process models_ccww_sm_top 	   = 	c, C	=>	Wp, Wm
 
 model = SM_top_anom
 process models_ccww_sm_top_anom    = 	c, C	=>	Wp, Wm
+
+model = SM_Higgs
+process models_ccww_sm_higgs 	   = 	c, C	=>	Wp, Wm
 
 model = Simplest
 process models_ccww_simplest 	   = 	c, C	=>	Wp, Wm
@@ -99,6 +105,9 @@ sqrts = 200 GeV
 
 iterations = 3:100
 
+!!! Tests should be run single-threaded 
+openmp_num_threads = 1
+
 integrate (models_ccww_grav_test)
 integrate (models_ccww_littlest, models_ccww_littlest_eta, 
            models_ccww_littlest_tpar)
@@ -107,8 +116,9 @@ integrate (models_uudd_qcd, models_eemm_qed)
 integrate (models_ccww_nmssm, models_ccww_nmssm_ckm, models_ccww_nmssm_hgg,
 	   models_ccww_psssm)
 integrate (models_ccww_sm, models_ccww_sm_ckm, models_ccww_sm_ac, 
-           models_ccww_sm_ac_ckm,
-           models_ccww_sm_km, models_ccww_sm_top, models_ccww_sm_top_anom)
+           models_ccww_sm_ac_ckm, models_ccww_sm_km, 
+	   models_ccuu_sm_qcd, models_ccww_sm_top, models_ccww_sm_top_anom,
+           models_ccww_sm_higgs)
 integrate (models_ccww_simplest, models_ccww_simplest_univ)
 integrate (models_ccww_template, models_ccww_ued, models_ccww_xdim, 
            models_ccww_zprime)

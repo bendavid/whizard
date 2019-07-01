@@ -1,4 +1,4 @@
-! WHIZARD 2.0.5 Tue May 10 2011
+! WHIZARD 2.0.6 Wed Dec 7 2011
 ! 
 ! Copyright (C) 1999-2011 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -342,7 +342,7 @@ contains
        case (BP_DENSITY)
           call printer ("density_matrix (a, b):")
           call printer ("   a: " // real2char (bp%d))
-          call printer ("   b: " // cmplx2char (bp%nd))
+          call printer ("   b: " // char (cmplx2string (bp%nd)))
        case (BP_DIAG)
           allocate (msgs(size (bp%fractions)))
           header = "diagonal_density ("

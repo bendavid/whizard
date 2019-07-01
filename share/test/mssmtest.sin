@@ -13,4 +13,7 @@ me = 0
 sqrts = 1 TeV
 beams = e1, E1
 
+!!! Tests should be run single-threaded 
+openmp_num_threads = 1
+
 integrate (mssmtest_se) { iterations = 3:5000 }

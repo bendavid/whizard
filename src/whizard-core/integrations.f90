@@ -1,4 +1,4 @@
-! WHIZARD 2.0.5 Tue May 10 2011
+! WHIZARD 2.0.6 Wed Dec 7 2011
 ! 
 ! Copyright (C) 1999-2011 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -53,6 +53,7 @@ module integrations
   public :: prepare_me_evaluation
   public :: prepare_me_missing_processes
   public :: integrate_process
+  public :: me_test_process
   public :: integrate_missing_processes
 
   type :: integration_t
@@ -74,6 +75,7 @@ module integrations
     logical :: sqrts_known = .false.
     real(default) :: sqrts = -1
     real(default) :: alpha_s = -1
+    integer :: n_events_for_me_test = 0
     logical :: time_estimate = .false.
     logical :: vis_history = .true.
     type(beam_data_t) :: beam_data
@@ -192,6 +194,8 @@ contains
          var_list_get_lval (var_list, var_str ("?time_estimate"))
     intg%vis_history = &
          var_list_get_lval (var_list, var_str ("?vis_history"))
+    intg%n_events_for_me_test = &
+         var_list_get_ival (var_list, var_str ("n_events"))
   end subroutine integration_basic_init
 
   subroutine integration_check_beam_data (intg, beam_data)
@@ -608,9 +612,8 @@ contains
           call process_results_write_average (intg%process, intg%pass, unit=u)
           flush (u)
        end if
-       if (intg%vis_history) then
-          call process_display_integration_history (intg%process, os_data)
-       end if
+       call process_display_integration_history &
+            (intg%process, os_data, intg%vis_history)
     end if
     call process_record_integral (intg%process, global_var_list)
     call process_write_logfile (intg%process)
@@ -745,6 +748,44 @@ contains
     end do
   end subroutine integration_integrate_dummy1
 
+  subroutine integration_me_test (intg, rng, global_var_list, os_data)
+    type(integration_t), intent(inout) :: intg
+    type(tao_random_state), intent(inout) :: rng
+    type(var_list_t), intent(inout) :: global_var_list
+    type(os_data_t), intent(in) :: os_data
+    integer :: openmp_num_threads
+    real(default) :: time_in_seconds, time_per_call, sample_function_sum
+    openmp_num_threads = &
+         var_list_get_ival (global_var_list, var_str ("openmp_num_threads"))
+    call openmp_set_num_threads_verbose (openmp_num_threads)
+    write (msg_buffer, "(A,1x,I0,1x,A)")  "Matrix element test: " &
+         // "Calling the sampling function", &
+         intg%n_events_for_me_test, "times ..."
+    call msg_message ()
+    call process_me_test (intg%process, rng, intg%n_events_for_me_test, &
+         time_in_seconds, sample_function_sum)
+    call msg_message ("... test finished.")
+    call process_status_write_counters (process_get_status (intg%process))
+    write (msg_buffer, "(A,1PG22.15)")  "Matrix element test: " &
+         // "Sample function sum:         ", sample_function_sum
+    call msg_message ()
+    write (msg_buffer, "(A,1PG12.5)")  "Matrix element test: " &
+         // "Time in seconds (wallclock): ", time_in_seconds
+    call msg_message ()
+    if (intg%n_events_for_me_test /= 0) then
+       time_per_call = time_in_seconds / intg%n_events_for_me_test
+       write (msg_buffer, "(A,1PG12.5)")  "Matrix element test: " &
+            // "Time per call in seconds:    ", time_per_call
+       call msg_message ()
+       if (openmp_num_threads /= 0) then
+          write (msg_buffer, "(A,1PG12.5)")  "Matrix element test: " &
+               // "Time times number of threads:", &
+               time_per_call * openmp_num_threads
+          call msg_message ()
+       end if
+    end if
+  end subroutine integration_me_test
+
   subroutine prepare_me_evaluation0 (process_id, global, verbose)
     type(string_t), intent(in) :: process_id
     type(rt_data_t), intent(inout), target :: global
@@ -820,6 +861,22 @@ contains
             (process_id(proc), global, global_var_list, no_beams, verbose)
     end do
   end subroutine integrate_process1
+
+  subroutine me_test_process (process_id, global, global_var_list)
+    type(string_t), intent(in) :: process_id
+    type(rt_data_t), intent(inout), target :: global
+    type(var_list_t), intent(inout) :: global_var_list
+    type(integration_t) :: intg
+    logical :: ok
+    call integration_init (intg, process_id, global, ok)
+    if (ok) then
+       call integration_me_test &
+            (intg, global%rng, global_var_list, global%os_data)
+    else
+       call msg_error ("Matrix element test fails " &
+            // "because process has no matrix element")
+    end if
+  end subroutine me_test_process
 
   subroutine integrate_missing_processes &
       (process_id, global, global_var_list, no_beams, verbose)

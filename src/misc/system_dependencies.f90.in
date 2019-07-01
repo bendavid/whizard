@@ -195,6 +195,8 @@ module system_dependencies
        "@LHAPDF_PDFSETS_PATH@"
 
   ! Available methods for event analysis display
+  character(*), parameter :: EVENT_ANALYSIS = &
+       "@EVENT_ANALYSIS@"
   character(*), parameter :: EVENT_ANALYSIS_PS = &
        "@EVENT_ANALYSIS_PS@"
   character(*), parameter :: EVENT_ANALYSIS_PDF = &

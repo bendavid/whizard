@@ -63,7 +63,7 @@ $y_label = "$N_{\textrm{events}}$"
 
 # Allocate plots
 $title = "$Z'$ Drell-Yan dilepton peak $pp\to \ell\ell$"
-$x_label = "$\theta^{\ell}$/GeV"
+$x_label = "$M_{\ell\ell}$/GeV"
 histogram m_lepton (1 TeV, 2 TeV, 50 GeV)
 
 $title = "$Z'$ Drell-Yan: $p_T$ distribution of the $\ell$"

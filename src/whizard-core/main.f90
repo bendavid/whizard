@@ -1,4 +1,4 @@
-! WHIZARD 2.0.5 Tue May 10 2011
+! WHIZARD 2.0.6 Wed Dec 7 2011
 ! 
 ! Copyright (C) 1999-2011 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -46,8 +46,12 @@ program main
   logical :: interactive
   type(string_t) :: files, this, model, libname, library, libraries, logfile
   type(string_t) :: check, checks
+  logical :: user_code_enable = .false.
+  integer :: n_user_src = 0, n_user_lib = 0
+  type(string_t) :: user_src, user_lib
   type(paths_t) :: paths
-  logical :: rebuild_library, rebuild_phs, rebuild_grids, rebuild_events
+  logical :: rebuild_library, rebuild_user
+  logical :: rebuild_phs, rebuild_grids, rebuild_events
   logical :: recompile_library
   logical :: time_estimate
   type(ifile_t) :: commands
@@ -68,7 +72,10 @@ program main
   libraries = ""
   check = ""
   checks = ""
+  user_src = ""
+  user_lib = ""
   rebuild_library = .false.
+  rebuild_user = .false.
   rebuild_phs = .false.
   rebuild_grids = .false.
   rebuild_events = .false.
@@ -156,6 +163,7 @@ program main
            case ("--rebuild")
               call no_option_value (long_option, value)
               rebuild_library = .true.
+              rebuild_user = .true.
               rebuild_phs = .true.
               rebuild_grids = .true.
               rebuild_events = .true.
@@ -163,6 +171,10 @@ program main
            case ("--rebuild-library")
               call no_option_value (long_option, value)
               rebuild_library = .true.
+              cycle SCAN_CMDLINE
+           case ("--rebuild-user")
+              call no_option_value (long_option, value)
+              rebuild_user = .true.
               cycle SCAN_CMDLINE
            case ("--rebuild-phase-space")
               call no_option_value (long_option, value)
@@ -188,6 +200,27 @@ program main
            case ("--no-time-estimate")
               call no_option_value (long_option, value)
               time_estimate = .false.
+              cycle SCAN_CMDLINE
+           case ("--user")
+              user_code_enable = .true.
+              cycle SCAN_CMDLINE
+           case ("--user-src")
+              if (user_src == "") then
+                 user_src = get_option_value (i, long_option, value)
+              else
+                 user_src = user_src // " " &
+                      // get_option_value (i, long_option, value)
+              end if
+              n_user_src = n_user_src + 1
+              cycle SCAN_CMDLINE
+           case ("--user-lib")
+              if (user_lib == "") then
+                 user_lib = get_option_value (i, long_option, value)
+              else
+                 user_lib = user_lib // " " &
+                      // get_option_value (i, long_option, value)
+              end if
+              n_user_lib = n_user_lib + 1
               cycle SCAN_CMDLINE
            case ("--write-syntax-tables")
               call no_option_value (long_option, value)
@@ -245,9 +278,13 @@ program main
                     cycle SCAN_CMDLINE
                  case ("-r")
                     rebuild_library = .true.
+                    rebuild_user = .true.
                     rebuild_phs = .true.
                     rebuild_grids = .true.
                     rebuild_events = .true.
+                    cycle SCAN_SHORT_OPTIONS
+                 case ("-u")
+                    user_code_enable = .true.
                     cycle SCAN_SHORT_OPTIONS
                  case default
                     call print_usage ()
@@ -271,12 +308,16 @@ program main
   call whizard_init &
        (preload_model=model, preload_libs=libraries, default_lib=libname, &
         rebuild_library=rebuild_library, &
+        rebuild_user=rebuild_user, &
         rebuild_phs=rebuild_phs, &
         rebuild_grids=rebuild_grids, &
         rebuild_events=rebuild_events, &
         recompile_library=recompile_library, &
         time_estimate=time_estimate, &
-        paths=paths)
+        paths=paths, &
+        user_code_enable=user_code_enable, &
+        n_user_src=n_user_src, user_src=user_src, &
+        n_user_lib=n_user_lib, user_lib=user_lib)
 
 
    ! Run any self-checks (and no commands)
@@ -284,7 +325,7 @@ program main
       checks = trim (adjustl (checks))
       RUN_CHECKS: do while (checks /= "")
          call split (checks, check, " ")
-         call whizard_check (check)
+         call whizard_check (check, LHAPDF_AVAILABLE)
       end do RUN_CHECKS
       quit = .true.
    end if
@@ -371,7 +412,8 @@ contains
 
   subroutine print_version ()
     print "(A)", "WHIZARD " // WHIZARD_VERSION 
-    print "(A)", "Copyright (C) 1999-2011 Wolfgang Kilian, Thorsten Ohl, Juergen Reuter"
+    print "(A)", "Copyright (C) 1999-2011 Wolfgang Kilian, Thorsten Ohl, Juergen Reuter,"
+    print "(A)", "                           Christian Speckner"
     print "(A)", "This is free software; see the source for copying conditions.  There is NO"
     print "(A)", "warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE."
     print *
@@ -401,14 +443,18 @@ contains
     print "(A)", "-L, --logfile FILE    write log to FILE (default: 'whizard.log'"
     print "(A)", "-m, --model NAME      preload model NAME (default: 'SM')"
     print "(A)", "    --no-logfile      do not write a logfile"
-    print "(A)", "-r, --rebuild         rebuild process code, phase space, integration grids, and events"
+    print "(A)", "-r, --rebuild         rebuild all (see below)"
     print "(A)", "    --rebuild-library"
     print "(A)", "                      rebuild process code library"
+    print "(A)", "    --rebuild-user    rebuild user-provided code"
     print "(A)", "    --rebuild-phase-space"
     print "(A)", "                      rebuild phase-space configuration"
     print "(A)", "    --rebuild-grids   rebuild integration grids"
     print "(A)", "    --rebuild-events  rebuild event samples"
     print "(A)", "    --recompile       recompile process code, ignoring any existing library"
+    print "(A)", "-u  --user            enable user-provided code"
+    print "(A)", "    --user-src FILE   user-provided source file"
+    print "(A)", "    --user-lib FILE   user-provided library file"
     print "(A)", "-V, --version         output version information and exit"
     print "(A)", "    --write-syntax-tables"
     print "(A)", "                      write the internal syntax tables to files and exit"

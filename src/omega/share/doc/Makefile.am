@@ -1,5 +1,5 @@
 # Makefile.am -- Makefile for O'Mega within and without WHIZARD
-# $Id: Makefile.am 3203 2011-04-30 10:43:05Z jr_reuter $
+# $Id: Makefile.am 3548 2011-10-10 10:33:48Z jr_reuter $
 ##
 ## Process this file with automake to produce Makefile.in
 ##
@@ -35,16 +35,23 @@ include $(top_srcdir)/src/Makefile.sources
 
 VPATH = $(srcdir):$(top_builddir)/src:$(srcdir):$(top_srcdir)/src
 
-## This relies on conventions of Karl Berry's kpathsearch library.
-## Is it safe to assume that all TeX installation use it?
-MPINPUTS = .:$(srcdir):
-
 PICTURES_EPS = \
-    el_te_ph.eps \
     modules.eps \
+    omega-paper-1-pics-1.eps \
+    omega-paper-1-pics-2.eps \
+    omega-paper-1-pics-3.eps \
+    omega-paper-1-pics-4.eps \
+    omega-paper-1-pics-5.eps \
+    omega-paper-1-pics-6.eps \
+    omega-paper-1-pics-7.eps \
+    omega-paper-1-pics-8.eps \
+    omega-paper-1-pics-9.eps \
+    omega-paper-1-pics-10.eps \
     bhabha.eps bhabha0.eps \
     epemudbardubar.eps epemudbardubar0.eps \
-    epemudbarmunumubar.eps epemudbarmunumubar0.eps
+    epemudbarmunumubar.eps epemudbarmunumubar0.eps \
+    sign_ex.eps fusion_rules.eps mom_choice.eps \
+    mom_flow.eps
 
 PICTURES_PDF = $(PICTURES_EPS:.eps=.pdf)
 
@@ -53,14 +60,14 @@ LATEX_STYLES = \
     noweb.sty ocamlweb.sty \
     feynmp.sty feynmp.mp emp.sty
 
+TEX_FLAGS = "$$TEXINPUTS:$(top_srcdir)/share/doc"
+MP_FLAGS  = "$$MPINPUTS:$(top_srcdir)/share/doc"
+
 if DISTRIBUTION
 PDFS = omega.pdf omega-paper-1.pdf omega-paper-2.pdf 
 else
 PDFS = 
 endif
-
-# Avoid mpost race condition
-omega-paper-2.pdf: omega-paper-1.pdf 
 
 ### Files needed to be installed with the O'Mega distribution
 modelsdir = $(pkgdatadir)/doc
@@ -84,31 +91,31 @@ if DISTRIBUTION
 if SUPP_PDF_AVAILABLE
 if PDFLATEX_AVAILABLE
 .tex.pdf:
-	-$(PDFLATEX) $<
+	-TEXINPUTS=$(TEX_FLAGS) $(PDFLATEX) $<
 if MPOST_AVAILABLE
-	MPINPUTS=$(MPINPUTS) $(MPOST) $*pics
-	TEX=$(LATEX) $(MPOST) $*
+	-test -r $*pics.mp && MPINPUTS=$(MP_FLAGS) $(MPOST) $*pics
+	-test -r $*.mp && TEX=$(LATEX) TEXINPUTS=$(TEX_FLAGS) MPINPUTS=$(MP_FLAGS) $(MPOST) $*
 endif MPOST_AVAILABLE
 	echo "skipping -bibtex $*"
-	$(PDFLATEX) $<
+	TEXINPUTS=$(TEX_FLAGS) $(PDFLATEX) $<
 	while $(GREP) -s 'Rerun to get cross-references right.' $*.log; do \
-	  $(PDFLATEX) $<; \
+	  TEXINPUTS=$(TEX_FLAGS) $(PDFLATEX) $<; \
 	done
 else  !PDFLATEX_AVAILABLE
 if LATEX_AVAILABLE
 if DVIPS_AVAILABLE
 if PS2PDF_AVAILABLE
-	-$(LATEX) $<
+	-TEXINPUTS=$(TEX_FLAGS) $(LATEX) $<
 if MPOST_AVAILABLE
-	MPINPUTS=$(MPINPUTS) $(MPOST) $*pics
-	TEX=$(LATEX) MPINPUTS=$(MPINPUTS) $(MPOST) $*
+	MPINPUTS=$(MP_FLAGS) $(MPOST) $*pics
+	TEX=$(LATEX) TEXINPUTS=$(TEX_FLAGS) MPINPUTS=$(MP_FLAGS) $(MPOST) $*
 endif MPOST_AVAILABLE
 	echo "skipping -bibtex $*"
-	$(LATEX) $<
+	TEXINPUTS=$(TEX_FLAGS) $(LATEX) $<
 	while $(GREP) -s 'Rerun to get cross-references right.' $*.log; do \
-	  $(LATEX) $<; \
+	  TEXINPUTS=$(TEX_FLAGS) $(LATEX) $<; \
 	done
-	$(DVIPS) $*
+	$(DVIPS) -o $*.ps $*
 	$(PS2PDF) $*
 endif PS2PDF_AVAILABLE
 endif DVIPS_AVAILABLE
@@ -120,7 +127,24 @@ endif DISTRIBUTION
 if DISTRIBUTION
 if SUPP_PDF_AVAILABLE
 if PDFLATEX_AVAILABLE
-omega-paper-1.pdf: el_te_ph.pdf modules.pdf
+
+omega-paper-1.pdf: modules.pdf \
+    omega-paper-1-pics-1.pdf \
+    omega-paper-1-pics-2.pdf \
+    omega-paper-1-pics-3.pdf \
+    omega-paper-1-pics-4.pdf \
+    omega-paper-1-pics-5.pdf \
+    omega-paper-1-pics-6.pdf \
+    omega-paper-1-pics-7.pdf \
+    omega-paper-1-pics-8.pdf \
+    omega-paper-1-pics-9.pdf \
+    omega-paper-1-pics-10.pdf
+
+# Dependencies and avoid mpost race condition
+omega-paper-2.pdf: \
+    omega-paper-1.pdf sign_ex.pdf fusion_rules.pdf \
+    mom_choice.pdf mom_flow.pdf
+
 endif PDFLATEX_AVAILABLE
 endif SUPP_PDF_AVAILABLE
 endif DISTRIBUTION
@@ -256,9 +280,6 @@ uninstall-hook:
 	-rm -f $(DESTDIR)/$(datarootdir)/doc/omega/omega-paper-1.pdf 
 	-rm -f $(DESTDIR)/$(datarootdir)/doc/omega/omega-paper-2.pdf 
 endif
-
-distclean-local:
-	-test "$(srcdir)" != "." && rm -f $(LATEX_STYLES)
 
 ########################################################################
 ## The End.

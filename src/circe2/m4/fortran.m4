@@ -119,6 +119,10 @@ esac
 ])
 FC_VERSION="$wo_cv_fc_version"
 AC_SUBST([FC_VERSION])
+
+### Catch gfortran memory leak in user structure function test
+AM_CONDITIONAL([FC_IS_GFORTRAN_450],
+  [test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.5.0" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.5.1" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.5.2" || test "$wo_cv_fc_vendor" = "gfortran" -a "$wo_cv_fc_version" = "4.5.3"])
  
 AC_CACHE_CHECK([the major version],
 [wo_cv_fc_major_version],
@@ -128,6 +132,7 @@ FC_MAJOR_VERSION="$wo_cv_fc_major_version"
 AC_SUBST([FC_MAJOR_VERSION])
 ])
 ### end WO_FC_GET_VENDOR_AND_VERSION
+
 
 ### Determine Fortran flags and file extensions
 AC_DEFUN([WO_FC_PARAMETERS],
@@ -489,6 +494,8 @@ AC_DEFUN([WO_FC_CHECK_ISO_FORTRAN_ENV],
   if test "$enable_iso_fortran_env" = yes; then
     AC_CACHE_CHECK([whether $FC supports iso_fortran_env (F2003)],
       [wo_cv_fc_iso_fortran_env],
+       AC_REQUIRE([AC_PROG_FC])
+       AC_LANG([Fortran])
       [AC_LINK_IFELSE(
         [dnl
         program conftest

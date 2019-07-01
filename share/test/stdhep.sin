@@ -9,6 +9,9 @@ compile
 sqrts = 500 GeV
 beams = e1, E1
 
+!!! Tests should be run single-threaded 
+openmp_num_threads = 1
+
 integrate (stdhep_eemm) {
   iterations = 1:2000
 }

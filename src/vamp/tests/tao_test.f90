@@ -4,4 +4,5 @@ program tao_test
   implicit none
   call test30 ("tmp.tao")
   call test52 ("tmp.tao")
+  stop 0
 end program tao_test

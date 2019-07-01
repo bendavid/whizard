@@ -186,6 +186,14 @@ AM_CONDITIONAL([PDFLATEX_AVAILABLE], [test "$PDFLATEX" != "no"])
 AC_SUBST(PDFLATEX)
 ])
 
+dnl Checking for makeindex
+
+AC_DEFUN([AC_PROG_MAKEINDEX], [dnl
+AC_CHECK_PROGS(MAKEINDEX,[makeindex],no)
+AM_CONDITIONAL([MAKEINDEX_AVAILABLE], [test "$MAKEINDEX" != "no"])
+AC_SUBST(MAKEINDEX)
+])
+
 dnl Checking for Metapost
 
 AC_DEFUN([AC_PROG_MPOST], [dnl
@@ -201,26 +209,45 @@ AC_REQUIRE([AC_PROG_MPOST])
 AC_REQUIRE([AC_PROG_DVIPS])
 AC_REQUIRE([AC_PROG_PS2PDF])
 
+AC_CACHE_CHECK([whether we can display event analysis],
+[wo_cv_event_analysis],
+[dnl
+if test "$LATEX" != "no" -a "$MPOST" != "no"; then
+  wo_cv_event_analysis="yes"
+else
+  wo_cv_event_analysis="no"
+fi
+])
+EVENT_ANALYSIS="$wo_cv_event_analysis"
+EVENT_ANALYSIS_PS="$EVENT_ANALYSIS"
+EVENT_ANALYSIS_PDF="$EVENT_ANALYSIS"
+
+if test "$EVENT_ANALYSIS" != "no"; then
 AC_CACHE_CHECK([whether we can display event analysis in PostScript format],
 [wo_cv_event_analysis_ps],
 [dnl
-if test "$LATEX" != "no" -a "$MPOST" != "no" -a "$DVIPS" != "no"; then
+if test "$DVIPS" != "no"; then
   wo_cv_event_analysis_ps="yes"
 else
   wo_cv_event_analysis_ps="no"
 fi])
 EVENT_ANALYSIS_PS="$wo_cv_event_analysis_ps"
-AC_SUBST([EVENT_ANALYSIS_PS])
+fi
 
+if test "$EVENT_ANALYSIS_PS" != "no"; then
 AC_CACHE_CHECK([whether we can display event analysis in PDF format],
 [wo_cv_event_analysis_pdf],
 [dnl
-if test "$EVENT_ANALYSIS_PS" != "no" -a "$PS2PDF" != "no"; then
+if test "$PS2PDF" != "no"; then
   wo_cv_event_analysis_pdf="yes"
 else
   wo_cv_event_analysis_pdf="no"
 fi])
 EVENT_ANALYSIS_PDF="$wo_cv_event_analysis_pdf"
+fi
+
+AC_SUBST([EVENT_ANALYSIS])
+AC_SUBST([EVENT_ANALYSIS_PS])
 AC_SUBST([EVENT_ANALYSIS_PDF])
 ])
 

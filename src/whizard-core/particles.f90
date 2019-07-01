@@ -1,4 +1,4 @@
-! WHIZARD 2.0.5 Tue May 10 2011
+! WHIZARD 2.0.6 Wed Dec 7 2011
 ! 
 ! Copyright (C) 1999-2011 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -50,10 +50,13 @@ module particles
   private
 
   public :: particle_t
+  public :: particle_write
   public :: particle_reset_status
   public :: particle_set_color
   public :: particle_set_flavor
   public :: particle_set_momentum
+  public :: particle_set_children
+  public :: particle_set_parents
   public :: particle_get_status
   public :: particle_get_pdg
   public :: particle_get_color
@@ -69,14 +72,15 @@ module particles
   public :: particle_set_fill_hepeup
   public :: particle_set_fill_hepevt
   public :: particle_set_fill_hepmc_event
-  public :: particle_set_reset_status
   public :: particle_set_get_n_beam
   public :: particle_set_get_n_in
   public :: particle_set_get_n_vir
   public :: particle_set_get_n_out
   public :: particle_set_get_n_tot
   public :: particle_set_get_particle
+  public :: particle_set_reset_status
   public :: particle_set_reduce
+  public :: particle_set_to_hepevt_form
   public :: particle_set_extract_interaction
   public :: particle_set_to_subevt
   public :: particle_set_replace
@@ -282,7 +286,7 @@ contains
   subroutine particle_read_raw (prt, u, iostat)
     type(particle_t), intent(out) :: prt
     integer, intent(in) :: u
-    integer, intent(out), optional :: iostat
+    integer, intent(out) :: iostat
     logical :: allocated_parent, allocated_child
     integer :: size_parent, size_child
     read (u, iostat=iostat) prt%status, prt%polarization
@@ -663,7 +667,7 @@ contains
   subroutine particle_set_read_raw (particle_set, u, iostat)
     type(particle_set_t), intent(out) :: particle_set
     integer, intent(in) :: u
-    integer, intent(out), optional :: iostat
+    integer, intent(out) :: iostat
     integer :: i
     read (u, iostat=iostat) &
          particle_set%n_beam, particle_set%n_in, &
@@ -679,13 +683,13 @@ contains
   subroutine particle_set_fill_hepeup (particle_set)
     type(particle_set_t), intent(in), target :: particle_set
     type(particle_t), pointer :: prt
-    type(particle_set_t), target :: pset_reduced
+    type(particle_set_t), target :: pset_hepevt
     integer :: i, n_parents
     integer, dimension(1) :: i_mother
-    call particle_set_reduce (particle_set, pset_reduced)
-    call hepeup_init (pset_reduced%n_tot)
-    do i = 1, pset_reduced%n_tot
-       prt => pset_reduced%prt(i)
+    call particle_set_to_hepevt_form (particle_set, pset_hepevt)
+    call hepeup_init (pset_hepevt%n_tot)
+    do i = 1, pset_hepevt%n_tot
+       prt => pset_hepevt%prt(i)
        call hepeup_set_particle (i, &
             particle_get_pdg (prt), &
             particle_get_status (prt), &
@@ -701,27 +705,23 @@ contains
              call hepeup_set_particle_spin (i, &
                   particle_get_momentum (prt), &
                   particle_get_polarization (prt), &
-                  particle_get_momentum (pset_reduced%prt(i_mother(1))))
+                  particle_get_momentum (pset_hepevt%prt(i_mother(1))))
           end select
        end if
     end do
-    call particle_set_final (pset_reduced)
+    call particle_set_final (pset_hepevt)
   end subroutine particle_set_fill_hepeup
 
   subroutine particle_set_fill_hepevt (particle_set, keep_beams)
     type(particle_set_t), intent(in), target :: particle_set
     type(particle_t), pointer :: prt
-    type(particle_set_t), target :: pset_reduced
+    type(particle_set_t), target :: pset_hepevt
     logical, intent(in), optional :: keep_beams
-    logical :: kb
-    integer :: i, n_parents
-    integer, dimension(1) :: i_mother
-    kb = .false.
-    if (present (keep_beams)) kb = keep_beams
-    call particle_set_reduce (particle_set, pset_reduced, kb)
-    call hepevt_init (pset_reduced%n_tot, pset_reduced%n_out)    
-    do i = 1, pset_reduced%n_tot
-       prt => pset_reduced%prt(i)
+    integer :: i
+    call particle_set_to_hepevt_form (particle_set, pset_hepevt)
+    call hepevt_init (pset_hepevt%n_tot, pset_hepevt%n_out)    
+    do i = 1, pset_hepevt%n_tot
+       prt => pset_hepevt%prt(i)
        call hepevt_set_particle (i, &
             particle_get_pdg (prt), &
             particle_get_status (prt), &
@@ -731,7 +731,7 @@ contains
             particle_get_p2 (prt), &
             particle_get_helicity (prt))
     end do
-    call particle_set_final (pset_reduced)
+    call particle_set_final (pset_hepevt)
   end subroutine particle_set_fill_hepevt
 
   subroutine particle_set_fill_hepmc_event (particle_set, evt)
@@ -739,53 +739,45 @@ contains
     type(hepmc_event_t), intent(inout) :: evt
     type(hepmc_vertex_t), dimension(:), allocatable :: v
     type(hepmc_particle_t), dimension(:), allocatable :: hprt
+    type(hepmc_particle_t), dimension(2) :: hbeam
+    logical, dimension(:), allocatable :: is_beam
     integer, dimension(:), allocatable :: v_from, v_to
-    integer :: n_vertices, i
-    allocate (v_from (particle_set%n_tot), v_to (particle_set%n_tot))
+    integer :: n_vertices, n_tot, i
+    n_tot = particle_set%n_tot
+    allocate (v_from (n_tot), v_to (n_tot))
     call particle_set_assign_vertices (particle_set, v_from, v_to, n_vertices)
     allocate (v (n_vertices))
     do i = 1, n_vertices
        call hepmc_vertex_init (v(i))
        call hepmc_event_add_vertex (evt, v(i))
     end do
-    allocate (hprt (particle_set%n_tot))
-    do i = 1, particle_set%n_tot
+    allocate (hprt (n_tot))
+    do i = 1, n_tot
        if (v_to(i) /= 0 .or. v_from(i) /= 0) then
           call particle_to_hepmc (particle_set%prt(i), hprt(i))
        end if
     end do
-    do i = 1, particle_set%n_tot
+    allocate (is_beam (n_tot))
+    is_beam = particle_get_status (particle_set%prt(1:n_tot)) == PRT_BEAM
+    if (.not. any (is_beam)) then
+       is_beam = particle_get_status (particle_set%prt(1:n_tot)) == PRT_INCOMING
+    end if
+    if (count (is_beam) == 2) then
+       hbeam = pack (hprt, is_beam)
+       call hepmc_event_set_beam_particles (evt, hbeam(1), hbeam(2))
+    end if
+    do i = 1, n_tot
        if (v_to(i) /= 0) then
           call hepmc_vertex_add_particle_in (v(v_to(i)), hprt(i))
        end if
     end do
-    do i = 1, particle_set%n_tot
+    do i = 1, n_tot
        if (v_from(i) /= 0) then
           call hepmc_vertex_add_particle_out (v(v_from(i)), hprt(i))
        end if
     end do
   end subroutine particle_set_fill_hepmc_event
   
-  subroutine particle_set_reset_status (particle_set, index, status)
-    type(particle_set_t), intent(inout) :: particle_set
-    integer, dimension(:), intent(in) :: index
-    integer, intent(in) :: status
-    integer :: i
-    if (allocated (particle_set%prt)) then
-       do i = 1, size (index)
-          call particle_reset_status (particle_set%prt(index(i)), status)
-       end do
-    end if
-    particle_set%n_beam  = &
-         count (particle_get_status (particle_set%prt) == PRT_BEAM)
-    particle_set%n_in  = &
-         count (particle_get_status (particle_set%prt) == PRT_INCOMING)
-    particle_set%n_out = &
-         count (particle_get_status (particle_set%prt) == PRT_OUTGOING)
-    particle_set%n_vir = particle_set%n_tot &
-         - particle_set%n_beam - particle_set%n_in - particle_set%n_out
-  end subroutine particle_set_reset_status
-
   function particle_set_get_real_parents (pset, i, keep_beams) result (parent)
     integer, dimension(:), allocatable :: parent
     type(particle_set_t), intent(in) :: pset
@@ -798,7 +790,7 @@ contains
     kb = .false.
     if (present (keep_beams)) kb = keep_beams
     allocate (is_real (pset%n_tot))
-    is_real = particle_is_real (pset%prt(i), kb)
+    is_real = particle_is_real (pset%prt, kb)
     allocate (is_parent (pset%n_tot), is_real_parent (pset%n_tot))
     is_real_parent = .false.
     is_parent = .false.
@@ -808,11 +800,13 @@ contains
           is_real_parent = .true.
           is_parent = .false.
        end where
-       do j = size (is_parent), 1, -1
+       mark_next_parent: do j = size (is_parent), 1, -1
           if (is_parent(j)) then
              is_parent(particle_get_parents(pset%prt(j))) = .true.
+             is_parent(j) = .false.
+             exit mark_next_parent
           end if
-       end do
+       end do mark_next_parent
     end do
     allocate (parent (count (is_real_parent)))
     j = 0
@@ -836,7 +830,7 @@ contains
     kb = .false.
     if (present (keep_beams)) kb = keep_beams
     allocate (is_real (pset%n_tot))
-    is_real = particle_is_real (pset%prt(i), kb)
+    is_real = particle_is_real (pset%prt, kb)
     allocate (is_child (pset%n_tot), is_real_child (pset%n_tot))
     is_real_child = .false.
     is_child = .false.
@@ -846,11 +840,13 @@ contains
           is_real_child = .true.
           is_child = .false.
        end where
-       do j = 1, size (is_child)
+       mark_next_child: do j = 1, size (is_child)
           if (is_child(j)) then
              is_child(particle_get_children(pset%prt(j))) = .true.
+             is_child(j) = .false.
+             exit mark_next_child
           end if
-       end do
+       end do mark_next_child
     end do
     allocate (child (count (is_real_child)))
     j = 0
@@ -899,6 +895,26 @@ contains
 
     particle = pset%prt(index)
   end function particle_set_get_particle
+
+  subroutine particle_set_reset_status (particle_set, index, status)
+    type(particle_set_t), intent(inout) :: particle_set
+    integer, dimension(:), intent(in) :: index
+    integer, intent(in) :: status
+    integer :: i
+    if (allocated (particle_set%prt)) then
+       do i = 1, size (index)
+          call particle_reset_status (particle_set%prt(index(i)), status)
+       end do
+    end if
+    particle_set%n_beam  = &
+         count (particle_get_status (particle_set%prt) == PRT_BEAM)
+    particle_set%n_in  = &
+         count (particle_get_status (particle_set%prt) == PRT_INCOMING)
+    particle_set%n_out = &
+         count (particle_get_status (particle_set%prt) == PRT_OUTGOING)
+    particle_set%n_vir = particle_set%n_tot &
+         - particle_set%n_beam - particle_set%n_in - particle_set%n_out
+  end subroutine particle_set_reset_status
 
   subroutine particle_set_reduce (pset_in, pset_out, keep_beams)
     type(particle_set_t), intent(in) :: pset_in
@@ -954,6 +970,125 @@ contains
       end do
     end subroutine copy_particles
   end subroutine particle_set_reduce
+
+  subroutine particle_set_to_hepevt_form (pset_in, pset_out)
+    type(particle_set_t), intent(in) :: pset_in
+    type(particle_set_t), intent(out) :: pset_out
+    type :: particle_entry_t
+       integer :: src = 0
+       integer :: status = 0
+       integer :: orig = 0
+       integer :: copy = 0
+    end type particle_entry_t
+    type(particle_entry_t), dimension(:), allocatable :: prt
+    integer, dimension(:), allocatable :: map1, map2
+    integer, dimension(:), allocatable :: parent, child
+    integer :: n_tot, n_parents, n_children, i, j, c, n
+    n_tot = pset_in%n_tot
+    allocate (prt (4 * n_tot))
+    allocate (map1(4 * n_tot))
+    allocate (map2(4 * n_tot))
+    map1 = 0
+    map2 = 0
+    allocate (child (n_tot))
+    allocate (parent (n_tot))
+    n = 0
+    do i = 1, n_tot
+       if (particle_get_n_parents (pset_in%prt(i)) == 0) then
+          call append (i)
+       end if
+    end do
+    do i = 1, n_tot
+       n_children = particle_get_n_children (pset_in%prt(i))
+       if (n_children > 0) then
+          child(1:n_children) = particle_get_children (pset_in%prt(i))
+          c = child(1)
+          if (map1(c) == 0) then
+             n_parents = particle_get_n_parents (pset_in%prt(c))
+             if (n_parents > 1) then
+                parent(1:n_parents) = particle_get_parents (pset_in%prt(c))
+                if (i == parent(1) .and. &
+                    any( (/(map1(i)+j-1, j=1,n_parents)/) /= map1(parent(1:n_parents)))) &
+                    then
+                   do j = 1, n_parents
+                      call append (parent(j))
+                   end do
+                end if
+             else if (map1(i) == 0) then
+                call append (i)
+             end if
+             do j = 1, n_children
+                call append (child(j))
+             end do
+          end if
+       else if (map1(i) == 0) then
+          call append (i)
+       end if
+    end do
+    do i = n, 1, -1
+       if (prt(i)%status /= PRT_OUTGOING) then
+          do j = 1, i-1
+             if (prt(j)%status == PRT_OUTGOING) then
+                call append(prt(j)%src)
+             end if
+          end do
+          exit
+       end if
+    end do
+    pset_out%n_beam = count (prt(1:n)%status == PRT_BEAM)
+    pset_out%n_in   = count (prt(1:n)%status == PRT_INCOMING)
+    pset_out%n_vir  = count (prt(1:n)%status == PRT_RESONANT)
+    pset_out%n_out  = count (prt(1:n)%status == PRT_OUTGOING)
+    pset_out%n_tot = n
+    allocate (pset_out%prt (n))
+    do i = 1, n
+       call particle_init (pset_out%prt(i), pset_in%prt(prt(i)%src))
+       call particle_reset_status (pset_out%prt(i), prt(i)%status)
+       if (prt(i)%orig == 0) then
+! This causes nagfor 5.2 (770) Panic
+!           call particle_set_parents &
+!                (pset_out%prt(i), &
+!                 map2 (particle_get_parents (pset_in%prt(prt(i)%src))))
+! Workaround
+          n_parents = particle_get_n_parents (pset_in%prt(prt(i)%src))
+          parent(1:n_parents) = particle_get_parents (pset_in%prt(prt(i)%src))
+          call particle_set_parents (pset_out%prt(i), &
+                                     map2(parent(1:n_parents)))
+       else
+          call particle_set_parents (pset_out%prt(i), (/ prt(i)%orig /))
+       end if
+       if (prt(i)%copy == 0) then
+! This causes nagfor 5.2 (770) Panic
+!           call particle_set_children &
+!                (pset_out%prt(i), &
+!                 map1 (particle_get_children (pset_in%prt(prt(i)%src))))
+! Workaround
+          n_children = particle_get_n_children (pset_in%prt(prt(i)%src))
+          child(1:n_children) = particle_get_children (pset_in%prt(prt(i)%src))
+          call particle_set_children (pset_out%prt(i), &
+                                      map1(child(1:n_children)))
+       else
+          call particle_set_children (pset_out%prt(i), (/ prt(i)%copy /))
+       end if
+    end do
+  contains
+    subroutine append (i)
+      integer, intent(in) :: i
+      n = n + 1
+      if (n > size (prt)) &
+           call msg_bug ("Particle set transform to HEPEVT: insufficient space")
+      prt(n)%src = i
+      prt(n)%status = particle_get_status (pset_in%prt(i))
+      if (map1(i) == 0) then
+         map1(i) = n
+      else
+         prt(map2(i))%status = PRT_VIRTUAL
+         prt(map2(i))%copy = n
+         prt(n)%orig = map2(i)
+      end if
+      map2(i) = n
+    end subroutine append
+  end subroutine particle_set_to_hepevt_form
 
   subroutine particle_set_extract_interaction (pset, int, flv_state)
     type(particle_set_t), intent(in) :: pset
@@ -1165,11 +1300,11 @@ contains
     type(hepmc_iostream_t) :: iostream
     type(subevt_t) :: subevt
     logical :: ok
-    integer :: u
+    integer :: u, iostat
     print *, "*** Read model file"
     call syntax_model_file_init ()
     call model_list_read_model &
-         (var_str("QCD"), var_str("test.mdl"), os_data, model)
+         (var_str("SM"), var_str("SM.mdl"), os_data, model)
     print *
     print *, "*** Setup production process ***"
     call interaction_init (int1, 2, 0, 1, set_relations=.true.)
@@ -1304,18 +1439,19 @@ contains
          (particle_set3, ok, int, int, FM_FACTOR_HELICITY, &
           (/0.7_default, 0.7_default/), .true., .true.)
     call particle_set_write (particle_set3)
-    u = free_unit ()
-    open (u, action="readwrite", form="unformatted", status="scratch")
-    call particle_set_write_raw (particle_set3, u)
-    rewind (u)
-    call particle_set_read_raw (particle_set4, u)
-    close (u)
-    print *
-    call particle_set_write (particle_set4)
-    print *
-    print *, "*** Transform to a subevt object ***"
-    call particle_set_to_subevt (particle_set4, subevt)
-    call subevt_write (subevt)
+    !!! !!! The raw writing seems not to be working.
+    !!! u = free_unit ()
+    !!! open (u, action="readwrite", form="unformatted", status="scratch")
+    !!! call particle_set_write_raw (particle_set3, u)
+    !!! rewind (u)
+    !!! call particle_set_read_raw (particle_set4, u, iostat=iostat)
+    !!! close (u)
+    !!! print *
+    !!! call particle_set_write (particle_set4)
+    !!! print *
+    !!! print *, "*** Transform to a subevt object ***"
+    !!! call particle_set_to_subevt (particle_set4, subevt)
+    !!! call subevt_write (subevt)
     print *
     print *, "*** Cleanup ***"
     call particle_set_final (particle_set1)

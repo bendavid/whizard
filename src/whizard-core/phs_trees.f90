@@ -1,4 +1,4 @@
-! WHIZARD 2.0.5 Tue May 10 2011
+! WHIZARD 2.0.6 Wed Dec 7 2011
 ! 
 ! Copyright (C) 1999-2011 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -71,6 +71,7 @@ module phs_trees
   public :: phs_tree_compute_momenta_from_x
   public :: phs_tree_compute_x_from_momenta
   public :: phs_tree_combine_particles
+  public :: phs_tree_setup_prt_combinations
 
   type :: phs_prt_t
      private
@@ -962,12 +963,30 @@ contains
          k1 = tree%branch(k)%daughter(1);  k2 = tree%branch(k)%daughter(2)
          call combine_particles_x (k1)
          call combine_particles_x (k2)
-         if (.not. phs_prt_is_defined (prt(k))) then
+         if (.not. prt(k)%defined) then
             call phs_prt_combine (prt(k), prt(k1), prt(k2))
          end if
       end if
     end subroutine combine_particles_x
   end subroutine phs_tree_combine_particles
 
+  subroutine phs_tree_setup_prt_combinations (tree, comb)
+    type(phs_tree_t), intent(in) :: tree
+    integer, dimension(:,:), intent(out) :: comb
+    comb = 0
+    call setup_prt_combinations_x (tree%mask_out)
+  contains
+    recursive subroutine setup_prt_combinations_x (k)
+      integer(TC), intent(in) :: k
+      integer, dimension(2) :: kk
+      if (tree%branch(k)%has_children) then
+         kk = tree%branch(k)%daughter
+         call setup_prt_combinations_x (kk(1))
+         call setup_prt_combinations_x (kk(2))
+         comb(:,k) = kk
+      end if
+    end subroutine setup_prt_combinations_x
+  end subroutine phs_tree_setup_prt_combinations
+      
 
 end module phs_trees

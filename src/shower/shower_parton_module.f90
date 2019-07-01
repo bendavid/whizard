@@ -48,6 +48,7 @@ module shower_parton_module
      type(parton_t), pointer :: initial => null ()
      integer :: c1 = 0, c2 = 0
      integer :: aux_pt = 0                 ! auxiliary value for pt-ordered isr
+     integer :: interactionnr = 0
   end type parton_t
 
   type :: parton_pointer_t
@@ -71,6 +72,7 @@ contains
     prt2%simulated = prt1%simulated
     prt2%belongstoFSR = prt1%belongstoFSR
     prt2%belongstointeraction = prt1%belongstointeraction
+    prt2%interactionnr = prt1%interactionnr
     if(associated(prt1%parent)) prt2%parent => prt1%parent
     if(associated(prt1%child1)) prt2%child1 => prt1%child1
     if(associated(prt1%child2)) prt2%child2 => prt1%child2
@@ -186,10 +188,15 @@ contains
        end if
     end if
 107 format(A1)
+116 format(I1)
     if(prt%belongstoFSR) then
        write(*,107, ADVANCE="NO") "F"
     else
-       write(*,107, ADVANCE="NO") "I"
+       if(associated(prt%initial)) then 
+          write(*,116, ADVANCE="NO") prt%initial%nr
+       else
+          write(*,107, ADVANCE="NO") "I"
+       end if
     end if
     if(parton_is_final(prt)) then
        write(*,107, ADVANCE="NO") "f"
@@ -209,12 +216,15 @@ contains
 109    format("  C:", I3)
        write(*,109, ADVANCE="NO") prt%child1%nr
     end if 
-    if(associated(prt%initial)) then
-112    format("  I:", I4)
-       write(*,112, ADVANCE="NO") prt%initial%nr
-    end if 
+!    if(associated(prt%initial)) then
+!112    format("  I:", I4)
+!       write(*,112, ADVANCE="NO") prt%initial%nr
+!    end if 
+115 format(A1,I2)
     if(prt%belongstointeraction .eqv. .true.) then
-       write(*,107, ADVANCE="NO") "T"
+       write(*,115, ADVANCE="NO") "T", prt%interactionnr
+    else
+       write(*,115, ADVANCE="NO") "F", prt%interactionnr
     end if
 113 format(A4)
 114 format(I4)
@@ -386,6 +396,14 @@ contains
     is_hadron=(abs(prt%typ) .eq. 2212)  ! only proton implemented yet
   end function parton_is_hadron
 
+  function parton_is_colored(prt) result(is_colored)
+    type(parton_t), intent(in) ::prt
+    logical :: is_colored
+
+    ! TODO: SUSY partons
+    is_colored=(parton_is_quark(prt).or.parton_is_gluon(prt))
+  end function parton_is_colored
+
   function parton_p4square(prt) result(p4square)
     type(parton_t), intent(in) :: prt
     real(default) :: p4square
@@ -425,6 +443,7 @@ contains
     type(parton_t), intent(in) :: prt
     real(default) :: retvalue
 
+    retvalue=0._default
     if(parton_is_gluon(prt)) then
        if(parton_is_quark(prt%child1)) then
           retvalue=P_gqq(prt%z)
@@ -440,10 +459,11 @@ contains
     end if
   end function P_prt_to_child1
 
-  function thetabar(prt, recoiler) result(retvalue)
+  function thetabar(prt, recoiler, E3out) result(retvalue)
     ! returns whether kinematics of branching of prt into its daughters are allowed
     type(parton_t), intent(inout) :: prt
     type(parton_t), intent(in) :: recoiler
+    real(default), intent(out), optional :: E3out
     logical :: retvalue
 
     real(default) :: ctheta, cthetachild1
@@ -451,6 +471,9 @@ contains
 
     shat = (prt%child1%momentum + recoiler%momentum)**2
     E3 = 0.5_default*(shat/prt%z -recoiler%t + prt%child1%t - parton_mass_squared(prt%child2))/sqrt(shat)
+    if(present(E3out)) then
+       E3out = E3
+    end if
 
     ! absolute values of momenta in a 3 -> 1 + 4 branching
     p3=sqrt(E3**2-prt%t)
@@ -770,7 +793,6 @@ directions(2,1)*directions(3,3))+directions(1,3)*(directions(2,1)*directions(3,2
     end if
 
     ! check if branchings are possible at all
-    prt%t=min(prt%t, abs(prt%parent%t) )
     if(min(prt%t, parton_get_energy(prt)**2)<parton_mass_squared(prt)+D_Min_t) then
        prt%t=parton_mass_squared(prt)
        call parton_set_simulated(prt)

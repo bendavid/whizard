@@ -1,5 +1,5 @@
 (* $Id: float.ml,v 1.6 2002/08/05 16:54:52 ohl Exp $ *)
-(* Copyright (C) 2001 by Thorsten Ohl <ohl@hep.tu-darmstadt.de>
+(* Copyright (C) 2001-2011 by Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
    Circe2 is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by 
    the Free Software Foundation; either version 2, or (at your option)
@@ -14,7 +14,14 @@
 
 open Printf
 
-module type T = Float.T
+module type T =
+  sig
+    type t
+    val epsilon : t
+    val to_string : t -> string
+    val input_binary_float : in_channel -> float
+    val input_binary_floats : in_channel -> float array -> unit
+  end
 
 module Double =
   struct
@@ -76,6 +83,20 @@ module Double =
       | Int i -> string_of_int i ^ "D0"
       | Float x -> to_string x
 
+
+(* 
+   Remark JRR:
+   The function [float_of_string] was part of the \texttt{C}
+   code of \texttt{O'Caml} from version 3.01 to version 3.07. 
+   In the transition from version 3.06 to 3.07 it was decided
+   to be obsolete and superseded by the routines from the 
+   module [Int64]. There I make ThO's functions available 
+   and I comment out the external [C] function. 
+
+   The following code uses the external [C] function:
+*)
+
+(*i
     external float_of_bytes : string -> float = "float_of_bytes"
 
     let rev8 s =
@@ -136,6 +157,8 @@ module Double =
         array.(i) <- float_of_bytes s
       done
 
+i*)
+
     let float_to_bytes x =
       let bytes = String.create 8 in
       let bits = Int64.bits_of_float x in
@@ -152,7 +175,9 @@ module Double =
       copy 0 7;
       bytes
 
-    let float_of_bytes' bytes =
+(* The following three functions make only use of the [Int64] module. *)
+
+    let float_of_bytes bytes =
       let copy i j =
         Int64.shift_left (Int64.of_int (Char.code (String.unsafe_get bytes j))) (8*i) in
       Int64.float_of_bits
@@ -165,19 +190,19 @@ module Double =
                           (Int64.logor (copy 1 6)
                              (copy 0 7))))))))
 
-    let input_binary_float' ic =
+    let input_binary_float ic =
       let buf = String.create 8 in
       really_input ic buf 0 8;
-      float_of_bytes' buf
+      float_of_bytes buf
 
-    let input_binary_floats' ic array =
+    let input_binary_floats ic array =
       let n = Array.length array in
       let bytes = 8 * n in
       let buf = String.create bytes in
       really_input ic buf 0 bytes;
       for i = 0 to n - 1 do
         let s = String.sub buf (8 * i) 8 in
-        array.(i) <- float_of_bytes' s
+        array.(i) <- float_of_bytes s
       done
 
     (* Suggested by Xavier Leroy: *)

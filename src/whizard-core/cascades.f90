@@ -1,4 +1,4 @@
-! WHIZARD 2.0.5 Tue May 10 2011
+! WHIZARD 2.0.6 Wed Dec 7 2011
 ! 
 ! Copyright (C) 1999-2011 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -1933,8 +1933,8 @@ contains
     type(cascade_set_t) :: cascade_set
     type(string_t) :: name, filename
     type(phs_parameters_t) :: phs_par
-    name = "QCD"
-    filename = "test.mdl"
+    name = "SM"
+    filename = "SM.mdl"
     call syntax_model_file_init ()
     call model_list_read_model (name, filename, os_data, model)
     call model_write (model, verbose=.true.)

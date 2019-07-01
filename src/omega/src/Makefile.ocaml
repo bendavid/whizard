@@ -1,14 +1,15 @@
 # Makefile.am -- O'Caml rules for O'Mega Makefiles
-# $Id: Makefile.ocaml 3116 2011-04-05 10:20:25Z kilian $
+# $Id: Makefile.ocaml 3468 2011-08-10 15:18:36Z sschmidt $
 ##
 ## Process Makefile.am with automake to include this file in Makefile.in
 ##
 ########################################################################
 #
-# Copyright (C) 1999-2009 by 
-#     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+# Copyright (C) 1999-2011 by 
+#     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
-#     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+#     Juergen Reuter <juergen.reuter@desy.de>
+#     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by 

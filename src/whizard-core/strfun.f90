@@ -1,4 +1,4 @@
-! WHIZARD 2.0.5 Tue May 10 2011
+! WHIZARD 2.0.6 Wed Dec 7 2011
 ! 
 ! Copyright (C) 1999-2011 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -46,6 +46,7 @@ module strfun
   use sf_beam_events
   use sf_lhapdf
   use sf_pdf_builtin
+  use sf_user
 
   implicit none
   private
@@ -76,6 +77,7 @@ module strfun
   integer, parameter, public :: STRF_LHAPDF = 1, STRF_ISR = 2, &
        STRF_EPA = 3, STRF_EWA = 4, STRF_CIRCE1 = 5, STRF_CIRCE2 = 6, &
        STRF_ESCAN = 7, STRF_BEVT = 8, STRF_PDF_BUILTIN = 9
+  integer, parameter, public :: STRF_USER = 99
   
   integer, parameter, public :: SFM_NONE = 0
   integer, parameter, public :: SFM_PDFPAIR = 1
@@ -84,6 +86,7 @@ module strfun
   integer, parameter, public :: SFM_EWAPAIR = 4  
   integer, parameter, public :: SFM_CIRCE1PAIR = 5
   integer, parameter, public :: SFM_CIRCE2PAIR = 6
+  integer, parameter, public :: SFM_USER = 99
 
   type :: strfun_t
      private
@@ -99,7 +102,9 @@ module strfun
      type(circe2_data_t), dimension(:), allocatable :: circe2_data     
      type(escan_data_t), dimension(:), allocatable :: escan_data     
      type(beam_events_data_t), dimension(:), allocatable :: beam_events_data
+     type(sf_user_data_t), dimension(:), allocatable :: user_data
      real(default) :: x = 0, f = 1, s = 0
+     real(default), dimension(:), allocatable :: user_xval
      real(default) :: scale = 0
   end type strfun_t
 
@@ -137,6 +142,7 @@ module strfun
      module procedure strfun_init_escan
      module procedure strfun_init_beam_events
      module procedure strfun_init_pdf_builtin
+     module procedure strfun_init_user
   end interface
 
   interface strfun_final
@@ -157,6 +163,7 @@ module strfun
      module procedure strfun_chain_set_circe2     
      module procedure strfun_chain_set_escan
      module procedure strfun_chain_set_beam_events
+     module procedure strfun_chain_set_user
   end interface
 
 contains
@@ -247,11 +254,23 @@ contains
     type(strfun_t), intent(out) :: strfun
     type(beam_events_data_t), intent(in) :: beam_events_data
     strfun%type = STRF_BEVT
-    strfun%name = "Energy scan"
+    strfun%name = "Beam events"
     allocate (strfun%beam_events_data (1))
     strfun%beam_events_data = beam_events_data
     call interaction_init_beam_events (strfun%int, beam_events_data)
   end subroutine strfun_init_beam_events
+
+  subroutine strfun_init_user (strfun, user_data)
+    type(strfun_t), intent(out) :: strfun
+    type(sf_user_data_t), intent(in) :: user_data
+    strfun%type = STRF_USER
+    strfun%name = "User structure function: " &
+         // sf_user_data_get_name (user_data)
+    allocate (strfun%user_data (1))
+    strfun%user_data = user_data
+    call interaction_init_sf_user (strfun%int, user_data)
+    allocate (strfun%user_xval (sf_user_data_get_n_var (user_data)))
+  end subroutine strfun_init_user  
 
   subroutine strfun_final1 (strfun)
     type(strfun_t), dimension(:), intent(inout) :: strfun
@@ -284,6 +303,9 @@ contains
     case (STRF_PDF_BUILTIN)
        call pdf_builtin_final (strfun%pdf_builtin_data(1))
        deallocate (strfun%pdf_builtin_data)
+    case (STRF_USER)
+       deallocate (strfun%user_data)
+       deallocate (strfun%user_xval)
     end select
     call interaction_final (strfun%int)
     strfun%type = STRF_NONE
@@ -326,6 +348,15 @@ contains
           call escan_data_write (strfun%escan_data(1), u)
        case (STRF_BEVT)
           call beam_events_data_write (strfun%beam_events_data(1), u)
+       case (STRF_USER)
+          call sf_user_data_write (strfun%user_data(1), u)
+          write (u, *) "User event data:"
+          if (allocated (strfun%user_xval)) then
+             write (u, *) "  x     =", strfun%user_xval
+          else
+             write (u, *) "  x     = [not allocated]"
+          end if
+          write (u, *) "  scale =", strfun%scale
        end select
        call interaction_write &
             (strfun%int, unit, verbose, show_momentum_sum, show_mass)
@@ -375,6 +406,9 @@ contains
     case (STRF_BEVT)
        call interaction_apply_beam_events &
             (strfun%int, strfun%beam_events_data(1))
+    case (STRF_USER)
+       call interaction_set_kinematics_sf_user (strfun%int, &
+            strfun%user_xval, r, strfun%user_data(1))
     end select
   end subroutine strfun_set_kinematics
 
@@ -389,6 +423,9 @@ contains
     case (STRF_PDF_BUILTIN)
        call interaction_apply_pdf_builtin (strfun%int, scale, &
             strfun%x, strfun%f, strfun%s, strfun%pdf_builtin_data(1))
+    case (STRF_USER)
+       call interaction_apply_sf_user (strfun%int, scale, &
+            strfun%user_xval, strfun%user_data(1))
     end select
   end subroutine strfun_apply
     
@@ -422,7 +459,7 @@ contains
     real(default), intent(inout) :: factor
     real(default), dimension(2) :: x2
     select case (sf_mapping%type)
-    case (SFM_EPAPAIR, SFM_PDFPAIR)
+    case (SFM_EPAPAIR, SFM_EWAPAIR, SFM_PDFPAIR, SFM_USER)
        x2 = x(sf_mapping%index)
        call map_unit_square (x2, factor, sf_mapping%par(1))
        x(sf_mapping%index) = x2
@@ -763,6 +800,22 @@ contains
     end if
   end subroutine strfun_chain_set_beam_events
 
+  subroutine strfun_chain_set_user &
+       (sfchain, i, line, user_data, n_parameters)
+    type(strfun_chain_t), intent(inout), target :: sfchain
+    integer, intent(in) :: i, line, n_parameters
+    type(sf_user_data_t), intent(in) :: user_data
+    integer :: n_tot
+    call strfun_init (sfchain%strfun(i), user_data)
+    n_tot = sf_user_data_get_n_tot (user_data)
+    sfchain%n_parameters(i) = n_parameters
+    if (line == 0) then
+       call strfun_chain_link (sfchain, i, line, (/1, 2/), (/n_tot-1, n_tot/))
+    else
+       call strfun_chain_link (sfchain, i, line, (/1/), (/n_tot/))
+    end if
+  end subroutine strfun_chain_set_user
+
   subroutine strfun_chain_link (sfchain, i, line, in_index, out_index)
     type(strfun_chain_t), intent(inout), target :: sfchain
     integer, intent(in) :: i, line
@@ -939,21 +992,24 @@ contains
     end do
   end subroutine strfun_chain_evaluate
 
-  subroutine strfun_test ()
+  subroutine strfun_test (lhapdf_present)
     use os_interface, only: os_data_t
     type(os_data_t) :: os_data
     type(model_t), pointer :: model
+    logical, intent(in) :: lhapdf_present
     print *, "*** Read model file"
     call syntax_model_file_init ()
     call model_list_read_model &
-         (var_str("QCD"), var_str("test.mdl"), os_data, model)
+         (var_str("SM"), var_str("SM.mdl"), os_data, model)
     call syntax_model_file_final ()
     print *, "***********************************************************"
     call isr_test (model)
     print *, "***********************************************************"
     call epa_test (model)
-    print *, "***********************************************************"
-    call lhapdf_test (model)
+    if (lhapdf_present) then
+      print *, "***********************************************************"
+      call lhapdf_test (model)
+    end if
   end subroutine strfun_test
 
   subroutine isr_test (model)
@@ -1041,8 +1097,9 @@ contains
     call beam_data_init_sqrts (beam_data, 2000._default, flv, pol)
     call strfun_chain_init (sfchain, beam_data, 2, 0)
     call lhapdf_data_init (data(1), lhapdf_status, model, flv(1), member=1)
+    !!! Use the same photon PDF that is demanded by the LHAPDF tests.
     call lhapdf_data_init (data(2), lhapdf_status, model, flv(2), &
-         file=var_str("SASG.LHgrid"), photon_scheme=1)
+         file=var_str("GSG961.LHgrid"), photon_scheme=1)
     call lhapdf_data_set_mask (data(2), &
          (/.false.,.false.,.false., .true., .true., .true., &
            .false., &

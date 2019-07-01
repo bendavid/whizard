@@ -27,7 +27,7 @@
 #
 ########################################################################
 
-SUBDIRS = src share
+SUBDIRS = src share tools
 
 ## Use the same compiler and compiler flags for distcheck
 DISTCHECK_CONFIGURE_FLAGS = F77=$(F77) F77FLAGS="$(F77FLAGS)" FC=$(FC) FCFLAGS="$(FCFLAGS)" \

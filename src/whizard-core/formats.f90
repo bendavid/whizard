@@ -1,4 +1,4 @@
-! WHIZARD 2.0.5 Tue May 10 2011
+! WHIZARD 2.0.6 Wed Dec 7 2011
 ! 
 ! Copyright (C) 1999-2011 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -406,48 +406,49 @@ contains
   end function sprintf
 
   subroutine format_test ()
-    use limits, only: EOR !NODEP!
-    type(string_t) :: fmt
-    type(sprintf_arg_t), dimension(:), allocatable :: arg
-    integer :: n_args, i, type
-    logical :: lval
-    integer :: ival
-    real(default) :: rval
-    integer :: iostat
-    character(80) :: buffer
-    type(string_t) :: string
-    do
-       print *, "Format string:"
-       call get (fmt, iostat=iostat)
-       select case (iostat)
-       case (0, EOR)
-       case default
-         return
-       end select
-       print *, "Number of args:"
-       read (*,*)  n_args
-       allocate (arg (n_args))
-       do i = 1, n_args
-          print *, "Argument (type, value) = "
-          read (*, *)  type, buffer
-          select case (type)
-          case (ARGTYPE_LOG)
-            read (buffer, *)  lval
-            call sprintf_arg_init (arg(i), lval)
-          case (ARGTYPE_INT)
-            read (buffer, *)  ival
-            call sprintf_arg_init (arg(i), ival)
-          case (ARGTYPE_REAL)
-            read (buffer, *)  rval
-            call sprintf_arg_init (arg(i), rval)
-          case (ARGTYPE_STR)
-            call sprintf_arg_init (arg(i), var_str (trim (buffer)))
-          end select
-       end do
-       string = sprintf (fmt, arg)
-       print *, "Result: '", char (string), "'"
-       deallocate (arg)
-    end do
+    print *, "*** 1. Test: a string ***"
+    call test_run (var_str("%s"), 1, (/ 4 /), (/ 'abcdefghij' /))
+    print *, "*** 2. Test: two integers ***"
+    call test_run (var_str("%d,%d"), 2, (/ 2, 2 /), (/ '42', '13' /))
+    print *, "*** 3. Test: floating point number ***"
+    call test_run (var_str("%8.4f"), 1, (/ 3 /), (/ '42567.12345' /))
+    print *, "*** 4. Test: general expression ***"
+    call test_run (var_str("%g"), 1, (/ 3 /), (/ '3.1415' /))
+    contains
+      subroutine test_run (fmt, n_args, type, buffer)
+        type(string_t), intent(in) :: fmt
+        integer, intent(in) :: n_args
+        logical :: lval
+        integer :: ival
+        real(default) :: rval
+        integer :: i
+        type(string_t) :: string
+        type(sprintf_arg_t), dimension(:), allocatable :: arg
+        integer, dimension(n_args), intent(in) :: type
+        character(*), dimension(n_args), intent(in) :: buffer
+        print *, "Format string:", char(fmt)
+        print *, "Number of args:", n_args
+        allocate (arg (n_args))
+        do i = 1, n_args
+           print *, "Argument (type ) = ", type(i)
+           select case (type(i))
+           case (ARGTYPE_LOG)
+              read (buffer(i), *)  lval
+              call sprintf_arg_init (arg(i), lval)
+           case (ARGTYPE_INT)
+              read (buffer(i), *)  ival
+              call sprintf_arg_init (arg(i), ival)
+           case (ARGTYPE_REAL)
+              read (buffer(i), *)  rval
+              call sprintf_arg_init (arg(i), rval)
+           case (ARGTYPE_STR)
+              call sprintf_arg_init (arg(i), var_str (trim (buffer(i))))
+           end select
+         end do
+         string = sprintf (fmt, arg)
+         print *, "Result: '", char (string), "'"
+         deallocate (arg)
+       end subroutine test_run
   end subroutine format_test
 
 

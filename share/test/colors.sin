@@ -1,4 +1,4 @@
-# $Id: colors.sin 2272 2010-04-09 16:43:37Z kilian $
+# $Id: colors.sin 3398 2011-07-05 16:25:48Z jr_reuter $
 
 alias parton = u:b:B:g
 
@@ -11,6 +11,9 @@ compile
 sqrts = 500 GeV
 cuts = all Pt >= 50 GeV [parton]
    and all M2 >= (50 GeV)^2 [combine [parton, parton]]
+
+!!! Tests should be run single-threaded 
+openmp_num_threads = 1
 
 ?read_color_factors = true  # compute color factors in OMega (default)
 seed = 0

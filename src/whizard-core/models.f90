@@ -1,4 +1,4 @@
-! WHIZARD 2.0.5 Tue May 10 2011
+! WHIZARD 2.0.6 Wed Dec 7 2011
 ! 
 ! Copyright (C) 1999-2011 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -1997,17 +1997,20 @@ contains
   end subroutine model_list_final
 
   subroutine models_test ()
-    type(os_data_t) :: os_data
+    type(os_data_t), pointer :: os_data => null ()
     call syntax_model_file_init ()
     call syntax_write (syntax_model_file)
     print *
+    allocate (os_data)
+    call os_data_init (os_data)
     call models_test1 (os_data)
     call models_test2 (os_data)
-    call models_test2 (os_data)
-    call model_list_write (verbose=.true.)
-!    call model_list_write ()
+    !!! Try to cath the gfortran 4.5.0+(?) seg fault
+    !!! call model_list_write (verbose=.true.)
+    call model_list_write ()
     call model_list_final ()
     call syntax_model_file_final ()
+    deallocate (os_data)
   end subroutine models_test
 
   subroutine models_test1 (os_data)
@@ -2058,8 +2061,8 @@ contains
     type(os_data_t), intent(in) :: os_data
     type(string_t) :: name, filename
     type(model_t), pointer :: model
-    name = "QCD"
-    filename = "test.mdl"
+    name = "SM"
+    filename = "SM.mdl"
     call model_list_read_model (name, filename, os_data, model)
   end subroutine models_test2
 

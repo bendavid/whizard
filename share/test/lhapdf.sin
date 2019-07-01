@@ -14,6 +14,9 @@ cuts = all Pt > 100 GeV [lepton]
 sqrts = 1000
 iterations = 4:500, 2:500
 
+!!! Tests should be run single-threaded 
+openmp_num_threads = 1
+
 n_events = 1
 ?write_raw = false
 sample_format = lhef

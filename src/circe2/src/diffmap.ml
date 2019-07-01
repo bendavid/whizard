@@ -1,5 +1,5 @@
 (* $Id: diffmap.ml,v 1.5 2001/10/18 18:29:07 ohl Exp $ *)
-(* Copyright (C) 2001 by Thorsten Ohl <ohl@hep.tu-darmstadt.de>
+(* Copyright (C) 2001-2011 by Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
    Circe2 is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by 
    the Free Software Foundation; either version 2, or (at your option)
@@ -14,12 +14,38 @@
 
 open Printf
 
-module type T = Diffmap.T
-module type Real = Diffmap.Real
+module type T =
+  sig
+
+    type t
+    type domain
+    val x_min : t -> domain
+    val x_max : t -> domain
+    type codomain
+    val y_min : t -> codomain
+    val y_max : t -> codomain
+    val phi : t -> domain -> codomain
+    val ihp : t -> codomain -> domain
+    val jac : t -> domain -> float
+    val caj : t -> codomain -> float
+    val with_domain : t -> x_min:domain -> x_max:domain -> t
+    val encode : t -> string
+    val as_block_data_to_channel : t ->
+      out_channel -> string -> int -> int -> int -> unit
+  end
+
+module type Real = T with type domain = float and type codomain = float
 
 (* \subsection{Testing Real Maps} *)
 
-module type Test = Diffmap.Test
+module type Test =
+  sig
+    module M : Real
+    val domain : M.t -> unit
+    val inverse : M.t -> unit
+    val jacobian : M.t -> unit
+    val all : M.t -> unit
+  end
 
 module Make_Test (M : Real) =
   struct

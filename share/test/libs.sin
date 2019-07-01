@@ -8,6 +8,9 @@ show (library)
 compile
 show (library)
 
+!!! Tests should be run single-threaded 
+openmp_num_threads = 1
+
 # Overwrite p1 and add process p3
 process libs_p1 = e1, E1 => e3, E3
 process libs_p3 = e1, E1 => e3, E3

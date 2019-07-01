@@ -85,7 +85,7 @@ contains
     real(default) :: alpha_s
 
 !    arbitrary lower cut off for scale
-!    t=MAX(max(1._default*D_Min_t, 1.1_default*D_Lambda**2), ABS(tin))
+!    t=MAX(max(1._default*D_Min_t, 1.1_default*D_Lambda_isr**2), ABS(tin))
     t=max(max(0.1_default*D_Min_t, 1.1_default*D_Lambda_isr**2), abs(tin))
 
     if(D_running_alpha_s_isr) then
@@ -186,13 +186,13 @@ contains
        mass2=0.93827_default**2
        ! other mesons and baryons needed for beam-remnant
     case (411) ! D+
-       mass2=1869.60_default**2
+       mass2=1.86960_default**2
     case (421) ! D0
-       mass2=1864.83_default**2
+       mass2=1.86483_default**2
     case (511) ! B0
-       mass2=5279.50_default**2
+       mass2=5.27950_default**2
     case (521) ! B+
-       mass2=5279.17_default**2
+       mass2=5.27917_default**2
     case (2224) !Delta++
        mass2=1.232_default**2
     case (3212) !Sigma0
@@ -200,13 +200,13 @@ contains
     case (3222) !Sigma+
        mass2=1.18937_default**2
     case (4212) ! Sigma_c+
-       mass2=2452.9_default**2
+       mass2=2.4529_default**2
     case (4222) ! Sigma_c++
-       mass2=2454.02_default**2
+       mass2=2.45402_default**2
     case (5212) ! Sigma_b0
-       mass2=5815.2_default**2
+       mass2=5.8152_default**2
     case (5222) ! Sigma_b+
-       mass2=5807.8_default**2
+       mass2=5.8078_default**2
     case (0) ! I take 0 to be partons whose type is not yet clear
        mass2=0.0_default
     case (9999) ! beam remnant
@@ -258,6 +258,28 @@ contains
     ! anti-symmetrized version -> needs to by symmetrized in color connections
     !    P=3._default*( 2._default*z/(1._default-z) + z*(1._default-z) )
   end function P_ggg
+
+  function integral_over_P_gqq(zmin, zmax) result (integral)
+    real(default), intent(in) :: zmin, zmax
+    real(default) :: integral
+
+    integral=0.5_default*( (2._default/3._default)*(zmax**3-zmin**3) - (zmax**2 - zmin**2) + (zmax - zmin) )
+  end function integral_over_P_gqq
+
+  function integral_over_P_ggg(zmin, zmax) result (integral)
+    real(default), intent(in) :: zmin, zmax
+    real(default) :: integral
+
+    integral=3._default*((log(zmax)-zmax-zmax-log(1._default-zmax)+zmax**2/2._default-zmax**3/3._default)-&
+         (log(zmin)-zmin-zmin-log(1._default-zmin)+zmin**2/2._default-zmin**3/3._default) )
+  end function integral_over_P_ggg
+
+  function integral_over_P_qqg(zmin, zmax) result (integral)
+    real(default), intent(in) :: zmin, zmax
+    real(default) :: integral
+
+    integral=(2._default/3._default)*(-zmax**2+zmin**2-2._default*(zmax-zmin)+4._default*log((1._default-zmin)/(1._default-zmax)) )
+  end function integral_over_P_qqg
 
   !! methods to set parameters -> better interface?
 

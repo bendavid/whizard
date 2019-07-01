@@ -9,7 +9,7 @@
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
-#     Christian Specker <christian.speckner@physik.uni-freiburg.de>
+#     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by 
@@ -27,7 +27,7 @@
 #
 ########################################################################
 
-SUBDIRS = src share
+SUBDIRS = src minuit tools share 
 
 ## Use the same compiler and compiler flags for distcheck
 DISTCHECK_CONFIGURE_FLAGS = F77=$(F77) F77FLAGS="$(F77FLAGS)" FC=$(FC) FCFLAGS="$(FCFLAGS)" \

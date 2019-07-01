@@ -1,4 +1,4 @@
-! WHIZARD 2.0.5 Tue May 10 2011
+! WHIZARD 2.0.6 Wed Dec 7 2011
 ! 
 ! Copyright (C) 1999-2011 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -97,19 +97,60 @@ contains
     end if
   end subroutine compilation_compile_and_link
 
-  subroutine compilations_make_executable (comp, os_data, exec_name)
+  subroutine compilations_make_executable (comp, os_data, exec_name, var_list)
     type(compilation_t), dimension(:), intent(in) :: comp
     type(os_data_t), intent(in) :: os_data
     type(string_t), intent(in) :: exec_name
+    type(var_list_t), intent(in) :: var_list
     type(string_t) :: flags
     integer :: lib
-    call write_library_manager (comp%libname)
+    type(user_procs_t) :: user_procs
+    call splice &
+         (var_list_get_sval (var_list, var_str ("$user_procs_cut")), &
+          user_procs%cut)
+    call splice &
+         (var_list_get_sval (var_list, var_str ("$user_procs_event_shape")), &
+          user_procs%event_shape)
+    call splice &
+         (var_list_get_sval (var_list, var_str ("$user_procs_obs1")), &
+          user_procs%obs_real_unary)
+    call splice &
+         (var_list_get_sval (var_list, var_str ("$user_procs_obs2")), &
+          user_procs%obs_real_binary)
+    call splice &
+         (var_list_get_sval (var_list, var_str ("$user_procs_sf")), &
+          user_procs%sf)
+    call write_library_manager (comp%libname, user_procs)
     call compile_library_manager (os_data)
     flags = ""
     do lib = 1, size (comp)
        flags = flags // get_modellibs_flags (comp(lib)%prc_lib, os_data)
     end do
     call link_executable (comp%libname, exec_name, flags, os_data)
+  contains
+    subroutine splice (string, array)
+      type(string_t), intent(in) :: string
+      type(string_t), dimension(:), intent(out), allocatable :: array
+      type(string_t) :: buffer, word, separator
+      integer :: n_commas, i
+      if (string /= "") then
+         buffer = string
+         n_commas = 0
+         COUNT_COMMAS: do
+            call split (buffer, word, ",", separator)
+            if (len (separator) == 0)  exit COUNT_COMMAS
+            n_commas = n_commas + 1
+         end do COUNT_COMMAS
+         allocate (array (n_commas + 1))
+         buffer = string
+         ASSIGN_STRINGS: do i = 1, size (array)
+            call split (buffer, word, ",")
+            array(i) = adjustl (trim (word))
+         end do ASSIGN_STRINGS
+      else
+         allocate (array (0))
+      end if
+    end subroutine splice
   end subroutine compilations_make_executable
 
   subroutine compilation_load_library (comp, os_data, global_var_list)
@@ -151,7 +192,8 @@ contains
     type(compilation_t), dimension(1) :: comp
     call compilation_basic_init (comp(1), libname, global%var_list)
     call compilation_compile_and_link (comp(1), global%os_data)
-    call compilations_make_executable (comp, global%os_data, exec_name)
+    call compilations_make_executable &
+         (comp, global%os_data, exec_name, global%var_list)
   end subroutine compile_executable0
 
   subroutine compile_executable1 (libname, exec_name, global)
@@ -164,7 +206,8 @@ contains
        call compilation_basic_init (comp(lib), libname(lib), global%var_list)
        call compilation_compile_and_link (comp(lib), global%os_data)
     end do
-    call compilations_make_executable (comp, global%os_data, exec_name)
+    call compilations_make_executable &
+         (comp, global%os_data, exec_name, global%var_list)
   end subroutine compile_executable1
 
   subroutine load_library0 (libname, global, global_var_list, global_prc_lib)

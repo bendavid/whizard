@@ -1,4 +1,4 @@
-! WHIZARD 2.0.5 Tue May 10 2011
+! WHIZARD 2.0.6 Wed Dec 7 2011
 ! 
 ! Copyright (C) 1999-2011 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -107,6 +107,7 @@ module os_interface
      type(string_t) :: whizard_circe2path
      type(string_t) :: whizard_beamsimpath
      type(string_t) :: pdf_builtin_datapath
+     logical :: event_analysis = .false.
      logical :: event_analysis_ps  = .false.
      logical :: event_analysis_pdf = .false.
      type(string_t) :: latex
@@ -268,6 +269,7 @@ contains
        os_data%whizard_beamsimpath    = WHIZARD_BEAMSIMPATH
        os_data%pdf_builtin_datapath   = PDF_BUILTIN_DATAPATH
     end if
+    os_data%event_analysis     = EVENT_ANALYSIS     == "yes"
     os_data%event_analysis_ps  = EVENT_ANALYSIS_PS  == "yes"
     os_data%event_analysis_pdf = EVENT_ANALYSIS_PDF == "yes"
     os_data%latex  = PRG_LATEX // " " // OPT_LATEX
@@ -369,6 +371,7 @@ contains
          char (os_data%whizard_models_libpath_local)
     write (u, *) "whizard_omega_binpath_local  = ", &
          char (os_data%whizard_omega_binpath_local)
+    write (u, *) "event_analysis     = ", os_data%event_analysis
     write (u, *) "event_analysis_ps  = ", os_data%event_analysis_ps
     write (u, *) "event_analysis_pdf = ", os_data%event_analysis_pdf
     write (u, *) "latex  = ", char (os_data%latex)
@@ -676,8 +679,9 @@ contains
   end subroutine os_interface_test
 
   subroutine os_interface_test1 ()
+    use diagnostics, only: msg_fatal !NODEP!
     type(dlaccess_t) :: dlaccess
-    type(string_t) :: fname, libname
+    type(string_t) :: fname, libname, ext
     type(os_data_t) :: os_data
     type(string_t) :: filename_src, filename_obj
     abstract interface
@@ -694,12 +698,18 @@ contains
     call os_data_init (os_data)
     fname = "so_test"
     filename_src = fname // os_data%fc_src_ext
-    filename_obj = fname // os_data%obj_ext
+    if (os_data%use_libtool) then
+       ext = ".lo"
+    else
+       ext = os_data%obj_ext
+    end if
+    filename_obj = fname // ext
     libname = fname // os_data%shlib_ext
     print *, "* write source file 'so_test.f90'"
     u = free_unit ()
     open (unit=u, file=char(filename_src), action="write")
     write (u, "(A)")  "function so_test (i) result (j) bind(C)"
+    write (u, "(A)")  "  use iso_c_binding"
     write (u, "(A)")  "  integer(c_int), intent(in) :: i"
     write (u, "(A)")  "  integer(c_int) :: j"
     write (u, "(A)")  "  j = 2 * i"
@@ -727,6 +737,11 @@ contains
     i = 7
     print *, "  input = ", i
     print *, "  result =", so_test(i)
+    if (so_test(i) / i .ne. 2) then
+       call msg_fatal ("Compiling and linking ISO C functions failed.")
+    else
+       print *, "* Successful."
+    end if
     print *, "* Cleanup"
     call dlaccess_final (dlaccess)
   end subroutine os_interface_test1

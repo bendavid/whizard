@@ -28,6 +28,8 @@
 #
 ########################################################################
 
+prefix="@prefix@"
+
 usage () {
 cat <<EOI
 usage: omega-config [options]

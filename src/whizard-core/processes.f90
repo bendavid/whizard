@@ -1,4 +1,4 @@
-! WHIZARD 2.0.5 Tue May 10 2011
+! WHIZARD 2.0.6 Wed Dec 7 2011
 ! 
 ! Copyright (C) 1999-2011 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -64,6 +64,7 @@ module processes
   use sf_beam_events
   use sf_lhapdf
   use sf_pdf_builtin
+  use sf_user
   use strfun
   use mappings
   use phs_forests
@@ -77,6 +78,8 @@ module processes
 
   public :: integration_results_t
   public :: integration_results_append
+  public :: process_status_t
+  public :: process_status_write_counters
   public :: process_t
   public :: process_assign_global_var_list
   public :: process_write
@@ -98,8 +101,6 @@ module processes
   public :: process_get_model_ptr
   public :: process_get_n_in
   public :: process_get_n_out
-  public :: process_get_n_tot
-  public :: process_get_n_flv
   public :: process_get_beam_index
   public :: process_get_incoming_parton_index
   public :: process_get_outgoing_parton_index
@@ -108,6 +109,7 @@ module processes
   public :: process_get_n_parameters
   public :: process_get_n_channels
   public :: process_get_n_bins
+  public :: process_get_status
   public :: process_get_scale
   public :: process_get_fac_scale
   public :: process_get_ren_scale  
@@ -129,6 +131,7 @@ module processes
   public :: process_get_hi_int_ptr
   public :: process_get_hi_eval_sqme_ptr
   public :: process_get_hi_eval_flows_ptr
+  public :: process_mark_as_cascade_decay
   public :: process_set_scale
   public :: process_set_fac_scale
   public :: process_set_ren_scale  
@@ -151,6 +154,7 @@ module processes
   public :: grid_parameters_t
   public :: process_setup_grids
   public :: process_reset_helicity_selection
+  public :: process_complete_kinematics
   public :: process_recover_kinematics
   public :: process_fill_subevt
   public :: process_compute_reweighting_factor
@@ -160,6 +164,7 @@ module processes
   public :: process_evaluate
   public :: process_integrate
   public :: process_do_dummy_integration
+  public :: process_me_test
   public :: process_init_vamp_history
   public :: process_final_vamp_history
   public :: process_write_time_estimate
@@ -223,6 +228,37 @@ module processes
      type(integration_entry_t), dimension(:), allocatable :: average
   end type integration_results_t
 
+  type :: process_status_t
+     logical :: called = .false.
+     logical :: passed_strfun_chain = .false.
+     logical :: passed_mass_threshold = .false.
+     logical :: passed_kinematics = .false.
+     logical :: passed_cuts = .false.
+     logical :: passed_evaluation = .false.
+     integer :: n_called = 0
+     integer :: n_passed_strfun_chain = 0
+     integer :: n_passed_mass_threshold = 0
+     integer :: n_passed_kinematics = 0
+     integer :: n_passed_cuts = 0
+     integer :: n_passed_evaluation = 0
+  end type process_status_t
+
+  type :: qcd_parameters_t
+     logical :: alpha_s_is_fixed = .true.
+     integer :: order = 0
+     integer :: nf = 0
+     logical :: alpha_s_from_mz = .true.
+     logical :: mz_is_known = .false.
+     real(default) :: mz = 0
+     logical :: alpha_s_mz_is_known = .false.
+     real(default) :: alpha_s_mz = 0
+     real(default) :: lambda = 0
+     real(default) :: alpha_s_at_scale = 0
+     logical :: alpha_s_from_lhapdf = .false.
+     integer :: lhapdf_set = 0
+     integer :: lhapdf_member = 0
+  end type qcd_parameters_t
+
   type :: process_t
      private
      integer :: type = PRC_UNKNOWN
@@ -237,6 +273,7 @@ module processes
      logical :: use_beams = .true.
      logical :: has_extra_evaluators = .true.
      logical :: beams_are_set = .false.
+     logical :: is_cascade_decay = .false.
      type(flavor_t), dimension(:), allocatable :: flv_in
      type(flavor_t), dimension(:), allocatable :: flv_out
      type(beam_data_t) :: beam_data
@@ -263,6 +300,8 @@ module processes
      integer :: channel = 0
      logical :: lab_is_cm_frame = .true.
      type(lorentz_transformation_t) :: lt_cm_to_lab = identity
+     logical :: old_phs_version = .false.
+     type(process_status_t) :: status
      real(default), dimension(:,:), allocatable :: x
      real(default), dimension(:), allocatable :: phs_factor
      real(default), dimension(:), allocatable :: mass_in
@@ -276,19 +315,10 @@ module processes
      real(default) :: sample_function_value = 0
      real(default) :: scale = 0
      real(default) :: fac_scale = 0
-     real(default) :: ren_scale = 0     
+     real(default) :: ren_scale = 0  
      logical :: negative_weights = .false.
-     logical :: alpha_s_is_fixed = .true.
-     integer :: alpha_s_order = 0
-     integer :: alpha_s_nf = 0
-     logical :: alpha_s_from_mz = .true.
-     logical :: mz_is_known = .false.
-     real(default) :: mz = 0
-     logical :: alpha_s_mz_is_known = .false.
-     real(default) :: alpha_s_mz = 0
-     real(default) :: lambda_qcd = 0
-     real(default) :: alpha_s_at_scale = 0
-     logical :: alpha_s_from_lhapdf = .false.
+     type(qcd_parameters_t) :: qcd
+     character(32) :: md5sum_alpha_s
      logical :: allow_s_channel_mapping = .false.
      type(strfun_chain_t) :: sfchain
      type(hard_interaction_t) :: hi
@@ -305,6 +335,11 @@ module processes
      integer, dimension(:), allocatable :: j_out
      type(subevt_t) :: subevt
      type(var_list_t) :: var_list
+     type(parse_node_t), pointer :: cut_pn => null ()
+     type(parse_node_t), pointer :: weight_pn => null ()
+     type(parse_node_t), pointer :: scale_pn => null ()
+     type(parse_node_t), pointer :: fac_scale_pn => null ()
+     type(parse_node_t), pointer :: ren_scale_pn => null ()
      type(eval_tree_t) :: cut_expr
      type(eval_tree_t) :: reweighting_expr
      type(eval_tree_t) :: scale_expr
@@ -345,6 +380,7 @@ module processes
      character(32) :: scale      = ""     
      character(32) :: fac_scale  = ""
      character(32) :: ren_scale  = ""     
+     character(32) :: alpha_s    = ""     
   end type md5sum_grids_t
 
   type :: process_entry_t
@@ -373,6 +409,7 @@ module processes
      module procedure process_set_strfun_circe2     
      module procedure process_set_strfun_escan
      module procedure process_set_strfun_beam_events
+     module procedure process_set_strfun_user
   end interface
 
   interface operator(==)
@@ -1217,6 +1254,11 @@ contains
     type(string_t) :: file_tex, file_dvi, file_ps, file_pdf, file_mp
     type(string_t) :: setenv_tex, setenv_mp, pipe, pipe_dvi
     type(string_t) :: latex_opt, mpost_opt
+    if (.not. os_data%event_analysis) then
+       call msg_warning ("Skipping integration history display " &
+           // "because latex or mpost is not available")
+       return
+    end if
     file_basename = filename // ".history"
     file_tex = file_basename // ".tex"
     file_dvi = file_basename // ".dvi"
@@ -1260,20 +1302,261 @@ contains
        call os_system_call (setenv_tex // os_data%latex // " " // &
              file_tex // pipe, status)
        if (status /= 0)  exit BLOCK
-       call os_system_call (os_data%dvips // " " // &
-          file_dvi // pipe_dvi, status)
-       if (status /= 0)  exit BLOCK
+       if (os_data%event_analysis_ps) then
+          call os_system_call (os_data%dvips // " " // &
+             file_dvi // pipe_dvi, status)
+          if (status /= 0)  exit BLOCK
+       else
+          call msg_warning ("Skipping PostScript generation because dvips " &
+               // "is not available")
+          exit BLOCK
+       end if
        if (os_data%event_analysis_pdf) then
           call os_system_call (os_data%ps2pdf // " " // &
                   file_ps, status)
+          if (status /= 0)  exit BLOCK
+       else
+          call msg_warning ("Skipping PDF generation because ps2pdf " &
+               // "is not available")
+          exit BLOCK
        end if
-       if (status /= 0)  exit BLOCK
        exit BLOCK
     end do BLOCK
     if (status /= 0) then
        call msg_error ("Unable to compile integration history display")
     end if
   end subroutine integration_results_compile_driver
+
+  subroutine process_status_write (status, unit)
+    type(process_status_t), intent(in) :: status
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = output_unit (unit);  if (u < 0)  return
+1   format (1x,A,L1,3x,I9)
+    write (u, *)  "Process evaluation status (count):"
+    write (u, 1) "  called                = ", status%called, &
+         status%n_called
+    write (u, 1) "  passed strfun_chain   = ", status%passed_strfun_chain, &
+         status%n_passed_strfun_chain
+    write (u, 1) "  passed mass_threshold = ", status%passed_mass_threshold, &
+         status%n_passed_mass_threshold
+    write (u, 1) "  passed kinematics     = ", status%passed_kinematics, &
+         status%n_passed_kinematics
+    write (u, 1) "  passed cuts           = ", status%passed_cuts, &
+         status%n_passed_cuts
+    write (u, 1) "  passed evaluation     = ", status%passed_evaluation, &
+         status%n_passed_evaluation
+  end subroutine process_status_write
+
+  subroutine process_status_write_counters (status, unit)
+    type(process_status_t), intent(in) :: status
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = output_unit (unit);  if (u < 0)  return
+1   format (2x,A,1x,I9)
+    call msg_message ("Process evaluation counters:", unit=u)
+    write (msg_buffer, 1) "called                = ", &
+         status%n_called
+    call msg_message (unit=u)
+    write (msg_buffer, 1) "passed strfun_chain   = ", &
+         status%n_passed_strfun_chain
+    call msg_message (unit=u)
+    write (msg_buffer, 1) "passed mass_threshold = ", &
+         status%n_passed_mass_threshold
+    call msg_message (unit=u)
+    write (msg_buffer, 1) "passed kinematics     = ", &
+         status%n_passed_kinematics
+    call msg_message (unit=u)
+    write (msg_buffer, 1) "passed cuts           = ", &
+         status%n_passed_cuts
+    call msg_message (unit=u)
+    write (msg_buffer, 1) "passed evaluation     = ", &
+         status%n_passed_evaluation 
+    call msg_message (unit=u)
+  end subroutine process_status_write_counters
+
+  subroutine process_status_reset_flags (status)
+    type(process_status_t), intent(inout) :: status
+    status%called = .false.
+    status%passed_strfun_chain = .false.
+    status%passed_mass_threshold = .false.
+    status%passed_kinematics = .false.
+    status%passed_cuts = .false.
+    status%passed_evaluation = .false.
+  end subroutine process_status_reset_flags
+
+  subroutine process_status_reset_counters (status)
+    type(process_status_t), intent(out) :: status
+  end subroutine process_status_reset_counters
+    
+  subroutine process_status_called (status)
+    type(process_status_t), intent(inout) :: status
+    status%called = .true.
+    status%n_called = status%n_called + 1
+  end subroutine process_status_called
+
+  subroutine process_status_passed_strfun_chain (status)
+    type(process_status_t), intent(inout) :: status
+    status%passed_strfun_chain = .true.
+    status%n_passed_strfun_chain = status%n_passed_strfun_chain + 1
+  end subroutine process_status_passed_strfun_chain
+
+  subroutine process_status_passed_mass_threshold (status)
+    type(process_status_t), intent(inout) :: status
+    status%passed_mass_threshold = .true.
+    status%n_passed_mass_threshold = status%n_passed_mass_threshold + 1
+  end subroutine process_status_passed_mass_threshold
+
+  subroutine process_status_passed_kinematics (status)
+    type(process_status_t), intent(inout) :: status
+    status%passed_kinematics = .true.
+    status%n_passed_kinematics = status%n_passed_kinematics + 1
+  end subroutine process_status_passed_kinematics
+
+  subroutine process_status_passed_cuts (status)
+    type(process_status_t), intent(inout) :: status
+    status%passed_cuts = .true.
+    status%n_passed_cuts = status%n_passed_cuts + 1
+  end subroutine process_status_passed_cuts
+
+  subroutine process_status_passed_evaluation (status)
+    type(process_status_t), intent(inout) :: status
+    status%passed_evaluation = .true.
+    status%n_passed_evaluation = status%n_passed_evaluation + 1
+  end subroutine process_status_passed_evaluation
+
+  subroutine qcd_parameters_setup (qcd, lhapdf_status, var_list)
+    type(qcd_parameters_t), intent(inout) :: qcd
+    type(lhapdf_status_t), intent(inout) :: lhapdf_status
+    type(var_list_t), intent(in), target :: var_list
+    type(string_t) :: lhapdf_file, lhapdf_dir
+    qcd%alpha_s_is_fixed = &
+         var_list_get_lval (var_list, var_str ("?alpha_s_is_fixed"))
+    qcd%order = &
+         var_list_get_ival (var_list, var_str ("alpha_s_order"))
+    qcd%nf = &
+         var_list_get_ival (var_list, var_str ("alpha_s_nf"))
+    qcd%alpha_s_from_mz = &
+         var_list_get_lval (var_list, var_str ("?alpha_s_from_mz"))
+    qcd%alpha_s_from_lhapdf = &
+         var_list_get_lval (var_list, var_str ("?alpha_s_from_lhapdf"))
+    if (qcd%alpha_s_from_lhapdf) then
+       if (LHAPDF_AVAILABLE) then
+          qcd%lhapdf_set = 1
+          lhapdf_dir = var_list_get_sval (var_list, &
+               var_str ("$lhapdf_dir"))  ! $
+          lhapdf_file = var_list_get_sval (var_list, &
+               var_str ("$lhapdf_file"))  ! $
+          qcd%lhapdf_member = var_list_get_ival (var_list, &
+               var_str ("lhapdf_member"))
+          call lhapdf_init (lhapdf_status, &
+               qcd%lhapdf_set, lhapdf_dir, lhapdf_file, qcd%lhapdf_member)
+       else             
+          call msg_error &
+               ("LHAPDF not linked: reset alpha_s_from_lhapdf to false")
+          qcd%alpha_s_from_lhapdf = .false.
+       end if
+    end if
+    qcd%mz_is_known = &
+         var_list_is_known (var_list, var_str ("mZ"))
+    if (qcd%mz_is_known)  qcd%mz = &
+         var_list_get_rval (var_list, var_str ("mZ"))
+    qcd%alpha_s_mz_is_known = &
+         var_list_is_known (var_list, var_str ("alphas"))
+    if (qcd%alpha_s_mz_is_known)  qcd%alpha_s_mz = &
+         var_list_get_rval (var_list, var_str ("alphas"))
+    qcd%lambda = &
+         var_list_get_rval (var_list, var_str ("lambda_qcd"))
+  end subroutine qcd_parameters_setup
+
+  subroutine qcd_parameters_write (qcd, unit)
+    type(qcd_parameters_t), intent(in) :: qcd
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = output_unit (unit)
+    write (u, *)  "QCD coupling parameters ="
+    write (u, *)  "  alpha-s is fixed = ", qcd%alpha_s_is_fixed
+    if (.not. qcd%alpha_s_is_fixed) then
+       if (qcd%alpha_s_from_lhapdf) then
+          write (u, *)  "  alpha-s from LHAPDF"
+          write (u, *)  "  PDF group        = ", qcd%lhapdf_set
+          write (u, *)  "  PDF member       = ", qcd%lhapdf_member
+       else
+          write (u, *)  "  LLA order        = ", qcd%order
+          write (u, *)  "  active flavors   = ", qcd%nf
+          write (u, *)  "  use alpha-s (mZ) = ", qcd%alpha_s_from_mz
+          if (qcd%alpha_s_from_mz) then
+             write (u, *)  "  mZ is known      = ", qcd%mz_is_known
+             if (qcd%mz_is_known) then
+                write (u, *)  "  mZ               = ", qcd%mz
+             end if
+             write (u, *)  "  as(mZ) is known  = ", qcd%alpha_s_mz_is_known
+             if (qcd%alpha_s_mz_is_known) then
+                write (u, *)  "  alpha-s (mZ)     = ", qcd%alpha_s_mz
+             end if
+          else
+             write (u, *)  "  Lambda_QCD       = ", qcd%lambda
+          end if
+       end if
+       write (u, *)  "  alpha-s (scale)  = ", qcd%alpha_s_at_scale
+    end if
+  end subroutine qcd_parameters_write
+
+  function qcd_parameters_get_md5sum (qcd) result (md5)
+    character(32) :: md5
+    type(qcd_parameters_t), intent(in) :: qcd
+    integer :: u
+    u = free_unit ()
+    open (unit=u, status="scratch")
+    call qcd_parameters_write (qcd, u)
+    rewind (u)
+    md5 = md5sum (u)
+    close (u)
+  end function qcd_parameters_get_md5sum
+
+  subroutine qcd_parameters_update_alpha_s (qcd, scale)
+    type(qcd_parameters_t), intent(inout) :: qcd
+    real(default), intent(in) :: scale
+    real(default) :: alpha_s
+    if (.not. qcd%alpha_s_is_fixed) then
+       if (qcd%alpha_s_from_lhapdf) then
+          alpha_s = alphasPDF (dble (scale))
+       else
+          if (qcd%alpha_s_from_mz) then
+             if (qcd%alpha_s_mz_is_known) then
+                if (qcd%mz_is_known) then
+                   alpha_s = running_as (scale, &
+                        al_mz = qcd%alpha_s_mz, &
+                        mz = qcd%mz, &
+                        order = qcd%order, &
+                        nf = real (qcd%nf, default))
+                else
+                   alpha_s = running_as (scale, &
+                        al_mz = qcd%alpha_s_mz, &
+                        order = qcd%order, &
+                        nf = real (qcd%nf, default))
+                end if
+             else
+                if (qcd%mz_is_known) then
+                   alpha_s = running_as (scale, &
+                        mz = qcd%mz, &
+                        order = qcd%order, &
+                        nf = real (qcd%nf, default))
+                else
+                   alpha_s = running_as (scale, &
+                        order = qcd%order, &
+                        nf = real (qcd%nf, default))
+                end if                
+             end if
+          else
+             alpha_s = running_as_lam (real (qcd%nf, default), scale, &
+                  lambda_qcd = qcd%lambda, &
+                  order = qcd%order)
+          end if   
+       end if
+       qcd%alpha_s_at_scale = alpha_s
+    end if
+  end subroutine qcd_parameters_update_alpha_s
 
   subroutine process_init &
        (process, prc_lib, process_lib_index, process_store_index, &
@@ -1285,12 +1568,10 @@ contains
     type(string_t), intent(in) :: process_id
     type(model_t), intent(in), target :: model
     type(lhapdf_status_t), intent(inout) :: lhapdf_status
-    type(var_list_t), intent(in), optional, target :: var_list
+    type(var_list_t), intent(in), target :: var_list
     logical, intent(in), optional :: use_beams
     integer :: n_in, n_out, n_tot
     integer :: n_beam
-    integer :: lhapdf_set, lhapdf_member
-    type(string_t) :: lhapdf_prefix, lhapdf_file, lhapdf_dir
     process%prc_lib => prc_lib
     process%lib_index = process_lib_index
     process%store_index = process_store_index
@@ -1341,47 +1622,17 @@ contains
     end if
     call process_assign_global_var_list (process, var_list)
 
+!    process%old_phs_version = &
+!         var_list_get_lval (var_list, var_str ("?old_phs_version"))
+
     process%negative_weights = &
          var_list_get_lval (var_list, var_str ("?negative_weights"))
-    process%alpha_s_is_fixed = &
-         var_list_get_lval (process%var_list, var_str ("?alpha_s_is_fixed"))
-    process%alpha_s_order = &
-         var_list_get_ival (process%var_list, var_str ("alpha_s_order"))
-    process%alpha_s_nf = &
-         var_list_get_ival (process%var_list, var_str ("alpha_s_nf"))
-    process%alpha_s_from_mz = &
-         var_list_get_lval (process%var_list, var_str ("?alpha_s_from_mz"))
-    process%alpha_s_from_lhapdf = &
-         var_list_get_lval (process%var_list, var_str ("?alpha_s_from_lhapdf"))
     process%fatal_beam_decay = &
-         var_list_get_lval (process%var_list, var_str ("?fatal_beam_decay"))
-    if (process%alpha_s_from_lhapdf) then
-       if (LHAPDF_AVAILABLE) then
-          lhapdf_set = 1
-          lhapdf_dir = var_list_get_sval (var_list, &
-               var_str ("$lhapdf_dir"))  ! $
-          lhapdf_file = var_list_get_sval (var_list, &
-               var_str ("$lhapdf_file"))  ! $
-          lhapdf_member = var_list_get_ival (var_list, &
-               var_str ("lhapdf_member"))
-          call lhapdf_init (lhapdf_status, &
-               lhapdf_set, lhapdf_dir, lhapdf_file, lhapdf_member)
-       else             
-          call msg_error &
-               ("LHAPDF not linked: reset alpha_s_from_lhapdf to false")
-          process%alpha_s_from_lhapdf = .false.
-       end if
-    end if
-    process%mz_is_known = &
-         var_list_is_known (process%var_list, var_str ("mZ"))
-    if (process%mz_is_known)  process%mz = &
-         var_list_get_rval (process%var_list, var_str ("mZ"))
-    process%alpha_s_mz_is_known = &
-         var_list_is_known (process%var_list, var_str ("alphas"))
-    if (process%alpha_s_mz_is_known)  process%alpha_s_mz = &
-         var_list_get_rval (process%var_list, var_str ("alphas"))
-    process%lambda_qcd = &
-         var_list_get_rval (process%var_list, var_str ("lambda_qcd"))
+         var_list_get_lval (var_list, var_str ("?fatal_beam_decay"))
+
+    call qcd_parameters_setup (process%qcd, lhapdf_status, var_list)
+    process%md5sum_alpha_s = qcd_parameters_get_md5sum (process%qcd)
+
     call var_list_append_int (process%var_list, &
          var_str ("n_in"),  n_in, intrinsic=.true.)
     call var_list_append_int (process%var_list, &
@@ -1465,6 +1716,7 @@ contains
     case (PRC_DECAY);       write (u, *) "  [decay]"
     case (PRC_SCATTERING);  write (u, *) "  [scattering]"
     end select
+    write (u, *)  "  is cascade decay        = ", process%is_cascade_decay
     write (u, *)  "  use separate beam setup = ", process%use_beams
     call beam_data_write (process%beam_data, u)
     if (process%use_beams) then
@@ -1480,6 +1732,10 @@ contains
     else
        write (u, *)  "  c.m. energy (sqrts)     = [unknown]"
     end if
+    write (u, *)  repeat ("-", 72)
+    call process_status_write (process%status, u)
+    write (u, *)  repeat ("-", 72)
+    write (u, *)  "Evaluation results:"
     if (process%sqrts_hat_known) then
        write (u, *)  "  c.m. energy (sqrts_hat) = ", process%sqrts_hat
     else
@@ -1524,30 +1780,7 @@ contains
     write (u, *)  "  Factorization scale     = ", process%fac_scale
     write (u, *)  "  Renormalization scale   = ", process%ren_scale    
     write (u, *)  repeat ("-", 72)
-    write (u, *)  "QCD coupling parameters ="
-    write (u, *)  "  alpha-s is fixed = ", process%alpha_s_is_fixed
-    if (.not. process%alpha_s_is_fixed) then
-       if (process%alpha_s_from_lhapdf) then
-          write (u, *)  "  alpha-s from        LHAPDF"
-       else
-          write (u, *)  "  LLA order        = ", process%alpha_s_order
-          write (u, *)  "  active flavors   = ", process%alpha_s_nf
-          write (u, *)  "  use alpha-s (mZ) = ", process%alpha_s_from_mz
-          if (process%alpha_s_from_mz) then
-             write (u, *)  "  mZ is known      = ", process%mz_is_known
-             if (process%mz_is_known) then
-                write (u, *)  "  mZ               = ", process%mz
-             end if
-             write (u, *)  "  as(mZ) is known  = ", process%alpha_s_mz_is_known
-             if (process%alpha_s_mz_is_known) then
-                write (u, *)  "  alpha-s (mZ)     = ", process%alpha_s_mz
-             end if
-          else
-             write (u, *)  "  Lambda_QCD       = ", process%lambda_qcd
-          end if
-       end if
-       write (u, *)  "  alpha-s (scale)  = ", process%alpha_s_at_scale
-    end if
+    call qcd_parameters_write (process%qcd, u)
     write (u, *)  repeat ("-", 72)
     write (u, *)  "Phase-space integration parameters (input) ="
     if (allocated (process%x_hi)) then
@@ -1688,6 +1921,9 @@ contains
     write (u, *)  "Efficiency = ", process_get_efficiency (process)
     write (u, *)  "Time/evt   = ", process_get_time_per_event (process)
     call integration_results_write (process%results, unit)
+    write (u, "(A)")  repeat ("#", 79)
+    call process_status_write_counters (process%status, unit)
+    write (u, "(A)")  repeat ("#", 79)
     call integration_results_write_grove_weights (process%results, unit)
     write (u, "(A)")  repeat ("#", 79)
     call beam_data_write (process%beam_data, u)
@@ -1747,12 +1983,13 @@ contains
     close (unit)
   end subroutine process_write_logfile
 
-  subroutine process_display_integration_history (process, os_data)
+  subroutine process_display_integration_history (process, os_data, vis_history)
     type(process_t), intent(in) :: process
     type(os_data_t), intent(in) :: os_data
+    logical, intent(in) :: vis_history
     call integration_results_write_driver (process%results, process%id)
-    call integration_results_compile_driver &
-         (process%results, process%id, os_data)
+    if (vis_history) call integration_results_compile_driver &
+          (process%results, process%id, os_data)
   end subroutine process_display_integration_history
 
   subroutine process_ptr_array_create (prc_array, process_id)
@@ -1915,6 +2152,12 @@ contains
     n = process%n_bins
   end function process_get_n_bins
 
+  function process_get_status (process) result (status)
+    type(process_status_t) :: status
+    type(process_t), intent(in) :: process
+    status = process%status
+  end function process_get_status
+
   function process_get_scale (process) result (scale)
     real(default) :: scale
     type(process_t), intent(in) :: process
@@ -1936,7 +2179,7 @@ contains
   function process_get_alpha_s (process) result (alpha_s)
     real(default) :: alpha_s
     type(process_t), intent(in) :: process
-    alpha_s = process%alpha_s_at_scale
+    alpha_s = process%qcd%alpha_s_at_scale
   end function process_get_alpha_s
 
   function process_get_sqme (process) result (sqme)
@@ -2049,6 +2292,11 @@ contains
     eval => hard_interaction_get_eval_flows_ptr (process%hi)
   end function process_get_hi_eval_flows_ptr
 
+  subroutine process_mark_as_cascade_decay (process)
+    type(process_t), intent(inout) :: process
+    process%is_cascade_decay = .true.
+  end subroutine process_mark_as_cascade_decay
+    
   subroutine process_set_scale (process, scale)
     type(process_t), intent(inout) :: process
     real(default), intent(in) :: scale
@@ -2070,7 +2318,7 @@ contains
   subroutine process_set_alpha_s (process, alpha_s)
     type(process_t), intent(inout) :: process
     real(default), intent(in) :: alpha_s
-    process%alpha_s_at_scale = alpha_s
+    process%qcd%alpha_s_at_scale = alpha_s
   end subroutine process_set_alpha_s
 
   subroutine process_set_sqme (process, sqme)
@@ -2244,6 +2492,17 @@ contains
             (process%sfchain, i, line, beam_events_data, n_parameters)
     end if
   end subroutine process_set_strfun_beam_events
+
+  subroutine process_set_strfun_user &
+       (process, i, line, user_data, n_parameters)
+    type(process_t), intent(inout), target :: process
+    integer, intent(in) :: i, line, n_parameters
+    type(sf_user_data_t), intent(in) :: user_data
+    if (process%use_beams) then
+       call strfun_chain_set_strfun &
+            (process%sfchain, i, line, user_data, n_parameters)
+    end if
+  end subroutine process_set_strfun_user
 
   subroutine process_set_strfun_mapping (process, i, index, type, par)
     type(process_t), intent(inout) :: process
@@ -2513,8 +2772,8 @@ contains
             call os_system_call (setenv_tex // os_data%latex // " " // &
                 filename_vis // ".tex" // pipe, status)
             if (status /= 0)  exit BLOCK
-            call os_system_call (os_data%dvips // " " // &
-               filename_vis // ".dvi" // pipe_dvi, status)
+            call os_system_call (os_data%dvips // " -o " // filename_vis &
+               // ".ps " // filename_vis // ".dvi" // pipe_dvi, status)
             if (status /= 0)  exit BLOCK
             if (os_data%event_analysis_pdf) then
                call os_system_call (os_data%ps2pdf // " " // &
@@ -2546,6 +2805,7 @@ contains
     call phs_forest_set_flavors (process%forest, flv(:,1))
     call phs_forest_set_parameters &
          (process%forest, mapping_defaults, variable_limits)
+    call phs_forest_setup_prt_combinations (process%forest)
     call phs_forest_set_equivalences (process%forest)
     if (process%use_beams) then
        n_par_strfun = strfun_chain_get_n_parameters_tot (process%sfchain)
@@ -2615,53 +2875,89 @@ contains
 
   subroutine process_setup_cuts (process, parse_node, md5sum)
     type(process_t), intent(inout), target :: process
-    type(parse_node_t), intent(in), target :: parse_node
+    type(parse_node_t), intent(in), optional, target :: parse_node
     character(32), intent(out), optional :: md5sum
-    call eval_tree_init_lexpr &
-         (process%cut_expr, parse_node, process%var_list, process%subevt)
+    if (present (parse_node)) then
+       process%cut_pn => parse_node
+       call eval_tree_init_lexpr &
+            (process%cut_expr, parse_node, process%var_list, process%subevt)
+    else if (associated (process%cut_pn)) then
+       call eval_tree_init_lexpr &
+            (process%cut_expr, process%cut_pn, process%var_list, process%subevt)
+    end if
     if (present (md5sum)) &
          md5sum = eval_tree_get_md5sum (process%cut_expr)
   end subroutine process_setup_cuts
 
   subroutine process_setup_weight (process, parse_node, md5sum)
     type(process_t), intent(inout), target :: process
-    type(parse_node_t), intent(in), target :: parse_node
+    type(parse_node_t), intent(in), optional, target :: parse_node
     character(32), intent(out), optional :: md5sum
-    call eval_tree_init_expr &
-         (process%reweighting_expr, parse_node, process%var_list, &
-          process%subevt)
+    if (present (parse_node)) then
+       process%weight_pn => parse_node
+       call eval_tree_init_expr &
+            (process%reweighting_expr, parse_node, process%var_list, &
+            process%subevt)
+    else if (associated (process%weight_pn)) then
+       call eval_tree_init_expr &
+            (process%reweighting_expr, process%weight_pn, process%var_list, &
+            process%subevt)
+    end if
     if (present (md5sum)) &
          md5sum = eval_tree_get_md5sum (process%reweighting_expr)
   end subroutine process_setup_weight
 
   subroutine process_setup_scale (process, parse_node, md5sum)
     type(process_t), intent(inout), target :: process
-    type(parse_node_t), intent(in), target :: parse_node
+    type(parse_node_t), intent(in), optional, target :: parse_node
     character(32), intent(out), optional :: md5sum
-    call eval_tree_init_expr &
-         (process%scale_expr, parse_node, process%var_list, process%subevt)
+    if (present (parse_node)) then
+       process%scale_pn => parse_node
+       call eval_tree_init_expr &
+            (process%scale_expr, parse_node, process%var_list, process%subevt)
+    else if (associated (process%scale_pn)) then
+       call eval_tree_init_expr &
+            (process%scale_expr, process%scale_pn, process%var_list, &
+            process%subevt)
+    end if
     if (present (md5sum)) &
          md5sum = eval_tree_get_md5sum (process%scale_expr)
   end subroutine process_setup_scale
 
   subroutine process_setup_fac_scale (process, parse_node, md5sum)
     type(process_t), intent(inout), target :: process
-    type(parse_node_t), intent(in), target :: parse_node
+    type(parse_node_t), intent(in), optional, target :: parse_node
     character(32), intent(out), optional :: md5sum
-    call eval_tree_init_expr &
-         (process%fac_scale_expr, parse_node, process%var_list, process%subevt)
+    if (present (parse_node)) then
+       process%fac_scale_pn => parse_node
+       call eval_tree_init_expr &
+            (process%fac_scale_expr, parse_node, process%var_list, &
+            process%subevt)
+    else if (associated (process%fac_scale_pn)) then
+       call eval_tree_init_expr &
+            (process%fac_scale_expr, process%fac_scale_pn, process%var_list, &
+            process%subevt)
+    end if
     if (present (md5sum)) &
          md5sum = eval_tree_get_md5sum (process%fac_scale_expr)
   end subroutine process_setup_fac_scale
 
   subroutine process_setup_ren_scale (process, parse_node, md5sum)
     type(process_t), intent(inout), target :: process
-    type(parse_node_t), intent(in), target :: parse_node
+    type(parse_node_t), intent(in), optional, target :: parse_node
     character(32), intent(out), optional :: md5sum
-    call eval_tree_init_expr &
-         (process%ren_scale_expr, parse_node, process%var_list, process%subevt)
+    if (present (parse_node)) then
+       process%ren_scale_pn => parse_node
+       call eval_tree_init_expr &
+            (process%ren_scale_expr, parse_node, process%var_list, &
+            process%subevt)
+    else if (associated (process%ren_scale_pn)) then
+       call eval_tree_init_expr &
+            (process%ren_scale_expr, process%ren_scale_pn, process%var_list, &
+            process%subevt)
+    end if
     if (present (md5sum)) &
-         md5sum = eval_tree_get_md5sum (process%cut_expr)
+         md5sum = eval_tree_get_md5sum (process%ren_scale_expr)
   end subroutine process_setup_ren_scale
 
   subroutine grid_parameters_write (grid_par, unit)
@@ -2800,6 +3096,7 @@ contains
        end select
        process%sqrts_hat = process%sqrts
     end if
+    call process_status_passed_strfun_chain (process%status)
     select case (process%type)
     case (PRC_DECAY)
        process%flux_factor = &
@@ -2814,6 +3111,7 @@ contains
        process%flux_factor = &
             conv * twopi4 / (2 * sqrt (lda))
     end select
+    call process_status_passed_mass_threshold (process%status)
     process%sqrts_hat_known = .true.
     if (.not. process%lab_is_cm_frame) then
        process%lt_cm_to_lab = interaction_get_cm_transformation (int)
@@ -2825,21 +3123,37 @@ contains
     forall (i = 1 : process%n_par_strfun)
        process%x(process%n_par_hi+i,:) = process%x_strfun(i)
     end forall
-    call phs_forest_evaluate_phase_space (process%forest, &
-         channel, process%active_channel, process%sqrts_hat, &
-         process%x, process%phs_factor, process%phs_volume, ok)
-    if (ok) then
-       if (process%lab_is_cm_frame) then
-          call phs_forest_get_prt_out (process%forest, int)
-       else
-          call phs_forest_get_prt_out &
-               (process%forest, int, process%lt_cm_to_lab)
-       end if
+    if (process%old_phs_version) then
+       call phs_forest_evaluate_phase_space (process%forest, &
+            channel, process%active_channel, process%sqrts_hat, &
+            process%x, process%phs_factor, process%phs_volume, ok)
+    else
+       call phs_forest_evaluate_momenta (process%forest, &
+            channel, process%active_channel, process%sqrts_hat, &
+            process%x, process%phs_factor, process%phs_volume, ok)
+    end if
+    if (.not. ok)  return
+    if (process%lab_is_cm_frame) then
+       call phs_forest_get_prt_out (process%forest, int)
+    else
+       call phs_forest_get_prt_out &
+            (process%forest, int, process%lt_cm_to_lab)
     end if
     call evaluator_receive_momenta (eval)
     if (process%use_beams) &
          call evaluator_receive_momenta (process%eval_trace)
+    call process_status_passed_kinematics (process%status)
   end subroutine process_set_kinematics
+
+  subroutine process_complete_kinematics (process, channel)
+    type(process_t), intent(inout), target :: process
+    integer, intent(in) :: channel
+    if (.not. process%old_phs_version) then
+       call phs_forest_evaluate_other_channels (process%forest, &
+            channel, process%active_channel, process%sqrts_hat, &
+            process%x, process%phs_factor)
+    end if
+  end subroutine process_complete_kinematics
 
   subroutine process_recover_kinematics (process, particle_set)
     type(process_t), intent(inout), target :: process
@@ -2884,16 +3198,25 @@ contains
     
   end subroutine process_recover_kinematics
 
-  subroutine process_fill_subevt (process)
+  subroutine process_fill_subevt (process, transform)
     type(process_t), intent(inout), target :: process
+    logical, intent(in), optional :: transform
     type(interaction_t), pointer :: int
+    logical :: tr
+    tr = .false.;  if (present (transform))  tr = transform
     if (process%use_beams) then
        int => evaluator_get_int_ptr (process%eval_trace)
     else
        int => hard_interaction_get_int_ptr (process%hi)
     end if
-    call interaction_momenta_to_subevt &
-         (int, process%j_beam, process%j_in, process%j_out, process%subevt)
+    if (tr) then
+       call interaction_momenta_to_subevt &
+            (int, process%j_beam, process%j_in, process%j_out, &
+             inverse (process%lt_cm_to_lab), process%subevt)
+    else
+       call interaction_momenta_to_subevt &
+            (int, process%j_beam, process%j_in, process%j_out, process%subevt)
+    end if
   end subroutine process_fill_subevt
 
   function process_passes_cuts (process) result (flag)
@@ -2966,6 +3289,8 @@ contains
     real(default), dimension(process%n_channels) :: vamp_prob
     real(default) :: dp
     integer :: i
+    !$OMP PARALLEL PRIVATE(i) SHARED(process,vamp_prob)
+    !$OMP DO
     do i = 1, process%n_channels
        if (process%active_channel(i)) then
           vamp_prob(i) = &
@@ -2974,6 +3299,8 @@ contains
           vamp_prob(i) = 0
        end if
     end do
+    !$OMP END DO
+    !$OMP END PARALLEL
     dp = dot_product (weights, vamp_prob / process%phs_factor)
     if (dp /= 0) then
        process%vamp_phs_factor = vamp_prob(process%channel) / dp
@@ -2989,42 +3316,10 @@ contains
 
   subroutine process_update_alpha_s (process)
     type(process_t), intent(inout) :: process
-    real(default) :: scale, nf, as_mz, mz, lambda, alpha_s
-    integer :: order
-    scale = process%ren_scale
-    as_mz = process%alpha_s_mz
-    mz = process%mz
-    lambda = process%lambda_qcd
-    order = process%alpha_s_order
-    nf = process%alpha_s_nf
-    if (.not. process%alpha_s_is_fixed) then
-       if (process%alpha_s_from_lhapdf) then
-          alpha_s = alphasPDF (dble (scale))
-       else
-          if (process%alpha_s_from_mz) then
-             if (process%alpha_s_mz_is_known) then
-                if (process%mz_is_known) then
-                   alpha_s = running_as (scale, &
-                        al_mz=as_mz, mz=mz, order=order, nf=nf)
-                else
-                   alpha_s = running_as (scale, &
-                        al_mz=as_mz, order=order, nf=nf)
-                end if
-             else
-                if (process%mz_is_known) then
-                   alpha_s = running_as (scale, &
-                        mz=mz, order=order, nf=nf)
-                else
-                   alpha_s = running_as (scale, &
-                        order=order, nf=nf)
-                end if                
-             end if
-          else
-             alpha_s = running_as_lam (nf, scale, lambda, order=order)
-          end if   
-       end if
-       process%alpha_s_at_scale = alpha_s
-       call hard_interaction_update_alpha_s (process%hi, alpha_s)
+    if (.not. process%qcd%alpha_s_is_fixed) then
+       call qcd_parameters_update_alpha_s (process%qcd, process%ren_scale)
+       call hard_interaction_update_alpha_s &
+            (process%hi, process%qcd%alpha_s_at_scale)
     end if
   end subroutine process_update_alpha_s
 
@@ -3115,6 +3410,7 @@ contains
        md5sum_local%model = model_get_md5sum (process%model)
        md5sum_local%parameters = model_get_parameters_md5sum (process%model)
        md5sum_local%phs = process%md5sum_phs
+       md5sum_local%alpha_s = process%md5sum_alpha_s
     end if
     sqrts = process%sqrts
     if (discard_integrals .and. it1==1) then
@@ -3134,6 +3430,7 @@ contains
        if (adapt_weights) then
           call process_adapt_channel_weights (process, grid_parameters, calls)
        end if
+       call process_status_reset_counters (process%status)
        if (time_estimate)  time_start = time_current ()
        if (grid_parameters%use_vamp_equivalences) then
           call vamp_sample_grids &
@@ -3182,6 +3479,51 @@ contains
          process%type, 1, 1, 0, &
          0._default, 0._default, 0._default)
   end subroutine process_do_dummy_integration
+
+  subroutine process_me_test &
+       (process, rng, n_calls, time_in_seconds, sample_function_sum)
+    type(process_t), intent(inout), target :: process
+    type(tao_random_state), intent(inout) :: rng
+    integer, intent(in) :: n_calls
+    real(default), intent(out), optional :: time_in_seconds, sample_function_sum
+    integer :: prc_index, i
+    type(time_t) :: time_start, time_end
+    real(default), dimension(:), allocatable :: weights
+    real(default) :: s
+    process%beams_are_set = .false.
+    s = 0
+    allocate (weights (process%n_channels))
+    weights = 1._default / size (weights)
+    call process_status_reset_counters (process%status)
+    if (present (time_in_seconds))  time_start = time_current ()
+    do i = 1, n_calls
+       s = s + sample_function &
+                 (random_xi (), process%store_index, &
+                  weights=weights, &
+                  channel=random_channel ())
+    end do
+    if (present (time_in_seconds)) then
+       time_end = time_current ()
+       time_in_seconds = time_end - time_start
+    end if
+    if (present (sample_function_sum)) then
+       sample_function_sum = s
+    end if
+  contains
+    function random_channel () result (channel)
+      integer :: channel
+      real(default) :: x
+      call tao_random_number (rng, x)
+      channel = ceiling (x * process%n_channels)
+    end function random_channel
+    function random_xi () result (xi)
+      real(default), dimension (process%n_par) :: xi
+      integer :: i
+      do i = 1, size (xi)
+         call tao_random_number (rng, xi(i))
+      end do
+    end function random_xi
+  end subroutine process_me_test
 
   subroutine process_init_vamp_history (process, n_iterations)
     type(process_t), intent(inout) :: process
@@ -3245,6 +3587,7 @@ contains
     write (u, *) "  md5sum_scale       = ", '"', md5sum%scale, '"'
     write (u, *) "  md5sum_fac_scale   = ", '"', md5sum%fac_scale, '"'
     write (u, *) "  md5sum_ren_scale   = ", '"', md5sum%ren_scale, '"'    
+    write (u, *) "  md5sum_alpha_s     = ", '"', md5sum%alpha_s, '"'    
     write (u, *)
     call grid_parameters_write (grid_parameters, u)
     write (u, *)
@@ -3356,6 +3699,12 @@ contains
             ("Renormalization scale expression has changed, discarding old grid file")
        close (u);  return
     end if
+    read (u, *)  buffer, equals, md5sum_file
+    if (md5sum_file /= md5sum%alpha_s) then
+       call msg_message &
+            ("Alpha(QCD) specifications have changed, discarding old grid file")
+       close (u);  return
+    end if
     read (u, *)
     call grid_parameters_read (grid_parameters_file, u)
     if (grid_parameters_file /= grid_parameters) then
@@ -3392,6 +3741,7 @@ contains
     md5sum_local%model = model_get_md5sum (process%model)
     md5sum_local%parameters = model_get_parameters_md5sum (process%model)
     md5sum_local%phs = process%md5sum_phs
+    md5sum_local%alpha_s = process%md5sum_alpha_s
     call read_grid_file (filename, process%id, md5sum_local, &
          grid_parameters, process%results, process%grids, &
          pass, n_calls, ok)
@@ -3469,6 +3819,7 @@ contains
             // "matrix element vanishes, no events can be generated")
        return
     end if
+    call process_status_reset_counters (process%status)
     call hard_interaction_final_sqme (process%hi)
     call hard_interaction_final_flows (process%hi)
     call evaluator_final (process%eval_beam_flows)
@@ -3694,6 +4045,8 @@ contains
     copy%use_hi_color_factors = original%use_hi_color_factors
     copy%use_beams = original%use_beams
     copy%has_extra_evaluators = .false.
+    copy%beams_are_set = original%beams_are_set
+    copy%is_cascade_decay = original%is_cascade_decay
     copy%id = original%id
     copy%prc_lib => original%prc_lib
     copy%lib_index = original%lib_index
@@ -3741,6 +4094,11 @@ contains
     copy%j_out = original%j_out
     copy%subevt = original%subevt
     copy%var_list = original%var_list
+    copy%cut_pn => original%cut_pn
+    copy%weight_pn => original%weight_pn
+    copy%scale_pn => original%scale_pn    
+    copy%fac_scale_pn => original%fac_scale_pn
+    copy%ren_scale_pn => original%ren_scale_pn    
     copy%cut_expr = original%cut_expr
     copy%reweighting_expr = original%reweighting_expr
     copy%scale_expr = original%scale_expr    
@@ -4073,8 +4431,9 @@ contains
     type(string_t), intent(in) :: process_id
     type(model_t), intent(in), target :: model
     type(lhapdf_status_t), intent(inout) :: lhapdf_status
-    type(var_list_t), intent(in), optional, target :: var_list
-    logical, intent(in), optional :: use_beams, allow_global_mapping
+    type(var_list_t), intent(in), target :: var_list
+    logical, intent(in) :: use_beams
+    logical, intent(in), optional :: allow_global_mapping
     integer :: process_lib_index, process_store_index
     procedure(prclib_unload_hook), pointer :: unload_hook
     procedure(prclib_reload_hook), pointer :: reload_hook
@@ -4111,14 +4470,22 @@ contains
     logical :: ok
     call terminate_now_if_signal ()
     process => process_get_working_copy_ptr (store%proc(prc_index)%ptr)
+    call process_status_reset_flags (process%status)
+    call process_status_called (process%status)
     call process_set_kinematics (process, xi, channel, ok)
     if (ok) then
-       call process_fill_subevt (process)
+       call process_fill_subevt (process, transform=process%is_cascade_decay)
        ok = process_passes_cuts (process)
+       if (ok)  call process_status_passed_cuts (process%status)
     end if
     call terminate_now_if_signal ()
     if (ok) then
-       call process_compute_vamp_phs_factor (process, weights)
+       call process_complete_kinematics (process, channel)
+       if (present (grids)) then
+          call process_compute_vamp_phs_factor (process, weights)
+       else
+          process%vamp_phs_factor = 1
+       end if
        call process_compute_scale (process)
        call process_update_alpha_s (process)
        call process_evaluate (process)
@@ -4130,6 +4497,7 @@ contains
             * process%phs_volume &
             * process%sqme &
             * process%reweighting_factor
+       call process_status_passed_evaluation (process%status)
     else
        process%sample_function_value = 0
     end if
@@ -4138,27 +4506,37 @@ contains
   end function sample_function
 
   subroutine process_test ()
-    type(os_data_t) :: os_data
-    type(process_library_t) :: prc_lib
-    type(model_t), pointer :: model
-    print *, "*** Load process library"
-    call process_library_init (prc_lib, var_str("proc"), os_data)
-    call process_library_load (prc_lib, os_data)
-    print *
+    type(os_data_t), pointer :: os_data => null ()
+    type(process_library_t), pointer :: prc_lib => null ()
+    type(model_t), pointer :: model => null ()
+    type(var_list_t), pointer :: var_list => null ()
+    allocate (os_data)
+    allocate (prc_lib)
+    allocate (var_list)
+    call process_library_store_final
+    call os_data_init (os_data)
     print *, "*** Read model file"
     call syntax_model_file_init ()
     call model_list_read_model &
-         (var_str("QCD"), var_str("test.mdl"), os_data, model)
+         (var_str("SM"), var_str("SM.mdl"), os_data, model)
+    var_list => model_get_var_list_ptr (model)
     call syntax_pexpr_init ()
     call syntax_phs_forest_init ()
     print *
-    call process_test1 (prc_lib, model)
+    print *, "*** Create process library"
+    call var_list_append_string (var_list, name = "$library_name", sval = "prc_proc")
+    call var_list_append_log (var_list, name = "?read_color_factors", lval = .true.)
+    call var_list_append_log (var_list, name = "?alpha_s_is_fixed", lval = .true.)
+    call process_library_store_append (var_str ("prc_proc"), os_data, prc_lib)
+    call process_library_init (prc_lib, var_str("prc_proc"), os_data)
     print *
-    call process_test2 (prc_lib, model)
+    call process_test1 (prc_lib, os_data, model, var_list)
     print *
-    call process_test3 (prc_lib, model)
-!     print *
-!     call process_test4 (prc_lib, model)
+    call process_test2 (prc_lib, os_data, model, var_list)
+    print *
+    call process_test3 (prc_lib, os_data, model, var_list)
+    print *
+    call process_test4 (prc_lib, os_data, model, var_list)
     print *
     print *, "* Cleanup"
     call process_store_final ()
@@ -4166,14 +4544,19 @@ contains
     call syntax_phs_forest_final ()
     call syntax_model_file_final ()
     call process_library_final (prc_lib)
+    deallocate (prc_lib)
+    deallocate (os_data)
   end subroutine process_test
 
-  subroutine process_test1 (prc_lib, model)
+  subroutine process_test1 (prc_lib, os_data, model, var_list)
     type(process_library_t), intent(inout) :: prc_lib
     type(model_t), intent(in), target :: model
+    type(var_list_t), intent(inout), target :: var_list
     type(process_t), pointer :: process
+    type(string_t) :: objlist
+    type(string_t), dimension(:), allocatable :: prt_in, prt_out
     type(lhapdf_status_t) :: lhapdf_status
-    type(os_data_t) :: os_data
+    type(os_data_t), intent(inout) :: os_data
     type(phs_parameters_t) :: phs_par
     type(mapping_defaults_t) :: mapping_defaults
     type(flavor_t), dimension(1) :: flv
@@ -4185,32 +4568,87 @@ contains
     logical :: rebuild_phs = .true.
     logical :: discard_integrals, adapt_grids, adapt_weights, print_current
     logical :: time_estimate = .true.
-    print *, "*** Test decay process"
+    print *, "*** Test decay process Z -> e+ e- ***"
     print *
     print *, "* Initialization"
     call tao_random_create (rng, 0)
+    allocate (prt_in (1), prt_out (2))
+    print *, "setting particles for Z -> e+ e-"
+    prt_in(1) = "Z"
+    prt_out(1) = "e1"
+    prt_out(2) = "E1"
+    call process_library_append &
+         (prc_lib, var_str ("zff"), model, prt_in, prt_out, method = PRC_TEST, &
+              message = .true. )
+    deallocate (prt_in, prt_out)
+    allocate (prt_in (1), prt_out (2))
+    print *, "setting particles for Z -> u ubar"
+    prt_in(1) = "Z"
+    prt_out(1) = "u"
+    prt_out(2) = "U"
+    call process_library_append &
+         (prc_lib, var_str ("zqq"), model, prt_in, prt_out, method = PRC_TEST, &
+              message = .true. )
+    deallocate (prt_in, prt_out)
+    allocate (prt_in (2), prt_out (3))
+    print *, "setting particles for e+ e- -> nu nubar H"
+    prt_in(1) = "e1"
+    prt_in(2) = "E1"
+    prt_out(1) = "nue"
+    prt_out(2) = "nuebar"
+    prt_out(3) = "H"
+    call process_library_append &
+         (prc_lib, var_str ("nnh"), model, prt_in, prt_out, method = PRC_TEST, &
+              message = .true. )
+    deallocate (prt_in, prt_out)
+    allocate (prt_in (2), prt_out (2))
+    print *, "setting particles for g g -> u ubar"
+    prt_in(1) = "g"
+    prt_in(2) = "g"
+    prt_out(1) = "u"
+    prt_out(2) = "U"
+    call process_library_append &
+         (prc_lib, var_str ("gguu"), model, prt_in, prt_out, method = PRC_TEST, &
+              message = .true. )
+    deallocate (prt_in, prt_out)
+    print *
+    print *, "* Generate code"
+    call process_library_generate_code (prc_lib, os_data)
+    print *
+    print *, "* Write driver file 'prc_proc_interface.f90'"
+    call process_library_write_driver (prc_lib)
+    print *
+    print *, "* Compile and link as 'libprc_proc.so'"
+    call process_library_compile (prc_lib, os_data, .false., objlist)
+    call process_library_link (prc_lib, os_data, objlist)
+    print *
+    print *, "* Load shared libraries"
+    call process_library_load (prc_lib, os_data, var_list = var_list)
+    print *
     call process_store_init_process &
-         (process, prc_lib, var_str ("zee"), model, lhapdf_status)
-    print *, "  Process ID = ", char (process%id)
+         (process, prc_lib, var_str ("zff"), model, lhapdf_status, &
+         var_list, use_beams = .true.)
     print *
     print *, "*** Beam/strfun setup (unpolarized)"
     print *
-    call os_data_init (os_data)
     call flavor_init (flv, (/ 23 /), model)
     call polarization_init_unpolarized (pol(1), flv(1))
     call beam_data_init_decay (beam_data, flv, pol)
     call process_setup_beams (process, beam_data, 0, 0)
     call process_connect_strfun (process)
+    call process_setup_subevt (process)
     print *
     print *, "* Phase space setup"
+    call openmp_set_num_threads_verbose (1) 
     call process_setup_phase_space (process, rebuild_phs, &
-         os_data, phs_par, mapping_defaults, filename_out=var_str("zee.phs"), &
+         os_data, phs_par, mapping_defaults, filename_out=var_str("zff.phs"), &
          vis_channels = .false.)
+    call process_init_vamp_history (process, 1)
     print *
     print *, "*** Test integration"
     print *, "* Grids setup"
     grid_parameters%stratified = .false.
-    call process_setup_grids (process, grid_parameters, calls=1000)
+    call process_setup_grids (process, grid_parameters, calls=9)
     print *
     print *, "* 1 iteration with minimal number of calls"
     call process_results_write_header (process)
@@ -4231,23 +4669,27 @@ contains
     print *
     print *, "*** Beam/strfun setup (polarized)"
     call process_store_init_process &
-         (process, prc_lib, var_str ("zee"), model, lhapdf_status)
+         (process, prc_lib, var_str ("zff"), model, lhapdf_status, &
+         var_list, use_beams = .true.)
     call flavor_init (flv, (/ 23 /), model)
     call polarization_init_axis &
          (pol(1), flv(1), (/ 0._default, 0._default, 1._default/))
     call beam_data_init_decay (beam_data, flv, pol)
     call process_setup_beams (process, beam_data, 0, 0)
     call process_connect_strfun (process)
+    call process_setup_subevt (process)
     print *
     print *, "* Phase space setup"
+    call openmp_set_num_threads_verbose (1) 
     call process_setup_phase_space (process, rebuild_phs, &
-         os_data, phs_par, mapping_defaults, filename_out=var_str("zee.phs"), &
+         os_data, phs_par, mapping_defaults, filename_out=var_str("zff.phs"), &
          vis_channels = .false.)
+    call process_init_vamp_history (process, 6)
     print *
     print *, "*** Test integration"
     print *, "* Grids setup"
     grid_parameters%stratified = .false.
-    call process_setup_grids (process, grid_parameters, calls=1000)
+    call process_setup_grids (process, grid_parameters, calls=10000)
     print *
     print *, "* 3 + 3 iterations"
     call process_results_write_header (process)
@@ -4272,12 +4714,14 @@ contains
     call process_write (process, 61)
   end subroutine process_test1
 
-  subroutine process_test2 (prc_lib, model)
+  subroutine process_test2 (prc_lib, os_data, model, var_list)
     type(process_library_t), intent(inout) :: prc_lib
     type(model_t), intent(in), target :: model
+    type(var_list_t), intent(in), target :: var_list
     type(lhapdf_status_t) :: lhapdf_status
+    type(string_t) :: objlist
     type(process_t), pointer :: process
-    type(os_data_t) :: os_data
+    type(os_data_t), intent(inout) :: os_data
     type(phs_parameters_t) :: phs_par
     type(mapping_defaults_t) :: mapping_defaults
     type(flavor_t), dimension(1) :: flv
@@ -4290,33 +4734,35 @@ contains
     integer :: i
     logical :: rebuild_phs = .true.
     logical :: discard_integrals, adapt_grids, adapt_weights, print_current
-    print *, "*** Test decay process"
+    print *, "*** Test decay process Z -> u ubar ***"
     print *
     print *, "* Initialization"
     call tao_random_create (rng, 0)
     call process_store_init_process &
          (process, prc_lib, var_str ("zqq"), model, lhapdf_status, &
-          use_beams=.false.)
+          var_list, use_beams=.false.)
     print *, "  Process ID = ", char (process%id)
     print *
     print *, "*** Beam/strfun setup (unpolarized)"
     print *
-    call os_data_init (os_data)
     call flavor_init (flv, (/ 23 /), model)
     call polarization_init_unpolarized (pol(1), flv(1))
     call beam_data_init_decay (beam_data, flv, pol)
     call process_setup_beams (process, beam_data, 0, 0)
     call process_connect_strfun (process)
+    call process_setup_subevt (process)
     print *
     print *, "* Phase space setup"
+    call openmp_set_num_threads_verbose (1) 
     call process_setup_phase_space (process, rebuild_phs, &
-         os_data, phs_par, mapping_defaults, filename_out=var_str("zee.phs"), &
+         os_data, phs_par, mapping_defaults, filename_out=var_str("zqq.phs"), &
          vis_channels = .false.)
+    call process_init_vamp_history (process, 1)
     print *
     print *, "*** Test integration"
     print *, "* Grids setup"
     grid_parameters%stratified = .false.
-    call process_setup_grids (process, grid_parameters, calls=1000)
+    call process_setup_grids (process, grid_parameters, calls=9)
     print *
     print *, "* 1 iteration with minimal number of calls"
     call process_results_write_header (process)
@@ -4354,12 +4800,13 @@ contains
     print *, "excess weight =", weight
   end subroutine process_test2
 
-  subroutine process_test3 (prc_lib, model)
+  subroutine process_test3 (prc_lib, os_data, model, var_list)
     type(process_library_t), intent(inout) :: prc_lib
     type(model_t), intent(in), target :: model
+    type(var_list_t), intent(in), target :: var_list
     type(lhapdf_status_t) :: lhapdf_status
     type(process_t), pointer :: process
-    type(os_data_t) :: os_data
+    type(os_data_t), intent(inout) :: os_data
     type(phs_parameters_t) :: phs_par
     type(mapping_defaults_t) :: mapping_defaults
     type(flavor_t), dimension(2) :: flv
@@ -4374,28 +4821,31 @@ contains
     type(tao_random_state) :: rng
     logical :: rebuild_phs = .true.
     logical :: discard_integrals, adapt_grids, adapt_weights, print_current
-    print *, "*** Test scattering process"
+    print *, "*** Test scattering process e+ e- -> nu nubar H ***"
     print *
     print *, "* Initialization"
     call tao_random_create (rng, 0)
     call process_store_init_process &
-         (process, prc_lib, var_str ("nnh"), model, lhapdf_status)
+         (process, prc_lib, var_str ("nnh"), model, lhapdf_status, &
+         var_list, use_beams = .true.)
     print *, "  Process ID = ", char (process%id)
     print *
     print *, "* Beam/strfun setup"
     print *
-    call os_data_init (os_data)
     call flavor_init (flv, (/ 11, -11 /), model)
     call polarization_init_unpolarized (pol(1), flv(1))
     call polarization_init_unpolarized (pol(2), flv(2))
     call beam_data_init_sqrts (beam_data, 500._default, flv, pol)
     call process_setup_beams (process, beam_data, 0, 0)
     call process_connect_strfun (process)
+    call process_setup_subevt (process)
     print *
     print *, "* Phase space setup"
+    call openmp_set_num_threads_verbose (1) 
     call process_setup_phase_space (process, rebuild_phs, &
          os_data, phs_par, mapping_defaults, filename_out=var_str("nnh.phs"), &
          vis_channels = .false.)
+    call process_init_vamp_history (process, 8)
     print *
     print *, "* Kinematics setup"
     allocate (x (process_get_n_parameters (process)))
@@ -4416,7 +4866,7 @@ contains
     print *
     print *, "*** Test integration"
     print *, "* Grids setup"
-    call process_setup_grids (process, grid_parameters, calls=10000)
+    call process_setup_grids (process, grid_parameters, calls=20000)
     print *
     print *, "* 5 + 3 iterations"
     call process_results_write_header (process)
@@ -4440,18 +4890,19 @@ contains
     call process_write (process, 72)
   end subroutine process_test3
 
-  subroutine process_test4 (prc_lib, model)
+  subroutine process_test4 (prc_lib, os_data, model, var_list)
     type(process_library_t), intent(inout) :: prc_lib
     type(model_t), intent(in), target :: model
+    type(var_list_t), intent(in), target :: var_list
     type(lhapdf_status_t) :: lhapdf_status
     type(process_t), pointer :: process
-    type(os_data_t) :: os_data
+    type(os_data_t), intent(inout) :: os_data
     type(phs_parameters_t) :: phs_par
     type(mapping_defaults_t) :: mapping_defaults
     type(flavor_t), dimension(2) :: flv
     type(polarization_t), dimension(2) :: pol
     type(beam_data_t) :: beam_data
-    type(lhapdf_data_t), dimension(2) :: data
+    type(pdf_builtin_data_t), dimension(2) :: data
     type(stream_t), target :: stream
     type(parse_tree_t) :: parse_tree
     type(grid_parameters_t) :: grid_parameters
@@ -4459,38 +4910,42 @@ contains
     integer :: i
     type(tao_random_state) :: rng
     logical :: rebuild_phs = .true.
-    print *, "*** Test process setup"
+    print *, "*** Test process setup for g g -> u ubar ***"
     print *
     print *, "* Initialization"
     call tao_random_create (rng, 0)
     call process_store_init_process &
-         (process, prc_lib, var_str ("qq"), model, lhapdf_status)
+         (process, prc_lib, var_str ("gguu"), model, lhapdf_status, &
+         var_list, use_beams = .true.)
     print *, "  Process ID = ", char (process%id)
     print *
     print *, "* Beam/strfun setup"
     print *
-    call os_data_init (os_data)
-!    call flavor_init (flv, (/ 21, 21 /), model)
+    !    call flavor_init (flv, (/ 21, 21 /), model)
     call flavor_init (flv, (/ PROTON, PROTON /), model)
     call polarization_init_unpolarized (pol(1), flv(1))
     call polarization_init_unpolarized (pol(2), flv(2))
     call beam_data_init_sqrts (beam_data, 14000._default, flv, pol)
-!     call process_setup_beams (process, beam_data, 0, 0)
+    !     call process_setup_beams (process, beam_data, 0, 0)
     call process_setup_beams (process, beam_data, 2, 0)
-    call lhapdf_data_init (data(1), lhapdf_status, model, flv(1))
-    call lhapdf_data_init (data(2), lhapdf_status, model, flv(2))
+    call pdf_builtin_init (data(1), model, flv(1), name = &
+         var_str("cteq6l"), path = os_data%pdf_builtin_datapath)
+    call pdf_builtin_init (data(2), model, flv(2), name = &
+         var_str("cteq6l"), path = os_data%pdf_builtin_datapath)
     call process_set_strfun (process, 1, 1, data(1), 1) 
     call process_set_strfun (process, 2, 2, data(2), 1)
     call process_connect_strfun (process)
     call process_setup_subevt (process)
     print *
     print *, "* Phase space setup"
+    call openmp_set_num_threads_verbose (1) 
     call process_setup_phase_space (process, rebuild_phs, &
-         os_data, phs_par, mapping_defaults, filename_out=var_str("qq.phs"), &
+         os_data, phs_par, mapping_defaults, filename_out=var_str("gguu.phs"), &
          vis_channels = .false.)
+    call process_init_vamp_history (process, 18)
     print *
     print *, "* Cuts setup"
-    call stream_init (stream, var_str ("all Pt > 50 GeV (outgoing u:d:U:D)"))
+    call stream_init (stream, var_str ("all Pt > 50 GeV [u:d:U:D]"))
     call parse_tree_init_lexpr (parse_tree, stream, .true.)
     call process_setup_cuts (process, parse_tree_get_root_ptr (parse_tree))
     call parse_tree_final (parse_tree)
@@ -4507,9 +4962,9 @@ contains
     print *, "* Grids setup"
     call process_setup_grids (process, grid_parameters, calls=10000)
     print *
-    print *, "* 15 + 3 iterations"
+    print *, "* 5 + 3 iterations"
     call process_results_write_header (process)
-    do i = 1, 15
+    do i = 1, 5
        call process_integrate (process, rng, grid_parameters, &
             1, 1, 1, 50000, i==1, .true., i>2, .true., .true.)
     end do

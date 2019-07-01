@@ -1,4 +1,4 @@
-!  $Id: omegalib.nw 3104 2011-04-02 10:31:01Z cnspeckn $
+!  $Id: omegalib.nw 3251 2011-05-18 16:37:08Z ohl $
 !
 !  Copyright (C) 1999-2009 by 
 !      Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
@@ -64,7 +64,7 @@ contains
     real(kind=default) :: a
     real(kind=default), intent(in) :: x, y
     real(kind=default), intent(in), optional :: base
-    real(kind=default) :: scale
+    real(kind=default) :: scale, dxy
     if (present (base)) then
        scale = max (abs (x), abs (y), abs (base))
     else
@@ -75,10 +75,15 @@ contains
     else if (scale <= 0) then
        a = -1
     else
-       a = log (abs (x - y) / scale) / log (epsilon (scale))
-       a = max (0.0_default, min (1.0_default, a))
-       if (ieee_is_nan (a)) then
-          a = 0
+       dxy = abs (x - y) / scale
+       if (dxy <= 0.0_default) then
+          a = 1
+       else
+          a = log (dxy) / log (epsilon (scale))
+          a = max (0.0_default, min (1.0_default, a))
+          if (ieee_is_nan (a)) then
+             a = 0
+          end if
        end if
     end if
     if (ieee_is_nan (a)) then
@@ -94,7 +99,7 @@ contains
     real(kind=default) :: a
     complex(kind=default), intent(in) :: x, y
     real(kind=default), intent(in), optional :: base
-    real(kind=default) :: scale
+    real(kind=default) :: scale, dxy
     if (present (base)) then
        scale = max (abs (x), abs (y), abs (base))
     else
@@ -106,10 +111,15 @@ contains
     else if (scale <= 0) then
        a = -1
     else
-       a = log (abs (x - y) / scale) / log (epsilon (scale))
-       a = max (0.0_default, min (1.0_default, a))
-       if (ieee_is_nan (a)) then
-          a = 0
+       dxy = abs (x - y) / scale
+       if (dxy <= 0.0_default) then
+          a = 1
+       else
+          a = log (dxy) / log (epsilon (scale))
+          a = max (0.0_default, min (1.0_default, a))
+          if (ieee_is_nan (a)) then
+             a = 0
+          end if
        end if
     end if
     if (ieee_is_nan (a)) then

@@ -1,4 +1,4 @@
-# $Id: helicity.sin 2375 2010-04-21 09:22:18Z ohl $
+# $Id: helicity.sin 3398 2011-07-05 16:25:48Z jr_reuter $
 # Validating the helicity selection rule heuristics
 
 process helicity_ee_mm = e1, E1 =>  e2, E2
@@ -11,6 +11,9 @@ sqrts = 500 GeV
 beams = e1, E1
 
 iterations = 1:10000
+
+!!! Tests should be run single-threaded 
+openmp_num_threads = 1
 
 ?helicity_selection_active = false
 seed = 0

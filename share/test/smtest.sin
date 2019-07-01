@@ -10,6 +10,9 @@ mH = 115 GeV
 sqrts = 500 GeV
 beams = e1, E1
 
+!!! Tests should be run single-threaded 
+openmp_num_threads = 1
+
 seed = 0
 integrate (smtest_nnh) { iterations = 4:20000 }
 printf "Expecting 84.883 fb"

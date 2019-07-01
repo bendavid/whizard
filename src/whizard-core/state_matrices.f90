@@ -1,4 +1,4 @@
-! WHIZARD 2.0.5 Tue May 10 2011
+! WHIZARD 2.0.6 Wed Dec 7 2011
 ! 
 ! Copyright (C) 1999-2011 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -616,10 +616,13 @@ contains
   end subroutine state_matrix_freeze2
 
   subroutine state_matrix_set_matrix_element_qn (state, qn, value)
-    type(state_matrix_t), intent(inout), target :: state
+    type(state_matrix_t), intent(inout) :: state
     type(quantum_numbers_t), dimension(:), intent(in) :: qn
     complex(default), intent(in) :: value
     type(state_iterator_t) :: it
+    if (.not. allocated (it%state%me)) then
+       allocate (it%state%me (size(qn)))
+    end if
     call state_iterator_init (it, state)
     do while (state_iterator_is_valid (it))
        if (all (qn == state_iterator_get_quantum_numbers (it))) then
@@ -633,12 +636,18 @@ contains
   subroutine state_matrix_set_matrix_element_all (state, value)
     type(state_matrix_t), intent(inout) :: state
     complex(default), intent(in) :: value
+    if (.not. allocated (state%me)) then
+       allocate (state%me (state%n_matrix_elements))    
+    end if
     state%me = value
   end subroutine state_matrix_set_matrix_element_all
 
   subroutine state_matrix_set_matrix_element_array (state, value)
     type(state_matrix_t), intent(inout) :: state
     complex(default), dimension(:), intent(in) :: value
+    if (.not. allocated (state%me)) then
+       allocate (state%me (size (value)))
+    end if
     state%me = value
   end subroutine state_matrix_set_matrix_element_array
 
@@ -646,6 +655,9 @@ contains
     type(state_matrix_t), intent(inout) :: state
     integer, intent(in) :: i
     complex(default), intent(in) :: value
+    if (.not. allocated (state%me)) then
+       allocate (state%me (state%n_matrix_elements))    
+    end if
     state%me(i) = value
   end subroutine state_matrix_set_matrix_element_single
 
@@ -1214,11 +1226,11 @@ contains
   end subroutine state_matrix_factorize
 
   subroutine state_matrix_test ()
-!     print *, "State matrix test 1"
-!     call state_matrix_test1 ()
-!     print *
-!     print *, "State matrix test 2"
-!     call state_matrix_test2 ()
+    print *, "State matrix test 1"
+    call state_matrix_test1 ()
+    print *
+    print *, "State matrix test 2"
+    call state_matrix_test2 ()
     print *
     print *, "State matrix test 3"
     call state_matrix_test3 ()

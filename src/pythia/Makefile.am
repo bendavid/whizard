@@ -40,7 +40,11 @@ endif
 
 noinst_LTLIBRARIES = libpythia_wo.la
 
+if LHAPDF_AVAILABLE
 libpythia_wo_la_SOURCES = pythia.f
+else
+libpythia_wo_la_SOURCES = pythia.f pythia_pdf.f
+endif
 
 endif	
 

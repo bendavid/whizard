@@ -144,7 +144,7 @@ if NOWEB_AVAILABLE
 	$(LATEX) $*
 	./gml $*
 	$(LATEX) $*
-	$(DVIPS) $*
+	$(DVIPS) -o $@ $*
 else !NOWEB_AVAILABLE
 .tex.ps:
 	-if test "$(srcdir)" != "."; then \
@@ -155,7 +155,7 @@ else !NOWEB_AVAILABLE
 	$(LATEX) $*
 	./gml $*
 	$(LATEX) $*
-	$(DVIPS) $*
+	$(DVIPS) -o $@ $*
 endif
 
 ## Non-standard cleanup tasks

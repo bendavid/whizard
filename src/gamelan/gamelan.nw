@@ -1,10 +1,10 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% gamelan.nw: v 0.31 
+% gamelan.nw: v 0.40 
 %
 % MetaPost macros and a LaTeX style file 
 % for Graphical Analysis in MEtapost LANguage
 %
-% Wolfgang Kilian <kilian@x4u2.desy.de> Tue Jan 21 17:03:38 1997
+% Wolfgang Kilian <kilian@physik.uni-siegen.de> Tue Jan 21 17:03:38 1997
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %\NeedsTeXFormat{LaTeX2e}

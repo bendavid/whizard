@@ -1,4 +1,4 @@
-! WHIZARD 2.0.5 Tue May 10 2011
+! WHIZARD 2.0.6 Wed Dec 7 2011
 ! 
 ! Copyright (C) 1999-2011 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -27,11 +27,12 @@
 
 module shower_interface
 
-  use kinds, only: default !NODEP!
-  use kinds, only: double !NODEP!
+  use kinds, only: default, double !NODEP!
   use shower_basics_module !NODEP!
   use shower_module !NODEP!
   use shower_topythia_module !NODEP!
+  use matching_helper !NODEP!
+  use tao_random_numbers !NODEP!
   use flavors
   use colors
   use particles
@@ -43,6 +44,7 @@ module shower_interface
   use event_formats
   use os_interface
   use diagnostics !NODEP!
+  use lorentz !NODEP!
 
   implicit none
   private
@@ -50,13 +52,16 @@ module shower_interface
   public :: shower_settings_t
   public :: shower_settings_init
   public :: shower_settings_write
-  public :: event_apply_shower_particle_set
+  public :: apply_shower_particle_set
 
   type :: shower_settings_t
      logical :: ps_isr_active = .false.
      logical :: ps_fsr_active = .false.
      logical :: ps_use_PYTHIA_shower = .false.
      logical :: hadronization_active = .false.
+     logical :: mlm_matching_active = .false.
+     logical :: ps_PYTHIA_verbose = .false.
+     type(string_t) :: ps_PYTHIA_PYGIVE
 
      ! values present in PYTHIA and WHIZARDs PS, comments denote corresponding PYTHIA values
      real(default) :: ps_mass_cutoff = 1._default      ! PARJ(82)
@@ -74,6 +79,9 @@ module shower_interface
      real(default) :: ps_isr_minenergy = 2._default            ! PARP(65)
      real(default) :: ps_isr_tscalefactor = 1._default
      logical :: ps_isr_only_onshell_emitted_partons = .true.  ! MSTP(63)
+
+     ! MLM settings
+     type(mlm_matching_settings_t) :: ms
   end type shower_settings_t
 
 
@@ -86,13 +94,16 @@ contains
     shower_settings%ps_isr_active =  var_list_get_lval(var_list, var_str("?ps_isr_active"))
     shower_settings%ps_fsr_active =  var_list_get_lval(var_list, var_str("?ps_fsr_active"))
     shower_settings%hadronization_active =  var_list_get_lval(var_list, var_str("?hadronization_active"))
+    shower_settings%mlm_matching_active =  var_list_get_lval(var_list, var_str("?mlm_matching_active"))
 
-    if( (shower_settings%ps_fsr_active .eqv. .false.).and.(shower_settings%ps_isr_active.eqv..false.) &
-         .and.(shower_settings%hadronization_active.eqv..false.) ) then
-       return
-    end if
+!    if( (shower_settings%ps_fsr_active .eqv. .false.).and.(shower_settings%ps_isr_active.eqv..false.) &
+!         .and.(shower_settings%hadronization_active.eqv..false.).and.(shower_settings%mlm_matching_active.eqv..false.) ) then
+!       return
+!    end if
 
     shower_settings%ps_use_PYTHIA_shower = var_list_get_lval(var_list, var_str("?ps_use_PYTHIA_shower"))
+    shower_settings%ps_PYTHIA_verbose = var_list_get_lval(var_list, var_str("?ps_PYTHIA_verbose"))
+    shower_settings%ps_PYTHIA_PYGIVE = var_list_get_sval(var_list, var_str("$ps_PYTHIA_PYGIVE"))
     shower_settings%ps_mass_cutoff = var_list_get_rval(var_list, var_str("ps_mass_cutoff"))
     shower_settings%ps_fsr_lambda = var_list_get_rval(var_list, var_str("ps_fsr_lambda"))
     shower_settings%ps_isr_lambda = var_list_get_rval(var_list, var_str("ps_isr_lambda"))
@@ -109,7 +120,20 @@ contains
     shower_settings%ps_isr_tscalefactor = var_list_get_rval(var_list, var_str("ps_isr_tscalefactor"))
     shower_settings%ps_isr_only_onshell_emitted_partons = &
                 var_list_get_lval(var_list, var_str("?ps_isr_only_onshell_emitted_partons"))
+
+    shower_settings%ms%mlm_ptmin =  var_list_get_rval(var_list, var_str("mlm_ptmin"))
+    shower_settings%ms%mlm_etamax =  var_list_get_rval(var_list, var_str("mlm_etamax"))
+    shower_settings%ms%mlm_Rmin =  var_list_get_rval(var_list, var_str("mlm_Rmin"))
+    shower_settings%ms%mlm_Emin =  var_list_get_rval(var_list, var_str("mlm_Emin"))
+    shower_settings%ms%mlm_nmaxMEjets = var_list_get_ival(var_list, var_str("mlm_nmaxMEjets"))
+
+    shower_settings%ms%mlm_ETclusfactor = var_list_get_rval(var_list, var_str("mlm_ETclusfactor"))
+    shower_settings%ms%mlm_ETclusminE = var_list_get_rval(var_list, var_str("mlm_ETclusminE"))
+    shower_settings%ms%mlm_etaclusfactor = var_list_get_rval(var_list, var_str("mlm_etaclusfactor"))
+    shower_settings%ms%mlm_Rclusfactor = var_list_get_rval(var_list, var_str("mlm_Rclusfactor"))
+    shower_settings%ms%mlm_Eclusfactor = var_list_get_rval(var_list, var_str("mlm_Eclusfactor"))
   end subroutine shower_settings_init
+
   subroutine shower_settings_write(shower_settings, unit)
     type(shower_settings_t), intent(in) :: shower_settings
     integer, intent(in), optional :: unit
@@ -141,33 +165,121 @@ contains
     end if
     write (u, "(A)")  "Hadronization Settings:"
     write (u, *) "hadronization_active         = ", shower_settings%hadronization_active
+    write (u, "(A)")  "Matching Settings:"
+    write (u, *) "mlm_matching_active          = ", shower_settings%mlm_matching_active
+    if(shower_settings%mlm_matching_active) then
+       call mlm_matching_settings_write(shower_settings%ms, u)
+    end if
+    write (u, *) "ps_PYTHIA_verbose           = ", shower_settings%ps_PYTHIA_verbose
+    write (u, *) "ps_PYTHIA_PYGIVE            = ", char(shower_settings%ps_PYTHIA_PYGIVE)
   end subroutine shower_settings_write
 
-  subroutine event_apply_shower_particle_set(particle_set, shower_settings, model)
+  subroutine apply_shower_particle_set(particle_set, shower_settings,  model, valid, vetoed)
     type(particle_set_t), intent(inout) :: particle_set
     type(shower_settings_t), intent(in) :: shower_settings
     type(model_t), pointer, intent(in) :: model
+    logical, intent(inout) :: valid
+    logical, intent(inout) :: vetoed
 
-    if( (shower_settings%ps_fsr_active .eqv. .false.).and.(shower_settings%ps_isr_active.eqv..false.) &
-         .and.(shower_settings%hadronization_active.eqv..false.) ) then
+    type(mlm_matching_data_t) :: mlm_matching_data
+    logical, save :: matching_disabled=.false.
+
+    ! return if already invalid or vetoed
+    if(.not.valid) then
+       print *, "not valid"
+       return
+    end if
+    if(vetoed) then
+       print *, "vetoed"
        return
     end if
 
-    if(shower_settings%ps_use_PYTHIA_shower) then
-       call event_apply_PYTHIAshower_particle_set(particle_set, shower_settings, model)
-    else
-       call event_apply_WHIZARDshower_particle_set(particle_set, shower_settings, model)
+!    call shower_settings_write(shower_settings)
+    
+    if( (shower_settings%ps_fsr_active .eqv. .false.).and.(shower_settings%ps_isr_active.eqv..false.) &
+         .and.(shower_settings%hadronization_active.eqv..false.).and.(shower_settings%mlm_matching_active.eqv..false.) ) then
+       ! return if nothing to do
+       return
     end if
 
+    if(shower_settings%ps_PYTHIA_verbose.eqv..false.) then
+       call PYGIVE('MSTU(12)=12345')
+       call PYGIVE('MSTU(13)=0')
+    else 
+       call PYGIVE('MSTU(13)=1')
+    end if
+!    pause
+
+    if(matching_disabled.eqv..false.) then
+       !!! Check if the beams are hadrons
+       if(  (abs(particle_get_pdg(particle_set_get_particle(particle_set, 1))).le.18).and.&
+            (abs(particle_get_pdg(particle_set_get_particle(particle_set, 2))).le.18)) then
+          mlm_matching_data%is_hadron_collision = .false.
+       else if( (abs(particle_get_pdg(particle_set_get_particle(particle_set, 1))).ge.1000).and.&
+            (abs(particle_get_pdg(particle_set_get_particle(particle_set, 2))).ge.1000) ) then
+          mlm_matching_data%is_hadron_collision = .true.
+       else 
+          call msg_error(" Matching didn't recognize beams setup," // &
+               char(10) // "     disabling matching")
+          matching_disabled = .true.
+          return
+       end if
+    end if
+    
+!!! SHOWER
+    if(shower_settings%ps_use_PYTHIA_shower.or. &
+         ((.not.shower_settings%ps_fsr_active).and.(.not.shower_settings%ps_isr_active) &
+         .and.(shower_settings%hadronization_active))) then
+       call apply_PYTHIAshower_particle_set(particle_set, shower_settings, mlm_matching_data%JETS_ME, model, valid)
+       !       call pylist(2)
+    else
+       call apply_WHIZARDshower_particle_set(particle_set, shower_settings, mlm_matching_data%JETS_ME, model, valid)
+    end if
+    !call particle_set_write(particle_set)
+    !print *, " after SHOWER"
+    !pause
+       
+    if(shower_settings%mlm_matching_active.and.(matching_disabled.eqv..false.)) then
+!!! MLM stage 2 -> PS jets and momenta
+       call matching_transfer_PS(mlm_matching_data, particle_set, shower_settings)
+!!! MLM stage 3 -> reconstruct and possible reject
+       call mlm_matching(mlm_matching_data, shower_settings%ms, vetoed)
+       if(vetoed) then
+          call mlm_matching_data_final(mlm_matching_data)
+          return
+       end if
+    endif
+
+!!! HADRONIZATION
+    if(shower_settings%hadronization_active) then
+       !! Assume that the event record is still in the PYTHIA COMMON BLOCKS
+       !! transferred there by one of the shower routines
+       if(valid) then
+          call apply_PYTHIAhadronization(particle_set, shower_settings, model, valid)
+       end if
+    end if
+!!! FINAL
+
+    call mlm_matching_data_final(mlm_matching_data)
+!    print *, "SHOWER+HAD+MATCHING finished"
   contains
-    subroutine event_apply_PYTHIAshower_particle_set(particle_set, shower_settings, model)
+    function shower_get_PYTHIA_error(mstu23in) result(mstu23)
       ! PYTHIA common blocks
       IMPLICIT DOUBLE PRECISION(A-H, O-Z)
       IMPLICIT INTEGER(I-N)
       COMMON/PYDAT1/MSTU(200),PARU(200),MSTJ(200),PARJ(200)
-      COMMON/PYDAT3/MDCY(500,3),MDME(8000,2),BRAT(8000),KFDP(8000,5)
-      SAVE/PYDAT1/,/PYDAT3/
+      SAVE/PYDAT1/
 
+      integer, intent(in), optional :: mstu23in
+      integer :: mstu23
+
+      if(present(mstu23in)) then
+         MSTU(23)=mstu23in
+      end if
+      mstu23 = MSTU(23)
+    end function shower_get_PYTHIA_error
+
+    subroutine apply_PYTHIAshower_particle_set(particle_set, shower_settings, JETS_ME, model, valid)
   integer, parameter :: MAXPUP = 100
   integer, parameter :: MAXNUP = 500
   integer, dimension(2) :: IDBMUP
@@ -235,13 +347,18 @@ contains
   
 
       type(particle_set_t), intent(inout) :: particle_set
+      type(particle_set_t) :: pset_reduced
       type(shower_settings_t), intent(in) :: shower_settings
+      type(vector4_t), dimension(:), allocatable, intent(inout) :: JETS_ME
       type(model_t), pointer, intent(in) :: model
-
+      logical, intent(inout) :: valid
+      real(kind=default) :: rand
+      
       ! units for transfer from WHIZARD to PYTHIA and back
       integer :: u_W2P, u_P2W
-      logical, save :: pythia_initialized = .false.
+      integer, save :: pythia_initialized_for_NPRUP = 0
       logical, save :: pythia_warning_given = .false.
+      type(string_t) :: remaining_PYGIVE, partial_PYGIVE
       character*10 buffer
 
       ! check if the beam particles are quarks
@@ -254,9 +371,13 @@ contains
          end if
          return
       end if
+      
+      call particle_set_reduce(particle_set, pset_reduced)
+      call particle_set_fill_hepeup(pset_reduced)
+      call hepeup_set_event_parameters(proc_id=1)
 
       u_W2P = free_unit()
-      !open(unit=u_W2P, status="replace", file="whizardout.lhe", action="readwrite")  ! only for debugging purposes
+      !open(unit=u_W2P, status="replace", file="whizardout1.lhe", action="readwrite")  ! only for debugging purposes
       open(unit=u_W2P, status="scratch", action="readwrite")
       call les_houches_events_write_header (u_W2P)
       call heprup_write_lhef(u_W2P)
@@ -266,27 +387,25 @@ contains
       write (buffer, "(I10)")  u_W2P
       call pygive ("MSTP(161)="//buffer)
       call pygive ("MSTP(162)="//buffer)
-      if(pythia_initialized) then
+      if(shower_settings%ps_isr_active.eqv..false.) then
+         call pygive ("MSTP(61)=0")  ! switch off ISR
+      else
+         call pygive("MSTP(61)=1")
+      end if
+      if(shower_settings%ps_fsr_active.eqv..false.) then
+         call pygive ("MSTP(71)=0")  ! switch off FSR
+      else
+         call pygive ("MSTP(71)=1")
+      end if
+      call pygive ("MSTP(111)=0") ! swith off hadronization
+
+      if(pythia_initialized_for_NPRUP .ge. NPRUP) then
          call upinit
       else
-         if(shower_settings%ps_isr_active.eqv..false.) then
-            call pygive ("MSTP(61)=0")  ! switch off ISR
-         else
-            call pygive("MSTP(61)=1")
-         end if
-         if(shower_settings%ps_fsr_active.eqv..false.) then
-            call pygive ("MSTP(71)=0")  ! switch off FSR
-         else
-            call pygive ("MSTP(71)=1")
-         end if
-         if(shower_settings%hadronization_active.eqv..false.) then
-            call pygive ("MSTP(111)=0") ! swith off hadronization
-         else
-            call pygive ("MSTP(111)=1")
-         end if
-
          write(buffer, "(F10.5)") shower_settings%ps_mass_cutoff
          call pygive("PARJ(82)="//buffer)
+         write(buffer, "(F10.5)") shower_settings%ps_isr_tscalefactor
+         call pygive("PARP(71)="//buffer)    
 
          write(buffer, "(F10.5)") shower_settings%ps_fsr_lambda
          call pygive("PARP(72)="//buffer)
@@ -319,9 +438,29 @@ contains
          else
             call pygive ("MSTP(63)=2")
          end if
-         pythia_initialized = .true.
-
+         if(shower_settings%mlm_matching_active) then
+            CALL PYGIVE('MSTP(62)=2')
+            CALL PYGIVE('MSTP(67)=0')
+         end if
          call pyinit("USER", "", "", 0D0)
+
+         call tao_random_number(rand)
+         write(buffer, "(I10)") floor(rand*900000000)
+         call pygive("MRPY(1)="//buffer)
+         call pygive("MRPY(2)=0")
+
+         if(len(shower_settings%ps_PYTHIA_PYGIVE)>0) then
+            remaining_PYGIVE = shower_settings%ps_PYTHIA_PYGIVE
+            do while(len(remaining_PYGIVE)>0)
+               call split(remaining_PYGIVE, partial_PYGIVE, ";")
+               call PYGIVE(char(partial_PYGIVE))
+            end do
+            if(shower_get_PYTHIA_error().ne.0) then
+               call msg_fatal(" PYTHIA didn't recognize ps_PYTHIA_PYGIVE setting")
+            end if
+         end if
+
+         pythia_initialized_for_NPRUP = NPRUP
       end if
       call pyevnt()
       u_P2W = free_unit()
@@ -335,22 +474,30 @@ contains
       call shower_add_lhef_to_particle_set(particle_set, u_P2W, model)
       close(unit=u_W2P)
       close(unit=u_P2W)
-    end subroutine event_apply_PYTHIAshower_particle_set
-    subroutine event_apply_WHIZARDshower_particle_set(particle_set, shower_settings, model_in)
+
+      if(shower_settings%mlm_matching_active) then
+         ! transfer momenta of the partons in the final state of the hard initeraction
+         call get_ME_momenta_from_PYTHIA(JETS_ME)
+      end if
+
+      valid = (shower_get_PYTHIA_error().eq.0)
+    end subroutine apply_PYTHIAshower_particle_set
+    subroutine apply_WHIZARDshower_particle_set(particle_set, shower_settings, JETS_ME, model_in, valid)
       type(particle_set_t), intent(inout) :: particle_set
       type(shower_settings_t), intent(in) :: shower_settings
+      type(vector4_t), dimension(:), allocatable, intent(inout) :: JETS_ME
       type(model_t), pointer, intent(in) :: model_in
+      logical, intent(inout) :: valid
 
       type(shower_t) :: shower
       type(parton_t), dimension(:), allocatable, target :: partons
-      type(parton_pointer_t), dimension(:), allocatable :: parton_pointers, final_partons
+      type(parton_pointer_t), dimension(:), allocatable :: parton_pointers, final_partons, final_ME_partons
       type(particle_t), dimension(:), allocatable :: temp_prt
       type(parton_pointer_t) :: temppp
       integer, dimension(:), allocatable :: connections
       integer :: n_loop, i, j
       integer :: n_hadrons, n_in, n_out
       integer :: max_color_nr
-      logical :: had_successfull
       integer, dimension(2) :: col_array
       integer, dimension(1) :: parent
       type(flavor_t) :: flv
@@ -361,9 +508,10 @@ contains
       type(os_data_t) :: os_data 
       logical :: exist_SM_hadrons
       type(string_t) :: filename
+      character*5 buffer
 
       ! transfer settings from shower_settings to shower
-      call shower_set_D_Min_t(shower_settings%ps_mass_cutoff)
+      call shower_set_D_Min_t(shower_settings%ps_mass_cutoff**2)
       call shower_set_D_Lambda_fsr(shower_settings%ps_fsr_lambda)
       call shower_set_D_Lambda_isr(shower_settings%ps_isr_lambda)
       call shower_set_D_Nf(shower_settings%ps_max_n_flavors)
@@ -415,6 +563,7 @@ contains
                   col_array=particle_get_color(particle_set_get_particle(particle_set, i))
                   partons(j)%c1 = col_array(1)
                   partons(j)%c2 = col_array(2)
+                  partons(j)%interactionnr = 1
                   max_color_nr = max(max_color_nr, abs(partons(j)%c1), abs(partons(j)%c2))
                   connections(i)=j
                end if
@@ -471,14 +620,16 @@ contains
             branchings: do
                i=i+1
                ! shower_generate_next_isr_branching returns a pointer to the parton with the next ISR-branching, this parton's scale is the scale of the next branching
+!               temppp=shower_generate_next_isr_branching_veto(shower)
                temppp=shower_generate_next_isr_branching(shower)
-
+               
                if(.not. associated(temppp%p)) then
                   exit branchings
                end if
                ! execute the next branching 'found' in the previous step
                call shower_execute_next_isr_branching(shower, temppp)
-               !        call shower_print(shower)
+!               call shower_print(shower)
+!               pause
             end do branchings
 
             call shower_generate_fsr_for_partons_emitted_in_ISR(shower)
@@ -503,94 +654,213 @@ contains
          call shower_print(shower)
          print *, "SHOWER_FINISHED"
 
-         if(shower_settings%hadronization_active) then
-            call event_apply_PYTHIAhadronization_particle_set(particle_set, shower_settings, model_in, shower,had_successfull)
-            if(.not. had_successfull) then
-               ! clean up and try again
-               deallocate(partons)
-               deallocate(parton_pointers)
-               call shower_final(shower)
-               cycle try_shower
-            end if
+         ! convert shower back into new particle_set
+         call shower_get_final_colored_ME_partons(shower, final_ME_partons)
+         call shower_get_final_partons(shower, final_partons, .true.)
+         !        call particle_set_write(particle_set)
+         !     print *, particle_set_get_n_in(particle_set), particle_set_get_n_vir(particle_set), &
+         !        particle_set_get_n_out(particle_set), particle_set_get_n_tot(particle_set)
+
+         ! transfer particle_set to temporary array
+         if(allocated(final_ME_partons)) then
+            allocate(temp_prt(1:particle_set_get_n_in(particle_set)+size(final_ME_partons)+size(final_partons)))
          else
-            ! convert shower back into new particle_set
-            call shower_get_final_partons(shower, final_partons, .true.)
-            !        call particle_set_write(particle_set)
-            !     print *, particle_set_get_n_in(particle_set), particle_set_get_n_vir(particle_set), &
-            !        particle_set_get_n_out(particle_set), particle_set_get_n_tot(particle_set)
-
-            ! transfer particle_set to temporary array
-            allocate(temp_prt(1:particle_set_get_n_tot(particle_set)+size(final_partons)))
-            do i=1, particle_set_get_n_tot(particle_set)
-               temp_prt(i) = particle_set_get_particle(particle_set, i)
-               if(particle_get_status(temp_prt(i))==PRT_OUTGOING .or. particle_get_status(temp_prt(i))==PRT_BEAM_REMNANT) then
-                  call particle_reset_status(temp_prt(i), PRT_VIRTUAL)
-               end if
-            end do
-            j = particle_set_get_n_tot(particle_set)
-            do i= particle_set_get_n_tot(particle_set)+1, size(temp_prt)
-               call particle_set_momentum(temp_prt(i),final_partons(i-j)%p%momentum)
-               call particle_reset_status(temp_prt(i), PRT_OUTGOING)
-               if(model_test_particle(model_in, final_partons(i-j)%p%typ)) then
-                  model => model_in
-               else 
-                  ! prepare model_SM_hadrons for hadrons created in the hadronization
-                  ! and not present in the model file
-                  if(.not. model_SM_hadrons_associated) then
-                     call os_data_init(os_data)
-                     filename = "SM_hadrons.mdl"
-                     call model_read(model_SM_hadrons, filename, os_data, & 
-                          exist_SM_hadrons)
-                     model_SM_hadrons_associated = .true.
-                  end if
-                  if(model_test_particle(model_SM_hadrons,  final_partons(i-j)%p%typ)) then
-                     model => model_SM_hadrons
-                  else
-                     print *, final_partons(i-j)%p%typ
-                     call msg_error ("Parton found neither in given model file " &
-                          // " nor in SM_hadrons")
-                     return
-                  end if
-               end if
-
-               call flavor_init(flv, final_partons(i-j)%p%typ, model)
-               ! call particle_reset_status(temp_prt(i), PRT_BEAM_REMNANT) !??
-               call color_init(col, (/ final_partons(i-j)%p%c1, -final_partons(i-j)%p%c2 /) )
-               call particle_set_flavor(temp_prt(i), flv)
-               call particle_set_color(temp_prt(i), col)
-            end do
-
-            call particle_set_replace(particle_set, temp_prt)
-            deallocate(final_partons)
-            deallocate(temp_prt)
+allocate(temp_prt(1:particle_set_get_n_in(particle_set)+size(final_partons)))
          end if
+         do i=1, particle_set_get_n_in(particle_set)
+            temp_prt(i) = particle_set_get_particle(particle_set, i)
+            if(particle_get_status(temp_prt(i))==PRT_OUTGOING .or. particle_get_status(temp_prt(i))==PRT_BEAM_REMNANT) then
+               call particle_reset_status(temp_prt(i), PRT_VIRTUAL)
+            end if
+         end do
+         j = particle_set_get_n_in(particle_set)
+         if(allocated(final_ME_partons)) then
+            do i= 1, size(final_ME_partons)
+               call particle_set_momentum(temp_prt(j+i),final_ME_partons(i)%p%momentum)
+               call particle_reset_status(temp_prt(j+i), PRT_VIRTUAL)
+               model => model_in
+               call flavor_init(flv, final_ME_partons(i)%p%typ, model)
+               ! call particle_reset_status(temp_prt(i), PRT_BEAM_REMNANT) !??
+               call color_init(col, (/ final_ME_partons(i)%p%c1, -final_ME_partons(i)%p%c2 /) )
+               call particle_set_flavor(temp_prt(j+i), flv)
+               call particle_set_color(temp_prt(j+i), col)
+            end do
+            j = particle_set_get_n_in(particle_set)+size(final_ME_partons)
+         end if
+         do i= 1, size(final_partons)
+            call particle_set_momentum(temp_prt(j+i),final_partons(i)%p%momentum)
+            call particle_reset_status(temp_prt(j+i), PRT_OUTGOING)
+            if(model_test_particle(model_in, final_partons(i)%p%typ)) then
+               model => model_in
+            else 
+               ! prepare model_SM_hadrons for hadrons created in the hadronization
+               ! and not present in the model file
+               if(.not. model_SM_hadrons_associated) then
+                  call os_data_init(os_data)
+                  filename = "SM_hadrons.mdl"
+                  call model_read(model_SM_hadrons, filename, os_data, & 
+                       exist_SM_hadrons)
+                  model_SM_hadrons_associated = .true.
+               end if
+               if(model_test_particle(model_SM_hadrons, final_partons(i)%p%typ)) then
+                  model => model_SM_hadrons
+               else
+                  write (buffer, "(I5)")  final_partons(i)%p%typ
+                  call msg_error ("Parton " // buffer // &
+                       " found neither in given model file nor in SM_hadrons")
+                  return
+               end if
+            end if
+            call flavor_init(flv, final_partons(i)%p%typ, model)
+            ! call particle_reset_status(temp_prt(i), PRT_BEAM_REMNANT) !??
+            call color_init(col, (/ final_partons(i)%p%c1, -final_partons(i)%p%c2 /) )
+            call particle_set_flavor(temp_prt(j+i), flv)
+            call particle_set_color(temp_prt(j+i), col)
+         end do
+
+         if(shower_settings%mlm_matching_active) then
+            ! transfer momenta of the partons in the final state of the hard initeraction
+            if(allocated(JETS_ME)) deallocate(JETS_ME)
+            if(allocated(final_ME_partons)) then
+               allocate(JETS_ME(1:size(final_ME_partons)))
+               do i=1, size(final_ME_partons)
+                  ! transfer
+                  JETS_ME(i) = final_ME_partons(i)%p%momentum
+               end do
+            end if
+         end if
+
+         call particle_set_replace(particle_set, temp_prt)
+!         call particle_set_write(particle_set)
+!         print *, particle_set_get_n_in(particle_set), size(final_ME_partons), size(final_partons)
+!         pause
+         
+         if(allocated(final_ME_partons)) deallocate(final_ME_partons)
+         deallocate(final_partons)
+         deallocate(temp_prt)
          deallocate(partons)
          deallocate(parton_pointers)
          exit try_shower
       end do try_shower
       !     call particle_set_write(particle_set)
-      print *, "----------------event_apply_shower_particle_set------------------"
+      print *, "----------------------apply_shower_particle_set------------------"
       print *, "-----------------------------------------------------------------"
-      call shower_final(shower) !????
-    end subroutine event_apply_WHIZARDshower_particle_set
-    subroutine event_apply_PYTHIAhadronization_particle_set(particle_set, shower_settings, model, shower, successful)
+
+      ! move the particle data to the PYTHIA COMMON BLOCKS in case 
+      ! hadronization is active
+      if(shower_settings%hadronization_active) then
+         call shower_converttopythia(shower)
+      end if
+
+      call shower_final(shower)
+      return
+    end subroutine apply_WHIZARDshower_particle_set
+    subroutine get_ME_momenta_from_PYTHIA(JETS_ME)
       IMPLICIT DOUBLE PRECISION(A-H, O-Z)
       IMPLICIT INTEGER(I-N)
-      COMMON/PYDAT1/MSTU(200),PARU(200),MSTJ(200),PARJ(200)
-      COMMON/PYDAT3/MDCY(500,3),MDME(8000,2),BRAT(8000),KFDP(8000,5)
-      SAVE/PYDAT1/,/PYDAT3/
+      COMMON/PYJETS/N,NPAD,K(4000,5),P(4000,5),V(4000,5)
+      SAVE /PYJETS/
 
+      type(vector4_t), dimension(:), allocatable :: JETS_ME
+
+      integer :: i, j, n_jets
+
+      if(allocated(JETS_ME)) deallocate(JETS_ME)
+      
+      ! final ME partons start in 7th row of event record
+      i=7
+      ! find number of jets
+      n_jets=0
+      do
+         if(K(I,1).ne.21) exit
+         if((K(I,2).eq.21).or.(ABS(K(I,2)).le.6)) then
+            n_jets = n_jets +1
+         end if
+         i=i+1
+      end do
+
+      if(n_jets.eq.0) return
+      allocate(JETS_ME(1:n_jets))
+
+      ! transfer jets
+      i=7
+      j=1
+      do
+         if(K(I,1).ne.21) exit
+         if((K(I,2).eq.21).or.(ABS(K(I,2)).le.6)) then
+            JETS_ME(j)= vector4_moving(P(I,4), & 
+              vector3_moving( (/P(I,1),P(I,2),P(I,3) /) ) )
+            j=j+1
+         end if
+         i=i+1
+      end do
+    end subroutine get_ME_momenta_from_PYTHIA
+    subroutine matching_transfer_PS(mlm_matching_data, particle_set, shower_settings)
+      ! transfer partons after parton shower to mlm_matching_data%P_PS
+      type(mlm_matching_data_t), intent(inout) :: mlm_matching_data
+      type(particle_set_t), intent(in) :: particle_set
+      type(shower_settings_t), intent(in) :: shower_settings
+
+      integer :: i, j, n_jets_PS
+      integer, dimension(2) :: col
+      type(particle_t) :: tempprt
+      real(kind=double) :: eta, E, pl
+
+      ! loop over particles and extract final colored ones with eta<etamax
+      n_jets_PS=0
+      do i=1, particle_set_get_n_tot(particle_set)
+         tempprt = particle_set_get_particle(particle_set, i)
+         if(particle_get_status(tempprt)/=PRT_OUTGOING) cycle
+         col = particle_get_color(tempprt)
+         if(all(col == 0)) cycle
+         if(mlm_matching_data%is_hadron_collision) then
+            E = vector4_get_component(particle_get_momentum(tempprt),0)
+            pl = vector4_get_component(particle_get_momentum(tempprt),3)
+            eta = 0.5*abs(log( min((E+pl)/(E-pl), 1D10)))
+            if (eta> shower_settings%ms%mlm_etaClusfactor*shower_settings%ms%mlm_etamax)  then
+               print *, "REJECTING"
+               call particle_write(tempprt)
+               cycle
+            end if
+         end if
+         n_jets_PS=n_jets_PS + 1
+      end do
+
+      allocate(mlm_matching_data%P_PS(1:n_jets_PS))
+!      print *, "n_jets_ps=", n_jets_ps
+
+      j=1
+      do i=1, particle_set_get_n_tot(particle_set)
+         tempprt = particle_set_get_particle(particle_set, i)
+         if(particle_get_status(tempprt)/=PRT_OUTGOING) cycle
+         col = particle_get_color(tempprt)
+         if(all(col == 0)) cycle
+         if(mlm_matching_data%is_hadron_collision) then
+            E = vector4_get_component(particle_get_momentum(tempprt),0)
+            pl = vector4_get_component(particle_get_momentum(tempprt),3)
+            eta = 0.5*abs(log( min((E+pl)/(E-pl), 1D10)))
+            if (eta> shower_settings%ms%mlm_etaClusfactor*shower_settings%ms%mlm_etamax) cycle
+         end if
+         mlm_matching_data%P_PS(j) = particle_get_momentum(tempprt)
+         j=j + 1
+      end do
+    end subroutine matching_transfer_PS
+    subroutine apply_PYTHIAhadronization(particle_set, shower_settings, model, valid)
       type(particle_set_t), intent(inout) :: particle_set
       type(shower_settings_t), intent(in) :: shower_settings
       type(model_t), pointer, intent(in) :: model
-      type(shower_t), intent(in) :: shower
-      type(vector4_t) :: totalmomentum
-      logical, intent(out) :: successful
+      logical, intent(inout) :: valid
       integer :: u_W2P, u_P2W
+      type(string_t) :: remaining_PYGIVE, partial_PYGIVE
       character*10 buffer
 
-      successful = .true.
+      if(shower_settings%hadronization_active.eqv..false.) then
+         return
+      end if
+      if(.not.valid) return
+
       u_W2P = free_unit()
+      !open(unit=u_W2P, status="replace", file="whizardout.lhe", action="readwrite")  ! only for debugging purposes
       open(unit=u_W2P, status="scratch", action="readwrite")
       call les_houches_events_write_header (u_W2P)
       call heprup_write_lhef(u_W2P)
@@ -600,37 +870,38 @@ contains
       write (buffer, "(I10)")  u_W2P
       call pygive ("MSTP(161)="//buffer)
       call pygive ("MSTP(162)="//buffer)
-      ! convert shower to PYTHIA so it can be hadronized and read back in
-      ! TODO? write a shower_to_lhef and read a lhef back in
-      call shower_converttopythia(shower)
-      call pygive ("MSTP(111)=1")
-      call pygive ("MSTU(21)=1")
-      call PYEXEC
-      if(associated(shower%interactions(1)%i%partons(1)%p%initial) .and. &
-           associated(shower%interactions(1)%i%partons(2)%p%initial)) then
-         totalmomentum = shower%interactions(1)%i%partons(1)%p%initial%momentum & 
-              + shower%interactions(1)%i%partons(2)%p%initial%momentum
-      else
-         totalmomentum = shower%interactions(1)%i%partons(1)%p%momentum &
-              + shower%interactions(1)%i%partons(2)%p%momentum
+
+      ! Assume that the event is still present in the PYTHIA common blocks
+!      call pygive ("MSTP(61)=0")  ! switch off ISR
+!      call pygive ("MSTP(71)=0")  ! switch off FSR
+
+      if(.not.(shower_settings%ps_use_PYTHIA_shower.and.(shower_settings%ps_isr_active.or. &
+           shower_settings%ps_fsr_active))) then
+         if(len(shower_settings%ps_PYTHIA_PYGIVE)>0) then
+            remaining_PYGIVE = shower_settings%ps_PYTHIA_PYGIVE
+            do while(len(remaining_PYGIVE)>0)
+               call split(remaining_PYGIVE, partial_PYGIVE, ";")
+               call PYGIVE(char(partial_PYGIVE))
+            end do
+            if(shower_get_PYTHIA_error().ne.0) then
+               call msg_fatal(" PYTHIA didn't recognize ps_PYTHIA_PYGIVE setting")
+            end if
+         end if
       end if
-      ! TODO: needed?
-!      if(abs(PYP(0,1)-vector4_get_component(totalmomentum, 1)).gt.1D-5) MSTU(23) = 1
-!      if(abs(PYP(0,2)-vector4_get_component(totalmomentum, 2)).gt.1D-5) MSTU(23) = 1
-!      if(abs(PYP(0,3)-vector4_get_component(totalmomentum, 3)).gt.1D-5) MSTU(23) = 1
-!      if(abs(PYP(0,4)-vector4_get_component(totalmomentum, 0)).gt.1D-5) MSTU(23) = 1
-      ! check if hadronization was successful
-      if (MSTU(23) .gt. 0) then
+
+      call pygive ("MSTP(111)=1") ! switch on hadronization
+      call PYEXEC
+
+      if (shower_get_PYTHIA_error() .gt. 0) then
          ! clean up, discard shower and exit
          close(u_W2P)
-         MSTU(23)=0
-         successful = .false.
+         valid =(shower_get_PYTHIA_error(0).eq.0)
       else
          ! convert back
          u_P2W = free_unit()
          write (buffer, "(I10)")  u_P2W
          call pygive ("MSTP(163)="//buffer)
-         !open(unit=u_P2W, file="pythiaout.lhe", status="replace", action="readwrite")  ! only for debugging purposes
+         !open(unit=u_P2W, file="pythiaout2.lhe", status="replace", action="readwrite")  ! only for debugging purposes
          open(unit=u_P2W, status="scratch", action="readwrite")
          ! convert pythia /PYJETS/ to lhef given in MSTU(163)=u1
          call pylheo
@@ -638,11 +909,10 @@ contains
          call shower_add_lhef_to_particle_set(particle_set, u_P2W, model)
          close(u_W2P)
          close(u_P2W)
-         successful = .true.
+         valid = .true.
       end if
-    end subroutine event_apply_PYTHIAhadronization_particle_set
-  end subroutine event_apply_shower_particle_set
-
+    end subroutine apply_PYTHIAhadronization
+  end subroutine apply_shower_particle_set
   subroutine shower_add_lhef_to_particle_set (particle_set, u, model_in)
     type(particle_set_t), intent(inout) :: particle_set
     integer, intent(in) :: u
@@ -659,6 +929,11 @@ contains
     integer :: newsize, oldsize
     type(particle_t), dimension(:), allocatable :: temp_prt
     integer :: i, j
+    integer :: n_available_parents;
+    integer, dimension(:), allocatable :: available_parents
+    integer, dimension(:), allocatable :: available_children
+    logical, dimension(:), allocatable :: direct_child
+    type(vector4_t) :: diffmomentum
     integer, PARAMETER :: MAXLEN=200
     CHARACTER*(MAXLEN) STRING
     integer ibeg
@@ -666,16 +941,11 @@ contains
     real(kind=double) :: XWGTUP,SCALUP,AQEDUP,AQCDUP,VTIMUP,SPINUP
     integer :: MOTHUP(1:2),ICOLUP(1:2)
     real(kind=double) :: PUP(1:5)
+    character*5 buffer
 
     CHARACTER*6 STRFMT
     STRFMT='(A000)'
     WRITE(STRFMT(3:5),'(I3)') MAXLEN
-
-    !! set the outgoing particles of the particle_set to be virtual
-    ! add outgoing particles from /HEPEVT/ to the particle_set as outgoing particles
-
-!    print *, "shower_add_lhef_to_particle_set"
-!    call particle_set_write(particle_set)
 
     rewind(u)
 
@@ -696,18 +966,23 @@ contains
     end do
     ! Read first line of event info -> number of entries
     READ(u,*,END=503,ERR=504) NUP,IDPRUP,XWGTUP,SCALUP,AQEDUP,AQCDUP
-    print *, "NUP=", NUP
-    newsize=oldsize+NUP-2         !! should be -4 for hadron collisions, but due to workaround below -2
-
-    ! transfer particle_set to temporary array
+    newsize=oldsize+NUP-2
     allocate(temp_prt(1:newsize))
+
+    allocate(available_parents(1:oldsize))
+    available_parents = 0
     do i=1, particle_set_get_n_tot(particle_set)
        temp_prt(i) = particle_set_get_particle(particle_set, i)
        if(particle_get_status(temp_prt(i)) == PRT_OUTGOING .or. particle_get_status(temp_prt(i))==PRT_BEAM_REMNANT) then
           call particle_reset_status(temp_prt(i), PRT_VIRTUAL)
+          available_parents(i)=i
        end if
     end do
 
+    allocate(available_children(1:newsize))
+    allocate(direct_child(1:newsize))
+    available_children = 0
+    direct_child = .false.
 
     ! transfer particles from lhef to particle_set
 !...Read NUP subsequent lines with information on each particle.
@@ -732,9 +1007,9 @@ contains
           if(model_test_particle(model_SM_hadrons, IDUP)) then
              model => model_SM_hadrons
           else
-             print *, IDUP
-             call msg_error ("Parton found neither in given model file " &
-                  // " nor in SM_hadrons")
+             write (buffer, "(I5)") IDUP
+             call msg_error ("Parton " // buffer // &
+                  " found neither in given model file nor in SM_hadrons")
              return
           end if
        end if
@@ -742,7 +1017,7 @@ contains
        call particle_set_flavor(temp_prt(oldsize+i-2), flv)
        
        if(IABS(IDUP).eq.2212 .or. IABS(IDUP).eq.2112) then
-          ! PYTHIA sets color indices for protons and neutrons (?)
+          ! PYTHIA sometimes sets color indices for protons and neutrons (?)
           ICOLUP(1) = 0
           ICOLUP(2) = 0
        end if
@@ -750,22 +1025,50 @@ contains
        call particle_set_color(temp_prt(oldsize+i-2),col)
        !particle_set%prt(oldsize+i-2)%hel=??
        !particle_set%prt(oldsize+i-2)%pol=??
-       call particle_set_momentum(temp_prt(oldsize+i-2), vector4_moving(PUP(4), vector3_moving( (/PUP(1),PUP(2),PUP(3)/) ) ) )
-       ! particle_set%prt(oldsize+i-2)%p2 = PUP(5)
-       !particle_set%prt(oldsize+i-2)%parent   --> JMOHEP(1,i)
-       !particle_set%prt(oldsize+i-2)%child= !none!
-       !print *, IDUP, oldsize+i-2, size(particle_set%prt), particle_set_get_n_tot(particle_set)
-    end DO
+       call particle_set_momentum(temp_prt(oldsize+i-2), vector4_moving(PUP(4), &
+            vector3_moving( (/PUP(1),PUP(2),PUP(3)/) ) ) )
 
+       available_children(oldsize+i-2) = oldsize+i-2
+       !! search for an existing particle with the same momentum -> treat these as mother and daughter
+       do j=1, size(available_parents)
+          if(available_parents(j) .eq. 0) cycle
+          diffmomentum = particle_get_momentum(temp_prt(available_parents(j))) - &
+               particle_get_momentum(temp_prt(oldsize+i-2))
+          if(abs(diffmomentum**2) < 1D-10 .and. &
+               particle_get_pdg(temp_prt(available_parents(j))).eq. &
+               particle_get_pdg(temp_prt(oldsize+i-2))) then
+             direct_child(available_parents(j)) = .true.
+             direct_child(oldsize+i-2) = .true.
+             call particle_set_parents(temp_prt(oldsize+i-2), (/ available_parents(j) /) )
+             call particle_set_children(temp_prt(available_parents(j)), (/ oldsize+i-2 /) )
+             available_parents(j) = 0
+             available_children(oldsize+i-2) = 0
+          end if
+       end do
+    end do
+
+    ! remove zeros in available parents and available children
+    available_parents  = pack(available_parents , available_parents  /= 0)
+    available_children = pack(available_children, available_children /= 0)
+
+    do i=1, size(available_parents) 
+      if(direct_child(available_parents(i))) cycle
+      call particle_set_children(temp_prt(available_parents(i)), available_children)
+    end do
+    do i=oldsize+1, newsize
+       if(direct_child(i)) cycle
+       call particle_set_parents(temp_prt(i), available_parents)
+    end do
 
     ! transfer to particle_set
     call particle_set_replace(particle_set, temp_prt)
+    if(allocated(available_children)) deallocate(available_children)
+    if(allocated(available_parents))  deallocate(available_parents)
+    deallocate(direct_child)
     deallocate(temp_prt)
     call model_final(model_SM_hadrons)
 
 200 continue
-    call particle_set_write(particle_set)
-    print *, "shower_add_lhef_to_particle_set finished"
     return
 
 501 write(*,*) "READING LHEF failed 501"
@@ -862,10 +1165,6 @@ contains
      end DO
       WRITE(MSTP(163),'(A)') '</init>'
 
-!C...Begin event loop. Read first line of event info or already done.
-!      READ(MSTP(162),'(A)',END=320,ERR=400) STRING
-  200 CONTINUE
-
 !!!! Find the numbers of entries of the <event block>
       NENTRIES = 2      ! incoming partons (nearest to the beam particles)
       DO I=1,N
@@ -940,7 +1239,7 @@ contains
                NANTIC = 0
             end if
 
-            !! mothers = 1, 2 ??
+            !! As no intermediate are given out here, assume the incoming partons to be the mothers
             WRITE(MSTP(163),*)  K(I,2),1,1,2,NCOLOR,NANTIC,(P(I,J),J=1,5),0, -9
          end if
       end DO
@@ -950,7 +1249,7 @@ contains
 
 !C...Successfully reached end of event loop: write closing tag
 !C...and remove temporary intermediate files (unless asked not to).
-  320 WRITE(MSTP(163),'(A)') '</LesHouchesEvents>'
+320   WRITE(MSTP(163),'(A)') '</LesHouchesEvents>'
       RETURN
 
 !!C...Error exit.

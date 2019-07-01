@@ -1,4 +1,4 @@
-! WHIZARD 2.0.5 Tue May 10 2011
+! WHIZARD 2.0.6 Wed Dec 7 2011
 ! 
 ! Copyright (C) 1999-2011 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -416,6 +416,12 @@ contains
          mask_hel, mask_sqme, mask_flows
     type(quantum_numbers_mask_t) :: mask_conn
     call process_request_copy (process, decay%process)
+    call process_mark_as_cascade_decay (decay%process)
+    call process_setup_cuts (decay%process)
+    call process_setup_weight (decay%process)
+    call process_setup_scale (decay%process)
+    call process_setup_fac_scale (decay%process)
+    call process_setup_ren_scale (decay%process)
     prc_int => process_get_hi_int_ptr (decay%process)
     prc_eval_sqme => process_get_hi_eval_sqme_ptr (decay%process)
     prc_eval_flows => process_get_hi_eval_flows_ptr (decay%process)

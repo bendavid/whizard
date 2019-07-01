@@ -1,4 +1,4 @@
-! WHIZARD 2.0.5 Tue May 10 2011
+! WHIZARD 2.0.6 Wed Dec 7 2011
 ! 
 ! Copyright (C) 1999-2011 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -60,7 +60,8 @@ module diagnostics
   public :: real2string
   public :: real2char
    public :: cmplx2string
-   public :: cmplx2char
+! Ifort and Portland seem to have problems with this -> temporarily disable it
+!   public :: cmplx2char
   public :: wo_sigint
   public :: wo_sigterm
   public :: wo_sigxcpu
@@ -453,6 +454,7 @@ subroutine message_print (level, string, str_arr, unit, logfile)
 
   subroutine msg_banner (unit)
     integer, intent(in), optional :: unit
+    integer :: n_proc
     call message_print (0, "|=============================================================================|", unit=unit)
     call message_print (0, "|                                                                             |", unit=unit)
     call message_print (0, "|    WW             WW  WW   WW  WW  WWWWWW      WW      WWWWW    WWWW        |", unit=unit)
@@ -495,13 +497,14 @@ subroutine message_print (level, string, str_arr, unit, logfile)
     call message_print (0, "|                                                                             |", unit=unit)
     call message_print (0, "|                                                                             |", unit=unit)
     call message_print (0, "|                                                                             |", unit=unit)
-    call message_print (0, "|  by:   Wolfgang Kilian    <kilian@hep.physik.uni-siegen.de>                 |", unit=unit)
+    call message_print (0, "|  by:   Wolfgang Kilian    <kilian@physik.uni-siegen.de>                     |", unit=unit)
     call message_print (0, "|        Thorsten Ohl       <ohl@physik.uni-wuerzburg.de>                     |", unit=unit)
     call message_print (0, "|        Juergen Reuter     <juergen.reuter@desy.de>                          |", unit=unit)
     call message_print (0, "|        Christian Speckner <christian.speckner@physik.uni-freiburg.de>       |", unit=unit)
     call message_print (0, "|                                                                             |", unit=unit)
     call message_print (0, "|  if you use WHIZARD please cite:                                            |", unit=unit)   
-    call message_print (0, "|        W. Kilian, T. Ohl, J. Reuter,  arXiv: 0708.4233 [hep-ph]             |", unit=unit)   
+    call message_print (0, "|        W. Kilian, T. Ohl, J. Reuter,  Eur.Phys.J.C71 (2011) 1742            |", unit=unit)
+    call message_print (0, "|                                          [arXiv: 0708.4233 [hep-ph]]        |", unit=unit)   
     call message_print (0, "|        M. Moretti, T. Ohl, J. Reuter, arXiv: hep-ph/0102195                 |", unit=unit)
     call message_print (0, "|                                                                             |", unit=unit)
     call message_print (0, "|=============================================================================|", unit=unit)

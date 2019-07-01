@@ -11,6 +11,9 @@ sqrts = 500 GeV
 cuts = all Pt >= 50 GeV [parton]
    and all M2 >= (50 GeV)^2 [combine [parton, parton]]
 
+!!! Tests should be run single-threaded 
+openmp_num_threads = 1
+
 beams = u, g
 integrate (alphas_ugug) { iterations = 5:5000 }
 

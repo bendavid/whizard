@@ -1,5 +1,5 @@
 (* $Id: grid.ml,v 1.40 2004/02/13 19:05:31 ohl Exp $ *)
-(* Copyright (C) 2001 by Thorsten Ohl <ohl@hep.tu-darmstadt.de>
+(* Copyright (C) 2001-2011 by Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
    Circe2 is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by 
    the Free Software Foundation; either version 2, or (at your option)
@@ -14,7 +14,61 @@
 
 open Printf
 
-module type T = Grid.T
+module type T =
+  sig
+    module D : Division.T
+
+    type t
+    val copy : t -> t
+
+    val create : ?triangle:bool -> D.t -> D.t -> t
+
+    val record : t -> float -> float -> float -> unit
+
+    val rebin : ?power:float ->
+      ?fixed_x1_min:bool -> ?fixed_x1_max:bool ->
+        ?fixed_x2_min:bool -> ?fixed_x2_max:bool -> t -> t
+
+    val normalize : t -> t
+
+    val of_bigarray : ?verbose:bool -> ?power:float ->
+      ?iterations:int -> ?margin:float -> ?cutoff:int ->
+        ?fixed_x1_min:bool -> ?fixed_x1_max:bool ->
+          ?fixed_x2_min:bool -> ?fixed_x2_max:bool ->
+            (float, Bigarray.float64_elt,
+             Bigarray.fortran_layout) Bigarray.Array2.t -> t -> t
+
+    type channel =
+        { pid1 : int;
+          pol1 : int;
+          pid2 : int;
+          pol2 : int;
+          lumi : float;
+          g : t }
+
+    val to_channel : out_channel -> channel -> unit
+
+    type design =
+        { name : string;
+          roots : float;
+          channels : channel list;
+          comments : string list }
+
+    val design_to_channel : out_channel -> design -> unit
+    val designs_to_channel : out_channel ->
+      ?comments:string list-> design list -> unit
+    val designs_to_file : string ->
+      ?comments:string list -> design list -> unit
+
+    val design_as_block_data_to_channel :
+        out_channel -> int * design -> unit
+    val designs_as_block_data_to_channel :
+        out_channel -> ?comments:string list-> (int * design) list -> unit
+    val designs_as_block_data_to_file :
+        string -> ?comments:string list -> (int * design) list -> unit
+    val variance : t -> float
+  end
+
 
 module Make (D : Division.T) =
   struct

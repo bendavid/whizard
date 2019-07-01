@@ -1,4 +1,4 @@
-! WHIZARD 2.0.5 Tue May 10 2011
+! WHIZARD 2.0.6 Wed Dec 7 2011
 ! 
 ! Copyright (C) 1999-2011 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -31,6 +31,7 @@ module lorentz
   use constants, only: pi, twopi, degree !NODEP!
   use file_utils !NODEP!
   use diagnostics !NODEP!
+  use c_particles
 
   implicit none
   private
@@ -53,6 +54,8 @@ module lorentz
   public :: vector4_set_component
   public :: vector4_get_component
   public :: vector4_get_components
+  public :: vector4_from_c_prt
+  public :: vector4_to_c_prt
   public :: lorentz_transformation_t
   public :: lorentz_transformation_write
   public :: lorentz_transformation_get_components
@@ -112,7 +115,8 @@ module lorentz
 
   type :: vector4_t
      private
-     real(default), dimension(0:3) :: p
+     real(default), dimension(0:3) :: p = &
+        (/ 0._default, 0._default, 0._default, 0._default /)
   end type vector4_t
   type :: lorentz_transformation_t
      private
@@ -722,6 +726,30 @@ contains
        a(0:3,i) = p(i)%p
     end forall
   end function array_from_vector4_2
+
+  elemental function vector4_from_c_prt (c_prt) result (p)
+    type(vector4_t) :: p
+    type(c_prt_t), intent(in) :: c_prt
+    p%p(0) = c_prt%pe
+    p%p(1) = c_prt%px
+    p%p(2) = c_prt%py
+    p%p(3) = c_prt%pz
+  end function vector4_from_c_prt
+
+  elemental function vector4_to_c_prt (p, p2) result (c_prt)
+    type(c_prt_t) :: c_prt
+    type(vector4_t), intent(in) :: p
+    real(default), intent(in), optional :: p2
+    c_prt%pe = p%p(0)
+    c_prt%px = p%p(1)
+    c_prt%py = p%p(2)
+    c_prt%pz = p%p(3)
+    if (present (p2)) then
+       c_prt%p2 = p2
+    else
+       c_prt%p2 = p ** 2
+    end if
+  end function vector4_to_c_prt
 
   elemental function vector3_azimuthal_angle (p) result (phi)
     real(default) :: phi

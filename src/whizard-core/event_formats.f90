@@ -1,4 +1,4 @@
-! WHIZARD 2.0.5 Tue May 10 2011
+! WHIZARD 2.0.6 Wed Dec 7 2011
 ! 
 ! Copyright (C) 1999-2011 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -49,6 +49,7 @@ module event_formats
   public :: heprup_init
   public :: heprup_set_lhapdf_id
   public :: heprup_set_process_parameters
+  public :: heprup_write_verbose
   public :: heprup_write_lhef
   public :: hepeup_init
   public :: hepeup_set_event_parameters
@@ -58,6 +59,8 @@ module event_formats
   public :: hepevt_init
   public :: hepevt_set_event_parameters
   public :: hepevt_set_particle
+  public :: hepevt_write_verbose
+  public :: hepeup_write_verbose
   public :: hepeup_write_lhef
   public :: hepeup_write_lha
   public :: hepevt_write_hepevt
@@ -142,18 +145,18 @@ contains
     integer, intent(in), optional :: unit
     integer :: u
     u = output_unit (unit);  if (u < 0)  return
-    write (u, *) '<LesHouchesEvents version="1.0">'
-    write (u, *) '<header>'
-    write (u, *) '  <generator_name>WHIZARD</generator_name>'
-    write (u, *) '  <generator_version>2.0.5</generator_version>'
-    write (u, *) '</header>'
+    write (u, '(A)') '<LesHouchesEvents version="1.0">'
+    write (u, '(A)') '<header>'
+    write (u, '(A)') '  <generator_name>WHIZARD</generator_name>'
+    write (u, '(A)') '  <generator_version>2.0.6</generator_version>'
+    write (u, '(A)') '</header>'
   end subroutine les_houches_events_write_header
 
   subroutine les_houches_events_write_footer (unit)
     integer, intent(in), optional :: unit
     integer :: u
     u = output_unit (unit);  if (u < 0)  return
-    write (u, *) '</LesHouchesEvents>'
+    write (u, '(A)') '</LesHouchesEvents>'
   end subroutine les_houches_events_write_footer
 
   subroutine lhef_write_matching_info (unit, ptmin, drmin, ktcut, ktmode, lhefout)
@@ -225,16 +228,46 @@ contains
     end select
   end subroutine heprup_set_process_parameters
 
+  subroutine heprup_write_verbose (unit)
+    integer, intent(in), optional :: unit
+    integer :: u, i
+    u = output_unit (unit);  if (u < 0)  return
+    write (u, "(A)")  "HEPRUP Common Block"
+    write (u, "(3x,A6,' = ',I9,3x,1x,I9,3x,8x,A)")  "IDBMUP", IDBMUP, &
+         "PDG code of beams"
+    write (u, "(3x,A6,' = ',G12.5,1x,G12.5,8x,A)")  "EBMUP ", EBMUP, &
+         "Energy of beams in GeV"
+    write (u, "(3x,A6,' = ',I9,3x,1x,I9,3x,8x,A)")  "PDFGUP", PDFGUP, &
+         "PDF author group [-1 = undefined]"
+    write (u, "(3x,A6,' = ',I9,3x,1x,I9,3x,8x,A)")  "PDFSUP", PDFSUP, &
+         "PDF set ID       [-1 = undefined]"
+    write (u, "(3x,A6,' = ',I9,3x,1x,9x,3x,8x,A)")  "IDWTUP", IDWTUP, &
+         "LHA code for event weight mode"
+    write (u, "(3x,A6,' = ',I9,3x,1x,9x,3x,8x,A)")  "NPRUP ", NPRUP, &
+         "Number of user subprocesses"
+    do i = 1, NPRUP
+       write (u, "(1x,A,I0)")  "Subprocess #", i
+       write (u, "(3x,A6,' = ',F12.5,1x,12x,8x,A)")  "XSECUP", XSECUP(i), &
+            "Cross section in pb"
+       write (u, "(3x,A6,' = ',F12.5,1x,12x,8x,A)")  "XERRUP", XERRUP(i), &
+            "Cross section error in pb"
+       write (u, "(3x,A6,' = ',F12.5,1x,12x,8x,A)")  "XMAXUP", XMAXUP(i), &
+            "Maximum event weight (cf. IDWTUP)"
+       write (u, "(3x,A6,' = ',I9,3x,1x,12x,8x,A)")  "LPRUP ", LPRUP(i), &
+            "Subprocess ID"
+    end do
+  end subroutine heprup_write_verbose
+
   subroutine heprup_write_lhef (unit)
     integer, intent(in), optional :: unit
     integer :: u, i
     u = output_unit (unit);  if (u < 0)  return
-    write (u, *) "<init>"
+    write (u, '(A)') "<init>"
     write (u, *) IDBMUP, EBMUP, PDFGUP, PDFSUP, IDWTUP, NPRUP
     do i = 1, NPRUP
        write (u, *) XSECUP(i), XERRUP(i), XMAXUP(i), LPRUP(i)
     end do
-    write (u, *) "</init>"
+    write (u, '(A)') "</init>"
   end subroutine heprup_write_lhef
   
   subroutine hepeup_init (n_tot)
@@ -271,6 +304,7 @@ contains
     case (PRT_INCOMING);  ISTUP(i) = -1
     case (PRT_OUTGOING);  ISTUP(i) =  1
     case (PRT_RESONANT);  ISTUP(i) =  2
+    case (PRT_VIRTUAL);   ISTUP(i) =  3
     case default;         ISTUP(i) =  0
     end select
     select case (size (parent))
@@ -326,16 +360,12 @@ contains
   end subroutine hepevt_init
   
   subroutine hepevt_set_event_parameters &
-       (n_tot, n_out, n_remnants, weight, function_value, &
-        function_ratio, i_evt)
-    integer, intent(in), optional :: n_tot, n_out, n_remnants, i_evt
+       (weight, function_value, function_ratio, i_evt)
+    integer, intent(in), optional :: i_evt
     real(default), intent(in), optional :: weight, function_value, &
        function_ratio
     integer(i32), parameter :: huge32 = huge (0_i32)
-    if (present (n_tot)) NHEP = n_tot
     if (present (i_evt)) NEVHEP = i_evt
-    if (present (n_out)) hepevt_n_out = n_out
-    if (present (n_remnants)) hepevt_n_remnants = n_remnants
     if (present (weight)) hepevt_weight = weight
     if (present (function_value)) hepevt_function_value = &
          function_value
@@ -343,12 +373,11 @@ contains
          function_ratio
   end subroutine hepevt_set_event_parameters
 
-  subroutine hepevt_set_particle (i, pdg, status, parent,  &
-          children, p, m2, hel)
+  subroutine hepevt_set_particle (i, pdg, status, parent, child, p, m2, hel)
     integer, intent(in) :: i
     integer, intent(in) :: pdg, status
     integer, dimension(:), intent(in) :: parent
-    integer, dimension(:), intent(in) :: children
+    integer, dimension(:), intent(in) :: child
     type(vector4_t), intent(in) :: p
     real(default), intent(in) :: m2
     integer, intent(in) :: hel
@@ -357,20 +386,19 @@ contains
       case (PRT_BEAM);      ISTHEP(i) = 2
       case (PRT_INCOMING);  ISTHEP(i) = 2
       case (PRT_OUTGOING);  ISTHEP(i) = 1
+      case (PRT_VIRTUAL);   ISTHEP(i) = 2
       case (PRT_RESONANT);  ISTHEP(i) = 2
       case default;         ISTHEP(i) = 0
     end select
     select case (size (parent))
-    case (1);    JMOHEP(:,i) = parent(1)
-    case (2);    JMOHEP(:,i) = parent
-    case default;  JMOHEP(:,i) = 0
+    case (0);      JMOHEP(:,i) = 0
+    case (1);      JMOHEP(1,i) = parent(1); JMOHEP(2,i) = 0
+    case default;  JMOHEP(:,i) = (/ parent(1), parent(size (parent)) /)
     end select
-    select case (status)
-      case (PRT_OUTGOING); JDAHEP(:,i) = 0
-      case (PRT_BEAM,PRT_INCOMING,PRT_RESONANT)
-         JDAHEP(1,i) = children(1);
-         JDAHEP(2,i) = children(size (children));
-      case default;    JDAHEP(:,i) = 0
+    select case (size (child))
+    case (0);      JDAHEP(:,i) = 0
+    case (1);      JDAHEP(:,i) = child(1)
+    case default;  JDAHEP(:,i) = (/ child(1), child(size (child)) /)
     end select
     PHEP(1:3,i) = vector3_get_components (space_part (p))
     PHEP(4,i) = energy (p)
@@ -379,17 +407,114 @@ contains
     hepevt_pol(i) = hel
   end subroutine hepevt_set_particle
 
+  subroutine hepevt_write_verbose (unit)
+    integer, intent(in), optional :: unit
+    integer :: u, i
+    u = output_unit (unit);  if (u < 0)  return
+    write (u, "(A)")  "HEPEVT Common Block"
+    write (u, "(3x,A6,' = ',I9,3x,1x,20x,A)")  "NEVHEP", NEVHEP, &
+         "Event number"
+    write (u, "(3x,A6,' = ',I9,3x,1x,20x,A)")  "NHEP  ", NHEP, &
+         "Number of particles in event"
+    do i = 1, NHEP
+       write (u, "(1x,A,I0)")  "Particle #", i
+       write (u, "(3x,A6,' = ',I9,3x,1x,20x,A)", advance="no") &
+            "ISTHEP", ISTHEP(i), "Status code: "
+       select case (ISTHEP(i))
+       case ( 0);  write (u, "(A)")  "null entry"
+       case ( 1);  write (u, "(A)")  "outgoing"
+       case ( 2);  write (u, "(A)")  "decayed"
+       case ( 3);  write (u, "(A)")  "documentation"
+       case (4:10);  write (u, "(A)")  "[unspecified]"
+       case (11:200);  write (u, "(A)")  "[model-specific]"
+       case (201:);  write (u, "(A)")  "[user-defined]"
+       case default;  write (u, "(A)")  "[undefined]"
+       end select
+       write (u, "(3x,A6,' = ',I9,3x,1x,20x,A)")  "IDHEP ", IDHEP(i), &
+            "PDG code of particle"
+       write (u, "(3x,A6,' = ',I9,3x,1x,I9,3x,8x,A)")  "JMOHEP", JMOHEP(:,i), &
+            "Index of first/second mother"
+       write (u, "(3x,A6,' = ',I9,3x,1x,I9,3x,8x,A)")  "JDAHEP", JDAHEP(:,i), &
+            "Index of first/last daughter"
+       write (u, "(3x,A6,' = ',G12.5,1x,G12.5,8x,A)")  "PHEP12", PHEP(1:2,i), &
+            "Transversal momentum (x/y) in GeV"
+       write (u, "(3x,A6,' = ',G12.5,1x,12x,8x,A)")  "PHEP3 ", PHEP(3,i), &
+            "Longitudinal momentum (z) in GeV"
+       write (u, "(3x,A6,' = ',G12.5,1x,12x,8x,A)")  "PHEP4 ", PHEP(4,i), &
+            "Energy in GeV"
+       write (u, "(3x,A6,' = ',G12.5,1x,12x,8x,A)")  "PHEP5 ", PHEP(5,i), &
+            "Invariant mass in GeV"
+       write (u, "(3x,A6,' = ',G12.5,1x,G12.5,8x,A)")  "VHEP12", VHEP(1:2,i), &
+            "Transversal displacement (xy) in mm"
+       write (u, "(3x,A6,' = ',G12.5,1x,12x,8x,A)")  "VHEP3 ", VHEP(3,i), &
+            "Longitudinal displacement (z) in mm"
+       write (u, "(3x,A6,' = ',G12.5,1x,12x,8x,A)")  "VHEP4 ", VHEP(4,i), &
+            "Production time in mm"
+    end do
+  end subroutine hepevt_write_verbose
+
+  subroutine hepeup_write_verbose (unit)
+    integer, intent(in), optional :: unit
+    integer :: u, i
+    u = output_unit (unit);  if (u < 0)  return
+    write (u, "(A)")  "HEPEUP Common Block"
+    write (u, "(3x,A6,' = ',I9,3x,1x,20x,A)")  "NUP   ", NUP, &
+         "Number of particles in event"
+    write (u, "(3x,A6,' = ',I9,3x,1x,20x,A)")  "IDPRUP", IDPRUP, &
+         "Subprocess ID"
+    write (u, "(3x,A6,' = ',G12.5,1x,20x,A)")  "XWGTUP", XWGTUP, &
+         "Event weight"
+    write (u, "(3x,A6,' = ',G12.5,1x,20x,A)")  "SCALUP", SCALUP, &
+         "Event energy scale in GeV"
+    write (u, "(3x,A6,' = ',G12.5,1x,20x,A)")  "AQEDUP", AQEDUP, &
+         "QED coupling [-1 = undefined]"
+    write (u, "(3x,A6,' = ',G12.5,1x,20x,A)")  "AQCDUP", AQCDUP, &
+         "QCD coupling [-1 = undefined]"
+    do i = 1, NUP
+       write (u, "(1x,A,I0)")  "Particle #", i
+       write (u, "(3x,A6,' = ',I9,3x,1x,20x,A)")  "IDUP  ", IDUP(i), &
+            "PDG code of particle"
+       write (u, "(3x,A6,' = ',I9,3x,1x,20x,A)", advance="no") &
+            "ISTUP ", ISTUP(i), "Status code: "
+       select case (ISTUP(i))
+       case (-1);  write (u, "(A)")  "incoming"
+       case ( 1);  write (u, "(A)")  "outgoing"
+       case (-2);  write (u, "(A)")  "spacelike"
+       case ( 2);  write (u, "(A)")  "resonance"
+       case ( 3);  write (u, "(A)")  "resonance (doc)"
+       case (-9);  write (u, "(A)")  "beam"
+       case default;  write (u, "(A)")  "[undefined]"
+       end select
+       write (u, "(3x,A6,' = ',I9,3x,1x,I9,3x,8x,A)")  "MOTHUP", MOTHUP(:,i), &
+            "Index of first/last mother"
+       write (u, "(3x,A6,' = ',I9,3x,1x,I9,3x,8x,A)")  "ICOLUP", ICOLUP(:,i), &
+            "Color/anticolor flow index"
+       write (u, "(3x,A6,' = ',G12.5,1x,G12.5,8x,A)")  "PUP1/2", PUP(1:2,i), &
+            "Transversal momentum (x/y) in GeV"
+       write (u, "(3x,A6,' = ',G12.5,1x,12x,8x,A)")  "PUP3  ", PUP(3,i), &
+            "Longitudinal momentum (z) in GeV"
+       write (u, "(3x,A6,' = ',G12.5,1x,12x,8x,A)")  "PUP4  ", PUP(4,i), &
+            "Energy in GeV"
+       write (u, "(3x,A6,' = ',G12.5,1x,12x,8x,A)")  "PUP5  ", PUP(5,i), &
+            "Invariant mass in GeV"
+       write (u, "(3x,A6,' = ',G12.5,1x,12x,8x,A)")  "VTIMUP", VTIMUP(i), &
+            "Invariant lifetime in mm"
+       write (u, "(3x,A6,' = ',G12.5,1x,12x,8x,A)")  "SPINUP", SPINUP(i), &
+            "cos(spin angle) [9 = undefined]"
+    end do
+  end subroutine hepeup_write_verbose
+
   subroutine hepeup_write_lhef (unit)
     integer, intent(in), optional :: unit
     integer :: u, i
     u = output_unit (unit);  if (u < 0)  return
-    write (u, *) "<event>"
+    write (u, '(A)') "<event>"
     write (u, *) NUP, IDPRUP, XWGTUP, SCALUP, AQEDUP, AQCDUP
     do i = 1, NUP
        write (u, *) IDUP(i), ISTUP(i), MOTHUP(:,i), ICOLUP(:,i), &
             PUP(:,i), VTIMUP(i), SPINUP(i)
     end do
-    write (u, *) "</event>"
+    write (u, '(A)') "</event>"
   end subroutine hepeup_write_lhef
 
   subroutine hepeup_write_lha (unit)

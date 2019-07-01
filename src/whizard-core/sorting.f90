@@ -1,4 +1,4 @@
-! WHIZARD 2.0.5 Tue May 10 2011
+! WHIZARD 2.0.6 Wed Dec 7 2011
 ! 
 ! Copyright (C) 1999-2011 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -28,6 +28,7 @@
 module sorting
 
   use kinds, only: default !NODEP!
+  use diagnostics !NODEP!
 
   implicit none
   private
@@ -63,13 +64,13 @@ contains
   function sort_int (val_in) result (val)
     integer, dimension(:), intent(in) :: val_in
     integer, dimension(size(val_in)) :: val
-    val = val_in( order (val) )
+    val = val_in( order (val_in) )
   end function sort_int
 
   function sort_real (val_in) result (val)
     real(default), dimension(:), intent(in) :: val_in
     real(default), dimension(size(val_in)) :: val
-    val = val_in( order (val) )
+    val = val_in( order (val_in) )
   end function sort_real
 
   function order_int (val) result (idx)
@@ -183,7 +184,7 @@ contains
     real(default), dimension(NMAX) :: rval
     integer, dimension(NMAX) :: ival
     real, dimension(NMAX) :: harvest
-    integer :: i
+    integer :: i, j
     print *, "Sorting real values:"
     do i = 1, NMAX
        print *
@@ -192,6 +193,10 @@ contains
        print "(10(1x,F7.4))", rval(:i)
        rval(:i) = sort (rval(:i))
        print "(10(1x,F7.4))", rval(:i)
+       do j = i, 2, -1
+          if (rval(j)-rval(j-1) < 0) &
+             call msg_fatal ("Sorting failure")
+       end do
     end do
     print *
     print *, "Sorting integer values:"
@@ -202,6 +207,10 @@ contains
        print "(10(1x,I2))", ival(:i)
        ival(:i) = sort (ival(:i))
        print "(10(1x,I2))", ival(:i)
+       do j = i, 2, -1
+          if (ival(j)-ival(j-1) < 0) &
+             call msg_fatal ("Sorting failure")
+       end do
     end do
   end subroutine sorting_test
 

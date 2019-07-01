@@ -1,5 +1,5 @@
 (* $Id: division.ml,v 1.41 2001/11/05 09:13:36 ohl Exp $ *)
-(* Copyright (C) 2001 by Thorsten Ohl <ohl@hep.tu-darmstadt.de>
+(* Copyright (C) 2001-2011 by Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
    Circe2 is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by 
    the Free Software Foundation; either version 2, or (at your option)
@@ -47,11 +47,30 @@ let find_raw d x =
   else
     find' 0 n_max
 
-module type T = Division.T
+module type T =
+sig
+    type t
+    val copy : t -> t
+    val find : t -> float -> int
+    val record : t -> float -> float -> unit
+    val rebin : ?power:float -> ?fixed_min:bool -> ?fixed_max:bool -> t -> t
+    val caj : t -> float -> float
+    val n_bins : t -> int
+    val bins : t -> float array
+    val to_channel : out_channel -> t -> unit
+    val as_block_data_to_channel : out_channel ->
+      string -> int -> int -> t -> unit
+
+  end
 
 (* \subsubsection{Primary Divisions} *)
 
-module type Mono = Division.Mono
+module type Mono =
+  sig
+    include T
+    val create : ?bias:(float -> float) -> int -> float -> float -> t
+
+  end
 
 module Mono (* [: T] *) =
   struct
@@ -289,7 +308,15 @@ i*)
 
 (* \subsubsection{Polydivisions} *)
 
-module type Poly = Division.Poly
+module type Poly =
+  sig
+
+    module M : Diffmaps.Real
+    include T
+    val create : ?bias:(float -> float) ->
+      (int * M.t) list -> int -> float -> float -> t
+
+  end
 
 module Make_Poly (M : Diffmaps.Real) (* [: Poly] *) =
   struct

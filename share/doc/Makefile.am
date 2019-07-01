@@ -25,7 +25,8 @@
 ########################################################################
 
 ## The manual source has to be distributed
-dist_noinst_DATA = manual.tex $(PACKAGE).tex
+dist_noinst_DATA = manual.tex $(PACKAGE).tex \
+	custom.hva fancysection.hva book.hva
 
 ## The primary targets
 if DISTRIBUTION
@@ -41,12 +42,16 @@ endif
 ps-local: manual.ps $(PACKAGE).ps gamelan_manual.ps
 pdf-local: manual.pdf $(PACKAGE).pdf gamelan_manual.pdf
 
+if DISTRIBUTION
 if HEVEA_AVAILABLE
-# html_DATA = manual.html index.html
-endif
+html_DATA = manual.html index.html
+endif HEVEA_AVAILABLE
+endif DISTRIBUTION
 
 LATEX_STYLES = \
     noweb.sty thophys.sty gamelan.sty
+
+TEX_FLAGS = "$$TEXINPUTS:$(top_srcdir)/share/doc"
 
 EXTRA_DIST = $(LATEX_STYLES)
 
@@ -59,23 +64,23 @@ gamelan_manual.pdf: gamelan.sty
 
 ## Rules for creating PS
 .tex.dvi:
-	-$(LATEX) $<; \
+	-TEXINPUTS=$(TEX_FLAGS) $(LATEX) $<; \
 	while grep 'Rerun to get cross-references right\.' $<.log; \
-	do $(LATEX) $<; \
+	do TEXINPUTS=$(TEX_FLAGS) $(LATEX) $<; \
 	done
-	$(LATEX) $<
+	TEXINPUTS=$(TEX_FLAGS) $(LATEX) $<
 .dvi.ps:
-	$(DVIPS) $<
+	$(DVIPS) -o $@ $<
 
 ## Rules for creating PDF
 if DISTRIBUTION
 if PDFLATEX_AVAILABLE 
 .tex.pdf: 
-	-$(PDFLATEX) $<; \
+	-TEXINPUTS=$(TEX_FLAGS) $(PDFLATEX) $<; \
 	while grep 'Rerun to get cross-references right\.' $<.log; \
-	do $(PDFLATEX) $<; \
+	do TEXINPUTS=$(TEX_FLAGS) $(PDFLATEX) $<; \
 	done
-	$(PDFLATEX) $<
+	TEXINPUTS=$(TEX_FLAGS) $(PDFLATEX) $<
 else 
 if PS2PDF_AVAILABLE
 ps.pdf: 
@@ -88,9 +93,9 @@ endif
 
 ## Rules for creating HTML
 if HEVEA_AVAILABLE
-HEVEAOPTS = -exec xxdate.exe \
-	article.hva fancysection.hva mathaccents.hva \
-	custom.hva
+HEVEAOPTS = -exec xxdate.exe -I $(top_srcdir)/share/doc \
+	book.hva fancysection.hva custom.hva
+#	mathaccents.hva book.hva fancysection.hva custom.hva
 HACHAOPTS = -tocbis
 
 if DISTRIBUTION
@@ -99,8 +104,10 @@ index.html: manual.html
 
 manual.html: manual.tex
 	$(HEVEA) $(HEVEAOPTS) manual.tex
-	$(IMAGEN) manual
-	$(MPOST) manualpics.mp
+### There are no pics at the moment inside the manual.
+#	$(IMAGEN) manual
+### There are no Feynman diagrams at the moment inside the manual.
+#	$(MPOST) manualpics.mp
 	$(HEVEA) -fix $(HEVEAOPTS) manual.tex
 else	
 	@echo "HEVEA not available. The HTML manual cannot be made"
@@ -134,11 +141,13 @@ endif
 .PHONY: mostlyclean-whizard maintainer-clean-whizard
 
 mostlyclean-html:
-	-rm -f *.haux
+	-rm -f *.haux *.htoc *.css index.html contents_motif.gif \
+	next_motif.gif previous_motif.gif manual*.html 
 clean-html:
 maintainer-clean-html:
-	-rm -f manual.html index.html *.gif
-.PHONY: mostlyclean-html clean-html
+	-rm -f manual*.html index.html contents_motif.gif \
+	next_motif.gif previous_motif.gif
+.PHONY: mostlyclean-html clean-html maintainer-clean-html
 
 ## Remove backup files
 maintainer-clean-backup:
@@ -162,9 +171,6 @@ uninstall-hook:
 	-rm -f $(DESTDIR)/$(datarootdir)/doc/whizard/$(PACKAGE).pdf 
 	-rm -f $(DESTDIR)/$(datarootdir)/doc/whizard/gamelan_manual.pdf
 endif
-
-distclean-local:
-	-test "$(srcdir)" != "." && rm -f $(LATEX_STYLES)
 
 ########################################################################
 ## The End.

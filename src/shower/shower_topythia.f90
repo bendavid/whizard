@@ -188,7 +188,9 @@ module shower_topythia_module
       integer :: i, j, n_finals
       type(parton_t), dimension(:), allocatable :: final_partons
       type(parton_t) :: temp_parton
-      integer :: min_index, max_index
+      integer :: minindex, maxindex
+
+      prt => null()
 
 !!$      !! old version using (anti-)colorpartner pointers
 !!$
@@ -340,6 +342,8 @@ module shower_topythia_module
       integer :: i, max
       real(kind=default) :: maxcostheta
 
+      n_emissions = 0
+
       IF(parton_is_final(prt)) THEN
          N=N+1
          K(N,1)=2
@@ -391,7 +395,7 @@ module shower_topythia_module
                end if
             end do
             
-            allocate(costhetas(1:n_emission))
+            allocate(costhetas(1:n_emissions))
             allocate(emittedpartons(1:n_emissions))
 
             tempprt=>prt
@@ -410,7 +414,7 @@ module shower_topythia_module
             end do
             
             ! if mode .eq. 1 write quark first
-            if(mod.eq.1) call shower_topythia_recursiv_weighted(finalprt, 1, first)
+            if(mode.eq.1) call shower_topythia_recursiv_weighted(finalprt, 1, first)
 
             ! if mode .eq. 2 write out gluons in recursive order <= replace costheta by 1- costheta
             if(mode.eq.2) then
@@ -420,6 +424,7 @@ module shower_topythia_module
             end if
             
             do
+               max=0
                maxcostheta=0._default
                do i=1, size(costhetas)
                   if(costhetas(i)>maxcostheta) then

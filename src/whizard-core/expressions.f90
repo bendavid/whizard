@@ -1,4 +1,4 @@
-! WHIZARD 2.0.5 Tue May 10 2011
+! WHIZARD 2.0.6 Wed Dec 7 2011
 ! 
 ! Copyright (C) 1999-2011 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -27,6 +27,7 @@
 
 module expressions
 
+  use iso_c_binding !NODEP!
   use kinds, only: default !NODEP!
   use iso_varying_string, string_t => varying_string !NODEP!
   use constants !NODEP!
@@ -43,6 +44,7 @@ module expressions
   use analysis
   use pdg_arrays
   use subevents
+  use user_code_interface
   use variables
 
   implicit none
@@ -106,11 +108,14 @@ module expressions
   integer, parameter :: EN_RECORD_CMD = 7
   integer, parameter :: EN_OBS1_INT = 11, EN_OBS2_INT = 12
   integer, parameter :: EN_OBS1_REAL = 21, EN_OBS2_REAL = 22
+  integer, parameter :: EN_UOBS1_INT = 31, EN_UOBS2_INT = 32
+  integer, parameter :: EN_UOBS1_REAL = 41, EN_UOBS2_REAL = 42
   integer, parameter :: EN_PRT_FUN_UNARY = 101, EN_PRT_FUN_BINARY = 102
   integer, parameter :: EN_EVAL_FUN_UNARY = 111, EN_EVAL_FUN_BINARY = 112
   integer, parameter :: EN_LOG_FUN_UNARY = 121, EN_LOG_FUN_BINARY = 122
   integer, parameter :: EN_INT_FUN_UNARY = 131, EN_INT_FUN_BINARY = 132
-  integer, parameter :: EN_FORMAT_STR = 141
+  integer, parameter :: EN_REAL_FUN_UNARY = 141, EN_REAL_FUN_BINARY = 142
+  integer, parameter :: EN_FORMAT_STR = 161
 
   type :: eval_node_t
      private
@@ -149,7 +154,8 @@ module expressions
      procedure(unary_sev),  nopass, pointer :: op1_sev  => null ()
      procedure(unary_str),  nopass, pointer :: op1_str  => null ()
      procedure(unary_cut),  nopass, pointer :: op1_cut  => null ()
-     procedure(unary_num),  nopass, pointer :: op1_num  => null ()
+     procedure(unary_evi),  nopass, pointer :: op1_evi  => null ()
+     procedure(unary_evr),  nopass, pointer :: op1_evr  => null ()
      procedure(binary_log),  nopass, pointer :: op2_log  => null ()
      procedure(binary_int),  nopass, pointer :: op2_int  => null ()
      procedure(binary_real), nopass, pointer :: op2_real => null ()
@@ -158,7 +164,8 @@ module expressions
      procedure(binary_sev),  nopass, pointer :: op2_sev  => null ()
      procedure(binary_str),  nopass, pointer :: op2_str  => null ()
      procedure(binary_cut),  nopass, pointer :: op2_cut  => null ()
-     procedure(binary_num),  nopass, pointer :: op2_num  => null ()
+     procedure(binary_evi),  nopass, pointer :: op2_evi  => null ()
+     procedure(binary_evr),  nopass, pointer :: op2_evr  => null ()
   end type eval_node_t
 
   type :: eval_tree_t
@@ -227,12 +234,20 @@ module expressions
      end function unary_cut
   end interface
   abstract interface
-     subroutine unary_num (ival, arg1, arg0)
+     subroutine unary_evi (ival, arg1, arg0)
        import eval_node_t
        integer, intent(out) :: ival
        type(eval_node_t), intent(in) :: arg1
        type(eval_node_t), intent(inout), optional :: arg0
-     end subroutine unary_num
+     end subroutine unary_evi
+  end interface
+  abstract interface
+     subroutine unary_evr (rval, arg1, arg0)
+       import eval_node_t, default
+       real(default), intent(out) :: rval
+       type(eval_node_t), intent(in) :: arg1
+       type(eval_node_t), intent(inout), optional :: arg0
+     end subroutine unary_evr
   end interface
   abstract interface
      logical function binary_log (arg1, arg2)
@@ -293,12 +308,20 @@ module expressions
      end function binary_cut
   end interface
   abstract interface
-     subroutine binary_num (ival, arg1, arg2, arg0)
+     subroutine binary_evi (ival, arg1, arg2, arg0)
        import eval_node_t
        integer, intent(out) :: ival
        type(eval_node_t), intent(in) :: arg1, arg2
        type(eval_node_t), intent(inout), optional :: arg0
-     end subroutine binary_num
+     end subroutine binary_evi
+  end interface
+  abstract interface
+     subroutine binary_evr (rval, arg1, arg2, arg0)
+       import eval_node_t, default
+       real(default), intent(out) :: rval
+       type(eval_node_t), intent(in) :: arg1, arg2
+       type(eval_node_t), intent(inout), optional :: arg0
+     end subroutine binary_evr
   end interface
 
 
@@ -326,13 +349,13 @@ contains
        call eval_node_final_rec (node%arg0)
        call eval_node_final_rec (node%arg1)
     case (EN_PRT_FUN_UNARY, EN_EVAL_FUN_UNARY, &
-          EN_LOG_FUN_UNARY, EN_INT_FUN_UNARY)
+          EN_LOG_FUN_UNARY, EN_INT_FUN_UNARY, EN_REAL_FUN_UNARY)
        if (associated (node%arg0))  call eval_node_final_rec (node%arg0)
        call eval_node_final_rec (node%arg1)
        deallocate (node%index)
        deallocate (node%prt1)
     case (EN_PRT_FUN_BINARY, EN_EVAL_FUN_BINARY, &
-          EN_LOG_FUN_BINARY, EN_INT_FUN_BINARY)
+          EN_LOG_FUN_BINARY, EN_INT_FUN_BINARY, EN_REAL_FUN_BINARY)
        if (associated (node%arg0))  call eval_node_final_rec (node%arg0)
        call eval_node_final_rec (node%arg1)
        call eval_node_final_rec (node%arg2)
@@ -356,6 +379,7 @@ contains
           EN_EVAL_FUN_UNARY, EN_EVAL_FUN_BINARY, &
           EN_LOG_FUN_UNARY, EN_LOG_FUN_BINARY, &
           EN_INT_FUN_UNARY, EN_INT_FUN_BINARY, &
+          EN_REAL_FUN_UNARY, EN_REAL_FUN_BINARY, &
           EN_FORMAT_STR, EN_RECORD_CMD)
        select case (node%result_type)
        case (V_LOG);  deallocate (node%lval)
@@ -524,43 +548,6 @@ contains
     node%value_is_known => is_known
   end subroutine eval_node_init_string_ptr
 
-  subroutine eval_node_init_obs (node, var)
-    type(eval_node_t), intent(out) :: node
-    type(var_entry_t), intent(in), target :: var
-    node%tag = var_entry_get_name (var)
-    select case (var_entry_get_type (var))
-    case (V_OBS1_INT)
-       node%type = EN_OBS1_INT
-       call var_entry_assign_obs1_int_ptr (node%obs1_int, var)
-    case (V_OBS2_INT)
-       node%type = EN_OBS2_INT
-       call var_entry_assign_obs2_int_ptr (node%obs2_int, var)
-    case (V_OBS1_REAL)
-       node%type = EN_OBS1_REAL
-       call var_entry_assign_obs1_real_ptr (node%obs1_real, var)
-    case (V_OBS2_REAL)
-       node%type = EN_OBS2_REAL
-       call var_entry_assign_obs2_real_ptr (node%obs2_real, var)
-    end select
-    select case (var_entry_get_type (var))
-    case (V_OBS1_INT, V_OBS2_INT)
-       node%result_type = V_INT
-       allocate (node%ival, node%value_is_known)
-       node%value_is_known = .false.
-    case (V_OBS1_REAL, V_OBS2_REAL)
-       node%result_type = V_REAL
-       allocate (node%rval, node%value_is_known)
-       node%value_is_known = .false.
-    end select
-    select case (var_entry_get_type (var))
-    case (V_OBS1_INT, V_OBS1_REAL)
-       node%prt1 => var_entry_get_prt1_ptr (var)
-    case (V_OBS2_INT, V_OBS2_REAL)
-       node%prt1 => var_entry_get_prt1_ptr (var)
-       node%prt2 => var_entry_get_prt2_ptr (var)
-    end select
-  end subroutine eval_node_init_obs
-
   subroutine eval_node_init_branch (node, tag, result_type, arg1, arg2)
     type(eval_node_t), intent(out) :: node
     type(string_t), intent(in) :: tag
@@ -592,7 +579,60 @@ contains
     case (V_STR);  allocate (node%sval)
     end select
     allocate (node%value_is_known)
+    node%value_is_known = .false.
   end subroutine eval_node_allocate_value
+
+  subroutine eval_node_init_obs (node, var, arg)
+    type(eval_node_t), intent(out) :: node
+    type(var_entry_t), intent(in), target :: var
+    type(eval_node_t), intent(in), target, optional :: arg
+    integer :: var_type
+    node%tag = var_entry_get_name (var)
+    var_type = var_entry_get_type (var)
+    select case (var_type)
+    case (V_OBS1_INT)
+       node%type = EN_OBS1_INT
+       call var_entry_assign_obs1_int_ptr (node%obs1_int, var)
+    case (V_OBS2_INT)
+       node%type = EN_OBS2_INT
+       call var_entry_assign_obs2_int_ptr (node%obs2_int, var)
+    case (V_OBS1_REAL)
+       node%type = EN_OBS1_REAL
+       call var_entry_assign_obs1_real_ptr (node%obs1_real, var)
+    case (V_OBS2_REAL)
+       node%type = EN_OBS2_REAL
+       call var_entry_assign_obs2_real_ptr (node%obs2_real, var)
+    case (V_UOBS1_INT)
+       node%type = EN_UOBS1_INT
+    case (V_UOBS2_INT)
+       node%type = EN_UOBS2_INT
+    case (V_UOBS1_REAL)
+       node%type = EN_UOBS1_REAL
+    case (V_UOBS2_REAL)
+       node%type = EN_UOBS2_REAL
+    end select
+    select case (var_type)
+    case (V_OBS1_INT, V_OBS2_INT, V_UOBS1_INT, V_UOBS2_INT)
+       node%result_type = V_INT
+       allocate (node%ival, node%value_is_known)
+       node%value_is_known = .false.
+    case (V_OBS1_REAL, V_OBS2_REAL, V_UOBS1_REAL, V_UOBS2_REAL)
+       node%result_type = V_REAL
+       allocate (node%rval, node%value_is_known)
+       node%value_is_known = .false.
+    end select
+    select case (var_type)
+    case (V_OBS1_INT, V_OBS1_REAL, V_UOBS1_INT, V_UOBS1_REAL)
+       node%prt1 => var_entry_get_prt1_ptr (var)
+    case (V_OBS2_INT, V_OBS2_REAL, V_UOBS2_INT, V_UOBS2_REAL)
+       node%prt1 => var_entry_get_prt1_ptr (var)
+       node%prt2 => var_entry_get_prt2_ptr (var)
+    end select
+    select case (var_type)
+    case (V_UOBS1_INT, V_UOBS1_REAL, V_UOBS2_INT, V_UOBS2_REAL)
+       if (present (arg))  node%arg0 => arg
+    end select
+  end subroutine eval_node_init_obs
 
   subroutine eval_node_init_block (node, name, type, var_def, var_list)
     type(eval_node_t), intent(out), target :: node
@@ -792,7 +832,7 @@ contains
     type(eval_node_t), intent(out) :: node
     type(eval_node_t), intent(in), target :: arg1
     type(string_t), intent(in) :: name
-    procedure(unary_num) :: proc
+    procedure(unary_evi) :: proc
     node%type = EN_INT_FUN_UNARY
     node%tag = name
     node%result_type = V_INT
@@ -800,14 +840,14 @@ contains
     node%arg1 => arg1
     allocate (node%index)
     allocate (node%prt1)
-    node%op1_num => proc
+    node%op1_evi => proc
   end subroutine eval_node_init_int_fun_unary
 
   subroutine eval_node_init_int_fun_binary (node, arg1, arg2, name, proc)
     type(eval_node_t), intent(out) :: node
     type(eval_node_t), intent(in), target :: arg1, arg2
     type(string_t), intent(in) :: name
-    procedure(binary_num) :: proc
+    procedure(binary_evi) :: proc
     node%type = EN_INT_FUN_BINARY
     node%tag = name
     node%result_type = V_INT
@@ -817,8 +857,40 @@ contains
     allocate (node%index)
     allocate (node%prt1)
     allocate (node%prt2)
-    node%op2_num => proc
+    node%op2_evi => proc
   end subroutine eval_node_init_int_fun_binary
+
+  subroutine eval_node_init_real_fun_unary (node, arg1, name, proc)
+    type(eval_node_t), intent(out) :: node
+    type(eval_node_t), intent(in), target :: arg1
+    type(string_t), intent(in) :: name
+    procedure(unary_evr) :: proc
+    node%type = EN_REAL_FUN_UNARY
+    node%tag = name
+    node%result_type = V_INT
+    call eval_node_allocate_value (node)
+    node%arg1 => arg1
+    allocate (node%index)
+    allocate (node%prt1)
+    node%op1_evr => proc
+  end subroutine eval_node_init_real_fun_unary
+
+  subroutine eval_node_init_real_fun_binary (node, arg1, arg2, name, proc)
+    type(eval_node_t), intent(out) :: node
+    type(eval_node_t), intent(in), target :: arg1, arg2
+    type(string_t), intent(in) :: name
+    procedure(binary_evr) :: proc
+    node%type = EN_REAL_FUN_BINARY
+    node%tag = name
+    node%result_type = V_INT
+    call eval_node_allocate_value (node)
+    node%arg1 => arg1
+    node%arg2 => arg2
+    allocate (node%index)
+    allocate (node%prt1)
+    allocate (node%prt2)
+    node%op2_evr => proc
+  end subroutine eval_node_init_real_fun_binary
 
   subroutine eval_node_init_format_string (node, fmt, arg, name, n_args)
     type(eval_node_t), intent(out) :: node
@@ -866,13 +938,15 @@ contains
           EN_PRT_FUN_UNARY, EN_PRT_FUN_BINARY, &
           EN_EVAL_FUN_UNARY, EN_EVAL_FUN_BINARY, &
           EN_LOG_FUN_UNARY, EN_LOG_FUN_BINARY, &
-          EN_INT_FUN_UNARY, EN_INT_FUN_BINARY)
+          EN_INT_FUN_UNARY, EN_INT_FUN_BINARY, &
+          EN_REAL_FUN_UNARY, EN_REAL_FUN_BINARY)
        write (u, "(A)", advance="no")  "[" // char (node%tag) // "] ="
     case (EN_CONSTANT)
        write (u, "(A)", advance="no")  "[const] ="
     case (EN_VARIABLE)
        write (u, "(A)", advance="no")  char (node%tag) // " =>"
-    case (EN_OBS1_INT, EN_OBS2_INT, EN_OBS1_REAL, EN_OBS2_REAL)
+    case (EN_OBS1_INT, EN_OBS2_INT, EN_OBS1_REAL, EN_OBS2_REAL, &
+         EN_UOBS1_INT, EN_UOBS2_INT, EN_UOBS1_REAL, EN_UOBS2_REAL)
        write (u, "(A)", advance="no")  char (node%tag) // " ="
     case (EN_BLOCK)
        write (u, "(A)", advance="no")  "[" // char (node%tag) // "]" // &
@@ -930,10 +1004,10 @@ contains
        write (u, *) "[empty]"
     end select
     select case (node%type)
-    case (EN_OBS1_INT, EN_OBS1_REAL)
+    case (EN_OBS1_INT, EN_OBS1_REAL, EN_UOBS1_INT, EN_UOBS1_REAL)
        write (u, "(A,6x,A)", advance="no")  repeat ("|  ", ind), "prt1 ="
        call prt_write (node%prt1, unit)
-    case (EN_OBS2_INT, EN_OBS2_REAL)
+    case (EN_OBS2_INT, EN_OBS2_REAL, EN_UOBS2_INT, EN_UOBS2_REAL)
        write (u, "(A,6x,A)", advance="no")  repeat ("|  ", ind), "prt1 ="
        call prt_write (node%prt1, unit)
        write (u, "(A,6x,A)", advance="no")  repeat ("|  ", ind), "prt2 ="
@@ -967,12 +1041,12 @@ contains
        call eval_node_write_rec (node%arg1, unit, ind+1)
        call eval_node_write_rec (node%arg2, unit, ind+1)
     case (EN_PRT_FUN_UNARY, EN_EVAL_FUN_UNARY, &
-          EN_LOG_FUN_UNARY, EN_INT_FUN_UNARY)
+          EN_LOG_FUN_UNARY, EN_INT_FUN_UNARY, EN_REAL_FUN_UNARY)
        if (associated (node%arg0)) &
             call eval_node_write_rec (node%arg0, unit, ind+1)
        call eval_node_write_rec (node%arg1, unit, ind+1)
     case (EN_PRT_FUN_BINARY, EN_EVAL_FUN_BINARY, &
-          EN_LOG_FUN_BINARY, EN_INT_FUN_BINARY)
+          EN_LOG_FUN_BINARY, EN_INT_FUN_BINARY, EN_REAL_FUN_BINARY)
        if (associated (node%arg0)) &
             call eval_node_write_rec (node%arg0, unit, ind+1)
        call eval_node_write_rec (node%arg1, unit, ind+1)
@@ -1854,6 +1928,69 @@ contains
     end do
   end function no_p
        
+  function user_obs_int_p (en0, prt1) result (ival)
+    integer :: ival
+    type(eval_node_t), intent(inout) :: en0
+    type(prt_t), intent(in) :: prt1
+    type(string_t) :: name
+    procedure(user_obs_int_unary), pointer :: user_obs
+    call eval_node_evaluate (en0)
+    if (en0%value_is_known) then
+       select case (en0%result_type)
+       case (V_STR);  name = en0%sval
+       case default
+          call msg_bug ("user_obs: procedure name must be a string")
+          name = ""
+       end select
+       call c_f_procpointer (user_code_find_proc (name), user_obs)
+       ival = user_obs (c_prt (prt1))
+    else
+       call eval_node_write_rec (en0)
+       call msg_fatal ("User observable name is undefined")
+    end if
+  end function user_obs_int_p
+
+  function user_obs_real_p (en0, prt1) result (rval)
+    real(default) :: rval
+    type(eval_node_t), intent(inout) :: en0
+    type(prt_t), intent(in) :: prt1
+    type(string_t) :: name
+    procedure(user_obs_real_unary), pointer :: user_obs
+    call eval_node_evaluate (en0)
+    if (en0%value_is_known) then
+       select case (en0%result_type)
+       case (V_STR);  name = en0%sval
+       case default
+          call msg_bug ("user_obs: procedure name must be a string")
+          name = ""
+       end select
+       call c_f_procpointer (user_code_find_proc (name), user_obs)
+       rval = user_obs (c_prt (prt1))
+    else
+       call eval_node_write_rec (en0)
+       call msg_fatal ("User observable name is undefined")
+    end if
+  end function user_obs_real_p
+
+  function user_cut_p (en1, en0) result (lval)
+    logical :: lval
+    type(eval_node_t), intent(in) :: en1
+    type(eval_node_t), intent(inout) :: en0
+    type(string_t) :: name
+    procedure(user_cut_fun), pointer :: user_cut
+    call eval_node_evaluate (en0)
+    select case (en0%result_type)
+    case (V_STR);  name = en0%sval
+    case default
+       call msg_bug ("user_cut: procedure name must be a string")
+       name = ""
+    end select
+    call c_f_procpointer (user_code_find_proc (name), user_cut)
+    lval = user_cut (c_prt (en1%pval), &
+                     int (subevt_get_length (en1%pval), kind=c_int)) &
+           /= 0
+  end function user_cut_p
+
   subroutine count_a (ival, en1, en0)
     integer, intent(out) :: ival
     type(eval_node_t), intent(in) :: en1
@@ -1873,6 +2010,26 @@ contains
        ival = n
     end if
   end subroutine count_a
+       
+  subroutine user_event_shape_a (rval, en1, en0)
+    real(default), intent(out) :: rval
+    type(eval_node_t), intent(in) :: en1
+    type(eval_node_t), intent(inout), optional :: en0
+    type(string_t) :: name
+    procedure(user_event_shape_fun), pointer :: user_event_shape
+    if (.not. present (en0))  call msg_bug &
+         ("user_event_shape called without procedure name")
+    call eval_node_evaluate (en0)
+    select case (en0%result_type)
+    case (V_STR);  name = en0%sval
+    case default
+       call msg_bug ("user_event_shape: procedure name must be a string")
+       name = ""
+    end select
+    call c_f_procpointer (user_code_find_proc (name), user_event_shape)
+    rval = user_event_shape (c_prt (en1%pval), &
+                             int (subevt_get_length (en1%pval), kind=c_int))
+  end subroutine user_event_shape_a
        
   subroutine join_pp (subevt, en1, en2, en0)
     type(subevt_t), intent(inout) :: subevt
@@ -2070,6 +2227,50 @@ contains
     end do LOOP1
   end function no_pp
        
+  function user_obs_int_pp (en0, prt1, prt2) result (ival)
+    integer :: ival
+    type(eval_node_t), intent(inout) :: en0
+    type(prt_t), intent(in) :: prt1, prt2
+    type(string_t) :: name
+    procedure(user_obs_int_binary), pointer :: user_obs
+    call eval_node_evaluate (en0)
+    if (en0%value_is_known) then
+       select case (en0%result_type)
+       case (V_STR);  name = en0%sval
+       case default
+          call msg_bug ("user_obs: procedure name must be a string")
+          name = ""
+       end select
+       call c_f_procpointer (user_code_find_proc (name), user_obs)
+       ival = user_obs (c_prt (prt1), c_prt (prt2))
+    else
+       call eval_node_write_rec (en0)
+       call msg_fatal ("User observable name is undefined")
+    end if
+  end function user_obs_int_pp
+
+  function user_obs_real_pp (en0, prt1, prt2) result (rval)
+    real(default) :: rval
+    type(eval_node_t), intent(inout) :: en0
+    type(prt_t), intent(in) :: prt1, prt2
+    type(string_t) :: name
+    procedure(user_obs_real_binary), pointer :: user_obs
+    call eval_node_evaluate (en0)
+    if (en0%value_is_known) then
+       select case (en0%result_type)
+       case (V_STR);  name = en0%sval
+       case default
+          call msg_bug ("user_obs: procedure name must be a string")
+          name = ""
+       end select
+       call c_f_procpointer (user_code_find_proc (name), user_obs)
+       rval = user_obs (c_prt (prt1), c_prt (prt2))
+    else
+       call eval_node_write_rec (en0)
+       call msg_fatal ("User observable name is undefined")
+    end if
+  end function user_obs_real_pp
+
   subroutine count_pp (ival, en1, en2, en0)
     integer, intent(out) :: ival
     type(eval_node_t), intent(in) :: en1, en2
@@ -2563,6 +2764,8 @@ contains
        call eval_node_compile_variable (en, pn, var_list)
     case ("result")
        call eval_node_compile_result (en, pn, var_list)
+    case ("user_observable")
+       call eval_node_compile_user_observable (en, pn, var_list)
     case ("expr")
        call eval_node_compile_expr (en, pn, var_list)
     case ("block_expr")
@@ -2575,8 +2778,8 @@ contains
        call eval_node_compile_binary_function (en, pn, var_list)
     case ("eval_fun")
        call eval_node_compile_eval_function (en, pn, var_list)
-    case ("count_fun")
-       call eval_node_compile_int_function (en, pn, var_list)
+    case ("count_fun", "user_event_fun")
+       call eval_node_compile_numeric_function (en, pn, var_list)
     case default
        call parse_node_mismatch &
             ("integer|real|complex|constant|variable|" // &
@@ -2933,6 +3136,47 @@ contains
        print *, "done result"
     end if
   end subroutine eval_node_compile_result
+
+  subroutine eval_node_compile_user_observable (en, pn, var_list)
+    type(eval_node_t), pointer :: en
+    type(parse_node_t), intent(in), target :: pn
+    type(var_list_t), intent(in), target :: var_list
+    type(parse_node_t), pointer :: pn_key, pn_arg, pn_obs
+    type(eval_node_t), pointer :: en0
+    integer :: res_type
+    type(string_t) :: var_name
+    type(var_entry_t), pointer :: var
+    if (debug) then
+       print *, "read user observable";  call parse_node_write (pn)
+    end if
+    pn_key => parse_node_get_sub_ptr (pn)
+    select case (char (parse_node_get_key (pn_key)))
+    case ("user_obs")
+       res_type = V_REAL
+    case default
+       call parse_node_write (pn_key)
+       call msg_bug ("user_observable: wrong keyword")
+    end select
+    pn_arg => parse_node_get_next_ptr (pn_key)
+    pn_obs => parse_node_get_sub_ptr (pn_arg)
+    call eval_node_compile_sexpr (en0, pn_obs, var_list)
+    select case (res_type)
+    case (V_INT);  var_name = "_User_obs_int"
+    case (V_REAL); var_name = "_User_obs_real"
+    end select
+    var => var_list_get_var_ptr (var_list, var_name, defined=.true.)
+    allocate (en)
+    if (associated (var)) then
+       call eval_node_init_obs  (en, var, en0)
+    else
+       call parse_node_write (pn)
+       call msg_error ("This variable is undefined at this point")
+    end if
+    if (debug) then
+       call eval_node_write (en)
+       print *, "done user observable"
+    end if
+  end subroutine eval_node_compile_user_observable
 
   recursive subroutine eval_node_compile_unary_function (en, pn, var_list)
     type(eval_node_t), pointer :: en
@@ -3522,11 +3766,19 @@ contains
     end if
     pn_maybe_elsif => parse_node_get_next_ptr (pn_expr)
     select case (char (parse_node_get_rule_key (pn_maybe_elsif)))
-    case ("maybe_elsif_expr")
+    case ("maybe_elsif_expr", &
+          "maybe_elsif_lexpr", &
+          "maybe_elsif_pexpr", &
+          "maybe_elsif_cexpr", &
+          "maybe_elsif_sexpr")
        pn_elsif_branch => parse_node_get_sub_ptr (pn_maybe_elsif)
        pn_maybe_else => parse_node_get_next_ptr (pn_maybe_elsif)
        select case (char (parse_node_get_rule_key (pn_maybe_else)))
-       case ("maybe_else_expr")
+       case ("maybe_else_expr", &
+          "maybe_else_lexpr", &
+          "maybe_else_pexpr", &
+          "maybe_else_cexpr", &
+          "maybe_else_sexpr")
           pn_else_branch => parse_node_get_sub_ptr (pn_maybe_else)
           pn_else_expr => parse_node_get_sub_ptr (pn_else_branch, 2)
        case default
@@ -3534,15 +3786,22 @@ contains
        end select
        call eval_node_compile_elsif &
             (en2, pn_elsif_branch, pn_else_expr, var_list, restype)
-    case ("maybe_else_expr")
+    case ("maybe_else_expr", &
+          "maybe_else_lexpr", &
+          "maybe_else_pexpr", &
+          "maybe_else_cexpr", &
+          "maybe_else_sexpr")
        pn_maybe_else => pn_maybe_elsif
        pn_maybe_elsif => null ()
        pn_else_branch => parse_node_get_sub_ptr (pn_maybe_else)
        pn_else_expr => parse_node_get_sub_ptr (pn_else_branch, 2)
        call eval_node_compile_genexpr &
             (en2, pn_else_expr, var_list, restype)
-    case default
+    case ("endif")
        call eval_node_compile_default_else (en2, restype)
+    case default
+       call msg_bug ("Broken conditional: unexpected " &
+            // char (parse_node_get_rule_key (pn_maybe_elsif)))
     end select
     call eval_node_create_conditional (en, en0, en1, en2, restype)
     call conditional_insert_conversion_nodes (en, restype)
@@ -3811,7 +4070,7 @@ contains
        call eval_node_compile_compared_expr (en, pn, var_list, V_REAL)
     case ("compared_sexpr")
        call eval_node_compile_compared_expr (en, pn, var_list, V_STR)
-    case ("all_fun", "any_fun", "no_fun")
+    case ("all_fun", "any_fun", "no_fun", "user_cut_fun")
        call eval_node_compile_log_function (en, pn, var_list)
     case ("record_cmd")
        call eval_node_compile_record_cmd (en, pn, var_list)
@@ -4544,15 +4803,28 @@ contains
     type(eval_node_t), pointer :: en
     type(parse_node_t), intent(in) :: pn
     type(var_list_t), intent(in), target :: var_list
-    type(parse_node_t), pointer :: pn_key, pn_arg0, pn_args, pn_arg1, pn_arg2
+    type(parse_node_t), pointer :: pn_key, pn_str
+    type(parse_node_t), pointer :: pn_arg0, pn_args, pn_arg1, pn_arg2
     type(eval_node_t), pointer :: en0, en1, en2
     type(string_t) :: key
     if (debug) then
        print *, "read log_function";  call parse_node_write (pn)
     end if
-    pn_key => parse_node_get_sub_ptr (pn)
-    pn_arg0 => parse_node_get_next_ptr (pn_key)
-    pn_args => parse_node_get_next_ptr (pn_arg0)
+    select case (char (parse_node_get_rule_key (pn)))
+    case ("all_fun", "any_fun", "no_fun")
+       pn_key => parse_node_get_sub_ptr (pn)
+       pn_arg0 => parse_node_get_next_ptr (pn_key)
+       pn_args => parse_node_get_next_ptr (pn_arg0)
+    case ("user_cut_fun")
+       pn_key => parse_node_get_sub_ptr (pn)
+       pn_str => parse_node_get_next_ptr (pn_key)
+       pn_arg0 => parse_node_get_sub_ptr (pn_str)
+       pn_args => parse_node_get_next_ptr (pn_str)
+    case default
+       call parse_node_mismatch &
+            ("all_fun|any_fun|no_fun|user_cut_fun", &
+            pn)
+    end select
     pn_arg1 => parse_node_get_sub_ptr (pn_args)
     pn_arg2 => parse_node_get_next_ptr (pn_arg1)
     key = parse_node_get_key (pn_key)
@@ -4566,6 +4838,11 @@ contains
           call eval_node_init_log_fun_unary (en, en1, key, any_p)
        case ("no")
           call eval_node_init_log_fun_unary (en, en1, key, no_p)
+       case ("user_cut")
+          call eval_node_init_log_fun_unary (en, en1, key, user_cut_p)
+       case default
+          call msg_bug ("Unary logical particle function '" // char (key) // &
+               "' undefined")
        end select
     else
        call eval_node_compile_pexpr (en2, pn_arg2, var_list)
@@ -4576,18 +4853,30 @@ contains
           call eval_node_init_log_fun_binary (en, en1, en2, key, any_pp)
        case ("no")
           call eval_node_init_log_fun_binary (en, en1, en2, key, no_pp)
+       case default
+          call msg_bug ("Binary logical particle function '" // char (key) // &
+               "' undefined")
        end select
     end if
-    call eval_node_set_observables (en, var_list)
-    call eval_node_compile_lexpr (en0, pn_arg0, en%var_list)
-    call eval_node_set_expr (en, en0)
+    if (associated (pn_arg0)) then
+       call eval_node_set_observables (en, var_list)
+       select case (char (key))
+       case ("all", "any", "no")
+          call eval_node_compile_lexpr (en0, pn_arg0, en%var_list)
+       case ("user_cut")
+          call eval_node_compile_sexpr (en0, pn_arg0, en%var_list)
+       case default                    
+          call msg_bug ("Compiling logical particle function: missing mode")
+       end select
+       call eval_node_set_expr (en, en0, V_LOG)
+    end if
     if (debug) then
        call eval_node_write (en)
        print *, "done log_function"
     end if
   end subroutine eval_node_compile_log_function
 
-  recursive subroutine eval_node_compile_int_function (en, pn, var_list)
+  recursive subroutine eval_node_compile_numeric_function (en, pn, var_list)
     type(eval_node_t), pointer :: en
     type(parse_node_t), intent(in) :: pn
     type(var_list_t), intent(in), target :: var_list
@@ -4596,14 +4885,25 @@ contains
     type(eval_node_t), pointer :: en0, en1, en2
     type(string_t) :: key
     if (debug) then
-       print *, "read int_function";  call parse_node_write (pn)
+       print *, "read numeric_function";  call parse_node_write (pn)
     end if
-    pn_clause => parse_node_get_sub_ptr (pn)
-    pn_key  => parse_node_get_sub_ptr (pn_clause)
-    pn_cond => parse_node_get_next_ptr (pn_key)
-    if (associated (pn_cond)) &
-         pn_arg0 => parse_node_get_sub_ptr (pn_cond, 2)
-    pn_args => parse_node_get_next_ptr (pn_clause)
+    select case (char (parse_node_get_rule_key (pn)))
+    case ("count_fun")
+       pn_clause => parse_node_get_sub_ptr (pn)
+       pn_key  => parse_node_get_sub_ptr (pn_clause)
+       pn_cond => parse_node_get_next_ptr (pn_key)
+       if (associated (pn_cond)) then
+          pn_arg0 => parse_node_get_sub_ptr (pn_cond, 2)
+       else
+          pn_arg0 => null ()
+       end if
+       pn_args => parse_node_get_next_ptr (pn_clause)
+    case ("user_event_fun")
+       pn_key => parse_node_get_sub_ptr (pn)
+       pn_cond => parse_node_get_next_ptr (pn_key)
+       pn_arg0 => parse_node_get_sub_ptr (pn_cond)
+       pn_args => parse_node_get_next_ptr (pn_cond)
+    end select
     pn_arg1 => parse_node_get_sub_ptr (pn_args)
     pn_arg2 => parse_node_get_next_ptr (pn_arg1)
     key = parse_node_get_key (pn_key)
@@ -4613,24 +4913,38 @@ contains
        select case (char (key))
        case ("count")
           call eval_node_init_int_fun_unary (en, en1, key, count_a)
+       case ("user_event_shape")
+          call eval_node_init_real_fun_unary (en, en1, key, user_event_shape_a)
+       case default
+          call msg_bug ("Unary subevent function '" // char (key) // &
+               "' undefined")
        end select
     else
        call eval_node_compile_pexpr (en2, pn_arg2, var_list)
        select case (char (key))
        case ("count")
           call eval_node_init_int_fun_binary (en, en1, en2, key, count_pp)
+       case default
+          call msg_bug ("Binary subevent function '" // char (key) // &
+               "' undefined")
        end select
     end if
-    if (associated (pn_cond)) then
+    if (associated (pn_arg0)) then
        call eval_node_set_observables (en, var_list)
-       call eval_node_compile_lexpr (en0, pn_arg0, en%var_list)
-       call eval_node_set_expr (en, en0, V_INT)
+       select case (char (key))
+       case ("count")
+          call eval_node_compile_lexpr (en0, pn_arg0, en%var_list)
+          call eval_node_set_expr (en, en0, V_INT)
+       case ("user_event_shape")
+          call eval_node_compile_sexpr (en0, pn_arg0, en%var_list)
+          call eval_node_set_expr (en, en0, V_REAL)
+       end select
     end if
     if (debug) then
        call eval_node_write (en)
-       print *, "done int_function"
+       print *, "done numeric_function"
     end if
-  end subroutine eval_node_compile_int_function
+  end subroutine eval_node_compile_numeric_function
 
   recursive subroutine eval_node_compile_prefix_cexpr (en, pn, var_list)
     type(eval_node_t), pointer :: en
@@ -5278,6 +5592,18 @@ contains
     case (EN_OBS2_REAL)
        en%rval = en% obs2_real (en%prt1, en%prt2)
        en%value_is_known = .true.
+    case (EN_UOBS1_INT)
+       en%ival = user_obs_int_p (en%arg0, en%prt1)
+       en%value_is_known = .true.
+    case (EN_UOBS2_INT)
+       en%ival = user_obs_int_pp (en%arg0, en%prt1, en%prt2)
+       en%value_is_known = .true.
+    case (EN_UOBS1_REAL)
+       en%rval = user_obs_real_p (en%arg0, en%prt1)
+       en%value_is_known = .true.
+    case (EN_UOBS2_REAL)
+       en%rval = user_obs_real_pp (en%arg0, en%prt1, en%prt2)
+       en%value_is_known = .true.
     case (EN_PRT_FUN_UNARY)
        call eval_node_evaluate (en%arg1)
        en%value_is_known = en%arg1%value_is_known
@@ -5357,9 +5683,9 @@ contains
           if (associated (en%arg0)) then
              en%arg0%index => en%index
              en%arg0%prt1 => en%prt1
-             call en% op1_num (en%ival, en%arg1, en%arg0)
+             call en% op1_evi (en%ival, en%arg1, en%arg0)
           else
-             call en% op1_num (en%ival, en%arg1)
+             call en% op1_evi (en%ival, en%arg1)
           end if
        end if
     case (EN_INT_FUN_BINARY)
@@ -5373,9 +5699,37 @@ contains
              en%arg0%index => en%index
              en%arg0%prt1 => en%prt1
              en%arg0%prt2 => en%prt2
-             call en% op2_num (en%ival, en%arg1, en%arg2, en%arg0)
+             call en% op2_evi (en%ival, en%arg1, en%arg2, en%arg0)
           else
-             call en% op2_num (en%ival, en%arg1, en%arg2) 
+             call en% op2_evi (en%ival, en%arg1, en%arg2) 
+          end if
+       end if
+    case (EN_REAL_FUN_UNARY)
+       call eval_node_evaluate (en%arg1)
+       en%value_is_known = en%arg1%value_is_known
+       if (en%value_is_known) then
+          if (associated (en%arg0)) then
+             en%arg0%index => en%index
+             en%arg0%prt1 => en%prt1
+             call en% op1_evr (en%rval, en%arg1, en%arg0)
+          else
+             call en% op1_evr (en%rval, en%arg1)
+          end if
+       end if
+    case (EN_REAL_FUN_BINARY)
+       call eval_node_evaluate (en%arg1)
+       call eval_node_evaluate (en%arg2)
+       en%value_is_known = &
+            en%arg1%value_is_known .and. &
+            en%arg2%value_is_known
+       if (en%value_is_known) then
+          if (associated (en%arg0)) then
+             en%arg0%index => en%index
+             en%arg0%prt1 => en%prt1
+             en%arg0%prt2 => en%prt2
+             call en% op2_evr (en%rval, en%arg1, en%arg2, en%arg0)
+          else
+             call en% op2_evr (en%rval, en%arg1, en%arg2) 
           end if
        end if
     case (EN_FORMAT_STR)
@@ -5464,7 +5818,8 @@ contains
     call ifile_append (ifile, "ALT value = signed_value | unsigned_value")
     call ifile_append (ifile, "SEQ signed_value = '-' unsigned_value")
     call ifile_append (ifile, "ALT unsigned_value = " // &
-         "numeric_value | constant | variable | result | " // &
+         "numeric_value | constant | variable | " // &
+         "result | user_observable | " // &
          "grouped_expr | block_expr | conditional_expr | " // &
          "unary_function | binary_function" // &
          numeric_pexpr)
@@ -5511,6 +5866,9 @@ contains
     call ifile_append (ifile, "SEQ result = result_key result_arg")
     call ifile_append (ifile, "ALT result_key = " // &
          "num_id | n_calls | integral | error | accuracy | efficiency | chi2")
+    call ifile_append (ifile, "SEQ user_observable = user_obs user_arg")
+    call ifile_append (ifile, "KEY user_obs")
+    call ifile_append (ifile, "ARG user_arg = ( sexpr )")
     call ifile_append (ifile, "KEY num_id")
     call ifile_append (ifile, "KEY n_calls")
     call ifile_append (ifile, "KEY integral")
@@ -5804,24 +6162,31 @@ contains
 
   subroutine define_numeric_pexpr_syntax (ifile)
     type(ifile_t), intent(inout) :: ifile
-    call ifile_append (ifile, "ALT numeric_pexpr = eval_fun | count_fun")
+    call ifile_append (ifile, "ALT numeric_pexpr = " &
+         // "eval_fun | count_fun | event_shape_fun")
     call ifile_append (ifile, "SEQ eval_fun = eval expr pargs1")
     call ifile_append (ifile, "SEQ count_fun = count_clause pargs1")
     call ifile_append (ifile, "SEQ count_clause = count condition?")
     call ifile_append (ifile, "KEY eval")
     call ifile_append (ifile, "KEY count")
+    call ifile_append (ifile, "ALT event_shape_fun = user_event_fun")
+    call ifile_append (ifile, "SEQ user_event_fun = " &
+         // "user_event_shape user_arg pargs1")
+    call ifile_append (ifile, "KEY user_event_shape")
   end subroutine define_numeric_pexpr_syntax
 
   subroutine define_logical_pexpr_syntax (ifile)
     type(ifile_t), intent(inout) :: ifile
     call ifile_append (ifile, "ALT logical_pexpr = " // &
-         "all_fun | any_fun | no_fun")
+         "all_fun | any_fun | no_fun | user_cut_fun")
     call ifile_append (ifile, "SEQ all_fun = all lexpr pargs1")
     call ifile_append (ifile, "SEQ any_fun = any lexpr pargs1")
     call ifile_append (ifile, "SEQ no_fun = no lexpr pargs1")
     call ifile_append (ifile, "KEY all")
     call ifile_append (ifile, "KEY any")
     call ifile_append (ifile, "KEY no")
+    call ifile_append (ifile, "SEQ user_cut_fun = user_cut user_arg pargs1")
+    call ifile_append (ifile, "KEY user_cut")
   end subroutine define_logical_pexpr_syntax
 
   subroutine lexer_init_eval_tree (lexer, particles)
@@ -6492,139 +6857,163 @@ contains
   end subroutine eval_tree_unknown
 
   subroutine expressions_test ()
-    call expressions_test1 ()
-!     call syntax_expr_init ()
-!     call syntax_write (syntax_expr)
-!    call expressions_test1
-!     call syntax_expr_final ()
-!     print *
-!     call expressions_test2
-!     print *
-!     call syntax_pexpr_init ()
-!     call syntax_write (syntax_pexpr)
-!     call expressions_test3
-!     call syntax_pexpr_final ()
+     print *
+     print *, "Expressions test 1"
+     print *
+     call expressions_test1 ()
+     print *
+     print *, "Expressions test 2"
+     print *
+     call syntax_expr_init ()
+     call syntax_write (syntax_expr)
+     call expressions_test2
+     call syntax_expr_final ()
+     print *
+     print *, "Expressions test 3"
+     print *
+     call expressions_test3
+     print *
+     print *, "Expressions test 4"
+     print *
+     call syntax_pexpr_init ()
+     call syntax_write (syntax_pexpr)
+     call expressions_test4
+     call syntax_pexpr_final ()
   end subroutine expressions_test
   
   subroutine expressions_test1 ()
-    type(var_list_t) :: var_list
-    type(eval_node_t) :: node
-    type(prt_t), target :: prt
-    type(var_entry_t), pointer :: var
+    type(var_list_t), pointer :: var_list => null ()
+    type(eval_node_t), pointer :: node => null ()
+    type(prt_t), pointer :: prt => null ()
+    type(var_entry_t), pointer :: var => null ()
+    allocate (var_list)
+    allocate (prt)
     call var_list_set_observables_unary (var_list, prt)
     call var_list_write (var_list)
     var => var_list_get_var_ptr (var_list, var_str ("PDG"))
+    allocate (node)
     call eval_node_init_obs (node, var)
     call eval_node_write (node)
+    call eval_node_final_rec (node)
+    deallocate (node)
+    call var_list_final (var_list)
+    deallocate (var_list)
+    deallocate (prt)
   end subroutine expressions_test1
 
-!   subroutine expressions_test1 ()
-!     type(ifile_t) :: ifile
-!     type(stream_t) :: stream
-!     type(eval_tree_t) :: eval_tree
-!     type(string_t) :: expr_text
-!     type(var_list_t), target :: var_list
-!     call var_list_append_real (var_list, var_str ("x"), -5._default)
-!     call var_list_append_int  (var_list, var_str ("foo"), -27)
-!     call var_list_append_real (var_list, var_str ("mb"), 4._default)
-!     expr_text = &
-!          "let real twopi = 2 * pi in" // &
-!          "  twopi * sqrt (25.d0 - mb^2)" // &
-!          "  / (let int mb_or_0 = max (mb, 0) in" // &
-!          "       1 + (if -1 TeV <= x < mb_or_0 then abs(x) else x))"
-!     call ifile_append (ifile, expr_text)
-!     call stream_init (stream, ifile)
-!     call var_list_write (var_list)
-!     call eval_tree_init_stream (eval_tree, stream, var_list=var_list)
-!     call eval_tree_evaluate (eval_tree)
-!     call eval_tree_write (eval_tree)
-!     print "(A)", "Input string:"
-!     print *, char (expr_text)
-!     call stream_final (stream)
-!     call ifile_final (ifile)
-!     call eval_tree_final (eval_tree)
-!   end subroutine expressions_test1
+   subroutine expressions_test2 ()
+     type(ifile_t) :: ifile
+     type(stream_t) :: stream
+     type(eval_tree_t) :: eval_tree
+     type(string_t) :: expr_text
+     type(var_list_t), pointer :: var_list => null ()
+     allocate (var_list)
+     call var_list_append_real (var_list, var_str ("x"), -5._default)
+     call var_list_append_int  (var_list, var_str ("foo"), -27)
+     call var_list_append_real (var_list, var_str ("mb"), 4._default)
+     expr_text = &
+          "let real twopi = 2 * pi in" // &
+          "  twopi * sqrt (25.d0 - mb^2)" // &
+          "  / (let int mb_or_0 = max (mb, 0) in" // &
+          "       1 + (if -1 TeV <= x < mb_or_0 then abs(x) else x endif))"
+     call ifile_append (ifile, expr_text)
+     call stream_init (stream, ifile)
+     call var_list_write (var_list)
+     call eval_tree_init_stream (eval_tree, stream, var_list=var_list)
+     call eval_tree_evaluate (eval_tree)
+     call eval_tree_write (eval_tree)
+     print "(A)", "Input string:"
+     print *, char (expr_text)
+     call stream_final (stream) 
+     call ifile_final (ifile)
+     call eval_tree_final (eval_tree)
+     call var_list_final (var_list)
+     deallocate (var_list)
+   end subroutine expressions_test2
 
-!   subroutine expressions_test2 ()
-!     type(subevt_t) :: subevt
-!     call subevt_init (subevt)
-!     call subevt_reset (subevt, 1)
-!     call subevt_set_incoming (subevt, 1, &
-!          22, vector4_moving (1.e3_default, 1.e3_default, 1), &
-!          0._default, (/ 2 /))
-!     call subevt_write (subevt)
-!     call subevt_reset (subevt, 4)
-!     call subevt_reset (subevt, 3)
-!     call subevt_set_incoming (subevt, 1, &
-!          21, vector4_moving (1.e3_default, 1.e3_default, 3), &
-!          0._default, (/ 1 /))
-!     call subevt_polarize (subevt, 1, -1)
-!     call subevt_set_outgoing (subevt, 2, &
-!          1, vector4_moving (0._default, 1.e3_default, 3), &
-!          -1.e6_default, (/ 7 /))
-!     call subevt_set_composite (subevt, 3, &
-!          vector4_moving (-1.e3_default, 0._default, 3), &
-!          (/ 2, 7 /))
-!     call subevt_write (subevt)
-!   end subroutine expressions_test2
+   subroutine expressions_test3 ()
+     type(subevt_t) :: subevt
+     call subevt_init (subevt)
+     call subevt_reset (subevt, 1)
+     call subevt_set_incoming (subevt, 1, &
+          22, vector4_moving (1.e3_default, 1.e3_default, 1), &
+          0._default, (/ 2 /))
+     call subevt_write (subevt)
+     call subevt_reset (subevt, 4)
+     call subevt_reset (subevt, 3)
+     call subevt_set_incoming (subevt, 1, &
+          21, vector4_moving (1.e3_default, 1.e3_default, 3), &
+          0._default, (/ 1 /))
+     call subevt_polarize (subevt, 1, -1)
+     call subevt_set_outgoing (subevt, 2, &
+          1, vector4_moving (0._default, 1.e3_default, 3), &
+          -1.e6_default, (/ 7 /))
+     call subevt_set_composite (subevt, 3, &
+          vector4_moving (-1.e3_default, 0._default, 3), &
+          (/ 2, 7 /))
+     call subevt_write (subevt)
+   end subroutine expressions_test3
 
-!   subroutine expressions_test3 ()
-!     type(subevt_t), target :: subevt
-!     type(string_t) :: expr_text
-!     type(ifile_t) :: ifile
-!     type(stream_t) :: stream
-!     type(eval_tree_t) :: eval_tree
-!     type(var_list_t), target :: var_list
-!     type(pdg_array_t) :: aval
-!     aval = 0
-!     call var_list_append_pdg_array (var_list, var_str ("particle"), aval)
-!     aval = (/ 11,-11 /)
-!     call var_list_append_pdg_array (var_list, var_str ("lepton"), aval)
-!     aval = 22
-!     call var_list_append_pdg_array (var_list, var_str ("photon"), aval)
-!     aval = 1
-!     call var_list_append_pdg_array (var_list, var_str ("u"), aval)
-!     call subevt_init (subevt)
-!     call subevt_reset (subevt, 6)
-!     call subevt_set_incoming (subevt, 1, &
-!          1, vector4_moving (1._default, 1._default, 1), 0._default)
-!     call subevt_set_incoming (subevt, 2, &
-!          -1, vector4_moving (2._default, 2._default, 1), 0._default)
-!     call subevt_set_outgoing (subevt, 3, &
-!          22, vector4_moving (3._default, 3._default, 1), 0._default)
-!     call subevt_set_outgoing (subevt, 4, &
-!          22, vector4_moving (4._default, 4._default, 1), 0._default)
-!     call subevt_set_outgoing (subevt, 5, &
-!          11, vector4_moving (5._default, 5._default, 1), 0._default)
-!     call subevt_set_outgoing (subevt, 6, &
-!          -11, vector4_moving (6._default, 6._default, 1), 0._default)
-!     print *
-!     print *, "Expression:"
-!     expr_text = &
-!          "let alias quark = pdg(1):pdg(2):pdg(3) in" // &
-!          "  any E > 3 GeV " // &
-!          "    (sort by - Pt " // &
-!          "       (select if Index < 6 " // &
-!          "          (outgoing photon:pdg(-11):pdg(3):quark " // &
-!          "           & incoming particle)))" // &
-!          "  and" // &
-!          "  eval Theta (extract index -1 (outgoing photon)) > 45 degree" // &
-!          "  and" // &
-!          "  count (incoming photon) * 3 > 0"
-!     print *, char (expr_text)
-!     print *
-!     call ifile_append (ifile, expr_text)
-!     call stream_init (stream, ifile)
-!     call eval_tree_init_stream (eval_tree, stream, var_list, subevt, V_LOG)
-!     print *
-!     call eval_tree_write (eval_tree)
-!     call eval_tree_evaluate (eval_tree)
-!     print *
-!     call eval_tree_write (eval_tree)
-!     call stream_final (stream)
-!     call ifile_final (ifile)
-!     call eval_tree_final (eval_tree)
-!   end subroutine expressions_test3
+   subroutine expressions_test4 ()
+     type(subevt_t), target :: subevt
+     type(string_t) :: expr_text
+     type(ifile_t) :: ifile
+     type(stream_t) :: stream
+     type(eval_tree_t) :: eval_tree
+     type(var_list_t), pointer :: var_list => null ()
+     type(pdg_array_t) :: aval
+     allocate (var_list)
+     aval = 0
+     call var_list_append_pdg_array (var_list, var_str ("particle"), aval)
+     aval = (/ 11,-11 /)
+     call var_list_append_pdg_array (var_list, var_str ("lepton"), aval)
+     aval = 22
+     call var_list_append_pdg_array (var_list, var_str ("photon"), aval)
+     aval = 1
+     call var_list_append_pdg_array (var_list, var_str ("u"), aval)
+     call subevt_init (subevt)
+     call subevt_reset (subevt, 6)
+     call subevt_set_incoming (subevt, 1, &
+          1, vector4_moving (1._default, 1._default, 1), 0._default)
+     call subevt_set_incoming (subevt, 2, &
+          -1, vector4_moving (2._default, 2._default, 1), 0._default)
+     call subevt_set_outgoing (subevt, 3, &
+          22, vector4_moving (3._default, 3._default, 1), 0._default)
+     call subevt_set_outgoing (subevt, 4, &
+          22, vector4_moving (4._default, 4._default, 1), 0._default)
+     call subevt_set_outgoing (subevt, 5, &
+          11, vector4_moving (5._default, 5._default, 1), 0._default)
+     call subevt_set_outgoing (subevt, 6, &
+          -11, vector4_moving (6._default, 6._default, 1), 0._default)
+     print *
+     print *, "Expression:"
+     expr_text = &
+          "let alias quark = pdg(1):pdg(2):pdg(3) in" // &
+          "  any E > 3 GeV " // &
+          "    [sort by - Pt " // &
+          "       [select if Index < 6 " // &
+          "          [photon:pdg(-11):pdg(3):quark " // &
+          "           & incoming particle]]]" // &
+          "  and" // &
+          "  eval Theta [extract index -1 [photon]] > 45 degree" // &
+          "  and" // &
+          "  count [incoming photon] * 3 > 0"
+     print *, char (expr_text)
+     print *
+     call ifile_append (ifile, expr_text)
+     call stream_init (stream, ifile)
+     call eval_tree_init_stream (eval_tree, stream, var_list, subevt, V_LOG)
+     print *
+     call eval_tree_write (eval_tree)
+     call eval_tree_evaluate (eval_tree)
+     print *
+     call eval_tree_write (eval_tree)
+     call stream_final (stream)
+     call ifile_final (ifile)
+     call eval_tree_final (eval_tree)
+     call var_list_final (var_list)
+     deallocate (var_list)
+   end subroutine expressions_test4
 
 
 end module expressions

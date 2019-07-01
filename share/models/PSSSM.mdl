@@ -995,8 +995,10 @@ particle LEPTOQUARK12 2000060
   tex_anti "D_{R1}^*"
   mass mlq_12  width wlq_12
 particle LEPTOQUARK21 1000061 like LEPTOQUARK11
-  name lq21      tex:"D_{L2}"
-  anti lq21c    tex:"D_{L2}^*"
+  name lq21
+  tex_name "D_{L2}"
+  anti lq21c
+  tex_anti "D_{L2}^*"
   mass mlq_21  width wlq_21
 particle LEPTOQUARK22 2000061 like LEPTOQUARK12
   name lq22      

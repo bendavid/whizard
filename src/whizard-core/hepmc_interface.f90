@@ -1,4 +1,4 @@
-! WHIZARD 2.0.5 Tue May 10 2011
+! WHIZARD 2.0.6 Wed Dec 7 2011
 ! 
 ! Copyright (C) 1999-2011 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -109,6 +109,8 @@ module hepmc_interface
   public :: hepmc_event_get_weight
   public :: hepmc_event_add_vertex
   public :: hepmc_event_set_signal_process_vertex
+  public :: hepmc_event_set_beam_particles
+  public :: hepmc_event_set_cross_section
   public :: hepmc_event_particle_iterator_t
   public :: hepmc_event_particle_iterator_init
   public :: hepmc_event_particle_iterator_final
@@ -586,6 +588,22 @@ module hepmc_interface
        type(c_ptr), value :: v_obj
      end subroutine gen_event_set_signal_process_vertex
   end interface
+  interface
+     logical(c_bool) function gen_event_set_beam_particles &
+          (evt_obj, prt1_obj, prt2_obj) bind(C)
+       import
+       type(c_ptr), value :: evt_obj, prt1_obj, prt2_obj
+     end function gen_event_set_beam_particles
+  end interface
+
+  interface
+     subroutine gen_event_set_cross_section (evt_obj, xs, xs_err) bind(C)
+       import
+       type(c_ptr), value :: evt_obj
+       real(c_double), value :: xs, xs_err
+     end subroutine gen_event_set_cross_section
+  end interface
+
   interface
      type(c_ptr) function new_event_particle_const_iterator (evt_obj) bind(C)
        import
@@ -1164,6 +1182,22 @@ contains
     type(hepmc_vertex_t), intent(in) :: v
     call gen_event_set_signal_process_vertex (evt%obj, v%obj)
   end subroutine hepmc_event_set_signal_process_vertex
+
+  subroutine hepmc_event_set_beam_particles (evt, prt1, prt2)
+    type(hepmc_event_t), intent(inout) :: evt
+    type(hepmc_particle_t), intent(in) :: prt1, prt2
+    logical(c_bool) :: flag
+    flag = gen_event_set_beam_particles (evt%obj, prt1%obj, prt2%obj)
+  end subroutine hepmc_event_set_beam_particles
+
+  subroutine hepmc_event_set_cross_section (evt, xsec, xsec_err)
+    type(hepmc_event_t), intent(inout) :: evt
+    real(default), intent(in) :: xsec, xsec_err
+    call gen_event_set_cross_section &
+         (evt%obj, &
+         real (xsec * 1e-3_default, c_double), &
+         real (xsec_err * 1e-3_default, c_double))
+  end subroutine hepmc_event_set_cross_section
 
   subroutine hepmc_event_particle_iterator_init (it, evt)
     type(hepmc_event_particle_iterator_t), intent(out) :: it

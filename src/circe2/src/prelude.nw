@@ -8,7 +8,7 @@ Subject: put
 \\
 Title: CIRCE Version 2.0:
   Beam Spectra for Simulating Linear Collider and Photon Collider Physics
-Author: Thorsten Ohl (TH Darmstadt)
+Author: Thorsten Ohl (Uni Wuerzburg)
 Comments: ?? pages, LaTeX (using amsmath.sty)
 Report-no: WUE-ITP-2002-006
 \\
@@ -47,12 +47,12 @@ Report-no: WUE-ITP-2002-006
   \documentclass[12pt,a4paper]{article}
   \usepackage{type1cm}
   \usepackage[pdftex,colorlinks]{hyperref}
-  \usepackage[pdftex]{graphics,emp}
+  \usepackage[pdftex]{graphicx,emp}
   \DeclareGraphicsRule{*}{mps}{*}{}
 \else
   \documentclass[a4paper]{article}
   \usepackage[nologo]{thopp}
-  \usepackage{graphics,emp}
+  \usepackage{graphicx,emp}
 \fi
 %BEGIN IMAGE
 \setlength{\unitlength}{1mm}
@@ -167,7 +167,7 @@ Report-no: WUE-ITP-2002-006
   \hfil\\
     Institut f\"ur Theoretische Physik und Astrophysik\\
     Universit\"at W\"urzburg\\
-    Am Hubland\\
+    Emil-Hilb-Weg 22 \\
     97074 W\"urzburg\\
     Germany}
 \providecommand{\preprintno}[1]{\relax}
@@ -200,13 +200,13 @@ Report-no: WUE-ITP-2002-006
   \item \textbf{Licensing provisions:}
     Free software under the GNU General Public License.
   \item \textbf{Programming languages used:}
-    FORTRAN77, Objective Caml\cite{O'Caml}
+    originally FORTRAN77, transferred to FORTRAN90, Objective Caml\cite{O'Caml} 
     (available from \verb|http://caml.inria.fr/ocaml/|).
   \item \textbf{Number of program lines in distributed program}
-    $\approx$ 800 lines of FORTRAN77 (excluding comments) for the library;
+    $\approx$ 800 lines of FORTRAN90 (excluding comments) for the library;
     $\approx$ 4000 lines of Objective Caml for the utility program
   \item \textbf{Computer/Operating System:}
-    Any with a FORTRAN77 programming environment.
+    Any with a FORTRAN90 programming environment.
   \item \textbf{Memory required to execute with typical data:}
     Negligible on the scale of typical applications calling the library.
   \item \textbf{Typical running time:}
@@ -267,7 +267,7 @@ backscattering $\gamma\gamma$
 colliders~\cite{Ginzburg/Telnov/etal:1983:gamma-collider} and at
 multi-TeV $\mathrm{e}^+\mathrm{e}^-$ LCs are correlated and can not
 be approximated by \KirkeOne/ at all.  In addition, the proliferation
-of accelerator designs since the release of \KirkeOne/ has make the
+of accelerator designs since the release of \KirkeOne/ has made the
 maintenance of parameterizations as FORTRAN77 \texttt{BLOCK DATA}
 unwieldy.
 
@@ -285,56 +285,57 @@ studies until $\mathrm{e}^+\mathrm{e}^-$ LCs and photon colliders come
 on-line and probably beyond.  The implementation \KirkeTwo/
 bears no resemblance at all with the implementation of \KirkeOne/.
 
-%%% \begin{figure}
-%%%   \begin{center}
-%%% %BEGIN IMAGE
-%%%     \begin{empgraph}(53,40)
-%%%       vardef smin (expr a, b) = if a Sleq b: a else: b fi enddef;
-%%%       setrange (0, 0, 1, 4);
-%%%       path simulation, circe[];
-%%%       gdata ("z.input.histo", $,
-%%%         augment.simulation ($1, smin (4, 100 Smul $2));)
-%%%       gdata ("z.50m2.histo", $,
-%%%         augment.circe[0] ($1, smin (4, 100 Smul $2));)
-%%%       pickup pencircle scaled 0.5pt;
-%%%       augment.simulation (1,0);
-%%%       augment.simulation (0,0);
-%%%       gfill (simulation -- cycle) withcolor (0.7,0.7,0.7);
-%%%       pickup pencircle scaled 1pt;
-%%%       gdraw circe[0];
-%%%       pickup pencircle scaled 0.5pt;
-%%%       glabel.bot (btex $z=\sqrt{x_{1}x_{2}}$ etex, OUT);
-%%%     \end{empgraph}
-%%%     \quad
-%%%     \begin{empgraph}(53,40)
-%%%       vardef smin (expr a, b) = if a Sleq b: a else: b fi enddef;
-%%%       setrange (0, 0, 1, 4);
-%%%       path simulation, circe[];
-%%%       gdata ("z_low.input.histo", $,
-%%%         augment.simulation ("1.0e4" Smul $1, "1.0e4" Smul $2);)
-%%%       gdata ("z_low.50m2.histo", $,
-%%%         augment.circe[0] ("1.0e4" Smul $1, smin (4, "1.0e4" Smul $2));)
-%%%       pickup pencircle scaled 0.5pt;
-%%%       augment.simulation (1,0);
-%%%       augment.simulation (0,0);
-%%%       gfill (simulation -- cycle) withcolor (0.7,0.7,0.7);
-%%%       pickup pencircle scaled 1pt;
-%%%       gdraw circe[0];
-%%%       pickup pencircle scaled 0.5pt;
-%%%       glabel.bot (btex $z=\sqrt{x_{1}x_{2}}\times10^{4}$ etex, OUT);
-%%%     \end{empgraph}
-%%% %END IMAGE
-%%% %HEVEA\imageflush
-%%%   \end{center}
-%%%   \caption{\label{fig:z}%
-%%%     Comparison of a simulated realistic $\gamma\gamma$ luminosity
-%%%     spectrum (helicities:~$(+,+)$) for a \unit[500]{GeV} photon collider
-%%%     at TESLA~\cite{Telnov:2001:priv} (filled area) with its \KirkeTwo/
-%%%     parameterization (solid line) using 50~bins in both directions.
-%%%     The $10^4$-fold blow-up of the $z\to0$~region is
-%%%     taken from the same pair of datasets as the plot including the
-%%%     large~$z$ region.}
-%%% \end{figure}
+\begin{figure}
+  \begin{center}
+%BEGIN IMAGE
+%%%    \begin{empgraph}(53,40)
+%%%      vardef smin (expr a, b) = if a Sleq b: a else: b fi enddef;
+%%%      setrange (0, 0, 1, 4);
+%%%      path simulation, circe[];
+%%%      gdata ("z.input.histo", $,
+%%%        augment.simulation ($1, smin (4, 100 Smul $2));)
+%%%      gdata ("z.50m2.histo", $,
+%%%        augment.circe[0] ($1, smin (4, 100 Smul $2));)
+%%%      pickup pencircle scaled 0.5pt;
+%%%      augment.simulation (1,0);
+%%%      augment.simulation (0,0);
+%%%      gfill (simulation -- cycle) withcolor (0.7,0.7,0.7);
+%%%      pickup pencircle scaled 1pt;
+%%%      gdraw circe[0];
+%%%      pickup pencircle scaled 0.5pt;
+%%%      glabel.bot (btex $z=\sqrt{x_{1}x_{2}}$ etex, OUT);
+%%%    \end{empgraph}
+%%%    \quad
+%%%    \begin{empgraph}(53,40)
+%%%      vardef smin (expr a, b) = if a Sleq b: a else: b fi enddef;
+%%%      setrange (0, 0, 1, 4);
+%%%      path simulation, circe[];
+%%%      gdata ("z_low.input.histo", $,
+%%%        augment.simulation ("1.0e4" Smul $1, "1.0e4" Smul $2);)
+%%%      gdata ("z_low.50m2.histo", $,
+%%%        augment.circe[0] ("1.0e4" Smul $1, smin (4, "1.0e4" Smul $2));)
+%%%      pickup pencircle scaled 0.5pt;
+%%%      augment.simulation (1,0);
+%%%      augment.simulation (0,0);
+%%%      gfill (simulation -- cycle) withcolor (0.7,0.7,0.7);
+%%%      pickup pencircle scaled 1pt;
+%%%      gdraw circe[0];
+%%%      pickup pencircle scaled 0.5pt;
+%%%      glabel.bot (btex $z=\sqrt{x_{1}x_{2}}\times10^{4}$ etex, OUT);
+%%%    \end{empgraph}
+       \includegraphics[width=.95\textwidth]{circe2pics1.png}
+%END IMAGE
+%HEVEA\imageflush
+  \end{center}
+  \caption{\label{fig:z}%
+    Comparison of a simulated realistic $\gamma\gamma$ luminosity
+    spectrum (helicities:~$(+,+)$) for a \unit[500]{GeV} photon collider
+    at TESLA~\cite{Telnov:2001:priv} (filled area) with its \KirkeTwo/
+    parameterization (solid line) using 50~bins in both directions.
+    The $10^4$-fold blow-up of the $z\to0$~region is
+    taken from the same pair of datasets as the plot including the
+    large~$z$ region.}
+\end{figure}
 
 \KirkeTwo/ describes the distributions by two-dimensional grids that
 are optimized using an algorithm derived from
@@ -358,18 +359,19 @@ functions.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Notes on the Implementation}
-The FORTRAN77 library is extremely simple (about 800 lines) and
+The FORTRAN90 library is extremely simple (about 800 lines) and
 performs only two tasks: one small set of subroutines efficiently
 generates pairs of random numbers distributed according to two
 dimensional histograms with factorized non-uniform bins stored in a
 file.  A second set of functions calculates the value of the
 corresponding distributions.
 
-FORTRAN77 has been chosen solely for practical reasons: at the time of
-writing, the majority of programs expected to use the \KirkeTwo/ are
-legacy applications written in FORTRAN77.  The simple functionality of
-the FORTRAN77 library can however be reproduced trivially in any other
-programming language that will be needed in the future.
+In the original implementation, FORTRAN77 has been chosen solely for 
+practical reasons: at the time of the original writing, the majority 
+of programs expected to use the \KirkeTwo/ have been legacy applications 
+written in FORTRAN77.  The simple functionality of the FORTRAN90 
+library can however be reproduced trivially in any other programming 
+language that will be needed in the future.
 
 The non-trivial part of constructing an optimized histogram from an
 arbitrary distribution is performed by a utility program
@@ -809,16 +811,16 @@ and helicities can be inspected with the function \texttt{cir2lm}
 where $\upsilon=\unit[10^7]{sec}\approx \unit{year}/\pi$ is an
 ``effective year'' of running with about 30\%\ up-time
 \begin{params}
-   \item \texttt{double precision function cir2lm (p1, h1, p2, h2)}
+   \item \texttt{function cir2lm (p1, h1, p2, h2)}
      \label{pg:cir2lm}
      \begin{params}
-       \item \texttt{integer p1} (input):
+       \item \texttt{integer :: p1} (input):
          particle code for the first particle
-       \item \texttt{integer h1} (input):
+       \item \texttt{integer :: h1} (input):
          helicity of the first particle
-       \item \texttt{integer p2} (input):
+       \item \texttt{integer :: p2} (input):
          particle code for the second particle
-       \item \texttt{integer h2} (input):
+       \item \texttt{integer :: h2} (input):
          helicity of the second particle
      \end{params}
 \end{params}
@@ -909,10 +911,10 @@ after which randomly distributed \texttt{p1}, \texttt{h1},
 for further processing.
 
 NB: a function like \texttt{circe2} has not been added to the default
-FORTRAN77 API, because \texttt{cir2gn} and \texttt{circe2} have the
+FORTRAN90 API, because \texttt{cir2gn} and \texttt{circe2} have the
 same number and types of arguments, differing only in the input/output
 direction of four of the arguments.  This is a source of errors that a
-FORTRAN77 compiler can not help the application programmer to spot.
+FORTRAN90 compiler can not help the application programmer to spot.
 The current design should be less error prone and is only minimally
 less convenient because of the additional procedure call
 \begin{alltt}\small
@@ -1145,40 +1147,39 @@ application can consume events without the need for costly
 reinitializations when the flavors are changed, a simple loop around
 \texttt{cir2ch} and \texttt{cir2gn} suffices:
 \begin{alltt}\small
-      program demo1
-      implicit none
-      integer p1, h1, p2, h2, n, nevent, ierror
-      double precision x1, x2
-      external random
-      nevent = 20
-      ierror = 1
-      call cir2ld ('default.circe', '*', 500D0, ierror)
-      if (ierror .lt. 0) stop
-      write (*, '(A7,4(X,A4),2(X,A10))')
-     $     '#', 'pdg1', 'hel1', 'pdg2', 'hel2', 'x1', 'x2'
-      do 10 n = 1, nevent
-        call cir2ch (p1, h1, p2, h2, random)
-        call cir2gn (p1, h1, p2, h2, x1, x2, random)
-        write (*, '(I7,4(X,I4),2(X,F10.8))') n, p1, h1, p2, h2, x1, x2
- 10   continue
-      end
+  program demo1
+    use kinds
+    use circe2
+    implicit none
+    integer :: p1, h1, p2, h2, n, nevent, ierror
+    real(kind=double) :: x1, x2
+    external random
+    nevent = 20
+    ierror = 1
+    call cir2ld ('default.circe', '*', 500D0, ierror)
+    if (ierror .lt. 0) stop
+    write (*, '(A7,4(1X,A4),2(1X,A10))') &
+         '#', 'pdg1', 'hel1', 'pdg2', 'hel2', 'x1', 'x2'
+    do n = 1, nevent
+      call cir2ch (p1, h1, p2, h2, random)
+      call cir2gn (p1, h1, p2, h2, x1, x2, random)
+      write (*, '(I7,4(1X,I4),2(1X,F10.8))') n, p1, h1, p2, h2, x1, x2
+    end do
+  end program demo1
 \end{alltt}
 The following minimalistic linear congruential random number
 generator can be used for demonstrating the interface, but it is known
 to produce correlations and \emph{must} be replaced by a more
 sophisticated one in real applications:
 \begin{alltt}\small
-      subroutine random (r)
-      implicit none
-      double precision r
-      integer M, A, C
-      parameter (M = 259200, A = 7141, C = 54773)
-      integer n
-      save n
-      data n /0/
-      n = mod (n*A + C, M)
-      r = dble (n) / dble (M)
-      end
+  subroutine random (r)
+    use kinds
+    real(kind=double) :: r
+    integer, parameter :: M = 259200, A = 7141, C = 54773
+    integer, save :: n = 0
+    n = mod (n*A + C, M)
+    r = real (n, kind=double) / real (M, kind=double)
+  end subroutine random
 \end{alltt}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -1189,36 +1190,38 @@ flavors and helicities sequentially and uses the partial luminosities
 \texttt{cir2lm} to determine the correct number of events for each
 combination:
 \begin{alltt}\small
-      program demo2
-      implicit none
-      integer i1, i2, pdg(3), h1, h2, i, n, nevent, nev, ierror
-      double precision x1, x2, lumi, cir2lm
-      external random, cir2lm
-      data pdg /22, 11, -11/
-      nevent = 20
-      ierror = 1
-      call cir2ld ('default.circe', '*', 500D0, ierror)
-      if (ierror .lt. 0) stop
-      lumi = cir2lm (0, 0, 0, 0)
-      write (*, '(A7,4(X,A4),2(X,A10))')
-     $     '#', 'pdg1', 'hel1', 'pdg2', 'hel2', 'x1', 'x2'
-      i = 0
-      do 10 i1 = 1, 3
-        do 11 i2 = 1, 3
-          do 12 h1 = -1, 1, 2
-            do 13 h2 = -1, 1, 2
-              nev = nevent * cir2lm (pdg(i1), h1, pdg(i2), h2) / lumi
-              do 20 n = 1, nev
-                call cir2gn (pdg(i1), h1, pdg(i2), h2, x1, x2, random)
-                i = i + 1
-                write (*, '(I7,4(X,I4),2(X,F10.8))')
-     $               i, pdg(i1), h1, pdg(i2), h2, x1, x2
- 20           continue
- 13         continue
- 12       continue
- 11     continue
- 10   continue
-      end
+  program demo2
+    use kinds
+    use circe2
+    implicit none
+    integer :: i1, i2, h1, h2, i, n, nevent, nev, ierror
+    integer, dimension(3), save :: pdg = (/ 22, 11, -11 /)
+    real(kind=double) :: x1, x2, lumi
+    external random
+    nevent = 20
+    ierror = 1
+    call cir2ld ('default.circe', '*', 500D0, ierror)
+    if (ierror .lt. 0) stop
+    lumi = cir2lm (0, 0, 0, 0)
+    write (*, '(A7,4(1X,A4),2(1X,A10))') &
+        '#', 'pdg1', 'hel1', 'pdg2', 'hel2', 'x1', 'x2'
+    i = 0
+    do i1 = 1, 3
+      do i2 = 1, 3
+        do h1 = -1, 1, 2
+          do h2 = -1, 1, 2
+            nev = nevent * cir2lm (pdg(i1), h1, pdg(i2), h2) / lumi
+            do n = 1, nev
+              call cir2gn (pdg(i1), h1, pdg(i2), h2, x1, x2, random)
+              i = i + 1
+              write (*, '(I7,4(1X,I4),2(1X,F10.8))') &
+                   i, pdg(i1), h1, pdg(i2), h2, x1, x2
+            end do
+          end do  
+        end do  
+      end do
+    end do
+  end program demo2
 \end{alltt}
 More care can be taken to guarantee that the total number of events
 is not reduced by rounding \texttt{new} towards~$0$, but the error
@@ -1232,23 +1235,25 @@ If the helicities are to be ignored, the abbreviated file
 The code remains unchanged, but the variables~\texttt{h1}
 and~\texttt{h2} will always be set to~0.
 \begin{alltt}\small
-      program demo3
-      implicit none
-      integer p1, h1, p2, h2, n, nevent, ierror
-      double precision x1, x2
-      external random
-      nevent = 20
-      ierror = 1
-      call cir2ld ('default_polavg.circe', '*', 500D0, ierror)
-      if (ierror .lt. 0) stop
-      write (*, '(A7,2(X,A4),2(X,A10))')
-     $     '#', 'pdg1', 'pdg2', 'x1', 'x2'
-      do 10 n = 1, nevent
-        call cir2ch (p1, h1, p2, h2, random)
-        call cir2gn (p1, h1, p2, h2, x1, x2, random)
-        write (*, '(I7,2(X,I4),2(X,F10.8))') n, p1, p2, x1, x2
- 10   continue
-      end
+  program demo3
+    use kinds
+    use circe2
+    implicit none
+    integer :: p1, h1, p2, h2, n, nevent, ierror
+    real(kind=double) :: x1, x2
+    external random
+    nevent = 20
+    ierror = 1
+    call cir2ld ('default_polavg.circe', '*', 500D0, ierror)
+    if (ierror .lt. 0) stop
+    write (*, '(A7,2(1X,A4),2(1X,A10))') &
+         '#', 'pdg1', 'pdg2', 'x1', 'x2'
+    do n = 1, nevent
+      call cir2ch (p1, h1, p2, h2, random)
+      call cir2gn (p1, h1, p2, h2, x1, x2, random)
+      write (*, '(I7,2(1X,I4),2(1X,F10.8))') n, p1, p2, x1, x2
+    end do
+  end program demo3
 \end{alltt}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -1258,82 +1263,87 @@ or helicities. As an example, we generate a sample of two photon
 events with~$L=0$. The first approach generates the two channels~$++$ and~$--$
 sequentially:
 \begin{alltt}\small
-      program demo4
-      implicit none
-      double precision x1, x2, lumipp, lumimm, cir2lm
-      integer n, nevent, npp, nmm, ierror
-      external random, cir2lm
-      nevent = 20
-      ierror = 1
-      call cir2ld ('default.circe', '*', 500D0, ierror)
-      if (ierror .lt. 0) stop
-      lumipp = cir2lm (22,  1, 22,  1)
-      lumimm = cir2lm (22, -1, 22, -1)
-      npp = nevent * lumipp / (lumipp + lumimm)
-      nmm = nevent - npp
-      write (*, '(A7,2(X,A10))') '#', 'x1', 'x2'
-      do 10 n = 1, npp
-        call cir2gn (22,  1, 22,  1, x1, x2, random)
-        write (*, '(I7,2(X,F10.8))') n, x1, x2
- 10   continue
-      do 20 n = 1, nmm
-        call cir2gn (22, -1, 22, -1, x1, x2, random)
-        write (*, '(I7,2(X,F10.8))') n, x1, x2
- 20   continue
-      end
+  program demo4
+    use kinds
+    use circe2
+    implicit none
+    real(kind=double) :: x1, x2, lumipp, lumimm
+    integer :: n, nevent, npp, nmm, ierror
+    external random
+    nevent = 20
+    ierror = 1
+    call cir2ld ('default.circe', '*', 500D0, ierror)
+    if (ierror .lt. 0) stop
+    lumipp = cir2lm (22,  1, 22,  1)
+    lumimm = cir2lm (22, -1, 22, -1)
+    npp = nevent * lumipp / (lumipp + lumimm)
+    nmm = nevent - npp
+    write (*, '(A7,2(1X,A10))') '#', 'x1', 'x2'
+    do n = 1, npp
+      call cir2gn (22,  1, 22,  1, x1, x2, random)
+      write (*, '(I7,2(1X,F10.8))') n, x1, x2
+    end do
+    do n = 1, nmm
+      call cir2gn (22, -1, 22, -1, x1, x2, random)
+      write (*, '(I7,2(1X,F10.8))') n, x1, x2
+    end do
+  end program demo4
 \end{alltt}
 a second approach alternates between the two possibilities
 \begin{alltt}\small
-      program demo5
-      implicit none
-      double precision x1, x2, u, lumipp, lumimm, cir2lm
-      integer n, nevent, ierror
-      external random, cir2lm
-      nevent = 20
-      ierror = 1
-      call cir2ld ('default.circe', '*', 500D0, ierror)
-      if (ierror .lt. 0) stop
-      lumipp = cir2lm (22,  1, 22,  1)
-      lumimm = cir2lm (22, -1, 22, -1)
-      write (*, '(A7,2(X,A10))') '#', 'x1', 'x2'
-      do 10 n = 1, nevent
-        call random (u)
-        if (u * (lumipp + lumimm) .lt. lumipp) then
-          call cir2gn (22,  1, 22,  1, x1, x2, random)
-        else
-          call cir2gn (22, -1, 22, -1, x1, x2, random)
-        endif
-        write (*, '(I7,2(X,F10.8))') n, x1, x2
- 10   continue
-      end
+  program demo5
+    use kinds
+    use circe2
+    implicit none    
+    real(kind=double) :: x1, x2, u, lumipp, lumimm
+    integer :: n, nevent, ierror
+    external random
+    nevent = 20
+    ierror = 1
+    call cir2ld ('default.circe', '*', 500D0, ierror)
+    if (ierror .lt. 0) stop
+    lumipp = cir2lm (22,  1, 22,  1)
+    lumimm = cir2lm (22, -1, 22, -1)
+    write (*, '(A7,2(1X,A10))') '#', 'x1', 'x2'
+    do n = 1, nevent
+      call random (u)
+      if (u * (lumipp + lumimm) .lt. lumipp) then
+        call cir2gn (22,  1, 22,  1, x1, x2, random)
+      else
+        call cir2gn (22, -1, 22, -1, x1, x2, random)
+      endif
+      write (*, '(I7,2(1X,F10.8))') n, x1, x2
+    end do
+  end program demo5
 \end{alltt}
 finally, the third approach uses rejection to select the desired
 flavors and helicities
 \begin{alltt}\small
-      program demo6
-      implicit none
-      integer p1, h1, p2, h2, n, nevent, ierror
-      double precision x1, x2
-      external random
-      nevent = 20
-      ierror = 1
-      call cir2ld ('default.circe', '*', 500D0, ierror)
-      if (ierror .lt. 0) stop
-      write (*, '(A7,2(X,A10))') '#', 'x1', 'x2'
-      n = 0
- 10   continue
-        call cir2ch (p1, h1, p2, h2, random)
-        call cir2gn (p1, h1, p2, h2, x1, x2, random)
-        if ((p1 .eq. 22) .and. (p2 .eq. 22) .and.
-     $      (((h1 .eq.  1) .and. (h2 .eq.  1)) .or.
-     $       ((h1 .eq. -1) .and. (h2 .eq. -1)))) then
-          n = n + 1
-          write (*, '(I7,2(X,F10.8))') n, x1, x2
-        end if
-        if (n .lt. nevent) then
-          goto 10
-        end if
-      end
+  program demo6
+    use kinds
+    use circe2
+    implicit none
+    integer :: p1, h1, p2, h2, n, nevent, ierror
+    real(kind=double) :: x1, x2
+    external random
+    nevent = 20
+    ierror = 1
+    call cir2ld ('default.circe', '*', 500D0, ierror)
+    if (ierror .lt. 0) stop
+    write (*, '(A7,2(1X,A10))') '#', 'x1', 'x2'
+    n = 0
+    do
+      call cir2ch (p1, h1, p2, h2, random)
+      call cir2gn (p1, h1, p2, h2, x1, x2, random)
+      if ((p1 .eq. 22) .and. (p2 .eq. 22) .and.  &
+         (((h1 .eq.  1) .and. (h2 .eq.  1)) .or. &
+         ((h1 .eq. -1) .and. (h2 .eq. -1)))) then
+        n = n + 1
+        write (*, '(I7,2(1X,F10.8))') n, x1, x2
+      end if
+      if (n .ge. nevent) exit
+    end do
+  end program demo6
 \end{alltt}
 All generated distributions are equivalent, but the chosen
 subsequences of random numbers will be different.  It depends on the
@@ -1353,72 +1363,78 @@ with~$D$ is more rapidly varying than~$D$ itself.
 Depending on the beam descriptions, these distributions are available
 either for fixed helicities 
 \begin{alltt}\small
-      program demo7
-      implicit none
-      integer n, nevent, ierror
-      double precision x1, x2, w, cir2dn
-      nevent = 20
-      ierror = 1
-      call cir2ld ('default.circe', '*', 500D0, ierror)
-      if (ierror .lt. 0) stop
-      write (*, '(A7,3(X,A10))') '#', 'x1', 'x2', 'weight'
-      do 10 n = 1, nevent
-        call random (x1)
-        call random (x2)
-        w = cir2dn (22, 1, 22, 1, x1, x2)
-        write (*, '(I7,2(X,F10.8),X,E10.4)') n, x1, x2, w
- 10   continue
-      end
+  program demo7
+    use kinds
+    use circe2
+    implicit none
+    integer :: n, nevent, ierror
+    real(kind=double) :: x1, x2, w
+    nevent = 20
+    ierror = 1
+    call cir2ld ('default.circe', '*', 500D0, ierror)
+    if (ierror .lt. 0) stop
+    write (*, '(A7,3(1X,A10))') '#', 'x1', 'x2', 'weight'
+    do n = 1, nevent
+      call random (x1)
+      call random (x2)
+      w = cir2dn (22, 1, 22, 1, x1, x2)
+      write (*, '(I7,2(1X,F10.8),1X,E10.4)') n, x1, x2, w
+    end do
+  end program demo7
 \end{alltt}
 or summed over all helicities if the beam description is
 polarization averaged:
 \begin{alltt}\small
-      program demo8
-      implicit none
-      integer n, nevent, ierror
-      double precision x1, x2, w, cir2dn
-      nevent = 20
-      ierror = 1
-      call cir2ld ('default_polavg.circe', '*', 500D0, ierror)
-      if (ierror .lt. 0) stop
-      write (*, '(A7,3(X,A10))') '#', 'x1', 'x2', 'weight'
-      do 10 n = 1, nevent
-        call random (x1)
-        call random (x2)
-        w = cir2dn (22, 0, 22, 0, x1, x2)
-        write (*, '(I7,2(X,F10.8),X,E10.4)') n, x1, x2, w
- 10   continue
-      end
+  program demo8
+    use kinds   
+    use circe2
+    implicit none
+    integer n, nevent, ierror
+    real(kind=double) :: x1, x2, w
+    nevent = 20
+    ierror = 1
+    call cir2ld ('default_polavg.circe', '*', 500D0, ierror)
+    if (ierror .lt. 0) stop
+    write (*, '(A7,3(1X,A10))') '#', 'x1', 'x2', 'weight'
+    do n = 1, nevent
+      call random (x1)
+      call random (x2)
+      w = cir2dn (22, 0, 22, 0, x1, x2)
+      write (*, '(I7,2(1X,F10.8),1X,E10.4)') n, x1, x2, w
+    end do
+  end program demo8
 \end{alltt}
 If the beam description is not polarization averaged, the application
 can perform the averaging itself (note that each distribution is
 normalized):
 \begin{alltt}\small
-      program demo9
-      implicit none
-      integer n, nevent, ierror
-      double precision x1, x2, w, cir2dn, cir2lm
-      double precision lumi, lumipp, lumimp, lumipm, lumimm
-      nevent = 20
-      ierror = 1
-      call cir2ld ('default.circe', '*', 500D0, ierror)
-      if (ierror .lt. 0) stop
-      lumipp = cir2lm (22,  1, 22,  1)
-      lumipm = cir2lm (22,  1, 22, -1)
-      lumimp = cir2lm (22, -1, 22,  1)
-      lumimm = cir2lm (22, -1, 22, -1)
-      lumi = lumipp + lumimp + lumipm + lumimm
-      write (*, '(A7,3(X,A10))') '#', 'x1', 'x2', 'weight'
-      do 10 n = 1, nevent
-        call random (x1)
-        call random (x2)
-        w = (   lumipp * cir2dn (22,  1, 22,  1, x1, x2)
-     $        + lumipm * cir2dn (22,  1, 22, -1, x1, x2)
-     $        + lumimp * cir2dn (22, -1, 22,  1, x1, x2)
-     $        + lumimm * cir2dn (22, -1, 22, -1, x1, x2)) / lumi
-        write (*, '(I7,2(X,F10.8),X,E10.4)') n, x1, x2, w
- 10   continue
-      end
+  program demo9
+    use kinds
+    use circe2
+    implicit none
+    integer :: n, nevent, ierror
+    real(kind=double) :: x1, x2, w
+    real(kind=double) :: lumi, lumipp, lumimp, lumipm, lumimm
+    nevent = 20
+    ierror = 1
+    call cir2ld ('default.circe', '*', 500D0, ierror)
+    if (ierror .lt. 0) stop
+    lumipp = cir2lm (22,  1, 22,  1)
+    lumipm = cir2lm (22,  1, 22, -1)
+    lumimp = cir2lm (22, -1, 22,  1)
+    lumimm = cir2lm (22, -1, 22, -1)
+    lumi = lumipp + lumimp + lumipm + lumimm
+    write (*, '(A7,3(1X,A10))') '#', 'x1', 'x2', 'weight'
+    do n = 1, nevent
+      call random (x1)
+      call random (x2)
+      w = (   lumipp * cir2dn (22,  1, 22,  1, x1, x2) &
+           + lumipm * cir2dn (22,  1, 22, -1, x1, x2)  & 
+           + lumimp * cir2dn (22, -1, 22,  1, x1, x2)  &
+           + lumimm * cir2dn (22, -1, 22, -1, x1, x2)) / lumi
+      write (*, '(I7,2(1X,F10.8),1X,E10.4)') n, x1, x2, w
+    end do
+  end program demo9
 \end{alltt}
 The results produced by the preceeding pair of examples will differ
 point-by-point, because the
@@ -1756,30 +1772,31 @@ though the density itself is integrable.
     \item biasing doesn't appear to work as well as fences
   \end{itemize}
 \end{dubious}
-%%% \begin{figure}
-%%%   \begin{center}
-%%% %BEGIN IMAGE
-%%%     \begin{empgraph}(50,40)
-%%%       pickup pencircle scaled 1.0pt;
-%%%       setrange (0, 0, 1, 0.8);
-%%%       autogrid (otick.bot,);
-%%%       frame.bot;
-%%%       path p;
-%%%       for x = 0.001 step 0.01 until 0.9:
-%%%         augment.p (x, 0.2 * (x ** (-0.2)) + 0.001 / ((x - 0.7)**2 + 0.003));
-%%%       endfor
-%%%       gdraw p;
-%%%       glabel.top (btex $\epsilon$ etex, (0.02, 0.02));
-%%%       glabel.top (btex $\hat y$ etex, (0.4, 0.02));
-%%%       glabel.lft (btex $w(y)$ etex, (-0.02, 0.7));
-%%%     \end{empgraph}
-%%% %END IMAGE
-%%% %HEVEA\imageflush
-%%%   \end{center}
-%%%   \caption{\label{fig:sample-distribution}%
-%%%     Distribution with both an integrable singularity $\propto x^{-0.2}$
-%%%     and a peak at finite~$x\approx 0.7$.}
-%%% \end{figure}
+\begin{figure}
+  \begin{center}
+%%%BEGIN IMAGE
+%%    \begin{empgraph}(50,40)
+%%      pickup pencircle scaled 1.0pt;
+%%      setrange (0, 0, 1, 0.8);
+%%      autogrid (otick.bot,);
+%%      frame.bot;
+%%      path p;
+%%      for x = 0.001 step 0.01 until 0.9:
+%%        augment.p (x, 0.2 * (x ** (-0.2)) + 0.001 / ((x - 0.7)**2 + 0.003));
+%%      endfor
+%%      gdraw p;
+%%      glabel.top (btex $\epsilon$ etex, (0.02, 0.02));
+%%      glabel.top (btex $\hat y$ etex, (0.4, 0.02));
+%%      glabel.lft (btex $w(y)$ etex, (-0.02, 0.7));
+%%    \end{empgraph}
+     \includegraphics[width=.6\textwidth]{circe2pics2.png}
+%%%END IMAGE
+%%%HEVEA\imageflush
+  \end{center}
+  \caption{\label{fig:sample-distribution}%
+    Distribution with both an integrable singularity $\propto x^{-0.2}$
+    and a peak at finite~$x\approx 0.7$.}
+\end{figure}
 The distributions that we want to describe can contain integrable
 singularities and $\delta$-distributions at the endpoints.  Since
 there is always a finite resolution, both contributions can be
@@ -2241,9 +2258,9 @@ effects, only 20~bins are used in each direction, but
 figure~\ref{fig:z/20/m} will show that adequate results are achievable
 in this case too.
 
-%%% \begin{figure}
-%%%   \begin{center}
-%%% %BEGIN IMAGE
+\begin{figure}
+  \begin{center}
+%BEGIN IMAGE
 %%%     \begin{empgraph}(55,40)
 %%%       vardef smin (expr a, b) = if a Sleq b: a else: b fi enddef;
 %%%       setrange (0, 0, 1, 4);
@@ -2284,17 +2301,18 @@ in this case too.
 %%%     \end{empgraph}
 %%% %END IMAGE
 %%% %HEVEA\imageflush
-%%%   \end{center}
-%%%   \caption{\label{fig:z/20/q}%
-%%%     Using 20~equidistant bins in each direction. In the region blown
-%%%     up on the right neither 20~equidistant bins nor 50~equidistant bin
-%%%     produce enough events to be visible.  In this and all following
-%%%     plots, the simulated input data is shown as a filled histogram,
-%%%     and the \KirkeTwo/ parametrization is shown as a solid line.}
-%%% \end{figure}
+    \includegraphics[width=.95\textwidth]{circe2pics3.png}
+  \end{center}
+  \caption{\label{fig:z/20/q}%
+    Using 20~equidistant bins in each direction. In the region blown
+    up on the right neither 20~equidistant bins nor 50~equidistant bin
+    produce enough events to be visible.  In this and all following
+    plots, the simulated input data is shown as a filled histogram,
+    and the \KirkeTwo/ parametrization is shown as a solid line.}
+\end{figure}
 
-%%% \begin{figure}
-%%%   \begin{center}
+\begin{figure}
+  \begin{center}
 %%% %BEGIN IMAGE
 %%%     \begin{empgraph}(55,40)
 %%%       vardef smin (expr a, b) = if a Sleq b: a else: b fi enddef;
@@ -2331,15 +2349,16 @@ in this case too.
 %%%       pickup pencircle scaled 0.5pt;
 %%%       glabel.bot (btex $x_{1}$ etex, OUT);
 %%%     \end{empgraph}
-%%% %END IMAGE
-%%% %HEVEA\imageflush
-%%%   \end{center}
-%%%   \caption{\label{fig:x/20/q}%
-%%%     Using 20~bins, both equidistant~(left) and adapted~(right).}
-%%% \end{figure}
+    \includegraphics[width=.95\textwidth]{circe2pics4.png}
+%END IMAGE
+%HEVEA\imageflush
+  \end{center}
+  \caption{\label{fig:x/20/q}%
+    Using 20~bins, both equidistant~(left) and adapted~(right).}
+\end{figure}
 
-%%% \begin{figure}
-%%%   \begin{center}
+\begin{figure}
+  \begin{center}
 %%% %BEGIN IMAGE
 %%%     \begin{empgraph}(55,40)
 %%%       vardef smin (expr a, b) = if a Sleq b: a else: b fi enddef;
@@ -2379,17 +2398,18 @@ in this case too.
 %%%       gdraw circe[1];
 %%%       glabel.bot (btex $z=\sqrt{x_{1}x_{2}}\times10^{4}$ etex, OUT);
 %%%     \end{empgraph}
+    \includegraphics[width=.95\textwidth]{circe2pics5.png}
 %%% %END IMAGE
 %%% %HEVEA\imageflush
-%%%   \end{center}
-%%%   \caption{\label{fig:z/20}%
-%%%     20~adapted bins.  In the blow-up, the 50~bin result is shown for
-%%%     illustration as a thin line, while the 20~bin result remains
-%%%     almost invisible.}
-%%% \end{figure}
-%%% 
-%%% \begin{figure}
-%%%   \begin{center}
+  \end{center}
+  \caption{\label{fig:z/20}%
+    20~adapted bins.  In the blow-up, the 50~bin result is shown for
+    illustration as a thin line, while the 20~bin result remains
+    almost invisible.}
+\end{figure}
+
+\begin{figure}
+  \begin{center}
 %%% %BEGIN IMAGE
 %%%     \begin{empgraph}(55,40)
 %%%       vardef smin (expr a, b) = if a Sleq b: a else: b fi enddef;
@@ -2426,16 +2446,17 @@ in this case too.
 %%%       pickup pencircle scaled 0.5pt;
 %%%       glabel.bot (btex $z=\sqrt{x_{1}x_{2}}\times10^{4}$ etex, OUT);
 %%%     \end{empgraph}
+    \includegraphics[width=.95\textwidth]{circe2pics6.png}
 %%% %END IMAGE
 %%% %HEVEA\imageflush
-%%%   \end{center}
-%%%   \caption{\label{fig:z/20/qm}%
-%%%     Using 20~equidistant bins in each direction with a power map
-%%%     appropriate for~$x^{-0.67}$.}
-%%% \end{figure}
-%%% 
-%%% \begin{figure}
-%%%   \begin{center}
+  \end{center}
+  \caption{\label{fig:z/20/qm}%
+    Using 20~equidistant bins in each direction with a power map
+    appropriate for~$x^{-0.67}$.}
+\end{figure}
+
+\begin{figure}
+  \begin{center}
 %%% %BEGIN IMAGE
 %%%     \begin{empgraph}(55,40)
 %%%       vardef smin (expr a, b) = if a Sleq b: a else: b fi enddef;
@@ -2472,16 +2493,17 @@ in this case too.
 %%%       pickup pencircle scaled 0.5pt;
 %%%       glabel.bot (btex $x_{1}$ etex, OUT);
 %%%     \end{empgraph}
+    \includegraphics[width=.95\textwidth]{circe2pics7.png}
 %%% %END IMAGE
 %%% %HEVEA\imageflush
-%%%   \end{center}
-%%%   \caption{\label{fig:x/20/m}%
-%%%     Using 20~bins with a power map appropriate for~$x^{-0.67}$,
-%%%     equidistant~(left) and adapted~(right).}
-%%% \end{figure}
-%%% 
-%%% \begin{figure}
-%%%   \begin{center}
+  \end{center}
+  \caption{\label{fig:x/20/m}%
+    Using 20~bins with a power map appropriate for~$x^{-0.67}$,
+    equidistant~(left) and adapted~(right).}
+\end{figure}
+
+\begin{figure}
+  \begin{center}
 %%% %BEGIN IMAGE
 %%%     \begin{empgraph}(55,40)
 %%%       vardef smin (expr a, b) = if a Sleq b: a else: b fi enddef;
@@ -2518,16 +2540,17 @@ in this case too.
 %%%       pickup pencircle scaled 0.5pt;
 %%%       glabel.bot (btex $z=\sqrt{x_{1}x_{2}}\times10^{4}$ etex, OUT);
 %%%     \end{empgraph}
+    \includegraphics[width=.95\textwidth]{circe2pics8.png}
 %%% %END IMAGE
 %%% %HEVEA\imageflush
-%%%   \end{center}
-%%%   \caption{\label{fig:z/20/m}%
-%%%     Using 20~adapted bins in each direction with a power map
-%%%     appropriate for~$x^{-0.67}$.}
-%%% \end{figure}
-%%% 
-%%% \begin{figure}
-%%%   \begin{center}
+  \end{center}
+  \caption{\label{fig:z/20/m}%
+    Using 20~adapted bins in each direction with a power map
+    appropriate for~$x^{-0.67}$.}
+\end{figure}
+
+\begin{figure}
+  \begin{center}
 %%% %BEGIN IMAGE
 %%%     \begin{empgraph}(55,40)
 %%%       vardef smin (expr a, b) = if a Sleq b: a else: b fi enddef;
@@ -2564,13 +2587,14 @@ in this case too.
 %%%       pickup pencircle scaled 0.5pt;
 %%%       glabel.bot (btex $z=\sqrt{x_{1}x_{2}}\times10^{4}$ etex, OUT);
 %%%     \end{empgraph}
+    \includegraphics[width=.95\textwidth]{circe2pics9.png}
 %%% %END IMAGE
 %%% %HEVEA\imageflush
-%%%   \end{center}
-%%%   \caption{\label{fig:z/20/m2}%
-%%%     Using $4+16$~adapted bins in each direction with a power map
-%%%     appropriate for~$x^{-0.67}$ in the 4~bins below~$x<0.05$.}
-%%% \end{figure}
+  \end{center}
+  \caption{\label{fig:z/20/m2}%
+    Using $4+16$~adapted bins in each direction with a power map
+    appropriate for~$x^{-0.67}$ in the 4~bins below~$x<0.05$.}
+\end{figure}
 
 In figure~\ref{fig:z/20/q}, 20~equidistant bins in each direction
 \begin{alltt}
@@ -2733,7 +2757,7 @@ distribution.
   \end{center}
   \caption{\label{tab:fileformat}
     File format.  The variable input lines (except comments) are
-    designed to be readable by FORTRAN77 `list-directed' input.  The
+    designed to be readable by FORTRAN90 `list-directed' input.  The
     files are generated from simulation data with the program
     \texttt{circe2\_tool} and are read transparently by the procedure
     \texttt{cir2ld}. The format is documented here only for

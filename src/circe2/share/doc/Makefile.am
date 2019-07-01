@@ -41,9 +41,17 @@ endif
 LATEX_STYLES = \
     emp.sty noweb.sty thohacks.sty thopp.sty ocamlweb.sty
 
+TEX_FLAGS = "$$TEXINPUTS:$(top_srcdir)/share/doc"
+MP_FLAGS  = "$$MPINPUTS:$(top_srcdir)/share/doc"
+
+CIRCE2PICS = circe2pics1.png circe2pics2.png circe2pics3.png \
+	circe2pics4.png circe2pics5.png circe2pics6.png \
+	circe2pics7.png circe2pics8.png circe2pics9.png
+
 EXTRA_DIST = \
   tex-comments.sh \
-  $(LATEX_STYLES)
+  $(LATEX_STYLES) \
+  $(CIRCE2PICS)
 
 if DISTRIBUTION
 dist_doc_DATA = $(PDFS)
@@ -80,8 +88,6 @@ tex-comments: tex-comments.sh
 
 SUFFIXES = .tex .pdf .ml .implementation .mli .interface .nw .dvi .eps .ps
 
-MPOST_LATEX = TEX=$(LATEX) $(MPOST)
-
 if !OCAMLWEB_AVAILABLE
 circe2.pdf:
 else
@@ -93,15 +99,26 @@ if DISTRIBUTION
 if PDFLATEX_AVAILABLE
 if MPOST_AVAILABLE
 if SUPP_PDF_AVAILABLE
+if MAKEINDEX_AVAILABLE
 .tex.pdf:
-	-pdflatex $<
-	makeindex -o $*.ind $*.idx
-	-test -r $*.mp && $(MPOST_LATEX) $*
-	-test -r $*pics.mp && $(MPOST) $*pics
-	pdflatex $<
+	-TEXINPUTS=$(TEX_FLAGS) $(PDFLATEX) $<
+	-$(MAKEINDEX) -o $*.ind $*.idx
+	-test -r $*.mp && TEX=$(LATEX) TEXINPUTS=$(TEX_FLAGS) $(MPOST) $*
+	-test -r $*pics.mp && MPINPUTS=$(MP_FLAGS) $(MPOST) $*pics
+	TEXINPUTS=$(TEX_FLAGS) $(PDFLATEX) $<
 	if grep -s 'Rerun to get cross-references right.' $*.log; then \
-	  pdflatex $<; \
+	   TEXINPUTS=$(TEX_FLAGS) $(PDFLATEX) $<; \
 	fi
+else
+.tex.pdf:
+	-TEXINPUTS=$(TEX_FLAGS) $(PDFLATEX) $<
+	-test -r $*.mp && TEX=$(LATEX) TEXINPUTS=$(TEX_FLAGS) $(MPOST) $*
+	-test -r $*pics.mp && MPINPUTS=$(MP_FLAGS) $(MPOST) $*pics
+	TEXINPUTS=$(TEX_FLAGS) $(PDFLATEX) $<
+	if grep -s 'Rerun to get cross-references right.' $*.log; then \
+	   TEXINPUTS=$(TEX_FLAGS) $(PDFLATEX) $<; \
+	fi
+endif
 endif SUPP_PDF_AVAILABLE
 endif MPOST_AVAILABLE
 endif PDFLATEX_AVAILABLE
@@ -174,9 +191,6 @@ install-data-hook:
 uninstall-hook: 
 	-rm -f $(DESTDIR)/$(datarootdir)/doc/circe2/circe2.pdf 
 endif
-
-distclean-local:
-	-test "$(srcdir)" != "." && rm -f $(LATEX_STYLES)
 
 ########################################################################
 ## The End.

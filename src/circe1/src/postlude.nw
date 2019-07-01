@@ -23,7 +23,7 @@ of them.
 \nowebchunks                                                   %!MANUAL%
 \InputIfFileExists{\jobname.ind}{}{}                           %!MANUAL%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%!MANUAL%                    
-%%% \bibliography{circe}
+%%% \bibliography{circe1}
 \begin{thebibliography}{10}
 
 \bibitem{Murayama/Peskin:1996:LC_review}
@@ -211,10 +211,7 @@ subroutine is provided for this purpose and updates some
 internal parameters as well.\par
 With features from the current Fortran standard (Fortran90), I could
 have kept the last two functions and the \texttt{common} block
-private. But since Fortran90 has only
-been adopted by a small fraction of the high energy physics community,
-I have decided to remain in the confines of Fortran77 (except for the
-ubiquitous \texttt{implicit none}).\par
+private.\par
 Application programs wishing to remain compatible with future versions
 of \Kirke/ must not use \texttt{common} blocks or procedures starting
 with \texttt{circe} or \texttt{girce}.
@@ -225,30 +222,13 @@ Information about updates can be obtained
 \begin{itemize}
   \item on the World Wide Web:
     \begin{itemize}
-      \item[]\verb+http://crunch.ikp.physik.th-darmstadt.de/nlc/beam.html+
-    \end{itemize}
-  \item by internet FTP:
-    \begin{itemize}
-      \item[] host: \verb+crunch.ikp.physik.th-darmstadt.de+
-      \item[] user: \verb+anonymous+
-      \item[] password: your email address
-      \item[] directory: \verb+pub/ohl/circe+
-    \end{itemize}
-  \item from mailing lists:
-    \begin{itemize}
-      \item[] \verb+circe-announce@crunch.ikp.physik.th-darmstadt.de+
-      \item[] \verb+circe-bugs@crunch.ikp.physik.th-darmstadt.de+
-      \item[] \verb+circe-discuss@crunch.ikp.physik.th-darmstadt.de+
-    \end{itemize}
-    Subscriptions are available from
-    \begin{itemize}
-      \item[] \verb+majordomo@crunch.ikp.physik.th-darmstadt.de+
+      \item[]\verb+http:http://projects.hepforge.org/whizard/+
     \end{itemize}
 \end{itemize}
 Contributions of results from other simulation programs and updated
 accelerator designs are welcome at
 \begin{itemize}
-  \item[] \verb+Thorsten.Ohl@Physik.TH-Darmstadt.de+
+  \item[] \verb+ohl@physik.uni-wuerzburg.de+
 \end{itemize}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \end{RCS}                                                      %!MANUAL%

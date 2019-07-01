@@ -1,4 +1,4 @@
-! WHIZARD 2.0.5 Tue May 10 2011
+! WHIZARD 2.0.6 Wed Dec 7 2011
 ! 
 ! Copyright (C) 1999-2011 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -311,7 +311,7 @@ contains
   end function token_get_real
   
   function token_get_cmplx (token) result (cval)
-    real(default) :: cval
+    complex(default) :: cval
     type(token_t), intent(in) :: token
     if (associated (token%cval)) then
        cval = token%cval
@@ -934,8 +934,8 @@ contains
          pn_sub_prev => pn_sub
          pn_sub => pn_sub%next
       end do
-      if (any (parse_node_get_rule_key (pn) == rule_key)) then
-         if (parse_node_get_n_sub (pn) == 1) then
+      if (parse_node_get_n_sub (pn) == 1) then
+         if (matches (parse_node_get_rule_key (pn), rule_key)) then
             pn_tmp => pn
             pn => pn%sub_first
             if (associated (pn_prev)) then
@@ -955,7 +955,18 @@ contains
          end if
       end if
     end subroutine parse_node_reduce
- end subroutine parse_tree_reduce
+    function matches (key, key_list) result (flag)
+      logical :: flag
+      type(string_t), intent(in) :: key
+      type(string_t), dimension(:), intent(in) :: key_list
+      integer :: i
+      flag = .true.
+      do i = 1, size (key_list)
+         if (key == key_list(i))  return
+      end do
+      flag = .false.
+    end function matches
+  end subroutine parse_tree_reduce
 
   function parse_tree_get_process_ptr (parse_tree, process) result (node)
     type(parse_node_t), pointer :: node

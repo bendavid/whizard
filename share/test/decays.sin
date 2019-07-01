@@ -7,6 +7,9 @@ compile
 !---------------------------------------------
 me = 0
 
+!!! Tests should be run single-threaded 
+openmp_num_threads = 1
+
 integrate (decays_zee) { iterations = 1:100 }
 integrate (decays_zuu) { iterations = 1:100 }
 

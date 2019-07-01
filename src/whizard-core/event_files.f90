@@ -1,4 +1,4 @@
-! WHIZARD 2.0.5 Tue May 10 2011
+! WHIZARD 2.0.6 Wed Dec 7 2011
 ! 
 ! Copyright (C) 1999-2011 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -33,6 +33,7 @@ module event_files
   use file_utils !NODEP!
   use diagnostics !NODEP!
   use variables
+  use expressions
   use flavors
   use event_formats
   use processes
@@ -64,10 +65,12 @@ module event_files
   integer, parameter, public :: FMT_HEPMC = 10
   integer, parameter, public :: FMT_LHEF = 20
   integer, parameter, public :: FMT_LHA = 21
+  integer, parameter, public :: FMT_LHA_VERB = 29
   integer, parameter, public :: FMT_HEPEVT = 30
   integer, parameter, public :: FMT_ASCII_SHORT = 31
   integer, parameter, public :: FMT_ASCII_LONG = 32
   integer, parameter, public :: FMT_ATHENA = 33
+  integer, parameter, public :: FMT_HEPEVT_VERB = 39
   integer, parameter, public :: FMT_STDHEP = 40
   integer, parameter, public :: FMT_STDHEP_UP = 41
 
@@ -234,6 +237,10 @@ contains
             (var_list, var_str ("$extension_stdhep"))
     case (FMT_STDHEP_UP);   current%name = basename // "." // var_list_get_sval &
             (var_list, var_str ("$extension_stdhep_up"))
+    case (FMT_HEPEVT_VERB); current%name = basename // "." // var_list_get_sval &
+            (var_list, var_str ("$extension_hepevt_verbose"))
+    case (FMT_LHA_VERB);    current%name = basename // "." // var_list_get_sval &
+            (var_list, var_str ("$extension_lha_verbose"))
     case default;           current%name = basename // "." // var_list_get_sval &
             (var_list, var_str ("$extension_default"))
     end select          
@@ -415,14 +422,40 @@ contains
           call stdhep_init (char(current%name), "WHIZARD event sample", &
                n_events_expected)     
           call stdhep_write (STDHEP_HEPRUP)
-        end select
+       case (FMT_HEPEVT_VERB)
+          call msg_message ("Writing events in verbose HEPEVT format to file '" &
+               // char (current%name) // "'")
+          current%unit = free_unit ()
+          open (unit=current%unit, file=char(current%name), &
+               action="write", status="replace")
+       case (FMT_LHA_VERB)
+          call msg_message ("Writing events in verbose HEPRUP/HEPEUP format to file '" &
+               // char (current%name) // "'")
+          call heprup_init &
+               (flavor_get_pdg (current%beam_flv), &
+                current%beam_energy, &
+                n_processes = current%n_processes, &
+                unweighted = current%unweighted, &
+                negative_weights = current%negative_weights)
+          do i = 1, n_proc
+             call heprup_set_process_parameters (i = i, process_id = &
+                 i, cross_section = integral(i), error = error(i))
+          end do               
+          current%unit = free_unit ()
+          open (unit=current%unit, file=char(current%name), &
+               action="write", status="replace")
+          call heprup_write_verbose (current%unit)
+       end select
        current => current%next
     end do
   end subroutine event_file_list_open
 
-  subroutine event_file_list_write_event (event_file_list, event, i_evt)
+  subroutine event_file_list_write_event &
+       (event_file_list, event, integral_sum, error_sum, analysis_expr, i_evt)
     type(event_file_list_t), intent(in), target :: event_file_list
     type(event_t), intent(in), target :: event
+    real(default), intent(in) :: integral_sum, error_sum
+    type(eval_tree_t), intent(in) :: analysis_expr
     integer, intent(in) :: i_evt
     type(file_spec_t), pointer :: current
     type(hepmc_event_t) :: hepmc_event
@@ -430,14 +463,17 @@ contains
     do while (associated (current))
        select case (current%format)
        case (FMT_DEFAULT)
-          call event_write (event, current%unit, verbose=.false.)
+          call event_write (event, unit=current%unit, verbose=.false.)
        case (FMT_DEBUG)
-          call event_write (event, current%unit, verbose=.true.)
+          call event_write (event, analysis_expr=analysis_expr, &
+               unit=current%unit, verbose=.true.)
        case (FMT_HEPMC)
           if (hepmc_is_available ()) then
              call hepmc_event_init (hepmc_event, event_id=i_evt)
+             call hepmc_event_set_cross_section (hepmc_event, &
+                  integral_sum, error_sum)
              call event_write_to_hepmc (event, hepmc_event)
-             ! call hepmc_event_print (hepmc_event)
+            ! call hepmc_event_print (hepmc_event)
              call hepmc_iostream_write_event (current%iostream, hepmc_event)
              call hepmc_event_final (hepmc_event)
           end if
@@ -465,6 +501,12 @@ contains
        case (FMT_STDHEP_UP)
           call event_write_to_hepeup (event)
           call stdhep_write (STDHEP_HEPEUP)
+       case (FMT_HEPEVT_VERB)
+          call event_write_to_hepevt (event)
+          call hepevt_write_verbose (current%unit)
+       case (FMT_LHA_VERB)
+          call event_write_to_hepeup (event)
+          call hepeup_write_verbose (current%unit)
        end select
        current => current%next
     end do
@@ -521,6 +563,10 @@ contains
        fmt = FMT_STDHEP
     case ("stdhep_up")
        fmt = FMT_STDHEP_UP
+    case ("hepevt_verbose")
+       fmt = FMT_HEPEVT_VERB
+    case ("lha_verbose")
+       fmt = FMT_LHA_VERB
     case default
        fmt = FMT_NONE
     end select

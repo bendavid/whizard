@@ -213,6 +213,10 @@ particle ETA0 221
   spin 0
   name eta0
   tex_name "\eta^0"
+particle OMEGA 223
+  spin 1
+  name omega
+  tex_name "\omega"
 
 # Strange Mesons
 particle K0 311
@@ -243,6 +247,14 @@ particle KSTARP 323
   anti kstarm "K*-"
   tex_name "K^{*+}"
   tex_anti "K^{*-}"
+particle ETAPRIME 331
+  spin 0
+  name etaprime
+  tex_name "\eta'"
+particle phi 333
+  spin 1
+  name phi
+  tex_name "\phi"
 
 # Charm Mesons
 particle DP 411
@@ -279,6 +291,64 @@ particle DSTARsP 433
   anti dstarsm "D*_s-"
   tex_name "D_s^{*+}"
   tex_anti "D_s^{*-}"
+particle ETAC 441
+  spin 0 charge 0
+  name etac "eta_c"
+  tex_name "\eta_c"
+particle JPSI 443
+  spin 1 charge 0
+  name jpsi "J/Psi"
+  tex_name "J/\psi"
+
+# Bottom Mesons
+particle B0 511
+  spin 0
+  name b0 "B0"
+  anti bbar0 "Bbar0"
+  tex_name "B^0"
+  tex_anti "\bar{B}^0"
+particle B0 513
+  spin 1
+  name bstar0 "Bstar0"
+  anti bstarbar0 "Bstarbar0"
+  tex_name "B^{*0}"
+  tex_anti "\bar{B}^{*0}"
+particle BP 521
+  spin 0
+  name bP "B+"
+  anti bbarM "Bbar-"
+  tex_name "B^{+}"
+  tex_anti "\bar{B}^{-}"
+particle BSTARP 523
+  spin 1
+  name bstarP "Bstar+"
+  anti bstarbarM "Bstarbar-"
+  tex_name "B^{*+}"
+  tex_anti "\bar{B}^{*-}"
+particle BS0 531
+  spin 0
+  name bs0 "BS0"
+  anti bsbar0 "BSbar0"
+  tex_name "B^{0}_s"
+  tex_anti "\bar{B}^{0}_s"
+particle BSTARS0 533
+  spin 1
+  name bstars0 "BstarS0"
+  anti bstarsbar0 "BstarSbar0"
+  tex_name "B^{*0}_s"
+  tex_anti "\bar{B}^{*0}_s"
+particle BCP 541
+  spin 1
+  name bcP "Bc+"
+  anti bcbarM "Bcbar-"
+  tex_name "B^{+}_c"
+  tex_anti "\bar{B}^{-}_c"
+particle BCSTARP 543
+  spin 1
+  name bstarcP "Bstarc+"
+  anti bstarcbarM "Bstarcbar-"
+  tex_name "B^{*+}_c"
+  tex_anti "\bar{B}^{*-}_c"
 	
 # Light Baryons 
 particle PROTON 2212
@@ -359,6 +429,36 @@ particle SIGMASTARM 3114
   anti sigmabarstarp
   tex_name "\Sigma^{*-}"
   tex_anti "\bar{\Sigma}^{*+}"
+particle XIM 3312
+  spin 1/2 charge -1
+  name "xi-" xim
+  anti "xi+" xip
+  tex_name "\Xi^-"
+  tex_anti "\bar{\Xi}^+"
+particle XISTARM 3314
+  spin 3/2 charge -1
+  name "xistar-" xistarm
+  anti "xistar+" xistarp
+  tex_name "\Xi^{*-}"
+  tex_anti "\bar{\Xi}^{*+}"
+particle XI0 3322
+  spin 1/2
+  name xi0
+  anti xibar0
+  tex_name "\Xi^{0}"
+  tex_anti "\bar{\Xi}^{0}"
+particle XISTAR0 3324
+  spin 1/2
+  name xistar0
+  anti xistarbar0
+  tex_name "\Xi^{*0}"
+  tex_anti "\bar{\Xi}^{*0}"
+particle OMEGAM 3334
+  spin 3/2 charge -1
+  name "omega-" omegam
+  anti "omega+" omegap
+  tex_name "\Omega^-"
+  tex_anti "\bar{\Omega}^+"
 
 # Charm Baryons
 particle LAMBDACP 4122
@@ -396,7 +496,7 @@ particle SIGMASTARCP 4214
   name "sigmastarc+" sigmastarcp
   anti "sigmastarcbar-" sigmastarcbarm
   tex_name "\Sigma_c^{*+}"
-  tex_anti "\bar{\Sigma_c}^{*}-"
+  tex_anti "\bar{\Sigma_c}^{*-}"
 particle SIGMASTARCPP 4224
   spin 3/2 charge 2
   name "sigmastarc++" sigmastarcpp
@@ -453,24 +553,30 @@ particle OMEGASTARC0 4334
   tex_anti "\bar{\Omega_c}^{*0}"
 
 # Bottom baryons
-particle LAMBDAB 5122
-  spin 1/2
-  name lambdab lambdab0
-  anti lambdabbar lambdabbar0
-  tex_name "\Lambda_b^0"
-  tex_anti "\bar{\Lambda_b}^0"
 particle SIGMABM 5112
   spin 1/2 charge -1 
   name sigmabm "sigmab-"	
   anti sigmabbarp "sigmabbar+"
   tex_name "\Sigma_b^-"
   tex_anti "\bar{\Sigma_b}^+"
+particle LAMBDAB 5122
+  spin 1/2
+  name lambdab lambdab0
+  anti lambdabbar lambdabbar0
+  tex_name "\Lambda_b^0"
+  tex_anti "\bar{\Lambda_b}^0"
 particle SIGMASTARBM 5114
   spin 3/2 charge -1 
   name sigmastarbm "sigmastarb-"
   anti sigmastarbbarp "sigmastarbbar+"
   tex_name "\Sigma_b^{*-}"
   tex_anti "\bar{\Sigma_b}^{*+}"
+particle XIBM 5132
+  spin 1/2 charge -1
+  name "xib-" xibm
+  anti "xib+" xibp
+  tex_name "\Xi^-_b"
+  tex_anti "\bar{\Xi}^+_b"
 particle SIGMAB0 5212
   spin 1/2 charge 0
   name sigmab sigmab0
@@ -495,6 +601,42 @@ particle SIGMASTARBP 5224
   anti sigmastarbbarm "sigmastarbbar-"
   tex_name "\Sigma_b^{*+}"
   tex_anti "\bar{\Sigma_b}^{*-}"
+particle XIB0 5232
+  spin 1/2 charge 0
+  name xib0 xib
+  anti xibbar0 xibbar
+  tex_name "\Xi_b^{0}"
+  tex_anti "\bar{\Xi_b}^{0}"
+particle XIPRIMEBM 5312
+  spin 3/2 charge -1 
+  name xiprimebm "xiprimeb-"
+  anti xiprimebbarp "xiprimebbar+"
+  tex_name "\Xi'_b^{-}"
+  tex_anti "\bar{\Xi'_b}^{+}"
+particle XISTARBM 5314
+  spin 3/2 charge -1 
+  name xistarbm "xistarb-"
+  anti xistarbbarp "xistarbbar+"
+  tex_name "\Xi_b^{*-}"
+  tex_anti "\bar{\Xi_b}^{*+}"
+particle XIPRIMEB0 5322
+  spin 1/2 charge 0
+  name xiprimeb0 xiprimeb
+  anti xiprimebbar0 xiprimebbar
+  tex_name "\Xi'_b^{0}"
+  tex_anti "\bar{\Xi'_b}^{0}"
+particle XISTARB0 5324
+  spin 3/2 charge 0
+  name xistarb0 xistarb
+  anti xistarbbar0 xistarbbar
+  tex_name "\Xi_b^{*0}"
+  tex_anti "\bar{\Xi_b}^{*0}"
+particle OMEGASTARBM 5334
+  spin 3/2 charge -1
+  name omegastarbm "omegastarb-"
+  anti omegastarbbarp "omegastarbbar+"
+  tex_name "\Omega_b^{*-}"
+  tex_anti "\bar{\Omega_b}^{*+}"
 
 particle HADRON_REMNANT 90
 

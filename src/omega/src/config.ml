@@ -1,4 +1,4 @@
-(* $Id: config.ml.in 3130 2011-04-07 14:25:10Z kilian $
+(* $Id: config.ml.in 3468 2011-08-10 15:18:36Z sschmidt $
 
    Copyright (C) 1999-2011 by
 
@@ -21,7 +21,7 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
-let system_cache_dir = "/afs/desy.de/group/theorie/software/ELF64/var/cache"
+let system_cache_dir = "/data/reuter/trunk/inst/var/cache"
 let user_cache_dir = "/afs/desy.de/user/r/reuter/.whizard/var/cache"
 
 (* \begin{dubious}

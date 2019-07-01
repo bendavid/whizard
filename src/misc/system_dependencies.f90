@@ -36,46 +36,46 @@ module system_dependencies
   public
  
   ! Program version
-  character(*), parameter :: WHIZARD_VERSION = "2.0.5"
-  character(*), parameter :: WHIZARD_DATE = "May 10 2011"
+  character(*), parameter :: WHIZARD_VERSION = "2.0.6"
+  character(*), parameter :: WHIZARD_DATE = "Dec 7 2011"
 
   ! System paths
   ! These are used for testing without existing installation
   character(*), parameter :: WHIZARD_TEST_AUX_MODPATH = &
-       "/afs/desy.de/group/theorie/software/packages/whizard_elf64/build/src/misc"
+       "/data/reuter/trunk/build/src/misc"
   character(*), parameter :: WHIZARD_TEST_MODELS_MODPATH = &
-       "/afs/desy.de/group/theorie/software/packages/whizard_elf64/build/src/models"
+       "/data/reuter/trunk/build/src/models"
   character(*), parameter :: WHIZARD_TEST_OMEGA_MODPATH = &
-       "/afs/desy.de/group/theorie/software/packages/whizard_elf64/build/src/omega/src"
+       "/data/reuter/trunk/build/src/omega/src"
   character(*), parameter :: WHIZARD_TEST_CORE_MODPATH = &
-       "/afs/desy.de/group/theorie/software/packages/whizard_elf64/build/src/whizard-core"
+       "/data/reuter/trunk/build/src/whizard-core"
   character(*), parameter :: WHIZARD_TEST_CORE_LIBPATH = &
-       "/afs/desy.de/group/theorie/software/packages/whizard_elf64/build/src/whizard-core"
+       "/data/reuter/trunk/build/src/whizard-core"
   character(*), parameter :: WHIZARD_TEST_OMEGA_BINPATH = &
-       "/afs/desy.de/group/theorie/software/packages/whizard_elf64/build/src/omega/bin"
+       "/data/reuter/trunk/build/src/omega/bin"
   character(*), parameter :: WHIZARD_TEST_SRC_LIBPATH = &
-       "/afs/desy.de/group/theorie/software/packages/whizard_elf64/build/src"
+       "/data/reuter/trunk/build/src"
   character(*), parameter :: WHIZARD_TEST_HEPMC_LIBPATH = &
-       "/afs/desy.de/group/theorie/software/packages/whizard_elf64/build/src/hepmc"
+       "/data/reuter/trunk/build/src/hepmc"
   character(*), parameter :: WHIZARD_TEST_MODELPATH = &
-       "/afs/desy.de/group/theorie/software/packages/whizard_elf64/share/models"
+       "/data/reuter/trunk/share/models"
   character(*), parameter :: WHIZARD_TEST_MODELS_LIBPATH = &
-       "/afs/desy.de/group/theorie/software/packages/whizard_elf64/build/src/models"
+       "/data/reuter/trunk/build/src/models"
   character(*), parameter :: WHIZARD_TEST_SUSYPATH = &
-       "/afs/desy.de/group/theorie/software/packages/whizard_elf64/share/susy"
+       "/data/reuter/trunk/share/susy"
   character(*), parameter :: WHIZARD_TEST_GMLPATH= &
-       "/afs/desy.de/group/theorie/software/packages/whizard_elf64/build/src/gamelan"
+       "/data/reuter/trunk/build/src/gamelan"
   character(*), parameter :: WHIZARD_TEST_CUTSPATH = &
-       "/afs/desy.de/group/theorie/software/packages/whizard_elf64/share/cuts"
+       "/data/reuter/trunk/share/cuts"
   character(*), parameter :: WHIZARD_TEST_TESTDATAPATH = &
-       "/afs/desy.de/group/theorie/software/packages/whizard_elf64/share/test"
+       "/data/reuter/trunk/share/test"
   character(*), parameter :: WHIZARD_TEST_TEXPATH = ""
   character(*), parameter :: WHIZARD_TEST_CIRCE2PATH = &
-       "/afs/desy.de/group/theorie/software/packages/whizard_elf64/src/circe2/share/data"
+       "/data/reuter/trunk/src/circe2/share/data"
   character(*), parameter :: WHIZARD_TEST_BEAMSIMPATH = &
-       "/afs/desy.de/group/theorie/software/packages/whizard_elf64/share/beam-sim"
+       "/data/reuter/trunk/share/beam-sim"
   character(*), parameter :: PDF_BUILTIN_TEST_DATAPATH = &
-       "/afs/desy.de/group/theorie/software/packages/whizard_elf64/share/pdf_builtin"
+       "/data/reuter/trunk/share/pdf_builtin"
 
   ! WHIZARD-specific include flags
   character(*), parameter :: WHIZARD_TEST_INCLUDES = &
@@ -93,13 +93,13 @@ module system_dependencies
 
   ! Libtool
   character(*), parameter :: WHIZARD_LIBTOOL_TEST = &
-       "/afs/desy.de/group/theorie/software/packages/whizard_elf64/build/libtool"
+       "/data/reuter/trunk/build/libtool"
 
 
   ! System paths
   ! These are used for the installed version
   character(*), parameter :: PREFIX = &
-       "/afs/desy.de/group/theorie/software/ELF64"
+       "/data/reuter/trunk/inst"
   character(*), parameter :: EXEC_PREFIX = &
        "${prefix}"
   character(*), parameter :: BINDIR = &
@@ -195,6 +195,8 @@ module system_dependencies
        "/afs/desy.de/group/theorie/software/ELF64/share/lhapdf/PDFsets"
 
   ! Available methods for event analysis display
+  character(*), parameter :: EVENT_ANALYSIS = &
+       "yes"
   character(*), parameter :: EVENT_ANALYSIS_PS = &
        "yes"
   character(*), parameter :: EVENT_ANALYSIS_PDF = &

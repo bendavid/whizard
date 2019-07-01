@@ -1,4 +1,4 @@
-(* $Id: fusion.ml 3215 2011-05-08 16:07:40Z ohl $
+(* $Id: fusion.ml 3468 2011-08-10 15:18:36Z sschmidt $
 
    Copyright (C) 1999-2011 by
 
@@ -22,9 +22,9 @@
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
 let rcs_file = RCS.parse "Fusion" ["General Fusions"]
-    { RCS.revision = "$Revision: 3215 $";
-      RCS.date = "$Date: 2011-05-08 18:07:40 +0200 (Sun, 08 May 2011) $";
-      RCS.author = "$Author: ohl $";
+    { RCS.revision = "$Revision: 3468 $";
+      RCS.date = "$Date: 2011-08-10 17:18:36 +0200 (Wed, 10 Aug 2011) $";
+      RCS.author = "$Author: sschmidt $";
       RCS.source
         = "$URL: svn+ssh://jr_reuter@login.hepforge.org/hepforge/svn/whizard/trunk/src/omega/src/fusion.ml $" }
 
@@ -718,6 +718,12 @@ module Tagged (Tagger : Tagger) (PT : Tuple.Poly)
 
    NB: the analogous problem does not occur for [select_wf], because this applies
    to momenta instead of vertices. *)
+
+(* \begin{dubious}
+     This approach worked before the colorize, but has become \emph{futile},
+     because [CM.fuse] will bring the killed vertices back to life.  We need
+     to implement the same checks there again!!!
+   \end{dubious}  *)
 
 (* \begin{dubious}
      Using [PT.Mismatched_arity] is not really good style \ldots

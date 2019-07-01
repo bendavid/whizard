@@ -1,5 +1,5 @@
 (* $Id: diffmaps.ml,v 1.4 2001/10/18 18:29:07 ohl Exp $ *)
-(* Copyright (C) 2001 by Thorsten Ohl <ohl@hep.tu-darmstadt.de>
+(* Copyright (C) 2001-2011 by Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
    Circe2 is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by 
    the Free Software Foundation; either version 2, or (at your option)
@@ -12,9 +12,25 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)  
 
-module type T = Diffmaps.T
-module type Real = Diffmaps.Real
-module type Default = Diffmaps.Default
+module type T =
+  sig
+    include Diffmap.T
+    val id : ?x_min:domain -> ?x_max:domain -> codomain -> codomain -> t
+  end
+
+module type Real = T with type domain = float and type codomain = float
+
+module type Default =
+  sig
+
+    include Real
+
+    val power : alpha:float -> eta:float ->
+      ?x_min:domain -> ?x_max:domain -> codomain -> codomain -> t
+    val resonance : eta:float -> a:float ->
+      ?x_min:domain -> ?x_max:domain -> codomain -> codomain -> t
+
+  end
 
 module Default =
   struct

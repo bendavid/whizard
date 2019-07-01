@@ -1,4 +1,4 @@
-! WHIZARD 2.0.5 Tue May 10 2011
+! WHIZARD 2.0.6 Wed Dec 7 2011
 ! 
 ! Copyright (C) 1999-2011 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -34,6 +34,7 @@ module hard_interactions
   use diagnostics !NODEP!
   use lorentz !NODEP!
   use os_interface
+  use variables
   use models
   use flavors
   use helicities
@@ -823,22 +824,28 @@ contains
   end subroutine hard_interaction_write_state_summary
 
   subroutine hard_interaction_test (model)
-    type(model_t), pointer :: model
-    type(process_library_t) :: prc_lib
-    type(os_data_t) :: os_data
-    type(hard_interaction_t), target :: hi
+    type(model_t), target :: model
+    type(process_library_t), pointer :: prc_lib => null ()
+    type(os_data_t), pointer :: os_data => null ()
+    type(hard_interaction_t), pointer :: hi => null ()
+    type(var_list_t), pointer :: var_list => null ()
     type(vector4_t), dimension(4) :: p
     type(quantum_numbers_mask_t), dimension(2) :: qn_mask_in
     type(quantum_numbers_mask_t), dimension(4) :: qn_mask
     real(default) :: sqme, mh
+    allocate (hi)
+    allocate (prc_lib)
+    allocate (os_data)
+    allocate (var_list)
     call os_data_init (os_data)
-    call msg_message ("*** Load library 'qedtest'")
-    call msg_message ("    [must exist and contain process 'eemm' (whizard.sin.qedtest)]")
-    call process_library_init (prc_lib, var_str("qedtest"), os_data)
-    call process_library_load (prc_lib, os_data)
+    call msg_message ("*** Load library 'test_me'")
+    call msg_message ("    [must exist and contain process 'test_me_eemm' (test_me.sin)]")
+    call var_list_append_string (var_list, name = "$library_name", sval = "test_me")
+    call process_library_init (prc_lib, var_str("test_me"), os_data)
+    call process_library_load (prc_lib, os_data, var_list = var_list)
     call msg_message ()
     call msg_message ("*** Create hard interaction")
-    call hard_interaction_init (hi, prc_lib, 1, var_str ("eemm"), model)
+    call hard_interaction_init (hi, prc_lib, 1, var_str ("test_me_eemm"), model)
     qn_mask_in = new_quantum_numbers_mask (.true., .true., .true.)
     call hard_interaction_init_trace (hi, qn_mask_in)
     print *, "Interaction: n_values = ", interaction_get_n_matrix_elements (hi%int)

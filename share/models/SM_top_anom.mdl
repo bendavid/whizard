@@ -36,7 +36,8 @@ parameter tv_ttZ    = 0.000     # vector coeff. of ttZ tensor cpl.
                                 # FIXED by gauge inv. !
 parameter ta_ttZ    = 0.000     # axial coeff. (*i) of ttZ tensor cpl.
                                 # FIXED by gauge inv. !
-parameter vl_tbW    = 0.000     # left-handed coeff. of tbW vector cpl.
+parameter vl_tbW_Re = 0.000     # left-handed coeff. of tbW vector cpl.
+parameter vl_tbW_Im = 0.000
 parameter vr_tbW_Re = 0.000     # right-handed coeff. of tbW vector cpl.
 parameter vr_tbW_Im = 0.000
 parameter tl_tbW_Re = 0.000     # left-handed coeff. of bbartW- tensor cpl.

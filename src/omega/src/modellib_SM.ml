@@ -1,4 +1,4 @@
-(* $Id: modellib_SM.ml 3090 2011-03-31 22:07:21Z jr_reuter $
+(* $Id: modellib_SM.ml 3611 2011-11-29 16:27:29Z jr_reuter $
 
    Copyright (C) 1999-2011 by
 
@@ -23,8 +23,8 @@
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
 let rcs_file = RCS.parse "Modellib_SM" ["Lagragians"]
-    { RCS.revision = "$Revision: 3090 $";
-      RCS.date = "$Date: 2011-04-01 00:07:21 +0200 (Fri, 01 Apr 2011) $";
+    { RCS.revision = "$Revision: 3611 $";
+      RCS.date = "$Date: 2011-11-29 17:27:29 +0100 (Tue, 29 Nov 2011) $";
       RCS.author = "$Author: jr_reuter $";
       RCS.source
         = "$URL: svn+ssh://jr_reuter@login.hepforge.org/hepforge/svn/whizard/trunk/src/omega/src/modellib_SM.ml $" }
@@ -506,6 +506,7 @@ module QCD =
 module type SM_flags =
   sig
     val higgs_triangle : bool (* $H\gamma\gamma$, $Hg\gamma$ and $Hgg$ couplings *)
+    val higgs_hmm : bool    
     val triple_anom : bool
     val quartic_anom : bool
     val higgs_anom : bool
@@ -517,6 +518,7 @@ module type SM_flags =
 module SM_no_anomalous : SM_flags =
   struct
     let higgs_triangle = false
+    let higgs_hmm = false
     let triple_anom = false
     let quartic_anom = false
     let higgs_anom = false
@@ -528,6 +530,7 @@ module SM_no_anomalous : SM_flags =
 module SM_no_anomalous_ckm : SM_flags =
   struct
     let higgs_triangle = false
+    let higgs_hmm = false
     let triple_anom = false
     let quartic_anom = false
     let higgs_anom = false
@@ -539,6 +542,7 @@ module SM_no_anomalous_ckm : SM_flags =
 module SM_anomalous : SM_flags =
   struct
     let higgs_triangle = false
+    let higgs_hmm = false
     let triple_anom = true
     let quartic_anom = true
     let higgs_anom = true
@@ -550,6 +554,7 @@ module SM_anomalous : SM_flags =
 module SM_anomalous_ckm : SM_flags =
   struct
     let higgs_triangle = false
+    let higgs_hmm = false
     let triple_anom = true
     let quartic_anom = true
     let higgs_anom = true
@@ -561,6 +566,7 @@ module SM_anomalous_ckm : SM_flags =
 module SM_k_matrix : SM_flags =
   struct
     let higgs_triangle = false
+    let higgs_hmm = false
     let triple_anom = false
     let quartic_anom = true
     let higgs_anom = false
@@ -569,9 +575,10 @@ module SM_k_matrix : SM_flags =
     let top_anom = false
   end
 
-module SM_Hgg : SM_flags =
+module SM_Higgs : SM_flags =
   struct
     let higgs_triangle = true
+    let higgs_hmm = true
     let triple_anom = false
     let quartic_anom = false
     let higgs_anom = false
@@ -583,6 +590,7 @@ module SM_Hgg : SM_flags =
 module SM_anomalous_top : SM_flags =
   struct
     let higgs_triangle = false
+    let higgs_hmm = false
     let triple_anom = false
     let quartic_anom = false
     let higgs_anom = false
@@ -1061,8 +1069,12 @@ module SM (Flags : SM_flags) =
       [ ((M (U (-3)), O H, M (U 3)), FBF (1, Psibar, S, Psi), G_Htt);
         ((M (D (-3)), O H, M (D 3)), FBF (1, Psibar, S, Psi), G_Hbb);
         ((M (U (-2)), O H, M (U 2)), FBF (1, Psibar, S, Psi), G_Hcc);
-        ((M (L (-2)), O H, M (L 2)), FBF (1, Psibar, S, Psi), G_Hmm);
-        ((M (L (-3)), O H, M (L 3)), FBF (1, Psibar, S, Psi), G_Htautau) ]
+        ((M (L (-3)), O H, M (L 3)), FBF (1, Psibar, S, Psi), G_Htautau) ] @
+      if Flags.higgs_hmm then
+      [ ((M (L (-2)), O H, M (L 2)), FBF (1, Psibar, S, Psi), G_Hmm)]
+          else
+      []
+
       
 (* \begin{equation}
      \mathcal{L}_{\textrm{TGC}} =
@@ -2099,6 +2111,564 @@ module SM_Rxi =
     let mass_symbol = SM.mass_symbol
     let width_symbol = SM.width_symbol
     let constant_symbol = SM.constant_symbol
+
+  end
+
+(* \thocwmodulesection{QCD with electroweak insertions.} *)
+
+module SM_QCD =
+  struct
+    let rcs = RCS.rename rcs_file "Modellib.SM_QCD"
+        [ "QCD with electroweak insertions"]
+
+    open Coupling
+
+    let default_width = ref Timelike
+    let use_fudged_width = ref false
+
+    let options = Options.create
+      [ "constant_width", Arg.Unit (fun () -> default_width := Constant),
+        "use constant width (also in t-channel)";
+        "fudged_width", Arg.Set use_fudged_width,
+        "use fudge factor for charge particle width";
+        "custom_width", Arg.String (fun f -> default_width := Custom f),
+        "use custom width";
+        "cancel_widths", Arg.Unit (fun () -> default_width := Vanishing),
+        "use vanishing width"]
+
+    type matter_field = L of int | N of int | U of int | D of int
+    type gauge_boson = Ga | GaX | Wp | Wm | Z | Gl
+    type other = H
+    type flavor = M of matter_field | G of gauge_boson | O of other
+
+    let matter_field f = M f
+    let gauge_boson f = G f
+    let other f = O f
+
+    type field =
+      | Matter of matter_field
+      | Gauge of gauge_boson
+      | Other of other
+
+    let field = function
+      | M f -> Matter f
+      | G f -> Gauge f
+      | O f -> Other f
+
+    type gauge = unit
+
+    let gauge_symbol () =
+      failwith "Modellib.SM_QCD.gauge_symbol: internal error"
+
+    let family n = List.map matter_field [ L n; N n; U n; D n ]
+
+    let external_flavors () =
+      [ "1st Generation", ThoList.flatmap family [1; -1];
+        "2nd Generation", ThoList.flatmap family [2; -2];
+        "3rd Generation", ThoList.flatmap family [3; -3];
+        "Gauge Bosons", List.map gauge_boson [Ga; GaX; Z; Wp; Wm; Gl];
+        "Higgs", List.map other [H] ]
+
+    let flavors () = ThoList.flatmap snd (external_flavors ()) 
+
+    let spinor n =
+      if n >= 0 then
+        Spinor
+      else
+        ConjSpinor
+
+    let lorentz_aux = function
+      | 2 -> Tensor_1
+      | 1 -> Vector
+      | 0 -> Scalar
+      | _ -> invalid_arg ("SM_QCD.lorentz_aux: wrong value")
+
+    let lorentz = function
+      | M f ->
+          begin match f with
+          | L n -> spinor n | N n -> spinor n
+          | U n -> spinor n | D n -> spinor n
+          end
+      | G f ->
+          begin match f with
+          | Ga | GaX | Gl -> Vector
+          | Wp | Wm | Z -> Massive_Vector
+          end
+      | O f ->
+          begin match f with
+          | _ -> Scalar
+          end
+
+    let color = function 
+      | M (U n) -> Color.SUN (if n > 0 then 3 else -3)
+      | M (D n) -> Color.SUN (if n > 0 then 3 else -3)
+      | G Gl -> Color.AdjSUN 3
+      | _ -> Color.Singlet
+
+    let prop_spinor n =
+      if n >= 0 then
+        Prop_Spinor
+      else
+        Prop_ConjSpinor
+
+    let prop_aux = function
+      | 2 -> Aux_Tensor_1
+      | 1 -> Aux_Vector
+      | 0 -> Aux_Scalar
+      | _ -> invalid_arg ("SM_QCD.prop_aux: wrong value")
+
+    let propagator = function
+      | M f ->
+          begin match f with
+          | L n -> prop_spinor n | N n -> prop_spinor n
+          | U n -> prop_spinor n | D n -> prop_spinor n
+          end
+      | G f ->
+          begin match f with
+          | Ga | GaX | Gl -> Prop_Feynman
+          | Wp | Wm | Z -> Prop_Unitarity
+          end
+      | O f ->
+          begin match f with
+          | H -> Prop_Scalar
+          end
+
+(* Optionally, ask for the fudge factor treatment for the widths of
+   charged particles.  Currently, this only applies to $W^\pm$ and top. *)
+
+    let width f =
+      if !use_fudged_width then
+        match f with
+        | G Wp | G Wm | M (U 3) | M (U (-3)) -> Fudged
+        | _ -> !default_width
+      else
+        !default_width
+
+    let goldstone _ = None
+
+    let conjugate = function
+      | M f ->
+          M (begin match f with
+          | L n -> L (-n) | N n -> N (-n)
+          | U n -> U (-n) | D n -> D (-n)
+          end)
+      | G f ->
+          G (begin match f with
+          | Gl -> Gl | Ga -> GaX | Z -> Z
+          | GaX -> Ga | Wp -> Wm | Wm -> Wp
+          end)
+      | O f ->
+          O (begin match f with
+          | H -> H
+          end)
+
+    let fermion = function
+      | M f ->
+          begin match f with
+          | L n -> if n > 0 then 1 else -1
+          | N n -> if n > 0 then 1 else -1
+          | U n -> if n > 0 then 1 else -1
+          | D n -> if n > 0 then 1 else -1
+          end
+      | G f ->
+          begin match f with
+          | Gl | Ga | GaX | Z | Wp | Wm -> 0
+          end
+      | O _ -> 0
+
+    (* Electrical charge, lepton number, baryon number.  We could avoid the
+       rationals altogether by multiplying the first and last by 3 \ldots *)
+
+    module Ch = Charges.QQ
+    let ( // ) = Algebra.Small_Rational.make
+
+    let generation' = function
+      |  1 -> [ 1//1;  0//1;  0//1]
+      |  2 -> [ 0//1;  1//1;  0//1]
+      |  3 -> [ 0//1;  0//1;  1//1]
+      | -1 -> [-1//1;  0//1;  0//1]
+      | -2 -> [ 0//1; -1//1;  0//1]
+      | -3 -> [ 0//1;  0//1; -1//1]
+      |  n -> invalid_arg ("SM_QCD.generation': " ^ string_of_int n)
+
+    let generation f =
+      match f with
+      | M (L n | N n | U n | D n) -> generation' n
+      | G _ | O _ -> [0//1; 0//1; 0//1]
+
+    let charge = function
+      | M f ->
+          begin match f with
+          | L n -> if n > 0 then -1//1 else  1//1
+          | N n -> 0//1
+          | U n -> if n > 0 then  2//3 else -2//3
+          | D n -> if n > 0 then -1//3 else  1//3
+          end
+      | G f ->
+          begin match f with
+          | Gl | Ga | GaX | Z -> 0//1
+          | Wp ->  1//1
+          | Wm -> -1//1
+          end
+      | O f ->
+          begin match f with
+          | H ->  0//1
+          end
+
+    let lepton = function
+      | M f ->
+          begin match f with
+          | L n | N n -> if n > 0 then 1//1 else -1//1
+          | U _ | D _ -> 0//1
+          end
+      | G _ | O _ -> 0//1
+
+    let baryon = function
+      | M f ->
+          begin match f with
+          | L _ | N _ -> 0//1
+          | U n | D n -> if n > 0 then 1//1 else -1//1
+          end
+      | G _ | O _ -> 0//1
+
+    let charges f = 
+      [ charge f; lepton f; baryon f] @ generation f
+
+    type constant =
+      | Unit | Half | Pi | Alpha_QED | Sin2thw
+      | Sinthw | Costhw | E | G_weak | I_G_weak | Vev
+      | Q_lepton | Q_up | Q_down | G_CC | G_CCQ of int*int
+      | G_NC_neutrino | G_NC_lepton | G_NC_up | G_NC_down 
+      | I_Q_W | G_Htt | G_Hbb | G_Hcc | G_Hmm | G_Htautau
+      | Gs | I_Gs | G2
+      | Mass of flavor | Width of flavor
+
+(* \begin{dubious}
+     The current abstract syntax for parameter dependencies is admittedly
+     tedious. Later, there will be a parser for a convenient concrete syntax
+     as a part of a concrete syntax for models.  But as these examples show,
+     it should include simple functions.
+   \end{dubious} *)
+
+(* \begin{subequations}
+     \begin{align}
+        \alpha_{\text{QED}} &= \frac{1}{137.0359895} \\
+             \sin^2\theta_w &= 0.23124
+     \end{align}
+   \end{subequations} *)
+    let input_parameters =
+      [ Alpha_QED, 1. /. 137.0359895;
+        Sin2thw, 0.23124;
+        Mass (G Z), 91.187;
+        Mass (M (N 1)), 0.0; Mass (M (L 1)), 0.51099907e-3;
+        Mass (M (N 2)), 0.0; Mass (M (L 2)), 0.105658389;
+        Mass (M (N 3)), 0.0; Mass (M (L 3)), 1.77705;
+        Mass (M (U 1)), 5.0e-3; Mass (M (D 1)), 3.0e-3;
+        Mass (M (U 2)), 1.2; Mass (M (D 2)), 0.1;
+        Mass (M (U 3)), 174.0; Mass (M (D 3)), 4.2 ]
+
+    let derived_parameters =
+      [ Real E, Sqrt (Prod [Const 4; Atom Pi; Atom Alpha_QED]);
+        Real Sinthw, Sqrt (Atom Sin2thw);
+        Real Costhw, Sqrt (Diff (Const 1, Atom Sin2thw));
+        Real G_weak, Quot (Atom E, Atom Sinthw);
+        Real (Mass (G Wp)), Prod [Atom Costhw; Atom (Mass (G Z))];
+        Real Vev, Quot (Prod [Const 2; Atom (Mass (G Wp))], Atom G_weak);
+        Real Q_lepton, Atom E;
+        Real Q_up, Prod [Quot (Const (-2), Const 3); Atom E];
+        Real Q_down, Prod [Quot (Const 1, Const 3); Atom E];
+        Real G_CC, Neg (Quot (Atom G_weak, Prod [Const 2; Sqrt (Const 2)]));
+        Complex I_Q_W, Prod [I; Atom E]]
+
+    let g_over_2_costh =
+      Quot (Neg (Atom G_weak), Prod [Const 2; Atom Costhw])
+
+    let nc_coupling c t3 q =
+      (Real_Array c,
+       [Prod [g_over_2_costh; Diff (t3, Prod [Const 2; q; Atom Sin2thw])];
+        Prod [g_over_2_costh; t3]])
+
+    let half = Quot (Const 1, Const 2)
+
+    let derived_parameter_arrays =
+      [ nc_coupling G_NC_neutrino half (Const 0);
+        nc_coupling G_NC_lepton (Neg half) (Const (-1));
+        nc_coupling G_NC_up half (Quot (Const 2, Const 3));
+        nc_coupling G_NC_down (Neg half) (Quot (Const (-1), Const 3)) ]
+
+    let parameters () =
+      { input = input_parameters;
+        derived = derived_parameters;
+        derived_arrays = derived_parameter_arrays }
+
+    module F = Modeltools.Fusions (struct
+      type f = flavor
+      type c = constant
+      let compare = compare
+      let conjugate = conjugate
+    end)
+
+    let mgm ((m1, g, m2), fbf, c) = ((M m1, G g, M m2), fbf, c)
+    let mom ((m1, o, m2), fbf, c) = ((M m1, O o, M m2), fbf, c)
+
+    let electromagnetic_currents n =
+      List.map mgm
+        [ ((L (-n), GaX, L n), FBF (1, Psibar, V, Psi), Q_lepton);
+          ((U (-n), Ga, U n), FBF (1, Psibar, V, Psi), Q_up);
+          ((D (-n), Ga, D n), FBF (1, Psibar, V, Psi), Q_down) ]
+        
+    let color_currents n =
+      List.map mgm
+        [ ((U (-n), Gl, U n), FBF ((-1), Psibar, V, Psi), Gs);
+          ((D (-n), Gl, D n), FBF ((-1), Psibar, V, Psi), Gs) ]
+
+(* \begin{equation}
+     \mathcal{L}_{\textrm{NC}} =
+        - \frac{g}{2\cos\theta_W}
+            \sum_i \bar\psi_i\fmslash{Z}(g_V^i-g_A^i\gamma_5)\psi_i
+   \end{equation} *)
+
+    let neutral_currents n =
+      List.map mgm
+        [ ((L (-n), Z, L n), FBF (1, Psibar, VA, Psi), G_NC_lepton);
+          ((N (-n), Z, N n), FBF (1, Psibar, VA, Psi), G_NC_neutrino);
+          ((U (-n), Z, U n), FBF (1, Psibar, VA, Psi), G_NC_up);
+          ((D (-n), Z, D n), FBF (1, Psibar, VA, Psi), G_NC_down) ] 
+
+(* \begin{equation}
+     \mathcal{L}_{\textrm{CC}} =
+        - \frac{g}{2\sqrt2} \sum_i \bar\psi_i
+               (T^+\fmslash{W}^+ + T^-\fmslash{W}^-)(1-\gamma_5)\psi_i 
+   \end{equation} *)
+
+    let charged_currents' n = 
+      List.map mgm
+        [ ((L (-n), Wm, N n), FBF (1, Psibar, VL, Psi), G_CC);
+          ((N (-n), Wp, L n), FBF (1, Psibar, VL, Psi), G_CC) ] 
+
+    let charged_currents'' n =
+      List.map mgm 
+        [ ((D (-n), Wm, U n), FBF (1, Psibar, VL, Psi), G_CC);
+          ((U (-n), Wp, D n), FBF (1, Psibar, VL, Psi), G_CC) ] 
+
+    let charged_currents_triv = 
+      ThoList.flatmap charged_currents' [1;2;3] @
+      ThoList.flatmap charged_currents'' [1;2;3]
+
+    let charged_currents_ckm = 
+      let charged_currents_2 n1 n2 = 
+        List.map mgm 
+          [ ((D (-n1), Wm, U n2), FBF (1, Psibar, VL, Psi), G_CCQ (n2,n1));
+            ((U (-n1), Wp, D n2), FBF (1, Psibar, VL, Psi), G_CCQ (n1,n2)) ] in
+      ThoList.flatmap charged_currents' [1;2;3] @ 
+      List.flatten (Product.list2 charged_currents_2 [1;2;3] [1;2;3])
+
+    let yukawa =
+      [ ((M (U (-3)), O H, M (U 3)), FBF (1, Psibar, S, Psi), G_Htt);
+        ((M (D (-3)), O H, M (D 3)), FBF (1, Psibar, S, Psi), G_Hbb);
+        ((M (U (-2)), O H, M (U 2)), FBF (1, Psibar, S, Psi), G_Hcc);
+        ((M (L (-2)), O H, M (L 2)), FBF (1, Psibar, S, Psi), G_Hmm);
+        ((M (L (-3)), O H, M (L 3)), FBF (1, Psibar, S, Psi), G_Htautau) ]
+      
+(* \begin{equation}
+     \mathcal{L}_{\textrm{TGC}} =
+        - e \partial_\mu A_\nu W_+^\mu W_-^\nu + \ldots
+        - e \cot\theta_w  \partial_\mu Z_\nu W_+^\mu W_-^\nu + \ldots
+   \end{equation} *)
+
+    let tgc ((g1, g2, g3), t, c) = ((G g1, G g2, G g3), t, c)
+
+    let triple_gauge =
+      List.map tgc
+        [ ((Gl, Gl, Gl), Gauge_Gauge_Gauge 1, I_Gs)]
+
+    let qgc ((g1, g2, g3, g4), t, c) = ((G g1, G g2, G g3, G g4), t, c)
+
+    let gauge4 = Vector4 [(2, C_13_42); (-1, C_12_34); (-1, C_14_23)]
+    let minus_gauge4 = Vector4 [(-2, C_13_42); (1, C_12_34); (1, C_14_23)]
+    let quartic_gauge =
+      List.map qgc
+        [ (Gl, Gl, Gl, Gl), gauge4, G2 ]
+
+    let vertices3 =
+      (ThoList.flatmap electromagnetic_currents [1;2;3] @
+       ThoList.flatmap color_currents [1;2;3] @
+       ThoList.flatmap neutral_currents [1;2;3] @
+       charged_currents_triv @
+       yukawa @ triple_gauge)
+
+    let vertices4 =
+      quartic_gauge
+
+    let vertices () = (vertices3, vertices4, [])
+
+(* For efficiency, make sure that [F.of_vertices vertices] is
+   evaluated only once. *)
+
+    let table = F.of_vertices (vertices ())
+    let fuse2 = F.fuse2 table
+    let fuse3 = F.fuse3 table
+    let fuse = F.fuse table
+    let max_degree () = 4
+
+    let flavor_of_string = function
+      | "e-" -> M (L 1) | "e+" -> M (L (-1))
+      | "mu-" -> M (L 2) | "mu+" -> M (L (-2))
+      | "tau-" -> M (L 3) | "tau+" -> M (L (-3))
+      | "nue" -> M (N 1) | "nuebar" -> M (N (-1))
+      | "numu" -> M (N 2) | "numubar" -> M (N (-2))
+      | "nutau" -> M (N 3) | "nutaubar" -> M (N (-3))
+      | "u" -> M (U 1) | "ubar" -> M (U (-1))
+      | "c" -> M (U 2) | "cbar" -> M (U (-2))
+      | "t" -> M (U 3) | "tbar" -> M (U (-3))
+      | "d" -> M (D 1) | "dbar" -> M (D (-1))
+      | "s" -> M (D 2) | "sbar" -> M (D (-2))
+      | "b" -> M (D 3) | "bbar" -> M (D (-3))
+      | "g" | "gl" -> G Gl
+      | "A" -> G Ga | "Z" | "Z0" -> G Z
+      | "W+" -> G Wp | "W-" -> G Wm
+      | "H" -> O H
+      | _ -> invalid_arg "Modellib.SM_QCD.flavor_of_string"
+
+    let flavor_to_string = function
+      | M f ->
+          begin match f with
+          | L 1 -> "e-" | L (-1) -> "e+"
+          | L 2 -> "mu-" | L (-2) -> "mu+"
+          | L 3 -> "tau-" | L (-3) -> "tau+"
+          | L _ -> invalid_arg
+                "Modellib.SM_QCD.flavor_to_string: invalid lepton"
+          | N 1 -> "nue" | N (-1) -> "nuebar"
+          | N 2 -> "numu" | N (-2) -> "numubar"
+          | N 3 -> "nutau" | N (-3) -> "nutaubar"
+          | N _ -> invalid_arg
+                "Modellib.SM_QCD.flavor_to_string: invalid neutrino"
+          | U 1 -> "u" | U (-1) -> "ubar"
+          | U 2 -> "c" | U (-2) -> "cbar"
+          | U 3 -> "t" | U (-3) -> "tbar"
+          | U _ -> invalid_arg
+                "Modellib.SM_QCD.flavor_to_string: invalid up type quark"
+          | D 1 -> "d" | D (-1) -> "dbar"
+          | D 2 -> "s" | D (-2) -> "sbar"
+          | D 3 -> "b" | D (-3) -> "bbar"
+          | D _ -> invalid_arg
+                "Modellib.SM_QCD.flavor_to_string: invalid down type quark"
+          end
+      | G f ->
+          begin match f with
+          | Gl -> "gl"
+          | Ga | GaX -> "A" | Z -> "Z"
+          | Wp -> "W+" | Wm -> "W-"
+          end
+      | O f ->
+          begin match f with
+          | H -> "H"
+          end
+
+    let flavor_to_TeX = function
+      | M f ->
+          begin match f with
+          | L 1 -> "e^-" | L (-1) -> "e^+"
+          | L 2 -> "\\mu^-" | L (-2) -> "\\mu^+"
+          | L 3 -> "\\tau^-" | L (-3) -> "\\tau^+"
+          | L _ -> invalid_arg
+                "Modellib.SM_QCD.flavor_to_TeX: invalid lepton"
+          | N 1 -> "\\nu_e" | N (-1) -> "\\bar{\\nu}_e"
+          | N 2 -> "\\nu_\\mu" | N (-2) -> "\\bar{\\nu}_\\mu"
+          | N 3 -> "\\nu_\\tau" | N (-3) -> "\\bar{\\nu}_\\tau"
+          | N _ -> invalid_arg
+                "Modellib.SM_QCD.flavor_to_TeX: invalid neutrino"
+          | U 1 -> "u" | U (-1) -> "\\bar{u}"
+          | U 2 -> "c" | U (-2) -> "\\bar{c}"
+          | U 3 -> "t" | U (-3) -> "\\bar{t}"
+          | U _ -> invalid_arg
+                "Modellib.SM_QCD.flavor_to_TeX: invalid up type quark"
+          | D 1 -> "d" | D (-1) -> "\\bar{d}"
+          | D 2 -> "s" | D (-2) -> "\\bar{s}"
+          | D 3 -> "b" | D (-3) -> "\\bar{b}"
+          | D _ -> invalid_arg
+                "Modellib.SM_QCD.flavor_to_TeX: invalid down type quark"
+          end
+      | G f ->
+          begin match f with
+          | Gl -> "g"
+          | Ga | GaX -> "\\gamma" | Z -> "Z"
+          | Wp -> "W^+" | Wm -> "W^-"
+          end
+      | O f ->
+          begin match f with
+          | H -> "H"
+          end
+
+    let flavor_symbol = function
+      | M f ->
+          begin match f with
+          | L n when n > 0 -> "l" ^ string_of_int n
+          | L n -> "l" ^ string_of_int (abs n) ^ "b"
+          | N n when n > 0 -> "n" ^ string_of_int n
+          | N n -> "n" ^ string_of_int (abs n) ^ "b"
+          | U n when n > 0 -> "u" ^ string_of_int n
+          | U n -> "u" ^ string_of_int (abs n) ^ "b"
+          | D n when n > 0 ->  "d" ^ string_of_int n
+          | D n -> "d" ^ string_of_int (abs n) ^ "b"
+          end
+      | G f ->
+          begin match f with
+          | Gl -> "gl"
+          | Ga -> "a" | Z -> "z"
+          | GaX -> "gax"
+          | Wp -> "wp" | Wm -> "wm"
+          end
+      | O f ->
+          begin match f with
+          | H -> "h"
+          end
+
+    let pdg = function
+      | M f ->
+          begin match f with
+          | L n when n > 0 -> 9 + 2*n
+          | L n -> - 9 + 2*n
+          | N n when n > 0 -> 10 + 2*n
+          | N n -> - 10 + 2*n
+          | U n when n > 0 -> 2*n
+          | U n -> 2*n
+          | D n when n > 0 -> - 1 + 2*n
+          | D n -> 1 + 2*n
+          end
+      | G f ->
+          begin match f with
+          | Gl -> 21
+          | Ga | GaX -> 22 | Z -> 23
+          | Wp -> 24 | Wm -> (-24)
+          end
+      | O f ->
+          begin match f with
+          | H -> 25
+          end
+
+    let mass_symbol f = 
+      "mass(" ^ string_of_int (abs (pdg f)) ^ ")"
+
+    let width_symbol f =
+      "width(" ^ string_of_int (abs (pdg f)) ^ ")"
+
+    let constant_symbol = function
+      | Unit -> "unit" | Half -> "half" | Pi -> "PI"
+      | Alpha_QED -> "alpha" | E -> "e" | G_weak -> "g" | Vev -> "vev"
+      | I_G_weak -> "ig" 
+      | Sin2thw -> "sin2thw" | Sinthw -> "sinthw" | Costhw -> "costhw"
+      | Q_lepton -> "qlep" | Q_up -> "qup" | Q_down -> "qdwn"
+      | G_NC_lepton -> "gnclep" | G_NC_neutrino -> "gncneu"
+      | G_NC_up -> "gncup" | G_NC_down -> "gncdwn"
+      | G_CC -> "gcc"
+      | G_CCQ (n1,n2) -> "gccq" ^ string_of_int n1 ^ string_of_int n2
+      | I_Q_W -> "iqw" 
+      | G_Htt -> "ghtt" | G_Hbb -> "ghbb"
+      | G_Htautau -> "ghtautau" | G_Hcc -> "ghcc" | G_Hmm -> "ghmm"
+      | Gs -> "gs" | I_Gs -> "igs" | G2 -> "gs**2"
+      | Mass f -> "mass" ^ flavor_symbol f
+      | Width f -> "width" ^ flavor_symbol f
 
   end
 

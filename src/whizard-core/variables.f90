@@ -1,4 +1,4 @@
-! WHIZARD 2.0.5 Tue May 10 2011
+! WHIZARD 2.0.6 Wed Dec 7 2011
 ! 
 ! Copyright (C) 1999-2011 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -156,6 +156,8 @@ module variables
   integer, parameter, public :: V_CMPLX = 4, V_SEV = 5, V_PDG = 6, V_STR = 7
   integer, parameter, public :: V_OBS1_INT = 11, V_OBS2_INT = 12
   integer, parameter, public :: V_OBS1_REAL = 21, V_OBS2_REAL = 22
+  integer, parameter, public :: V_UOBS1_INT = 31, V_UOBS2_INT = 32
+  integer, parameter, public :: V_UOBS1_REAL = 41, V_UOBS2_REAL = 42
 
 
   type :: var_entry_t
@@ -639,7 +641,7 @@ contains
        end if
     case (V_CMPLX)
        if (var%is_known) then
-          write (u, *)  cmplx2char (var%cval)
+          write (u, *)  char (cmplx2string (var%cval))
        else
           write (u, "(A)")  "[unknown complex]"
        end if
@@ -665,6 +667,10 @@ contains
     case (V_OBS2_INT);  write (u, *) "[int] = binary observable"
     case (V_OBS1_REAL); write (u, *) "[real] = unary observable"
     case (V_OBS2_REAL); write (u, *) "[real] = binary observable"
+    case (V_UOBS1_INT);  write (u, *) "[int] = unary user observable"
+    case (V_UOBS2_INT);  write (u, *) "[int] = binary user observable"
+    case (V_UOBS1_REAL); write (u, *) "[real] = unary user observable"
+    case (V_UOBS2_REAL); write (u, *) "[real] = binary user observable"
     end select
     if (present (show_ptr)) then
        if (show_ptr .and. var%is_copy .and. associated (var%original)) then
@@ -1926,6 +1932,10 @@ contains
     call var_list_set_obs &
          (var_list, var_str ("Dist"), V_OBS1_REAL, var, prt1)
     var% obs1_real => obs_dist1
+    call var_list_set_obs &
+         (var_list, var_str ("_User_obs_real"), V_UOBS1_REAL, var, prt1)
+    call var_list_set_obs &
+         (var_list, var_str ("_User_obs_int"), V_UOBS1_INT, var, prt1)
   end subroutine var_list_set_observables_unary
 
   subroutine var_list_set_observables_binary (var_list, prt1, prt2)
@@ -1987,6 +1997,10 @@ contains
     call var_list_set_obs &
          (var_list, var_str ("kT"), V_OBS2_REAL, var, prt1, prt2)
     var% obs2_real => obs_ktmeasure
+    call var_list_set_obs &
+         (var_list, var_str ("_User_obs_real"), V_UOBS2_REAL, var, prt1, prt2)
+    call var_list_set_obs &
+         (var_list, var_str ("_User_obs_int"), V_UOBS2_INT, var, prt1, prt2)
   end subroutine var_list_set_observables_binary
 
   function string_is_observable_id (string) result (flag)

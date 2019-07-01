@@ -1,4 +1,4 @@
-(* $Id: modellib_SM.mli 3070 2011-03-28 08:09:25Z jr_reuter $
+(* $Id: modellib_SM.mli 3611 2011-11-29 16:27:29Z jr_reuter $
 
    Copyright (C) 1999-2011 by
 
@@ -31,6 +31,7 @@ module QCD : Model.T with module Ch = Charges.ZZ
 module type SM_flags =
   sig
     val higgs_triangle : bool (* $H\gamma\gamma$, $Hg\gamma$ and $Hgg couplings *)
+    val higgs_hmm : bool    
     val triple_anom : bool
     val quartic_anom : bool
     val higgs_anom : bool
@@ -44,12 +45,13 @@ module SM_anomalous : SM_flags
 module SM_k_matrix : SM_flags
 module SM_no_anomalous_ckm : SM_flags
 module SM_anomalous_ckm : SM_flags
-module SM_Hgg : SM_flags
+module SM_Higgs : SM_flags
 module SM_anomalous_top : SM_flags
 
 module SM : functor (F : SM_flags) -> Model.Gauge with module Ch = Charges.QQ
 
 module SM_Rxi : Model.T with module Ch = Charges.QQ
+module SM_QCD : Model.T with module Ch = Charges.QQ
 
 module Groves : functor (M : Model.Gauge) -> Model.Gauge with module Ch = M.Ch
 module SM_clones : Model.Gauge with module Ch = Charges.QQ

@@ -62,7 +62,7 @@ module parameters_sm_top_anom
 contains
 
   subroutine import_from_whizard (par_array)
-    real(default), dimension(53), intent(in) :: par_array
+    real(default), dimension(54), intent(in) :: par_array
     type :: parameter_set
        real(default) :: gf
        real(default) :: mZ
@@ -91,7 +91,8 @@ contains
        real(default) :: vrZ
        real(default) :: tvZ
        real(default) :: taZ
-       real(default) :: vlW
+       real(default) :: vlWRe
+       real(default) :: vlWIm
        real(default) :: vrWRe
        real(default) :: vrWIm
        real(default) :: tlWRe
@@ -150,32 +151,33 @@ contains
     par%vrZ    = par_array(25)
     par%tvZ    = par_array(26)
     par%taZ    = par_array(27)
-    par%vlW    = par_array(28)
-    par%vrWRe  = par_array(29)
-    par%vrWIm  = par_array(30)
-    par%tlWRe  = par_array(31)
-    par%tlWIm  = par_array(32)
-    par%trWRe  = par_array(33)
-    par%trWIm  = par_array(34)
-    par%tvG    = par_array(35)
-    par%taG    = par_array(36)
-    par%sH     = par_array(37)
-    par%pH     = par_array(38)
-    par%lam    = par_array(39)
-    par%fun    = par_array(40)
-    par%gi     = par_array(41)
-    par%re_CqG = par_array(42)
-    par%re_CuG = par_array(43)
-    par%re_CqB = par_array(44)
-    par%re_CuB = par_array(45)
-    par%re_CqW = par_array(46)
-    par%re_CDu = par_array(47)
-    par%re_CDd = par_array(48)
-    par%im_CDd = par_array(49)
-    par%v      = par_array(50)
-    par%cw     = par_array(51)
-    par%sw     = par_array(52)
-    par%ee     = par_array(53)
+    par%vlWRe  = par_array(28)
+    par%vlWIm  = par_array(29)
+    par%vrWRe  = par_array(30)
+    par%vrWIm  = par_array(31)
+    par%tlWRe  = par_array(32)
+    par%tlWIm  = par_array(33)
+    par%trWRe  = par_array(34)
+    par%trWIm  = par_array(35)
+    par%tvG    = par_array(36)
+    par%taG    = par_array(37)
+    par%sH     = par_array(38)
+    par%pH     = par_array(39)
+    par%lam    = par_array(40)
+    par%fun    = par_array(41)
+    par%gi     = par_array(42)
+    par%re_CqG = par_array(43)
+    par%re_CuG = par_array(44)
+    par%re_CqB = par_array(45)
+    par%re_CuB = par_array(46)
+    par%re_CqW = par_array(47)
+    par%re_CDu = par_array(48)
+    par%re_CDd = par_array(49)
+    par%im_CDd = par_array(50)
+    par%v      = par_array(51)
+    par%cw     = par_array(52)
+    par%sw     = par_array(53)
+    par%ee     = par_array(54)
     mass(1:27) = 0
     width(1:27) = 0
     mass(3) = par%ms
@@ -252,7 +254,7 @@ contains
     tvaz(2) = par%taZ * (0,1)
     tvazbb(1) = 0.0_default
     tvazbb(2) = 0.0_default
-    vlrw(1) = par%vlW
+    vlrw(1) = par%vlWRe + par%vlWIm * (0,1)
     vlrw(2) = par%vrWRe + par%vrWIm * (0,1)
     tlrw(1) = par%tlWRe + par%tlWIm * (0,1)
     tlrw(2) = par%trWRe + par%trWIm * (0,1)
@@ -264,10 +266,14 @@ contains
     gi_flag = par%gi
     if ( gi_flag > 0. ) then
 
-      if ( abs(par%vlW) > 0. ) then
-        vlrw(1) = par%vlZ / 2.0_default
-      else
-        vlrz(1) = par%vlW * 2.0_default
+      if ( abs(2.0_default*par%vlWRe - par%vlZ) > 0.0_default  ) then
+        print *, "WARNING: gauge invariance and vanishing anomalous"
+        print *, "  bbZ vector coupling implies the relation:"
+        print *, "           vl_ttZ = 2 * vl_tbW_Re ."
+        print *, "  Inferring vl_ttZ from vl_tbW_Re and IGNORING any"
+        print *, "  inconsistent values set!"
+
+        vlrz(1) = par%vlWRe * 2.0_default
       end if
 
       if ( ( abs(par%tvZ) > 0. ).or.( abs(par%taZ) > 0. ) ) then
@@ -281,11 +287,11 @@ contains
       end if
       if ( bz.or.bw.or.ba ) then
         print *, "WARNING: anomalous top tensor couplings to W, A and Z"
-        print *, "are related by gauge invariance: Inferring Z couplings"
-        print *, "from W/A couplings according to the relation in the"
-        print *, "model file and IGNORING any inconsistent values set"
-        print *, "manually! (Exception: only tX_ttZ != 0: tr_tbW ~ tv_ttZ"
-        print *, "+ i*ta_ttZ and tX_ttA = 0)"
+        print *, "  are related by gauge invariance: Inferring Z couplings"
+        print *, "  from W/A couplings according to the relation in the"
+        print *, "  model file and IGNORING any inconsistent values set"
+        print *, "  manually! (Exception: only tX_ttZ != 0: tr_tbW ~ tv_ttZ"
+        print *, "  + i*ta_ttZ and tX_ttA = 0)"
       end if
       if ( ( bz.and.bw ).and..not.ba ) then
         tvaa(1) =  (par%trWRe / costhw - par%tvZ) / (tanthw*e)

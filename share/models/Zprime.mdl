@@ -38,6 +38,8 @@ parameter glepa  = 0.0	        # Explicit ZH lepton A coupling
 parameter gneua  = 0.0	        # Explicit ZH neutrino A coupling
 parameter gupa   = 0.0	        # Explicit ZH up A coupling
 parameter gdwna  = 0.0	        # Explicit ZH down A coupling
+parameter gyp    = 0.0		# Sequential ZH coupling to hypercharge
+parameter gbmlp  = 0.0		# Sequential ZH coupling to B-L
 	
 # Dependent parameters
 derived v     = 1 / sqrt (sqrt (2.) * GF)     # v (Higgs vev)

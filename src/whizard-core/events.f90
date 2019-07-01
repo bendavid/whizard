@@ -1,4 +1,4 @@
-! WHIZARD 2.0.5 Tue May 10 2011
+! WHIZARD 2.0.6 Wed Dec 7 2011
 ! 
 ! Copyright (C) 1999-2011 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -57,7 +57,9 @@ module events
   use cascades
   use processes
   use decays
+  use lorentz !NODEP!
   use shower_interface
+  use lorentz !NODEP!
 
   implicit none
   private
@@ -80,6 +82,7 @@ module events
   public :: event_reweight
   public :: event_do_analysis
   public :: event_is_valid
+  public :: event_is_vetoed
   public :: md5sum_events_t
   public :: is_raw_event_file
   public :: raw_event_file_write_header
@@ -90,6 +93,7 @@ module events
   public :: event_read_from_hepmc
   public :: event_write_to_hepmc
   public :: event_write_to_hepeup
+  public :: event_assure_heprup
   public :: event_write_to_hepevt
   public :: event_get_process_ptr
   public :: FM_IGNORE_HELICITY
@@ -105,6 +109,7 @@ module events
      type(decay_tree_t), pointer :: decay_tree => null ()
      logical :: particle_set_exists = .false.
      logical :: is_valid = .false.
+     logical :: is_vetoed = .false.
      type(particle_set_t) :: particle_set
      real(default) :: excess = 0
   end type event_t
@@ -137,8 +142,9 @@ contains
     event%is_valid = .false.
   end subroutine event_final
 
-  subroutine event_write (event, unit, verbose)
+  subroutine event_write (event, analysis_expr, unit, verbose)
     type(event_t), intent(in) :: event
+    type(eval_tree_t), intent(in), optional :: analysis_expr
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: verbose
     integer :: u
@@ -153,6 +159,11 @@ contains
        if (present (verbose)) then
           if (verbose) then
              call process_write (event%process, unit)
+             if (present (analysis_expr)) then
+                write (u, "(A)")  "Analysis expression:"
+                call eval_tree_write (analysis_expr, unit)
+                write (u, "(A)")  repeat ("#", 79)
+             end if
              write (u, *)
           end if
        end if
@@ -179,6 +190,8 @@ contains
     logical, intent(in) :: keep_correlations, keep_virtual
     type(shower_settings_t), intent(in), optional :: shower_settings
     integer :: u
+
+    event%is_vetoed = .false.
     if (unweighted) then
        call process_generate_unweighted_event &
             (event%process, rng, event%vars%excess)
@@ -195,13 +208,12 @@ contains
     end if
     call event_factorize_process (event, rng, &
          factorization_mode, keep_correlations, keep_virtual)
-    if(event%particle_set_exists) then
-       call event_write_to_hepeup(event)
-       if (present (shower_settings)) then
-          call event_apply_shower_particle_set (event%particle_set, & 
-               shower_settings, &
-               process_get_model_ptr(event%process))
-       end if
+    if(event%particle_set_exists.and.present (shower_settings)) then
+       call event_assure_heprup(event)
+       call apply_shower_particle_set(event%particle_set, & 
+            shower_settings, &
+            process_get_model_ptr(event%process), &
+            event%is_valid, event%is_vetoed)
     end if
   end subroutine event_generate
 
@@ -354,6 +366,12 @@ contains
     type(event_t), intent(in) :: event
     flag = event%is_valid
   end function event_is_valid
+
+  function event_is_vetoed (event) result (flag)
+    logical :: flag
+    type(event_t), intent(in) :: event
+    flag = event%is_vetoed
+  end function event_is_vetoed
 
   function is_raw_event_file (unit) result (flag)
     logical :: flag
@@ -593,6 +611,9 @@ contains
             process_get_fac_scale (event%process))
        call hepmc_event_set_alpha_qcd (hepmc_event, &
             process_get_alpha_s (event%process))
+!        call hepmc_event_set_cross_section (hepmc_event, &
+!             process_get_integral (event%process), &
+!             process_get_error (event%process))
        call particle_set_fill_hepmc_event (event%particle_set, hepmc_event)
     end if
   end subroutine event_write_to_hepmc
@@ -615,23 +636,101 @@ contains
     end if
   end subroutine event_write_to_hepeup
 
+  subroutine event_assure_heprup (event)
+    type(event_t), intent(in) :: event
+    integer :: i
+
+  integer, parameter :: MAXPUP = 100
+  integer, parameter :: MAXNUP = 500
+  integer, dimension(2) :: IDBMUP
+  double precision, dimension(2) :: EBMUP
+  integer, dimension(2) :: PDFGUP
+  integer, dimension(2) :: PDFSUP
+  integer :: IDWTUP
+  integer :: NPRUP
+  double precision, dimension(MAXPUP) :: XSECUP
+  double precision, dimension(MAXPUP) :: XERRUP
+  double precision, dimension(MAXPUP) :: XMAXUP
+  integer, dimension(MAXPUP) :: LPRUP
+  integer :: NUP
+  integer :: IDPRUP
+  double precision :: XWGTUP
+  double precision :: SCALUP
+  double precision :: AQEDUP
+  double precision :: AQCDUP
+  integer, dimension(MAXNUP) :: IDUP
+  integer, dimension(MAXNUP) :: ISTUP
+  integer, dimension(2,MAXNUP) :: MOTHUP
+  integer, dimension(2,MAXNUP) :: ICOLUP
+  double precision, dimension(5,MAXNUP) :: PUP
+  double precision, dimension(MAXNUP) :: VTIMUP
+  double precision, dimension(MAXNUP) :: SPINUP
+  integer, parameter :: NMXHEP = 4000
+
+  integer :: NEVHEP
+
+  integer :: NHEP
+
+  integer, dimension(NMXHEP) :: ISTHEP
+
+  integer, dimension(NMXHEP) :: IDHEP
+
+  integer, dimension(2, NMXHEP) :: JMOHEP
+
+  integer, dimension(2, NMXHEP) :: JDAHEP
+
+  double precision, dimension(5, NMXHEP) :: PHEP
+  
+  double precision, dimension(4, NMXHEP) :: VHEP
+  
+  integer, dimension(NMXHEP) :: hepevt_pol
+
+  integer :: hepevt_n_out, hepevt_n_remnants
+
+  double precision :: hepevt_weight, hepevt_function_value
+  double precision :: hepevt_function_ratio
+  
+  common /HEPRUP/ &
+       IDBMUP, EBMUP, PDFGUP, PDFSUP, IDWTUP, NPRUP, &
+       XSECUP, XERRUP, XMAXUP, LPRUP
+  save /HEPRUP/
+
+  common /HEPEUP/ &
+       NUP, IDPRUP, XWGTUP, SCALUP, AQEDUP, AQCDUP, &
+       IDUP, ISTUP, MOTHUP, ICOLUP, PUP, VTIMUP, SPINUP
+  save /HEPEUP/
+
+  common /HEPEVT/ &
+       NEVHEP, NHEP, ISTHEP, IDHEP, &
+       JMOHEP, JDAHEP, PHEP, VHEP
+  save /HEPEVT/
+  
+
+    if (.not.event%is_valid) return
+    if(LPRUP(event%vars%process_num_id).ne.0) return
+
+    call heprup_init( &
+         (/particle_get_pdg(particle_set_get_particle(event%particle_set, 1)), &
+         particle_get_pdg(particle_set_get_particle(event%particle_set, 2)) /) , &
+         (/vector4_get_component(particle_get_momentum(particle_set_get_particle(event%particle_set, 1)), 0),&
+         vector4_get_component(particle_get_momentum(particle_set_get_particle(event%particle_set, 1)), 0) /), &
+         event%vars%process_num_id, .false., .false. )
+    do i=1, event%vars%process_num_id
+       call heprup_set_process_parameters (i = i, process_id = &
+            i, cross_section = 1._default, error = 1._default)
+    end do
+  end subroutine event_assure_heprup
+
   subroutine event_write_to_hepevt (event, keep_beams)
     type(event_t), intent(in) :: event
-    type(particle_set_t), target :: pset_reduced
-    integer :: proc_id, n_tot, n_out, n_remnants
+    integer :: proc_id
     logical, intent(in), optional :: keep_beams  
-    logical :: kb 
     if (event%is_valid) then
-       kb = .false.
-       if (present (keep_beams)) kb = keep_beams
-       call particle_set_fill_hepevt (event%particle_set, kb)
-       call particle_set_reduce (event%particle_set, pset_reduced, kb)
-       n_tot = particle_set_get_n_tot (pset_reduced)
-       n_out = particle_set_get_n_out (pset_reduced)
-       n_remnants = 0 
-       call hepevt_set_event_parameters (n_tot, n_out, &
-          n_remnants, weight = event%vars%weight, &
-          function_value = event%vars%sqme, i_evt = event%vars%event_index)
+       call particle_set_fill_hepevt (event%particle_set)
+       call hepevt_set_event_parameters ( &
+            weight = event%vars%weight, &
+            function_value = event%vars%sqme, &
+            i_evt = event%vars%event_index)
     end if
   end subroutine event_write_to_hepevt
 
@@ -659,22 +758,31 @@ contains
   end function event_get_process_ptr
 
   subroutine event_test ()
-    type(os_data_t) :: os_data
-    type(process_library_t) :: prc_lib
+    type(os_data_t), pointer :: os_data => null ()
+    type(process_library_t), pointer :: prc_lib => null ()
     type(event_t), target :: event
     type(model_t), pointer :: model
+    type(var_list_t), pointer :: var_list => null ()
     print *, "*** Read model file"
+    allocate (os_data)
+    allocate (prc_lib)
+    allocate (var_list)
+    call os_data_init (os_data)
     call syntax_model_file_init ()
     call model_list_read_model &
-         (var_str("QCD"), var_str("test.mdl"), os_data, model)
+         (var_str("SM"), var_str("SM.mdl"), os_data, model)
+    var_list = model_get_var_list_ptr (model)
     call syntax_pexpr_init ()
     call syntax_phs_forest_init ()
     print *
     print *, "*** Load process library"
-    call process_library_init (prc_lib, var_str("proc"), os_data)
-    call process_library_load (prc_lib, os_data)
+    call var_list_append_string (var_list, name = "$library_name", sval = "test_me")
+    call var_list_append_log (var_list, name = "?read_color_factors", lval = .true.)
+    call var_list_append_log (var_list, name = "?alpha_s_is_fixed", lval = .true.)
+    call process_library_init (prc_lib, var_str("test_me"), os_data)
+    call process_library_load (prc_lib, os_data, var_list = var_list)
     print *
-    call event_test1 (prc_lib, model)
+    call event_test1 (prc_lib, model, os_data, var_list)
     print *
     print *, "* Cleanup"
     call event_final (event)
@@ -682,14 +790,18 @@ contains
     call syntax_pexpr_final ()
     call syntax_phs_forest_final ()
     call syntax_model_file_final ()
+    call process_library_final (prc_lib)
+    deallocate (os_data)
+    deallocate (prc_lib)
   end subroutine event_test
 
-  subroutine event_test1 (prc_lib, model)
+  subroutine event_test1 (prc_lib, model, os_data, var_list)
     type(process_library_t), intent(inout) :: prc_lib
     type(model_t), intent(in), target :: model
+    type(var_list_t), target :: var_list
     type(lhapdf_status_t) :: lhapdf_status
     type(process_t), pointer :: process
-    type(os_data_t) :: os_data
+    type(os_data_t), intent(in) :: os_data
     type(phs_parameters_t) :: phs_par
     type(mapping_defaults_t) :: mapping_defaults
     type(flavor_t), dimension(2) :: flv
@@ -709,27 +821,27 @@ contains
     print *, "* Initialization"
     call tao_random_create (rng, 0)
     call process_store_init_process &
-         (process, prc_lib, var_str ("qq"), model, lhapdf_status)
+         (process, prc_lib, var_str ("test_me_unit_col"), model, lhapdf_status, &
+         var_list, use_beams = .false.)
     print *, "  Process ID = ", char (process_get_id (process))
     print *
     print *, "* Beam setup"
     print *
-    call os_data_init (os_data)
-    call flavor_init (flv, (/ 21, 21 /), model)
+    call flavor_init (flv, (/ 2, -2 /), model)
     call polarization_init_unpolarized (pol(1), flv(1))
     call polarization_init_unpolarized (pol(2), flv(2))
-    call beam_data_init_sqrts (beam_data, 1000._default, flv, pol)
-    call process_setup_beams (process, beam_data, 0, 0)
+    call process_setup_beams (process, beam_data, 0, 0, sqrts = 1000._default)
     call process_connect_strfun (process)
     call process_setup_subevt (process)
     print *
     print *, "* Phase space setup"
+    call openmp_set_num_threads_verbose (1) 
     call process_setup_phase_space (process, rebuild_phs, &
-         os_data, phs_par, mapping_defaults, filename_out=var_str("qq.phs"), &
+         os_data, phs_par, mapping_defaults, filename_out=var_str("test_me_unit_col.phs"), &
          vis_channels = .false.)
     print *
     print *, "* Cuts setup"
-    call stream_init (stream, var_str ("all Pt > 200 GeV (outgoing u:d:U:D)"))
+    call stream_init (stream, var_str ("all Pt > 200 GeV [g]"))
     call parse_tree_init_lexpr (parse_tree, stream, .true.)
     call process_setup_cuts (process, parse_tree_get_root_ptr (parse_tree))
     call parse_tree_final (parse_tree)
@@ -741,6 +853,8 @@ contains
     print *
     print *, "* 5 + 3 iterations"
     call process_results_write_header (process)
+    call process_init_vamp_history (process, 8)
+    call openmp_set_num_threads_verbose (1) 
     do i = 1, 5
        call process_integrate (process, rng, grid_parameters, &
             1, 1, 1, 5000, i==1, .true., i>2, .true., .true.)

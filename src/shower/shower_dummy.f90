@@ -207,6 +207,7 @@ module shower_parton_module
      type(parton_t), pointer :: initial => null ()
      integer :: c1 = 0, c2 = 0
      integer :: aux_pt = 0             
+     integer :: interactionnr = 0
   end type parton_t
   type :: parton_pointer_t
      type(parton_t), pointer :: p => null ()
@@ -221,6 +222,7 @@ module shower_module
   public :: shower_t
   public :: shower_get_next_free_nr
   public :: shower_generate_next_isr_branching
+  public :: shower_generate_next_isr_branching_veto
   public :: shower_generate_fsr_for_partons_emitted_in_isr
   public :: interaction_generate_primordial_kt
   public :: shower_generate_primordial_kt
@@ -266,6 +268,14 @@ contains
       write (0, "(A)")  "**************************************************************"
       stop      
     end function shower_generate_next_isr_branching
+    function shower_generate_next_isr_branching_veto (shower) result (next_brancher)
+      type(shower_t), intent(inout) :: shower
+      type(parton_pointer_t) :: next_brancher
+      write (0, "(A)")  "**************************************************************"
+      write (0, "(A)")  "*** Error: Shower has not been enabled, WHIZARD terminates ***"
+      write (0, "(A)")  "**************************************************************"
+      stop      
+    end function shower_generate_next_isr_branching_veto
     subroutine shower_generate_fsr_for_partons_emitted_in_isr (shower)
       type(shower_t), intent(inout) :: shower
       write (0, "(A)")  "**************************************************************"
@@ -310,6 +320,14 @@ contains
       write (0, "(A)")  "**************************************************************"
       stop      
     end subroutine shower_boost_to_labframe
+    subroutine shower_get_final_colored_ME_partons(shower, partons)
+      type(shower_t), intent(in) :: shower
+      type(parton_pointer_t), dimension(:), allocatable, intent(inout) :: partons
+      write (0, "(A)")  "**************************************************************"
+      write (0, "(A)")  "*** Error: Shower has not been enabled, WHIZARD terminates ***"
+      write (0, "(A)")  "**************************************************************"
+      stop            
+    end subroutine shower_get_final_colored_ME_partons
     subroutine shower_get_final_partons (shower, partons, include_remnants)
       type(shower_t), intent(in) :: shower
       type(parton_pointer_t), dimension(:), allocatable, intent(inout) :: partons
@@ -391,3 +409,65 @@ contains
       stop      
     end subroutine shower_converttopythia
 end module shower_topythia_module
+
+module matching_helper
+  use kinds, only: default, double !NODEP!
+  use lorentz !NODEP!
+
+  public :: mlm_matching_data_t
+  public :: mlm_matching_settings_t
+  public :: mlm_matching_settings_write
+  public :: mlm_matching_data_final
+  public :: mlm_matching
+
+  type :: mlm_matching_data_t
+     logical :: is_hadron_collision = .false.
+     ! the (colored) partons' momenta
+!     type(vector4_t), dimension(:), allocatable :: P_ME
+     type(vector4_t), dimension(:), allocatable :: P_PS
+     ! the jets' momenta
+     type(vector4_t), dimension(:), allocatable :: JETS_ME
+     type(vector4_t), dimension(:), allocatable :: JETS_PS
+  end type mlm_matching_data_t
+
+  type :: mlm_matching_settings_t
+     real(kind=default) :: mlm_ptmin, mlm_etamax, mlm_Rmin, mlm_Emin
+     real(kind=default) :: mlm_ETclusfactor = 0.2_default
+     real(kind=default) :: mlm_ETclusminE = 5._default
+     real(kind=default) :: mlm_etaclusfactor = 1._default
+     real(kind=default) :: mlm_Rclusfactor = 1._default
+     real(kind=default) :: mlm_Eclusfactor = 1._default
+     integer :: kt_imode_hadronic = 4313
+     integer :: kt_imode_leptonic = 1111
+     integer :: mlm_nmaxMEjets = 0
+  end type mlm_matching_settings_t
+
+  contains
+
+  subroutine mlm_matching_settings_write(mlm_matching_settings, unit)
+    type(mlm_matching_settings_t), intent(in) :: mlm_matching_settings
+    integer, intent(in), optional :: unit
+    write (0, "(A)")  "****************************************************************"
+    write (0, "(A)")  "*** Error: Matching has not been enabled, WHIZARD terminates ***"
+    write (0, "(A)")  "****************************************************************"
+    stop      
+  end subroutine mlm_matching_settings_write
+
+  subroutine mlm_matching_data_final(mlm_matching_data)
+    type(mlm_matching_data_t), intent(inout) :: mlm_matching_data
+    write (0, "(A)")  "****************************************************************"
+    write (0, "(A)")  "*** Error: Matching has not been enabled, WHIZARD terminates ***"
+    write (0, "(A)")  "****************************************************************"
+    stop      
+  end subroutine mlm_matching_data_final
+
+subroutine mlm_matching(mlm_matching_data, mlm_matching_settings, vetoed)
+    type(mlm_matching_data_t), intent(inout) :: mlm_matching_data
+    type(mlm_matching_settings_t), intent(in) :: mlm_matching_settings
+    logical, intent(out) :: vetoed
+    write (0, "(A)")  "****************************************************************"
+    write (0, "(A)")  "*** Error: Matching has not been enabled, WHIZARD terminates ***"
+    write (0, "(A)")  "****************************************************************"
+    stop      
+  end subroutine mlm_matching
+end module matching_helper

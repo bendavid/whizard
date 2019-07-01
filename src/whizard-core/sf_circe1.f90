@@ -1,4 +1,4 @@
-! WHIZARD 2.0.5 Tue May 10 2011
+! WHIZARD 2.0.6 Wed Dec 7 2011
 ! 
 ! Copyright (C) 1999-2011 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -42,6 +42,7 @@ module sf_circe1
   use polarizations
   use interactions
   use sf_aux
+  use circe1 !NODEP!
 
   implicit none
   private
@@ -76,42 +77,6 @@ module sf_circe1
      integer :: error = NONE 
   end type circe1_data_t 
  
-
-  abstract interface
-    subroutine rn_sub_t (r)
-      double precision, intent(out) :: r
-    end subroutine rn_sub_t
-  end interface
-
-  interface
-     subroutine gircee (x1, x2, rn_sub)
-       import
-       double precision, intent(out) :: x1, x2
-       procedure(rn_sub_t) :: rn_sub
-     end subroutine gircee
-  end interface
-  interface
-     subroutine girceg (x1, x2, rn_sub)
-       import
-       double precision, intent(out) :: x1, x2
-       procedure(rn_sub_t) :: rn_sub
-     end subroutine girceg
-  end interface
-  interface
-     subroutine gircgg (x1, x2, rn_sub)
-       import
-       double precision, intent(out) :: x1, x2
-       procedure(rn_sub_t) :: rn_sub
-     end subroutine gircgg
-  end interface
-
-  interface kirke
-     double precision function kirke (x1, x2, p1, p2)
-       double precision, intent(in) :: x1, x2
-       integer, intent(in) :: p1, p2
-     end function kirke
-  end interface
-
 
   type(tao_random_state), pointer :: rng_tmp => null ()
 
@@ -156,27 +121,12 @@ contains
   elemental subroutine circe1_get_parameters (photon, beta, gamma)
     logical, intent(in) :: photon
     real(default), intent(out) :: beta, gamma
-    double precision x1m, x2m, roots
-    common /circom/ x1m, x2m, roots
-    double precision lumi
-    common /circom/ lumi
-    double precision a1(0:7)
-    common /circom/ a1
-    double precision elect0, gamma0
-    common /circom/ elect0, gamma0
-    integer acc, ver, rev, chat
-    common /circom/ acc, ver, rev, chat
-    integer magic
-    common /circom/ magic
-    integer e, r, ehi, elo
-    common /circom/ e, r, ehi, elo
-    save /circom/
     if (photon) then
-       beta = a1(6)
-       gamma = a1(5)
+       beta = circe1_params%a1(6)
+       gamma = circe1_params%a1(5)
     else
-       beta = a1(2)
-       gamma = a1(3)
+       beta = circe1_params%a1(2)
+       gamma = circe1_params%a1(3)
     end if
   end subroutine circe1_get_parameters
     
@@ -418,8 +368,6 @@ contains
     real(default) :: f
     real(default), dimension(2), intent(in) :: x
     integer, dimension(2), intent(in) :: pdg
-    double precision :: kirke
-    external kirke
     if (all (x /= 0)) then
        f = kirke (dble (x(1)), dble (x(2)), pdg(1), pdg(2))
     else

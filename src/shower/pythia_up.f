@@ -1,7 +1,7 @@
 C*********************************************************************
 C*********************************************************************
 C*                                                                  **
-C*                                                      June 2010   **
+C*                                                       Mar 2011   **
 C*                                                                  **
 C*                       The Lund Monte Carlo                       **
 C*                                                                  **
@@ -52,6 +52,14 @@ C*              Copyright Torbjorn Sjostrand, Lund 2010             **
 C*                                                                  **
 C*********************************************************************
 C*********************************************************************
+
+C...UPINIT
+C...Dummy routine, to be replaced by a user implementing external
+C...processes. Is supposed to fill the HEPRUP commonblock with info
+C...on incoming beams and allowed processes.
+
+C...New example: handles a standard Les Houches Events File.
+
       SUBROUTINE UPINIT
  
 C...Double precision and integer declarations.
@@ -330,4 +338,3 @@ C...Make decision here.
  
       RETURN
       END
- 

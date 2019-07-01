@@ -158,6 +158,21 @@
        type(c_ptr), value :: v_obj
      end subroutine gen_event_set_signal_process_vertex
 
+! extern "C" bool gen_event_set_beam_particles( void* evt, void* prt1, void* prt2) {}
+     logical(c_bool) function gen_event_set_beam_particles &
+          (evt_obj, prt1_obj, prt2_obj) bind(C)
+       use iso_c_binding
+       type(c_ptr), value :: evt_obj
+       type(c_ptr), value :: prt1_obj, prt2_obj
+     end function gen_event_set_beam_particles
+
+! extern "C" void gen_event_set_cross_section( GenEvent* evt, double xs, double xs_err) {}
+     subroutine gen_event_set_cross_section (evt_obj, xs, xs_err) bind(C)
+       use iso_c_binding
+       type(c_ptr), value :: evt_obj
+       real(c_double), value :: xs, xs_err
+     end subroutine gen_event_set_cross_section
+
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !! GenEvent particle iterator functions
 

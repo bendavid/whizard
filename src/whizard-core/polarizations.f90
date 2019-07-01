@@ -1,4 +1,4 @@
-! WHIZARD 2.0.5 Tue May 10 2011
+! WHIZARD 2.0.6 Wed Dec 7 2011
 ! 
 ! Copyright (C) 1999-2011 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -493,7 +493,7 @@ contains
 
   function polarization_get_axis (pol) result (alpha)
     real(default), dimension(3) :: alpha
-    type(polarization_t), intent(in) :: pol
+    type(polarization_t), intent(in), target :: pol
     type(state_iterator_t) :: it
     complex(default), dimension(2,2) :: value
     type(helicity_t), dimension(2,2) :: hel
@@ -564,7 +564,7 @@ contains
     print *, "* Read model file"
     call syntax_model_file_init ()
     call model_list_read_model &
-         (var_str("QCD"), var_str("test.mdl"), os_data, model)
+         (var_str("SM"), var_str("SM.mdl"), os_data, model)
     print *, "Unpolarized fermion"
     call flavor_init (flv, 1, model)
     call polarization_init_unpolarized (pol, flv)

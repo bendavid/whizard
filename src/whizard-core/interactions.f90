@@ -1,4 +1,4 @@
-! WHIZARD 2.0.5 Tue May 10 2011
+! WHIZARD 2.0.6 Wed Dec 7 2011
 ! 
 ! Copyright (C) 1999-2011 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -75,6 +75,7 @@ module interactions
   public :: interaction_get_n_out
   public :: interaction_get_momenta
   public :: interaction_get_momentum
+  public :: interaction_get_momenta_sub
   public :: interaction_to_subevt
   public :: interaction_momenta_to_subevt
   public :: interaction_get_state_matrix_ptr
@@ -159,6 +160,11 @@ module interactions
      module procedure interaction_get_momenta_all
      module procedure interaction_get_momenta_idx
   end interface
+  interface interaction_momenta_to_subevt
+     module procedure interaction_momenta_to_subevt_id
+     module procedure interaction_momenta_to_subevt_tr
+  end interface
+
   interface interaction_get_mask
      module procedure interaction_get_mask_all
      module procedure interaction_get_mask_slice
@@ -793,6 +799,16 @@ contains
     p = int%p(idx (int, i, outgoing))
   end function interaction_get_momentum
 
+  subroutine interaction_get_momenta_sub (int, p, outgoing)
+    type(vector4_t), dimension(:), intent(out) :: p
+    type(interaction_t), intent(in) :: int
+    logical, intent(in), optional :: outgoing
+    integer :: i
+    do i = 1, size (p)
+       p(i) = int%p(idx (int, i, outgoing))
+    end do
+  end subroutine interaction_get_momenta_sub
+
   subroutine interaction_to_subevt (int, j_beam, j_in, j_out, subevt)
     type(interaction_t), intent(in), target :: int
     integer, dimension(:), intent(in) :: j_beam, j_in, j_out
@@ -828,7 +844,7 @@ contains
     end do
   end subroutine interaction_to_subevt
 
-  subroutine interaction_momenta_to_subevt (int, j_beam, j_in, j_out, subevt)
+  subroutine interaction_momenta_to_subevt_id (int, j_beam, j_in, j_out, subevt)
     type(interaction_t), intent(in) :: int
     integer, dimension(:), intent(in) :: j_beam, j_in, j_out
     type(subevt_t), intent(inout) :: subevt
@@ -838,7 +854,21 @@ contains
          (subevt, - interaction_get_momenta (int, j_in))
     call subevt_set_p_outgoing &
          (subevt, interaction_get_momenta (int, j_out))
-  end subroutine interaction_momenta_to_subevt
+  end subroutine interaction_momenta_to_subevt_id
+
+  subroutine interaction_momenta_to_subevt_tr &
+       (int, j_beam, j_in, j_out, lt, subevt)
+    type(interaction_t), intent(in) :: int
+    integer, dimension(:), intent(in) :: j_beam, j_in, j_out
+    type(subevt_t), intent(inout) :: subevt
+    type(lorentz_transformation_t), intent(in) :: lt
+    call subevt_set_p_beam &
+         (subevt, - lt * interaction_get_momenta (int, j_beam))
+    call subevt_set_p_incoming &
+         (subevt, - lt * interaction_get_momenta (int, j_in))
+    call subevt_set_p_outgoing &
+         (subevt, lt * interaction_get_momenta (int, j_out))
+  end subroutine interaction_momenta_to_subevt_tr
 
   function interaction_get_state_matrix_ptr (int) result (state)
     type(state_matrix_t), pointer :: state
@@ -968,7 +998,6 @@ contains
     type(state_iterator_t) :: it
     type(flavor_t) :: flv
     integer :: i
-!    stop "Procedure disabled due to ifort11.0 problem"
     if (size (value) == 1) then
        call interaction_set_matrix_element (int, value(1))
     else
@@ -1231,16 +1260,16 @@ contains
     p(2) = vector4_moving (500._default, 500._default, 1)
     p(3) = vector4_moving (500._default,-500._default, 1)
     p(1) = p(2) + p(3)
-    call interaction_init (int, 1, 0, 2, set_relations=.true.)
-    call int_set (1, -1, 1, 1, (0.3_default, 0.1_default))
-    call int_set (1, -1,-1, 1, (0.5_default,-0.7_default))
-    call int_set (1, 1, 1, 1, (0.1_default, 0._default))
-    call int_set (-1, 1, -1, 2, (0.4_default, -0.1_default))
-    call int_set (1, 1, 1, 2, (0.2_default, 0._default))
+    call interaction_init (int, 1, 0, 2, set_relations=.true., store_values = .true. )
+    call int_set (int, 1, -1, 1, 1, cmplx (0.3_default, 0.1_default, kind=default))
+    call int_set (int, 1, -1,-1, 1, cmplx (0.5_default,-0.7_default, kind=default))
+    call int_set (int, 1, 1, 1, 1, cmplx (0.1_default, 0._default, kind=default))
+    call int_set (int, -1, 1, -1, 2, cmplx (0.4_default, -0.1_default, kind=default))
+    call int_set (int, 1, 1, 1, 2, cmplx (0.2_default, 0._default, kind=default))
     call interaction_freeze (int)
     call interaction_set_momenta (int, p)
     mask = new_quantum_numbers_mask (.false.,.false., (/.true.,.true.,.true./))
-    call interaction_init (rad, 1, 0, 2, mask=mask, set_relations=.true.)
+    call interaction_init (rad, 1, 0, 2, mask=mask, set_relations=.true., store_values = .true.)
     call rad_set (1)
     call rad_set (2)
     call interaction_set_source_link (rad, 1, int, 2)
@@ -1252,14 +1281,15 @@ contains
     call interaction_set_momenta (rad, p(2:3), outgoing=.true.)
     call interaction_freeze (int)
     call interaction_freeze (rad)
-    call interaction_set_matrix_element (rad, (0._default, 0._default))
+    call interaction_set_matrix_element (rad, cmplx (0._default, 0._default, kind=default))
     call interaction_write (int)
     print *
     call interaction_write (rad)
     call interaction_final (int)
     call interaction_final (rad)
   contains
-    subroutine int_set (h1, h2, hq, q, val)
+    subroutine int_set (int, h1, h2, hq, q, val)
+      type(interaction_t), target, intent(inout) :: int
       integer, intent(in) :: h1, h2, hq, q
       type(flavor_t), dimension(3) :: flv
       type(color_t), dimension(3) :: col
@@ -1272,7 +1302,7 @@ contains
       call helicity_init (hel, (/h1, hq, -hq/), (/h2, hq, -hq/))
       call quantum_numbers_init (qn, flv, col, hel)
       call interaction_add_state (int, qn)
-      call interaction_set_matrix_element (int, qn, val)
+      call interaction_set_matrix_element (int, val)
     end subroutine int_set
     subroutine rad_set (q)
       integer, intent(in) :: q

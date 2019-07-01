@@ -409,15 +409,9 @@ contains
     integer :: seed_value, j, s, t
     integer(kind=tao_i32), dimension(2*K-1) :: x
     if (present (seed)) then
-       seed_value = seed
+       seed_value = modulo (seed, MAX_SEED + 1)
     else
        seed_value = DEFAULT_SEED
-    end if
-    if (seed_value < 0 .or. seed_value > MAX_SEED) then
-       !!! print *, "tao_random_seed: seed (", seed_value, &
-       !!!      ") not in [ 0,", MAX_SEED, "]!"
-       seed_value = modulo (abs (seed_value), MAX_SEED + 1)
-       !!! print *, "tao_random_seed: seed set to ", seed_value, "!"
     end if
     s = seed_value - modulo (seed_value, 2) + 2
     do j = 1, K
@@ -433,19 +427,15 @@ contains
     t = TT - 1
     do
        x(3:2*K-1:2) = x(2:K)
-       x(2:K+L-1:2) = x(2*K-1:K-L+2:-2) - modulo (x(2*K-1:K-L+2:-2), 2_tao_i32)
-       do j= 2*K-1, K+1, -1
-          if (modulo (x(j), int(2, tao_i32)) == 1) then
-             x(j-(K-L)) = modulo (x(j-(K-L)) - x(j), M)
-             x(j-K) = modulo (x(j-K) - x(j), M)
-          end if
+       x(2:2*K-2:2) = 0
+       do j = 2*K-1, K+1, -1
+          x(j-(K-L)) = modulo (x(j-(K-L))-x(j), M)
+          x(j-K)=modulo (x(j-K)-x(j), M)
        end do
        if (modulo (s, 2) == 1) then
           x(2:K+1) = x(1:K)
           x(1) = x(K+1)
-          if (modulo (x(K+1), 2_tao_i32) == 1) then
-             x(L+1) = modulo (x(L+1) - x(K+1), M)
-          end if
+          x(L+1) = modulo (x(L+1) - x(K+1), M)
        end if
        if (s /= 0) then
           s = s / 2
@@ -456,8 +446,11 @@ contains
           exit
        end if
     end do
-    state(K-L+1:K) = x(1:L)
     state(1:K-L) = x(L+1:K)
+    state(K-L+1:K) = x(1:L)
+    do j = 1, 10
+       call generate (x, state)
+    end do
   end subroutine seed_stateless
   subroutine write_state_array (a, unit)
     integer(kind=tao_i32), dimension(:), intent(in) :: a
@@ -688,7 +681,7 @@ contains
          N = 2009, M = 1009, &
          N_SHORT = 1984
     integer, parameter :: &
-         A_2027082 = 461390032
+         A_2027082 = 995235265
     integer, dimension(N) :: a
     type(tao_random_state) :: s, t
     integer, dimension(:), allocatable :: ibuf
@@ -705,6 +698,7 @@ contains
        print OK, a(1)
     else
        print NOT_OK, a(1), A_2027082
+       stop 1
     end if
     call tao_random_seed (SEED)
     do i = 1, M+1
@@ -714,6 +708,7 @@ contains
        print OK, a(1)
     else
        print NOT_OK, a(1), A_2027082
+       stop 1
     end if
     print *, "testing the stateless stuff ..."
     call tao_random_create (s, SEED)
@@ -728,6 +723,7 @@ contains
        print OK, a(1)
     else
        print NOT_OK, a(1), A_2027082
+       stop 1
     end if
     do i = 1, N+1 - N_SHORT
        call tao_random_number (t, a, M)
@@ -736,6 +732,7 @@ contains
        print OK, a(1)
     else
        print NOT_OK, a(1), A_2027082
+       stop 1
     end if
     if (present (name)) then
        print *, "testing I/O ..."
@@ -751,6 +748,7 @@ contains
           print OK, a(1)
        else
           print NOT_OK, a(1), A_2027082
+          stop 1
        end if
        call tao_random_read (s, name)
        do i = 1, N+1 - N_SHORT
@@ -760,6 +758,7 @@ contains
           print OK, a(1)
        else
           print NOT_OK, a(1), A_2027082
+          stop 1
        end if
     end if
     print *, "testing marshaling/unmarshaling ..."
@@ -777,6 +776,7 @@ contains
        print OK, a(1)
     else
        print NOT_OK, a(1), A_2027082
+       stop 1
     end if
     call tao_random_unmarshal (s, ibuf, dbuf)
     do i = 1, N+1 - N_SHORT
@@ -786,6 +786,7 @@ contains
        print OK, a(1)
     else
        print NOT_OK, a(1), A_2027082
+       stop 1
     end if
   end subroutine tao_random_test
 end module tao_random_numbers

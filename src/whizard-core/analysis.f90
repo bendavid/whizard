@@ -1,4 +1,4 @@
-! WHIZARD 2.0.5 Tue May 10 2011
+! WHIZARD 2.0.6 Wed Dec 7 2011
 ! 
 ! Copyright (C) 1999-2011 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -92,10 +92,10 @@ module analysis
      integer :: height_mm = 90
      logical :: x_log = .false.
      logical :: y_log = .false.
-     real(default) :: x_min
-     real(default) :: x_max
-     real(default) :: y_min
-     real(default) :: y_max
+     real(default) :: x_min = 0
+     real(default) :: x_max = 1
+     real(default) :: y_min = 0
+     real(default) :: y_max = 1
      logical :: x_min_set = .false.
      logical :: x_max_set = .false.
      logical :: y_min_set = .false.
@@ -2479,7 +2479,8 @@ contains
                   status)
              if (status /= 0)  exit BLOCK
           end if
-          call os_system_call (os_data%dvips // " " // file, status)
+          call os_system_call (os_data%dvips // " -o " // file // ".ps " &
+               // file, status)
           if (status /= 0)  exit BLOCK
           if (os_data%event_analysis_pdf) then
              call os_system_call (os_data%ps2pdf // " " // file // ".ps", &
@@ -2491,6 +2492,9 @@ contains
        if (status /= 0) then
           call msg_error ("Unable to compile analysis output file")
        end if
+    else
+       call msg_warning ("Skipping results display because " &
+            // "latex/mpost/dvips is not available")
     end if
   end subroutine analysis_compile_tex
 

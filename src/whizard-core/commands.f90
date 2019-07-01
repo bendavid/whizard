@@ -1,4 +1,4 @@
-! WHIZARD 2.0.5 Tue May 10 2011
+! WHIZARD 2.0.6 Wed Dec 7 2011
 ! 
 ! Copyright (C) 1999-2011 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -56,6 +56,7 @@ module commands
   use quantum_numbers
   use polarizations
   use beams
+  use strfun
   use mappings
   use phs_forests
   use cascades
@@ -94,6 +95,7 @@ module commands
   integer, parameter :: CMD_INTEGRATE = 2
   integer, parameter :: CMD_SIMULATE = 3
   integer, parameter :: CMD_RESCAN = 4
+  integer, parameter :: CMD_ME_TEST = 5
 
   integer, parameter :: CMD_COMPILE = 10
   integer, parameter :: CMD_LOAD = 11
@@ -183,6 +185,7 @@ module commands
      type(cmd_seed_t), pointer :: seed => null ()
      type(cmd_iterations_t), pointer :: iterations => null ()
      type(cmd_integrate_t), pointer :: integrate => null ()
+     type(cmd_me_test_t), pointer :: me_test => null ()
      type(cmd_observable_t), pointer :: observable => null ()
      type(cmd_histogram_t), pointer :: histogram => null ()
      type(cmd_plot_t), pointer :: plot => null ()
@@ -288,8 +291,8 @@ module commands
   type :: strfun_def_t
      private
      integer :: type = STRF_NONE
-     integer :: n_parameters = 1
      type(command_list_t), pointer :: options => null ()
+     type(parse_node_t), pointer :: pn_user_name => null ()
      type(rt_data_t) :: local
   end type strfun_def_t
 
@@ -412,6 +415,13 @@ module commands
      type(command_list_t), pointer :: options => null ()
      type(rt_data_t) :: local
   end type cmd_integrate_t
+     
+  type :: cmd_me_test_t
+     private
+     type(string_t) :: process_id
+     type(command_list_t), pointer :: options => null ()
+     type(rt_data_t) :: local
+  end type cmd_me_test_t
      
   type :: cmd_observable_t
      private
@@ -698,6 +708,9 @@ contains
     case (CMD_INTEGRATE)
        call cmd_integrate_final (command%integrate)
        deallocate (command%integrate)
+    case (CMD_ME_TEST)
+       call cmd_me_test_final (command%me_test)
+       deallocate (command%me_test)
     case (CMD_OBSERVABLE)
        call cmd_observable_final (command%observable)
        deallocate (command%observable)
@@ -845,6 +858,9 @@ contains
     case ("cmd_integrate")
        command%type = CMD_INTEGRATE
        call cmd_integrate_compile (command%integrate, pn, global)
+    case ("cmd_me_test")
+       command%type = CMD_ME_TEST
+       call cmd_me_test_compile (command%me_test, pn, global)
     case ("cmd_observable")
        command%type = CMD_OBSERVABLE
        call cmd_observable_compile (command%observable, pn, global)
@@ -976,6 +992,8 @@ contains
        call cmd_iterations_execute (command%iterations, global)
     case (CMD_INTEGRATE)
        call cmd_integrate_execute (command%integrate, global)
+    case (CMD_ME_TEST)
+       call cmd_me_test_execute (command%me_test, global)
     case (CMD_OBSERVABLE)
        call cmd_observable_execute (command%observable, global)
     case (CMD_HISTOGRAM)
@@ -1119,7 +1137,8 @@ contains
          var_list_get_lval (global%var_list, var_str ("?rebuild_library"))
     recompile_library = &
          var_list_get_lval (global%var_list, var_str ("?recompile_library"))
-    if (.not. (rebuild_library .or. recompile_library)) then
+    if (.not. (rebuild_library .or. recompile_library .or. &
+               associated (global%prc_lib))) then
        call load_library (library%name, global, global%var_list, global%prc_lib)
     else
        call process_library_store_append &
@@ -1189,7 +1208,7 @@ contains
     type(pdg_array_t) :: pdg_in, pdg_out
     integer :: i, method
     logical :: rebuild_library, omega_openmp
-    type(string_t) :: restrictions, method_str    
+    type(string_t) :: restrictions, omega_flags, method_str    
     call rt_data_link (process%local, global)
     if (associated (process%options)) then
        call command_list_execute (process%options, process%local)
@@ -1212,6 +1231,8 @@ contains
     end do
     restrictions = var_list_get_sval &
          (process%local%var_list, var_str ("$restrictions"))
+    omega_flags = var_list_get_sval &
+         (process%local%var_list, var_str ("$omega_flags"))
     method_str = var_list_get_sval &
          (process%local%var_list, var_str ("$method"))
     omega_openmp = var_list_get_lval &
@@ -1224,7 +1245,8 @@ contains
        call process_library_append (global%prc_lib, &
             process%id, process%local%model, &
             process%prt_in, process%prt_out, &
-            method = method, restrictions = restrictions, &
+            method = method, &
+            restrictions = restrictions, omega_flags = omega_flags, &
             rebuild_library = rebuild_library, message = .true., &
             omega_openmp = omega_openmp)
     else
@@ -2226,10 +2248,10 @@ contains
     type(strfun_def_t), intent(out) :: strfun_def
     type(parse_node_t), intent(in), target :: pn_strfun_def
     type(rt_data_t), intent(in), target :: global
-    type(parse_node_t), pointer :: pn_key, pn_opt
+    type(parse_node_t), pointer :: pn_key, pn_opt, pn_arg
     pn_key => parse_node_get_sub_ptr (pn_strfun_def)
     pn_opt => parse_node_get_next_ptr (pn_key)
-    select case (char (parse_node_get_key (pn_key)))
+    select case (char (parse_node_get_rule_key (pn_key)))
     case ("none")
        strfun_def%type = STRF_NONE
     case ("lhapdf")
@@ -2250,6 +2272,10 @@ contains
        strfun_def%type = STRF_ESCAN
     case ("beam_events")
        strfun_def%type = STRF_BEVT
+    case ("user_sf_spec")
+       strfun_def%type = STRF_USER
+       pn_arg => parse_node_get_sub_ptr (pn_key, 2)
+       strfun_def%pn_user_name => parse_node_get_sub_ptr (pn_arg)
     end select
     call rt_data_local_init (strfun_def%local, global)
     if (associated (pn_opt)) then
@@ -2385,6 +2411,7 @@ contains
           call strfun_pair_register (beams%strfun_pair(i), global)
        end do
        call sf_list_freeze (global%sf_list)
+       call sf_list_write (global%sf_list)
        call sf_list_compute_md5sum (global%sf_list)
     end select
     call beam_data_write (global%beam_data, verbose=.false.)
@@ -2402,7 +2429,7 @@ contains
     if (u >= 0) flush (u)
     call rt_data_restore (global, beams%local)
   end subroutine cmd_beams_execute
-    
+
   subroutine strfun_pair_register (strfun_pair, global)
     type(strfun_pair_t), intent(inout) :: strfun_pair
     type(rt_data_t), intent(inout), target :: global
@@ -2423,243 +2450,478 @@ contains
     type(strfun_def_t), intent(inout) :: strfun_def
     logical, dimension(2), intent(in) :: affects_beam
     type(rt_data_t), intent(inout), target :: global
-    type(sf_data_t), pointer :: sf_data
-    type(string_t) :: lhapdf_file, lhapdf_dir
-    integer :: lhapdf_member, lhapdf_photon_scheme
-    real(default) :: isr_alpha, isr_q_max, isr_mass
-    integer :: isr_order
-    logical :: isr_recoil
-    real(default) :: epa_alpha, epa_x_min, epa_q_min, epa_e_max, epa_mass
-    real(default) :: ewa_x_min, ewa_q_min, ewa_pt_max, ewa_mass, ewa_sqrts    
-    logical :: ewa_keep_momentum, ewa_keep_energy, epa_recoil
-    real(default) :: circe1_sqrts
-    logical, dimension(2) :: circe1_photon
-    logical :: circe1_generate, circe1_map
-    integer :: circe1_ver, circe1_rev, circe1_acc, circe1_chat
-    real(default) :: circe2_sqrts
-    logical :: circe2_generate, circe2_map, circe2_polarized
-    type(string_t) :: circe2_file, circe2_design
-    real(default) :: escan_sqrts
-    type(string_t) :: beam_events_file
-    logical :: beam_events_warn_eof
-    logical :: exist
-    logical :: pdf_builtin_have_name
-    type(string_t) :: pdf_builtin_prefix, pdf_builtin_name
     call rt_data_link (strfun_def%local, global)
     if (associated (strfun_def%options)) then
        call command_list_execute (strfun_def%options, strfun_def%local)
     end if
-    if (strfun_def%type /= STRF_NONE) then
-       select case (strfun_def%type)
-       case (STRF_ISR)
-          isr_recoil = var_list_get_lval (strfun_def%local%var_list, &
-               var_str ("?isr_recoil"))
-          if (isr_recoil)  strfun_def%n_parameters = 3
-       case (STRF_EPA)
-          epa_recoil = var_list_get_lval (strfun_def%local%var_list, &
-               var_str ("?epa_recoil"))
-          if (epa_recoil)  strfun_def%n_parameters = 3
-       case (STRF_CIRCE1, STRF_CIRCE2)
-          strfun_def%n_parameters = 2
-       case (STRF_BEVT)
-          strfun_def%n_parameters = 0
-       end select
-       call sf_list_append (global%sf_list, &
-            strfun_def%type, affects_beam, strfun_def%n_parameters, sf_data)
-       select case (strfun_def%type)
-       case (STRF_LHAPDF)
-          lhapdf_dir  = var_list_get_sval (strfun_def%local%var_list, &
-               var_str ("$lhapdf_dir"))  ! $
-          lhapdf_file = var_list_get_sval (strfun_def%local%var_list, &
-               var_str ("$lhapdf_file"))  ! $
-          lhapdf_member = var_list_get_ival (strfun_def%local%var_list, &
-               var_str ("lhapdf_member"))
-          lhapdf_photon_scheme = var_list_get_ival (strfun_def%local%var_list, &
-               var_str ("lhapdf_photon_scheme"))
-          call sf_data_init_lhapdf (sf_data, global%lhapdf_status, &
-               global%model, global%beam_data%flv, &
-               lhapdf_dir, lhapdf_file, lhapdf_member, lhapdf_photon_scheme)
-       case (STRF_PDF_BUILTIN)
-          pdf_builtin_have_name = var_list_is_known (strfun_def%local%var_list, &
-               var_str ("$pdf_builtin_set"))
-          if (pdf_builtin_have_name) pdf_builtin_name = var_list_get_sval ( &
-               strfun_def%local%var_list, var_str ("$pdf_builtin_set"))
-          pdf_builtin_have_name = trim (pdf_builtin_name) /= ""
-          pdf_builtin_prefix = ""
-          if (var_list_is_known (strfun_def%local%var_list, &
-               var_str ("$pdf_builtin_path"))) &
-             pdf_builtin_prefix = var_list_get_sval ( &
-                  strfun_def%local%var_list, var_str ("$pdf_builtin_path"))
-          if (trim (pdf_builtin_prefix) == "") &
-             pdf_builtin_prefix = strfun_def%local%os_data%pdf_builtin_datapath
-          if (pdf_builtin_have_name) then
-             call sf_data_init_pdf_builtin (sf_data, global%model, &
-                  global%beam_data%flv, name=pdf_builtin_name, path=pdf_builtin_prefix)
-          else
-             call sf_data_init_pdf_builtin (sf_data, global%model, &
-                  global%beam_data%flv, path=pdf_builtin_prefix)
-          end if
-       case (STRF_ISR)
-          isr_alpha = var_list_get_rval (strfun_def%local%var_list, &
-               var_str ("isr_alpha"))
-          if (isr_alpha == 0) then
-             isr_alpha = (var_list_get_rval (strfun_def%local%var_list, &
-                  var_str ("ee"))) ** 2 / (4 * pi)
-          end if
-          isr_q_max = var_list_get_rval (strfun_def%local%var_list, &
-               var_str ("isr_q_max"))
-          if (isr_q_max == 0) then
-             isr_q_max = global%beam_data%sqrts
-          end if
-          isr_mass = var_list_get_rval (strfun_def%local%var_list, &
-               var_str ("isr_mass"))
-          isr_order = var_list_get_ival (strfun_def%local%var_list, &
-               var_str ("isr_order"))
-          if (isr_mass /= 0) then
-             call sf_data_init_isr (sf_data, &
-                  global%model, global%beam_data%flv, &
-                  isr_alpha, isr_q_max, isr_mass, isr_order)
-          else
-             call sf_data_init_isr (sf_data, &
-                  global%model, global%beam_data%flv, &
-                  isr_alpha, isr_q_max, order = isr_order)
-          end if
-       case (STRF_EPA)
-          epa_alpha = var_list_get_rval (strfun_def%local%var_list, &
-               var_str ("epa_alpha"))
-          if (epa_alpha == 0) then
-             epa_alpha = (var_list_get_rval (strfun_def%local%var_list, &
-                  var_str ("ee"))) ** 2 / (4 * pi)
-          end if
-          epa_x_min = var_list_get_rval (strfun_def%local%var_list, &
-               var_str ("epa_x_min"))
-          epa_q_min = var_list_get_rval (strfun_def%local%var_list, &
-               var_str ("epa_q_min"))
-          epa_e_max = var_list_get_rval (strfun_def%local%var_list, &
-               var_str ("epa_e_max"))
-          if (epa_e_max == 0) then
-             epa_e_max = global%beam_data%sqrts
-          end if
-          epa_mass = var_list_get_rval (strfun_def%local%var_list, &
-               var_str ("epa_mass"))
-          if (epa_mass /= 0) then
-             call sf_data_init_epa (sf_data, &
-                  global%model, global%beam_data%flv, &
-                  epa_alpha, epa_x_min, epa_q_min, epa_e_max, epa_mass)
-          else
-             call sf_data_init_epa (sf_data, &
-                  global%model, global%beam_data%flv, &
-                  epa_alpha, epa_x_min, epa_q_min, epa_e_max)
-          end if
-       case (STRF_EWA)
-          call msg_warning ("EWA structure function not yet fully implemented")
-          ewa_x_min = var_list_get_rval (strfun_def%local%var_list, &
-               var_str ("ewa_x_min"))
-          ewa_q_min = var_list_get_rval (strfun_def%local%var_list, &
-               var_str ("ewa_q_min"))
-          ewa_pt_max = var_list_get_rval (strfun_def%local%var_list, &
-               var_str ("ewa_pt_max"))
-          if (ewa_pt_max == 0) then
-             ewa_pt_max = global%beam_data%sqrts
-          end if
-          ewa_mass = var_list_get_rval (strfun_def%local%var_list, &
-               var_str ("ewa_mass"))
-          ewa_sqrts = global%beam_data%sqrts
-          ewa_keep_momentum = var_list_get_lval (strfun_def%local%var_list, &
-                    var_str ("?ewa_keep_momentum"))
-          ewa_keep_energy = var_list_get_lval (strfun_def%local%var_list, &
-                    var_str ("?ewa_keep_energy"))          
-          if (ewa_keep_momentum .and. ewa_keep_energy) &
-             call msg_fatal (" EWA cannot violate both energy " &
-                  // "and momentum conservation.") 
-               if (ewa_mass /= 0) then     
-                  call sf_data_init_ewa (sf_data, &
-                       global%model, global%beam_data%flv, &
-                       ewa_x_min, ewa_q_min, ewa_pt_max, ewa_sqrts, &
-             ewa_keep_momentum, ewa_keep_energy, ewa_mass)
-               else         
-                  call sf_data_init_ewa (sf_data, &
-                       global%model, global%beam_data%flv, &
-                       ewa_x_min, ewa_q_min, ewa_pt_max, ewa_sqrts, &
-             ewa_keep_momentum, ewa_keep_energy)          
-           end if        
-       case (STRF_CIRCE1)
-          if (var_list_is_known (strfun_def%local%var_list, &
-               var_str ("circe1_sqrts"))) then
-             circe1_sqrts = var_list_get_rval (strfun_def%local%var_list, &
-                  var_str ("circe1_sqrts"))
-          else
-             circe1_sqrts = global%beam_data%sqrts
-          end if
-          circe1_photon(1) = var_list_get_lval (strfun_def%local%var_list, &
-               var_str ("?circe1_photon1"))
-          circe1_photon(2) = var_list_get_lval (strfun_def%local%var_list, &
-               var_str ("?circe1_photon2"))
-          circe1_generate = var_list_get_lval (strfun_def%local%var_list, &
-               var_str ("?circe1_generate"))
-          circe1_map = var_list_get_lval (strfun_def%local%var_list, &
-               var_str ("?circe1_map"))
-          circe1_ver = var_list_get_ival (strfun_def%local%var_list, &
-               var_str ("circe1_ver"))
-          circe1_rev = var_list_get_ival (strfun_def%local%var_list, &
-               var_str ("circe1_rev"))
-          circe1_acc = var_list_get_ival (strfun_def%local%var_list, &
-               var_str ("circe1_acc"))
-          circe1_chat = var_list_get_ival (strfun_def%local%var_list, &
-               var_str ("circe1_chat"))        
-          call sf_data_init_circe1 (sf_data, &
-               global%model, global%beam_data%flv, circe1_sqrts, circe1_photon, &
-               circe1_generate, global%rng, circe1_map, &
-               circe1_ver, circe1_rev, circe1_acc, circe1_chat)
-       case (STRF_CIRCE2)
-          if (var_list_is_known (strfun_def%local%var_list, &
-               var_str ("circe2_sqrts"))) then
-             circe2_sqrts = var_list_get_rval (strfun_def%local%var_list, &
-                  var_str ("circe2_sqrts"))
-          else
-             circe2_sqrts = global%beam_data%sqrts
-          end if       
-          circe2_generate = var_list_get_lval (strfun_def%local%var_list, &
-               var_str ("?circe2_generate"))
-          circe2_map = var_list_get_lval (strfun_def%local%var_list, &
-               var_str ("?circe2_map"))      
-          circe2_polarized = var_list_get_lval (strfun_def%local%var_list, &
-               var_str ("?circe2_polarized"))        
-          circe2_file = var_list_get_sval (strfun_def%local%var_list, &
-               var_str ("$circe2_file"))  ! $
-          if (circe2_file == "")   call msg_fatal &
-               ("CIRCE2: Data file $circe2_file must be specified")
-          circe2_file = global%os_data%whizard_circe2path // "/" // circe2_file 
-          circe2_design = var_list_get_sval (strfun_def%local%var_list, &
-               var_str ("$circe2_design"))  ! $        
-          call sf_data_init_circe2 (sf_data, &
-               global%beam_data%flv, circe2_generate, global%rng, &
-               circe2_map, circe2_file, circe2_design, circe2_sqrts, &
-               circe2_polarized)
-       case (STRF_ESCAN)
-          escan_sqrts = global%beam_data%sqrts
-          call sf_data_init_escan (sf_data, global%beam_data%flv, escan_sqrts)
-       case (STRF_BEVT)
-          beam_events_file = var_list_get_sval (strfun_def%local%var_list, &
-               var_str ("$beam_events_file"))  ! $
-          beam_events_warn_eof = var_list_get_lval (strfun_def%local%var_list, &
-               var_str ("?beam_events_warn_eof"))
-          inquire (file = char (beam_events_file), exist = exist)
-          if (.not. exist) then
-             beam_events_file = global%os_data%whizard_beamsimpath & 
-                  // "/" // beam_events_file
-             inquire (file = char (beam_events_file), exist = exist)
-             if (.not. exist) then
-                call msg_fatal ("Beam simulation data file '" &
-                     // char (beam_events_file) // "' not found.")
-             end if
-          end if
-          call sf_data_init_beam_events (sf_data, &
-               global%beam_data%flv, beam_events_file, beam_events_warn_eof)
-       end select
-    end if
+    select case (strfun_def%type)
+    case (STRF_LHAPDF)
+       call sf_list_register_lhapdf &
+            (global%sf_list, affects_beam, &
+             global%lhapdf_status, global%model, global%beam_data%flv, &
+             strfun_def%local%var_list)
+    case (STRF_PDF_BUILTIN)
+       call sf_list_register_pdf_builtin &
+            (global%sf_list, affects_beam, &
+             global%model, global%beam_data%flv, &
+             strfun_def%local%os_data%pdf_builtin_datapath, &
+             strfun_def%local%var_list)
+    case (STRF_ISR)
+       call sf_list_register_isr &
+            (global%sf_list, affects_beam, &
+             global%model, global%beam_data%flv, global%beam_data%sqrts, &
+             strfun_def%local%var_list)
+    case (STRF_EPA)
+       call sf_list_register_epa &
+            (global%sf_list, affects_beam, &
+             global%model, global%beam_data%flv, global%beam_data%sqrts, &
+             strfun_def%local%var_list)
+    case (STRF_EWA)
+       call msg_warning ("EWA structure function not yet fully implemented")
+       call sf_list_register_ewa &
+            (global%sf_list, affects_beam, &
+             global%model, global%beam_data%flv, global%beam_data%sqrts, &
+             strfun_def%local%var_list)
+    case (STRF_CIRCE1)
+       call sf_list_register_circe1 &
+            (global%sf_list, affects_beam, &
+             global%model, global%beam_data%flv, global%beam_data%sqrts, &
+             global%rng, &
+             strfun_def%local%var_list)
+    case (STRF_CIRCE2)
+       call sf_list_register_circe2 &
+            (global%sf_list, affects_beam, &
+             global%beam_data%flv, global%beam_data%sqrts, &
+             global%rng, global%os_data%whizard_circe2path, &
+             strfun_def%local%var_list)
+    case (STRF_ESCAN)
+       call sf_list_register_escan &
+            (global%sf_list, affects_beam, &
+             global%beam_data%flv, global%beam_data%sqrts, &
+             strfun_def%local%var_list)
+    case (STRF_BEVT)
+       call sf_list_register_beam_events &
+            (global%sf_list, affects_beam, &
+             global%beam_data%flv, global%os_data%whizard_beamsimpath, &
+             strfun_def%local%var_list)
+    case (STRF_USER)
+       call sf_list_register_user &
+            (global%sf_list, affects_beam, &
+             global%model, global%beam_data%flv, &
+             eval_string (strfun_def%pn_user_name, strfun_def%local%var_list), &
+             strfun_def%local%var_list)
+    end select
     call rt_data_restore (global, strfun_def%local)
   end subroutine strfun_def_register
+
+  subroutine sf_list_register_lhapdf (sf_list, affects_beam, &
+       lhapdf_status, model, flv, var_list)
+    type(sf_list_t), intent(inout) :: sf_list
+    logical, dimension(2), intent(in) :: affects_beam
+    type(lhapdf_status_t), intent(inout) :: lhapdf_status
+    type(model_t), intent(in), target :: model
+    type(flavor_t), dimension(2), intent(in) :: flv
+    type(var_list_t), intent(in) :: var_list
+    type(string_t) :: lhapdf_file, lhapdf_dir
+    integer :: lhapdf_member, lhapdf_photon_scheme
+    type(sf_data_t), pointer :: sf_data
+    integer :: i
+    lhapdf_dir = &
+         var_list_get_sval (var_list, var_str ("$lhapdf_dir"))  ! $
+    lhapdf_file = &
+         var_list_get_sval (var_list, var_str ("$lhapdf_file"))  ! $
+    lhapdf_member = &
+         var_list_get_ival (var_list, var_str ("lhapdf_member"))
+    lhapdf_photon_scheme = &
+         var_list_get_ival (var_list, var_str ("lhapdf_photon_scheme"))
+    do i = 1, 2
+       if (affects_beam(i)) then
+          allocate (sf_data)
+          call sf_data_init_lhapdf (sf_data, i, lhapdf_status, &
+               model, flv(i), &
+               lhapdf_dir, lhapdf_file, lhapdf_member, lhapdf_photon_scheme)
+          call sf_list_append (sf_list, sf_data)
+       end if
+    end do
+    if (all (affects_beam)) then
+       call sf_data_setup_mapping &
+            (sf_data, SFM_PDFPAIR, (/ 0, 1 /), 2._default)
+    end if
+  end subroutine sf_list_register_lhapdf
+
+  subroutine sf_list_register_pdf_builtin (sf_list, affects_beam, &
+       model, flv, datapath, var_list)
+    type(sf_list_t), intent(inout) :: sf_list
+    logical, dimension(2), intent(in) :: affects_beam
+    type(model_t), intent(in), target :: model
+    type(flavor_t), dimension(2), intent(in) :: flv
+    type(string_t), intent(in) :: datapath
+    type(var_list_t), intent(in) :: var_list
+    logical :: pdf_builtin_have_name
+    type(string_t) :: pdf_builtin_prefix, pdf_builtin_name
+    type(sf_data_t), pointer :: sf_data
+    integer :: i
+    pdf_builtin_have_name = &
+         var_list_is_known (var_list, var_str ("$pdf_builtin_set"))
+    if (pdf_builtin_have_name)  &
+         pdf_builtin_name = &
+         var_list_get_sval (var_list, var_str ("$pdf_builtin_set"))
+    pdf_builtin_have_name = trim (pdf_builtin_name) /= ""
+    pdf_builtin_prefix = ""
+    if (var_list_is_known (var_list, var_str ("$pdf_builtin_path"))) &
+         pdf_builtin_prefix = &
+              var_list_get_sval (var_list, var_str ("$pdf_builtin_path"))
+    if (trim (pdf_builtin_prefix) == "")  pdf_builtin_prefix = datapath
+    do i = 1, 2
+       if (affects_beam(i)) then
+          allocate (sf_data)
+          if (pdf_builtin_have_name) then
+             call sf_data_init_pdf_builtin (sf_data, i, model, flv(i), &
+                  name=pdf_builtin_name, path=pdf_builtin_prefix)
+          else
+             call sf_data_init_pdf_builtin (sf_data, i, model, flv(i), &
+                  path=pdf_builtin_prefix)
+          end if
+          call sf_list_append (sf_list, sf_data)
+       end if
+    end do
+    if (all (affects_beam)) then
+       call sf_data_setup_mapping &
+            (sf_data, SFM_PDFPAIR, (/ 0, 1 /), 2._default)
+    end if
+  end subroutine sf_list_register_pdf_builtin
+
+  subroutine sf_list_register_isr (sf_list, affects_beam, &
+       model, flv, sqrts, var_list)
+    type(sf_list_t), intent(inout) :: sf_list
+    logical, dimension(2), intent(in) :: affects_beam
+    type(model_t), intent(in), target :: model
+    type(flavor_t), dimension(2), intent(in) :: flv
+    real(default), intent(in) :: sqrts
+    type(var_list_t), intent(in) :: var_list
+    real(default) :: isr_alpha, isr_q_max, isr_mass
+    integer :: isr_order
+    logical :: isr_recoil
+    type(sf_data_t), pointer :: sf_data
+    integer :: i
+    isr_alpha = var_list_get_rval (var_list, var_str ("isr_alpha"))
+    if (isr_alpha == 0) then
+       isr_alpha = (var_list_get_rval (var_list, var_str ("ee"))) &
+                   ** 2 / (4 * pi)
+    end if
+    isr_q_max = var_list_get_rval (var_list, var_str ("isr_q_max"))
+    if (isr_q_max == 0) then
+       isr_q_max = sqrts
+    end if
+    isr_mass   = var_list_get_rval (var_list, var_str ("isr_mass"))
+    isr_order  = var_list_get_ival (var_list, var_str ("isr_order"))
+    isr_recoil = var_list_get_lval (var_list, var_str ("?isr_recoil"))
+    do i = 1, 2
+       if (affects_beam(i)) then
+          allocate (sf_data)
+          if (isr_mass /= 0) then
+             call sf_data_init_isr (sf_data, i, &
+                  model, flv(i), isr_recoil, isr_alpha, isr_q_max, isr_mass, &
+                  order=isr_order)
+          else
+             call sf_data_init_isr (sf_data, i, &
+                  model, flv(i), isr_recoil, isr_alpha, isr_q_max, &
+                  order=isr_order)
+          end if
+          call sf_list_append (sf_list, sf_data)
+       end if
+    end do
+    ! No pair mapping
+  end subroutine sf_list_register_isr
+
+  subroutine sf_list_register_epa (sf_list, affects_beam, &
+       model, flv, sqrts, var_list)
+    type(sf_list_t), intent(inout) :: sf_list
+    logical, dimension(2), intent(in) :: affects_beam
+    type(model_t), intent(in), target :: model
+    type(flavor_t), dimension(2), intent(in) :: flv
+    real(default), intent(in) :: sqrts
+    type(var_list_t), intent(in) :: var_list
+    real(default) :: epa_alpha, epa_x_min, epa_q_min, epa_e_max, epa_mass
+    logical :: epa_recoil
+    type(sf_data_t), pointer :: sf_data
+    integer :: i
+    epa_alpha = var_list_get_rval (var_list, var_str ("epa_alpha"))
+    if (epa_alpha == 0) then
+       epa_alpha = (var_list_get_rval (var_list, var_str ("ee"))) &
+                   ** 2 / (4 * pi)
+    end if
+    epa_x_min = var_list_get_rval (var_list, var_str ("epa_x_min"))
+    epa_q_min = var_list_get_rval (var_list, var_str ("epa_q_min"))
+    epa_e_max = var_list_get_rval (var_list, var_str ("epa_e_max"))
+    if (epa_e_max == 0) then
+       epa_e_max = sqrts
+    end if
+    epa_mass   = var_list_get_rval (var_list, var_str ("epa_mass"))
+    epa_recoil = var_list_get_lval (var_list, var_str ("?epa_recoil"))
+    do i = 1, 2
+       if (affects_beam(i)) then
+          allocate (sf_data)
+          if (epa_mass /= 0) then
+             call sf_data_init_epa (sf_data, i, &
+                  model, flv(i), epa_recoil, &
+                  epa_alpha, epa_x_min, epa_q_min, epa_e_max, epa_mass)
+          else
+             call sf_data_init_epa (sf_data, i, &
+                  model, flv(i), epa_recoil, &
+                  epa_alpha, epa_x_min, epa_q_min, epa_e_max)
+          end if
+          call sf_list_append (sf_list, sf_data)
+       end if
+    end do
+    if (all (affects_beam)) then
+       if (epa_recoil) then
+          call sf_data_setup_mapping &
+               (sf_data, SFM_EPAPAIR, (/-2, 1 /), 1._default)
+       else
+          call sf_data_setup_mapping &
+               (sf_data, SFM_EPAPAIR, (/ 0, 1 /), 1._default)
+       end if
+    end if
+  end subroutine sf_list_register_epa
+
+  subroutine sf_list_register_ewa (sf_list, affects_beam, &
+       model, flv, sqrts, var_list)
+    type(sf_list_t), intent(inout) :: sf_list
+    logical, dimension(2), intent(in) :: affects_beam
+    type(model_t), intent(in), target :: model
+    type(flavor_t), dimension(2), intent(in) :: flv
+    real(default), intent(in) :: sqrts
+    type(var_list_t), intent(in) :: var_list
+    real(default) :: ewa_x_min, ewa_q_min, ewa_pt_max, ewa_mass, ewa_sqrts    
+    logical :: ewa_keep_momentum, ewa_keep_energy
+    type(sf_data_t), pointer :: sf_data
+    integer :: i
+    do i = 1, 2
+       if (affects_beam(i)) then
+          allocate (sf_data)
+          ewa_x_min  = var_list_get_rval (var_list, var_str ("ewa_x_min"))
+          ewa_q_min  = var_list_get_rval (var_list, var_str ("ewa_q_min"))
+          ewa_pt_max = var_list_get_rval (var_list, var_str ("ewa_pt_max"))
+          if (ewa_pt_max == 0) then
+             ewa_pt_max = sqrts
+          end if
+          ewa_mass = var_list_get_rval (var_list, var_str ("ewa_mass"))
+          ewa_sqrts = sqrts
+          ewa_keep_momentum = var_list_get_lval (var_list, &
+                    var_str ("?ewa_keep_momentum"))
+          ewa_keep_energy = var_list_get_lval (var_list, &
+                    var_str ("?ewa_keep_energy"))          
+          if (ewa_keep_momentum .and. ewa_keep_energy) &
+               call msg_fatal (" EWA cannot violate both energy " &
+                            // "and momentum conservation.") 
+          if (ewa_mass /= 0) then     
+             call sf_data_init_ewa (sf_data, i, &
+                  model, flv(i), &
+                  ewa_x_min, ewa_q_min, ewa_pt_max, ewa_sqrts, &
+                  ewa_keep_momentum, ewa_keep_energy, ewa_mass)
+          else         
+             call sf_data_init_ewa (sf_data, i, &
+                  model, flv(i), &
+                  ewa_x_min, ewa_q_min, ewa_pt_max, ewa_sqrts, &
+                  ewa_keep_momentum, ewa_keep_energy)          
+          end if        
+          call sf_list_append (sf_list, sf_data)
+       end if
+    end do
+    if (all (affects_beam)) then
+       call sf_data_setup_mapping &
+            (sf_data, SFM_EWAPAIR, (/ 0, 1 /), 1._default)
+    end if
+  end subroutine sf_list_register_ewa
+
+  subroutine sf_list_register_circe1 (sf_list, affects_beam, &
+       model, flv, sqrts, rng, var_list)
+    type(sf_list_t), intent(inout) :: sf_list
+    logical, dimension(2), intent(in) :: affects_beam
+    type(model_t), intent(in), target :: model
+    type(flavor_t), dimension(2), intent(in) :: flv
+    real(default), intent(in) :: sqrts
+    type(tao_random_state), intent(in), target :: rng
+    type(var_list_t), intent(in) :: var_list
+     real(default) :: circe1_sqrts
+    logical, dimension(2) :: circe1_photon
+    logical :: circe1_generate, circe1_map
+    integer :: circe1_ver, circe1_rev, circe1_acc, circe1_chat
+    type(sf_data_t), pointer :: sf_data
+    if (all (affects_beam)) then
+       allocate (sf_data)
+       if (var_list_is_known (var_list, var_str ("circe1_sqrts"))) then
+          circe1_sqrts = var_list_get_rval (var_list, var_str ("circe1_sqrts"))
+       else
+          circe1_sqrts = sqrts
+       end if
+       circe1_photon(1) = &
+            var_list_get_lval (var_list, var_str ("?circe1_photon1"))
+       circe1_photon(2) = &
+            var_list_get_lval (var_list, var_str ("?circe1_photon2"))
+       circe1_generate = &
+            var_list_get_lval (var_list, var_str ("?circe1_generate"))
+       circe1_map = &
+            var_list_get_lval (var_list, var_str ("?circe1_map"))
+       circe1_ver = &
+            var_list_get_ival (var_list, var_str ("circe1_ver"))
+       circe1_rev = &
+            var_list_get_ival (var_list, var_str ("circe1_rev"))
+       circe1_acc = &
+            var_list_get_ival (var_list, var_str ("circe1_acc"))
+       circe1_chat = &
+            var_list_get_ival (var_list, var_str ("circe1_chat"))              
+       call sf_data_init_circe1 (sf_data, &
+            model, flv, circe1_sqrts, circe1_photon, &
+            circe1_generate, rng, circe1_map, &
+            circe1_ver, circe1_rev, circe1_acc, circe1_chat)
+       call sf_list_append (sf_list, sf_data)
+    else
+       call msg_fatal ("CIRCE1 beamstrahlung spectrum must apply to both beams")
+    end if
+    ! No pair mapping
+  end subroutine sf_list_register_circe1
+
+  subroutine sf_list_register_circe2 (sf_list, affects_beam, &
+       flv, sqrts, rng, path, var_list)
+    type(sf_list_t), intent(inout) :: sf_list
+    logical, dimension(2), intent(in) :: affects_beam
+    type(flavor_t), dimension(2), intent(in) :: flv
+    real(default), intent(in) :: sqrts
+    type(tao_random_state), intent(in), target :: rng
+    type(string_t), intent(in) :: path
+    type(var_list_t), intent(in) :: var_list
+    real(default) :: circe2_sqrts
+    logical :: circe2_generate, circe2_map, circe2_polarized
+    type(string_t) :: circe2_file, circe2_design
+    type(sf_data_t), pointer :: sf_data
+    if (all (affects_beam)) then
+       allocate (sf_data)
+       if (var_list_is_known (var_list, var_str ("circe2_sqrts"))) then
+          circe2_sqrts = var_list_get_rval (var_list, var_str ("circe2_sqrts"))
+       else
+          circe2_sqrts = sqrts
+       end if
+       circe2_generate = &
+            var_list_get_lval (var_list, var_str ("?circe2_generate"))
+       circe2_map = &
+            var_list_get_lval (var_list, var_str ("?circe2_map"))            
+       circe2_polarized = &
+            var_list_get_lval (var_list, var_str ("?circe2_polarized"))      
+       circe2_file = &
+            var_list_get_sval (var_list, var_str ("$circe2_file"))  ! $
+       if (circe2_file == "")   call msg_fatal &
+            ("CIRCE2: Data file $circe2_file must be specified") ! $
+       circe2_file = path // "/" // circe2_file 
+       circe2_design = &
+            var_list_get_sval (var_list, var_str ("$circe2_design"))  ! $
+       call sf_data_init_circe2 (sf_data, &
+            flv, circe2_generate, rng, &
+            circe2_map, circe2_file, circe2_design, circe2_sqrts, &
+            circe2_polarized)
+       call sf_list_append (sf_list, sf_data)
+    else
+       call msg_fatal ("CIRCE2 spectrum must apply to both beams")
+    end if
+    ! No pair mapping
+  end subroutine sf_list_register_circe2
+
+  subroutine sf_list_register_escan (sf_list, affects_beam, &
+       flv, sqrts, var_list)
+    type(sf_list_t), intent(inout) :: sf_list
+    logical, dimension(2), intent(in) :: affects_beam
+    type(flavor_t), dimension(2), intent(in) :: flv
+    real(default), intent(in) :: sqrts
+    type(var_list_t), intent(in) :: var_list
+    real(default) :: escan_sqrts
+    type(sf_data_t), pointer :: sf_data
+    escan_sqrts = sqrts
+    allocate (sf_data)
+    call sf_data_init_escan (sf_data, affects_beam, flv, escan_sqrts)
+    call sf_list_append (sf_list, sf_data)
+    ! No pair mapping
+  end subroutine sf_list_register_escan
+
+  subroutine sf_list_register_beam_events (sf_list, affects_beam, &
+       flv, path, var_list)
+    type(sf_list_t), intent(inout) :: sf_list
+    logical, dimension(2), intent(in) :: affects_beam
+    type(flavor_t), dimension(2), intent(in) :: flv
+    type(string_t), intent(in) :: path
+    type(var_list_t), intent(in) :: var_list
+    type(sf_data_t), pointer :: sf_data
+    type(string_t) :: beam_events_file
+    logical :: beam_events_warn_eof
+    logical :: exist
+    if (all (affects_beam)) then
+       allocate (sf_data)
+       beam_events_file = &
+            var_list_get_sval (var_list, var_str ("$beam_events_file"))  ! $
+       beam_events_warn_eof = &
+            var_list_get_lval (var_list, var_str ("?beam_events_warn_eof"))
+       inquire (file = char (beam_events_file), exist = exist)
+       if (.not. exist) then
+          beam_events_file = path // "/" // beam_events_file
+          inquire (file = char (beam_events_file), exist = exist)
+          if (.not. exist) then
+             call msg_fatal ("Beam simulation data file '" &
+                  // char (beam_events_file) // "' not found.")
+          end if
+       end if
+       call sf_data_init_beam_events &
+            (sf_data, affects_beam, flv, beam_events_file, beam_events_warn_eof)
+       call sf_list_append (sf_list, sf_data)
+    else
+       call msg_fatal ("Beam events simulation must apply to both beams")
+    end if
+    ! No pair mapping
+  end subroutine sf_list_register_beam_events
+
+  subroutine sf_list_register_user (sf_list, affects_beam, &
+       model, flv, user_name, var_list)
+    type(sf_list_t), intent(inout) :: sf_list
+    logical, dimension(2), intent(in) :: affects_beam
+    type(model_t), intent(in), target :: model
+    type(flavor_t), dimension(2), intent(in) :: flv
+    type(string_t), intent(in) :: user_name
+    type(var_list_t), intent(in) :: var_list
+    type(sf_data_t), pointer :: sf_data
+    logical :: user_strfun_mapping
+    real(default) :: user_strfun_mapping_power
+    integer :: i
+    do i = 1, 2
+       if (affects_beam(i)) then
+          allocate (sf_data)
+          call sf_data_init_user (sf_data, i, flv, user_name, model)
+          call sf_list_append (sf_list, sf_data)
+          if (all (sf_data_affects_beam (sf_data))) then
+             if (.not. all (affects_beam))  call msg_fatal &
+                  ("User spectrum/structure function inconsistently applied")
+             exit
+          end if
+       end if
+    end do
+    user_strfun_mapping = & 
+         var_list_get_lval (var_list, var_str ("?user_strfun_mapping"))
+    user_strfun_mapping_power = &
+         var_list_get_rval (var_list, var_str ("user_strfun_mapping_power"))
+    if (all (affects_beam) .and. user_strfun_mapping) then
+       if (all (sf_data_affects_beam (sf_data))) then
+          call sf_data_setup_mapping &
+               (sf_data, SFM_USER, &
+                (/ sf_data_get_n_parameters (sf_data) - 1, &
+                   sf_data_get_n_parameters (sf_data) /), &
+                user_strfun_mapping_power)
+       else
+          call sf_data_setup_mapping &
+               (sf_data, SFM_USER, &
+                (/ 0, sf_data_get_n_parameters (sf_data) /), &
+               user_strfun_mapping_power)
+       end if
+    end if
+    ! No pair mapping
+  end subroutine sf_list_register_user
 
   elemental subroutine bp_circ_data_final (d)
     type(bp_circ_data_t), intent(inout) :: d
@@ -3101,6 +3363,45 @@ contains
          (integrate%process_id, integrate%local, global%var_list)
     call rt_data_restore (global, integrate%local)
   end subroutine cmd_integrate_execute
+
+  subroutine cmd_me_test_final (me_test)
+    type(cmd_me_test_t), intent(inout) :: me_test
+    if (associated (me_test%options)) then
+       call command_list_final (me_test%options)
+       deallocate (me_test%options)
+    end if
+  end subroutine cmd_me_test_final
+
+  subroutine cmd_me_test_compile (me_test, pn, global)
+    type(cmd_me_test_t), pointer :: me_test
+    type(parse_node_t), intent(in), target :: pn
+    type(rt_data_t), intent(inout), target :: global
+    type(parse_node_t), pointer :: pn_proclist, pn_proc, pn_opt
+    integer :: i
+    pn_proclist => parse_node_get_sub_ptr (pn, 2)
+    pn_opt => parse_node_get_next_ptr (pn_proclist)
+    allocate (me_test)
+    call rt_data_local_init (me_test%local, global)
+    if (associated (pn_opt)) then
+       allocate (me_test%options)
+       call command_list_compile (me_test%options, pn_opt, me_test%local)
+    end if
+    pn_proc => parse_node_get_sub_ptr (pn_proclist)
+    me_test%process_id = parse_node_get_string (pn_proc)
+    call rt_data_local_reset (me_test%local)
+  end subroutine cmd_me_test_compile
+
+  subroutine cmd_me_test_execute (me_test, global)
+    type(cmd_me_test_t), intent(inout), target :: me_test
+    type(rt_data_t), intent(inout), target :: global
+    call rt_data_link (me_test%local, global)
+    if (associated (me_test%options)) then
+       call command_list_execute (me_test%options, me_test%local)
+    end if
+    call me_test_process &
+         (me_test%process_id, me_test%local, global%var_list)
+    call rt_data_restore (global, me_test%local)
+  end subroutine cmd_me_test_execute
 
   subroutine cmd_observable_final (observable)
     type(cmd_observable_t), intent(inout) :: observable
@@ -4091,8 +4392,6 @@ contains
       extension = ""
     end if
     driver_file = basename // ".tex"
-    call msg_message ("Compiling analysis results in file '" &
-            // char (driver_file) // "'")
     u_driver = free_unit ()
     open (unit=u_driver, file=char(driver_file), &
           action="write", status="replace")
@@ -4834,7 +5133,7 @@ contains
     type(cmd_simulate_t), intent(inout), target :: simulate
     type(rt_data_t), intent(inout), target :: global
     logical :: ok, mlm_matching
-    integer :: i_evt
+!    integer :: i_evt
     type(simulation_t), target :: sim
     call rt_data_link (simulate%local, global)
     if (associated (simulate%options)) then
@@ -4851,7 +5150,11 @@ contains
             (sim, simulate%local%pn_analysis_lexpr, verbose=.true.)
        call openmp_set_num_threads_verbose &
             (var_list_get_ival (global%var_list, "openmp_num_threads"))
-       do i_evt = 1, simulation_get_n_events (sim)
+!       do i_evt = 1, simulation_get_n_events (sim)
+!          call simulation_event (sim, simulate%local%rng, ok, verbose=.true.)
+!          if (.not. ok)  exit
+!       end do
+       do while( simulation_get_i_evt(sim) .lt.simulation_get_n_events(sim))
           call simulation_event (sim, simulate%local%rng, ok, verbose=.true.)
           if (.not. ok)  exit
        end do
@@ -5778,7 +6081,7 @@ contains
          // "cmd_expect | " &
          // "cmd_cuts | cmd_scale | cmd_fac_scale | cmd_ren_scale | " &
          // "cmd_weight | cmd_selection | cmd_reweight | " &
-         // "cmd_beams | cmd_integrate | " &
+         // "cmd_beams | cmd_integrate | cmd_me_test | " &
          // "cmd_observable | cmd_histogram | cmd_plot | cmd_graph | " &
          // "cmd_clear | cmd_record | " &
          // "cmd_analysis | " &
@@ -5911,7 +6214,8 @@ contains
     call ifile_append (ifile, "SEQ strfun_def = strfun_id options?")
     call ifile_append (ifile, "ALT strfun_id = " &
           // "none | lhapdf | isr | epa | ewa | pdf_builtin | " &
-          // "circe1 | circe2 | energy_scan | beam_events")
+          // "circe1 | circe2 | energy_scan | beam_events | " &
+          // "user_sf_spec")
     call ifile_append (ifile, "KEY none")
     call ifile_append (ifile, "KEY lhapdf")
     call ifile_append (ifile, "KEY isr")
@@ -5922,11 +6226,17 @@ contains
     call ifile_append (ifile, "KEY energy_scan")
     call ifile_append (ifile, "KEY beam_events")
     call ifile_append (ifile, "KEY pdf_builtin")
+    call ifile_append (ifile, "SEQ user_sf_spec = user_strfun user_arg")
+    call ifile_append (ifile, "KEY user_strfun")
     call ifile_append (ifile, "SEQ cmd_integrate = " &
          // "integrate proc_arg options?") 
     call ifile_append (ifile, "KEY integrate")
     call ifile_append (ifile, "ARG proc_arg = ( proc_id* )")
     call ifile_append (ifile, "IDE proc_id")
+    call ifile_append (ifile, "SEQ cmd_me_test = " &
+         // "matrix_element_test proc_arg1 options?") 
+    call ifile_append (ifile, "KEY matrix_element_test")
+    call ifile_append (ifile, "ARG proc_arg1 = ( proc_id )")
     call ifile_append (ifile, "SEQ cmd_seed = seed '=' expr")
     call ifile_append (ifile, "KEY seed")
     call ifile_append (ifile, "SEQ cmd_iterations = " &
@@ -6139,32 +6449,38 @@ contains
   subroutine command_test ()
     integer :: u
     type(stream_t), target :: stream
-    type(lexer_t) :: lexer
+    type(lexer_t), target :: lexer
     type(parse_tree_t) :: parse_tree
     type(command_list_t), target :: command_list
     type(rt_data_t), target :: global
     print *, "* Initialization"
-    call os_data_init (global%os_data)
-    global%os_data%fcflags = "-gline -C=all"
-    allocate (global%rng)
-    call tao_random_create (global%rng, 0)
+    call rt_data_global_init (global)
+    allocate (global%prc_lib)
     call syntax_model_file_init ()
     call syntax_phs_forest_init ()
     call syntax_pexpr_init ()
     call syntax_cmd_list_init ()
     call lexer_init_cmd_list (lexer)
-    print *, "* Open 'whizard.sin'"
+    print *, "* Open 'commands2.sin'"
     u = free_unit ()
-    open (unit=u, file="whizard.sin")
+    open (unit=u, file="commands2.sin")
     call stream_init (stream, u)
     print *, "* Parse"
+    global%lexer => lexer
     call lexer_assign_stream (lexer, stream)
     call parse_tree_init (parse_tree, syntax_cmd_list, lexer)
-    call stream_final (stream)
-    close (u)
     call parse_tree_write (parse_tree)
     print *
     print *, "* Compile command list"
+    call var_list_append_string (global%var_list, name = "$library_name", sval = "commands2")
+    call var_list_append_string (global%var_list, name = "$model_name", sval = "SM")
+    call process_library_init (global%prc_lib, var_str("commands2"), global%os_data)
+    call model_list_read_model (var_str("SM"), var_str("SM.mdl"), global%os_data, global%model)
+    call var_list_init_copies (global%var_list, model_get_var_list_ptr (global%model))
+    call var_list_synchronize (global%var_list, model_get_var_list_ptr (global%model), &
+              reset_pointers = .true.)
+    call var_list_set_string (global%var_list, var_str ("$model_name"), &
+         model_get_name (global%model), is_known=.true.)
     if (associated (parse_tree_get_root_ptr (parse_tree))) then
        call command_list_compile &
             (command_list, parse_tree_get_root_ptr (parse_tree), global)
@@ -6173,6 +6489,9 @@ contains
     call command_list_execute (command_list, global)
     print *
     print *, "* Cleanup"
+    call stream_final (stream)
+    close (u)
+    call lexer_final (lexer)
     call command_list_final (command_list)
     call process_store_final ()
     call model_list_final ()
@@ -6180,6 +6499,7 @@ contains
     call syntax_pexpr_final ()
     call syntax_phs_forest_final ()
     call syntax_model_file_final ()
+    call rt_data_global_final (global)
   end subroutine command_test
 
 

@@ -50,10 +50,11 @@ dist_models_DATA = \
   models/SM_ac.mdl \
   models/SM_CKM.mdl \
   models/SM_km.mdl \
+  models/SM_QCD.mdl \
   models/SM_top.mdl \
   models/SM_top_anom.mdl \
   models/SM.mdl \
-  models/SM_triangle_higgs.mdl \
+  models/SM_Higgs.mdl \
   models/SM_hadrons.mdl \
   models/Template.mdl \
   models/UED.mdl \

@@ -1,4 +1,4 @@
-! WHIZARD 2.0.5 Tue May 10 2011
+! WHIZARD 2.0.6 Wed Dec 7 2011
 ! 
 ! Copyright (C) 1999-2011 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -1966,20 +1966,22 @@ contains
 
   subroutine evaluator_test1 (mdl)
     type(model_t), intent(in), target :: mdl
-    type(interaction_t), target :: int_qqtt, int_tbw
+    type(interaction_t), target :: int_qqtt, int_tbw, int1, int2
     type(flavor_t), dimension(:), allocatable :: flv
     type(color_t), dimension(:), allocatable :: col
     type(helicity_t), dimension(:), allocatable :: hel
     type(quantum_numbers_t), dimension(:), allocatable :: qn
     integer :: f, c, h1, h2, h3
-!     type(vector4_t), dimension(4) :: p
-!     type(vector4_t), dimension(2) :: q
+    type(vector4_t), dimension(4) :: p
+    type(vector4_t), dimension(2) :: q
     type(quantum_numbers_mask_t) :: qn_mask_conn
-    type(evaluator_t), target :: eval
+    type(quantum_numbers_mask_t), dimension(:), allocatable :: qn_mask2
+    type(evaluator_t), target :: eval, eval2, eval3
     print *, "*** Evaluator for matrix product"
     print *, "***   Construct interaction for qq -> tt"
     call interaction_init (int_qqtt, 2, 0, 2, set_relations=.true.)
     allocate (flv (4), col (4), hel (4), qn (4))
+    allocate (qn_mask2 (4))
     do c = 1, 2
        select case (c)
        case (1)
@@ -2032,74 +2034,77 @@ contains
          (eval, int_qqtt, int_tbw, qn_mask_conn)
     call evaluator_write (eval)
 
-!     p(1) = vector4_moving (1000._default, 1000._default, 3)
-!     p(2) = vector4_moving (200._default, 200._default, 2)
-!     p(3) = vector4_moving (100._default, 200._default, 1)
-!     p(4) = p(1) - p(2) - p(3)
-!     call interaction_set_momenta (int1, p)
-!     q(1) = vector4_moving (50._default,-50._default, 3)
-!     q(2) = p(2) + p(4) - q(1)
-!     call interaction_set_momenta (int2, q, outgoing=.true.)
-!     call interaction_set_matrix_element &
-!          (int1, (/(2._default,0._default), (4._default,1._default), (-3._default,0._default)/))
-!     call interaction_set_matrix_element &
-!          (int2, (/(-3._default,0._default), (0._default,1._default), (1._default,2._default)/))
-!     call evaluator_receive_momenta (eval)
-!     call evaluator_evaluate (eval)
-!     call interaction_write (int1)
-!     print *
-!     call interaction_write (int2)
-!     print *
-!     call evaluator_write (eval)
-!     print *
-!     call interaction_final (int1)
-!     call interaction_final (int2)
-!     call evaluator_final (eval)
+     call interaction_init (int1, 2, 0, 2, set_relations=.true.)
+     call interaction_init (int2, 1, 0, 2, set_relations=.true.)
+     p(1) = vector4_moving (1000._default, 1000._default, 3)
+     p(2) = vector4_moving (200._default, 200._default, 2)
+     p(3) = vector4_moving (100._default, 200._default, 1)
+     p(4) = p(1) - p(2) - p(3)
+     call interaction_set_momenta (int1, p)
+     q(1) = vector4_moving (50._default,-50._default, 3)
+     q(2) = p(2) + p(4) - q(1)
+     call interaction_set_momenta (int2, q, outgoing=.true.)
+     call interaction_set_matrix_element &
+          (int1, (/(2._default,0._default), (4._default,1._default), (-3._default,0._default)/))
+     call interaction_set_matrix_element &
+          (int2, (/(-3._default,0._default), (0._default,1._default), (1._default,2._default)/))
+     call evaluator_receive_momenta (eval)
+     call evaluator_evaluate (eval)
+     call interaction_write (int1)
+     print *
+     call interaction_write (int2)
+     print *
+     call evaluator_write (eval)
+     print *
+     call interaction_final (int1)
+     call interaction_final (int2)
+     call evaluator_final (eval)
 
-!     print *
-!     print *, "*** Evaluator for matrix square"
-!     call interaction_init (int1, 2, 0, 2, set_relations=.true.)
-!     call flavor_init (flv, (/1, -1, 21, 21/), mdl)
-!     call color_init (col(1), (/1/))
-!     call color_init (col(2), (/-2/))
-!     call color_init (col(3), (/2, -3/))
-!     call color_init (col(4), (/3, -1/))
-!     call quantum_numbers_init (qn, flv, col)
-!     call interaction_add_state (int1, qn)
-!     call color_init (col(3), (/3, -1/))
-!     call color_init (col(4), (/2, -3/))
-!     call quantum_numbers_init (qn, flv, col)
-!     call interaction_add_state (int1, qn)
-!     call color_init (col(3), (/2, -1/))
-!     call color_init (col(4), .true.)
-!     call quantum_numbers_init (qn, flv, col)
-!     call interaction_add_state (int1, qn)
-!     call interaction_freeze (int1)
-!     ! qn_mask2 = all false (default)
-!     call evaluator_init_square (eval, int1, qn_mask2, nc=3)
-!     call evaluator_init_squared_flows (eval2, int1, qn_mask2)
-!     qn_mask2 = new_quantum_numbers_mask (.false., .true., .true.)
-!     call evaluator_init_trace (eval3, eval%int, qn_mask2)
-!     call interaction_set_matrix_element &
-!          (int1, (/(2._default,0._default), (4._default,1._default), (-3._default,0._default)/))
-!     call interaction_set_momenta (int1, p)
-!     call interaction_write (int1)
-!     print *
-!     call evaluator_receive_momenta (eval)
-!     call evaluator_evaluate (eval)
-!     call evaluator_write (eval)
-!     print *
-!     call evaluator_receive_momenta (eval2)
-!     call evaluator_evaluate (eval2)
-!     call evaluator_write (eval2)
-!     print *
-!     call evaluator_receive_momenta (eval3)
-!     call evaluator_evaluate (eval3)
-!     call evaluator_write (eval3)
-!     call interaction_final (int1)
-!     call evaluator_final (eval)
-!     call evaluator_final (eval2)
-!     call evaluator_final (eval3)
+     print *
+     print *, "*** Evaluator for matrix square"
+     allocate (flv(4), col(4), qn(4))
+     call interaction_init (int1, 2, 0, 2, set_relations=.true.)
+     call flavor_init (flv, (/1, -1, 21, 21/), mdl)
+     call color_init (col(1), (/1/))
+     call color_init (col(2), (/-2/))
+     call color_init (col(3), (/2, -3/))
+     call color_init (col(4), (/3, -1/))
+     call quantum_numbers_init (qn, flv, col)
+     call interaction_add_state (int1, qn)
+     call color_init (col(3), (/3, -1/))
+     call color_init (col(4), (/2, -3/))
+     call quantum_numbers_init (qn, flv, col)
+     call interaction_add_state (int1, qn)
+     call color_init (col(3), (/2, -1/))
+     call color_init (col(4), .true.)
+     call quantum_numbers_init (qn, flv, col)
+     call interaction_add_state (int1, qn)
+     call interaction_freeze (int1)
+     ! qn_mask2 = all false (default)
+     call evaluator_init_square (eval, int1, qn_mask2, nc=3)
+     call evaluator_init_square_nondiag (eval2, int1, qn_mask2)
+     qn_mask2 = new_quantum_numbers_mask (.false., .true., .true.)
+     call evaluator_init_square_diag (eval3, eval%int, qn_mask2)
+     call interaction_set_matrix_element &
+          (int1, (/(2._default,0._default), (4._default,1._default), (-3._default,0._default)/))
+     call interaction_set_momenta (int1, p)
+     call interaction_write (int1)
+     print *
+     call evaluator_receive_momenta (eval)
+     call evaluator_evaluate (eval)
+     call evaluator_write (eval)
+     print *
+     call evaluator_receive_momenta (eval2)
+     call evaluator_evaluate (eval2)
+     call evaluator_write (eval2)
+     print *
+     call evaluator_receive_momenta (eval3)
+     call evaluator_evaluate (eval3)
+     call evaluator_write (eval3)
+     call interaction_final (int1)
+     call evaluator_final (eval)
+     call evaluator_final (eval2)
+     call evaluator_final (eval3)
   end subroutine evaluator_test1
 
 

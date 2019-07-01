@@ -1,4 +1,4 @@
-! $Id: test_openmp.f90 3150 2011-04-09 20:03:28Z jr_reuter $
+! $Id: test_openmp.f90 3468 2011-08-10 15:18:36Z sschmidt $
 ! driver.f90 -- O'Mega self test driver
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !

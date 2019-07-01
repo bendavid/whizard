@@ -1,16 +1,21 @@
 model = SM
 
+library = "test_me"
+
 process test_me_eemm = e1, E1 => e2, E2 { $method = "test" }
 process test_me_ugug = u, g => u, g { $method = "test" }
 process test_me_unit = e1, E1 => e2, E2 { $method = "unit" }
 process test_me_unit_col = u, U => g, g { $method = "unit" }
 
-compile
+compile ("test_me")
 
 sqrts = 100 GeV
 
 me = 0
 mmu = 0
+
+!!! Tests should be run single-threaded 
+openmp_num_threads = 1
 
 seed = 0
 integrate (test_me_eemm) 

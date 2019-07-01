@@ -1,63 +1,120 @@
 ChangeLog -- Summary of changes to the WHIZARD package
-	
+
 Use svn log to see detailed changes.
 
-        Version 2.0.5
+        Version 2.0.6
+
+2011-12-07
+	Bug fixes in SM_top_anom
+	Added missing entries to HepMC format
+	
+2011-12-06
+	Allow to pass options to O'Mega
+	Bug fix for HEPEVT block for showered/hadronized events
+	
+2011-12-01
+	Reenabled user plug-in for external code for
+	   cuts, structure functions, routines etc.
+
+2011-11-29
+	Changed model SM_Higgs for Higgs phenomenology
+
+2011-11-25
+	Supporting a Y, (B-L) Z' model
+
+2011-11-23
+	Make WHIZARD compatible for MAC OS X Lion/XCode 4
+	
+2011-09-25 
+	WHIZARD paper published: Eur.Phys.J. C71 (2011) 1742
+
+2011-08-16 
+	Model SM_QCD: QCD with one EW insertion
+
+2011-07-19 
+	Explicit output channel for dvips avoids printing
+
+2011-07-10 
+	Test suite for WHIZARD unit tests
+
+2011-07-01 
+	Commands for matrix element tests
+	More OpenMP parallelization of kinematics
+	Added unit tests 
+
+2011-06-23 
+	Conversion of CIRCE2 from F77 to F90, major
+	  clean-up 
+
+2011-06-14 
+	Conversion of CIRCE1 from F77 to F90
+
+2011-06-10 
+	OpenMP parallelization of channel kinematics
+		(by Matthias Trudewind)
+
+2011-05-31 
+	RELEASE: version 1.97
+
+2011-05-24 
+	Minor bug fixes: update grids and elsif statement. 
+
+##################################################################
 
 2011-05-10 
 	RELEASE: version 2.0.5
 
-2011-05-09
+2011-05-09 
 	Fixed bug in final state flavor sums
 	Minor improvements on phase-space setup
-	
-2011-05-05
+
+2011-05-05 
 	Minor bug fixes
-	
-2011-04-15
+
+2011-04-15 
 	WHIZARD as a precompiled 64-bit binary available
-	
-2011-04-06
+
+2011-04-06 
 	Wall clock instead of cpu time for time estimates
-	
-2011-04-05
+
+2011-04-05 
 	Major improvement on the phase space setup
 
-2011-04-02
+2011-04-02 
 	OpenMP parallelization for helicity loop
- 	
-2011-03-31
+
+2011-03-31 
 	Tools for relocating WHIZARD and use in batch
 	environments
-	
-2011-03-29
+
+2011-03-29 
 	Completely static builds possible, profiling options
-	
-2011-03-28
+
+2011-03-28 
 	Visualization of integration history
-	
-2011-03-27
+
+2011-03-27 
 	Fixed broken K-matrix implementation
-	
-2011-03-23
+
+2011-03-23 
 	Including the GAMELAN manual in the distribution
-	
-2011-01-26
+
+2011-01-26 
 	WHIZARD analysis can handle hadronized event files
-	
-2011-01-17
+
+2011-01-17 
 	MSTW2008 and CT10 included
-	
-2010-12-23
+
+2010-12-23 
 	Inclusion of NMSSM with Hgg couplings
-	
+
 2010-12-21 
 	Advanced options for integration passes
-	
+
 2010-11-16 
 	WHIZARD supports CTEQ6 and possibly other PDFs
 	directly; data files included in the distribution
-	
+
 ##################################################################
 
 2010-10-26 
@@ -65,10 +122,10 @@ Use svn log to see detailed changes.
 
 2010-10-06 
 	Bug fix in MSSM implementation
-	
+
 2010-10-01 
 	Update to libtool 2.4
-	
+
 2010-09-29 
 	Support for anomalous top couplings (form factors etc.)
 	Bug fix for running gauge Yukawa SUSY couplings
@@ -79,18 +136,18 @@ Use svn log to see detailed changes.
 2010-09-21 
 	Beam remnants and pT spectra for lepton collider re-enabled
 	Restructuring subevt class 
-	
+
 2010-09-16 
 	Shower and matching are disabled by default
 	PYTHIA as a conditional on these two options
-	
+
 2010-09-14 
 	Possibility to read in beam spectra re-enabled (e.g. Guinea
 	   Pig)
-	
+
 2010-09-13 
 	Energy scan as (pseudo-) structure functions re-implemented
-	
+
 2010-09-10 
 	CIRCE2 included again in WHIZARD 2 and validated
 
@@ -98,38 +155,38 @@ Use svn log to see detailed changes.
 	Re-implementation of asymmetric beam energies and collision
 	  angles, e-p collisions work, inclusion of a HERA DIS test 
 	  case
-	
+
 ##################################################################
 
 	Version 2.0.3
 
 2010-10-18 
 	RELEASE: version 2.0.3
-	
+
 2010-08-08 
 	Bug in CP-violating anomalous triple TGCs fixed
-	
+
 2010-08-06 
 	Solving backwards compatibility problem with O'Caml 3.12.0
-	
+
 2010-07-12 
 	Conserved quantum numbers speed up O'Mega code generation
-	
+
 2010-07-07 
 	Attaching full ISR/FSR parton shower and MPI/ISR
 	   module
-	Added SM model containing Hgg, HAA, HAZ vertices	
-	
+	Added SM model containing Hgg, HAA, HAZ vertices
+
 2010-07-02 
 	Matching output available as LHEF and STDHEP
-	
+
 2010-06-30 
 	Various bug fixes, missing files, typos
-	
+
 2010-06-26 
 	CIRCE1 completely re-enabled
 	Chaining structure functions supported
-	
+
 2010-06-25 
 	Partial support for conserved quantum numbers in 
 	O'Mega
@@ -137,28 +194,28 @@ Use svn log to see detailed changes.
 2010-06-21 
 	Major upgrade of the graphics package: error bars,
 	smarter SINDARIN steering, documentation, and all that... 
-	
+
 2010-06-17 
 	MLM matching with PYTHIA shower included
-	
+
 2010-06-16 
 	Added full CIRCE1 and CIRCE2 versions including
 	full documentation and miscellanea to the trunk
-	
+
 2010-06-12 
 	User file management supported, improved variable
 	and command structure
 
 2010-05-24 
 	Improved handling of variables in local command lists
-	
+
 2010-05-20 
 	PYTHIA interface re-enabled
-	
+
 2010-05-19 
 	ASCII file formats for interfacing ROOT and gnuplot in
 	   data analysis
-	
+
 ##################################################################
 
 2010-05-18 
@@ -168,25 +225,25 @@ Use svn log to see detailed changes.
 	Reimplementation of visualization of phase space 
 	   channels
 	Minor bug fixes
-	
+
 2010-05-12 
 	Improved phase space - elimination of redundancies
-	
+
 2010-05-08 
 	Interface for polarization completed: polarized beams etc.
-	
+
 2010-05-06 
 	Full quantum numbers appear in process log
 	Integration results are usable as user variables
 	Communication with external programs
-	
+
 2010-05-05 
 	Split module commands into commands, integration, 
 	   simulation modules
-	
+
 2010-05-04 
 	FSR+ISR for the first time connected to the WHIZARD 2 core
-	
+
 ##################################################################
 
 2010-04-25 
@@ -199,10 +256,10 @@ Use svn log to see detailed changes.
 2010-04-21 
 	Checkpointing for event generation
 	Flush statements to use WHIZARD inside a pipe
-	
+
 2010-04-20 
 	Reimplementation of signal handling in WGIZARD 2.0
-		
+
 2010-04-19 
 	VAMP is now a separately configurable and installable unit of 
 	   WHIZARD, included VAMP self-checks
@@ -211,10 +268,10 @@ Use svn log to see detailed changes.
 2010-04-06 
 	Allow for logarithmic plots in GAMELAN, reimplement the 
 	   possibility to set the number of bins
-	
+
 2010-04-15 
 	Improvement on time estimates for event generation
-	
+
 ##################################################################
 
 2010-04-12 
@@ -226,7 +283,7 @@ Use svn log to see detailed changes.
 	More advanced and unified and straightforward command language
 	  syntax
 	Final bug fixes
-	
+
 2010-04-07 
 	Improvement on SINDARIN syntax; printf, sprintf function
 	  thorugh a C interface
@@ -240,7 +297,7 @@ Use svn log to see detailed changes.
 	  unweighted events
 	Grid and weight histories added again to log files
 	Weights can be used in analyses
-	
+
 2010-03-28 
 	Cascade decays completely implemented including color and 
 	spin correlations
@@ -252,42 +309,42 @@ Use svn log to see detailed changes.
 	Removed conflict in O'Mega amplitudes between flavour sums
 	   and cascades
 	StdHEP interface re-implemented
-	
+
 2010-03-03 
 	RELEASE: version 2.0.0rc3
 	Several bug fixes for preventing abuse in input files
 	OpenMP support for amplitudes
 	Reimplementation of WHIZARD 1 HEPEVT ASCII event formats
 	FeynRules interface successfully passed MSSM test
-	
+
 2010-02-26 
 	Eliminating ghost gluons from multi-gluon amplitudes
 
 2010-02-25 
 	RELEASE: version 1.95
 	HEPEVT format from WHIZARD 1 re-implemented in WHIZARD 2	
-	
+
 2010-02-23 
 	Running alpha_s implemented in the FeynRules interface
-	
+
 2010-02-19 
 	MSSM (semi-) automatized self-tests finalized
-		
+
 2010-02-17 
 	RELEASE: version 1.94
-	
+
 2010-02-16 
 	Closed memory corruption in WHIZARD 1
 	Fixed problems of old MadGraph and CompHep drivers 
 	   with modern compilers
 	Uncolored vertex selection rules for colored amplitudes in
 	   O'Mega
-	
+
 2010-02-15 
 	Infrastructure for color correlation computation in O'Mega 
 	finished
 	Forbidden processes are warned about, but treated as non-fatal 
-	
+
 2010-02-10 
 	Improving phase space mappings for identical particles in
 	initial and final states
@@ -296,29 +353,29 @@ Use svn log to see detailed changes.
 2010-02-08 
 	First O'Caml code for computation of color correlations in
 	O'Mega	
-	
+
 2010-02-07 
 	First MLM matching with e+ e- -> jets 
 
 
 2010-02-04 
 	Color correlation computation in O'Mega finalized
-	
+
 ##################################################################
 
 2010-02-06 
 	RELEASE: version 2.0.0rc2
-	
+
 2010-02-05 	
 	Reconsidered the Makefile structure and more extended tests
 	Catch a crash between WHIZARD and O'Mega for forbidden processes
 	Tensor products of arbitrary color structures in jet definitions
-	
+
 ##################################################################
 
 2010-02-03 
 	RELEASE: version 2.0.0rc1
-	
+
 ##################################################################
 
 2010-01-31 
@@ -327,12 +384,12 @@ Use svn log to see detailed changes.
 
 2009-12-05 
 	NMSSM validated with FeynRules in WHIZARD 1 (Felix Braam)
-	
+
 2009-12-04 
 	RELEASE: version 2.0.0alpha
 
 ##################################################################
-	
+
 2009-04-16 
 	RELEASE: version 1.93
 
@@ -354,7 +411,7 @@ Use svn log to see detailed changes.
 	Improved color and flavor sums
 
 ##################################################################
-	
+
 2008-03-12 
 	RELEASE: version 1.92
 	LHEF (Les Houches Event File) format added
@@ -363,7 +420,7 @@ Use svn log to see detailed changes.
 	More bug fixes and workarounds for compiler compatibility
 
 ##################################################################
-	
+
 2008-03-06 
 	RELEASE: version 1.91
 	New model K-matrix (resonances and anom. couplings in WW scattering)
@@ -381,7 +438,7 @@ Use svn log to see detailed changes.
 	New model UED
 
 ##################################################################
-	
+
 2007-11-23 
 	RELEASE: version 1.90
 	O'Mega now part of the WHIZARD tree
@@ -392,7 +449,7 @@ Use svn log to see detailed changes.
 	Minor bug fixes
 
 ##################################################################
-	
+
 2006-06-15 
 	RELEASE: version 1.51
 	Support for anomaly-type Higgs couplings (to gluon and photon/Z)
@@ -403,7 +460,7 @@ Use svn log to see detailed changes.
 	Intel 9.0 bug workaround (deallocation of some arrays)
 
 ##################################################################
-	
+
 2006-02-07 
 	RELEASE: version 1.50
         To avoid confusion: Mention outdated manual example in BUGS file
@@ -425,7 +482,7 @@ Use svn log to see detailed changes.
 	Workaround hacks for g95 compatibility
 
 ##################################################################
-	
+
 2005-10-25 
 	RELEASE: version 1.43
 	Minor fixes in MSSM couplings (Higgs/3rd gen squarks).  
@@ -437,7 +494,7 @@ Use svn log to see detailed changes.
         Bug fix: missing process energy scale in raw event file
 
 ##################################################################
-	
+
 2005-09-30 
 	RELEASE: version 1.42	
 	Graphical display of integration history ('make history')
@@ -462,7 +519,7 @@ Use svn log to see detailed changes.
 	  Unit matrix element with option 'u' / default: normalized phase space
 
 ##################################################################
-	
+
 2005-07-15 
 	RELEASE: version 1.41	
 	Bug fix: no result for particle decay processes with width=0
@@ -494,7 +551,7 @@ Use svn log to see detailed changes.
 	pgf90 compatibility issues [note: still internal error in pgf90]
 
 ##################################################################
-	
+
 2004-12-13 
 	RELEASE: version 1.40	
 	compatibility fix: preprocessor marks in helas code now commented out 
@@ -522,7 +579,7 @@ Use svn log to see detailed changes.
 	don't compile unix_args module if it is not required
 
 ##################################################################
-	
+
 2004-09-20 
 	RELEASE: version 1.30	
 	g95 compatibility issues resolved
@@ -555,7 +612,7 @@ Use svn log to see detailed changes.
 	Fixed bug in comphep module: Vtb was overlooked
 
 ##################################################################
-	
+
 2004-04-15 
 	RELEASE: version 1.28	
         Fixed bug: Color factor was missing for O'Mega processes with
@@ -587,7 +644,7 @@ Use svn log to see detailed changes.
 	Support for catching signals
 
 ##################################################################
-	
+
 2003-08-06 
 	RELEASE: version 1.27	
 	User-defined PDF libraries as an alternative to the standard PDFLIB
@@ -599,7 +656,7 @@ Use svn log to see detailed changes.
 	Madgraph module: increased max number of color flows from 250 to 1000
 
 ##################################################################
-	
+
 2003-06-23 
 	RELEASE: version 1.26
 	CIRCE2 support
@@ -610,7 +667,7 @@ Use svn log to see detailed changes.
 	Bug fixes for MSSM definitions
 
 ##################################################################
-	
+
 2003-05-22 
 	RELEASE: version 1.25
 	Experimental MSSM support with ISAJET interface
@@ -618,7 +675,7 @@ Use svn log to see detailed changes.
 	Optional drawing phase space diagrams using FeynMF
 
 ##################################################################
-	
+
 2003-01-31 
 	RELEASE: version 1.24
 	A few more fixes and workarounds (Intel and Lahey compiler)
@@ -630,10 +687,10 @@ Use svn log to see detailed changes.
 	Bug fix: problem with reading whizard.phs
 
 ##################################################################
-	
+
 2002-12-10 
 	RELEASE: version 1.23
-	
+
 	Command-line options (on some systems)
 
 	Allow for initial particles in the event record, ordered:
@@ -647,7 +704,7 @@ Use svn log to see detailed changes.
 	Support for transversal polarization of fermion beams
 	Cut codes: PHI now for absolute azimuthal angle, DPHI for distance
 	'Test' matrix elements optionally respect polarization
-	
+
 	User-defined code can be inserted for spectra, structure functions
           and fragmentation
 
@@ -660,7 +717,7 @@ Use svn log to see detailed changes.
 	Bug fix: Gamelan (graphical analysis) was not built if noweb absent
 
 ##################################################################
-	
+
 2002-03-16 
 	RELEASE: version 1.22
 	Allow for beam remnants in the event record
@@ -673,7 +730,7 @@ Use svn log to see detailed changes.
 	  (total execution time reduced by 20-60%, depending on process)
 
 ##################################################################
-	
+
 2002-02-26 
 	RELEASE: version 1.21
 	Fixed ISR formula (ISR was underestimated in previous versions).
@@ -681,7 +738,7 @@ Use svn log to see detailed changes.
           third order.  Parameter ISR_sqrts renamed to ISR_scale.
 
 ##################################################################
-	
+
 2002-02-19 
 	RELEASE: version 1.20	
 	New process-generating method 'test' (dummy matrix element)
@@ -705,7 +762,7 @@ Use svn log to see detailed changes.
 	Fixed bug: Whizard library was not always recompiled when necessary
 	Fixed bug: Default cuts were insufficient in some cases
 	Fixed bug: Unusable phase space mappings generated in some cases
-	
+
 2001-12-06 
 	Reorganized document source
 
@@ -758,7 +815,7 @@ Use svn log to see detailed changes.
 	Workaround for missing PDFLIB dummy routines in PYTHIA library
 
 ##################################################################
-	
+
 2001-06-30 
 	RELEASE: version 1.13
 	Default path /cern/pro/lib in configure script
@@ -782,7 +839,7 @@ Use svn log to see detailed changes.
 	new parameters for grid adaptation: accuracy_goal and efficiency_goal
 
 ##################################################################
-	
+
 2001-05-29 
 	RELEASE: version 1.12
 	bug fixes (compilation problems): deleted/modified unused functions
@@ -797,7 +854,7 @@ Use svn log to see detailed changes.
 	slight changes in whizard.out format; manual extended
 
 ##################################################################
-	
+
 2001-04-20 
 	RELEASE: version 1.11
 	fixed some configuration and compilation problems (PDFLIB etc.)
@@ -810,7 +867,7 @@ Use svn log to see detailed changes.
 	SM_ac model file: fixed error in continuation line
 
 ##################################################################
-	
+
 2001-03-27 
 	RELEASE: version 1.10
 	reorganized the modules as libraries
@@ -820,7 +877,7 @@ Use svn log to see detailed changes.
 	fixed some configuration problems (if noweb etc. are absent)
 
 ##################################################################
-	
+
 2000-12-01 
 	RELEASE of first public version: version 1.00beta
 

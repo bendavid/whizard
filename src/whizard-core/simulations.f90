@@ -1,4 +1,4 @@
-! WHIZARD 2.0.5 Tue May 10 2011
+! WHIZARD 2.0.6 Wed Dec 7 2011
 ! 
 ! Copyright (C) 1999-2011 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -60,6 +60,7 @@ module simulations
   public :: simulation_setup_analysis
   public :: simulation_init
   public :: simulation_get_n_events
+  public :: simulation_get_i_evt
   public :: simulation_event
   public :: simulation_final
   public :: simulation_check_matching
@@ -123,13 +124,16 @@ module simulations
     integer :: u_raw = -1
     type(simulation_parameters_t) :: spar
     real(default), dimension(:), allocatable :: integral
+    real(default), dimension(:), allocatable :: error
     real(default) :: integral_sum = 0
+    real(default) :: error_sum = 0
     real(default) :: norm_weight = 0
     logical :: helicity_selection_active = .false.
     real(default) :: helicity_selection_threshold = -1
     integer :: helicity_selection_cutoff = 1000
     type(md5sum_events_t) :: md5sum
     integer :: n_events = 0
+    logical :: n_events_set = .false.
     integer :: n_read = 0
     integer :: i_evt = 0
     integer :: n_selected = 0
@@ -630,17 +634,21 @@ contains
     type(process_t), pointer :: process
     type(string_t) :: process_id
     allocate (sim%integral (sim%n_proc))
+    allocate (sim%error (sim%n_proc))
     do proc = 1, sim%n_proc
        process => sim%prc_array(proc)%ptr
        process_id = process_get_id (process)
        sim%integral(proc) = var_list_get_rval (var_list, &
             var_str ("integral(") // process_id // ")")
+       sim%error(proc) = var_list_get_rval (var_list, &
+            var_str ("error(") // process_id // ")")
        if (sim%integral(proc) < 0 .and. .not.sim%spar%negative_weights) then       
           call msg_fatal ("Integral of process '" &
                // char (process_id) // "' is negative")
        end if
     end do
     sim%integral_sum = sum (sim%integral)
+    sim%error_sum = sqrt (sum (sim%error ** 2))
     if (sim%integral_sum > 0) then
        ok = .true.
     else
@@ -713,6 +721,7 @@ contains
           end if
        end if
        sim%n_events = max (nint (luminosity * sim%integral_sum), n_events)
+       sim%n_events_set = (sim%n_events.eq.n_events)
        sim%luminosity = max (luminosity, sim%n_events / sim%integral_sum)
        sim%norm_weight = simulation_parameters_get_norm &
             (sim%spar, sim%integral_sum, sim%n_events)
@@ -871,9 +880,20 @@ contains
               close (sim%u_raw)
           end if
           ok = .true.
+          call reinitialize_processes (sim%prc_array)
        end if
     end if
   end subroutine simulation_read_event_raw
+
+  subroutine reinitialize_processes (prc_array)
+    type(process_p), dimension(:), intent(in) :: prc_array
+    type(process_t), pointer :: process
+    integer :: i
+    do i = 1, size (prc_array)
+       process => prc_array(i)%ptr
+       call process_setup_subevt (process)
+    end do
+  end subroutine reinitialize_processes
 
   subroutine simulation_read_event_hepmc (sim, ok)
     type(simulation_t), intent(inout), target :: sim
@@ -961,7 +981,16 @@ contains
              keep_correlations=.false., &
              keep_virtual=.true., &
              shower_settings = sim%spar%shower_settings)
-       if (event_is_valid (sim%event))  exit GENERATE
+       if (event_is_vetoed(sim%event).and. &
+            (.not.sim%n_events_set)) then
+          sim%n_events = sim%n_events - 1
+          if(sim%i_evt .ge. sim%n_events) then
+             call event_final(sim%event)
+             return
+          end if
+       end if
+       if (event_is_valid (sim%event).and. &
+            (.not.event_is_vetoed(sim%event)))  exit GENERATE
     end do GENERATE
     if (.not. event_is_valid (sim%event)) then
        write (msg_buffer, "(A,I0,A)") "Failed to generate a valid event " &
@@ -995,7 +1024,8 @@ contains
        call event_reweight (sim%event, sim%subevt, sim%reweight_expr)
        call event_do_analysis (sim%event, sim%subevt, sim%analysis_expr)
        call event_file_list_write_event &
-            (sim%event_file_list, sim%event, i_evt=sim%i_evt)
+            (sim%event_file_list, sim%event, sim%integral_sum, sim%error_sum, &
+             sim%analysis_expr, i_evt=sim%i_evt)
     end if
     if (sim%write_raw .and. .not. sim%read_raw) &
          call event_write_raw (sim%event, sim%u_raw)
@@ -1178,6 +1208,12 @@ contains
     type(simulation_t), intent(in) :: sim
     n_events = sim%n_events
   end function simulation_get_n_events
+
+  function simulation_get_i_evt (sim) result (i_evt)
+    integer :: i_evt
+    type(simulation_t), intent(in) :: sim
+    i_evt = sim%i_evt
+  end function simulation_get_i_evt
 
   subroutine simulation_event (sim, rng, ok, verbose)
     type(simulation_t), intent(inout), target :: sim

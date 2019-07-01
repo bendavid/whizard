@@ -1,4 +1,4 @@
-! WHIZARD 2.0.5 Tue May 10 2011
+! WHIZARD 2.0.6 Wed Dec 7 2011
 ! 
 ! Copyright (C) 1999-2011 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -114,11 +114,29 @@ contains
          (global%var_list, var_str ("$restrictions"), var_str (""), &
           intrinsic=.true.)
     call var_list_append_string &
+         (global%var_list, var_str ("$omega_flags"), var_str (""), &
+          intrinsic=.true.)
+    call var_list_append_string &
          (global%var_list, var_str ("$method"), var_str ("omega"), &
           intrinsic=.true.)       
     call var_list_append_log &
          (global%var_list, var_str ("?read_color_factors"), .true., &
           intrinsic=.true.)
+    call var_list_append_string &
+         (global%var_list, var_str ("$user_procs_cut"), var_str (""), &
+          intrinsic=.true.)       
+    call var_list_append_string &
+         (global%var_list, var_str ("$user_procs_event_shape"), var_str (""), &
+          intrinsic=.true.)       
+    call var_list_append_string &
+         (global%var_list, var_str ("$user_procs_obs1"), var_str (""), &
+          intrinsic=.true.)       
+    call var_list_append_string &
+         (global%var_list, var_str ("$user_procs_obs2"), var_str (""), &
+          intrinsic=.true.)       
+    call var_list_append_string &
+         (global%var_list, var_str ("$user_procs_sf"), var_str (""), &
+          intrinsic=.true.)       
     call var_list_append_log &
          (global%var_list, var_str ("?slha_read_input"), .true., &
           intrinsic=.true.)
@@ -152,9 +170,15 @@ contains
     call var_list_append_real &
          (global%var_list, var_str ("luminosity"), 0._default, &
           intrinsic=.true.)
-    call var_list_append_string &
-         (global%var_list, var_str ("$lhapdf_dir"), paths%lhapdfdir, &
-          intrinsic=.true.)
+    if (present (paths)) then
+       call var_list_append_string &
+            (global%var_list, var_str ("$lhapdf_dir"), paths%lhapdfdir, &
+             intrinsic=.true.)
+    else
+       call var_list_append_string &
+            (global%var_list, var_str ("$lhapdf_dir"), var_str(""), &
+             intrinsic=.true.)
+    end if 
     call var_list_append_string &
          (global%var_list, var_str ("$lhapdf_file"), var_str (""), &
           intrinsic=.true.)
@@ -235,7 +259,7 @@ contains
     call var_list_append_int &
          (global%var_list, var_str ("circe1_rev"), 0, intrinsic=.true.)
     call var_list_append_int &
-         (global%var_list, var_str ("circe1_acc"), 0, intrinsic=.true.)
+         (global%var_list, var_str ("circe1_acc"), 1, intrinsic=.true.)
     call var_list_append_int &
          (global%var_list, var_str ("circe1_chat"), 0, intrinsic=.true.)
     call var_list_append_real &
@@ -353,8 +377,11 @@ contains
     call var_list_append_log &
          (global%var_list, var_str ("?allow_global_mapping"), .false., &
           intrinsic=.true.)
+!    call var_list_append_log &
+!         (global%var_list, var_str ("?old_phs_version"), .false., &
+!          intrinsic=.true.)
     call var_list_append_log &
-         (global%var_list, var_str ("?vis_history"), .true., &
+         (global%var_list, var_str ("?vis_history"), .false., &
           intrinsic=.true.)       
     call var_list_append_log &
          (global%var_list, var_str ("?isotropic_decay"), .false., &
@@ -442,6 +469,12 @@ contains
           intrinsic=.true.)
     call var_list_append_string &
          (global%var_list, var_str ("$extension_stdhep_up"), var_str ("up.stdhep"), &
+          intrinsic=.true.)
+    call var_list_append_string &
+         (global%var_list, var_str ("$extension_hepevt_verbose"), var_str ("hepevt.verb"), &
+          intrinsic=.true.)
+    call var_list_append_string &
+         (global%var_list, var_str ("$extension_lha_verbose"), var_str ("lha.verb"), &
           intrinsic=.true.)
     call var_list_append_int (global%var_list, &
          var_str ("n_bins"), 20, &
@@ -581,8 +614,14 @@ contains
          (global%var_list, var_str ("?ps_fsr_active"), .false., &
             intrinsic=.true.)
     call var_list_append_log &
-         (global%var_list, var_str ("?ps_use_PYTHIA_shower"), .false., &
+         (global%var_list, var_str ("?ps_use_PYTHIA_shower"), .true., &
             intrinsic=.true.)
+    call var_list_append_log &
+         (global%var_list, var_str ("?ps_PYTHIA_verbose"), .false., &
+            intrinsic=.true.)
+    call var_list_append_string &
+         (global%var_list, var_str ("$ps_PYTHIA_PYGIVE"), var_str (""), &
+          intrinsic=.true.)
     call var_list_append_log &
          (global%var_list, var_str ("?ps_isr_active"), .false., &
             intrinsic=.true.)
@@ -625,6 +664,31 @@ contains
     call var_list_append_log &
          (global%var_list, var_str ("?hadronization_active"), .false., &
             intrinsic=.true.)
+    ! setting for my matching
+    call var_list_append_log &
+         (global%var_list, var_str ("?mlm_matching_active"), .false., &
+            intrinsic=.true.)
+    call var_list_append_real (global%var_list, var_str ("mlm_ptmin"), &
+         0._default, intrinsic = .true.)
+    call var_list_append_real (global%var_list, var_str ("mlm_etamax"), &
+         0._default, intrinsic = .true.)
+    call var_list_append_real (global%var_list, var_str ("mlm_Rmin"), &
+         0._default, intrinsic = .true.)
+    call var_list_append_real (global%var_list, var_str ("mlm_Emin"), &
+         0._default, intrinsic = .true.)
+    call var_list_append_int (global%var_list, var_str ("mlm_nmaxMEjets"), &
+         0, intrinsic = .true.)
+
+    call var_list_append_real (global%var_list, var_str ("mlm_ETclusfactor"), &
+         0.2_default, intrinsic = .true.)
+    call var_list_append_real (global%var_list, var_str ("mlm_ETclusminE"), &
+         5._default, intrinsic = .true.)
+    call var_list_append_real (global%var_list, var_str ("mlm_etaclusfactor"), &
+         1._default, intrinsic = .true.)
+    call var_list_append_real (global%var_list, var_str ("mlm_Rclusfactor"), &
+         1._default, intrinsic = .true.)
+    call var_list_append_real (global%var_list, var_str ("mlm_Eclusfactor"), &
+         1._default, intrinsic = .true.)
 
     call var_list_append_string (global%var_list, var_str ("$datafile"), &
           intrinsic=.true.)

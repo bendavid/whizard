@@ -11,6 +11,9 @@ compile ("qedtest")
 sqrts = 500 GeV
 beams = e1, E1
 
+!!! Tests should be run single-threaded 
+openmp_num_threads = 1
+
 integrate (qedtest_eemm) {
   iterations = 1:2000
 }

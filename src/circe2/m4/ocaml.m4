@@ -5,6 +5,7 @@ dnl JR added check for ocamlcp
 dnl JR added check for ocamlweb
 dnl JR added routine for lablgtk
 dnl JR added check for ocaml version
+dnl JR added conditional for CAMLP4
 dnl
 dnl Copyright © 2009      Richard W.M. Jones
 dnl Copyright © 2009      Stefano Zacchiroli
@@ -158,6 +159,8 @@ AC_DEFUN([AC_PROG_CAMLP4],
      fi
   fi
   AC_SUBST([CAMLP4])
+  AM_CONDITIONAL([CAMLP4_AVAILABLE],
+     [test "$CAMLP4" != "no"])
 
   # checking for companion tools
   AC_CHECK_TOOL([CAMLP4BOOT],[camlp4boot],[no])

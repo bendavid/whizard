@@ -34,14 +34,51 @@ TESTS_DEFAULT = \
     md5.run \
     errors.run \
     extpar.run \
+    formats.run \
+    os_interface.run \
     susyhit.run \
-    test_me.run
+    sorting.run \
+    color.run \
+    model.run \
+    particles.run \
+    beams.run \
+    polarizations.run \
+    lexers.run \
+    parser.run \
+    state_matrices.run \
+    interactions.run \
+    evaluators.run \
+    analysis.run \
+    expressions.run \
+    hepmc.run \
+    strfun.run \
+    phs_forests.run \
+    cascades.run \
+    commands.run \
+    processes.run \
+    process_libraries.run \
+    slha_interface.run \
+    test_me.run \
+    hard_interactions.run \
+    events.run
 XFAIL_TESTS_DEFAULT = \
     errors.run
+
+hard_interactions.run: test_me.run.log
+events.run: test_me.run.log
+
+if FC_IS_GFORTRAN_450
+TESTS_USER_STRFUN =
+else
+TESTS_USER_STRFUN = \
+    user_strfun.run 
+endif 
 
 TESTS_REQ_OCAML = \
     libs.run \
     qedtest.run \
+    user_cuts.run \
+    $(TESTS_USER_STRFUN) \
     helicity.run \
     smtest.run \
     defaultcuts.run \
@@ -49,6 +86,7 @@ TESTS_REQ_OCAML = \
     decays.run \
     alphas.run \
     colors.run \
+    model.run \
     cuts.run \
     ilc.run \
     mssmtest.run \
@@ -78,6 +116,7 @@ XFAIL_TESTS_EXTENDED =
 TESTS_REQ_GAMELAN = \
     plain.run \
     test_me.run \
+    commands.run \
     $(TESTS_REQ_OCAML) \
     $(TESTS_REQ_LHAPDF) \
     $(TESTS_REQ_STDHEP) \
@@ -188,17 +227,27 @@ SUFFIXES = .sh .run
         fi
 	chmod +x $@
 
+commands.run: commands2.sin
 plain.run: TEST.mdl
-$(TESTS_REQ_GAMELAN): gamelan.sty
 susyhit.run: susyhit.in
+user_cuts.run: user_cuts.f90
+user_strfun.run: user_strfun.f90
+user_cuts.f90: $(top_builddir)/share/test/user_cuts.f90
+	cp $< $@
+user_strfun.f90: $(top_builddir)/share/test/user_strfun.f90
+	cp $< $@
 
 TEST.mdl: $(top_srcdir)/share/test/TEST.mdl
 	cp $< $@
 
-gamelan.sty: $(top_builddir)/src/gamelan/gamelan.sty
+commands2.sin: $(top_srcdir)/share/test/commands2.sin
 	cp $< $@
 
 if MPOST_AVAILABLE
+$(TESTS_REQ_GAMELAN): gamelan.sty
+gamelan.sty: $(top_builddir)/src/gamelan/gamelan.sty
+	cp $< $@
+
 $(top_builddir)/src/gamelan/gamelan.sty:
 	$(MAKE) -C $(top_builddir)/src/gamelan gamelan.sty
 endif
@@ -223,15 +272,16 @@ notestflag:
 
 ## Remove generated files
 clean-local:
-	rm -f gamelan.sty TESTFLAG TEST.mdl
+	rm -f gamelan.sty TESTFLAG TEST.mdl 
 	rm -f whizard.static
-	rm -f *.run *.log
+	rm -f commands2.sin
+	rm -f *.run *.log slha_test.out
 	rm -f *.f90 *.mod *.o *.la
 	rm -f *.phs *.vg *.evt *.evx *.lhef *.hepmc *.hepevt
 	rm -f *.tmp *.dat *.debug *.lha *.short *.long *.athena
-	rm -f *.stdhep *.stdhep_up
+	rm -f *.stdhep *.stdhep_up fort.81
 	rm -f *.tex *.mp *.mpx *.[1-9] *.[1-9][0-9] *.[1-9][0-9][0-9] 
-	rm -f *.ltp *.aux *.dvi *.ps *.pdf
+	rm -f *.ltp *.aux *.dvi *.ps *.pdf so_test.*
 	rm -f slhaspectrum.in suspect2.out suspect2_lha.out 
 	rm -f susyhit.in susyhit_slha.out suspect2_lha.in
 

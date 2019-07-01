@@ -1,4 +1,4 @@
-! WHIZARD 2.0.5 Tue May 10 2011
+! WHIZARD 2.0.6 Wed Dec 7 2011
 ! 
 ! Copyright (C) 1999-2011 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -41,6 +41,7 @@ module sf_circe2
   use polarizations
   use interactions
   use sf_aux
+  use circe2 !NODEP!
 
   implicit none
   private
@@ -70,49 +71,6 @@ module sf_circe2
      real(default), dimension(0:4) :: lumi_hel_sum = 0
   end type circe2_data_t
 
-
-  interface
-     subroutine cir2ld (file, design, roots, ierror)
-       import 
-       character*(*), intent(in) :: file, design
-       double precision, intent(in) :: roots
-       integer, intent(inout) :: ierror
-     end subroutine cir2ld
-  end interface
-  interface
-     double precision function cir2lm (p1, h1, p2, h2)
-        import
-        integer, intent(in) :: p1, h1, p2, h2
-     end function cir2lm  
-  end interface
-  interface
-     double precision function cir2dn (p1, h1, p2, h2, x1, x2)
-       import 
-       integer, intent(in) :: p1, h1, p2, h2
-       double precision, intent(in) :: x1, x2
-     end function cir2dn
-  end interface  
-  abstract interface
-     subroutine rng_call (x)
-       double precision, intent(out) :: x
-     end subroutine rng_call
-  end interface
-!   interface
-!      subroutine cir2ch (p1, h1, p2, h2, rng)
-!        import
-!        integer, intent(out) :: p1, h1, p2, h2
-!        procedure(rng_call) :: rng
-!      end subroutine cir2ch  
-!   end interface
-  interface
-     subroutine cir2gn (p1, h1, p2, h2, x1, x2, rng)
-       import
-       integer, intent(in) :: p1, h1, p2, h2
-       double precision, intent(out) :: x1, x2
-       procedure(rng_call) :: rng
-     end subroutine cir2gn
-  end interface
-  
 
   type(tao_random_state), pointer :: rng_tmp => null ()
 

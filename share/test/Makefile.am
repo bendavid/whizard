@@ -28,7 +28,7 @@
 
 EXTRA_DIST = \
     $(TESTSUITE_MACROS) $(TESTSUITES_M4) $(TESTSUITES_SIN) \
-    susyhit.in TEST.mdl
+    user_cuts.f90 user_strfun.f90 susyhit.in TEST.mdl
 
 TESTSUITE_MACROS = testsuite.m4
 
@@ -46,17 +46,23 @@ MISC_TESTS_M4 =
 
 MISC_TESTS_SIN = \
     empty.sin vars.sin errors.sin md5.sin \
-    alphas.sin \
-    colors.sin \
-    cuts.sin \
-    decays.sin \
-    defaultcuts.sin \
-    extpar.sin \
-    helicity.sin \
-    ilc.sin \
+    beams.sin cascades.sin alphas.sin \
+    color.sin commands.sin commands2.sin \
+    colors.sin hepmc.sin model.sin \
+    state_matrices.sin sorting.sin \
+    analysis.sin strfun.sin slha_interface.sin \
+    expressions.sin phs_forests.sin \
+    evaluators.sin os_interface.sin \
+    cuts.sin parser.sin particles.sin \
+    decays.sin polarizations.sin \
+    defaultcuts.sin process_libraries.sin \
+    extpar.sin formats.sin interactions.sin \
+    helicity.sin lexers.sin events.sin \
+    ilc.sin processes.sin \
     jets.sin \
     lhapdf.sin \
     libs.sin \
+    user_cuts.sin user_strfun.sin \
     mssmtest.sin \
     plain.sin \
     qedtest.sin \
@@ -70,7 +76,8 @@ MISC_TESTS_SIN = \
     sm_ext.sin \
     models.sin \
     test_me.sin \
-	 pdf_builtin.sin
+    hard_interactions.sin \
+    pdf_builtin.sin
 
 MSSM_EXT_M4 = \
     mssm_ext-ee.m4 mssm_ext-ee2.m4 \

@@ -1,5 +1,5 @@
 WHIZARD Core
-* Release 2.0.6
+* Release 2.0.7
   - 2->1 processes ?
   - Library API (bind(C))
   - large event numbers (still a problem??)
@@ -15,10 +15,10 @@ WHIZARD Core
   
 * 2.2
   - Mathematica interface
-  - Parton shower matching (MLM done with PYTHIA)
+  - Parton shower matching (MLM done, CKKW pending)
   - GUI (Tim)
-  - parallelization (done for helicity loop)
-  - NLO/GOLEM
+  - parallelization (OpenMP done, MPI pending)
+  - NLO/GoSAM (first things happened)
   - Dark Matter
   - Use omega restrictions on diagrams for phase space
 
@@ -35,7 +35,7 @@ O'Mega
   - helicity optimization (numerically done/analytically pending)
 
 Models
-* Release 2.0.6
+* Release 2.0.7
   - more self-checks (trivial processes + all kinds of commands)
   - Tests for 7, 8 fermions ... 
 
@@ -44,7 +44,7 @@ Models
   - W'
 
 VAMP
-* 2.0.6
+* 2.0.7
   - unify naming conventions for types with WHIZARD (JR will do, 
 	e.g. type :: division -> division_t (partially done)
 * 2.1
@@ -55,11 +55,10 @@ configure
   - Windows support?
 
 Misc
-* Release 2.0.6
+* Release 2.0.7
   - ATLAS/CMS software environment
-  - Manual + Paper (partially done)
+  - Manual + O'Mega Paper (partially done)
 
 * 2.1
-  - GRID compatibility (Christian)
   - review gamelan (partially done, esp. docu)
 

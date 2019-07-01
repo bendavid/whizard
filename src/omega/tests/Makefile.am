@@ -1,5 +1,5 @@
 # Makefile.am -- Makefile for O'Mega within and without WHIZARD
-# $Id: Makefile.am 3150 2011-04-09 20:03:28Z jr_reuter $
+# $Id: Makefile.am 3468 2011-08-10 15:18:36Z sschmidt $
 ##
 ## Process this file with automake to produce Makefile.in
 ##
@@ -308,7 +308,12 @@ installcheck-local:
 
 ########################################################################
 
-clean-local:
+### Remove DWARF debug information on MAC OS X
+clean-macosx:
+	-rm -rf a.out.dSYM
+.PHONY: clean-macosx
+
+clean-local: clean-macosx
 	rm -f a.out gmon.out $(OMEGA_CACHES) *.$(FC_MODULE_EXT) *.o amplitude_*.f90 \
 	  $(EXTRA_PROGRAMS) ects.f90 ward.f90 compare_split_*.f90 \
 	  omega_testtools.f90 test_omega95*.f90

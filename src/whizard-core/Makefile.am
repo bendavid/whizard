@@ -36,7 +36,9 @@ libwhizard_core_la_SOURCES = \
   permutations.f90 sorting.f90 ifiles.f90 \
   lexers.f90 syntax_rules.f90 parser.f90 \
   analysis.f90 \
-  pdg_arrays.f90 subevents.f90 variables.f90 expressions.f90 \
+  pdg_arrays.f90 subevents.f90 \
+  user_code_interface.f90 \
+  variables.f90 expressions.f90 \
   models.f90 \
   helicities.f90 colors.f90 flavors.f90 quantum_numbers.f90 \
   state_matrices.f90 interactions.f90 evaluators.f90 \
@@ -46,7 +48,8 @@ libwhizard_core_la_SOURCES = \
   beams.f90 \
   sf_aux.f90 sf_isr.f90 sf_epa.f90 sf_ewa.f90 sf_circe1.f90 \
   sf_circe2.f90 sf_escan.f90 sf_beam_events.f90 sf_lhapdf.f90 \
-  sf_pdf_builtin.f90 strfun.f90 \
+  sf_pdf_builtin.f90 sf_user.f90 \
+  strfun.f90 \
   mappings.f90 phs_trees.f90 phs_forests.f90 \
   cascades.f90 \
   prclib_interfaces.f90 \
@@ -100,9 +103,12 @@ $(libwhizard_core_la_OBJECTS): \
   ../misc/limits.$(FC_MODULE_EXT) \
   ../misc/file_utils.$(FC_MODULE_EXT) \
   ../misc/diagnostics.$(FC_MODULE_EXT) \
+  ../misc/c_particles.$(FC_MODULE_EXT) \
   ../misc/lorentz.$(FC_MODULE_EXT) \
   ../misc/sm_physics.$(FC_MODULE_EXT) \
-  ../vamp/src/vamp.$(FC_MODULE_EXT)
+  ../vamp/src/vamp.$(FC_MODULE_EXT) \
+  ../circe1/src/circe1.$(FC_MODULE_EXT) \
+  ../circe2/src/circe2.$(FC_MODULE_EXT)
 ## Dependency libshower (kinds, constants, strings) and VAMP
 #$(libwhizard_core_la_OBJECTS): \
   ../shower/shower_module.$(FC_MODULE_EXT) \
@@ -116,7 +122,7 @@ SUFFIXES = .lo .$(FC_MODULE_EXT)
 	@:
 #	touch $@
 
-AM_FCFLAGS = -I../misc -I../vamp/src -I../shower -I../pdf_builtin 
+AM_FCFLAGS = -I../misc -I../vamp/src -I../shower -I../pdf_builtin -I../circe1/src -I../circe2/src
 
 ########################################################################
 ## Default Fortran compiler options
@@ -135,8 +141,11 @@ endif
 ## Non-standard targets and dependencies
 
 ## Install the modules used by generated matrix element code
+## and by the user code library
 execmoddir = $(pkglibdir)/mod/whizard-core
 nodist_execmod_HEADERS = \
+  os_interface.$(FC_MODULE_EXT) \
+  user_code_interface.$(FC_MODULE_EXT) \
   prclib_interfaces.$(FC_MODULE_EXT)
 
 ## (Re)create F90 sources from NOWEB source.

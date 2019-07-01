@@ -1,4 +1,4 @@
-! WHIZARD 2.0.5 Tue May 10 2011
+! WHIZARD 2.0.6 Wed Dec 7 2011
 ! 
 ! Copyright (C) 1999-2011 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -36,6 +36,7 @@ module process_libraries
   use os_interface
   use lexers
   use variables
+  use user_code_interface
   use models
   use flavors
   use prclib_interfaces
@@ -66,6 +67,7 @@ module process_libraries
   public :: process_library_get_openmp_status
   public :: process_library_generate_code
   public :: process_library_write_driver
+  public :: user_procs_t
   public :: write_library_manager
   public :: get_modellibs_flags
   public :: process_library_compile
@@ -108,6 +110,7 @@ module process_libraries
      integer :: n_tot = 0
      type(string_t), dimension(:), allocatable :: prt_in, prt_out
      type(string_t) :: restrictions
+     type(string_t) :: omega_flags
      character(32) :: md5sum = ""
      logical :: omega_openmp = .false.
      type(process_configuration_t), pointer :: next => null ()
@@ -129,6 +132,8 @@ module process_libraries
      procedure(prc_get_stringptr), nopass, pointer :: get_model_name => null ()
      procedure(prc_get_stringptr), nopass, pointer :: &
           get_restrictions => null ()
+     procedure(prc_get_stringptr), nopass, pointer :: &
+          get_omega_flags => null ()
      procedure(prc_get_stringptr), nopass, pointer :: get_md5sum => null ()
      procedure(prc_get_int), nopass, pointer :: get_n_in  => null ()
      procedure(prc_get_int), nopass, pointer :: get_n_out => null ()
@@ -156,6 +161,14 @@ module process_libraries
      procedure(prclib_reload_hook), nopass, pointer :: reload_hook => null ()
      type(process_library_t), pointer :: next => null ()
   end type process_library_t
+
+  type :: user_procs_t
+     type(string_t), dimension(:), allocatable :: cut
+     type(string_t), dimension(:), allocatable :: event_shape
+     type(string_t), dimension(:), allocatable :: obs_real_unary
+     type(string_t), dimension(:), allocatable :: obs_real_binary
+     type(string_t), dimension(:), allocatable :: sf
+  end type user_procs_t
 
   type :: process_library_store_t
      private
@@ -193,14 +206,14 @@ contains
 
   subroutine process_configuration_init &
        (prc_conf, prc_id, model, prt_in, prt_out, method, status, &
-        restrictions, known_md5sum, omega_openmp)
+        restrictions, omega_flags, known_md5sum, omega_openmp)
     type(process_configuration_t), intent(inout) :: prc_conf
     type(string_t), intent(in) :: prc_id
     type(model_t), intent(in), target :: model
     type(string_t), dimension(:), intent(in) :: prt_in, prt_out
     integer, intent(in), optional :: status
     integer, intent(in), optional :: method
-    type(string_t), intent(in), optional :: restrictions
+    type(string_t), intent(in), optional :: restrictions, omega_flags
     character(32), intent(in), optional :: known_md5sum
     logical, intent(in), optional :: omega_openmp
     prc_conf%id = prc_id
@@ -228,6 +241,11 @@ contains
        prc_conf%restrictions = canonicalize_restrictions (restrictions, model)
     else
        prc_conf%restrictions = ""
+    end if
+    if (present (omega_flags)) then
+       prc_conf%omega_flags = omega_flags
+    else
+       prc_conf%omega_flags = ""
     end if
     if (present (omega_openmp)) then
        prc_conf%omega_openmp = omega_openmp
@@ -259,6 +277,9 @@ contains
     if (prc_conf%restrictions /= "") then
        write (u, "(A)")  char (prc_conf%restrictions)
     end if
+    if (prc_conf%omega_flags /= "") then
+       write (u, "(A)")  char (prc_conf%omega_flags)
+    end if
     rewind (u)
     prc_conf%md5sum = md5sum (u)
     close (u)
@@ -269,6 +290,7 @@ contains
     integer, intent(in), optional :: unit
     character :: status
     type(string_t) :: in_state, out_state
+    type(string_t) :: restrictions_str, omega_flags_str
     integer :: i
     select case (prc_conf%status)
     case (STAT_UNKNOWN);         status = "?"
@@ -285,14 +307,26 @@ contains
     do i = 2, size (prc_conf%prt_out)
        out_state = out_state // ", " // prc_conf%prt_out(i)
     end do
-    if (prc_conf%restrictions == "") then
+    if (prc_conf%restrictions == "" .and. prc_conf%omega_flags == "") then
        call msg_message (" [" // status // "] " // char (prc_conf%id) // " = " &
             // char (in_state) // " => " // char (out_state), unit)
     else
+       if (prc_conf%restrictions /= "") then
+          restrictions_str = "$restrictions = """ &    ! $
+               // prc_conf%restrictions // """"
+       else
+          restrictions_str = ""
+       end if
+       if (prc_conf%omega_flags /= "") then
+          omega_flags_str = "$omega_flags = """ &      ! $
+               // prc_conf%omega_flags // """"
+       else
+          omega_flags_str = ""
+       end if
        call msg_message (" [" // status // "] " // char (prc_conf%id) // " = " &
             // char (in_state) // " => " // char (out_state) &
-            // " { $restrictions = " // '"' // char (prc_conf%restrictions) &
-            // '"' // " }", unit)  ! $
+            // " { " // char (restrictions_str) // " " &
+            // char (omega_flags_str) // " }", unit) 
     end if
   end subroutine process_configuration_write
 
@@ -496,14 +530,15 @@ contains
 
   subroutine process_library_append &
        (prc_lib, prc_id, model, prt_in, prt_out, method, &
-        status, restrictions, rebuild_library, message, known_md5sum, &
+        status, restrictions, omega_flags, &
+        rebuild_library, message, known_md5sum, &
         omega_openmp)
     type(process_library_t), intent(inout), target :: prc_lib
     type(string_t), intent(in) :: prc_id
     type(model_t), intent(in), target :: model
     type(string_t), dimension(:), intent(in) :: prt_in, prt_out
     integer, intent(in), optional :: status, method
-    type(string_t), intent(in), optional :: restrictions
+    type(string_t), intent(in), optional :: restrictions, omega_flags
     logical, intent(in), optional :: rebuild_library, message, omega_openmp
     character(32), intent(in), optional :: known_md5sum
     type(process_configuration_t), pointer :: current
@@ -521,7 +556,7 @@ contains
        old_omega_openmp = current%omega_openmp
        call process_configuration_init &
             (current, prc_id, model, prt_in, prt_out, method, status, &
-             restrictions, known_md5sum, omega_openmp)
+             restrictions, omega_flags, known_md5sum, omega_openmp)
        if (size (prt_in) == 0) then
           call msg_warning ("Process '" // char (prc_id) &
                // "': matrix element vanishes in selected model '" &
@@ -560,7 +595,7 @@ contains
        call process_library_check_name_consistency (prc_id, prc_lib)
        call process_configuration_init &
             (current, prc_id, model, prt_in, prt_out, method, status, &
-             restrictions, known_md5sum, omega_openmp)
+             restrictions, omega_flags, known_md5sum, omega_openmp)
        call process_update_code_status (current, keep_status)
        if (msg)  call msg_message &
             ("Added process to library '" // char (prc_lib%basename) // "':")
@@ -592,7 +627,7 @@ contains
                 md5sum = buffer(15:47)
                 found = .true.
              end if
-             if (buffer(1:5) == "!$OMP") omega_openmp = .true.
+             if (buffer(1:5) == "!$OMP") omega_openmp = .true. ! $
           case default
              exit SCAN_FILE
           end select
@@ -649,7 +684,7 @@ contains
     integer(c_int) :: pid
     integer, dimension(:,:), allocatable :: flv_state
     integer(c_int), dimension(:,:), allocatable, target :: flv_state_tmp
-    type(string_t) :: prc_id, model_name, filename, restrictions
+    type(string_t) :: prc_id, model_name, filename, restrictions, omega_flags
     type(string_t), dimension(:), allocatable :: prt_in, prt_out
     logical :: omega_openmp
     character(32) :: md5sum
@@ -660,6 +695,7 @@ contains
        md5sum = process_library_get_process_md5sum (prc_lib, pid)
        model_name = process_library_get_process_model_name (prc_lib, pid)
        restrictions = process_library_get_process_restrictions (prc_lib, pid)
+       omega_flags = process_library_get_process_omega_flags (prc_lib, pid)
        omega_openmp = process_library_get_openmp_status (prc_lib, pid)
        filename = model_name // ".mdl"
        model => null ()
@@ -690,7 +726,8 @@ contains
        end do
        call process_library_append &
             (prc_lib, prc_id, model, prt_in, prt_out, &
-             status=STAT_LOADED, restrictions=restrictions, &
+             status=STAT_LOADED, &
+             restrictions=restrictions, omega_flags=omega_flags, &
              known_md5sum=md5sum, omega_openmp=omega_openmp)
        deallocate (prt_in, prt_out, flv_state, flv_state_tmp)
     end do SCAN_PROCESSES
@@ -785,6 +822,26 @@ contains
        restrictions = ""
     end if
   end function process_library_get_process_restrictions
+
+  function process_library_get_process_omega_flags &
+       (prc_lib, pid) result (omega_flags)
+    type(string_t) :: omega_flags
+    type(process_library_t), intent(in), target :: prc_lib
+    integer(c_int), intent(in) :: pid
+    type(c_ptr) :: cptr
+    integer(c_int) :: len
+    character(kind=c_char), dimension(:), pointer :: char_array
+    integer, dimension(1) :: shape
+    call prc_lib% get_omega_flags (pid, cptr, len)
+    if (c_associated (cptr)) then
+       shape(1) = len
+       call c_f_pointer (cptr, char_array, shape)
+       omega_flags = char_from_array (char_array)
+       call prc_lib% get_omega_flags (0_c_int, cptr, len)
+    else
+       omega_flags = ""
+    end if
+  end function process_library_get_process_omega_flags
 
   function process_library_get_openmp_status &
        (prc_lib, pid) result (openmp_status)
@@ -940,6 +997,7 @@ contains
          // " -target:md5sum " // prc_conf%md5sum &
          // omega_cascade &
          // " -fusion:progress" &
+         // " " // prc_conf%omega_flags &
          // " " // omega_mode
     command_string = command_string // " "
     do j = 1, prc_conf%n_in
@@ -1347,7 +1405,8 @@ contains
 
     type(process_library_t), intent(inout) :: prc_lib
     type(string_t) :: filename, prefix
-    type(string_t), dimension(:), allocatable :: prc_id, model, restrictions
+    type(string_t), dimension(:), allocatable :: prc_id, model
+    type(string_t), dimension(:), allocatable :: restrictions, omega_flags
     integer, dimension(:), allocatable :: n_par
     character(32), dimension(:), allocatable :: md5sum
     type(process_configuration_t), pointer :: current
@@ -1358,13 +1417,15 @@ contains
     prefix = prc_lib%basename // "_"
 
     n_prc = prc_lib%n_prc
-    allocate (prc_id (n_prc), model (n_prc), restrictions (n_prc))
+    allocate (prc_id (n_prc), model (n_prc))
+    allocate (restrictions (n_prc), omega_flags (n_prc))
     allocate (n_par (n_prc), md5sum (n_prc))
     current => prc_lib%prc_first
     do i = 1, n_prc
        prc_id(i) = current%id
        model(i) = model_get_name (current%model)
        restrictions(i) = current%restrictions
+       omega_flags(i) = current%omega_flags
        n_par(i) = model_get_n_parameters (current%model)
        md5sum(i) = current%md5sum
        current => current%next
@@ -1379,6 +1440,7 @@ contains
     call write_get_process_id_fun ()
     call write_get_model_name_fun ()
     call write_get_restrictions_fun ()
+    call write_get_omega_flags_fun ()
     call write_get_openmp_status_fun ()
     call write_get_md5sum_fun ()
     call write_string_to_array_fun ()
@@ -1517,6 +1579,36 @@ contains
       write (u, "(A)")  "end subroutine " // char (prefix) &
            // "get_restrictions"
     end subroutine write_get_restrictions_fun
+
+    subroutine write_get_omega_flags_fun ()
+      write (u, "(A)")  ""
+      write (u, "(A)")  "! Return the omega flags for process #i (as a C pointer to a character array)"
+      write (u, "(A)")  "subroutine " // char (prefix) &
+           // "get_omega_flags (i, cptr, len) bind(C)"
+      write (u, "(A)")  "  use iso_c_binding"
+      write (u, "(A)")  "  integer(c_int), intent(in) :: i"
+      write (u, "(A)")  "  type(c_ptr), intent(inout) :: cptr"
+      write (u, "(A)")  "  integer(c_int), intent(out) :: len"
+      write (u, "(A)")  "  character(kind=c_char), dimension(:), allocatable, target, save :: a"
+      call write_string_to_array_interface ()
+      write (u, "(A)")  "  select case (i)"
+      write (u, "(A)")  "  case (0);  if (allocated (a))  deallocate (a)"
+      do i = 1, n_prc
+         write (u, "(A,I0,A)")  "  case (", i, ");  " &
+              // "call " // char (prefix) &
+              // "string_to_array ('" // char (omega_flags(i)) // "', a)"
+      end do
+      write (u, "(A)")  "  end select"
+      write (u, "(A)")  "  if (allocated (a)) then"
+      write (u, "(A)")  "     cptr = c_loc (a)"
+      write (u, "(A)")  "     len = size (a)"
+      write (u, "(A)")  "  else"
+      write (u, "(A)")  "     cptr = c_null_ptr"
+      write (u, "(A)")  "     len = 0"
+      write (u, "(A)")  "  end if"
+      write (u, "(A)")  "end subroutine " // char (prefix) &
+           // "get_omega_flags"
+    end subroutine write_get_omega_flags_fun
 
     subroutine write_get_openmp_status_fun ()
       write (u, "(A)")  ""
@@ -2061,9 +2153,70 @@ contains
 
   end subroutine process_library_write_driver
 
-  subroutine write_library_manager (libname)
+  subroutine write_user_code_declarations (u, user_procs)
+    integer, intent(in) :: u
+    type(user_procs_t), intent(in) :: user_procs
+    integer :: i
+    do i = 1, size (user_procs%cut)
+       write (u, "(A)")  "  procedure(user_cut_fun), bind(C) :: " &
+            // char (user_procs%cut(i))
+    end do
+    do i = 1, size (user_procs%event_shape)
+       write (u, "(A)")  "  procedure(user_event_shape_fun), bind(C) :: " &
+            // char (user_procs%event_shape(i))
+    end do
+    do i = 1, size (user_procs%obs_real_unary)
+       write (u, "(A)")  "  procedure(user_obs_real_unary), bind(C) :: " &
+            // char (user_procs%obs_real_unary(i))
+    end do
+    do i = 1, size (user_procs%obs_real_binary)
+       write (u, "(A)")  "  procedure(user_obs_real_binary), bind(C) :: " &
+            // char (user_procs%obs_real_binary(i))
+    end do
+  end subroutine write_user_code_declarations
+
+  subroutine write_user_code_access (u, user_procs)
+    integer, intent(in) :: u
+    type(user_procs_t), intent(in) :: user_procs
+    write (u, "(5x,A)")  "select case (fname)"
+    call write_access (user_procs%cut)
+    call write_access (user_procs%event_shape)
+    call write_access (user_procs%obs_real_unary)
+    call write_access (user_procs%obs_real_binary)
+    call write_sf_access (user_procs%sf)
+    write (u, "(5x,A)")  "case default"
+    write (u, "(5x,A)")  "   c_fptr = c_null_funptr"
+    write (u, "(5x,A)")  "end select"
+  contains
+    subroutine write_access (procname)
+      type(string_t), dimension(:), intent(in) :: procname
+      integer :: i
+      do i = 1, size (procname)
+         call write_access_line (procname(i))
+      end do
+    end subroutine write_access
+    subroutine write_sf_access (procname)
+      type(string_t), dimension(:), intent(in) :: procname
+      integer :: i
+      do i = 1, size (procname)
+         call write_access_line (procname(i) // "_info")
+         call write_access_line (procname(i) // "_mask")
+         call write_access_line (procname(i) // "_state")
+         call write_access_line (procname(i) // "_kinematics")
+         call write_access_line (procname(i) // "_evaluate")
+      end do
+    end subroutine write_sf_access
+    subroutine write_access_line (procname)
+      type(string_t), intent(in) :: procname
+      write (u, "(5x,A)")  "case ('" // char (procname) // "')"
+      write (u, "(8x,A)")  "c_fptr = c_funloc (" // char (procname) // ")"
+    end subroutine write_access_line
+  end subroutine write_user_code_access
+
+  subroutine write_library_manager (libname, user_procs)
 
     type(string_t), dimension(:), intent(in) :: libname
+    type(user_procs_t), intent(in) :: user_procs
     integer :: u, i
 
     call msg_message ("Writing library manager code")
@@ -2074,12 +2227,14 @@ contains
     write (u, "(A)")  "! Automatically generated file, do not edit"
     write (u, "(A)")  ""
     write (u, "(A)")  "function libmanager_get_n_libs () result (n)"
+    write (u, "(A)")  "  implicit none"
     write (u, "(A)")  "  integer :: n"
     write (u, "(A,1x,I0)")  "  n =", size (libname)
     write (u, "(A)")  "end function libmanager_get_n_libs"
     write (u, "(A)")  ""
     write (u, "(A)")  "function libmanager_get_libname (i) result (name)"
     write (u, "(A)")  "  use iso_varying_string, string_t => varying_string"
+    write (u, "(A)")  "  implicit none"
     write (u, "(A)")  "  type(string_t) :: name"
     write (u, "(A)")  "  integer, intent(in) :: i"
     write (u, "(A)")  "  select case (i)"
@@ -2094,15 +2249,22 @@ contains
          // "result (c_fptr)"
     write (u, "(A)")  "  use iso_c_binding"
     write (u, "(A)")  "  use prclib_interfaces"
+    write (u, "(A)")  "  use user_code_interface"
+    write (u, "(A)")  "  implicit none"
     write (u, "(A)")  "  type(c_funptr) :: c_fptr"
     write (u, "(A)")  "  character(*), intent(in) :: libname, fname"
     do i = 1, size (libname)
        call write_lib_declarations (libname(i))
     end do
+    if (has_user_lib)  call write_user_code_declarations (u, user_procs)
     write (u, "(A)")  "  select case (libname)"
     do i = 1, size (libname)
        call write_lib_code (libname(i))
     end do
+    if (has_user_lib) then
+       write (u, "(A)")  "  case ('user')"
+       call write_user_code_access (u, user_procs)
+    end if
     write (u, "(A)")  "  case default"
     write (u, "(A)")  "     c_fptr = c_null_funptr"
     write (u, "(A)")  "  end select"
@@ -2128,6 +2290,8 @@ contains
            // char (libname)// "_" //  "get_model_name"
       write (u, "(A)")  "  procedure(prc_get_stringptr), bind(C) :: " &
            // char (libname)// "_" //  "get_restrictions"
+      write (u, "(A)")  "  procedure(prc_get_stringptr), bind(C) :: " &
+           // char (libname)// "_" //  "get_omega_flags"
       write (u, "(A)")  "  procedure(prc_get_stringptr), bind(C) :: " &
            // char (libname)// "_" //  "get_md5sum"
       write (u, "(A)")  "  procedure(prc_get_int), bind(C) :: " &
@@ -2178,6 +2342,7 @@ contains
       call write_fun_code (char (libname), "get_process_id")
       call write_fun_code (char (libname), "get_model_name")
       call write_fun_code (char (libname), "get_restrictions")
+      call write_fun_code (char (libname), "get_omega_flags")
       call write_fun_code (char (libname), "get_md5sum")
       call write_fun_code (char (libname), "get_n_in")
       call write_fun_code (char (libname), "get_n_out")
@@ -2345,6 +2510,9 @@ contains
     do i = 1, size (libname)
        objlist = objlist // " " // libname(i) // ext_a
     end do
+    if (has_user_lib) then
+       objlist = objlist // " user" // ext_a
+    end if
     call os_link_static (objlist // flags, exec_name, os_data)
   end subroutine link_executable
 
@@ -2352,7 +2520,7 @@ contains
     type(process_library_t), intent(inout), target :: prc_lib
     type(os_data_t), intent(in) :: os_data
     type(model_t), pointer, optional :: model
-    type(var_list_t), intent(inout), optional :: var_list
+    type(var_list_t), intent(inout) :: var_list
     logical, intent(in), optional :: ignore
     type(c_funptr) :: c_fptr
     type(model_t), pointer :: mdl
@@ -2391,6 +2559,9 @@ contains
     c_fptr = process_library_get_c_funptr &
          (prc_lib, prefix, var_str ("get_restrictions"))
     call c_f_procpointer (c_fptr, prc_lib%get_restrictions)
+    c_fptr = process_library_get_c_funptr &
+         (prc_lib, prefix, var_str ("get_omega_flags"))
+    call c_f_procpointer (c_fptr, prc_lib%get_omega_flags)
     c_fptr = process_library_get_c_funptr &
          (prc_lib, prefix, var_str ("get_openmp_status"))
     call c_f_procpointer (c_fptr, prc_lib%get_openmp_status)
@@ -2531,6 +2702,7 @@ contains
        call process_library_final (current)
        deallocate (current)
     end do
+    process_library_store%last => null ()
   end subroutine process_library_store_final
 
   subroutine process_library_store_load (os_data, var_list)
@@ -2548,7 +2720,7 @@ contains
     type(process_library_t), pointer :: prc_lib
     type(string_t), intent(in) :: name
     prc_lib => process_library_store%first
-    do while (associated (prc_lib))
+    do while (associated (prc_lib))       
        if (prc_lib%basename == name)  exit
        prc_lib => prc_lib%next
     end do
@@ -2581,29 +2753,31 @@ contains
 
   subroutine process_libraries_test ()
     type(model_t), pointer :: model
-    type(process_library_t), pointer :: prc_lib
+    type(process_library_t), pointer :: prc_lib => null ()
     type(string_t), dimension(:), allocatable :: prt_in, prt_out
     type(os_data_t) :: os_data
     type(string_t) :: objlist
+    type(var_list_t), pointer :: var_list => null ()
+    integer :: n_prc
+    allocate (var_list)
+    allocate (prc_lib)
+    call process_library_store_final
     call os_data_init (os_data)
-    os_data%fcflags = "-gline -C=all"
     print *, "*** Read model file"
     call syntax_model_file_init ()
     call model_list_read_model &
-         (var_str("QCD"), var_str("test.mdl"), os_data, model)
+         (var_str("SM"), var_str("SM.mdl"), os_data, model)
     call syntax_model_file_final ()
     print *, "*** Create library 'proc' with two processes"
     print *, "* Setup process configuration"
-    print *, "  [temporary: include zero processes because of references"
-    print *, "   to omegalib, which we also need as a .so version]"
-    print *, "  [iso_varying_string included in libproc.so for the same reason"
+    call var_list_append_string (var_list, name = "$library_name", sval = "proc") ! $
     call process_library_store_append (var_str ("proc"), os_data, prc_lib)
     allocate (prt_in (1), prt_out (2))
     prt_in(1) = "Z"
     prt_out(1) = "e1"
     prt_out(2) = "E1"
     call process_library_append &
-         (prc_lib, var_str ("zee"), model, prt_in, prt_out)
+         (prc_lib, var_str ("zee"), model, prt_in, prt_out, method = PRC_TEST)
     deallocate (prt_in, prt_out)
     allocate (prt_in (2), prt_out (2))
     prt_in(1) = "g"
@@ -2611,7 +2785,7 @@ contains
     prt_out(1) = "u"
     prt_out(2) = "U"
     call process_library_append &
-         (prc_lib, var_str ("uu"), model, prt_in, prt_out)
+         (prc_lib, var_str ("uu"), model, prt_in, prt_out, method = PRC_TEST)
     print *
     print *, "* Generate code"
     call process_library_generate_code (prc_lib, os_data)
@@ -2624,15 +2798,23 @@ contains
     call process_library_link (prc_lib, os_data, objlist)
     print *
     print *, "* Load shared libraries"
-    call process_library_store_load (os_data)
+    call process_library_load (prc_lib, os_data, var_list = var_list)
     print *
     print *, "* Execute 'get_n_processes' from the shared library named 'proc'"
     print *
     prc_lib => process_library_store_get_ptr (var_str ("proc"))
-    print *, "n_prc = ", prc_lib% get_n_prc ()
+    n_prc = prc_lib% get_n_prc ()
+    print *, "n_prc = ", n_prc 
+    if (n_prc .ne. 2) then
+       call msg_fatal (" Process library test failed.") 
+    else
+       call msg_message ("Successful.")
+    end if
     print *
     print *, "* Cleanup"
     call process_library_store_final
+    call var_list_final (var_list)
+    deallocate (var_list)
   end subroutine process_libraries_test
 
 

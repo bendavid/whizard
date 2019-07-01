@@ -1,4 +1,4 @@
-! WHIZARD 2.0.5 Tue May 10 2011
+! WHIZARD 2.0.6 Wed Dec 7 2011
 ! 
 ! Copyright (C) 1999-2011 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -1075,25 +1075,31 @@ contains
   end subroutine slha_write_file
 
   subroutine slha_test ()
-    type(os_data_t) :: os_data
-    type(parse_tree_t) :: parse_tree
+    type(os_data_t), pointer :: os_data => null ()
+    type(parse_tree_t), pointer :: parse_tree => null ()
     integer :: unit
     character(*), parameter :: file_test = "slha_test.out"
     character(*), parameter :: file_slha = "slha_test.dat"
-    type(model_t), pointer :: model
+    type(model_t), pointer :: model => null ()
+    allocate (os_data)
+    allocate (parse_tree)
     call os_data_init (os_data)
+    call model_list_read_model (var_str("MSSM"), var_str("MSSM.mdl"), os_data, model)
     call slha_parse_file (var_str ("sps1ap_decays.slha"), os_data, parse_tree)
     call msg_message ("Writing parse tree to '" // file_test // "'")
     unit = free_unit ()
     open (unit=unit, file=file_test, action="write", status="replace")
     call parse_tree_write (parse_tree, unit)
     call slha_interpret_parse_tree (parse_tree, os_data, model, &
-         input=.true., spectrum=.true., decays=.true.)
+         input=.true., spectrum=.true., decays=.true.)    
     call parse_tree_final (parse_tree)
     call var_list_write (model_get_var_list_ptr (model), only_type=V_REAL)
     call msg_message ("Writing SLHA output to '" // file_slha // "'")
     call slha_write_file (var_str (file_slha), model, input=.true., &
          spectrum=.false., decays=.false.)
+    call parse_tree_final (parse_tree)
+    deallocate (parse_tree)
+    deallocate (os_data)
   end subroutine slha_test
 
 

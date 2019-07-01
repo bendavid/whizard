@@ -1,4 +1,4 @@
-! WHIZARD 2.0.5 Tue May 10 2011
+! WHIZARD 2.0.6 Wed Dec 7 2011
 ! 
 ! Copyright (C) 1999-2011 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -907,16 +907,25 @@ contains
     type(lexer_t), intent(inout) :: lexer
     integer, intent(in) :: unit
     type(stream_t), target :: stream
+    type(string_t) :: string
     type(lexeme_t) :: lexeme
-    call lexer_clear (lexer)
-    call stream_init (stream, unit)
+    string = "abcdefghij"
+    call lexer_init (lexer, &
+       comment_chars = "", &
+       quote_chars = "<'""", &
+       quote_match = ">'""", &
+       single_chars = "?*+|=,()", &
+       special_class = (/ "." /), &
+       keyword_list = null ())
+    call stream_init (stream, string)
     call lexer_assign_stream (lexer, stream)
     do
        call lex (lexeme, lexer)
-       call lexeme_write (lexeme, 6)
+       call lexeme_write (lexeme, unit)
        if (lexeme_is_break (lexeme))  exit
     end do
     call stream_final (stream)
+    call lexer_final (lexer)
   end subroutine lexer_test
 
 
