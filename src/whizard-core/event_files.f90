@@ -1,6 +1,6 @@
-! WHIZARD 2.0.6 Wed Dec 7 2011
+! WHIZARD 2.0.7 Mar 19 2012
 ! 
-! Copyright (C) 1999-2011 by 
+! Copyright (C) 1999-2012 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -291,12 +291,10 @@ contains
     type(string_t), dimension(:), intent(in) :: process_id
     integer, intent(in) :: n_events
     real(default), dimension(:), allocatable :: integral, error
-    real(default) :: pt, dr, kt
     type(var_list_t), intent(in) :: var_list
     type(process_t), pointer :: process 
     type(file_spec_t), pointer :: current
-    integer :: i, n_proc, ktmode
-    logical :: lhefout
+    integer :: i, n_proc
     integer(i64) :: n_events_expected    
     n_proc = size (process_id)
     current => event_file_list%first
@@ -312,11 +310,6 @@ contains
        end if
     end do
     n_events_expected = n_events
-    pt = var_list_get_rval (var_list, var_str ("PTmin"))
-    dr = var_list_get_rval (var_list, var_str ("DRmin"))
-    kt = var_list_get_rval (var_list, var_str ("kTcut"))
-    ktmode = var_list_get_ival (var_list, var_str ("kTmode"))
-    lhefout = var_list_get_lval (var_list, var_str ("?LHEFout"))
     do while (associated (current))
        select case (current%format)
        case (FMT_DEFAULT)
@@ -372,8 +365,6 @@ contains
           open (unit=current%unit, file=char(current%name), &
                action="write", status="replace")
           call les_houches_events_write_header (current%unit)
-          call lhef_write_matching_info (unit = current%unit, ptmin = pt, &
-               drmin = dr, ktcut = kt, ktmode = ktmode, lhefout = lhefout)
           call heprup_init &
                (flavor_get_pdg (current%beam_flv), &
                 current%beam_energy, &
@@ -490,22 +481,22 @@ contains
           call event_write_to_hepevt (event, current%keep_beams)
           call hepevt_write_athena (unit=current%unit, i_evt=i_evt)
        case (FMT_LHEF)
-          call event_write_to_hepeup (event)
+          call event_write_to_hepeup (event, current%keep_beams)
           call hepeup_write_lhef (current%unit)
        case (FMT_LHA)
-          call event_write_to_hepeup (event)
+          call event_write_to_hepeup (event, current%keep_beams)
           call hepeup_write_lha (current%unit)
        case (FMT_STDHEP)
-          call event_write_to_hepevt (event)
+          call event_write_to_hepevt (event, current%keep_beams)
           call stdhep_write (STDHEP_HEPEVT)
        case (FMT_STDHEP_UP)
-          call event_write_to_hepeup (event)
+          call event_write_to_hepeup (event, current%keep_beams)
           call stdhep_write (STDHEP_HEPEUP)
        case (FMT_HEPEVT_VERB)
-          call event_write_to_hepevt (event)
+          call event_write_to_hepevt (event, current%keep_beams)
           call hepevt_write_verbose (current%unit)
        case (FMT_LHA_VERB)
-          call event_write_to_hepeup (event)
+          call event_write_to_hepeup (event, current%keep_beams)
           call hepeup_write_verbose (current%unit)
        end select
        current => current%next

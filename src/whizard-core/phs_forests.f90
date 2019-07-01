@@ -1,6 +1,6 @@
-! WHIZARD 2.0.6 Wed Dec 7 2011
+! WHIZARD 2.0.7 Mar 19 2012
 ! 
-! Copyright (C) 1999-2011 by 
+! Copyright (C) 1999-2012 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -887,6 +887,11 @@ contains
                (forest%grove(g)%tree(t), forest%flv(forest%n_in+1:))
           call phs_tree_set_mapping_parameters (forest%grove(g)%tree(t), &
                mapping_defaults, variable_limits)
+          call phs_tree_set_effective_masses (forest%grove(g)%tree(t))
+          if (mapping_defaults%step_mapping) then
+             call phs_tree_set_step_mappings (forest%grove(g)%tree(t), &
+                  mapping_defaults%step_mapping_exp, variable_limits)
+          end if
        end do
     end do
   end subroutine phs_forest_set_parameters

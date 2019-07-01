@@ -1,6 +1,6 @@
-! WHIZARD 2.0.6 Wed Dec 7 2011
+! WHIZARD 2.0.7 Mar 19 2012
 ! 
-! Copyright (C) 1999-2011 by 
+! Copyright (C) 1999-2012 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -199,6 +199,12 @@ module variables
      integer :: event_index = 0
      integer :: process_index = 0
      integer :: process_num_id = 0
+     type(string_t) :: process_id
+     integer :: n_in = 0
+     integer :: n_out = 0
+     integer :: n_tot = 0
+     real(default) :: sqrts = 0
+     real(default) :: sqrts_hat = 0
      real(default) :: sqme = 0
      real(default) :: sqme_ref = 0
      real(default) :: weight = 0
@@ -2243,30 +2249,54 @@ contains
     write (u, *)  "Event index          = ", vars%event_index
     write (u, *)  "Process index        = ", vars%process_index
     write (u, *)  "Numerical process ID = ", vars%process_num_id
+    write (u, *)  "Process ID           = ", char (vars%process_id)
+    write (u, *)  "Process n_in         = ", vars%n_in
+    write (u, *)  "Process n_out        = ", vars%n_out
+    write (u, *)  "Process n_tot        = ", vars%n_tot
+    write (u, *)  "Event sqrts_hat      = ", vars%sqrts_hat
     write (u, *)  "Event sqme           = ", vars%sqme
     write (u, *)  "Event sqme(ref)      = ", vars%sqme_ref
     write (u, *)  "Event weight         = ", vars%weight
     write (u, *)  "Event excess weight  = ", vars%excess
   end subroutine event_vars_write
 
-  subroutine event_vars_write_raw (vars, u)
+  subroutine event_vars_write_raw (vars, u, version)
     type(event_vars_t), intent(in) :: vars
     integer, intent(in) :: u
+    integer, intent(in) :: version
     write (u)  vars%event_index
     write (u)  vars%process_index
+    select case (version)
+    case (3:)
+       write (u)  vars%n_in
+       write (u)  vars%n_out
+       write (u)  vars%n_tot
+       write (u)  vars%sqrts
+       write (u)  vars%sqrts_hat
+    end select
     write (u)  vars%sqme
     write (u)  vars%sqme_ref
     write (u)  vars%weight
     write (u)  vars%excess
   end subroutine event_vars_write_raw
 
-  subroutine event_vars_read_raw (vars, u, iostat)
+  subroutine event_vars_read_raw (vars, u, iostat, version)
     type(event_vars_t), intent(out) :: vars
     integer, intent(in) :: u
     integer, intent(out) :: iostat
+    integer, intent(in) :: version
     read (u, iostat=iostat)  vars%event_index
     if (iostat /= 0) return
     read (u, iostat=iostat)  vars%process_index
+    if (iostat /= 0) return
+    select case (version)
+    case (3:)
+       read (u, iostat=iostat)  vars%n_in
+       read (u, iostat=iostat)  vars%n_out
+       read (u, iostat=iostat)  vars%n_tot
+       read (u, iostat=iostat)  vars%sqrts
+       read (u, iostat=iostat)  vars%sqrts_hat
+    end select
     if (iostat /= 0) return
     read (u, iostat=iostat)  vars%sqme
     if (iostat /= 0) return
@@ -2290,17 +2320,35 @@ contains
     call var_list_append_int_ptr (var_list, &
          var_str ("process_num_id"), event_vars%process_num_id, &
          is_known = known, locked = .true., intrinsic = .true.)
+    call var_list_append_string_ptr (var_list, &
+         var_str ("$process_id"), event_vars%process_id, &     ! $
+         is_known = known, locked = .true., intrinsic = .true.)
+    call var_list_append_int_ptr (var_list, &
+         var_str ("n_in"), event_vars%n_in, &
+         is_known = known, locked = .true., intrinsic = .true.)
+    call var_list_append_int_ptr (var_list, &
+         var_str ("n_out"), event_vars%n_out, &
+         is_known = known, locked = .true., intrinsic = .true.)
+    call var_list_append_int_ptr (var_list, &
+         var_str ("n_tot"), event_vars%n_tot, &
+         is_known = known, locked = .true., intrinsic = .true.)
+    call var_list_append_real_ptr (var_list, &
+         var_str ("sqrts"), event_vars%sqrts, &
+         is_known = known, locked = .true., intrinsic = .true.)
+    call var_list_append_real_ptr (var_list, &
+         var_str ("sqrts_hat"), event_vars%sqrts_hat, &
+         is_known = known, locked = .true., intrinsic = .true.)
+    call var_list_append_real_ptr (var_list, &
+         var_str ("sqme"), event_vars%sqme, &
+         is_known = known, locked = .true., intrinsic = .true.)
+    call var_list_append_real_ptr (var_list, &
+         var_str ("sqme_ref"), event_vars%sqme, &
+         is_known = known, locked = .true., intrinsic = .true.)
     call var_list_append_real_ptr (var_list, &
          var_str ("event_weight"), event_vars%weight, &
          is_known = known, locked = .true., intrinsic = .true.)
     call var_list_append_real_ptr (var_list, &
          var_str ("event_excess_weight"), event_vars%excess, &
-         is_known = known, locked = .true., intrinsic = .true.)
-    call var_list_append_real_ptr (var_list, &
-         var_str ("event_sqme"), event_vars%sqme, &
-         is_known = known, locked = .true., intrinsic = .true.)
-    call var_list_append_real_ptr (var_list, &
-         var_str ("event_sqme_ref"), event_vars%sqme, &
          is_known = known, locked = .true., intrinsic = .true.)
   end subroutine var_list_append_event_vars
 

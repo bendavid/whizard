@@ -1,8 +1,8 @@
-! $Id: ward_lib.f90 3468 2011-08-10 15:18:36Z sschmidt $
+! $Id: ward_lib.f90 3750 2012-03-13 12:08:00Z sschmidt $
 ! ward_lib.f90 -- check On Shell Ward Identities in O'Mega 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
-! Copyright (C) 1999-2011 by 
+! Copyright (C) 1999-2012 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>

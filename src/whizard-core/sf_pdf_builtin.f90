@@ -1,6 +1,6 @@
-! WHIZARD 2.0.6 Wed Dec 7 2011
+! WHIZARD 2.0.7 Mar 19 2012
 ! 
-! Copyright (C) 1999-2011 by 
+! Copyright (C) 1999-2012 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -75,8 +75,9 @@ module sf_pdf_builtin
 
 contains
 
-  subroutine pdf_builtin_init (data, model, flv, name, path)
+  subroutine pdf_builtin_init (data, pdf_status, model, flv, name, path)
     type(pdf_builtin_data_t), intent(out) :: data
+    type(pdf_builtin_status_t), intent(inout) :: pdf_status
     type(model_t), intent(in), target :: model
     type(flavor_t), intent(in) :: flv
     type(string_t), intent(in), optional :: name
@@ -122,7 +123,7 @@ contains
     data%id = pdf_get_id (data%name)
     if (data%id < 0) call msg_fatal ("unknown PDF set " // char (data%name))
     data%has_photon = pdf_provides_photon (data%id)
-    call pdf_init (data%id, path)
+    call pdf_init (pdf_status, data%id, path)
   end subroutine pdf_builtin_init
 
   subroutine pdf_builtin_final (data)
@@ -146,16 +147,23 @@ contains
     data%mask = mask
   end subroutine pdf_builtin_data_set_mask
 
-  subroutine pdf_builtin_data_write (data, unit, md5)
+  subroutine pdf_builtin_data_write (data, unit, md5, beam_fmt)
     type(pdf_builtin_data_t), intent(in) :: data
     integer, intent(in), optional :: unit
     integer :: u
     logical, intent(in), optional :: md5
+    logical, intent(in), optional :: beam_fmt
     logical :: is_md5
+    logical :: is_beam_fmt
     if (present (md5)) then
        is_md5 = md5
     else
        is_md5 = .false.
+    end if
+    if (present (beam_fmt)) then
+       is_beam_fmt = beam_fmt
+    else
+       is_beam_fmt = .false.
     end if
     u = output_unit (unit);  if (u < 0)  return
     if (data%id < 0) then
@@ -169,9 +177,11 @@ contains
        write (u, *) "  grid path    = ", char (data%path)
     write (u, *) "  invert       = ", data%invert
     write (u, *) "  has photon   = ", data%has_photon
-    write (u, *) "  mask         = ", &
-         data%mask(-6:-1), "*", data%mask(0), "*", data%mask(1:6)
-    write (u, *) "  photon mask  = ", data%mask_photon
+    if (.not. is_beam_fmt) then
+       write (u, *) "  mask         = ", &
+            data%mask(-6:-1), "*", data%mask(0), "*", data%mask(1:6)
+       write (u, *) "  photon mask  = ", data%mask_photon
+    end if
   end subroutine pdf_builtin_data_write
 
   subroutine interaction_init_pdf_builtin (int, data)

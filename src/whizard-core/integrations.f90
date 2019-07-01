@@ -1,6 +1,6 @@
-! WHIZARD 2.0.6 Wed Dec 7 2011
+! WHIZARD 2.0.7 Mar 19 2012
 ! 
-! Copyright (C) 1999-2011 by 
+! Copyright (C) 1999-2012 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -33,6 +33,7 @@ module integrations
   use limits, only: ITERATIONS_DEFAULT_LIST_SIZE !NODEP!
   use diagnostics !NODEP!
   use tao_random_numbers !NODEP!
+  use pdf_builtin !NODEP!
   use os_interface
   use parser
   use variables
@@ -60,15 +61,24 @@ module integrations
     private
     type(string_t) :: process_id
     type(process_t), pointer :: process => null ()
+    type(string_t) :: run_id
     logical :: rebuild_phs = .false.
+    logical :: check_phs_file = .true.
     type(string_t) :: phs_filename
+    type(string_t) :: phs_filename_out
+    type(string_t) :: phs_filename_vis
     logical :: phs_only = .false.
     logical :: vis_channels = .false.
     type(phs_parameters_t) :: phs_par
     type(mapping_defaults_t) :: mapping_defaults
     logical :: rebuild_grids = .false.
+    logical :: check_grid_file = .true.
     type(grid_parameters_t) :: grid_parameters
     type(string_t) :: grids_filename
+    logical :: use_best_grid = .true.
+    real(default) :: accuracy_goal = 0
+    real(default) :: abs_error_goal = 0
+    real(default) :: rel_error_goal = 0
     logical :: helicity_selection_active = .false.
     real(default) :: helicity_selection_threshold = -1
     integer :: helicity_selection_cutoff = 1000
@@ -78,6 +88,7 @@ module integrations
     integer :: n_events_for_me_test = 0
     logical :: time_estimate = .false.
     logical :: vis_history = .true.
+    type(string_t) :: history_filename
     type(beam_data_t) :: beam_data
     logical :: use_beams = .false.
     logical :: allow_global_mapping = .false.
@@ -89,6 +100,7 @@ module integrations
     type(md5sum_grids_t) :: md5sum
     integer :: pass = 0
     integer :: it = 0
+    type(string_t) :: log_filename
   end type integration_t
 
 
@@ -127,15 +139,21 @@ contains
     logical, intent(in), optional :: verbose
     logical :: verb
     intg%process_id = process_id
+    intg%run_id = var_list_get_sval (var_list, var_str ("$run_id"))  ! $
     verb = .true.;  if (present (verbose))  verb = verbose
     if (verb) then
        call msg_message ("Initializating integration for process " &
             // char (intg%process_id) // ":")
+       if (intg%run_id /= "") then
+          call msg_message ("Run ID = " // '"' // char (intg%run_id) // '"')
+       end if
     end if
     intg%rebuild_phs = &
          var_list_get_lval (var_list, var_str ("?rebuild_phase_space"))
+    intg%check_phs_file = &
+         var_list_get_lval (var_list, var_str ("?check_phs_file"))
     intg%phs_filename = &
-         var_list_get_sval (var_list, var_str ("$phs_file"))   ! $ sign
+         var_list_get_sval (var_list, var_str ("$phs_file"))         ! $
     intg%phs_only = &
          var_list_get_lval (var_list, var_str ("?phs_only"))
     intg%vis_channels = &
@@ -156,10 +174,16 @@ contains
          var_list_get_rval (var_list, var_str ("phs_m_scale"))
     intg%mapping_defaults%momentum_transfer_scale = &
          var_list_get_rval (var_list, var_str ("phs_q_scale"))
+    intg%mapping_defaults%step_mapping = &
+         var_list_get_lval (var_list, var_str ("?phs_step_mapping"))
+    intg%mapping_defaults%step_mapping_exp = &
+         var_list_get_lval (var_list, var_str ("?phs_step_mapping_exp"))
     intg%allow_global_mapping = &
          var_list_get_lval (var_list, var_str ("?allow_global_mapping"))
     intg%rebuild_grids = &
          var_list_get_lval (var_list, var_str ("?rebuild_grids"))
+    intg%check_grid_file = &
+         var_list_get_lval (var_list, var_str ("?check_grid_file"))
     intg%grid_parameters%threshold_calls = &
          var_list_get_ival (var_list, var_str ("threshold_calls"))
     intg%grid_parameters%min_calls_per_channel = &
@@ -176,7 +200,30 @@ contains
          var_list_get_lval (var_list, var_str ("?use_vamp_equivalences"))
     intg%grid_parameters%channel_weights_power = &
          var_list_get_rval (var_list, var_str ("channel_weights_power"))
-    intg%grids_filename = intg%process_id // ".vg"
+    intg%run_id = &
+         var_list_get_sval (var_list, var_str ("$run_id"))  ! $
+    if (intg%run_id /= "") then
+       intg%phs_filename_out = intg%process_id // "." // intg%run_id // ".phs"
+       intg%phs_filename_vis = intg%process_id // "." // intg%run_id // "_phs"
+       intg%grids_filename = intg%process_id // "." // intg%run_id // ".vg"
+       intg%history_filename = intg%process_id // "." // intg%run_id &
+            // ".history"
+       intg%log_filename = intg%process_id // "." // intg%run_id // ".log"
+    else
+       intg%phs_filename_out = intg%process_id // ".phs"
+       intg%phs_filename_vis = intg%process_id // "_phs"
+       intg%grids_filename = intg%process_id // ".vg"
+       intg%history_filename = intg%process_id // ".history"
+       intg%log_filename = intg%process_id // ".log"
+    end if
+    intg%use_best_grid = &
+         var_list_get_lval (var_list, var_str ("?use_best_grid"))
+    intg%accuracy_goal = &
+         var_list_get_rval (var_list, var_str ("accuracy_goal"))
+    intg%abs_error_goal = &
+         var_list_get_rval (var_list, var_str ("error_goal"))
+    intg%rel_error_goal = &
+         var_list_get_rval (var_list, var_str ("relative_error_goal"))
     intg%helicity_selection_active = &
          var_list_get_lval (var_list, var_str ("?helicity_selection_active"))
     if (intg%helicity_selection_active) then
@@ -220,16 +267,14 @@ contains
     end if
   end subroutine maybe_compile_library    
 
-  subroutine integration_init_process &
-      (intg, prc_lib, model, lhapdf_status, var_list, ok)
+  subroutine integration_init_process (intg, prc_lib, model, var_list, ok)
     type(integration_t), intent(inout) :: intg
     type(process_library_t), intent(inout), target :: prc_lib
     type(model_t), intent(in), target :: model
-    type(lhapdf_status_t), intent(inout) :: lhapdf_status
     type(var_list_t), intent(in), target :: var_list
     logical, intent(out) :: ok
     call process_store_init_process (intg%process, &
-         prc_lib, intg%process_id, model, lhapdf_status, var_list, &
+         prc_lib, intg%process_id, model, var_list, &
          use_beams = intg%use_beams, &
          allow_global_mapping = intg%allow_global_mapping)
     if (.not. process_is_valid (intg%process)) then
@@ -242,8 +287,6 @@ contains
     else
        ok = .true.
     end if
-    if (ok .and. intg%alpha_s > 0) &
-       call process_set_alpha_s (intg%process, intg%alpha_s)
     call process_reset_helicity_selection (intg%process, &
          intg%helicity_selection_threshold, intg%helicity_selection_cutoff)
   end subroutine integration_init_process
@@ -292,21 +335,42 @@ contains
     end if
   end subroutine integration_setup_beams
 
+  subroutine integration_setup_qcd &
+       (intg, lhapdf_status, pdf_builtin_status, sf_list, os_data, var_list)
+    type(integration_t), intent(inout) :: intg
+    type(lhapdf_status_t), intent(inout) :: lhapdf_status
+    type(pdf_builtin_status_t), intent(inout) :: pdf_builtin_status
+    type(sf_list_t), intent(in), pointer :: sf_list
+    type(os_data_t), intent(in) :: os_data
+    type(var_list_t), intent(in) :: var_list
+    if (intg%alpha_s > 0)  call process_set_alpha_s (intg%process, intg%alpha_s)
+    if (associated (sf_list)) then
+       call process_setup_qcd (intg%process, &
+            lhapdf_status, pdf_builtin_status, &
+            sf_list_get_lhapdf_data_ptr (sf_list), &
+            sf_list_get_pdf_builtin_data_ptr (sf_list), &
+            os_data, var_list)
+    else
+       call process_setup_qcd (intg%process, &
+            lhapdf_status, pdf_builtin_status, &
+            null (), null (), &
+            os_data, var_list)
+    end if
+  end subroutine integration_setup_qcd
+
   subroutine integration_setup_phase_space (intg, os_data, ok)
     type(integration_t), intent(inout) :: intg
     type(os_data_t), intent(in) :: os_data
     logical, intent(out) :: ok
-    type(string_t) :: filename_out, filename_vis
-    filename_out = intg%process_id // ".phs"
-    filename_vis = intg%process_id // "_phs"
     if (intg%phs_filename == "") then
        call process_setup_phase_space (intg%process, &
             intg%rebuild_phs, &
-       os_data, &
+            os_data, &
             intg%phs_par, intg%mapping_defaults, &
-            filename_out = filename_out, &
-       filename_vis = filename_vis, &
+            filename_out = intg%phs_filename_out, &
+            filename_vis = intg%phs_filename_vis, &
             vis_channels = intg%vis_channels, &
+            check_phs_file = intg%check_phs_file, &
             ok = ok)
     else
        call process_setup_phase_space (intg%process, &
@@ -314,8 +378,8 @@ contains
             os_data, &
             intg%phs_par, intg%mapping_defaults, &
             filename_in = intg%phs_filename, &
-            filename_out = filename_out, &
-       filename_vis = filename_vis, &
+            filename_out = intg%phs_filename_out, &
+            filename_vis = intg%phs_filename_vis, &
             vis_channels = intg%vis_channels, &
             ok = ok)
     end if       
@@ -458,11 +522,14 @@ contains
     integer :: n_calls
     logical :: verb, ok
     verb = .true.;  if (present (verbose))  verb = verbose
+    call process_store_iteration_parameters (intg%process, &
+         iterations_list_get_pass_array (intg%it_list), &
+         iterations_list_get_n_calls_array (intg%it_list))
     if (iterations_list_get_n_pass (intg%it_list) > 0) then
        n_calls = iterations_list_get_n_calls (intg%it_list, 1)
        if (.not. intg%rebuild_grids) then
-          call process_read_grid_file (intg%process, &
-               intg%grids_filename, intg%md5sum, intg%grid_parameters, &
+          call process_read_grid_file (intg%process, intg%grids_filename, &
+               intg%check_grid_file, intg%md5sum, intg%grid_parameters, &
                iterations_list_get_pass_array (intg%it_list), &
                iterations_list_get_n_calls_array (intg%it_list),&
                ok)
@@ -509,9 +576,14 @@ contains
     type(tao_random_state), intent(inout) :: rng
     integer, intent(in) :: pass
     logical, intent(in), optional :: verbose
-    integer :: n_calls, i, u
+    integer :: n_it, n_calls, i, u
     logical :: iteration_is_on_file, adapt_grids, adapt_weights
     logical :: verb 
+    real(default) :: last_accuracy, current_accuracy
+    real(default) :: last_abs_error, current_abs_error
+    real(default) :: last_rel_error, current_rel_error
+    logical :: accuracy_reached, abs_error_reached, rel_error_reached
+    logical :: goal_set
     verb = .true.;  if (present (verbose))  verb = verbose
     u = logfile_unit ()
     intg%pass = pass
@@ -523,10 +595,40 @@ contains
        adapt_grids = .true.
        adapt_weights = .true.
     end if
-    LOOP_IT: do i = 1, iterations_list_get_n_it (intg%it_list, intg%pass)
+    last_accuracy = 0
+    last_abs_error = 0
+    last_rel_error = 0
+    goal_set = intg%accuracy_goal > 0 &
+         .or. intg%abs_error_goal > 0 .or. intg%rel_error_goal > 0
+    accuracy_reached = .false.
+    abs_error_reached = .false.
+    rel_error_reached = .false.
+    n_it = iterations_list_get_n_it (intg%it_list, intg%pass)
+    LOOP_IT: do i = 1, n_it
        intg%it = intg%it + 1
        iteration_is_on_file = intg%pass < intg%pass_on_file &
             .or. intg%pass == intg%pass_on_file .and. i <= intg%it_on_file
+       if (iteration_is_on_file) then
+          current_accuracy =  process_get_accuracy (intg%process, it=intg%it)
+          current_abs_error =  process_get_error (intg%process, it=intg%it)
+          current_rel_error =  process_get_rel_error (intg%process, it=intg%it)
+          if (current_accuracy == 0) then
+             if (.not. goal_set .or. &
+                  intg%accuracy_goal > 0 .and. .not. accuracy_reached .or. &
+                  intg%abs_error_goal > 0 .and. .not. abs_error_reached .or. &
+                  intg%rel_error_goal > 0 .and. .not. rel_error_reached) then
+                call process_discard_results (intg%process, intg%it)
+                intg%pass_on_file = process_get_current_pass (intg%process)
+                intg%it_on_file = process_get_current_it (intg%process)
+                iteration_is_on_file = .false.
+             else
+                call msg_message &
+                     ("Accuracy/error goals reached, skipped iterations")
+                intg%it = intg%it + n_it - i
+                exit LOOP_IT
+             end if
+          end if
+       end if
        if (iteration_is_on_file) then
           if (verb) then
              call process_results_write_entry (intg%process, intg%it)
@@ -536,17 +638,41 @@ contains
              end if
           end if
        else
-          call process_integrate (intg%process, rng, &
-               intg%grid_parameters, &
-               intg%pass, 1, 1, n_calls, &
-               discard_integrals = i==1, &
-               adapt_grids = adapt_grids, &
-               adapt_weights = adapt_weights .and. i>2, &
-               print_current = verb, &
-               time_estimate = intg%time_estimate, &
-               grids_filename = intg%grids_filename, &
-               md5sum = intg%md5sum)
+          if (.not. goal_set .or. &
+               intg%accuracy_goal > 0 .and. .not. accuracy_reached .or. &
+               intg%abs_error_goal > 0 .and. .not. abs_error_reached .or. &
+               intg%rel_error_goal > 0 .and. .not. rel_error_reached) then
+             call process_integrate (intg%process, rng, &
+                  intg%grid_parameters, &
+                  intg%pass, 1, 1, n_calls, &
+                  discard_integrals = i==1, &
+                  adapt_grids = adapt_grids, &
+                  adapt_weights = adapt_weights .and. i>2, &
+                  print_current = verb, &
+                  time_estimate = intg%time_estimate, &
+                  grids_filename = intg%grids_filename, &
+                  write_best_grid = intg%use_best_grid, &
+                  md5sum = intg%md5sum, &
+                  history_filename = intg%history_filename, &
+                  log_filename = intg%log_filename)
+          else
+             call msg_message &
+                  ("Accuracy/error goals reached, skipping iterations")
+             call process_skip_iterations &
+                  (intg%process, pass, intg%it - 1, n_it - i + 1)
+             intg%it = intg%it + n_it - i
+             exit LOOP_IT
+          end if
+          current_accuracy = process_get_accuracy (intg%process, it=intg%it)
+          current_abs_error = process_get_error (intg%process, it=intg%it)
+          current_rel_error = process_get_rel_error (intg%process, it=intg%it)
        end if
+       last_accuracy = current_accuracy
+       last_abs_error = current_abs_error
+       last_rel_error = current_rel_error
+       accuracy_reached = last_accuracy < intg%accuracy_goal
+       abs_error_reached = last_abs_error < intg%abs_error_goal
+       rel_error_reached = last_rel_error < intg%rel_error_goal
     end do LOOP_IT
     if (verb) then
        call process_results_write_average (intg%process, intg%pass)
@@ -555,7 +681,6 @@ contains
           flush (u)
        end if
     end if
-    call process_write_logfile (intg%process)
   end subroutine integration_warmup
 
   subroutine integration_evaluate &
@@ -605,18 +730,22 @@ contains
          print_current = verb, &
          time_estimate = intg%time_estimate, &
          grids_filename = intg%grids_filename, &
-         md5sum = intg%md5sum)
+         write_best_grid = intg%use_best_grid, &
+         md5sum = intg%md5sum, &
+         history_filename = intg%history_filename, &
+         log_filename = intg%log_filename)
     if (verb) then
        call process_results_write_average (intg%process, intg%pass)
        if (u > 0) then
           call process_results_write_average (intg%process, intg%pass, unit=u)
           flush (u)
        end if
+    end if
+    if (intg%vis_history) then
        call process_display_integration_history &
-            (intg%process, os_data, intg%vis_history)
+            (intg%process, intg%history_filename, os_data)
     end if
     call process_record_integral (intg%process, global_var_list)
-    call process_write_logfile (intg%process)
   end subroutine integration_evaluate
 
   subroutine integration_write_footer (intg, verbose)
@@ -651,11 +780,15 @@ contains
     if (allow_beams)  call integration_check_beam_data (intg, global%beam_data)
     call maybe_compile_library (global)
     call integration_init_process (intg, &
-         global%prc_lib, global%model, global%lhapdf_status, &
-         global%var_list, ok)
+         global%prc_lib, global%model, global%var_list, ok)
     if (ok) then
        call integration_setup_beams &
             (intg, global%sf_list, global%var_list, ok)
+    end if
+    if (ok) then
+       call integration_setup_qcd &
+            (intg, global%lhapdf_status, global%pdf_builtin_status, &
+             global%sf_list, global%os_data, global%var_list)
     end if
     if (integrate .and. ok) then
        call integration_setup_phase_space (intg, global%os_data, ok)
@@ -709,6 +842,8 @@ contains
     do pass = 1, iterations_list_get_n_pass (intg%it_list) - 1
        call integration_warmup (intg, rng, pass, verbose)
     end do
+    if (intg%use_best_grid) &
+         call process_choose_best_grid (intg%process, intg%check_grid_file)
     call integration_evaluate &
          (intg, rng, pass, global_var_list, os_data, verbose)
     call integration_write_footer (intg, verbose)

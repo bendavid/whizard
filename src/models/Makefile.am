@@ -2,7 +2,7 @@
 ##
 ## Process this file with automake to produce Makefile.in
 #
-# Copyright (C) 1999-2011 by 
+# Copyright (C) 1999-2012 by 
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
@@ -34,6 +34,7 @@ SUBDIRS = \
 noinst_LTLIBRARIES = libmodels.la
 
 libmodels_la_SOURCES = \
+  parameters.2HDM.f90 \
   parameters.GravTest.f90 \
   parameters.Littlest.f90 \
   parameters.Littlest_Eta.f90 \
@@ -70,6 +71,7 @@ libmodels_la_SOURCES = \
 ## Install the modules used by generated matrix element code
 execmoddir = $(pkglibdir)/mod/models
 nodist_execmod_HEADERS = \
+  parameters_2hdm.$(FC_MODULE_EXT) \
   parameters_gravtest.$(FC_MODULE_EXT) \
   parameters_littlest.$(FC_MODULE_EXT) \
   parameters_littlest_eta.$(FC_MODULE_EXT) \
@@ -142,6 +144,9 @@ endif
 	$(LTFCCOMPILE) $(NO_OPT) -c -o $@ $<
 
 ## The mismatch of filenames and module names requires a lot of repetition:
+parameters_2hdm.$(FC_MODULE_EXT): parameters.2HDM.lo
+	@:
+
 parameters_gravtest.$(FC_MODULE_EXT): parameters.GravTest.lo
 	@:
 

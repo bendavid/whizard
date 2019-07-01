@@ -1,6 +1,6 @@
-(* $Id: momentum.ml 3070 2011-03-28 08:09:25Z jr_reuter $
+(* $Id: momentum.ml 3670 2012-01-21 19:33:07Z jr_reuter $
 
-   Copyright (C) 1999-2011 by
+   Copyright (C) 1999-2012 by
 
        Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
@@ -22,8 +22,8 @@
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
 let rcs_file = RCS.parse "Momentum" ["Finite disjoint sums of momenta"]
-    { RCS.revision = "$Revision: 3070 $";
-      RCS.date = "$Date: 2011-03-28 10:09:25 +0200 (Mon, 28 Mar 2011) $";
+    { RCS.revision = "$Revision: 3670 $";
+      RCS.date = "$Date: 2012-01-21 20:33:07 +0100 (Sat, 21 Jan 2012) $";
       RCS.author = "$Author: jr_reuter $";
       RCS.source
         = "$URL: svn+ssh://jr_reuter@login.hepforge.org/hepforge/svn/whizard/trunk/src/omega/src/momentum.ml $" }

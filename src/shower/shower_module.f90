@@ -27,29 +27,34 @@ module shower_module
   use shower_basics_module
   use shower_parton_module
   use lorentz !NODEP!
+  use file_utils !NODEP!
 
   implicit none
 !  private
 
-  type :: my_interaction_t
+  type :: shower_interaction_t
      type(parton_pointer_t), dimension(:), allocatable :: partons
-  end type my_interaction_t
+  end type shower_interaction_t
 
-  type :: interaction_pointer_t
-     type(my_interaction_t), pointer :: i => null()
-  end type interaction_pointer_t
+  type :: shower_interaction_pointer_t
+     type(shower_interaction_t), pointer :: i => null()
+  end type shower_interaction_pointer_t
 
   type :: shower_t
-     type(interaction_pointer_t), dimension(:), allocatable :: interactions
+     ! remember to change shower_dummy as well
+     type(shower_interaction_pointer_t), dimension(:), allocatable :: interactions
      type(parton_pointer_t), dimension(:), allocatable :: partons
      integer :: next_free_nr
      integer :: next_color_nr
      logical :: valid
   end type shower_t
   
+  ! remember to change shower_dummy as well
   public :: shower_t
-  public :: my_interaction_t
+  public :: shower_interaction_t
 
+  ! When adding new routines                                   !
+  ! remember to add dummy routines to shower_dummy.f90 as well !
   public :: shower_create
   public :: shower_final
   public :: shower_print
@@ -63,6 +68,7 @@ module shower_module
   public :: shower_generate_next_isr_branching_veto
   public :: shower_simulate_no_isr_shower
   public :: shower_simulate_no_fsr_shower
+  public :: shower_write_lhef
 
   public :: interaction_get_shat
   public :: interaction_get_s
@@ -84,7 +90,7 @@ contains
       type(parton_pointer_t), dimension(:), allocatable :: new_partons
       type(parton_t), pointer :: prt
       integer :: n_interactions
-      type(interaction_pointer_t), dimension(:), allocatable :: temp
+      type(shower_interaction_pointer_t), dimension(:), allocatable :: temp
       type(vector4_t) :: prtmomentum, childmomentum
       logical :: isr_is_possible
       type(lorentz_transformation_t) :: L
@@ -405,7 +411,7 @@ contains
 
     end subroutine swap_pointers
 
-    subroutine shower_remove_parton_from_partons(shower, prt)
+    recursive subroutine shower_remove_parton_from_partons(shower, prt)
       type(shower_t), intent(inout) :: shower
       type(parton_t), pointer :: prt
       integer :: i
@@ -557,25 +563,14 @@ contains
          return
       end if
 
-!!$      ! deallocate hadrons
-!!$      if(associated(shower%interactions(1)%i%partons(1)%p%initial)) deallocate(shower%interactions(1)%i%partons(1)%p%initial)
-!!$      if(associated(shower%interactions(1)%i%partons(2)%p%initial)) deallocate(shower%interactions(1)%i%partons(2)%p%initial)
-
       ! deallocate interaction pointers
       do i=1, size(shower%interactions)
          if(allocated(shower%interactions(i)%i%partons)) deallocate (shower%interactions(i)%i%partons)
          deallocate(shower%interactions(i)%i)
       end do
 
-!!$      ! deallocate partons
-!!$      do i=1, size(shower%partons)
-!!$         if(associated(shower%partons(i)%p)) then
-!!$            deallocate(shower%partons(i)%p)
-!!$         end if
-!!$      end do
       deallocate(shower%interactions)
       deallocate(shower%partons)
-
     end subroutine shower_final
 
     !!! bookkeeping
@@ -903,7 +898,7 @@ contains
     end function interaction_fsr_is_finished_for_parton
 
     function interaction_fsr_is_finished(interaction) result(finished)
-      type(my_interaction_t), intent(in) :: interaction
+      type(shower_interaction_t), intent(in) :: interaction
       logical :: finished
       integer :: i
 
@@ -918,7 +913,7 @@ contains
     end function interaction_fsr_is_finished
 
     function interaction_get_shat(interaction) result(shat)
-      type(my_interaction_t), intent(in) :: interaction
+      type(shower_interaction_t), intent(in) :: interaction
       real(kind=default) :: shat
 
       shat = (interaction%partons(1)%p%momentum + &
@@ -926,7 +921,7 @@ contains
     end function interaction_get_shat
 
     function interaction_get_s(interaction) result(s)
-      type(my_interaction_t), intent(in) :: interaction
+      type(shower_interaction_t), intent(in) :: interaction
       real(kind=default) :: s
 
       s = (interaction%partons(1)%p%initial%momentum + &
@@ -982,7 +977,7 @@ contains
     end function shower_is_finished
 
     subroutine interaction_find_partons_nearest_to_hadron(interaction, prt1, prt2)
-      type(my_interaction_t), intent(in) :: interaction
+      type(shower_interaction_t), intent(in) :: interaction
       type(parton_t), pointer :: prt1, prt2
 
       prt1=>null()
@@ -1205,7 +1200,7 @@ contains
     end subroutine shower_update_beamremnants
 
     subroutine interaction_apply_lorentztrafo(interaction, L)
-      type(my_interaction_t), intent(inout) :: interaction
+      type(shower_interaction_t), intent(inout) :: interaction
       type(lorentz_transformation_t), intent(in) :: L
 
       type(parton_t), pointer :: prt
@@ -1263,7 +1258,7 @@ contains
 
     subroutine interaction_boost_to_CMframe(interaction)
       ! boosts partons belonging to the interaction to the center-of-mass-frame of its partons nearest to the hadron
-      type(my_interaction_t), intent(inout) :: interaction
+      type(shower_interaction_t), intent(inout) :: interaction
       type(vector4_t) :: beta
       type(parton_t), pointer :: prt1, prt2
 
@@ -1305,7 +1300,7 @@ contains
 
     subroutine interaction_boost_to_labframe(interaction)
       ! boost all partons so that initial partons have their assigned x-value
-      type(my_interaction_t), intent(inout) :: interaction
+      type(shower_interaction_t), intent(inout) :: interaction
       type(parton_t), pointer :: prt1, prt2
       type(vector3_t) :: beta
 
@@ -1330,7 +1325,7 @@ contains
     end subroutine interaction_boost_to_labframe
 
     subroutine interaction_rotate_to_z(interaction)
-      type(my_interaction_t), intent(inout) :: interaction
+      type(shower_interaction_t), intent(inout) :: interaction
       type(parton_t), pointer :: prt1, prt2
       
       call interaction_find_partons_nearest_to_hadron(interaction, prt1, prt2)
@@ -1354,7 +1349,7 @@ contains
     end subroutine shower_rotate_to_z
 
     subroutine interaction_generate_primordial_kt(interaction)
-      type(my_interaction_t), intent(inout) :: interaction
+      type(shower_interaction_t), intent(inout) :: interaction
       type(parton_t), pointer :: had1, had2
       type(vector4_t) :: momenta(2)
       type(vector3_t) :: beta
@@ -1431,7 +1426,7 @@ contains
 !!!! for printing
 
     subroutine interaction_print(interaction)
-      type(my_interaction_t), intent(in) :: interaction
+      type(shower_interaction_t), intent(in) :: interaction
       integer :: i
 
       if(associated(interaction%partons(1)%p)) then
@@ -1497,6 +1492,65 @@ contains
       print *, " ISR finished: ", shower_isr_is_finished(shower)
       print *, " FSR finished: ", shower_fsr_is_finished(shower)
     end subroutine shower_print
+
+    subroutine shower_write_lhef(shower, unit)
+      type(shower_t), intent(in) :: shower
+      integer, intent(in), optional :: unit
+      integer :: u
+      integer :: i
+      integer :: c1, c2
+      u = output_unit (unit);  if (u < 0)  return
+
+      write(u,'(A)') '<LesHouchesEvents version="1.0">'
+      write(u,'(A)') '<-- not a complete lhe file - just one event -->'
+      write(u,'(A)') '<event>'
+      write(u,*) 2+shower_get_nr_of_partons(shower),1,1.0,1.0,1.0,1.0
+
+      ! write incoming partons
+      do i=1,2
+         if(abs(shower%partons(i)%p%typ) < 1000) then
+            c1=0
+            c2=0
+            if(parton_is_colored(shower%partons(i)%p)) then
+               if(shower%partons(i)%p%c1 .ne. 0) c1=500+shower%partons(i)%p%c1
+               if(shower%partons(i)%p%c2 .ne. 0) c2=500+shower%partons(i)%p%c2
+            end if
+            write(u,*) shower%partons(i)%p%typ, -1, 0, 0, c1, c2, &
+                 vector4_get_component(shower%partons(i)%p%momentum, 1), &
+                 vector4_get_component(shower%partons(i)%p%momentum, 2), &
+                 vector4_get_component(shower%partons(i)%p%momentum, 3), &
+                 vector4_get_component(shower%partons(i)%p%momentum, 0), &
+                 shower%partons(i)%p%momentum**2, 0.0, 9.0
+         else
+            write(u,*) shower%partons(i)%p%typ, -9, 0, 0, 0, 0, &
+                 vector4_get_component(shower%partons(i)%p%momentum, 1), &
+                 vector4_get_component(shower%partons(i)%p%momentum, 2), &
+                 vector4_get_component(shower%partons(i)%p%momentum, 3), &
+                 vector4_get_component(shower%partons(i)%p%momentum, 0), &
+                 shower%partons(i)%p%momentum**2, 0.0, 9.0
+         end if
+      end do
+      ! write outgoing partons
+      do i=3, size(shower%partons)
+         if(.not.associated(shower%partons(i)%p)) cycle
+         if(.not.parton_is_final(shower%partons(i)%p)) cycle
+         c1=0
+         c2=0
+         if(parton_is_colored(shower%partons(i)%p)) then
+            if(shower%partons(i)%p%c1 .ne. 0) c1=500+shower%partons(i)%p%c1
+            if(shower%partons(i)%p%c2 .ne. 0) c2=500+shower%partons(i)%p%c2
+         end if
+         write(u,*) shower%partons(i)%p%typ, 1, 1, 2, c1, c2, &
+              vector4_get_component(shower%partons(i)%p%momentum, 1), &
+              vector4_get_component(shower%partons(i)%p%momentum, 2), &
+              vector4_get_component(shower%partons(i)%p%momentum, 3), &
+              vector4_get_component(shower%partons(i)%p%momentum, 0), &
+              shower%partons(i)%p%momentum**2, 0.0, 9.0
+      end do
+
+      write(u,'(A)') '</event>'
+      write(u,'(A)') '</LesHouchesEvents>'
+    end subroutine shower_write_lhef
 
 !!! physics
 
@@ -1676,7 +1730,7 @@ contains
 
     subroutine shower_prepare_for_simulate_isr_pt(shower, interaction)
       type(shower_t), intent(inout) :: shower
-      type(my_interaction_t), intent(inout) :: interaction
+      type(shower_interaction_t), intent(inout) :: interaction
       real(default) :: s
 
 !      print *, " shower_prepare_for_simulate_isr_pt"
@@ -3295,7 +3349,7 @@ contains
 
 !!$    subroutine shower_interaction_generate_fsr(shower, interaction)
 !!$      type(shower_t), intent(inout) :: shower
-!!$      type(my_interaction_t), intent(inout) :: interaction
+!!$      type(shower_interaction_t), intent(inout) :: interaction
 !!$      type(parton_pointer_t), dimension(:), allocatable :: partons   ! array of partons whose children are to be evolved
 !!$
 !!$      ! arrange partons to be included in <partons>
@@ -3311,7 +3365,7 @@ contains
 
     subroutine shower_interaction_generate_fsr2ton(shower, interaction)
       type(shower_t), intent(inout) :: shower
-      type(my_interaction_t), intent(inout) :: interaction
+      type(shower_interaction_t), intent(inout) :: interaction
 
       type(parton_t), pointer :: prt
 

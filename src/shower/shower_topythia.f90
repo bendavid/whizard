@@ -237,7 +237,7 @@ module shower_topythia_module
          if(associated(prt%child1)) cycle
          n_finals = n_finals + 1
       end do
-      print *, "n_finals=", n_finals
+!      print *, "n_finals=", n_finals
 
       allocate(final_partons(1:n_finals))
       j=1
@@ -250,10 +250,6 @@ module shower_topythia_module
          j = j+1
       end do
       
-      do i=1, size(final_partons)
-         call parton_print(final_partons(i))
-      end do
-
       !! move quark to front as beginning of color string
       minindex=1
       maxindex=size(final_partons)
@@ -297,10 +293,6 @@ module shower_topythia_module
          final_partons(j) = temp_parton
       end do
       
-      do i=1, size(final_partons)
-         call parton_print(final_partons(i))
-      end do
-
       ! transfering partons
       do i=1, size(final_partons)
          prt=final_partons(i)
@@ -316,7 +308,6 @@ module shower_topythia_module
          P(N,3)=vector4_get_component(prt%momentum, 3)
          P(N,4)=vector4_get_component(prt%momentum, 0)
          P(N,5)=prt%momentum**2
-!!$         call shower_topythia_recursiv_weighted(final_partons(i),1,
       end do
       deallocate(final_partons)
     end subroutine shower_transfer_final_partons_to_pythia

@@ -1,6 +1,6 @@
-! WHIZARD 2.0.6 Wed Dec 7 2011
+! WHIZARD 2.0.7 Mar 19 2012
 ! 
-! Copyright (C) 1999-2011 by 
+! Copyright (C) 1999-2012 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -33,6 +33,7 @@ module rt_data
   use system_dependencies !NODEP!
   use diagnostics !NODEP!
   use tao_random_numbers !NODEP!
+  use pdf_builtin !NODEP!
   use variables
   use os_interface
   use lexers
@@ -67,6 +68,7 @@ module rt_data
      type(model_t), pointer :: model => null ()
      type(beam_data_t) :: beam_data
      type(lhapdf_status_t) :: lhapdf_status
+     type(pdf_builtin_status_t) :: pdf_builtin_status
      logical :: sf_list_allocated = .false.
      type(sf_list_t), pointer  :: sf_list => null ()
      type(parse_node_t), pointer :: pn_cuts_lexpr => null ()
@@ -292,6 +294,9 @@ contains
     call var_list_append_log &
          (global%var_list, var_str ("?alpha_s_from_lhapdf"), .false., &
           intrinsic=.true.)
+    call var_list_append_log &
+         (global%var_list, var_str ("?alpha_s_from_pdf_builtin"), .false., &
+          intrinsic=.true.)
     call var_list_append_int &
          (global%var_list, var_str ("alpha_s_order"), 0, &
           intrinsic=.true.)
@@ -344,6 +349,9 @@ contains
     call var_list_append_log &
          (global%var_list, var_str ("?vis_channels"), .false., &
           intrinsic=.true.)       
+    call var_list_append_log &
+         (global%var_list, var_str ("?check_phs_file"), .true., &
+          intrinsic=.true.)
     call var_list_append_string &
          (global%var_list, var_str ("$phs_file"), var_str (""), &
           intrinsic=.true.)
@@ -362,9 +370,6 @@ contains
     call var_list_append_int &
          (global%var_list, var_str ("phs_t_channel"), 6, &
           intrinsic=.true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?phs_keep_nonresonant"), .false., &
-          intrinsic=.true.)
     call var_list_append_real &
          (global%var_list, var_str ("phs_e_scale"), 10._default, &
           intrinsic=.true.)
@@ -375,11 +380,38 @@ contains
          (global%var_list, var_str ("phs_q_scale"), 10._default, &
           intrinsic=.true.)
     call var_list_append_log &
+         (global%var_list, var_str ("?phs_keep_nonresonant"), .true., &
+          intrinsic=.true.)
+    call var_list_append_log &
+         (global%var_list, var_str ("?phs_step_mapping"), .true., &
+          intrinsic=.true.)
+    call var_list_append_log &
+         (global%var_list, var_str ("?phs_step_mapping_exp"), .false., &
+          intrinsic=.true.)
+    call var_list_append_log &
          (global%var_list, var_str ("?allow_global_mapping"), .false., &
           intrinsic=.true.)
 !    call var_list_append_log &
 !         (global%var_list, var_str ("?old_phs_version"), .false., &
 !          intrinsic=.true.)
+    call var_list_append_string &
+         (global%var_list, var_str ("$run_id"), var_str (""), &
+          intrinsic=.true.)
+    call var_list_append_log &
+         (global%var_list, var_str ("?use_best_grid"), .true., &
+          intrinsic=.true.)
+    call var_list_append_log &
+         (global%var_list, var_str ("?check_grid_file"), .true., &
+          intrinsic=.true.)
+    call var_list_append_real &
+         (global%var_list, var_str ("accuracy_goal"), 0._default, &
+          intrinsic=.true.)
+    call var_list_append_real &
+         (global%var_list, var_str ("error_goal"), 0._default, &
+          intrinsic=.true.)
+    call var_list_append_real &
+         (global%var_list, var_str ("relative_error_goal"), 0._default, &
+          intrinsic=.true.)
     call var_list_append_log &
          (global%var_list, var_str ("?vis_history"), .false., &
           intrinsic=.true.)       
@@ -388,6 +420,12 @@ contains
           intrinsic=.true.)
     call var_list_append_log &
          (global%var_list, var_str ("?diagonal_decay"), .false., &
+          intrinsic=.true.)
+    call var_list_append_log &
+         (global%var_list, var_str ("?check_event_file"), .true., &
+          intrinsic=.true.)
+    call var_list_append_string &
+         (global%var_list, var_str ("$event_file_version"), var_str (""), &
           intrinsic=.true.)
     call var_list_append_int &
          (global%var_list, var_str ("n_events"), 0, &
@@ -666,8 +704,12 @@ contains
             intrinsic=.true.)
     ! setting for my matching
     call var_list_append_log &
-         (global%var_list, var_str ("?mlm_matching_active"), .false., &
+         (global%var_list, var_str ("?mlm_matching"), .false., &
             intrinsic=.true.)
+    call var_list_append_real (global%var_list, var_str ("mlm_Qcut_ME"), &
+         0._default, intrinsic = .true.)
+    call var_list_append_real (global%var_list, var_str ("mlm_Qcut_PS"), &
+         0._default, intrinsic = .true.)
     call var_list_append_real (global%var_list, var_str ("mlm_ptmin"), &
          0._default, intrinsic = .true.)
     call var_list_append_real (global%var_list, var_str ("mlm_etamax"), &
@@ -696,24 +738,6 @@ contains
           var_str ("$comment_prefix"), var_str ("#"), intrinsic=.true.)
     call var_list_append_log (global%var_list, var_str ("?write_header"), &
           .true., intrinsic=.true.)
-    call var_list_append_real &
-         (global%var_list, var_str ("PTmin"), 10._default, &
-          intrinsic=.true.)
-    call var_list_append_real &
-         (global%var_list, var_str ("DRmin"), 0.4_default, &
-          intrinsic=.true.)
-    call var_list_append_real &
-         (global%var_list, var_str ("kTcut"), 0.01_default, &
-          intrinsic=.true.)
-    call var_list_append_int &
-         (global%var_list, var_str ("kTmode"), 0, &
-          intrinsic=.true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?LHEFout"), .false., &
-          intrinsic=.true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?mlm_matching"), .false., &
-          intrinsic=.true.)
     call var_list_append_string (global%var_list, &
          var_str ("$pdf_builtin_path"), intrinsic=.true.)
     call var_list_append_string (global%var_list, &
@@ -736,7 +760,7 @@ contains
          intrinsic=.true.)
     call rt_data_init_pointer_variables (global)
     call iterations_lists_init_default (global%it_list_default)
-  end subroutine rt_data_global_init
+  end subroutine rt_data_global_init                            ! $
 
   subroutine rt_data_local_init (local, global, env)
     type(rt_data_t), intent(inout), target :: local

@@ -1,6 +1,6 @@
-! WHIZARD 2.0.6 Wed Dec 7 2011
+! WHIZARD 2.0.7 Mar 19 2012
 ! 
-! Copyright (C) 1999-2011 by 
+! Copyright (C) 1999-2012 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -156,7 +156,7 @@ contains
     type(interaction_t), intent(out) :: int
     type(isr_data_t), intent(in) :: data
     type(quantum_numbers_mask_t), dimension(3) :: mask
-    integer, dimension(3) :: lock
+    integer, dimension(3) :: hel_lock
     type(polarization_t) :: pol
     type(quantum_numbers_t), dimension(1) :: qn_fc, qn_hel
     type(flavor_t) :: flv_photon
@@ -164,9 +164,9 @@ contains
     type(state_iterator_t) :: it_hel
     mask = new_quantum_numbers_mask (.false., .false., &
          mask_h = (/ .false., .true., .false. /))
-    lock = (/ 3, 0, 1 /)
+    hel_lock = (/ 3, 0, 1 /)
     call interaction_init &
-         (int, 1, 0, 2, mask=mask, lock=lock, set_relations=.true.)
+         (int, 1, 0, 2, mask=mask, hel_lock=hel_lock, set_relations=.true.)
     call flavor_init (flv_photon, PHOTON, data%model)
     call quantum_numbers_init (qn_photon, flv_photon)
     call polarization_init_generic (pol, data%flv)

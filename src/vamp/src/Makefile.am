@@ -4,7 +4,7 @@
 ##
 ## Process this file with automake to produce Makefile.in
 #
-# Copyright (C) 1999-2011 by 
+# Copyright (C) 1999-2012 by 
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
@@ -80,15 +80,16 @@ NOWEB_FILES = \
     vampi.nw mpi90.nw vamp_test.nw vamp_test0.nw \
     application.nw sample.nw
 
+moduleexecincludedir = $(pkgincludedir)
 if MPI
 lib_LTLIBRARIES = libvamp.la libvampi.la
 libvamp_la_SOURCES = $(SOURCE_FILES)
 libvampi_la_SOURCES = mpi90.f90 vampi.f90
-pkginclude_DATA = $(MODULE_FILES) # mpi90.$(FC_MODULE_EXT) vampi.$(FC_MODULE_EXT)
+nodist_moduleexecinclude_DATA = $(MODULE_FILES) # mpi90.$(FC_MODULE_EXT) vampi.$(FC_MODULE_EXT)
 else !MPI
 lib_LTLIBRARIES = libvamp.la
 libvamp_la_SOURCES = $(SOURCE_FILES)
-pkginclude_DATA = $(MODULE_FILES)
+nodist_moduleexecinclude_DATA = $(MODULE_FILES)
 endif !MPI
 
 EXTRA_DIST = $(NOWEB_FILES) $(SOURCE_FILES) f90.m4 f95.m4 iso_fortran_env_stub.f90

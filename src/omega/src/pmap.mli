@@ -1,8 +1,8 @@
-(* $Id: pmap.mli 2948 2010-12-24 03:25:57Z jr_reuter $
+(* $Id: pmap.mli 3670 2012-01-21 19:33:07Z jr_reuter $
 
-   Copyright (C) 1999-2011 by
+   Copyright (C) 1999-2012 by
 
-       Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+       Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
        Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
        Christian Speckner <christian.speckner@physik.uni-freiburg.de>

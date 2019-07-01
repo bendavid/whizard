@@ -35,7 +35,7 @@ O'Mega
   - helicity optimization (numerically done/analytically pending)
 
 Models
-* Release 2.0.7
+* Release 2.0.8
   - more self-checks (trivial processes + all kinds of commands)
   - Tests for 7, 8 fermions ... 
 
@@ -55,7 +55,7 @@ configure
   - Windows support?
 
 Misc
-* Release 2.0.7
+* Release 2.0.8
   - ATLAS/CMS software environment
   - Manual + O'Mega Paper (partially done)
 

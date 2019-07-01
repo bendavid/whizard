@@ -9,24 +9,10 @@ AC_DEFUN([WO_PROG_PYTHIA],
 [dnl
 AC_REQUIRE([AC_PROG_FC])
 
-AC_ARG_ENABLE([matching],
-  [AS_HELP_STRING([--enable-matching],
-    [enable MLM matching w/ PYTHIA parton showers [[no]]])],
-  [], [enable_matching="no"])
-
 AC_ARG_ENABLE([shower],
   [AS_HELP_STRING([--enable-shower],
     [enable parton showers [[no]]])],
   [], [enable_shower="no"])
-
-AC_CACHE_CHECK([whether we want to enable MLM matching], 
-[wo_cv_mlm_matching],
-[dnl
-if test "$enable_matching" = "yes"; then
-  wo_cv_mlm_matching=yes
-else
-  wo_cv_mlm_matching=no
-fi])
 
 AC_CACHE_CHECK([whether we want to enable showering], 
 [wo_cv_showering],
@@ -37,7 +23,7 @@ else
   wo_cv_showering=no
 fi])
 
-if test "$enable_shower" = "yes" -o "$enable_matching" = "yes"; then
+if test "$enable_shower" = "yes"; then
   PYTHIA_AVAILABLE_FLAG=".true."
   AC_MSG_CHECKING([for PYTHIA])
   AC_MSG_RESULT([(enabled)])
@@ -48,8 +34,6 @@ else
 fi
 AC_SUBST(PYTHIA_AVAILABLE_FLAG)
 
-AM_CONDITIONAL([MATCHING_AVAILABLE], 
-   [test "$wo_cv_mlm_matching" = "yes"])
 AM_CONDITIONAL([SHOWER_AVAILABLE], 
    [test "$wo_cv_showering" = "yes"])
 AM_CONDITIONAL([PYTHIA_AVAILABLE], 

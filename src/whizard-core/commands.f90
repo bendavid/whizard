@@ -1,6 +1,6 @@
-! WHIZARD 2.0.6 Wed Dec 7 2011
+! WHIZARD 2.0.7 Mar 19 2012
 ! 
-! Copyright (C) 1999-2011 by 
+! Copyright (C) 1999-2012 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -39,6 +39,7 @@ module commands
   use diagnostics !NODEP!
   use lorentz !NODEP!
   use tao_random_numbers !NODEP!
+  use pdf_builtin !NODEP!
   use md5
   use os_interface
   use ifiles
@@ -2303,6 +2304,7 @@ contains
     logical :: polarized
     u = logfile_unit ()
     call lhapdf_status_reset (global%lhapdf_status)
+    call pdf_builtin_status_reset (global%pdf_builtin_status)
     call rt_data_link (beams%local, global)
     if (associated (beams%options)) then
        call command_list_execute (beams%options, beams%local)
@@ -2411,7 +2413,7 @@ contains
           call strfun_pair_register (beams%strfun_pair(i), global)
        end do
        call sf_list_freeze (global%sf_list)
-       call sf_list_write (global%sf_list)
+!       call sf_list_write (global%sf_list, beam_fmt = .true.)
        call sf_list_compute_md5sum (global%sf_list)
     end select
     call beam_data_write (global%beam_data, verbose=.false.)
@@ -2463,7 +2465,7 @@ contains
     case (STRF_PDF_BUILTIN)
        call sf_list_register_pdf_builtin &
             (global%sf_list, affects_beam, &
-             global%model, global%beam_data%flv, &
+             global%pdf_builtin_status, global%model, global%beam_data%flv, &
              strfun_def%local%os_data%pdf_builtin_datapath, &
              strfun_def%local%var_list)
     case (STRF_ISR)
@@ -2550,9 +2552,10 @@ contains
   end subroutine sf_list_register_lhapdf
 
   subroutine sf_list_register_pdf_builtin (sf_list, affects_beam, &
-       model, flv, datapath, var_list)
+       pdf_status, model, flv, datapath, var_list)
     type(sf_list_t), intent(inout) :: sf_list
     logical, dimension(2), intent(in) :: affects_beam
+    type(pdf_builtin_status_t), intent(inout) :: pdf_status
     type(model_t), intent(in), target :: model
     type(flavor_t), dimension(2), intent(in) :: flv
     type(string_t), intent(in) :: datapath
@@ -2576,10 +2579,12 @@ contains
        if (affects_beam(i)) then
           allocate (sf_data)
           if (pdf_builtin_have_name) then
-             call sf_data_init_pdf_builtin (sf_data, i, model, flv(i), &
+             call sf_data_init_pdf_builtin (sf_data, i, &
+                  pdf_status, model, flv(i), &
                   name=pdf_builtin_name, path=pdf_builtin_prefix)
           else
-             call sf_data_init_pdf_builtin (sf_data, i, model, flv(i), &
+             call sf_data_init_pdf_builtin (sf_data, i, &
+                  pdf_status, model, flv(i), &
                   path=pdf_builtin_prefix)
           end if
           call sf_list_append (sf_list, sf_data)
@@ -3361,6 +3366,7 @@ contains
     end if
     call integrate_process &
          (integrate%process_id, integrate%local, global%var_list)
+    call decay_store_update (integrate%process_id, verbose = .true.)
     call rt_data_restore (global, integrate%local)
   end subroutine cmd_integrate_execute
 
@@ -4790,8 +4796,9 @@ contains
           process_id = unstable%decay(d)%process_id(proc)
           process => process_store_get_process_ptr (process_id)
           if (associated (process)) then
-             integral(proc) = var_list_get_rval (unstable%local%var_list, &
-                 var_str ("integral(") // process_id // ")")
+!             integral(proc) = var_list_get_rval (unstable%local%var_list, &
+!                 var_str ("integral(") // process_id // ")")
+             integral(proc) = process_get_integral (process)
              if (integral(proc) < 0) then
                  call msg_fatal ("Integral of process '" &
                       // char (process_id) // "' is negative")
@@ -5132,7 +5139,7 @@ contains
   subroutine cmd_simulate_execute (simulate, global)
     type(cmd_simulate_t), intent(inout), target :: simulate
     type(rt_data_t), intent(inout), target :: global
-    logical :: ok, mlm_matching
+    logical :: ok
 !    integer :: i_evt
     type(simulation_t), target :: sim
     call rt_data_link (simulate%local, global)
@@ -5159,10 +5166,6 @@ contains
           if (.not. ok)  exit
        end do
        call simulation_final (sim, verbose=.true.)
-       mlm_matching = simulation_check_matching(sim)
-       if (mlm_matching) then
-            call cmd_matching_execute (simulate%local%os_data)
-       end if
     end if
     call rt_data_restore (global, simulate%local)
   end subroutine cmd_simulate_execute

@@ -4,7 +4,7 @@
 ##
 ########################################################################
 #
-# Copyright (C) 1999-2011 by 
+# Copyright (C) 1999-2012 by 
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
@@ -77,7 +77,8 @@ MISC_TESTS_SIN = \
     models.sin \
     test_me.sin \
     hard_interactions.sin \
-    pdf_builtin.sin
+    pdf_builtin.sin \
+    fsr_shower.sin isr_shower.sin
 
 MSSM_EXT_M4 = \
     mssm_ext-ee.m4 mssm_ext-ee2.m4 \

@@ -1,7 +1,7 @@
-%  $Id: omegalib.nw 3251 2011-05-18 16:37:08Z ohl $
+%  $Id: omegalib.nw 3745 2012-03-10 20:44:32Z jr_reuter $
 %
-%  Copyright (C) 1999-2011 by 
-%      Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+%  Copyright (C) 1999-2012 by 
+%      Wolfgang Kilian <kilian@physik.uni-siegen.de>
 %      Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 %      Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
 %      Christian Speckner <christian.speckner@physik.uni-freiburg.de>
@@ -4158,10 +4158,15 @@ pure function chi_minus (p) result (chi)
 end function chi_minus
 @
 \begin{equation}
-  u_\pm(p) = 
+  u_\pm(p,|m|) = 
      \begin{pmatrix}
        \sqrt{p_0\mp|\vec p|} \cdot \chi_\pm(\vec p) \\
        \sqrt{p_0\pm|\vec p|} \cdot \chi_\pm(\vec p)
+     \end{pmatrix}\qquad
+  u_\pm(p,-|m|) = 
+     \begin{pmatrix}
+       - i \sqrt{p_0\mp|\vec p|} \cdot \chi_\pm(\vec p) \\
+       + i \sqrt{p_0\pm|\vec p|} \cdot \chi_\pm(\vec p)
      \end{pmatrix}
 \end{equation}
 Determining the mass from the momenta is a numerically haphazardous for
@@ -4170,15 +4175,16 @@ mass explicitely.  Even if the mass is not used in the chiral
 representation, we do so for symmetry with polarization vectors and to
 be prepared for other representations.
 <<Implementation of spinor on shell wave functions>>=
-pure function u (m, p, s) result (psi)
+pure function u (mass, p, s) result (psi)
   type(spinor) :: psi
-  real(kind=default), intent(in) :: m
+  real(kind=default), intent(in) :: mass
   type(momentum), intent(in) :: p
   integer, intent(in) :: s
   complex(kind=default), dimension(2) :: chi
-  real(kind=default) :: pabs, delta
+  real(kind=default) :: pabs, delta, m
+  m = abs(mass)
   pabs = sqrt (dot_product (p%x, p%x))
-  if (m < epsilon (m) * pabs) then
+  if (m < epsilon (m) * pabs) then 
       delta = 0
   else
       delta = sqrt (max (p%t - pabs, 0._default))
@@ -4196,6 +4202,10 @@ pure function u (m, p, s) result (psi)
      pabs = m ! make the compiler happy and use m
      psi%a = 0
   end select
+  if (mass < 0) then
+     psi%a(1:2) = - imago * psi%a(1:2)
+     psi%a(3:4) = + imago * psi%a(3:4)
+  end if
 end function u
 @ 
 <<Implementation of spinor on shell wave functions>>=
@@ -4204,7 +4214,7 @@ pure function ubar (m, p, s) result (psibar)
   real(kind=default), intent(in) :: m
   type(momentum), intent(in) :: p
   integer, intent(in) :: s
-  type(spinor) :: psi
+  type(spinor) :: psi  
   psi = u (m, p, s)
   psibar%a(1:2) = conjg (psi%a(3:4))
   psibar%a(3:4) = conjg (psi%a(1:2))
@@ -4218,13 +4228,14 @@ end function ubar
      \end{pmatrix}
 \end{equation}
 <<Implementation of spinor on shell wave functions>>=
-pure function v (m, p, s) result (psi)
+pure function v (mass, p, s) result (psi)
   type(spinor) :: psi
-  real(kind=default), intent(in) :: m
+  real(kind=default), intent(in) :: mass
   type(momentum), intent(in) :: p
   integer, intent(in) :: s
   complex(kind=default), dimension(2) :: chi
-  real(kind=default) :: pabs, delta
+  real(kind=default) :: pabs, delta, m
+  m = abs(mass)
   pabs = sqrt (dot_product (p%x, p%x))
   if (m < epsilon (m) * pabs) then
       delta = 0
@@ -4244,6 +4255,10 @@ pure function v (m, p, s) result (psi)
      pabs = m ! make the compiler happy and use m
      psi%a = 0
   end select
+  if (mass < 0) then
+     psi%a(1:2) = - imago * psi%a(1:2)
+     psi%a(3:4) = + imago * psi%a(3:4)
+   end if
 end function v
 @ 
 <<Implementation of spinor on shell wave functions>>=
@@ -7460,13 +7475,14 @@ public :: u, v, ghost
      \end{pmatrix}
 \end{equation}    
 <<Implementation of bispinor on shell wave functions>>=
-pure function u (m, p, s) result (psi)
+pure function u (mass, p, s) result (psi)
   type(bispinor) :: psi
-  real(kind=default), intent(in) :: m
+  real(kind=default), intent(in) :: mass
   type(momentum), intent(in) :: p
   integer, intent(in) :: s
   complex(kind=default), dimension(2) :: chip, chim
-  real(kind=default) :: pabs, norm, delta
+  real(kind=default) :: pabs, norm, delta, m
+  m = abs(mass)
   pabs = sqrt (dot_product (p%x, p%x))
   if (m < epsilon (m) * pabs) then
       delta = 0	
@@ -7493,6 +7509,10 @@ pure function u (m, p, s) result (psi)
      psi%a(3:4) = delta * chim
   end if
   pabs = m ! make the compiler happy and use m
+  if (mass < 0) then
+     psi%a(1:2) = - imago * psi%a(1:2)
+     psi%a(3:4) = + imago * psi%a(3:4)
+  end if
 end function u
 @
 \begin{equation}
@@ -7503,14 +7523,15 @@ end function u
      \end{pmatrix}
 \end{equation}     
 <<Implementation of bispinor on shell wave functions>>=
-pure function v (m, p, s) result (psi)
+pure function v (mass, p, s) result (psi)
   type(bispinor) :: psi
-  real(kind=default), intent(in) :: m
+  real(kind=default), intent(in) :: mass
   type(momentum), intent(in) :: p
   integer, intent(in) :: s
   complex(kind=default), dimension(2) :: chip, chim
-  real(kind=default) :: pabs, norm, delta
+  real(kind=default) :: pabs, norm, delta, m
   pabs = sqrt (dot_product (p%x, p%x))
+  m = abs(mass)
   if (m < epsilon (m) * pabs) then
       delta = 0	
   else
@@ -7536,6 +7557,10 @@ pure function v (m, p, s) result (psi)
      psi%a(3:4) = - sqrt (p%t + pabs) * chip
   end if
   pabs = m ! make the compiler happy and use m
+  if (mass < 0) then
+     psi%a(1:2) = - imago * psi%a(1:2)
+     psi%a(3:4) = + imago * psi%a(3:4)
+  end if 
 end function v
 @ 
 <<Implementation of bispinor on shell wave functions>>=
@@ -7781,16 +7806,17 @@ light particles.  Therefore, we accept some redundancy and pass the
 mass explicitely. For the case that the momentum lies totally in the 
 $z$-direction we take the convention $\cos\phi=1$ and $\sin\phi=0$.
 <<Implementation of polarization vectorspinors>>=
-pure function eps (m, k, s) result (e)
+pure function eps (mass, k, s) result (e)
   type(vector) :: e
-  real(kind=default), intent(in) :: m
+  real(kind=default), intent(in) :: mass
   type(momentum), intent(in) :: k
   integer, intent(in) :: s
-  real(kind=default) :: kabs, kabs2, sqrt2
+  real(kind=default) :: kabs, kabs2, sqrt2, m
   real(kind=default) :: cos_phi, sin_phi, cos_th, sin_th
   complex(kind=default) :: epiphi, emiphi
   sqrt2 = sqrt (2.0_default)
   kabs2 = dot_product (k%x, k%x)
+  m = abs(mass)
   if (kabs2 > 0) then
      kabs = sqrt (kabs2)
      if ((k%x(1) == 0) .and. (k%x(2) == 0)) then
@@ -9053,6 +9079,15 @@ call expect (abs(f_fv(c_one,ubar(m,p,+1),vp)-m*ubar(m,p,+1)), 0, "|ubar(+)[p-m]|
 call expect (abs(f_fv(c_one,ubar(m,p,-1),vp)-m*ubar(m,p,-1)), 0, "|ubar(-)[p-m]|=0", passed)
 call expect (abs(f_fv(c_one,vbar(m,p,+1),vp)+m*vbar(m,p,+1)), 0, "|vbar(+)[p+m]|=0", passed)
 call expect (abs(f_fv(c_one,vbar(m,p,-1),vp)+m*vbar(m,p,-1)), 0, "|vbar(-)[p+m]|=0", passed)
+print *, "*** Checking the equations of motion for negative mass***:"
+call expect (abs(f_vf(c_one,vp,u(-m,p,+1))+m*u(-m,p,+1)), 0, "|[p+m]u(+)|=0", passed)
+call expect (abs(f_vf(c_one,vp,u(-m,p,-1))+m*u(-m,p,-1)), 0, "|[p+m]u(-)|=0", passed)
+call expect (abs(f_vf(c_one,vp,v(-m,p,+1))-m*v(-m,p,+1)), 0, "|[p-m]v(+)|=0", passed)
+call expect (abs(f_vf(c_one,vp,v(-m,p,-1))-m*v(-m,p,-1)), 0, "|[p-m]v(-)|=0", passed)
+call expect (abs(f_fv(c_one,ubar(-m,p,+1),vp)+m*ubar(-m,p,+1)), 0, "|ubar(+)[p+m]|=0", passed)
+call expect (abs(f_fv(c_one,ubar(-m,p,-1),vp)+m*ubar(-m,p,-1)), 0, "|ubar(-)[p+m]|=0", passed)
+call expect (abs(f_fv(c_one,vbar(-m,p,+1),vp)-m*vbar(-m,p,+1)), 0, "|vbar(+)[p-m]|=0", passed)
+call expect (abs(f_fv(c_one,vbar(-m,p,-1),vp)-m*vbar(-m,p,-1)), 0, "|vbar(-)[p-m]|=0", passed)
 @ 
 <<Test [[omega95]]>>=
 print *, "*** Checking the normalization ***:"
@@ -9064,6 +9099,15 @@ call expect (ubar(m,p,+1)*v(m,p,+1),    0, "ubar(+)*v(+)=0  ", passed)
 call expect (ubar(m,p,-1)*v(m,p,-1),    0, "ubar(-)*v(-)=0  ", passed)
 call expect (vbar(m,p,+1)*u(m,p,+1),    0, "vbar(+)*u(+)=0  ", passed)
 call expect (vbar(m,p,-1)*u(m,p,-1),    0, "vbar(-)*u(-)=0  ", passed)
+print *, "*** Checking the normalization for negative masses***:"
+call expect (ubar(-m,p,+1)*u(-m,p,+1), -2*m, "ubar(+)*u(+)=-2m", passed)
+call expect (ubar(-m,p,-1)*u(-m,p,-1), -2*m, "ubar(-)*u(-)=-2m", passed)
+call expect (vbar(-m,p,+1)*v(-m,p,+1), +2*m, "vbar(+)*v(+)=+2m", passed)
+call expect (vbar(-m,p,-1)*v(-m,p,-1), +2*m, "vbar(-)*v(-)=+2m", passed)
+call expect (ubar(-m,p,+1)*v(-m,p,+1),    0, "ubar(+)*v(+)=0  ", passed)
+call expect (ubar(-m,p,-1)*v(-m,p,-1),    0, "ubar(-)*v(-)=0  ", passed)
+call expect (vbar(-m,p,+1)*u(-m,p,+1),    0, "vbar(+)*u(+)=0  ", passed)
+call expect (vbar(-m,p,-1)*u(-m,p,-1),    0, "vbar(-)*u(-)=0  ", passed)
 @ 
 <<Test [[omega95]]>>=
 print *, "*** Checking the currents ***:"
@@ -9071,6 +9115,11 @@ call expect (abs(v_ff(c_one,ubar(m,p,+1),u(m,p,+1))-2*vp), 0, "ubar(+).V.u(+)=2p
 call expect (abs(v_ff(c_one,ubar(m,p,-1),u(m,p,-1))-2*vp), 0, "ubar(-).V.u(-)=2p", passed)
 call expect (abs(v_ff(c_one,vbar(m,p,+1),v(m,p,+1))-2*vp), 0, "vbar(+).V.v(+)=2p", passed)
 call expect (abs(v_ff(c_one,vbar(m,p,-1),v(m,p,-1))-2*vp), 0, "vbar(-).V.v(-)=2p", passed)
+print *, "*** Checking the currents for negative masses***:"
+call expect (abs(v_ff(c_one,ubar(-m,p,+1),u(-m,p,+1))-2*vp), 0, "ubar(+).V.u(+)=2p", passed)
+call expect (abs(v_ff(c_one,ubar(-m,p,-1),u(-m,p,-1))-2*vp), 0, "ubar(-).V.u(-)=2p", passed)
+call expect (abs(v_ff(c_one,vbar(-m,p,+1),v(-m,p,+1))-2*vp), 0, "vbar(+).V.v(+)=2p", passed)
+call expect (abs(v_ff(c_one,vbar(-m,p,-1),v(-m,p,-1))-2*vp), 0, "vbar(-).V.v(-)=2p", passed)
 @ 
 <<Test [[omega95]]>>=
 print *, "*** Checking current conservation ***:"
@@ -9078,6 +9127,11 @@ call expect ((vp-vq)*v_ff(c_one,ubar(m,p,+1),u(m,q,+1)), 0, "d(ubar(+).V.u(+))=0
 call expect ((vp-vq)*v_ff(c_one,ubar(m,p,-1),u(m,q,-1)), 0, "d(ubar(-).V.u(-))=0", passed)
 call expect ((vp-vq)*v_ff(c_one,vbar(m,p,+1),v(m,q,+1)), 0, "d(vbar(+).V.v(+))=0", passed)
 call expect ((vp-vq)*v_ff(c_one,vbar(m,p,-1),v(m,q,-1)), 0, "d(vbar(-).V.v(-))=0", passed)
+print *, "*** Checking current conservation for negative masses***:"
+call expect ((vp-vq)*v_ff(c_one,ubar(-m,p,+1),u(-m,q,+1)), 0, "d(ubar(+).V.u(+))=0", passed)
+call expect ((vp-vq)*v_ff(c_one,ubar(-m,p,-1),u(-m,q,-1)), 0, "d(ubar(-).V.u(-))=0", passed)
+call expect ((vp-vq)*v_ff(c_one,vbar(-m,p,+1),v(-m,q,+1)), 0, "d(vbar(+).V.v(+))=0", passed)
+call expect ((vp-vq)*v_ff(c_one,vbar(-m,p,-1),v(-m,q,-1)), 0, "d(vbar(-).V.v(-))=0", passed)
 @ 
 <<Test [[omega95]]>>=
 if (m == 0) then
@@ -9393,6 +9447,11 @@ call expect (abs(f_vf(c_one,vp,u(m,p,+1))-m*u(m,p,+1)), 0, "|[p-m]u(+)|=0", pass
 call expect (abs(f_vf(c_one,vp,u(m,p,-1))-m*u(m,p,-1)), 0, "|[p-m]u(-)|=0", passed)
 call expect (abs(f_vf(c_one,vp,v(m,p,+1))+m*v(m,p,+1)), 0, "|[p+m]v(+)|=0", passed)
 call expect (abs(f_vf(c_one,vp,v(m,p,-1))+m*v(m,p,-1)), 0, "|[p+m]v(-)|=0", passed)
+print *, "*** Checking the equations of motion for negative masses***:"
+call expect (abs(f_vf(c_one,vp,u(-m,p,+1))+m*u(-m,p,+1)), 0, "|[p+m]u(+)|=0", passed)
+call expect (abs(f_vf(c_one,vp,u(-m,p,-1))+m*u(-m,p,-1)), 0, "|[p+m]u(-)|=0", passed)
+call expect (abs(f_vf(c_one,vp,v(-m,p,+1))-m*v(-m,p,+1)), 0, "|[p-m]v(+)|=0", passed)
+call expect (abs(f_vf(c_one,vp,v(-m,p,-1))-m*v(-m,p,-1)), 0, "|[p-m]v(-)|=0", passed)
 @ 
 <<Test [[omega95_bispinors]]>>=
 print *, "*** Checking the normalization ***:"
@@ -9404,6 +9463,15 @@ call expect (s_ff(c_one,v(m,p,+1),v(m,p,+1)),    0, "ubar(+)*v(+)=0  ", passed)
 call expect (s_ff(c_one,v(m,p,-1),v(m,p,-1)),    0, "ubar(-)*v(-)=0  ", passed)
 call expect (s_ff(c_one,u(m,p,+1),u(m,p,+1)),    0, "vbar(+)*u(+)=0  ", passed)
 call expect (s_ff(c_one,u(m,p,-1),u(m,p,-1)),    0, "vbar(-)*u(-)=0  ", passed)
+print *, "*** Checking the normalization for negative masses***:"
+call expect (s_ff(c_one,v(-m,p,+1),u(-m,p,+1)), -2*m, "ubar(+)*u(+)=-2m", passed)
+call expect (s_ff(c_one,v(-m,p,-1),u(-m,p,-1)), -2*m, "ubar(-)*u(-)=-2m", passed)
+call expect (s_ff(c_one,u(-m,p,+1),v(-m,p,+1)), +2*m, "vbar(+)*v(+)=+2m", passed)
+call expect (s_ff(c_one,u(-m,p,-1),v(-m,p,-1)), +2*m, "vbar(-)*v(-)=+2m", passed)
+call expect (s_ff(c_one,v(-m,p,+1),v(-m,p,+1)),    0, "ubar(+)*v(+)=0  ", passed)
+call expect (s_ff(c_one,v(-m,p,-1),v(-m,p,-1)),    0, "ubar(-)*v(-)=0  ", passed)
+call expect (s_ff(c_one,u(-m,p,+1),u(-m,p,+1)),    0, "vbar(+)*u(+)=0  ", passed)
+call expect (s_ff(c_one,u(-m,p,-1),u(-m,p,-1)),    0, "vbar(-)*u(-)=0  ", passed)
 @ 
 <<Test [[omega95_bispinors]]>>=
 print *, "*** Checking the currents ***:"
@@ -9411,6 +9479,11 @@ call expect (abs(v_ff(c_one,v(m,p,+1),u(m,p,+1))-2*vp), 0, "ubar(+).V.u(+)=2p", 
 call expect (abs(v_ff(c_one,v(m,p,-1),u(m,p,-1))-2*vp), 0, "ubar(-).V.u(-)=2p", passed)
 call expect (abs(v_ff(c_one,u(m,p,+1),v(m,p,+1))-2*vp), 0, "vbar(+).V.v(+)=2p", passed)
 call expect (abs(v_ff(c_one,u(m,p,-1),v(m,p,-1))-2*vp), 0, "vbar(-).V.v(-)=2p", passed)
+print *, "*** Checking the currents for negative masses***:"
+call expect (abs(v_ff(c_one,v(-m,p,+1),u(-m,p,+1))-2*vp), 0, "ubar(+).V.u(+)=2p", passed)
+call expect (abs(v_ff(c_one,v(-m,p,-1),u(-m,p,-1))-2*vp), 0, "ubar(-).V.u(-)=2p", passed)
+call expect (abs(v_ff(c_one,u(-m,p,+1),v(-m,p,+1))-2*vp), 0, "vbar(+).V.v(+)=2p", passed)
+call expect (abs(v_ff(c_one,u(-m,p,-1),v(-m,p,-1))-2*vp), 0, "vbar(-).V.v(-)=2p", passed)
 @ 
 <<Test [[omega95_bispinors]]>>=
 print *, "*** Checking current conservation ***:"
@@ -9418,6 +9491,12 @@ call expect ((vp-vq)*v_ff(c_one,v(m,p,+1),u(m,q,+1)), 0, "d(ubar(+).V.u(+))=0", 
 call expect ((vp-vq)*v_ff(c_one,v(m,p,-1),u(m,q,-1)), 0, "d(ubar(-).V.u(-))=0", passed)
 call expect ((vp-vq)*v_ff(c_one,u(m,p,+1),v(m,q,+1)), 0, "d(vbar(+).V.v(+))=0", passed)
 call expect ((vp-vq)*v_ff(c_one,u(m,p,-1),v(m,q,-1)), 0, "d(vbar(-).V.v(-))=0", passed)
+<<Test [[omega95_bispinors]]>>=
+print *, "*** Checking current conservation for negative masses***:"
+call expect ((vp-vq)*v_ff(c_one,v(-m,p,+1),u(-m,q,+1)), 0, "d(ubar(+).V.u(+))=0", passed)
+call expect ((vp-vq)*v_ff(c_one,v(-m,p,-1),u(-m,q,-1)), 0, "d(ubar(-).V.u(-))=0", passed)
+call expect ((vp-vq)*v_ff(c_one,u(-m,p,+1),v(-m,q,+1)), 0, "d(vbar(+).V.v(+))=0", passed)
+call expect ((vp-vq)*v_ff(c_one,u(-m,p,-1),v(-m,q,-1)), 0, "d(vbar(-).V.v(-))=0", passed)
 @ 
 <<Test [[omega95_bispinors]]>>=
 if (m == 0) then
@@ -9455,6 +9534,15 @@ call expect (abs(p * veps(m, p,  2)),  0, "p.veps ( 2)= 0", passed)
 call expect (abs(p * veps(m, p,  1)),  0, "p.veps ( 1)= 0", passed)
 call expect (abs(p * veps(m, p, -1)),  0, "p.veps (-1)= 0", passed)
 call expect (abs(p * veps(m, p, -2)),  0, "p.veps (-2)= 0", passed)
+print *, "*** Checking polarization vectorspinors (neg. masses): ***"
+call expect (abs(p * ueps(-m, p,  2)),  0, "p.ueps ( 2)= 0", passed)
+call expect (abs(p * ueps(-m, p,  1)),  0, "p.ueps ( 1)= 0", passed)
+call expect (abs(p * ueps(-m, p, -1)),  0, "p.ueps (-1)= 0", passed)
+call expect (abs(p * ueps(-m, p, -2)),  0, "p.ueps (-2)= 0", passed)
+call expect (abs(p * veps(-m, p,  2)),  0, "p.veps ( 2)= 0", passed)
+call expect (abs(p * veps(-m, p,  1)),  0, "p.veps ( 1)= 0", passed)
+call expect (abs(p * veps(-m, p, -1)),  0, "p.veps (-1)= 0", passed)
+call expect (abs(p * veps(-m, p, -2)),  0, "p.veps (-2)= 0", passed)
 print *, "*** in the rest frame ***"
 call expect (abs(p_0 * ueps(m, p_0,  2)),  0, "p0.ueps ( 2)= 0", passed)
 call expect (abs(p_0 * ueps(m, p_0,  1)),  0, "p0.ueps ( 1)= 0", passed)
@@ -9464,6 +9552,15 @@ call expect (abs(p_0 * veps(m, p_0,  2)),  0, "p0.veps ( 2)= 0", passed)
 call expect (abs(p_0 * veps(m, p_0,  1)),  0, "p0.veps ( 1)= 0", passed)
 call expect (abs(p_0 * veps(m, p_0, -1)),  0, "p0.veps (-1)= 0", passed)
 call expect (abs(p_0 * veps(m, p_0, -2)),  0, "p0.veps (-2)= 0", passed)
+print *, "*** in the rest frame (neg. masses) ***"
+call expect (abs(p_0 * ueps(-m, p_0,  2)),  0, "p0.ueps ( 2)= 0", passed)
+call expect (abs(p_0 * ueps(-m, p_0,  1)),  0, "p0.ueps ( 1)= 0", passed)
+call expect (abs(p_0 * ueps(-m, p_0, -1)),  0, "p0.ueps (-1)= 0", passed)
+call expect (abs(p_0 * ueps(-m, p_0, -2)),  0, "p0.ueps (-2)= 0", passed)
+call expect (abs(p_0 * veps(-m, p_0,  2)),  0, "p0.veps ( 2)= 0", passed)
+call expect (abs(p_0 * veps(-m, p_0,  1)),  0, "p0.veps ( 1)= 0", passed)
+call expect (abs(p_0 * veps(-m, p_0, -1)),  0, "p0.veps (-1)= 0", passed)
+call expect (abs(p_0 * veps(-m, p_0, -2)),  0, "p0.veps (-2)= 0", passed)
 @ 
 <<Test [[omega95_bispinors]]>>=
 print *, "*** Checking the irreducibility condition: ***"
@@ -9475,7 +9572,25 @@ call expect (abs(f_potgr (c_one, c_one, veps(m, p,  2))),  0, "g.veps ( 2)", pas
 call expect (abs(f_potgr (c_one, c_one, veps(m, p,  1))),  0, "g.veps ( 1)", passed)
 call expect (abs(f_potgr (c_one, c_one, veps(m, p, -1))),  0, "g.veps (-1)", passed)
 call expect (abs(f_potgr (c_one, c_one, veps(m, p, -2))),  0, "g.veps (-2)", passed)
+print *, "*** Checking the irreducibility condition (neg. masses): ***"
+call expect (abs(f_potgr (c_one, c_one, ueps(-m, p,  2))),  0, "g.ueps ( 2)", passed)
+call expect (abs(f_potgr (c_one, c_one, ueps(-m, p,  1))),  0, "g.ueps ( 1)", passed)
+call expect (abs(f_potgr (c_one, c_one, ueps(-m, p, -1))),  0, "g.ueps (-1)", passed)
+call expect (abs(f_potgr (c_one, c_one, ueps(-m, p, -2))),  0, "g.ueps (-2)", passed)
+call expect (abs(f_potgr (c_one, c_one, veps(-m, p,  2))),  0, "g.veps ( 2)", passed)
+call expect (abs(f_potgr (c_one, c_one, veps(-m, p,  1))),  0, "g.veps ( 1)", passed)
+call expect (abs(f_potgr (c_one, c_one, veps(-m, p, -1))),  0, "g.veps (-1)", passed)
+call expect (abs(f_potgr (c_one, c_one, veps(-m, p, -2))),  0, "g.veps (-2)", passed)
 print *, "*** in the rest frame ***"
+call expect (abs(f_potgr (c_one, c_one, ueps(m, p_0,  2))),  0, "g.ueps ( 2)", passed)
+call expect (abs(f_potgr (c_one, c_one, ueps(m, p_0,  1))),  0, "g.ueps ( 1)", passed)
+call expect (abs(f_potgr (c_one, c_one, ueps(m, p_0, -1))),  0, "g.ueps (-1)", passed)
+call expect (abs(f_potgr (c_one, c_one, ueps(m, p_0, -2))),  0, "g.ueps (-2)", passed)
+call expect (abs(f_potgr (c_one, c_one, veps(m, p_0,  2))),  0, "g.veps ( 2)", passed)
+call expect (abs(f_potgr (c_one, c_one, veps(m, p_0,  1))),  0, "g.veps ( 1)", passed)
+call expect (abs(f_potgr (c_one, c_one, veps(m, p_0, -1))),  0, "g.veps (-1)", passed)
+call expect (abs(f_potgr (c_one, c_one, veps(m, p_0, -2))),  0, "g.veps (-2)", passed)
+print *, "*** in the rest frame (neg. masses) ***"
 call expect (abs(f_potgr (c_one, c_one, ueps(m, p_0,  2))),  0, "g.ueps ( 2)", passed)
 call expect (abs(f_potgr (c_one, c_one, ueps(m, p_0,  1))),  0, "g.ueps ( 1)", passed)
 call expect (abs(f_potgr (c_one, c_one, ueps(m, p_0, -1))),  0, "g.ueps (-1)", passed)
@@ -9503,6 +9618,23 @@ call expect (veps(m,p, 2)*veps(m,p, 2),    0, "veps( 2).ueps( 2)=   0", passed)
 call expect (veps(m,p, 1)*veps(m,p, 1),    0, "veps( 1).ueps( 1)=   0", passed)
 call expect (veps(m,p,-1)*veps(m,p,-1),    0, "veps(-1).ueps(-1)=   0", passed)
 call expect (veps(m,p,-2)*veps(m,p,-2),    0, "veps(-2).ueps(-2)=   0", passed)
+print *, "*** Testing vectorspinor normalization (neg. masses) ***"
+call expect (veps(-m,p, 2)*ueps(-m,p, 2), +2*m, "ueps( 2).ueps( 2)= +2m", passed)
+call expect (veps(-m,p, 1)*ueps(-m,p, 1), +2*m, "ueps( 1).ueps( 1)= +2m", passed)
+call expect (veps(-m,p,-1)*ueps(-m,p,-1), +2*m, "ueps(-1).ueps(-1)= +2m", passed)
+call expect (veps(-m,p,-2)*ueps(-m,p,-2), +2*m, "ueps(-2).ueps(-2)= +2m", passed)
+call expect (ueps(-m,p, 2)*veps(-m,p, 2), -2*m, "veps( 2).veps( 2)= -2m", passed)
+call expect (ueps(-m,p, 1)*veps(-m,p, 1), -2*m, "veps( 1).veps( 1)= -2m", passed)
+call expect (ueps(-m,p,-1)*veps(-m,p,-1), -2*m, "veps(-1).veps(-1)= -2m", passed)
+call expect (ueps(-m,p,-2)*veps(-m,p,-2), -2*m, "veps(-2).veps(-2)= -2m", passed)
+call expect (ueps(-m,p, 2)*ueps(-m,p, 2),    0, "ueps( 2).veps( 2)=   0", passed)
+call expect (ueps(-m,p, 1)*ueps(-m,p, 1),    0, "ueps( 1).veps( 1)=   0", passed)
+call expect (ueps(-m,p,-1)*ueps(-m,p,-1),    0, "ueps(-1).veps(-1)=   0", passed)
+call expect (ueps(-m,p,-2)*ueps(-m,p,-2),    0, "ueps(-2).veps(-2)=   0", passed)
+call expect (veps(-m,p, 2)*veps(-m,p, 2),    0, "veps( 2).ueps( 2)=   0", passed)
+call expect (veps(-m,p, 1)*veps(-m,p, 1),    0, "veps( 1).ueps( 1)=   0", passed)
+call expect (veps(-m,p,-1)*veps(-m,p,-1),    0, "veps(-1).ueps(-1)=   0", passed)
+call expect (veps(-m,p,-2)*veps(-m,p,-2),    0, "veps(-2).ueps(-2)=   0", passed)
 print *, "*** in the rest frame ***"
 call expect (veps(m,p_0, 2)*ueps(m,p_0, 2), -2*m, "ueps( 2).ueps( 2)= -2m", passed)
 call expect (veps(m,p_0, 1)*ueps(m,p_0, 1), -2*m, "ueps( 1).ueps( 1)= -2m", passed)
@@ -9520,6 +9652,23 @@ call expect (veps(m,p_0, 2)*veps(m,p_0, 2),    0, "veps( 2).ueps( 2)=   0", pass
 call expect (veps(m,p_0, 1)*veps(m,p_0, 1),    0, "veps( 1).ueps( 1)=   0", passed)
 call expect (veps(m,p_0,-1)*veps(m,p_0,-1),    0, "veps(-1).ueps(-1)=   0", passed)
 call expect (veps(m,p_0,-2)*veps(m,p_0,-2),    0, "veps(-2).ueps(-2)=   0", passed)
+print *, "*** in the rest frame (neg. masses) ***"
+call expect (veps(-m,p_0, 2)*ueps(-m,p_0, 2), +2*m, "ueps( 2).ueps( 2)= +2m", passed)
+call expect (veps(-m,p_0, 1)*ueps(-m,p_0, 1), +2*m, "ueps( 1).ueps( 1)= +2m", passed)
+call expect (veps(-m,p_0,-1)*ueps(-m,p_0,-1), +2*m, "ueps(-1).ueps(-1)= +2m", passed)
+call expect (veps(-m,p_0,-2)*ueps(-m,p_0,-2), +2*m, "ueps(-2).ueps(-2)= +2m", passed)
+call expect (ueps(-m,p_0, 2)*veps(-m,p_0, 2), -2*m, "veps( 2).veps( 2)= -2m", passed)
+call expect (ueps(-m,p_0, 1)*veps(-m,p_0, 1), -2*m, "veps( 1).veps( 1)= -2m", passed)
+call expect (ueps(-m,p_0,-1)*veps(-m,p_0,-1), -2*m, "veps(-1).veps(-1)= -2m", passed)
+call expect (ueps(-m,p_0,-2)*veps(-m,p_0,-2), -2*m, "veps(-2).veps(-2)= -2m", passed)
+call expect (ueps(-m,p_0, 2)*ueps(-m,p_0, 2),    0, "ueps( 2).veps( 2)=   0", passed)
+call expect (ueps(-m,p_0, 1)*ueps(-m,p_0, 1),    0, "ueps( 1).veps( 1)=   0", passed)
+call expect (ueps(-m,p_0,-1)*ueps(-m,p_0,-1),    0, "ueps(-1).veps(-1)=   0", passed)
+call expect (ueps(-m,p_0,-2)*ueps(-m,p_0,-2),    0, "ueps(-2).veps(-2)=   0", passed)
+call expect (veps(-m,p_0, 2)*veps(-m,p_0, 2),    0, "veps( 2).ueps( 2)=   0", passed)
+call expect (veps(-m,p_0, 1)*veps(-m,p_0, 1),    0, "veps( 1).ueps( 1)=   0", passed)
+call expect (veps(-m,p_0,-1)*veps(-m,p_0,-1),    0, "veps(-1).ueps(-1)=   0", passed)
+call expect (veps(-m,p_0,-2)*veps(-m,p_0,-2),    0, "veps(-2).ueps(-2)=   0", passed)
 @ 
 <<Test [[omega95_bispinors]]>>=
 print *, "*** Majorana properties of gravitino vertices: ***"
@@ -9869,10 +10018,10 @@ case (OVM_FUSE_PSIBAR_PSIBAR_VECTOR)
         f_fv (sign*env%gc(coupl), vm%psibar(rhs(1)), vm%v(rhs(2)))
 @ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 <<Copyleft>>=
-!  $Id: omegalib.nw 3251 2011-05-18 16:37:08Z ohl $
+!  $Id: omegalib.nw 3745 2012-03-10 20:44:32Z jr_reuter $
 !
 !  Copyright (C) 1999-2009 by 
-!      Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+!      Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !      Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !      Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
 !

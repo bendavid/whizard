@@ -6,7 +6,7 @@
 #
 ########################################################################
 #
-# Copyright (C) 1999-2011 by 
+# Copyright (C) 1999-2012 by 
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
@@ -37,6 +37,7 @@ usage: whizard-config [options]
 Gives information on the build-time WHIZARD 2 configuration.
 
 Available options:
+   --prefix        : WHIZARD installation prefix
    --libdir        : directory containing the WHIZARD libraries
    --datadir       : WHIZARD data directory
    --version       : WHIZARD version
@@ -51,6 +52,9 @@ test -z "$1" && usage
 
 while test -n "$1"; do
    case "$1" in
+      "--prefix")
+         echo ${prefix}
+         ;;
       "--libdir")
          echo "@PKGLIBDIR@"
          ;;

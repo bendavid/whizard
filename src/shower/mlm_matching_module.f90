@@ -1,10 +1,11 @@
-module matching_helper
+module mlm_matching_module
   use kinds, only: default, double !NODEP!
   use lorentz !NODEP!
   use file_utils !NODEP!
 
   implicit none
  
+  ! remember to change shower_dummy as well
   public :: mlm_matching_data_t
   public :: mlm_matching_settings_t
   public :: mlm_matching_settings_write
@@ -12,22 +13,28 @@ module matching_helper
   public :: mlm_matching
 
   type :: mlm_matching_data_t
+     ! remember to change shower_dummy as well
      logical :: is_hadron_collision = .false.
      ! the (colored) partons' momenta
-!     type(vector4_t), dimension(:), allocatable :: P_ME
-     type(vector4_t), dimension(:), allocatable :: P_PS
+     type(vector4_t), dimension(:), allocatable, public :: P_ME
+     type(vector4_t), dimension(:), allocatable, public :: P_PS
+
      ! the jets' momenta
-     type(vector4_t), dimension(:), allocatable :: JETS_ME
-     type(vector4_t), dimension(:), allocatable :: JETS_PS
+     type(vector4_t), dimension(:), allocatable, private :: JETS_ME
+     type(vector4_t), dimension(:), allocatable, private :: JETS_PS
   end type mlm_matching_data_t
 
   type :: mlm_matching_settings_t
+     ! remember to change shower_dummy as well
+     real(kind=default) :: mlm_Qcut_ME = 1._default
+     real(kind=default) :: mlm_Qcut_PS = 1._default
      real(kind=default) :: mlm_ptmin, mlm_etamax, mlm_Rmin, mlm_Emin
      real(kind=default) :: mlm_ETclusfactor = 0.2_default
      real(kind=default) :: mlm_ETclusminE = 5._default
      real(kind=default) :: mlm_etaclusfactor = 1._default
      real(kind=default) :: mlm_Rclusfactor = 1._default
      real(kind=default) :: mlm_Eclusfactor = 1._default
+
      integer :: kt_imode_hadronic = 4313
      integer :: kt_imode_leptonic = 1111
      integer :: mlm_nmaxMEjets = 0
@@ -40,6 +47,8 @@ contains
     integer, intent(in), optional :: unit
     integer :: u
     u = output_unit (unit);  if (u < 0)  return
+    write (u, *) "mlm_Qcut_ME                  = ", mlm_matching_settings%mlm_Qcut_ME
+    write (u, *) "mlm_Qcut_PS                  = ", mlm_matching_settings%mlm_Qcut_PS
     write (u, *) "mlm_ptmin                    = ", mlm_matching_settings%mlm_ptmin
     write (u, *) "mlm_etamax                   = ", mlm_matching_settings%mlm_etamax
     write (u, *) "mlm_Rmin                     = ", mlm_matching_settings%mlm_Rmin
@@ -60,6 +69,13 @@ contains
     integer :: u
     u = output_unit (unit);  if (u < 0)  return
 
+    write(u, *) "P_ME"
+    if(allocated(mlm_matching_data%P_ME)) then
+       do i=1, size(mlm_matching_data%P_ME)
+          call vector4_write(mlm_matching_data%P_ME(i), unit=u)
+       end do
+    end if
+    write(u, *) "================"
     write(u, *) "JETS_ME"
     if(allocated(mlm_matching_data%JETS_ME)) then
        do i=1, size(mlm_matching_data%JETS_ME)
@@ -103,6 +119,7 @@ contains
     real(kind=double), dimension(:, :), allocatable :: PP
     real(kind=double), dimension(:), allocatable :: Y
     real(kind=double), dimension(:,:), allocatable :: P_JETS
+    real(kind=double), dimension(:,:), allocatable :: P_ME
     integer, dimension(:), allocatable :: JET
     integer :: NJET, NSUB
     integer :: imode
@@ -118,23 +135,62 @@ contains
 
     vetoed = .true.
 
-    if(allocated(mlm_matching_data%JETS_ME)) then
-       print *, "number of jets after ME: ", size(mlm_matching_data%JETS_ME)
-       n_jets_ME = size(mlm_matching_data%JETS_ME)
+    if(allocated(mlm_matching_data%P_ME)) then
+!       print *, "number of partons after ME: ", size(mlm_matching_data%P_ME)
+       n_jets_ME = size(mlm_matching_data%P_ME)
     else 
        n_jets_ME = 0
     end if
     if(allocated(mlm_matching_data%p_PS)) then
-       print *, "number of partons after PS: ", size(mlm_matching_data%p_PS)
+!       print *, "number of partons after PS: ", size(mlm_matching_data%p_PS)
        n_jets_PS = size(mlm_matching_data%p_PS)
     else 
        n_jets_PS = 0
     end if
 
-    ! jet clustering
+    ! jet clustering for partons after matrix element
+    if(n_jets_ME>0) then
+       ycut = (mlm_matching_settings%mlm_ptmin)**2
+!       ycut = mlm_matching_settings%mlm_Qcut_ME**2
+       allocate(PP(1:4, 1:N_jets_ME))
+       do i=1, n_jets_ME
+          PP(1,i) = vector4_get_component(mlm_matching_data%p_ME(i), 1)
+          PP(2,i) = vector4_get_component(mlm_matching_data%p_ME(i), 2)
+          PP(3,i) = vector4_get_component(mlm_matching_data%p_ME(i), 3)
+          PP(4,i) = vector4_get_component(mlm_matching_data%p_ME(i), 0)
+       end do
+
+       if(mlm_matching_data%is_hadron_collision) then
+          imode = mlm_matching_settings%kt_imode_hadronic
+       else
+          imode = mlm_matching_settings%kt_imode_leptonic
+       end if
+
+       allocate(P_ME(1:4,1:n_jets_ME))
+       allocate(JET(1:n_jets_ME))
+       allocate(Y(1:n_jets_ME))
+
+       call KTCLUR(imode, PP, n_jets_ME, mlm_matching_settings%mlm_Rmin, ECUT, y, *999)
+       call ktreco(1, PP,n_jets_me,ECUT,ycut,ycut,P_ME,JET,NJET,NSUB,*999)
+
+       n_jets_ME = NJET
+       if(NJET>0) then
+          allocate(mlm_matching_data%JETS_ME(1:NJET))
+          do i=1, NJET
+             mlm_matching_data%JETS_ME(i)=vector4_moving(P_ME(4,i),vector3_moving((/P_ME(1,i),P_ME(2,i),P_ME(3,i)/)))
+          end do
+       end if
+       deallocate(P_ME)
+       deallocate(JET)
+       deallocate(Y)
+       deallocate(PP) 
+    end if
+
+    ! jet clustering for partons after shower
     if(n_jets_PS>0) then
        ycut = (mlm_matching_settings%mlm_ptmin+max(mlm_matching_settings%mlm_ETclusminE, & 
             mlm_matching_settings%mlm_ETclusfactor*mlm_matching_settings%mlm_ptmin))**2
+!       ycut = mlm_matching_settings%mlm_Qcut_PS**2
        allocate(PP(1:4, 1:N_jets_ps))
        do i=1, n_jets_ps
           PP(1,i) = vector4_get_component(mlm_matching_data%p_PS(i), 1)
@@ -157,7 +213,7 @@ contains
        call ktreco(1, PP,n_jets_ps,ECUT,ycut,ycut,P_JETS,JET,NJET,NSUB,*999)
        n_jets_PS_atycut = NJET
        if((n_jets_ME.eq.mlm_matching_settings%mlm_nmaxMEjets).and.(NJET.gt.0)) then
-          print *, " resetting ycut to ", y(mlm_matching_settings%mlm_nmaxMEjets)
+!          print *, " resetting ycut to ", y(mlm_matching_settings%mlm_nmaxMEjets)
           ycut = y(mlm_matching_settings%mlm_nmaxMEjets)
           call ktreco(1, PP,n_jets_ps,ECUT,ycut,ycut,P_JETS,JET,NJET,NSUB,*999)
 !!! else -> y(1) ???
@@ -176,7 +232,10 @@ contains
              mlm_matching_data%JETS_PS(i)=vector4_moving(P_JETS(4,i),vector3_moving((/P_JETS(1,i),P_JETS(2,i),P_JETS(3,i)/)))
           end do
        end if
-       print *, "AFTER RECO", n_jets_ps, allocated(mlm_matching_data%jets_ps), size(mlm_matching_data%jets_ps)
+
+       deallocate(P_JETS)
+       deallocate(JET)
+       deallocate(Y)
     else
        n_jets_PS_atycut = 0
     end if
@@ -184,20 +243,17 @@ contains
     !      call mlm_matching_data_write(mlm_matching_data)
 
     if(n_jets_PS_atycut < n_jets_ME) then
-       print *, "DISCARDING: Not enough PS jets"
+!       print *, "DISCARDING: Not enough PS jets"
        return
     end if
     if((n_jets_PS_atycut > n_jets_ME).and.(n_jets_ME.ne.mlm_matching_settings%mlm_nmaxMEjets)) then
-       !         do i=1, n_jets_PS_ycut
-       !            call vector4_write(mlm_matching_data%JETS_PS(i))
-       !         end do
-       print *, "DISCARDING: Too many PS jets ", n_jets_PS_atycut
+!       print *, "DISCARDING: Too many PS jets ", n_jets_PS_atycut
        return
     end if
 
     ! Cluster ME Jets with PS Jets one at a time
     if(allocated(mlm_matching_data%JETS_PS)) then
-       print *, "number of jets after PS: ", size(mlm_matching_data%JETS_PS)
+!       print *, "number of jets after PS: ", size(mlm_matching_data%JETS_PS)
        n_jets_PS = size(mlm_matching_data%JETS_PS)
     else 
        n_jets_PS = 0
@@ -206,9 +262,9 @@ contains
        n_jets_ps = size(mlm_matching_data%JETS_PS)
        if(allocated(PP)) deallocate(PP)
        allocate(PP(1:4, 1:n_jets_ps+1))
-       print *, "PS JET"
+!       print *, "PS JET"
        do i=1, n_jets_ps
-          call vector4_write(mlm_matching_data%jets_PS(i))
+!          call vector4_write(mlm_matching_data%jets_PS(i))
           PP(1,i) = vector4_get_component(mlm_matching_data%JETS_PS(i), 1)
           PP(2,i) = vector4_get_component(mlm_matching_data%JETS_PS(i), 2)
           PP(3,i) = vector4_get_component(mlm_matching_data%JETS_PS(i), 3)
@@ -218,34 +274,34 @@ contains
        allocate(Y(1:n_jets_PS+1))
        y = 0.0
        do i=1, n_jets_ME
-          print *, "ME JET"
-          call vector4_write(mlm_matching_data%jets_ME(i))
+!          print *, "ME JET"
+!          call vector4_write(mlm_matching_data%jets_ME(i))
           PP(1,N_jets_ps+2-i) = vector4_get_component(mlm_matching_data%JETS_ME(i), 1)
           PP(2,n_jets_ps+2-i) = vector4_get_component(mlm_matching_data%JETS_ME(i), 2)
           PP(3,n_jets_ps+2-i) = vector4_get_component(mlm_matching_data%JETS_ME(i), 3)
           PP(4,n_jets_ps+2-i) = vector4_get_component(mlm_matching_data%JETS_ME(i), 0)
           CALL KTCLUS(4313, PP, (n_jets_ps+2-i), 1.0_double, Y, *999)
-          print *, "    Y=" , y
-          print *, y(n_jets_PS+1-i), " " , ycut
+!          print *, "    Y=" , y
+!          print *, y(n_jets_PS+1-i), " " , ycut
           if(0.99*y(n_jets_PS+1-(i-1)).gt.ycut) then
-             print *, "DISCARDING: Jet ", i, " not clusterd"
+!             print *, "DISCARDING: Jet ", i, " not clusterd"
              !               pause
              return
           end if
           ! search for and remove PS jet clustered with ME Jet
-          print *, "i=",  i, n_jets_PS, n_jets_ME
-          do j=1, N_jets_PS+2-i
-             print *, PP(1,j), PP(2,j), PP(3,j), PP(4,j)
-          end do
-          print *, " n_jets_ps=", n_jets_ps
+!          print *, "i=",  i, n_jets_PS, n_jets_ME
+!          do j=1, N_jets_PS+2-i
+!             print *, PP(1,j), PP(2,j), PP(3,j), PP(4,j)
+!          end do
+!          print *, " n_jets_ps=", n_jets_ps
           ip1 = HIST(n_jets_PS+2-i)/NMAX
           ip2 = Mod(hist(n_jets_ps+2-i), NMAX)
           if((ip2.ne.n_jets_ps+2-i).or.(ip1.le.0)) then
-             print *, "DISCARDING: Jet ", i, " not clustered ", ip1, ip2, hist(n_jets_ps+2-i)
+!             print *, "DISCARDING: Jet ", i, " not clustered ", ip1, ip2, hist(n_jets_ps+2-i)
              !               pause
              return
           else
-             print *, "PARTON clustered", ip1, ip2, hist(n_jets_ps+2-i)
+!             print *, "PARTON clustered", ip1, ip2, hist(n_jets_ps+2-i)
              PP(:,IP1) = 0.0
              do j=IP1, n_jets_ps-i
                 PP(:, j) = PP(:,j+1)
@@ -255,7 +311,7 @@ contains
        end do
     end if
 
-    print *, "EVENT ACCEPTED"
+!    print *, "EVENT ACCEPTED"
     vetoed = .false.
     !      pause
 999 continue
@@ -1830,5 +1886,5 @@ contains
     END SUBROUTINE KTWARN
 !C-----------------------------------------------------------------------
 !C-----------------------------------------------------------------------
-!C-----------------------------------------------------------------------
-  end module matching_helper
+    !C-----------------------------------------------------------------------
+  end module mlm_matching_module

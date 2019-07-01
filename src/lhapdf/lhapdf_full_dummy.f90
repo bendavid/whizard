@@ -100,6 +100,16 @@ subroutine GetQ2maxM (set, mem, q2max)
   stop
 end subroutine GetQ2maxM
 
+subroutine GetQ2max (set, q2max)
+  integer, intent(in) :: set
+  double precision, intent(out) :: q2max
+  q2max = huge (1.d0)
+  write (0, "(A)")  "*************************************************************"
+  write (0, "(A)")  "*** LHAPDF: Error: library not linked, WHIZARD terminates ***"
+  write (0, "(A)")  "*************************************************************"
+  stop
+end subroutine GetQ2max
+
 double precision function alphasPDF (Q)
   double precision, intent(in) :: Q
   write (0, "(A)")  "*************************************************************"

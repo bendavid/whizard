@@ -1,7 +1,7 @@
 ## Makefile.am -- Makefile for WHIZARD
 ##
 #
-# Copyright (C) 1999-2011 by  
+# Copyright (C) 1999-2012 by  
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de> 
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de> 
 #     Juergen Reuter <juergen.reuter@desy.de> 
@@ -29,10 +29,8 @@ GML=gml
 gmlexeclibdir = $(pkglibdir)/gamelan
 dist_gmlexeclib_SCRIPTS = $(GML)
 
-## Install the mem file (byte-compiled MetaPost code) here:
+## Install the gml MetaPost code here:
 gmllibdir = $(pkglibdir)/gamelan
-gmllib_DATA = \
-  gamelan.mem
 
 ## The NOWEB source and the test / demofiles generated from it must be distributed,
 ## but not installed.
@@ -41,8 +39,8 @@ dist_noinst_DATA = \
   $(GML_TEX_EXAMPLES_SRC) $(GML_TEX_EXAMPLES_DAT) \
   $(GML_TEX_TEST_SRC) $(GML_TEX_TEST_DAT)
 
-## If we want to live without the mem file, then we need to install all the
-## gamelan includes.
+## Mem files are no longer existent in MetaPost, hence we need to install 
+## all the gamelan includes.
 dist_gmllib_DATA = $(GML_MPOST_SRC)
 
 ## Distribute the style file and color definition files, and install them here:
@@ -60,7 +58,7 @@ GML_FROM_GAMELAN_NW = \
   $(GML_TEX_EXAMPLES_SRC) $(GML_TEX_EXAMPLES_DAT) \
   $(GML_TEX_TEST_SRC) $(GML_TEX_TEST_DAT)
 
-## Sources for the (byte-compiled) .mem file
+## Gamelan MetaPost sources
 GML_MPOST_SRC = \
   gamelan.mp \
   gmlaux.mp gmlhatch.mp gmlbox.mp gmlshapes.mp gmlspectra.mp \
@@ -100,10 +98,6 @@ endif
 
 ## --------------------------------------------------------------------
 ## Special targets
-
-## Byte-compile the gamelan source
-gamelan.mem: $(GML_MPOST_SRC)
-	echo dump | MPINPUTS=.:$(srcdir): $(MPOST) --ini gamelan
 
 ## The 'check' rule consists of building these PS files from TEX sources:
 check: $(GML_TEX_TEST_TARGETS)
@@ -180,7 +174,7 @@ endif
 ## Remove test 
 
 clean-local: clean-noweb
-	-rm -f *.ps *.pool *.mem *.aux *.dvi *.idx *.log *.toc
+	-rm -f *.ps *.pool *.aux *.dvi *.idx *.log *.toc
 	-rm -f *.mpx *.sh *.tmp *.1 *.ltp 
 
 ## Remove backup files

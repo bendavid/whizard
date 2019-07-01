@@ -1,6 +1,6 @@
-! WHIZARD 2.0.6 Wed Dec 7 2011
+! WHIZARD 2.0.7 Mar 19 2012
 ! 
-! Copyright (C) 1999-2011 by 
+! Copyright (C) 1999-2012 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -80,6 +80,7 @@ module particles
   public :: particle_set_get_particle
   public :: particle_set_reset_status
   public :: particle_set_reduce
+  public :: particle_set_apply_keep_beams
   public :: particle_set_to_hepevt_form
   public :: particle_set_extract_interaction
   public :: particle_set_to_subevt
@@ -626,7 +627,10 @@ contains
 
   subroutine particle_set_final (particle_set)
     type(particle_set_t), intent(inout) :: particle_set
-    if (allocated (particle_set%prt))  call particle_final (particle_set%prt)
+    if (allocated (particle_set%prt)) then
+       call particle_final (particle_set%prt)
+       deallocate(particle_set%prt)
+    end if
     call state_matrix_final (particle_set%correlated_state)
   end subroutine particle_set_final
 
@@ -680,13 +684,14 @@ contains
     call state_matrix_read_raw (particle_set%correlated_state, u, iostat=iostat)
   end subroutine particle_set_read_raw
 
-  subroutine particle_set_fill_hepeup (particle_set)
+  subroutine particle_set_fill_hepeup (particle_set, keep_beams)
     type(particle_set_t), intent(in), target :: particle_set
+    logical, intent(in), optional :: keep_beams  
     type(particle_t), pointer :: prt
     type(particle_set_t), target :: pset_hepevt
     integer :: i, n_parents
     integer, dimension(1) :: i_mother
-    call particle_set_to_hepevt_form (particle_set, pset_hepevt)
+    call particle_set_to_hepevt_form (particle_set, pset_hepevt, keep_beams)
     call hepeup_init (pset_hepevt%n_tot)
     do i = 1, pset_hepevt%n_tot
        prt => pset_hepevt%prt(i)
@@ -718,7 +723,7 @@ contains
     type(particle_set_t), target :: pset_hepevt
     logical, intent(in), optional :: keep_beams
     integer :: i
-    call particle_set_to_hepevt_form (particle_set, pset_hepevt)
+    call particle_set_to_hepevt_form (particle_set, pset_hepevt,keep_beams)
     call hepevt_init (pset_hepevt%n_tot, pset_hepevt%n_out)    
     do i = 1, pset_hepevt%n_tot
        prt => pset_hepevt%prt(i)
@@ -971,9 +976,73 @@ contains
     end subroutine copy_particles
   end subroutine particle_set_reduce
 
-  subroutine particle_set_to_hepevt_form (pset_in, pset_out)
+  subroutine particle_set_apply_keep_beams (pset_in, pset_out, keep_beams)
     type(particle_set_t), intent(in) :: pset_in
     type(particle_set_t), intent(out) :: pset_out
+    logical, intent(in), optional :: keep_beams
+    integer, dimension(:), allocatable :: status, map
+    integer :: i, j
+    logical :: kb
+    kb = .false.;  if (present (keep_beams))  kb = keep_beams
+    allocate (status (pset_in%n_tot))    
+    status = particle_get_status (pset_in%prt)
+    if (kb)  pset_out%n_beam  = count (status == PRT_BEAM)
+    pset_out%n_in  = count (status == PRT_INCOMING)
+    if (kb) then
+       pset_out%n_vir = count (status == PRT_VIRTUAL) + count (status == PRT_RESONANT) &
+            + count (status == PRT_BEAM_REMNANT)
+    else 
+       pset_out%n_vir = count (status == PRT_VIRTUAL) + count (status == PRT_RESONANT)
+    end if
+    pset_out%n_out = count (status == PRT_OUTGOING)
+    pset_out%n_tot = &
+         pset_out%n_beam + pset_out%n_in + pset_out%n_vir + pset_out%n_out
+    allocate (pset_out%prt (pset_out%n_tot))
+    allocate (map (pset_in%n_tot))
+    map = 0
+    j = 0
+    if (kb) call copy_particles (PRT_BEAM)
+    call copy_particles (PRT_INCOMING)
+    if (kb) call copy_particles (PRT_BEAM_REMNANT)
+    call copy_particles (PRT_RESONANT)
+    call copy_particles (PRT_VIRTUAL)
+    call copy_particles (PRT_OUTGOING)
+    do i = 1, pset_in%n_tot
+       if (map(i) == 0)  cycle
+! triggers nagfor bug!
+!        call particle_set_parents (pset_out%prt(map(i)), &
+!             map (particle_set_get_real_parents (pset_in, i)))
+!        call particle_set_children (pset_out%prt(map(i)), &
+!             map (particle_set_get_real_children (pset_in, i)))
+! workaround:
+       call particle_set_parents (pset_out%prt(map(i)), &
+            particle_set_get_real_parents (pset_in, i, kb))
+       call particle_set_parents (pset_out%prt(map(i)), &
+            map (pset_out%prt(map(i))%parent))
+       call particle_set_children (pset_out%prt(map(i)), &
+            particle_set_get_real_children (pset_in, i, kb))
+       call particle_set_children (pset_out%prt(map(i)), &
+            map (pset_out%prt(map(i))%child))
+    end do
+  contains
+    subroutine copy_particles (stat)
+      integer, intent(in) :: stat
+      integer :: i
+      do i = 1, pset_in%n_tot
+         if (status(i) == stat) then
+            j = j + 1
+            map(i) = j
+            call particle_init (pset_out%prt(j), pset_in%prt(i))
+         end if
+      end do
+    end subroutine copy_particles
+  end subroutine particle_set_apply_keep_beams
+
+  subroutine particle_set_to_hepevt_form (pset_in, pset_out, keep_beams)
+    type(particle_set_t), intent(in) :: pset_in
+    type(particle_set_t), intent(out) :: pset_out
+    logical, intent(in), optional :: keep_beams
+    type(particle_set_t) :: pset
     type :: particle_entry_t
        integer :: src = 0
        integer :: status = 0
@@ -984,7 +1053,9 @@ contains
     integer, dimension(:), allocatable :: map1, map2
     integer, dimension(:), allocatable :: parent, child
     integer :: n_tot, n_parents, n_children, i, j, c, n
-    n_tot = pset_in%n_tot
+
+    call particle_set_apply_keep_beams(pset_in, pset, keep_beams)
+    n_tot = pset%n_tot
     allocate (prt (4 * n_tot))
     allocate (map1(4 * n_tot))
     allocate (map2(4 * n_tot))
@@ -994,19 +1065,19 @@ contains
     allocate (parent (n_tot))
     n = 0
     do i = 1, n_tot
-       if (particle_get_n_parents (pset_in%prt(i)) == 0) then
+       if (particle_get_n_parents (pset%prt(i)) == 0) then
           call append (i)
        end if
     end do
     do i = 1, n_tot
-       n_children = particle_get_n_children (pset_in%prt(i))
+       n_children = particle_get_n_children (pset%prt(i))
        if (n_children > 0) then
-          child(1:n_children) = particle_get_children (pset_in%prt(i))
+          child(1:n_children) = particle_get_children (pset%prt(i))
           c = child(1)
           if (map1(c) == 0) then
-             n_parents = particle_get_n_parents (pset_in%prt(c))
+             n_parents = particle_get_n_parents (pset%prt(c))
              if (n_parents > 1) then
-                parent(1:n_parents) = particle_get_parents (pset_in%prt(c))
+                parent(1:n_parents) = particle_get_parents (pset%prt(c))
                 if (i == parent(1) .and. &
                     any( (/(map1(i)+j-1, j=1,n_parents)/) /= map1(parent(1:n_parents)))) &
                     then
@@ -1042,16 +1113,16 @@ contains
     pset_out%n_tot = n
     allocate (pset_out%prt (n))
     do i = 1, n
-       call particle_init (pset_out%prt(i), pset_in%prt(prt(i)%src))
+       call particle_init (pset_out%prt(i), pset%prt(prt(i)%src))
        call particle_reset_status (pset_out%prt(i), prt(i)%status)
        if (prt(i)%orig == 0) then
 ! This causes nagfor 5.2 (770) Panic
 !           call particle_set_parents &
 !                (pset_out%prt(i), &
-!                 map2 (particle_get_parents (pset_in%prt(prt(i)%src))))
+!                 map2 (particle_get_parents (pset%prt(prt(i)%src))))
 ! Workaround
-          n_parents = particle_get_n_parents (pset_in%prt(prt(i)%src))
-          parent(1:n_parents) = particle_get_parents (pset_in%prt(prt(i)%src))
+          n_parents = particle_get_n_parents (pset%prt(prt(i)%src))
+          parent(1:n_parents) = particle_get_parents (pset%prt(prt(i)%src))
           call particle_set_parents (pset_out%prt(i), &
                                      map2(parent(1:n_parents)))
        else
@@ -1061,10 +1132,10 @@ contains
 ! This causes nagfor 5.2 (770) Panic
 !           call particle_set_children &
 !                (pset_out%prt(i), &
-!                 map1 (particle_get_children (pset_in%prt(prt(i)%src))))
+!                 map1 (particle_get_children (pset%prt(prt(i)%src))))
 ! Workaround
-          n_children = particle_get_n_children (pset_in%prt(prt(i)%src))
-          child(1:n_children) = particle_get_children (pset_in%prt(prt(i)%src))
+          n_children = particle_get_n_children (pset%prt(prt(i)%src))
+          child(1:n_children) = particle_get_children (pset%prt(prt(i)%src))
           call particle_set_children (pset_out%prt(i), &
                                       map1(child(1:n_children)))
        else
@@ -1078,7 +1149,7 @@ contains
       if (n > size (prt)) &
            call msg_bug ("Particle set transform to HEPEVT: insufficient space")
       prt(n)%src = i
-      prt(n)%status = particle_get_status (pset_in%prt(i))
+      prt(n)%status = particle_get_status (pset%prt(i))
       if (map1(i) == 0) then
          map1(i) = n
       else

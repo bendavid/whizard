@@ -1,6 +1,6 @@
-! WHIZARD 2.0.6 Wed Dec 7 2011
+! WHIZARD 2.0.7 Mar 19 2012
 ! 
-! Copyright (C) 1999-2011 by 
+! Copyright (C) 1999-2012 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -117,23 +117,23 @@ contains
     type(interaction_t), intent(out) :: int
     type(beam_events_data_t), intent(in) :: data
     type(quantum_numbers_mask_t), dimension(4) :: mask
-    integer, dimension(4) :: lock
+    integer, dimension(4) :: hel_lock
     type(quantum_numbers_t), dimension(4) :: qn_fc, qn_hel, qn
     type(polarization_t) :: pol1, pol2
     type(state_iterator_t) :: it_hel1, it_hel2
     integer :: i
     if (all (data%affects_beam)) then
-       lock = (/ 3, 4, 1, 2 /)
+       hel_lock = (/ 3, 4, 1, 2 /)
        call interaction_init &
-            (int, 2, 0, 2, mask=mask, lock=lock, set_relations=.true.)
+            (int, 2, 0, 2, mask=mask, hel_lock=hel_lock, set_relations=.true.)
     else if (data%affects_beam(1)) then
-       lock = (/ 2, 1, 0, 0 /)
+       hel_lock = (/ 2, 1, 0, 0 /)
        call interaction_init &
-            (int, 1, 0, 1, mask=mask(1:2), lock=lock(1:2), set_relations=.true.)
+            (int, 1, 0, 1, mask=mask(1:2), hel_lock=hel_lock(1:2), set_relations=.true.)
     else if (data%affects_beam(2)) then
-       lock = (/ 2, 1, 0, 0 /)
+       hel_lock = (/ 2, 1, 0, 0 /)
        call interaction_init &
-            (int, 1, 0, 1, mask=mask(1:2), lock=lock(1:2), set_relations=.true.)
+            (int, 1, 0, 1, mask=mask(1:2), hel_lock=hel_lock(1:2), set_relations=.true.)
     end if
     do i = 1, 2
        call quantum_numbers_init (qn_fc(i), &

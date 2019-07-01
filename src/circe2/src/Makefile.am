@@ -5,7 +5,7 @@
 ##
 ########################################################################
 #
-# Copyright (C) 1999-2011 by 
+# Copyright (C) 1999-2012 by 
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
@@ -69,8 +69,7 @@ EXTRA_SOURCE_FILES =
 
 MODULE_FILES = \
   kinds.$(FC_MODULE_EXT) \
-  circe2.$(FC_MODULE_EXT) \
-  circe2d.$(FC_MODULE_EXT) 
+  circe2.$(FC_MODULE_EXT) 
 
 NOWEB_FILES = \
     prelude.nw postlude.nw circe2.nw
@@ -93,7 +92,8 @@ libcirce2_c_la_SOURCES = circe2_c.c
 libcirce2_cpp_la_SOURCES = circe2_cpp.cc
 
 # There are no module files for the FORTRAN 77 code
-# pkginclude_DATA = $(MODULE_FILES)
+moduleexecincludedir = $(pkgincludedir)
+nodist_moduleexecinclude_HEADERS = $(MODULE_FILES)
 
 AM_FFLAGS = 
 AM_FCFLAGS = 

@@ -1,6 +1,6 @@
-! WHIZARD 2.0.6 Wed Dec 7 2011
+! WHIZARD 2.0.7 Mar 19 2012
 ! 
-! Copyright (C) 1999-2011 by 
+! Copyright (C) 1999-2012 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -65,6 +65,8 @@ module phs_trees
   public :: phs_tree_set_mapping_parameters
   public :: phs_tree_assign_global_mapping
   public :: phs_tree_set_mass_sum
+  public :: phs_tree_set_effective_masses
+  public :: phs_tree_set_step_mappings
   public :: phs_tree_equivalent
   public :: phs_tree_find_msq_permutation
   public :: phs_tree_find_angle_permutation
@@ -103,6 +105,8 @@ module phs_trees
      type(phs_branch_t), dimension(:), allocatable :: branch
      type(mapping_t), dimension(:), allocatable :: mapping
      real(default), dimension(:), allocatable :: mass_sum
+     real(default), dimension(:), allocatable :: effective_mass
+     real(default), dimension(:), allocatable :: effective_width
   end type phs_tree_t
 
 
@@ -192,6 +196,8 @@ contains
     tree%n_branches  = 0
     allocate (tree%mapping (tree%n_branches_out))
     allocate (tree%mass_sum (tree%n_branches_out))
+    allocate (tree%effective_mass (tree%n_branches_out))
+    allocate (tree%effective_width (tree%n_branches_out))
   end subroutine phs_tree_init
 
   elemental subroutine phs_tree_final (tree)
@@ -199,6 +205,8 @@ contains
     deallocate (tree%branch)
     deallocate (tree%mapping)
     deallocate (tree%mass_sum)
+    deallocate (tree%effective_mass)
+    deallocate (tree%effective_width)
   end subroutine phs_tree_final
 
   subroutine phs_tree_write (tree, unit)
@@ -218,11 +226,13 @@ contains
             call phs_branch_write (tree%branch(k), unit=unit, kval=k)
     end do
     do k = 1, size (tree%mapping)
-       call mapping_write (tree%mapping (k), unit)
+       call mapping_write (tree%mapping (k), unit, verbose=.true.)
     end do
+    write (u, *) "Arrays: mass_sum, effective_mass, effective_width"
     do k = 1, size (tree%mass_sum)
        if (tree%branch(k)%set) then
-          write (u, *) k, "mass_sum =", tree%mass_sum(k)
+          write (u, *) "  ", k, tree%mass_sum(k), &
+               tree%effective_mass(k), tree%effective_width(k)
        end if
     end do
   end subroutine phs_tree_write
@@ -472,6 +482,94 @@ contains
     end do
   end subroutine phs_tree_set_mass_sum
   
+  subroutine phs_tree_set_effective_masses (tree)
+    type(phs_tree_t), intent(inout) :: tree
+    integer(TC) :: k
+    tree%effective_mass = 0
+    tree%effective_width = 0
+    call set_masses_x (tree%mask_out)
+  contains
+    recursive subroutine set_masses_x (k)
+      integer(TC), intent(in) :: k
+      integer(TC) :: k1, k2
+      if (tree%branch(k)%has_children) then
+         k1 = tree%branch(k)%daughter(1)
+         k2 = tree%branch(k)%daughter(2)
+         call set_masses_x (k1)
+         call set_masses_x (k2)
+         if (mapping_is_s_channel (tree%mapping(k))) then
+            tree%effective_mass(k) = mapping_get_mass (tree%mapping(k))
+            tree%effective_width(k) = mapping_get_width (tree%mapping(k))
+         else
+            tree%effective_mass(k) = &
+                 tree%effective_mass(k1) + tree%effective_mass(k2)
+            tree%effective_width(k) = &
+                 tree%effective_width(k1) + tree%effective_width(k2)
+         end if
+      else
+         tree%effective_mass(k) = tree%mass_sum(k)
+      end if
+    end subroutine set_masses_x
+  end subroutine phs_tree_set_effective_masses
+
+  subroutine phs_tree_set_step_mappings (tree, exp_type, variable_limits)
+    type(phs_tree_t), intent(inout) :: tree
+    logical, intent(in) :: exp_type
+    logical, intent(in) :: variable_limits
+    type(string_t) :: map_str
+    integer(TC) :: k, k_res
+    if (exp_type) then
+       map_str = "step_exp"
+    else
+       map_str = "step_hyp"
+    end if
+    k = tree%mask_out
+    k_res = 0
+    call set_step_mappings_x (k, 0._default, 0._default)
+  contains
+    recursive subroutine set_step_mappings_x (k, m_limit, w_limit)
+      integer(TC), intent(in) :: k
+      real(default), intent(in) :: m_limit, w_limit
+      integer(TC), dimension(2) :: kk
+      real(default), dimension(2) :: m, w
+      if (tree%branch(k)%has_children) then
+         if (m_limit > 0) then
+            if (.not. mapping_is_set (tree%mapping(k))) then
+               call mapping_init (tree%mapping(k), k, map_str)
+               call mapping_set_step_mapping_parameters (tree%mapping(k), &
+                    m_limit, w_limit, &
+                    variable_limits)
+            end if
+         end if
+         kk = tree%branch(k)%daughter
+         m = tree%effective_mass(kk)
+         w = tree%effective_width(kk)
+         if (mapping_is_s_channel (tree%mapping(k))) then
+            call set_step_mappings_x (kk(1), &
+                 mapping_get_mass (tree%mapping(k)) - m(2), &
+                 mapping_get_width (tree%mapping(k)) + w(2))
+            call set_step_mappings_x (kk(2), &
+                 mapping_get_mass (tree%mapping(k)) - m(1), &
+                 mapping_get_width (tree%mapping(k)) + w(1))
+         else if (m_limit > 0) then
+            call set_step_mappings_x (kk(1), &
+                 m_limit - m(2), &
+                 w_limit + w(2))
+            call set_step_mappings_x (kk(2), &
+                 m_limit - m(1), &
+                 w_limit + w(1))
+         else
+            call set_step_mappings_x (kk(1), &
+                 - m(2), &
+                 + w(2))
+            call set_step_mappings_x (kk(2), &
+                 - m(1), &
+                 + w(1))
+         end if
+      end if
+    end subroutine set_step_mappings_x
+  end subroutine phs_tree_set_step_mappings
+
   function phs_tree_equivalent (t1, t2, perm) result (is_equal)
     type(phs_tree_t), intent(in) :: t1, t2
     type(permutation_t), intent(in) :: perm

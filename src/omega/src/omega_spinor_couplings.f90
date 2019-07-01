@@ -1,7 +1,7 @@
-!  $Id: omegalib.nw 3251 2011-05-18 16:37:08Z ohl $
+!  $Id: omegalib.nw 3745 2012-03-10 20:44:32Z jr_reuter $
 !
 !  Copyright (C) 1999-2009 by 
-!      Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+!      Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !      Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !      Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
 !
@@ -75,15 +75,16 @@ contains
                  cmplx (pabs + p%x(3), kind=default) /)
     end if
   end function chi_minus
-  pure function u (m, p, s) result (psi)
+  pure function u (mass, p, s) result (psi)
     type(spinor) :: psi
-    real(kind=default), intent(in) :: m
+    real(kind=default), intent(in) :: mass
     type(momentum), intent(in) :: p
     integer, intent(in) :: s
     complex(kind=default), dimension(2) :: chi
-    real(kind=default) :: pabs, delta
+    real(kind=default) :: pabs, delta, m
+    m = abs(mass)
     pabs = sqrt (dot_product (p%x, p%x))
-    if (m < epsilon (m) * pabs) then
+    if (m < epsilon (m) * pabs) then 
         delta = 0
     else
         delta = sqrt (max (p%t - pabs, 0._default))
@@ -101,24 +102,29 @@ contains
        pabs = m ! make the compiler happy and use m
        psi%a = 0
     end select
+    if (mass < 0) then
+       psi%a(1:2) = - imago * psi%a(1:2)
+       psi%a(3:4) = + imago * psi%a(3:4)
+    end if
   end function u
   pure function ubar (m, p, s) result (psibar)
     type(conjspinor) :: psibar
     real(kind=default), intent(in) :: m
     type(momentum), intent(in) :: p
     integer, intent(in) :: s
-    type(spinor) :: psi
+    type(spinor) :: psi  
     psi = u (m, p, s)
     psibar%a(1:2) = conjg (psi%a(3:4))
     psibar%a(3:4) = conjg (psi%a(1:2))
   end function ubar
-  pure function v (m, p, s) result (psi)
+  pure function v (mass, p, s) result (psi)
     type(spinor) :: psi
-    real(kind=default), intent(in) :: m
+    real(kind=default), intent(in) :: mass
     type(momentum), intent(in) :: p
     integer, intent(in) :: s
     complex(kind=default), dimension(2) :: chi
-    real(kind=default) :: pabs, delta
+    real(kind=default) :: pabs, delta, m
+    m = abs(mass)
     pabs = sqrt (dot_product (p%x, p%x))
     if (m < epsilon (m) * pabs) then
         delta = 0
@@ -138,6 +144,10 @@ contains
        pabs = m ! make the compiler happy and use m
        psi%a = 0
     end select
+    if (mass < 0) then
+       psi%a(1:2) = - imago * psi%a(1:2)
+       psi%a(3:4) = + imago * psi%a(3:4)
+     end if
   end function v
   pure function vbar (m, p, s) result (psibar)
     type(conjspinor) :: psibar

@@ -1,8 +1,8 @@
-(* $Id: phasespace.ml 2948 2010-12-24 03:25:57Z jr_reuter $
+(* $Id: phasespace.ml 3670 2012-01-21 19:33:07Z jr_reuter $
 
-   Copyright (C) 1999-2011 by
+   Copyright (C) 1999-2012 by
 
-       Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+       Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
        Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
        Christian Speckner <christian.speckner@physik.uni-freiburg.de>
@@ -203,9 +203,11 @@ module Make (M : Momentum.T) =
          \fmfshift{(0,.2h)}{w1,w3,w5}
          \fmflabel{$t_1$}{w1}
          \fmflabel{$t_2$}{w3}
-         \fmfi{plain}{vloc(__v1)...{right}vloc(__w1){right}...vloc(__w2)}
-         \fmfi{plain}{vloc(__w2)...{right}vloc(__w3){right}...vloc(__w4)}
-         \fmfi{dashes}{vloc(__w4)...{right}vloc(__w5){right}...vloc(__v2)}
+	 %%% Workaround for MetaPost 1.504 bug
+         \fmfcmd{pair fubara, fubarb, fubarc; fubara = vloc(__v1); fubarb = vloc(__w2); fubarc = vloc(__w4);}
+         \fmfi{plain}{fubara...{right}vloc(__w1){right}...vloc(__w2)}
+         \fmfi{plain}{fubarb...{right}vloc(__w3){right}...vloc(__w4)}
+         \fmfi{dashes}{fubarc...{right}vloc(__w5){right}...vloc(__v2)}
          \fmf{plain,tension=2,label=$s_1$}{v1,p1}
          \fmf{plain}{o1,p1,q1,o4}
          \fmf{plain,tension=0}{q1,o3}

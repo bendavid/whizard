@@ -1,0 +1,80 @@
+# $Id: isr_shower.sin 3765 2010-04-11 23:57:50Z jr_reuter $
+
+model = SM
+alias quark = u:d
+alias antiq = U:D
+process isr_shower_qqee = quark:antiq, quark:antiq => e1, E1
+process isr_shower_qqeeg = quark:antiq, quark:antiq => e1, E1, g
+process isr_shower_qgeeq = quark:antiq, g => e1, E1, quark:antiq
+process isr_shower_gqeeq = g, quark:antiq => e1, E1, quark:antiq
+
+compile
+
+sqrts = 1960 GeV
+beams = p, pbar => lhapdf
+
+ps_isr_primordial_kt_width = 0
+ps_isr_tscalefactor = 1
+
+?ps_fsr_active=true
+?ps_isr_active=true
+?hadronization_active = true
+?ps_use_PYTHIA_shower = false
+?ps_isr_pt_ordered = false
+?ps_isr_only_onshell_emitted_partons = true
+ps_max_n_flavors = 5
+ps_mass_cutoff = 0.5
+$ps_PYTHIA_PYGIVE = "MSTP(5)=108"
+?mlm_matching = false
+cuts = all M > 80 GeV [combine[e1,E1]]
+       and all M < 100 GeV [combine[e1,E1]]
+
+!!! Tests should be run single-threaded 
+openmp_num_threads = 1
+
+integrate(isr_shower_qqee) { iterations = 2:2000 }
+
+n_events = 5
+
+?rebuild_events=true
+$sample = "isr_shower"
+sample_format = lhef
+
+simulate(isr_shower_qqee)
+
+show(results)
+
+
+ps_isr_primordial_kt_width = 0
+ps_isr_tscalefactor = 1
+
+?ps_fsr_active=true
+?ps_isr_active=true
+?hadronization_active = true
+?ps_use_PYTHIA_shower = false
+?ps_isr_pt_ordered = false
+?ps_isr_only_onshell_emitted_partons = true
+ps_max_n_flavors = 5
+ps_mass_cutoff = 0.5
+$ps_PYTHIA_PYGIVE = "MSTP(5)=108;MSTP(81)=0;MSTJ(41)=1;MSTJ(21)=0;MSTP(68)=0"
+
+?mlm_matching = true
+mlm_ptmin = 5 GeV
+mlm_etamax = 2.5
+mlm_Rmin = 1
+mlm_nmaxMEjets = 1
+cuts = all M > 80 GeV [combine[e1,E1]]
+       and all M < 100 GeV [combine[e1,E1]]
+       and all Pt > mlm_ptmin [g:quark:antiq]
+       and all abs(Eta) < mlm_etamax [g:quark:antiq]
+
+integrate(isr_shower_qqee, isr_shower_qqeeg, isr_shower_qgeeq, isr_shower_gqeeq) { iterations = 2:2000 }
+
+n_events = 5
+
+?rebuild_events=true
+$sample = "isr_shower2"
+sample_format = lhef
+simulate (isr_shower_qqee, isr_shower_qqeeg, isr_shower_qgeeq, isr_shower_gqeeq)
+
+show(results)

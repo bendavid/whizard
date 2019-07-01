@@ -1,6 +1,6 @@
-! WHIZARD 2.0.6 Wed Dec 7 2011
+! WHIZARD 2.0.7 Mar 19 2012
 ! 
-! Copyright (C) 1999-2011 by 
+! Copyright (C) 1999-2012 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -45,7 +45,6 @@ module event_formats
 
   public :: les_houches_events_write_header
   public :: les_houches_events_write_footer
-  public :: lhef_write_matching_info
   public :: heprup_init
   public :: heprup_set_lhapdf_id
   public :: heprup_set_process_parameters
@@ -148,7 +147,7 @@ contains
     write (u, '(A)') '<LesHouchesEvents version="1.0">'
     write (u, '(A)') '<header>'
     write (u, '(A)') '  <generator_name>WHIZARD</generator_name>'
-    write (u, '(A)') '  <generator_version>2.0.6</generator_version>'
+    write (u, '(A)') '  <generator_version>2.0.7</generator_version>'
     write (u, '(A)') '</header>'
   end subroutine les_houches_events_write_header
 
@@ -158,23 +157,6 @@ contains
     u = output_unit (unit);  if (u < 0)  return
     write (u, '(A)') '</LesHouchesEvents>'
   end subroutine les_houches_events_write_footer
-
-  subroutine lhef_write_matching_info (unit, ptmin, drmin, ktcut, ktmode, lhefout)
-    integer, intent(in), optional :: unit, ktmode
-    real(default), intent(in), optional :: ptmin, drmin, ktcut
-    logical, intent(in), optional :: lhefout
-    integer :: u
-    u = output_unit (unit);  if (u < 0)  return
-    if (present(ptmin).or.present(drmin).or.present(ktcut)) then
-       write (u, *) '<!-- Matching information for PYTHIA'
-       if (present(ptmin))    write (u, *) "# PTmin: ", ptmin
-       if (present(drmin))    write (u, *) "# DRmin: ", drmin
-       if (present(ktcut))    write (u, *) "# kTcut: ", ktcut
-       if (present(ktmode))   write (u, *) "# kTmode: ", ktmode
-       if (present(lhefout))  write (u, *) "# LHEFout: ", lhefout
-       write (u, *) '-->'
-    endif
-  end subroutine lhef_write_matching_info
 
   subroutine heprup_init &
        (beam_pdg, beam_energy, n_processes, unweighted, negative_weights)
@@ -300,17 +282,18 @@ contains
     real(default), intent(in) :: m2
     IDUP(i) = pdg
     select case (status)
-    case (PRT_BEAM);      ISTUP(i) = -9
-    case (PRT_INCOMING);  ISTUP(i) = -1
-    case (PRT_OUTGOING);  ISTUP(i) =  1
-    case (PRT_RESONANT);  ISTUP(i) =  2
-    case (PRT_VIRTUAL);   ISTUP(i) =  3
-    case default;         ISTUP(i) =  0
+    case (PRT_BEAM);         ISTUP(i) = -9
+    case (PRT_INCOMING);     ISTUP(i) = -1
+    case (PRT_BEAM_REMNANT); ISTUP(i) =  3
+    case (PRT_OUTGOING);     ISTUP(i) =  1
+    case (PRT_RESONANT);     ISTUP(i) =  2
+    case (PRT_VIRTUAL);      ISTUP(i) =  3
+    case default;            ISTUP(i) =  0
     end select
     select case (size (parent))
-    case (1);    MOTHUP(:,i) = parent(1)
-    case (2);    MOTHUP(:,i) = parent
-    case default;  MOTHUP(:,i) = 0
+    case (0);      MOTHUP(:,i) = 0
+    case (1);      MOTHUP(1,i) = parent(1); MOTHUP(2,i) = 0
+    case default;  MOTHUP(:,i) = (/ parent(1), parent(size (parent)) /)
     end select
     if (col(1) > 0) then
        ICOLUP(1,i) = 500 + col(1)

@@ -1,6 +1,6 @@
-(* $Id: config.ml.in 3468 2011-08-10 15:18:36Z sschmidt $
+(* $Id: config.ml.in 3750 2012-03-13 12:08:00Z sschmidt $
 
-   Copyright (C) 1999-2011 by
+   Copyright (C) 1999-2012 by
 
        Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
@@ -21,8 +21,8 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
-let system_cache_dir = "/data/reuter/trunk/inst/var/cache"
-let user_cache_dir = "/afs/desy.de/user/r/reuter/.whizard/var/cache"
+let system_cache_dir = "/Users/reuter/local/var/cache"
+let user_cache_dir = "/Users/reuter/.whizard/var/cache"
 
 (* \begin{dubious}
      This relies on the fast that the executable names should be unique.

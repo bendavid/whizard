@@ -1,6 +1,6 @@
-(* $Id: modellib_SM.ml 3611 2011-11-29 16:27:29Z jr_reuter $
+(* $Id: modellib_SM.ml 3722 2012-02-29 14:31:53Z fbach $
 
-   Copyright (C) 1999-2011 by
+   Copyright (C) 1999-2012 by
 
        Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
@@ -23,9 +23,9 @@
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
 let rcs_file = RCS.parse "Modellib_SM" ["Lagragians"]
-    { RCS.revision = "$Revision: 3611 $";
-      RCS.date = "$Date: 2011-11-29 17:27:29 +0100 (Tue, 29 Nov 2011) $";
-      RCS.author = "$Author: jr_reuter $";
+    { RCS.revision = "$Revision: 3722 $";
+      RCS.date = "$Date: 2012-02-29 15:31:53 +0100 (Wed, 29 Feb 2012) $";
+      RCS.author = "$Author: fbach $";
       RCS.source
         = "$URL: svn+ssh://jr_reuter@login.hepforge.org/hepforge/svn/whizard/trunk/src/omega/src/modellib_SM.ml $" }
 
@@ -513,6 +513,7 @@ module type SM_flags =
     val k_matrix : bool
     val ckm_present : bool
     val top_anom : bool
+    val top_anom_4f : bool
   end
 
 module SM_no_anomalous : SM_flags =
@@ -525,6 +526,7 @@ module SM_no_anomalous : SM_flags =
     let k_matrix = false
     let ckm_present = false
     let top_anom = false
+    let top_anom_4f = false
   end
 
 module SM_no_anomalous_ckm : SM_flags =
@@ -537,6 +539,7 @@ module SM_no_anomalous_ckm : SM_flags =
     let k_matrix = false
     let ckm_present = true
     let top_anom = false
+    let top_anom_4f = false
   end
 
 module SM_anomalous : SM_flags =
@@ -549,6 +552,7 @@ module SM_anomalous : SM_flags =
     let k_matrix = false
     let ckm_present = false
     let top_anom = false
+    let top_anom_4f = false
   end
 
 module SM_anomalous_ckm : SM_flags =
@@ -561,6 +565,7 @@ module SM_anomalous_ckm : SM_flags =
     let k_matrix = false
     let ckm_present = true
     let top_anom = false
+    let top_anom_4f = false
   end
 
 module SM_k_matrix : SM_flags =
@@ -573,6 +578,7 @@ module SM_k_matrix : SM_flags =
     let k_matrix = true
     let ckm_present = false
     let top_anom = false
+    let top_anom_4f = false
   end
 
 module SM_Higgs : SM_flags =
@@ -585,6 +591,7 @@ module SM_Higgs : SM_flags =
     let k_matrix = false
     let ckm_present = false
     let top_anom = false
+    let top_anom_4f = false
   end
 
 module SM_anomalous_top : SM_flags =
@@ -597,6 +604,7 @@ module SM_anomalous_top : SM_flags =
     let k_matrix = false
     let ckm_present = false
     let top_anom = true
+    let top_anom_4f = true
   end
 
 (* \thocwmodulesection{Complete Minimal Standard Model (including some extensions)} *)
@@ -621,10 +629,13 @@ module SM (Flags : SM_flags) =
         "cancel_widths", Arg.Unit (fun () -> default_width := Vanishing),
         "use vanishing width"]
 
+    type f_aux_top = TTGG | TBWA | TBWZ | TTWW | BBWW |   (*i top auxiliary field "flavors" *)
+                     QGUG | QBUB | QW | DL | DR
+
     type matter_field = L of int | N of int | U of int | D of int
     type gauge_boson = Ga | Wp | Wm | Z | Gl
     type other = Phip | Phim | Phi0 | H
-                 | Aux_top of int*int*int*int*string    (* lorentz*color*charge*conj*vertex *)
+                 | Aux_top of int*int*int*bool*f_aux_top    (*i lorentz*color*charge*top-side*flavor *)
     type flavor = M of matter_field | G of gauge_boson | O of other
 
     let matter_field f = M f
@@ -648,6 +659,13 @@ module SM (Flags : SM_flags) =
 
     let family n = List.map matter_field [ L n; N n; U n; D n ]
 
+    let rec aux_top_flavors (f,l,co,ch) = List.append
+      ( List.map other [ Aux_top(l,co,ch/2,true,f); Aux_top(l,co,ch/2,false,f) ] )
+      ( if ch > 1 then List.append
+          ( List.map other [ Aux_top(l,co,-ch/2,true,f); Aux_top(l,co,-ch/2,false,f) ] )
+          ( aux_top_flavors (f,l,co,(ch-2)) )
+        else [] )
+
     let external_flavors () =
       [ "1st Generation", ThoList.flatmap family [1; -1];
         "2nd Generation", ThoList.flatmap family [2; -2];
@@ -656,7 +674,11 @@ module SM (Flags : SM_flags) =
         "Higgs", List.map other [H];
         "Goldstone Bosons", List.map other [Phip; Phim; Phi0] ]
 
-    let flavors () = ThoList.flatmap snd (external_flavors ()) 
+    let flavors () = List.append
+      ( ThoList.flatmap snd (external_flavors ()) )
+      ( ThoList.flatmap aux_top_flavors
+         [ (TTGG,2,1,1); (TBWA,2,0,2); (TBWZ,2,0,2); (TTWW,2,0,1); (BBWW,2,0,1);
+           (QGUG,1,1,1); (QBUB,1,0,1); (QW,1,0,3); (DL,0,0,3); (DR,0,0,3) ] )
 
     let spinor n =
       if n >= 0 then
@@ -760,7 +782,7 @@ module SM (Flags : SM_flags) =
           O (begin match f with
           | Phip -> Phim | Phim -> Phip | Phi0 -> Phi0
           | H -> H
-          | Aux_top (l,co,ch,n,v) -> Aux_top (l,co,-ch,-n,v)
+          | Aux_top (l,co,ch,n,f) -> Aux_top (l,co,(-ch),(not n),f)
           end)
 
     let fermion = function
@@ -1639,8 +1661,8 @@ effective operators:
 
     let anomalous_ttGG =
       if Flags.top_anom then
-        [ ((M (U (-3)), O (Aux_top (2,1,0,1,"ttGG")), M (U 3)), FBF (1, Psibar, TVA, Psi), G_TVA_ttGG);
-          ((O (Aux_top (2,1,0,-1,"ttGG")), G Gl, G Gl), Aux_Gauge_Gauge 1, I_Gs) ]
+        [ ((M (U (-3)), O (Aux_top (2,1,0,true,TTGG)), M (U 3)), FBF (1, Psibar, TVA, Psi), G_TVA_ttGG);
+          ((O (Aux_top (2,1,0,false,TTGG)), G Gl, G Gl), Aux_Gauge_Gauge 1, I_Gs) ]
       else
         []
 
@@ -1654,10 +1676,10 @@ effective operators:
 
     let anomalous_tbWA =
       if Flags.top_anom then
-        [ ((M (D (-3)), O (Aux_top (2,0,-1,1,"btWA")), M (U 3)), FBF (1, Psibar, TLR, Psi), G_TLR_btWA);
-          ((O (Aux_top (2,0,1,-1,"btWA")), G Ga, G Wm), Aux_Gauge_Gauge 1, I_G_weak);
-          ((M (U (-3)), O (Aux_top (2,0,1,1,"tbWA")), M (D 3)), FBF (1, Psibar, TRL, Psi), G_TRL_tbWA);
-          ((O (Aux_top (2,0,-1,-1,"tbWA")), G Wp, G Ga), Aux_Gauge_Gauge 1, I_G_weak) ]
+        [ ((M (D (-3)), O (Aux_top (2,0,-1,true,TBWA)), M (U 3)), FBF (1, Psibar, TLR, Psi), G_TLR_btWA);
+          ((O (Aux_top (2,0,1,false,TBWA)), G Ga, G Wm), Aux_Gauge_Gauge 1, I_G_weak);
+          ((M (U (-3)), O (Aux_top (2,0,1,true,TBWA)), M (D 3)), FBF (1, Psibar, TRL, Psi), G_TRL_tbWA);
+          ((O (Aux_top (2,0,-1,false,TBWA)), G Wp, G Ga), Aux_Gauge_Gauge 1, I_G_weak) ]
       else
         []
 
@@ -1671,10 +1693,10 @@ effective operators:
 
     let anomalous_tbWZ =
       if Flags.top_anom then
-        [ ((M (D (-3)), O (Aux_top (2,0,-1,1,"btWZ")), M (U 3)), FBF (1, Psibar, TLR, Psi), G_TLR_btWZ);
-          ((O (Aux_top (2,0,1,-1,"btWZ")), G Z, G Wm), Aux_Gauge_Gauge 1, I_G_weak);
-          ((M (U (-3)), O (Aux_top (2,0,1,1,"tbWZ")), M (D 3)), FBF (1, Psibar, TRL, Psi), G_TRL_tbWZ);
-          ((O (Aux_top (2,0,-1,-1,"tbWZ")), G Wp, G Z), Aux_Gauge_Gauge 1, I_G_weak) ]
+        [ ((M (D (-3)), O (Aux_top (2,0,-1,true,TBWZ)), M (U 3)), FBF (1, Psibar, TLR, Psi), G_TLR_btWZ);
+          ((O (Aux_top (2,0,1,false,TBWZ)), G Z, G Wm), Aux_Gauge_Gauge 1, I_G_weak);
+          ((M (U (-3)), O (Aux_top (2,0,1,true,TBWZ)), M (D 3)), FBF (1, Psibar, TRL, Psi), G_TRL_tbWZ);
+          ((O (Aux_top (2,0,-1,false,TBWZ)), G Wp, G Z), Aux_Gauge_Gauge 1, I_G_weak) ]
       else
         []
 
@@ -1687,8 +1709,8 @@ effective operators:
 
     let anomalous_ttWW =
       if Flags.top_anom then
-        [ ((M (U (-3)), O (Aux_top (2,0,0,1,"ttWW")), M (U 3)), FBF (1, Psibar, TVA, Psi), G_TVA_ttWW);
-          ((O (Aux_top (2,0,0,-1,"ttWW")), G Wm, G Wp), Aux_Gauge_Gauge 1, I_G_weak) ]
+        [ ((M (U (-3)), O (Aux_top (2,0,0,true,TTWW)), M (U 3)), FBF (1, Psibar, TVA, Psi), G_TVA_ttWW);
+          ((O (Aux_top (2,0,0,false,TTWW)), G Wm, G Wp), Aux_Gauge_Gauge 1, I_G_weak) ]
       else
         []
 
@@ -1701,76 +1723,76 @@ effective operators:
 
     let anomalous_bbWW =
       if Flags.top_anom then
-        [ ((M (D (-3)), O (Aux_top (2,0,0,1,"ttWW")), M (D 3)), FBF (1, Psibar, TVA, Psi), G_TVA_bbWW);
-          ((O (Aux_top (2,0,0,-1,"ttWW")), G Wm, G Wp), Aux_Gauge_Gauge 1, I_G_weak) ]
+        [ ((M (D (-3)), O (Aux_top (2,0,0,true,BBWW)), M (D 3)), FBF (1, Psibar, TVA, Psi), G_TVA_bbWW);
+          ((O (Aux_top (2,0,0,false,BBWW)), G Wm, G Wp), Aux_Gauge_Gauge 1, I_G_weak) ]
       else
         []
 
 (* 4-fermion contact terms emerging from operator rewriting: *)
 
     let anomalous_top_qGuG_tt =
-      [ ((M (U (-3)), O (Aux_top (1,1,0,1,"qGuG")), M (U 3)), FBF (1, Psibar, VLR, Psi), G_VLR_qGuG) ]
+      [ ((M (U (-3)), O (Aux_top (1,1,0,true,QGUG)), M (U 3)), FBF (1, Psibar, VLR, Psi), G_VLR_qGuG) ]
 
     let anomalous_top_qGuG_ff n =
       List.map mom
-        [ ((U (-n), Aux_top (1,1,0,-1,"qGuG"), U n), FBF (1, Psibar, V, Psi), Unit);
-          ((D (-n), Aux_top (1,1,0,-1,"qGuG"), D n), FBF (1, Psibar, V, Psi), Unit) ]
+        [ ((U (-n), Aux_top (1,1,0,false,QGUG), U n), FBF (1, Psibar, V, Psi), Unit);
+          ((D (-n), Aux_top (1,1,0,false,QGUG), D n), FBF (1, Psibar, V, Psi), Unit) ]
 
     let anomalous_top_qGuG =
-      if Flags.top_anom then
+      if Flags.top_anom_4f then
         anomalous_top_qGuG_tt @ ThoList.flatmap anomalous_top_qGuG_ff [1;2;3]
       else
         []
 
     let anomalous_top_qBuB_tt =
-      [ ((M (U (-3)), O (Aux_top (1,0,0,1,"qBuB")), M (U 3)), FBF (1, Psibar, VLR, Psi), G_VLR_qBuB) ]
+      [ ((M (U (-3)), O (Aux_top (1,0,0,true,QBUB)), M (U 3)), FBF (1, Psibar, VLR, Psi), G_VLR_qBuB) ]
 
     let anomalous_top_qBuB_ff n =
       List.map mom
-        [ ((U (-n), Aux_top (1,0,0,-1,"qBuB"), U n), FBF (1, Psibar, VLR, Psi), G_VLR_qBuB_u);
-          ((D (-n), Aux_top (1,0,0,-1,"qBuB"), D n), FBF (1, Psibar, VLR, Psi), G_VLR_qBuB_d);
-          ((L (-n), Aux_top (1,0,0,-1,"qBuB"), L n), FBF (1, Psibar, VLR, Psi), G_VLR_qBuB_e);
-          ((N (-n), Aux_top (1,0,0,-1,"qBuB"), N n), FBF (1, Psibar, VL, Psi), G_VL_qBuB_n) ]
+        [ ((U (-n), Aux_top (1,0,0,false,QBUB), U n), FBF (1, Psibar, VLR, Psi), G_VLR_qBuB_u);
+          ((D (-n), Aux_top (1,0,0,false,QBUB), D n), FBF (1, Psibar, VLR, Psi), G_VLR_qBuB_d);
+          ((L (-n), Aux_top (1,0,0,false,QBUB), L n), FBF (1, Psibar, VLR, Psi), G_VLR_qBuB_e);
+          ((N (-n), Aux_top (1,0,0,false,QBUB), N n), FBF (1, Psibar, VL, Psi), G_VL_qBuB_n) ]
 
     let anomalous_top_qBuB =
-      if Flags.top_anom then
+      if Flags.top_anom_4f then
         anomalous_top_qBuB_tt @ ThoList.flatmap anomalous_top_qBuB_ff [1;2;3]
       else
         []
 
     let anomalous_top_qW_tq =
-      [ ((M (U (-3)), O (Aux_top (1,0,0,1,"qWtt")), M (U 3)), FBF (1, Psibar, VL, Psi), G_VL_qW);
-        ((M (D (-3)), O (Aux_top (1,0,-1,1,"qWbt")), M (U 3)), FBF (1, Psibar, VL, Psi), G_VL_qW);
-        ((M (U (-3)), O (Aux_top (1,0,1,1,"qWtb")), M (D 3)), FBF (1, Psibar, VL, Psi), G_VL_qW) ]
+      [ ((M (U (-3)), O (Aux_top (1,0,0,true,QW)), M (U 3)), FBF (1, Psibar, VL, Psi), G_VL_qW);
+        ((M (D (-3)), O (Aux_top (1,0,-1,true,QW)), M (U 3)), FBF (1, Psibar, VL, Psi), G_VL_qW);
+        ((M (U (-3)), O (Aux_top (1,0,1,true,QW)), M (D 3)), FBF (1, Psibar, VL, Psi), G_VL_qW) ]
 
     let anomalous_top_qW_ff n =
       List.map mom
-        [ ((U (-n), Aux_top (1,0,0,-1,"qWtt"), U n), FBF (1, Psibar, VL, Psi), G_VL_qW_u);
-          ((D (-n), Aux_top (1,0,0,-1,"qWtt"), D n), FBF (1, Psibar, VL, Psi), G_VL_qW_d);
-          ((N (-n), Aux_top (1,0,0,-1,"qWtt"), N n), FBF (1, Psibar, VL, Psi), G_VL_qW_u);
-          ((L (-n), Aux_top (1,0,0,-1,"qWtt"), L n), FBF (1, Psibar, VL, Psi), G_VL_qW_d);
-          ((D (-n), Aux_top (1,0,-1,-1,"qWtb"), U n), FBF (1, Psibar, VL, Psi), Half);
-          ((U (-n), Aux_top (1,0,1,-1,"qWbt"), D n), FBF (1, Psibar, VL, Psi), Half);
-          ((L (-n), Aux_top (1,0,-1,-1,"qWtb"), N n), FBF (1, Psibar, VL, Psi), Half);
-          ((N (-n), Aux_top (1,0,1,-1,"qWbt"), L n), FBF (1, Psibar, VL, Psi), Half) ]
+        [ ((U (-n), Aux_top (1,0,0,false,QW), U n), FBF (1, Psibar, VL, Psi), G_VL_qW_u);
+          ((D (-n), Aux_top (1,0,0,false,QW), D n), FBF (1, Psibar, VL, Psi), G_VL_qW_d);
+          ((N (-n), Aux_top (1,0,0,false,QW), N n), FBF (1, Psibar, VL, Psi), G_VL_qW_u);
+          ((L (-n), Aux_top (1,0,0,false,QW), L n), FBF (1, Psibar, VL, Psi), G_VL_qW_d);
+          ((D (-n), Aux_top (1,0,-1,false,QW), U n), FBF (1, Psibar, VL, Psi), Half);
+          ((U (-n), Aux_top (1,0,1,false,QW), D n), FBF (1, Psibar, VL, Psi), Half);
+          ((L (-n), Aux_top (1,0,-1,false,QW), N n), FBF (1, Psibar, VL, Psi), Half);
+          ((N (-n), Aux_top (1,0,1,false,QW), L n), FBF (1, Psibar, VL, Psi), Half) ]
 
     let anomalous_top_qW =
-      if Flags.top_anom then
+      if Flags.top_anom_4f then
         anomalous_top_qW_tq @ ThoList.flatmap anomalous_top_qW_ff [1;2;3]
       else
         []
 
     let anomalous_top_DuDd =
-      if Flags.top_anom then
-        [ ((M (U (-3)), O (Aux_top (0,0,0,1,"DttR")), M (U 3)), FBF (1, Psibar, SR, Psi), Half);
-          ((M (U (-3)), O (Aux_top (0,0,0,-1,"DttR")), M (U 3)), FBF (1, Psibar, SL, Psi), G_SL_DttR);
-          ((M (D (-3)), O (Aux_top (0,0,0,-1,"DttR")), M (D 3)), FBF (1, Psibar, SR, Psi), G_SR_DttR);
-          ((M (U (-3)), O (Aux_top (0,0,0,1,"DttL")), M (U 3)), FBF (1, Psibar, SL, Psi), Half);
-          ((M (D (-3)), O (Aux_top (0,0,0,-1,"DttL")), M (D 3)), FBF (1, Psibar, SL, Psi), G_SL_DttL);
-          ((M (D (-3)), O (Aux_top (0,0,-1,1,"DbtR")), M (U 3)), FBF (1, Psibar, SR, Psi), Half);
-          ((M (U (-3)), O (Aux_top (0,0,1,-1,"DbtR")), M (D 3)), FBF (1, Psibar, SLR, Psi), G_SLR_DbtR);
-          ((M (D (-3)), O (Aux_top (0,0,-1,1,"DbtL")), M (U 3)), FBF (1, Psibar, SL, Psi), Half);
-          ((M (U (-3)), O (Aux_top (0,0,1,-1,"DbtL")), M (D 3)), FBF (1, Psibar, SL, Psi), G_SL_DbtL) ]
+      if Flags.top_anom_4f then
+        [ ((M (U (-3)), O (Aux_top (0,0,0,true,DR)), M (U 3)), FBF (1, Psibar, SR, Psi), Half);
+          ((M (U (-3)), O (Aux_top (0,0,0,false,DR)), M (U 3)), FBF (1, Psibar, SL, Psi), G_SL_DttR);
+          ((M (D (-3)), O (Aux_top (0,0,0,false,DR)), M (D 3)), FBF (1, Psibar, SR, Psi), G_SR_DttR);
+          ((M (U (-3)), O (Aux_top (0,0,0,true,DL)), M (U 3)), FBF (1, Psibar, SL, Psi), Half);
+          ((M (D (-3)), O (Aux_top (0,0,0,false,DL)), M (D 3)), FBF (1, Psibar, SL, Psi), G_SL_DttL);
+          ((M (D (-3)), O (Aux_top (0,0,-1,true,DR)), M (U 3)), FBF (1, Psibar, SR, Psi), Half);
+          ((M (U (-3)), O (Aux_top (0,0,1,false,DR)), M (D 3)), FBF (1, Psibar, SLR, Psi), G_SLR_DbtR);
+          ((M (D (-3)), O (Aux_top (0,0,-1,true,DL)), M (U 3)), FBF (1, Psibar, SL, Psi), Half);
+          ((M (U (-3)), O (Aux_top (0,0,1,false,DL)), M (D 3)), FBF (1, Psibar, SL, Psi), G_SL_DbtL) ]
       else
         []
 
@@ -1825,6 +1847,24 @@ effective operators:
       | "A" -> G Ga | "Z" | "Z0" -> G Z
       | "W+" -> G Wp | "W-" -> G Wm
       | "H" -> O H
+      | "Aux_t_ttGG0" -> O (Aux_top (2,1, 0,true,TTGG)) | "Aux_ttGG0" -> O (Aux_top (2,1, 0,false,TTGG))
+      | "Aux_t_tbWA+" -> O (Aux_top (2,0, 1,true,TBWA)) | "Aux_tbWA+" -> O (Aux_top (2,0, 1,false,TBWA))
+      | "Aux_t_tbWA-" -> O (Aux_top (2,0,-1,true,TBWA)) | "Aux_tbWA-" -> O (Aux_top (2,0,-1,false,TBWA))
+      | "Aux_t_tbWZ+" -> O (Aux_top (2,0, 1,true,TBWZ)) | "Aux_tbWZ+" -> O (Aux_top (2,0, 1,false,TBWZ))
+      | "Aux_t_tbWZ-" -> O (Aux_top (2,0,-1,true,TBWZ)) | "Aux_tbWZ-" -> O (Aux_top (2,0,-1,false,TBWZ))
+      | "Aux_t_ttWW0" -> O (Aux_top (2,0, 0,true,TTWW)) | "Aux_ttWW0" -> O (Aux_top (2,0, 0,false,TTWW))
+      | "Aux_t_bbWW0" -> O (Aux_top (2,0, 0,true,BBWW)) | "Aux_bbWW0" -> O (Aux_top (2,0, 0,false,BBWW))
+      | "Aux_t_qGuG0" -> O (Aux_top (1,1, 0,true,QGUG)) | "Aux_qGuG0" -> O (Aux_top (1,1, 0,false,QGUG))
+      | "Aux_t_qBuB0" -> O (Aux_top (1,0, 0,true,QBUB)) | "Aux_qBuB0" -> O (Aux_top (1,0, 0,false,QBUB))
+      | "Aux_t_qW0"   -> O (Aux_top (1,0, 0,true,QW))   | "Aux_qW0"   -> O (Aux_top (1,0, 0,false,QW))
+      | "Aux_t_qW+"   -> O (Aux_top (1,0, 1,true,QW))   | "Aux_qW+"   -> O (Aux_top (1,0, 1,false,QW))
+      | "Aux_t_qW-"   -> O (Aux_top (1,0,-1,true,QW))   | "Aux_qW-"   -> O (Aux_top (1,0,-1,false,QW))
+      | "Aux_t_dL0"   -> O (Aux_top (0,0, 0,true,DL))   | "Aux_dL0"   -> O (Aux_top (0,0, 0,false,DL))
+      | "Aux_t_dL+"   -> O (Aux_top (0,0, 1,true,DL))   | "Aux_dL+"   -> O (Aux_top (0,0, 1,false,DL))
+      | "Aux_t_dL-"   -> O (Aux_top (0,0,-1,true,DL))   | "Aux_dL-"   -> O (Aux_top (0,0,-1,false,DL))
+      | "Aux_t_dR0"   -> O (Aux_top (0,0, 0,true,DR))   | "Aux_dR0"   -> O (Aux_top (0,0, 0,false,DR))
+      | "Aux_t_dR+"   -> O (Aux_top (0,0, 1,true,DR))   | "Aux_dR+"   -> O (Aux_top (0,0, 1,false,DR))
+      | "Aux_t_dR-"   -> O (Aux_top (0,0,-1,true,DR))   | "Aux_dR-"   -> O (Aux_top (0,0,-1,false,DR))
       | _ -> invalid_arg "Modellib.SM.flavor_of_string"
 
     let flavor_to_string = function
@@ -1861,7 +1901,13 @@ effective operators:
           begin match f with
           | Phip -> "phi+" | Phim -> "phi-" | Phi0 -> "phi0" 
           | H -> "H"
-          | Aux_top (_,_,_,_,v) -> "Aux_" ^ v
+          | Aux_top (_,_,ch,n,v) -> "Aux_" ^ (if n then "t_" else "") ^ (
+              begin match v with
+              | TTGG -> "ttGG" | TBWA -> "tbWA" | TBWZ -> "tbWZ"
+              | TTWW -> "ttWW" | BBWW -> "bbWW"
+              | QGUG -> "qGuG" | QBUB -> "qBuB"
+              | QW   -> "qW"   | DL   -> "dL"   | DR   -> "dR"
+              end ) ^ ( if ch > 0 then "+" else if ch < 0 then "-" else "0" )
           end
 
     let flavor_to_TeX = function
@@ -1898,7 +1944,13 @@ effective operators:
           begin match f with
           | Phip -> "\\phi^+" | Phim -> "\\phi^-" | Phi0 -> "\\phi^0" 
           | H -> "H"
-          | Aux_top (_,_,_,_,v) -> "\\textnormal{Aux_" ^ v ^ "}"
+          | Aux_top (_,_,ch,n,v) -> "\\textnormal{Aux_" ^ (if n then "t_" else "") ^ (
+              begin match v with
+              | TTGG -> "ttGG" | TBWA -> "tbWA" | TBWZ -> "tbWZ"
+              | TTWW -> "ttWW" | BBWW -> "bbWW"
+              | QGUG -> "qGuG" | QBUB -> "qBuB"
+              | QW   -> "qW"   | DL   -> "dL"   | DR   -> "dR"
+              end ) ^ ( if ch > 0 then "^+" else if ch < 0 then "^-" else "^0" ) ^ "}"
           end
 
     let flavor_symbol = function
@@ -1923,7 +1975,13 @@ effective operators:
           begin match f with
           | Phip -> "pp" | Phim -> "pm" | Phi0 -> "p0" 
           | H -> "h"
-          | Aux_top (_,_,_,_,v) -> "aux_" ^ v
+          | Aux_top (_,_,ch,n,v) -> "aux_" ^ (if n then "t_" else "") ^ (
+              begin match v with
+              | TTGG -> "ttgg" | TBWA -> "tbwa" | TBWZ -> "tbwz"
+              | TTWW -> "ttww" | BBWW -> "bbww"
+              | QGUG -> "qgug" | QBUB -> "qbub"
+              | QW   -> "qw"   | DL   -> "dl"   | DR   -> "dr"
+              end ) ^ "_" ^ ( if ch > 0 then "p" else if ch < 0 then "m" else "0" )
           end
 
     let pdg = function

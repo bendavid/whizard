@@ -1,6 +1,6 @@
-! WHIZARD 2.0.6 Wed Dec 7 2011
+! WHIZARD 2.0.7 Mar 19 2012
 ! 
-! Copyright (C) 1999-2011 by 
+! Copyright (C) 1999-2012 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -33,7 +33,7 @@ use iso_fortran_env, only: iostat_end, iostat_eor !NODEP!
 
   integer, parameter, public :: VERSION_STRLEN = 255
   character(len=VERSION_STRLEN), parameter, public :: &
-       & VERSION_STRING = "WHIZARD version 2.0.6 (Wed Dec 7 2011)"
+       & VERSION_STRING = "WHIZARD version 2.0.7 (Mar 19 2012)"
   integer, parameter, public :: MIN_UNIT = 11, MAX_UNIT = 99
   integer, parameter, public :: ENVVAR_LEN = 1000
   integer, parameter, public :: DLERROR_LEN = 160
@@ -68,7 +68,6 @@ use iso_fortran_env, only: iostat_end, iostat_eor !NODEP!
   integer, parameter, public :: MAX_TRIES_FOR_DECAY_CHAIN = 100000
   character(*), parameter, public :: &
        RAW_EVENT_FILE_ID_STRING = "WHIZARD raw event file"
-  integer, parameter, public :: RAW_EVENT_FILE_VERSION = 2
   integer, parameter, public :: ITERATIONS_DEFAULT_LIST_SIZE = 7
   integer, parameter, public :: MAX_TRIES_FOR_SINGLE_EVENT = 100000
   character(*), parameter, public :: &
@@ -77,9 +76,9 @@ use iso_fortran_env, only: iostat_end, iostat_eor !NODEP!
        FORBIDDEN_ENDINGS1 = (/ "o", "a" /)
   character(len=2), dimension(5), parameter, public :: &       
        FORBIDDEN_ENDINGS2 = (/ "mp", "ps", "vg", "lo", "la" /)
-  character(len=3), dimension(12), parameter, public :: &
+  character(len=3), dimension(13), parameter, public :: &
        FORBIDDEN_ENDINGS3 = (/ "aux", "dvi", "evx", "f03", "f90", "log", &
-          "ltp", "mpx", "pdf", "phs", "sin", "tex" /)
+          "ltp", "mpx", "pdf", "phs", "sin", "tex", "vbg" /)
        
   integer, parameter, public :: CMDLINE_ARG_LEN = 1000
 

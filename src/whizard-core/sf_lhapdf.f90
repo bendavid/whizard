@@ -1,6 +1,6 @@
-! WHIZARD 2.0.6 Wed Dec 7 2011
+! WHIZARD 2.0.7 Mar 19 2012
 ! 
-! Copyright (C) 1999-2011 by 
+! Copyright (C) 1999-2012 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -55,6 +55,7 @@ module sf_lhapdf
   public :: lhapdf_data_t
   public :: lhapdf_data_init
   public :: lhapdf_data_set_mask
+  public :: lhapdf_data_get_public_info
   public :: lhapdf_data_write
   public :: interaction_init_lhapdf
   public :: interaction_set_kinematics_lhapdf
@@ -302,16 +303,32 @@ contains
     data%mask = mask
   end subroutine lhapdf_data_set_mask
 
-  subroutine lhapdf_data_write (data, unit, md5)
+  subroutine lhapdf_data_get_public_info &
+       (data, lhapdf_dir, lhapdf_file, lhapdf_member)
+    type(lhapdf_data_t), intent(in) :: data
+    type(string_t), intent(out) :: lhapdf_dir, lhapdf_file
+    integer, intent(out) :: lhapdf_member
+    lhapdf_dir = data%prefix
+    lhapdf_file = data%file
+    lhapdf_member = data%member
+  end subroutine lhapdf_data_get_public_info
+
+  subroutine lhapdf_data_write (data, unit, md5, beam_fmt)
     type(lhapdf_data_t), intent(in) :: data
     integer, intent(in), optional :: unit
     integer :: u
     logical, intent(in), optional :: md5
-    logical :: is_md5
+    logical, intent(in), optional :: beam_fmt
+    logical :: is_md5, is_beam_fmt
     if (present (md5)) then
        is_md5 = md5
     else
        is_md5 = .false.
+    end if
+    if (present (beam_fmt)) then
+       is_beam_fmt = beam_fmt
+    else
+       is_beam_fmt = .false.
     end if
     u = output_unit (unit);  if (u < 0)  return
     write (u, *) "LHAPDF data:"
@@ -328,9 +345,11 @@ contains
        write (u, *) "  Q^2(max)     = ", data%qmax
        write (u, *) "  invert       = ", data%invert
        if (data%photon)  write (u, *) "  IP2 (scheme) = ", data%photon_scheme
-       write (u, *) "  mask         = ", &
-            data%mask(-6:-1), "*", data%mask(0), "*", data%mask(1:6)
-       write (u, *) "  photon mask  = ", data%mask_photon
+       if (.not. is_beam_fmt) then          
+          write (u, *) "  mask         = ", &
+               data%mask(-6:-1), "*", data%mask(0), "*", data%mask(1:6)
+          write (u, *) "  photon mask  = ", data%mask_photon
+       end if  
     else
        write (u, *) "  [undefined]"
     end if

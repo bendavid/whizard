@@ -84,23 +84,47 @@ contains
     integer :: n, i
     n = size (x)
     local_r = sqrt (dot_product (x, x))
-    product_sin_theta(n-1) = 1
-    do i = n, 3, -1
-       cos_theta(i-2) = x(i) / product_sin_theta(i-1) / local_r
-       product_sin_theta(i-2) = &
-            product_sin_theta(i-1) * sqrt (1 - cos_theta(i-2)**2)
-    end do
-    if (present (r)) then
-       r = local_r
-    end if
-    if (present (phi)) then
-       phi = atan2 (x(1), x(2))
-    end if
-    if (present (theta)) then
-       theta = acos (cos_theta)
-    end if
-    if (present (jacobian)) then
-       jacobian = local_r**(1-n) / product (product_sin_theta)
+    if (local_r == 0) then
+      if (present (r)) then
+        r = 0
+      end if 
+      if (present (phi)) then
+        phi = 0
+      end if
+      if (present (theta)) then
+        theta = 0
+      end if
+      if (present (jacobian)) then
+        jacobian = 1
+      end if
+    else          
+      product_sin_theta(n-1) = 1
+      do i = n, 3, -1
+         if (product_sin_theta(i-1) == 0) then
+           cos_theta(i-2) = 0
+         else     
+           cos_theta(i-2) = x(i) / product_sin_theta(i-1) / local_r
+         end if
+         product_sin_theta(i-2) = &
+              product_sin_theta(i-1) * sqrt (1 - cos_theta(i-2)**2)
+      end do
+      if (present (r)) then
+         r = local_r
+      end if
+      if (present (phi)) then
+         !  Set phi = 0 for vanishing vector
+         if (x(1) == 0 .and. x(2)==0) then
+          phi = 0
+         else     
+            phi = atan2 (x(1), x(2))
+         end if 
+      end if
+      if (present (theta)) then
+         theta = acos (cos_theta)
+      end if
+      if (present (jacobian)) then
+         jacobian = local_r**(1-n) / product (product_sin_theta)
+      end if
     end if
   end subroutine cartesian_to_spherical_2
    subroutine cartesian_to_spherical (x, r, phi, theta)
@@ -160,23 +184,47 @@ contains
     integer :: n, i
     n = size (x)
     local_r = sqrt (dot_product (x, x))
-    product_sin_theta(n-1) = 1
-    do i = n, 3, -1
-       local_cos_theta(i-2) = x(i) / product_sin_theta(i-1) / local_r
-       product_sin_theta(i-2) = &
-            product_sin_theta(i-1) * sqrt (1 - local_cos_theta(i-2)**2)
-    end do
-    if (present (r)) then
-       r = local_r
-    end if
-    if (present (phi)) then
-       phi = atan2 (x(1), x(2))
-    end if
-    if (present (cos_theta)) then
-       cos_theta = local_cos_theta
-    end if
-    if (present (jacobian)) then
-       jacobian = local_r**(1-n) / product (product_sin_theta(2:))
+    if (local_r == 0) then
+      if (present (r)) then
+        r = 0
+      end if 
+      if (present (phi)) then
+        phi = 0
+      end if
+      if (present (cos_theta)) then
+        cos_theta = 0
+      end if
+      if (present (jacobian)) then
+        jacobian = 1
+      end if
+    else          
+      product_sin_theta(n-1) = 1
+      do i = n, 3, -1
+         if (product_sin_theta(i-1) == 0) then
+           local_cos_theta(i-2) = 0
+         else     
+           local_cos_theta(i-2) = x(i) / product_sin_theta(i-1) / local_r
+         end if
+         product_sin_theta(i-2) = &
+              product_sin_theta(i-1) * sqrt (1 - local_cos_theta(i-2)**2)
+      end do
+      if (present (r)) then
+         r = local_r
+      end if
+      if (present (phi)) then
+         !  Set phi = 0 for vanishing vector
+         if (x(1) == 0 .and. x(2)==0) then
+          phi = 0
+         else     
+            phi = atan2 (x(1), x(2))
+         end if 
+      end if
+      if (present (cos_theta)) then
+         cos_theta = local_cos_theta
+      end if
+      if (present (jacobian)) then
+         jacobian = local_r**(1-n) / product (product_sin_theta(2:))
+      end if
     end if
   end subroutine cartesian_to_spherical_cos_2
    subroutine cartesian_to_spherical_cos (x, r, phi, cos_theta)

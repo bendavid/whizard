@@ -2,7 +2,67 @@ ChangeLog -- Summary of changes to the WHIZARD package
 
 Use svn log to see detailed changes.
 
+	Version 2.0.7
+
+2012-03-19
+	RELEASE: version 2.0.7
+	
+2012-03-15
+	Run IDs are available now
+	More event variables in analysis
+	Modified raw event format (compatibility mode exists)
+	
+2012-03-12
+	Bugfix in decay-integration order
+	MLM matching steered completely internally now
+	
+2012-03-09
+	Special phase space mapping for narrow resonances
+	  decaying to 4-particle final states with far off-shell
+	  intermediate states
+	Running alphas from PDF collaborations with
+	  builtin PDFs
+	
+2012-02-16
+	Bug fix in cascades decay infrastructure
+	
+2012-02-04
+	WHIZARD documentation compatible with TeXLive 2011
+	
+2012-02-01
+	Bug fix in FeynRules interface with --prefix flag
+	
+2012-01-29
+	Bug fix with name clash of O'Mega variable names
+	
+2012-01-27
+	Update internal PYTHIA to version 6.4.26
+	Bug fix in LHEF output
+	
+2012-01-21
+	Catching stricter automake 1.11.2 rules
+	
+2011-12-23
+	Bug fix in decay cascade setup
+	
+2011-12-20
+	Bug fix in helicity selection rules
+	
+2011-12-16
+	Accuracy goal reimplemented
+	
+2011-12-14
+	WHIZARD compatible with TeXLive 2011
+	
+2011-12-09
+	Option --user-target added
+	
+##################################################################
+
         Version 2.0.6
+
+2011-12-07 
+	RELEASE: version 2.0.6
 
 2011-12-07
 	Bug fixes in SM_top_anom

@@ -238,6 +238,7 @@ module shower_module
   public :: shower_print
   public :: shower_create
   Public :: shower_final
+  public :: shower_write_lhef
   type :: my_interaction_t
      type(parton_pointer_t) :: in1, in2
      type(parton_pointer_t), dimension(:), allocatable :: partons
@@ -395,6 +396,14 @@ contains
       write (0, "(A)")  "**************************************************************"
       stop      
     end subroutine shower_final
+    subroutine shower_write_lhef (shower, unit)
+      type(shower_t), intent(in) :: shower
+      integer, intent(in), optional :: unit
+      write (0, "(A)")  "**************************************************************"
+      write (0, "(A)")  "*** Error: Shower has not been enabled, WHIZARD terminates ***"
+      write (0, "(A)")  "**************************************************************"
+      stop      
+    end subroutine shower_write_lhef
 end module shower_module
 
 module shower_topythia_module
@@ -410,7 +419,7 @@ contains
     end subroutine shower_converttopythia
 end module shower_topythia_module
 
-module matching_helper
+module mlm_matching_module
   use kinds, only: default, double !NODEP!
   use lorentz !NODEP!
 
@@ -423,20 +432,24 @@ module matching_helper
   type :: mlm_matching_data_t
      logical :: is_hadron_collision = .false.
      ! the (colored) partons' momenta
-!     type(vector4_t), dimension(:), allocatable :: P_ME
-     type(vector4_t), dimension(:), allocatable :: P_PS
+     type(vector4_t), dimension(:), allocatable, public :: P_ME
+     type(vector4_t), dimension(:), allocatable, public :: P_PS
+
      ! the jets' momenta
-     type(vector4_t), dimension(:), allocatable :: JETS_ME
-     type(vector4_t), dimension(:), allocatable :: JETS_PS
+     type(vector4_t), dimension(:), allocatable, private :: JETS_ME
+     type(vector4_t), dimension(:), allocatable, private :: JETS_PS
   end type mlm_matching_data_t
 
   type :: mlm_matching_settings_t
+     real(kind=default) :: mlm_Qcut_ME = 1._default
+     real(kind=default) :: mlm_Qcut_PS = 1._default
      real(kind=default) :: mlm_ptmin, mlm_etamax, mlm_Rmin, mlm_Emin
      real(kind=default) :: mlm_ETclusfactor = 0.2_default
      real(kind=default) :: mlm_ETclusminE = 5._default
      real(kind=default) :: mlm_etaclusfactor = 1._default
      real(kind=default) :: mlm_Rclusfactor = 1._default
      real(kind=default) :: mlm_Eclusfactor = 1._default
+
      integer :: kt_imode_hadronic = 4313
      integer :: kt_imode_leptonic = 1111
      integer :: mlm_nmaxMEjets = 0
@@ -470,4 +483,4 @@ subroutine mlm_matching(mlm_matching_data, mlm_matching_settings, vetoed)
     write (0, "(A)")  "****************************************************************"
     stop      
   end subroutine mlm_matching
-end module matching_helper
+end module mlm_matching_module

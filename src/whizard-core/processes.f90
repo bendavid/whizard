@@ -1,6 +1,6 @@
-! WHIZARD 2.0.6 Wed Dec 7 2011
+! WHIZARD 2.0.7 Mar 19 2012
 ! 
-! Copyright (C) 1999-2011 by 
+! Copyright (C) 1999-2012 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -38,6 +38,7 @@ module processes
   use vamp_equivalences !NODEP!
   use vamp !NODEP!
   use tao_random_numbers !NODEP!
+  use pdf_builtin !NODEP!
   use md5
   use cputime
   use os_interface
@@ -78,9 +79,13 @@ module processes
 
   public :: integration_results_t
   public :: integration_results_append
+  public :: integration_results_append_null
   public :: process_status_t
   public :: process_status_write_counters
+  public :: grid_parameters_t
+  public :: md5sum_grids_t
   public :: process_t
+  public :: process_setup_qcd
   public :: process_assign_global_var_list
   public :: process_write
   public :: process_write_logfile
@@ -101,6 +106,7 @@ module processes
   public :: process_get_model_ptr
   public :: process_get_n_in
   public :: process_get_n_out
+  public :: process_get_n_tot
   public :: process_get_beam_index
   public :: process_get_incoming_parton_index
   public :: process_get_outgoing_parton_index
@@ -114,6 +120,8 @@ module processes
   public :: process_get_fac_scale
   public :: process_get_ren_scale  
   public :: process_get_alpha_s
+  public :: process_get_sqrts
+  public :: process_get_sqrts_hat
   public :: process_get_sqme
   public :: process_get_reweighting_factor
   public :: process_get_n_calls
@@ -121,6 +129,7 @@ module processes
   public :: process_get_error
   public :: process_get_accuracy
   public :: process_get_chi2
+  public :: process_get_rel_error
   public :: process_get_time_per_event
   public :: process_get_efficiency
   public :: process_get_sample_function_value
@@ -137,6 +146,7 @@ module processes
   public :: process_set_ren_scale  
   public :: process_set_alpha_s
   public :: process_set_sqme
+  public :: process_discard_results
   public :: process_setup_beams
   public :: process_set_beam_momenta
   public :: process_set_strfun
@@ -151,7 +161,6 @@ module processes
   public :: process_setup_scale
   public :: process_setup_fac_scale
   public :: process_setup_ren_scale
-  public :: grid_parameters_t
   public :: process_setup_grids
   public :: process_reset_helicity_selection
   public :: process_complete_kinematics
@@ -164,11 +173,13 @@ module processes
   public :: process_evaluate
   public :: process_integrate
   public :: process_do_dummy_integration
+  public :: process_skip_iterations
+  public :: process_choose_best_grid
   public :: process_me_test
   public :: process_init_vamp_history
   public :: process_final_vamp_history
   public :: process_write_time_estimate
-  public :: md5sum_grids_t
+  public :: process_store_iteration_parameters
   public :: process_read_grid_file
   public :: process_setup_event_generation
   public :: process_generate_weighted_event
@@ -255,9 +266,41 @@ module processes
      real(default) :: lambda = 0
      real(default) :: alpha_s_at_scale = 0
      logical :: alpha_s_from_lhapdf = .false.
+     type(string_t) :: lhapdf_dir
+     type(string_t) :: lhapdf_file
      integer :: lhapdf_set = 0
      integer :: lhapdf_member = 0
+     integer :: lhapdf_photon_scheme = 0
+     logical :: alpha_s_from_pdf_builtin = .false.
+     integer :: pdf_builtin_set = CTEQ6L
   end type qcd_parameters_t
+
+  type :: grid_parameters_t
+     integer :: threshold_calls = 0
+     integer :: min_calls_per_channel = 10
+     integer :: min_calls_per_bin = 10
+     integer :: min_bins = 3
+     integer :: max_bins = 20
+     logical :: stratified = .true.
+     logical :: use_vamp_equivalences = .true.
+     real(default) :: channel_weights_power = 0.25_default
+  end type grid_parameters_t
+
+  type :: md5sum_grids_t
+     character(32) :: process    = ""
+     character(32) :: model      = ""
+     character(32) :: parameters = ""
+     character(32) :: phs        = ""
+     character(32) :: beams      = ""
+     character(32) :: sf_list    = ""
+     character(32) :: mappings   = ""
+     character(32) :: cuts       = ""
+     character(32) :: weight     = ""
+     character(32) :: scale      = ""     
+     character(32) :: fac_scale  = ""
+     character(32) :: ren_scale  = ""     
+     character(32) :: alpha_s    = ""     
+  end type md5sum_grids_t
 
   type :: process_t
      private
@@ -346,6 +389,12 @@ module processes
      type(eval_tree_t) :: fac_scale_expr
      type(eval_tree_t) :: ren_scale_expr
      logical, dimension(:), allocatable :: active_channel
+     type(string_t) :: filename_current_grid
+     type(string_t) :: filename_best_grid
+     type(md5sum_grids_t) :: md5sum_grids
+     type(grid_parameters_t) :: grid_parameters
+     integer, dimension(:), allocatable :: pass_array
+     integer, dimension(:), allocatable :: n_calls_array
      type(vamp_grids) :: grids
      type(vamp_history), dimension(:), allocatable :: v_history
      type(vamp_history), dimension(:,:), allocatable :: v_histories
@@ -355,33 +404,6 @@ module processes
   type :: process_p
      type(process_t), pointer :: ptr
   end type process_p
-
-  type :: grid_parameters_t
-     integer :: threshold_calls = 0
-     integer :: min_calls_per_channel = 10
-     integer :: min_calls_per_bin = 10
-     integer :: min_bins = 3
-     integer :: max_bins = 20
-     logical :: stratified = .true.
-     logical :: use_vamp_equivalences = .true.
-     real(default) :: channel_weights_power = 0.25_default
-  end type grid_parameters_t
-
-  type :: md5sum_grids_t
-     character(32) :: process    = ""
-     character(32) :: model      = ""
-     character(32) :: parameters = ""
-     character(32) :: phs        = ""
-     character(32) :: beams      = ""
-     character(32) :: sf_list    = ""
-     character(32) :: mappings   = ""
-     character(32) :: cuts       = ""
-     character(32) :: weight     = ""
-     character(32) :: scale      = ""     
-     character(32) :: fac_scale  = ""
-     character(32) :: ren_scale  = ""     
-     character(32) :: alpha_s    = ""     
-  end type md5sum_grids_t
 
   type :: process_entry_t
      type(process_t) :: process
@@ -399,6 +421,12 @@ module processes
   type(process_store_t), save :: store
 
 
+  interface operator(==)
+     module procedure grid_parameters_eq
+  end interface
+  interface operator(/=)
+     module procedure grid_parameters_ne
+  end interface
   interface process_set_strfun
      module procedure process_set_strfun_lhapdf  
      module procedure process_set_strfun_pdf_builtin
@@ -412,12 +440,6 @@ module processes
      module procedure process_set_strfun_user
   end interface
 
-  interface operator(==)
-     module procedure grid_parameters_eq
-  end interface
-  interface operator(/=)
-     module procedure grid_parameters_ne
-  end interface
 interface
    double precision function alphasPDF (Q)
       double precision, intent(in) :: Q
@@ -601,7 +623,24 @@ contains
     logical :: verb
     u = output_unit (unit);  if (u < 0)  return
     verb = .false.;  if (present (verbose))  verb = verbose
-    if (.not. verb)  then
+    if (verb)  then
+       write (u, *)  "process_type = ", entry%process_type
+       write (u, *)  "        pass = ", entry%pass
+       write (u, *)  "          it = ", entry%it
+       write (u, *)  "        n_it = ", entry%n_it
+       write (u, *)  "     n_calls = ", entry%n_calls
+       write (u, *)  "    improved = ", entry%improved
+       write (u, *)  "    integral = ", entry%integral
+       write (u, *)  "       error = ", entry%error
+       write (u, *)  "  efficiency = ", entry%efficiency
+       write (u, *)  "        chi2 = ", entry%chi2
+       if (allocated (entry%grove_weight)) then
+          write (u, *)  "    n_groves = ", size (entry%grove_weight)
+          write (u, *)  "grove_weight = ", entry%grove_weight
+       else
+          write (u, *)  "    n_groves = 0"
+       end if
+    else if (entry%process_type /= PRC_UNKNOWN) then
        if (entry%improved) then
           star = "*"
        else
@@ -631,23 +670,6 @@ contains
                abs(integration_entry_get_accuracy (entry)), &
                star, &
                entry%efficiency
-       end if
-    else
-       write (u, *)  "process_type = ", entry%process_type
-       write (u, *)  "        pass = ", entry%pass
-       write (u, *)  "          it = ", entry%it
-       write (u, *)  "        n_it = ", entry%n_it
-       write (u, *)  "     n_calls = ", entry%n_calls
-       write (u, *)  "    improved = ", entry%improved
-       write (u, *)  "    integral = ", entry%integral
-       write (u, *)  "       error = ", entry%error
-       write (u, *)  "  efficiency = ", entry%efficiency
-       write (u, *)  "        chi2 = ", entry%chi2
-       if (allocated (entry%grove_weight)) then
-          write (u, *)  "    n_groves = ", size (entry%grove_weight)
-          write (u, *)  "grove_weight = ", entry%grove_weight
-       else
-          write (u, *)  "    n_groves = 0"
        end if
     end if
     flush (u)
@@ -709,7 +731,8 @@ contains
     real(default), dimension(size(entry)) :: ivar
     real(default) :: sum_ivar, variance
     result%process_type = entry(1)%process_type
-    mask = entry%pass == pass
+    result%pass = pass
+    mask = entry%pass == pass .and. entry%process_type /= PRC_UNKNOWN
     result%it = maxval (entry%it, mask)
     result%n_it = count (mask)
     result%n_calls = sum (entry%n_calls, mask)
@@ -826,7 +849,8 @@ contains
     integer, intent(in), optional :: unit
     integer :: u
     u = output_unit (unit);  if (u < 0)  return
-    if (pass /= 0)  call integration_entry_write (results%average(pass), unit)
+    if (allocated (results%average) .and. pass /= 0) &
+         call integration_entry_write (results%average(pass), unit)
   end subroutine integration_results_write_average
 
   subroutine integration_results_write_current_average (results, unit)
@@ -835,7 +859,8 @@ contains
     integer :: u, n
     u = output_unit (unit);  if (u < 0)  return
     n = results%n_pass
-    if (n /= 0)  call integration_entry_write (results%average(n), unit)
+    if (allocated (results%average) .and. n /= 0) &
+         call integration_entry_write (results%average(n), unit)
   end subroutine integration_results_write_current_average
 
   subroutine integration_results_write_grove_weights (results, unit)
@@ -920,10 +945,32 @@ contains
     logical :: flag
     type(integration_results_t), intent(in) :: results
     integer, dimension(:), intent(in) :: pass, n_calls
-    flag = all (results%entry(:results%n_it)%pass == pass(:results%n_it)) &
-         .and. all (results%entry(:results%n_it)%n_calls &
-                    == n_calls(:results%n_it))
+    integer :: n_it
+    n_it = results%n_it
+    flag = size (pass) >= n_it .and. size (n_calls) >= n_it
+    if (flag) then
+       flag = all (results%entry(:n_it)%pass == pass(:n_it) &
+                   .and. &
+                   (results%entry(:n_it)%n_calls == n_calls(:n_it) &
+                    .or. &
+                    results%entry(:n_it)%process_type == PRC_UNKNOWN))
+    end if
   end function integration_results_iterations_are_consistent
+
+  subroutine integration_results_discard (results, it)
+    type(integration_results_t), intent(inout) :: results
+    integer, intent(in) :: it
+    if (it <= results%n_it) then
+       select case (it)
+       case (:1)
+          results%n_it = 0
+          results%n_pass = 0
+       case default
+          results%n_it = it - 1
+          results%n_pass = maxval (results%entry(1:results%n_it)%pass)
+       end select
+    end if
+  end subroutine integration_results_discard
 
   subroutine integration_results_expand (results)
     type(integration_results_t), intent(inout) :: results
@@ -948,20 +995,24 @@ contains
 
   subroutine integration_results_append_entry (results, entry)
     type(integration_results_t), intent(inout) :: results
-    type(integration_entry_t), intent(in) :: entry
+    type(integration_entry_t), intent(in), optional :: entry
     if (results%n_it == 0) then
        call integration_results_init (results)
        results%n_it = 1
        results%n_pass = 1
     else
        call integration_results_expand (results)
-       if (entry%pass /= results%entry(results%n_it)%pass) &
-            results%n_pass = results%n_pass + 1
+       if (present (entry)) then
+          if (entry%pass /= results%entry(results%n_it)%pass) &
+               results%n_pass = results%n_pass + 1
+       end if
        results%n_it = results%n_it + 1
     end if
-    results%entry(results%n_it) = entry
-    results%average(results%n_pass) = &
-         compute_average (results%entry, entry%pass)
+    if (present (entry)) then
+       results%entry(results%n_it) = entry
+       results%average(results%n_pass) = &
+            compute_average (results%entry, entry%pass)
+    end if
   end subroutine integration_results_append_entry
 
   subroutine integration_results_append (results, &
@@ -987,76 +1038,108 @@ contains
     call integration_results_append_entry (results, entry)
   end subroutine integration_results_append
          
+  subroutine integration_results_append_null (results, pass, n_it)
+    type(integration_results_t), intent(inout) :: results
+    integer, intent(in) :: pass, n_it
+    type(integration_entry_t) :: entry
+    call integration_entry_init (entry, &
+         PRC_UNKNOWN, pass, n_it, 1, 0, .false., &
+         0._default, 0._default, 0._default)
+    call integration_results_append_entry (results, entry)
+  end subroutine integration_results_append_null
+         
   function integration_results_exist (results) result (flag)
     logical :: flag
     type(integration_results_t), intent(in) :: results
     flag = results%n_pass > 0
   end function integration_results_exist
 
-  function integration_results_get_n_calls (results) result (n_calls)
-    integer :: n_calls
+  function results_get_entry (results, last, it, pass) result (entry)
+    type(integration_entry_t) :: entry
     type(integration_results_t), intent(in) :: results
-    if (results%n_pass > 0) then
-       n_calls = &
-            integration_entry_get_n_calls (results%average(results%n_pass))
+    logical, intent(in), optional :: last
+    integer, intent(in), optional :: it, pass
+    if (present (last)) then
+       if (allocated (results%entry)) then
+          entry = results%entry(results%n_it)
+       end if
+    else if (present (it)) then
+       if (allocated (results%entry)) then
+          if (it > 0 .and. it <= results%n_it) then
+             entry = results%entry(it)
+          end if
+       end if
+    else if (present (pass)) then
+       if (allocated (results%average)) then
+          if (pass > 0 .and. pass <= results%n_pass) then
+             entry = results%average (pass)
+          end if
+       end if
     else
-       n_calls = 0
+       if (allocated (results%average)) then
+          entry = results%average (results%n_pass)
+       end if
     end if
+  end function results_get_entry
+  
+  function integration_results_get_n_calls (results, last, it, pass) &
+       result (n_calls)
+    integer :: n_calls
+    type(integration_results_t), intent(in), target :: results
+    logical, intent(in), optional :: last
+    integer, intent(in), optional :: it, pass
+    n_calls = integration_entry_get_n_calls &
+         (results_get_entry (results, last, it, pass))
   end function integration_results_get_n_calls
 
-  function integration_results_get_integral (results) result (integral)
+  function integration_results_get_integral (results, last, it, pass) &
+       result (integral)
     real(default) :: integral
-    type(integration_results_t), intent(in) :: results
-    if (results%n_pass > 0) then
-       integral = &
-            integration_entry_get_integral (results%average(results%n_pass))
-    else
-       integral = 0
-    end if
+    type(integration_results_t), intent(in), target :: results
+    logical, intent(in), optional :: last
+    integer, intent(in), optional :: it, pass
+    integral = integration_entry_get_integral &
+         (results_get_entry (results, last, it, pass))
   end function integration_results_get_integral
 
-  function integration_results_get_error (results) result (error)
+  function integration_results_get_error (results, last, it, pass) &
+       result (error)
     real(default) :: error
-    type(integration_results_t), intent(in) :: results
-    if (results%n_pass > 0) then
-       error = &
-            integration_entry_get_error (results%average(results%n_pass))
-    else
-       error = 0
-    end if
+    type(integration_results_t), intent(in), target :: results
+    logical, intent(in), optional :: last
+    integer, intent(in), optional :: it, pass
+    error = integration_entry_get_error &
+         (results_get_entry (results, last, it, pass))
   end function integration_results_get_error
 
-  function integration_results_get_accuracy (results) result (accuracy)
+  function integration_results_get_accuracy (results, last, it, pass) &
+       result (accuracy)
     real(default) :: accuracy
-    type(integration_results_t), intent(in) :: results
-    if (results%n_pass > 0) then
-       accuracy = &
-            integration_entry_get_accuracy (results%average(results%n_pass))
-    else
-       accuracy = 0
-    end if
+    type(integration_results_t), intent(in), target :: results
+    logical, intent(in), optional :: last
+    integer, intent(in), optional :: it, pass
+    accuracy = integration_entry_get_accuracy &
+         (results_get_entry (results, last, it, pass))
   end function integration_results_get_accuracy
 
-  function integration_results_get_chi2 (results) result (chi2)
+  function integration_results_get_chi2 (results, last, it, pass) &
+       result (chi2)
     real(default) :: chi2
-    type(integration_results_t), intent(in) :: results
-    if (results%n_pass > 0) then
-       chi2 = &
-            integration_entry_get_chi2 (results%average(results%n_pass))
-    else
-       chi2 = 0
-    end if
+    type(integration_results_t), intent(in), target :: results
+    logical, intent(in), optional :: last
+    integer, intent(in), optional :: it, pass
+    chi2 = integration_entry_get_chi2 &
+         (results_get_entry (results, last, it, pass))
   end function integration_results_get_chi2
 
-  function integration_results_get_efficiency (results) result (efficiency)
+  function integration_results_get_efficiency (results, last, it, pass) &
+       result (efficiency)
     real(default) :: efficiency
-    type(integration_results_t), intent(in) :: results
-    if (results%n_pass > 0) then
-       efficiency = &
-            integration_entry_get_efficiency (results%average(results%n_pass))
-    else
-       efficiency = 0
-    end if
+    type(integration_results_t), intent(in), target :: results
+    logical, intent(in), optional :: last
+    integer, intent(in), optional :: it, pass
+    efficiency = integration_entry_get_efficiency &
+         (results_get_entry (results, last, it, pass))
   end function integration_results_get_efficiency
 
   function integration_results_get_time_per_event (results) result (s)
@@ -1079,11 +1162,35 @@ contains
     integer :: it
     type(integration_results_t), intent(in) :: results
     if (allocated (results%entry)) then
-       it = count (results%entry%pass == results%n_pass)
+       it = count (results%entry(1:results%n_it)%pass == results%n_pass)
     else
        it = 0
     end if
   end function integration_results_get_current_it
+
+  function integration_results_get_last_it (results) result (it)
+    integer :: it
+    type(integration_results_t), intent(in) :: results
+    it = results%n_it
+  end function integration_results_get_last_it
+
+  function integration_results_get_best_it (results) result (it)
+    integer :: it
+    type(integration_results_t), intent(in) :: results
+    integer :: i
+    real(default) :: acc, acc_best
+    acc_best = -1
+    it = 0
+    do i = 1, results%n_it
+       if (results%entry(i)%pass == results%n_pass) then
+          acc = integration_entry_get_accuracy (results%entry(i))
+          if (acc_best < 0 .or. acc <= acc_best) then
+             acc_best = acc
+             it = i
+          end if
+       end if
+    end do
+  end function integration_results_get_best_it
 
   function integration_results_get_md5sum (results) result (md5sum_results)
     character(32) :: md5sum_results
@@ -1100,14 +1207,13 @@ contains
   subroutine integration_results_write_driver (results, filename)
     type(integration_results_t), intent(in) :: results
     type(string_t), intent(in) :: filename
-    type(string_t) :: file_basename, file_tex
+    type(string_t) :: file_tex
     integer :: unit
     integer :: n, i, n_pass, pass
     integer, dimension(:), allocatable :: ipass
     real(default) :: ymin, ymax, yavg, ydif, y0, y1
     real(default) :: int, err
-    file_basename = filename // ".history"
-    file_tex = file_basename // ".tex"
+    file_tex = filename // ".tex"
     unit = free_unit ()
     open (unit=unit, file=char(file_tex), action="write", status="replace")
     n = results%n_it
@@ -1250,7 +1356,6 @@ contains
     type(string_t), intent(in) :: filename
     type(os_data_t), intent(in) :: os_data
     integer :: unit, unit_dev, status
-    type(string_t) :: file_basename
     type(string_t) :: file_tex, file_dvi, file_ps, file_pdf, file_mp
     type(string_t) :: setenv_tex, setenv_mp, pipe, pipe_dvi
     type(string_t) :: latex_opt, mpost_opt
@@ -1259,12 +1364,11 @@ contains
            // "because latex or mpost is not available")
        return
     end if
-    file_basename = filename // ".history"
-    file_tex = file_basename // ".tex"
-    file_dvi = file_basename // ".dvi"
-    file_ps = file_basename // ".ps"
-    file_pdf = file_basename // ".pdf"
-    file_mp = file_basename // ".mp"
+    file_tex = filename // ".tex"
+    file_dvi = filename // ".dvi"
+    file_ps = filename // ".ps"
+    file_pdf = filename // ".pdf"
+    file_mp = filename // ".mp"
     call msg_message ("Creating integration history display "& 
          // char (file_ps) // " and " // char (file_pdf))
     BLOCK: do
@@ -1425,11 +1529,9 @@ contains
     status%n_passed_evaluation = status%n_passed_evaluation + 1
   end subroutine process_status_passed_evaluation
 
-  subroutine qcd_parameters_setup (qcd, lhapdf_status, var_list)
+  subroutine qcd_parameters_basic_setup (qcd, var_list)
     type(qcd_parameters_t), intent(inout) :: qcd
-    type(lhapdf_status_t), intent(inout) :: lhapdf_status
     type(var_list_t), intent(in), target :: var_list
-    type(string_t) :: lhapdf_file, lhapdf_dir
     qcd%alpha_s_is_fixed = &
          var_list_get_lval (var_list, var_str ("?alpha_s_is_fixed"))
     qcd%order = &
@@ -1440,23 +1542,12 @@ contains
          var_list_get_lval (var_list, var_str ("?alpha_s_from_mz"))
     qcd%alpha_s_from_lhapdf = &
          var_list_get_lval (var_list, var_str ("?alpha_s_from_lhapdf"))
-    if (qcd%alpha_s_from_lhapdf) then
-       if (LHAPDF_AVAILABLE) then
-          qcd%lhapdf_set = 1
-          lhapdf_dir = var_list_get_sval (var_list, &
-               var_str ("$lhapdf_dir"))  ! $
-          lhapdf_file = var_list_get_sval (var_list, &
-               var_str ("$lhapdf_file"))  ! $
-          qcd%lhapdf_member = var_list_get_ival (var_list, &
-               var_str ("lhapdf_member"))
-          call lhapdf_init (lhapdf_status, &
-               qcd%lhapdf_set, lhapdf_dir, lhapdf_file, qcd%lhapdf_member)
-       else             
-          call msg_error &
-               ("LHAPDF not linked: reset alpha_s_from_lhapdf to false")
-          qcd%alpha_s_from_lhapdf = .false.
-       end if
-    end if
+    qcd%alpha_s_from_pdf_builtin = &
+         var_list_get_lval (var_list, var_str ("?alpha_s_from_pdf_builtin"))    
+    if (qcd%alpha_s_from_lhapdf .and. qcd%alpha_s_from_pdf_builtin) then
+        call msg_fatal (" Mixing alphas evolution",  &
+             (/ var_str (" from LHAPDF and builtin PDF is not permitted") /))
+    end if 
     qcd%mz_is_known = &
          var_list_is_known (var_list, var_str ("mZ"))
     if (qcd%mz_is_known)  qcd%mz = &
@@ -1467,7 +1558,66 @@ contains
          var_list_get_rval (var_list, var_str ("alphas"))
     qcd%lambda = &
          var_list_get_rval (var_list, var_str ("lambda_qcd"))
-  end subroutine qcd_parameters_setup
+  end subroutine qcd_parameters_basic_setup
+
+  subroutine qcd_parameters_setup_lhapdf (qcd, lhapdf_status, &
+       lhapdf_dir, lhapdf_file, lhapdf_member, &
+       var_list)
+    type(qcd_parameters_t), intent(inout) :: qcd
+    type(lhapdf_status_t), intent(inout) :: lhapdf_status
+    type(string_t), intent(in), optional :: lhapdf_dir, lhapdf_file
+    integer, intent(in), optional :: lhapdf_member
+    type(var_list_t), intent(in), optional :: var_list
+    if (qcd%alpha_s_from_lhapdf) then
+       if (LHAPDF_AVAILABLE) then
+          if (present (lhapdf_dir)) then
+             qcd%lhapdf_dir = lhapdf_dir
+             qcd%lhapdf_file = lhapdf_file
+             qcd%lhapdf_member = lhapdf_member
+          else
+             qcd%lhapdf_dir = var_list_get_sval (var_list, &
+                  var_str ("$lhapdf_dir"))  ! $
+             qcd%lhapdf_file = var_list_get_sval (var_list, &
+                  var_str ("$lhapdf_file"))  ! $
+             qcd%lhapdf_member = var_list_get_ival (var_list, &
+                  var_str ("lhapdf_member"))
+          end if
+          qcd%lhapdf_set = 1
+          call msg_message ("LHAPDF set used for alpha_s = " &
+               // '"' // char (qcd%lhapdf_file) // '"')
+          call lhapdf_init (lhapdf_status, &
+               qcd%lhapdf_set, qcd%lhapdf_dir, qcd%lhapdf_file, &
+               qcd%lhapdf_member)
+       else             
+          call msg_error &
+               ("LHAPDF not linked: resetting alpha_s_from_lhapdf to false")
+          qcd%alpha_s_from_lhapdf = .false.
+       end if
+    end if
+  end subroutine qcd_parameters_setup_lhapdf
+
+  subroutine qcd_parameters_setup_pdf_builtin (qcd, pdf_builtin_status, &
+       pdf_builtin_datapath, pdf_builtin_set, var_list)
+    type(qcd_parameters_t), intent(inout) :: qcd
+    type(pdf_builtin_status_t), intent(inout) :: pdf_builtin_status
+    type(string_t), intent(in) :: pdf_builtin_datapath
+    type(string_t), intent(in), optional :: pdf_builtin_set
+    type(var_list_t), intent(in), optional :: var_list
+    type(string_t) :: name
+    if (qcd%alpha_s_from_pdf_builtin) then
+       if (present (pdf_builtin_set)) then
+          name = pdf_builtin_set
+       else
+          name = var_list_get_sval (var_list, &
+               var_str ("$pdf_builtin_set"))  ! $
+       end if
+       call msg_message ("Built-in PDF set used for alpha_s = " &
+            // '"' // char (name) // '"')
+       qcd%pdf_builtin_set = pdf_get_id (name)
+       call pdf_init (pdf_builtin_status, qcd%pdf_builtin_set, &
+            pdf_builtin_datapath)
+    end if
+  end subroutine qcd_parameters_setup_pdf_builtin
 
   subroutine qcd_parameters_write (qcd, unit)
     type(qcd_parameters_t), intent(in) :: qcd
@@ -1481,15 +1631,19 @@ contains
           write (u, *)  "  alpha-s from LHAPDF"
           write (u, *)  "  PDF group        = ", qcd%lhapdf_set
           write (u, *)  "  PDF member       = ", qcd%lhapdf_member
-       else
-          write (u, *)  "  LLA order        = ", qcd%order
-          write (u, *)  "  active flavors   = ", qcd%nf
-          write (u, *)  "  use alpha-s (mZ) = ", qcd%alpha_s_from_mz
-          if (qcd%alpha_s_from_mz) then
-             write (u, *)  "  mZ is known      = ", qcd%mz_is_known
-             if (qcd%mz_is_known) then
-                write (u, *)  "  mZ               = ", qcd%mz
-             end if
+       else 
+          if (qcd%alpha_s_from_pdf_builtin) then
+             write (u, *)  "  alpha-s from builtin PDF"
+             write (u, *)  "  PDF group        = ", qcd%pdf_builtin_set
+          else
+             write (u, *)  "  LLA order        = ", qcd%order
+             write (u, *)  "  active flavors   = ", qcd%nf
+             write (u, *)  "  use alpha-s (mZ) = ", qcd%alpha_s_from_mz
+             if (qcd%alpha_s_from_mz) then
+                write (u, *)  "  mZ is known      = ", qcd%mz_is_known
+                if (qcd%mz_is_known) then
+                   write (u, *)  "  mZ               = ", qcd%mz
+                end if
              write (u, *)  "  as(mZ) is known  = ", qcd%alpha_s_mz_is_known
              if (qcd%alpha_s_mz_is_known) then
                 write (u, *)  "  alpha-s (mZ)     = ", qcd%alpha_s_mz
@@ -1498,7 +1652,8 @@ contains
              write (u, *)  "  Lambda_QCD       = ", qcd%lambda
           end if
        end if
-       write (u, *)  "  alpha-s (scale)  = ", qcd%alpha_s_at_scale
+    end if
+    write (u, *)  "  alpha-s (scale)  = ", qcd%alpha_s_at_scale
     end if
   end subroutine qcd_parameters_write
 
@@ -1520,54 +1675,133 @@ contains
     real(default) :: alpha_s
     if (.not. qcd%alpha_s_is_fixed) then
        if (qcd%alpha_s_from_lhapdf) then
-          alpha_s = alphasPDF (dble (scale))
-       else
-          if (qcd%alpha_s_from_mz) then
-             if (qcd%alpha_s_mz_is_known) then
-                if (qcd%mz_is_known) then
-                   alpha_s = running_as (scale, &
-                        al_mz = qcd%alpha_s_mz, &
-                        mz = qcd%mz, &
-                        order = qcd%order, &
-                        nf = real (qcd%nf, default))
+          alpha_s = alphasPDF (dble (scale))          
+       else 
+          if (qcd%alpha_s_from_pdf_builtin) then
+             alpha_s = pdf_alphas (qcd%pdf_builtin_set, scale)
+          else
+             if (qcd%alpha_s_from_mz) then
+                if (qcd%alpha_s_mz_is_known) then
+                   if (qcd%mz_is_known) then
+                      alpha_s = running_as (scale, &
+                           al_mz = qcd%alpha_s_mz, &
+                           mz = qcd%mz, &
+                           order = qcd%order, &
+                           nf = real (qcd%nf, default))
+                   else
+                      alpha_s = running_as (scale, &
+                           al_mz = qcd%alpha_s_mz, &
+                           order = qcd%order, &
+                           nf = real (qcd%nf, default))
+                   end if
                 else
-                   alpha_s = running_as (scale, &
-                        al_mz = qcd%alpha_s_mz, &
-                        order = qcd%order, &
-                        nf = real (qcd%nf, default))
+                   if (qcd%mz_is_known) then
+                      alpha_s = running_as (scale, &
+                           mz = qcd%mz, &
+                           order = qcd%order, &
+                           nf = real (qcd%nf, default))
+                   else
+                      alpha_s = running_as (scale, &
+                           order = qcd%order, &
+                           nf = real (qcd%nf, default))
+                   end if
                 end if
              else
-                if (qcd%mz_is_known) then
-                   alpha_s = running_as (scale, &
-                        mz = qcd%mz, &
-                        order = qcd%order, &
-                        nf = real (qcd%nf, default))
-                else
-                   alpha_s = running_as (scale, &
-                        order = qcd%order, &
-                        nf = real (qcd%nf, default))
-                end if                
+                alpha_s = running_as_lam (real (qcd%nf, default), scale, &
+                     lambda_qcd = qcd%lambda, &
+                     order = qcd%order)
              end if
-          else
-             alpha_s = running_as_lam (real (qcd%nf, default), scale, &
-                  lambda_qcd = qcd%lambda, &
-                  order = qcd%order)
-          end if   
+          end if
        end if
        qcd%alpha_s_at_scale = alpha_s
     end if
   end subroutine qcd_parameters_update_alpha_s
 
+  subroutine grid_parameters_write (grid_par, unit)
+    type(grid_parameters_t), intent(in) :: grid_par
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = output_unit (unit)
+    write (u, *) "threshold_calls       = ", grid_par%threshold_calls 
+    write (u, *) "min_calls_per_channel = ", grid_par%min_calls_per_channel
+    write (u, *) "min_calls_per_bin     = ", grid_par%min_calls_per_bin
+    write (u, *) "min_bins              = ", grid_par%min_bins
+    write (u, *) "max_bins              = ", grid_par%max_bins
+    write (u, *) "stratified            = ", grid_par%stratified
+    write (u, *) "use_vamp_equivalences = ", grid_par%use_vamp_equivalences
+    write (u, *) "channel_weights_power = ", grid_par%channel_weights_power
+  end subroutine grid_parameters_write
+
+  subroutine grid_parameters_read (grid_par, unit)
+    type(grid_parameters_t), intent(out) :: grid_par
+    integer, intent(in) :: unit
+    character(30) :: dummy
+    character :: equals
+    read (unit, *) dummy, equals, grid_par%threshold_calls 
+    read (unit, *) dummy, equals, grid_par%min_calls_per_channel
+    read (unit, *) dummy, equals, grid_par%min_calls_per_bin
+    read (unit, *) dummy, equals, grid_par%min_bins
+    read (unit, *) dummy, equals, grid_par%max_bins
+    read (unit, *) dummy, equals, grid_par%stratified
+    read (unit, *) dummy, equals, grid_par%use_vamp_equivalences
+    read (unit, *) dummy, equals, grid_par%channel_weights_power
+  end subroutine grid_parameters_read
+
+  function grid_parameters_eq (gp1, gp2) result (eq)
+    logical :: eq
+    type(grid_parameters_t), intent(in) :: gp1, gp2
+    eq = gp1%threshold_calls == gp2%threshold_calls &
+         .and. gp1%min_calls_per_channel    == gp2%min_calls_per_channel &
+         .and. gp1%min_calls_per_bin        == gp2%min_calls_per_bin     &
+         .and. gp1%min_bins                 == gp2%min_bins              &
+         .and. gp1%max_bins                 == gp2%max_bins              &
+         .and.(gp1%stratified            .eqv. gp2%stratified           )&
+         .and.(gp1%use_vamp_equivalences .eqv. gp2%use_vamp_equivalences)&
+         .and. gp1%channel_weights_power    == gp2%channel_weights_power
+  end function grid_parameters_eq
+
+  function grid_parameters_ne (gp1, gp2) result (ne)
+    logical :: ne
+    type(grid_parameters_t), intent(in) :: gp1, gp2
+    ne = gp1%threshold_calls /= gp2%threshold_calls &
+         .or. gp1%min_calls_per_channel     /= gp2%min_calls_per_channel &
+         .or. gp1%min_calls_per_bin         /= gp2%min_calls_per_bin     &
+         .or. gp1%min_bins                  /= gp2%min_bins              &
+         .or. gp1%max_bins                  /= gp2%max_bins              &
+         .or.(gp1%stratified            .neqv. gp2%stratified           )&
+         .or.(gp1%use_vamp_equivalences .neqv. gp2%use_vamp_equivalences)&
+         .or. gp1%channel_weights_power     /= gp2%channel_weights_power
+  end function grid_parameters_ne
+
+  subroutine md5sum_grids_write (md5sum, unit)
+    type(md5sum_grids_t), intent(in) :: md5sum
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = output_unit (unit)
+    write (u, *) "  md5sum_process     = ", '"', md5sum%process, '"'
+    write (u, *) "  md5sum_model       = ", '"', md5sum%model, '"'
+    write (u, *) "  md5sum_parameters  = ", '"', md5sum%parameters, '"'
+    write (u, *) "  md5sum_phase_space = ", '"', md5sum%phs, '"'
+    write (u, *) "  md5sum_beams       = ", '"', md5sum%beams, '"'
+    write (u, *) "  md5sum_sf_list     = ", '"', md5sum%sf_list, '"'
+    write (u, *) "  md5sum_mappings    = ", '"', md5sum%mappings, '"'
+    write (u, *) "  md5sum_cuts        = ", '"', md5sum%cuts, '"'
+    write (u, *) "  md5sum_weight      = ", '"', md5sum%weight, '"'
+    write (u, *) "  md5sum_scale       = ", '"', md5sum%scale, '"'
+    write (u, *) "  md5sum_fac_scale   = ", '"', md5sum%fac_scale, '"'
+    write (u, *) "  md5sum_ren_scale   = ", '"', md5sum%ren_scale, '"'    
+    write (u, *) "  md5sum_alpha_s     = ", '"', md5sum%alpha_s, '"'    
+  end subroutine md5sum_grids_write
+
   subroutine process_init &
        (process, prc_lib, process_lib_index, process_store_index, &
-        process_id, model, lhapdf_status, var_list, use_beams)
+        process_id, model, var_list, use_beams)
     type(process_t), intent(out), target :: process
     type(process_library_t), intent(in), target :: prc_lib
     integer, intent(in) :: process_lib_index
     integer, intent(in) :: process_store_index
     type(string_t), intent(in) :: process_id
     type(model_t), intent(in), target :: model
-    type(lhapdf_status_t), intent(inout) :: lhapdf_status
     type(var_list_t), intent(in), target :: var_list
     logical, intent(in), optional :: use_beams
     integer :: n_in, n_out, n_tot
@@ -1630,9 +1864,6 @@ contains
     process%fatal_beam_decay = &
          var_list_get_lval (var_list, var_str ("?fatal_beam_decay"))
 
-    call qcd_parameters_setup (process%qcd, lhapdf_status, var_list)
-    process%md5sum_alpha_s = qcd_parameters_get_md5sum (process%qcd)
-
     call var_list_append_int (process%var_list, &
          var_str ("n_in"),  n_in, intrinsic=.true.)
     call var_list_append_int (process%var_list, &
@@ -1650,8 +1881,43 @@ contains
     allocate (process%j_out (n_out))
     call subevt_init (process%subevt, n_beam + n_in + n_out)
 !    call integration_results_init (process%results)
+    process%filename_current_grid = ""
+    process%filename_best_grid = ""
     process%initialized = .true.
   end subroutine process_init
+
+  subroutine process_setup_qcd (process, lhapdf_status, pdf_builtin_status, &
+       lhapdf_data, pdf_builtin_data, os_data, var_list)
+    type(process_t), intent(inout) :: process
+    type(lhapdf_status_t), intent(inout) :: lhapdf_status
+    type(pdf_builtin_status_t), intent(inout) :: pdf_builtin_status
+    type(lhapdf_data_t), intent(in), pointer :: lhapdf_data
+    type(pdf_builtin_data_t), intent(in), pointer :: pdf_builtin_data
+    type(os_data_t), intent(in) :: os_data
+    type(var_list_t), intent(in) :: var_list
+    type(string_t) :: lhapdf_dir, lhapdf_file
+    integer :: lhapdf_member
+    type(string_t) :: pdf_builtin_set
+    call qcd_parameters_basic_setup (process%qcd, var_list)
+    if (associated (lhapdf_data)) then
+       call lhapdf_data_get_public_info (lhapdf_data, &
+            lhapdf_dir, lhapdf_file, lhapdf_member)
+       call qcd_parameters_setup_lhapdf (process%qcd, lhapdf_status, &
+            lhapdf_dir, lhapdf_file, lhapdf_member)
+    else
+       call qcd_parameters_setup_lhapdf (process%qcd, lhapdf_status, &
+            var_list=var_list)
+    end if
+    if (associated (pdf_builtin_data)) then
+       pdf_builtin_set = pdf_builtin_get_name (pdf_builtin_data)
+       call qcd_parameters_setup_pdf_builtin (process%qcd, pdf_builtin_status, &
+            os_data%pdf_builtin_datapath, pdf_builtin_set)
+    else
+       call qcd_parameters_setup_pdf_builtin (process%qcd, pdf_builtin_status, &
+            os_data%pdf_builtin_datapath, var_list=var_list)
+    end if
+    process%md5sum_alpha_s = qcd_parameters_get_md5sum (process%qcd)
+  end subroutine process_setup_qcd
 
   subroutine process_assign_global_var_list (process, var_list)
     type(process_t), intent(inout) :: process
@@ -1883,6 +2149,33 @@ contains
     call eval_tree_write (process%ren_scale_expr, unit)
     write (u, "(A)")  repeat ("-", 72)    
     if (process%vamp_grids_defined) then
+       write (u, "(A)") "Integration grid data"
+       write (u, *)
+       write (u, "(A)") "Grid file name (current) = " // '"' &
+            // char (process%filename_current_grid) // '"'
+       write (u, "(A)") "Grid file name (best)    = " // '"' &
+            // char (process%filename_best_grid) // '"'
+       write (u, *)
+       write (u, "(A)") "MD5 sums stored in grid file"
+       call md5sum_grids_write (process%md5sum_grids, u)
+       write (u, *)
+       write (u, "(A)") "Grid parameters stored in grid file"
+       call grid_parameters_write (process%grid_parameters, u)
+       write (u, *)
+       write (u, "(A)", advance="no") "Iterations: pass array = "
+       if (allocated (process%pass_array)) then
+          write (u, *) process%pass_array
+       else
+          write (u, *) "[not allocated]"
+       end if
+       write (u, "(A)", advance="no") "Iterations: n_calls array = "
+       if (allocated (process%n_calls_array)) then
+          write (u, *) process%n_calls_array
+       else
+          write (u, *) "[not allocated]"
+       end if
+       write (u, *)
+       write (u, "(A)", advance="no") "VAMP grids:"
        call vamp_write_grids (process%grids, u)
     else
        write (u, "(A)")  "VAMP grids: [empty]"
@@ -1971,25 +2264,23 @@ contains
     write (u, "(A)")  repeat ("#", 79)
   end subroutine process_write_log
 
-  subroutine process_write_logfile (process)
+  subroutine process_write_logfile (process, filename)
     type(process_t), intent(in) :: process
-    type(string_t) :: filename
+    type(string_t), intent(in) :: filename
     integer :: unit
     unit = free_unit ()
-    filename = process%id // ".log"
     open (unit = unit, file = char (filename), action = "write", &
           status = "replace")
     call process_write_log (process, unit)
     close (unit)
   end subroutine process_write_logfile
 
-  subroutine process_display_integration_history (process, os_data, vis_history)
+  subroutine process_display_integration_history (process, filename, os_data)
     type(process_t), intent(in) :: process
+    type(string_t), intent(in) :: filename
     type(os_data_t), intent(in) :: os_data
-    logical, intent(in) :: vis_history
-    call integration_results_write_driver (process%results, process%id)
-    if (vis_history) call integration_results_compile_driver &
-          (process%results, process%id, os_data)
+    call integration_results_write_driver (process%results, filename)
+    call integration_results_compile_driver (process%results, filename, os_data)
   end subroutine process_display_integration_history
 
   subroutine process_ptr_array_create (prc_array, process_id)
@@ -2182,6 +2473,18 @@ contains
     alpha_s = process%qcd%alpha_s_at_scale
   end function process_get_alpha_s
 
+  function process_get_sqrts (process) result (sqrts)
+    real(default) :: sqrts
+    type(process_t), intent(in) :: process
+    sqrts = process%sqrts
+  end function process_get_sqrts
+
+  function process_get_sqrts_hat (process) result (sqrts_hat)
+    real(default) :: sqrts_hat
+    type(process_t), intent(in) :: process
+    sqrts_hat = process%sqrts_hat
+  end function process_get_sqrts_hat
+
   function process_get_sqme (process) result (sqme)
     real(default) :: sqme
     type(process_t), intent(in) :: process
@@ -2194,47 +2497,82 @@ contains
     weight = process%reweighting_factor
   end function process_get_reweighting_factor
 
-  function process_get_n_calls (process) result (n_calls)
+  function process_get_n_calls (process, last, it, pass) result (n_calls)
     integer :: n_calls
     type(process_t), intent(in) :: process
-    n_calls = integration_results_get_n_calls (process%results)
+    logical, intent(in), optional :: last
+    integer, intent(in), optional :: it, pass
+    n_calls = integration_results_get_n_calls &
+         (process%results, last, it, pass)
   end function process_get_n_calls
 
-  function process_get_integral (process) result (integral)
+  function process_get_integral (process, last, it, pass) result (integral)
     real(default) :: integral
     type(process_t), intent(in) :: process
-    integral = integration_results_get_integral (process%results)
+    logical, intent(in), optional :: last
+    integer, intent(in), optional :: it, pass
+    integral = integration_results_get_integral &
+         (process%results, last, it, pass)
   end function process_get_integral
 
-  function process_get_error (process) result (error)
+  function process_get_error (process, last, it, pass) result (error)
     real(default) :: error
     type(process_t), intent(in) :: process
-    error = integration_results_get_error (process%results)
+    logical, intent(in), optional :: last
+    integer, intent(in), optional :: it, pass
+    error = integration_results_get_error &
+         (process%results, last, it, pass)
   end function process_get_error
 
-  function process_get_accuracy (process) result (accuracy)
+  function process_get_accuracy (process, last, it, pass) result (accuracy)
     real(default) :: accuracy
     type(process_t), intent(in) :: process
-    accuracy = integration_results_get_accuracy (process%results)
+    logical, intent(in), optional :: last
+    integer, intent(in), optional :: it, pass
+    accuracy = integration_results_get_accuracy &
+         (process%results, last, it, pass)
   end function process_get_accuracy
 
-  function process_get_chi2 (process) result (chi2)
+  function process_get_chi2 (process, last, it, pass) result (chi2)
     real(default) :: chi2
     type(process_t), intent(in) :: process
-    chi2 = integration_results_get_chi2 (process%results)
+    logical, intent(in), optional :: last
+    integer, intent(in), optional :: it, pass
+    chi2 = integration_results_get_chi2 &
+         (process%results, last, it, pass)
   end function process_get_chi2
+
+  function process_get_efficiency (process, last, it, pass) result (efficiency)
+    real(default) :: efficiency
+    type(process_t), intent(in) :: process
+    logical, intent(in), optional :: last
+    integer, intent(in), optional :: it, pass
+    efficiency = integration_results_get_efficiency &
+         (process%results, last, it, pass)
+  end function process_get_efficiency
+
+  function process_get_rel_error (process, last, it, pass) result (error)
+    real(default) :: error
+    type(process_t), intent(in) :: process
+    logical, intent(in), optional :: last
+    integer, intent(in), optional :: it, pass
+    real(default) :: integral, abs_error
+    integral = integration_results_get_integral &
+         (process%results, last, it, pass)
+    abs_error = integration_results_get_error &
+         (process%results, last, it, pass)
+    if (integral /= 0) then
+       error = abs_error / abs (integral)
+    else
+       error = 0
+    end if
+  end function process_get_rel_error
 
   function process_get_time_per_event (process) result (tpe)
     real(default) :: tpe
     type(process_t), intent(in) :: process
     tpe = integration_results_get_time_per_event (process%results)
   end function process_get_time_per_event
-
-  function process_get_efficiency (process) result (efficiency)
-    real(default) :: efficiency
-    type(process_t), intent(in) :: process
-    efficiency = integration_results_get_efficiency (process%results)
-  end function process_get_efficiency
 
   function process_get_sample_function_value (process) result  (value)
      real(default) :: value
@@ -2253,6 +2591,12 @@ contains
     type(process_t), intent(in) :: process
     it = integration_results_get_current_it (process%results)
   end function process_get_current_it
+
+  function process_get_last_it (process) result (it)
+    integer :: it
+    type(process_t), intent(in) :: process
+    it = integration_results_get_last_it (process%results)
+  end function process_get_last_it
 
   function process_get_eval_sqme_ptr (process) result (eval)
     type(evaluator_t), pointer :: eval
@@ -2326,6 +2670,12 @@ contains
     real(default), intent(in) :: sqme
     process%sqme = sqme
   end subroutine process_set_sqme
+
+  subroutine process_discard_results (process, it)
+    type(process_t), intent(inout) :: process
+    integer, intent(in) :: it
+    call integration_results_discard (process%results, it)
+  end subroutine process_discard_results
 
   subroutine process_setup_beams &
        (process, beam_data, n_strfun, n_mapping, sqrts, flv)
@@ -2606,7 +2956,7 @@ contains
 
   subroutine process_setup_phase_space (process, rebuild_phs, &  
        os_data, phs_par, mapping_defaults, filename_out, &
-       filename_in, filename_vis, vis_channels, ok)
+       filename_in, filename_vis, vis_channels, check_phs_file, ok)
     type(process_t), intent(inout), target :: process
     logical, intent(in) :: rebuild_phs
     type(os_data_t), intent(in) :: os_data
@@ -2615,6 +2965,7 @@ contains
     type(string_t), intent(in), optional :: &
        filename_out, filename_in, filename_vis
     logical, intent(in) :: vis_channels
+    logical, intent(in), optional :: check_phs_file
     logical, intent(out), optional :: ok
     type(string_t) :: filename, setenv_tex, setenv_mp, &
        pipe, pipe_dvi
@@ -2645,12 +2996,14 @@ contains
     phs_par%sqrts = process%sqrts
     if (present (filename_in)) then
        filename = filename_in
-       call msg_message ("Reading phase-space configuration from file '" &
-            // char (filename) // "'")
        check = .false.
     else if (.not. rebuild_phs .and. present (filename_out)) then
        filename = filename_out
-       check = .true.
+       if (present (check_phs_file)) then
+          check = check_phs_file
+       else
+          check = .true.
+       end if
     else
        filename = ""
     end if
@@ -2663,13 +3016,16 @@ contains
                   md5sum_process, md5sum_model, md5sum_parameters, phs_par, &
                   phs_match)
           else
+             call msg_warning &
+                  ("Validity checks turned off for phase-space file " &
+                   // "'" // char (filename) // "'")
              call phs_forest_read (process%forest, filename, &
                   process%id, n_in, n_out, process%model, phs_ok)
              phs_match = .true.
           end if
-          if (phs_match) &
-               call msg_message ("Read phase-space configuration from file '" &
-               // char (filename) // "'...")
+          if (phs_match)  call msg_message &
+               ("Reading phase-space configuration from file '" &
+                // char (filename) // "'...")
           unit = free_unit ()
           open (unit = unit, file = char (filename), action = "read", &
                 status = "old")
@@ -2959,62 +3315,6 @@ contains
     if (present (md5sum)) &
          md5sum = eval_tree_get_md5sum (process%ren_scale_expr)
   end subroutine process_setup_ren_scale
-
-  subroutine grid_parameters_write (grid_par, unit)
-    type(grid_parameters_t), intent(in) :: grid_par
-    integer, intent(in), optional :: unit
-    integer :: u
-    u = output_unit (unit)
-    write (u, *) "threshold_calls       = ", grid_par%threshold_calls 
-    write (u, *) "min_calls_per_channel = ", grid_par%min_calls_per_channel
-    write (u, *) "min_calls_per_bin     = ", grid_par%min_calls_per_bin
-    write (u, *) "min_bins              = ", grid_par%min_bins
-    write (u, *) "max_bins              = ", grid_par%max_bins
-    write (u, *) "stratified            = ", grid_par%stratified
-    write (u, *) "use_vamp_equivalences = ", grid_par%use_vamp_equivalences
-    write (u, *) "channel_weights_power = ", grid_par%channel_weights_power
-  end subroutine grid_parameters_write
-
-  subroutine grid_parameters_read (grid_par, unit)
-    type(grid_parameters_t), intent(out) :: grid_par
-    integer, intent(in) :: unit
-    character(30) :: dummy
-    character :: equals
-    read (unit, *) dummy, equals, grid_par%threshold_calls 
-    read (unit, *) dummy, equals, grid_par%min_calls_per_channel
-    read (unit, *) dummy, equals, grid_par%min_calls_per_bin
-    read (unit, *) dummy, equals, grid_par%min_bins
-    read (unit, *) dummy, equals, grid_par%max_bins
-    read (unit, *) dummy, equals, grid_par%stratified
-    read (unit, *) dummy, equals, grid_par%use_vamp_equivalences
-    read (unit, *) dummy, equals, grid_par%channel_weights_power
-  end subroutine grid_parameters_read
-
-  function grid_parameters_eq (gp1, gp2) result (eq)
-    logical :: eq
-    type(grid_parameters_t), intent(in) :: gp1, gp2
-    eq = gp1%threshold_calls == gp2%threshold_calls &
-         .and. gp1%min_calls_per_channel    == gp2%min_calls_per_channel &
-         .and. gp1%min_calls_per_bin        == gp2%min_calls_per_bin     &
-         .and. gp1%min_bins                 == gp2%min_bins              &
-         .and. gp1%max_bins                 == gp2%max_bins              &
-         .and.(gp1%stratified            .eqv. gp2%stratified           )&
-         .and.(gp1%use_vamp_equivalences .eqv. gp2%use_vamp_equivalences)&
-         .and. gp1%channel_weights_power    == gp2%channel_weights_power
-  end function grid_parameters_eq
-
-  function grid_parameters_ne (gp1, gp2) result (ne)
-    logical :: ne
-    type(grid_parameters_t), intent(in) :: gp1, gp2
-    ne = gp1%threshold_calls /= gp2%threshold_calls &
-         .or. gp1%min_calls_per_channel     /= gp2%min_calls_per_channel &
-         .or. gp1%min_calls_per_bin         /= gp2%min_calls_per_bin     &
-         .or. gp1%min_bins                  /= gp2%min_bins              &
-         .or. gp1%max_bins                  /= gp2%max_bins              &
-         .or.(gp1%stratified            .neqv. gp2%stratified           )&
-         .or.(gp1%use_vamp_equivalences .neqv. gp2%use_vamp_equivalences)&
-         .or. gp1%channel_weights_power     /= gp2%channel_weights_power
-  end function grid_parameters_ne
 
   subroutine process_setup_grids (process, grid_parameters, calls)
     type(process_t), intent(inout), target :: process
@@ -3383,7 +3683,7 @@ contains
        grid_parameters, pass, it1, it2, calls, &
        discard_integrals, adapt_grids, adapt_weights, print_current, &
        time_estimate, &
-       grids_filename, md5sum)
+       grids_filename, write_best_grid, md5sum, history_filename, log_filename)
     type(process_t), intent(inout), target :: process
     type(tao_random_state), intent(inout) :: rng
     type(grid_parameters_t), intent(in) :: grid_parameters
@@ -3394,7 +3694,9 @@ contains
     logical, intent(in) :: print_current
     logical, intent(in) :: time_estimate
     type(string_t), intent(in), optional :: grids_filename
+    logical, intent(in), optional :: write_best_grid
     type(md5sum_grids_t), intent(in), optional :: md5sum
+    type(string_t), intent(in), optional :: history_filename, log_filename
     integer :: it
     real(default) :: integral, error, efficiency
     type(time_t) :: time_start, time_end
@@ -3405,13 +3707,9 @@ contains
     if (it1 > it2)  return
     u = logfile_unit ()
     if (present (md5sum)) then
-       md5sum_local = md5sum
-       md5sum_local%process = process%md5sum
-       md5sum_local%model = model_get_md5sum (process%model)
-       md5sum_local%parameters = model_get_parameters_md5sum (process%model)
-       md5sum_local%phs = process%md5sum_phs
-       md5sum_local%alpha_s = process%md5sum_alpha_s
+       process%md5sum_grids = process_collect_md5sum (process, md5sum)
     end if
+    process%grid_parameters = grid_parameters
     sqrts = process%sqrts
     if (discard_integrals .and. it1==1) then
        if (grid_parameters%use_vamp_equivalences) then
@@ -3460,18 +3758,50 @@ contains
                process%type, pass, 1, calls, &
                integral, error, efficiency, grove_weight)
        end if
+       process%filename_current_grid = ""
+       process%filename_best_grid = ""
        if (present (grids_filename)) then
-          call write_grid_file (grids_filename, process%id, md5sum_local, &
-               grid_parameters, process%results, process%grids)
+          process%filename_current_grid = grids_filename
+          call write_grid_file (grids_filename, process%id, &
+               process%md5sum_grids, grid_parameters, &
+               process%results, process%grids)
+          if (present (write_best_grid)) then
+             if (write_best_grid) then
+                process%filename_best_grid = grids_filename // "b"
+                call write_best_grid_file (process%filename_best_grid, &
+                     process%id, &
+                     process%md5sum_grids, grid_parameters, &
+                     process%results, process%grids)
+             end if
+          end if
        end if
        if (print_current) then
           call integration_results_write_current (process%results)
           call integration_results_write_current (process%results, unit=u)
           if (u >= 0) flush (u)
        end if
-       call integration_results_write_driver (process%results, process%id)
+       if (present (history_filename)) then
+          call integration_results_write_driver &
+               (process%results, history_filename)
+       end if
+       if (present (log_filename)) then
+          call process_write_logfile (process, log_filename)
+       end if
     end do
   end subroutine process_integrate
+
+  function process_collect_md5sum (process, md5sum_global) &
+       result (md5sum_local)
+    type(md5sum_grids_t) :: md5sum_local
+    type(process_t), intent(in) :: process
+    type(md5sum_grids_t), intent(in) :: md5sum_global
+    md5sum_local = md5sum_global
+    md5sum_local%process = process%md5sum
+    md5sum_local%model = model_get_md5sum (process%model)
+    md5sum_local%parameters = model_get_parameters_md5sum (process%model)
+    md5sum_local%phs = process%md5sum_phs
+    md5sum_local%alpha_s = process%md5sum_alpha_s
+  end function process_collect_md5sum
 
   subroutine process_do_dummy_integration (process)
     type(process_t), intent(inout) :: process
@@ -3479,6 +3809,39 @@ contains
          process%type, 1, 1, 0, &
          0._default, 0._default, 0._default)
   end subroutine process_do_dummy_integration
+
+  subroutine process_skip_iterations (process, pass, it, n_skip)
+    type(process_t), intent(inout) :: process
+    integer, intent(in) :: pass, it, n_skip
+    integer :: i
+    do i = 1, n_skip
+       call integration_results_append_null (process%results, &
+            pass, it + i)
+    end do
+  end subroutine process_skip_iterations
+
+  subroutine process_choose_best_grid (process, check_grid_file)
+    type(process_t), intent(inout) :: process
+    logical, intent(in) :: check_grid_file
+    integer :: it_last, it_best
+    type(md5sum_grids_t) :: md5sum_local
+    type(integration_results_t) :: results_on_file
+    logical :: ok
+    it_last = integration_results_get_last_it (process%results)
+    it_best = integration_results_get_best_it (process%results)
+    if (it_best /= 0 .and. it_best /= it_last &
+         .and. process%filename_best_grid /= "") then
+       write (msg_buffer, "(A,A,A,I0)") &
+            "Process ", char (process%id), &
+            ": Using integration grids from iteration #", &
+            it_best
+       call msg_message
+       call read_grid_file (process%filename_best_grid, process%id, &
+            check_grid_file, process%md5sum_grids, process%grid_parameters, &
+            results_on_file, process%grids, &
+            process%pass_array, process%n_calls_array, ok)
+    end if
+  end subroutine process_choose_best_grid
 
   subroutine process_me_test &
        (process, rng, n_calls, time_in_seconds, sample_function_sum)
@@ -3575,19 +3938,7 @@ contains
     open (file = char (filename), unit = u, &
          action = "write", status = "replace")
     write (u, *) "process ", char (process_id)
-    write (u, *) "  md5sum_process     = ", '"', md5sum%process, '"'
-    write (u, *) "  md5sum_model       = ", '"', md5sum%model, '"'
-    write (u, *) "  md5sum_parameters  = ", '"', md5sum%parameters, '"'
-    write (u, *) "  md5sum_phase_space = ", '"', md5sum%phs, '"'
-    write (u, *) "  md5sum_beams       = ", '"', md5sum%beams, '"'
-    write (u, *) "  md5sum_sf_list     = ", '"', md5sum%sf_list, '"'
-    write (u, *) "  md5sum_mappings    = ", '"', md5sum%mappings, '"'
-    write (u, *) "  md5sum_cuts        = ", '"', md5sum%cuts, '"'
-    write (u, *) "  md5sum_weight      = ", '"', md5sum%weight, '"'
-    write (u, *) "  md5sum_scale       = ", '"', md5sum%scale, '"'
-    write (u, *) "  md5sum_fac_scale   = ", '"', md5sum%fac_scale, '"'
-    write (u, *) "  md5sum_ren_scale   = ", '"', md5sum%ren_scale, '"'    
-    write (u, *) "  md5sum_alpha_s     = ", '"', md5sum%alpha_s, '"'    
+    call md5sum_grids_write (md5sum, u)
     write (u, *)
     call grid_parameters_write (grid_parameters, u)
     write (u, *)
@@ -3598,10 +3949,11 @@ contains
     close (u)
   end subroutine write_grid_file
 
-  subroutine read_grid_file (filename, process_id, md5sum, &
-       grid_parameters, results, grids, &
+  subroutine read_grid_file (filename, process_id, &
+       check, md5sum, grid_parameters, results, grids, &
        pass, n_calls, ok)
     type(string_t), intent(in) :: filename, process_id
+    logical, intent(in) :: check
     type(md5sum_grids_t), intent(in) :: md5sum
     type(grid_parameters_t), intent(in) :: grid_parameters
     type(integration_results_t), intent(out) :: results
@@ -3616,6 +3968,9 @@ contains
     type(grid_parameters_t) :: grid_parameters_file
     type(integration_results_t) :: results_file
     ok = .false.
+    if (.not. check)  call msg_warning &
+         ("Validity checks turned off for grid file '" &
+         // char (filename) // "'")
     inquire (file = char (filename), exist = exist)
     if (.not. exist)  return
     call msg_message ("Reading integration grids and results from file '" &
@@ -3623,98 +3978,98 @@ contains
     u = free_unit ()
     open (file = char (filename), unit = u, action = "read", status = "old")
     read (u, *)  buffer
-    if (trim (adjustl (buffer)) /= "process") then
+    if (check .and. trim (adjustl (buffer)) /= "process") then
        call msg_fatal ("Grid file: missing 'process' tag")
        close (u);  return
     end if
     read (u, *)  buffer, equals, md5sum_file
-    if (md5sum_file /= md5sum%process) then
+    if (check .and. md5sum_file /= md5sum%process) then
        call msg_message &
             ("Process configuration has changed, discarding old grid file")
        close (u);  return
     end if
     read (u, *)  buffer, equals, md5sum_file
-    if (md5sum_file /= md5sum%model) then
+    if (check .and. md5sum_file /= md5sum%model) then
        call msg_message &
             ("Model has changed, discarding old grid file")
        close (u);  return
     end if
     read (u, *)  buffer, equals, md5sum_file
-    if (md5sum_file /= md5sum%parameters) then
+    if (check .and. md5sum_file /= md5sum%parameters) then
        call msg_message &
             ("Model parameters have changed, discarding old grid file")
        close (u);  return
     end if
     read (u, *)  buffer, equals, md5sum_file
-    if (md5sum_file /= md5sum%phs) then
+    if (check .and. md5sum_file /= md5sum%phs) then
        call msg_message &
             ("Phase-space setup has changed, discarding old grid file")
        close (u);  return
     end if
     read (u, *)  buffer, equals, md5sum_file
-    if (md5sum_file /= md5sum%beams) then
+    if (check .and. md5sum_file /= md5sum%beams) then
        call msg_message &
             ("Beam setup has changed, discarding old grid file")
        close (u);  return
     end if
     read (u, *)  buffer, equals, md5sum_file
-    if (md5sum_file /= md5sum%sf_list) then
+    if (check .and. md5sum_file /= md5sum%sf_list) then
        call msg_message &
             ("Structure-function setup has changed, discarding old grid file")
        close (u);  return
     end if
     read (u, *)  buffer, equals, md5sum_file
-    if (md5sum_file /= md5sum%mappings) then
+    if (check .and. md5sum_file /= md5sum%mappings) then
        call msg_message &
             ("Mapping scale parameters have changed, discarding old grid file")
        close (u);  return
     end if
     read (u, *)  buffer, equals, md5sum_file
-    if (md5sum_file /= md5sum%cuts) then
+    if (check .and. md5sum_file /= md5sum%cuts) then
        call msg_message &
             ("Cut configuration has changed, discarding old grid file")
        close (u);  return
     end if
     read (u, *)  buffer, equals, md5sum_file
-    if (md5sum_file /= md5sum%weight) then
+    if (check .and. md5sum_file /= md5sum%weight) then
        call msg_message &
             ("Weight expression has changed, discarding old grid file")
        close (u);  return
     end if
     read (u, *)  buffer, equals, md5sum_file
-    if (md5sum_file /= md5sum%scale) then
+    if (check .and. md5sum_file /= md5sum%scale) then
        call msg_message &
             ("General scale expression has changed, discarding old grid file")
        close (u);  return
     end if    
     read (u, *)  buffer, equals, md5sum_file
-    if (md5sum_file /= md5sum%fac_scale) then
+    if (check .and. md5sum_file /= md5sum%fac_scale) then
        call msg_message &
             ("Factorization scale expression has changed, discarding old grid file")
        close (u);  return
     end if
     read (u, *)  buffer, equals, md5sum_file
-    if (md5sum_file /= md5sum%ren_scale) then
+    if (check .and. md5sum_file /= md5sum%ren_scale) then
        call msg_message &
             ("Renormalization scale expression has changed, discarding old grid file")
        close (u);  return
     end if
     read (u, *)  buffer, equals, md5sum_file
-    if (md5sum_file /= md5sum%alpha_s) then
+    if (check .and. md5sum_file /= md5sum%alpha_s) then
        call msg_message &
             ("Alpha(QCD) specifications have changed, discarding old grid file")
        close (u);  return
     end if
     read (u, *)
     call grid_parameters_read (grid_parameters_file, u)
-    if (grid_parameters_file /= grid_parameters) then
+    if (check .and. grid_parameters_file /= grid_parameters) then
        call msg_message &
             ("Grid parameters have changed, discarding old grid file")
        close (u);  return
     end if
     read (u, *)
     call integration_results_read (results_file, u)
-    if (.not. integration_results_iterations_are_consistent &
+    if (check .and. .not. integration_results_iterations_are_consistent &
          (results_file, pass, n_calls)) then
        call msg_message &
             ("Iteration parameters have changed, discarding old grid file")
@@ -3727,24 +4082,50 @@ contains
     ok = .true.
   end subroutine read_grid_file
 
-  subroutine process_read_grid_file (process, filename, md5sum, &
-       grid_parameters, pass, n_calls, ok)
+  subroutine write_best_grid_file (filename, process_id, md5sum, &
+       grid_parameters, results, grids)
+    type(string_t), intent(in) :: filename, process_id
+    type(md5sum_grids_t), intent(in) :: md5sum
+    type(grid_parameters_t), intent(in) :: grid_parameters
+    type(integration_results_t), intent(in) :: results
+    type(vamp_grids), intent(in) :: grids
+    type(vamp_grids) :: grids_on_file
+    type(integration_results_t) :: results_on_file
+    integer :: it_current, it_best
+    logical :: ok
+    integer :: u
+    it_current = integration_results_get_current_it (results)
+    it_best = integration_results_get_best_it (results)
+    if (it_best == it_current) then
+       call write_grid_file (filename, process_id, md5sum, &
+            grid_parameters, results, grids)
+    end if
+  end subroutine write_best_grid_file
+
+  subroutine process_store_iteration_parameters &
+       (process, pass_array, n_calls_array)
+    type(process_t), intent(inout) :: process
+    integer, dimension(:), intent(in) :: pass_array, n_calls_array
+    allocate (process%pass_array (size (pass_array)))
+    process%pass_array = pass_array
+    allocate (process%n_calls_array (size (n_calls_array)))
+    process%n_calls_array = n_calls_array
+  end subroutine process_store_iteration_parameters
+
+  subroutine process_read_grid_file (process, filename, &
+       check_grid_file, md5sum, grid_parameters, pass, n_calls, ok)
     type(process_t), intent(inout) :: process
     type(string_t), intent(in) :: filename
+    logical, intent(in) :: check_grid_file
     type(md5sum_grids_t), intent(in) :: md5sum
     type(grid_parameters_t), intent(in) :: grid_parameters
     integer, dimension(:), intent(in) :: pass, n_calls
     logical, intent(out) :: ok
     type(md5sum_grids_t) :: md5sum_local
-    md5sum_local = md5sum
-    md5sum_local%process = process%md5sum
-    md5sum_local%model = model_get_md5sum (process%model)
-    md5sum_local%parameters = model_get_parameters_md5sum (process%model)
-    md5sum_local%phs = process%md5sum_phs
-    md5sum_local%alpha_s = process%md5sum_alpha_s
-    call read_grid_file (filename, process%id, md5sum_local, &
-         grid_parameters, process%results, process%grids, &
-         pass, n_calls, ok)
+    md5sum_local = process_collect_md5sum (process, md5sum)
+    call read_grid_file (filename, process%id, &
+         check_grid_file, md5sum_local, grid_parameters, &
+         process%results, process%grids, pass, n_calls, ok)
   end subroutine process_read_grid_file
 
   subroutine process_adapt_grids (process)
@@ -3809,6 +4190,7 @@ contains
     type(quantum_numbers_mask_t), intent(in), optional :: qn_mask_in
     integer, dimension(:), allocatable :: coll_index
     type(quantum_numbers_mask_t), dimension(:), allocatable :: mask_in
+    type(md5sum_grids_t) :: md5sum_local
     type(quantum_numbers_mask_t) :: mask_conn_sqme, mask_conn_flows
     type(evaluator_t), pointer :: eval_sfchain, eval_sqme, eval_flows
     type(interaction_t), pointer :: int_hi, int_beam
@@ -4107,6 +4489,18 @@ contains
     if (allocated (original%active_channel)) then
        allocate (copy%active_channel (size (original%active_channel)))
        copy%active_channel = original%active_channel
+    end if
+    copy%filename_current_grid = original%filename_current_grid
+    copy%filename_best_grid = original%filename_best_grid
+    copy%md5sum_grids = original%md5sum_grids
+    copy%grid_parameters = original%grid_parameters
+    if (allocated (original%pass_array)) then
+       allocate (copy%pass_array (size (original%pass_array)))
+       copy%pass_array = original%pass_array
+    end if
+    if (allocated (original%n_calls_array)) then
+       allocate (copy%n_calls_array (size (original%n_calls_array)))
+       copy%n_calls_array = original%n_calls_array
     end if
     call vamp_copy_grids (copy%grids, original%grids)
     beam_int => strfun_chain_get_beam_int_ptr (original%sfchain)
@@ -4424,13 +4818,13 @@ contains
   end function process_store_get_fresh_process_ptr
 
   subroutine process_store_init_process (process, &
-       prc_lib, process_id, model, lhapdf_status, var_list, &
+       prc_lib, process_id, model, var_list, &
        use_beams, allow_global_mapping)
     type(process_t), pointer :: process
     type(process_library_t), intent(inout), target :: prc_lib
     type(string_t), intent(in) :: process_id
     type(model_t), intent(in), target :: model
-    type(lhapdf_status_t), intent(inout) :: lhapdf_status
+    type(pdf_builtin_status_t) :: pdf_builtin_status
     type(var_list_t), intent(in), target :: var_list
     logical, intent(in) :: use_beams
     logical, intent(in), optional :: allow_global_mapping
@@ -4453,7 +4847,7 @@ contains
     call process_library_set_reload_hook (prc_lib, reload_hook)
     call process_init &
          (process, prc_lib, process_lib_index, process_store_index, &
-          process_id, model, lhapdf_status, var_list, use_beams)
+          process_id, model, var_list, use_beams)
     if (present (allow_global_mapping)) then
        if (allow_global_mapping)  call process_allow_global_mapping (process)
     end if
@@ -4524,7 +4918,7 @@ contains
     call syntax_phs_forest_init ()
     print *
     print *, "*** Create process library"
-    call var_list_append_string (var_list, name = "$library_name", sval = "prc_proc")
+    call var_list_append_string (var_list, name = "$library_name", sval = "prc_proc") ! $
     call var_list_append_log (var_list, name = "?read_color_factors", lval = .true.)
     call var_list_append_log (var_list, name = "?alpha_s_is_fixed", lval = .true.)
     call process_library_store_append (var_str ("prc_proc"), os_data, prc_lib)
@@ -4555,7 +4949,6 @@ contains
     type(process_t), pointer :: process
     type(string_t) :: objlist
     type(string_t), dimension(:), allocatable :: prt_in, prt_out
-    type(lhapdf_status_t) :: lhapdf_status
     type(os_data_t), intent(inout) :: os_data
     type(phs_parameters_t) :: phs_par
     type(mapping_defaults_t) :: mapping_defaults
@@ -4626,7 +5019,7 @@ contains
     call process_library_load (prc_lib, os_data, var_list = var_list)
     print *
     call process_store_init_process &
-         (process, prc_lib, var_str ("zff"), model, lhapdf_status, &
+         (process, prc_lib, var_str ("zff"), model, &
          var_list, use_beams = .true.)
     print *
     print *, "*** Beam/strfun setup (unpolarized)"
@@ -4669,7 +5062,7 @@ contains
     print *
     print *, "*** Beam/strfun setup (polarized)"
     call process_store_init_process &
-         (process, prc_lib, var_str ("zff"), model, lhapdf_status, &
+         (process, prc_lib, var_str ("zff"), model, &
          var_list, use_beams = .true.)
     call flavor_init (flv, (/ 23 /), model)
     call polarization_init_axis &
@@ -4718,7 +5111,6 @@ contains
     type(process_library_t), intent(inout) :: prc_lib
     type(model_t), intent(in), target :: model
     type(var_list_t), intent(in), target :: var_list
-    type(lhapdf_status_t) :: lhapdf_status
     type(string_t) :: objlist
     type(process_t), pointer :: process
     type(os_data_t), intent(inout) :: os_data
@@ -4739,7 +5131,7 @@ contains
     print *, "* Initialization"
     call tao_random_create (rng, 0)
     call process_store_init_process &
-         (process, prc_lib, var_str ("zqq"), model, lhapdf_status, &
+         (process, prc_lib, var_str ("zqq"), model, &
           var_list, use_beams=.false.)
     print *, "  Process ID = ", char (process%id)
     print *
@@ -4804,7 +5196,6 @@ contains
     type(process_library_t), intent(inout) :: prc_lib
     type(model_t), intent(in), target :: model
     type(var_list_t), intent(in), target :: var_list
-    type(lhapdf_status_t) :: lhapdf_status
     type(process_t), pointer :: process
     type(os_data_t), intent(inout) :: os_data
     type(phs_parameters_t) :: phs_par
@@ -4826,7 +5217,7 @@ contains
     print *, "* Initialization"
     call tao_random_create (rng, 0)
     call process_store_init_process &
-         (process, prc_lib, var_str ("nnh"), model, lhapdf_status, &
+         (process, prc_lib, var_str ("nnh"), model, &
          var_list, use_beams = .true.)
     print *, "  Process ID = ", char (process%id)
     print *
@@ -4894,7 +5285,6 @@ contains
     type(process_library_t), intent(inout) :: prc_lib
     type(model_t), intent(in), target :: model
     type(var_list_t), intent(in), target :: var_list
-    type(lhapdf_status_t) :: lhapdf_status
     type(process_t), pointer :: process
     type(os_data_t), intent(inout) :: os_data
     type(phs_parameters_t) :: phs_par
@@ -4902,6 +5292,7 @@ contains
     type(flavor_t), dimension(2) :: flv
     type(polarization_t), dimension(2) :: pol
     type(beam_data_t) :: beam_data
+    type(pdf_builtin_status_t) :: pdf_builtin_status
     type(pdf_builtin_data_t), dimension(2) :: data
     type(stream_t), target :: stream
     type(parse_tree_t) :: parse_tree
@@ -4915,7 +5306,7 @@ contains
     print *, "* Initialization"
     call tao_random_create (rng, 0)
     call process_store_init_process &
-         (process, prc_lib, var_str ("gguu"), model, lhapdf_status, &
+         (process, prc_lib, var_str ("gguu"), model, &
          var_list, use_beams = .true.)
     print *, "  Process ID = ", char (process%id)
     print *
@@ -4928,9 +5319,9 @@ contains
     call beam_data_init_sqrts (beam_data, 14000._default, flv, pol)
     !     call process_setup_beams (process, beam_data, 0, 0)
     call process_setup_beams (process, beam_data, 2, 0)
-    call pdf_builtin_init (data(1), model, flv(1), name = &
+    call pdf_builtin_init (data(1), pdf_builtin_status, model, flv(1), name = &
          var_str("cteq6l"), path = os_data%pdf_builtin_datapath)
-    call pdf_builtin_init (data(2), model, flv(2), name = &
+    call pdf_builtin_init (data(2), pdf_builtin_status, model, flv(2), name = &
          var_str("cteq6l"), path = os_data%pdf_builtin_datapath)
     call process_set_strfun (process, 1, 1, data(1), 1) 
     call process_set_strfun (process, 2, 2, data(2), 1)

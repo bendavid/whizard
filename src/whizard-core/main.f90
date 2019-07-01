@@ -1,6 +1,6 @@
-! WHIZARD 2.0.6 Wed Dec 7 2011
+! WHIZARD 2.0.7 Mar 19 2012
 ! 
-! Copyright (C) 1999-2011 by 
+! Copyright (C) 1999-2012 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -48,7 +48,7 @@ program main
   type(string_t) :: check, checks
   logical :: user_code_enable = .false.
   integer :: n_user_src = 0, n_user_lib = 0
-  type(string_t) :: user_src, user_lib
+  type(string_t) :: user_src, user_lib, user_target
   type(paths_t) :: paths
   logical :: rebuild_library, rebuild_user
   logical :: rebuild_phs, rebuild_grids, rebuild_events
@@ -74,6 +74,7 @@ program main
   checks = ""
   user_src = ""
   user_lib = ""
+  user_target = ""
   rebuild_library = .false.
   rebuild_user = .false.
   rebuild_phs = .false.
@@ -222,6 +223,9 @@ program main
               end if
               n_user_lib = n_user_lib + 1
               cycle SCAN_CMDLINE
+           case ("--user-target")
+              user_target = get_option_value (i, long_option, value)
+              cycle SCAN_CMDLINE
            case ("--write-syntax-tables")
               call no_option_value (long_option, value)
               call init_syntax_tables ()
@@ -317,7 +321,8 @@ program main
         paths=paths, &
         user_code_enable=user_code_enable, &
         n_user_src=n_user_src, user_src=user_src, &
-        n_user_lib=n_user_lib, user_lib=user_lib)
+        n_user_lib=n_user_lib, user_lib=user_lib, &
+        user_target=user_target)
 
 
    ! Run any self-checks (and no commands)
@@ -412,7 +417,7 @@ contains
 
   subroutine print_version ()
     print "(A)", "WHIZARD " // WHIZARD_VERSION 
-    print "(A)", "Copyright (C) 1999-2011 Wolfgang Kilian, Thorsten Ohl, Juergen Reuter,"
+    print "(A)", "Copyright (C) 1999-2012 Wolfgang Kilian, Thorsten Ohl, Juergen Reuter,"
     print "(A)", "                           Christian Speckner"
     print "(A)", "This is free software; see the source for copying conditions.  There is NO"
     print "(A)", "warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE."
@@ -455,6 +460,7 @@ contains
     print "(A)", "-u  --user            enable user-provided code"
     print "(A)", "    --user-src FILE   user-provided source file"
     print "(A)", "    --user-lib FILE   user-provided library file"
+    print "(A)", "    --user-target BN  basename of created user library (default: user)"
     print "(A)", "-V, --version         output version information and exit"
     print "(A)", "    --write-syntax-tables"
     print "(A)", "                      write the internal syntax tables to files and exit"

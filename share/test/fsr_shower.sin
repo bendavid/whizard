@@ -1,0 +1,73 @@
+# $Id: fsr_shower.sin 3765 2010-04-11 23:57:50Z jr_reuter $
+
+model = SM
+process fsr_shower_eeuu = e1, E1 => u, U
+alias j = u:d:s:c:U:D:S:C:g
+
+compile
+
+sqrts = 91 GeV
+beams = e1, E1
+
+?ps_fsr_active=true
+?ps_use_PYTHIA_shower = false
+
+ps_max_n_flavors = 5
+ps_mass_cutoff = 1
+ps_fsr_lambda = 0.29
+
+?mlm_matching = false
+
+cuts = all M > 80 GeV [combine[u,U]]
+       and all M < 100 GeV [combine[u,U]]
+
+!!! Tests should be run single-threaded 
+openmp_num_threads = 1
+
+integrate(fsr_shower_eeuu) { iterations = 2:2000 }
+
+n_events = 10
+
+?rebuild_events=true
+$sample = "fsr_shower"
+sample_format = lhef
+
+simulate(fsr_shower_eeuu)
+
+show(results)
+
+ms = 0
+mc = 0
+
+sqrts = 91 GeV
+beams = e1, E1
+
+?ps_fsr_active=true
+?ps_use_PYTHIA_shower = false
+
+ps_max_n_flavors = 5
+ps_mass_cutoff = 1
+ps_fsr_lambda = 0.29
+
+?mlm_matching = true
+mlm_ptmin = 10 GeV
+mlm_nmaxMEjets = 2
+mlm_Rmin = 1
+mlm_Emin = 10 GeV
+
+cuts = all E > mlm_Emin [j]
+       and all Dist > mlm_Rmin [j, j]
+
+seed = 1
+
+integrate(fsr_shower_eeuu) { iterations = 2:2000 }
+
+n_events = 10
+
+?rebuild_events=true
+$sample = "fsr_shower2"
+sample_format = lhef
+
+simulate(fsr_shower_eeuu)
+
+show(results)

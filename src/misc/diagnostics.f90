@@ -1,6 +1,6 @@
-! WHIZARD 2.0.6 Wed Dec 7 2011
+! WHIZARD 2.0.7 Mar 19 2012
 ! 
-! Copyright (C) 1999-2011 by 
+! Copyright (C) 1999-2012 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -373,7 +373,7 @@ subroutine message_print (level, string, str_arr, unit, logfile)
     integer, intent(in), optional :: unit
     character(len=*), intent(in), optional :: string
     type(string_t), dimension(:), intent(in), optional :: arr
-    logical, pointer :: crash_ptr => null ()
+    logical, pointer :: crash_ptr
     call message_print (BUG, string, arr, unit)
     call msg_summary (unit)
     select case (handle_fatal_errors)
@@ -382,6 +382,7 @@ subroutine message_print (level, string, str_arr, unit, logfile)
        call exit (-1_c_int)
     case (TERM_CRASH)
        print *, "*** Intentional crash ***"
+       crash_ptr => null ()
        print *, crash_ptr
     end select
     stop "WHIZARD run aborted."
@@ -391,7 +392,7 @@ subroutine message_print (level, string, str_arr, unit, logfile)
     integer, intent(in), optional :: unit
     character(len=*), intent(in), optional :: string
     type(string_t), dimension(:), intent(in), optional :: arr
-    logical, pointer :: crash_ptr => null ()
+    logical, pointer :: crash_ptr
     if (mask_fatal_errors) then
        call msg_error (string, arr, unit)
     else
@@ -403,6 +404,7 @@ subroutine message_print (level, string, str_arr, unit, logfile)
           call exit (1_c_int)
        case (TERM_CRASH)
           print *, "*** Intentional crash ***"
+          crash_ptr => null ()
           print *, crash_ptr
        end select
        stop "WHIZARD run aborted."

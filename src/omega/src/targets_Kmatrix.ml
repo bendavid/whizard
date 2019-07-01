@@ -1,8 +1,8 @@
-(* $Id: targets_Kmatrix.ml 2975 2011-01-25 14:04:43Z jr_reuter $
+(* $Id: targets_Kmatrix.ml 3670 2012-01-21 19:33:07Z jr_reuter $
 
-   Copyright (C) 1999-2011 by
+   Copyright (C) 1999-2012 by
 
-       Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+       Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
        Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
        Christian Speckner <christian.speckner@physik.uni-freiburg.de>
@@ -22,8 +22,8 @@
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
 let rcs_file = RCS.parse "Targets_Kmatrix" ["K-Matrix Support routines"]
-    { RCS.revision = "$Revision: 2975 $";
-      RCS.date = "$Date: 2011-01-25 15:04:43 +0100 (Tue, 25 Jan 2011) $";
+    { RCS.revision = "$Revision: 3670 $";
+      RCS.date = "$Date: 2012-01-21 20:33:07 +0100 (Sat, 21 Jan 2012) $";
       RCS.author = "$Author: jr_reuter $";
       RCS.source
         = "$URL: svn+ssh://jr_reuter@login.hepforge.org/hepforge/svn/whizard/trunk/src/omega/src/targets_Kmatrix.ml $" }

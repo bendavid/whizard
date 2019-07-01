@@ -1,8 +1,8 @@
-(* $Id: omega_Zprime.ml 2948 2010-12-24 03:25:57Z jr_reuter $
+(* $Id: omega_Zprime.ml 3670 2012-01-21 19:33:07Z jr_reuter $
 
-   Copyright (C) 1999-2011 by
+   Copyright (C) 1999-2012 by
 
-       Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+       Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
        Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
        Christian Speckner <christian.speckner@physik.uni-freiburg.de>
@@ -22,8 +22,8 @@
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
 let rcs_file = RCS.parse "omega_Zprime" ["Standard Model with Additional Vectors"]
-    { RCS.revision = "$Revision: 2948 $";
-      RCS.date = "$Date: 2010-12-24 04:25:57 +0100 (Fri, 24 Dec 2010) $";
+    { RCS.revision = "$Revision: 3670 $";
+      RCS.date = "$Date: 2012-01-21 20:33:07 +0100 (Sat, 21 Jan 2012) $";
       RCS.author = "$Author: jr_reuter $";
       RCS.source
         = "$Source: /home/sources/ohl/ml/omega/src/omega_Zprime.ml,v $" }

@@ -1,6 +1,6 @@
-! WHIZARD 2.0.6 Wed Dec 7 2011
+! WHIZARD 2.0.7 Mar 19 2012
 ! 
-! Copyright (C) 1999-2011 by 
+! Copyright (C) 1999-2012 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -30,10 +30,10 @@ module events
   use kinds, only: default !NODEP!
   use iso_varying_string, string_t => varying_string !NODEP!
   use limits, only: RAW_EVENT_FILE_ID_STRING !NODEP!
-  use limits, only: RAW_EVENT_FILE_VERSION !NODEP!
   use file_utils !NODEP!
   use diagnostics !NODEP!
   use tao_random_numbers !NODEP!
+  use pdf_builtin !NODEP!
   use os_interface
   use lexers
   use parser
@@ -201,6 +201,11 @@ contains
             (event%process, rng, event%vars%weight)
        event%vars%excess = 0
     end if
+    event%vars%n_in = process_get_n_in (event%process)
+    event%vars%n_out = process_get_n_out (event%process)
+    event%vars%n_tot = process_get_n_tot (event%process)
+    event%vars%sqrts = process_get_sqrts (event%process)
+    event%vars%sqrts_hat = process_get_sqrts_hat (event%process)
     event%vars%sqme = process_get_sqme (event%process)
     event%vars%sqme_ref = event%vars%sqme
     if (associated (event%decay_tree)) then
@@ -388,11 +393,12 @@ contains
     end if
   end function is_raw_event_file
 
-  subroutine raw_event_file_write_header (unit, md5sum)
+  subroutine raw_event_file_write_header (unit, md5sum, version)
     integer, intent(in) :: unit
     type(md5sum_events_t), intent(in) :: md5sum
+    integer, intent(in) :: version
     write (unit)  RAW_EVENT_FILE_ID_STRING
-    write (unit)  RAW_EVENT_FILE_VERSION
+    write (unit)  version
     write (unit)  size (md5sum%process)
     write (unit)  md5sum%process
     write (unit)  md5sum%parameters
@@ -402,69 +408,73 @@ contains
     write (unit)  md5sum%simulation
   end subroutine raw_event_file_write_header
 
-  subroutine raw_event_file_read_header (unit, rescan, md5sum, ok, iostat)
+  subroutine raw_event_file_read_header &
+       (unit, rescan, check, md5sum, version, ok, iostat)
     integer, intent(in) :: unit
-    logical, intent(in) :: rescan
+    logical, intent(in) :: rescan, check
     type(md5sum_events_t), intent(in) :: md5sum
+    integer, intent(in) :: version
     logical, intent(out) :: ok
     integer, intent(out), optional :: iostat
     character(len=len(RAW_EVENT_FILE_ID_STRING)) :: id_string
-    integer :: version, n
+    integer :: file_version, n
     character(32), dimension(:), allocatable :: md5sum_array
     character(32) :: md5sum_single
     logical :: unweighted
     ok = .false.
     read (unit, iostat=iostat)  id_string
-    if (id_string /= RAW_EVENT_FILE_ID_STRING) then
-       call msg_message &
-            ("File doesn't appear to be a WHIZARD raw event file, discarding")
+    if (check .and. id_string /= RAW_EVENT_FILE_ID_STRING) then
+       call msg_fatal &
+            ("File doesn't appear to be a WHIZARD raw event file")
        return
     end if
-    read (unit, iostat=iostat)  version
-    if (version /= RAW_EVENT_FILE_VERSION) then
-       call msg_message &
-            ("Event-file format version has changed, discarding old event file")
+    read (unit, iostat=iostat)  file_version
+    if (check .and. file_version /= version) then
+       call msg_fatal &
+            ("Event-file format version mismatch")
        return
     end if
     read (unit, iostat=iostat)  n
-    if (n /= size (md5sum%process)) then
+    if (check .and. n /= size (md5sum%process)) then
        call msg_message &
             ("Process number has changed, discarding old event file")
        return
     end if
     allocate (md5sum_array (n))
     read (unit, iostat=iostat)  md5sum_array
-    if (any (md5sum%process /= md5sum_array)) then
+    if (check .and. any (md5sum%process /= md5sum_array)) then
        call msg_message &
             ("Process configuration has changed, discarding old event file")
        return
     end if
     read (unit, iostat=iostat)  md5sum_array
-    if (.not. rescan .and. any (md5sum%parameters /= md5sum_array)) then
+    if (check .and. .not. rescan &
+         .and. any (md5sum%parameters /= md5sum_array)) then
        call msg_message &
             ("Model parameters have changed, discarding old event file")
        return
     end if
     read (unit, iostat=iostat)  md5sum_array
-    if (.not. rescan .and. any (md5sum%results /= md5sum_array)) then
+    if (check .and. .not. rescan &
+         .and. any (md5sum%results /= md5sum_array)) then
        call msg_message &
             ("Integration results have changed, skipping event file")
        return
     end if
     read (unit, iostat=iostat)  md5sum_array
-    if (any (md5sum%polarized /= md5sum_array)) then
+    if (check .and. any (md5sum%polarized /= md5sum_array)) then
        call msg_message &
             ("Polarization setup has changed, discarding old event file")
        return
     end if
     read (unit, iostat=iostat)  md5sum_single
-    if (.not. rescan .and. md5sum%decays /= md5sum_single) then
+    if (check .and. .not. rescan .and. md5sum%decays /= md5sum_single) then
        call msg_message &
             ("Decay configuration has changed, skipping event file")
        return
     end if
     read (unit, iostat=iostat)  md5sum_single
-    if (md5sum%simulation /= md5sum_single) then
+    if (check .and. md5sum%simulation /= md5sum_single) then
        call msg_message &
             ("Simulation parameters have changed, skipping event file")
        return
@@ -472,15 +482,16 @@ contains
     ok = .true.
   end subroutine raw_event_file_read_header
 
-  subroutine event_write_raw (event, unit)
+  subroutine event_write_raw (event, unit, version)
     type(event_t), intent(in) :: event
     integer, intent(in) :: unit
+    integer, intent(in) :: version
     if (event%is_valid) then
        if (.not. associated (event%process)) &
             call msg_bug ("Writing event: process not associated")
        if (.not. associated (event%vars)) &
             call msg_bug ("Writing event: event variables not associated")
-       call event_vars_write_raw (event%vars, unit)
+       call event_vars_write_raw (event%vars, unit, version)
        write (unit)  process_get_scale (event%process)       
        write (unit)  process_get_fac_scale (event%process)
        write (unit)  process_get_ren_scale (event%process)       
@@ -490,21 +501,23 @@ contains
   end subroutine event_write_raw
 
   subroutine event_read_raw &
-       (event, unit, event_vars, prc_array, num_id_array, iostat)
+       (event, unit, event_vars, prc_array, num_id_array, iostat, version)
     type(event_t), intent(out) :: event
     integer, intent(in) :: unit
     type(event_vars_t), intent(inout), target :: event_vars
     type(process_p), dimension(:), intent(in) :: prc_array
     integer, dimension(:), intent(in), optional :: num_id_array
     integer, intent(out) :: iostat
+    integer, intent(in) :: version
     integer :: proc
     type(process_t), pointer :: process
     real(default) :: scale, ren_scale, fac_scale, alpha_s, sqme
-    call event_vars_read_raw (event_vars, unit, iostat)
+    call event_vars_read_raw (event_vars, unit, iostat, version)
     if (iostat /= 0) return
     proc = event_vars%process_index
     if (proc > 0 .and. proc <= size (prc_array)) then
        process => prc_array(proc)%ptr
+       event_vars%process_id = process_get_id (process)
        if (present (num_id_array)) then
           event_vars%process_num_id = num_id_array(proc)
        else
@@ -517,7 +530,9 @@ contains
     call event_init (event, process, event_vars)
     event%is_valid = .true.
     read (unit, iostat=iostat)  scale    
+    if (iostat /= 0)  return
     read (unit, iostat=iostat)  fac_scale
+    if (iostat /= 0)  return
     read (unit, iostat=iostat)  ren_scale    
     if (iostat /= 0)  return
     read (unit, iostat=iostat)  alpha_s
@@ -576,7 +591,9 @@ contains
        if (alpha_s > 0)  call process_set_alpha_s (process, alpha_s)
        event_vars%event_index = hepmc_event_get_event_index (hepmc_event)
        event_vars%process_index = proc
+       event_vars%process_id = process_get_id (process)
        event_vars%process_num_id = num_id
+       event_vars%sqrts_hat = 0
        n_weights = hepmc_event_get_weights_size (hepmc_event)
        if (n_weights > 0) then
           event_vars%weight = hepmc_event_get_weight (hepmc_event, 1)
@@ -618,12 +635,13 @@ contains
     end if
   end subroutine event_write_to_hepmc
 
-  subroutine event_write_to_hepeup (event)
+  subroutine event_write_to_hepeup (event, keep_beams)
     type(event_t), intent(in) :: event
     integer :: proc_id
+    logical, intent(in), optional :: keep_beams  
     real(default) :: scale, alpha_qcd
     if (event%is_valid) then
-       call particle_set_fill_hepeup (event%particle_set)
+       call particle_set_fill_hepeup (event%particle_set, keep_beams)
        if (associated (event%process)) then
           call hepeup_set_event_parameters (proc_id = event%vars%process_num_id)
           scale = process_get_fac_scale (event%process)
@@ -639,6 +657,7 @@ contains
   subroutine event_assure_heprup (event)
     type(event_t), intent(in) :: event
     integer :: i
+    integer, parameter :: min_processes = 10
 
   integer, parameter :: MAXPUP = 100
   integer, parameter :: MAXNUP = 500
@@ -715,7 +734,7 @@ contains
          (/vector4_get_component(particle_get_momentum(particle_set_get_particle(event%particle_set, 1)), 0),&
          vector4_get_component(particle_get_momentum(particle_set_get_particle(event%particle_set, 1)), 0) /), &
          event%vars%process_num_id, .false., .false. )
-    do i=1, event%vars%process_num_id
+    do i=1, (event%vars%process_num_id/min_processes+1)*min_processes
        call heprup_set_process_parameters (i = i, process_id = &
             i, cross_section = 1._default, error = 1._default)
     end do
@@ -726,7 +745,7 @@ contains
     integer :: proc_id
     logical, intent(in), optional :: keep_beams  
     if (event%is_valid) then
-       call particle_set_fill_hepevt (event%particle_set)
+       call particle_set_fill_hepevt (event%particle_set, keep_beams)
        call hepevt_set_event_parameters ( &
             weight = event%vars%weight, &
             function_value = event%vars%sqme, &
@@ -771,12 +790,12 @@ contains
     call syntax_model_file_init ()
     call model_list_read_model &
          (var_str("SM"), var_str("SM.mdl"), os_data, model)
-    var_list = model_get_var_list_ptr (model)
+    var_list => model_get_var_list_ptr (model)
     call syntax_pexpr_init ()
     call syntax_phs_forest_init ()
     print *
     print *, "*** Load process library"
-    call var_list_append_string (var_list, name = "$library_name", sval = "test_me")
+    call var_list_append_string (var_list, name = "$library_name", sval = "test_me")  ! $
     call var_list_append_log (var_list, name = "?read_color_factors", lval = .true.)
     call var_list_append_log (var_list, name = "?alpha_s_is_fixed", lval = .true.)
     call process_library_init (prc_lib, var_str("test_me"), os_data)
@@ -799,7 +818,6 @@ contains
     type(process_library_t), intent(inout) :: prc_lib
     type(model_t), intent(in), target :: model
     type(var_list_t), target :: var_list
-    type(lhapdf_status_t) :: lhapdf_status
     type(process_t), pointer :: process
     type(os_data_t), intent(in) :: os_data
     type(phs_parameters_t) :: phs_par
@@ -821,7 +839,7 @@ contains
     print *, "* Initialization"
     call tao_random_create (rng, 0)
     call process_store_init_process &
-         (process, prc_lib, var_str ("test_me_unit_col"), model, lhapdf_status, &
+         (process, prc_lib, var_str ("test_me_unit_col"), model, &
          var_list, use_beams = .false.)
     print *, "  Process ID = ", char (process_get_id (process))
     print *

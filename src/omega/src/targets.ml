@@ -1,8 +1,8 @@
-(* $Id: targets.ml 3104 2011-04-02 10:31:01Z cnspeckn $
+(* $Id: targets.ml 3670 2012-01-21 19:33:07Z jr_reuter $
 
-   Copyright (C) 1999-2011 by
+   Copyright (C) 1999-2012 by
 
-       Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+       Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
        Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
        Christian Speckner <christian.speckner@physik.uni-freiburg.de>
@@ -23,9 +23,9 @@
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
 let rcs_file = RCS.parse "Targets" ["Code Generation"]
-    { RCS.revision = "$Revision: 3104 $";
-      RCS.date = "$Date: 2011-04-02 12:31:01 +0200 (Sat, 02 Apr 2011) $";
-      RCS.author = "$Author: cnspeckn $";
+    { RCS.revision = "$Revision: 3670 $";
+      RCS.date = "$Date: 2012-01-21 20:33:07 +0100 (Sat, 21 Jan 2012) $";
+      RCS.author = "$Author: jr_reuter $";
       RCS.source
         = "$URL: svn+ssh://jr_reuter@login.hepforge.org/hepforge/svn/whizard/trunk/src/omega/src/targets.ml $" }
 
@@ -2454,12 +2454,15 @@ i*)
       printf "subroutine reset_helicity_selection (threshold, cutoff)"; nl ();
       printf "    real(kind=%s), intent(in) :: threshold" !kind; nl ();
       printf "    integer, intent(in) :: cutoff"; nl ();
+      printf "    integer :: i"; nl ();
       printf "    hel_is_allowed = T"; nl ();
       printf "    hel_max_abs = 0"; nl ();
       printf "    hel_sum_abs = 0"; nl ();
       printf "    hel_count = 0"; nl ();
       printf "    hel_threshold = threshold"; nl ();
       printf "    hel_cutoff = cutoff"; nl ();
+      printf "    hel_map = (/(i, i = 1, n_hel)/)"; nl ();
+      printf "    hel_finite = n_hel"; nl ();
       printf "  end subroutine reset_helicity_selection"; nl ();
       nl ();
       printf "  @[<5>"; if !fortran95 then printf "pure ";

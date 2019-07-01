@@ -1,6 +1,6 @@
 ! $Id: parameters.QED.omega.f90,v 1.1 2004/03/11 04:21:17 kilian Exp $
 !
-! Copyright (C) 1999-2011 by 
+! Copyright (C) 1999-2012 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -75,7 +75,7 @@ contains
     ! width(23)   = 2.443_default        ! Z-boson width
     ! mass(24)    = 80.419_default       ! W-boson mass
     ! width(24)   = 2.049_default        ! W-boson width
-    mass(25)    = 200_default          ! Higgs mass
+    mass(25)    = 200._default          ! Higgs mass
     width(25)   = 1.419_default        ! Higgs width
 
     ttop = 4.0_default * mass(6)**2 / mass(25)**2

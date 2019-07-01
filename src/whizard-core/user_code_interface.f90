@@ -1,6 +1,6 @@
-! WHIZARD 2.0.6 Wed Dec 7 2011
+! WHIZARD 2.0.7 Mar 19 2012
 ! 
-! Copyright (C) 1999-2011 by 
+! Copyright (C) 1999-2012 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -55,6 +55,7 @@ module user_code_interface
 
   type(dlaccess_t), save :: user_lib_handle
   logical, save :: has_user_lib = .false.
+  type(string_t), save :: user
 
 
   interface
@@ -184,8 +185,9 @@ module user_code_interface
 
 contains
 
-  subroutine user_code_init (user_src, user_lib, rebuild, os_data)
+  subroutine user_code_init (user_src, user_lib, user_target, rebuild, os_data)
     type(string_t), dimension(:), intent(in) :: user_src, user_lib
+    type(string_t), intent(in) :: user_target
     logical, intent(in) :: rebuild
     type(os_data_t), intent(in) :: os_data
     type(string_t) :: user_src_file, user_obj_files, user_lib_file
@@ -193,8 +195,9 @@ contains
     type(c_funptr) :: fptr
     integer :: i
     call msg_message ("Initializing user code")
+    user = user_target;  if (user == "")  user = "user"
     user_obj_files = ""
-    inquire (file = "user.la", exist = exist)
+    inquire (file = char (user) // ".la", exist = exist)
     if (rebuild .or. .not. exist) then
        do i = 1, size (user_src)
           user_src_file = user_src(i) // os_data%fc_src_ext
@@ -228,7 +231,7 @@ contains
           user_obj_files = user_obj_files // " " // user_lib_file
        end do
        if (user_obj_files == "") then
-          user_src_file = "user" // os_data%fc_src_ext
+          user_src_file = user // os_data%fc_src_ext
           inquire (file = char (user_src_file), exist = exist)
           if (exist) then
              call msg_message ("Found user-code source '" &
@@ -240,17 +243,19 @@ contains
           end if
        end if
        if (user_obj_files /= "") then
-          call link_user ("user", user_obj_files)
+          call link_user (char (user), user_obj_files)
        end if
     end if
     call dlaccess_init &
          (user_lib_handle, var_str ("."), &
-          var_str ("user") // os_data%shlib_ext, os_data)
+          user // os_data%shlib_ext, os_data)
     if (dlaccess_has_error (user_lib_handle)) then
        call msg_error (char (dlaccess_get_error (user_lib_handle)))
-       call msg_fatal ("Loading user code library 'user.la' failed")
+       call msg_fatal ("Loading user code library '" // char (user) &
+            // ".la' failed")
     else
-       call msg_message ("User code library 'user.la' successfully loaded")
+       call msg_message ("User code library '" // char (user) &
+            // ".la' successfully loaded")
        has_user_lib = .true.
     end if
   contains
@@ -299,7 +304,7 @@ contains
     type(c_funptr) :: fptr
     integer :: i
     fptr = c_null_funptr
-    fptr = libmanager_get_c_funptr ("user", char (name))
+    fptr = libmanager_get_c_funptr (char (user), char (name))
     if (.not. c_associated (fptr)) then
        if (has_user_lib) then
           fptr = dlaccess_get_c_funptr (user_lib_handle, name)

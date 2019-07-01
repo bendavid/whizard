@@ -1,6 +1,6 @@
-! WHIZARD 2.0.6 Wed Dec 7 2011
+! WHIZARD 2.0.7 Mar 19 2012
 ! 
-! Copyright (C) 1999-2011 by 
+! Copyright (C) 1999-2012 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -650,7 +650,9 @@ contains
                   (/ var_str ("   --------------------------------------------"), &
                      var_str ("This happens when two density matrices are convoluted "), &
                      var_str ("but the processes they belong to (e.g., production "), &
-                     var_str ("and decay) do not match.  This may indicate a WHIZARD bug.") /) )
+                     var_str ("and decay) do not match. This could happen if the "), &
+                     var_str ("beam specification does not match the hard "), &
+                     var_str ("process. Or it may indicate a WHIZARD bug.") /) )
     end if
 
   contains

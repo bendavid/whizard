@@ -1,6 +1,6 @@
-! WHIZARD 2.0.6 Wed Dec 7 2011
+! WHIZARD 2.0.7 Mar 19 2012
 ! 
-! Copyright (C) 1999-2011 by 
+! Copyright (C) 1999-2012 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -256,7 +256,7 @@ contains
   
   subroutine rn_sub (r)
     double precision, intent(out) :: r
-    real(double) :: x
+    real(default) :: x
     call tao_random_number (rng_tmp, x)
     r = x
   end subroutine rn_sub
@@ -345,12 +345,10 @@ contains
     integer, dimension(2), intent(out) :: hel
     type(tao_random_state), pointer :: rng
     real(default), dimension(0:4) :: threshold
-    real(double) :: r
     real(default) :: x
     integer :: h1, h2
     integer :: h
-    call tao_random_number (rng, r)
-    x = r
+    call tao_random_number (rng, x)
     h = 0
     do h1 = -1, 1, 2
        do h2 = -1, 1, 2

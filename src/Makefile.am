@@ -2,7 +2,7 @@
 ##
 ## Process this file with automake to produce Makefile.in
 #
-# Copyright (C) 1999-2011 by 
+# Copyright (C) 1999-2012 by 
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
@@ -26,9 +26,8 @@
 
 ## Subdirectories to configure
 SUBDIRS = \
-  pythia matching hepmc lhapdf stdhep circe1 \
-  circe2 misc pdf_builtin vamp shower whizard-core prebuilt \
-  omega models 
+  pythia hepmc lhapdf stdhep circe1 circe2 misc pdf_builtin vamp \
+  shower whizard-core prebuilt omega models 
 if MPOST_AVAILABLE
 SUBDIRS += gamelan feynmf
 endif

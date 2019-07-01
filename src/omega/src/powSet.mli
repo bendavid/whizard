@@ -1,8 +1,8 @@
-(* $Id: powSet.mli 3468 2011-08-10 15:18:36Z sschmidt $
+(* $Id: powSet.mli 3750 2012-03-13 12:08:00Z sschmidt $
 
-   Copyright (C) 1999-2011 by
+   Copyright (C) 1999-2012 by
 
-       Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+       Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
        Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
        Christian Speckner <christian.speckner@physik.uni-freiburg.de>

@@ -4414,7 +4414,9 @@ obtained an estimate for the integral of the matrix element over phase space,
 together with an error estimate, and a set of integration \emph{grids} which
 contains all information on channel weights and bin boundaries.  This
 information is stored in a file \emph{xxx}\ttt{.vg}, where \emph{xxx} is the
-process tag, and is used for event generation by the \ttt{simulate} command.
+process tag, and is used for event generation by the \ttt{simulate}
+command.  (Actually, the grid with the best accuracy obtained so far
+is copied to \emph{xxx}\ttt{.vgb}, and this is used for simulation.)
 
 
 \subsection{Integration}
@@ -4604,6 +4606,46 @@ example.  It is based on the timing and efficiency estimate of the most recent
 iteration.
 
 
+\subsection{Integration run IDs}
+
+A single \sindarin\ script may contain multiple calls to the
+\ttt{integrate} command with different parameters.  By default,
+files generated for the same process in a subsequent integration will
+overwrite the previous ones.  This is undesirable when the script is
+re-run: all results that have been overwritten have to be recreated.
+
+To avoid this, the user may identify a specific run by a string-valued
+ID, e.g.
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+  integrate (foo) { $run_id = "first" }
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
+This ID will become part of the file name for all files that are
+created specifically for this run.  Often it is useful to create a run
+ID from a numerical value using \ttt{sprintd}, e.g., in this scan:
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+  scan mh = (100 => 200 /+ 10) {
+    $run_id = sprintd (mh)
+    integrate (h_production)
+  }
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
+For a finer control of the character string generated from a number,
+use \ttt{sprintf} instead.
+
+With unique run IDs, a subsequent run of the same \sindarin\ script
+will be able to reuse all previous results, even if there is more than
+a single integration per process.
+
+
+
+
 \subsection{Controlling iterations}
 
 \whizard\ has some predefined numbers of iterations and calls for the first
@@ -4654,6 +4696,24 @@ In the final pass, the default behavior is to further adapt grids, but not
 channel weights.  This can be changed by the parameters
 \verb|?adapt_final_grids| (default \ttt{true}) and 
 \verb|?adapt_final_weights| (default \ttt{false}).
+
+Since it is often not known beforehand how many iterations the grid
+adaptation will need, it is generally a good idea to give the first
+pass a large number of iterations.  However, in many cases these turn
+out to be not necessary.  To shortcut iterations, you can set any of
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+accuracy_goal
+error_goal
+relative_error_goal
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
+to a positive value.  If this is done, \whizard\ will skip warmup
+iterations once all of the specified goals are reached by the current
+iteration.  The final iterations (without weight adaptation) are
+always performed.
 
 
 \subsection{Phase space}
@@ -4780,6 +4840,28 @@ will also be used when the process is called by a subsequent \ttt{simulate};
 it is \ttt{integrate} which compiles the cut expression and stores it among
 the process data.  This behavior allows for scanning over parameters without
 redefining the cuts every time.
+
+The cut expression can make use of all variables and constructs that are
+defined at the point where it is evaluated.  In particular, it can make use of
+the particle content and kinematics of the hard process, as in the example
+above.  In addition to the predefined variables and those defined by the user,
+there are the following variables which depend on the hard process:
+\begin{quote}
+\begin{tabular}{ll}
+integer: & \ttt{n\_in}, \ttt{n\_out}, \ttt{n\_tot} \\
+real: & \ttt{sqrts}, \ttt{sqrts\_hat}
+\end{tabular}
+\end{quote}
+Example:
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+cuts = sqrts_hat > 150 GeV
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
+The constants \ttt{n\_in} etc.\ are sometimes useful if a generic set of cuts
+is defined, which applies to various processes simultaneously.
 
 The user is encouraged to define his own set of cuts, if possible in a
 process-independent manner, even if it is not required.  The \ttt{include}
@@ -4967,6 +5049,13 @@ sample and generate further events only when it is used up.  If necessary, you
 can suppress the writing/reading of the raw event file by the parameters
 \verb|?write_raw| and \verb|?read_raw|.
 
+If you try to reuse an event file that has been written by a previous version
+of \whizard, you may run into an incompatibility, which will be detected as an
+error.  If this happens, you may enforce a compatibility mode (also for
+writing) by setting \ttt{\$event\_file\_version} to the appropriate version
+string, e.g., \verb|"2.06"|.  Be aware that this may break some more recent
+features in the event analysis.
+
 There are two things that are usually done with an event sample.  It can be
 analyzed directly when it is generated or read, and it can be written to file
 in a standard format that a human or an external program can understand.  The
@@ -5146,6 +5235,30 @@ applies the analysis expression only to the selected events.  This
 allows for the simultaneous application of different selections to a
 single event sample.  The latter version applies the selection to all
 events before they are analyzed or written to file.
+
+The analysis expression can make use of all variables and constructs that are
+defined at the point where it is evaluated.  In particular, it can make use of
+the particle content and kinematics of the hard process, as in the example
+above.  In addition to the predefined variables and those defined by the user,
+there are the following variables which depend on the hard process.  Some of
+them are constants, some vary event by event:
+\begin{quote}
+\begin{tabular}{ll}
+integer: &\ttt{event\_index} \\
+integer: &\ttt{process\_index}, \ttt{process\_num\_id} \\
+string: &\ttt{\$process\_id} \\
+integer: &\ttt{n\_in}, \ttt{n\_out}, \ttt{n\_tot} \\
+real: &\ttt{sqrts}, \ttt{sqrts\_hat} \\
+real: &\ttt{sqme}, \ttt{sqme\_ref} \\
+real: &\ttt{event\_weight}, \ttt{event\_excess\_weight}
+\end{tabular}
+\end{quote}
+The process index refers to the current library, while \ttt{process\_num\_id}
+is the numeric ID as used by external programs; by default, the two are
+identical.  The \ttt{sqme} and \ttt{sqme\_ref} values indicate the squared
+matrix element and the reference squared matrix element, respectively.  The
+latter applies when comparing with a reference sample (the \ttt{rescan}
+command).
 
 \ttt{record} evaluates to a logical, so several \ttt{record} functions may
 be concatenated by the logical operators \ttt{and} or \ttt{or}.  However,
@@ -6599,17 +6712,19 @@ end subroutine user_sf_mask
     unspecified.  In the process, the spectrum interaction matches any
     helicity assignment, i.e., the particle is treated as
     unpolarized.  Default is 0.
-  \item[\ttt{i\_lock}]  If nonzero, this is the index of another
-    particle that shares the helicity with the current particle for
-    all allowed quantum states.  This is used to implement a helicity
-    conservation rule for fermions through the interaction described
-    by the spectrum.  The partner particle must point to the current
-    particle as well.  
+  \item[\ttt{i\_lock}]  If nonzero, this indicates a helicity
+    conservation rule.  The current particle (\ttt{i\_prt}) and the
+    particle with index \ttt{i\_lock} are declared to have the same
+    helicity.
 
-    The conservation rule is applied whenever a beam is declared as
-    unpolarized.  It tells the program that polarization is carried
-    through, so that it is the hard matrix element which is
-    effectively averaged over polarizations.  The default value is 0.
+    The particle with index \ttt{i\_lock} must have a correponding
+    entry pointing to index \ttt{i\_prt}.  Of course, the conservation
+    rule must be satisfied by all quantum-number combination.
+
+    (The conservation rule improves efficiency when a beam is declared as
+    unpolarized.  (De-)polarization is carried through the
+    structure-function chain, so that it is the hard matrix element
+    which is effectively averaged over polarizations.)
   \end{description}
 \item
   \ttt{user\_sf\_state}:\\
@@ -7674,6 +7789,23 @@ antiprotons as beam particles are predefined as \ttt{p} and
 p => lhapdf}. (cf. also \ttt{circe}, \ttt{circe2}, \ttt{lhapdf}).
 %%%%%
 \item
+\ttt{logical ?check\_events\_file}\\
+Setting this to false turns off all sanity checks when reading a raw
+event file with previously generated events.  Use this at your own
+risk; the program may return wrong results or crash if data do not match.
+\item
+\ttt{logical ?check\_grid\_file}\\
+Setting this to false turns off all sanity checks when reading a grid
+file with previous integration data.  Use this at your own risk; the
+program may return wrong results or crash if data do not match. 
+\item
+\ttt{logical ?check\_grid\_file}\\
+Setting this to false turns off all sanity checks when reading a
+previously generated phase-space configuration file.  Use this at your
+own risk; the program may return wrong results or crash if data do not
+match.
+%%%%%
+\item
 \ttt{int checkpoint}\\
 Setting this variable to a positive integer $n$ instructs simulate to
 print out a progress summary every $n$ events.
@@ -7925,7 +8057,9 @@ specified number of integrations and calls each.
 \item
  \ttt{?keep\_beams} \newline
  The logical variable \texttt{?keep\_beams = true/false} specifies whether
- beams are included when writing event files. 
+ beam particles and beam remnants are included when writing event files.
+ For example, in order to read Les Houches accord event files into \pythia,
+ no beam particles are allowed.
 %%%%%
 \item
  \ttt{keV} \newline

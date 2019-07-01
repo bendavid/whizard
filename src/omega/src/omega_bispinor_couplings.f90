@@ -1,7 +1,7 @@
-!  $Id: omegalib.nw 3251 2011-05-18 16:37:08Z ohl $
+!  $Id: omegalib.nw 3745 2012-03-10 20:44:32Z jr_reuter $
 !
 !  Copyright (C) 1999-2009 by 
-!      Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+!      Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !      Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !      Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
 !
@@ -61,13 +61,14 @@ module omega_bispinor_couplings
   public :: pj_psi, pg_psi
   integer, parameter, public :: omega_bispinor_cpls_2010_01_A = 0
 contains
-  pure function u (m, p, s) result (psi)
+  pure function u (mass, p, s) result (psi)
     type(bispinor) :: psi
-    real(kind=default), intent(in) :: m
+    real(kind=default), intent(in) :: mass
     type(momentum), intent(in) :: p
     integer, intent(in) :: s
     complex(kind=default), dimension(2) :: chip, chim
-    real(kind=default) :: pabs, norm, delta
+    real(kind=default) :: pabs, norm, delta, m
+    m = abs(mass)
     pabs = sqrt (dot_product (p%x, p%x))
     if (m < epsilon (m) * pabs) then
         delta = 0 
@@ -94,15 +95,20 @@ contains
        psi%a(3:4) = delta * chim
     end if
     pabs = m ! make the compiler happy and use m
+    if (mass < 0) then
+       psi%a(1:2) = - imago * psi%a(1:2)
+       psi%a(3:4) = + imago * psi%a(3:4)
+    end if
   end function u
-  pure function v (m, p, s) result (psi)
+  pure function v (mass, p, s) result (psi)
     type(bispinor) :: psi
-    real(kind=default), intent(in) :: m
+    real(kind=default), intent(in) :: mass
     type(momentum), intent(in) :: p
     integer, intent(in) :: s
     complex(kind=default), dimension(2) :: chip, chim
-    real(kind=default) :: pabs, norm, delta
+    real(kind=default) :: pabs, norm, delta, m
     pabs = sqrt (dot_product (p%x, p%x))
+    m = abs(mass)
     if (m < epsilon (m) * pabs) then
         delta = 0 
     else
@@ -128,6 +134,10 @@ contains
        psi%a(3:4) = - sqrt (p%t + pabs) * chip
     end if
     pabs = m ! make the compiler happy and use m
+    if (mass < 0) then
+       psi%a(1:2) = - imago * psi%a(1:2)
+       psi%a(3:4) = + imago * psi%a(3:4)
+    end if 
   end function v
   pure function ghost (m, p, s) result (psi) 
       type(bispinor) :: psi

@@ -1,6 +1,6 @@
-! WHIZARD 2.0.6 Wed Dec 7 2011
+! WHIZARD 2.0.7 Mar 19 2012
 ! 
-! Copyright (C) 1999-2011 by 
+! Copyright (C) 1999-2012 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -166,28 +166,28 @@ contains
     type(circe1_data_t), intent(in) :: circe1_data 
     logical, dimension(6) :: mask_h
     type(quantum_numbers_mask_t), dimension(6) :: mask 
-    integer, dimension(6) :: lock 
+    integer, dimension(6) :: hel_lock 
     type(polarization_t) :: pol1, pol2
     type(quantum_numbers_t), dimension(1) :: qn_fc1, qn_hel1, qn_fc2, qn_hel2
     type(flavor_t) :: flv_photon
     type(quantum_numbers_t) :: qn_photon, qn1, qn2
     type(quantum_numbers_t), dimension(6) :: qn
     type(state_iterator_t) :: it_hel1, it_hel2
-    lock = 0
+    hel_lock = 0
     mask_h = .false.
     if (circe1_data%photon(1)) then
-       lock(1) = 3;  lock(3) = 1;  mask_h(5) = .true.
+       hel_lock(1) = 3;  hel_lock(3) = 1;  mask_h(5) = .true.
     else
-       lock(1) = 5;  lock(5) = 1;  mask_h(3) = .true.
+       hel_lock(1) = 5;  hel_lock(5) = 1;  mask_h(3) = .true.
     end if
     if (circe1_data%photon(2)) then
-       lock(2) = 4;  lock(4) = 2;  mask_h(6) = .true.
+       hel_lock(2) = 4;  hel_lock(4) = 2;  mask_h(6) = .true.
     else
-       lock(2) = 6;  lock(6) = 2;  mask_h(4) = .true.
+       hel_lock(2) = 6;  hel_lock(6) = 2;  mask_h(4) = .true.
     end if
     mask = new_quantum_numbers_mask (.false., .false., mask_h)
     call interaction_init & 
-         (int, 2, 0, 4, mask=mask, lock=lock, set_relations=.true.) 
+         (int, 2, 0, 4, mask=mask, hel_lock=hel_lock, set_relations=.true.) 
     call flavor_init (flv_photon, PHOTON, circe1_data%model)
     call quantum_numbers_init (qn_photon, flv_photon)
     call polarization_init_generic (pol1, circe1_data%flv_in(1))
@@ -250,7 +250,7 @@ contains
  
   subroutine rn_sub (r)
     double precision, intent(out) :: r
-    real(double) :: x
+    real(default) :: x
     call tao_random_number (rng_tmp, x)
     r = x
   end subroutine rn_sub
@@ -259,21 +259,23 @@ contains
     logical, dimension(2), intent(in) :: anti
     logical, dimension(2), intent(in) :: photon
     real(default), dimension(2), intent(out) :: x
+    real(double), dimension(2) :: xdum
     type(tao_random_state), intent(in), target :: rng
-    rng_tmp => rng
+    rng_tmp => rng    
     if (all (photon)) then
-       call gircgg (x(1), x(2), rn_sub)
+       call gircgg (xdum(1), xdum(2), rn_sub)
     else if (photon(2)) then
-       call girceg (x(1), x(2), rn_sub)
+       call girceg (xdum(1), xdum(2), rn_sub)
     else if (photon(1)) then
-       call girceg (x(2), x(1), rn_sub)
+       call girceg (xdum(2), xdum(1), rn_sub)
     else if (.not. anti(1) .and. anti(2)) then
-       call gircee (x(1), x(2), rn_sub)
+       call gircee (xdum(1), xdum(2), rn_sub)
     else if (anti(1) .and. .not. anti(2)) then
-       call gircee (x(2), x(1), rn_sub)
+       call gircee (xdum(2), xdum(1), rn_sub)
     else
        call msg_bug ("CIRCE1: impossible flavor assigment")
     end if
+    x = xdum
     rng_tmp => null ()
   end subroutine circe_generate
     

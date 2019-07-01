@@ -1,6 +1,6 @@
 ! circe2.f90 -- beam spectra for linear colliders and photon colliders
 ! $Id: circe2.nw,v 1.56 2002/10/14 10:12:06 ohl Exp $
-! Copyright (C) 2001-2011 by 
+! Copyright (C) 2001-2012 by 
 !      Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !      Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !      Juergen Reuter <juergen.reuter@desy.de>

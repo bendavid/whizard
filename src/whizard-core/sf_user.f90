@@ -1,6 +1,6 @@
-! WHIZARD 2.0.6 Wed Dec 7 2011
+! WHIZARD 2.0.7 Mar 19 2012
 ! 
-! Copyright (C) 1999-2011 by 
+! Copyright (C) 1999-2012 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -170,7 +170,7 @@ contains
     type(interaction_t), intent(out) :: inter
     type(sf_user_data_t), intent(in) :: data
     type(quantum_numbers_mask_t), dimension(:), allocatable :: mask
-    integer, dimension(:), allocatable :: lock
+    integer, dimension(:), allocatable :: hel_lock
     integer(c_int) :: m_flv, m_hel, m_col, i_lock
     type(quantum_numbers_t), dimension(:), allocatable :: qn
     integer(c_int) :: f, h
@@ -181,7 +181,7 @@ contains
     integer :: i, s
     integer(c_int) :: i_prt, i_state
     allocate (mask (data%n_tot))
-    allocate (lock (data%n_tot))
+    allocate (hel_lock (data%n_tot))
     allocate (qn (data%n_tot))
     allocate (c (data%n_col))
     do i = 1, size (mask)
@@ -189,10 +189,10 @@ contains
        m_flv = 0;  m_col = 0;  m_hel = 0;  i_lock = 0
        call data%mask (i_prt, m_flv, m_col, m_hel, i_lock)
        mask(i) = new_quantum_numbers_mask (m_flv /= 0, m_col /= 0, m_hel /= 0)
-       lock(i) = i_lock
+       hel_lock(i) = i_lock
     end do
     call interaction_init &
-         (inter, data%n_in, 0, data%n_out, mask=mask, lock=lock, &
+         (inter, data%n_in, 0, data%n_out, mask=mask, hel_lock=hel_lock, &
           set_relations=.true.)
     do s = 1, data%n_states
        i_state = s

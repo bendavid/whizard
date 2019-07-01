@@ -1,6 +1,6 @@
-(* $Id: modellib_SM.mli 3611 2011-11-29 16:27:29Z jr_reuter $
+(* $Id: modellib_SM.mli 3699 2012-02-24 09:37:54Z fbach $
 
-   Copyright (C) 1999-2011 by
+   Copyright (C) 1999-2012 by
 
        Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
@@ -38,6 +38,7 @@ module type SM_flags =
     val k_matrix : bool
     val ckm_present : bool
     val top_anom : bool
+    val top_anom_4f : bool
   end
 
 module SM_no_anomalous : SM_flags

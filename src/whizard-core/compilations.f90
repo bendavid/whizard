@@ -1,6 +1,6 @@
-! WHIZARD 2.0.6 Wed Dec 7 2011
+! WHIZARD 2.0.7 Mar 19 2012
 ! 
-! Copyright (C) 1999-2011 by 
+! Copyright (C) 1999-2012 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -119,7 +119,7 @@ contains
           user_procs%obs_real_binary)
     call splice &
          (var_list_get_sval (var_list, var_str ("$user_procs_sf")), &
-          user_procs%sf)
+          user_procs%sf)                                               ! $
     call write_library_manager (comp%libname, user_procs)
     call compile_library_manager (os_data)
     flags = ""

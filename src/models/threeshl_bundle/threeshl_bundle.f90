@@ -1,6 +1,6 @@
-! $Id: threeshl_bundle.f90 3635 2011-12-07 15:12:20Z fbach $
+! $Id: threeshl_bundle.f90 3670 2012-01-21 19:33:07Z jr_reuter $
 !
-! Copyright (C) 1999-2011 by
+! Copyright (C) 1999-2012 by
 !    Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !    Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !    Juergen Reuter <juergen.reuter@desy.de>

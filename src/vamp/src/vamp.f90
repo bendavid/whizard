@@ -1543,6 +1543,8 @@ contains
           imax = i - 1
           exit iterations
        end if
+       ! *JR: Skip zero channel
+       if (h(i)%f_max==0) cycle
        if (h(i)%stratified) then
           s = "*"
        else

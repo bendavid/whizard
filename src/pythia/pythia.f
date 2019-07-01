@@ -1672,7 +1672,7 @@ C...Default values for main switches and parameters. Reset information.
      5  0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
      6  0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
      7  0,    2,    0,    0,    0,    0,    0,    0,    0,    0,
-     8  6,  425, 2011,   03,   23,    0,    0,    0,    0,    0,
+     8  6,  426, 2011,   11,   16,    0,    0,    0,    0,    0,
      9  0,    0,    0,    0,    0,    0,    0,    0,    0,    0/
       DATA (PARP(I),I=1,100)/
      &  0.25D0,  10D0, 8*0D0,
@@ -13604,8 +13604,12 @@ C...Commonblocks.
       COMMON/PYISMX/MIMX,JSMX,KFLAMX,KFLCMX,KFBEAM(2),NISGEN(2,240),
      &     PT2MX,PT2AMX,ZMX,RM2CMX,Q2BMX,PHIMX
       COMMON/PYISJN/MJN1MX,MJN2MX,MJOIND(2,240)
+C...Max size of hard system = HEPEUP size
+      INTEGER MAXNUP
+      PARAMETER (MAXNUP=500)
 C...Local arrays and saved variables.
-      DIMENSION VINTSV(11:80),KSAV(4,5),PSAV(4,5),VSAV(4,5),SHAT(240)
+      DIMENSION VINTSV(11:80),KSAV(MAXNUP,5),PSAV(MAXNUP,5),
+     &     VSAV(MAXNUP,5),SHAT(240)
       SAVE NSAV,NPARTS,M15SV,M16SV,M21SV,M22SV,VINTSV,SHAT,ISUBHD,ALAM3
      &     ,PSAV,KSAV,VSAV
  
@@ -13629,7 +13633,7 @@ C...Store hard scattering variables
           VINTSV(J)=VINT(J)
   100   CONTINUE
         DO 120 J=1,5
-          DO 110 IS=1,4
+          DO 110 IS=1,NSAV-MINT(84)
             I=IS+MINT(84)
             PSAV(IS,J)=P(I,J)
             KSAV(IS,J)=K(I,J)
@@ -13669,7 +13673,7 @@ C...Reset hard scattering variables
           VINT(J)=VINTSV(J)
   130   CONTINUE
         DO 150 J=1,5
-          DO 140 IS=1,4
+          DO 140 IS=1,NSAV-MINT(84)
             I=IS+MINT(84)
             P(I,J)=PSAV(IS,J)
             K(I,J)=KSAV(IS,J)
@@ -18015,7 +18019,7 @@ CMRENNA--
             K(N+3,9-ISID)=MSTU(5)*(N+2)
           ENDIF
            
-          NSAV=N
+CXXX      NSAV=N
           
 C...Set colour flow in three-body decays with baryon number violation.
 C...Neutralino and chargino decays first.
@@ -36529,7 +36533,8 @@ C...Mrenna...Normalization.and.1/XMT
      &      (UH*TH-SQM3*SQM4)/XMT**2 )*RMSS(42)**2
             FACQQB=COMFAC*AS**2*4D0/9D0*(
      &      (UH*TH-SQM3*SQM4)/SH2 )
-            FACQQI=-COMFAC*AS**2*4D0/27D0*(
+C...Mrenna..Switched sign to agree with Eichten, Dawson, etc.
+            FACQQI=COMFAC*AS**2*4D0/27D0*(
      &      (UH*TH-SQM3*SQM4)/SH/XMT )*RMSS(42)
             FACQQB=FACQQB+FACQQ1+FACQQI
           ELSE
@@ -46189,7 +46194,7 @@ C...Date of last Change
 C...Local arrays and initial values
       DIMENSION IDC(5),KFSUSY(50)
       SAVE KFSUSY
-C      DATA NQNUM /0/
+C     DATA NQNUM /0/        C Change by WHIZARD due to nagfor error
       DATA NDECAY /0/
       DATA VERBOS /1/
       DATA NHELLO /0/
@@ -46915,7 +46920,13 @@ C...  Flip sign if reading antiparticle decays (if antipartner exists)
      &               IDC(IDA)=MPSIGN*IDC(IDA)
   340         CONTINUE
 C...Switch on decay channel, with products ordered in decreasing ABS(KF)
-              MDME(NDC,1)=1
+C             MDME(NDC,1)=1
+              IF(MDME(NDC,1).LT.0.AND.MDME(NDC,1).GE.-5) THEN
+                MDME(NDC,1)=-MDME(NDC,1)
+              ELSE
+                MDME(NDC,1)=1
+              ENDIF
+
               IF (BRAT(NDC).LE.0D0) MDME(NDC,1)=0
               BRSUM=BRSUM+ABS(BRAT(NDC))
               BRAT(NDC)=ABS(BRAT(NDC))
@@ -61487,7 +61498,7 @@ C...Presets for a few specific underlying-event and min-bias tunes
 C...Note some tunes require external pdfs to be linked (e.g. 105:QW),
 C...others require particular versions of pythia (e.g. the SCI and GAL
 C...models). See below for details.
-      SUBROUTINE PYTUNE(ITUNE)
+      SUBROUTINE PYTUNE(MYTUNE)
 C
 C ITUNE    NAME (detailed descriptions below)
 C     0 Default : No settings changed => defaults.
@@ -61884,7 +61895,7 @@ C...SAVE statements
 C...Internal parameters
       PARAMETER(MXTUNS=500)
       CHARACTER*8 CHDOC
-      PARAMETER (CHDOC='Mar 2011')
+      PARAMETER (CHDOC='Nov 2011')
       CHARACTER*16 CHNAMS(0:MXTUNS), CHNAME
       CHARACTER*42 CHMSTJ(50), CHMSTP(100), CHPARP(100),
      &    CHPARJ(100), CHMSTU(101:121), CHPARU(101:121), CH40
@@ -62000,9 +62011,9 @@ C...Internal parameters
 C...1) Shorthand notation
       M13=MSTU(13)
       M11=MSTU(11)
-      IF (ITUNE.LE.MXTUNS.AND.ITUNE.GE.0) THEN
-        CHNAME=CHNAMS(ITUNE)
-        IF (ITUNE.EQ.0) GOTO 9999
+      IF (MYTUNE.LE.MXTUNS.AND.MYTUNE.GE.0) THEN
+        CHNAME=CHNAMS(MYTUNE)
+        IF (MYTUNE.EQ.0) GOTO 9999
       ELSE
         CALL PYERRM(9,'(PYTUNE:) Tune number > max. Using defaults.')
         GOTO 9999
@@ -62021,6 +62032,7 @@ C... No K-factor
       MSTP(33) =  0
 
 C...3) Tune parameters
+      ITUNE = MYTUNE
  
 C=======================================================================
 C...ATLAS MC08
@@ -80162,62 +80174,62 @@ C...on incoming beams and allowed processes.
 
 C...New example: handles a standard Les Houches Events File.
 
-C      SUBROUTINE UPINIT
-C 
-CC...Double precision and integer declarations.
-C      IMPLICIT DOUBLE PRECISION(A-H, O-Z)
-C      IMPLICIT INTEGER(I-N)
-C 
-CC...PYTHIA commonblock: only used to provide read unit MSTP(161).
-C      COMMON/PYPARS/MSTP(200),PARP(200),MSTI(200),PARI(200)
-C      SAVE /PYPARS/
-C 
-CC...User process initialization commonblock.
-C      INTEGER MAXPUP
-C      PARAMETER (MAXPUP=100)
-C      INTEGER IDBMUP,PDFGUP,PDFSUP,IDWTUP,NPRUP,LPRUP
-C      DOUBLE PRECISION EBMUP,XSECUP,XERRUP,XMAXUP
-C      COMMON/HEPRUP/IDBMUP(2),EBMUP(2),PDFGUP(2),PDFSUP(2),
-C     &IDWTUP,NPRUP,XSECUP(MAXPUP),XERRUP(MAXPUP),XMAXUP(MAXPUP),
-C     &LPRUP(MAXPUP)
-C      SAVE /HEPRUP/
-C
-CC...Lines to read in assumed never longer than 200 characters. 
-C      PARAMETER (MAXLEN=200)
-C      CHARACTER*(MAXLEN) STRING
-C
-CC...Format for reading lines.
-C      CHARACTER*6 STRFMT
-C      STRFMT='(A000)'
-C      WRITE(STRFMT(3:5),'(I3)') MAXLEN
-C
-CC...Loop until finds line beginning with "<init>" or "<init ". 
-C  100 READ(MSTP(161),STRFMT,END=130,ERR=130) STRING
-C      IBEG=0
-C  110 IBEG=IBEG+1
-CC...Allow indentation.
-C      IF(STRING(IBEG:IBEG).EQ.' '.AND.IBEG.LT.MAXLEN-5) GOTO 110 
-C      IF(STRING(IBEG:IBEG+5).NE.'<init>'.AND.
-C     &STRING(IBEG:IBEG+5).NE.'<init ') GOTO 100
-C
-CC...Read first line of initialization info.
-C      READ(MSTP(161),*,END=130,ERR=130) IDBMUP(1),IDBMUP(2),EBMUP(1),
-C     &EBMUP(2),PDFGUP(1),PDFGUP(2),PDFSUP(1),PDFSUP(2),IDWTUP,NPRUP
-C
-CC...Read NPRUP subsequent lines with information on each process.
-C      DO 120 IPR=1,NPRUP
-C        READ(MSTP(161),*,END=130,ERR=130) XSECUP(IPR),XERRUP(IPR),
-C     &  XMAXUP(IPR),LPRUP(IPR)
-C  120 CONTINUE
-C      RETURN
-C
-CC...Error exit: give up if initalization does not work.
-C  130 WRITE(*,*) ' Failed to read LHEF initialization information.'
-C      WRITE(*,*) ' Event generation will be stopped.'
-C      CALL PYSTOP(12)
-C 
-C      RETURN
-C      END
+c$$$      SUBROUTINE UPINIT
+c$$$ 
+c$$$C...Double precision and integer declarations.
+c$$$      IMPLICIT DOUBLE PRECISION(A-H, O-Z)
+c$$$      IMPLICIT INTEGER(I-N)
+c$$$ 
+c$$$C...PYTHIA commonblock: only used to provide read unit MSTP(161).
+c$$$      COMMON/PYPARS/MSTP(200),PARP(200),MSTI(200),PARI(200)
+c$$$      SAVE /PYPARS/
+c$$$ 
+c$$$C...User process initialization commonblock.
+c$$$      INTEGER MAXPUP
+c$$$      PARAMETER (MAXPUP=100)
+c$$$      INTEGER IDBMUP,PDFGUP,PDFSUP,IDWTUP,NPRUP,LPRUP
+c$$$      DOUBLE PRECISION EBMUP,XSECUP,XERRUP,XMAXUP
+c$$$      COMMON/HEPRUP/IDBMUP(2),EBMUP(2),PDFGUP(2),PDFSUP(2),
+c$$$     &IDWTUP,NPRUP,XSECUP(MAXPUP),XERRUP(MAXPUP),XMAXUP(MAXPUP),
+c$$$     &LPRUP(MAXPUP)
+c$$$      SAVE /HEPRUP/
+c$$$
+c$$$C...Lines to read in assumed never longer than 200 characters. 
+c$$$      PARAMETER (MAXLEN=200)
+c$$$      CHARACTER*(MAXLEN) STRING
+c$$$
+c$$$C...Format for reading lines.
+c$$$      CHARACTER*6 STRFMT
+c$$$      STRFMT='(A000)'
+c$$$      WRITE(STRFMT(3:5),'(I3)') MAXLEN
+c$$$
+c$$$C...Loop until finds line beginning with "<init>" or "<init ". 
+c$$$  100 READ(MSTP(161),STRFMT,END=130,ERR=130) STRING
+c$$$      IBEG=0
+c$$$  110 IBEG=IBEG+1
+c$$$C...Allow indentation.
+c$$$      IF(STRING(IBEG:IBEG).EQ.' '.AND.IBEG.LT.MAXLEN-5) GOTO 110 
+c$$$      IF(STRING(IBEG:IBEG+5).NE.'<init>'.AND.
+c$$$     &STRING(IBEG:IBEG+5).NE.'<init ') GOTO 100
+c$$$
+c$$$C...Read first line of initialization info.
+c$$$      READ(MSTP(161),*,END=130,ERR=130) IDBMUP(1),IDBMUP(2),EBMUP(1),
+c$$$     &EBMUP(2),PDFGUP(1),PDFGUP(2),PDFSUP(1),PDFSUP(2),IDWTUP,NPRUP
+c$$$
+c$$$C...Read NPRUP subsequent lines with information on each process.
+c$$$      DO 120 IPR=1,NPRUP
+c$$$        READ(MSTP(161),*,END=130,ERR=130) XSECUP(IPR),XERRUP(IPR),
+c$$$     &  XMAXUP(IPR),LPRUP(IPR)
+c$$$  120 CONTINUE
+c$$$      RETURN
+c$$$
+c$$$C...Error exit: give up if initalization does not work.
+c$$$  130 WRITE(*,*) ' Failed to read LHEF initialization information.'
+c$$$      WRITE(*,*) ' Event generation will be stopped.'
+c$$$      CALL PYSTOP(12)
+c$$$ 
+c$$$      RETURN
+c$$$      END
 
 C...Old example: handles a simple Pythia 6.4 initialization file.
  
@@ -80282,64 +80294,64 @@ C...HEPEUP commonblock, including (often) an event weight.
 
 C...New example: handles a standard Les Houches Events File.
 
-C      SUBROUTINE UPEVNT
-C 
-CC...Double precision and integer declarations.
-C      IMPLICIT DOUBLE PRECISION(A-H, O-Z)
-C      IMPLICIT INTEGER(I-N)
-C 
-CC...PYTHIA commonblock: only used to provide read unit MSTP(162).
-C      COMMON/PYPARS/MSTP(200),PARP(200),MSTI(200),PARI(200)
-C      SAVE /PYPARS/
-C 
-CC...User process event common block.
-C      INTEGER MAXNUP
-C      PARAMETER (MAXNUP=500)
-C      INTEGER NUP,IDPRUP,IDUP,ISTUP,MOTHUP,ICOLUP
-C      DOUBLE PRECISION XWGTUP,SCALUP,AQEDUP,AQCDUP,PUP,VTIMUP,SPINUP
-C      COMMON/HEPEUP/NUP,IDPRUP,XWGTUP,SCALUP,AQEDUP,AQCDUP,IDUP(MAXNUP),
-C     &ISTUP(MAXNUP),MOTHUP(2,MAXNUP),ICOLUP(2,MAXNUP),PUP(5,MAXNUP),
-C     &VTIMUP(MAXNUP),SPINUP(MAXNUP)
-C      SAVE /HEPEUP/
-C
-CC...Lines to read in assumed never longer than 200 characters. 
-C      PARAMETER (MAXLEN=200)
-C      CHARACTER*(MAXLEN) STRING
-C
-CC...Format for reading lines.
-C      CHARACTER*6 STRFMT
-C      STRFMT='(A000)'
-C      WRITE(STRFMT(3:5),'(I3)') MAXLEN
-C
-CC...Loop until finds line beginning with "<event>" or "<event ". 
-C  100 READ(MSTP(162),STRFMT,END=130,ERR=130) STRING
-C      IBEG=0
-C  110 IBEG=IBEG+1
-CC...Allow indentation.
-C      IF(STRING(IBEG:IBEG).EQ.' '.AND.IBEG.LT.MAXLEN-6) GOTO 110 
-C      IF(STRING(IBEG:IBEG+6).NE.'<event>'.AND.
-C     &STRING(IBEG:IBEG+6).NE.'<event ') GOTO 100
-C
-CC...Read first line of event info.
-C      READ(MSTP(162),*,END=130,ERR=130) NUP,IDPRUP,XWGTUP,SCALUP,
-C     &AQEDUP,AQCDUP
-C
-CC...Read NUP subsequent lines with information on each particle.
-C      DO 120 I=1,NUP
-C        READ(MSTP(162),*,END=130,ERR=130) IDUP(I),ISTUP(I),
-C     &  MOTHUP(1,I),MOTHUP(2,I),ICOLUP(1,I),ICOLUP(2,I),
-C     &  (PUP(J,I),J=1,5),VTIMUP(I),SPINUP(I)
-C  120 CONTINUE
-C      RETURN
-C
-CC...Error exit, typically when no more events.
-C  130 WRITE(*,*) ' Failed to read LHEF event information.'
-C      WRITE(*,*) ' Will assume end of file has been reached.'
-C      NUP=0
-C      MSTI(51)=1
-C 
-C      RETURN
-C      END
+c$$$      SUBROUTINE UPEVNT
+c$$$ 
+c$$$C...Double precision and integer declarations.
+c$$$      IMPLICIT DOUBLE PRECISION(A-H, O-Z)
+c$$$      IMPLICIT INTEGER(I-N)
+c$$$ 
+c$$$C...PYTHIA commonblock: only used to provide read unit MSTP(162).
+c$$$      COMMON/PYPARS/MSTP(200),PARP(200),MSTI(200),PARI(200)
+c$$$      SAVE /PYPARS/
+c$$$ 
+c$$$C...User process event common block.
+c$$$      INTEGER MAXNUP
+c$$$      PARAMETER (MAXNUP=500)
+c$$$      INTEGER NUP,IDPRUP,IDUP,ISTUP,MOTHUP,ICOLUP
+c$$$      DOUBLE PRECISION XWGTUP,SCALUP,AQEDUP,AQCDUP,PUP,VTIMUP,SPINUP
+c$$$      COMMON/HEPEUP/NUP,IDPRUP,XWGTUP,SCALUP,AQEDUP,AQCDUP,IDUP(MAXNUP),
+c$$$     &ISTUP(MAXNUP),MOTHUP(2,MAXNUP),ICOLUP(2,MAXNUP),PUP(5,MAXNUP),
+c$$$     &VTIMUP(MAXNUP),SPINUP(MAXNUP)
+c$$$      SAVE /HEPEUP/
+c$$$
+c$$$C...Lines to read in assumed never longer than 200 characters. 
+c$$$      PARAMETER (MAXLEN=200)
+c$$$      CHARACTER*(MAXLEN) STRING
+c$$$
+c$$$C...Format for reading lines.
+c$$$      CHARACTER*6 STRFMT
+c$$$      STRFMT='(A000)'
+c$$$      WRITE(STRFMT(3:5),'(I3)') MAXLEN
+c$$$
+c$$$C...Loop until finds line beginning with "<event>" or "<event ". 
+c$$$  100 READ(MSTP(162),STRFMT,END=130,ERR=130) STRING
+c$$$      IBEG=0
+c$$$  110 IBEG=IBEG+1
+c$$$C...Allow indentation.
+c$$$      IF(STRING(IBEG:IBEG).EQ.' '.AND.IBEG.LT.MAXLEN-6) GOTO 110 
+c$$$      IF(STRING(IBEG:IBEG+6).NE.'<event>'.AND.
+c$$$     &STRING(IBEG:IBEG+6).NE.'<event ') GOTO 100
+c$$$
+c$$$C...Read first line of event info.
+c$$$      READ(MSTP(162),*,END=130,ERR=130) NUP,IDPRUP,XWGTUP,SCALUP,
+c$$$     &AQEDUP,AQCDUP
+c$$$
+c$$$C...Read NUP subsequent lines with information on each particle.
+c$$$      DO 120 I=1,NUP
+c$$$        READ(MSTP(162),*,END=130,ERR=130) IDUP(I),ISTUP(I),
+c$$$     &  MOTHUP(1,I),MOTHUP(2,I),ICOLUP(1,I),ICOLUP(2,I),
+c$$$     &  (PUP(J,I),J=1,5),VTIMUP(I),SPINUP(I)
+c$$$  120 CONTINUE
+c$$$      RETURN
+c$$$
+c$$$C...Error exit, typically when no more events.
+c$$$  130 WRITE(*,*) ' Failed to read LHEF event information.'
+c$$$      WRITE(*,*) ' Will assume end of file has been reached.'
+c$$$      NUP=0
+c$$$      MSTI(51)=1
+c$$$ 
+c$$$      RETURN
+c$$$      END
 
 C...Old example: handles a simple Pythia 6.4 event file.
  
@@ -80413,33 +80425,33 @@ C...The user decision is to be conveyed by the IVETO value.
 C...IVETO = 0 : retain current event and generate in full;
 C...      = 1 : abort generation of current event and move to next.
  
-C      SUBROUTINE UPVETO(IVETO)
-C 
-CC...HEPEVT commonblock.
-C      PARAMETER (NMXHEP=4000)
-C      COMMON/HEPEVT/NEVHEP,NHEP,ISTHEP(NMXHEP),IDHEP(NMXHEP),
-C     &JMOHEP(2,NMXHEP),JDAHEP(2,NMXHEP),PHEP(5,NMXHEP),VHEP(4,NMXHEP)
-C      DOUBLE PRECISION PHEP,VHEP
-C      SAVE /HEPEVT/
-C 
-CC...Next few lines allow you to see what info PYVETO extracted from
-CC...the full event record for the first two events.
-CC...Delete if you don't want it.
-C      DATA NLIST/0/
-C      SAVE NLIST
-C      IF(NLIST.LE.2) THEN
-C        WRITE(*,*) ' Full event record at time of UPVETO call:'
-C        CALL PYLIST(1)
-C        WRITE(*,*) ' Part of event record made available to UPVETO:'
-C        CALL PYLIST(5)
-C        NLIST=NLIST+1
-C      ENDIF
-C 
-CC...Make decision here.
-C      IVETO = 0
-C 
-C      RETURN
-C      END
+c$$$      SUBROUTINE UPVETO(IVETO)
+c$$$ 
+c$$$C...HEPEVT commonblock.
+c$$$      PARAMETER (NMXHEP=4000)
+c$$$      COMMON/HEPEVT/NEVHEP,NHEP,ISTHEP(NMXHEP),IDHEP(NMXHEP),
+c$$$     &JMOHEP(2,NMXHEP),JDAHEP(2,NMXHEP),PHEP(5,NMXHEP),VHEP(4,NMXHEP)
+c$$$      DOUBLE PRECISION PHEP,VHEP
+c$$$      SAVE /HEPEVT/
+c$$$ 
+c$$$C...Next few lines allow you to see what info PYVETO extracted from
+c$$$C...the full event record for the first two events.
+c$$$C...Delete if you don't want it.
+c$$$      DATA NLIST/0/
+c$$$      SAVE NLIST
+c$$$      IF(NLIST.LE.2) THEN
+c$$$        WRITE(*,*) ' Full event record at time of UPVETO call:'
+c$$$        CALL PYLIST(1)
+c$$$        WRITE(*,*) ' Part of event record made available to UPVETO:'
+c$$$        CALL PYLIST(5)
+c$$$        NLIST=NLIST+1
+c$$$      ENDIF
+c$$$ 
+c$$$C...Make decision here.
+c$$$      IVETO = 0
+c$$$ 
+c$$$      RETURN
+c$$$      END
  
 C*********************************************************************
  

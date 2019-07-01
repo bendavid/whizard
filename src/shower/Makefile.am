@@ -18,7 +18,7 @@ if FC_IS_NAG
 AM_FFLAGS += -dcfuns -w
 AM_FCFLAGS += -dcfuns -w
 endif
-libshower_la_SOURCES = pythia_up.f shower_basics_module.f90 shower_parton_module.f90 shower_module.f90 shower_topythia.f90 matching_helper.f90
+libshower_la_SOURCES = pythia_up.f shower_basics_module.f90 shower_parton_module.f90 shower_module.f90 shower_topythia.f90 mlm_matching_module.f90
 libshower_dummy_la_SOURCES = shower_dummy.f90
 
 ## Fortran module dependencies

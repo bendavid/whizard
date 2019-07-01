@@ -1,6 +1,6 @@
-! WHIZARD 2.0.6 Wed Dec 7 2011
+! WHIZARD 2.0.7 Mar 19 2012
 ! 
-! Copyright (C) 1999-2011 by 
+! Copyright (C) 1999-2012 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -79,6 +79,7 @@ module quantum_numbers
   public :: quantum_numbers_mask_set_flavor
   public :: quantum_numbers_mask_set_color
   public :: quantum_numbers_mask_set_helicity
+  public :: quantum_numbers_mask_assign
   public :: any
   public :: operator(.or.)
   public :: operator(.eqv.)
@@ -749,6 +750,30 @@ contains
        if (.not. mask%h)  mask%hd = mask_hd
     end if
   end subroutine quantum_numbers_mask_set_helicity
+
+  elemental subroutine quantum_numbers_mask_assign &
+       (mask, mask_in, flavor, color, helicity)
+    type(quantum_numbers_mask_t), intent(inout) :: mask
+    type(quantum_numbers_mask_t), intent(in) :: mask_in
+    logical, intent(in), optional :: flavor, color, helicity
+    if (present (flavor)) then
+       if (flavor) then
+          mask%f = mask_in%f
+       end if
+    end if
+    if (present (color)) then
+       if (color) then
+          mask%c = mask_in%c
+          mask%cg = mask_in%cg
+       end if
+    end if
+    if (present (helicity)) then
+       if (helicity) then
+          mask%h = mask_in%h
+          mask%hd = mask_in%hd
+       end if
+    end if
+  end subroutine quantum_numbers_mask_assign
 
   function quantum_numbers_mask_any (mask) result (match)
     logical :: match

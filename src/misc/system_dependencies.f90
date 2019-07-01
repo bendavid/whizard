@@ -1,6 +1,6 @@
 ! WHIZARD <<Version>> <<Date>>
 ! 
-! Copyright (C) 1999-2011 by 
+! Copyright (C) 1999-2012 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -36,46 +36,46 @@ module system_dependencies
   public
  
   ! Program version
-  character(*), parameter :: WHIZARD_VERSION = "2.0.6"
-  character(*), parameter :: WHIZARD_DATE = "Dec 7 2011"
+  character(*), parameter :: WHIZARD_VERSION = "2.0.7"
+  character(*), parameter :: WHIZARD_DATE = "Mar 19 2012"
 
   ! System paths
   ! These are used for testing without existing installation
   character(*), parameter :: WHIZARD_TEST_AUX_MODPATH = &
-       "/data/reuter/trunk/build/src/misc"
+       "/Users/reuter/local/packages/whizard/trunk/build/src/misc"
   character(*), parameter :: WHIZARD_TEST_MODELS_MODPATH = &
-       "/data/reuter/trunk/build/src/models"
+       "/Users/reuter/local/packages/whizard/trunk/build/src/models"
   character(*), parameter :: WHIZARD_TEST_OMEGA_MODPATH = &
-       "/data/reuter/trunk/build/src/omega/src"
+       "/Users/reuter/local/packages/whizard/trunk/build/src/omega/src"
   character(*), parameter :: WHIZARD_TEST_CORE_MODPATH = &
-       "/data/reuter/trunk/build/src/whizard-core"
+       "/Users/reuter/local/packages/whizard/trunk/build/src/whizard-core"
   character(*), parameter :: WHIZARD_TEST_CORE_LIBPATH = &
-       "/data/reuter/trunk/build/src/whizard-core"
+       "/Users/reuter/local/packages/whizard/trunk/build/src/whizard-core"
   character(*), parameter :: WHIZARD_TEST_OMEGA_BINPATH = &
-       "/data/reuter/trunk/build/src/omega/bin"
+       "/Users/reuter/local/packages/whizard/trunk/build/src/omega/bin"
   character(*), parameter :: WHIZARD_TEST_SRC_LIBPATH = &
-       "/data/reuter/trunk/build/src"
+       "/Users/reuter/local/packages/whizard/trunk/build/src"
   character(*), parameter :: WHIZARD_TEST_HEPMC_LIBPATH = &
-       "/data/reuter/trunk/build/src/hepmc"
+       "/Users/reuter/local/packages/whizard/trunk/build/src/hepmc"
   character(*), parameter :: WHIZARD_TEST_MODELPATH = &
-       "/data/reuter/trunk/share/models"
+       "/Users/reuter/local/packages/whizard/trunk/share/models"
   character(*), parameter :: WHIZARD_TEST_MODELS_LIBPATH = &
-       "/data/reuter/trunk/build/src/models"
+       "/Users/reuter/local/packages/whizard/trunk/build/src/models"
   character(*), parameter :: WHIZARD_TEST_SUSYPATH = &
-       "/data/reuter/trunk/share/susy"
+       "/Users/reuter/local/packages/whizard/trunk/share/susy"
   character(*), parameter :: WHIZARD_TEST_GMLPATH= &
-       "/data/reuter/trunk/build/src/gamelan"
+       "/Users/reuter/local/packages/whizard/trunk/build/src/gamelan"
   character(*), parameter :: WHIZARD_TEST_CUTSPATH = &
-       "/data/reuter/trunk/share/cuts"
+       "/Users/reuter/local/packages/whizard/trunk/share/cuts"
   character(*), parameter :: WHIZARD_TEST_TESTDATAPATH = &
-       "/data/reuter/trunk/share/test"
+       "/Users/reuter/local/packages/whizard/trunk/share/test"
   character(*), parameter :: WHIZARD_TEST_TEXPATH = ""
   character(*), parameter :: WHIZARD_TEST_CIRCE2PATH = &
-       "/data/reuter/trunk/src/circe2/share/data"
+       "/Users/reuter/local/packages/whizard/trunk/src/circe2/share/data"
   character(*), parameter :: WHIZARD_TEST_BEAMSIMPATH = &
-       "/data/reuter/trunk/share/beam-sim"
+       "/Users/reuter/local/packages/whizard/trunk/share/beam-sim"
   character(*), parameter :: PDF_BUILTIN_TEST_DATAPATH = &
-       "/data/reuter/trunk/share/pdf_builtin"
+       "/Users/reuter/local/packages/whizard/trunk/share/pdf_builtin"
 
   ! WHIZARD-specific include flags
   character(*), parameter :: WHIZARD_TEST_INCLUDES = &
@@ -89,17 +89,17 @@ module system_dependencies
       "-L" // WHIZARD_TEST_CORE_LIBPATH // " " // &
       "-L" // WHIZARD_TEST_SRC_LIBPATH // " " // &
       "-L" // WHIZARD_TEST_HEPMC_LIBPATH // " " // &
-       "-lwhizard_main -lwhizard -lomega -L/opt/whizard/lib -lHepMC"
+       "-lwhizard_main -lwhizard -lomega -lHepMC"
 
   ! Libtool
   character(*), parameter :: WHIZARD_LIBTOOL_TEST = &
-       "/data/reuter/trunk/build/libtool"
+       "/Users/reuter/local/packages/whizard/trunk/build/libtool"
 
 
   ! System paths
   ! These are used for the installed version
   character(*), parameter :: PREFIX = &
-       "/data/reuter/trunk/inst"
+       "/Users/reuter/local"
   character(*), parameter :: EXEC_PREFIX = &
        "${prefix}"
   character(*), parameter :: BINDIR = &
@@ -159,7 +159,7 @@ module system_dependencies
   ! WHIZARD-specific link flags
   character(*), parameter :: WHIZARD_LDFLAGS = &
       "-L" // WHIZARD_OMEGA_LIBPATH // " " // &
-       "-lwhizard_main -lwhizard -lomega -L/opt/whizard/lib -lHepMC"
+       "-lwhizard_main -lwhizard -lomega -lHepMC"
 
   ! Libtool
   character(*), parameter :: WHIZARD_LIBTOOL = &
@@ -172,7 +172,7 @@ module system_dependencies
   character(*), parameter :: DEFAULT_FCFLAGS = &
        " -fopenmp -g -O2"
   character(*), parameter :: DEFAULT_FCFLAGS_PIC = &
-       " -fPIC"
+       " -fno-common"
   character(*), parameter :: DEFAULT_FC_SRC_EXT = &
        ".f90"
   character(*), parameter :: DEFAULT_OBJ_EXT = &
@@ -180,19 +180,19 @@ module system_dependencies
 
   ! Linker
   character(*), parameter :: DEFAULT_LD = &
-       "/usr/bin/ld -m elf_x86_64"
+       "/opt/local/bin/ld"
   character(*), parameter :: DEFAULT_LDFLAGS = &
        ""
   character(*), parameter :: DEFAULT_LDFLAGS_SO = "-shared"
   character(*), parameter :: DEFAULT_LDFLAGS_STATIC = &
        "-lstdc++"
   character(*), parameter :: DEFAULT_LDFLAGS_HEPMC = &
-       "-L/opt/whizard/lib -lHepMC"
+       "-lHepMC"
   character(*), parameter :: DEFAULT_SHLIB_EXT = ".so"
 
   ! LHAPDF library
   character(*), parameter :: LHAPDF_PDFSETS_PATH = &
-       "/afs/desy.de/group/theorie/software/ELF64/share/lhapdf/PDFsets"
+       "/usr/local/share/lhapdf/PDFsets"
 
   ! Available methods for event analysis display
   character(*), parameter :: EVENT_ANALYSIS = &
@@ -251,7 +251,7 @@ contains
   
   function openmp_get_default_max_threads () result (num)
     integer :: num
-    num = 16
+    num = 8
   end function openmp_get_default_max_threads
 
 end module system_dependencies

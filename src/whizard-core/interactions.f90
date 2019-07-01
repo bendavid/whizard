@@ -1,6 +1,6 @@
-! WHIZARD 2.0.6 Wed Dec 7 2011
+! WHIZARD 2.0.7 Mar 19 2012
 ! 
-! Copyright (C) 1999-2011 by 
+! Copyright (C) 1999-2012 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -136,7 +136,7 @@ module interactions
      type(internal_link_list_t), dimension(:), allocatable :: children
      logical, dimension(:), allocatable :: resonant
      type(quantum_numbers_mask_t), dimension(:), allocatable :: mask
-     integer, dimension(:), allocatable :: lock
+     integer, dimension(:), allocatable :: hel_lock
      logical :: update_state_matrix = .false.
      logical :: update_values = .false.
   end type interaction_t
@@ -299,13 +299,13 @@ contains
 
   subroutine interaction_init &
        (int, n_in, n_vir, n_out, &
-        tag, resonant, mask, lock, set_relations, store_values)
+        tag, resonant, mask, hel_lock, set_relations, store_values)
     type(interaction_t), intent(out) :: int
     integer, intent(in) :: n_in, n_vir, n_out
     integer, intent(in), optional :: tag
     logical, dimension(:), intent(in), optional :: resonant
     type(quantum_numbers_mask_t), dimension(:), intent(in), optional :: mask
-    integer, dimension(:), intent(in), optional :: lock
+    integer, dimension(:), intent(in), optional :: hel_lock
     logical, intent(in), optional :: set_relations, store_values
     logical :: set_rel
     integer :: i, j
@@ -329,14 +329,14 @@ contains
        int%resonant = .false.
     end if
     allocate (int%mask (int%n_tot))
-    allocate (int%lock (int%n_tot))
+    allocate (int%hel_lock (int%n_tot))
     if (present (mask)) then
        int%mask = mask
     end if
-    if (present (lock)) then
-       int%lock = lock
+    if (present (hel_lock)) then
+       int%hel_lock = hel_lock
     else
-       int%lock = 0
+       int%hel_lock = 0
     end if
     int%update_state_matrix = .false.
     int%update_values = .true.
@@ -435,9 +435,9 @@ contains
              end do
              write (u, *)
           end if
-          if (allocated (int%lock)) then
-             if (int%lock(i) /= 0) then
-                write (u, "(1x,A,1x,I0)")  "lock:", int%lock(i)
+          if (allocated (int%hel_lock)) then
+             if (int%hel_lock(i) /= 0) then
+                write (u, "(1x,A,1x,I0)")  "helicity lock:", int%hel_lock(i)
              end if
           end if
           if (external_link_is_set (int%source(i))) then
@@ -506,9 +506,9 @@ contains
        allocate (int_out%mask (size (int_in%mask)))
        int_out%mask = int_in%mask
     end if
-    if (allocated (int_in%lock)) then
-       allocate (int_out%lock (size (int_in%lock)))
-       int_out%lock = int_in%lock
+    if (allocated (int_in%hel_lock)) then
+       allocate (int_out%hel_lock (size (int_in%hel_lock)))
+       int_out%hel_lock = int_in%hel_lock
     end if
     int_out%update_state_matrix = int_in%update_state_matrix
     int_out%update_values = int_in%update_values
@@ -952,11 +952,15 @@ contains
     type(interaction_t), intent(inout) :: int
     integer, intent(in) :: i
     type(quantum_numbers_mask_t), intent(in) :: mask
+    type(quantum_numbers_mask_t) :: mask_tmp
     integer :: ii
     ii = idx (int, i)
     if (int%mask(ii) .neqv. mask) then
        int%mask(ii) = int%mask(ii) .or. mask
-       if (int%lock(ii) /= 0)  int%mask(int%lock(ii)) = mask
+       if (int%hel_lock(ii) /= 0) then
+          call quantum_numbers_mask_assign (mask_tmp, mask, helicity=.true.)
+          int%mask(int%hel_lock(ii)) = int%mask(int%hel_lock(ii)) .or. mask_tmp
+       end if
     end if
     int%update_state_matrix = .true.
   end subroutine interaction_merge_mask_entry

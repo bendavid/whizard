@@ -1,7 +1,7 @@
-!  $Id: omegalib.nw 3251 2011-05-18 16:37:08Z ohl $
+!  $Id: omegalib.nw 3745 2012-03-10 20:44:32Z jr_reuter $
 !
 !  Copyright (C) 1999-2009 by 
-!      Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+!      Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !      Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !      Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
 !
@@ -33,16 +33,17 @@ module omega_vspinor_polarizations
   private :: outer_product  
   integer, parameter, public :: omega_vspinor_pols_2010_01_A = 0
 contains
-  pure function eps (m, k, s) result (e)
+  pure function eps (mass, k, s) result (e)
     type(vector) :: e
-    real(kind=default), intent(in) :: m
+    real(kind=default), intent(in) :: mass
     type(momentum), intent(in) :: k
     integer, intent(in) :: s
-    real(kind=default) :: kabs, kabs2, sqrt2
+    real(kind=default) :: kabs, kabs2, sqrt2, m
     real(kind=default) :: cos_phi, sin_phi, cos_th, sin_th
     complex(kind=default) :: epiphi, emiphi
     sqrt2 = sqrt (2.0_default)
     kabs2 = dot_product (k%x, k%x)
+    m = abs(mass)
     if (kabs2 > 0) then
        kabs = sqrt (kabs2)
        if ((k%x(1) == 0) .and. (k%x(2) == 0)) then

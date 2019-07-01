@@ -2,7 +2,7 @@
 ##
 ## Process this file with automake to produce Makefile.in
 #
-# Copyright (C) 1999-2011 by 
+# Copyright (C) 1999-2012 by 
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
@@ -31,6 +31,7 @@ SUBDIRS = doc susy models cuts beam-sim test examples
 ## to be installed with the 'models' prefix kept
 modelsdir = $(pkgdatadir)/models
 dist_models_DATA = \
+  models/2HDM.mdl \
   models/GravTest.mdl \
   models/Littlest_Eta.mdl \
   models/Littlest_Tpar.mdl \
@@ -94,16 +95,32 @@ dist_examples_DATA = \
   examples/LEP_higgs.sin \
   examples/LEP_cc10.sin \
   examples/eeww_polarized.sin \
-  examples/LEP_jets.sin \
-  examples/HERA_DIS.sin
+  examples/HERA_DIS.sin \
+  examples/DrellYanMatchingP.sin \
+  examples/DrellYanMatchingW.sin \
+  examples/DrellYanNoMatchingP.sin \
+  examples/DrellYanNoMatchingW.sin \
+  examples/EEMatching2P.sin \
+  examples/EEMatching2W.sin \
+  examples/EEMatching3P.sin \
+  examples/EEMatching3W.sin \
+  examples/EEMatching4P.sin \
+  examples/EEMatching4W.sin \
+  examples/EEMatching5P.sin \
+  examples/EEMatching5W.sin \
+  examples/EENoMatchingP.sin \
+  examples/EENoMatchingW.sin
 
 ## The data files for the included PDF sets
 pdfdir = $(pkgdatadir)/pdf_builtin
 dist_pdf_DATA = \
 	pdf_builtin/cteq6l.tbl \
+	pdf_builtin/cteq6l1.tbl \
+	pdf_builtin/cteq6m.tbl \
+	pdf_builtin/cteq6d.tbl \
 	pdf_builtin/qed6-10gridp.dat \
 	pdf_builtin/qed6-10gridn.dat \
-   pdf_builtin/mstw2008lo.00.dat \
+        pdf_builtin/mstw2008lo.00.dat \
 	pdf_builtin/mstw2008nlo.00.dat \
 	pdf_builtin/mstw2008nnlo.00.dat \
 	pdf_builtin/ct10.00.pds

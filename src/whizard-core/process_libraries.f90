@@ -1,6 +1,6 @@
-! WHIZARD 2.0.6 Wed Dec 7 2011
+! WHIZARD 2.0.7 Mar 19 2012
 ! 
-! Copyright (C) 1999-2011 by 
+! Copyright (C) 1999-2012 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -248,7 +248,12 @@ contains
        prc_conf%omega_flags = ""
     end if
     if (present (omega_openmp)) then
-       prc_conf%omega_openmp = omega_openmp
+       select case (prc_conf%method)
+       case (PRC_OMEGA)
+          prc_conf%omega_openmp = omega_openmp
+       case default
+          prc_conf%omega_openmp = .false.
+       end select
     else
        prc_conf%omega_openmp = .false.
     end if
@@ -274,6 +279,9 @@ contains
     do i = 1, size (prc_conf%prt_out)
        write (u, "(A)")  char (prc_conf%prt_out(i))
     end do
+    if (prc_conf%method /= PRC_OMEGA) then
+       write (u, "(I0)")  prc_conf%method
+    end if
     if (prc_conf%restrictions /= "") then
        write (u, "(A)")  char (prc_conf%restrictions)
     end if
@@ -546,9 +554,20 @@ contains
     integer :: old_status
     logical :: keep_status
     logical :: msg
-    logical :: old_omega_openmp
-    keep_status = .true.;  if (present (rebuild_library))  keep_status = .not. rebuild_library
+    logical :: old_omega_openmp, new_omega_openmp
+    keep_status = .true.
+    if (present (rebuild_library))  keep_status = .not. rebuild_library
     msg = .false.;  if (present (message))  msg = message
+    if (.not. present (method)) then
+       new_omega_openmp = omega_openmp
+    else
+       select case (method)
+       case (PRC_OMEGA)
+          new_omega_openmp = omega_openmp
+       case default
+          new_omega_openmp = .false.
+       end select
+    end if
     current => process_library_get_process_ptr (prc_lib, prc_id)
     if (associated (current)) then
        old_md5sum = current%md5sum
@@ -556,14 +575,14 @@ contains
        old_omega_openmp = current%omega_openmp
        call process_configuration_init &
             (current, prc_id, model, prt_in, prt_out, method, status, &
-             restrictions, omega_flags, known_md5sum, omega_openmp)
+             restrictions, omega_flags, known_md5sum, new_omega_openmp)
        if (size (prt_in) == 0) then
           call msg_warning ("Process '" // char (prc_id) &
                // "': matrix element vanishes in selected model '" &
                // char (model_get_name (model)) // "'")
        else if (keep_status) then
           if ((current%md5sum == old_md5sum) .and. &
-               (old_omega_openmp .eqv. omega_openmp)) then
+               (old_omega_openmp .eqv. new_omega_openmp)) then
              if (current%status <= old_status) then
                  call msg_message ("Process '" // char (prc_id) &
                       // "': keeping configuration")
@@ -595,7 +614,7 @@ contains
        call process_library_check_name_consistency (prc_id, prc_lib)
        call process_configuration_init &
             (current, prc_id, model, prt_in, prt_out, method, status, &
-             restrictions, omega_flags, known_md5sum, omega_openmp)
+             restrictions, omega_flags, known_md5sum, new_omega_openmp)
        call process_update_code_status (current, keep_status)
        if (msg)  call msg_message &
             ("Added process to library '" // char (prc_lib%basename) // "':")
@@ -992,7 +1011,7 @@ contains
          // " -o " // prc_conf%id // ".f90" &
          // " -target:whizard" &
          // " -target:parameter_module parameters_" // model_id &
-         // " -target:module " // prc_conf%id &
+         // " -target:module opr_" // prc_conf%id &
          // omega_kmatrix // omega_openmp &
          // " -target:md5sum " // prc_conf%md5sum &
          // omega_cascade &
@@ -1087,7 +1106,7 @@ contains
     write (u, "(A)") "! Note that irresp. of what you demanded WHIZARD"
     write (u, "(A)") "! treats this as colorless process       "    
     write (u, "(A)") "!                                        "
-    write (u, "(A)") "module " // char(prc_conf%id)
+    write (u, "(A)") "module tpr_" // char(prc_conf%id)
     write (u, "(A)") "                                         "
     write (u, "(A)") "  use kinds"    
     write (u, "(A)") "  use omega_color, OCF => omega_color_factor"        
@@ -1303,7 +1322,7 @@ contains
     write (u, "(A,1x,I0,A)") "    amp = amp / sqrt(", hel_out, "._default)"
     write (u, "(A)") "  end subroutine calculate_amplitudes"
     write (u, "(A)") "                                           "                  
-    write (u, "(A)") "end module " // char(prc_conf%id)    
+    write (u, "(A)") "end module tpr_" // char(prc_conf%id)    
     close (u, iostat=status)
     deallocate (sxxx)
   contains
@@ -1405,11 +1424,11 @@ contains
 
     type(process_library_t), intent(inout) :: prc_lib
     type(string_t) :: filename, prefix
-    type(string_t), dimension(:), allocatable :: prc_id, model
+    type(string_t), dimension(:), allocatable :: prc_id, mod_prc_id, model
     type(string_t), dimension(:), allocatable :: restrictions, omega_flags
     integer, dimension(:), allocatable :: n_par
     character(32), dimension(:), allocatable :: md5sum
-    type(process_configuration_t), pointer :: current
+    type(process_configuration_t), pointer :: current    
     integer :: u, i, n_prc
 
     call msg_message ("Writing interface code for process library '" // &
@@ -1417,12 +1436,13 @@ contains
     prefix = prc_lib%basename // "_"
 
     n_prc = prc_lib%n_prc
-    allocate (prc_id (n_prc), model (n_prc))
+    allocate (prc_id (n_prc), mod_prc_id (n_prc), model (n_prc))
     allocate (restrictions (n_prc), omega_flags (n_prc))
     allocate (n_par (n_prc), md5sum (n_prc))
     current => prc_lib%prc_first
     do i = 1, n_prc
        prc_id(i) = current%id
+       mod_prc_id(i) = process_library_get_module_name (current%id,current%method)
        model(i) = model_get_name (current%model)
        restrictions(i) = current%restrictions
        omega_flags(i) = current%omega_flags
@@ -1855,7 +1875,7 @@ contains
               // "_init (par) bind(C)"
          write (u, "(A)")  "  use iso_c_binding"
          write (u, "(A)")  "  use kinds"
-         write (u, "(A)")  "  use " // char (prc_id(i))
+         write (u, "(A)")  "  use " // char (mod_prc_id(i))
          write (u, "(A)")  "  real(c_default_float), dimension(*), " &
               // "intent(in) :: par"
          if (c_default_float == default) then
@@ -1893,7 +1913,7 @@ contains
          write (u, *)
          write (u, "(A)")  "subroutine " // char (prc_id(i)) &
               // "_final () bind(C)"
-         write (u, "(A)")  "  use " // char (prc_id(i))
+         write (u, "(A)")  "  use " // char (mod_prc_id(i))
          write (u, "(A)")  "  call final ()"
          write (u, "(A)")  "end subroutine " // char (prc_id(i)) // "_final"
       end do
@@ -1928,7 +1948,7 @@ contains
               // "_update_alpha_s (alpha_s) bind(C)"
          write (u, "(A)")  "  use iso_c_binding"
          write (u, "(A)")  "  use kinds"
-         write (u, "(A)")  "  use " // char (prc_id(i))
+         write (u, "(A)")  "  use " // char (mod_prc_id(i))
          write (u, "(A)")  "  real(c_default_float), " &
               // "intent(in) :: alpha_s"
          if (c_default_float == default) then
@@ -1976,7 +1996,7 @@ contains
               // "_reset_helicity_selection (threshold, cutoff) bind(C)"
          write (u, "(A)")  "  use iso_c_binding"
          write (u, "(A)")  "  use kinds"
-         write (u, "(A)")  "  use " // char (prc_id(i))
+         write (u, "(A)")  "  use " // char (mod_prc_id(i))
          write (u, "(A)")  "  real(c_default_float), " &
               // "intent(in) :: threshold"
          write (u, "(A)")  "  integer(c_int), " &
@@ -2021,7 +2041,7 @@ contains
               // "_new_event (p) bind(C)"
          write (u, "(A)")  "  use iso_c_binding"
          write (u, "(A)")  "  use kinds"
-         write (u, "(A)")  "  use " // char (prc_id(i))
+         write (u, "(A)")  "  use " // char (mod_prc_id(i))
          write (u, "(A)")  "  real(c_default_float), dimension(0:3,*), " &
               // "intent(in) :: p"
          if (c_default_float == default) then
@@ -2070,7 +2090,7 @@ contains
               // "_is_allowed (flv, hel, col) result (flag) bind(C)"
          write (u, "(A)")  "  use iso_c_binding"
          write (u, "(A)")  "  use kinds"
-         write (u, "(A)")  "  use " // char (prc_id(i))
+         write (u, "(A)")  "  use " // char (mod_prc_id(i))
          write (u, "(A)")  "  logical(c_bool) :: flag"
          write (u, "(A)")  "  integer(c_int), intent(in) :: flv, hel, col"
          if (c_int == kind(1)) then
@@ -2116,7 +2136,7 @@ contains
               // "_get_amplitude (flv, hel, col) result (amp) bind(C)"
          write (u, "(A)")  "  use iso_c_binding"
          write (u, "(A)")  "  use kinds"
-         write (u, "(A)")  "  use " // char (prc_id(i))
+         write (u, "(A)")  "  use " // char (mod_prc_id(i))
          write (u, "(A)")  "  complex(c_default_complex) :: amp"
          write (u, "(A)")  "  integer(c_int), intent(in) :: flv, hel, col"
          if (c_int == kind(1)) then
@@ -2135,7 +2155,7 @@ contains
       character(*), intent(in) :: vname, fname
       integer :: i
       do i = 1, n_prc
-         write (u, "(2x,A)")  "use " // char (prc_id(i)) // ", only: " &
+         write (u, "(2x,A)")  "use " // char (mod_prc_id(i)) // ", only: " &
               // char (prc_id(i)) // "_" // vname // " => " // fname
       end do
     end subroutine write_use_lines
@@ -2751,6 +2771,19 @@ contains
     end do
   end subroutine process_library_store_load_static
 
+  function process_library_get_module_name (id, method) result (mod_id)
+    type(string_t), intent(in) :: id
+    integer, intent(in) :: method
+    type(string_t) :: mod_id
+    select case (method)
+       case (PRC_OMEGA)
+          mod_id = "opr_" // id
+       case (PRC_TEST, PRC_UNIT)
+          mod_id = "tpr_" // id
+       case default
+          mod_id = id
+    end select    
+  end function process_library_get_module_name
   subroutine process_libraries_test ()
     type(model_t), pointer :: model
     type(process_library_t), pointer :: prc_lib => null ()

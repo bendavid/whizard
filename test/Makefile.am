@@ -4,7 +4,7 @@
 ##
 ########################################################################
 #
-# Copyright (C) 1999-2011 by 
+# Copyright (C) 1999-2012 by 
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
@@ -107,6 +107,11 @@ TESTS_STATIC = \
     static.run
 XFAIL_TESTS_STATIC =
 
+TESTS_REQ_SHOWER = \
+    fsr_shower.run
+#   isr_shower.run	
+XFAIL_TESTS_REQ_SHOWER = 
+
 TESTS_EXTENDED = \
     sm_ext.run \
     mssm_ext.run \
@@ -120,6 +125,7 @@ TESTS_REQ_GAMELAN = \
     $(TESTS_REQ_OCAML) \
     $(TESTS_REQ_LHAPDF) \
     $(TESTS_REQ_STDHEP) \
+    $(TESTS_REQ_SHOWER) \
     $(TESTS_EXTENDED)
 
 TEST_DRIVERS_RUN = \
@@ -127,6 +133,7 @@ TEST_DRIVERS_RUN = \
     $(TESTS_REQ_OCAML) \
     $(TESTS_REQ_LHAPDF) \
     $(TESTS_REQ_STDHEP) \
+    $(TESTS_REQ_SHOWER) \
     $(TESTS_STATIC) \
     $(TESTS_EXTENDED)
 
@@ -158,6 +165,11 @@ if STDHEP_AVAILABLE
 TESTS += $(TESTS_REQ_STDHEP)
 XFAIL_TESTS += $(XFAIL_TESTS_REQ_STDHEP)
 endif STDHEP_AVAILABLE
+
+if SHOWER_AVAILABLE
+TESTS += $(TESTS_REQ_SHOWER)
+XFAIL_TESTS += $(XFAIL_TESTS_REQ_SHOWER)
+endif SHOWER_AVAILABLE
 
 if STATIC_AVAILABLE
 TESTS += $(TESTS_STATIC)
@@ -277,7 +289,7 @@ clean-local:
 	rm -f commands2.sin
 	rm -f *.run *.log slha_test.out
 	rm -f *.f90 *.mod *.o *.la
-	rm -f *.phs *.vg *.evt *.evx *.lhef *.hepmc *.hepevt
+	rm -f *.phs *.vg *.vgb *.evt *.evx *.lhef *.hepmc *.hepevt
 	rm -f *.tmp *.dat *.debug *.lha *.short *.long *.athena
 	rm -f *.stdhep *.stdhep_up fort.81
 	rm -f *.tex *.mp *.mpx *.[1-9] *.[1-9][0-9] *.[1-9][0-9][0-9] 

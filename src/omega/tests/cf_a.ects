@@ -1,4 +1,4 @@
-! $Id: cf_a.ects 3468 2011-08-10 15:18:36Z sschmidt $
+! $Id: cf_a.ects 3750 2012-03-13 12:08:00Z sschmidt $
 !ects:model QCD
 !ects:scatter
 !ects:process ubar u -> gl

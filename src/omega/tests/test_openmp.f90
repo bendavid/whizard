@@ -1,8 +1,8 @@
-! $Id: test_openmp.f90 3468 2011-08-10 15:18:36Z sschmidt $
+! $Id: test_openmp.f90 3764 2012-03-17 16:34:36Z jr_reuter $
 ! driver.f90 -- O'Mega self test driver
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
-! Copyright (C) 1999-2011 by 
+! Copyright (C) 1999-2012 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -37,10 +37,10 @@ program test_openmp
 
   integer, parameter :: NOUT = 3
   integer, parameter :: NCALLS = 2000
-  real(kind=double), parameter :: ROOTS = 1000
+  real(kind=default), parameter :: ROOTS = 1000
 
-  real(kind=double) :: elapsed
-  real(kind=double), dimension(:), allocatable :: amp2
+  real(kind=default) :: elapsed
+  real(kind=default), dimension(:), allocatable :: amp2
   integer :: max_threads, num_threads
   
   call init_parameters_qcd ()
@@ -75,10 +75,10 @@ program test_openmp
       integer, intent(in) :: n
       real(kind=default), intent(in) :: roots
       integer, intent(in) :: flv, hel
-      real(kind=double), intent (out) :: amp2, elapsed
+      real(kind=default), intent(out) :: amp2, elapsed
 
-      real(kind=double) :: wtime_start, wtime
-      real(kind=double) :: sum_amp2
+      real(kind=default) :: wtime_start, wtime
+      real(kind=default) :: sum_amp2
       real(kind=default) :: p(0:3,2+NOUT)
       integer :: i, size
       integer, dimension(:), allocatable :: seed

@@ -1,6 +1,6 @@
-! WHIZARD 2.0.6 Wed Dec 7 2011
+! WHIZARD 2.0.7 Mar 19 2012
 ! 
-! Copyright (C) 1999-2011 by 
+! Copyright (C) 1999-2012 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -839,8 +839,10 @@ contains
     allocate (var_list)
     call os_data_init (os_data)
     call msg_message ("*** Load library 'test_me'")
-    call msg_message ("    [must exist and contain process 'test_me_eemm' (test_me.sin)]")
-    call var_list_append_string (var_list, name = "$library_name", sval = "test_me")
+    call msg_message &
+         ("    [must exist and contain process 'test_me_eemm' (test_me.sin)]")
+    call var_list_append_string &
+         (var_list, name = "$library_name", sval = "test_me")         ! $
     call process_library_init (prc_lib, var_str("test_me"), os_data)
     call process_library_load (prc_lib, os_data, var_list = var_list)
     call msg_message ()
@@ -848,7 +850,8 @@ contains
     call hard_interaction_init (hi, prc_lib, 1, var_str ("test_me_eemm"), model)
     qn_mask_in = new_quantum_numbers_mask (.true., .true., .true.)
     call hard_interaction_init_trace (hi, qn_mask_in)
-    print *, "Interaction: n_values = ", interaction_get_n_matrix_elements (hi%int)
+    print *, "Interaction: n_values = ", &
+         interaction_get_n_matrix_elements (hi%int)
     qn_mask_in = new_quantum_numbers_mask (.false., .false., .false., .true.)
     call hard_interaction_init_sqme (hi, qn_mask_in)
     call hard_interaction_init_flows (hi, qn_mask_in)

@@ -1,7 +1,7 @@
 ! circe1.f90 -- canonical beam spectra for linear collider physics
 ! $Id: circe1.nw 67 2002-03-28 17:13:06Z ohl $
 ! 
-! Copyright (C) 1999-2011 by 
+! Copyright (C) 1999-2012 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>

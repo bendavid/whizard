@@ -1,6 +1,6 @@
-! WHIZARD 2.0.6 Wed Dec 7 2011
+! WHIZARD 2.0.7 Mar 19 2012
 ! 
-! Copyright (C) 1999-2011 by 
+! Copyright (C) 1999-2012 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -63,7 +63,6 @@ module simulations
   public :: simulation_get_i_evt
   public :: simulation_event
   public :: simulation_final
-  public :: simulation_check_matching
 
   integer, parameter :: NORM_UNDEFINED = 0
   integer, parameter :: NORM_UNIT = 1
@@ -81,6 +80,7 @@ module simulations
 
   type :: simulation_parameters_t
     logical :: unweighted = .true.
+    logical :: use_best_grid = .true.
     integer :: normalization_mode = NORM_UNDEFINED
     logical :: negative_weights = .false.
     logical :: polarized = .false.
@@ -101,6 +101,9 @@ module simulations
     type(process_p), dimension(:), allocatable :: prc_array
     type(var_list_t) :: var_list
     logical :: rebuild_events = .false.
+    logical :: check_grid_file = .true.
+    logical :: check_event_file = .true.
+    integer :: version = 0
     integer :: n_in = 0
     type(flavor_t), dimension(:), allocatable :: beam_flv
     real(default), dimension(:), allocatable :: beam_energy
@@ -154,13 +157,15 @@ module simulations
 contains
 
   recursive subroutine simulation_parameters_init &
-      (sim, unweighted, event_normalization, negative_weights, &
+      (sim, unweighted, use_best_grid, event_normalization, negative_weights, &
          polarized)
     type(simulation_parameters_t), intent(out) :: sim
     logical, intent(in) :: unweighted
+    logical, intent(in) :: use_best_grid
     type(string_t), intent(in) :: event_normalization
     logical, intent(in) :: negative_weights, polarized
     sim%unweighted = unweighted
+    sim%use_best_grid = use_best_grid
     sim%negative_weights = negative_weights
     sim%polarized = polarized
     select case (char (event_normalization))
@@ -182,7 +187,8 @@ contains
        call msg_error ("Unknown value '" // char (event_normalization) &
             // "for $event_normalization.  I'll assume 'auto'")
        call simulation_parameters_init &
-            (sim, unweighted, var_str ("auto"), negative_weights, polarized)
+            (sim, unweighted, use_best_grid, var_str ("auto"), &
+             negative_weights, polarized)
     end select
   end subroutine simulation_parameters_init
 
@@ -195,11 +201,16 @@ contains
   subroutine simulation_parameters_write_message (sim, unit)
     type(simulation_parameters_t), intent(in) :: sim
     integer, intent(in), optional :: unit
-    type(string_t) :: weight_str, norm_str, neg_str, polarized_str
+    type(string_t) :: weight_str, grid_str, norm_str, neg_str, polarized_str
     if (sim%unweighted) then
        weight_str = "unweighted"
     else
        weight_str = "weighted"
+    end if     
+    if (sim%use_best_grid) then
+       grid_str = ", best grid"
+    else
+       grid_str = ", last grid"
     end if     
     if (sim%polarized) then 
        polarized_str = ", polarized events" 
@@ -223,8 +234,11 @@ contains
     else
        neg_str = ""
     end if
-    call msg_message ("Simulation mode = " // char (weight_str) &
-         // ", event_normalization = '" // char (norm_str) &
+    call msg_message ("Simulation mode = " &
+         // char (weight_str) // char (grid_str), &
+         unit)
+    call msg_message ("                  " &
+         // "event_normalization = '" // char (norm_str) &
          // "'" // char (neg_str) // char (polarized_str), &
          unit)
   end subroutine simulation_parameters_write_message
@@ -236,6 +250,7 @@ contains
     u = output_unit (unit)
     write (u, *) "Simulation parameters:"
     write (u, *) "  unweighted         = ", sim%unweighted
+    write (u, *) "  use best grid      = ", sim%use_best_grid
     write (u, *) "  normalization_mode = ", sim%normalization_mode
     write (u, *) "  negative_weights   = ", sim%negative_weights
     write (u, *) "  polarized          = ", sim%polarized
@@ -349,7 +364,7 @@ contains
     type(string_t), dimension(:), intent(in) :: process_id
     type(var_list_t), intent(in), target :: var_list
     logical, intent(in), optional :: rescan, verbose
-    type(string_t) :: process_string
+    type(string_t) :: process_string, version_string
     integer :: proc
     logical :: generate, verb
     generate = .true.;  if (present (rescan))  generate = .not. rescan
@@ -378,9 +393,21 @@ contains
     end if
     sim%rebuild_events = &
          var_list_get_lval (var_list, var_str ("?rebuild_events"))
+    sim%check_grid_file = &
+         var_list_get_lval (var_list, var_str ("?check_grid_file"))
+    sim%check_event_file = &
+         var_list_get_lval (var_list, var_str ("?check_event_file"))
+    version_string = &
+         var_list_get_sval (var_list, var_str ("$event_file_version"))
+    select case (char (version_string))
+    case ("2.00":"2.06");  sim%version = 2
+    case default;          sim%version = 3
+    end select
     call simulation_parameters_init (sim%spar, &
          var_list_get_lval &
               (var_list, var_str ("?unweighted")), &
+         var_list_get_lval &
+              (var_list, var_str ("?use_best_grid")), &
          var_list_get_sval &
               (var_list, var_str ("$event_normalization")), &
          var_list_get_lval &
@@ -499,6 +526,19 @@ contains
     end do
   end subroutine simulation_compute_missing_integrals
 
+  subroutine simulation_choose_best_grids (sim)
+    type(simulation_t), intent(in) :: sim
+    type(process_t), pointer :: process
+    integer :: proc
+    do proc = 1, sim%n_proc
+       process => sim%prc_array(proc)%ptr
+       if (associated (process)) then
+          if (process_has_integral (process)) &
+               call process_choose_best_grid (process, sim%check_grid_file)
+       end if
+    end do
+  end subroutine simulation_choose_best_grids
+
   subroutine simulation_init_missing_processes (sim, global, verbose)
     type(simulation_t), intent(inout) :: sim
     type(rt_data_t), intent(inout), target :: global
@@ -574,7 +614,6 @@ contains
     type(string_t), intent(in) :: basename_default
     type(string_t) :: extension_raw
     integer :: i
-    logical :: mlm_matching
     type(string_t) :: matching_basename
     sim%basename = var_list_get_sval (sim%var_list, var_str ("$sample"))
     if (sim%basename == "")  sim%basename = basename_default
@@ -604,14 +643,6 @@ contains
                sim%basename, sim%var_list, event_fmt(i), &
                sim%beam_flv, sim%beam_energy, sim%n_proc)
        end do
-    end if
-    mlm_matching = var_list_get_lval &
-        (sim%var_list, var_str ("?mlm_matching"))
-    if (mlm_matching) then
-        matching_basename = "mlm_sample"
-        call event_file_list_append_file_spec (sim%event_file_list, &
-               matching_basename, sim%var_list, FMT_LHEF, &
-               sim%beam_flv, sim%beam_energy, sim%n_proc)
     end if
     if (sim%rescan) then
        if (sim%read_raw) then
@@ -757,7 +788,8 @@ contains
         sim%n_events, sim%var_list)
     if (sim%read_raw) then
        call open_raw_event_file_for_reading &
-            (sim%file_raw, sim%rescan, sim%md5sum, sim%u_raw, ok, verbose)
+            (sim%file_raw, sim%rescan, sim%check_event_file, sim%md5sum, &
+             sim%version, sim%u_raw, ok, verbose)
        if (.not. ok)  sim%read_raw = .false.
     else if (sim%read_hepmc) then
        call input_event_stream_init &
@@ -772,7 +804,7 @@ contains
     if (.not. sim%read_raw) then
        if (sim%write_raw) then
           call open_raw_event_file_for_writing &
-               (sim%file_raw, sim%md5sum, sim%u_raw, verbose)
+               (sim%file_raw, sim%md5sum, sim%version, sim%u_raw, verbose)
        end if
     end if
     call checkpointing_init (sim%checkpointing, sim%var_list)
@@ -850,10 +882,10 @@ contains
     if (sim%use_num_id) then
        call event_read_raw (sim%event, sim%u_raw, &
             sim%event_vars, sim%prc_array, num_id_array=sim%num_id, &
-            iostat=iostat)
+            iostat=iostat, version=sim%version)
     else
        call event_read_raw (sim%event, sim%u_raw, &
-            sim%event_vars, sim%prc_array, iostat=iostat)
+            sim%event_vars, sim%prc_array, iostat=iostat, version=sim%version)
     end if
     if (iostat == 0) then
        sim%i_evt = sim%i_evt + 1
@@ -969,6 +1001,7 @@ contains
     else
        sim%event_vars%process_num_id = proc
     end if
+    sim%event_vars%process_id = process_get_id (process)
     if (sim%spar%polarized) then 
        factorization_mode = FM_SELECT_HELICITY 
     else 
@@ -981,7 +1014,7 @@ contains
              keep_correlations=.false., &
              keep_virtual=.true., &
              shower_settings = sim%spar%shower_settings)
-       if (event_is_vetoed(sim%event).and. &
+       if(event_is_vetoed(sim%event).and. &
             (.not.sim%n_events_set)) then
           sim%n_events = sim%n_events - 1
           if(sim%i_evt .ge. sim%n_events) then
@@ -1028,7 +1061,7 @@ contains
              sim%analysis_expr, i_evt=sim%i_evt)
     end if
     if (sim%write_raw .and. .not. sim%read_raw) &
-         call event_write_raw (sim%event, sim%u_raw)
+         call event_write_raw (sim%event, sim%u_raw, sim%version)
     call checkpointing_msg_event &
          (sim%checkpointing, sim%n_events, sim%n_read, sim%i_evt)
   end subroutine simulation_handle_event
@@ -1042,7 +1075,7 @@ contains
     type(simulation_t), intent(inout) :: sim
     logical, intent(in), optional :: verbose
     integer :: proc
-    logical :: verb, mlm_matching
+    logical :: verb
     verb = .false.;  if (present (verbose)) verb = verbose
     call checkpointing_msg_end &
          (sim%checkpointing, sim%n_read, sim%i_evt)
@@ -1092,18 +1125,22 @@ contains
   end subroutine simulation_basic_final
 
   subroutine open_raw_event_file_for_reading &
-      (file_raw, rescan, md5sum, u_raw, ok, verbose)
+      (file_raw, rescan, check, md5sum, version, u_raw, ok, verbose)
     type(string_t), intent(in) :: file_raw
-    logical, intent(in) :: rescan
+    logical, intent(in) :: rescan, check
     type(md5sum_events_t), intent(in) :: md5sum
+    integer, intent(in) :: version
     integer, intent(out) :: u_raw
     logical, intent(out) :: ok
     logical, intent(in), optional :: verbose
     logical :: verb
     integer :: iostat
     verb = .false.;  if (present (verbose))  verb = verbose
+    if (.not. check)  call msg_warning &
+         ("Validity checks turned off for event file '" &
+         // char (file_raw) // "'")
     inquire (file = char (file_raw), exist = ok)
-    if (ok) then
+    if (check .and. ok) then
        ok = event_file_get_format (file_raw) == FMT_RAW
        if (.not. ok) then
           call msg_warning ("File '" // char (file_raw) &
@@ -1116,7 +1153,8 @@ contains
        u_raw = free_unit ()
        open (file = char (file_raw), unit = u_raw, form = "unformatted", &
              action = "read", status = "old")
-       call raw_event_file_read_header (u_raw, rescan, md5sum, ok, iostat)
+       call raw_event_file_read_header &
+            (u_raw, rescan, check, md5sum, version, ok, iostat)
        if (iostat /= 0) then
           call msg_error ("Event file '" & 
                // char (file_raw) // "' is corrupt, discarding.")
@@ -1131,9 +1169,11 @@ contains
     end if
   end subroutine open_raw_event_file_for_reading
 
-  subroutine open_raw_event_file_for_writing (file_raw, md5sum, u_raw, verbose)
+  subroutine open_raw_event_file_for_writing &
+       (file_raw, md5sum, version, u_raw, verbose)
     type(string_t), intent(in) :: file_raw
     type(md5sum_events_t), intent(in) :: md5sum
+    integer, intent(in) :: version
     integer, intent(out) :: u_raw
     logical, intent(in), optional :: verbose
     logical :: verb
@@ -1145,7 +1185,7 @@ contains
     u_raw = free_unit ()
     open (file = char (file_raw), unit = u_raw, form = "unformatted", &
           action = "write", status = "replace")
-    call raw_event_file_write_header (u_raw, md5sum)
+    call raw_event_file_write_header (u_raw, md5sum, version)
   end subroutine open_raw_event_file_for_writing
 
   subroutine reopen_raw_event_file_for_writing (file_raw, u_raw, verbose)
@@ -1189,6 +1229,7 @@ contains
     end if
     call simulation_compute_missing_integrals &
          (sim, global, global_var_list, rescan, verbose)
+    if (sim%spar%use_best_grid)  call simulation_choose_best_grids (sim)
     call simulation_check (sim, ok)
     if (ok .and. .not. rescan) then
        call simulation_collect_integrals (sim, global%var_list, ok)
@@ -1249,13 +1290,6 @@ contains
     call simulation_finish_event_generation (sim, verbose)
     call simulation_basic_final (sim)
   end subroutine simulation_final
-
-  function simulation_check_matching (sim) result (mlm_matching)
-    type(simulation_t), intent(inout) :: sim
-    logical :: mlm_matching
-    mlm_matching = var_list_get_lval &
-          (sim%var_list, var_str ("?mlm_matching"))
-  end function simulation_check_matching
 
 
 end module simulations

@@ -192,7 +192,6 @@ Optional Features:
   --enable-lhapdf         enable LHAPDF for structure functions [[yes]]
   --enable-hepmc          enable HepMC for handling event data [[yes]]
   --enable-stdhep	  enable STDHEP for binary event files [[yes]]
-  --enable-matching       enable MLM matching w/ PYTHIA parton showers [[no]]
   --enable-shower         enable parton showers [[no]]
   --enable-optimization-for-parameter-files
 			  enable (useless) optimization for parameter file

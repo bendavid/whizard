@@ -1,0 +1,71 @@
+# $Id: EEMatching3W.sin 2293 2010-04-11 23:57:50Z jr_reuter $
+# Simple complete physics example: e+e- to jets with
+# 	 matched WHIZARD shower (max. 3 hard matrix-element jets)
+########################################################################
+#
+# Copyright (C) 1999-2012 by 
+#     Wolfgang Kilian <kilian@physik.uni-siegen.de>
+#     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
+#     Juergen Reuter <juergen.reuter@desy.de>
+#     Sebastian Schmidt <sebastian.t.schmidt@desy.de>
+#     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+#
+# WHIZARD is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License as published by 
+# the Free Software Foundation; either version 2, or (at your option)
+# any later version.
+#
+# WHIZARD is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+#
+########################################################################
+
+model = SM
+ms = 0
+mc = 0
+alias j = u:d:s:c:U:D:S:C:g
+process eeuu = e1, E1 => u, U
+process eeuuj = e1, E1 => u, U, j
+
+compile
+
+sqrts = 91 GeV
+beams = e1, E1
+
+?ps_fsr_active=true
+?ps_isr_active=true
+!?hadronization_active = true
+?ps_use_PYTHIA_shower = false
+ps_fsr_lambda = 0.29
+
+ps_max_n_flavors = 5
+ps_mass_cutoff = 1
+
+?mlm_matching = true
+mlm_ptmin = 10 GeV
+mlm_nmaxMEjets = 3
+mlm_Rmin = 1
+mlm_Emin = 10 GeV
+
+cuts = all E > mlm_Emin [j]
+       and all Dist > mlm_Rmin [j, j]
+
+seed = 1
+
+integrate(eeuu, eeuuj) { iterations = 2:2000 }
+
+n_events = 100000
+
+?rebuild_events=true
+$sample = "EEMatching3W"
+sample_format = lhef
+
+simulate(eeuu, eeuuj)
+
+show(results)

@@ -1,6 +1,6 @@
-! WHIZARD 2.0.6 Wed Dec 7 2011
+! WHIZARD 2.0.7 Mar 19 2012
 ! 
-! Copyright (C) 1999-2011 by 
+! Copyright (C) 1999-2012 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -175,7 +175,7 @@ contains
     type(interaction_t), intent(out) :: int
     type(ewa_data_t), intent(in) :: data
     type(quantum_numbers_mask_t), dimension(3) :: mask
-    integer, dimension(3) :: lock
+    integer, dimension(3) :: hel_lock
     type(polarization_t) :: pol
     type(quantum_numbers_t), dimension(1) :: qn_fc, qn_hel, qn_fc_fin
     type(flavor_t) :: flv_z, flv_wp, flv_wm, flv_down, flv_up
@@ -196,9 +196,9 @@ contains
     up_type = (t3 > 0)
     mask = new_quantum_numbers_mask (.false., .false., &
          mask_h = (/ .false., .false., .true. /))
-    lock = (/ 2, 1, 0 /)
+    hel_lock = (/ 2, 1, 0 /)
     call interaction_init &
-         (int, 1, 0, 2, mask=mask, lock=lock, set_relations=.true.)
+         (int, 1, 0, 2, mask=mask, hel_lock=hel_lock, set_relations=.true.)
     select case (data%id)
     case (23)
        !!! Z boson, flavor is not changing    

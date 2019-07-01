@@ -1,6 +1,6 @@
-! WHIZARD 2.0.6 Wed Dec 7 2011
+! WHIZARD 2.0.7 Mar 19 2012
 ! 
-! Copyright (C) 1999-2011 by 
+! Copyright (C) 1999-2012 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -94,7 +94,8 @@ contains
         paths, &
         user_code_enable, &
         n_user_src, user_src, &
-        n_user_lib, user_lib)
+        n_user_lib, user_lib, &
+        user_target)
     type(string_t), intent(in) :: preload_model, preload_libs
     type(string_t), intent(in) :: default_lib
     logical, intent(in) :: rebuild_library, rebuild_user
@@ -105,7 +106,7 @@ contains
     type(paths_t), intent(in), optional :: paths
     integer, intent(in), optional :: n_user_src, n_user_lib
     logical, intent(in), optional :: user_code_enable
-    type(string_t), intent(in), optional :: user_src, user_lib
+    type(string_t), intent(in), optional :: user_src, user_lib, user_target
     type(string_t) :: filename, libname, libs
     type(var_list_t), pointer :: model_vars
     logical :: user
@@ -122,7 +123,7 @@ contains
     if (user) then
        call splice (user_src, n_src, src)
        call splice (user_lib, n_lib, lib)
-       call user_code_init (src, lib, rebuild_user, global%os_data)
+       call user_code_init (src, lib, user_target, rebuild_user, global%os_data)
     end if
     call var_list_append_log &
          (global%var_list, var_str ("?rebuild_library"), rebuild_library, &

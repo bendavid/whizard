@@ -1,6 +1,6 @@
-! WHIZARD 2.0.6 Wed Dec 7 2011
+! WHIZARD 2.0.7 Mar 19 2012
 ! 
-! Copyright (C) 1999-2011 by 
+! Copyright (C) 1999-2012 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -55,6 +55,7 @@ module decays
   public :: decay_store_get_md5sum
   public :: decay_store_append_decay
   public :: decay_store_recheck_final_state
+  public :: decay_store_update
   public :: decay_tree_t
   public :: decay_tree_init
   public :: decay_tree_final
@@ -232,6 +233,61 @@ contains
     end do
   end subroutine decay_configuration_recheck_final_state
 
+  subroutine decay_configuration_update (conf, process_id, verbose)
+    type(decay_configuration_t), intent(inout) :: conf
+    type(string_t), dimension(:), intent(in) :: process_id
+    logical, intent(in), optional :: verbose
+    logical, dimension(:), allocatable :: updated
+    real(default), dimension(:), allocatable :: integral, br
+    real(default) :: integral_sum
+    integer :: u, i, j, n_channels
+    type(process_t), pointer :: process
+    logical :: verb
+    u = logfile_unit ()
+    verb = .false.;  if (present (verbose))  verb = verbose
+    if (flavor_is_stable (conf%flv))  return
+    n_channels = size (conf%channel)
+    allocate (updated (n_channels))
+    allocate (integral (n_channels), br (n_channels))
+    updated = .false.
+    do j = 1, n_channels
+       do i = 1, size (process_id)
+          if (process_id(i) == conf%process_id(j)) then
+             updated(j) = .true.
+          end if
+       end do
+    end do
+    if (any (updated)) then
+       do j = 1, n_channels
+          process => conf%channel(j)%process
+          integral(j) = process_get_integral (process)
+          if (integral(j) < 0) then
+             call msg_fatal ("Integral of process '" &
+                  // char (process_get_id (process)) // "' is negative")
+          end if
+          if (updated(j)) then
+             call process_setup_event_generation (process, &
+                  qn_mask_in = new_quantum_numbers_mask (.false., .false., &
+                       mask_h =  conf%isotropic, mask_hd = conf%diagonal))
+          end if
+       end do
+       integral_sum = sum (integral)
+       if (integral_sum /= 0) then
+          br = integral / integral_sum
+       else
+          call msg_fatal ("Unstable particle: Computed total width vanishes")
+          br = 0
+       end if
+       conf%width = integral_sum
+       conf%channel%br = br
+       if (verb) then
+          call msg_message ("Updated decay configuration:")
+          call decay_configuration_write (conf)
+          call decay_configuration_write (conf, u)
+       end if
+    end if
+  end subroutine decay_configuration_update
+
   subroutine decay_configuration_write (conf, unit)
     type(decay_configuration_t), intent(in) :: conf
     integer, intent(in), optional :: unit
@@ -403,6 +459,17 @@ contains
     end do
   end subroutine decay_store_recheck_final_state
 
+  subroutine decay_store_update (process_id, verbose)
+    type(string_t), dimension(:), intent(in) :: process_id
+    logical, intent(in), optional :: verbose
+    type(decay_configuration_t), pointer :: conf
+    conf => store%first
+    do while (associated (conf))
+       call decay_configuration_update (conf, process_id, verbose)
+       conf => conf%next
+    end do
+  end subroutine decay_store_update
+
   subroutine decay_init (decay, process, eval_sqme, eval_flows, i)
     type(decay_t), intent(out), target :: decay
     type(process_t), intent(inout), target :: process
@@ -426,6 +493,14 @@ contains
     prc_eval_sqme => process_get_hi_eval_sqme_ptr (decay%process)
     prc_eval_flows => process_get_hi_eval_flows_ptr (decay%process)
     n_tot = evaluator_get_n_tot (prc_eval_sqme)
+    if (n_tot < 3) then
+       call msg_bug (arr = &
+            (/"Initialization fails for decay '" &
+              // process_get_id (decay%process) // "':", &
+              var_str ("Event generation not set up properly.") &
+!              var_str ("(Missing 'unstable' command after integration?)") &
+            /))
+    end if
     allocate (ignore_hel (n_tot))
     ignore_hel(1) = .true.
     ignore_hel(2:) = .false.

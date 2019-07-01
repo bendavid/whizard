@@ -1,6 +1,6 @@
-! WHIZARD 2.0.6 Wed Dec 7 2011
+! WHIZARD 2.0.7 Mar 19 2012
 ! 
-! Copyright (C) 1999-2011 by 
+! Copyright (C) 1999-2012 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -32,6 +32,7 @@ module strfun_config
   use file_utils !NODEP!
   use diagnostics !NODEP!
   use tao_random_numbers !NODEP!
+  use pdf_builtin !NODEP!
   use md5
   use models
   use flavors
@@ -85,6 +86,8 @@ module strfun_config
   public :: sf_list_get_n_mapping
   public :: sf_list_get_md5sum
   public :: sf_list_compute_md5sum
+  public :: sf_list_get_lhapdf_data_ptr
+  public :: sf_list_get_pdf_builtin_data_ptr
   public :: sf_list_transfer_to_process
   public :: lhapdf_status_t
   public :: lhapdf_status_reset
@@ -151,11 +154,12 @@ contains
     end if
   end subroutine sf_mapping_write
      
-  subroutine sf_data_write (sf_data, unit, md5)
+  subroutine sf_data_write (sf_data, unit, md5, beam_fmt)
     type(sf_data_t), intent(in) :: sf_data
     integer, intent(in), optional :: unit
     integer :: u
     logical, intent(in), optional :: md5
+    logical, intent(in), optional :: beam_fmt
     u = output_unit (unit);  if (u < 0)  return
     write (u, "(A)", advance="no")  "Structure function"
     if (all (sf_data%affects_beam)) then
@@ -171,9 +175,9 @@ contains
     case (STRF_NONE)
        write (u, "(1x,A)") "[none]"
     case (STRF_LHAPDF)
-       call lhapdf_data_write (sf_data%lhapdf, unit, md5)
+       call lhapdf_data_write (sf_data%lhapdf, unit, md5, beam_fmt)
     case (STRF_PDF_BUILTIN)
-       call pdf_builtin_data_write (sf_data%pdf_builtin, unit, md5)
+       call pdf_builtin_data_write (sf_data%pdf_builtin, unit, md5, beam_fmt)
     case (STRF_ISR)
        call isr_data_write (sf_data%isr, unit, md5)
     case (STRF_EPA)
@@ -209,6 +213,28 @@ contains
     n_parameters = sf_data%n_parameters
   end function sf_data_get_n_parameters
 
+  function sf_data_get_lhapdf_data_ptr (sf_data) result (lhapdf_data)
+    type(sf_data_t), intent(in), target :: sf_data
+    type(lhapdf_data_t), pointer :: lhapdf_data
+    select case (sf_data%type)
+    case (STRF_LHAPDF)
+       lhapdf_data => sf_data%lhapdf
+    case default
+       lhapdf_data => null ()
+    end select
+  end function sf_data_get_lhapdf_data_ptr
+
+  function sf_data_get_pdf_builtin_data_ptr (sf_data) result (pdf_builtin_data)
+    type(sf_data_t), intent(in), target :: sf_data
+    type(pdf_builtin_data_t), pointer :: pdf_builtin_data
+    select case (sf_data%type)
+    case (STRF_PDF_BUILTIN)
+       pdf_builtin_data => sf_data%pdf_builtin
+    case default
+       pdf_builtin_data => null ()
+    end select
+  end function sf_data_get_pdf_builtin_data_ptr
+
   subroutine sf_data_setup_mapping (sf_data, type, index, par)
     type(sf_data_t), intent(inout) :: sf_data
     integer, intent(in) :: type
@@ -239,14 +265,17 @@ contains
     sf_data%n_parameters = 1
   end subroutine sf_data_init_lhapdf
 
-  subroutine sf_data_init_pdf_builtin (sf_data, i, model, flv, name, path)
+  subroutine sf_data_init_pdf_builtin (sf_data, i, &
+       pdf_builtin_status, model, flv, name, path)
     type(sf_data_t), intent(out) :: sf_data
     integer, intent(in) :: i
+    type(pdf_builtin_status_t), intent(inout) :: pdf_builtin_status
     type(model_t), intent(in), target :: model
     type(flavor_t), intent(in) :: flv
     type(string_t), intent(in), optional :: name, path
     sf_data%type = STRF_PDF_BUILTIN
-    call pdf_builtin_init (sf_data%pdf_builtin, model, flv, name, path)
+    call pdf_builtin_init (sf_data%pdf_builtin, pdf_builtin_status, &
+         model, flv, name, path)
     sf_data%affects_beam(i) = .true.
     sf_data%n_parameters = 1
   end subroutine sf_data_init_pdf_builtin
@@ -395,18 +424,19 @@ contains
     sf_data%n_parameters = sf_user_data_get_n_dim (sf_data%user)
   end subroutine sf_data_init_user
 
-  subroutine sf_list_write (sf_list, unit, md5)
+  subroutine sf_list_write (sf_list, unit, md5, beam_fmt)
     type(sf_list_t), intent(in) :: sf_list
     integer, intent(in), optional :: unit
     integer :: u
     logical, intent(in), optional :: md5
+    logical, intent(in), optional :: beam_fmt
     type(sf_data_t), pointer :: current
     u = output_unit (unit);  if (u < 0)  return
     write (u, "(A)")  "Structure function list"
     if (associated (sf_list%first)) then
        current => sf_list%first
        do while (associated (current))
-          call sf_data_write (current, unit, md5)
+          call sf_data_write (current, unit, md5, beam_fmt)
           current => current%next
        end do
     else
@@ -479,6 +509,32 @@ contains
     sf_list%md5sum = md5sum (unit)
     close (unit)
   end subroutine sf_list_compute_md5sum
+
+  function sf_list_get_lhapdf_data_ptr (sf_list) result (lhapdf_data)
+    type(sf_list_t), intent(in) :: sf_list
+    type(lhapdf_data_t), pointer :: lhapdf_data
+    type(sf_data_t), pointer :: sf_data
+    lhapdf_data => null ()
+    sf_data => sf_list%first
+    FIND_LHAPDF: do while (associated (sf_data))
+       lhapdf_data => sf_data_get_lhapdf_data_ptr (sf_data)
+       if (associated (lhapdf_data))  exit FIND_LHAPDF
+       sf_data => sf_data%next
+    end do FIND_LHAPDF
+  end function sf_list_get_lhapdf_data_ptr
+
+  function sf_list_get_pdf_builtin_data_ptr (sf_list) result (pdf_builtin_data)
+    type(sf_list_t), intent(in) :: sf_list
+    type(pdf_builtin_data_t), pointer :: pdf_builtin_data
+    type(sf_data_t), pointer :: sf_data
+    pdf_builtin_data => null ()
+    sf_data => sf_list%first
+    FIND_PDF_BUILTIN: do while (associated (sf_data))
+       pdf_builtin_data => sf_data_get_pdf_builtin_data_ptr (sf_data)
+       if (associated (pdf_builtin_data))  exit FIND_PDF_BUILTIN
+       sf_data => sf_data%next
+    end do FIND_PDF_BUILTIN
+  end function sf_list_get_pdf_builtin_data_ptr
 
   subroutine sf_list_transfer_to_process (sf_list, process)
     type(sf_list_t), intent(in) :: sf_list

@@ -1,6 +1,6 @@
-! WHIZARD 2.0.6 Wed Dec 7 2011
+! WHIZARD 2.0.7 Mar 19 2012
 ! 
-! Copyright (C) 1999-2011 by 
+! Copyright (C) 1999-2012 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -56,7 +56,8 @@ module cascades
   integer, parameter :: &
        & EXTERNAL_PRT = -1, &
        & NO_MAPPING = 0, S_CHANNEL = 1, T_CHANNEL =  2, U_CHANNEL = 3, &
-       & RADIATION = 4, COLLINEAR = 5, INFRARED = 6
+       & RADIATION = 4, COLLINEAR = 5, INFRARED = 6, &
+       & STEP_MAPPING_E = 11, STEP_MAPPING_H = 12
 
   type :: cascade_t
      private
@@ -194,7 +195,8 @@ contains
 1   format(3x,A,1x,40(1x,I4))
 2   format(3x,A,1x,I3,1x,A,1x,I7,1x,'!',1x,A)
     u = output_unit (unit);  if (u < 0)  return
-    write (u, 1)  "tree", reduced (cascade%tree)
+!    write (u, 1)  "tree", reduced (cascade%tree)
+    call write_reduced (cascade%tree, u)
     do i = 1, cascade%depth
        call flavor_init (flv, cascade%tree_pdg(i), model)
        select case (cascade%tree_mapping(i))
@@ -228,19 +230,27 @@ contains
        end select
     end do
   contains
-    function reduced (array)
+    subroutine write_reduced (array, unit)
       integer(TC), dimension(:), intent(in) :: array
-      integer(TC), dimension(max((size(array)-3)/2, 1)) :: reduced
-      integer :: i, j
-      j = 1
-      do i=1, size(array)
-         if (decay_level(array(i)) > 1) then
-            reduced(j) = array(i)
-            j = j+1
+      integer, intent(in) :: unit
+      integer :: i
+      write (u, "(3x,A,1x)", advance="no")  "tree"
+      do i = 1, size (array)
+         if (decay_level (array(i)) > 1) then
+            write (u, "(1x,I0)", advance="no")  array(i)
          end if
       end do
-    end function reduced
-    function decay_level (k) result (l)
+    end subroutine write_reduced
+    ! ICE in gfortran 4.6.0
+    ! function reduced (array)
+    !   integer(TC), dimension(:), allocatable :: reduced
+    !   integer(TC), dimension(:), intent(in) :: array
+    !   logical, dimension(size(array)) :: mask
+    !   mask = decay_level (array) > 1
+    !   allocate (reduced (count (mask)))
+    !   reduced = pack (array, mask)
+    ! end function reduced
+    elemental function decay_level (k) result (l)
       integer(TC), intent(in) :: k
       integer :: l
       integer :: i
@@ -657,7 +667,7 @@ contains
   subroutine cascade_set_final (cascade_set)
     type(cascade_set_t), intent(inout), target :: cascade_set
     type(cascade_t), pointer :: current
-    deallocate (cascade_set%entry)
+    if (allocated (cascade_set%entry))  deallocate (cascade_set%entry)
     do while (associated (cascade_set%first))
        current => cascade_set%first
        cascade_set%first => cascade_set%first%next

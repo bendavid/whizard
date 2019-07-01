@@ -1,13 +1,14 @@
-## Makefile.am -- Makefile for WHIZARD
-##
-## Process this file with automake to produce Makefile.in
+# $Id: EEMatching3P.sin 2293 2010-04-11 23:57:50Z jr_reuter $
+# Simple complete physics example: e+e- to jets with
+# 	 matched PYTHIA shower (max. 3 hard matrix-element jets)
+########################################################################
 #
-# Copyright (C) 1999-2011 by 
+# Copyright (C) 1999-2012 by 
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
+#     Sebastian Schmidt <sebastian.t.schmidt@desy.de>
 #     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
-#     and Daniel Wiesler (this file only)	
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by 
@@ -25,44 +26,45 @@
 #
 ########################################################################
 
-## PYTHIA is automatically available if matching is switched on
-AM_FFLAGS =
-AM_FCFLAGS =
+model = SM
+ms = 0
+mc = 0
+alias j = u:d:s:c:U:D:S:C:g
+process eeuu = e1, E1 => u, U
+process eeuuj = e1, E1 => u, U, j
 
-if FC_IS_NAG
-AM_FFLAGS += -dcfuns -w
-AM_FCFLAGS += -dcfuns -w
-endif
+compile
 
-if MATCHING_AVAILABLE
-bin_PROGRAMS = interface
+sqrts = 91 GeV
+beams = e1, E1
 
-interface_LDADD = ../pythia/libpythia_wo.la
-interface_LDFLAGS = -I../pythia
+?ps_fsr_active=true
+?ps_isr_active=true
+!?hadronization_active = true
+?ps_use_PYTHIA_shower = true
 
-if STDHEP_AVAILABLE
-interface_SOURCES = main_stdhep.f interface.f
-interface_LDFLAGS += $(LDFLAGS_STDHEP)
-else
-interface_SOURCES = main_lhef.f interface.f 
-endif	
+ps_max_n_flavors = 5
+ps_mass_cutoff = 1
 
-else
-bin_PROGRAMS = 
-endif
+?mlm_matching = true
+mlm_ptmin = 10 GeV
+mlm_nmaxMEjets = 3
+mlm_Rmin = 1
+mlm_Emin = 10 GeV
 
-########################################################################
-## Default Fortran compiler options
+cuts = all E > mlm_Emin [j]
+       and all Dist > mlm_Rmin [j, j]
 
-## Profiling
-if FC_USE_PROFILING
-AM_FFLAGS += $(FCFLAGS_PROFILING)
-AM_FCFLAGS += $(FCFLAGS_PROFILING)
-endif
+seed = 1
 
-## OpenMP
-if FC_USE_OPENMP
-AM_FFLAGS += $(FCFLAGS_OPENMP)
-AM_FCFLAGS += $(FCFLAGS_OPENMP)
-endif
+integrate(eeuu, eeuuj) { iterations = 2:2000 }
 
+n_events = 100000
+
+?rebuild_events=true
+$sample = "EEMatching3"
+sample_format = lhef
+
+simulate(eeuu, eeuuj)
+
+show(results)
