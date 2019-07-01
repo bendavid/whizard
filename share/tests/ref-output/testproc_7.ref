@@ -46,22 +46,6 @@ n_events = 1
 | Simulate: initializing alternate process setup ...
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 1
-| Initializing integration for process testproc_7_p1:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'testproc_7_p1'
-|   Library name  = 'testproc_7_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'testproc_7_p1_i1':   s, s => s, s [unit_test]
-| ------------------------------------------------------------------------
-| Beam structure: [any particles]
-| Beam data (collision):
-|   s  (mass = 1.2500000E+02 GeV)
-|   s  (mass = 1.2500000E+02 GeV)
-|   sqrts = 1.000000000000E+03 GeV
-| Phase space: 1 channels, 2 dimensions
-| Phase space: single-particle
-| Applying user-defined cuts.
 | ...  alternate process setup complete.
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 2
@@ -79,22 +63,6 @@ n_events = 1
 | Simulate: initializing alternate process setup ...
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 3
-| Initializing integration for process testproc_7_p1:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'testproc_7_p1'
-|   Library name  = 'testproc_7_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'testproc_7_p1_i1':   s, s => s, s [unit_test]
-| ------------------------------------------------------------------------
-| Beam structure: [any particles]
-| Beam data (collision):
-|   s  (mass = 1.2500000E+02 GeV)
-|   s  (mass = 1.2500000E+02 GeV)
-|   sqrts = 1.000000000000E+03 GeV
-| Phase space: 1 channels, 2 dimensions
-| Phase space: single-particle
-| Applying user-defined cuts.
 | ...  alternate process setup complete.
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 4
@@ -110,22 +78,6 @@ n_events = 1
 | Simulate: initializing alternate process setup ...
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 5
-| Initializing integration for process testproc_7_p1:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'testproc_7_p1'
-|   Library name  = 'testproc_7_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'testproc_7_p1_i1':   s, s => s, s [unit_test]
-| ------------------------------------------------------------------------
-| Beam structure: [any particles]
-| Beam data (collision):
-|   s  (mass = 1.2500000E+02 GeV)
-|   s  (mass = 1.2500000E+02 GeV)
-|   sqrts = 1.000000000000E+03 GeV
-| Phase space: 1 channels, 2 dimensions
-| Phase space: single-particle
-| Applying user-defined cuts.
 | ...  alternate process setup complete.
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 6

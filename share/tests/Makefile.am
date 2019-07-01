@@ -4,12 +4,18 @@
 ##
 ########################################################################
 #
-# Copyright (C) 1999-2014 by 
+# Copyright (C) 1999-2015 by 
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
 #     with contributions from
+#     Fabian Bach <fabian.bach@desy.de>
+#     Bijan Chokoufe <bijan.chokoufe@desy.de>
 #     Christian Speckner <cnspeckn@googlemail.com>
+#     Marco Sekulla <marco.sekulla@desy.de>
+#     Christian Weiss <christian.weiss@desy.de>
+#     Felix Braam, Sebastian Schmidt,
+#     Hans-Werner Boschmann, Daniel Wiesler
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by 
@@ -64,6 +70,8 @@ REF_OUTPUT_FILES_BASE = \
     ref-output/state_matrix_1.ref \
     ref-output/state_matrix_2.ref \
     ref-output/state_matrix_3.ref \
+    ref-output/state_matrix_4.ref \
+    ref-output/state_matrix_5.ref \
     ref-output/interaction_1.ref \
     ref-output/parse_1.ref \
     ref-output/color_1.ref \
@@ -73,6 +81,7 @@ REF_OUTPUT_FILES_BASE = \
     ref-output/os_interface_1.ref \
     ref-output/format_1.ref \
     ref-output/hepmc_interface_1.ref \
+    ref-output/lcio_interface_1.ref \
     ref-output/xml_1.ref \
     ref-output/xml_2.ref \
     ref-output/xml_3.ref \
@@ -88,6 +97,12 @@ REF_OUTPUT_FILES_BASE = \
     ref-output/auto_components_3.ref \
     ref-output/particles_1.ref \
     ref-output/particles_2.ref \
+    ref-output/particles_3.ref \
+    ref-output/particles_4.ref \
+    ref-output/particles_5.ref \
+    ref-output/particles_6.ref \
+    ref-output/particles_7.ref \
+    ref-output/particles_8.ref \
     ref-output/beam_structures_1.ref \
     ref-output/beam_structures_2.ref \
     ref-output/beam_structures_3.ref \
@@ -156,6 +171,7 @@ REF_OUTPUT_FILES_BASE = \
     ref-output/sf_circe2_3.ref \
     ref-output/sf_beam_events_1.ref \
     ref-output/sf_beam_events_2.ref \
+    ref-output/sf_beam_events_3.ref \
     ref-output/sf_escan_1.ref \
     ref-output/sf_escan_2.ref \
     ref-output/phs_base_1.ref \
@@ -296,6 +312,8 @@ REF_OUTPUT_FILES_BASE = \
     ref-output/eio_lhef_6.ref \
     ref-output/eio_hepmc_1.ref \
     ref-output/eio_hepmc_2.ref \
+    ref-output/eio_lcio_1.ref \
+    ref-output/eio_lcio_2.ref \
     ref-output/eio_stdhep_1.ref \
     ref-output/eio_stdhep_2.ref \
     ref-output/eio_ascii_1.ref \
@@ -460,6 +478,7 @@ REF_OUTPUT_FILES_BASE = \
     ref-output/reweight_5.ref \
     ref-output/reweight_6.ref \
     ref-output/reweight_7.ref \
+    ref-output/reweight_8.ref \
     ref-output/analyze_1.ref \
     ref-output/analyze_2.ref \
     ref-output/analyze_3.ref \
@@ -469,16 +488,17 @@ REF_OUTPUT_FILES_BASE = \
     ref-output/alphas.ref \
     ref-output/jets_xsec.ref \
     ref-output/parton_shower_1.ref \
-    ref-output/parton_shower_3.ref \
-    ref-output/parton_shower_4.ref \
+    ref-output/pythia6_1.ref \
+    ref-output/pythia6_2.ref \
     ref-output/mlm_matching_fsr.ref \
-    ref-output/mlm_matching_isr.ref \
+    ref-output/mlm_pythia6_isr.ref \
     ref-output/hepmc_1.ref \
     ref-output/hepmc_2.ref \
     ref-output/hepmc_3.ref \
     ref-output/hepmc_4.ref \
     ref-output/hepmc_5.ref \
     ref-output/hepmc_6.ref \
+    ref-output/hepmc_7.ref \
     ref-output/lhef_1.ref \
     ref-output/lhef_2.ref \
     ref-output/lhef_3.ref \
@@ -505,6 +525,7 @@ REF_OUTPUT_FILES_BASE = \
     ref-output/smtest_16.ref \
     ref-output/smtest_17.ref \
     ref-output/mssmtest.ref \
+    ref-output/spincor_1.ref \
     ref-output/show_1.ref \
     ref-output/show_2.ref \
     ref-output/show_3.ref \
@@ -519,6 +540,7 @@ REF_OUTPUT_FILES_BASE = \
     ref-output/circe2_2.ref \
     ref-output/ewa_4.ref \
     ref-output/beam_events_1.ref \
+    ref-output/beam_events_4.ref \
     ref-output/energy_scan_1.ref \
     ref-output/user_strfun.ref
 
@@ -536,6 +558,7 @@ REF_OUTPUT_FILES_DOUBLE = \
     ref-output-double/parton_shower_2.ref \
     ref-output-double/helicity.ref \
     ref-output-double/lhef_7.ref \
+    ref-output-double/hepmc_8.ref \
     ref-output-double/multi_comp_1.ref \
     ref-output-double/multi_comp_2.ref \
     ref-output-double/multi_comp_3.ref \
@@ -576,6 +599,7 @@ REF_OUTPUT_FILES_EXT = \
     ref-output-ext/parton_shower_2.ref \
     ref-output-ext/helicity.ref \
     ref-output-ext/lhef_7.ref \
+    ref-output-ext/hepmc_8.ref \
     ref-output-ext/multi_comp_1.ref \
     ref-output-ext/multi_comp_2.ref \
     ref-output-ext/multi_comp_3.ref \
@@ -687,6 +711,7 @@ UNIT_TESTS_SIN = \
     eio_checkpoints.sin \
     eio_lhef.sin \
     eio_hepmc.sin \
+    eio_lcio.sin \
     eio_stdhep.sin \
     eio_ascii.sin \
     eio_weights.sin \
@@ -738,6 +763,7 @@ MISC_TESTS_SIN = \
     rebuild_2.sin \
     rebuild_3.sin \
     rebuild_4.sin \
+    rebuild_5.sin \
     qedtest_1.sin \
     qedtest_2.sin \
     qedtest_3.sin \
@@ -767,6 +793,7 @@ MISC_TESTS_SIN = \
     reweight_5.sin \
     reweight_6.sin \
     reweight_7.sin \
+    reweight_8.sin \
     analyze_1.sin \
     analyze_2.sin \
     analyze_3.sin \
@@ -785,10 +812,10 @@ MISC_TESTS_SIN = \
     lhef_8.sin \
     parton_shower_1.sin \
     parton_shower_2.sin \
-    parton_shower_3.sin \
-    parton_shower_4.sin \
+    pythia6_1.sin \
+    pythia6_2.sin \
     mlm_matching_fsr.sin \
-    mlm_matching_isr.sin \
+    mlm_pythia6_isr.sin \
     hepmc.sin \
     hepmc_1.sin \
     hepmc_2.sin \
@@ -796,6 +823,9 @@ MISC_TESTS_SIN = \
     hepmc_4.sin \
     hepmc_5.sin \
     hepmc_6.sin \
+    hepmc_7.sin \
+    hepmc_8.sin \
+    lcio.sin \
     stdhep_1.sin \
     stdhep_2.sin \
     stdhep_3.sin \
@@ -818,6 +848,7 @@ MISC_TESTS_SIN = \
     smtest_16.sin \
     smtest_17.sin \
     mssmtest.sin \
+    spincor_1.sin \
     show_1.sin \
     show_2.sin \
     show_3.sin \
@@ -858,6 +889,7 @@ MISC_TESTS_SIN = \
     beam_events_1.sin \
     beam_events_2.sin \
     beam_events_3.sin \
+    beam_events_4.sin \
     energy_scan_1.sin \
     susyhit.sin \
     restrictions.sin \

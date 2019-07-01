@@ -281,6 +281,7 @@ fks_dij_exp2 =  1.000000000000E+00
 fks_mapping_type = 1
 alpha_power = 2
 alphas_power = 0
+?combined_nlo_integration = false
 $fc => "Fortran-compiler"
 $fcflags => "Fortran-flags"
 ========================================================================

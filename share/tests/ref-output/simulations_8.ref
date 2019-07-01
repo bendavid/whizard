@@ -659,13 +659,13 @@
  E =   5.00000000E+02
  P =   0.00000000E+00  0.00000000E+00  5.00000000E+02
  mask [fch] = [TTT]
- internal links: X => 5 3
+ internal links: X => 3 5
  source: (8)1
  Particle 2
  E =   5.00000000E+02
  P =   0.00000000E+00  0.00000000E+00 -5.00000000E+02
  mask [fch] = [TTT]
- internal links: X => 6 4
+ internal links: X => 4 6
  source: (8)2
  Particle 3
  E =   1.76844029E+02
@@ -727,13 +727,13 @@
  E =   5.00000000E+02
  P =   0.00000000E+00  0.00000000E+00  5.00000000E+02
  mask [fch] = [FFgT]
- internal links: X => 5 3
+ internal links: X => 3 5
  source: (8)1
  Particle 2
  E =   5.00000000E+02
  P =   0.00000000E+00  0.00000000E+00 -5.00000000E+02
  mask [fch] = [FFgT]
- internal links: X => 6 4
+ internal links: X => 4 6
  source: (8)2
  Particle 3
  E =   1.76844029E+02
@@ -795,13 +795,13 @@
  E =   5.00000000E+02
  P =   0.00000000E+00  0.00000000E+00  5.00000000E+02
  mask [fch] = [FFgT]
- internal links: X => 5 3
+ internal links: X => 3 5
  source: (15)1
  Particle 2
  E =   5.00000000E+02
  P =   0.00000000E+00  0.00000000E+00 -5.00000000E+02
  mask [fch] = [FFgT]
- internal links: X => 6 4
+ internal links: X => 4 6
  source: (15)2
  Particle 3
  E =   1.76844029E+02
@@ -888,12 +888,12 @@ n_tot* => 6
  E =   5.00000000E+02
  P =   0.00000000E+00  0.00000000E+00  5.00000000E+02
  T =   0.000000000E+00
- Children: 5 3
+ Children: 3 5
  Particle 2 [b] f(25)
  E =   5.00000000E+02
  P =   0.00000000E+00  0.00000000E+00 -5.00000000E+02
  T =   0.000000000E+00
- Children: 6 4
+ Children: 4 6
  Particle 3 [i] f(25)
  E =   1.76844029E+02
  P =   0.00000000E+00  0.00000000E+00  1.76844029E+02
@@ -944,14 +944,14 @@ event_weight_ref* =>  2.019623591658E+04
 event_excess* =>  0.000000000000E+00
 ------------------------------------------------------------------------
  subevent:
- 1 prt(b:25|-5.0000000E+02; 0.0000000E+00, 0.0000000E+00,-5.0000000E+02| 0.000000000000E+00| 1)
- 2 prt(b:25|-5.0000000E+02; 0.0000000E+00, 0.0000000E+00, 5.0000000E+02| 0.000000000000E+00| 2)
- 3 prt(i:25|-1.7684403E+02; 0.0000000E+00, 0.0000000E+00,-1.7684403E+02| 0.000000000000E+00| 3)
- 4 prt(i:25|-1.7609932E+02; 0.0000000E+00, 0.0000000E+00, 1.7609932E+02| 0.000000000000E+00| 4)
- 5 prt(o:25| 3.2315597E+02; 0.0000000E+00, 0.0000000E+00, 3.2315597E+02| 0.000000000000E+00| 5)
- 6 prt(o:25| 3.2390068E+02; 0.0000000E+00, 0.0000000E+00,-3.2390068E+02| 0.000000000000E+00| 6)
- 7 prt(o:25| 1.7660740E+02; 1.3445425E+02,-9.4478772E+01, 6.4699226E+01| 0.000000000000E+00| 7)
- 8 prt(o:25| 1.7633594E+02;-1.3445425E+02, 9.4478772E+01,-6.3954515E+01| 0.000000000000E+00| 8)
+ 1 prt(b:25|-5.0000000E+02; 0.0000000E+00, 0.0000000E+00,-5.0000000E+02| 0.0000000E+00| 1)
+ 2 prt(b:25|-5.0000000E+02; 0.0000000E+00, 0.0000000E+00, 5.0000000E+02| 0.0000000E+00| 2)
+ 3 prt(i:25|-1.7684403E+02; 0.0000000E+00, 0.0000000E+00,-1.7684403E+02| 0.0000000E+00| 3)
+ 4 prt(i:25|-1.7609932E+02; 0.0000000E+00, 0.0000000E+00, 1.7609932E+02| 0.0000000E+00| 4)
+ 5 prt(o:25| 3.2315597E+02; 0.0000000E+00, 0.0000000E+00, 3.2315597E+02| 0.0000000E+00| 5)
+ 6 prt(o:25| 3.2390068E+02; 0.0000000E+00, 0.0000000E+00,-3.2390068E+02| 0.0000000E+00| 6)
+ 7 prt(o:25| 1.7660740E+02; 1.3445425E+02,-9.4478772E+01, 6.4699226E+01| 0.0000000E+00| 7)
+ 8 prt(o:25| 1.7633594E+02;-1.3445425E+02, 9.4478772E+01,-6.3954515E+01| 0.0000000E+00| 8)
 ========================================================================
 
 * Re-read the event from file
@@ -999,12 +999,12 @@ event_excess* =>  0.000000000000E+00
  E =   5.00000000E+02
  P =   0.00000000E+00  0.00000000E+00  5.00000000E+02
  T =   0.000000000E+00
- Children: 5 3
+ Children: 3 5
  Particle 2 [b] f(25)
  E =   5.00000000E+02
  P =   0.00000000E+00  0.00000000E+00 -5.00000000E+02
  T =   0.000000000E+00
- Children: 6 4
+ Children: 4 6
  Particle 3 [i] f(25)
  E =   1.76844029E+02
  P =   0.00000000E+00  0.00000000E+00  1.76844029E+02
@@ -1055,14 +1055,14 @@ event_weight_ref* =>  2.019623591658E+04
 event_excess* =>  0.000000000000E+00
 ------------------------------------------------------------------------
  subevent:
- 1 prt(b:25|-5.0000000E+02; 0.0000000E+00, 0.0000000E+00,-5.0000000E+02| 0.000000000000E+00| 1)
- 2 prt(b:25|-5.0000000E+02; 0.0000000E+00, 0.0000000E+00, 5.0000000E+02| 0.000000000000E+00| 2)
- 3 prt(i:25|-1.7684403E+02; 0.0000000E+00, 0.0000000E+00,-1.7684403E+02| 0.000000000000E+00| 3)
- 4 prt(i:25|-1.7609932E+02; 0.0000000E+00, 0.0000000E+00, 1.7609932E+02| 0.000000000000E+00| 4)
- 5 prt(o:25| 3.2315597E+02; 0.0000000E+00, 0.0000000E+00, 3.2315597E+02| 0.000000000000E+00| 5)
- 6 prt(o:25| 3.2390068E+02; 0.0000000E+00, 0.0000000E+00,-3.2390068E+02| 0.000000000000E+00| 6)
- 7 prt(o:25| 1.7660740E+02; 1.3445425E+02,-9.4478772E+01, 6.4699226E+01| 0.000000000000E+00| 7)
- 8 prt(o:25| 1.7633594E+02;-1.3445425E+02, 9.4478772E+01,-6.3954515E+01| 0.000000000000E+00| 8)
+ 1 prt(b:25|-5.0000000E+02; 0.0000000E+00, 0.0000000E+00,-5.0000000E+02| 0.0000000E+00| 1)
+ 2 prt(b:25|-5.0000000E+02; 0.0000000E+00, 0.0000000E+00, 5.0000000E+02| 0.0000000E+00| 2)
+ 3 prt(i:25|-1.7684403E+02; 0.0000000E+00, 0.0000000E+00,-1.7684403E+02| 0.0000000E+00| 3)
+ 4 prt(i:25|-1.7609932E+02; 0.0000000E+00, 0.0000000E+00, 1.7609932E+02| 0.0000000E+00| 4)
+ 5 prt(o:25| 3.2315597E+02; 0.0000000E+00, 0.0000000E+00, 3.2315597E+02| 0.0000000E+00| 5)
+ 6 prt(o:25| 3.2390068E+02; 0.0000000E+00, 0.0000000E+00,-3.2390068E+02| 0.0000000E+00| 6)
+ 7 prt(o:25| 1.7660740E+02; 1.3445425E+02,-9.4478772E+01, 6.4699226E+01| 0.0000000E+00| 7)
+ 8 prt(o:25| 1.7633594E+02;-1.3445425E+02, 9.4478772E+01,-6.3954515E+01| 0.0000000E+00| 8)
 ========================================================================
 
 * Re-read again and recalculate
@@ -1136,7 +1136,7 @@ event_excess* =>  0.000000000000E+00
    sqrts = 1.000000000000E+03 GeV
 ------------------------------------------------------------------------
  Colliding beams:
- Interaction: 1
+ Interaction: 2
  Outgoing:
  Particle 1
  E =   5.000000000000E+02
@@ -1163,7 +1163,7 @@ event_excess* =>  0.000000000000E+00
    radiated  = 2
    outgoing  = 3
    parameter = 1
- Interaction: 2
+ Interaction: 3
  Incoming:
  Particle 1
   [momentum undefined]
@@ -1196,7 +1196,7 @@ event_excess* =>  0.000000000000E+00
    radiated  = 2
    outgoing  = 3
    parameter = 2
- Interaction: 3
+ Interaction: 4
  Incoming:
  Particle 1
   [momentum undefined]
@@ -1251,18 +1251,18 @@ event_excess* =>  0.000000000000E+00
    x = 0.3536881 0.3521986
 ------------------------------------------------------------------------
  Colliding beams:
- Interaction: 4
+ Interaction: 5
  Outgoing:
  Particle 1
  E =   5.000000000000E+02
  P =   0.000000000000E+00  0.000000000000E+00  5.000000000000E+02
  mask [fch] = [FFgT]
- source: (1)1
+ source: (2)1
  Particle 2
  E =   5.000000000000E+02
  P =   0.000000000000E+00  0.000000000000E+00 -5.000000000000E+02
  mask [fch] = [FFgT]
- source: (1)2
+ source: (2)2
  State matrix:  norm =  1.000000000000E+00
  [f(25)]
    [f(25)] => ME(1) = ( 1.000000000000E+00, 0.000000000000E+00)
@@ -1286,14 +1286,14 @@ event_excess* =>  0.000000000000E+00
    radiated  = 2
    outgoing  = 3
    parameter = 1
- Interaction: 5
+ Interaction: 6
  Incoming:
  Particle 1
  E =   5.000000000000E+02
  P =   0.000000000000E+00  0.000000000000E+00  5.000000000000E+02
  mask [fch] = [FFgT]
  internal links: X => 2 3
- source: (4)1
+ source: (5)1
  Outgoing:
  Particle 2
  E =   3.231559712440E+02
@@ -1309,40 +1309,40 @@ event_excess* =>  0.000000000000E+00
  [f(25)]
    [f(25) h(0)]
      [f(25) h(0)] => ME(1) = ( 3.536880575120E-01, 0.000000000000E+00)
- Interaction: 7
+ Interaction: 8
  Virtual:
  Particle 1
  E =   5.000000000000E+02
  P =   0.000000000000E+00  0.000000000000E+00  5.000000000000E+02
  mask [fch] = [FFgT]
  internal links: X => 3 4
- source: (4)1
+ source: (5)1
  Outgoing:
  Particle 2
  E =   5.000000000000E+02
  P =   0.000000000000E+00  0.000000000000E+00 -5.000000000000E+02
  mask [fch] = [FFgT]
- source: (4)2
+ source: (5)2
  Particle 3
  E =   3.231559712440E+02
  P =   0.000000000000E+00  0.000000000000E+00  3.231559712440E+02
  mask [fch] = [FFgF]
  internal links: 1 => X
- source: (5)2
+ source: (6)2
  Particle 4
  E =   1.768440287560E+02
  P =   0.000000000000E+00  0.000000000000E+00  1.768440287560E+02
  mask [fch] = [FFgF]
  internal links: 1 => X
- source: (5)3
+ source: (6)3
  State matrix:  norm =  1.000000000000E+00
  [f(25)]
    [f(25)]
      [f(25) h(0)]
        [f(25) h(0)] => ME(1) = ( 3.536880575120E-01, 0.000000000000E+00)
  Matrix-element multiplication
-  Input interaction 1: 4
-  Input interaction 2: 5
+  Input interaction 1: 5
+  Input interaction 2: 6
   ME(1) =
     + ME1(1) x ME2(1)
 ------------------------------------------------------------------------
@@ -1365,14 +1365,14 @@ event_excess* =>  0.000000000000E+00
    radiated  = 2
    outgoing  = 3
    parameter = 2
- Interaction: 6
+ Interaction: 7
  Incoming:
  Particle 1
  E =   5.000000000000E+02
  P =   0.000000000000E+00  0.000000000000E+00 -5.000000000000E+02
  mask [fch] = [FFgT]
  internal links: X => 2 3
- source: (4)2
+ source: (5)2
  Outgoing:
  Particle 2
  E =   3.239006823860E+02
@@ -1388,45 +1388,45 @@ event_excess* =>  0.000000000000E+00
  [f(25)]
    [f(25) h(0)]
      [f(25) h(0)] => ME(1) = ( 3.521986352280E-01, 0.000000000000E+00)
- Interaction: 8
+ Interaction: 9
  Virtual:
  Particle 1
  E =   5.000000000000E+02
  P =   0.000000000000E+00  0.000000000000E+00  5.000000000000E+02
  mask [fch] = [FFgT]
  internal links: X => 3 4
- source: (7)1
+ source: (8)1
  Particle 2
  E =   5.000000000000E+02
  P =   0.000000000000E+00  0.000000000000E+00 -5.000000000000E+02
  mask [fch] = [FFgT]
  internal links: X => 5 6
- source: (7)2
+ source: (8)2
  Outgoing:
  Particle 3
  E =   3.231559712440E+02
  P =   0.000000000000E+00  0.000000000000E+00  3.231559712440E+02
  mask [fch] = [FFgF]
  internal links: 1 => X
- source: (7)3
+ source: (8)3
  Particle 4
  E =   1.768440287560E+02
  P =   0.000000000000E+00  0.000000000000E+00  1.768440287560E+02
  mask [fch] = [FFgF]
  internal links: 1 => X
- source: (7)4
+ source: (8)4
  Particle 5
  E =   3.239006823860E+02
  P =   0.000000000000E+00  0.000000000000E+00 -3.239006823860E+02
  mask [fch] = [FFgF]
  internal links: 2 => X
- source: (6)2
+ source: (7)2
  Particle 6
  E =   1.760993176140E+02
  P =   0.000000000000E+00  0.000000000000E+00 -1.760993176140E+02
  mask [fch] = [FFgF]
  internal links: 2 => X
- source: (6)3
+ source: (7)3
  State matrix:  norm =  1.000000000000E+00
  [f(25)]
    [f(25)]
@@ -1435,8 +1435,8 @@ event_excess* =>  0.000000000000E+00
          [f(25) h(0)]
            [f(25) h(0)] => ME(1) = ( 1.245684511522E-01, 0.000000000000E+00)
  Matrix-element multiplication
-  Input interaction 1: 7
-  Input interaction 2: 6
+  Input interaction 1: 8
+  Input interaction 2: 7
   ME(1) =
     + ME1(1) x ME2(1)
 ------------------------------------------------------------------------
@@ -1493,20 +1493,20 @@ event_excess* =>  0.000000000000E+00
 ------------------------------------------------------------------------
  Amplitude (transition matrix of the hard interaction):
 ------------------------------------------------------------------------
- Interaction: 9
+ Interaction: 10
  Incoming:
  Particle 1
  E =   1.76844029E+02
  P =   0.00000000E+00  0.00000000E+00  1.76844029E+02
  mask [fch] = [FFgF]
  internal links: X => 3 4
- source: (8)4
+ source: (9)4
  Particle 2
  E =   1.76099318E+02
  P =   0.00000000E+00  0.00000000E+00 -1.76099318E+02
  mask [fch] = [FFgF]
  internal links: X => 3 4
- source: (8)6
+ source: (9)6
  Outgoing:
  Particle 3
  E =   1.76607403E+02
@@ -1528,120 +1528,120 @@ event_excess* =>  0.000000000000E+00
 ------------------------------------------------------------------------
  Evaluator (trace of the squared transition matrix):
 ------------------------------------------------------------------------
- Interaction: 10
+ Interaction: 11
  Incoming:
  Particle 1
  E =   1.76844029E+02
  P =   0.00000000E+00  0.00000000E+00  1.76844029E+02
  mask [fch] = [FTF]
  internal links: X => 3 4
- source: (9)1
+ source: (10)1
  Particle 2
  E =   1.76099318E+02
  P =   0.00000000E+00  0.00000000E+00 -1.76099318E+02
  mask [fch] = [FTF]
  internal links: X => 3 4
- source: (9)2
+ source: (10)2
  Outgoing:
  Particle 3
  E =   1.76607403E+02
  P =   1.34454255E+02 -9.44787721E+01  6.46992258E+01
  mask [fch] = [TTT]
  internal links: 1 2 => X
- source: (9)3
+ source: (10)3
  Particle 4
  E =   1.76335943E+02
  P =  -1.34454255E+02  9.44787721E+01 -6.39545147E+01
  mask [fch] = [TTT]
  internal links: 1 2 => X
- source: (9)4
+ source: (10)4
  State matrix:  norm =  1.0000000000E+00
  [f(25) h(0)]
    [f(25) h(0)]
      []
        [] => ME(1) = ( 1.0000000000E+00, 0.0000000000E+00)
  Matrix-element multiplication
-  Input interaction 1: 9
+  Input interaction 1: 10
   Input interaction 2: [undefined]
   ME(1) =
     + ME1(1)* x ME2(1) x ( 1.000000000000E+00, 0.000000000000E+00)
 ------------------------------------------------------------------------
  Evaluator (squared transition matrix):
 ------------------------------------------------------------------------
- Interaction: 12
+ Interaction: 13
  Incoming:
  Particle 1
  E =   1.76844029E+02
  P =   0.00000000E+00  0.00000000E+00  1.76844029E+02
  mask [fch] = [FTF]
  internal links: X => 3 4
- source: (9)1
+ source: (10)1
  Particle 2
  E =   1.76099318E+02
  P =   0.00000000E+00  0.00000000E+00 -1.76099318E+02
  mask [fch] = [FTF]
  internal links: X => 3 4
- source: (9)2
+ source: (10)2
  Outgoing:
  Particle 3
  E =   1.76607403E+02
  P =   1.34454255E+02 -9.44787721E+01  6.46992258E+01
  mask [fch] = [FTT]
  internal links: 1 2 => X
- source: (9)3
+ source: (10)3
  Particle 4
  E =   1.76335943E+02
  P =  -1.34454255E+02  9.44787721E+01 -6.39545147E+01
  mask [fch] = [FTT]
  internal links: 1 2 => X
- source: (9)4
+ source: (10)4
  State matrix:  norm =  1.0000000000E+00
  [f(25) h(0)]
    [f(25) h(0)]
      [f(25)]
        [f(25)] => ME(1) = ( 1.0000000000E+00, 0.0000000000E+00)
  Matrix-element multiplication
-  Input interaction 1: 9
+  Input interaction 1: 10
   Input interaction 2: [undefined]
   ME(1) =
     + ME1(1)* x ME2(1) x ( 1.000000000000E+00, 0.000000000000E+00)
 ------------------------------------------------------------------------
  Evaluator (squared color-flow matrix):
 ------------------------------------------------------------------------
- Interaction: 13
+ Interaction: 14
  Incoming:
  Particle 1
  E =   1.76844029E+02
  P =   0.00000000E+00  0.00000000E+00  1.76844029E+02
  mask [fch] = [FFgF]
  internal links: X => 3 4
- source: (9)1
+ source: (10)1
  Particle 2
  E =   1.76099318E+02
  P =   0.00000000E+00  0.00000000E+00 -1.76099318E+02
  mask [fch] = [FFgF]
  internal links: X => 3 4
- source: (9)2
+ source: (10)2
  Outgoing:
  Particle 3
  E =   1.76607403E+02
  P =   1.34454255E+02 -9.44787721E+01  6.46992258E+01
  mask [fch] = [FFgT]
  internal links: 1 2 => X
- source: (9)3
+ source: (10)3
  Particle 4
  E =   1.76335943E+02
  P =  -1.34454255E+02  9.44787721E+01 -6.39545147E+01
  mask [fch] = [FFgT]
  internal links: 1 2 => X
- source: (9)4
+ source: (10)4
  State matrix:  norm =  1.0000000000E+00
  [f(25) h(0)]
    [f(25) h(0)]
      [f(25)]
        [f(25)] => ME(1) = ( 1.0000000000E+00, 0.0000000000E+00)
  Matrix-element multiplication
-  Input interaction 1: 9
+  Input interaction 1: 10
   Input interaction 2: [undefined]
   ME(1) =
     + |ME1(1)|^2
@@ -1650,45 +1650,45 @@ event_excess* =>  0.000000000000E+00
 ------------------------------------------------------------------------
  Evaluator (extension of the beam evaluator with color contractions):
 ------------------------------------------------------------------------
- Interaction: 15
+ Interaction: 16
  Virtual:
  Particle 1
  E =   5.00000000E+02
  P =   0.00000000E+00  0.00000000E+00  5.00000000E+02
  mask [fch] = [FFgT]
  internal links: X => 3 4
- source: (8)1
+ source: (9)1
  Particle 2
  E =   5.00000000E+02
  P =   0.00000000E+00  0.00000000E+00 -5.00000000E+02
  mask [fch] = [FFgT]
  internal links: X => 5 6
- source: (8)2
+ source: (9)2
  Outgoing:
  Particle 3
  E =   3.23155971E+02
  P =   0.00000000E+00  0.00000000E+00  3.23155971E+02
  mask [fch] = [FFgF]
  internal links: 1 => X
- source: (8)3
+ source: (9)3
  Particle 4
  E =   1.76844029E+02
  P =   0.00000000E+00  0.00000000E+00  1.76844029E+02
  mask [fch] = [FFgF]
  internal links: 1 => X
- source: (8)4
+ source: (9)4
  Particle 5
  E =   3.23900682E+02
  P =   0.00000000E+00  0.00000000E+00 -3.23900682E+02
  mask [fch] = [FFgF]
  internal links: 2 => X
- source: (8)5
+ source: (9)5
  Particle 6
  E =   1.76099318E+02
  P =   0.00000000E+00  0.00000000E+00 -1.76099318E+02
  mask [fch] = [FFgF]
  internal links: 2 => X
- source: (8)6
+ source: (9)6
  State matrix:  norm =  1.0000000000E+00
  [f(25)]
    [f(25)]
@@ -1697,64 +1697,64 @@ event_excess* =>  0.000000000000E+00
          [f(25) h(0)]
            [f(25) h(0)] => ME(1) = ( 1.2456845115E-01, 0.0000000000E+00)
  Matrix-element multiplication
-  Input interaction 1: 8
+  Input interaction 1: 9
   Input interaction 2: [undefined]
   ME(1) =
     + ME1(1)
 ------------------------------------------------------------------------
  Evaluator (trace of the squared transition matrix):
 ------------------------------------------------------------------------
- Interaction: 11
+ Interaction: 12
  Virtual:
  Particle 1
  E =   5.00000000E+02
  P =   0.00000000E+00  0.00000000E+00  5.00000000E+02
  mask [fch] = [TTT]
- internal links: X => 5 3
- source: (8)1
+ internal links: X => 3 5
+ source: (9)1
  Particle 2
  E =   5.00000000E+02
  P =   0.00000000E+00  0.00000000E+00 -5.00000000E+02
  mask [fch] = [TTT]
- internal links: X => 6 4
- source: (8)2
+ internal links: X => 4 6
+ source: (9)2
  Particle 3
  E =   1.76844029E+02
  P =   0.00000000E+00  0.00000000E+00  1.76844029E+02
  mask [fch] = [TTT]
  internal links: 1 => X => 7 8
- source: (8)4
+ source: (9)4
  Particle 4
  E =   1.76099318E+02
  P =   0.00000000E+00  0.00000000E+00 -1.76099318E+02
  mask [fch] = [TTT]
  internal links: 2 => X => 7 8
- source: (8)6
+ source: (9)6
  Outgoing:
  Particle 5
  E =   3.23155971E+02
  P =   0.00000000E+00  0.00000000E+00  3.23155971E+02
  mask [fch] = [TTT]
  internal links: 1 => X
- source: (8)3
+ source: (9)3
  Particle 6
  E =   3.23900682E+02
  P =   0.00000000E+00  0.00000000E+00 -3.23900682E+02
  mask [fch] = [TTT]
  internal links: 2 => X
- source: (8)5
+ source: (9)5
  Particle 7
  E =   1.76607403E+02
  P =   1.34454255E+02 -9.44787721E+01  6.46992258E+01
  mask [fch] = [TTT]
  internal links: 3 4 => X
- source: (10)3
+ source: (11)3
  Particle 8
  E =   1.76335943E+02
  P =  -1.34454255E+02  9.44787721E+01 -6.39545147E+01
  mask [fch] = [TTT]
  internal links: 3 4 => X
- source: (10)4
+ source: (11)4
  State matrix:  norm =  1.0000000000E+00
  []
    []
@@ -1765,130 +1765,62 @@ event_excess* =>  0.000000000000E+00
              []
                [] => ME(1) = ( 1.2456845115E-01, 0.0000000000E+00)
  Matrix-element multiplication
-  Input interaction 1: 8
-  Input interaction 2: 10
+  Input interaction 1: 9
+  Input interaction 2: 11
   ME(1) =
     + ME1(1) x ME2(1)
 ------------------------------------------------------------------------
  Evaluator (squared transition matrix):
 ------------------------------------------------------------------------
- Interaction: 14
+ Interaction: 15
  Virtual:
  Particle 1
  E =   5.00000000E+02
  P =   0.00000000E+00  0.00000000E+00  5.00000000E+02
  mask [fch] = [FFgT]
- internal links: X => 5 3
- source: (8)1
+ internal links: X => 3 5
+ source: (9)1
  Particle 2
  E =   5.00000000E+02
  P =   0.00000000E+00  0.00000000E+00 -5.00000000E+02
  mask [fch] = [FFgT]
- internal links: X => 6 4
- source: (8)2
+ internal links: X => 4 6
+ source: (9)2
  Particle 3
  E =   1.76844029E+02
  P =   0.00000000E+00  0.00000000E+00  1.76844029E+02
  mask [fch] = [FTT]
  internal links: 1 => X => 7 8
- source: (8)4
+ source: (9)4
  Particle 4
  E =   1.76099318E+02
  P =   0.00000000E+00  0.00000000E+00 -1.76099318E+02
  mask [fch] = [FTT]
  internal links: 2 => X => 7 8
- source: (8)6
+ source: (9)6
  Outgoing:
  Particle 5
  E =   3.23155971E+02
  P =   0.00000000E+00  0.00000000E+00  3.23155971E+02
  mask [fch] = [FFgF]
  internal links: 1 => X
- source: (8)3
+ source: (9)3
  Particle 6
  E =   3.23900682E+02
  P =   0.00000000E+00  0.00000000E+00 -3.23900682E+02
  mask [fch] = [FFgF]
  internal links: 2 => X
- source: (8)5
+ source: (9)5
  Particle 7
  E =   1.76607403E+02
  P =   1.34454255E+02 -9.44787721E+01  6.46992258E+01
  mask [fch] = [FTT]
- internal links: 3 4 => X
- source: (12)3
- Particle 8
- E =   1.76335943E+02
- P =  -1.34454255E+02  9.44787721E+01 -6.39545147E+01
- mask [fch] = [FTT]
- internal links: 3 4 => X
- source: (12)4
- State matrix:  norm =  1.0000000000E+00
- [f(25)]
-   [f(25)]
-     [f(25)]
-       [f(25)]
-         [f(25) h(0)]
-           [f(25) h(0)]
-             [f(25)]
-               [f(25)] => ME(1) = ( 1.2456845115E-01, 0.0000000000E+00)
- Matrix-element multiplication
-  Input interaction 1: 8
-  Input interaction 2: 12
-  ME(1) =
-    + ME1(1) x ME2(1)
-------------------------------------------------------------------------
- Evaluator (squared color-flow matrix):
-------------------------------------------------------------------------
- Interaction: 16
- Virtual:
- Particle 1
- E =   5.00000000E+02
- P =   0.00000000E+00  0.00000000E+00  5.00000000E+02
- mask [fch] = [FFgT]
- internal links: X => 5 3
- source: (15)1
- Particle 2
- E =   5.00000000E+02
- P =   0.00000000E+00  0.00000000E+00 -5.00000000E+02
- mask [fch] = [FFgT]
- internal links: X => 6 4
- source: (15)2
- Particle 3
- E =   1.76844029E+02
- P =   0.00000000E+00  0.00000000E+00  1.76844029E+02
- mask [fch] = [FFgT]
- internal links: 1 => X => 7 8
- source: (15)4
- Particle 4
- E =   1.76099318E+02
- P =   0.00000000E+00  0.00000000E+00 -1.76099318E+02
- mask [fch] = [FFgT]
- internal links: 2 => X => 7 8
- source: (15)6
- Outgoing:
- Particle 5
- E =   3.23155971E+02
- P =   0.00000000E+00  0.00000000E+00  3.23155971E+02
- mask [fch] = [FFgF]
- internal links: 1 => X
- source: (15)3
- Particle 6
- E =   3.23900682E+02
- P =   0.00000000E+00  0.00000000E+00 -3.23900682E+02
- mask [fch] = [FFgF]
- internal links: 2 => X
- source: (15)5
- Particle 7
- E =   1.76607403E+02
- P =   1.34454255E+02 -9.44787721E+01  6.46992258E+01
- mask [fch] = [FFgT]
  internal links: 3 4 => X
  source: (13)3
  Particle 8
  E =   1.76335943E+02
  P =  -1.34454255E+02  9.44787721E+01 -6.39545147E+01
- mask [fch] = [FFgT]
+ mask [fch] = [FTT]
  internal links: 3 4 => X
  source: (13)4
  State matrix:  norm =  1.0000000000E+00
@@ -1901,8 +1833,76 @@ event_excess* =>  0.000000000000E+00
              [f(25)]
                [f(25)] => ME(1) = ( 1.2456845115E-01, 0.0000000000E+00)
  Matrix-element multiplication
-  Input interaction 1: 15
+  Input interaction 1: 9
   Input interaction 2: 13
+  ME(1) =
+    + ME1(1) x ME2(1)
+------------------------------------------------------------------------
+ Evaluator (squared color-flow matrix):
+------------------------------------------------------------------------
+ Interaction: 17
+ Virtual:
+ Particle 1
+ E =   5.00000000E+02
+ P =   0.00000000E+00  0.00000000E+00  5.00000000E+02
+ mask [fch] = [FFgT]
+ internal links: X => 3 5
+ source: (16)1
+ Particle 2
+ E =   5.00000000E+02
+ P =   0.00000000E+00  0.00000000E+00 -5.00000000E+02
+ mask [fch] = [FFgT]
+ internal links: X => 4 6
+ source: (16)2
+ Particle 3
+ E =   1.76844029E+02
+ P =   0.00000000E+00  0.00000000E+00  1.76844029E+02
+ mask [fch] = [FFgT]
+ internal links: 1 => X => 7 8
+ source: (16)4
+ Particle 4
+ E =   1.76099318E+02
+ P =   0.00000000E+00  0.00000000E+00 -1.76099318E+02
+ mask [fch] = [FFgT]
+ internal links: 2 => X => 7 8
+ source: (16)6
+ Outgoing:
+ Particle 5
+ E =   3.23155971E+02
+ P =   0.00000000E+00  0.00000000E+00  3.23155971E+02
+ mask [fch] = [FFgF]
+ internal links: 1 => X
+ source: (16)3
+ Particle 6
+ E =   3.23900682E+02
+ P =   0.00000000E+00  0.00000000E+00 -3.23900682E+02
+ mask [fch] = [FFgF]
+ internal links: 2 => X
+ source: (16)5
+ Particle 7
+ E =   1.76607403E+02
+ P =   1.34454255E+02 -9.44787721E+01  6.46992258E+01
+ mask [fch] = [FFgT]
+ internal links: 3 4 => X
+ source: (14)3
+ Particle 8
+ E =   1.76335943E+02
+ P =  -1.34454255E+02  9.44787721E+01 -6.39545147E+01
+ mask [fch] = [FFgT]
+ internal links: 3 4 => X
+ source: (14)4
+ State matrix:  norm =  1.0000000000E+00
+ [f(25)]
+   [f(25)]
+     [f(25)]
+       [f(25)]
+         [f(25) h(0)]
+           [f(25) h(0)]
+             [f(25)]
+               [f(25)] => ME(1) = ( 1.2456845115E-01, 0.0000000000E+00)
+ Matrix-element multiplication
+  Input interaction 1: 16
+  Input interaction 2: 14
   ME(1) =
     + ME1(1) x ME2(1)
 ------------------------------------------------------------------------
@@ -1929,9 +1929,9 @@ n_tot* => 6
 ------------------------------------------------------------------------
    Associated process: 'simulation_8p'
    TAO random-number generator:
-     seed  = 6
-     calls = 0
-   Number of tries = 0
+     seed  = 196610
+     calls = 3
+   Number of tries = 1
 ------------------------------------------------------------------------
  Particle set:
 ------------------------------------------------------------------------
@@ -1939,12 +1939,12 @@ n_tot* => 6
  E =   5.00000000E+02
  P =   0.00000000E+00  0.00000000E+00  5.00000000E+02
  T =   0.000000000E+00
- Children: 5 3
+ Children: 3 5
  Particle 2 [b] f(25)
  E =   5.00000000E+02
  P =   0.00000000E+00  0.00000000E+00 -5.00000000E+02
  T =   0.000000000E+00
- Children: 6 4
+ Children: 4 6
  Particle 3 [i] f(25)
  E =   1.76844029E+02
  P =   0.00000000E+00  0.00000000E+00  1.76844029E+02
@@ -1995,14 +1995,14 @@ event_weight_ref* =>  2.019623591658E+04
 event_excess* =>  0.000000000000E+00
 ------------------------------------------------------------------------
  subevent:
- 1 prt(b:25|-5.0000000E+02; 0.0000000E+00, 0.0000000E+00,-5.0000000E+02| 0.000000000000E+00| 1)
- 2 prt(b:25|-5.0000000E+02; 0.0000000E+00, 0.0000000E+00, 5.0000000E+02| 0.000000000000E+00| 2)
- 3 prt(i:25|-1.7684403E+02; 0.0000000E+00, 0.0000000E+00,-1.7684403E+02| 0.000000000000E+00| 3)
- 4 prt(i:25|-1.7609932E+02; 0.0000000E+00, 0.0000000E+00, 1.7609932E+02| 0.000000000000E+00| 4)
- 5 prt(o:25| 3.2315597E+02; 0.0000000E+00, 0.0000000E+00, 3.2315597E+02| 0.000000000000E+00| 5)
- 6 prt(o:25| 3.2390068E+02; 0.0000000E+00, 0.0000000E+00,-3.2390068E+02| 0.000000000000E+00| 6)
- 7 prt(o:25| 1.7660740E+02; 1.3445425E+02,-9.4478772E+01, 6.4699226E+01| 0.000000000000E+00| 7)
- 8 prt(o:25| 1.7633594E+02;-1.3445425E+02, 9.4478772E+01,-6.3954515E+01| 0.000000000000E+00| 8)
+ 1 prt(b:25|-5.0000000E+02; 0.0000000E+00, 0.0000000E+00,-5.0000000E+02| 0.0000000E+00| 1)
+ 2 prt(b:25|-5.0000000E+02; 0.0000000E+00, 0.0000000E+00, 5.0000000E+02| 0.0000000E+00| 2)
+ 3 prt(i:25|-1.7684403E+02; 0.0000000E+00, 0.0000000E+00,-1.7684403E+02| 0.0000000E+00| 3)
+ 4 prt(i:25|-1.7609932E+02; 0.0000000E+00, 0.0000000E+00, 1.7609932E+02| 0.0000000E+00| 4)
+ 5 prt(o:25| 3.2315597E+02; 0.0000000E+00, 0.0000000E+00, 3.2315597E+02| 0.0000000E+00| 5)
+ 6 prt(o:25| 3.2390068E+02; 0.0000000E+00, 0.0000000E+00,-3.2390068E+02| 0.0000000E+00| 6)
+ 7 prt(o:25| 1.7660740E+02; 1.3445425E+02,-9.4478772E+01, 6.4699226E+01| 0.0000000E+00| 7)
+ 8 prt(o:25| 1.7633594E+02;-1.3445425E+02, 9.4478772E+01,-6.3954515E+01| 0.0000000E+00| 8)
 ========================================================================
 
 * Cleanup

@@ -2,12 +2,18 @@
 ##
 ## Process this file with automake to produce Makefile.in
 #
-# Copyright (C) 1999-2014 by 
+# Copyright (C) 1999-2015 by 
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
 #     with contributions from
+#     Fabian Bach <fabian.bach@desy.de>
+#     Bijan Chokoufe <bijan.chokoufe@desy.de>
 #     Christian Speckner <cnspeckn@googlemail.com>
+#     Marco Sekulla <marco.sekulla@desy.de>
+#     Christian Weiss <christian.weiss@desy.de>
+#     Felix Braam, Sebastian Schmidt,
+#     Hans-Werner Boschmann, Daniel Wiesler
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by 
@@ -32,41 +38,17 @@
 noinst_LTLIBRARIES = libwhizard_core.la
 
 libwhizard_core_la_SOURCES = \
-  user_files.f90 \
-  user_code_interface.f90 \
-  eval_trees.f90 \
-  models.f90 auto_components.f90 \
-  sf_pdf_builtin.f90 sf_lhapdf.f90 sf_circe1.f90 \
-  sf_circe2.f90 sf_isr.f90 sf_epa.f90 sf_ewa.f90 \
-  sf_escan.f90 sf_beam_events.f90 sf_user.f90 \
-  phs_single.f90 \
-  mappings.f90 phs_trees.f90 phs_forests.f90 cascades.f90 phs_wood.f90\
-  fks_calculation.f90 fks_regions.f90 phs_fks.f90 \
-  radiation_generator.f90 \
-  rng_tao.f90 \
-  mci_midpoint.f90 mci_vamp.f90 \
-  prc_core.f90 subevt_expr.f90 parton_states.f90 \
-  processes.f90 process_stacks.f90 \
+  subevt_expr.f90 parton_states.f90 processes.f90 process_stacks.f90 \
   event_transforms.f90 decays.f90 shower.f90 \
-  events.f90 prc_omega.f90 prc_template_me.f90 prc_gosam.f90 \
-  loop_archive.f90 \
-  hep_common.f90 hep_events.f90 \
-  hoppet_interface.f90 \
-  eio_data.f90 eio_base.f90 eio_raw.f90 eio_checkpoints.f90 \
-  eio_lhef.f90 eio_hepmc.f90 eio_ascii.f90 \
-  eio_lcio.f90 eio_stdhep.f90 eio_weights.f90 \
-  rt_data.f90  \
-  blha_config.f90 blha_interface.f90 blha_driver.f90 \
-  slha_interface.f90 dispatch.f90 \
+  events.f90 eio_raw.f90 \
+  user_files.f90 rt_data.f90  \
+  dispatch.f90 \
   process_configurations.f90 compilations.f90 integrations.f90 \
   event_streams.f90 simulations.f90 \
   expr_tests.f90 \
   commands.f90 \
   whizard.f90
-### Old NLO files
-#  nlo_setup.f90 dipoles_integrated_qed.f90 dipoles_real_qed.f90\
-  photon_recombination.f90 \
-  core_interactions.f90 core_interactions_config.f90
+
 # Adds the whizard-c-interface
 EXTRA_libwhizard_core_la_SOURCES = whizard-c-interface.f90
 libwhizard_core_la_LIBADD = whizard-c-interface.lo
@@ -91,15 +73,32 @@ module_lists = \
   ../rng/Modules \
   ../physics/Modules \
   ../qft/Modules \
+  ../expr_base/Modules \
   ../types/Modules \
   ../matrix_elements/Modules \
   ../particles/Modules \
   ../beams/Modules \
+  ../me_methods/Modules \
+  ../events/Modules \
   ../phase_space/Modules \
-  ../mci/Modules
+  ../mci/Modules \
+  ../user/Modules \
+  ../blha/Modules \
+  ../gosam/Modules \
+  ../fks/Modules \
+  ../variables/Modules \
+  ../model_features/Modules \
+  ../muli/Modules \
+  ../shower/Modules
 
 $(module_lists):
 	$(MAKE) -C `dirname $@` Modules
+
+
+$(module_dummy_lists):
+	$(MAKE) -C `dirname $@` Modules
+
+$(module_lists): $(module_dummy_lists)
 
 Module_dependencies.sed: $(module_lists)
 	@rm -f $@
@@ -135,27 +134,13 @@ Makefile.depend: $(libwhizard_core_la_SOURCES) $(libwhizard_main_la_SOURCES) $(E
 
 DISTCLEANFILES += Makefile.depend 
 
-## Dependencies across directories and packages, if not automatically generated
-$(libwhizard_core_la_OBJECTS): \
-  ../lhapdf/lhapdf.$(FC_MODULE_EXT) \
-  ../../vamp/src/vamp.$(FC_MODULE_EXT) \
-  ../../circe1/src/circe1.$(FC_MODULE_EXT) \
-  ../../circe2/src/circe2.$(FC_MODULE_EXT)
-## Dependency libshower (kinds, constants, strings) and VAMP
-#$(libwhizard_core_la_OBJECTS): \
-  ../shower/shower_module.$(FC_MODULE_EXT) \
-  ../shower/shower_particle.$(FC_MODULE_EXT) \
-  ../shower/shower_basics.$(FC_MODULE_EXT) \
-  ../pdf_builtin/pdf_builtin.$(FC_MODULE_EXT) \
-  ../muli/muli.$(FC_MODULE_EXT)
-
 SUFFIXES = .lo .$(FC_MODULE_EXT)
 # Fortran90 module files are generated at the same time as object files
 .lo.$(FC_MODULE_EXT):
 	@:
 #	touch $@
 
-AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system -I../combinatorics -I../parsing -I../rng -I../physics -I../qft -I../matrix_elements -I../types -I../particles -I../beams -I../phase_space -I../mci -I../../vamp/src -I../shower -I../pdf_builtin -I../muli -I../../circe1/src -I../../circe2/src -I../lhapdf -I../fastjet
+AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system -I../combinatorics -I../parsing -I../rng -I../physics -I../qft -I../expr_base -I../matrix_elements -I../types -I../particles -I../beams -I../me_methods -I../events -I../phase_space -I../mci -I../user -I../blha -I../gosam -I../fks -I../variables -I../model_features -I../../vamp/src -I../muli -I../shower -I../pdf_builtin -I../muli -I../../circe1/src -I../../circe2/src -I../lhapdf -I../fastjet
 
 ########################################################################
 ## Default Fortran compiler options
@@ -172,12 +157,6 @@ endif
 
 ########################################################################
 ## Non-standard targets and dependencies
-
-## Install the modules used by generated matrix element code
-## and by the user code library
-execmoddir = $(pkglibdir)/mod/whizard-core
-nodist_execmod_HEADERS = \
-  user_code_interface.$(FC_MODULE_EXT)
 
 ## (Re)create F90 sources from NOWEB source.
 if NOWEB_AVAILABLE

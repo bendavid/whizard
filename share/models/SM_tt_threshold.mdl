@@ -31,6 +31,9 @@ parameter nloop  = 1            # NRQCD order (0: LL, 1: NLL)
 parameter sh     = 1.0          # hard scale: mu_h = m1S * sh
 parameter sf     = 1.0          # soft scale: mu_s = m1s * sh * sf * v*(sqrts)
 
+# TESTING ONLY: switch off threshold initialization to speed up
+parameter test   = -1           # > 0 for fast testing (DON'T TOUCH)
+
 # Dependent parameters
 derived ee    = sqrt(4*pi/alpha_em_i)         # em-coupling
 derived cw    = mW / mZ                       # cos(theta-W)
@@ -145,14 +148,21 @@ particle PROTON 2212
   anti pbar "p-"
 
 particle HADRON_REMNANT 90
-
+  name hr
+  tex_name "had_r"
 particle HADRON_REMNANT_SINGLET 91
-
-particle HADRON_REMNANT_TRIPLET 92
+  name hr1
+  tex_name "had_r^{(1)}"
+particle HADRON_REMNANT_TRIPLET 92	 
   color 3
-
+  name hr3
+  tex_name "had_r^{(3)}"
+  anti hr3bar
+  tex_anti "had_r^{(\bar 3)}"  
 particle HADRON_REMNANT_OCTET 93
   color 8
+  name hr8
+  tex_name "had_r^{(8)}"
 
 ########################################################################
 # Vertices of the Standard model

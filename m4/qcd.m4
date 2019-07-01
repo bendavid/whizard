@@ -3,62 +3,37 @@ dnl
 
 include('aux.m4')
 
-### Sets LDFLAGS_PYTHIA and the conditional PYTHIA_AVAILABLE if successful
-### Also: PYTHIA_VERSION 
 AC_DEFUN([WO_PROG_QCD],
 [dnl
 AC_REQUIRE([AC_PROG_FC])
 
-AC_ARG_ENABLE([shower],
-  [AS_HELP_STRING([--enable-shower],
-    [enable parton showers [[yes]]])],
-  [], [enable_shower="yes"])
+### Choice to enable or disable (internal) PYTHIA6 package
 
-AC_CACHE_CHECK([whether we want to enable showering], 
-[wo_cv_showering],
+AC_ARG_ENABLE([pythia6],
+  [AS_HELP_STRING([--enable-pythia6],
+    [enable internal PYTHIA6 for hadronization [[yes]]])],
+  [], [enable_pythia6="yes"])
+
+AC_CACHE_CHECK([whether we want to enable PYTHIA6], 
+[wo_cv_pythia6],
 [dnl
-if test "$enable_shower" = "yes"; then
-  wo_cv_showering=yes
+if test "$enable_pythia6" = "yes"; then
+  wo_cv_pythia6=yes
 else
-  wo_cv_showering=no
+  wo_cv_pythia6=no
 fi])
 
-if test "$enable_shower" = "yes"; then
-  PYTHIA_AVAILABLE_FLAG=".true."
-  AC_MSG_CHECKING([for PYTHIA])
+if test "$enable_pythia6" = "yes"; then
+  PYTHIA6_AVAILABLE_FLAG=".true."
+  AC_MSG_CHECKING([for PYTHIA6])
   AC_MSG_RESULT([(enabled)])
 else
-  PYTHIA_AVAILABLE_FLAG=".false."
-  AC_MSG_CHECKING([for PYTHIA])
+  PYTHIA6_AVAILABLE_FLAG=".false."
+  AC_MSG_CHECKING([for PYTHIA6])
   AC_MSG_RESULT([(disabled)])
 fi
 AC_SUBST(PYTHIA_AVAILABLE_FLAG)
 
-AM_CONDITIONAL([SHOWER_AVAILABLE], 
-   [test "$wo_cv_showering" = "yes"])
-AM_CONDITIONAL([PYTHIA_AVAILABLE], 
-   [test "$PYTHIA_AVAILABLE_FLAG" = ".true."])
-
-AC_ARG_ENABLE([MPI],
-  [AS_HELP_STRING([--enable-mpi],
-    [enable multi-parton interactions [[no]]])])
-
-AC_CACHE_CHECK([whether we want to enable MPI], 
-[wo_cv_mpi],
-[dnl
-if test "$wo_cv_showering" = "yes" -a "$enable_mpi" = "yes"; then
-  wo_cv_mpi=yes
-elif test "$wo_cv_showering" = "no" -a "$enable_mpi" = "yes"; then
-AC_MSG_NOTICE([no])
-AC_MSG_NOTICE([error: **************************************])
-AC_MSG_NOTICE([error: Multiple interactions work only with  ])
-AC_MSG_NOTICE([error:    shower enabled.                    ])
-AC_MSG_ERROR([**************************************])
-else
-  wo_cv_mpi=no
-fi])
-
-AM_CONDITIONAL([MPI_AVAILABLE], 
-   [test "$wo_cv_mpi" = "yes"])
+AM_CONDITIONAL([PYTHIA6_AVAILABLE], 
+   [test "$PYTHIA6_AVAILABLE_FLAG" = ".true."])
 ])
-

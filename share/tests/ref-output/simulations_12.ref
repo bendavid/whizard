@@ -12,12 +12,16 @@
    Unweighted   = F
    Event norm   = 'sigma'
    Neg. weights = F
+   Update sqme  = F
+   Update wgt   = F
+   Update event = F
+   Recov. beams = F
    Pacify       = F
    Max. tries   = 10000
    Integral     =  7.746462203555E+03
    Error        =  0.000000000000E+00
    Sim. valid   = T
-   Ev.file ver. = 1
+   Ev.file ver. = 2
    MD5 sum (proc)   = '6214DB8278FE8B44E3EA0DE2842B8892'
    MD5 sum (config) = '010DDE3510C0B8A2E825FA331786C034'
    Events requested  = 0

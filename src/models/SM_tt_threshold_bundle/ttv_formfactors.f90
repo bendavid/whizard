@@ -1,6 +1,6 @@
 ! WHIZARD <<Version>> <<Date>>
 
-! Copyright (C) 1999-2013 by 
+! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -182,21 +182,30 @@ contains
     init = .true.
   end subroutine init_parameters
 
-  subroutine init_threshold_grid ()
+  subroutine init_threshold_grid (testflag)
+    real(default), intent(in) :: testflag
+    logical :: test
+    test = ( testflag > 0.0_default )
     if ( .not.init .or. .not.scan_threshold ) return
     print *, " "
     print *, "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%"
-    print *, " Initialize e+e- => ttbar threshold resummation:"
-    print *, " Use analytic (LL) or TOPPIK (NLL) form factors for ttA/ttZ vector"
-    print *, " and axial vector couplings (S/P-wave) in the threshold region."
-    print *, " Cf. threshold shapes from A. Hoang et al.: [arXiv:hep-ph/0107144],"
-    print *, " [arXiv:1309.6323]."
-    if ( nloop > 0 ) then
-      print *, " Numerical NLL solutions calculated with TOPPIK [arXiv:hep-ph/9904468]"
-      print *, " by M. Jezabek, T. Teubner."
+    if (test) then
+      print *, " TESTING ONLY:"
+      print *, " Skip initialization of ttbar threshold resummation and use tree-level SM."
+    else
+      print *, " Initialize e+e- => ttbar threshold resummation:"
+      print *, " Use analytic (LL) or TOPPIK (NLL) form factors for ttA/ttZ vector"
+      print *, " and axial vector couplings (S/P-wave) in the threshold region."
+      print *, " Cf. threshold shapes from A. Hoang et al.: [arXiv:hep-ph/0107144],"
+      print *, " [arXiv:1309.6323]."
+      if ( nloop > 0 ) then
+        print *, " Numerical NLL solutions calculated with TOPPIK [arXiv:hep-ph/9904468]"
+        print *, " by M. Jezabek, T. Teubner."
+      end if
     end if
     print *, "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%"
     print *, " "
+    if (test) return
     call scan_formfactor_over_pt_en ()
     scan_threshold = .false.
   end subroutine init_threshold_grid

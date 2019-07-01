@@ -8,6 +8,8 @@ if test -f OCAML_FLAG; then
     cat ${name}a.mokka.evt >> $name.log
     echo "Contents of ${name}b.mokka.evt" >> $name.log
     cat ${name}b.mokka.evt >> $name.log
+    cat $name.log | sed -e 's/WHIZARD 2.*$/WHIZARD [version]/' > $name.log.tmp
+    mv $name.log.tmp $name.log
     diff ref-output/`basename @script@`.ref `basename @script@`.log
 else
     echo "|=============================================================================|"

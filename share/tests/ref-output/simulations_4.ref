@@ -30,12 +30,16 @@
    Unweighted   = F
    Event norm   = 'sigma'
    Neg. weights = F
+   Update sqme  = F
+   Update wgt   = F
+   Update event = F
+   Recov. beams = F
    Pacify       = F
    Max. tries   = 10000
    Integral     =  8.200737758747E+03
    Error        =  2.218271966722E+02
    Sim. valid   = T
-   Ev.file ver. = 1
+   Ev.file ver. = 2
    MD5 sum (proc)   = 'B88A275F2B403BA5A6D8C5159988A14F'
    MD5 sum (config) = '74023E5CF2FA5C6DB5C980E0ABDCBB91'
    Events requested  = 3
@@ -167,12 +171,12 @@
  E =   5.000000000000E+02
  P =   0.000000000000E+00  0.000000000000E+00  5.000000000000E+02
  T =   0.000000000000E+00
- Children: 5 3
+ Children: 3 5
  Particle 2 [b] f(25)
  E =   5.000000000000E+02
  P =   0.000000000000E+00  0.000000000000E+00 -5.000000000000E+02
  T =   0.000000000000E+00
- Children: 6 4
+ Children: 4 6
  Particle 3 [i] f(25)
  E =   1.243705446832E+02
  P =   0.000000000000E+00  0.000000000000E+00  1.243705446832E+02

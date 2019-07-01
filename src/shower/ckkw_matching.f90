@@ -1,6 +1,6 @@
-! WHIZARD 2.2.3 Nov 30 2014
+! WHIZARD 2.2.4 Feb 06 2015
 ! 
-! Copyright (C) 1999-2014 by 
+! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -9,7 +9,8 @@
 !     Fabian Bach <fabian.bach@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Felix Braam, Sebastian Schmidt, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam, 
+!     Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -31,13 +32,12 @@
 
 module ckkw_matching
 
-  use kinds, only: default !NODEP!
-  use kinds, only: double !NODEP!
-  use constants !NODEP!
-  use lorentz !NODEP!
-  use io_units !NODEP!
-  use diagnostics !NODEP!
-  use tao_random_numbers !NODEP!
+  use kinds, only: default, double
+  use io_units
+  use constants
+  use diagnostics
+  use physics_defs
+  use lorentz
   use shower_base
   use shower_partons
   use shower_core
@@ -79,9 +79,9 @@ contains
     allocate (scales(1:size(shower%partons)))
     do i = 1, size (shower%partons)
        if (.not. associated (shower%partons(i)%p)) cycle
-       if (shower%partons(i)%p%type == 94) then
-          scales(i) = 2.0 * min (parton_get_energy (shower%partons(i)%p%child1),  &
-               parton_get_energy (shower%partons(i)%p%child2))**2 * &
+       if (shower%partons(i)%p%type == INTERNAL) then
+          scales(i) = two * min (shower%partons(i)%p%child1%momentum%p(0),  &
+                                 shower%partons(i)%p%child2%momentum%p(0))**2 * &
                (1.0 - (space_part (shower%partons(i)%p%child1%momentum) * &
                 space_part (shower%partons(i)%p%child2%momentum)) / &
                (space_part (shower%partons(i)%p%child1%momentum)**1 * &
@@ -105,7 +105,7 @@ contains
     do i = 1, size (shower%partons)
        if (signal_is_pending ()) return
        if (.not. associated (shower%partons(i)%p)) cycle
-       if (shower%partons(i)%p%type == 94) then
+       if (shower%partons(i)%p%type == INTERNAL) then
           !!! get type
           !!! check that all particles involved are colored
           if ((parton_is_colored (shower%partons(i)%p) .or. &
@@ -129,7 +129,7 @@ contains
           else
              print *, "no reweight with alphaS for ", shower%partons(i)%p%nr
           end if
-          if (shower%partons(i)%p%child1%type == 94) then
+          if (shower%partons(i)%p%child1%type == INTERNAL) then
              print *, "internal line from ", &
                   shower%partons(i)%p%child1%ckkwscale, &
                   " to ", shower%partons(i)%p%ckkwscale, &
@@ -166,7 +166,7 @@ contains
              end if
              weight = weight * min (one, sf)
           end if
-          if (shower%partons(i)%p%child2%type == 94) then
+          if (shower%partons(i)%p%child2%type == INTERNAL) then
              print *, "internal line from ", shower%partons(i)%p%child2%ckkwscale, &
                   " to ", shower%partons(i)%p%ckkwscale, &
                   " for type ", shower%partons(i)%p%child2%ckkwtype
@@ -205,7 +205,7 @@ contains
        end if
     end do
 
-    call tao_random_number(rand)
+    call rng%generate (rand)
 
     print *, "final weight: ", weight
 
@@ -270,7 +270,7 @@ contains
     real(default) :: rand
     integral = zero
     do i = 1, NTRIES
-       call tao_random_number (rand)
+       call rng%generate (rand)
        integral = integral + GammaQ (Q1 + rand * (Q - Q1), Q, fsr)
     end do
     integral = integral / NTRIES
@@ -287,7 +287,7 @@ contains
     real(default) :: rand
     integral = zero
     do i = 1, NTRIES
-       call tao_random_number (rand)
+       call rng%generate (rand)
        integral = integral + GammaG (Q1 + rand * (Q - Q1), Q, fsr) + &
             GammaF (Q1 +rand * (Q - Q1), fsr)
     end do

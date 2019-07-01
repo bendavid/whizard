@@ -1,0 +1,146 @@
+?openmp_logging = false
+?vis_history = false
+?integration_timer = false
+SM.me =>  0.000000000000E+00
+$method = "omega"
+| Process library 'pythia6_1_lib': recorded process 'pythia6_1_p1'
+seed = 0
+| Process library 'pythia6_1_lib': compiling ...
+| Process library 'pythia6_1_lib': writing makefile
+| Process library 'pythia6_1_lib': removing old files
+| Process library 'pythia6_1_lib': writing driver
+| Process library 'pythia6_1_lib': creating source code
+| Process library 'pythia6_1_lib': compiling sources
+| Process library 'pythia6_1_lib': linking
+| Process library 'pythia6_1_lib': loading
+| Process library 'pythia6_1_lib': ... success.
+$phs_method = "wood"
+$integration_method = "vamp"
+sqrts =  1.000000000000E+03
+openmp_num_threads = 1
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 0
+| Initializing integration for process pythia6_1_p1:
+| ------------------------------------------------------------------------
+| Process [scattering]: 'pythia6_1_p1'
+|   Library name  = 'pythia6_1_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'pythia6_1_p1_i1':   e-, e+ => u, ubar [omega]
+| ------------------------------------------------------------------------
+| Beam structure: [any particles]
+| Beam data (collision):
+|   e-  (mass = 0.0000000E+00 GeV)
+|   e+  (mass = 0.0000000E+00 GeV)
+|   sqrts = 1.000000000000E+03 GeV
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'pythia6_1_p1_i1.phs'
+| Phase space: 2 channels, 2 dimensions
+| Phase space: found 2 channels, collected in 2 groves.
+| Phase space: Using 2 equivalences between channels.
+| Phase space: wood
+| Applying user-defined cuts.
+| Starting integration for process 'pythia6_1_p1'
+| Integrate: iterations = 3:1000:"g", 3:1000
+| Integrator: 2 chains, 2 channels, 2 dimensions
+| Integrator: Using VAMP channel equivalences
+| Integrator: 1000 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1        784  1.6879081E+02  1.42E+00    0.84    0.24*  36.50
+   2        784  1.6800261E+02  8.60E-01    0.51    0.14*  36.20
+   3        784  1.6863536E+02  7.93E-01    0.47    0.13*  57.29
+|-----------------------------------------------------------------------------|
+   3       2352  1.6840915E+02  5.39E-01    0.32    0.16   57.29    0.19   3
+|-----------------------------------------------------------------------------|
+   4        784  1.6843609E+02  7.16E-01    0.43    0.12*  56.93
+   5        784  1.6986450E+02  7.15E-01    0.42    0.12*  57.39
+   6        784  1.6914014E+02  6.91E-01    0.41    0.11*  57.15
+|-----------------------------------------------------------------------------|
+   6       2352  1.6914727E+02  4.08E-01    0.24    0.12   57.15    1.00   3
+|=============================================================================|
+n_events = 1
+?allow_shower = true
+?ps_fsr_active = true
+?ps_use_PYTHIA_shower = true
+$sample = "pythia6_1"
+?sample_pacify = true
+| Starting simulation for process 'pythia6_1_p1'
+| Simulate: using integration grids from file 'pythia6_1_p1_m1.vg'
+| Simulate: activating parton shower
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 1
+| Simulation: requested number of events = 1
+|             corr. to luminosity [fb-1] =   5.9120E-03
+| Events: writing to ASCII file 'pythia6_1.evt'
+| Events: writing to raw file 'pythia6_1.evx'
+| Events: generating 1 unweighted, unpolarized events ...
+| Events: event normalization mode '1'
+| Using PYTHIA interface for parton showers
+|         ... event sample complete.
+| Events: closing ASCII file 'pythia6_1.evt'
+| Events: closing raw file 'pythia6_1.evx'
+| WHIZARD run finished.
+|=============================================================================|
+Contents of pythia6_1.evt:
+========================================================================
+ Event
+------------------------------------------------------------------------
+   Unweighted         = T
+   Normalization      = '1'
+   Helicity handling  = drop
+   Keep correlations  = F
+------------------------------------------------------------------------
+   Squared matrix el. =  8.054420331018E-03
+   Event weight       =  1.000000000000E+00
+------------------------------------------------------------------------
+   Selected MCI group = 1
+   Selected term      = 1
+   Selected channel   = 1
+------------------------------------------------------------------------
+   Passed selection   = T
+   Reweighting factor =  1.000000000000E+00
+   Analysis flag      = T
+========================================================================
+ Local variables:
+------------------------------------------------------------------------
+sqrts* =  1.000000000000E+03
+sqrts_hat* =>  1.000000000000E+03
+n_in* => 2
+n_out* => 19
+n_tot* => 21
+$process_id* => "pythia6_1_p1"
+process_num_id* => [unknown integer]
+sqme* =>  8.054420331018E-03
+sqme_ref* =>  8.054420331018E-03
+event_index* => 1
+event_weight* =>  1.000000000000E+00
+event_weight_ref* =>  1.000000000000E+00
+event_excess* =>  0.000000000000E+00
+------------------------------------------------------------------------
+ subevent:
+ 1 prt(i:11|-5.0000000E+02; 0.0000000E+00, 0.0000000E+00,-5.0000000E+02| 0.0000000E+00| 1)
+ 2 prt(i:-11|-5.0000000E+02; 0.0000000E+00, 0.0000000E+00, 5.0000000E+02| 0.0000000E+00| 2)
+ 3 prt(o:2| 6.0085778E+01;-5.2702643E+01, 2.5889615E+00,-2.8740727E+01| 0.0000000E+00| 3)
+ 4 prt(o:21| 5.6366797E+01;-4.8405889E+01, 3.4555074E-01,-2.8878474E+01| 0.0000000E+00| 4)
+ 5 prt(o:21| 1.0843575E+02;-9.6648030E+01, 1.4148563E+01,-4.7088092E+01| 0.0000000E+00| 5)
+ 6 prt(o:21| 6.3378322E+01;-5.7118599E+01, 7.7347885E+00,-2.6352427E+01| 0.0000000E+00| 6)
+ 7 prt(o:21| 1.0697449E+02;-9.5771195E+01, 1.3039745E+01,-4.5840867E+01| 0.0000000E+00| 7)
+ 8 prt(o:21| 9.5270175E+00;-8.3290592E+00, 1.1654479E+00,-4.4757756E+00| 0.0000000E+00| 8)
+ 9 prt(o:21| 1.1655891E+01;-1.0291831E+01, 1.2318137E+00,-5.3311021E+00| 0.0000000E+00| 9)
+ 10 prt(o:21| 4.8377697E+01;-4.3942661E+01, 2.1370564E+00,-2.0121559E+01| 0.0000000E+00| 10)
+ 11 prt(o:-1| 9.1160122E+00;-8.2503224E+00, 1.5840202E+00,-3.5236115E+00| 1.0890000E-01| 11)
+ 12 prt(o:1| 2.3418779E+01;-2.1067487E+01, 2.2046723E+00,-9.9815193E+00| 1.0890000E-01| 12)
+ 13 prt(o:21| 3.1343036E+00; 1.1441401E+00,-6.2361992E-01, 2.8505965E+00| 0.0000000E+00| 13)
+ 14 prt(o:21| 3.8142427E+00; 9.6768671E-01, 4.3639016E-01, 3.6635493E+00| 0.0000000E+00| 14)
+ 15 prt(o:21| 1.5917592E+00; 9.8584918E-01,-1.2489069E+00, 4.5057111E-02| 0.0000000E+00| 15)
+ 16 prt(o:21| 3.0643898E+00; 2.1783643E-01,-2.3322913E+00, 1.9757149E+00| 0.0000000E+00| 16)
+ 17 prt(o:21| 1.3066273E+00; 2.9309976E-01, 1.0848598E+00,-6.6666840E-01| 0.0000000E+00| 17)
+ 18 prt(o:21| 1.0234149E+01; 9.6404011E+00,-8.3470490E-01, 3.3322275E+00| 0.0000000E+00| 18)
+ 19 prt(o:21| 3.6913316E+01; 3.4036230E+01,-3.3112877E+00, 1.3898322E+01| 0.0000000E+00| 19)
+ 20 prt(o:21| 7.9373040E+00; 7.3156179E+00,-6.6715619E-01, 3.0062322E+00| 0.0000000E+00| 20)
+ 21 prt(o:-2| 4.3466737E+02; 3.8792685E+02,-3.8683902E+01, 1.9222912E+02| 0.0000000E+00| 21)
+========================================================================

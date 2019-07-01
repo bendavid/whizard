@@ -1,6 +1,6 @@
-! WHIZARD 2.2.3 Nov 30 2014
+! WHIZARD 2.2.4 Feb 06 2015
 ! 
-! Copyright (C) 1999-2014 by 
+! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -9,7 +9,8 @@
 !     Fabian Bach <fabian.bach@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Felix Braam, Sebastian Schmidt, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam, 
+!     Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -94,6 +95,7 @@ module rt_data
      logical :: model_is_copy = .false.
      type(model_t), pointer :: preload_model => null ()
      type(model_t), pointer :: fallback_model => null ()
+     type(model_t), pointer :: radiation_model => null ()
      type(prclib_stack_t) :: prclib_stack
      type(process_library_t), pointer :: prclib => null ()
      type(beam_structure_t) :: beam_structure
@@ -126,6 +128,7 @@ module rt_data
      procedure :: local_final => rt_data_local_final
      procedure :: read_model => rt_data_read_model
      procedure :: init_fallback_model => rt_data_init_fallback_model
+     procedure :: init_radiation_model => rt_data_init_radiation_model
      procedure :: select_model => rt_data_select_model
      procedure :: unselect_model => rt_data_unselect_model
      procedure :: ensure_model_copy => rt_data_ensure_model_copy
@@ -333,7 +336,7 @@ contains
        var_list => object%get_var_list_ptr ()
        do i = 1, size (vars)
           associate (var => vars(i))
-            if (var_list_exists (var_list, var, follow_link=.true.)) then
+            if (var_list%contains (var, follow_link=.true.)) then
                call var_list_write_var (var_list, var, unit = u, &
                     follow_link = .true.)
             end if
@@ -1225,6 +1228,9 @@ contains
     call var_list_append_int &
         (global%var_list, var_str ("alphas_power"), &
          0, intrinsic = .true.)
+    call var_list_append_log &
+        (global%var_list, var_str ("?combined_nlo_integration"), &
+         .false., intrinsic = .true.)
     call global%init_pointer_variables ()
     call global%process_stack%init_var_list (global%var_list)
   end subroutine rt_data_global_init
@@ -1242,6 +1248,7 @@ contains
           intrinsic=.true.)
     call local%init_pointer_variables ()
     local%fallback_model => global%fallback_model
+    local%radiation_model => global%radiation_model
     local%os_data = global%os_data
     local%logfile = global%logfile
     call local%model_list%link (global%model_list)
@@ -1354,7 +1361,7 @@ contains
     call global%prclib_stack%final ()
 !    call global%delete_model_copy ()
     call global%model_list%final ()
-    call var_list_final (global%var_list, follow_link=.false.)
+    call global%var_list%final (follow_link=.false.)
     if (associated (global%out_files)) then
        call file_list_final (global%out_files)
        deallocate (global%out_files)
@@ -1366,7 +1373,7 @@ contains
     call local%process_stack%clear ()
 !    call local%delete_model_copy ()
     call local%model_list%final ()
-    call var_list_final (local%var_list, follow_link=.false.)
+    call local%var_list%final (follow_link=.false.)
   end subroutine rt_data_local_final
 
   subroutine rt_data_read_model (global, name, model)
@@ -1385,6 +1392,13 @@ contains
     call global%model_list%read_model &
          (name, filename, global%os_data, global%fallback_model)
   end subroutine rt_data_init_fallback_model
+  
+  subroutine rt_data_init_radiation_model (global, name, filename)
+    class(rt_data_t), intent(inout) :: global
+    type(string_t), intent(in) :: name, filename
+    call global%model_list%read_model &
+         (name, filename, global%os_data, global%radiation_model)
+  end subroutine rt_data_init_radiation_model
   
   subroutine rt_data_select_model (global, name)
     class(rt_data_t), intent(inout), target :: global
@@ -1650,49 +1664,63 @@ contains
     logical :: lval
     class(rt_data_t), intent(in), target :: global
     type(string_t), intent(in) :: name
-    lval = var_list_get_lval (global%get_var_list_ptr (), name)
+    type(var_list_t), pointer :: var_list
+    var_list => global%get_var_list_ptr ()
+    lval = var_list%get_lval (name)
   end function rt_data_get_lval
   
   function rt_data_get_ival (global, name) result (ival)
     integer :: ival
     class(rt_data_t), intent(in), target :: global
     type(string_t), intent(in) :: name
-    ival = var_list_get_ival (global%get_var_list_ptr (), name)
+    type(var_list_t), pointer :: var_list
+    var_list => global%get_var_list_ptr ()
+    ival = var_list%get_ival (name)
   end function rt_data_get_ival
   
   function rt_data_get_rval (global, name) result (rval)
     real(default) :: rval
     class(rt_data_t), intent(in), target :: global
     type(string_t), intent(in) :: name
-    rval = var_list_get_rval (global%get_var_list_ptr (), name)
+    type(var_list_t), pointer :: var_list
+    var_list => global%get_var_list_ptr ()
+    rval = var_list%get_rval (name)
   end function rt_data_get_rval
     
   function rt_data_get_cval (global, name) result (cval)
     complex(default) :: cval
     class(rt_data_t), intent(in), target :: global
     type(string_t), intent(in) :: name
-    cval = var_list_get_cval (global%get_var_list_ptr (), name)
+    type(var_list_t), pointer :: var_list
+    var_list => global%get_var_list_ptr ()
+    cval = var_list%get_cval (name)
   end function rt_data_get_cval
 
   function rt_data_get_aval (global, name) result (aval)
     type(pdg_array_t) :: aval
     class(rt_data_t), intent(in), target :: global
     type(string_t), intent(in) :: name
-    aval = var_list_get_aval (global%get_var_list_ptr (), name)
+    type(var_list_t), pointer :: var_list
+    var_list => global%get_var_list_ptr ()
+    aval = var_list%get_aval (name)
   end function rt_data_get_aval
   
   function rt_data_get_pval (global, name) result (pval)
     type(subevt_t) :: pval
     class(rt_data_t), intent(in), target :: global
     type(string_t), intent(in) :: name
-    pval = var_list_get_pval (global%get_var_list_ptr (), name)
+    type(var_list_t), pointer :: var_list
+    var_list => global%get_var_list_ptr ()
+    pval = var_list%get_pval (name)
   end function rt_data_get_pval
   
   function rt_data_get_sval (global, name) result (sval)
     type(string_t) :: sval
     class(rt_data_t), intent(in), target :: global
     type(string_t), intent(in) :: name
-    sval = var_list_get_sval (global%get_var_list_ptr (), name)
+    type(var_list_t), pointer :: var_list
+    var_list => global%get_var_list_ptr ()
+    sval = var_list%get_sval (name)
   end function rt_data_get_sval
   
   subroutine rt_data_add_prclib (global, prclib_entry)
@@ -1705,12 +1733,11 @@ contains
   subroutine rt_data_update_prclib (global, lib)
     class(rt_data_t), intent(inout) :: global
     type(process_library_t), intent(in), target :: lib
-    type(var_entry_t), pointer :: var
     global%prclib => lib
-    var => var_list_get_var_ptr (global%var_list, &
-         var_str ("$library_name"), follow_link = .false.)
-    if (associated (var)) then
-       call var_entry_set_string (var, &
+    if (global%var_list%contains (&
+         var_str ("$library_name"), follow_link = .false.)) then
+       call var_list_set_string (global%var_list, &
+            var_str ("$library_name"), &
             global%prclib%get_name (), is_known=.true.)
     else
        call var_list_append_string (global%var_list, &
@@ -1723,12 +1750,12 @@ contains
     class(rt_data_t), intent(in) :: rt_data
     type(helicity_selection_t) :: helicity_selection
     associate (var_list => rt_data%var_list)
-      helicity_selection%active = var_list_get_lval (var_list, &
+      helicity_selection%active = var_list%get_lval (&
            var_str ("?helicity_selection_active"))
       if (helicity_selection%active) then
-         helicity_selection%threshold = var_list_get_rval (var_list, &
+         helicity_selection%threshold = var_list%get_rval (&
               var_str ("helicity_selection_threshold"))
-         helicity_selection%cutoff = var_list_get_ival (var_list, &
+         helicity_selection%cutoff = var_list%get_ival (&
               var_str ("helicity_selection_cutoff"))
       end if
     end associate
@@ -1744,10 +1771,10 @@ contains
       call beams%write (u)
       if (.not. beams%asymmetric () .and. beams%get_n_beam () == 2) then
          write (u, "(2x,A,ES19.12,1x,'GeV')") "sqrts =", &
-              var_list_get_rval (var_list, var_str ("sqrts"))         
+              var_list%get_rval (var_str ("sqrts"))         
       end if
       if (beams%contains ("pdf_builtin")) then
-         s = var_list_get_sval (var_list, var_str ("$pdf_builtin_set"))
+         s = var_list%get_sval (var_str ("$pdf_builtin_set"))
          if (s /= "") then
             write (u, "(2x,A,1x,3A)")  "PDF set =", '"', char (s), '"'
          else
@@ -1755,31 +1782,31 @@ contains
          end if
       end if
       if (beams%contains ("lhapdf")) then
-         s = var_list_get_sval (var_list, var_str ("$lhapdf_dir"))
+         s = var_list%get_sval (var_str ("$lhapdf_dir"))
          if (s /= "") then
             write (u, "(2x,A,1x,3A)")  "LHAPDF dir    =", '"', char (s), '"'
          end if
-         s = var_list_get_sval (var_list, var_str ("$lhapdf_file"))
+         s = var_list%get_sval (var_str ("$lhapdf_file"))
          if (s /= "") then
             write (u, "(2x,A,1x,3A)")  "LHAPDF file   =", '"', char (s), '"'
             write (u, "(2x,A,1x,I0)") "LHAPDF member =", &
-                 var_list_get_ival (var_list, var_str ("lhapdf_member"))
+                 var_list%get_ival (var_str ("lhapdf_member"))
          else
             write (u, "(2x,A,1x,A)")  "LHAPDF file   =", "[undefined]"
          end if
       end if
       if (beams%contains ("lhapdf_photon")) then
-         s = var_list_get_sval (var_list, var_str ("$lhapdf_dir"))
+         s = var_list%get_sval (var_str ("$lhapdf_dir"))
          if (s /= "") then
             write (u, "(2x,A,1x,3A)")  "LHAPDF dir    =", '"', char (s), '"'
          end if
-         s = var_list_get_sval (var_list, var_str ("$lhapdf_photon_file"))
+         s = var_list%get_sval (var_str ("$lhapdf_photon_file"))
          if (s /= "") then
             write (u, "(2x,A,1x,3A)")  "LHAPDF file   =", '"', char (s), '"'
             write (u, "(2x,A,1x,I0)") "LHAPDF member =", &
-                 var_list_get_ival (var_list, var_str ("lhapdf_member"))
+                 var_list%get_ival (var_str ("lhapdf_member"))
             write (u, "(2x,A,1x,I0)") "LHAPDF scheme =", &
-                 var_list_get_ival (var_list, &
+                 var_list%get_ival (&
                  var_str ("lhapdf_photon_scheme"))
          else
             write (u, "(2x,A,1x,A)")  "LHAPDF file   =", "[undefined]"
@@ -1787,81 +1814,81 @@ contains
       end if
       if (beams%contains ("isr")) then
          write (u, "(2x,A,ES19.12)") "ISR alpha =", &
-              var_list_get_rval (var_list, var_str ("isr_alpha"))
+              var_list%get_rval (var_str ("isr_alpha"))
          write (u, "(2x,A,ES19.12)") "ISR Q max =", &
-              var_list_get_rval (var_list, var_str ("isr_q_max"))
+              var_list%get_rval (var_str ("isr_q_max"))
          write (u, "(2x,A,ES19.12)") "ISR mass  =", &
-              var_list_get_rval (var_list, var_str ("isr_mass"))
+              var_list%get_rval (var_str ("isr_mass"))
          write (u, "(2x,A,1x,I0)") "ISR order  =", &
-              var_list_get_ival (var_list, var_str ("isr_order"))
+              var_list%get_ival (var_str ("isr_order"))
          write (u, "(2x,A,1x,L1)") "ISR recoil =", &
-              var_list_get_lval (var_list, var_str ("?isr_recoil"))
+              var_list%get_lval (var_str ("?isr_recoil"))
       end if
       if (beams%contains ("epa")) then
          write (u, "(2x,A,ES19.12)") "EPA alpha  =", &
-              var_list_get_rval (var_list, var_str ("epa_alpha"))
+              var_list%get_rval (var_str ("epa_alpha"))
          write (u, "(2x,A,ES19.12)") "EPA x min  =", &
-              var_list_get_rval (var_list, var_str ("epa_x_min"))
+              var_list%get_rval (var_str ("epa_x_min"))
          write (u, "(2x,A,ES19.12)") "EPA Q min  =", &
-              var_list_get_rval (var_list, var_str ("epa_q_min"))
+              var_list%get_rval (var_str ("epa_q_min"))
          write (u, "(2x,A,ES19.12)") "EPA E max  =", &
-              var_list_get_rval (var_list, var_str ("epa_e_max"))
+              var_list%get_rval (var_str ("epa_e_max"))
          write (u, "(2x,A,ES19.12)") "EPA mass   =", &
-              var_list_get_rval (var_list, var_str ("epa_mass"))
+              var_list%get_rval (var_str ("epa_mass"))
          write (u, "(2x,A,1x,L1)") "EPA recoil =", &
-              var_list_get_lval (var_list, var_str ("?epa_recoil"))
+              var_list%get_lval (var_str ("?epa_recoil"))
       end if
       if (beams%contains ("ewa")) then
          write (u, "(2x,A,ES19.12)") "EWA x min       =", &
-              var_list_get_rval (var_list, var_str ("ewa_x_min"))
+              var_list%get_rval (var_str ("ewa_x_min"))
          write (u, "(2x,A,ES19.12)") "EWA Pt max      =", &
-              var_list_get_rval (var_list, var_str ("ewa_pt_max"))
+              var_list%get_rval (var_str ("ewa_pt_max"))
          write (u, "(2x,A,ES19.12)") "EWA mass        =", &
-              var_list_get_rval (var_list, var_str ("ewa_mass"))
+              var_list%get_rval (var_str ("ewa_mass"))
          write (u, "(2x,A,1x,L1)") "EWA mom cons.   =", &
-              var_list_get_lval (var_list, &
+              var_list%get_lval (&
               var_str ("?ewa_keep_momentum"))
          write (u, "(2x,A,1x,L1)") "EWA energ. cons. =", &
-              var_list_get_lval (var_list, &
+              var_list%get_lval (&
               var_str ("ewa_keep_energy"))
       end if
       if (beams%contains ("circe1")) then
          write (u, "(2x,A,1x,I0)") "CIRCE1 version    =", &
-              var_list_get_ival (var_list, var_str ("circe1_ver"))
+              var_list%get_ival (var_str ("circe1_ver"))
          write (u, "(2x,A,1x,I0)") "CIRCE1 revision   =", &
-              var_list_get_ival (var_list, var_str ("circe1_rev")) 
-         s = var_list_get_sval (var_list, var_str ("$circe1_acc"))
+              var_list%get_ival (var_str ("circe1_rev")) 
+         s = var_list%get_sval (var_str ("$circe1_acc"))
          write (u, "(2x,A,1x,A)") "CIRCE1 acceler.   =", char (s)
          write (u, "(2x,A,1x,I0)") "CIRCE1 chattin.   =", &
-              var_list_get_ival (var_list, var_str ("circe1_chat"))
+              var_list%get_ival (var_str ("circe1_chat"))
          write (u, "(2x,A,ES19.12)") "CIRCE1 sqrts      =", &
-              var_list_get_rval (var_list, var_str ("circe1_sqrts"))
+              var_list%get_rval (var_str ("circe1_sqrts"))
          write (u, "(2x,A,ES19.12)") "CIRCE1 epsil.     =", &
-              var_list_get_rval (var_list, var_str ("circe1_eps"))
+              var_list%get_rval (var_str ("circe1_eps"))
          write (u, "(2x,A,1x,L1)") "CIRCE1 phot. 1  =", &
-              var_list_get_lval (var_list, var_str ("?circe1_photon1"))
+              var_list%get_lval (var_str ("?circe1_photon1"))
          write (u, "(2x,A,1x,L1)") "CIRCE1 phot. 2  =", &
-              var_list_get_lval (var_list, var_str ("?circe1_photon2"))
+              var_list%get_lval (var_str ("?circe1_photon2"))
          write (u, "(2x,A,1x,L1)") "CIRCE1 generat. =", &
-              var_list_get_lval (var_list, var_str ("?circe1_generate"))
+              var_list%get_lval (var_str ("?circe1_generate"))
          write (u, "(2x,A,1x,L1)") "CIRCE1 mapping  =", &
-              var_list_get_lval (var_list, var_str ("?circe1_map"))
+              var_list%get_lval (var_str ("?circe1_map"))
          write (u, "(2x,A,ES19.12)") "CIRCE1 map. slope =", &
-              var_list_get_rval (var_list, var_str ("circe1_mapping_slope"))
+              var_list%get_rval (var_str ("circe1_mapping_slope"))
       end if
       if (beams%contains ("circe2")) then
-         s = var_list_get_sval (var_list, var_str ("$circe2_design"))
+         s = var_list%get_sval (var_str ("$circe2_design"))
          write (u, "(2x,A,1x,A)") "CIRCE2 design   =", char (s) 
-         s = var_list_get_sval (var_list, var_str ("$circe2_file"))
+         s = var_list%get_sval (var_str ("$circe2_file"))
          write (u, "(2x,A,1x,A)") "CIRCE2 file     =", char (s)
          write (u, "(2x,A,1x,L1)") "CIRCE2 polarized =", &
-              var_list_get_lval (var_list, var_str ("?circe2_polarized"))
+              var_list%get_lval (var_str ("?circe2_polarized"))
       end if
       if (beams%contains ("beam_events")) then
-         s = var_list_get_sval (var_list, var_str ("$beam_events_file"))
+         s = var_list%get_sval (var_str ("$beam_events_file"))
          write (u, "(2x,A,1x,A)") "Beam events file     =", char (s)
          write (u, "(2x,A,1x,L1)") "Beam events EOF warn =", &
-              var_list_get_lval (var_list, var_str ("?beam_events_warn_eof"))
+              var_list%get_lval (var_str ("?beam_events_warn_eof"))
       end if
     end associate
   end subroutine rt_data_show_beams
@@ -1869,7 +1896,7 @@ contains
   function rt_data_get_sqrts (rt_data) result (sqrts)
     class(rt_data_t), intent(in) :: rt_data
     real(default) :: sqrts
-    sqrts = var_list_get_rval (rt_data%var_list, var_str ("sqrts"))
+    sqrts = rt_data%var_list%get_rval (var_str ("sqrts"))
   end function rt_data_get_sqrts
     
   subroutine rt_data_pacify (rt_data, efficiency_reset, error_reset)
@@ -1886,17 +1913,26 @@ contains
   subroutine rt_data_change_to_gosam (global, success)
     class(rt_data_t), intent(inout) :: global
     logical, intent(out) :: success
-    call var_list_replace_string &
-         (global%var_list, var_str ("$method"), var_str ("gosam"), &
-          intrinsic = .true., success = success)
+    success = global%var_list%contains (var_str ("$method"))
+    if (global%var_list%contains (var_str ("$method"))) then
+       call global%var_list%set_sval (var_str ("$method"), var_str ("gosam"))
+    end if
+!     call var_list_replace_string &
+!          (global%var_list, var_str ("$method"), var_str ("gosam"), &
+!           intrinsic = .true., success = success)
+
   end subroutine rt_data_change_to_gosam
 
   subroutine rt_data_change_to_omega (global)
     class(rt_data_t), intent(inout) :: global
     logical :: success
-    call var_list_replace_string &
-         (global%var_list, var_str ("$method"), var_str ("omega"), &
-          intrinsic = .true., success = success)
+    success = global%var_list%contains (var_str ("$method"))
+    if (global%var_list%contains (var_str ("$method"))) then
+       call global%var_list%set_sval (var_str ("$method"), var_str ("omega"))
+    end if
+!     call var_list_replace_string &
+!          (global%var_list, var_str ("$method"), var_str ("omega"), &
+!           intrinsic = .true., success = success)
   end subroutine rt_data_change_to_omega
 
 
@@ -1935,32 +1971,23 @@ contains
   subroutine rt_data_fix_system_dependencies (rt_data)
     class(rt_data_t), intent(inout), target :: rt_data
     type(var_list_t), pointer :: var_list
-    type(var_entry_t), pointer :: var
     var_list => rt_data%var_list
-
-    call var_list_set_log (var_list, &
-         var_str ("?omega_openmp"), .false., is_known = .true.)
-
-    var => var_list_get_var_ptr (var_list, &
-         var_str ("?openmp_is_active"), V_LOG)
-    call var_entry_set_log (var, .false., is_known = .true.)
-    var => var_list_get_var_ptr (var_list, &
-         var_str ("openmp_num_threads_default"), V_INT)
-    call var_entry_set_int (var, 1, is_known = .true.)
-    call var_list_set_int (var_list, &
-         var_str ("openmp_num_threads"), 1, is_known = .true.)        
-    var => var_list_get_var_ptr (var_list, &
-         var_str ("real_range"), V_INT)
-    call var_entry_set_int (var, 307, is_known = .true.)
-    var => var_list_get_var_ptr (var_list, &
-         var_str ("real_precision"), V_INT)
-    call var_entry_set_int (var, 15, is_known = .true.)    
-    var => var_list_get_var_ptr (var_list, &
-         var_str ("real_epsilon"), V_REAL)
-    call var_entry_set_real (var, 1.e-16_default, is_known = .true.)
-    var => var_list_get_var_ptr (var_list, &
-         var_str ("real_tiny"), V_REAL)
-    call var_entry_set_real (var, 1.e-300_default, is_known = .true.)     
+    call var_list_set_log (var_list, var_str ("?omega_openmp"), &
+         .false., is_known = .true., force=.true.) 
+    call var_list_set_log (var_list, var_str ("?openmp_is_active"), &
+         .false., is_known = .true., force=.true.)
+    call var_list_set_int (var_list, var_str ("openmp_num_threads_default"), &
+         1, is_known = .true., force=.true.)
+    call var_list_set_int (var_list, var_str ("openmp_num_threads"), &
+         1, is_known = .true., force=.true.)        
+    call var_list_set_int (var_list, var_str ("real_range"), &
+         307, is_known = .true., force=.true.)
+    call var_list_set_int (var_list, var_str ("real_precision"), &
+         15, is_known = .true., force=.true.)    
+    call var_list_set_real (var_list, var_str ("real_epsilon"), &
+         1.e-16_default, is_known = .true., force=.true.)
+    call var_list_set_real (var_list, var_str ("real_tiny"), &
+         1.e-300_default, is_known = .true., force=.true.)     
     
     rt_data%os_data%fc = "Fortran-compiler"
     rt_data%os_data%fcflags = "Fortran-flags"
@@ -2245,7 +2272,6 @@ contains
     integer, intent(in) :: u
     type(rt_data_t), target :: rt_data, local
     type(var_list_t), pointer :: model_vars
-    type(var_entry_t), pointer :: var_entry
     type(string_t) :: var_name
 
     write (u, "(A)")  "* Test output: rt_data_6"
@@ -2447,7 +2473,6 @@ contains
     integer, intent(in) :: u
     type(rt_data_t), target :: global, local
     type(var_list_t), pointer :: var_list
-    type(var_entry_t), pointer :: var_entry
     type(string_t) :: var_name
 
     write (u, "(A)")  "* Test output: rt_data_9"

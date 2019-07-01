@@ -1,6 +1,6 @@
 (* $Id: modellib_NoH.mli 5045 2014-03-21 17:09:34Z msekulla $
 
-   Copyright (C) 1999-2014 by
+   Copyright (C) 1999-2015 by
 
        Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>

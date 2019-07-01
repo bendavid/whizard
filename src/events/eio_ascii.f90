@@ -1,0 +1,1310 @@
+! WHIZARD 2.2.4 Feb 06 2015
+! 
+! Copyright (C) 1999-2015 by 
+!     Wolfgang Kilian <kilian@physik.uni-siegen.de>
+!     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
+!     Juergen Reuter <juergen.reuter@desy.de>
+!     
+!     with contributions from
+!     Fabian Bach <fabian.bach@desy.de>
+!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Weiss <christian.weiss@desy.de>
+!     and Hans-Werner Boschmann, Felix Braam, 
+!     Sebastian Schmidt, Daniel Wiesler 
+!
+! WHIZARD is free software; you can redistribute it and/or modify it
+! under the terms of the GNU General Public License as published by 
+! the Free Software Foundation; either version 2, or (at your option)
+! any later version.
+!
+! WHIZARD is distributed in the hope that it will be useful, but
+! WITHOUT ANY WARRANTY; without even the implied warranty of
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! GNU General Public License for more details.
+!
+! You should have received a copy of the GNU General Public License
+! along with this program; if not, write to the Free Software
+! Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! This file has been stripped of most comments.  For documentation, refer
+! to the source 'whizard.nw'
+
+module eio_ascii
+  
+  use kinds
+  use io_units
+  use iso_varying_string, string_t => varying_string
+  use unit_tests
+  use diagnostics
+
+  use lorentz
+  use model_data
+  use particles
+  use event_base
+  use hep_common
+  use hep_events
+  use eio_data
+  use eio_base
+
+  implicit none
+  private
+
+  public :: eio_ascii_t
+  public :: eio_ascii_ascii_t
+  public :: eio_ascii_athena_t
+  public :: eio_ascii_debug_t
+  public :: eio_ascii_hepevt_t
+  public :: eio_ascii_hepevt_verb_t
+  public :: eio_ascii_lha_t
+  public :: eio_ascii_lha_verb_t
+  public :: eio_ascii_long_t
+  public :: eio_ascii_mokka_t
+  public :: eio_ascii_short_t
+  public :: eio_ascii_test
+
+  type, abstract, extends (eio_t) :: eio_ascii_t
+     logical :: writing = .false.
+     integer :: unit = 0
+     logical :: keep_beams = .false.     
+   contains
+     procedure :: set_parameters => eio_ascii_set_parameters
+     procedure :: write => eio_ascii_write
+     procedure :: final => eio_ascii_final
+     procedure :: init_out => eio_ascii_init_out
+     procedure :: check_normalization => eio_ascii_check_normalization
+     procedure :: init_in => eio_ascii_init_in
+     procedure :: switch_inout => eio_ascii_switch_inout
+     procedure :: split_out => eio_ascii_split_out
+     procedure :: output => eio_ascii_output
+     procedure :: input_i_prc => eio_ascii_input_i_prc
+     procedure :: input_event => eio_ascii_input_event
+  end type eio_ascii_t
+  
+  type, extends (eio_ascii_t) :: eio_ascii_ascii_t
+  end type eio_ascii_ascii_t
+  
+  type, extends (eio_ascii_t) :: eio_ascii_athena_t
+  end type eio_ascii_athena_t
+  
+  type, extends (eio_ascii_t) :: eio_ascii_debug_t
+     logical :: show_process = .true.
+     logical :: show_transforms = .true.
+     logical :: show_decay = .true.
+     logical :: verbose = .true.
+  end type eio_ascii_debug_t
+  
+  type, extends (eio_ascii_t) :: eio_ascii_hepevt_t
+  end type eio_ascii_hepevt_t
+  
+  type, extends (eio_ascii_t) :: eio_ascii_hepevt_verb_t
+  end type eio_ascii_hepevt_verb_t
+  
+  type, extends (eio_ascii_t) :: eio_ascii_lha_t
+  end type eio_ascii_lha_t
+  
+  type, extends (eio_ascii_t) :: eio_ascii_lha_verb_t
+  end type eio_ascii_lha_verb_t
+   
+  type, extends (eio_ascii_t) :: eio_ascii_long_t
+  end type eio_ascii_long_t
+  
+  type, extends (eio_ascii_t) :: eio_ascii_mokka_t
+  end type eio_ascii_mokka_t
+  
+  type, extends (eio_ascii_t) :: eio_ascii_short_t
+  end type eio_ascii_short_t
+  
+
+contains
+  
+  subroutine eio_ascii_set_parameters (eio, keep_beams, extension, &
+       show_process, show_transforms, show_decay, verbose)
+    class(eio_ascii_t), intent(inout) :: eio
+    logical, intent(in), optional :: keep_beams
+    type(string_t), intent(in), optional :: extension
+    logical, intent(in), optional :: show_process, show_transforms, show_decay
+    logical, intent(in), optional :: verbose
+    if (present (keep_beams))  eio%keep_beams = keep_beams
+    if (present (extension)) then
+       eio%extension = extension
+    else
+       select type (eio)
+       type is (eio_ascii_ascii_t)
+          eio%extension = "evt"
+       type is (eio_ascii_athena_t)
+          eio%extension = "athena.evt"
+       type is (eio_ascii_debug_t)
+          eio%extension = "debug"
+       type is (eio_ascii_hepevt_t)
+          eio%extension = "hepevt"
+       type is (eio_ascii_hepevt_verb_t)
+          eio%extension = "hepevt.verb"          
+       type is (eio_ascii_lha_t)
+          eio%extension = "lha"
+       type is (eio_ascii_lha_verb_t)
+          eio%extension = "lha.verb"          
+       type is (eio_ascii_long_t)
+          eio%extension = "long.evt"
+       type is (eio_ascii_mokka_t)
+          eio%extension = "mokka.evt"
+       type is (eio_ascii_short_t)
+          eio%extension = "short.evt"
+       end select
+    end if
+    select type (eio)
+    type is (eio_ascii_debug_t)
+       if (present (show_process))  eio%show_process = show_process
+       if (present (show_transforms))  eio%show_transforms = show_transforms
+       if (present (show_decay))  eio%show_decay = show_decay
+       if (present (verbose))  eio%verbose = verbose
+    end select
+  end subroutine eio_ascii_set_parameters
+  
+  subroutine eio_ascii_write (object, unit)
+    class(eio_ascii_t), intent(in) :: object
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = given_output_unit (unit)
+    select type (object)
+    type is (eio_ascii_ascii_t)
+       write (u, "(1x,A)")  "ASCII event stream (default format):"
+    type is (eio_ascii_athena_t)
+       write (u, "(1x,A)")  "ASCII event stream (ATHENA format):"
+    type is (eio_ascii_debug_t)
+       write (u, "(1x,A)")  "ASCII event stream (Debugging format):"
+    type is (eio_ascii_hepevt_t)
+       write (u, "(1x,A)")  "ASCII event stream (HEPEVT format):"
+    type is (eio_ascii_hepevt_verb_t)
+       write (u, "(1x,A)")  "ASCII event stream (verbose HEPEVT format):"
+    type is (eio_ascii_lha_t)
+       write (u, "(1x,A)")  "ASCII event stream (LHA format):"
+    type is (eio_ascii_lha_verb_t)
+       write (u, "(1x,A)")  "ASCII event stream (verbose LHA format):"
+    type is (eio_ascii_long_t)
+       write (u, "(1x,A)")  "ASCII event stream (long format):"
+    type is (eio_ascii_mokka_t)
+       write (u, "(1x,A)")  "ASCII event stream (MOKKA format):"
+    type is (eio_ascii_short_t)
+       write (u, "(1x,A)")  "ASCII event stream (short format):"
+    end select
+    if (object%writing) then
+       write (u, "(3x,A,A)")  "Writing to file   = ", char (object%filename)
+    else
+       write (u, "(3x,A)")  "[closed]"
+    end if
+    write (u, "(3x,A,L1)")    "Keep beams        = ", object%keep_beams
+    select type (object)
+    type is (eio_ascii_debug_t)
+       write (u, "(3x,A,L1)")    "Show process      = ", object%show_process
+       write (u, "(3x,A,L1)")    "Show transforms   = ", object%show_transforms
+       write (u, "(3x,A,L1)")    "Show decay tree   = ", object%show_decay
+       write (u, "(3x,A,L1)")    "Verbose output    = ", object%verbose
+    end select
+  end subroutine eio_ascii_write
+  
+  subroutine eio_ascii_final (object)
+    class(eio_ascii_t), intent(inout) :: object
+    if (object%writing) then
+       write (msg_buffer, "(A,A,A)")  "Events: closing ASCII file '", &
+            char (object%filename), "'"
+       call msg_message ()
+       close (object%unit)
+       object%writing = .false.
+    end if
+  end subroutine eio_ascii_final
+  
+  subroutine eio_ascii_init_out (eio, sample, data, success, extension)
+    class(eio_ascii_t), intent(inout) :: eio
+    type(string_t), intent(in) :: sample
+    type(string_t), intent(in), optional :: extension
+    type(event_sample_data_t), intent(in), optional :: data
+    logical, intent(out), optional :: success
+    integer :: i
+    if (.not. present (data)) &
+         call msg_bug ("ASCII initialization: missing data")
+    if (data%n_beam /= 2) &
+         call msg_fatal ("ASCII: defined for scattering processes only")
+    eio%sample = sample
+    call eio%check_normalization (data)
+    call eio%set_splitting (data)
+    call eio%set_filename ()
+    eio%unit = free_unit ()
+    write (msg_buffer, "(A,A,A)")  "Events: writing to ASCII file '", &
+         char (eio%filename), "'"
+    call msg_message ()
+    eio%writing = .true.
+    open (eio%unit, file = char (eio%filename), &
+         action = "write", status = "replace")
+    select type (eio)
+    type is (eio_ascii_lha_t)
+       call heprup_init &
+            (data%pdg_beam, &
+            data%energy_beam, &
+            n_processes = data%n_proc, &
+            unweighted = data%unweighted, &
+            negative_weights = data%negative_weights)           
+       do i = 1, data%n_proc
+          call heprup_set_process_parameters (i = i, &
+               process_id = data%proc_num_id(i), &
+               cross_section = data%cross_section(i), &
+               error = data%error(i))
+       end do
+       call heprup_write_ascii (eio%unit)    
+    type is (eio_ascii_lha_verb_t)
+       call heprup_init &
+            (data%pdg_beam, &
+            data%energy_beam, &
+            n_processes = data%n_proc, &
+            unweighted = data%unweighted, &
+            negative_weights = data%negative_weights)           
+       do i = 1, data%n_proc
+          call heprup_set_process_parameters (i = i, &
+               process_id = data%proc_num_id(i), &
+               cross_section = data%cross_section(i), &
+               error = data%error(i))
+       end do
+       call heprup_write_verbose (eio%unit)        
+    end select
+    if (present (success))  success = .true.
+  end subroutine eio_ascii_init_out
+    
+  subroutine eio_ascii_check_normalization (eio, data)
+    class(eio_ascii_t), intent(in) :: eio
+    type(event_sample_data_t), intent(in) :: data
+    if (data%unweighted) then
+    else
+       select type (eio)
+       type is (eio_ascii_athena_t);  call msg_fatal &
+            ("Event output (Athena format): events must be unweighted.")
+       type is (eio_ascii_hepevt_t);  call msg_fatal &
+            ("Event output (HEPEVT format): events must be unweighted.")
+       type is (eio_ascii_hepevt_verb_t);  call msg_fatal &
+            ("Event output (HEPEVT format): events must be unweighted.")
+       end select
+       select case (data%norm_mode)
+       case (NORM_SIGMA)
+       case default
+          select type (eio)
+          type is (eio_ascii_lha_t)
+             call msg_fatal &
+                  ("Event output (LHA): normalization for weighted events &
+                  &must be 'sigma'")
+          type is (eio_ascii_lha_verb_t)
+             call msg_fatal &
+                  ("Event output (LHA): normalization for weighted events &
+                  &must be 'sigma'")
+          end select
+       end select
+    end if
+  end subroutine eio_ascii_check_normalization
+  
+  subroutine eio_ascii_init_in (eio, sample, data, success, extension)
+    class(eio_ascii_t), intent(inout) :: eio
+    type(string_t), intent(in) :: sample
+    type(string_t), intent(in), optional :: extension
+    type(event_sample_data_t), intent(inout), optional :: data
+    logical, intent(out), optional :: success
+    call msg_bug ("ASCII: event input not supported")
+    if (present (success))  success = .false.
+  end subroutine eio_ascii_init_in
+    
+  subroutine eio_ascii_switch_inout (eio, success)
+    class(eio_ascii_t), intent(inout) :: eio
+    logical, intent(out), optional :: success
+    call msg_bug ("ASCII: in-out switch not supported")
+    if (present (success))  success = .false.
+  end subroutine eio_ascii_switch_inout
+  
+  subroutine eio_ascii_split_out (eio)
+    class(eio_ascii_t), intent(inout) :: eio
+    if (eio%split) then
+       eio%split_index = eio%split_index + 1
+       call eio%set_filename ()
+       write (msg_buffer, "(A,A,A)")  "Events: writing to ASCII file '", &
+            char (eio%filename), "'"
+       call msg_message ()
+       close (eio%unit)
+       open (eio%unit, file = char (eio%filename), &
+            action = "write", status = "replace")
+       select type (eio)
+       type is (eio_ascii_lha_t)
+          call heprup_write_ascii (eio%unit)    
+       type is (eio_ascii_lha_verb_t)
+          call heprup_write_verbose (eio%unit)        
+       end select
+    end if
+  end subroutine eio_ascii_split_out
+  
+  subroutine eio_ascii_output (eio, event, i_prc, reading, pacify)
+    class(eio_ascii_t), intent(inout) :: eio
+    class(generic_event_t), intent(in), target :: event
+    integer, intent(in) :: i_prc
+    logical, intent(in), optional :: reading, pacify
+    if (eio%writing) then
+       select type (eio)
+       type is (eio_ascii_lha_t)
+          call hepeup_from_event (event, &
+               process_index = i_prc, &
+               keep_beams = eio%keep_beams)
+          call hepeup_write_lha (eio%unit)
+       type is (eio_ascii_lha_verb_t)
+          call hepeup_from_event (event, &
+               process_index = i_prc, &
+               keep_beams = eio%keep_beams)
+          call hepeup_write_verbose (eio%unit)          
+       type is (eio_ascii_ascii_t)
+          call event%write (eio%unit, &
+               show_process = .false., &
+               show_transforms = .false., &
+               show_decay = .false., &
+               verbose = .false., testflag = pacify)
+       type is (eio_ascii_athena_t)
+          call hepevt_from_event (event, &
+               i_evt = event%get_index (), &          
+               keep_beams = eio%keep_beams)
+          call hepevt_write_athena (eio%unit)                    
+       type is (eio_ascii_debug_t)
+          call event%write (eio%unit, &
+               show_process = eio%show_process, &
+               show_transforms = eio%show_transforms, &
+               show_decay = eio%show_decay, &
+               verbose = eio%verbose)
+       type is (eio_ascii_hepevt_t)
+          call hepevt_from_event (event, &
+               i_evt = event%get_index (), &                         
+               keep_beams = eio%keep_beams)
+          call hepevt_write_hepevt (eio%unit)                              
+       type is (eio_ascii_hepevt_verb_t)
+          call hepevt_from_event (event, &
+               i_evt = event%get_index (), &                         
+               keep_beams = eio%keep_beams)
+          call hepevt_write_verbose (eio%unit)
+       type is (eio_ascii_long_t)
+          call hepevt_from_event (event, &
+               i_evt = event%get_index (), & 
+               keep_beams = eio%keep_beams)
+          call hepevt_write_ascii (eio%unit, .true.)                           
+       type is (eio_ascii_mokka_t)
+          call hepevt_from_event (event, &
+               i_evt = event%get_index (), &                         
+               keep_beams = eio%keep_beams)
+          call hepevt_write_mokka (eio%unit)                              
+       type is (eio_ascii_short_t)
+          call hepevt_from_event (event, &
+               i_evt = event%get_index (), &  
+               keep_beams = eio%keep_beams)
+          call hepevt_write_ascii (eio%unit, .false.)                    
+       end select       
+    else
+       call eio%write ()
+       call msg_fatal ("ASCII file is not open for writing")
+    end if
+  end subroutine eio_ascii_output
+
+  subroutine eio_ascii_input_i_prc (eio, i_prc, iostat)
+    class(eio_ascii_t), intent(inout) :: eio
+    integer, intent(out) :: i_prc
+    integer, intent(out) :: iostat
+    call msg_bug ("ASCII: event input not supported")
+    i_prc = 0
+    iostat = 1
+  end subroutine eio_ascii_input_i_prc
+
+  subroutine eio_ascii_input_event (eio, event, iostat)
+    class(eio_ascii_t), intent(inout) :: eio
+    class(generic_event_t), intent(inout), target :: event
+    integer, intent(out) :: iostat
+    call msg_bug ("ASCII: event input not supported")
+    iostat = 1
+  end subroutine eio_ascii_input_event
+
+
+  subroutine eio_ascii_test (u, results)
+    integer, intent(in) :: u
+    type(test_results_t), intent(inout) :: results
+    call test (eio_ascii_1, "eio_ascii_1", &
+         "read and write event contents, format [ascii]", &
+         u, results)
+    call test (eio_ascii_2, "eio_ascii_2", &
+         "read and write event contents, format [athena]", &
+         u, results)
+    call test (eio_ascii_3, "eio_ascii_3", &
+         "read and write event contents, format [debug]", &
+         u, results)
+    call test (eio_ascii_4, "eio_ascii_4", &
+         "read and write event contents, format [hepevt]", &
+         u, results)
+    call test (eio_ascii_5, "eio_ascii_5", &
+         "read and write event contents, format [lha]", &
+         u, results)
+    call test (eio_ascii_6, "eio_ascii_6", &
+         "read and write event contents, format [long]", &
+         u, results)
+    call test (eio_ascii_7, "eio_ascii_7", &
+         "read and write event contents, format [mokka]", &
+         u, results)
+    call test (eio_ascii_8, "eio_ascii_8", &
+         "read and write event contents, format [short]", &
+         u, results)
+    call test (eio_ascii_9, "eio_ascii_9", &
+         "read and write event contents, format [lha_verb]", &
+         u, results)
+    call test (eio_ascii_10, "eio_ascii_10", &
+         "read and write event contents, format [hepevt_verb]", &
+         u, results)
+  end subroutine eio_ascii_test
+  
+  subroutine eio_ascii_1 (u)
+    integer, intent(in) :: u
+    class(generic_event_t), pointer :: event
+    type(event_sample_data_t) :: data
+    class(eio_t), allocatable :: eio
+    type(string_t) :: sample
+    integer :: u_file, iostat
+    character(80) :: buffer
+
+    write (u, "(A)")  "* Test output: eio_ascii_1"
+    write (u, "(A)")  "*   Purpose: generate an event in ASCII ascii format"
+    write (u, "(A)")  "*      and write weight to file"
+    write (u, "(A)")
+
+    write (u, "(A)")  "* Initialize test process"
+ 
+    call eio_prepare_test (event, unweighted = .false.)
+
+    call data%init (1)
+    data%n_evt = 1
+    data%n_beam = 2
+    data%pdg_beam = 25
+    data%energy_beam = 500
+    data%proc_num_id = [42]
+    data%cross_section(1) = 100
+    data%error(1) = 1
+    data%total_cross_section = sum (data%cross_section)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Generate and write an event"
+    write (u, "(A)")
+ 
+    sample = "eio_ascii_1"
+ 
+    allocate (eio_ascii_ascii_t :: eio)
+    
+    select type (eio)
+    class is (eio_ascii_t);  call eio%set_parameters ()
+    end select
+    call eio%init_out (sample, data)
+    call event%generate (1, [0._default, 0._default])
+    call event%evaluate_expressions ()
+
+    call eio%output (event, i_prc = 1)
+    call eio%write (u)
+    call eio%final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* File contents:"
+    write (u, "(A)")
+
+    u_file = free_unit ()
+    open (u_file, file = char (sample // ".evt"), &
+         action = "read", status = "old")
+    do
+       read (u_file, "(A)", iostat = iostat)  buffer
+       if (buffer(1:21) == "  <generator_version>")  buffer = "[...]"
+       if (iostat /= 0)  exit
+       write (u, "(A)") trim (buffer)
+    end do
+    close (u_file)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Reset data"
+    write (u, "(A)")
+ 
+    deallocate (eio)
+    allocate (eio_ascii_ascii_t :: eio)
+    
+    select type (eio)
+    type is (eio_ascii_ascii_t)
+       call eio%set_parameters (keep_beams = .true.)
+    end select
+    call eio%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Cleanup"
+ 
+    call eio_cleanup_test (event)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: eio_ascii_1"
+    
+  end subroutine eio_ascii_1
+  
+  subroutine eio_ascii_2 (u)
+    integer, intent(in) :: u
+    class(generic_event_t), pointer :: event
+    type(event_sample_data_t) :: data
+    class(eio_t), allocatable :: eio
+    type(string_t) :: sample
+    integer :: u_file, iostat
+    character(80) :: buffer
+
+    write (u, "(A)")  "* Test output: eio_ascii_2"
+    write (u, "(A)")  "*   Purpose: generate an event in ASCII athena format"
+    write (u, "(A)")  "*      and write weight to file"
+    write (u, "(A)")
+
+    write (u, "(A)")  "* Initialize test process"
+ 
+    call eio_prepare_test (event, unweighted = .false.)
+    
+    call data%init (1)
+    data%n_evt = 1
+    data%n_beam = 2
+    data%pdg_beam = 25
+    data%energy_beam = 500
+    data%proc_num_id = [42]
+    data%cross_section(1) = 100
+    data%error(1) = 1
+    data%total_cross_section = sum (data%cross_section)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Generate and write an event"
+    write (u, "(A)")
+ 
+    sample = "eio_ascii_2"
+ 
+    allocate (eio_ascii_athena_t :: eio)
+    
+    select type (eio)
+    class is (eio_ascii_t);  call eio%set_parameters ()
+    end select
+    call eio%init_out (sample, data)
+    call event%generate (1, [0._default, 0._default])
+    call event%evaluate_expressions ()
+
+    call eio%output (event, i_prc = 1)
+    call eio%write (u)
+    call eio%final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* File contents:"
+    write (u, "(A)")
+
+    u_file = free_unit ()
+    open (u_file, file = char(sample // ".athena.evt"), &
+         action = "read", status = "old")
+    do
+       read (u_file, "(A)", iostat = iostat)  buffer
+       if (buffer(1:21) == "  <generator_version>")  buffer = "[...]"
+       if (iostat /= 0)  exit
+       write (u, "(A)") trim (buffer)
+    end do
+    close (u_file)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Reset data"
+    write (u, "(A)")
+ 
+    deallocate (eio)
+    allocate (eio_ascii_athena_t :: eio)
+    
+    select type (eio)
+    type is (eio_ascii_athena_t)
+       call eio%set_parameters (keep_beams = .true.)
+    end select
+    call eio%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Cleanup"
+ 
+    call eio_cleanup_test (event)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: eio_ascii_2"
+    
+  end subroutine eio_ascii_2
+  
+  subroutine eio_ascii_3 (u)
+    integer, intent(in) :: u
+    class(generic_event_t), pointer :: event
+    type(event_sample_data_t) :: data
+    class(eio_t), allocatable :: eio
+    type(string_t) :: sample
+    integer :: u_file, iostat
+    character(80) :: buffer
+
+    write (u, "(A)")  "* Test output: eio_ascii_3"
+    write (u, "(A)")  "*   Purpose: generate an event in ASCII debug format"
+    write (u, "(A)")  "*      and write weight to file"
+    write (u, "(A)")
+
+    write (u, "(A)")  "* Initialize test process"
+ 
+    call eio_prepare_test (event, unweighted = .false.)
+    
+    call data%init (1)
+    data%n_evt = 1
+    data%n_beam = 2
+    data%pdg_beam = 25
+    data%energy_beam = 500
+    data%proc_num_id = [42]
+    data%cross_section(1) = 100
+    data%error(1) = 1
+    data%total_cross_section = sum (data%cross_section)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Generate and write an event"
+    write (u, "(A)")
+ 
+    sample = "eio_ascii_3"
+ 
+    allocate (eio_ascii_debug_t :: eio)
+    
+    select type (eio)
+    class is (eio_ascii_t);  call eio%set_parameters ()
+    end select
+    call eio%init_out (sample, data)
+    call event%generate (1, [0._default, 0._default])
+    call event%evaluate_expressions ()
+
+    call eio%output (event, i_prc = 1)
+    call eio%write (u)
+    call eio%final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* File contents:"
+    write (u, "(A)")
+
+    u_file = free_unit ()
+    open (u_file, file = char (sample // ".debug"), &
+         action = "read", status = "old")
+    do
+       read (u_file, "(A)", iostat = iostat)  buffer
+       if (buffer(1:21) == "  <generator_version>")  buffer = "[...]"
+       if (iostat /= 0)  exit
+       write (u, "(A)") trim (buffer)
+    end do
+    close (u_file)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Reset data"
+    write (u, "(A)")
+ 
+    deallocate (eio)
+    allocate (eio_ascii_debug_t :: eio)
+    
+    select type (eio)
+    type is (eio_ascii_debug_t)
+       call eio%set_parameters (keep_beams = .true.)
+    end select
+    call eio%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Cleanup"
+ 
+    call eio_cleanup_test (event)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: eio_ascii_3"
+    
+  end subroutine eio_ascii_3
+  
+  subroutine eio_ascii_4 (u)
+    integer, intent(in) :: u
+    class(generic_event_t), pointer :: event
+    type(event_sample_data_t) :: data
+    class(eio_t), allocatable :: eio
+    type(string_t) :: sample
+    integer :: u_file, iostat
+    character(80) :: buffer
+
+    write (u, "(A)")  "* Test output: eio_ascii_4"
+    write (u, "(A)")  "*   Purpose: generate an event in ASCII hepevt format"
+    write (u, "(A)")  "*      and write weight to file"
+    write (u, "(A)")
+
+    write (u, "(A)")  "* Initialize test process"
+ 
+    call eio_prepare_test (event, unweighted = .false.)
+    
+    call data%init (1)
+    data%n_evt = 1
+    data%n_beam = 2
+    data%pdg_beam = 25
+    data%energy_beam = 500
+    data%proc_num_id = [42]
+    data%cross_section(1) = 100
+    data%error(1) = 1
+    data%total_cross_section = sum (data%cross_section)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Generate and write an event"
+    write (u, "(A)")
+ 
+    sample = "eio_ascii_4"
+ 
+    allocate (eio_ascii_hepevt_t :: eio)
+    
+    select type (eio)
+    class is (eio_ascii_t);  call eio%set_parameters ()
+    end select
+    call eio%init_out (sample, data)
+    call event%generate (1, [0._default, 0._default])
+    call event%evaluate_expressions ()
+
+    call eio%output (event, i_prc = 1)
+    call eio%write (u)
+    call eio%final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* File contents:"
+    write (u, "(A)")
+
+    u_file = free_unit ()
+    open (u_file, file = char (sample // ".hepevt"), &
+         action = "read", status = "old")
+    do
+       read (u_file, "(A)", iostat = iostat)  buffer
+       if (buffer(1:21) == "  <generator_version>")  buffer = "[...]"
+       if (iostat /= 0)  exit
+       write (u, "(A)") trim (buffer)
+    end do
+    close (u_file)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Reset data"
+    write (u, "(A)")
+ 
+    deallocate (eio)
+    allocate (eio_ascii_hepevt_t :: eio)
+    
+    select type (eio)
+    type is (eio_ascii_hepevt_t)
+       call eio%set_parameters (keep_beams = .true.)
+    end select
+    call eio%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Cleanup"
+ 
+    call eio_cleanup_test (event)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: eio_ascii_4"
+    
+  end subroutine eio_ascii_4
+  
+  subroutine eio_ascii_5 (u)
+    integer, intent(in) :: u
+    class(generic_event_t), pointer :: event
+    type(event_sample_data_t) :: data
+    class(eio_t), allocatable :: eio
+    type(string_t) :: sample
+    integer :: u_file, iostat
+    character(80) :: buffer
+
+    write (u, "(A)")  "* Test output: eio_ascii_5"
+    write (u, "(A)")  "*   Purpose: generate an event in ASCII LHA format"
+    write (u, "(A)")  "*      and write weight to file"
+    write (u, "(A)")
+
+    write (u, "(A)")  "* Initialize test process"
+ 
+    call eio_prepare_test (event, unweighted = .false.)
+    
+    call data%init (1)
+    data%n_evt = 1
+    data%n_beam = 2
+    data%pdg_beam = 25
+    data%energy_beam = 500
+    data%proc_num_id = [42]
+    data%cross_section(1) = 100
+    data%error(1) = 1
+    data%total_cross_section = sum (data%cross_section)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Generate and write an event"
+    write (u, "(A)")
+ 
+    sample = "eio_ascii_5"
+ 
+    allocate (eio_ascii_lha_t :: eio)
+    
+    select type (eio)
+    class is (eio_ascii_t);  call eio%set_parameters ()
+    end select
+    call eio%init_out (sample, data)
+    call event%generate (1, [0._default, 0._default])
+    call event%evaluate_expressions ()
+
+    call eio%output (event, i_prc = 1)
+    call eio%write (u)
+    call eio%final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* File contents:"
+    write (u, "(A)")
+
+    u_file = free_unit ()
+    open (u_file, file = char (sample // ".lha"), &
+         action = "read", status = "old")
+    do
+       read (u_file, "(A)", iostat = iostat)  buffer
+       if (buffer(1:21) == "  <generator_version>")  buffer = "[...]"
+       if (iostat /= 0)  exit
+       write (u, "(A)") trim (buffer)
+    end do
+    close (u_file)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Reset data"
+    write (u, "(A)")
+ 
+    deallocate (eio)
+    allocate (eio_ascii_lha_t :: eio)
+    
+    select type (eio)
+    type is (eio_ascii_lha_t)
+       call eio%set_parameters (keep_beams = .true.)
+    end select
+    call eio%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Cleanup"
+ 
+    call eio_cleanup_test (event)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: eio_ascii_5"
+    
+  end subroutine eio_ascii_5
+  
+  subroutine eio_ascii_6 (u)
+    integer, intent(in) :: u
+    class(generic_event_t), pointer :: event
+    type(event_sample_data_t) :: data
+    class(eio_t), allocatable :: eio
+    type(string_t) :: sample
+    integer :: u_file, iostat
+    character(80) :: buffer
+
+    write (u, "(A)")  "* Test output: eio_ascii_6"
+    write (u, "(A)")  "*   Purpose: generate an event in ASCII long format"
+    write (u, "(A)")  "*      and write weight to file"
+    write (u, "(A)")
+
+    write (u, "(A)")  "* Initialize test process"
+ 
+    call eio_prepare_test (event, unweighted = .false.)
+    
+    call data%init (1)
+    data%n_evt = 1
+    data%n_beam = 2
+    data%pdg_beam = 25
+    data%energy_beam = 500
+    data%proc_num_id = [42]
+    data%cross_section(1) = 100
+    data%error(1) = 1
+    data%total_cross_section = sum (data%cross_section)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Generate and write an event"
+    write (u, "(A)")
+ 
+    sample = "eio_ascii_6"
+ 
+    allocate (eio_ascii_long_t :: eio)
+    
+    select type (eio)
+    class is (eio_ascii_t);  call eio%set_parameters ()
+    end select
+    call eio%init_out (sample, data)
+    call event%generate (1, [0._default, 0._default])
+    call event%evaluate_expressions ()
+
+    call eio%output (event, i_prc = 1)
+    call eio%write (u)
+    call eio%final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* File contents:"
+    write (u, "(A)")
+
+    u_file = free_unit ()
+    open (u_file, file = char (sample // ".long.evt"), &
+         action = "read", status = "old")
+    do
+       read (u_file, "(A)", iostat = iostat)  buffer
+       if (buffer(1:21) == "  <generator_version>")  buffer = "[...]"
+       if (iostat /= 0)  exit
+       write (u, "(A)") trim (buffer)
+    end do
+    close (u_file)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Reset data"
+    write (u, "(A)")
+ 
+    deallocate (eio)
+    allocate (eio_ascii_long_t :: eio)
+    
+    select type (eio)
+    type is (eio_ascii_long_t)
+       call eio%set_parameters (keep_beams = .true.)
+    end select
+    call eio%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Cleanup"
+ 
+    call eio_cleanup_test (event)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: eio_ascii_6"
+    
+  end subroutine eio_ascii_6
+  
+  subroutine eio_ascii_7 (u)
+    integer, intent(in) :: u
+    type(model_data_t), target :: model
+    class(generic_event_t), pointer :: event
+    type(event_sample_data_t) :: data
+    class(eio_t), allocatable :: eio
+    type(string_t) :: sample
+    integer :: u_file, iostat
+    character(80) :: buffer
+
+    write (u, "(A)")  "* Test output: eio_ascii_7"
+    write (u, "(A)")  "*   Purpose: generate an event in ASCII mokka format"
+    write (u, "(A)")  "*      and write weight to file"
+    write (u, "(A)")
+
+    write (u, "(A)")  "* Initialize test process"
+ 
+    call eio_prepare_test (event, unweighted = .false.)
+    
+    call data%init (1)
+    data%n_evt = 1
+    data%n_beam = 2
+    data%pdg_beam = 25
+    data%energy_beam = 500
+    data%proc_num_id = [42]
+    data%cross_section(1) = 100
+    data%error(1) = 1
+    data%total_cross_section = sum (data%cross_section)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Generate and write an event"
+    write (u, "(A)")
+ 
+    sample = "eio_ascii_7"
+ 
+    allocate (eio_ascii_mokka_t :: eio)
+    
+    select type (eio)
+    class is (eio_ascii_t);  call eio%set_parameters ()
+    end select
+    call eio%init_out (sample, data)
+    call event%generate (1, [0._default, 0._default])
+    call event%evaluate_expressions ()
+
+    call eio%output (event, i_prc = 1)
+    call eio%write (u)
+    call eio%final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* File contents:"
+    write (u, "(A)")
+
+    u_file = free_unit ()
+    open (u_file, file = char (sample // ".mokka.evt"), &
+         action = "read", status = "old")
+    do
+       read (u_file, "(A)", iostat = iostat)  buffer
+       if (buffer(1:21) == "  <generator_version>")  buffer = "[...]"
+       if (iostat /= 0)  exit
+       write (u, "(A)") trim (buffer)
+    end do
+    close (u_file)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Reset data"
+    write (u, "(A)")
+ 
+    deallocate (eio)
+    allocate (eio_ascii_mokka_t :: eio)
+    
+    select type (eio)
+    type is (eio_ascii_mokka_t)
+       call eio%set_parameters (keep_beams = .true.)
+    end select
+    call eio%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Cleanup"
+
+    call eio_cleanup_test (event)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: eio_ascii_7"
+    
+  end subroutine eio_ascii_7
+  
+  subroutine eio_ascii_8 (u)
+    integer, intent(in) :: u
+    class(generic_event_t), pointer :: event
+    type(event_sample_data_t) :: data
+    class(eio_t), allocatable :: eio
+    type(string_t) :: sample
+    integer :: u_file, iostat
+    character(80) :: buffer
+
+    write (u, "(A)")  "* Test output: eio_ascii_8"
+    write (u, "(A)")  "*   Purpose: generate an event in ASCII short format"
+    write (u, "(A)")  "*      and write weight to file"
+    write (u, "(A)")
+
+    write (u, "(A)")  "* Initialize test process"
+ 
+    call eio_prepare_test (event, unweighted = .false.)
+    
+    call data%init (1)
+    data%n_evt = 1
+    data%n_beam = 2
+    data%pdg_beam = 25
+    data%energy_beam = 500
+    data%proc_num_id = [42]
+    data%cross_section(1) = 100
+    data%error(1) = 1
+    data%total_cross_section = sum (data%cross_section)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Generate and write an event"
+    write (u, "(A)")
+ 
+    sample = "eio_ascii_8"
+ 
+    allocate (eio_ascii_short_t :: eio)
+    
+    select type (eio)
+    class is (eio_ascii_t);  call eio%set_parameters ()
+    end select
+    call eio%init_out (sample, data)
+    call event%generate (1, [0._default, 0._default])
+    call event%evaluate_expressions ()
+
+    call eio%output (event, i_prc = 1)
+    call eio%write (u)
+    call eio%final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* File contents:"
+    write (u, "(A)")
+
+    u_file = free_unit ()
+    open (u_file, file = char (sample // ".short.evt"), &
+         action = "read", status = "old")
+    do
+       read (u_file, "(A)", iostat = iostat)  buffer
+       if (buffer(1:21) == "  <generator_version>")  buffer = "[...]"
+       if (iostat /= 0)  exit
+       write (u, "(A)") trim (buffer)
+    end do
+    close (u_file)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Reset data"
+    write (u, "(A)")
+ 
+    deallocate (eio)
+    allocate (eio_ascii_short_t :: eio)
+    
+    select type (eio)
+    type is (eio_ascii_short_t)
+       call eio%set_parameters (keep_beams = .true.)
+    end select
+    call eio%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Cleanup"
+ 
+    call eio_cleanup_test (event)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: eio_ascii_8"
+    
+  end subroutine eio_ascii_8
+  
+  subroutine eio_ascii_9 (u)
+    integer, intent(in) :: u
+    class(generic_event_t), pointer :: event
+    type(event_sample_data_t) :: data
+    class(eio_t), allocatable :: eio
+    type(string_t) :: sample
+    integer :: u_file, iostat
+    character(80) :: buffer
+
+    write (u, "(A)")  "* Test output: eio_ascii_9"
+    write (u, "(A)")  "*   Purpose: generate an event in ASCII LHA verbose format"
+    write (u, "(A)")  "*      and write weight to file"
+    write (u, "(A)")
+
+    write (u, "(A)")  "* Initialize test process"
+ 
+    call eio_prepare_test (event, unweighted = .false.)
+    
+    call data%init (1)
+    data%n_evt = 1
+    data%n_beam = 2
+    data%pdg_beam = 25
+    data%energy_beam = 500
+    data%proc_num_id = [42]
+    data%cross_section(1) = 100
+    data%error(1) = 1
+    data%total_cross_section = sum (data%cross_section)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Generate and write an event"
+    write (u, "(A)")
+ 
+    sample = "eio_ascii_9"
+ 
+    allocate (eio_ascii_lha_verb_t :: eio)
+    
+    select type (eio)
+    class is (eio_ascii_t);  call eio%set_parameters ()
+    end select
+    call eio%init_out (sample, data)
+    call event%generate (1, [0._default, 0._default])
+    call event%evaluate_expressions ()
+
+    call eio%output (event, i_prc = 1)
+    call eio%write (u)
+    call eio%final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* File contents:"
+    write (u, "(A)")
+
+    u_file = free_unit ()
+    open (u_file, file = char (sample // ".lha.verb"), &
+         action = "read", status = "old")
+    do
+       read (u_file, "(A)", iostat = iostat)  buffer
+       if (buffer(1:21) == "  <generator_version>")  buffer = "[...]"
+       if (iostat /= 0)  exit
+       write (u, "(A)") trim (buffer)
+    end do
+    close (u_file)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Reset data"
+    write (u, "(A)")
+ 
+    deallocate (eio)
+    allocate (eio_ascii_lha_verb_t :: eio)
+    
+    select type (eio)
+    type is (eio_ascii_lha_verb_t)
+       call eio%set_parameters (keep_beams = .true.)
+    end select
+    call eio%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Cleanup"
+ 
+    call eio_cleanup_test (event)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: eio_ascii_9"
+    
+  end subroutine eio_ascii_9
+  
+  subroutine eio_ascii_10 (u)
+    integer, intent(in) :: u
+    class(generic_event_t), pointer :: event
+    type(event_sample_data_t) :: data
+    class(eio_t), allocatable :: eio
+    type(string_t) :: sample
+    integer :: u_file, iostat
+    character(80) :: buffer
+
+    write (u, "(A)")  "* Test output: eio_ascii_10"
+    write (u, "(A)")  "*   Purpose: generate an event in ASCII hepevt verbose format"
+    write (u, "(A)")  "*      and write weight to file"
+    write (u, "(A)")
+
+    write (u, "(A)")  "* Initialize test process"
+ 
+    call eio_prepare_test (event, unweighted = .false.)
+    
+    call data%init (1)
+    data%n_evt = 1
+    data%n_beam = 2
+    data%pdg_beam = 25
+    data%energy_beam = 500
+    data%proc_num_id = [42]
+    data%cross_section(1) = 100
+    data%error(1) = 1
+    data%total_cross_section = sum (data%cross_section)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Generate and write an event"
+    write (u, "(A)")
+ 
+    sample = "eio_ascii_10"
+ 
+    allocate (eio_ascii_hepevt_verb_t :: eio)
+    
+    select type (eio)
+    class is (eio_ascii_t);  call eio%set_parameters ()
+    end select
+    call eio%init_out (sample, data)
+    call event%generate (1, [0._default, 0._default])
+    call event%evaluate_expressions ()
+
+    call eio%output (event, i_prc = 1)
+    call eio%write (u)
+    call eio%final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* File contents:"
+    write (u, "(A)")
+
+    u_file = free_unit ()
+    open (u_file, file = char (sample // ".hepevt.verb"), &
+         action = "read", status = "old")
+    do
+       read (u_file, "(A)", iostat = iostat)  buffer
+       if (buffer(1:21) == "  <generator_version>")  buffer = "[...]"
+       if (iostat /= 0)  exit
+       write (u, "(A)") trim (buffer)
+    end do
+    close (u_file)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Reset data"
+    write (u, "(A)")
+ 
+    deallocate (eio)
+    allocate (eio_ascii_hepevt_verb_t :: eio)
+    
+    select type (eio)
+    type is (eio_ascii_hepevt_verb_t)
+       call eio%set_parameters (keep_beams = .true.)
+    end select
+    call eio%write (u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Cleanup"
+ 
+    call eio_cleanup_test (event)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: eio_ascii_10"
+    
+  end subroutine eio_ascii_10
+  
+
+end module eio_ascii

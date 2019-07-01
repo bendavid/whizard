@@ -1,6 +1,6 @@
 ! WHIZARD <<Version>> <<Date>>
 
-! Copyright (C) 1999-2014 by 
+! Copyright (C) 1999-2015 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -8,13 +8,13 @@
 !     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
-! under the terms of the GNU General Public License as published by 
+! under the terms of the GNU General Public License as published by
 ! the Free Software Foundation; either version 2, or (at your option)
 ! any later version.
 !
 ! WHIZARD is distributed in the hope that it will be useful, but
 ! WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ! GNU General Public License for more details.
 !
 ! You should have received a copy of the GNU General Public License
@@ -23,7 +23,7 @@
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-! Numeric constants, no reference to physics in particular
+!!! Numeric constants, no reference to physics in particular
 
 module constants
 
@@ -59,5 +59,13 @@ module constants
 
   real(default), parameter, public :: &
        degree = pi/180
+
+  !!! On double precision, these are roughly
+  !!! 2.22E-016    2.22E-013    2.22E-010    2.22E-007
+  real(default), parameter, public :: &
+       eps0 = epsilon (zero), &
+       tiny_13 = 1E3_default * epsilon (zero), &
+       tiny_10 = 1E6_default * epsilon (zero), &
+       tiny_07 = 1E9_default * epsilon (zero)
 
 end module constants

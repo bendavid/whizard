@@ -1,285 +1,311 @@
-!!! module: muli_momentum
-!!! This code is part of my Ph.D studies.
-!!! 
-!!! Copyright (C) 2011 Hans-Werner Boschmann <boschmann@tp1.physik.uni-siegen.de>
-!!! 
-!!! This program is free software; you can redistribute it and/or modify it
-!!! under the terms of the GNU General Public License as published by the Free 
-!!! Software Foundation; either version 3 of the License, or (at your option) 
-!!! any later version.
-!!! 
-!!! This program is distributed in the hope that it will be useful, but WITHOUT
-!!! ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or 
-!!! FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
-!!! more details.
-!!! 
-!!! You should have received a copy of the GNU General Public License along
-!!! with this program; if not, see <http://www.gnu.org/licenses/>.
-!!! 
-!!! Latest Change: 2011-06-09 13:26:25 CEST(+0200)
-!!! 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-!!! This file contains the module "muli_momentum". It's purpose is to store the
-!!! actual value of the evolution parameter pt^2 in a convenient way. I use the
-!!! normalized value pt^2/ptmax^2 for generating the next value of the scale,
-!!! also need the square root of both pt^2 and pt^2/ptmax^2 for other purposes.
-!!! That's why I store all four combinations together with ptmax in an array.
+! WHIZARD 2.2.4 Feb 06 2015
+! 
+! Copyright (C) 1999-2015 by 
+!     Wolfgang Kilian <kilian@physik.uni-siegen.de>
+!     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
+!     Juergen Reuter <juergen.reuter@desy.de>
+!     
+!     with contributions from
+!     Fabian Bach <fabian.bach@desy.de>
+!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Weiss <christian.weiss@desy.de>
+!     and Hans-Werner Boschmann, Felix Braam, 
+!     Sebastian Schmidt, Daniel Wiesler 
+!
+! WHIZARD is free software; you can redistribute it and/or modify it
+! under the terms of the GNU General Public License as published by 
+! the Free Software Foundation; either version 2, or (at your option)
+! any later version.
+!
+! WHIZARD is distributed in the hope that it will be useful, but
+! WITHOUT ANY WARRANTY; without even the implied warranty of
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! GNU General Public License for more details.
+!
+! You should have received a copy of the GNU General Public License
+! along with this program; if not, write to the Free Software
+! Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! This file has been stripped of most comments.  For documentation, refer
+! to the source 'whizard.nw'
 
 module muli_momentum
-  use muli_basic
+  
+  use kinds, only: default
+  use constants
+  use muli_base
+  
   implicit none
-  type,extends(serializable_class)::transversal_momentum_type
-     private
-     real(kind=drk),dimension(0:4)::momentum=[0D0,0D0,0D0,0D0,0D0]
-   contains
-     ! overridden serializable_class procedures
-     procedure,public::write_to_marker=>transversal_momentum_write_to_marker
-     procedure,public::read_from_marker=>transversal_momentum_read_from_marker
-     procedure,public::print_to_unit=>transversal_momentum_print_to_unit
-     procedure,public,nopass::get_type=>transversal_momentum_get_type
-     ! new type-bound-procedures
-     procedure,public::get_gev_initial_cme=>transversal_momentum_get_gev_initial_cme
-     procedure,public::get_gev_max_scale=>transversal_momentum_get_gev_max_scale
-     procedure,public::get_gev2_max_scale=>transversal_momentum_get_gev2_max_scale
-     procedure,public::get_gev_scale=>transversal_momentum_get_gev_scale
-     procedure,public::get_gev2_scale=>transversal_momentum_get_gev2_scale
-     procedure,public::get_unit_scale=>transversal_momentum_get_unit_scale
-     procedure,public::get_unit2_scale=>transversal_momentum_get_unit2_scale
-     procedure,public::set_gev_initial_cme=>transversal_momentum_set_gev_initial_cme
-     procedure,public::set_gev_max_scale=>transversal_momentum_set_gev_max_scale
-     procedure,public::set_gev2_max_scale=>transversal_momentum_set_gev2_max_scale
-     procedure,public::set_gev_scale=>transversal_momentum_set_gev_scale
-     procedure,public::set_gev2_scale=>transversal_momentum_set_gev2_scale
-     procedure,public::set_unit_scale=>transversal_momentum_set_unit_scale
-     procedure,public::set_unit2_scale=>transversal_momentum_set_unit2_scale
-     procedure,public::transversal_momentum_initialize
-     generic,public::initialize=>transversal_momentum_initialize
-  end type transversal_momentum_type
+  private
+  
+  public :: transverse_mom_t
+  public :: qcd_2_2_class
 
-  type,extends(transversal_momentum_type),abstract::qcd_2_2_class
+  type, extends (ser_class_t) :: transverse_mom_t
+     private
+     real(default), dimension(0:4) :: momentum = [0, 0, 0, 0, 0]
    contains
-     procedure(qcd_get_int),deferred::get_process_id
-     procedure(qcd_get_int),deferred::get_integrand_id
-     procedure(qcd_get_int),deferred::get_diagram_kind
-     procedure(qcd_get_int_4),deferred::get_lha_flavors
-     procedure(qcd_get_int_4),deferred::get_pdg_flavors
-     procedure(qcd_get_int_by_int),deferred::get_parton_id
-     procedure(qcd_get_int_2),deferred::get_parton_kinds
-     procedure(qcd_get_int_2),deferred::get_pdf_int_kinds
-     procedure(qcd_get_drk),deferred::get_momentum_boost
-!     procedure(qcd_get_drk_3),deferred::get_parton_in_momenta
-     procedure(qcd_get_drk_2),deferred::get_remnant_momentum_fractions
-     procedure(qcd_get_drk_2),deferred::get_total_momentum_fractions
+     procedure :: mom_write_to_marker => transverse_mom_write_to_marker
+     procedure :: write_to_marker => transverse_mom_write_to_marker
+     procedure :: mom_read_from_marker => transverse_mom_read_from_marker
+     procedure :: read_from_marker => transverse_mom_read_from_marker
+     procedure :: mom_print_to_unit => transverse_mom_print_to_unit
+     procedure :: print_to_unit => transverse_mom_print_to_unit
+     procedure, nopass :: get_type => transverse_mom_get_type    
+     procedure :: get_gev_initial_cme => transverse_mom_get_gev_initial_cme
+     procedure :: get_gev_max_scale => transverse_mom_get_gev_max_scale
+     procedure :: get_gev2_max_scale => transverse_mom_get_gev2_max_scale
+     procedure :: get_gev_scale => transverse_mom_get_gev_scale
+     procedure :: get_gev2_scale => transverse_mom_get_gev2_scale
+     procedure :: get_unit_scale => transverse_mom_get_unit_scale
+     procedure :: get_unit2_scale => transverse_mom_get_unit2_scale
+     procedure :: set_gev_initial_cme => transverse_mom_set_gev_initial_cme
+     procedure :: set_gev_max_scale => transverse_mom_set_gev_max_scale
+     procedure :: set_gev2_max_scale => transverse_mom_set_gev2_max_scale
+     procedure :: set_gev_scale => transverse_mom_set_gev_scale
+     procedure :: set_gev2_scale => transverse_mom_set_gev2_scale
+     procedure :: set_unit_scale => transverse_mom_set_unit_scale
+     procedure :: set_unit2_scale => transverse_mom_set_unit2_scale
+     generic :: initialize => transverse_mom_initialize
+     procedure :: transverse_mom_initialize  
+  end type transverse_mom_t
+  
+  type, extends (transverse_mom_t), abstract :: qcd_2_2_class
+   contains
+     procedure(qcd_get_int), deferred :: get_process_id
+     procedure(qcd_get_int), deferred :: get_integrand_id
+     procedure(qcd_get_int), deferred :: get_diagram_kind
+     procedure(qcd_get_int_4), deferred :: get_lha_flavors
+     procedure(qcd_get_int_4), deferred :: get_pdg_flavors
+     procedure(qcd_get_int_by_int), deferred :: get_parton_id
+     procedure(qcd_get_int_2), deferred :: get_parton_kinds
+     procedure(qcd_get_int_2), deferred :: get_pdf_int_kinds
+     procedure(qcd_get_real), deferred :: get_momentum_boost
+     ! procedure(qcd_get_real_3),deferred :: get_parton_in_momenta
+     procedure(qcd_get_real_2), deferred :: get_remnant_momentum_fractions
+     procedure(qcd_get_real_2), deferred :: get_total_momentum_fractions    
   end type qcd_2_2_class
 
-    abstract interface
-     subroutine qcd_none(this)
+
+  abstract interface
+     subroutine qcd_none (this)
        import qcd_2_2_class
-       class(qcd_2_2_class),target,intent(in)::this
+       class(qcd_2_2_class), target, intent(in) :: this
      end subroutine qcd_none
-!!$     subroutine qcd_get_beam(this,beam)
-!!$       import qcd_2_2_class
-!!$       import pp_remnant_class
-!!$       class(qcd_2_2_class),target,intent(in)::this
-!!$       class(pp_remnant_class),pointer,intent(out)::beam
-!!$     end subroutine qcd_get_beam
-     elemental function qcd_get_drk(this)
-       use muli_basic, only: drk
-       import qcd_2_2_class
-       class(qcd_2_2_class),intent(in)::this
-       real(kind=drk)::qcd_get_drk
-     end function qcd_get_drk
-     pure function qcd_get_drk_2(this)
-       use muli_basic, only: drk
-       import qcd_2_2_class
-       class(qcd_2_2_class),intent(in)::this
-       real(kind=drk),dimension(2)::qcd_get_drk_2
-     end function qcd_get_drk_2
-     pure function qcd_get_drk_3(this)
-       use muli_basic, only: drk
-       import qcd_2_2_class
-       class(qcd_2_2_class),intent(in)::this
-       real(kind=drk),dimension(3)::qcd_get_drk_3
-     end function qcd_get_drk_3
-     elemental function qcd_get_int(this)
-       use muli_basic, only: drk
-       import qcd_2_2_class
-       class(qcd_2_2_class),intent(in)::this
-       integer::qcd_get_int
+  end interface
+  ! abstract interface
+  !    subroutine qcd_get_beam (this, beam)
+  !      import qcd_2_2_class
+  !      import pp_remnant_class
+  !      class(qcd_2_2_class),target, intent(in) :: this
+  !      class(pp_remnant_class),pointer, intent(out) :: beam
+  !     end subroutine qcd_get_beam
+  ! end interface
+  abstract interface
+     elemental function qcd_get_real (this)
+       import 
+       class(qcd_2_2_class), intent(in) :: this
+       real(default) :: qcd_get_real
+     end function qcd_get_real
+  end interface
+  abstract interface
+     pure function qcd_get_real_2 (this)
+       import 
+       class(qcd_2_2_class), intent(in) :: this
+       real(default), dimension(2) :: qcd_get_real_2
+     end function qcd_get_real_2
+  end interface
+  abstract interface
+     pure function qcd_get_real_3 (this)
+       import 
+       class(qcd_2_2_class), intent(in) :: this
+       real(default), dimension(3) :: qcd_get_real_3
+     end function qcd_get_real_3
+  end interface
+  abstract interface
+     elemental function qcd_get_int (this)
+       import 
+       class(qcd_2_2_class), intent(in) :: this
+       integer :: qcd_get_int
      end function qcd_get_int
-     elemental function qcd_get_int_by_int(this,n)
-       use muli_basic, only: drk
-       import qcd_2_2_class
-       class(qcd_2_2_class),intent(in)::this
-       integer,intent(in)::n
-       integer::qcd_get_int_by_int
+  end interface
+  abstract interface
+     elemental function qcd_get_int_by_int (this, n)
+       import 
+       class(qcd_2_2_class), intent(in) :: this
+       integer, intent(in) :: n
+       integer :: qcd_get_int_by_int
      end function qcd_get_int_by_int
-     pure function qcd_get_int_2(this)
-       use muli_basic, only: drk
-       import qcd_2_2_class
-       class(qcd_2_2_class),intent(in)::this
-       integer,dimension(2)::qcd_get_int_2
+  end interface
+  abstract interface
+     pure function qcd_get_int_2 (this)
+       import 
+       class(qcd_2_2_class), intent(in) :: this
+       integer, dimension(2) :: qcd_get_int_2
      end function qcd_get_int_2
-     pure function qcd_get_int_4(this)
-       use muli_basic, only: drk
-       import qcd_2_2_class
-       class(qcd_2_2_class),intent(in)::this
-       integer,dimension(4)::qcd_get_int_4
+  end interface
+  abstract interface
+     pure function qcd_get_int_4 (this)
+       import 
+       class(qcd_2_2_class), intent(in) :: this
+       integer, dimension(4) :: qcd_get_int_4
      end function qcd_get_int_4
   end interface
 
+
 contains
 
-  subroutine transversal_momentum_write_to_marker(this,marker,status)
-    class(transversal_momentum_type),intent(in)::this
-    class(marker_type),intent(inout)::marker
-    integer(kind=dik),intent(out)::status
-    call marker%mark_begin("transversal_momentum_type")
-    call marker%mark("gev_momenta",this%momentum(0:1))
-    call marker%mark_end("transversal_momentum_type")
-  end subroutine transversal_momentum_write_to_marker
+  subroutine transverse_mom_write_to_marker (this, marker, status)
+    class(transverse_mom_t), intent(in) :: this
+    class(marker_t), intent(inout) :: marker
+    integer(dik), intent(out) :: status
+    call marker%mark_begin ("transverse_mom_t")
+    call marker%mark ("gev_momenta", this%momentum(0:1))
+    call marker%mark_end ("transverse_mom_t")
+  end subroutine transverse_mom_write_to_marker
 
-  subroutine transversal_momentum_read_from_marker(this,marker,status)
-    class(transversal_momentum_type),intent(out)::this
-    class(marker_type),intent(inout)::marker
-    integer(kind=dik),intent(out)::status
-    call marker%pick_begin("transversal_momentum_type",status=status)
-    call marker%pick("gev_momenta",this%momentum(0:1),status)
-    this%momentum(2:4)=[&
-         this%momentum(1)**2,&
-         this%momentum(1)/this%momentum(0),&
-         (this%momentum(1)/this%momentum(0))**2]
-    call marker%pick_end("transversal_momentum_type",status=status)
-  end subroutine transversal_momentum_read_from_marker
+  subroutine transverse_mom_read_from_marker (this, marker, status)
+    class(transverse_mom_t), intent(out) :: this
+    class(marker_t), intent(inout) :: marker
+    integer(dik), intent(out) :: status
+    call marker%pick_begin ("transverse_mom_t", status=status)
+    call marker%pick ("gev_momenta", this%momentum(0:1), status)
+    this%momentum(2:4) = [ this%momentum(1)**2, &
+                           this%momentum(1) / this%momentum(0), &
+                           (this%momentum(1)/this%momentum(0))**2 ]
+    call marker%pick_end ("transverse_mom_t", status=status)
+  end subroutine transverse_mom_read_from_marker
 
-  subroutine transversal_momentum_print_to_unit(this,unit,parents,components,peers)
-    class(transversal_momentum_type),intent(in)::this
-    integer,intent(in)::unit
-    integer(kind=dik),intent(in)::parents,components,peers
-    write(unit,'("Components of transversal_momentum_type:")')
-    write(unit,fmt='("Actual energy scale:")')
-    write(unit,fmt='("Max scale (MeV)   :",E20.10)')this%momentum(0)
-    write(unit,fmt='("Scale (MeV)       :",E20.10)')this%momentum(1)
-    write(unit,fmt='("Scale^2 (MeV^2)   :",E20.10)')this%momentum(2)
-    write(unit,fmt='("Scale normalized  :",E20.10)')this%momentum(3)
-    write(unit,fmt='("Scale^2 normalized:",E20.10)')this%momentum(4)
-  end subroutine transversal_momentum_print_to_unit
+  subroutine transverse_mom_print_to_unit &
+       (this, unit, parents, components, peers)
+    class(transverse_mom_t), intent(in) :: this
+    integer, intent(in) :: unit
+    integer(dik), intent(in) :: parents, components, peers
+    write (unit, "(1x,A)")  "Components of transverse_mom_t:"
+    write (unit, "(3x,A)")  "Actual energy scale:"
+    write (unit, "(A,E20.10)")  "Max scale (MeV)   :", this%momentum(0)
+    write (unit, "(A,E20.10)")  "Scale (MeV)       :", this%momentum(1)
+    write (unit, "(A,E20.10)")  "Scale^2 (MeV^2)   :", this%momentum(2)
+    write (unit, "(A,E20.10)")  "Scale normalized  :", this%momentum(3)
+    write (unit, "(A,E20.10)")  "Scale^2 normalized:", this%momentum(4)
+  end subroutine transverse_mom_print_to_unit
+    
+  pure subroutine transverse_mom_get_type (type)
+    character(:), allocatable, intent(out) :: type
+    allocate (type, source="transverse_mom_t")
+  end subroutine transverse_mom_get_type
   
-  pure subroutine transversal_momentum_get_type(type)
-    character(:),allocatable,intent(out)::type
-    allocate(type,source="transversal_momentum_type")
-  end subroutine transversal_momentum_get_type
+  elemental function transverse_mom_get_gev_initial_cme (this) result(scale)
+    class(transverse_mom_t), intent(in) :: this
+    real(default) :: scale
+    scale = this%momentum(0) * 2D0
+  end function transverse_mom_get_gev_initial_cme
 
-  
-  elemental function transversal_momentum_get_gev_initial_cme(this) result(scale)
-    class(transversal_momentum_type),intent(in)::this
-    real(kind=drk)::scale
-    scale=this%momentum(0)*2D0
-  end function transversal_momentum_get_gev_initial_cme
+  elemental function transverse_mom_get_gev_max_scale (this) result (scale)
+    class(transverse_mom_t), intent(in) :: this
+    real(default) :: scale
+    scale = this%momentum(0)
+  end function transverse_mom_get_gev_max_scale
 
-  elemental function transversal_momentum_get_gev_max_scale(this) result(scale)
-    class(transversal_momentum_type),intent(in)::this
-    real(kind=drk)::scale
-    scale=this%momentum(0)
-  end function transversal_momentum_get_gev_max_scale
+  elemental function transverse_mom_get_gev2_max_scale (this) result (scale)
+    class(transverse_mom_t), intent(in) :: this
+    real(default) :: scale
+    scale = this%momentum(0)**2
+  end function transverse_mom_get_gev2_max_scale
 
-  elemental function transversal_momentum_get_gev2_max_scale(this) result(scale)
-    class(transversal_momentum_type),intent(in)::this
-    real(kind=drk)::scale
-    scale=this%momentum(0)**2
-  end function transversal_momentum_get_gev2_max_scale
+  elemental function transverse_mom_get_gev_scale(this) result(scale)
+    class(transverse_mom_t), intent(in) :: this
+    real(default) :: scale
+    scale = this%momentum(1)
+  end function transverse_mom_get_gev_scale
 
-  elemental function transversal_momentum_get_gev_scale(this) result(scale)
-    class(transversal_momentum_type),intent(in)::this
-    real(kind=drk)::scale
-    scale=this%momentum(1)
-  end function transversal_momentum_get_gev_scale
+  elemental function transverse_mom_get_gev2_scale (this) result (scale)
+    class(transverse_mom_t), intent(in) :: this
+    real(default) :: scale
+    scale = this%momentum(2)
+  end function transverse_mom_get_gev2_scale
 
-  elemental function transversal_momentum_get_gev2_scale(this) result(scale)
-    class(transversal_momentum_type),intent(in)::this
-    real(kind=drk)::scale
-    scale=this%momentum(2)
-  end function transversal_momentum_get_gev2_scale
+  elemental function transverse_mom_get_unit_scale (this) result (scale)
+    class(transverse_mom_t), intent(in) :: this
+    real(default) :: scale
+    scale = this%momentum(3)
+  end function transverse_mom_get_unit_scale
 
-  elemental function transversal_momentum_get_unit_scale(this) result(scale)
-    class(transversal_momentum_type),intent(in)::this
-    real(kind=drk)::scale
-    scale=this%momentum(3)
-  end function transversal_momentum_get_unit_scale
+  elemental function transverse_mom_get_unit2_scale (this) result (scale)
+    class(transverse_mom_t), intent(in) :: this
+    real(default) :: scale
+    scale = this%momentum(4)
+  end function transverse_mom_get_unit2_scale
 
-  elemental function transversal_momentum_get_unit2_scale(this) result(scale)
-    class(transversal_momentum_type),intent(in)::this
-    real(kind=drk)::scale
-    scale=this%momentum(4)
-  end function transversal_momentum_get_unit2_scale
-
-  subroutine transversal_momentum_set_gev_initial_cme(this,new_gev_initial_cme)
-    class(transversal_momentum_type),intent(inout)::this
-    real(kind=drk),intent(in) :: new_gev_initial_cme
-    this%momentum(0) = new_gev_initial_cme/2D0
-    this%momentum(3) = this%momentum(1)/this%momentum(0)
+  subroutine transverse_mom_set_gev_initial_cme (this, new_gev_initial_cme)
+    class(transverse_mom_t), intent(inout) :: this
+    real(default), intent(in)  ::  new_gev_initial_cme
+    this%momentum(0) = new_gev_initial_cme / 2D0
+    this%momentum(3) = this%momentum(1) / this%momentum(0)
     this%momentum(4) = this%momentum(3)**2
-  end subroutine transversal_momentum_set_gev_initial_cme
+  end subroutine transverse_mom_set_gev_initial_cme
 
-  subroutine transversal_momentum_set_gev_max_scale(this,new_gev_max_scale)
-    class(transversal_momentum_type),intent(inout)::this
-    real(kind=drk),intent(in) :: new_gev_max_scale
+  subroutine transverse_mom_set_gev_max_scale (this, new_gev_max_scale)
+    class(transverse_mom_t), intent(inout) :: this
+    real(default), intent(in)  ::  new_gev_max_scale
     this%momentum(0) = new_gev_max_scale
-    this%momentum(3) = this%momentum(1)/this%momentum(0)
+    this%momentum(3) = this%momentum(1) / this%momentum(0)
     this%momentum(4) = this%momentum(3)**2
-  end subroutine transversal_momentum_set_gev_max_scale
-
-  subroutine transversal_momentum_set_gev2_max_scale(this,new_gev2_max_scale)
-    class(transversal_momentum_type),intent(inout)::this
-    real(kind=drk),intent(in) :: new_gev2_max_scale
-    this%momentum(0) = sqrt(new_gev2_max_scale)
-    this%momentum(3) = this%momentum(1)/this%momentum(0)
+  end subroutine transverse_mom_set_gev_max_scale
+  
+  subroutine transverse_mom_set_gev2_max_scale (this, new_gev2_max_scale)
+    class(transverse_mom_t), intent(inout) :: this
+    real(default), intent(in)  ::  new_gev2_max_scale
+    this%momentum(0) = sqrt (new_gev2_max_scale)
+    this%momentum(3) = this%momentum(1) / this%momentum(0)
     this%momentum(4) = this%momentum(3)**2
-  end subroutine transversal_momentum_set_gev2_max_scale
+  end subroutine transverse_mom_set_gev2_max_scale
 
-  subroutine transversal_momentum_set_gev_scale(this,new_gev_scale)
-    class(transversal_momentum_type),intent(inout)::this
-    real(kind=drk),intent(in) :: new_gev_scale
+  subroutine transverse_mom_set_gev_scale (this, new_gev_scale)
+    class(transverse_mom_t), intent(inout) :: this
+    real(default), intent(in)  ::  new_gev_scale
     this%momentum(1) = new_gev_scale
     this%momentum(2) = new_gev_scale**2
-    this%momentum(3) = new_gev_scale/this%momentum(0)
+    this%momentum(3) = new_gev_scale / this%momentum(0)
     this%momentum(4) = this%momentum(3)**2
-  end subroutine transversal_momentum_set_gev_scale
+  end subroutine transverse_mom_set_gev_scale
 
-  subroutine transversal_momentum_set_gev2_scale(this,new_gev2_scale)
-    class(transversal_momentum_type),intent(inout)::this
-    real(kind=drk),intent(in) :: new_gev2_scale
-    this%momentum(1) = sqrt(new_gev2_scale)
+  subroutine transverse_mom_set_gev2_scale (this, new_gev2_scale)
+    class(transverse_mom_t), intent(inout) :: this
+    real(default), intent(in) :: new_gev2_scale
+    this%momentum(1) = sqrt (new_gev2_scale)
     this%momentum(2) = new_gev2_scale
-    this%momentum(3) = this%momentum(1)/this%momentum(0)
+    this%momentum(3) = this%momentum(1) / this%momentum(0)
     this%momentum(4) = this%momentum(3)**2
-  end subroutine transversal_momentum_set_gev2_scale
+  end subroutine transverse_mom_set_gev2_scale
 
-  subroutine transversal_momentum_set_unit_scale(this,new_unit_scale)
-    class(transversal_momentum_type),intent(inout)::this
-    real(kind=drk),intent(in) :: new_unit_scale
-    this%momentum(1) = new_unit_scale*this%momentum(0)
+  subroutine transverse_mom_set_unit_scale (this, new_unit_scale)
+    class(transverse_mom_t), intent(inout)::this
+    real(default), intent(in) :: new_unit_scale
+    this%momentum(1) = new_unit_scale * this%momentum(0)
     this%momentum(2) = this%momentum(1)**2
     this%momentum(3) = new_unit_scale
     this%momentum(4) = this%momentum(3)**2
-  end subroutine transversal_momentum_set_unit_scale
+  end subroutine transverse_mom_set_unit_scale
 
-  subroutine transversal_momentum_set_unit2_scale(this,new_unit2_scale)
-    class(transversal_momentum_type),intent(inout)::this
-    real(kind=drk),intent(in) :: new_unit2_scale
-    this%momentum(3) = sqrt(new_unit2_scale)
+  subroutine transverse_mom_set_unit2_scale (this, new_unit2_scale)
+    class(transverse_mom_t), intent(inout)::this
+    real(default), intent(in) :: new_unit2_scale
+    this%momentum(3) = sqrt (new_unit2_scale)
     this%momentum(4) = new_unit2_scale
-    this%momentum(1) = this%momentum(3)*this%momentum(0)
+    this%momentum(1) = this%momentum(3) * this%momentum(0)
     this%momentum(2) = this%momentum(1)**2
-  end subroutine transversal_momentum_set_unit2_scale
+  end subroutine transverse_mom_set_unit2_scale
 
-  subroutine transversal_momentum_initialize(this,gev2_s)
-    class(transversal_momentum_type),intent(out)::this
-    real(kind=drk),intent(in)::gev2_s
-    real(kind=drk)::gev_s
-    gev_s=sqrt(gev2_s)
-    this%momentum=[gev_s/2D0,gev_s/2D0,gev2_s/4D0,1D0,1D0]
-  end subroutine transversal_momentum_initialize
-
+  subroutine transverse_mom_initialize (this, gev2_s)
+    class(transverse_mom_t), intent(out) :: this
+    real(default), intent(in) :: gev2_s
+    real(default) :: gev_s
+    gev_s = sqrt (gev2_s)
+    this%momentum = [gev_s/2, gev_s/2, gev2_s/4, one, one]
+  end subroutine transverse_mom_initialize
+    
+    
 end module muli_momentum
+

@@ -4,13 +4,17 @@
 ##
 ########################################################################
 #
-# Copyright (C) 1999-2014 by 
+# Copyright (C) 1999-2015 by 
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
 #     with contributions from
+#     Fabian Bach <fabian.bach@desy.de>
+#     Bijan Chokoufe <bijan.chokoufe@desy.de>
 #     Christian Speckner <cnspeckn@googlemail.com>
+#     Marco Sekulla <marco.sekulla@desy.de>
 #     Christian Weiss <christian.weiss@desy.de>
+#     Felix Braam, Sebastian Schmidt
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by 
@@ -119,10 +123,15 @@ UNIT_TESTS_REQ_FASTJET = \
     jets.run
 
 UNIT_TESTS_REQ_HEPMC = \
+    hepmc.run \
     eio_hepmc.run
 
 UNIT_TESTS_REQ_STDHEP = \
     eio_stdhep.run
+
+UNIT_TESTS_REQ_LCIO = \
+    lcio.run \
+    eio_lcio.run
 
 UNIT_TESTS_REQ_OCAML = \
     prc_omega.run \
@@ -169,6 +178,7 @@ TESTS_REQ_OCAML = \
     libraries_3.run \
     rebuild_2.run \
     rebuild_3.run \
+    rebuild_5.run \
     defaultcuts.run \
     cuts.run \
     model_change_1.run \
@@ -203,6 +213,7 @@ TESTS_REQ_OCAML = \
     reweight_5.run \
     reweight_6.run \
     reweight_7.run \
+    reweight_8.run \
     analyze_1.run \
     analyze_2.run \
     colors.run \
@@ -236,6 +247,7 @@ TESTS_REQ_OCAML = \
     smtest_16.run \
     smtest_17.run \
     mssmtest.run \
+    spincor_1.run \
     show_1.run \
     show_2.run \
     show_3.run \
@@ -274,9 +286,13 @@ TESTS_REQ_OCAML = \
     beam_events_1.run \
     beam_events_2.run \
     beam_events_3.run \
+    beam_events_4.run \
     energy_scan_1.run \
     restrictions.run \
     process_log.run \
+    parton_shower_1.run \
+    parton_shower_2.run \
+    mlm_matching_fsr.run \
     user_cuts.run \
     $(TESTS_USER_STRFUN) 
 XFAIL_TESTS_REQ_OCAML = \
@@ -285,13 +301,16 @@ XFAIL_TESTS_REQ_OCAML = \
     $(TESTS_USER_STRFUN)
 
 TESTS_REQ_HEPMC = \
-    hepmc.run \
     hepmc_1.run \
     hepmc_2.run \
     hepmc_3.run \
     hepmc_4.run \
     hepmc_5.run \
-    hepmc_6.run
+    hepmc_6.run \
+    hepmc_8.run
+###    hepmc_7.run \
+XFAIL_TESTS_REQ_HEPMC = 
+### \ hepmc_7.run
 
 UNIT_TESTS_REQ_LHAPDF5 = \
     sf_lhapdf5.run 
@@ -315,14 +334,11 @@ TESTS_STATIC = \
     static_1.run
 XFAIL_TESTS_STATIC =
 
-TESTS_REQ_SHOWER = \
-    parton_shower_1.run \
-    parton_shower_2.run \
-    parton_shower_3.run \
-    parton_shower_4.run \
-    mlm_matching_fsr.run \
-    mlm_matching_isr.run	
-XFAIL_TESTS_REQ_SHOWER = 
+TESTS_REQ_PYTHIA6 = \
+    pythia6_1.run \
+    pythia6_2.run \
+    mlm_pythia6_isr.run	
+XFAIL_TESTS_REQ_PYTHIA6 = 
 
 TESTS_REQ_EV_ANA = \
     analyze_3.run
@@ -342,6 +358,7 @@ TEST_DRIVERS_RUN = \
     $(UNIT_TESTS) \
     $(UNIT_TESTS_REQ_GAMELAN) \
     $(UNIT_TESTS_REQ_HEPMC) \
+    $(UNIT_TESTS_REQ_LCIO) \
     $(UNIT_TESTS_REQ_FASTJET) \
     $(UNIT_TESTS_REQ_LHAPDF5) \
     $(UNIT_TESTS_REQ_LHAPDF6) \
@@ -354,7 +371,7 @@ TEST_DRIVERS_RUN = \
     $(TESTS_REQ_HEPMC) \
     $(TESTS_REQ_FASTJET) \
     $(TESTS_REQ_STDHEP) \
-    $(TESTS_REQ_SHOWER) \
+    $(TESTS_REQ_PYTHIA6) \
     $(TESTS_REQ_EV_ANA) \
     $(TESTS_STATIC) \
     $(TESTS_EXTENDED)
@@ -370,6 +387,7 @@ TESTS_SRC =
 UNIT_TESTS += $(UNIT_TESTS_REQ_GAMELAN)
 UNIT_TESTS += $(UNIT_TESTS_REQ_FASTJET)
 UNIT_TESTS += $(UNIT_TESTS_REQ_HEPMC)
+UNIT_TESTS += $(UNIT_TESTS_REQ_LCIO)
 UNIT_TESTS += $(UNIT_TESTS_REQ_LHAPDF5)
 UNIT_TESTS += $(UNIT_TESTS_REQ_LHAPDF6)
 UNIT_TESTS += $(UNIT_TESTS_REQ_STDHEP)
@@ -401,8 +419,8 @@ XFAIL_TESTS += $(XFAIL_TESTS_REQ_LHAPDF6)
 TESTS += $(TESTS_REQ_STDHEP)
 XFAIL_TESTS += $(XFAIL_TESTS_REQ_STDHEP)
 
-TESTS += $(TESTS_REQ_SHOWER)
-XFAIL_TESTS += $(XFAIL_TESTS_REQ_SHOWER)
+TESTS += $(TESTS_REQ_PYTHIA6)
+XFAIL_TESTS += $(XFAIL_TESTS_REQ_PYTHIA6)
 
 TESTS += $(TESTS_REQ_EV_ANA)
 XFAIL_TESTS += $(XFAIL_TESTS_REQ_EV_ANA)
@@ -510,7 +528,10 @@ user_cuts.f90: $(top_builddir)/share/tests/user_cuts.f90
 user_strfun.f90: $(top_builddir)/share/tests/user_strfun.f90
 	cp $< $@
 
-model_test.run: tdefs.mod tglue.mod threeshl.mod tscript.mod
+model_test.run: tdefs.$(FC_MODULE_EXT) tglue.$(FC_MODULE_EXT) \
+	threeshl.$(FC_MODULE_EXT) tscript.$(FC_MODULE_EXT) \
+	ttv_formfactors.$(FC_MODULE_EXT) nr_hypgeometric.$(FC_MODULE_EXT) \
+	nr.$(FC_MODULE_EXT) nrtype.$(FC_MODULE_EXT) interpolation.$(FC_MODULE_EXT)
 tdefs.mod: $(top_builddir)/src/models/threeshl_bundle/tdefs.$(FC_MODULE_EXT)
 	cp $< $@
 tglue.mod: $(top_builddir)/src/models/threeshl_bundle/tglue.$(FC_MODULE_EXT)
@@ -519,6 +540,16 @@ tscript.mod: $(top_builddir)/src/models/threeshl_bundle/tscript.$(FC_MODULE_EXT)
 	cp $< $@
 threeshl.mod: $(top_builddir)/src/models/threeshl_bundle/threeshl.$(FC_MODULE_EXT)
 	cp $< $@
+ttv_formfactors.mod: $(top_builddir)/src/models/SM_tt_threshold_bundle/ttv_formfactors.$(FC_MODULE_EXT)
+	cp $< $@
+nr_hypgeometric.mod: $(top_builddir)/src/models/SM_tt_threshold_bundle/nr_hypgeometric.$(FC_MODULE_EXT)
+	cp $< $@ 
+nr.mod: $(top_builddir)/src/models/SM_tt_threshold_bundle/nr.$(FC_MODULE_EXT)
+	cp $< $@ 
+nrtype.mod: $(top_builddir)/src/models/SM_tt_threshold_bundle/nrtype.$(FC_MODULE_EXT)
+	cp $< $@ 
+interpolation.mod: $(top_builddir)/src/models/SM_tt_threshold_bundle/interpolation.$(FC_MODULE_EXT)
+	cp $< $@ 
 
 TEST.mdl: $(top_srcdir)/share/tests/TEST.mdl
 	cp $< $@
@@ -564,13 +595,14 @@ BUILT_SOURCES = \
     TESTFLAG  \
     STDHEP_FLAG \
     HEPMC_FLAG \
+    LCIO_FLAG \
     FASTJET_FLAG \
     LHAPDF5_FLAG \
     LHAPDF6_FLAG \
     GAMELAN_FLAG \
     EVENT_ANALYSIS_FLAG \
     OCAML_FLAG \
-    SHOWER_FLAG \
+    PYTHIA6_FLAG \
     STATIC_FLAG \
     ref-output \
     err-output
@@ -596,6 +628,11 @@ if HEPMC_AVAILABLE
 	touch $@
 endif
 
+LCIO_FLAG:
+if LCIO_AVAILABLE
+	touch $@
+endif
+
 LHAPDF5_FLAG:
 if LHAPDF5_AVAILABLE
 	touch $@
@@ -616,8 +653,8 @@ if OCAML_AVAILABLE
 	touch $@
 endif
 
-SHOWER_FLAG:
-if SHOWER_AVAILABLE
+PYTHIA6_FLAG:
+if PYTHIA6_AVAILABLE
 	touch $@
 endif
 
@@ -658,9 +695,9 @@ notestflag:
 clean-local:
 	rm -f gamelan.sty TEST.mdl 
 	rm -f TESTFLAG GAMELAN_FLAG STDHEP_FLAG 
-	rm -f OCAML_FLAG FASTJET_FLAG HEPMC_FLAG LHAPDF5_FLAG
-	rm -f EVENT_ANALYSIS_FLAG SHOWER_FLAG LHAPDF6_FLAG
-	rm -f STATIC_FLAG static_1.exe
+	rm -f OCAML_FLAG FASTJET_FLAG HEPMC_FLAG LCIO_FLAG
+	rm -f EVENT_ANALYSIS_FLAG PYTHIA6_FLAG LHAPDF5_FLAG
+	rm -f LHAPDF6_FLAG STATIC_FLAG static_1.exe
 	rm -f *.run *.log slha_test.out
 	rm -f *.f90 *.c *.$(FC_MODULE_EXT) *.o *.la
 	rm -f *.makefile
@@ -668,7 +705,7 @@ clean-local:
 	rm -rf ref-output
 	rm -f *.sin *.hbc
 	rm -f *.phs *.vg *.vgb *.evt *.evx *.lhe *.hepmc *.dat *.debug 
-	rm -f *.tmp *.hepevt *.hepevt.verb *.lha *.lha.verb
+	rm -f *.tmp *.hepevt *.hepevt.verb *.lha *.lha.verb *.slcio
 	rm -f prc_omega_diags_1_p_i1_diags.out prc_omega_diags_1_p_i1_diags.toc
 	rm -f *.hep *.up.hep *.[1-9] *.[1-9][0-9] *.[1-9][0-9][0-9] 
 	rm -f *.tex *.mp *.mpx *.t[1-9] *.t[1-9][0-9] *.t[1-9][0-9][0-9] 

@@ -488,7 +488,7 @@ particle HADRON_REMNANT_TRIPLET 92
   name hr3
   tex_name "had_r^{(3)}"
   anti hr3bar
-  tex_name "had_r^{(\bar 3)}"
+  tex_anti "had_r^{(\bar 3)}"
 particle HADRON_REMNANT_OCTET 93
   color 8
   name hr8

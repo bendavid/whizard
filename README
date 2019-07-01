@@ -1,7 +1,7 @@
 #######################################################################
 # WHIZARD
 # 
-# Copyright (C) 1999-2014 by 
+# Copyright (C) 1999-2015 by 
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
@@ -27,7 +27,7 @@
 WHIZARD is a program system designed for the efficient calculation of
 multi-particle scattering cross sections and simulated event samples.
 
-The events can be written to file in HepMC, LHEF or ASCII format.
+The events can be written to file in HepMC, LHEF, LCIO or ASCII format.
 Tree-level matrix elements are generated automatically for arbitrary
 partonic processes by calling the O'Mega matrix element generator.
 Matrix elements obtained by alternative methods (e.g., including loop

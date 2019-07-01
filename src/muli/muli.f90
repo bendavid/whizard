@@ -34,31 +34,41 @@
 !!! set of TBP to query all aspects without the burden of the generator 
 !!! internals.
 
-!!! muli_type then is an extension of qcd_2_2_type that adds generator
+!!! muli_t then is an extension of qcd_2_2_type that adds generator
 !!! internals like random number generator, integrated cross-sections, the
 !!! actual Monte Carlo generator for flavour genertation and beam remnants in
 !!! tao_rnd, dsigma, samples and beam respectively.
 
 module muli
+  use, intrinsic :: iso_fortran_env
+  use kinds, only: default  
+  use constants
+  use tao_random_numbers !NODEP!
+  use muli_base
+  use muli_momentum
+  use muli_trapezium
+  use muli_interactions
   use muli_dsigma
   use muli_mcint
   use muli_remnant
+
   implicit none
+  private
 
   logical,parameter::muli_default_modify_pdfs=.true.
   integer,parameter::muli_default_lhapdf_member=0
   character(*),parameter::muli_default_lhapdf_file="cteq6ll.LHpdf"
   
-  type,extends(qcd_2_2_class)::qcd_2_2_type
+  type, extends(qcd_2_2_class) :: qcd_2_2_type
      private
      integer::process_id=-1
      integer::integrand_id=-1
-     integer,dimension(2)::parton_ids=[0,0]
-     integer,dimension(4)::flow=[0,0,0,0]
-     real(kind=double),dimension(3)::momentum_fractions=[-1D0,-1D0,-1D0]
-     real(kind=double),dimension(3)::hyperbolic_fractions=[-1D0,-1D0,-1D0]
+     integer, dimension(2)::parton_ids=[0,0]
+     integer, dimension(4)::flow=[0,0,0,0]
+     real(default), dimension(3) :: momentum_fractions = [-one, -one, -one]
+     real(default), dimension(3) :: hyperbolic_fractions = [-one ,- one,- one]
    contains
-     !overridden serializable_class procedures
+     !overridden ser_class_t procedures
      procedure,public::write_to_marker=>qcd_2_2_write_to_marker
      procedure,public::read_from_marker=>qcd_2_2_read_from_marker
      procedure,public::print_to_unit=>qcd_2_2_print_to_unit
@@ -84,33 +94,34 @@ module muli
      generic,public::initialize=>qcd_2_2_initialize
   end type qcd_2_2_type
 
-  type,extends(qcd_2_2_type)::muli_type
+  public :: muli_t
+  type,extends(qcd_2_2_type)::muli_t
 !     private
      ! model parameters
-     real(kind=double)::GeV2_scale_cutoff     
+     real(default)::GeV2_scale_cutoff     
      logical::modify_pdfs=muli_default_modify_pdfs
      ! pt chain status
      logical::finished=.false.
      logical::exceeded=.false.
      ! timers
-     real(kind=double)::init_time=0D0
-     real(kind=double)::pt_time=0D0
-     real(kind=double)::partons_time=0D0
-     real(kind=double)::confirm_time=0D0
+     real(default) :: init_time = zero
+     real(default) :: pt_time = zero
+     real(default) :: partons_time = zero
+     real(default) :: confirm_time = zero
      ! generator internals
      logical::initialized=.false.
      logical::initial_interaction_given=.false.
-     real(kind=double)::mean=1D0
-     real(kind=double),dimension(0:16)::start_integrals=&
-          [0D0,0D0,0D0,0D0,0D0,0D0,0D0,0D0,0D0,0D0,0D0,0D0,0D0,0D0,0D0,0D0,0D0]
+     real(default) :: mean = one
+     real(default), dimension(0:16) :: start_integrals = &
+          [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
      type(tao_random_state)::tao_rnd
-     type(muli_trapezium_tree_type)::dsigma
-     type(sample_inclusive_type)::samples
-     type(pp_remnant_type)::beam
+     type(muli_trapezium_tree_t)::dsigma
+     type(sample_inclusive_t)::samples
+     type(pp_remnant_t)::beam
      ! these pointers shall not be allocated, deallocated, serialized or deserialized explicitly.
-     class(muli_trapezium_node_class),pointer::node=>null()
+     class(muli_trapezium_node_class_t),pointer::node=>null()
    contains
-     ! overridden serializable_class procedures
+     ! overridden ser_class_t procedures
      procedure,public::write_to_marker=>muli_write_to_marker
      procedure,public::read_from_marker=>muli_read_from_marker
      procedure,public::print_to_unit=>muli_print_to_unit
@@ -143,7 +154,7 @@ module muli
      ! private procedures
      procedure,private::generate_next_scale=>muli_generate_next_scale
      procedure,private::confirm=>muli_confirm
-  end type muli_type
+  end type muli_t
 
 contains
 
@@ -151,14 +162,14 @@ contains
 !!! type bound procedures for qcd_2_2_type !!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   
-  !overridden serializable_class procedures
+  !overridden ser_class_t procedures
 
   subroutine qcd_2_2_write_to_marker(this,marker,status)
-    class(qcd_2_2_type),intent(in)::this
-    class(marker_type),intent(inout)::marker
-    integer(kind=dik),intent(out)::status
+    class(qcd_2_2_type), intent(in)::this
+    class(marker_t), intent(inout)::marker
+    integer(dik), intent(out)::status
     call marker%mark_begin("qcd_2_2_type")
-    call transversal_momentum_write_to_marker(this,marker,status)
+    call this%mom_write_to_marker (marker, status)
     call marker%mark("process_id",this%process_id)
     call marker%mark("integrand_id",this%integrand_id)
     call marker%mark("momentum_fractions",this%momentum_fractions)
@@ -167,11 +178,11 @@ contains
   end subroutine qcd_2_2_write_to_marker
 
   subroutine qcd_2_2_read_from_marker(this,marker,status)
-    class(qcd_2_2_type),intent(out)::this
-    class(marker_type),intent(inout)::marker
-    integer(kind=dik),intent(out)::status
+    class(qcd_2_2_type), intent(out)::this
+    class(marker_t), intent(inout)::marker
+    integer(dik), intent(out)::status
     call marker%pick_begin("qcd_2_2_type",status=status)
-    call transversal_momentum_read_from_marker(this,marker,status)
+    call this%mom_read_from_marker (marker, status)
     call marker%pick("process_id",this%process_id,status)
     call marker%pick("integrand_id",this%integrand_id,status)
     call marker%pick("momentum_fractions",this%momentum_fractions,status)
@@ -180,16 +191,17 @@ contains
   end subroutine qcd_2_2_read_from_marker
 
   subroutine qcd_2_2_print_to_unit(this,unit,parents,components,peers)
-    class(qcd_2_2_type),intent(in)::this
-    integer,intent(in)::unit
-    integer(kind=dik),intent(in)::parents,components,peers
-    integer,dimension(2,4)::flow
+    class(qcd_2_2_type), intent(in)::this
+    integer, intent(in)::unit
+    integer(dik), intent(in)::parents,components,peers
+    integer, dimension(2,4)::flow
     integer::index
-    if(parents>zero)call transversal_momentum_print_to_unit(this,unit,parents-1,components,peers)
+    if (parents > i_zero) & 
+         call this%mom_print_to_unit (unit, parents-1, components, peers)
     write(unit,'("Components of qcd_2_2_type:")')
     write(unit,'("Process id is:       ",I3)')this%get_process_id()
     write(unit,'("Integrand id is:     ",I3)')this%get_integrand_id()
-    if(this%get_integrand_id()>0)then
+    if (this%get_integrand_id()>0) then
        write(unit,'("LHA Flavors are:     ",4(I3))')this%get_lha_flavors()
        write(unit,'("PDG Flavors are:     ",4(I3))')this%get_pdg_flavors()
        write(unit,'("Parton kinds are:    ",2(I3))')this%get_parton_kinds()
@@ -207,64 +219,64 @@ contains
   end subroutine qcd_2_2_print_to_unit
   
   pure subroutine qcd_2_2_get_type(type)
-    character(:),allocatable,intent(out)::type
+    character(:),allocatable, intent(out)::type
     allocate(type,source="qcd_2_2_type")
   end subroutine qcd_2_2_get_type
 
   elemental function qcd_2_2_get_process_id(this) result(id)
-    class(qcd_2_2_type),intent(in)::this
+    class(qcd_2_2_type), intent(in)::this
     integer::id
     id=this%process_id
   end function qcd_2_2_get_process_id
 
   elemental function qcd_2_2_get_integrand_id(this) result(id)
-    class(qcd_2_2_type),intent(in)::this
+    class(qcd_2_2_type), intent(in)::this
     integer::id
     id=this%integrand_id
   end function qcd_2_2_get_integrand_id
 
   pure function qcd_2_2_get_lha_flavors(this) result(lha)
-    class(qcd_2_2_type),intent(in)::this
-    integer,dimension(4)::lha
-    lha=valid_processes(1:4,this%process_id)
+    class(qcd_2_2_type), intent(in)::this
+    integer, dimension(4)::lha
+    lha = valid_processes(1:4,this%process_id)
   end function qcd_2_2_get_lha_flavors
 
   pure function qcd_2_2_get_pdg_flavors(this) result(pdg)
-    class(qcd_2_2_type),intent(in)::this
-    integer,dimension(4)::pdg
+    class(qcd_2_2_type), intent(in)::this
+    integer, dimension(4)::pdg
     pdg=this%get_lha_flavors()
     where(pdg==0) pdg=21
   end function qcd_2_2_get_pdg_flavors
 
   pure function qcd_2_2_get_pdf_int_kinds(this) result(kinds)
-    class(qcd_2_2_type),intent(in)::this
-    integer,dimension(2)::kinds
+    class(qcd_2_2_type), intent(in)::this
+    integer, dimension(2)::kinds
     kinds=double_pdf_kinds(1:2,this%integrand_id)
   end function qcd_2_2_get_pdf_int_kinds
 
   elemental function qcd_2_2_get_parton_id(this,n) result(id)
-    class(qcd_2_2_type),intent(in)::this
-    integer,intent(in)::n
+    class(qcd_2_2_type), intent(in)::this
+    integer, intent(in)::n
     integer::id
     id=this%parton_ids(n)
   end function qcd_2_2_get_parton_id
 
   pure function qcd_2_2_get_parton_kinds(this) result(kinds)
-    class(qcd_2_2_type),intent(in)::this
-    integer,dimension(2)::kinds
+    class(qcd_2_2_type), intent(in)::this
+    integer, dimension(2)::kinds
     kinds=this%get_pdf_int_kinds()
     kinds(1)=parton_kind_of_int_kind(kinds(1))
     kinds(2)=parton_kind_of_int_kind(kinds(2))
   end function qcd_2_2_get_parton_kinds
 
   elemental function qcd_2_2_get_io_kind(this) result(kind)
-    class(qcd_2_2_type),intent(in)::this
+    class(qcd_2_2_type), intent(in)::this
     integer::kind
     kind=valid_processes(5,this%process_id)
   end function qcd_2_2_get_io_kind
 
   elemental function qcd_2_2_get_diagram_kind(this) result(kind)
-    class(qcd_2_2_type),intent(in)::this
+    class(qcd_2_2_type), intent(in)::this
     integer::kind
     kind=valid_processes(6,this%process_id)
   end function qcd_2_2_get_diagram_kind
@@ -275,68 +287,69 @@ contains
     ! cross sections were summed up to diagram kind 1. 
     ! Now muli also generates color flows, so we must devide diagram kind 1 into diagram color kind 0
     ! and diagram color kind 1.
-    class(qcd_2_2_type),intent(in)::this
+    class(qcd_2_2_type), intent(in)::this
     integer::kind
     kind=valid_processes(6,this%process_id)
-    if(kind==1)then
-       if(product(valid_processes(1:2,this%process_id))>0)then
+    if (kind==1) then
+       if (product(valid_processes(1:2,this%process_id))>0) then
           kind=0
        end if
     end if
   end function qcd_2_2_get_diagram_color_kind
 
-  elemental function qcd_2_2_get_momentum_boost(this) result(boost)
-    class(qcd_2_2_type),intent(in)::this
-    real(kind=double)::boost
-    boost=-1D0
-!    print('("qcd_2_2_get_momentum_boost: not yet implemented.")')
-!    boost=this%momentum_boost
+  elemental function qcd_2_2_get_momentum_boost (this) result (boost)
+    class(qcd_2_2_type), intent(in) :: this
+    real(default) :: boost
+    boost = -one
+    ! print('("qcd_2_2_get_momentum_boost: not yet implemented.")')
+    ! boost = this%momentum_boost
   end function qcd_2_2_get_momentum_boost
 
   pure function qcd_2_2_get_hyperbolic_fractions(this) result(fractions)
-    class(qcd_2_2_type),intent(in)::this
-    real(kind=double),dimension(3)::fractions
+    class(qcd_2_2_type), intent(in)::this
+    real(double), dimension(3)::fractions
     fractions=this%hyperbolic_fractions
   end function qcd_2_2_get_hyperbolic_fractions
 
-  pure function qcd_2_2_get_remnant_momentum_fractions(this) result(fractions)
-    class(qcd_2_2_type),intent(in)::this
-    real(kind=double),dimension(2)::fractions
-    fractions=this%momentum_fractions(1:2)
+  pure function qcd_2_2_get_remnant_momentum_fractions (this) result (fractions)
+    class(qcd_2_2_type), intent(in) :: this
+    real(default), dimension(2) :: fractions
+    fractions = this%momentum_fractions(1:2)
   end function qcd_2_2_get_remnant_momentum_fractions
 
-  pure function qcd_2_2_get_total_momentum_fractions(this) result(fractions)
-    class(qcd_2_2_type),intent(in)::this
-    real(kind=double),dimension(2)::fractions
-    fractions=[-1D0,-1D0]
-!    fractions=this%hyperbolic_fractions(1:2)*this%beam%get_proton_remnant_momentum_fractions()
+  pure function qcd_2_2_get_total_momentum_fractions (this) result (fractions)
+    class(qcd_2_2_type), intent(in) :: this
+    real(default), dimension(2) :: fractions
+    fractions = [-one, -one]
+    ! fractions = this%hyperbolic_fractions(1:2) * &
+    !    this%beam%get_proton_remnant_momentum_fractions()
   end function qcd_2_2_get_total_momentum_fractions
 
   pure function qcd_2_2_get_color_flow(this) result(flow)
-    class(qcd_2_2_type),intent(in)::this
-    integer,dimension(4)::flow
+    class(qcd_2_2_type), intent(in)::this
+    integer, dimension(4)::flow
     flow=this%flow
   end function qcd_2_2_get_color_flow
 
   subroutine qcd_2_2_get_color_correlations(this,start_index,final_index,flow)
-    class(qcd_2_2_type),intent(in)::this
-    integer,intent(in)::start_index
-    integer,intent(out)::final_index
-    integer,dimension(2,4),intent(out)::flow
+    class(qcd_2_2_type), intent(in)::this
+    integer, intent(in)::start_index
+    integer, intent(out)::final_index
+    integer, dimension(2,4), intent(out)::flow
     integer::pos,f_end,f_beginning
     final_index=start_index
-    ! we set all flows to zero. zero means no connection.
+    ! we set all flows to i_zero. i_zero means no connection.
     flow=reshape([0,0,0,0,0,0,0,0],[2,4])
     ! look at all four possible ends of color lines
     do f_end=1,4
-       ! the beginning of of this potential line is stored in flow. zero means no line.
+       ! the beginning of of this potential line is stored in flow. i_zero means no line.
        f_beginning=this%flow(f_end)
        ! is there a line beginning at f_beginning and ending at f_end?
-       if(f_beginning>0)then
+       if (f_beginning>0) then
           ! yes it is. we get a new number for this new line
           final_index=final_index+1
           ! is this line beginning in the initial state?
-          if(f_beginning<3)then
+          if (f_beginning<3) then
              ! yes it is. lets connect the color entry of f_begin.            
              flow(1,f_beginning)=final_index
           else
@@ -344,7 +357,7 @@ contains
              flow(2,f_beginning)=final_index
           end if
           ! is this line ending in the final state?
-          if(f_end>2)then
+          if (f_end>2) then
              ! yes it is. lets connect the color entry of f_end.
              flow(1,f_end)=final_index
           else
@@ -355,39 +368,40 @@ contains
     end do
   end subroutine qcd_2_2_get_color_correlations
 
-  subroutine qcd_2_2_initialize(this,gev2_s,process_id,integrand_id,parton_ids,flow,hyp,cart)
-    class(qcd_2_2_type),intent(out)::this
-    real(kind=double),intent(in)::gev2_s
-    integer,intent(in)::process_id,integrand_id
-    integer,dimension(2),intent(in)::parton_ids
-    integer,dimension(4),intent(in)::flow
-    real(kind=double),dimension(3),intent(in)::hyp
-    real(kind=double),dimension(3),intent(in),optional::cart
-    call this%initialize(gev2_s)
-    this%process_id=process_id
-    this%integrand_id=integrand_id
-    this%parton_ids=parton_ids
-    this%flow=flow
-    this%hyperbolic_fractions=hyp
-    if(present(cart))then
-       this%momentum_fractions=cart
+  subroutine qcd_2_2_initialize (this, gev2_s, process_id, &
+       integrand_id, parton_ids, flow,hyp, cart)
+    class(qcd_2_2_type), intent(out) :: this
+    real(default), intent(in) :: gev2_s
+    integer, intent(in) :: process_id, integrand_id
+    integer, dimension(2), intent(in) :: parton_ids
+    integer, dimension(4), intent(in) :: flow
+    real(default), dimension(3), intent(in)::hyp
+    real(default), dimension(3), intent(in), optional :: cart
+    call this%initialize (gev2_s)
+    this%process_id = process_id
+    this%integrand_id = integrand_id
+    this%parton_ids = parton_ids
+    this%flow = flow
+    this%hyperbolic_fractions = hyp
+    if (present(cart)) then 
+       this%momentum_fractions = cart
     else
-       this%momentum_fractions=h_to_c_param(hyp)
+       this%momentum_fractions = h_to_c_param (hyp)
     end if
   end subroutine qcd_2_2_initialize
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  !!! type bound procedures for muli_type !!!
+  !!! type bound procedures for muli_t !!!
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-  ! overridden serializable_class procedures
+  ! overridden ser_class_t procedures
 
   subroutine muli_write_to_marker(this,marker,status)
-    class(muli_type),intent(in) :: this
-    class(marker_type),intent(inout)::marker
-    integer(kind=dik),intent(out)::status
-    call marker%mark_begin("muli_type")
-    call qcd_2_2_write_to_marker(this,marker,status)
+    class(muli_t), intent(in) :: this
+    class(marker_t), intent(inout)::marker
+    integer(dik), intent(out)::status
+    call marker%mark_begin("muli_t")
+    call qcd_2_2_write_to_marker (this,marker,status)
     call marker%mark("modify_pdfs",this%modify_pdfs)
     call marker%mark("initialized",this%initialized)
     call marker%mark("initial_interaction_given",this%initial_interaction_given)
@@ -400,14 +414,14 @@ contains
     call marker%mark_instance(this%dsigma,"dsigma")
     call marker%mark_instance(this%samples,"samples")
     call marker%mark_instance(this%beam,"beam")
-    call marker%mark_end("muli_type")
+    call marker%mark_end("muli_t")
   end subroutine muli_write_to_marker
   
   subroutine muli_read_from_marker(this,marker,status)
-    class(muli_type),intent(out) :: this
-    class(marker_type),intent(inout)::marker
-    integer(kind=dik),intent(out)::status
-    call marker%pick_begin("muli_type",status=status)
+    class(muli_t), intent(out) :: this
+    class(marker_t), intent(inout)::marker
+    integer(dik), intent(out)::status
+    call marker%pick_begin("muli_t",status=status)
     call qcd_2_2_read_from_marker(this,marker,status)
     call marker%pick("modify_pdfs",this%modify_pdfs,status)
     call marker%pick("initialized",this%initialized,status)
@@ -421,15 +435,15 @@ contains
     call marker%pick_instance("dsigma",this%dsigma,status=status)
     call marker%pick_instance("samples",this%samples,status=status)
     call marker%pick_instance("beam",this%beam,status=status)
-    call marker%pick_end("muli_type",status)
+    call marker%pick_end("muli_t",status)
   end subroutine muli_read_from_marker
 
   subroutine muli_print_to_unit(this,unit,parents,components,peers)
-    class(muli_type),intent(in)::this
-    integer,intent(in)::unit
-    integer(kind=dik),intent(in)::parents,components,peers
-    if(parents>0)call qcd_2_2_print_to_unit(this,unit,parents-1,components,peers)
-    write(unit,fmt="(a)")"Components of muli_type :"
+    class(muli_t), intent(in)::this
+    integer, intent(in)::unit
+    integer(dik), intent(in)::parents,components,peers
+    if (parents>0)call qcd_2_2_print_to_unit(this,unit,parents-1,components,peers)
+    write(unit,fmt="(a)")"Components of muli_t :"
     write(unit,'("Model Parameters:")')
     write(unit,'("GeV2_scale_cutoff : ",E20.10)')this%GeV2_scale_cutoff
     write(unit,'("Modify PDF        : ",L1)')this%modify_pdfs
@@ -440,7 +454,7 @@ contains
     write(unit,'("Exceeded          : ",L1)')this%exceeded
     write(unit,'("Generator Internals:")')
     write(unit,'("Mean Value        : ",E20.10)')this%mean
-    if(components>zero)then
+    if (components>i_zero) then
        write(unit,'("Start Integrals   : ",16(E20.10))')this%start_integrals(1:16)
 !       write(unit,'("start_values Component:")')
 !       call this%start_values%print_to_unit(unit,parents,components-1,peers)
@@ -453,30 +467,24 @@ contains
     else
        write(unit,'("Skipping Derived-Type Components.")')
     end if
-!    call print_comp_pointer(this%start_node,unit,zero,min(components-1,one),zero,"start_node")
-!    call serialize_print_comp_pointer(this%node,unit,zero,min(components-1,one),zero,"node")
+!    call print_comp_pointer(this%start_node,unit,i_zero,min(components-1,i_one),i_zero,"start_node")
+!    call serialize_print_comp_pointer(this%node,unit,i_zero,min(components-1,i_one),i_zero,"node")
   end subroutine muli_print_to_unit
 
   pure subroutine muli_get_type(type)
-    character(:),allocatable,intent(out)::type
-    allocate(type,source="muli_type")
+    character(:),allocatable, intent(out)::type
+    allocate(type,source="muli_t")
   end subroutine muli_get_type
 
   ! user interface
 
-  subroutine muli_apply_initial_interaction(this,&
-       GeV2_s,&
-       x1,&
-       x2,&
-       pdg_f1,&
-       pdg_f2,&
-       n1,&
-       n2)
-    class(muli_type),intent(inout)::this
-    real(kind=default),intent(in)::Gev2_s,x1,x2
-    integer,intent(in)::pdg_f1,pdg_f2,n1,n2
-    real(kind=double)::rnd1,rnd2,time
-    if(this%initialized)then
+  subroutine muli_apply_initial_interaction (this, GeV2_s, &
+       x1, x2, pdg_f1, pdg_f2, n1, n2)
+    class(muli_t), intent(inout) :: this
+    real(default), intent(in) :: Gev2_s, x1, x2
+    integer, intent(in):: pdg_f1, pdg_f2, n1, n2
+    real(default) :: rnd1, rnd2, time
+    if (this%initialized) then
        call cpu_time(time)
        this%init_time=this%init_time-time
        print *,"muli_apply_initial_interaction:"
@@ -487,11 +495,12 @@ contains
        print *,"pdg_f2=",pdg_f2
        print *,"n1=",n1
        print *,"n2=",n2
-       call tao_random_number(this%tao_rnd,rnd1)
-       call tao_random_number(this%tao_rnd,rnd2)
+       call tao_random_number (this%tao_rnd, rnd1)
+       call tao_random_number (this%tao_rnd, rnd2)
        call cpu_time(time)
        this%init_time=this%init_time+time
-       call this%beam%apply_initial_interaction(sqrt(gev2_s),x1,x2,pdg_f1,pdg_f2,n1,n2,&
+       call this%beam%apply_initial_interaction &
+                 (sqrt (gev2_s), x1, x2, pdg_f1, pdg_f2, n1, n2,&
             ! This is a hack: We should give the pt scale of the initial interaction.
             ! Unfortunately, we only know the invarient mass shat. shat/2 is the upper
             ! bound of pt, so we use it for now.
@@ -509,13 +518,13 @@ contains
        gev2_s,&              
        muli_dir,&
        random_seed)
-    class(muli_type),intent(out)::this
-    real(kind=default),intent(in)::gev2_s,GeV2_scale_cutoff
-    character(*),intent(in)::muli_dir
-    integer,intent(in),optional::random_seed
-    real(kind=double)::time
+    class(muli_t), intent(out)::this
+    real(kind=default), intent(in)::gev2_s,GeV2_scale_cutoff
+    character(*), intent(in)::muli_dir
+    integer, intent(in),optional::random_seed
+    real(double)::time
     logical::exist
-    type(muli_dsigma_type)::dsigma_aq
+    type(muli_dsigma_t)::dsigma_aq
     character(3)::lhapdf_member_c
     call cpu_time(time)
     this%init_time=this%init_time-time
@@ -528,14 +537,14 @@ contains
     print *,"lhapdf_file=",muli_default_lhapdf_file
     print *,"lhapdf_member=",muli_default_lhapdf_member
     print *,""
-    call transversal_momentum_initialize(this,gev2_s)
+    call this%transverse_mom_t%initialize (gev2_s)
     call this%beam%initialize(&
          muli_dir,&
          lhapdf_dir="",&
          lhapdf_file=muli_default_lhapdf_file,&
          lhapdf_member=muli_default_lhapdf_member)
     this%GeV2_scale_cutoff=GeV2_scale_cutoff
-    if(present(random_seed))then
+    if (present(random_seed)) then
        call tao_random_create(this%tao_rnd,random_seed)
     else
        call tao_random_create(this%tao_rnd,1)
@@ -543,7 +552,7 @@ contains
     print *,"looking for previously generated root function..."
     call integer_with_leading_zeros(muli_default_lhapdf_member,3,lhapdf_member_c)
     inquire(file=muli_dir//"/dsigma_"//muli_default_lhapdf_file//".xml",exist=exist)
-    if(exist)then
+    if (exist) then
        print *,"found. Starting deserialization..."
        call this%dsigma%deserialize(&
             name="dsigma_"//muli_default_lhapdf_file//"_"//lhapdf_member_c,&
@@ -570,12 +579,12 @@ contains
     print *,""
     print *,"looking for previously generated samples..."
     inquire(file=muli_dir//"/samples.xml",exist=exist)
-    if(exist)then
+    if (exist) then
        print *,"found. Starting deserialization..."
        call this%samples%deserialize("samples",muli_dir//"/samples.xml")
     else
        print *,"No samples found. Starting with default initialization."
-       call this%samples%initialize(4,int_sizes_all,int_all,1D-2)
+       call this%samples%initialize(4, int_sizes_all, int_all, 1E-2_default)
     end if
     call this%restart()
     this%initialized=.true.
@@ -584,7 +593,7 @@ contains
   end subroutine muli_initialize
 
   subroutine muli_finalize(this)
-    class(muli_type),intent(inout)::this
+    class(muli_t), intent(inout)::this
     print *,"muli_finalize"
     nullify(this%node)
     call this%dsigma%finalize()
@@ -593,12 +602,12 @@ contains
   end subroutine muli_finalize
 
   subroutine muli_stop_trainer(this)
-    class(muli_type),intent(inout)::this
+    class(muli_t), intent(inout)::this
     print *,"muli_stop_trainer: DUMMY!"
   end subroutine muli_stop_trainer
 
   subroutine muli_reset_timer(this)
-    class(muli_type),intent(inout)::this
+    class(muli_t), intent(inout)::this
     this%init_time=0D0
     this%pt_time=0D0
     this%partons_time=0D0
@@ -606,7 +615,7 @@ contains
   end subroutine muli_reset_timer
 
   subroutine muli_restart(this)
-    class(muli_type),intent(inout)::this
+    class(muli_t), intent(inout)::this
     call this%dsigma%get_rightmost(this%node)
     call this%beam%reset()
 !    print *,associated(this%node)
@@ -625,40 +634,40 @@ contains
 
   elemental function muli_is_initialized(this) result(res)
     logical::res
-    class(muli_type),intent(in) :: this
+    class(muli_t), intent(in) :: this
     res=this%initialized
   end function muli_is_initialized
   
   elemental function muli_is_initial_interaction_given(this) result(res)
     logical::res
-    class(muli_type),intent(in) :: this
+    class(muli_t), intent(in) :: this
     res=this%initial_interaction_given
   end function muli_is_initial_interaction_given
 
   elemental function muli_is_finished(this) result(res)
     logical::res
-    class(muli_type),intent(in) :: this
+    class(muli_t), intent(in) :: this
     res=this%finished
   end function muli_is_finished
 
   subroutine muli_enable_remnant_pdf(this)
-    class(muli_type),intent(inout)::this
+    class(muli_t), intent(inout)::this
     this%modify_pdfs=.true.
   end subroutine muli_enable_remnant_pdf
 
   subroutine muli_disable_remnant_pdf(this)
-    class(muli_type),intent(inout)::this
+    class(muli_t), intent(inout)::this
     this%modify_pdfs=.false.
   end subroutine muli_disable_remnant_pdf
 
-  subroutine muli_generate_gev2_pt2(this,gev2_start_scale,gev2_new_scale)
-    class(muli_type),intent(inout)::this
-    real(kind=default),intent(in)::gev2_start_scale
-    real(kind=default),intent(out)::gev2_new_scale
-    real(kind=double)::time
-    call cpu_time(time)
-    this%pt_time=this%pt_time-time
-    call this%set_gev2_scale(gev2_start_scale)
+  subroutine muli_generate_gev2_pt2 (this, gev2_start_scale, gev2_new_scale)
+    class(muli_t), intent(inout) :: this
+    real(kind=default), intent(in) :: gev2_start_scale
+    real(kind=default), intent(out) :: gev2_new_scale
+    real(double) :: time
+    call cpu_time (time)
+    this%pt_time = this%pt_time - time
+    call this%set_gev2_scale (gev2_start_scale)
     this%start_integrals=this%node%approx_integral(this%get_unit_scale())
     call this%generate_next_scale()
     gev2_new_scale=this%get_gev2_scale()
@@ -667,12 +676,12 @@ contains
   end subroutine muli_generate_gev2_pt2
   
   subroutine muli_generate_flow(this)
-    class(muli_type),intent(inout)::this
+    class(muli_t), intent(inout)::this
     integer::rnd
     integer::m,n
-    logical,dimension(3)::t
-    integer,dimension(4)::tmp_flow
-    ! we initialize with zeros. a zero means no line ends here.
+    logical, dimension(3)::t
+    integer, dimension(4)::tmp_flow, tmp_array
+    ! we initialize with zeros. a i_zero means no line ends here.
     this%flow=[0,0,0,0]
     ! we randomly pick a color flow
     call tao_random_number(this%tao_rnd,rnd)
@@ -685,7 +694,7 @@ contains
        ! now we remove the weight of flow n from our random number.
        m=m-muli_flows(0,n)
        ! this is how we pick a flow.
-       if(m<0)then
+       if (m<0) then
           ! the actual flow
           this%flow=muli_flows(1:4,n)
           exit
@@ -696,20 +705,23 @@ contains
     ! (2) permutation of the initial state particles
     ! (3) permutation of the final state particles
     ! lets see, what transformations we have got in our actual interaction.
-    t=muli_get_state_transformations(this%get_diagram_color_kind(),this%get_lha_flavors())
+    tmp_array = this%get_lha_flavors ()
+    t = muli_get_state_transformations (this%get_diagram_color_kind (), &
+         tmp_array)
+    !     this%get_lha_flavors ())    
     ! now we have to apply these transformations to our flow.
     ! (1) means: swap beginning and end of a line. flow is a permutation that maps
     ! ends to their beginnings, so we apply flow to itself:
 !!$    print *,"(0)",this%flow
-    if(t(1))then
+    if (t(1)) then
        tmp_flow=this%flow
        this%flow=[0,0,0,0]
        do n=1,4
-          if(tmp_flow(n)>0)this%flow(tmp_flow(n))=n
+          if (tmp_flow(n)>0)this%flow(tmp_flow(n))=n
        end do
 !!$       print *,"(1)",this%flow
     end if
-    if(t(2))then
+    if (t(2)) then
        ! we swap the particles 1 and 2
        tmp_flow(1)=this%flow(2)
        tmp_flow(2)=this%flow(1)
@@ -725,7 +737,7 @@ contains
        end where
 !!$       print *,"(2)",this%flow
     end if
-    if(t(3))then
+    if (t(3)) then
        ! we swap the particles 3 and 4
        tmp_flow(1:2)=this%flow(1:2)
        tmp_flow(3)=this%flow(4)
@@ -743,21 +755,22 @@ contains
     end if
   end subroutine muli_generate_flow
 
-  subroutine muli_generate_partons(this,n1,n2,x_proton_1,x_proton_2,pdg_f1,pdg_f2,pdg_f3,pdg_f4)
-    class(muli_type),intent(inout)::this
-    integer,intent(in)::n1,n2
-    real(kind=default),intent(out)::x_proton_1,x_proton_2
-    integer,intent(out)::pdg_f1,pdg_f2,pdg_f3,pdg_f4
-    integer,dimension(4)::pdg_f
-    real(kind=double)::time
+  subroutine muli_generate_partons (this, n1, n2, x_proton_1, x_proton_2, &
+       pdg_f1, pdg_f2, pdg_f3, pdg_f4)
+    class(muli_t), intent(inout) :: this
+    integer, intent(in) :: n1, n2
+    real(kind=default), intent(out) :: x_proton_1, x_proton_2
+    integer, intent(out) :: pdg_f1, pdg_f2, pdg_f3, pdg_f4
+    integer, dimension(4) :: pdg_f
+    real(double) :: time
     !print *,"muli_generate_partons: n1=",n1," n2=",n2
-    this%parton_ids(1)=n1
-    this%parton_ids(2)=n2
+    this%parton_ids(1) = n1
+    this%parton_ids(2) = n2
     call cpu_time(time)
     this%partons_time=this%partons_time-time
-    this%mean=this%node%approx_value_n(this%get_unit_scale(),this%integrand_id)
-    call sample_inclusive_mcgenerate_hit(&
-         this%samples,&
+    this%mean = this%node%approx_value_n (this%get_unit_scale(), &
+         this%integrand_id)
+    call this%samples%mcgenerate_hit(&
          this%get_unit2_scale(),&
          this%mean,&
          this%integrand_id,&
@@ -766,7 +779,7 @@ contains
          this%momentum_fractions)
     !print *,"muli_generate_partons",this%momentum_fractions
     call this%generate_flow()
-    if(this%modify_pdfs)then
+    if (this%modify_pdfs) then
        call cpu_time(time)
        this%partons_time=this%partons_time+time
        this%confirm_time=this%confirm_time-time
@@ -788,11 +801,11 @@ contains
   end subroutine muli_generate_partons
 
   subroutine muli_replace_parton(this,proton_id,old_id,new_id,pdg_f,x_proton,gev_scale)
-    class(muli_type),intent(inout)::this
-    integer,intent(in)::proton_id,old_id,new_id,pdg_f
-    real(kind=default),intent(in)::x_proton,gev_scale
+    class(muli_t), intent(inout)::this
+    integer, intent(in)::proton_id,old_id,new_id,pdg_f
+    real(kind=default), intent(in)::x_proton,gev_scale
     !print *,"muli_replace_parton(",proton_id,old_id,new_id,pdg_f,x_proton,gev_scale,")"
-    if(proton_id==1.or.proton_id==2)then
+    if (proton_id==1.or.proton_id==2) then
        call this%beam%replace_parton(proton_id,old_id,new_id,pdg_f,x_proton,gev_scale)
     else
        print *,"muli_replace_parton: proton_id must be 1 or 2, but ",proton_id," was given."
@@ -800,24 +813,26 @@ contains
     end if
   end subroutine muli_replace_parton
 
-  function muli_get_momentum_pdf(this,x_proton,gev2_scale,n,pdg_f) result(pdf)
-    real(kind=double)::pdf
-    class(muli_type),intent(in)::this
-    real(kind=double),intent(in)::x_proton,gev2_scale
-    integer,intent(in)::n,pdg_f
-    call this%beam%momentum_pdf(x_proton,gev2_scale,n,pdg_f,pdf)
+  function muli_get_momentum_pdf &
+       (this, x_proton, gev2_scale, n, pdg_f) result (pdf)
+    real(default) :: pdf
+    class(muli_t), intent(in) :: this
+    real(default), intent(in) :: x_proton, gev2_scale
+    integer, intent(in) :: n, pdg_f
+    call this%beam%momentum_pdf (x_proton, gev2_scale, n, pdg_f, pdf)
   end function muli_get_momentum_pdf
 
-  function muli_get_parton_pdf(this,x_proton,gev2_scale,n,pdg_f) result(pdf)
-    real(kind=double)::pdf
-    class(muli_type),intent(in)::this
-    real(kind=double),intent(in)::x_proton,gev2_scale
-    integer,intent(in)::n,pdg_f
-    call this%beam%parton_pdf(x_proton,gev2_scale,n,pdg_f,pdf)
+  function muli_get_parton_pdf &
+       (this, x_proton, gev2_scale, n, pdg_f) result(pdf)
+    real(default) :: pdf
+    class(muli_t), intent(in) :: this
+    real(default), intent(in) :: x_proton, gev2_scale
+    integer, intent(in) :: n, pdg_f
+    call this%beam%parton_pdf (x_proton, gev2_scale, n, pdg_f, pdf)
   end function muli_get_parton_pdf
 
   subroutine muli_print_timer(this)
-    class(muli_type),intent(in) :: this
+    class(muli_t), intent(in) :: this
     print('("Init time:    ",E20.10)'),this%init_time
     print('("PT gen time:  ",E20.10)'),this%pt_time
     print('("Partons time: ",E20.10)'),this%partons_time
@@ -825,15 +840,15 @@ contains
     print('("Overall time: ",E20.10)'),this%init_time+this%pt_time+this%partons_time+this%confirm_time
   end subroutine muli_print_timer
 
-  subroutine muli_generate_next_scale(this,integrand_kind)
-    class(muli_type),intent(inout)::this
-    integer,intent(in),optional::integrand_kind
-    real(kind=double)::pts,tmp_pts,rnd
-    integer::tmp_int_kind
-    class(muli_trapezium_node_class),pointer::tmp_node
-      pts=-1D0
-      if(present(integrand_kind))then
-         call tao_random_number(this%tao_rnd,rnd)
+  subroutine muli_generate_next_scale (this, integrand_kind)
+    class(muli_t), intent(inout) :: this
+    integer, intent(in), optional :: integrand_kind
+    real(default) :: pts,tmp_pts,rnd
+    integer :: tmp_int_kind
+    class(muli_trapezium_node_class_t), pointer :: tmp_node
+      pts = -one
+      if (present(integrand_kind)) then
+         call tao_random_number (this%tao_rnd, rnd)
          call generate_single_pts(&
               integrand_kind,&
               this%start_integrals(integrand_kind),&
@@ -843,8 +858,8 @@ contains
               pts,&
               this%node)
       else
-         do tmp_int_kind=1,16
-            call tao_random_number(this%tao_rnd,rnd)
+         do tmp_int_kind = 1, 16
+            call tao_random_number (this%tao_rnd, rnd)
             call generate_single_pts(&
                  tmp_int_kind,&
                  this%start_integrals(tmp_int_kind),&
@@ -853,32 +868,33 @@ contains
                  this%dsigma,&
                  tmp_pts,&
                  tmp_node)
-            if(tmp_pts>pts)then
+            if (tmp_pts>pts) then
                pts=tmp_pts
                this%integrand_id=tmp_int_kind
                this%node=>tmp_node
             end if
          end do
       end if
-      if(pts>0)then
+      if (pts>0) then
          call this%set_unit_scale(pts)
       else
          this%finished=.true.
       end if
 !      print *,this%finished,this%integrand_id
   contains
-    subroutine generate_single_pts(int_kind,start_int,weight,rnd,int_tree,pts,node)
-      integer,intent(in)::int_kind
-      real(kind=double),intent(in)::start_int,weight,rnd
-      type(muli_trapezium_tree_type),intent(in)::int_tree
-      real(kind=double),intent(out)::pts
-      class(muli_trapezium_node_class),pointer,intent(out)::node
-      real(kind=double)::arg
-!      print *,int_kind,start_int,weight,rnd
-      if(weight>0D0)then
+    subroutine generate_single_pts &
+         (int_kind, start_int, weight, rnd, int_tree, pts, node)
+      integer, intent(in) :: int_kind
+      real(default), intent(in) :: start_int, weight, rnd
+      type(muli_trapezium_tree_t), intent(in) :: int_tree
+      real(default), intent(out) :: pts
+      class(muli_trapezium_node_class_t),pointer, intent(out) :: node
+      real(default) :: arg
+      ! print *,int_kind,start_int,weight,rnd
+      if (weight>0D0) then
          arg=start_int-log(rnd)/weight
-         call int_tree%find_decreasing(arg,int_kind,node)
-         if(node%get_l_integral(int_kind)>arg)then
+         call int_tree%find_decreasing (arg, int_kind, node)
+         if (node%get_l_integral(int_kind)>arg) then
             pts=node%approx_position_by_integral(int_kind,arg)
          else
             pts=-1D0
@@ -889,60 +905,60 @@ contains
     end subroutine generate_single_pts
   end subroutine muli_generate_next_scale
 
-  subroutine muli_confirm(this)
-    class(muli_type),intent(inout) :: this
+  subroutine muli_confirm (this)
+    class(muli_t), intent(inout) :: this
     this%mean=this%node%approx_value_n(this%get_unit_scale(),this%integrand_id)
     this%start_integrals=this%node%approx_integral(this%get_unit_scale())
   end subroutine muli_confirm
 
   subroutine muli_generate_samples(this,n_total,n_print,integrand_kind,muli_dir,analyse)
-    class(muli_type),intent(inout)::this
-    integer(kind=dik),intent(in)::n_total,n_print
-    integer,intent(in)::integrand_kind
-    character(*),intent(in)::muli_dir
-    logical,intent(in)::analyse
-    integer(kind=dik)::n_inner
+    class(muli_t), intent(inout)::this
+    integer(dik), intent(in)::n_total,n_print
+    integer, intent(in)::integrand_kind
+    character(*), intent(in)::muli_dir
+    logical, intent(in)::analyse
+    integer(dik)::n_inner
 
-    class(muli_trapezium_node_class),pointer::start_node=>null()
-    class(muli_trapezium_node_class),pointer,save::s_node=>null()
-    class(muli_trapezium_node_class),pointer,save::node=>null()   
+    class(muli_trapezium_node_class_t),pointer::start_node=>null()
+    class(muli_trapezium_node_class_t),pointer,save::s_node=>null()
+    class(muli_trapezium_node_class_t),pointer,save::node=>null()   
 
     character(2)::prefix
     integer,save::t_slice,t_region,t_proc,t_subproc,t_max_n=0
-    integer(kind=dik)::n_t,n_p,n_m
+    integer(dik)::n_t,n_p,n_m
     integer::n,m,u,unit=0
-    integer(kind=dik)::n_tries=0
-    integer(kind=dik)::n_hits=0
-    integer(kind=dik)::n_over=0
-    integer(kind=dik)::n_miss=0
-    real(kind=double),save,dimension(3)::cart_hit
-    integer,save,dimension(4)::t_i_rnd
-    !  integer,save,dimension(5)::r_n_proc
-    real(kind=double),dimension(16)::d_rnd
-    real(kind=double),save::t_area,t_dddsigma,t_rnd,t_weight,t_arg
-    real(kind=double)::mean=0D0
-    real(kind=double)::time=0D0
-    real(kind=double)::timepa=0D0
-    real(kind=double)::timept=0D0
-    real(kind=double)::timet=0D0
-    real(kind=double)::pts,s_pts=1D0
-    real(kind=double)::pts2=1D0
-    real(kind=double)::rnd
+    integer(dik)::n_tries=0
+    integer(dik)::n_hits=0
+    integer(dik)::n_over=0
+    integer(dik)::n_miss=0
+    real(default),save, dimension(3)::cart_hit
+    integer,save, dimension(4)::t_i_rnd
+    !  integer,save, dimension(5)::r_n_proc
+    real(default), dimension(16)::d_rnd
+    real(default),save::t_area,t_dddsigma,t_rnd,t_weight,t_arg
+    real(default)::mean=0D0
+    real(default)::time=0D0
+    real(default)::timepa=0D0
+    real(default)::timept=0D0
+    real(default)::timet=0D0
+    real(default)::pts,s_pts=1D0
+    real(default)::pts2=1D0
+    real(default)::rnd
     logical::running
     character(3)::num
     integer::success=-1
     integer::chain_length=0
     integer::int_kind
     integer::process_id
-    real(kind=double),dimension(0:16)::integral
+    real(double), dimension(0:16)::integral
     call this%print_parents()
     n_tries=one
     n_inner=n_total/n_print
-    n_t=zero
+    n_t=i_zero
     print:do while(n_t<n_total)
        call cpu_time(time)
        timet=-time
-       n_p=zero
+       n_p=i_zero
        inner:do while(n_p<n_print)
           chain_length=0
 !          print *,"new chain"
@@ -960,8 +976,7 @@ contains
              call cpu_time(time)
              timepa=timepa-time
              !             print *,this%get_unit2_scale()
-             call sample_inclusive_mcgenerate_hit(&
-                  this%samples,&
+             call this%samples%mcgenerate_hit(&
                   this%get_unit2_scale(),&
                   this%mean,&
                   this%integrand_id,&
@@ -986,7 +1001,7 @@ contains
        print *,"pt time: ",timept
        print *,"pa time: ",timepa       
        print *,this%samples%n_tries_sum,this%samples%n_hits_sum,this%samples%n_over_sum
-       if(this%samples%n_hits_sum>0)then
+       if (this%samples%n_hits_sum>0) then
           print *,(this%samples%n_hits_sum*10000)/this%samples%n_tries_sum,&
                (this%samples%n_over_sum*10000)/this%samples%n_hits_sum
        else
@@ -999,7 +1014,7 @@ contains
 !            this%samples%int_kinds(integrand_kind)%overall_boost
     end do print
     call integer_with_leading_zeros(integrand_kind,2,prefix)
-    if(analyse)then
+    if (analyse) then
        call this%samples%int_kinds(integrand_kind)%analyse(muli_dir,prefix//"_")
        call this%samples%int_kinds(integrand_kind)%serialize(&
             "sample_int_kind_"//prefix,&
@@ -1010,23 +1025,24 @@ contains
          muli_dir//"/sample_int_kind/"//prefix//".xml")
   end subroutine muli_generate_samples
 
-  subroutine muli_fake_interaction(this,GeV2_scale,x1,x2,process_id,integrand_id,n1,n2,flow)
-    class(muli_type),intent(inout)::this
-    real(kind=double),intent(in)::Gev2_scale,x1,x2
-    integer,intent(in)::process_id,integrand_id,n1,n2
-    integer,dimension(4),intent(in),optional::flow
-    call this%set_gev2_scale(Gev2_scale)
-    this%process_id=process_id
-    this%integrand_id=integrand_id
-    this%parton_ids=[n1,n2]
-    if(present(flow))then
-       this%flow=flow
+  subroutine muli_fake_interaction (this, GeV2_scale, x1, x2, &
+       process_id, integrand_id, n1, n2, flow)
+    class(muli_t), intent(inout) :: this
+    real(default), intent(in) :: Gev2_scale, x1, x2
+    integer, intent(in) :: process_id, integrand_id, n1, n2
+    integer, dimension(4), intent(in), optional :: flow
+    call this%set_gev2_scale (Gev2_scale)
+    this%process_id = process_id
+    this%integrand_id = integrand_id
+    this%parton_ids = [n1, n2]
+    if (present (flow)) then
+       this%flow = flow
     else
-       this%flow=[0,0,0,0]
+       this%flow = [0,0,0,0]
     end if
-    this%momentum_fractions=[x1,x2,this%get_unit2_scale()]
-    call this%beam%apply_interaction(this)
-    call this%beam%print_all()
+    this%momentum_fractions = [x1, x2, this%get_unit2_scale()]
+    call this%beam%apply_interaction (this)
+    call this%beam%print_all ()
   end subroutine muli_fake_interaction
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -1034,3 +1050,4 @@ contains
 !!!!!!!!!!!!!!!!!!!!!!!!!!
 
 end module muli
+

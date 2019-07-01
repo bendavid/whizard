@@ -1,0 +1,932 @@
+% -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*- 
+% WHIZARD code as NOWEB source: matrix elements and process libraries
+
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{User Plugin Support}
+
+Here we collect interface code that enables the user to inject his own
+code into the WHIZARD workflow.  The code uses data types defined elsewhere, and
+is referenced in the [[eval_trees]] module.
+
+These are the modules:
+\begin{description}
+\item[user\_code\_interface]
+  Generic support and specific additions.
+\item[sf\_user]
+  Handle user-defined structure functions.
+\end{description}
+
+\clearpage
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{User Code Interface}
+
+<<[[user_code_interface.f90]]>>=
+<<File header>>
+
+module user_code_interface
+
+  use iso_c_binding !NODEP!
+<<Use kinds>>
+<<Use strings>>
+  use diagnostics
+  use c_particles
+  use os_interface
+
+<<Standard module head>>
+
+<<User Code: public>>
+
+<<User Code: variables>>
+
+<<User Code: interfaces>>
+
+contains
+
+<<User Code: procedures>>
+
+end module user_code_interface
+@ %def user_code_interface
+@
+\subsection{User Code Management}
+@ 
+This data structure globally holds the filehandle of the user-code
+library:
+<<User Code: public>>=
+  public :: has_user_lib
+<<User Code: variables>>=
+  type(dlaccess_t), save :: user_lib_handle
+  logical, save :: has_user_lib = .false.
+  type(string_t), save :: user
+
+@ %def user_lib_handle has_user_lib user
+@ 
+Compile, link and load user code files.  Dlopen all user-provided
+libraries, included the one just compiled (if any).
+
+By default, we are looking for a library [[user.so/dylib]].  If this is not
+present, try [[user.f90]] and compile it.  This can be overridden.
+
+In detail: First, compile all sources explicitly specified on the
+command line.  Then collect all libraries specified on the command
+line, including [[user.so]] if it was generated.  If there is still no
+code, check for an existing [[user.f90]] and compile this.  Link
+everything into a [[user.la]] libtool library.  When 
+done, dlopen all libraries that we have so far.
+<<User Code: public>>=
+  public :: user_code_init
+<<User Code: procedures>>=
+  subroutine user_code_init (user_src, user_lib, user_target, rebuild, os_data)
+    type(string_t), dimension(:), intent(in) :: user_src, user_lib
+    type(string_t), intent(in) :: user_target
+    logical, intent(in) :: rebuild
+    type(os_data_t), intent(in) :: os_data
+    type(string_t) :: user_src_file, user_obj_files, user_lib_file
+    logical :: exist
+    type(c_funptr) :: fptr
+    integer :: i
+    call msg_message ("Initializing user code")
+    user = user_target;  if (user == "")  user = "user"
+    user_obj_files = ""
+    inquire (file = char (user) // ".la", exist = exist)
+    if (rebuild .or. .not. exist) then
+       do i = 1, size (user_src)
+          user_src_file = user_src(i) // os_data%fc_src_ext
+          inquire (file = char (user_src_file), exist = exist)
+          if (exist) then
+             call msg_message ("Found user-code source '" &
+                  // char (user_src_file) // "'.")
+             call compile_user_src (user_src_file, user_obj_files)
+          else
+             call msg_fatal ("User-code source '" // char (user_src_file) &
+                  // "' not found")
+          end if
+       end do
+       do i = 1, size (user_lib)
+          user_lib_file = user_lib(i) // ".la"
+          inquire (file = char (user_lib_file), exist = exist)
+          if (exist) then
+             call msg_message ("Found user-code library '" &
+                  // char (user_lib_file) // "'.")
+          else
+             user_lib_file = user_lib(i) // os_data%shlib_ext
+             inquire (file = char (user_lib_file), exist = exist)
+             if (exist) then
+                call msg_message ("Found user-code library '" &
+                     // char (user_lib_file) // "'.")
+             else
+                call msg_fatal ("User-code library '" // char (user_lib(i)) &
+                     // "' not found")
+             end if
+          end if
+          user_obj_files = user_obj_files // " " // user_lib_file
+       end do
+       if (user_obj_files == "") then
+          user_src_file = user // os_data%fc_src_ext
+          inquire (file = char (user_src_file), exist = exist)
+          if (exist) then
+             call msg_message ("Found user-code source '" &
+                  // char (user_src_file) // "'.")
+             call compile_user_src (user_src_file, user_obj_files)
+          else
+             call msg_fatal ("User-code source '" // char (user_src_file) &
+                  // "' not found")
+          end if
+       end if
+       if (user_obj_files /= "") then
+          call link_user (char (user), user_obj_files)
+       end if
+    end if
+    call dlaccess_init &
+         (user_lib_handle, var_str ("."), &
+          user // os_data%shlib_ext, os_data)
+    if (dlaccess_has_error (user_lib_handle)) then
+       call msg_error (char (dlaccess_get_error (user_lib_handle)))
+       call msg_fatal ("Loading user code library '" // char (user) &
+            // ".la' failed")
+    else
+       call msg_message ("User code library '" // char (user) &
+            // ".la' successfully loaded")
+       has_user_lib = .true.
+    end if
+  contains
+    subroutine compile_user_src (user_src_file, user_obj_files)
+      type(string_t), intent(in) :: user_src_file
+      type(string_t), intent(inout) :: user_obj_files
+      type(string_t) :: basename, ext
+      logical :: exist
+      basename = user_src_file
+      call split (basename, ext, ".", back=.true.)
+      if ("." // ext == os_data%fc_src_ext) then
+         inquire (file = char (user_src_file), exist = exist)
+         if (exist) then
+            call msg_message ("Compiling user code file '" &
+                 // char (user_src_file) // "'")
+            call os_compile_shared (basename, os_data)
+            user_obj_files = user_obj_files // " " // basename // ".lo"
+         else
+            call msg_error ("User code file '" // char (user_src_file) &
+                 // "' not found.")
+         end if
+      else
+         call msg_error ("User code file '" // char (user_src_file) &
+              // "' should have file extension '" &
+              // char (os_data%fc_src_ext) // "'")
+      end if
+    end subroutine compile_user_src
+    subroutine link_user (user_lib, user_obj_files)
+      character(*), intent(in) :: user_lib
+      type(string_t), intent(in) :: user_obj_files
+      call msg_message ("Linking user code library '" &
+           // user_lib // char (os_data%shlib_ext) // "'")
+      call os_link_shared (user_obj_files, var_str (user_lib), os_data)
+    end subroutine link_user
+  end subroutine user_code_init
+
+@ %def user_code_init
+@ Unload all user-code libraries.
+<<User Code: public>>=
+  public :: user_code_final
+<<User Code: procedures>>=
+  subroutine user_code_final ()
+    if (has_user_lib) then
+       call dlaccess_final (user_lib_handle)
+       has_user_lib = .false.
+    end if
+  end subroutine user_code_final
+
+@ %def user_code_final
+@ Try to load the possible user-defined procedures from the dlopened
+libraries.  If a procedure is not found, do nothing.
+<<User Code: public>>=
+  public :: user_code_find_proc
+<<User Code: procedures>>=
+  function user_code_find_proc (name) result (fptr)
+    type(string_t), intent(in) :: name
+    type(c_funptr) :: fptr
+    integer :: i
+    fptr = c_null_funptr
+    !!! Ticket #529
+    ! fptr = libmanager_get_c_funptr (char (user), char (name))
+    if (.not. c_associated (fptr)) then
+       if (has_user_lib) then
+          fptr = dlaccess_get_c_funptr (user_lib_handle, name)
+          if (.not. c_associated (fptr)) then      
+             call msg_fatal ("User procedure '" // char (name) // "' not found")
+          end if
+       else
+          call msg_fatal ("User procedure '" // char (name) &
+               // "' called without user library (missing -u flag?)")
+       end if
+    end if
+  end function user_code_find_proc
+
+@  %def user_code_find_proc
+@ 
+\subsection{Interfaces for user-defined functions}
+The following functions represent user-defined real observables.  There may
+be one or two particles as argument, the result is a real value.
+<<User Code: public>>=
+  public :: user_obs_int_unary
+  public :: user_obs_int_binary
+  public :: user_obs_real_unary
+  public :: user_obs_real_binary
+<<User Code: interfaces>>=
+  abstract interface
+     function user_obs_int_unary (prt1) result (ival) bind(C)
+       use iso_c_binding !NODEP!
+       use c_particles !NODEP!
+       type(c_prt_t), intent(in) :: prt1
+       integer(c_int) :: ival
+     end function user_obs_int_unary
+  end interface
+
+  abstract interface
+     function user_obs_int_binary (prt1, prt2) result (ival) bind(C)
+       use iso_c_binding !NODEP!
+       use c_particles !NODEP!
+       type(c_prt_t), intent(in) :: prt1, prt2
+       integer(c_int) :: ival
+     end function user_obs_int_binary
+  end interface
+
+  abstract interface
+     function user_obs_real_unary (prt1) result (rval) bind(C)
+       use iso_c_binding !NODEP!
+       use c_particles !NODEP!
+       type(c_prt_t), intent(in) :: prt1
+       real(c_double) :: rval
+     end function user_obs_real_unary
+  end interface
+
+  abstract interface
+     function user_obs_real_binary (prt1, prt2) result (rval) bind(C)
+       use iso_c_binding !NODEP!
+       use c_particles !NODEP!
+       type(c_prt_t), intent(in) :: prt1, prt2
+       real(c_double) :: rval
+     end function user_obs_real_binary
+  end interface
+
+@ %def user_obs_real_unary
+@ %def user_obs_real_binary
+@
+The following function takes an array of C-compatible particles and
+return a single value.  The particle array represents a subevent.  For
+C interoperability, we have to use an assumed-size array, hence the
+array size has to be transferred explicitly.
+
+The cut function returns an [[int]], which we should interpret as a
+logical value (nonzero=true).
+<<User Code: public>>=
+  public :: user_cut_fun
+<<User Code: interfaces>>=
+  abstract interface
+     function user_cut_fun (prt, n_prt) result (iflag) bind(C)
+       use iso_c_binding !NODEP!
+       use c_particles !NODEP!
+       type(c_prt_t), dimension(*), intent(in) :: prt
+       integer(c_int), intent(in) :: n_prt
+       integer(c_int) :: iflag
+     end function user_cut_fun
+  end interface
+
+@ %def user_cut_fun
+@ The event-shape function returns a real value.
+<<User Code: public>>=
+  public :: user_event_shape_fun
+<<User Code: interfaces>>=
+  abstract interface
+     function user_event_shape_fun (prt, n_prt) result (rval) bind(C)
+       use iso_c_binding !NODEP!
+       use c_particles !NODEP!
+       type(c_prt_t), dimension(*), intent(in) :: prt
+       integer(c_int), intent(in) :: n_prt
+       real(c_double) :: rval
+     end function user_event_shape_fun
+  end interface
+
+@ %def user_event_shape_fun
+@ 
+\subsection{Interfaces for user-defined interactions}
+The following procedure interfaces pertain to user-defined
+interactions, e.g., spectra or structure functions.
+
+This subroutine retrieves the basic information for setting up the
+interaction and event generation.  All parameters are
+[[intent(inout)]], so we can provide default values.  [[n_in]] and
+[[n_out]] are the number of incoming and outgoing particles,
+respectively.  [[n_states]] is the total number of distinct states
+that should be generated (counting all states of the incoming
+particles).  [[n_col]] is the maximal number of color entries a
+particle can have.  [[n_dim]] is the number of input parameters, i.e.,
+integration dimensions, that the structure function call requires for
+computing kinematics and matrix elements.
+[[n_var]] is the number of variables (e.g., momentum fractions) that
+the structure function call has to transfer from the kinematics to the
+dynamics evaluation.
+<<User Code: public>>=
+  public :: user_int_info
+<<User Code: interfaces>>=
+  abstract interface
+     subroutine user_int_info (n_in, n_out, n_states, n_col, n_dim, n_var) &
+          bind(C)
+       use iso_c_binding !NODEP!
+       integer(c_int), intent(inout) :: n_in, n_out, n_states, n_col
+       integer(c_int), intent(inout) :: n_dim, n_var
+     end subroutine user_int_info
+  end interface
+
+@  %def user_int_info
+@ This subroutine retrieves the settings for the quantum number mask
+of a given particle index in the interaction.  A nonzero value
+indicates that the corresponding quantum number is to be ignored.  The
+lock index is the index of a particle that the current particle is
+related to.  The relation applies if quantum numbers of one of the
+locked particles are summed over.  (This is intended for helicity.)
+<<User Code: public>>=
+  public :: user_int_mask
+<<User Code: interfaces>>=
+  abstract interface
+     subroutine user_int_mask (i_prt, m_flv, m_hel, m_col, i_lock) bind(C)
+       use iso_c_binding !NODEP!
+       integer(c_int), intent(in) :: i_prt
+       integer(c_int), intent(inout) :: m_flv, m_hel, m_col, i_lock
+     end subroutine user_int_mask
+  end interface
+
+@ %def user_int_mask
+@ This subroutine retrieves the quantum numbers for the particle
+index [[i_prt]] in state [[i_state]].  The [[flv]] value is a PDG
+code.  The [[hel]] value is an integer helicity (twice the helicity
+for fermions).  The [[col]] array is an array which has at most
+[[n_col]] entries (see above).  All parameters are [[intent(inout)]]
+since default values exist.  In particular, if a mask entry is set by
+the previous procedure, the corresponding quantum number is ignored
+anyway.
+<<User Code: public>>=
+  public :: user_int_state
+<<User Code: interfaces>>=
+  abstract interface
+     subroutine user_int_state (i_state, i_prt, flv, hel, col) bind(C)
+       use iso_c_binding !NODEP!
+       integer(c_int), intent(in) :: i_state, i_prt
+       integer(c_int), intent(inout) :: flv, hel
+       integer(c_int), dimension(*), intent(inout) :: col
+     end subroutine user_int_state
+  end interface
+
+@ %def user_int_state
+@ This subroutine takes an array of particle objects
+with array length [[n_in]] and an array of input parameters between 0 and 1
+with array length [[n_dim]].  It returns an array of particle objects 
+with array length [[n_out]].  In addition, it returns an array of
+internal variables (e.g., momentum fractions, Jacobian) with array
+length [[n_var]] that is used by the
+following subroutine for evaluating the dynamics, i.e., the matrix
+elements.
+<<User Code: public>>=
+  public :: user_int_kinematics
+<<User Code: interfaces>>=
+  abstract interface
+     subroutine user_int_kinematics (prt_in, rval, prt_out, xval) bind(C)
+       use iso_c_binding !NODEP!
+       use c_particles !NODEP!
+       type(c_prt_t), dimension(*), intent(in) :: prt_in
+       real(c_double), dimension(*), intent(in) :: rval
+       type(c_prt_t), dimension(*), intent(inout) :: prt_out
+       real(c_double), dimension(*), intent(out) :: xval
+     end subroutine user_int_kinematics
+  end interface
+
+@ %def user_int_kinematics
+@ This subroutine takes the array of variables (e.g., momentum
+fractions) with length [[n_var]] which has been generated by the
+previous subroutine and a real variable, the energy scale of the
+event.  It returns an array of matrix-element values, one entry for
+each quantum state [[n_states]].  The ordering of matrix elements must
+correspond to the ordering of states.
+<<User Code: public>>=
+  public :: user_int_evaluate
+<<User Code: interfaces>>=
+  abstract interface
+     subroutine user_int_evaluate (xval, scale, fval) bind(C)
+       use iso_c_binding !NODEP!
+       real(c_double), dimension(*), intent(in) :: xval
+       real(c_double), intent(in) :: scale
+       real(c_double), dimension(*), intent(out) :: fval
+     end subroutine user_int_evaluate
+  end interface
+
+@ %def user_int_evaluate
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{User Plugin for Structure Functions}
+This variant gives access to user-defined structure functions or spectra.
+
+\subsection{The module}
+<<[[sf_user.f90]]>>=
+<<File header>>
+
+module sf_user
+
+  use, intrinsic :: iso_c_binding !NODEP!
+<<Use kinds>>
+<<Use strings>>
+  use io_units
+  use format_defs, only: FMT_17
+  use diagnostics
+  use c_particles
+  use lorentz
+  use subevents
+  use user_code_interface
+  use pdg_arrays
+  use model_data
+  use flavors
+  use helicities
+  use colors
+  use quantum_numbers
+  use state_matrices
+  use polarizations
+  use interactions
+  use sf_aux
+  use sf_base
+  
+<<Standard module head>>
+
+<<SF user: public>>
+
+<<SF user: types>>
+
+contains
+
+<<SF user: procedures>>
+
+end module sf_user
+@ %def sf_user
+@  
+\subsection{The user structure function data block} 
+The data block holds the procedure pointers that are used for retrieving
+static information, as well as the actual evaluation.
+<<SF user: public>>=
+  public :: user_data_t
+<<SF user: types>>=
+  type, extends(sf_data_t) :: user_data_t
+     private
+     type(string_t) :: name
+     integer :: n_in
+     integer :: n_out
+     integer :: n_tot
+     integer :: n_states
+     integer :: n_col
+     integer :: n_dim
+     integer :: n_var
+     integer, dimension(2) :: pdg_in
+     class(model_data_t), pointer :: model => null ()
+     procedure(user_int_info), nopass, pointer :: info => null ()
+     procedure(user_int_mask), nopass, pointer :: mask => null ()
+     procedure(user_int_state), nopass, pointer :: state => null ()
+     procedure(user_int_kinematics), nopass, pointer :: kinematics => null ()
+     procedure(user_int_evaluate), nopass, pointer :: evaluate => null ()
+   contains
+   <<SF user: user data: TBP>>  
+  end type user_data_t
+
+@ %def user_data_t
+@ Assign procedure pointers from a dynamically loaded library, given the
+specified [[name]].  
+
+We have to distinguish three cases: (1) Both beams are affected, and
+the user spectrum implements both beams.  There is a single data
+object. (2) Both beams are
+affected, and the user spectrum applies to single beams.  Fill two
+different objects.  (3) A single beam is affected.
+<<SF User: public>>=
+  public :: sf_user_data_init
+<<SF User: procedures>>=
+  subroutine sf_user_data_init (data, name, flv, model)
+    type(sf_user_data_t), intent(out) :: data
+    type(string_t), intent(in) :: name
+    type(flavor_t), dimension(2), intent(in) :: flv
+    class(model_data_t), intent(in), target :: model
+    integer(c_int) :: n_in
+    integer(c_int) :: n_out
+    integer(c_int) :: n_states
+    integer(c_int) :: n_col
+    integer(c_int) :: n_dim
+    integer(c_int) :: n_var
+    data%name = name
+    data%pdg_in = flavor_get_pdg (flv)
+    data%model => model
+    call c_f_procpointer (user_code_find_proc (name // "_info"), data%info)
+    call c_f_procpointer (user_code_find_proc (name // "_mask"), data%mask)
+    call c_f_procpointer (user_code_find_proc (name // "_state"), data%state)
+    call c_f_procpointer &
+         (user_code_find_proc (name // "_kinematics"), data%kinematics)
+    call c_f_procpointer &
+         (user_code_find_proc (name // "_evaluate"), data%evaluate)
+    n_in = 1
+    n_out = 2
+    n_states = 1
+    n_col = 2
+    n_dim = 1
+    n_var = 1
+    call data%info (n_in, n_out, n_states, n_col, n_dim, n_var)
+    data%n_in = n_in
+    data%n_out = n_out
+    data%n_tot = n_in + n_out
+    data%n_states = n_states
+    data%n_col = n_col
+    data%n_dim = n_dim
+    data%n_var = n_var
+  end subroutine sf_user_data_init
+
+@ %def sf_user_data_init
+@ Output
+<<SF user: user data: TBP>>=
+  procedure :: write => user_data_write
+<<SF user: procedures>>=
+  subroutine user_data_write (data, unit, verbose) 
+    class(user_data_t), intent(in) :: data
+    integer, intent(in), optional :: unit
+    logical, intent(in), optional :: verbose        
+    integer :: u
+    u = given_output_unit (unit);  if (u < 0)  return
+    write (u, "(1x,A,A)") "User structure function: ", char (data%name)
+  end subroutine user_data_write
+
+@ %def user_data_write
+@ Retrieving contents
+<<SF User: public>>=
+  public :: sf_user_data_get_name
+<<SF User: procedures>>=
+  function sf_user_data_get_name (data) result (name)
+    type(string_t) :: name
+    type(sf_user_data_t), intent(in) :: data
+    name = data%name
+  end function sf_user_data_get_name
+
+@ %def sf_user_data_get_name
+<<SF User: public>>=
+  public :: sf_user_data_get_n_in
+  public :: sf_user_data_get_n_out
+  public :: sf_user_data_get_n_tot
+  public :: sf_user_data_get_n_dim
+  public :: sf_user_data_get_n_var
+<<SF User: procedures>>=
+  function sf_user_data_get_n_in (data) result (n_in)
+    integer :: n_in
+    type(sf_user_data_t), intent(in) :: data
+    n_in = data%n_in
+  end function sf_user_data_get_n_in
+
+   function sf_user_data_get_n_out (data) result (n_out)
+    integer :: n_out
+    type(sf_user_data_t), intent(in) :: data
+    n_out = data%n_out
+  end function sf_user_data_get_n_out
+
+  function sf_user_data_get_n_tot (data) result (n_tot)
+    integer :: n_tot
+    type(sf_user_data_t), intent(in) :: data
+    n_tot = data%n_tot
+  end function sf_user_data_get_n_tot
+
+  function sf_user_data_get_n_dim (data) result (n_dim)
+    integer :: n_dim
+    type(sf_user_data_t), intent(in) :: data
+    n_dim = data%n_dim
+  end function sf_user_data_get_n_dim
+
+ function sf_user_data_get_n_var (data) result (n_var)
+    integer :: n_var
+    type(sf_user_data_t), intent(in) :: data
+    n_var = data%n_var
+  end function sf_user_data_get_n_var
+
+@ %def sf_user_data_get_n_in
+@ %def sf_user_data_get_n_out
+@ %def sf_user_data_get_n_tot
+@ %def sf_user_data_get_n_dim
+@ %def sf_user_data_get_n_var
+@
+\subsection{The interaction}
+We fill the interaction by looking up the table of states using the interface
+functions.
+
+For particles which have a known flavor (as indicated by the mask), we
+compute the mass squared, so we can use it for the invariant mass of
+the particle objects.
+<<SF user: user: TBP>>=
+  procedure :: init => user_init
+<<SF user: procedures>>=
+  subroutine user_init (sf_int, data)
+    !!! JRR: WK please check (#529)
+    class(user_t), intent(out) :: sf_int
+    class(sf_data_t), intent(in), target :: data
+    type(quantum_numbers_mask_t), dimension(:), allocatable :: mask
+    integer, dimension(:), allocatable :: hel_lock
+    integer(c_int) :: m_flv, m_hel, m_col, i_lock
+    type(quantum_numbers_t), dimension(:), allocatable :: qn
+    integer(c_int) :: f, h
+    integer(c_int), dimension(:), allocatable :: c
+    type(flavor_t) :: flv
+    type(helicity_t) :: hel
+    type(color_t) :: col
+    integer :: i, s
+    integer(c_int) :: i_prt, i_state
+    select type (data)
+    type is (user_data_t)   
+       allocate (mask (data%n_tot))
+       allocate (hel_lock (data%n_tot))
+       allocate (qn (data%n_tot))
+       allocate (c (data%n_col))
+       do i = 1, size (mask)
+          i_prt = i
+          m_flv = 0;  m_col = 0;  m_hel = 0;  i_lock = 0
+          call data%mask (i_prt, m_flv, m_col, m_hel, i_lock)
+          mask(i) = &
+               new_quantum_numbers_mask (m_flv /= 0, m_col /= 0, m_hel /= 0)
+          hel_lock(i) = i_lock
+       end do
+       !!! JRR: WK please check (#529)
+       !!! Will have to be filled in later.
+       ! call sf_int%base_init (mask, &
+       !      hel_lock = hel_lock)
+       call interaction_init &
+            (sf_int%interaction_t, data%n_in, 0, data%n_out, mask=mask, &
+            hel_lock=hel_lock, set_relations=.true.)       
+       do s = 1, data%n_states
+          i_state = s
+          do i = 1, data%n_tot
+             i_prt = i
+             f = 0;  h = 0;  c = 0
+             call data%state (i_state, i_prt, f, h, c)
+             if (m_flv == 0) then
+                call flavor_init (flv, int (f), data%model)
+             else
+                call flavor_init (flv)
+             end if
+             if (m_hel == 0) then
+                call helicity_init (hel, int (h))
+             else
+                call helicity_init (hel)
+             end if
+             if (m_col == 0) then
+                call color_init_from_array (col, int (c))
+             else
+                call color_init (col)
+             end if
+             call quantum_numbers_init (qn(i), flv, col, hel)
+          end do
+          call interaction_add_state (sf_int%interaction_t, qn)
+       end do
+       call interaction_freeze (sf_int%interaction_t)
+       !!! JRR: WK please check (#529)
+       !!! What has to be inserted here?
+       ! call sf_int%set_incoming (??)
+       ! call sf_int%set_radiated (??)
+       ! call sf_int%set_outgoing (??)
+       sf_int%status = SF_INITIAL
+    end select
+  end subroutine user_init
+
+@ %def user_init
+@ 
+@ Allocate the interaction record.
+<<SF user: user data: TBP>>=
+  procedure :: allocate_sf_int => user_data_allocate_sf_int
+<<SF user: procedures>>=
+  subroutine user_data_allocate_sf_int (data, sf_int)
+    class(user_data_t), intent(in) :: data
+    class(sf_int_t), intent(inout), allocatable :: sf_int
+    allocate (user_t :: sf_int)
+  end subroutine user_data_allocate_sf_int
+  
+@ %def user_data_allocate_sf_int 
+@ The number of parameters is one.  We do not generate transverse momentum.
+<<SF user: user data: TBP>>=
+  procedure :: get_n_par => user_data_get_n_par
+<<SF user: procedures>>=
+  function user_data_get_n_par (data) result (n)
+    class(user_data_t), intent(in) :: data
+    integer :: n
+    n = data%n_var
+  end function user_data_get_n_par
+  
+@ %def user_data_get_n_par
+@ 
+@ Return the outgoing particle PDG codes. This has to be inferred from
+the states (right?). JRR: WK please check.
+<<SF user: user data: TBP>>=
+  procedure :: get_pdg_out => user_data_get_pdg_out
+<<SF user: procedures>>=
+  subroutine user_data_get_pdg_out (data, pdg_out)
+    class(user_data_t), intent(in) :: data
+    type(pdg_array_t), dimension(:), intent(inout) :: pdg_out
+    !!! JRR: WK please check (#529)
+    !!! integer :: n, np, i
+    !!! n = count (data%mask)
+    !!! np = 0;  if (data%has_photon .and. data%mask_photon)  np = 1
+    !!! allocate (pdg_out (n + np))
+    !!! pdg_out(1:n) = pack ([(i, i = -6, 6)], data%mask)
+    !!! if (np == 1)  pdg_out(n+np) = PHOTON
+  end subroutine user_data_get_pdg_out
+  
+@ %def user_data_get_pdg_out
+\subsection{The user structure function}
+For maximal flexibility, user structure functions separate kinematics from
+dynamics just as the PDF interface does.  (JRR: Ok, I guess this now
+done for all structure functions, right?) We create [[c_prt_t]]
+particle objects from the incoming momenta (all other quantum numbers
+are irrelevant) and call the user-supplied kinematics function to
+compute the outgoing momenta, along with other variables that will be
+needed for matrix element evaluation.  If known, we use the mass
+squared computed above.
+!!! JRR: WK please check (\#529)
+I don't know actually whether this really fits into the setup done by
+WK. 
+<<SF user: types>>=
+  !!! JRR: WK please check (#529)
+  type, extends (sf_int_t) :: user_t
+     type(user_data_t), pointer :: data => null ()
+     real(default) :: x = 0
+     real(default) :: q = 0
+   contains
+   <<SF user: user: TBP>>
+  end type user_t 
+  
+@ %def user_t
+@ Type string: display the name of the user structure function.
+<<SF user: user: TBP>>=
+  procedure :: type_string => user_type_string
+<<SF user: procedures>>=
+  function user_type_string (object) result (string)
+    class(user_t), intent(in) :: object
+    type(string_t) :: string
+    if (associated (object%data)) then
+       string = "User structure function: " // object%data%name
+    else
+       string = "User structure function: [undefined]"
+    end if
+  end function user_type_string
+  
+@ %def user_type_string
+@ Output.  Call the interaction routine after displaying the configuration.
+<<SF user: user: TBP>>=
+  procedure :: write => user_write
+<<SF user: procedures>>=
+  subroutine user_write (object, unit, testflag)
+    !!! JRR: WK please check (#529)
+    !!! Guess these variables do not exist for user strfun (?)
+    class(user_t), intent(in) :: object
+    integer, intent(in), optional :: unit
+    logical, intent(in), optional :: testflag
+    integer :: u
+    u = given_output_unit (unit)
+    if (associated (object%data)) then
+       call object%data%write (u)
+       if (object%status >= SF_DONE_KINEMATICS) then
+          write (u, "(1x,A)")  "SF parameters:"
+          write (u, "(3x,A," // FMT_17 // ")")  "x =", object%x
+          if (object%status >= SF_FAILED_EVALUATION) then
+             write (u, "(3x,A," // FMT_17 // ")")  "Q =", object%q
+          end if
+       end if
+       call object%base_write (u, testflag)
+    else
+       write (u, "(1x,A)")  "User structure function data: [undefined]"
+    end if
+  end subroutine user_write
+    
+@ %def user_write
+@
+\subsection{Kinematics}
+Set kinematics.  If [[map]] is unset, the $r$ and $x$ values
+coincide, and the Jacobian $f(r)$ is trivial.
+
+If [[map]] is set, we are asked to provide an efficient mapping.
+For the test case, we set $x=r^2$ and consequently $f(r)=2r$.
+<<SF user: user: TBP>>=
+  procedure :: complete_kinematics => user_complete_kinematics
+<<SF user: procedures>>=
+  subroutine user_complete_kinematics (sf_int, x, f, r, rb, map)
+    !!! JRR: WK please check (#529)
+    !!! This cannot be correct, as the CIRCE1 structure function has 
+    !!! twice the variables (2->4 instead of 1->2 splitting)
+    class(user_t), intent(inout) :: sf_int
+    real(default), dimension(:), intent(out) :: x
+    real(default), intent(out) :: f
+    real(default), dimension(:), intent(in) :: r
+    real(default), dimension(:), intent(in) :: rb
+    logical, intent(in) :: map
+    real(default) :: xb1
+    if (map) then
+       call msg_fatal ("User structure function: map flag not supported")
+    else
+       x(1) = r(1)
+       f = 1
+    end if
+    xb1 = 1 - x(1)
+    call sf_int%split_momentum (x, xb1)
+    select case (sf_int%status)
+    case (SF_DONE_KINEMATICS)
+       sf_int%x = x(1)
+    case (SF_FAILED_KINEMATICS)
+       sf_int%x = 0
+       f = 0
+    end select
+  end subroutine user_complete_kinematics
+
+@ %def user_complete_kinematics
+@ Compute inverse kinematics.  Here, we start with the $x$ array and
+compute the ``input'' $r$ values and the Jacobian $f$.  After this, we
+can set momenta by the same formula as for normal kinematics.
+<<SF user: user: TBP>>=
+  procedure :: inverse_kinematics => user_inverse_kinematics
+<<SF user: procedures>>=
+  subroutine user_inverse_kinematics (sf_int, x, f, r, rb, map, set_momenta)
+    !!! JRR: WK please check (#529)
+    !!! This cannot be correct, as the CIRCE1 structure function has 
+    !!! twice the variables (2->4 instead of 1->2 splitting)
+    class(user_t), intent(inout) :: sf_int
+    real(default), dimension(:), intent(in) :: x
+    real(default), intent(out) :: f
+    real(default), dimension(:), intent(out) :: r
+    real(default), dimension(:), intent(out) :: rb
+    logical, intent(in) :: map
+    logical, intent(in), optional :: set_momenta
+    real(default) :: xb1
+    logical :: set_mom
+    set_mom = .false.;  if (present (set_momenta))  set_mom = set_momenta
+    if (map) then
+       call msg_fatal ("User structure function: map flag not supported")
+    else
+       r(1) = x(1)
+       f = 1
+    end if
+    xb1 = 1 - x(1)
+    rb = 1 - r
+    if (set_mom) then
+       call sf_int%split_momentum (x, xb1)
+       select case (sf_int%status)
+       case (SF_DONE_KINEMATICS)
+          sf_int%x = x(1)
+       case (SF_FAILED_KINEMATICS)
+          sf_int%x = 0
+          f = 0
+       end select
+    end if
+  end subroutine user_inverse_kinematics
+
+@ %def user_inverse_kinematics
+@
+<<SF User: public>>=
+  public :: interaction_set_kinematics_sf_user
+<<SF User: procedures>>=
+  subroutine interaction_set_kinematics_sf_user (int, x, r, data)
+    type(interaction_t), intent(inout) :: int
+    real(default), dimension(:), intent(out) :: x
+    real(default), dimension(:), intent(in) :: r
+    type(sf_user_data_t), intent(in) :: data
+    type(vector4_t), dimension(data%n_in) :: p_in
+    type(vector4_t), dimension(data%n_out) :: p_out
+    type(c_prt_t), dimension(data%n_in) :: prt_in
+    type(c_prt_t), dimension(data%n_out) :: prt_out
+    real(c_double), dimension(data%n_var) :: xval
+    call interaction_get_momenta_sub (int, p_in, outgoing=.false.)
+    prt_in = vector4_to_c_prt (p_in)
+    prt_in%type = PRT_INCOMING
+    call data%kinematics (prt_in, real (r, c_double), prt_out, xval)
+    x = xval
+    p_out = vector4_from_c_prt (prt_out)
+    call interaction_set_momenta (int, p_out, outgoing=.true.)
+  end subroutine interaction_set_kinematics_sf_user
+
+@ %def interaction_set_kinematics_sf_user
+@ The matrix-element evaluation may require a scale parameter, therefore this
+routine is separate.  We take the variables computed above together
+with the event energy scale and call the user function that computes
+the matrix elements.
+<<SF user: user: TBP>>=
+  procedure :: apply => user_apply
+<<SF user: procedures>>=
+  subroutine user_apply (sf_int, scale) !, x, data)    
+    !!! JRR: WK please check (#529)
+    class(user_t), intent(inout) :: sf_int
+    real(default), intent(in) :: scale
+    real(default), dimension(:), allocatable :: x
+    real(c_double), dimension(sf_int%data%n_states) :: fval
+    complex(default), dimension(sf_int%data%n_states) :: fc
+    associate (data => sf_int%data)
+      !!! This is wrong, has to be replaced
+      ! allocate (x, size (sf_int%x)))
+      x = sf_int%x
+      call data%evaluate (real (x, c_double), real (scale, c_double), fval)
+      fc = fval
+      call interaction_set_matrix_element (sf_int%interaction_t, fc)
+    end associate
+    sf_int%status = SF_EVALUATED
+  end subroutine user_apply
+
+@ %def user_apply

@@ -1,6 +1,6 @@
-! WHIZARD 2.2.3 Nov 30 2014
+! WHIZARD 2.2.4 Feb 06 2015
 ! 
-! Copyright (C) 1999-2014 by 
+! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -9,7 +9,8 @@
 !     Fabian Bach <fabian.bach@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Felix Braam, Sebastian Schmidt, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam, 
+!     Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -449,7 +450,7 @@ end subroutine subevt_expr_test
     call var_list_append_real &
          (var_list, var_str ("tolerance"), 0._default)
     call process%set_var_list (var_list)
-    call var_list_final (var_list)
+    call var_list%final ()
    
     allocate (test_t :: core_template)
     allocate (phs_test_config_t :: phs_config_template)
@@ -646,7 +647,7 @@ end subroutine subevt_expr_test
          (procname, run_id, lib, os_data, qcd, rng_factory, model) 
 
     call process%set_var_list (var_list)
-    call var_list_final (var_list)
+    call var_list%final ()
    
     allocate (test_t :: core_template)
     allocate (phs_test_config_t :: phs_config_template)
@@ -772,7 +773,7 @@ end subroutine subevt_expr_test
     call prepare_test_process (process, process_instance, model)
 
     call process%set_var_list (var_list)
-    call var_list_final (var_list)
+    call var_list%final ()
 
     call process_instance%setup_event_data ()
 

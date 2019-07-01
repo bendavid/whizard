@@ -1,6 +1,6 @@
-! WHIZARD 2.2.3 Nov 30 2014
+! WHIZARD 2.2.4 Feb 06 2015
 ! 
-! Copyright (C) 1999-2014 by 
+! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -9,7 +9,8 @@
 !     Fabian Bach <fabian.bach@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Felix Braam, Sebastian Schmidt, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam, 
+!     Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -77,15 +78,11 @@ module model_data
   type, extends (modelpar_data_t) :: modelpar_real_t
      private
      real(default) :: value
-   contains
-   
   end type modelpar_real_t
   
   type, extends (modelpar_data_t) :: modelpar_complex_t
      private
      complex(default) :: value
-   contains
-   
   end type modelpar_complex_t
   
   type :: field_data_t

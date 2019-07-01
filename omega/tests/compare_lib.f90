@@ -1,8 +1,8 @@
-! $Id: compare_lib.f90 6292 2014-11-20 18:33:14Z bchokoufe $
+! $Id: compare_lib.f90 6465 2015-01-10 15:22:31Z jr_reuter $
 ! compare_lib.f90 -- compare two O'Mega versions
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
-! Copyright (C) 1999-2014 by
+! Copyright (C) 1999-2015 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>

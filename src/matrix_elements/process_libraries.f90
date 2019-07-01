@@ -1,6 +1,6 @@
-! WHIZARD 2.2.3 Nov 30 2014
+! WHIZARD 2.2.4 Feb 06 2015
 ! 
-! Copyright (C) 1999-2014 by 
+! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -9,7 +9,8 @@
 !     Fabian Bach <fabian.bach@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Felix Braam, Sebastian Schmidt, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam, 
+!     Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -82,6 +83,9 @@ module process_libraries
      character(32) :: md5sum = ""
      type(string_t) :: nlo_type
      integer :: associated_born = 0
+     integer :: associated_real = 0
+     integer :: associated_virt = 0
+     integer :: associated_sub = 0
      logical :: active_nlo_component
    contains
      procedure :: write => process_component_def_write
@@ -103,6 +107,8 @@ module process_libraries
      procedure :: get_nlo_type => process_component_def_get_nlo_type
      procedure :: get_associated_born &
                   => process_component_def_get_associated_born
+     procedure :: get_association_list &
+                  => process_component_def_get_association_list
      procedure :: is_active_nlo_component &
                   => process_component_def_is_active_nlo_component
   end type process_component_def_t
@@ -119,13 +125,17 @@ module process_libraries
      type(process_component_def_t), dimension(:), allocatable :: initial
      type(process_component_def_t), dimension(:), allocatable :: extra
      character(32) :: md5sum = ""
-     logical :: nlo_process
+     logical :: nlo_process = .false.
+     logical :: combined_nlo_integration = .false.
    contains
      procedure :: write => process_def_write
      procedure :: read => process_def_read
      procedure :: show => process_def_show
      procedure :: init => process_def_init
      procedure :: import_component => process_def_import_component
+     procedure :: get_n_components => process_def_get_n_components
+     procedure :: set_associated_components => &
+                      process_def_set_associated_components
      procedure :: compute_md5sum => process_def_compute_md5sum
      procedure :: get_md5sum => process_def_get_md5sum
      procedure :: needs_code => process_def_needs_code
@@ -209,6 +219,7 @@ module process_libraries
      procedure :: is_active => process_library_is_active
      procedure :: connect_process => process_library_connect_process
      procedure :: get_modellibs_ldflags => process_library_get_modellibs_ldflags
+     procedure :: get_static_modelname => process_library_get_static_modelname
   end type process_library_t
 
   type, extends (process_driver_internal_t) :: prctest_2_t
@@ -534,6 +545,15 @@ contains
     active = component%active_nlo_component
   end function process_component_def_is_active_nlo_component
 
+  function process_component_def_get_association_list (component) result (list)
+    class(process_component_def_t), intent(in) :: component
+    integer, dimension(4) :: list
+    list(1) = component%associated_born
+    list(2) = component%associated_real
+    list(3) = component%associated_virt
+    list(4) = component%associated_sub
+  end function process_component_def_get_association_list
+
   subroutine process_def_write (object, unit)
     class(process_def_t), intent(in) :: object
     integer, intent(in) :: unit
@@ -694,7 +714,7 @@ contains
   
   subroutine process_def_import_component (def, &
        i, n_out, prt_in, prt_out, method, variant, &
-       nlo_type, i_born, active)
+       nlo_type, active)
     class(process_def_t), intent(inout) :: def
     integer, intent(in) :: i
     integer, intent(in), optional :: n_out
@@ -702,7 +722,6 @@ contains
     type(prt_spec_t), dimension(:), intent(in), optional :: prt_out
     type(string_t), intent(in), optional :: method
     type(string_t), intent(in), optional :: nlo_type
-    integer, intent(in), optional :: i_born
     logical, intent(in), optional :: active
     class(prc_core_def_t), &
          intent(inout), allocatable, optional :: variant
@@ -725,7 +744,6 @@ contains
       if (present (variant)) then
          call move_alloc (variant, comp%core_def)
       end if
-      if (present (i_born)) comp%associated_born = i_born
       if (present (nlo_type)) then
         comp%nlo_type = nlo_type
       end if
@@ -756,6 +774,26 @@ contains
       end if
     end associate
   end subroutine process_def_import_component
+
+  function process_def_get_n_components (def) result (n)
+    class(process_def_t), intent(in) :: def
+    integer :: n
+    n = size (def%initial)
+  end function process_def_get_n_components
+
+  subroutine process_def_set_associated_components (def, i, &
+                     i_born, i_real, i_virt, i_sub)
+    class(process_def_t), intent(inout) :: def
+    integer, intent(in) :: i
+    integer, intent(in) :: i_born, i_real
+    integer, intent(in) :: i_virt, i_sub
+    associate (comp => def%initial(i))
+       comp%associated_born = i_born
+       comp%associated_real = i_real
+       comp%associated_virt = i_virt
+       comp%associated_sub = i_sub
+    end associate
+  end subroutine process_def_set_associated_components
 
   subroutine process_def_compute_md5sum (def, model)
     class(process_def_t), intent(inout) :: def
@@ -1683,7 +1721,6 @@ contains
     if (allocated (prc_lib%entry)) then
        SCAN: do i = 1, prc_lib%n_entries
           if (associated (prc_lib%entry(i)%def)) then
-!             if (associated (prc_lib%entry(i)%def%model)) then
              if (prc_lib%entry(i)%def%model_name /= "") then
                 modelname = prc_lib%entry(i)%def%model_name
              else
@@ -1701,7 +1738,7 @@ contains
              modellib = "libparameters_" // modelname // ".la"
           else
              modellib = "libparameters_" // modelname // ".a"
-          end if
+          end if          
           exist = .false.
           if (.not. os_data%use_testfiles) then
              modellib_full = os_data%whizard_models_libpath_local &
@@ -1719,6 +1756,52 @@ contains
     deallocate (models)
     flags = flags // " -lwhizard"
   end function process_library_get_modellibs_ldflags
+
+  function process_library_get_static_modelname (prc_lib, os_data) result (name)
+    class(process_library_t), intent(in) :: prc_lib
+    type(os_data_t), intent(in) :: os_data
+    type(string_t) :: name
+    type(string_t), dimension(:), allocatable :: models
+    type(string_t) :: modelname, modellib, modellib_full
+    logical :: exist
+    integer :: i, j, mi
+    name = ""
+    allocate (models(prc_lib%n_entries + 1))
+    models = ""
+    mi = 1
+    if (allocated (prc_lib%entry)) then
+       SCAN: do i = 1, prc_lib%n_entries
+          if (associated (prc_lib%entry(i)%def)) then
+             if (prc_lib%entry(i)%def%model_name /= "") then
+                modelname = prc_lib%entry(i)%def%model_name
+             else
+                cycle SCAN
+             end if
+          else
+             cycle SCAN
+          end if
+          do j = 1, mi
+             if (models(mi) == modelname) cycle SCAN
+          end do
+          models(mi) = modelname
+          mi = mi + 1
+          modellib = "libparameters_" // modelname // ".a"
+          exist = .false.
+          if (.not. os_data%use_testfiles) then
+             modellib_full = os_data%whizard_models_libpath_local &
+                  // "/" // modellib
+             inquire (file=char (modellib_full), exist=exist)
+          end if
+          if (.not. exist) then
+             modellib_full = os_data%whizard_models_libpath &
+                  // "/" // modellib
+             inquire (file=char (modellib_full), exist=exist)
+          end if
+          if (exist) name = name // " " // modellib_full
+       end do SCAN
+    end if
+    deallocate (models)
+  end function process_library_get_static_modelname
 
   function prctest_2_type_name () result (type)
     type(string_t) :: type

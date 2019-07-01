@@ -216,9 +216,8 @@ Optional Features:
   --enable-hepmc          enable HepMC for handling event data [[yes]]
   --enable-stdhep	  enable STDHEP for binary event files [[yes]]
   --enable-lcio		  enable LCIO for binary event files [[yes]]
-  --enable-shower         enable parton showers [[yes]]
+  --enable-pythia6        enable internal PYTHIA6 for hadronization [[yes]]
   --enable-gosam	  enable GoSAM for external NLO matrix elements [[no]]
-  --enable-mpi            enable multi-parton interactions [[no]]
   --enable-hoppet         enable HOPPET for b quark pdf matching [[no]]
   --enable-fastjet	  enable FastJet for handling event data [[no]]
   --enable-optimization-for-parameter-files

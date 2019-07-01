@@ -1,4 +1,4 @@
-# $Id: model_test.sin 6306 2014-11-28 07:40:42Z kilian $
+# $Id: model_test.sin 6474 2015-01-12 19:47:31Z jr_reuter $
 # SINDARIN input for WHIZARD self-test
 
 library = "model_test_1_lib"
@@ -111,6 +111,11 @@ model = "SM_Higgs"
 mH = 125 GeV
 process models_ccww_sm_higgs 	   = 	c, C	=>	Wp, Wm
 
+model = "SM_tt_threshold"
+mH = 125 GeV
+test = 42
+process models_ccww_sm_tt_thresh   =    c, C    =>      Wp, Wm 
+
 model = "Simplest"
 mH = 125 GeV
 process models_ccww_simplest 	   = 	c, C	=>	Wp, Wm
@@ -184,15 +189,16 @@ integrate (models_wwww_noh_rx)       { seed = 21 }
 integrate (models_ccww_sm_top)       { seed = 22 }
 integrate (models_ccww_sm_top_anom)  { seed = 23 }
 integrate (models_ccww_sm_higgs)     { seed = 24 }
-integrate (models_ccww_simplest)     { seed = 25 }
-integrate (models_ccww_simplest_univ){ seed = 26 }
-integrate (models_ccww_template)     { seed = 27 }
-integrate (models_ccww_threeshl)     { seed = 28 }
-integrate (models_ccww_threeshl_nohf){ seed = 29 }
-integrate (models_ccww_ued)          { seed = 30 }
-integrate (models_wwww_ssc)          { seed = 31 }
-integrate (models_wwww_alth)         { seed = 32 }
-integrate (models_ccww_xdim)         { seed = 33 }
-integrate (models_ccww_zprime)       { seed = 34 }
+integrate (models_ccww_sm_tt_thresh) { seed = 25 }
+integrate (models_ccww_simplest)     { seed = 26 }
+integrate (models_ccww_simplest_univ){ seed = 27 }
+integrate (models_ccww_template)     { seed = 28 }
+integrate (models_ccww_threeshl)     { seed = 29 }
+integrate (models_ccww_threeshl_nohf){ seed = 30 }
+integrate (models_ccww_ued)          { seed = 31 }
+integrate (models_wwww_ssc)          { seed = 32 }
+integrate (models_wwww_alth)         { seed = 33 }
+integrate (models_ccww_xdim)         { seed = 34 }
+integrate (models_ccww_zprime)       { seed = 35 }
  
 show (results)

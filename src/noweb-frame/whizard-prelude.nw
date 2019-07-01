@@ -38,12 +38,12 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\def\WhizardVersion{2.2.3}
-\def\WhizardDate{Nov 30 2014}
+\def\WhizardVersion{2.2.4}
+\def\WhizardDate{Feb 06 2015}
 <<Version>>=
-2.2.3
+2.2.4
 <<Date>>=
-Nov 30 2014
+Feb 06 2015
 @ 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \title{%
@@ -61,8 +61,8 @@ Nov 30 2014
 \date{Version \WhizardVersion, \WhizardDate \\
  \mbox{}
  with contributions from:
- Fabian Bach, Felix Braam, Bijan Chokouf\'{e} Nejad, David Gordo
- Gomez, Sebastian Schmidt,  
+ Fabian Bach, Felix Braam, Hans-Werner Boschmann, 
+ Bijan Chokouf\'{e} Nejad, David Gordo Gomez, Sebastian Schmidt,  
  Marco Sekulla, Christian Speckner, Christian Weiss, Daniel Wiesler 
  \vspace{1cm}
  \begin{center}
@@ -100,7 +100,7 @@ The WHIZARD file header:
 <<File header>>=
 ! WHIZARD <<Version>> <<Date>>
 ! 
-! Copyright (C) 1999-2014 by 
+! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -109,7 +109,8 @@ The WHIZARD file header:
 !     Fabian Bach <fabian.bach@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Felix Braam, Sebastian Schmidt, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam, 
+!     Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -136,6 +137,8 @@ We are strict with our names:
 @ This is the way to envoke the kinds module (not contained in this source)
 <<Use kinds>>=
   use kinds, only: default
+<<Use kinds with double>>=
+  use kinds, only: default, double
 @ %def default
 @ And we make heavy use of variable-length strings
 <<Use strings>>=

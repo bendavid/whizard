@@ -2,7 +2,7 @@
 ##
 ## Process this file with automake to produce Makefile.in
 #
-# Copyright (C) 1999-2014 by 
+# Copyright (C) 1999-2015 by 
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
@@ -32,7 +32,8 @@ noinst_LTLIBRARIES = librng.la
 
 librng_la_SOURCES = \
   rng_base.f90 \
-  selectors.f90
+  selectors.f90 \
+  rng_tao.f90
 
 ## Omitting this would exclude it from the distribution
 dist_noinst_DATA = rng.nw
@@ -90,12 +91,15 @@ Makefile.depend: $(librng_la_SOURCES)
 
 DISTCLEANFILES += Makefile.depend 
 
+## Dependencies across directories and packages, if not automatically generated
+rng_tao.lo: ../../vamp/src/tao_random_numbers.$(FC_MODULE_EXT)
+
 # Fortran90 module files are generated at the same time as object files
 .lo.$(FC_MODULE_EXT):
 	@:
 #	touch $@
 
-AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system
+AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system -I../../vamp/src
 
 
 ########################################################################

@@ -2,8 +2,50 @@ ChangeLog -- Summary of changes to the WHIZARD package
 
 Use svn log to see detailed changes.
 
-	Version 2.2.3
+	Version 2.2.4
 
+2015-02-06
+	RELEASE: version 2.2.4
+
+2015-02-06
+	Bugfix in event output
+
+2015-02-05	
+	LCIO event format supported
+	
+2015-01-30
+	Including state matrices in WHIZARD's internal IO
+	Versioning for WHIZARD's internal IO
+	Libtool update from 2.4.3 to 2.4.5
+	LCIO event output (beta version)
+	
+2015-01-27
+	Progress on NLO integration
+	Fixing a bug for multiple processes in a single
+	   event file when using beam event files
+	
+2015-01-19
+	Bug fix for spin correlations evaluated in the rest
+	   frame of the mother particle
+	
+2015-01-17
+	Regression fix for statically linked processes
+	   from SARAH and FeynRules
+	
+2015-01-10
+	NLO: massive FKS emitters supported (experimental)
+	
+2015-01-06
+	MMHT2014 PDF sets included
+	
+2015-01-05
+	Handling mass degeneracies in auto_decays
+
+2014-12-19
+	Fixing bug in rescan of event files
+	
+##################################################################
+	
 2014-11-30
 	RELEASE: version 2.2.3
 
@@ -24,7 +66,7 @@ Use svn log to see detailed changes.
 
 2014-10-18
 	Internal restructuring of code; half-way 
-	  WHIZARD main code file dissambled
+	  WHIZARD main code file disassembled
 	
 2014-07-09
 	Alpha version of NLO infrastructure
@@ -370,7 +412,7 @@ Use svn log to see detailed changes.
 	WHIZARD analysis can handle hadronized event files
 
 2011-01-17 
-	MSTW2008 and CT10 included
+	MSTW2008 and CT10 PDF sets included
 
 2010-12-23 
 	Inclusion of NMSSM with Hgg couplings

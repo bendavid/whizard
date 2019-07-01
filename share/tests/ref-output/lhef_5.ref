@@ -78,6 +78,10 @@ $sample = "lhef_5b"
 | Starting simulation for process 'lhef_5_p'
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 2
+Warning: Reading phs file: MD5 sum check disabled
+| Phase space: keeping configuration file 'lhef_5_p_i1.phs'
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 3
 | Recalculating observables
 | Recalculating squared matrix elements
 | Events: reading from LHEF file 'lhef_5a.lhe'
@@ -87,7 +91,8 @@ $sample = "lhef_5b"
 | ... event file terminates after 1 events.
 | Events: closing weight stream file 'lhef_5b.weights.dat'
 | Events: closing LHEF file 'lhef_5a.lhe'
+| There were no errors and    1 warning(s).
 | WHIZARD run finished.
 |=============================================================================|
 Contents of lhef_5b.weights.dat
-0  1.7050298567E+00  1.0709379029E-03  1.0709379027E-03 1 1 1
+0  1.7050298567E+00  1.0709379029E-03  1.0709379027E-03 1

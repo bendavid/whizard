@@ -2,12 +2,17 @@
 ##
 ## Process this file with automake to produce Makefile.in
 #
-# Copyright (C) 1999-2014 by 
+# Copyright (C) 1999-2015 by 
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
 #     with contributions from
+#     Fabian Bach <fabian.bach@desy.de>
+#     Bijan Chokoufe <bijan.chokoufe@desy.de>
 #     Christian Speckner <cnspeckn@googlemail.com>
+#     Marco Sekulla <marco.sekulla@desy.de>
+#     Christian Weiss <christian.weiss@desy.de>
+#     Felix Braam, Sebastian Schmidt
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by 
@@ -32,17 +37,24 @@ SUBDIRS = \
   utilities \
   testing \
   system \
-  combinatorics parsing rng physics qft \
+  combinatorics parsing rng expr_base \
+  physics qft \
   fastjet \
   types \
   matrix_elements \
   hepmc lcio particles \
-  beams \
+  lhapdf lhapdf5 pdf_builtin hoppet beams \
+  me_methods \
+  stdhep events \
   phase_space \
   mci \
-  lhapdf lhapdf5 stdhep pdf_builtin \
-  hoppet shower muli \
-  whizard-core prebuilt models
+  shower muli \
+  user \
+  blha \
+  gosam fks \
+  variables model_features \
+  whizard-core \
+  prebuilt models
 if MPOST_AVAILABLE
 SUBDIRS += gamelan feynmf
 endif
@@ -65,15 +77,26 @@ libwhizard_la_LIBADD = \
   ../vamp/src/libvamp.la \
   ../circe1/src/libcirce1.la \
   ../circe2/src/libcirce2.la \
+  shower/libshower.la \
+  muli/libmuli.la \
   pdf_builtin/libpdf_builtin.la \
+  model_features/libmodel_features.la \
+  variables/libvariables.la \
+  fks/libfks.la \
+  gosam/libgosam.la \
+  blha/libblha.la \
+  user/libuser.la \
   mci/libmci.la \
   phase_space/libphase_space.la \
+  events/libevents.la \
   beams/libbeams.la \
   particles/libparticles.la \
+  me_methods/libme_methods.la \
   matrix_elements/libmatrix_elements.la \
   types/libtypes.la \
   qft/libqft.la \
   physics/libphysics.la \
+  expr_base/libexpr_base.la \
   rng/librng.la \
   parsing/libparsing.la \
   combinatorics/libcombinatorics.la \
@@ -81,23 +104,6 @@ libwhizard_la_LIBADD = \
   testing/libtesting.la \
   utilities/libutilities.la \
   basics/libbasics.la
-
-if SHOWER_AVAILABLE
-libwhizard_la_LIBADD += \
-  shower/libshower.la 
-else 
-libwhizard_la_LIBADD += \
-  shower/libshower_dummy.la
-
-endif 
-
-if MPI_AVAILABLE
-libwhizard_la_LIBADD += \
-  muli/libmuli.la 
-else 
-libwhizard_la_LIBADD += \
-  muli/libmuli_dummy.la
-endif 
 
 if HEPMC_AVAILABLE
 libwhizard_la_LIBADD += hepmc/libHepMCWrap.la

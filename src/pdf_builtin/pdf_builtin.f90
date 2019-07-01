@@ -1,8 +1,8 @@
-!$Id: pdf_builtin.f90 6231 2014-10-16 18:18:17Z jr_reuter $
+!$Id: pdf_builtin.f90 6465 2015-01-10 15:22:31Z jr_reuter $
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
-! Copyright (C) 1999-2014 by 
+! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -35,7 +35,7 @@ module pdf_builtin
   use diagnostics
   use mrst2004qed
   use cteq6pdf
-  use mstw2008
+  use mstwpdf
   use ct10pdf
   use CJ12
 
@@ -45,12 +45,12 @@ module pdf_builtin
   private
 
 ! The available sets
-  integer, parameter :: nsets = 13
+  integer, parameter :: nsets = 16
   integer, parameter, public :: &
        CTEQ6M = 1, CTEQ6D = 2, CTEQ6L = 3, CTEQ6L1 = 4, &
        MRST2004QEDp = 5, MRST2004QEDn = 6, MSTW2008LO = 7, MSTW2008NLO = 8, &
        MSTW2008NNLO = 9, CT10 = 10, CJ12_max = 11, CJ12_mid = 12, &
-       CJ12_min = 13
+       CJ12_min = 13, MMHT2014LO = 14, MMHT2014NLO = 15, MMHT2014NNLO = 16
   
 ! Limits
   real(kind=default), parameter :: &
@@ -63,7 +63,9 @@ module pdf_builtin
        ct10_q_min = 1.3, ct10_q_max = 1.E5, &
        ct10_x_min = 1.E-8, ct10_x_max = 1., &
        cj12_q_min = 1.69, cj12_q_max = 3.E5, &
-       cj12_x_min = 2.E-5, cj12_x_max = 0.9 
+       cj12_x_min = 2.E-5, cj12_x_max = 0.9, &
+       mmht2014_q_min = mstw2008_q_min, mmht2014_q_max = mstw2008_q_max, &
+       mmht2014_x_min = mstw2008_x_min, mmht2014_x_max = mstw2008_x_max
 
 ! Lambda_QCD and quark masses
   
@@ -107,13 +109,14 @@ module pdf_builtin
   ! Init flags
   integer :: cteq6_initialized = -1
   integer :: mstw2008_initialized = -1
+  integer :: mmht2014_initialized = -1
   logical :: ct10_initialized = .false.
   integer :: cj12_initialized = -1
   logical :: &
        mrst2004qedp_initialized =  .false., &
        mrst2004qedn_initialized =  .false.
   type(string_t) :: mrst2004qedp_prefix, mrst2004qedn_prefix, &
-       mstw2008_prefix
+       mstw2008_prefix, mmht2014_prefix
 
 ! Public stuff
   public :: pdf_init
@@ -159,6 +162,12 @@ contains
        name = var_str ("CJ12_mid")
     case (CJ12_min)
        name = var_str ("CJ12_min")
+    case (MMHT2014LO)
+       name = var_str ("MMHT2014LO")
+    case (MMHT2014NLO)
+       name = var_str ("MMHT2014NLO")
+    case (MMHT2014NNLO)
+       name = var_str ("MMHT2014NNLO")
     case default
        call msg_fatal ("pdf_builtin: internal: invalid PDF set!")
     end select
@@ -188,6 +197,8 @@ contains
     case (CT10)
        flag = .false.
     case (CJ12_max, CJ12_mid, CJ12_min)
+       flag = .false.
+    case (MMHT2014LO, MMHT2014NLO, MMHT2014NNLO)
        flag = .false.
     case default
        call msg_fatal ("pdf_builtin: internal: invalid PDF set!")
@@ -244,6 +255,10 @@ contains
        if (cj12_initialized == pdftype) return
        call setCJ (char (mprefix), 100)
        cj12_initialized = pdftype
+    case (MMHT2014LO, MMHT2014NLO, MMHT2014NNLO)
+       if (mmht2014_initialized == pdftype) return
+       mmht2014_initialized = pdftype
+       mmht2014_prefix = mprefix
     case default
        call msg_fatal ("pdf_builtin: internal: invalid PDF set!")
     end select
@@ -325,7 +340,7 @@ contains
        end select
        mx = max (min (x, mstw2008_x_max), mstw2008_x_min)
        mq = max (min (q, mstw2008_q_max), mstw2008_q_min)
-       call getmstw2008 (char (mstw2008_prefix), char (setname), 0, mx, mq, &
+       call getmstwpdf (char (mstw2008_prefix), char (setname), 0, mx, mq, &
             upv, dnv, ups, dns, str, sbar, chm, cbar, bot, bbar, glu, phot)
        if (present (f)) f = &
             [ 0._double, bbar, cbar, sbar, ups, dns, glu, dns + dnv, ups + upv, &
@@ -365,6 +380,32 @@ contains
             CJpdf ( 4, mx, mq), CJpdf ( 5, mx, mq), 0._double ]
        if (present (fphoton)) call msg_fatal ("photon pdf requested for " // &
             "CJ12 which does not provide it!")
+    case (MMHT2014LO, MMHT2014NLO, MMHT2014NNLO)
+       if (mmht2014_initialized < 0) &
+            call msg_fatal ("pdf_builtin: internal: PDF set " // &
+            char (pdf_get_name (pdftype)) // " requested without initialization!")
+       if (mmht2014_initialized /= pdftype) &
+            call msg_fatal ( &
+            "PDF sets " // char (pdf_get_name (pdftype)) // " and " // &
+            char (pdf_get_name (mmht2014_initialized)) // &
+            " cannot be used simultaneously")
+       select case (pdftype)
+       case (MMHT2014LO)
+          setname = var_str ("mmht2014lo")
+       case (MMHT2014NLO)
+          setname = var_str ("mmht2014nlo")
+       case (MMHT2014NNLO)
+          setname = var_str ("mmht2014nnlo")
+       end select
+       mx = max (min (x, mmht2014_x_max), mmht2014_x_min)
+       mq = max (min (q, mmht2014_q_max), mmht2014_q_min)
+       call getmstwpdf (char (mmht2014_prefix), char (setname), 0, mx, mq, &
+            upv, dnv, ups, dns, str, sbar, chm, cbar, bot, bbar, glu, phot)
+       if (present (f)) f = &
+            [ 0._double, bbar, cbar, sbar, ups, dns, glu, dns + dnv, ups + upv, &
+            str, chm, bot, 0._double ] / mx
+       if (present (fphoton)) call msg_fatal ("photon pdf requested for " // &
+            char (pdf_get_name (pdftype)) // " which does not provide it!")
     case default
        call msg_fatal ("pdf_builtin: internal: invalid PDF set!")
     end select
@@ -458,6 +499,23 @@ contains
             char (pdf_get_name (cteq6_initialized)) // &
             " cannot be used simultaneously")
        as = PI*pdf_builtin_alpi (qdummy,2,5,alam_cteq6m)
+    case (MMHT2014LO, MMHT2014NLO, MMHT2014NNLO)
+       if (mmht2014_initialized < 0) &
+            call msg_fatal ("pdf_builtin: internal: PDF set " // &
+            char (pdf_get_name (pdftype)) // " requested without initialization!")
+       if (mmht2014_initialized /= pdftype) &
+            call msg_fatal ( &
+              "PDF sets " // char (pdf_get_name (pdftype)) // " and " // &
+              char (pdf_get_name (mmht2014_initialized)) // &
+              " cannot be used simultaneously")
+       select case (pdftype)
+          case (MMHT2014lo)
+             call pdf_builtin_alfa (as,qdummy,0)
+          case (MMHT2014nlo)
+             call pdf_builtin_alfa (as,qdummy,1)  
+          case (MMHT2014nnlo)
+             call pdf_builtin_alfa (as,qdummy,2)
+       end select
     case default
          call msg_fatal ("pdf_builtin: internal: invalid PDF set!")
     end select

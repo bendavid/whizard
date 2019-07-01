@@ -1,8 +1,8 @@
-! $Id: omega_interface.f90 6058 2014-08-04 10:31:06Z bchokoufe $
+! $Id: omega_interface.f90 6465 2015-01-10 15:22:31Z jr_reuter $
 ! omega_interface.f90 -- package the O'Mega interface functions
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
-! Copyright (C) 1999-2014 by 
+! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>

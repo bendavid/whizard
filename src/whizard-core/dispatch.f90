@@ -1,6 +1,6 @@
-! WHIZARD 2.2.3 Nov 30 2014
+! WHIZARD 2.2.4 Feb 06 2015
 ! 
-! Copyright (C) 1999-2014 by 
+! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -9,7 +9,8 @@
 !     Fabian Bach <fabian.bach@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Felix Braam, Sebastian Schmidt, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam, 
+!     Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -32,9 +33,10 @@
 module dispatch
   
   use kinds, only: default
-  use kinds, only: i16
+  use kinds, only: i16, double
   use iso_varying_string, string_t => varying_string
   use constants, only: PI
+  use system_dependencies, only: LHAPDF5_AVAILABLE
   use system_dependencies, only: LHAPDF6_AVAILABLE
   use io_units
   use format_utils, only: write_separator
@@ -52,6 +54,7 @@ module dispatch
   use models
   use process_constants
   use pdf_builtin !NODEP!
+  use lhapdf !NODEP!  
   use sf_mappings
   use sf_base
   use sf_pdf_builtin
@@ -81,6 +84,7 @@ module dispatch
   use prc_template_me
   use prc_core
   use processes
+  use shower_base !NODEP!
   use shower
   use event_transforms
   use decays
@@ -97,7 +101,7 @@ module dispatch
   use rt_data
   use prc_gosam
   use phs_fks
-  use fks_calculation
+  use nlo_data
 
   implicit none
   private
@@ -127,14 +131,45 @@ module dispatch
   end type sf_prop_t
   
 
+  interface
+     subroutine GetXminM (set, mem, xmin)
+       integer, intent(in) :: set, mem
+       double precision, intent(out) :: xmin
+     end subroutine GetXminM
+  end interface
+
+  interface
+     subroutine GetXmaxM (set, mem, xmax)
+       integer, intent(in) :: set, mem
+       double precision, intent(out) :: xmax
+     end subroutine GetXmaxM
+  end interface
+
+  interface
+     subroutine GetQ2minM (set, mem, q2min)
+       integer, intent(in) :: set, mem
+       double precision, intent(out) :: q2min
+     end subroutine GetQ2minM
+  end interface
+
+  interface
+     subroutine GetQ2maxM (set, mem, q2max)
+       integer, intent(in) :: set, mem
+       double precision, intent(out) :: q2max
+     end subroutine GetQ2maxM
+  end interface
+
+
 contains
   
-  subroutine dispatch_core_def (core_def, prt_in, prt_out, global, id)
+  subroutine dispatch_core_def (core_def, prt_in, prt_out, &
+                                global, id, nlo_type)
     class(prc_core_def_t), allocatable, intent(inout) :: core_def
     type(string_t), dimension(:), intent(in) :: prt_in
     type(string_t), dimension(:), intent(in) :: prt_out
     type(rt_data_t), intent(in) :: global
     type(string_t), intent(in), optional :: id
+    type(string_t), intent(in), optional :: nlo_type
     type(string_t) :: method
     type(string_t) :: model_name
     type(string_t) :: restrictions
@@ -145,7 +180,7 @@ contains
     type(model_t), pointer :: model
     model => global%model
     associate (var_list => global%get_var_list_ptr ())
-      method = var_list_get_sval (var_list, var_str ("$method"))
+      method = var_list%get_sval (var_str ("$method"))
       if (associated (model)) then
          model_name = model%get_name ()
       else
@@ -171,17 +206,17 @@ contains
             call core_def%init (model, prt_in, prt_out, unity = .true.)
          end select                  
       case ("omega")
-         diags = var_list_get_lval (var_list, &
+         diags = var_list%get_lval (&
               var_str ("?diags"))
-         diags_color = var_list_get_lval (var_list, &
+         diags_color = var_list%get_lval (&
               var_str ("?diags_color"))         
-         restrictions = var_list_get_sval (var_list, &
+         restrictions = var_list%get_sval (&
               var_str ("$restrictions"))
-         openmp_support = var_list_get_lval (var_list, &
+         openmp_support = var_list%get_lval (&
               var_str ("?omega_openmp"))
-         report_progress = var_list_get_lval (var_list, &
+         report_progress = var_list%get_lval (&
               var_str ("?report_progress"))
-         extra_options = var_list_get_sval (var_list, &
+         extra_options = var_list%get_sval (&
               var_str ("$omega_flags"))
          allocate (omega_omega_def_t :: core_def)
          select type (core_def)
@@ -191,17 +226,17 @@ contains
                  extra_options, diags, diags_color)
          end select
       case ("ovm")
-         diags = var_list_get_lval (var_list, &
+         diags = var_list%get_lval (&
               var_str ("?diags"))
-         diags_color = var_list_get_lval (var_list, &
+         diags_color = var_list%get_lval (&
               var_str ("?diags_color"))         
-         restrictions = var_list_get_sval (var_list, &
+         restrictions = var_list%get_sval (&
               var_str ("$restrictions"))
-         openmp_support = var_list_get_lval (var_list, &
+         openmp_support = var_list%get_lval (&
               var_str ("?omega_openmp"))
-         report_progress = var_list_get_lval (var_list, &
+         report_progress = var_list%get_lval (&
               var_str ("?report_progress"))
-         extra_options = var_list_get_sval (var_list, &
+         extra_options = var_list%get_sval (&
               var_str ("$omega_flags"))
          allocate (omega_ovm_def_t :: core_def)
          select type (core_def)
@@ -215,14 +250,10 @@ contains
         select type (core_def)
         type is (gosam_def_t)
           if (present (id)) then
-             ! call core_def%init (id, prt_in, prt_out, &
-             !          global%os_data, global%model)
-             call core_def%init (id)
+             call core_def%init (id, model_name, prt_in, &
+                                 prt_out, nlo_type)
           else
-             ! call core_def%init (var_str ('undefined_process'), &
-             !          prt_in, prt_out, global%os_data, &
-             !          global%model)
-             call core_def%init (var_str ('undefined_process'))
+             call msg_fatal ("Dispatch GoSam def: No id!")
           end if
         end select
       case default
@@ -260,7 +291,7 @@ contains
       if (.not. allocated (core)) allocate (prc_gosam_t :: core)
       select type (core)
       type is (prc_gosam_t)
-        call core%set_parameters (qcd)
+        call core%set_parameters (qcd, use_color_factors)
       end select
     class default
        call msg_bug ("Process core: unexpected process definition type")
@@ -311,56 +342,53 @@ contains
     type(grid_parameters_t) :: grid_par
     type(history_parameters_t) :: history_par
     logical :: rebuild_grids, check_grid_file, negative_weights, verbose
-    integration_method = var_list_get_sval (global%var_list, &
-         var_str ("$integration_method"))
+    integration_method = &
+         global%var_list%get_sval (var_str ("$integration_method"))
     select case (char (integration_method))
     case ("midpoint")
        allocate (mci_midpoint_t :: mci)
     case ("vamp", "default")
        associate (var_list => global%get_var_list_ptr ())
          grid_par%threshold_calls = &
-              var_list_get_ival (var_list, var_str ("threshold_calls"))
+              var_list%get_ival (var_str ("threshold_calls"))
          grid_par%min_calls_per_channel = &
-              var_list_get_ival (var_list, var_str ("min_calls_per_channel"))
+              var_list%get_ival (var_str ("min_calls_per_channel"))
          grid_par%min_calls_per_bin = &
-              var_list_get_ival (var_list, var_str ("min_calls_per_bin"))
+              var_list%get_ival (var_str ("min_calls_per_bin"))
          grid_par%min_bins = &
-              var_list_get_ival (var_list, var_str ("min_bins"))
+              var_list%get_ival (var_str ("min_bins"))
          grid_par%max_bins = &
-              var_list_get_ival (var_list, var_str ("max_bins"))
+              var_list%get_ival (var_str ("max_bins"))
          grid_par%stratified = &
-              var_list_get_lval (var_list, var_str ("?stratified"))
+              var_list%get_lval (var_str ("?stratified"))
          grid_par%use_vamp_equivalences = &
-              var_list_get_lval (var_list, var_str ("?use_vamp_equivalences"))
+              var_list%get_lval (var_str ("?use_vamp_equivalences"))
          grid_par%channel_weights_power = &
-              var_list_get_rval (var_list, var_str ("channel_weights_power"))
+              var_list%get_rval (var_str ("channel_weights_power"))
          grid_par%accuracy_goal = &
-              var_list_get_rval (var_list, var_str ("accuracy_goal"))
+              var_list%get_rval (var_str ("accuracy_goal"))
          grid_par%error_goal = &
-              var_list_get_rval (var_list, var_str ("error_goal"))
+              var_list%get_rval (var_str ("error_goal"))
          grid_par%rel_error_goal = &
-              var_list_get_rval (var_list, var_str ("relative_error_goal"))
+              var_list%get_rval (var_str ("relative_error_goal"))
          history_par%global = &
-              var_list_get_lval (var_list, &
-              var_str ("?vamp_history_global"))
+              var_list%get_lval (var_str ("?vamp_history_global"))
          history_par%global_verbose = &
-              var_list_get_lval (var_list, &
-              var_str ("?vamp_history_global_verbose"))
+              var_list%get_lval (var_str ("?vamp_history_global_verbose"))
          history_par%channel = &
-              var_list_get_lval (var_list, &
-              var_str ("?vamp_history_channels"))
+              var_list%get_lval (var_str ("?vamp_history_channels"))
          history_par%channel_verbose = &
-              var_list_get_lval (var_list, &
-              var_str ("?vamp_history_channels_verbose"))
-         verbose = var_list_get_lval (var_list, var_str ("?vamp_verbose"))
+              var_list%get_lval (var_str ("?vamp_history_channels_verbose"))
+         verbose = &
+              var_list%get_lval (var_str ("?vamp_verbose"))
          check_grid_file = &
-              var_list_get_lval (var_list, var_str ("?check_grid_file"))
+              var_list%get_lval (var_str ("?check_grid_file"))
          run_id = &
-              var_list_get_sval (var_list, var_str ("$run_id"))
+              var_list%get_sval (var_str ("$run_id"))
          rebuild_grids = &
-              var_list_get_lval (var_list, var_str ("?rebuild_grids"))
+              var_list%get_lval (var_str ("?rebuild_grids"))
          negative_weights = &
-              var_list_get_lval (var_list, var_str ("?negative_weights"))
+              var_list%get_lval (var_str ("?negative_weights"))
        end associate
        allocate (mci_vamp_t :: mci)
        select type (mci)
@@ -397,19 +425,19 @@ contains
     if (present (phs_method_in)) then
        phs_method = phs_method_in
     else
-       phs_method = var_list_get_sval (global%var_list, &
-            var_str ("$phs_method"))
+       phs_method = &
+            global%var_list%get_sval (var_str ("$phs_method"))
     end if
-    phs_file = var_list_get_sval (global%var_list, &
-         var_str ("$phs_file"))
-    use_equivalences = var_list_get_lval (global%var_list, &
-         var_str ("?use_vamp_equivalences"))
-    vis_channels = var_list_get_lval (global%var_list, &
-         var_str ("?vis_channels"))
-    fatal_beam_decay = var_list_get_lval (global%var_list, &
-         var_str ("?fatal_beam_decay"))
+    phs_file = &
+         global%var_list%get_sval (var_str ("$phs_file"))
+    use_equivalences = &
+         global%var_list%get_lval (var_str ("?use_vamp_equivalences"))
+    vis_channels = &
+         global%var_list%get_lval (var_str ("?vis_channels"))
+    fatal_beam_decay = &
+         global%var_list%get_lval (var_str ("?fatal_beam_decay"))
     run_id = &
-         var_list_get_sval (global%var_list, var_str ("$run_id"))    
+         global%var_list%get_sval (var_str ("$run_id"))    
     select case (char (phs_method))
     case ("single")
        allocate (phs_single_config_t :: phs)
@@ -460,12 +488,12 @@ contains
     real(default) :: fks_dij_exp1, fks_dij_exp2
     integer :: fks_mapping_type
     
-    fks_dij_exp1 = var_list_get_rval (global%var_list, &
-         var_str ("fks_dij_exp1"))
-    fks_dij_exp2 = var_list_get_rval (global%var_list, &
-         var_str ("fks_dij_exp2")) 
-    fks_mapping_type = var_list_get_ival (global%var_list, &
-         var_str ("fks_mapping_type"))
+    fks_dij_exp1 = &
+         global%var_list%get_rval (var_str ("fks_dij_exp1"))
+    fks_dij_exp2 = &
+         global%var_list%get_rval (var_str ("fks_dij_exp2")) 
+    fks_mapping_type = &
+         global%var_list%get_ival (var_str ("fks_mapping_type"))
 
     call fks_template%set_dij_exp (fks_dij_exp1, fks_dij_exp2)
     call fks_template%set_mapping_type (fks_mapping_type)
@@ -486,8 +514,10 @@ contains
     else
        local => global
     end if
-    rng_method = var_list_get_sval (local%var_list, var_str ("$rng_method"))
-    seed = var_list_get_ival (local%var_list, var_str ("seed"))
+    rng_method = &
+         local%var_list%get_sval (var_str ("$rng_method"))
+    seed = &
+         local%var_list%get_ival (var_str ("seed"))
     s = mod (seed, 32768)
     select case (char (rng_method))
     case ("unit_test")
@@ -570,9 +600,9 @@ contains
          select type (data)
          type is (pdf_builtin_data_t)
             pdf_name = &
-                 var_list_get_sval (var_list, var_str ("$pdf_builtin_set"))
+                 var_list%get_sval (var_str ("$pdf_builtin_set"))
             hoppet_b_matching = &
-                 var_list_get_lval (var_list, var_str ("?hoppet_b_matching"))
+                 var_list%get_lval (var_str ("?hoppet_b_matching"))
             call data%init ( &
                  model, pdg_in(i_beam(1)), &
                  name = pdf_name, &
@@ -590,15 +620,15 @@ contains
                  [var_str ("pions, please use 'lhapdf_photon' for photon beams.")])
          end if         
          lhapdf_dir = &
-              var_list_get_sval (var_list, var_str ("$lhapdf_dir"))  
+              var_list%get_sval (var_str ("$lhapdf_dir"))  
          lhapdf_file = &
-              var_list_get_sval (var_list, var_str ("$lhapdf_file")) 
+              var_list%get_sval (var_str ("$lhapdf_file")) 
          lhapdf_member = &
-              var_list_get_ival (var_list, var_str ("lhapdf_member"))
+              var_list%get_ival (var_str ("lhapdf_member"))
          lhapdf_photon_scheme = &
-              var_list_get_ival (var_list, var_str ("lhapdf_photon_scheme"))
+              var_list%get_ival (var_str ("lhapdf_photon_scheme"))
          hoppet_b_matching = &
-              var_list_get_lval (var_list, var_str ("?hoppet_b_matching"))
+              var_list%get_lval (var_str ("?hoppet_b_matching"))
          select type (data)
          type is (lhapdf_data_t)
             call data%init &
@@ -614,13 +644,13 @@ contains
                  [var_str ("photon PDFs, i.e. for photons as beam particles")])
          end if
          lhapdf_dir = &
-              var_list_get_sval (var_list, var_str ("$lhapdf_dir"))  
+              var_list%get_sval (var_str ("$lhapdf_dir"))  
          lhapdf_file = &
-              var_list_get_sval (var_list, var_str ("$lhapdf_photon_file")) 
+              var_list%get_sval (var_str ("$lhapdf_photon_file")) 
          lhapdf_member = &
-              var_list_get_ival (var_list, var_str ("lhapdf_member"))
+              var_list%get_ival (var_str ("lhapdf_member"))
          lhapdf_photon_scheme = &
-              var_list_get_ival (var_list, var_str ("lhapdf_photon_scheme"))
+              var_list%get_ival (var_str ("lhapdf_photon_scheme"))
          if (.not. any (lhapdf_photon_sets == lhapdf_file)) then
             call msg_fatal ("This PDF set is not supported or not " // & 
                  "intended for photon beams.")
@@ -634,18 +664,20 @@ contains
          end select         
       case ("isr")
          allocate (isr_data_t :: data)
-         isr_alpha = var_list_get_rval (var_list, var_str ("isr_alpha"))
+         isr_alpha = &
+              var_list%get_rval (var_str ("isr_alpha"))
          if (isr_alpha == 0) then
-            isr_alpha = (var_list_get_rval (var_list, var_str ("ee"))) &
+            isr_alpha = (var_list%get_rval (var_str ("ee"))) &
                  ** 2 / (4 * PI)
          end if
-         isr_q_max = var_list_get_rval (var_list, var_str ("isr_q_max"))
+         isr_q_max = &
+              var_list%get_rval (var_str ("isr_q_max"))
          if (isr_q_max == 0) then
             isr_q_max = sqrts
          end if
-         isr_mass   = var_list_get_rval (var_list, var_str ("isr_mass"))
-         isr_order  = var_list_get_ival (var_list, var_str ("isr_order"))
-         isr_recoil = var_list_get_lval (var_list, var_str ("?isr_recoil")) 
+         isr_mass   = var_list%get_rval (var_str ("isr_mass"))
+         isr_order  = var_list%get_ival (var_str ("isr_order"))
+         isr_recoil = var_list%get_lval (var_str ("?isr_recoil")) 
          select type (data)
          type is (isr_data_t)
             call data%init &
@@ -656,19 +688,19 @@ contains
          end select
       case ("epa")
          allocate (epa_data_t :: data)
-         epa_alpha = var_list_get_rval (var_list, var_str ("epa_alpha"))
+         epa_alpha = var_list%get_rval (var_str ("epa_alpha"))
          if (epa_alpha == 0) then
-            epa_alpha = (var_list_get_rval (var_list, var_str ("ee"))) &
+            epa_alpha = (var_list%get_rval (var_str ("ee"))) &
                  ** 2 / (4 * PI)
          end if         
-         epa_x_min = var_list_get_rval (var_list, var_str ("epa_x_min"))
-         epa_q_min = var_list_get_rval (var_list, var_str ("epa_q_min"))
-         epa_e_max = var_list_get_rval (var_list, var_str ("epa_e_max"))
+         epa_x_min = var_list%get_rval (var_str ("epa_x_min"))
+         epa_q_min = var_list%get_rval (var_str ("epa_q_min"))
+         epa_e_max = var_list%get_rval (var_str ("epa_e_max"))
          if (epa_e_max == 0) then
             epa_e_max = sqrts
          end if
-         epa_mass   = var_list_get_rval (var_list, var_str ("epa_mass"))
-         epa_recoil = var_list_get_lval (var_list, var_str ("?epa_recoil"))
+         epa_mass   = var_list%get_rval (var_str ("epa_mass"))
+         epa_recoil = var_list%get_lval (var_str ("?epa_recoil"))
          select type (data)            
          type is (epa_data_t)
             call data%init &
@@ -686,16 +718,16 @@ contains
                  ("EWA: process incoming particle (W/Z) must be unique")
          end if
          ewa_id = abs (pdg_array_get (pdg_prc1(1), 1))
-         ewa_x_min = var_list_get_rval (var_list, var_str ("ewa_x_min"))
-         ewa_pt_max = var_list_get_rval (var_list, var_str ("ewa_pt_max")) 
+         ewa_x_min = var_list%get_rval (var_str ("ewa_x_min"))
+         ewa_pt_max = var_list%get_rval (var_str ("ewa_pt_max")) 
          if (ewa_pt_max == 0) then
             ewa_pt_max = sqrts
          end if
-         ewa_mass = var_list_get_rval (var_list, var_str ("ewa_mass"))  
-         ewa_keep_momentum = var_list_get_lval (var_list, &
+         ewa_mass = var_list%get_rval (var_str ("ewa_mass"))  
+         ewa_keep_momentum = var_list%get_lval (&
               var_str ("?ewa_keep_momentum"))
-         ewa_keep_energy = var_list_get_lval (var_list, &
-                    var_str ("?ewa_keep_energy"))                  
+         ewa_keep_energy = var_list%get_lval (&
+              var_str ("?ewa_keep_energy"))                  
          if (ewa_keep_momentum .and. ewa_keep_energy) &
               call msg_fatal (" EWA cannot conserve both energy " &
                  // "and momentum.")          
@@ -713,24 +745,24 @@ contains
          select type (data)
          type is (circe1_data_t)
             circe1_photon1 = &
-                 var_list_get_lval (var_list, var_str ("?circe1_photon1"))      
+                 var_list%get_lval (var_str ("?circe1_photon1"))        
             circe1_photon2 = &
-                 var_list_get_lval (var_list, var_str ("?circe1_photon2"))      
+                 var_list%get_lval (var_str ("?circe1_photon2"))        
             circe1_sqrts = &
-                 var_list_get_rval (var_list, var_str ("circe1_sqrts"))
+                 var_list%get_rval (var_str ("circe1_sqrts"))
             circe1_eps = &
-                 var_list_get_rval (var_list, var_str ("circe1_eps"))
+                 var_list%get_rval (var_str ("circe1_eps"))
             if (circe1_sqrts <= 0)  circe1_sqrts = sqrts
             circe1_generate = &
-                 var_list_get_lval (var_list, var_str ("?circe1_generate"))
+                 var_list%get_lval (var_str ("?circe1_generate"))
             circe1_version = &
-                 var_list_get_ival (var_list, var_str ("circe1_ver"))
+                 var_list%get_ival (var_str ("circe1_ver"))
             circe1_revision = &
-                 var_list_get_ival (var_list, var_str ("circe1_rev"))
+                 var_list%get_ival (var_str ("circe1_rev"))
             circe1_accelerator = &
-                 char (var_list_get_sval (var_list, var_str ("$circe1_acc")))
+                 char (var_list%get_sval (var_str ("$circe1_acc")))
             circe1_chattiness = &
-                 var_list_get_ival (var_list, var_str ("circe1_chat"))
+                 var_list%get_ival (var_str ("circe1_chat"))
             call data%init (model, pdg_in, circe1_sqrts, circe1_eps, &
                  [circe1_photon1, circe1_photon2], &
                  circe1_version, circe1_revision, circe1_accelerator, &
@@ -746,11 +778,11 @@ contains
          select type (data)
          type is (circe2_data_t)
             circe2_polarized = &
-                 var_list_get_lval (var_list, var_str ("?circe2_polarized"))
+                 var_list%get_lval (var_str ("?circe2_polarized"))
             circe2_file = &
-                 var_list_get_sval (var_list, var_str ("$circe2_file"))
+                 var_list%get_sval (var_str ("$circe2_file"))
             circe2_design = &
-                 var_list_get_sval (var_list, var_str ("$circe2_design"))
+                 var_list%get_sval (var_str ("$circe2_design"))
             call data%init (global%os_data, model, pdg_in, sqrts, &
                  circe2_polarized, circe2_file, circe2_design)
             call msg_message ("Circe2: activating generator mode")
@@ -762,16 +794,16 @@ contains
          select type (data)
          type is (beam_events_data_t)
             beam_events_dir = global%os_data%whizard_beamsimpath
-            beam_events_file = var_list_get_sval (var_list, &
+            beam_events_file = var_list%get_sval (&
                  var_str ("$beam_events_file"))
-            beam_events_warn_eof = var_list_get_lval (var_list, &
+            beam_events_warn_eof = var_list%get_lval (&
                  var_str ("?beam_events_warn_eof"))
             call data%init (model, pdg_in, &
                     beam_events_dir, beam_events_file, beam_events_warn_eof)  
          end select
       case ("energy_scan")
          escan_normalize = &
-              var_list_get_lval (var_list, var_str ("?energy_scan_normalize"))
+              var_list%get_lval (var_str ("?energy_scan_normalize"))
          allocate (escan_data_t :: data)
          select type (data) 
          type is (escan_data_t)
@@ -877,13 +909,13 @@ contains
     n_strfun = beam_structure%get_n_record ()
     sf_string = beam_structure%to_string (sf_only = .true.)
     sf_allow_s_mapping = &
-         var_list_get_lval (global%var_list, var_str ("?sf_allow_s_mapping"))
+         global%var_list%get_lval (var_str ("?sf_allow_s_mapping"))
     circe1_generate = &
-         var_list_get_lval (global%var_list, var_str ("?circe1_generate"))
+         global%var_list%get_lval (var_str ("?circe1_generate"))
     circe1_map = &
-         var_list_get_lval (global%var_list, var_str ("?circe1_map"))
+         global%var_list%get_lval (var_str ("?circe1_map"))
     circe1_mapping_slope = &
-         var_list_get_rval (global%var_list, var_str ("circe1_mapping_slope"))
+         global%var_list%get_rval (var_str ("circe1_mapping_slope"))
     s_mapping_enable = .false.
     s_mapping_power = 1
     endpoint_mapping = .false.
@@ -1049,23 +1081,36 @@ contains
           call msg_fatal ("Circe/EPA: supported with ?circe1_generate=true &
                &only")
        end if
-    case ("circe2")
-    case ("beam_events")
-    case ("beam_events => isr, none => none, isr")
+    case ("circe2", &
+         "beam_events")
+       !!! no mapping
+    case ("circe2 => isr, none => none, isr", &
+       "beam_events => isr, none => none, isr")
        allocate (s_mapping (2), source = [2, 3])
        power_mapping = .true.
        power_mapping_eps = minval (sf_prop%isr_eps)
-    case ("beam_events => isr, none", &
+    case ("circe2 => isr, none", &
+         "circe2 => none, isr", &
+         "beam_events => isr, none", &
          "beam_events => none, isr")
        allocate (single_mapping (1), source = [2])
-    case ("beam_events => epa, none => none, epa")
+    case ("circe2 => epa, none => none, epa", &
+         "beam_events => epa, none => none, epa")
        allocate (single_mapping (2), source = [2, 3])
-    case ("beam_events => epa, none", &
+    case ("circe2 => epa, none", &
+         "circe2 => none, epa", &
+         "circe2 => ewa, none", &
+         "circe2 => none, ewa", &
+         "beam_events => epa, none", &
          "beam_events => none, epa", &
          "beam_events => ewa, none", &
          "beam_events => none, ewa")
        allocate (single_mapping (1), source = [2])
-    case ("beam_events => epa, none => none, isr", &
+    case ("circe2 => epa, none => none, isr", &
+         "circe2 => isr, none => none, epa", &
+         "circe2 => ewa, none => none, isr", &
+         "circe2 => isr, none => none, ewa", &
+         "beam_events => epa, none => none, isr", &
          "beam_events => isr, none => none, epa", &
          "beam_events => ewa, none => none, isr", &
          "beam_events => isr, none => none, ewa")
@@ -1185,7 +1230,7 @@ contains
     type(rt_data_t), intent(in) :: global
     logical :: check, keep_beams, recover_beams
     logical :: write_sqme_prc, write_sqme_ref, write_sqme_alt
-    type(string_t) :: lhef_version, lhef_extension
+    type(string_t) :: lhef_version, lhef_extension, raw_version
     type(string_t) :: extension_default, debug_extension, extension_hepmc, &
          extension_lha, extension_hepevt, extension_ascii_short, &
          extension_ascii_long, extension_athena, extension_mokka, &
@@ -1198,20 +1243,22 @@ contains
        allocate (eio_raw_t :: eio)
        select type (eio)
        type is (eio_raw_t)
-          check = var_list_get_lval &
-               (global%var_list, var_str ("?check_event_file"))
+          check = &
+               global%var_list%get_lval (var_str ("?check_event_file"))
+          raw_version = &
+               global%var_list%get_sval (var_str ("$event_file_version"))
           extension_raw = &
-               var_list_get_sval (global%var_list, var_str ("$extension_raw"))
-          call eio%set_parameters (check, extension_raw)
+               global%var_list%get_sval (var_str ("$extension_raw"))
+          call eio%set_parameters (check, raw_version, extension_raw)
        end select
     case ("checkpoint")
        allocate (eio_checkpoints_t :: eio)
        select type (eio)
        type is (eio_checkpoints_t)
-          checkpoint = var_list_get_ival &
-               (global%var_list, var_str ("checkpoint"))
-          pacify = var_list_get_lval &
-               (global%var_list, var_str ("?pacify"))
+          checkpoint = &
+               global%var_list%get_ival (var_str ("checkpoint"))
+          pacify = &
+               global%var_list%get_lval (var_str ("?pacify"))
           call eio%set_parameters (checkpoint, blank = pacify)
        end select
     case ("lhef")
@@ -1219,19 +1266,19 @@ contains
        select type (eio)
        type is (eio_lhef_t)
           keep_beams = &
-               var_list_get_lval (global%var_list, var_str ("?keep_beams"))
+               global%var_list%get_lval (var_str ("?keep_beams"))
           recover_beams = &
-               var_list_get_lval (global%var_list, var_str ("?recover_beams"))
+               global%var_list%get_lval (var_str ("?recover_beams"))
           lhef_version = &
-               var_list_get_sval (global%var_list, var_str ("$lhef_version"))
+               global%var_list%get_sval (var_str ("$lhef_version"))
           lhef_extension = &
-               var_list_get_sval (global%var_list, var_str ("$lhef_extension"))
-          write_sqme_prc = var_list_get_lval (global%var_list, &
-               var_str ("?lhef_write_sqme_prc"))
-          write_sqme_ref = var_list_get_lval (global%var_list, &
-               var_str ("?lhef_write_sqme_ref"))
-          write_sqme_alt = var_list_get_lval (global%var_list, &
-               var_str ("?lhef_write_sqme_alt"))
+               global%var_list%get_sval (var_str ("$lhef_extension"))
+          write_sqme_prc = &
+               global%var_list%get_lval (var_str ("?lhef_write_sqme_prc"))
+          write_sqme_ref = &
+               global%var_list%get_lval (var_str ("?lhef_write_sqme_ref"))
+          write_sqme_alt = &
+               global%var_list%get_lval (var_str ("?lhef_write_sqme_alt"))
           call eio%set_parameters (keep_beams, recover_beams, &
                char (lhef_version), lhef_extension, &
                write_sqme_ref, write_sqme_prc, write_sqme_alt)
@@ -1241,11 +1288,11 @@ contains
        select type (eio)
        type is (eio_hepmc_t)
           keep_beams = &
-               var_list_get_lval (global%var_list, var_str ("?keep_beams"))
+               global%var_list%get_lval (var_str ("?keep_beams"))
           recover_beams = &
-               var_list_get_lval (global%var_list, var_str ("?recover_beams"))
-          extension_hepmc = var_list_get_sval ( &
-               global%var_list, var_str ("$extension_hepmc"))          
+               global%var_list%get_lval (var_str ("?recover_beams"))
+          extension_hepmc = &
+               global%var_list%get_sval (var_str ("$extension_hepmc"))          
           call eio%set_parameters (keep_beams, recover_beams, extension_hepmc)
        end select
     case ("lcio")
@@ -1253,11 +1300,11 @@ contains
        select type (eio)
        type is (eio_lcio_t)
           keep_beams = &
-               var_list_get_lval (global%var_list, var_str ("?keep_beams"))
+               global%var_list%get_lval (var_str ("?keep_beams"))
           recover_beams = &
-               var_list_get_lval (global%var_list, var_str ("?recover_beams"))
-          extension_lcio = var_list_get_sval ( &
-               global%var_list, var_str ("$extension_lcio"))
+               global%var_list%get_lval (var_str ("?recover_beams"))
+          extension_lcio = &
+               global%var_list%get_sval (var_str ("$extension_lcio"))
           call eio%set_parameters (keep_beams, recover_beams, extension_lcio)
        end select       
     case ("stdhep")
@@ -1265,9 +1312,9 @@ contains
        select type (eio)
        type is (eio_stdhep_hepevt_t)                   
           keep_beams = &
-               var_list_get_lval (global%var_list, var_str ("?keep_beams"))
-          extension_stdhep = var_list_get_sval ( &
-               global%var_list, var_str ("$extension_stdhep"))          
+               global%var_list%get_lval (var_str ("?keep_beams"))
+          extension_stdhep = &
+               global%var_list%get_sval (var_str ("$extension_stdhep"))
           call eio%set_parameters (keep_beams, extension_stdhep)          
        end select
     case ("stdhep_up")
@@ -1275,9 +1322,9 @@ contains
        select type (eio)
        type is (eio_stdhep_hepeup_t)          
           keep_beams = &
-               var_list_get_lval (global%var_list, var_str ("?keep_beams"))
-          extension_stdhep_up = var_list_get_sval ( &
-               global%var_list, var_str ("$extension_stdhep_up"))          
+               global%var_list%get_lval (var_str ("?keep_beams"))
+          extension_stdhep_up = &
+               global%var_list%get_sval (var_str ("$extension_stdhep_up")) 
           call eio%set_parameters (keep_beams, extension_stdhep_up)          
        end select       
     case ("ascii")   
@@ -1285,9 +1332,9 @@ contains
        select type (eio)
        type is (eio_ascii_ascii_t)
           keep_beams = &
-               var_list_get_lval (global%var_list, var_str ("?keep_beams"))
-          extension_default = var_list_get_sval ( &
-               global%var_list, var_str ("$extension_default"))          
+               global%var_list%get_lval (var_str ("?keep_beams"))
+          extension_default = &
+               global%var_list%get_sval (var_str ("$extension_default"))
           call eio%set_parameters (keep_beams, extension_default)
        end select       
     case ("athena")   
@@ -1295,9 +1342,9 @@ contains
        select type (eio)
        type is (eio_ascii_athena_t)
           keep_beams = &
-               var_list_get_lval (global%var_list, var_str ("?keep_beams"))
-          extension_athena = var_list_get_sval ( &
-               global%var_list, var_str ("$extension_athena"))
+               global%var_list%get_lval (var_str ("?keep_beams"))
+          extension_athena = &
+               global%var_list%get_sval (var_str ("$extension_athena"))
           call eio%set_parameters (keep_beams, extension_athena)
        end select              
     case ("debug")   
@@ -1305,17 +1352,17 @@ contains
        select type (eio)
        type is (eio_ascii_debug_t)
           keep_beams = &
-               var_list_get_lval (global%var_list, var_str ("?keep_beams"))
-          debug_extension = var_list_get_sval ( &
-               global%var_list, var_str ("$debug_extension"))          
-          show_process = var_list_get_lval ( &
-               global%var_list, var_str ("?debug_process"))
-          show_transforms = var_list_get_lval ( &
-               global%var_list, var_str ("?debug_transforms"))
-          show_decay = var_list_get_lval ( &
-               global%var_list, var_str ("?debug_decay"))
-          verbose = var_list_get_lval ( &
-               global%var_list, var_str ("?debug_verbose"))
+               global%var_list%get_lval (var_str ("?keep_beams"))
+          debug_extension = &
+               global%var_list%get_sval (var_str ("$debug_extension"))          
+          show_process = &
+               global%var_list%get_lval (var_str ("?debug_process"))
+          show_transforms = &
+               global%var_list%get_lval (var_str ("?debug_transforms"))
+          show_decay = &
+               global%var_list%get_lval (var_str ("?debug_decay"))
+          verbose = &
+               global%var_list%get_lval (var_str ("?debug_verbose"))
           call eio%set_parameters (keep_beams, debug_extension, &
                show_process, show_transforms, show_decay, verbose)
        end select
@@ -1324,9 +1371,9 @@ contains
        select type (eio)
        type is (eio_ascii_hepevt_t)
           keep_beams = &
-               var_list_get_lval (global%var_list, var_str ("?keep_beams"))
-          extension_hepevt = var_list_get_sval ( &
-               global%var_list, var_str ("$extension_hepevt"))          
+               global%var_list%get_lval (var_str ("?keep_beams"))
+          extension_hepevt = &
+               global%var_list%get_sval (var_str ("$extension_hepevt"))
           call eio%set_parameters (keep_beams, extension_hepevt)
        end select              
     case ("hepevt_verb")   
@@ -1334,9 +1381,9 @@ contains
        select type (eio)
        type is (eio_ascii_hepevt_verb_t)
           keep_beams = &
-               var_list_get_lval (global%var_list, var_str ("?keep_beams"))
-          extension_hepevt_verb = var_list_get_sval ( &
-               global%var_list, var_str ("$extension_hepevt_verb"))          
+               global%var_list%get_lval (var_str ("?keep_beams"))
+          extension_hepevt_verb = &
+               global%var_list%get_sval (var_str ("$extension_hepevt_verb"))
           call eio%set_parameters (keep_beams, extension_hepevt_verb)
        end select                     
     case ("lha")   
@@ -1344,9 +1391,9 @@ contains
        select type (eio)
        type is (eio_ascii_lha_t)
           keep_beams = &
-               var_list_get_lval (global%var_list, var_str ("?keep_beams"))
-          extension_lha = var_list_get_sval ( &
-               global%var_list, var_str ("$extension_lha"))          
+               global%var_list%get_lval (var_str ("?keep_beams"))
+          extension_lha = &
+               global%var_list%get_sval (var_str ("$extension_lha"))
           call eio%set_parameters (keep_beams, extension_lha)
        end select                     
     case ("lha_verb")   
@@ -1354,9 +1401,9 @@ contains
        select type (eio)
        type is (eio_ascii_lha_verb_t)
           keep_beams = &
-               var_list_get_lval (global%var_list, var_str ("?keep_beams"))
-          extension_lha_verb = var_list_get_sval ( &
-               global%var_list, var_str ("$extension_lha_verb"))          
+               global%var_list%get_lval (var_str ("?keep_beams"))
+          extension_lha_verb = global%var_list%get_sval ( &
+               var_str ("$extension_lha_verb"))          
           call eio%set_parameters (keep_beams, extension_lha_verb)
        end select                            
     case ("long")   
@@ -1364,9 +1411,9 @@ contains
        select type (eio)
        type is (eio_ascii_long_t)
           keep_beams = &
-               var_list_get_lval (global%var_list, var_str ("?keep_beams"))
-          extension_ascii_long = var_list_get_sval ( &
-               global%var_list, var_str ("$extension_ascii_long"))          
+               global%var_list%get_lval (var_str ("?keep_beams"))
+          extension_ascii_long = &
+               global%var_list%get_sval (var_str ("$extension_ascii_long"))
           call eio%set_parameters (keep_beams, extension_ascii_long)
        end select              
     case ("mokka")   
@@ -1374,9 +1421,9 @@ contains
        select type (eio)
        type is (eio_ascii_mokka_t)
           keep_beams = &
-               var_list_get_lval (global%var_list, var_str ("?keep_beams"))
-          extension_mokka = var_list_get_sval ( &
-               global%var_list, var_str ("$extension_mokka"))          
+               global%var_list%get_lval (var_str ("?keep_beams"))
+          extension_mokka = &
+               global%var_list%get_sval (var_str ("$extension_mokka"))          
           call eio%set_parameters (keep_beams, extension_mokka)
        end select                     
     case ("short")   
@@ -1384,17 +1431,17 @@ contains
        select type (eio)
        type is (eio_ascii_short_t)
           keep_beams = &
-               var_list_get_lval (global%var_list, var_str ("?keep_beams"))
-          extension_ascii_short = var_list_get_sval ( &
-               global%var_list, var_str ("$extension_ascii_short"))          
+               global%var_list%get_lval (var_str ("?keep_beams"))
+          extension_ascii_short = &
+               global%var_list%get_sval (var_str ("$extension_ascii_short"))
           call eio%set_parameters (keep_beams, extension_ascii_short)
        end select                     
     case ("weight_stream")
        allocate (eio_weights_t :: eio)
        select type (eio)
        type is (eio_weights_t)
-          pacify = var_list_get_lval &
-               (global%var_list, var_str ("?pacify"))
+          pacify = &
+               global%var_list%get_lval (var_str ("?pacify"))
           call eio%set_parameters (pacify = pacify)       
        end select
     case default
@@ -1414,37 +1461,37 @@ contains
     type(string_t) :: pdfset, lhapdf_dir, lhapdf_file
     var_list => global%get_var_list_ptr ()
     fixed = &
-         var_list_get_lval (var_list, var_str ("?alpha_s_is_fixed"))
+         var_list%get_lval (var_str ("?alpha_s_is_fixed"))
     from_mz = &
-         var_list_get_lval (var_list, var_str ("?alpha_s_from_mz"))
+         var_list%get_lval (var_str ("?alpha_s_from_mz"))
     from_pdf_builtin = &
-         var_list_get_lval (var_list, var_str ("?alpha_s_from_pdf_builtin"))
+         var_list%get_lval (var_str ("?alpha_s_from_pdf_builtin"))
     from_lhapdf = &
-         var_list_get_lval (var_list, var_str ("?alpha_s_from_lhapdf"))
+         var_list%get_lval (var_str ("?alpha_s_from_lhapdf"))
     from_lambda_qcd = &
-         var_list_get_lval (var_list, var_str ("?alpha_s_from_lambda_qcd"))
+         var_list%get_lval (var_str ("?alpha_s_from_lambda_qcd"))
     pdfset = &
-         var_list_get_sval (var_list, var_str ("$pdf_builtin_set"))    
+         var_list%get_sval (var_str ("$pdf_builtin_set"))    
     lambda = &
-         var_list_get_rval (var_list, var_str ("lambda_qcd"))
+         var_list%get_rval (var_str ("lambda_qcd"))
     nf = &
-         var_list_get_ival (var_list, var_str ("alpha_s_nf"))
+         var_list%get_ival (var_str ("alpha_s_nf"))
     order = &
-         var_list_get_ival (var_list, var_str ("alpha_s_order"))
+         var_list%get_ival (var_str ("alpha_s_order"))
     lhapdf_dir = &
-         var_list_get_sval (var_list, var_str ("$lhapdf_dir"))
+         var_list%get_sval (var_str ("$lhapdf_dir"))
     lhapdf_file = &
-         var_list_get_sval (var_list, var_str ("$lhapdf_file"))
+         var_list%get_sval (var_str ("$lhapdf_file"))
     lhapdf_member = &
-         var_list_get_ival (var_list, var_str ("lhapdf_member"))         
+         var_list%get_ival (var_str ("lhapdf_member"))         
     var_list => global%get_var_list_ptr ()
-    if (var_list_exists (var_list, var_str ("mZ"))) then
-       mz = var_list_get_rval (var_list, var_str ("mZ"))
+    if (var_list%contains (var_str ("mZ"))) then
+       mz = var_list%get_rval (var_str ("mZ"))
     else
        mz = MZ_REF
     end if
-    if (var_list_exists (var_list, var_str ("alphas"))) then
-       alpha_val = var_list_get_rval (var_list, var_str ("alphas"))
+    if (var_list%contains (var_str ("alphas"))) then
+       alpha_val = var_list%get_rval (var_str ("alphas"))
     else
        alpha_val = ALPHA_QCD_MZ_REF
     end if
@@ -1510,7 +1557,7 @@ contains
     type(rt_data_t), intent(in) :: global
     logical :: allow_decays
     allow_decays = &
-         var_list_get_lval (global%var_list, var_str ("?allow_decays"))
+         global%var_list%get_lval (var_str ("?allow_decays"))
     if (allow_decays) then
        allocate (evt_decay_t :: evt)
        call msg_message ("Simulate: activating decays")
@@ -1521,20 +1568,24 @@ contains
 
   subroutine dispatch_evt_shower (evt, global, process)
     class(evt_t), intent(out), pointer :: evt
-    type(rt_data_t), intent(in) :: global
+    type(rt_data_t), intent(in), target :: global
     type(process_t), intent(in), optional, target :: process
     logical :: allow_shower
+    type(var_list_t), pointer :: var_list
     type(string_t) :: lhapdf_file, lhapdf_dir
     integer :: lhapdf_member
+    double precision :: xmin, xmax, q2min, q2max
     type(shower_settings_t) :: settings
+    external :: GetXminM, GetXmaxM, GetQ2minM, GetQ2maxM    
+    var_list => global%get_var_list_ptr ()    
     allow_shower = &
-         var_list_get_lval (global%var_list, var_str ("?allow_shower"))
+         var_list%get_lval (var_str ("?allow_shower"))
     lhapdf_dir = &
-         var_list_get_sval (global%var_list, var_str ("$lhapdf_dir"))    
+         var_list%get_sval (var_str ("$lhapdf_dir"))    
     lhapdf_file = &
-         var_list_get_sval (global%var_list, var_str ("$lhapdf_file"))
+         var_list%get_sval (var_str ("$lhapdf_file"))
     lhapdf_member = &
-         var_list_get_ival (global%var_list, var_str ("lhapdf_member"))             
+         var_list%get_ival (var_str ("lhapdf_member"))             
     if (allow_shower) then
        allocate (evt_shower_t :: evt)
        call msg_message ("Simulate: activating parton shower")
@@ -1547,13 +1598,31 @@ contains
             call msg_message ("Simulate: applying hadronization")
        select type (evt)
        type is (evt_shower_t)
+          call evt%init (settings, global%fallback_model, global%os_data)
           if (LHAPDF6_AVAILABLE) then
              call lhapdf_initialize &
                   (1, lhapdf_dir, lhapdf_file, lhapdf_member, evt%pdf)
           end if
-          call evt%init (settings, global%fallback_model, global%os_data)
           if (present (process)) &
                call evt%setup_pdf (process, global%beam_structure)
+          select case (evt%pdf_type)
+          case (STRF_LHAPDF6)
+             evt%xmin = evt%pdf%getxmin ()
+             evt%xmax = evt%pdf%getxmax ()
+             evt%qmin = sqrt(evt%pdf%getq2min ())
+             evt%qmax = sqrt(evt%pdf%getq2max ())
+          case (STRF_LHAPDF5)
+             if (LHAPDF5_AVAILABLE) then
+                call GetXminM (1, lhapdf_member, xmin)
+                call GetXmaxM (1, lhapdf_member, xmax)
+                call GetQ2minM (1, lhapdf_member, q2min)
+                call GetQ2maxM (1, lhapdf_member, q2max)
+                evt%xmin = xmin
+                evt%xmax = xmax
+                evt%qmin = sqrt(q2min)
+                evt%qmax = sqrt(q2max)
+             end if
+          end select
        end select
     else
        evt => null ()
@@ -1563,12 +1632,12 @@ contains
   subroutine dispatch_slha (global, input, spectrum, decays)
     type(rt_data_t), intent(inout), target :: global
     logical, intent(out) :: input, spectrum, decays
-    input = var_list_get_lval (global%var_list, &
-         var_str ("?slha_read_input"))
-    spectrum = var_list_get_lval (global%var_list, &
-         var_str ("?slha_read_spectrum"))
-    decays = var_list_get_lval (global%var_list, &
-         var_str ("?slha_read_decays"))    
+    input = &
+         global%var_list%get_lval (var_str ("?slha_read_input"))
+    spectrum = &
+         global%var_list%get_lval (var_str ("?slha_read_spectrum"))
+    decays = &
+         global%var_list%get_lval (var_str ("?slha_read_decays"))    
   end subroutine dispatch_slha
 
 
@@ -2486,6 +2555,7 @@ contains
     integer, intent(in) :: u
     type(rt_data_t), target :: global
     class(evt_t), pointer :: evt
+    type(var_list_t), pointer :: model_vars
     
     write (u, "(A)")  "* Test output: dispatch_13"
     write (u, "(A)")  "*   Purpose: configure event transform"
@@ -2495,6 +2565,7 @@ contains
     call global%global_init ()
     call global%init_fallback_model &
          (var_str ("SM_hadrons"), var_str ("SM_hadrons.mdl"))
+    model_vars => global%get_var_list_ptr ()    
 
     write (u, "(A)")  "* Partonic decays"
     write (u, "(A)")

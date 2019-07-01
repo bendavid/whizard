@@ -78,6 +78,7 @@ contains
        real(default) :: nloop
        real(default) :: sh
        real(default) :: sf
+       real(default) :: test
        real(default) :: ee
        real(default) :: cw
        real(default) :: sw
@@ -113,11 +114,12 @@ contains
     par%nloop  = par_array(22)
     par%sh     = par_array(23)
     par%sf     = par_array(24)
-    par%ee     = par_array(25)
-    par%cw     = par_array(26)
-    par%sw     = par_array(27)
-    par%v      = par_array(28)
-    par%mtpole = par_array(29)
+    par%test   = par_array(25)
+    par%ee     = par_array(26)
+    par%cw     = par_array(27)
+    par%sw     = par_array(28)
+    par%v      = par_array(29)
+    par%mtpole = par_array(30)
     mass(1:27) = 0
     width(1:27) = 0
     mass(3) = par%ms
@@ -186,7 +188,7 @@ contains
     igs = cmplx (0.0_default, 1.0_default, kind=default) * gs
     call ttv_formfactors_init (mass(6), par%m1s, width(6), par%alphaemi, &
        par%sw, par%alphas, par%mZ, par%mW, mass(5), par%sh, par%sf, par%nloop)
-    call ttv_formfactors_init_threshold_grid ()
+    call ttv_formfactors_init_threshold_grid (par%test)
   end subroutine import_from_whizard
 
   subroutine model_update_alpha_s (alpha_s)

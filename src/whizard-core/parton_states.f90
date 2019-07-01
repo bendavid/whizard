@@ -1,6 +1,6 @@
-! WHIZARD 2.2.3 Nov 30 2014
+! WHIZARD 2.2.4 Feb 06 2015
 ! 
-! Copyright (C) 1999-2014 by 
+! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -9,7 +9,8 @@
 !     Fabian Bach <fabian.bach@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Felix Braam, Sebastian Schmidt, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam, 
+!     Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -79,6 +80,7 @@ module parton_states
      procedure :: get_trace_int_ptr => parton_state_get_trace_int_ptr
      procedure :: get_matrix_int_ptr => parton_state_get_matrix_int_ptr
      procedure :: get_flows_int_ptr => parton_state_get_flows_int_ptr
+     procedure :: get_n_out => parton_state_get_n_out
   end type parton_state_t
 
   type, extends (parton_state_t) :: isolated_state_t
@@ -96,6 +98,7 @@ module parton_states
 
   public :: connected_state_t
   type, extends (parton_state_t) :: connected_state_t
+     type(state_flv_content_t) :: state_flv
      logical :: has_flows_sf = .false.
      type(evaluator_t) :: flows_sf
      logical :: has_expr = .false.
@@ -104,6 +107,8 @@ module parton_states
      procedure :: setup_connected_trace => connected_state_setup_connected_trace
      procedure :: setup_connected_matrix => connected_state_setup_connected_matrix
      procedure :: setup_connected_flows => connected_state_setup_connected_flows
+     procedure :: setup_state_flv => connected_state_setup_state_flv
+     procedure :: get_state_flv => connected_state_get_state_flv
      procedure :: setup_subevt => connected_state_setup_subevt
      procedure :: setup_var_list => connected_state_setup_var_list
      procedure :: setup_cuts => connected_state_setup_cuts
@@ -385,6 +390,20 @@ contains
     state%has_flows = .true.
   end subroutine connected_state_setup_connected_flows
   
+  subroutine connected_state_setup_state_flv (state, n_out_hard)
+    class(connected_state_t), intent(inout), target :: state
+    integer, intent(in) :: n_out_hard
+    type(interaction_t), pointer :: int
+    int => evaluator_get_int_ptr (state%matrix)
+    call interaction_get_flv_content (int, state%state_flv, n_out_hard)
+  end subroutine connected_state_setup_state_flv
+  
+  function connected_state_get_state_flv (state) result (state_flv)
+    class(connected_state_t), intent(in) :: state
+    type(state_flv_content_t) :: state_flv
+    state_flv = state%state_flv
+  end function connected_state_get_state_flv
+  
   subroutine connected_state_setup_subevt (state, sf_chain, f_beam, f_in, f_out)
     class(connected_state_t), intent(inout), target :: state
     type(sf_chain_instance_t), intent(in), target :: sf_chain
@@ -575,6 +594,14 @@ contains
     integer, dimension(:), intent(out) :: i_in
     call state%expr%get_in_index (i_in)
   end subroutine connected_state_get_in_index
+  
+  function parton_state_get_n_out (state) result (n)
+    class(parton_state_t), intent(in), target :: state
+    integer :: n
+    type(interaction_t), pointer :: int
+    int => evaluator_get_int_ptr (state%trace)
+    n = interaction_get_n_out (int)
+  end function parton_state_get_n_out
   
 
 end module parton_states

@@ -2,7 +2,7 @@
 ##
 ## Process this file with automake to produce Makefile.in
 #
-# Copyright (C) 1999-2014 by 
+# Copyright (C) 1999-2015 by 
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
@@ -32,7 +32,11 @@
 noinst_LTLIBRARIES = libphase_space.la
 
 libphase_space_la_SOURCES = \
-  phs_base.f90
+  phs_base.f90 \
+  phs_single.f90 \
+  mappings.f90 phs_trees.f90 phs_forests.f90 \
+  cascades.f90 \
+  phs_wood.f90
 
 ## Omitting this would exclude it from the distribution
 dist_noinst_DATA = phase_space.nw
@@ -53,8 +57,10 @@ module_lists = \
   ../testing/Modules \
   ../system/Modules \
   ../combinatorics/Modules \
+  ../parsing/Modules \
   ../physics/Modules \
   ../qft/Modules \
+  ../types/Modules \
   ../matrix_elements/Modules \
   ../beams/Modules
 
@@ -100,7 +106,7 @@ DISTCLEANFILES += Makefile.depend
 	@:
 #	touch $@
 
-AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system -I../combinatorics -I../physics -I../fastjet -I../qft -I../matrix_elements -I../types -I../particles -I../beams
+AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system -I../combinatorics -I../parsing -I../physics -I../fastjet -I../qft -I../matrix_elements -I../types -I../particles -I../beams
 
 
 ########################################################################

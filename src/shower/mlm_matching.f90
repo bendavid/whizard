@@ -1,6 +1,6 @@
-! WHIZARD 2.2.3 Nov 30 2014
+! WHIZARD 2.2.4 Feb 06 2015
 ! 
-! Copyright (C) 1999-2014 by 
+! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -9,7 +9,8 @@
 !     Fabian Bach <fabian.bach@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Felix Braam, Sebastian Schmidt, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam, 
+!     Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -31,14 +32,13 @@
 
 module mlm_matching
 
-  use kinds, only: default !NODEP!
-  use kinds, only: double !NODEP!
-  use io_units !NODEP!
-  use format_utils, only: write_separator !NODEP!
-  use constants !NODEP!
-  use diagnostics !NODEP!
-  use file_utils !NODEP!
-  use lorentz !NODEP!
+  use kinds, only: default, double
+  use io_units
+  use constants
+  use format_utils, only: write_separator
+  use diagnostics
+  use file_utils
+  use lorentz
 
   implicit none
   private
@@ -209,13 +209,10 @@ contains
 
     if (n_jets_ME > 0) then
        ycut = (settings%mlm_ptmin)**2
-       ! ycut = settings%mlm_Qcut_ME**2
        allocate (PP(1:4, 1:N_jets_ME))
        do i = 1, n_jets_ME
-          PP(1,i) = vector4_get_component (data%p_ME(i), 1)
-          PP(2,i) = vector4_get_component (data%p_ME(i), 2)
-          PP(3,i) = vector4_get_component (data%p_ME(i), 3)
-          PP(4,i) = vector4_get_component (data%p_ME(i), 0)
+          PP(1:3,i) = data%p_ME(i)%p(1:3)
+          PP(4,i) = data%p_ME(i)%p(0)
        end do
 
        if (data%is_hadron_collision) then
@@ -228,7 +225,6 @@ contains
        allocate (JET(1:n_jets_ME))
        allocate (Y(1:n_jets_ME))
 
-    !!! TODO: (bcn 2014-03-26) has he forgotten mlm_Rclusfactor here? #
        if (signal_is_pending ())  return
        call KTCLUR (imode, PP, n_jets_ME, &
             dble (settings%mlm_Rclusfactor * settings%mlm_Rmin), ECUT, y, *999)
@@ -253,13 +249,10 @@ contains
     if (n_jets_PS > 0) then
        ycut = (settings%mlm_ptmin + max (settings%mlm_ETclusminE, &
             settings%mlm_ETclusfactor * settings%mlm_ptmin))**2
-       ! ycut = settings%mlm_Qcut_PS**2
        allocate (PP(1:4, 1:n_jets_PS))
        do i = 1, n_jets_PS
-          PP(1,i) = vector4_get_component (data%p_PS(i), 1)
-          PP(2,i) = vector4_get_component (data%p_PS(i), 2)
-          PP(3,i) = vector4_get_component (data%p_PS(i), 3)
-          PP(4,i) = vector4_get_component (data%p_PS(i), 0)
+          PP(1:3,i) = data%p_PS(i)%p(1:3)
+          PP(4,i) = data%p_PS(i)%p(0)
        end do
 
        if (data%is_hadron_collision) then
@@ -309,8 +302,6 @@ contains
        n_jets_PS_atycut = 0
     end if
 
-    ! call data_write(data)
-
     if (n_jets_PS_atycut < n_jets_ME) then
        ! print *, "DISCARDING: Not enough PS jets: ", n_jets_PS_atycut
        return
@@ -332,39 +323,25 @@ contains
        allocate (PP(1:4, 1:n_jets_PS + 1))
        do i = 1, n_jets_PS
           if (signal_is_pending ()) return
-          ! call vector4_write(data%jets_PS(i))
-          PP(1,i) = vector4_get_component (data%JETS_PS(i), 1)
-          PP(2,i) = vector4_get_component (data%JETS_PS(i), 2)
-          PP(3,i) = vector4_get_component (data%JETS_PS(i), 3)
-          PP(4,i) = vector4_get_component (data%JETS_PS(i), 0)
+          PP(1:3,i) = data%JETS_PS(i)%p(1:3)
+          PP(4,i) = data%JETS_PS(i)%p(0)
        end do
        if (allocated (Y))  deallocate(Y)
        allocate (Y(1:n_jets_PS + 1))
        y = zero
        do i = 1, n_jets_ME
-          ! print *, "ME JET"
-          ! call vector4_write(data%jets_ME(i))
-          PP(1,n_jets_PS + 2 - i) = vector4_get_component (data%JETS_ME(i), 1)
-          PP(2,n_jets_PS + 2 - i) = vector4_get_component (data%JETS_ME(i), 2)
-          PP(3,n_jets_PS + 2 - i) = vector4_get_component (data%JETS_ME(i), 3)
-          PP(4,n_jets_PS + 2 - i) = vector4_get_component (data%JETS_ME(i), 0)
+          PP(1:3,n_jets_PS + 2 - i) = data%JETS_ME(i)%p(1:3)
+          PP(4,n_jets_PS + 2 - i) = data%JETS_ME(i)%p(0)
           !!! This makes more sense than hardcoding
           ! call KTCLUS (4313, PP, (n_jets_PS + 2 - i), 1.0_double, Y, *999)
           call KTCLUR (imode, PP, (n_jets_PS + 2 - i), &
             dble (settings%mlm_Rclusfactor * settings%mlm_Rmin), &
             ECUT, y, *999)
-          ! print *, "    Y=" , y
-          ! print *, y(n_jets_PS + 1 - i), " " , ycut
           if (0.99 * y(n_jets_PS + 1 - (i - 1)).gt.ycut) then
              ! print *, "DISCARDING: Jet ", i, " not clusterd"
              return
           end if
           !!! search for and remove PS jet clustered with ME Jet
-          ! print *, "i=",  i, n_jets_PS, n_jets_ME
-          ! do j = 1, n_jets_PS + 2 - i
-          !    print *, PP(1,j), PP(2,j), PP(3,j), PP(4,j)
-          ! end do
-          ! print *, " n_jets_PS=", n_jets_PS
           ip1 = HIST(n_jets_PS + 2 - i) / NMAX
           ip2 = mod(hist(n_jets_PS + 2 - i), NMAX)
           if ((ip2 /= n_jets_PS + 2 - i) .or. (ip1 <= 0)) then
@@ -1092,7 +1069,7 @@ contains
 !C                          200-    PRINT WARNING & STOP DEAD
 !C-----------------------------------------------------------------------
       INTEGER ICODE
-      CHARACTER*6 SUBRTN
+      CHARACTER(len=6) SUBRTN
       WRITE (6,10) SUBRTN,ICODE
 10    FORMAT(/' KTWARN CALLED FROM SUBPROGRAM ',A6,': CODE =',I4/)
       IF (ICODE.LT.100) RETURN

@@ -12,6 +12,8 @@ The modules depend only on modules from the [[basics]] set.
 \item[file\_utils]
   Procedures that deal with external files, if not covered by Fortran
   built-ins.
+\item[file\_registries]
+  Manage files that are accessed by their name.
 \item[string\_utils]
   Some string-handling utilities.  Includes conversion to C string.
 \item[format\_utils]
@@ -66,6 +68,257 @@ handle the subtleties, so we assume that it is writable if it exists.
   end subroutine delete_file
   
 @ %def delete_file
+@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{File Registries}
+
+This module provides a file-registry facility.  We can open and close
+files multiple times without inadvertedly accessing a single file by two
+different I/O unit numbers.  Opening a file the first time enters it
+into the registry.  Opening again just returns the associated I/O
+unit.  The registry maintains a reference count, so closing a file
+does not actually complete until the last reference is released.
+
+File access will always be sequential, however.  The file can't be
+opened at different positions simultaneously.
+<<[[file_registries.f90]]>>=
+<<File header>>
+
+module file_registries
+  
+<<Use strings>>
+  use io_units
+
+<<Standard module head>>
+
+<<File registries: public>>
+
+<<File registries: types>>
+
+contains
+  
+<<File registries: procedures>>
+
+end module file_registries
+@ %def file_registries
+@
+\subsection{File handle}
+This object holds a filename (fully qualified), the associated
+unit, and a reference count.  The idea is that the object should be
+deleted when the reference count drops to zero.
+<<File registries: types>>=
+  type :: file_handle_t
+     type(string_t) :: file
+     integer :: unit = 0
+     integer :: refcount = 0
+   contains
+   <<File registries: file handle: TBP>>
+  end type file_handle_t
+  
+@ %def file_handle_t
+@ Debugging output:
+<<File registries: file handle: TBP>>=
+  procedure :: write => file_handle_write
+<<File registries: procedures>>=
+  subroutine file_handle_write (handle, u, show_unit)
+    class(file_handle_t), intent(in) :: handle
+    integer, intent(in) :: u
+    logical, intent(in), optional :: show_unit
+    logical :: show_u
+    show_u = .false.;  if (present (show_unit))  show_u = show_unit
+    if (show_u) then
+       write (u, "(3x,A,1x,I0,1x,'(',I0,')')")  &
+            char (handle%file), handle%unit, handle%refcount
+    else
+       write (u, "(3x,A,1x,'(',I0,')')")  &
+            char (handle%file), handle%refcount
+    end if
+  end subroutine file_handle_write
+  
+@ %def file_handle_write
+@ Initialize with a file name, don't open the file yet:
+<<File registries: file handle: TBP>>=
+  procedure :: init => file_handle_init
+<<File registries: procedures>>=
+  subroutine file_handle_init (handle, file)
+    class(file_handle_t), intent(out) :: handle
+    type(string_t), intent(in) :: file
+    handle%file = file
+  end subroutine file_handle_init
+  
+@ %def file_handle_init
+@ We check the [[refcount]] before actually opening the file.
+<<File registries: file handle: TBP>>=
+  procedure :: open => file_handle_open
+<<File registries: procedures>>=
+  subroutine file_handle_open (handle)
+    class(file_handle_t), intent(inout) :: handle
+    if (handle%refcount == 0) then
+       handle%unit = free_unit ()
+       open (unit = handle%unit, file = char (handle%file), action = "read", &
+            status = "old")
+    end if
+    handle%refcount = handle%refcount + 1
+  end subroutine file_handle_open
+    
+@ %def file_handle_open
+@ Analogously, close if the refcount drops to zero.  The caller may
+then delete the object.
+<<File registries: file handle: TBP>>=
+  procedure :: close => file_handle_close
+<<File registries: procedures>>=
+  subroutine file_handle_close (handle)
+    class(file_handle_t), intent(inout) :: handle
+    handle%refcount = handle%refcount - 1
+    if (handle%refcount == 0) then
+       close (handle%unit)
+       handle%unit = 0
+    end if
+  end subroutine file_handle_close
+  
+@ %def file_handle_close
+@ The I/O unit will be nonzero when the file is open.
+<<File registries: file handle: TBP>>=
+  procedure :: is_open => file_handle_is_open
+<<File registries: procedures>>=
+  function file_handle_is_open (handle) result (flag)
+    class(file_handle_t), intent(in) :: handle
+    logical :: flag
+    flag = handle%unit /= 0
+  end function file_handle_is_open
+  
+@ %def file_handle_is_open
+@ Return the filename, so we can identify the entry.
+<<File registries: file handle: TBP>>=
+  procedure :: get_file => file_handle_get_file
+<<File registries: procedures>>=
+  function file_handle_get_file (handle) result (file)
+    class(file_handle_t), intent(in) :: handle
+    type(string_t) :: file
+    file = handle%file
+  end function file_handle_get_file
+  
+@ %def file_handle_get_file
+@ For debugging, return the I/O unit number.
+<<File registries: file handle: TBP>>=
+  procedure :: get_unit => file_handle_get_unit
+<<File registries: procedures>>=
+  function file_handle_get_unit (handle) result (unit)
+    class(file_handle_t), intent(in) :: handle
+    integer :: unit
+    unit = handle%unit
+  end function file_handle_get_unit
+  
+@ %def file_handle_get_unit
+@
+\subsection{File handles registry}
+This is implemented as a doubly-linked list.  The list exists only
+once in the program, as a private module variable.
+
+Extend the handle type to become a list entry:
+<<File registries: types>>=
+  type, extends (file_handle_t) :: file_entry_t
+     type(file_entry_t), pointer :: prev => null ()
+     type(file_entry_t), pointer :: next => null ()
+  end type file_entry_t
+
+@ %def file_entry_t
+@ The actual registry.  We need only the pointer to the first entry.
+<<File registries: public>>=
+  public :: file_registry_t
+<<File registries: types>>=
+  type :: file_registry_t
+     type(file_entry_t), pointer :: first => null ()
+   contains
+   <<File registries: file registry: TBP>>
+  end type file_registry_t
+  
+@ %def file_registry_t
+@ Debugging output.
+<<File registries: file registry: TBP>>=
+  procedure :: write => file_registry_write
+<<File registries: procedures>>=
+  subroutine file_registry_write (registry, unit, show_unit)
+    class(file_registry_t), intent(in) :: registry
+    integer, intent(in), optional :: unit
+    logical, intent(in), optional :: show_unit
+    type(file_entry_t), pointer :: entry
+    integer :: u
+    u = given_output_unit (unit)
+    if (associated (registry%first)) then
+       write (u, "(1x,A)")  "File registry:"
+       entry => registry%first
+       do while (associated (entry))
+          call entry%write (u, show_unit)
+          entry => entry%next
+       end do
+    else
+       write (u, "(1x,A)")  "File registry: [empty]"
+    end if
+  end subroutine file_registry_write
+    
+@ %def file_registry_write
+@ Open a file: find the appropriate entry.  Create a new entry and add
+to the list if necessary.  The list is extended at the beginning.
+Return the I/O unit number for the records.
+<<File registries: file registry: TBP>>=
+  procedure :: open => file_registry_open
+<<File registries: procedures>>=
+  subroutine file_registry_open (registry, file, unit)
+    class(file_registry_t), intent(inout) :: registry
+    type(string_t), intent(in) :: file
+    integer, intent(out), optional :: unit
+    type(file_entry_t), pointer :: entry
+    entry => registry%first
+    FIND_ENTRY: do while (associated (entry))
+       if (entry%get_file () == file)  exit FIND_ENTRY
+       entry => entry%next
+    end do FIND_ENTRY
+    if (.not. associated (entry)) then
+       allocate (entry)
+       call entry%init (file)
+       if (associated (registry%first)) then
+          registry%first%prev => entry
+          entry%next => registry%first
+       end if
+       registry%first => entry
+    end if
+    call entry%open ()
+    if (present (unit))  unit = entry%get_unit ()
+  end subroutine file_registry_open
+
+@ %def file_registry_open
+@ Close a file: find the appropriate entry.  Delete the entry if there
+is no file connected to it anymore.
+<<File registries: file registry: TBP>>=
+  procedure :: close => file_registry_close
+<<File registries: procedures>>=
+  subroutine file_registry_close (registry, file)
+    class(file_registry_t), intent(inout) :: registry
+    type(string_t), intent(in) :: file
+    type(file_entry_t), pointer :: entry
+    entry => registry%first
+    FIND_ENTRY: do while (associated (entry))
+       if (entry%get_file () == file)  exit FIND_ENTRY
+       entry => entry%next
+    end do FIND_ENTRY
+    if (associated (entry)) then
+       call entry%close ()
+       if (.not. entry%is_open ()) then
+          if (associated (entry%prev)) then
+             entry%prev%next => entry%next
+          else
+             registry%first => entry%next
+          end if
+          if (associated (entry%next)) then
+             entry%next%prev => entry%prev
+          end if
+          deallocate (entry)
+       end if
+    end if
+  end subroutine file_registry_close
+    
+@ %def file_registry_close
 @ 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
 \section{String Utilities}
@@ -82,8 +335,9 @@ This module provides tools associated with strings
 <<File header>>
 
 module string_utils
-
+  
   use, intrinsic :: iso_c_binding
+<<Use kinds>>  
 <<Use strings>>
 
 <<Standard module head>>
@@ -181,6 +435,70 @@ Convert a FORTRAN string into a zero terminated C string.
 
 @ %def string_f2c
 @ 
+\subsection{Number Conversion}
+Convert an integer to a string.
+<<String utils: public>>=
+  public :: integer_to_string
+<<String utils: procedures>>=
+  function integer_to_string (x) result (str)
+    integer, intent(in) :: x
+    type(string_t) :: str
+    character(5) :: buf
+    write (buf, '(I5)') x
+    str = var_str (trim (adjustl (buf)))
+  end function integer_to_string
+
+@ %def integer_to_string
+@
+Create a string from a number.  We use fixed format for the reals
+and variable format for integers.
+<<String utils: public>>=
+  public :: str
+<<String utils: interfaces>>=
+  interface str
+     module procedure str_int, str_real
+  end interface
+<<String utils: procedures>>=
+  function str_int (i) result (s)
+    integer, intent(in) :: i
+    type(string_t) :: s
+    character(32) :: buffer
+    write (buffer, "(I0)")  i
+    s = var_str (trim (buffer))
+  end function str_int
+  
+  function str_real (x) result (s)
+    real(default), intent(in) :: x
+    type(string_t) :: s
+    character(32) :: buffer
+    write (buffer, "(ES17.10)")  x
+    s = var_str (trim (adjustl (buffer)))
+  end function str_real
+  
+@ %def str str_int str_real
+@ Auxiliary: Read real, integer, string value.
+<<String utils: public>>=
+  public :: read_rval
+  public :: read_ival
+<<String utils: procedures>>=
+  function read_rval (s) result (rval)
+    type(string_t), intent(in) :: s
+    real(default) :: rval
+    character(80) :: buffer
+    buffer = s
+    read (buffer, *)  rval
+  end function read_rval
+    
+  function read_ival (s) result (ival)
+    type(string_t), intent(in) :: s
+    integer :: ival
+    character(80) :: buffer
+    buffer = s
+    read (buffer, *)  ival
+  end function read_ival
+    
+@ %def read_rval read_ival
+@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
 \section{Format Utilities}
 

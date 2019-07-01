@@ -1,11 +1,11 @@
-% -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*- 
+% -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*-
 % WHIZARD code as NOWEB source
 
-@ 
+@
 \chapter{Testing}
 This part contains tools for automatic testing.
 \begin{description}
-\item[unit\_tests] 
+\item[unit\_tests]
   A handler that executes test procedures and compares and collects results.
 \end{description}
 
@@ -20,6 +20,8 @@ signal failure and write the output to a file.
 
 module unit_tests
 
+<<Use kinds>>
+  use constants, only: zero, tiny_10, tiny_13
 <<Use strings>>
   use io_units
 
@@ -65,7 +67,7 @@ Here is the entry:
      type(string_t) :: description
      type(test_result_t), pointer :: next => null ()
   end type test_result_t
-  
+
   type :: test_results_t
      private
      type(test_result_t), pointer :: first => null ()
@@ -75,7 +77,7 @@ Here is the entry:
    contains
    <<Tests: test results: TBP>>
   end type test_results_t
-  
+
 @ %def test_result_t test_results_t
 @ Add a test result.
 <<Tests: test results: TBP>>=
@@ -137,7 +139,7 @@ Here is the entry:
     write (u, "(A,I0)")  "Failure = ", list%n_failure
     write (u, "(A)")  "*** End of test Summary ***"
   end subroutine test_results_write
-    
+
 @ %def test_results_write
 @ Return true if all tests were successful (or no test).
 <<Tests: test results: TBP>>=
@@ -148,7 +150,7 @@ Here is the entry:
     logical, intent(out) :: success
     success = list%n_failure == 0
   end subroutine test_results_report
-  
+
 @ %def test_results_report
 @ Delete the list.
 <<Tests: test results: TBP>>=
@@ -266,4 +268,96 @@ The test routine must take the output unit as argument.
   end subroutine test
 
 @ %def test
+\subsection{Convenience functions}
+@ Unit tests should include a lot of assertions that only involve IO if
+something is wrong. [[assert]] allows to streamline this method.
+<<Tests: public>>=
+  public :: assert
+<<Tests: procedures>>=
+  subroutine assert (unit, ok, description)
+    integer, intent(in) :: unit
+    logical, intent(in) :: ok
+    character(*), intent(in), optional :: description
+    if (.not. ok) then
+       if (present(description)) then
+          write (unit, "(A)") "* FAIL: " // description
+       else
+          write (unit, "(A)") "* FAIL: Assertion error"
+       end if
+    end if
+  end subroutine assert
 
+@ %def assert
+@ Note that this poor man's check will be disabled if someone compiles
+with [[-ffast-math]] or similar optimizations.
+<<Tests: procedures>>=
+  elemental function ieee_is_nan (x) result (yorn)
+    logical :: yorn
+    real(default), intent(in) :: x
+    yorn = (x /= x)
+  end function ieee_is_nan
+@ This is still not perfect but should work in most cases.  Usually one
+wants to compare to a relative epsilon [[rel_smallness]], except for
+numbers close to zero defined by [[abs_smallness]].  Both might need
+adaption to specific use cases but have reasonable defaults.
+<<Tests: public>>=
+  public :: nearly_equal
+<<Tests: procedures>>=
+  elemental function nearly_equal (a, b, abs_smallness, rel_smallness) result (r)
+    logical :: r
+    real(default), intent(in) :: a, b
+    real(default), intent(in), optional :: abs_smallness, rel_smallness
+    real(default) :: abs_a, abs_b, diff, abs_small, rel_small
+    abs_a = abs (a)
+    abs_b = abs (b)
+    diff = abs (a - b)
+    ! shortcut, handles infinities and nans
+    if (a == b) then
+       r = .true.
+       return
+    else if (ieee_is_nan (a) .or. ieee_is_nan (b) .or. ieee_is_nan (diff)) then
+       r = .false.
+       return
+    end if
+    if (present (abs_smallness)) then
+       abs_small = abs_smallness
+    else
+       abs_small = tiny_13
+    end if
+    if (present (rel_smallness)) then
+       rel_small = rel_smallness
+    else
+       rel_small = tiny_10
+    end if
+    if (abs_a < abs_small .and. abs_b < abs_small) then
+       r = diff < abs_small
+    else
+       r = diff / max (abs_a, abs_b) < rel_small
+    end if
+  end function nearly_equal
+
+@ %def nearly_equal
+@ Often we will need to check whether floats vanish:
+<<Tests: public>>=
+  public:: vanishes
+  interface vanishes
+     module procedure vanishes_real, vanishes_complex
+  end interface
+@
+<<Tests: procedures>>=
+  elemental function vanishes_real (x, abs_smallness, rel_smallness) result (r)
+    logical :: r
+    real(default), intent(in) :: x
+    real(default), intent(in), optional :: abs_smallness, rel_smallness
+    r = nearly_equal (x, zero, abs_smallness, rel_smallness)
+  end function vanishes_real
+
+  elemental function vanishes_complex (x, abs_smallness, rel_smallness) result (r)
+    logical :: r
+    complex(default), intent(in) :: x
+    real(default), intent(in), optional :: abs_smallness, rel_smallness
+    r = vanishes_real (abs (x), abs_smallness, rel_smallness)
+  end function vanishes_complex
+
+@ %def vanishes
+@

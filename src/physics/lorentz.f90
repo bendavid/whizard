@@ -1,6 +1,6 @@
-! WHIZARD 2.2.3 Nov 30 2014
+! WHIZARD 2.2.4 Feb 06 2015
 ! 
-! Copyright (C) 1999-2014 by 
+! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -9,7 +9,8 @@
 !     Fabian Bach <fabian.bach@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Felix Braam, Sebastian Schmidt, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam, 
+!     Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -33,7 +34,7 @@ module lorentz
 
   use kinds, only: default
   use io_units
-  use constants, only: pi, twopi, degree
+  use constants, only: pi, twopi, degree, zero, one, eps0
   use format_defs, only: FMT_15, FMT_17, FMT_19
   use format_utils, only: pac_fmt
   use diagnostics
@@ -61,7 +62,7 @@ module lorentz
   public :: vector4_set_component
   public :: vector4_get_component
   public :: vector4_get_components
-  public :: vector4_from_c_prt
+  public :: assignment (=)
   public :: vector4_to_c_prt
   public :: lorentz_transformation_t
   public :: lorentz_transformation_write
@@ -70,6 +71,7 @@ module lorentz
   public :: space_reflection
   public :: vector_set_reshuffle
   public :: vector4_write_set
+  public :: spinor_product
 
   public :: operator(==), operator(/=)
   public :: operator(+), operator(-)
@@ -80,7 +82,6 @@ module lorentz
   public :: sum
   public :: direction
   public :: space_part
-  public :: array_from_vector4
   public :: azimuthal_angle
   public :: azimuthal_angle_deg
   public :: azimuthal_distance
@@ -122,14 +123,12 @@ module lorentz
   public :: pacify
 
   type :: vector3_t
-     private
      real(default), dimension(3) :: p
   end type vector3_t
 
   type :: vector4_t
-     private
      real(default), dimension(0:3) :: p = &
-        [0._default, 0._default, 0._default, 0._default]
+        [zero, zero, zero, zero]
   end type vector4_t
   type :: lorentz_transformation_t
      private
@@ -140,10 +139,10 @@ module lorentz
 
 
   type(vector3_t), parameter :: vector3_null = &
-       vector3_t ([ 0._default, 0._default, 0._default ])
+       vector3_t ([ zero, zero, zero ])
 
   type(vector4_t), parameter :: vector4_null = &
-       vector4_t ([ 0._default, 0._default, 0._default, 0._default ])
+       vector4_t ([ zero, zero, zero, zero ])
 
   integer, dimension(3,3), parameter :: delta_three = &
        & reshape( source = [ 1,0,0, 0,1,0, 0,0,1 ], &
@@ -156,18 +155,18 @@ module lorentz
   type(lorentz_transformation_t), parameter :: &
        & identity = &
        & lorentz_transformation_t ( &
-       & reshape( source = [ 1._default, 0._default, 0._default, 0._default, &
-       &                     0._default, 1._default, 0._default, 0._default, &
-       &                     0._default, 0._default, 1._default, 0._default, &
-       &                     0._default, 0._default, 0._default, 1._default ],&
+       & reshape( source = [ one, zero, zero, zero, &
+       &                     zero, one, zero, zero, &
+       &                     zero, zero, one, zero, &
+       &                     zero, zero, zero, one ],&
        &          shape = [4,4] ) )
   type(lorentz_transformation_t), parameter :: &
        & space_reflection = &
        & lorentz_transformation_t ( &
-       & reshape( source = [ 1._default, 0._default, 0._default, 0._default, &
-       &                     0._default,-1._default, 0._default, 0._default, &
-       &                     0._default, 0._default,-1._default, 0._default, &
-       &                     0._default, 0._default, 0._default,-1._default ],&
+       & reshape( source = [ one, zero, zero, zero, &
+       &                     zero,-one, zero, zero, &
+       &                     zero, zero,-one, zero, &
+       &                     zero, zero, zero,-one ],&
        &          shape = [4,4] ) )
 
   interface vector3_moving
@@ -253,9 +252,13 @@ module lorentz
   interface direction
      module procedure vector4_get_direction
   end interface
-  interface array_from_vector4
-     module procedure array_from_vector4_1
-     module procedure array_from_vector4_2
+  interface assignment (=)
+     module procedure array_from_vector4_1, array_from_vector4_2, &
+            array_from_vector3_1, array_from_vector3_2, &
+            vector4_from_array, vector3_from_array
+  end interface
+  interface assignment (=)
+     module procedure vector4_from_c_prt, c_prt_from_vector4
   end interface
   interface azimuthal_angle
      module procedure vector3_azimuthal_angle
@@ -415,12 +418,12 @@ contains
   elemental function vector3_eq (p, q) result (r)
     logical :: r
     type(vector3_t), intent(in) :: p,q
-    r = all (p%p == q%p)
+    r = all (abs (p%p - q%p) < eps0)
   end function vector3_eq
   elemental function vector3_neq (p, q) result (r)
     logical :: r
     type(vector3_t), intent(in) :: p,q
-    r = any (p%p /= q%p)
+    r = any (abs(p%p - q%p) > eps0)
   end function vector3_neq
 
   elemental function add_vector3 (p, q) result (r)
@@ -435,7 +438,7 @@ contains
   end function sub_vector3
 
   elemental function prod_real_vector3 (s, p) result (q)
-    type(vector3_t) :: q 
+    type(vector3_t) :: q
     real(default), intent(in) :: s
     type(vector3_t), intent(in) :: p
     q%p = s * p%p
@@ -505,7 +508,7 @@ contains
     type(vector3_t), intent(in) :: p
     integer :: i
     do i = 1, 3
-       if (p%p(i) == -p%p(i)) then
+       if (abs (p%p(i)) < eps0) then
           q%p(i) = 0
        else
           q%p(i) = -p%p(i)
@@ -547,7 +550,7 @@ contains
     type(vector3_t), intent(in) :: p
     real(default) :: pp
     pp = p**1
-    if (pp /= 0) then
+    if (pp > eps0) then
        q%p = p%p / pp
     else
        q%p = 0
@@ -560,8 +563,8 @@ contains
     logical, intent(in), optional :: show_mass
     logical, intent(in), optional :: testflag
     integer :: u
-    character(len=7) :: fmt 
-    call pac_fmt (fmt, FMT_19, FMT_15, testflag)    
+    character(len=7) :: fmt
+    call pac_fmt (fmt, FMT_19, FMT_15, testflag)
     u = given_output_unit (unit);  if (u < 0)  return
     write(u, "(1x,A,1x," // fmt // ")") 'E = ', p%p(0)
     write(u, "(1x,A,3(1x," // fmt // "))") 'P = ', p%p(1:)
@@ -594,7 +597,7 @@ contains
   elemental function vector4_at_rest (m) result (p)
     type(vector4_t) :: p
     real(default), intent(in) :: m
-    p = vector4_t ([ m, 0._default, 0._default, 0._default ])
+    p = vector4_t ([ m, zero, zero, zero ])
   end function vector4_at_rest
 
   elemental function vector4_moving_canonical (E, p, k) result (q)
@@ -615,12 +618,12 @@ contains
   elemental function vector4_eq (p, q) result (r)
     logical :: r
     type(vector4_t), intent(in) :: p,q
-    r = all (p%p == q%p)
+    r = all (abs (p%p - q%p) < eps0)
   end function vector4_eq
   elemental function vector4_neq (p, q) result (r)
     logical :: r
     type(vector4_t), intent(in) :: p,q
-    r = any (p%p /= q%p)
+    r = any (abs (p%p - q%p) > eps0)
   end function vector4_neq
 
   elemental function add_vector4 (p,q) result (r)
@@ -698,7 +701,7 @@ contains
     type(vector4_t), intent(in) :: p
     integer :: i
     do i = 0, 3
-       if (p%p(i) == -p%p(i)) then
+       if (abs (p%p(i)) < eps0) then
           q%p(i) = 0
        else
           q%p(i) = -p%p(i)
@@ -747,36 +750,73 @@ contains
     real(default) :: qq
     q%p = p%p(1:)
     qq = q**1
-    if (qq /= 0) then
+    if (abs(qq) > eps0) then
        q%p = q%p / qq
     else
        q%p = 0
     end if
   end function vector4_get_direction
 
-  pure function array_from_vector4_1 (p) result (a)
+  pure subroutine array_from_vector4_1 (a, p)
+    real(default), dimension(:), intent(out) :: a
     type(vector4_t), intent(in) :: p
-    real(default), dimension(0:3) :: a
     a = p%p
-  end function array_from_vector4_1
+  end subroutine array_from_vector4_1
 
-  pure function array_from_vector4_2 (p) result (a)
+  pure subroutine array_from_vector4_2 (a, p)
     type(vector4_t), dimension(:), intent(in) :: p
-    real(default), dimension(0:3, size(p)) :: a
+    real(default), dimension(:,:), intent(out) :: a
     integer :: i
     forall (i=1:size(p))
-       a(0:3,i) = p(i)%p
+       a(:,i) = p(i)%p
     end forall
-  end function array_from_vector4_2
+  end subroutine array_from_vector4_2
 
-  elemental function vector4_from_c_prt (c_prt) result (p)
-    type(vector4_t) :: p
+  pure subroutine array_from_vector3_1 (a, p)
+    real(default), dimension(:), intent(out) :: a
+    type(vector3_t), intent(in) :: p
+    a = p%p
+  end subroutine array_from_vector3_1
+
+  pure subroutine array_from_vector3_2 (a, p)
+    type(vector3_t), dimension(:), intent(in) :: p
+    real(default), dimension(:,:), intent(out) :: a
+    integer :: i
+    forall (i=1:size(p))
+       a(:,i) = p(i)%p
+    end forall
+  end subroutine array_from_vector3_2
+
+  pure subroutine vector4_from_array (p, a)
+    type(vector4_t), intent(out) :: p
+    real(default), dimension(:), intent(in) :: a
+    p%p(0:3) = a
+  end subroutine vector4_from_array
+
+  pure subroutine vector3_from_array (p, a)
+    type(vector3_t), intent(out) :: p
+    real(default), dimension(:), intent(in) :: a
+    p%p(1:3) = a
+  end subroutine vector3_from_array
+
+  pure subroutine vector4_from_c_prt (p, c_prt)
+    type(vector4_t), intent(out) :: p
     type(c_prt_t), intent(in) :: c_prt
     p%p(0) = c_prt%pe
     p%p(1) = c_prt%px
     p%p(2) = c_prt%py
     p%p(3) = c_prt%pz
-  end function vector4_from_c_prt
+  end subroutine vector4_from_c_prt
+
+  pure subroutine c_prt_from_vector4 (c_prt, p)
+    type(c_prt_t), intent(out) :: c_prt
+    type(vector4_t), intent(in) :: p
+    c_prt%pe = p%p(0)
+    c_prt%px = p%p(1)
+    c_prt%py = p%p(2)
+    c_prt%pz = p%p(3)
+    c_prt%p2 = p ** 2
+  end subroutine c_prt_from_vector4
 
   elemental function vector4_to_c_prt (p, p2) result (c_prt)
     type(c_prt_t) :: c_prt
@@ -796,7 +836,7 @@ contains
   elemental function vector3_azimuthal_angle (p) result (phi)
     real(default) :: phi
     type(vector3_t), intent(in) :: p
-    if (any(p%p(1:2)/=0)) then
+    if (any (abs (p%p(1:2)) > 0)) then
        phi = atan2(p%p(2), p%p(1))
        if (phi < 0) phi = phi + twopi
     else
@@ -851,7 +891,7 @@ contains
   elemental function polar_angle_vector3 (p) result (theta)
     real(default) :: theta
     type(vector3_t), intent(in) :: p
-    if (any(p%p/=0)) then
+    if (any (abs (p%p) > 0)) then
        theta = atan2 (sqrt(p%p(1)**2 + p%p(2)**2), p%p(3))
     else
        theta = 0
@@ -866,7 +906,7 @@ contains
   elemental function polar_angle_ct_vector3 (p) result (ct)
     real(default) :: ct
     type(vector3_t), intent(in) :: p
-    if (any(p%p/=0)) then
+    if (any (abs (p%p) > 0)) then
        ct = p%p(3) / p**1
     else
        ct = 1
@@ -903,7 +943,7 @@ contains
   elemental function enclosed_angle_ct_vector3 (p, q) result (ct)
     real(default) :: ct
     type(vector3_t), intent(in) :: p, q
-    if (any(p%p/=0).and.any(q%p/=0)) then
+    if (any (abs (p%p) > 0) .and. any (abs (q%p) > 0)) then
        ct = p*q / (p**1 * q**1)
        if (ct>1) then
           ct = 1
@@ -1096,9 +1136,9 @@ contains
   function create_orthogonal (p_in) result (p_out)
     type(vector3_t), intent(in) :: p_in
     type(vector3_t) :: p_out
-    real(default) :: abs
-    abs = sqrt (p_in%p(1)**2 + p_in%p(2)**2)
-    if (abs == 0) then
+    real(default) :: ab
+    ab = sqrt (p_in%p(1)**2 + p_in%p(2)**2)
+    if (abs (ab) < eps0) then
       p_out%p(1) = 1
       p_out%p(2) = 0
       p_out%p(3) = 0
@@ -1106,7 +1146,7 @@ contains
       p_out%p(1) = p_in%p(2)
       p_out%p(2) = -p_in%p(1)
       p_out%p(3) = 0
-      p_out = p_out / abs
+      p_out = p_out / ab
     end if
   end function create_orthogonal
 
@@ -1140,13 +1180,13 @@ contains
     type(vector3_t) :: beta_gamma
     real(default) :: bg2, g, c
     integer :: i,j
-    if (m /= 0) then
+    if (m > eps0) then
        beta_gamma = p / m
        bg2 = beta_gamma**2
     else
        bg2 = 0
     end if
-    if (bg2 /= 0) then
+    if (bg2 > eps0) then
        g = sqrt(1 + bg2);  c = (g-1)/bg2
        L%L(0,0)  = g
        L%L(0,1:) = beta_gamma%p
@@ -1176,7 +1216,7 @@ contains
     type(lorentz_transformation_t) :: L
     real(default), intent(in) :: beta_gamma
     type(vector3_t), intent(in) :: axis
-    if (any(axis%p/=0)) then
+    if (any (abs (axis%p) > 0)) then
        L = boost_from_rest_frame_vector3 (beta_gamma * axis, axis**1)
     else
        L = identity
@@ -1200,7 +1240,7 @@ contains
     type(lorentz_transformation_t) :: R
     type(vector3_t), intent(in) :: axis
     real(default) :: phi
-    if (any(axis%p/=0)) then
+    if (any (abs(axis%p) > 0)) then
        phi = abs(axis**1)
        R = rotation_generic_cs (cos(phi), sin(phi), axis/phi)
     else
@@ -1232,12 +1272,12 @@ contains
     type(vector3_t), intent(in) :: p, q
     type(vector3_t) :: a, b, ab
     real(default) :: ct, st
-    if (any (p%p /= 0) .and. any (q%p /= 0)) then
+    if (any (abs (p%p) > 0) .and. any (abs (q%p) > 0)) then
        a = direction (p)
        b = direction (q)
        ab = cross_product(a,b)
        ct = a*b;  st = ab**1
-       if (st /= 0) then
+       if (abs(st) > eps0) then
           R = rotation_generic_cs (ct, st, ab/st)
        else if (ct < 0) then
           R = space_reflection
@@ -1255,7 +1295,7 @@ contains
     type(vector3_t) :: b, ab
     real(default) :: ct, st
     integer :: i, j
-    if (any (p%p /= 0)) then
+    if (any (abs (p%p) > 0)) then
        b = direction (p)
        ab%p = 0
        do i = 1, 3
@@ -1264,7 +1304,7 @@ contains
           end do
        end do
        ct = b%p(k);  st = ab**1
-       if (st /= 0) then
+       if (abs(st) > eps0) then
           R = rotation_generic_cs (ct, st, ab/st)
        else if (ct < 0) then
           R = space_reflection
@@ -1315,12 +1355,12 @@ contains
     type(lorentz_transformation_t) :: L
     real(default), intent(in) :: cp, sp, ct, st, beta_gamma
     real(default) :: gamma
-    if (beta_gamma==0) then
+    if (abs(beta_gamma) < eps0) then
        L%L(0,0)  = 1
        L%L(1:,0) = 0
        L%L(0,1:) = 0
        L%L(1,1:) = [  ct*cp, -ct*sp, st ]
-       L%L(2,1:) = [     sp,     cp,  0._default ]
+       L%L(2,1:) = [     sp,     cp,  zero ]
        L%L(3,1:) = [ -st*cp,  st*sp, ct ]
     else
        gamma = sqrt(1 + beta_gamma**2)
@@ -1330,7 +1370,7 @@ contains
        L%L(3,0)  = beta_gamma
        L%L(0,1:) = beta_gamma * [ -st*cp,  st*sp, ct ]
        L%L(1,1:) =              [  ct*cp, -ct*sp, st ]
-       L%L(2,1:) =              [     sp,     cp, 0._default ]
+       L%L(2,1:) =              [     sp,     cp, zero ]
        L%L(3,1:) = gamma      * [ -st*cp,  st*sp, ct ]
     end if
   end function LT_compose_r3_r2_b3
@@ -1340,23 +1380,23 @@ contains
     type(lorentz_transformation_t) :: L
     real(default), intent(in) :: ct, st, cp, sp, beta_gamma
     real(default) :: gamma
-    if (beta_gamma==0) then
+    if (abs(beta_gamma) < eps0) then
        L%L(0,0)  = 1
        L%L(1:,0) = 0
        L%L(0,1:) = 0
        L%L(1,1:) = [  ct*cp,    -sp,     st*cp ]
        L%L(2,1:) = [  ct*sp,     cp,     st*sp ]
-       L%L(3,1:) = [ -st   , 0._default, ct    ]
+       L%L(3,1:) = [ -st   ,   zero,     ct    ]
     else
        gamma = sqrt(1 + beta_gamma**2)
        L%L(0,0)  = gamma
        L%L(1,0)  = 0
        L%L(2,0)  = 0
        L%L(3,0)  = beta_gamma
-       L%L(0,1:) = beta_gamma * [ -st   , 0._default, ct    ]
+       L%L(0,1:) = beta_gamma * [ -st   ,   zero,     ct    ]
        L%L(1,1:) =              [  ct*cp,    -sp,     st*cp ]
        L%L(2,1:) =              [  ct*sp,     cp,     st*sp ]
-       L%L(3,1:) = gamma      * [ -st   , 0._default, ct    ]
+       L%L(3,1:) = gamma      * [ -st   ,   zero,     ct    ]
     end if
   end function LT_compose_r2_r3_b3
 
@@ -1370,8 +1410,8 @@ contains
     py = sp * p%p(1) + cp * p%p(2)
     n%p(1) =  ct * px + st * p%p(3)
     n%p(2) = py
-    n%p(3) = -st * px + ct * p%p(3) 
-    if (beta_gamma/=0) then
+    n%p(3) = -st * px + ct * p%p(3)
+    if (abs(beta_gamma) > eps0) then
        gamma = sqrt(1 + beta_gamma**2)
        n%p(3) = n%p(3) * gamma + p%p(0) * beta_gamma
     end if
@@ -1383,7 +1423,7 @@ contains
     real(default), intent(in) :: beta_gamma
     real(default) :: gamma
     n%p = p%p(1:3)
-    if (beta_gamma/=0) then
+    if (abs(beta_gamma) > eps0) then
        gamma = sqrt(1 + beta_gamma**2)
        n%p(3) = n%p(3) * gamma + p%p(0) * beta_gamma
     end if
@@ -1404,7 +1444,7 @@ contains
     real(default) :: ch, sh
     real(default), dimension(2) :: E0, p0
     integer, dimension(2), parameter :: sgn = [1, -1]
-    if (sqrts == 0) then
+    if (abs(sqrts) < eps0) then
        call msg_fatal (" Colliding beams: sqrts is zero (please set sqrts)")
        p = vector4_null;  return
     else if (sqrts <= 0) then
@@ -1438,19 +1478,19 @@ contains
     real(default), intent(in) :: tolerance
     where (abs (p%p) < tolerance)  p%p = 0
   end subroutine pacify_vector3
-    
+
   elemental subroutine pacify_vector4 (p, tolerance)
     type(vector4_t), intent(inout) :: p
     real(default), intent(in) :: tolerance
     where (abs (p%p) < tolerance)  p%p = 0
   end subroutine pacify_vector4
-    
+
   elemental subroutine pacify_LT (LT, tolerance)
     type(lorentz_transformation_t), intent(inout) :: LT
     real(default), intent(in) :: tolerance
     where (abs (LT%L) < tolerance)  LT%L = 0
   end subroutine pacify_LT
-    
+
   subroutine vector_set_reshuffle (p1, list, p2)
     type(vector4_t), intent(in), dimension(:), allocatable :: p1
     integer, intent(in), dimension(:), allocatable :: list
@@ -1470,14 +1510,40 @@ contains
     logical, intent(in), optional :: show_mass
     integer :: i, j
     real(default), dimension(4) :: p_tot
+    character(len=7) :: fmt
+    integer :: u
+    u = given_output_unit (unit);  if (u < 0)  return
     p_tot = 0
     do i = 1, size (p)
       forall (j=1:4) p_tot(j) = p_tot(j) + vector4_get_component(p(i),j-1)
-      call vector4_write (p(i), unit, show_mass)
+      call vector4_write (p(i), u, show_mass)
     end do
-    print *, 'Total: '
-    print *, 'E: ', p_tot(1)
-    print *, 'p: ', p_tot(2), p_tot(3), p_tot(4)
+    call pac_fmt (fmt, FMT_19, FMT_15)
+    write(u, "(A5)") 'Total: '
+    write(u, "(1x,A,1x," // fmt // ")") 'E = ', p_tot(1)
+    write(u, "(1x,A,3(1x," // fmt // "))") 'P = ', p_tot(2:)
   end subroutine vector4_write_set
+
+  subroutine spinor_product (p1, p2, prod1, prod2)
+    type(vector4_t), intent(in) :: p1, p2
+    complex(default), intent(out) :: prod1, prod2
+    real(default) :: sij
+    complex(default) :: phase
+    real(default) :: pp_1, pp_2
+    pp_1 = p1%p(0) + p1%p(3)
+    pp_2 = p2%p(0) + p2%p(3)
+    sij = (p1+p2)**2
+    phase = cmplx ((p1%p(1)*pp_2 - p2%p(1)*pp_1)/sqrt (sij*pp_1*pp_2), &
+                   (p1%p(2)*pp_2 - p2%p(2)*pp_1)/sqrt (sij*pp_1*pp_2), &
+                    default)
+    !!! <ij>
+    prod1 = sqrt (sij) * phase
+    !!! [ij]
+    if (abs(prod1) > 0) then
+       prod2 = - sij / prod1
+    else
+       prod2 = 0
+    end if
+  end subroutine spinor_product
 
 end module lorentz

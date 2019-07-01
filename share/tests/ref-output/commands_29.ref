@@ -40,7 +40,7 @@ Parse tree:
 * Model MSSM, default values:
 
 model "MSSM"
- ! md5sum = '39CA146809D35A889A2DF15DBBD4A27C'
+ ! md5sum = '8C3D4C41EAB3F0130AC31A7397D0ABDE'
 
    parameter GF =  1.166390000000E-05
    parameter mZ =  9.118820000000E+01
@@ -189,7 +189,7 @@ wch1 =>  0.000000000000E+00
 * Model MSSM, values from SLHA file
 
 model "MSSM"
- ! md5sum = '39CA146809D35A889A2DF15DBBD4A27C'
+ ! md5sum = '8C3D4C41EAB3F0130AC31A7397D0ABDE'
 
    parameter GF =  1.166390000000E-05
    parameter mZ =  9.118760000000E+01

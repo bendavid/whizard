@@ -81,60 +81,24 @@ QCD.alphas =>  1.178000000000E-01
 QCD.alphas =>  2.356000000000E-01
 QCD.alphas =>  3.534000000000E-01
 | Starting simulation for process 'lhef_4_p'
-| Simulate: initializing alternate process setup ...
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 2
-| Initializing integration for process lhef_4_p:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'lhef_4_p'
-|   Library name  = 'lhef_4_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'lhef_4_p_i1':   gl, gl => u, ubar [omega]
-| ------------------------------------------------------------------------
-| Beam structure: p, p => pdf_builtin
-| Beam data (collision):
-|   p  (mass = 0.0000000E+00 GeV)
-|   p  (mass = 0.0000000E+00 GeV)
-|   sqrts = 8.000000000000E+03 GeV
 Warning: Reading phs file: MD5 sum check disabled
 | Phase space: keeping configuration file 'lhef_4_p_i1.phs'
-| Phase space: 5 channels, 2 dimensions
-| Phase space: found 5 channels, collected in 2 groves.
-| Phase space: Using 9 equivalences between channels.
-| Phase space: wood
-| Beam structure: pdf_builtin, none => none, pdf_builtin
-| Beam structure: 1 channels, 2 dimensions
-| Applying user-defined cuts.
-| ...  alternate process setup complete.
 | Simulate: initializing alternate process setup ...
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 3
-| Initializing integration for process lhef_4_p:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'lhef_4_p'
-|   Library name  = 'lhef_4_lib'
-|   Process index = 1
-|   Process components:
-|     1: 'lhef_4_p_i1':   gl, gl => u, ubar [omega]
-| ------------------------------------------------------------------------
-| Beam structure: p, p => pdf_builtin
-| Beam data (collision):
-|   p  (mass = 0.0000000E+00 GeV)
-|   p  (mass = 0.0000000E+00 GeV)
-|   sqrts = 8.000000000000E+03 GeV
 Warning: Reading phs file: MD5 sum check disabled
 | Phase space: keeping configuration file 'lhef_4_p_i1.phs'
-| Phase space: 5 channels, 2 dimensions
-| Phase space: found 5 channels, collected in 2 groves.
-| Phase space: Using 9 equivalences between channels.
-| Phase space: wood
-| Beam structure: pdf_builtin, none => none, pdf_builtin
-| Beam structure: 1 channels, 2 dimensions
-| Applying user-defined cuts.
 | ...  alternate process setup complete.
+| Simulate: initializing alternate process setup ...
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 4
+Warning: Reading phs file: MD5 sum check disabled
+| Phase space: keeping configuration file 'lhef_4_p_i1.phs'
+| ...  alternate process setup complete.
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 5
 | Recalculating observables
 | Recalculating squared matrix elements
 | Events: reading from LHEF file 'lhef_4a.lhe'
@@ -144,10 +108,10 @@ Warning: Reading phs file: MD5 sum check disabled
 | ... event file terminates after 1 events.
 | Events: closing weight stream file 'lhef_4b.weights.dat'
 | Events: closing LHEF file 'lhef_4a.lhe'
-| There were no errors and    2 warning(s).
+| There were no errors and    3 warning(s).
 | WHIZARD run finished.
 |=============================================================================|
 Contents of lhef_4b.weights.dat
-0  1.7050298567E+00  1.0709379029E-03  1.0709379027E-03 1 1 1
+0  1.7050298567E+00  1.0709379029E-03  1.0709379027E-03 1
 1  6.8201194280E+00  4.2837516116E-03
 2  1.5345268713E+01  9.6384411260E-03

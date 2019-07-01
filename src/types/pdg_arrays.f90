@@ -1,6 +1,6 @@
-! WHIZARD 2.2.3 Nov 30 2014
+! WHIZARD 2.2.4 Feb 06 2015
 ! 
-! Copyright (C) 1999-2014 by 
+! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -9,7 +9,8 @@
 !     Fabian Bach <fabian.bach@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Felix Braam, Sebastian Schmidt, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam, 
+!     Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -771,20 +772,13 @@ contains
     class(pdg_list_t), intent(in) :: pl
     type(pdg_array_t), dimension(:), intent(inout), allocatable :: pdg
     integer :: n_elements
-    integer :: i, j, k
-    n_elements = 0
+    integer :: i
     associate (a => pl%a)
-      do i = 1, size (a)
-         n_elements = n_elements + size (a(i)%pdg)
-      end do
+      n_elements = size (a)
       if (allocated (pdg))  deallocate (pdg)
       allocate (pdg (n_elements))
-      k = 1
-      do i = 1, size (a)
-         do j = 1, size (a(i)%pdg)
-            pdg(k) = a(i)%pdg(j)
-            k = k+1
-         end do
+      do i = 1, n_elements
+         pdg(i) = a(i)
       end do
     end associate
   end subroutine pdg_list_create_pdg_array

@@ -1,6 +1,6 @@
-! WHIZARD 2.2.3 Nov 30 2014
+! WHIZARD 2.2.4 Feb 06 2015
 ! 
-! Copyright (C) 1999-2014 by 
+! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -9,7 +9,8 @@
 !     Fabian Bach <fabian.bach@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Felix Braam, Sebastian Schmidt, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam, 
+!     Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -34,7 +35,6 @@ module events
   use kinds, only: default
   use iso_varying_string, string_t => varying_string
   use io_units
-  use string_utils, only: lower_case
   use format_utils, only: write_separator
   use format_defs, only: FMT_12
   use unit_tests
@@ -52,6 +52,7 @@ module events
   use process_libraries
   use processes
   use process_stacks
+  use event_base
   use event_transforms
   use decays
   use shower
@@ -59,19 +60,9 @@ module events
   implicit none
   private
 
-  public :: event_normalization_mode
-  public :: event_normalization_string
-  public :: event_normalization_update
   public :: event_t
   public :: pacify
   public :: events_test
-
-  integer, parameter, public :: NORM_UNDEFINED = 0
-  integer, parameter, public :: NORM_UNIT = 1
-  integer, parameter, public :: NORM_N_EVT = 2
-  integer, parameter, public :: NORM_SIGMA = 3
-  integer, parameter, public :: NORM_S_N = 4
-
 
   type :: event_config_t
      logical :: unweighted = .false.
@@ -88,7 +79,7 @@ module events
      procedure :: write => event_config_write
   end type event_config_t
 
-  type :: event_t
+  type, extends (generic_event_t) :: event_t
      type(event_config_t) :: config
      type(process_t), pointer :: process => null ()
      type(process_instance_t), pointer :: instance => null ()
@@ -99,23 +90,6 @@ module events
      logical :: is_complete = .false.
      class(evt_t), pointer :: transform_first => null ()
      class(evt_t), pointer :: transform_last => null ()
-     logical :: particle_set_exists = .false.
-     type(particle_set_t), pointer :: particle_set => null ()
-     logical :: sqme_ref_is_known = .false.
-     real(default) :: sqme_ref = 0
-     logical :: sqme_prc_is_known = .false.
-     real(default) :: sqme_prc = 0
-     logical :: weight_ref_is_known = .false.
-     real(default) :: weight_ref = 0
-     logical :: weight_prc_is_known = .false.
-     real(default) :: weight_prc = 0
-     logical :: excess_prc_is_known = .false.
-     real(default) :: excess_prc = 0
-     integer :: n_alt = 0
-     logical :: sqme_alt_is_known = .false.
-     real(default), dimension(:), allocatable :: sqme_alt
-     logical :: weight_alt_is_known = .false.
-     real(default), dimension(:), allocatable :: weight_alt
      type(event_expr_t) :: expr
      logical :: selection_evaluated = .false.
      logical :: passed = .false.
@@ -137,7 +111,6 @@ module events
      procedure :: evaluate_expressions => event_evaluate_expressions
      procedure :: store_alt_values => event_store_alt_values
      procedure :: reset => event_reset
-     procedure :: set => event_set
      procedure :: import_instance_results => event_import_instance_results
      procedure :: accept_sqme_ref => event_accept_sqme_ref
      procedure :: accept_sqme_prc => event_accept_sqme_prc
@@ -146,19 +119,20 @@ module events
      procedure :: update_normalization => event_update_normalization
      procedure :: check => event_check
      procedure :: generate => event_generate
-     procedure :: get_particle_set_hard_proc => event_get_particle_set_hard_proc
+     procedure :: get_hard_particle_set => event_get_hard_particle_set
      procedure :: select => event_select
-     procedure :: set_particle_set_hard_proc => event_set_particle_set_hard_proc
-     procedure :: accept_particle_set => event_accept_particle_set
+     procedure :: set_hard_particle_set => event_set_hard_particle_set
      procedure :: recalculate => event_recalculate
      procedure :: get_process_ptr => event_get_process_ptr
-     procedure :: has_particle_set => event_has_particle_set
-     procedure :: get_particle_set_ptr => event_get_particle_set_ptr
+     procedure :: get_process_instance_ptr => event_get_process_instance_ptr
+     procedure :: get_model_ptr => event_get_model_ptr
      procedure :: get_i_mci => event_get_i_mci
      procedure :: get_i_term => event_get_i_term
      procedure :: get_channel => event_get_channel
+     procedure :: has_transform => event_has_transform
      procedure :: get_norm_mode => event_get_norm_mode
      procedure :: get_kinematical_weight => event_get_kinematical_weight
+     procedure :: get_index => event_get_index
      procedure :: get_fac_scale => event_get_fac_scale
      procedure :: get_alpha_s => event_get_alpha_s
   end type event_t
@@ -214,71 +188,6 @@ contains
     end if
   end subroutine event_config_write
   
-  function event_normalization_mode (string, unweighted) result (mode)
-    integer :: mode
-    type(string_t), intent(in) :: string
-    logical, intent(in) :: unweighted
-    select case (lower_case (char (string)))
-    case ("auto")
-       if (unweighted) then
-          mode = NORM_UNIT
-       else
-          mode = NORM_SIGMA
-       end if
-    case ("1")
-       mode = NORM_UNIT
-    case ("1/n")
-       mode = NORM_N_EVT
-    case ("sigma")
-       mode = NORM_SIGMA
-    case ("sigma/n")
-       mode = NORM_S_N
-    case default
-       call msg_fatal ("Event normalization: unknown value '" &
-            // char (string) // "'")
-    end select
-  end function event_normalization_mode
-  
-  function event_normalization_string (norm_mode) result (string)
-    integer, intent(in) :: norm_mode
-    type(string_t) :: string
-    select case (norm_mode)
-    case (NORM_UNDEFINED); string = "[undefined]"
-    case (NORM_UNIT);      string = "'1'"
-    case (NORM_N_EVT);     string = "'1/n'"
-    case (NORM_SIGMA);     string = "'sigma'"
-    case (NORM_S_N);       string = "'sigma/n'"
-    case default;          string = "???"
-    end select
-  end function event_normalization_string
-  
-  subroutine event_normalization_update (weight, sigma, n, mode_new, mode_old)
-    real(default), intent(inout) :: weight
-    real(default), intent(in) :: sigma
-    integer, intent(in) :: n
-    integer, intent(in) :: mode_new, mode_old
-    if (mode_new /= mode_old) then
-       if (sigma > 0 .and. n > 0) then
-          weight = weight / factor (mode_old) * factor (mode_new)
-       else
-          call msg_fatal ("Event normalization update: null sample")
-       end if
-    end if
-  contains
-    function factor (mode)
-      real(default) :: factor
-      integer, intent(in) :: mode
-      select case (mode)
-      case (NORM_UNIT);   factor = 1._default
-      case (NORM_N_EVT);  factor = 1._default / n
-      case (NORM_SIGMA);  factor = sigma
-      case (NORM_S_N);    factor = sigma / n
-      case default
-         call msg_fatal ("Event normalization update: undefined mode")
-      end select
-    end function factor
-  end subroutine event_normalization_update
-  
   subroutine event_final (object)
     class(event_t), intent(inout) :: object
     class(evt_t), pointer :: evt
@@ -315,24 +224,26 @@ contains
     end if
     call write_separator (u)
     call object%config%write (u)
-    if (object%sqme_ref_is_known .or. object%weight_ref_is_known) then
+    if (object%sqme_ref_is_known () .or. object%weight_ref_is_known ()) then
        call write_separator (u)
     end if
-    if (object%sqme_ref_is_known) then
-       write (u, "(3x,A,ES19.12)")  "Squared matrix el. = ", object%sqme_ref
-       if (object%sqme_alt_is_known) then
-          do i = 1, object%n_alt
+    if (object%sqme_ref_is_known ()) then
+       write (u, "(3x,A,ES19.12)") &
+            "Squared matrix el. = ", object%get_sqme_ref ()
+       if (object%sqme_alt_is_known ()) then
+          do i = 1, object%get_n_alt ()
              write (u, "(5x,A,ES19.12,1x,I0)")  &
-                  "alternate sqme   = ", object%sqme_alt(i), i
+                  "alternate sqme   = ", object%get_sqme_alt(i), i
           end do
        end if
     end if
-    if (object%weight_ref_is_known) then
-       write (u, "(3x,A,ES19.12)")  "Event weight       = ", object%weight_ref
-       if (object%weight_alt_is_known) then
-          do i = 1, object%n_alt
+    if (object%weight_ref_is_known ()) then
+       write (u, "(3x,A,ES19.12)") &
+            "Event weight       = ", object%get_weight_ref ()
+       if (object%weight_alt_is_known ()) then
+          do i = 1, object%get_n_alt ()
              write (u, "(5x,A,ES19.12,1x,I0)")  &
-                  "alternate weight = ", object%weight_alt(i), i
+                  "alternate weight = ", object%get_weight_alt(i), i
           end do
        end if
     end if
@@ -379,7 +290,7 @@ contains
           call write_separator (u, 2)
        end if
        if (object%expr%subevt_filled) then
-          call object%expr%write (u)
+          call object%expr%write (u, pacified = testflag)
           call write_separator (u, 2)
        end if
     else
@@ -395,32 +306,32 @@ contains
     integer, intent(in), optional :: n_alt
     type(string_t) :: norm_string
     logical :: polarized_events
+    if (present (n_alt)) then
+       call event%base_init (n_alt)
+       call event%expr%init (n_alt)
+    else
+       call event%base_init (0)
+    end if
     if (present (var_list)) then
-       event%config%unweighted = var_list_get_lval (var_list, &
+       event%config%unweighted = var_list%get_lval (&
             var_str ("?unweighted"))
-       norm_string = var_list_get_sval (var_list, &
+       norm_string = var_list%get_sval (&
             var_str ("$sample_normalization"))
        event%config%norm_mode = &
             event_normalization_mode (norm_string, event%config%unweighted)
        polarized_events = &
-            var_list_get_lval (var_list, var_str ("?polarized_events"))
+            var_list%get_lval (var_str ("?polarized_events"))
        if (polarized_events) then
           event%config%factorization_mode = FM_SELECT_HELICITY
        else
           event%config%factorization_mode = FM_IGNORE_HELICITY
        end if
        if (event%config%unweighted) then
-          event%config%safety_factor = var_list_get_rval (var_list, &
+          event%config%safety_factor = var_list%get_rval (&
                var_str ("safety_factor"))
        end if
     else
        event%config%norm_mode = NORM_SIGMA
-    end if
-    if (present (n_alt)) then
-       event%n_alt = n_alt
-       allocate (event%sqme_alt (n_alt))
-       allocate (event%weight_alt (n_alt))
-       call event%expr%init (n_alt)
     end if
     allocate (evt_trivial_t :: event%transform_first)
     event%transform_last => event%transform_first
@@ -501,7 +412,7 @@ contains
     real(default), dimension(:), intent(in), optional :: r
     class(evt_t), pointer :: evt
     integer :: i_term
-    event%particle_set_exists = .false.
+    call event%discard_particle_set ()
     call event%check ()
     if (event%instance%is_complete_event ()) then
        call event%instance%select_i_term (i_term)
@@ -524,33 +435,34 @@ contains
        end do
        evt => event%transform_last
        if (associated (evt) .and. evt%particle_set_exists) then
-          event%particle_set => evt%particle_set
-          call event%accept_particle_set ()
+          call event%link_particle_set (evt%particle_set)
        end if
     end if
   end subroutine event_evaluate_transforms
     
   subroutine event_evaluate_expressions (event)
     class(event_t), intent(inout) :: event
-    if (event%particle_set_exists) then
-       call event%expr%fill_subevt (event%particle_set)
+    type(particle_set_t), pointer :: particle_set
+    if (event%has_valid_particle_set ()) then
+       particle_set => event%get_particle_set_ptr ()
+       call event%expr%fill_subevt (particle_set)
     end if
-    if (event%weight_ref_is_known) then
-       call event%expr%set (weight_ref = event%weight_ref)
+    if (event%weight_ref_is_known ()) then
+       call event%expr%set (weight_ref = event%get_weight_ref ())
     end if
-    if (event%weight_prc_is_known) then
-       call event%expr%set (weight_prc = event%weight_prc)
+    if (event%weight_prc_is_known ()) then
+       call event%expr%set (weight_prc = event%get_weight_prc ())
     end if
-    if (event%excess_prc_is_known) then
-       call event%expr%set (excess_prc = event%excess_prc)
+    if (event%excess_prc_is_known ()) then
+       call event%expr%set (excess_prc = event%get_excess_prc ())
     end if
-    if (event%sqme_ref_is_known) then
-       call event%expr%set (sqme_ref = event%sqme_ref)
+    if (event%sqme_ref_is_known ()) then
+       call event%expr%set (sqme_ref = event%get_sqme_ref ())
     end if
-    if (event%sqme_prc_is_known) then
-       call event%expr%set (sqme_prc = event%sqme_prc)
+    if (event%sqme_prc_is_known ()) then
+       call event%expr%set (sqme_prc = event%get_sqme_prc ())
     end if
-    if (event%particle_set_exists) then
+    if (event%has_valid_particle_set ()) then
        call event%expr%evaluate &
             (event%passed, event%reweight, event%analysis_flag)
        event%selection_evaluated = .true.
@@ -559,29 +471,22 @@ contains
   
   subroutine event_store_alt_values (event)
     class(event_t), intent(inout) :: event
-    if (event%weight_alt_is_known) then
-       call event%expr%set (weight_alt = event%weight_alt)
+    if (event%weight_alt_is_known ()) then
+       call event%expr%set (weight_alt = event%get_weight_alt ())
     end if
-    if (event%sqme_alt_is_known) then
-       call event%expr%set (sqme_alt = event%sqme_alt)
+    if (event%sqme_alt_is_known ()) then
+       call event%expr%set (sqme_alt = event%get_sqme_alt ())
     end if
   end subroutine event_store_alt_values
   
   subroutine event_reset (event)
     class(event_t), intent(inout) :: event
     class(evt_t), pointer :: evt
+    call event%base_reset ()
     event%selected_i_mci = 0
     event%selected_i_term = 0
     event%selected_channel = 0
     event%is_complete = .false.
-    event%particle_set_exists = .false.
-    event%sqme_ref_is_known = .false.
-    event%sqme_prc_is_known = .false.
-    event%sqme_alt_is_known = .false.
-    event%weight_ref_is_known = .false.
-    event%weight_prc_is_known = .false.
-    event%weight_alt_is_known = .false.
-    event%excess_prc_is_known = .false.
     call event%expr%reset ()
     event%selection_evaluated = .false.
     event%passed = .false.
@@ -595,45 +500,6 @@ contains
        evt => evt%next
     end do
   end subroutine event_reset
-  
-  subroutine event_set (event, &
-       weight_ref, weight_prc, weight_alt, &
-       excess_prc, &
-       sqme_ref, sqme_prc, sqme_alt)
-    class(event_t), intent(inout) :: event
-    real(default), intent(in), optional :: weight_ref, weight_prc
-    real(default), intent(in), optional :: sqme_ref, sqme_prc
-    real(default), dimension(:), intent(in), optional :: sqme_alt, weight_alt
-    real(default), intent(in), optional :: excess_prc
-    if (present (sqme_ref)) then
-       event%sqme_ref_is_known = .true.
-       event%sqme_ref = sqme_ref
-    end if
-    if (present (sqme_prc)) then
-       event%sqme_prc_is_known = .true.
-       event%sqme_prc = sqme_prc
-    end if 
-    if (present (sqme_alt)) then
-       event%sqme_alt_is_known = .true.
-       event%sqme_alt = sqme_alt
-    end if
-    if (present (weight_ref)) then
-       event%weight_ref_is_known = .true.
-       event%weight_ref = weight_ref
-    end if
-    if (present (weight_prc)) then
-       event%weight_prc_is_known = .true.
-       event%weight_prc = weight_prc
-    end if
-    if (present (weight_alt)) then
-       event%weight_alt_is_known = .true.
-       event%weight_alt = weight_alt
-    end if
-    if (present (excess_prc)) then
-       event%excess_prc_is_known = .true.
-       event%excess_prc = excess_prc
-    end if
-  end subroutine event_set
   
   subroutine event_import_instance_results (event)
     class(event_t), intent(inout) :: event
@@ -650,29 +516,29 @@ contains
   
   subroutine event_accept_sqme_ref (event)
     class(event_t), intent(inout) :: event
-    if (event%sqme_ref_is_known) then
-       call event%set (sqme_prc = event%sqme_ref)
+    if (event%sqme_ref_is_known ()) then
+       call event%set (sqme_prc = event%get_sqme_ref ())
     end if
   end subroutine event_accept_sqme_ref
   
   subroutine event_accept_sqme_prc (event)
     class(event_t), intent(inout) :: event
-    if (event%sqme_prc_is_known) then
-       call event%set (sqme_ref = event%sqme_prc)
+    if (event%sqme_prc_is_known ()) then
+       call event%set (sqme_ref = event%get_sqme_prc ())
     end if
   end subroutine event_accept_sqme_prc
   
   subroutine event_accept_weight_ref (event)
     class(event_t), intent(inout) :: event
-    if (event%weight_ref_is_known) then
-       call event%set (weight_prc = event%weight_ref)
+    if (event%weight_ref_is_known ()) then
+       call event%set (weight_prc = event%get_weight_ref ())
     end if
   end subroutine event_accept_weight_ref
   
   subroutine event_accept_weight_prc (event)
     class(event_t), intent(inout) :: event
-    if (event%weight_prc_is_known) then
-       call event%set (weight_ref = event%weight_prc)
+    if (event%weight_prc_is_known ()) then
+       call event%set (weight_ref = event%get_weight_prc ())
     end if
   end subroutine event_accept_weight_prc
   
@@ -680,6 +546,7 @@ contains
     class(event_t), intent(inout) :: event
     integer, intent(in), optional :: mode_ref
     integer :: mode_old
+    real(default) :: weight, excess
     if (present (mode_ref)) then
        mode_old = mode_ref
     else if (event%config%unweighted) then
@@ -687,27 +554,31 @@ contains
     else
        mode_old = NORM_SIGMA
     end if
-    call event_normalization_update (event%weight_prc, &
+    weight = event%get_weight_prc ()
+    call event_normalization_update (weight, &
          event%config%sigma, event%config%n, &
          mode_new = event%config%norm_mode, &
          mode_old = mode_old)
-    call event_normalization_update (event%excess_prc, &
+    call event%set_weight_prc (weight)
+    excess = event%get_excess_prc ()
+    call event_normalization_update (excess, &
          event%config%sigma, event%config%n, &
          mode_new = event%config%norm_mode, &
          mode_old = mode_old)
+    call event%set_excess_prc (excess)
   end subroutine event_update_normalization
   
   subroutine event_check (event)
     class(event_t), intent(inout) :: event
-    event%is_complete = event%particle_set_exists &
-         .and. event%sqme_ref_is_known &
-         .and. event%sqme_prc_is_known &
-         .and. event%weight_ref_is_known &
-         .and. event%weight_prc_is_known
-    if (event%n_alt /= 0) then
+    event%is_complete = event%has_valid_particle_set () &
+         .and. event%sqme_ref_is_known () &
+         .and. event%sqme_prc_is_known () &
+         .and. event%weight_ref_is_known () &
+         .and. event%weight_prc_is_known ()
+    if (event%get_n_alt () /= 0) then
        event%is_complete = event%is_complete &
-            .and. event%sqme_alt_is_known &
-            .and. event%weight_alt_is_known
+            .and. event%sqme_alt_is_known () &
+            .and. event%weight_alt_is_known ()
     end if
   end subroutine event_check
   
@@ -737,13 +608,13 @@ contains
     call event%check ()
   end subroutine event_generate
   
-  subroutine event_get_particle_set_hard_proc (event, pset)
+  subroutine event_get_hard_particle_set (event, pset)
     class(event_t), intent(in) :: event
     type(particle_set_t), intent(out) :: pset
     class(evt_t), pointer :: evt
     evt => event%transform_first
     pset = evt%particle_set
-  end subroutine event_get_particle_set_hard_proc
+  end subroutine event_get_hard_particle_set
     
   subroutine event_select (event, i_mci, i_term, channel)
     class(event_t), intent(inout) :: event
@@ -757,35 +628,31 @@ contains
     end if
   end subroutine event_select
 
-  subroutine event_set_particle_set_hard_proc (event, particle_set)
+  subroutine event_set_hard_particle_set (event, particle_set)
     class(event_t), intent(inout) :: event
     type(particle_set_t), intent(in) :: particle_set
     class(evt_t), pointer :: evt
     evt => event%transform_first
     call evt%set_particle_set (particle_set, &
          event%selected_i_mci, event%selected_i_term)
-    event%particle_set => evt%particle_set
-    call event%accept_particle_set ()
+    call event%link_particle_set (evt%particle_set)
     evt => evt%next
     do while (associated (evt))
        call evt%reset ()
        evt => evt%next
     end do
-  end subroutine event_set_particle_set_hard_proc
+  end subroutine event_set_hard_particle_set
 
-  subroutine event_accept_particle_set (event)
-    class(event_t), intent(inout) :: event
-    event%particle_set_exists = .true.
-  end subroutine event_accept_particle_set
-  
   subroutine event_recalculate &
        (event, update_sqme, weight_factor, recover_beams)
     class(event_t), intent(inout) :: event
     logical, intent(in) :: update_sqme
     real(default), intent(in), optional :: weight_factor
     logical, intent(in), optional :: recover_beams
+    type(particle_set_t), pointer :: particle_set
     integer :: i_mci, i_term, channel
-    if (event%particle_set_exists) then
+    if (event%has_valid_particle_set ()) then
+       particle_set => event%get_particle_set_ptr ()
        i_mci = event%selected_i_mci
        i_term = event%selected_i_term
        channel = event%selected_channel
@@ -793,15 +660,15 @@ contains
           call msg_bug ("Event: recalculate: undefined selection parameters")
        end if
        call event%instance%choose_mci (i_mci)
-       call event%instance%set_trace (event%particle_set, i_term, recover_beams)
+       call event%instance%set_trace (particle_set, i_term, recover_beams)
        call event%instance%recover (channel, i_term, update_sqme) 
        if (signal_is_pending ())  return
        if (update_sqme .and. present (weight_factor)) then
           call event%instance%evaluate_event_data &
                (weight = event%instance%get_sqme () * weight_factor)
-       else if (event%weight_ref_is_known) then
+       else if (event%weight_ref_is_known ()) then
           call event%instance%evaluate_event_data &
-               (weight = event%weight_ref)
+               (weight = event%get_weight_ref ())
        else
           call event%process%recover_event (event%instance, i_term)
           if (signal_is_pending ())  return
@@ -828,18 +695,18 @@ contains
     ptr => event%process
   end function event_get_process_ptr
 
-  function event_has_particle_set (event) result (flag)
+  function event_get_process_instance_ptr (event) result (ptr)
     class(event_t), intent(in) :: event
-    logical :: flag
-    flag = event%particle_set_exists
-  end function event_has_particle_set
-  
-  function event_get_particle_set_ptr (event) result (ptr)
-    class(event_t), intent(in), target :: event
-    type(particle_set_t), pointer :: ptr
-    ptr => event%particle_set
-  end function event_get_particle_set_ptr
-  
+    type(process_instance_t), pointer :: ptr
+    ptr => event%instance
+  end function event_get_process_instance_ptr
+
+  function event_get_model_ptr (event) result (model)
+    class(event_t), intent(in) :: event
+    class(model_data_t), pointer :: model
+    model => event%process%get_model_ptr ()
+  end function event_get_model_ptr
+
   function event_get_i_mci (event) result (i_mci)
     class(event_t), intent(in) :: event
     integer :: i_mci
@@ -858,6 +725,16 @@ contains
     channel = event%selected_channel
   end function event_get_channel
   
+  function event_has_transform (event) result (flag)
+    class(event_t), intent(in) :: event
+    logical :: flag
+    if (associated (event%transform_first)) then
+       flag = associated (event%transform_first%next)
+    else
+       flag = .false.
+    end if
+  end function event_has_transform
+  
   elemental function event_get_norm_mode (event) result (norm_mode)
     class(event_t), intent(in) :: event
     integer :: norm_mode
@@ -867,13 +744,19 @@ contains
   function event_get_kinematical_weight (event) result (f)
     class(event_t), intent(in) :: event
     real(default) :: f
-    if (event%sqme_ref_is_known .and. event%weight_ref_is_known &
-         .and. event%sqme_ref /= 0) then
-       f = event%weight_ref / event%sqme_ref
+    if (event%sqme_ref_is_known () .and. event%weight_ref_is_known () &
+         .and. event%get_sqme_ref () /= 0) then
+       f = event%get_weight_ref () / event%get_sqme_ref ()
     else
        f = 0
     end if
   end function event_get_kinematical_weight
+    
+  function event_get_index (event) result (index)
+    class(event_t), intent(in) :: event
+    integer :: index
+    index = event%expr%index
+  end function event_get_index
     
   function event_get_fac_scale (event) result (fac_scale)
     class(event_t), intent(in) :: event
@@ -890,7 +773,7 @@ contains
   subroutine pacify_event (event)
     class(event_t), intent(inout) :: event
     class(evt_t), pointer :: evt
-    if (event%particle_set_exists)  call pacify (event%particle_set)
+    call event%pacify_particle_set ()
     if (event%expr%subevt_filled)  call pacify (event%expr)
     evt => event%transform_first
     do while (associated (evt))
@@ -1005,6 +888,7 @@ contains
     type(process_t), allocatable, target :: process
     type(process_instance_t), allocatable, target :: process_instance
     type(particle_set_t) :: particle_set
+    type(particle_set_t), pointer :: particle_set_ptr
     type(model_data_t), target :: model
 
     write (u, "(A)")  "* Test output: events_4"
@@ -1029,7 +913,8 @@ contains
     call event%evaluate_expressions ()
     call event%write (u)
     
-    particle_set = event%particle_set
+    particle_set_ptr => event%get_particle_set_ptr ()
+    particle_set = particle_set_ptr
 
     call event%final ()
     deallocate (event)
@@ -1052,7 +937,7 @@ contains
     call event%connect (process_instance, process%get_model_ptr ())
     
     call event%select (1, 1, 1)
-    call event%set_particle_set_hard_proc (particle_set)
+    call event%set_hard_particle_set (particle_set)
     call event%recalculate (update_sqme = .true.)
     call event%write (u)
 
@@ -1101,6 +986,7 @@ contains
     type(process_t), allocatable, target :: process
     type(process_instance_t), allocatable, target :: process_instance
     type(particle_set_t) :: particle_set
+    type(particle_set_t), pointer :: particle_set_ptr
     real(default) :: sqme, weight
     type(model_data_t), target :: model
 
@@ -1126,9 +1012,10 @@ contains
     call event%evaluate_expressions ()
     call event%write (u)
     
-    particle_set = event%particle_set
-    sqme = event%sqme_ref
-    weight = event%weight_ref
+    particle_set_ptr => event%get_particle_set_ptr ()
+    particle_set = particle_set_ptr
+    sqme = event%get_sqme_ref ()
+    weight = event%get_weight_ref ()
 
     call event%final ()
     deallocate (event)
@@ -1151,7 +1038,7 @@ contains
     call event%connect (process_instance, process%get_model_ptr ())
     
     call event%select (1, 1, 1)
-    call event%set_particle_set_hard_proc (particle_set)
+    call event%set_hard_particle_set (particle_set)
     call event%recalculate (update_sqme = .false.)
     call event%write (u)
 

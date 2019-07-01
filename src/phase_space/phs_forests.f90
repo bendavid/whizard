@@ -1,0 +1,1473 @@
+! WHIZARD 2.2.4 Feb 06 2015
+! 
+! Copyright (C) 1999-2015 by 
+!     Wolfgang Kilian <kilian@physik.uni-siegen.de>
+!     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
+!     Juergen Reuter <juergen.reuter@desy.de>
+!     
+!     with contributions from
+!     Fabian Bach <fabian.bach@desy.de>
+!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Weiss <christian.weiss@desy.de>
+!     and Hans-Werner Boschmann, Felix Braam, 
+!     Sebastian Schmidt, Daniel Wiesler 
+!
+! WHIZARD is free software; you can redistribute it and/or modify it
+! under the terms of the GNU General Public License as published by 
+! the Free Software Foundation; either version 2, or (at your option)
+! any later version.
+!
+! WHIZARD is distributed in the hope that it will be useful, but
+! WITHOUT ANY WARRANTY; without even the implied warranty of
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! GNU General Public License for more details.
+!
+! You should have received a copy of the GNU General Public License
+! along with this program; if not, write to the Free Software
+! Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! This file has been stripped of most comments.  For documentation, refer
+! to the source 'whizard.nw'
+
+module phs_forests
+
+  use kinds, only: default
+  use kinds, only: TC
+  use iso_varying_string, string_t => varying_string
+  use io_units
+  use format_defs, only: FMT_12, FMT_19
+  use diagnostics
+  use lorentz
+  use unit_tests
+  use permutations
+  use ifiles
+  use syntax_rules
+  use lexers
+  use parser
+  use model_data
+  use model_data
+  use flavors
+  use interactions
+
+  use phs_base
+  use mappings
+  use phs_trees
+
+  implicit none
+  private
+
+  public :: phs_parameters_t
+  public :: phs_parameters_write
+  public :: phs_parameters_read
+  public :: phs_forest_t
+  public :: phs_forest_init
+  public :: phs_forest_set_s_mappings
+  public :: phs_forest_final
+  public :: phs_forest_write
+  public :: assignment(=)
+  public :: phs_forest_get_n_parameters
+  public :: phs_forest_get_n_channels
+  public :: phs_forest_get_n_groves
+  public :: phs_forest_get_grove_bounds
+  public :: phs_forest_get_n_equivalences
+  public :: phs_forest_get_s_mapping
+  public :: phs_forest_get_on_shell
+  public :: syntax_phs_forest_init
+  public :: syntax_phs_forest_final
+  public :: syntax_phs_forest_write
+  public :: phs_forest_read
+  public :: phs_forest_set_flavors
+  public :: phs_forest_set_momentum_links
+  public :: phs_forest_set_parameters
+  public :: phs_forest_setup_prt_combinations
+  public :: phs_forest_set_prt_in
+  public :: phs_forest_set_prt_out
+  public :: phs_forest_combine_particles
+  public :: phs_forest_get_prt_out
+  public :: phs_forest_get_momenta_out
+  public :: phs_forest_set_equivalences
+  public :: phs_forest_get_equivalences 
+  public :: phs_forest_evaluate_selected_channel
+  public :: phs_forest_evaluate_other_channels
+  public :: phs_forest_recover_channel
+  public :: phs_forest_test
+
+  type :: phs_parameters_t
+     real(default) :: sqrts = 0
+     real(default) :: m_threshold_s = 50._default
+     real(default) :: m_threshold_t = 100._default
+     integer :: off_shell = 1
+     integer :: t_channel = 2
+     logical :: keep_nonresonant = .true.
+  end type phs_parameters_t
+
+  type :: equivalence_t
+     private
+     integer :: left, right
+     type(permutation_t) :: perm
+     type(permutation_t) :: msq_perm, angle_perm
+     logical, dimension(:), allocatable :: angle_sig
+     type(equivalence_t), pointer :: next => null ()
+  end type equivalence_t
+
+  type :: equivalence_list_t
+     private
+     integer :: length = 0
+     type(equivalence_t), pointer :: first => null ()
+     type(equivalence_t), pointer :: last => null ()
+  end type equivalence_list_t
+
+  type :: phs_grove_t
+     private
+     integer :: tree_count_offset
+     type(phs_tree_t), dimension(:), allocatable :: tree
+     type(equivalence_list_t) :: equivalence_list
+  end type phs_grove_t
+
+  type :: phs_forest_t
+     private
+     integer :: n_in, n_out, n_tot
+     integer :: n_masses, n_angles, n_dimensions
+     integer :: n_trees, n_equivalences
+     type(flavor_t), dimension(:), allocatable :: flv
+     type(phs_grove_t), dimension(:), allocatable :: grove
+     integer, dimension(:), allocatable :: grove_lookup
+     type(phs_prt_t), dimension(:), allocatable :: prt_in
+     type(phs_prt_t), dimension(:), allocatable :: prt_out
+     type(phs_prt_t), dimension(:), allocatable :: prt
+     integer(TC), dimension(:,:), allocatable :: prt_combination
+     type(mapping_t), dimension(:), allocatable :: s_mapping
+   contains
+     procedure :: write => phs_forest_write
+  end type phs_forest_t
+
+
+  interface operator(==)
+     module procedure phs_parameters_eq
+  end interface
+  interface operator(/=)
+     module procedure phs_parameters_ne
+  end interface
+  interface assignment(=)
+     module procedure equivalence_list_assign
+  end interface
+
+  interface assignment(=)
+     module procedure phs_grove_assign0
+     module procedure phs_grove_assign1
+  end interface
+
+  interface assignment(=)
+     module procedure phs_forest_assign
+  end interface
+
+  interface phs_forest_read
+     module procedure phs_forest_read_file
+     module procedure phs_forest_read_unit
+     module procedure phs_forest_read_parse_tree
+  end interface
+
+  interface phs_forest_set_prt_in
+     module procedure phs_forest_set_prt_in_int, phs_forest_set_prt_in_mom
+  end interface phs_forest_set_prt_in
+  interface phs_forest_set_prt_out
+     module procedure phs_forest_set_prt_out_int, phs_forest_set_prt_out_mom
+  end interface phs_forest_set_prt_out
+
+  type(syntax_t), target, save :: syntax_phs_forest
+
+
+contains
+
+  subroutine phs_parameters_write (phs_par, unit)
+    type(phs_parameters_t), intent(in) :: phs_par
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = given_output_unit (unit)
+    write (u, "(3x,A," // FMT_19 // ")") "sqrts         = ", phs_par%sqrts
+    write (u, "(3x,A," // FMT_19 // ")") "m_threshold_s = ", phs_par%m_threshold_s
+    write (u, "(3x,A," // FMT_19 // ")") "m_threshold_t = ", phs_par%m_threshold_t
+    write (u, "(3x,A,I0)") "off_shell = ", phs_par%off_shell
+    write (u, "(3x,A,I0)") "t_channel = ", phs_par%t_channel
+    write (u, "(3x,A,L1)") "keep_nonresonant = ", phs_par%keep_nonresonant
+  end subroutine phs_parameters_write
+
+  subroutine phs_parameters_read (phs_par, unit)
+    type(phs_parameters_t), intent(out) :: phs_par
+    integer, intent(in) :: unit
+    character(20) :: dummy
+    character :: equals
+    read (unit, *)  dummy, equals, phs_par%sqrts
+    read (unit, *)  dummy, equals, phs_par%m_threshold_s
+    read (unit, *)  dummy, equals, phs_par%m_threshold_t
+    read (unit, *)  dummy, equals, phs_par%off_shell
+    read (unit, *)  dummy, equals, phs_par%t_channel
+    read (unit, *)  dummy, equals, phs_par%keep_nonresonant
+  end subroutine phs_parameters_read
+
+  function phs_parameters_eq (phs_par1, phs_par2) result (equal)
+    logical :: equal
+    type(phs_parameters_t), intent(in) :: phs_par1, phs_par2
+    equal = phs_par1%sqrts == phs_par2%sqrts &
+         .and. phs_par1%m_threshold_s == phs_par2%m_threshold_s &
+         .and. phs_par1%m_threshold_t == phs_par2%m_threshold_t &
+         .and. phs_par1%off_shell == phs_par2%off_shell &
+         .and. phs_par1%t_channel == phs_par2%t_channel &
+         .and.(phs_par1%keep_nonresonant .eqv. phs_par2%keep_nonresonant)
+  end function phs_parameters_eq
+
+  function phs_parameters_ne (phs_par1, phs_par2) result (ne)
+    logical :: ne
+    type(phs_parameters_t), intent(in) :: phs_par1, phs_par2
+    ne = phs_par1%sqrts /= phs_par2%sqrts &
+         .or. phs_par1%m_threshold_s /= phs_par2%m_threshold_s &
+         .or. phs_par1%m_threshold_t /= phs_par2%m_threshold_t &
+         .or. phs_par1%off_shell /= phs_par2%off_shell &
+         .or. phs_par1%t_channel /= phs_par2%t_channel &
+         .or.(phs_par1%keep_nonresonant .neqv. phs_par2%keep_nonresonant)
+  end function phs_parameters_ne
+
+  subroutine equivalence_list_add (eql, left, right, perm)
+    type(equivalence_list_t), intent(inout) :: eql
+    integer, intent(in) :: left, right
+    type(permutation_t), intent(in) :: perm
+    type(equivalence_t), pointer :: eq
+    allocate (eq)
+    eq%left = left
+    eq%right = right
+    eq%perm = perm
+    if (associated (eql%last)) then
+       eql%last%next => eq
+    else
+       eql%first => eq
+    end if
+    eql%last => eq
+    eql%length = eql%length + 1
+  end subroutine equivalence_list_add
+
+  pure subroutine equivalence_list_final (eql)
+    type(equivalence_list_t), intent(inout) :: eql
+    type(equivalence_t), pointer :: eq
+    do while (associated (eql%first))
+       eq => eql%first
+       eql%first => eql%first%next
+       deallocate (eq)
+    end do
+    eql%last => null ()
+    eql%length = 0
+  end subroutine equivalence_list_final
+
+  subroutine equivalence_list_assign (eql_out, eql_in)
+    type(equivalence_list_t), intent(out) :: eql_out
+    type(equivalence_list_t), intent(in) :: eql_in
+    type(equivalence_t), pointer :: eq, eq_copy
+    eq => eql_in%first
+    do while (associated (eq))
+       allocate (eq_copy)
+       eq_copy = eq
+       eq_copy%next => null ()
+       if (associated (eql_out%first)) then
+          eql_out%last%next => eq_copy
+       else
+          eql_out%first => eq_copy
+       end if
+       eql_out%last => eq_copy
+       eq => eq%next
+    end do
+  end subroutine equivalence_list_assign
+
+  elemental function equivalence_list_length (eql) result (length)
+    integer :: length
+    type(equivalence_list_t), intent(in) :: eql
+    length = eql%length
+  end function equivalence_list_length
+
+  subroutine equivalence_list_write (eql, unit)
+    type(equivalence_list_t), intent(in) :: eql
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = given_output_unit (unit);  if (u < 0)  return
+    if (associated (eql%first)) then
+       call equivalence_write_rec (eql%first, u)
+    else
+       write (u, *) " [empty]"
+    end if
+  contains
+    recursive subroutine equivalence_write_rec (eq, u)
+      type(equivalence_t), intent(in) :: eq
+      integer, intent(in) :: u
+      integer :: i
+      write (u, "(3x,A,1x,I0,1x,I0,2x,A)", advance="no") &
+           "Equivalence:", eq%left, eq%right, "Final state permutation:"
+      call permutation_write (eq%perm, u)
+      write (u, "(1x,12x,1x,A,1x)", advance="no") &
+           "       msq permutation:  "
+      call permutation_write (eq%msq_perm, u)
+      write (u, "(1x,12x,1x,A,1x)", advance="no") &
+           "       angle permutation:"
+      call permutation_write (eq%angle_perm, u)
+      write (u, "(1x,12x,1x,26x)", advance="no")
+      do i = 1, size (eq%angle_sig)
+         if (eq%angle_sig(i)) then
+            write (u, "(1x,A)", advance="no") "+"
+         else
+            write (u, "(1x,A)", advance="no") "-"
+         end if
+      end do
+      write (u, *) 
+      if (associated (eq%next))  call equivalence_write_rec (eq%next, u)
+    end subroutine equivalence_write_rec
+  end subroutine equivalence_list_write
+
+  elemental subroutine phs_grove_init &
+       (grove, n_trees, n_in, n_out, n_masses, n_angles)
+    type(phs_grove_t), intent(inout) :: grove
+    integer, intent(in) :: n_trees, n_in, n_out, n_masses, n_angles
+    grove%tree_count_offset = 0
+    allocate (grove%tree (n_trees))
+    call phs_tree_init (grove%tree, n_in, n_out, n_masses, n_angles)
+  end subroutine phs_grove_init
+
+  elemental subroutine phs_grove_final (grove)
+    type(phs_grove_t), intent(inout) :: grove
+    deallocate (grove%tree)
+    call equivalence_list_final (grove%equivalence_list)
+  end subroutine phs_grove_final
+
+  subroutine phs_grove_assign0 (grove_out, grove_in)
+    type(phs_grove_t), intent(out) :: grove_out
+    type(phs_grove_t), intent(in) :: grove_in
+    grove_out%tree_count_offset = grove_in%tree_count_offset
+    if (allocated (grove_in%tree)) then
+       allocate (grove_out%tree (size (grove_in%tree)))
+       grove_out%tree = grove_in%tree
+    end if
+    grove_out%equivalence_list = grove_in%equivalence_list
+  end subroutine phs_grove_assign0
+
+  subroutine phs_grove_assign1 (grove_out, grove_in)
+    type(phs_grove_t), dimension(:), intent(out) :: grove_out
+    type(phs_grove_t), dimension(:), intent(in) :: grove_in
+    integer :: i
+    do i = 1, size (grove_in)
+       call phs_grove_assign0 (grove_out(i), grove_in(i))
+    end do
+  end subroutine phs_grove_assign1
+
+  subroutine phs_grove_assign_s_mappings (grove, mapping)
+    type(phs_grove_t), intent(in) :: grove
+    type(mapping_t), dimension(:), intent(out) :: mapping
+    integer :: i
+    if (size (mapping) == size (grove%tree)) then
+       do i = 1, size (mapping)
+          call phs_tree_assign_s_mapping (grove%tree(i), mapping(i))
+       end do
+    else
+       call msg_bug ("phs_grove_assign_s_mappings: array size mismatch")
+    end if
+  end subroutine phs_grove_assign_s_mappings
+
+  subroutine phs_forest_init (forest, n_tree, n_in, n_out)
+    type(phs_forest_t), intent(inout) :: forest
+    integer, dimension(:), intent(in) :: n_tree
+    integer, intent(in) :: n_in, n_out
+    integer :: g, count, k_root
+    forest%n_in = n_in
+    forest%n_out = n_out
+    forest%n_tot = n_in + n_out
+    forest%n_masses = max (n_out - 2, 0)
+    forest%n_angles = max (2*n_out - 2, 0)
+    forest%n_dimensions = forest%n_masses + forest%n_angles
+    forest%n_trees = sum (n_tree)
+    forest%n_equivalences = 0
+    allocate (forest%grove (size (n_tree)))
+    call phs_grove_init &
+         (forest%grove, n_tree, n_in, n_out, forest%n_masses, &
+          forest%n_angles)
+    allocate (forest%grove_lookup (forest%n_trees))
+    count = 0
+    do g = 1, size (forest%grove)
+       forest%grove(g)%tree_count_offset = count
+       forest%grove_lookup (count+1:count+n_tree(g)) = g
+       count = count + n_tree(g)
+    end do
+    allocate (forest%prt_in  (n_in))
+    allocate (forest%prt_out (forest%n_out))
+    k_root = 2**forest%n_tot - 1
+    allocate (forest%prt (k_root))
+    allocate (forest%prt_combination (2, k_root))
+    allocate (forest%s_mapping (forest%n_trees))
+  end subroutine phs_forest_init
+
+  subroutine phs_forest_set_s_mappings (forest)
+    type(phs_forest_t), intent(inout) :: forest
+    integer :: g, i0, i1, n
+    do g = 1, size (forest%grove)
+       call phs_forest_get_grove_bounds (forest, g, i0, i1, n)
+       call phs_grove_assign_s_mappings &
+            (forest%grove(g), forest%s_mapping(i0:i1))
+    end do
+  end subroutine phs_forest_set_s_mappings
+
+  subroutine phs_forest_final (forest)
+    type(phs_forest_t), intent(inout) :: forest
+    if (allocated (forest%grove)) then
+       call phs_grove_final (forest%grove)
+       deallocate (forest%grove)
+    end if
+    if (allocated (forest%grove_lookup))  deallocate (forest%grove_lookup)
+    if (allocated (forest%prt))  deallocate (forest%prt)
+    if (allocated (forest%s_mapping))  deallocate (forest%s_mapping)
+  end subroutine phs_forest_final
+
+  subroutine phs_forest_write (forest, unit)
+    class(phs_forest_t), intent(in) :: forest
+    integer, intent(in), optional :: unit
+    integer :: u
+    integer :: i, g, k
+    u = given_output_unit (unit);  if (u < 0)  return
+    write (u, "(1x,A)") "Phase space forest:"
+    write (u, "(3x,A,I0)") "n_in  = ", forest%n_in
+    write (u, "(3x,A,I0)") "n_out = ", forest%n_out
+    write (u, "(3x,A,I0)") "n_tot = ", forest%n_tot
+    write (u, "(3x,A,I0)") "n_masses = ", forest%n_masses
+    write (u, "(3x,A,I0)") "n_angles = ", forest%n_angles
+    write (u, "(3x,A,I0)") "n_dim    = ", forest%n_dimensions
+    write (u, "(3x,A,I0)") "n_trees  = ", forest%n_trees
+    write (u, "(3x,A,I0)") "n_equiv  = ", forest%n_equivalences
+    write (u, "(3x,A)", advance="no") "flavors  ="
+    if (allocated (forest%flv)) then
+       do i = 1, size (forest%flv)
+          write (u, "(1x,I0)", advance="no")  flavor_get_pdg (forest%flv(i))
+       end do
+       write (u, "(A)")
+    else
+       write (u, "(1x,A)") "[empty]"
+    end if
+    write (u, "(1x,A)") "Particle combinations:"
+    if (allocated (forest%prt_combination)) then
+       do k = 1, size (forest%prt_combination, 2)
+          if (forest%prt_combination(1, k) /= 0) then
+             write (u, "(3x,I0,1x,'<=',1x,I0,1x,'+',1x,I0)") &
+                  k, forest%prt_combination(:,k)
+          end if
+       end do
+    else
+       write (u, "(3x,A)") "  [empty]"
+    end if
+    write (u, "(1x,A)") "Groves and trees:"
+    if (allocated (forest%grove)) then
+       do g = 1, size (forest%grove)
+          write (u, "(3x,A,1x,I0)") "Grove    ", g
+          call phs_grove_write (forest%grove(g), unit)
+       end do
+    else
+       write (u, "(3x,A)") "  [empty]"
+    end if
+    write (u, "(1x,A,I0)") "Total number of equivalences: ", &
+         forest%n_equivalences
+    write (u, "(A)")
+    write (u, "(1x,A)") "Global s-channel mappings:"
+    if (allocated (forest%s_mapping)) then
+       do i = 1, size (forest%s_mapping)
+          associate (mapping => forest%s_mapping(i))
+            if (mapping_is_s_channel (mapping) &
+                 .or. mapping_is_on_shell (mapping)) then
+               write (u, "(1x,I0,':',1x)", advance="no")  i
+               call mapping_write (forest%s_mapping(i), unit)
+            end if
+          end associate
+       end do
+    else
+       write (u, "(3x,A)") "  [empty]"
+    end if
+    write (u, "(A)")
+    write (u, "(1x,A)") "Incoming particles:"
+    if (allocated (forest%prt_in)) then
+       if (any (phs_prt_is_defined (forest%prt_in))) then
+          do i = 1, size (forest%prt_in)
+             if (phs_prt_is_defined (forest%prt_in(i))) then
+                write (u, "(1x,A,1x,I0)")  "Particle", i
+                call phs_prt_write (forest%prt_in(i), u)
+             end if
+          end do
+       else
+          write (u, "(3x,A)")  "[all undefined]"
+       end if
+    else
+       write (u, "(3x,A)")  "  [empty]"
+    end if
+    write (u, "(A)")
+    write (u, "(1x,A)") "Outgoing particles:"
+    if (allocated (forest%prt_out)) then
+       if (any (phs_prt_is_defined (forest%prt_out))) then
+          do i = 1, size (forest%prt_out)
+             if (phs_prt_is_defined (forest%prt_out(i))) then
+                write (u, "(1x,A,1x,I0)")  "Particle", i
+                call phs_prt_write (forest%prt_out(i), u)
+             end if
+          end do
+       else
+          write (u, "(3x,A)")  "[all undefined]"
+       end if
+    else
+       write (u, "(1x,A)")  "  [empty]"
+    end if
+    write (u, "(A)")
+    write (u, "(1x,A)") "Tree particles:"
+    if (allocated (forest%prt)) then
+       if (any (phs_prt_is_defined (forest%prt))) then
+          do i = 1, size (forest%prt)
+             if (phs_prt_is_defined (forest%prt(i))) then
+                write (u, "(1x,A,1x,I0)")  "Particle", i
+                call phs_prt_write (forest%prt(i), u)
+             end if
+          end do
+       else
+          write (u, "(3x,A)")  "[all undefined]"
+       end if
+    else
+       write (u, "(3x,A)")  "  [empty]"
+    end if
+  end subroutine phs_forest_write
+
+  subroutine phs_grove_write (grove, unit)
+    type(phs_grove_t), intent(in) :: grove
+    integer, intent(in), optional :: unit
+    integer :: u
+    integer :: t
+    u = given_output_unit (unit);  if (u < 0)  return
+    do t = 1, size (grove%tree)
+       write (u, "(3x,A,I0)") "Tree      ", t
+       call phs_tree_write (grove%tree(t), unit)
+    end do
+    write (u, "(1x,A)") "Equivalence list:"
+    call equivalence_list_write (grove%equivalence_list, unit)
+  end subroutine phs_grove_write
+
+  subroutine phs_forest_assign (forest_out, forest_in)
+    type(phs_forest_t), intent(out) :: forest_out
+    type(phs_forest_t), intent(in) :: forest_in
+    forest_out%n_in  = forest_in%n_in
+    forest_out%n_out = forest_in%n_out
+    forest_out%n_tot = forest_in%n_tot
+    forest_out%n_masses = forest_in%n_masses
+    forest_out%n_angles = forest_in%n_angles
+    forest_out%n_dimensions  = forest_in%n_dimensions
+    forest_out%n_trees  = forest_in%n_trees
+    forest_out%n_equivalences  = forest_in%n_equivalences
+    if (allocated (forest_in%flv)) then
+       allocate (forest_out%flv (size (forest_in%flv)))
+       forest_out%flv = forest_in%flv
+    end if
+    if (allocated (forest_in%grove)) then
+       allocate (forest_out%grove (size (forest_in%grove)))
+       forest_out%grove = forest_in%grove
+    end if
+    if (allocated (forest_in%grove_lookup)) then
+       allocate (forest_out%grove_lookup (size (forest_in%grove_lookup)))
+       forest_out%grove_lookup = forest_in%grove_lookup
+    end if
+    if (allocated (forest_in%prt_in)) then
+       allocate (forest_out%prt_in (size (forest_in%prt_in)))
+       forest_out%prt_in = forest_in%prt_in
+    end if
+    if (allocated (forest_in%prt_out)) then
+       allocate (forest_out%prt_out (size (forest_in%prt_out)))
+       forest_out%prt_out = forest_in%prt_out
+    end if
+    if (allocated (forest_in%prt)) then
+       allocate (forest_out%prt (size (forest_in%prt)))
+       forest_out%prt = forest_in%prt
+    end if
+    if (allocated (forest_in%s_mapping)) then
+       allocate (forest_out%s_mapping (size (forest_in%s_mapping)))
+       forest_out%s_mapping = forest_in%s_mapping
+    end if
+    if (allocated (forest_in%prt_combination)) then
+       allocate (forest_out%prt_combination &
+            (2, size (forest_in%prt_combination, 2)))
+       forest_out%prt_combination = forest_in%prt_combination
+    end if
+  end subroutine phs_forest_assign
+
+  function phs_forest_get_n_parameters (forest) result (n)
+    integer :: n
+    type(phs_forest_t), intent(in) :: forest
+    n = forest%n_dimensions
+  end function phs_forest_get_n_parameters
+
+  function phs_forest_get_n_channels (forest) result (n)
+    integer :: n
+    type(phs_forest_t), intent(in) :: forest
+    n = forest%n_trees
+  end function phs_forest_get_n_channels
+
+  function phs_forest_get_n_groves (forest) result (n)
+    integer :: n
+    type(phs_forest_t), intent(in) :: forest
+    n = size (forest%grove)
+  end function phs_forest_get_n_groves
+
+  subroutine phs_forest_get_grove_bounds (forest, g, i0, i1, n)
+    type(phs_forest_t), intent(in) :: forest
+    integer, intent(in) :: g
+    integer, intent(out) :: i0, i1, n
+    n = size (forest%grove(g)%tree)
+    i0 = forest%grove(g)%tree_count_offset + 1
+    i1 = forest%grove(g)%tree_count_offset + n
+  end subroutine phs_forest_get_grove_bounds
+
+  function phs_forest_get_n_equivalences (forest) result (n)
+    integer :: n
+    type(phs_forest_t), intent(in) :: forest
+    n = forest%n_equivalences
+  end function phs_forest_get_n_equivalences
+
+  subroutine phs_forest_get_s_mapping (forest, channel, flag, mass, width)
+    type(phs_forest_t), intent(in) :: forest
+    integer, intent(in) :: channel
+    logical, intent(out) :: flag
+    real(default), intent(out) :: mass, width
+    flag = mapping_is_s_channel (forest%s_mapping(channel))
+    if (flag) then
+       mass = mapping_get_mass (forest%s_mapping(channel))
+       width = mapping_get_width (forest%s_mapping(channel))
+    else
+       mass = 0
+       width = 0
+    end if
+  end subroutine phs_forest_get_s_mapping
+
+  subroutine phs_forest_get_on_shell (forest, channel, flag, mass)
+    type(phs_forest_t), intent(in) :: forest
+    integer, intent(in) :: channel
+    logical, intent(out) :: flag
+    real(default), intent(out) :: mass
+    flag = mapping_is_on_shell (forest%s_mapping(channel))
+    if (flag) then
+       mass = mapping_get_mass (forest%s_mapping(channel))
+    else
+       mass = 0
+    end if
+  end subroutine phs_forest_get_on_shell
+
+  subroutine define_phs_forest_syntax (ifile)
+    type(ifile_t) :: ifile
+    call ifile_append (ifile, "SEQ phase_space_list = process_phase_space*")
+    call ifile_append (ifile, "SEQ process_phase_space = " &
+         // "process_def process_header phase_space")
+    call ifile_append (ifile, "SEQ process_def = process process_list")
+    call ifile_append (ifile, "KEY process")
+    call ifile_append (ifile, "LIS process_list = process_tag*")
+    call ifile_append (ifile, "IDE process_tag")
+    call ifile_append (ifile, "SEQ process_header = " &
+         // "md5sum_process = md5sum " &
+         // "md5sum_model_par = md5sum " &
+         // "md5sum_phs_config = md5sum " &
+         // "sqrts = real " &
+         // "m_threshold_s = real " &
+         // "m_threshold_t = real " &
+         // "off_shell = integer " &
+         // "t_channel = integer " &
+         // "keep_nonresonant = logical")
+    call ifile_append (ifile, "KEY '='")
+    call ifile_append (ifile, "KEY md5sum_process")
+    call ifile_append (ifile, "KEY md5sum_model_par")
+    call ifile_append (ifile, "KEY md5sum_phs_config")
+    call ifile_append (ifile, "KEY sqrts")
+    call ifile_append (ifile, "KEY m_threshold_s")
+    call ifile_append (ifile, "KEY m_threshold_t")
+    call ifile_append (ifile, "KEY off_shell")
+    call ifile_append (ifile, "KEY t_channel")
+    call ifile_append (ifile, "KEY keep_nonresonant")
+    call ifile_append (ifile, "QUO md5sum = '""' ... '""'")
+    call ifile_append (ifile, "REA real")
+    call ifile_append (ifile, "INT integer")
+    call ifile_append (ifile, "IDE logical")
+    call ifile_append (ifile, "SEQ phase_space = grove_def+")
+    call ifile_append (ifile, "SEQ grove_def = grove tree_def+")
+    call ifile_append (ifile, "KEY grove")
+    call ifile_append (ifile, "SEQ tree_def = tree bincodes mapping*")
+    call ifile_append (ifile, "KEY tree")
+    call ifile_append (ifile, "SEQ bincodes = bincode*")
+    call ifile_append (ifile, "INT bincode")
+    call ifile_append (ifile, "SEQ mapping = map bincode channel pdg")
+    call ifile_append (ifile, "KEY map")
+    call ifile_append (ifile, "ALT channel = &
+         &s_channel | t_channel | u_channel | &
+         &collinear | infrared | radiation | on_shell")
+    call ifile_append (ifile, "KEY s_channel")
+    ! call ifile_append (ifile, "KEY t_channel")   !!! Key already exists
+    call ifile_append (ifile, "KEY u_channel")
+    call ifile_append (ifile, "KEY collinear")
+    call ifile_append (ifile, "KEY infrared")
+    call ifile_append (ifile, "KEY radiation")
+    call ifile_append (ifile, "KEY on_shell")
+    call ifile_append (ifile, "INT pdg")
+  end subroutine define_phs_forest_syntax
+
+  subroutine syntax_phs_forest_init ()
+    type(ifile_t) :: ifile
+    call define_phs_forest_syntax (ifile)
+    call syntax_init (syntax_phs_forest, ifile)
+    call ifile_final (ifile)
+  end subroutine syntax_phs_forest_init
+
+  subroutine lexer_init_phs_forest (lexer)
+    type(lexer_t), intent(out) :: lexer
+    call lexer_init (lexer, &
+         comment_chars = "#!", &
+         quote_chars = '"', &
+         quote_match = '"', &
+         single_chars = "", &
+         special_class = ["="] , &
+         keyword_list = syntax_get_keyword_list_ptr (syntax_phs_forest))
+  end subroutine lexer_init_phs_forest
+
+  subroutine syntax_phs_forest_final ()
+    call syntax_final (syntax_phs_forest)
+  end subroutine syntax_phs_forest_final
+
+  subroutine syntax_phs_forest_write (unit)
+    integer, intent(in), optional :: unit
+    call syntax_write (syntax_phs_forest, unit)
+  end subroutine syntax_phs_forest_write
+
+  subroutine phs_forest_read_file &
+       (forest, filename, process_id, n_in, n_out, model, found, &
+        md5sum_process, md5sum_model_par, &
+        md5sum_phs_config, phs_par, match)
+    type(phs_forest_t), intent(out) :: forest
+    type(string_t), intent(in) :: filename
+    type(string_t), intent(in) :: process_id
+    integer, intent(in) :: n_in, n_out
+    class(model_data_t), intent(in), target :: model
+    logical, intent(out) :: found
+    character(32), intent(in), optional :: &
+         md5sum_process, md5sum_model_par, md5sum_phs_config
+    type(phs_parameters_t), intent(in), optional :: phs_par
+    logical, intent(out), optional :: match
+    type(parse_tree_t), target :: parse_tree
+    type(stream_t), target :: stream
+    type(lexer_t) :: lexer
+    call lexer_init_phs_forest (lexer)
+    call stream_init (stream, char (filename))
+    call lexer_assign_stream (lexer, stream)
+    call parse_tree_init (parse_tree, syntax_phs_forest, lexer)
+    call phs_forest_read (forest, parse_tree, &
+         process_id, n_in, n_out, model, found, &
+         md5sum_process, md5sum_model_par, md5sum_phs_config, phs_par, match)
+    call stream_final (stream)
+    call lexer_final (lexer)
+    call parse_tree_final (parse_tree)
+  end subroutine phs_forest_read_file
+
+  subroutine phs_forest_read_unit &
+       (forest, unit, process_id, n_in, n_out, model, found, &
+        md5sum_process, md5sum_model_par, md5sum_phs_config, &
+        phs_par, match)
+    type(phs_forest_t), intent(out) :: forest
+    integer, intent(in) :: unit
+    type(string_t), intent(in) :: process_id
+    integer, intent(in) :: n_in, n_out
+    class(model_data_t), intent(in), target :: model
+    logical, intent(out) :: found
+    character(32), intent(in), optional :: &
+         md5sum_process, md5sum_model_par, md5sum_phs_config
+    type(phs_parameters_t), intent(in), optional :: phs_par
+    logical, intent(out), optional :: match
+    type(parse_tree_t), target :: parse_tree
+    type(stream_t), target :: stream
+    type(lexer_t) :: lexer
+    call lexer_init_phs_forest (lexer)
+    call stream_init (stream, unit)
+    call lexer_assign_stream (lexer, stream)
+    call parse_tree_init (parse_tree, syntax_phs_forest, lexer)
+    call phs_forest_read (forest, parse_tree, &
+         process_id, n_in, n_out, model, found, &
+         md5sum_process, md5sum_model_par, md5sum_phs_config, &
+         phs_par, match)
+    call stream_final (stream)
+    call lexer_final (lexer)
+    call parse_tree_final (parse_tree)
+  end subroutine phs_forest_read_unit
+
+  subroutine phs_forest_read_parse_tree &
+       (forest, parse_tree, process_id, n_in, n_out, model, found, &
+        md5sum_process, md5sum_model_par, md5sum_phs_config, &
+        phs_par, match)
+    type(phs_forest_t), intent(out) :: forest
+    type(parse_tree_t), intent(in), target :: parse_tree
+    type(string_t), intent(in) :: process_id
+    integer, intent(in) :: n_in, n_out
+    class(model_data_t), intent(in), target :: model
+    logical, intent(out) :: found
+    character(32), intent(in), optional :: &
+         md5sum_process, md5sum_model_par, md5sum_phs_config
+    type(phs_parameters_t), intent(in), optional :: phs_par
+    logical, intent(out), optional :: match
+    type(parse_node_t), pointer :: node_header, node_phs, node_grove
+    integer :: n_grove, g
+    integer, dimension(:), allocatable :: n_tree
+    integer :: t
+    logical :: real_phsp_work
+    node_header => parse_tree_get_process_ptr (parse_tree, process_id)
+    found = associated (node_header);  if (.not. found)  return
+    if (present (match)) then
+       call phs_forest_check_input (node_header, &
+            md5sum_process, md5sum_model_par, md5sum_phs_config, phs_par, match)
+       if (.not. match)  return
+    end if
+    node_phs => parse_node_get_next_ptr (node_header)
+    n_grove = parse_node_get_n_sub (node_phs)
+    allocate (n_tree (n_grove))
+    do g = 1, n_grove
+       node_grove => parse_node_get_sub_ptr (node_phs, g)
+       n_tree(g) = parse_node_get_n_sub (node_grove) - 1
+    end do
+    call phs_forest_init (forest, n_tree, n_in, n_out)
+    do g = 1, n_grove
+       node_grove => parse_node_get_sub_ptr (node_phs, g)
+       do t = 1, n_tree(g)
+          call phs_tree_set (forest%grove(g)%tree(t), &
+               parse_node_get_sub_ptr (node_grove, t+1), model)
+       end do
+    end do
+  end subroutine phs_forest_read_parse_tree
+
+  subroutine phs_forest_check_input (pn_header, &
+       md5sum_process, md5sum_model_par, md5sum_phs_config, phs_par, match)
+    type(parse_node_t), intent(in), target :: pn_header
+    character(32), intent(in) :: &
+         md5sum_process, md5sum_model_par, md5sum_phs_config
+    type(phs_parameters_t), intent(in), optional :: phs_par
+    logical, intent(out) :: match
+    type(parse_node_t), pointer :: pn_md5sum, pn_rval, pn_ival, pn_lval
+    character(32) :: md5sum
+    type(phs_parameters_t) :: phs_par_old
+    character(1) :: lstr
+    pn_md5sum => parse_node_get_sub_ptr (pn_header, 3)
+    md5sum = parse_node_get_string (pn_md5sum)
+    if (md5sum /= "" .and. md5sum /= md5sum_process) then
+       call msg_message ("Phase space: discarding old configuration &
+            &(process changed)")
+       match = .false.;  return
+    end if
+    pn_md5sum => parse_node_get_next_ptr (pn_md5sum, 3)
+    md5sum = parse_node_get_string (pn_md5sum)
+    if (md5sum /= "" .and. md5sum /= md5sum_model_par) then
+       call msg_message ("Phase space: discarding old configuration &
+            &(model parameters changed)")
+       match = .false.;  return
+    end if
+    pn_md5sum => parse_node_get_next_ptr (pn_md5sum, 3)
+    md5sum = parse_node_get_string (pn_md5sum)
+    if (md5sum /= "" .and. md5sum /= md5sum_phs_config) then
+       call msg_message ("Phase space: discarding old configuration &
+            &(configuration parameters changed)")
+       match = .false.;  return
+    end if
+    if (present (phs_par)) then
+       pn_rval => parse_node_get_next_ptr (pn_md5sum, 3)
+       phs_par_old%sqrts = parse_node_get_real (pn_rval)
+       pn_rval => parse_node_get_next_ptr (pn_rval, 3)
+       phs_par_old%m_threshold_s = parse_node_get_real (pn_rval)
+       pn_rval => parse_node_get_next_ptr (pn_rval, 3)
+       phs_par_old%m_threshold_t = parse_node_get_real (pn_rval)
+       pn_ival => parse_node_get_next_ptr (pn_rval, 3)
+       phs_par_old%off_shell = parse_node_get_integer (pn_ival)
+       pn_ival => parse_node_get_next_ptr (pn_ival, 3)
+       phs_par_old%t_channel = parse_node_get_integer (pn_ival)
+       pn_lval => parse_node_get_next_ptr (pn_ival, 3)
+       lstr = parse_node_get_string (pn_lval)
+       read (lstr, "(L1)")  phs_par_old%keep_nonresonant
+       if (phs_par_old /= phs_par) then
+          call msg_message &
+               ("Phase space: discarding old configuration &
+               &(configuration parameters changed)")
+          match = .false.;  return
+       end if
+    end if
+    match = .true.
+  end subroutine phs_forest_check_input
+
+  subroutine phs_tree_set (tree, node, model)
+    type(phs_tree_t), intent(inout) :: tree
+    type(parse_node_t), intent(in), target :: node
+    class(model_data_t), intent(in), target :: model
+    type(parse_node_t), pointer :: node_bincodes, node_mapping
+    integer :: n_bincodes, offset
+    integer(TC), dimension(:), allocatable :: bincode
+    integer :: b, n_mappings, m
+    integer(TC) :: k
+    type(string_t) :: type
+    integer :: pdg
+    node_bincodes => parse_node_get_sub_ptr (node, 2)
+    if (associated (node_bincodes)) then
+       select case (char (parse_node_get_rule_key (node_bincodes)))
+       case ("bincodes")
+          n_bincodes = parse_node_get_n_sub (node_bincodes)
+          offset = 2
+       case default
+          n_bincodes = 0
+          offset = 1
+       end select
+    else
+       n_bincodes = 0
+       offset = 2
+    end if
+    allocate (bincode (n_bincodes))
+    do b = 1, n_bincodes
+       bincode(b) = parse_node_get_integer &
+            (parse_node_get_sub_ptr (node_bincodes, b))
+    end do
+    call phs_tree_from_array (tree, bincode)
+    call phs_tree_flip_t_to_s_channel (tree)
+    call phs_tree_canonicalize (tree)
+    n_mappings = parse_node_get_n_sub (node) - offset
+    do m = 1, n_mappings
+       node_mapping => parse_node_get_sub_ptr (node, m + offset)
+       k = parse_node_get_integer &
+            (parse_node_get_sub_ptr (node_mapping, 2))
+       type = parse_node_get_key &
+            (parse_node_get_sub_ptr (node_mapping, 3))
+       pdg = parse_node_get_integer &
+            (parse_node_get_sub_ptr (node_mapping, 4))
+       call phs_tree_init_mapping (tree, k, type, pdg, model)
+    end do
+  end subroutine phs_tree_set
+
+  subroutine phs_forest_set_flavors (forest, flv, reshuffle, flv_extra)
+    type(phs_forest_t), intent(inout) :: forest
+    type(flavor_t), dimension(:), intent(in) :: flv
+    integer, intent(in), dimension(:), allocatable, optional :: reshuffle
+    type(flavor_t), intent(in), optional :: flv_extra
+    integer :: i, n_flv0
+    if (present (reshuffle) .and. present (flv_extra)) then
+       n_flv0 = size (flv)
+       do i = 1, n_flv0
+          if (reshuffle(i) <= n_flv0) then
+             forest%flv(i) = flv (reshuffle(i))
+          else
+             forest%flv(i) = flv_extra
+          end if
+       end do
+    else
+       allocate (forest%flv (size (flv)))
+       forest%flv = flv
+    end if
+  end subroutine phs_forest_set_flavors
+
+  subroutine phs_forest_set_momentum_links (forest, list)
+    type(phs_forest_t), intent(inout) :: forest
+    integer, intent(in), dimension(:), allocatable :: list
+    integer :: g, t
+    do g = 1, size (forest%grove)
+      do t = 1, size (forest%grove(g)%tree)
+        associate (tree => forest%grove(g)%tree(t))
+          call phs_tree_set_momentum_links (tree, list)
+!!!          call phs_tree_reshuffle_mappings (tree)
+        end associate
+      end do
+    end do
+  end subroutine phs_forest_set_momentum_links
+
+  subroutine phs_forest_set_parameters &
+       (forest, mapping_defaults, variable_limits)
+    type(phs_forest_t), intent(inout) :: forest
+    type(mapping_defaults_t), intent(in) :: mapping_defaults
+    logical, intent(in) :: variable_limits
+    integer :: g, t
+    do g = 1, size (forest%grove)
+       do t = 1, size (forest%grove(g)%tree)
+          call phs_tree_set_mass_sum &
+               (forest%grove(g)%tree(t), forest%flv(forest%n_in+1:))
+          call phs_tree_set_mapping_parameters (forest%grove(g)%tree(t), &
+               mapping_defaults, variable_limits)
+          call phs_tree_set_effective_masses (forest%grove(g)%tree(t))
+          if (mapping_defaults%step_mapping) then
+             call phs_tree_set_step_mappings (forest%grove(g)%tree(t), &
+                  mapping_defaults%step_mapping_exp, variable_limits)
+          end if
+       end do
+    end do
+  end subroutine phs_forest_set_parameters
+
+  subroutine phs_forest_setup_prt_combinations (forest)
+    type(phs_forest_t), intent(inout) :: forest
+    integer :: g, t
+    integer, dimension(:,:), allocatable :: tree_prt_combination
+    forest%prt_combination = 0
+    allocate (tree_prt_combination (2, size (forest%prt_combination, 2)))
+    do g = 1, size (forest%grove)
+       do t = 1, size (forest%grove(g)%tree)
+          call phs_tree_setup_prt_combinations &
+               (forest%grove(g)%tree(t), tree_prt_combination)
+          where (tree_prt_combination /= 0 .and. forest%prt_combination == 0)
+             forest%prt_combination = tree_prt_combination
+          end where
+       end do
+    end do
+  end subroutine phs_forest_setup_prt_combinations
+
+  subroutine phs_forest_set_prt_in_int (forest, int, lt_cm_to_lab)
+    type(phs_forest_t), intent(inout) :: forest
+    type(interaction_t), intent(in) :: int
+    type(lorentz_transformation_t), intent(in), optional :: lt_cm_to_lab
+    if (present (lt_cm_to_lab)) then
+       call phs_prt_set_momentum (forest%prt_in, &
+            inverse (lt_cm_to_lab) * &
+            interaction_get_momenta (int, outgoing=.false.))
+    else
+       call phs_prt_set_momentum (forest%prt_in, &
+            interaction_get_momenta (int, outgoing=.false.))
+    end if
+    call phs_prt_set_msq (forest%prt_in, &
+         flavor_get_mass (forest%flv(:forest%n_in)) ** 2)
+    call phs_prt_set_defined (forest%prt_in)
+  end subroutine phs_forest_set_prt_in_int
+
+  subroutine phs_forest_set_prt_in_mom (forest, mom, lt_cm_to_lab)
+    type(phs_forest_t), intent(inout) :: forest
+    type(vector4_t), dimension(size (forest%prt_in)), intent(in) :: mom
+    type(lorentz_transformation_t), intent(in), optional :: lt_cm_to_lab
+    if (present (lt_cm_to_lab)) then
+       call phs_prt_set_momentum (forest%prt_in, &
+            inverse (lt_cm_to_lab) * mom)
+    else
+       call phs_prt_set_momentum (forest%prt_in, mom)
+    end if
+    call phs_prt_set_msq (forest%prt_in, &
+         flavor_get_mass (forest%flv(:forest%n_in)) ** 2)
+    call phs_prt_set_defined (forest%prt_in)
+  end subroutine phs_forest_set_prt_in_mom
+
+  subroutine phs_forest_set_prt_out_int (forest, int, lt_cm_to_lab)
+    type(phs_forest_t), intent(inout) :: forest
+    type(interaction_t), intent(in) :: int
+    type(lorentz_transformation_t), intent(in), optional :: lt_cm_to_lab
+    if (present (lt_cm_to_lab)) then
+       call phs_prt_set_momentum (forest%prt_out, &
+            inverse (lt_cm_to_lab) * &
+            interaction_get_momenta (int, outgoing=.true.))
+    else
+       call phs_prt_set_momentum (forest%prt_out, &
+            interaction_get_momenta (int, outgoing=.true.))
+    end if
+    call phs_prt_set_msq (forest%prt_out, &
+         flavor_get_mass (forest%flv(forest%n_in+1:)) ** 2)
+    call phs_prt_set_defined (forest%prt_out)
+  end subroutine phs_forest_set_prt_out_int
+
+  subroutine phs_forest_set_prt_out_mom (forest, mom, lt_cm_to_lab)
+    type(phs_forest_t), intent(inout) :: forest
+    type(vector4_t), dimension(size (forest%prt_out)), intent(in) :: mom
+    type(lorentz_transformation_t), intent(in), optional :: lt_cm_to_lab
+    if (present (lt_cm_to_lab)) then
+       call phs_prt_set_momentum (forest%prt_out, &
+            inverse (lt_cm_to_lab) * mom)
+    else
+       call phs_prt_set_momentum (forest%prt_out, mom)
+    end if
+    call phs_prt_set_msq (forest%prt_out, &
+         flavor_get_mass (forest%flv(forest%n_in+1:)) ** 2)
+    call phs_prt_set_defined (forest%prt_out)
+  end subroutine phs_forest_set_prt_out_mom
+
+  subroutine phs_forest_combine_particles (forest)
+    type(phs_forest_t), intent(inout) :: forest
+    integer :: k
+    integer, dimension(2) :: kk
+    do k = 1, size (forest%prt_combination, 2)
+       kk = forest%prt_combination(:,k)
+       if (kk(1) /= 0) then
+          call phs_prt_combine (forest%prt(k), &
+               forest%prt(kk(1)), forest%prt(kk(2)))
+       end if
+    end do
+  end subroutine phs_forest_combine_particles
+
+  subroutine phs_forest_get_prt_out (forest, int, lt_cm_to_lab)
+    type(phs_forest_t), intent(in) :: forest
+    type(interaction_t), intent(inout) :: int
+    type(lorentz_transformation_t), intent(in), optional :: lt_cm_to_lab
+    if (present (lt_cm_to_lab)) then
+       call interaction_set_momenta (int, &
+            lt_cm_to_lab * &
+            phs_prt_get_momentum (forest%prt_out), outgoing=.true.)
+    else
+       call interaction_set_momenta (int, &
+            phs_prt_get_momentum (forest%prt_out), outgoing=.true.)
+    end if
+  end subroutine phs_forest_get_prt_out
+
+  function phs_forest_get_momenta_out (forest, lt_cm_to_lab) result (p)
+    type(phs_forest_t), intent(in) :: forest
+    type(lorentz_transformation_t), intent(in), optional :: lt_cm_to_lab
+    type(vector4_t), dimension(size (forest%prt_out)) :: p
+    p = phs_prt_get_momentum (forest%prt_out)
+    if (present (lt_cm_to_lab)) p = p * lt_cm_to_lab
+  end function phs_forest_get_momenta_out
+  
+  subroutine phs_grove_set_equivalences (grove, perm_array)
+    type(phs_grove_t), intent(inout) :: grove
+    type(permutation_t), dimension(:), intent(in) :: perm_array
+    type(equivalence_t), pointer :: eq
+    integer :: t1, t2, i
+    do t1 = 1, size (grove%tree)
+       do t2 = 1, size (grove%tree)
+          SCAN_PERM: do i = 1, size (perm_array)
+             if (phs_tree_equivalent &
+                  (grove%tree(t1), grove%tree(t2), perm_array(i))) then
+                call equivalence_list_add &
+                     (grove%equivalence_list, t1, t2, perm_array(i))
+                eq => grove%equivalence_list%last
+                call phs_tree_find_msq_permutation &
+                     (grove%tree(t1), grove%tree(t2), eq%perm, &
+                      eq%msq_perm)
+                call phs_tree_find_angle_permutation &
+                     (grove%tree(t1), grove%tree(t2), eq%perm, &
+                      eq%angle_perm, eq%angle_sig)
+             end if
+          end do SCAN_PERM
+       end do
+    end do
+  end subroutine phs_grove_set_equivalences
+
+  subroutine phs_forest_set_equivalences (forest)
+    type(phs_forest_t), intent(inout) :: forest
+    type(permutation_t), dimension(:), allocatable :: perm_array
+    integer :: i
+    call permutation_array_make &
+         (perm_array, flavor_get_pdg (forest%flv(forest%n_in+1:)))
+    do i = 1, size (forest%grove)
+       call phs_grove_set_equivalences (forest%grove(i), perm_array)
+    end do
+    forest%n_equivalences = sum (forest%grove%equivalence_list%length)
+  end subroutine phs_forest_set_equivalences
+
+  subroutine phs_forest_get_equivalences (forest, channel, azimuthal_dependence)
+    type(phs_forest_t), intent(in) :: forest
+    type(phs_channel_t), dimension(:), intent(out) :: channel
+    logical, intent(in) :: azimuthal_dependence
+    integer :: n_masses, n_angles
+    integer :: mode_azimuthal_angle
+    integer, dimension(:), allocatable :: n_eq
+    type(equivalence_t), pointer :: eq
+    integer, dimension(:), allocatable :: perm, mode
+    integer :: g, c, j, left, right
+    n_masses = forest%n_masses
+    n_angles = forest%n_angles
+    allocate (n_eq (forest%n_trees), source = 0)
+    allocate (perm (forest%n_dimensions))
+    allocate (mode (forest%n_dimensions), source = EQ_IDENTITY)
+    do g = 1, size (forest%grove)
+       eq => forest%grove(g)%equivalence_list%first
+       do while (associated (eq))
+          left = eq%left + forest%grove(g)%tree_count_offset
+          n_eq(left) = n_eq(left) + 1
+          eq => eq%next
+       end do
+    end do
+    do c = 1, size (channel)
+       allocate (channel(c)%eq (n_eq(c)))
+       do j = 1, n_eq(c)
+          call channel(c)%eq(j)%init (forest%n_dimensions)
+       end do
+    end do
+    n_eq = 0
+    if (azimuthal_dependence) then
+       mode_azimuthal_angle = EQ_IDENTITY
+    else
+       mode_azimuthal_angle = EQ_INVARIANT
+    end if
+    do g = 1, size (forest%grove)
+       eq => forest%grove(g)%equivalence_list%first
+       do while (associated (eq))
+          left = eq%left + forest%grove(g)%tree_count_offset
+          right = eq%right + forest%grove(g)%tree_count_offset
+          do j = 1, n_masses
+             perm(j) = permute (j, eq%msq_perm)
+             mode(j) = EQ_IDENTITY
+          end do
+          do j = 1, n_angles
+             perm(n_masses+j) = n_masses + permute (j, eq%angle_perm)
+             if (j == 1) then
+                mode(n_masses+j) = mode_azimuthal_angle   ! first az. angle
+             else if (mod(j,2) == 1) then
+                mode(n_masses+j) = EQ_SYMMETRIC          ! other az. angles
+             else if (eq%angle_sig(j)) then
+                mode(n_masses+j) = EQ_IDENTITY           ! polar angle +
+             else
+                mode(n_masses+j) = EQ_INVERT             ! polar angle -
+             end if
+          end do
+          n_eq(left) = n_eq(left) + 1
+          associate (eq_cur => channel(left)%eq(n_eq(left)))
+            eq_cur%c = right
+            eq_cur%perm = perm
+            eq_cur%mode = mode
+          end associate
+          eq => eq%next
+       end do
+    end do
+  end subroutine phs_forest_get_equivalences
+
+  subroutine phs_forest_evaluate_selected_channel &
+       (forest, channel, active, sqrts, x, phs_factor, volume, ok)
+    type(phs_forest_t), intent(inout) :: forest
+    integer, intent(in) :: channel
+    logical, dimension(:), intent(in) :: active
+    real(default), intent(in) :: sqrts
+    real(default), dimension(:,:), intent(inout) :: x
+    real(default), dimension(:), intent(out) :: phs_factor
+    real(default), intent(out) :: volume
+    logical, intent(out) :: ok
+    integer :: g, t
+    integer(TC) :: k, k_root, k_in
+
+    g = forest%grove_lookup (channel)
+    t = channel - forest%grove(g)%tree_count_offset
+    call phs_prt_set_undefined (forest%prt)
+    call phs_prt_set_undefined (forest%prt_out)
+    k_in = forest%n_tot
+    
+    do k = 1,forest%n_in
+       forest%prt(ibset(0,k_in-k)) = forest%prt_in(k)
+    end do
+
+    do k = 1, forest%n_out
+       call phs_prt_set_msq (forest%prt(ibset(0,k-1)), &
+            flavor_get_mass (forest%flv(forest%n_in+k)) ** 2)
+    end do
+
+
+    k_root = 2**forest%n_out - 1
+    select case (forest%n_in)
+    case (1)
+       forest%prt(k_root) = forest%prt_in(1)
+    case (2)
+       call phs_prt_combine &
+            (forest%prt(k_root), forest%prt_in(1), forest%prt_in(2))
+    end select
+    call phs_tree_compute_momenta_from_x (forest%grove(g)%tree(t), &
+         forest%prt, phs_factor(channel), volume, sqrts, x(:,channel), ok)
+    if (ok) then
+       do k = 1, forest%n_out
+          forest%prt_out(k) = forest%prt(ibset(0,k-1))
+       end do
+    end if
+  end subroutine phs_forest_evaluate_selected_channel
+
+  subroutine phs_forest_evaluate_other_channels &
+       (forest, channel, active, sqrts, x, phs_factor, combine)
+    type(phs_forest_t), intent(inout) :: forest
+    integer, intent(in) :: channel
+    logical, dimension(:), intent(in) :: active
+    real(default), intent(in) :: sqrts
+    real(default), dimension(:,:), intent(inout) :: x
+    real(default), dimension(:), intent(inout) :: phs_factor
+    logical, intent(in) :: combine
+    integer :: g, t, ch, n_channel
+
+    g = forest%grove_lookup (channel)
+    t = channel - forest%grove(g)%tree_count_offset
+
+    n_channel = forest%n_trees
+    if (combine) then
+       do ch = 1, n_channel
+          if (ch == channel)  cycle
+          if (active(ch)) then
+             g = forest%grove_lookup(ch)
+             t = ch - forest%grove(g)%tree_count_offset
+             call phs_tree_combine_particles &
+                  (forest%grove(g)%tree(t), forest%prt)
+          end if
+       end do
+    end if
+
+    !OMP PARALLEL PRIVATE (g,t,ch) SHARED(active,forest,sqrts,x,channel)
+    !OMP DO SCHEDULE(STATIC)
+    do ch = 1, n_channel
+       if (ch == channel)  cycle
+       if (active(ch)) then
+          g = forest%grove_lookup(ch)
+          t = ch - forest%grove(g)%tree_count_offset
+          call phs_tree_compute_x_from_momenta &
+               (forest%grove(g)%tree(t), &
+               forest%prt, phs_factor(ch), sqrts, x(:,ch))
+       end if
+    end do
+    !OMP END DO
+    !OMP END PARALLEL
+
+  end subroutine phs_forest_evaluate_other_channels
+
+  subroutine phs_forest_recover_channel &
+       (forest, channel, sqrts, x, phs_factor, volume)
+    type(phs_forest_t), intent(inout) :: forest
+    integer, intent(in) :: channel
+    real(default), intent(in) :: sqrts
+    real(default), dimension(:,:), intent(inout) :: x
+    real(default), dimension(:), intent(inout) :: phs_factor
+    real(default), intent(out) :: volume
+    integer :: g, t
+    integer(TC) :: k, k_in
+    g = forest%grove_lookup (channel)
+    t = channel - forest%grove(g)%tree_count_offset
+    call phs_prt_set_undefined (forest%prt)
+    k_in = forest%n_tot
+    forall (k = 1:forest%n_in)
+       forest%prt(ibset(0,k_in-k)) = forest%prt_in(k)
+    end forall
+    forall (k = 1:forest%n_out)
+       forest%prt(ibset(0,k-1)) = forest%prt_out(k)
+    end forall
+    call phs_forest_combine_particles (forest)
+    call phs_tree_compute_volume &
+         (forest%grove(g)%tree(t), sqrts, volume)
+    call phs_tree_compute_x_from_momenta &
+         (forest%grove(g)%tree(t), &
+         forest%prt, phs_factor(channel), sqrts, x(:,channel))
+  end subroutine phs_forest_recover_channel
+
+  subroutine phs_forest_test (u, results)
+    integer, intent(in) :: u
+    type(test_results_t), intent(inout) :: results
+    call test (phs_forest_1, "phs_forest_1", &
+         "check phs forest setup", &
+         u, results)  
+  end subroutine phs_forest_test
+  
+
+  subroutine phs_forest_1 (u)
+    use os_interface
+    integer, intent(in) :: u
+    type(phs_forest_t) :: forest
+    type(phs_channel_t), dimension(:), allocatable :: channel
+    type(model_data_t), target :: model
+    type(string_t) :: process_id
+    type(flavor_t), dimension(5) :: flv
+    type(string_t) :: filename
+    type(interaction_t) :: int
+    integer, parameter :: unit_fix = 20
+    type(mapping_defaults_t) :: mapping_defaults
+    logical :: found_process, ok
+    integer :: n_channel, ch, i
+    logical, dimension(4) :: active = .true.
+    real(default) :: sqrts = 1000
+    real(default), dimension(5,4) :: x
+    real(default), dimension(4) :: factor
+    real(default) :: volume
+
+    write (u, "(A)")  "* Test output: PHS forest"
+    write (u, "(A)")  "*   Purpose: test PHS forest routines"
+    write (u, "(A)")      
+    
+    write (u, "(A)")  "* Reading model file"
+    
+    call model%init_sm_test ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Create phase-space file 'phs_forest_test.phs'"
+    write (u, "(A)")
+    
+    call flavor_init (flv, [11, -11, 11, -11, 22], model)
+    open (file="phs_forest_test.phs", unit=unit_fix, action="write")
+    write (unit_fix, *) "process foo"
+    write (unit_fix, *) 'md5sum_process    = "6ABA33BC2927925D0F073B1C1170780A"'
+    write (unit_fix, *) 'md5sum_model_par  = "1A0B151EE6E2DEB92D880320355A3EAB"'
+    write (unit_fix, *) 'md5sum_phs_config = "B6A8877058809A8BDD54753CDAB83ACE"'
+    write (unit_fix, *) "sqrts         =    100.00000000000000"     
+    write (unit_fix, *) "m_threshold_s =    50.000000000000000"     
+    write (unit_fix, *) "m_threshold_t =    100.00000000000000"     
+    write (unit_fix, *) "off_shell =            2"
+    write (unit_fix, *) "t_channel =            6"
+    write (unit_fix, *) "keep_nonresonant =  F"
+    write (unit_fix, *) ""
+    write (unit_fix, *) "  grove"
+    write (unit_fix, *) "    tree 3 7"
+    write (unit_fix, *) "      map 3 s_channel 23"
+    write (unit_fix, *) "    tree 5 7"
+    write (unit_fix, *) "    tree 6 7"
+    write (unit_fix, *) "  grove"
+    write (unit_fix, *) "    tree 9 11"
+    write (unit_fix, *) "      map 9 t_channel 22"
+    close (unit_fix)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Read phase-space file 'phs_forest_test.phs'"
+
+    call syntax_phs_forest_init ()
+    process_id = "foo"
+    filename = "phs_forest_test.phs"
+    call phs_forest_read &
+         (forest, filename, process_id, 2, 3, model, found_process)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Set parameters, flavors, equiv, momenta"
+    write (u, "(A)") 
+    
+    call phs_forest_set_flavors (forest, flv)
+    call phs_forest_set_parameters (forest, mapping_defaults, .false.)
+    call phs_forest_setup_prt_combinations (forest)
+    call phs_forest_set_equivalences (forest)
+    call interaction_init (int, 2, 0, 3)
+    call interaction_set_momentum (int, &
+         vector4_moving (500._default, 500._default, 3), 1)
+    call interaction_set_momentum (int, &
+         vector4_moving (500._default,-500._default, 3), 2)
+    call phs_forest_set_prt_in (forest, int)
+    n_channel = 2
+    x = 0
+    x(:,n_channel) = [0.3, 0.4, 0.1, 0.9, 0.6]
+    write (u, "(A)")  "   Input values:"
+    write (u, "(3x,5(1x," // FMT_12 // "))")  x(:,n_channel)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Evaluating phase space"
+
+    call phs_forest_evaluate_selected_channel (forest, &
+         n_channel, active, sqrts, x, factor, volume, ok)
+    call phs_forest_evaluate_other_channels (forest, &
+         n_channel, active, sqrts, x, factor, combine=.true.)
+    call phs_forest_get_prt_out (forest, int)
+    write (u, "(A)")  "   Output values:"
+    do ch = 1, 4
+       write (u, "(3x,5(1x," // FMT_12 // "))")  x(:,ch)
+    end do
+    call interaction_write (int, u)
+    write (u, "(A)")  "   Factors:"
+    write (u, "(3x,5(1x," // FMT_12 // "))")  factor
+    write (u, "(A)")  "   Volume:"
+    write (u, "(3x,5(1x," // FMT_12 // "))")  volume
+    call phs_forest_write (forest, u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Compute equivalences"
+
+    n_channel = 4
+    allocate (channel (n_channel))
+    call phs_forest_get_equivalences (forest, &
+         channel, .true.)
+    do i = 1, n_channel
+       write (u, "(1x,I0,':')", advance = "no")  ch       
+       call channel(i)%write (u)
+    end do
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Cleanup"
+
+    call model%final ()
+    call phs_forest_final (forest)
+    call syntax_phs_forest_final ()
+        
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: phs_forest_1"    
+
+  end subroutine phs_forest_1
+
+
+end module phs_forests

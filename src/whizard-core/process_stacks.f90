@@ -1,6 +1,6 @@
-! WHIZARD 2.2.3 Nov 30 2014
+! WHIZARD 2.2.4 Feb 06 2015
 ! 
-! Copyright (C) 1999-2014 by 
+! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -9,7 +9,8 @@
 !     Fabian Bach <fabian.bach@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Felix Braam, Sebastian Schmidt, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam, 
+!     Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -38,10 +39,10 @@ module process_stacks
   use diagnostics
   use os_interface
   use sm_qcd
-  use variables
   use model_data
   use rng_base
-
+  use variables
+  use observables
   use process_libraries
   use prc_test
   use processes
@@ -85,7 +86,7 @@ contains
     class(process_stack_t), intent(inout) :: stack
     type(process_entry_t), pointer :: process
     if (associated (stack%var_list)) then
-       call var_list_final (stack%var_list)
+       call stack%var_list%final ()
     end if
     do while (associated (stack%first))
        process => stack%first
@@ -167,13 +168,13 @@ contains
     class(process_stack_t), intent(inout) :: stack
     type(var_list_t), intent(inout), optional :: var_list
     allocate (stack%var_list)
-    if (present (var_list))  call var_list_link (var_list, stack%var_list)
+    if (present (var_list))  call var_list%link (stack%var_list)
   end subroutine process_stack_init_var_list
   
   subroutine process_stack_link_var_list (stack, var_list)
     class(process_stack_t), intent(inout) :: stack
     type(var_list_t), intent(in), target :: var_list
-    call var_list_link (stack%var_list, var_list)
+    call stack%var_list%link (var_list)
   end subroutine process_stack_link_var_list
   
   subroutine process_stack_push (stack, process)

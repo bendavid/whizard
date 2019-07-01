@@ -1,6 +1,6 @@
-(* $Id: modellib_MSSM.mli 4926 2013-12-04 12:35:06Z jr_reuter $
+(* $Id: modellib_MSSM.mli 6465 2015-01-10 15:22:31Z jr_reuter $
 
-   Copyright (C) 1999-2014 by
+   Copyright (C) 1999-2015 by
 
        Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>

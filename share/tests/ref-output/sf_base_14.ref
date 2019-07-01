@@ -173,13 +173,13 @@ p_in =  0.9000000
  E =   5.000000000000E+02
  P =   0.000000000000E+00  0.000000000000E+00  4.841229182759E+02
  mask [fch] = [FFgT]
- internal links: X => 4 3
+ internal links: X => 3 4
  source: (7)1
  Particle 2
  E =   5.000000000000E+02
  P =   0.000000000000E+00  0.000000000000E+00 -4.841229182759E+02
  mask [fch] = [FFgT]
- internal links: X => 4 3
+ internal links: X => 3 4
  source: (7)2
  Particle 3
  E =   2.500000000000E+02

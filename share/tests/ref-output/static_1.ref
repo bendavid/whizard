@@ -2,12 +2,12 @@
 $method = "omega"
 | Process library 'static_1_lib': recorded process 'static_1_p1'
 | Static executable 'static_1.exe': writing library dispatcher
-| Static executable 'static_1.exe': writing makefile
 | Process library 'static_1_lib': compiling ...
 | Process library 'static_1_lib': writing makefile
 | Process library 'static_1_lib': removing old files
 | Process library 'static_1_lib': writing driver
 | Process library 'static_1_lib': ... success.
+| Static executable 'static_1.exe': writing makefile
 | WHIZARD run finished.
 |=============================================================================|
 

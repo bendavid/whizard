@@ -23,6 +23,8 @@ let equidistant n x_min x_max =
     let delta = (x_max -. x_min) /. (float n) in
     Array.init (n + 1) (fun i -> x_min +. delta *. float i)
 
+exception Above_max of float * (float * float) * int
+exception Below_min of float * (float * float) * int
 exception Out_of_range of float * (float * float)
 exception Rebinning_failure of string
 
@@ -38,8 +40,10 @@ let find_raw d x =
 	find' a m
       else
 	find' m b in
-  if x < d.(0) -. eps || x > d.(n_max) +. eps then
-    raise (Out_of_range (x, (d.(0), d.(n_max))))
+  if x < d.(0) -. eps then
+    raise (Below_min (x, (d.(0), d.(n_max)), 0))
+  else if x > d.(n_max) +. eps then
+    raise (Above_max (x, (d.(0), d.(n_max)), n_max - 1))
   else if x <= d.(0) then
     0
   else if x >= d.(n_max) then
@@ -441,7 +445,7 @@ module Make_Poly (M : Diffmaps.Real) (* [: Poly] *) =
          w = \frac{f}{{\displaystyle\frac{\mathrm{d}x}{\mathrm{d}y}}}
            = f\cdot\frac{\mathrm{d}y}{\mathrm{d}x}
        \end{equation}
-       Here, the jacobian make no difference for the final result, but
+       Here, the jacobian makes no difference for the final result, but
        it steers VEGAS/VAMP into the right direction.  *)
 
     let caj pd y =

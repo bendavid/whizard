@@ -4,7 +4,6 @@
 ?pacify = true
 ?use_gosam_loops = false
 openmp_num_threads = 1
-| Reading model file SM_rad.mdl
 | Process library 'smtest_16_lib': recorded process 'smtest_16_p1'
 seed = 0
 sqrts =  2.5000000E+02
@@ -27,7 +26,7 @@ sqrts =  2.5000000E+02
 |   Library name  = 'smtest_16_lib'
 |   Process index = 1
 |   Process components:
-|     1: 'smtest_16_p1_i1':   e-, e+ => u, ubar [omega]
+|     1: 'smtest_16_p1_i1':   e-, e+ => u, ubar [omega], [Born]
 |     2: 'smtest_16_p1_i2':   e-, e+ => u, ubar, gl [omega], [Real]
 |     3: 'smtest_16_p1_i3':   e-, e+ => u, ubar [omega], [Virtual]
 |     4: 'smtest_16_p1_i4':   e-, e+ => u, ubar [omega], [Subtraction]

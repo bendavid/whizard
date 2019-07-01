@@ -1,6 +1,6 @@
-! WHIZARD 2.2.3 Nov 30 2014
+! WHIZARD 2.2.4 Feb 06 2015
 ! 
-! Copyright (C) 1999-2014 by 
+! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -9,7 +9,8 @@
 !     Fabian Bach <fabian.bach@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Felix Braam, Sebastian Schmidt, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam, 
+!     Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -36,6 +37,7 @@ module subevents
   use kinds, only: default
   use io_units
   use format_defs, only: FMT_14, FMT_19
+  use format_utils, only: pac_fmt
   use sorting
   use c_particles
   use lorentz
@@ -300,11 +302,18 @@ contains
     c_prt%p2 = prt%p2
   end function c_prt_from_prt
 
-  subroutine prt_write (prt, unit)
+  subroutine prt_write (prt, unit, pacified)
     type(prt_t), intent(in) :: prt
     integer, intent(in), optional :: unit
+    logical, intent(in), optional :: pacified
+    real(default), dimension(0:3) :: arr
+    logical :: num_pac
+    type(prt_t) :: tmp
+    character(len=7) :: fmt   
     integer :: u, i
+    call pac_fmt (fmt, FMT_19, FMT_14, pacified)
     u = given_output_unit (unit);  if (u < 0)  return
+    num_pac = .false. ; if (present (pacified))  num_pac = pacified
     write (u, "(1x,A)", advance="no")  "prt("
     select case (prt%type)
     case (PRT_UNDEFINED);    write (u, "('?')", advance="no")
@@ -323,10 +332,15 @@ contains
     end select
     select case (prt%type)
     case (PRT_BEAM, PRT_INCOMING, PRT_OUTGOING, PRT_COMPOSITE)
+       tmp = prt
+       if (num_pac) then
+          call pacify (tmp)
+       end if
+       arr = tmp%p
        write (u, "(" // FMT_14 // ",';'," // FMT_14 // ",','," // &
-            FMT_14 // ",','," // FMT_14 // ")", advance="no") &
-            array_from_vector4 (prt%p)
-       write (u, "('|'," // FMT_19 // ")", advance="no")  prt%p2
+            FMT_14 // ",','," // FMT_14 // ")", advance="no") arr
+       write (u, "('|'," // fmt // ")", advance="no") &
+            tmp%p2
     end select
     if (allocated (prt%src)) then
        write (u, "('|')", advance="no")
@@ -439,17 +453,18 @@ contains
     end if
   end subroutine subevt_reset
 
-  subroutine subevt_write (object, unit, prefix)
+  subroutine subevt_write (object, unit, prefix, pacified)
     class(subevt_t), intent(in) :: object
     integer, intent(in), optional :: unit
     character(*), intent(in), optional :: prefix
+    logical, intent(in), optional :: pacified
     integer :: u, i
     u = given_output_unit (unit);  if (u < 0)  return
     write (u, "(1x,A)") "subevent:"
     do i = 1, object%n_active
        if (present (prefix))  write (u, "(A)", advance="no") prefix
        write (u, "(1x,I0)", advance="no")  i
-       call prt_write (object%prt(i), unit)
+       call prt_write (object%prt(i), unit = unit, pacified = pacified)
     end do
   end subroutine subevt_write
 
@@ -945,9 +960,9 @@ contains
   subroutine pacify_prt (prt)
     class(prt_t), intent(inout) :: prt
     real(default) :: e
-    e = 1e-16_default * energy (prt%p)
-    call pacify (prt%p, 10 * e)
-    call pacify (prt%p2, 1e4 * e)
+    e = 1e-13_default * energy (prt%p)
+    call pacify (prt%p, e)
+    call pacify (prt%p2, 1e3 * e)
   end subroutine pacify_prt
   
   subroutine pacify_subevt (subevt)

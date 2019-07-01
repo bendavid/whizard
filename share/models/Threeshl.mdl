@@ -1,4 +1,4 @@
-# $Id: Threeshl.mdl 5021 2013-12-20 09:59:02Z kilian $
+# $Id: Threeshl.mdl 6476 2015-01-12 22:07:55Z jr_reuter $
 
 ########################################################################
 # Three-site higgsless model (unitary gauge)
@@ -307,7 +307,7 @@ particle HADRON_REMNANT_TRIPLET 92
   name hr3
   tex_name "had_r^{(3)}"
   anti hr3bar
-  tex_name "had_r^{(\bar 3)}"
+  tex_anti "had_r^{(\bar 3)}"
 particle HADRON_REMNANT_OCTET 93
   color 8
   name hr8

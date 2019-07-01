@@ -1,6 +1,6 @@
-! $Id: external.Threeshl.f90 6124 2014-09-16 09:51:26Z kilian $
+! $Id: external.Threeshl.f90 6465 2015-01-10 15:22:31Z jr_reuter $
 !
-! Copyright (C) 1999-2014 by 
+! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>

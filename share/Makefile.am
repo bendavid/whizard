@@ -2,7 +2,7 @@
 ##
 ## Process this file with automake to produce Makefile.in
 #
-# Copyright (C) 1999-2014 by 
+# Copyright (C) 1999-2015 by 
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
@@ -134,7 +134,10 @@ dist_pdf_DATA = \
 	pdf_builtin/ct10.00.pds \
 	pdf_builtin/CJ12_max_00.tbl \
 	pdf_builtin/CJ12_mid_00.tbl \
-	pdf_builtin/CJ12_min_00.tbl
+	pdf_builtin/CJ12_min_00.tbl \
+	pdf_builtin/mmht2014lo.00.dat \
+	pdf_builtin/mmht2014nlo.00.dat \
+	pdf_builtin/mmht2014nnlo.00.dat
 
 ## Files containing precompiled cross sections for muli
 ## to be installed with the 'muli' prefix kept

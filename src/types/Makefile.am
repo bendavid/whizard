@@ -2,7 +2,7 @@
 ##
 ## Process this file with automake to produce Makefile.in
 #
-# Copyright (C) 1999-2014 by 
+# Copyright (C) 1999-2015 by 
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
@@ -36,9 +36,7 @@ libtypes_la_SOURCES = \
   analysis.f90 \
   pdg_arrays.f90 \
   jets.f90 \
-  subevents.f90 \
-  variables.f90 \
-  expr_base.f90
+  subevents.f90
 
 ## Omitting this would exclude it from the distribution
 dist_noinst_DATA = types.nw
@@ -60,7 +58,8 @@ module_lists = \
   ../system/Modules \
   ../combinatorics/Modules \
   ../parsing/Modules \
-  ../physics/Modules
+  ../physics/Modules \
+  ../qft/Modules
 
 $(module_lists):
 	$(MAKE) -C `dirname $@` Modules
@@ -104,7 +103,7 @@ DISTCLEANFILES += Makefile.depend
 	@:
 #	touch $@
 
-AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system -I../combinatorics -I../parsing -I../physics -I../fastjet
+AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system -I../combinatorics -I../parsing -I../physics -I../qft -I../fastjet
 
 
 ########################################################################

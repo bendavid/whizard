@@ -23,8 +23,8 @@ contains
   pure function sp (p, q) result (sppq)
     real(kind=default), dimension(0:), intent(in) :: p, q
     complex(kind=default) :: sppq
-    sppq = cmplx (p(2), p(3)) * sqrt ((q(0)-q(1))/(p(0)-p(1))) &
-         - cmplx (q(2), q(3)) * sqrt ((p(0)-p(1))/(q(0)-q(1)))
+    sppq = cmplx (p(2), p(3), kind=default) * sqrt ((q(0)-q(1))/(p(0)-p(1))) &
+         - cmplx (q(2), q(3), kind=default) * sqrt ((p(0)-p(1))/(q(0)-q(1)))
   end function sp
   pure function spc (p, q) result (spcpq)
     real(kind=default), dimension(0:), intent(in) :: p, q

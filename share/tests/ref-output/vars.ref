@@ -193,6 +193,7 @@ seed = 2
 ?use_gosam_loops = true
 ?use_gosam_correlations = false
 ?use_gosam_real_trees = false
+?combined_nlo_integration = false
 ?rebuild_library = true
 ?recompile_library = false
 ?rebuild_phase_space = true

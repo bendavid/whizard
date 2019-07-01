@@ -4,7 +4,6 @@ WHIZARD Core
 
 * 2.3
   - EWA implementation (some progress in 2.2.0-2)
-  - reconsider structure function mappings for optimization (done?)
   - integration of multiple observables (cf. VAMP)
   - jet finder (partially done)
   - reenabling underlying event 
@@ -14,7 +13,7 @@ WHIZARD Core
   - Parton shower matching (MLM done, CKKW pending)
   - GUI (Tim?)
   - parallelization (OpenMP done, MPI pending)
-  - NLO/GoSAM/FKS (first things happened)
+  - NLO/GoSAM/FKS (beta status)
   - Dark Matter
   - Use omega restrictions on diagrams for phase space
 

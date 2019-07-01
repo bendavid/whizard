@@ -1,6 +1,6 @@
-! WHIZARD 2.2.3 Nov 30 2014
+! WHIZARD 2.2.4 Feb 06 2015
 ! 
-! Copyright (C) 1999-2014 by 
+! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -9,7 +9,8 @@
 !     Fabian Bach <fabian.bach@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Felix Braam, Sebastian Schmidt, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam, 
+!     Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -31,6 +32,8 @@
 
 module unit_tests
 
+  use kinds, only: default
+  use constants, only: zero, tiny_10, tiny_13
   use iso_varying_string, string_t => varying_string
   use io_units
 
@@ -39,6 +42,12 @@ module unit_tests
 
   public :: test_results_t
   public :: test
+  public :: assert
+  public :: nearly_equal
+  public:: vanishes
+  interface vanishes
+     module procedure vanishes_real, vanishes_complex
+  end interface
 
   character(*), parameter :: ref_prefix = "ref-output/"
   character(*), parameter :: ref = ".ref"
@@ -53,7 +62,7 @@ module unit_tests
      type(string_t) :: description
      type(test_result_t), pointer :: next => null ()
   end type test_result_t
-  
+
   type :: test_results_t
      private
      type(test_result_t), pointer :: first => null ()
@@ -67,7 +76,7 @@ module unit_tests
      procedure, private :: final => test_results_final
      procedure :: wrapup => test_results_wrapup
   end type test_results_t
-  
+
 
   abstract interface
      subroutine unit_test (u)
@@ -129,13 +138,13 @@ contains
     write (u, "(A,I0)")  "Failure = ", list%n_failure
     write (u, "(A)")  "*** End of test Summary ***"
   end subroutine test_results_write
-    
+
   subroutine test_results_report (list, success)
     class(test_results_t), intent(in) :: list
     logical, intent(out) :: success
     success = list%n_failure == 0
   end subroutine test_results_report
-  
+
   subroutine test_results_final (list)
     class(test_results_t), intent(inout) :: list
     type(test_result_t), pointer :: result
@@ -218,6 +227,71 @@ contains
     close (u_test)
     call results%add (name, description, success)
   end subroutine test
+
+  subroutine assert (unit, ok, description)
+    integer, intent(in) :: unit
+    logical, intent(in) :: ok
+    character(*), intent(in), optional :: description
+    if (.not. ok) then
+       if (present(description)) then
+          write (unit, "(A)") "* FAIL: " // description
+       else
+          write (unit, "(A)") "* FAIL: Assertion error"
+       end if
+    end if
+  end subroutine assert
+
+  elemental function ieee_is_nan (x) result (yorn)
+    logical :: yorn
+    real(default), intent(in) :: x
+    yorn = (x /= x)
+  end function ieee_is_nan
+  elemental function nearly_equal (a, b, abs_smallness, rel_smallness) result (r)
+    logical :: r
+    real(default), intent(in) :: a, b
+    real(default), intent(in), optional :: abs_smallness, rel_smallness
+    real(default) :: abs_a, abs_b, diff, abs_small, rel_small
+    abs_a = abs (a)
+    abs_b = abs (b)
+    diff = abs (a - b)
+    ! shortcut, handles infinities and nans
+    if (a == b) then
+       r = .true.
+       return
+    else if (ieee_is_nan (a) .or. ieee_is_nan (b) .or. ieee_is_nan (diff)) then
+       r = .false.
+       return
+    end if
+    if (present (abs_smallness)) then
+       abs_small = abs_smallness
+    else
+       abs_small = tiny_13
+    end if
+    if (present (rel_smallness)) then
+       rel_small = rel_smallness
+    else
+       rel_small = tiny_10
+    end if
+    if (abs_a < abs_small .and. abs_b < abs_small) then
+       r = diff < abs_small
+    else
+       r = diff / max (abs_a, abs_b) < rel_small
+    end if
+  end function nearly_equal
+
+  elemental function vanishes_real (x, abs_smallness, rel_smallness) result (r)
+    logical :: r
+    real(default), intent(in) :: x
+    real(default), intent(in), optional :: abs_smallness, rel_smallness
+    r = nearly_equal (x, zero, abs_smallness, rel_smallness)
+  end function vanishes_real
+
+  elemental function vanishes_complex (x, abs_smallness, rel_smallness) result (r)
+    logical :: r
+    complex(default), intent(in) :: x
+    real(default), intent(in), optional :: abs_smallness, rel_smallness
+    r = vanishes_real (abs (x), abs_smallness, rel_smallness)
+  end function vanishes_complex
 
 
 end module unit_tests

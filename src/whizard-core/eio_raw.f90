@@ -1,6 +1,6 @@
-! WHIZARD 2.2.3 Nov 30 2014
+! WHIZARD 2.2.4 Feb 06 2015
 ! 
-! Copyright (C) 1999-2014 by 
+! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -9,7 +9,8 @@
 !     Fabian Bach <fabian.bach@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Felix Braam, Sebastian Schmidt, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam, 
+!     Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -41,17 +42,19 @@ module eio_raw
   use variables
   use model_data
   use particles
-  use beams
-  use processes
-  use events
+  use event_base
   use eio_data
   use eio_base
+  use events
 
   implicit none
   private
 
   public :: eio_raw_t
   public :: eio_raw_test
+
+  integer, parameter :: CURRENT_FILE_VERSION = 2
+
 
   type, extends (eio_t) :: eio_raw_t
      logical :: reading = .false.
@@ -62,6 +65,7 @@ module eio_raw
      integer :: n = 1
      integer :: n_alt = 0
      logical :: check = .false.
+     integer :: file_version = CURRENT_FILE_VERSION
    contains
      procedure :: write => eio_raw_write
      procedure :: final => eio_raw_final
@@ -108,11 +112,24 @@ contains
     end if
   end subroutine eio_raw_final
   
-  subroutine eio_raw_set_parameters (eio, check, extension)
+  subroutine eio_raw_set_parameters (eio, check, version_string, extension)
     class(eio_raw_t), intent(inout) :: eio
-    logical, intent(in) :: check
+    logical, intent(in), optional :: check
+    type(string_t), intent(in), optional :: version_string
     type(string_t), intent(in), optional :: extension 
-    eio%check = check
+    if (present (check))  eio%check = check
+    if (present (version_string)) then
+       select case (char (version_string))
+       case ("", "2.2.4")
+          eio%file_version = CURRENT_FILE_VERSION
+       case ("2.2")
+          eio%file_version = 1
+       case default
+          call msg_fatal ("Raw event I/O: unsupported version '" &
+               // char (version_string) // "'")
+          eio%file_version = 0
+       end select
+    end if
     if (present (extension)) then
        eio%extension = extension
     else
@@ -120,14 +137,12 @@ contains
     end if
   end subroutine eio_raw_set_parameters
     
-  subroutine eio_raw_init_out &
-       (eio, sample, process_ptr, data, success, extension)
+  subroutine eio_raw_init_out (eio, sample, data, success, extension)
     class(eio_raw_t), intent(inout) :: eio
     type(string_t), intent(in) :: sample
-    type(string_t), intent(in), optional :: extension
-    type(process_ptr_t), dimension(:), intent(in) :: process_ptr
     type(event_sample_data_t), intent(in), optional :: data
     logical, intent(out), optional :: success
+    type(string_t), intent(in), optional :: extension
     character(32) :: md5sum_prc, md5sum_cfg
     character(32), dimension(:), allocatable :: md5sum_alt
     integer :: i
@@ -158,6 +173,9 @@ contains
     end if
     open (eio%unit, file = char (eio%filename), form = "unformatted", &
          action = "write", status = "replace")
+    select case (eio%file_version)
+    case (2:);  write (eio%unit)  eio%file_version
+    end select
     write (eio%unit)  md5sum_prc
     write (eio%unit)  md5sum_cfg
     write (eio%unit)  eio%norm_mode
@@ -168,17 +186,15 @@ contains
     if (present (success))  success = .true.
   end subroutine eio_raw_init_out
     
-  subroutine eio_raw_init_in &
-       (eio, sample, process_ptr, data, success, extension)
+  subroutine eio_raw_init_in (eio, sample, data, success, extension)
     class(eio_raw_t), intent(inout) :: eio
     type(string_t), intent(in) :: sample
-    type(string_t), intent(in), optional :: extension
-    type(process_ptr_t), dimension(:), intent(in) :: process_ptr
     type(event_sample_data_t), intent(inout), optional :: data
     logical, intent(out), optional :: success
+    type(string_t), intent(in), optional :: extension
     character(32) :: md5sum_prc, md5sum_cfg
     character(32), dimension(:), allocatable :: md5sum_alt
-    integer :: i
+    integer :: i, file_version
     if (present (success))  success = .true.
     if (present (extension)) then
        eio%extension = extension
@@ -197,6 +213,17 @@ contains
     eio%reading = .true.
     open (eio%unit, file = char (eio%filename), form = "unformatted", &
          action = "read", status = "old")
+    select case (eio%file_version)
+    case (2:);  read (eio%unit)  file_version
+    case default;  file_version = 1
+    end select
+    if (file_version /= eio%file_version) then
+       call msg_error ("Reading event file: raw-file version mismatch.")
+       if (present (success))  success = .false.
+       return
+    else if (file_version /= CURRENT_FILE_VERSION) then
+       call msg_warning ("Reading event file: compatibility mode.")
+    end if
     read (eio%unit)  md5sum_prc
     read (eio%unit)  md5sum_cfg
     read (eio%unit)  eio%norm_mode
@@ -246,29 +273,46 @@ contains
     if (present (success))  success = .true.
   end subroutine eio_raw_switch_inout
   
-  subroutine eio_raw_output (eio, event, i_prc, reading)
+  subroutine eio_raw_output (eio, event, i_prc, reading, pacify)
     class(eio_raw_t), intent(inout) :: eio
-    type(event_t), intent(in), target :: event
-    logical, intent(in), optional :: reading
+    class(generic_event_t), intent(in), target :: event
+    logical, intent(in), optional :: reading, pacify
     integer, intent(in) :: i_prc
-    type(particle_set_t) :: pset
+    type(particle_set_t), pointer :: pset
     integer :: i
     if (eio%writing) then
-       if (event%has_particle_set ()) then
-          write (eio%unit)  i_prc
-          write (eio%unit)  event%get_i_mci ()
-          write (eio%unit)  event%get_i_term ()
-          write (eio%unit)  event%get_channel ()
-          write (eio%unit)  event%expr%weight_prc
-          write (eio%unit)  event%expr%excess_prc
-          write (eio%unit)  event%expr%sqme_prc
-          do i = 1, eio%n_alt
-             write (eio%unit)  event%expr%weight_alt(i)
-             write (eio%unit)  event%expr%sqme_alt(i)
-          end do
-          call event%get_particle_set_hard_proc (pset)
-          call particle_set_write_raw (pset, eio%unit)
-          call particle_set_final (pset)
+       if (event%has_valid_particle_set ()) then
+          select type (event)
+          type is (event_t)
+             write (eio%unit)  i_prc
+             write (eio%unit)  event%get_i_mci ()
+             write (eio%unit)  event%get_i_term ()
+             write (eio%unit)  event%get_channel ()
+             write (eio%unit)  event%expr%weight_prc
+             write (eio%unit)  event%expr%excess_prc
+             write (eio%unit)  event%expr%sqme_prc
+             do i = 1, eio%n_alt
+                write (eio%unit)  event%expr%weight_alt(i)
+                write (eio%unit)  event%expr%sqme_alt(i)
+             end do
+             allocate (pset)
+             call event%get_hard_particle_set (pset)
+             call particle_set_write_raw (pset, eio%unit)
+             call particle_set_final (pset)
+             deallocate (pset)
+             select case (eio%file_version)
+             case (2:)
+                if (event%has_transform ()) then
+                   write (eio%unit)  .true.
+                   pset => event%get_particle_set_ptr ()
+                   call particle_set_write_raw (pset, eio%unit)
+                else
+                   write (eio%unit)  .false.
+                end if
+             end select
+          class default
+             call msg_bug ("Event: write raw: defined only for full event_t")
+          end select
        else
           call msg_bug ("Event: write raw: particle set is undefined")
        end if
@@ -292,52 +336,76 @@ contains
 
   subroutine eio_raw_input_event (eio, event, iostat)
     class(eio_raw_t), intent(inout) :: eio
-    type(event_t), intent(inout), target :: event
+    class(generic_event_t), intent(inout), target :: event
     integer, intent(out) :: iostat
     integer :: i_mci, i_term, channel, i
     real(default) :: weight, excess, sqme
     real(default), dimension(:), allocatable :: weight_alt, sqme_alt
-    type(particle_set_t) :: pset
+    logical :: has_transform
+    type(particle_set_t), pointer :: pset
+    class(model_data_t), pointer :: model
     if (eio%reading) then
-       read (eio%unit, iostat = iostat)  i_mci
-       if (iostat /= 0)  return
-       read (eio%unit, iostat = iostat)  i_term
-       if (iostat /= 0)  return
-       read (eio%unit, iostat = iostat)  channel
-       if (iostat /= 0)  return
-       read (eio%unit, iostat = iostat)  weight
-       if (iostat /= 0)  return
-       read (eio%unit, iostat = iostat)  excess
-       if (iostat /= 0)  return
-       read (eio%unit, iostat = iostat)  sqme
-       if (iostat /= 0)  return
-       call event%reset ()
-       call event%select (i_mci, i_term, channel)
-       if (eio%norm_mode /= NORM_UNDEFINED) then
-          call event_normalization_update (weight, &
-               eio%sigma, eio%n, event%get_norm_mode (), eio%norm_mode)
-          call event_normalization_update (excess, &
-               eio%sigma, eio%n, event%get_norm_mode (), eio%norm_mode)
-       end if
-       call event%set (sqme_ref = sqme, weight_ref = weight, &
-            excess_prc = excess)
-       if (eio%n_alt /= 0) then
-          allocate (sqme_alt (eio%n_alt), weight_alt (eio%n_alt))
-          do i = 1, eio%n_alt
-             read (eio%unit, iostat = iostat)  weight_alt(i)
+       select type (event)
+       type is (event_t)
+          read (eio%unit, iostat = iostat)  i_mci
+          if (iostat /= 0)  return
+          read (eio%unit, iostat = iostat)  i_term
+          if (iostat /= 0)  return
+          read (eio%unit, iostat = iostat)  channel
+          if (iostat /= 0)  return
+          read (eio%unit, iostat = iostat)  weight
+          if (iostat /= 0)  return
+          read (eio%unit, iostat = iostat)  excess
+          if (iostat /= 0)  return
+          read (eio%unit, iostat = iostat)  sqme
+          if (iostat /= 0)  return
+          call event%reset ()
+          call event%select (i_mci, i_term, channel)
+          if (eio%norm_mode /= NORM_UNDEFINED) then
+             call event_normalization_update (weight, &
+                  eio%sigma, eio%n, event%get_norm_mode (), eio%norm_mode)
+             call event_normalization_update (excess, &
+                  eio%sigma, eio%n, event%get_norm_mode (), eio%norm_mode)
+          end if
+          call event%set (sqme_ref = sqme, weight_ref = weight, &
+               excess_prc = excess)
+          if (eio%n_alt /= 0) then
+             allocate (sqme_alt (eio%n_alt), weight_alt (eio%n_alt))
+             do i = 1, eio%n_alt
+                read (eio%unit, iostat = iostat)  weight_alt(i)
+                if (iostat /= 0)  return
+                read (eio%unit, iostat = iostat)  sqme_alt(i)
+                if (iostat /= 0)  return
+             end do
+             call event%set (sqme_alt = sqme_alt, weight_alt = weight_alt)
+          end if
+          model => null ()
+          if (associated (event%process)) then
+             model => event%process%get_model_ptr ()
+          end if
+          allocate (pset)
+          call particle_set_read_raw (pset, eio%unit, iostat)
+          if (iostat /= 0)  return
+          if (associated (model))  call particle_set_set_model (pset, model)
+          call event%set_hard_particle_set (pset)
+          call particle_set_final (pset)
+          deallocate (pset)
+          select case (eio%file_version)
+          case (2:)
+             read (eio%unit, iostat = iostat)  has_transform
              if (iostat /= 0)  return
-             read (eio%unit, iostat = iostat)  sqme_alt(i)
-             if (iostat /= 0)  return
-          end do
-          call event%set (sqme_alt = sqme_alt, weight_alt = weight_alt)
-       end if
-       call particle_set_read_raw (pset, eio%unit, iostat)
-       if (iostat /= 0)  return
-       if (associated (event%process)) then
-          call particle_set_set_model (pset, event%process%get_model_ptr ())
-       end if
-       call event%set_particle_set_hard_proc (pset)
-       call particle_set_final (pset)
+             if (has_transform) then
+                allocate (pset)
+                call particle_set_read_raw (pset, eio%unit, iostat)
+                if (iostat /= 0)  return
+                if (associated (model)) &
+                     call particle_set_set_model (pset, model)
+                call event%link_particle_set (pset)
+             end if
+          end select
+       class default
+          call msg_bug ("Event: read raw: defined only for full event_t")
+       end select
     else
        call eio%write ()
        call msg_fatal ("Raw event file is not open for reading")
@@ -357,11 +425,11 @@ contains
   end subroutine eio_raw_test
   
   subroutine eio_raw_1 (u)
+    use processes
     integer, intent(in) :: u
     type(model_data_t), target :: model
     type(event_t), allocatable, target :: event
     type(process_t), allocatable, target :: process
-    type(process_ptr_t) :: process_ptr
     type(process_instance_t), allocatable, target :: process_instance
     class(eio_t), allocatable :: eio
     integer :: i_prc, iostat
@@ -371,12 +439,11 @@ contains
     write (u, "(A)")  "*   Purpose: generate and read/write an event"
     write (u, "(A)")
 
-    call model%init_test ()
-
     write (u, "(A)")  "* Initialize test process"
  
+    call model%init_test ()
+
     allocate (process)
-    process_ptr%ptr => process
     allocate (process_instance)
     call prepare_test_process (process, process_instance, model)
     call process_instance%setup_event_data ()
@@ -393,7 +460,7 @@ contains
  
     allocate (eio_raw_t :: eio)
     
-    call eio%init_out (sample, [process_ptr])
+    call eio%init_out (sample)
     call event%generate (1, [0._default, 0._default])
     call event%evaluate_expressions ()
     call event%write (u)
@@ -412,7 +479,7 @@ contains
     write (u, "(A)")  "* Re-read the event"
     write (u, "(A)")
     
-    call eio%init_in (sample, [process_ptr])
+    call eio%init_in (sample)
 
     allocate (process_instance)
     call process_instance%init (process)
@@ -455,7 +522,7 @@ contains
     write (u, "(A)")  "* Re-read both events"
     write (u, "(A)")
     
-    call eio%init_in (sample, [process_ptr])
+    call eio%init_in (sample)
 
     allocate (process_instance)
     call process_instance%init (process)
@@ -500,12 +567,12 @@ contains
   end subroutine eio_raw_1
   
   subroutine eio_raw_2 (u)
+    use processes
     integer, intent(in) :: u
     type(model_data_t), target :: model
     type(var_list_t) :: var_list
     type(event_t), allocatable, target :: event
     type(process_t), allocatable, target :: process
-    type(process_ptr_t) :: process_ptr
     type(process_instance_t), allocatable, target :: process_instance
     type(event_sample_data_t) :: data
     class(eio_t), allocatable :: eio
@@ -522,7 +589,6 @@ contains
     write (u, "(A)")  "* Initialize test process"
  
     allocate (process)
-    process_ptr%ptr => process
     allocate (process_instance)
     call prepare_test_process (process, process_instance, model)
     call process_instance%setup_event_data ()
@@ -548,11 +614,12 @@ contains
  
     allocate (eio_raw_t :: eio)
     
-    call eio%init_out (sample, [process_ptr], data)
+    call eio%init_out (sample, data)
     call event%generate (1, [0._default, 0._default])
     call event%evaluate_expressions ()
     call event%set (sqme_alt = [2._default, 3._default])
-    call event%set (weight_alt = [2 * event%weight_ref, 3 * event%weight_ref])
+    call event%set (weight_alt = &
+         [2 * event%get_weight_ref (), 3 * event%get_weight_ref ()])
     call event%store_alt_values ()
     call event%check ()
 
@@ -572,7 +639,7 @@ contains
     write (u, "(A)")  "* Re-read the event"
     write (u, "(A)")
     
-    call eio%init_in (sample, [process_ptr], data)
+    call eio%init_in (sample, data)
 
     allocate (process_instance)
     call process_instance%init (process)

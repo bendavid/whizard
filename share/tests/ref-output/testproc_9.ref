@@ -356,20 +356,20 @@ Contents of testproc_9_1.debug:
  Particle 3
  E =   5.000000000000E+02
  P =   2.498205220122E+01  2.186536143155E+02  4.312093389696E+02
- mask [fch] = [FTT]
+ mask [fch] = [FTF]
  internal links: 1 2 => X
  source: (15)3
  Particle 4
  E =   5.000000000000E+02
  P =  -2.498205220122E+01 -2.186536143155E+02 -4.312093389696E+02
- mask [fch] = [FTT]
+ mask [fch] = [FTF]
  internal links: 1 2 => X
  source: (15)4
  State matrix:  norm =  1.000000000000E+00
  [f(25)]
    [f(25)]
-     [f(25)]
-       [f(25)] => ME(1) = ( 1.000000000000E+00, 0.000000000000E+00)
+     [f(25) h(0)]
+       [f(25) h(0)] => ME(1) = ( 1.000000000000E+00, 0.000000000000E+00)
  Matrix-element multiplication
   Input interaction 1: 15
   Input interaction 2: [undefined]
@@ -396,20 +396,20 @@ Contents of testproc_9_1.debug:
  Particle 3
  E =   5.000000000000E+02
  P =   2.498205220122E+01  2.186536143155E+02  4.312093389696E+02
- mask [fch] = [FFgT]
+ mask [fch] = [FFgF]
  internal links: 1 2 => X
  source: (15)3
  Particle 4
  E =   5.000000000000E+02
  P =  -2.498205220122E+01 -2.186536143155E+02 -4.312093389696E+02
- mask [fch] = [FFgT]
+ mask [fch] = [FFgF]
  internal links: 1 2 => X
  source: (15)4
  State matrix:  norm =  1.000000000000E+00
  [f(25)]
    [f(25)]
-     [f(25)]
-       [f(25)] => ME(1) = ( 1.000000000000E+00, 0.000000000000E+00)
+     [f(25) h(0)]
+       [f(25) h(0)] => ME(1) = ( 1.000000000000E+00, 0.000000000000E+00)
  Matrix-element multiplication
   Input interaction 1: 15
   Input interaction 2: [undefined]
@@ -501,20 +501,20 @@ Contents of testproc_9_1.debug:
  Particle 3
  E =   5.000000000000E+02
  P =   2.498205220122E+01  2.186536143155E+02  4.312093389696E+02
- mask [fch] = [FTT]
+ mask [fch] = [FTF]
  internal links: 1 2 => X
  source: (18)3
  Particle 4
  E =   5.000000000000E+02
  P =  -2.498205220122E+01 -2.186536143155E+02 -4.312093389696E+02
- mask [fch] = [FTT]
+ mask [fch] = [FTF]
  internal links: 1 2 => X
  source: (18)4
  State matrix:  norm =  1.000000000000E+00
  [f(25)]
    [f(25)]
-     [f(25)]
-       [f(25)] => ME(1) = ( 1.000000000000E+00, 0.000000000000E+00)
+     [f(25) h(0)]
+       [f(25) h(0)] => ME(1) = ( 1.000000000000E+00, 0.000000000000E+00)
  Matrix-element multiplication
   Input interaction 1: 14
   Input interaction 2: 18
@@ -541,20 +541,20 @@ Contents of testproc_9_1.debug:
  Particle 3
  E =   5.000000000000E+02
  P =   2.498205220122E+01  2.186536143155E+02  4.312093389696E+02
- mask [fch] = [FFgT]
+ mask [fch] = [FFgF]
  internal links: 1 2 => X
  source: (19)3
  Particle 4
  E =   5.000000000000E+02
  P =  -2.498205220122E+01 -2.186536143155E+02 -4.312093389696E+02
- mask [fch] = [FFgT]
+ mask [fch] = [FFgF]
  internal links: 1 2 => X
  source: (19)4
  State matrix:  norm =  1.000000000000E+00
  [f(25)]
    [f(25)]
-     [f(25)]
-       [f(25)] => ME(1) = ( 1.000000000000E+00, 0.000000000000E+00)
+     [f(25) h(0)]
+       [f(25) h(0)] => ME(1) = ( 1.000000000000E+00, 0.000000000000E+00)
  Matrix-element multiplication
   Input interaction 1: 21
   Input interaction 2: 19
@@ -803,7 +803,7 @@ n_tot* => 4
  Particle 4
  E =   5.000000000000E+02
  P =  -2.498205220122E+01 -2.186536143155E+02 -4.312093389696E+02
- mask [fch] = [FTT]
+ mask [fch] = [FTF]
  internal links: 1 2 => X
  source: (20)4
  Particle 5
@@ -822,7 +822,7 @@ n_tot* => 4
  [f(25)]
    [f(25)]
      [f(25)]
-       [f(25)]
+       [f(25) h(0)]
          [f(6)]
            [f(-6)] => ME(1) = ( 1.000000000000E+00, 0.000000000000E+00)
  Matrix-element multiplication
@@ -857,7 +857,7 @@ n_tot* => 4
  Particle 4
  E =   5.000000000000E+02
  P =  -2.498205220122E+01 -2.186536143155E+02 -4.312093389696E+02
- mask [fch] = [FFgT]
+ mask [fch] = [FFgF]
  internal links: 1 2 => X
  source: (22)4
  Particle 5
@@ -876,7 +876,7 @@ n_tot* => 4
  [f(25)]
    [f(25)]
      [f(25)]
-       [f(25)]
+       [f(25) h(0)]
          [f(6) c(1 )]
            [f(-6) c(-1 )] => ME(1) = ( 2.000000000000E+00, 0.000000000000E+00)
  Matrix-element multiplication
@@ -1377,20 +1377,20 @@ n_tot* => 4
  Particle 3
  E =   5.000000000000E+02
  P =   2.498205220122E+01  2.186536143155E+02  4.312093389696E+02
- mask [fch] = [FTT]
+ mask [fch] = [FTF]
  internal links: 1 2 => X
  source: (15)3
  Particle 4
  E =   5.000000000000E+02
  P =  -2.498205220122E+01 -2.186536143155E+02 -4.312093389696E+02
- mask [fch] = [FTT]
+ mask [fch] = [FTF]
  internal links: 1 2 => X
  source: (15)4
  State matrix:  norm =  1.000000000000E+00
  [f(25)]
    [f(25)]
-     [f(25)]
-       [f(25)] => ME(1) = ( 1.000000000000E+00, 0.000000000000E+00)
+     [f(25) h(0)]
+       [f(25) h(0)] => ME(1) = ( 1.000000000000E+00, 0.000000000000E+00)
  Matrix-element multiplication
   Input interaction 1: 15
   Input interaction 2: [undefined]
@@ -1417,20 +1417,20 @@ n_tot* => 4
  Particle 3
  E =   5.000000000000E+02
  P =   2.498205220122E+01  2.186536143155E+02  4.312093389696E+02
- mask [fch] = [FFgT]
+ mask [fch] = [FFgF]
  internal links: 1 2 => X
  source: (15)3
  Particle 4
  E =   5.000000000000E+02
  P =  -2.498205220122E+01 -2.186536143155E+02 -4.312093389696E+02
- mask [fch] = [FFgT]
+ mask [fch] = [FFgF]
  internal links: 1 2 => X
  source: (15)4
  State matrix:  norm =  1.000000000000E+00
  [f(25)]
    [f(25)]
-     [f(25)]
-       [f(25)] => ME(1) = ( 1.000000000000E+00, 0.000000000000E+00)
+     [f(25) h(0)]
+       [f(25) h(0)] => ME(1) = ( 1.000000000000E+00, 0.000000000000E+00)
  Matrix-element multiplication
   Input interaction 1: 15
   Input interaction 2: [undefined]
@@ -1522,20 +1522,20 @@ n_tot* => 4
  Particle 3
  E =   5.000000000000E+02
  P =   2.498205220122E+01  2.186536143155E+02  4.312093389696E+02
- mask [fch] = [FTT]
+ mask [fch] = [FTF]
  internal links: 1 2 => X
  source: (18)3
  Particle 4
  E =   5.000000000000E+02
  P =  -2.498205220122E+01 -2.186536143155E+02 -4.312093389696E+02
- mask [fch] = [FTT]
+ mask [fch] = [FTF]
  internal links: 1 2 => X
  source: (18)4
  State matrix:  norm =  1.000000000000E+00
  [f(25)]
    [f(25)]
-     [f(25)]
-       [f(25)] => ME(1) = ( 1.000000000000E+00, 0.000000000000E+00)
+     [f(25) h(0)]
+       [f(25) h(0)] => ME(1) = ( 1.000000000000E+00, 0.000000000000E+00)
  Matrix-element multiplication
   Input interaction 1: 14
   Input interaction 2: 18
@@ -1562,20 +1562,20 @@ n_tot* => 4
  Particle 3
  E =   5.000000000000E+02
  P =   2.498205220122E+01  2.186536143155E+02  4.312093389696E+02
- mask [fch] = [FFgT]
+ mask [fch] = [FFgF]
  internal links: 1 2 => X
  source: (19)3
  Particle 4
  E =   5.000000000000E+02
  P =  -2.498205220122E+01 -2.186536143155E+02 -4.312093389696E+02
- mask [fch] = [FFgT]
+ mask [fch] = [FFgF]
  internal links: 1 2 => X
  source: (19)4
  State matrix:  norm =  1.000000000000E+00
  [f(25)]
    [f(25)]
-     [f(25)]
-       [f(25)] => ME(1) = ( 1.000000000000E+00, 0.000000000000E+00)
+     [f(25) h(0)]
+       [f(25) h(0)] => ME(1) = ( 1.000000000000E+00, 0.000000000000E+00)
  Matrix-element multiplication
   Input interaction 1: 21
   Input interaction 2: 19

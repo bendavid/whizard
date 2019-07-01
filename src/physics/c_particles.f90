@@ -1,6 +1,6 @@
-! WHIZARD 2.2.3 Nov 30 2014
+! WHIZARD 2.2.4 Feb 06 2015
 ! 
-! Copyright (C) 1999-2014 by 
+! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -9,7 +9,8 @@
 !     Fabian Bach <fabian.bach@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Felix Braam, Sebastian Schmidt, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam, 
+!     Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -32,7 +33,7 @@
 module c_particles
 
   use, intrinsic :: iso_c_binding !NODEP!
-  
+
   use io_units
   use format_defs, only: FMT_14, FMT_19
 
@@ -60,7 +61,7 @@ contains
   subroutine c_prt_write (prt, unit)
     type(c_prt_t), intent(in) :: prt
     integer, intent(in), optional :: unit
-    integer :: u, i
+    integer :: u
     u = given_output_unit (unit);  if (u < 0)  return
     write (u, "(1x,A)", advance="no")  "prt("
     write (u, "(I0,':')", advance="no")  prt%type

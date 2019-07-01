@@ -2,7 +2,7 @@
 # $Id: Makefile.am 317 2010-04-18 00:31:03Z ohl $
 ########################################################################
 #
-# Copyright (C) 1999-2014 by 
+# Copyright (C) 1999-2015 by 
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
@@ -270,7 +270,7 @@ endif
 
 ## Cleanup tasks
 mostlyclean-latex:
-	-rm -f *.data *.rcs *.mpx *.[1-9] *.t[1-9] circe*.mp preview*.mp \
+	-rm -f *.data *.mpx *.[1-9] *.t[1-9] circe*.mp preview*.mp \
 		circe1.tex *.out *.log *.aux *.idx *.ilg *.ind *.toc \
 		$(PICTURES_PDF) tex-comments circe1_plot *.dat dist.mp \
 		fit.mp dist.11 dist.12 dist.13 dist.14 

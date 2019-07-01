@@ -1,6 +1,6 @@
-(* $Id: fusion.mli 5023 2013-12-20 12:03:39Z ohl $
+(* $Id: fusion.mli 6465 2015-01-10 15:22:31Z jr_reuter $
 
-   Copyright (C) 1999-2014 by
+   Copyright (C) 1999-2015 by
 
        Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>

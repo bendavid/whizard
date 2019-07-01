@@ -46,6 +46,7 @@ n_events = 1
 ?ps_use_PYTHIA_shower = false
 
 ?sample_pacify = true
+?keep_beams = false
 
 simulate (lhef_8_p1) {
   sample_format = lhef, mokka

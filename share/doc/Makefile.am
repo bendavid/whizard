@@ -2,20 +2,20 @@
 ##
 ## Process this file with automake to produce Makefile.in
 #
-# Copyright (C) 1999-2014 by 
+# Copyright (C) 1999-2015 by
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
 #     Christian Speckner <cnspeckn@googlemail.com>
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
-# under the terms of the GNU General Public License as published by 
+# under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2, or (at your option)
 # any later version.
 #
 # WHIZARD is distributed in the hope that it will be useful, but
 # WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
@@ -25,13 +25,13 @@
 ########################################################################
 
 ## The manual source has to be distributed
-dist_noinst_DATA = manual.tex $(PACKAGE).tex shower.tex \
+dist_noinst_DATA = manual.tex $(PACKAGE).tex \
 	book.hva custom.hva fancysection.hva Whizard-Logo.jpg \
 	$(MANUAL_PICS)
 
 ## The WHIZARD documented source is assembled from various directories
 w_srcdir = $(top_srcdir)/src
-VPATH = $(srcdir):$(w_srcdir)/noweb-frame:$(w_srcdir)/utilities:$(w_srcdir)/testing:$(w_srcdir)/system:$(w_srcdir)/combinatorics:$(w_srcdir)/parsing:$(w_srcdir)/rng:$(w_srcdir)/physics:$(w_srcdir)/qft:$(w_srcdir)/types:$(w_srcdir)/matrix_elements:$(w_srcdir)/particles:$(w_srcdir)/beams:$(w_srcdir)/phase_space:$(w_srcdir)/mci:$(w_srcdir)/whizard-core
+VPATH = $(srcdir):$(w_srcdir)/noweb-frame:$(w_srcdir)/utilities:$(w_srcdir)/testing:$(w_srcdir)/system:$(w_srcdir)/combinatorics:$(w_srcdir)/parsing:$(w_srcdir)/rng:$(w_srcdir)/expr_base:$(w_srcdir)/physics:$(w_srcdir)/qft:$(w_srcdir)/types:$(w_srcdir)/matrix_elements:$(w_srcdir)/particles:$(w_srcdir)/beams:$(w_srcdir)/me_methods:$(w_srcdir)/events:$(w_srcdir)/phase_space:$(w_srcdir)/mci:$(w_srcdir)/user:$(w_srcdir)/fks:$(w_srcdir)/gosam:$(w_srcdir)/blha:$(w_srcdir)/shower:$(w_srcdir)/muli:$(w_srcdir)/variables:$(w_srcdir)/model_features:$(w_srcdir)/whizard-core
 
 MANUAL_PICS = \
    proc_4f-history.eps proc_4f-history.pdf \
@@ -40,7 +40,7 @@ MANUAL_PICS = \
    Z-lineshape_1.pdf Z-lineshape_2.eps Z-lineshape_2.pdf \
    flow4.eps flow4.pdf lep_higgs_1.eps lep_higgs_1.pdf \
    lep_higgs_2.eps lep_higgs_2.pdf lep_higgs_3.eps \
-   lep_higgs_3.pdf 
+   lep_higgs_3.pdf circe2-smoothing.eps circe2-smoothing.pdf
 
 ## The primary targets
 if DISTRIBUTION
@@ -49,8 +49,8 @@ dist_pdf_DATA = manual.pdf $(PACKAGE).pdf gamelan_manual.pdf
 else
 dist_pdf_DATA = manual.pdf gamelan_manual.pdf
 endif
-else 
-dist_pdf_DATA = 
+else
+dist_pdf_DATA =
 endif
 
 ps-local: manual.ps $(PACKAGE).ps gamelan_manual.ps
@@ -70,10 +70,10 @@ TEX_FLAGS = "$$TEXINPUTS:$(top_srcdir)/share/doc"
 EXTRA_DIST = $(LATEX_STYLES)
 
 ## don't try to run the files in parallel (TeXLive 2009 doesn't like it)
-manual.ps: $(PACKAGE).ps 
-manual.pdf: $(PACKAGE).pdf 
-$(PACKAGE).ps: gamelan_manual.ps 
-$(PACKAGE).pdf: gamelan_manual.pdf 
+manual.ps: $(PACKAGE).ps
+manual.pdf: $(PACKAGE).pdf
+$(PACKAGE).ps: gamelan_manual.ps
+$(PACKAGE).pdf: gamelan_manual.pdf
 gamelan_manual.pdf: gamelan.sty
 
 ## Rules for creating PS
@@ -90,20 +90,20 @@ SUFFIXES: .tex .dvi .ps .pdf
 
 ## Rules for creating PDF
 if DISTRIBUTION
-if PDFLATEX_AVAILABLE 
-.tex.pdf: 
+if PDFLATEX_AVAILABLE
+.tex.pdf:
 	-TEXINPUTS=$(TEX_FLAGS) $(PDFLATEX) $<; \
 	while grep 'Rerun to get cross-references right\.' $<.log; \
 	do TEXINPUTS=$(TEX_FLAGS) $(PDFLATEX) $<; \
 	done
 	TEXINPUTS=$(TEX_FLAGS) $(PDFLATEX) $<
-else 
+else
 if PS2PDF_AVAILABLE
-ps.pdf: 
+ps.pdf:
 	$(PS2PDF) $<.ps
 else
 	@echo "Neither pdflatex nor ps2pdf available. The PDF manual cannot be made"
-endif !PS2PDF_AVAILABLE		
+endif !PS2PDF_AVAILABLE
 endif !PDFLATEX_AVAILABLE
 endif DISTRIBUTION
 
@@ -123,15 +123,12 @@ manual.html: manual.tex $(MANUAL_PICS)
 ### There are no Feynman diagrams at the moment inside the manual.
 #	$(MPOST) manualpics.mp
 	TEXINPUTS=$(TEX_FLAGS) $(HEVEA) -fix $(HEVEAOPTS) manual.tex
-else	
+else
 	@echo "HEVEA not available. The HTML manual cannot be made"
 endif !DISTRIBUTION
 endif HEVEA_AVAILABLE
 
 if NOWEB_AVAILABLE
-shower.tex: $(top_srcdir)/src/shower/shower.nw
-	$(NOWEAVE) -delay $< | $(CPIF) $@
-
 WHIZARD_NOWEB_SRC = \
   whizard-prelude.nw \
   utilities.nw \
@@ -143,12 +140,16 @@ WHIZARD_NOWEB_SRC = \
   matrix_elements.nw \
   particles.nw \
   beams.nw \
+  me_methods.nw \
+  events.nw \
   phase_space.nw \
   mci.nw \
+  shower.nw muli.nw \
+  user.nw blha.nw gosam.nw fks.nw \
+  model_features.nw \
   whizard.nw \
   whizard-postlude.nw
 
-$(PACKAGE).tex: shower.tex
 $(PACKAGE).tex: $(WHIZARD_NOWEB_SRC)
 	-rm -f $@
 	$(NOWEAVE) -delay $^ | $(CPIF) $@
@@ -166,7 +167,7 @@ maintainer-clean-latex:
 	-rm manual.ps manual.pdf
 if NOWEB_AVAILABLE
 mostlyclean-whizard:
-	-rm -f $(PACKAGE).tex $(PACKAGE).ps $(PACKAGE).pdf shower.tex
+	-rm -f $(PACKAGE).tex $(PACKAGE).ps $(PACKAGE).pdf
 maintainer-clean-whizard:
 else
 mostlyclean-whizard:
@@ -182,7 +183,7 @@ mostlyclean-html:
 clean-html:
 maintainer-clean-html:
 	-rm -f manual*.html index.html contents_motif.gif \
-	next_motif.gif previous_motif.gif 
+	next_motif.gif previous_motif.gif
 .PHONY: mostlyclean-html clean-html maintainer-clean-html
 
 ## Remove backup files
@@ -197,14 +198,14 @@ maintainer-clean-local: maintainer-clean-latex maintainer-clean-html \
 	maintainer-clean-whizard maintainer-clean-backup
 
 if !DISTRIBUTION
-install-data-hook: 
+install-data-hook:
 	-$(INSTALL) -m 644 manual.pdf $(DESTDIR)$(datarootdir)/doc/whizard
 	-$(INSTALL) -m 644 $(PACKAGE).pdf $(DESTDIR)$(datarootdir)/doc/whizard
 	-$(INSTALL) -m 644 gamelan_manual.pdf $(DESTDIR)$(datarootdir)/doc/whizard
 
-uninstall-hook: 
-	-rm -f $(DESTDIR)/$(datarootdir)/doc/whizard/manual.pdf 
-	-rm -f $(DESTDIR)/$(datarootdir)/doc/whizard/$(PACKAGE).pdf 
+uninstall-hook:
+	-rm -f $(DESTDIR)/$(datarootdir)/doc/whizard/manual.pdf
+	-rm -f $(DESTDIR)/$(datarootdir)/doc/whizard/$(PACKAGE).pdf
 	-rm -f $(DESTDIR)/$(datarootdir)/doc/whizard/gamelan_manual.pdf
 endif
 

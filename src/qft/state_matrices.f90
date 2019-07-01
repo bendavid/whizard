@@ -1,6 +1,6 @@
-! WHIZARD 2.2.3 Nov 30 2014
+! WHIZARD 2.2.4 Feb 06 2015
 ! 
-! Copyright (C) 1999-2014 by 
+! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -9,7 +9,8 @@
 !     Fabian Bach <fabian.bach@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Felix Braam, Sebastian Schmidt, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam, 
+!     Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -37,6 +38,8 @@ module state_matrices
   use format_defs, only: FMT_17, FMT_19
   use unit_tests
   use diagnostics
+  use sorting
+  use model_data
   use flavors
   use colors
   use helicities
@@ -51,6 +54,7 @@ module state_matrices
   public :: state_matrix_write
   public :: state_matrix_write_raw
   public :: state_matrix_read_raw
+  public :: state_matrix_set_model
   public :: state_matrix_is_defined
   public :: state_matrix_is_empty
   public :: state_matrix_get_n_matrix_elements
@@ -95,6 +99,7 @@ module state_matrices
   public :: state_matrix_evaluate_me_sum
   public :: outer_multiply
   public :: state_matrix_factorize
+  public :: state_flv_content_t
   public :: state_matrix_test
 
   integer, parameter, public :: FM_IGNORE_HELICITY = 1
@@ -133,6 +138,19 @@ module state_matrices
      type(node_t), pointer :: node => null ()
   end type state_iterator_t
 
+  type :: state_flv_content_t
+     private
+     integer, dimension(:,:), allocatable :: pdg
+     integer, dimension(:,:), allocatable :: map
+     logical, dimension(:), allocatable :: mask
+   contains
+     procedure :: write => state_flv_content_write
+     procedure :: init => state_flv_content_init
+     procedure :: set_entry => state_flv_content_set_entry
+     procedure :: fill => state_flv_content_fill
+     procedure :: match => state_flv_content_match
+  end type state_flv_content_t
+  
 
   interface state_matrix_freeze
      module procedure state_matrix_freeze1
@@ -403,33 +421,86 @@ contains
   end subroutine state_matrix_write
 
   subroutine state_matrix_write_raw (state, u)
-    type(state_matrix_t), intent(in) :: state
+    type(state_matrix_t), intent(in), target :: state
     integer, intent(in) :: u
-    logical :: associated_root
-    associated_root = associated (state%root)
-    write (u) associated_root
-    if (associated_root) then
-       write (u) state%depth
-       write (u) state%norm
-       call node_write_raw_rec (state%root, u)
+    logical :: is_defined
+    integer :: depth, j
+    type(state_iterator_t) :: it
+    type(quantum_numbers_t), dimension(:), allocatable :: qn
+    is_defined = state_matrix_is_defined (state)
+    write (u)  is_defined
+    if (is_defined) then
+       write (u)  state_matrix_get_norm (state)
+       write (u)  state_matrix_get_n_leaves (state)
+       depth = state_matrix_get_depth (state)
+       write (u)  depth
+       allocate (qn (depth))
+       call state_iterator_init (it, state)
+       do while (state_iterator_is_valid (it))
+          qn = state_iterator_get_quantum_numbers (it)
+          do j = 1, depth
+             call quantum_numbers_write_raw (qn(j), u)
+          end do
+          write (u)  state_iterator_get_me_index (it)
+          write (u)  state_iterator_get_matrix_element (it)
+          call state_iterator_advance (it)
+       end do
     end if
   end subroutine state_matrix_write_raw
 
   subroutine state_matrix_read_raw (state, u, iostat)
     type(state_matrix_t), intent(out) :: state
     integer, intent(in) :: u
-    integer, intent(out), optional :: iostat
-    logical :: associated_root
-    read (u, iostat=iostat) associated_root
-    if (associated_root) then
-       read (u, iostat=iostat) state%depth
-       read (u, iostat=iostat) state%norm
-       call state_matrix_init (state)
-       call node_read_raw_rec (state%root, u, iostat=iostat)
+    integer, intent(out) :: iostat
+    logical :: is_defined
+    real(default) :: norm
+    integer :: n_leaves, depth, i, j
+    type(quantum_numbers_t), dimension(:), allocatable :: qn
+    integer :: me_index
+    complex(default) :: me
+    read (u, iostat=iostat)  is_defined
+    if (iostat /= 0)  goto 1
+    if (is_defined) then
+       call state_matrix_init (state, store_values = .true.)
+       read (u, iostat=iostat)  norm
+       if (iostat /= 0)  goto 1
+       call state_matrix_set_norm (state, norm)
+       read (u)  n_leaves
+       if (iostat /= 0)  goto 1
+       read (u)  depth
+       if (iostat /= 0)  goto 1
+       allocate (qn (depth))
+       do i = 1, n_leaves
+          do j = 1, depth
+             call quantum_numbers_read_raw (qn(j), u, iostat=iostat)
+             if (iostat /= 0)  goto 1
+          end do
+          read (u, iostat=iostat)  me_index
+          if (iostat /= 0)  goto 1
+          read (u, iostat=iostat)  me
+          if (iostat /= 0)  goto 1
+          call state_matrix_add_state (state, qn, index = me_index, value = me)
+       end do
        call state_matrix_freeze (state)
     end if
+    return
+
+    ! Clean up on error
+1   continue
+    call state_matrix_final (state)
   end subroutine state_matrix_read_raw
 
+  subroutine state_matrix_set_model (state, model)
+    type(state_matrix_t), intent(inout), target :: state
+    class(model_data_t), intent(in), target :: model
+    type(state_iterator_t) :: it
+    call state_iterator_init (it, state)
+    do while (state_iterator_is_valid (it))
+       call state_iterator_set_model (it, model)
+       call state_iterator_advance (it)
+    end do
+  end subroutine state_matrix_set_model
+    
   elemental function state_matrix_is_defined (state) result (defined)
     logical :: defined
     type(state_matrix_t), intent(in) :: state
@@ -914,6 +985,18 @@ contains
          (state_iterator_get_quantum_numbers (it, k))
   end function state_iterator_get_hel_single
 
+  subroutine state_iterator_set_model (it, model)
+    type(state_iterator_t), intent(inout) :: it
+    class(model_data_t), intent(in), target :: model
+    type(node_t), pointer :: node
+    integer :: i
+    node => it%node
+    do i = it%depth, 1, -1
+       call quantum_numbers_set_model (node%qn, model)
+       node => node%parent
+    end do
+  end subroutine state_iterator_set_model
+  
   function state_iterator_get_matrix_element (it) result (me)
     complex(default) :: me
     type(state_iterator_t), intent(in) :: it
@@ -1298,6 +1381,126 @@ contains
          call state_matrix_freeze (correlated_state)
   end subroutine state_matrix_factorize
 
+  subroutine state_flv_content_write (state_flv, unit)
+    class(state_flv_content_t), intent(in), target :: state_flv
+    integer, intent(in), optional :: unit
+    type(state_iterator_t) :: it
+    integer :: u, n, d, i, j
+    u = given_output_unit (unit)
+    d = size (state_flv%pdg, 1)
+    n = size (state_flv%pdg, 2)
+    do i = 1, n
+       write (u, "(2x,'PDG =')", advance="no")
+       do j = 1, d
+          write (u, "(1x,I0)", advance="no")  state_flv%pdg(j,i)
+       end do
+       write (u, "(' :: map = (')", advance="no")
+       do j = 1, d
+          write (u, "(1x,I0)", advance="no")  state_flv%map(j,i)
+       end do
+       write (u, "(' )')")
+    end do
+  end subroutine state_flv_content_write
+    
+  subroutine state_flv_content_init (state_flv, n, mask)
+    class(state_flv_content_t), intent(out) :: state_flv
+    integer, intent(in) :: n
+    logical, dimension(:), intent(in) :: mask
+    integer :: d, i
+    d = size (mask)
+    allocate (state_flv%pdg (d, n), source = 0)
+    allocate (state_flv%map (d, n), source = spread ([(i, i = 1, d)], 2, n))
+    allocate (state_flv%mask (d), source = mask)
+  end subroutine state_flv_content_init
+    
+  subroutine state_flv_content_set_entry (state_flv, i, pdg, map)
+    class(state_flv_content_t), intent(inout) :: state_flv
+    integer, intent(in) :: i
+    integer, dimension(:), intent(in) :: pdg, map
+    state_flv%pdg(:,i) = pdg
+    where (map /= 0)
+       state_flv%map(:,i) = map
+    end where
+  end subroutine state_flv_content_set_entry
+  
+  subroutine state_flv_content_fill &
+       (state_flv, state_full, mask)
+    class(state_flv_content_t), intent(out) :: state_flv
+    type(state_matrix_t), intent(in), target :: state_full
+    logical, dimension(:), intent(in) :: mask
+    type(state_matrix_t), target :: state_tmp
+    type(state_iterator_t) :: it
+    type(flavor_t), dimension(:), allocatable :: flv
+    integer, dimension(:), allocatable :: pdg, pdg_subset
+    integer, dimension(:), allocatable :: idx, map_subset, idx_subset, map
+    type(quantum_numbers_t), dimension(:), allocatable :: qn
+    integer :: n, d, c, i
+    call state_matrix_init (state_tmp)
+    d = state_matrix_get_depth (state_full)
+    allocate (flv (d), qn (d), pdg (d), idx (d), map (d))
+    idx = [(i, i = 1, d)]
+    c = count (mask)
+    allocate (pdg_subset (c), map_subset (c), idx_subset (c))
+    call state_iterator_init (it, state_full)
+    do while (state_iterator_is_valid (it))
+       flv = state_iterator_get_flavor (it)
+       call quantum_numbers_init (qn, flv = flv)
+       call state_matrix_add_state (state_tmp, qn)
+       call state_iterator_advance (it)
+    end do
+    n = state_matrix_get_n_leaves (state_tmp)
+    call state_flv%init (n, mask)
+    i = 0
+    call state_iterator_init (it, state_tmp)
+    do while (state_iterator_is_valid (it))
+       i = i + 1
+       pdg = flavor_get_pdg (state_iterator_get_flavor (it))
+       idx_subset = pack (idx, mask)
+       pdg_subset = pack (pdg, mask)
+       map_subset = order_abs (pdg_subset)
+       map = unpack (idx_subset (map_subset), mask, idx)
+       call state_flv%set_entry (i, &
+            unpack (pdg_subset(map_subset), mask, pdg), &
+            order (map))
+       call state_iterator_advance (it)
+    end do
+    call state_matrix_final (state_tmp)
+  end subroutine state_flv_content_fill
+
+  subroutine state_flv_content_match (state_flv, pdg, success, map)
+    class(state_flv_content_t), intent(in) :: state_flv
+    integer, dimension(:), intent(in) :: pdg
+    logical, intent(out) :: success
+    integer, dimension(:), intent(out) :: map
+    integer, dimension(:), allocatable :: pdg_subset, pdg_sorted, map1, map2
+    integer, dimension(:), allocatable :: idx, map_subset, idx_subset
+    integer :: i, n, c, d
+    c = count (state_flv%mask)
+    d = size (state_flv%pdg, 1)
+    n = size (state_flv%pdg, 2)
+    allocate (idx (d), source = [(i, i = 1, d)])
+    allocate (idx_subset (c), pdg_subset (c), map_subset (c))
+    allocate (pdg_sorted (d), map1 (d), map2 (d))
+    idx_subset = pack (idx, state_flv%mask)
+    pdg_subset = pack (pdg, state_flv%mask)
+    map_subset = order_abs (pdg_subset)
+    pdg_sorted = unpack (pdg_subset(map_subset), state_flv%mask, pdg)
+    success = .false.
+    do i = 1, n
+       if (all (pdg_sorted == state_flv%pdg(:,i) &
+            .or. pdg_sorted == 0)) then
+          success = .true.
+          exit
+       end if
+    end do
+    if (success) then
+       map1 = state_flv%map(:,i)
+       map2 = unpack (idx_subset(map_subset), state_flv%mask, idx)
+       map = map2(map1)
+       where (pdg == 0)  map = 0
+    end if
+  end subroutine state_flv_content_match
+    
   elemental function pacify_complex (c_in) result (c_pac)
     complex(default), intent(in) :: c_in
     complex(default) :: c_pac
@@ -1323,6 +1526,12 @@ contains
          u, results)
     call test (state_matrix_3, "state_matrix_3", &
          "check factorizing 3-particle state matrix", &
+         u, results)
+    call test (state_matrix_4, "state_matrix_4", &
+         "check raw I/O", &
+         u, results)
+    call test (state_matrix_5, "state_matrix_5", &
+         "check flavor content", &
          u, results)  
   end subroutine state_matrix_test 
   
@@ -1538,6 +1747,226 @@ contains
     write (u, "(A)")  "* Test output end: state_matrx_3"    
     
   end subroutine state_matrix_3
+
+  subroutine state_matrix_4 (u)
+    integer, intent(in) :: u
+    type(state_matrix_t), allocatable :: state
+    complex(default) :: z, val
+    complex(default), dimension(-1:1) :: v
+    integer :: f, h11, h12, h21, h22, i, mode
+    type(flavor_t), dimension(2) :: flv
+    type(color_t), dimension(2) :: col
+    type(helicity_t), dimension(2) :: hel
+    type(quantum_numbers_t), dimension(2) :: qn
+    integer :: unit, iostat
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output: state_matrix_4"
+    write (u, "(A)")  "*   Purpose: raw I/O for correlated 3-particle state"
+    write (u, "(A)")        
+    
+    write (u, "(A)")  "*  Initialization"
+    write (u, "(A)")    
+        
+    allocate (state)
+
+    z = 1 / 2._default
+    v(-1) = (0.6_default, 0._default)
+    v( 1) = (0._default, 0.8_default)
+    call state_matrix_init (state)
+    do f = 1, 2
+       do h11 = -1, 1, 2
+          do h12 = -1, 1, 2
+             do h21 = -1, 1, 2
+                do h22 = -1, 1, 2
+                   call flavor_init (flv, [f, -f])
+                   call color_init (col(1), [1])
+                   call color_init (col(2), [-1])
+                   call helicity_init (hel, [h11,h12], [h21, h22])
+                   call quantum_numbers_init (qn, flv, col, hel)
+                   val = z * v(h11) * v(h12) * conjg (v(h21) * v(h22))
+                   call state_matrix_add_state (state, qn)
+                end do
+             end do
+          end do
+       end do
+    end do
+    call state_matrix_freeze (state)
+
+    call state_matrix_set_norm (state, 3._default)
+    do i = 1, state_matrix_get_n_leaves (state)
+       call state_matrix_set_matrix_element &
+            (state, i, cmplx (2 * i, 2 * i + 1, default))
+    end do
+    
+    call state_matrix_write (state, u)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Write to file and read again "
+    write (u, "(A)")
+    
+    unit = free_unit ()
+    open (unit, action="readwrite", form="unformatted", status="scratch")
+    call state_matrix_write_raw (state, unit)
+    call state_matrix_final (state)
+    deallocate (state)
+    
+    allocate(state)
+    rewind (unit)
+    call state_matrix_read_raw (state, unit, iostat=iostat)
+    close (unit)
+    
+    call state_matrix_write (state, u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Cleanup"
+    
+    call state_matrix_final (state)
+    deallocate (state)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: state_matrix_4"
+    
+  end subroutine state_matrix_4
+
+  subroutine state_matrix_5 (u)
+    integer, intent(in) :: u
+    type(state_matrix_t), allocatable, target :: state
+    type(state_iterator_t) :: it
+    type(state_flv_content_t), allocatable :: state_flv
+    type(flavor_t), dimension(4) :: flv1, flv2, flv3, flv4
+    type(color_t), dimension(4) :: col1, col2
+    type(helicity_t), dimension(4) :: hel1, hel2, hel3
+    type(quantum_numbers_t), dimension(4) :: qn
+    logical, dimension(4) :: mask
+    
+    write (u, "(A)")  "* Test output: state_matrix_5"
+    write (u, "(A)")  "*   Purpose: check flavor-content state"
+    write (u, "(A)")        
+    
+    write (u, "(A)")  "* Set up arbitrary state matrix"
+    write (u, "(A)")    
+    
+    call flavor_init (flv1, [1, 4, 2, 7])
+    call flavor_init (flv2, [1, 3,-3, 8])
+    call flavor_init (flv3, [5, 6, 3, 7])
+    call flavor_init (flv4, [6, 3, 5, 8])
+    call helicity_init (hel1, [0, 1, -1, 0])
+    call helicity_init (hel2, [0, 1, 1, 1])
+    call helicity_init (hel3, [1, 0, 0, 0])
+    call color_init (col1(1), [0])
+    call color_init (col1(2), [0])
+    call color_init (col1(3), [0])
+    call color_init (col1(4), [0])
+    call color_init (col2(1), [5, -6])
+    call color_init (col2(2), [0])
+    call color_init (col2(3), [6, -5])
+    call color_init (col2(4), [0])
+
+    allocate (state)
+    call state_matrix_init (state)
+    call quantum_numbers_init (qn, flv1, col1, hel1)
+    call state_matrix_add_state (state, qn)
+    call quantum_numbers_init (qn, flv1, col1, hel2)
+    call state_matrix_add_state (state, qn)
+    call quantum_numbers_init (qn, flv3, col1, hel3)
+    call state_matrix_add_state (state, qn)
+    call quantum_numbers_init (qn, flv4, col1, hel3)
+    call state_matrix_add_state (state, qn)
+    call quantum_numbers_init (qn, flv1, col2, hel3)
+    call state_matrix_add_state (state, qn)
+    call quantum_numbers_init (qn, flv2, col2, hel2)
+    call state_matrix_add_state (state, qn)
+    call quantum_numbers_init (qn, flv2, col2, hel1)
+    call state_matrix_add_state (state, qn)
+    call quantum_numbers_init (qn, flv2, col1, hel1)
+    call state_matrix_add_state (state, qn)
+    call quantum_numbers_init (qn, flv3, col1, hel1)
+    call state_matrix_add_state (state, qn)
+    call quantum_numbers_init (qn, flv3, col2, hel3)
+    call state_matrix_add_state (state, qn)
+    call quantum_numbers_init (qn, flv1, col1, hel1)
+    call state_matrix_add_state (state, qn)
+    
+    write (u, "(A)")  "* Quantum number content"
+    write (u, "(A)")
+    
+    call state_iterator_init (it, state)
+    do while (state_iterator_is_valid (it))
+       call quantum_numbers_write ( &
+            state_iterator_get_quantum_numbers (it), u)
+       write (u, *)
+       call state_iterator_advance (it)
+    end do
+    
+    write (u, "(A)")    
+    write (u, "(A)")  "* Extract the flavor content"
+    write (u, "(A)")
+    
+    mask = [.true., .true., .true., .false.]
+
+    allocate (state_flv)
+    call state_flv%fill (state, mask)
+    call state_flv%write (u)
+
+    write (u, "(A)")    
+    write (u, "(A)")  "* Match trial sets"
+    write (u, "(A)")
+   
+    call check ([1, 2, 3, 0])
+    call check ([1, 4, 2, 0])
+    call check ([4, 2, 1, 0])
+    call check ([1, 3, -3, 0])
+    call check ([1, -3, 3, 0])
+    call check ([6, 3, 5, 0])
+
+    write (u, "(A)")    
+    write (u, "(A)")  "* Determine the flavor content with mask"
+    write (u, "(A)")
+    
+    mask = [.false., .true., .true., .false.]
+
+    call state_flv%fill (state, mask)
+    call state_flv%write (u)
+    
+    write (u, "(A)")    
+    write (u, "(A)")  "* Match trial sets"
+    write (u, "(A)")
+   
+    call check ([1, 2, 3, 0])
+    call check ([1, 4, 2, 0])
+    call check ([4, 2, 1, 0])
+    call check ([1, 3, -3, 0])
+    call check ([1, -3, 3, 0])
+    call check ([6, 3, 5, 0])
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Cleanup"
+    
+    deallocate (state_flv)
+    
+    call state_matrix_final (state)
+    deallocate (state)
+    
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: state_matrix_5"
+    
+  contains
+
+    subroutine check (pdg)
+      integer, dimension(4), intent(in) :: pdg
+      integer, dimension(4) :: map
+      logical :: success
+      call state_flv%match (pdg, success, map)
+      write (u, "(2x,4(1x,I0),':',1x,L1)", advance="no")  pdg, success
+      if (success) then
+         write (u, "(2x,'map = (',4(1x,I0),' )')")  map
+      else
+         write (u, *)
+      end if
+    end subroutine check
+
+  end subroutine state_matrix_5
 
 
 end module state_matrices

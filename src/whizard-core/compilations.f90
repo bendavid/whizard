@@ -1,6 +1,6 @@
-! WHIZARD 2.2.3 Nov 30 2014
+! WHIZARD 2.2.4 Feb 06 2015
 ! 
-! Copyright (C) 1999-2014 by 
+! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -9,7 +9,8 @@
 !     Fabian Bach <fabian.bach@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Felix Braam, Sebastian Schmidt, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam, 
+!     Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -56,6 +57,7 @@ module compilations
 
   type :: compilation_item_t
      type(string_t) :: libname
+     type(string_t) :: static_external_tag
      type(process_library_t), pointer :: lib => null ()
      logical :: recompile_library = .false.
    contains
@@ -94,7 +96,7 @@ contains
             // "' has not been declared.")
     end if
     comp%recompile_library = &
-         var_list_get_lval (var_list, var_str ("?recompile_library"))
+         var_list%get_lval (var_str ("?recompile_library"))
   end subroutine compilation_item_init
 
   subroutine compilation_item_compile (comp, model, os_data, force, recompile)
@@ -149,9 +151,9 @@ contains
     type(compilation_item_t) :: comp
     logical :: force, recompile
     force = &
-         var_list_get_lval (global%var_list, var_str ("?rebuild_library"))
+         global%var_list%get_lval (var_str ("?rebuild_library"))
     recompile = &
-         var_list_get_lval (global%var_list, var_str ("?recompile_library"))
+         global%var_list%get_lval (var_str ("?recompile_library"))
     if (associated (global%model)) then
        call comp%init (libname, global%prclib_stack, global%var_list)
        call comp%compile (global%model, global%os_data, force, recompile)
@@ -244,11 +246,17 @@ contains
     close (u)
   end subroutine compilation_write_dispatcher
     
-  subroutine compilation_write_makefile (compilation, os_data)
+  subroutine compilation_write_makefile (compilation, os_data, ext_libtag)
     class(compilation_t), intent(in) :: compilation
     type(os_data_t), intent(in) :: os_data
-    type(string_t) :: file
+    type(string_t), intent(in), optional :: ext_libtag
+    type(string_t) :: file, ext_tag
     integer :: u, i
+    if (present (ext_libtag)) then
+       ext_tag = ext_libtag
+    else
+       ext_tag = ""
+    end if
     file = compilation%exe_name // ".makefile"
     call msg_message ("Static executable '" // char (compilation%exe_name) &
          // "': writing makefile")
@@ -306,7 +314,7 @@ contains
     write (u, "(A)") TAB // "   $(LDWHIZARD) $(LDFLAGS) \" 
     write (u, "(A)") TAB // "   -o $(EXE) $^ \"
     write (u, "(A)") TAB // "   $(LDFLAGS_HEPMC) $(LDFLAGS_HOPPET) \"
-    write (u, "(A)") TAB // "   $(LDFLAGS_STATIC)" 
+    write (u, "(A)") TAB // "   $(LDFLAGS_STATIC)" // char (ext_tag)
     write (u, "(A)") ""
     write (u, "(A)") "# Main targets"
     write (u, "(A)") "link: compile $(EXE)"
@@ -352,29 +360,32 @@ contains
   
   subroutine compile_executable (exename, libname, global)
     type(string_t), intent(in) :: exename
-    type(string_t), dimension(:), intent(in) :: libname
+    type(string_t), dimension(:), intent(in) :: libname    
     type(rt_data_t), intent(inout), target :: global
     type(compilation_t) :: compilation
     type(compilation_item_t) :: item
+    type(string_t) :: ext_libtag
     logical :: force, recompile
     integer :: i
+    ext_libtag = ""
     force = &
-         var_list_get_lval (global%var_list, var_str ("?rebuild_library"))
+         global%var_list%get_lval (var_str ("?rebuild_library"))
     recompile = &
-         var_list_get_lval (global%var_list, var_str ("?recompile_library"))
+         global%var_list%get_lval (var_str ("?recompile_library"))
     call compilation%init (exename, [libname])
     if (signal_is_pending ())  return
     call compilation%write_dispatcher ()
-    if (signal_is_pending ())  return
-    call compilation%write_makefile (global%os_data)
     if (signal_is_pending ())  return
     do i = 1, size (libname)
        call item%init (libname(i), global%prclib_stack, global%var_list)
        call item%compile (global%model, global%os_data, &
             force=force, recompile=recompile)
+       ext_libtag = "" // item%lib%get_static_modelname (global%os_data)       
        if (signal_is_pending ())  return
        call item%success ()
     end do
+    call compilation%write_makefile (global%os_data, ext_libtag)
+    if (signal_is_pending ())  return    
     call compilation%make_compile (global%os_data)
     if (signal_is_pending ())  return
     call compilation%make_link (global%os_data)

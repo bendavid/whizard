@@ -1,6 +1,6 @@
-(* $Id: targets.ml 6295 2014-11-21 18:58:53Z bchokoufe $
+(* $Id: targets.ml 6465 2015-01-10 15:22:31Z jr_reuter $
 
-   Copyright (C) 1999-2014 by
+   Copyright (C) 1999-2015 by
 
        Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
@@ -26,9 +26,9 @@
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
 let rcs_file = RCS.parse "Targets" ["Code Generation"]
-    { RCS.revision = "$Revision: 6295 $";
-      RCS.date = "$Date: 2014-11-21 19:58:53 +0100 (Fri, 21 Nov 2014) $";
-      RCS.author = "$Author: bchokoufe $";
+    { RCS.revision = "$Revision: 6465 $";
+      RCS.date = "$Date: 2015-01-10 16:22:31 +0100 (Sat, 10 Jan 2015) $";
+      RCS.author = "$Author: jr_reuter $";
       RCS.source
         = "$URL: svn+ssh://jr_reuter@login.hepforge.org/hepforge/svn/whizard/trunk/omega/src/targets.ml $" }
 

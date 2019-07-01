@@ -1,6 +1,6 @@
-! WHIZARD 2.2.3 Nov 30 2014
+! WHIZARD 2.2.4 Feb 06 2015
 ! 
-! Copyright (C) 1999-2014 by 
+! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -9,7 +9,8 @@
 !     Fabian Bach <fabian.bach@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Felix Braam, Sebastian Schmidt, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam, 
+!     Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -90,6 +91,7 @@ module interactions
   public :: interaction_get_cm_transformation
   public :: interaction_get_unstable_particle
   public :: interaction_get_flv_out
+  public :: interaction_get_flv_content
   public :: interaction_set_mask
   public :: interaction_reset_momenta
   public :: interaction_set_momenta
@@ -238,7 +240,7 @@ contains
   subroutine internal_link_list_append (link_list, link)
     class(internal_link_list_t), intent(inout) :: link_list
     integer, intent(in) :: link
-    integer :: l
+    integer :: l, j
     integer, dimension(:), allocatable :: tmp
     l = link_list%length
     if (allocated (link_list%link)) then
@@ -250,9 +252,16 @@ contains
     else
        allocate (link_list%link (2))
     end if
-    l = l + 1
-    link_list%link(l) = link
-    link_list%length = l
+    link_list%link(l+1) = link
+    SHIFT_LINK_IN_PLACE: do j = l, 1, -1
+       if (link >= link_list%link(j)) then
+          exit SHIFT_LINK_IN_PLACE
+       else
+          link_list%link(j+1) = link_list%link(j)
+          link_list%link(j) = link
+       end if
+    end do SHIFT_LINK_IN_PLACE
+    link_list%length = l + 1
   end subroutine internal_link_list_append
 
   function internal_link_list_has_entries (link_list) result (flag)
@@ -911,6 +920,18 @@ contains
        call state_iterator_advance (it)
     end do
   end subroutine interaction_get_flv_out
+  
+  subroutine interaction_get_flv_content (int, state_flv, n_out_hard)
+    type(interaction_t), intent(in), target :: int
+    type(state_flv_content_t), intent(out) :: state_flv
+    integer, intent(in) :: n_out_hard
+    logical, dimension(:), allocatable :: mask
+    integer :: n_tot
+    n_tot = interaction_get_n_tot (int)
+    allocate (mask (n_tot), source = .false.)
+    mask(n_tot-n_out_hard+1:) = .true.
+    call state_flv%fill (interaction_get_state_matrix_ptr (int), mask)
+  end subroutine interaction_get_flv_content
   
   subroutine interaction_set_mask (int, mask)
     type(interaction_t), intent(inout) :: int

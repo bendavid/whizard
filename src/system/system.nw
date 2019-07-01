@@ -331,7 +331,7 @@ interactive mode.
 How to handle bugs and unmasked fatal errors.  Either execute a normal
 stop statement, or call the C [[exit()]] function, or try to cause a
 program crash by dereferencing a null pointer.
-<<Diagnostics: parameters>>= 
+<<Diagnostics: parameters>>=
   integer, parameter :: TERM_STOP = 0, TERM_EXIT = 1, TERM_CRASH = 2
 @ %def TERM_STOP TERM_EXIT TERM_CRASH
 <<Diagnostics: variables>>=
@@ -1350,7 +1350,7 @@ necessary.
     os_data%use_libtool = .true.
     inquire (file = "TESTFLAG", exist = os_data%use_testfiles)
     call get_environment_variable ("HOME", home)
-    if(present(paths)) then
+    if (present(paths)) then
        if (paths%localprefix == "") then
           localprefix = trim (home) // "/.whizard"
        else

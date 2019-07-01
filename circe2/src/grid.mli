@@ -12,6 +12,8 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)  
 
+exception Out_of_range of string * float * (float * float)
+
 module type T =
   sig
     module D : Division.T

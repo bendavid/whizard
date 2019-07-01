@@ -1,6 +1,5 @@
-% -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*- 
+% -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*-
 % WHIZARD code as NOWEB source: combinatorics and such
-
 
 \chapter{Physics}
 
@@ -12,7 +11,7 @@ of WHIZARD.
   Physical constants.
 \item[c\_particles]
   A simple data type for particles which is C compatible.
-\item[lorentz] 
+\item[lorentz]
   Define three-vectors, four-vectors and Lorentz
   transformations and common operations for them.
 \item[sm\_physics]
@@ -21,7 +20,6 @@ of WHIZARD.
 \item[sm\_qcd]
   Definitions and methods for dealing with the running QCD coupling.
 \end{description}
-
 
 \clearpage
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -48,27 +46,27 @@ Conversion from energy units to cross-section units.
 <<Physics defs: public parameters>>=
   real(default), parameter, public :: &
        conv = 0.38937966e12_default
-@ 
+@
 Rescaling factor.
 <<Physics defs: public parameters>>=
   real(default), parameter, public :: &
        pb_per_fb = 1.e-3_default
-@ 
+@
 String for the default energy and cross-section units.
 <<Physics defs: public parameters>>=
   character(*), parameter, public :: &
        energy_unit = "GeV"
   character(*), parameter, public :: &
        cross_section_unit = "fb"
-@ 
+@
 \subsection{SM and QCD constants}
 <<Physics defs: public parameters>>=
   real(default), parameter, public :: &
        NC = three, &
-       CF = (NC**2 - one)/two/NC, &
+       CF = (NC**2 - one) / two / NC, &
        CA = NC, &
-       TR = one/two
-@ 
+       TR = one / two
+@
 \subsection{Parameter Reference values}
 These are used exclusively in the context of
 running QCD parameters.  In other contexts, we rely on the uniform
@@ -86,6 +84,7 @@ Let us define a few particle codes independent of the model.
 We need an UNDEFINED value:
 <<Physics defs: public parameters>>=
   integer, parameter, public :: UNDEFINED = 0
+
 @ %def UNDEFINED
 @ SM fermions:
 <<Physics defs: public parameters>>=
@@ -100,23 +99,71 @@ We need an UNDEFINED value:
   integer, parameter, public :: W_BOSON = 24
 
 @ %def GLUON PHOTON Z_BOSON W_BOSON
-@ Hadrons:
-<<Physics defs: public parameters>>=
-  integer, parameter, public :: PROTON = 2212 
+@ Light mesons:
 <<Physics defs: public parameters>>=
   integer, parameter, public :: PION = 111
   integer, parameter, public :: PIPLUS = 211
   integer, parameter, public :: PIMINUS = - PIPLUS
 
-@ %def PROTON PION PIPLUS PIMINUS
-@ Hadron remnants (internal)
+@ %def PION PIPLUS PIMINUS
+@ Di-Quarks:
 <<Physics defs: public parameters>>=
+  integer, parameter, public :: UD0 = 2101
+  integer, parameter, public :: UD1 = 2103
+  integer, parameter, public :: UU1 = 2203
+
+@ %def UD0 UD1 UU1
+@ Mesons:
+<<Physics defs: public parameters>>=
+  integer, parameter, public :: K0L = 130
+  integer, parameter, public :: K0S = 310
+  integer, parameter, public :: K0 = 311
+  integer, parameter, public :: KPLUS = 321
+  integer, parameter, public :: DPLUS = 411
+  integer, parameter, public :: D0 = 421
+  integer, parameter, public :: B0 = 511
+  integer, parameter, public :: BPLUS = 521
+
+@ %def K0L K0S K0 KPLUS DPLUS D0 B0 BPLUS
+@ Light baryons:
+<<Physics defs: public parameters>>=
+  integer, parameter, public :: PROTON = 2212
+  integer, parameter, public :: NEUTRON = 2112
+  integer, parameter, public :: DELTAPLUSPLUS = 2224
+  integer, parameter, public :: DELTAPLUS = 2214
+  integer, parameter, public :: DELTA0 = 2114
+  integer, parameter, public :: DELTAMINUS = 1114
+
+@ %def PROTON NEUTRON DELTAPLUSPLUS DELTAPLUS DELTA0 DELTAMINUS
+@ Strange baryons:
+<<Physics defs: public parameters>>=
+  integer, parameter, public :: SIGMAPLUS = 3222
+  integer, parameter, public :: SIGMA0 = 3212
+  integer, parameter, public :: SIGMAMINUS = 3112
+
+@ %def SIGMAPLUS SIGMA0 SIGMAMINUS
+@ Charmed baryons:
+<<Physics defs: public parameters>>=
+  integer, parameter, public :: SIGMACPLUSPLUS = 4222
+  integer, parameter, public :: SIGMACPLUS = 4212
+  integer, parameter, public :: SIGMAC0 = 4112
+
+@ %def SIGMACPLUSPLUS SIGMACPLUS SIGMAC0
+@ Bottom baryons:
+<<Physics defs: public parameters>>=
+  integer, parameter, public :: SIGMAB0 = 5212
+  integer, parameter, public :: SIGMABPLUS = 5222
+
+@ %def SIGMAB0 SIGMABPLUS
+@ 81-100 are reserved for internal codes. Hadron and beam remnants:
+<<Physics defs: public parameters>>=
+  integer, parameter, public :: BEAM_REMNANT = 9999
   integer, parameter, public :: HADRON_REMNANT = 90
   integer, parameter, public :: HADRON_REMNANT_SINGLET = 91
   integer, parameter, public :: HADRON_REMNANT_TRIPLET = 92
   integer, parameter, public :: HADRON_REMNANT_OCTET = 93
 
-@ %def HADRON_REMNANT 
+@ %def BEAM_REMNANT HADRON_REMNANT
 @ %def HADRON_REMNANT_SINGLET HADRON_REMNANT_TRIPLET HADRON_REMNANT_OCTET
 @ Generic particles for internal use in event analysis:
 <<Physics defs: public parameters>>=
@@ -128,20 +175,21 @@ We need an UNDEFINED value:
 @ %def PRT_ANY PRT_VISIBLE PRT_CHARGED PRT_COLORED
 @ Further particle codes for internal use:
 <<Physics defs: public parameters>>=
+  integer, parameter, public :: INTERNAL = 94
   integer, parameter, public :: INVALID = 97
   integer, parameter, public :: KEYSTONE = 98
   integer, parameter, public :: COMPOSITE = 99
 
-@ %def INVALID KEYSTONE COMPOSITE
+@ %def INTERNAL INVALID KEYSTONE COMPOSITE
 @
 \subsection{Spin codes}
 Somewhat redundant, but for better readability we define named
 constants for spin types.  If the mass is nonzero, this is equal to
 the number of degrees of freedom.
 <<Physics defs: public parameters>>=
-  integer, parameter, public:: UNKNOWN=0
-  integer, parameter, public :: SCALAR=1, SPINOR=2, VECTOR=3, &
-	VECTORSPINOR=4, TENSOR=5
+  integer, parameter, public:: UNKNOWN = 0
+  integer, parameter, public :: SCALAR = 1, SPINOR = 2, VECTOR = 3, &
+                                VECTORSPINOR = 4, TENSOR = 5
 @ %def UNKNOWN SCALAR SPINOR VECTOR VECTORSPINOR TENSOR
 @ Isospin types and charge types are counted in an analogous way,
 where charge type 1 is charge 0, 2 is charge 1/3, and so on. Zero
@@ -149,7 +197,6 @@ always means unknown. Note that charge and isospin types have an
 explicit sign.
 
 Color types are defined as the dimension of the representation.
-
 
 \clearpage
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -166,7 +213,7 @@ as part of the interface.
 module c_particles
 
   use, intrinsic :: iso_c_binding !NODEP!
-  
+
   use io_units
   use format_defs, only: FMT_14, FMT_19
 
@@ -199,14 +246,14 @@ end module c_particles
 
 @ %def c_prt_t
 @ This is for debugging only, there is no C binding.  It is a
-simplified version of [[prt_write]]. 
+simplified version of [[prt_write]].
 <<C Particles: public>>=
   public :: c_prt_write
 <<C Particles: procedures>>=
   subroutine c_prt_write (prt, unit)
     type(c_prt_t), intent(in) :: prt
     integer, intent(in), optional :: unit
-    integer :: u, i
+    integer :: u
     u = given_output_unit (unit);  if (u < 0)  return
     write (u, "(1x,A)", advance="no")  "prt("
     write (u, "(I0,':')", advance="no")  prt%type
@@ -239,7 +286,7 @@ module lorentz
 
 <<Use kinds>>
   use io_units
-  use constants, only: pi, twopi, degree
+  use constants, only: pi, twopi, degree, zero, one, eps0
   use format_defs, only: FMT_15, FMT_17, FMT_19
   use format_utils, only: pac_fmt
   use diagnostics
@@ -275,7 +322,6 @@ a vector by extending the type definition later.
   public :: vector3_t
 <<Lorentz: types>>=
   type :: vector3_t
-     private
      real(default), dimension(3) :: p
   end type vector3_t
 
@@ -301,7 +347,7 @@ a vector by extending the type definition later.
   public :: vector3_null
 <<Lorentz: parameters>>=
   type(vector3_t), parameter :: vector3_null = &
-       vector3_t ([ 0._default, 0._default, 0._default ])
+       vector3_t ([ zero, zero, zero ])
 
 @ %def vector3_null
 @ Canonical three-vector:
@@ -354,12 +400,12 @@ function for the generic momentum cannot be elemental.
   elemental function vector3_eq (p, q) result (r)
     logical :: r
     type(vector3_t), intent(in) :: p,q
-    r = all (p%p == q%p)
+    r = all (abs (p%p - q%p) < eps0)
   end function vector3_eq
   elemental function vector3_neq (p, q) result (r)
     logical :: r
     type(vector3_t), intent(in) :: p,q
-    r = any (p%p /= q%p)
+    r = any (abs(p%p - q%p) > eps0)
   end function vector3_neq
 
 @ %def == /=
@@ -400,7 +446,7 @@ similarly division:
   end interface
 <<Lorentz: procedures>>=
   elemental function prod_real_vector3 (s, p) result (q)
-    type(vector3_t) :: q 
+    type(vector3_t) :: q
     real(default), intent(in) :: s
     type(vector3_t), intent(in) :: p
     q%p = s * p%p
@@ -502,7 +548,7 @@ take the square root; so [[p**1]] is the length of [[p]].
     type(vector3_t), intent(in) :: p
     integer :: i
     do i = 1, 3
-       if (p%p(i) == -p%p(i)) then
+       if (abs (p%p(i)) < eps0) then
           q%p(i) = 0
        else
           q%p(i) = -p%p(i)
@@ -519,7 +565,7 @@ take the square root; so [[p**1]] is the length of [[p]].
      module procedure sum_vector3
   end interface
 @ %def sum
-@ 
+@
 <<Lorentz: public>>=
   public :: vector3_set_component
 <<Lorentz: procedures>>=
@@ -581,7 +627,7 @@ normalized three-vector.  If the vector is null, we return a null vector.
     type(vector3_t), intent(in) :: p
     real(default) :: pp
     pp = p**1
-    if (pp /= 0) then
+    if (pp > eps0) then
        q%p = p%p / pp
     else
        q%p = 0
@@ -589,7 +635,7 @@ normalized three-vector.  If the vector is null, we return a null vector.
   end function vector3_get_direction
 
 @ %def direction
-@ 
+@
 \subsection{Four-vectors}
 In four-vectors the zero-component needs special treatment, therefore
 we do not use the standard operations.  Sure, we pay for the extra
@@ -599,9 +645,8 @@ the time-critical applications do not involve four-vector operations.
   public :: vector4_t
 <<Lorentz: types>>=
   type :: vector4_t
-     private
      real(default), dimension(0:3) :: p = &
-        [0._default, 0._default, 0._default, 0._default]
+        [zero, zero, zero, zero]
   end type vector4_t
 @ %def vector4_t
 @ Output a vector
@@ -614,8 +659,8 @@ the time-critical applications do not involve four-vector operations.
     logical, intent(in), optional :: show_mass
     logical, intent(in), optional :: testflag
     integer :: u
-    character(len=7) :: fmt 
-    call pac_fmt (fmt, FMT_19, FMT_15, testflag)    
+    character(len=7) :: fmt
+    call pac_fmt (fmt, FMT_19, FMT_15, testflag)
     u = given_output_unit (unit);  if (u < 0)  return
     write(u, "(1x,A,1x," // fmt // ")") 'E = ', p%p(0)
     write(u, "(1x,A,3(1x," // fmt // "))") 'P = ', p%p(1:)
@@ -650,7 +695,7 @@ the time-critical applications do not involve four-vector operations.
   public :: vector4_null
 <<Lorentz: parameters>>=
   type(vector4_t), parameter :: vector4_null = &
-       vector4_t ([ 0._default, 0._default, 0._default, 0._default ])
+       vector4_t ([ zero, zero, zero, zero ])
 
 @ %def vector4_null
 @ Canonical four-vector:
@@ -672,7 +717,7 @@ the time-critical applications do not involve four-vector operations.
   elemental function vector4_at_rest (m) result (p)
     type(vector4_t) :: p
     real(default), intent(in) :: m
-    p = vector4_t ([ m, 0._default, 0._default, 0._default ])
+    p = vector4_t ([ m, zero, zero, zero ])
   end function vector4_at_rest
 
 @ %def vector4_at_rest
@@ -713,12 +758,12 @@ the time-critical applications do not involve four-vector operations.
   elemental function vector4_eq (p, q) result (r)
     logical :: r
     type(vector4_t), intent(in) :: p,q
-    r = all (p%p == q%p)
+    r = all (abs (p%p - q%p) < eps0)
   end function vector4_eq
   elemental function vector4_neq (p, q) result (r)
     logical :: r
     type(vector4_t), intent(in) :: p,q
-    r = any (p%p /= q%p)
+    r = any (abs (p%p - q%p) > eps0)
   end function vector4_neq
 
 @ %def == /=
@@ -840,7 +885,7 @@ positive for timelike and negative for spacelike vectors.  Note that
     type(vector4_t), intent(in) :: p
     integer :: i
     do i = 0, 3
-       if (p%p(i) == -p%p(i)) then
+       if (abs (p%p(i)) < eps0) then
           q%p(i) = 0
        else
           q%p(i) = -p%p(i)
@@ -855,7 +900,7 @@ positive for timelike and negative for spacelike vectors.  Note that
      module procedure sum_vector4
   end interface
 @ %def sum
-@ 
+@
 <<Lorentz: procedures>>=
   pure function sum_vector4 (p) result (q)
     type(vector4_t) :: q
@@ -867,7 +912,7 @@ positive for timelike and negative for spacelike vectors.  Note that
   end function sum_vector4
 
 @ %def sum
-@ 
+@
 \subsection{Conversions}
 Manually set a component of the four-vector:
 <<Lorentz: public>>=
@@ -934,7 +979,7 @@ return a null vector.
     real(default) :: qq
     q%p = p%p(1:)
     qq = q**1
-    if (qq /= 0) then
+    if (abs(qq) > eps0) then
        q%p = q%p / qq
     else
        q%p = 0
@@ -944,47 +989,88 @@ return a null vector.
 @ %def direction
 @ This function returns the four-vector as an ordinary array.  A
 second version for an array of four-vectors.
-<<Lorentz: public functions>>=
-  public :: array_from_vector4
+<<Lorentz: public>>=
+  public :: assignment (=)
 <<Lorentz: interfaces>>=
-  interface array_from_vector4
-     module procedure array_from_vector4_1
-     module procedure array_from_vector4_2
+  interface assignment (=)
+     module procedure array_from_vector4_1, array_from_vector4_2, &
+            array_from_vector3_1, array_from_vector3_2, &
+            vector4_from_array, vector3_from_array
   end interface
 <<Lorentz: procedures>>=
-  pure function array_from_vector4_1 (p) result (a)
+  pure subroutine array_from_vector4_1 (a, p)
+    real(default), dimension(:), intent(out) :: a
     type(vector4_t), intent(in) :: p
-    real(default), dimension(0:3) :: a
     a = p%p
-  end function array_from_vector4_1
+  end subroutine array_from_vector4_1
 
-  pure function array_from_vector4_2 (p) result (a)
+  pure subroutine array_from_vector4_2 (a, p)
     type(vector4_t), dimension(:), intent(in) :: p
-    real(default), dimension(0:3, size(p)) :: a
+    real(default), dimension(:,:), intent(out) :: a
     integer :: i
     forall (i=1:size(p))
-       a(0:3,i) = p(i)%p
+       a(:,i) = p(i)%p
     end forall
-  end function array_from_vector4_2
+  end subroutine array_from_vector4_2
 
-@ %def array_from_vector4
-@ Transform the momentum of a [[c_prt]] object into a four-vector:
-<<Lorentz: public>>=
-  public :: vector4_from_c_prt
+  pure subroutine array_from_vector3_1 (a, p)
+    real(default), dimension(:), intent(out) :: a
+    type(vector3_t), intent(in) :: p
+    a = p%p
+  end subroutine array_from_vector3_1
+
+  pure subroutine array_from_vector3_2 (a, p)
+    type(vector3_t), dimension(:), intent(in) :: p
+    real(default), dimension(:,:), intent(out) :: a
+    integer :: i
+    forall (i=1:size(p))
+       a(:,i) = p(i)%p
+    end forall
+  end subroutine array_from_vector3_2
+
+  pure subroutine vector4_from_array (p, a)
+    type(vector4_t), intent(out) :: p
+    real(default), dimension(:), intent(in) :: a
+    p%p(0:3) = a
+  end subroutine vector4_from_array
+
+  pure subroutine vector3_from_array (p, a)
+    type(vector3_t), intent(out) :: p
+    real(default), dimension(:), intent(in) :: a
+    p%p(1:3) = a
+  end subroutine vector3_from_array
+
+@ %def array_from_vector4 array_from_vector3
+@ Transform the momentum of a [[c_prt]] object into a four-vector and
+vice versa:
+<<Lorentz: interfaces>>=
+  interface assignment (=)
+     module procedure vector4_from_c_prt, c_prt_from_vector4
+  end interface
 <<Lorentz: procedures>>=
-  elemental function vector4_from_c_prt (c_prt) result (p)
-    type(vector4_t) :: p
+  pure subroutine vector4_from_c_prt (p, c_prt)
+    type(vector4_t), intent(out) :: p
     type(c_prt_t), intent(in) :: c_prt
     p%p(0) = c_prt%pe
     p%p(1) = c_prt%px
     p%p(2) = c_prt%py
     p%p(3) = c_prt%pz
-  end function vector4_from_c_prt
+  end subroutine vector4_from_c_prt
 
-@ %def vector4_from_c_prt
+  pure subroutine c_prt_from_vector4 (c_prt, p)
+    type(c_prt_t), intent(out) :: c_prt
+    type(vector4_t), intent(in) :: p
+    c_prt%pe = p%p(0)
+    c_prt%px = p%p(1)
+    c_prt%py = p%p(2)
+    c_prt%pz = p%p(3)
+    c_prt%p2 = p ** 2
+  end subroutine c_prt_from_vector4
+
+@ %def vector4_from_c_prt c_prt_from_vector4
 @ Initialize a [[c_prt_t]] object with the components of a four-vector
 as its kinematical entries.  Compute the invariant mass, or use the
-optional mass-squared value instead. 
+optional mass-squared value instead.
 <<Lorentz: public>>=
   public :: vector4_to_c_prt
 <<Lorentz: procedures>>=
@@ -1004,7 +1090,7 @@ optional mass-squared value instead.
   end function vector4_to_c_prt
 
 @ %def vector4_to_c_prt
-@ 
+@
 \subsection{Angles}
 Return the angles in a canonical system.  The angle $\phi$ is defined
 between $0\leq\phi<2\pi$.  In degenerate cases, return zero.
@@ -1019,7 +1105,7 @@ between $0\leq\phi<2\pi$.  In degenerate cases, return zero.
   elemental function vector3_azimuthal_angle (p) result (phi)
     real(default) :: phi
     type(vector3_t), intent(in) :: p
-    if (any(p%p(1:2)/=0)) then
+    if (any (abs (p%p(1:2)) > 0)) then
        phi = atan2(p%p(2), p%p(1))
        if (phi < 0) phi = phi + twopi
     else
@@ -1119,7 +1205,7 @@ always nonnegative.  Therefore, the result is nonnegative as well.
   elemental function polar_angle_vector3 (p) result (theta)
     real(default) :: theta
     type(vector3_t), intent(in) :: p
-    if (any(p%p/=0)) then
+    if (any (abs (p%p) > 0)) then
        theta = atan2 (sqrt(p%p(1)**2 + p%p(2)**2), p%p(3))
     else
        theta = 0
@@ -1144,7 +1230,7 @@ always nonnegative.  Therefore, the result is nonnegative as well.
   elemental function polar_angle_ct_vector3 (p) result (ct)
     real(default) :: ct
     type(vector3_t), intent(in) :: p
-    if (any(p%p/=0)) then
+    if (any (abs (p%p) > 0)) then
        ct = p%p(3) / p**1
     else
        ct = 1
@@ -1214,7 +1300,7 @@ positive $z$ axis as reference.
   elemental function enclosed_angle_ct_vector3 (p, q) result (ct)
     real(default) :: ct
     type(vector3_t), intent(in) :: p, q
-    if (any(p%p/=0).and.any(q%p/=0)) then
+    if (any (abs (p%p) > 0) .and. any (abs (q%p) > 0)) then
        ct = p*q / (p**1 * q**1)
        if (ct>1) then
           ct = 1
@@ -1595,11 +1681,11 @@ indices and transposing is sufficient.
 
 @ %def lorentz_transformation_inverse
 @ %def inverse
-@ 
+@
 \subsection{Invariants}
 These are used below.  The first array index is varying fastest in
 [[FORTRAN]]; therefore the extra minus in the odd-rank tensor
-epsilon. 
+epsilon.
 <<Lorentz: parameters>>=
   integer, dimension(3,3), parameter :: delta_three = &
        & reshape( source = [ 1,0,0, 0,1,0, 0,0,1 ], &
@@ -1617,10 +1703,10 @@ epsilon.
   type(lorentz_transformation_t), parameter :: &
        & identity = &
        & lorentz_transformation_t ( &
-       & reshape( source = [ 1._default, 0._default, 0._default, 0._default, &
-       &                     0._default, 1._default, 0._default, 0._default, &
-       &                     0._default, 0._default, 1._default, 0._default, &
-       &                     0._default, 0._default, 0._default, 1._default ],&
+       & reshape( source = [ one, zero, zero, zero, &
+       &                     zero, one, zero, zero, &
+       &                     zero, zero, one, zero, &
+       &                     zero, zero, zero, one ],&
        &          shape = [4,4] ) )
 @ %def identity
 <<Lorentz: public>>=
@@ -1629,10 +1715,10 @@ epsilon.
   type(lorentz_transformation_t), parameter :: &
        & space_reflection = &
        & lorentz_transformation_t ( &
-       & reshape( source = [ 1._default, 0._default, 0._default, 0._default, &
-       &                     0._default,-1._default, 0._default, 0._default, &
-       &                     0._default, 0._default,-1._default, 0._default, &
-       &                     0._default, 0._default, 0._default,-1._default ],&
+       & reshape( source = [ one, zero, zero, zero, &
+       &                     zero,-one, zero, zero, &
+       &                     zero, zero,-one, zero, &
+       &                     zero, zero, zero,-one ],&
        &          shape = [4,4] ) )
 @ %def space_reflection
 @ Builds a unit vector orthogal to the input vector in the xy-plane.
@@ -1642,9 +1728,9 @@ epsilon.
   function create_orthogonal (p_in) result (p_out)
     type(vector3_t), intent(in) :: p_in
     type(vector3_t) :: p_out
-    real(default) :: abs
-    abs = sqrt (p_in%p(1)**2 + p_in%p(2)**2)
-    if (abs == 0) then
+    real(default) :: ab
+    ab = sqrt (p_in%p(1)**2 + p_in%p(2)**2)
+    if (abs (ab) < eps0) then
       p_out%p(1) = 1
       p_out%p(2) = 0
       p_out%p(3) = 0
@@ -1652,7 +1738,7 @@ epsilon.
       p_out%p(1) = p_in%p(2)
       p_out%p(2) = -p_in%p(1)
       p_out%p(3) = 0
-      p_out = p_out / abs
+      p_out = p_out / ab
     end if
   end function create_orthogonal
 
@@ -1730,13 +1816,13 @@ rest frame of a particle, in particular $(E;\vec p)$ into $(m;\vec
     type(vector3_t) :: beta_gamma
     real(default) :: bg2, g, c
     integer :: i,j
-    if (m /= 0) then
+    if (m > eps0) then
        beta_gamma = p / m
        bg2 = beta_gamma**2
     else
        bg2 = 0
     end if
-    if (bg2 /= 0) then
+    if (bg2 > eps0) then
        g = sqrt(1 + bg2);  c = (g-1)/bg2
        L%L(0,0)  = g
        L%L(0,1:) = beta_gamma%p
@@ -1774,7 +1860,7 @@ need not be normalized.  If it is zero, return the unit matrix.
     type(lorentz_transformation_t) :: L
     real(default), intent(in) :: beta_gamma
     type(vector3_t), intent(in) :: axis
-    if (any(axis%p/=0)) then
+    if (any (abs (axis%p) > 0)) then
        L = boost_from_rest_frame_vector3 (beta_gamma * axis, axis**1)
     else
        L = identity
@@ -1782,7 +1868,7 @@ need not be normalized.  If it is zero, return the unit matrix.
   end function boost_generic
 
 @ %def boost_generic
-@ 
+@
 \subsection{Rotations}
 For a rotation, the vector defines the rotation axis, and its length
 the rotation angle.
@@ -1819,7 +1905,7 @@ angle.
     type(lorentz_transformation_t) :: R
     type(vector3_t), intent(in) :: axis
     real(default) :: phi
-    if (any(axis%p/=0)) then
+    if (any (abs(axis%p) > 0)) then
        phi = abs(axis**1)
        R = rotation_generic_cs (cos(phi), sin(phi), axis/phi)
     else
@@ -1851,7 +1937,7 @@ an integer.
     R = rotation_canonical_cs(cos(phi), sin(phi), k)
   end function rotation_canonical
 @ %def rotation_canonical_cs rotation_canonical
-@ 
+@
 This is viewed as a method for the first argument (three-vector):
 Reconstruct the rotation that rotates it into the second three-vector.
 <<Lorentz: public functions>>=
@@ -1867,12 +1953,12 @@ Reconstruct the rotation that rotates it into the second three-vector.
     type(vector3_t), intent(in) :: p, q
     type(vector3_t) :: a, b, ab
     real(default) :: ct, st
-    if (any (p%p /= 0) .and. any (q%p /= 0)) then
+    if (any (abs (p%p) > 0) .and. any (abs (q%p) > 0)) then
        a = direction (p)
        b = direction (q)
        ab = cross_product(a,b)
        ct = a*b;  st = ab**1
-       if (st /= 0) then
+       if (abs(st) > eps0) then
           R = rotation_generic_cs (ct, st, ab/st)
        else if (ct < 0) then
           R = space_reflection
@@ -1884,7 +1970,7 @@ Reconstruct the rotation that rotates it into the second three-vector.
     end if
   end function rotation_to_2nd_generic
 @ %def rotation_to_2nd_generic
-@ 
+@
 The same for a canonical axis: The function returns the transformation that
 rotates the $k$-axis into the direction of $p$.
 <<Lorentz: procedures>>=
@@ -1895,7 +1981,7 @@ rotates the $k$-axis into the direction of $p$.
     type(vector3_t) :: b, ab
     real(default) :: ct, st
     integer :: i, j
-    if (any (p%p /= 0)) then
+    if (any (abs (p%p) > 0)) then
        b = direction (p)
        ab%p = 0
        do i = 1, 3
@@ -1904,7 +1990,7 @@ rotates the $k$-axis into the direction of $p$.
           end do
        end do
        ct = b%p(k);  st = ab**1
-       if (st /= 0) then
+       if (abs(st) > eps0) then
           R = rotation_generic_cs (ct, st, ab/st)
        else if (ct < 0) then
           R = space_reflection
@@ -1917,7 +2003,7 @@ rotates the $k$-axis into the direction of $p$.
   end function rotation_to_2nd_canonical
 
 @ %def rotation_to_2nd_canonical
-@ 
+@
 \subsection{Composite Lorentz transformations}
 This function returns the transformation that, given a pair of vectors
 $p_{1,2}$, (a) boosts from the rest frame of the c.m. system (with
@@ -1981,7 +2067,7 @@ Multiplying vectors and Lorentz transformations is straightforward.
   end function prod_vector4_LT
 
 @ %def *
-@ 
+@
 \subsection{Special Lorentz transformations}
 These routines have their application in the generation and extraction
 of angles in the phase-space sampling routine.  Since this part of the
@@ -2003,12 +2089,12 @@ Instead of the angles we provide sine and cosine.
     type(lorentz_transformation_t) :: L
     real(default), intent(in) :: cp, sp, ct, st, beta_gamma
     real(default) :: gamma
-    if (beta_gamma==0) then
+    if (abs(beta_gamma) < eps0) then
        L%L(0,0)  = 1
        L%L(1:,0) = 0
        L%L(0,1:) = 0
        L%L(1,1:) = [  ct*cp, -ct*sp, st ]
-       L%L(2,1:) = [     sp,     cp,  0._default ]
+       L%L(2,1:) = [     sp,     cp,  zero ]
        L%L(3,1:) = [ -st*cp,  st*sp, ct ]
     else
        gamma = sqrt(1 + beta_gamma**2)
@@ -2018,7 +2104,7 @@ Instead of the angles we provide sine and cosine.
        L%L(3,0)  = beta_gamma
        L%L(0,1:) = beta_gamma * [ -st*cp,  st*sp, ct ]
        L%L(1,1:) =              [  ct*cp, -ct*sp, st ]
-       L%L(2,1:) =              [     sp,     cp, 0._default ]
+       L%L(2,1:) =              [     sp,     cp, zero ]
        L%L(3,1:) = gamma      * [ -st*cp,  st*sp, ct ]
     end if
   end function LT_compose_r3_r2_b3
@@ -2036,23 +2122,23 @@ Instead of the angles we provide sine and cosine.
     type(lorentz_transformation_t) :: L
     real(default), intent(in) :: ct, st, cp, sp, beta_gamma
     real(default) :: gamma
-    if (beta_gamma==0) then
+    if (abs(beta_gamma) < eps0) then
        L%L(0,0)  = 1
        L%L(1:,0) = 0
        L%L(0,1:) = 0
        L%L(1,1:) = [  ct*cp,    -sp,     st*cp ]
        L%L(2,1:) = [  ct*sp,     cp,     st*sp ]
-       L%L(3,1:) = [ -st   , 0._default, ct    ]
+       L%L(3,1:) = [ -st   ,   zero,     ct    ]
     else
        gamma = sqrt(1 + beta_gamma**2)
        L%L(0,0)  = gamma
        L%L(1,0)  = 0
        L%L(2,0)  = 0
        L%L(3,0)  = beta_gamma
-       L%L(0,1:) = beta_gamma * [ -st   , 0._default, ct    ]
+       L%L(0,1:) = beta_gamma * [ -st   ,   zero,     ct    ]
        L%L(1,1:) =              [  ct*cp,    -sp,     st*cp ]
        L%L(2,1:) =              [  ct*sp,     cp,     st*sp ]
-       L%L(3,1:) = gamma      * [ -st   , 0._default, ct    ]
+       L%L(3,1:) = gamma      * [ -st   ,   zero,     ct    ]
     end if
   end function LT_compose_r2_r3_b3
 
@@ -2076,8 +2162,8 @@ The second variant applies if there is no rotation
     py = sp * p%p(1) + cp * p%p(2)
     n%p(1) =  ct * px + st * p%p(3)
     n%p(2) = py
-    n%p(3) = -st * px + ct * p%p(3) 
-    if (beta_gamma/=0) then
+    n%p(3) = -st * px + ct * p%p(3)
+    if (abs(beta_gamma) > eps0) then
        gamma = sqrt(1 + beta_gamma**2)
        n%p(3) = n%p(3) * gamma + p%p(0) * beta_gamma
     end if
@@ -2089,14 +2175,14 @@ The second variant applies if there is no rotation
     real(default), intent(in) :: beta_gamma
     real(default) :: gamma
     n%p = p%p(1:3)
-    if (beta_gamma/=0) then
+    if (abs(beta_gamma) > eps0) then
        gamma = sqrt(1 + beta_gamma**2)
        n%p(3) = n%p(3) * gamma + p%p(0) * beta_gamma
     end if
   end function axis_from_p_b3
 
 @ %def axis_from_p_r3_r2_b3 axis_from_p_b3
-@ 
+@
 \subsection{Special functions}
 The standard phase space function:
 <<Lorentz: public functions>>=
@@ -2124,7 +2210,7 @@ c.m. system.
     real(default) :: ch, sh
     real(default), dimension(2) :: E0, p0
     integer, dimension(2), parameter :: sgn = [1, -1]
-    if (sqrts == 0) then
+    if (abs(sqrts) < eps0) then
        call msg_fatal (" Colliding beams: sqrts is zero (please set sqrts)")
        p = vector4_null;  return
     else if (sqrts <= 0) then
@@ -2174,19 +2260,19 @@ transformations.
     real(default), intent(in) :: tolerance
     where (abs (p%p) < tolerance)  p%p = 0
   end subroutine pacify_vector3
-    
+
   elemental subroutine pacify_vector4 (p, tolerance)
     type(vector4_t), intent(inout) :: p
     real(default), intent(in) :: tolerance
     where (abs (p%p) < tolerance)  p%p = 0
   end subroutine pacify_vector4
-    
+
   elemental subroutine pacify_LT (LT, tolerance)
     type(lorentz_transformation_t), intent(inout) :: LT
     real(default), intent(in) :: tolerance
     where (abs (LT%L) < tolerance)  LT%L = 0
   end subroutine pacify_LT
-    
+
 @ %def pacify
 @
 <<Lorentz: public>>=
@@ -2209,24 +2295,69 @@ transformations.
 @
 <<Lorentz: public>>=
   public :: vector4_write_set
-<<Lorentz: procedures>>=  
+<<Lorentz: procedures>>=
   subroutine vector4_write_set (p, unit, show_mass)
     type(vector4_t), intent(in), dimension(:) :: p
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: show_mass
     integer :: i, j
     real(default), dimension(4) :: p_tot
+    character(len=7) :: fmt
+    integer :: u
+    u = given_output_unit (unit);  if (u < 0)  return
     p_tot = 0
     do i = 1, size (p)
       forall (j=1:4) p_tot(j) = p_tot(j) + vector4_get_component(p(i),j-1)
-      call vector4_write (p(i), unit, show_mass)
+      call vector4_write (p(i), u, show_mass)
     end do
-    print *, 'Total: '
-    print *, 'E: ', p_tot(1)
-    print *, 'p: ', p_tot(2), p_tot(3), p_tot(4)
+    call pac_fmt (fmt, FMT_19, FMT_15)
+    write(u, "(A5)") 'Total: '
+    write(u, "(1x,A,1x," // fmt // ")") 'E = ', p_tot(1)
+    write(u, "(1x,A,3(1x," // fmt // "))") 'P = ', p_tot(2:)
   end subroutine vector4_write_set
 
 @ %def vector4_write_set
+@ This computes the quantities
+\begin{align*}
+  \langle ij \rangle &= \sqrt{|S_{ij}|} e^{i\phi_{ij}},
+  [ij] &= \sqrt{|S_{ij}|} e^{\i\tilde{\phi}_{ij}},
+\end{align*}
+with $S_{ij} = \left(p_i + p_j\right)^2$. The phase space factor
+$\phi_{ij}$ is determined by
+\begin{align*}
+  \cos\phi_{ij} &= \frac{p_i^1p_j^+ - p_j^1p_i^+}{\sqrt{p_i^+p_j^+S_{ij}}},
+  \sin\phi_{ij} &= \frac{p_i^2p_j^+ - p_j^2p_i^+}{\sqrt{p_i^+p_j^+S_{ij}}}.
+\end{align*}
+After $\langle ij \rangle$ has been computed according to these
+formulae, $[ij]$ can be obtained by using the relation $S_{ij} =
+\langle ij \rangle [ji]$ and taking into account that $[ij] =
+-[ji]$. Thus, a minus-sign has to be applied.
+<<Lorentz: public>>=
+  public :: spinor_product
+<<Lorentz: procedures>>=
+  subroutine spinor_product (p1, p2, prod1, prod2)
+    type(vector4_t), intent(in) :: p1, p2
+    complex(default), intent(out) :: prod1, prod2
+    real(default) :: sij
+    complex(default) :: phase
+    real(default) :: pp_1, pp_2
+    pp_1 = p1%p(0) + p1%p(3)
+    pp_2 = p2%p(0) + p2%p(3)
+    sij = (p1+p2)**2
+    phase = cmplx ((p1%p(1)*pp_2 - p2%p(1)*pp_1)/sqrt (sij*pp_1*pp_2), &
+                   (p1%p(2)*pp_2 - p2%p(2)*pp_1)/sqrt (sij*pp_1*pp_2), &
+                    default)
+    !!! <ij>
+    prod1 = sqrt (sij) * phase
+    !!! [ij]
+    if (abs(prod1) > 0) then
+       prod2 = - sij / prod1
+    else
+       prod2 = 0
+    end if
+  end subroutine spinor_product
+
+@ %def spinor_product
 @
 \clearpage
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -2245,6 +2376,7 @@ module sm_physics
 <<Use kinds>>
   use io_units
   use constants
+  use unit_tests
   use diagnostics
   use physics_defs
   use lorentz
@@ -2275,66 +2407,62 @@ active flavors in two different schemes:
   b_0 &=\; \frac{1}{12 \pi} \left( 11 C_A  - 2 n_f \right) \\
   b_1 &=\; \frac{1}{24 \pi^2} \left( 17 C_A^2 - 5 C_A n_f - 3 C_F n_f \right) \\
   b_2 &=\; \frac{1}{(4\pi)^3} \biggl( \frac{2857}{54} C_A^3 -
-  \frac{1415}{54} * C_A^2 n_f - \frac{205}{18} C_A C_F n_f + C_F^2 n_f 
+  \frac{1415}{54} * C_A^2 n_f - \frac{205}{18} C_A C_F n_f + C_F^2 n_f
   + \frac{79}{54} C_A n_f**2 + \frac{11}{9} C_F n_f**2 \biggr)
 \end{align}
 <<SM physics: public>>=
   public :: beta0, beta1, beta2, coeff_b0, coeff_b1, coeff_b2
 <<SM physics: procedures>>=
-  pure function beta0 (nf) 
+  pure function beta0 (nf)
     real(default), intent(in) :: nf
     real(default) :: beta0
     beta0 = 11.0_default - two/three * nf
-  end function beta0 
-  
-  pure function beta1 (nf) 
+  end function beta0
+
+  pure function beta1 (nf)
     real(default), intent(in) :: nf
     real(default) :: beta1
     beta1 = 51.0_default - 19.0_default/three * nf
   end function beta1
-  
-  pure function beta2 (nf) 
+
+  pure function beta2 (nf)
     real(default), intent(in) :: nf
     real(default) :: beta2
     beta2 = 2857.0_default - 5033.0_default / 9.0_default * &
                     nf + 325.0_default/27.0_default * nf**2
   end function beta2
-  
-  pure function coeff_b0 (nf) 
+
+  pure function coeff_b0 (nf)
     real(default), intent(in) :: nf
     real(default) :: coeff_b0
     coeff_b0 = (11.0_default * CA - two * nf) / (12.0_default * pi)
-  end function coeff_b0 
-  
-  pure function coeff_b1 (nf) 
+  end function coeff_b0
+
+  pure function coeff_b1 (nf)
     real(default), intent(in) :: nf
     real(default) :: coeff_b1
     coeff_b1 = (17.0_default * CA**2 - five * CA * nf - three * CF * nf) / &
                (24.0_default * pi**2)
   end function coeff_b1
-  
-  pure function coeff_b2 (nf) 
+
+  pure function coeff_b2 (nf)
     real(default), intent(in) :: nf
     real(default) :: coeff_b2
     coeff_b2 = (2857.0_default/54.0_default * CA**3 - &
-                    1415.0_default/54.0_default * & 
+                    1415.0_default/54.0_default * &
                     CA**2 * nf - 205.0_default/18.0_default * CA*CF*nf &
-		    + 79.0_default/54.0_default * CA*nf**2 + &
-		    11.0_default/9.0_default * CF * nf**2) / (four*pi)**3
+                    + 79.0_default/54.0_default * CA*nf**2 + &
+                    11.0_default/9.0_default * CF * nf**2) / (four*pi)**3
   end function coeff_b2
-  
-@ %def beta0
-@ %def beta1
-@ %def beta2
-@ %def coeff_b0
-@ %def coeff_b1
-@ %def coeff_b2
+
+@ %def beta0 beta1 beta2
+@ %def coeff_b0 coeff_b1 coeff_b2
 @ There should be two versions of running $\alpha_s$, one which takes
-the scale and $\Lambda_{\text{QCD}}$ as imput, and one which takes the
+the scale and $\Lambda_{\text{QCD}}$ as input, and one which takes the
 scale and e.g. $\alpha_s(m_Z)$ as input. Here, we take the one which
 takes the QCD scale and scale as inputs from the PDG book.
 <<SM physics: public>>=
-  public :: running_as, running_as_lam 
+  public :: running_as, running_as_lam
 <<SM physics: procedures>>=
   pure function running_as (scale, al_mz, mz, order, nf) result (ascale)
     real(default), intent(in) :: scale
@@ -2343,45 +2471,47 @@ takes the QCD scale and scale as inputs from the PDG book.
     integer :: ord
     real(default) :: az, m_z, as_log, n_f, b0, b1, b2, ascale
     real(default) :: as0, as1
-    if (present(mz)) then
-      m_z = mz
+    if (present (mz)) then
+       m_z = mz
     else
-      m_z = MZ_REF
+       m_z = MZ_REF
     end if
-    if (present(order)) then
+    if (present (order)) then
        ord = order
     else
        ord = 0
     end if
-    if (present(al_mz)) then
+    if (present (al_mz)) then
        az = al_mz
     else
        az = ALPHA_QCD_MZ_REF
     end if
-    if (present(nf)) then
-      n_f = nf
+    if (present (nf)) then
+       n_f = nf
     else
-      n_f = 5
-    end if      
+       n_f = 5
+    end if
     b0 = coeff_b0 (n_f)
     b1 = coeff_b1 (n_f)
     b2 = coeff_b2 (n_f)
     as_log = one + b0 * az * log(scale**2/m_z**2)
     as0 = az / as_log
     as1 = as0 - as0**2 * b1/b0 * log(as_log)
-    select case (ord) 
-      case (0)
-        ascale = as0
-      case (1)
-        ascale = as1
-      case (2) 
-        ascale = as1 + as0**3 * (b1**2/b0**2 * ((log(as_log))**2 - &
-	          log(as_log) + as_log - one) - b2/b0 * (as_log - one))
-    end select		  
+    select case (ord)
+    case (0)
+       ascale = as0
+    case (1)
+       ascale = as1
+    case (2)
+       ascale = as1 + as0**3 * (b1**2/b0**2 * ((log(as_log))**2 - &
+            log(as_log) + as_log - one) - b2/b0 * (as_log - one))
+    case default
+       ascale = as0
+    end select
   end function running_as
 
   pure function running_as_lam (nf, scale, lambda, order) result (ascale)
-    real(default), intent(in) :: nf, scale 
+    real(default), intent(in) :: nf, scale
     real(default), intent(in), optional :: lambda
     integer, intent(in), optional :: order
     real(default) :: lambda_qcd
@@ -2392,26 +2522,30 @@ takes the QCD scale and scale as inputs from the PDG book.
     else
        lambda_qcd = LAMBDA_QCD_REF
     end if
-    if (present(order)) then 
-      ord = order
+    if (present (order)) then
+       ord = order
     else
-      ord = 0
+       ord = 0
     end if
     b0 = beta0(nf)
-    b1 = beta1(nf)
-    b2 = beta2(nf)
     logmul = log(scale**2/lambda_qcd**2)
     as0 = four*pi / b0 / logmul
-    as1 = as0 * (one - two* b1 / b0**2 * log(logmul) / logmul)
+    if (ord > 0) then
+       b1 = beta1(nf)
+       as1 = as0 * (one - two* b1 / b0**2 * log(logmul) / logmul)
+    end if
     select case (ord)
-      case (0)
-        ascale = as0
-      case (1)
-        ascale = as1
-      case (2) 
-        ascale = as1 + as0 * four * b1**2/b0**4/logmul**2 * &
-               ( (log(logmul) - 0.5_default)**2 + &
-	       b2*b0/8.0_default/b1**2 - five/four)
+    case (0)
+       ascale = as0
+    case (1)
+       ascale = as1
+    case (2)
+       b2 = beta2(nf)
+       ascale = as1 + as0 * four * b1**2/b0**4/logmul**2 * &
+            ((log(logmul) - 0.5_default)**2 + &
+             b2*b0/8.0_default/b1**2 - five/four)
+    case default
+       ascale = as0
     end select
   end function running_as_lam
 
@@ -2424,18 +2558,18 @@ Since the corresponding parameters for the gluon case depend on the
 number of flavors which is treated as an argument, there we do have
 functions and not parameters.
 \begin{equation}
-  \gamma_q = \gamma_{\bar q} = \frac{3}{2} C_F \qquad \gamma_g = 
+  \gamma_q = \gamma_{\bar q} = \frac{3}{2} C_F \qquad \gamma_g =
   \frac{11}{6} C_A - \frac{2}{3} T_R N_f
-\end{equation}  
+\end{equation}
 \begin{equation}
   K_q = K_{\bar q} = \left(  \frac{7}{2} - \frac{\pi^2}{6} \right) C_F \qquad
   K_g = \left( \frac{67}{18} - \frac{\pi^2}{6} \right) C_A -
   \frac{10}{9} T_R N_f
-\end{equation}  
+\end{equation}
 <<SM physics: parameters>>=
   real(kind=default), parameter, public ::  gamma_q = three/two * CF, &
      k_q = (7.0_default/two - pi**2/6.0_default) * CF
-     
+
 @ %def gamma_q
 @
 <<SM physics: public>>=
@@ -2446,14 +2580,14 @@ functions and not parameters.
      real(kind=default) :: gg
      gg = 11.0_default/6.0_default * CA - two/three * TR * nf
   end function gamma_g
-  
+
   elemental function k_g (nf) result (kg)
      real(kind=default), intent(in) :: nf
      real(kind=default) :: kg
      kg = (67.0_default/18.0_default - pi**2/6.0_default) * CA - &
                 10.0_default/9.0_default * TR * nf
   end function k_g
-  
+
 @ %def gamma_g
 @ %def k_g
 @
@@ -2491,10 +2625,11 @@ than $1.10$, but $\frac{1.10^{19}}{19!}{\rm Bernoulli}_{19}=2.7\times
        Li2 = pi2_6
     else if (abs(1-x) <  0.5_double) then
        Li2 = pi2_6 - log(1-x) * log(x) - Li2_restricted (1-x)
-    else if (abs(x).gt.1.d0) then
-       call msg_bug (" Dilogarithm called outside of defined range.")
-       !!! Insert dilogarithm identity, not used yet 
-       ! Li2 = -pi2_6 - 0.5_default * log(-x) * log(-x) - Li2_restricted (1/x)
+    else if (abs(x) > 1.d0) then
+       ! Li2 = 0
+       ! call msg_bug (" Dilogarithm called outside of defined range.")
+       !!! Reactivate Dilogarithm identity
+        Li2 = -pi2_6 - 0.5_default * log(-x) * log(-x) - Li2_restricted (1/x)
     else
        Li2 = Li2_restricted (x)
     end if
@@ -2547,7 +2682,7 @@ a (pseudo)scalar to a vector boson pair.
   elemental function fonehalf (x) result (y)
     real(default), intent(in) :: x
     complex(default) :: y
-    if (x==0) then
+    if (abs(x) < eps0) then
        y = 0
     else
        y = - 2.0_default * x * (1 + (1 - x) * faux(x))
@@ -2559,25 +2694,25 @@ a (pseudo)scalar to a vector boson pair.
 <<SM physics: public>>=
   public :: fonehalf_pseudo
 <<SM physics: procedures>>=
-  function fonehalf_pseudo (x) result (y) 
+  function fonehalf_pseudo (x) result (y)
     real(default), intent(in) :: x
     complex(default) :: y
-    if (x==0) then
+    if (abs(x) < eps0) then
        y = 0
-    else 
+    else
        y = - 2.0_default * x * faux(x)
     end if
   end function fonehalf_pseudo
 
-@ %def fonehalf_pseudo  
-@ 
+@ %def fonehalf_pseudo
+@
 <<SM physics: public>>=
   public :: fone
 <<SM physics: procedures>>=
   elemental function fone (x) result  (y)
     real(default), intent(in) :: x
     complex(default) :: y
-    if (x==0) then
+    if (abs(x) < eps0) then
        y = 2.0_default
     else
        y = 2.0_default + 3.0_default * x + &
@@ -2611,7 +2746,7 @@ a (pseudo)scalar to a vector boson pair.
   elemental function tri_i1 (a,b) result (y)
     real(default), intent(in) :: a,b
     complex(default) :: y
-    if (a < epsilon(a) .or. b < epsilon (b)) then
+    if (a < eps0 .or. b < eps0) then
        y = 0
     else
        y = a*b/2.0_default/(a-b) + a**2 * b**2/2.0_default/(a-b)**2 * &
@@ -2625,13 +2760,13 @@ a (pseudo)scalar to a vector boson pair.
 <<SM physics: public>>=
   public :: tri_i2
 <<SM physics: procedures>>=
-  elemental function tri_i2 (a,b) result (y) 
+  elemental function tri_i2 (a,b) result (y)
     real(default), intent(in) :: a,b
     complex(default) :: y
-    if (a < epsilon (a) .or. b < epsilon(b)) then
+    if (a < eps0 .or. b < eps0) then
        y = 0
     else
-       y = - a * b / 2.0_default / (a-b) * (faux(a) - faux(b)) 
+       y = - a * b / 2.0_default / (a-b) * (faux(a) - faux(b))
     end if
   end function tri_i2
 
@@ -2650,7 +2785,7 @@ $\alpha_s$.
   end function run_b0
 
 @ %def run_b0
-@ 
+@
 <<SM physics: public>>=
   public :: run_b1
 <<SM physics: procedures>>=
@@ -2661,7 +2796,7 @@ $\alpha_s$.
   end function run_b1
 
 @ %def run_b1
-@ 
+@
 <<SM physics: public>>=
   public :: run_aa
 <<SM physics: procedures>>=
@@ -2672,7 +2807,7 @@ $\alpha_s$.
   end function run_aa
 
 @ %def run_aa
-@ 
+@
 <<SM physics: pubic functions>>=
   public :: run_bb
 <<SM physics: procedures>>=
@@ -2683,11 +2818,11 @@ $\alpha_s$.
   end function run_bb
 
 @ %def run_bb
-@ 
+@
 \subsection{Functions for Catani-Seymour dipoles}
 
 For the automated Catani-Seymour dipole subtraction, we need the
-following functions. 
+following functions.
 
 <<SM physics: public>>=
   public :: ff_dipole
@@ -2699,7 +2834,7 @@ following functions.
       real(kind=default) :: z_i
       real(kind=default), intent(out) :: v_ijk
       z_i   = (p_i*p_k) / ((p_k*p_j) + (p_k*p_i))
-      y_ijk = (p_i*p_j) / ((p_i*p_j) + (p_i*p_k) + (p_j*p_k)) 
+      y_ijk = (p_i*p_j) / ((p_i*p_j) + (p_i*p_k) + (p_j*p_k))
       p_ij  = p_i + p_j - y_ijk/(1.0_default - y_ijk) * p_k
       pp_k  = (1.0/(1.0_default - y_ijk)) * p_k
       !!! We don't multiply by alpha_s right here:
@@ -2720,12 +2855,12 @@ following functions.
      real(kind=default), intent(out) :: v_ija
      z_i   = (p_i*p_a) / ((p_a*p_j) + (p_a*p_i))
      x_ija = ((p_i*p_a) + (p_j*p_a) - (p_i*p_j)) &
-          / ((p_i*p_a) + (p_j*p_a)) 
+          / ((p_i*p_a) + (p_j*p_a))
      p_ij  = p_i + p_j - (1.0_default - x_ija) * p_a
      pp_a  = x_ija * p_a
      !!! We don't not multiply by alpha_s right here:
      v_ija = 8.0_default * PI * CF * &
-          (2.0 / (1.0 - z_i + (1.0 - x_ija)) - (1.0 + z_i)) / x_ija 
+          (2.0 / (1.0 - z_i + (1.0 - x_ija)) - (1.0 + z_i)) / x_ija
   end subroutine fi_dipole
 
 @ %def fi_dipole
@@ -2741,7 +2876,7 @@ following functions.
      real(kind=default), intent(out) :: v_kja
      u_j   = (p_a*p_j) / ((p_a*p_j) + (p_a*p_k))
      x_kja = ((p_a*p_k) + (p_a*p_j) - (p_j*p_k)) &
-          / ((p_a*p_j) + (p_a*p_k)) 
+          / ((p_a*p_j) + (p_a*p_k))
      p_aj  = x_kja * p_a
      pp_k  = p_k + p_j - (1.0_default - x_kja) * p_a
      v_kja = 8.0_default * PI * CF * &
@@ -2774,7 +2909,7 @@ whose kinematics all get changed by the initial-initial dipole insertion.
          p_a = p_in(2)
       end if
       !!! We assume that the unresolved particle has always the last
-      !!! momentum    
+      !!! momentum
       p_j = p_in(size(p_in))
       x_jab = ((p_a*p_b) - (p_a*p_j) - (p_b*p_j)) / (p_a*p_b)
       v_j = (p_a*p_j) / (p_a * p_b)
@@ -2786,11 +2921,11 @@ whose kinematics all get changed by the initial-initial dipole insertion.
               (2.0 * (k*p_in(i)) / (k*k)) * kk
       end do
       if (flag_1or2) then
-         p_out(1) = p_aj 
+         p_out(1) = p_aj
          p_out(2) = p_b
       else
          p_out(1) = p_b
-         p_out(2) = p_aj 
+         p_out(2) = p_aj
       end if
       v_jab = 8.0_default * PI * CF * &
            (2.0 / (1.0 - x_jab) - (1.0 + x_jab)) / x_jab
@@ -2798,8 +2933,11 @@ whose kinematics all get changed by the initial-initial dipole insertion.
 @ %def ii_dipole
 @
 \subsection{Distributions for integrated dipoles and such}
+Note that the following formulae are only meaningful for
+$0 \leq x \leq 1$.
 
-The Dirac delta distribution, modified for Monte-Carlo sampling:
+The Dirac delta distribution, modified for Monte-Carlo sampling,
+centered at $x=1-\frac{\epsilon}{2}$:
 
 <<SM physics: public>>=
   public :: delta
@@ -2807,8 +2945,8 @@ The Dirac delta distribution, modified for Monte-Carlo sampling:
   elemental function delta (x,eps) result (z)
      real(kind=default), intent(in) :: x, eps
      real(kind=default) :: z
-     if (x > 1.0_default - eps) then
-        z = 1.0_default/eps
+     if (x > one - eps) then
+        z = one / eps
      else
         z = 0
      end if
@@ -2819,35 +2957,36 @@ The Dirac delta distribution, modified for Monte-Carlo sampling:
 the regularization of soft-collinear singularities. The constant part
 for the Monte-Carlo sampling is the integral over the splitting
 function divided by the weight for the WHIZARD numerical integration
-over the interval. 
+over the interval.
 <<SM physics: public>>=
   public :: plus_distr
 <<SM physics: procedures>>=
   elemental function plus_distr (x,eps) result (plusd)
      real(kind=default), intent(in) :: x, eps
      real(kind=default) :: plusd
-     if (x > (1.0_default - eps)) then
-        plusd = log(eps)/eps
+     if (x > one - eps) then
+        plusd = log(eps) / eps
      else
-        plusd = one/(one-x)
+        plusd = one / (one - x)
      end if
   end function plus_distr
 
 @ %def plus_distr
-@ The splitting function in $D=4$ dimensions, regularized as 
+@ The splitting function in $D=4$ dimensions, regularized as
 $+$-distributions if necessary:
 \begin{align}
   P^{qq} (x) = P^{\bar q\bar q} (x) &= \; C_F \cdot \left( \frac{1 +
-      x^2}{1-x} \right)_+ \\ 
-  P^{qg} (x) = P^{\bar q g}      (x) &= \; C_F  \cdot \frac{1 + (1-x)^2}{x}\\ 
-  P^{gq} (x) = P^{g \bar q}      (x) &= \; T_R \cdot \left[ x^2 + (1-x)^2    
+      x^2}{1-x} \right)_+ \\
+  P^{qg} (x) = P^{\bar q g}     (x) &= \; C_F  \cdot \frac{1 + (1-x)^2}{x}\\
+  P^{gq} (x) = P^{g \bar q}     (x) &= \; T_R \cdot \left[ x^2 + (1-x)^2
   \right] \\
-  P^{gg} (x) & = \; 2 C_A \biggl[ \left( \frac{1}{1-x} \right)_+ +
-  \frac{1-x}{x} - 1 + x(1-x) \biggl] + \delta(1-x) \left( \frac{11}{6} C_A -
-    \frac{2}{3} N_f T_R \right)
+  P^{gg} (x) &= \; 2 C_A \biggl[ \left( \frac{1}{1-x} \right)_+ +
+                 \frac{1-x}{x} - 1 + x(1-x) \biggl] \notag{}\\
+             &\quad + \delta(1-x) \left( \frac{11}{6} C_A -
+                                          \frac{2}{3} N_f T_R \right)
 \end{align}
 Since the number of flavors summed over in the gluon splitting
-function might depend on the physics case under consideration it is
+function might depend on the physics case under consideration, it is
 implemented as an input variable.
 <<SM physics: public>>=
   public :: pqq
@@ -2856,9 +2995,10 @@ implemented as an input variable.
      real(kind=default), intent(in) :: x, eps
      real(kind=default) :: pqqx
      if (x > (1.0_default - eps)) then
-        pqqx = (eps-one)/two + two*log(eps)/eps - three*(eps-one)/eps/two
+        pqqx = (eps - one) / two + two * log(eps) / eps - &
+             three * (eps - one) / eps / two
      else
-        pqqx = (one + x**2)/(one-x)
+        pqqx = (one + x**2) / (one - x)
      end if
      pqqx = CF * pqqx
   end function pqq
@@ -2871,7 +3011,7 @@ implemented as an input variable.
   elemental function pgq (x) result (pgqx)
      real(kind=default), intent(in) :: x
      real(kind=default) :: pgqx
-     pgqx = TR * (x**2 + (one - x)**2) 
+     pgqx = TR * (x**2 + (one - x)**2)
   end function pgq
 
 @ %def pgq
@@ -2895,14 +3035,14 @@ implemented as an input variable.
     real(kind=default) :: pggx
     pggx = two * CA * ( plus_distr (x, eps) + (one-x)/x - one + &
                    x*(one-x)) + delta (x, eps)  * gamma_g(nf)
-  end function pgg                   
+  end function pgg
 
 @ %def pgg
 @ For the $qq$ and $gg$ cases, there exist ``regularized'' versions of
 the splitting functions:
 \begin{align}
-  P^{qq}_{\text{reg}} (x) = - C_F \cdot (1 + x) \\
-    P^{gg}_{\text{reg}} (x) = 2 C_A \left[ \frac{1-x}{x} - 1 + x(1-x) \right] \\
+  P^{qq}_{\text{reg}} (x) &= - C_F \cdot (1 + x) \\
+  P^{gg}_{\text{reg}} (x) &= 2 C_A \left[ \frac{1-x}{x} - 1 + x(1-x) \right]
 \end{align}
 <<SM physics: public>>=
   public :: pqq_reg
@@ -2939,13 +3079,15 @@ The standard flavor kernels $\overline{K}^{ab}$ are:
   P^{gq} (x) \log ((1-x)/x) + TR \times 2x(1-x) \\
   %%%
   \overline{K}^{qq} &=\; C_F \biggl[ \left( \frac{2}{1-x} \log
-  \frac{1-x}{x} \right)_+ - (1+x) \log ((1-x)/x)  + 
-  (1-x) \biggr] - (5 - \pi^2) \cdot C_F \cdot \delta(1-x) \\
+  \frac{1-x}{x} \right)_+ - (1+x) \log ((1-x)/x)  +
+  (1-x) \biggr] \notag{}\\
+                    &\quad - (5 - \pi^2) \cdot C_F \cdot \delta(1-x) \\
   %%%
   \overline{K}^{gg} &=\; 2 C_A \biggl[ \left( \frac{1}{1-x} \log
     \frac{1-x}{x} \right)_+ + \left( \frac{1-x}{x} - 1 + x(1-x)
-  \right) \log((1-x)/x) \biggr] - delta(1-x) \biggl[ \left(
-    frac{50}{9} - \pi^2 \right) C_A - \frac{16}{9} T_R N_f \biggr]
+  \right) \log((1-x)/x) \biggr] \notag{}\\
+                    &\quad - \delta(1-x) \biggl[ \left(
+    \frac{50}{9} - \pi^2 \right) C_A - \frac{16}{9} T_R N_f \biggr]
 \end{align}
 <<SM physics: public>>=
   public :: kbarqg
@@ -2957,7 +3099,7 @@ The standard flavor kernels $\overline{K}^{ab}$ are:
   end function kbarqg
 
 @ %def kbarqg
-@ 
+@
 <<SM physics: public>>=
   public :: kbargq
 <<SM physics: procedures>>=
@@ -2968,7 +3110,7 @@ The standard flavor kernels $\overline{K}^{ab}$ are:
   end function kbargq
 
 @ %def kbarqg
-@ 
+@
 <<SM physics: public>>=
   public :: kbarqq
 <<SM physics: procedures>>=
@@ -2982,7 +3124,7 @@ The standard flavor kernels $\overline{K}^{ab}$ are:
 @ %def kbarqq
 @
 <<SM physics: public>>=
-  public :: kbargg 
+  public :: kbargg
 <<SM physics: procedures>>=
   function kbargg (x,eps,nf) result (kbarggx)
     real(kind=default), intent(in) :: x, eps, nf
@@ -3002,13 +3144,13 @@ The standard flavor kernels $\overline{K}^{ab}$ are:
 \end{equation}
 
 <<SM physics: public>>=
-  public :: ktildeqq 
+  public :: ktildeqq
 <<SM physics: procedures>>=
   function ktildeqq (x,eps) result (ktildeqqx)
     real(kind=default), intent(in) :: x, eps
     real(kind=default) :: ktildeqqx
     ktildeqqx = pqq_reg (x) * log(one-x) + CF * ( - log2_plus_distr (x,eps) &
-                          - pi**2/three * delta(x,eps)) 
+                          - pi**2/three * delta(x,eps))
   end function ktildeqq
 
 @ %def ktildeqq
@@ -3020,7 +3162,7 @@ The standard flavor kernels $\overline{K}^{ab}$ are:
     real(kind=default), intent(in) :: x, eps
     real(kind=default) :: ktildeqgx
     ktildeqgx = pqg (x) * log(one-x)
-  end function ktildeqg 
+  end function ktildeqg
 
 @ %def ktildeqg
 @
@@ -3031,7 +3173,7 @@ The standard flavor kernels $\overline{K}^{ab}$ are:
     real(kind=default), intent(in) :: x, eps
     real(kind=default) :: ktildegqx
     ktildegqx = pgq (x) * log(one-x)
-  end function ktildegq 
+  end function ktildegq
 
 @ %def ktildeqg
 @
@@ -3089,7 +3231,7 @@ all, the $K$ functions get modified:
     real(kind=default) :: k_q_al
     k_q_al = k_q - CF * (log(alpha))**2 + gamma_q * &
                       (alpha - one - log(alpha))
-  end function k_q_al                      
+  end function k_q_al
 
   pure function k_g_al (alpha, nf)
     real(kind=default), intent(in) :: alpha, nf
@@ -3097,20 +3239,21 @@ all, the $K$ functions get modified:
     k_g_al = k_g (nf) - CA * (log(alpha))**2 + gamma_g (nf) * &
                      (alpha - one - log(alpha))
   end function k_g_al
-  
+
 @ %def k_q_al
 @ %def k_g_al
 @ The $+$-distribution, but with a phase-space slicing parameter,
-$\alpha$,  $P_{1-alpha}(x) = \left( \frac{1}{1-x}
+$\alpha$,  $P_{1-\alpha}(x) = \left( \frac{1}{1-x}
 \right)_{1-x}$. Since we need the fatal error message here, this
-function cannot be elemental.  
+function cannot be elemental.
 <<SM physics: public>>=
   public :: plus_distr_al
 <<SM physics: procedures>>=
   function plus_distr_al (x,alpha,eps) result (plusd_al)
      real(kind=default), intent(in) :: x,  eps, alpha
      real(kind=default) :: plusd_al
-     if ((1.0_default - alpha) .ge. (1.0_default - eps)) then
+     if ((one - alpha) >= (one - eps)) then
+        plusd_al = zero
         call msg_fatal ('sm_physics, plus_distr_al: alpha and epsilon chosen wrongly')
      elseif (x < (1.0_default - alpha)) then
         plusd_al = 0
@@ -3122,36 +3265,35 @@ function cannot be elemental.
    end function plus_distr_al
 
 @ %def plus_distr_al
-@ Introducing phase-space slicing parameters, these flavor kernels become:
-The standard flavor kernels $\overline{K}^{ab}$ are:
+@ Introducing phase-space slicing parameters, these standard flavor
+kernels $\overline{K}^{ab}$ become:
 \begin{align}
   \overline{K}^{qg}_\alpha (x) = \overline{K}^{\bar q g}_\alpha (x) & = \;
-  P^{qg} (x) \log (\alpha (1-x)/x) + CF \times x \\
+  P^{qg} (x) \log (\alpha (1-x)/x) + C_F \times x \\
   %%%
   \overline{K}^{gq}_\alpha (x) = \overline{K}^{g \bar q}_\alpha (x) & = \;
-  P^{gq} (x) \log (\alpha (1-x)/x) + TR \times 2x(1-x) \\
+  P^{gq} (x) \log (\alpha (1-x)/x) + T_R \times 2x(1-x) \\
   %%%
   \overline{K}^{qq}_\alpha &=
-      C_F  (1 - x) + P^{qq}_{\text{reg}} (x) \log \frac{\alpha(1-x)}{x}      
-      + C_F \delta (1 - x) \log^2 \alpha  + C_F \left( \frac{2}{1-x}
-        \log \frac{1-x}{x} \right)_+
-       - \left( \gamma_q + K_q(\alpha) - \frac56 \pi^2 C_F
-      \right) \cdot \delta(1-x)    
-      \; C_F \Bigl[
-      +
-      \frac{2}{1-x}  \log \left( \frac{\alpha (2-x)}{1+\alpha-x} \right)       
+      C_F  (1 - x) + P^{qq}_{\text{reg}} (x) \log \frac{\alpha(1-x)}{x}
+      \notag{}\\           &\quad
+      + C_F \delta (1 - x) \log^2 \alpha
+      + C_F \left( \frac{2}{1-x} \log \frac{1-x}{x} \right)_+ \notag{}\\
+                           &\quad
+      - \left( \gamma_q + K_q(\alpha) - \frac56 \pi^2 C_F \right) \cdot
+      \delta(1-x) \; C_F \Bigl[ + \frac{2}{1-x}  \log \left(
+      \frac{\alpha (2-x)}{1+\alpha-x} \right)
       - \theta(1 - \alpha - x) \cdot \left( \frac{2}{1-x} \log
-      \frac{2-x}{1-x} \right) \Bigr]
+      \frac{2-x}{1-x} \right) \Bigr] \\
   %%%
-  \overline{K}^{gg}_\alpha &=\;       
-       P^{gg}_{\text{reg}} (x) \log \frac{\alpha(1-x)}{x}      
-      + C_A \delta (1 - x) \log^2 \alpha  + C_A \left( \frac{2}{1-x}
-        \log \frac{1-x}{x} \right)_+
-       - \left( \gamma_g + K_g(\alpha) - \frac56 \pi^2 C_A
-      \right) \cdot \delta(1-x)    
-      \; C_A \Bigl[
-      +
-      \frac{2}{1-x}  \log \left( \frac{\alpha (2-x)}{1+\alpha-x} \right)       
+  \overline{K}^{gg}_\alpha &=\;
+       P^{gg}_{\text{reg}} (x) \log \frac{\alpha(1-x)}{x}
+      + C_A \delta (1 - x) \log^2 \alpha  \notag{}\\
+                           &\quad
+      + C_A \left( \frac{2}{1-x} \log \frac{1-x}{x} \right)_+
+       - \left( \gamma_g + K_g(\alpha) - \frac56 \pi^2 C_A \right) \cdot
+       \delta(1-x) \; C_A \Bigl[ + \frac{2}{1-x}  \log \left(
+       \frac{\alpha (2-x)}{1+\alpha-x} \right)
       - \theta(1 - \alpha - x) \cdot \left( \frac{2}{1-x} \log
       \frac{2-x}{1-x} \right) \Bigr]
 \end{align}
@@ -3163,9 +3305,9 @@ The standard flavor kernels $\overline{K}^{ab}$ are:
     real(kind=default) :: kbarqgx
     kbarqgx = pqg (x) * log(alpha*(one-x)/x) + CF * x
   end function kbarqg_al
-@ %def kbarqg_al  
-@ 
-  
+@ %def kbarqg_al
+@
+
 <<SM physics: public>>=
   public :: kbargq_al
 <<SM physics: procedures>>=
@@ -3174,40 +3316,40 @@ The standard flavor kernels $\overline{K}^{ab}$ are:
     real(kind=default) :: kbargqx
     kbargqx = pgq (x) * log(alpha*(one-x)/x) + two * TR * x * (one-x)
   end function kbargq_al
-@ %def kbargq_al  
-@ 
-   
+@ %def kbargq_al
+@
+
 <<SM physics: public>>=
-  public :: kbarqq_al 
-<<SM physics: procedures>>=  
+  public :: kbarqq_al
+<<SM physics: procedures>>=
   function kbarqq_al (x,alpha,eps) result (kbarqqx)
      real(kind=default), intent(in) :: x, alpha, eps
-     real(kind=default) :: kbarqqx 
+     real(kind=default) :: kbarqqx
      kbarqqx = CF * (one - x) + pqq_reg(x) * log(alpha*(one-x)/x) &
               + CF * log_plus_distr(x,eps) &
              - (gamma_q + k_q_al(alpha) - CF * &
               five/6.0_default  * pi**2 - CF * (log(alpha))**2) * &
-              delta(x,eps) + & 
+              delta(x,eps) + &
               CF * two/(one -x)*log(alpha*(two-x)/(one+alpha-x))
-     if (x < (one-alpha)) then 
+     if (x < (one-alpha)) then
         kbarqqx = kbarqqx - CF * two/(one-x) * log((two-x)/(one-x))
      end if
   end function kbarqq_al
 
 @ %def kbarqq_al
 <<SM physics: public>>=
-  public :: kbargg_al 
-<<SM physics: procedures>>=  
+  public :: kbargg_al
+<<SM physics: procedures>>=
   function kbargg_al (x,alpha,eps,nf) result (kbarggx)
      real(kind=default), intent(in) :: x, alpha, eps, nf
-     real(kind=default) :: kbarggx 
+     real(kind=default) :: kbarggx
      kbarggx = pgg_reg(x) * log(alpha*(one-x)/x) &
               + CA * log_plus_distr(x,eps) &
              - (gamma_g(nf) + k_g_al(alpha,nf) - CA * &
               five/6.0_default  * pi**2 - CA * (log(alpha))**2) * &
-              delta(x,eps) + & 
+              delta(x,eps) + &
               CA * two/(one -x)*log(alpha*(two-x)/(one+alpha-x))
-     if (x < (one-alpha)) then 
+     if (x < (one-alpha)) then
         kbarggx = kbarggx - CA * two/(one-x) * log((two-x)/(one-x))
      end if
   end function kbargg_al
@@ -3273,14 +3415,15 @@ irrespective of the fact what the user chooses.
 
 @ %def log2_plus_distr
 @ Logarithmic $+$-distribution with phase-space slicing parameter, $2
-\left( \frac{\log(1/(1-x))}{1-x} \right)_{1-\alpha}$. 
+\left( \frac{\log(1/(1-x))}{1-x} \right)_{1-\alpha}$.
 <<SM physics: public>>=
   public :: log2_plus_distr_al
 <<SM physics: procedures>>=
   function log2_plus_distr_al (x,alpha,eps) result (lpd_al)
-    real(kind=default), intent(in) :: x, eps, alpha    
+    real(kind=default), intent(in) :: x, eps, alpha
     real(kind=default) :: lpd_al
-    if ((1.0_default - alpha) .ge. (1.0_default - eps)) then
+    if ((one - alpha) >= (one - eps)) then
+       lpd_al = zero
        call msg_fatal ('alpha and epsilon chosen wrongly')
     elseif (x < (one - alpha)) then
        lpd_al = 0
@@ -3292,6 +3435,140 @@ irrespective of the fact what the user chooses.
   end function log2_plus_distr_al
 
 @ %def log2_plus_distr_al
+@
+\subsection{Splitting Functions}
+@ Analogue to the regularized distributions of the last subsection, we
+give here the unregularized splitting functions, relevant for the parton
+shower algorithm. We can use this unregularized version since there will
+be a cut-off $\epsilon$ that ensures that $\{z,1-z\}>\epsilon(t)$. This
+cut-off seperates resolvable from unresolvable emissions.
+
+[[p_xxx]] are the kernels that are summed over helicity:
+<<SM physics: public>>=
+  public :: p_qqg
+  public :: p_gqq
+  public :: p_ggg
+@ $q\to q g$
+<<SM physics: procedures>>=
+  elemental function p_qqg (z) result (P)
+    real(default), intent(in) :: z
+    real(default) :: P
+    P = CF * (one + z**2) / (one - z)
+  end function p_qqg
+@ $g\to q \bar{q}$
+<<SM physics: procedures>>=
+  elemental function p_gqq (z) result (P)
+    real(default), intent(in) :: z
+    real(default) :: P
+    P = TR * (z**2 + (one - z)**2)
+  end function p_gqq
+@ $g\to g g$
+<<SM physics: procedures>>=
+  elemental function p_ggg (z) result (P)
+    real(default), intent(in) :: z
+    real(default) :: P
+    P = NC * ((one - z) / z + z / (one - z) + z * (one - z))
+  end function p_ggg
+
+@ %def p_qqg p_gqq p_ggg
+@ Analytically integrated splitting kernels:
+<<SM physics: public>>=
+  public :: integral_over_p_qqg
+  public :: integral_over_p_gqq
+  public :: integral_over_p_ggg
+<<SM physics: procedures>>=
+  pure function integral_over_p_qqg (zmin, zmax) result (integral)
+    real(default), intent(in) :: zmin, zmax
+    real(default) :: integral
+    integral = (two / three) * (- zmax**2 + zmin**2 - &
+         two * (zmax - zmin) + four * log((one - zmin) / (one - zmax)))
+  end function integral_over_p_qqg
+
+  pure function integral_over_p_gqq (zmin, zmax) result (integral)
+    real(default), intent(in) :: zmin, zmax
+    real(default) :: integral
+    integral = 0.5_default * ((two / three) * &
+         (zmax**3 - zmin**3) - (zmax**2 - zmin**2) + (zmax - zmin))
+  end function integral_over_p_gqq
+
+  pure function integral_over_p_ggg (zmin, zmax) result (integral)
+    real(default), intent(in) :: zmin, zmax
+    real(default) :: integral
+    integral = three * ((log(zmax) - two * zmax - &
+         log(one - zmax) + zmax**2 / two - zmax**3 / three) - &
+         (log(zmin) - zmin - zmin - log(one - zmin) + zmin**2 &
+         / two - zmin**3 / three) )
+  end function integral_over_p_ggg
+
+@ %def integral_over_p_gqq integral_over_p_ggg integral_over_p_qqg
+@ We can also use (massless) helicity dependent splitting functions:
+<<SM physics: public>>=
+  public :: p_qqg_pol
+@ $q_a\to q_b g_c$, the helicity of the quark is not changed by gluon
+emission and the gluon is preferably polarized in the branching plane
+($l_c=1$):
+<<SM physics: procedures>>=
+  elemental function p_qqg_pol (z, l_a, l_b, l_c) result (P)
+    real(default), intent(in) :: z
+    integer, intent(in) :: l_a, l_b, l_c
+    real(default) :: P
+    if (l_a /= l_b) then
+       P = zero
+       return
+    end if
+    if (l_c == -1) then
+       P = one - z
+    else
+       P = (one + z)**2 / (one - z)
+    end if
+    P = P * CF
+  end function p_qqg_pol
+
+@
+\subsection{Unit tests}
+<<SM qcd: public>>=
+  public :: sm_physics_test
+<<SM qcd: tests>>=
+  subroutine sm_physics_test (u, results)
+    integer, intent(in) :: u
+    type(test_results_t), intent(inout) :: results
+  <<SM qcd: execute tests>>
+  end subroutine sm_physics_test
+
+@ %def sm_physics_test
+@
+\subsubsection{Splitting functions}
+<<SM physics: execute tests>>=
+  call test (sm_physics_1, "sm_physics_1", &
+       "running alpha_s", &
+       u, results)
+<<SM physics: tests>>=
+  subroutine sm_physics_1 (u)
+    integer, intent(in) :: u
+    real(default) :: z = 0.75_default
+
+    write (u, "(A)")  "* Test output: sm_physics_1"
+    write (u, "(A)")  "*   Purpose: check analytic properties"
+    write (u, "(A)")
+
+    write (u, "(A)")  "* Splitting functions:"
+    write (u, "(A)")
+
+    call assert (u, vanishes (p_qqg_pol (z, +1, -1, +1)))
+    call assert (u, vanishes (p_qqg_pol (z, +1, -1, -1)))
+    call assert (u, vanishes (p_qqg_pol (z, -1, +1, +1)))
+    call assert (u, vanishes (p_qqg_pol (z, -1, +1, -1)))
+
+    call assert (u, nearly_equal ( &
+         p_qqg_pol (z, +1, +1, -1) + p_qqg_pol (z, +1, +1, +1),
+         p_qqg (z))
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: sm_physics_1"
+
+  end subroutine sm_physics_1
+
+@ %def sm_physics_1
 @
 \clearpage
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -3332,7 +3609,7 @@ contains
 
 end module sm_qcd
 @ %def sm_qcd
-@ 
+@
 \subsection{Coupling: Abstract Data Type}
 This is the abstract version of the QCD coupling implementation.
 <<SM qcd: public>>=
@@ -3342,7 +3619,7 @@ This is the abstract version of the QCD coupling implementation.
    contains
    <<SM qcd: alpha qcd: TBP>>
   end type alpha_qcd_t
-  
+
 @ %def alpha_qcd_t
 @ There must be an output routine.
 <<SM qcd: alpha qcd: TBP>>=
@@ -3371,7 +3648,7 @@ set before calling this.
        real(default) :: alpha
      end function alpha_qcd_get
   end interface
-  
+
 @ %def alpha_qcd_get
 @
 \subsection{Fixed Coupling}
@@ -3386,7 +3663,7 @@ value.  By default, this is the value at $M_Z$.
    contains
    <<SM qcd: alpha qcd fixed: TBP>>
   end type alpha_qcd_fixed_t
-     
+
 @ %def alpha_qcd_fixed_t
 @ Output.
 <<SM qcd: alpha qcd fixed: TBP>>=
@@ -3400,7 +3677,7 @@ value.  By default, this is the value at $M_Z$.
     write (u, "(3x,A)")  "QCD parameters (fixed coupling):"
     write (u, "(5x,A," // FMT_12 // ")")  "alpha = ", object%val
   end subroutine alpha_qcd_fixed_write
-  
+
 @ %def alpha_qcd_fixed_write
 @ Calculation: the scale is ignored in this case.
 <<SM qcd: alpha qcd fixed: TBP>>=
@@ -3412,7 +3689,7 @@ value.  By default, this is the value at $M_Z$.
     real(default) :: alpha
     alpha = alpha_qcd%val
   end function alpha_qcd_fixed_get
-  
+
 @ %def alpha_qcd_fixed_get
 @
 \subsection{Running Coupling}
@@ -3432,7 +3709,7 @@ approximation.
    contains
    <<SM qcd: alpha qcd from scale: TBP>>
   end type alpha_qcd_from_scale_t
-     
+
 @ %def alpha_qcd_from_scale_t
 @ Output.
 <<SM qcd: alpha qcd from scale: TBP>>=
@@ -3449,7 +3726,7 @@ approximation.
     write (u, "(5x,A,I0)")      "LL order  = ", object%order
     write (u, "(5x,A,I0)")      "N(flv)    = ", object%nf
   end subroutine alpha_qcd_from_scale_write
-  
+
 @ %def alpha_qcd_from_scale_write
 @ Calculation: here, we call the function for running $\alpha_s$ that
 was defined in [[sm_physics]] above.  The function does not take into
@@ -3466,7 +3743,7 @@ for the chosen scale.  Normally, this should be the $Z$ boson mass.
          alpha_qcd%ref, alpha_qcd%mu_ref, alpha_qcd%order, &
          real (alpha_qcd%nf, kind=default))
   end function alpha_qcd_from_scale_get
-  
+
 @ %def alpha_qcd_from_scale_get
 @
 \subsection{Running Coupling, determined by $\Lambda_{\text{QCD}}$}
@@ -3482,7 +3759,7 @@ the order of the approximation.
    contains
    <<SM qcd: alpha qcd from lambda: TBP>>
   end type alpha_qcd_from_lambda_t
-     
+
 @ %def alpha_qcd_from_lambda_t
 @ Output.
 <<SM qcd: alpha qcd from lambda: TBP>>=
@@ -3498,7 +3775,7 @@ the order of the approximation.
     write (u, "(5x,A,I0)")      "LL order   = ", object%order
     write (u, "(5x,A,I0)")      "N(flv)     = ", object%nf
   end subroutine alpha_qcd_from_lambda_write
-  
+
 @ %def alpha_qcd_from_lambda_write
 @ Calculation: here, we call the second function for running $\alpha_s$ that
 was defined in [[sm_physics]] above.  The $\Lambda$ value should be
@@ -3514,7 +3791,7 @@ flavors.  Again, thresholds are not incorporated.
     alpha = running_as_lam (real (alpha_qcd%nf, kind=default), scale, &
          alpha_qcd%lambda, alpha_qcd%order)
   end function alpha_qcd_from_lambda_get
-  
+
 @ %def alpha_qcd_from_lambda_get
 @
 \subsection{Wrapper type}
@@ -3552,25 +3829,25 @@ then any extra components.
        write (u, "(3x,A)")  "QCD parameters (coupling undefined)"
     end if
     if (show_md5 .and. qcd%md5sum /= "") &
-         write (u, "(5x,A,A,A)") "md5sum = '", qcd%md5sum, "'"    
+         write (u, "(5x,A,A,A)") "md5sum = '", qcd%md5sum, "'"
   end subroutine qcd_write
-  
+
 @ %def qcd_write
 @ Compute a MD5 sum for the [[alpha_s]] setup.  This is
 done by writing them to a temporary file, using a standard format.
 <<SM qcd: qcd: TBP>>=
   procedure :: compute_alphas_md5sum => qcd_compute_alphas_md5sum
 <<SM qcd: procedures>>=
-  subroutine qcd_compute_alphas_md5sum (qcd) 
+  subroutine qcd_compute_alphas_md5sum (qcd)
     class(qcd_t), intent(inout) :: qcd
     integer :: unit
-    if (allocated (qcd%alpha)) then    
+    if (allocated (qcd%alpha)) then
        unit = free_unit ()
        open (unit, status="scratch", action="readwrite")
        call qcd%alpha%write (unit)
-       rewind (unit)       
-       qcd%md5sum = md5sum (unit)       
-       close (unit)       
+       rewind (unit)
+       qcd%md5sum = md5sum (unit)
+       close (unit)
     end if
   end subroutine qcd_compute_alphas_md5sum
 
@@ -3597,8 +3874,8 @@ done by writing them to a temporary file, using a standard format.
     type(test_results_t), intent(inout) :: results
   <<SM qcd: execute tests>>
   end subroutine sm_qcd_test
-  
-@ %def sf_aux_test
+
+@ %def sm_qcd_test
 @
 \subsubsection{QCD Coupling}
 We check two different implementations of the abstract QCD coupling.
@@ -3610,17 +3887,17 @@ We check two different implementations of the abstract QCD coupling.
   subroutine sm_qcd_1 (u)
     integer, intent(in) :: u
     type(qcd_t) :: qcd
-    
+
     write (u, "(A)")  "* Test output: sm_qcd_1"
     write (u, "(A)")  "*   Purpose: compute running alpha_s"
     write (u, "(A)")
-    
+
     write (u, "(A)")  "* Fixed:"
     write (u, "(A)")
 
     allocate (alpha_qcd_fixed_t :: qcd%alpha)
     call qcd%compute_alphas_md5sum ()
-    
+
     call qcd%write (u)
     write (u, *)
     write (u, "(1x,A,F10.7)")  "alpha_s (mz)    =", &
@@ -3629,13 +3906,13 @@ We check two different implementations of the abstract QCD coupling.
          qcd%alpha%get (1000._default)
     write (u, *)
     deallocate (qcd%alpha)
-     
+
     write (u, "(A)")  "* Running from MZ (LO):"
     write (u, "(A)")
 
     allocate (alpha_qcd_from_scale_t :: qcd%alpha)
     call qcd%compute_alphas_md5sum ()
-    
+
     call qcd%write (u)
     write (u, *)
     write (u, "(1x,A,F10.7)")  "alpha_s (mz)    =", &
@@ -3643,7 +3920,7 @@ We check two different implementations of the abstract QCD coupling.
     write (u, "(1x,A,F10.7)")  "alpha_s (1 TeV) =", &
          qcd%alpha%get (1000._default)
     write (u, *)
-     
+
     write (u, "(A)")  "* Running from MZ (NLO):"
     write (u, "(A)")
 
@@ -3652,7 +3929,7 @@ We check two different implementations of the abstract QCD coupling.
        alpha%order = 1
     end select
     call qcd%compute_alphas_md5sum ()
-    
+
     call qcd%write (u)
     write (u, *)
     write (u, "(1x,A,F10.7)")  "alpha_s (mz)    =", &
@@ -3660,7 +3937,7 @@ We check two different implementations of the abstract QCD coupling.
     write (u, "(1x,A,F10.7)")  "alpha_s (1 TeV) =", &
          qcd%alpha%get (1000._default)
     write (u, *)
-     
+
     write (u, "(A)")  "* Running from MZ (NNLO):"
     write (u, "(A)")
 
@@ -3669,7 +3946,7 @@ We check two different implementations of the abstract QCD coupling.
        alpha%order = 2
     end select
     call qcd%compute_alphas_md5sum ()
-    
+
     call qcd%write (u)
     write (u, *)
     write (u, "(1x,A,F10.7)")  "alpha_s (mz)    =", &
@@ -3684,7 +3961,7 @@ We check two different implementations of the abstract QCD coupling.
 
     allocate (alpha_qcd_from_lambda_t :: qcd%alpha)
     call qcd%compute_alphas_md5sum ()
-    
+
     call qcd%write (u)
     write (u, *)
     write (u, "(1x,A,F10.7)")  "alpha_s (mz)    =", &
@@ -3692,7 +3969,7 @@ We check two different implementations of the abstract QCD coupling.
     write (u, "(1x,A,F10.7)")  "alpha_s (1 TeV) =", &
          qcd%alpha%get (1000._default)
     write (u, *)
-     
+
     write (u, "(A)")  "* Running from Lambda_QCD (NLO):"
     write (u, "(A)")
 
@@ -3701,7 +3978,7 @@ We check two different implementations of the abstract QCD coupling.
        alpha%order = 1
     end select
     call qcd%compute_alphas_md5sum ()
-    
+
     call qcd%write (u)
     write (u, *)
     write (u, "(1x,A,F10.7)")  "alpha_s (mz)    =", &
@@ -3709,7 +3986,7 @@ We check two different implementations of the abstract QCD coupling.
     write (u, "(1x,A,F10.7)")  "alpha_s (1 TeV) =", &
          qcd%alpha%get (1000._default)
     write (u, *)
-     
+
     write (u, "(A)")  "* Running from Lambda_QCD (NNLO):"
     write (u, "(A)")
 
@@ -3718,7 +3995,7 @@ We check two different implementations of the abstract QCD coupling.
        alpha%order = 2
     end select
     call qcd%compute_alphas_md5sum ()
-    
+
     call qcd%write (u)
     write (u, *)
     write (u, "(1x,A,F10.7)")  "alpha_s (mz)    =", &
@@ -3730,6 +4007,5 @@ We check two different implementations of the abstract QCD coupling.
     write (u, "(A)")  "* Test output end: sm_qcd_1"
 
   end subroutine sm_qcd_1
-  
-@ %def sm_qcd_1
 
+@ %def sm_qcd_1

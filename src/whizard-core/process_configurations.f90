@@ -1,6 +1,6 @@
-! WHIZARD 2.2.3 Nov 30 2014
+! WHIZARD 2.2.4 Feb 06 2015
 ! 
-! Copyright (C) 1999-2014 by 
+! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -9,7 +9,8 @@
 !     Fabian Bach <fabian.bach@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Felix Braam, Sebastian Schmidt, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam, 
+!     Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -62,6 +63,8 @@ module process_configurations
    contains
      procedure :: init => process_configuration_init
      procedure :: setup_component => process_configuration_setup_component
+     procedure :: set_component_associations => &
+                      process_configuration_set_component_associations
      procedure :: record => process_configuration_record
   end type process_configuration_t
   
@@ -79,9 +82,9 @@ contains
     model => global%model
     config%id = prc_name
     allocate (config%entry)
-    if (var_list_is_known (global%var_list, var_str ("process_num_id"))) then
+    if (global%var_list%is_known (var_str ("process_num_id"))) then
        config%num_id = &
-            var_list_get_ival (global%var_list, var_str ("process_num_id"))
+            global%var_list%get_ival (var_str ("process_num_id"))
        call config%entry%init (prc_name, &
             model = model, n_in = n_in, n_components = n_components, &
             num_id = config%num_id, nlo_process = global%nlo_calculation)
@@ -94,14 +97,13 @@ contains
     
   subroutine process_configuration_setup_component &
        (config, i_component, prt_in, prt_out, global, &
-        nlo_type, associated_born, active_in)
+        nlo_type, active_in)
     class(process_configuration_t), intent(inout) :: config
     integer, intent(in) :: i_component
     type(prt_spec_t), dimension(:), intent(in) :: prt_in
     type(prt_spec_t), dimension(:), intent(in) :: prt_out
     type(rt_data_t), intent(inout) :: global
     type(string_t), intent(in), optional :: nlo_type
-    integer, intent(in), optional :: associated_born
     logical, intent(in), optional :: active_in
     type(string_t), dimension(:), allocatable :: prt_str_in
     type(string_t), dimension(:), allocatable :: prt_str_out
@@ -120,30 +122,33 @@ contains
       active = .true.
     end if
 
-    call dispatch_core_def (core_def, prt_str_in, prt_str_out, global, config%id)
-    method = var_list_get_sval (global%var_list, var_str ("$method"))
-    if (present (nlo_type) .and. present (associated_born)) then
-      call config%entry%import_component (i_component, &
-          n_out = size (prt_out), &
-          prt_in = prt_in, &
-          prt_out = prt_out, &
-          method = method, &
-          variant = core_def, &
-          nlo_type = nlo_type, &
-          i_born = associated_born, &
-          active = active)
-    else
-      call config%entry%import_component (i_component, &
-         n_out = size (prt_out), &
-         prt_in = prt_in, &
-         prt_out = prt_out, &
-         method = method, &
-         variant = core_def, &
-         i_born = i_component, &
-         active = active)
-     end if
+    call dispatch_core_def (core_def, prt_str_in, prt_str_out, &
+                            global, config%id, nlo_type)
+    method = &
+         global%var_list%get_sval (var_str ("$method"))
+    call config%entry%import_component (i_component, &
+       n_out = size (prt_out), &
+       prt_in = prt_in, &
+       prt_out = prt_out, &
+       method = method, &
+       variant = core_def, &
+       nlo_type = nlo_type, &
+       active = active)
   end subroutine process_configuration_setup_component
   
+  subroutine process_configuration_set_component_associations &
+       (config, i_list)
+    class(process_configuration_t), intent(inout) :: config
+    integer, intent(in), dimension(4) :: i_list 
+    integer :: i_component
+    do i_component = 1, config%entry%get_n_components ()
+       if (any (i_list == i_component)) then
+          call config%entry%set_associated_components (i_component, &
+                 i_list(1), i_list(2), i_list(3), i_list(4))
+       end if
+    end do
+  end subroutine process_configuration_set_component_associations
+
   subroutine process_configuration_record (config, global)
     class(process_configuration_t), intent(inout) :: config
     type(rt_data_t), intent(inout) :: global

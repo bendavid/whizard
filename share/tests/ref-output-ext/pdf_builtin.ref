@@ -455,8 +455,152 @@ $pdf_builtin_set = "CJ12_min"
 |-----------------------------------------------------------------------------|
    6        994  1.2077576E+00  4.18E-02    3.46    1.09   10.84    0.53   2
 |=============================================================================|
+$pdf_builtin_set = "mmht2014lo"
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 9
+| Initializing integration for process pdf_builtin_1_p:
+| ------------------------------------------------------------------------
+| Process [scattering]: 'pdf_builtin_1_p'
+|   Library name  = 'pdf_builtin_1_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'pdf_builtin_1_p_i1':   u:d:s, ubar:dbar:sbar => mu-, mu+ [omega]
+| ------------------------------------------------------------------------
+| Beam structure: p, p => pdf_builtin
+| Beam data (collision):
+|   p  (mass = 0.0000000E+00 GeV)
+|   p  (mass = 0.0000000E+00 GeV)
+|   sqrts = 1.000000000000E+03 GeV
+| Initialized builtin PDF MMHT2014LO
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'pdf_builtin_1_p_i1.phs'
+| Phase space: 2 channels, 2 dimensions
+| Phase space: found 2 channels, collected in 2 groves.
+| Phase space: Using 2 equivalences between channels.
+| Phase space: wood
+| Beam structure: pdf_builtin, none => none, pdf_builtin
+| Beam structure: 1 channels, 2 dimensions
+| Applying user-defined cuts.
+| Starting integration for process 'pdf_builtin_1_p'
+| Integrate: iterations = 4:500:"gw", 2:500
+| Integrator: 2 chains, 2 channels, 4 dimensions
+| Integrator: Using VAMP channel equivalences
+| Integrator: 500 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1        500  1.3561548E+00  4.59E-01   33.86    7.57*   0.92
+   2        499  1.4984866E+00  1.54E-01   10.29    2.30*   5.60
+   3        498  1.5780063E+00  9.30E-02    5.90    1.32*   9.88
+   4        497  1.6625280E+00  8.82E-02    5.31    1.18*  11.48
+|-----------------------------------------------------------------------------|
+   4       1994  1.6002211E+00  5.86E-02    3.66    1.64   11.48    0.42   4
+|-----------------------------------------------------------------------------|
+   5        497  1.5067178E+00  8.06E-02    5.35    1.19   10.41
+   6        497  1.5637584E+00  8.21E-02    5.25    1.17*  10.80
+|-----------------------------------------------------------------------------|
+   6        994  1.5347179E+00  5.75E-02    3.75    1.18   10.80    0.25   2
+|=============================================================================|
+$pdf_builtin_set = "mmht2014nlo"
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 10
+| Initializing integration for process pdf_builtin_1_p:
+| ------------------------------------------------------------------------
+| Process [scattering]: 'pdf_builtin_1_p'
+|   Library name  = 'pdf_builtin_1_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'pdf_builtin_1_p_i1':   u:d:s, ubar:dbar:sbar => mu-, mu+ [omega]
+| ------------------------------------------------------------------------
+| Beam structure: p, p => pdf_builtin
+| Beam data (collision):
+|   p  (mass = 0.0000000E+00 GeV)
+|   p  (mass = 0.0000000E+00 GeV)
+|   sqrts = 1.000000000000E+03 GeV
+| Initialized builtin PDF MMHT2014NLO
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'pdf_builtin_1_p_i1.phs'
+| Phase space: 2 channels, 2 dimensions
+| Phase space: found 2 channels, collected in 2 groves.
+| Phase space: Using 2 equivalences between channels.
+| Phase space: wood
+| Beam structure: pdf_builtin, none => none, pdf_builtin
+| Beam structure: 1 channels, 2 dimensions
+| Applying user-defined cuts.
+| Starting integration for process 'pdf_builtin_1_p'
+| Integrate: iterations = 4:500:"gw", 2:500
+| Integrator: 2 chains, 2 channels, 4 dimensions
+| Integrator: Using VAMP channel equivalences
+| Integrator: 500 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1        500  1.3468700E+00  4.75E-01   35.29    7.89*   1.05
+   2        499  1.5768056E+00  1.50E-01    9.51    2.12*   6.36
+   3        498  1.6116833E+00  8.52E-02    5.29    1.18*  16.38
+   4        497  1.6146378E+00  7.73E-02    4.79    1.07*  15.26
+|-----------------------------------------------------------------------------|
+   4       1994  1.6053835E+00  5.32E-02    3.31    1.48   15.26    0.12   4
+|-----------------------------------------------------------------------------|
+   5        497  1.6739776E+00  9.53E-02    5.69    1.27    8.15
+   6        497  1.4479906E+00  6.94E-02    4.79    1.07*   7.05
+|-----------------------------------------------------------------------------|
+   6        994  1.5263247E+00  5.61E-02    3.67    1.16    7.05    3.68   2
+|=============================================================================|
+$pdf_builtin_set = "mmht2014nnlo"
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 11
+| Initializing integration for process pdf_builtin_1_p:
+| ------------------------------------------------------------------------
+| Process [scattering]: 'pdf_builtin_1_p'
+|   Library name  = 'pdf_builtin_1_lib'
+|   Process index = 1
+|   Process components:
+|     1: 'pdf_builtin_1_p_i1':   u:d:s, ubar:dbar:sbar => mu-, mu+ [omega]
+| ------------------------------------------------------------------------
+| Beam structure: p, p => pdf_builtin
+| Beam data (collision):
+|   p  (mass = 0.0000000E+00 GeV)
+|   p  (mass = 0.0000000E+00 GeV)
+|   sqrts = 1.000000000000E+03 GeV
+| Initialized builtin PDF MMHT2014NNLO
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'pdf_builtin_1_p_i1.phs'
+| Phase space: 2 channels, 2 dimensions
+| Phase space: found 2 channels, collected in 2 groves.
+| Phase space: Using 2 equivalences between channels.
+| Phase space: wood
+| Beam structure: pdf_builtin, none => none, pdf_builtin
+| Beam structure: 1 channels, 2 dimensions
+| Applying user-defined cuts.
+| Starting integration for process 'pdf_builtin_1_p'
+| Integrate: iterations = 4:500:"gw", 2:500
+| Integrator: 2 chains, 2 channels, 4 dimensions
+| Integrator: Using VAMP channel equivalences
+| Integrator: 500 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1        500  2.2202207E+00  6.63E-01   29.86    6.68*   1.29
+   2        499  1.7350726E+00  1.51E-01    8.68    1.94*   6.54
+   3        498  1.6284890E+00  8.92E-02    5.48    1.22*  10.66
+   4        497  1.6087745E+00  7.53E-02    4.68    1.04*  17.01
+|-----------------------------------------------------------------------------|
+   4       1994  1.6358431E+00  5.36E-02    3.27    1.46   17.01    0.45   4
+|-----------------------------------------------------------------------------|
+   5        497  1.5353520E+00  7.17E-02    4.67    1.04*  11.87
+   6        497  1.5871195E+00  7.78E-02    4.90    1.09    9.58
+|-----------------------------------------------------------------------------|
+   6        994  1.5591173E+00  5.27E-02    3.38    1.07    9.58    0.24   2
+|=============================================================================|
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 12
 | Initializing integration for process pdf_builtin_2_p:
 | ------------------------------------------------------------------------
 | Process [scattering]: 'pdf_builtin_2_p'
@@ -487,21 +631,21 @@ $pdf_builtin_set = "CJ12_min"
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1        500  1.0371009E+03  5.30E+01    5.11    1.14*  40.63
-   2        500  1.0453834E+03  2.12E+01    2.02    0.45*  60.50
-   3        500  1.0153313E+03  1.75E+01    1.72    0.39*  64.12
-   4        500  1.0056837E+03  1.91E+01    1.90    0.43   40.10
+   1        500  1.0045559E+03  5.27E+01    5.25    1.17*  39.35
+   2        500  1.0025802E+03  2.30E+01    2.30    0.51*  62.37
+   3        500  9.9533556E+02  1.91E+01    1.92    0.43*  44.00
+   4        500  1.0066529E+03  2.37E+01    2.35    0.53   27.21
 |-----------------------------------------------------------------------------|
-   4       2000  1.0209799E+03  1.08E+01    1.06    0.47   40.10    0.72   4
+   4       2000  1.0008207E+03  1.21E+01    1.21    0.54   27.21    0.05   4
 |-----------------------------------------------------------------------------|
-   5        500  9.9354792E+02  1.80E+01    1.81    0.40*  39.62
-   6        500  1.0066309E+03  2.08E+01    2.06    0.46   40.12
+   5        500  1.0006032E+03  2.23E+01    2.23    0.50*  24.55
+   6        500  9.8051881E+02  2.16E+01    2.20    0.49*  24.06
 |-----------------------------------------------------------------------------|
-   6       1000  9.9915010E+02  1.36E+01    1.36    0.43   40.12    0.23   2
+   6       1000  9.9024856E+02  1.55E+01    1.57    0.50   24.06    0.42   2
 |=============================================================================|
 $pdf_builtin_set = "mrst2004qedp"
 | RNG: Initializing TAO random-number generator
-| RNG: Setting seed for random-number generator to 10
+| RNG: Setting seed for random-number generator to 13
 | Initializing integration for process pdf_builtin_2_p:
 | ------------------------------------------------------------------------
 | Process [scattering]: 'pdf_builtin_2_p'
@@ -535,17 +679,17 @@ $pdf_builtin_set = "mrst2004qedp"
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1        500  2.5151015E-01  1.05E-01   41.56    9.29*   1.10
-   2        500  1.3006994E-01  1.33E-02   10.20    2.28*   6.31
-   3        500  1.4572763E-01  1.31E-02    8.96    2.00*   6.29
-   4        500  1.4756790E-01  9.89E-03    6.70    1.50*  11.13
+   1        500  5.9268883E-02  2.81E-02   47.34   10.59*   1.18
+   2        500  1.4073590E-01  1.92E-02   13.64    3.05*   4.14
+   3        500  1.2890507E-01  7.92E-03    6.14    1.37*  11.38
+   4        500  1.3808463E-01  6.84E-03    4.95    1.11*  14.73
 |-----------------------------------------------------------------------------|
-   4       2000  1.4296193E-01  6.76E-03    4.73    2.12   11.13    0.76   4
+   4       2000  1.3229388E-01  4.92E-03    3.72    1.66   14.73    2.62   4
 |-----------------------------------------------------------------------------|
-   5        500  1.5048869E-01  1.12E-02    7.42    1.66    8.54
-   6        500  1.3767935E-01  9.39E-03    6.82    1.53*   7.78
+   5        500  1.2495266E-01  7.42E-03    5.94    1.33   10.92
+   6        500  1.3088647E-01  9.15E-03    6.99    1.56    7.87
 |-----------------------------------------------------------------------------|
-   6       1000  1.4299045E-01  7.19E-03    5.03    1.59    7.78    0.77   2
+   6       1000  1.2730499E-01  5.76E-03    4.53    1.43    7.87    0.25   2
 |=============================================================================|
 | WHIZARD run finished.
 |=============================================================================|

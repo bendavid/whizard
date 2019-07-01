@@ -1,5 +1,4 @@
 @ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\RCSId$Id: postlude.nw 5455 2014-03-12 14:26:30Z ohl $    %!MANUAL%
 \section{Conclusions}
 \label{sec:conclusions}
 I have presented a library of simple parameterizations of realistic
@@ -231,7 +230,6 @@ accelerator designs are welcome at
   \item[] \verb+ohl@physik.uni-wuerzburg.de+
 \end{itemize}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\end{RCS}                                                      %!MANUAL%
 \end{document}
 \endinput
 Local Variables:

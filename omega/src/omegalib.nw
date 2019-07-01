@@ -1,6 +1,6 @@
-%  $Id: omegalib.nw 6301 2014-11-25 09:34:00Z bchokoufe $
+%  $Id: omegalib.nw 6465 2015-01-10 15:22:31Z jr_reuter $
 %
-%  Copyright (C) 1999-2014 by
+%  Copyright (C) 1999-2015 by
 %      Wolfgang Kilian <kilian@physik.uni-siegen.de>
 %      Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 %      Juergen Reuter <juergen.reuter@desy.de>
@@ -12154,7 +12154,7 @@ end function vm_get_amplitude
 @
 @ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 <<Copyleft>>=
-!  $Id: omegalib.nw 6301 2014-11-25 09:34:00Z bchokoufe $
+!  $Id: omegalib.nw 6465 2015-01-10 15:22:31Z jr_reuter $
 !
 !  Copyright (C) 1999-2009 by
 !      Wolfgang Kilian <kilian@physik.uni-siegen.de>

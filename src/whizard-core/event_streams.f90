@@ -1,6 +1,6 @@
-! WHIZARD 2.2.3 Nov 30 2014
+! WHIZARD 2.2.4 Feb 06 2015
 ! 
-! Copyright (C) 1999-2014 by 
+! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -9,7 +9,8 @@
 !     Fabian Bach <fabian.bach@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Felix Braam, Sebastian Schmidt, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam, 
+!     Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -97,7 +98,6 @@ contains
     type(event_t) :: event
     type(string_t) :: sample
     type(string_t), dimension(0) :: empty_string_array
-    type(process_ptr_t), dimension(0) :: empty_process_ptr_array
 
     write (u, "(A)")  "* Test output: event_streams_1"
     write (u, "(A)")  "*   Purpose: handle empty event stream array"
@@ -105,8 +105,7 @@ contains
 
     sample = "event_streams_1"
 
-    call es_array%init &
-         (sample, empty_string_array, empty_process_ptr_array, global)
+    call es_array%init (sample, empty_string_array, global)
     call es_array%output (event, 42, 1)
     call es_array%write (u)
     call es_array%final ()
@@ -124,7 +123,6 @@ contains
     type(event_t), allocatable, target :: event
     type(process_t), allocatable, target :: process
     type(process_instance_t), allocatable, target :: process_instance
-    type(process_ptr_t) :: process_ptr
     type(string_t) :: sample
     type(string_t), dimension(0) :: empty_string_array
     integer :: i_prc, iostat
@@ -144,7 +142,6 @@ contains
     write (u, "(A)")
 
     allocate (process)
-    process_ptr%ptr => process
     allocate (process_instance)
     call prepare_test_process (process, process_instance, model)
     call process_instance%setup_event_data ()
@@ -162,7 +159,7 @@ contains
 
     sample = "event_streams_2"
 
-    call es_array%init (sample, [var_str ("raw")], [process_ptr], global)
+    call es_array%init (sample, [var_str ("raw")], global)
     call es_array%output (event, 1, 1)
     call es_array%write (u)
     call es_array%final ()
@@ -172,7 +169,7 @@ contains
     write (u, "(A)")
 
     sample = "foo"
-    call es_array%init (sample, empty_string_array, [process_ptr], global, &
+    call es_array%init (sample, empty_string_array, global, &
          input = var_str ("raw"), input_sample = var_str ("event_streams_2"))
     call es_array%write (u)
 
@@ -207,7 +204,6 @@ contains
     type(event_t), allocatable, target :: event
     type(process_t), allocatable, target :: process
     type(process_instance_t), allocatable, target :: process_instance
-    type(process_ptr_t) :: process_ptr
     type(string_t) :: sample
     type(string_t), dimension(0) :: empty_string_array
     integer :: i_prc, iostat
@@ -227,7 +223,6 @@ contains
     write (u, "(A)")
 
     allocate (process)
-    process_ptr%ptr => process
     allocate (process_instance)
     call prepare_test_process (process, process_instance, model)
     call process_instance%setup_event_data ()
@@ -243,7 +238,7 @@ contains
 
     sample = "event_streams_3"
 
-    call es_array%init (sample, [var_str ("raw")], [process_ptr], global)
+    call es_array%init (sample, [var_str ("raw")], global)
     call es_array%output (event, 1, 1)
     call es_array%write (u)
     call es_array%final ()
@@ -252,7 +247,7 @@ contains
     write (u, "(A)") "* Reallocate raw eio stream for reading"
     write (u, "(A)")
 
-    call es_array%init (sample, empty_string_array, [process_ptr], global, &
+    call es_array%init (sample, empty_string_array, global, &
          input = var_str ("raw"))
     call es_array%write (u)
 
@@ -283,7 +278,7 @@ contains
     write (u, "(A)") "* Reallocate raw eio stream for reading"
     write (u, "(A)")
 
-    call es_array%init (sample, empty_string_array, [process_ptr], global, &
+    call es_array%init (sample, empty_string_array, global, &
          input = var_str ("raw"))
     call es_array%write (u)
 
@@ -315,7 +310,6 @@ contains
     type(event_stream_array_t) :: es_array
     type(rt_data_t) :: global
     type(process_t), allocatable, target :: process
-    type(process_ptr_t) :: process_ptr
     type(string_t) :: sample
     type(string_t), dimension(0) :: empty_string_array
     type(event_sample_data_t) :: data
@@ -336,7 +330,6 @@ contains
          .true., is_known = .true.)
 
     allocate (process)
-    process_ptr%ptr => process
 
     write (u, "(A)") "* Allocate raw eio stream for writing"
     write (u, "(A)")
@@ -344,8 +337,7 @@ contains
     sample = "event_streams_4"
     data%md5sum_cfg = "1234567890abcdef1234567890abcdef"
 
-    call es_array%init &
-         (sample, [var_str ("raw")], [process_ptr], global, data)
+    call es_array%init (sample, [var_str ("raw")], global, data)
     call es_array%write (u)
     call es_array%final ()
     
@@ -353,7 +345,7 @@ contains
     write (u, "(A)") "* Reallocate raw eio stream for reading"
     write (u, "(A)")
 
-    call es_array%init (sample, empty_string_array, [process_ptr], global, &
+    call es_array%init (sample, empty_string_array, global, &
          data, input = var_str ("raw"))
     call es_array%write (u)
     call es_array%final ()
@@ -363,7 +355,7 @@ contains
     write (u, "(A)")
 
     data%md5sum_cfg = "1234567890______1234567890______"
-    call es_array%init (sample, empty_string_array, [process_ptr], global, &
+    call es_array%init (sample, empty_string_array, global, &
          data, input = var_str ("raw"))
     call es_array%write (u)
     call es_array%final ()
@@ -374,7 +366,7 @@ contains
 
     call global%set_log (var_str ("?check_event_file"), &
          .false., is_known = .true.)
-    call es_array%init (sample, empty_string_array, [process_ptr], global, &
+    call es_array%init (sample, empty_string_array, global, &
          data, input = var_str ("raw"))
     call es_array%write (u)
     call es_array%final ()
@@ -418,13 +410,12 @@ contains
   end subroutine event_stream_array_final
 
   subroutine event_stream_array_init &
-       (es_array, sample, stream_fmt, process_ptr, global, &
+       (es_array, sample, stream_fmt, global, &
        data, input, input_sample, input_data, allow_switch, checkpoint, &
        error)
     class(event_stream_array_t), intent(out) :: es_array
     type(string_t), intent(in) :: sample
     type(string_t), dimension(:), intent(in) :: stream_fmt
-    type(process_ptr_t), dimension(:), intent(in) :: process_ptr
     type(rt_data_t), intent(in) :: global
     type(event_sample_data_t), intent(inout), optional :: data
     type(string_t), intent(in), optional :: input
@@ -458,18 +449,16 @@ contains
        allocate (es_array%entry (n + 1))
        call dispatch_eio &
             (es_array%entry(n+1)%eio, var_str ("checkpoint"), global)
-       call es_array%entry(n+1)%eio%init_out (sample, process_ptr, data)
+       call es_array%entry(n+1)%eio%init_out (sample, data)
     else
        allocate (es_array%entry (n))
     end if
     if (present (input)) then
        call dispatch_eio (es_array%entry(n)%eio, input, global)
        if (present (input_data)) then
-          call es_array%entry(n)%eio%init_in &
-               (sample_in, process_ptr, input_data, success)
+          call es_array%entry(n)%eio%init_in (sample_in, input_data, success)
        else
-          call es_array%entry(n)%eio%init_in &
-               (sample_in, process_ptr, data, success)
+          call es_array%entry(n)%eio%init_in (sample_in, data, success)
        end if
        if (success) then
           es_array%i_in = n
@@ -486,14 +475,13 @@ contains
           call es_array%entry(n)%eio%final ()
           if (switch) then
              call msg_message ("Events: generating new events")
-             call es_array%entry(n)%eio%init_out &
-                  (sample, process_ptr, data)
+             call es_array%entry(n)%eio%init_out (sample, data)
           end if
        end if
     end if
     do i = 1, size (stream_fmt)
        call dispatch_eio (es_array%entry(i)%eio, stream_fmt(i), global)
-       call es_array%entry(i)%eio%init_out (sample, process_ptr, data)
+       call es_array%entry(i)%eio%init_out (sample, data)
     end do
   end subroutine event_stream_array_init
   
@@ -509,10 +497,12 @@ contains
     end if
   end subroutine event_stream_array_switch_inout
   
-  subroutine event_stream_array_output (es_array, event, i_prc, event_index)
+  subroutine event_stream_array_output (es_array, event, i_prc, &
+                                        event_index, pacify)
     class(event_stream_array_t), intent(inout) :: es_array
     type(event_t), intent(in), target :: event
     integer, intent(in) :: i_prc, event_index
+    logical, intent(in), optional :: pacify
     integer :: i
     do i = 1, size (es_array%entry)
        if (i /= es_array%i_in) then
@@ -523,7 +513,8 @@ contains
                   call eio%split_out ()
                end if
             end if
-            call eio%output (event, i_prc, reading = es_array%i_in /= 0)
+            call eio%output (event, i_prc, reading = es_array%i_in /= 0, &
+                 pacify = pacify)
           end associate
        end if
     end do

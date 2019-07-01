@@ -2,7 +2,7 @@
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
-! Copyright (C) 1999-2014 by 
+! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -37,6 +37,8 @@ module lhapdf
   
   ! Public types
   public :: lhapdf_pdf_t
+
+  public :: lhapdf_transfer_pointer
 
   type :: lhapdf_pdf_t
      private
@@ -288,7 +290,16 @@ contains
 
   subroutine lhapdf_final (pdf)
     class(lhapdf_pdf_t), intent(inout) :: pdf
-    call lhapdf_pdf_delete (pdf%cptr)
+    if (c_associated (pdf%cptr)) then
+       call lhapdf_pdf_delete (pdf%cptr)
+    end if
   end subroutine lhapdf_final
-  
+
+  subroutine lhapdf_transfer_pointer (pdf_in, pdf_out)
+    type(lhapdf_pdf_t), intent(inout), target :: pdf_in
+    type(lhapdf_pdf_t), intent(out), target :: pdf_out
+    pdf_out = pdf_in    
+    pdf_out%cptr = transfer (pdf_in%cptr, pdf_out%cptr)
+  end subroutine lhapdf_transfer_pointer
+
 end module lhapdf

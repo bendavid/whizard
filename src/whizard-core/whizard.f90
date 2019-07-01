@@ -1,6 +1,6 @@
-! WHIZARD 2.2.3 Nov 30 2014
+! WHIZARD 2.2.4 Feb 06 2015
 ! 
-! Copyright (C) 1999-2014 by 
+! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -9,7 +9,8 @@
 !     Fabian Bach <fabian.bach@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Felix Braam, Sebastian Schmidt, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam, 
+!     Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -51,6 +52,7 @@ module whizard
   use state_matrices
   use analysis
   use variables
+  use model_testbed
   use user_code_interface
   use eval_trees
   use particles
@@ -87,6 +89,7 @@ module whizard
   use process_libraries
   use prclib_stacks
   use hepmc_interface
+  use lcio_interface
   use jets
   use pdg_arrays
   use interactions
@@ -94,6 +97,7 @@ module whizard
   use cascades
   use blha_driver
   use blha_config
+  use prc_core
   use prc_test
   use prc_template_me
   use prc_omega
@@ -125,7 +129,7 @@ module whizard
   use integrations
   use event_streams
   use simulations
-  use fks_calculation
+  use nlo_data
 
   use expr_tests
 
@@ -220,6 +224,8 @@ contains
     call whizard%preload_library ()
     call whizard%global%init_fallback_model &
          (var_str ("SM_hadrons"), var_str ("SM_hadrons.mdl"))
+    call whizard%global%init_radiation_model &
+         (var_str ("SM_rad"), var_str ("SM_rad.mdl"))
   end subroutine whizard_init
   
   subroutine whizard_final (whizard)
@@ -477,6 +483,106 @@ contains
     call lexer_final (lexer)
   end subroutine whizard_shell
 
+  subroutine prepare_eio_test (event, unweighted, n_alt)
+    use variables
+    use model_data
+    use event_base
+    class(generic_event_t), intent(inout), pointer :: event
+    logical, intent(in), optional :: unweighted
+    integer, intent(in), optional :: n_alt
+    type(model_data_t), pointer :: model
+    type(var_list_t) :: var_list
+    type(process_t), pointer :: process
+    type(process_instance_t), pointer :: process_instance
+
+    allocate (model)
+    call model%init_test ()
+
+    allocate (process)
+    allocate (process_instance)
+
+    call prepare_test_process (process, process_instance, model)
+    call process_instance%setup_event_data ()
+ 
+    call model%final ()
+    deallocate (model)
+
+    allocate (event_t :: event)
+    select type (event)
+    type is (event_t)
+       if (present (unweighted)) then
+          call var_list_append_log (var_list, &
+               var_str ("?unweighted"), unweighted, &
+               intrinsic = .true.)
+       else
+          call var_list_append_log (var_list, &
+               var_str ("?unweighted"), .true., &
+               intrinsic = .true.)
+       end if
+       call var_list_append_string (var_list, &
+            var_str ("$sample_normalization"), &
+            var_str ("auto"), intrinsic = .true.)
+       call event%basic_init (var_list, n_alt)
+       call event%connect (process_instance, process%get_model_ptr ())
+       call var_list%final ()
+    end select
+  end subroutine prepare_eio_test
+    
+  subroutine cleanup_eio_test (event)
+    use model_data
+    use event_base
+    class(generic_event_t), intent(inout), pointer :: event
+    type(process_t), pointer :: process
+    type(process_instance_t), pointer :: process_instance
+    select type (event)
+    type is (event_t)
+       process => event%get_process_ptr ()
+       process_instance => event%get_process_instance_ptr ()
+       call cleanup_test_process (process, process_instance)
+       deallocate (process_instance)
+       deallocate (process)
+       call event%final ()
+    end select
+    deallocate (event)
+  end subroutine cleanup_eio_test
+    
+  subroutine prepare_whizard_model (model, name, vars)
+    use iso_varying_string, string_t => varying_string
+    use os_interface
+    use model_data
+    use var_base
+    use models
+    class(model_data_t), intent(inout), pointer :: model
+    type(string_t), intent(in) :: name
+    class(vars_t), pointer, intent(out), optional :: vars
+    type(os_data_t) :: os_data
+    call syntax_model_file_init ()
+    call os_data_init (os_data)
+    allocate (model_t :: model)
+    select type (model)
+    type is (model_t)
+       call model%read (name // ".mdl", os_data)
+       if (present (vars)) then
+          vars => model%get_var_list_ptr ()
+       end if
+    end select
+  end subroutine prepare_whizard_model
+    
+  subroutine cleanup_whizard_model (model)
+    use model_data
+    use models
+    class(model_data_t), intent(inout), pointer :: model
+    call model%final ()
+    deallocate (model)
+    call syntax_model_file_final ()
+  end subroutine cleanup_whizard_model
+    
+  subroutine prepare_fallback_model (model)
+    use model_data
+    class(model_data_t), intent(inout), pointer :: model
+    call prepare_whizard_model (model, var_str ("SM_hadrons"))
+  end subroutine prepare_fallback_model
+    
   subroutine whizard_check (check, results)
     type(string_t), intent(in) :: check
     type(test_results_t), intent(inout) :: results
@@ -489,6 +595,12 @@ contains
     call msg_message (repeat ('=', 76), 0)
     call msg_message ("Running self-test: " // char (check), 0)
     call msg_message (repeat ('-', 76), 0)
+    eio_prepare_test => prepare_eio_test
+    eio_cleanup_test => cleanup_eio_test
+    prepare_model => prepare_whizard_model
+    cleanup_model => cleanup_whizard_model
+    eio_prepare_fallback_model => prepare_fallback_model
+    eio_cleanup_fallback_model => cleanup_model
     select case (char (check))
     case ("analysis")
        call analysis_test (u, results)
@@ -506,6 +618,8 @@ contains
        call format_test (u, results)
     case ("hepmc")
        call hepmc_test (u, results)
+    case ("lcio")
+       call lcio_test (u, results)
     case ("jets")
        call jets_test (u, results)
     case ("pdg_arrays")
@@ -602,8 +716,6 @@ contains
        call processes_test (u, results)       
     case ("process_stacks")
        call process_stacks_test (u, results)   
-    case ("fks_calculation")
-       call fks_calculation_test (u, results)    
     case ("event_transforms")
        call event_transforms_test (u, results)       
     case ("decays")
@@ -674,6 +786,7 @@ contains
        call expressions_test (u, results)
        call format_test (u, results)
        call hepmc_test (u, results)
+       call lcio_test (u, results)
        call jets_test (u, results)
        call os_interface_test (u, results)
        call cputime_test (u, results)
@@ -718,7 +831,6 @@ contains
        call subevt_expr_test (u, results)
        call processes_test (u, results)
        call process_stacks_test (u, results)   
-       call fks_calculation_test (u, results)    
        call event_transforms_test (u, results)
        call decays_test (u, results)
        call shower_test (u, results)

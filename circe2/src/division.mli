@@ -50,6 +50,8 @@ module type T =
 
   end
 
+exception Above_max of float * (float * float) * int
+exception Below_min of float * (float * float) * int
 exception Out_of_range of float * (float * float)
 exception Rebinning_failure of string
 

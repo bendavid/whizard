@@ -42,9 +42,9 @@ subroutine init_external_parameters (par) bind (C)
   nloop  = par(22)
   sh     = par(23)
   sf     = par(24)
-  sw     = par(27)
+  sw     = par(28)
   call ttv_formfactors_init (mpole, m1s_in, wtop, alphaemi, sw, alphas, &
                 mZ, mW, mb, sh, sf, nloop)
   par(21) = wtop
-  par(29) = mpole
+  par(30) = mpole
 end subroutine init_external_parameters

@@ -101,26 +101,8 @@ Warning: No cuts have been defined.
 | Simulate: initializing alternate process setup ...
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 3
-| Initializing integration for process reweight_3_p2:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'reweight_3_p2'
-|   Library name  = 'reweight_3_lib'
-|   Process index = 2
-|   Process components:
-|     1: 'reweight_3_p2_i1':   e-, e+ => m-, m+ [omega]
-| ------------------------------------------------------------------------
-| Beam structure: [any particles]
-| Beam data (collision):
-|   e-  (mass = 0.0000000E+00 GeV)
-|   e+  (mass = 0.0000000E+00 GeV)
-|   sqrts = 1.000000000000E+03 GeV
 Warning: Reading phs file: MD5 sum check disabled
 | Phase space: keeping configuration file 'reweight_3_p2_i1.phs'
-| Phase space: 1 channels, 2 dimensions
-| Phase space: found 1 channel, collected in 1 grove.
-| Phase space: Using 1 equivalence between channels.
-| Phase space: wood
-Warning: No cuts have been defined.
 | ...  alternate process setup complete.
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 4
@@ -131,9 +113,9 @@ Warning: Reading event file: MD5 sum check disabled
 | ... event file terminates after 1 events.
 | Events: closing weight stream file 'reweight_3b.weights.dat'
 | Events: closing raw file 'reweight_3a.evx'
-| There were no errors and    5 warning(s).
+| There were no errors and    4 warning(s).
 | WHIZARD run finished.
 |=============================================================================|
 Contents of reweight_3b.weights.dat
-0  6.6074231114E+01  8.5296009168E-03  8.5296009168E-03 1 1 1
+0  6.6074231114E+01  8.5296009168E-03  8.5296009168E-03 1
 1  1.0571876978E+03  1.3647361467E-01

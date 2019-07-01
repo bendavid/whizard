@@ -1,5 +1,5 @@
 % taorng.nw --
-% $Id: taorng.nw 5455 2014-03-12 14:26:30Z ohl $ 
+% $Id: taorng.nw 6466 2015-01-10 16:06:40Z jr_reuter $ 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \NeedsTeXFormat{LaTeX2e}
 \documentclass[a4paper]{article}
@@ -377,7 +377,6 @@ Thanks to Don Knuth for making it available.
 \end{thebibliography}
 {circe}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\end{RCS}
 \end{document}
 \endinput
 Local Variables:

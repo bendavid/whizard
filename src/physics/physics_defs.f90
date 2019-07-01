@@ -1,6 +1,6 @@
-! WHIZARD 2.2.3 Nov 30 2014
+! WHIZARD 2.2.4 Feb 06 2015
 ! 
-! Copyright (C) 1999-2014 by 
+! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -9,7 +9,8 @@
 !     Fabian Bach <fabian.bach@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Felix Braam, Sebastian Schmidt, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam, 
+!     Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -47,13 +48,14 @@ module physics_defs
        cross_section_unit = "fb"
   real(default), parameter, public :: &
        NC = three, &
-       CF = (NC**2 - one)/two/NC, &
+       CF = (NC**2 - one) / two / NC, &
        CA = NC, &
-       TR = one/two
+       TR = one / two
   real(default), public, parameter :: MZ_REF = 91.188_default
   real(default), public, parameter :: ALPHA_QCD_MZ_REF = 0.1178_default
   real(default), public, parameter :: LAMBDA_QCD_REF = 200.e-3_default
   integer, parameter, public :: UNDEFINED = 0
+
   integer, parameter, public :: ELECTRON = 11
 
   integer, parameter, public :: GLUON = 21
@@ -61,11 +63,42 @@ module physics_defs
   integer, parameter, public :: Z_BOSON = 23
   integer, parameter, public :: W_BOSON = 24
 
-  integer, parameter, public :: PROTON = 2212 
   integer, parameter, public :: PION = 111
   integer, parameter, public :: PIPLUS = 211
   integer, parameter, public :: PIMINUS = - PIPLUS
 
+  integer, parameter, public :: UD0 = 2101
+  integer, parameter, public :: UD1 = 2103
+  integer, parameter, public :: UU1 = 2203
+
+  integer, parameter, public :: K0L = 130
+  integer, parameter, public :: K0S = 310
+  integer, parameter, public :: K0 = 311
+  integer, parameter, public :: KPLUS = 321
+  integer, parameter, public :: DPLUS = 411
+  integer, parameter, public :: D0 = 421
+  integer, parameter, public :: B0 = 511
+  integer, parameter, public :: BPLUS = 521
+
+  integer, parameter, public :: PROTON = 2212
+  integer, parameter, public :: NEUTRON = 2112
+  integer, parameter, public :: DELTAPLUSPLUS = 2224
+  integer, parameter, public :: DELTAPLUS = 2214
+  integer, parameter, public :: DELTA0 = 2114
+  integer, parameter, public :: DELTAMINUS = 1114
+
+  integer, parameter, public :: SIGMAPLUS = 3222
+  integer, parameter, public :: SIGMA0 = 3212
+  integer, parameter, public :: SIGMAMINUS = 3112
+
+  integer, parameter, public :: SIGMACPLUSPLUS = 4222
+  integer, parameter, public :: SIGMACPLUS = 4212
+  integer, parameter, public :: SIGMAC0 = 4112
+
+  integer, parameter, public :: SIGMAB0 = 5212
+  integer, parameter, public :: SIGMABPLUS = 5222
+
+  integer, parameter, public :: BEAM_REMNANT = 9999
   integer, parameter, public :: HADRON_REMNANT = 90
   integer, parameter, public :: HADRON_REMNANT_SINGLET = 91
   integer, parameter, public :: HADRON_REMNANT_TRIPLET = 92
@@ -76,12 +109,13 @@ module physics_defs
   integer, parameter, public :: PRT_CHARGED = 83
   integer, parameter, public :: PRT_COLORED = 84
 
+  integer, parameter, public :: INTERNAL = 94
   integer, parameter, public :: INVALID = 97
   integer, parameter, public :: KEYSTONE = 98
   integer, parameter, public :: COMPOSITE = 99
 
-  integer, parameter, public:: UNKNOWN=0
-  integer, parameter, public :: SCALAR=1, SPINOR=2, VECTOR=3, &
-        VECTORSPINOR=4, TENSOR=5
+  integer, parameter, public:: UNKNOWN = 0
+  integer, parameter, public :: SCALAR = 1, SPINOR = 2, VECTOR = 3, &
+                                VECTORSPINOR = 4, TENSOR = 5
 
 end module physics_defs

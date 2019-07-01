@@ -1,6 +1,6 @@
-(* $Id: comphep.ml 6222 2014-10-13 08:40:53Z ohl $
+(* $Id: comphep.ml 6465 2015-01-10 15:22:31Z jr_reuter $
 
-   Copyright (C) 1999-2014 by
+   Copyright (C) 1999-2015 by
 
        Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
@@ -23,9 +23,9 @@
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
 let rcs_file = RCS.parse "Comphep" ["Plagiarizing CompHEP models ..."]
-    { RCS.revision = "$Revision: 6222 $";
-      RCS.date = "$Date: 2014-10-13 10:40:53 +0200 (Mon, 13 Oct 2014) $";
-      RCS.author = "$Author: ohl $";
+    { RCS.revision = "$Revision: 6465 $";
+      RCS.date = "$Date: 2015-01-10 16:22:31 +0100 (Sat, 10 Jan 2015) $";
+      RCS.author = "$Author: jr_reuter $";
       RCS.source
         = "$URL: svn+ssh://jr_reuter@login.hepforge.org/hepforge/svn/whizard/trunk/omega/src/comphep.ml $" }
 

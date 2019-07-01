@@ -1,18 +1,18 @@
 @ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\RCSId$Id: circe1.nw 5607 2014-03-31 09:28:28Z ohl $
 \section{Implementation of [[circe1]]}
 <<[[circe1.f90]]>>=
 ! circe1.f90 -- canonical beam spectra for linear collider physics
-! $Id: circe1.nw 5607 2014-03-31 09:28:28Z ohl $
+! $Id: circe1.nw 6466 2015-01-10 16:06:40Z jr_reuter $
 <<Copyleft notice>>
 <<Main module>>
 @
 <<Copyleft notice>>=
 ! 
-! Copyright (C) 1999-2014 by 
+! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
+!     with contributions from
 !     Christian Speckner <cnspeckn@googlemail.com>
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
@@ -40,7 +40,7 @@ The file \texttt{circe.h} contains symbolic names for various magic
 constants used by \Kirke/:
 <<[[circe.h]]>>=
 c circe.h -- canonical beam spectra for linear collider physics
-c $Id: circe1.nw 5607 2014-03-31 09:28:28Z ohl $
+c $Id: circe1.nw 6466 2015-01-10 16:06:40Z jr_reuter $
 <<Main module>>=
 module circe1
   use kinds
@@ -160,7 +160,7 @@ all negative variables to ensure initialization:
       if (xchat .ne. 0) then
          call circem ('MESSAGE', 'starting up ...')
          call circem ('MESSAGE', & 
-            '$Id: circe1.nw 5607 2014-03-31 09:28:28Z ohl $')
+            '$Id: circe1.nw 6466 2015-01-10 16:06:40Z jr_reuter $')
       endif
 @
 <<Update circe1 parameters>>=

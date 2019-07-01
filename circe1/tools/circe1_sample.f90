@@ -1,10 +1,11 @@
 ! circe1_sample.f90 -- canonical beam spectra for linear collider physics
-! $Id: prelude.nw 5455 2014-03-12 14:26:30Z ohl $
+! $Id: prelude.nw 6466 2015-01-10 16:06:40Z jr_reuter $
 ! 
-! Copyright (C) 1999-2014 by 
+! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
+!     with contributions from
 !     Christian Speckner <cnspeckn@googlemail.com>
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it

@@ -178,6 +178,7 @@
 \newcommand{\pythia}{\texttt{PYTHIA}}
 \newcommand{\jetset}{\texttt{JETSET}}
 \newcommand{\comphep}{\texttt{CompHEP}}
+\newcommand{\circe}{\texttt{CIRCE}}
 \newcommand{\circeone}{\texttt{CIRCE1}}
 \newcommand{\circetwo}{\texttt{CIRCE2}}
 \newcommand{\gamelan}{\textsf{gamelan}}
@@ -264,7 +265,7 @@ Parameter & Value & Default & Description \\
 }
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %END LATEX
-\newcommand{\thisversion}{2.2.3}
+\newcommand{\thisversion}{2.2.4}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -360,8 +361,9 @@ initial and final states.  Quark or lepton flavors can be
 summed over automatically where needed.  
 \\[\baselineskip]
 For hadron collider physics, we ship the package with the most recent
-PDF sets from the MSTW and CTEQ/CT10/CJ12 collaborations. Furthermore,
-an interface to the \lhapdf\ library is provided.
+PDF sets from the MSTW/MMHT and CTEQ/CT10/CJ12
+collaborations. Furthermore, an interface to the \lhapdf\ library is
+provided. 
 \\[\baselineskip]
 For Linear Collider physics,
 beamstrahlung (\circeone, \circetwo), Compton and ISR spectra are
@@ -631,7 +633,9 @@ of \whizard:
   2.2.2 & 07/2014 & LHAPDF6 support; correlated LC beams; GuineaPig
   interface \\
   2.2.3 & 11/2014 & O'Mega virtual machine; lepton collider top
-     pair threshold; Higgs singlet extension
+  pair threshold; Higgs singlet extension \\
+  2.2.4 & 02/2015 & LCIO support; progress on NLO; many technical
+  bug fixes
   \\\hline  
 \end{tabular}
 \end{center}
@@ -2274,7 +2278,7 @@ named \verb|hello.sin|.
 		|        M. Moretti, T. Ohl, J. Reuter, arXiv: hep-ph/0102195                 |
 		|                                                                             |
 		|=============================================================================|
-		|                               WHIZARD 2.2.3
+		|                               WHIZARD 2.2.4
 		|=============================================================================|
 		| Reading model file '/usr/local/share/whizard/models/SM.mdl'
 		| Preloaded model: SM
@@ -2305,7 +2309,7 @@ including the \whizard\ banner is shown in Fig.~\ref{fig:helloworld})
 \centerline{[... here a banner is displayed]}
 \begin{Verbatim}
 |=============================================================================|
-|                               WHIZARD 2.2.3
+|                               WHIZARD 2.2.4
 |=============================================================================|
 | Reading model file '/usr/local/share/whizard/models/SM.mdl'
 | Preloaded model: SM
@@ -2364,7 +2368,7 @@ This produces a lot of output which looks similar to this:
  | Writing log to 'whizard.log'
 [... banner ...]
  |=============================================================================|
- |                               WHIZARD 2.2.3
+ |                               WHIZARD 2.2.4
  |=============================================================================|
  | Reading model file '/usr/local/share/whizard/models/SM.mdl'
  | Preloaded model: SM
@@ -4232,6 +4236,9 @@ argument is always the subevent or alias enclosed in square brackets.
   \item One argument: Absolute polar angle in the lab frame
   \item Two arguments: Angular distance of two particles in the lab frame.
   \end{itemize}
+\item \ttt{Theta\_star}
+  Only with two arguments, gives the relative polar angle of the two momenta
+  in the rest system of the momentum sum (i.e. mother particle).
 \item \ttt{Phi}
   \begin{itemize}
   \item One argument: Absolute azimuthal angle in the lab frame
@@ -5454,6 +5461,14 @@ Tag & Name & Notes & References \\\hline\hline
    \cite{Owens:2012bv} \\\hline
 \texttt{CJ12\_min} & CJ12\_min & \mbox{}\hfill---\hfill\mbox{} &
    \cite{Owens:2012bv} \\\hline
+\hline
+\texttt{mmht2014lo} & MMHT2014LO & \mbox{}\hfill---\hfill\mbox{} &
+   \cite{Harland-Lang:2014zoa} \\\hline
+\texttt{mmht2014nlo} & MMHT2014NLO & \mbox{}\hfill---\hfill\mbox{} &
+   \cite{Harland-Lang:2014zoa} \\\hline
+\texttt{mmht2014nnlo} & MMHT2014NNLO & \mbox{}\hfill---\hfill\mbox{} &
+   \cite{Harland-Lang:2014zoa} \\\hline
+\hline
 %
 \end{tabular}}
 \caption{All PDF sets available as builtin sets. The two MRST2004QED
@@ -5624,8 +5639,8 @@ the bunches that is important for an exact simulation of the beam
 spectrum. There are several methods to account for these effects. The
 most important tool to simulate classical beam-beam interactions in
 lepton-collider physics is
-\ttt{GuineaPig}~\cite{Schulte:1998au,Schulte:1999tx,Schulte:2007zz}. A
-direct interface between this tool \ttt{GuineaPig} and \whizard\ had
+\ttt{GuineaPig++}~\cite{Schulte:1998au,Schulte:1999tx,Schulte:2007zz}. A
+direct interface between this tool \ttt{GuineaPig++} and \whizard\ had
 existed as an inofficial add-on to the legacy branch \whizard\ttt{1},
 but is no longer applicable in \whizard\ttt{2}. A \whizard-internal
 interface is foreseen for the very near future, most probably within
@@ -5634,7 +5649,9 @@ beam spectrum that have been included in the package \circeone~\cite{CIRCE}
 which has been interfaced to \whizard\ since version v1.20 and been
 included in the \whizard\ttt{2} release series. Another option is to
 generate a beam spectrum externally and then read it in as an ASCII
-data file, cf. Sec.~\ref{sec:beamevents}. 
+data file, cf. Sec.~\ref{sec:beamevents}. More about this can be found
+in a dedicated section on lepton collider spectra,
+Sec.~\ref{sec:beamspectra}. 
 
 In this section, we discuss the usage of beamstrahlung spectra by
 means of the \ttt{circeone} package. The beamstrahlung spectra are
@@ -7470,13 +7487,31 @@ writing) by setting \ttt{\$event\_file\_version} to the appropriate version
 string, e.g., \verb|"2.0"|.  Be aware that this may break some more recent
 features in the event analysis.
 
-There are two things that are usually done with an event sample.  It can be
-analyzed directly when it is generated or read, and it can be written to file
-in a standard format that a human or an external program can understand.  The
+Generating an event sample can serve several purposes.  First of all,
+it can be analyzed directly, by \whizard's built-in capabilities, to
+produce tables, histograms, or calculate inclusive observables.  The
 basic analysis features of \whizard\ are described below in
-Sec.~\ref{sec:analysis}.  In Chap.~\ref{chap:events}, you will find a more
-thorough discussion of event generation with \whizard, which also covers in
-detail the available event-file formats.
+Sec.~\ref{sec:analysis}.  It can be written to an external file in a
+standard format that a human or an external program can understand.
+In Chap.~\ref{chap:events}, you will find a more thorough discussion
+of event generation with \whizard, which also covers in detail the
+available event-file formats.  Finally, \whizard\ can rescan an
+existing event sample.  The event sample may either be the result of a
+previous \ttt{simulate} run or, under certain conditions, an external
+event sample produced by another generator or reconstructed from
+data.
+\begin{quote}
+\begin{footnotesize}
+\begin{verbatim}
+rescan "my_events" (proc1) { $pdf_builtin_set = "MSTW2008LO" }
+\end{verbatim}
+\end{footnotesize}
+\end{quote}
+The rescanning may apply different parameters and recalculate the
+matrix element, it may apply a different event selection, it may
+reweight the events by a different PDF set (as above).  The modified
+event sample can again be analyzed or written to file.  For more
+details, cf.\ Sec.~\ref{sec:rescan}.
 
 %%%%%%%%%%%%%%%
 
@@ -8175,6 +8210,10 @@ consideration.
 \section{The O'Mega matrix element generator}
 \label{sec:omega_me}
 
+%%%%%
+
+\section{Interface to GoSam}
+
 \newpage
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -8355,8 +8394,198 @@ models, this is completely handled internally. Especially
 Ref.~\cite{Hagiwara:2005wg} discusses the details of the neutralino
 (and chargino) mixing matrix.  
 
+%%%%%%%%%%%%%%%%
+
+\section{Lepton Collider Beam Spectra}
+\label{sec:beamspectra}
+
+For the simulation of lepton collider beam spectra there are two
+dedicated tools, \circeone\ and \circetwo\ that have been written as
+in principle independent tools. Both attempt to describe the
+details of electron (and positron) beams in a realistic lepton
+collider environment. Due to the quest for achieving high peak
+luminosities at $e^+e^-$ machines, the goal is to make the spatial
+extension of the beam as small as possible but keeping the area of the
+beam roughly constant. This is achieved by forcing the beams in the
+final focus into the shape of a quasi-2D bunch. Due to the high charge
+density in that bunch, the bunch electron distribution is modified by
+classical electromagnetic radiation, so called {\em beamstrahlung}. 
+The two \circe\ packages are intended to perform a simulation of this
+beamstrahlung and its consequences on the electron beam spectrum as
+realistic as possible. More details about the two packages can be
+found in their stand-alone documentations. We will discuss the basic
+features of lepton-collider beam simulations in the next two sections,
+including the technicalities of passing simulations of the machine
+beam setup to \whizard. This will be followed by a section on the
+simulation of photon collider spectra, included for historical
+reasons.  
+
+%%%%%
+
+\subsection{\circeone}
+
+While the bunches in a linear collider cross only once, due to their
+small size they experience a strong beam-beam effect. There is a
+code to simulate the impact of this effect on luminosity and
+background, called
+\ttt{GuineaPig++}~\cite{Schulte:1998au,Schulte:1999tx,Schulte:2007zz}.
+This takes into account the details of the accelerator, the final
+focus etc. on the structure of the beam and the main features of the
+resulting energy spectrum of the electrons and positrons. It offers
+the state-of-the-art simulation of lepton-collider beam spectra as
+close as possible to reality. However, for many high-luminosity
+simulations, event files produced with \texttt{GuineaPig++} are usually
+too small, in the sense that not enough independent events are
+available for physics simulations. Lepton collider beam spectra do
+peak at the nominal beam energy ($\sqrt{s}/2$) of the collider, and
+feature very steeply falling tails. Such steeply falling distributions
+are very poorly mapped by histogrammed distributions with fixed bin
+widths. 
+
+The main working assumption to handle such spectra are being followed
+within \circeone: 
+\begin{enumerate}
+\label{circe1_assumptions}
+\item The beam spectra for the two beams $P_1$ and $P_2$ factorize
+  (here $x_1$ and $x_2$ are the energy fractions of the two beams,
+  respectively): 
+  \begin{equation*}
+    D_{P_1P_2} (x_1, x_2) = D_{P_1} (x_1) \cdot D_{P_2} (x_2) 
+  \end{equation*}
+
+\item
+  The peak is described with a delta distribution, and the tail with a
+  power law:
+  \begin{equation*}
+    D(x) = d \cdot \delta(1-x) \; + \; c \cdot x^\alpha \, (1-x)^\beta
+  \end{equation*}
+\end{enumerate}
+The two powers $\alpha$ and $\beta$ are the main coefficients that can
+be tuned in order to describe the spectrum with \circeone\ as close as
+possible as the original \texttt{GuineaPig++} spectrum. More details
+about how \circeone\ works and what it does can be found in its own
+write-up in \texttt{circe1/share/doc}.
+
+\subsection{\circetwo}
+
+The two conditions listed in \ref{circe1_assumptions} are too
+restrictive and hence insufficient to describe more complicated
+lepton-collider beam spectra, as they e.g. occur in the CLIC
+drive-beam design. Here, the two beams are highly correlated and also
+a power-law description does not give good enough precision for the
+tails. To deal with these problems, \circetwo\ starts with a
+two-dimensional histogram featuring factorized, but variable bin
+widths in order to simulate the steep parts of the
+distributions. The limited statistics from too small
+\texttt{GuineaPig++} event output files leads to correlated
+fluctuations that would leave strange artifacts in the
+distributions. To abandon them, Gaussian filters are applied to smooth
+out the correlated fluctuations. Here care has to be taken when going
+from the continuum in $x$ momentum fraction space to the corresponding
+\begin{figure}
+  \centering
+  \includegraphics{circe2-smoothing}
+  \caption{\label{fig:circe2smoothing}
+    Smoothing the bin at the $x_{e^+} = 1$ boundary with Gaussian
+    filters of 3 and 10 bins width compared to no smoothing.}
+\end{figure}
+boundaries: separate smoothing procedures are being applied to the
+bins in the continuum region and those in the boundary in order to
+avoid artificial unphysical beam energy
+spreads. Fig.~\ref{fig:circe2-smoothing} shows the smoothing of the
+distribution for the bin at the $x_{e^+} = 1$ boundary. The blue dots
+show the direct \texttt{GuineaPig++} output comprising the
+fluctuations due to the low statistics. Gaussian filters with widths
+of 3 and 10 bins, respectively, have been applied (orange and green
+dots, resp.). While there is still considerable fluctuation for 3 bin
+width Gaussian filtering, the distribution is perfectly smooth for 10
+bin width. Hence, five bin widths seem a reasonable compromise for
+histograms with a total of 100 bins. Note that the bins are not
+equidistant, but shrink with a power law towards the $x_{e^-} = 1$
+boundary on the right hand side of Fig.~\ref{fig:circe2-smoothing}. 
+
+\whizard\ ships (inside its subpackage \circetwo) with prepared beam
+spectra ready to be used within \circetwo\ for the ILC beam spectra
+used in the ILC
+TDR~\cite{Behnke:2013xla,Baer:2013cma,Adolphsen:2013jya,Adolphsen:2013kya,Behnke:2013lya}. These
+comprise the designed staging energies of 200 GeV, 230 GeV, 250 GeV,
+350 GeV, and 500 GeV. Note that all of these spectra up to now do not
+take polarization of the original beams on the beamstrahlung into
+account, but are polarization-averaged. For backwards compatibility,
+also the 500 GeV spectra for the TESLA
+design~\cite{AguilarSaavedra:2001rg,Richard:2001qm}, here both for
+polarized and polarization-averaged cases, are included. Correlated
+spectra for CLIC staging energies like 350 GeV, 1400 GeV and 3000 GeV
+are not yet (as of version 2.2.4) included in the \whizard\
+distribution. 
+
+In the following we describe how to obtain such files with the tools
+included in \whizard (resp. \circetwo). The procedure is equivalent to
+the so-called \texttt{lumi-linker} construction used by Timothy
+Barklow (SLAC) together with the legacy version \whizard\texttt{ 1.95}.
+The workflow to produce such files is to run \texttt{GuineaPig++} with
+the following input parameters:
+\begin{Code}
+  do_lumi = 7;
+  num_lumi = 100000000;
+  num_lumi_eg = 100000000;
+  num_lumi_gg = 100000000;
+\end{Code}
+This demands from \texttt{GuineaPig++} the generation of distributions
+for the $e^-e^+$, $e^\mp \gamma$, and $\gamma\gamma$ components of the
+beamstrahlung's spectrum, respectively. These are the files
+\texttt{lumi.ee.out}, \texttt{lumi.eg.out}, \texttt{lumi.ge.out}, and
+\texttt{lumi.gg.out}, respectively. These contain pairs $(E_1, E_2)$
+of beam energies, {\em not} fractions of the original beam
+energy. Huge event numbers are out in here, as \texttt{GuineaPig++}
+will produce only a small fraction due to a very low generation
+efficiency. 
+
+The next step is to transfer these output files from
+\texttt{GuineaPig++} into input files used with \circetwo. This is
+done by means of the tool \texttt{circe\_tool.opt} that is installed
+together with the \whizard\ main binary and libraries. The user should
+run this executable with the following input file: 
+\begin{Code}
+{ file="ilc500/ilc500.circe"                   # to be loaded by WHIZARD
+  { design="ILC" roots=500 bins=100 scale=250 # E in [0,1]
+    { pid/1=electron pid/2=positron pol=0     # unpolarized e-/e+
+      events="ilc500/lumi.ee.out" columns=2   # <= Guinea-Pig
+      lumi = 1564.763360                      # <= Guinea-Pig
+      iterations = 10                         # adapting bins
+      smooth = 5 [0,1) [0,1)                  # Gaussian filter 5 bins
+      smooth = 5 [1] [0,1) smooth = 5 [0,1) [1] } } }  
+\end{Code}
+The first line defines the output file, that later can be read in into
+the beamstrahlung's description of \whizard\ (cf. below). Then, in the
+second line the design of the collider (here: ILC for 500 GeV
+center-of-mass energy, with the number of bins) is specified. The next
+line tells the tool to take the unpolarized case, then the
+\texttt{GuineaPig++} parameters (event file and luminosity) are
+set. In the last three lines, details concerning the adaptation of the
+simulation as well as the smoothing procedure are being specified: the
+number of iterations in the adaptation procedure, and for the
+smoothing with the Gaussian filter first in the continuum and then at
+the two edges of the spectrum. For more details confer the
+documentation in the \circetwo\ subpackage. 
+
+This produces the corresponding input files that can be used within
+\whizard\ to describe beamstrahlung for lepton colliders, using a
+SINDARIN input file like:
+\begin{Code}
+        beams = e1, E1 => circe2
+        $circe2_file = "ilc500.circe"
+        $circe2_design = "ILC"
+        ?circe2_polarized = false  
+\end{Code}
 
 
+%%%%%
+
+\subsection{Photon Collider Spectra} 
+
+For details confer the complete write-up of the \circetwo\
+subpackage. 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -8992,7 +9221,7 @@ This is the modern version of the Les Houches accord event format
 <LesHouchesEvents version="1.0">
 <header>
   <generator_name>WHIZARD</generator_name>
-  <generator_version>2.2.3</generator_version>
+  <generator_version>2.2.4</generator_version>
 </header>
 <init>
  25 25  5.0000000000E+02  5.0000000000E+02 -1 -1 -1 -1 3 1
@@ -9063,12 +9292,12 @@ required, these additional steps have to be switched off using the
 corresponding arguments for \pythia's \texttt{PYGIVE} routine vie the
 \ttt{\$ps\_PYTHIA\_PYGIVE} string. 
 
-During configuration the \texttt{--enable-shower} flag has to be set (this is the default from
-version 2.1.0 on), which then triggers
-automatic compilation of the shower subpackage and the \pythia\ version included in the
-\whizard\ package (which is the last release of the \fortran\ \pythia,
-v6.427) as well as the interface. It can be invoked by the following
-\sindarin\ keywords:\\[2ex] 
+Note that from version 2.2.4 on the earlier flag
+\texttt{--enable-shower} flag has been abandoned, and there is only a
+flag to either compile or not compile the interally attached
+\pythia\texttt{6} package (\texttt{--enable-pythia6}) last release of
+the \fortran\ \pythia, v6.427) as well as the interface. It can be
+invoked by the following \sindarin\ keywords:\\[2ex] 
 %
 \centerline{\begin{tabular}{|l|l|}
 \hline\ttt{?ps\_fsr\_active = true} & master switch for final-state
@@ -9230,7 +9459,177 @@ uncertainties introduced by the matching procedure (See section 3.1 in
 
 %%%%%%%%%
 
+\section{Rescanning and recalculating events}
+\label{sec:rescan}
+
+In the simplest mode of execution, \whizard\ handles its events at the
+point where they are generated.  It can apply event transforms such as
+decays or shower (see above), it can analyze the events, calculate and
+plot observables, and it can output them to file.  However, it is also
+possible to apply two different operations to those events in
+parallel, or to reconsider and rescan an event sample that has been
+previously generated.
+
+We first discuss the possibilities that \ttt{simulate} offers.  For
+each event, \whizard\ calculates the matrix element for the hard
+interaction, supplements this by Jacobian and phase-space factors in
+order to obtain the event weight, optionally applies a rejection step
+in order to gather uniformly weighted events, and applies the
+cuts and analysis setup.  We may ask about the event matrix element or
+weight, or the analysis result, that we would have obtained for a
+different setting.  To this end, there is an \ttt{alt\_setup} option.
+
+This option allows us to recalculate, event by event, the matrix
+element, weight, or analysis contribution with a different parameter
+set but identical kinematics.  For instance, we may evaluate a
+distribution for both zero and non-zero anomalous coupling \ttt{fw}
+and enter some observable in separate histograms: 
+
+\begin{footnotesize}
+\begin{verbatim}
+  simulate (some_proc) {
+      fw = 0
+      analysis = record hist1 (eval Pt [H])
+    alt_setup = {
+       fw = 0.01
+       analysis = record hist2 (eval Pt [H])
+    }
+  }
+\end{verbatim}
+\end{footnotesize}
+
+In fact, the \ttt{alt\_setup} object is not restricted to a single
+code block (enclosed in curly braces) but can take a list of those,
+\begin{footnotesize}
+\begin{verbatim}
+  alt_setup = { fw = 0.01 }, { fw = 0.02 }, ...
+\end{verbatim}
+\end{footnotesize}
+Each block provides the environment for a separate evaluation of the
+event data.  The generation of these events, i.e., their kinematics,
+is still steered by the primary environment.
+
+The \ttt{alt\_setup} blocks may modify various settings that affect the
+evaluation of an event, including physical parameters, PDF choice,
+cuts and analysis, output format, etc.  This must not (i.e., cannot)
+affect the kinematics of an event, so don't modify particle masses.
+When applying cuts, they can only reduce the generated event sample,
+so they apply on top of the primary cuts for the simulation.
+
+Alternatively, it is possible to \ttt{rescan} a sample that has been
+generated by a previous \ttt{simulate} command:
+\begin{footnotesize}
+\begin{verbatim}
+  simulate (some_proc) { $sample = "my_events"
+    analysis = record hist1 (eval Pt [H])
+  }
+  ?update_sqme = true
+  ?update_weight = true
+  rescan "my_events" (some_proc) {
+    fw = 0.01
+    analysis = record hist2 (eval Pt [H])   
+  }
+  rescan "my_events" (some_proc) {
+    fw = 0.05
+    analysis = record hist3 (eval Pt [H])   
+  }
+\end{verbatim}
+\end{footnotesize}
+In more complicated situation, rescanning is more transparent and
+offers greater flexibility than doing all operations at the very point
+of event generation.
+
+Combining these features with the \ttt{scan} looping construct, we
+already cover a considerable range of applications.  (There are
+limitations due to the fact that \sindarin\ doesn't provide array
+objects, yet.)  Note that the \ttt{rescan} construct also allows
+for an \ttt{alt\_setup} option.
+
+You may generate a new sample by rescanning, for which you may choose
+any output format:
+\begin{footnotesize}
+\begin{verbatim}
+  rescan "my_events" (some_proc) {
+    selection = all Pt > 100 GeV [H]
+    $sample = "new_events"
+    sample_format = lhef
+  }
+\end{verbatim}
+\end{footnotesize}
+
+The event sample that you rescan need not be an internal raw \whizard\
+file, as above.  You may rescan a LHEF file,
+\begin{footnotesize}
+\begin{verbatim}
+  rescan "lhef_events" (proc) {
+    $rescan_input_format = "lhef"
+  }
+\end{verbatim}
+\end{footnotesize}
+This file may have any origin, not necessarily from \whizard.  To
+understand such an external file, \whizard\ must be able to
+reconstruct the hard process and match it to a process with a known
+name (e.g., \ttt{proc}), that has been defined in the \sindarin\ script
+previously.
+
+Within its limits, \whizard\ can thus be used for translating an event
+sample from one format to another format.
+
+There are three important switches that control the rescanning
+behavior.  They can be set or unset independently.
+\begin{itemize}
+\item \ttt{?update\_sqme} (default: false).
+  If true, \whizard\ will recalculate the hard matrix element for each
+  event.  When applying an analysis, the recalculated squared matrix
+  element (averaged and summed over quantum numbers as usual) is
+  available as the variable \ttt{sqme\_prc}.  This may be related to
+  \ttt{sqme\_ref}, the corresponding
+  value in the event file, if available.  (For the \ttt{alt\_env}
+  option, this switch is implied.)
+\item \ttt{?update\_weight} (default: false).
+  If true, \whizard\ will recalculate the event weight according to
+  the current environment and apply this to the event.  In particular,
+  the user may apply a \ttt{reweight} expression.  In an
+  analysis, the new weight value is available as \ttt{weight\_prc}, to
+  be related 
+  to \ttt{weight\_ref} from the sample.  The updated weight will be
+  applied for histograms and averages.  An unweighted event sample
+  will thus be transformed into a weighted event sample.  (This switch
+  is also implied for the \ttt{alt\_env} option.)
+\item \ttt{?update\_event} (default: false).
+  If true, \whizard\ will generate a new decay chain etc., if
+  applicable.  That is, it reuses just the particles in the hard
+  process.  Otherwise, the complete event is kept as it is written to
+  file.
+\end{itemize}
+For these options to make sense, \whizard\ must have access to a full
+process object, so the \sindarin\ script must contain not just a
+definition but also a \ttt{compile} command for the matrix elements in
+question.
+
+If an event file (other than raw format) contains several processes as
+a mixture, they must be identifiable by a numeric ID.  \whizard\ will
+recognize the processes if their respective \sindarin\ definitions
+contain appropriate \ttt{process\_num\_id} options, such as
+\begin{footnotesize}
+\begin{verbatim}
+  process foo = u, ubar => d, dbar { process_num_id = 42 }
+\end{verbatim}
+\end{footnotesize}
+
+Certain event-file formats, such as LHEF, support alternative
+matrix-element values or weights.  \whizard\ can thus write both
+original and 
+recalculated matrix-element and weight values.
+Other formats support only a single
+event weight, so the \ttt{?update\_weight} option is necessary for a
+visible effect.
+
+
+%%%%%%%%%
+
 \section{Negative weight events}
+\emph{To be done.}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{User Code Plug-Ins}
@@ -10187,7 +10586,7 @@ Tables~\ref{tab:graph-options} and \ref{tab:drawing-options}, respectively.
         Whether the $x$-axis scale is linear or logarithmic
       \\
       \hline
-      \ttt{?x\_log} & false & Logical &
+      \ttt{?y\_log} & false & Logical &
         Whether the $y$-axis scale is linear or logarithmic
       \\
       \hline
@@ -15586,10 +15985,10 @@ e.g.: \newline
 \ttt{"{\em <event\_file>}"} is the name of the event file and
 \ttt{{\em <proc\_name>}} is the process whose (existing) event 
 file of arbitrary size that is to be rescanned. Several flags allow to
-reconstruct the beams ($\to$ \ttt{?recover\_beams}), to reconstruct
-only kinematics but recalculate the events ($\to$
+reconstruct the beams ($\to$ \ttt{?recover\_beams}), to reuse only the
+hard process but rebuild the full events ($\to$
 \ttt{?update\_event}), to recalculate the matrix element ($\to$
-\ttt{?update\_sqme}) or to recalculate the corresponding weight ($\to$
+\ttt{?update\_sqme}) or to recalculate the individual event weight ($\to$
 \ttt{?update\_weight}). Further rescan options are redefining model
 parameter input, or defining a completely new alternative setup ($\to$
 \ttt{alt\_setup}) (cf. also \ttt{\$rescan\_input\_format})  
@@ -16006,13 +16405,14 @@ gives the angle between a particle's momentum and the beam axis ($+z$
 direction). As a binary observable, it gives the angle enclosed
 between the momenta of the two particles: \ttt{eval Theta [e1]},
 \ttt{all Theta > 30 degrees [jet, jet]}. (cf. also \ttt{eval},
-\ttt{cuts}, \ttt{selection}, \ttt{Phi}) 
+\ttt{cuts}, \ttt{selection}, \ttt{Phi}, \ttt{Theta\_star}) 
 %%%%%
 \item
-\ttt{Theta\_RF} \newline
-Binary observable specifier, that gives the angle enclosed
+\ttt{Theta\_star} \newline
+Binary observable specifier, that gives the polar angle enclosed
 between the momenta of the two particles in the rest frame of the
-collider: \ttt{eval Theta\_RF [jet, jet]}. (cf. also \ttt{eval},
+mother particle (momentum sum of the two particle): \ttt{eval
+Theta\_star [jet, jet]}. (cf. also \ttt{eval},  
 \ttt{cuts}, \ttt{selection}, \ttt{Theta}) 
 %%%%%
 \item
@@ -16101,8 +16501,8 @@ generation. (cf. also \ttt{simulate}, \ttt{n\_events},
 %%%%%
 \item
 \ttt{?update\_event} \qquad (default: \ttt{false}) \newline
-Flag that decides whehter the events in an event file should be
-updated when reading event/rescanning files into
+Flag that decides whether the events in an event file should be
+rebuilt from the hard process when reading event/rescanning files into
 \whizard. (cf. \ttt{rescan}, \ttt{?recover\_beams},
 \ttt{?update\_sqme}, \ttt{?update\_weight}) 
 %%%%%
@@ -16482,6 +16882,13 @@ respectively.
   arXiv:1306.6328 [physics.acc-ph].
   %%CITATION = ARXIV:1306.6328;%%
 
+%\cite{Behnke:2013lya}
+\bibitem{Behnke:2013lya} 
+  T.~Behnke, J.~E.~Brau, P.~N.~Burrows, J.~Fuster, M.~Peskin, M.~Stanitzki, Y.~Sugimoto and S.~Yamada {\it et al.},
+  %``The International Linear Collider Technical Design Report - Volume 4: Detectors,''
+  arXiv:1306.6329 [physics.ins-det].
+  %%CITATION = ARXIV:1306.6329;%%
+
 %\cite{Aicheler:2012bya}
 \bibitem{Aicheler:2012bya} 
   M.~Aicheler, P.~Burrows, M.~Draper, T.~Garvey, P.~Lebrun, K.~Peach and N.~Phinney {\it et al.},
@@ -16834,6 +17241,13 @@ respectively.
   Phys.\ Rev.\ D {\bf 87}, no. 9, 094012 (2013)
   [arXiv:1212.1702 [hep-ph]].
   %%CITATION = ARXIV:1212.1702;%%
+%\cite{Harland-Lang:2014zoa}
+\bibitem{Harland-Lang:2014zoa} 
+  L.~A.~Harland-Lang, A.~D.~Martin, P.~Motylinski and R.~S.~Thorne,
+  %``Parton distributions in the LHC era: MMHT 2014 PDFs,''
+  arXiv:1412.3989 [hep-ph].
+  %%CITATION = ARXIV:1412.3989;%%
+
 
 %\cite{Salam:2008qg}
 \bibitem{Salam:2008qg} 

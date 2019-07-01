@@ -1,6 +1,6 @@
-! WHIZARD 2.2.3 Nov 30 2014
+! WHIZARD 2.2.4 Feb 06 2015
 ! 
-! Copyright (C) 1999-2014 by 
+! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -9,7 +9,8 @@
 !     Fabian Bach <fabian.bach@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Felix Braam, Sebastian Schmidt, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam, 
+!     Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -58,6 +59,7 @@ module simulations
   use prc_core
   use prclib_stacks
   use processes
+  use event_base
   use events
   use event_transforms
   use decays
@@ -136,6 +138,14 @@ module simulations
      procedure :: write_config => entry_write_config
      procedure :: final => entry_final
      procedure :: init => entry_init
+     procedure, private :: import_process_characteristics &
+          => entry_import_process_characteristics
+     procedure, private :: import_process_results &
+          => entry_import_process_results
+     procedure, private :: prepare_expressions &
+          => entry_prepare_expressions
+     procedure, private :: setup_event_transforms &
+          => entry_setup_event_transforms
      procedure :: init_mci_selector => entry_init_mci_selector
      procedure :: select_mci => entry_select_mci
      procedure :: record => entry_record
@@ -156,6 +166,10 @@ module simulations
      logical :: unweighted = .true.
      logical :: negative_weights = .false.
      integer :: norm_mode = NORM_UNDEFINED
+     logical :: update_sqme = .false.
+     logical :: update_weight = .false.
+     logical :: update_event = .false.
+     logical :: recover_beams = .false.
      logical :: pacify = .false.
      integer :: n_max_tries = 10000
      integer :: n_prc = 0
@@ -206,7 +220,6 @@ module simulations
      generic :: read_event => read_event_es_array
      procedure :: read_event_es_array => simulation_read_event_es_array
      procedure :: recalculate => simulation_recalculate
-     procedure :: get_process_ptr => simulation_get_process_ptr
      procedure :: get_md5sum_prc => simulation_get_md5sum_prc
      procedure :: get_md5sum_cfg => simulation_get_md5sum_cfg
      procedure :: get_md5sum_alt => simulation_get_md5sum_alt
@@ -420,31 +433,22 @@ contains
   end subroutine entry_final
   
   subroutine entry_init &
-       (entry, process_id, integrate, generate, local, global, n_alt)
+       (entry, process_id, integrate, generate, update_sqme, &
+       local, global, n_alt)
     class(entry_t), intent(inout), target :: entry
     type(string_t), intent(in) :: process_id
-    logical, intent(in) :: integrate, generate
+    logical, intent(in) :: integrate, generate, update_sqme
     type(rt_data_t), intent(inout), target :: local
     type(rt_data_t), intent(inout), optional, target :: global
     integer, intent(in), optional :: n_alt
-    type(process_t), pointer :: process
+    type(process_t), pointer :: process, master_process
     type(process_instance_t), pointer :: process_instance
-    type(eval_tree_factory_t) :: expr_factory
-    class(evt_t), pointer :: evt
     integer :: i
-    logical :: enable_qcd
     
-    enable_qcd = local%get_lval (var_str ("?ps_isr_active")) &
-            .or. local%get_lval (var_str ("?ps_fsr_active")) &
-            .or. local%get_lval (var_str ("?hadronization_active")) &
-            .or. local%get_lval (var_str ("?mlm_matching")) &
-            .or. local%get_lval (var_str ("?ckkw_matching")) &
-            .or. local%get_lval (var_str ("?muli_active"))
-    
-    call prepare_process (process, process_id, integrate, local, global)
+    call prepare_process (master_process, process_id, integrate, local, global)
     if (signal_is_pending ())  return
 
-    if (.not. process%has_matrix_element ()) then
+    if (.not. master_process%has_matrix_element ()) then
        entry%has_integral = .true.
        entry%process_id = process_id
        entry%valid = .false.          
@@ -453,52 +457,48 @@ contains
     
     call entry%basic_init (local%var_list, n_alt)
 
-    allocate (process_instance)
-    call process_instance%init (process)
-    call process_instance%setup_event_data ()
-
     entry%process_id = process_id
-    entry%library = process%get_library_name ()
-    entry%run_id = process%get_run_id ()
-    entry%n_in = process%get_n_in ()
-    entry%n_mci = process%get_n_mci ()
+    if (generate .or. integrate) then
+       entry%run_id = master_process%get_run_id ()
+       process => master_process
+    else
+       call local%set_log (var_str ("?rebuild_phase_space"), &
+            .false., is_known = .true.)
+       call local%set_log (var_str ("?check_phs_file"), &
+            .false., is_known = .true.)
+       call local%set_log (var_str ("?rebuild_grids"), &
+            .false., is_known = .true.)
+       entry%run_id = &
+            local%var_list%get_sval (var_str ("$run_id"))
+       if (update_sqme) then
+          call prepare_local_process (process, process_id, local)
+       else
+          process => master_process
+       end if
+    end if
+
+    call entry%import_process_characteristics (process)
+
     allocate (entry%mci_set (entry%n_mci))
     do i = 1, size (entry%mci_set)
-       call entry%mci_set(i)%init (i, process)
+       call entry%mci_set(i)%init (i, master_process)
     end do
     if (process%is_nlo_calculation ()) then
       entry%nlo_event = .true.
       call entry%combine_mci_sets ()
     end if
-    if (process%has_integral ()) then
-       entry%integral = process%get_integral ()
-       entry%error = process%get_error ()
-       call entry%set_sigma (entry%integral)
-       entry%has_integral = .true.
-    end if
 
-    call expr_factory%init (local%pn%selection_lexpr)
-    call entry%set_selection (expr_factory)
-    call expr_factory%init (local%pn%reweight_expr)
-    call entry%set_reweight (expr_factory)
-    call expr_factory%init (local%pn%analysis_lexpr)
-    call entry%set_analysis (expr_factory)
+    call entry%import_process_results (master_process)
+    call entry%prepare_expressions (local)
+
+    call prepare_process_instance (process_instance, process, local%model)
     if (generate) then
        do i = 1, entry%n_mci
           call process%prepare_simulation (i)
           call process_instance%init_simulation (i, entry%config%safety_factor)
        end do
     end if
-
-    if (process%contains_unstable (local%model)) then
-       call dispatch_evt_decay (evt, local)
-       if (associated (evt))  call entry%import_transform (evt)
-    end if
-    
-    if (enable_qcd) then 
-       call dispatch_evt_shower (evt, local, process)
-       if (associated (evt))  call entry%import_transform (evt)
-    end if
+    call entry%setup_event_transforms (process, local)
 
     if (present (global)) then
        call entry%connect (process_instance, local%model, global%process_stack)
@@ -506,12 +506,86 @@ contains
        call entry%connect (process_instance, local%model, local%process_stack)
     end if
     call entry%setup_expressions ()
+
     entry%model => process%get_model_ptr ()
     call dispatch_qcd (entry%qcd, local)
     entry%valid = .true.
     
   end subroutine entry_init
     
+  subroutine prepare_local_process (process, process_id, local)
+    type(process_t), pointer, intent(inout) :: process
+    type(string_t), intent(in) :: process_id
+    type(rt_data_t), intent(inout), target :: local
+    type(integration_t) :: intg
+    call intg%create_process (process_id)
+    call intg%init_process (local)
+    call intg%setup_process (local, verbose=.false.)
+    process => intg%get_process_ptr ()
+  end subroutine prepare_local_process
+  
+  subroutine prepare_process_instance (process_instance, process, model)
+    type(process_instance_t), pointer, intent(inout) :: process_instance
+    type(process_t), intent(inout), target :: process
+    class(model_data_t), intent(in), optional :: model
+    allocate (process_instance)
+    call process_instance%init (process)
+    call process_instance%setup_event_data (model)
+  end subroutine prepare_process_instance 
+
+  subroutine entry_import_process_characteristics (entry, process)
+    class(entry_t), intent(inout) :: entry
+    type(process_t), intent(in), target :: process
+    entry%library = process%get_library_name ()
+    entry%n_in = process%get_n_in ()
+    entry%n_mci = process%get_n_mci ()
+  end subroutine entry_import_process_characteristics
+
+  subroutine entry_import_process_results (entry, process)
+    class(entry_t), intent(inout) :: entry
+    type(process_t), intent(in), target :: process
+    if (process%has_integral ()) then
+       entry%integral = process%get_integral ()
+       entry%error = process%get_error ()
+       call entry%set_sigma (entry%integral)
+       entry%has_integral = .true.
+    end if
+  end subroutine entry_import_process_results
+
+  subroutine entry_prepare_expressions (entry, local)
+    class(entry_t), intent(inout) :: entry
+    type(rt_data_t), intent(in), target :: local
+    type(eval_tree_factory_t) :: expr_factory
+    call expr_factory%init (local%pn%selection_lexpr)
+    call entry%set_selection (expr_factory)
+    call expr_factory%init (local%pn%reweight_expr)
+    call entry%set_reweight (expr_factory)
+    call expr_factory%init (local%pn%analysis_lexpr)
+    call entry%set_analysis (expr_factory)
+  end subroutine entry_prepare_expressions
+
+  subroutine entry_setup_event_transforms (entry, process, local)
+    class(entry_t), intent(inout) :: entry
+    type(process_t), intent(in), target :: process
+    type(rt_data_t), intent(in), target :: local
+    class(evt_t), pointer :: evt
+    logical :: enable_qcd
+    if (process%contains_unstable (local%model)) then
+       call dispatch_evt_decay (evt, local)
+       if (associated (evt))  call entry%import_transform (evt)
+    end if
+    enable_qcd = local%get_lval (var_str ("?ps_isr_active")) &
+            .or. local%get_lval (var_str ("?ps_fsr_active")) &
+            .or. local%get_lval (var_str ("?hadronization_active")) &
+            .or. local%get_lval (var_str ("?mlm_matching")) &
+            .or. local%get_lval (var_str ("?ckkw_matching")) &
+            .or. local%get_lval (var_str ("?muli_active"))
+    if (enable_qcd) then 
+       call dispatch_evt_shower (evt, local, process)
+       if (associated (evt))  call entry%import_transform (evt)
+    end if
+  end subroutine entry_setup_event_transforms
+
   subroutine entry_init_mci_selector (entry)
     class(entry_t), intent(inout) :: entry
     integer :: i
@@ -534,8 +608,8 @@ contains
     integer, intent(in) :: i_mci
     logical, intent(in), optional :: from_file
     real(default) :: weight, excess
-    weight = entry%weight_prc
-    excess = entry%excess_prc
+    weight = entry%get_weight_prc ()
+    excess = entry%get_excess_prc ()
     call entry%counter%record (weight, excess, from_file)
     call entry%mci_set(i_mci)%counter%record (weight, excess)
   end subroutine entry_record
@@ -614,23 +688,14 @@ contains
     class(rng_factory_t), allocatable :: rng_factory
     type(process_t), pointer :: process
     type(process_instance_t), pointer :: process_instance
-    type(eval_tree_factory_t) :: expr_factory
-    class(evt_t), pointer :: evt
     type(string_t) :: run_id
     type(integration_t) :: intg
     integer :: i
-    logical :: enable_qcd
-    
-    enable_qcd = local%get_lval (var_str ("?ps_isr_active")) &
-            .or. local%get_lval (var_str ("?ps_fsr_active")) &
-            .or. local%get_lval (var_str ("?hadronization_active")) &
-            .or. local%get_lval (var_str ("?mlm_matching")) &
-            .or. local%get_lval (var_str ("?ckkw_matching")) &
-            .or. local%get_lval (var_str ("?muli_active"))    
 
     call msg_message ("Simulate: initializing alternate process setup ...")
 
-    run_id = var_list_get_sval (local%var_list, var_str ("$run_id"))
+    run_id = &
+         local%var_list%get_sval (var_str ("$run_id"))
     call local%set_log (var_str ("?rebuild_phase_space"), &
          .false., is_known = .true.)
     call local%set_log (var_str ("?check_phs_file"), &
@@ -638,47 +703,24 @@ contains
     call local%set_log (var_str ("?rebuild_grids"), &
          .false., is_known = .true.)
     
-    call intg%create_process (process_id)
-    call intg%init_process (local)
-    call intg%setup_process (local)
-    process => intg%get_process_ptr ()
-
     call entry%basic_init (local%var_list)
     
-    allocate (process_instance)
-    call process_instance%init (process)
-    call process_instance%setup_event_data ()
+    call prepare_local_process (process, process_id, local)
     entry%process_id = process_id
-    entry%library = process%get_library_name ()
     entry%run_id = run_id
-    entry%n_mci = process%get_n_mci ()
+
+    call entry%import_process_characteristics (process)
+    
     allocate (entry%mci_set (entry%n_mci))
     do i = 1, size (entry%mci_set)
        call entry%mci_set(i)%init (i, master_process)
     end do
-    if (master_process%has_integral ()) then
-       entry%integral = master_process%get_integral ()
-       entry%error = master_process%get_error ()
-       call entry%set_sigma (entry%integral)
-       entry%has_integral = .true.
-    end if
-    
-    call expr_factory%init (local%pn%selection_lexpr)
-    call entry%set_selection (expr_factory)
-    call expr_factory%init (local%pn%reweight_expr)
-    call entry%set_reweight (expr_factory)
-    call expr_factory%init (local%pn%analysis_lexpr)
-    call entry%set_analysis (expr_factory)
 
-    if (process%contains_unstable (local%model)) then
-       call dispatch_evt_decay (evt, local)
-       if (associated (evt))  call entry%import_transform (evt)
-    end if
+    call entry%import_process_results (master_process)
+    call entry%prepare_expressions (local)
 
-    if (enable_qcd) then
-       call dispatch_evt_shower (evt, local)
-       if (associated (evt))  call entry%import_transform (evt)
-    end if
+    call prepare_process_instance (process_instance, process, local%model)
+    call entry%setup_event_transforms (process, local)
 
     call entry%connect (process_instance, local%model, local%process_stack)
     call entry%setup_expressions ()
@@ -693,8 +735,8 @@ contains
     class(alt_entry_t), intent(inout) :: alt_entry
     class(entry_t), intent(in), target :: entry
     type(particle_set_t) :: pset
-    call entry%get_particle_set_hard_proc (pset)
-    call alt_entry%set_particle_set_hard_proc (pset)
+    call entry%get_hard_particle_set (pset)
+    call alt_entry%set_hard_particle_set (pset)
     call particle_set_final (pset)
   end subroutine entry_fill_particle_set
     
@@ -713,6 +755,10 @@ contains
     write (u, "(3x,A,A)")   "Event norm   = ", &
          char (event_normalization_string (object%norm_mode))
     write (u, "(3x,A,L1)")  "Neg. weights = ", object%negative_weights
+    write (u, "(3x,A,L1)")  "Update sqme  = ", object%update_sqme
+    write (u, "(3x,A,L1)")  "Update wgt   = ", object%update_weight
+    write (u, "(3x,A,L1)")  "Update event = ", object%update_event
+    write (u, "(3x,A,L1)")  "Recov. beams = ", object%recover_beams
     write (u, "(3x,A,L1)")  "Pacify       = ", object%pacify
     write (u, "(3x,A,I0)")  "Max. tries   = ", object%n_max_tries
     if (object%has_integral) then
@@ -774,7 +820,11 @@ contains
     logical, intent(in), optional :: verbose
     integer, intent(in), optional :: i_prc
     logical, intent(in), optional :: testflag
+    logical :: pacified
     integer :: current
+    pacified = .false.
+    if (present(testflag)) pacified = testflag
+    pacified = pacified .or. object%pacify
     if (present (i_prc)) then
        current = i_prc
     else
@@ -782,7 +832,7 @@ contains
     end if
     if (current > 0) then
        call object%entry(current)%write (unit, verbose = verbose, &
-            testflag = testflag)
+            testflag = pacified)
     else
        call msg_fatal ("Simulation: write event: no process selected")
     end if
@@ -855,10 +905,22 @@ contains
     norm_string = local%get_sval (var_str ("$sample_normalization"))
     simulation%norm_mode = &
          event_normalization_mode (norm_string, simulation%unweighted)
-    simulation%pacify = local%get_lval (var_str ("?sample_pacify"))
-    simulation%n_max_tries = local%get_ival (var_str ("sample_max_tries"))
-    simulation%split_n_evt = local%get_ival (var_str ("sample_split_n_evt"))
-    simulation%split_index = local%get_ival (var_str ("sample_split_index"))
+    simulation%pacify = &
+         local%get_lval (var_str ("?sample_pacify"))
+    simulation%n_max_tries = &
+         local%get_ival (var_str ("sample_max_tries"))
+    simulation%split_n_evt = &
+         local%get_ival (var_str ("sample_split_n_evt"))
+    simulation%split_index = &
+         local%get_ival (var_str ("sample_split_index"))
+    simulation%update_sqme = &
+         local%get_lval (var_str ("?update_sqme"))
+    simulation%update_weight = &
+         local%get_lval (var_str ("?update_weight"))
+    simulation%update_event = &
+         local%get_lval (var_str ("?update_event"))
+    simulation%recover_beams = &
+         local%get_lval (var_str ("?recover_beams"))
     select case (size (process_id))
     case (0)
        call msg_error ("Simulation: no process selected")
@@ -874,21 +936,26 @@ contains
        call msg_message ()
     end select
     select case (char (version_string))
-    case ("2.0","2.1")
-       simulation%version = 0
-    case default
+    case ("", "2.2.4")
+       simulation%version = 2
+    case ("2.2")
        simulation%version = 1
+    case default
+       simulation%version = 0
     end select
     if (simulation%version == 0) then
-       call msg_fatal ("Event file formats older than version 2.2 are " &
-          // "not compatible with this version.")
+       call msg_fatal ("Event file format '" &
+            // char (version_string) &
+            // "' is not compatible with this version.")
     end if        
     simulation%n_prc = size (process_id)
     allocate (simulation%entry (simulation%n_prc))
     if (present (alt_env)) then
        simulation%n_alt = size (alt_env)
        do i = 1, simulation%n_prc
-          call simulation%entry(i)%init (process_id(i), integrate, generate, &
+          call simulation%entry(i)%init (process_id(i), &
+               integrate, generate, &
+               simulation%update_sqme, &
                local, global, simulation%n_alt)
           if (signal_is_pending ())  return
        end do
@@ -912,7 +979,9 @@ contains
     else       
        do i = 1, simulation%n_prc
           call simulation%entry(i)%init &
-               (process_id(i), integrate, generate, local, global)
+               (process_id(i), &
+               integrate, generate, simulation%update_sqme, &
+               local, global)
           if (signal_is_pending ())  return          
        end do
        if (.not. any (simulation%entry%valid)) then
@@ -960,8 +1029,10 @@ contains
     real(default) :: lumi, x_events_lumi
     integer :: n_events_lumi
     logical :: is_scattering
-    n_events = var_list_get_ival (var_list, var_str ("n_events"))
-    lumi = var_list_get_rval (var_list, var_str ("luminosity"))
+    n_events = &
+         var_list%get_ival (var_str ("n_events"))
+    lumi = &
+         var_list%get_rval (var_str ("luminosity"))
     if (simulation%unweighted) then
        is_scattering = simulation%entry(1)%n_in == 2
        if (is_scattering) then
@@ -981,10 +1052,12 @@ contains
              write (msg_buffer, "(A,1x,I0)") &
                   "Simulation: requested number of events =", n_events
              call msg_message ()
-             write (msg_buffer, "(A,1x,ES11.4)") &
-                  "            corr. to luminosity [fb-1] = ", &
-                   n_events / simulation%integral            
-             call msg_message ()
+             if (simulation%integral /= 0) then
+                write (msg_buffer, "(A,1x,ES11.4)") &
+                     "            corr. to luminosity [fb-1] = ", &
+                     n_events / simulation%integral        
+                call msg_message ()
+             end if
           end if
        end if
     end if
@@ -1113,9 +1186,9 @@ contains
                        "matrix element vanishes, no events can be generated.")
                call entry%generate (simulation%i_mci)
                if (signal_is_pending ()) return
-               if (entry%particle_set_exists)  exit
+               if (entry%has_valid_particle_set ())  exit
             end do
-            if (.not. entry%particle_set_exists) then
+            if (.not. entry%has_valid_particle_set ()) then
                write (msg_buffer, "(A,I0,A)")  "Simulation: failed to &
                     &generate valid event after ", &
                     simulation%n_max_tries, " tries (sample_max_tries)"
@@ -1123,8 +1196,8 @@ contains
             end if
             call entry%evaluate_expressions ()
             if (signal_is_pending ()) return
-            simulation%weight = entry%weight_ref
-            simulation%excess = entry%excess_prc
+            simulation%weight = entry%get_weight_ref ()
+            simulation%excess = entry%get_excess_prc ()
             call simulation%counter%record &
                  (simulation%weight, simulation%excess)
             call entry%record (simulation%i_mci)
@@ -1136,8 +1209,8 @@ contains
             call entry%check ()
             call entry%evaluate_expressions ()
             if (signal_is_pending ()) return
-            simulation%weight = entry%weight_ref
-            simulation%excess = entry%excess_prc
+            simulation%weight = entry%get_weight_ref ()
+            simulation%excess = entry%get_excess_prc ()
             call simulation%counter%record &
                  (simulation%weight, simulation%excess, from_file=.true.)
             call entry%record (simulation%i_mci, from_file=.true.)
@@ -1182,8 +1255,8 @@ contains
            call alt_entry%evaluate_expressions ()
            if (signal_is_pending ())  return
            call alt_entry%restore_process ()
-           sqme_alt(j) = alt_entry%sqme_ref
-           weight_alt(j) = alt_entry%weight_ref
+           sqme_alt(j) = alt_entry%get_sqme_ref ()
+           weight_alt(j) = alt_entry%get_weight_ref ()
          end associate
       end do
       call entry%set (sqme_alt = sqme_alt, weight_alt = weight_alt)
@@ -1192,14 +1265,10 @@ contains
     end associate
   end subroutine simulation_calculate_alt_entries
        
-  subroutine simulation_rescan &
-       (simulation, n, es_array, update_event, update_sqme, update_weight, &
-       recover_beams, global)
+  subroutine simulation_rescan (simulation, n, es_array, global)
     class(simulation_t), intent(inout) :: simulation
     integer, intent(in) :: n
     type(event_stream_array_t), intent(inout) :: es_array
-    logical, intent(in) :: update_event, update_sqme, update_weight
-    logical, intent(in) :: recover_beams
     type(rt_data_t), intent(inout) :: global
     type(qcd_t) :: qcd
     type(string_t) :: str1, str2, str3
@@ -1212,7 +1281,7 @@ contains
     end if
     simulation%n_evt_requested = n
     call simulation%entry%set_n (n)
-    if (update_sqme .or. update_weight) then
+    if (simulation%update_sqme .or. simulation%update_weight) then
        call dispatch_qcd (qcd, global)
        call simulation%update_processes &
             (global%model, qcd, global%get_helicity_selection ())
@@ -1226,16 +1295,20 @@ contains
     do
        call simulation%read_event (es_array, .false., complete)
        if (complete)  exit
-       if (update_event .or. update_sqme .or. update_weight) then
-          call simulation%recalculate (update_sqme, update_weight, &
-               recover_beams)
+       if (simulation%update_event &
+            .or. simulation%update_sqme &
+            .or. simulation%update_weight) then
+          call simulation%recalculate ()
           if (signal_is_pending ())  return
           associate (entry => simulation%entry(simulation%i_prc))
             call entry%update_normalization ()
+            if (simulation%update_event) then
+               call entry%evaluate_transforms ()
+            end if
             call entry%check ()
             call entry%evaluate_expressions ()
             if (signal_is_pending ())  return
-            simulation%weight = entry%weight_prc
+            simulation%weight = entry%get_weight_prc ()
             call simulation%counter%record (simulation%weight, from_file=.true.)
             call entry%record (simulation%i_mci, from_file=.true.)
           end associate
@@ -1246,7 +1319,7 @@ contains
             call entry%check ()
             call entry%evaluate_expressions ()
             if (signal_is_pending ())  return
-            simulation%weight = entry%weight_ref
+            simulation%weight = entry%get_weight_ref ()
             call simulation%counter%record (simulation%weight, from_file=.true.)
             call entry%record (simulation%i_mci, from_file=.true.)
           end associate
@@ -1255,7 +1328,7 @@ contains
        if (signal_is_pending ())  return
        call simulation%write_event (es_array)
     end do
-    if (update_sqme .or. update_weight) then
+    if (simulation%update_sqme .or. simulation%update_weight) then
        call simulation%restore_processes ()
     end if
   end subroutine simulation_rescan
@@ -1297,7 +1370,7 @@ contains
              call eio%split_out ()
           end if
        end if
-       call eio%output (object%entry(current)%event_t, current)
+       call eio%output (object%entry(current)%event_t, current, pacify = object%pacify)
     else
        call msg_fatal ("Simulation: write event: no process selected")
     end if
@@ -1333,7 +1406,8 @@ contains
     i_prc = object%i_prc
     if (i_prc > 0) then
        event_index = object%counter%total
-       call es_array%output (object%entry(i_prc)%event_t, i_prc, event_index)
+       call es_array%output (object%entry(i_prc)%event_t, i_prc, &
+            event_index, pacify = object%pacify)
     else
        call msg_fatal ("Simulation: write event: no process selected")
     end if
@@ -1385,35 +1459,24 @@ contains
     end if
   end subroutine simulation_read_event_es_array
 
-  subroutine simulation_recalculate (simulation, update_sqme, update_weight, &
-       recover_beams)
+  subroutine simulation_recalculate (simulation)
     class(simulation_t), intent(inout) :: simulation
-    logical, intent(in) :: update_sqme, update_weight
-    logical, intent(in), optional :: recover_beams
     integer :: i_prc
     i_prc = simulation%i_prc
     associate (entry => simulation%entry(i_prc))
-      if (update_weight) then
+      if (simulation%update_weight) then
          call simulation%entry(i_prc)%recalculate &
-              (update_sqme = update_sqme, recover_beams = recover_beams, &
+              (update_sqme = simulation%update_sqme, &
+              recover_beams = simulation%recover_beams, &
               weight_factor = entry%get_kinematical_weight ())
       else
          call simulation%entry(i_prc)%recalculate &
-              (update_sqme = update_sqme, recover_beams = recover_beams)
+              (update_sqme = simulation%update_sqme, &
+              recover_beams = simulation%recover_beams)
       end if
     end associate
   end subroutine simulation_recalculate
 
-  function simulation_get_process_ptr (simulation) result (ptr)
-    class(simulation_t), intent(in) :: simulation
-    type(process_ptr_t), dimension(:), allocatable :: ptr
-    integer :: i
-    allocate (ptr (simulation%n_prc))
-    do i = 1, size (ptr)
-       ptr(i)%ptr => simulation%entry(i)%get_process_ptr ()
-    end do
-  end function simulation_get_process_ptr
-    
   function simulation_get_md5sum_prc (simulation) result (md5sum)
     class(simulation_t), intent(in) :: simulation
     character(32) :: md5sum
@@ -1588,6 +1651,8 @@ contains
          .false., is_known = .true.)    
     call global%set_log (var_str ("?integration_timer"),&
          .false., is_known = .true.)    
+    call global%set_log (var_str ("?recover_beams"), &
+         .false., is_known = .true.)
     
     call global%set_real (var_str ("sqrts"),&
          1000._default, is_known = .true.)
@@ -1675,6 +1740,8 @@ contains
          .false., is_known = .true.)    
     call global%set_log (var_str ("?integration_timer"),&
          .false., is_known = .true.)    
+    call global%set_log (var_str ("?recover_beams"), &
+         .false., is_known = .true.)
 
     call global%set_real (var_str ("sqrts"),&
          1000._default, is_known = .true.)
@@ -1762,6 +1829,8 @@ contains
          .false., is_known = .true.)    
     call global%set_log (var_str ("?integration_timer"),&
          .false., is_known = .true.)    
+    call global%set_log (var_str ("?recover_beams"), &
+         .false., is_known = .true.)
 
     call global%set_real (var_str ("sqrts"),&
          1000._default, is_known = .true.)
@@ -1861,6 +1930,8 @@ contains
          .false., is_known = .true.)    
     call global%set_log (var_str ("?integration_timer"),&
          .false., is_known = .true.)    
+    call global%set_log (var_str ("?recover_beams"), &
+         .false., is_known = .true.)
     
     call reset_interaction_counter ()
 
@@ -1918,7 +1989,6 @@ contains
     integer, intent(in) :: u
     type(string_t) :: libname, procname1, sample
     type(rt_data_t), target :: global
-    type(process_ptr_t) :: process_ptr
     class(eio_t), allocatable :: eio
     type(simulation_t), allocatable, target :: simulation
     
@@ -1957,6 +2027,8 @@ contains
          .false., is_known = .true.)    
     call global%set_log (var_str ("?integration_timer"),&
          .false., is_known = .true.)    
+    call global%set_log (var_str ("?recover_beams"), &
+         .false., is_known = .true.)
 
     call global%set_real (var_str ("sqrts"),&
          1000._default, is_known = .true.)
@@ -1982,10 +2054,8 @@ contains
     write (u, "(A)")  "* Initialize raw event file"
     write (u, "(A)")
 
-    process_ptr%ptr => global%process_stack%get_process_ptr (procname1)
-    
     allocate (eio_raw_t :: eio)
-    call eio%init_out (sample, [process_ptr])
+    call eio%init_out (sample)
     
     write (u, "(A)")  "* Generate an event"
     write (u, "(A)")
@@ -2003,11 +2073,18 @@ contains
     write (u, "(A)")  "* Re-read the event from file"
     write (u, "(A)")
     
+    call global%set_log (var_str ("?update_sqme"), &
+         .true., is_known = .true.)
+    call global%set_log (var_str ("?update_weight"), &
+         .true., is_known = .true.)
+    call global%set_log (var_str ("?recover_beams"), &
+         .false., is_known = .true.)
+
     allocate (simulation)
     call simulation%init ([procname1], .true., .true., global)
     call simulation%init_process_selector ()
     allocate (eio_raw_t :: eio)
-    call eio%init_in (sample, [process_ptr])
+    call eio%init_in (sample)
     
     call simulation%read_event (eio)
     call simulation%write_event (u)
@@ -2016,7 +2093,7 @@ contains
     write (u, "(A)")  "* Recalculate process instance"
     write (u, "(A)")
 
-    call simulation%recalculate (update_sqme = .true., update_weight = .true.)
+    call simulation%recalculate ()
     call simulation%entry(simulation%i_prc)%evaluate_expressions ()
     call simulation%write_event (u)
 
@@ -2036,7 +2113,6 @@ contains
     integer, intent(in) :: u
     type(string_t) :: libname, procname1, sample
     type(rt_data_t), target :: global
-    type(process_ptr_t) :: process_ptr
     class(eio_t), allocatable :: eio
     type(simulation_t), allocatable, target :: simulation
     type(flavor_t) :: flv
@@ -2082,6 +2158,8 @@ contains
          .false., is_known = .true.)    
     call global%set_log (var_str ("?integration_timer"),&
          .false., is_known = .true.)    
+    call global%set_log (var_str ("?recover_beams"), &
+         .false., is_known = .true.)
 
     call global%set_real (var_str ("sqrts"),&
          1000._default, is_known = .true.)
@@ -2115,10 +2193,8 @@ contains
     write (u, "(A)")  "* Initialize raw event file"
     write (u, "(A)")
 
-    process_ptr%ptr => global%process_stack%get_process_ptr (procname1)
-    
     allocate (eio_raw_t :: eio)
-    call eio%init_out (sample, [process_ptr])
+    call eio%init_out (sample)
     
     write (u, "(A)")  "* Generate an event"
     write (u, "(A)")
@@ -2139,11 +2215,16 @@ contains
     
     call reset_interaction_counter ()
     
+    call global%set_log (var_str ("?update_sqme"), &
+         .true., is_known = .true.)
+    call global%set_log (var_str ("?update_weight"), &
+         .true., is_known = .true.)
+
     allocate (simulation)
     call simulation%init ([procname1], .true., .true., global)
     call simulation%init_process_selector ()
     allocate (eio_raw_t :: eio)
-    call eio%init_in (sample, [process_ptr])
+    call eio%init_in (sample)
     
     call simulation%read_event (eio)
     call simulation%write_event (u, verbose = .true., testflag = .true.)
@@ -2152,7 +2233,7 @@ contains
     write (u, "(A)")  "* Recalculate process instance"
     write (u, "(A)")
 
-    call simulation%recalculate (update_sqme = .true., update_weight = .true.)
+    call simulation%recalculate ()
     call simulation%entry(simulation%i_prc)%evaluate_expressions ()
     call simulation%write_event (u, verbose = .true., testflag = .true.)
 
@@ -2222,6 +2303,8 @@ contains
          .false., is_known = .true.)    
     call global%set_log (var_str ("?integration_timer"),&
          .false., is_known = .true.)    
+    call global%set_log (var_str ("?recover_beams"), &
+         .false., is_known = .true.)
 
     call global%set_real (var_str ("sqrts"),&
          1000._default, is_known = .true.)
@@ -2257,9 +2340,7 @@ contains
 
     data%md5sum_prc = simulation%get_md5sum_prc ()
     data%md5sum_cfg = simulation%get_md5sum_cfg ()
-    call es_array%init &
-         (sample, [var_str ("raw")], simulation%get_process_ptr (), global, &
-         data)
+    call es_array%init (sample, [var_str ("raw")], global, data)
     
     write (u, "(A)")  "* Generate an event"
     write (u, "(A)")
@@ -2284,8 +2365,7 @@ contains
 
     data%md5sum_prc = simulation%get_md5sum_prc ()
     data%md5sum_cfg = simulation%get_md5sum_cfg ()
-    call es_array%init (sample, &
-         empty_string_array, simulation%get_process_ptr (), global, data, &
+    call es_array%init (sample, empty_string_array, global, data, &
          input = var_str ("raw"))
     
     call simulation%generate (2, es_array)
@@ -2310,8 +2390,7 @@ contains
 
     data%md5sum_prc = simulation%get_md5sum_prc ()
     data%md5sum_cfg = simulation%get_md5sum_cfg ()
-    call es_array%init (sample, &
-         empty_string_array, simulation%get_process_ptr (), global, data, &
+    call es_array%init (sample, empty_string_array, global, data, &
          input = var_str ("raw"))
 
     call simulation%generate (2, es_array)
@@ -2385,6 +2464,8 @@ contains
          .false., is_known = .true.)    
     call global%set_log (var_str ("?integration_timer"),&
          .false., is_known = .true.)    
+    call global%set_log (var_str ("?recover_beams"), &
+         .false., is_known = .true.)
 
     call global%set_real (var_str ("sqrts"),&
          1000._default, is_known = .true.)
@@ -2422,8 +2503,7 @@ contains
     data%md5sum_cfg = simulation%get_md5sum_cfg ()
     write (u, "(1x,A,A,A)")  "MD5 sum (proc)   = '", data%md5sum_prc, "'"
     write (u, "(1x,A,A,A)")  "MD5 sum (config) = '", data%md5sum_cfg, "'"
-    call es_array%init &
-         (sample, [var_str ("raw")], simulation%get_process_ptr (), global, &
+    call es_array%init (sample, [var_str ("raw")], global, &
          data)
     
     write (u, "(A)")
@@ -2453,16 +2533,10 @@ contains
     data%md5sum_cfg = ""
     write (u, "(1x,A,A,A)")  "MD5 sum (proc)   = '", data%md5sum_prc, "'"
     write (u, "(1x,A,A,A)")  "MD5 sum (config) = '", data%md5sum_cfg, "'"
-    call es_array%init (sample, &
-         empty_string_array, simulation%get_process_ptr (), global, data, &
+    call es_array%init (sample, empty_string_array, global, data, &
          input = var_str ("raw"), input_sample = sample, allow_switch = .false.)
     
-    call simulation%rescan (1, es_array, &
-         update_event = .false., &
-         update_sqme = .false., &
-         update_weight = .false., &
-         recover_beams = .false., &
-         global = global)
+    call simulation%rescan (1, es_array, global = global)
     
     write (u, "(A)")
 
@@ -2479,6 +2553,11 @@ contains
     
     call reset_interaction_counter ()
     
+    call global%set_log (var_str ("?update_sqme"), &
+         .true., is_known = .true.)
+    call global%set_log (var_str ("?update_event"), &
+         .true., is_known = .true.)
+
     allocate (simulation)
     call simulation%init ([procname1], .false., .false., global)
     call simulation%init_process_selector ()
@@ -2487,16 +2566,10 @@ contains
     data%md5sum_cfg = ""
     write (u, "(1x,A,A,A)")  "MD5 sum (proc)   = '", data%md5sum_prc, "'"
     write (u, "(1x,A,A,A)")  "MD5 sum (config) = '", data%md5sum_cfg, "'"
-    call es_array%init (sample, &
-         empty_string_array, simulation%get_process_ptr (), global, data, &
+    call es_array%init (sample, empty_string_array, global, data, &
          input = var_str ("raw"), input_sample = sample, allow_switch = .false.)
     
-    call simulation%rescan (1, es_array, &
-         update_event = .true., &
-         update_sqme = .true., &
-         update_weight = .false., &
-         recover_beams = .false., &
-         global = global)
+    call simulation%rescan (1, es_array, global = global)
     
     write (u, "(A)")
 
@@ -2570,6 +2643,8 @@ contains
          .false., is_known = .true.)    
     call global%set_log (var_str ("?integration_timer"),&
          .false., is_known = .true.)    
+    call global%set_log (var_str ("?recover_beams"), &
+         .false., is_known = .true.)
 
     call global%set_real (var_str ("sqrts"),&
          1000._default, is_known = .true.)
@@ -2610,8 +2685,7 @@ contains
     data%md5sum_cfg = simulation%get_md5sum_cfg ()
     write (u, "(1x,A,A,A)")  "MD5 sum (proc)   = '", data%md5sum_prc, "'"
     write (u, "(1x,A,A,A)")  "MD5 sum (config) = '", data%md5sum_cfg, "'"
-    call es_array%init &
-         (sample, [var_str ("raw")], simulation%get_process_ptr (), global, &
+    call es_array%init (sample, [var_str ("raw")], global, &
          data)
     
     write (u, "(A)")
@@ -2643,19 +2717,13 @@ contains
     data%md5sum_cfg = ""
     write (u, "(1x,A,A,A)")  "MD5 sum (proc)   = '", data%md5sum_prc, "'"
     write (u, "(1x,A,A,A)")  "MD5 sum (config) = '", data%md5sum_cfg, "'"
-    call es_array%init (sample, &
-         empty_string_array, simulation%get_process_ptr (), global, data, &
+    call es_array%init (sample, empty_string_array, global, data, &
          input = var_str ("raw"), input_sample = sample, &
          allow_switch = .false., error = error)
     
     write (u, "(1x,A,L1)")  "error = ", error
     
-    call simulation%rescan (1, es_array, &
-         update_event = .false., &
-         update_sqme = .false., &
-         update_weight = .false., &
-         recover_beams = .false., &
-         global = global)
+    call simulation%rescan (1, es_array, global = global)
 
     call es_array%final ()
     call simulation%final ()
@@ -2716,6 +2784,8 @@ contains
          .false., is_known = .true.)    
     call global%set_log (var_str ("?integration_timer"),&
          .false., is_known = .true.)    
+    call global%set_log (var_str ("?recover_beams"), &
+         .false., is_known = .true.)
 
     call global%set_real (var_str ("sqrts"),&
          1000._default, is_known = .true.)
@@ -2812,6 +2882,8 @@ contains
 
     call global%set_int (var_str ("seed"), &
          0, is_known = .true.)        
+    call global%set_log (var_str ("?recover_beams"), &
+         .false., is_known = .true.)
     
     prefix = "simulation_11"
     procname1 = prefix // "_p"
@@ -2862,7 +2934,6 @@ contains
     integer, intent(in) :: u
     type(string_t) :: libname, procname1, sample
     type(rt_data_t), target :: global
-    type(process_ptr_t) :: process_ptr
     class(eio_t), allocatable :: eio
     type(simulation_t), allocatable, target :: simulation
     type(flavor_t) :: flv
@@ -2907,6 +2978,8 @@ contains
          .false., is_known = .true.)    
     call global%set_log (var_str ("?integration_timer"),&
          .false., is_known = .true.)    
+    call global%set_log (var_str ("?recover_beams"), &
+         .false., is_known = .true.)
 
     call global%set_real (var_str ("sqrts"),&
          1000._default, is_known = .true.)
@@ -2943,13 +3016,11 @@ contains
     write (u, "(A)")  "* Initialize ASCII event file"
     write (u, "(A)")
 
-    process_ptr%ptr => global%process_stack%get_process_ptr (procname1)
-    
     allocate (eio_ascii_short_t :: eio)
     select type (eio)
     class is (eio_ascii_t);  call eio%set_parameters ()
     end select
-    call eio%init_out (sample, [process_ptr], data = simulation%get_data ())
+    call eio%init_out (sample, data = simulation%get_data ())
     
     write (u, "(A)")  "* Generate 5 events, distributed among three files"
 

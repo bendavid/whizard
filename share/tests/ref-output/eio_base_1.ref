@@ -6,8 +6,6 @@
 * Generate and write an event
 
  Test event stream
-   Process ID  = 'processes_test'
-   sqrts       =  1.000000000000E+03
  Event #1:
  E =   5.000000000000E+02
  P =  -1.496022091137E+02 -4.604282561141E+02  0.000000000000E+00
@@ -17,8 +15,6 @@
 * Re-read the event
 
  Test event stream
-   Process ID  = 'processes_test'
-   sqrts       =  1.000000000000E+03
  Event #1:
  E =   5.000000000000E+02
  P =  -1.496022091137E+02 -4.604282561141E+02  0.000000000000E+00
@@ -30,8 +26,6 @@
 * Generate and append another event
 
  Test event stream
-   Process ID  = 'processes_test'
-   sqrts       =  1.000000000000E+03
  Event #2:
  E =   5.000000000000E+02
  P =  -1.492173604062E+02  4.592438135829E+02  3.470301196281E+01
@@ -41,8 +35,6 @@
 * Re-read both events
 
  Test event stream
-   Process ID  = 'processes_test'
-   sqrts       =  1.000000000000E+03
  Event #2:
  E =   5.000000000000E+02
  P =  -1.492173604062E+02  4.592438135829E+02  3.470301196281E+01

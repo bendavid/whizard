@@ -1,6 +1,6 @@
-! WHIZARD 2.2.3 Nov 30 2014
+! WHIZARD 2.2.4 Feb 06 2015
 ! 
-! Copyright (C) 1999-2014 by 
+! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -9,7 +9,8 @@
 !     Fabian Bach <fabian.bach@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Felix Braam, Sebastian Schmidt, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam, 
+!     Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -52,6 +53,7 @@ module commands
   use analysis
   use pdg_arrays
   use variables
+  use observables
   use eval_trees
   use models
   use auto_components
@@ -966,7 +968,7 @@ contains
     logical :: rebuild_library
     lib => global%prclib_stack%get_library_ptr (cmd%name)
     rebuild_library = &
-         var_list_get_lval (global%var_list, var_str ("?rebuild_library"))    
+         global%var_list%get_lval (var_str ("?rebuild_library"))    
     if (.not. (associated (lib))) then
        allocate (lib_entry)
        call lib_entry%init (cmd%name)
@@ -1036,11 +1038,9 @@ contains
     logical :: use_gosam_loops
     logical :: use_gosam_correlations
     logical :: use_gosam_real_trees
-    integer, dimension(:,:), allocatable :: flv_real
-    integer, dimension(:,:), allocatable :: flv_born
-    integer :: alpha_power, alphas_power
-    type(blha_master_t) :: blha_master
-
+    integer , dimension(4) :: i_list
+    logical :: combined_nlo_integration
+    
     nlo_calc = cmd%local%nlo_calculation
     active_nlo_components = cmd%local%active_nlo_components
 
@@ -1088,17 +1088,16 @@ contains
        call prt_expr_out%term_to_array (prt_spec_out, i_term(i))
        if (nlo_calc) then
          associate (active_comp => cmd%local%active_nlo_components)
-            use_gosam_loops  = var_list_get_lval (global%var_list, &
-                                             var_str ('?use_gosam_loops'))
-            use_gosam_correlations = var_list_get_lval (global%var_list, &
-                                             var_str ('?use_gosam_correlations'))
-            use_gosam_real_trees= var_list_get_lval (global%var_list, &
-                                             var_str ('?use_gosam_real_trees'))
-            alpha_power = var_list_get_ival (global%var_list, &
-                                             var_str ('alpha_power'))
-            alphas_power = var_list_get_ival (global%var_list, &
-                                              var_str ('alphas_power'))
-
+            i_list(1) = i
+            i_list(2) = i + n_components
+            i_list(3) = i + 2*n_components
+            i_list(4) = i + 3*n_components
+            use_gosam_loops = &
+                 global%var_list%get_lval (var_str ('?use_gosam_loops'))
+            use_gosam_correlations = &
+                 global%var_list%get_lval (var_str ('?use_gosam_correlations'))
+            use_gosam_real_trees = &
+                 global%var_list%get_lval (var_str ('?use_gosam_real_trees'))
 
             call prc_config%setup_component (i, prt_spec_in, prt_spec_out, &
                                              cmd%local, var_str ('Born'), &
@@ -1109,32 +1108,27 @@ contains
                                            pl_in, pl_out)
             call radiation_generator%set_n (n_in, n_out, 0)
             call radiation_generator%set_constraints (.false., .false., .true., .true.)
-            call radiation_generator%init_radiation_model (cmd%local%os_data)
+            call radiation_generator%init_radiation_model &
+                 (cmd%local%radiation_model)
             call radiation_generator%generate (prt_in_nlo, prt_out_nlo)
 
             if (use_gosam_real_trees) then
                if (.not. method_changed) &
                  call global%change_to_gosam (method_changed)
-               flv_real = radiation_generator%get_raw_states ()
             end if
   
             call prc_config%setup_component (n_components + i, &
                             new_prt_spec (prt_in_nlo), &
                             new_prt_spec (prt_out_nlo),&
-                            cmd%local, var_str ('Real'), i, &
+                            cmd%local, var_str ('Real'), &
                             active_in = active_comp (2))
-
 
             if (use_gosam_loops .and..not. method_changed) &
                  call global%change_to_gosam (method_changed)
 
             call prc_config%setup_component (n_components*2 + i, prt_spec_in, &
-                            prt_spec_out, global, var_str ('Virtual'), i, &
+                            prt_spec_out, global, var_str ('Virtual'), &
                             active_in = active_comp (3))
-
-            if (use_gosam_loops .or. use_gosam_correlations) &
-               flv_born = radiation_generator%get_born_raw ()
-               
 
             if (.not. use_gosam_correlations .and. method_changed) then
                call global%change_to_omega ()
@@ -1143,23 +1137,14 @@ contains
             end if
 
             call prc_config%setup_component (n_components*3 + i, prt_spec_in, &
-                            prt_spec_out, global, var_str ('Subtraction'), i, &
+                            prt_spec_out, global, var_str ('Subtraction'), &
                             .false.)                     
+            call prc_config%set_component_associations (i_list)
          end associate
        else
          call prc_config%setup_component (i, prt_spec_in, prt_spec_out, cmd%local)
        end if
     end do
-    if (nlo_calc .and. &
-        (use_gosam_loops .or. use_gosam_correlations .or. use_gosam_real_trees)) then
-       call blha_master%init (cmd%id, global%model, &
-                              n_in, size (flv_born, 1)-2, use_gosam_loops, &
-                              use_gosam_correlations, use_gosam_real_trees, &
-                              alpha_power, alphas_power, &
-                              flv_born, flv_real)
-       call blha_master%generate (cmd%id)
-    end if
- 
     call prc_config%record (cmd%local)
  
   contains
@@ -1504,7 +1489,6 @@ contains
     type(parse_node_t), pointer :: pn_result, pn_proc
     type(string_t) :: var_name
     type(var_list_t), pointer :: model_vars
-    type(var_entry_t), pointer :: var_entry
     integer :: type
     logical :: new
     pn_result => null ()
@@ -1568,28 +1552,36 @@ contains
     else
        model_vars => null ()
     end if
+    call var_list_check_observable (global%var_list, var_name, type)
+    call var_list_check_result_var (global%var_list, var_name, type)
     call var_list_check_user_var (global%var_list, var_name, type, new)
     cmd%name = var_name
     cmd%pn_value => parse_node_get_next_ptr (pn_name, 2)
-    var_entry => var_list_get_var_ptr (global%var_list, cmd%name, type, &
-         follow_link = .false.)
-    if (associated (var_entry)) then   ! local variable
-       cmd%is_intrinsic = var_entry_is_intrinsic (var_entry)
-       cmd%type = var_entry_get_type (var_entry)
+    if (global%var_list%contains (cmd%name, follow_link = .false.)) then
+       ! local variable
+       cmd%is_intrinsic = &
+            global%var_list%is_intrinsic (cmd%name, follow_link = .false.)
+       cmd%type = &
+            global%var_list%get_type (cmd%name, follow_link = .false.)
     else
-       var_entry => var_list_get_var_ptr (global%var_list, cmd%name, type, &
-            follow_link = .true.)
-       if (associated (var_entry)) then        ! global variable
-          cmd%is_intrinsic = var_entry_is_intrinsic (var_entry)
+       if (new)  cmd%type = type
+       if (global%var_list%contains (cmd%name, follow_link = .true.)) then
+          ! global variable
+          cmd%is_intrinsic = &
+               global%var_list%is_intrinsic (cmd%name, follow_link = .true.)
+          if (cmd%type == V_NONE) then
+             cmd%type = &
+                  global%var_list%get_type (cmd%name, follow_link = .true.)
+          end if
        else if (associated (model_vars)) then  ! check model variable
-          var_entry => var_list_get_var_ptr (model_vars, cmd%name)
-          cmd%is_model_var = associated (var_entry)
+          cmd%is_model_var = &
+               model_vars%contains (cmd%name)
+          if (cmd%type == V_NONE) then
+             cmd%type = &
+                  model_vars%get_type (cmd%name)
+          end if
        end if
-       if (new) then
-          cmd%type = type
-       else if (associated (var_entry)) then
-          cmd%type = var_entry_get_type (var_entry)
-       else
+       if (cmd%type == V_NONE) then
           call msg_fatal ("Variable '" // char (cmd%name) // "' " &
                // "set without declaration")
           cmd%type = V_NONE;  return
@@ -1598,7 +1590,7 @@ contains
           if (new) then
              call msg_fatal ("Model variable '" // char (cmd%name) // "' " &
                   // "redeclared")
-          else if (var_list_is_locked (model_vars, cmd%name)) then
+          else if (model_vars%is_locked (cmd%name)) then
              call msg_fatal ("Model variable '" // char (cmd%name) // "' " &
                   // "is locked")
           end if
@@ -1635,7 +1627,7 @@ contains
     logical :: is_known, pacified
     var_list => global%get_var_list_ptr ()
     if (cmd%is_model_var) then
-       pacified = var_list_get_lval (var_list, var_str ("?pacify"))     
+       pacified = var_list%get_lval (var_str ("?pacify"))     
        rval = eval_real (cmd%pn_value, var_list, is_known=is_known)
        call global%model_set_real &
             (cmd%name, rval, verbose=.true., pacified=pacified)
@@ -1656,7 +1648,7 @@ contains
     type(pdg_array_t) :: aval
     type(string_t) :: sval
     logical :: is_known
-    pacified = var_list_get_lval (var_list, var_str ("?pacify"))     
+    pacified = var_list%get_lval (var_str ("?pacify"))     
     select case (var%type)
     case (V_LOG)
        lval = eval_log (var%pn_value, var_list, is_known=is_known)
@@ -1855,7 +1847,7 @@ contains
     else
        model_vars => null ()
     end if
-    pacified = var_list_get_lval (var_list, var_str ("?pacify"))
+    pacified = var_list%get_lval (var_str ("?pacify"))
     open (u, status = "scratch", action = "readwrite")
     if (associated (cmd%local%model)) then
        name = cmd%local%model%get_name ()
@@ -1975,18 +1967,17 @@ contains
                 prc_lib => cmd%local%prclib_stack%get_library_ptr (cmd%name(i))
                 call prc_lib%show (u)
              else if (associated (model_vars)) then
-                if (var_list_exists (model_vars, cmd%name(i), &
-                     follow_link=.false.)) then
+                if (model_vars%contains (cmd%name(i), follow_link=.false.)) then
                    call var_list_write_var (model_vars, cmd%name(i), &
                         unit = u, model_name = name, pacified = pacified)
-                else if (var_list_exists (var_list, cmd%name(i))) then
+                else if (var_list%contains (cmd%name(i))) then
                    call var_list_write_var (var_list, cmd%name(i), &
                         unit = u, pacified = pacified)
                 else
                    call msg_error ("show: object '" // char (cmd%name(i)) &
                         // "' not found")
                 end if
-             else if (var_list_exists (var_list, cmd%name(i))) then
+             else if (var_list%contains (cmd%name(i))) then
                 call var_list_write_var (var_list, cmd%name(i), &
                      unit = u, pacified = pacified)
              else
@@ -2089,9 +2080,9 @@ contains
   subroutine cmd_clear_execute (cmd, global)
     class(cmd_clear_t), intent(inout) :: cmd
     type(rt_data_t), intent(inout), target :: global
-    type(var_entry_t), pointer :: var
     integer :: i
     logical :: success
+    type(var_list_t), pointer :: model_vars
     if (size (cmd%name) == 0) then
        call msg_warning ("clear: no object specified")
     else
@@ -2115,19 +2106,17 @@ contains
           case default
              if (analysis_exists (cmd%name(i))) then
                 call analysis_clear (cmd%name(i))
-             else if (var_list_exists (cmd%local%var_list, cmd%name(i))) then
-                var => var_list_get_var_ptr &
-                     (cmd%local%var_list, cmd%name(i), follow_link=.true.)
-                if (.not. var_entry_is_locked (var)) then
-                   call var_entry_clear (var)
+             else if (cmd%local%var_list%contains (cmd%name(i))) then
+                if (.not. cmd%local%var_list%is_locked (cmd%name(i))) then
+                   call cmd%local%var_list%unset (cmd%name(i))
                 else
                    call msg_error ("clear: variable '" // char (cmd%name(i)) &
                         // "' is locked and can't be cleared")
                    success = .false.
                 end if
              else if (associated (cmd%local%model)) then
-                if (var_list_exists (cmd%local%model%get_var_list_ptr (), &
-                     cmd%name(i), follow_link=.false.)) then
+                model_vars => cmd%local%model%get_var_list_ptr ()
+                if (model_vars%contains (cmd%name(i), follow_link=.false.)) then
                    call msg_error ("clear: variable '" // char (cmd%name(i)) &
                         // "' is a model variable and can't be cleared")
                 else
@@ -2328,10 +2317,10 @@ contains
     if (n_expr <= n_index + 1) then
        do i = 1, min (n_expr, n_index)
           associate (expr => sentry%expr(i))
-            call eval_tree_init_expr (eval_tree, expr%ptr, var_list)
-            call eval_tree_evaluate (eval_tree)
-            if (eval_tree_result_is_known (eval_tree)) then
-               index(i) = eval_tree_get_int (eval_tree)
+            call eval_tree%init_expr (expr%ptr, var_list)
+            call eval_tree%evaluate ()
+            if (eval_tree%is_known ()) then
+               index(i) = eval_tree%get_int ()
             else
                call msg_fatal ("Evaluating density matrix: undefined index")
             end if
@@ -2342,14 +2331,14 @@ contains
        end do
        if (n_expr == n_index + 1) then
           associate (expr => sentry%expr(n_expr))
-            call eval_tree_init_expr (eval_tree, expr%ptr, var_list)
-            call eval_tree_evaluate (eval_tree)
-            if (eval_tree_result_is_known (eval_tree)) then
-               value = eval_tree_get_cmplx (eval_tree)
+            call eval_tree%init_expr (expr%ptr, var_list)
+            call eval_tree%evaluate ()
+            if (eval_tree%is_known ()) then
+               value = eval_tree%get_cmplx ()
             else
                call msg_fatal ("Evaluating density matrix: undefined index")
             end if
-            call eval_tree_final (eval_tree)
+            call eval_tree%final ()
           end associate
        else
           value = 1
@@ -2479,14 +2468,14 @@ contains
     var_list => global%get_var_list_ptr ()
     allocate (pol_f (cmd%n_in))
     do i = 1, cmd%n_in
-       call eval_tree_init_expr (expr, cmd%expr(i)%ptr, var_list)
-       call eval_tree_evaluate (expr)
-       if (eval_tree_result_is_known (expr)) then
-          pol_f(i) = eval_tree_get_real (expr)
+       call expr%init_expr (cmd%expr(i)%ptr, var_list)
+       call expr%evaluate ()
+       if (expr%is_known ()) then
+          pol_f(i) = expr%get_real ()
        else
           call msg_fatal ("beams polarization fraction: undefined value")
        end if
-       call eval_tree_final (expr)
+       call expr%final ()
     end do
     call global%beam_structure%set_pol_f (pol_f)
   end subroutine cmd_beams_pol_fraction_execute
@@ -2517,14 +2506,14 @@ contains
     var_list => global%get_var_list_ptr ()
     allocate (p (cmd%n_in))
     do i = 1, cmd%n_in
-       call eval_tree_init_expr (expr, cmd%expr(i)%ptr, var_list)
-       call eval_tree_evaluate (expr)
-       if (eval_tree_result_is_known (expr)) then
-          p(i) = eval_tree_get_real (expr)
+       call expr%init_expr (cmd%expr(i)%ptr, var_list)
+       call expr%evaluate ()
+       if (expr%is_known ()) then
+          p(i) = expr%get_real ()
        else
           call msg_fatal ("beams momentum: undefined value")
        end if
-       call eval_tree_final (expr)
+       call expr%final ()
     end do
     call global%beam_structure%set_momentum (p)
   end subroutine cmd_beams_momentum_execute
@@ -2571,14 +2560,14 @@ contains
     var_list => global%get_var_list_ptr ()
     allocate (theta (cmd%n_in))
     do i = 1, cmd%n_in
-       call eval_tree_init_expr (expr, cmd%expr(i)%ptr, var_list)
-       call eval_tree_evaluate (expr)
-       if (eval_tree_result_is_known (expr)) then
-          theta(i) = eval_tree_get_real (expr)
+       call expr%init_expr (cmd%expr(i)%ptr, var_list)
+       call expr%evaluate ()
+       if (expr%is_known ()) then
+          theta(i) = expr%get_real ()
        else
           call msg_fatal ("beams theta: undefined value")
        end if
-       call eval_tree_final (expr)
+       call expr%final ()
     end do
     call global%beam_structure%set_theta (theta)
   end subroutine cmd_beams_theta_execute
@@ -2593,14 +2582,14 @@ contains
     var_list => global%get_var_list_ptr ()
     allocate (phi (cmd%n_in))
     do i = 1, cmd%n_in
-       call eval_tree_init_expr (expr, cmd%expr(i)%ptr, var_list)
-       call eval_tree_evaluate (expr)
-       if (eval_tree_result_is_known (expr)) then
-          phi(i) = eval_tree_get_real (expr)
+       call expr%init_expr (cmd%expr(i)%ptr, var_list)
+       call expr%evaluate ()
+       if (expr%is_known ()) then
+          phi(i) = expr%get_real ()
        else
           call msg_fatal ("beams phi: undefined value")
        end if
-       call eval_tree_final (expr)
+       call expr%final ()
     end do
     call global%beam_structure%set_phi (phi)
   end subroutine cmd_beams_phi_execute
@@ -2864,8 +2853,8 @@ contains
     type(graph_options_t) :: graph_options
     type(string_t) :: label, unit
     var_list => cmd%local%get_var_list_ptr ()
-    label = var_list_get_sval (var_list, var_str ("$obs_label"))
-    unit = var_list_get_sval (var_list, var_str ("$obs_unit"))
+    label = var_list%get_sval (var_str ("$obs_label"))
+    unit = var_list%get_sval (var_str ("$obs_unit"))
     call graph_options_init (graph_options)
     call set_graph_options (graph_options, var_list)
     call analysis_init_observable (cmd%id, label, unit, graph_options)
@@ -2925,21 +2914,20 @@ contains
     if (associated (cmd%pn_bin_width)) then
        bin_width = eval_real (cmd%pn_bin_width, var_list)
        bin_width_is_used = .true.
-    else if (var_list_is_known &
-         (var_list, var_str ("n_bins"))) then
-       bin_number = var_list_get_ival &
-            (var_list, var_str ("n_bins"))
+    else if (var_list%is_known (var_str ("n_bins"))) then
+       bin_number = &
+            var_list%get_ival (var_str ("n_bins"))
        bin_width_is_used = .false.
     else
        call msg_error ("Cmd '" // char (cmd%id) // &
             "': neither bin width nor number is defined")
     end if
-    normalize_bins = var_list_get_lval &
-         (var_list, var_str ("?normalize_bins"))
-    obs_label = var_list_get_sval &
-         (var_list, var_str ("$obs_label"))
-    obs_unit = var_list_get_sval &
-         (var_list, var_str ("$obs_unit"))
+    normalize_bins = &
+         var_list%get_lval (var_str ("?normalize_bins"))
+    obs_label = &
+         var_list%get_sval (var_str ("$obs_label"))
+    obs_unit = &
+         var_list%get_sval (var_str ("$obs_unit"))
 
     call graph_options_init (graph_options)
     call set_graph_options (graph_options, var_list)
@@ -2965,115 +2953,115 @@ contains
     type(graph_options_t), intent(inout) :: gro
     type(var_list_t), intent(in) :: var_list
     call graph_options_set (gro, title = &
-         var_list_get_sval (var_list, var_str ("$title")))
+         var_list%get_sval (var_str ("$title")))
     call graph_options_set (gro, description = &
-         var_list_get_sval (var_list, var_str ("$description")))
+         var_list%get_sval (var_str ("$description")))
     call graph_options_set (gro, x_label = &
-         var_list_get_sval (var_list, var_str ("$x_label")))
+         var_list%get_sval (var_str ("$x_label")))
     call graph_options_set (gro, y_label = &
-         var_list_get_sval (var_list, var_str ("$y_label")))
+         var_list%get_sval (var_str ("$y_label")))
     call graph_options_set (gro, width_mm = &
-         var_list_get_ival (var_list, var_str ("graph_width_mm")))
+         var_list%get_ival (var_str ("graph_width_mm")))
     call graph_options_set (gro, height_mm = &
-         var_list_get_ival (var_list, var_str ("graph_height_mm")))
+         var_list%get_ival (var_str ("graph_height_mm")))
     call graph_options_set (gro, x_log = &
-         var_list_get_lval (var_list, var_str ("?x_log")))
+         var_list%get_lval (var_str ("?x_log")))
     call graph_options_set (gro, y_log = &
-         var_list_get_lval (var_list, var_str ("?y_log")))
-    if (var_list_is_known (var_list, var_str ("x_min"))) &
+         var_list%get_lval (var_str ("?y_log")))
+    if (var_list%is_known (var_str ("x_min"))) &
          call graph_options_set (gro, x_min = &
-         var_list_get_rval (var_list, var_str ("x_min")))
-    if (var_list_is_known (var_list, var_str ("x_max"))) &
+         var_list%get_rval (var_str ("x_min")))
+    if (var_list%is_known (var_str ("x_max"))) &
          call graph_options_set (gro, x_max = &
-         var_list_get_rval (var_list, var_str ("x_max")))
-    if (var_list_is_known (var_list, var_str ("y_min"))) &
+         var_list%get_rval (var_str ("x_max")))
+    if (var_list%is_known (var_str ("y_min"))) &
          call graph_options_set (gro, y_min = &
-         var_list_get_rval (var_list, var_str ("y_min")))
-    if (var_list_is_known (var_list, var_str ("y_max"))) &
+         var_list%get_rval (var_str ("y_min")))
+    if (var_list%is_known (var_str ("y_max"))) &
          call graph_options_set (gro, y_max = &
-         var_list_get_rval (var_list, var_str ("y_max")))
+         var_list%get_rval (var_str ("y_max")))
     call graph_options_set (gro, gmlcode_bg = &
-         var_list_get_sval (var_list, var_str ("$gmlcode_bg")))
+         var_list%get_sval (var_str ("$gmlcode_bg")))
     call graph_options_set (gro, gmlcode_fg = &
-         var_list_get_sval (var_list, var_str ("$gmlcode_fg")))
+         var_list%get_sval (var_str ("$gmlcode_fg")))
   end subroutine set_graph_options
 
   subroutine set_drawing_options (dro, var_list)
     type(drawing_options_t), intent(inout) :: dro
     type(var_list_t), intent(in) :: var_list
-    if (var_list_is_known (var_list, var_str ("?draw_histogram"))) then
-       if (var_list_get_lval (var_list, var_str ("?draw_histogram"))) then
+    if (var_list%is_known (var_str ("?draw_histogram"))) then
+       if (var_list%get_lval (var_str ("?draw_histogram"))) then
           call drawing_options_set (dro, with_hbars = .true.)
        else
           call drawing_options_set (dro, with_hbars = .false., &
                with_base = .false., fill = .false., piecewise = .false.)
        end if
     end if
-    if (var_list_is_known (var_list, var_str ("?draw_base"))) then
-       if (var_list_get_lval (var_list, var_str ("?draw_base"))) then
+    if (var_list%is_known (var_str ("?draw_base"))) then
+       if (var_list%get_lval (var_str ("?draw_base"))) then
           call drawing_options_set (dro, with_base = .true.)
        else
           call drawing_options_set (dro, with_base = .false., fill = .false.)
        end if
     end if
-    if (var_list_is_known (var_list, var_str ("?draw_piecewise"))) then
-       if (var_list_get_lval (var_list, var_str ("?draw_piecewise"))) then
+    if (var_list%is_known (var_str ("?draw_piecewise"))) then
+       if (var_list%get_lval (var_str ("?draw_piecewise"))) then
           call drawing_options_set (dro, piecewise = .true.)
        else
           call drawing_options_set (dro, piecewise = .false.)
        end if
     end if
-    if (var_list_is_known (var_list, var_str ("?fill_curve"))) then
-       if (var_list_get_lval (var_list, var_str ("?fill_curve"))) then
+    if (var_list%is_known (var_str ("?fill_curve"))) then
+       if (var_list%get_lval (var_str ("?fill_curve"))) then
           call drawing_options_set (dro, fill = .true., with_base = .true.)
        else
           call drawing_options_set (dro, fill = .false.)
        end if
     end if
-    if (var_list_is_known (var_list, var_str ("?draw_curve"))) then
-       if (var_list_get_lval (var_list, var_str ("?draw_curve"))) then
+    if (var_list%is_known (var_str ("?draw_curve"))) then
+       if (var_list%get_lval (var_str ("?draw_curve"))) then
           call drawing_options_set (dro, draw = .true.)
        else
           call drawing_options_set (dro, draw = .false.)
        end if
     end if
-    if (var_list_is_known (var_list, var_str ("?draw_errors"))) then
-       if (var_list_get_lval (var_list, var_str ("?draw_errors"))) then
+    if (var_list%is_known (var_str ("?draw_errors"))) then
+       if (var_list%get_lval (var_str ("?draw_errors"))) then
           call drawing_options_set (dro, err = .true.)
        else
           call drawing_options_set (dro, err = .false.)
        end if
     end if
-    if (var_list_is_known (var_list, var_str ("?draw_symbols"))) then
-       if (var_list_get_lval (var_list, var_str ("?draw_symbols"))) then
+    if (var_list%is_known (var_str ("?draw_symbols"))) then
+       if (var_list%get_lval (var_str ("?draw_symbols"))) then
           call drawing_options_set (dro, symbols = .true.)
        else
           call drawing_options_set (dro, symbols = .false.)
        end if
     end if
-    if (var_list_is_known (var_list, var_str ("$fill_options"))) then
+    if (var_list%is_known (var_str ("$fill_options"))) then
        call drawing_options_set (dro, fill_options = &
-            var_list_get_sval (var_list, var_str ("$fill_options")))
+            var_list%get_sval (var_str ("$fill_options")))
     end if
-    if (var_list_is_known (var_list, var_str ("$draw_options"))) then
+    if (var_list%is_known (var_str ("$draw_options"))) then
        call drawing_options_set (dro, draw_options = &
-            var_list_get_sval (var_list, var_str ("$draw_options")))
+            var_list%get_sval (var_str ("$draw_options")))
     end if
-    if (var_list_is_known (var_list, var_str ("$err_options"))) then
+    if (var_list%is_known (var_str ("$err_options"))) then
        call drawing_options_set (dro, err_options = &
-            var_list_get_sval (var_list, var_str ("$err_options")))
+            var_list%get_sval (var_str ("$err_options")))
     end if
-    if (var_list_is_known (var_list, var_str ("$symbol"))) then
+    if (var_list%is_known (var_str ("$symbol"))) then
        call drawing_options_set (dro, symbol = &
-            var_list_get_sval (var_list, var_str ("$symbol")))
+            var_list%get_sval (var_str ("$symbol")))
     end if
-    if (var_list_is_known (var_list, var_str ("$gmlcode_bg"))) then
+    if (var_list%is_known (var_str ("$gmlcode_bg"))) then
        call drawing_options_set (dro, gmlcode_bg = &
-            var_list_get_sval (var_list, var_str ("$gmlcode_bg")))
+            var_list%get_sval (var_str ("$gmlcode_bg")))
     end if
-    if (var_list_is_known (var_list, var_str ("$gmlcode_fg"))) then
+    if (var_list%is_known (var_str ("$gmlcode_fg"))) then
        call drawing_options_set (dro, gmlcode_fg = &
-            var_list_get_sval (var_list, var_str ("$gmlcode_fg")))
+            var_list%get_sval (var_str ("$gmlcode_fg")))
     end if
   end subroutine set_drawing_options
 
@@ -3284,7 +3272,7 @@ contains
 !     type(analysis_iterator_t) :: iterator
 !     type(rt_data_t), target :: sandbox
 !     type(command_list_t) :: writer    
-    defaultfile = var_list_get_sval (var_list, var_str ("$out_file"))
+    defaultfile = var_list%get_sval (var_str ("$out_file"))
     if (present (data_file)) then
        if (defaultfile == "" .or. defaultfile == ".") then
           defaultfile = DEFAULT_ANALYSIS_FILENAME
@@ -3337,16 +3325,16 @@ contains
 !     if (present (data_file)) then
 !        custom = .false.
 !     else
-!        custom = var_list_get_lval (var_list, &
+!        custom = var_list%get_lval (&
 !            var_str ("?out_custom"))
 !     end if
-!     comment_prefix = var_list_get_sval (var_list, &
+!     comment_prefix = var_list%get_sval (&
 !          var_str ("$out_comment"))
-!     header = var_list_get_lval (var_list, &
+!     header = var_list%get_lval (&
 !          var_str ("?out_header"))
-!     write_yerr = var_list_get_lval (var_list, &
+!     write_yerr = var_list%get_lval (&
 !          var_str ("?out_yerr"))
-!     write_xerr = var_list_get_lval (var_list, &
+!     write_xerr = var_list%get_lval (&
 !          var_str ("?out_xerr"))
 
     call get_analysis_tags (tag, id, var_list)       
@@ -3478,16 +3466,16 @@ contains
     type(eval_tree_t) :: file_expr
     type(string_t) :: file
     var_list => cmd%local%get_var_list_ptr ()
-    call eval_tree_init_sexpr (file_expr, cmd%file_expr, var_list)
-    call eval_tree_evaluate (file_expr)
-    if (eval_tree_result_is_known (file_expr)) then
-       file = eval_tree_get_string (file_expr)
+    call file_expr%init_sexpr (cmd%file_expr, var_list)
+    call file_expr%evaluate ()
+    if (file_expr%is_known ()) then
+       file = file_expr%get_string ()
        call file_list_open (global%out_files, file, &
             action = "write", status = "replace", position = "asis")
     else
        call msg_fatal ("open_out: file name argument evaluates to unknown")
     end if
-    call eval_tree_final (file_expr)
+    call file_expr%final ()
   end subroutine cmd_open_out_execute
 
   subroutine cmd_close_out_execute (cmd, global)
@@ -3497,15 +3485,15 @@ contains
     type(eval_tree_t) :: file_expr
     type(string_t) :: file
     var_list => cmd%local%var_list
-    call eval_tree_init_sexpr (file_expr, cmd%file_expr, var_list)
-    call eval_tree_evaluate (file_expr)
-    if (eval_tree_result_is_known (file_expr)) then
-       file = eval_tree_get_string (file_expr)
+    call file_expr%init_sexpr (cmd%file_expr, var_list)
+    call file_expr%evaluate ()
+    if (file_expr%is_known ()) then
+       file = file_expr%get_string ()
        call file_list_close (global%out_files, file)
     else
        call msg_fatal ("close_out: file name argument evaluates to unknown")
     end if
-    call eval_tree_final (file_expr)
+    call file_expr%final ()
   end subroutine cmd_close_out_execute
 
   subroutine cmd_printf_final (cmd)
@@ -3571,14 +3559,14 @@ contains
     type(eval_tree_t) :: sprintf_expr
     logical :: advance
     var_list => cmd%local%get_var_list_ptr ()
-    advance = var_list_get_lval (var_list, &
+    advance = var_list%get_lval (&
          var_str ("?out_advance"))
-    file = var_list_get_sval (var_list, &
+    file = var_list%get_sval (&
          var_str ("$out_file"))
-    call eval_tree_init_sexpr (sprintf_expr, cmd%sexpr, var_list)
-    call eval_tree_evaluate (sprintf_expr)
-    if (eval_tree_result_is_known (sprintf_expr)) then
-       string = eval_tree_get_string (sprintf_expr)
+    call sprintf_expr%init_sexpr (cmd%sexpr, var_list)
+    call sprintf_expr%evaluate ()
+    if (sprintf_expr%is_known ()) then
+       string = sprintf_expr%get_string ()
        if (len (file) == 0) then
           call msg_result (char (string))
        else
@@ -3685,18 +3673,18 @@ contains
     character(80) :: buffer
     var_list => cmd%local%get_var_list_ptr ()
     auto_decays = &
-         var_list_get_lval (var_list, var_str ("?auto_decays"))
+         var_list%get_lval (var_str ("?auto_decays"))
     if (auto_decays) then
        auto_decays_multiplicity = &
-            var_list_get_ival (var_list, var_str ("auto_decays_multiplicity"))
+            var_list%get_ival (var_str ("auto_decays_multiplicity"))
        auto_decays_radiative = &
-            var_list_get_lval (var_list, var_str ("?auto_decays_radiative"))
+            var_list%get_lval (var_str ("?auto_decays_radiative"))
     end if
     isotropic_decay = &
-         var_list_get_lval (var_list, var_str ("?isotropic_decay"))
+         var_list%get_lval (var_str ("?isotropic_decay"))
     if (.not. isotropic_decay) then
        diagonal_decay = &
-            var_list_get_lval (var_list, var_str ("?diagonal_decay"))
+            var_list%get_lval (var_str ("?diagonal_decay"))
     else
        diagonal_decay = .false.
     end if
@@ -3730,22 +3718,26 @@ contains
     end do
     call cmd%local%update_prclib &
          (cmd%local%prclib_stack%get_library_ptr (libname_cur))
-    call global%modify_particle (pdg_in, stable = .false., &
-         decay = cmd%process_id, &
-         isotropic_decay = isotropic_decay, &
-         diagonal_decay = diagonal_decay, &
-         polarized = .false.)
-    u_tmp = free_unit ()
-    open (u_tmp, status = "scratch", action = "readwrite")
-    call show_unstable (global, pdg_in, u_tmp)
-    rewind (u_tmp)
-    do
-       read (u_tmp, "(A)", end = 1)  buffer
-       write (msg_buffer, "(A)")  trim (buffer)
-       call msg_message ()
-    end do
-1   continue
-    close (u_tmp)
+    if (cmd%n_proc > 0) then
+       call global%modify_particle (pdg_in, stable = .false., &
+            decay = cmd%process_id, &
+            isotropic_decay = isotropic_decay, &
+            diagonal_decay = diagonal_decay, &
+            polarized = .false.)
+       u_tmp = free_unit ()
+       open (u_tmp, status = "scratch", action = "readwrite")
+       call show_unstable (global, pdg_in, u_tmp)
+       rewind (u_tmp)
+       do
+          read (u_tmp, "(A)", end = 1)  buffer
+          write (msg_buffer, "(A)")  trim (buffer)
+          call msg_message ()
+       end do
+1      continue
+       close (u_tmp)
+    else
+       call err_unstable (global, pdg_in)
+    end if
   end subroutine cmd_unstable_execute
 
   subroutine show_unstable (global, pdg, u)
@@ -3808,6 +3800,15 @@ contains
     end if
   end subroutine show_unstable
     
+  subroutine err_unstable (global, pdg)
+    type(rt_data_t), intent(in), target :: global
+    integer, intent(in) :: pdg
+    type(flavor_t) :: flv
+    call flavor_init (flv, pdg, global%model)
+    call msg_error ("Unstable: no allowed decays found for particle " &
+         // char (flavor_get_name (flv)) // ", keeping as stable")
+  end subroutine err_unstable
+    
   subroutine create_auto_decays &
        (pdg_in, mult, rad, libname_dec, process_id, global)
     integer, intent(in) :: pdg_in
@@ -3837,7 +3838,8 @@ contains
        call constraints%set (3, constrain_radiation ())
     end if
     call constraints%set (1, constrain_n_tot (mult))
-    call constraints%set (2, constrain_mass_sum (flavor_get_mass (flv_in)))
+    call constraints%set (2, &
+         constrain_mass_sum (flavor_get_mass (flv_in), margin = 0._default))
     call ds_table%make (global%model, pdg_in, constraints)
     prt_in = flavor_get_name (flv_in)
     if (pdg_in > 0) then
@@ -3845,53 +3847,61 @@ contains
     else
        p_or_a = "a"
     end if
-    call msg_message ("Creating decay process library for particle " &
-         // char (prt_in))
-    libname_cur = global%prclib%get_name () 
-    write (buffer, "(A,A,I0)")  "_d", p_or_a, abs (pdg_in)
-    libname_dec = libname_cur // trim (buffer)
-    lib => global%prclib_stack%get_library_ptr (libname_dec)
-    if (.not. (associated (lib))) then
-       allocate (lib_entry)
-       call lib_entry%init (libname_dec)
-       lib => lib_entry%process_library_t
-       call global%add_prclib (lib_entry)
+    if (ds_table%get_length () == 0) then
+       call msg_warning ("Auto-decays: Particle " // char (prt_in) // ": " &
+            // "no decays found")
+       libname_dec = ""
+       allocate (process_id (0))
     else
+       call msg_message ("Creating decay process library for particle " &
+            // char (prt_in))
+       libname_cur = global%prclib%get_name () 
+       write (buffer, "(A,A,I0)")  "_d", p_or_a, abs (pdg_in)
+       libname_dec = libname_cur // trim (buffer)
+       lib => global%prclib_stack%get_library_ptr (libname_dec)
+       if (.not. (associated (lib))) then
+          allocate (lib_entry)
+          call lib_entry%init (libname_dec)
+          lib => lib_entry%process_library_t
+          call global%add_prclib (lib_entry)
+       else
+          call global%update_prclib (lib)
+       end if
+       allocate (process_id (ds_table%get_length ()))
+       do i = 1, size (process_id)
+          write (buffer, "(A,'_',A,I0,'_',I0)") &
+               "decay", p_or_a, abs (pdg_in), i
+          process_id(i) = trim (buffer)
+          process_string = process_id(i) // ": " // prt_in // " =>"
+          call ds_table%get_pdg_out (i, pa_out)
+          allocate (prt_out (size (pa_out)))
+          do j = 1, size (pa_out)
+             do k = 1, pa_out(j)%get_length ()
+                call flavor_init (flv_out, pa_out(j)%get (k), global%model)
+                if (k == 1) then
+                   prt_out(j) = flavor_get_name (flv_out)
+                else
+                   prt_out(j) = prt_out(j) // ":" // flavor_get_name (flv_out)
+                end if
+             end do
+             process_string = process_string // " " // prt_out(j)
+          end do
+          call msg_message (char (process_string))
+          call prc_config%init (process_id(i), 1, 1, global)
+          !!! Causes runtime error with gfortran 4.9.1 
+          ! call prc_config%setup_component (1, &
+          !      new_prt_spec ([prt_in]), new_prt_spec (prt_out), global)
+          !!! Workaround:
+          call prc_config%setup_component (1, &
+               [new_prt_spec (prt_in)], new_prt_spec (prt_out), global)       
+          call prc_config%record (global)
+          deallocate (prt_out)
+          deallocate (pa_out)
+       end do
+       lib => global%prclib_stack%get_library_ptr (libname_cur)
        call global%update_prclib (lib)
     end if
-    allocate (process_id (ds_table%get_length ()))
-    do i = 1, size (process_id)
-       write (buffer, "(A,'_',A,I0,'_',I0)")  "decay", p_or_a, abs (pdg_in), i
-       process_id(i) = trim (buffer)
-       process_string = process_id(i) // ": " // prt_in // " =>"
-       call ds_table%get_pdg_out (i, pa_out)
-       allocate (prt_out (size (pa_out)))
-       do j = 1, size (pa_out)
-          do k = 1, pa_out(j)%get_length ()
-             call flavor_init (flv_out, pa_out(j)%get (k), global%model)
-             if (k == 1) then
-                prt_out(j) = flavor_get_name (flv_out)
-             else
-                prt_out(j) = prt_out(j) // ":" // flavor_get_name (flv_out)
-             end if
-          end do
-          process_string = process_string // " " // prt_out(j)
-       end do
-       call msg_message (char (process_string))
-       call prc_config%init (process_id(i), 1, 1, global)
-       !!! Causes runtime error with gfortran 4.9.1 
-       ! call prc_config%setup_component (1, &
-       !      new_prt_spec ([prt_in]), new_prt_spec (prt_out), global)
-       !!! Workaround:
-       call prc_config%setup_component (1, &
-            [new_prt_spec (prt_in)], new_prt_spec (prt_out), global)       
-       call prc_config%record (global)
-       deallocate (prt_out)
-       deallocate (pa_out)
-    end do
     call ds_table%final ()
-    lib => global%prclib_stack%get_library_ptr (libname_cur)
-    call global%update_prclib (lib)
   end subroutine create_auto_decays
     
   subroutine cmd_stable_write (cmd, unit, indent)
@@ -4119,20 +4129,20 @@ contains
     if (sim%is_valid ()) then
        call sim%init_process_selector ()    
        call openmp_set_num_threads_verbose &
-            (var_list_get_ival (var_list, "openmp_num_threads"), &
-            var_list_get_lval (var_list, "?openmp_logging"))
+            (var_list%get_ival (var_str ("openmp_num_threads")), &
+            var_list%get_lval (var_str ("?openmp_logging")))
        call sim%compute_n_events (n_events, var_list)
-       sample = var_list_get_sval (var_list, var_str ("$sample"))
+       sample = var_list%get_sval (var_str ("$sample"))
        if (sample == "")  sample = sim%get_default_sample_name ()
        rebuild_events = &
-            var_list_get_lval (var_list, var_str ("?rebuild_events"))
+            var_list%get_lval (var_str ("?rebuild_events"))
        read_raw = &
-            var_list_get_lval (var_list, var_str ("?read_raw")) &
+            var_list%get_lval (var_str ("?read_raw")) &
             .and. .not. rebuild_events
        write_raw = &
-            var_list_get_lval (var_list, var_str ("?write_raw"))
+            var_list%get_lval (var_str ("?write_raw"))
        checkpoint = &
-            var_list_get_ival (var_list, var_str ("checkpoint"))
+            var_list%get_ival (var_str ("checkpoint"))
        if (read_raw) then
           inquire (file = char (sample) // ".evx", exist = read_raw)
        end if
@@ -4147,7 +4157,7 @@ contains
           allocate (sample_fmt (n_fmt))
           if (n_fmt > 0)  sample_fmt = cmd%local%sample_fmt
           call es_array%init (sample, &
-               sample_fmt, sim%get_process_ptr (), cmd%local, &
+               sample_fmt, cmd%local, &
                data = data, &
                input = var_str ("raw"), &
                allow_switch = write_raw, &
@@ -4159,7 +4169,7 @@ contains
           if (n_fmt > 0)  sample_fmt(:n_fmt) = cmd%local%sample_fmt
           sample_fmt(n_fmt+1) = var_str ("raw")
           call es_array%init (sample, &
-               sample_fmt, sim%get_process_ptr (), cmd%local, &
+               sample_fmt, cmd%local, &
                data = data, &
                checkpoint = checkpoint)
           call sim%generate (n_events, es_array)
@@ -4168,7 +4178,7 @@ contains
           allocate (sample_fmt (n_fmt))
           if (n_fmt > 0)  sample_fmt = cmd%local%sample_fmt
           call es_array%init (sample, &
-               sample_fmt, sim%get_process_ptr (), cmd%local, &
+               sample_fmt, cmd%local, &
                data = data, &
                checkpoint = checkpoint)
           call sim%generate (n_events, es_array)
@@ -4239,7 +4249,6 @@ contains
     type(rt_data_t), dimension(:), allocatable, target :: alt_env
     type(string_t) :: sample
     logical :: exist, write_raw, update_event, update_sqme, update_weight
-    logical :: recover_beams
     type(simulation_t), target :: sim
     type(event_sample_data_t) :: input_data, data
     type(string_t) :: input_sample
@@ -4263,11 +4272,11 @@ contains
     end if
     call sim%compute_n_events (n_events, var_list)
     input_sample = eval_string (cmd%pn_filename, var_list)
-    input_format = var_list_get_sval (var_list, &
+    input_format = var_list%get_sval (&
          var_str ("$rescan_input_format"))
-    sample = var_list_get_sval (var_list, var_str ("$sample"))
+    sample = var_list%get_sval (var_str ("$sample"))
     if (sample == "")  sample = sim%get_default_sample_name ()
-    write_raw = var_list_get_lval (var_list, var_str ("?write_raw"))
+    write_raw = var_list%get_lval (var_str ("?write_raw"))
     if (allocated (cmd%local%sample_fmt)) then
        n_fmt = size (cmd%local%sample_fmt)
     else
@@ -4289,13 +4298,11 @@ contains
        if (n_fmt > 0)  sample_fmt = cmd%local%sample_fmt
     end if
     update_event = &
-         var_list_get_lval (var_list, var_str ("?update_event"))
+         var_list%get_lval (var_str ("?update_event"))
     update_sqme = &
-         var_list_get_lval (var_list, var_str ("?update_sqme"))
+         var_list%get_lval (var_str ("?update_sqme"))
     update_weight = &
-         var_list_get_lval (var_list, var_str ("?update_weight"))
-    recover_beams = &
-         var_list_get_lval (var_list, var_str ("?recover_beams"))
+         var_list%get_lval (var_str ("?update_weight"))
     if (update_event .or. update_sqme) then
        call msg_message ("Recalculating observables")
        if (update_sqme) then
@@ -4303,13 +4310,15 @@ contains
        end if
     end if
     lhef_extension = &
-         var_list_get_sval (var_list, var_str ("$lhef_extension"))
+         var_list%get_sval (var_str ("$lhef_extension"))
     extension_hepmc = &
-         var_list_get_sval (var_list, var_str ("$extension_hepmc"))
+         var_list%get_sval (var_str ("$extension_hepmc"))
     extension_lcio = &
-         var_list_get_sval (cmd%local%var_list, var_str ("$extension_lcio"))
+         var_list%get_sval (var_str ("$extension_lcio"))
     select case (char (input_format))
     case ("raw");  input_ext = "evx"
+       call cmd%local%set_log &
+            (var_str ("?recover_beams"), .false., is_known=.true.)
     case ("lhef"); input_ext = lhef_extension
     case ("hepmc"); input_ext = extension_hepmc
     case default
@@ -4325,16 +4334,11 @@ contains
        data%n_evt = n_events
        input_data%md5sum_cfg = ""
        call es_array%init (sample, &
-            sample_fmt, sim%get_process_ptr (), cmd%local, data, &
+            sample_fmt, cmd%local, data, &
             input = input_format, input_sample = input_sample, &
             input_data = input_data, &
             allow_switch = .false.)
-       call sim%rescan (n_events, es_array, &
-            update_event = update_event, &
-            update_sqme = update_sqme, &
-            update_weight = update_weight, &
-            recover_beams = recover_beams, &
-            global = cmd%local)
+       call sim%rescan (n_events, es_array, global = cmd%local)
        call es_array%final ()
     else
        call msg_fatal ("Rescan: event file '" &
@@ -4453,11 +4457,11 @@ contains
     if (associated (object%pn_beg)) then
        write (u, "(1x,A)")  "Initial value:"
        call parse_node_write_rec (object%pn_beg, u)
-       call eval_tree_write (object%expr_beg, u)
+       call object%expr_beg%write (u)
        if (associated (object%pn_end)) then
           write (u, "(1x,A)")  "Final value:"
           call parse_node_write_rec (object%pn_end, u)
-          call eval_tree_write (object%expr_end, u)
+          call object%expr_end%write (u)
           if (associated (object%pn_step)) then
              write (u, "(1x,A)")  "Step value:"
              call parse_node_write_rec (object%pn_step, u)
@@ -4588,14 +4592,11 @@ contains
     type(var_list_t), pointer :: var_list
     var_list => global%get_var_list_ptr ()
     if (associated (range%pn_beg)) then
-       call eval_tree_init_expr &
-            (range%expr_beg, range%pn_beg, var_list)
+       call range%expr_beg%init_expr (range%pn_beg, var_list)
        if (associated (range%pn_end)) then
-          call eval_tree_init_expr &
-               (range%expr_end, range%pn_end, var_list)
+          call range%expr_end%init_expr (range%pn_end, var_list)
           if (associated (range%pn_step)) then
-             call eval_tree_init_expr &
-                  (range%expr_step, range%pn_step, var_list)
+             call range%expr_step%init_expr (range%pn_step, var_list)
           end if
        end if
     end if
@@ -4605,22 +4606,22 @@ contains
     class(range_int_t), intent(inout) :: range
     integer :: ival
     if (associated (range%pn_beg)) then
-       call eval_tree_evaluate (range%expr_beg)
-       if (eval_tree_result_is_known (range%expr_beg)) then
-          range%i_beg = eval_tree_get_int (range%expr_beg)
+       call range%expr_beg%evaluate ()
+       if (range%expr_beg%is_known ()) then
+          range%i_beg = range%expr_beg%get_int ()
        else
           call range%write ()
           call msg_fatal &
                ("Range expression: initial value evaluates to unknown")
        end if
        if (associated (range%pn_end)) then
-          call eval_tree_evaluate (range%expr_end)
-          if (eval_tree_result_is_known (range%expr_end)) then
-             range%i_end = eval_tree_get_int (range%expr_end)
+          call range%expr_end%evaluate ()
+          if (range%expr_end%is_known ()) then
+             range%i_end = range%expr_end%get_int ()
              if (associated (range%pn_step)) then
-                call eval_tree_evaluate (range%expr_step)
-                if (eval_tree_result_is_known (range%expr_step)) then
-                   range%i_step = eval_tree_get_int (range%expr_step)
+                call range%expr_step%evaluate ()
+                if (range%expr_step%is_known ()) then
+                   range%i_step = range%expr_step%get_int ()
                    select case (range%step_mode)
                    case (STEP_SUB);  range%i_step = - range%i_step
                    end select
@@ -4714,30 +4715,30 @@ contains
   subroutine range_real_evaluate (range)
     class(range_real_t), intent(inout) :: range
     if (associated (range%pn_beg)) then
-       call eval_tree_evaluate (range%expr_beg)
-       if (eval_tree_result_is_known (range%expr_beg)) then
-          range%r_beg = eval_tree_get_real (range%expr_beg)
+       call range%expr_beg%evaluate ()
+       if (range%expr_beg%is_known ()) then
+          range%r_beg = range%expr_beg%get_real ()
        else
           call range%write ()
           call msg_fatal &
                ("Range expression: initial value evaluates to unknown")
        end if
        if (associated (range%pn_end)) then
-          call eval_tree_evaluate (range%expr_end)
-          if (eval_tree_result_is_known (range%expr_end)) then
-             range%r_end = eval_tree_get_real (range%expr_end)
+          call range%expr_end%evaluate ()
+          if (range%expr_end%is_known ()) then
+             range%r_end = range%expr_end%get_real ()
              if (associated (range%pn_step)) then
-                if (eval_tree_result_is_known (range%expr_step)) then
+                if (range%expr_step%is_known ()) then
                    select case (range%step_mode)
                    case (STEP_ADD, STEP_SUB, STEP_MUL, STEP_DIV)
-                      call eval_tree_evaluate (range%expr_step)
-                      range%r_step = eval_tree_get_real (range%expr_step)
+                      call range%expr_step%evaluate ()
+                      range%r_step = range%expr_step%get_real ()
                       select case (range%step_mode)
                       case (STEP_SUB);  range%r_step = - range%r_step
                       end select
                    case (STEP_COMP_ADD, STEP_COMP_MUL)
                       range%n_step = &
-                           max (eval_tree_get_int (range%expr_step), 0)
+                           max (range%expr_step%get_int (), 0)
                    end select
                 else
                    call range%write ()
@@ -5069,7 +5070,8 @@ contains
     allocate (cmd%scan_cmd (cmd%n_values))
     select case (char (key))
     case ("scan_num")
-       var_type = var_list_get_type (var_list, cmd%name)
+       var_type = &
+            var_list%get_type (cmd%name)
        select case (var_type)
        case (V_INT)
           !!! !!! gfortran 4.7.x memory corruption
@@ -6787,6 +6789,12 @@ contains
     call syntax_model_file_init ()
 
     call global%global_init ()
+    call var_list_append_log (global%var_list, &
+         var_str ("?rebuild_phase_space"), .false., &
+         intrinsic=.true.)
+    call var_list_append_log (global%var_list, &
+         var_str ("?rebuild_grids"), .false., &
+         intrinsic=.true.)
     call global%init_fallback_model &
          (var_str ("SM_hadrons"), var_str ("SM_hadrons.mdl"))
 

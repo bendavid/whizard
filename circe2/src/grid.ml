@@ -12,6 +12,8 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)  
 
+exception Out_of_range of string * float * (float * float)
+
 open Printf
 
 module type T =
@@ -97,15 +99,48 @@ module Make (D : Division.T) =
         var = Array.make_matrix n1 n2 0.0;
         triangle = triangle }
 
-    let lower_bin div = function
-      | Syntax.Closed x -> D.find div x + 1
-      | Syntax.Open x -> D.find div x
-      | Syntax.Bin n -> n
+    (* We need
+       \begin{subequations}
+       \begin{align}
+         \textit{upper}\; x\rbrack &= \textit{lower}\; \lbrack x \\
+         \textit{upper}\; x\rbrack &= \textit{lower}\; (x - 1 \\
+         \textit{upper}\; x) &= \textit{lower}\; \lbrack x - 1 \\
+         \textit{upper}\; x) &= \textit{lower}\; (x - 2
+       \end{align}
+       \end{subequations}
+       and
+       \begin{subequations}
+       \begin{align}
+         \textit{upper}\; x\rbrack &= \textit{upper}\; x) + 1 \\
+         \textit{lower}\; \lbrack x &= \textit{lower}\; (x - 1
+       \end{align}
+       \end{subequations} *)
 
-    let upper_bin div = function
-      | Syntax.Closed x -> D.find div x
-      | Syntax.Open x -> D.find div x - 1
-      | Syntax.Bin n -> n
+    (* [lower_bin] had [Open] and [Closed] mixed up! (tho:2014-12-09) *)
+
+    let lower_bin div limit =
+      try
+        begin match limit with
+        | Syntax.Closed x -> D.find div x
+        | Syntax.Open x -> D.find div x + 1
+        | Syntax.Bin n -> n
+        end
+      with
+      | Division.Below_min (_, _, n) -> n
+      | Division.Above_max (x, range, _) ->
+          raise (Out_of_range ("Grid.lower_bin", x, range))
+
+    let upper_bin div limit =
+      try
+        begin match limit with
+        | Syntax.Closed x -> D.find div x
+        | Syntax.Open x -> D.find div x - 1
+        | Syntax.Bin n -> n
+        end
+      with
+      | Division.Above_max (_, _, n) -> n
+      | Division.Below_min (x, range, _) ->
+          raise (Out_of_range ("Grid.upper_bin", x, range))
 
     let enclosed_bins div (x1, x2) =
       (lower_bin div x1, upper_bin div x2)

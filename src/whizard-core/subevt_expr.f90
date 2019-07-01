@@ -1,6 +1,6 @@
-! WHIZARD 2.2.3 Nov 30 2014
+! WHIZARD 2.2.4 Feb 06 2015
 ! 
-! Copyright (C) 1999-2014 by 
+! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -9,7 +9,8 @@
 !     Fabian Bach <fabian.bach@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Felix Braam, Sebastian Schmidt, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam, 
+!     Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -67,6 +68,7 @@ module subevt_expr
      procedure :: base_final => subevt_expr_final
      procedure (subevt_expr_setup_vars), deferred :: setup_vars
      procedure :: base_setup_vars => subevt_expr_setup_vars
+     procedure :: setup_var_self => subevt_expr_setup_var_self
      procedure :: link_var_list => subevt_expr_link_var_list
      procedure :: setup_selection => subevt_expr_setup_selection
      procedure :: reset => subevt_expr_reset
@@ -151,9 +153,10 @@ module subevt_expr
 
 contains
   
-  subroutine subevt_expr_write (object, unit)
+  subroutine subevt_expr_write (object, unit, pacified)
     class(subevt_expr_t), intent(in) :: object
     integer, intent(in), optional :: unit
+    logical, intent(in), optional :: pacified
     integer :: u
     u = given_output_unit (unit)
     write (u, "(1x,A)")  "Local variables:"
@@ -161,7 +164,7 @@ contains
     call var_list_write (object%var_list, u, follow_link=.false.)
     call write_separator (u)
     if (object%subevt_filled) then
-       call object%subevt_t%write (u)
+       call object%subevt_t%write (u, pacified = pacified)
        if (object%has_selection) then
           call write_separator (u)
           write (u, "(1x,A)")  "Selection expression:"
@@ -175,7 +178,7 @@ contains
     
   subroutine subevt_expr_final (object)
     class(subevt_expr_t), intent(inout) :: object
-    call var_list_final (object%var_list)
+    call object%var_list%final ()
     if (object%has_selection) then
        call object%selection%final ()
     end if
@@ -184,7 +187,7 @@ contains
   subroutine subevt_expr_setup_vars (expr, sqrts)
     class(subevt_expr_t), intent(inout), target :: expr
     real(default), intent(in) :: sqrts
-    call var_list_final (expr%var_list)
+    call expr%var_list%final ()
     call var_list_append_real (expr%var_list, &
          var_str ("sqrts"), sqrts, &
          locked = .true., verbose = .false., intrinsic = .true.)
@@ -206,10 +209,21 @@ contains
          locked = .true., verbose = .false., intrinsic = .true.)
   end subroutine subevt_expr_setup_vars
     
+  subroutine subevt_expr_setup_var_self (expr)
+    class(subevt_expr_t), intent(inout), target :: expr
+    if (.not. expr%var_list%contains (var_str ("@evt"))) then
+       call var_list_append_subevt_ptr &
+            (expr%var_list, &
+            var_str ("@evt"), expr%subevt_t, &
+            is_known = expr%subevt_filled, &
+            locked = .true., verbose = .false., intrinsic=.true.)
+    end if
+  end subroutine subevt_expr_setup_var_self
+  
   subroutine subevt_expr_link_var_list (expr, var_list)
     class(subevt_expr_t), intent(inout) :: expr
     type(var_list_t), intent(in), target :: var_list
-    call var_list_link (expr%var_list, var_list)
+    call expr%var_list%link (var_list)
   end subroutine subevt_expr_link_var_list
 
   subroutine subevt_expr_setup_selection (expr, ef_cuts)
@@ -217,7 +231,8 @@ contains
     class(expr_factory_t), intent(in) :: ef_cuts
     call ef_cuts%build (expr%selection)
     if (allocated (expr%selection)) then
-       call expr%selection%setup_lexpr (expr%var_list, expr%subevt_t)
+       call expr%setup_var_self ()
+       call expr%selection%setup_lexpr (expr%var_list)
        expr%has_selection = .true.
     end if
   end subroutine subevt_expr_setup_selection
@@ -260,13 +275,14 @@ contains
     end if
   end subroutine parton_expr_final
 
-  subroutine parton_expr_write (object, unit, prefix)
+  subroutine parton_expr_write (object, unit, prefix, pacified)
     class(parton_expr_t), intent(in) :: object
     integer, intent(in), optional :: unit
     character(*), intent(in), optional :: prefix
+    logical, intent(in), optional :: pacified
     integer :: u
     u = given_output_unit (unit)
-    call object%base_write (u)
+    call object%base_write (u, pacified = pacified)
     if (object%subevt_filled) then
        if (object%has_scale) then
           call write_separator (u)
@@ -306,7 +322,8 @@ contains
     class(expr_factory_t), intent(in) :: ef_scale
     call ef_scale%build (expr%scale)
     if (allocated (expr%scale)) then
-       call expr%scale%setup_expr (expr%var_list, expr%subevt_t)
+       call expr%setup_var_self ()
+       call expr%scale%setup_expr (expr%var_list)
        expr%has_scale = .true.
     end if
   end subroutine parton_expr_setup_scale
@@ -316,7 +333,8 @@ contains
     class(expr_factory_t), intent(in) :: ef_fac_scale
     call ef_fac_scale%build (expr%fac_scale)
     if (allocated (expr%fac_scale)) then
-       call expr%fac_scale%setup_expr (expr%var_list, expr%subevt_t)
+       call expr%setup_var_self ()
+       call expr%fac_scale%setup_expr (expr%var_list)
        expr%has_fac_scale = .true.
     end if
   end subroutine parton_expr_setup_fac_scale
@@ -326,7 +344,8 @@ contains
     class(expr_factory_t), intent(in) :: ef_ren_scale
     call ef_ren_scale%build (expr%ren_scale)
     if (allocated (expr%ren_scale)) then
-       call expr%ren_scale%setup_expr (expr%var_list, expr%subevt_t)
+       call expr%setup_var_self ()
+       call expr%ren_scale%setup_expr (expr%var_list)
        expr%has_ren_scale = .true.
     end if
   end subroutine parton_expr_setup_ren_scale
@@ -336,7 +355,8 @@ contains
     class(expr_factory_t), intent(in) :: ef_weight
     call ef_weight%build (expr%weight)
     if (allocated (expr%weight)) then
-       call expr%weight%setup_expr (expr%var_list, expr%subevt_t)
+       call expr%setup_var_self ()
+       call expr%weight%setup_expr (expr%var_list)
        expr%has_weight = .true.
     end if
   end subroutine parton_expr_setup_weight
@@ -518,13 +538,14 @@ contains
     end if
   end subroutine event_expr_final
 
-  subroutine event_expr_write (object, unit, prefix)
+  subroutine event_expr_write (object, unit, prefix, pacified)
     class(event_expr_t), intent(in) :: object
     integer, intent(in), optional :: unit
     character(*), intent(in), optional :: prefix
+    logical, intent(in), optional :: pacified
     integer :: u
     u = given_output_unit (unit)
-    call object%base_write (u)
+    call object%base_write (u, pacified = pacified)
     if (object%subevt_filled) then
        if (object%has_reweight) then
           call write_separator (u)
@@ -594,7 +615,8 @@ contains
     class(expr_factory_t), intent(in) :: ef_analysis
     call ef_analysis%build (expr%analysis)
     if (allocated (expr%analysis)) then
-       call expr%analysis%setup_lexpr (expr%var_list, expr%subevt_t)
+       call expr%setup_var_self ()
+       call expr%analysis%setup_lexpr (expr%var_list)
        expr%has_analysis = .true.
     end if
   end subroutine event_expr_setup_analysis
@@ -604,7 +626,8 @@ contains
     class(expr_factory_t), intent(in) :: ef_reweight
     call ef_reweight%build (expr%reweight)
     if (allocated (expr%reweight)) then
-       call expr%reweight%setup_expr (expr%var_list, expr%subevt_t)
+       call expr%setup_var_self ()
+       call expr%reweight%setup_expr (expr%var_list)
        expr%has_reweight = .true.
     end if
   end subroutine event_expr_setup_reweight

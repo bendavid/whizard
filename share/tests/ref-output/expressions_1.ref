@@ -18,7 +18,7 @@ Theta =>  [real] = unary observable
 Phi =>  [real] = unary observable
 Rap =>  [real] = unary observable
 Eta =>  [real] = unary observable
-Theta_RF =>  [real] = unary observable
+Theta_star =>  [real] = unary observable
 Dist =>  [real] = unary observable
 _User_obs_real =>  [real] = unary user observable
 _User_obs_int =>  [int] = unary user observable

@@ -1,6 +1,6 @@
-! WHIZARD 2.2.3 Nov 30 2014
+! WHIZARD 2.2.4 Feb 06 2015
 ! 
-! Copyright (C) 1999-2014 by 
+! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -9,7 +9,8 @@
 !     Fabian Bach <fabian.bach@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Felix Braam, Sebastian Schmidt, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam, 
+!     Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -34,10 +35,12 @@ module shower
   use kinds, only: default, double
   use iso_varying_string, string_t => varying_string
   use io_units
-  use constants, only: pi, twopi
+  use constants, only: pi, twopi, zero
   use format_utils, only: write_separator
   use unit_tests
   use system_defs, only: LF
+  use os_interface
+  use xml
   use diagnostics
   use lorentz
   use system_dependencies, only: LHAPDF5_AVAILABLE
@@ -45,18 +48,14 @@ module shower
   use lhapdf !NODEP!
   use pdf_builtin !NODEP!
   
-  use shower_base !NODEP!
-  use shower_partons !NODEP!
-  use shower_core !NODEP!
-  use shower_topythia !NODEP!
-  use muli, muli_output_unit => output_unit !NODEP!
-  use mlm_matching !NODEP!
-  use ckkw_pseudo_weights !NODEP!
-  use ckkw_matching !NODEP!
-  use tao_random_numbers !NODEP!
-
-  use os_interface
-  use xml
+  use shower_base
+  use shower_partons
+  use shower_core
+  use shower_topythia
+  use muli, only: muli_t
+  use mlm_matching
+  use ckkw_pseudo_weights
+  use ckkw_matching
   
   use sm_qcd
   use flavors
@@ -65,21 +64,26 @@ module shower
   use state_matrices
   use subevents
   use model_data
-  use models
   use variables
   use beam_structures
-  use hep_common
   use process_libraries
+  use rng_base
+  use mci_base
+  use phs_base
+
+  use event_transforms
+  ! For model_hadrons and testing
+  use models
+  ! For Pythia6 communication
+  use hep_common
+  ! For PDF information
+  use processes
+  ! For integration tests
+  use rng_tao
+  use mci_midpoint
+  use phs_single
   use prc_core
   use prc_omega
-  use rng_base
-  use rng_tao
-  use mci_base
-  use mci_midpoint
-  use phs_base
-  use phs_single
-  use processes
-  use event_transforms
 
   implicit none
   private
@@ -89,8 +93,6 @@ module shower
   public :: evt_shower_t
   public :: ckkw_fake_pseudo_shower_weights
   public :: shower_test
-
-
 
   type :: shower_settings_t
      logical :: ps_isr_active = .false.
@@ -137,6 +139,8 @@ module shower
      type(shower_settings_t) :: settings
      type(model_t), pointer :: model_hadrons => null ()
      type(lhapdf_pdf_t) :: pdf
+     real(double) :: xmin = 0, xmax = 0
+     real(double) :: qmin = 0, qmax = 0
      type(os_data_t) :: os_data     
      integer :: pdf_type = STRF_NONE
      integer :: pdf_set = 0
@@ -158,17 +162,17 @@ contains
     type(var_list_t), intent(in) :: var_list
 
     shower_settings%ps_isr_active = &
-         var_list_get_lval (var_list, var_str ("?ps_isr_active"))
+         var_list%get_lval (var_str ("?ps_isr_active"))
     shower_settings%ps_fsr_active = &
-         var_list_get_lval (var_list, var_str ("?ps_fsr_active"))
+         var_list%get_lval (var_str ("?ps_fsr_active"))
     shower_settings%hadronization_active = &
-         var_list_get_lval (var_list, var_str ("?hadronization_active"))
+         var_list%get_lval (var_str ("?hadronization_active"))
     shower_settings%mlm_matching = &
-         var_list_get_lval (var_list, var_str ("?mlm_matching"))
+         var_list%get_lval (var_str ("?mlm_matching"))
     shower_settings%ckkw_matching = & 
-         var_list_get_lval (var_list, var_str ("?ckkw_matching"))
+         var_list%get_lval (var_str ("?ckkw_matching"))
     shower_settings%muli_active = &
-         var_list_get_lval (var_list, var_str ("?muli_active"))
+         var_list%get_lval (var_str ("?muli_active"))
 
     if (.not. shower_settings%ps_fsr_active .and. &
         .not. shower_settings%ps_isr_active .and. &
@@ -178,69 +182,69 @@ contains
     end if
 
     shower_settings%ps_use_PYTHIA_shower = &
-         var_list_get_lval (var_list, var_str ("?ps_use_PYTHIA_shower"))
+         var_list%get_lval (var_str ("?ps_use_PYTHIA_shower"))
     shower_settings%ps_PYTHIA_verbose = &
-         var_list_get_lval (var_list, var_str ("?ps_PYTHIA_verbose"))
+         var_list%get_lval (var_str ("?ps_PYTHIA_verbose"))
     shower_settings%ps_PYTHIA_PYGIVE = &
-         var_list_get_sval (var_list, var_str ("$ps_PYTHIA_PYGIVE"))
+         var_list%get_sval (var_str ("$ps_PYTHIA_PYGIVE"))
     shower_settings%ps_mass_cutoff = &
-         var_list_get_rval (var_list, var_str ("ps_mass_cutoff"))
+         var_list%get_rval (var_str ("ps_mass_cutoff"))
     shower_settings%ps_fsr_lambda = &
-         var_list_get_rval (var_list, var_str ("ps_fsr_lambda"))
+         var_list%get_rval (var_str ("ps_fsr_lambda"))
     shower_settings%ps_isr_lambda = &
-         var_list_get_rval (var_list, var_str ("ps_isr_lambda"))
+         var_list%get_rval (var_str ("ps_isr_lambda"))
     shower_settings%ps_max_n_flavors = &
-         var_list_get_ival (var_list, var_str ("ps_max_n_flavors"))
+         var_list%get_ival (var_str ("ps_max_n_flavors"))
     shower_settings%ps_isr_alpha_s_running = &
-         var_list_get_lval (var_list, var_str ("?ps_isr_alpha_s_running"))
+         var_list%get_lval (var_str ("?ps_isr_alpha_s_running"))
     shower_settings%ps_fsr_alpha_s_running = &
-         var_list_get_lval (var_list, var_str ("?ps_fsr_alpha_s_running"))
+         var_list%get_lval (var_str ("?ps_fsr_alpha_s_running"))
     shower_settings%ps_fixed_alpha_s = &
-         var_list_get_rval (var_list, var_str ("ps_fixed_alpha_s"))
+         var_list%get_rval (var_str ("ps_fixed_alpha_s"))
     shower_settings%ps_isr_pt_ordered = &
-         var_list_get_lval (var_list, var_str ("?ps_isr_pt_ordered"))
+         var_list%get_lval (var_str ("?ps_isr_pt_ordered"))
     shower_settings%ps_isr_angular_ordered = &
-         var_list_get_lval (var_list, var_str ("?ps_isr_angular_ordered"))
+         var_list%get_lval (var_str ("?ps_isr_angular_ordered"))
     shower_settings%ps_isr_primordial_kt_width = &
-         var_list_get_rval (var_list, var_str ("ps_isr_primordial_kt_width"))
+         var_list%get_rval (var_str ("ps_isr_primordial_kt_width"))
     shower_settings%ps_isr_primordial_kt_cutoff = &
-         var_list_get_rval (var_list, var_str ("ps_isr_primordial_kt_cutoff"))
+         var_list%get_rval (var_str ("ps_isr_primordial_kt_cutoff"))
     shower_settings%ps_isr_z_cutoff = &
-         var_list_get_rval (var_list, var_str ("ps_isr_z_cutoff"))
+         var_list%get_rval (var_str ("ps_isr_z_cutoff"))
     shower_settings%ps_isr_minenergy = &
-         var_list_get_rval (var_list, var_str ("ps_isr_minenergy"))
+         var_list%get_rval (var_str ("ps_isr_minenergy"))
     shower_settings%ps_isr_tscalefactor = &
-         var_list_get_rval (var_list, var_str ("ps_isr_tscalefactor"))
+         var_list%get_rval (var_str ("ps_isr_tscalefactor"))
     shower_settings%ps_isr_only_onshell_emitted_partons = &
-         var_list_get_lval (var_list, &
+         var_list%get_lval (&
          var_str ("?ps_isr_only_onshell_emitted_partons"))
 
     !!! MLM matching
     shower_settings%ms%mlm_Qcut_ME = &
-         var_list_get_rval(var_list, var_str ("mlm_Qcut_ME"))
+         var_list%get_rval (var_str ("mlm_Qcut_ME"))
     shower_settings%ms%mlm_Qcut_PS = &
-         var_list_get_rval(var_list, var_str ("mlm_Qcut_PS"))
+         var_list%get_rval (var_str ("mlm_Qcut_PS"))
     shower_settings%ms%mlm_ptmin = &
-         var_list_get_rval(var_list, var_str ("mlm_ptmin"))
+         var_list%get_rval (var_str ("mlm_ptmin"))
     shower_settings%ms%mlm_etamax = &
-         var_list_get_rval(var_list, var_str ("mlm_etamax"))
+         var_list%get_rval (var_str ("mlm_etamax"))
     shower_settings%ms%mlm_Rmin = &
-         var_list_get_rval(var_list, var_str ("mlm_Rmin"))
+         var_list%get_rval (var_str ("mlm_Rmin"))
     shower_settings%ms%mlm_Emin = &
-         var_list_get_rval(var_list, var_str ("mlm_Emin"))
+         var_list%get_rval (var_str ("mlm_Emin"))
     shower_settings%ms%mlm_nmaxMEjets = &
-         var_list_get_ival(var_list, var_str ("mlm_nmaxMEjets"))
+         var_list%get_ival (var_str ("mlm_nmaxMEjets"))
 
     shower_settings%ms%mlm_ETclusfactor = &
-         var_list_get_rval(var_list, var_str ("mlm_ETclusfactor"))
+         var_list%get_rval (var_str ("mlm_ETclusfactor"))
     shower_settings%ms%mlm_ETclusminE = &
-         var_list_get_rval(var_list, var_str ("mlm_ETclusminE"))
+         var_list%get_rval (var_str ("mlm_ETclusminE"))
     shower_settings%ms%mlm_etaclusfactor = &
-         var_list_get_rval(var_list, var_str ("mlm_etaclusfactor"))
+         var_list%get_rval (var_str ("mlm_etaclusfactor"))
     shower_settings%ms%mlm_Rclusfactor = &
-         var_list_get_rval(var_list, var_str ("mlm_Rclusfactor"))
+         var_list%get_rval (var_str ("mlm_Rclusfactor"))
     shower_settings%ms%mlm_Eclusfactor = &
-         var_list_get_rval(var_list, var_str ("mlm_Eclusfactor"))
+         var_list%get_rval (var_str ("mlm_Eclusfactor"))
 
     !!! CKKW matching
     ! TODO
@@ -323,28 +327,20 @@ contains
   end subroutine shower_settings_write
 
   subroutine apply_shower_particle_set & 
-       (particle_set, shower_settings,  model, model_hadrons, &
-        os_data, pdf_type, pdf_set, pdf, valid, vetoed)
-    type(particle_set_t), intent(inout) :: particle_set
-    type(shower_settings_t), intent(in) :: shower_settings
-    class(model_data_t), intent(in), target :: model
-    class(model_data_t), intent(in), target :: model_hadrons
-    type(os_data_t), intent(in) :: os_data
-    type(lhapdf_pdf_t), intent(inout) :: pdf
-    integer, intent(in) :: pdf_type
-    integer, intent(in) :: pdf_set
+       (evt, valid, vetoed)
+    class(evt_shower_t), intent(inout) :: evt
     logical, intent(inout) :: valid
     logical, intent(inout) :: vetoed
-    real(kind=double) :: pdftest
+    real(kind=double) :: pdftest    
     logical, parameter :: debug = .false., to_file = .false.
 
     type(mlm_matching_data_t) :: mlm_matching_data
     logical, save :: matching_disabled = .false.
 
-    if (.not. shower_settings%ps_fsr_active .and. &
-        .not. shower_settings%ps_isr_active .and. &
-        .not. shower_settings%hadronization_active .and. &
-        .not. shower_settings%mlm_matching) then
+    if (.not. evt%settings%ps_fsr_active .and. &
+        .not. evt%settings%ps_isr_active .and. &
+        .not. evt%settings%hadronization_active .and. &
+        .not. evt%settings%mlm_matching) then
        ! return if nothing to do
        return
     end if
@@ -355,37 +351,37 @@ contains
     if (signal_is_pending ()) return    
     
     ! ensure that lhapdf is initialized
-    if (pdf_type .eq. STRF_LHAPDF5) then
-       if (shower_settings%ps_isr_active .and. &
+    if (evt%pdf_type .eq. STRF_LHAPDF5) then
+       if (evt%settings%ps_isr_active .and. &
             (abs (particle_get_pdg (particle_set_get_particle &
-                 (particle_set, 1))) >= 1000) .and. &
+                 (evt%particle_set, 1))) >= 1000) .and. &
             (abs (particle_get_pdg (particle_set_get_particle &
-                 (particle_set, 2))) >= 1000)) then
-          call GetQ2max (0,pdftest)
-          if (pdftest == 0._double) then
+                 (evt%particle_set, 2))) >= 1000)) then
+          call GetQ2max (0, pdftest)
+          if (pdftest < epsilon(pdftest)) then
              call msg_fatal ("ISR QCD shower enabled, but LHAPDF not" // &
                   "initialized," // LF // "     aborting simulation")
              return
           end if
        end if
-    else if (pdf_type == STRF_PDF_BUILTIN) then
-       if (shower_settings%ps_use_PYTHIA_shower) then
+    else if (evt%pdf_type == STRF_PDF_BUILTIN) then
+       if (evt%settings%ps_use_PYTHIA_shower) then
           call msg_fatal ("Builtin PDFs cannot be used for PYTHIA showers," &
                // LF // "     aborting simulation")
           return
        end if
     end if
-    if (shower_settings%mlm_matching .and. shower_settings%ckkw_matching) then
+    if (evt%settings%mlm_matching .and. evt%settings%ckkw_matching) then
        call msg_fatal ("Both MLM and CKKW matching activated," // &
             LF // "     aborting simulation")
        return      
     end if
 
-    if (debug)  call shower_settings%write ()
+    if (debug)  call evt%settings%write ()
     
-    if (shower_settings%ps_use_PYTHIA_shower .or. &
-         shower_settings%hadronization_active) then
-       if (.not. shower_settings%ps_PYTHIA_verbose) then
+    if (evt%settings%ps_use_PYTHIA_shower .or. &
+         evt%settings%hadronization_active) then
+       if (.not. evt%settings%ps_PYTHIA_verbose) then
           call PYGIVE ('MSTU(12)=12345')
           call PYGIVE ('MSTU(13)=0')
        else 
@@ -398,14 +394,14 @@ contains
     if (.not. matching_disabled) then
        !!! Check if the beams are hadrons
        if ((abs (particle_get_pdg (particle_set_get_particle &
-            (particle_set, 1))) <= 18) .and. &
+            (evt%particle_set, 1))) <= 18) .and. &
             (abs (particle_get_pdg (particle_set_get_particle &
-            (particle_set, 2))) <= 18)) then
+            (evt%particle_set, 2))) <= 18)) then
           mlm_matching_data%is_hadron_collision = .false.
        else if ((abs (particle_get_pdg (particle_set_get_particle &
-            (particle_set, 1))) >= 1000) .and. &
+            (evt%particle_set, 1))) >= 1000) .and. &
             (abs (particle_get_pdg (particle_set_get_particle &
-            (particle_set, 2))) >= 1000)) then
+            (evt%particle_set, 2))) >= 1000)) then
           mlm_matching_data%is_hadron_collision = .true.
        else 
           call msg_error (" Matching didn't recognize beams setup," // &
@@ -418,32 +414,33 @@ contains
     if (debug)  print *, "Shower: apply shower"
 
     !!! SHOWER
-    if (shower_settings%ps_use_PYTHIA_shower .or. &
-         (.not. shower_settings%ps_fsr_active .and. &
-          .not. shower_settings%ps_isr_active .and. &
-           shower_settings%hadronization_active)) then
-       call apply_PYTHIAshower_particle_set (particle_set, &
-            shower_settings, mlm_matching_data%P_ME, model, model_hadrons, &
+    if (evt%settings%ps_use_PYTHIA_shower .or. &
+         (.not. evt%settings%ps_fsr_active .and. &
+          .not. evt%settings%ps_isr_active .and. &
+           evt%settings%hadronization_active)) then
+       call apply_PYTHIAshower_particle_set (evt%particle_set, &
+            evt%settings, mlm_matching_data%P_ME, evt%model, evt%model_hadrons, &
             valid)
        if (debug)  call pylist(2)
     else
-       call apply_WHIZARDshower_particle_set (particle_set, &
-            shower_settings, mlm_matching_data%P_ME, model, model_hadrons, &
-            os_data, pdf_type, pdf_set, pdf, valid, vetoed)
+       call apply_WHIZARDshower_particle_set (evt%particle_set, &
+            evt%settings, mlm_matching_data%P_ME, evt%model, evt%model_hadrons, &
+            evt%os_data, evt%pdf_type, evt%pdf_set, evt%pdf, &
+            evt%xmin, evt%xmax, evt%qmin, evt%qmax, valid, vetoed)
        if (vetoed) return
     end if
     if (debug) then
        print *, " after SHOWER"
-       call particle_set_write (particle_set)
+       call particle_set_write (evt%particle_set)
     end if
        
-    if (shower_settings%mlm_matching .and. &
+    if (evt%settings%mlm_matching .and. &
          (matching_disabled.eqv..false.)) then
     !!! MLM stage 2 -> PS jets and momenta
        call matching_transfer_PS &
-            (mlm_matching_data, particle_set, shower_settings)
+            (mlm_matching_data, evt%particle_set, evt%settings)
     !!! MLM stage 3 -> reconstruct and possible reject
-       call mlm_matching_apply (mlm_matching_data, shower_settings%ms, vetoed)
+       call mlm_matching_apply (mlm_matching_data, evt%settings%ms, vetoed)
        if (vetoed) then
           call mlm_matching_data_final (mlm_matching_data)
           return
@@ -451,12 +448,12 @@ contains
     endif
 
 !!! HADRONIZATION
-    if (shower_settings%hadronization_active) then
+    if (evt%settings%hadronization_active) then
        !! Assume that the event record is still in the PYTHIA COMMON BLOCKS
        !! transferred there by one of the shower routines
        if (valid) then
-          call apply_PYTHIAhadronization (particle_set, &
-               shower_settings, model, model_hadrons, valid)
+          call apply_PYTHIAhadronization (evt%particle_set, &
+               evt%settings, evt%model, evt%model_hadrons, valid)
        end if
     end if
 !!! FINAL
@@ -466,13 +463,6 @@ contains
     if (debug)  print *, "SHOWER+HADRONIZATION+MATCHING finished"
 
   contains
-
-    subroutine evolvepdfm6 (set, x, q, ff)
-      integer, intent(in) :: set
-      double precision, intent(in) :: x, q
-      double precision, dimension(-6:6), intent(out) :: ff
-      call pdf%evolve_pdfm (x, q, ff)
-    end subroutine evolvepdfm6
     
     subroutine shower_set_PYTHIA_error (mstu23)
       ! PYTHIA common blocks
@@ -500,71 +490,6 @@ contains
 
     subroutine apply_PYTHIAshower_particle_set &
          (particle_set, shower_settings, JETS_ME, model, model_hadrons, valid)
-      integer, parameter :: MAXNUP = 500
-      integer, parameter :: MAXPUP = 100
-      integer :: NUP
-      integer :: IDPRUP
-      double precision :: XWGTUP
-      double precision :: SCALUP
-      double precision :: AQEDUP
-      double precision :: AQCDUP
-      integer, dimension(MAXNUP) :: IDUP
-      integer, dimension(MAXNUP) :: ISTUP
-      integer, dimension(2,MAXNUP) :: MOTHUP
-      integer, dimension(2,MAXNUP) :: ICOLUP
-      double precision, dimension(5,MAXNUP) :: PUP
-      double precision, dimension(MAXNUP) :: VTIMUP
-      double precision, dimension(MAXNUP) :: SPINUP
-      integer, dimension(2) :: IDBMUP
-      double precision, dimension(2) :: EBMUP
-      integer, dimension(2) :: PDFGUP
-      integer, dimension(2) :: PDFSUP
-      integer :: IDWTUP
-      integer :: NPRUP
-      double precision, dimension(MAXPUP) :: XSECUP
-      double precision, dimension(MAXPUP) :: XERRUP
-      double precision, dimension(MAXPUP) :: XMAXUP
-      integer, dimension(MAXPUP) :: LPRUP
-      integer, parameter :: NMXHEP = 4000
-
-      integer :: NEVHEP
-
-      integer :: NHEP
-
-      integer, dimension(NMXHEP) :: ISTHEP
-
-      integer, dimension(NMXHEP) :: IDHEP
-
-      integer, dimension(2, NMXHEP) :: JMOHEP
-
-      integer, dimension(2, NMXHEP) :: JDAHEP
-
-      double precision, dimension(5, NMXHEP) :: PHEP
-      
-      double precision, dimension(4, NMXHEP) :: VHEP
-      
-      integer, dimension(NMXHEP) :: hepevt_pol
-
-      integer :: hepevt_n_out, hepevt_n_remnants
-
-      double precision :: hepevt_weight, hepevt_function_value
-      double precision :: hepevt_function_ratio
-      
-      common /HEPRUP/ &
-           IDBMUP, EBMUP, PDFGUP, PDFSUP, IDWTUP, NPRUP, &
-           XSECUP, XERRUP, XMAXUP, LPRUP
-      save /HEPRUP/
-
-      common /HEPEUP/ &
-           NUP, IDPRUP, XWGTUP, SCALUP, AQEDUP, AQCDUP, &
-           IDUP, ISTUP, MOTHUP, ICOLUP, PUP, VTIMUP, SPINUP
-      save /HEPEUP/
-
-      common /HEPEVT/ &
-           NEVHEP, NHEP, ISTHEP, IDHEP, &
-           JMOHEP, JDAHEP, PHEP, VHEP
-      save /HEPEVT/
-      
 
       type(particle_set_t), intent(inout) :: particle_set
       type(particle_set_t) :: pset_reduced
@@ -581,7 +506,7 @@ contains
       logical, save :: pythia_warning_given = .false.
       logical, save :: msg_written = .false.
       type(string_t) :: remaining_PYGIVE, partial_PYGIVE
-      character*10 buffer
+      character(len=10) :: buffer
 
       if (signal_is_pending ()) return      
       
@@ -681,7 +606,7 @@ contains
          if (debug)  print *, "calling pyinit"
          call PYINIT ("USER", "", "", 0D0)
 
-         call tao_random_number (rand)
+         call evt%rng%generate (rand)
          write (buffer, "(I10)") floor (rand*900000000)
          call pygive ("MRPY(1)="//buffer)
          call pygive ("MRPY(2)=0")
@@ -742,19 +667,21 @@ contains
 
     subroutine apply_WHIZARDshower_particle_set & 
          (particle_set, shower_settings, JETS_ME, model, model_hadrons, &
-         os_data, pdf_type, pdf_set, pdf, valid, vetoed)
+         os_data, pdf_type, pdf_set, pdf, &
+         xmin, xmax, qmin, qmax, valid, vetoed)
       type(particle_set_t), intent(inout) :: particle_set
       type(shower_settings_t), intent(in) :: shower_settings
       type(vector4_t), dimension(:), allocatable, intent(inout) :: JETS_ME
       class(model_data_t), intent(in), target :: model
       class(model_data_t), intent(in), target :: model_hadrons
       type(os_data_t), intent(in) :: os_data
-      type(lhapdf_pdf_t), intent(in), target :: pdf
+      type(lhapdf_pdf_t), intent(inout) :: pdf
       integer, intent(in) :: pdf_set, pdf_type
+      real(double), intent(in) :: xmin, xmax, qmin, qmax
       logical, intent(inout) :: valid
       logical, intent(out) :: vetoed
 
-      type(muli_type),save :: mi
+      type(muli_t), save :: mi
       type(shower_t) :: shower
       type(parton_t), dimension(:), allocatable, target :: partons, hadrons
       type(parton_pointer_t), dimension(:), allocatable :: &
@@ -768,13 +695,8 @@ contains
       integer :: max_color_nr
       integer, dimension(2) :: col_array
       integer, dimension(1) :: parent
-      type(flavor_t) :: flv
-      type(color_t) :: col
       logical, save :: msg_written = .false.
-      type(string_t) :: filename
       integer, dimension(2,4) :: color_corr
-      integer :: colori, colorj
-      character*5 buffer
       integer :: u_S2W
 
       vetoed = .false.
@@ -794,18 +716,17 @@ contains
            (shower_settings%ps_fixed_alpha_s)
       call shower_set_isr_pt_ordered &
            (shower_settings%ps_isr_pt_ordered)
-      call shower_set_isr_angular_ordered &
-           (shower_settings%ps_isr_angular_ordered)
       Call shower_set_primordial_kt_width &
            (shower_settings%ps_isr_primordial_kt_width)
       call shower_set_primordial_kt_cutoff &
            (shower_settings%ps_isr_primordial_kt_cutoff)
-      call shower_set_maxz_isr (shower_settings%ps_isr_z_cutoff)
-      call shower_set_minenergy_timelike (shower_settings%ps_isr_minenergy)
-      call shower_set_tscalefactor_isr (shower_settings%ps_isr_tscalefactor)
-      call shower_set_isr_only_onshell_emitted_partons &
-           (shower_settings%ps_isr_only_onshell_emitted_partons)
-      call shower_set_pdf_set_and_type (pdf_set, pdf_type)
+      shower%isr_angular_ordered = shower_settings%ps_isr_angular_ordered
+      shower%pdf_set = pdf_set
+      shower%pdf_type = pdf_type
+      shower%maxz_isr = shower_settings%ps_isr_z_cutoff
+      shower%minenergy_timelike = shower_settings%ps_isr_minenergy
+      shower%tscalefactor_isr = shower_settings%ps_isr_tscalefactor
+      call shower_set_rng(evt%rng)
       
       if (.not. msg_written) then
          call msg_message ("Using WHIZARD's internal showering")
@@ -815,9 +736,14 @@ contains
       n_loop = 0
       TRY_SHOWER: do ! just a loop to be able to discard events
          n_loop = n_loop + 1
+         ! TODO: (bcn 2014-12-02) Can this loop even occur twice?
          if (n_loop > 1000) call msg_fatal &
               ("Shower: too many loops (try_shower)")
-         call shower%create (pdf)
+         if (pdf_type == STRF_LHAPDF6) then
+            call shower%create (xmin, xmax, qmin, qmax, pdf)
+         else
+            call shower%create (xmin, xmax, qmin, qmax)
+         end if
          if (signal_is_pending ()) return             
          max_color_nr = 0
 
@@ -849,7 +775,7 @@ contains
             do i = 1, particle_set_get_n_tot (particle_set)
                if (particle_get_status (particle_set_get_particle &
                     (particle_set, i)) == PRT_BEAM) then
-                  j = j+1
+                  j = j + 1
                   hadrons(j)%nr = shower%get_next_free_nr ()
                   hadrons(j)%momentum = particle_get_momentum &
                        (particle_set_get_particle (particle_set, i))
@@ -863,7 +789,7 @@ contains
                   max_color_nr = max (max_color_nr, abs(hadrons(j)%c1), &
                        abs(hadrons(j)%c2))
                   hadrons(j)%interactionnr = 1
-                  connections(i)=j
+                  connections(i) = j
                end if
             end do
          end if
@@ -1018,12 +944,10 @@ contains
                   !!! calculate momenta
                   shat = partons(1)%x *partons(2)%x * &
                        shower_interaction_get_s(shower%interactions(1)%i)
-                  call parton_set_momentum (partons(1), &
-                       0.5_default*sqrt(shat), 0._default, 0._default, &
-                       0.5_default*sqrt(shat))
-                  call parton_set_momentum (partons(2), &
-                       0.5_default*sqrt(shat), 0._default, 0._default, &
-                       -0.5_default*sqrt(shat))
+                  partons(1)%momentum = [0.5_default * sqrt(shat), &
+                       zero, zero, 0.5_default*sqrt(shat)]
+                  partons(2)%momentum = [0.5_default * sqrt(shat), &
+                       zero, zero, -0.5_default*sqrt(shat)]
                   call parton_set_initial (partons(1), &
                        shower%interactions(1)%i%partons(1)%p%initial)
                   call parton_set_initial (partons(2), &
@@ -1045,16 +969,16 @@ contains
                   partons(4)%c1 = color_corr(1,4)
                   partons(4)%c2 = color_corr(2,4)
 
-                  call tao_random_number (phi)
-                  phi = 2*pi*phi
-                  call parton_set_momentum (partons(3), &
-                       0.5_default*sqrt(shat), sqrt(mi_scale)*cos(phi), &
-                       sqrt(mi_scale)*sin(phi), sqrt(0.25_default*shat - &
-                       mi_scale))
-                  call parton_set_momentum (partons(4), &
-                       0.5_default*sqrt(shat), -sqrt(mi_scale)*cos(phi), &
-                       -sqrt(mi_scale)*sin(phi), -sqrt(0.25_default*shat - &
-                       mi_scale))
+                  call evt%rng%generate (phi)
+                  phi = 2 * pi * phi
+                  partons(3)%momentum = [0.5_default*sqrt(shat), &
+                       sqrt(mi_scale)*cos(phi), &
+                       sqrt(mi_scale)*sin(phi), &
+                       sqrt(0.25_default*shat - mi_scale)]
+                  partons(4)%momentum = [ 0.5_default*sqrt(shat), &
+                       -sqrt(mi_scale)*cos(phi), &
+                       -sqrt(mi_scale)*sin(phi), &
+                       -sqrt(0.25_default*shat - mi_scale)]
                   partons(3)%belongstoFSR = .true.
                   partons(4)%belongstoFSR = .true.
 
@@ -1160,6 +1084,7 @@ contains
       end if         
          
       call shower%final ()
+      call shower_get_rng(evt%rng)
       !!! clean-up muli: we should finalize the muli pdf sets 
       !!!      when all runs are done. 
       ! call mi%finalize()
@@ -1220,7 +1145,7 @@ contains
       integer :: i, j, n_jets_PS
       integer, dimension(2) :: col
       type(particle_t) :: tempprt
-      real(double) :: eta, E, pl
+      real(double) :: eta
       type(vector4_t) :: p_tmp      
 
       !!! loop over particles and extract final colored ones with eta<etamax
@@ -1286,7 +1211,7 @@ contains
       integer :: u_W2P, u_P2W
       type(string_t) :: remaining_PYGIVE, partial_PYGIVE
       logical, save :: msg_written = .false.
-      character*10 buffer
+      character(len=10) :: buffer
 
       if (.not. shower_settings%hadronization_active)  return
       if (.not. valid) return
@@ -1396,7 +1321,7 @@ contains
       call tag_gen_n%write (var_str ("WHIZARD"), unit)
       write (unit, *)
       write (unit, "(2x)", advance = "no")      
-      call tag_gen_v%write (var_str ("2.2.3"), unit)
+      call tag_gen_v%write (var_str ("2.2.4"), unit)
       write (unit, *)
       call tag_head%close (unit); write (unit, *)
       call tag_init%write (unit); write (unit, *)
@@ -1417,31 +1342,27 @@ contains
     integer, intent(in) :: u
     class(model_data_t), intent(in), target :: model_in
     class(model_data_t), intent(in), target :: model_hadrons
-    type(string_t) :: filename
     type(flavor_t) :: flv
     type(color_t) :: col
-    logical :: logging_save
 
     class(model_data_t), pointer :: model
     integer :: newsize, oldsize
     type(particle_t), dimension(:), allocatable :: temp_prt
     integer :: i, j
-    integer :: n_available_parents;
     integer, dimension(:), allocatable :: available_parents
     integer, dimension(:), allocatable :: available_children
     logical, dimension(:), allocatable :: direct_child
     type(vector4_t) :: diffmomentum
     integer, PARAMETER :: MAXLEN=200
-    CHARACTER*(MAXLEN) STRING
+    character(len=maxlen) :: string
     integer ibeg
     INTEGER :: NUP,IDPRUP,IDUP,ISTUP
     real(kind=double) :: XWGTUP,SCALUP,AQEDUP,AQCDUP,VTIMUP,SPINUP
     integer :: MOTHUP(1:2),ICOLUP(1:2)
     real(kind=double) :: PUP(1:5)
     real(kind=default) :: pup_dum(1:5)
-    character*5 buffer
-
-    CHARACTER*6 STRFMT
+    character(len=5) :: buffer
+    character(len=6) :: strfmt
     STRFMT='(A000)'
     WRITE(STRFMT(3:5),'(I3)') MAXLEN
 
@@ -1613,8 +1534,7 @@ contains
       INTEGER MAXNUP
       PARAMETER (MAXNUP=500)
       INTEGER NUP,IDPRUP,IDUP,ISTUP,MOTHUP,ICOLUP
-      PARAMETER (KSUSY1=1000000,KSUSY2=2000000,KTECHN=3000000, &
-           KEXCIT=4000000,KDIMEN=5000000)
+      PARAMETER (KSUSY1=1000000,KSUSY2=2000000)
       DOUBLE PRECISION XWGTUP,SCALUP,AQEDUP,AQCDUP,PUP,VTIMUP,SPINUP
       COMMON/HEPEUP/NUP,IDPRUP,XWGTUP,SCALUP,AQEDUP,AQCDUP,IDUP(MAXNUP),ISTUP(MAXNUP),MOTHUP(2,MAXNUP),ICOLUP(2,MAXNUP), &
                       PUP(5,MAXNUP),VTIMUP(MAXNUP),SPINUP(MAXNUP)
@@ -1622,12 +1542,12 @@ contains
 
 !C...Lines to read in assumed never longer than 200 characters.
       PARAMETER (MAXLEN=200)
-      CHARACTER*(MAXLEN) STRING
+      character(len=maxlen) :: string
 
       INTEGER LEN
 
 !C...Format for reading lines.
-      CHARACTER*6 STRFMT
+      character(len=6) :: strfmt
       STRFMT='(A000)'
       WRITE(STRFMT(3:5),'(I3)') MAXLEN
 
@@ -1835,9 +1755,7 @@ contains
           call ckkw_fake_pseudo_shower_weights (evt%settings%ckkw_settings, &
                evt%settings%ckkw_weights, evt%particle_set)
        end if
-       call apply_shower_particle_set (evt%particle_set, &
-            evt%settings, evt%model, evt%model_hadrons, &
-            evt%os_data, evt%pdf_type, evt%pdf_set, evt%pdf, valid, vetoed)
+       call apply_shower_particle_set (evt, valid, vetoed)
        probability = 1
        !!! BCN: WK please check: In 2.1.1 vetoed events reduced sim%n_events by
        ! one while invalid events did not. This bookkeeping should be reenabled
@@ -1865,72 +1783,6 @@ contains
     integer :: i, num_id
     integer, parameter :: min_processes = 10
 
-    integer, parameter :: MAXNUP = 500
-    integer, parameter :: MAXPUP = 100
-    integer :: NUP
-    integer :: IDPRUP
-    double precision :: XWGTUP
-    double precision :: SCALUP
-    double precision :: AQEDUP
-    double precision :: AQCDUP
-    integer, dimension(MAXNUP) :: IDUP
-    integer, dimension(MAXNUP) :: ISTUP
-    integer, dimension(2,MAXNUP) :: MOTHUP
-    integer, dimension(2,MAXNUP) :: ICOLUP
-    double precision, dimension(5,MAXNUP) :: PUP
-    double precision, dimension(MAXNUP) :: VTIMUP
-    double precision, dimension(MAXNUP) :: SPINUP
-    integer, dimension(2) :: IDBMUP
-    double precision, dimension(2) :: EBMUP
-    integer, dimension(2) :: PDFGUP
-    integer, dimension(2) :: PDFSUP
-    integer :: IDWTUP
-    integer :: NPRUP
-    double precision, dimension(MAXPUP) :: XSECUP
-    double precision, dimension(MAXPUP) :: XERRUP
-    double precision, dimension(MAXPUP) :: XMAXUP
-    integer, dimension(MAXPUP) :: LPRUP
-    integer, parameter :: NMXHEP = 4000
-
-    integer :: NEVHEP
-
-    integer :: NHEP
-
-    integer, dimension(NMXHEP) :: ISTHEP
-
-    integer, dimension(NMXHEP) :: IDHEP
-
-    integer, dimension(2, NMXHEP) :: JMOHEP
-
-    integer, dimension(2, NMXHEP) :: JDAHEP
-
-    double precision, dimension(5, NMXHEP) :: PHEP
-    
-    double precision, dimension(4, NMXHEP) :: VHEP
-    
-    integer, dimension(NMXHEP) :: hepevt_pol
-
-    integer :: hepevt_n_out, hepevt_n_remnants
-
-    double precision :: hepevt_weight, hepevt_function_value
-    double precision :: hepevt_function_ratio
-    
-    common /HEPRUP/ &
-         IDBMUP, EBMUP, PDFGUP, PDFSUP, IDWTUP, NPRUP, &
-         XSECUP, XERRUP, XMAXUP, LPRUP
-    save /HEPRUP/
-
-    common /HEPEUP/ &
-         NUP, IDPRUP, XWGTUP, SCALUP, AQEDUP, AQCDUP, &
-         IDUP, ISTUP, MOTHUP, ICOLUP, PUP, VTIMUP, SPINUP
-    save /HEPEUP/
-
-    common /HEPEVT/ &
-         NEVHEP, NHEP, ISTHEP, IDHEP, &
-         JMOHEP, JDAHEP, PHEP, VHEP
-    save /HEPEVT/
-    
-    
     num_id = 1
     if (LPRUP (num_id) /= 0)  return
 

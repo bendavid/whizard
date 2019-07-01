@@ -602,13 +602,13 @@
  E =   5.000000000000E+02
  P =   0.000000000000E+00  0.000000000000E+00  4.841229182759E+02
  mask [fch] = [TTT]
- internal links: X => 5 3
+ internal links: X => 3 5
  source: (9)1
  Particle 2
  E =   5.000000000000E+02
  P =   0.000000000000E+00  0.000000000000E+00 -4.841229182759E+02
  mask [fch] = [TTT]
- internal links: X => 6 4
+ internal links: X => 4 6
  source: (9)2
  Particle 3
  E =   4.000000000000E+02
@@ -1153,13 +1153,13 @@ Channel 2:
  E =   5.000000000000E+02
  P =   0.000000000000E+00  0.000000000000E+00  4.841229182759E+02
  mask [fch] = [TTT]
- internal links: X => 5 3
+ internal links: X => 3 5
  source: (9)1
  Particle 2
  E =   5.000000000000E+02
  P =   0.000000000000E+00  0.000000000000E+00 -4.841229182759E+02
  mask [fch] = [TTT]
- internal links: X => 6 4
+ internal links: X => 4 6
  source: (9)2
  Particle 3
  E =   4.000000000000E+02
@@ -1697,13 +1697,13 @@ n_tot* => 6
  E =   5.000000000000E+02
  P =   0.000000000000E+00  0.000000000000E+00  4.841229182759E+02
  mask [fch] = [TTT]
- internal links: X => 5 3
+ internal links: X => 3 5
  source: (9)1
  Particle 2
  E =   5.000000000000E+02
  P =   0.000000000000E+00  0.000000000000E+00 -4.841229182759E+02
  mask [fch] = [TTT]
- internal links: X => 6 4
+ internal links: X => 4 6
  source: (9)2
  Particle 3
  E =   4.000000000000E+02

@@ -1,6 +1,6 @@
-! WHIZARD 2.2.3 Nov 30 2014
+! WHIZARD 2.2.4 Feb 06 2015
 ! 
-! Copyright (C) 1999-2014 by 
+! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -9,7 +9,8 @@
 !     Fabian Bach <fabian.bach@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Felix Braam, Sebastian Schmidt, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam, 
+!     Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -31,9 +32,12 @@
 
 module shower_base
 
-  use kinds, only: default !NODEP!
-  use constants !NODEP!
-  use tao_random_numbers !NODEP!
+  use kinds, only: default
+  use constants
+  use diagnostics
+  use rng_base
+  use physics_defs
+  use sm_physics, only: running_as_lam
 
   implicit none
   private
@@ -43,12 +47,6 @@ module shower_base
   public :: mass_type
   public :: mass_squared_type
   public :: number_of_flavors
-  public :: P_qqg
-  public :: P_gqq
-  public :: P_ggg
-  public :: integral_over_P_gqq
-  public :: integral_over_P_ggg
-  public :: integral_over_P_qqg
   public :: shower_set_D_min_t
   public :: shower_set_D_lambda_fsr
   public :: shower_set_D_lambda_isr
@@ -57,21 +55,18 @@ module shower_base
   public :: shower_set_D_running_alpha_s_isr
   public :: shower_set_D_constantalpha_s
   public :: shower_set_isr_pt_ordered
-  public :: shower_set_isr_angular_ordered
   public :: shower_set_primordial_kt_width
   public :: shower_set_primordial_kt_cutoff
-  public :: shower_set_maxz_isr
-  public :: shower_set_minenergy_timelike
-  public :: shower_set_tscalefactor_isr
-  public :: shower_set_isr_only_onshell_emitted_partons
-  public :: shower_set_pdf_set_and_type
+  public :: shower_set_rng
+  public :: shower_get_rng
 
   integer, parameter, public :: STRF_NONE = 0
   integer, parameter, public :: STRF_LHAPDF6 = 1
   integer, parameter, public :: STRF_LHAPDF5 = 2
   integer, parameter, public :: STRF_PDF_BUILTIN = 3
-  
-  logical, parameter, public :: D_print = .false.
+
+  logical, parameter, public :: D_PRINT = .false.
+  logical, parameter, public :: ASSERT = .false.
   real(default), public :: D_Min_t = one
   real(default), public :: D_min_scale = 0.5_default
   real(default), public :: D_Lambda_fsr = 0.29_default
@@ -80,69 +75,59 @@ module shower_base
   logical, public :: D_running_alpha_s_fsr = .true.
   logical, public :: D_running_alpha_s_isr = .true.
   real(default), public :: D_constalpha_s = 0.20_default
+  logical, public :: alpha_s_fudged = .true.
   logical, public :: isr_pt_ordered = .false.
-  logical, public :: isr_only_onshell_emitted_partons = .true.
-  logical, public :: isr_angular_ordered = .true.
   logical, public :: treat_light_quarks_massless = .true.
   logical, public :: treat_duscb_quarks_massless = .false.
   real(default), public :: primordial_kt_width = 1.5_default
   real(default), public :: primordial_kt_cutoff = five
-  real(default), public :: maxz_isr = 0.999_default
-  real(default), public :: minenergy_timelike = one
-  real(default), public :: tscalefactor_isr = one
-  real(default), public :: first_integral_suppression_factor = one
   real(default), public :: scalefactor1 = 0.02_default
   real(default), public :: scalefactor2 = 0.02_default
-  integer, public :: shower_pdf_set = 0
-  integer, public :: shower_pdf_type = STRF_NONE
-
-
+    class(rng_t), allocatable, public :: rng
 
 contains
 
-  function D_alpha_s_isr (tin) result(alpha_s)
+  function D_alpha_s_isr (tin) result (alpha_s)
     real(default), intent(in) :: tin
-    real(default) :: b, t
+    real(default) :: t
     real(default) :: alpha_s
-
-!    arbitrary lower cut off for scale
-!    t = MAX(max(one * D_Min_t, 1.1_default * D_Lambda_isr**2), ABS(tin))
-    t = max (max (0.1_default * D_Min_t, &
-         1.1_default * D_Lambda_isr**2), abs(tin))
-
+    if (alpha_s_fudged) then
+       t = max (max (0.1_default * D_Min_t, &
+                     1.1_default * D_Lambda_isr**2), abs(tin))
+    else
+       t = abs(tin)
+    end if
     if (D_running_alpha_s_isr) then
-       b = (33._default - two * number_of_flavors(t)) / (12._default * pi)
-       alpha_s = one / (b * log(t / (D_Lambda_isr**2)))
+       alpha_s = running_as_lam (number_of_flavors(t), sqrt(t), D_Lambda_isr, 0)
     else
        alpha_s = D_constalpha_s
     end if
   end function D_alpha_s_isr
 
-  function D_alpha_s_fsr (tin) result(alpha_s)
+  function D_alpha_s_fsr (tin) result (alpha_s)
     real(default), intent(in) :: tin
-    real(default) :: b, t
+    real(default) :: t
     real(default) :: alpha_s
-
-!    arbitrary lower cut off for scale
-!    t= max( max (one * D_Min_t, 1.1_default * D_Lambda**2), ABS(tin))
-    t = max (max (0.1_default * D_Min_t, &
-         1.1_default * D_Lambda_fsr**2), abs(tin))
-
+    if (alpha_s_fudged) then
+       t = max (max (0.1_default * D_Min_t, &
+                     1.1_default * D_Lambda_isr**2), abs(tin))
+    else
+       t = abs(tin)
+    end if
     if (D_running_alpha_s_fsr) then
-       b = (33._default - two * number_of_flavors(t)) / (12._default * pi)
-       alpha_s = one / (b * log(t / (D_Lambda_fsr**2)))
+       alpha_s = running_as_lam (number_of_flavors(t), sqrt(t), D_Lambda_fsr, 0)
     else
        alpha_s = D_constalpha_s
     end if
   end function D_alpha_s_fsr
 
-  function mass_type (type) result (mass)
+  elemental function mass_type (type) result (mass)
     integer, intent(in) :: type
     real(default) :: mass
     mass = sqrt (mass_squared_type (type))
   end function mass_type
 
-  function mass_squared_type (type) result (mass2)
+  elemental function mass_squared_type (type) result (mass2)
     integer, intent(in) :: type
     real(default) :: mass2
 
@@ -174,51 +159,53 @@ contains
        end if
     case (6)
        mass2 = 175.00_default**2
-    case (21)
+    case (GLUON)
        mass2 = zero
-    case (2112)   ! Neutron
+    case (NEUTRON)
        mass2 = 0.939565_default**2
-    case (2212)   ! Proton
+    case (PROTON)
        mass2 = 0.93827_default**2
-    case (411) ! D+
+    case (DPLUS)
        mass2 = 1.86960_default**2
-    case (421) ! D0
+    case (D0)
        mass2 = 1.86483_default**2
-    case (511) ! B0
+    case (B0)
        mass2 = 5.27950_default**2
-    case (521) ! B+
+    case (BPLUS)
        mass2 = 5.27917_default**2
-    case (2224) !Delta++
+    case (DELTAPLUSPLUS)
        mass2 = 1.232_default**2
-    case (3212) !Sigma0
+    case (SIGMA0)
        mass2 = 1.192642_default**2
-    case (3222) !Sigma+
+    case (SIGMAPLUS)
        mass2 = 1.18937_default**2
-    case (4212) ! Sigma_c+
+    case (SIGMACPLUS)
        mass2 = 2.4529_default**2
-    case (4222) ! Sigma_c++
+    case (SIGMACPLUSPLUS)
        mass2 = 2.45402_default**2
-    case (5212) ! Sigma_b0
+    case (SIGMAB0)
        mass2 = 5.8152_default**2
-    case (5222) ! Sigma_b+
+    case (SIGMABPLUS)
        mass2 = 5.8078_default**2
-    case (0) ! I take 0 to be partons whose type is not yet clear
+    case (UNDEFINED)
        mass2 = zero
-    case (9999) ! beam remnant
+    case (BEAM_REMNANT)
        mass2 = zero ! don't know how to handle the beamremnant
     case default !others not implemented
        mass2 = zero
     end select
   end function mass_squared_type
 
-  function number_of_flavors (t) result (nr)
+  elemental function number_of_flavors (t) result (nr)
     real(default), intent(in) :: t
-    integer :: nr
+    real(default) :: nr
     integer :: i
     nr = 0
-    if (t < 0.25_default * D_Min_t) return   ! arbitrary cut off ?WRONG?
-    do i = 1, min (D_Nf, 3)
-       ! to do: take heavier quarks(-> cuts on allowed costheta in g->qq) into account
+    if (t < D_Min_t) return   ! arbitrary cut off
+    ! TODO: do i = 1, min (max (3, D_Nf), 6)
+    do i = 1, min (3, D_Nf)
+    !!! to do: take heavier quarks(-> cuts on allowed costheta in g->qq)
+    !!!        into account
        if ((four * mass_squared_type (i) + D_Min_t) < t ) then
           nr = i
        else
@@ -226,56 +213,6 @@ contains
        end if
     end do
   end function number_of_flavors
-
-  function P_qqg (z) result (P)
-    !!! quark => quark + gluon
-    real(default), intent(in) :: z
-    real(default) :: P
-    P = (four / three) * (one + z**2) / (one - z)
-  end function P_qqg
-
-  function P_gqq (z) result (P)
-    !!! gluon => quark + antiquark
-    real(default), intent(in) :: z
-    real(default) :: P
-    P = 0.5_default * (z**2 + (one - z)**2)
-    !!! anti-symmetrized version -> needs change of first and second daughter
-    !!! in 50% of branchings
-    !    P = (one - z)**2
-  end function P_gqq
-
-  function P_ggg (z) result (P)
-    !!! gluon => gluon + gluon
-    real(default), intent(in) :: z
-    real(default) :: P
-    P = three * ((one - z) / z + z / (one - z) + z * (one - z))
-    !!! anti-symmetrized version -> needs to by symmetrized in color connections
-    !    P = three * ( two * z / (one - z) + z * (one - z) )
-  end function P_ggg
-
-  function integral_over_P_gqq (zmin, zmax) result (integral)
-    real(default), intent(in) :: zmin, zmax
-    real(default) :: integral
-    integral = 0.5_default * ((two / three) * &
-         (zmax**3 - zmin**3) - (zmax**2 - zmin**2) + (zmax - zmin))
-  end function integral_over_P_gqq
-
-  function integral_over_P_ggg (zmin, zmax) result (integral)
-    real(default), intent(in) :: zmin, zmax
-    real(default) :: integral
-    integral = three * ((log(zmax) - two * zmax - &
-         log(one - zmax) + zmax**2 / two - zmax**3 / three) - &
-         (log(zmin) - zmin - zmin - log(one - zmin) + zmin**2 &
-         / two - zmin**3 / three) )
-  end function integral_over_P_ggg
-
-  function integral_over_P_qqg (zmin, zmax) result (integral)
-    real(default), intent(in) :: zmin, zmax
-    real(default) :: integral
-    integral = (two / three) * ( - zmax**2 + zmin**2 - &
-         two * (zmax - zmin) + four * &
-         log((one - zmin) / (one - zmax)))
-  end function integral_over_P_qqg
 
   subroutine shower_set_D_Min_t (input)
     real(default) :: input
@@ -317,11 +254,6 @@ contains
     isr_pt_ordered = input
   end subroutine shower_set_isr_pt_ordered
 
-  subroutine shower_set_isr_angular_ordered (input)
-    logical :: input
-    isr_angular_ordered = input
-  end subroutine shower_set_isr_angular_ordered
-
   subroutine shower_set_primordial_kt_width (input)
     real(default) :: input
     primordial_kt_width = input
@@ -332,31 +264,15 @@ contains
     primordial_kt_cutoff = input
   end subroutine shower_set_primordial_kt_cutoff
 
-  subroutine shower_set_maxz_isr (input)
-    real(default) :: input
-    maxz_isr = input
-  end subroutine shower_set_maxz_isr
+  subroutine shower_set_rng (rng_inc)
+    class(rng_t), intent(inout), allocatable :: rng_inc
+    call move_alloc (from = rng_inc, to = rng)
+  end subroutine shower_set_rng
 
-  subroutine shower_set_minenergy_timelike (input)
-    real(default) :: input
-    minenergy_timelike = input
-  end subroutine shower_set_minenergy_timelike
-
-  subroutine shower_set_tscalefactor_isr (input)
-    real(default) :: input
-    tscalefactor_isr = input
-  end subroutine shower_set_tscalefactor_isr
-
-  subroutine shower_set_isr_only_onshell_emitted_partons (input)
-    logical :: input
-    isr_only_onshell_emitted_partons = input
-  end subroutine shower_set_isr_only_onshell_emitted_partons
-
-  subroutine shower_set_pdf_set_and_type (set, type)
-    integer, intent(in) :: set, type
-    shower_pdf_set = set
-    shower_pdf_type = type
-  end subroutine shower_set_pdf_set_and_type
+  subroutine shower_get_rng (rng_out)
+    class(rng_t), intent(inout), allocatable :: rng_out
+    call move_alloc (from = rng, to = rng_out)
+  end subroutine shower_get_rng
 
 
 end module shower_base

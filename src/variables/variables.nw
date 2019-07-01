@@ -1,0 +1,3320 @@
+% -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*- 
+% WHIZARD code as NOWEB source: variables for processes
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Variables for Processes}
+
+This part introduces variables as user-controlled objects that
+influence the behavior of objects and calculations.  Variables contain
+objects of intrinsic type or of a type as introced above.
+\begin{description}
+\item[variables]
+  Store values of various kind, used by expressions and accessed by
+  the command interface.  This provides an implementation of the [[vars_t]]
+  abstract type.
+\item[observables]
+  Concrete implementation of observables (functions in the variable tree),
+  applicable for \whizard.
+  abstract type.
+\end{description}
+
+\clearpage
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Variables: Implementation}
+The user interface deals with variables that are handled similarly to
+full-flegded programming languages.  The system will add a lot of
+predefined variables (model parameters, flags, etc.) that are
+accessible to the user by the same methods.
+
+Variables can be of various type: logical (boolean/flag), integer,
+real (default precision), subevents (used in cut expressions),
+arrays of PDG codes (aliases for particles), strings.  Furthermore, in
+cut expressions we have unary and binary observables, which are used
+like real parameters but behave like functions.
+<<[[variables.f90]]>>=
+<<File header>>
+
+module variables
+
+<<Use kinds>>
+<<Use strings>>
+  use io_units
+  use format_utils, only: pac_fmt
+  use format_defs, only: FMT_14, FMT_19
+  use constants, only: eps0
+  use diagnostics
+  use pdg_arrays
+  use subevents
+  
+  use var_base
+
+<<Standard module head>>
+
+<<Variables: public>>
+
+<<Variables: parameters>>
+
+<<Variables: types>>
+
+<<Variables: interfaces>>
+
+contains
+
+<<Variables: procedures>>
+
+end module variables
+@ %def variables
+@ 
+\subsection{Variable list entries}
+Variable (and constant) values can be of one of the following types:
+<<Variables: parameters>>=
+  integer, parameter, public :: V_NONE = 0, V_LOG = 1, V_INT = 2, V_REAL = 3
+  integer, parameter, public :: V_CMPLX = 4, V_SEV = 5, V_PDG = 6, V_STR = 7
+  integer, parameter, public :: V_OBS1_INT = 11, V_OBS2_INT = 12
+  integer, parameter, public :: V_OBS1_REAL = 21, V_OBS2_REAL = 22
+  integer, parameter, public :: V_UOBS1_INT = 31, V_UOBS2_INT = 32
+  integer, parameter, public :: V_UOBS1_REAL = 41, V_UOBS2_REAL = 42
+
+@ %def V_NONE V_LOG V_INT V_REAL V_CMPLX V_PRT V_SEV V_PDG
+@ %def V_OBS1_INT V_OBS2_INT V_OBS1_REAL V_OBS2_REAL
+@ %def V_UOBS1_INT V_UOBS2_INT V_UOBS1_REAL V_UOBS2_REAL
+@ 
+\subsubsection{The type}
+This is an entry in the variable list.  It can be of any type; in
+each case only one value is allocated.  It may be physically
+allocated upon creation, in which case [[is_allocated]] is true, or
+it may contain just a pointer to a value somewhere else, in which case
+[[is_allocated]] is false.
+
+The flag [[is_defined]] is set when the variable is given a value, even the
+undefined value.  (Therefore it is distinct from [[is_known]].)  This matters
+for variable declaration in the SINDARIN language.  The variable is set up in
+the compilation step and initially marked as defined, but after compilation
+all variables are set undefined.  Each variable becomes defined when it is
+explicitly set.  The difference matters in loops.
+
+[[is_locked]] means that it cannot be given a value using the interface
+routines [[var_list_set_XXX]] below.  It can only be initialized, or change
+automatically due to a side effect.
+
+[[is_copy]] means that this is a local copy of a global variable.  The copy
+has a pointer to the original, which can be used to restore a previous value.
+
+[[is_intrinsic]] means that this variable is defined by the program, not by
+the user.  Intrinsic variables cannot be (re)declared, but their values can be
+reset unless they are locked.  [[is_user_var]] means that the variable has
+been declared by the user.  It could be a new variable, or a local copy of an
+intrinsic variable.
+
+The flag [[is_known]] is a pointer which parallels the use of the
+value pointer.  For pointer variables, it is set if the value should point to
+a known value.  For ordinary variables, it should be true.
+
+The value is implemented as a set of alternative type-specific pointers.  This
+emulates polymorphism, and it allows for actual pointer variables.
+Observable-type variables have function pointers as values, so they behave
+like macros.  The functions make use of the particle objects accessible via
+the pointers [[prt1]] and [[prt2]].
+
+Finally, the [[next]] pointer indicates that we are making lists of
+variables.  A more efficient implementation might switch to hashes or
+similar; the current implementation has $O(N)$ lookup.
+<<Variables: types>>=
+  type :: var_entry_t
+     private
+     integer :: type = V_NONE
+     type(string_t) :: name
+     logical :: is_allocated = .false.
+     logical :: is_defined = .false.
+     logical :: is_locked = .false.
+     logical :: is_intrinsic = .false.
+     logical :: is_user_var = .false.
+     logical, pointer :: is_known => null ()
+     logical,           pointer :: lval => null ()
+     integer,           pointer :: ival => null ()
+     real(default),     pointer :: rval => null ()
+     complex(default), pointer :: cval => null ()
+     type(subevt_t),  pointer :: pval => null ()
+     type(pdg_array_t), pointer :: aval => null ()
+     type(string_t),    pointer :: sval => null ()
+     procedure(obs_unary_int),   nopass, pointer :: obs1_int  => null ()
+     procedure(obs_unary_real),  nopass, pointer :: obs1_real => null ()
+     procedure(obs_binary_int),  nopass, pointer :: obs2_int  => null ()
+     procedure(obs_binary_real), nopass, pointer :: obs2_real => null ()
+     type(prt_t), pointer :: prt1 => null ()
+     type(prt_t), pointer :: prt2 => null ()
+     type(var_entry_t), pointer :: next => null ()
+  end type var_entry_t
+
+@ %def var_entry_t
+@ 
+\subsubsection{Interfaces for the observable functions}
+<<Variables: public>>=
+  public :: obs_unary_int
+  public :: obs_unary_real
+  public :: obs_binary_int
+  public :: obs_binary_real
+<<Variables: interfaces>>=
+  abstract interface
+     function obs_unary_int (prt1) result (ival)
+       import
+       integer :: ival
+       type(prt_t), intent(in) :: prt1
+     end function obs_unary_int
+  end interface
+  abstract interface
+     function obs_unary_real (prt1) result (rval)
+       import
+       real(default) :: rval
+       type(prt_t), intent(in) :: prt1
+     end function obs_unary_real
+  end interface
+  abstract interface
+     function obs_binary_int (prt1, prt2) result (ival)
+       import
+       integer :: ival
+       type(prt_t), intent(in) :: prt1, prt2
+     end function obs_binary_int
+  end interface
+  abstract interface
+     function obs_binary_real (prt1, prt2) result (rval)
+       import
+       real(default) :: rval
+       type(prt_t), intent(in) :: prt1, prt2
+     end function obs_binary_real
+  end interface
+
+@ %def obs_unary_int obs_unary_real obs_binary_real
+@ 
+\subsubsection{Initialization}
+Initialize an entry, optionally with a physical value.  We also
+allocate the [[is_known]] flag and set it if the value is set.
+<<Variables: procedures>>=
+  subroutine var_entry_init_log (var, name, lval, intrinsic, user)
+    type(var_entry_t), intent(out) :: var
+    type(string_t), intent(in) :: name
+    logical, intent(in), optional :: lval
+    logical, intent(in), optional :: intrinsic, user
+    var%name = name
+    var%type = V_LOG
+    allocate (var%lval, var%is_known)
+    if (present (lval)) then
+       var%lval = lval
+       var%is_defined = .true.
+       var%is_known = .true.
+    else
+       var%is_known = .false.
+    end if
+    if (present (intrinsic))  var%is_intrinsic = intrinsic
+    if (present (user))  var%is_user_var = user
+    var%is_allocated = .true.
+  end subroutine var_entry_init_log
+
+  subroutine var_entry_init_int (var, name, ival, intrinsic, user)
+    type(var_entry_t), intent(out) :: var
+    type(string_t), intent(in) :: name
+    integer, intent(in), optional :: ival
+    logical, intent(in), optional :: intrinsic, user
+    var%name = name
+    var%type = V_INT
+    allocate (var%ival, var%is_known)
+    if (present (ival)) then
+       var%ival = ival
+       var%is_defined = .true.
+       var%is_known = .true.
+    else
+       var%is_known = .false.
+    end if
+    if (present (intrinsic))  var%is_intrinsic = intrinsic
+    if (present (user))  var%is_user_var = user
+    var%is_allocated = .true.
+  end subroutine var_entry_init_int
+
+  subroutine var_entry_init_real (var, name, rval, intrinsic, user)
+    type(var_entry_t), intent(out) :: var
+    type(string_t), intent(in) :: name
+    real(default), intent(in), optional :: rval
+    logical, intent(in), optional :: intrinsic, user
+    var%name = name
+    var%type = V_REAL
+    allocate (var%rval, var%is_known)
+    if (present (rval)) then
+       var%rval = rval
+       var%is_defined = .true.
+       var%is_known = .true.
+    else
+       var%is_known = .false.
+    end if
+    if (present (intrinsic))  var%is_intrinsic = intrinsic
+    if (present (user))  var%is_user_var = user
+    var%is_allocated = .true.
+  end subroutine var_entry_init_real
+  
+  subroutine var_entry_init_cmplx (var, name, cval, intrinsic, user)
+    type(var_entry_t), intent(out) :: var
+    type(string_t), intent(in) :: name
+    complex(default), intent(in), optional :: cval
+    logical, intent(in), optional :: intrinsic, user
+    var%name = name
+    var%type = V_CMPLX
+    allocate (var%cval, var%is_known)
+    if (present (cval)) then
+       var%cval = cval
+       var%is_defined = .true.
+       var%is_known = .true.
+    else
+       var%is_known = .false.
+    end if
+    if (present (intrinsic))  var%is_intrinsic = intrinsic
+    if (present (user))  var%is_user_var = user
+    var%is_allocated = .true.
+  end subroutine var_entry_init_cmplx
+
+  subroutine var_entry_init_subevt (var, name, pval, intrinsic, user)
+    type(var_entry_t), intent(out) :: var
+    type(string_t), intent(in) :: name
+    type(subevt_t), intent(in), optional :: pval
+    logical, intent(in), optional :: intrinsic, user
+    var%name = name
+    var%type = V_SEV
+    allocate (var%pval, var%is_known)
+    if (present (pval)) then
+       var%pval = pval
+       var%is_defined = .true.
+       var%is_known = .true.
+    else
+       var%is_known = .false.
+    end if
+    if (present (intrinsic))  var%is_intrinsic = intrinsic
+    if (present (user))  var%is_user_var = user
+    var%is_allocated = .true.
+  end subroutine var_entry_init_subevt
+
+  subroutine var_entry_init_pdg_array (var, name, aval, intrinsic, user)
+    type(var_entry_t), intent(out) :: var
+    type(string_t), intent(in) :: name
+    type(pdg_array_t), intent(in), optional :: aval
+    logical, intent(in), optional :: intrinsic, user
+    var%name = name
+    var%type = V_PDG
+    allocate (var%aval, var%is_known)
+    if (present (aval)) then
+       var%aval = aval
+       var%is_defined = .true.
+       var%is_known = .true.
+    else
+       var%is_known = .false.
+    end if
+    if (present (intrinsic))  var%is_intrinsic = intrinsic
+    if (present (user))  var%is_user_var = user
+    var%is_allocated = .true.
+  end subroutine var_entry_init_pdg_array
+
+  subroutine var_entry_init_string (var, name, sval, intrinsic, user)
+    type(var_entry_t), intent(out) :: var
+    type(string_t), intent(in) :: name
+    type(string_t), intent(in), optional :: sval
+    logical, intent(in), optional :: intrinsic, user
+    var%name = name
+    var%type = V_STR
+    allocate (var%sval, var%is_known)
+    if (present (sval)) then
+       var%sval = sval
+       var%is_defined = .true.
+       var%is_known = .true.
+    else
+       var%is_known = .false.
+    end if
+    if (present (intrinsic))  var%is_intrinsic = intrinsic
+    if (present (user))  var%is_user_var = user
+    var%is_allocated = .true.
+  end subroutine var_entry_init_string
+
+@ %def var_entry_init_log
+@ %def var_entry_init_int
+@ %def var_entry_init_real
+@ %def var_entry_init_cmplx
+@ %def var_entry_init_subevt
+@ %def var_entry_init_pdg_array
+@ %def var_entry_init_string
+@ Initialize an entry with a pointer to the value and, for numeric/logical
+values, a pointer to the [[is_known]] flag.
+<<Variables: procedures>>=
+  subroutine var_entry_init_log_ptr (var, name, lval, is_known, intrinsic)
+    type(var_entry_t), intent(out) :: var
+    type(string_t), intent(in) :: name
+    logical, intent(in), target :: lval
+    logical, intent(in), target :: is_known
+    logical, intent(in), optional :: intrinsic
+    var%name = name
+    var%type = V_LOG
+    var%lval => lval
+    var%is_known => is_known
+    if (present (intrinsic))  var%is_intrinsic = intrinsic
+    var%is_defined = .true.
+  end subroutine var_entry_init_log_ptr
+
+  subroutine var_entry_init_int_ptr (var, name, ival, is_known, intrinsic)
+    type(var_entry_t), intent(out) :: var
+    type(string_t), intent(in) :: name
+    integer, intent(in), target :: ival
+    logical, intent(in), target :: is_known
+    logical, intent(in), optional :: intrinsic
+    var%name = name
+    var%type = V_INT
+    var%ival => ival
+    var%is_known => is_known
+    if (present (intrinsic))  var%is_intrinsic = intrinsic
+    var%is_defined = .true.
+  end subroutine var_entry_init_int_ptr
+
+  subroutine var_entry_init_real_ptr (var, name, rval, is_known, intrinsic)
+    type(var_entry_t), intent(out) :: var
+    type(string_t), intent(in) :: name
+    real(default), intent(in), target :: rval
+    logical, intent(in), target :: is_known
+    logical, intent(in), optional :: intrinsic
+    var%name = name
+    var%type = V_REAL
+    var%rval => rval
+    var%is_known => is_known
+    if (present (intrinsic))  var%is_intrinsic = intrinsic
+    var%is_defined = .true.
+  end subroutine var_entry_init_real_ptr
+ 
+  subroutine var_entry_init_cmplx_ptr (var, name, cval, is_known, intrinsic)
+    type(var_entry_t), intent(out) :: var
+    type(string_t), intent(in) :: name
+    complex(default), intent(in), target :: cval
+    logical, intent(in), target :: is_known
+    logical, intent(in), optional :: intrinsic
+    var%name = name
+    var%type = V_CMPLX
+    var%cval => cval
+    var%is_known => is_known
+    if (present (intrinsic))  var%is_intrinsic = intrinsic
+    var%is_defined = .true.
+  end subroutine var_entry_init_cmplx_ptr
+
+  subroutine var_entry_init_pdg_array_ptr (var, name, aval, is_known, intrinsic)
+    type(var_entry_t), intent(out) :: var
+    type(string_t), intent(in) :: name
+    type(pdg_array_t), intent(in), target :: aval
+    logical, intent(in), target :: is_known
+    logical, intent(in), optional :: intrinsic
+    var%name = name
+    var%type = V_PDG
+    var%aval => aval
+    var%is_known => is_known
+    if (present (intrinsic))  var%is_intrinsic = intrinsic
+    var%is_defined = .true.
+  end subroutine var_entry_init_pdg_array_ptr
+
+  subroutine var_entry_init_subevt_ptr (var, name, pval, is_known, intrinsic)
+    type(var_entry_t), intent(out) :: var
+    type(string_t), intent(in) :: name
+    type(subevt_t), intent(in), target :: pval
+    logical, intent(in), target :: is_known
+    logical, intent(in), optional :: intrinsic
+    var%name = name
+    var%type = V_SEV
+    var%pval => pval
+    var%is_known => is_known
+    if (present (intrinsic))  var%is_intrinsic = intrinsic
+    var%is_defined = .true.
+  end subroutine var_entry_init_subevt_ptr
+
+  subroutine var_entry_init_string_ptr (var, name, sval, is_known, intrinsic)
+    type(var_entry_t), intent(out) :: var
+    type(string_t), intent(in) :: name
+    type(string_t), intent(in), target :: sval
+    logical, intent(in), target :: is_known
+    logical, intent(in), optional :: intrinsic
+    var%name = name
+    var%type = V_STR
+    var%sval => sval
+    var%is_known => is_known
+    if (present (intrinsic))  var%is_intrinsic = intrinsic
+    var%is_defined = .true.
+  end subroutine var_entry_init_string_ptr
+
+@ %def var_entry_init_log_ptr
+@ %def var_entry_init_int_ptr
+@ %def var_entry_init_real_ptr
+@ %def var_entry_init_cmplx_ptr
+@ %def var_entry_init_pdg_array_ptr
+@ %def var_entry_init_subevt_ptr
+@ %def var_entry_init_string_ptr
+@ Initialize an entry with an observable.  The procedure pointer is
+not yet set.
+<<Variables: procedures>>=
+  subroutine var_entry_init_obs (var, name, type, prt1, prt2)
+    type(var_entry_t), intent(out) :: var
+    type(string_t), intent(in) :: name
+    integer, intent(in) :: type
+    type(prt_t), intent(in), target :: prt1
+    type(prt_t), intent(in), optional, target :: prt2
+    var%type = type
+    var%name = name
+    var%prt1 => prt1
+    if (present (prt2))  var%prt2 => prt2
+    var%is_intrinsic = .true.
+    var%is_defined = .true.
+  end subroutine var_entry_init_obs
+
+@ %def var_entry_init_obs
+@ Mark an entry as undefined it it is a user-defined variable object, so force
+re-initialization.
+<<Variables: procedures>>=
+  subroutine var_entry_undefine (var)
+    type(var_entry_t), intent(inout) :: var
+    var%is_defined = .not. var%is_user_var
+    var%is_known = var%is_defined .and. var%is_known
+  end subroutine var_entry_undefine
+
+@ %def var_entry_undefine
+@ Clear an entry: mark it as unknown.
+<<Variables: procedures>>=
+  subroutine var_entry_clear (var)
+    type(var_entry_t), intent(inout) :: var
+    var%is_known = .false.
+  end subroutine var_entry_clear
+
+@ %def var_entry_clear
+@ Lock an entry: forbid resetting the entry after initialization.
+<<Variables: procedures>>=
+  subroutine var_entry_lock (var, locked)
+    type(var_entry_t), intent(inout) :: var
+    logical, intent(in), optional :: locked
+    if (present (locked)) then
+       var%is_locked = locked
+    else
+       var%is_locked = .true.
+    end if
+  end subroutine var_entry_lock
+
+@ %def var_entry_lock
+@ 
+\subsubsection{Finalizer}
+<<Variables: procedures>>=
+  subroutine var_entry_final (var)
+    type(var_entry_t), intent(inout) :: var
+    if (var%is_allocated) then
+       select case (var%type)
+       case (V_LOG); deallocate (var%lval)
+       case (V_INT); deallocate (var%ival)
+       case (V_REAL);deallocate (var%rval)
+       case (V_CMPLX);deallocate (var%cval)
+       case (V_SEV); deallocate (var%pval)
+       case (V_PDG); deallocate (var%aval)
+       case (V_STR); deallocate (var%sval)
+       end select
+       deallocate (var%is_known)
+       var%is_allocated = .false.
+       var%is_defined = .false.
+    end if
+  end subroutine var_entry_final
+
+@ %def var_entry_final
+@ 
+\subsubsection{Output}
+<<Variables: procedures>>=
+  recursive subroutine var_entry_write (var, unit, model_name, &
+       intrinsic, pacified)
+    type(var_entry_t), intent(in) :: var
+    integer, intent(in), optional :: unit
+    type(string_t), intent(in), optional :: model_name
+    logical, intent(in), optional :: intrinsic
+    logical, intent(in), optional :: pacified
+    logical :: num_pac
+    real(default) :: rval
+    complex(default) :: cval
+    integer :: u    
+    character(len=7) :: fmt   
+    call pac_fmt (fmt, FMT_19, FMT_14, pacified)
+    u = given_output_unit (unit);  if (u < 0)  return
+    if (present (intrinsic)) then
+       if (var%is_intrinsic .neqv. intrinsic)  return
+    end if
+    if (.not. var%is_defined) then
+       write (u, "(A,1x)", advance="no")  "[undefined]"
+    end if
+    if (.not. var%is_intrinsic) then
+       write (u, "(A,1x)", advance="no")  "[user variable]"
+    end if
+    num_pac = .false.
+    if (present (pacified))  num_pac = pacified
+    if (present (model_name)) then
+       write (u, "(A,A)", advance="no")  char(model_name), "."
+    end if
+    write (u, "(A)", advance="no")  char (var%name)
+    if (var%is_locked)  write (u, "(A)", advance="no")  "*"
+    if (var%is_allocated) then
+       write (u, "(A)", advance="no")  " = "
+    else if (var%type /= V_NONE) then
+       write (u, "(A)", advance="no")  " => "
+    end if
+    select case (var%type)
+    case (V_NONE); write (u, *)
+    case (V_LOG)
+       if (var%is_known) then
+          if (var%lval) then
+             write (u, "(A)")  "true"
+          else
+             write (u, "(A)")  "false"
+          end if
+       else
+          write (u, "(A)")  "[unknown logical]"
+       end if
+    case (V_INT)
+       if (var%is_known) then
+          write (u, "(I0)")  var%ival
+       else
+          write (u, "(A)")  "[unknown integer]"
+       end if
+    case (V_REAL)
+       if (var%is_known) then
+          rval = var%rval
+          if (num_pac) then
+             call pacify (rval, 10 * eps0)
+          end if
+          write (u, "(" // fmt // ")")  rval          
+       else
+          write (u, "(A)")  "[unknown real]"
+       end if
+    case (V_CMPLX)
+       if (var%is_known) then
+          cval = var%cval
+          if (num_pac) then
+             call pacify (cval, 10 * eps0)
+          end if
+          write (u, "('('," // fmt // ",','," // fmt // ",')')")  cval 
+       else
+          write (u, "(A)")  "[unknown complex]"
+       end if
+    case (V_SEV)
+       if (var%is_known) then
+          call subevt_write (var%pval, unit, prefix="       ")
+       else
+          write (u, "(A)")  "[unknown subevent]"
+       end if
+    case (V_PDG)
+       if (var%is_known) then
+          call pdg_array_write (var%aval, u);  write (u, *)
+       else
+          write (u, "(A)")  "[unknown PDG array]"
+       end if
+    case (V_STR)
+       if (var%is_known) then
+          write (u, "(A)")  '"' // char (var%sval) // '"'
+       else
+          write (u, "(A)")  "[unknown string]"
+       end if
+    case (V_OBS1_INT);  write (u, *) "[int] = unary observable"
+    case (V_OBS2_INT);  write (u, *) "[int] = binary observable"
+    case (V_OBS1_REAL); write (u, *) "[real] = unary observable"
+    case (V_OBS2_REAL); write (u, *) "[real] = binary observable"
+    case (V_UOBS1_INT);  write (u, *) "[int] = unary user observable"
+    case (V_UOBS2_INT);  write (u, *) "[int] = binary user observable"
+    case (V_UOBS1_REAL); write (u, *) "[real] = unary user observable"
+    case (V_UOBS2_REAL); write (u, *) "[real] = binary user observable"
+    end select
+  end subroutine var_entry_write
+
+@ %def var_entry_write
+@ 
+\subsubsection{Accessing contents}
+<<Variables: procedures>>=
+  function var_entry_get_name (var) result (name)
+    type(string_t) :: name
+    type(var_entry_t), intent(in) :: var
+    name = var%name
+  end function var_entry_get_name
+
+  function var_entry_get_type (var) result (type)
+    integer :: type
+    type(var_entry_t), intent(in) :: var
+    type = var%type
+  end function var_entry_get_type
+
+@ %def var_entry_get_name var_entry_get_type
+@ Return true if the variable is defined.  This the case if it is allocated
+and known, or if it is a pointer.
+<<Variables: procedures>>=
+  function var_entry_is_defined (var) result (defined)
+    logical :: defined
+    type(var_entry_t), intent(in) :: var
+    defined = var%is_defined
+  end function var_entry_is_defined
+
+@ %def var_entry_is_defined
+@ Return true if the variable is locked.  If [[force]] is active,
+always return false.
+<<Variables: procedures>>=
+  function var_entry_is_locked (var, force) result (locked)
+    logical :: locked
+    type(var_entry_t), intent(in) :: var
+    logical, intent(in), optional :: force
+    if (present (force)) then
+       if (force) then
+          locked = .false.;  return
+       end if
+    end if
+    locked = var%is_locked
+  end function var_entry_is_locked
+
+@ %def var_entry_is_locked
+@ Return true if the variable is intrinsic
+<<Variables: procedures>>=
+  function var_entry_is_intrinsic (var) result (flag)
+    logical :: flag
+    type(var_entry_t), intent(in) :: var
+    flag = var%is_intrinsic
+  end function var_entry_is_intrinsic
+
+@ %def var_entry_is_intrinsic
+@ Return components
+<<Variables: procedures>>=
+  function var_entry_is_known (var) result (flag)
+    logical :: flag
+    type(var_entry_t), intent(in) :: var
+    flag = var%is_known
+  end function var_entry_is_known
+
+  function var_entry_get_lval (var) result (lval)
+    logical :: lval
+    type(var_entry_t), intent(in) :: var
+    lval = var%lval
+  end function var_entry_get_lval
+
+  function var_entry_get_ival (var) result (ival)
+    integer :: ival
+    type(var_entry_t), intent(in) :: var
+    ival = var%ival
+  end function var_entry_get_ival
+
+  function var_entry_get_rval (var) result (rval)
+    real(default) :: rval
+    type(var_entry_t), intent(in) :: var
+    rval = var%rval
+  end function var_entry_get_rval
+  
+  function var_entry_get_cval (var) result (cval)
+    complex(default) :: cval
+    type(var_entry_t), intent(in) :: var
+    cval = var%cval
+  end function var_entry_get_cval
+
+  function var_entry_get_aval (var) result (aval)
+    type(pdg_array_t) :: aval
+    type(var_entry_t), intent(in) :: var
+    aval = var%aval
+  end function var_entry_get_aval
+
+  function var_entry_get_pval (var) result (pval)
+    type(subevt_t) :: pval
+    type(var_entry_t), intent(in) :: var
+    pval = var%pval
+  end function var_entry_get_pval
+
+  function var_entry_get_sval (var) result (sval)
+    type(string_t) :: sval
+    type(var_entry_t), intent(in) :: var
+    sval = var%sval
+  end function var_entry_get_sval
+
+@ %def var_entry_get_lval
+@ %def var_entry_get_ival
+@ %def var_entry_get_rval
+@ %def var_entry_get_cval
+@ %def var_entry_get_aval
+@ %def var_entry_get_pval
+@ %def var_entry_get_sval
+@ Return pointers to components.
+<<Variables: procedures>>=
+  function var_entry_get_known_ptr (var) result (ptr)
+    logical, pointer :: ptr
+    type(var_entry_t), intent(in), target :: var
+    ptr => var%is_known
+  end function var_entry_get_known_ptr
+
+  function var_entry_get_lval_ptr (var) result (ptr)
+    logical, pointer :: ptr
+    type(var_entry_t), intent(in), target :: var
+    ptr => var%lval
+  end function var_entry_get_lval_ptr
+
+  function var_entry_get_ival_ptr (var) result (ptr)
+    integer, pointer :: ptr
+    type(var_entry_t), intent(in), target :: var
+    ptr => var%ival
+  end function var_entry_get_ival_ptr
+
+  function var_entry_get_rval_ptr (var) result (ptr)
+    real(default), pointer :: ptr
+    type(var_entry_t), intent(in), target :: var
+    ptr => var%rval
+  end function var_entry_get_rval_ptr
+  
+  function var_entry_get_cval_ptr (var) result (ptr)
+    complex(default), pointer :: ptr
+    type(var_entry_t), intent(in), target :: var
+    ptr => var%cval
+  end function var_entry_get_cval_ptr
+
+  function var_entry_get_pval_ptr (var) result (ptr)
+    type(subevt_t), pointer :: ptr
+    type(var_entry_t), intent(in), target :: var
+    ptr => var%pval
+  end function var_entry_get_pval_ptr
+
+  function var_entry_get_aval_ptr (var) result (ptr)
+    type(pdg_array_t), pointer :: ptr
+    type(var_entry_t), intent(in), target :: var
+    ptr => var%aval
+  end function var_entry_get_aval_ptr
+
+  function var_entry_get_sval_ptr (var) result (ptr)
+    type(string_t), pointer :: ptr
+    type(var_entry_t), intent(in), target :: var
+    ptr => var%sval
+  end function var_entry_get_sval_ptr
+
+@ %def var_entry_get_known_ptr
+@ %def var_entry_get_lval_ptr var_entry_get_ival_ptr var_entry_get_rval_ptr
+@ %def var_entry_get_cval_ptr var_entry_get_aval_ptr var_entry_get_pval_ptr
+@ %def var_entry_get_sval_ptr
+@ Furthermore,
+<<Variables: procedures>>=
+  function var_entry_get_prt1_ptr (var) result (ptr)
+    type(prt_t), pointer :: ptr
+    type(var_entry_t), intent(in), target :: var
+    ptr => var%prt1
+  end function var_entry_get_prt1_ptr
+
+  function var_entry_get_prt2_ptr (var) result (ptr)
+    type(prt_t), pointer :: ptr
+    type(var_entry_t), intent(in), target :: var
+    ptr => var%prt2
+  end function var_entry_get_prt2_ptr
+
+@ %def var_entry_get_prt1_ptr
+@ %def var_entry_get_prt2_ptr
+@ Subroutines might be safer than functions for procedure pointer transfer
+(there was a nagfor bug).
+<<Variables: procedures>>=
+  subroutine var_entry_assign_obs1_int_ptr (ptr, var)
+    procedure(obs_unary_int), pointer :: ptr
+    type(var_entry_t), intent(in), target :: var
+    ptr => var%obs1_int
+  end subroutine var_entry_assign_obs1_int_ptr
+
+  subroutine var_entry_assign_obs1_real_ptr (ptr, var)
+    procedure(obs_unary_real), pointer :: ptr
+    type(var_entry_t), intent(in), target :: var
+    ptr => var%obs1_real
+  end subroutine var_entry_assign_obs1_real_ptr
+
+  subroutine var_entry_assign_obs2_int_ptr (ptr, var)
+    procedure(obs_binary_int), pointer :: ptr
+    type(var_entry_t), intent(in), target :: var
+    ptr => var%obs2_int
+  end subroutine var_entry_assign_obs2_int_ptr
+
+  subroutine var_entry_assign_obs2_real_ptr (ptr, var)
+    procedure(obs_binary_real), pointer :: ptr
+    type(var_entry_t), intent(in), target :: var
+    ptr => var%obs2_real
+  end subroutine var_entry_assign_obs2_real_ptr
+
+@ %def var_entry_assign_obs1_int_ptr var_entry_assign_obs1_real_ptr
+@ %def var_entry_assign_obs2_int_ptr var_entry_assign_obs2_real_ptr
+@ 
+\subsection{Setting values}
+Undefine the value.
+<<Variables: procedures>>=
+  subroutine var_entry_clear_value (var)
+    type(var_entry_t), intent(inout) :: var
+    var%is_known = .false.
+  end subroutine var_entry_clear_value
+
+@ %def var_entry_clear_value
+<<Variables: procedures>>=
+  recursive subroutine var_entry_set_log &
+       (var, lval, is_known, verbose, model_name)
+    type(var_entry_t), intent(inout) :: var
+    logical, intent(in) :: lval
+    logical, intent(in) :: is_known
+    logical, intent(in), optional :: verbose
+    type(string_t), intent(in), optional :: model_name
+    integer :: u
+    u = logfile_unit ()
+    var%lval = lval
+    var%is_known = is_known
+    var%is_defined = .true.
+    if (present (verbose)) then
+       if (verbose) then
+          call var_entry_write (var, model_name=model_name)
+          call var_entry_write (var, model_name=model_name, unit=u)
+          if (u >= 0) flush (u)
+       end if
+    end if
+  end subroutine var_entry_set_log
+
+  recursive subroutine var_entry_set_int &
+       (var, ival, is_known, verbose, model_name)
+    type(var_entry_t), intent(inout) :: var
+    integer, intent(in) :: ival
+    logical, intent(in) :: is_known
+    logical, intent(in), optional :: verbose
+    type(string_t), intent(in), optional :: model_name
+    integer :: u
+    u = logfile_unit ()
+    var%ival = ival
+    var%is_known = is_known
+    var%is_defined = .true.
+    if (present (verbose)) then
+       if (verbose) then
+          call var_entry_write (var, model_name=model_name)
+          call var_entry_write (var, model_name=model_name, unit=u)
+          if (u >= 0) flush (u)
+       end if
+    end if
+  end subroutine var_entry_set_int
+
+  recursive subroutine var_entry_set_real &
+       (var, rval, is_known, verbose, model_name, pacified)
+    type(var_entry_t), intent(inout) :: var
+    real(default), intent(in) :: rval
+    logical, intent(in) :: is_known
+    logical, intent(in), optional :: verbose, pacified
+    type(string_t), intent(in), optional :: model_name
+    integer :: u
+    u = logfile_unit ()
+    var%rval = rval
+    var%is_known = is_known
+    var%is_defined = .true.
+    if (present (verbose)) then
+       if (verbose) then
+          call var_entry_write &
+               (var, model_name=model_name, pacified = pacified)
+          call var_entry_write &
+               (var, model_name=model_name, unit=u, pacified = pacified)
+          if (u >= 0) flush (u)
+       end if
+    end if
+  end subroutine var_entry_set_real
+  
+  recursive subroutine var_entry_set_cmplx &
+       (var, cval, is_known, verbose, model_name, pacified)
+    type(var_entry_t), intent(inout) :: var
+    complex(default), intent(in) :: cval
+    logical, intent(in) :: is_known
+    logical, intent(in), optional :: verbose, pacified
+    type(string_t), intent(in), optional :: model_name
+    integer :: u
+    u = logfile_unit ()
+    var%cval = cval
+    var%is_known = is_known
+    var%is_defined = .true.
+    if (present (verbose)) then
+       if (verbose) then
+          call var_entry_write &
+               (var, model_name=model_name, pacified = pacified)
+          call var_entry_write &
+               (var, model_name=model_name, unit=u, pacified = pacified)
+          if (u >= 0) flush (u)
+       end if
+    end if
+  end subroutine var_entry_set_cmplx
+
+  recursive subroutine var_entry_set_pdg_array &
+       (var, aval, is_known, verbose, model_name)
+    type(var_entry_t), intent(inout) :: var
+    type(pdg_array_t), intent(in) :: aval
+    logical, intent(in) :: is_known
+    logical, intent(in), optional :: verbose
+    type(string_t), intent(in), optional :: model_name
+    integer :: u
+    u = logfile_unit ()
+    var%aval = aval
+    var%is_known = is_known
+    var%is_defined = .true.
+    if (present (verbose)) then
+       if (verbose) then
+          call var_entry_write (var, model_name=model_name)
+          call var_entry_write (var, model_name=model_name, unit=u)
+          if (u >= 0) flush (u)
+       end if
+    end if
+  end subroutine var_entry_set_pdg_array
+
+  recursive subroutine var_entry_set_subevt &
+       (var, pval, is_known, verbose, model_name)
+    type(var_entry_t), intent(inout) :: var
+    type(subevt_t), intent(in) :: pval
+    logical, intent(in) :: is_known
+    logical, intent(in), optional :: verbose
+    type(string_t), intent(in), optional :: model_name
+    integer :: u
+    u = logfile_unit ()
+    var%pval = pval
+    var%is_known = is_known
+    var%is_defined = .true.
+    if (present (verbose)) then
+       if (verbose) then
+          call var_entry_write (var, model_name=model_name)
+          call var_entry_write (var, model_name=model_name, unit=u)
+          if (u >= 0) flush (u)
+       end if
+    end if
+  end subroutine var_entry_set_subevt
+
+  recursive subroutine var_entry_set_string &
+       (var, sval, is_known, verbose, model_name)
+    type(var_entry_t), intent(inout) :: var
+    type(string_t), intent(in) :: sval
+    logical, intent(in) :: is_known
+    logical, intent(in), optional :: verbose
+    type(string_t), intent(in), optional :: model_name
+    integer :: u
+    u = logfile_unit ()
+    var%sval = sval
+    var%is_known = is_known
+    var%is_defined = .true.
+    if (present (verbose)) then
+       if (verbose) then
+          call var_entry_write (var, model_name=model_name)
+          call var_entry_write (var, model_name=model_name, unit=u)
+          if (u >= 0) flush (u)
+       end if
+    end if
+  end subroutine var_entry_set_string
+
+@ %def var_entry_set_log
+@ %def var_entry_set_int
+@ %def var_entry_set_real
+@ %def var_entry_set_cmplx
+@ %def var_entry_set_pdg_array
+@ %def var_entry_set_subevt
+@ %def var_entry_set_string
+@ 
+\subsection{Copies and pointer variables}
+Initialize an entry with a copy of an existing variable entry.  The
+copy is physically allocated with the same type as the original.
+<<Variables: procedures>>=
+  subroutine var_entry_init_copy (var, original, user)
+    type(var_entry_t), intent(out) :: var
+    type(var_entry_t), intent(in), target :: original
+    logical, intent(in), optional :: user
+    type(string_t) :: name
+    logical :: intrinsic
+    name = var_entry_get_name (original)
+    intrinsic = original%is_intrinsic
+    select case (original%type)
+    case (V_LOG)
+       call var_entry_init_log (var, name, intrinsic=intrinsic, user=user)
+    case (V_INT)
+       call var_entry_init_int (var, name, intrinsic=intrinsic, user=user)
+    case (V_REAL)
+       call var_entry_init_real (var, name, intrinsic=intrinsic, user=user)
+    case (V_CMPLX)
+       call var_entry_init_cmplx (var, name, intrinsic=intrinsic, user=user)
+    case (V_SEV)
+       call var_entry_init_subevt (var, name, intrinsic=intrinsic, user=user)
+    case (V_PDG)
+       call var_entry_init_pdg_array (var, name, intrinsic=intrinsic, user=user)
+    case (V_STR)
+       call var_entry_init_string (var, name, intrinsic=intrinsic, user=user)
+    end select
+  end subroutine var_entry_init_copy
+
+@ %def var_entry_init_copy
+@ Copy the value of an entry.  The target variable entry must be initialized
+correctly.
+<<Variables: procedures>>=
+  subroutine var_entry_copy_value (var, original)
+    type(var_entry_t), intent(inout) :: var
+    type(var_entry_t), intent(in), target :: original
+    type(string_t) :: name
+    if (var_entry_is_known (original)) then
+       select case (original%type)
+       case (V_LOG)
+          call var_entry_set_log (var, var_entry_get_lval (original), .true.)
+       case (V_INT)
+          call var_entry_set_int (var, var_entry_get_ival (original), .true.)
+       case (V_REAL)
+          call var_entry_set_real (var, var_entry_get_rval (original), .true.)
+       case (V_CMPLX)
+          call var_entry_set_cmplx (var, var_entry_get_cval (original), .true.)
+       case (V_SEV)
+          call var_entry_set_subevt (var, var_entry_get_pval (original), .true.)
+       case (V_PDG)
+          call var_entry_set_pdg_array (var, var_entry_get_aval (original), .true.)
+       case (V_STR)
+          call var_entry_set_string (var, var_entry_get_sval (original), .true.)
+       end select
+    else
+       call var_entry_clear (var)
+    end if
+  end subroutine var_entry_copy_value
+
+@ %def var_entry_copy_value
+@ 
+\subsection{Variable lists}
+\subsubsection{The type}
+Variable lists can be linked together.  No initializer needed.
+They are deleted separately.
+<<Variables: public>>=
+  public :: var_list_t
+<<Variables: types>>=
+  type, extends (vars_t) :: var_list_t
+     private
+     type(var_entry_t), pointer :: first => null ()
+     type(var_entry_t), pointer :: last => null ()
+     type(var_list_t), pointer :: next => null ()
+   contains
+   <<Variables: var list: TBP>>
+  end type var_list_t
+
+@ %def var_list_t
+@ 
+\subsubsection{Constructors}
+Implementation of the [[link]] deferred method.  The implementation
+restricts itself to var lists of the same type.  We might need to
+relax this constraint.
+<<Variables: var list: TBP>>=
+  procedure :: link => var_list_link
+<<Variables: procedures>>=
+  subroutine var_list_link (vars, target_vars)
+    class(var_list_t), intent(inout) :: vars
+    class(vars_t), intent(in), target :: target_vars
+    select type (target_vars)
+    type is (var_list_t)
+       vars%next => target_vars
+    class default
+       call msg_bug ("var_list_link: unsupported target type")
+    end select
+  end subroutine var_list_link
+
+@ %def var_list_link
+@ Append a new entry to an existing list.
+<<Variables: procedures>>=
+  subroutine var_list_append (var_list, var, verbose)
+    type(var_list_t), intent(inout) :: var_list
+    type(var_entry_t), intent(in), target :: var
+    logical, intent(in), optional :: verbose
+    if (associated (var_list%last)) then
+       var_list%last%next => var
+    else
+       var_list%first => var
+    end if
+    var_list%last => var
+    if (present (verbose)) then
+       if (verbose)  call var_entry_write (var)
+    end if
+  end subroutine var_list_append
+
+@ %def var_list_append
+@ Public methods for expanding the variable list (as subroutines)
+<<Variables: public>>=
+  public :: var_list_append_log
+  public :: var_list_append_int
+  public :: var_list_append_real
+  public :: var_list_append_cmplx
+  public :: var_list_append_subevt
+  public :: var_list_append_pdg_array
+  public :: var_list_append_string
+<<Variables: interfaces>>=
+  interface var_list_append_log
+     module procedure var_list_append_log_s
+     module procedure var_list_append_log_c
+  end interface
+  interface var_list_append_int
+     module procedure var_list_append_int_s
+     module procedure var_list_append_int_c
+  end interface
+  interface var_list_append_real
+     module procedure var_list_append_real_s
+     module procedure var_list_append_real_c
+  end interface
+  interface var_list_append_cmplx
+     module procedure var_list_append_cmplx_s
+     module procedure var_list_append_cmplx_c
+  end interface
+  interface var_list_append_subevt
+     module procedure var_list_append_subevt_s
+     module procedure var_list_append_subevt_c
+  end interface
+  interface var_list_append_pdg_array
+     module procedure var_list_append_pdg_array_s
+     module procedure var_list_append_pdg_array_c
+  end interface
+  interface var_list_append_string
+     module procedure var_list_append_string_s
+     module procedure var_list_append_string_c
+  end interface
+<<Variables: procedures>>=
+  subroutine var_list_append_log_s &
+       (var_list, name, lval, locked, verbose, intrinsic, user)
+    type(var_list_t), intent(inout) :: var_list
+    type(string_t), intent(in) :: name
+    logical, intent(in), optional :: lval
+    logical, intent(in), optional :: locked, verbose, intrinsic, user
+    type(var_entry_t), pointer :: var
+    allocate (var)
+    call var_entry_init_log (var, name, lval, intrinsic, user)
+    if (present (locked))  call var_entry_lock (var, locked)
+    call var_list_append (var_list, var, verbose)
+  end subroutine var_list_append_log_s
+
+  subroutine var_list_append_int_s &
+       (var_list, name, ival, locked, verbose, intrinsic, user)
+    type(var_list_t), intent(inout) :: var_list
+    type(string_t), intent(in) :: name
+    integer, intent(in), optional :: ival
+    logical, intent(in), optional :: locked, verbose, intrinsic, user
+    type(var_entry_t), pointer :: var
+    allocate (var)
+    call var_entry_init_int (var, name, ival, intrinsic, user)
+    if (present (locked))  call var_entry_lock (var, locked)
+    call var_list_append (var_list, var, verbose)
+  end subroutine var_list_append_int_s
+
+  subroutine var_list_append_real_s &
+       (var_list, name, rval, locked, verbose, intrinsic, user)
+    type(var_list_t), intent(inout) :: var_list
+    type(string_t), intent(in) :: name
+    real(default), intent(in), optional :: rval
+    logical, intent(in), optional :: locked, verbose, intrinsic, user
+    type(var_entry_t), pointer :: var
+    allocate (var)
+    call var_entry_init_real (var, name, rval, intrinsic, user)
+    if (present (locked))  call var_entry_lock (var, locked)
+    call var_list_append (var_list, var, verbose)
+  end subroutine var_list_append_real_s
+  
+  subroutine var_list_append_cmplx_s &
+       (var_list, name, cval, locked, verbose, intrinsic, user)
+    type(var_list_t), intent(inout) :: var_list
+    type(string_t), intent(in) :: name
+    complex(default), intent(in), optional :: cval
+    logical, intent(in), optional :: locked, verbose, intrinsic, user
+    type(var_entry_t), pointer :: var
+    allocate (var)
+    call var_entry_init_cmplx (var, name, cval, intrinsic, user)
+    if (present (locked))  call var_entry_lock (var, locked)
+    call var_list_append (var_list, var, verbose)
+  end subroutine var_list_append_cmplx_s
+
+  subroutine var_list_append_subevt_s &
+       (var_list, name, pval, locked, verbose, intrinsic, user)
+    type(var_list_t), intent(inout) :: var_list
+    type(string_t), intent(in) :: name
+    type(subevt_t), intent(in), optional :: pval
+    logical, intent(in), optional :: locked, verbose, intrinsic, user
+    type(var_entry_t), pointer :: var
+    allocate (var)
+    call var_entry_init_subevt (var, name, pval, intrinsic, user)
+    if (present (locked))  call var_entry_lock (var, locked)
+    call var_list_append (var_list, var, verbose)
+  end subroutine var_list_append_subevt_s
+
+  subroutine var_list_append_pdg_array_s &
+       (var_list, name, aval, locked, verbose, intrinsic, user)
+    type(var_list_t), intent(inout) :: var_list
+    type(string_t), intent(in) :: name
+    type(pdg_array_t), intent(in), optional :: aval
+    logical, intent(in), optional :: locked, verbose, intrinsic, user
+    type(var_entry_t), pointer :: var
+    allocate (var)
+    call var_entry_init_pdg_array (var, name, aval, intrinsic, user)
+    if (present (locked))  call var_entry_lock (var, locked)
+    call var_list_append (var_list, var, verbose)
+  end subroutine var_list_append_pdg_array_s
+
+  subroutine var_list_append_string_s &
+       (var_list, name, sval, locked, verbose, intrinsic, user)
+    type(var_list_t), intent(inout) :: var_list
+    type(string_t), intent(in) :: name
+    type(string_t), intent(in), optional :: sval
+    logical, intent(in), optional :: locked, verbose, intrinsic, user
+    type(var_entry_t), pointer :: var
+    allocate (var)
+    call var_entry_init_string (var, name, sval, intrinsic, user)
+    if (present (locked))  call var_entry_lock (var, locked)
+    call var_list_append (var_list, var, verbose)
+  end subroutine var_list_append_string_s
+
+  subroutine var_list_append_log_c &
+       (var_list, name, lval, locked, verbose, intrinsic, user)
+    type(var_list_t), intent(inout) :: var_list
+    character(*), intent(in) :: name
+    logical, intent(in), optional :: lval
+    logical, intent(in), optional :: locked, verbose, intrinsic, user
+    call var_list_append_log_s &
+         (var_list, var_str (name), lval, locked, verbose, intrinsic, user)
+  end subroutine var_list_append_log_c
+
+  subroutine var_list_append_int_c &
+       (var_list, name, ival, locked, verbose, intrinsic, user)
+    type(var_list_t), intent(inout) :: var_list
+    character(*), intent(in) :: name
+    integer, intent(in), optional :: ival
+    logical, intent(in), optional :: locked, verbose, intrinsic, user
+    call var_list_append_int_s &
+         (var_list, var_str (name), ival, locked, verbose, intrinsic, user)
+  end subroutine var_list_append_int_c
+
+  subroutine var_list_append_real_c &
+       (var_list, name, rval, locked, verbose, intrinsic, user)
+    type(var_list_t), intent(inout) :: var_list
+    character(*), intent(in) :: name
+    real(default), intent(in), optional :: rval
+    logical, intent(in), optional :: locked, verbose, intrinsic, user
+    call var_list_append_real_s &
+         (var_list, var_str (name), rval, locked, verbose, intrinsic, user)
+  end subroutine var_list_append_real_c
+  
+  subroutine var_list_append_cmplx_c &
+       (var_list, name, cval, locked, verbose, intrinsic, user)
+    type(var_list_t), intent(inout) :: var_list
+    character(*), intent(in) :: name
+    complex(default), intent(in), optional :: cval
+    logical, intent(in), optional :: locked, verbose, intrinsic, user
+    call var_list_append_cmplx_s &
+         (var_list, var_str (name), cval, locked, verbose, intrinsic, user)
+  end subroutine var_list_append_cmplx_c
+
+  subroutine var_list_append_subevt_c &
+       (var_list, name, pval, locked, verbose, intrinsic, user)
+    type(var_list_t), intent(inout) :: var_list
+    character(*), intent(in) :: name
+    type(subevt_t), intent(in), optional :: pval
+    logical, intent(in), optional :: locked, verbose, intrinsic, user
+    call var_list_append_subevt_s &
+         (var_list, var_str (name), pval, locked, verbose, intrinsic, user)
+  end subroutine var_list_append_subevt_c
+
+  subroutine var_list_append_pdg_array_c &
+       (var_list, name, aval, locked, verbose, intrinsic, user)
+    type(var_list_t), intent(inout) :: var_list
+    character(*), intent(in) :: name
+    type(pdg_array_t), intent(in), optional :: aval
+    logical, intent(in), optional :: locked, verbose, intrinsic, user
+    call var_list_append_pdg_array_s &
+         (var_list, var_str (name), aval, locked, verbose, intrinsic, user)
+  end subroutine var_list_append_pdg_array_c
+
+  subroutine var_list_append_string_c &
+       (var_list, name, sval, locked, verbose, intrinsic, user)
+    type(var_list_t), intent(inout) :: var_list
+    character(*), intent(in) :: name
+    character(*), intent(in), optional :: sval
+    logical, intent(in), optional :: locked, verbose, intrinsic, user
+    if (present (sval)) then
+       call var_list_append_string_s &
+            (var_list, var_str (name), var_str (sval), &
+            locked, verbose, intrinsic, user)
+    else
+       call var_list_append_string_s &
+            (var_list, var_str (name), &
+            locked=locked, verbose=verbose, intrinsic=intrinsic, user=user)
+    end if
+  end subroutine var_list_append_string_c
+
+@ %def var_list_append_log
+@ %def var_list_append_int
+@ %def var_list_append_real
+@ %def var_list_append_cmplx
+@ %def var_list_append_subevt
+@ %def var_list_append_pdg_array
+@ %def var_list_append_string
+<<Variables: public>>=
+  public :: var_list_append_log_ptr
+  public :: var_list_append_int_ptr
+  public :: var_list_append_real_ptr
+  public :: var_list_append_cmplx_ptr
+  public :: var_list_append_pdg_array_ptr
+  public :: var_list_append_subevt_ptr
+  public :: var_list_append_string_ptr
+<<Variables: procedures>>=
+  subroutine var_list_append_log_ptr &
+       (var_list, name, lval, is_known, locked, verbose, intrinsic)
+    type(var_list_t), intent(inout) :: var_list
+    type(string_t), intent(in) :: name
+    logical, intent(in), target :: lval
+    logical, intent(in), target :: is_known
+    logical, intent(in), optional :: locked, verbose, intrinsic
+    type(var_entry_t), pointer :: var
+    allocate (var)
+    call var_entry_init_log_ptr (var, name, lval, is_known, intrinsic)
+    if (present (locked))  call var_entry_lock (var, locked)
+    call var_list_append (var_list, var, verbose)
+  end subroutine var_list_append_log_ptr
+
+  subroutine var_list_append_int_ptr &
+       (var_list, name, ival, is_known, locked, verbose, intrinsic)
+    type(var_list_t), intent(inout) :: var_list
+    type(string_t), intent(in) :: name
+    integer, intent(in), target :: ival
+    logical, intent(in), target :: is_known
+    logical, intent(in), optional :: locked, verbose, intrinsic
+    type(var_entry_t), pointer :: var
+    allocate (var)
+    call var_entry_init_int_ptr (var, name, ival, is_known, intrinsic)
+    if (present (locked))  call var_entry_lock (var, locked)
+    call var_list_append (var_list, var, verbose)
+  end subroutine var_list_append_int_ptr
+
+  subroutine var_list_append_real_ptr &
+       (var_list, name, rval, is_known, locked, verbose, intrinsic)
+    type(var_list_t), intent(inout) :: var_list
+    type(string_t), intent(in) :: name
+    real(default), intent(in), target :: rval
+    logical, intent(in), target :: is_known
+    logical, intent(in), optional :: locked, verbose, intrinsic
+    type(var_entry_t), pointer :: var
+    allocate (var)
+    call var_entry_init_real_ptr (var, name, rval, is_known, intrinsic)
+    if (present (locked))  call var_entry_lock (var, locked)
+    call var_list_append (var_list, var, verbose)
+  end subroutine var_list_append_real_ptr
+
+  subroutine var_list_append_cmplx_ptr &
+       (var_list, name, cval, is_known, locked, verbose, intrinsic)
+    type(var_list_t), intent(inout) :: var_list
+    type(string_t), intent(in) :: name
+    complex(default), intent(in), target :: cval
+    logical, intent(in), target :: is_known
+    logical, intent(in), optional :: locked, verbose, intrinsic
+    type(var_entry_t), pointer :: var
+    allocate (var)
+    call var_entry_init_cmplx_ptr (var, name, cval, is_known, intrinsic)
+    if (present (locked))  call var_entry_lock (var, locked)
+    call var_list_append (var_list, var, verbose)
+  end subroutine var_list_append_cmplx_ptr
+    
+  subroutine var_list_append_pdg_array_ptr &
+       (var_list, name, aval, is_known, locked, verbose, intrinsic)
+    type(var_list_t), intent(inout) :: var_list
+    type(string_t), intent(in) :: name
+    type(pdg_array_t), intent(in), target :: aval
+    logical, intent(in), target :: is_known
+    logical, intent(in), optional :: locked, verbose, intrinsic
+    type(var_entry_t), pointer :: var
+    allocate (var)
+    call var_entry_init_pdg_array_ptr (var, name, aval, is_known, intrinsic)
+    if (present (locked))  call var_entry_lock (var, locked)
+    call var_list_append (var_list, var, verbose)
+  end subroutine var_list_append_pdg_array_ptr
+
+  subroutine var_list_append_subevt_ptr &
+       (var_list, name, pval, is_known, locked, verbose, intrinsic)
+    type(var_list_t), intent(inout) :: var_list
+    type(string_t), intent(in) :: name
+    type(subevt_t), intent(in), target :: pval
+    logical, intent(in), target :: is_known
+    logical, intent(in), optional :: locked, verbose, intrinsic
+    type(var_entry_t), pointer :: var
+    allocate (var)
+    call var_entry_init_subevt_ptr (var, name, pval, is_known, intrinsic)
+    if (present (locked))  call var_entry_lock (var, locked)
+    call var_list_append (var_list, var, verbose)
+  end subroutine var_list_append_subevt_ptr
+
+  subroutine var_list_append_string_ptr &
+       (var_list, name, sval, is_known, locked, verbose, intrinsic)
+    type(var_list_t), intent(inout) :: var_list
+    type(string_t), intent(in) :: name
+    type(string_t), intent(in), target :: sval
+    logical, intent(in), target :: is_known
+    logical, intent(in), optional :: locked, verbose, intrinsic
+    type(var_entry_t), pointer :: var
+    allocate (var)
+    call var_entry_init_string_ptr (var, name, sval, is_known, intrinsic)
+    if (present (locked))  call var_entry_lock (var, locked)
+    call var_list_append (var_list, var, verbose)
+  end subroutine var_list_append_string_ptr
+
+@ %def var_list_append_log_ptr
+@ %def var_list_append_int_ptr
+@ %def var_list_append_real_ptr
+@ %def var_list_append_cmplx_ptr
+@ %def var_list_append_pdg_array_ptr
+@ %def var_list_append_subevt_ptr
+@ 
+\subsubsection{Finalizer}
+Finalize, delete the list entry by entry.  The link itself is kept
+intact.  Follow link and delete recursively only if requested
+explicitly.
+<<Variables: var list: TBP>>=
+  procedure :: final => var_list_final
+<<Variables: procedures>>=
+  recursive subroutine var_list_final (vars, follow_link)
+    class(var_list_t), intent(inout) :: vars
+    logical, intent(in), optional :: follow_link
+    type(var_entry_t), pointer :: var
+    vars%last => null ()
+    do while (associated (vars%first))
+       var => vars%first
+       vars%first => var%next
+       call var_entry_final (var)
+       deallocate (var)
+    end do
+    if (present (follow_link)) then
+       if (follow_link) then
+          if (associated (vars%next)) then
+             call vars%next%final (follow_link)
+             deallocate (vars%next)
+          end if
+       end if
+    end if
+  end subroutine var_list_final
+
+@ %def var_list_final
+@ 
+\subsubsection{Output}
+Show variable list with precise control over options.  E.g., 
+show only variables of a certain type.
+
+Many options, thus not an ordinary [[write]] method.
+<<Variables: public>>=
+  public :: var_list_write
+<<Variables: procedures>>=
+  recursive subroutine var_list_write &
+       (var_list, unit, follow_link, only_type, prefix, model_name, &
+        intrinsic, pacified)
+    type(var_list_t), intent(in), target :: var_list
+    integer, intent(in), optional :: unit
+    logical, intent(in), optional :: follow_link
+    integer, intent(in), optional :: only_type
+    character(*), intent(in), optional :: prefix
+    type(string_t), intent(in), optional :: model_name
+!     logical, intent(in), optional :: show_ptr
+    logical, intent(in), optional :: intrinsic
+    logical, intent(in), optional :: pacified
+    type(var_entry_t), pointer :: var
+    integer :: u, length
+    logical :: write_this, write_next
+    u = given_output_unit (unit);  if (u < 0)  return
+    if (present (prefix))  length = len (prefix)
+    var => var_list%first
+    if (associated (var)) then
+       do while (associated (var))
+          if (present (only_type)) then
+             write_this = only_type == var%type
+          else
+             write_this = .true.
+          end if
+          if (write_this .and. present (prefix)) then
+             if (prefix /= extract (var%name, 1, length)) &
+                  write_this = .false.
+          end if
+          if (write_this) then
+             call var_entry_write &
+                  (var, unit, model_name = model_name, &
+                   intrinsic = intrinsic, pacified = pacified)
+          end if
+          var => var%next
+       end do
+    end if
+    if (present (follow_link)) then
+       write_next = follow_link .and. associated (var_list%next)
+    else
+       write_next = associated (var_list%next)
+    end if
+    if (write_next) then
+       call var_list_write (var_list%next, &
+            unit, follow_link, only_type, prefix, model_name, &
+            intrinsic, pacified)
+    end if
+  end subroutine var_list_write
+
+@ %def var_list_write
+@ Write only a certain variable.
+<<Variables: public>>=
+  public :: var_list_write_var
+<<Variables: procedures>>=
+  recursive subroutine var_list_write_var &
+       (var_list, name, unit, type, follow_link, &
+       model_name, pacified)
+    type(var_list_t), intent(in), target :: var_list
+    type(string_t), intent(in) :: name
+    integer, intent(in), optional :: unit
+    integer, intent(in), optional :: type
+    logical, intent(in), optional :: follow_link
+    type(string_t), intent(in), optional :: model_name
+    logical, intent(in), optional :: pacified
+    type(var_entry_t), pointer :: var
+    integer :: u
+    u = given_output_unit (unit);  if (u < 0)  return
+    var => var_list_get_var_ptr &
+         (var_list, name, type, follow_link=follow_link, defined=.true.)
+    if (associated (var)) then
+       call var_entry_write &
+            (var, unit, model_name = model_name, &
+            pacified = pacified)
+    else
+       write (u, "(A)")  char (name) // " = [undefined]"
+    end if
+  end subroutine var_list_write_var
+
+@ %def var_list_write_var
+@ 
+\subsection{Tools}
+Return a pointer to the variable list linked to by the current one.
+<<Variables: procedures>>=
+  function var_list_get_next_ptr (var_list) result (next_ptr)
+    type(var_list_t), pointer :: next_ptr
+    type(var_list_t), intent(in) :: var_list
+    next_ptr => var_list%next
+  end function var_list_get_next_ptr
+
+@ %def var_list_get_next_ptr
+@ Used by [[eval_trees]]:
+Return a pointer to the variable with the requested name.  If no such
+name exists, return a null pointer.  In that case, try the next list
+if present, unless [[follow_link]] is unset.  If [[defined]] is set, ignore
+entries that exist but are undefined.
+<<Variables: public>>=
+  public :: var_list_get_var_ptr
+<<Variables: procedures>>=
+  recursive function var_list_get_var_ptr &
+       (var_list, name, type, follow_link, defined) result (var)
+    type(var_entry_t), pointer :: var
+    type(var_list_t), intent(in), target :: var_list
+    type(string_t), intent(in) :: name
+    integer, intent(in), optional :: type
+    logical, intent(in), optional :: follow_link, defined
+    logical :: ignore_undef, search_next
+    ignore_undef = .true.;  if (present (defined))  ignore_undef = .not. defined
+    var => var_list%first
+    if (present (type)) then
+       do while (associated (var))
+          if (var%type == type) then
+             if (var%name == name) then
+                if (ignore_undef .or. var%is_defined)  return
+             end if
+          end if
+          var => var%next
+       end do
+    else
+       do while (associated (var))
+          if (var%name == name) then
+             if (ignore_undef .or. var%is_defined)  return
+          end if
+          var => var%next
+       end do
+    end if
+    search_next = associated (var_list%next)
+    if (present (follow_link)) &
+         search_next = search_next .and. follow_link
+    if (search_next) &
+         var => var_list_get_var_ptr &
+              (var_list%next, name, type, defined=defined)
+  end function var_list_get_var_ptr
+
+@ %def var_list_get_var_ptr
+@ Return the variable type
+<<Variables: var list: TBP>>=
+  procedure :: get_type => var_list_get_type
+<<Variables: procedures>>=
+  function var_list_get_type (var_list, name, follow_link) result (type)
+    class(var_list_t), intent(in), target :: var_list
+    type(string_t), intent(in) :: name
+    logical, intent(in), optional :: follow_link
+    integer :: type
+    type(var_entry_t), pointer :: var
+    var => var_list_get_var_ptr (var_list, name, follow_link=follow_link)
+    if (associated (var)) then
+       type = var%type
+    else
+       type = V_NONE
+    end if
+  end function var_list_get_type
+
+@ %def var_list_get_type
+@ Return true if the variable exists in the current list.
+<<Variables: var list: TBP>>=
+  procedure :: contains => var_list_exists
+<<Variables: procedures>>=
+  function var_list_exists (vars, name, follow_link) result (lval)
+    logical :: lval
+    type(string_t), intent(in) :: name
+    class(var_list_t), intent(in) :: vars
+    logical, intent(in), optional :: follow_link
+    type(var_entry_t), pointer :: var
+    var => var_list_get_var_ptr (vars, name, follow_link=follow_link)
+    lval = associated (var)
+  end function var_list_exists
+
+@ %def var_list_exists
+@ Return true if the variable is declared as intrinsic.  (This is not a
+property of the abstract [[vars_t]] type, and therefore the method is
+not inherited.)
+<<Variables: var list: TBP>>=
+  procedure :: is_intrinsic => var_list_is_intrinsic
+<<Variables: procedures>>=
+  function var_list_is_intrinsic (vars, name, follow_link) result (lval)
+    logical :: lval
+    type(string_t), intent(in) :: name
+    class(var_list_t), intent(in) :: vars
+    logical, intent(in), optional :: follow_link
+    type(var_entry_t), pointer :: var
+    var => var_list_get_var_ptr (vars, name, follow_link=follow_link)
+    if (associated (var)) then
+       lval = var%is_intrinsic
+    else
+       lval = .false.
+    end if
+  end function var_list_is_intrinsic
+
+@ %def var_list_is_intrinsic
+@ Return true if the value is known.
+<<Variables: var list: TBP>>=
+  procedure :: is_known => var_list_is_known
+<<Variables: procedures>>=
+  function var_list_is_known (vars, name, follow_link) result (lval)
+    logical :: lval
+    type(string_t), intent(in) :: name
+    class(var_list_t), intent(in) :: vars
+    logical, intent(in), optional :: follow_link
+    type(var_entry_t), pointer :: var
+    var => var_list_get_var_ptr (vars, name, follow_link=follow_link)
+    if (associated (var)) then
+       lval = var%is_known
+    else
+       lval = .false.
+    end if
+  end function var_list_is_known
+
+@ %def var_list_is_known
+@ Return true if the value is locked.  (This is not a
+property of the abstract [[vars_t]] type, and therefore the method is
+not inherited.)
+<<Variables: var list: TBP>>=
+  procedure :: is_locked => var_list_is_locked
+<<Variables: procedures>>=
+  function var_list_is_locked (vars, name, follow_link) result (lval)
+    logical :: lval
+    type(string_t), intent(in) :: name
+    class(var_list_t), intent(in) :: vars
+    logical, intent(in), optional :: follow_link
+    type(var_entry_t), pointer :: var
+    var => var_list_get_var_ptr (vars, name, follow_link=follow_link)
+    if (associated (var)) then
+       lval = var_entry_is_locked (var)
+    else
+       lval = .false.
+    end if
+  end function var_list_is_locked
+
+@ %def var_list_is_locked
+@ Return several properties at once.
+<<Variables: var list: TBP>>=
+  procedure :: get_var_properties => var_list_get_var_properties
+<<Variables: procedures>>=
+  subroutine var_list_get_var_properties (vars, name, req_type, follow_link, &
+       type, is_defined, is_known, is_locked)
+    class(var_list_t), intent(in) :: vars
+    type(string_t), intent(in) :: name
+    integer, intent(in), optional :: req_type
+    logical, intent(in), optional :: follow_link
+    integer, intent(out), optional :: type
+    logical, intent(out), optional :: is_defined, is_known, is_locked
+    type(var_entry_t), pointer :: var
+    var => var_list_get_var_ptr &
+         (vars, name, type=req_type, follow_link=follow_link)
+    if (associated (var)) then
+       if (present (type))  type = var_entry_get_type (var)
+       if (present (is_defined))  is_defined = var_entry_is_defined (var)
+       if (present (is_known))  is_known = var_entry_is_known (var)
+       if (present (is_locked))  is_locked = var_entry_is_locked (var)
+    else
+       if (present (type))  type = V_NONE
+       if (present (is_defined))  is_defined = .false.
+       if (present (is_known))  is_known = .false.
+       if (present (is_locked))  is_locked = .false.
+    end if
+  end subroutine var_list_get_var_properties
+    
+@ %def var_list_get_var_properties
+@ Return the value, assuming that the type is correct.  We consider only
+variable entries that have been [[defined]].
+
+For convenience, allow both variable and fixed-length (literal) strings.
+<<Variables: var list: TBP>>=
+  procedure :: get_lval => var_list_get_lval
+  procedure :: get_ival => var_list_get_ival
+  procedure :: get_rval => var_list_get_rval
+  procedure :: get_cval => var_list_get_cval
+  procedure :: get_pval => var_list_get_pval
+  procedure :: get_aval => var_list_get_aval
+  procedure :: get_sval => var_list_get_sval
+<<Variables: procedures>>=
+  function var_list_get_lval (vars, name, follow_link) result (lval)
+    logical :: lval
+    type(string_t), intent(in) :: name
+    class(var_list_t), intent(in) :: vars
+    logical, intent(in), optional :: follow_link
+    type(var_entry_t), pointer :: var
+    var => var_list_get_var_ptr &
+         (vars, name, V_LOG, follow_link, defined=.true.)
+    if (associated (var)) then
+       if (var_has_value (var)) then
+          lval = var%lval
+       else
+          lval = .false.
+       end if
+    else
+       lval = .false.
+    end if
+  end function var_list_get_lval
+  
+  function var_list_get_ival (vars, name, follow_link) result (ival)
+    integer :: ival
+    type(string_t), intent(in) :: name
+    class(var_list_t), intent(in) :: vars
+    logical, intent(in), optional :: follow_link
+    type(var_entry_t), pointer :: var
+    var => var_list_get_var_ptr &
+         (vars, name, V_INT, follow_link, defined=.true.)
+    if (associated (var)) then
+       if (var_has_value (var)) then
+          ival = var%ival
+       else
+          ival = 0
+       end if
+    else
+       ival = 0
+    end if
+  end function var_list_get_ival
+  
+  function var_list_get_rval (vars, name, follow_link) result (rval)
+    real(default) :: rval
+    type(string_t), intent(in) :: name
+    class(var_list_t), intent(in) :: vars
+    logical, intent(in), optional :: follow_link
+    type(var_entry_t), pointer :: var
+    var => var_list_get_var_ptr &
+         (vars, name, V_REAL, follow_link, defined=.true.)
+    if (associated (var)) then
+       if (var_has_value (var)) then
+          rval = var%rval
+       else
+          rval = 0
+       end if
+    else
+       rval = 0
+    end if
+  end function var_list_get_rval
+    
+  function var_list_get_cval (vars, name, follow_link) result (cval)
+    complex(default) :: cval
+    type(string_t), intent(in) :: name
+    class(var_list_t), intent(in) :: vars
+    logical, intent(in), optional :: follow_link
+    type(var_entry_t), pointer :: var
+    var => var_list_get_var_ptr &
+         (vars, name, V_CMPLX, follow_link, defined=.true.)
+    if (associated (var)) then
+       if (var_has_value (var)) then
+          cval = var%cval
+       else
+          cval = 0
+       end if
+    else
+       cval = 0
+    end if
+  end function var_list_get_cval
+
+  function var_list_get_aval (vars, name, follow_link) result (aval)
+    type(pdg_array_t) :: aval
+    type(string_t), intent(in) :: name
+    class(var_list_t), intent(in) :: vars
+    logical, intent(in), optional :: follow_link
+    type(var_entry_t), pointer :: var
+    var => var_list_get_var_ptr &
+         (vars, name, V_PDG, follow_link, defined=.true.)
+    if (associated (var)) then
+       if (var_has_value (var)) then
+          aval = var%aval
+       end if
+    end if    
+  end function var_list_get_aval
+  
+  function var_list_get_pval (vars, name, follow_link) result (pval)
+    type(subevt_t) :: pval
+    type(string_t), intent(in) :: name
+    class(var_list_t), intent(in) :: vars
+    logical, intent(in), optional :: follow_link
+    type(var_entry_t), pointer :: var
+    var => var_list_get_var_ptr &
+         (vars, name, V_SEV, follow_link, defined=.true.)
+    if (associated (var)) then
+       if (var_has_value (var)) then
+          pval = var%pval
+       end if
+    end if
+  end function var_list_get_pval
+  
+  function var_list_get_sval (vars, name, follow_link) result (sval)
+    type(string_t) :: sval
+    type(string_t), intent(in) :: name
+    class(var_list_t), intent(in) :: vars
+    logical, intent(in), optional :: follow_link
+    type(var_entry_t), pointer :: var
+    var => var_list_get_var_ptr &
+         (vars, name, V_STR, follow_link, defined=.true.)
+    if (associated (var)) then
+       if (var_has_value (var)) then
+          sval = var%sval
+       else
+          sval = ""
+       end if
+    else
+       sval = ""
+    end if
+  end function var_list_get_sval
+  
+@ %def var_list_get_lval
+@ %def var_list_get_ival
+@ %def var_list_get_rval
+@ %def var_list_get_cval
+@ %def var_list_get_pval
+@ %def var_list_get_aval
+@ %def var_list_get_sval
+@ Check for a valid value, given a pointer.  Issue error messages if invalid.
+<<Variables: procedures>>=
+  function var_has_value (var) result (valid)
+    logical :: valid
+    type(var_entry_t), pointer :: var
+    if (associated (var)) then
+       if (var%is_known) then
+          valid = .true.
+       else
+          call msg_error ("The value of variable '" // char (var%name) &
+               // "' is unknown but must be known at this point.")
+          valid = .false.
+       end if
+    else
+       call msg_error ("Variable '" // char (var%name) &
+            // "' is undefined but must have a known value at this point.")
+       valid = .false.
+    end if
+  end function var_has_value
+
+@ %def var_has_value
+@ Return pointers instead of values, including a pointer to the
+[[known]] entry.
+<<Variables: var list: TBP>>=
+  procedure :: get_lptr => var_list_get_lptr
+  procedure :: get_iptr => var_list_get_iptr
+  procedure :: get_rptr => var_list_get_rptr
+  procedure :: get_cptr => var_list_get_cptr
+  procedure :: get_aptr => var_list_get_aptr
+  procedure :: get_pptr => var_list_get_pptr
+  procedure :: get_sptr => var_list_get_sptr
+<<Variables: procedures>>=
+  subroutine var_list_get_lptr (var_list, name, lptr, known)
+    class(var_list_t), intent(in) :: var_list
+    type(string_t), intent(in) :: name
+    logical, pointer, intent(out) :: lptr
+    logical, pointer, intent(out), optional :: known
+    type(var_entry_t), pointer :: var
+    var => var_list_get_var_ptr (var_list, name, V_LOG)
+    if (associated (var)) then
+       lptr => var_entry_get_lval_ptr (var)
+       if (present (known))  known => var_entry_get_known_ptr (var)
+    else
+       lptr => null ()
+       if (present (known))  known => null ()
+    end if
+  end subroutine var_list_get_lptr
+    
+  subroutine var_list_get_iptr (var_list, name, iptr, known)
+    class(var_list_t), intent(in) :: var_list
+    type(string_t), intent(in) :: name
+    integer, pointer, intent(out) :: iptr
+    logical, pointer, intent(out), optional :: known
+    type(var_entry_t), pointer :: var
+    var => var_list_get_var_ptr (var_list, name, V_INT)
+    if (associated (var)) then
+       iptr => var_entry_get_ival_ptr (var)
+       if (present (known))  known => var_entry_get_known_ptr (var)
+    else
+       iptr => null ()
+       if (present (known))  known => null ()
+    end if
+  end subroutine var_list_get_iptr
+    
+  subroutine var_list_get_rptr (var_list, name, rptr, known)
+    class(var_list_t), intent(in) :: var_list
+    type(string_t), intent(in) :: name
+    real(default), pointer, intent(out) :: rptr
+    logical, pointer, intent(out), optional :: known
+    type(var_entry_t), pointer :: var
+    var => var_list_get_var_ptr (var_list, name, V_REAL)
+    if (associated (var)) then
+       rptr => var_entry_get_rval_ptr (var)
+       if (present (known))  known => var_entry_get_known_ptr (var)
+    else
+       rptr => null ()
+       if (present (known))  known => null ()
+    end if
+  end subroutine var_list_get_rptr
+    
+  subroutine var_list_get_cptr (var_list, name, cptr, known)
+    class(var_list_t), intent(in) :: var_list
+    type(string_t), intent(in) :: name
+    complex(default), pointer, intent(out) :: cptr
+    logical, pointer, intent(out), optional :: known
+    type(var_entry_t), pointer :: var
+    var => var_list_get_var_ptr (var_list, name, V_CMPLX)
+    if (associated (var)) then
+       cptr => var_entry_get_cval_ptr (var)
+       if (present (known))  known => var_entry_get_known_ptr (var)
+    else
+       cptr => null ()
+       if (present (known))  known => null ()
+    end if
+  end subroutine var_list_get_cptr
+    
+  subroutine var_list_get_aptr (var_list, name, aptr, known)
+    class(var_list_t), intent(in) :: var_list
+    type(string_t), intent(in) :: name
+    type(pdg_array_t), pointer, intent(out) :: aptr
+    logical, pointer, intent(out), optional :: known
+    type(var_entry_t), pointer :: var
+    var => var_list_get_var_ptr (var_list, name, V_PDG)
+    if (associated (var)) then
+       aptr => var_entry_get_aval_ptr (var)
+       if (present (known))  known => var_entry_get_known_ptr (var)
+    else
+       aptr => null ()
+       if (present (known))  known => null ()
+    end if
+  end subroutine var_list_get_aptr
+    
+  subroutine var_list_get_pptr (var_list, name, pptr, known)
+    class(var_list_t), intent(in) :: var_list
+    type(string_t), intent(in) :: name
+    type(subevt_t), pointer, intent(out) :: pptr
+    logical, pointer, intent(out), optional :: known
+    type(var_entry_t), pointer :: var
+    var => var_list_get_var_ptr (var_list, name, V_SEV)
+    if (associated (var)) then
+       pptr => var_entry_get_pval_ptr (var)
+       if (present (known))  known => var_entry_get_known_ptr (var)
+    else
+       pptr => null ()
+       if (present (known))  known => null ()
+    end if
+  end subroutine var_list_get_pptr
+    
+  subroutine var_list_get_sptr (var_list, name, sptr, known)
+    class(var_list_t), intent(in) :: var_list
+    type(string_t), intent(in) :: name
+    type(string_t), pointer, intent(out) :: sptr
+    logical, pointer, intent(out), optional :: known
+    type(var_entry_t), pointer :: var
+    var => var_list_get_var_ptr (var_list, name, V_STR)
+    if (associated (var)) then
+       sptr => var_entry_get_sval_ptr (var)
+       if (present (known))  known => var_entry_get_known_ptr (var)
+    else
+       sptr => null ()
+       if (present (known))  known => null ()
+    end if
+  end subroutine var_list_get_sptr
+    
+@ %def var_list_get_lptr
+@ %def var_list_get_iptr
+@ %def var_list_get_rptr
+@ %def var_list_get_cptr
+@ %def var_list_get_aptr
+@ %def var_list_get_pptr
+@ %def var_list_get_sptr
+@
+This bunch of methods handles the procedure-pointer cases.
+<<Variables: var list: TBP>>=
+  procedure :: get_obs1_iptr => var_list_get_obs1_iptr
+  procedure :: get_obs2_iptr => var_list_get_obs2_iptr
+  procedure :: get_obs1_rptr => var_list_get_obs1_rptr
+  procedure :: get_obs2_rptr => var_list_get_obs2_rptr
+<<Variables: procedures>>=
+  subroutine var_list_get_obs1_iptr (var_list, name, obs1_iptr, p1)
+    class(var_list_t), intent(in) :: var_list
+    type(string_t), intent(in) :: name
+    procedure(obs_unary_int), pointer, intent(out) :: obs1_iptr
+    type(prt_t), pointer, intent(out) :: p1
+    type(var_entry_t), pointer :: var
+    var => var_list_get_var_ptr (var_list, name, V_OBS1_INT)
+    if (associated (var)) then
+       call var_entry_assign_obs1_int_ptr (obs1_iptr, var)
+       p1 => var_entry_get_prt1_ptr (var)
+    else
+       obs1_iptr => null ()
+       p1 => null ()
+    end if
+  end subroutine var_list_get_obs1_iptr
+  
+  subroutine var_list_get_obs2_iptr (var_list, name, obs2_iptr, p1, p2)
+    class(var_list_t), intent(in) :: var_list
+    type(string_t), intent(in) :: name
+    procedure(obs_binary_int), pointer, intent(out) :: obs2_iptr
+    type(prt_t), pointer, intent(out) :: p1, p2
+    type(var_entry_t), pointer :: var
+    var => var_list_get_var_ptr (var_list, name, V_OBS2_INT)
+    if (associated (var)) then
+       call var_entry_assign_obs2_int_ptr (obs2_iptr, var)
+       p1 => var_entry_get_prt1_ptr (var)
+       p2 => var_entry_get_prt2_ptr (var)
+    else
+       obs2_iptr => null ()
+       p1 => null ()
+       p2 => null ()
+    end if
+  end subroutine var_list_get_obs2_iptr
+  
+  subroutine var_list_get_obs1_rptr (var_list, name, obs1_rptr, p1)
+    class(var_list_t), intent(in) :: var_list
+    type(string_t), intent(in) :: name
+    procedure(obs_unary_real), pointer, intent(out) :: obs1_rptr
+    type(prt_t), pointer, intent(out) :: p1
+    type(var_entry_t), pointer :: var
+    var => var_list_get_var_ptr (var_list, name, V_OBS1_REAL)
+    if (associated (var)) then
+       call var_entry_assign_obs1_real_ptr (obs1_rptr, var)
+       p1 => var_entry_get_prt1_ptr (var)
+    else
+       obs1_rptr => null ()
+       p1 => null ()
+    end if
+  end subroutine var_list_get_obs1_rptr
+  
+  subroutine var_list_get_obs2_rptr (var_list, name, obs2_rptr, p1, p2)
+    class(var_list_t), intent(in) :: var_list
+    type(string_t), intent(in) :: name
+    procedure(obs_binary_real), pointer, intent(out) :: obs2_rptr
+    type(prt_t), pointer, intent(out) :: p1, p2
+    type(var_entry_t), pointer :: var
+    var => var_list_get_var_ptr (var_list, name, V_OBS2_REAL)
+    if (associated (var)) then
+       call var_entry_assign_obs2_real_ptr (obs2_rptr, var)
+       p1 => var_entry_get_prt1_ptr (var)
+       p2 => var_entry_get_prt2_ptr (var)
+    else
+       obs2_rptr => null ()
+       p1 => null ()
+       p2 => null ()
+    end if
+  end subroutine var_list_get_obs2_rptr
+  
+@ %def var_list_get_obs1_iptr
+@ %def var_list_get_obs2_iptr
+@ %def var_list_get_obs1_rptr
+@ %def var_list_get_obs2_rptr
+@
+\subsection{Process Result Variables}
+These variables are associated to process (integration) runs and their
+results.  Their names contain brackets (so they look like function
+evaluations), therefore we need to special-case them.
+<<Variables: public>>=
+  public :: var_list_set_procvar_int
+  public :: var_list_set_procvar_real
+<<Variables: procedures>>=
+  subroutine var_list_set_procvar_int (var_list, proc_id, name, ival)
+    type(var_list_t), intent(inout) :: var_list
+    type(string_t), intent(in) :: proc_id
+    type(string_t), intent(in) :: name
+    integer, intent(in), optional :: ival
+    type(string_t) :: var_name
+    type(var_entry_t), pointer :: var
+    var_name = name // "(" // proc_id // ")"
+    var => var_list_get_var_ptr (var_list, var_name)
+    if (.not. associated (var)) then
+       call var_list_append_int (var_list, var_name, ival, intrinsic=.true.)
+    else if (present (ival)) then
+       call var_list_set_int (var_list, var_name, ival, is_known=.true.)
+    end if
+  end subroutine var_list_set_procvar_int
+
+  subroutine var_list_set_procvar_real (var_list, proc_id, name, rval)
+    type(var_list_t), intent(inout) :: var_list
+    type(string_t), intent(in) :: proc_id
+    type(string_t), intent(in) :: name
+    real(default), intent(in), optional :: rval
+    type(string_t) :: var_name
+    type(var_entry_t), pointer :: var
+    var_name = name // "(" // proc_id // ")"
+    var => var_list_get_var_ptr (var_list, var_name)
+    if (.not. associated (var)) then
+       call var_list_append_real (var_list, var_name, rval, intrinsic=.true.)
+    else if (present (rval)) then
+       call var_list_set_real (var_list, var_name, rval, is_known=.true.)
+    end if
+  end subroutine var_list_set_procvar_real
+
+@ %def var_list_set_procvar_int    
+@ %def var_list_set_procvar_real
+@ 
+\subsection{Observable initialization}
+Observables are formally treated as variables, which however are
+evaluated each time the observable is used.  The arguments (pointers)
+to evaluate and the function are part of the variable-list entry.
+<<Variables: public>>=
+  public :: var_list_append_obs1_iptr
+  public :: var_list_append_obs2_iptr
+  public :: var_list_append_obs1_rptr
+  public :: var_list_append_obs2_rptr
+<<Variables: procedures>>=
+  subroutine var_list_append_obs1_iptr (var_list, name, obs1_iptr, p1)
+    type(var_list_t), intent(inout) :: var_list
+    type(string_t), intent(in) :: name
+    procedure(obs_unary_int) :: obs1_iptr
+    type(prt_t), intent(in), target :: p1
+    type(var_entry_t), pointer :: var
+    allocate (var)
+    call var_entry_init_obs (var, name, V_OBS1_INT, p1)
+    var%obs1_int => obs1_iptr
+    call var_list_append (var_list, var)
+  end subroutine var_list_append_obs1_iptr
+  
+  subroutine var_list_append_obs2_iptr (var_list, name, obs2_iptr, p1, p2)
+    type(var_list_t), intent(inout) :: var_list
+    type(string_t), intent(in) :: name
+    procedure(obs_binary_int) :: obs2_iptr
+    type(prt_t), intent(in), target :: p1, p2
+    type(var_entry_t), pointer :: var
+    allocate (var)
+    call var_entry_init_obs (var, name, V_OBS2_INT, p1, p2)
+    var%obs2_int => obs2_iptr
+    call var_list_append (var_list, var)
+  end subroutine var_list_append_obs2_iptr
+  
+  subroutine var_list_append_obs1_rptr (var_list, name, obs1_rptr, p1)
+    type(var_list_t), intent(inout) :: var_list
+    type(string_t), intent(in) :: name
+    procedure(obs_unary_real) :: obs1_rptr
+    type(prt_t), intent(in), target :: p1
+    type(var_entry_t), pointer :: var
+    allocate (var)
+    call var_entry_init_obs (var, name, V_OBS1_REAL, p1)
+    var%obs1_real => obs1_rptr
+    call var_list_append (var_list, var)
+  end subroutine var_list_append_obs1_rptr
+  
+  subroutine var_list_append_obs2_rptr (var_list, name, obs2_rptr, p1, p2)
+    type(var_list_t), intent(inout) :: var_list
+    type(string_t), intent(in) :: name
+    procedure(obs_binary_real) :: obs2_rptr
+    type(prt_t), intent(in), target :: p1, p2
+    type(var_entry_t), pointer :: var
+    allocate (var)
+    call var_entry_init_obs (var, name, V_OBS2_REAL, p1, p2)
+    var%obs2_real => obs2_rptr
+    call var_list_append (var_list, var)
+  end subroutine var_list_append_obs2_rptr
+  
+@ %def var_list_append_obs1_iptr
+@ %def var_list_append_obs2_iptr
+@ %def var_list_append_obs1_rptr
+@ %def var_list_append_obs2_rptr
+@ User observables: no pointer needs to be stored.
+<<Variables: public>>=
+  public :: var_list_append_uobs_int
+  public :: var_list_append_uobs_real
+<<Variables: procedures>>=
+  subroutine var_list_append_uobs_int (var_list, name, p1, p2)
+    type(var_list_t), intent(inout) :: var_list
+    type(string_t), intent(in) :: name
+    type(prt_t), intent(in), target :: p1
+    type(prt_t), intent(in), target, optional :: p2
+    type(var_entry_t), pointer :: var
+    allocate (var)
+    if (present (p2)) then
+       call var_entry_init_obs (var, name, V_UOBS2_INT, p1, p2)
+    else
+       call var_entry_init_obs (var, name, V_UOBS1_INT, p1)
+    end if
+    call var_list_append (var_list, var)
+  end subroutine var_list_append_uobs_int
+  
+  subroutine var_list_append_uobs_real (var_list, name, p1, p2)
+    type(var_list_t), intent(inout) :: var_list
+    type(string_t), intent(in) :: name
+    type(prt_t), intent(in), target :: p1
+    type(prt_t), intent(in), target, optional :: p2
+    type(var_entry_t), pointer :: var
+    allocate (var)
+    if (present (p2)) then
+       call var_entry_init_obs (var, name, V_UOBS2_REAL, p1, p2)
+    else
+       call var_entry_init_obs (var, name, V_UOBS1_REAL, p1)
+    end if
+    call var_list_append (var_list, var)
+  end subroutine var_list_append_uobs_real
+  
+@ %def var_list_append_uobs_int
+@ %def var_list_append_uobs_real
+@
+\subsection{API for variable lists}
+Set a new value.  If the variable holds a pointer, this pointer is
+followed, e.g., a model parameter is actually set.  If [[ignore]] is
+set, do nothing if the variable does not exist.  If [[verbose]] is
+set, echo the new value.
+
+Clear a variable (all variables), i.e., undefine the value.
+<<Variables: var list: TBP>>=
+  procedure :: unset => var_list_clear
+<<Variables: procedures>>=
+  subroutine var_list_clear (vars, name, follow_link)
+    class(var_list_t), intent(inout) :: vars
+    type(string_t), intent(in) :: name
+    logical, intent(in), optional :: follow_link
+    type(var_entry_t), pointer :: var
+    var => var_list_get_var_ptr (vars, name, follow_link=follow_link)
+    if (associated (var)) then
+       call var_entry_clear (var)
+    end if
+  end subroutine var_list_clear
+  
+@ %def var_list_clear
+@
+Setting the value, concise specific versions (implementing deferred TBP):
+<<Variables: var list: TBP>>=
+  procedure :: set_ival => var_list_set_ival
+  procedure :: set_rval => var_list_set_rval
+  procedure :: set_cval => var_list_set_cval
+  procedure :: set_lval => var_list_set_lval
+  procedure :: set_sval => var_list_set_sval
+<<Variables: procedures>>=
+  subroutine var_list_set_ival (vars, name, ival, follow_link)
+    class(var_list_t), intent(inout) :: vars
+    type(string_t), intent(in) :: name
+    integer, intent(in) :: ival
+    logical, intent(in), optional :: follow_link
+    type(var_entry_t), pointer :: var
+    var => var_list_get_var_ptr (vars, name, follow_link=follow_link)
+    if (associated (var)) then
+       call var_entry_set_int (var, ival, is_known=.true.)
+    end if
+  end subroutine var_list_set_ival
+  
+  subroutine var_list_set_rval (vars, name, rval, follow_link)
+    class(var_list_t), intent(inout) :: vars
+    type(string_t), intent(in) :: name
+    real(default), intent(in) :: rval
+    logical, intent(in), optional :: follow_link
+    type(var_entry_t), pointer :: var
+    var => var_list_get_var_ptr (vars, name, follow_link=follow_link)
+    if (associated (var)) then
+       call var_entry_set_real (var, rval, is_known=.true.)
+    end if
+  end subroutine var_list_set_rval
+  
+  subroutine var_list_set_cval (vars, name, cval, follow_link)
+    class(var_list_t), intent(inout) :: vars
+    type(string_t), intent(in) :: name
+    complex(default), intent(in) :: cval
+    logical, intent(in), optional :: follow_link
+    type(var_entry_t), pointer :: var
+    var => var_list_get_var_ptr (vars, name, follow_link=follow_link)
+    if (associated (var)) then
+       call var_entry_set_cmplx (var, cval, is_known=.true.)
+    end if
+  end subroutine var_list_set_cval
+  
+  subroutine var_list_set_lval (vars, name, lval, follow_link)
+    class(var_list_t), intent(inout) :: vars
+    type(string_t), intent(in) :: name
+    logical, intent(in) :: lval
+    logical, intent(in), optional :: follow_link
+    type(var_entry_t), pointer :: var
+    var => var_list_get_var_ptr (vars, name, follow_link=follow_link)
+    if (associated (var)) then
+       call var_entry_set_log (var, lval, is_known=.true.)
+    end if
+  end subroutine var_list_set_lval
+  
+  subroutine var_list_set_sval (vars, name, sval, follow_link)
+    class(var_list_t), intent(inout) :: vars
+    type(string_t), intent(in) :: name
+    type(string_t), intent(in) :: sval
+    logical, intent(in), optional :: follow_link
+    type(var_entry_t), pointer :: var
+    var => var_list_get_var_ptr (vars, name, follow_link=follow_link)
+    if (associated (var)) then
+       call var_entry_set_string (var, sval, is_known=.true.)
+    end if
+  end subroutine var_list_set_sval
+  
+@ %def var_list_set_ival
+@ %def var_list_set_rval
+@ %def var_list_set_cval
+@ %def var_list_set_lval
+@ %def var_list_set_sval
+@
+Setting the value, verbose specific versions (as subroutines):
+<<Variables: public>>=
+  public :: var_list_set_log
+  public :: var_list_set_int
+  public :: var_list_set_real
+  public :: var_list_set_cmplx
+  public :: var_list_set_subevt
+  public :: var_list_set_pdg_array
+  public :: var_list_set_string
+<<Variables: procedures>>=
+  subroutine var_list_set_log &
+       (var_list, name, lval, is_known, ignore, force, verbose, model_name)
+    type(var_list_t), intent(inout), target :: var_list
+    type(string_t), intent(in) :: name
+    logical, intent(in) :: lval
+    logical, intent(in) :: is_known
+    logical, intent(in), optional :: ignore, force, verbose
+    type(string_t), intent(in), optional :: model_name
+    type(var_entry_t), pointer :: var
+    var => var_list_get_var_ptr (var_list, name, V_LOG)
+    if (associated (var)) then
+       if (.not. var_entry_is_locked (var, force)) then
+          select case (var%type)
+          case (V_LOG)
+             call var_entry_set_log (var, lval, is_known, verbose, model_name)
+          case default
+             call var_mismatch_error (name)
+          end select
+       else
+          call var_locked_error (name)
+       end if
+    else
+       call var_missing_error (name, ignore)
+    end if
+  end subroutine var_list_set_log
+          
+  subroutine var_list_set_int &
+       (var_list, name, ival, is_known, ignore, force, verbose, model_name)
+    type(var_list_t), intent(inout), target :: var_list
+    type(string_t), intent(in) :: name
+    integer, intent(in) :: ival
+    logical, intent(in) :: is_known
+    logical, intent(in), optional :: ignore, force, verbose
+    type(string_t), intent(in), optional :: model_name
+    type(var_entry_t), pointer :: var
+    var => var_list_get_var_ptr (var_list, name, V_INT)
+    if (associated (var)) then 
+       if (.not. var_entry_is_locked (var, force)) then
+          select case (var%type)
+          case (V_INT)
+             call var_entry_set_int (var, ival, is_known, verbose, model_name)
+          case default
+             call var_mismatch_error (name)
+          end select
+       else
+          call var_locked_error (name)
+       end if
+    else
+       call var_missing_error (name, ignore)
+    end if
+  end subroutine var_list_set_int
+          
+  subroutine var_list_set_real &
+       (var_list, name, rval, is_known, ignore, force, &
+        verbose, model_name, pacified)
+    type(var_list_t), intent(inout), target :: var_list
+    type(string_t), intent(in) :: name
+    real(default), intent(in) :: rval
+    logical, intent(in) :: is_known
+    logical, intent(in), optional :: ignore, force, verbose, pacified
+    type(string_t), intent(in), optional :: model_name
+    type(var_entry_t), pointer :: var
+    var => var_list_get_var_ptr (var_list, name, V_REAL)
+    if (associated (var)) then
+       if (.not. var_entry_is_locked (var, force)) then
+          select case (var%type)
+          case (V_REAL)
+             call var_entry_set_real &
+                  (var, rval, is_known, verbose, model_name, pacified)
+          case default
+             call var_mismatch_error (name)
+          end select
+       else
+          call var_locked_error (name)
+       end if
+    else
+       call var_missing_error (name, ignore)
+    end if
+  end subroutine var_list_set_real
+          
+  subroutine var_list_set_cmplx &
+       (var_list, name, cval, is_known, ignore, force, &
+        verbose, model_name, pacified)
+    type(var_list_t), intent(inout), target :: var_list
+    type(string_t), intent(in) :: name
+    complex(default), intent(in) :: cval
+    logical, intent(in) :: is_known
+    logical, intent(in), optional :: ignore, force, verbose, pacified
+    type(string_t), intent(in), optional :: model_name
+    type(var_entry_t), pointer :: var
+    var => var_list_get_var_ptr (var_list, name, V_CMPLX)
+    if (associated (var)) then
+       if (.not. var_entry_is_locked (var, force)) then
+          select case (var%type)
+          case (V_CMPLX)
+             call var_entry_set_cmplx &
+                  (var, cval, is_known, verbose, model_name, pacified)
+          case default
+             call var_mismatch_error (name)
+          end select
+       else
+          call var_locked_error (name)
+       end if
+    else
+       call var_missing_error (name, ignore)
+    end if
+  end subroutine var_list_set_cmplx
+          
+  subroutine var_list_set_pdg_array &
+       (var_list, name, aval, is_known, ignore, force, verbose, model_name)
+    type(var_list_t), intent(inout), target :: var_list
+    type(string_t), intent(in) :: name
+    type(pdg_array_t), intent(in) :: aval
+    logical, intent(in) :: is_known
+    logical, intent(in), optional :: ignore, force, verbose
+    type(string_t), intent(in), optional :: model_name
+    type(var_entry_t), pointer :: var
+    var => var_list_get_var_ptr (var_list, name, V_PDG)
+    if (associated (var)) then
+       if (.not. var_entry_is_locked (var, force)) then
+          select case (var%type)
+          case (V_PDG)
+             call var_entry_set_pdg_array &
+                  (var, aval, is_known, verbose, model_name)
+          case default
+             call var_mismatch_error (name)
+          end select
+       else
+          call var_locked_error (name)
+       end if
+    else
+       call var_missing_error (name, ignore)
+    end if
+  end subroutine var_list_set_pdg_array
+          
+  subroutine var_list_set_subevt &
+       (var_list, name, pval, is_known, ignore, force, verbose, model_name)
+    type(var_list_t), intent(inout), target :: var_list
+    type(string_t), intent(in) :: name
+    type(subevt_t), intent(in) :: pval
+    logical, intent(in) :: is_known
+    logical, intent(in), optional :: ignore, force, verbose
+    type(string_t), intent(in), optional :: model_name
+    type(var_entry_t), pointer :: var
+    var => var_list_get_var_ptr (var_list, name, V_SEV)
+    if (associated (var)) then
+       if (.not. var_entry_is_locked (var, force)) then
+          select case (var%type)
+          case (V_SEV)
+             call var_entry_set_subevt &
+                  (var, pval, is_known, verbose, model_name)
+          case default
+             call var_mismatch_error (name)
+          end select
+       else
+          call var_locked_error (name)
+       end if
+    else
+       call var_missing_error (name, ignore)
+    end if
+  end subroutine var_list_set_subevt
+          
+  subroutine var_list_set_string &
+       (var_list, name, sval, is_known, ignore, force, verbose, model_name)
+    type(var_list_t), intent(inout), target :: var_list
+    type(string_t), intent(in) :: name
+    type(string_t), intent(in) :: sval
+    logical, intent(in) :: is_known
+    logical, intent(in), optional :: ignore, force, verbose
+    type(string_t), intent(in), optional :: model_name
+    type(var_entry_t), pointer :: var
+    var => var_list_get_var_ptr (var_list, name, V_STR)
+    if (associated (var)) then
+       if (.not. var_entry_is_locked (var, force)) then
+          select case (var%type)
+          case (V_STR)
+             call var_entry_set_string &
+                  (var, sval, is_known, verbose, model_name)
+          case default
+             call var_mismatch_error (name)
+          end select
+       else
+          call var_locked_error (name)
+       end if
+    else
+       call var_missing_error (name, ignore)
+    end if
+  end subroutine var_list_set_string
+          
+  subroutine var_mismatch_error (name)
+    type(string_t), intent(in) :: name
+    call msg_fatal ("Type mismatch for variable '" // char (name) // "'")
+  end subroutine var_mismatch_error
+
+  subroutine var_locked_error (name)
+    type(string_t), intent(in) :: name
+    call msg_error ("Variable '" // char (name) // "' is not user-definable")
+  end subroutine var_locked_error
+
+  subroutine var_missing_error (name, ignore)
+    type(string_t), intent(in) :: name
+    logical, intent(in), optional :: ignore
+    logical :: error
+    if (present (ignore)) then
+       error = .not. ignore
+    else
+       error = .true.
+    end if
+    if (error) then
+       call msg_fatal ("Variable '" // char (name) // "' has not been declared")
+    end if
+  end subroutine var_missing_error
+
+@ %def var_list_set_log
+@ %def var_list_set_int
+@ %def var_list_set_real
+@ %def var_list_set_cmplx
+@ %def var_list_set_subevt
+@ %def var_list_set_pdg_array
+@ %def var_list_set_string
+@ %def var_mismatch_error
+@ %def var_missing_error
+@ 
+Import values for the current variable list from another list.
+<<Variables: public>>=
+  public :: var_list_import
+<<Variables: procedures>>=
+  subroutine var_list_import (var_list, src_list)
+    type(var_list_t), intent(inout) :: var_list
+    type(var_list_t), intent(in) :: src_list
+    type(var_entry_t), pointer :: var, src
+    type(string_t) :: name
+    var => var_list%first
+    do while (associated (var))
+       src => var_list_get_var_ptr (src_list, var%name)
+       if (associated (src)) then
+          call var_entry_copy_value (var, src)
+       end if
+       var => var%next
+    end do
+  end subroutine var_list_import
+          
+@ %def var_list_import
+@ Mark all entries in the current variable list as undefined.  This is done
+when a local variable list is discarded.  If the local list is used again (by
+a loop), the entries will be re-initialized.
+<<Variables: public>>=
+  public :: var_list_undefine
+<<Variables: procedures>>=
+  recursive subroutine var_list_undefine (var_list, follow_link)
+    type(var_list_t), intent(inout) :: var_list
+    logical, intent(in), optional :: follow_link
+    type(var_entry_t), pointer :: var
+    logical :: rec
+    rec = .true.;  if (present (follow_link))  rec = follow_link
+    var => var_list%first
+    do while (associated (var))
+       call var_entry_undefine (var)
+       var => var%next
+    end do
+    if (rec .and. associated (var_list%next)) then
+       call var_list_undefine (var_list%next, follow_link=follow_link)
+    end if
+  end subroutine var_list_undefine
+
+@ %def var_list_undefine
+@ Make a deep copy of a variable list.
+<<Variables: public>>=
+  public :: var_list_init_snapshot
+<<Variables: procedures>>=
+  recursive subroutine var_list_init_snapshot (var_list, vars_in, follow_link)
+    type(var_list_t), intent(out) :: var_list
+    type(var_list_t), intent(in) :: vars_in
+    logical, intent(in), optional :: follow_link
+    type(var_entry_t), pointer :: var, var_in
+    type(var_list_t), pointer :: var_list_next
+    logical :: rec
+    rec = .true.;  if (present (follow_link))  rec = follow_link
+    var_in => vars_in%first
+    do while (associated (var_in))
+       allocate (var)
+       call var_entry_init_copy (var, var_in)
+       call var_entry_copy_value (var, var_in)
+       call var_list_append (var_list, var)
+       var_in => var_in%next
+    end do
+    if (rec .and. associated (vars_in%next)) then
+       allocate (var_list_next)
+       call var_list_init_snapshot (var_list_next, vars_in%next)
+       call var_list%link (var_list_next)
+    end if
+  end subroutine var_list_init_snapshot
+
+@ %def var_list_init_snapshot
+@ Check if a user variable can be set.  The [[new]] flag is set if the user
+variable has an explicit declaration.  If an error occurs, return [[V_NONE]]
+as variable type.
+
+Also determine the actual type of generic numerical variables, which enter the
+procedure with type [[V_NONE]].
+<<Variables: public>>=
+  public :: var_list_check_user_var
+<<Variables: procedures>>=
+  subroutine var_list_check_user_var (var_list, name, type, new)
+    type(var_list_t), intent(in), target :: var_list
+    type(string_t), intent(in) :: name
+    integer, intent(inout) :: type
+    logical, intent(in) :: new
+    type(var_entry_t), pointer :: var
+    var => var_list_get_var_ptr (var_list, name)
+    if (associated (var)) then
+       if (type == V_NONE) then
+          type = var_entry_get_type (var)
+       end if
+       if (var_entry_is_locked (var)) then
+          call msg_fatal ("Variable '" // char (name) &
+               // "' is not user-definable")
+          type = V_NONE
+          return
+       else if (new) then
+          if (var_entry_is_intrinsic (var)) then
+             call msg_fatal ("Intrinsic variable '" &
+                  // char (name) // "' redeclared")
+             type = V_NONE
+             return
+          end if
+          if (var_entry_get_type (var) /= type) then
+             call msg_fatal ("Variable '" // char (name) // "' " &
+                  // "redeclared with different type")
+             type = V_NONE
+             return
+          end if
+       end if
+    end if
+  end subroutine var_list_check_user_var
+
+@ %def var_list_check_user_var
+@
+\clearpage
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Observables}
+
+In this module we define concrete variables and operators (observables)
+that we want to support in expressions.
+<<[[observables.f90]]>>=
+<<File header>>
+
+module observables
+
+<<Use kinds>>
+<<Use strings>>
+  use io_units
+  use diagnostics
+  use lorentz
+  use subevents
+  use variables
+
+<<Standard module head>>
+
+<<Observables: public>>
+
+contains
+
+<<Observables: procedures>>
+
+end module observables
+@ %def observables
+@
+\subsection{Process-specific variables}
+We allow the user to set a numeric process ID for each declared process.
+<<Observables: public>>=
+  public :: var_list_init_num_id
+<<Observables: procedures>>=
+  subroutine var_list_init_num_id (var_list, proc_id, num_id)
+    type(var_list_t), intent(inout) :: var_list
+    type(string_t), intent(in) :: proc_id
+    integer, intent(in), optional :: num_id
+    call var_list_set_procvar_int (var_list, proc_id, &
+         var_str ("num_id"), num_id)
+  end subroutine var_list_init_num_id
+
+@ %def var_list_init_num_id
+@
+Integration results are stored in special variables.  They are
+initialized by this subroutine.  The values may or may not already
+known.
+
+Note: the values which are accessible are those that are unique for a
+process with multiple MCI records. The rest has been discarded.
+<<Observables: public>>=
+  public :: var_list_init_process_results
+<<Observables: procedures>>=
+  subroutine var_list_init_process_results (var_list, proc_id, &
+       n_calls, integral, error, accuracy, chi2, efficiency)
+    type(var_list_t), intent(inout) :: var_list
+    type(string_t), intent(in) :: proc_id
+    integer, intent(in), optional :: n_calls
+    real(default), intent(in), optional :: integral, error, accuracy
+    real(default), intent(in), optional :: chi2, efficiency
+    call var_list_set_procvar_real (var_list, proc_id, &
+         var_str ("integral"), integral)
+    call var_list_set_procvar_real (var_list, proc_id, &
+         var_str ("error"), error)
+  end subroutine var_list_init_process_results
+
+@ %def var_list_init_process_results
+@
+\subsection{Observables as Pseudo-Variables}
+Unary and binary observables are different.  Most unary observables
+can be equally well evaluated for particle pairs.  Binary observables
+cannot be evaluated for single particles.
+<<Observables: public>>=
+  public :: var_list_set_observables_unary
+  public :: var_list_set_observables_binary
+<<Observables: procedures>>=
+  subroutine var_list_set_observables_unary (var_list, prt1)
+    type(var_list_t), intent(inout) :: var_list
+    type(prt_t), intent(in), target :: prt1
+    call var_list_append_obs1_iptr &
+         (var_list, var_str ("PDG"), obs_pdg1, prt1)
+    call var_list_append_obs1_iptr &
+         (var_list, var_str ("Hel"), obs_helicity1, prt1)
+    call var_list_append_obs1_rptr &
+         (var_list, var_str ("M"), obs_signed_mass1, prt1)
+    call var_list_append_obs1_rptr &
+         (var_list, var_str ("M2"), obs_mass_squared1, prt1)
+    call var_list_append_obs1_rptr &
+         (var_list, var_str ("E"), obs_energy1, prt1)
+    call var_list_append_obs1_rptr &
+         (var_list, var_str ("Px"), obs_px1, prt1)
+    call var_list_append_obs1_rptr &
+         (var_list, var_str ("Py"), obs_py1, prt1)
+    call var_list_append_obs1_rptr &
+         (var_list, var_str ("Pz"), obs_pz1, prt1)
+    call var_list_append_obs1_rptr &
+         (var_list, var_str ("P"), obs_p1, prt1)
+    call var_list_append_obs1_rptr &
+         (var_list, var_str ("Pl"), obs_pl1, prt1)
+    call var_list_append_obs1_rptr &
+         (var_list, var_str ("Pt"), obs_pt1, prt1)
+    call var_list_append_obs1_rptr &
+         (var_list, var_str ("Theta"), obs_theta1, prt1)
+    call var_list_append_obs1_rptr &
+         (var_list, var_str ("Phi"), obs_phi1, prt1)
+    call var_list_append_obs1_rptr &
+         (var_list, var_str ("Rap"), obs_rap1, prt1)
+    call var_list_append_obs1_rptr &
+         (var_list, var_str ("Eta"), obs_eta1, prt1)
+    call var_list_append_obs1_rptr &
+         (var_list, var_str ("Theta_star"), obs_theta_star1, prt1)
+    call var_list_append_obs1_rptr &
+         (var_list, var_str ("Dist"), obs_dist1, prt1)
+    call var_list_append_uobs_real &
+         (var_list, var_str ("_User_obs_real"), prt1)
+    call var_list_append_uobs_int &
+         (var_list, var_str ("_User_obs_int"), prt1)
+  end subroutine var_list_set_observables_unary
+
+  subroutine var_list_set_observables_binary (var_list, prt1, prt2)
+    type(var_list_t), intent(inout) :: var_list
+    type(prt_t), intent(in), target :: prt1
+    type(prt_t), intent(in), optional, target :: prt2
+    call var_list_append_obs2_iptr &
+         (var_list, var_str ("PDG"), obs_pdg2, prt1, prt2)
+    call var_list_append_obs2_iptr &
+         (var_list, var_str ("Hel"), obs_helicity2, prt1, prt2)
+    call var_list_append_obs2_rptr &
+         (var_list, var_str ("M"), obs_signed_mass2, prt1, prt2)
+    call var_list_append_obs2_rptr &
+         (var_list, var_str ("M2"), obs_mass_squared2, prt1, prt2)
+    call var_list_append_obs2_rptr &
+         (var_list, var_str ("E"), obs_energy2, prt1, prt2)
+    call var_list_append_obs2_rptr &
+         (var_list, var_str ("Px"), obs_px2, prt1, prt2)
+    call var_list_append_obs2_rptr &
+         (var_list, var_str ("Py"), obs_py2, prt1, prt2)
+    call var_list_append_obs2_rptr &
+         (var_list, var_str ("Pz"), obs_pz2, prt1, prt2)
+    call var_list_append_obs2_rptr &
+         (var_list, var_str ("P"), obs_p2, prt1, prt2)
+    call var_list_append_obs2_rptr &
+         (var_list, var_str ("Pl"), obs_pl2, prt1, prt2)
+    call var_list_append_obs2_rptr &
+         (var_list, var_str ("Pt"), obs_pt2, prt1, prt2)
+    call var_list_append_obs2_rptr &
+         (var_list, var_str ("Theta"), obs_theta2, prt1, prt2)
+    call var_list_append_obs2_rptr &
+         (var_list, var_str ("Phi"), obs_phi2, prt1, prt2)
+    call var_list_append_obs2_rptr &
+         (var_list, var_str ("Rap"), obs_rap2, prt1, prt2)
+    call var_list_append_obs2_rptr &
+         (var_list, var_str ("Eta"), obs_eta2, prt1, prt2)
+    call var_list_append_obs2_rptr &
+         (var_list, var_str ("Theta_star"), obs_theta_star2, prt1, prt2)
+    call var_list_append_obs2_rptr &
+         (var_list, var_str ("Dist"), obs_dist2, prt1, prt2)
+    call var_list_append_obs2_rptr &
+         (var_list, var_str ("kT"), obs_ktmeasure, prt1, prt2)
+    call var_list_append_uobs_real &
+         (var_list, var_str ("_User_obs_real"), prt1, prt2)
+    call var_list_append_uobs_int &
+         (var_list, var_str ("_User_obs_int"), prt1, prt2)
+  end subroutine var_list_set_observables_binary
+
+@ %def var_list_set_observables_unary var_list_set_observables_binary
+@ 
+\subsection{Checks}
+<<Observables: public>>=
+  public :: var_list_check_observable
+<<Observables: procedures>>=
+  subroutine var_list_check_observable (var_list, name, type)
+    type(var_list_t), intent(in), target :: var_list
+    type(string_t), intent(in) :: name
+    integer, intent(inout) :: type
+    if (string_is_observable_id (name)) then
+       call msg_fatal ("Variable name '" // char (name) &
+            // "' is reserved for an observable")
+       type = V_NONE
+       return
+    end if
+  end subroutine var_list_check_observable
+  
+@ %def var_list_check_observable
+@
+Check if a variable name is defined as an observable:
+<<Observables: procedures>>=
+  function string_is_observable_id (string) result (flag)
+    logical :: flag
+    type(string_t), intent(in) :: string
+    select case (char (string))
+    case ("PDG", "Hel", "M", "M2", "E", "Px", "Py", "Pz", "P", "Pl", "Pt", &
+         "Theta", "Phi", "Rap", "Eta", "Theta_star", "Dist", "kT")
+       flag = .true.
+    case default
+       flag = .false.
+    end select
+  end function string_is_observable_id
+
+@ %def string_is_observable_id
+@ Check for result and process variables.
+<<Observables: public>>=
+  public :: var_list_check_result_var
+<<Observables: procedures>>=
+  subroutine var_list_check_result_var (var_list, name, type)
+    type(var_list_t), intent(in), target :: var_list
+    type(string_t), intent(in) :: name
+    integer, intent(inout) :: type
+    if (string_is_integer_result_var (name))  type = V_INT
+    if (.not. var_list%contains (name)) then
+       if (string_is_result_var (name)) then
+          call msg_fatal ("Result variable '" // char (name) // "' " &
+               // "set without prior integration")
+          type = V_NONE
+          return
+       else if (string_is_num_id (name)) then
+          call msg_fatal ("Numeric process ID '" // char (name) // "' " &
+               // "set without process declaration")
+          type = V_NONE
+          return
+       end if
+    end if
+  end subroutine var_list_check_result_var
+
+@ %def var_list_check_result_var
+@
+Check if a variable name is a result variable of integer type:
+<<Observables: procedures>>=
+  function string_is_integer_result_var (string) result (flag)
+    logical :: flag
+    type(string_t), intent(in) :: string
+    type(string_t) :: buffer, name, separator
+    buffer = string
+    call split (buffer, name, "(", separator=separator)  ! ")"
+    if (separator == "(") then
+       select case (char (name))
+       case ("num_id", "n_calls")
+          flag = .true.
+       case default
+          flag = .false.
+       end select
+    else
+       flag = .false.
+    end if
+  end function string_is_integer_result_var
+
+@ %def string_is_integer_result_var
+@ 
+Check if a variable name is an integration-result variable:
+<<Observables: procedures>>=
+  function string_is_result_var (string) result (flag)
+    logical :: flag
+    type(string_t), intent(in) :: string
+    type(string_t) :: buffer, name, separator
+    buffer = string
+    call split (buffer, name, "(", separator=separator)  ! ")"
+    if (separator == "(") then
+       select case (char (name))
+       case ("integral", "error")
+          flag = .true.
+       case default
+          flag = .false.
+       end select
+    else
+       flag = .false.
+    end if
+  end function string_is_result_var
+
+@ %def string_is_result_var
+@ 
+Check if a variable name is a numeric process ID:
+<<Observables: procedures>>=
+  function string_is_num_id (string) result (flag)
+    logical :: flag
+    type(string_t), intent(in) :: string
+    type(string_t) :: buffer, name, separator
+    buffer = string
+    call split (buffer, name, "(", separator=separator)  ! ")"
+    if (separator == "(") then
+       select case (char (name))
+       case ("num_id")
+          flag = .true.
+       case default
+          flag = .false.
+       end select
+    else
+       flag = .false.
+    end if
+  end function string_is_num_id
+
+@ %def string_is_num_id
+@ 
+\subsection{Observables}
+These are analogous to the unary and binary numeric functions listed
+above.  An observable takes the [[pval]] component(s) of its one or
+two argument nodes and produces an integer or real value.
+
+\subsubsection{Integer-valued unary observables}
+The PDG code
+<<Observables: procedures>>=
+  integer function obs_pdg1 (prt1) result (pdg)
+    type(prt_t), intent(in) :: prt1
+    pdg = prt_get_pdg (prt1)
+  end function obs_pdg1
+
+@ %def obs_pdg
+@ The helicity.  The return value is meaningful only if the particle
+is polarized, otherwise an invalid value is returned (-9).
+<<Observables: procedures>>=    
+  integer function obs_helicity1 (prt1) result (h)
+    type(prt_t), intent(in) :: prt1
+    if (prt_is_polarized (prt1)) then
+       h = prt_get_helicity (prt1)
+    else
+       h = -9
+    end if
+  end function obs_helicity1
+
+@ %def obs_helicity1
+@
+\subsubsection{Real-valued unary observables}
+The invariant mass squared, obtained from the separately stored value.
+<<Observables: procedures>>=
+  real(default) function obs_mass_squared1 (prt1) result (p2)
+    type(prt_t), intent(in) :: prt1
+    p2 = prt_get_msq (prt1)
+  end function obs_mass_squared1
+
+@ %def obs_mass_squared1
+@ The signed invariant mass, which is the signed square root of the
+previous observable.
+<<Observables: procedures>>=
+  real(default) function obs_signed_mass1 (prt1) result (m)
+    type(prt_t), intent(in) :: prt1
+    real(default) :: msq
+    msq = prt_get_msq (prt1)
+    m = sign (sqrt (abs (msq)), msq)
+  end function obs_signed_mass1
+
+@ %def obs_signed_mass1
+@ The particle energy
+<<Observables: procedures>>=
+  real(default) function obs_energy1 (prt1) result (e)
+    type(prt_t), intent(in) :: prt1
+    e = energy (prt_get_momentum (prt1))
+  end function obs_energy1
+
+@ %def obs_energy1
+@ Particle momentum (components)
+<<Observables: procedures>>=
+  real(default) function obs_px1 (prt1) result (p)
+    type(prt_t), intent(in) :: prt1
+    p = vector4_get_component (prt_get_momentum (prt1), 1)
+  end function obs_px1
+
+  real(default) function obs_py1 (prt1) result (p)
+    type(prt_t), intent(in) :: prt1
+    p = vector4_get_component (prt_get_momentum (prt1), 2)
+  end function obs_py1
+
+  real(default) function obs_pz1 (prt1) result (p)
+    type(prt_t), intent(in) :: prt1
+    p = vector4_get_component (prt_get_momentum (prt1), 3)
+  end function obs_pz1
+
+  real(default) function obs_p1 (prt1) result (p)
+    type(prt_t), intent(in) :: prt1
+    p = space_part_norm (prt_get_momentum (prt1))
+  end function obs_p1
+
+  real(default) function obs_pl1 (prt1) result (p)
+    type(prt_t), intent(in) :: prt1
+    p = longitudinal_part (prt_get_momentum (prt1))
+  end function obs_pl1
+
+  real(default) function obs_pt1 (prt1) result (p)
+    type(prt_t), intent(in) :: prt1
+    p = transverse_part (prt_get_momentum (prt1))
+  end function obs_pt1
+
+@ %def obs_px1 obs_py1 obs_pz1
+@ %def obs_p1 obs_pl1 obs_pt1
+@ Polar and azimuthal angle (lab frame).
+<<Observables: procedures>>=
+  real(default) function obs_theta1 (prt1) result (p)
+    type(prt_t), intent(in) :: prt1
+    p = polar_angle (prt_get_momentum (prt1))
+  end function obs_theta1
+
+  real(default) function obs_phi1 (prt1) result (p)
+    type(prt_t), intent(in) :: prt1
+    p = azimuthal_angle (prt_get_momentum (prt1))
+  end function obs_phi1
+
+@ %def obs_theta1 obs_phi1
+@ Rapidity and pseudorapidity
+<<Observables: procedures>>=
+  real(default) function obs_rap1 (prt1) result (p)
+    type(prt_t), intent(in) :: prt1
+    p = rapidity (prt_get_momentum (prt1))
+  end function obs_rap1
+
+  real(default) function obs_eta1 (prt1) result (p)
+    type(prt_t), intent(in) :: prt1
+    p = pseudorapidity (prt_get_momentum (prt1))
+  end function obs_eta1
+
+@ %def obs_rap1 obs_eta1
+@ Meaningless: Polar angle in the rest frame of the two arguments
+combined.
+<<Observables: procedures>>=
+  real(default) function obs_theta_star1 (prt1) result (dist)
+    type(prt_t), intent(in) :: prt1
+    call msg_fatal (" 'Theta_star' is undefined as unary observable")
+    dist = 0
+  end function obs_theta_star1
+
+@ %def obs_theta_star1
+@ [Obsolete] Meaningless: Polar angle in the rest frame of the 2nd argument.
+<<XXX Observables: procedures>>=
+  real(default) function obs_theta_rf1 (prt1) result (dist)
+    type(prt_t), intent(in) :: prt1
+    call msg_fatal (" 'Theta_RF' is undefined as unary observable")
+    dist = 0
+  end function obs_theta_rf1
+
+@ %def obs_theta_rf1
+@ Meaningless: Distance on the $\eta$-$\phi$ cylinder.
+<<Observables: procedures>>=
+  real(default) function obs_dist1 (prt1) result (dist)
+    type(prt_t), intent(in) :: prt1
+    call msg_fatal (" 'Dist' is undefined as unary observable")
+    dist = 0
+  end function obs_dist1
+
+@ %def obs_dist1
+@ 
+\subsubsection{Integer-valued binary observables}
+These observables are meaningless as binary functions.
+<<Observables: procedures>>=
+  integer function obs_pdg2 (prt1, prt2) result (pdg)
+    type(prt_t), intent(in) :: prt1, prt2
+    call msg_fatal (" PDG_Code is undefined as binary observable")
+    pdg = 0
+  end function obs_pdg2
+
+  integer function obs_helicity2 (prt1, prt2) result (h)
+    type(prt_t), intent(in) :: prt1, prt2
+    call msg_fatal (" Helicity is undefined as binary observable")
+    h = 0
+  end function obs_helicity2
+
+@ %def obs_pdg2
+@ %def obs_helicity2
+@ 
+\subsubsection{Real-valued binary observables}
+The invariant mass squared, obtained from the separately stored value.
+<<Observables: procedures>>=
+  real(default) function obs_mass_squared2 (prt1, prt2) result (p2)
+    type(prt_t), intent(in) :: prt1, prt2
+    type(prt_t) :: prt
+    call prt_init_combine (prt, prt1, prt2)
+    p2 = prt_get_msq (prt)
+  end function obs_mass_squared2
+
+@ %def obs_mass_squared2
+@ The signed invariant mass, which is the signed square root of the
+previous observable.
+<<Observables: procedures>>=
+  real(default) function obs_signed_mass2 (prt1, prt2) result (m)
+    type(prt_t), intent(in) :: prt1, prt2
+    type(prt_t) :: prt
+    real(default) :: msq
+    call prt_init_combine (prt, prt1, prt2)
+    msq = prt_get_msq (prt)
+    m = sign (sqrt (abs (msq)), msq)
+  end function obs_signed_mass2
+
+@ %def obs_signed_mass2
+@ The particle energy
+<<Observables: procedures>>=
+  real(default) function obs_energy2 (prt1, prt2) result (e)
+    type(prt_t), intent(in) :: prt1, prt2
+    type(prt_t) :: prt
+    call prt_init_combine (prt, prt1, prt2)
+    e = energy (prt_get_momentum (prt))
+  end function obs_energy2
+
+@ %def obs_energy2
+@ Particle momentum (components)
+<<Observables: procedures>>=
+  real(default) function obs_px2 (prt1, prt2) result (p)
+    type(prt_t), intent(in) :: prt1, prt2
+    type(prt_t) :: prt
+    call prt_init_combine (prt, prt1, prt2)
+    p = vector4_get_component (prt_get_momentum (prt), 1)
+  end function obs_px2
+
+  real(default) function obs_py2 (prt1, prt2) result (p)
+    type(prt_t), intent(in) :: prt1, prt2
+    type(prt_t) :: prt
+    call prt_init_combine (prt, prt1, prt2)
+    p = vector4_get_component (prt_get_momentum (prt), 2)
+  end function obs_py2
+
+  real(default) function obs_pz2 (prt1, prt2) result (p)
+    type(prt_t), intent(in) :: prt1, prt2
+    type(prt_t) :: prt
+    call prt_init_combine (prt, prt1, prt2)
+    p = vector4_get_component (prt_get_momentum (prt), 3)
+  end function obs_pz2
+
+  real(default) function obs_p2 (prt1, prt2) result (p)
+    type(prt_t), intent(in) :: prt1, prt2
+    type(prt_t) :: prt
+    call prt_init_combine (prt, prt1, prt2)
+    p = space_part_norm (prt_get_momentum (prt))
+  end function obs_p2
+
+  real(default) function obs_pl2 (prt1, prt2) result (p)
+    type(prt_t), intent(in) :: prt1, prt2
+    type(prt_t) :: prt
+    call prt_init_combine (prt, prt1, prt2)
+    p = longitudinal_part (prt_get_momentum (prt))
+  end function obs_pl2
+
+  real(default) function obs_pt2 (prt1, prt2) result (p)
+    type(prt_t), intent(in) :: prt1, prt2
+    type(prt_t) :: prt
+    call prt_init_combine (prt, prt1, prt2)
+    p = transverse_part (prt_get_momentum (prt))
+  end function obs_pt2
+
+@ %def obs_px2 obs_py2 obs_pz2
+@ %def obs_p2 obs_pl2 obs_pt2
+@ Enclosed angle and azimuthal distance (lab frame).
+<<Observables: procedures>>=
+  real(default) function obs_theta2 (prt1, prt2) result (p)
+    type(prt_t), intent(in) :: prt1, prt2
+    p = enclosed_angle (prt_get_momentum (prt1), prt_get_momentum (prt2))
+  end function obs_theta2
+
+  real(default) function obs_phi2 (prt1, prt2) result (p)
+    type(prt_t), intent(in) :: prt1, prt2
+    type(prt_t) :: prt
+    call prt_init_combine (prt, prt1, prt2)
+    p = azimuthal_distance (prt_get_momentum (prt1), prt_get_momentum (prt2))
+  end function obs_phi2
+
+@ %def obs_theta2 obs_phi2
+@ Rapidity and pseudorapidity distance
+<<Observables: procedures>>=
+  real(default) function obs_rap2 (prt1, prt2) result (p)
+    type(prt_t), intent(in) :: prt1, prt2
+    p = rapidity_distance &
+         (prt_get_momentum (prt1), prt_get_momentum (prt2))
+  end function obs_rap2
+
+  real(default) function obs_eta2 (prt1, prt2) result (p)
+    type(prt_t), intent(in) :: prt1, prt2
+    type(prt_t) :: prt
+    call prt_init_combine (prt, prt1, prt2)
+    p = pseudorapidity_distance &
+         (prt_get_momentum (prt1), prt_get_momentum (prt2))
+  end function obs_eta2
+
+@ %def obs_rap2 obs_eta2
+@ [This doesn't work!  The principle of no common particle for momentum
+  combination prohibits us from combining a decay particle with the momentum
+  of its parent.] Polar angle in the rest frame of the 2nd argument.
+<<XXX Observables: procedures>>=
+  real(default) function obs_theta_rf2 (prt1, prt2) result (theta)
+    type(prt_t), intent(in) :: prt1, prt2
+    theta = enclosed_angle_rest_frame &
+         (prt_get_momentum (prt1), prt_get_momentum (prt2))
+  end function obs_theta_rf2
+
+@ %def obs_theta_rf2
+@ Polar angle of the first particle in the rest frame of the two particles
+combined.
+<<Observables: procedures>>=
+  real(default) function obs_theta_star2 (prt1, prt2) result (theta)
+    type(prt_t), intent(in) :: prt1, prt2
+    theta = enclosed_angle_rest_frame &
+         (prt_get_momentum (prt1), &
+         prt_get_momentum (prt1) + prt_get_momentum (prt2))
+  end function obs_theta_star2
+
+@ %def obs_theta_star2
+@ Distance on the $\eta$-$\phi$ cylinder.
+<<Observables: procedures>>=
+  real(default) function obs_dist2 (prt1, prt2) result (dist)
+    type(prt_t), intent(in) :: prt1, prt2
+    dist = eta_phi_distance &
+         (prt_get_momentum (prt1), prt_get_momentum (prt2))
+  end function obs_dist2
+
+@ %def obs_dist2
+@ Durham kT measure.
+<<Observables: procedures>>=
+  real(default) function obs_ktmeasure (prt1, prt2) result (kt)
+    type(prt_t), intent(in) :: prt1, prt2
+    real (default) :: q2, e1, e2
+    ! Normalized scale to one for now! (#67)
+    q2 = 1
+    e1 = energy (prt_get_momentum (prt1))
+    e2 = energy (prt_get_momentum (prt2))
+    kt = (2/q2) * min(e1**2,e2**2) *  &
+         (1 - enclosed_angle_ct(prt_get_momentum (prt1), &
+         prt_get_momentum (prt2)))
+  end function obs_ktmeasure
+
+@ %def obs_ktmeasure

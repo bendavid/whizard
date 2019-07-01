@@ -1,6 +1,6 @@
-! WHIZARD 2.2.3 Nov 30 2014
+! WHIZARD 2.2.4 Feb 06 2015
 ! 
-! Copyright (C) 1999-2014 by 
+! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -9,7 +9,8 @@
 !     Fabian Bach <fabian.bach@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Felix Braam, Sebastian Schmidt, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam, 
+!     Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -31,13 +32,14 @@
 
 module shower_partons
 
-  use kinds, only: default !NODEP!
-  use io_units !NODEP!
-  use constants !NODEP!
-  use system_defs, only: TAB !NODEP!
-  use diagnostics !NODEP!
-  use tao_random_numbers !NODEP!
-  use lorentz !NODEP!
+  use kinds, only: default
+  use io_units
+  use constants
+  use system_defs, only: TAB
+  use diagnostics
+  use physics_defs
+  use lorentz
+  use sm_physics
   use shower_base
 
   implicit none
@@ -54,11 +56,6 @@ module shower_partons
   public :: parton_is_final
   public :: parton_is_branched
   public :: parton_set_simulated
-  public :: parton_is_simulated
-  public :: parton_get_momentum
-  public :: parton_set_momentum
-  public :: parton_set_energy
-  public :: parton_get_energy
   public :: parton_set_parent
   public :: parton_get_parent
   public :: parton_set_initial
@@ -71,9 +68,6 @@ module shower_partons
   public :: parton_is_gluino
   public :: parton_is_hadron
   public :: parton_is_colored
-  public :: parton_p4square
-  public :: parton_p3square
-  public :: parton_p3abs
   public :: parton_mass
   public :: parton_mass_squared
   public :: P_prt_to_child1
@@ -143,74 +137,66 @@ contains
     prt2%aux_pt = prt1%aux_pt
   end subroutine parton_copy
 
-  function parton_get_costheta (prt) result (costheta)
+  elemental function parton_get_costheta (prt) result (costheta)
     type(parton_t), intent(in) :: prt
     real(default) :: costheta
-    if (prt%z * (one - prt%z) * parton_get_energy(prt)**2 > zero) then
-       costheta = one - prt%t / (two * prt%z * (one - prt%z) * &
-            parton_get_energy(prt)**2)
+    real(default) :: denom
+    denom = two * prt%z * (one - prt%z) * prt%momentum%p(0)**2
+    if (denom > eps0) then
+       costheta = one - prt%t / denom
     else
        costheta = - one
     end if
   end function parton_get_costheta
 
-  function parton_get_costheta_correct (prt) result (costheta)
+  elemental function parton_get_costheta_correct (prt) result (costheta)
     type(parton_t), intent(in) :: prt
-    real(default) :: costheta
+    real(default) :: costheta, sqrt12
     if (parton_is_branched (prt)) then
-       if (parton_is_simulated (prt%child1) .and. &
-            parton_is_simulated (prt%child2) .and. &
-            sqrt (max (zero, (prt%z)**2 * parton_get_energy(prt)**2 &
-                                        - prt%child1%t)) * &
-            sqrt (max (zero, (1.-prt%z)**2 * parton_get_energy(prt)**2 &
-                                         - prt%child2%t)) > zero) then
-          costheta = &
-               (prt%t - prt%child1%t - prt%child2%t - 2. * prt%z * &
-               (1.-prt%z) * parton_get_energy(prt)**2) / &
-               (-2.* sqrt((prt%z)**2 * parton_get_energy(prt)**2 &
-               - prt%child1%t) * &
-               sqrt( (1.-prt%z)**2 * parton_get_energy(prt)**2 - prt%child2%t))
-       else
-          costheta = parton_get_costheta (prt)
+       if (prt%child1%simulated .and. &
+           prt%child2%simulated) then
+          sqrt12 = sqrt (max (zero, (prt%z)**2 * prt%momentum%p(0)**2 &
+                                    - prt%child1%t)) * &
+                   sqrt (max (zero, (one - prt%z)**2 * prt%momentum%p(0)**2 &
+                                    - prt%child2%t))
+          if (sqrt12 > eps0) then
+             costheta = (prt%t - prt%child1%t - prt%child2%t - &
+                  two * prt%z * (one - prt%z) * prt%momentum%p(0)**2) / &
+                  (- two * sqrt12)
+             return
+          end if
        end if
-    else
-       costheta = parton_get_costheta (prt)
     end if
+    costheta = parton_get_costheta (prt)
   end function parton_get_costheta_correct
 
-  function parton_get_costheta_motherfirst (prt) result (costheta)
-    type(parton_t), intent(in) :: prt
+  elemental function parton_get_costheta_motherfirst (prt) result (costheta)
     real(default) :: costheta
+    type(parton_t), intent(in) :: prt
     if (parton_is_branched (prt)) then
-       if ((parton_is_simulated (prt%child1) .or. parton_is_final (prt%child1) &
-            .or. parton_is_branched (prt%child1)) .and. &
-            (parton_is_simulated (prt%child2) .or. &
-            parton_is_final (prt%child2) &
-            .or. parton_is_branched (prt%child2)) .and. &
-            (space_part_norm (prt%momentum) * space_part_norm &
-            (prt%child1%momentum) > zero)) then
-          costheta = (space_part (prt%momentum) * &
-               space_part(prt%child1%momentum)) / &
-               (space_part_norm (prt%momentum) * &
-                space_part_norm (prt%child1%momentum))
-       else
-          costheta = -two
+       if ((prt%child1%simulated .or. &
+            parton_is_final (prt%child1) .or. &
+            parton_is_branched (prt%child1)) .and. &
+            (prt%child2%simulated .or. &
+             parton_is_final (prt%child2) .or. &
+             parton_is_branched (prt%child2))) then
+          costheta = enclosed_angle_ct (prt%momentum, prt%child1%momentum)
+          return
        end if
-    else
-       costheta = -two
     end if
+    costheta = - two
   end function parton_get_costheta_motherfirst
 
-  function get_beta (t,E) result (beta)
+  pure function get_beta (t,E) result (beta)
     real(default), intent(in) :: t,E
     real(default) :: beta
-    beta = sqrt (max (1.E-6_default, one - t /(E**2)))
+    beta = sqrt (max (tiny_07, one - t /(E**2)))
   end function get_beta
 
-  function parton_get_beta (prt) result (beta)
+  elemental function parton_get_beta (prt) result (beta)
     type(parton_t), intent(in) :: prt
     real(default) :: beta
-    beta = get_beta (prt%t, vector4_get_component (prt%momentum, 0))
+    beta = sqrt (max (tiny_07, one - prt%t / prt%momentum%p(0)**2))
   end function parton_get_beta
 
   subroutine parton_write (prt, unit)
@@ -219,86 +205,95 @@ contains
     integer :: u
     u = given_output_unit (unit); if (u < 0) return
 
-    write (u, "(1x,4A)", advance ="no")  "Shower parton <nr>", &
-         TAB, "<type>", TAB
-    write (u, "(1x,3A)") "<parent>", TAB, "<mom(0:3)>"
+    write (u, "(1x,7A)") "Shower parton <nr>", TAB, "<type>", TAB // TAB, &
+         "<parent>", TAB, "<mom(0:3)>"
     write (u, "(2x,I5,3A)", advance = "no")  prt%nr, TAB, TAB, TAB
     if (parton_is_final (prt)) then
-       write (u, "(1x,I5,1x,A)", advance = "no") prt%type, TAB
+       write (u, "(1x,I5,1x,A)", advance = "no") prt%type, TAB // TAB
     else
-       write (u, "('[',I5,']',A)", advance = "no") prt%type, TAB
+       write (u, "('[',I5,']',A)", advance = "no") prt%type, TAB // TAB
     end if
     if (associated (prt%parent)) then
-       write (u, "(I5,2A)", advance = "no") prt%parent%nr, TAB, TAB
+       write (u, "(I5,A)", advance = "no") prt%parent%nr, TAB // TAB
     else
        write (u, "(5x,2A)", advance = "no") TAB, TAB
     end if
-    write (u, "(4(ES12.5,A))") &
-         vector4_get_component (prt%momentum, 0), TAB, &
-         vector4_get_component (prt%momentum, 1), TAB, &
-         vector4_get_component (prt%momentum, 2), TAB, &
-         vector4_get_component (prt%momentum, 3)
-    write (u, "(1x,5A)", advance = "no") "<p4square>", TAB, TAB, "<t>", TAB
-    write (u, "(1x,7A)") TAB, "<scale>", TAB, TAB, "<c1>", TAB, "<c2>"
-    write (u, "(3(ES12.5,A))", advance = "no") &
-         parton_p4square(prt), TAB, prt%t, TAB // TAB, prt%scale, TAB
+    write (u, "(4(ES12.5,A))") prt%momentum%p(0), TAB, &
+                               prt%momentum%p(1), TAB, &
+                               prt%momentum%p(2), TAB, &
+                               prt%momentum%p(3)
+    write (u, "(1x,9A)") "<p4square>", TAB // TAB, "<t>", TAB // TAB, &
+         "<scale>", TAB // TAB, "<c1>", TAB, "<c2>"
+    write (u, "(1x,3(ES12.5,A))", advance = "no") &
+         prt%momentum ** 2, TAB // TAB, prt%t, TAB, prt%scale, TAB
     write (u, "(2(I4,A))") prt%c1, TAB, prt%c2, TAB
     if (parton_is_branched (prt)) then
        if (prt%belongstoFSR) then
-          write(u, "(3x,5(ES8.5,1x),A1)", advance = "no") &
-               parton_get_costheta (prt), &
-               parton_get_costheta_correct (prt), prt%costheta, prt%z, &
-               parton_get_costheta_motherfirst (prt), 'b'
+          write (u, "(1x,9A)") "costheta(prt)", TAB, &
+               "costheta_correct(prt)", TAB, &
+               "prt%costheta", TAB, "prt%z", TAB, &
+               "costheta_motherfirst(prt)"
+          write (u, "(1X,5(ES12.5,A))") &
+               parton_get_costheta (prt), TAB, &
+               parton_get_costheta_correct (prt), TAB // TAB, &
+               prt%costheta, TAB, prt%z, TAB, &
+               parton_get_costheta_motherfirst (prt), TAB
        else
-          write(u, "(3x,5(ES8.5,1x),A1)", advance = "no") prt%z, prt%x, &
-               parton_get_costheta_correct (prt), prt%costheta, &
-               parton_get_costheta_motherfirst (prt), 'b'
+          write (u, "(1x,9A)") "prt%z", TAB, "prt%x", TAB, &
+               "costheta_correct(prt)", TAB, &
+               "prt%costheta", TAB, &
+               "costheta_motherfirst(prt)"
+          write (u, "(1X,5(ES12.5,A))") &
+               prt%z, TAB, prt%x, TAB, &
+               parton_get_costheta_correct (prt), TAB, &
+               prt%costheta, TAB, &
+               parton_get_costheta_motherfirst (prt), TAB
        end if
     else
        if (prt%belongstoFSR) then
-          write (u, "(43x)", advance = "no")
+          write (u, "(1X,A)") "not branched."
        else
-          write (u, "(9x,ES8.5,26x)", advance = "no")  prt%x
+          write (u, "(1X,A,ES12.5)") "not branched. x = ",  prt%x
        end if
     end if
-    write (u, "(A)", advance = "no") " Parton "
+    write (u, "(A)", advance = "no") " Parton"
     if (prt%belongstoFSR) then
-       write (u, "(A)", advance = "no")  "is FSR, "
+       write (u, "(A)", advance = "no")  " is FSR,"
     else
        if (associated (prt%initial)) then
-          write (u, "(A,I1)", advance = "no")  "from hadron, ", prt%initial%nr
+          write (u, "(A,I1)", advance = "no")  " from hadron,", prt%initial%nr
        else
-          write (u, "(A)", advance = "no")  " "
+          write (u, "(A)", advance = "no")  ""
        end if
     end if
     if (parton_is_final (prt)) then
-       write (u, "(A)", advance = "no")  "is final, "
+       write (u, "(A)", advance = "no")  " is final,"
     else
-       write (u, "(A)", advance = "no")  " "
+       write (u, "(A)", advance = "no")  ""
     end if
-    if (parton_is_simulated (prt)) then
-       write (u, "(A)", advance = "no")  "is simulated, "
+    if (prt%simulated) then
+       write (u, "(A)", advance = "no")  " is simulated,"
     else
-       write (u, "(A)", advance = "no")  " "
+       write (u, "(A)", advance = "no")  ""
     end if
     if (associated (prt%child1) .and. associated (prt%child2)) then
        write (u, "(A,2(I5),A)", advance = "no") &
-            "has children: ", prt%child1%nr, prt%child2%nr, ", "
+            " has children: ", prt%child1%nr, prt%child2%nr, ","
     else if (associated (prt%child1)) then
        write (u, "(A,1(I5),A)", advance = "no") &
-            "has children: ", prt%child1%nr, ", "
+            " has one child: ", prt%child1%nr, ", "
     end if
     if (prt%belongstointeraction) then
-       write (u, "(A,I2)") "belongs to         ", &
+       write (u, "(A,I2)") " belongs to interaction ", &
             prt%interactionnr
     else
-       write (u, "(A,I2)") "does not belong to ", &
+       write (u, "(A,I2)") " does not belong to interaction ", &
             prt%interactionnr
     end if
     write (u,"(A)")  TAB
   end subroutine parton_write
 
-  function parton_is_final (prt) result (is_final)
+  elemental function parton_is_final (prt) result (is_final)
     type(parton_t), intent(in) :: prt
     logical :: is_final
     is_final = .false.
@@ -309,13 +304,13 @@ contains
     end if
   end function parton_is_final
 
-  function parton_is_branched (prt) result (is_branched)
+  elemental function parton_is_branched (prt) result (is_branched)
     type(parton_t), intent(in) :: prt
     logical :: is_branched
     is_branched = associated (prt%child1) .and. associated (prt%child2)
   end function parton_is_branched
 
-  subroutine parton_set_simulated (prt, sim)
+  pure subroutine parton_set_simulated (prt, sim)
     type(parton_t), intent(inout) :: prt
     logical, intent(in), optional :: sim
     if (present (sim)) then
@@ -324,49 +319,6 @@ contains
        prt%simulated = .true.
     end if
   end subroutine parton_set_simulated
-
-  function parton_is_simulated (prt) result (is_simulated)
-    type(parton_t), intent(in) :: prt
-    logical :: is_simulated
-    is_simulated = prt%simulated
-  end function parton_is_simulated
-
-  function parton_get_momentum (prt, i) result (mom)
-    type(parton_t), intent(in) :: prt
-    integer, intent(in) :: i
-    real(default) :: mom
-    select case (i)
-    case (0)
-       mom = vector4_get_component (prt%momentum,0)
-    case (1)
-       mom = vector4_get_component (prt%momentum,1)
-    case (2)
-       mom = vector4_get_component (prt%momentum,2)
-    case (3)
-       mom = vector4_get_component (prt%momentum,3)
-    case default
-       mom = 0
-    end select
-  end function parton_get_momentum
-
-  subroutine parton_set_momentum (prt, EE, ppx, ppy, ppz)
-    type(parton_t), intent(inout) :: prt
-    real(default), intent(in) :: EE, ppx, ppy, ppz
-    prt%momentum = vector4_moving &
-         (EE, vector3_moving ([ppx, ppy, ppz]))
-  end subroutine parton_set_momentum
-
-  subroutine parton_set_energy (prt, E)
-    type(parton_t), intent(inout) :: prt
-    real(default), intent(in) :: E
-    call vector4_set_component (prt%momentum, 0, E)
-  end subroutine parton_set_energy
-
-  function parton_get_energy (prt) result (E)
-    type(parton_t), intent(in) :: prt
-    real(default) :: E
-    E = vector4_get_component (prt%momentum, 0)
-  end function parton_get_energy
 
   subroutine parton_set_parent (prt, parent)
     type(parton_t), intent(inout) :: prt
@@ -404,9 +356,9 @@ contains
   end subroutine parton_set_child
 
   function parton_get_child (prt, i) result (child)
+    type(parton_t), pointer :: child
     type(parton_t), intent(in) :: prt
     integer, intent(in) :: i
-    type(parton_t), pointer :: child
     child => null ()
     if (i == 1) then
        child => prt%child1
@@ -415,60 +367,42 @@ contains
     end if
   end function parton_get_child
 
-  function parton_is_quark (prt) result (is_quark)
+  elemental function parton_is_quark (prt) result (is_quark)
     type(parton_t), intent(in) ::prt
     logical :: is_quark
-    is_quark= abs (prt%type) <= 6 .and. prt%type /= 0
+    is_quark = abs (prt%type) <= 6 .and. prt%type /= 0
   end function parton_is_quark
 
-  function parton_is_squark (prt) result (is_squark)
+  elemental function parton_is_squark (prt) result (is_squark)
     type(parton_t), intent(in) ::prt
     logical :: is_squark
     is_squark = ((abs(prt%type) >= 1000001) .and. (abs(prt%type) <= 1000006)) &
              .or. ((abs(prt%type) >= 2000001) .and. (abs(prt%type) <= 2000006))
   end function parton_is_squark
 
-  function parton_is_gluon (prt) result (is_gluon)
+  elemental function parton_is_gluon (prt) result (is_gluon)
     type(parton_t), intent(in) :: prt
     logical :: is_gluon
-    is_gluon = prt%type == 21 .or. prt%type == 9
+    is_gluon = prt%type == GLUON .or. prt%type == 9
   end function parton_is_gluon
 
-  function parton_is_gluino (prt) result (is_gluino)
+  elemental function parton_is_gluino (prt) result (is_gluino)
     type(parton_t), intent(in) :: prt
     logical :: is_gluino
     is_gluino = prt%type == 1000021
   end function parton_is_gluino
 
-  function parton_is_hadron (prt) result (is_hadron)
+  elemental function parton_is_hadron (prt) result (is_hadron)
     type(parton_t), intent(in) :: prt
     logical :: is_hadron
-    is_hadron = abs (prt%type) == 2212
+    is_hadron = abs (prt%type) == PROTON
   end function parton_is_hadron
 
-  function parton_is_colored (prt) result (is_colored)
+  elemental function parton_is_colored (prt) result (is_colored)
     type(parton_t), intent(in) ::prt
     logical :: is_colored
     is_colored = parton_is_quark (prt) .or. parton_is_gluon (prt)
   end function parton_is_colored
-
-  function parton_p4square (prt) result (p4square)
-    type(parton_t), intent(in) :: prt
-    real(default) :: p4square
-    p4square = prt%momentum**2
-  end function parton_p4square
-
-  function parton_p3square (prt) result (p3square)
-    type(parton_t), intent(in) :: prt
-    real(default) :: p3square
-    p3square = parton_p3abs (prt)**2
-  end function parton_p3square
-
-  function parton_p3abs (prt) result (p3abs)
-    type(parton_t), intent(in) :: prt
-    real(default) :: p3abs
-    p3abs = space_part_norm (prt%momentum)
-  end function parton_p3abs
 
   function parton_mass (prt) result (mass)
     type(parton_t), intent(in) :: prt
@@ -501,38 +435,39 @@ contains
     end if
   end function P_prt_to_child1
 
-  function thetabar (prt, recoiler, E3out) result (retvalue)
+  function thetabar (prt, recoiler, isr_ang, E3out) result (retvalue)
     type(parton_t), intent(inout) :: prt
     type(parton_t), intent(in) :: recoiler
     real(default), intent(out), optional :: E3out
+    logical, intent(in) :: isr_ang
     logical :: retvalue
     real(default) :: ctheta, cthetachild1
     real(default) p1, p4, p3, E3, shat
 
     shat = (prt%child1%momentum + recoiler%momentum)**2
     E3 = 0.5_default * (shat / prt%z -recoiler%t + prt%child1%t - &
-         parton_mass_squared (prt%child2)) / sqrt(shat)
+                        parton_mass_squared (prt%child2)) / sqrt(shat)
     if (present (E3out)) then
        E3out = E3
     end if
     !!! absolute values of momenta in a 3 -> 1 + 4 branching
     p3 = sqrt (E3**2 - prt%t)
-    p1 = sqrt (parton_get_energy (prt%child1)**2 - prt%child1%t)
-    p4 = sqrt (max (zero, (E3 - parton_get_energy (prt%child1))**2 &
-         - prt%child2%t))
+    p1 = sqrt (prt%child1%momentum%p(0)**2 - prt%child1%t)
+    p4 = sqrt (max (zero, (E3 - prt%child1%momentum%p(0))**2 &
+                          - prt%child2%t))
     if (p3 > zero) then
        retvalue = ((p1 + p4 >= p3) .and. (p3 >= abs(p1 - p4)) )
-       if (retvalue .and. isr_angular_ordered) then
+       if (retvalue .and. isr_ang) then
           !!! check angular ordering
           if (associated (prt%child1)) then
              if (associated (prt%child1%child2)) then
                 ctheta = (E3**2 - p1**2 - p4**2 +prt%t) / (two * p1 * p4)
-                cthetachild1 = (parton_get_energy (prt%child1)**2 - &
+                cthetachild1 = (prt%child1%momentum%p(0)**2 - &
                      space_part (prt%child1%child1%momentum)**2 &
                      - space_part (prt%child1%child2%momentum)**2 + prt%child1%t) &
                      / (two * space_part (prt%child1%child1%momentum)**1 * &
-                     space_part(prt%child1%child2%momentum)**1)
-                retvalue= (ctheta > cthetachild1)
+                              space_part (prt%child1%child2%momentum)**1)
+                retvalue = (ctheta > cthetachild1)
              end if
           end if
        end if
@@ -544,12 +479,12 @@ contains
   recursive subroutine parton_apply_z(prt, newz)
     type(parton_t), intent(inout) :: prt
     real(default), intent(in) :: newz
-    if (D_print) print *, "old z = ", prt%z , " new z = ", newz
+    if (D_PRINT) print *, "D: old z = ", prt%z , " new z = ", newz
     prt%z = newz
     if (associated (prt%child1) .and. associated (prt%child2)) then
-       call parton_set_energy (prt%child1, newz * parton_get_energy (prt))
+       prt%child1%momentum%p(0) = newz * prt%momentum%p(0)
        call parton_apply_z (prt%child1, prt%child1%z)
-       call parton_set_energy (prt%child2, (1.-newz) * parton_get_energy (prt))
+       prt%child2%momentum%p(0) = (one - newz) * prt%momentum%p(0)
        call parton_apply_z (prt%child2, prt%child2%z)
     end if
   end subroutine parton_apply_z
@@ -558,17 +493,15 @@ contains
     type(parton_t), intent(inout) :: prt
     prt%z = 0.5_default * (one + parton_get_beta (prt) * prt%costheta)
     if (associated (prt%child1) .and. associated (prt%child2) ) then
-       if (parton_is_simulated (prt%child1) .and. &
-           parton_is_simulated (prt%child2)) then
+       if (prt%child1%simulated .and. &
+           prt%child2%simulated) then
           prt%z = 0.5_default * (one + (prt%child1%t - prt%child2%t) / &
                prt%t + parton_get_beta (prt) * prt%costheta * &
                 sqrt((prt%t - prt%child1%t - prt%child2%t)**2 - &
                 4 * prt%child1%t * prt%child2%t) / prt%t)
-          if (prt%type /= 94) then
-             call parton_set_energy (prt%child1, &
-                  prt%z * parton_get_energy (prt))
-             call parton_set_energy (prt%child2, (one - prt%z) * &
-                  parton_get_energy (prt))
+          if (prt%type /= INTERNAL) then
+             prt%child1%momentum%p(0) = prt%z * prt%momentum%p(0)
+             prt%child2%momentum%p(0) = (one - prt%z) * prt%momentum%p(0)
           end if
           call parton_generate_ps (prt)
           call parton_apply_costheta (prt%child1)
@@ -586,13 +519,13 @@ contains
   recursive subroutine parton_apply_lorentztrafo_recursive (prt, L)
     type(parton_t), intent(inout) :: prt
     type(lorentz_transformation_t) ,intent(in) :: L
-    if (prt%type /= 2212 .and. prt%type /= 9999) then
+    if (prt%type /= PROTON .and. prt%type /= BEAM_REMNANT) then
        !!! don't boost hadrons and beam-remnants
        call parton_apply_lorentztrafo (prt, L)
     end if
     if (associated (prt%child1) .and. associated (prt%child2)) then
-       if ((parton_p3abs(prt%child1) == zero) .and. &
-           (parton_p3abs(prt%child2) == zero) .and. &
+       if ((space_part_norm (prt%child1%momentum) < eps0) .and. &
+           (space_part_norm (prt%child2%momentum) < eps0) .and. &
            (.not. prt%child1%belongstointeraction) .and. &
            (.not. prt%child2%belongstointeraction)) then
           !!! don't boost unevolved timelike partons
@@ -616,17 +549,17 @@ contains
     integer i,j
     real(default) :: scproduct, pabs, p1abs, p2abs, x, ptabs, phi
     real(default), dimension(1:3) :: momentum
-
     type(vector3_t) :: pchild1_direction
     type(lorentz_transformation_t) :: L, rotation
-
-    if (D_print) print *, "parton_generate_ps for parton " , prt%nr
-    if (.not. (associated (prt%child1) .and. associated (prt%child2))) then
-       print *, "no children for generate_ps"
-       return
+    if (D_PRINT) print *, "D: parton_generate_ps for parton " , prt%nr
+    if (ASSERT) then
+       if (.not. (associated (prt%child1) .and. associated (prt%child2))) then
+          print *, "no children for generate_ps"
+          stop 1
+       end if
     end if
     !!! test if parton is a virtual parton from the imagined parton shower history
-    if (prt%type == 94) then
+    if (prt%type == INTERNAL) then
        L = inverse (boost (prt%momentum, sqrt(prt%t)))
        !!! boost to restframe of mother
        call parton_apply_lorentztrafo (prt, L)
@@ -635,18 +568,18 @@ contains
        !!! Store child1's momenta
        pchild1_direction = direction (space_part (prt%child1%momentum))
        !!! Redistribute energy
-       call parton_set_energy (prt%child1, (parton_get_energy (prt)**2- &
-            prt%child2%t + prt%child1%t) / (two * parton_get_energy (prt)))
-       call parton_set_energy (prt%child2, parton_get_energy (prt) - &
-            parton_get_energy (prt%child1))
+       prt%child1%momentum%p(0) = (prt%momentum%p(0)**2 - &
+            prt%child2%t + prt%child1%t) / (two * prt%momentum%p(0))
+       prt%child2%momentum%p(0) = prt%momentum%p(0) - &
+            prt%child1%momentum%p(0)
 
        ! rescale momenta and set momenta to be along z-axis
-       prt%child1%momentum = vector4_moving (parton_get_energy (prt%child1), &
-            vector3_canonical(3) * sqrt(parton_get_energy (prt%child1)**2 - &
-            prt%child1%t))
-       prt%child2%momentum = vector4_moving (parton_get_energy (prt%child2), &
-            vector3_canonical(3) * (-sqrt(parton_get_energy (prt%child2)**2 - &
-            prt%child2%t)))
+       prt%child1%momentum = vector4_moving (prt%child1%momentum%p(0), &
+            vector3_canonical(3) * &
+            sqrt(prt%child1%momentum%p(0)**2 - prt%child1%t))
+       prt%child2%momentum = vector4_moving (prt%child2%momentum%p(0), &
+            - vector3_canonical(3) * &
+            sqrt(prt%child2%momentum%p(0)**2 - prt%child2%t))
 
        !!! rotate so that total momentum is along former total momentum
        rotation = rotation_to_2nd (space_part (prt%child1%momentum), &
@@ -660,17 +593,13 @@ contains
        call parton_apply_lorentztrafo (prt%child2, L)
     else
        !!! directions(1,:) -> direction of the parent parton
-       if (parton_p3abs (prt) == zero) return
-       do i = 1, 3
-          directions(1,i) = parton_get_momentum (prt,i) / parton_p3abs (prt)
-       end do
+       if (space_part_norm (prt%momentum) < eps0) return
+       directions(1,1:3) = prt%momentum%p(1:3) / space_part_norm (prt%momentum)
        !!! directions(2,:) and directions(3,:) -> two random directions
        !!!   perpendicular to the direction of the parent parton
-       do i = 1, 3
-          do j = 2, 3
-             call tao_random_number (directions(j,i))
-          end do
-       end do
+        do j = 2, 3
+           call rng%generate(directions(j,:))
+        end do
        do i = 2, 3
           scproduct = zero
           do j = 1, i - 1
@@ -691,25 +620,23 @@ contains
             directions(2,1) * directions(3,3)) + &
             directions(1,3) * (directions(2,1) * directions(3,2) - &
             directions(2,2) * directions(3,1))) < 0) then
-          directions(3,1) = - directions(3,1)
-          directions(3,2) = - directions(3,2)
-          directions(3,3) = - directions(3,3)
+          directions(3,:) = - directions(3,:)
        end if
 
-       pabs = parton_p3abs(prt)
-       if ((parton_get_energy (prt%child1)**2 - prt%child1%t < 0) .or. &
-           (parton_get_energy (prt%child2)**2 - prt%child2%t < 0)) then
-          if (D_print) print *, "err: error at generate_ps(), E^2 < t"
+       pabs = space_part_norm (prt%momentum)
+       if ((prt%child1%momentum%p(0)**2 - prt%child1%t < 0) .or. &
+           (prt%child2%momentum%p(0)**2 - prt%child2%t < 0)) then
+          if (D_PRINT) print *, "D: generate_ps error at E^2 < t"
           return
        end if
-       p1abs = sqrt (parton_get_energy (prt%child1)**2 - prt%child1%t)
-       p2abs = sqrt (parton_get_energy (prt%child2)**2 - prt%child2%t)
+       p1abs = sqrt (prt%child1%momentum%p(0)**2 - prt%child1%t)
+       p2abs = sqrt (prt%child2%momentum%p(0)**2 - prt%child2%t)
        x = (pabs**2 + p1abs**2 - p2abs**2) / (two * pabs)
        if (pabs > p1abs + p2abs .or. &
             pabs < abs(p1abs - p2abs)) then
-          if (D_print) then
-             print *, "error at parton_generate_ps Dreiecksungleichung for parton ", &
-                     prt%nr, " ", parton_p3abs(prt)," ",p1abs," ",p2abs
+          if (D_PRINT) then
+             print *, "D: parton_generate_ps Dreiecksungleichung error for parton ", &
+                     prt%nr, " ", space_part_norm (prt%momentum)," ",p1abs," ",p2abs
              call parton_write (prt)
              call parton_write (prt%child1)
              call parton_write (prt%child2)
@@ -719,20 +646,18 @@ contains
        !!! Due to numerical problems transverse momentum could be imaginary ->
        !!!     set transverse momentum to zero
        ptabs = sqrt (max (p1abs * p1abs - x * x, zero))
-       call tao_random_number (phi)
+       call rng%generate (phi)
        phi = twopi * phi
        do i = 1, 3
           momentum(i) = x * directions(1,i) + ptabs * &
                 (cos(phi) * directions(2,i) + sin(phi) * directions(3,i))
        end do
-       call parton_set_momentum (prt%child1, parton_get_energy (prt%child1), &
-            momentum(1), momentum(2), momentum(3))
+       prt%child1%momentum%p(1:3) = momentum(1:3)
        do i = 1, 3
-          momentum(i) = (parton_p3abs(prt) - x) * directions(1,i) - &
+          momentum(i) = (space_part_norm (prt%momentum) - x) * directions(1,i) - &
                ptabs * (cos(phi) * directions(2,i) + sin(phi) * directions(3,i))
        end do
-       call parton_set_momentum (prt%child2, parton_get_energy (prt%child2), &
-            momentum(1), momentum(2), momentum(3))
+       prt%child2%momentum%p(1:3) = momentum(1:3)
     end if
   end subroutine parton_generate_ps
 
@@ -742,23 +667,22 @@ contains
     integer :: i,j
     real(default) :: scproduct, pabs, p1abs, p2abs, x, ptabs, phi
     real(default), dimension(1:3) :: momentum
-
-    if (D_print) print *, "parton_generate_ps_ini for parton " , prt%nr
-    if (.not. (associated(prt%child1) .and. associated(prt%child2))) then
-       print *, "error in parton_generate_ps_ini"
-       return
+    if (D_PRINT) print *, "D: parton_generate_ps_ini: for parton " , prt%nr
+    if (ASSERT) then
+       if (.not. (associated (prt%child1) .and. associated (prt%child2))) then
+          print *, "no children for generate_ps"
+          stop 1
+       end if
     end if
 
     if (parton_is_hadron(prt) .eqv. .false.) then
        !!! generate ps for normal partons
        do i = 1, 3
-          directions(1,i) = parton_get_momentum (prt%child1,i) / &
-               parton_p3abs(prt%child1)
+          directions(1,i) = prt%child1%momentum%p(i) / &
+               space_part_norm(prt%child1%momentum)
        end do
-       do i = 1, 3
-          do j = 2, 3
-             call tao_random_number (directions(j,i))
-          end do
+       do j = 2, 3
+          call rng%generate (directions(j,:))
        end do
        do i = 2, 3
           scproduct = zero
@@ -780,41 +704,39 @@ contains
             directions(2,1) * directions(3,3)) + &
             directions(1,3) * (directions(2,1) * directions(3,2) - &
             directions(2,2) * directions(3,1))) < 0) then
-          directions(3,1) = - directions(3,1)
-          directions(3,2) = - directions(3,2)
-          directions(3,3) = - directions(3,3)
+          directions(3,:) = - directions(3,:)
        end if
 
-       pabs = parton_p3abs (prt%child1)
-       p1abs = sqrt (parton_get_energy (prt)**2 - prt%t)
-       p2abs = sqrt (max(zero, parton_get_energy (prt%child2)**2 - &
+       pabs = space_part_norm (prt%child1%momentum)
+       p1abs = sqrt (prt%momentum%p(0)**2 - prt%t)
+       p2abs = sqrt (max(zero, prt%child2%momentum%p(0)**2 - &
             prt%child2%t))
 
        x = (pabs**2 + p1abs**2 - p2abs**2) / (two * pabs)
-       if (pabs > p1abs + p2abs .or. pabs < abs(p1abs - p2abs)) then
-          print *, "error at generate_ps, Dreiecksungleichung for parton ", &
-               prt%nr, " ", pabs," ",p1abs," ",p2abs
-          call parton_write (prt)
-          call parton_write (prt%child1)
-          call parton_write (prt%child2)
-          return
+       if (ASSERT) then
+          if (pabs > p1abs + p2abs .or. pabs < abs(p1abs - p2abs)) then
+             print *, "error at generate_ps, Dreiecksungleichung for parton ", &
+                  prt%nr, " ", pabs," ",p1abs," ",p2abs
+             call parton_write (prt)
+             call parton_write (prt%child1)
+             call parton_write (prt%child2)
+             stop 1
+          end if
        end if
-       if (D_print) print *, "parton_generate_ps_ini : x = ", x
+       if (D_PRINT) print *, "D: parton_generate_ps_ini: x = ", x
        ptabs = sqrt (p1abs * p1abs - x**2)
-       call tao_random_number (phi)
+       call rng%generate (phi)
        phi = twopi * phi
        do i = 1,3
           momentum(i) = x * directions(1,i) + ptabs * (cos(phi) * &
                directions(2,i) + sin(phi) * directions(3,i))
        end do
-       call parton_set_momentum (prt, parton_get_energy(prt), &
-            momentum(1), momentum(2), momentum(3))
+       prt%momentum%p(1:3) = momentum
        do i = 1, 3
           momentum(i) = (x - pabs) * directions(1,i) + ptabs * (cos(phi) * &
                directions(2,i) + sin(phi) * directions(3,i))
        end do
-       call parton_set_momentum (prt%child2, parton_get_energy(prt%child2), &
-            momentum(1), momentum(2), momentum(3))
+       prt%child2%momentum%p(1:3) = momentum(1:3)
     else
        !!! for first partons just set beam remnants momentum
        prt%child2%momentum = prt%momentum - prt%child1%momentum
@@ -827,12 +749,12 @@ contains
     real(default) :: integral, random
 
     if (signal_is_pending ()) return
-    if (D_print) then
-       print *, "parton_next_t_ana for parton " , prt%nr
+    if (D_PRINT) then
+       print *, "D: parton_next_t_ana: for parton " , prt%nr
     end if
 
     ! check if branchings are possible at all
-    if (min (prt%t, parton_get_energy(prt)**2) < &
+    if (min (prt%t, prt%momentum%p(0)**2) < &
          parton_mass_squared(prt) + D_Min_t) then
        prt%t = parton_mass_squared (prt)
        call parton_set_simulated (prt)
@@ -840,11 +762,11 @@ contains
     end if
 
     integral = zero
-    call tao_random_number (random)
+    call rng%generate (random)
     do
        if (signal_is_pending ()) return
        call parton_simulate_stept (prt, integral, random, gtoqq, .false.)
-       if (parton_is_simulated (prt)) then
+       if (prt%simulated) then
           if (parton_is_gluon (prt)) then
              !!! Abusing the x-variable to store the information to which
              !!! quark flavour the gluon branches (if any)
@@ -857,7 +779,7 @@ contains
     end do
   end subroutine parton_next_t_ana
 
-  function cmax (prt, tt) result (cma)
+  pure function cmax (prt, tt) result (cma)
     type(parton_t), intent(in) :: prt
     real(default), intent(in), optional :: tt
     real(default) :: cma
@@ -872,7 +794,7 @@ contains
     if (associated (prt%parent)) then
        cost = parton_get_costheta (prt%parent)
        cma = min (0.99999_default, sqrt( max(zero, one - t/ &
-              (parton_get_beta(prt) *parton_get_energy(prt))**2 * &
+              (parton_get_beta(prt) * prt%momentum%p(0))**2 * &
               (one + cost) / (one - cost))))
     else
        cma = 0.99999_default
@@ -939,8 +861,8 @@ contains
           prt%t = (sqrt (prt%parent%t) - sqrt (parton_mass_squared (sister)))**2
        end if
     end if
-    if (prt%t > parton_get_energy(prt)**2) then
-        prt%t = parton_get_energy(prt)**2
+    if (prt%t > prt%momentum%p(0)**2) then
+        prt%t = prt%momentum%p(0)**2
     end if
 
     if (prt%t <= tmin) then
@@ -956,7 +878,7 @@ contains
     cstep = max(cstepfactor * (one - abs(c)), cstepmin)
     ! get values at border of "previous" bin -> to be used in first bin
     z(3) = 0.5_default + 0.5_default * get_beta (prt%t - &
-         0.5_default * tstep, parton_get_energy (prt)) * c
+         0.5_default * tstep, prt%momentum%p(0)) * c
     if (parton_is_gluon (prt)) then
        P(3) = P_ggg (z(3)) + P_gqq (z(3)) * number_of_flavors (prt%t)
     else
@@ -978,10 +900,10 @@ contains
        end if
        z(1) = z(3)
        z(2) = 0.5_default + 0.5_default * get_beta &
-            (prt%t - 0.5_default * tstep, parton_get_energy (prt)) * &
+            (prt%t - 0.5_default * tstep, prt%momentum%p(0)) * &
             (c + 0.5_default * cstep)
        z(3) = 0.5_default + 0.5_default * get_beta &
-            (prt%t - 0.5_default * tstep, parton_get_energy (prt)) * (c + cstep)
+            (prt%t - 0.5_default * tstep, prt%momentum%p(0)) * (c + cstep)
        P(1) = P(3)
        if (parton_is_gluon (prt)) then
           P(2) = P_ggg(z(2)) + P_gqq(z(2)) * number_of_flavors (prt%t)
@@ -1019,18 +941,18 @@ contains
 
        if (integral > to_integral) then
           oldt = prt%t
-          call tao_random_number (temprand)
+          call rng%generate (temprand)
           prt%t = prt%t - temprand * tstep
-          call tao_random_number (temprand)
+          call rng%generate (temprand)
           prt%costheta = c + (0.5_default - temprand) * cstep
           call parton_set_simulated (prt)
 
           if (prt%t < D_Min_t + parton_mass_squared(prt)) then
              prt%t = parton_mass_squared (prt)
           end if
-          if (prt%costheta.lt.-cmax_t .or. prt%costheta.gt.cmax_t) then
+          if (abs(prt%costheta) > cmax_t) then
              ! reject branching due to violation of costheta-limits
-             call tao_random_number (random)
+             call rng%generate (random)
              if (parton_is_quark (prt)) then
                 to_integral = three * pi * log(one / random)
              else if (parton_is_gluon(prt)) then
@@ -1043,12 +965,12 @@ contains
           if (parton_is_gluon (prt)) then
              ! decide between g->gg and g->qqbar splitting
              z(1) = 0.5_default + 0.5_default * prt%costheta
-             call tao_random_number (temprand)
+             call rng%generate (temprand)
              if (P_ggg(z(1)) > temprand * (P_ggg (z(1)) + P_gqq (z(1)) * &
                   number_of_flavors(prt%t))) then
                 gtoqq = 0
              else
-                call tao_random_number (temprand)
+                call rng%generate (temprand)
                 gtoqq = 1 + int (temprand * number_of_flavors (prt%t))
              end if
           end if
@@ -1066,10 +988,10 @@ contains
     end if
   end subroutine parton_simulate_stept
 
-  function maxzz (shat, s) result (maxz)
-    real(default), intent(in) :: shat,s
+  function maxzz (shat, s, maxz_isr, minenergy_timelike) result (maxz)
+    real(default), intent(in) :: shat, s, minenergy_timelike, maxz_isr
     real(default) :: maxz
-    maxz= min (maxz_isr, one - (two * minenergy_timelike * sqrt(shat)) / s)
+    maxz = min (maxz_isr, one - (two * minenergy_timelike * sqrt(shat)) / s)
   end function maxzz
 
 

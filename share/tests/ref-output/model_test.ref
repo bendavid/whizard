@@ -104,6 +104,10 @@ SM_top_anom.mH =>  1.250000000000E+02
 | Switching to model 'SM_Higgs'
 SM_Higgs.mH =>  1.250000000000E+02
 | Process library 'model_test_1_lib': recorded process 'models_ccww_sm_higgs'
+| Switching to model 'SM_tt_threshold'
+SM_tt_threshold.mH =>  1.250000000000E+02
+SM_tt_threshold.test =>  4.200000000000E+01
+| Process library 'model_test_1_lib': recorded process 'models_ccww_sm_tt_thresh'
 | Switching to model 'Simplest'
 Simplest.mH =>  1.250000000000E+02
 | Process library 'model_test_1_lib': recorded process 'models_ccww_simplest'
@@ -1122,11 +1126,50 @@ Warning: No cuts have been defined.
 seed = 25
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 25
+| Initializing integration for process models_ccww_sm_tt_thresh:
+| ------------------------------------------------------------------------
+| Process [scattering]: 'models_ccww_sm_tt_thresh'
+|   Library name  = 'model_test_1_lib'
+|   Process index = 27
+|   Process components:
+|     1: 'models_ccww_sm_tt_thresh_i1':   c, cbar => W+, W- [omega]
+| ------------------------------------------------------------------------
+| Beam structure: [any particles]
+| Beam data (collision):
+|   c     (mass = 1.2000000E+00 GeV)
+|   cbar  (mass = 1.2000000E+00 GeV)
+|   sqrts = 2.000000000000E+02 GeV
+| Phase space: generating configuration ...
+| Phase space: ... success.
+| Phase space: writing configuration file 'models_ccww_sm_tt_thresh_i1.phs'
+| Phase space: 3 channels, 2 dimensions
+| Phase space: found 3 channels, collected in 2 groves.
+| Phase space: Using 3 equivalences between channels.
+| Phase space: wood
+Warning: No cuts have been defined.
+| Starting integration for process 'models_ccww_sm_tt_thresh'
+| Integrate: iterations = 3:100
+| Integrator: 2 chains, 3 channels, 2 dimensions
+| Integrator: Using VAMP channel equivalences
+| Integrator: 100 initial calls, 20 bins, stratified = T
+| Integrator: VAMP
+|=============================================================================|
+| It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+|=============================================================================|
+   1         99  5.5668330E+03  5.99E+02   10.76    1.07*  28.07
+   2         99  7.0915892E+03  6.87E+02    9.69    0.96*  34.35
+   3         99  7.1720499E+03  7.27E+02   10.14    1.01   34.59
+|-----------------------------------------------------------------------------|
+   3        297  6.4884159E+03  3.84E+02    5.91    1.02   34.59    2.01   3
+|=============================================================================|
+seed = 26
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 26
 | Initializing integration for process models_ccww_simplest:
 | ------------------------------------------------------------------------
 | Process [scattering]: 'models_ccww_simplest'
 |   Library name  = 'model_test_1_lib'
-|   Process index = 27
+|   Process index = 28
 |   Process components:
 |     1: 'models_ccww_simplest_i1':   c, cbar => W+, W- [omega]
 | ------------------------------------------------------------------------
@@ -1152,20 +1195,20 @@ Warning: No cuts have been defined.
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1         99  5.0276359E+03  5.41E+02   10.76    1.07*  28.07
-   2         99  6.4046753E+03  6.21E+02    9.69    0.96*  34.35
-   3         99  6.4773469E+03  6.57E+02   10.14    1.01   34.59
+   1         99  6.1903753E+03  5.99E+02    9.68    0.96*  33.39
+   2         99  6.2594619E+03  6.37E+02   10.18    1.01   33.41
+   3         99  6.0620104E+03  6.26E+02   10.33    1.03   32.35
 |-----------------------------------------------------------------------------|
-   3        297  5.8599379E+03  3.46E+02    5.91    1.02   34.59    2.01   3
+   3        297  6.1702256E+03  3.58E+02    5.80    1.00   32.35    0.03   3
 |=============================================================================|
-seed = 26
+seed = 27
 | RNG: Initializing TAO random-number generator
-| RNG: Setting seed for random-number generator to 26
+| RNG: Setting seed for random-number generator to 27
 | Initializing integration for process models_ccww_simplest_univ:
 | ------------------------------------------------------------------------
 | Process [scattering]: 'models_ccww_simplest_univ'
 |   Library name  = 'model_test_1_lib'
-|   Process index = 28
+|   Process index = 29
 |   Process components:
 |     1: 'models_ccww_simplest_univ_i1':   c, cbar => W+, W- [omega]
 | ------------------------------------------------------------------------
@@ -1191,20 +1234,20 @@ Warning: No cuts have been defined.
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1         99  6.1903479E+03  5.99E+02    9.68    0.96*  33.39
-   2         99  6.2594349E+03  6.37E+02   10.18    1.01   33.41
-   3         99  6.0619818E+03  6.26E+02   10.33    1.03   32.35
+   1         99  7.2867865E+03  6.44E+02    8.84    0.88*  39.17
+   2         99  5.9973314E+03  5.93E+02    9.89    0.98   32.13
+   3         99  6.2338235E+03  5.42E+02    8.70    0.87*  33.40
 |-----------------------------------------------------------------------------|
-   3        297  6.1701979E+03  3.58E+02    5.80    1.00   32.35    0.03   3
+   3        297  6.4494096E+03  3.40E+02    5.27    0.91   33.40    1.21   3
 |=============================================================================|
-seed = 27
+seed = 28
 | RNG: Initializing TAO random-number generator
-| RNG: Setting seed for random-number generator to 27
+| RNG: Setting seed for random-number generator to 28
 | Initializing integration for process models_ccww_template:
 | ------------------------------------------------------------------------
 | Process [scattering]: 'models_ccww_template'
 |   Library name  = 'model_test_1_lib'
-|   Process index = 29
+|   Process index = 30
 |   Process components:
 |     1: 'models_ccww_template_i1':   c, cbar => W+, W- [omega]
 | ------------------------------------------------------------------------
@@ -1230,20 +1273,20 @@ Warning: No cuts have been defined.
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1         99  7.2865851E+03  6.44E+02    8.84    0.88*  39.17
-   2         99  5.9971526E+03  5.93E+02    9.89    0.98   32.13
-   3         99  6.2336502E+03  5.42E+02    8.70    0.87*  33.39
+   1         99  6.4269885E+03  6.11E+02    9.51    0.95*  35.25
+   2         99  6.9897903E+03  6.24E+02    8.92    0.89*  37.31
+   3         99  7.4433376E+03  6.67E+02    8.96    0.89   39.72
 |-----------------------------------------------------------------------------|
-   3        297  6.4492274E+03  3.40E+02    5.27    0.91   33.39    1.21   3
+   3        297  6.9245820E+03  3.65E+02    5.27    0.91   39.72    0.64   3
 |=============================================================================|
-seed = 28
+seed = 29
 | RNG: Initializing TAO random-number generator
-| RNG: Setting seed for random-number generator to 28
+| RNG: Setting seed for random-number generator to 29
 | Initializing integration for process models_ccww_threeshl:
 | ------------------------------------------------------------------------
 | Process [scattering]: 'models_ccww_threeshl'
 |   Library name  = 'model_test_1_lib'
-|   Process index = 30
+|   Process index = 31
 |   Process components:
 |     1: 'models_ccww_threeshl_i1':   c, cbar => W+, W- [omega]
 | ------------------------------------------------------------------------
@@ -1269,20 +1312,20 @@ Warning: No cuts have been defined.
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1        100  7.0049523E+03  6.50E+02    9.28    0.93*  35.07
-   2        100  7.0440891E+03  6.13E+02    8.70    0.87*  35.27
-   3        100  8.1984425E+03  6.82E+02    8.32    0.83*  41.04
+   1        100  7.9345696E+03  6.40E+02    8.06    0.81*  41.29
+   2        100  7.1778620E+03  6.19E+02    8.63    0.86   36.52
+   3        100  6.4986523E+03  6.11E+02    9.40    0.94   32.65
 |-----------------------------------------------------------------------------|
-   3        300  7.3769254E+03  3.73E+02    5.06    0.88   41.04    1.04   3
+   3        300  7.1816831E+03  3.60E+02    5.01    0.87   32.65    1.32   3
 |=============================================================================|
-seed = 29
+seed = 30
 | RNG: Initializing TAO random-number generator
-| RNG: Setting seed for random-number generator to 29
+| RNG: Setting seed for random-number generator to 30
 | Initializing integration for process models_ccww_threeshl_nohf:
 | ------------------------------------------------------------------------
 | Process [scattering]: 'models_ccww_threeshl_nohf'
 |   Library name  = 'model_test_1_lib'
-|   Process index = 31
+|   Process index = 32
 |   Process components:
 |     1: 'models_ccww_threeshl_nohf_i1':   c, cbar => W+, W- [omega]
 | ------------------------------------------------------------------------
@@ -1308,20 +1351,20 @@ Warning: No cuts have been defined.
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1         99  8.2346988E+03  6.94E+02    8.43    0.84*  41.28
-   2         99  6.4514355E+03  5.95E+02    9.23    0.92   32.28
-   3         99  6.2436756E+03  6.02E+02    9.64    0.96   31.20
+   1         99  6.9365252E+03  6.80E+02    9.80    0.98*  34.79
+   2         99  7.5602688E+03  6.76E+02    8.95    0.89*  37.73
+   3         99  5.8057853E+03  6.39E+02   11.01    1.10   28.88
 |-----------------------------------------------------------------------------|
-   3        297  6.8596374E+03  3.61E+02    5.27    0.91   31.20    2.72   3
+   3        297  6.7296882E+03  3.84E+02    5.70    0.98   28.88    1.85   3
 |=============================================================================|
-seed = 30
+seed = 31
 | RNG: Initializing TAO random-number generator
-| RNG: Setting seed for random-number generator to 30
+| RNG: Setting seed for random-number generator to 31
 | Initializing integration for process models_ccww_ued:
 | ------------------------------------------------------------------------
 | Process [scattering]: 'models_ccww_ued'
 |   Library name  = 'model_test_1_lib'
-|   Process index = 32
+|   Process index = 33
 |   Process components:
 |     1: 'models_ccww_ued_i1':   c, cbar => W+, W- [omega]
 | ------------------------------------------------------------------------
@@ -1347,20 +1390,20 @@ Warning: No cuts have been defined.
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1         99  6.5975695E+08  4.80E+07    7.27    0.72*  43.54
-   2         99  6.5953691E+08  4.87E+07    7.38    0.73   43.53
-   3         99  5.6724973E+08  4.19E+07    7.38    0.73*  37.44
+   1         99  6.1877081E+08  4.56E+07    7.37    0.73*  40.48
+   2         99  6.9107543E+08  4.49E+07    6.50    0.65*  45.21
+   3         99  5.7778943E+08  4.13E+07    7.14    0.71   37.80
 |-----------------------------------------------------------------------------|
-   3        297  6.2270879E+08  2.65E+07    4.25    0.73   37.44    1.46   3
+   3        297  6.2630843E+08  2.53E+07    4.04    0.70   37.80    1.74   3
 |=============================================================================|
-seed = 31
+seed = 32
 | RNG: Initializing TAO random-number generator
-| RNG: Setting seed for random-number generator to 31
+| RNG: Setting seed for random-number generator to 32
 | Initializing integration for process models_wwww_ssc:
 | ------------------------------------------------------------------------
 | Process [scattering]: 'models_wwww_ssc'
 |   Library name  = 'model_test_1_lib'
-|   Process index = 33
+|   Process index = 34
 |   Process components:
 |     1: 'models_wwww_ssc_i1':   W+, W- => W+, W- [omega]
 | ------------------------------------------------------------------------
@@ -1386,20 +1429,20 @@ Warning: No cuts have been defined.
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1         96  5.0421237E+09  3.93E+09   77.87    7.63*   8.24
-   2         96  1.0664228E+08  5.63E+07   52.82    5.18*   0.17
-   3         96  4.3404726E+08  3.48E+08   80.15    7.85    0.70
+   1         96  1.6731434E+07  6.50E+06   38.84    3.81*  15.00
+   2         96  6.9683387E+07  3.58E+07   51.36    5.03    7.42
+   3         96  9.6878001E+07  6.22E+07   64.16    6.29    7.58
 |-----------------------------------------------------------------------------|
-   3        288  1.1599523E+08  5.56E+07   47.93    8.13    0.70    1.22   3
+   3        288  1.9242433E+07  6.36E+06   33.05    5.61    7.58    1.85   3
 |=============================================================================|
-seed = 32
+seed = 33
 | RNG: Initializing TAO random-number generator
-| RNG: Setting seed for random-number generator to 32
+| RNG: Setting seed for random-number generator to 33
 | Initializing integration for process models_wwww_alth:
 | ------------------------------------------------------------------------
 | Process [scattering]: 'models_wwww_alth'
 |   Library name  = 'model_test_1_lib'
-|   Process index = 34
+|   Process index = 35
 |   Process components:
 |     1: 'models_wwww_alth_i1':   W+, W- => W+, W- [omega]
 | ------------------------------------------------------------------------
@@ -1425,20 +1468,20 @@ Warning: No cuts have been defined.
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1         96  1.6623770E+07  6.49E+06   39.02    3.82*  14.95
-   2         96  6.9564080E+07  3.58E+07   51.42    5.04    7.42
-   3         96  9.6776605E+07  6.21E+07   64.21    6.29    7.57
+   1         96  1.1605669E+10  1.14E+10   98.10    9.61*   6.31
+   2         96  2.5069449E+08  2.19E+08   87.19    8.54*   0.13
+   3         96  1.7540857E+09  1.30E+09   74.35    7.28*   0.93
 |-----------------------------------------------------------------------------|
-   3        288  1.9128087E+07  6.35E+06   33.19    5.63    7.57    1.85   3
+   3        288  2.9582174E+08  2.16E+08   72.86   12.36    0.93    1.14   3
 |=============================================================================|
-seed = 33
+seed = 34
 | RNG: Initializing TAO random-number generator
-| RNG: Setting seed for random-number generator to 33
+| RNG: Setting seed for random-number generator to 34
 | Initializing integration for process models_ccww_xdim:
 | ------------------------------------------------------------------------
 | Process [scattering]: 'models_ccww_xdim'
 |   Library name  = 'model_test_1_lib'
-|   Process index = 35
+|   Process index = 36
 |   Process components:
 |     1: 'models_ccww_xdim_i1':   c, cbar => W+, W- [omega]
 | ------------------------------------------------------------------------
@@ -1464,20 +1507,20 @@ Warning: No cuts have been defined.
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1         99  5.6250800E+08  4.44E+07    7.90    0.79*  37.65
-   2         99  7.2079090E+08  4.86E+07    6.74    0.67*  46.92
-   3         99  6.6722660E+08  4.41E+07    6.61    0.66*  43.32
+   1         99  5.9392683E+08  3.86E+07    6.50    0.65*  41.63
+   2         99  6.0745221E+08  4.42E+07    7.27    0.72   40.59
+   3         99  5.9255483E+08  4.03E+07    6.79    0.68*  39.60
 |-----------------------------------------------------------------------------|
-   3        297  6.4625980E+08  2.63E+07    4.07    0.70   43.32    3.07   3
+   3        297  5.9730309E+08  2.36E+07    3.95    0.68   39.60    0.04   3
 |=============================================================================|
-seed = 34
+seed = 35
 | RNG: Initializing TAO random-number generator
-| RNG: Setting seed for random-number generator to 34
+| RNG: Setting seed for random-number generator to 35
 | Initializing integration for process models_ccww_zprime:
 | ------------------------------------------------------------------------
 | Process [scattering]: 'models_ccww_zprime'
 |   Library name  = 'model_test_1_lib'
-|   Process index = 36
+|   Process index = 37
 |   Process components:
 |     1: 'models_ccww_zprime_i1':   c, cbar => W+, W- [omega]
 | ------------------------------------------------------------------------
@@ -1503,32 +1546,34 @@ Warning: No cuts have been defined.
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-   1         99  6.9787379E+03  6.53E+02    9.35    0.93*  37.36
-   2         99  7.2791212E+03  6.49E+02    8.92    0.89*  38.83
-   3         99  5.9600095E+03  6.00E+02   10.07    1.00   31.79
+   1         99  6.5022478E+03  6.18E+02    9.51    0.95*  34.89
+   2         99  5.2624848E+03  6.20E+02   11.78    1.17   28.23
+   3         99  7.0955709E+03  6.20E+02    8.74    0.87*  38.06
 |-----------------------------------------------------------------------------|
-   3        297  6.6965914E+03  3.65E+02    5.45    0.94   31.79    1.25   3
+   3        297  6.2873580E+03  3.58E+02    5.69    0.98   38.06    2.28   3
 |=============================================================================|
 models_ccww_zprime:
-   6.6965914E+03 +- 3.65E+02 fb
+   6.2873580E+03 +- 3.58E+02 fb
 models_ccww_xdim:
-   6.4625980E+08 +- 2.63E+07 fb
+   5.9730309E+08 +- 2.36E+07 fb
 models_wwww_alth:
-   1.9128087E+07 +- 6.35E+06 fb
+   2.9582174E+08 +- 2.16E+08 fb
 models_wwww_ssc:
-   1.1599523E+08 +- 5.56E+07 fb
+   1.9242433E+07 +- 6.36E+06 fb
 models_ccww_ued:
-   6.2270879E+08 +- 2.65E+07 fb
+   6.2630843E+08 +- 2.53E+07 fb
 models_ccww_threeshl_nohf:
-   6.8596374E+03 +- 3.61E+02 fb
+   6.7296882E+03 +- 3.84E+02 fb
 models_ccww_threeshl:
-   7.3769254E+03 +- 3.73E+02 fb
+   7.1816831E+03 +- 3.60E+02 fb
 models_ccww_template:
-   6.4492274E+03 +- 3.40E+02 fb
+   6.9245820E+03 +- 3.65E+02 fb
 models_ccww_simplest_univ:
-   6.1701979E+03 +- 3.58E+02 fb
+   6.4494096E+03 +- 3.40E+02 fb
 models_ccww_simplest:
-   5.8599379E+03 +- 3.46E+02 fb
+   6.1702256E+03 +- 3.58E+02 fb
+models_ccww_sm_tt_thresh:
+   6.4884159E+03 +- 3.84E+02 fb
 models_ccww_sm_higgs:
    6.7318181E+03 +- 3.69E+02 fb
 models_ccww_sm_top_anom:
@@ -1579,6 +1624,6 @@ models_ccww_2hdm_ckm:
    6.5655673E+03 +- 3.56E+02 fb
 models_ccww_2hdm:
    7.7757776E+03 +- 3.78E+02 fb
-| There were no errors and   35 warning(s).
+| There were no errors and   36 warning(s).
 | WHIZARD run finished.
 |=============================================================================|

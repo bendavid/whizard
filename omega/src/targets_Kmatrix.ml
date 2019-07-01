@@ -1,6 +1,6 @@
-(* $Id: targets_Kmatrix.ml 5697 2014-04-17 11:01:21Z msekulla $
+(* $Id: targets_Kmatrix.ml 6465 2015-01-10 15:22:31Z jr_reuter $
 
-   Copyright (C) 1999-2014 by
+   Copyright (C) 1999-2015 by
 
        Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
@@ -24,9 +24,9 @@
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
 let rcs_file = RCS.parse "Targets_Kmatrix" ["K-Matrix Support routines"]
-    { RCS.revision = "$Revision: 5697 $";
-      RCS.date = "$Date: 2014-04-17 13:01:21 +0200 (Thu, 17 Apr 2014) $";
-      RCS.author = "$Author: msekulla $";
+    { RCS.revision = "$Revision: 6465 $";
+      RCS.date = "$Date: 2015-01-10 16:22:31 +0100 (Sat, 10 Jan 2015) $";
+      RCS.author = "$Author: jr_reuter $";
       RCS.source
         = "$URL: svn+ssh://jr_reuter@login.hepforge.org/hepforge/svn/whizard/trunk/omega/src/targets_Kmatrix.ml $" }
 

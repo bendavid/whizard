@@ -1,8 +1,8 @@
-! $Id: test_openmp.f90 6081 2014-08-26 18:16:22Z bchokoufe $
+! $Id: test_openmp.f90 6465 2015-01-10 15:22:31Z jr_reuter $
 ! driver.f90 -- O'Mega self test driver
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
-! Copyright (C) 1999-2014 by
+! Copyright (C) 1999-2015 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>

@@ -1,6 +1,6 @@
-! WHIZARD 2.2.3 Nov 30 2014
+! WHIZARD 2.2.4 Feb 06 2015
 ! 
-! Copyright (C) 1999-2014 by 
+! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -9,7 +9,8 @@
 !     Fabian Bach <fabian.bach@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Felix Braam, Sebastian Schmidt, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam, 
+!     Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -34,6 +35,7 @@ module sm_physics
   use kinds, only: default
   use io_units
   use constants
+  use unit_tests
   use diagnostics
   use physics_defs
   use lorentz
@@ -42,7 +44,7 @@ module sm_physics
   private
 
   public :: beta0, beta1, beta2, coeff_b0, coeff_b1, coeff_b2
-  public :: running_as, running_as_lam 
+  public :: running_as, running_as_lam
   public :: gamma_g, k_g
   public :: Li2
   public :: faux
@@ -70,8 +72,8 @@ module sm_physics
   public :: kbarqg
   public :: kbargq
   public :: kbarqq
-  public :: kbargg 
-  public :: ktildeqq 
+  public :: kbargg
+  public :: ktildeqq
   public :: ktildeqg
   public :: ktildegq
   public :: ktildegg
@@ -81,61 +83,68 @@ module sm_physics
   public :: plus_distr_al
   public :: kbarqg_al
   public :: kbargq_al
-  public :: kbarqq_al 
-  public :: kbargg_al 
+  public :: kbarqq_al
+  public :: kbargg_al
   public :: ktildeqq_al
   public :: log_plus_distr
   public :: log2_plus_distr
   public :: log2_plus_distr_al
+  public :: p_qqg
+  public :: p_gqq
+  public :: p_ggg
+  public :: integral_over_p_qqg
+  public :: integral_over_p_gqq
+  public :: integral_over_p_ggg
+  public :: p_qqg_pol
 
   real(kind=default), parameter, public ::  gamma_q = three/two * CF, &
      k_q = (7.0_default/two - pi**2/6.0_default) * CF
-     
+
 
 contains
 
-  pure function beta0 (nf) 
+  pure function beta0 (nf)
     real(default), intent(in) :: nf
     real(default) :: beta0
     beta0 = 11.0_default - two/three * nf
-  end function beta0 
-  
-  pure function beta1 (nf) 
+  end function beta0
+
+  pure function beta1 (nf)
     real(default), intent(in) :: nf
     real(default) :: beta1
     beta1 = 51.0_default - 19.0_default/three * nf
   end function beta1
-  
-  pure function beta2 (nf) 
+
+  pure function beta2 (nf)
     real(default), intent(in) :: nf
     real(default) :: beta2
     beta2 = 2857.0_default - 5033.0_default / 9.0_default * &
                     nf + 325.0_default/27.0_default * nf**2
   end function beta2
-  
-  pure function coeff_b0 (nf) 
+
+  pure function coeff_b0 (nf)
     real(default), intent(in) :: nf
     real(default) :: coeff_b0
     coeff_b0 = (11.0_default * CA - two * nf) / (12.0_default * pi)
-  end function coeff_b0 
-  
-  pure function coeff_b1 (nf) 
+  end function coeff_b0
+
+  pure function coeff_b1 (nf)
     real(default), intent(in) :: nf
     real(default) :: coeff_b1
     coeff_b1 = (17.0_default * CA**2 - five * CA * nf - three * CF * nf) / &
                (24.0_default * pi**2)
   end function coeff_b1
-  
-  pure function coeff_b2 (nf) 
+
+  pure function coeff_b2 (nf)
     real(default), intent(in) :: nf
     real(default) :: coeff_b2
     coeff_b2 = (2857.0_default/54.0_default * CA**3 - &
-                    1415.0_default/54.0_default * & 
+                    1415.0_default/54.0_default * &
                     CA**2 * nf - 205.0_default/18.0_default * CA*CF*nf &
                     + 79.0_default/54.0_default * CA*nf**2 + &
                     11.0_default/9.0_default * CF * nf**2) / (four*pi)**3
   end function coeff_b2
-  
+
   pure function running_as (scale, al_mz, mz, order, nf) result (ascale)
     real(default), intent(in) :: scale
     real(default), intent(in), optional :: al_mz, nf, mz
@@ -143,45 +152,47 @@ contains
     integer :: ord
     real(default) :: az, m_z, as_log, n_f, b0, b1, b2, ascale
     real(default) :: as0, as1
-    if (present(mz)) then
-      m_z = mz
+    if (present (mz)) then
+       m_z = mz
     else
-      m_z = MZ_REF
+       m_z = MZ_REF
     end if
-    if (present(order)) then
+    if (present (order)) then
        ord = order
     else
        ord = 0
     end if
-    if (present(al_mz)) then
+    if (present (al_mz)) then
        az = al_mz
     else
        az = ALPHA_QCD_MZ_REF
     end if
-    if (present(nf)) then
-      n_f = nf
+    if (present (nf)) then
+       n_f = nf
     else
-      n_f = 5
-    end if      
+       n_f = 5
+    end if
     b0 = coeff_b0 (n_f)
     b1 = coeff_b1 (n_f)
     b2 = coeff_b2 (n_f)
     as_log = one + b0 * az * log(scale**2/m_z**2)
     as0 = az / as_log
     as1 = as0 - as0**2 * b1/b0 * log(as_log)
-    select case (ord) 
-      case (0)
-        ascale = as0
-      case (1)
-        ascale = as1
-      case (2) 
-        ascale = as1 + as0**3 * (b1**2/b0**2 * ((log(as_log))**2 - &
-                  log(as_log) + as_log - one) - b2/b0 * (as_log - one))
-    end select            
+    select case (ord)
+    case (0)
+       ascale = as0
+    case (1)
+       ascale = as1
+    case (2)
+       ascale = as1 + as0**3 * (b1**2/b0**2 * ((log(as_log))**2 - &
+            log(as_log) + as_log - one) - b2/b0 * (as_log - one))
+    case default
+       ascale = as0
+    end select
   end function running_as
 
   pure function running_as_lam (nf, scale, lambda, order) result (ascale)
-    real(default), intent(in) :: nf, scale 
+    real(default), intent(in) :: nf, scale
     real(default), intent(in), optional :: lambda
     integer, intent(in), optional :: order
     real(default) :: lambda_qcd
@@ -192,26 +203,30 @@ contains
     else
        lambda_qcd = LAMBDA_QCD_REF
     end if
-    if (present(order)) then 
-      ord = order
+    if (present (order)) then
+       ord = order
     else
-      ord = 0
+       ord = 0
     end if
     b0 = beta0(nf)
-    b1 = beta1(nf)
-    b2 = beta2(nf)
     logmul = log(scale**2/lambda_qcd**2)
     as0 = four*pi / b0 / logmul
-    as1 = as0 * (one - two* b1 / b0**2 * log(logmul) / logmul)
+    if (ord > 0) then
+       b1 = beta1(nf)
+       as1 = as0 * (one - two* b1 / b0**2 * log(logmul) / logmul)
+    end if
     select case (ord)
-      case (0)
-        ascale = as0
-      case (1)
-        ascale = as1
-      case (2) 
-        ascale = as1 + as0 * four * b1**2/b0**4/logmul**2 * &
-               ( (log(logmul) - 0.5_default)**2 + &
-               b2*b0/8.0_default/b1**2 - five/four)
+    case (0)
+       ascale = as0
+    case (1)
+       ascale = as1
+    case (2)
+       b2 = beta2(nf)
+       ascale = as1 + as0 * four * b1**2/b0**4/logmul**2 * &
+            ((log(logmul) - 0.5_default)**2 + &
+             b2*b0/8.0_default/b1**2 - five/four)
+    case default
+       ascale = as0
     end select
   end function running_as_lam
 
@@ -220,14 +235,14 @@ contains
      real(kind=default) :: gg
      gg = 11.0_default/6.0_default * CA - two/three * TR * nf
   end function gamma_g
-  
+
   elemental function k_g (nf) result (kg)
      real(kind=default), intent(in) :: nf
      real(kind=default) :: kg
      kg = (67.0_default/18.0_default - pi**2/6.0_default) * CA - &
                 10.0_default/9.0_default * TR * nf
   end function k_g
-  
+
   function Li2 (x)
       use kinds, only: double
       real(default), intent(in) :: x
@@ -244,10 +259,11 @@ contains
        Li2 = pi2_6
     else if (abs(1-x) <  0.5_double) then
        Li2 = pi2_6 - log(1-x) * log(x) - Li2_restricted (1-x)
-    else if (abs(x).gt.1.d0) then
-       call msg_bug (" Dilogarithm called outside of defined range.")
-       !!! Insert dilogarithm identity, not used yet 
-       ! Li2 = -pi2_6 - 0.5_default * log(-x) * log(-x) - Li2_restricted (1/x)
+    else if (abs(x) > 1.d0) then
+       ! Li2 = 0
+       ! call msg_bug (" Dilogarithm called outside of defined range.")
+       !!! Reactivate Dilogarithm identity
+        Li2 = -pi2_6 - 0.5_default * log(-x) * log(-x) - Li2_restricted (1/x)
     else
        Li2 = Li2_restricted (x)
     end if
@@ -287,19 +303,19 @@ contains
   elemental function fonehalf (x) result (y)
     real(default), intent(in) :: x
     complex(default) :: y
-    if (x==0) then
+    if (abs(x) < eps0) then
        y = 0
     else
        y = - 2.0_default * x * (1 + (1 - x) * faux(x))
     end if
   end function fonehalf
 
-  function fonehalf_pseudo (x) result (y) 
+  function fonehalf_pseudo (x) result (y)
     real(default), intent(in) :: x
     complex(default) :: y
-    if (x==0) then
+    if (abs(x) < eps0) then
        y = 0
-    else 
+    else
        y = - 2.0_default * x * faux(x)
     end if
   end function fonehalf_pseudo
@@ -307,7 +323,7 @@ contains
   elemental function fone (x) result  (y)
     real(default), intent(in) :: x
     complex(default) :: y
-    if (x==0) then
+    if (abs(x) < eps0) then
        y = 2.0_default
     else
        y = 2.0_default + 3.0_default * x + &
@@ -331,7 +347,7 @@ contains
   elemental function tri_i1 (a,b) result (y)
     real(default), intent(in) :: a,b
     complex(default) :: y
-    if (a < epsilon(a) .or. b < epsilon (b)) then
+    if (a < eps0 .or. b < eps0) then
        y = 0
     else
        y = a*b/2.0_default/(a-b) + a**2 * b**2/2.0_default/(a-b)**2 * &
@@ -340,13 +356,13 @@ contains
     end if
   end function tri_i1
 
-  elemental function tri_i2 (a,b) result (y) 
+  elemental function tri_i2 (a,b) result (y)
     real(default), intent(in) :: a,b
     complex(default) :: y
-    if (a < epsilon (a) .or. b < epsilon(b)) then
+    if (a < eps0 .or. b < eps0) then
        y = 0
     else
-       y = - a * b / 2.0_default / (a-b) * (faux(a) - faux(b)) 
+       y = - a * b / 2.0_default / (a-b) * (faux(a) - faux(b))
     end if
   end function tri_i2
 
@@ -381,7 +397,7 @@ contains
       real(kind=default) :: z_i
       real(kind=default), intent(out) :: v_ijk
       z_i   = (p_i*p_k) / ((p_k*p_j) + (p_k*p_i))
-      y_ijk = (p_i*p_j) / ((p_i*p_j) + (p_i*p_k) + (p_j*p_k)) 
+      y_ijk = (p_i*p_j) / ((p_i*p_j) + (p_i*p_k) + (p_j*p_k))
       p_ij  = p_i + p_j - y_ijk/(1.0_default - y_ijk) * p_k
       pp_k  = (1.0/(1.0_default - y_ijk)) * p_k
       !!! We don't multiply by alpha_s right here:
@@ -397,12 +413,12 @@ contains
      real(kind=default), intent(out) :: v_ija
      z_i   = (p_i*p_a) / ((p_a*p_j) + (p_a*p_i))
      x_ija = ((p_i*p_a) + (p_j*p_a) - (p_i*p_j)) &
-          / ((p_i*p_a) + (p_j*p_a)) 
+          / ((p_i*p_a) + (p_j*p_a))
      p_ij  = p_i + p_j - (1.0_default - x_ija) * p_a
      pp_a  = x_ija * p_a
      !!! We don't not multiply by alpha_s right here:
      v_ija = 8.0_default * PI * CF * &
-          (2.0 / (1.0 - z_i + (1.0 - x_ija)) - (1.0 + z_i)) / x_ija 
+          (2.0 / (1.0 - z_i + (1.0 - x_ija)) - (1.0 + z_i)) / x_ija
   end subroutine fi_dipole
 
   pure subroutine if_dipole (v_kja,u_j,p_aj,pp_k,p_k,p_j,p_a)
@@ -413,7 +429,7 @@ contains
      real(kind=default), intent(out) :: v_kja
      u_j   = (p_a*p_j) / ((p_a*p_j) + (p_a*p_k))
      x_kja = ((p_a*p_k) + (p_a*p_j) - (p_j*p_k)) &
-          / ((p_a*p_j) + (p_a*p_k)) 
+          / ((p_a*p_j) + (p_a*p_k))
      p_aj  = x_kja * p_a
      pp_k  = p_k + p_j - (1.0_default - x_kja) * p_a
      v_kja = 8.0_default * PI * CF * &
@@ -440,7 +456,7 @@ contains
          p_a = p_in(2)
       end if
       !!! We assume that the unresolved particle has always the last
-      !!! momentum    
+      !!! momentum
       p_j = p_in(size(p_in))
       x_jab = ((p_a*p_b) - (p_a*p_j) - (p_b*p_j)) / (p_a*p_b)
       v_j = (p_a*p_j) / (p_a * p_b)
@@ -452,11 +468,11 @@ contains
               (2.0 * (k*p_in(i)) / (k*k)) * kk
       end do
       if (flag_1or2) then
-         p_out(1) = p_aj 
+         p_out(1) = p_aj
          p_out(2) = p_b
       else
          p_out(1) = p_b
-         p_out(2) = p_aj 
+         p_out(2) = p_aj
       end if
       v_jab = 8.0_default * PI * CF * &
            (2.0 / (1.0 - x_jab) - (1.0 + x_jab)) / x_jab
@@ -464,8 +480,8 @@ contains
   elemental function delta (x,eps) result (z)
      real(kind=default), intent(in) :: x, eps
      real(kind=default) :: z
-     if (x > 1.0_default - eps) then
-        z = 1.0_default/eps
+     if (x > one - eps) then
+        z = one / eps
      else
         z = 0
      end if
@@ -474,10 +490,10 @@ contains
   elemental function plus_distr (x,eps) result (plusd)
      real(kind=default), intent(in) :: x, eps
      real(kind=default) :: plusd
-     if (x > (1.0_default - eps)) then
-        plusd = log(eps)/eps
+     if (x > one - eps) then
+        plusd = log(eps) / eps
      else
-        plusd = one/(one-x)
+        plusd = one / (one - x)
      end if
   end function plus_distr
 
@@ -485,9 +501,10 @@ contains
      real(kind=default), intent(in) :: x, eps
      real(kind=default) :: pqqx
      if (x > (1.0_default - eps)) then
-        pqqx = (eps-one)/two + two*log(eps)/eps - three*(eps-one)/eps/two
+        pqqx = (eps - one) / two + two * log(eps) / eps - &
+             three * (eps - one) / eps / two
      else
-        pqqx = (one + x**2)/(one-x)
+        pqqx = (one + x**2) / (one - x)
      end if
      pqqx = CF * pqqx
   end function pqq
@@ -495,7 +512,7 @@ contains
   elemental function pgq (x) result (pgqx)
      real(kind=default), intent(in) :: x
      real(kind=default) :: pgqx
-     pgqx = TR * (x**2 + (one - x)**2) 
+     pgqx = TR * (x**2 + (one - x)**2)
   end function pgq
 
   elemental function pqg (x) result (pqgx)
@@ -509,7 +526,7 @@ contains
     real(kind=default) :: pggx
     pggx = two * CA * ( plus_distr (x, eps) + (one-x)/x - one + &
                    x*(one-x)) + delta (x, eps)  * gamma_g(nf)
-  end function pgg                   
+  end function pgg
 
   elemental function pqq_reg (x) result (pqqregx)
      real(kind=default), intent(in) :: x
@@ -555,20 +572,20 @@ contains
     real(kind=default), intent(in) :: x, eps
     real(kind=default) :: ktildeqqx
     ktildeqqx = pqq_reg (x) * log(one-x) + CF * ( - log2_plus_distr (x,eps) &
-                          - pi**2/three * delta(x,eps)) 
+                          - pi**2/three * delta(x,eps))
   end function ktildeqq
 
   function ktildeqg (x,eps) result (ktildeqgx)
     real(kind=default), intent(in) :: x, eps
     real(kind=default) :: ktildeqgx
     ktildeqgx = pqg (x) * log(one-x)
-  end function ktildeqg 
+  end function ktildeqg
 
   function ktildegq (x,eps) result (ktildegqx)
     real(kind=default), intent(in) :: x, eps
     real(kind=default) :: ktildegqx
     ktildegqx = pgq (x) * log(one-x)
-  end function ktildegq 
+  end function ktildegq
 
   function ktildegg (x,eps) result (ktildeggx)
     real(kind=default), intent(in) :: x, eps
@@ -597,7 +614,7 @@ contains
     real(kind=default) :: k_q_al
     k_q_al = k_q - CF * (log(alpha))**2 + gamma_q * &
                       (alpha - one - log(alpha))
-  end function k_q_al                      
+  end function k_q_al
 
   pure function k_g_al (alpha, nf)
     real(kind=default), intent(in) :: alpha, nf
@@ -605,11 +622,12 @@ contains
     k_g_al = k_g (nf) - CA * (log(alpha))**2 + gamma_g (nf) * &
                      (alpha - one - log(alpha))
   end function k_g_al
-  
+
   function plus_distr_al (x,alpha,eps) result (plusd_al)
      real(kind=default), intent(in) :: x,  eps, alpha
      real(kind=default) :: plusd_al
-     if ((1.0_default - alpha) .ge. (1.0_default - eps)) then
+     if ((one - alpha) >= (one - eps)) then
+        plusd_al = zero
         call msg_fatal ('sm_physics, plus_distr_al: alpha and epsilon chosen wrongly')
      elseif (x < (1.0_default - alpha)) then
         plusd_al = 0
@@ -632,28 +650,28 @@ contains
   end function kbargq_al
   function kbarqq_al (x,alpha,eps) result (kbarqqx)
      real(kind=default), intent(in) :: x, alpha, eps
-     real(kind=default) :: kbarqqx 
+     real(kind=default) :: kbarqqx
      kbarqqx = CF * (one - x) + pqq_reg(x) * log(alpha*(one-x)/x) &
               + CF * log_plus_distr(x,eps) &
              - (gamma_q + k_q_al(alpha) - CF * &
               five/6.0_default  * pi**2 - CF * (log(alpha))**2) * &
-              delta(x,eps) + & 
+              delta(x,eps) + &
               CF * two/(one -x)*log(alpha*(two-x)/(one+alpha-x))
-     if (x < (one-alpha)) then 
+     if (x < (one-alpha)) then
         kbarqqx = kbarqqx - CF * two/(one-x) * log((two-x)/(one-x))
      end if
   end function kbarqq_al
 
   function kbargg_al (x,alpha,eps,nf) result (kbarggx)
      real(kind=default), intent(in) :: x, alpha, eps, nf
-     real(kind=default) :: kbarggx 
+     real(kind=default) :: kbarggx
      kbarggx = pgg_reg(x) * log(alpha*(one-x)/x) &
               + CA * log_plus_distr(x,eps) &
              - (gamma_g(nf) + k_g_al(alpha,nf) - CA * &
               five/6.0_default  * pi**2 - CA * (log(alpha))**2) * &
-              delta(x,eps) + & 
+              delta(x,eps) + &
               CA * two/(one -x)*log(alpha*(two-x)/(one+alpha-x))
-     if (x < (one-alpha)) then 
+     if (x < (one-alpha)) then
         kbarggx = kbarggx - CA * two/(one-x) * log((two-x)/(one-x))
      end if
   end function kbargg_al
@@ -692,9 +710,10 @@ contains
   end function log2_plus_distr
 
   function log2_plus_distr_al (x,alpha,eps) result (lpd_al)
-    real(kind=default), intent(in) :: x, eps, alpha    
+    real(kind=default), intent(in) :: x, eps, alpha
     real(kind=default) :: lpd_al
-    if ((1.0_default - alpha) .ge. (1.0_default - eps)) then
+    if ((one - alpha) >= (one - eps)) then
+       lpd_al = zero
        call msg_fatal ('alpha and epsilon chosen wrongly')
     elseif (x < (one - alpha)) then
        lpd_al = 0
@@ -704,6 +723,61 @@ contains
        lpd_al = two*log(one/(one-x))/(one-x)
     end if
   end function log2_plus_distr_al
+
+  elemental function p_qqg (z) result (P)
+    real(default), intent(in) :: z
+    real(default) :: P
+    P = CF * (one + z**2) / (one - z)
+  end function p_qqg
+  elemental function p_gqq (z) result (P)
+    real(default), intent(in) :: z
+    real(default) :: P
+    P = TR * (z**2 + (one - z)**2)
+  end function p_gqq
+  elemental function p_ggg (z) result (P)
+    real(default), intent(in) :: z
+    real(default) :: P
+    P = NC * ((one - z) / z + z / (one - z) + z * (one - z))
+  end function p_ggg
+
+  pure function integral_over_p_qqg (zmin, zmax) result (integral)
+    real(default), intent(in) :: zmin, zmax
+    real(default) :: integral
+    integral = (two / three) * (- zmax**2 + zmin**2 - &
+         two * (zmax - zmin) + four * log((one - zmin) / (one - zmax)))
+  end function integral_over_p_qqg
+
+  pure function integral_over_p_gqq (zmin, zmax) result (integral)
+    real(default), intent(in) :: zmin, zmax
+    real(default) :: integral
+    integral = 0.5_default * ((two / three) * &
+         (zmax**3 - zmin**3) - (zmax**2 - zmin**2) + (zmax - zmin))
+  end function integral_over_p_gqq
+
+  pure function integral_over_p_ggg (zmin, zmax) result (integral)
+    real(default), intent(in) :: zmin, zmax
+    real(default) :: integral
+    integral = three * ((log(zmax) - two * zmax - &
+         log(one - zmax) + zmax**2 / two - zmax**3 / three) - &
+         (log(zmin) - zmin - zmin - log(one - zmin) + zmin**2 &
+         / two - zmin**3 / three) )
+  end function integral_over_p_ggg
+
+  elemental function p_qqg_pol (z, l_a, l_b, l_c) result (P)
+    real(default), intent(in) :: z
+    integer, intent(in) :: l_a, l_b, l_c
+    real(default) :: P
+    if (l_a /= l_b) then
+       P = zero
+       return
+    end if
+    if (l_c == -1) then
+       P = one - z
+    else
+       P = (one + z)**2 / (one - z)
+    end if
+    P = P * CF
+  end function p_qqg_pol
 
 
 end module sm_physics

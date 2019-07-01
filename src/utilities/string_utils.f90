@@ -1,6 +1,6 @@
-! WHIZARD 2.2.3 Nov 30 2014
+! WHIZARD 2.2.4 Feb 06 2015
 ! 
-! Copyright (C) 1999-2014 by 
+! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -9,7 +9,8 @@
 !     Fabian Bach <fabian.bach@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Felix Braam, Sebastian Schmidt, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam, 
+!     Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -30,8 +31,9 @@
 ! to the source 'whizard.nw'
 
 module string_utils
-
+  
   use, intrinsic :: iso_c_binding
+  use kinds, only: default  
   use iso_varying_string, string_t => varying_string
 
   implicit none
@@ -40,6 +42,10 @@ module string_utils
   public :: upper_case
   public :: lower_case
   public :: string_f2c
+  public :: integer_to_string
+  public :: str
+  public :: read_rval
+  public :: read_ival
 
   interface upper_case
      module procedure upper_case_char, upper_case_string
@@ -50,6 +56,9 @@ module string_utils
   interface string_f2c
      module procedure string_f2c_char, string_f2c_var_str
   end interface string_f2c
+  interface str
+     module procedure str_int, str_real
+  end interface
 
 contains
 
@@ -109,5 +118,45 @@ contains
     o = char (i) // c_null_char
   end function string_f2c_var_str
 
+  function integer_to_string (x) result (str)
+    integer, intent(in) :: x
+    type(string_t) :: str
+    character(5) :: buf
+    write (buf, '(I5)') x
+    str = var_str (trim (adjustl (buf)))
+  end function integer_to_string
+
+  function str_int (i) result (s)
+    integer, intent(in) :: i
+    type(string_t) :: s
+    character(32) :: buffer
+    write (buffer, "(I0)")  i
+    s = var_str (trim (buffer))
+  end function str_int
+  
+  function str_real (x) result (s)
+    real(default), intent(in) :: x
+    type(string_t) :: s
+    character(32) :: buffer
+    write (buffer, "(ES17.10)")  x
+    s = var_str (trim (adjustl (buffer)))
+  end function str_real
+  
+  function read_rval (s) result (rval)
+    type(string_t), intent(in) :: s
+    real(default) :: rval
+    character(80) :: buffer
+    buffer = s
+    read (buffer, *)  rval
+  end function read_rval
+    
+  function read_ival (s) result (ival)
+    type(string_t), intent(in) :: s
+    integer :: ival
+    character(80) :: buffer
+    buffer = s
+    read (buffer, *)  ival
+  end function read_ival
+    
 
 end module string_utils

@@ -2,7 +2,7 @@
 ##
 ## Process this file with automake to produce Makefile.in
 #
-# Copyright (C) 1999-2014 by 
+# Copyright (C) 1999-2015 by 
 #     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 #     Juergen Reuter <juergen.reuter@desy.de>
@@ -33,6 +33,7 @@ noinst_LTLIBRARIES = libqft.la
 
 libqft_la_SOURCES = \
   model_data.f90 \
+  model_testbed.f90 \
   helicities.f90 \
   colors.f90 \
   flavors.f90 \
@@ -60,6 +61,7 @@ module_lists = \
   ../testing/Modules \
   ../system/Modules \
   ../combinatorics/Modules \
+  ../expr_base/Modules \
   ../physics/Modules
 
 $(module_lists):
@@ -104,7 +106,7 @@ DISTCLEANFILES += Makefile.depend
 	@:
 #	touch $@
 
-AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system -I../combinatorics -I../physics
+AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system -I../combinatorics -I../expr_base -I../physics
 
 
 ########################################################################

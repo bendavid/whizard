@@ -1,6 +1,6 @@
-! WHIZARD 2.2.3 Nov 30 2014
+! WHIZARD 2.2.4 Feb 06 2015
 ! 
-! Copyright (C) 1999-2014 by 
+! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
 !     Juergen Reuter <juergen.reuter@desy.de>
@@ -9,7 +9,8 @@
 !     Fabian Bach <fabian.bach@desy.de>
 !     Christian Speckner <cnspeckn@googlemail.com> 
 !     Christian Weiss <christian.weiss@desy.de>
-!     and Felix Braam, Sebastian Schmidt, Daniel Wiesler 
+!     and Hans-Werner Boschmann, Felix Braam, 
+!     Sebastian Schmidt, Daniel Wiesler 
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -165,11 +166,7 @@ contains
     write (u) pol%polarized
     write (u) pol%spin_type
     write (u) pol%multiplicity
-    if (state_matrix_is_defined (pol%state)) then
-       call msg_bug ("Write polarization (raw): nontrivial state matrix not supported yet")
-    else
-       call state_matrix_write_raw (pol%state, u)
-    end if
+    call state_matrix_write_raw (pol%state, u)
   end subroutine polarization_write_raw
 
   subroutine polarization_read_raw (pol, u, iostat)

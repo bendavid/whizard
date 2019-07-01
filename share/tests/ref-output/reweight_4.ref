@@ -107,56 +107,16 @@ $pdf_builtin_set = "CT10"
 | Simulate: initializing alternate process setup ...
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 3
-| Initializing integration for process reweight_4_p2:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'reweight_4_p2'
-|   Library name  = 'reweight_4_lib'
-|   Process index = 2
-|   Process components:
-|     1: 'reweight_4_p2_i1':   gl, gl => u, ubar [omega]
-| ------------------------------------------------------------------------
-| Beam structure: p, p => pdf_builtin
-| Beam data (collision):
-|   p  (mass = 0.0000000E+00 GeV)
-|   p  (mass = 0.0000000E+00 GeV)
-|   sqrts = 8.000000000000E+03 GeV
 | Initialized builtin PDF MSTW2008LO
 Warning: Reading phs file: MD5 sum check disabled
 | Phase space: keeping configuration file 'reweight_4_p2_i1.phs'
-| Phase space: 5 channels, 2 dimensions
-| Phase space: found 5 channels, collected in 2 groves.
-| Phase space: Using 9 equivalences between channels.
-| Phase space: wood
-| Beam structure: pdf_builtin, none => none, pdf_builtin
-| Beam structure: 1 channels, 2 dimensions
-| Applying user-defined cuts.
 | ...  alternate process setup complete.
 | Simulate: initializing alternate process setup ...
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 4
-| Initializing integration for process reweight_4_p2:
-| ------------------------------------------------------------------------
-| Process [scattering]: 'reweight_4_p2'
-|   Library name  = 'reweight_4_lib'
-|   Process index = 2
-|   Process components:
-|     1: 'reweight_4_p2_i1':   gl, gl => u, ubar [omega]
-| ------------------------------------------------------------------------
-| Beam structure: p, p => pdf_builtin
-| Beam data (collision):
-|   p  (mass = 0.0000000E+00 GeV)
-|   p  (mass = 0.0000000E+00 GeV)
-|   sqrts = 8.000000000000E+03 GeV
 | Initialized builtin PDF CT10
 Warning: Reading phs file: MD5 sum check disabled
 | Phase space: keeping configuration file 'reweight_4_p2_i1.phs'
-| Phase space: 5 channels, 2 dimensions
-| Phase space: found 5 channels, collected in 2 groves.
-| Phase space: Using 9 equivalences between channels.
-| Phase space: wood
-| Beam structure: pdf_builtin, none => none, pdf_builtin
-| Beam structure: 1 channels, 2 dimensions
-| Applying user-defined cuts.
 | ...  alternate process setup complete.
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 5
@@ -171,6 +131,6 @@ Warning: Reading event file: MD5 sum check disabled
 | WHIZARD run finished.
 |=============================================================================|
 Contents of reweight_4b.weights.dat
-0  1.7050298567E+00  1.0709379027E-03  1.0709379027E-03 1 1 1
+0  1.7050298567E+00  1.0709379027E-03  1.0709379027E-03 1
 1  2.2645882447E+00  1.4223993649E-03
 2  3.8324393379E+00  2.4071745904E-03

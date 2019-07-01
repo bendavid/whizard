@@ -1,6 +1,6 @@
 (* $Id: omega_NoH_rx.ml 4926 2014-03-21 12:35:06 msekulla $
 
-   Copyright (C) 1999-2014 by
+   Copyright (C) 1999-2015 by
 
        Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
