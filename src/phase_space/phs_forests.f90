@@ -1,4 +1,4 @@
-! WHIZARD 2.2.4 Feb 06 2015
+! WHIZARD 2.2.5 Feb 27 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -439,7 +439,7 @@ contains
     write (u, "(3x,A)", advance="no") "flavors  ="
     if (allocated (forest%flv)) then
        do i = 1, size (forest%flv)
-          write (u, "(1x,I0)", advance="no")  flavor_get_pdg (forest%flv(i))
+          write (u, "(1x,I0)", advance="no")  forest%flv(i)%get_pdg ()
        end do
        write (u, "(A)")
     else
@@ -1024,8 +1024,9 @@ contains
        call phs_prt_set_momentum (forest%prt_in, &
             interaction_get_momenta (int, outgoing=.false.))
     end if
-    call phs_prt_set_msq (forest%prt_in, &
-         flavor_get_mass (forest%flv(:forest%n_in)) ** 2)
+    associate (m_in => forest%flv(:forest%n_in)%get_mass ())
+      call phs_prt_set_msq (forest%prt_in, m_in ** 2)
+    end associate
     call phs_prt_set_defined (forest%prt_in)
   end subroutine phs_forest_set_prt_in_int
 
@@ -1039,8 +1040,9 @@ contains
     else
        call phs_prt_set_momentum (forest%prt_in, mom)
     end if
-    call phs_prt_set_msq (forest%prt_in, &
-         flavor_get_mass (forest%flv(:forest%n_in)) ** 2)
+    associate (m_in => forest%flv(:forest%n_in)%get_mass ())
+      call phs_prt_set_msq (forest%prt_in, m_in ** 2)
+    end associate
     call phs_prt_set_defined (forest%prt_in)
   end subroutine phs_forest_set_prt_in_mom
 
@@ -1056,8 +1058,9 @@ contains
        call phs_prt_set_momentum (forest%prt_out, &
             interaction_get_momenta (int, outgoing=.true.))
     end if
-    call phs_prt_set_msq (forest%prt_out, &
-         flavor_get_mass (forest%flv(forest%n_in+1:)) ** 2)
+    associate (m_out => forest%flv(forest%n_in+1:)%get_mass ())
+      call phs_prt_set_msq (forest%prt_out, m_out ** 2)
+    end associate
     call phs_prt_set_defined (forest%prt_out)
   end subroutine phs_forest_set_prt_out_int
 
@@ -1071,8 +1074,9 @@ contains
     else
        call phs_prt_set_momentum (forest%prt_out, mom)
     end if
-    call phs_prt_set_msq (forest%prt_out, &
-         flavor_get_mass (forest%flv(forest%n_in+1:)) ** 2)
+    associate (m_out => forest%flv(forest%n_in+1:)%get_mass ())
+      call phs_prt_set_msq (forest%prt_out, m_out ** 2)
+    end associate
     call phs_prt_set_defined (forest%prt_out)
   end subroutine phs_forest_set_prt_out_mom
 
@@ -1141,7 +1145,7 @@ contains
     type(permutation_t), dimension(:), allocatable :: perm_array
     integer :: i
     call permutation_array_make &
-         (perm_array, flavor_get_pdg (forest%flv(forest%n_in+1:)))
+         (perm_array, forest%flv(forest%n_in+1:)%get_pdg ())
     do i = 1, size (forest%grove)
        call phs_grove_set_equivalences (forest%grove(i), perm_array)
     end do
@@ -1240,7 +1244,7 @@ contains
 
     do k = 1, forest%n_out
        call phs_prt_set_msq (forest%prt(ibset(0,k-1)), &
-            flavor_get_mass (forest%flv(forest%n_in+k)) ** 2)
+            forest%flv(forest%n_in+k)%get_mass () ** 2)
     end do
 
 
@@ -1374,7 +1378,7 @@ contains
     write (u, "(A)")  "* Create phase-space file 'phs_forest_test.phs'"
     write (u, "(A)")
     
-    call flavor_init (flv, [11, -11, 11, -11, 22], model)
+    call flv%init ([11, -11, 11, -11, 22], model)
     open (file="phs_forest_test.phs", unit=unit_fix, action="write")
     write (unit_fix, *) "process foo"
     write (unit_fix, *) 'md5sum_process    = "6ABA33BC2927925D0F073B1C1170780A"'

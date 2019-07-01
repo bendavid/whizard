@@ -8,7 +8,10 @@
  LHEF event stream:
    Writing to file   = eio_lhef_2.lhe
    Keep beams        = F
+   Keep remnants     = T
    Recover beams     = T
+   Alpha_s from file = F
+   Scale from file   = F
    Version           = 2.0
    File extension    = 'lhe'
    Numerical process IDs:

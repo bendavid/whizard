@@ -33,8 +33,6 @@ noinst_LTLIBRARIES = libparticles.la
 
 libparticles_la_SOURCES = \
   polarizations.f90 \
-  hepmc_interface.f90 \
-  lcio_interface.f90 \
   particles.f90
 
 ## Omitting this would exclude it from the distribution
@@ -43,10 +41,15 @@ dist_noinst_DATA = particles.nw
 # Dump module names into file Modules
 libparticles_Modules = ${libparticles_la_SOURCES:.f90=}
 Modules: Makefile
-	@rm -f $@
-	for module in $(libparticles_Modules); do \
-          echo $$module >> $@; \
+	@for module in $(libparticles_Modules); do \
+          echo $$module >> $@.new; \
         done
+	@if diff $@ $@.new -q >/dev/null; then \
+          rm $@.new; \
+	else \
+          mv $@.new $@; echo "Modules updated"; \
+        fi
+BUILT_SOURCES = Modules
 
 ## Fortran module dependencies
 # Get module lists from other directories

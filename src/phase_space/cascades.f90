@@ -1,4 +1,4 @@
-! WHIZARD 2.2.4 Feb 06 2015
+! WHIZARD 2.2.5 Feb 27 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -208,37 +208,37 @@ contains
     call write_reduced (cascade%tree, u)
     write (u, "(A)")
     do i = 1, cascade%depth
-       call flavor_init (flv, cascade%tree_pdg(i), model)
+       call flv%init (cascade%tree_pdg(i), model)
        select case (cascade%tree_mapping(i))
        case (NO_MAPPING, EXTERNAL_PRT)
        case (S_CHANNEL)
           write(u,2) 'map', &
                cascade%tree(i), 's_channel', abs (cascade%tree_pdg(i)), &
-               char (flavor_get_name (flv))
+               char (flv%get_name ())
        case (T_CHANNEL)
           write(u,2) 'map', &
                cascade%tree(i), 't_channel', abs (cascade%tree_pdg(i)), &
-               char (flavor_get_name (flv))
+               char (flv%get_name ())
        case (U_CHANNEL)
           write(u,2) 'map', &
                cascade%tree(i), 'u_channel', abs (cascade%tree_pdg(i)), &
-               char (flavor_get_name (flv))
+               char (flv%get_name ())
        case (RADIATION)
           write(u,2) 'map', &
                cascade%tree(i), 'radiation', abs (cascade%tree_pdg(i)), &
-               char (flavor_get_name (flv))
+               char (flv%get_name ())
        case (COLLINEAR)
           write(u,2) 'map', &
                cascade%tree(i), 'collinear', abs (cascade%tree_pdg(i)), &
-               char (flavor_get_name (flv))
+               char (flv%get_name ())
        case (INFRARED)
           write(u,2) 'map', &
                cascade%tree(i), 'infrared ',  abs (cascade%tree_pdg(i)), &
-               char (flavor_get_name (flv))
+               char (flv%get_name ())
        case (ON_SHELL)
           write(u,2) 'map', &
                cascade%tree(i), 'on_shell ', abs (cascade%tree_pdg(i)), &
-               char (flavor_get_name (flv))
+               char (flv%get_name ())
        case default
           call msg_bug (" Impossible mapping mode encountered")
        end select
@@ -299,6 +299,7 @@ contains
       type(cascade_t), intent(in) :: cascade
       integer(TC), intent(in) :: mask
       logical, intent(in), optional :: reverse
+      type(flavor_t) :: anti
       logical :: rev
       rev = .false.;  if (present(reverse))  rev = reverse
       if (cascade%has_children) then
@@ -315,11 +316,12 @@ contains
          end if
       else
          if (cascade%incoming) then
-            call external_write (cascade%bincode, &
-                 flavor_get_tex_name (flavor_anti (cascade%flv)), left_str)
+            anti = cascade%flv%anti ()
+            call external_write (cascade%bincode, anti%get_tex_name (), &
+                 left_str)
          else
-            call external_write (cascade%bincode, &
-                 flavor_get_tex_name (cascade%flv), right_str)
+            call external_write (cascade%bincode, cascade%flv%get_tex_name (), &
+                 right_str)
          end if
       end if
     end subroutine graph_write
@@ -347,7 +349,7 @@ contains
       integer, intent(in), optional :: mapping
       integer :: k1, k2
       type(string_t) :: prt_type
-      select case (flavor_get_spin_type (flv))
+      select case (flv%get_spin_type ())
       case (SCALAR);       prt_type = "plain"
       case (SPINOR);       prt_type = "fermion"
       case (VECTOR);       prt_type = "boson"
@@ -355,7 +357,7 @@ contains
       case (TENSOR);       prt_type = "dbl_wiggly"
       case default;        prt_type = "dashes"
       end select
-      if (flavor_is_antiparticle (flv)) then
+      if (flv%is_antiparticle ()) then
          k1 = i2;  k2 = i1
       else
          k1 = i1;  k2 = i2
@@ -365,27 +367,27 @@ contains
          case (S_CHANNEL)
             write (u, '(A,I0,A,I0,A)') "\fmf{" // char (prt_type) // &
                  & ",f=blue,lab=\sm\blue$" // &
-                 & char (flavor_get_tex_name (flv)) // "$}" // &
+                 & char (flv%get_tex_name ()) // "$}" // &
                  & "{v", k1, ",v", k2, "}"
          case (T_CHANNEL, U_CHANNEL)
             write (u, '(A,I0,A,I0,A)') "\fmf{" // char (prt_type) // &
                  & ",f=cyan,lab=\sm\cyan$" // &
-                 & char (flavor_get_tex_name (flv)) // "$}" // &
+                 & char (flv%get_tex_name ()) // "$}" // &
                  & "{v", k1, ",v", k2, "}"
          case (RADIATION)
             write (u, '(A,I0,A,I0,A)') "\fmf{" // char (prt_type) // &
                  & ",f=green,lab=\sm\green$" // &
-                 & char (flavor_get_tex_name (flv)) // "$}" // &
+                 & char (flv%get_tex_name ()) // "$}" // &
                  & "{v", k1, ",v", k2, "}"
          case (COLLINEAR)
             write (u, '(A,I0,A,I0,A)') "\fmf{" // char (prt_type) // &
                  & ",f=magenta,lab=\sm\magenta$" // &
-                 & char (flavor_get_tex_name (flv)) // "$}" // &
+                 & char (flv%get_tex_name ()) // "$}" // &
                  & "{v", k1, ",v", k2, "}"
          case (INFRARED)
             write (u, '(A,I0,A,I0,A)') "\fmf{" // char (prt_type) // &
                  & ",f=red,lab=\sm\red$" // &
-                 & char (flavor_get_tex_name (flv)) // "$}" // &
+                 & char (flv%get_tex_name ()) // "$}" // &
                  & "{v", k1, ",v", k2, "}"
          case default
             write (u, '(A,I0,A,I0,A)') "\fmf{" // char (prt_type) // &
@@ -424,7 +426,7 @@ contains
          cascade%active, cascade%complete, cascade%incoming
     write (u, "(A,I0)") '  Bincode:      ', cascade%bincode
     write (u, "(A)", advance="no") '  Flavor:       '
-    call flavor_write (cascade%flv, unit)
+    call cascade%flv%write (unit)
     write (u, "(A,I9)") '  Active flavor:', cascade%pdg
     write (u, "(A,L1)") '  Is vector:    ', cascade%is_vector
     write (u, "(A,3(1x," // FMT_19 // "))") '  Mass (m/r/e): ', &
@@ -464,9 +466,9 @@ contains
     call cascade_init (cascade, 1)
     cascade%bincode = ibset (0_TC, pos-1)
     cascade%flv = flv
-    cascade%pdg = abs (flavor_get_pdg (cascade%flv))
-    cascade%is_vector = flavor_get_spin_type (flv) == VECTOR
-    cascade%m_min = flavor_get_mass (flv)
+    cascade%pdg = abs (cascade%flv%get_pdg ())
+    cascade%is_vector = flv%get_spin_type () == VECTOR
+    cascade%m_min = flv%get_mass ()
     cascade%m_rea = cascade%m_min
     if (cascade%m_rea >= m_thr) then
        cascade%m_eff = cascade%m_rea
@@ -487,10 +489,10 @@ contains
     call cascade_init (cascade, 1)
     cascade%incoming = .true.
     cascade%bincode = ibset (0_TC, pos-1)
-    cascade%flv = flavor_anti (flv)
-    cascade%pdg = abs (flavor_get_pdg (flv))
-    cascade%is_vector = flavor_get_spin_type (flv) == VECTOR
-    cascade%m_min = flavor_get_mass (flv)
+    cascade%flv = flv%anti ()
+    cascade%pdg = abs (flv%get_pdg ())
+    cascade%is_vector = flv%get_spin_type () == VECTOR
+    cascade%m_min = flv%get_mass ()
     cascade%m_rea = cascade%m_min
     if (cascade%m_rea >= m_thr) then
        cascade%m_eff = cascade%m_rea
@@ -650,13 +652,18 @@ contains
     logical, intent(in) :: fatal_beam_decay
     type(flavor_t), dimension(:,:), intent(in), optional :: flv
     integer :: size_guess
+    integer :: i, j
     cascade_set%model => model
     cascade_set%n_in = n_in
     cascade_set%n_out = n_out
     cascade_set%n_tot = n_in + n_out
     if (present (flv)) then
        allocate (cascade_set%flv (size (flv, 1), size (flv, 2)))
-       call flavor_init (cascade_set%flv, flavor_get_pdg (flv), model)
+       do i = 1, size (flv, 2)
+          do j = 1, size (flv, 1)
+             call cascade_set%flv(j,i)%init (flv(j,i)%get_pdg (), model)
+          end do
+       end do
     end if
     select case (n_in)
     case (1);  cascade_set%depth_out = 2 * n_out - 3
@@ -725,7 +732,7 @@ contains
        field_width(i) = len_trim (str)
        do f = 1, n_flv
           field_width(i) = max (field_width(i), &
-               len (flavor_get_name (cascade_set%flv(i,f))))
+               len (cascade_set%flv(i,f)%get_name ()))
        end do
     end do
     fmt_head = "('!'"
@@ -746,7 +753,7 @@ contains
        write (u, "('!')", advance="no")
        do i = 1, n_tot
           write (u, char (fmt_proc(i)), advance="no") &
-               char (flavor_get_name (cascade_set%flv(i,f)))
+               char (cascade_set%flv(i,f)%get_name ())
           if (i == n_in)  write (u, "(1x,'=>')", advance="no")
        end do
        write (u, *)
@@ -765,13 +772,13 @@ contains
        do i = 1, cascade_set%n_in
           if (i > 1)  write (u, "(A)", advance="no") "\quad "
           write (u, "(A)", advance="no") &
-               char (flavor_get_tex_name (cascade_set%flv(i,f)))
+               char (cascade_set%flv(i,f)%get_tex_name ())
        end do
        write (u, "(A)", advance="no")  "\quad &\to\quad "
        do i = cascade_set%n_in + 1, cascade_set%n_tot
           if (i > cascade_set%n_in + 1)  write (u, "(A)", advance="no") "\quad "
           write (u, "(A)", advance="no") &
-               char (flavor_get_tex_name (cascade_set%flv(i,f)))
+               char (cascade_set%flv(i,f)%get_tex_name ())
        end do
        if (f < size (cascade_set%flv, 2)) then
           write (u, "(A)")  "\\"
@@ -1219,11 +1226,11 @@ contains
     end if
     if (cascade1%depth + cascade2%depth < depth_max) then
        call cascade_set%model%match_vertex ( &
-            flavor_get_pdg (cascade1%flv), &
-            flavor_get_pdg (cascade2%flv), &
+            cascade1%flv%get_pdg (), &
+            cascade2%flv%get_pdg (), &
             pdg3)
        do i = 1, size (pdg3)
-          call flavor_init (flv, pdg3(i), cascade_set%model)
+          call flv%init (pdg3(i), cascade_set%model)
           if (s_channel) then
              call cascade_combine_s (cascade_set, cascade1, cascade2, flv)
           else
@@ -1243,9 +1250,9 @@ contains
     depth_max = cascade_set%depth_tot
     if (cascade1%depth + cascade2%depth + cascade3%depth == depth_max) then
        if (cascade_set%model%check_vertex ( &
-            flavor_get_pdg (cascade1%flv), &
-            flavor_get_pdg (cascade2%flv), &
-            flavor_get_pdg (cascade3%flv))) then
+            cascade1%flv%get_pdg (), &
+            cascade2%flv%get_pdg (), &
+            cascade3%flv%get_pdg ())) then
           call cascade_combine_keystone &
                (cascade_set, cascade1, cascade2, cascade3, s_channel)
        end if
@@ -1262,18 +1269,18 @@ contains
     allocate (cascade3)
     call cascade_init (cascade3, cascade1%depth + cascade2%depth + 1)
     cascade3%bincode = ior (cascade1%bincode, cascade2%bincode)
-    cascade3%flv = flavor_anti (flv)
-    cascade3%pdg = abs (flavor_get_pdg (cascade3%flv))
-    cascade3%is_vector = flavor_get_spin_type (flv) == VECTOR
+    cascade3%flv = flv%anti ()
+    cascade3%pdg = abs (cascade3%flv%get_pdg ())
+    cascade3%is_vector = flv%get_spin_type () == VECTOR
     cascade3%m_min = cascade1%m_min + cascade2%m_min
-    cascade3%m_rea = flavor_get_mass (flv)
+    cascade3%m_rea = flv%get_mass ()
     if (cascade3%m_rea > cascade_set%m_threshold_s) then
        cascade3%m_eff = cascade3%m_rea
     end if
     ! Potentially resonant cases [sqrts = m_rea for on-shell decay]
     if (cascade3%m_rea > cascade3%m_min &
          .and. cascade3%m_rea <= cascade_set%sqrts) then
-       if (flavor_get_width (flv) /= 0) then
+       if (flv%get_width () /= 0) then
           if (cascade1%on_shell .or. cascade2%on_shell) then
              keep = .true.
              cascade3%mapping = S_CHANNEL
@@ -1339,7 +1346,7 @@ contains
     if (keep) then
        cascade3%on_shell = cascade3%resonant .or. cascade3%log_enhanced
        if (cascade3%resonant) then
-          cascade3%pdg = abs (flavor_get_pdg (cascade3%flv))
+          cascade3%pdg = abs (cascade3%flv%get_pdg ())
           if (cascade_set%keep_nonresonant) then
              allocate (cascade4)
              cascade4 = cascade3
@@ -1367,14 +1374,14 @@ contains
       integer, dimension(MAX_WARN_RESONANCE), save :: warned_code = 0
       LOOP_WARNED: do i = 1, MAX_WARN_RESONANCE
          if (warned_code(i) == 0) then
-            warned_code(i) = flavor_get_pdg (flv)
+            warned_code(i) = flv%get_pdg ()
             write (msg_buffer, "(A)") &
                  & " Intermediate decay of zero-width particle " &
-                 & // char (flavor_get_name (flv)) &
+                 & // char (flv%get_name ()) &
                  & // " may be possible."
             call msg_warning
             exit LOOP_WARNED
-         else if (warned_code(i) == flavor_get_pdg (flv)) then
+         else if (warned_code(i) == flv%get_pdg ()) then
             exit LOOP_WARNED
          end if
       end do LOOP_WARNED
@@ -1389,15 +1396,15 @@ contains
     allocate (cascade3)
     call cascade_init (cascade3, cascade1%depth + cascade2%depth + 1)
     cascade3%bincode = ior (cascade1%bincode, cascade2%bincode)
-    cascade3%flv = flavor_anti (flv)
-    cascade3%pdg = abs (flavor_get_pdg (cascade3%flv))
-    cascade3%is_vector = flavor_get_spin_type (flv) == VECTOR
+    cascade3%flv = flv%anti ()
+    cascade3%pdg = abs (cascade3%flv%get_pdg ())
+    cascade3%is_vector = flv%get_spin_type () == VECTOR
     if (cascade1%incoming) then
        cascade3%m_min = cascade2%m_min
     else
        cascade3%m_min = cascade1%m_min + cascade2%m_min
     end if
-    cascade3%m_rea = flavor_get_mass (flv)
+    cascade3%m_rea = flv%get_mass ()
     if (cascade3%m_rea > cascade_set%m_threshold_t) then
        cascade3%m_eff = max (cascade3%m_rea, cascade2%m_eff)
     else if (cascade2%m_eff > cascade_set%m_threshold_t) then
@@ -1422,7 +1429,7 @@ contains
          .and. abs (cascade1%m_eff - cascade3%m_eff) &
                < cascade_set%m_threshold_t) &
          then
-       cascade3%pdg = abs (flavor_get_pdg (flv))
+       cascade3%pdg = abs (flv%get_pdg ())
        cascade3%log_enhanced = .true.
        cascade3%mapping = RADIATION
     end if
@@ -1432,18 +1439,18 @@ contains
     subroutine beam_decay (fatal_beam_decay)
       logical, intent(in) :: fatal_beam_decay
       write (msg_buffer, "(1x,A,1x,'->',1x,A,1x,A)") &
-           char (flavor_get_name (cascade1%flv)), &
-           char (flavor_get_name (cascade3%flv)), &
-           char (flavor_get_name (cascade2%flv))
+           char (cascade1%flv%get_name ()), &
+           char (cascade3%flv%get_name ()), &
+           char (cascade2%flv%get_name ())
       call msg_message
       write (msg_buffer, "(1x,'mass(',A,') =',1x,E17.10)") &
-           char (flavor_get_name (cascade1%flv)), cascade1%m_rea
+           char (cascade1%flv%get_name ()), cascade1%m_rea
       call msg_message
       write (msg_buffer, "(1x,'mass(',A,') =',1x,E17.10)") &
-           char (flavor_get_name (cascade3%flv)), cascade3%m_rea
+           char (cascade3%flv%get_name ()), cascade3%m_rea
       call msg_message
       write (msg_buffer, "(1x,'mass(',A,') =',1x,E17.10)") &
-           char (flavor_get_name (cascade2%flv)), cascade2%m_rea
+           char (cascade2%flv%get_name ()), cascade2%m_rea
       call msg_message
       if (fatal_beam_decay) then
          call msg_fatal (" Phase space: Initial beam particle can decay")
@@ -1960,7 +1967,7 @@ contains
     n_prt = size (flv, 1)
     n_flv = size (flv, 2)
     allocate (mass (n_prt, n_flv), mass_in (n_flv), mass_out (n_flv))
-    mass = flavor_get_mass (flv)
+    mass = flv%get_mass ()
     mass_in = sum (mass(:n_in,:), 1)
     mass_out = sum (mass(n_in+1:,:), 1)
     if (any (mass_in > sqrts)) then
@@ -2000,16 +2007,16 @@ contains
     
     call model%init_sm_test ()
 
-    call flavor_init (flv(1,1), 2, model)
-    call flavor_init (flv(2,1),-2, model)
-    call flavor_init (flv(3,1), 1, model)
-    call flavor_init (flv(4,1),-1, model)
-    call flavor_init (flv(5,1),21, model)
-    call flavor_init (flv(1,2), 2, model)
-    call flavor_init (flv(2,2),-2, model)
-    call flavor_init (flv(3,2), 2, model)
-    call flavor_init (flv(4,2),-2, model)
-    call flavor_init (flv(5,2),21, model)
+    call flv(1,1)%init ( 2, model)
+    call flv(2,1)%init (-2, model)
+    call flv(3,1)%init ( 1, model)
+    call flv(4,1)%init (-1, model)
+    call flv(5,1)%init (21, model)
+    call flv(1,2)%init ( 2, model)
+    call flv(2,2)%init (-2, model)
+    call flv(3,2)%init ( 2, model)
+    call flv(4,2)%init (-2, model)
+    call flv(5,2)%init (21, model)
     phs_par%sqrts = 1000._default
     phs_par%off_shell = 2
     

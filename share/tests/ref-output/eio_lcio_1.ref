@@ -7,8 +7,9 @@
 
  LCIO event stream:
    Writing to file   = eio_lcio_1.slcio
-   Keep beams        = F
    Recover beams     = F
+   Alpha_s from file = F
+   Scale from file   = F
    File extension    = 'slcio'
    Numerical process IDs:
      1: 42
@@ -17,8 +18,9 @@
 
  LCIO event stream:
    [closed]
-   Keep beams        = T
    Recover beams     = F
+   Alpha_s from file = F
+   Scale from file   = F
    File extension    = 'slcio'
 
 * Write LCIO file contents to ASCII file

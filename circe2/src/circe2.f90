@@ -54,7 +54,7 @@ module circe2
   end interface
   public :: circe2_generate
   interface circe2_generate
-     module procedure circe2_generate
+     module procedure circe2_generate_ph
   end interface circe2_generate
   interface circe2_generate
      module procedure circe2_generate_channel
@@ -70,7 +70,7 @@ module circe2
   public :: circe2_luminosity
   public :: circe2_distribution
   interface circe2_distribution
-     module procedure circe2_distribution
+     module procedure circe2_distribution_ph
   end interface circe2_distribution
   interface circe2_distribution
      module procedure circe2_distribution_channel
@@ -80,7 +80,7 @@ module circe2
   integer, parameter, public :: &
        EOK = 0, EFILE = -1, EMATCH = -2, EFORMT = -3, ESIZE = -4
 contains
-  subroutine circe2_generate (c2s, rng, y, p, h)
+  subroutine circe2_generate_ph (c2s, rng, y, p, h)
     type(circe2_state), intent(in) :: c2s
     class(rng_type), intent(inout) :: rng
     real(kind=default), dimension(:), intent(out) :: y
@@ -109,7 +109,7 @@ contains
        return
     end if
     call circe2_generate_channel (c2s%ch(ic), rng, y)
-  end subroutine circe2_generate
+  end subroutine circe2_generate_ph
   !-----------------------------------------------------------------------
   subroutine circe2_generate_channel (ch, rng, y)
     type(circe2_channel), intent(in) :: ch
@@ -253,12 +253,12 @@ contains
     end do
   end function circe2_luminosity
   !-----------------------------------------------------------------------
-  function circe2_distribution (c2s, p, h, yy)
+  function circe2_distribution_ph (c2s, p, h, yy)
     type(circe2_state), intent(in) :: c2s
     integer, dimension(:), intent(in) :: p
     real(kind=default), dimension(:), intent(in)  :: yy
     integer, dimension(:), intent(in) :: h
-    real(kind=default) :: circe2_distribution
+    real(kind=default) :: circe2_distribution_ph
     integer :: i, ic
     ic = 0
     if ((c2s%polspt == POLAVG .or. c2s%polspt == POLGEN) .and. any (h /= 0)) then
@@ -275,11 +275,11 @@ contains
        end do
     end if
     if (ic <= 0) then
-       circe2_distribution = 0
+       circe2_distribution_ph = 0
     else
-       circe2_distribution = circe2_distribution_channel (c2s%ch(ic), yy)
+       circe2_distribution_ph = circe2_distribution_channel (c2s%ch(ic), yy)
     end if
-  end function circe2_distribution
+  end function circe2_distribution_ph
   !-----------------------------------------------------------------------
   function circe2_distribution_channel (ch, yy)
     type(circe2_channel), intent(in) :: ch
@@ -372,7 +372,7 @@ contains
        return
     end if
     if (ierror .gt. 0) then
-       write (*, '(2A)') 'circe2_load: ', 'Version 2.2.4'                         
+       write (*, '(2A)') 'circe2_load: ', 'Version 2.2.5'                         
     end if
     prefix = index (design, '*') - 1
     do

@@ -1,4 +1,4 @@
-! WHIZARD 2.2.4 Feb 06 2015
+! WHIZARD 2.2.5 Feb 27 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -69,8 +69,8 @@ module model_data
      procedure, private :: modelpar_data_set_real
      procedure, private :: modelpar_data_set_complex
      procedure :: get_name => modelpar_data_get_name
-     procedure :: get_real => modelpar_data_get_real
-     procedure :: get_complex => modelpar_data_get_complex
+     procedure, pass :: get_real => modelpar_data_get_real
+     procedure, pass :: get_complex => modelpar_data_get_complex
      procedure :: get_real_ptr => modelpar_data_get_real_ptr
      procedure :: get_complex_ptr => modelpar_data_get_complex_ptr
   end type modelpar_data_t
@@ -98,9 +98,13 @@ module model_data
      logical :: p_is_stable = .true.
      logical :: p_decays_isotropically = .false.
      logical :: p_decays_diagonal = .false.
+     logical :: p_has_decay_helicity = .false.
+     integer :: p_decay_helicity = 0
      logical :: a_is_stable = .true.
      logical :: a_decays_isotropically = .false.
      logical :: a_decays_diagonal = .false.
+     logical :: a_has_decay_helicity = .false.
+     integer :: a_decay_helicity = 0
      logical :: p_polarized = .false.
      logical :: a_polarized = .false.
      type(string_t), dimension(:), allocatable :: name, anti
@@ -140,6 +144,8 @@ module model_data
      procedure :: get_decays => field_data_get_decays
      procedure :: decays_isotropically => field_data_decays_isotropically
      procedure :: decays_diagonal => field_data_decays_diagonal
+     procedure :: has_decay_helicity => field_data_has_decay_helicity
+     procedure :: decay_helicity => field_data_decay_helicity
      procedure :: is_polarized => field_data_is_polarized
      procedure :: get_longname => field_data_get_longname
      procedure :: get_name => field_data_get_name
@@ -318,7 +324,7 @@ contains
     end select
   end subroutine par_show
     
-  pure subroutine modelpar_data_init_real (par, name, value)
+  subroutine modelpar_data_init_real (par, name, value)
     class(modelpar_data_t), intent(out) :: par
     type(string_t), intent(in) :: name
     real(default), intent(in) :: value
@@ -326,7 +332,7 @@ contains
     par = value
   end subroutine modelpar_data_init_real
 
-  pure subroutine modelpar_data_init_complex (par, name, value)
+  subroutine modelpar_data_init_complex (par, name, value)
     class(modelpar_data_t), intent(out) :: par
     type(string_t), intent(in) :: name
     complex(default), intent(in) :: value
@@ -427,9 +433,14 @@ contains
     prt%p_is_stable =             prt_src%p_is_stable
     prt%p_decays_isotropically =  prt_src%p_decays_isotropically
     prt%p_decays_diagonal =       prt_src%p_decays_diagonal   
+    prt%p_has_decay_helicity =    prt_src%p_has_decay_helicity
+    prt%p_decay_helicity =        prt_src%p_decay_helicity
+    prt%p_decays_diagonal =       prt_src%p_decays_diagonal   
     prt%a_is_stable =             prt_src%a_is_stable        
     prt%a_decays_isotropically =  prt_src%a_decays_isotropically
     prt%a_decays_diagonal =       prt_src%a_decays_diagonal   
+    prt%a_has_decay_helicity =    prt_src%a_has_decay_helicity
+    prt%a_decay_helicity =        prt_src%a_decay_helicity
     prt%p_polarized =             prt_src%p_polarized        
     prt%a_polarized =             prt_src%a_polarized
     prt%spin_type = prt_src%spin_type
@@ -460,7 +471,9 @@ contains
   subroutine field_data_set (prt, &
        is_visible, is_parton, is_gauge, is_left_handed, is_right_handed, &
        p_is_stable, p_decays_isotropically, p_decays_diagonal, &
+       p_decay_helicity, &
        a_is_stable, a_decays_isotropically, a_decays_diagonal, &
+       a_decay_helicity, &
        p_polarized, a_polarized, &
        name, anti, tex_name, tex_anti, &
        spin_type, isospin_type, charge_type, color_type, &
@@ -471,8 +484,10 @@ contains
     logical, intent(in), optional :: is_left_handed, is_right_handed
     logical, intent(in), optional :: p_is_stable
     logical, intent(in), optional :: p_decays_isotropically, p_decays_diagonal
+    integer, intent(in), optional :: p_decay_helicity
     logical, intent(in), optional :: a_is_stable
     logical, intent(in), optional :: a_decays_isotropically, a_decays_diagonal
+    integer, intent(in), optional :: a_decay_helicity
     logical, intent(in), optional :: p_polarized, a_polarized
     type(string_t), dimension(:), intent(in), optional :: name, anti
     type(string_t), intent(in), optional :: tex_name, tex_anti
@@ -490,11 +505,19 @@ contains
           prt%p_decays_isotropically = p_decays_isotropically
     if (present (p_decays_diagonal)) &
           prt%p_decays_diagonal = p_decays_diagonal
+    if (present (p_decay_helicity)) then
+       prt%p_has_decay_helicity = .true.
+       prt%p_decay_helicity = p_decay_helicity
+    end if
     if (present (a_is_stable))  prt%a_is_stable = a_is_stable
     if (present (a_decays_isotropically)) &
           prt%a_decays_isotropically = a_decays_isotropically
     if (present (a_decays_diagonal)) &
           prt%a_decays_diagonal = a_decays_diagonal
+    if (present (a_decay_helicity)) then
+       prt%a_has_decay_helicity = .true.
+       prt%a_decay_helicity = a_decay_helicity
+    end if
     if (present (p_polarized)) prt%p_polarized = p_polarized
     if (present (a_polarized)) prt%a_polarized = a_polarized
     if (present (name)) then
@@ -667,6 +690,9 @@ contains
              write (u, "(1x,A)", advance="no")  "isotropic"
           else if (prt%p_decays_diagonal) then
              write (u, "(1x,A)", advance="no")  "diagonal"
+          else if (prt%p_has_decay_helicity) then
+             write (u, "(1x,A,I0)", advance="no")  "helicity = ", &
+                  prt%p_decay_helicity
           end if
           write (u, *)
        end if
@@ -683,6 +709,9 @@ contains
              write (u, "(1x,A)", advance="no")  "isotropic"
           else if (prt%a_decays_diagonal) then
              write (u, "(1x,A)", advance="no")  "diagonal"
+          else if (prt%a_has_decay_helicity) then
+             write (u, "(1x,A,I0)", advance="no")  "helicity = ", &
+                  prt%a_decay_helicity
           end if
           write (u, *)
        end if
@@ -845,6 +874,38 @@ contains
     end if
   end function field_data_decays_diagonal
 
+  elemental function field_data_has_decay_helicity &
+       (prt, anti) result (flag)
+    logical :: flag
+    class(field_data_t), intent(in) :: prt
+    logical, intent(in), optional :: anti
+    if (present (anti)) then
+       if (anti) then
+          flag = prt%a_has_decay_helicity
+       else
+          flag = prt%p_has_decay_helicity
+       end if
+    else
+       flag = prt%p_has_decay_helicity
+    end if
+  end function field_data_has_decay_helicity
+
+  elemental function field_data_decay_helicity &
+       (prt, anti) result (hel)
+    integer :: hel
+    class(field_data_t), intent(in) :: prt
+    logical, intent(in), optional :: anti
+    if (present (anti)) then
+       if (anti) then
+          hel = prt%a_decay_helicity
+       else
+          hel = prt%p_decay_helicity
+       end if
+    else
+       hel = prt%p_decay_helicity
+    end if
+  end function field_data_decay_helicity
+
   elemental function field_data_is_polarized (prt, anti) result (flag)
     logical :: flag
     class(field_data_t), intent(in) :: prt
@@ -862,13 +923,13 @@ contains
     end if
   end function field_data_is_polarized
        
-  elemental function field_data_get_longname (prt) result (name)
+  pure function field_data_get_longname (prt) result (name)
     type(string_t) :: name
     class(field_data_t), intent(in) :: prt
     name = prt%longname
   end function field_data_get_longname
 
-  elemental function field_data_get_name (prt, is_antiparticle) result (name)
+  pure function field_data_get_name (prt, is_antiparticle) result (name)
     type(string_t) :: name
     class(field_data_t), intent(in) :: prt
     logical, intent(in) :: is_antiparticle
@@ -1729,23 +1790,27 @@ contains
     call field%set_width (value)
   end subroutine model_data_set_field_width_pdg
     
-  subroutine model_data_set_unstable (model, pdg, decay, isotropic, diagonal)
+  subroutine model_data_set_unstable &
+       (model, pdg, decay, isotropic, diagonal, decay_helicity)
     class(model_data_t), intent(inout), target :: model
     integer, intent(in) :: pdg
     type(string_t), dimension(:), intent(in) :: decay
     logical, intent(in), optional :: isotropic, diagonal
+    integer, intent(in), optional :: decay_helicity
     type(field_data_t), pointer :: field
     field => model%get_field_ptr (pdg)
     if (pdg > 0) then
        call field%set ( &
             p_is_stable = .false., p_decay = decay, &
             p_decays_isotropically = isotropic, &
-            p_decays_diagonal = diagonal)
+            p_decays_diagonal = diagonal, &
+            p_decay_helicity = decay_helicity)
     else
        call field%set ( &
             a_is_stable = .false., a_decay = decay, &
             a_decays_isotropically = isotropic, &
-            a_decays_diagonal = diagonal)
+            a_decays_diagonal = diagonal, &
+            a_decay_helicity = decay_helicity)
     end if
   end subroutine model_data_set_unstable
        

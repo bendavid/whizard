@@ -1,4 +1,4 @@
-! WHIZARD 2.2.4 Feb 06 2015
+! WHIZARD 2.2.5 Feb 27 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -134,7 +134,7 @@ contains
     class(evt_t), intent(inout) :: object
     if (allocated (object%rng))  call object%rng%final ()
     if (object%particle_set_exists) &
-         call particle_set_final (object%particle_set)
+         call object%particle_set%final ()
   end subroutine evt_final
   
   subroutine evt_write (object, unit, verbose, testflag)
@@ -153,7 +153,7 @@ contains
     end if
     if (object%particle_set_exists) then
        call write_separator (u)
-       call particle_set_write (object%particle_set, u, testflag)
+       call object%particle_set%write (u, testflag)
     end if
   end subroutine evt_write
   
@@ -213,7 +213,7 @@ contains
     else
        call evt%rng%generate (x)
     end if
-    call particle_set_init (evt%particle_set, evt%particle_set_exists, &
+    call evt%particle_set%init (evt%particle_set_exists, &
          int_matrix, int_flows, factorization_mode, x, &
          keep_correlations, keep_virtual=.true.)
     evt%particle_set_exists = .true.
@@ -227,12 +227,10 @@ contains
     i_term = 1
     allocate (beam_index (n_in))
     call evt%process_instance%get_beam_index (i_term, beam_index)
-    call particle_set_reset_status (evt%particle_set, &
-         beam_index, PRT_BEAM)
+    call evt%particle_set%reset_status (beam_index, PRT_BEAM)
     allocate (in_index (n_in))
     call evt%process_instance%get_in_index (i_term, in_index)
-    call particle_set_reset_status (evt%particle_set, &
-         in_index, PRT_INCOMING)
+    call evt%particle_set%reset_status (in_index, PRT_INCOMING)
   end subroutine evt_tag_incoming
 
   subroutine evt_trivial_write (object, unit, verbose, testflag)

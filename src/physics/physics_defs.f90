@@ -1,4 +1,4 @@
-! WHIZARD 2.2.4 Feb 06 2015
+! WHIZARD 2.2.5 Feb 27 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -104,14 +104,9 @@ module physics_defs
   integer, parameter, public :: HADRON_REMNANT_TRIPLET = 92
   integer, parameter, public :: HADRON_REMNANT_OCTET = 93
 
-  integer, parameter, public :: PRT_ANY = 81
-  integer, parameter, public :: PRT_VISIBLE = 82
-  integer, parameter, public :: PRT_CHARGED = 83
-  integer, parameter, public :: PRT_COLORED = 84
-
   integer, parameter, public :: INTERNAL = 94
   integer, parameter, public :: INVALID = 97
-  integer, parameter, public :: KEYSTONE = 98
+
   integer, parameter, public :: COMPOSITE = 99
 
   integer, parameter, public:: UNKNOWN = 0

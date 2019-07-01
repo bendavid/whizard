@@ -1,4 +1,4 @@
-! WHIZARD 2.2.4 Feb 06 2015
+! WHIZARD 2.2.5 Feb 27 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -567,8 +567,7 @@ contains
        write (u, "(3x,I0,':')", advance="no")  i
 !       do j = 1, object%n_tot
        do j = 1, n_tot_flv
-          write (u, "(1x,A)", advance="no") &
-               char (flavor_get_name (object%flv(j,i)))
+          write (u, "(1x,A)", advance="no")  char (object%flv(j,i)%get_name ())
        end do
        write (u, *)
     end do
@@ -611,7 +610,7 @@ contains
     allocate (phs_config%flv (phs_config%n_tot, phs_config%n_state))    
     do i = 1, phs_config%n_state
        do j = 1, phs_config%n_tot
-          call flavor_init (phs_config%flv(j,i), data%flv_state(j,i), &
+          call phs_config%flv(j,i)%init (data%flv_state(j,i), &
                phs_config%model)
        end do
     end do
@@ -695,7 +694,7 @@ contains
     real(default), dimension(:), intent(out) :: m
     integer :: i
     do i = 1, phs_config%n_in
-       m(i) = flavor_get_mass (phs_config%flv(i,1))
+       m(i) = phs_config%flv(i,1)%get_mass ()
     end do
   end subroutine phs_config_get_masses_in
   
@@ -778,10 +777,10 @@ contains
     allocate (phs%f (phs%config%n_channel));                    phs%f = 0
     allocate (phs%p (phs%config%n_in))
     allocate (phs%m_in  (phs%config%n_in), &
-         source = flavor_get_mass (phs_config%flv(:phs_config%n_in, 1)))
+         source = phs_config%flv(:phs_config%n_in, 1)%get_mass ())
     allocate (phs%q (phs%config%n_out))
     allocate (phs%m_out (phs%config%n_out), &
-         source = flavor_get_mass (phs_config%flv(phs_config%n_in+1:, 1)))
+         source = phs_config%flv(phs_config%n_in+1:, 1)%get_mass ())
     call phs%compute_flux ()
   end subroutine phs_base_init
 
@@ -1089,7 +1088,7 @@ contains
     class(phs_test_t), intent(out) :: phs
     class(phs_config_t), intent(in), target :: phs_config
     call phs%base_init (phs_config)
-    phs%m = flavor_get_mass (phs%config%flv(1,1))
+    phs%m = phs%config%flv(1,1)%get_mass ()
     allocate (phs%x (phs_config%n_par), source = 0._default)
   end subroutine phs_test_init
   
@@ -1244,7 +1243,7 @@ contains
     write (u, "(A)")
     
     call model%init_test ()
-    call flavor_init (flv, 25, model)
+    call flv%init (25, model)
 
     write (u, "(A)")  "* Initialize a process and a matching &
          &phase-space configuration"
@@ -1277,8 +1276,8 @@ contains
     write (u, "(A)")
 
     E = sqrts / 2
-    p(1) = vector4_moving (E, sqrt (E**2 - flavor_get_mass (flv)**2), 3)
-    p(2) = vector4_moving (E,-sqrt (E**2 - flavor_get_mass (flv)**2), 3)
+    p(1) = vector4_moving (E, sqrt (E**2 - flv%get_mass ()**2), 3)
+    p(2) = vector4_moving (E,-sqrt (E**2 - flv%get_mass ()**2), 3)
 
     call phs%set_incoming_momenta (p)
     call phs%compute_flux ()

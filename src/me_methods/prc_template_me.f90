@@ -1,4 +1,4 @@
-! WHIZARD 2.2.4 Feb 06 2015
+! WHIZARD 2.2.5 Feb 27 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -354,15 +354,15 @@ contains
     end do       
     do i = 1, writer%n_in
        prt_in(i) = writer%model%get_pdg (writer%prt_in(i))
-       call flavor_init (flv_in(i), prt_in(i), writer%model)
-       mult_in(i) = flavor_get_multiplicity (flv_in(i))
-       col_in(i) = abs(flavor_get_color_type (flv_in(i)))
+       call flv_in(i)%init (prt_in(i), writer%model)
+       mult_in(i) = flv_in(i)%get_multiplicity ()
+       col_in(i) = abs (flv_in(i)%get_color_type ())
        mult(i) = mult_in(i)
        end do
     do j = 1, writer%n_out
        prt_out(j) = writer%model%get_pdg (writer%prt_out(j))    
-       call flavor_init (flv_out(j), prt_out(j), writer%model)       
-       mult_out(j) = flavor_get_multiplicity (flv_out(j))       
+       call flv_out(j)%init (prt_out(j), writer%model)       
+       mult_out(j) = flv_out(j)%get_multiplicity ()       
        mult(writer%n_in + j) = mult_out(j)
        end do
     prt(1:writer%n_in) = prt_in(1:writer%n_in)
@@ -687,7 +687,7 @@ contains
       k = 0
       do i = 1, size(flv)
          k = k + 1
-         select case (flavor_get_color_type (flv(i)))    
+         select case (flv(i)%get_color_type ())
          case (1,-1)
             str = str // "0,0, "
          case (3)
@@ -987,12 +987,14 @@ contains
   end subroutine prc_template_me_compute_eff_kinematics
   
   function prc_template_me_compute_amplitude &
-       (object, j, p, f, h, c, fac_scale, ren_scale, tmp) result (amp)
+       (object, j, p, f, h, c, fac_scale, ren_scale, alpha_qcd_forced, tmp) &
+       result (amp)
     class(prc_template_me_t), intent(in) :: object
     integer, intent(in) :: j
     type(vector4_t), dimension(:), intent(in) :: p
     integer, intent(in) :: f, h, c
     real(default), intent(in) :: fac_scale, ren_scale
+    real(default), intent(in), allocatable :: alpha_qcd_forced
     class(workspace_t), intent(inout), allocatable, optional :: tmp
     complex(default) :: amp
     integer :: n_tot, i

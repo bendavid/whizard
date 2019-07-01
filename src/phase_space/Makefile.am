@@ -44,10 +44,15 @@ dist_noinst_DATA = phase_space.nw
 # Dump module names into file Modules
 libphase_space_Modules = ${libphase_space_la_SOURCES:.f90=}
 Modules: Makefile
-	@rm -f $@
-	for module in $(libphase_space_Modules); do \
-          echo $$module >> $@; \
+	@for module in $(libphase_space_Modules); do \
+          echo $$module >> $@.new; \
         done
+	@if diff $@ $@.new -q >/dev/null; then \
+          rm $@.new; \
+	else \
+          mv $@.new $@; echo "Modules updated"; \
+        fi
+BUILT_SOURCES = Modules
 
 ## Fortran module dependencies
 # Get module lists from other directories

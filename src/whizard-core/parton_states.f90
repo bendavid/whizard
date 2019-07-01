@@ -1,4 +1,4 @@
-! WHIZARD 2.2.4 Feb 06 2015
+! WHIZARD 2.2.5 Feb 27 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -235,17 +235,21 @@ contains
     associate (data => core%data)
       allocate (qn_mask (data%n_in + data%n_out))
       qn_mask(:data%n_in) = &
-              new_quantum_numbers_mask (.false., .true., .false.) &
+              quantum_numbers_mask (.false., .true., .false.) &
               .or. qn_mask_in
       qn_mask(data%n_in+1:) = &
-           new_quantum_numbers_mask (.true., .true., .true.)
+           quantum_numbers_mask (.true., .true., .true.)
     if (core%use_color_factors) then
        call evaluator_init_square (state%trace, &
             state%int_eff, qn_mask, &
-            data%cf_index, data%color_factors, col, nc=core%nc)
+            col_flow_index = data%cf_index, &
+            col_factor = data%color_factors, &
+            col_index_hi = col, &
+            nc = core%nc)
     else
        call evaluator_init_square (state%trace, &
-            state%int_eff, qn_mask, nc=core%nc)
+            state%int_eff, qn_mask, &
+            nc = core%nc)
     end if
     end associate
     state%has_trace = .true.
@@ -266,28 +270,32 @@ contains
       allocate (qn_mask (data%n_in + data%n_out))
       allocate (flv (data%n_flv))
       do i = 1, data%n_in + data%n_out      
-         call flavor_init (flv, data%flv_state(i,:), model)
+         call flv%init (data%flv_state(i,:), model)
          if ((data%n_in == 1 .or. i > data%n_in) &
-              .and. any (.not. flavor_is_stable (flv))) then
-            helmask = all (flavor_decays_isotropically (flv))
-            helmask_hd = all (flavor_decays_diagonal (flv))
-            qn_mask(i) = new_quantum_numbers_mask (.false., .true., helmask, &
+              .and. any (.not. flv%is_stable ())) then
+            helmask = all (flv%decays_isotropically ())
+            helmask_hd = all (flv%decays_diagonal ())
+            qn_mask(i) = quantum_numbers_mask (.false., .true., helmask, &
                  mask_hd = helmask_hd)
          else if (i > data%n_in) then
-            helmask = all (.not. flavor_is_polarized (flv))
-            qn_mask(i) = new_quantum_numbers_mask (.false., .true., helmask)
+            helmask = all (.not. flv%is_polarized ())
+            qn_mask(i) = quantum_numbers_mask (.false., .true., helmask)
          else
-            qn_mask(i) = new_quantum_numbers_mask (.false., .true., .false.) &
+            qn_mask(i) = quantum_numbers_mask (.false., .true., .false.) &
               .or. qn_mask_in(i)
          end if
       end do
     if (core%use_color_factors) then
        call evaluator_init_square (state%matrix, &
             state%int_eff, qn_mask, &
-            data%cf_index, data%color_factors, col, nc=core%nc)
+            col_flow_index = data%cf_index, &
+            col_factor = data%color_factors, &
+            col_index_hi = col, &
+            nc = core%nc)
     else
        call evaluator_init_square (state%matrix, state%int_eff, &
-            qn_mask, nc=core%nc)
+            qn_mask, &
+            nc = core%nc)
     end if
     end associate
     state%has_matrix = .true.
@@ -306,18 +314,18 @@ contains
       allocate (qn_mask (data%n_in + data%n_out))
       allocate (flv (data%n_flv))
       do i = 1, data%n_in + data%n_out
-         call flavor_init (flv, data%flv_state(i,:), model)
+         call flv%init (data%flv_state(i,:), model)
          if ((data%n_in == 1 .or. i > data%n_in) &
-              .and. any (.not. flavor_is_stable (flv))) then
-            helmask = all (flavor_decays_isotropically (flv))
-            helmask_hd = all (flavor_decays_diagonal (flv))
-            qn_mask(i) = new_quantum_numbers_mask (.false., .false., helmask, &
+              .and. any (.not. flv%is_stable ())) then
+            helmask = all (flv%decays_isotropically ())
+            helmask_hd = all (flv%decays_diagonal ())
+            qn_mask(i) = quantum_numbers_mask (.false., .false., helmask, &
                  mask_hd = helmask_hd)
          else if (i > data%n_in) then
-            helmask = all (.not. flavor_is_polarized (flv))
-            qn_mask(i) = new_quantum_numbers_mask (.false., .false., helmask)
+            helmask = all (.not. flv%is_polarized ())
+            qn_mask(i) = quantum_numbers_mask (.false., .false., helmask)
          else
-            qn_mask(i) = new_quantum_numbers_mask (.false., .false., .false.) &
+            qn_mask(i) = quantum_numbers_mask (.false., .false., .false.) &
               .or. qn_mask_in(i)
          end if
       end do
@@ -335,27 +343,30 @@ contains
     logical, intent(in), optional :: resonant
     type(quantum_numbers_mask_t) :: mask
     type(interaction_t), pointer :: src_int
-    mask = new_quantum_numbers_mask (.true., .true., .true.)
+    mask = quantum_numbers_mask (.true., .true., .true.)
     if (present (int)) then
        src_int => int
     else
        src_int => isolated%sf_chain_eff%get_out_int_ptr ()
     end if
     call evaluator_init_product &
-         (state%trace, src_int, isolated%trace, mask, mask, &
+         (state%trace, src_int, isolated%trace, &
+          qn_mask_conn = mask, &
+          qn_mask_rest = mask, &
           connections_are_resonant = resonant)
     state%has_trace = .true.
   end subroutine connected_state_setup_connected_trace
     
   subroutine connected_state_setup_connected_matrix &
-       (state, isolated, int, resonant)
+       (state, isolated, int, resonant, qn_filter_conn)
     class(connected_state_t), intent(inout), target :: state
     type(isolated_state_t), intent(in), target :: isolated
     type(interaction_t), intent(in), optional, target :: int
     logical, intent(in), optional :: resonant
+    type(quantum_numbers_t), intent(in), optional :: qn_filter_conn
     type(quantum_numbers_mask_t) :: mask
     type(interaction_t), pointer :: src_int
-    mask = new_quantum_numbers_mask (.false., .true., .true.)
+    mask = quantum_numbers_mask (.false., .true., .true.)
     if (present (int)) then
        src_int => int
     else
@@ -363,19 +374,21 @@ contains
     end if
     call evaluator_init_product &
          (state%matrix, src_int, isolated%matrix, mask, &
+          qn_filter_conn = qn_filter_conn, &
           connections_are_resonant = resonant)
     state%has_matrix = .true.
   end subroutine connected_state_setup_connected_matrix
   
   subroutine connected_state_setup_connected_flows &
-       (state, isolated, int, resonant)
+       (state, isolated, int, resonant, qn_filter_conn)
     class(connected_state_t), intent(inout), target :: state
     type(isolated_state_t), intent(in), target :: isolated
     type(interaction_t), intent(in), optional, target :: int
     logical, intent(in), optional :: resonant
+    type(quantum_numbers_t), intent(in), optional :: qn_filter_conn
     type(quantum_numbers_mask_t) :: mask
     type(interaction_t), pointer :: src_int
-    mask = new_quantum_numbers_mask (.false., .false., .true.)
+    mask = quantum_numbers_mask (.false., .false., .true.)
     if (present (int)) then
        src_int => int
     else
@@ -386,6 +399,7 @@ contains
     end if
     call evaluator_init_product &
          (state%flows, src_int, isolated%flows, mask, &
+          qn_filter_conn = qn_filter_conn, &
           connections_are_resonant = resonant)
     state%has_flows = .true.
   end subroutine connected_state_setup_connected_flows
@@ -503,12 +517,14 @@ contains
   end subroutine parton_state_send_kinematics
 
   subroutine connected_state_evaluate_expressions (state, passed, &
-       scale, fac_scale, ren_scale, weight)
+       scale, fac_scale, ren_scale, weight, scale_forced)
     class(connected_state_t), intent(inout) :: state
     logical, intent(out) :: passed
     real(default), intent(out) :: scale, fac_scale, ren_scale, weight
+    real(default), intent(in), allocatable, optional :: scale_forced
     if (state%has_expr) then
-       call state%expr%evaluate (passed, scale, fac_scale, ren_scale, weight)
+       call state%expr%evaluate (passed, scale, fac_scale, ren_scale, weight, &
+            scale_forced)
     end if
   end subroutine connected_state_evaluate_expressions
     

@@ -1,4 +1,4 @@
-! WHIZARD 2.2.4 Feb 06 2015
+! WHIZARD 2.2.5 Feb 27 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -79,6 +79,8 @@ module subevents
   public :: subevt_get_length
   public :: subevt_get_prt
   public :: subevt_get_sqrts_hat
+  public :: subevt_get_n_in
+  public :: subevt_get_n_out
   public :: subevt_join
   public :: subevt_combine
   public :: subevt_collect
@@ -692,6 +694,18 @@ contains
     end do
     sqrts_hat = p ** 1
   end function subevt_get_sqrts_hat
+    
+  function subevt_get_n_in (subevt) result (n_in)
+    type(subevt_t), intent(in) :: subevt
+    integer :: n_in
+    n_in = count (subevt%prt(:subevt%n_active)%type == PRT_INCOMING)
+  end function subevt_get_n_in
+    
+  function subevt_get_n_out (subevt) result (n_out)
+    type(subevt_t), intent(in) :: subevt
+    integer :: n_out
+    n_out = count (subevt%prt(:subevt%n_active)%type == PRT_OUTGOING)
+  end function subevt_get_n_out
     
   function c_prt_from_subevt (subevt, i) result (c_prt)
     type(c_prt_t) :: c_prt

@@ -1,4 +1,4 @@
-! WHIZARD 2.2.4 Feb 06 2015
+! WHIZARD 2.2.5 Feb 27 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -49,8 +49,6 @@ module particles
   use state_matrices
   use interactions
   use evaluators
-  use hepmc_interface
-  use lcio_interface
   use subevents
   use polarizations
 
@@ -58,49 +56,7 @@ module particles
   private
 
   public :: particle_t
-  public :: particle_write
-  public :: particle_reset_status
-  public :: particle_set_color
-  public :: particle_set_flavor
-  public :: particle_set_model
-  public :: particle_set_momentum
-  public :: particle_set_children
-  public :: particle_set_parents
-  public :: particle_get_status
-  public :: particle_get_polarization_status
-  public :: particle_get_pdg
-  public :: particle_get_color
-  public :: particle_get_polarization
-  public :: particle_get_helicity
-  public :: particle_get_n_parents
-  public :: particle_get_n_children
-  public :: particle_get_parents
-  public :: particle_get_children
-  public :: particle_get_momentum
-  public :: particle_get_p2
   public :: particle_set_t
-  public :: particle_set_init
-  public :: particle_set_set_model
-  public :: particle_set_final
-  public :: particle_set_write
-  public :: particle_set_write_raw 
-  public :: particle_set_read_raw 
-  public :: hepmc_event_from_particle_set 
-  public :: lcio_event_from_particle_set 
-  public :: particle_set_get_n_beam
-  public :: particle_set_get_n_in
-  public :: particle_set_get_n_vir
-  public :: particle_set_get_n_out
-  public :: particle_set_get_n_tot
-  public :: particle_set_get_particle
-  public :: particle_set_reset_status
-  public :: particle_set_reduce
-  public :: particle_set_apply_keep_beams
-  public :: particle_set_to_hepevt_form
-  public :: particle_set_fill_interaction
-  public :: particle_set_assign_vertices
-  public :: particle_set_to_subevt
-  public :: particle_set_replace
   public :: pacify
   public :: particles_test
 
@@ -121,10 +77,44 @@ module particles
      real(default) :: p2 = 0
      integer, dimension(:), allocatable :: parent
      integer, dimension(:), allocatable :: child
+   contains
+    generic :: init => init_state
+    procedure :: init_state => particle_init_state
+    procedure :: final => particle_final
+    procedure :: write => particle_write
+    procedure :: write_raw => particle_write_raw
+    procedure :: read_raw => particle_read_raw  
+    procedure :: reset_status => particle_reset_status
+    procedure :: set_color => particle_set_color
+    procedure :: set_flavor => particle_set_flavor
+    procedure :: set_helicity => particle_set_helicity
+    procedure :: set_pol => particle_set_pol
+    procedure :: set_model => particle_set_model
+    procedure :: set_momentum => particle_set_momentum
+    procedure :: set_children => particle_set_children
+    procedure :: set_parents => particle_set_parents
+    procedure :: add_child => particle_add_child
+    procedure :: set_status => particle_set_status
+    procedure :: set_polarization => particle_set_polarization
+    procedure :: get_status => particle_get_status
+    procedure :: is_real => particle_is_real
+    procedure :: get_polarization_status => particle_get_polarization_status
+    procedure :: get_pdg => particle_get_pdg
+    procedure :: get_color => particle_get_color
+    procedure :: get_polarization => particle_get_polarization
+    procedure :: get_flv => particle_get_flv
+    procedure :: get_col => particle_get_col 
+    procedure :: get_hel => particle_get_hel
+    procedure :: get_helicity => particle_get_helicity
+    procedure :: get_n_parents => particle_get_n_parents
+    procedure :: get_n_children => particle_get_n_children
+    procedure :: get_parents => particle_get_parents
+    procedure :: get_children => particle_get_children
+    procedure :: get_momentum => particle_get_momentum
+    procedure :: get_p2 => particle_get_p2  
   end type particle_t
 
   type :: particle_set_t
-     ! private
      integer :: n_beam = 0
      integer :: n_in  = 0
      integer :: n_vir = 0
@@ -132,21 +122,32 @@ module particles
      integer :: n_tot = 0
      type(particle_t), dimension(:), allocatable :: prt
      type(state_matrix_t) :: correlated_state
+   contains
+     generic :: init => init_interaction
+     procedure :: init_interaction => particle_set_init_interaction
+     procedure :: set_model => particle_set_set_model
+     procedure :: final => particle_set_final
+     procedure :: write => particle_set_write
+     procedure :: write_raw => particle_set_write_raw 
+     procedure :: read_raw => particle_set_read_raw 
+     procedure :: get_real_parents => particle_set_get_real_parents
+     procedure :: get_real_children => particle_set_get_real_children
+     procedure :: get_n_beam => particle_set_get_n_beam
+     procedure :: get_n_in => particle_set_get_n_in
+     procedure :: get_n_vir => particle_set_get_n_vir
+     procedure :: get_n_out => particle_set_get_n_out
+     procedure :: get_n_tot => particle_set_get_n_tot
+     procedure :: get_particle => particle_set_get_particle
+     procedure :: reset_status => particle_set_reset_status
+     procedure :: reduce => particle_set_reduce
+     procedure :: apply_keep_beams => particle_set_apply_keep_beams
+     procedure :: to_hepevt_form => particle_set_to_hepevt_form
+     procedure :: fill_interaction => particle_set_fill_interaction
+     procedure :: assign_vertices => particle_set_assign_vertices
+     procedure :: to_subevt => particle_set_to_subevt
+     procedure :: replace => particle_set_replace
   end type particle_set_t
 
-
-  interface particle_init
-     module procedure particle_init_particle
-     module procedure particle_init_state
-     module procedure particle_init_hepmc
-     module procedure particle_init_lcio
-  end interface
-
-  interface particle_set_init
-     module procedure particle_set_init_interaction
-     module procedure particle_set_init_hepmc
-     module procedure particle_set_init_lcio
-  end interface
 
   interface pacify
      module procedure pacify_particle
@@ -157,8 +158,8 @@ module particles
 contains
 
   subroutine particle_init_particle (prt_out, prt_in)
-    type(particle_t), intent(out) :: prt_out
     type(particle_t), intent(in) :: prt_in
+    class(particle_t), intent(out) :: prt_out
     prt_out%status = prt_in%status
     prt_out%polarization = prt_in%polarization
     prt_out%flv = prt_in%flv
@@ -170,114 +171,34 @@ contains
   end subroutine particle_init_particle
 
   subroutine particle_init_state (prt, state, status, mode)
-    type(particle_t), intent(out) :: prt
+    class(particle_t), intent(out) :: prt
     type(state_matrix_t), intent(in) :: state
     integer, intent(in) :: status, mode
     type(state_iterator_t) :: it
     prt%status = status
-    call state_iterator_init (it, state)
-    prt%flv = state_iterator_get_flavor (it, 1)
-    if (flavor_is_beam_remnant (prt%flv))  prt%status = PRT_BEAM_REMNANT
-    prt%col = state_iterator_get_color (it, 1)
+    call it%init (state)
+    prt%flv = it%get_flavor (1)
+    if (prt%flv%is_radiated ())  prt%status = PRT_BEAM_REMNANT
+    prt%col = it%get_color (1)
     select case (mode)
     case (FM_SELECT_HELICITY)
-       prt%hel = state_iterator_get_helicity (it, 1)
-       prt%polarization = PRT_DEFINITE_HELICITY
+       prt%hel = it%get_helicity (1)
+       if (prt%hel%is_defined ()) then
+          prt%polarization = PRT_DEFINITE_HELICITY
+       end if
     case (FM_FACTOR_HELICITY)
        call polarization_init_state_matrix (prt%pol, state)
        prt%polarization = PRT_GENERIC_POLARIZATION
     end select
   end subroutine particle_init_state
 
-  subroutine particle_init_hepmc (prt, hprt, model, polarization, barcode)
-    type(particle_t), intent(out) :: prt
-    type(hepmc_particle_t), intent(in) :: hprt
-    type(model_data_t), intent(in), target :: model
-    integer, intent(in) :: polarization
-    integer, dimension(:), intent(in) :: barcode
-    type(hepmc_polarization_t) :: hpol
-    integer :: n_parents, n_children
-    integer, dimension(:), allocatable :: parent_barcode, child_barcode
-    integer :: i
-    select case (hepmc_particle_get_status (hprt))
-    case (1);  prt%status = PRT_OUTGOING
-    case (2);  prt%status = PRT_RESONANT
-    case (3);  prt%status = PRT_VIRTUAL
-    end select
-    if (hepmc_particle_is_beam (hprt)) prt%status = PRT_BEAM
-    call flavor_init (prt%flv, hepmc_particle_get_pdg (hprt), model)
-    if (flavor_is_beam_remnant (prt%flv))  prt%status = PRT_BEAM_REMNANT
-    call color_init (prt%col, hepmc_particle_get_color (hprt))
-    prt%polarization = polarization
-    select case (polarization)
-    case (PRT_DEFINITE_HELICITY)
-       hpol = hepmc_particle_get_polarization (hprt)
-       call hepmc_polarization_to_hel (hpol, prt%flv, prt%hel)
-       call hepmc_polarization_final (hpol)
-    case (PRT_GENERIC_POLARIZATION)
-       hpol = hepmc_particle_get_polarization (hprt)
-       call hepmc_polarization_to_pol (hpol, prt%flv, prt%pol)
-       call hepmc_polarization_final (hpol)
-    end select
-    prt%p = hepmc_particle_get_momentum (hprt)
-    prt%p2 = hepmc_particle_get_mass_squared (hprt)
-    n_parents  = hepmc_particle_get_n_parents  (hprt)
-    n_children = hepmc_particle_get_n_children (hprt)
-    allocate (parent_barcode (n_parents),  prt%parent (n_parents))
-    allocate (child_barcode  (n_children), prt%child  (n_children))
-    parent_barcode = hepmc_particle_get_parent_barcodes (hprt)
-    child_barcode  = hepmc_particle_get_child_barcodes  (hprt)
-    do i = 1, size (barcode)
-       where (parent_barcode == barcode(i))  prt%parent = i
-       where (child_barcode  == barcode(i))  prt%child  = i
-    end do
-    if (prt%status == PRT_VIRTUAL .and. n_parents == 0) &
-         prt%status = PRT_INCOMING
-  end subroutine particle_init_hepmc
-
-  subroutine particle_init_lcio (prt, lprt, model, daughters, parents, polarization)
-    type(particle_t), intent(out) :: prt
-    type(lcio_particle_t), intent(in) :: lprt
-    type(model_data_t), intent(in), target :: model
-    integer, intent(in) :: polarization
-    integer :: n_parents, n_daughters
-    integer, dimension(:) :: daughters, parents
-    integer :: i
-    select case (lcio_particle_get_status (lprt))
-    case (1);  prt%status = PRT_OUTGOING
-    case (2);  prt%status = PRT_RESONANT
-    case (3);  prt%status = PRT_VIRTUAL
-    end select
-    !!! if (hepmc_particle_is_beam (hprt)) prt%status = PRT_BEAM
-    call flavor_init (prt%flv, lcio_particle_get_pdg (lprt), model)
-    if (flavor_is_beam_remnant (prt%flv))  prt%status = PRT_BEAM_REMNANT
-    call color_init (prt%col, lcio_particle_get_flow (lprt))
-    prt%polarization = polarization
-    select case (polarization)
-    case (PRT_DEFINITE_HELICITY)
-       call lcio_particle_to_hel (lprt, prt%flv, prt%hel)
-    case (PRT_GENERIC_POLARIZATION)
-       call lcio_particle_to_pol (lprt, prt%flv, prt%pol)
-    end select
-    prt%p = lcio_particle_get_momentum (lprt)
-    prt%p2 = lcio_particle_get_mass_squared (lprt)
-    n_parents  = lcio_particle_get_n_parents (lprt)
-    n_daughters  = lcio_particle_get_n_children (lprt)    
-    allocate (prt%parent (n_parents))
-    prt%parent = parents
-    allocate (prt%child (n_daughters))
-    prt%child = daughters
-    if (prt%status == PRT_VIRTUAL .and. n_parents == 0) &
-         prt%status = PRT_INCOMING
-  end subroutine particle_init_lcio
-
-  elemental subroutine particle_final (prt)
-    type(particle_t), intent(inout) :: prt
+  subroutine particle_final (prt)
+    class(particle_t), intent(inout) :: prt
     call polarization_final (prt%pol)
   end subroutine particle_final
 
   subroutine particle_write (prt, unit, testflag)
-    type(particle_t), intent(in) :: prt
+    class(particle_t), intent(in) :: prt
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: testflag
     logical :: pacified
@@ -298,11 +219,13 @@ contains
     case (PRT_BEAM_REMNANT); write (u, "(1x, A)", advance="no")  "[x]"
     end select
     write (u, "(1x)", advance="no")
-    call flavor_write (prt%flv, unit)
-    call color_write (prt%col, unit)
+    call prt%flv%write (unit)
+    if (prt%col%is_nonzero ()) then
+       call color_write (prt%col, unit)
+    end if
     select case (prt%polarization)
     case (PRT_DEFINITE_HELICITY)
-       call helicity_write (prt%hel, unit)
+       call prt%hel%write (unit)
        write (u, *)
     case (PRT_GENERIC_POLARIZATION)
        write (u, *)
@@ -327,14 +250,14 @@ contains
   end subroutine particle_write
 
   subroutine particle_write_raw (prt, u)
-    type(particle_t), intent(in) :: prt
+    class(particle_t), intent(in) :: prt
     integer, intent(in) :: u
     write (u) prt%status, prt%polarization
-    call flavor_write_raw (prt%flv, u)
-    call color_write_raw (prt%col, u)
+    call prt%flv%write_raw (u)
+    call prt%col%write_raw (u)
     select case (prt%polarization)
     case (PRT_DEFINITE_HELICITY)
-       call helicity_write_raw (prt%hel, u)
+       call prt%hel%write_raw (u)
     case (PRT_GENERIC_POLARIZATION)
        call polarization_write_raw (prt%pol, u)
     end select
@@ -353,17 +276,17 @@ contains
   end subroutine particle_write_raw
 
   subroutine particle_read_raw (prt, u, iostat)
-    type(particle_t), intent(out) :: prt
+    class(particle_t), intent(out) :: prt
     integer, intent(in) :: u
     integer, intent(out) :: iostat
     logical :: allocated_parent, allocated_child
     integer :: size_parent, size_child
     read (u, iostat=iostat) prt%status, prt%polarization
-    call flavor_read_raw (prt%flv, u, iostat=iostat)
-    call color_read_raw (prt%col, u, iostat=iostat)
+    call prt%flv%read_raw (u, iostat=iostat)
+    call prt%col%read_raw (u, iostat=iostat)
     select case (prt%polarization)
     case (PRT_DEFINITE_HELICITY)
-       call helicity_read_raw (prt%hel, u, iostat=iostat)
+       call prt%hel%read_raw (u, iostat=iostat)
     case (PRT_GENERIC_POLARIZATION)
        call polarization_read_raw (prt%pol, u, iostat=iostat)
     end select
@@ -384,43 +307,55 @@ contains
   end subroutine particle_read_raw
 
   elemental subroutine particle_reset_status (prt, status)
-    type(particle_t), intent(inout) :: prt
+    class(particle_t), intent(inout) :: prt
     integer, intent(in) :: status
     prt%status = status
     select case (status)
     case (PRT_BEAM, PRT_INCOMING, PRT_OUTGOING)
-       prt%p2 = flavor_get_mass (prt%flv) ** 2
+       prt%p2 = prt%flv%get_mass () ** 2
     end select
   end subroutine particle_reset_status
 
   elemental subroutine particle_set_color (prt, col)
-    type(particle_t), intent(inout) :: prt
+    class(particle_t), intent(inout) :: prt
     type(color_t), intent(in) :: col
     prt%col = col
   end subroutine particle_set_color
 
   subroutine particle_set_flavor (prt, flv)
-    type(particle_t), intent(inout) :: prt
+    class(particle_t), intent(inout) :: prt
     type(flavor_t), intent(in) :: flv
     prt%flv = flv
   end subroutine particle_set_flavor
 
+  subroutine particle_set_helicity (prt, hel)
+    class(particle_t), intent(inout) :: prt
+    type(helicity_t), intent(in) :: hel
+    prt%hel = hel
+  end subroutine particle_set_helicity
+
+  subroutine particle_set_pol (prt, pol)
+    class(particle_t), intent(inout) :: prt
+    type(polarization_t), intent(in) :: pol
+    prt%pol = pol
+  end subroutine particle_set_pol
+
   subroutine particle_set_model (prt, model)
-    type(particle_t), intent(inout) :: prt
+    class(particle_t), intent(inout) :: prt
     class(model_data_t), intent(in), target :: model
-    call flavor_set_model (prt%flv, model)
+    call prt%flv%set_model (model)
   end subroutine particle_set_model
   
   elemental subroutine particle_set_momentum (prt, p, p2, on_shell)
-    type(particle_t), intent(inout) :: prt
+    class(particle_t), intent(inout) :: prt
     type(vector4_t), intent(in) :: p
     real(default), intent(in), optional :: p2
     logical, intent(in), optional :: on_shell
     prt%p = p
     if (present (on_shell)) then
        if (on_shell) then
-          if (flavor_is_associated (prt%flv)) then
-             prt%p2 = flavor_get_mass (prt%flv) ** 2
+          if (prt%flv%is_associated ()) then
+             prt%p2 = prt%flv%get_mass () ** 2
              return
           end if
        end if
@@ -433,7 +368,7 @@ contains
   end subroutine particle_set_momentum
 
   elemental subroutine particle_set_resonance_flag (prt, resonant)
-    type(particle_t), intent(inout) :: prt
+    class(particle_t), intent(inout) :: prt
     logical, intent(in) :: resonant
     select case (prt%status)
     case (PRT_VIRTUAL)
@@ -442,7 +377,7 @@ contains
   end subroutine particle_set_resonance_flag
 
   subroutine particle_set_children (prt, idx)
-    type(particle_t), intent(inout) :: prt
+    class(particle_t), intent(inout) :: prt
     integer, dimension(:), intent(in) :: idx
     if (allocated (prt%child))  deallocate (prt%child)
     allocate (prt%child (count (idx /= 0)))
@@ -450,22 +385,49 @@ contains
   end subroutine particle_set_children
 
   subroutine particle_set_parents (prt, idx)
-    type(particle_t), intent(inout) :: prt
+    class(particle_t), intent(inout) :: prt
     integer, dimension(:), intent(in) :: idx
     if (allocated (prt%parent))  deallocate (prt%parent) 
     allocate (prt%parent (count (idx /= 0)))
     prt%parent = pack (idx, idx /= 0)
   end subroutine particle_set_parents
 
+  subroutine particle_add_child (prt, new_child)
+    class(particle_t), intent(inout) :: prt
+    integer, intent(in) :: new_child
+    integer, dimension(:), allocatable :: idx
+    integer :: n
+    n = prt%get_n_children()
+    if (n == 0) then
+       call prt%set_children ([new_child])
+    else
+       allocate (idx (1:n+1))
+       idx(1:n) = prt%get_children ()
+       idx(n+1) = new_child
+       call prt%set_children (idx)
+    end if
+  end subroutine particle_add_child
+  elemental subroutine particle_set_status (prt, status)
+    class(particle_t), intent(inout) :: prt
+    integer, intent(in) :: status
+    prt%status = status
+  end subroutine particle_set_status
+
+  subroutine particle_set_polarization (prt, polarization)
+    class(particle_t), intent(inout) :: prt
+    integer, intent(in) :: polarization
+    prt%polarization = polarization
+  end subroutine particle_set_polarization
+
   elemental function particle_get_status (prt) result (status)
     integer :: status
-    type(particle_t), intent(in) :: prt
+    class(particle_t), intent(in) :: prt
     status = prt%status
   end function particle_get_status
 
   elemental function particle_is_real (prt, keep_beams) result (flag)
     logical :: flag, kb
-    type(particle_t), intent(in) :: prt
+    class(particle_t), intent(in) :: prt
     logical, intent(in), optional :: keep_beams
     kb = .false.
     if (present (keep_beams)) kb = keep_beams
@@ -481,44 +443,61 @@ contains
 
   elemental function particle_get_polarization_status (prt) result (status)
     integer :: status
-    type(particle_t), intent(in) :: prt
+    class(particle_t), intent(in) :: prt
     status = prt%polarization
   end function particle_get_polarization_status
 
   elemental function particle_get_pdg (prt) result (pdg)
     integer :: pdg
-    type(particle_t), intent(in) :: prt
-    pdg = flavor_get_pdg (prt%flv)
+    class(particle_t), intent(in) :: prt
+    pdg = prt%flv%get_pdg ()
   end function particle_get_pdg
 
   pure function particle_get_color (prt) result (col)
     integer, dimension(2) :: col
-    type(particle_t), intent(in) :: prt
-    col(1) = color_get_col (prt%col)
-    col(2) = color_get_acl (prt%col)
+    class(particle_t), intent(in) :: prt
+    col(1) = prt%col%get_col ()
+    col(2) = prt%col%get_acl ()
   end function particle_get_color
   
   function particle_get_polarization (prt) result (pol)
-    type(polarization_t) :: pol
-    type(particle_t), intent(in) :: prt
+    class(particle_t), intent(in) :: prt
+    class(polarization_t), allocatable :: pol
     pol = prt%pol
   end function particle_get_polarization
 
+  function particle_get_flv (prt) result (flv)
+    class(particle_t), intent(in) :: prt
+    type(flavor_t) :: flv
+    flv = prt%flv
+  end function particle_get_flv 
+  
+  function particle_get_col (prt) result (col)
+    class(particle_t), intent(in) :: prt
+    type(color_t) :: col
+    col = prt%col
+  end function particle_get_col
+  
+  function particle_get_hel (prt) result (hel)
+    class(particle_t), intent(in) :: prt
+    type(helicity_t) :: hel
+    hel = prt%hel
+  end function particle_get_hel
+  
   elemental function particle_get_helicity (prt) result (hel)
     integer :: hel
     integer, dimension(2) :: hel_arr
-    type(particle_t), intent(in) :: prt    
+    class(particle_t), intent(in) :: prt    
     hel = 0
-    if (helicity_is_defined (prt%hel) .and. &
-        helicity_is_diagonal (prt%hel)) then
-             hel_arr = helicity_get (prt%hel)
-             hel = hel_arr (1)
+    if (prt%hel%is_defined () .and. prt%hel%is_diagonal ()) then
+       hel_arr = prt%hel%to_pair ()
+       hel = hel_arr (1)
     end if
   end function particle_get_helicity  
   
   elemental function particle_get_n_parents (prt) result (n)
     integer :: n
-    type(particle_t), intent(in) :: prt
+    class(particle_t), intent(in) :: prt
     if (allocated (prt%parent)) then
        n = size (prt%parent)
     else
@@ -528,7 +507,7 @@ contains
     
   elemental function particle_get_n_children (prt) result (n)
     integer :: n
-    type(particle_t), intent(in) :: prt
+    class(particle_t), intent(in) :: prt
     if (allocated (prt%child)) then
        n = size (prt%child)
     else
@@ -537,7 +516,7 @@ contains
   end function particle_get_n_children
     
   function particle_get_parents (prt) result (parent)
-    type(particle_t), intent(in) :: prt
+    class(particle_t), intent(in) :: prt
     integer, dimension(:), allocatable :: parent
     if (allocated (prt%parent)) then
        allocate (parent (size (prt%parent)))
@@ -548,7 +527,7 @@ contains
   end function particle_get_parents
 
   function particle_get_children (prt) result (child)
-    type(particle_t), intent(in) :: prt
+    class(particle_t), intent(in) :: prt
     integer, dimension(:), allocatable :: child
     if (allocated (prt%child)) then
        allocate (child (size (prt%child)))
@@ -560,20 +539,20 @@ contains
 
   elemental function particle_get_momentum (prt) result (p)
     type(vector4_t) :: p
-    type(particle_t), intent(in) :: prt
+    class(particle_t), intent(in) :: prt
     p = prt%p
   end function particle_get_momentum
 
   elemental function particle_get_p2 (prt) result (p2)
     real(default) :: p2
-    type(particle_t), intent(in) :: prt
+    class(particle_t), intent(in) :: prt
     p2 = prt%p2
   end function particle_get_p2
 
   subroutine particle_set_init_interaction &
        (particle_set, is_valid, int, int_flows, mode, x, &
         keep_correlations, keep_virtual, n_incoming)
-    type(particle_set_t), intent(out) :: particle_set
+    class(particle_set_t), intent(out) :: particle_set
     logical, intent(out) :: is_valid
     type(interaction_t), intent(in), target :: int, int_flows
     integer, intent(in) :: mode
@@ -608,7 +587,7 @@ contains
          (int, FM_IGNORE_HELICITY, x(1), is_valid, flavor_state)
     allocate (qn (n_tot,1))
     do i = 1, n_tot
-       qn(i,:) = state_matrix_get_quantum_numbers (flavor_state(i), 1)
+       qn(i,:) = flavor_state(i)%get_quantum_numbers (1)
     end do
     if (keep_correlations .and. keep_virtual) then
        call interaction_factorize (int_flows, mode, x(2), ok, &
@@ -622,28 +601,25 @@ contains
     j = 1
     do i = 1, n_tot
        if (i <= n_in) then
-          call particle_init &
-               (particle_set%prt(j), single_state(i), PRT_INCOMING, mode)
-          call particle_set_momentum &
-               (particle_set%prt(j), interaction_get_momentum (int, i))
+          call particle_set%prt(j)%init (single_state(i), PRT_INCOMING, mode)
+          call particle_set%prt(j)%set_momentum &
+               (interaction_get_momentum (int, i))
        else if (i <= n_in + n_vir) then
           if (.not. keep_virtual)  cycle
-          call particle_init &
-               (particle_set%prt(j), single_state(i), PRT_VIRTUAL, mode) 
-          call particle_set_momentum &
-               (particle_set%prt(j), interaction_get_momentum (int, i))
+          call particle_set%prt(j)%init &
+               (single_state(i), PRT_VIRTUAL, mode) 
+          call particle_set%prt(j)%set_momentum &
+               (interaction_get_momentum (int, i))
        else
-          call particle_init &
-               (particle_set%prt(j), single_state(i), PRT_OUTGOING, mode)
-          call particle_set_momentum &
-               (particle_set%prt(j), interaction_get_momentum (int, i), &
-               on_shell = .true.)
+          call particle_set%prt(j)%init (single_state(i), PRT_OUTGOING, mode)
+          call particle_set%prt(j)%set_momentum &
+               (interaction_get_momentum (int, i), on_shell = .true.)
        end if
        if (keep_virtual) then
-          call particle_set_children &
-               (particle_set%prt(j), interaction_get_children (int, i))
-          call particle_set_parents &
-               (particle_set%prt(j), interaction_get_parents (int, i))
+          call particle_set%prt(j)%set_children &
+               (interaction_get_children (int, i))
+          call particle_set%prt(j)%set_parents &
+               (interaction_get_parents (int, i))
        end if
        j = j + 1
     end do
@@ -651,134 +627,38 @@ contains
        call particle_set_resonance_flag &
             (particle_set%prt, interaction_get_resonance_flags (int))
     end if
-    call state_matrix_final (flavor_state)
-    call state_matrix_final (single_state)
+    do i = i, size(flavor_state)
+       call flavor_state(i)%final ()
+    end do
+    do i = i, size(single_state)
+       call single_state(i)%final ()
+    end do
   end subroutine particle_set_init_interaction
 
-  subroutine particle_set_init_hepmc &
-       (particle_set, evt, model, fallback_model, polarization)
-    type(particle_set_t), intent(inout), target :: particle_set
-    type(hepmc_event_t), intent(in) :: evt
-    class(model_data_t), intent(in), target :: model, fallback_model
-    integer, intent(in) :: polarization
-    type(hepmc_event_particle_iterator_t) :: it
-    type(hepmc_particle_t) :: prt
-    integer, dimension(:), allocatable :: barcode
-    integer :: n_tot, i, j
-    n_tot = 0
-    call hepmc_event_particle_iterator_init (it, evt)
-    do while (hepmc_event_particle_iterator_is_valid (it))
-       n_tot = n_tot + 1
-       call hepmc_event_particle_iterator_advance (it)
-    end do
-    allocate (barcode (n_tot))
-    call hepmc_event_particle_iterator_reset (it)
-    do i = 1, n_tot
-       barcode(i) = hepmc_particle_get_barcode &
-            (hepmc_event_particle_iterator_get (it))
-       call hepmc_event_particle_iterator_advance (it)
-    end do
-    allocate (particle_set%prt (n_tot))
-    call hepmc_event_particle_iterator_reset (it)
-    do i = 1, n_tot
-       prt = hepmc_event_particle_iterator_get (it)
-       call particle_init (particle_set%prt(i), &
-            prt, model, polarization, barcode)
-       call hepmc_event_particle_iterator_advance (it)
-    end do
-    do i = 1, n_tot
-       if (particle_get_status (particle_set%prt(i)) == PRT_VIRTUAL) then
-          CHECK_BEAM: do j = 1, size (particle_set%prt(i)%parent)
-             if (particle_get_status (particle_set%prt(j)) == PRT_BEAM) &
-                  particle_set%prt(i)%status = PRT_INCOMING
-             exit CHECK_BEAM
-          end do CHECK_BEAM
-       end if
-    end do
-    call hepmc_event_particle_iterator_final (it)
-    particle_set%n_tot = n_tot
-    particle_set%n_beam  = &
-         count (particle_get_status (particle_set%prt) == PRT_BEAM)
-    particle_set%n_in  = &
-         count (particle_get_status (particle_set%prt) == PRT_INCOMING)
-    particle_set%n_out = &
-         count (particle_get_status (particle_set%prt) == PRT_OUTGOING)
-    particle_set%n_vir = &
-         particle_set%n_tot - particle_set%n_in - particle_set%n_out
-  end subroutine particle_set_init_hepmc
-
-  subroutine particle_set_init_lcio &
-       (particle_set, evt, model, fallback_model, polarization)
-    type(particle_set_t), intent(inout), target :: particle_set
-    type(lcio_event_t), intent(in) :: evt
-    class(model_data_t), intent(in), target :: model, fallback_model
-    integer, intent(in) :: polarization
-    type(lcio_particle_t) :: prt
-    integer, dimension(:), allocatable :: parents, daughters
-    integer :: n_tot, i, j, n_parents, n_children
-    n_tot = lcio_event_get_n_tot (evt)
-    allocate (particle_set%prt (n_tot))
-    do i = 1, n_tot
-       prt = lcio_event_get_particle (evt, i-1)
-       n_parents = lcio_particle_get_n_parents (prt)
-       n_children = lcio_particle_get_n_children (prt) 
-       allocate (daughters (n_children))
-       allocate (parents (n_parents))
-       if (n_children > 0) then
-          do j = 1, n_children
-             daughters(j) = lcio_get_n_children (evt,i,j)          
-          end do
-       end if
-       if (n_parents > 0) then
-          do j = 1, n_parents
-             parents(j) = lcio_get_n_parents (evt,i,j)
-          end do
-       end if
-       call particle_init (particle_set%prt(i), prt, model, &
-            daughters, parents, polarization)
-       deallocate (daughters, parents)
-    end do
-    do i = 1, n_tot
-       if (particle_get_status (particle_set%prt(i)) == PRT_VIRTUAL) then
-          CHECK_BEAM: do j = 1, size (particle_set%prt(i)%parent)
-             if (particle_get_status (particle_set%prt(j)) == PRT_BEAM) &
-                  particle_set%prt(i)%status = PRT_INCOMING
-             exit CHECK_BEAM
-          end do CHECK_BEAM
-       end if
-    end do
-    particle_set%n_tot = n_tot
-    particle_set%n_beam  = &
-         count (particle_get_status (particle_set%prt) == PRT_BEAM)
-    particle_set%n_in  = &
-         count (particle_get_status (particle_set%prt) == PRT_INCOMING)
-    particle_set%n_out = &
-         count (particle_get_status (particle_set%prt) == PRT_OUTGOING)
-    particle_set%n_vir = &
-         particle_set%n_tot - particle_set%n_in - particle_set%n_out
-  end subroutine particle_set_init_lcio
-
   subroutine particle_set_set_model (particle_set, model)
-    type(particle_set_t), intent(inout) :: particle_set
+    class(particle_set_t), intent(inout) :: particle_set
     class(model_data_t), intent(in), target :: model
     integer :: i
     do i = 1, particle_set%n_tot
-       call particle_set_model (particle_set%prt(i), model)
+       call particle_set%prt(i)%set_model (model)
     end do
-    call state_matrix_set_model (particle_set%correlated_state, model)
+    call particle_set%correlated_state%set_model (model)
   end subroutine particle_set_set_model
     
   subroutine particle_set_final (particle_set)
-    type(particle_set_t), intent(inout) :: particle_set
+    class(particle_set_t), intent(inout) :: particle_set
+    integer :: i
     if (allocated (particle_set%prt)) then
-       call particle_final (particle_set%prt)
-       deallocate(particle_set%prt)
+       do i = 1, size(particle_set%prt)
+          call particle_set%prt(i)%final ()
+       end do
+       deallocate (particle_set%prt)
     end if
-    call state_matrix_final (particle_set%correlated_state)
+    call particle_set%correlated_state%final ()
   end subroutine particle_set_final
 
   subroutine particle_set_write (particle_set, unit, testflag)
-    type(particle_set_t), intent(in) :: particle_set
+    class(particle_set_t), intent(in) :: particle_set
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: testflag
     integer :: u, i
@@ -788,12 +668,12 @@ contains
     if (particle_set%n_tot /= 0) then
        do i = 1, particle_set%n_tot
           write (u, "(1x,A,1x,I0)", advance="no") "Particle", i
-          call particle_write (particle_set%prt(i), u, testflag)
+          call particle_set%prt(i)%write (u, testflag)
        end do
-       if (state_matrix_is_defined (particle_set%correlated_state)) then
+       if (particle_set%correlated_state%is_defined ()) then
           call write_separator (u)
           write (u, *) "Correlated state density matrix:"
-          call state_matrix_write (particle_set%correlated_state, u)
+          call particle_set%correlated_state%write (u)
        end if
     else
        write (u, "(3x,A)") "[empty]"
@@ -801,7 +681,7 @@ contains
   end subroutine particle_set_write
 
   subroutine particle_set_write_raw (particle_set, u)
-    type(particle_set_t), intent(in) :: particle_set
+    class(particle_set_t), intent(in) :: particle_set
     integer, intent(in) :: u
     integer :: i
     write (u) &
@@ -809,13 +689,13 @@ contains
          particle_set%n_vir, particle_set%n_out
     write (u) particle_set%n_tot
     do i = 1, particle_set%n_tot
-       call particle_write_raw (particle_set%prt(i), u)
+       call particle_set%prt(i)%write_raw (u)
     end do
-    call state_matrix_write_raw (particle_set%correlated_state, u)
+    call particle_set%correlated_state%write_raw (u)
   end subroutine particle_set_write_raw
 
   subroutine particle_set_read_raw (particle_set, u, iostat)
-    type(particle_set_t), intent(out) :: particle_set
+    class(particle_set_t), intent(out) :: particle_set
     integer, intent(in) :: u
     integer, intent(out) :: iostat
     integer :: i
@@ -825,158 +705,14 @@ contains
     read (u, iostat=iostat) particle_set%n_tot
     allocate (particle_set%prt (particle_set%n_tot))
     do i = 1, size (particle_set%prt)
-       call particle_read_raw (particle_set%prt(i), u, iostat=iostat)
+       call particle_set%prt(i)%read_raw (u, iostat=iostat)
     end do
-    call state_matrix_read_raw (particle_set%correlated_state, u, iostat=iostat)
+    call particle_set%correlated_state%read_raw (u, iostat=iostat)
   end subroutine particle_set_read_raw
 
-  subroutine particle_to_hepmc (prt, hprt)
-    type(particle_t), intent(in) :: prt
-    type(hepmc_particle_t), intent(out) :: hprt
-    integer :: hepmc_status
-    select case (particle_get_status (prt))
-    case (PRT_UNDEFINED)
-       hepmc_status = 0
-    case (PRT_OUTGOING)
-       hepmc_status = 1
-    case (PRT_BEAM)
-       hepmc_status = 4
-    case (PRT_RESONANT)
-       if(abs(particle_get_pdg(prt)) == 13 .or. &
-            abs(particle_get_pdg(prt)) == 15) then
-          hepmc_status = 2
-       else
-          hepmc_status = 11
-       end if
-    case default
-       hepmc_status = 3
-    end select
-    call hepmc_particle_init (hprt, &
-         particle_get_momentum (prt), &
-         particle_get_pdg (prt), &
-         hepmc_status)
-    call hepmc_particle_set_color (hprt, &
-         particle_get_color (prt))
-    select case (particle_get_polarization_status (prt))
-    case (PRT_DEFINITE_HELICITY)
-       call hepmc_particle_set_polarization (hprt, &
-            particle_get_helicity (prt))
-    case (PRT_GENERIC_POLARIZATION)
-       call hepmc_particle_set_polarization (hprt, &
-            particle_get_polarization (prt))
-    end select
-  end subroutine particle_to_hepmc
-
-  subroutine hepmc_event_from_particle_set (evt, particle_set)
-    type(hepmc_event_t), intent(inout) :: evt
-    type(particle_set_t), intent(in) :: particle_set
-    type(hepmc_vertex_t), dimension(:), allocatable :: v
-    type(hepmc_particle_t), dimension(:), allocatable :: hprt
-    type(hepmc_particle_t), dimension(2) :: hbeam
-    logical, dimension(:), allocatable :: is_beam
-    integer, dimension(:), allocatable :: v_from, v_to
-    integer :: n_vertices, n_tot, i
-    n_tot = particle_set%n_tot
-    allocate (v_from (n_tot), v_to (n_tot))
-    call particle_set_assign_vertices (particle_set, v_from, v_to, n_vertices)
-    allocate (v (n_vertices))
-    do i = 1, n_vertices
-       call hepmc_vertex_init (v(i))
-       call hepmc_event_add_vertex (evt, v(i))
-    end do
-    allocate (hprt (n_tot))
-    do i = 1, n_tot
-       if (v_to(i) /= 0 .or. v_from(i) /= 0) then
-          call particle_to_hepmc (particle_set%prt(i), hprt(i))
-       end if
-    end do
-    allocate (is_beam (n_tot))
-    is_beam = particle_get_status (particle_set%prt(1:n_tot)) == PRT_BEAM
-    if (.not. any (is_beam)) then
-       is_beam = particle_get_status (particle_set%prt(1:n_tot)) == PRT_INCOMING
-    end if
-    if (count (is_beam) == 2) then
-       hbeam = pack (hprt, is_beam)
-       call hepmc_event_set_beam_particles (evt, hbeam(1), hbeam(2))
-    end if
-    do i = 1, n_tot
-       if (v_to(i) /= 0) then
-          call hepmc_vertex_add_particle_in (v(v_to(i)), hprt(i))
-       end if
-    end do
-    do i = 1, n_tot
-       if (v_from(i) /= 0) then
-          call hepmc_vertex_add_particle_out (v(v_from(i)), hprt(i))
-       end if
-    end do
-  end subroutine hepmc_event_from_particle_set
-  
-  subroutine particle_to_lcio (prt, lprt)
-    type(particle_t), intent(in) :: prt
-    type(lcio_particle_t), intent(out) :: lprt
-    integer :: lcio_status
-    select case (particle_get_status (prt))
-    case (PRT_UNDEFINED)
-       lcio_status = 0
-    case (PRT_OUTGOING)
-       lcio_status = 1
-    case (PRT_BEAM)
-       lcio_status = 4
-    case (PRT_RESONANT)
-       if(abs(particle_get_pdg(prt)) == 13 .or. &
-            abs(particle_get_pdg(prt)) == 15) then
-          lcio_status = 2
-       else
-          lcio_status = 11
-       end if
-    case default
-       lcio_status = 3
-    end select
-    call lcio_particle_init (lprt, &
-         particle_get_momentum (prt), &
-         particle_get_pdg (prt), &
-         lcio_status)
-    call lcio_particle_set_color (lprt, &
-         particle_get_color (prt))
-    select case (particle_get_polarization_status (prt))
-    case (PRT_DEFINITE_HELICITY)
-       call lcio_polarization_init (lprt, &
-            particle_get_helicity (prt))
-    case (PRT_GENERIC_POLARIZATION)
-       call lcio_polarization_init (lprt, &
-            particle_get_polarization (prt))
-    end select
-  end subroutine particle_to_lcio
-
-  subroutine lcio_event_from_particle_set (evt, particle_set)
-    type(lcio_event_t), intent(inout) :: evt
-    type(particle_set_t), intent(in) :: particle_set
-    type(lcio_particle_t), dimension(:), allocatable :: lprt
-    type(lcio_particle_t), dimension(2) :: lbeam
-    integer, dimension(:), allocatable :: parent, child    
-    logical, dimension(:), allocatable :: is_beam
-    integer :: n_tot, i, j, n_parents
-    n_tot = particle_set%n_tot
-    allocate (lprt (n_tot))
-    do i = 1, n_tot
-       call particle_to_lcio (particle_set%prt(i), lprt(i))
-       n_parents = particle_get_n_parents (particle_set%prt(i))
-       if (n_parents /= 0) then
-          allocate (parent (n_parents))
-          parent = particle_get_parents (particle_set%prt(i))
-          do j = 1, n_parents
-             call lcio_particle_set_parent (lprt(i), lprt(parent(j)))
-          end do
-          deallocate (parent)
-       end if
-       call lcio_particle_add_to_evt_coll (lprt(i), evt)
-    end do
-    call lcio_event_add_coll (evt)
-  end subroutine lcio_event_from_particle_set
-  
   function particle_set_get_real_parents (pset, i, keep_beams) result (parent)
     integer, dimension(:), allocatable :: parent
-    type(particle_set_t), intent(in) :: pset
+    class(particle_set_t), intent(in) :: pset
     integer, intent(in) :: i
     logical, intent(in), optional :: keep_beams
     logical, dimension(:), allocatable :: is_real
@@ -986,11 +722,11 @@ contains
     kb = .false.
     if (present (keep_beams)) kb = keep_beams
     allocate (is_real (pset%n_tot))
-    is_real = particle_is_real (pset%prt, kb)
+    is_real = pset%prt%is_real (kb)
     allocate (is_parent (pset%n_tot), is_real_parent (pset%n_tot))
     is_real_parent = .false.
     is_parent = .false.
-    is_parent(particle_get_parents(pset%prt(i))) = .true.
+    is_parent(pset%prt(i)%get_parents()) = .true.
     do while (any (is_parent))
        where (is_real .and. is_parent)
           is_real_parent = .true.
@@ -998,7 +734,7 @@ contains
        end where
        mark_next_parent: do j = size (is_parent), 1, -1
           if (is_parent(j)) then
-             is_parent(particle_get_parents(pset%prt(j))) = .true.
+             is_parent(pset%prt(j)%get_parents()) = .true.
              is_parent(j) = .false.
              exit mark_next_parent
           end if
@@ -1016,7 +752,7 @@ contains
 
   function particle_set_get_real_children (pset, i, keep_beams) result (child)
     integer, dimension(:), allocatable :: child
-    type(particle_set_t), intent(in) :: pset
+    class(particle_set_t), intent(in) :: pset
     integer, intent(in) :: i
     logical, dimension(:), allocatable :: is_real
     logical, dimension(:), allocatable :: is_child, is_real_child
@@ -1026,11 +762,11 @@ contains
     kb = .false.
     if (present (keep_beams)) kb = keep_beams
     allocate (is_real (pset%n_tot))
-    is_real = particle_is_real (pset%prt, kb)
+    is_real = pset%prt%is_real (kb)
     allocate (is_child (pset%n_tot), is_real_child (pset%n_tot))
     is_real_child = .false.
     is_child = .false.
-    is_child(particle_get_children(pset%prt(i))) = .true.
+    is_child(pset%prt(i)%get_children()) = .true.
     do while (any (is_child))
        where (is_real .and. is_child)
           is_real_child = .true.
@@ -1038,7 +774,7 @@ contains
        end where
        mark_next_child: do j = 1, size (is_child)
           if (is_child(j)) then
-             is_child(particle_get_children(pset%prt(j))) = .true.
+             is_child(pset%prt(j)%get_children()) = .true.
              is_child(j) = .false.
              exit mark_next_child
           end if
@@ -1055,65 +791,70 @@ contains
   end function particle_set_get_real_children
 
   function particle_set_get_n_beam (pset) result (n_beam)
-     type(particle_set_t), intent(in) :: pset
+     class(particle_set_t), intent(in) :: pset
      integer :: n_beam
      n_beam = pset%n_beam
   end function particle_set_get_n_beam
 
   function particle_set_get_n_in (pset) result (n_in)
-     type(particle_set_t), intent(in) :: pset
+     class(particle_set_t), intent(in) :: pset
      integer :: n_in
      n_in = pset%n_in
   end function particle_set_get_n_in
 
   function particle_set_get_n_vir (pset) result (n_vir)
-     type(particle_set_t), intent(in) :: pset
+     class(particle_set_t), intent(in) :: pset
      integer :: n_vir
-     n_vir = pset%n_in
+     n_vir = pset%n_vir
    end function particle_set_get_n_vir
 
   function particle_set_get_n_out (pset) result (n_out)
-     type(particle_set_t), intent(in) :: pset
+     class(particle_set_t), intent(in) :: pset
      integer :: n_out
      n_out = pset%n_out
   end function particle_set_get_n_out
   
   function particle_set_get_n_tot (pset) result (n_tot)
-     type(particle_set_t), intent(in) :: pset
+     class(particle_set_t), intent(in) :: pset
      integer :: n_tot
      n_tot = pset%n_tot
   end function particle_set_get_n_tot
 
-  function particle_set_get_particle(pset, index) result(particle)
-    type(particle_set_t), intent(in) :: pset
+  function particle_set_get_n_rad (pset) result (n_rad)
+    class(particle_set_t), intent(in) :: pset
+    integer :: n_rad
+    n_rad = count (pset%prt%get_status () == PRT_BEAM_REMNANT)
+  end function particle_set_get_n_rad
+
+  function particle_set_get_particle (pset, index) result (particle)
+    class(particle_set_t), intent(in) :: pset
     integer, intent(in) :: index
     type(particle_t) :: particle
-
     particle = pset%prt(index)
   end function particle_set_get_particle
 
   subroutine particle_set_reset_status (particle_set, index, status)
-    type(particle_set_t), intent(inout) :: particle_set
+    class(particle_set_t), intent(inout) :: particle_set
     integer, dimension(:), intent(in) :: index
     integer, intent(in) :: status
     integer :: i
     if (allocated (particle_set%prt)) then
        do i = 1, size (index)
-          call particle_reset_status (particle_set%prt(index(i)), status)
+          call particle_set%prt(index(i))%reset_status (status)
        end do
     end if
     particle_set%n_beam  = &
-         count (particle_get_status (particle_set%prt) == PRT_BEAM)
+         count (particle_set%prt%get_status () == PRT_BEAM)
     particle_set%n_in  = &
-         count (particle_get_status (particle_set%prt) == PRT_INCOMING)
+         count (particle_set%prt%get_status () == PRT_INCOMING)
     particle_set%n_out = &
-         count (particle_get_status (particle_set%prt) == PRT_OUTGOING)
+         count (particle_set%prt%get_status () == PRT_OUTGOING)
     particle_set%n_vir = particle_set%n_tot &
          - particle_set%n_beam - particle_set%n_in - particle_set%n_out
   end subroutine particle_set_reset_status
 
   subroutine particle_set_reduce (pset_in, pset_out, keep_beams)
-    type(particle_set_t), intent(in) :: pset_in
+    class(particle_set_t), intent(in) :: pset_in
     type(particle_set_t), intent(out) :: pset_out
     logical, intent(in), optional :: keep_beams
     integer, dimension(:), allocatable :: status, map
@@ -1121,7 +862,7 @@ contains
     logical :: kb
     kb = .false.;  if (present (keep_beams))  kb = keep_beams
     allocate (status (pset_in%n_tot))    
-    status = particle_get_status (pset_in%prt)
+    status = pset_in%prt%get_status ()
     if (kb)  pset_out%n_beam  = count (status == PRT_BEAM)
     pset_out%n_in  = count (status == PRT_INCOMING)
     pset_out%n_vir = count (status == PRT_RESONANT)
@@ -1144,14 +885,14 @@ contains
        !!!  call particle_set_children (pset_out%prt(map(i)), &
        !!!       map (particle_set_get_real_children (pset_in, i)))
        !!! !!! workaround:
-       call particle_set_parents (pset_out%prt(map(i)), &
-            particle_set_get_real_parents (pset_in, i, kb))
-       call particle_set_parents (pset_out%prt(map(i)), &
-            map (pset_out%prt(map(i))%parent))
-       call particle_set_children (pset_out%prt(map(i)), &
-            particle_set_get_real_children (pset_in, i, kb))
-       call particle_set_children (pset_out%prt(map(i)), &
-            map (pset_out%prt(map(i))%child))
+       call pset_out%prt(map(i))%set_parents &
+            (pset_in%get_real_parents (i, kb))
+       call pset_out%prt(map(i))%set_parents &
+            (map (pset_out%prt(map(i))%parent))
+       call pset_out%prt(map(i))%set_children &
+            (pset_in%get_real_children (i, kb))
+       call pset_out%prt(map(i))%set_children &
+            (map (pset_out%prt(map(i))%child))
     end do
   contains
     subroutine copy_particles (stat)
@@ -1161,14 +902,14 @@ contains
          if (status(i) == stat) then
             j = j + 1
             map(i) = j
-            call particle_init (pset_out%prt(j), pset_in%prt(i))
+            call particle_init_particle (pset_out%prt(j), pset_in%prt(i))
          end if
       end do
     end subroutine copy_particles
   end subroutine particle_set_reduce
 
   subroutine particle_set_apply_keep_beams (pset_in, pset_out, keep_beams)
-    type(particle_set_t), intent(in) :: pset_in
+    class(particle_set_t), intent(in) :: pset_in
     type(particle_set_t), intent(out) :: pset_out
     logical, intent(in), optional :: keep_beams
     integer, dimension(:), allocatable :: status, map
@@ -1180,10 +921,12 @@ contains
     if (kb)  pset_out%n_beam  = count (status == PRT_BEAM)
     pset_out%n_in  = count (status == PRT_INCOMING)
     if (kb) then
-       pset_out%n_vir = count (status == PRT_VIRTUAL) + count (status == PRT_RESONANT) &
-            + count (status == PRT_BEAM_REMNANT)
+       pset_out%n_vir = count (status == PRT_VIRTUAL) + &
+            count (status == PRT_RESONANT) + &
+            count (status == PRT_BEAM_REMNANT)
     else 
-       pset_out%n_vir = count (status == PRT_VIRTUAL) + count (status == PRT_RESONANT)
+       pset_out%n_vir = count (status == PRT_VIRTUAL) + &
+            count (status == PRT_RESONANT)
     end if
     pset_out%n_out = count (status == PRT_OUTGOING)
     pset_out%n_tot = &
@@ -1206,14 +949,14 @@ contains
        !!!  call particle_set_children (pset_out%prt(map(i)), &
        !!!       map (particle_set_get_real_children (pset_in, i)))
        !!! !!! workaround:
-       call particle_set_parents (pset_out%prt(map(i)), &
-            particle_set_get_real_parents (pset_in, i, kb))
-       call particle_set_parents (pset_out%prt(map(i)), &
-            map (pset_out%prt(map(i))%parent))
-       call particle_set_children (pset_out%prt(map(i)), &
-            particle_set_get_real_children (pset_in, i, kb))
-       call particle_set_children (pset_out%prt(map(i)), &
-            map (pset_out%prt(map(i))%child))
+       call pset_out%prt(map(i))%set_parents &
+            (pset_in%get_real_parents (i, kb))
+       call pset_out%prt(map(i))%set_parents &
+            (map (pset_out%prt(map(i))%parent))
+       call pset_out%prt(map(i))%set_children &
+            (pset_in%get_real_children (i, kb))
+       call pset_out%prt(map(i))%set_children &
+            (map (pset_out%prt(map(i))%child))
     end do
   contains
     subroutine copy_particles (stat)
@@ -1223,14 +966,14 @@ contains
          if (status(i) == stat) then
             j = j + 1
             map(i) = j
-            call particle_init (pset_out%prt(j), pset_in%prt(i))
+            call particle_init_particle (pset_out%prt(j), pset_in%prt(i))
          end if
       end do
     end subroutine copy_particles
   end subroutine particle_set_apply_keep_beams
 
   subroutine particle_set_to_hepevt_form (pset_in, pset_out, keep_beams)
-    type(particle_set_t), intent(in) :: pset_in
+    class(particle_set_t), intent(in) :: pset_in
     type(particle_set_t), intent(out) :: pset_out
     logical, intent(in), optional :: keep_beams
     type(particle_set_t) :: pset
@@ -1245,7 +988,7 @@ contains
     integer, dimension(:), allocatable :: parent, child
     integer :: n_tot, n_parents, n_children, i, j, c, n
 
-    call particle_set_apply_keep_beams(pset_in, pset, keep_beams)
+    call pset_in%apply_keep_beams (pset, keep_beams)
     n_tot = pset%n_tot
     allocate (prt (4 * n_tot))
     allocate (map1(4 * n_tot))
@@ -1256,19 +999,19 @@ contains
     allocate (parent (n_tot))
     n = 0
     do i = 1, n_tot
-       if (particle_get_n_parents (pset%prt(i)) == 0) then
+       if (pset%prt(i)%get_n_parents () == 0) then
           call append (i)
        end if
     end do
     do i = 1, n_tot
-       n_children = particle_get_n_children (pset%prt(i))
+       n_children = pset%prt(i)%get_n_children ()
        if (n_children > 0) then
-          child(1:n_children) = particle_get_children (pset%prt(i))
+          child(1:n_children) = pset%prt(i)%get_children ()
           c = child(1)
           if (map1(c) == 0) then
-             n_parents = particle_get_n_parents (pset%prt(c))
+             n_parents = pset%prt(c)%get_n_parents ()
              if (n_parents > 1) then
-                parent(1:n_parents) = particle_get_parents (pset%prt(c))
+                parent(1:n_parents) = pset%prt(c)%get_parents ()
                 if (i == parent(1) .and. &
                     any( [(map1(i)+j-1, j=1,n_parents)] /= &
                            map1(parent(1:n_parents)))) &
@@ -1305,7 +1048,7 @@ contains
     pset_out%n_tot = n
     allocate (pset_out%prt (n))
     do i = 1, n
-       call particle_init (pset_out%prt(i), pset%prt(prt(i)%src))
+       call particle_init_particle (pset_out%prt(i), pset%prt(prt(i)%src))
        call particle_reset_status (pset_out%prt(i), prt(i)%status)
        if (prt(i)%orig == 0) then
           !!! !!! This causes nagfor 5.2 (770) Panic
@@ -1341,7 +1084,7 @@ contains
       if (n > size (prt)) &
            call msg_bug ("Particle set transform to HEPEVT: insufficient space")
       prt(n)%src = i
-      prt(n)%status = particle_get_status (pset%prt(i))
+      prt(n)%status = pset%prt(i)%get_status ()
       if (map1(i) == 0) then
          map1(i) = n
       else
@@ -1355,7 +1098,7 @@ contains
 
   subroutine particle_set_fill_interaction &
        (pset, int, n_in, recover_beams, check_match, state_flv)
-    type(particle_set_t), intent(in) :: pset
+    class(particle_set_t), intent(in) :: pset
     type(interaction_t), intent(inout) :: int
     integer, intent(in) :: n_in
     logical, intent(in), optional :: recover_beams, check_match
@@ -1399,7 +1142,7 @@ contains
        if (map(p) /= 0) then
           i_set(map(p)) = .true.
           call interaction_set_momentum (int, &
-               particle_get_momentum (pset%prt(p)), map(p))
+               pset%prt(p)%get_momentum (), map(p))
        end if
     end do
     if (r_beams) then
@@ -1491,14 +1234,14 @@ contains
       n_p = particle_get_n_parents (pset%prt(q))
       do while (n_p == 1)
          pp = particle_get_parents (pset%prt(q))
-         if (particle_get_n_children (pset%prt(pp(1))) > 1)  exit
+         if (pset%prt(pp(1))%get_n_children () > 1)  exit
          q = pp(1)
-         n_p = particle_get_n_parents (pset%prt(q))
+         n_p = pset%prt(q)%get_n_parents ()
       end do
       if (n_p /= n)  call err_map
       allocate (i_parents (n), p_parents (n))
       i_parents = interaction_get_parents (int, i)
-      p_parents = particle_get_parents (pset%prt(q))
+      p_parents = pset%prt(q)%get_parents ()
       do k = 1, n
          q = p_parents(k)
          if (map(q) == 0) then
@@ -1515,11 +1258,11 @@ contains
       if (particle_get_status (pset%prt(p)) == PRT_INCOMING)  return
       i = map(p)
       n = interaction_get_n_children (int, i)
-      n_p = particle_get_n_children (pset%prt(p))
+      n_p = pset%prt(p)%get_n_children ()
       if (n_p /= n)  call err_map
       allocate (i_children (n), p_children (n))
       i_children = interaction_get_children (int, i)
-      p_children = particle_get_children (pset%prt(p))
+      p_children = pset%prt(p)%get_children ()
       do k = 1, n
          q = p_children(k)
          if (map(q) == 0) then
@@ -1601,19 +1344,19 @@ contains
       call msg_fatal
     end subroutine err_pset_n_out
     subroutine err_mismatch
-      call particle_set_write (pset)
+      call pset%write ()
       call state_flv%write ()
       call msg_fatal ("Reading particle set: Flavor combination " &
            // "does not match requested process")
     end subroutine err_mismatch
     subroutine err_map
-      call particle_set_write (pset)
+      call pset%write ()
       call interaction_write (int)
       call msg_fatal ("Reading hard-process particle set: " &
            // "Incomplete mapping from particle set to interaction")
     end subroutine err_map
     subroutine err_beams
-      call particle_set_write (pset)
+      call pset%write ()
       call interaction_write (int)
       call msg_fatal ("Reading particle set: Beam structure " &
            // "does not match requested process")
@@ -1627,7 +1370,7 @@ contains
     
   subroutine particle_set_assign_vertices &
        (particle_set, v_from, v_to, n_vertices)
-    type(particle_set_t), intent(in) :: particle_set
+    class(particle_set_t), intent(in) :: particle_set
     integer, dimension(:), intent(out) :: v_from, v_to
     integer, intent(out) :: n_vertices
     integer, dimension(:), allocatable :: parent, child
@@ -1638,10 +1381,10 @@ contains
     vf = 0
     vt = 0
     do i = 1, particle_set%n_tot
-       n_parents = particle_get_n_parents (particle_set%prt(i))
+       n_parents = particle_set%prt(i)%get_n_parents ()
        if (n_parents /= 0) then
           allocate (parent (n_parents))
-          parent = particle_get_parents (particle_set%prt(i))
+          parent = particle_set%prt(i)%get_parents ()
           SCAN_PARENTS: do j = 1, size (parent)
              v = v_to(parent(j))
              if (v /= 0) then
@@ -1654,10 +1397,10 @@ contains
           end if
           deallocate (parent)
        end if
-       n_children = particle_get_n_children (particle_set%prt(i))
+       n_children = particle_set%prt(i)%get_n_children ()
        if (n_children /= 0) then
           allocate (child (n_children))
-          child = particle_get_children (particle_set%prt(i))
+          child = particle_set%prt(i)%get_children ()
           SCAN_CHILDREN: do j = 1, size (child)
              v = v_from(child(j))
              if (v /= 0) then
@@ -1675,50 +1418,70 @@ contains
   end subroutine particle_set_assign_vertices
 
   subroutine particle_set_to_subevt (particle_set, subevt)
-    type(particle_set_t), intent(in), target :: particle_set
+    class(particle_set_t), intent(in) :: particle_set
     type(subevt_t), intent(out) :: subevt
-    type(particle_t), pointer :: prt
-    integer :: i, k
+    integer :: n_tot, n_beam, n_in, n_out, n_rad
+    integer :: i, k, n_active
     integer, dimension(2) :: hel
-    call subevt_init &
-         (subevt, particle_set%n_beam + particle_set%n_in + particle_set%n_out)
+    logical :: keep
+    n_tot  = particle_set_get_n_tot  (particle_set)
+    n_beam = particle_set_get_n_beam (particle_set)
+    n_in   = particle_set_get_n_in   (particle_set)
+    n_out  = particle_set_get_n_out  (particle_set)
+    n_rad  = particle_set_get_n_rad  (particle_set)
+    call subevt_init (subevt, n_beam + n_rad + n_in + n_out)
     k = 0
-    do i = 1, particle_set%n_tot
-       prt => particle_set%prt(i)
-       select case (particle_get_status (prt))
-       case (PRT_BEAM)
-          k = k + 1
-          call subevt_set_beam (subevt, k, &
-               particle_get_pdg (prt), &
-               particle_get_momentum (prt), &
-               particle_get_p2 (prt))
-       case (PRT_INCOMING)
-          k = k + 1
-          call subevt_set_incoming (subevt, k, &
-               particle_get_pdg (prt), &
-               particle_get_momentum (prt), &
-               particle_get_p2 (prt))
-       case (PRT_OUTGOING)
-          k = k + 1
-          call subevt_set_outgoing (subevt, k, &
-               particle_get_pdg (prt), &
-               particle_get_momentum (prt), &
-               particle_get_p2 (prt))
-       end select
-       select case (particle_get_status (prt))
-       case (PRT_BEAM, PRT_INCOMING, PRT_OUTGOING)
-          if (prt%polarization == PRT_DEFINITE_HELICITY) then
-             if (helicity_is_diagonal (prt%hel)) then
-                hel = helicity_get (prt%hel)
-                call subevt_polarize (subevt, k, hel(1))
-             end if
-          end if
-       end select
+    do i = 1, n_tot
+       associate (prt => particle_set%prt(i))
+         keep = .false.
+         select case (particle_get_status (prt))
+         case (PRT_BEAM)
+            k = k + 1
+            call subevt_set_beam (subevt, k, &
+                 particle_get_pdg (prt), &
+                 particle_get_momentum (prt), &
+                 particle_get_p2 (prt))
+            keep = .true.
+         case (PRT_INCOMING)
+            k = k + 1
+            call subevt_set_incoming (subevt, k, &
+                 particle_get_pdg (prt), &
+                 particle_get_momentum (prt), &
+                 particle_get_p2 (prt))
+            keep = .true.
+         case (PRT_OUTGOING)
+            k = k + 1
+            call subevt_set_outgoing (subevt, k, &
+                 particle_get_pdg (prt), &
+                 particle_get_momentum (prt), &
+                 particle_get_p2 (prt))
+            keep = .true.
+         case (PRT_BEAM_REMNANT)
+            if (particle_get_n_children (prt) == 0) then
+               k = k + 1
+               call subevt_set_outgoing (subevt, k, &
+                    particle_get_pdg (prt), &
+                    particle_get_momentum (prt), &
+                    particle_get_p2 (prt))
+               keep = .true.
+            end if
+         end select
+         if (keep) then
+            if (prt%polarization == PRT_DEFINITE_HELICITY) then
+               if (prt%hel%is_diagonal ()) then
+                  hel = prt%hel%to_pair ()
+                  call subevt_polarize (subevt, k, hel(1))
+               end if
+            end if
+         end if
+       end associate
+       n_active = k
     end do
+    call subevt_reset (subevt, n_active)
   end subroutine particle_set_to_subevt
 
   subroutine particle_set_replace (particle_set, newprt)
-    type(particle_set_t), intent(inout) :: particle_set
+    class(particle_set_t), intent(inout) :: particle_set
     type(particle_t), intent(in), dimension(:), allocatable :: newprt
     if (allocated (particle_set%prt))  deallocate (particle_set%prt)
     allocate (particle_set%prt(size (newprt)))
@@ -1753,27 +1516,22 @@ contains
     call test (particles_1, "particles_1", &
          "check particle_set routines", &
          u, results)
-    if (hepmc_is_available ()) then
-       call test (particles_2, "particles_2", &
-            "check particle_set routines via HepMC", &
-            u, results)
-    end if
-    call test (particles_3, "particles_3", &
+    call test (particles_2, "particles_2", &
          "reconstruct hard interaction", &
          u, results)
-    call test (particles_4, "particles_4", &
+    call test (particles_3, "particles_3", &
          "reconstruct interaction with beam structure", &
          u, results)
-    call test (particles_5, "particles_5", &
+    call test (particles_4, "particles_4", &
          "reconstruct interaction with missing beams", &
          u, results)
-    call test (particles_6, "particles_6", &
+    call test (particles_5, "particles_5", &
          "reconstruct interaction with beams and duplicate entries", &
          u, results)
-    call test (particles_7, "particles_7", &
+    call test (particles_6, "particles_6", &
          "reconstruct interaction with pair spectrum", &
          u, results)
-    call test (particles_8, "particles_8", &
+    call test (particles_7, "particles_7", &
          "reconstruct decay interaction with reordering", &
          u, results)  
   end subroutine particles_test
@@ -1795,15 +1553,13 @@ contains
     type(particle_set_t) :: particle_set1, particle_set2
     type(particle_set_t) :: particle_set3, particle_set4
     type(subevt_t) :: subevt
-    type(hepmc_event_t) :: hepmc_event
-    type(hepmc_iostream_t) :: iostream    
     logical :: ok
-    integer :: unit, iostat  
+    integer :: unit, iostat      
 
     write (u, "(A)")  "* Test output: Particles"
     write (u, "(A)")  "*   Purpose: test particle_set routines"
     write (u, "(A)")      
-    
+
     write (u, "(A)")  "* Reading model file"
 
     call model%init_sm_test ()
@@ -1812,21 +1568,22 @@ contains
     write (u, "(A)")  "* Initializing production process"
 
     call interaction_init (int1, 2, 0, 1, set_relations=.true.)
-    call flavor_init (flv, [1, -1, 23], model)
-    call helicity_init (hel(3), 1, 1)
-    call quantum_numbers_init (qn, flv, hel)
+    call flv%init ([1, -1, 23], model)
+    call col%init_col_acl ([0, 0, 0], [0, 0, 0])
+    call hel(3)%init (1, 1)
+    call qn%init (flv, col, hel)
     call interaction_add_state (int1, qn, value=(0.25_default, 0._default))
-    call helicity_init (hel(3), 1,-1)
-    call quantum_numbers_init (qn, flv, hel)
+    call hel(3)%init (1,-1)
+    call qn%init (flv, col, hel)
     call interaction_add_state (int1, qn, value=(0._default, 0.25_default))
-    call helicity_init (hel(3),-1, 1)
-    call quantum_numbers_init (qn, flv, hel)
+    call hel(3)%init (-1, 1)
+    call qn%init (flv, col, hel)
     call interaction_add_state (int1, qn, value=(0._default,-0.25_default))
-    call helicity_init (hel(3),-1,-1)
-    call quantum_numbers_init (qn, flv, hel)
+    call hel(3)%init (-1,-1)
+    call qn%init (flv, col, hel)
     call interaction_add_state (int1, qn, value=(0.25_default, 0._default))
-    call helicity_init (hel(3), 0, 0)
-    call quantum_numbers_init (qn, flv, hel)
+    call hel(3)%init (0, 0)
+    call qn%init (flv, col, hel)
     call interaction_add_state (int1, qn, value=(0.5_default, 0._default))
     call interaction_freeze (int1)
     p(1) = vector4_moving (45._default, 45._default, 3)
@@ -1838,38 +1595,38 @@ contains
     write (u, "(A)")  "* Setup decay process"
 
     call interaction_init (int2, 1, 0, 2, set_relations=.true.)
-    call flavor_init (flv, [23, 1, -1], model)
-    call color_init_col_acl (col, [0, 501, 0], [0, 0, 501])
-    call helicity_init (hel, [1, 1, 1], [1, 1, 1])
-    call quantum_numbers_init (qn, flv, col, hel)
+    call flv%init ([23, 1, -1], model)
+    call col%init_col_acl ([0, 501, 0], [0, 0, 501])
+    call hel%init ([1, 1, 1], [1, 1, 1])
+    call qn%init (flv, col, hel)
     call interaction_add_state (int2, qn, value=(1._default, 0._default))
-    call helicity_init (hel, [1, 1, 1], [-1,-1,-1])
-    call quantum_numbers_init (qn, flv, col, hel)
+    call hel%init ([1, 1, 1], [-1,-1,-1])
+    call qn%init (flv, col, hel)
     call interaction_add_state (int2, qn, value=(0._default, 0.1_default))
-    call helicity_init (hel, [-1,-1,-1], [1, 1, 1])
-    call quantum_numbers_init (qn, flv, col, hel)
+    call hel%init ([-1,-1,-1], [1, 1, 1])
+    call qn%init (flv, col, hel)
     call interaction_add_state (int2, qn, value=(0._default,-0.1_default))
-    call helicity_init (hel, [-1,-1,-1], [-1,-1,-1])
-    call quantum_numbers_init (qn, flv, col, hel)
+    call hel%init ([-1,-1,-1], [-1,-1,-1])
+    call qn%init (flv, col, hel)
     call interaction_add_state (int2, qn, value=(1._default, 0._default))
-    call helicity_init (hel, [0, 1,-1], [0, 1,-1])
-    call quantum_numbers_init (qn, flv, col, hel)
+    call hel%init ([0, 1,-1], [0, 1,-1])
+    call qn%init (flv, col, hel)
     call interaction_add_state (int2, qn, value=(4._default, 0._default))
-    call helicity_init (hel, [0,-1, 1], [0, 1,-1])
-    call quantum_numbers_init (qn, flv, col, hel)
+    call hel%init ([0,-1, 1], [0, 1,-1])
+    call qn%init (flv, col, hel)
     call interaction_add_state (int2, qn, value=(2._default, 0._default))
-    call helicity_init (hel, [0, 1,-1], [0,-1, 1])
-    call quantum_numbers_init (qn, flv, col, hel)
+    call hel%init ([0, 1,-1], [0,-1, 1])
+    call qn%init (flv, col, hel)
     call interaction_add_state (int2, qn, value=(2._default, 0._default))
-    call helicity_init (hel, [0,-1, 1], [0,-1, 1])
-    call quantum_numbers_init (qn, flv, col, hel)
+    call hel%init ([0,-1, 1], [0,-1, 1])
+    call qn%init (flv, col, hel)
     call interaction_add_state (int2, qn, value=(4._default, 0._default))
-    call flavor_init (flv, [23, 2, -2], model)
-    call helicity_init (hel, [0, 1,-1], [0, 1,-1])
-    call quantum_numbers_init (qn, flv, col, hel)
+    call flv%init ([23, 2, -2], model)
+    call hel%init ([0, 1,-1], [0, 1,-1])
+    call qn%init (flv, col, hel)
     call interaction_add_state (int2, qn, value=(0.5_default, 0._default))
-    call helicity_init (hel, [0,-1, 1], [0,-1, 1])
-    call quantum_numbers_init (qn, flv, col, hel)
+    call hel%init ([0,-1, 1], [0,-1, 1])
+    call qn%init (flv, col, hel)
     call interaction_add_state (int2, qn, value=(0.5_default, 0._default))
     call interaction_freeze (int2)
     p(2) = vector4_moving (45._default, 45._default, 2)
@@ -1893,8 +1650,8 @@ contains
     write (u, "(A)")
     
     int => evaluator_get_int_ptr (eval)
-    call particle_set_init &
-         (particle_set1, ok, int, int, FM_FACTOR_HELICITY, &
+    call particle_set1%init &
+         (ok, int, int, FM_FACTOR_HELICITY, &
           [0.2_default, 0.2_default], .false., .true.)
     call particle_set_write (particle_set1, u)
 
@@ -1903,21 +1660,21 @@ contains
     write (u, "(A)")
     
     int => evaluator_get_int_ptr (eval)
-    call particle_set_init &
-         (particle_set2, ok, int, int, FM_SELECT_HELICITY, &
+    call particle_set2%init &
+         (ok, int, int, FM_SELECT_HELICITY, &
           [0.9_default, 0.9_default], .false., .false.)
-    call particle_set_write (particle_set2, u)
-    call particle_set_final (particle_set2)
+    call particle_set2%write (u)
+    call particle_set2%final ()
 
     write (u, "(A)")
     write (u, "(A)")  "* Factorize as subevent (complete, selected helicity)"
     write (u, "(A)") 
     
     int => evaluator_get_int_ptr (eval)
-    call particle_set_init &
-         (particle_set2, ok, int, int, FM_SELECT_HELICITY, &
+    call particle_set2%init &
+         (ok, int, int, FM_SELECT_HELICITY, &
           [0.7_default, 0.7_default], .false., .true.)
-    call particle_set_write (particle_set2, u)  
+    call particle_set2%write (u)      
         
     write (u, "(A)")
     write (u, "(A)")  &
@@ -1925,39 +1682,39 @@ contains
     write (u, "(A)")
     
     int => evaluator_get_int_ptr (eval)
-    call particle_set_init &
-         (particle_set3, ok, int, int, FM_FACTOR_HELICITY, &
+    call particle_set3%init &
+         (ok, int, int, FM_FACTOR_HELICITY, &
           [0.7_default, 0.7_default], .true., .true.)
-    call particle_set_write (particle_set3, u)
+    call particle_set3%write (u)
 
     unit = free_unit ()
     open (unit, action="readwrite", form="unformatted", status="scratch")
-    call particle_set_write_raw (particle_set3, unit)
+    call particle_set3%write_raw (unit)
     rewind (unit)
-    call particle_set_read_raw (particle_set4, unit, iostat=iostat)
-    call particle_set_set_model (particle_set4, model)
+    call particle_set4%read_raw (unit, iostat=iostat)
+    call particle_set4%set_model (model)
     close (unit)
     
     write (u, "(A)")
     write (u, "(A)")  "* Result from reading"
     write (u, "(A)")
 
-    call particle_set_write (particle_set4, u)
+    call particle_set4%write (u)
 
     !!! write (u, "(A)")
     !!! write (u, "(A)")  "* Transform to a subevt object"
     !!! write (u, "(A)")
     !!! 
-    !!! call particle_set_to_subevt (particle_set4, subevt)
+    !!! call particle_set4%to_subevt (subevt)
     !!! call subevt_write (subevt, u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
     
-    call particle_set_final (particle_set1)
-    call particle_set_final (particle_set2)
-    call particle_set_final (particle_set3)
-    call particle_set_final (particle_set4)
+    call particle_set1%final ()
+    call particle_set2%final ()
+    call particle_set3%final ()
+    call particle_set4%final ()
     call evaluator_final (eval)
     call interaction_final (int1)
     call interaction_final (int2)
@@ -1970,190 +1727,6 @@ contains
   end subroutine particles_1
 
   subroutine particles_2 (u)
-    use os_interface
-    integer, intent(in) :: u
-    type(model_data_t), target :: model
-    type(flavor_t), dimension(3) :: flv
-    type(color_t), dimension(3) :: col
-    type(helicity_t), dimension(3) :: hel
-    type(quantum_numbers_t), dimension(3) :: qn
-    type(vector4_t), dimension(3) :: p
-    type(interaction_t), target :: int1, int2
-    type(quantum_numbers_mask_t) :: qn_mask_conn, qn_rest
-    type(evaluator_t), target :: eval
-    type(interaction_t), pointer :: int
-    type(particle_set_t) :: particle_set1, particle_set2
-    type(particle_set_t) :: particle_set3, particle_set4
-    type(subevt_t) :: subevt
-    type(hepmc_event_t) :: hepmc_event
-    type(hepmc_iostream_t) :: iostream    
-    logical :: ok
-    integer :: unit, iostat  
-
-    write (u, "(A)")  "* Test output: Particles"
-    write (u, "(A)")  "*   Purpose: test particle_set routines via HepMC"
-    write (u, "(A)")      
-       
-    write (u, "(A)")  "* Reading model file"
-
-    call model%init_sm_test ()
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Initializing production process"
-
-    call interaction_init (int1, 2, 0, 1, set_relations=.true.)
-    call flavor_init (flv, [1, -1, 23], model)
-    call helicity_init (hel(3), 1, 1)
-    call quantum_numbers_init (qn, flv, hel)
-    call interaction_add_state (int1, qn, value=(0.25_default, 0._default))
-    call helicity_init (hel(3), 1,-1)
-    call quantum_numbers_init (qn, flv, hel)
-    call interaction_add_state (int1, qn, value=(0._default, 0.25_default))
-    call helicity_init (hel(3),-1, 1)
-    call quantum_numbers_init (qn, flv, hel)
-    call interaction_add_state (int1, qn, value=(0._default,-0.25_default))
-    call helicity_init (hel(3),-1,-1)
-    call quantum_numbers_init (qn, flv, hel)
-    call interaction_add_state (int1, qn, value=(0.25_default, 0._default))
-    call helicity_init (hel(3), 0, 0)
-    call quantum_numbers_init (qn, flv, hel)
-    call interaction_add_state (int1, qn, value=(0.5_default, 0._default))
-    call interaction_freeze (int1)
-    p(1) = vector4_moving (45._default, 45._default, 3)
-    p(2) = vector4_moving (45._default,-45._default, 3)
-    p(3) = p(1) + p(2)
-    call interaction_set_momenta (int1, p)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Setup decay process"
-
-    call interaction_init (int2, 1, 0, 2, set_relations=.true.)
-    call flavor_init (flv, [23, 1, -1], model)
-    call color_init_col_acl (col, [0, 501, 0], [0, 0, 501])
-    call helicity_init (hel, [1, 1, 1], [1, 1, 1])
-    call quantum_numbers_init (qn, flv, col, hel)
-    call interaction_add_state (int2, qn, value=(1._default, 0._default))
-    call helicity_init (hel, [1, 1, 1], [-1,-1,-1])
-    call quantum_numbers_init (qn, flv, col, hel)
-    call interaction_add_state (int2, qn, value=(0._default, 0.1_default))
-    call helicity_init (hel, [-1,-1,-1], [1, 1, 1])
-    call quantum_numbers_init (qn, flv, col, hel)
-    call interaction_add_state (int2, qn, value=(0._default,-0.1_default))
-    call helicity_init (hel, [-1,-1,-1], [-1,-1,-1])
-    call quantum_numbers_init (qn, flv, col, hel)
-    call interaction_add_state (int2, qn, value=(1._default, 0._default))
-    call helicity_init (hel, [0, 1,-1], [0, 1,-1])
-    call quantum_numbers_init (qn, flv, col, hel)
-    call interaction_add_state (int2, qn, value=(4._default, 0._default))
-    call helicity_init (hel, [0,-1, 1], [0, 1,-1])
-    call quantum_numbers_init (qn, flv, col, hel)
-    call interaction_add_state (int2, qn, value=(2._default, 0._default))
-    call helicity_init (hel, [0, 1,-1], [0,-1, 1])
-    call quantum_numbers_init (qn, flv, col, hel)
-    call interaction_add_state (int2, qn, value=(2._default, 0._default))
-    call helicity_init (hel, [0,-1, 1], [0,-1, 1])
-    call quantum_numbers_init (qn, flv, col, hel)
-    call interaction_add_state (int2, qn, value=(4._default, 0._default))
-    call flavor_init (flv, [23, 2, -2], model)
-    call helicity_init (hel, [0, 1,-1], [0, 1,-1])
-    call quantum_numbers_init (qn, flv, col, hel)
-    call interaction_add_state (int2, qn, value=(0.5_default, 0._default))
-    call helicity_init (hel, [0,-1, 1], [0,-1, 1])
-    call quantum_numbers_init (qn, flv, col, hel)
-    call interaction_add_state (int2, qn, value=(0.5_default, 0._default))
-    call interaction_freeze (int2)
-    p(2) = vector4_moving (45._default, 45._default, 2)
-    p(3) = vector4_moving (45._default,-45._default, 2)
-    call interaction_set_momenta (int2, p)
-    call interaction_set_source_link (int2, 1, int1, 3)
-    call interaction_write (int1, u)
-    call interaction_write (int2, u)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Concatenate production and decay"
-
-    call evaluator_init_product (eval, int1, int2, qn_mask_conn, &
-         connections_are_resonant=.true.)
-    call evaluator_receive_momenta (eval)
-    call eval%evaluate ()
-    call eval%write (u)
-    
-    write (u, "(A)")
-    write (u, "(A)")  "* Factorize as subevent (complete, polarized)"
-    write (u, "(A)")
-    
-    int => evaluator_get_int_ptr (eval)
-    call particle_set_init &
-         (particle_set1, ok, int, int, FM_FACTOR_HELICITY, &
-          [0.2_default, 0.2_default], .false., .true.)
-    call particle_set_write (particle_set1, u)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Factorize as subevent (in/out only, selected helicity)"
-    write (u, "(A)")
-    
-    int => evaluator_get_int_ptr (eval)
-    call particle_set_init &
-         (particle_set2, ok, int, int, FM_SELECT_HELICITY, &
-          [0.9_default, 0.9_default], .false., .false.)
-    call particle_set_write (particle_set2, u)
-    call particle_set_final (particle_set2)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Factorize as subevent (complete, selected helicity)"
-    write (u, "(A)") 
-    
-    int => evaluator_get_int_ptr (eval)
-    call particle_set_init &
-         (particle_set2, ok, int, int, FM_SELECT_HELICITY, &
-          [0.7_default, 0.7_default], .false., .true.)
-    call particle_set_write (particle_set2, u)  
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Transfer particle_set to HepMC, print, and output to"
-    write (u, "(A)")  "        particles_test.hepmc.dat"
-    write (u, "(A)")
-    
-    call hepmc_event_init (hepmc_event, 11, 127)
-    call hepmc_event_from_particle_set (hepmc_event, particle_set2)
-    call hepmc_event_print (hepmc_event)
-    call hepmc_iostream_open_out &
-         (iostream , var_str ("particles_test.hepmc.dat"))
-    call hepmc_iostream_write_event (iostream, hepmc_event)
-    call hepmc_iostream_close (iostream)
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Recover from HepMC file"
-    write (u, "(A)")
-    
-    call particle_set_final (particle_set2)
-    call hepmc_event_final (hepmc_event)
-    call hepmc_event_init (hepmc_event)
-    call hepmc_iostream_open_in &
-         (iostream , var_str ("particles_test.hepmc.dat"))
-    call hepmc_iostream_read_event (iostream, hepmc_event, ok)
-    call hepmc_iostream_close (iostream)
-    call particle_set_init (particle_set2, &
-         hepmc_event, model, model, PRT_DEFINITE_HELICITY)
-    call particle_set_write (particle_set2, u)   
-
-    write (u, "(A)")
-    write (u, "(A)")  "* Cleanup"
-    
-    call particle_set_final (particle_set1)
-    call particle_set_final (particle_set2)
-    call evaluator_final (eval)
-    call interaction_final (int1)
-    call interaction_final (int2)
-    call hepmc_event_final (hepmc_event)            
-    call model%final ()
-       
-    write (u, "(A)")
-    write (u, "(A)")  "* Test output end: particles_2"
-
-  end subroutine particles_2
-  
-  subroutine particles_3 (u)
 
     integer, intent(in) :: u
     type(interaction_t) :: int
@@ -2209,46 +1782,46 @@ contains
     pset%n_tot  = 5
     allocate (pset%prt (pset%n_tot))
     do i = 1, 2
-       call particle_reset_status (pset%prt(i), PRT_INCOMING)
-       call particle_set_children (pset%prt(i), [3,4,5])
+       call pset%prt(i)%reset_status (PRT_INCOMING)
+       call pset%prt(i)%set_children ([3,4,5])
     end do
     do i = 3, 5
        call particle_reset_status (pset%prt(i), PRT_OUTGOING)
        call particle_set_parents (pset%prt(i), [1,2])
     end do
-    call particle_set_momentum (pset%prt(1), vector4_at_rest (1._default))
-    call particle_set_momentum (pset%prt(2), vector4_at_rest (2._default))
-    call particle_set_momentum (pset%prt(3), vector4_at_rest (5._default))
-    call particle_set_momentum (pset%prt(4), vector4_at_rest (4._default))
-    call particle_set_momentum (pset%prt(5), vector4_at_rest (3._default))
+    call pset%prt(1)%set_momentum (vector4_at_rest (1._default))
+    call pset%prt(2)%set_momentum (vector4_at_rest (2._default))
+    call pset%prt(3)%set_momentum (vector4_at_rest (5._default))
+    call pset%prt(4)%set_momentum (vector4_at_rest (4._default))
+    call pset%prt(5)%set_momentum (vector4_at_rest (3._default))
 
     allocate (flv (5))
-    call flavor_init (flv, [11,12,5,4,3])
+    call flv%init ([11,12,5,4,3])
     do i = 1, 5
-       call particle_set_flavor (pset%prt(i), flv(i))
+       call pset%prt(i)%set_flavor (flv(i))
     end do
 
-    call particle_set_write (pset, u)
+    call pset%write (u)
 
     write (u, "(A)")      
     write (u, "(A)")  "*   Fill interaction from particle set"
     write (u, "(A)")
 
-    call particle_set_fill_interaction (pset, int, 2, state_flv=state_flv)
+    call pset%fill_interaction (int, 2, state_flv=state_flv)
     call interaction_write (int, u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
 
     call interaction_final (int)
-    call particle_set_final (pset)
+    call pset%final ()
     
     write (u, "(A)")
-    write (u, "(A)")  "* Test output end: particles_3"
+    write (u, "(A)")  "* Test output end: particles_2"
 
-  end subroutine particles_3
+  end subroutine particles_2
   
-  subroutine particles_4 (u)
+  subroutine particles_3 (u)
 
     integer, intent(in) :: u
     type(interaction_t) :: int
@@ -2308,46 +1881,46 @@ contains
     pset%n_tot  = 9
 
     allocate (pset%prt (pset%n_tot))
-    call particle_reset_status (pset%prt(1), PRT_BEAM)
-    call particle_reset_status (pset%prt(2), PRT_BEAM)
-    call particle_reset_status (pset%prt(3), PRT_INCOMING)
-    call particle_reset_status (pset%prt(4), PRT_INCOMING)
-    call particle_reset_status (pset%prt(5), PRT_OUTGOING)
-    call particle_reset_status (pset%prt(6), PRT_OUTGOING)
-    call particle_reset_status (pset%prt(7), PRT_OUTGOING)
-    call particle_reset_status (pset%prt(8), PRT_OUTGOING)
-    call particle_reset_status (pset%prt(9), PRT_OUTGOING)
+    call pset%prt(1)%reset_status (PRT_BEAM)
+    call pset%prt(2)%reset_status (PRT_BEAM)
+    call pset%prt(3)%reset_status (PRT_INCOMING)
+    call pset%prt(4)%reset_status (PRT_INCOMING)
+    call pset%prt(5)%reset_status (PRT_OUTGOING)
+    call pset%prt(6)%reset_status (PRT_OUTGOING)
+    call pset%prt(7)%reset_status (PRT_OUTGOING)
+    call pset%prt(8)%reset_status (PRT_OUTGOING)
+    call pset%prt(9)%reset_status (PRT_OUTGOING)
 
-    call particle_set_children (pset%prt(1), [3,5])
-    call particle_set_children (pset%prt(2), [4,6])
-    call particle_set_children (pset%prt(3), [7,8,9])
-    call particle_set_children (pset%prt(4), [7,8,9])
+    call pset%prt(1)%set_children ([3,5])
+    call pset%prt(2)%set_children ([4,6])
+    call pset%prt(3)%set_children ([7,8,9])
+    call pset%prt(4)%set_children ([7,8,9])
 
-    call particle_set_parents (pset%prt(3), [1])
-    call particle_set_parents (pset%prt(4), [2])
-    call particle_set_parents (pset%prt(5), [1])
-    call particle_set_parents (pset%prt(6), [2])
-    call particle_set_parents (pset%prt(7), [5,6])
-    call particle_set_parents (pset%prt(8), [5,6])
-    call particle_set_parents (pset%prt(9), [5,6])
+    call pset%prt(3)%set_parents ([1])
+    call pset%prt(4)%set_parents ([2])
+    call pset%prt(5)%set_parents ([1])
+    call pset%prt(6)%set_parents ([2])
+    call pset%prt(7)%set_parents ([5,6])
+    call pset%prt(8)%set_parents ([5,6])
+    call pset%prt(9)%set_parents ([5,6])
 
-    call particle_set_momentum (pset%prt(1), vector4_at_rest (1._default))
-    call particle_set_momentum (pset%prt(2), vector4_at_rest (2._default))
-    call particle_set_momentum (pset%prt(3), vector4_at_rest (4._default))
-    call particle_set_momentum (pset%prt(4), vector4_at_rest (6._default))
-    call particle_set_momentum (pset%prt(5), vector4_at_rest (3._default))
-    call particle_set_momentum (pset%prt(6), vector4_at_rest (5._default))
-    call particle_set_momentum (pset%prt(7), vector4_at_rest (7._default))
-    call particle_set_momentum (pset%prt(8), vector4_at_rest (8._default))
-    call particle_set_momentum (pset%prt(9), vector4_at_rest (9._default))
+    call pset%prt(1)%set_momentum (vector4_at_rest (1._default))
+    call pset%prt(2)%set_momentum (vector4_at_rest (2._default))
+    call pset%prt(3)%set_momentum (vector4_at_rest (4._default))
+    call pset%prt(4)%set_momentum (vector4_at_rest (6._default))
+    call pset%prt(5)%set_momentum (vector4_at_rest (3._default))
+    call pset%prt(6)%set_momentum (vector4_at_rest (5._default))
+    call pset%prt(7)%set_momentum (vector4_at_rest (7._default))
+    call pset%prt(8)%set_momentum (vector4_at_rest (8._default))
+    call pset%prt(9)%set_momentum (vector4_at_rest (9._default))
 
     allocate (flv (9))
-    call flavor_init (flv, [2011, 2012, 11, 12, 91, 92, 3, 4, 5])
+    call flv%init ([2011, 2012, 11, 12, 91, 92, 3, 4, 5])
     do i = 1, 9
-       call particle_set_flavor (pset%prt(i), flv(i))
+       call pset%prt(i)%set_flavor (flv(i))
     end do
 
-    call particle_set_write (pset, u)
+    call pset%write (u)
  
     write (u, "(A)")      
     write (u, "(A)")  "*   Fill interaction from particle set"
@@ -2360,14 +1933,14 @@ contains
     write (u, "(A)")  "* Cleanup"
 
     call interaction_final (int)
-    call particle_set_final (pset)
+    call pset%final ()
     
     write (u, "(A)")
-    write (u, "(A)")  "* Test output end: particles_4"
+    write (u, "(A)")  "* Test output end: particles_3"
 
-  end subroutine particles_4
+  end subroutine particles_3
   
-  subroutine particles_5 (u)
+  subroutine particles_4 (u)
 
     integer, intent(in) :: u
     type(interaction_t) :: int
@@ -2448,38 +2021,38 @@ contains
     pset%n_tot  = 5
 
     allocate (pset%prt (pset%n_tot))
-    call particle_reset_status (pset%prt(1), PRT_INCOMING)
-    call particle_reset_status (pset%prt(2), PRT_INCOMING)
-    call particle_reset_status (pset%prt(3), PRT_OUTGOING)
-    call particle_reset_status (pset%prt(4), PRT_OUTGOING)
-    call particle_reset_status (pset%prt(5), PRT_OUTGOING)
+    call pset%prt(1)%reset_status (PRT_INCOMING)
+    call pset%prt(2)%reset_status (PRT_INCOMING)
+    call pset%prt(3)%reset_status (PRT_OUTGOING)
+    call pset%prt(4)%reset_status (PRT_OUTGOING)
+    call pset%prt(5)%reset_status (PRT_OUTGOING)
 
-    call particle_set_children (pset%prt(1), [3,4,5])
-    call particle_set_children (pset%prt(2), [3,4,5])
+    call pset%prt(1)%set_children ([3,4,5])
+    call pset%prt(2)%set_children ([3,4,5])
 
-    call particle_set_parents (pset%prt(3), [1,2])
-    call particle_set_parents (pset%prt(4), [1,2])
-    call particle_set_parents (pset%prt(5), [1,2])
+    call pset%prt(3)%set_parents ([1,2])
+    call pset%prt(4)%set_parents ([1,2])
+    call pset%prt(5)%set_parents ([1,2])
 
-    call particle_set_momentum (pset%prt(1), vector4_at_rest (6._default))
-    call particle_set_momentum (pset%prt(2), vector4_at_rest (6._default))
-    call particle_set_momentum (pset%prt(3), vector4_at_rest (3._default))
-    call particle_set_momentum (pset%prt(4), vector4_at_rest (4._default))
-    call particle_set_momentum (pset%prt(5), vector4_at_rest (5._default))
+    call pset%prt(1)%set_momentum (vector4_at_rest (6._default))
+    call pset%prt(2)%set_momentum (vector4_at_rest (6._default))
+    call pset%prt(3)%set_momentum (vector4_at_rest (3._default))
+    call pset%prt(4)%set_momentum (vector4_at_rest (4._default))
+    call pset%prt(5)%set_momentum (vector4_at_rest (5._default))
 
     allocate (flv (5))
-    call flavor_init (flv, [11, 12, 3, 4, 5])
+    call flv%init ([11, 12, 3, 4, 5])
     do i = 1, 5
-       call particle_set_flavor (pset%prt(i), flv(i))
+       call pset%prt(i)%set_flavor (flv(i))
     end do
 
-    call particle_set_write (pset, u)
+    call pset%write (u)
  
     write (u, "(A)")      
     write (u, "(A)")  "*   Fill interaction from particle set"
     write (u, "(A)")
 
-    call particle_set_fill_interaction (pset, int, 2, state_flv=state_flv, &
+    call pset%fill_interaction (int, 2, state_flv=state_flv, &
          recover_beams = .true.)
     call interaction_write (int, u)
 
@@ -2487,14 +2060,14 @@ contains
     write (u, "(A)")  "* Cleanup"
 
     call interaction_final (int)
-    call particle_set_final (pset)
+    call pset%final ()
     
     write (u, "(A)")
-    write (u, "(A)")  "* Test output end: particles_5"
+    write (u, "(A)")  "* Test output end: particles_4"
 
-  end subroutine particles_5
+  end subroutine particles_4
   
-  subroutine particles_6 (u)
+  subroutine particles_5 (u)
 
     integer, intent(in) :: u
     type(interaction_t) :: int
@@ -2554,83 +2127,82 @@ contains
     pset%n_tot  = 13
 
     allocate (pset%prt (pset%n_tot))
-    call particle_reset_status (pset%prt(1), PRT_BEAM)
-    call particle_reset_status (pset%prt(2), PRT_BEAM)
-    call particle_reset_status (pset%prt(3), PRT_VIRTUAL)
-    call particle_reset_status (pset%prt(4), PRT_VIRTUAL)
-    call particle_reset_status (pset%prt(5), PRT_VIRTUAL)
-    call particle_reset_status (pset%prt(6), PRT_VIRTUAL)
-    call particle_reset_status (pset%prt(7), PRT_INCOMING)
-    call particle_reset_status (pset%prt(8), PRT_INCOMING)
-    call particle_reset_status (pset%prt( 9), PRT_OUTGOING)
-    call particle_reset_status (pset%prt(10), PRT_OUTGOING)
-    call particle_reset_status (pset%prt(11), PRT_OUTGOING)
-    call particle_reset_status (pset%prt(12), PRT_OUTGOING)
-    call particle_reset_status (pset%prt(13), PRT_OUTGOING)
+    call pset%prt(1)%reset_status (PRT_BEAM)
+    call pset%prt(2)%reset_status (PRT_BEAM)
+    call pset%prt(3)%reset_status (PRT_VIRTUAL)
+    call pset%prt(4)%reset_status (PRT_VIRTUAL)
+    call pset%prt(5)%reset_status (PRT_VIRTUAL)
+    call pset%prt(6)%reset_status (PRT_VIRTUAL)
+    call pset%prt(7)%reset_status (PRT_INCOMING)
+    call pset%prt(8)%reset_status (PRT_INCOMING)
+    call pset%prt( 9)%reset_status (PRT_OUTGOING)
+    call pset%prt(10)%reset_status (PRT_OUTGOING)
+    call pset%prt(11)%reset_status (PRT_OUTGOING)
+    call pset%prt(12)%reset_status (PRT_OUTGOING)
+    call pset%prt(13)%reset_status (PRT_OUTGOING)
 
-    call particle_set_children (pset%prt(1), [3,4])
-    call particle_set_children (pset%prt(2), [5,6])
-    call particle_set_children (pset%prt(3), [ 7])
-    call particle_set_children (pset%prt(4), [ 9])
-    call particle_set_children (pset%prt(5), [ 8])
-    call particle_set_children (pset%prt(6), [10])
-    call particle_set_children (pset%prt(7), [11,12,13])
-    call particle_set_children (pset%prt(8), [11,12,13])
+    call pset%prt(1)%set_children ([3,4])
+    call pset%prt(2)%set_children ([5,6])
+    call pset%prt(3)%set_children ([ 7])
+    call pset%prt(4)%set_children ([ 9])
+    call pset%prt(5)%set_children ([ 8])
+    call pset%prt(6)%set_children ([10])
+    call pset%prt(7)%set_children ([11,12,13])
+    call pset%prt(8)%set_children ([11,12,13])
 
-    call particle_set_parents (pset%prt(3), [1])
-    call particle_set_parents (pset%prt(4), [1])
-    call particle_set_parents (pset%prt(5), [2])
-    call particle_set_parents (pset%prt(6), [2])
-    call particle_set_parents (pset%prt( 7), [3])
-    call particle_set_parents (pset%prt( 8), [5])
-    call particle_set_parents (pset%prt( 9), [4])
-    call particle_set_parents (pset%prt(10), [6])
-    call particle_set_parents (pset%prt(11), [7,8])
-    call particle_set_parents (pset%prt(12), [7,8])
-    call particle_set_parents (pset%prt(13), [7,8])
+    call pset%prt(3)%set_parents ([1])
+    call pset%prt(4)%set_parents ([1])
+    call pset%prt(5)%set_parents ([2])
+    call pset%prt(6)%set_parents ([2])
+    call pset%prt( 7)%set_parents ([3])
+    call pset%prt( 8)%set_parents ([5])
+    call pset%prt( 9)%set_parents ([4])
+    call pset%prt(10)%set_parents ([6])
+    call pset%prt(11)%set_parents ([7,8])
+    call pset%prt(12)%set_parents ([7,8])
+    call pset%prt(13)%set_parents ([7,8])
 
-    call particle_set_momentum (pset%prt(1), vector4_at_rest (1._default))
-    call particle_set_momentum (pset%prt(2), vector4_at_rest (2._default))
-    call particle_set_momentum (pset%prt(3), vector4_at_rest (4._default))
-    call particle_set_momentum (pset%prt(4), vector4_at_rest (3._default))
-    call particle_set_momentum (pset%prt(5), vector4_at_rest (6._default))
-    call particle_set_momentum (pset%prt(6), vector4_at_rest (5._default))
-    call particle_set_momentum (pset%prt(7), vector4_at_rest (4._default))
-    call particle_set_momentum (pset%prt(8), vector4_at_rest (6._default))
-    call particle_set_momentum (pset%prt( 9), vector4_at_rest (3._default))
-    call particle_set_momentum (pset%prt(10), vector4_at_rest (5._default))
-    call particle_set_momentum (pset%prt(11), vector4_at_rest (7._default))
-    call particle_set_momentum (pset%prt(12), vector4_at_rest (8._default))
-    call particle_set_momentum (pset%prt(13), vector4_at_rest (9._default))
+    call pset%prt(1)%set_momentum (vector4_at_rest (1._default))
+    call pset%prt(2)%set_momentum (vector4_at_rest (2._default))
+    call pset%prt(3)%set_momentum (vector4_at_rest (4._default))
+    call pset%prt(4)%set_momentum (vector4_at_rest (3._default))
+    call pset%prt(5)%set_momentum (vector4_at_rest (6._default))
+    call pset%prt(6)%set_momentum (vector4_at_rest (5._default))
+    call pset%prt(7)%set_momentum (vector4_at_rest (4._default))
+    call pset%prt(8)%set_momentum (vector4_at_rest (6._default))
+    call pset%prt( 9)%set_momentum (vector4_at_rest (3._default))
+    call pset%prt(10)%set_momentum (vector4_at_rest (5._default))
+    call pset%prt(11)%set_momentum (vector4_at_rest (7._default))
+    call pset%prt(12)%set_momentum (vector4_at_rest (8._default))
+    call pset%prt(13)%set_momentum (vector4_at_rest (9._default))
 
     allocate (flv (13))
-    call flavor_init (flv, &
-         [2011, 2012, 11, 91, 12, 92, 11, 12, 91, 92, 3, 4, 5])
+    call flv%init ([2011, 2012, 11, 91, 12, 92, 11, 12, 91, 92, 3, 4, 5])
     do i = 1, 13
-       call particle_set_flavor (pset%prt(i), flv(i))
+       call pset%prt(i)%set_flavor (flv(i))
     end do
 
-    call particle_set_write (pset, u)
+    call pset%write (u)
  
     write (u, "(A)")      
     write (u, "(A)")  "*   Fill interaction from particle set"
     write (u, "(A)")
 
-    call particle_set_fill_interaction (pset, int, 2, state_flv=state_flv)
+    call pset%fill_interaction (int, 2, state_flv=state_flv)
     call interaction_write (int, u)
 
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
 
     call interaction_final (int)
-    call particle_set_final (pset)
+    call pset%final ()
     
     write (u, "(A)")
-    write (u, "(A)")  "* Test output end: particles_6"
+    write (u, "(A)")  "* Test output end: particles_5"
 
-  end subroutine particles_6
+  end subroutine particles_5
   
-  subroutine particles_7 (u)
+  subroutine particles_6 (u)
 
     integer, intent(in) :: u
     type(interaction_t) :: int
@@ -2691,46 +2263,46 @@ contains
     pset%n_tot  = 9
 
     allocate (pset%prt (pset%n_tot))
-    call particle_reset_status (pset%prt(1), PRT_BEAM)
-    call particle_reset_status (pset%prt(2), PRT_BEAM)
-    call particle_reset_status (pset%prt(3), PRT_INCOMING)
-    call particle_reset_status (pset%prt(4), PRT_INCOMING)
-    call particle_reset_status (pset%prt(5), PRT_OUTGOING)
-    call particle_reset_status (pset%prt(6), PRT_OUTGOING)
-    call particle_reset_status (pset%prt(7), PRT_OUTGOING)
-    call particle_reset_status (pset%prt(8), PRT_OUTGOING)
-    call particle_reset_status (pset%prt(9), PRT_OUTGOING)
+    call pset%prt(1)%reset_status (PRT_BEAM)
+    call pset%prt(2)%reset_status (PRT_BEAM)
+    call pset%prt(3)%reset_status (PRT_INCOMING)
+    call pset%prt(4)%reset_status (PRT_INCOMING)
+    call pset%prt(5)%reset_status (PRT_OUTGOING)
+    call pset%prt(6)%reset_status (PRT_OUTGOING)
+    call pset%prt(7)%reset_status (PRT_OUTGOING)
+    call pset%prt(8)%reset_status (PRT_OUTGOING)
+    call pset%prt(9)%reset_status (PRT_OUTGOING)
 
-    call particle_set_children (pset%prt(1), [3,4,5,6])
-    call particle_set_children (pset%prt(2), [3,4,5,6])
-    call particle_set_children (pset%prt(3), [7,8,9])
-    call particle_set_children (pset%prt(4), [7,8,9])
+    call pset%prt(1)%set_children ([3,4,5,6])
+    call pset%prt(2)%set_children ([3,4,5,6])
+    call pset%prt(3)%set_children ([7,8,9])
+    call pset%prt(4)%set_children ([7,8,9])
 
-    call particle_set_parents (pset%prt(3), [1,2])
-    call particle_set_parents (pset%prt(4), [1,2])
-    call particle_set_parents (pset%prt(5), [1,2])
-    call particle_set_parents (pset%prt(6), [1,2])
-    call particle_set_parents (pset%prt(7), [3,4])
-    call particle_set_parents (pset%prt(8), [3,4])
-    call particle_set_parents (pset%prt(9), [3,4])
+    call pset%prt(3)%set_parents ([1,2])
+    call pset%prt(4)%set_parents ([1,2])
+    call pset%prt(5)%set_parents ([1,2])
+    call pset%prt(6)%set_parents ([1,2])
+    call pset%prt(7)%set_parents ([3,4])
+    call pset%prt(8)%set_parents ([3,4])
+    call pset%prt(9)%set_parents ([3,4])
 
-    call particle_set_momentum (pset%prt(1), vector4_at_rest (1._default))
-    call particle_set_momentum (pset%prt(2), vector4_at_rest (2._default))
-    call particle_set_momentum (pset%prt(3), vector4_at_rest (5._default))
-    call particle_set_momentum (pset%prt(4), vector4_at_rest (6._default))
-    call particle_set_momentum (pset%prt(5), vector4_at_rest (3._default))
-    call particle_set_momentum (pset%prt(6), vector4_at_rest (4._default))
-    call particle_set_momentum (pset%prt(7), vector4_at_rest (7._default))
-    call particle_set_momentum (pset%prt(8), vector4_at_rest (8._default))
-    call particle_set_momentum (pset%prt(9), vector4_at_rest (9._default))
+    call pset%prt(1)%set_momentum (vector4_at_rest (1._default))
+    call pset%prt(2)%set_momentum (vector4_at_rest (2._default))
+    call pset%prt(3)%set_momentum (vector4_at_rest (5._default))
+    call pset%prt(4)%set_momentum (vector4_at_rest (6._default))
+    call pset%prt(5)%set_momentum (vector4_at_rest (3._default))
+    call pset%prt(6)%set_momentum (vector4_at_rest (4._default))
+    call pset%prt(7)%set_momentum (vector4_at_rest (7._default))
+    call pset%prt(8)%set_momentum (vector4_at_rest (8._default))
+    call pset%prt(9)%set_momentum (vector4_at_rest (9._default))
 
     allocate (flv (9))
-    call flavor_init (flv, [1011, 1012, 11, 12, 21, 22, 3, 4, 5])
+    call flv%init ([1011, 1012, 11, 12, 21, 22, 3, 4, 5])
     do i = 1, 9
-       call particle_set_flavor (pset%prt(i), flv(i))
+       call pset%prt(i)%set_flavor (flv(i))
     end do
 
-    call particle_set_write (pset, u)
+    call pset%write (u)
  
     write (u, "(A)")      
     write (u, "(A)")  "*   Fill interaction from particle set"
@@ -2743,14 +2315,14 @@ contains
     write (u, "(A)")  "* Cleanup"
 
     call interaction_final (int)
-    call particle_set_final (pset)
+    call pset%final ()
     
     write (u, "(A)")
-    write (u, "(A)")  "* Test output end: particles_7"
+    write (u, "(A)")  "* Test output end: particles_6"
 
-  end subroutine particles_7
+  end subroutine particles_6
   
-  subroutine particles_8 (u)
+  subroutine particles_7 (u)
 
     integer, intent(in) :: u
     type(interaction_t) :: int
@@ -2804,25 +2376,25 @@ contains
     pset%n_tot  = 4
     allocate (pset%prt (pset%n_tot))
     do i = 1, 1
-       call particle_reset_status (pset%prt(i), PRT_INCOMING)
-       call particle_set_children (pset%prt(i), [2,3,4])
+       call pset%prt(i)%reset_status (PRT_INCOMING)
+       call pset%prt(i)%set_children ([2,3,4])
     end do
     do i = 2, 4
-       call particle_reset_status (pset%prt(i), PRT_OUTGOING)
-       call particle_set_parents (pset%prt(i), [1])
+       call pset%prt(i)%reset_status (PRT_OUTGOING)
+       call pset%prt(i)%set_parents ([1])
     end do
-    call particle_set_momentum (pset%prt(1), vector4_at_rest (1._default))
-    call particle_set_momentum (pset%prt(2), vector4_at_rest (3._default))
-    call particle_set_momentum (pset%prt(3), vector4_at_rest (2._default))
-    call particle_set_momentum (pset%prt(4), vector4_at_rest (4._default))
+    call pset%prt(1)%set_momentum (vector4_at_rest (1._default))
+    call pset%prt(2)%set_momentum (vector4_at_rest (3._default))
+    call pset%prt(3)%set_momentum (vector4_at_rest (2._default))
+    call pset%prt(4)%set_momentum (vector4_at_rest (4._default))
 
     allocate (flv (5))
-    call flavor_init (flv, [6,5,12,-11])
+    call flv%init ([6,5,12,-11])
     do i = 1, 4
-       call particle_set_flavor (pset%prt(i), flv(i))
+       call pset%prt(i)%set_flavor (flv(i))
     end do
 
-    call particle_set_write (pset, u)
+    call pset%write (u)
 
     write (u, "(A)")      
     write (u, "(A)")  "*   Fill interaction from particle set"
@@ -2835,12 +2407,12 @@ contains
     write (u, "(A)")  "* Cleanup"
 
     call interaction_final (int)
-    call particle_set_final (pset)
+    call pset%final ()
     
     write (u, "(A)")
-    write (u, "(A)")  "* Test output end: particles_8"
+    write (u, "(A)")  "* Test output end: particles_7"
 
-  end subroutine particles_8
+  end subroutine particles_7
   
 
 end module particles

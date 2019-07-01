@@ -1,4 +1,4 @@
-! WHIZARD 2.2.4 Feb 06 2015
+! WHIZARD 2.2.5 Feb 27 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -142,7 +142,7 @@ contains
        write (u, "(1x,A)") "Beam data: [undefined]"
        return
     end if
-    prt_name_len = maxval (len (flavor_get_name (beam_data%flv)))
+    prt_name_len = maxval (len (beam_data%flv%get_name ()))
     select case (beam_data%n)
     case (1)
        write (u, "(1x,A)") "Beam data (decay):"
@@ -195,7 +195,7 @@ contains
     subroutine write_prt (i)
       integer, intent(in) :: i
       character(80) :: name_str, mass_str
-      write (name_str, "(A)")  char (flavor_get_name (beam_data%flv(i)))
+      write (name_str, "(A)")  char (beam_data%flv(i)%get_name ())
       write (mass_str, "(ES13.7)")  beam_data%mass(i)
       write (u, "(3x,A)", advance="no") &
            name_str(:prt_name_len) // "  (mass = " &
@@ -289,7 +289,7 @@ contains
     type(flavor_t), dimension(:), allocatable :: flv
     n_beam = structure%get_n_beam ()
     allocate (flv (n_beam))
-    call flavor_init (flv, structure%get_prt (), model)
+    call flv%init (structure%get_prt (), model)
     if (structure%asymmetric ()) then
        if (structure%polarized ()) then
           call beam_data_init_momenta (beam_data, &
@@ -339,8 +339,8 @@ contains
        beam_data%p_cm = vector4_moving (E, p, 3)
        beam_data%p = beam_data%p_cm
     case (2)
-       beam_data%p_cm = colliding_momenta (sqrts, flavor_get_mass (flv))
-       beam_data%p = colliding_momenta (sqrts, flavor_get_mass (flv))
+       beam_data%p_cm = colliding_momenta (sqrts, flv%get_mass ())
+       beam_data%p = colliding_momenta (sqrts, flv%get_mass ())
     end select
     call beam_data_finish_initialization (beam_data, flv, smatrix, pol_f)
   end subroutine beam_data_init_sqrts
@@ -357,7 +357,7 @@ contains
     real(default), dimension(size(flv)) :: m
     type(lorentz_transformation_t) :: L_boost, L_rot
     call beam_data_init (beam_data, size (flv))
-    m = flavor_get_mass (flv)
+    m = flv%get_mass ()
     e = sqrt (p3 ** 2 + m ** 2)
     allocate (p (beam_data%n))
     p = vector4_moving (e, p3)
@@ -377,7 +377,7 @@ contains
        L_rot = rotation_to_2nd (3, space_part (p_cm_rot(1)))
        beam_data%L_cm_to_lab = L_boost * L_rot
        beam_data%p_cm = &
-            colliding_momenta (beam_data%sqrts, flavor_get_mass (flv))
+            colliding_momenta (beam_data%sqrts, flv%get_mass ())
     end select
     call beam_data_finish_initialization (beam_data, flv, smatrix, pol_f)
   end subroutine beam_data_init_momenta
@@ -390,7 +390,7 @@ contains
     integer :: i
     do i = 1, beam_data%n
        beam_data%flv(i) = flv(i)
-       beam_data%mass(i) = flavor_get_mass (flv(i))
+       beam_data%mass(i) = flv(i)%get_mass ()
        if (present (smatrix)) then
           if (size (smatrix) /= beam_data%n) &
                call msg_fatal ("Beam data: &
@@ -431,7 +431,7 @@ contains
     real(default), dimension(:), intent(in), optional :: pol_f
     logical, intent(in), optional :: rest_frame
     real(default), dimension(1) :: m
-    m = flavor_get_mass (flv)
+    m = flv%get_mass ()
     if (present (smatrix)) then
        call beam_data_init_sqrts (beam_data, m(1), flv, smatrix, pol_f)
     else
@@ -443,7 +443,7 @@ contains
   function beam_data_masses_are_consistent (beam_data) result (flag)
     logical :: flag
     type(beam_data_t), intent(in) :: beam_data
-    flag = all (beam_data%mass == flavor_get_mass (beam_data%flv))
+    flag = all (beam_data%mass == beam_data%flv%get_mass ())
   end function beam_data_masses_are_consistent
 
   subroutine beam_init (beam, beam_data)
@@ -455,7 +455,7 @@ contains
     type(quantum_numbers_t), dimension(:), allocatable :: qn
     type(polarization_t), dimension(:), allocatable :: pol
     integer :: i
-    mask = new_quantum_numbers_mask (.false., .false., &
+    mask = quantum_numbers_mask (.false., .false., &
          .not. beam_data%pmatrix%is_polarized (), &
          mask_hd = beam_data%pmatrix%is_diagonal ())
     call interaction_init &
@@ -469,29 +469,28 @@ contains
        call polarization_final (pol(i))
     end do
     allocate (qn (beam_data%n))
-    call quantum_numbers_init &
-         (qn, beam_data%flv, color_from_flavor (beam_data%flv, 1))
-    call state_matrix_init (state_fc)
-    call state_matrix_add_state (state_fc, qn)
+    call qn%init (beam_data%flv, color_from_flavor (beam_data%flv, 1))
+    call state_fc%init ()
+    call state_fc%add_state (qn)
     call merge_state_matrices (state_hel, state_fc, state_tmp)
-    call state_iterator_init (it_hel, state_hel)
-    call state_iterator_init (it_tmp, state_tmp)
-    do while (state_iterator_is_valid (it_hel))
+    call it_hel%init (state_hel)
+    call it_tmp%init (state_tmp)
+    do while (it_hel%is_valid ())
        call interaction_add_state (beam%int, &
-            state_iterator_get_quantum_numbers (it_tmp), &
-            value=state_iterator_get_matrix_element (it_hel))
-       call state_iterator_advance (it_hel)
-       call state_iterator_advance (it_tmp)
+            it_tmp%get_quantum_numbers (), &
+            value=it_hel%get_matrix_element ())
+       call it_hel%advance ()
+       call it_tmp%advance ()
     end do
     call interaction_freeze (beam%int)
     call interaction_set_momenta &
          (beam%int, beam_data%p, outgoing = .true.)
-    call state_matrix_final (state_hel)
-    call state_matrix_final (state_fc)
-    call state_matrix_final (state_tmp)
+    call state_hel%final ()
+    call state_fc%final ()
+    call state_tmp%final ()
   end subroutine beam_init
 
-  elemental subroutine beam_final (beam)
+  subroutine beam_final (beam)
     type(beam_t), intent(inout) :: beam
     call interaction_final (beam%int)
   end subroutine beam_final
@@ -576,7 +575,7 @@ contains
     write (u, "(A)")
     
     sqrts = 500
-    call flavor_init (flv, [1,-1], model)
+    call flv%init ([1,-1], model)
 
     call smatrix(1)%init (2, 1)
     call smatrix(1)%set_entry (1, [1,1], (1._default, 0._default))
@@ -604,7 +603,7 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* 2: Decay"
     write (u, "(A)")
-    call flavor_init (flv(1), 23, model)
+    call flv(1)%init (23, model)
     call smatrix(1)%init (2, 1)
     call smatrix(1)%set_entry (1, [0,0], (1._default, 0._default))
     pol_f(1) = 0.4_default
@@ -656,8 +655,8 @@ contains
     write (u, "(A)")
     
     sqrts = 500
-    call flavor_init (flv, [1,-1], model)
-    call beam_structure%init_sf (flavor_get_name (flv), no_records)
+    call flv%init ([1,-1], model)
+    call beam_structure%init_sf (flv%get_name (), no_records)
 
     call beam_structure%init_pol (2)
 
@@ -689,8 +688,8 @@ contains
     write (u, "(A)")  "* 2: Decay"
     write (u, "(A)")
 
-    call flavor_init (flv(1), 23, model)
-    call beam_structure%init_sf ([flavor_get_name (flv(1))], no_records)
+    call flv(1)%init (23, model)
+    call beam_structure%init_sf ([flv(1)%get_name ()], no_records)
 
     call beam_structure%init_pol (1)
 
@@ -744,12 +743,12 @@ contains
     write (u, "(A)")  "* 1: Scattering process"
     write (u, "(A)")
     
-    call flavor_init (flv, [2212,2212], model)
+    call flv%init ([2212,2212], model)
 
     p3(1) = vector3_moving ([5._default, 0._default, 10._default])
     p3(2) = -vector3_moving ([1._default, 1._default, -10._default])
 
-    call beam_structure%init_sf (flavor_get_name (flv), no_records)
+    call beam_structure%init_sf (flv%get_name (), no_records)
     call beam_structure%set_momentum (p3 ** 1)
     call beam_structure%set_theta (polar_angle (p3))
     call beam_structure%set_phi (azimuthal_angle (p3))
@@ -779,10 +778,10 @@ contains
     write (u, "(A)")  "* 2: Decay"
     write (u, "(A)")
 
-    call flavor_init (flv(1), 23, model)
+    call flv(1)%init (23, model)
     p3(1) = vector3_moving ([10._default, 5._default, 50._default])
     
-    call beam_structure%init_sf ([flavor_get_name (flv(1))], no_records)
+    call beam_structure%init_sf ([flv(1)%get_name ()], no_records)
     call beam_structure%set_momentum ([p3(1) ** 1])
     call beam_structure%set_theta ([polar_angle (p3(1))])
     call beam_structure%set_phi ([azimuthal_angle (p3(1))])

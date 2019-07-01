@@ -13,6 +13,7 @@
    Unweighted   = T
    Event norm   = '1'
    Neg. weights = F
+   Respect sel. = T
    Update sqme  = F
    Update wgt   = F
    Update event = F

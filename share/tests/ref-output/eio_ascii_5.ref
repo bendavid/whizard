@@ -9,6 +9,7 @@
  ASCII event stream (LHA format):
    Writing to file   = eio_ascii_5.lha
    Keep beams        = F
+   Keep remnants     = T
 
 * File contents:
 
@@ -32,6 +33,7 @@
  ASCII event stream (LHA format):
    [closed]
    Keep beams        = T
+   Keep remnants     = T
 
 * Cleanup
 

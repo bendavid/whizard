@@ -9,6 +9,7 @@
  ASCII event stream (MOKKA format):
    Writing to file   = eio_ascii_7.mokka.evt
    Keep beams        = F
+   Keep remnants     = T
 
 * File contents:
 
@@ -23,6 +24,7 @@
  ASCII event stream (MOKKA format):
    [closed]
    Keep beams        = T
+   Keep remnants     = T
 
 * Cleanup
 

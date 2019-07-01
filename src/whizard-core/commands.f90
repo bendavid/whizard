@@ -1,4 +1,4 @@
-! WHIZARD 2.2.4 Feb 06 2015
+! WHIZARD 2.2.5 Feb 27 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -1189,11 +1189,11 @@ contains
     integer :: i
     pdg = aval
     allocate (flv (size (pdg)))
-    call flavor_init (flv, pdg, model)
+    call flv%init (pdg, model)
     if (size (pdg) /= 0) then
-       prt = flavor_get_name (flv(1))
+       prt = flv(1)%get_name ()
        do i = 2, size (flv)
-          prt = prt // ":" // flavor_get_name (flv(i))
+          prt = prt // ":" // flv(i)%get_name ()
        end do
     else
        prt = "?"
@@ -1209,8 +1209,8 @@ contains
     integer :: k
     allocate (aval (size (prt)))
     do k = 1, size (prt)
-      call flavor_init (flv, prt(k)%to_string (), model)
-      aval (k) = flavor_get_pdg (flv)
+      call flv%init (prt(k)%to_string (), model)
+      aval (k) = flv%get_pdg ()
     end do
     pdg_array = aval
   end function make_pdg_array
@@ -1891,12 +1891,14 @@ contains
              n = model%get_n_field ()
              do j = 1, n
                 pdg = model%get_pdg (j)
-                call flavor_init (flv, pdg, model)
-                if (.not. flavor_is_stable (flv)) &
+                call flv%init (pdg, model)
+                if (.not. flv%is_stable ()) &
                      call show_unstable (cmd%local, pdg, u)
-                if (flavor_has_antiparticle (flv)) then
-                   if (.not. flavor_is_stable (flavor_anti (flv))) &
-                        call show_unstable (cmd%local, -pdg, u)
+                if (flv%has_antiparticle ()) then
+                   associate (anti => flv%anti ())
+                     if (.not. anti%is_stable ()) &
+                          call show_unstable (cmd%local, -pdg, u)
+                   end associate
                 end if
              end do
           case ("cuts", "weight", "scale", &
@@ -2258,7 +2260,7 @@ contains
        pdg = pdg_array
        select case (size (pdg))
        case (1)
-          call flavor_init (flv(i), pdg(1), cmd%local%model)
+          call flv(i)%init ( pdg(1), cmd%local%model)
        case default
           call msg_fatal ("Beams: beam particles must be unique")
        end select
@@ -2269,9 +2271,9 @@ contains
           call msg_fatal ("Beam setup: no structure functions allowed &
                &for decay")
        end if
-       call global%beam_structure%init_sf (flavor_get_name (flv))
+       call global%beam_structure%init_sf (flv%get_name ())
     case (2)
-       call global%beam_structure%init_sf (flavor_get_name (flv), cmd%n_entry)
+       call global%beam_structure%init_sf (flv%get_name (), cmd%n_entry)
        do i = 1, cmd%n_sf_record
           do j = 1, cmd%n_entry(i)
              pn_key => parse_node_get_sub_ptr (cmd%pn_sf_entry(j,i)%ptr)
@@ -3663,7 +3665,8 @@ contains
     type(var_list_t), pointer :: var_list
     logical :: auto_decays, auto_decays_radiative
     integer :: auto_decays_multiplicity
-    logical :: isotropic_decay, diagonal_decay
+    logical :: isotropic_decay, diagonal_decay, polarized_decay
+    integer :: decay_helicity
     type(pdg_array_t) :: pa_in
     integer :: pdg_in
     type(string_t) :: libname_cur, libname_dec
@@ -3682,11 +3685,21 @@ contains
     end if
     isotropic_decay = &
          var_list%get_lval (var_str ("?isotropic_decay"))
-    if (.not. isotropic_decay) then
+    if (isotropic_decay) then
+       diagonal_decay = .false.
+       polarized_decay = .false.
+    else
        diagonal_decay = &
             var_list%get_lval (var_str ("?diagonal_decay"))
-    else
-       diagonal_decay = .false.
+       if (diagonal_decay) then
+          polarized_decay = .false.
+       else
+          polarized_decay = &
+               var_list%is_known (var_str ("decay_helicity"))
+          if (polarized_decay) then
+             decay_helicity = var_list%get_ival (var_str ("decay_helicity"))
+          end if
+       end if
     end if
     pa_in = eval_pdg_array (cmd%pn_prt_in, var_list)
     if (pdg_array_get_length (pa_in) /= 1) &
@@ -3719,11 +3732,20 @@ contains
     call cmd%local%update_prclib &
          (cmd%local%prclib_stack%get_library_ptr (libname_cur))
     if (cmd%n_proc > 0) then
-       call global%modify_particle (pdg_in, stable = .false., &
-            decay = cmd%process_id, &
-            isotropic_decay = isotropic_decay, &
-            diagonal_decay = diagonal_decay, &
-            polarized = .false.)
+       if (polarized_decay) then
+          call global%modify_particle (pdg_in, stable = .false., &
+               decay = cmd%process_id, &
+               isotropic_decay = .false., &
+               diagonal_decay = .false., &
+               decay_helicity = decay_helicity, &
+               polarized = .false.)
+       else
+          call global%modify_particle (pdg_in, stable = .false., &
+               decay = cmd%process_id, &
+               isotropic_decay = isotropic_decay, &
+               diagonal_decay = diagonal_decay, &
+               polarized = .false.)
+       end if
        u_tmp = free_unit ()
        open (u_tmp, status = "scratch", action = "readwrite")
        call show_unstable (global, pdg_in, u_tmp)
@@ -3751,8 +3773,8 @@ contains
     type(process_component_def_t), pointer :: prc_def
     type(string_t), dimension(:), allocatable :: prt_out, prt_out_str
     integer :: i, j
-    call flavor_init (flv, pdg, global%model)
-    call flavor_get_decays (flv, decay)
+    call flv%init (pdg, global%model)
+    call flv%get_decays (decay)
     if (.not. allocated (decay))  return
     allocate (prt_out_str (size (decay)))
     allocate (br (size (decay)))
@@ -3771,7 +3793,7 @@ contains
           width = sum (br)
           br = br / sum (br)
           write (u, "(A)") "Unstable particle " &
-               // char (flavor_get_name (flv)) &
+               // char (flv%get_name ()) &
                // ": computed branching ratios:"
           do i = 1, size (br)
              write (u, "(2x,A,':'," // FMT_14 // ",3x,A)") &
@@ -3779,23 +3801,26 @@ contains
           end do
           write (u, "(2x,'Total width ='," // FMT_14 // ",' GeV (computed)')")  width
           write (u, "(2x,'            ='," // FMT_14 // ",' GeV (preset)')") &
-               flavor_get_width (flv)
-          if (flavor_decays_isotropically (flv)) then
+               flv%get_width ()
+          if (flv%decays_isotropically ()) then
              write (u, "(2x,A)")  "Decay options: isotropic"
-          else if (flavor_decays_diagonal (flv)) then
+          else if (flv%decays_diagonal ()) then
              write (u, "(2x,A)")  "Decay options: &
                   &projection on diagonal helicity states"
+          else if (flv%has_decay_helicity ()) then
+             write (u, "(2x,A,1x,I0)")  "Decay options: projection onto helicity =", &
+                  flv%get_decay_helicity ()
           else
              write (u, "(2x,A)")  "Decay options: helicity treated exactly"
           end if
        else
           call msg_fatal ("Unstable particle " &
-               // char (flavor_get_name (flv)) &
+               // char (flv%get_name ()) &
                // ": partial width vanishes for all decay channels")
        end if
     else
        call msg_fatal ("Unstable particle " &
-               // char (flavor_get_name (flv)) &
+               // char (flv%get_name ()) &
                // ": partial width is negative")
     end if
   end subroutine show_unstable
@@ -3804,9 +3829,9 @@ contains
     type(rt_data_t), intent(in), target :: global
     integer, intent(in) :: pdg
     type(flavor_t) :: flv
-    call flavor_init (flv, pdg, global%model)
+    call flv%init (pdg, global%model)
     call msg_error ("Unstable: no allowed decays found for particle " &
-         // char (flavor_get_name (flv)) // ", keeping as stable")
+         // char (flv%get_name ()) // ", keeping as stable")
   end subroutine err_unstable
     
   subroutine create_auto_decays &
@@ -3830,7 +3855,7 @@ contains
     type(string_t), dimension(:), allocatable :: prt_out
     type(process_configuration_t) :: prc_config
     integer :: i, j, k, n
-    call flavor_init (flv_in, pdg_in, global%model)
+    call flv_in%init (pdg_in, global%model)
     if (rad) then
        call constraints%init (2)
     else
@@ -3839,9 +3864,9 @@ contains
     end if
     call constraints%set (1, constrain_n_tot (mult))
     call constraints%set (2, &
-         constrain_mass_sum (flavor_get_mass (flv_in), margin = 0._default))
+         constrain_mass_sum (flv_in%get_mass (), margin = 0._default))
     call ds_table%make (global%model, pdg_in, constraints)
-    prt_in = flavor_get_name (flv_in)
+    prt_in = flv_in%get_name ()
     if (pdg_in > 0) then
        p_or_a = "p"
     else
@@ -3877,11 +3902,11 @@ contains
           allocate (prt_out (size (pa_out)))
           do j = 1, size (pa_out)
              do k = 1, pa_out(j)%get_length ()
-                call flavor_init (flv_out, pa_out(j)%get (k), global%model)
+                call flv_out%init (pa_out(j)%get (k), global%model)
                 if (k == 1) then
-                   prt_out(j) = flavor_get_name (flv_out)
+                   prt_out(j) = flv_out%get_name ()
                 else
-                   prt_out(j) = prt_out(j) // ":" // flavor_get_name (flv_out)
+                   prt_out(j) = prt_out(j) // ":" // flv_out%get_name ()
                 end if
              end do
              process_string = process_string // " " // prt_out(j)
@@ -3950,9 +3975,9 @@ contains
          isotropic_decay = .false., &
          diagonal_decay = .false., &
          polarized = .false.)
-       call flavor_init (flv, pdg, cmd%local%model)
+       call flv%init (pdg, cmd%local%model)
        call msg_message ("Particle " &
-            // char (flavor_get_name (flv)) &
+            // char (flv%get_name ()) &
             // " declared as stable")
     end do
   end subroutine cmd_stable_execute
@@ -3993,9 +4018,9 @@ contains
             stable = .true., &
             isotropic_decay = .false., &
             diagonal_decay = .false.)
-       call flavor_init (flv, pdg, cmd%local%model)
+       call flv%init (pdg, cmd%local%model)
        call msg_message ("Particle " &
-            // char (flavor_get_name (flv)) &
+            // char (flv%get_name ()) &
             // " declared as polarized")
     end do
   end subroutine cmd_polarized_execute
@@ -4018,9 +4043,9 @@ contains
             stable = .true., &
             isotropic_decay = .false., &
             diagonal_decay = .false.)
-       call flavor_init (flv, pdg, cmd%local%model)
+       call flv%init (pdg, cmd%local%model)
        call msg_message ("Particle " &
-            // char (flavor_get_name (flv)) &
+            // char (flv%get_name ()) &
             // " declared as unpolarized")
     end do
   end subroutine cmd_unpolarized_execute

@@ -1,4 +1,4 @@
-! WHIZARD 2.2.4 Feb 06 2015
+! WHIZARD 2.2.5 Feb 27 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -375,12 +375,12 @@ contains
     expr%i_out = i_out
     call interaction_to_subevt (int, &
          expr%i_beam, expr%i_in, expr%i_out, expr%subevt_t)
-    call subevt_set_pdg_beam     (expr%subevt_t, flavor_get_pdg (f_beam))
-    call subevt_set_pdg_incoming (expr%subevt_t, flavor_get_pdg (f_in))
-    call subevt_set_pdg_outgoing (expr%subevt_t, flavor_get_pdg (f_out))
-    call subevt_set_p2_beam     (expr%subevt_t, flavor_get_mass (f_beam) ** 2)
-    call subevt_set_p2_incoming (expr%subevt_t, flavor_get_mass (f_in)   ** 2)
-    call subevt_set_p2_outgoing (expr%subevt_t, flavor_get_mass (f_out)  ** 2)
+    call subevt_set_pdg_beam     (expr%subevt_t, f_beam%get_pdg ())
+    call subevt_set_pdg_incoming (expr%subevt_t, f_in%get_pdg ())
+    call subevt_set_pdg_outgoing (expr%subevt_t, f_out%get_pdg ())
+    call subevt_set_p2_beam     (expr%subevt_t, f_beam%get_mass () ** 2)
+    call subevt_set_p2_incoming (expr%subevt_t, f_in%get_mass ()   ** 2)
+    call subevt_set_p2_outgoing (expr%subevt_t, f_out%get_mass ()  ** 2)
     expr%n_in  = size (i_in)
     expr%n_out = size (i_out)
     expr%n_tot = expr%n_in + expr%n_out
@@ -401,23 +401,23 @@ contains
     do i = 1, n_beam
        j = j_beam(i)
        call subevt_set_beam (subevt, i, &
-            flavor_get_pdg (flv(j)), &
+            flv(j)%get_pdg (), &
             vector4_null, &
-            flavor_get_mass (flv(j)) ** 2)
+            flv(j)%get_mass () ** 2)
     end do
     do i = 1, n_in
        j = j_in(i)
        call subevt_set_incoming (subevt, n_beam + i, &
-            flavor_get_pdg (flv(j)), &
+            flv(j)%get_pdg (), &
             vector4_null, &
-            flavor_get_mass (flv(j)) ** 2)
+            flv(j)%get_mass () ** 2)
     end do
     do i = 1, n_out
        j = j_out(i)
        call subevt_set_outgoing (subevt, n_beam + n_in + i, &
-            flavor_get_pdg (flv(j)), &
+            flv(j)%get_pdg (), &
             vector4_null, &
-            flavor_get_mass (flv(j)) ** 2)
+            flv(j)%get_mass () ** 2)
     end do
   end subroutine interaction_to_subevt
 
@@ -457,16 +457,22 @@ contains
   end subroutine parton_expr_fill_subevt
     
   subroutine parton_expr_evaluate &
-       (expr, passed, scale, fac_scale, ren_scale, weight)
+       (expr, passed, scale, fac_scale, ren_scale, weight, scale_forced)
     class(parton_expr_t), intent(inout) :: expr
     logical, intent(out) :: passed
     real(default), intent(out) :: scale
     real(default), intent(out) :: fac_scale
     real(default), intent(out) :: ren_scale
     real(default), intent(out) :: weight
+    real(default), intent(in), allocatable, optional :: scale_forced
+    logical :: force_scale
+    force_scale = .false.
+    if (present (scale_forced))  force_scale = allocated (scale_forced)
     call expr%base_evaluate (passed)
     if (passed) then
-       if (expr%has_scale) then
+       if (force_scale) then
+          scale = scale_forced
+       else if (expr%has_scale) then
           call expr%scale%evaluate ()
           if (expr%scale%is_known ()) then
              scale = expr%scale%get_real ()
@@ -477,7 +483,9 @@ contains
        else
           scale = expr%sqrts_hat
        end if
-       if (expr%has_fac_scale) then
+       if (force_scale) then
+          fac_scale = scale_forced
+       else if (expr%has_fac_scale) then
           call expr%fac_scale%evaluate ()
           if (expr%fac_scale%is_known ()) then
              fac_scale = expr%fac_scale%get_real ()
@@ -489,7 +497,9 @@ contains
        else
           fac_scale = scale
        end if
-       if (expr%has_ren_scale) then
+       if (force_scale) then
+          ren_scale = scale_forced
+       else if (expr%has_ren_scale) then
           call expr%ren_scale%evaluate ()
           if (expr%ren_scale%is_known ()) then
              ren_scale = expr%ren_scale%get_real ()
@@ -700,10 +710,10 @@ contains
   subroutine event_expr_fill_subevt (expr, particle_set)
     class(event_expr_t), intent(inout) :: expr
     type(particle_set_t), intent(in) :: particle_set
-    call particle_set_to_subevt (particle_set, expr%subevt_t)
+    call particle_set%to_subevt (expr%subevt_t)
     expr%sqrts_hat = subevt_get_sqrts_hat (expr%subevt_t)
-    expr%n_in  = particle_set_get_n_in  (particle_set)
-    expr%n_out = particle_set_get_n_out (particle_set)
+    expr%n_in  = subevt_get_n_in  (expr%subevt_t)
+    expr%n_out = subevt_get_n_out (expr%subevt_t)
     expr%n_tot = expr%n_in + expr%n_out
     expr%subevt_filled = .true.
     if (expr%has_index) then

@@ -1,4 +1,4 @@
-! WHIZARD 2.2.4 Feb 06 2015
+! WHIZARD 2.2.5 Feb 27 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -829,7 +829,7 @@ contains
     write (u, "(A)")
     
     call model%init_test ()
-    call flavor_init (flv, 25, model)
+    call flv%init (25, model)
 
     write (u, "(A)")  "* Initialize a process and a matching &
          &phase-space configuration"
@@ -867,8 +867,8 @@ contains
     write (u, "(A)")
 
     E = sqrts / 2
-    p(1) = vector4_moving (E, sqrt (E**2 - flavor_get_mass (flv)**2), 3)
-    p(2) = vector4_moving (E,-sqrt (E**2 - flavor_get_mass (flv)**2), 3)
+    p(1) = vector4_moving (E, sqrt (E**2 - flv%get_mass ()**2), 3)
+    p(2) = vector4_moving (E,-sqrt (E**2 - flv%get_mass ()**2), 3)
 
     call phs%set_incoming_momenta (p)
     call phs%compute_flux ()
@@ -1053,7 +1053,7 @@ contains
     select type (phs_data)
     type is (phs_wood_config_t)
        E = phs_data%sqrts / 2
-       pL = sqrt (E**2 - flavor_get_mass (phs_data%flv(1,1))**2)
+       pL = sqrt (E**2 - phs_data%flv(1,1)%get_mass ()**2)
     end select
     p(1) = vector4_moving (E, pL, 3)
     p(2) = vector4_moving (E, -pL, 3)

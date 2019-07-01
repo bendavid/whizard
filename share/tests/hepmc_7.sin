@@ -24,27 +24,25 @@ cuts = all Pt > 50 [u:ubar]
 openmp_num_threads = 1
 
 n_events = 1
+safety_factor = 2
 
 ?read_raw = false
 ?write_raw = false
 
 simulate (hepmc_7_p) {
-  sample_format = hepmc
-  $sample = "hepmc_7a"
-  ?keep_beams = true
   iterations = 1:1000
+  ?keep_beams = true
+  sample_format = hepmc, weight_stream
+  $sample = "hepmc_7a"
 }
-
-real alphas0 = alphas
 
 rescan "hepmc_7a" (hepmc_7_p) {
   $rescan_input_format = "hepmc"
   sample_format = weight_stream
   $sample = "hepmc_7b"
-  alphas = alphas0
   ?update_sqme = true
   ?recover_beams = false
   alt_setup = 
-    { alphas = 2 * alphas0 },
-    { alphas = 3 * alphas0 }
+    { alphas = 2 * alphas },
+    { alphas = 3 * alphas }
 }

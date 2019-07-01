@@ -1,4 +1,4 @@
-! WHIZARD 2.2.4 Feb 06 2015
+! WHIZARD 2.2.5 Feb 27 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -710,9 +710,11 @@ contains
     class(identified_t), intent(in) :: this
     class(marker_t), intent(inout) :: marker
     integer(dik), intent(out) :: status
+    integer(dik) :: id
+    id = this%get_id ()
     call marker%mark_begin ("identified_t")
     call marker%mark ("name", this%get_name ())
-    call marker%mark ("id", this%get_id ())
+    call marker%mark ("id", id)
     call marker%mark_end ("identified_t")
   end subroutine identified_write_to_marker
   
@@ -815,7 +817,7 @@ contains
     this%unique_id = last_id
   end subroutine unique_initialize
   
-  elemental function unique_get_unique_id (this)
+  pure function unique_get_unique_id (this)
     class(unique_t), intent(in) :: this
     integer(dik) :: unique_get_unique_id
     unique_get_unique_id = this%unique_id

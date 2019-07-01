@@ -1,4 +1,4 @@
-! WHIZARD 2.2.4 Feb 06 2015
+! WHIZARD 2.2.5 Feb 27 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -135,7 +135,7 @@ contains
           m_flv = 0;  m_col = 0;  m_hel = 0;  i_lock = 0
           call data%mask (i_prt, m_flv, m_col, m_hel, i_lock)
           mask(i) = &
-               new_quantum_numbers_mask (m_flv /= 0, m_col /= 0, m_hel /= 0)
+               quantum_numbers_mask (m_flv /= 0, m_col /= 0, m_hel /= 0)
           hel_lock(i) = i_lock
        end do
        !!! JRR: WK please check (#529)
@@ -152,21 +152,21 @@ contains
              f = 0;  h = 0;  c = 0
              call data%state (i_state, i_prt, f, h, c)
              if (m_flv == 0) then
-                call flavor_init (flv, int (f), data%model)
+                call flv%init (int (f), data%model)
              else
-                call flavor_init (flv)
+                call flv%init ()
              end if
              if (m_hel == 0) then
-                call helicity_init (hel, int (h))
+                call hel%init (int (h))
              else
-                call helicity_init (hel)
+                call hel%init ()
              end if
              if (m_col == 0) then
                 call color_init_from_array (col, int (c))
              else
-                call color_init (col)
+                call col%init ()
              end if
-             call quantum_numbers_init (qn(i), flv, col, hel)
+             call qn(i)%init (flv, col, hel)
           end do
           call interaction_add_state (sf_int%interaction_t, qn)
        end do

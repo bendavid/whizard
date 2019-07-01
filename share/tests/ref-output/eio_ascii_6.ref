@@ -9,6 +9,7 @@
  ASCII event stream (long format):
    Writing to file   = eio_ascii_6.long.evt
    Keep beams        = F
+   Keep remnants     = T
 
 * File contents:
 
@@ -24,6 +25,7 @@
  ASCII event stream (long format):
    [closed]
    Keep beams        = T
+   Keep remnants     = T
 
 * Cleanup
 

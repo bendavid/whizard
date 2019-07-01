@@ -176,6 +176,8 @@
 \newcommand{\herwig}{\texttt{HERWIG}}
 \newcommand{\isajet}{\texttt{ISAJET}}
 \newcommand{\pythia}{\texttt{PYTHIA}}
+\newcommand{\pythiasix}{\texttt{PYTHIA6}}
+\newcommand{\pythiaeight}{\texttt{PYTHIA8}}
 \newcommand{\jetset}{\texttt{JETSET}}
 \newcommand{\comphep}{\texttt{CompHEP}}
 \newcommand{\circe}{\texttt{CIRCE}}
@@ -265,7 +267,7 @@ Parameter & Value & Default & Description \\
 }
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %END LATEX
-\newcommand{\thisversion}{2.2.4}
+\newcommand{\thisversion}{2.2.5}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -1118,11 +1120,58 @@ header files.
 \subsection{FastJet}
 \label{sec:fastjet}
 
+\emph{NOTE: This is at the moment not yet supported, but merely a stub 
+with the only purpose to be recognized by the build system.}
+
+\pythiaeight\ is a \ttt{C++} class library for handling hadronization,
+showering and underlying event. If you want to use this feature (once it is
+fully supported in \whizard), you should link \whizard\ with \pythiaeight,
+otherwise you can skip this section.
+
+If it is not already installed on your system, you may obtain
+\pythiaeight\ from
+\begin{quote}
+  \url{http://home.thep.lu.se/~torbjorn/Pythia.html}
+\end{quote}
+If the \pythiaeight\ library is linked with the installation, \whizard\ will
+be able to use its hadronization and showering, once this is fully supported
+within \whizard.
+
+To link a \pythiaeight\ installation to \whizard, you should specify the flag
+\begin{quote}
+\ttt{--enable-pythia8}
+\end{quote}
+to \ttt{configure}.  If  \pythiaeight\ is installed in a non-default directory 
+where \whizard\ would not find it, specify also
+\begin{quote}
+\ttt{--with-pythia8=\emph{<your-pythia8-installation-path>}}
+\end{quote}
+
+A successful \whizard\ configuration should produce a screen output
+similar to this:
+\begin{footnotesize}
+\begin{verbatim}
+configure: --------------------------------------------------------------
+configure: --- SHOWERS PYTHIA6 PYTHIA8 MPI ---
+configure: 
+[....]
+checking for pythia8-config... /usr/local/bin/pythia8-config
+checking if PYTHIA8 is functional... yes
+checking PYTHIA8... yes
+configure: WARNING: PYTHIA8 configure is for testing purposes at the moment.
+configure: --------------------------------------------------------------
+\end{verbatim}
+\end{footnotesize}
+
+%%%%%
+
+\subsection{FastJet}
+\label{sec:fastjet}
+
 \emph{NOTE: This is an experimental feature.}
 
-\fastjet\ is a \ttt{C++} class library for handling collider scattering
-events.  In particular, it provides a portable format for event files.
-If you want to use this format, you should link \whizard\ with \fastjet,
+\fastjet\ is a \ttt{C++} class library for handling jet clustering.
+If you want to use this feature, you should link \whizard\ with \fastjet,
 otherwise you can skip this section.
 
 If it is not already installed on your system, you may obtain
@@ -1145,8 +1194,7 @@ where \whizard\ would not find it, specify also
 \end{quote}
 
 A successful \whizard\ configuration should produce a screen output
-similar to this (note that most of the \ttt{C++} features have already
-been tested in the configuration for \ttt{HepMC}):
+similar to this:
 \begin{footnotesize}
 \begin{verbatim}
 configure: --------------------------------------------------------------
@@ -2278,7 +2326,7 @@ named \verb|hello.sin|.
 		|        M. Moretti, T. Ohl, J. Reuter, arXiv: hep-ph/0102195                 |
 		|                                                                             |
 		|=============================================================================|
-		|                               WHIZARD 2.2.4
+		|                               WHIZARD 2.2.5
 		|=============================================================================|
 		| Reading model file '/usr/local/share/whizard/models/SM.mdl'
 		| Preloaded model: SM
@@ -2309,7 +2357,7 @@ including the \whizard\ banner is shown in Fig.~\ref{fig:helloworld})
 \centerline{[... here a banner is displayed]}
 \begin{Verbatim}
 |=============================================================================|
-|                               WHIZARD 2.2.4
+|                               WHIZARD 2.2.5
 |=============================================================================|
 | Reading model file '/usr/local/share/whizard/models/SM.mdl'
 | Preloaded model: SM
@@ -2368,7 +2416,7 @@ This produces a lot of output which looks similar to this:
  | Writing log to 'whizard.log'
 [... banner ...]
  |=============================================================================|
- |                               WHIZARD 2.2.4
+ |                               WHIZARD 2.2.5
  |=============================================================================|
  | Reading model file '/usr/local/share/whizard/models/SM.mdl'
  | Preloaded model: SM
@@ -6614,10 +6662,12 @@ settings you have previously done affect the result of the integration.
   polarized integral is available; this will be discarded.
 \end{itemize}
 
+
 \subsection{Final state polarization}
 
 Final state polarization is available in \whizard\ in the sense that the
-polarization of final state particles can be retained when generating simulated
+polarization of real final state particles can be retained when generating
+simulated
 events. In order for the polarization of a particle to be retained, it must be
 declared as polarized via the \ttt{polarized} statement
 \begin{quote}
@@ -7541,7 +7591,9 @@ it is the phase space integration that becomes the true bottleneck for
 a high multiplicity of final state particles. 
 
 In order to use the factorized approach, one has to specify particles
-as \ttt{unstable}. We give an example for a $pp \to Wj$ final state:
+as \ttt{unstable}.  (Also, the \ttt{?allow\_decays} switch must be \ttt{true};
+this is however its default value.)  We give an example for a $pp \to Wj$ final
+state:
 \begin{code}
 process wj  = u, gl => d, Wp
 process wen = Wp => E1, n1
@@ -7561,30 +7613,16 @@ states with multiplicity $3$, namely $e^+ \nu_e d$. Note that here
 only one decay process is given, hence the branching ratio for the
 decay will be taken to be $100 \%$ by \whizard.
 
-Usually, \whizard\ applies full spin and color correlations to the
-factorized processes, so it keeps both color and spin coherence
-between productions and decays. It sums over all quantum numbers. At
-the moment, it is not yet possible to generate polarized particles and
-let them decay in a factorized approach. This will be covered in a
-future version of \whizard. Another restriction is that momentarily
-the factorized approach is always treated in narrow-width
-approximation; this is motivated by the fact that whenever the width
-plays an important role, the usage of the factorized approach will not
-be fully justified. There are again plans for a future \whizard\
-version to also include Breit-Wigner or Gaussian distributions when
-using the factorized approach. 
+A natural restriction of the factorized approach is the implied narrow-width
+approximation.  Theoretically, this restriction is necessary since whenever
+the width plays an important role, the usage of the factorized approach will
+not be fully justified.  In particular, all involved matrix elements must be
+evaluated on-shell, or otherwise gauge-invariance issues could spoil the
+calculation.  (There are plans for a future \whizard\ version
+to also include Breit-Wigner or Gaussian distributions when using the
+factorized approach.)
 
-There are several options to play around with the spin correlations:
-the default is that they are completely taken into account. However,
-one can restrict them to the classical spin correlations, i.e. to the
-diagonal elements of the spin-density matrix between production and
-decay. This is done by setting the flag \ttt{?diagonal\_decay =
-true}. In order to test whether spin correlations might play a crucial
-role in a process or not, the user can even completely switch off spin
-correlations by setting \ttt{?isotropic\_decay = true}. Both flags are
-off by default. 
-
-Decays can also be concatenated, e.g. for top pair production and
+Decays can be concatenated, e.g. for top pair production and
 decay, $e^+ e^- \to t \bar t$ with decay $t \to W^+ b$, and subsequent
 leptonic decay of the $W$ as in $W^+ \to \mu^+ \nu_\mu$:
 \begin{code}
@@ -7638,6 +7676,40 @@ marked as being stable, using the
 stable <particle-tag>  
 \end{code}
 constructor for the particle \ttt{<particle-tag>}. 
+
+\subsubsection{Spin correlations in decays}
+
+By default, \whizard\ applies full spin and color correlations to the
+factorized processes, so it keeps both color and spin coherence between
+productions and decays.  Correlations between decay products of distinct
+unstable particles in the same event are also fully retained.  The program
+sums over all intermediate quantum numbers.
+
+Although this approach obviously yields the optimal description with the
+limits of production-decay factorization, there is support for a simplified
+handling of particle decays.  Essentially, there are four options, taking a
+decay \ttt{W\_ud}: $W^-\to \bar u d$ as an example:
+\begin{enumerate}
+\item
+  Full spin correlations: \verb|unstable Wp (W_ud)|
+\item
+  Isotropic decay: \verb|unstable Wp (W_ud) { ?isotropic_decay = true }|
+\item
+  Diagonal decay matrix:
+  \verb|unstable Wp (W_ud) { ?diagonal_decay = true }|
+\item
+  Project onto specific helicity:
+  \verb|unstable Wp (W_ud) { decay_helicity = -1 }|
+\end{enumerate}
+Here, the isotropic option completely eliminates spin correlations.  The
+diagonal-decays option eliminates just the off-diagonal entries of the $W$
+spin-density matrix.  This is equivalent to a measurement of spin before the
+decay.  As a result, spin correlations are still present in the classical
+sense, while quantum coherence is lost.  The definite-helicity option is
+similar and additional selects only the specified helicity component for the
+decaying particle, so its decay distribution assumes the shape for an
+accordingly polarized particle.  All options apply in the rest frame of the
+decaying particle, with the particle's momentum as the quantization axis.
 
 \subsubsection{Automatic decays}
 
@@ -8895,6 +8967,32 @@ different event formats available in \whizard.
 
 %%%%%%%%%
 
+\section{Event selection}
+
+The \ttt{selection} expression (cf.\ Sec.~\ref{subsec:analysis})
+reduces the event sample during generation or rescanning, selecting
+only events for which the expression evaluates to \ttt{true}.  Apart
+from internal analysis, the selection also applies to writing external
+files.  For instance, the following code generates a $e^+e^-\to
+W^+W^-$ sample with longitudinally polarized $W$ bosons only:
+\begin{footnotesize}
+\begin{verbatim}
+process ww = "e+", "e-" => "W-", "W+"
+polarized "W+"
+polarized "W-"
+?polarized_events = true
+sqrts = 500
+selection = all Hel == 0 ["W+":"W-"]
+simulate (ww) { n_events = 1000 }
+\end{verbatim}
+\end{footnotesize}
+The number of events that end up in the sample on file is equal to the
+number of events with longitudinally polarized $W$s in the generated
+sample, so the file will contain less than 1000 events.
+
+
+%%%%%%%%%
+
 \section{Supported event formats}
 \label{sec:eventformats}
 
@@ -9221,7 +9319,7 @@ This is the modern version of the Les Houches accord event format
 <LesHouchesEvents version="1.0">
 <header>
   <generator_name>WHIZARD</generator_name>
-  <generator_version>2.2.4</generator_version>
+  <generator_version>2.2.5</generator_version>
 </header>
 <init>
  25 25  5.0000000000E+02  5.0000000000E+02 -1 -1 -1 -1 3 1
@@ -9625,6 +9723,20 @@ Other formats support only a single
 event weight, so the \ttt{?update\_weight} option is necessary for a
 visible effect.
 
+External event files in formats such as LHEF, HepMC, or LCIO, also may
+carry information about the value of the strong coupling $\alpha_s$
+and the energy scale of each event.  This information will also be
+provided by \whizard\ when writing external event files.  When such an
+event file is rescanned, the user has the choice to either user the
+$\alpha_s$ value that \whizard\ defines in the current context (or the
+method for obtaining an event-specific running $\alpha_s$ value), or
+override this for each event by using the value in the event file.
+The corresponding parameter is \ttt{?use\_alpha\_s\_from\_file}, which
+is false by default.  Analogously, the parameter
+\ttt{?use\_scale\_from\_file} may be set to override the scale
+definition in the current context.  Obviously, these settings
+influence matrix-element recalculation and therefore require
+\ttt{?update\_sqme} to be set in order to become operational.
 
 %%%%%%%%%
 
@@ -13140,7 +13252,7 @@ command, that tells \whizard\ to automatically determine the decays of
 that particle up to the final state multplicity ($\to$)
 \ttt{auto\_decays\_multiplicity}. Depending on the flag ($\to$)
 \ttt{?auto\_decays\_radiative}, radiative decays will be taken into
-account or not. (cf. also \ttt{unstable}, \ttt{?decay\_rest\_frame},
+account or not. (cf. also \ttt{unstable},
 \ttt{?isotropic\_decay}, \ttt{?diagonal\_decay}) 
 %%%%%
 \item
@@ -13150,8 +13262,7 @@ option to let \whizard\ automatically determine the decays of a
 particle set as ($\to$) \ttt{unstable} -- the maximal final state
 multiplicity that is taken into account. The default is \ttt{2}. The
 flag \ttt{?auto\_decays\_radiative} decides whether radiative decays
-are taken into account. (cf. also \ttt{?decay\_rest\_frame},
-\ttt{?isotropic\_decay}, \ttt{?diagonal\_decay}) 
+are taken into account. (cf.\ also \ttt{unstable}, \ttt{?auto\_decays})
 %%%%%
 \item
 \ttt{?auto\_decays\_radiative} \qquad (default: \ttt{false}) \newline
@@ -13159,9 +13270,8 @@ If \whizard's automatic detection of decay channels are switched on
 ($\to$ \ttt{?auto\_decays} for the ($\to$) \ttt{unstable} command,
 this flags decides whether radiative decays (e.g. containing
 additional photon(s)/gluon(s)) are taken into account or
-not. \newline (cf. also \ttt{auto\_decays\_multiplicity},
-\ttt{?decay\_rest\_frame}, \ttt{?isotropic\_decay}, \newline
-\ttt{?diagonal\_decay})  
+not. (cf. also \ttt{unstable},
+\ttt{auto\_decays\_multiplicity})
 %%%%%
 \item
 \ttt{beam\_events} \newline
@@ -13664,12 +13774,19 @@ included in the ASCII debug event format ($\to$)
 \ttt{?debug\_transforms}, \ttt{?debug\_process})  
 %%%%%
 \item
+\ttt{?decay\_helicity} \qquad (default: unknown) \newline
+If this parameter is given an integer value, any particle decay triggered by a
+subsequent \ttt{unstable} declaration will receive a projection on the given
+helicity state for the unstable particle.
+(cf. also \ttt{unstable}, \ttt{?isotropic\_decay}, \ttt{?diagonal\_decay}.
+The latter parameters, if true, take precdence over any
+\ttt{?decay\_helicity} setting.) 
+%%%%%
+\item
 \ttt{?decay\_rest\_frame} \qquad (default: \ttt{false}) \newline
 Flag that allows to force a particle decay to be simulated in its rest
-frame. Usually, particularly as part of the \ttt{unstable} command,
-this is not the case. (cf. also \ttt{?auto\_decays},
-\ttt{auto\_decays\_multiplicity}, \ttt{?auto\_decays\_radiative},
-\ttt{?isotropic\_decay}, \newline \ttt{?diagonal\_decay})
+frame.  This simplifies the calculation for decays as stand-alone processes,
+but makes the process unsuitable for use in a decay chain.
 %%%%%
 \item
 \ttt{degree} \newline
@@ -13700,9 +13817,8 @@ Flag that -- in case of using factorized production and decays using
 the ($\to$) \ttt{unstable} command -- tells \whizard\ instead of full
 spin correlations to take only the diagonal entries in the
 spin-density matrix (i.e. classical spin correlations). (cf. also 
-\ttt{?decay\_rest\_frame}, \ttt{?auto\_decays},
-\ttt{auto\_decays\_multiplicity}, \ttt{?auto\_decays\_radiative},
-\newline \ttt{?isotropic\_decay})
+\ttt{unstable}, \ttt{?auto\_decays},
+\ttt{decay\_helicity}, \ttt{?isotropic\_decay})
 %%%%%
 \item
 \ttt{?diags} \qquad (default: \ttt{false}) \newline
@@ -14581,9 +14697,8 @@ events for each integrated process.
 Flag that -- in case of using factorized production and decays using
 the ($\to$) \ttt{unstable} command -- tells \whizard\ to switch off
 spin correlations completely (isotropic decay). (cf. also 
-\ttt{?decay\_rest\_frame}, \ttt{?auto\_decays},
-\ttt{auto\_decays\_multiplicity}, \ttt{?diagonal\_decay},
-\ttt{?auto\_decays\_radiative}) 
+\ttt{unstable}, \ttt{?auto\_decays},
+\ttt{decay\_helicity}, \ttt{?diagonal\_decay}) 
 %%%%%
 \item
 \ttt{isr} \newline
@@ -14685,6 +14800,16 @@ The logical variable \texttt{?keep\_beams = true/false} specifies whether
 beam particles and beam remnants are included when writing event files.
 For example, in order to read Les Houches accord event files into \pythia,
 no beam particles are allowed.
+%%%%%
+\item
+\ttt{?keep\_remnants} \qquad (default: \ttt{true}) \newline
+The logical variable \texttt{?keep\_beams = true/false} is respected
+only if \ttt{?keep\_beams} is set.  If \ttt{true}, beam remnants are
+tagged as outgoing particles if they have been neither showered nor
+hadronized, i.e., have no children.  If \ttt{false}, beam remnants are
+also included in the event record, but tagged as unphysical.  Note
+that for ISR and/or beamstrahlung spectra, the radiated photons are
+considered as beam remnants.
 %%%%%
 \item
 \ttt{keV} \newline
@@ -16515,10 +16640,25 @@ into \whizard. (cf. \ttt{rescan}, \newline \ttt{?recover\_beams},
 %%%%%
 \item
 \ttt{?update\_weight} \qquad (default: \ttt{false}) \newline
-Flag that decides whehter the weights in an event file
+Flag that decides whether the weights in an event file
 should be updated/recalculated when reading event/rescanning files
 into \whizard. (cf. \ttt{rescan}, \ttt{?recover\_beams},
 \newline \ttt{?update\_event}, \ttt{?update\_sqme}) 
+%%%%%
+\item
+\ttt{?use\_alpha\_s\_from\_file} \qquad (default: \ttt{false}) \newline
+Flag that decides whether the current $\alpha_s$ definition should be
+used when recalculating matrix elements for events read from file, or
+the value that is stored in the file for that
+event. (cf. \ttt{rescan}, \ttt{?update\_sqme}, \ttt{?use\_scale\_from\_file}) 
+%%%%%
+\item
+\ttt{?use\_scale\_from\_file} \qquad (default: \ttt{false}) \newline
+Flag that decides whether the current energy-scale expression should be
+used when recalculating matrix elements for events read from file, or
+the value that is stored in the file for that
+event. (cf. \ttt{rescan}, \ttt{?update\_sqme},
+\ttt{?use\_alpha\_s\_from\_file})
 %%%%%
 \item
 {\color{red}

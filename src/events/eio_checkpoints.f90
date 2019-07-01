@@ -1,4 +1,4 @@
-! WHIZARD 2.2.4 Feb 06 2015
+! WHIZARD 2.2.5 Feb 27 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -151,11 +151,11 @@ contains
     if (present (success))  success = .false.
   end subroutine eio_checkpoints_switch_inout
   
-  subroutine eio_checkpoints_output (eio, event, i_prc, reading, pacify)
+  subroutine eio_checkpoints_output (eio, event, i_prc, reading, passed, pacify)
     class(eio_checkpoints_t), intent(inout) :: eio
     class(generic_event_t), intent(in), target :: event
     integer, intent(in) :: i_prc
-    logical, intent(in), optional :: reading, pacify
+    logical, intent(in), optional :: reading, passed, pacify
     logical :: rd
     rd = .false.;  if (present (reading))  rd = reading
     if (eio%active) then

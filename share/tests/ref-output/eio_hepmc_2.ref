@@ -23,8 +23,9 @@
 
  HepMC event stream:
    Reading from file = eio_hepmc_2.hepmc
-   Keep beams        = F
    Recover beams     = F
+   Alpha_s from file = F
+   Scale from file   = F
    File extension    = 'hepmc'
    Numerical process IDs:
      1: 42
@@ -39,6 +40,8 @@ Found process #1 with ID = 42
    Normalization      = 'sigma'
    Helicity handling  = drop
    Keep correlations  = F
+------------------------------------------------------------------------
+   Event weight       =  1.000000000000E+00
 ------------------------------------------------------------------------
    Selected MCI group = 1
    Selected term      = 1

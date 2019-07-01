@@ -1,4 +1,4 @@
-! WHIZARD 2.2.4 Feb 06 2015
+! WHIZARD 2.2.5 Feb 27 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -785,6 +785,9 @@ contains
          (global%var_list, var_str ("?keep_beams"), .false., &
           intrinsic=.true.)
     call var_list_append_log &
+         (global%var_list, var_str ("?keep_remnants"), .true., &
+          intrinsic=.true.)
+    call var_list_append_log &
          (global%var_list, var_str ("?recover_beams"), .true., &
           intrinsic=.true.)
     call var_list_append_log &
@@ -795,6 +798,12 @@ contains
           intrinsic=.true.)       
     call var_list_append_log &
          (global%var_list, var_str ("?update_weight"), .false., &
+          intrinsic=.true.)       
+    call var_list_append_log &
+         (global%var_list, var_str ("?use_alpha_s_from_file"), .false., &
+          intrinsic=.true.)       
+    call var_list_append_log &
+         (global%var_list, var_str ("?use_scale_from_file"), .false., &
           intrinsic=.true.)       
     call var_list_append_log &
          (global%var_list, var_str ("?allow_decays"), .true., &
@@ -817,6 +826,9 @@ contains
     call var_list_append_log &
          (global%var_list, var_str ("?diagonal_decay"), .false., &
           intrinsic=.true.)
+    call var_list_append_int &
+         (global%var_list, var_str ("decay_helicity"), &
+          intrinsic=.true.)
     call var_list_append_string &
          (global%var_list, var_str ("$sample"), var_str (""), &
           intrinsic=.true.)
@@ -825,6 +837,9 @@ contains
           intrinsic=.true.)       
     call var_list_append_log &
          (global%var_list, var_str ("?sample_pacify"), .false., &
+          intrinsic=.true.)
+    call var_list_append_log &
+         (global%var_list, var_str ("?sample_select"), .true., &
           intrinsic=.true.)
     call var_list_append_int &
          (global%var_list, var_str ("sample_max_tries"), 10000, &
@@ -1475,11 +1490,13 @@ contains
   end subroutine rt_data_model_set_real
 
   subroutine rt_data_modify_particle &
-       (global, pdg, polarized, stable, decay, isotropic_decay, diagonal_decay)
+       (global, pdg, polarized, stable, decay, &
+       isotropic_decay, diagonal_decay, decay_helicity)
     class(rt_data_t), intent(inout), target :: global
     integer, intent(in) :: pdg
     logical, intent(in), optional :: polarized, stable
     logical, intent(in), optional :: isotropic_decay, diagonal_decay
+    integer, intent(in), optional :: decay_helicity
     type(string_t), dimension(:), intent(in), optional :: decay
     call global%ensure_model_copy ()
     if (present (polarized)) then
@@ -1494,7 +1511,7 @@ contains
           call global%model%set_stable (pdg)
        else if (present (decay)) then
           call global%model%set_unstable &
-               (pdg, decay, isotropic_decay, diagonal_decay)
+               (pdg, decay, isotropic_decay, diagonal_decay, decay_helicity)
        else
           call msg_bug ("Setting particle unstable: missing decay processes")
        end if
@@ -2043,7 +2060,7 @@ contains
          1000._default, is_known = .true.)
     call rt_data%set_int (var_str ("seed"), &
          0, is_known=.true.)        
-    call flavor_init (flv, [25,25], rt_data%model)
+    call flv%init ([25,25], rt_data%model)
     
     call rt_data%set_string (var_str ("$run_id"), &
          var_str ("run1"), is_known = .true.)
@@ -2107,9 +2124,9 @@ contains
 
     call rt_data%set_real (var_str ("sqrts"),&
          1000._default, is_known = .true.)
-    call flavor_init (flv, [25,25], rt_data%model)
+    call flv%init ([25,25], rt_data%model)
     
-    call rt_data%beam_structure%init_sf (flavor_get_name (flv), [1])
+    call rt_data%beam_structure%init_sf (flv%get_name (), [1])
     call rt_data%beam_structure%set_sf (1, 1, var_str ("pdf_builtin"))
 
     call rt_data%set_string (var_str ("$run_id"), &
@@ -2255,8 +2272,8 @@ contains
     type(rt_data_t), intent(in) :: rt_data
     logical :: flag
     type(flavor_t) :: flv
-    call flavor_init (flv, pdg, rt_data%model)
-    flag = flavor_is_stable (flv)
+    call flv%init (pdg, rt_data%model)
+    flag = flv%is_stable ()
   end function is_stable
    
   function is_polarized (pdg, rt_data) result (flag)
@@ -2264,8 +2281,8 @@ contains
     type(rt_data_t), intent(in) :: rt_data
     logical :: flag
     type(flavor_t) :: flv
-    call flavor_init (flv, pdg, rt_data%model)
-    flag = flavor_is_polarized (flv)
+    call flv%init (pdg, rt_data%model)
+    flag = flv%is_polarized ()
   end function is_polarized
     
   subroutine rt_data_6 (u)

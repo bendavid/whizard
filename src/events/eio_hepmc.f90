@@ -1,4 +1,4 @@
-! WHIZARD 2.2.4 Feb 06 2015
+! WHIZARD 2.2.5 Feb 27 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -58,8 +58,10 @@ module eio_hepmc
   type, extends (eio_t) :: eio_hepmc_t
      logical :: writing = .false.
      logical :: reading = .false.
-     logical :: keep_beams = .false.
+     ! logical :: keep_beams = .false.
      logical :: recover_beams = .false.
+     logical :: use_alpha_s_from_file = .false.
+     logical :: use_scale_from_file = .false.
      type(hepmc_iostream_t) :: iostream
      type(hepmc_event_t) :: hepmc_event
      integer, dimension(:), allocatable :: proc_num_id
@@ -82,14 +84,20 @@ module eio_hepmc
 
 contains
   
-  subroutine eio_hepmc_set_parameters (eio, keep_beams, &
-       recover_beams, extension)
+  ! subroutine eio_hepmc_set_parameters (eio, keep_beams, recover_beams, extension)
+  subroutine eio_hepmc_set_parameters &
+       (eio, recover_beams, use_alpha_s_from_file, use_scale_from_file, &
+       extension)
     class(eio_hepmc_t), intent(inout) :: eio
-    logical, intent(in), optional :: keep_beams
     logical, intent(in), optional :: recover_beams 
+    logical, intent(in), optional :: use_alpha_s_from_file
+    logical, intent(in), optional :: use_scale_from_file
     type(string_t), intent(in), optional :: extension    
-    if (present (keep_beams))  eio%keep_beams = keep_beams
     if (present (recover_beams))  eio%recover_beams = recover_beams
+    if (present (use_alpha_s_from_file)) &
+         eio%use_alpha_s_from_file = use_alpha_s_from_file
+    if (present (use_scale_from_file)) &
+         eio%use_scale_from_file = use_scale_from_file
     if (present (extension)) then
        eio%extension = extension
     else
@@ -110,8 +118,11 @@ contains
     else
        write (u, "(3x,A)")  "[closed]"
     end if
-    write (u, "(3x,A,L1)")    "Keep beams        = ", object%keep_beams
     write (u, "(3x,A,L1)")    "Recover beams     = ", object%recover_beams
+    write (u, "(3x,A,L1)")    "Alpha_s from file = ", &
+         object%use_alpha_s_from_file
+    write (u, "(3x,A,L1)")    "Scale from file   = ", &
+         object%use_scale_from_file
     write (u, "(3x,A,A,A)")     "File extension    = '", &
          char (object%extension), "'"
     if (allocated (object%proc_num_id)) then
@@ -221,12 +232,15 @@ contains
     if (present (success))  success = .false.
   end subroutine eio_hepmc_switch_inout
   
-  subroutine eio_hepmc_output (eio, event, i_prc, reading, pacify)
+  subroutine eio_hepmc_output (eio, event, i_prc, reading, passed, pacify)
     class(eio_hepmc_t), intent(inout) :: eio
     class(generic_event_t), intent(in), target :: event
     integer, intent(in) :: i_prc
-    logical, intent(in), optional :: reading, pacify
+    logical, intent(in), optional :: reading, passed, pacify
     type(particle_set_t), pointer :: pset_ptr
+    if (present (passed)) then
+       if (.not. passed)  return
+    end if
     if (eio%writing) then
        pset_ptr => event%get_particle_set_ptr ()
        call hepmc_event_init (eio%hepmc_event, &
@@ -283,11 +297,9 @@ contains
     call event%reset ()
     call event%select (1, 1, 1)
     call hepmc_to_event (event, eio%hepmc_event, eio%fallback_model, &
-         recover_beams = eio%recover_beams) 
-    ! if (associated (event%process)) then
-    !    pset => event%get_particle_set_ptr ()
-    !    call particle_set_set_model (pset, event%process%get_model_ptr ())
-    ! end if    
+         recover_beams = eio%recover_beams, &
+         use_alpha_s = eio%use_alpha_s_from_file, &
+         use_scale = eio%use_scale_from_file) 
     call hepmc_event_final (eio%hepmc_event)
   end subroutine eio_hepmc_input_event
 
@@ -383,7 +395,7 @@ contains
     
     select type (eio)
     type is (eio_hepmc_t)
-       call eio%set_parameters (keep_beams = .true.)
+       call eio%set_parameters ()
     end select
     call eio%write (u)
 

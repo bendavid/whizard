@@ -1,4 +1,4 @@
-! WHIZARD 2.2.4 Feb 06 2015
+! WHIZARD 2.2.5 Feb 27 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -128,7 +128,7 @@ contains
     data%model => model
     if (pdg_array_get_length (pdg_in) /= 1) &
          call msg_fatal ("PDF: incoming particle must be unique")
-    call flavor_init (data%flv_in, pdg_array_get (pdg_in, 1), model)
+    call data%flv_in%init (pdg_array_get (pdg_in, 1), model)
     data%mask = .true.
     data%mask_photon = .true.
     select case (pdg_array_get (pdg_in, 1))
@@ -184,7 +184,7 @@ contains
        return
     end if
     write (u, "(3x,A)", advance="no") "flavor       = "
-    call flavor_write (data%flv_in, u);  write (u, *)
+    call data%flv_in%write (u);  write (u, *)
     write (u, "(3x,A,A)")   "name         = ", char (data%name)
     write (u, "(3x,A,L1)")  "invert       = ", data%invert
     write (u, "(3x,A,L1)")  "has photon   = ", data%has_photon
@@ -262,37 +262,41 @@ contains
     class(sf_data_t), intent(in), target :: data
     type(quantum_numbers_mask_t), dimension(3) :: mask
     type(flavor_t) :: flv, flv_remnant
+    type(color_t) :: col0
     type(quantum_numbers_t), dimension(3) :: qn
     integer :: i
     select type (data)
     type is (pdf_builtin_data_t)
-       mask = new_quantum_numbers_mask (.false., .false., .true.)
+       mask = quantum_numbers_mask (.false., .false., .true.)
+       call col0%init ()
        call sf_int%base_init (mask, [0._default], [0._default], [0._default])
        sf_int%data => data
        do i = -6, 6
           if (data%mask(i)) then
-             call quantum_numbers_init (qn(1), data%flv_in)
+             call qn(1)%init (data%flv_in, col = col0)
              if (i == 0) then
-                call flavor_init (flv, GLUON, data%model)
-                call flavor_init (flv_remnant, HADRON_REMNANT_OCTET, data%model)
+                call flv%init (GLUON, data%model)
+                call flv_remnant%init (HADRON_REMNANT_OCTET, data%model)
              else
-                call flavor_init (flv, i, data%model)
-                call flavor_init (flv_remnant, &
-                     sign (HADRON_REMNANT_TRIPLET, -i), data%model)
+                call flv%init (i, data%model)
+                call flv_remnant%init &
+                     (sign (HADRON_REMNANT_TRIPLET, -i), data%model)
              end if
-             call quantum_numbers_init (qn(2), &
+             call qn(2)%init ( &
                   flv = flv_remnant, col = color_from_flavor (flv_remnant, 1))
-             call quantum_numbers_init (qn(3), &
+             call qn(2)%tag_radiated ()
+             call qn(3)%init ( &
                   flv = flv, col = color_from_flavor (flv, 1, reverse=.true.))
              call interaction_add_state (sf_int%interaction_t, qn)
           end if
        end do
        if (data%has_photon .and. data%mask_photon) then
-          call flavor_init (flv, PHOTON, data%model)
-          call flavor_init (flv_remnant, HADRON_REMNANT_SINGLET, data%model)
-          call quantum_numbers_init (qn(2), flv = flv_remnant, &
+          call flv%init (PHOTON, data%model)
+          call flv_remnant%init (HADRON_REMNANT_SINGLET, data%model)
+          call qn(2)%init (flv = flv_remnant, &
                col = color_from_flavor (flv_remnant, 1))
-          call quantum_numbers_init (qn(3), flv = flv, &
+          call qn(2)%tag_radiated ()
+          call qn(3)%init (flv = flv, &
                col = color_from_flavor (flv, 1, reverse = .true.))
           call interaction_add_state (sf_int%interaction_t, qn)
        end if
@@ -532,7 +536,7 @@ contains
 
     call os_data_init (os_data)
     call model%init_sm_test ()
-    call flavor_init (flv, PROTON, model)
+    call flv%init (PROTON, model)
     pdg_in = PROTON
 
     call reset_interaction_counter ()
@@ -559,7 +563,7 @@ contains
     write (u, "(A)")  "* Initialize incoming momentum with E=500"
     write (u, "(A)")
     E = 500
-    k = vector4_moving (E, sqrt (E**2 - flavor_get_mass (flv)**2), 3)
+    k = vector4_moving (E, sqrt (E**2 - flv%get_mass ()**2), 3)
     call vector4_write (k, u)
     call sf_int%seed_kinematics ([k])
 

@@ -94,6 +94,11 @@ extern "C" void gen_event_set_signal_process_vertex
   evt->set_signal_process_vertex( v );
 }
 
+extern "C" GenVertex* gen_event_get_signal_process_vertex
+( GenEvent* evt ) {
+  return evt->signal_process_vertex();
+}
+
 extern "C" bool gen_event_set_beam_particles
 ( GenEvent* evt, GenParticle* prt1, GenParticle* prt2) {
   evt->set_beam_particles( prt1, prt2 );

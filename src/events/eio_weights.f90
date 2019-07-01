@@ -1,4 +1,4 @@
-! WHIZARD 2.2.4 Feb 06 2015
+! WHIZARD 2.2.5 Feb 27 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -141,16 +141,14 @@ contains
     if (present (success))  success = .false.
   end subroutine eio_weights_switch_inout
   
-  subroutine eio_weights_output (eio, event, i_prc, reading, pacify)
+  subroutine eio_weights_output (eio, event, i_prc, reading, passed, pacify)
     class(eio_weights_t), intent(inout) :: eio
     class(generic_event_t), intent(in), target :: event
     integer, intent(in) :: i_prc
-    logical, intent(in), optional :: reading, pacify
-    integer :: i_mci, i_term, n_alt, i
+    logical, intent(in), optional :: reading, passed, pacify
+    integer :: n_alt, i
     real(default) :: weight, sqme_ref, sqme_prc
     if (eio%writing) then
-!       i_mci = event%get_i_mci ()
-!       i_term = event%get_i_term ()
        weight = event%get_weight_prc ()
        sqme_ref = event%get_sqme_ref ()
        sqme_prc = event%get_sqme_prc ()
@@ -159,10 +157,10 @@ contains
 2      format (I0,3(1x,ES15.8),3(1x,I0))       
        if (eio%pacify) then
           write (eio%unit, 2)  0, weight, sqme_prc, sqme_ref, &
-               i_prc !, i_mci, i_term
+               i_prc 
        else
           write (eio%unit, 1)  0, weight, sqme_prc, sqme_ref, &
-               i_prc !, i_mci, i_term
+               i_prc 
        end if
        do i = 1, n_alt
           weight = event%get_weight_alt(i)

@@ -38,6 +38,8 @@ libevents_la_SOURCES = \
   eio_checkpoints.f90 \
   eio_weights.f90 \
   hep_common.f90 \
+  hepmc_interface.f90 \
+  lcio_interface.f90 \
   hep_events.f90 \
   eio_ascii.f90 \
   eio_lhef.f90 \
@@ -51,10 +53,15 @@ dist_noinst_DATA = events.nw
 # Dump module names into file Modules
 libevents_Modules = ${libevents_la_SOURCES:.f90=}
 Modules: Makefile
-	@rm -f $@
-	for module in $(libevents_Modules); do \
-          echo $$module >> $@; \
+	@for module in $(libevents_Modules); do \
+          echo $$module >> $@.new; \
         done
+	@if diff $@ $@.new -q >/dev/null; then \
+          rm $@.new; \
+	else \
+          mv $@.new $@; echo "Modules updated"; \
+        fi
+BUILT_SOURCES = Modules
 
 ## Fortran module dependencies
 # Get module lists from other directories
@@ -67,7 +74,8 @@ module_lists = \
   ../physics/Modules \
   ../qft/Modules \
   ../types/Modules \
-  ../particles/Modules
+  ../particles/Modules \
+  ../xdr/Modules
 
 $(module_lists):
 	$(MAKE) -C `dirname $@` Modules
@@ -111,7 +119,7 @@ DISTCLEANFILES += Makefile.depend
 	@:
 #	touch $@
 
-AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system -I../combinatorics -I../parsing -I../physics -I../qft -I../expr_base -I../types -I../fastjet -I../particles
+AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system -I../combinatorics -I../parsing -I../physics -I../qft -I../expr_base -I../types -I../fastjet -I../particles -I../xdr
 
 
 ########################################################################

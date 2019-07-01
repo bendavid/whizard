@@ -1,4 +1,4 @@
-! WHIZARD 2.2.4 Feb 06 2015
+! WHIZARD 2.2.5 Feb 27 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -329,10 +329,12 @@ contains
   subroutine apply_shower_particle_set & 
        (evt, valid, vetoed)
     class(evt_shower_t), intent(inout) :: evt
+    type(particle_t), dimension(1:2) :: prt_in
     logical, intent(inout) :: valid
     logical, intent(inout) :: vetoed
-    real(kind=double) :: pdftest    
+    real(kind=double) :: pdftest       
     logical, parameter :: debug = .false., to_file = .false.
+    integer :: i
 
     type(mlm_matching_data_t) :: mlm_matching_data
     logical, save :: matching_disabled = .false.
@@ -349,14 +351,15 @@ contains
     if (.not. valid .or. vetoed)  return
 
     if (signal_is_pending ()) return    
+
+    do i = 1, 2
+       prt_in(i) = evt%particle_set%get_particle (i)
+    end do
     
     ! ensure that lhapdf is initialized
     if (evt%pdf_type .eq. STRF_LHAPDF5) then
        if (evt%settings%ps_isr_active .and. &
-            (abs (particle_get_pdg (particle_set_get_particle &
-                 (evt%particle_set, 1))) >= 1000) .and. &
-            (abs (particle_get_pdg (particle_set_get_particle &
-                 (evt%particle_set, 2))) >= 1000)) then
+            (all (abs (prt_in%get_pdg ()) >= 1000))) then
           call GetQ2max (0, pdftest)
           if (pdftest < epsilon(pdftest)) then
              call msg_fatal ("ISR QCD shower enabled, but LHAPDF not" // &
@@ -393,15 +396,9 @@ contains
 
     if (.not. matching_disabled) then
        !!! Check if the beams are hadrons
-       if ((abs (particle_get_pdg (particle_set_get_particle &
-            (evt%particle_set, 1))) <= 18) .and. &
-            (abs (particle_get_pdg (particle_set_get_particle &
-            (evt%particle_set, 2))) <= 18)) then
+       if (all (abs (prt_in%get_pdg ()) <= 18)) then
           mlm_matching_data%is_hadron_collision = .false.
-       else if ((abs (particle_get_pdg (particle_set_get_particle &
-            (evt%particle_set, 1))) >= 1000) .and. &
-            (abs (particle_get_pdg (particle_set_get_particle &
-            (evt%particle_set, 2))) >= 1000)) then
+       else if (all (abs (prt_in%get_pdg ()) >= 1000)) then
           mlm_matching_data%is_hadron_collision = .true.
        else 
           call msg_error (" Matching didn't recognize beams setup," // &
@@ -431,7 +428,7 @@ contains
     end if
     if (debug) then
        print *, " after SHOWER"
-       call particle_set_write (evt%particle_set)
+       call evt%particle_set%write ()
     end if
        
     if (evt%settings%mlm_matching .and. &
@@ -528,8 +525,9 @@ contains
          return
       end if
       
-      call particle_set_reduce (particle_set, pset_reduced)
+      call particle_set%reduce (pset_reduced)
       call hepeup_from_particle_set (pset_reduced)
+      
       call hepeup_set_event_parameters (proc_id=1)
 
       u_W2P = free_unit ()
@@ -688,6 +686,7 @@ contains
            parton_pointers, final_ME_partons
       real(kind=default) :: mi_scale, ps_scale, shat, phi
       type(parton_pointer_t) :: temppp
+      type(particle_t) :: prt
       integer, dimension(:), allocatable :: connections
       integer :: n_loop, i, j, k
       integer :: n_hadrons, n_in, n_out
@@ -697,7 +696,7 @@ contains
       integer, dimension(1) :: parent
       logical, save :: msg_written = .false.
       integer, dimension(2,4) :: color_corr
-      integer :: u_S2W
+      integer :: u_S2W      
 
       vetoed = .false.
 
@@ -750,19 +749,17 @@ contains
          n_hadrons = 0
          n_in = 0
          n_out = 0
-         do i = 1, particle_set_get_n_tot (particle_set)
-            if (particle_get_status (particle_set_get_particle &
-                 (particle_set, i)) == PRT_BEAM) &
+         do i = 1, particle_set%get_n_tot ()
+            prt = particle_set%get_particle (i)
+            if (prt%get_status () == PRT_BEAM) &
                  n_hadrons = n_hadrons + 1
-            if (particle_get_status (particle_set_get_particle &
-                 (particle_set, i)) == PRT_INCOMING) &
+            if (prt%get_status () == PRT_INCOMING) &
                  n_in = n_in + 1
-            if (particle_get_status (particle_set_get_particle &
-                 (particle_set, i)) == PRT_OUTGOING) &
+            if (prt%get_status () == PRT_OUTGOING) &
                  n_out = n_out + 1
          end do
 
-         allocate (connections (1:particle_set_get_n_tot (particle_set)))
+         allocate (connections (1:particle_set%get_n_tot ()))
          connections = 0
 
          allocate (hadrons (1:2))
@@ -772,18 +769,15 @@ contains
          j=0
          if (n_hadrons > 0) then
             if (debug) print *, "Transfer hadrons from particle_set to hadrons"
-            do i = 1, particle_set_get_n_tot (particle_set)
-               if (particle_get_status (particle_set_get_particle &
-                    (particle_set, i)) == PRT_BEAM) then
+            do i = 1, particle_set%get_n_tot ()
+               prt = particle_set%get_particle (i)
+               if (prt%get_status () == PRT_BEAM) then
                   j = j + 1
                   hadrons(j)%nr = shower%get_next_free_nr ()
-                  hadrons(j)%momentum = particle_get_momentum &
-                       (particle_set_get_particle (particle_set, i))
+                  hadrons(j)%momentum = prt%get_momentum ()
                   hadrons(j)%t = hadrons(j)%momentum**2
-                  hadrons(j)%type = particle_get_pdg &
-                       (particle_set_get_particle (particle_set, i))
-                  col_array=particle_get_color (particle_set_get_particle &
-                       (particle_set, i))
+                  hadrons(j)%type = prt%get_pdg ()
+                  col_array = prt%get_color ()
                   hadrons(j)%c1 = col_array(1)
                   hadrons(j)%c2 = col_array(2)
                   max_color_nr = max (max_color_nr, abs(hadrons(j)%c1), &
@@ -796,18 +790,15 @@ contains
 
          j = 0
          if (debug) print *, "Transfer incoming partons from particle_set to partons"
-         do i = 1, particle_set_get_n_tot (particle_set)
-            if (particle_get_status (particle_set_get_particle &
-                 (particle_set, i)) == PRT_INCOMING) then
+         do i = 1, particle_set%get_n_tot ()
+            prt = particle_set%get_particle (i)
+            if (prt%get_status () == PRT_INCOMING) then
                j = j+1
                partons(j)%nr = shower%get_next_free_nr ()
-               partons(j)%momentum = particle_get_momentum &
-                    (particle_set_get_particle (particle_set, i))
+               partons(j)%momentum = prt%get_momentum ()
                partons(j)%t = partons(j)%momentum**2
-               partons(j)%type = particle_get_pdg &
-                    (particle_set_get_particle (particle_set, i))
-               col_array=particle_get_color &
-                    (particle_set_get_particle (particle_set, i))
+               partons(j)%type = prt%get_pdg ()
+               col_array = prt%get_color ()
                partons(j)%c1 = col_array (1)
                partons(j)%c2 = col_array (2)
                parton_pointers(j)%p => partons(j)
@@ -815,10 +806,8 @@ contains
                     abs (partons(j)%c2))
                connections(i)=j
                ! insert dependences on hadrons
-               if (particle_get_n_parents (particle_set_get_particle &
-                    (particle_set, i))==1) then
-                  parent = particle_get_parents (particle_set_get_particle &
-                       (particle_set, i))
+               if (prt%get_n_parents () == 1) then
+                  parent = prt%get_parents ()
                   partons(j)%initial => hadrons (connections (parent(1)))
                   partons(j)%x = space_part_norm (partons(j)%momentum) / &
                                  space_part_norm (partons(j)%initial%momentum)
@@ -827,18 +816,15 @@ contains
          end do
          if (signal_is_pending ()) return             
          if (debug) print *, "Transfer outgoing partons from particle_set to partons"
-         do i = 1, particle_set_get_n_tot (particle_set)
-            if (particle_get_status (particle_set_get_particle &
-                 (particle_set, i)) == PRT_OUTGOING) then
+         do i = 1, particle_set%get_n_tot ()
+            prt = particle_set%get_particle (i)
+            if (prt%get_status () == PRT_OUTGOING) then               
                j = j + 1
                partons(j)%nr = shower%get_next_free_nr ()
-               partons(j)%momentum = particle_get_momentum &
-                    (particle_set_get_particle (particle_set, i))
+               partons(j)%momentum = prt%get_momentum ()
                partons(j)%t = partons(j)%momentum**2
-               partons(j)%type = particle_get_pdg &
-                    (particle_set_get_particle (particle_set, i))
-               col_array=particle_get_color &
-                    (particle_set_get_particle (particle_set, i))
+               partons(j)%type = prt%get_pdg ()
+               col_array = prt%get_color ()
                partons(j)%c1 = col_array(1)
                partons(j)%c2 = col_array(2)
                parton_pointers(j)%p => partons(j)
@@ -1073,7 +1059,7 @@ contains
          exit TRY_SHOWER
       end do TRY_SHOWER
       if (debug) then
-         call particle_set_write (particle_set)
+         call particle_set%write ()
          print *, &
            "----------------------apply_shower_particle_set------------------"
          print *, &
@@ -1150,14 +1136,14 @@ contains
 
       !!! loop over particles and extract final colored ones with eta<etamax
       n_jets_PS = 0
-      do i = 1, particle_set_get_n_tot (particle_set)
+      do i = 1, particle_set%get_n_tot ()
          if (signal_is_pending ()) return             
-         tempprt = particle_set_get_particle (particle_set, i)
-         if (particle_get_status (tempprt) /= PRT_OUTGOING) cycle
-         col = particle_get_color (tempprt)
+         tempprt = particle_set%get_particle (i)
+         if (tempprt%get_status () /= PRT_OUTGOING) cycle
+         col = tempprt%get_color ()
          if (all (col == 0)) cycle
          if (data%is_hadron_collision) then
-            p_tmp = particle_get_momentum (tempprt)
+            p_tmp = tempprt%get_momentum ()
             if (energy (p_tmp) - longitudinal_part (p_tmp) < 1.E-10_default .or. &
                 energy (p_tmp) + longitudinal_part (p_tmp) < 1.E-10_default) then
                eta = pseudorapidity (p_tmp)
@@ -1168,7 +1154,7 @@ contains
                  settings%ms%mlm_etamax)  then
                if (debug) then
                   print *, "REJECTING"
-                  call particle_write (tempprt)
+                  call tempprt%write ()
                end if
                cycle
             end if
@@ -1180,13 +1166,13 @@ contains
       if (debug)  write (*, "(A,1x,I0)")  "n_jets_ps =", n_jets_ps
 
       j = 1
-      do i = 1, particle_set_get_n_tot (particle_set)
-         tempprt = particle_set_get_particle (particle_set, i)
-         if (particle_get_status (tempprt) /= PRT_OUTGOING) cycle
-         col = particle_get_color (tempprt)
+      do i = 1, particle_set%get_n_tot ()
+         tempprt = particle_set%get_particle (i)
+         if (tempprt%get_status () /= PRT_OUTGOING) cycle
+         col = tempprt%get_color ()
          if(all(col == 0)) cycle
          if (data%is_hadron_collision) then
-            p_tmp = particle_get_momentum (tempprt)
+            p_tmp = tempprt%get_momentum ()
             if (energy (p_tmp) - longitudinal_part (p_tmp) < 1.E-10_default .or. &
                 energy (p_tmp) + longitudinal_part (p_tmp) < 1.E-10_default) then
                eta = pseudorapidity (p_tmp)
@@ -1196,7 +1182,7 @@ contains
             if (eta > settings%ms%mlm_etaClusfactor * &
                  settings%ms%mlm_etamax) cycle
          end if
-         data%P_PS(j) = particle_get_momentum (tempprt)
+         data%P_PS(j) = tempprt%get_momentum ()
          j = j + 1
       end do
     end subroutine matching_transfer_PS
@@ -1321,7 +1307,7 @@ contains
       call tag_gen_n%write (var_str ("WHIZARD"), unit)
       write (unit, *)
       write (unit, "(2x)", advance = "no")      
-      call tag_gen_v%write (var_str ("2.2.4"), unit)
+      call tag_gen_v%write (var_str ("2.2.5"), unit)
       write (unit, *)
       call tag_head%close (unit); write (unit, *)
       call tag_init%write (unit); write (unit, *)
@@ -1344,42 +1330,35 @@ contains
     class(model_data_t), intent(in), target :: model_hadrons
     type(flavor_t) :: flv
     type(color_t) :: col
-
     class(model_data_t), pointer :: model
-    integer :: newsize, oldsize
-    type(particle_t), dimension(:), allocatable :: temp_prt
+    type(particle_t), dimension(:), allocatable :: prt_tmp, prt
     integer :: i, j
-    integer, dimension(:), allocatable :: available_parents
-    integer, dimension(:), allocatable :: available_children
-    logical, dimension(:), allocatable :: direct_child
-    type(vector4_t) :: diffmomentum
+    type(vector4_t) :: mom, d_mom
     integer, PARAMETER :: MAXLEN=200
     character(len=maxlen) :: string
-    integer ibeg
+    integer :: ibeg, n_tot, n_entries
+    integer, dimension(:), allocatable :: relations, mothers
     INTEGER :: NUP,IDPRUP,IDUP,ISTUP
     real(kind=double) :: XWGTUP,SCALUP,AQEDUP,AQCDUP,VTIMUP,SPINUP
-    integer :: MOTHUP(1:2),ICOLUP(1:2)
+    integer :: MOTHUP(1:2), ICOLUP(1:2)
     real(kind=double) :: PUP(1:5)
     real(kind=default) :: pup_dum(1:5)
     character(len=5) :: buffer
     character(len=6) :: strfmt
+    logical :: not_found
     STRFMT='(A000)'
-    WRITE(STRFMT(3:5),'(I3)') MAXLEN
+    WRITE (STRFMT(3:5),'(I3)') MAXLEN
 
     rewind (u)
 
-    !!! get newsize of particle_set, newsize = old size of 
-    !!!    particle_set + #entries - 2 (incoming partons in lhef)
-    oldsize = particle_set_get_n_tot (particle_set)
-    !!! Loop until finds line beginning with "<event>" or "<event ".
     do
-       read (u,*,END=501,ERR=502) STRING
-       IBEG=0
+       read (u,*, END=501, ERR=502) STRING
+       IBEG = 0
        do
           if (signal_is_pending ()) return              
           IBEG = IBEG + 1
           ! Allow indentation.
-          IF (STRING(IBEG:IBEG).EQ.' ' .and. IBEG < MAXLEN-6) cycle
+          IF (STRING (IBEG:IBEG) .EQ. ' ' .and. IBEG < MAXLEN-6) cycle
           exit
        end do
        IF (string(IBEG:IBEG+6) /= '<event>' .and. &
@@ -1388,36 +1367,26 @@ contains
     end do
     !!! Read first line of event info -> number of entries
     read (u, *, END=503, ERR=504) NUP, IDPRUP, XWGTUP, SCALUP, AQEDUP, AQCDUP
-    newsize = oldsize + NUP - 2
-    allocate (temp_prt (1:newsize))
-
-    allocate (available_parents (1:oldsize))
-    available_parents = 0
-    do i = 1, particle_set_get_n_tot (particle_set)
+    n_tot = particle_set%get_n_tot ()
+    allocate (prt_tmp (1:n_tot+NUP))
+    allocate (relations (1:NUP), mothers (1:NUP))
+    do i = 1, n_tot
        if (signal_is_pending ()) return           
-       temp_prt (i) = particle_set_get_particle (particle_set, i)
-       if (particle_get_status (temp_prt (i)) == PRT_OUTGOING .or. &
-            particle_get_status (temp_prt (i)) == PRT_BEAM_REMNANT) then
-          call particle_reset_status (temp_prt (i), PRT_VIRTUAL)
-          available_parents (i) = i
+       prt_tmp (i) = particle_set%get_particle (i)
+       if (prt_tmp(i)%get_status () == PRT_OUTGOING .or. &
+            prt_tmp(i)%get_status () == PRT_BEAM_REMNANT) then
+          call prt_tmp(i)%reset_status (PRT_VIRTUAL)
        end if
     end do
 
-    allocate (available_children (1:newsize))
-    allocate (direct_child (1:newsize))
-    available_children = 0
-    direct_child = .false.
-
     !!! transfer particles from lhef to particle_set
     !!!...Read NUP subsequent lines with information on each particle.
-    DO I = 1, NUP
-       READ (u,*,END=200,ERR=505) IDUP, ISTUP, MOTHUP(1), MOTHUP(2), &
+    n_entries = 1
+    mothers = 0
+    relations = 0    
+    PARTICLE_LOOP: do I = 1, NUP
+       read (u,*, END=200, ERR=505) IDUP, ISTUP, MOTHUP(1), MOTHUP(2), &
             ICOLUP(1), ICOLUP(2), (PUP (J),J=1,5), VTIMUP, SPINUP
-       if ((I.eq.1).or.(I.eq.2)) cycle
-
-       call particle_reset_status (temp_prt(oldsize+i-2), PRT_OUTGOING)
-       !!! Settings for unpolarized particles
-       ! particle_set%prt (oldsize+i-2)%polarization = 0 ! =PRT_UNPOLARIZED !??
        if (model_in%test_field (IDUP)) then
           model => model_in
        else if (model_hadrons%test_field (IDUP)) then
@@ -1428,67 +1397,59 @@ contains
                " found neither in given model file nor in SM_hadrons")
           return
        end if
-       call flavor_init (flv, IDUP, model)
-       call particle_set_flavor (temp_prt (oldsize+i-2), flv)
-       
+       call flv%init (IDUP, model)
        if (IABS(IDUP) == 2212 .or. IABS(IDUP) == 2112) then
           ! PYTHIA sometimes sets color indices for protons and neutrons (?)
           ICOLUP (1) = 0
           ICOLUP (2) = 0
        end if
-       call color_init_col_acl (col, ICOLUP (1), ICOLUP (2))
-       call particle_set_color (temp_prt (oldsize+i-2), col)
+       call col%init_col_acl (ICOLUP (1), ICOLUP (2))
        !!! Settings for unpolarized particles
-       ! particle_set%prt (oldsize+i-2)%hel = ??
-       ! particle_set%prt (oldsize+i-2)%pol = ??
+       ! particle_set%prt (oldsize+i)%hel = ??
+       ! particle_set%prt (oldsize+i)%pol = ??
+       if (MOTHUP(1) /= 0) then
+          mothers(i) = MOTHUP(1)
+       end if
        pup_dum = PUP
-       call particle_set_momentum (temp_prt (oldsize+i-2), &
-            vector4_moving (pup_dum (4), &
-            vector3_moving ([pup_dum (1), pup_dum (2), pup_dum (3)])))
-
-       available_children (oldsize+i-2) = oldsize+i-2
-       !!! search for an existing particle with the same momentum 
-       !!!   -> treat these as mother and daughter
-       do j = 1, size (available_parents)
-          if (available_parents (j) == 0) cycle
-          diffmomentum = particle_get_momentum &
-               (temp_prt (available_parents (j))) - &
-               particle_get_momentum (temp_prt(oldsize+i-2))
-          if (abs(diffmomentum**2) < 1E-10_default .and. &
-               particle_get_pdg (temp_prt (available_parents (j))).eq. &
-               particle_get_pdg (temp_prt (oldsize+i-2))) then
-             direct_child (available_parents (j)) = .true.
-             direct_child (oldsize+i-2) = .true.
-             call particle_set_parents (temp_prt (oldsize+i-2), &
-                  [available_parents(j)] )
-             call particle_set_children (temp_prt (available_parents(j)), &
-                  [oldsize+i-2] )
-             available_parents (j) = 0
-             available_children (oldsize+i-2) = 0
+       if (pup_dum(4) < 1E-10_default)  cycle
+       mom = vector4_moving (pup_dum (4), &
+            vector3_moving ([pup_dum (1), pup_dum (2), pup_dum (3)]))
+       not_found = .true.
+       SCAN_PARTICLES: do j = 1, n_tot
+          d_mom = prt_tmp(j)%get_momentum () - mom
+          if (abs(d_mom**1) < 1E-8_default .and. &               
+                (prt_tmp(j)%get_pdg () == IDUP)) then
+             not_found = .false.             
+             if (.not. prt_tmp(j)%get_status () == PRT_BEAM .or. &
+                  .not. prt_tmp(j)%get_status () == PRT_BEAM_REMNANT) &
+                  relations(i) = j
           end if
-       end do
-    end do
+       end do SCAN_PARTICLES               
+       if (not_found) then
+          call prt_tmp(n_tot+n_entries)%set_flavor (flv)    
+          call prt_tmp(n_tot+n_entries)%set_color (col)
+          call prt_tmp(n_tot+n_entries)%set_momentum (mom)
+          if (MOTHUP(1) /= 0) then 
+             if (relations(MOTHUP(1)) /= 0) then
+                call prt_tmp(n_tot+n_entries)%set_parents &
+                     ([relations(MOTHUP(1))])             
+                call prt_tmp(relations(MOTHUP(1)))%add_child (n_tot+n_entries)
+                if (prt_tmp(relations(MOTHUP(1)))%get_status () &
+                     == PRT_OUTGOING) &
+                     call prt_tmp(relations(MOTHUP(1)))%reset_status &
+                     (PRT_VIRTUAL)
+             end if
+          end if
+          call prt_tmp(n_tot+n_entries)%set_status (PRT_OUTGOING)
+          n_entries = n_entries + 1
+       end if
+    end do PARTICLE_LOOP
 
-    !!! remove zeros in available parents and available children
-    available_parents  = pack (available_parents , available_parents  /= 0)
-    available_children = pack (available_children, available_children /= 0)
-
-    do i = 1, size (available_parents) 
-      if (direct_child (available_parents (i))) cycle
-      call particle_set_children &
-           (temp_prt (available_parents (i)), available_children)
-    end do
-    do i = oldsize + 1, newsize
-       if (direct_child (i)) cycle
-       call particle_set_parents (temp_prt(i), available_parents)
-    end do
-
+    allocate (prt (1:n_tot+n_entries-1))
+    prt = prt_tmp (1:n_tot+n_entries-1)
     ! transfer to particle_set
-    call particle_set_replace (particle_set, temp_prt)
-    if (allocated (available_children)) deallocate (available_children)
-    if (allocated (available_parents))  deallocate (available_parents)
-    deallocate (direct_child)
-    deallocate (temp_prt)
+    call particle_set%replace (prt)
+    deallocate (prt, prt_tmp)
 
 200 continue
     return
@@ -1501,189 +1462,184 @@ contains
     return
 504 write(*,*) "READING LHEF failed 504"
     return
-505 write(*,*) "READING LHEF failed 504"
+505 write(*,*) "READING LHEF failed 505"
     return
   end subroutine shower_add_lhef_to_particle_set
 !!!!!!!!!!PYTHIA STYLE!!!!!!!!!!!!!
 !!! originally PYLHEF subroutine from PYTHIA 6.4.22
 
-!C...Write out the showered event to a Les Houches Event File.
-!C...Take MSTP(161) as the input for <init>...</init>
+  !C...Write out the showered event to a Les Houches Event File.
+  !C...Take MSTP(161) as the input for <init>...</init>
 
-      SUBROUTINE PYLHEO
+  subroutine pylheo ()
 
-!C...Double precision and integer declarations.
-      IMPLICIT DOUBLE PRECISION(A-H, O-Z)
-      IMPLICIT INTEGER(I-N)
+  !C...Double precision and integer declarations.
+    IMPLICIT DOUBLE PRECISION(A-H, O-Z)
+    IMPLICIT INTEGER(I-N)
 
-!C...PYTHIA commonblock: only used to provide read/write units and version.
-      COMMON/PYPARS/MSTP(200),PARP(200),MSTI(200),PARI(200)
-      COMMON/PYJETS/N,NPAD,K(4000,5),P(4000,5),V(4000,5)
-      SAVE /PYPARS/
-      SAVE /PYJETS/
+    !C...PYTHIA commonblock: only used to provide read/write units and version.
+    common /PYPARS/ MSTP(200), PARP(200), MSTI(200), PARI(200)
+    common /PYJETS/ N, NPAD, K(4000,5), P(4000,5), V(4000,5)
+    save /PYPARS/
+    save /PYJETS/
 
-!C...User process initialization commonblock.
-      INTEGER MAXPUP
-      PARAMETER (MAXPUP=100)
-      INTEGER IDBMUP,PDFGUP,PDFSUP,IDWTUP,NPRUP,LPRUP
-      DOUBLE PRECISION EBMUP,XSECUP,XERRUP,XMAXUP
-      COMMON/HEPRUP/IDBMUP(2),EBMUP(2),PDFGUP(2),PDFSUP(2),IDWTUP,NPRUP,XSECUP(MAXPUP),XERRUP(MAXPUP),XMAXUP(MAXPUP),LPRUP(MAXPUP)
-      SAVE /HEPRUP/
+    !C...User process initialization commonblock.
+    !C...User process event common block.    
+    integer, parameter :: MAXPUP = 100, MAXNUP = 500
+    integer :: IDBMUP, PDFGUP, PDFSUP, IDWTUP, NPRUP, LPRUP
+    integer :: NUP, IDPRUP, IDUP, ISTUP, MOTHUP, ICOLUP
+    real(double) :: EBMUP, XSECUP, XERRUP, XMAXUP
+    real(double) :: XWGTUP, SCALUP, AQEDUP, AQCDUP, PUP, VTIMUP, SPINUP    
+    integer, parameter :: KSUSY1 = 1000000, KSUSY2 = 2000000
+    common /HEPRUP/ &
+         IDBMUP(2), EBMUP(2), PDFGUP(2), PDFSUP(2), IDWTUP, NPRUP, &
+         XSECUP(MAXPUP), XERRUP(MAXPUP), XMAXUP(MAXPUP), LPRUP(MAXPUP)
+    save /HEPRUP/
+    common /HEPEUP/ &
+         NUP, IDPRUP, XWGTUP, SCALUP, AQEDUP, AQCDUP, IDUP(MAXNUP), &
+         ISTUP(MAXNUP), MOTHUP(2,MAXNUP), ICOLUP(2,MAXNUP), &
+         PUP(5,MAXNUP), VTIMUP(MAXNUP), SPINUP(MAXNUP)
+    save /HEPEUP/
+    
+    !C...Lines to read in assumed never longer than 200 characters.
+    PARAMETER (MAXLEN=200)
+    character(len=maxlen) :: string
+    
+    integer :: LEN, ndangling_color, ndangling_antic, ncolor
+    
+    !C...Format for reading lines.
+    character(len=6) :: strfmt
+    STRFMT='(A000)'
+    write (STRFMT(3:5),'(I3)') MAXLEN
 
-!C...User process event common block.
-      INTEGER MAXNUP
-      PARAMETER (MAXNUP=500)
-      INTEGER NUP,IDPRUP,IDUP,ISTUP,MOTHUP,ICOLUP
-      PARAMETER (KSUSY1=1000000,KSUSY2=2000000)
-      DOUBLE PRECISION XWGTUP,SCALUP,AQEDUP,AQCDUP,PUP,VTIMUP,SPINUP
-      COMMON/HEPEUP/NUP,IDPRUP,XWGTUP,SCALUP,AQEDUP,AQCDUP,IDUP(MAXNUP),ISTUP(MAXNUP),MOTHUP(2,MAXNUP),ICOLUP(2,MAXNUP), &
-                      PUP(5,MAXNUP),VTIMUP(MAXNUP),SPINUP(MAXNUP)
-      SAVE /HEPEUP/
+    !C...Rewind initialization and event files.
+    rewind MSTP(161)
+    rewind MSTP(162)
 
-!C...Lines to read in assumed never longer than 200 characters.
-      PARAMETER (MAXLEN=200)
-      character(len=maxlen) :: string
+    !C...Write header info.
+    write (MSTP(163), "(A)")  '<LesHouchesEvents version="1.0">'
+    write (MSTP(163), "(A)")  "<!--"
+    write (MSTP(163), "(A,I1,A1,I3)")  "File generated with PYTHIA ", &
+         MSTP(181), ".", MSTP(182)
+    write (MSTP(163), "(A)")  " and the WHIZARD2 interface"
+    write (MSTP(163), "(A)")  "-->"
 
-      INTEGER LEN
+    !C...Loop until finds line beginning with "<init>" or "<init ".
+100 READ(MSTP(161),STRFMT,END=400,ERR=400) STRING
+    IBEG=0
+110 IBEG=IBEG+1
+    !C...Allow indentation.
+    IF(STRING(IBEG:IBEG).EQ.' '.AND.IBEG.LT.MAXLEN-5) GOTO 110
+    IF(STRING(IBEG:IBEG+5).NE.'<init>'.AND.STRING(IBEG:IBEG+5).NE.'<init ') GOTO 100
+    
+    !C...Read first line of initialization info and get number of processes.
+    READ(MSTP(161),'(A)',END=400,ERR=400) STRING
+    READ(STRING,*,ERR=400) IDBMUP(1),IDBMUP(2),EBMUP(1),EBMUP(2),PDFGUP(1),PDFGUP(2),PDFSUP(1),PDFSUP(2),IDWTUP,NPRUP
 
-!C...Format for reading lines.
-      character(len=6) :: strfmt
-      STRFMT='(A000)'
-      WRITE(STRFMT(3:5),'(I3)') MAXLEN
-
-!C...Rewind initialization and event files.
-      REWIND MSTP(161)
-      REWIND MSTP(162)
-
-!C...Write header info.
-      WRITE(MSTP(163),'(A)') '<LesHouchesEvents version="1.0">'
-      WRITE(MSTP(163),'(A)') '<!--'
-      WRITE(MSTP(163),'(A,I1,A1,I3)') 'File generated with PYTHIA ',MSTP(181),'.',MSTP(182)
-      WRITE(MSTP(163),'(A)') ' and the WHIZARD2 interface'
-      WRITE(MSTP(163),'(A)') '-->'
-
-!C...Loop until finds line beginning with "<init>" or "<init ".
-  100 READ(MSTP(161),STRFMT,END=400,ERR=400) STRING
-      IBEG=0
-  110 IBEG=IBEG+1
-!C...Allow indentation.
-      IF(STRING(IBEG:IBEG).EQ.' '.AND.IBEG.LT.MAXLEN-5) GOTO 110
-      IF(STRING(IBEG:IBEG+5).NE.'<init>'.AND.STRING(IBEG:IBEG+5).NE.'<init ') GOTO 100
-
-!C...Read first line of initialization info and get number of processes.
-      READ(MSTP(161),'(A)',END=400,ERR=400) STRING
-      READ(STRING,*,ERR=400) IDBMUP(1),IDBMUP(2),EBMUP(1),EBMUP(2),PDFGUP(1),PDFGUP(2),PDFSUP(1),PDFSUP(2),IDWTUP,NPRUP
-
-!C...Copy initialization lines, omitting trailing blanks.
-!C...Embed in <init> ... </init> block.
-      WRITE(MSTP(163),'(A)') '<init>'
-      DO IPR=0,NPRUP
-        IF(IPR.GT.0) READ(MSTP(161),'(A)',END=400,ERR=400) STRING
-        LEN=MAXLEN+1
-  120   LEN=LEN-1
-        IF(LEN.GT.1.AND.STRING(LEN:LEN).EQ.' ') GOTO 120
-        WRITE(MSTP(163),'(A)',ERR=400) STRING(1:LEN)
-     end DO
-      WRITE(MSTP(163),'(A)') '</init>'
-
-!!!! Find the numbers of entries of the <event block>
-      NENTRIES = 2      ! incoming partons (nearest to the beam particles)
-      DO I=1,N
-         if((K(I,1).eq.1) .or. (K(I,1).eq.2)) then
-            if(P(I,4) < 1D-10) cycle
-            NENTRIES = NENTRIES + 1
-         end if
-      end DO
-
-!C...Begin an <event> block. Copy event lines, omitting trailing blanks.
-      WRITE(MSTP(163),'(A)') '<event>'
-      WRITE(MSTP(163),*) NENTRIES,IDPRUP,XWGTUP,SCALUP,AQEDUP,AQCDUP
-
-      DO I=3,4       ! the incoming partons nearest to the beam particles
-         WRITE(MSTP(163),*)  K(I,2),-1,0,0,0,0,(P(I,J),J=1,5),0, -9
-      end DO
-      NDANGLING_COLOR = 0
-      NCOLOR = 0
-      NDANGLING_ANTIC = 0
-      NANTIC = 0
-      NNEXTC = 1   ! TODO find next free color number ??
-      DO I=1,N
-         if (signal_is_pending ()) return             
-         if((K(I,1).eq.1) .or. (K(I,1).eq.2)) then
-            ! workaround for zero energy photon in electron ISR            
-            if (P(I,4) < 1E-10_default) cycle   
-            if ((K(I,2).eq.21) .or. (IABS(K(I,2)) <= 8) .or. &
-                (IABS(K(I,2)) >= KSUSY1+1 .and. IABS(K(I,2)) <= KSUSY1+8) &
-                .or. &
-                (IABS(K(I,2)) >= KSUSY2+1 .and. IABS(K(I,2)) <= KSUSY2+8) .or. &
-                 (IABS(K(I,2)) >= 1000 .and. IABS(K(I,2)) <= 9999) ) then
-               if(NDANGLING_COLOR.eq.0 .and. NDANGLING_ANTIC.eq.0) then
-                  ! new color string
-                  ! Gluon and gluino only color octets implemented so far
-                  if(K(I,2).eq.21 .or. K(I,2).eq.1000021) then  
-                     NCOLOR = NNEXTC
-                     NDANGLING_COLOR = NCOLOR
-                     NNEXTC = NNEXTC + 1
-                     NANTIC = NNEXTC
-                     NDANGLING_ANTIC = NANTIC
-                     NNEXTC = NNEXTC + 1
-                  elseif(K(I,2) .gt. 0) then  ! particles to have color
-                     NCOLOR = NNEXTC
-                     NDANGLING_COLOR = NCOLOR
-                     NANTIC = 0
-                     NNEXTC = NNEXTC + 1
-                  elseif(K(I,2) .lt. 0) then  ! antiparticles to have anticolor
-                     NANTIC = NNEXTC
-                     NDANGLING_ANTIC = NANTIC
-                     NCOLOR = 0
-                     NNEXTC = NNEXTC + 1
-                  end if
-               else if(K(I,1).eq.1) then
-                  ! end of string
-                  NCOLOR = NDANGLING_ANTIC
-                  NANTIC = NDANGLING_COLOR
-                  NDANGLING_COLOR = 0
-                  NDANGLING_ANTIC = 0
-               else
-                  ! inside the string
-                  if(NDANGLING_COLOR .ne. 0) then
-                     NANTIC = NDANGLING_COLOR
-                     NCOLOR = NNEXTC
-                     NDANGLING_COLOR = NNEXTC
-                     NNEXTC = NNEXTC +1
-                  else if(NDANGLING_ANTIC .ne. 0) then
-                     NCOLOR = NDANGLING_ANTIC
-                     NANTIC = NNEXTC
-                     NDANGLING_ANTIC = NNEXTC
-                     NNEXTC = NNEXTC +1
-                  else
-                     print *, "ERROR IN PYLHEO"
-                  end if
-               end if
-            else
-               NCOLOR = 0
-               NANTIC = 0
-            end if
-
-            !!! As no intermediate are given out here, assume the 
-            !!!   incoming partons to be the mothers
-            WRITE(MSTP(163),*)  K(I,2),1,1,2,NCOLOR,NANTIC,(P(I,J),J=1,5),0, -9
-         end if
-      end DO
-
-!C..End the <event> block. Loop back to look for next event.
-      WRITE(MSTP(163),'(A)') '</event>'
-
-!C...Successfully reached end of event loop: write closing tag
-!C...and remove temporary intermediate files (unless asked not to).
-      WRITE(MSTP(163),'(A)') '</LesHouchesEvents>'
-      RETURN
-
-!!C...Error exit.
-  400 WRITE(*,*) ' PYLHEO file joining failed!'
-
-      RETURN
-    END SUBROUTINE PYLHEO
+    !C...Copy initialization lines, omitting trailing blanks.
+    !C...Embed in <init> ... </init> block.
+    WRITE(MSTP(163),'(A)') '<init>'
+    do IPR = 0, NPRUP
+       IF(IPR.GT.0) READ(MSTP(161),'(A)',END=400,ERR=400) STRING
+       LEN=MAXLEN+1
+120    LEN=LEN-1
+       IF(LEN.GT.1.AND.STRING(LEN:LEN).EQ.' ') GOTO 120
+       WRITE(MSTP(163),'(A)',ERR=400) STRING(1:LEN)
+    end DO
+    write (MSTP(163), "(A)")  "</init>"
+    
+    !!! Find the numbers of entries of the <event block>
+    NENTRIES = 0
+    do I = 1, N
+       if (K(I,1) == 1 .or. K(I,1) == 2 .or. K(I,1) == 21) then
+          NENTRIES = NENTRIES + 1
+       end if
+    end do
+    
+    !C...Begin an <event> block. Copy event lines, omitting trailing blanks.
+    write (MSTP(163), "(A)")  "<event>"
+    write (MSTP(163), *)  NENTRIES, IDPRUP, XWGTUP, SCALUP, AQEDUP, AQCDUP
+    
+    ndangling_color = 0
+    ncolor = 0
+    ndangling_antic = 0
+    NANTIC = 0
+    NNEXTC = 1   ! TODO find next free color number ??
+    do I = 1, N
+       if (signal_is_pending ()) return             
+       if ((K(I,1) >= 1 .and. K(I,1) <= 15) .or. (K(I,1) == 21)) then
+          if ((K(I,2).eq.21) .or. (IABS(K(I,2)) <= 8) .or. &
+               (IABS(K(I,2)) >= KSUSY1+1 .and. IABS(K(I,2)) <= KSUSY1+8) &
+               .or. &
+               (IABS(K(I,2)) >= KSUSY2+1 .and. IABS(K(I,2)) <= KSUSY2+8) .or. &
+               (IABS(K(I,2)) >= 1000 .and. IABS(K(I,2)) <= 9999) ) then
+             if (ndangling_color.eq.0 .and. ndangling_antic.eq.0) then
+                ! new color string
+                ! Gluon and gluino only color octets implemented so far
+                if (K(I,2).eq.21 .or. K(I,2).eq.1000021) then  
+                   ncolor = NNEXTC
+                   ndangling_color = ncolor
+                   NNEXTC = NNEXTC + 1
+                   NANTIC = NNEXTC
+                   ndangling_antic = NANTIC
+                   NNEXTC = NNEXTC + 1
+                else if (K(I,2) .gt. 0) then  ! particles to have color
+                   ncolor = NNEXTC
+                   ndangling_color = ncolor
+                   NANTIC = 0
+                   NNEXTC = NNEXTC + 1
+                else if (K(I,2) .lt. 0) then  ! antiparticles to have anticolor
+                   NANTIC = NNEXTC
+                   ndangling_antic = NANTIC
+                   ncolor = 0
+                   NNEXTC = NNEXTC + 1
+                end if
+             else if(K(I,1).eq.1) then
+                ! end of string
+                ncolor = ndangling_antic
+                NANTIC = ndangling_color
+                ndangling_color = 0
+                ndangling_antic = 0
+             else
+                ! inside the string
+                if(ndangling_color .ne. 0) then
+                   NANTIC = ndangling_color
+                   ncolor = NNEXTC
+                   ndangling_color = NNEXTC
+                   NNEXTC = NNEXTC +1
+                else if(ndangling_antic .ne. 0) then
+                   ncolor = ndangling_antic
+                   NANTIC = NNEXTC
+                   ndangling_antic = NNEXTC
+                   NNEXTC = NNEXTC +1
+                else
+                   print *, "ERROR IN PYLHEO"
+                end if
+             end if
+          else
+             ncolor = 0
+             NANTIC = 0
+          end if
+       !!! As no intermediate are given out here, assume the 
+       !!!   incoming partons to be the mothers
+          write (MSTP(163),*)  K(I,2), K(I,1), K(I,3), K(I,3), &
+               ncolor, NANTIC, (P(I,J),J=1,5), 0, -9
+       end if
+    end do
+    
+    !C..End the <event> block. Loop back to look for next event.
+    write (MSTP(163), "(A)")  "</event>"
+      
+    !C...Successfully reached end of event loop: write closing tag
+    !C...and remove temporary intermediate files (unless asked not to).
+    write (MSTP(163), "(A)")  "</LesHouchesEvents>"
+    return
+      
+    !!C...Error exit.
+400 write(*,*) ' PYLHEO file joining failed!'
+    
+    return
+  end subroutine pylheo
 
   subroutine evt_shower_write (object, unit, testflag)
     class(evt_shower_t), intent(in) :: object
@@ -1780,22 +1736,21 @@ contains
 
   subroutine event_shower_assure_heprup (evt)
     class(evt_shower_t), intent(in) :: evt
+    type(particle_t), dimension(2) :: prt
     integer :: i, num_id
     integer, parameter :: min_processes = 10
 
     num_id = 1
     if (LPRUP (num_id) /= 0)  return
 
+    do i = 1, 2
+       prt(i) = evt%particle_set%get_particle (i)
+    end do
     call heprup_init ( &
-         [ particle_get_pdg (particle_set_get_particle &
-                              (evt%particle_set, 1)), &
-           particle_get_pdg (particle_set_get_particle &
-                              (evt%particle_set, 2)) ] , &
-         [ vector4_get_component (particle_get_momentum &
-            (particle_set_get_particle (evt%particle_set, 1)), 0), &
-           vector4_get_component (particle_get_momentum &
-            (particle_set_get_particle (evt%particle_set, 2)), 0) ], &
-         num_id, .false., .false.)
+         [ prt(1)%get_pdg (), prt(2)%get_pdg () ] , &
+         [ vector4_get_component (prt(1)%get_momentum (), 0), &
+           vector4_get_component (prt(2)%get_momentum (), 0) ], &
+           num_id, .false., .false.)
     do i = 1, (num_id / min_processes + 1) * min_processes
        call heprup_set_process_parameters (i = i, process_id = &
             i, cross_section = 1._default, error = 1._default)
@@ -1810,6 +1765,7 @@ contains
     type(ckkw_pseudo_shower_weights_t), intent(inout) :: &
          ckkw_pseudo_shower_weights
     type(particle_set_t), intent(in) :: particle_set
+    type(particle_t) :: prt
     integer :: i, j
     integer :: n
     type(vector4_t) :: momentum
@@ -1818,17 +1774,17 @@ contains
     ckkw_pseudo_shower_settings%Qmin = 1.0_default
     ckkw_pseudo_shower_settings%n_max_jets = 3
 
-    n = 2**particle_set_get_n_tot(particle_set)
+    n = 2**particle_set%get_n_tot()
     if (allocated (ckkw_pseudo_shower_weights%weights)) then 
        deallocate (ckkw_pseudo_shower_weights%weights)
     end if
     allocate (ckkw_pseudo_shower_weights%weights (1:n))
     do i = 1, n
        momentum = vector4_null
-       do j = 1, particle_set_get_n_tot (particle_set)
+       do j = 1, particle_set%get_n_tot ()
           if (btest (i,j-1)) then
-             momentum = momentum + particle_get_momentum &
-                  (particle_set_get_particle (particle_set, j))
+             prt = particle_set%get_particle (j) 
+             momentum = momentum + prt%get_momentum ()
           end if
        end do
        if (momentum**1 > 0.0) then

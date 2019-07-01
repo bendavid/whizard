@@ -2,8 +2,30 @@ ChangeLog -- Summary of changes to the WHIZARD package
 
 Use svn log to see detailed changes.
 
-	Version 2.2.4
+	Version 2.2.5
 
+2015-02-27
+	RELEASE: version 2.2.5
+
+2015-02-26
+	Abstract types for quantum numbers
+	
+2015-02-25
+	Read-in of StdHEP events, self-tests
+	
+2015-02-22
+	Bugfix for mother-daughter relations in
+	   showered/hadronized events
+
+2015-02-20
+	Projection on polarization in intermediate states
+	
+2015-02-13	
+	Correct treatment of beam remnants in
+	   event formats (also LC remnants)
+	
+##################################################################
+	
 2015-02-06
 	RELEASE: version 2.2.4
 

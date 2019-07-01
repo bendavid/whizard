@@ -1,4 +1,4 @@
-! WHIZARD 2.2.4 Feb 06 2015
+! WHIZARD 2.2.5 Feb 27 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -121,12 +121,12 @@ module eio_base
   end interface
 
   abstract interface
-     subroutine eio_output (eio, event, i_prc, reading, pacify)
+     subroutine eio_output (eio, event, i_prc, reading, passed, pacify)
        import
        class(eio_t), intent(inout) :: eio
        class(generic_event_t), intent(in), target :: event
        integer, intent(in) :: i_prc
-       logical, intent(in), optional :: reading, pacify
+       logical, intent(in), optional :: reading, passed, pacify
      end subroutine eio_output
   end interface
   
@@ -222,7 +222,7 @@ contains
        eio%filename = eio%sample // "." // trim (buffer) // eio%extension
     else
        eio%filename = eio%sample // "." // eio%extension
-    end if
+    end if    
   end subroutine eio_set_filename
 
   subroutine eio_set_fallback_model (eio, model)
@@ -282,10 +282,10 @@ contains
     if (present (success))  success = .true.
   end subroutine eio_test_switch_inout
   
-  subroutine eio_test_output (eio, event, i_prc, reading, pacify)
+  subroutine eio_test_output (eio, event, i_prc, reading, passed, pacify)
     class(eio_test_t), intent(inout) :: eio
     class(generic_event_t), intent(in), target :: event
-    logical, intent(in), optional :: reading, pacify
+    logical, intent(in), optional :: reading, passed, pacify
     integer, intent(in) :: i_prc
     type(particle_set_t), pointer :: pset
     type(particle_t) :: prt
@@ -293,10 +293,10 @@ contains
     eio%event_i = eio%event_n
     eio%i_prc = i_prc
     pset => event%get_particle_set_ptr ()
-    prt = particle_set_get_particle (pset, 3)
-    eio%event_p(1, eio%event_i) = particle_get_momentum (prt)
-    prt = particle_set_get_particle (pset, 4)
-    eio%event_p(2, eio%event_i) = particle_get_momentum (prt)
+    prt = pset%get_particle (3)
+    eio%event_p(1, eio%event_i) = prt%get_momentum ()
+    prt = pset%get_particle (4)
+    eio%event_p(2, eio%event_i) = prt%get_momentum ()
   end subroutine eio_test_output
 
   subroutine eio_test_input_i_prc (eio, i_prc, iostat)

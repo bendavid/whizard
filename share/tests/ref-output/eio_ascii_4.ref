@@ -9,6 +9,7 @@
  ASCII event stream (HEPEVT format):
    Writing to file   = eio_ascii_4.hepevt
    Keep beams        = F
+   Keep remnants     = T
 
 * File contents:
 
@@ -31,6 +32,7 @@
  ASCII event stream (HEPEVT format):
    [closed]
    Keep beams        = T
+   Keep remnants     = T
 
 * Cleanup
 

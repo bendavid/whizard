@@ -1,4 +1,4 @@
-! WHIZARD 2.2.4 Feb 06 2015
+! WHIZARD 2.2.5 Feb 27 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -109,6 +109,7 @@ module whizard
   use shower
   use events
 
+  use hep_events
   use eio_data
   use eio_base
   use eio_raw
@@ -730,7 +731,9 @@ contains
        call prc_omega_test (u, results)
     case ("prc_omega_diags")
        call prc_omega_diags_test (u, results)       
-    case ("eio_data")
+    case ("hep_events")
+       call hep_events_test (u, results)       
+    case ("eio_data")       
        call eio_data_test (u, results)
     case ("eio_base")
        call eio_base_test (u, results)
@@ -838,6 +841,7 @@ contains
        call prc_omega_test (u, results)
        call prc_omega_diags_test (u, results)
        call prc_template_me_test (u, results)
+       call hep_events_test (u, results)
        call eio_data_test (u, results)
        call eio_base_test (u, results)
        call eio_raw_test (u, results)

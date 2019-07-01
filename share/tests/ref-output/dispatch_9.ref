@@ -16,7 +16,10 @@
  LHEF event stream:
    [closed]
    Keep beams        = F
+   Keep remnants     = T
    Recover beams     = T
+   Alpha_s from file = F
+   Scale from file   = F
    Version           = 2.0
    File extension    = 'lhe_custom'
 
@@ -24,8 +27,9 @@
 
  HepMC event stream:
    [closed]
-   Keep beams        = F
    Recover beams     = T
+   Alpha_s from file = F
+   Scale from file   = F
    File extension    = 'hepmc'
 
 * Allocate as weight_stream
@@ -38,6 +42,7 @@
  ASCII event stream (Debugging format):
    [closed]
    Keep beams        = F
+   Keep remnants     = T
    Show process      = T
    Show transforms   = T
    Show decay tree   = T

@@ -159,6 +159,13 @@
        type(c_ptr), value :: v_obj
      end subroutine gen_event_set_signal_process_vertex
 
+! extern "C" GenVertex* gen_event_get_signal_process_vertex( void* evt ) {}
+     type(c_ptr) function gen_event_get_signal_process_vertex &
+          (evt_obj) bind (C)
+       use iso_c_binding
+       type(c_ptr), value :: evt_obj
+     end function gen_event_get_signal_process_vertex
+
 ! extern "C" bool gen_event_set_beam_particles( void* evt, void* prt1, void* prt2) {}
      logical(c_bool) function gen_event_set_beam_particles &
           (evt_obj, prt1_obj, prt2_obj) bind(C)

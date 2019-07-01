@@ -7,8 +7,9 @@
 
  HepMC event stream:
    Writing to file   = eio_hepmc_1.hepmc
-   Keep beams        = F
    Recover beams     = F
+   Alpha_s from file = F
+   Scale from file   = F
    File extension    = 'hepmc'
    Numerical process IDs:
      1: 42
@@ -16,7 +17,7 @@
 * File contents (blanking out last two digits):
 
 HepMC::IO_GenEvent-START_EVENT_LISTING
-E 0 -1 1.0000000000000000e+03 -1.0000000000000000e+00 -1.0000000000000000e+00 42 0 1 10001 10002 0 0
+E 0 -1 1.0000000000000000e+03 -1.0000000000000000e+00 -1.0000000000000000e+00 42 -1 1 10001 10002 0 0
 U GEV MM
 V -1 0 0 0 0 0 2 2 0
 P 10001 25 0 0 4.84122918275927XXe+02 5.00000000000000XXe+02 1.25000000000000XXe+02 3 0 0 -1 0
@@ -29,8 +30,9 @@ HepMC::IO_GenEvent-END_EVENT_LISTING
 
  HepMC event stream:
    [closed]
-   Keep beams        = T
    Recover beams     = F
+   Alpha_s from file = F
+   Scale from file   = F
    File extension    = 'hepmc'
 
 * Cleanup

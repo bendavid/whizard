@@ -1,4 +1,4 @@
-! WHIZARD 2.2.4 Feb 06 2015
+! WHIZARD 2.2.5 Feb 27 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -322,7 +322,7 @@ contains
     write (u, "(A)")
     
     call model%init_test ()
-    call flavor_init (flv, 25, model)
+    call flv%init (25, model)
 
     write (u, "(A)")  "* Initialize a process and a matching &
          &phase-space configuration"
@@ -352,8 +352,8 @@ contains
     write (u, "(A)")
 
     E = sqrts / 2
-    p(1) = vector4_moving (E, sqrt (E**2 - flavor_get_mass (flv)**2), 3)
-    p(2) = vector4_moving (E,-sqrt (E**2 - flavor_get_mass (flv)**2), 3)
+    p(1) = vector4_moving (E, sqrt (E**2 - flv%get_mass ()**2), 3)
+    p(2) = vector4_moving (E,-sqrt (E**2 - flv%get_mass ()**2), 3)
 
     call phs%set_incoming_momenta (p)
     call phs%compute_flux ()
@@ -415,7 +415,7 @@ contains
     write (u, "(A)")
     
     call model%init_test ()
-    call flavor_init (flv, 25, model)
+    call flv%init (25, model)
 
     write (u, "(A)")  "* Initialize a process and a matching &
          &phase-space configuration"
@@ -447,8 +447,8 @@ contains
     lt = boost (0.1_default, 1) * boost (0.3_default, 3)
     
     E = sqrts / 2
-    p(1) = lt * vector4_moving (E, sqrt (E**2 - flavor_get_mass (flv)**2), 3)
-    p(2) = lt * vector4_moving (E,-sqrt (E**2 - flavor_get_mass (flv)**2), 3)
+    p(1) = lt * vector4_moving (E, sqrt (E**2 - flv%get_mass ()**2), 3)
+    p(2) = lt * vector4_moving (E,-sqrt (E**2 - flv%get_mass ()**2), 3)
 
     call vector4_write (p(1), u)
     call vector4_write (p(2), u)
@@ -523,7 +523,7 @@ contains
     call model%set_par (var_str ("ff"), 0.4_default)
     call model%set_par (var_str ("mf"), &
          model%get_real (var_str ("ff")) * model%get_real (var_str ("ms")))
-    call flavor_init (flv, 25, model)
+    call flv%init (25, model)
 
     write (u, "(A)")  "* Initialize a decay and a matching &
          &phase-space configuration"
@@ -534,7 +534,7 @@ contains
     allocate (phs_single_config_t :: phs_data)
     call phs_data%init (process_data, model)
 
-    call phs_data%configure (flavor_get_mass (flv))
+    call phs_data%configure (flv%get_mass ())
 
     call phs_data%write (u)
     
@@ -551,7 +551,7 @@ contains
     write (u, "(A)")  "* Set incoming momenta"
     write (u, "(A)")
 
-    p(1) = vector4_at_rest (flavor_get_mass (flv))
+    p(1) = vector4_at_rest (flv%get_mass ())
 
     call phs%set_incoming_momenta (p)
     call phs%compute_flux ()
@@ -575,7 +575,7 @@ contains
     call phs_data%allocate_instance (phs)
     call phs%init (phs_data)
        
-    call phs_data%configure (flavor_get_mass (flv))
+    call phs_data%configure (flv%get_mass ())
 
     call phs%set_incoming_momenta (p)
     call phs%compute_flux ()

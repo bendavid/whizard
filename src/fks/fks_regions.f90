@@ -1,4 +1,4 @@
-! WHIZARD 2.2.4 Feb 06 2015
+! WHIZARD 2.2.5 Feb 27 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -627,8 +627,8 @@ contains
     type(flavor_t) :: flavor
     allocate (flv%massive (n), flv%colored(n))
     do i = 1, n
-       call flavor_init (flavor, flv%flst(i), model)
-       flv%massive(i) = flavor_get_mass (flavor) > 0
+       call flavor%init (flv%flst(i), model)
+       flv%massive(i) = flavor%get_mass () > 0
        flv%colored(i) = is_quark (abs(flv%flst(i))) .or. &
                         is_gluon (flv%flst(i))
     end do
@@ -725,9 +725,9 @@ contains
        call msg_fatal ("Init region_data: FKS mapping not implemented!")
     end select
 
-    call flavor_init (reg_data%flv_extra, &
-                      reg_data%flv_real(1)%flst(reg_data%nlegs_real), &
-                      model)
+    call reg_data%flv_extra%init &
+         (reg_data%flv_real(1)%flst(reg_data%nlegs_real), &
+         model)
     call reg_data%find_regions (model, ftuples, emitter, flst_alr)
     call reg_data%init_regions (ftuples, emitter, flst_alr)
     call reg_data%evaluate_flavors (model)

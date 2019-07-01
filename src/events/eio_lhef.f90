@@ -1,4 +1,4 @@
-! WHIZARD 2.2.4 Feb 06 2015
+! WHIZARD 2.2.5 Feb 27 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -64,11 +64,14 @@ module eio_lhef
      type(cstream_t) :: cstream
      character(3) :: version = "1.0"
      logical :: keep_beams = .false.
+     logical :: keep_remnants = .true.
      logical :: recover_beams = .true.
      logical :: unweighted = .true.
      logical :: write_sqme_ref = .false.
      logical :: write_sqme_prc = .false.
      logical :: write_sqme_alt = .false.
+     logical :: use_alpha_s_from_file = .false.
+     logical :: use_scale_from_file = .false.
      integer :: n_alt = 0
      integer, dimension(:), allocatable :: proc_num_id
      integer :: i_weight_sqme = 0
@@ -111,18 +114,28 @@ module eio_lhef
 
 contains
   
-  subroutine eio_lhef_set_parameters (eio, keep_beams, recover_beams, &
+  subroutine eio_lhef_set_parameters (eio, &
+       keep_beams, keep_remnants, recover_beams, &
+       use_alpha_s_from_file, use_scale_from_file, &
        version, extension, write_sqme_ref, write_sqme_prc, write_sqme_alt)
     class(eio_lhef_t), intent(inout) :: eio
     logical, intent(in), optional :: keep_beams
+    logical, intent(in), optional :: keep_remnants
     logical, intent(in), optional :: recover_beams
+    logical, intent(in), optional :: use_alpha_s_from_file
+    logical, intent(in), optional :: use_scale_from_file
     character(*), intent(in), optional :: version
     type(string_t), intent(in), optional :: extension
     logical, intent(in), optional :: write_sqme_ref
     logical, intent(in), optional :: write_sqme_prc
     logical, intent(in), optional :: write_sqme_alt
     if (present (keep_beams))  eio%keep_beams = keep_beams
+    if (present (keep_remnants))  eio%keep_remnants = keep_remnants
     if (present (recover_beams))  eio%recover_beams = recover_beams
+    if (present (use_alpha_s_from_file)) &
+         eio%use_alpha_s_from_file = use_alpha_s_from_file
+    if (present (use_scale_from_file)) &
+         eio%use_scale_from_file = use_scale_from_file
     if (present (version)) then
        select case (version)
        case ("1.0", "2.0", "3.0")
@@ -157,7 +170,12 @@ contains
        write (u, "(3x,A)")  "[closed]"
     end if
     write (u, "(3x,A,L1)")    "Keep beams        = ", object%keep_beams
+    write (u, "(3x,A,L1)")    "Keep remnants     = ", object%keep_remnants
     write (u, "(3x,A,L1)")    "Recover beams     = ", object%recover_beams
+    write (u, "(3x,A,L1)")    "Alpha_s from file = ", &
+         object%use_alpha_s_from_file
+    write (u, "(3x,A,L1)")    "Scale from file   = ", &
+         object%use_scale_from_file
     write (u, "(3x,A,A)")     "Version           = ", object%version
     write (u, "(3x,A,A,A)")     "File extension    = '", &
          char (object%extension), "'"
@@ -184,6 +202,7 @@ contains
             char (object%filename), "'"
        call msg_message ()
        call object%cstream%final ()
+       close (object%unit)
        object%reading = .false.
     end if
   end subroutine eio_lhef_final
@@ -256,7 +275,7 @@ contains
        allocate (eio%tag_generator)
        call eio%tag_generator%init ( &
             var_str ("generator"), &
-            [xml_attribute (var_str ("version"), var_str ("2.2.4"))], &
+            [xml_attribute (var_str ("version"), var_str ("2.2.5"))], &
             .true.)
        allocate (eio%tag_xsecinfo)
        call eio%tag_xsecinfo%init ( &
@@ -486,17 +505,21 @@ contains
     end if
   end subroutine eio_lhef_split_out
   
-  subroutine eio_lhef_output (eio, event, i_prc, reading, pacify)
+  subroutine eio_lhef_output (eio, event, i_prc, reading, passed, pacify)
     class(eio_lhef_t), intent(inout) :: eio
     class(generic_event_t), intent(in), target :: event
     integer, intent(in) :: i_prc
-    logical, intent(in), optional :: reading, pacify
+    logical, intent(in), optional :: reading, passed, pacify
     integer :: u
     u = given_output_unit (eio%unit);  if (u < 0)  return
+    if (present (passed)) then
+       if (.not. passed)  return
+    end if
     if (eio%writing) then
        call hepeup_from_event (event, &
             process_index = eio%proc_num_id (i_prc), &
-            keep_beams = eio%keep_beams)
+            keep_beams = eio%keep_beams, &
+            keep_remnants = eio%keep_remnants)
        write (u, '(A)') "<event>"
        call hepeup_write_lhef (eio%unit)
        select case (eio%version)
@@ -572,11 +595,9 @@ contains
     call event%reset ()
     call event%select (1, 1, 1)
     call hepeup_to_event (event, eio%fallback_model, &
-         recover_beams = eio%recover_beams)
-    ! if (associated (event%process)) then
-    !    pset => event%get_particle_set_ptr ()
-    !    call particle_set_set_model (pset, event%process%get_model_ptr ())
-    ! end if
+         recover_beams = eio%recover_beams, &
+         use_alpha_s = eio%use_alpha_s_from_file, &
+         use_scale = eio%use_scale_from_file)
     select case (eio%version)
     case ("1.0")
        call eio%tag_event%read_content (eio%cstream, s, closing = closing)
@@ -605,7 +626,7 @@ contains
        call eio%tag_gen_n%write (var_str ("WHIZARD"), u)
        write (u, *)
        write (u, "(2x)", advance = "no")
-       call eio%tag_gen_v%write (var_str ("2.2.4"), u)
+       call eio%tag_gen_v%write (var_str ("2.2.5"), u)
        write (u, *)
     end select
     call eio%tag_head%close (u);  write (u, *)

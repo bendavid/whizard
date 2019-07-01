@@ -457,12 +457,12 @@ in this initialization step.
     expr%i_out = i_out
     call interaction_to_subevt (int, &
          expr%i_beam, expr%i_in, expr%i_out, expr%subevt_t)
-    call subevt_set_pdg_beam     (expr%subevt_t, flavor_get_pdg (f_beam))
-    call subevt_set_pdg_incoming (expr%subevt_t, flavor_get_pdg (f_in))
-    call subevt_set_pdg_outgoing (expr%subevt_t, flavor_get_pdg (f_out))
-    call subevt_set_p2_beam     (expr%subevt_t, flavor_get_mass (f_beam) ** 2)
-    call subevt_set_p2_incoming (expr%subevt_t, flavor_get_mass (f_in)   ** 2)
-    call subevt_set_p2_outgoing (expr%subevt_t, flavor_get_mass (f_out)  ** 2)
+    call subevt_set_pdg_beam     (expr%subevt_t, f_beam%get_pdg ())
+    call subevt_set_pdg_incoming (expr%subevt_t, f_in%get_pdg ())
+    call subevt_set_pdg_outgoing (expr%subevt_t, f_out%get_pdg ())
+    call subevt_set_p2_beam     (expr%subevt_t, f_beam%get_mass () ** 2)
+    call subevt_set_p2_incoming (expr%subevt_t, f_in%get_mass ()   ** 2)
+    call subevt_set_p2_outgoing (expr%subevt_t, f_out%get_mass ()  ** 2)
     expr%n_in  = size (i_in)
     expr%n_out = size (i_out)
     expr%n_tot = expr%n_in + expr%n_out
@@ -499,23 +499,23 @@ particles.
     do i = 1, n_beam
        j = j_beam(i)
        call subevt_set_beam (subevt, i, &
-            flavor_get_pdg (flv(j)), &
+            flv(j)%get_pdg (), &
             vector4_null, &
-            flavor_get_mass (flv(j)) ** 2)
+            flv(j)%get_mass () ** 2)
     end do
     do i = 1, n_in
        j = j_in(i)
        call subevt_set_incoming (subevt, n_beam + i, &
-            flavor_get_pdg (flv(j)), &
+            flv(j)%get_pdg (), &
             vector4_null, &
-            flavor_get_mass (flv(j)) ** 2)
+            flv(j)%get_mass () ** 2)
     end do
     do i = 1, n_out
        j = j_out(i)
        call subevt_set_outgoing (subevt, n_beam + n_in + i, &
-            flavor_get_pdg (flv(j)), &
+            flv(j)%get_pdg (), &
             vector4_null, &
-            flavor_get_mass (flv(j)) ** 2)
+            flv(j)%get_mass () ** 2)
     end do
   end subroutine interaction_to_subevt
 
@@ -567,16 +567,22 @@ default values.
   procedure :: evaluate => parton_expr_evaluate
 <<Subevt expr: procedures>>=
   subroutine parton_expr_evaluate &
-       (expr, passed, scale, fac_scale, ren_scale, weight)
+       (expr, passed, scale, fac_scale, ren_scale, weight, scale_forced)
     class(parton_expr_t), intent(inout) :: expr
     logical, intent(out) :: passed
     real(default), intent(out) :: scale
     real(default), intent(out) :: fac_scale
     real(default), intent(out) :: ren_scale
     real(default), intent(out) :: weight
+    real(default), intent(in), allocatable, optional :: scale_forced
+    logical :: force_scale
+    force_scale = .false.
+    if (present (scale_forced))  force_scale = allocated (scale_forced)
     call expr%base_evaluate (passed)
     if (passed) then
-       if (expr%has_scale) then
+       if (force_scale) then
+          scale = scale_forced
+       else if (expr%has_scale) then
           call expr%scale%evaluate ()
           if (expr%scale%is_known ()) then
              scale = expr%scale%get_real ()
@@ -587,7 +593,9 @@ default values.
        else
           scale = expr%sqrts_hat
        end if
-       if (expr%has_fac_scale) then
+       if (force_scale) then
+          fac_scale = scale_forced
+       else if (expr%has_fac_scale) then
           call expr%fac_scale%evaluate ()
           if (expr%fac_scale%is_known ()) then
              fac_scale = expr%fac_scale%get_real ()
@@ -599,7 +607,9 @@ default values.
        else
           fac_scale = scale
        end if
-       if (expr%has_ren_scale) then
+       if (force_scale) then
+          ren_scale = scale_forced
+       else if (expr%has_ren_scale) then
           call expr%ren_scale%evaluate ()
           if (expr%ren_scale%is_known ()) then
              ren_scale = expr%ren_scale%get_real ()
@@ -929,10 +939,10 @@ Also increment the event index; initialize it if necessary.
   subroutine event_expr_fill_subevt (expr, particle_set)
     class(event_expr_t), intent(inout) :: expr
     type(particle_set_t), intent(in) :: particle_set
-    call particle_set_to_subevt (particle_set, expr%subevt_t)
+    call particle_set%to_subevt (expr%subevt_t)
     expr%sqrts_hat = subevt_get_sqrts_hat (expr%subevt_t)
-    expr%n_in  = particle_set_get_n_in  (particle_set)
-    expr%n_out = particle_set_get_n_out (particle_set)
+    expr%n_in  = subevt_get_n_in  (expr%subevt_t)
+    expr%n_out = subevt_get_n_out (expr%subevt_t)
     expr%n_tot = expr%n_in + expr%n_out
     expr%subevt_filled = .true.
     if (expr%has_index) then
@@ -1271,17 +1281,21 @@ table from the hard matrix element data.
     associate (data => core%data)
       allocate (qn_mask (data%n_in + data%n_out))
       qn_mask(:data%n_in) = &
-              new_quantum_numbers_mask (.false., .true., .false.) &
+              quantum_numbers_mask (.false., .true., .false.) &
               .or. qn_mask_in
       qn_mask(data%n_in+1:) = &
-           new_quantum_numbers_mask (.true., .true., .true.)
+           quantum_numbers_mask (.true., .true., .true.)
     if (core%use_color_factors) then
        call evaluator_init_square (state%trace, &
             state%int_eff, qn_mask, &
-            data%cf_index, data%color_factors, col, nc=core%nc)
+            col_flow_index = data%cf_index, &
+            col_factor = data%color_factors, &
+            col_index_hi = col, &
+            nc = core%nc)
     else
        call evaluator_init_square (state%trace, &
-            state%int_eff, qn_mask, nc=core%nc)
+            state%int_eff, qn_mask, &
+            nc = core%nc)
     end if
     end associate
     state%has_trace = .true.
@@ -1319,28 +1333,32 @@ apply the provided [[qn_mask_in]] which communicates the beam properties.
       allocate (qn_mask (data%n_in + data%n_out))
       allocate (flv (data%n_flv))
       do i = 1, data%n_in + data%n_out      
-         call flavor_init (flv, data%flv_state(i,:), model)
+         call flv%init (data%flv_state(i,:), model)
          if ((data%n_in == 1 .or. i > data%n_in) &
-              .and. any (.not. flavor_is_stable (flv))) then
-            helmask = all (flavor_decays_isotropically (flv))
-            helmask_hd = all (flavor_decays_diagonal (flv))
-            qn_mask(i) = new_quantum_numbers_mask (.false., .true., helmask, &
+              .and. any (.not. flv%is_stable ())) then
+            helmask = all (flv%decays_isotropically ())
+            helmask_hd = all (flv%decays_diagonal ())
+            qn_mask(i) = quantum_numbers_mask (.false., .true., helmask, &
                  mask_hd = helmask_hd)
          else if (i > data%n_in) then
-            helmask = all (.not. flavor_is_polarized (flv))
-            qn_mask(i) = new_quantum_numbers_mask (.false., .true., helmask)
+            helmask = all (.not. flv%is_polarized ())
+            qn_mask(i) = quantum_numbers_mask (.false., .true., helmask)
          else
-            qn_mask(i) = new_quantum_numbers_mask (.false., .true., .false.) &
+            qn_mask(i) = quantum_numbers_mask (.false., .true., .false.) &
               .or. qn_mask_in(i)
          end if
       end do
     if (core%use_color_factors) then
        call evaluator_init_square (state%matrix, &
             state%int_eff, qn_mask, &
-            data%cf_index, data%color_factors, col, nc=core%nc)
+            col_flow_index = data%cf_index, &
+            col_factor = data%color_factors, &
+            col_index_hi = col, &
+            nc = core%nc)
     else
        call evaluator_init_square (state%matrix, state%int_eff, &
-            qn_mask, nc=core%nc)
+            qn_mask, &
+            nc = core%nc)
     end if
     end associate
     state%has_matrix = .true.
@@ -1368,18 +1386,18 @@ Helicity handling: see above.
       allocate (qn_mask (data%n_in + data%n_out))
       allocate (flv (data%n_flv))
       do i = 1, data%n_in + data%n_out
-         call flavor_init (flv, data%flv_state(i,:), model)
+         call flv%init (data%flv_state(i,:), model)
          if ((data%n_in == 1 .or. i > data%n_in) &
-              .and. any (.not. flavor_is_stable (flv))) then
-            helmask = all (flavor_decays_isotropically (flv))
-            helmask_hd = all (flavor_decays_diagonal (flv))
-            qn_mask(i) = new_quantum_numbers_mask (.false., .false., helmask, &
+              .and. any (.not. flv%is_stable ())) then
+            helmask = all (flv%decays_isotropically ())
+            helmask_hd = all (flv%decays_diagonal ())
+            qn_mask(i) = quantum_numbers_mask (.false., .false., helmask, &
                  mask_hd = helmask_hd)
          else if (i > data%n_in) then
-            helmask = all (.not. flavor_is_polarized (flv))
-            qn_mask(i) = new_quantum_numbers_mask (.false., .false., helmask)
+            helmask = all (.not. flv%is_polarized ())
+            qn_mask(i) = quantum_numbers_mask (.false., .false., helmask)
          else
-            qn_mask(i) = new_quantum_numbers_mask (.false., .false., .false.) &
+            qn_mask(i) = quantum_numbers_mask (.false., .false., .false.) &
               .or. qn_mask_in(i)
          end if
       end do
@@ -1413,14 +1431,16 @@ event output.
     logical, intent(in), optional :: resonant
     type(quantum_numbers_mask_t) :: mask
     type(interaction_t), pointer :: src_int
-    mask = new_quantum_numbers_mask (.true., .true., .true.)
+    mask = quantum_numbers_mask (.true., .true., .true.)
     if (present (int)) then
        src_int => int
     else
        src_int => isolated%sf_chain_eff%get_out_int_ptr ()
     end if
     call evaluator_init_product &
-         (state%trace, src_int, isolated%trace, mask, mask, &
+         (state%trace, src_int, isolated%trace, &
+          qn_mask_conn = mask, &
+          qn_mask_rest = mask, &
           connections_are_resonant = resonant)
     state%has_trace = .true.
   end subroutine connected_state_setup_connected_trace
@@ -1434,14 +1454,15 @@ numbers which are present in the original evaluators.
   procedure :: setup_connected_matrix => connected_state_setup_connected_matrix
 <<Parton states: procedures>>=
   subroutine connected_state_setup_connected_matrix &
-       (state, isolated, int, resonant)
+       (state, isolated, int, resonant, qn_filter_conn)
     class(connected_state_t), intent(inout), target :: state
     type(isolated_state_t), intent(in), target :: isolated
     type(interaction_t), intent(in), optional, target :: int
     logical, intent(in), optional :: resonant
+    type(quantum_numbers_t), intent(in), optional :: qn_filter_conn
     type(quantum_numbers_mask_t) :: mask
     type(interaction_t), pointer :: src_int
-    mask = new_quantum_numbers_mask (.false., .true., .true.)
+    mask = quantum_numbers_mask (.false., .true., .true.)
     if (present (int)) then
        src_int => int
     else
@@ -1449,6 +1470,7 @@ numbers which are present in the original evaluators.
     end if
     call evaluator_init_product &
          (state%matrix, src_int, isolated%matrix, mask, &
+          qn_filter_conn = qn_filter_conn, &
           connections_are_resonant = resonant)
     state%has_matrix = .true.
   end subroutine connected_state_setup_connected_matrix
@@ -1469,14 +1491,15 @@ caller-provided [[int]], this is not necessary.
   procedure :: setup_connected_flows => connected_state_setup_connected_flows
 <<Parton states: procedures>>=
   subroutine connected_state_setup_connected_flows &
-       (state, isolated, int, resonant)
+       (state, isolated, int, resonant, qn_filter_conn)
     class(connected_state_t), intent(inout), target :: state
     type(isolated_state_t), intent(in), target :: isolated
     type(interaction_t), intent(in), optional, target :: int
     logical, intent(in), optional :: resonant
+    type(quantum_numbers_t), intent(in), optional :: qn_filter_conn
     type(quantum_numbers_mask_t) :: mask
     type(interaction_t), pointer :: src_int
-    mask = new_quantum_numbers_mask (.false., .false., .true.)
+    mask = quantum_numbers_mask (.false., .false., .true.)
     if (present (int)) then
        src_int => int
     else
@@ -1487,6 +1510,7 @@ caller-provided [[int]], this is not necessary.
     end if
     call evaluator_init_product &
          (state%flows, src_int, isolated%flows, mask, &
+          qn_filter_conn = qn_filter_conn, &
           connections_are_resonant = resonant)
     state%has_flows = .true.
   end subroutine connected_state_setup_connected_flows
@@ -1682,12 +1706,14 @@ are defined, default values are inserted.
   procedure :: evaluate_expressions => connected_state_evaluate_expressions
 <<Parton states: procedures>>=
   subroutine connected_state_evaluate_expressions (state, passed, &
-       scale, fac_scale, ren_scale, weight)
+       scale, fac_scale, ren_scale, weight, scale_forced)
     class(connected_state_t), intent(inout) :: state
     logical, intent(out) :: passed
     real(default), intent(out) :: scale, fac_scale, ren_scale, weight
+    real(default), intent(in), allocatable, optional :: scale_forced
     if (state%has_expr) then
-       call state%expr%evaluate (passed, scale, fac_scale, ren_scale, weight)
+       call state%expr%evaluate (passed, scale, fac_scale, ren_scale, weight, &
+            scale_forced)
     end if
   end subroutine connected_state_evaluate_expressions
     
@@ -2388,7 +2414,7 @@ This restriction could be removed by extending the code in the
          all (pdg_in(1,:) == pdg_in(1,i0)) .and. &
          all (pdg_in(2,:) == pdg_in(2,i0))) then
        pdg_scattering = pdg_array_get (pdg_in(:,i0), 1)
-       call flavor_init (flv_in, pdg_scattering, process%config%model)
+       call flv_in%init (pdg_scattering, process%config%model)
        call process%beam_config%init_scattering (flv_in, sqrts, beam_structure)
     else
        call msg_fatal ("Setting up process '" // char (process%meta%id) // "':", &
@@ -2431,7 +2457,7 @@ particle mass, hence no extra argument.
     if (all (pdg_array_get_length (pdg_in) == 1) &
          .and. all (pdg_in(1,:) == pdg_in(1,i0))) then
        pdg_decay = pdg_array_get (pdg_in(:,i0), 1)
-       call flavor_init (flv_in, pdg_decay, process%config%model)
+       call flv_in%init (pdg_decay, process%config%model)
        call process%beam_config%init_decay (flv_in, rest_frame, beam_structure)
     else
        call msg_fatal ("Setting up decay '" &
@@ -2455,8 +2481,8 @@ in a given position in the particle string coincide.
           associate (data => process%component(i)%core%data)
             allocate (flv (data%n_flv), mass (data%n_flv))
             do j = 1, data%n_in + data%n_out
-               call flavor_init (flv, data%flv_state(j,:), process%config%model)
-               mass = flavor_get_mass (flv)
+               call flv%init (data%flv_state(j,:), process%config%model)
+               mass = flv%get_mass ()
                if (any (mass /= mass(1))) then
                   call msg_fatal ("Process '" // char (process%meta%id) // "': " &
                        // "mass values in flavor combination do not coincide. ")
@@ -5200,9 +5226,9 @@ interaction object.
     character :: sgn
     u = given_output_unit (unit)
     write (u, "(1x,A,I0)")  "Term #", term%i_term_global
-    call state_iterator_init (it, interaction_get_state_matrix_ptr (term%int))
-    do while (state_iterator_is_valid (it))
-       i = state_iterator_get_me_index (it)
+    call it%init (interaction_get_state_matrix_ptr (term%int))
+    do while (it%is_valid ())
+       i = it%get_me_index ()
        f = term%flv(i)
        h = term%hel(i)
        c = term%col(i)
@@ -5212,9 +5238,9 @@ interaction object.
           sgn = " "
        end if
        write (u, "(1x,A1,1x,I0,2x)", advance="no")  sgn, i
-       call quantum_numbers_write (state_iterator_get_quantum_numbers (it), u)
+       call quantum_numbers_write (it%get_quantum_numbers (), u)
        write (u, *)
-       call state_iterator_advance (it)
+       call it%advance ()
     end do
   end subroutine process_term_write_state_summary
   
@@ -5328,12 +5354,13 @@ matrix element.
                   term%flv(i) = f
                   term%hel(i) = h
                   term%col(i) = c
-                  call flavor_init (flv, data%flv_state(:,f), model)
-                  call color_init_from_array (col, data%col_state(:,:,c), &
+                  call flv%init (data%flv_state(:,f), model)
+                  call color_init_from_array (col, &
+                       data%col_state(:,:,c), &
                        data%ghost_flag(:,c))
-                  call color_invert (col(:data%n_in))
-                  call helicity_init (hel, data%hel_state(:,h))
-                  call quantum_numbers_init (qn, flv, col, hel)
+                  call col(:data%n_in)%invert ()
+                  call hel%init (data%hel_state(:,h))
+                  call qn%init (flv, col, hel)
                   call interaction_add_state (term%int, qn)
                end if
             end do
@@ -5686,8 +5713,8 @@ one that is stored in the process object.
     flag = .false.
     do i_term = 1, process%get_n_terms ()
        call process%get_term_flv_out (i_term, flv)
-       call flavor_set_model (flv, model)
-       flag = .not. all (flavor_is_stable (flv))
+       call flv%set_model (model)
+       flag = .not. all (flv%is_stable ())
        deallocate (flv)
        if (flag)  return
     end do
@@ -5814,13 +5841,16 @@ For invalid arguments (quantum states), we return zero.
   procedure :: compute_amplitude => process_compute_amplitude
 <<Processes: procedures>>=
   function process_compute_amplitude &
-       (process, i, j, p, f, h, c, fac_scale, ren_scale) result (amp)
+       (process, i, j, p, f, h, c, fac_scale, ren_scale, alpha_qcd_forced) &
+       result (amp)
     class(process_t), intent(in) :: process
     integer, intent(in) :: i, j
     type(vector4_t), dimension(:), intent(in) :: p
     integer, intent(in) :: f, h, c
     real(default), intent(in), optional :: fac_scale, ren_scale
+    real(default), intent(in), allocatable, optional :: alpha_qcd_forced
     real(default) :: fscale, rscale
+    real(default), allocatable :: aqcd_forced
     complex(default) :: amp
     amp = 0
     if (0 < i .and. i <= process%meta%n_components) then
@@ -5840,8 +5870,12 @@ For invalid arguments (quantum states), we return zero.
                else
                   rscale = fscale
                end if
-               amp = process%component(i)%core% &
-                    compute_amplitude (j, p, f, h, c, fscale, rscale)
+               if (present (alpha_qcd_forced)) then
+                  if (allocated (alpha_qcd_forced)) &
+                       allocate (aqcd_forced, source = alpha_qcd_forced)
+               end if
+               amp = process%component(i)%core%compute_amplitude &
+                    (j, p, f, h, c, fscale, rscale, aqcd_forced)
             end if
           end associate
        else
@@ -6849,6 +6883,7 @@ has passed cuts, we calculate the various scale and weight expressions.
      real(default) :: scale = 0
      real(default) :: fac_scale = 0
      real(default) :: ren_scale = 0
+     real(default), allocatable :: alpha_qcd_forced
      real(default) :: weight = 1
      type(vector4_t), dimension(:), allocatable :: p_hard
      type(nlo_data_t), pointer :: nlo_data => null ()
@@ -6888,6 +6923,10 @@ has passed cuts, we calculate the various scale and weight expressions.
        write (u, "(3x,A,ES19.12)")  "overall scale         = ", term%scale
        write (u, "(3x,A,ES19.12)")  "factorization scale   = ", term%fac_scale
        write (u, "(3x,A,ES19.12)")  "renormalization scale = ", term%ren_scale
+       if (allocated (term%alpha_qcd_forced)) then
+          write (u, "(3x,A,ES19.12)")  "alpha(QCD) forced     = ", &
+               term%alpha_qcd_forced
+       end if
        write (u, "(3x,A,ES19.12)")  "reweighting factor    = ", term%weight
     end if
     call term%k_term%write (u)
@@ -7032,7 +7071,7 @@ relevant for a NLO algorithm.
       n_tot = interaction_get_n_tot  (int_eff)
       allocate (flv_int (n_tot))
       flv_int = quantum_numbers_get_flavor &
-           (state_matrix_get_quantum_numbers (state_matrix, 1))
+           (state_matrix%get_quantum_numbers (1))
       allocate (f_in (n_in))
       f_in = flv_int(1:n_in)
       deallocate (flv_int)
@@ -7048,7 +7087,7 @@ relevant for a NLO algorithm.
           state_matrix => interaction_get_state_matrix_ptr (src_int)
           allocate (flv_src (interaction_get_n_tot (src_int)))
           flv_src = quantum_numbers_get_flavor &
-               (state_matrix_get_quantum_numbers (state_matrix, 1))
+               (state_matrix%get_quantum_numbers (1))
           f_out(j) = flv_src(i)
           deallocate (flv_src)
        end if
@@ -7183,10 +7222,27 @@ The quantum numbers mask of the incoming particle
   subroutine term_instance_reset (term)
     class(term_instance_t), intent(inout) :: term
     call term%connected%reset_expressions ()
+    if (allocated (term%alpha_qcd_forced))  deallocate (term%alpha_qcd_forced)
     term%active = .false.
   end subroutine term_instance_reset
   
 @ %def term_instance_reset
+@ Force an $\alpha_s$ value that should be used in the matrix-element
+calculation. 
+<<Processes: term instance: TBP>>=
+  procedure :: set_alpha_qcd_forced => term_instance_set_alpha_qcd_forced
+<<Processes: procedures>>=
+  subroutine term_instance_set_alpha_qcd_forced (term, alpha_qcd)
+    class(term_instance_t), intent(inout) :: term
+    real(default), intent(in) :: alpha_qcd
+    if (allocated (term%alpha_qcd_forced)) then
+       term%alpha_qcd_forced = alpha_qcd
+    else
+       allocate (term%alpha_qcd_forced, source = alpha_qcd)
+    end if
+  end subroutine term_instance_set_alpha_qcd_forced
+  
+@ %def term_instance_set_alpha_qcd_forced
 @ Complete the kinematics computation for the effective parton states.
 
 We assume that the [[compute_hard_kinematics]] method of the process
@@ -7272,10 +7328,12 @@ kinematics, enabling structure-function evaluation.
   procedure :: evaluate_expressions => &
        term_instance_evaluate_expressions
 <<Processes: procedures>>=
-  subroutine term_instance_evaluate_expressions (term)
+  subroutine term_instance_evaluate_expressions (term, scale_forced)
     class(term_instance_t), intent(inout) :: term
+    real(default), intent(in), allocatable, optional :: scale_forced
     call term%connected%evaluate_expressions (term%passed, &
-         term%scale, term%fac_scale, term%ren_scale, term%weight)
+         term%scale, term%fac_scale, term%ren_scale, term%weight, &
+         scale_forced)
     term%checked = .true.
   end subroutine term_instance_evaluate_expressions
        
@@ -7303,7 +7361,7 @@ method may modify the [[tmp]] workspace object.
           do i = 1, term%config%n_allowed
              term%amp(i) = core%compute_amplitude (i_term, term%p_hard, &
                 term%config%flv(i), term%config%hel(i), term%config%col(i), &
-                term%fac_scale, term%ren_scale, &
+                term%fac_scale, term%ren_scale, term%alpha_qcd_forced, &
                 component(i_component)%tmp)
           end do
           call interaction_set_matrix_element (term%int_hard, term%amp)
@@ -7399,7 +7457,7 @@ physical event.
               term%amp(i) = core%compute_amplitude (i_term, &
                  interaction_get_momenta (term%int_hard_real), &
                  term%config%flv(i), term%config%hel(i), term%config%col(i), &
-                 term%fac_scale, term%ren_scale, &
+                 term%fac_scale, term%ren_scale, term%alpha_qcd_forced, &
                  component%tmp)
            end do
         type is (prc_gosam_t)
@@ -7414,6 +7472,7 @@ physical event.
                   interaction_get_momenta (term%nlo_data%int_born), &
                   term%nlo_data%flv_born(i), term%nlo_data%hel_born(i), &
                   term%nlo_data%col_born(i), term%fac_scale, term%ren_scale, &
+                  term%alpha_qcd_forced, &
                   component%tmp)
            end do
         type is (prc_gosam_t)
@@ -8391,17 +8450,21 @@ one term, then compute effective kinematics for the other terms.
 @ Fourth step of process evaluation: check cuts for all terms.  Where
 sucessful, compute any scales and weights.  Otherwise, deactive the term.
 If any of the terms has passed, set the state to [[STAT_PASSED_CUTS]].
+
+The argument [[scale_forced]], if present, will override the scale calculation
+in the term expressions.
 <<Processes: process instance: TBP>>=
   procedure :: evaluate_expressions => &
        process_instance_evaluate_expressions
 <<Processes: procedures>>=
-  subroutine process_instance_evaluate_expressions (instance)
+  subroutine process_instance_evaluate_expressions (instance, scale_forced)
     class(process_instance_t), intent(inout) :: instance
+    real(default), intent(in), allocatable, optional :: scale_forced
     integer :: i
     if (instance%evaluation_status >= STAT_EFF_KINEMATICS) then
        do i = 1, size (instance%term)
           if (instance%term(i)%active) then
-             call instance%term(i)%evaluate_expressions ()
+             call instance%term(i)%evaluate_expressions (scale_forced)
           end if
        end do
        if (any (instance%term%passed)) then
@@ -8660,11 +8723,13 @@ Before calling this, we should call [[choose_mci]].
 <<Processes: process instance: TBP>>=
   procedure :: recover => process_instance_recover
 <<Processes: procedures>>=
-  subroutine process_instance_recover (instance, channel, i_term, update_sqme)
+  subroutine process_instance_recover &
+       (instance, channel, i_term, update_sqme, scale_forced)
     class(process_instance_t), intent(inout) :: instance
     integer, intent(in) :: channel
     integer, intent(in) :: i_term
     logical, intent(in) :: update_sqme
+    real(default), intent(in), allocatable, optional :: scale_forced
     call instance%activate ()
     instance%evaluation_status = STAT_EFF_KINEMATICS
     call instance%recover_hard_kinematics (i_term)
@@ -8676,7 +8741,7 @@ Before calling this, we should call [[choose_mci]].
     call instance%compute_hard_kinematics (i_term)
     call instance%compute_eff_kinematics (i_term)
     call instance%compute_other_channels (i_term)
-    call instance%evaluate_expressions ()
+    call instance%evaluate_expressions (scale_forced)
     if (update_sqme)  call instance%evaluate_trace ()
   end subroutine process_instance_recover
   
@@ -9100,7 +9165,7 @@ it.  It should be switched off when reading from raw event file.
     type(interaction_t), pointer :: int
     logical :: ok
     int => instance%get_trace_int_ptr (i_term)
-    call particle_set_init (pset, ok, int, int, FM_IGNORE_HELICITY, &
+    call pset%init (ok, int, int, FM_IGNORE_HELICITY, &
          [0._default, 0._default], .false., .true.)
   end subroutine process_instance_get_trace
     
@@ -9114,7 +9179,7 @@ it.  It should be switched off when reading from raw event file.
     integer :: n_in
     int => instance%get_trace_int_ptr (i_term)
     n_in = instance%process%get_n_in ()
-    call particle_set_fill_interaction (pset, int, n_in, &
+    call pset%fill_interaction (int, n_in, &
          recover_beams = recover_beams, &
          check_match = check_match, &
          state_flv = instance%get_state_flv (i_term))
@@ -9122,9 +9187,23 @@ it.  It should be switched off when reading from raw event file.
 
 @ %def process_instance_get_trace
 @ %def process_instance_set_trace
+@ This procedure allows us to override any QCD setting of the WHIZARD process
+and directly set the coupling value that comes together with a particle set.
+<<Processes: process instance: TBP>>=
+  procedure :: set_alpha_qcd_forced => process_instance_set_alpha_qcd_forced
+<<Processes: procedures>>=
+  subroutine process_instance_set_alpha_qcd_forced (instance, i_term, alpha_qcd)
+    class(process_instance_t), intent(inout) :: instance
+    integer, intent(in) :: i_term
+    real(default), intent(in) :: alpha_qcd
+    call instance%term(i_term)%set_alpha_qcd_forced (alpha_qcd)
+  end subroutine process_instance_set_alpha_qcd_forced
+  
+@ %def process_instance_set_alpha_qcd_forced
 @
 <<Processes: process instance: TBP>>=
-  procedure :: display_real_kinematics => process_instance_display_real_kinematics
+  procedure :: display_real_kinematics => &
+       process_instance_display_real_kinematics
 <<Processes: procedures>>=
   subroutine process_instance_display_real_kinematics (instance, i)
      class(process_instance_t), intent(in) :: instance
@@ -9355,12 +9434,14 @@ in fact, returns a constant.  Nevertheless, we properly transfer the
 momentum vectors.
 <<Processes: tests>>=
   function test_compute_amplitude &
-       (object, j, p, f, h, c, fac_scale, ren_scale, tmp) result (amp)
+       (object, j, p, f, h, c, fac_scale, ren_scale, alpha_qcd_forced, tmp) &
+       result (amp)
     class(test_t), intent(in) :: object
     integer, intent(in) :: j
     type(vector4_t), dimension(:), intent(in) :: p
     integer, intent(in) :: f, h, c
     real(default), intent(in) :: fac_scale, ren_scale
+    real(default), intent(in), allocatable :: alpha_qcd_forced
     class(workspace_t), intent(inout), allocatable, optional :: tmp
     complex(default) :: amp
     real(default), dimension(:,:), allocatable :: parray
@@ -9692,7 +9773,7 @@ functionality.
     write (u, "(A)")
     
     call write_separator (u)
-    call particle_set_write (pset, u)
+    call pset%write (u)
     call write_separator (u)
 
     write (u, "(A)")
@@ -9723,7 +9804,7 @@ functionality.
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
     
-    call particle_set_final (pset)
+    call pset%final ()
     call process_instance%final ()
     deallocate (process_instance)
     
@@ -9968,7 +10049,7 @@ structure-function channel.
     write (u, "(A)")
     
     call write_separator (u)
-    call particle_set_write (pset, u)
+    call pset%write (u)
     call write_separator (u)
 
     write (u, "(A)")
@@ -9989,7 +10070,7 @@ structure-function channel.
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
 
-    call particle_set_final (pset)
+    call pset%final ()
 
     call process_instance%final ()
     deallocate (process_instance)
@@ -10162,7 +10243,7 @@ distinct phase-space channels.
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
 
-    call particle_set_final (pset)
+    call pset%final ()
 
     call process_instance%final ()
     deallocate (process_instance)
@@ -10867,7 +10948,7 @@ Initialize an evaluate a decay process.
     write (u, "(A)")
     
     call write_separator (u)
-    call particle_set_write (pset, u)
+    call pset%write (u)
     call write_separator (u)
 
     write (u, "(A)")
@@ -10886,7 +10967,7 @@ Initialize an evaluate a decay process.
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
 
-    call particle_set_final (pset)
+    call pset%final ()
     call process_instance%final ()
     deallocate (process_instance)
     
@@ -11099,8 +11180,8 @@ Initialize an evaluate a decay process for a moving particle.
     call process_instance%set_mcpar ([0._default, 0._default])
 
     model => process%get_model_ptr ()
-    call flavor_init (flv_beam, 25, model)
-    m = flavor_get_mass (flv_beam)
+    call flv_beam%init (25, model)
+    m = flv_beam%get_mass ()
     p = 3 * m / 4
     E = sqrt (m**2 + p**2)
     call process_instance%set_beam_momenta ([vector4_moving (E, p, 3)])
@@ -11133,7 +11214,7 @@ Initialize an evaluate a decay process for a moving particle.
     write (u, "(A)")
     
     call write_separator (u)
-    call particle_set_write (pset, u)
+    call pset%write (u)
     call write_separator (u)
 
     write (u, "(A)")
@@ -11153,7 +11234,7 @@ Initialize an evaluate a decay process for a moving particle.
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
 
-    call particle_set_final (pset)
+    call pset%final ()
     call process_instance%final ()
     deallocate (process_instance)
     
@@ -11864,7 +11945,7 @@ instance is a pointer and should not be finalized here.
     class(evt_t), intent(inout) :: object
     if (allocated (object%rng))  call object%rng%final ()
     if (object%particle_set_exists) &
-         call particle_set_final (object%particle_set)
+         call object%particle_set%final ()
   end subroutine evt_final
   
 @ %def evt_final
@@ -11888,7 +11969,7 @@ instance is a pointer and should not be finalized here.
     end if
     if (object%particle_set_exists) then
        call write_separator (u)
-       call particle_set_write (object%particle_set, u, testflag)
+       call object%particle_set%write (u, testflag)
     end if
   end subroutine evt_write
   
@@ -12046,7 +12127,7 @@ the state.  For testing purposes, we can provide those numbers explicitly.
     else
        call evt%rng%generate (x)
     end if
-    call particle_set_init (evt%particle_set, evt%particle_set_exists, &
+    call evt%particle_set%init (evt%particle_set_exists, &
          int_matrix, int_flows, factorization_mode, x, &
          keep_correlations, keep_virtual=.true.)
     evt%particle_set_exists = .true.
@@ -12076,12 +12157,10 @@ same across event transforms.  If this is not true for a transform
     i_term = 1
     allocate (beam_index (n_in))
     call evt%process_instance%get_beam_index (i_term, beam_index)
-    call particle_set_reset_status (evt%particle_set, &
-         beam_index, PRT_BEAM)
+    call evt%particle_set%reset_status (beam_index, PRT_BEAM)
     allocate (in_index (n_in))
     call evt%process_instance%get_in_index (i_term, in_index)
-    call particle_set_reset_status (evt%particle_set, &
-         in_index, PRT_INCOMING)
+    call evt%particle_set%reset_status (in_index, PRT_INCOMING)
   end subroutine evt_tag_incoming
 
 @ %def evt_tag_incoming
@@ -12320,6 +12399,7 @@ module decays
   use os_interface
   use sm_qcd
   use flavors
+  use helicities
   use quantum_numbers
   use state_matrices
   use interactions
@@ -12499,14 +12579,14 @@ possibly, differing flavor content.
        select type (prt_config => object%prt(i)%c)
        type is (stable_config_t)
           write (u, "(1x,A)", advance="no") &
-               char (flavor_get_name (prt_config%flv(1)))
+               char (prt_config%flv(1)%get_name ())
           do j = 2, size (prt_config%flv)
              write (u, "(':',A)", advance="no") &
-                  char (flavor_get_name (prt_config%flv(j)))
+                  char (prt_config%flv(j)%get_name ())
           end do
        type is (unstable_config_t)
           write (u, "(1x,A)", advance="no") &
-               char (flavor_get_name (prt_config%flv))
+               char (prt_config%flv%get_name ())
        end select
     end do
     write (u, *)
@@ -12548,7 +12628,7 @@ decay product is itself stable.
          type is (unstable_config_t)
             if (all (flv(i,:) == flv(i,1))) then
                call prt_config%init (flv(i,1))
-               call flavor_get_decays (flv(i,1), decay)
+               call flv(i,1)%get_decays (decay)
                call prt_config%init_decays (decay, model, process_stack)
             else
                call prt_config%write ()
@@ -12905,9 +12985,9 @@ recursively, available from the process stack (if present).
        else
           call process%get_term_flv_out (i, flv)
        end if
-       call flavor_set_model (flv, model)
+       call flv%set_model (model)
        allocate (stable (size (flv, 1)))
-       stable = flavor_is_stable (flv(:,1))
+       stable = flv(:,1)%is_stable ()
        call decay%init_term (i, flv, stable, model, process_stack)
        deallocate (flv, stable)
     end do
@@ -13154,8 +13234,12 @@ decay mode may include several terms, which correspond to the terms in the
 associated process.  In addition to the base type, the decay configuration
 object contains the integral of the parent process and the selector for the
 MCI group inside this process.
+
+The flavor component should be identical to the flavor component of the parent
+particle ([[unstable]] object).
 <<Decays: types>>=
   type, extends (decay_root_config_t) :: decay_config_t
+     type(flavor_t) :: flv
      real(default) :: weight = 0
      real(default) :: integral = 0
      real(default) :: abs_error = 0
@@ -13231,6 +13315,18 @@ should be used instead.
   end subroutine decay_config_connect
 
 @ %def decay_config_connect
+@ Set the flavor entry, which repeats the flavor of the parent unstable
+particle.
+<<Decays: decay config: TBP>>=
+  procedure :: set_flv => decay_config_set_flv
+<<Decays: procedures>>=
+  subroutine decay_config_set_flv (decay, flv)
+    class(decay_config_t), intent(inout) :: decay
+    type(flavor_t), intent(in) :: flv
+    decay%flv = flv
+  end subroutine decay_config_set_flv
+  
+@ %def decay_config_set_flv
 @ Compute embedded branchings and the relative error.  This method does not
 apply to the decay root.
 <<Decays: decay config: TBP>>=
@@ -13442,10 +13538,10 @@ This is a stable particle.  The flavor can be ambiguous (e.g., partons).
     ind = 0;  if (present (indent))  ind = indent
     call write_indent (u, ind)
     write (u, "(1x,'+',1x,A)", advance = "no")  "Stable:"
-    write (u, "(1x,A)", advance = "no")  char (flavor_get_name (object%flv(1)))
+    write (u, "(1x,A)", advance = "no")  char (object%flv(1)%get_name ())
     do i = 2, size (object%flv)
        write (u, "(':',A)", advance = "no") &
-            char (flavor_get_name (object%flv(i)))
+            char (object%flv(i)%get_name ())
     end do
     write (u, *)
   end subroutine stable_config_write
@@ -13462,7 +13558,7 @@ double entries which we remove, so we store only the distinct flavors.
     integer, dimension (size (flv)) :: pdg
     logical, dimension (size (flv)) :: mask
     integer :: i
-    pdg = flavor_get_pdg (flv)
+    pdg = flv%get_pdg ()
     mask(1) = .true.
     forall (i = 2 : size (pdg))
        mask(i) = all (pdg(i) /= pdg(1:i-1))
@@ -13566,7 +13662,7 @@ The flavor must be unique in this case.
     verb = .true.;  if (present (verbose))  verb = verbose
     call write_indent (u, ind)
     write (u, "(1x,'+',1x,A,1x,A)")  "Unstable:", &
-         char (flavor_get_name (object%flv))
+         char (object%flv%get_name ())
     call write_indent (u, ind)
     write (u, 1)  "total width =", object%integral
     call write_indent (u, ind)
@@ -13618,6 +13714,7 @@ process names.
          else
             call decay%init (model, decay_id(i))
          end if
+         call decay%set_flv (unstable%flv)
        end associate
     end do
   end subroutine unstable_config_init_decays
@@ -13911,8 +14008,7 @@ any previous contents.
     end if
     int_last_decay => chain%last%get_matrix_int_ptr ()
     allocate (qn_mask (interaction_get_n_tot (int_last_decay)))
-    call quantum_numbers_mask_init (qn_mask, &
-         mask_f = .true., mask_c = .true., mask_h = .true.)
+    call qn_mask%init (mask_f = .true., mask_c = .true., mask_h = .true.)
     call evaluator_init_qn_sum (chain%correlated_trace, int_last_decay, qn_mask)
   end subroutine decay_chain_build
     
@@ -13965,6 +14061,8 @@ in the decay chain generation.
     type(decay_chain_entry_t), pointer :: entry
     type(connected_state_t), pointer :: previous_state
     type(isolated_state_t), pointer :: current_decay
+    type(helicity_t) :: hel
+    type(quantum_numbers_t) :: qn_filter_conn
     allocate (entry)
     if (associated (chain%last)) then
        entry%previous => chain%last
@@ -13982,10 +14080,23 @@ in the decay chain generation.
          (decay%selected_term)
     call entry%setup_connected_trace &
          (current_decay, previous_state%get_trace_int_ptr (), resonant=.true.)
-    call entry%setup_connected_matrix &
-         (current_decay, previous_state%get_matrix_int_ptr (), resonant=.true.)
-    call entry%setup_connected_flows &
-         (current_decay, previous_state%get_flows_int_ptr (), resonant=.true.)
+    if (entry%config%flv%has_decay_helicity ()) then
+       call hel%init (entry%config%flv%get_decay_helicity ())
+       call qn_filter_conn%init (hel)
+       call entry%setup_connected_matrix &
+            (current_decay, previous_state%get_matrix_int_ptr (), &
+            resonant=.true., qn_filter_conn = qn_filter_conn)
+       call entry%setup_connected_flows &
+            (current_decay, previous_state%get_flows_int_ptr (), &
+            resonant=.true., qn_filter_conn = qn_filter_conn)
+    else
+       call entry%setup_connected_matrix &
+            (current_decay, previous_state%get_matrix_int_ptr (), &
+            resonant=.true.)
+       call entry%setup_connected_flows &
+            (current_decay, previous_state%get_flows_int_ptr (), &
+            resonant=.true.)
+    end if
     chain%last => entry
     call chain%build_term_entries (decay%term(decay%selected_term))
   end subroutine decay_chain_build_decay_entries
@@ -14382,9 +14493,9 @@ integral values by hand, so we do not need to evaluate processes, yet.
 !    call model_list%read_model (var_str ("SM"), &
 !         var_str ("SM.mdl"), os_data, model)
 
-    call flavor_init (flv_h, 25, model)
-    call flavor_init (flv_hbb(:,1), [5, -5], model)
-    call flavor_init (flv_hgg(:,1), [22, 22], model)
+    call flv_h%init (25, model)
+    call flv_hbb(:,1)%init ([5, -5], model)
+    call flv_hgg(:,1)%init ([22, 22], model)
 
     write (u, "(A)")  "* Set up branching and decay"
     write (u, "(A)")
@@ -14458,12 +14569,12 @@ by another branching.
     call model%set_unstable (25, [var_str ("h_ww")])
     call model%set_unstable (24, [var_str ("w_ud"), var_str ("w_en")])
 
-    call flavor_init (flv_h, 25, model)
-    call flavor_init (flv_hww(:,1), [24, -24], model)
-    call flavor_init (flv_wp, 24, model)
-    call flavor_init (flv_wm,-24, model)
-    call flavor_init (flv_wud(:,1), [2, -1], model)
-    call flavor_init (flv_wen(:,1), [-11, 12], model)
+    call flv_h%init (25, model)
+    call flv_hww(:,1)%init ([24, -24], model)
+    call flv_wp%init (24, model)
+    call flv_wm%init (-24, model)
+    call flv_wud(:,1)%init ([2, -1], model)
+    call flv_wen(:,1)%init ([-11, 12], model)
     
 
     write (u, "(A)")  "* Set up branching and decay"
@@ -14471,7 +14582,7 @@ by another branching.
 
     allocate (unstable)
     unstable%flv = flv_h
-    call flavor_get_decays (unstable%flv, decay)
+    call unstable%flv%get_decays (decay)
     call unstable%init_decays (decay, model)
     
     associate (decay => unstable%decay_config(1))
@@ -14565,7 +14676,7 @@ with an actual process object.
     write (u, "(A)")
 
     allocate (unstable)
-    call flavor_init (unstable%flv, 25, model)
+    call unstable%flv%init (25, model)
     call unstable%init_decays ([procname2], model)
     
     write (u, "(A)")  "* Connect decay with process object"
@@ -14632,7 +14743,7 @@ decay event.
     model => process%get_model_ptr ()
 
     allocate (unstable)
-    call flavor_init (unstable%flv, 25, model)
+    call unstable%flv%init (25, model)
     call unstable%init_decays ([procname2], model)
     
     call model%set_unstable (25, [procname2])
@@ -15199,10 +15310,12 @@ from WHIZARD.
   subroutine apply_shower_particle_set & 
        (evt, valid, vetoed)
     class(evt_shower_t), intent(inout) :: evt
+    type(particle_t), dimension(1:2) :: prt_in
     logical, intent(inout) :: valid
     logical, intent(inout) :: vetoed
-    real(kind=double) :: pdftest    
+    real(kind=double) :: pdftest       
     logical, parameter :: debug = .false., to_file = .false.
+    integer :: i
 
     type(mlm_matching_data_t) :: mlm_matching_data
     logical, save :: matching_disabled = .false.
@@ -15219,14 +15332,15 @@ from WHIZARD.
     if (.not. valid .or. vetoed)  return
 
     if (signal_is_pending ()) return    
+
+    do i = 1, 2
+       prt_in(i) = evt%particle_set%get_particle (i)
+    end do
     
     ! ensure that lhapdf is initialized
     if (evt%pdf_type .eq. STRF_LHAPDF5) then
        if (evt%settings%ps_isr_active .and. &
-            (abs (particle_get_pdg (particle_set_get_particle &
-                 (evt%particle_set, 1))) >= 1000) .and. &
-            (abs (particle_get_pdg (particle_set_get_particle &
-                 (evt%particle_set, 2))) >= 1000)) then
+            (all (abs (prt_in%get_pdg ()) >= 1000))) then
           call GetQ2max (0, pdftest)
           if (pdftest < epsilon(pdftest)) then
              call msg_fatal ("ISR QCD shower enabled, but LHAPDF not" // &
@@ -15263,15 +15377,9 @@ from WHIZARD.
 
     if (.not. matching_disabled) then
        !!! Check if the beams are hadrons
-       if ((abs (particle_get_pdg (particle_set_get_particle &
-            (evt%particle_set, 1))) <= 18) .and. &
-            (abs (particle_get_pdg (particle_set_get_particle &
-            (evt%particle_set, 2))) <= 18)) then
+       if (all (abs (prt_in%get_pdg ()) <= 18)) then
           mlm_matching_data%is_hadron_collision = .false.
-       else if ((abs (particle_get_pdg (particle_set_get_particle &
-            (evt%particle_set, 1))) >= 1000) .and. &
-            (abs (particle_get_pdg (particle_set_get_particle &
-            (evt%particle_set, 2))) >= 1000)) then
+       else if (all (abs (prt_in%get_pdg ()) >= 1000)) then
           mlm_matching_data%is_hadron_collision = .true.
        else 
           call msg_error (" Matching didn't recognize beams setup," // &
@@ -15301,7 +15409,7 @@ from WHIZARD.
     end if
     if (debug) then
        print *, " after SHOWER"
-       call particle_set_write (evt%particle_set)
+       call evt%particle_set%write ()
     end if
        
     if (evt%settings%mlm_matching .and. &
@@ -15398,8 +15506,9 @@ from WHIZARD.
          return
       end if
       
-      call particle_set_reduce (particle_set, pset_reduced)
+      call particle_set%reduce (pset_reduced)
       call hepeup_from_particle_set (pset_reduced)
+      
       call hepeup_set_event_parameters (proc_id=1)
 
       u_W2P = free_unit ()
@@ -15558,6 +15667,7 @@ from WHIZARD.
            parton_pointers, final_ME_partons
       real(kind=default) :: mi_scale, ps_scale, shat, phi
       type(parton_pointer_t) :: temppp
+      type(particle_t) :: prt
       integer, dimension(:), allocatable :: connections
       integer :: n_loop, i, j, k
       integer :: n_hadrons, n_in, n_out
@@ -15567,7 +15677,7 @@ from WHIZARD.
       integer, dimension(1) :: parent
       logical, save :: msg_written = .false.
       integer, dimension(2,4) :: color_corr
-      integer :: u_S2W
+      integer :: u_S2W      
 
       vetoed = .false.
 
@@ -15620,19 +15730,17 @@ from WHIZARD.
          n_hadrons = 0
          n_in = 0
          n_out = 0
-         do i = 1, particle_set_get_n_tot (particle_set)
-            if (particle_get_status (particle_set_get_particle &
-                 (particle_set, i)) == PRT_BEAM) &
+         do i = 1, particle_set%get_n_tot ()
+            prt = particle_set%get_particle (i)
+            if (prt%get_status () == PRT_BEAM) &
                  n_hadrons = n_hadrons + 1
-            if (particle_get_status (particle_set_get_particle &
-                 (particle_set, i)) == PRT_INCOMING) &
+            if (prt%get_status () == PRT_INCOMING) &
                  n_in = n_in + 1
-            if (particle_get_status (particle_set_get_particle &
-                 (particle_set, i)) == PRT_OUTGOING) &
+            if (prt%get_status () == PRT_OUTGOING) &
                  n_out = n_out + 1
          end do
 
-         allocate (connections (1:particle_set_get_n_tot (particle_set)))
+         allocate (connections (1:particle_set%get_n_tot ()))
          connections = 0
 
          allocate (hadrons (1:2))
@@ -15642,18 +15750,15 @@ from WHIZARD.
          j=0
          if (n_hadrons > 0) then
             if (debug) print *, "Transfer hadrons from particle_set to hadrons"
-            do i = 1, particle_set_get_n_tot (particle_set)
-               if (particle_get_status (particle_set_get_particle &
-                    (particle_set, i)) == PRT_BEAM) then
+            do i = 1, particle_set%get_n_tot ()
+               prt = particle_set%get_particle (i)
+               if (prt%get_status () == PRT_BEAM) then
                   j = j + 1
                   hadrons(j)%nr = shower%get_next_free_nr ()
-                  hadrons(j)%momentum = particle_get_momentum &
-                       (particle_set_get_particle (particle_set, i))
+                  hadrons(j)%momentum = prt%get_momentum ()
                   hadrons(j)%t = hadrons(j)%momentum**2
-                  hadrons(j)%type = particle_get_pdg &
-                       (particle_set_get_particle (particle_set, i))
-                  col_array=particle_get_color (particle_set_get_particle &
-                       (particle_set, i))
+                  hadrons(j)%type = prt%get_pdg ()
+                  col_array = prt%get_color ()
                   hadrons(j)%c1 = col_array(1)
                   hadrons(j)%c2 = col_array(2)
                   max_color_nr = max (max_color_nr, abs(hadrons(j)%c1), &
@@ -15666,18 +15771,15 @@ from WHIZARD.
 
          j = 0
          if (debug) print *, "Transfer incoming partons from particle_set to partons"
-         do i = 1, particle_set_get_n_tot (particle_set)
-            if (particle_get_status (particle_set_get_particle &
-                 (particle_set, i)) == PRT_INCOMING) then
+         do i = 1, particle_set%get_n_tot ()
+            prt = particle_set%get_particle (i)
+            if (prt%get_status () == PRT_INCOMING) then
                j = j+1
                partons(j)%nr = shower%get_next_free_nr ()
-               partons(j)%momentum = particle_get_momentum &
-                    (particle_set_get_particle (particle_set, i))
+               partons(j)%momentum = prt%get_momentum ()
                partons(j)%t = partons(j)%momentum**2
-               partons(j)%type = particle_get_pdg &
-                    (particle_set_get_particle (particle_set, i))
-               col_array=particle_get_color &
-                    (particle_set_get_particle (particle_set, i))
+               partons(j)%type = prt%get_pdg ()
+               col_array = prt%get_color ()
                partons(j)%c1 = col_array (1)
                partons(j)%c2 = col_array (2)
                parton_pointers(j)%p => partons(j)
@@ -15685,10 +15787,8 @@ from WHIZARD.
                     abs (partons(j)%c2))
                connections(i)=j
                ! insert dependences on hadrons
-               if (particle_get_n_parents (particle_set_get_particle &
-                    (particle_set, i))==1) then
-                  parent = particle_get_parents (particle_set_get_particle &
-                       (particle_set, i))
+               if (prt%get_n_parents () == 1) then
+                  parent = prt%get_parents ()
                   partons(j)%initial => hadrons (connections (parent(1)))
                   partons(j)%x = space_part_norm (partons(j)%momentum) / &
                                  space_part_norm (partons(j)%initial%momentum)
@@ -15697,18 +15797,15 @@ from WHIZARD.
          end do
          if (signal_is_pending ()) return             
          if (debug) print *, "Transfer outgoing partons from particle_set to partons"
-         do i = 1, particle_set_get_n_tot (particle_set)
-            if (particle_get_status (particle_set_get_particle &
-                 (particle_set, i)) == PRT_OUTGOING) then
+         do i = 1, particle_set%get_n_tot ()
+            prt = particle_set%get_particle (i)
+            if (prt%get_status () == PRT_OUTGOING) then               
                j = j + 1
                partons(j)%nr = shower%get_next_free_nr ()
-               partons(j)%momentum = particle_get_momentum &
-                    (particle_set_get_particle (particle_set, i))
+               partons(j)%momentum = prt%get_momentum ()
                partons(j)%t = partons(j)%momentum**2
-               partons(j)%type = particle_get_pdg &
-                    (particle_set_get_particle (particle_set, i))
-               col_array=particle_get_color &
-                    (particle_set_get_particle (particle_set, i))
+               partons(j)%type = prt%get_pdg ()
+               col_array = prt%get_color ()
                partons(j)%c1 = col_array(1)
                partons(j)%c2 = col_array(2)
                parton_pointers(j)%p => partons(j)
@@ -15943,7 +16040,7 @@ from WHIZARD.
          exit TRY_SHOWER
       end do TRY_SHOWER
       if (debug) then
-         call particle_set_write (particle_set)
+         call particle_set%write ()
          print *, &
            "----------------------apply_shower_particle_set------------------"
          print *, &
@@ -16020,14 +16117,14 @@ from WHIZARD.
 
       !!! loop over particles and extract final colored ones with eta<etamax
       n_jets_PS = 0
-      do i = 1, particle_set_get_n_tot (particle_set)
+      do i = 1, particle_set%get_n_tot ()
          if (signal_is_pending ()) return             
-         tempprt = particle_set_get_particle (particle_set, i)
-         if (particle_get_status (tempprt) /= PRT_OUTGOING) cycle
-         col = particle_get_color (tempprt)
+         tempprt = particle_set%get_particle (i)
+         if (tempprt%get_status () /= PRT_OUTGOING) cycle
+         col = tempprt%get_color ()
          if (all (col == 0)) cycle
          if (data%is_hadron_collision) then
-            p_tmp = particle_get_momentum (tempprt)
+            p_tmp = tempprt%get_momentum ()
             if (energy (p_tmp) - longitudinal_part (p_tmp) < 1.E-10_default .or. &
                 energy (p_tmp) + longitudinal_part (p_tmp) < 1.E-10_default) then
                eta = pseudorapidity (p_tmp)
@@ -16038,7 +16135,7 @@ from WHIZARD.
                  settings%ms%mlm_etamax)  then
                if (debug) then
                   print *, "REJECTING"
-                  call particle_write (tempprt)
+                  call tempprt%write ()
                end if
                cycle
             end if
@@ -16050,13 +16147,13 @@ from WHIZARD.
       if (debug)  write (*, "(A,1x,I0)")  "n_jets_ps =", n_jets_ps
 
       j = 1
-      do i = 1, particle_set_get_n_tot (particle_set)
-         tempprt = particle_set_get_particle (particle_set, i)
-         if (particle_get_status (tempprt) /= PRT_OUTGOING) cycle
-         col = particle_get_color (tempprt)
+      do i = 1, particle_set%get_n_tot ()
+         tempprt = particle_set%get_particle (i)
+         if (tempprt%get_status () /= PRT_OUTGOING) cycle
+         col = tempprt%get_color ()
          if(all(col == 0)) cycle
          if (data%is_hadron_collision) then
-            p_tmp = particle_get_momentum (tempprt)
+            p_tmp = tempprt%get_momentum ()
             if (energy (p_tmp) - longitudinal_part (p_tmp) < 1.E-10_default .or. &
                 energy (p_tmp) + longitudinal_part (p_tmp) < 1.E-10_default) then
                eta = pseudorapidity (p_tmp)
@@ -16066,7 +16163,7 @@ from WHIZARD.
             if (eta > settings%ms%mlm_etaClusfactor * &
                  settings%ms%mlm_etamax) cycle
          end if
-         data%P_PS(j) = particle_get_momentum (tempprt)
+         data%P_PS(j) = tempprt%get_momentum ()
          j = j + 1
       end do
     end subroutine matching_transfer_PS
@@ -16224,42 +16321,35 @@ remaining new outgoing particles.
     class(model_data_t), intent(in), target :: model_hadrons
     type(flavor_t) :: flv
     type(color_t) :: col
-
     class(model_data_t), pointer :: model
-    integer :: newsize, oldsize
-    type(particle_t), dimension(:), allocatable :: temp_prt
+    type(particle_t), dimension(:), allocatable :: prt_tmp, prt
     integer :: i, j
-    integer, dimension(:), allocatable :: available_parents
-    integer, dimension(:), allocatable :: available_children
-    logical, dimension(:), allocatable :: direct_child
-    type(vector4_t) :: diffmomentum
+    type(vector4_t) :: mom, d_mom
     integer, PARAMETER :: MAXLEN=200
     character(len=maxlen) :: string
-    integer ibeg
+    integer :: ibeg, n_tot, n_entries
+    integer, dimension(:), allocatable :: relations, mothers
     INTEGER :: NUP,IDPRUP,IDUP,ISTUP
     real(kind=double) :: XWGTUP,SCALUP,AQEDUP,AQCDUP,VTIMUP,SPINUP
-    integer :: MOTHUP(1:2),ICOLUP(1:2)
+    integer :: MOTHUP(1:2), ICOLUP(1:2)
     real(kind=double) :: PUP(1:5)
     real(kind=default) :: pup_dum(1:5)
     character(len=5) :: buffer
     character(len=6) :: strfmt
+    logical :: not_found
     STRFMT='(A000)'
-    WRITE(STRFMT(3:5),'(I3)') MAXLEN
+    WRITE (STRFMT(3:5),'(I3)') MAXLEN
 
     rewind (u)
 
-    !!! get newsize of particle_set, newsize = old size of 
-    !!!    particle_set + #entries - 2 (incoming partons in lhef)
-    oldsize = particle_set_get_n_tot (particle_set)
-    !!! Loop until finds line beginning with "<event>" or "<event ".
     do
-       read (u,*,END=501,ERR=502) STRING
-       IBEG=0
+       read (u,*, END=501, ERR=502) STRING
+       IBEG = 0
        do
           if (signal_is_pending ()) return              
           IBEG = IBEG + 1
           ! Allow indentation.
-          IF (STRING(IBEG:IBEG).EQ.' ' .and. IBEG < MAXLEN-6) cycle
+          IF (STRING (IBEG:IBEG) .EQ. ' ' .and. IBEG < MAXLEN-6) cycle
           exit
        end do
        IF (string(IBEG:IBEG+6) /= '<event>' .and. &
@@ -16268,36 +16358,26 @@ remaining new outgoing particles.
     end do
     !!! Read first line of event info -> number of entries
     read (u, *, END=503, ERR=504) NUP, IDPRUP, XWGTUP, SCALUP, AQEDUP, AQCDUP
-    newsize = oldsize + NUP - 2
-    allocate (temp_prt (1:newsize))
-
-    allocate (available_parents (1:oldsize))
-    available_parents = 0
-    do i = 1, particle_set_get_n_tot (particle_set)
+    n_tot = particle_set%get_n_tot ()
+    allocate (prt_tmp (1:n_tot+NUP))
+    allocate (relations (1:NUP), mothers (1:NUP))
+    do i = 1, n_tot
        if (signal_is_pending ()) return           
-       temp_prt (i) = particle_set_get_particle (particle_set, i)
-       if (particle_get_status (temp_prt (i)) == PRT_OUTGOING .or. &
-            particle_get_status (temp_prt (i)) == PRT_BEAM_REMNANT) then
-          call particle_reset_status (temp_prt (i), PRT_VIRTUAL)
-          available_parents (i) = i
+       prt_tmp (i) = particle_set%get_particle (i)
+       if (prt_tmp(i)%get_status () == PRT_OUTGOING .or. &
+            prt_tmp(i)%get_status () == PRT_BEAM_REMNANT) then
+          call prt_tmp(i)%reset_status (PRT_VIRTUAL)
        end if
     end do
 
-    allocate (available_children (1:newsize))
-    allocate (direct_child (1:newsize))
-    available_children = 0
-    direct_child = .false.
-
     !!! transfer particles from lhef to particle_set
     !!!...Read NUP subsequent lines with information on each particle.
-    DO I = 1, NUP
-       READ (u,*,END=200,ERR=505) IDUP, ISTUP, MOTHUP(1), MOTHUP(2), &
+    n_entries = 1
+    mothers = 0
+    relations = 0    
+    PARTICLE_LOOP: do I = 1, NUP
+       read (u,*, END=200, ERR=505) IDUP, ISTUP, MOTHUP(1), MOTHUP(2), &
             ICOLUP(1), ICOLUP(2), (PUP (J),J=1,5), VTIMUP, SPINUP
-       if ((I.eq.1).or.(I.eq.2)) cycle
-
-       call particle_reset_status (temp_prt(oldsize+i-2), PRT_OUTGOING)
-       !!! Settings for unpolarized particles
-       ! particle_set%prt (oldsize+i-2)%polarization = 0 ! =PRT_UNPOLARIZED !??
        if (model_in%test_field (IDUP)) then
           model => model_in
        else if (model_hadrons%test_field (IDUP)) then
@@ -16308,67 +16388,59 @@ remaining new outgoing particles.
                " found neither in given model file nor in SM_hadrons")
           return
        end if
-       call flavor_init (flv, IDUP, model)
-       call particle_set_flavor (temp_prt (oldsize+i-2), flv)
-       
+       call flv%init (IDUP, model)
        if (IABS(IDUP) == 2212 .or. IABS(IDUP) == 2112) then
           ! PYTHIA sometimes sets color indices for protons and neutrons (?)
           ICOLUP (1) = 0
           ICOLUP (2) = 0
        end if
-       call color_init_col_acl (col, ICOLUP (1), ICOLUP (2))
-       call particle_set_color (temp_prt (oldsize+i-2), col)
+       call col%init_col_acl (ICOLUP (1), ICOLUP (2))
        !!! Settings for unpolarized particles
-       ! particle_set%prt (oldsize+i-2)%hel = ??
-       ! particle_set%prt (oldsize+i-2)%pol = ??
+       ! particle_set%prt (oldsize+i)%hel = ??
+       ! particle_set%prt (oldsize+i)%pol = ??
+       if (MOTHUP(1) /= 0) then
+          mothers(i) = MOTHUP(1)
+       end if
        pup_dum = PUP
-       call particle_set_momentum (temp_prt (oldsize+i-2), &
-            vector4_moving (pup_dum (4), &
-            vector3_moving ([pup_dum (1), pup_dum (2), pup_dum (3)])))
-
-       available_children (oldsize+i-2) = oldsize+i-2
-       !!! search for an existing particle with the same momentum 
-       !!!   -> treat these as mother and daughter
-       do j = 1, size (available_parents)
-          if (available_parents (j) == 0) cycle
-          diffmomentum = particle_get_momentum &
-               (temp_prt (available_parents (j))) - &
-               particle_get_momentum (temp_prt(oldsize+i-2))
-          if (abs(diffmomentum**2) < 1E-10_default .and. &
-               particle_get_pdg (temp_prt (available_parents (j))).eq. &
-               particle_get_pdg (temp_prt (oldsize+i-2))) then
-             direct_child (available_parents (j)) = .true.
-             direct_child (oldsize+i-2) = .true.
-             call particle_set_parents (temp_prt (oldsize+i-2), &
-                  [available_parents(j)] )
-             call particle_set_children (temp_prt (available_parents(j)), &
-                  [oldsize+i-2] )
-             available_parents (j) = 0
-             available_children (oldsize+i-2) = 0
+       if (pup_dum(4) < 1E-10_default)  cycle
+       mom = vector4_moving (pup_dum (4), &
+            vector3_moving ([pup_dum (1), pup_dum (2), pup_dum (3)]))
+       not_found = .true.
+       SCAN_PARTICLES: do j = 1, n_tot
+          d_mom = prt_tmp(j)%get_momentum () - mom
+          if (abs(d_mom**1) < 1E-8_default .and. &               
+                (prt_tmp(j)%get_pdg () == IDUP)) then
+             not_found = .false.             
+             if (.not. prt_tmp(j)%get_status () == PRT_BEAM .or. &
+                  .not. prt_tmp(j)%get_status () == PRT_BEAM_REMNANT) &
+                  relations(i) = j
           end if
-       end do
-    end do
+       end do SCAN_PARTICLES               
+       if (not_found) then
+          call prt_tmp(n_tot+n_entries)%set_flavor (flv)    
+          call prt_tmp(n_tot+n_entries)%set_color (col)
+          call prt_tmp(n_tot+n_entries)%set_momentum (mom)
+          if (MOTHUP(1) /= 0) then 
+             if (relations(MOTHUP(1)) /= 0) then
+                call prt_tmp(n_tot+n_entries)%set_parents &
+                     ([relations(MOTHUP(1))])             
+                call prt_tmp(relations(MOTHUP(1)))%add_child (n_tot+n_entries)
+                if (prt_tmp(relations(MOTHUP(1)))%get_status () &
+                     == PRT_OUTGOING) &
+                     call prt_tmp(relations(MOTHUP(1)))%reset_status &
+                     (PRT_VIRTUAL)
+             end if
+          end if
+          call prt_tmp(n_tot+n_entries)%set_status (PRT_OUTGOING)
+          n_entries = n_entries + 1
+       end if
+    end do PARTICLE_LOOP
 
-    !!! remove zeros in available parents and available children
-    available_parents  = pack (available_parents , available_parents  /= 0)
-    available_children = pack (available_children, available_children /= 0)
-
-    do i = 1, size (available_parents) 
-      if (direct_child (available_parents (i))) cycle
-      call particle_set_children &
-           (temp_prt (available_parents (i)), available_children)
-    end do
-    do i = oldsize + 1, newsize
-       if (direct_child (i)) cycle
-       call particle_set_parents (temp_prt(i), available_parents)
-    end do
-
+    allocate (prt (1:n_tot+n_entries-1))
+    prt = prt_tmp (1:n_tot+n_entries-1)
     ! transfer to particle_set
-    call particle_set_replace (particle_set, temp_prt)
-    if (allocated (available_children)) deallocate (available_children)
-    if (allocated (available_parents))  deallocate (available_parents)
-    deallocate (direct_child)
-    deallocate (temp_prt)
+    call particle_set%replace (prt)
+    deallocate (prt, prt_tmp)
 
 200 continue
     return
@@ -16381,7 +16453,7 @@ remaining new outgoing particles.
     return
 504 write(*,*) "READING LHEF failed 504"
     return
-505 write(*,*) "READING LHEF failed 504"
+505 write(*,*) "READING LHEF failed 505"
     return
   end subroutine shower_add_lhef_to_particle_set
 @ %def shower_add_lhef_to_particle_set
@@ -16390,183 +16462,178 @@ remaining new outgoing particles.
 !!!!!!!!!!PYTHIA STYLE!!!!!!!!!!!!!
 !!! originally PYLHEF subroutine from PYTHIA 6.4.22
 
-!C...Write out the showered event to a Les Houches Event File.
-!C...Take MSTP(161) as the input for <init>...</init>
+  !C...Write out the showered event to a Les Houches Event File.
+  !C...Take MSTP(161) as the input for <init>...</init>
 
-      SUBROUTINE PYLHEO
+  subroutine pylheo ()
 
-!C...Double precision and integer declarations.
-      IMPLICIT DOUBLE PRECISION(A-H, O-Z)
-      IMPLICIT INTEGER(I-N)
+  !C...Double precision and integer declarations.
+    IMPLICIT DOUBLE PRECISION(A-H, O-Z)
+    IMPLICIT INTEGER(I-N)
 
-!C...PYTHIA commonblock: only used to provide read/write units and version.
-      COMMON/PYPARS/MSTP(200),PARP(200),MSTI(200),PARI(200)
-      COMMON/PYJETS/N,NPAD,K(4000,5),P(4000,5),V(4000,5)
-      SAVE /PYPARS/
-      SAVE /PYJETS/
+    !C...PYTHIA commonblock: only used to provide read/write units and version.
+    common /PYPARS/ MSTP(200), PARP(200), MSTI(200), PARI(200)
+    common /PYJETS/ N, NPAD, K(4000,5), P(4000,5), V(4000,5)
+    save /PYPARS/
+    save /PYJETS/
 
-!C...User process initialization commonblock.
-      INTEGER MAXPUP
-      PARAMETER (MAXPUP=100)
-      INTEGER IDBMUP,PDFGUP,PDFSUP,IDWTUP,NPRUP,LPRUP
-      DOUBLE PRECISION EBMUP,XSECUP,XERRUP,XMAXUP
-      COMMON/HEPRUP/IDBMUP(2),EBMUP(2),PDFGUP(2),PDFSUP(2),IDWTUP,NPRUP,XSECUP(MAXPUP),XERRUP(MAXPUP),XMAXUP(MAXPUP),LPRUP(MAXPUP)
-      SAVE /HEPRUP/
+    !C...User process initialization commonblock.
+    !C...User process event common block.    
+    integer, parameter :: MAXPUP = 100, MAXNUP = 500
+    integer :: IDBMUP, PDFGUP, PDFSUP, IDWTUP, NPRUP, LPRUP
+    integer :: NUP, IDPRUP, IDUP, ISTUP, MOTHUP, ICOLUP
+    real(double) :: EBMUP, XSECUP, XERRUP, XMAXUP
+    real(double) :: XWGTUP, SCALUP, AQEDUP, AQCDUP, PUP, VTIMUP, SPINUP    
+    integer, parameter :: KSUSY1 = 1000000, KSUSY2 = 2000000
+    common /HEPRUP/ &
+         IDBMUP(2), EBMUP(2), PDFGUP(2), PDFSUP(2), IDWTUP, NPRUP, &
+         XSECUP(MAXPUP), XERRUP(MAXPUP), XMAXUP(MAXPUP), LPRUP(MAXPUP)
+    save /HEPRUP/
+    common /HEPEUP/ &
+         NUP, IDPRUP, XWGTUP, SCALUP, AQEDUP, AQCDUP, IDUP(MAXNUP), &
+         ISTUP(MAXNUP), MOTHUP(2,MAXNUP), ICOLUP(2,MAXNUP), &
+         PUP(5,MAXNUP), VTIMUP(MAXNUP), SPINUP(MAXNUP)
+    save /HEPEUP/
+    
+    !C...Lines to read in assumed never longer than 200 characters.
+    PARAMETER (MAXLEN=200)
+    character(len=maxlen) :: string
+    
+    integer :: LEN, ndangling_color, ndangling_antic, ncolor
+    
+    !C...Format for reading lines.
+    character(len=6) :: strfmt
+    STRFMT='(A000)'
+    write (STRFMT(3:5),'(I3)') MAXLEN
 
-!C...User process event common block.
-      INTEGER MAXNUP
-      PARAMETER (MAXNUP=500)
-      INTEGER NUP,IDPRUP,IDUP,ISTUP,MOTHUP,ICOLUP
-      PARAMETER (KSUSY1=1000000,KSUSY2=2000000)
-      DOUBLE PRECISION XWGTUP,SCALUP,AQEDUP,AQCDUP,PUP,VTIMUP,SPINUP
-      COMMON/HEPEUP/NUP,IDPRUP,XWGTUP,SCALUP,AQEDUP,AQCDUP,IDUP(MAXNUP),ISTUP(MAXNUP),MOTHUP(2,MAXNUP),ICOLUP(2,MAXNUP), &
-                      PUP(5,MAXNUP),VTIMUP(MAXNUP),SPINUP(MAXNUP)
-      SAVE /HEPEUP/
+    !C...Rewind initialization and event files.
+    rewind MSTP(161)
+    rewind MSTP(162)
 
-!C...Lines to read in assumed never longer than 200 characters.
-      PARAMETER (MAXLEN=200)
-      character(len=maxlen) :: string
+    !C...Write header info.
+    write (MSTP(163), "(A)")  '<LesHouchesEvents version="1.0">'
+    write (MSTP(163), "(A)")  "<!--"
+    write (MSTP(163), "(A,I1,A1,I3)")  "File generated with PYTHIA ", &
+         MSTP(181), ".", MSTP(182)
+    write (MSTP(163), "(A)")  " and the WHIZARD2 interface"
+    write (MSTP(163), "(A)")  "-->"
 
-      INTEGER LEN
+    !C...Loop until finds line beginning with "<init>" or "<init ".
+100 READ(MSTP(161),STRFMT,END=400,ERR=400) STRING
+    IBEG=0
+110 IBEG=IBEG+1
+    !C...Allow indentation.
+    IF(STRING(IBEG:IBEG).EQ.' '.AND.IBEG.LT.MAXLEN-5) GOTO 110
+    IF(STRING(IBEG:IBEG+5).NE.'<init>'.AND.STRING(IBEG:IBEG+5).NE.'<init ') GOTO 100
+    
+    !C...Read first line of initialization info and get number of processes.
+    READ(MSTP(161),'(A)',END=400,ERR=400) STRING
+    READ(STRING,*,ERR=400) IDBMUP(1),IDBMUP(2),EBMUP(1),EBMUP(2),PDFGUP(1),PDFGUP(2),PDFSUP(1),PDFSUP(2),IDWTUP,NPRUP
 
-!C...Format for reading lines.
-      character(len=6) :: strfmt
-      STRFMT='(A000)'
-      WRITE(STRFMT(3:5),'(I3)') MAXLEN
-
-!C...Rewind initialization and event files.
-      REWIND MSTP(161)
-      REWIND MSTP(162)
-
-!C...Write header info.
-      WRITE(MSTP(163),'(A)') '<LesHouchesEvents version="1.0">'
-      WRITE(MSTP(163),'(A)') '<!--'
-      WRITE(MSTP(163),'(A,I1,A1,I3)') 'File generated with PYTHIA ',MSTP(181),'.',MSTP(182)
-      WRITE(MSTP(163),'(A)') ' and the WHIZARD2 interface'
-      WRITE(MSTP(163),'(A)') '-->'
-
-!C...Loop until finds line beginning with "<init>" or "<init ".
-  100 READ(MSTP(161),STRFMT,END=400,ERR=400) STRING
-      IBEG=0
-  110 IBEG=IBEG+1
-!C...Allow indentation.
-      IF(STRING(IBEG:IBEG).EQ.' '.AND.IBEG.LT.MAXLEN-5) GOTO 110
-      IF(STRING(IBEG:IBEG+5).NE.'<init>'.AND.STRING(IBEG:IBEG+5).NE.'<init ') GOTO 100
-
-!C...Read first line of initialization info and get number of processes.
-      READ(MSTP(161),'(A)',END=400,ERR=400) STRING
-      READ(STRING,*,ERR=400) IDBMUP(1),IDBMUP(2),EBMUP(1),EBMUP(2),PDFGUP(1),PDFGUP(2),PDFSUP(1),PDFSUP(2),IDWTUP,NPRUP
-
-!C...Copy initialization lines, omitting trailing blanks.
-!C...Embed in <init> ... </init> block.
-      WRITE(MSTP(163),'(A)') '<init>'
-      DO IPR=0,NPRUP
-        IF(IPR.GT.0) READ(MSTP(161),'(A)',END=400,ERR=400) STRING
-        LEN=MAXLEN+1
-  120   LEN=LEN-1
-        IF(LEN.GT.1.AND.STRING(LEN:LEN).EQ.' ') GOTO 120
-        WRITE(MSTP(163),'(A)',ERR=400) STRING(1:LEN)
-     end DO
-      WRITE(MSTP(163),'(A)') '</init>'
-
-!!!! Find the numbers of entries of the <event block>
-      NENTRIES = 2      ! incoming partons (nearest to the beam particles)
-      DO I=1,N
-         if((K(I,1).eq.1) .or. (K(I,1).eq.2)) then
-            if(P(I,4) < 1D-10) cycle
-            NENTRIES = NENTRIES + 1
-         end if
-      end DO
-
-!C...Begin an <event> block. Copy event lines, omitting trailing blanks.
-      WRITE(MSTP(163),'(A)') '<event>'
-      WRITE(MSTP(163),*) NENTRIES,IDPRUP,XWGTUP,SCALUP,AQEDUP,AQCDUP
-
-      DO I=3,4       ! the incoming partons nearest to the beam particles
-         WRITE(MSTP(163),*)  K(I,2),-1,0,0,0,0,(P(I,J),J=1,5),0, -9
-      end DO
-      NDANGLING_COLOR = 0
-      NCOLOR = 0
-      NDANGLING_ANTIC = 0
-      NANTIC = 0
-      NNEXTC = 1   ! TODO find next free color number ??
-      DO I=1,N
-         if (signal_is_pending ()) return             
-         if((K(I,1).eq.1) .or. (K(I,1).eq.2)) then
-            ! workaround for zero energy photon in electron ISR            
-            if (P(I,4) < 1E-10_default) cycle   
-            if ((K(I,2).eq.21) .or. (IABS(K(I,2)) <= 8) .or. &
-                (IABS(K(I,2)) >= KSUSY1+1 .and. IABS(K(I,2)) <= KSUSY1+8) &
-                .or. &
-                (IABS(K(I,2)) >= KSUSY2+1 .and. IABS(K(I,2)) <= KSUSY2+8) .or. &
-                 (IABS(K(I,2)) >= 1000 .and. IABS(K(I,2)) <= 9999) ) then
-               if(NDANGLING_COLOR.eq.0 .and. NDANGLING_ANTIC.eq.0) then
-                  ! new color string
-                  ! Gluon and gluino only color octets implemented so far
-                  if(K(I,2).eq.21 .or. K(I,2).eq.1000021) then  
-                     NCOLOR = NNEXTC
-                     NDANGLING_COLOR = NCOLOR
-                     NNEXTC = NNEXTC + 1
-                     NANTIC = NNEXTC
-                     NDANGLING_ANTIC = NANTIC
-                     NNEXTC = NNEXTC + 1
-                  elseif(K(I,2) .gt. 0) then  ! particles to have color
-                     NCOLOR = NNEXTC
-                     NDANGLING_COLOR = NCOLOR
-                     NANTIC = 0
-                     NNEXTC = NNEXTC + 1
-                  elseif(K(I,2) .lt. 0) then  ! antiparticles to have anticolor
-                     NANTIC = NNEXTC
-                     NDANGLING_ANTIC = NANTIC
-                     NCOLOR = 0
-                     NNEXTC = NNEXTC + 1
-                  end if
-               else if(K(I,1).eq.1) then
-                  ! end of string
-                  NCOLOR = NDANGLING_ANTIC
-                  NANTIC = NDANGLING_COLOR
-                  NDANGLING_COLOR = 0
-                  NDANGLING_ANTIC = 0
-               else
-                  ! inside the string
-                  if(NDANGLING_COLOR .ne. 0) then
-                     NANTIC = NDANGLING_COLOR
-                     NCOLOR = NNEXTC
-                     NDANGLING_COLOR = NNEXTC
-                     NNEXTC = NNEXTC +1
-                  else if(NDANGLING_ANTIC .ne. 0) then
-                     NCOLOR = NDANGLING_ANTIC
-                     NANTIC = NNEXTC
-                     NDANGLING_ANTIC = NNEXTC
-                     NNEXTC = NNEXTC +1
-                  else
-                     print *, "ERROR IN PYLHEO"
-                  end if
-               end if
-            else
-               NCOLOR = 0
-               NANTIC = 0
-            end if
-
-            !!! As no intermediate are given out here, assume the 
-            !!!   incoming partons to be the mothers
-            WRITE(MSTP(163),*)  K(I,2),1,1,2,NCOLOR,NANTIC,(P(I,J),J=1,5),0, -9
-         end if
-      end DO
-
-!C..End the <event> block. Loop back to look for next event.
-      WRITE(MSTP(163),'(A)') '</event>'
-
-!C...Successfully reached end of event loop: write closing tag
-!C...and remove temporary intermediate files (unless asked not to).
-      WRITE(MSTP(163),'(A)') '</LesHouchesEvents>'
-      RETURN
-
-!!C...Error exit.
-  400 WRITE(*,*) ' PYLHEO file joining failed!'
-
-      RETURN
-    END SUBROUTINE PYLHEO
+    !C...Copy initialization lines, omitting trailing blanks.
+    !C...Embed in <init> ... </init> block.
+    WRITE(MSTP(163),'(A)') '<init>'
+    do IPR = 0, NPRUP
+       IF(IPR.GT.0) READ(MSTP(161),'(A)',END=400,ERR=400) STRING
+       LEN=MAXLEN+1
+120    LEN=LEN-1
+       IF(LEN.GT.1.AND.STRING(LEN:LEN).EQ.' ') GOTO 120
+       WRITE(MSTP(163),'(A)',ERR=400) STRING(1:LEN)
+    end DO
+    write (MSTP(163), "(A)")  "</init>"
+    
+    !!! Find the numbers of entries of the <event block>
+    NENTRIES = 0
+    do I = 1, N
+       if (K(I,1) == 1 .or. K(I,1) == 2 .or. K(I,1) == 21) then
+          NENTRIES = NENTRIES + 1
+       end if
+    end do
+    
+    !C...Begin an <event> block. Copy event lines, omitting trailing blanks.
+    write (MSTP(163), "(A)")  "<event>"
+    write (MSTP(163), *)  NENTRIES, IDPRUP, XWGTUP, SCALUP, AQEDUP, AQCDUP
+    
+    ndangling_color = 0
+    ncolor = 0
+    ndangling_antic = 0
+    NANTIC = 0
+    NNEXTC = 1   ! TODO find next free color number ??
+    do I = 1, N
+       if (signal_is_pending ()) return             
+       if ((K(I,1) >= 1 .and. K(I,1) <= 15) .or. (K(I,1) == 21)) then
+          if ((K(I,2).eq.21) .or. (IABS(K(I,2)) <= 8) .or. &
+               (IABS(K(I,2)) >= KSUSY1+1 .and. IABS(K(I,2)) <= KSUSY1+8) &
+               .or. &
+               (IABS(K(I,2)) >= KSUSY2+1 .and. IABS(K(I,2)) <= KSUSY2+8) .or. &
+               (IABS(K(I,2)) >= 1000 .and. IABS(K(I,2)) <= 9999) ) then
+             if (ndangling_color.eq.0 .and. ndangling_antic.eq.0) then
+                ! new color string
+                ! Gluon and gluino only color octets implemented so far
+                if (K(I,2).eq.21 .or. K(I,2).eq.1000021) then  
+                   ncolor = NNEXTC
+                   ndangling_color = ncolor
+                   NNEXTC = NNEXTC + 1
+                   NANTIC = NNEXTC
+                   ndangling_antic = NANTIC
+                   NNEXTC = NNEXTC + 1
+                else if (K(I,2) .gt. 0) then  ! particles to have color
+                   ncolor = NNEXTC
+                   ndangling_color = ncolor
+                   NANTIC = 0
+                   NNEXTC = NNEXTC + 1
+                else if (K(I,2) .lt. 0) then  ! antiparticles to have anticolor
+                   NANTIC = NNEXTC
+                   ndangling_antic = NANTIC
+                   ncolor = 0
+                   NNEXTC = NNEXTC + 1
+                end if
+             else if(K(I,1).eq.1) then
+                ! end of string
+                ncolor = ndangling_antic
+                NANTIC = ndangling_color
+                ndangling_color = 0
+                ndangling_antic = 0
+             else
+                ! inside the string
+                if(ndangling_color .ne. 0) then
+                   NANTIC = ndangling_color
+                   ncolor = NNEXTC
+                   ndangling_color = NNEXTC
+                   NNEXTC = NNEXTC +1
+                else if(ndangling_antic .ne. 0) then
+                   ncolor = ndangling_antic
+                   NANTIC = NNEXTC
+                   ndangling_antic = NNEXTC
+                   NNEXTC = NNEXTC +1
+                else
+                   print *, "ERROR IN PYLHEO"
+                end if
+             end if
+          else
+             ncolor = 0
+             NANTIC = 0
+          end if
+       !!! As no intermediate are given out here, assume the 
+       !!!   incoming partons to be the mothers
+          write (MSTP(163),*)  K(I,2), K(I,1), K(I,3), K(I,3), &
+               ncolor, NANTIC, (P(I,J),J=1,5), 0, -9
+       end if
+    end do
+    
+    !C..End the <event> block. Loop back to look for next event.
+    write (MSTP(163), "(A)")  "</event>"
+      
+    !C...Successfully reached end of event loop: write closing tag
+    !C...and remove temporary intermediate files (unless asked not to).
+    write (MSTP(163), "(A)")  "</LesHouchesEvents>"
+    return
+      
+    !!C...Error exit.
+400 write(*,*) ' PYLHEO file joining failed!'
+    
+    return
+  end subroutine pylheo
 
 @ 
 \subsection{Event Transform}
@@ -16731,22 +16798,21 @@ reinitialized in case events with higher process ids are generated.
 <<Shower: procedures>>=
   subroutine event_shower_assure_heprup (evt)
     class(evt_shower_t), intent(in) :: evt
+    type(particle_t), dimension(2) :: prt
     integer :: i, num_id
     integer, parameter :: min_processes = 10
 
     num_id = 1
     if (LPRUP (num_id) /= 0)  return
 
+    do i = 1, 2
+       prt(i) = evt%particle_set%get_particle (i)
+    end do
     call heprup_init ( &
-         [ particle_get_pdg (particle_set_get_particle &
-                              (evt%particle_set, 1)), &
-           particle_get_pdg (particle_set_get_particle &
-                              (evt%particle_set, 2)) ] , &
-         [ vector4_get_component (particle_get_momentum &
-            (particle_set_get_particle (evt%particle_set, 1)), 0), &
-           vector4_get_component (particle_get_momentum &
-            (particle_set_get_particle (evt%particle_set, 2)), 0) ], &
-         num_id, .false., .false.)
+         [ prt(1)%get_pdg (), prt(2)%get_pdg () ] , &
+         [ vector4_get_component (prt(1)%get_momentum (), 0), &
+           vector4_get_component (prt(2)%get_momentum (), 0) ], &
+           num_id, .false., .false.)
     do i = 1, (num_id / min_processes + 1) * min_processes
        call heprup_set_process_parameters (i = i, process_id = &
             i, cross_section = 1._default, error = 1._default)
@@ -16767,6 +16833,7 @@ from the matrix element generation is available.
     type(ckkw_pseudo_shower_weights_t), intent(inout) :: &
          ckkw_pseudo_shower_weights
     type(particle_set_t), intent(in) :: particle_set
+    type(particle_t) :: prt
     integer :: i, j
     integer :: n
     type(vector4_t) :: momentum
@@ -16775,17 +16842,17 @@ from the matrix element generation is available.
     ckkw_pseudo_shower_settings%Qmin = 1.0_default
     ckkw_pseudo_shower_settings%n_max_jets = 3
 
-    n = 2**particle_set_get_n_tot(particle_set)
+    n = 2**particle_set%get_n_tot()
     if (allocated (ckkw_pseudo_shower_weights%weights)) then 
        deallocate (ckkw_pseudo_shower_weights%weights)
     end if
     allocate (ckkw_pseudo_shower_weights%weights (1:n))
     do i = 1, n
        momentum = vector4_null
-       do j = 1, particle_set_get_n_tot (particle_set)
+       do j = 1, particle_set%get_n_tot ()
           if (btest (i,j-1)) then
-             momentum = momentum + particle_get_momentum &
-                  (particle_set_get_particle (particle_set, j))
+             prt = particle_set%get_particle (j) 
+             momentum = momentum + prt%get_momentum ()
           end if
        end do
        if (momentum**1 > 0.0) then
@@ -17304,6 +17371,8 @@ and should be written to file, including copies of [[sqme]] and [[weight]].
      type(event_expr_t) :: expr
      logical :: selection_evaluated = .false.
      logical :: passed = .false.
+     real(default), allocatable :: alpha_qcd_forced
+     real(default), allocatable :: scale_forced
      real(default) :: reweight = 1
      logical :: analysis_flag = .false.
    contains
@@ -17715,6 +17784,17 @@ version corrupts its memory.
   end subroutine event_evaluate_expressions
   
 @ %def event_evaluate_expressions
+@ Report the result of the [[selection]] evaluation.
+<<Events: event: TBP>>=
+  procedure :: passed_selection => event_passed_selection
+<<Events: procedures>>=
+  function event_passed_selection (event) result (flag)
+    class(event_t), intent(in) :: event
+    logical :: flag
+    flag = event%passed
+  end function event_passed_selection
+  
+@ %def event_passed_selection
 @ Set alternate sqme and weight arrays.  This should be merged with
 the previous routine, if the expressions are allowed to refer to these
 values.
@@ -17754,6 +17834,8 @@ are not deleted.  In particular, the initialization is kept.
     if (associated (event%instance)) then
        call event%instance%reset (reset_mci = .true.)
     end if
+    if (allocated (event%alpha_qcd_forced))  deallocate (event%alpha_qcd_forced)
+    if (allocated (event%scale_forced))  deallocate (event%scale_forced)
     evt => event%transform_first
     do while (associated (evt))
        call evt%reset ()
@@ -17986,6 +18068,41 @@ Since this makes all subsequent event transforms invalid, we call
 
 @ %def event_set_hard_particle_set
 @
+Set the $\alpha_s$ value that should be used in a recalculation.  This should
+be called only if we explicitly want to override the QCD setting of the
+process core.
+<<Events: event: TBP>>=
+  procedure :: set_alpha_qcd_forced => event_set_alpha_qcd_forced
+<<Events: procedures>>=
+  subroutine event_set_alpha_qcd_forced (event, alpha_qcd)
+    class(event_t), intent(inout) :: event
+    real(default), intent(in) :: alpha_qcd
+    if (allocated (event%alpha_qcd_forced)) then
+       event%alpha_qcd_forced = alpha_qcd
+    else
+       allocate (event%alpha_qcd_forced, source = alpha_qcd)
+    end if
+  end subroutine event_set_alpha_qcd_forced
+  
+@ %def event_set_alpha_qcd_forced
+@
+Analogously, for the common scale.  This forces also renormalization and
+factorization scale.
+<<Events: event: TBP>>=
+  procedure :: set_scale_forced => event_set_scale_forced
+<<Events: procedures>>=
+  subroutine event_set_scale_forced (event, scale)
+    class(event_t), intent(inout) :: event
+    real(default), intent(in) :: scale
+    if (allocated (event%scale_forced)) then
+       event%scale_forced = scale
+    else
+       allocate (event%scale_forced, source = scale)
+    end if
+  end subroutine event_set_scale_forced
+  
+@ %def event_set_scale_forced
+@
 Here we try to recover an event from the [[particle_set]] subobject
 and recalculate the structure functions and matrix elements.  We
 have the appropriate [[process]] object and an initialized
@@ -18031,7 +18148,12 @@ Evaluating event expressions must also be done separately.
        end if
        call event%instance%choose_mci (i_mci)
        call event%instance%set_trace (particle_set, i_term, recover_beams)
-       call event%instance%recover (channel, i_term, update_sqme) 
+       if (allocated (event%alpha_qcd_forced)) then
+          call event%instance%set_alpha_qcd_forced &
+               (i_term, event%alpha_qcd_forced)
+       end if
+       call event%instance%recover (channel, i_term, update_sqme, &
+            event%scale_forced) 
        if (signal_is_pending ())  return
        if (update_sqme .and. present (weight_factor)) then
           call event%instance%evaluate_event_data &
@@ -18411,7 +18533,7 @@ memory corruption in gfortran 4.7.
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
 
-    call particle_set_final (particle_set)
+    call particle_set%final ()
 
     call event%final ()
     deallocate (event)
@@ -18515,7 +18637,7 @@ without recomputing the squared matrix element.
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
 
-    call particle_set_final (particle_set)
+    call particle_set%final ()
 
     call event%final ()
     deallocate (event)
@@ -19048,13 +19170,16 @@ On output, we write the [[prc]] values for weight and sqme, since
 these are the values just computed.  On input, we store the values as
 [[ref]] values.  The caller can then decide whether to recompute
 values and thus obtain distinct [[prc]] values, or just accept them.
+
+The [[passed]] flag is not written.  This allow us to apply different
+selection criteria upon rereading.
 <<EIO raw: eio raw: TBP>>=
   procedure :: output => eio_raw_output
 <<EIO raw: procedures>>=
-  subroutine eio_raw_output (eio, event, i_prc, reading, pacify)
+  subroutine eio_raw_output (eio, event, i_prc, reading, passed, pacify)
     class(eio_raw_t), intent(inout) :: eio
     class(generic_event_t), intent(in), target :: event
-    logical, intent(in), optional :: reading, pacify
+    logical, intent(in), optional :: reading, passed, pacify
     integer, intent(in) :: i_prc
     type(particle_set_t), pointer :: pset
     integer :: i
@@ -19075,15 +19200,15 @@ values and thus obtain distinct [[prc]] values, or just accept them.
              end do
              allocate (pset)
              call event%get_hard_particle_set (pset)
-             call particle_set_write_raw (pset, eio%unit)
-             call particle_set_final (pset)
+             call pset%write_raw (eio%unit)
+             call pset%final ()
              deallocate (pset)
              select case (eio%file_version)
              case (2:)
                 if (event%has_transform ()) then
                    write (eio%unit)  .true.
                    pset => event%get_particle_set_ptr ()
-                   call particle_set_write_raw (pset, eio%unit)
+                   call pset%write_raw (eio%unit)
                 else
                    write (eio%unit)  .false.
                 end if
@@ -19172,11 +19297,11 @@ a different version of [[event%set_hard_particle_set]].
              model => event%process%get_model_ptr ()
           end if
           allocate (pset)
-          call particle_set_read_raw (pset, eio%unit, iostat)
+          call pset%read_raw (eio%unit, iostat)
           if (iostat /= 0)  return
-          if (associated (model))  call particle_set_set_model (pset, model)
+          if (associated (model))  call pset%set_model (model)
           call event%set_hard_particle_set (pset)
-          call particle_set_final (pset)
+          call pset%final ()
           deallocate (pset)
           select case (eio%file_version)
           case (2:)
@@ -19184,10 +19309,10 @@ a different version of [[event%set_hard_particle_set]].
              if (iostat /= 0)  return
              if (has_transform) then
                 allocate (pset)
-                call particle_set_read_raw (pset, eio%unit, iostat)
+                call pset%read_raw (eio%unit, iostat)
                 if (iostat /= 0)  return
                 if (associated (model)) &
-                     call particle_set_set_model (pset, model)
+                     call pset%set_model (model)
                 call event%link_particle_set (pset)
              end if
           end select
@@ -20715,6 +20840,9 @@ so the latter is always available (and kept global).
          (global%var_list, var_str ("?keep_beams"), .false., &
           intrinsic=.true.)
     call var_list_append_log &
+         (global%var_list, var_str ("?keep_remnants"), .true., &
+          intrinsic=.true.)
+    call var_list_append_log &
          (global%var_list, var_str ("?recover_beams"), .true., &
           intrinsic=.true.)
     call var_list_append_log &
@@ -20725,6 +20853,12 @@ so the latter is always available (and kept global).
           intrinsic=.true.)	  
     call var_list_append_log &
          (global%var_list, var_str ("?update_weight"), .false., &
+          intrinsic=.true.)	  
+    call var_list_append_log &
+         (global%var_list, var_str ("?use_alpha_s_from_file"), .false., &
+          intrinsic=.true.)	  
+    call var_list_append_log &
+         (global%var_list, var_str ("?use_scale_from_file"), .false., &
           intrinsic=.true.)	  
     call var_list_append_log &
          (global%var_list, var_str ("?allow_decays"), .true., &
@@ -20747,6 +20881,9 @@ so the latter is always available (and kept global).
     call var_list_append_log &
          (global%var_list, var_str ("?diagonal_decay"), .false., &
           intrinsic=.true.)
+    call var_list_append_int &
+         (global%var_list, var_str ("decay_helicity"), &
+          intrinsic=.true.)
     call var_list_append_string &
          (global%var_list, var_str ("$sample"), var_str (""), &
           intrinsic=.true.)
@@ -20755,6 +20892,9 @@ so the latter is always available (and kept global).
           intrinsic=.true.)	  
     call var_list_append_log &
          (global%var_list, var_str ("?sample_pacify"), .false., &
+          intrinsic=.true.)
+    call var_list_append_log &
+         (global%var_list, var_str ("?sample_select"), .true., &
           intrinsic=.true.)
     call var_list_append_int &
          (global%var_list, var_str ("sample_max_tries"), 10000, &
@@ -21555,11 +21695,13 @@ of the current model.  If there is none yet, create one.
   procedure :: modify_particle => rt_data_modify_particle
 <<RT data: procedures>>=
   subroutine rt_data_modify_particle &
-       (global, pdg, polarized, stable, decay, isotropic_decay, diagonal_decay)
+       (global, pdg, polarized, stable, decay, &
+       isotropic_decay, diagonal_decay, decay_helicity)
     class(rt_data_t), intent(inout), target :: global
     integer, intent(in) :: pdg
     logical, intent(in), optional :: polarized, stable
     logical, intent(in), optional :: isotropic_decay, diagonal_decay
+    integer, intent(in), optional :: decay_helicity
     type(string_t), dimension(:), intent(in), optional :: decay
     call global%ensure_model_copy ()
     if (present (polarized)) then
@@ -21574,7 +21716,7 @@ of the current model.  If there is none yet, create one.
           call global%model%set_stable (pdg)
        else if (present (decay)) then
           call global%model%set_unstable &
-               (pdg, decay, isotropic_decay, diagonal_decay)
+               (pdg, decay, isotropic_decay, diagonal_decay, decay_helicity)
        else
           call msg_bug ("Setting particle unstable: missing decay processes")
        end if
@@ -22256,7 +22398,7 @@ Fill in empty slots in the runtime data block.
          1000._default, is_known = .true.)
     call rt_data%set_int (var_str ("seed"), &
          0, is_known=.true.)        
-    call flavor_init (flv, [25,25], rt_data%model)
+    call flv%init ([25,25], rt_data%model)
     
     call rt_data%set_string (var_str ("$run_id"), &
          var_str ("run1"), is_known = .true.)
@@ -22330,9 +22472,9 @@ global block.
 
     call rt_data%set_real (var_str ("sqrts"),&
          1000._default, is_known = .true.)
-    call flavor_init (flv, [25,25], rt_data%model)
+    call flv%init ([25,25], rt_data%model)
     
-    call rt_data%beam_structure%init_sf (flavor_get_name (flv), [1])
+    call rt_data%beam_structure%init_sf (flv%get_name (), [1])
     call rt_data%beam_structure%set_sf (1, 1, var_str ("pdf_builtin"))
 
     call rt_data%set_string (var_str ("$run_id"), &
@@ -22502,8 +22644,8 @@ function to determine the status of a model particle:
     type(rt_data_t), intent(in) :: rt_data
     logical :: flag
     type(flavor_t) :: flv
-    call flavor_init (flv, pdg, rt_data%model)
-    flag = flavor_is_stable (flv)
+    call flv%init (pdg, rt_data%model)
+    flag = flv%is_stable ()
   end function is_stable
    
   function is_polarized (pdg, rt_data) result (flag)
@@ -22511,8 +22653,8 @@ function to determine the status of a model particle:
     type(rt_data_t), intent(in) :: rt_data
     logical :: flag
     type(flavor_t) :: flv
-    call flavor_init (flv, pdg, rt_data%model)
-    flag = flavor_is_polarized (flv)
+    call flv%init (pdg, rt_data%model)
+    flag = flv%is_polarized ()
   end function is_polarized
     
 @ %def is_stable is_polarized
@@ -23888,8 +24030,8 @@ phase space for the elementary process.
        allocate (prt_in (n_beam), pdg_in (n_beam))
        prt_in = beam_structure%get_prt ()
        do i = 1, n_beam
-          call flavor_init (flv_in, prt_in(i), global%model)
-          pdg_in(i) = flavor_get_pdg (flv_in)
+          call flv_in%init (prt_in(i), global%model)
+          pdg_in(i) = flv_in%get_pdg ()
        end do
     else
        n_beam = size (pdg_prc, 1)
@@ -24267,7 +24409,8 @@ structure-function chain.
     class(eio_t), intent(inout), allocatable :: eio
     type(string_t), intent(in) :: method
     type(rt_data_t), intent(in) :: global
-    logical :: check, keep_beams, recover_beams
+    logical :: check, keep_beams, keep_remnants, recover_beams
+    logical :: use_alpha_s_from_file, use_scale_from_file
     logical :: write_sqme_prc, write_sqme_ref, write_sqme_alt
     type(string_t) :: lhef_version, lhef_extension, raw_version
     type(string_t) :: extension_default, debug_extension, extension_hepmc, &
@@ -24306,8 +24449,14 @@ structure-function chain.
        type is (eio_lhef_t)
           keep_beams = &
                global%var_list%get_lval (var_str ("?keep_beams"))
+          keep_remnants = &
+               global%var_list%get_lval (var_str ("?keep_remnants"))
           recover_beams = &
                global%var_list%get_lval (var_str ("?recover_beams"))
+          use_alpha_s_from_file = &
+               global%var_list%get_lval (var_str ("?use_alpha_s_from_file"))
+          use_scale_from_file = &
+               global%var_list%get_lval (var_str ("?use_scale_from_file"))
           lhef_version = &
                global%var_list%get_sval (var_str ("$lhef_version"))
           lhef_extension = &
@@ -24318,7 +24467,9 @@ structure-function chain.
                global%var_list%get_lval (var_str ("?lhef_write_sqme_ref"))
           write_sqme_alt = &
                global%var_list%get_lval (var_str ("?lhef_write_sqme_alt"))
-          call eio%set_parameters (keep_beams, recover_beams, &
+          call eio%set_parameters ( &
+               keep_beams, keep_remnants, recover_beams, &
+               use_alpha_s_from_file, use_scale_from_file, &
                char (lhef_version), lhef_extension, &
                write_sqme_ref, write_sqme_prc, write_sqme_alt)
        end select
@@ -24326,25 +24477,40 @@ structure-function chain.
        allocate (eio_hepmc_t :: eio)
        select type (eio)
        type is (eio_hepmc_t)
-          keep_beams = &
-               global%var_list%get_lval (var_str ("?keep_beams"))
+          ! keep_beams = &
+          !      global%var_list%get_lval (var_str ("?keep_beams"))
+          use_alpha_s_from_file = &
+               global%var_list%get_lval (var_str ("?use_alpha_s_from_file"))
+          use_scale_from_file = &
+               global%var_list%get_lval (var_str ("?use_scale_from_file"))
           recover_beams = &
                global%var_list%get_lval (var_str ("?recover_beams"))
           extension_hepmc = &
                global%var_list%get_sval (var_str ("$extension_hepmc"))          
-          call eio%set_parameters (keep_beams, recover_beams, extension_hepmc)
+          ! call eio%set_parameters (keep_beams, recover_beams, extension_hepmc)
+          call eio%set_parameters (recover_beams, &
+               use_alpha_s_from_file, use_scale_from_file, &
+               extension_hepmc)
        end select
     case ("lcio")
        allocate (eio_lcio_t :: eio)
        select type (eio)
        type is (eio_lcio_t)
-          keep_beams = &
-               global%var_list%get_lval (var_str ("?keep_beams"))
+          ! keep_beams = &
+          !      global%var_list%get_lval (var_str ("?keep_beams"))
+          use_alpha_s_from_file = &
+               global%var_list%get_lval (var_str ("?use_alpha_s_from_file"))
+          use_scale_from_file = &
+               global%var_list%get_lval (var_str ("?use_scale_from_file"))
           recover_beams = &
                global%var_list%get_lval (var_str ("?recover_beams"))
           extension_lcio = &
                global%var_list%get_sval (var_str ("$extension_lcio"))
-          call eio%set_parameters (keep_beams, recover_beams, extension_lcio)
+          ! call eio%set_parameters &
+          !      (keep_beams, keep_remnants, recover_beams, extension_lcio)
+          call eio%set_parameters (recover_beams, &
+               use_alpha_s_from_file, use_scale_from_file, &
+               extension_lcio)
        end select       
     case ("stdhep")
        allocate (eio_stdhep_hepevt_t :: eio)
@@ -24352,9 +24518,19 @@ structure-function chain.
        type is (eio_stdhep_hepevt_t)                   
           keep_beams = &
                global%var_list%get_lval (var_str ("?keep_beams"))
+          keep_remnants = &
+               global%var_list%get_lval (var_str ("?keep_remnants"))
+          use_alpha_s_from_file = &
+               global%var_list%get_lval (var_str ("?use_alpha_s_from_file"))
+          use_scale_from_file = &
+               global%var_list%get_lval (var_str ("?use_scale_from_file"))
+          recover_beams = &
+               global%var_list%get_lval (var_str ("?recover_beams"))          
           extension_stdhep = &
                global%var_list%get_sval (var_str ("$extension_stdhep"))
-          call eio%set_parameters (keep_beams, extension_stdhep)          
+          call eio%set_parameters &
+               (keep_beams, keep_remnants, recover_beams, &
+                use_alpha_s_from_file, use_scale_from_file, extension_stdhep)
        end select
     case ("stdhep_up")
        allocate (eio_stdhep_hepeup_t :: eio)
@@ -24362,9 +24538,19 @@ structure-function chain.
        type is (eio_stdhep_hepeup_t)          
           keep_beams = &
                global%var_list%get_lval (var_str ("?keep_beams"))
+          keep_remnants = &
+               global%var_list%get_lval (var_str ("?keep_remnants"))
+          use_alpha_s_from_file = &
+               global%var_list%get_lval (var_str ("?use_alpha_s_from_file"))
+          use_scale_from_file = &
+               global%var_list%get_lval (var_str ("?use_scale_from_file"))
+          recover_beams = &
+               global%var_list%get_lval (var_str ("?recover_beams"))          
           extension_stdhep_up = &
                global%var_list%get_sval (var_str ("$extension_stdhep_up")) 
-          call eio%set_parameters (keep_beams, extension_stdhep_up)          
+          call eio%set_parameters (keep_beams, keep_remnants, &
+               recover_beams, use_alpha_s_from_file, &
+               use_scale_from_file, extension_stdhep_up)          
        end select       
     case ("ascii")   
        allocate (eio_ascii_ascii_t :: eio)
@@ -24372,9 +24558,12 @@ structure-function chain.
        type is (eio_ascii_ascii_t)
           keep_beams = &
                global%var_list%get_lval (var_str ("?keep_beams"))
+          keep_remnants = &
+               global%var_list%get_lval (var_str ("?keep_remnants"))
           extension_default = &
                global%var_list%get_sval (var_str ("$extension_default"))
-          call eio%set_parameters (keep_beams, extension_default)
+          call eio%set_parameters &
+               (keep_beams, keep_remnants, extension_default)
        end select       
     case ("athena")   
        allocate (eio_ascii_athena_t :: eio)
@@ -24382,16 +24571,17 @@ structure-function chain.
        type is (eio_ascii_athena_t)
           keep_beams = &
                global%var_list%get_lval (var_str ("?keep_beams"))
+          keep_remnants = &
+               global%var_list%get_lval (var_str ("?keep_remnants"))
           extension_athena = &
                global%var_list%get_sval (var_str ("$extension_athena"))
-          call eio%set_parameters (keep_beams, extension_athena)
+          call eio%set_parameters &
+               (keep_beams, keep_remnants, extension_athena)
        end select              
     case ("debug")   
        allocate (eio_ascii_debug_t :: eio)
        select type (eio)
        type is (eio_ascii_debug_t)
-          keep_beams = &
-               global%var_list%get_lval (var_str ("?keep_beams"))
           debug_extension = &
                global%var_list%get_sval (var_str ("$debug_extension"))          
           show_process = &
@@ -24402,8 +24592,12 @@ structure-function chain.
                global%var_list%get_lval (var_str ("?debug_decay"))
           verbose = &
                global%var_list%get_lval (var_str ("?debug_verbose"))
-          call eio%set_parameters (keep_beams, debug_extension, &
-               show_process, show_transforms, show_decay, verbose)
+          call eio%set_parameters ( &
+               extension = debug_extension, &
+               show_process = show_process, &
+               show_transforms = show_transforms, &
+               show_decay = show_decay, &
+               verbose = verbose)
        end select
     case ("hepevt")   
        allocate (eio_ascii_hepevt_t :: eio)
@@ -24411,9 +24605,12 @@ structure-function chain.
        type is (eio_ascii_hepevt_t)
           keep_beams = &
                global%var_list%get_lval (var_str ("?keep_beams"))
+          keep_remnants = &
+               global%var_list%get_lval (var_str ("?keep_remnants"))
           extension_hepevt = &
                global%var_list%get_sval (var_str ("$extension_hepevt"))
-          call eio%set_parameters (keep_beams, extension_hepevt)
+          call eio%set_parameters &
+               (keep_beams, keep_remnants, extension_hepevt)
        end select              
     case ("hepevt_verb")   
        allocate (eio_ascii_hepevt_verb_t :: eio)
@@ -24421,9 +24618,12 @@ structure-function chain.
        type is (eio_ascii_hepevt_verb_t)
           keep_beams = &
                global%var_list%get_lval (var_str ("?keep_beams"))
+          keep_remnants = &
+               global%var_list%get_lval (var_str ("?keep_remnants"))
           extension_hepevt_verb = &
                global%var_list%get_sval (var_str ("$extension_hepevt_verb"))
-          call eio%set_parameters (keep_beams, extension_hepevt_verb)
+          call eio%set_parameters &
+               (keep_beams, keep_remnants, extension_hepevt_verb)
        end select                     
     case ("lha")   
        allocate (eio_ascii_lha_t :: eio)
@@ -24431,9 +24631,12 @@ structure-function chain.
        type is (eio_ascii_lha_t)
           keep_beams = &
                global%var_list%get_lval (var_str ("?keep_beams"))
+          keep_remnants = &
+               global%var_list%get_lval (var_str ("?keep_remnants"))
           extension_lha = &
                global%var_list%get_sval (var_str ("$extension_lha"))
-          call eio%set_parameters (keep_beams, extension_lha)
+          call eio%set_parameters &
+               (keep_beams, keep_remnants, extension_lha)
        end select                     
     case ("lha_verb")   
        allocate (eio_ascii_lha_verb_t :: eio)
@@ -24441,9 +24644,12 @@ structure-function chain.
        type is (eio_ascii_lha_verb_t)
           keep_beams = &
                global%var_list%get_lval (var_str ("?keep_beams"))
+          keep_remnants = &
+               global%var_list%get_lval (var_str ("?keep_remnants"))
           extension_lha_verb = global%var_list%get_sval ( &
                var_str ("$extension_lha_verb"))          
-          call eio%set_parameters (keep_beams, extension_lha_verb)
+          call eio%set_parameters &
+               (keep_beams, keep_remnants, extension_lha_verb)
        end select                            
     case ("long")   
        allocate (eio_ascii_long_t :: eio)
@@ -24451,9 +24657,12 @@ structure-function chain.
        type is (eio_ascii_long_t)
           keep_beams = &
                global%var_list%get_lval (var_str ("?keep_beams"))
+          keep_remnants = &
+               global%var_list%get_lval (var_str ("?keep_remnants"))
           extension_ascii_long = &
                global%var_list%get_sval (var_str ("$extension_ascii_long"))
-          call eio%set_parameters (keep_beams, extension_ascii_long)
+          call eio%set_parameters &
+               (keep_beams, keep_remnants, extension_ascii_long)
        end select              
     case ("mokka")   
        allocate (eio_ascii_mokka_t :: eio)
@@ -24461,9 +24670,12 @@ structure-function chain.
        type is (eio_ascii_mokka_t)
           keep_beams = &
                global%var_list%get_lval (var_str ("?keep_beams"))
+          keep_remnants = &
+               global%var_list%get_lval (var_str ("?keep_remnants"))
           extension_mokka = &
                global%var_list%get_sval (var_str ("$extension_mokka"))          
-          call eio%set_parameters (keep_beams, extension_mokka)
+          call eio%set_parameters &
+               (keep_beams, keep_remnants, extension_mokka)
        end select                     
     case ("short")   
        allocate (eio_ascii_short_t :: eio)
@@ -24471,9 +24683,12 @@ structure-function chain.
        type is (eio_ascii_short_t)
           keep_beams = &
                global%var_list%get_lval (var_str ("?keep_beams"))
+          keep_remnants = &
+               global%var_list%get_lval (var_str ("?keep_remnants"))
           extension_ascii_short = &
                global%var_list%get_sval (var_str ("$extension_ascii_short"))
-          call eio%set_parameters (keep_beams, extension_ascii_short)
+          call eio%set_parameters &
+               (keep_beams, keep_remnants, extension_ascii_short)
        end select                     
     case ("weight_stream")
        allocate (eio_weights_t :: eio)
@@ -25288,14 +25503,14 @@ This is the master for calling self-test procedures.
     write (u, "(A)")  "* Allocate LHC beams with PDF builtin"
     write (u, "(A)")
 
-    call flavor_init (flv(1), PROTON, global%model)
-    call flavor_init (flv(2), PROTON, global%model)
+    call flv(1)%init (PROTON, global%model)
+    call flv(2)%init (PROTON, global%model)
 
     call reset_interaction_counter ()
     call var_list_set_real (global%var_list, var_str ("sqrts"), &
          14000._default, is_known = .true.)
          
-    call global%beam_structure%init_sf (flavor_get_name (flv), [1])
+    call global%beam_structure%init_sf (flv%get_name (), [1])
     call global%beam_structure%set_sf (1, 1, var_str ("pdf_builtin"))
     
     call dispatch_sf_config (sf_config, sf_prop, global, pdg_prc)
@@ -25315,8 +25530,8 @@ This is the master for calling self-test procedures.
     write (u, "(A)")
 
     call global%select_model (var_str ("QED"))
-    call flavor_init (flv(1), ELECTRON, global%model)
-    call flavor_init (flv(2),-ELECTRON, global%model)
+    call flv(1)%init ( ELECTRON, global%model)
+    call flv(2)%init (-ELECTRON, global%model)
 
     call reset_interaction_counter ()
     call var_list_set_real (global%var_list, var_str ("sqrts"), &
@@ -25324,7 +25539,7 @@ This is the master for calling self-test procedures.
     call var_list_set_log (global%var_list, var_str ("?circe1_generate"), &
          .false., is_known = .true.)
          
-    call global%beam_structure%init_sf (flavor_get_name (flv), [1])
+    call global%beam_structure%init_sf (flv%get_name (), [1])
     call global%beam_structure%set_sf (1, 1, var_str ("circe1"))
     
     call dispatch_sf_config (sf_config, sf_prop, global, pdg_prc)
@@ -28563,6 +28778,7 @@ zero here.
     type(string_t) :: libname, procname
     type(rt_data_t), target :: global
     type(flavor_t) :: flv
+    type(string_t) :: name
     
     write (u, "(A)")  "* Test output: integrations_8"
     write (u, "(A)")  "*   Purpose: integrate test process using VAMP &
@@ -28613,9 +28829,10 @@ zero here.
 
     call reset_interaction_counter ()
 
-    call flavor_init (flv, 25, global%model)
+    call flv%init (25, global%model)
          
-    call global%beam_structure%init_sf (flavor_get_name ([flv, flv]), [1])
+    name = flv%get_name ()
+    call global%beam_structure%init_sf ([name, name], [1])
     call global%beam_structure%set_sf (1, 1, var_str ("sf_test_1"))
 
     write (u, "(A)")  "* Integrate"
@@ -28983,11 +29200,11 @@ If there is no output stream, do nothing.
   procedure :: output => event_stream_array_output
 <<Event streams: procedures>>=
   subroutine event_stream_array_output (es_array, event, i_prc, &
-                                        event_index, pacify)
+                                        event_index, passed, pacify)
     class(event_stream_array_t), intent(inout) :: es_array
     type(event_t), intent(in), target :: event
     integer, intent(in) :: i_prc, event_index
-    logical, intent(in), optional :: pacify
+    logical, intent(in), optional :: passed, pacify
     integer :: i
     do i = 1, size (es_array%entry)
        if (i /= es_array%i_in) then
@@ -28999,6 +29216,7 @@ If there is no output stream, do nothing.
                end if
             end if
             call eio%output (event, i_prc, reading = es_array%i_in /= 0, &
+                 passed = passed, &
                  pacify = pacify)
           end associate
        end if
@@ -30247,7 +30465,7 @@ This is the particle set of the hard process.
     type(particle_set_t) :: pset
     call entry%get_hard_particle_set (pset)
     call alt_entry%set_hard_particle_set (pset)
-    call particle_set_final (pset)
+    call pset%final ()
   end subroutine entry_fill_particle_set
     
 @ %def particle_set_copy_prt
@@ -30269,6 +30487,7 @@ event file version. It can be
      type(string_t) :: sample_id
      logical :: unweighted = .true.
      logical :: negative_weights = .false.
+     logical :: respect_selection = .true.
      integer :: norm_mode = NORM_UNDEFINED
      logical :: update_sqme = .false.
      logical :: update_weight = .false.
@@ -30324,6 +30543,7 @@ writes the current event and process instance, depending on options.
     write (u, "(3x,A,A)")   "Event norm   = ", &
          char (event_normalization_string (object%norm_mode))
     write (u, "(3x,A,L1)")  "Neg. weights = ", object%negative_weights
+    write (u, "(3x,A,L1)")  "Respect sel. = ", object%respect_selection
     write (u, "(3x,A,L1)")  "Update sqme  = ", object%update_sqme
     write (u, "(3x,A,L1)")  "Update wgt   = ", object%update_weight
     write (u, "(3x,A,L1)")  "Update event = ", object%update_event
@@ -30394,7 +30614,8 @@ in order to suppress numerical noise in the testsuite.
   generic :: write_event => write_event_unit
   procedure :: write_event_unit => simulation_write_event_unit
 <<Simulations: procedures>>=
-  subroutine simulation_write_event_unit (object, unit, i_prc, verbose, testflag)
+  subroutine simulation_write_event_unit &
+       (object, unit, i_prc, verbose, testflag)
     class(simulation_t), intent(in) :: object
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: verbose
@@ -30510,11 +30731,18 @@ we may only read and rescan events.
     class(rng_factory_t), allocatable :: rng_factory
     type(string_t) :: norm_string, version_string
     integer :: i, j
-    simulation%sample_id = local%get_sval (var_str ("$sample"))
-    simulation%unweighted = local%get_lval (var_str ("?unweighted"))
-    simulation%negative_weights = local%get_lval (var_str ("?negative_weights"))
-    version_string = local%get_sval (var_str ("$event_file_version"))
-    norm_string = local%get_sval (var_str ("$sample_normalization"))
+    simulation%sample_id = &
+         local%get_sval (var_str ("$sample"))
+    simulation%unweighted = &
+         local%get_lval (var_str ("?unweighted"))
+    simulation%negative_weights = &
+         local%get_lval (var_str ("?negative_weights"))
+    simulation%respect_selection = &
+         local%get_lval (var_str ("?sample_select"))
+    version_string = &
+         local%get_sval (var_str ("$event_file_version"))
+    norm_string = &
+         local%get_sval (var_str ("$sample_normalization"))
     simulation%norm_mode = &
          event_normalization_mode (norm_string, simulation%unweighted)
     simulation%pacify = &
@@ -30815,7 +31043,7 @@ process instance will not be complete.  This should be fixed.
     integer, intent(in) :: n
     type(event_stream_array_t), intent(inout), optional :: es_array
     type(string_t) :: str1, str2, str3
-    logical :: generate_new
+    logical :: generate_new, passed
     integer :: i, j
     simulation%n_evt_requested = n
     call simulation%entry%set_n (n)
@@ -30867,8 +31095,10 @@ process instance will not be complete.  This should be fixed.
             end if
             call entry%evaluate_expressions ()
             if (signal_is_pending ()) return
-            simulation%weight = entry%get_weight_ref ()
-            simulation%excess = entry%get_excess_prc ()
+            if (entry%passed_selection ()) then
+               simulation%weight = entry%get_weight_ref ()
+               simulation%excess = entry%get_excess_prc ()
+            end if
             call simulation%counter%record &
                  (simulation%weight, simulation%excess)
             call entry%record (simulation%i_mci)
@@ -30880,8 +31110,10 @@ process instance will not be complete.  This should be fixed.
             call entry%check ()
             call entry%evaluate_expressions ()
             if (signal_is_pending ()) return
-            simulation%weight = entry%get_weight_ref ()
-            simulation%excess = entry%get_excess_prc ()
+            if (entry%passed_selection ()) then
+               simulation%weight = entry%get_weight_ref ()
+               simulation%excess = entry%get_excess_prc ()
+            end if
             call simulation%counter%record &
                  (simulation%weight, simulation%excess, from_file=.true.)
             call entry%record (simulation%i_mci, from_file=.true.)
@@ -30890,8 +31122,13 @@ process instance will not be complete.  This should be fixed.
        call simulation%calculate_alt_entries ()
        if (signal_is_pending ()) return
        if (simulation%pacify)  call pacify (simulation)
+       if (simulation%respect_selection) then
+          passed = simulation%entry(simulation%i_prc)%passed_selection ()
+       else
+          passed = .true.
+       end if
        if (present (es_array)) then
-          call simulation%write_event (es_array)
+          call simulation%write_event (es_array, passed)
        end if
     end do
     call msg_message ("        ... event sample complete.")
@@ -30948,7 +31185,9 @@ external matrix element parameters event by event.  The matrix element
            if (signal_is_pending ())  return
            call alt_entry%restore_process ()
            sqme_alt(j) = alt_entry%get_sqme_ref ()
-           weight_alt(j) = alt_entry%get_weight_ref ()
+           if (alt_entry%passed_selection ()) then
+              weight_alt(j) = alt_entry%get_weight_ref ()
+           end if
          end associate
       end do
       call entry%set (sqme_alt = sqme_alt, weight_alt = weight_alt)
@@ -31149,15 +31388,16 @@ available.
   generic :: write_event => write_event_es_array
   procedure :: write_event_es_array => simulation_write_event_es_array
 <<Simulations: procedures>>=
-  subroutine simulation_write_event_es_array (object, es_array)
+  subroutine simulation_write_event_es_array (object, es_array, passed)
     class(simulation_t), intent(in) :: object
     class(event_stream_array_t), intent(inout) :: es_array
+    logical, intent(in), optional :: passed
     integer :: i_prc, event_index
     i_prc = object%i_prc
     if (i_prc > 0) then
        event_index = object%counter%total
        call es_array%output (object%entry(i_prc)%event_t, i_prc, &
-            event_index, pacify = object%pacify)
+            event_index, passed = passed, pacify = object%pacify)
     else
        call msg_fatal ("Simulation: write event: no process selected")
     end if
@@ -31283,48 +31523,51 @@ Return the MD5 sum that summarizes configuration and integration
 <<Simulations: simulation: TBP>>=
   procedure :: get_data => simulation_get_data
 <<Simulations: procedures>>=
-  function simulation_get_data (simulation, alt) result (data)
+  function simulation_get_data (simulation, alt) result (sdata)
     class(simulation_t), intent(in) :: simulation
     logical, intent(in), optional :: alt
-    type(event_sample_data_t) :: data
+    type(event_sample_data_t) :: sdata
     type(process_t), pointer :: process
     type(beam_data_t), pointer :: beam_data
+    type(flavor_t), dimension(:), allocatable :: flv
     integer :: n, i
     logical :: enable_alt
     enable_alt = .true.;  if (present (alt))  enable_alt = alt    
     process => simulation%entry(1)%get_process_ptr ()
     beam_data => process%get_beam_data_ptr ()
     if (enable_alt) then
-       call data%init (simulation%n_prc, simulation%n_alt)
+       call sdata%init (simulation%n_prc, simulation%n_alt)
        do i = 1, simulation%n_alt
-          data%md5sum_alt(i) = simulation%get_md5sum_alt (i)
+          sdata%md5sum_alt(i) = simulation%get_md5sum_alt (i)
        end do
     else
-       call data%init (simulation%n_prc)
+       call sdata%init (simulation%n_prc)
     end if
-    data%unweighted = simulation%unweighted
-    data%negative_weights = simulation%negative_weights
-    data%norm_mode = simulation%norm_mode
+    sdata%unweighted = simulation%unweighted
+    sdata%negative_weights = simulation%negative_weights
+    sdata%norm_mode = simulation%norm_mode
     n = beam_data_get_n_in (beam_data)
-    data%n_beam = n
-    data%pdg_beam(:n) = flavor_get_pdg (beam_data_get_flavor (beam_data))
-    data%energy_beam(:n) = beam_data_get_energy (beam_data)
+    sdata%n_beam = n
+    allocate (flv (n))
+    flv = beam_data_get_flavor (beam_data)
+    sdata%pdg_beam(:n) = flv%get_pdg ()
+    sdata%energy_beam(:n) = beam_data_get_energy (beam_data)
     do i = 1, simulation%n_prc
        if (.not. simulation%entry(i)%valid) cycle
        process => simulation%entry(i)%get_process_ptr ()
-       data%proc_num_id(i) = process%get_num_id ()
-       if (data%proc_num_id(i) == 0)  data%proc_num_id(i) = i
+       sdata%proc_num_id(i) = process%get_num_id ()
+       if (sdata%proc_num_id(i) == 0)  sdata%proc_num_id(i) = i
        if (simulation%entry(i)%has_integral) then
-          data%cross_section(i) = simulation%entry(i)%integral
-          data%error(i) = simulation%entry(i)%error
+          sdata%cross_section(i) = simulation%entry(i)%integral
+          sdata%error(i) = simulation%entry(i)%error
        end if
     end do
-    data%total_cross_section = sum (data%cross_section)
-    data%md5sum_prc = simulation%get_md5sum_prc ()
-    data%md5sum_cfg = simulation%get_md5sum_cfg ()
+    sdata%total_cross_section = sum (sdata%cross_section)
+    sdata%md5sum_prc = simulation%get_md5sum_prc ()
+    sdata%md5sum_cfg = simulation%get_md5sum_cfg ()
     if (simulation%split_n_evt > 0) then
-       data%split_n_evt = simulation%split_n_evt
-       data%split_index = simulation%split_index
+       sdata%split_n_evt = simulation%split_n_evt
+       sdata%split_index = simulation%split_index
     end if
   end function simulation_get_data
     
@@ -31693,6 +31936,7 @@ Generate events for a single process.
     type(string_t) :: libname, procname1
     type(rt_data_t), target :: global
     type(flavor_t) :: flv
+    type(string_t) :: name
     type(simulation_t), target :: simulation
     type(event_sample_data_t) :: data
     
@@ -31749,8 +31993,10 @@ Generate events for a single process.
     
     call reset_interaction_counter ()
 
-    call flavor_init (flv, 25, global%model)
-    call global%beam_structure%init_sf (flavor_get_name ([flv, flv]), [1])
+    call flv%init (25, global%model)
+    name = flv%get_name ()
+    
+    call global%beam_structure%init_sf ([name, name], [1])
     call global%beam_structure%set_sf (1, 1, var_str ("sf_test_1"))
 
     write (u, "(A)")  "* Integrate"
@@ -31949,6 +32195,7 @@ reread.
     class(eio_t), allocatable :: eio
     type(simulation_t), allocatable, target :: simulation
     type(flavor_t) :: flv
+    type(string_t) :: name
     
     write (u, "(A)")  "* Test output: simulations_6"
     write (u, "(A)")  "*   Purpose: generate events for a single process"
@@ -31999,8 +32246,10 @@ reread.
     call global%model_set_real (var_str ("ms"), &
          0._default)
 
-    call flavor_init (flv, 25, global%model)
-    call global%beam_structure%init_sf (flavor_get_name ([flv, flv]), [1])
+    call flv%init (25, global%model)
+    name = flv%get_name ()
+    
+    call global%beam_structure%init_sf ([name, name], [1])
     call global%beam_structure%set_sf (1, 1, var_str ("sf_test_1"))
 
     call global%it_list%init ([1], [1000])
@@ -32101,6 +32350,7 @@ append.
     type(event_stream_array_t) :: es_array
     type(simulation_t), allocatable, target :: simulation
     type(flavor_t) :: flv
+    type(string_t) :: name
     
     write (u, "(A)")  "* Test output: simulations_7"
     write (u, "(A)")  "*   Purpose: generate events for a single process"
@@ -32154,8 +32404,10 @@ append.
     call global%model_set_real (var_str ("ms"), &
          0._default)
 
-    call flavor_init (flv, 25, global%model)
-    call global%beam_structure%init_sf (flavor_get_name ([flv, flv]), [1])
+    call flv%init (25, global%model)
+    name = flv%get_name ()
+    
+    call global%beam_structure%init_sf ([name, name], [1])
     call global%beam_structure%set_sf (1, 1, var_str ("sf_test_1"))
 
     call global%it_list%init ([1], [1000])
@@ -32271,6 +32523,7 @@ Generate events and rescan the resulting raw event file.
     type(event_stream_array_t) :: es_array
     type(simulation_t), allocatable, target :: simulation
     type(flavor_t) :: flv
+    type(string_t) :: name
     
     write (u, "(A)")  "* Test output: simulations_8"
     write (u, "(A)")  "*   Purpose: generate events for a single process"
@@ -32324,8 +32577,10 @@ Generate events and rescan the resulting raw event file.
     call global%model_set_real (var_str ("ms"), &
          0._default)
 
-    call flavor_init (flv, 25, global%model)
-    call global%beam_structure%init_sf (flavor_get_name ([flv, flv]), [1])
+    call flv%init (25, global%model)
+    name = flv%get_name ()
+    
+    call global%beam_structure%init_sf ([name, name], [1])
     call global%beam_structure%set_sf (1, 1, var_str ("sf_test_1"))
 
     call global%it_list%init ([1], [1000])
@@ -32458,6 +32713,7 @@ Generate events and rescan with process mismatch.
     type(event_stream_array_t) :: es_array
     type(simulation_t), allocatable, target :: simulation
     type(flavor_t) :: flv
+    type(string_t) :: name
     logical :: error
     
     write (u, "(A)")  "* Test output: simulations_9"
@@ -32512,8 +32768,10 @@ Generate events and rescan with process mismatch.
     call global%model_set_real (var_str ("ms"), &
          0._default)
 
-    call flavor_init (flv, 25, global%model)
-    call global%beam_structure%init_sf (flavor_get_name ([flv, flv]), [1])
+    call flv%init (25, global%model)
+    name = flv%get_name ()
+    
+    call global%beam_structure%init_sf ([name, name], [1])
     call global%beam_structure%set_sf (1, 1, var_str ("sf_test_1"))
 
     call global%it_list%init ([1], [1000])
@@ -32876,7 +33134,7 @@ accepting a limit for the number of events per file.
     call global%model_set_real (var_str ("ms"), &
          0._default)
 
-    call flavor_init (flv, 25, global%model)
+    call flv%init (25, global%model)
 
     call global%it_list%init ([1], [1000])
 
@@ -34616,11 +34874,11 @@ which are not available there.
     integer :: i
     pdg = aval
     allocate (flv (size (pdg)))
-    call flavor_init (flv, pdg, model)
+    call flv%init (pdg, model)
     if (size (pdg) /= 0) then
-       prt = flavor_get_name (flv(1))
+       prt = flv(1)%get_name ()
        do i = 2, size (flv)
-          prt = prt // ":" // flavor_get_name (flv(i))
+          prt = prt // ":" // flv(i)%get_name ()
        end do
     else
        prt = "?"
@@ -34639,8 +34897,8 @@ which are not available there.
     integer :: k
     allocate (aval (size (prt)))
     do k = 1, size (prt)
-      call flavor_init (flv, prt(k)%to_string (), model)
-      aval (k) = flavor_get_pdg (flv)
+      call flv%init (prt(k)%to_string (), model)
+      aval (k) = flv%get_pdg ()
     end do
     pdg_array = aval
   end function make_pdg_array
@@ -35573,12 +35831,14 @@ variables to show.
              n = model%get_n_field ()
              do j = 1, n
                 pdg = model%get_pdg (j)
-                call flavor_init (flv, pdg, model)
-                if (.not. flavor_is_stable (flv)) &
+                call flv%init (pdg, model)
+                if (.not. flv%is_stable ()) &
                      call show_unstable (cmd%local, pdg, u)
-                if (flavor_has_antiparticle (flv)) then
-                   if (.not. flavor_is_stable (flavor_anti (flv))) &
-                        call show_unstable (cmd%local, -pdg, u)
+                if (flv%has_antiparticle ()) then
+                   associate (anti => flv%anti ())
+                     if (.not. anti%is_stable ()) &
+                          call show_unstable (cmd%local, -pdg, u)
+                   end associate
                 end if
              end do
           case ("cuts", "weight", "scale", &
@@ -36046,7 +36306,7 @@ component of the [[global]] data block.
        pdg = pdg_array
        select case (size (pdg))
        case (1)
-          call flavor_init (flv(i), pdg(1), cmd%local%model)
+          call flv(i)%init ( pdg(1), cmd%local%model)
        case default
           call msg_fatal ("Beams: beam particles must be unique")
        end select
@@ -36057,9 +36317,9 @@ component of the [[global]] data block.
           call msg_fatal ("Beam setup: no structure functions allowed &
                &for decay")
        end if
-       call global%beam_structure%init_sf (flavor_get_name (flv))
+       call global%beam_structure%init_sf (flv%get_name ())
     case (2)
-       call global%beam_structure%init_sf (flavor_get_name (flv), cmd%n_entry)
+       call global%beam_structure%init_sf (flv%get_name (), cmd%n_entry)
        do i = 1, cmd%n_sf_record
           do j = 1, cmd%n_entry(i)
              pn_key => parse_node_get_sub_ptr (cmd%pn_sf_entry(j,i)%ptr)
@@ -38343,7 +38603,8 @@ the current model object.
     type(var_list_t), pointer :: var_list
     logical :: auto_decays, auto_decays_radiative
     integer :: auto_decays_multiplicity
-    logical :: isotropic_decay, diagonal_decay
+    logical :: isotropic_decay, diagonal_decay, polarized_decay
+    integer :: decay_helicity
     type(pdg_array_t) :: pa_in
     integer :: pdg_in
     type(string_t) :: libname_cur, libname_dec
@@ -38362,11 +38623,21 @@ the current model object.
     end if
     isotropic_decay = &
          var_list%get_lval (var_str ("?isotropic_decay"))
-    if (.not. isotropic_decay) then
+    if (isotropic_decay) then
+       diagonal_decay = .false.
+       polarized_decay = .false.
+    else
        diagonal_decay = &
             var_list%get_lval (var_str ("?diagonal_decay"))
-    else
-       diagonal_decay = .false.
+       if (diagonal_decay) then
+          polarized_decay = .false.
+       else
+          polarized_decay = &
+               var_list%is_known (var_str ("decay_helicity"))
+          if (polarized_decay) then
+             decay_helicity = var_list%get_ival (var_str ("decay_helicity"))
+          end if
+       end if
     end if
     pa_in = eval_pdg_array (cmd%pn_prt_in, var_list)
     if (pdg_array_get_length (pa_in) /= 1) &
@@ -38399,11 +38670,20 @@ the current model object.
     call cmd%local%update_prclib &
          (cmd%local%prclib_stack%get_library_ptr (libname_cur))
     if (cmd%n_proc > 0) then
-       call global%modify_particle (pdg_in, stable = .false., &
-            decay = cmd%process_id, &
-            isotropic_decay = isotropic_decay, &
-            diagonal_decay = diagonal_decay, &
-            polarized = .false.)
+       if (polarized_decay) then
+          call global%modify_particle (pdg_in, stable = .false., &
+               decay = cmd%process_id, &
+               isotropic_decay = .false., &
+               diagonal_decay = .false., &
+               decay_helicity = decay_helicity, &
+               polarized = .false.)
+       else
+          call global%modify_particle (pdg_in, stable = .false., &
+               decay = cmd%process_id, &
+               isotropic_decay = isotropic_decay, &
+               diagonal_decay = diagonal_decay, &
+               polarized = .false.)
+       end if
        u_tmp = free_unit ()
        open (u_tmp, status = "scratch", action = "readwrite")
        call show_unstable (global, pdg_in, u_tmp)
@@ -38435,8 +38715,8 @@ the [[unstable]] and by the [[show]] command.
     type(process_component_def_t), pointer :: prc_def
     type(string_t), dimension(:), allocatable :: prt_out, prt_out_str
     integer :: i, j
-    call flavor_init (flv, pdg, global%model)
-    call flavor_get_decays (flv, decay)
+    call flv%init (pdg, global%model)
+    call flv%get_decays (decay)
     if (.not. allocated (decay))  return
     allocate (prt_out_str (size (decay)))
     allocate (br (size (decay)))
@@ -38455,7 +38735,7 @@ the [[unstable]] and by the [[show]] command.
           width = sum (br)
           br = br / sum (br)
           write (u, "(A)") "Unstable particle " &
-               // char (flavor_get_name (flv)) &
+               // char (flv%get_name ()) &
                // ": computed branching ratios:"
           do i = 1, size (br)
              write (u, "(2x,A,':'," // FMT_14 // ",3x,A)") &
@@ -38463,23 +38743,26 @@ the [[unstable]] and by the [[show]] command.
           end do
           write (u, "(2x,'Total width ='," // FMT_14 // ",' GeV (computed)')")  width
           write (u, "(2x,'            ='," // FMT_14 // ",' GeV (preset)')") &
-               flavor_get_width (flv)
-          if (flavor_decays_isotropically (flv)) then
+               flv%get_width ()
+          if (flv%decays_isotropically ()) then
              write (u, "(2x,A)")  "Decay options: isotropic"
-          else if (flavor_decays_diagonal (flv)) then
+          else if (flv%decays_diagonal ()) then
              write (u, "(2x,A)")  "Decay options: &
                   &projection on diagonal helicity states"
+          else if (flv%has_decay_helicity ()) then
+             write (u, "(2x,A,1x,I0)")  "Decay options: projection onto helicity =", &
+                  flv%get_decay_helicity ()
           else
              write (u, "(2x,A)")  "Decay options: helicity treated exactly"
           end if
        else
           call msg_fatal ("Unstable particle " &
-               // char (flavor_get_name (flv)) &
+               // char (flv%get_name ()) &
                // ": partial width vanishes for all decay channels")
        end if
     else
        call msg_fatal ("Unstable particle " &
-               // char (flavor_get_name (flv)) &
+               // char (flv%get_name ()) &
                // ": partial width is negative")
     end if
   end subroutine show_unstable
@@ -38491,9 +38774,9 @@ the [[unstable]] and by the [[show]] command.
     type(rt_data_t), intent(in), target :: global
     integer, intent(in) :: pdg
     type(flavor_t) :: flv
-    call flavor_init (flv, pdg, global%model)
+    call flv%init (pdg, global%model)
     call msg_error ("Unstable: no allowed decays found for particle " &
-         // char (flavor_get_name (flv)) // ", keeping as stable")
+         // char (flv%get_name ()) // ", keeping as stable")
   end subroutine err_unstable
     
 @ %def err_unstable
@@ -38528,7 +38811,7 @@ referred to at any time.
     type(string_t), dimension(:), allocatable :: prt_out
     type(process_configuration_t) :: prc_config
     integer :: i, j, k, n
-    call flavor_init (flv_in, pdg_in, global%model)
+    call flv_in%init (pdg_in, global%model)
     if (rad) then
        call constraints%init (2)
     else
@@ -38537,9 +38820,9 @@ referred to at any time.
     end if
     call constraints%set (1, constrain_n_tot (mult))
     call constraints%set (2, &
-         constrain_mass_sum (flavor_get_mass (flv_in), margin = 0._default))
+         constrain_mass_sum (flv_in%get_mass (), margin = 0._default))
     call ds_table%make (global%model, pdg_in, constraints)
-    prt_in = flavor_get_name (flv_in)
+    prt_in = flv_in%get_name ()
     if (pdg_in > 0) then
        p_or_a = "p"
     else
@@ -38575,11 +38858,11 @@ referred to at any time.
           allocate (prt_out (size (pa_out)))
           do j = 1, size (pa_out)
              do k = 1, pa_out(j)%get_length ()
-                call flavor_init (flv_out, pa_out(j)%get (k), global%model)
+                call flv_out%init (pa_out(j)%get (k), global%model)
                 if (k == 1) then
-                   prt_out(j) = flavor_get_name (flv_out)
+                   prt_out(j) = flv_out%get_name ()
                 else
-                   prt_out(j) = prt_out(j) // ":" // flavor_get_name (flv_out)
+                   prt_out(j) = prt_out(j) // ":" // flv_out%get_name ()
                 end if
              end do
              process_string = process_string // " " // prt_out(j)
@@ -38675,9 +38958,9 @@ Revert the unstable declaration for a list of particles.
          isotropic_decay = .false., &
          diagonal_decay = .false., &
          polarized = .false.)
-       call flavor_init (flv, pdg, cmd%local%model)
+       call flv%init (pdg, cmd%local%model)
        call msg_message ("Particle " &
-            // char (flavor_get_name (flv)) &
+            // char (flv%get_name ()) &
             // " declared as stable")
     end do
   end subroutine cmd_stable_execute
@@ -38753,9 +39036,9 @@ Execute: apply the modifications to the current model.
             stable = .true., &
             isotropic_decay = .false., &
             diagonal_decay = .false.)
-       call flavor_init (flv, pdg, cmd%local%model)
+       call flv%init (pdg, cmd%local%model)
        call msg_message ("Particle " &
-            // char (flavor_get_name (flv)) &
+            // char (flv%get_name ()) &
             // " declared as polarized")
     end do
   end subroutine cmd_polarized_execute
@@ -38778,9 +39061,9 @@ Execute: apply the modifications to the current model.
             stable = .true., &
             isotropic_decay = .false., &
             diagonal_decay = .false.)
-       call flavor_init (flv, pdg, cmd%local%model)
+       call flv%init (pdg, cmd%local%model)
        call msg_message ("Particle " &
-            // char (flavor_get_name (flv)) &
+            // char (flv%get_name ()) &
             // " declared as unpolarized")
     end do
   end subroutine cmd_unpolarized_execute
@@ -44243,6 +44526,7 @@ module whizard
   use shower
   use events
 
+  use hep_events
   use eio_data
   use eio_base
   use eio_raw
@@ -45047,7 +45331,9 @@ This is for developers only, but needs a well-defined interface.
        call prc_omega_test (u, results)
     case ("prc_omega_diags")
        call prc_omega_diags_test (u, results)       
-    case ("eio_data")
+    case ("hep_events")
+       call hep_events_test (u, results)       
+    case ("eio_data")       
        call eio_data_test (u, results)
     case ("eio_base")
        call eio_base_test (u, results)
@@ -45155,6 +45441,7 @@ This is for developers only, but needs a well-defined interface.
        call prc_omega_test (u, results)
        call prc_omega_diags_test (u, results)
        call prc_template_me_test (u, results)
+       call hep_events_test (u, results)
        call eio_data_test (u, results)
        call eio_base_test (u, results)
        call eio_raw_test (u, results)

@@ -45,7 +45,7 @@ SUBDIRS = \
   hepmc lcio particles \
   lhapdf lhapdf5 pdf_builtin hoppet beams \
   me_methods \
-  stdhep events \
+  stdhep xdr events \
   phase_space \
   mci \
   shower muli \
@@ -88,6 +88,7 @@ libwhizard_la_LIBADD = \
   user/libuser.la \
   mci/libmci.la \
   phase_space/libphase_space.la \
+  xdr/libWOStdHep.la \
   events/libevents.la \
   beams/libbeams.la \
   particles/libparticles.la \

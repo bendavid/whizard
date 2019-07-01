@@ -41,10 +41,15 @@ dist_noinst_DATA = expr_base.nw
 # Dump module names into file Modules
 libexpr_base_Modules = ${libexpr_base_la_SOURCES:.f90=}
 Modules: Makefile
-	@rm -f $@
-	for module in $(libexpr_base_Modules); do \
-          echo $$module >> $@; \
+	@for module in $(libexpr_base_Modules); do \
+          echo $$module >> $@.new; \
         done
+	@if diff $@ $@.new -q >/dev/null; then \
+          rm $@.new; \
+	else \
+          mv $@.new $@; echo "Modules updated"; \
+        fi
+BUILT_SOURCES = Modules
 
 ## Fortran module dependencies
 # Get module lists from other directories

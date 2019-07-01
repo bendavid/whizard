@@ -24,7 +24,10 @@
  LHEF event stream:
    Reading from file = eio_lhef_6.lhe
    Keep beams        = F
+   Keep remnants     = T
    Recover beams     = F
+   Alpha_s from file = F
+   Scale from file   = F
    Version           = 3.0
    File extension    = 'lhe'
    Numerical process IDs:

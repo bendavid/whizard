@@ -1,4 +1,4 @@
-! WHIZARD 2.2.4 Feb 06 2015
+! WHIZARD 2.2.5 Feb 27 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -119,6 +119,10 @@ module event_base
      procedure (generic_event_get_index), deferred :: get_index
      procedure (generic_event_get_fac_scale), deferred :: get_fac_scale
      procedure (generic_event_get_alpha_s), deferred :: get_alpha_s
+     procedure (generic_event_set_alpha_qcd_forced), deferred :: &
+          set_alpha_qcd_forced
+     procedure (generic_event_set_scale_forced), deferred :: &
+          set_scale_forced
      procedure :: reset => generic_event_reset
      procedure :: base_reset => generic_event_reset
      procedure :: pacify_particle_set => generic_event_pacify_particle_set
@@ -202,6 +206,22 @@ module event_base
        class(generic_event_t), intent(in) :: event
        real(default) :: alpha_s
      end function generic_event_get_alpha_s
+  end interface
+
+  abstract interface
+     subroutine generic_event_set_alpha_qcd_forced (event, alpha_qcd)
+       import
+       class(generic_event_t), intent(inout) :: event
+       real(default), intent(in) :: alpha_qcd
+     end subroutine generic_event_set_alpha_qcd_forced
+  end interface
+
+  abstract interface
+     subroutine generic_event_set_scale_forced (event, scale)
+       import
+       class(generic_event_t), intent(inout) :: event
+       real(default), intent(in) :: scale
+     end subroutine generic_event_set_scale_forced
   end interface
 
 

@@ -1,4 +1,4 @@
-! WHIZARD 2.2.4 Feb 06 2015
+! WHIZARD 2.2.5 Feb 27 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -870,8 +870,8 @@ contains
        allocate (prt_in (n_beam), pdg_in (n_beam))
        prt_in = beam_structure%get_prt ()
        do i = 1, n_beam
-          call flavor_init (flv_in, prt_in(i), global%model)
-          pdg_in(i) = flavor_get_pdg (flv_in)
+          call flv_in%init (prt_in(i), global%model)
+          pdg_in(i) = flv_in%get_pdg ()
        end do
     else
        n_beam = size (pdg_prc, 1)
@@ -1228,7 +1228,8 @@ contains
     class(eio_t), intent(inout), allocatable :: eio
     type(string_t), intent(in) :: method
     type(rt_data_t), intent(in) :: global
-    logical :: check, keep_beams, recover_beams
+    logical :: check, keep_beams, keep_remnants, recover_beams
+    logical :: use_alpha_s_from_file, use_scale_from_file
     logical :: write_sqme_prc, write_sqme_ref, write_sqme_alt
     type(string_t) :: lhef_version, lhef_extension, raw_version
     type(string_t) :: extension_default, debug_extension, extension_hepmc, &
@@ -1267,8 +1268,14 @@ contains
        type is (eio_lhef_t)
           keep_beams = &
                global%var_list%get_lval (var_str ("?keep_beams"))
+          keep_remnants = &
+               global%var_list%get_lval (var_str ("?keep_remnants"))
           recover_beams = &
                global%var_list%get_lval (var_str ("?recover_beams"))
+          use_alpha_s_from_file = &
+               global%var_list%get_lval (var_str ("?use_alpha_s_from_file"))
+          use_scale_from_file = &
+               global%var_list%get_lval (var_str ("?use_scale_from_file"))
           lhef_version = &
                global%var_list%get_sval (var_str ("$lhef_version"))
           lhef_extension = &
@@ -1279,7 +1286,9 @@ contains
                global%var_list%get_lval (var_str ("?lhef_write_sqme_ref"))
           write_sqme_alt = &
                global%var_list%get_lval (var_str ("?lhef_write_sqme_alt"))
-          call eio%set_parameters (keep_beams, recover_beams, &
+          call eio%set_parameters ( &
+               keep_beams, keep_remnants, recover_beams, &
+               use_alpha_s_from_file, use_scale_from_file, &
                char (lhef_version), lhef_extension, &
                write_sqme_ref, write_sqme_prc, write_sqme_alt)
        end select
@@ -1287,25 +1296,40 @@ contains
        allocate (eio_hepmc_t :: eio)
        select type (eio)
        type is (eio_hepmc_t)
-          keep_beams = &
-               global%var_list%get_lval (var_str ("?keep_beams"))
+          ! keep_beams = &
+          !      global%var_list%get_lval (var_str ("?keep_beams"))
+          use_alpha_s_from_file = &
+               global%var_list%get_lval (var_str ("?use_alpha_s_from_file"))
+          use_scale_from_file = &
+               global%var_list%get_lval (var_str ("?use_scale_from_file"))
           recover_beams = &
                global%var_list%get_lval (var_str ("?recover_beams"))
           extension_hepmc = &
                global%var_list%get_sval (var_str ("$extension_hepmc"))          
-          call eio%set_parameters (keep_beams, recover_beams, extension_hepmc)
+          ! call eio%set_parameters (keep_beams, recover_beams, extension_hepmc)
+          call eio%set_parameters (recover_beams, &
+               use_alpha_s_from_file, use_scale_from_file, &
+               extension_hepmc)
        end select
     case ("lcio")
        allocate (eio_lcio_t :: eio)
        select type (eio)
        type is (eio_lcio_t)
-          keep_beams = &
-               global%var_list%get_lval (var_str ("?keep_beams"))
+          ! keep_beams = &
+          !      global%var_list%get_lval (var_str ("?keep_beams"))
+          use_alpha_s_from_file = &
+               global%var_list%get_lval (var_str ("?use_alpha_s_from_file"))
+          use_scale_from_file = &
+               global%var_list%get_lval (var_str ("?use_scale_from_file"))
           recover_beams = &
                global%var_list%get_lval (var_str ("?recover_beams"))
           extension_lcio = &
                global%var_list%get_sval (var_str ("$extension_lcio"))
-          call eio%set_parameters (keep_beams, recover_beams, extension_lcio)
+          ! call eio%set_parameters &
+          !      (keep_beams, keep_remnants, recover_beams, extension_lcio)
+          call eio%set_parameters (recover_beams, &
+               use_alpha_s_from_file, use_scale_from_file, &
+               extension_lcio)
        end select       
     case ("stdhep")
        allocate (eio_stdhep_hepevt_t :: eio)
@@ -1313,9 +1337,19 @@ contains
        type is (eio_stdhep_hepevt_t)                   
           keep_beams = &
                global%var_list%get_lval (var_str ("?keep_beams"))
+          keep_remnants = &
+               global%var_list%get_lval (var_str ("?keep_remnants"))
+          use_alpha_s_from_file = &
+               global%var_list%get_lval (var_str ("?use_alpha_s_from_file"))
+          use_scale_from_file = &
+               global%var_list%get_lval (var_str ("?use_scale_from_file"))
+          recover_beams = &
+               global%var_list%get_lval (var_str ("?recover_beams"))          
           extension_stdhep = &
                global%var_list%get_sval (var_str ("$extension_stdhep"))
-          call eio%set_parameters (keep_beams, extension_stdhep)          
+          call eio%set_parameters &
+               (keep_beams, keep_remnants, recover_beams, &
+                use_alpha_s_from_file, use_scale_from_file, extension_stdhep)
        end select
     case ("stdhep_up")
        allocate (eio_stdhep_hepeup_t :: eio)
@@ -1323,9 +1357,19 @@ contains
        type is (eio_stdhep_hepeup_t)          
           keep_beams = &
                global%var_list%get_lval (var_str ("?keep_beams"))
+          keep_remnants = &
+               global%var_list%get_lval (var_str ("?keep_remnants"))
+          use_alpha_s_from_file = &
+               global%var_list%get_lval (var_str ("?use_alpha_s_from_file"))
+          use_scale_from_file = &
+               global%var_list%get_lval (var_str ("?use_scale_from_file"))
+          recover_beams = &
+               global%var_list%get_lval (var_str ("?recover_beams"))          
           extension_stdhep_up = &
                global%var_list%get_sval (var_str ("$extension_stdhep_up")) 
-          call eio%set_parameters (keep_beams, extension_stdhep_up)          
+          call eio%set_parameters (keep_beams, keep_remnants, &
+               recover_beams, use_alpha_s_from_file, &
+               use_scale_from_file, extension_stdhep_up)          
        end select       
     case ("ascii")   
        allocate (eio_ascii_ascii_t :: eio)
@@ -1333,9 +1377,12 @@ contains
        type is (eio_ascii_ascii_t)
           keep_beams = &
                global%var_list%get_lval (var_str ("?keep_beams"))
+          keep_remnants = &
+               global%var_list%get_lval (var_str ("?keep_remnants"))
           extension_default = &
                global%var_list%get_sval (var_str ("$extension_default"))
-          call eio%set_parameters (keep_beams, extension_default)
+          call eio%set_parameters &
+               (keep_beams, keep_remnants, extension_default)
        end select       
     case ("athena")   
        allocate (eio_ascii_athena_t :: eio)
@@ -1343,16 +1390,17 @@ contains
        type is (eio_ascii_athena_t)
           keep_beams = &
                global%var_list%get_lval (var_str ("?keep_beams"))
+          keep_remnants = &
+               global%var_list%get_lval (var_str ("?keep_remnants"))
           extension_athena = &
                global%var_list%get_sval (var_str ("$extension_athena"))
-          call eio%set_parameters (keep_beams, extension_athena)
+          call eio%set_parameters &
+               (keep_beams, keep_remnants, extension_athena)
        end select              
     case ("debug")   
        allocate (eio_ascii_debug_t :: eio)
        select type (eio)
        type is (eio_ascii_debug_t)
-          keep_beams = &
-               global%var_list%get_lval (var_str ("?keep_beams"))
           debug_extension = &
                global%var_list%get_sval (var_str ("$debug_extension"))          
           show_process = &
@@ -1363,8 +1411,12 @@ contains
                global%var_list%get_lval (var_str ("?debug_decay"))
           verbose = &
                global%var_list%get_lval (var_str ("?debug_verbose"))
-          call eio%set_parameters (keep_beams, debug_extension, &
-               show_process, show_transforms, show_decay, verbose)
+          call eio%set_parameters ( &
+               extension = debug_extension, &
+               show_process = show_process, &
+               show_transforms = show_transforms, &
+               show_decay = show_decay, &
+               verbose = verbose)
        end select
     case ("hepevt")   
        allocate (eio_ascii_hepevt_t :: eio)
@@ -1372,9 +1424,12 @@ contains
        type is (eio_ascii_hepevt_t)
           keep_beams = &
                global%var_list%get_lval (var_str ("?keep_beams"))
+          keep_remnants = &
+               global%var_list%get_lval (var_str ("?keep_remnants"))
           extension_hepevt = &
                global%var_list%get_sval (var_str ("$extension_hepevt"))
-          call eio%set_parameters (keep_beams, extension_hepevt)
+          call eio%set_parameters &
+               (keep_beams, keep_remnants, extension_hepevt)
        end select              
     case ("hepevt_verb")   
        allocate (eio_ascii_hepevt_verb_t :: eio)
@@ -1382,9 +1437,12 @@ contains
        type is (eio_ascii_hepevt_verb_t)
           keep_beams = &
                global%var_list%get_lval (var_str ("?keep_beams"))
+          keep_remnants = &
+               global%var_list%get_lval (var_str ("?keep_remnants"))
           extension_hepevt_verb = &
                global%var_list%get_sval (var_str ("$extension_hepevt_verb"))
-          call eio%set_parameters (keep_beams, extension_hepevt_verb)
+          call eio%set_parameters &
+               (keep_beams, keep_remnants, extension_hepevt_verb)
        end select                     
     case ("lha")   
        allocate (eio_ascii_lha_t :: eio)
@@ -1392,9 +1450,12 @@ contains
        type is (eio_ascii_lha_t)
           keep_beams = &
                global%var_list%get_lval (var_str ("?keep_beams"))
+          keep_remnants = &
+               global%var_list%get_lval (var_str ("?keep_remnants"))
           extension_lha = &
                global%var_list%get_sval (var_str ("$extension_lha"))
-          call eio%set_parameters (keep_beams, extension_lha)
+          call eio%set_parameters &
+               (keep_beams, keep_remnants, extension_lha)
        end select                     
     case ("lha_verb")   
        allocate (eio_ascii_lha_verb_t :: eio)
@@ -1402,9 +1463,12 @@ contains
        type is (eio_ascii_lha_verb_t)
           keep_beams = &
                global%var_list%get_lval (var_str ("?keep_beams"))
+          keep_remnants = &
+               global%var_list%get_lval (var_str ("?keep_remnants"))
           extension_lha_verb = global%var_list%get_sval ( &
                var_str ("$extension_lha_verb"))          
-          call eio%set_parameters (keep_beams, extension_lha_verb)
+          call eio%set_parameters &
+               (keep_beams, keep_remnants, extension_lha_verb)
        end select                            
     case ("long")   
        allocate (eio_ascii_long_t :: eio)
@@ -1412,9 +1476,12 @@ contains
        type is (eio_ascii_long_t)
           keep_beams = &
                global%var_list%get_lval (var_str ("?keep_beams"))
+          keep_remnants = &
+               global%var_list%get_lval (var_str ("?keep_remnants"))
           extension_ascii_long = &
                global%var_list%get_sval (var_str ("$extension_ascii_long"))
-          call eio%set_parameters (keep_beams, extension_ascii_long)
+          call eio%set_parameters &
+               (keep_beams, keep_remnants, extension_ascii_long)
        end select              
     case ("mokka")   
        allocate (eio_ascii_mokka_t :: eio)
@@ -1422,9 +1489,12 @@ contains
        type is (eio_ascii_mokka_t)
           keep_beams = &
                global%var_list%get_lval (var_str ("?keep_beams"))
+          keep_remnants = &
+               global%var_list%get_lval (var_str ("?keep_remnants"))
           extension_mokka = &
                global%var_list%get_sval (var_str ("$extension_mokka"))          
-          call eio%set_parameters (keep_beams, extension_mokka)
+          call eio%set_parameters &
+               (keep_beams, keep_remnants, extension_mokka)
        end select                     
     case ("short")   
        allocate (eio_ascii_short_t :: eio)
@@ -1432,9 +1502,12 @@ contains
        type is (eio_ascii_short_t)
           keep_beams = &
                global%var_list%get_lval (var_str ("?keep_beams"))
+          keep_remnants = &
+               global%var_list%get_lval (var_str ("?keep_remnants"))
           extension_ascii_short = &
                global%var_list%get_sval (var_str ("$extension_ascii_short"))
-          call eio%set_parameters (keep_beams, extension_ascii_short)
+          call eio%set_parameters &
+               (keep_beams, keep_remnants, extension_ascii_short)
        end select                     
     case ("weight_stream")
        allocate (eio_weights_t :: eio)
@@ -2179,14 +2252,14 @@ contains
     write (u, "(A)")  "* Allocate LHC beams with PDF builtin"
     write (u, "(A)")
 
-    call flavor_init (flv(1), PROTON, global%model)
-    call flavor_init (flv(2), PROTON, global%model)
+    call flv(1)%init (PROTON, global%model)
+    call flv(2)%init (PROTON, global%model)
 
     call reset_interaction_counter ()
     call var_list_set_real (global%var_list, var_str ("sqrts"), &
          14000._default, is_known = .true.)
          
-    call global%beam_structure%init_sf (flavor_get_name (flv), [1])
+    call global%beam_structure%init_sf (flv%get_name (), [1])
     call global%beam_structure%set_sf (1, 1, var_str ("pdf_builtin"))
     
     call dispatch_sf_config (sf_config, sf_prop, global, pdg_prc)
@@ -2206,8 +2279,8 @@ contains
     write (u, "(A)")
 
     call global%select_model (var_str ("QED"))
-    call flavor_init (flv(1), ELECTRON, global%model)
-    call flavor_init (flv(2),-ELECTRON, global%model)
+    call flv(1)%init ( ELECTRON, global%model)
+    call flv(2)%init (-ELECTRON, global%model)
 
     call reset_interaction_counter ()
     call var_list_set_real (global%var_list, var_str ("sqrts"), &
@@ -2215,7 +2288,7 @@ contains
     call var_list_set_log (global%var_list, var_str ("?circe1_generate"), &
          .false., is_known = .true.)
          
-    call global%beam_structure%init_sf (flavor_get_name (flv), [1])
+    call global%beam_structure%init_sf (flv%get_name (), [1])
     call global%beam_structure%set_sf (1, 1, var_str ("circe1"))
     
     call dispatch_sf_config (sf_config, sf_prop, global, pdg_prc)

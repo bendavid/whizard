@@ -1,4 +1,4 @@
-! WHIZARD 2.2.4 Feb 06 2015
+! WHIZARD 2.2.5 Feb 27 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -211,11 +211,13 @@ contains
   end subroutine pairing_array_init
 
   subroutine evaluator_write (eval, unit, &
-       verbose, show_momentum_sum, show_mass, show_state, show_table, testflag)
+       verbose, show_momentum_sum, show_mass, show_state, show_table, &
+       col_verbose, testflag)
     class(evaluator_t), intent(in) :: eval
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: verbose, show_momentum_sum, show_mass
-    logical, intent(in), optional :: show_state, show_table, testflag
+    logical, intent(in), optional :: show_state, show_table, col_verbose
+    logical, intent(in), optional :: testflag
     logical :: conjugate, square, show_tab
     integer :: u, i, j
     u = given_output_unit (unit);  if (u < 0)  return
@@ -223,7 +225,7 @@ contains
     ! write (u, "(1x,A)")  "Evaluator:"     !!! Debugging
     call interaction_write &
          (eval%int, unit, verbose, show_momentum_sum, show_mass, & 
-            show_state, testflag)
+            show_state, col_verbose, testflag)
     if (show_tab) then
        write (u, "(1x,A)")  "Matrix-element multiplication"
        write (u, "(2x,A)", advance="no")  "Input interaction 1:"
@@ -459,28 +461,26 @@ contains
     type(quantum_numbers_t), dimension(:), allocatable :: qn
     type(state_matrix_t) :: state_col
     integer :: index, n_col_state
-    allocate (color_table%index &
-         (state_matrix_get_n_matrix_elements (state)))
+    allocate (color_table%index (state%get_n_matrix_elements ()))
     color_table%index = 0
     allocate (qn (n_tot))
-    call state_matrix_init (state_col)
-    call state_iterator_init (it, state)
-    do while (state_iterator_is_valid (it))
-       index = state_iterator_get_me_index (it)
-       call quantum_numbers_init (qn, col = state_iterator_get_color (it))
-       call state_matrix_add_state (state_col, qn, &
-            me_index = color_table%index(index))
-       call state_iterator_advance (it)
+    call state_col%init ()
+    call it%init (state)
+    do while (it%is_valid ())
+       index = it%get_me_index ()
+       call qn%init (col = it%get_color ())
+       call state_col%add_state (qn, me_index = color_table%index(index))
+       call it%advance ()
     end do
-    n_col_state = state_matrix_get_n_matrix_elements (state_col)
+    n_col_state = state_col%get_n_matrix_elements ()
     allocate (color_table%col (n_tot, n_col_state))
-    call state_iterator_init (it, state_col)
-    do while (state_iterator_is_valid (it))
-       index = state_iterator_get_me_index (it)
-       color_table%col(:,index) = state_iterator_get_color (it)
-       call state_iterator_advance (it)
+    call it%init (state_col)
+    do while (it%is_valid ())
+       index = it%get_me_index ()
+       color_table%col(:,index) = it%get_color ()
+       call it%advance ()
     end do
-    call state_matrix_final (state_col)
+    call state_col%final ()
     allocate (color_table%factor_is_known (n_col_state, n_col_state))
     allocate (color_table%factor (n_col_state, n_col_state))
     color_table%factor_is_known = .false.
@@ -567,16 +567,18 @@ contains
   end function color_table_get_color_factor
 
   subroutine evaluator_init_product_ii &
-       (eval, int_in1, int_in2, qn_mask_conn, qn_mask_rest, &
+       (eval, int_in1, int_in2, qn_mask_conn, qn_filter_conn, qn_mask_rest, &
         connections_are_resonant)
 
     type(evaluator_t), intent(out), target :: eval
     type(interaction_t), intent(in), target :: int_in1, int_in2
     type(quantum_numbers_mask_t), intent(in) :: qn_mask_conn
+    type(quantum_numbers_t), intent(in), optional :: qn_filter_conn
     type(quantum_numbers_mask_t), intent(in), optional :: qn_mask_rest
     logical, intent(in), optional :: connections_are_resonant
 
     type(qn_mask_array_t), dimension(2) :: qn_mask_in
+    type(state_matrix_t), pointer :: state_in1, state_in2
 
     type :: connection_table_t
        integer :: n_conn = 0
@@ -614,12 +616,15 @@ contains
     ! call interaction_write (int_in2)      !!! Debugging      
     ! print *                               !!! Debugging      
 
+    state_in1 => interaction_get_state_matrix_ptr (int_in1)
+    state_in2 => interaction_get_state_matrix_ptr (int_in2)
+
     call find_connections (int_in1, int_in2, n_conn, connection_index)
     if (n_conn == 0) then
        call msg_message ("First interaction:")
-       call interaction_write (int_in1)
+       call interaction_write (int_in1, col_verbose=.true.)
        call msg_message ("Second interaction:")
-       call interaction_write (int_in2)
+       call interaction_write (int_in2, col_verbose=.true.)
        call msg_fatal ("Evaluator product: no connections found between factors")
     end if
     call compute_index_bounds_and_mappings &
@@ -643,19 +648,19 @@ contains
     qn_mask_in(2)%mask = interaction_get_mask (int_in2)
 
     call connection_table_init (connection_table, &
-         interaction_get_state_matrix_ptr (int_in1), &
-         interaction_get_state_matrix_ptr (int_in2), &
+         state_in1, state_in2, &
          qn_mask_conn_initial,  &
-         n_conn, connection_index, n_rest)
+         n_conn, connection_index, n_rest, &
+         qn_filter_conn)
     call connection_table_fill (connection_table, &
-         interaction_get_state_matrix_ptr (int_in1), &
-         interaction_get_state_matrix_ptr (int_in2), &
+         state_in1, state_in2, &
          connection_index, prt_is_connected)
     call make_product_interaction (eval%int, &
          n_in, n_vir, n_out, &
          connection_table, &
          prt_map_in, prt_is_connected, &
-         qn_mask_in, qn_mask_conn_initial, qn_mask_conn, qn_mask_rest)
+         qn_mask_in, qn_mask_conn_initial, &
+         qn_mask_conn, qn_filter_conn, qn_mask_rest)
     ! call connection_table_write (connection_table)    !!! Debugging
     call make_pairing_array (eval%pairing_array, &
          interaction_get_n_matrix_elements (eval%int), &
@@ -671,10 +676,10 @@ contains
     if (interaction_get_n_matrix_elements (eval%int) == 0) then
        print *, "Evaluator product"
        print *, "First interaction"
-       call interaction_write (int_in1)
+       call interaction_write (int_in1, col_verbose=.true.)
        print *
        print *, "Second interaction"
-       call interaction_write (int_in2)
+       call interaction_write (int_in2, col_verbose=.true.)
        print *
        call msg_fatal ("Product of density matrices is empty", &
            [var_str ("   --------------------------------------------"), &
@@ -734,13 +739,15 @@ contains
 
     subroutine connection_table_init &
         (connection_table, state_in1, state_in2, qn_mask_conn, &
-         n_conn, connection_index, n_rest)
+         n_conn, connection_index, n_rest, &
+         qn_filter_conn)
       type(connection_table_t), intent(out) :: connection_table
       type(state_matrix_t), intent(in), target :: state_in1, state_in2
       type(quantum_numbers_mask_t), dimension(:), intent(in) :: qn_mask_conn
       integer, intent(in) :: n_conn
       integer, dimension(:,:), intent(in) :: connection_index
       integer, dimension(2), intent(in) :: n_rest
+      type(quantum_numbers_t), intent(in), optional :: qn_filter_conn
       integer, dimension(2) :: n_me_in
       type(state_iterator_t) :: it
       type(quantum_numbers_t), dimension(n_conn) :: qn
@@ -748,46 +755,50 @@ contains
       integer, dimension(2) :: me_count
       connection_table%n_conn = n_conn
       connection_table%n_rest = n_rest
-      n_me_in(1) = state_matrix_get_n_matrix_elements (state_in1)
-      n_me_in(2) = state_matrix_get_n_matrix_elements (state_in2)
+      n_me_in(1) = state_in1%get_n_matrix_elements ()
+      n_me_in(2) = state_in2%get_n_matrix_elements ()
       allocate (connection_table%index_conn (2))
       call index_map_init (connection_table%index_conn, n_me_in)
       connection_table%index_conn = 0
-      call state_matrix_init (connection_table%state, n_counters=2)
+      call connection_table%state%init (n_counters=2)
       do i = 1, 2
          select case (i)
-         case (1);  call state_iterator_init (it, state_in1)
-         case (2);  call state_iterator_init (it, state_in2)
+         case (1);  call it%init (state_in1)
+         case (2);  call it%init (state_in2)
          end select
-         do while (state_iterator_is_valid (it))
-            qn = state_iterator_get_quantum_numbers (it, connection_index(:,i))
-            call quantum_numbers_undefine (qn, qn_mask_conn)
+         do while (it%is_valid ())
+            qn = it%get_quantum_numbers (connection_index(:,i))
+            call qn%undefine (qn_mask_conn)
+            if (present (qn_filter_conn)) then
+               if (.not. all (qn .match. qn_filter_conn)) then
+                  call it%advance ();  cycle
+               end if
+            end if
             call quantum_numbers_canonicalize_color (qn)
-            me_index_in = state_iterator_get_me_index (it)
-            call state_matrix_add_state (connection_table%state, qn, &
+            me_index_in = it%get_me_index ()
+            call connection_table%state%add_state (qn, &
                 counter_index = i, me_index = me_index_conn)
             call index_map_set_entry (connection_table%index_conn(i), &
                  me_index_in, me_index_conn)
-            call state_iterator_advance (it)
+            call it%advance ()
          end do
       end do
-      n_me_conn = state_matrix_get_n_matrix_elements (connection_table%state)
+      n_me_conn = connection_table%state%get_n_matrix_elements ()
       connection_table%n_me_conn = n_me_conn
       allocate (connection_table%entry (n_me_conn))
-      call state_iterator_init (it, connection_table%state)
-      do while (state_iterator_is_valid (it))
-         i = state_iterator_get_me_index (it)
-         me_count = state_iterator_get_me_count (it)
+      call it%init (connection_table%state)
+      do while (it%is_valid ())
+         i = it%get_me_index ()
+         me_count = it%get_me_count ()
          call connection_entry_init (connection_table%entry(i), 2, 2, &
-              state_iterator_get_quantum_numbers (it), &
-              me_count, n_rest)
-         call state_iterator_advance (it)
+              it%get_quantum_numbers (), me_count, n_rest)
+         call it%advance ()
       end do
     end subroutine connection_table_init
 
     subroutine connection_table_final (connection_table)
       type(connection_table_t), intent(inout) :: connection_table
-      call state_matrix_final (connection_table%state)
+      call connection_table%state%final ()
     end subroutine connection_table_final
    
     subroutine connection_table_write (connection_table, unit)
@@ -797,7 +808,7 @@ contains
       integer :: u
       u = given_output_unit (unit)
       write (u, *) "Connection table:"
-      call state_matrix_write (connection_table%state, unit)
+      call connection_table%state%write (unit)
       if (allocated (connection_table%index_conn)) then
          write (u, *) "  Index mapping input => connection table:"
          do i = 1, size (connection_table%index_conn)
@@ -835,28 +846,26 @@ contains
       integer :: color_offset
       integer :: n_result_entries
       integer :: i, k
-      color_offset = state_matrix_get_max_color_value (connection_table%state)
+      color_offset = connection_table%state%get_max_color_value ()
       do i = 1, 2
          select case (i)
-         case (1);  call state_iterator_init (it, state_in1)
-         case (2);  call state_iterator_init (it, state_in2)
+         case (1);  call it%init (state_in1)
+         case (2);  call it%init (state_in2)
          end select
-         do while (state_iterator_is_valid (it))
-            index_in = state_iterator_get_me_index (it)
+         do while (it%is_valid ())
+            index_in = it%get_me_index ()
             index_conn = index_map_get_entry &
                               (connection_table%index_conn(i), index_in)
             if (index_conn /= 0) then
                call connection_entry_add_state &
                     (connection_table%entry(index_conn), i, &
-                     index_in, &
-                     state_iterator_get_quantum_numbers (it), &
+                     index_in, it%get_quantum_numbers (), &
                      connection_index(:,i), prt_is_connected(i), &
                      color_offset)
             end if
-            call state_iterator_advance (it)
+            call it%advance ()
          end do
-         color_offset = color_offset &
-              + state_matrix_get_max_color_value (state_in1)
+         color_offset = color_offset + state_in1%get_max_color_value ()
       end do
       n_result_entries = 0
       do k = 1, size (connection_table%entry)
@@ -880,8 +889,8 @@ contains
       integer, dimension(:,:), allocatable :: color_map
       entry%count(i) = entry%count(i) + 1
       c = entry%count(i)
-      call quantum_numbers_set_color_map &
-           (color_map, qn_in(connection_index), entry%qn_conn)
+      call make_color_map (color_map, &
+           qn_in(connection_index), entry%qn_conn)
       call index_map_set_entry (entry%index_in(i), c, index_in)
       entry%qn_in_list(i)%qn(:,c) = pack (qn_in, prt_is_connected%entry)
       call quantum_numbers_translate_color &
@@ -892,7 +901,8 @@ contains
          n_in, n_vir, n_out, &
          connection_table, &
          prt_map_in, prt_is_connected, &
-         qn_mask_in, qn_mask_conn_initial, qn_mask_conn, qn_mask_rest)
+         qn_mask_in, qn_mask_conn_initial, &
+         qn_mask_conn, qn_filter_conn, qn_mask_rest)
       type(interaction_t), intent(out), target :: int
       integer, intent(in) :: n_in, n_vir, n_out
       type(connection_table_t), intent(inout), target :: connection_table
@@ -902,6 +912,7 @@ contains
       type(quantum_numbers_mask_t), dimension(:), intent(in) :: &
            qn_mask_conn_initial
       type(quantum_numbers_mask_t), intent(in) :: qn_mask_conn
+      type(quantum_numbers_t), intent(in), optional :: qn_filter_conn
       type(quantum_numbers_mask_t), intent(in), optional :: qn_mask_rest
       type(index_map_t), dimension(2) :: prt_index_in
       type(index_map_t) :: prt_index_conn
@@ -940,6 +951,10 @@ contains
          entry => connection_table%entry(i)
          qn(prt_index_conn%entry) = &
               quantum_numbers_undefined (entry%qn_conn, qn_mask_conn)
+         if (present (qn_filter_conn)) then
+            if (.not. all (qn(prt_index_conn%entry) .match. qn_filter_conn)) &
+                 cycle
+         end if
          do j = 1, entry%n_index(1)
             qn(prt_index_in(1)%entry) = entry%qn_in_list(1)%qn(:,j)
             do k = 1, entry%n_index(2)
@@ -1037,43 +1052,49 @@ contains
   end subroutine evaluator_init_product_ii
 
   subroutine evaluator_init_product_ie &
-       (eval, int_in1, eval_in2, qn_mask_conn, qn_mask_rest, &
+       (eval, int_in1, eval_in2, qn_mask_conn, qn_filter_conn, qn_mask_rest, &
         connections_are_resonant)
     type(evaluator_t), intent(out), target :: eval
     type(interaction_t), intent(in), target :: int_in1
     type(evaluator_t), intent(in), target :: eval_in2
     type(quantum_numbers_mask_t), intent(in) :: qn_mask_conn
+    type(quantum_numbers_t), intent(in), optional :: qn_filter_conn
     type(quantum_numbers_mask_t), intent(in), optional :: qn_mask_rest
     logical, intent(in), optional :: connections_are_resonant
     call evaluator_init_product_ii &
-         (eval, int_in1, eval_in2%int, qn_mask_conn, qn_mask_rest, &
+         (eval, int_in1, eval_in2%int, &
+          qn_mask_conn, qn_filter_conn, qn_mask_rest, &
           connections_are_resonant)
   end subroutine evaluator_init_product_ie
 
   subroutine evaluator_init_product_ei &
-       (eval, eval_in1, int_in2, qn_mask_conn, qn_mask_rest, &
+       (eval, eval_in1, int_in2, qn_mask_conn, qn_filter_conn, qn_mask_rest, &
         connections_are_resonant)
     type(evaluator_t), intent(out), target :: eval
     type(evaluator_t), intent(in), target :: eval_in1
     type(interaction_t), intent(in), target :: int_in2
     type(quantum_numbers_mask_t), intent(in) :: qn_mask_conn
+    type(quantum_numbers_t), intent(in), optional :: qn_filter_conn
     type(quantum_numbers_mask_t), intent(in), optional :: qn_mask_rest
     logical, intent(in), optional :: connections_are_resonant
     call evaluator_init_product_ii &
-         (eval, eval_in1%int, int_in2, qn_mask_conn, qn_mask_rest, &
+         (eval, eval_in1%int, int_in2, &
+          qn_mask_conn, qn_filter_conn, qn_mask_rest, &
          connections_are_resonant)
   end subroutine evaluator_init_product_ei
 
   subroutine evaluator_init_product_ee &
-       (eval, eval_in1, eval_in2, qn_mask_conn, qn_mask_rest, &
+       (eval, eval_in1, eval_in2, qn_mask_conn, qn_filter_conn, qn_mask_rest, &
         connections_are_resonant)
     type(evaluator_t), intent(out), target :: eval
     type(evaluator_t), intent(in), target :: eval_in1, eval_in2
     type(quantum_numbers_mask_t), intent(in) :: qn_mask_conn
+    type(quantum_numbers_t), intent(in), optional :: qn_filter_conn
     type(quantum_numbers_mask_t), intent(in), optional :: qn_mask_rest
     logical, intent(in), optional :: connections_are_resonant
     call evaluator_init_product_ii &
-         (eval, eval_in1%int, eval_in2%int, qn_mask_conn, qn_mask_rest, &
+         (eval, eval_in1%int, eval_in2%int, &
+          qn_mask_conn, qn_filter_conn, qn_mask_rest, &
           connections_are_resonant)
   end subroutine evaluator_init_product_ee
 
@@ -1087,7 +1108,7 @@ contains
     integer, dimension(:), intent(in), optional :: col_index_hi
     logical, intent(in), optional :: expand_color_flows
     integer, intent(in), optional :: nc
-    if (all (quantum_numbers_mask_diagonal_helicity (qn_mask))) then
+    if (all (qn_mask%diagonal_helicity ())) then
        call evaluator_init_square_diag (eval, int_in, qn_mask, &
             col_flow_index, col_factor, col_index_hi, expand_color_flows, nc)
     else
@@ -1096,7 +1117,7 @@ contains
     end if
   end subroutine evaluator_init_square
 
-  subroutine evaluator_init_square_diag (eval, int_in, qn_mask, &
+  subroutine evaluator_init_square_diag (eval, int_in, qn_mask, & 
        col_flow_index, col_factor, col_index_hi, expand_color_flows, nc)
 
     type(evaluator_t), intent(out), target :: eval
@@ -1110,6 +1131,7 @@ contains
 
     integer :: n_in, n_vir, n_out, n_tot
     type(quantum_numbers_mask_t), dimension(:), allocatable :: qn_mask_initial
+    type(state_matrix_t), pointer :: state_in
 
     type :: connection_table_t
       integer :: n_tot = 0
@@ -1146,13 +1168,13 @@ contains
     n_out = interaction_get_n_out (int_in)
     n_tot = interaction_get_n_tot (int_in)
 
+    state_in => interaction_get_state_matrix_ptr (int_in)
+
     allocate (qn_mask_initial (n_tot))
     qn_mask_initial = interaction_get_mask (int_in)
-    call quantum_numbers_mask_set_color &
-         (qn_mask_initial, sum_colors, mask_cg=.false.)
+    call qn_mask_initial%set_color (sum_colors, mask_cg=.false.)
     if (sum_colors) then
-       call color_table_init &
-            (color_table, interaction_get_state_matrix_ptr (int_in), n_tot)
+       call color_table_init (color_table, state_in, n_tot)
        if (present (col_flow_index) .and. present (col_factor) &
            .and. present (col_index_hi)) then
           call color_table_set_color_factors &
@@ -1161,11 +1183,9 @@ contains
        ! call color_table_write (color_table)     !!! Debugging
     end if
 
-    call connection_table_init (connection_table, &
-         interaction_get_state_matrix_ptr (int_in), &
+    call connection_table_init (connection_table, state_in, &
          qn_mask_initial, qn_mask, n_tot)
-    call connection_table_fill (connection_table, &
-         interaction_get_state_matrix_ptr (int_in))
+    call connection_table_fill (connection_table, state_in)
     call make_squared_interaction (eval%int, &
          n_in, n_vir, n_out, n_tot, &
          connection_table, sum_colors, qn_mask_initial .or. qn_mask)
@@ -1191,40 +1211,44 @@ contains
       integer :: i, n_me_in, me_index_in
       integer :: me_index_conn, n_me_conn
       integer, dimension(1) :: me_count
+      logical :: qn_passed
       connection_table%n_tot = n_tot
-      n_me_in = state_matrix_get_n_matrix_elements (state_in)
+      n_me_in = state_in%get_n_matrix_elements ()
       call index_map_init (connection_table%index_conn, n_me_in)
       connection_table%index_conn = 0
-      call state_matrix_init (connection_table%state, n_counters=1)
-      call state_iterator_init (it, state_in)
-      do while (state_iterator_is_valid (it))
-         qn = state_iterator_get_quantum_numbers (it)
+      call connection_table%state%init (n_counters=1)
+      call it%init (state_in)
+      do while (it%is_valid ())
+         qn = it%get_quantum_numbers ()
          if (all (quantum_numbers_are_physical (qn, qn_mask))) then
-            call quantum_numbers_undefine (qn, qn_mask_in)
-            me_index_in = state_iterator_get_me_index (it)
-            call state_matrix_add_state (connection_table%state, qn, &
-                 counter_index = 1, me_index = me_index_conn)
-            call index_map_set_entry (connection_table%index_conn, &
-                 me_index_in, me_index_conn)
+            call qn%undefine (qn_mask_in)
+            qn_passed = .true.
+            if (qn_passed) then
+               me_index_in = it%get_me_index ()
+               call connection_table%state%add_state (qn, &
+                    counter_index = 1, me_index = me_index_conn)
+               call index_map_set_entry (connection_table%index_conn, &
+                    me_index_in, me_index_conn)
+            end if
          end if
-         call state_iterator_advance (it)
+         call it%advance ()
       end do
-      n_me_conn = state_matrix_get_n_matrix_elements (connection_table%state)
+      n_me_conn = connection_table%state%get_n_matrix_elements ()
       connection_table%n_me_conn = n_me_conn
       allocate (connection_table%entry (n_me_conn))
-      call state_iterator_init (it, connection_table%state)
-      do while (state_iterator_is_valid (it))
-         i = state_iterator_get_me_index (it)
-         me_count = state_iterator_get_me_count (it)
+      call it%init (connection_table%state)
+      do while (it%is_valid ())
+         i = it%get_me_index ()
+         me_count = it%get_me_count ()
          call connection_entry_init (connection_table%entry(i), 1, 2, &
-              state_iterator_get_quantum_numbers (it), me_count, [n_tot])
-         call state_iterator_advance (it)
+              it%get_quantum_numbers (), me_count, [n_tot])
+         call it%advance ()
       end do
     end subroutine connection_table_init
          
     subroutine connection_table_final (connection_table)
       type(connection_table_t), intent(inout) :: connection_table
-      call state_matrix_final (connection_table%state)
+      call connection_table%state%final ()
     end subroutine connection_table_final
 
     subroutine connection_table_write (connection_table, unit)
@@ -1234,7 +1258,7 @@ contains
       integer :: u
       u = given_output_unit (unit)
       write (u, *) "Connection table:"
-      call state_matrix_write (connection_table%state, unit)
+      call connection_table%state%write (unit)
       if (index_map_exists (connection_table%index_conn)) then
          write (u, *) "  Index mapping input => connection table:"
          do i = 1, size (connection_table%index_conn)
@@ -1263,18 +1287,17 @@ contains
       integer :: index_in, index_conn, n_result_entries
       type(state_iterator_t) :: it
       integer :: k
-      call state_iterator_init (it, state)
-      do while (state_iterator_is_valid (it))
-         index_in = state_iterator_get_me_index (it)
+      call it%init (state)
+      do while (it%is_valid ())
+         index_in = it%get_me_index ()
          index_conn = &
               index_map_get_entry (connection_table%index_conn, index_in)
          if (index_conn /= 0) then
             call connection_entry_add_state &
                  (connection_table%entry(index_conn), &
-                  index_in, &
-                  state_iterator_get_quantum_numbers (it))
+                  index_in, it%get_quantum_numbers ())
          end if
-         call state_iterator_advance (it)
+         call it%advance ()
       end do
       n_result_entries = 0
       do k = 1, size (connection_table%entry)
@@ -1313,7 +1336,7 @@ contains
       do i = 1, connection_table%n_me_conn
          entry => connection_table%entry(i)
          qn = quantum_numbers_undefined (entry%qn_conn, qn_mask)
-         if (.not. sum_colors)   call quantum_numbers_invert_color (qn(1:n_in))
+         if (.not. sum_colors)   call qn(1:n_in)%invert_color ()
          call interaction_add_state (int, qn, me_index = result_index)
          n_contrib = entry%n_index(1) ** 2
          connection_table%index_result%entry(m+1:m+n_contrib) = result_index
@@ -1392,8 +1415,8 @@ contains
 
   end subroutine evaluator_init_square_diag
 
-  subroutine evaluator_init_square_nondiag (eval, int_in, qn_mask, &
-      col_flow_index, col_factor, col_index_hi, expand_color_flows, nc)
+  subroutine evaluator_init_square_nondiag (eval, int_in, qn_mask, & 
+       col_flow_index, col_factor, col_index_hi, expand_color_flows, nc)
 
     type(evaluator_t), intent(out), target :: eval
     type(interaction_t), intent(in), target :: int_in
@@ -1406,6 +1429,7 @@ contains
 
     integer :: n_in, n_vir, n_out, n_tot
     type(quantum_numbers_mask_t), dimension(:), allocatable :: qn_mask_initial
+    type(state_matrix_t), pointer :: state_in
 
     type :: connection_table_t
       integer :: n_tot = 0
@@ -1441,13 +1465,13 @@ contains
     n_out = interaction_get_n_out (int_in)
     n_tot = interaction_get_n_tot (int_in)
 
+    state_in => interaction_get_state_matrix_ptr (int_in)
+
     allocate (qn_mask_initial (n_tot))
     qn_mask_initial = interaction_get_mask (int_in)
-    call quantum_numbers_mask_set_color &
-         (qn_mask_initial, sum_colors, mask_cg=.false.)
+    call qn_mask_initial%set_color (sum_colors, mask_cg=.false.)
     if (sum_colors) then
-       call color_table_init &
-            (color_table, interaction_get_state_matrix_ptr (int_in), n_tot)
+       call color_table_init (color_table, state_in, n_tot)
        if (present (col_flow_index) .and. present (col_factor) &
            .and. present (col_index_hi)) then
           call color_table_set_color_factors &
@@ -1456,11 +1480,9 @@ contains
        ! call color_table_write (color_table)    !!! Debugging
     end if
 
-    call connection_table_init (connection_table, &
-         interaction_get_state_matrix_ptr (int_in), &
+    call connection_table_init (connection_table, state_in, &
          qn_mask_initial, qn_mask, n_tot)
-    call connection_table_fill (connection_table, &
-         interaction_get_state_matrix_ptr (int_in))
+    call connection_table_fill (connection_table, state_in)
     call make_squared_interaction (eval%int, &
          n_in, n_vir, n_out, n_tot, &
          connection_table, sum_colors, qn_mask_initial .or. qn_mask)
@@ -1488,47 +1510,51 @@ contains
       integer :: i, n_me_in, me_index_in1, me_index_in2
       integer :: me_index_conn, n_me_conn
       integer, dimension(1) :: me_count
+      logical :: qn_passed
       connection_table%n_tot = n_tot
-      n_me_in = state_matrix_get_n_matrix_elements (state_in)
+      n_me_in = state_in%get_n_matrix_elements ()
       call index_map2_init (connection_table%index_conn, n_me_in)
       connection_table%index_conn = 0
-      call state_matrix_init (connection_table%state, n_counters=1)
-      call state_iterator_init (it1, state_in)
-      do while (state_iterator_is_valid (it1))
-         qn1 = state_iterator_get_quantum_numbers (it1)
-         me_index_in1 = state_iterator_get_me_index (it1)
-         call state_iterator_init (it2, state_in)
-         do while (state_iterator_is_valid (it2))
-            qn2 = state_iterator_get_quantum_numbers (it2)
+      call connection_table%state%init (n_counters=1)
+      call it1%init (state_in)
+      do while (it1%is_valid ())
+         qn1 = it1%get_quantum_numbers ()
+         me_index_in1 = it1%get_me_index ()
+         call it2%init (state_in)
+         do while (it2%is_valid ())
+            qn2 = it2%get_quantum_numbers ()
             if (all (quantum_numbers_are_compatible (qn1, qn2, qn_mask))) then
                qn = qn1 .merge. qn2
-               call quantum_numbers_undefine (qn, qn_mask_in)
-               me_index_in2 = state_iterator_get_me_index (it2)
-               call state_matrix_add_state (connection_table%state, qn, &
-                    counter_index = 1, me_index = me_index_conn)
-               call index_map2_set_entry (connection_table%index_conn, &
-                    me_index_in1, me_index_in2, me_index_conn)
+               call qn%undefine (qn_mask_in)
+               qn_passed = .true.
+               if (qn_passed) then
+                  me_index_in2 = it2%get_me_index ()
+                  call connection_table%state%add_state (qn, &
+                       counter_index = 1, me_index = me_index_conn)
+                  call index_map2_set_entry (connection_table%index_conn, &
+                       me_index_in1, me_index_in2, me_index_conn)
+               end if
             end if
-            call state_iterator_advance (it2)
+            call it2%advance ()
          end do
-         call state_iterator_advance (it1)
+         call it1%advance ()
       end do
-      n_me_conn = state_matrix_get_n_matrix_elements (connection_table%state)
+      n_me_conn = connection_table%state%get_n_matrix_elements ()
       connection_table%n_me_conn = n_me_conn
       allocate (connection_table%entry (n_me_conn))
-      call state_iterator_init (it, connection_table%state)
-      do while (state_iterator_is_valid (it))
-         i = state_iterator_get_me_index (it)
-         me_count = state_iterator_get_me_count (it)
+      call it%init (connection_table%state)
+      do while (it%is_valid ())
+         i = it%get_me_index ()
+         me_count = it%get_me_count ()
          call connection_entry_init (connection_table%entry(i), 1, 2, &
-              state_iterator_get_quantum_numbers (it), me_count, [n_tot])
-         call state_iterator_advance (it)
+              it%get_quantum_numbers (), me_count, [n_tot])
+         call it%advance ()
       end do
     end subroutine connection_table_init
          
     subroutine connection_table_final (connection_table)
       type(connection_table_t), intent(inout) :: connection_table
-      call state_matrix_final (connection_table%state)
+      call connection_table%state%final ()
     end subroutine connection_table_final
 
     subroutine connection_table_write (connection_table, unit)
@@ -1538,7 +1564,7 @@ contains
       integer :: u
       u = given_output_unit (unit)
       write (u, *) "Connection table:"
-      call state_matrix_write (connection_table%state, unit)
+      call connection_table%state%write (unit)
       if (index_map2_exists (connection_table%index_conn)) then
          write (u, *) "  Index mapping input => connection table:"
          do i = 1, size (connection_table%index_conn)
@@ -1569,25 +1595,25 @@ contains
       integer :: index1_in, index2_in, index_conn, n_result_entries
       type(state_iterator_t) :: it1, it2
       integer :: k
-      call state_iterator_init (it1, state)
-      do while (state_iterator_is_valid (it1))
-         index1_in = state_iterator_get_me_index (it1)
-         call state_iterator_init (it2, state)
-         do while (state_iterator_is_valid (it2))
-            index2_in = state_iterator_get_me_index (it2)
+      call it1%init (state)
+      do while (it1%is_valid ())
+         index1_in = it1%get_me_index ()
+         call it2%init (state)
+         do while (it2%is_valid ())
+            index2_in = it2%get_me_index ()
             index_conn = index_map2_get_entry &
                             (connection_table%index_conn, index1_in, index2_in)
             if (index_conn /= 0) then
                call connection_entry_add_state &
                     (connection_table%entry(index_conn), &
                      index1_in, index2_in, &
-                     state_iterator_get_quantum_numbers (it1) &
+                     it1%get_quantum_numbers () &
                      .merge. &
-                     state_iterator_get_quantum_numbers (it2))
+                     it2%get_quantum_numbers ())
             end if
-            call state_iterator_advance (it2)
+            call it2%advance ()
          end do
-         call state_iterator_advance (it1)
+         call it1%advance ()
       end do
       n_result_entries = 0
       do k = 1, size (connection_table%entry)
@@ -1629,8 +1655,7 @@ contains
          do k = 1, size (entry%qn_in_list(1)%qn, 2)
             qn = quantum_numbers_undefined &
                     (entry%qn_in_list(1)%qn(:,k), qn_mask)
-            if (.not. sum_colors) &
-                    call quantum_numbers_invert_color (qn(1:n_in))
+            if (.not. sum_colors)  call qn(1:n_in)%invert_color ()
             call interaction_add_state (int, qn, me_index = result_index)
             call index_map_set_entry (connection_table%index_result, m + 1, &
                  result_index)
@@ -1722,14 +1747,14 @@ contains
     n_out = interaction_get_n_out (int_in)
     n_tot = interaction_get_n_tot (int_in)
     state_with_contractions = interaction_get_state_matrix_ptr (int_in)
-    call state_matrix_add_color_contractions (state_with_contractions)
+    call state_with_contractions%add_color_contractions ()
     call make_contracted_interaction (eval%int, &
          me_index, result_index, &
          n_in, n_vir, n_out, n_tot, &
          state_with_contractions, interaction_get_mask (int_in))
     call make_pairing_array (eval%pairing_array, me_index, result_index)
     call record_links (eval%int, int_in, n_tot)
-    call state_matrix_final (state_with_contractions)
+    call state_with_contractions%final ()
     ! print *, "Result evaluator:"     !!! Debugging
     ! call evaluator_write (eval)      !!! Debugging
 
@@ -1748,17 +1773,17 @@ contains
       integer :: n_me, i
       type(quantum_numbers_t), dimension(n_tot) :: qn
       call interaction_init (int, n_in, n_vir, n_out, mask=qn_mask)
-      n_me = state_matrix_get_n_leaves (state)
+      n_me = state%get_n_leaves ()
       allocate (me_index (n_me))
       allocate (result_index (n_me))
-      call state_iterator_init (it, state)
+      call it%init (state)
       i = 0
-      do while (state_iterator_is_valid (it))
+      do while (it%is_valid ())
          i = i + 1
-         me_index(i) = state_iterator_get_me_index (it)
-         qn = state_iterator_get_quantum_numbers (it)
+         me_index(i) = it%get_me_index ()
+         qn = it%get_quantum_numbers ()
          call interaction_add_state (int, qn, me_index = result_index(i))
-         call state_iterator_advance (it)
+         call it%advance ()
       end do
       call interaction_freeze (int)
     end subroutine make_contracted_interaction
@@ -1965,7 +1990,7 @@ contains
     call interaction_get_unstable_particle (eval%int, flv, p, i)
   end subroutine evaluator_get_unstable_particle
 
-  elemental subroutine evaluator_final (eval)
+  subroutine evaluator_final (eval)
     type(evaluator_t), intent(inout) :: eval
     call interaction_final (eval%int)
   end subroutine evaluator_final
@@ -1996,12 +2021,11 @@ contains
     map = [(i, i = 1, n_tot)]
     call interaction_transfer_relations (int, eval%int, map)
     state => interaction_get_state_matrix_ptr (int)
-    call state_iterator_init (it, state)
-    do while (state_iterator_is_valid (it))
+    call it%init (state)
+    do while (it%is_valid ())
        call interaction_add_state (eval%int, &
-          state_iterator_get_quantum_numbers (it), &
-          state_iterator_get_me_index (it))
-       call state_iterator_advance (it)
+          it%get_quantum_numbers (), it%get_me_index ())
+       call it%advance ()
     end do
     call interaction_freeze (eval%int)
 
@@ -2087,26 +2111,26 @@ contains
     pairing_sizes = 0
     state_old => interaction_get_state_matrix_ptr (int)
     state_new => interaction_get_state_matrix_ptr (eval%int)
-    call state_iterator_init (it_old, state_old)
+    call it_old%init (state_old)
     allocate (qn(n_tot + ndropped))
-    do while (state_iterator_is_valid (it_old))
-       qn = state_iterator_get_quantum_numbers (it_old)
-       if (.not. all (quantum_numbers_are_diagonal (qn))) then
-          call state_iterator_advance (it_old)
+    do while (it_old%is_valid ())
+       qn = it_old%get_quantum_numbers ()
+       if (.not. all (qn%are_diagonal ())) then
+          call it_old%advance ()
           cycle
        end if
        matched = .false.
-       call state_iterator_init (it_new, state_new)
+       call it_new%init (state_new)
        if (interaction_get_n_matrix_elements (eval%int) > 0) then
-          do while (state_iterator_is_valid (it_new))
+          do while (it_new%is_valid ())
              if (all (qn(inotdropped) .match. &
-                state_iterator_get_quantum_numbers (it_new))) &
+                it_new%get_quantum_numbers ())) &
              then
                 matched = .true.
-                i = state_iterator_get_me_index (it_new)
+                i = it_new%get_me_index ()
                 exit
              end if
-             call state_iterator_advance (it_new)
+             call it_new%advance ()
           end do
        end if
        if (.not. matched) then
@@ -2114,11 +2138,10 @@ contains
           i = interaction_get_n_matrix_elements (eval%int)
        end if
        pairing_sizes(i) = pairing_sizes(i) + 1
-       pairing_proto(pairing_sizes(i), i) = &
-          state_iterator_get_me_index (it_old)
+       pairing_proto(pairing_sizes(i), i) = it_old%get_me_index ()
        ! print *, &                         !!! Debugging
-       !     i, pairing_sizes(i), state_iterator_get_me_index (it_old)
-       call state_iterator_advance (it_old)
+       !     i, pairing_sizes(i), it_old%get_me_index ()
+       call it_old%advance ()
     end do
     call interaction_freeze (eval%int)
 
@@ -2194,6 +2217,9 @@ contains
     call test (evaluator_3, "evaluator_3", &
          "check evaluators (3)", &
          u, results)
+    call test (evaluator_4, "evaluator_4", &
+         "check evaluator product with filter", &
+         u, results)
   end subroutine evaluator_test
 
 
@@ -2223,17 +2249,17 @@ contains
     do c = 1, 2
        select case (c)
        case (1)
-          call color_init_col_acl (col, [1, 0, 1, 0], [0, 2, 0, 2])
+          call col%init_col_acl ([1, 0, 1, 0], [0, 2, 0, 2])
        case (2)
-          call color_init_col_acl (col, [1, 0, 2, 0], [0, 1, 0, 2])
+          call col%init_col_acl ([1, 0, 2, 0], [0, 1, 0, 2])
        end select
        do f = 1, 2
-          call flavor_init (flv, [f, -f, 6, -6], model)
+          call flv%init ([f, -f, 6, -6], model)
           do h1 = -1, 1, 2
-             call helicity_init (hel(3), h1)
+             call hel(3)%init (h1)
              do h2 = -1, 1, 2
-                call helicity_init (hel(4), h2)
-                call quantum_numbers_init (qn, flv, col, hel)
+                call hel(4)%init (h2)
+                call qn%init (flv, col, hel)
                 call interaction_add_state (int_qqtt, qn)
              end do
           end do
@@ -2244,15 +2270,15 @@ contains
     write (u, "(A)")  "***   Construct interaction for t -> bW"
     call interaction_init (int_tbw, 1, 0, 2, set_relations=.true.)
     allocate (flv (3), col (3), hel (3), qn (3))
-    call flavor_init (flv, [6, 5, 24], model)
-    call color_init_col_acl (col, [1, 1, 0], [0, 0, 0])
+    call flv%init ([6, 5, 24], model)
+    call col%init_col_acl ([1, 1, 0], [0, 0, 0])
     do h1 = -1, 1, 2
-       call helicity_init (hel(1), h1)
+       call hel(1)%init (h1)
        do h2 = -1, 1, 2
-          call helicity_init (hel(2), h2)
+          call hel(2)%init (h2)
           do h3 = -1, 1
-             call helicity_init (hel(3), h3)
-             call quantum_numbers_init (qn, flv, col, hel)
+             call hel(3)%init (h3)
+             call qn%init (flv, col, hel)
              call interaction_add_state (int_tbw, qn)
           end do
        end do
@@ -2261,7 +2287,7 @@ contains
     deallocate (flv, col, hel, qn)
     write (u, "(A)")  "***   Link interactions"
     call interaction_set_source_link (int_tbw, 1, int_qqtt, 3)
-    qn_mask_conn = new_quantum_numbers_mask (.false.,.false.,.true.)
+    qn_mask_conn = quantum_numbers_mask (.false.,.false.,.true.)
     write (u, "(A)")
     write (u, "(A)")  "***   Show input"
     call interaction_write (int_qqtt, unit = u)
@@ -2305,26 +2331,26 @@ contains
      write (u, "(A)")   "*** Evaluator for matrix square"
      allocate (flv(4), col(4), qn(4))
      call interaction_init (int1, 2, 0, 2, set_relations=.true.)
-     call flavor_init (flv, [1, -1, 21, 21], model)
-     call color_init (col(1), [1])
-     call color_init (col(2), [-2])
-     call color_init (col(3), [2, -3])
-     call color_init (col(4), [3, -1])
-     call quantum_numbers_init (qn, flv, col)
+     call flv%init ([1, -1, 21, 21], model)
+     call col(1)%init ([1])
+     call col(2)%init ([-2])
+     call col(3)%init ([2, -3])
+     call col(4)%init ([3, -1])
+     call qn%init (flv, col)
      call interaction_add_state (int1, qn)
-     call color_init (col(3), [3, -1])
-     call color_init (col(4), [2, -3])
-     call quantum_numbers_init (qn, flv, col)
+     call col(3)%init ([3, -1])
+     call col(4)%init ([2, -3])
+     call qn%init (flv, col)
      call interaction_add_state (int1, qn)
-     call color_init (col(3), [2, -1])
-     call color_init (col(4), .true.)
-     call quantum_numbers_init (qn, flv, col)
+     call col(3)%init ([2, -1])
+     call col(4)%init (.true.)
+     call qn%init (flv, col)
      call interaction_add_state (int1, qn)
      call interaction_freeze (int1)
      ! [qn_mask2 not set since default is false]
      call evaluator_init_square (eval, int1, qn_mask2, nc=3)
      call evaluator_init_square_nondiag (eval2, int1, qn_mask2)
-     qn_mask2 = new_quantum_numbers_mask (.false., .true., .true.)
+     qn_mask2 = quantum_numbers_mask (.false., .true., .true.)
      call evaluator_init_square_diag (eval3, eval%int, qn_mask2)
      call interaction_set_matrix_element &
           (int1, [(2._default,0._default), &
@@ -2369,20 +2395,20 @@ contains
     write (u, "(A)") "*** Creating interaction for e+ e- -> W+ W-"
     write (u, "(A)") 
     
-    call flavor_init (flv, [11, -11, 24, -24], model)
+    call flv%init ([11, -11, 24, -24], model)
     do i = 1, 4
-       call color_init (col (i))
+       call col(i)%init ()
     end do
     call interaction_init (int, 2, 0, 2, set_relations=.true.)
     do h1 = -1, 1, 2
-       call helicity_init (hel(1), h1)
+       call hel(1)%init (h1)
        do h2 = -1, 1, 2
-          call helicity_init (hel(2), h2)
+          call hel(2)%init (h2)
           do h3 = -1, 1
-             call helicity_init (hel(3), h3)
+             call hel(3)%init (h3)
              do h4 = -1, 1
-                call helicity_init (hel(4), h4)
-                call quantum_numbers_init (qn, flv, col, hel)
+                call hel(4)%init (h4)
+                call qn%init (flv, col, hel)
                 call interaction_add_state (int, qn)
              end do
           end do
@@ -2440,23 +2466,23 @@ contains
     call model%init_sm_test ()
             
     write (u, "(A)")  "*** Creating interaction for e+/mu+ e-/mu- -> W+ W-"
-    call flavor_init (flv1, [11, -11, 24, -24], model)
-    call flavor_init (flv2, [13, -13, 24, -24], model)
+    call flv1%init ([11, -11, 24, -24], model)
+    call flv2%init ([13, -13, 24, -24], model)
     do i = 1, 4
-       call color_init (col (i))
+       call col (i)%init ()
     end do
     call interaction_init (int, 2, 0, 2, set_relations=.true.)
     do h1 = -1, 1, 2
-       call helicity_init (hel(1), h1)
+       call hel(1)%init (h1)
        do h2 = -1, 1, 2
-          call helicity_init (hel(2), h2)
+          call hel(2)%init (h2)
           do h3 = -1, 1
-             call helicity_init (hel(3), h3)
+             call hel(3)%init (h3)
              do h4 = -1, 1
-                call helicity_init (hel(4), h4)
-                call quantum_numbers_init (qn, flv1, col, hel)
+                call hel(4)%init (h4)
+                call qn%init (flv1, col, hel)
                 call interaction_add_state (int, qn)
-                call quantum_numbers_init (qn, flv2, col, hel)
+                call qn%init (flv2, col, hel)
                 call interaction_add_state (int, qn)
              end do
           end do
@@ -2472,11 +2498,11 @@ contains
     p(4) = p(1) + p(2) - p(3)
     call interaction_set_momenta (int, p)
     write (u, "(A)")  "*** Setting up evaluators"
-    call quantum_numbers_mask_init (qn_mask, .false., .true., .true.)
+    call qn_mask%init (.false., .true., .true.)
     call evaluator_init_qn_sum (eval1, int, qn_mask)
-    call quantum_numbers_mask_init (qn_mask, .true., .true., .true.)
+    call qn_mask%init (.true., .true., .true.)
     call evaluator_init_qn_sum (eval2, int, qn_mask)
-    call quantum_numbers_mask_init (qn_mask, .false., .true., .false.)
+    call qn_mask%init (.false., .true., .false.)
     call evaluator_init_qn_sum (eval3, int, qn_mask, &
       [.false., .false., .false., .true.])
     write (u, "(A)")  "*** Transferring momenta and evaluating"
@@ -2515,6 +2541,141 @@ contains
     
     call model%final ()
   end subroutine evaluator_3
+
+  subroutine evaluator_4 (u)   
+    integer, intent(in) :: u
+    type(model_data_t), target :: model
+    type(interaction_t), target :: int1, int2
+    integer :: h1, h2, h3
+    type(helicity_t), dimension(3) :: hel
+    type(color_t), dimension(3) :: col
+    type(flavor_t), dimension(2) :: flv1, flv2
+    type(flavor_t), dimension(3) :: flv3, flv4
+    type(quantum_numbers_t), dimension(3) :: qn
+    type(evaluator_t) :: eval1, eval2, eval3, eval4
+    type(quantum_numbers_mask_t) :: qn_mask
+    type(flavor_t) :: flv_filter
+    type(helicity_t) :: hel_filter
+    type(color_t) :: col_filter
+    type(quantum_numbers_t) :: qn_filter
+    integer :: i
+    
+    write (u, "(A)")  "* Test output: evaluator_4"
+    write (u, "(A)")  "*   Purpose: test evaluator products &
+         &with mask and filter"
+    write (u, "(A)")
+
+    call model%init_sm_test ()
+            
+    write (u, "(A)")  "* Creating interaction for e- -> W+/Z"
+    write (u, "(A)")
+    
+    call flv1%init ([11, 24], model)
+    call flv2%init ([11, 23], model)
+    do i = 1, 3
+       call col(i)%init ()
+    end do
+    call interaction_init (int1, 1, 0, 1, set_relations=.true.)
+    do h1 = -1, 1, 2
+       call hel(1)%init (h1)
+       do h2 = -1, 1
+          call hel(2)%init (h2)
+          call qn(:2)%init (flv1, col(:2), hel(:2))
+          call interaction_add_state (int1, qn(:2))
+          call qn(:2)%init (flv2, col(:2), hel(:2))
+          call interaction_add_state (int1, qn(:2))
+       end do
+    end do
+    call interaction_freeze (int1)
+    call interaction_write (int1, u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Creating interaction for W+/Z -> u ubar/dbar"
+    write (u, "(A)")
+
+    call flv3%init ([24, 2, -1], model)
+    call flv4%init ([23, 2, -2], model)
+
+    call interaction_init (int2, 1, 0, 2, set_relations=.true.)
+    do h1 = -1, 1
+       call hel(1)%init (h1)
+       do h2 = -1, 1, 2
+          call hel(2)%init (h2)
+          do h3 = -1, 1, 2
+             call hel(3)%init (h3)
+             call qn(:3)%init (flv3, col(:3), hel(:3))
+             call interaction_add_state (int2, qn(:3))
+             call qn(:3)%init (flv4, col(:3), hel(:3))
+             call interaction_add_state (int2, qn(:3))
+          end do
+       end do
+    end do
+    call interaction_freeze (int2)
+
+    call interaction_set_source_link (int2, 1, int1, 2)
+    call interaction_write (int2, u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Product evaluator"
+    write (u, "(A)")
+
+    call qn_mask%init (.false., .false., .false.)
+    call evaluator_init_product (eval1, int1, int2, &
+         qn_mask_conn = qn_mask)
+    call evaluator_write (eval1, u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Product evaluator with helicity mask"
+    write (u, "(A)")
+
+    call qn_mask%init (.false., .false., .true.)
+    call evaluator_init_product (eval2, int1, int2, &
+         qn_mask_conn = qn_mask)
+    call evaluator_write (eval2, u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Product with flavor filter and helicity mask"
+    write (u, "(A)")
+
+    call qn_mask%init (.false., .false., .true.)
+    call flv_filter%init (24, model)
+    call hel_filter%init ()
+    call col_filter%init ()
+    call qn_filter%init (flv_filter, col_filter, hel_filter)
+    call evaluator_init_product (eval3, int1, int2, &
+         qn_mask_conn = qn_mask, qn_filter_conn = qn_filter)
+    call evaluator_write (eval3, u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Product with helicity filter and mask"
+    write (u, "(A)")
+
+    call qn_mask%init (.false., .false., .true.)
+    call flv_filter%init ()
+    call hel_filter%init (0)
+    call col_filter%init ()
+    call qn_filter%init (flv_filter, col_filter, hel_filter)
+    call evaluator_init_product (eval4, int1, int2, &
+         qn_mask_conn = qn_mask, qn_filter_conn = qn_filter)
+    call evaluator_write (eval4, u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Cleanup"
+    
+    call evaluator_final (eval1)
+    call evaluator_final (eval2)
+    call evaluator_final (eval3)
+    call evaluator_final (eval4)
+    
+    call interaction_final (int1)
+    call interaction_final (int2)
+    
+    call model%final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: evaluator_4"
+
+  end subroutine evaluator_4
 
 
 end module evaluators

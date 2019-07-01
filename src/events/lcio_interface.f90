@@ -1,4 +1,4 @@
-! WHIZARD 2.2.4 Feb 06 2015
+! WHIZARD 2.2.5 Feb 27 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -424,7 +424,7 @@ contains
     rid = 0; if (present (run_id))  rid = run_id
     runhdr%obj = new_lcio_run_header (rid)
     call run_header_set_simstring (runhdr%obj, &
-         "WHIZARD version:" // "2.2.4")
+         "WHIZARD version:" // "2.2.5")
   end subroutine lcio_run_header_init
 
   subroutine lcio_run_header_write (wrt, hdr)
@@ -508,8 +508,8 @@ contains
     type(lcio_particle_t), intent(inout) :: prt
     type(color_t), intent(in) :: col
     integer(c_int), dimension(2) :: c
-    c(1) = color_get_col (col)
-    c(2) = color_get_acl (col)    
+    c(1) = col%get_col ()
+    c(2) = col%get_acl ()    
     if (c(1) /= 0 .or. c(2) /= 0)  then
        call lcio_set_color_flow (prt%obj, c(1), c(2))
     end  if
@@ -566,8 +566,8 @@ contains
     type(lcio_particle_t), intent(out) :: prt
     type(helicity_t), intent(in) :: hel
     integer, dimension(2) :: h
-    if (helicity_is_defined (hel)) then
-       h = helicity_get (hel)
+    if (hel%is_defined ()) then
+       h = hel%to_pair ()
        select case (h(1))
        case (1:)
           call lcio_particle_set_spin (prt%obj, 1._c_double, &
@@ -616,8 +616,8 @@ contains
     real(default) :: theta
     integer :: hmax
     theta = lcio_polarization_theta (prt%obj)
-    hmax = flavor_get_spin_type (flv) / 2
-    call helicity_init (hel, sign (hmax, nint (cos (theta))))
+    hmax = flv%get_spin_type () / 2
+    call hel%init (sign (hmax, nint (cos (theta))))
   end subroutine lcio_particle_to_hel
 
   subroutine lcio_particle_set_parent (daughter, parent) 
@@ -765,7 +765,7 @@ contains
     call photon_data%init (var_str ("PHOTON"), 22)
     call photon_data%set (spin_type=VECTOR)
     call photon_data%freeze ()
-    call flavor_init (flv, photon_data)
+    call flv%init (photon_data)
     call polarization_init_angles &
          (pol, flv, 0.6_default, 1._default, 0.5_default)
 

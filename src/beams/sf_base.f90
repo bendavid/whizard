@@ -1,4 +1,4 @@
-! WHIZARD 2.2.4 Feb 06 2015
+! WHIZARD 2.2.5 Feb 27 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -42,6 +42,7 @@ module sf_base
   use lorentz
   use model_data
   use flavors
+  use colors
   use helicities
   use quantum_numbers
   use state_matrices
@@ -1344,7 +1345,7 @@ contains
     if (chain%status >= SF_DONE_MASK) then
        if (allocated (chain%sf)) then
           if (size (chain%sf) /= 0) then
-             mask = new_quantum_numbers_mask (.false., .false., .true.)
+             mask = quantum_numbers_mask (.false., .false., .true.)
              int => beam_get_int_ptr (chain%beam_t)
              do i = 1, size (chain%sf)
                 associate (sf => chain%sf(i))
@@ -1716,11 +1717,11 @@ contains
     write (u, "(1x,A)")  "SF test data:"
     write (u, "(3x,A,A)") "model     = ", char (data%model%get_name ())
     write (u, "(3x,A)", advance="no") "incoming  = "
-    call flavor_write (data%flv_in, u);  write (u, *)
+    call data%flv_in%write (u);  write (u, *)
     write (u, "(3x,A)", advance="no") "outgoing  = "
-    call flavor_write (data%flv_out, u);  write (u, *)
+    call data%flv_out%write (u);  write (u, *)
     write (u, "(3x,A)", advance="no") "radiated  = "
-    call flavor_write (data%flv_rad, u);  write (u, *)
+    call data%flv_rad%write (u);  write (u, *)
     write (u, "(3x,A," // FMT_19 // ")")  "mass      = ", data%m
     write (u, "(3x,A,L1)")  "collinear = ", data%collinear
     if (.not. data%collinear .and. allocated (data%qbounds)) then
@@ -1741,11 +1742,11 @@ contains
     if (pdg_array_get (pdg_in, 1) /= 25) then
        call msg_fatal ("Test spectrum function: input flavor must be 's'")
     end if
-    call flavor_init (data%flv_in, 25, model)
-    data%m = flavor_get_mass (data%flv_in)
+    call data%flv_in%init (25, model)
+    data%m = data%flv_in%get_mass ()
     if (present (collinear))  data%collinear = collinear
-    call flavor_init (data%flv_out, 25, model)
-    call flavor_init (data%flv_rad, 25, model)
+    call data%flv_out%init (25, model)
+    call data%flv_rad%init (25, model)
     if (present (qbounds)) then
        allocate (data%qbounds (2))
        data%qbounds = qbounds
@@ -1799,8 +1800,9 @@ contains
     class(sf_data_t), intent(in), target :: data
     type(quantum_numbers_mask_t), dimension(3) :: mask
     type(helicity_t) :: hel0
+    type(color_t) :: col0
     type(quantum_numbers_t), dimension(3) :: qn
-    mask = new_quantum_numbers_mask (.false., .false., .false.)
+    mask = quantum_numbers_mask (.false., .false., .false.)
     select type (data)
     type is (sf_test_data_t)
        if (allocated (data%qbounds)) then
@@ -1812,10 +1814,11 @@ contains
                [data%m**2], [0._default], [data%m**2])
        end if
        sf_int%data => data
-       call helicity_init (hel0, 0)
-       call quantum_numbers_init (qn(1), data%flv_in,  hel0)
-       call quantum_numbers_init (qn(2), data%flv_rad, hel0)
-       call quantum_numbers_init (qn(3), data%flv_out, hel0)
+       call hel0%init (0)
+       call col0%init ()
+       call qn(1)%init (data%flv_in,  col0, hel0)
+       call qn(2)%init (data%flv_rad, col0, hel0)
+       call qn(3)%init (data%flv_out, col0, hel0)
        call interaction_add_state (sf_int%interaction_t, qn)
        call interaction_freeze (sf_int%interaction_t)
        call sf_int%set_incoming ([1])
@@ -1902,11 +1905,11 @@ contains
     write (u, "(1x,A)")  "SF test spectrum data:"
     write (u, "(3x,A,A)") "model     = ", char (data%model%get_name ())
     write (u, "(3x,A)", advance="no") "incoming  = "
-    call flavor_write (data%flv_in, u);  write (u, *)
+    call data%flv_in%write (u);  write (u, *)
     write (u, "(3x,A)", advance="no") "outgoing  = "
-    call flavor_write (data%flv_out, u);  write (u, *)
+    call data%flv_out%write (u);  write (u, *)
     write (u, "(3x,A)", advance="no") "radiated  = "
-    call flavor_write (data%flv_rad, u);  write (u, *)
+    call data%flv_rad%write (u);  write (u, *)
     write (u, "(3x,A," // FMT_19 // ")")  "mass      = ", data%m
   end subroutine sf_test_spectrum_data_write
     
@@ -1920,11 +1923,11 @@ contains
     if (pdg_array_get (pdg_in, 1) /= 25) then
        call msg_fatal ("Test structure function: input flavor must be 's'")
     end if
-    call flavor_init (data%flv_in, 25, model)
-    data%m = flavor_get_mass (data%flv_in)
-    call flavor_init (data%flv_out, 25, model)
+    call data%flv_in%init (25, model)
+    data%m = data%flv_in%get_mass ()
+    call data%flv_out%init (25, model)
     if (with_radiation) then
-       call flavor_init (data%flv_rad, 25, model)
+       call data%flv_rad%init (25, model)
     end if
   end subroutine sf_test_spectrum_data_init
   
@@ -1972,8 +1975,9 @@ contains
     class(sf_data_t), intent(in), target :: data
     type(quantum_numbers_mask_t), dimension(6) :: mask
     type(helicity_t) :: hel0
+    type(color_t) :: col0
     type(quantum_numbers_t), dimension(6) :: qn
-    mask = new_quantum_numbers_mask (.false., .false., .false.)
+    mask = quantum_numbers_mask (.false., .false., .false.)
     select type (data)
     type is (sf_test_spectrum_data_t)
        if (data%with_radiation) then
@@ -1982,13 +1986,14 @@ contains
                [0._default, 0._default], &
                [data%m**2, data%m**2])
           sf_int%data => data
-          call helicity_init (hel0, 0)
-          call quantum_numbers_init (qn(1), data%flv_in,  hel0)
-          call quantum_numbers_init (qn(2), data%flv_in,  hel0)
-          call quantum_numbers_init (qn(3), data%flv_rad, hel0)
-          call quantum_numbers_init (qn(4), data%flv_rad, hel0)
-          call quantum_numbers_init (qn(5), data%flv_out, hel0)
-          call quantum_numbers_init (qn(6), data%flv_out, hel0)
+          call hel0%init (0)
+          call col0%init ()
+          call qn(1)%init (data%flv_in,  col0, hel0)
+          call qn(2)%init (data%flv_in,  col0, hel0)
+          call qn(3)%init (data%flv_rad, col0, hel0)
+          call qn(4)%init (data%flv_rad, col0, hel0)
+          call qn(5)%init (data%flv_out, col0, hel0)
+          call qn(6)%init (data%flv_out, col0, hel0)
           call interaction_add_state (sf_int%interaction_t, qn(1:6))
           call sf_int%set_incoming ([1,2])
           call sf_int%set_radiated ([3,4])
@@ -1999,11 +2004,12 @@ contains
                [real(default) :: ], &
                [data%m**2, data%m**2])
           sf_int%data => data
-          call helicity_init (hel0, 0)
-          call quantum_numbers_init (qn(1), data%flv_in,  hel0)
-          call quantum_numbers_init (qn(2), data%flv_in,  hel0)
-          call quantum_numbers_init (qn(3), data%flv_out, hel0)
-          call quantum_numbers_init (qn(4), data%flv_out, hel0)
+          call hel0%init (0)
+          call col0%init ()
+          call qn(1)%init (data%flv_in,  col0, hel0)
+          call qn(2)%init (data%flv_in,  col0, hel0)
+          call qn(3)%init (data%flv_out, col0, hel0)
+          call qn(4)%init (data%flv_out, col0, hel0)
           call interaction_add_state (sf_int%interaction_t, qn(1:4))
           call sf_int%set_incoming ([1,2])
           call sf_int%set_outgoing ([3,4])
@@ -2089,9 +2095,9 @@ contains
     write (u, "(1x,A)")  "SF test generator data:"
     write (u, "(3x,A,A)") "model     = ", char (data%model%get_name ())
     write (u, "(3x,A)", advance="no") "incoming  = "
-    call flavor_write (data%flv_in, u);  write (u, *)
+    call data%flv_in%write (u);  write (u, *)
     write (u, "(3x,A)", advance="no") "outgoing  = "
-    call flavor_write (data%flv_out, u);  write (u, *)
+    call data%flv_out%write (u);  write (u, *)
     write (u, "(3x,A," // FMT_19 // ")")  "mass      = ", data%m
   end subroutine sf_test_generator_data_write
     
@@ -2103,9 +2109,9 @@ contains
     if (pdg_array_get (pdg_in, 1) /= 25) then
        call msg_fatal ("Test generator: input flavor must be 's'")
     end if
-    call flavor_init (data%flv_in, 25, model)
-    data%m = flavor_get_mass (data%flv_in)
-    call flavor_init (data%flv_out, 25, model)
+    call data%flv_in%init (25, model)
+    data%m = data%flv_in%get_mass ()
+    call data%flv_out%init (25, model)
   end subroutine sf_test_generator_data_init
   
   function sf_test_generator_data_is_generator (data) result (flag)
@@ -2158,8 +2164,9 @@ contains
     class(sf_data_t), intent(in), target :: data
     type(quantum_numbers_mask_t), dimension(4) :: mask
     type(helicity_t) :: hel0
+    type(color_t) :: col0
     type(quantum_numbers_t), dimension(4) :: qn
-    mask = new_quantum_numbers_mask (.false., .false., .false.)
+    mask = quantum_numbers_mask (.false., .false., .false.)
     select type (data)
     type is (sf_test_generator_data_t)
        call sf_int%base_init (mask(1:4), &
@@ -2167,11 +2174,12 @@ contains
             [real(default) :: ], &
             [data%m**2, data%m**2])
        sf_int%data => data
-       call helicity_init (hel0, 0)
-       call quantum_numbers_init (qn(1), data%flv_in,  hel0)
-       call quantum_numbers_init (qn(2), data%flv_in,  hel0)
-       call quantum_numbers_init (qn(3), data%flv_out, hel0)
-       call quantum_numbers_init (qn(4), data%flv_out, hel0)
+       call hel0%init (0)
+       call col0%init ()
+       call qn(1)%init (data%flv_in,  col0, hel0)
+       call qn(2)%init (data%flv_in,  col0, hel0)
+       call qn(3)%init (data%flv_out, col0, hel0)
+       call qn(4)%init (data%flv_out, col0, hel0)
        call interaction_add_state (sf_int%interaction_t, qn(1:4))
        call sf_int%set_incoming ([1,2])
        call sf_int%set_outgoing ([3,4])
@@ -2349,7 +2357,7 @@ contains
 
     call model%init_test ()
     pdg_in = 25
-    call flavor_init (flv, 25, model)
+    call flv%init (25, model)
 
     call reset_interaction_counter ()
     
@@ -2372,7 +2380,7 @@ contains
     write (u, "(A)")  "* Initialize incoming momentum with E=500"
     write (u, "(A)")
     E = 500
-    k = vector4_moving (E, sqrt (E**2 - flavor_get_mass (flv)**2), 3)
+    k = vector4_moving (E, sqrt (E**2 - flv%get_mass ()**2), 3)
     call vector4_write (k, u)
     call sf_int%seed_kinematics ([k])
 
@@ -2497,7 +2505,7 @@ contains
 
     call model%init_test ()
     pdg_in = 25
-    call flavor_init (flv, 25, model)
+    call flv%init (25, model)
 
     call reset_interaction_counter ()
     
@@ -2523,7 +2531,7 @@ contains
     write (u, "(A)")  "* Initialize incoming momentum with E=500"
 
     E = 500
-    k = vector4_moving (E, sqrt (E**2 - flavor_get_mass (flv)**2), 3)
+    k = vector4_moving (E, sqrt (E**2 - flv%get_mass ()**2), 3)
     call sf_int%seed_kinematics ([k])
 
     write (u, "(A)")
@@ -2741,7 +2749,7 @@ contains
 
     call model%init_test ()
     pdg_in = 25
-    call flavor_init (flv, 25, model)
+    call flv%init (25, model)
 
     call reset_interaction_counter ()
     
@@ -2767,7 +2775,7 @@ contains
     write (u, "(A)")  "* Initialize incoming momentum with E=500"
 
     E = 500
-    k = vector4_moving (E, sqrt (E**2 - flavor_get_mass (flv)**2), 3)
+    k = vector4_moving (E, sqrt (E**2 - flv%get_mass ()**2), 3)
     call sf_int%seed_kinematics ([k])
 
     write (u, "(A)")
@@ -3000,7 +3008,7 @@ contains
     write (u, "(A)")
 
     call model%init_test ()
-    call flavor_init (flv, 25, model)
+    call flv%init (25, model)
     pdg_in = 25
 
     call reset_interaction_counter ()
@@ -3030,8 +3038,8 @@ contains
     write (u, "(A)")  "* Initialize incoming momenta with sqrts=1000"
 
     E = 500
-    k(1) = vector4_moving (E, sqrt (E**2 - flavor_get_mass (flv)**2), 3)
-    k(2) = vector4_moving (E, sqrt (E**2 - flavor_get_mass (flv)**2), 3)
+    k(1) = vector4_moving (E, sqrt (E**2 - flv%get_mass ()**2), 3)
+    k(2) = vector4_moving (E, sqrt (E**2 - flv%get_mass ()**2), 3)
     call sf_int%seed_kinematics (k)
 
     write (u, "(A)")
@@ -3128,7 +3136,7 @@ contains
     write (u, "(A)")
 
     call model%init_test ()
-    call flavor_init (flv, 25, model)
+    call flv%init (25, model)
     pdg_in = 25
 
     call reset_interaction_counter ()
@@ -3148,8 +3156,8 @@ contains
     write (u, "(A)")  "* Initialize incoming momenta with sqrts=1000"
 
     E = 500
-    k(1) = vector4_moving (E, sqrt (E**2 - flavor_get_mass (flv)**2), 3)
-    k(2) = vector4_moving (E, sqrt (E**2 - flavor_get_mass (flv)**2), 3)
+    k(1) = vector4_moving (E, sqrt (E**2 - flv%get_mass ()**2), 3)
+    k(2) = vector4_moving (E, sqrt (E**2 - flv%get_mass ()**2), 3)
     call sf_int%seed_kinematics (k)
 
     write (u, "(A)")
@@ -3228,7 +3236,7 @@ contains
     write (u, "(A)")
 
     call model%init_test ()
-    call flavor_init (flv, 25, model)
+    call flv%init (25, model)
     pdg_in = 25
 
     call reset_interaction_counter ()
@@ -3344,7 +3352,7 @@ contains
     write (u, "(A)")
 
     call model%init_test ()
-    call flavor_init (flv, 25, model)
+    call flv%init (25, model)
     pdg_in = 25
 
     call reset_interaction_counter ()
@@ -3436,7 +3444,7 @@ contains
     write (u, "(A)")
 
     call model%init_test ()
-    call flavor_init (flv, 25, model)
+    call flv%init (25, model)
     pdg_in = 25
 
     call reset_interaction_counter ()
@@ -3595,7 +3603,7 @@ contains
     write (u, "(A)")
 
     call model%init_test ()
-    call flavor_init (flv, 25, model)
+    call flv%init (25, model)
     pdg_in = 25
 
     call reset_interaction_counter ()
@@ -3691,7 +3699,7 @@ contains
     write (u, "(A)")
 
     call model%init_test ()
-    call flavor_init (flv, 25, model)
+    call flv%init (25, model)
     pdg_in = 25
 
     call reset_interaction_counter ()
@@ -3729,7 +3737,7 @@ contains
     call write_separator (u, 2)
 
     int => sf_chain_instance%get_out_int_ptr ()
-    call particle_set_init (pset, ok, int, int, FM_IGNORE_HELICITY, &
+    call pset%init (ok, int, int, FM_IGNORE_HELICITY, &
          [0._default, 0._default], .false., .true.)
     call sf_chain_instance%final ()
 
@@ -3738,7 +3746,7 @@ contains
     write (u, "(A)")
 
     call write_separator (u)
-    call particle_set_write (pset, u)
+    call pset%write (u)
     call write_separator (u)
 
     write (u, "(A)")
@@ -3751,7 +3759,7 @@ contains
     call sf_chain_instance%init_evaluators ()
 
     int => sf_chain_instance%get_out_int_ptr ()
-    call particle_set_fill_interaction (pset, int, 2, check_match=.false.)
+    call pset%fill_interaction (int, 2, check_match=.false.)
 
     call sf_chain_instance%recover_kinematics (1)
     call sf_chain_instance%evaluate (scale=0._default)
@@ -3760,7 +3768,7 @@ contains
     call sf_chain_instance%write (u)
     call write_separator (u, 2)
 
-    call particle_set_final (pset)
+    call pset%final ()
     call sf_chain_instance%final ()
     call sf_chain%final ()
 
@@ -3790,7 +3798,7 @@ contains
     call write_separator (u, 2)
 
     int => sf_chain_instance%get_out_int_ptr ()
-    call particle_set_init (pset, ok, int, int, FM_IGNORE_HELICITY, &
+    call pset%init (ok, int, int, FM_IGNORE_HELICITY, &
          [0._default, 0._default], .false., .true.)
     call sf_chain_instance%final ()
 
@@ -3799,7 +3807,7 @@ contains
     write (u, "(A)")
 
     call write_separator (u)
-    call particle_set_write (pset, u)
+    call pset%write (u)
     call write_separator (u)
 
     write (u, "(A)")
@@ -3815,7 +3823,7 @@ contains
     call sf_chain_instance%init_evaluators ()
 
     int => sf_chain_instance%get_out_int_ptr ()
-    call particle_set_fill_interaction (pset, int, 2, check_match=.false.)
+    call pset%fill_interaction (int, 2, check_match=.false.)
 
     call sf_chain_instance%recover_kinematics (1)
     call sf_chain_instance%evaluate (scale=0._default)
@@ -3824,7 +3832,7 @@ contains
     call sf_chain_instance%write (u)
     call write_separator (u, 2)
 
-    call particle_set_final (pset)
+    call pset%final ()
     call sf_chain_instance%final ()
     call sf_chain%final ()
 
@@ -3857,7 +3865,7 @@ contains
     call write_separator (u, 2)
 
     int => sf_chain_instance%get_out_int_ptr ()
-    call particle_set_init (pset, ok, int, int, FM_IGNORE_HELICITY, &
+    call pset%init (ok, int, int, FM_IGNORE_HELICITY, &
          [0._default, 0._default], .false., .true.)
     call sf_chain_instance%final ()
 
@@ -3866,7 +3874,7 @@ contains
     write (u, "(A)")
 
     call write_separator (u)
-    call particle_set_write (pset, u)
+    call pset%write (u)
     call write_separator (u)
 
     write (u, "(A)")
@@ -3882,7 +3890,7 @@ contains
     call sf_chain_instance%init_evaluators ()
 
     int => sf_chain_instance%get_out_int_ptr ()
-    call particle_set_fill_interaction (pset, int, 2, check_match=.false.)
+    call pset%fill_interaction (int, 2, check_match=.false.)
 
     call sf_chain_instance%recover_kinematics (1)
     call sf_chain_instance%evaluate (scale=0._default)
@@ -3891,7 +3899,7 @@ contains
     call sf_chain_instance%write (u)
     call write_separator (u, 2)
 
-    call particle_set_final (pset)
+    call pset%final ()
     call sf_chain_instance%final ()
     call sf_chain%final ()
 
@@ -3928,7 +3936,7 @@ contains
     write (u, "(A)")
 
     call model%init_test ()
-    call flavor_init (flv, 25, model)
+    call flv%init (25, model)
     pdg_in = 25
 
     call reset_interaction_counter ()
@@ -4054,7 +4062,7 @@ contains
     write (u, "(A)")
 
     call model%init_test ()
-    call flavor_init (flv, 25, model)
+    call flv%init (25, model)
     pdg_in = 25
 
     call reset_interaction_counter ()
@@ -4084,8 +4092,8 @@ contains
     write (u, "(A)")  "* Initialize incoming momenta with sqrts=1000"
 
     E = 500
-    k(1) = vector4_moving (E, sqrt (E**2 - flavor_get_mass (flv)**2), 3)
-    k(2) = vector4_moving (E, sqrt (E**2 - flavor_get_mass (flv)**2), 3)
+    k(1) = vector4_moving (E, sqrt (E**2 - flv%get_mass ()**2), 3)
+    k(2) = vector4_moving (E, sqrt (E**2 - flv%get_mass ()**2), 3)
     call sf_int%seed_kinematics (k)
 
     write (u, "(A)")
@@ -4165,7 +4173,7 @@ contains
     write (u, "(A)")
 
     call model%init_test ()
-    call flavor_init (flv, 25, model)
+    call flv%init (25, model)
     pdg_in = 25
 
     call reset_interaction_counter ()

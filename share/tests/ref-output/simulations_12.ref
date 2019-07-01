@@ -12,6 +12,7 @@
    Unweighted   = F
    Event norm   = 'sigma'
    Neg. weights = F
+   Respect sel. = T
    Update sqme  = F
    Update wgt   = F
    Update event = F

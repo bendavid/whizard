@@ -1,4 +1,4 @@
-! WHIZARD 2.2.4 Feb 06 2015
+! WHIZARD 2.2.5 Feb 27 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -165,6 +165,7 @@ module simulations
      type(string_t) :: sample_id
      logical :: unweighted = .true.
      logical :: negative_weights = .false.
+     logical :: respect_selection = .true.
      integer :: norm_mode = NORM_UNDEFINED
      logical :: update_sqme = .false.
      logical :: update_weight = .false.
@@ -737,7 +738,7 @@ contains
     type(particle_set_t) :: pset
     call entry%get_hard_particle_set (pset)
     call alt_entry%set_hard_particle_set (pset)
-    call particle_set_final (pset)
+    call pset%final ()
   end subroutine entry_fill_particle_set
     
   subroutine simulation_write (object, unit)
@@ -755,6 +756,7 @@ contains
     write (u, "(3x,A,A)")   "Event norm   = ", &
          char (event_normalization_string (object%norm_mode))
     write (u, "(3x,A,L1)")  "Neg. weights = ", object%negative_weights
+    write (u, "(3x,A,L1)")  "Respect sel. = ", object%respect_selection
     write (u, "(3x,A,L1)")  "Update sqme  = ", object%update_sqme
     write (u, "(3x,A,L1)")  "Update wgt   = ", object%update_weight
     write (u, "(3x,A,L1)")  "Update event = ", object%update_event
@@ -814,7 +816,8 @@ contains
     call write_separator (u, 2)
   end subroutine simulation_write
   
-  subroutine simulation_write_event_unit (object, unit, i_prc, verbose, testflag)
+  subroutine simulation_write_event_unit &
+       (object, unit, i_prc, verbose, testflag)
     class(simulation_t), intent(in) :: object
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: verbose
@@ -898,11 +901,18 @@ contains
     class(rng_factory_t), allocatable :: rng_factory
     type(string_t) :: norm_string, version_string
     integer :: i, j
-    simulation%sample_id = local%get_sval (var_str ("$sample"))
-    simulation%unweighted = local%get_lval (var_str ("?unweighted"))
-    simulation%negative_weights = local%get_lval (var_str ("?negative_weights"))
-    version_string = local%get_sval (var_str ("$event_file_version"))
-    norm_string = local%get_sval (var_str ("$sample_normalization"))
+    simulation%sample_id = &
+         local%get_sval (var_str ("$sample"))
+    simulation%unweighted = &
+         local%get_lval (var_str ("?unweighted"))
+    simulation%negative_weights = &
+         local%get_lval (var_str ("?negative_weights"))
+    simulation%respect_selection = &
+         local%get_lval (var_str ("?sample_select"))
+    version_string = &
+         local%get_sval (var_str ("$event_file_version"))
+    norm_string = &
+         local%get_sval (var_str ("$sample_normalization"))
     simulation%norm_mode = &
          event_normalization_mode (norm_string, simulation%unweighted)
     simulation%pacify = &
@@ -1144,7 +1154,7 @@ contains
     integer, intent(in) :: n
     type(event_stream_array_t), intent(inout), optional :: es_array
     type(string_t) :: str1, str2, str3
-    logical :: generate_new
+    logical :: generate_new, passed
     integer :: i, j
     simulation%n_evt_requested = n
     call simulation%entry%set_n (n)
@@ -1196,8 +1206,10 @@ contains
             end if
             call entry%evaluate_expressions ()
             if (signal_is_pending ()) return
-            simulation%weight = entry%get_weight_ref ()
-            simulation%excess = entry%get_excess_prc ()
+            if (entry%passed_selection ()) then
+               simulation%weight = entry%get_weight_ref ()
+               simulation%excess = entry%get_excess_prc ()
+            end if
             call simulation%counter%record &
                  (simulation%weight, simulation%excess)
             call entry%record (simulation%i_mci)
@@ -1209,8 +1221,10 @@ contains
             call entry%check ()
             call entry%evaluate_expressions ()
             if (signal_is_pending ()) return
-            simulation%weight = entry%get_weight_ref ()
-            simulation%excess = entry%get_excess_prc ()
+            if (entry%passed_selection ()) then
+               simulation%weight = entry%get_weight_ref ()
+               simulation%excess = entry%get_excess_prc ()
+            end if
             call simulation%counter%record &
                  (simulation%weight, simulation%excess, from_file=.true.)
             call entry%record (simulation%i_mci, from_file=.true.)
@@ -1219,8 +1233,13 @@ contains
        call simulation%calculate_alt_entries ()
        if (signal_is_pending ()) return
        if (simulation%pacify)  call pacify (simulation)
+       if (simulation%respect_selection) then
+          passed = simulation%entry(simulation%i_prc)%passed_selection ()
+       else
+          passed = .true.
+       end if
        if (present (es_array)) then
-          call simulation%write_event (es_array)
+          call simulation%write_event (es_array, passed)
        end if
     end do
     call msg_message ("        ... event sample complete.")
@@ -1256,7 +1275,9 @@ contains
            if (signal_is_pending ())  return
            call alt_entry%restore_process ()
            sqme_alt(j) = alt_entry%get_sqme_ref ()
-           weight_alt(j) = alt_entry%get_weight_ref ()
+           if (alt_entry%passed_selection ()) then
+              weight_alt(j) = alt_entry%get_weight_ref ()
+           end if
          end associate
       end do
       call entry%set (sqme_alt = sqme_alt, weight_alt = weight_alt)
@@ -1399,15 +1420,16 @@ contains
     end select
   end subroutine simulation_read_event_eio
 
-  subroutine simulation_write_event_es_array (object, es_array)
+  subroutine simulation_write_event_es_array (object, es_array, passed)
     class(simulation_t), intent(in) :: object
     class(event_stream_array_t), intent(inout) :: es_array
+    logical, intent(in), optional :: passed
     integer :: i_prc, event_index
     i_prc = object%i_prc
     if (i_prc > 0) then
        event_index = object%counter%total
        call es_array%output (object%entry(i_prc)%event_t, i_prc, &
-            event_index, pacify = object%pacify)
+            event_index, passed = passed, pacify = object%pacify)
     else
        call msg_fatal ("Simulation: write event: no process selected")
     end if
@@ -1496,48 +1518,51 @@ contains
     md5sum = simulation%md5sum_alt(i)
   end function simulation_get_md5sum_alt
     
-  function simulation_get_data (simulation, alt) result (data)
+  function simulation_get_data (simulation, alt) result (sdata)
     class(simulation_t), intent(in) :: simulation
     logical, intent(in), optional :: alt
-    type(event_sample_data_t) :: data
+    type(event_sample_data_t) :: sdata
     type(process_t), pointer :: process
     type(beam_data_t), pointer :: beam_data
+    type(flavor_t), dimension(:), allocatable :: flv
     integer :: n, i
     logical :: enable_alt
     enable_alt = .true.;  if (present (alt))  enable_alt = alt    
     process => simulation%entry(1)%get_process_ptr ()
     beam_data => process%get_beam_data_ptr ()
     if (enable_alt) then
-       call data%init (simulation%n_prc, simulation%n_alt)
+       call sdata%init (simulation%n_prc, simulation%n_alt)
        do i = 1, simulation%n_alt
-          data%md5sum_alt(i) = simulation%get_md5sum_alt (i)
+          sdata%md5sum_alt(i) = simulation%get_md5sum_alt (i)
        end do
     else
-       call data%init (simulation%n_prc)
+       call sdata%init (simulation%n_prc)
     end if
-    data%unweighted = simulation%unweighted
-    data%negative_weights = simulation%negative_weights
-    data%norm_mode = simulation%norm_mode
+    sdata%unweighted = simulation%unweighted
+    sdata%negative_weights = simulation%negative_weights
+    sdata%norm_mode = simulation%norm_mode
     n = beam_data_get_n_in (beam_data)
-    data%n_beam = n
-    data%pdg_beam(:n) = flavor_get_pdg (beam_data_get_flavor (beam_data))
-    data%energy_beam(:n) = beam_data_get_energy (beam_data)
+    sdata%n_beam = n
+    allocate (flv (n))
+    flv = beam_data_get_flavor (beam_data)
+    sdata%pdg_beam(:n) = flv%get_pdg ()
+    sdata%energy_beam(:n) = beam_data_get_energy (beam_data)
     do i = 1, simulation%n_prc
        if (.not. simulation%entry(i)%valid) cycle
        process => simulation%entry(i)%get_process_ptr ()
-       data%proc_num_id(i) = process%get_num_id ()
-       if (data%proc_num_id(i) == 0)  data%proc_num_id(i) = i
+       sdata%proc_num_id(i) = process%get_num_id ()
+       if (sdata%proc_num_id(i) == 0)  sdata%proc_num_id(i) = i
        if (simulation%entry(i)%has_integral) then
-          data%cross_section(i) = simulation%entry(i)%integral
-          data%error(i) = simulation%entry(i)%error
+          sdata%cross_section(i) = simulation%entry(i)%integral
+          sdata%error(i) = simulation%entry(i)%error
        end if
     end do
-    data%total_cross_section = sum (data%cross_section)
-    data%md5sum_prc = simulation%get_md5sum_prc ()
-    data%md5sum_cfg = simulation%get_md5sum_cfg ()
+    sdata%total_cross_section = sum (sdata%cross_section)
+    sdata%md5sum_prc = simulation%get_md5sum_prc ()
+    sdata%md5sum_cfg = simulation%get_md5sum_cfg ()
     if (simulation%split_n_evt > 0) then
-       data%split_n_evt = simulation%split_n_evt
-       data%split_index = simulation%split_index
+       sdata%split_n_evt = simulation%split_n_evt
+       sdata%split_index = simulation%split_index
     end if
   end function simulation_get_data
     
@@ -1879,6 +1904,7 @@ contains
     type(string_t) :: libname, procname1
     type(rt_data_t), target :: global
     type(flavor_t) :: flv
+    type(string_t) :: name
     type(simulation_t), target :: simulation
     type(event_sample_data_t) :: data
     
@@ -1935,8 +1961,10 @@ contains
     
     call reset_interaction_counter ()
 
-    call flavor_init (flv, 25, global%model)
-    call global%beam_structure%init_sf (flavor_get_name ([flv, flv]), [1])
+    call flv%init (25, global%model)
+    name = flv%get_name ()
+    
+    call global%beam_structure%init_sf ([name, name], [1])
     call global%beam_structure%set_sf (1, 1, var_str ("sf_test_1"))
 
     write (u, "(A)")  "* Integrate"
@@ -2116,6 +2144,7 @@ contains
     class(eio_t), allocatable :: eio
     type(simulation_t), allocatable, target :: simulation
     type(flavor_t) :: flv
+    type(string_t) :: name
     
     write (u, "(A)")  "* Test output: simulations_6"
     write (u, "(A)")  "*   Purpose: generate events for a single process"
@@ -2166,8 +2195,10 @@ contains
     call global%model_set_real (var_str ("ms"), &
          0._default)
 
-    call flavor_init (flv, 25, global%model)
-    call global%beam_structure%init_sf (flavor_get_name ([flv, flv]), [1])
+    call flv%init (25, global%model)
+    name = flv%get_name ()
+    
+    call global%beam_structure%init_sf ([name, name], [1])
     call global%beam_structure%set_sf (1, 1, var_str ("sf_test_1"))
 
     call global%it_list%init ([1], [1000])
@@ -2258,6 +2289,7 @@ contains
     type(event_stream_array_t) :: es_array
     type(simulation_t), allocatable, target :: simulation
     type(flavor_t) :: flv
+    type(string_t) :: name
     
     write (u, "(A)")  "* Test output: simulations_7"
     write (u, "(A)")  "*   Purpose: generate events for a single process"
@@ -2311,8 +2343,10 @@ contains
     call global%model_set_real (var_str ("ms"), &
          0._default)
 
-    call flavor_init (flv, 25, global%model)
-    call global%beam_structure%init_sf (flavor_get_name ([flv, flv]), [1])
+    call flv%init (25, global%model)
+    name = flv%get_name ()
+    
+    call global%beam_structure%init_sf ([name, name], [1])
     call global%beam_structure%set_sf (1, 1, var_str ("sf_test_1"))
 
     call global%it_list%init ([1], [1000])
@@ -2419,6 +2453,7 @@ contains
     type(event_stream_array_t) :: es_array
     type(simulation_t), allocatable, target :: simulation
     type(flavor_t) :: flv
+    type(string_t) :: name
     
     write (u, "(A)")  "* Test output: simulations_8"
     write (u, "(A)")  "*   Purpose: generate events for a single process"
@@ -2472,8 +2507,10 @@ contains
     call global%model_set_real (var_str ("ms"), &
          0._default)
 
-    call flavor_init (flv, 25, global%model)
-    call global%beam_structure%init_sf (flavor_get_name ([flv, flv]), [1])
+    call flv%init (25, global%model)
+    name = flv%get_name ()
+    
+    call global%beam_structure%init_sf ([name, name], [1])
     call global%beam_structure%set_sf (1, 1, var_str ("sf_test_1"))
 
     call global%it_list%init ([1], [1000])
@@ -2597,6 +2634,7 @@ contains
     type(event_stream_array_t) :: es_array
     type(simulation_t), allocatable, target :: simulation
     type(flavor_t) :: flv
+    type(string_t) :: name
     logical :: error
     
     write (u, "(A)")  "* Test output: simulations_9"
@@ -2651,8 +2689,10 @@ contains
     call global%model_set_real (var_str ("ms"), &
          0._default)
 
-    call flavor_init (flv, 25, global%model)
-    call global%beam_structure%init_sf (flavor_get_name ([flv, flv]), [1])
+    call flv%init (25, global%model)
+    name = flv%get_name ()
+    
+    call global%beam_structure%init_sf ([name, name], [1])
     call global%beam_structure%set_sf (1, 1, var_str ("sf_test_1"))
 
     call global%it_list%init ([1], [1000])
@@ -2986,7 +3026,7 @@ contains
     call global%model_set_real (var_str ("ms"), &
          0._default)
 
-    call flavor_init (flv, 25, global%model)
+    call flv%init (25, global%model)
 
     call global%it_list%init ([1], [1000])
 

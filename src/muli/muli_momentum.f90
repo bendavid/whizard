@@ -1,4 +1,4 @@
-! WHIZARD 2.2.4 Feb 06 2015
+! WHIZARD 2.2.5 Feb 27 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -131,7 +131,7 @@ module muli_momentum
      end function qcd_get_int
   end interface
   abstract interface
-     elemental function qcd_get_int_by_int (this, n)
+     pure function qcd_get_int_by_int (this, n)
        import 
        class(qcd_2_2_class), intent(in) :: this
        integer, intent(in) :: n
@@ -226,13 +226,13 @@ contains
     scale = this%momentum(2)
   end function transverse_mom_get_gev2_scale
 
-  elemental function transverse_mom_get_unit_scale (this) result (scale)
+  pure function transverse_mom_get_unit_scale (this) result (scale)
     class(transverse_mom_t), intent(in) :: this
     real(default) :: scale
     scale = this%momentum(3)
   end function transverse_mom_get_unit_scale
 
-  elemental function transverse_mom_get_unit2_scale (this) result (scale)
+  pure function transverse_mom_get_unit2_scale (this) result (scale)
     class(transverse_mom_t), intent(in) :: this
     real(default) :: scale
     scale = this%momentum(4)

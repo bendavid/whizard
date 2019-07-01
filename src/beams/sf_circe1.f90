@@ -1,4 +1,4 @@
-! WHIZARD 2.2.4 Feb 06 2015
+! WHIZARD 2.2.5 Feb 27 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -130,10 +130,10 @@ contains
     if (any (pdg_array_get_length (pdg_in) /= 1)) then
        call msg_fatal ("CIRCE1: incoming beam particles must be unique")
     end if
-    call flavor_init (data%flv_in(1), pdg_array_get (pdg_in(1), 1), model)
-    call flavor_init (data%flv_in(2), pdg_array_get (pdg_in(2), 1), model)
-    data%pdg_in = flavor_get_pdg (data%flv_in)
-    data%m_in = flavor_get_mass (data%flv_in)
+    call data%flv_in(1)%init (pdg_array_get (pdg_in(1), 1), model)
+    call data%flv_in(2)%init (pdg_array_get (pdg_in(2), 1), model)
+    data%pdg_in = data%flv_in%get_pdg ()
+    data%m_in = data%flv_in%get_mass ()
     data%sqrts = sqrts
     data%eps = eps
     data%photon = out_photon
@@ -156,10 +156,10 @@ contains
   subroutine circe1_data_check (data) 
     class(circe1_data_t), intent(in) :: data 
     type(flavor_t) :: flv_electron, flv_photon
-    call flavor_init (flv_electron, ELECTRON, data%model)
-    call flavor_init (flv_photon, PHOTON, data%model)
-    if (flavor_get_pdg (flv_electron) == UNDEFINED &
-         .or. flavor_get_pdg (flv_photon) == UNDEFINED) then
+    call flv_electron%init (ELECTRON, data%model)
+    call flv_photon%init (PHOTON, data%model)
+    if (.not. flv_electron%is_defined () &
+         .or. .not. flv_photon%is_defined ()) then
        call msg_fatal ("CIRCE1: model must contain photon and electron")
     end if
     if (any (abs (data%pdg_in) /= ELECTRON) &
@@ -180,8 +180,8 @@ contains
     u = given_output_unit (unit);  if (u < 0)  return 
     write (u, "(1x,A)") "CIRCE1 data:" 
     write (u, "(3x,A,2(1x,A))") "prt_in   =", &
-         char (flavor_get_name (data%flv_in(1))), &
-         char (flavor_get_name (data%flv_in(2)))
+         char (data%flv_in(1)%get_name ()), &
+         char (data%flv_in(2)%get_name ())
     write (u, "(3x,A,2(1x,L1))")  "photon   =", data%photon
     write (u, "(3x,A,L1)")        "generate = ", data%generate
     write (u, "(3x,A,2(1x," // FMT_19 // "))") "m_in     =", data%m_in
@@ -287,6 +287,7 @@ contains
     type(polarization_t) :: pol1, pol2
     type(quantum_numbers_t), dimension(1) :: qn_fc1, qn_hel1, qn_fc2, qn_hel2
     type(flavor_t) :: flv_photon
+    type(color_t) :: col0
     real(default), dimension(2) :: mi2, mr2, mo2
     type(quantum_numbers_t) :: qn_photon, qn1, qn2
     type(quantum_numbers_t), dimension(6) :: qn
@@ -314,20 +315,21 @@ contains
           mr2(2) = 0._default
           mo2(2) = mi2(2)
        end if
-       mask = new_quantum_numbers_mask (.false., .false., mask_h)
+       mask = quantum_numbers_mask (.false., .false., mask_h)
        call sf_int%base_init (mask, mi2, mr2, mo2, &
             hel_lock = hel_lock)
        sf_int%data => data
-       call flavor_init (flv_photon, PHOTON, data%model)
-       call quantum_numbers_init (qn_photon, flv_photon)
+       call flv_photon%init (PHOTON, data%model)
+       call col0%init ()
+       call qn_photon%init (flv_photon, col0)
        call polarization_init_generic (pol1, data%flv_in(1))
-       call quantum_numbers_init (qn_fc1(1), flv = data%flv_in(1))
+       call qn_fc1(1)%init (flv = data%flv_in(1), col = col0)
        call polarization_init_generic (pol2, data%flv_in(2))
-       call quantum_numbers_init (qn_fc2(1), flv = data%flv_in(2))
-       call state_iterator_init (it_hel1, pol1%state)
+       call qn_fc2(1)%init (flv = data%flv_in(2), col = col0)
+       call it_hel1%init (pol1%state)
        
-       do while (state_iterator_is_valid (it_hel1)) 
-          qn_hel1 = state_iterator_get_quantum_numbers (it_hel1)
+       do while (it_hel1%is_valid ()) 
+          qn_hel1 = it_hel1%get_quantum_numbers ()
           qn1 = qn_hel1(1) .merge. qn_fc1(1) 
           qn(1) = qn1
           if (data%photon(1)) then
@@ -335,9 +337,9 @@ contains
           else
              qn(3) = qn_photon;  qn(5) = qn1
           end if
-          call state_iterator_init (it_hel2, pol2%state) 
-          do while (state_iterator_is_valid (it_hel2)) 
-             qn_hel2 = state_iterator_get_quantum_numbers (it_hel2) 
+          call it_hel2%init (pol2%state) 
+          do while (it_hel2%is_valid ()) 
+             qn_hel2 = it_hel2%get_quantum_numbers () 
              qn2 = qn_hel2(1) .merge. qn_fc2(1) 
              qn(2) = qn2
              if (data%photon(2)) then
@@ -345,10 +347,11 @@ contains
              else
                 qn(4) = qn_photon;  qn(6) = qn2
              end if
+             call qn(3:4)%tag_radiated ()
              call interaction_add_state (sf_int%interaction_t, qn)
-             call state_iterator_advance (it_hel2) 
+             call it_hel2%advance () 
           end do
-          call state_iterator_advance (it_hel1)
+          call it_hel1%advance ()
        end do
        call polarization_final (pol1)
        call polarization_final (pol2)
@@ -587,8 +590,8 @@ contains
     write (u, "(A)")
 
     call model%init_qed_test ()
-    call flavor_init (flv(1), ELECTRON, model)
-    call flavor_init (flv(2), -ELECTRON, model)
+    call flv(1)%init (ELECTRON, model)
+    call flv(2)%init (-ELECTRON, model)
     pdg_in(1) = ELECTRON
     pdg_in(2) = -ELECTRON
 
@@ -620,8 +623,8 @@ contains
     write (u, "(A)")  "* Initialize incoming momentum with E=500"
     write (u, "(A)")
     E = 250
-    k1 = vector4_moving (E, sqrt (E**2 - flavor_get_mass (flv(1))**2), 3)
-    k2 = vector4_moving (E,-sqrt (E**2 - flavor_get_mass (flv(2))**2), 3)
+    k1 = vector4_moving (E, sqrt (E**2 - flv(1)%get_mass ()**2), 3)
+    k2 = vector4_moving (E,-sqrt (E**2 - flv(2)%get_mass ()**2), 3)
     call vector4_write (k1, u)
     call vector4_write (k2, u)
     call sf_int%seed_kinematics ([k1, k2])
@@ -701,8 +704,8 @@ contains
     write (u, "(A)")
 
     call model%init_qed_test ()
-    call flavor_init (flv(1), ELECTRON, model)
-    call flavor_init (flv(2), -ELECTRON, model)
+    call flv(1)%init (ELECTRON, model)
+    call flv(2)%init (-ELECTRON, model)
     pdg_in(1) = ELECTRON
     pdg_in(2) = -ELECTRON
 
@@ -737,8 +740,8 @@ contains
     write (u, "(A)")  "* Initialize incoming momentum with E=500"
     write (u, "(A)")
     E = 250
-    k1 = vector4_moving (E, sqrt (E**2 - flavor_get_mass (flv(1))**2), 3)
-    k2 = vector4_moving (E,-sqrt (E**2 - flavor_get_mass (flv(2))**2), 3)
+    k1 = vector4_moving (E, sqrt (E**2 - flv(1)%get_mass ()**2), 3)
+    k2 = vector4_moving (E,-sqrt (E**2 - flv(2)%get_mass ()**2), 3)
     call vector4_write (k1, u)
     call vector4_write (k2, u)
     call sf_int%seed_kinematics ([k1, k2])

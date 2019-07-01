@@ -1,4 +1,4 @@
-! WHIZARD 2.2.4 Feb 06 2015
+! WHIZARD 2.2.5 Feb 27 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -169,13 +169,15 @@ module prc_core
 
   abstract interface
      function prc_core_compute_amplitude &
-          (object, j, p, f, h, c, fac_scale, ren_scale, tmp) result (amp)
+          (object, j, p, f, h, c, fac_scale, ren_scale, alpha_qcd_forced, tmp) &
+          result (amp)
        import
        class(prc_core_t), intent(in) :: object
        integer, intent(in) :: j
        type(vector4_t), dimension(:), intent(in) :: p
        integer, intent(in) :: f, h, c
        real(default), intent(in) :: fac_scale, ren_scale
+       real(default), intent(in), allocatable :: alpha_qcd_forced
        class(workspace_t), intent(inout), allocatable, optional :: tmp
        complex(default) :: amp
      end function prc_core_compute_amplitude

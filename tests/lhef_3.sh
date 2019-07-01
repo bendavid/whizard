@@ -10,6 +10,8 @@ if test -f OCAML_FLAG; then
     cat ${s}.1.lhe | sed -e 's/^  <generator_version>.*$/[...]/' >> $s.log
     echo "LHEF file contents (with beams):" >> $s.log
     cat ${s}.2.lhe | sed -e 's/^  <generator_version>.*$/[...]/' >> $s.log
+    echo "LHEF file contents (with beams and remnants as real):" >> $s.log
+    cat ${s}.3.lhe | sed -e 's/^  <generator_version>.*$/[...]/' >> $s.log
     diff ref-output/$s.ref $s.log
 else
     echo "|=============================================================================|"

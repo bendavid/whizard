@@ -1,4 +1,4 @@
-! WHIZARD 2.2.4 Feb 06 2015
+! WHIZARD 2.2.5 Feb 27 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -97,13 +97,12 @@ contains
     allocate (data%flv_in (maxval (data%n_flv), 2))
     do i = 1, 2
        do j = 1, data%n_flv(i)
-          call flavor_init (data%flv_in(j, i), pdg_array_get (pdg_in(i), j), &
-               model)
+          call data%flv_in(j, i)%init (pdg_array_get (pdg_in(i), j), model)
        end do
     end do
-    m2 = flavor_get_mass (data%flv_in(1,:))
+    m2 = data%flv_in(1,:)%get_mass ()
     do i = 1, 2
-       if (any (flavor_get_mass (data%flv_in(1:data%n_flv(i),i)) /= m2(i))) then
+       if (any (data%flv_in(1:data%n_flv(i),i)%get_mass () /= m2(i))) then
           call msg_fatal ("Energy scan: incoming particle mass must be uniform")
        end if
     end do
@@ -122,8 +121,7 @@ contains
        if (i > 1)  write (u, "(',',1x)", advance="no")
        do j = 1, data%n_flv(i)
           if (j > 1)  write (u, "(':')", advance="no")
-          write (u, "(A)", advance="no") &
-               char (flavor_get_name (data%flv_in(j,i)))
+          write (u, "(A)", advance="no")  char (data%flv_in(j,i)%get_name ())
        end do
     end do
     write (u, *)
@@ -142,7 +140,7 @@ contains
     integer :: i, n
     n = 2
     do i = 1, n
-       pdg_out(i) = flavor_get_pdg (data%flv_in(1:data%n_flv(i),i))
+       pdg_out(i) = data%flv_in(1:data%n_flv(i),i)%get_pdg ()
     end do
   end subroutine escan_data_get_pdg_out
   
@@ -190,38 +188,38 @@ contains
     select type (data)
     type is (escan_data_t)
        hel_lock = [3, 4, 1, 2]
-       m2 = flavor_get_mass (data%flv_in(1,:))
+       m2 = data%flv_in(1,:)%get_mass ()
        call sf_int%base_init (mask, m2, mr2, m2, hel_lock = hel_lock)
        sf_int%data => data       
        do j1 = 1, data%n_flv(1)
-          call quantum_numbers_init (qn_fc(1), &
+          call qn_fc(1)%init ( &
                flv = data%flv_in(j1,1), &
                col = color_from_flavor (data%flv_in(j1,1)))
-          call quantum_numbers_init (qn_fc(3), &
+          call qn_fc(3)%init ( &
                flv = data%flv_in(j1,1), &
                col = color_from_flavor (data%flv_in(j1,1)))
           call polarization_init_generic (pol1, data%flv_in(j1,1))
           do j2 = 1, data%n_flv(2)
-             call quantum_numbers_init (qn_fc(2), &
+             call qn_fc(2)%init ( &
                   flv = data%flv_in(j2,2), &
                   col = color_from_flavor (data%flv_in(j2,2)))
-             call quantum_numbers_init (qn_fc(4), &
+             call qn_fc(4)%init ( &
                   flv = data%flv_in(j2,2), &
                   col = color_from_flavor (data%flv_in(j2,2)))
              call polarization_init_generic (pol2, data%flv_in(j2,2))
-             call state_iterator_init (it_hel1, pol1%state)
-             do while (state_iterator_is_valid (it_hel1))
-                qn_hel(1:1) = state_iterator_get_quantum_numbers (it_hel1)
-                qn_hel(3:3) = state_iterator_get_quantum_numbers (it_hel1)
-                call state_iterator_init (it_hel2, pol2%state)
-                do while (state_iterator_is_valid (it_hel2))
-                   qn_hel(2:2) = state_iterator_get_quantum_numbers (it_hel2)
-                   qn_hel(4:4) = state_iterator_get_quantum_numbers (it_hel2)
+             call it_hel1%init (pol1%state)
+             do while (it_hel1%is_valid ())
+                qn_hel(1:1) = it_hel1%get_quantum_numbers ()
+                qn_hel(3:3) = it_hel1%get_quantum_numbers ()
+                call it_hel2%init (pol2%state)
+                do while (it_hel2%is_valid ())
+                   qn_hel(2:2) = it_hel2%get_quantum_numbers ()
+                   qn_hel(4:4) = it_hel2%get_quantum_numbers ()
                    qn = qn_hel .merge. qn_fc
                    call interaction_add_state (sf_int%interaction_t, qn)
-                   call state_iterator_advance (it_hel2)
+                   call it_hel2%advance ()
                 end do
-                call state_iterator_advance (it_hel1)
+                call it_hel1%advance ()
              end do
              call polarization_final (pol2)
           end do
@@ -371,8 +369,8 @@ contains
     write (u, "(A)")
     
     call model%init_qed_test ()
-    call flavor_init (flv(1), ELECTRON, model)
-    call flavor_init (flv(2), -ELECTRON, model)
+    call flv(1)%init (ELECTRON, model)
+    call flv(2)%init (-ELECTRON, model)
     pdg_in(1) = ELECTRON
     pdg_in(2) = -ELECTRON
 
@@ -394,8 +392,8 @@ contains
     write (u, "(A)")  "* Initialize incoming momentum with E=500"
     write (u, "(A)")
     E = 250
-    k1 = vector4_moving (E, sqrt (E**2 - flavor_get_mass (flv(1))**2), 3)
-    k2 = vector4_moving (E,-sqrt (E**2 - flavor_get_mass (flv(2))**2), 3)
+    k1 = vector4_moving (E, sqrt (E**2 - flv(1)%get_mass ()**2), 3)
+    k2 = vector4_moving (E,-sqrt (E**2 - flv(2)%get_mass ()**2), 3)
     call vector4_write (k1, u)
     call vector4_write (k2, u)
     call sf_int%seed_kinematics ([k1, k2])

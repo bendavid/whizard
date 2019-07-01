@@ -1,4 +1,4 @@
-! WHIZARD 2.2.4 Feb 06 2015
+! WHIZARD 2.2.5 Feb 27 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -41,106 +41,118 @@ module colors
   private
 
   public :: color_t
-  public :: color_init
-  public :: color_init_col_acl
   public :: color_init_from_array
-  public :: color_set_ghost
-  public :: color_undefine
   public :: color_write
-  public :: color_write_raw
-  public :: color_read_raw
-  public :: color_is_defined
-  public :: color_is_diagonal
-  public :: color_is_ghost
-  public :: color_get_col
-  public :: color_get_acl
   public :: color_get_max_value
-  public :: operator(.match.)
-  public :: operator(==)
-  public :: operator(/=)
-  public :: color_add_offset
   public :: color_canonicalize
   public :: color_array_make_contractions
-  public :: color_invert
-  public :: set_color_map
+  public :: make_color_map
   public :: color_translate
-  public :: operator(.merge.)
   public :: compute_color_factor
   public :: count_color_loops
   public :: color_test
 
   type :: color_t
      private
+     logical :: defined = .false.
      integer, dimension(2) :: c1 = 0, c2 = 0
      logical :: ghost = .false.
+   contains
+     generic :: init => &
+          color_init_trivial, color_init_trivial_ghost, &
+          color_init_array, color_init_array_ghost, &
+          color_init_arrays, color_init_arrays_ghost
+     procedure, private :: color_init_trivial
+     procedure, private :: color_init_trivial_ghost
+     procedure, private :: color_init_array
+     procedure, private :: color_init_array_ghost
+     procedure, private :: color_init_arrays
+     procedure, private :: color_init_arrays_ghost
+     procedure :: init_col_acl => color_init_col_acl
+     procedure :: set_ghost => color_set_ghost
+     procedure :: undefine => color_undefine
+     procedure :: write => color_write_single
+     procedure :: write_raw => color_write_raw
+     procedure :: read_raw => color_read_raw
+     procedure :: is_defined => color_is_defined
+     procedure :: is_nonzero => color_is_nonzero
+     procedure :: is_diagonal => color_is_diagonal
+     procedure :: is_ghost => color_is_ghost
+     procedure, private :: get_number_of_indices => color_get_number_of_indices
+     procedure :: get_col => color_get_col
+     procedure :: get_acl => color_get_acl
+     generic :: operator(.match.) => color_match
+     generic :: operator(==) => color_eq
+     generic :: operator(/=) => color_neq
+     procedure, private ::  color_match
+     procedure, private ::  color_eq
+     procedure, private ::  color_neq
+     procedure :: add_offset => color_add_offset
+     procedure :: invert => color_invert
+     generic :: operator(.merge.) => merge_colors
+     procedure, private ::  merge_colors
   end type color_t
 
 
-  interface color_init
-     module procedure color_init_undefined, color_init_undefined_ghost
-     module procedure color_init_array, color_init_array_ghost
-     module procedure color_init_arrays, color_init_arrays_ghost
-  end interface
-
   interface color_init_from_array
-     module procedure color_init_from_array1, color_init_from_array1g
-     module procedure color_init_from_array2, color_init_from_array2g
-  end interface
-
+     module procedure color_init_from_array1
+     module procedure color_init_from_array1g
+     module procedure color_init_from_array2
+     module procedure color_init_from_array2g
+  end interface color_init_from_array
+  
   interface color_write
      module procedure color_write_single
      module procedure color_write_array
-  end interface
-  interface color_ghost_parity
-     module procedure color_ghost_parity0
-     module procedure color_ghost_parity1
-  end interface
+  end interface color_write
+  
   interface color_get_max_value
      module procedure color_get_max_value0
      module procedure color_get_max_value1
      module procedure color_get_max_value2
-  end interface
-
-  interface operator(.match.)
-     module procedure color_match
-  end interface
-  interface operator(==)
-     module procedure color_eq
-  end interface
-  interface operator(/=)
-     module procedure color_neq
-  end interface
+  end interface color_get_max_value
+  
+  interface make_color_map
+     module procedure color_make_color_map
+  end interface make_color_map
+  
   interface color_translate
      module procedure color_translate0
      module procedure color_translate0_offset
      module procedure color_translate1
-  end interface
-
-  interface operator(.merge.)
-     module procedure merge_colors
-  end interface
+  end interface color_translate
+  
 
 contains
 
-  pure subroutine color_init_undefined (col)
-    type(color_t), intent(out) :: col
-  end subroutine color_init_undefined
+  pure subroutine color_init_trivial (col)
+    class(color_t), intent(inout) :: col
+    col%defined = .true.
+    col%c1 = 0
+    col%c2 = 0
+    col%ghost = .false.
+  end subroutine color_init_trivial
 
-  pure subroutine color_init_undefined_ghost (col, ghost)
-    type(color_t), intent(out) :: col
+  pure subroutine color_init_trivial_ghost (col, ghost)
+    class(color_t), intent(inout) :: col
     logical, intent(in) :: ghost
+    col%defined = .true.
+    col%c1 = 0
+    col%c2 = 0
     col%ghost = ghost
-  end subroutine color_init_undefined_ghost
+  end subroutine color_init_trivial_ghost
 
   pure subroutine color_init_array (col, c1)
-    type(color_t), intent(out) :: col
+    class(color_t), intent(inout) :: col
     integer, dimension(:), intent(in) :: c1
+    col%defined = .true.
     col%c1 = pack (c1, c1 /= 0, [0,0])
     col%c2 = col%c1
+    col%ghost = .false.
   end subroutine color_init_array
 
   pure subroutine color_init_array_ghost (col, c1, ghost)
-    type(color_t), intent(out) :: col
+    class(color_t), intent(inout) :: col
     integer, dimension(:), intent(in) :: c1
     logical, intent(in) :: ghost
     call color_init_array (col, c1)
@@ -148,8 +160,9 @@ contains
   end subroutine color_init_array_ghost
 
   pure subroutine color_init_arrays (col, c1, c2)
-    type(color_t), intent(out) :: col
+    class(color_t), intent(inout) :: col
     integer, dimension(:), intent(in) :: c1, c2
+    col%defined = .true.
     if (size (c1) == size (c2)) then
        col%c1 = pack (c1, c1 /= 0, [0,0])
        col%c2 = pack (c2, c2 /= 0, [0,0])
@@ -160,10 +173,11 @@ contains
        col%c1 = pack (c2, c2 /= 0, [0,0])
        col%c2 = col%c1
     end if
+    col%ghost = .false.
   end subroutine color_init_arrays
 
   pure subroutine color_init_arrays_ghost (col, c1, c2, ghost)
-    type(color_t), intent(out) :: col
+    class(color_t), intent(inout) :: col
     integer, dimension(:), intent(in) :: c1, c2
     logical, intent(in) :: ghost
     call color_init_arrays (col, c1, c2)
@@ -171,7 +185,7 @@ contains
   end subroutine color_init_arrays_ghost
 
   elemental subroutine color_init_col_acl (col, col_in, acl_in)
-    type(color_t), intent(out) :: col
+    class(color_t), intent(inout) :: col
     integer, intent(in) :: col_in, acl_in
     integer, dimension(0) :: null_array
     select case (col_in)
@@ -193,16 +207,18 @@ contains
   end subroutine color_init_col_acl
 
   pure subroutine color_init_from_array1 (col, c1)
-    type(color_t), intent(out) :: col
+    type(color_t), intent(inout) :: col
     integer, dimension(:), intent(in) :: c1
     logical, dimension(size(c1)) :: mask
     mask = c1 /= 0
+    col%defined = .true.
     col%c1 = pack (c1, mask, col%c1)
     col%c2 = col%c1
+    col%ghost = .false.
   end subroutine color_init_from_array1
 
   pure subroutine color_init_from_array1g (col, c1, ghost)
-    type(color_t), intent(out) :: col
+    type(color_t), intent(inout) :: col
     integer, dimension(:), intent(in) :: c1
     logical, intent(in) :: ghost
     call color_init_from_array1 (col, c1)
@@ -211,7 +227,7 @@ contains
 
   pure subroutine color_init_from_array2 (col, c1)
     integer, dimension(:,:), intent(in) :: c1
-    type(color_t), dimension(size(c1,2)), intent(out) :: col
+    type(color_t), dimension(:), intent(inout) :: col
     integer :: i
     do i = 1, size (c1,2)
        call color_init_from_array1 (col(i), c1(:,i))
@@ -219,24 +235,23 @@ contains
   end subroutine color_init_from_array2
 
   pure subroutine color_init_from_array2g (col, c1, ghost)
-    integer, dimension(:,:), intent(in) :: c1
-    type(color_t), dimension(size(c1,2)), intent(out) :: col
+    integer, dimension(:,:), intent(inout) :: c1
+    type(color_t), dimension(:), intent(out) :: col
     logical, intent(in), dimension(:) :: ghost
     call color_init_from_array2 (col, c1)
     col%ghost = ghost
   end subroutine color_init_from_array2g
 
   elemental subroutine color_set_ghost (col, ghost)
-    type(color_t), intent(inout) :: col
+    class(color_t), intent(inout) :: col
     logical, intent(in) :: ghost
     col%ghost = ghost
   end subroutine color_set_ghost
 
   elemental subroutine color_undefine (col, undefine_ghost)
-    type(color_t), intent(inout) :: col
+    class(color_t), intent(inout) :: col
     logical, intent(in), optional :: undefine_ghost
-    col%c1 = 0
-    col%c2 = 0
+    col%defined = .false.
     if (present (undefine_ghost)) then
        if (undefine_ghost)  col%ghost = .false.
     else
@@ -245,24 +260,24 @@ contains
   end subroutine color_undefine
 
   subroutine color_write_single (col, unit)
-    type(color_t), intent(in) :: col
+    class(color_t), intent(in) :: col
     integer, intent(in), optional :: unit
     integer :: u
     u = given_output_unit (unit);  if (u < 0)  return
-    if (color_is_defined (col)) then
+    if (col%ghost) then
+       write (u, "(A)", advance="no")  "c*"
+    else if (col%defined) then
        write (u, "(A)", advance="no")  "c("
        if (col%c1(1) /= 0)  write (u, "(I0)", advance="no")  col%c1(1)
        if (any (col%c1 /= 0))  write (u, "(1x)", advance="no")
        if (col%c1(2) /= 0)  write (u, "(I0)", advance="no")  col%c1(2)
-       if (.not. color_is_diagonal (col)) then
+       if (.not. col%is_diagonal ()) then
           write (u, "(A)", advance="no")  "|"
           if (col%c2(1) /= 0)  write (u, "(I0)", advance="no")  col%c2(1)
           if (any (col%c2 /= 0))  write (u, "(1x)", advance="no")
           if (col%c2(2) /= 0)  write (u, "(I0)", advance="no")  col%c2(2)
        end if
        write (u, "(A)", advance="no") ")"
-    else if (col%ghost) then
-       write (u, "(A)", advance="no")  "c*"
     end if
   end subroutine color_write_single
 
@@ -281,10 +296,10 @@ contains
   end subroutine color_write_array
 
   subroutine color_write_raw (col, u)
-    type(color_t), intent(in) :: col
+    class(color_t), intent(in) :: col
     integer, intent(in) :: u
     logical :: defined
-    defined = color_is_defined (col) .or. color_is_ghost (col)
+    defined = col%is_defined () .or. col%is_ghost ()
     write (u) defined
     if (defined) then
        write (u) col%c1, col%c2
@@ -293,12 +308,12 @@ contains
   end subroutine color_write_raw
     
   subroutine color_read_raw (col, u, iostat)
-    type(color_t), intent(out) :: col
+    class(color_t), intent(inout) :: col
     integer, intent(in) :: u
     integer, intent(out), optional :: iostat
     logical :: defined
-    read (u, iostat=iostat) defined
-    if (defined) then
+    read (u, iostat=iostat) col%defined
+    if (col%defined) then
        read (u, iostat=iostat) col%c1, col%c2
        read (u, iostat=iostat) col%ghost
     end if
@@ -306,14 +321,22 @@ contains
 
   elemental function color_is_defined (col) result (defined)
     logical :: defined
-    type(color_t), intent(in) :: col
-    defined = any (col%c1 /= 0)
+    class(color_t), intent(in) :: col
+    defined = col%defined
   end function color_is_defined
+
+  elemental function color_is_nonzero (col) result (flag)
+    logical :: flag
+    class(color_t), intent(in) :: col
+    flag = col%defined &
+         .and. .not. col%ghost &
+         .and. any (col%c1 /= 0 .or. col%c2 /= 0)
+  end function color_is_nonzero
 
   elemental function color_is_diagonal (col) result (diagonal)
     logical :: diagonal
-    type(color_t), intent(in) :: col
-    if (color_is_defined (col)) then
+    class(color_t), intent(in) :: col
+    if (col%defined) then
        diagonal = all (col%c1 == col%c2)
     else
        diagonal = .true.
@@ -322,63 +345,64 @@ contains
 
   elemental function color_is_ghost (col) result (ghost)
     logical :: ghost
-    type(color_t), intent(in) :: col
+    class(color_t), intent(in) :: col
     ghost = col%ghost
   end function color_is_ghost
 
-  pure function color_ghost_parity0 (col) result (parity)
-    type(color_t), intent(in) :: col
-    logical :: parity
-    parity = color_is_ghost (col)
-  end function color_ghost_parity0
-
-  pure function color_ghost_parity1 (col) result (parity)
+  pure function color_ghost_parity (col) result (parity)
     type(color_t), dimension(:), intent(in) :: col
     logical :: parity
-    logical, dimension(size(col)) :: p
-    integer :: i
-    forall (i = 1:size(col))
-       p(i) = color_ghost_parity0 (col(i))
-    end forall
-    parity = mod (count (p), 2) == 1
-  end function color_ghost_parity1
+    parity = mod (count (col%ghost), 2) == 1
+  end function color_ghost_parity
 
-  elemental function color_number (col) result (n)
+  elemental function color_get_number_of_indices (col) result (n)
     integer :: n
-    type(color_t), intent(in) :: col
-    n = count (col%c1 /= 0)
-  end function color_number
+    class(color_t), intent(in) :: col
+    if (col%defined .and. .not. col%ghost) then
+       n = count (col%c1 /= 0)
+    else
+       n = 0
+    end if
+  end function color_get_number_of_indices
 
   elemental function color_get_col (col) result (c)
     integer :: c
-    type(color_t), intent(in) :: col
+    class(color_t), intent(in) :: col
     integer :: i
-    do i = 1, size (col%c1)
-       if (col%c1(i) > 0) then
-          c = col%c1(i)
-          return
-       end if
-    end do
+    if (col%defined .and. .not. col%ghost) then
+       do i = 1, size (col%c1)
+          if (col%c1(i) > 0) then
+             c = col%c1(i)
+             return
+          end if
+       end do
+    end if
     c = 0
   end function color_get_col
 
   elemental function color_get_acl (col) result (c)
     integer :: c
-    type(color_t), intent(in) :: col
+    class(color_t), intent(in) :: col
     integer :: i
-    do i = 1, size (col%c1)
-       if (col%c1(i) < 0) then
-          c = - col%c1(i)
-          return
-       end if
-    end do
+    if (col%defined .and. .not. col%ghost) then
+       do i = 1, size (col%c1)
+          if (col%c1(i) < 0) then
+             c = - col%c1(i)
+             return
+          end if
+       end do
+    end if
     c = 0
   end function color_get_acl
 
   elemental function color_get_max_value0 (col) result (cmax)
     integer :: cmax
     type(color_t), intent(in) :: col
-    cmax = maxval (abs (col%c1))
+    if (col%defined .and. .not. col%ghost) then
+       cmax = maxval (abs (col%c1))
+    else
+       cmax = 0
+    end if
   end function color_get_max_value0
 
   pure function color_get_max_value1 (col) result (cmax)
@@ -387,7 +411,7 @@ contains
     cmax = maxval (color_get_max_value0 (col))
   end function color_get_max_value1
 
-  function color_get_max_value2 (col) result (cmax)
+  pure function color_get_max_value2 (col) result (cmax)
     integer :: cmax
     type(color_t), dimension(:,:), intent(in) :: col
     integer, dimension(size(col, 2)) :: cm
@@ -400,9 +424,15 @@ contains
 
   elemental function color_match (col1, col2) result (eq)
     logical :: eq
-    type(color_t), intent(in) :: col1, col2
-    if (color_is_defined (col1) .and. color_is_defined (col2)) then
+    class(color_t), intent(in) :: col1, col2
+    if (col1%defined .and. col2%defined) then
+       if (col1%ghost .and. col2%ghost) then
+          eq = .true.
+       else if (.not. col1%ghost .and. .not. col2%ghost) then
           eq = all (col1%c1 == col2%c1) .and. all (col1%c2 == col2%c2)
+       else
+          eq = .false.
+       end if
     else
        eq = .true.
     end if
@@ -410,12 +440,17 @@ contains
 
   elemental function color_eq (col1, col2) result (eq)
     logical :: eq
-    type(color_t), intent(in) :: col1, col2
-    if (color_is_defined (col1) .and. color_is_defined (col2)) then
-          eq = all (col1%c1 == col2%c1) .and. all (col1%c2 == col2%c2) &
-               .and. (col1%ghost .eqv. col2%ghost)
-    else if (.not. color_is_defined (col1) &
-       .and. .not. color_is_defined (col2)) then
+    class(color_t), intent(in) :: col1, col2
+    if (col1%defined .and. col2%defined) then
+       if (col1%ghost .and. col2%ghost) then
+          eq = .true.
+       else if (.not. col1%ghost .and. .not. col2%ghost) then
+          eq = all (col1%c1 == col2%c1) .and. all (col1%c2 == col2%c2)
+       else
+          eq = .false.
+       end if
+    else if (.not. col1%defined &
+       .and. .not. col2%defined) then
        eq = col1%ghost .eqv. col2%ghost
     else
        eq = .false.
@@ -424,16 +459,17 @@ contains
 
   elemental function color_neq (col1, col2) result (neq)
     logical :: neq
-    type(color_t), intent(in) :: col1, col2
-    if (color_is_defined (col1) .and. color_is_defined (col2)) then
-!       if (size (col1%c1) == size (col2%c1)) then
-          neq = any (col1%c1 /= col2%c1) .or. any (col1%c2 /= col2%c2) &
-               .or. (col1%ghost .neqv. col2%ghost)
-!       else
-!          neq = .true.
-!       end if
-    else if (.not. color_is_defined (col1) &
-       .and. .not. color_is_defined (col2)) then
+    class(color_t), intent(in) :: col1, col2
+    if (col1%defined .and. col2%defined) then
+       if (col1%ghost .and. col2%ghost) then
+          neq = .false.
+       else if (.not. col1%ghost .and. .not. col2%ghost) then
+          neq = any (col1%c1 /= col2%c1) .or. any (col1%c2 /= col2%c2)
+       else
+          neq = .true.
+       end if
+    else if (.not. col1%defined &
+         .and. .not. col2%defined) then
        neq = col1%ghost .neqv. col2%ghost
     else
        neq = .true.
@@ -441,10 +477,12 @@ contains
   end function color_neq
 
   elemental subroutine color_add_offset (col, offset)
-    type(color_t), intent(inout) :: col
+    class(color_t), intent(inout) :: col
     integer, intent(in) :: offset
-    where (col%c1 /= 0)  col%c1 = col%c1 + sign (offset, col%c1)
-    where (col%c2 /= 0)  col%c2 = col%c2 + sign (offset, col%c2)
+    if (col%defined .and. .not. col%ghost) then
+       where (col%c1 /= 0)  col%c1 = col%c1 + sign (offset, col%c1)
+       where (col%c2 /= 0)  col%c2 = col%c2 + sign (offset, col%c2)
+    end if
   end subroutine color_add_offset
 
   subroutine color_canonicalize (col)
@@ -453,26 +491,28 @@ contains
     integer :: n_col, i, j, k
     n_col = 0
     do i = 1, size (col)
-       do j = 1, size (col(i)%c1)
-          if (col(i)%c1(j) /= 0) then
-             k = find (abs (col(i)%c1(j)), map(:n_col))
-             if (k == 0) then
-                n_col = n_col + 1
-                map(n_col) = abs (col(i)%c1(j))
-                k = n_col
+       if (col(i)%defined .and. .not. col(i)%ghost) then
+          do j = 1, size (col(i)%c1)
+             if (col(i)%c1(j) /= 0) then
+                k = find (abs (col(i)%c1(j)), map(:n_col))
+                if (k == 0) then
+                   n_col = n_col + 1
+                   map(n_col) = abs (col(i)%c1(j))
+                   k = n_col
+                end if
+                col(i)%c1(j) = sign (k, col(i)%c1(j))
              end if
-             col(i)%c1(j) = sign (k, col(i)%c1(j))
-          end if
-          if (col(i)%c2(j) /= 0) then
-             k = find (abs (col(i)%c2(j)), map(:n_col))
-             if (k == 0) then
-                n_col = n_col + 1
-                map(n_col) = abs (col(i)%c2(j))
-                k = n_col
+             if (col(i)%c2(j) /= 0) then
+                k = find (abs (col(i)%c2(j)), map(:n_col))
+                if (k == 0) then
+                   n_col = n_col + 1
+                   map(n_col) = abs (col(i)%c2(j))
+                   k = n_col
+                end if
+                col(i)%c2(j) = sign (k, col(i)%c2(j))
              end if
-             col(i)%c2(j) = sign (k, col(i)%c2(j))
-          end if
-       end do
+          end do
+       end if
     end do
   contains
     function find (c, array) result (k)
@@ -496,23 +536,25 @@ contains
     type(color_t), dimension(size(col)), intent(out) :: col_pos
     integer, dimension(:), allocatable :: c_tmp
     integer :: i, j, k, n, c
-    allocate (c_tmp (sum (color_number (col))))
+    allocate (c_tmp (sum (col%get_number_of_indices ())), source=0)
     n = 0
     SCAN1: do i = 1, size (col)
-       SCAN2: do j = 1, 2
-          c = abs (col(i)%c1(j))
-          if (c /= 0) then
-             do k = 1, n
-                if (c_tmp(k) == c) then
-                   col_pos(i)%c1(j) = k
-                   cycle SCAN2
-                end if
-             end do
-             n = n + 1
-             c_tmp(n) = c
-             col_pos(i)%c1(j) = n
-          end if
-       end do SCAN2
+       if (col(i)%defined .and. .not. col(i)%ghost) then
+          SCAN2: do j = 1, 2
+             c = abs (col(i)%c1(j))
+             if (c /= 0) then
+                do k = 1, n
+                   if (c_tmp(k) == c) then
+                      col_pos(i)%c1(j) = k
+                      cycle SCAN2
+                   end if
+                end do
+                n = n + 1
+                c_tmp(n) = c
+                col_pos(i)%c1(j) = n
+             end if
+          end do SCAN2
+       end if
     end do SCAN1
     allocate (c_index (n))
     c_index = c_tmp(1:n)
@@ -584,6 +626,7 @@ contains
             c = col_in(i)%c1(j)
             if (c /= 0) then
                p = col_pos(i)%c1(j)
+               entry%col(i)%defined = .true.
                if (map(p) /= 0) then
                   entry%col(i)%c1(j) = sign (map(p), c)
                else
@@ -621,57 +664,63 @@ contains
   end subroutine color_array_make_contractions
 
   elemental subroutine color_invert (col)
-    type(color_t), intent(inout) :: col
-    col%c1 = - col%c1
-    col%c2 = - col%c2
-    if (col%c1(1) < 0 .and. col%c1(2) > 0) then
-       col%c1 = col%c1(2:1:-1)
-       col%c2 = col%c2(2:1:-1)
+    class(color_t), intent(inout) :: col
+    if (col%defined .and. .not. col%ghost) then
+       col%c1 = - col%c1
+       col%c2 = - col%c2
+       if (col%c1(1) < 0 .and. col%c1(2) > 0) then
+          col%c1 = col%c1(2:1:-1)
+          col%c2 = col%c2(2:1:-1)
+       end if
     end if
   end subroutine color_invert
 
-  subroutine set_color_map (map, col1, col2)
+  subroutine color_make_color_map (map, col1, col2)
     integer, dimension(:,:), intent(out), allocatable :: map
     type(color_t), dimension(:), intent(in) :: col1, col2
     integer, dimension(:,:), allocatable :: map1
     integer :: i, j, k
-    allocate (map1 (2, 2 * sum (color_number (col1))))
+    allocate (map1 (2, 2 * sum (col1%get_number_of_indices ())))
     k = 0
     do i = 1, size (col1)
-       do j = 1, size (col1(i)%c1)
-          if (col1(i)%c1(j) /= 0 &
-               .and. all (map1(1,:k) /= abs (col1(i)%c1(j)))) then
-             k = k + 1
-             map1(1,k) = abs (col1(i)%c1(j))
-             map1(2,k) = abs (col2(i)%c1(j))
-          end if
-          if (col1(i)%c2(j) /= 0 &
-               .and. all (map1(1,:k) /= abs (col1(i)%c2(j)))) then
-             k = k + 1
-             map1(1,k) = abs (col1(i)%c2(j))
-             map1(2,k) = abs (col2(i)%c2(j))
-          end if
-       end do
+       if (col1(i)%defined .and. .not. col1(i)%ghost) then
+          do j = 1, size (col1(i)%c1)
+             if (col1(i)%c1(j) /= 0 &
+                  .and. all (map1(1,:k) /= abs (col1(i)%c1(j)))) then
+                k = k + 1
+                map1(1,k) = abs (col1(i)%c1(j))
+                map1(2,k) = abs (col2(i)%c1(j))
+             end if
+             if (col1(i)%c2(j) /= 0 &
+                  .and. all (map1(1,:k) /= abs (col1(i)%c2(j)))) then
+                k = k + 1
+                map1(1,k) = abs (col1(i)%c2(j))
+                map1(2,k) = abs (col2(i)%c2(j))
+             end if
+          end do
+       end if
     end do
     allocate (map (2, k))
     map(:,:) = map1(:,:k)
-  end subroutine set_color_map
+  end subroutine color_make_color_map
 
   subroutine color_translate0 (col, map)
     type(color_t), intent(inout) :: col
     integer, dimension(:,:), intent(in) :: map
     type(color_t) :: col_tmp
     integer :: i
-    col_tmp = col
-    do i = 1, size (map,2)
-       where (abs (col%c1) == map(1,i))  
-          col_tmp%c1 = sign (map(2,i), col%c1)
-       end where
-       where (abs (col%c2) == map(1,i))  
-          col_tmp%c2 = sign (map(2,i), col%c2)
-       end where
-    end do
-    col = col_tmp
+    if (col%defined .and. .not. col%ghost) then
+       col_tmp = col
+       do i = 1, size (map,2)
+          where (abs (col%c1) == map(1,i))  
+             col_tmp%c1 = sign (map(2,i), col%c1)
+          end where
+          where (abs (col%c2) == map(1,i))  
+             col_tmp%c2 = sign (map(2,i), col%c2)
+          end where
+       end do
+       col = col_tmp
+    end if
   end subroutine color_translate0
 
   subroutine color_translate0_offset (col, map, offset)
@@ -681,22 +730,24 @@ contains
     logical, dimension(size(col%c1)) :: mask1, mask2
     type(color_t) :: col_tmp
     integer :: i
-    col_tmp = col
-    mask1 = col%c1 /= 0
-    mask2 = col%c2 /= 0
-    do i = 1, size (map,2)
-       where (abs (col%c1) == map(1,i))  
-          col_tmp%c1 = sign (map(2,i), col%c1)
-          mask1 = .false.
-       end where
-       where (abs (col%c2) == map(1,i))  
-          col_tmp%c2 = sign (map(2,i), col%c2)
-          mask2 = .false.
-       end where
-    end do
-    col = col_tmp
-    where (mask1)  col%c1 = sign (abs (col%c1) + offset, col%c1)
-    where (mask2)  col%c2 = sign (abs (col%c2) + offset, col%c2)
+    if (col%defined .and. .not. col%ghost) then
+       col_tmp = col
+       mask1 = col%c1 /= 0
+       mask2 = col%c2 /= 0
+       do i = 1, size (map,2)
+          where (abs (col%c1) == map(1,i))  
+             col_tmp%c1 = sign (map(2,i), col%c1)
+             mask1 = .false.
+          end where
+          where (abs (col%c2) == map(1,i))  
+             col_tmp%c2 = sign (map(2,i), col%c2)
+             mask2 = .false.
+          end where
+       end do
+       col = col_tmp
+       where (mask1)  col%c1 = sign (abs (col%c1) + offset, col%c1)
+       where (mask2)  col%c2 = sign (abs (col%c2) + offset, col%c2)
+    end if
   end subroutine color_translate0_offset
 
   subroutine color_translate1 (col, map, offset)
@@ -717,17 +768,17 @@ contains
 
   elemental function merge_colors (col1, col2) result (col)
     type(color_t) :: col
-    type(color_t), intent(in) :: col1, col2
+    class(color_t), intent(in) :: col1, col2
     if (color_is_defined (col1) .and. color_is_defined (col2)) then
-       call color_init_arrays (col, col1%c1, col2%c1)
+       if (color_is_ghost (col1) .and. color_is_ghost (col2)) then
+          call color_init_trivial_ghost (col, .true.)
+       else
+          call color_init_arrays (col, col1%c1, col2%c1)
+       end if
     else if (color_is_defined (col1)) then
-       col = col1
+       call color_init_array (col, col1%c1)
     else if (color_is_defined (col2)) then
-       col = col2
-    else if (color_is_ghost (col1)) then
-       col = col1
-    else if (color_is_ghost (col2)) then
-       col = col2
+       call color_init_array (col, col2%c1)
     end if
   end function merge_colors
 
@@ -740,7 +791,7 @@ contains
     ncol = 3;  if (present (nc))  ncol = nc
     col = col1 .merge. col2
     nloops = count_color_loops (col)
-    nghost = count (color_is_ghost (col))
+    nghost = count (col%is_ghost ())
     factor = real (ncol, default) ** (nloops - nghost)
     if (color_ghost_parity (col))  factor = - factor
   end function compute_color_factor
@@ -762,7 +813,7 @@ contains
     SCAN_LOOPS: do
        do i = 1, n
           ! print *, i, ':', cc(i)%c1    !!! Debugging 
-          if (color_is_defined (cc(i))) then
+          if (color_is_nonzero (cc(i))) then
              if (any (cc(i)%c1 > offset)) then
                 ! print *, 'start', i    !!! Debugging
                 count = count + 1
@@ -860,7 +911,7 @@ contains
     type(color_t), dimension(:), allocatable :: col3
     type(color_t), dimension(:,:), allocatable :: col_array
     integer :: count, i
-    call color_init_col_acl (col1, [1, 0, 2, 3], [0, 1, 3, 2])
+    call col1%init_col_acl ([1, 0, 2, 3], [0, 1, 3, 2])
     col2 = col1
     call color_write (col1, u)
     write (u, "(A)")
@@ -871,7 +922,7 @@ contains
     write (u, "(A)")
     count = count_color_loops (col)
     write (u, "(A,I1)") "Number of color loops (3): ", count
-    call color_init_col_acl (col2, [1, 0, 2, 3], [0, 2, 3, 1])
+    call col2%init_col_acl ([1, 0, 2, 3], [0, 2, 3, 1])
     call color_write (col1, u)
     write (u, "(A)")
     call color_write (col2, u)

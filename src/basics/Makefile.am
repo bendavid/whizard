@@ -51,10 +51,15 @@ libbasics_la_SOURCES = \
 # Dump module names into file Modules
 libbasics_Modules = ${libbasics_la_SOURCES:.f90=}
 Modules: Makefile
-	@rm -f $@
-	for module in $(libbasics_Modules); do \
-          echo $$module >> $@; \
+	@for module in $(libbasics_Modules); do \
+          echo $$module >> $@.new; \
         done
+	@if diff $@ $@.new -q >/dev/null; then \
+          rm $@.new; \
+        else \
+          mv $@.new $@; echo "Modules updated"; \
+        fi
+BUILT_SOURCES = Modules
 
 
 ## Install the modules used by generated matrix element code

@@ -9,6 +9,7 @@
  ASCII event stream (Debugging format):
    Writing to file   = eio_ascii_3.debug
    Keep beams        = F
+   Keep remnants     = T
    Show process      = T
    Show transforms   = T
    Show decay tree   = T
@@ -535,6 +536,7 @@ event_excess* =>  0.000000000000E+00
  ASCII event stream (Debugging format):
    [closed]
    Keep beams        = T
+   Keep remnants     = T
    Show process      = T
    Show transforms   = T
    Show decay tree   = T

@@ -1,4 +1,4 @@
-! WHIZARD 2.2.4 Feb 06 2015
+! WHIZARD 2.2.5 Feb 27 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -166,7 +166,7 @@ contains
        write (u, '(1x,A,I4,A)') &
             "Branch #", map%bincode, ":  " // &
             "Mapping (" // str // ") for particle " // &
-            '"' // char (flavor_get_name (map%flv)) // '"'
+            '"' // char (map%flv%get_name ()) // '"'
        if (present (verbose)) then
           if (verbose) then
              select case (map%type)
@@ -216,7 +216,7 @@ contains
             // char (type) // "'")
     end select
     if (present (f) .and. present (model)) &
-         call flavor_init (mapping%flv, abs (f), model)
+         call mapping%flv%init (abs (f), model)
   end subroutine mapping_init
 
   subroutine mapping_set_parameters (map, mapping_defaults, variable_limits)
@@ -224,8 +224,8 @@ contains
     type(mapping_defaults_t), intent(in) :: mapping_defaults
     logical, intent(in) :: variable_limits
     if (map%type /= NO_MAPPING) then
-       map%mass  = flavor_get_mass (map%flv)
-       map%width = flavor_get_width (map%flv)
+       map%mass  = map%flv%get_mass ()
+       map%width = map%flv%get_width ()
        map%variable_limits = variable_limits
        map%a_unknown = .true.
        map%b_unknown = .true.

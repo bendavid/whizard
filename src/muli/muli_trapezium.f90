@@ -1,6 +1,37 @@
+! WHIZARD 2.2.5 Feb 27 2015
+! 
+! Copyright (C) 1999-2015 by 
+!     Wolfgang Kilian <kilian@physik.uni-siegen.de>
+!     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
+!     Juergen Reuter <juergen.reuter@desy.de>
+!     
+!     with contributions from
+!     Fabian Bach <fabian.bach@desy.de>
+!     Christian Speckner <cnspeckn@googlemail.com> 
+!     Christian Weiss <christian.weiss@desy.de>
+!     and Hans-Werner Boschmann, Felix Braam, 
+!     Sebastian Schmidt, Daniel Wiesler 
+!
+! WHIZARD is free software; you can redistribute it and/or modify it
+! under the terms of the GNU General Public License as published by 
+! the Free Software Foundation; either version 2, or (at your option)
+! any later version.
+!
+! WHIZARD is distributed in the hope that it will be useful, but
+! WITHOUT ANY WARRANTY; without even the implied warranty of
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+! GNU General Public License for more details.
+!
+! You should have received a copy of the GNU General Public License
+! along with this program; if not, write to the Free Software
+! Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! This file has been stripped of most comments.  For documentation, refer
+! to the source 'whizard.nw'
 
 module muli_trapezium
-
+  use, intrinsic :: iso_fortran_env, only: output_unit
   use kinds, only: default
   use constants
   use diagnostics
@@ -1353,17 +1384,18 @@ contains
     open (den_unit, file = dir // den_file)
     do while (associated (list))
        ! print *,list%r_position,list%get_r_value()
-       write (val_unit, fmt, advance="no")  list%r_position
-       call write_array (val_unit, list%get_r_value_array(), fmt)
-       write (int_unit,fmt,advance="no")  list%r_position
-       call write_array (int_unit, list%get_r_integral(), fmt)
-       write (err_unit, fmt, advance="no")  list%r_position
-       call write_array (err_unit, list%get_error(), fmt)
-       write (pro_unit, fmt, advance="no")  list%r_position
-       call write_array (pro_unit, list%get_r_probability(), fmt)
-       write (den_unit, fmt, advance="no")  list%r_position
-       call write_array (den_unit, list%get_r_probability() * &
-            list%get_r_value_array(), fmt)
+       !!! !!! !!! gfortran 5.0.0 ICE       
+       ! write (val_unit, fmt, advance="no")  list%r_position
+       ! call write_array (val_unit, list%get_r_value_array(), fmt)
+       ! write (int_unit,fmt,advance="no")  list%r_position
+       ! call write_array (int_unit, list%get_r_integral(), fmt)
+       ! write (err_unit, fmt, advance="no")  list%r_position
+       ! call write_array (err_unit, list%get_error(), fmt)
+       ! write (pro_unit, fmt, advance="no")  list%r_position
+       ! call write_array (pro_unit, list%get_r_probability(), fmt)
+       ! write (den_unit, fmt, advance="no")  list%r_position
+       ! call write_array (den_unit, list%get_r_probability() * &
+       !      list%get_r_value_array(), fmt)
        list => list%right
     end do
     close (val_unit)
@@ -1404,12 +1436,14 @@ contains
        !    sum (node%values (1:this%dim-1, d_integral_index))
        node%values(1, error_index) = sum (node%values(1:this%dim-1, error_index))
        error_sum = error_sum + node%values (1, error_index)
-       call node%set_d_integral (node%get_d_position() * &
-            (node%get_d_value() / 2 - node%get_r_value_array ()))
+       !!! !!! !!! gfortran 5.0.0 ICE
+       ! call node%set_d_integral (node%get_d_position() * &
+       !      (node%get_d_value() / 2 - node%get_r_value_array ()))
        call node%set_r_probability (exp (-integral))
        call node%set_r_integral (integral)
-       integral = integral - node%get_d_integral()
-       call node%set_d_probability (node%get_r_probability() - exp(-integral))
+       !!! !!! !!! gfortran 5.0.0 ICE       
+       ! integral = integral - node%get_d_integral()
+       ! call node%set_d_probability (node%get_r_probability() - exp(-integral))
        ! call muli_trapezium_write (node, output_unit)
        call node%get_left (node)
     end do integrate

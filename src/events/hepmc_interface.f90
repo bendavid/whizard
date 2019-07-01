@@ -1,4 +1,4 @@
-! WHIZARD 2.2.4 Feb 06 2015
+! WHIZARD 2.2.5 Feb 27 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -118,6 +118,7 @@ module hepmc_interface
   public :: hepmc_event_get_weight
   public :: hepmc_event_add_vertex
   public :: hepmc_event_set_signal_process_vertex
+  public :: hepmc_event_get_signal_process_vertex
   public :: hepmc_event_set_beam_particles
   public :: hepmc_event_set_cross_section
   public :: hepmc_event_particle_iterator_t
@@ -611,6 +612,14 @@ module hepmc_interface
      end subroutine gen_event_set_signal_process_vertex
   end interface
   interface
+     function gen_event_get_signal_process_vertex (evt_obj) &
+          result (v_obj) bind(C)
+       import
+       type(c_ptr), value :: evt_obj
+       type(c_ptr) :: v_obj
+     end function gen_event_get_signal_process_vertex
+  end interface
+  interface
      logical(c_bool) function gen_event_set_beam_particles &
           (evt_obj, prt1_obj, prt2_obj) bind(C)
        import
@@ -766,8 +775,8 @@ contains
     type(hepmc_polarization_t), intent(out) :: hpol
     type(helicity_t), intent(in) :: hel
     integer, dimension(2) :: h
-    if (helicity_is_defined (hel)) then
-       h = helicity_get (hel)
+    if (hel%is_defined ()) then
+       h = hel%to_pair ()
        select case (h(1))
        case (1:)
           hpol%polarized = .true.
@@ -820,8 +829,8 @@ contains
     real(default) :: theta
     integer :: hmax
     theta = polarization_theta (hpol%obj)
-    hmax = flavor_get_spin_type (flv) / 2
-    call helicity_init (hel, sign (hmax, nint (cos (theta))))
+    hmax = flv%get_spin_type () / 2
+    call hel%init (sign (hmax, nint (cos (theta))))
   end subroutine hepmc_polarization_to_hel
 
   subroutine hepmc_particle_init (prt, p, pdg, status)
@@ -838,9 +847,9 @@ contains
     type(hepmc_particle_t), intent(inout) :: prt
     type(color_t), intent(in) :: col
     integer(c_int) :: c
-    c = color_get_col (col)
+    c = col%get_col ()
     if (c /= 0)  call gen_particle_set_flow (prt%obj, 1_c_int, c)
-    c = color_get_acl (col)
+    c = col%get_acl ()
     if (c /= 0)  call gen_particle_set_flow (prt%obj, 2_c_int, c)
   end subroutine hepmc_particle_set_color_col
 
@@ -1249,6 +1258,12 @@ contains
     call gen_event_set_signal_process_vertex (evt%obj, v%obj)
   end subroutine hepmc_event_set_signal_process_vertex
 
+  function hepmc_event_get_signal_process_vertex (evt) result (v)
+    type(hepmc_event_t), intent(in) :: evt
+    type(hepmc_vertex_t) :: v
+    v%obj = gen_event_get_signal_process_vertex (evt%obj)
+  end function hepmc_event_get_signal_process_vertex
+
   subroutine hepmc_event_set_beam_particles (evt, prt1, prt2)
     type(hepmc_event_t), intent(inout) :: evt
     type(hepmc_particle_t), intent(in) :: prt1, prt2
@@ -1364,7 +1379,7 @@ contains
     call photon_data%init (var_str ("PHOTON"), 22)
     call photon_data%set (spin_type=VECTOR)
     call photon_data%freeze ()
-    call flavor_init (flv, photon_data)
+    call flv%init (photon_data)
     call polarization_init_angles &
          (pol, flv, 0.6_default, 1._default, 0.5_default)
 

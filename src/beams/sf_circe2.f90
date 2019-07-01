@@ -1,4 +1,4 @@
-! WHIZARD 2.2.4 Feb 06 2015
+! WHIZARD 2.2.5 Feb 27 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -47,6 +47,7 @@ module sf_circe2
   use pdg_arrays
   use model_data
   use flavors
+  use colors
   use helicities
   use quantum_numbers
   use state_matrices
@@ -131,9 +132,9 @@ contains
     if (any (pdg_array_get_length (pdg_in) /= 1)) then
        call msg_fatal ("CIRCE2: incoming beam particles must be unique")
     end if
-    call flavor_init (data%flv_in(1), pdg_array_get (pdg_in(1), 1), model)
-    call flavor_init (data%flv_in(2), pdg_array_get (pdg_in(2), 1), model)
-    data%pdg_in = flavor_get_pdg (data%flv_in)
+    call data%flv_in(1)%init (pdg_array_get (pdg_in(1), 1), model)
+    call data%flv_in(2)%init (pdg_array_get (pdg_in(2), 1), model)
+    data%pdg_in = data%flv_in%get_pdg ()
     data%sqrts = sqrts
     data%polarized = polarized
     data%filename = file
@@ -185,12 +186,12 @@ contains
   subroutine circe2_data_check (data) 
     class(circe2_data_t), intent(in) :: data 
     type(flavor_t) :: flv_photon, flv_electron
-    call flavor_init (flv_photon, PHOTON, data%model)
-    if (flavor_get_pdg (flv_photon) == UNDEFINED) then
+    call flv_photon%init (PHOTON, data%model)
+    if (.not. flv_photon%is_defined ()) then
        call msg_fatal ("CIRCE2: model must contain photon")
     end if
-    call flavor_init (flv_electron, ELECTRON, data%model)
-    if (flavor_get_pdg (flv_electron) == UNDEFINED) then
+    call flv_electron%init (ELECTRON, data%model)
+    if (.not. flv_electron%is_defined ()) then
        call msg_fatal ("CIRCE2: model must contain electron")
     end if
     if (any (abs (data%pdg_in) /= PHOTON .and. abs (data%pdg_in) /= ELECTRON)) &
@@ -223,8 +224,8 @@ contains
     write (u, "(3x,A,A)")       "design = ", char(data%design)
     write (u, "(3x,A," // FMT_19 // ")") "sqrts  = ", data%sqrts
     write (u, "(3x,A,A,A,A)")   "prt_in = ", &
-         char (flavor_get_name (data%flv_in(1))), &
-         ", ", char (flavor_get_name (data%flv_in(2)))    
+         char (data%flv_in(1)%get_name ()), &
+         ", ", char (data%flv_in(2)%get_name ())    
     write (u, "(3x,A,L1)")      "polarized  = ", data%polarized
     write (u, "(3x,A," // FMT_19 // ")") "luminosity = ", data%lumi
     if (data%polarized) then
@@ -305,31 +306,36 @@ contains
     type(quantum_numbers_mask_t), dimension(4) :: mask
     type(quantum_numbers_t), dimension(4) :: qn
     type(helicity_t) :: hel
+    type(color_t) :: col0
     integer :: h
     select type (data)
     type is (circe2_data_t)
        mask_h(1:2) = .true.
        mask_h(3:4) = .not. data%polarized       
-       mask = new_quantum_numbers_mask (.false., .false., mask_h)
+       mask = quantum_numbers_mask (.false., .false., mask_h)
        call sf_int%base_init (mask, [0._default, 0._default], &
             null_array, [0._default, 0._default])    
        sf_int%data => data              
        if (data%polarized) then
           call sf_int%selector%init (data%lumi_hel_frac)
        end if
-       call quantum_numbers_init (qn(1), flv = data%flv_in(1))
-       call quantum_numbers_init (qn(2), flv = data%flv_in(2))
+       call col0%init ()
+       call qn(1)%init (flv = data%flv_in(1), col = col0)
+       call qn(2)%init (flv = data%flv_in(2), col = col0)
        if (data%polarized) then
           do h = 1, 4
-             call helicity_init (hel, data%h1(h))
-             call quantum_numbers_init (qn(3), flv = data%flv_in(1), hel = hel)
-             call helicity_init (hel, data%h2(h))
-             call quantum_numbers_init (qn(4), flv = data%flv_in(2), hel = hel)
+             call hel%init (data%h1(h))
+             call qn(3)%init &
+                  (flv = data%flv_in(1), col = col0, hel = hel)
+             call hel%init (data%h2(h))
+             call qn(4)%init &
+                  (flv = data%flv_in(2), col = col0, hel = hel)
              call interaction_add_state (sf_int%interaction_t, qn)
           end do
        else
-          call quantum_numbers_init (qn(3), flv = data%flv_in(1))
-          call quantum_numbers_init (qn(4), flv = data%flv_in(2))
+          call qn(3)%init (flv = data%flv_in(1), col = col0)
+          call qn(4)%init (flv = data%flv_in(2), col = col0)
+          call qn(3:4)%tag_radiated ()
           call interaction_add_state (sf_int%interaction_t, qn)
        end if
        call interaction_freeze (sf_int%interaction_t)
@@ -541,8 +547,8 @@ contains
 
     call os_data_init (os_data)
     call model%init_qed_test ()
-    call flavor_init (flv(1), PHOTON, model)
-    call flavor_init (flv(2), PHOTON, model)
+    call flv(1)%init (PHOTON, model)
+    call flv(2)%init (PHOTON, model)
     pdg_in(1) = PHOTON
     pdg_in(2) = PHOTON
 
@@ -574,8 +580,8 @@ contains
     write (u, "(A)")  "* Initialize incoming momentum with E=500"
     write (u, "(A)")
     E = 250
-    k1 = vector4_moving (E, sqrt (E**2 - flavor_get_mass (flv(1))**2), 3)
-    k2 = vector4_moving (E,-sqrt (E**2 - flavor_get_mass (flv(2))**2), 3)
+    k1 = vector4_moving (E, sqrt (E**2 - flv(1)%get_mass ()**2), 3)
+    k2 = vector4_moving (E,-sqrt (E**2 - flv(2)%get_mass ()**2), 3)
     call vector4_write (k1, u)
     call vector4_write (k2, u)
     call sf_int%seed_kinematics ([k1, k2])
@@ -640,8 +646,8 @@ contains
 
     call os_data_init (os_data)
     call model%init_qed_test ()
-    call flavor_init (flv(1), PHOTON, model)
-    call flavor_init (flv(2), PHOTON, model)
+    call flv(1)%init (PHOTON, model)
+    call flv(2)%init (PHOTON, model)
     pdg_in(1) = PHOTON
     pdg_in(2) = PHOTON
 
@@ -673,8 +679,8 @@ contains
     write (u, "(A)")  "* Initialize incoming momentum with E=500"
     write (u, "(A)")
     E = 250
-    k1 = vector4_moving (E, sqrt (E**2 - flavor_get_mass (flv(1))**2), 3)
-    k2 = vector4_moving (E,-sqrt (E**2 - flavor_get_mass (flv(2))**2), 3)
+    k1 = vector4_moving (E, sqrt (E**2 - flv(1)%get_mass ()**2), 3)
+    k2 = vector4_moving (E,-sqrt (E**2 - flv(2)%get_mass ()**2), 3)
     call vector4_write (k1, u)
     call vector4_write (k2, u)
     call sf_int%seed_kinematics ([k1, k2])

@@ -9,6 +9,7 @@
  ASCII event stream (verbose LHA format):
    Writing to file   = eio_ascii_9.lha.verb
    Keep beams        = F
+   Keep remnants     = T
 
 * File contents:
 
@@ -81,6 +82,7 @@ HEPEUP Common Block
  ASCII event stream (verbose LHA format):
    [closed]
    Keep beams        = T
+   Keep remnants     = T
 
 * Cleanup
 

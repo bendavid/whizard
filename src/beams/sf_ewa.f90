@@ -1,4 +1,4 @@
-! WHIZARD 2.2.4 Feb 06 2015
+! WHIZARD 2.2.5 Feb 27 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -142,7 +142,7 @@ contains
     allocate (data%flv_in (n_flv))
     allocate (data%flv_out(n_flv))
     do i = 1, n_flv
-       call flavor_init (data%flv_in(i), pdg_array_get (pdg_in, i), model)
+       call data%flv_in(i)%init (pdg_array_get (pdg_in, i), model)
     end do
     data%pt_max = pt_max
     data%sqrts = sqrts
@@ -175,8 +175,8 @@ contains
        data%m_out = mass
        data%mass_set = .true.
     else
-       data%mass = flavor_get_mass (data%flv_in(1))
-       if (any (flavor_get_mass (data%flv_in) /= data%mass)) then
+       data%mass = data%flv_in(1)%get_mass ()
+       if (any (data%flv_in%get_mass () /= data%mass)) then
           data%error = MASS_MIX;  return
        end if
     end if
@@ -195,27 +195,27 @@ contains
        data%flv_out = data%flv_in
     case (24)
        do i = 1, size (data%flv_in)
-          pdg = flavor_get_pdg (data%flv_in(i)) 
-          isospin = flavor_get_isospin_type (data%flv_in(i))
+          pdg = data%flv_in(i)%get_pdg () 
+          isospin = data%flv_in(i)%get_isospin_type ()
           if (isospin > 0) then            
              !!! up-type quark or neutrinos
-             if (flavor_is_antiparticle (data%flv_in(i))) then
-                call flavor_init (data%flv_out(i), pdg + 1, data%model)
+             if (data%flv_in(i)%is_antiparticle ()) then
+                call data%flv_out(i)%init (pdg + 1, data%model)
              else
-                call flavor_init (data%flv_out(i), pdg - 1, data%model)
+                call data%flv_out(i)%init (pdg - 1, data%model)
              end if
           else
              !!! down-type quark or lepton
-             if (flavor_is_antiparticle (data%flv_in(i))) then
-                call flavor_init (data%flv_out(i), pdg - 1, data%model)
+             if (data%flv_in(i)%is_antiparticle ()) then
+                call data%flv_out(i)%init (pdg - 1, data%model)
              else
-                call flavor_init (data%flv_out(i), pdg + 1, data%model)
+                call data%flv_out(i)%init (pdg + 1, data%model)
              end if
           end if
        end do
        if (.not. data%mass_set) then
-          data%m_out = flavor_get_mass (data%flv_out(1))
-          if (any (flavor_get_mass (data%flv_out) /= data%m_out)) then
+          data%m_out = data%flv_out(1)%get_mass ()
+          if (any (data%flv_out%get_mass () /= data%m_out)) then
              data%error = MASS_MIX_OUT;  return
           end if
        end if
@@ -259,13 +259,13 @@ contains
        write (u, "(3x,A)", advance="no") "  flavor(in)  =  "
        do i = 1, size (data%flv_in)
           if (i > 1)  write (u, "(',',1x)", advance="no")
-          call flavor_write (data%flv_in(i), u)
+          call data%flv_in(i)%write (u)
        end do
        write (u, *)
        write (u, "(3x,A)", advance="no") "  flavor(out) =  "
        do i = 1, size (data%flv_out)
           if (i > 1)  write (u, "(',',1x)", advance="no")
-          call flavor_write (data%flv_out(i), u)
+          call data%flv_out(i)%write (u)
        end do
        write (u, *)
        write (u, "(3x,A," // FMT_19 // ")") "  x_min     = ", data%x_min
@@ -310,7 +310,7 @@ contains
     end if
     allocate (pdg1 (n_flv))
     do i = 1, n_flv
-       pdg1(i) = flavor_get_pdg (data%flv_out(i))
+       pdg1(i) = data%flv_out(i)%get_pdg ()
     end do
     pdg_out(1) = pdg1
   end subroutine ewa_data_get_pdg_out
@@ -357,34 +357,38 @@ contains
     type(polarization_t) :: pol
     type(quantum_numbers_t), dimension(1) :: qn_fc, qn_hel, qn_fc_fin
     type(flavor_t) :: flv_z, flv_wp, flv_wm
-    type(quantum_numbers_t) :: qn_z, qn_wp, qn_wm, qn, qn_out, qn_w
+    type(color_t) :: col0
+    type(quantum_numbers_t) :: qn_z, qn_wp, qn_wm, qn, qn_rad, qn_w
     type(state_iterator_t) :: it_hel
     integer :: i, isospin
     select type (data)
     type is (ewa_data_t)   
-       mask = new_quantum_numbers_mask (.false., .false., &
+       mask = quantum_numbers_mask (.false., .false., &
             mask_h = [.false., .false., .true.])
        hel_lock = [2, 1, 0]
+       call col0%init ()
        select case (data%id)
        case (23)
           !!! Z boson, flavor is not changing    
           call sf_int%base_init (mask, [data%mass**2], [data%mass**2], &
                [data%mZ**2], hel_lock = hel_lock)
           sf_int%data => data          
-          call flavor_init (flv_z, Z_BOSON, data%model)
-          call quantum_numbers_init (qn_z, flv_z)
+          call flv_z%init (Z_BOSON, data%model)
+          call qn_z%init (flv_z, col0)
           do i = 1, size (data%flv_in)
              call polarization_init_generic (pol, data%flv_in(i))
-             call quantum_numbers_init (qn_fc(1), &
+             call qn_fc(1)%init ( &
                   flv = data%flv_in(i), &
                   col = color_from_flavor (data%flv_in(i), 1))
-             call state_iterator_init (it_hel, pol%state)
-             do while (state_iterator_is_valid (it_hel))
-                qn_hel = state_iterator_get_quantum_numbers (it_hel)
+             call it_hel%init (pol%state)
+             do while (it_hel%is_valid ())
+                qn_hel = it_hel%get_quantum_numbers ()
                 qn = qn_hel(1) .merge. qn_fc(1)
+                qn_rad = qn
+                call qn_rad%tag_radiated ()
                 call interaction_add_state &
-                     (sf_int%interaction_t, [qn, qn, qn_z])
-                call state_iterator_advance (it_hel)
+                     (sf_int%interaction_t, [qn, qn_rad, qn_z])
+                call it_hel%advance ()
              end do
              call polarization_final (pol)
           end do
@@ -392,42 +396,43 @@ contains
           call sf_int%base_init (mask, [data%mass**2], [data%m_out**2], &
                [data%mW**2], hel_lock = hel_lock)
           sf_int%data => data                       
-          call flavor_init (flv_wp, W_BOSON, data%model)
-          call flavor_init (flv_wm, - W_BOSON, data%model)
-          call quantum_numbers_init (qn_wp, flv_wp)
-          call quantum_numbers_init (qn_wm, flv_wm)
+          call flv_wp%init (W_BOSON, data%model)
+          call flv_wm%init (- W_BOSON, data%model)
+          call qn_wp%init (flv_wp, col0)
+          call qn_wm%init (flv_wm, col0)
           do i = 1, size (data%flv_in)
-             isospin = flavor_get_isospin_type (data%flv_in(i))
+             isospin = data%flv_in(i)%get_isospin_type ()
              if (isospin > 0) then            
                 !!! up-type quark or neutrinos
-                if (flavor_is_antiparticle (data%flv_in(i))) then
+                if (data%flv_in(i)%is_antiparticle ()) then
                    qn_w = qn_wm
                 else
                    qn_w = qn_wp
                 end if
              else
                 !!! down-type quark or lepton
-                if (flavor_is_antiparticle (data%flv_in(i))) then
+                if (data%flv_in(i)%is_antiparticle ()) then
                    qn_w = qn_wp
                 else
                    qn_w = qn_wm
                 end if
              end if
              call polarization_init_generic (pol, data%flv_in(i))
-             call quantum_numbers_init (qn_fc(1), &
+             call qn_fc(1)%init ( &
                   flv = data%flv_in(i), &
                   col = color_from_flavor (data%flv_in(i), 1))
-             call quantum_numbers_init (qn_fc_fin(1), &
+             call qn_fc_fin(1)%init ( &
                   flv = data%flv_out(i), &
                   col = color_from_flavor (data%flv_out(i), 1))
-             call state_iterator_init (it_hel, pol%state)
-             do while (state_iterator_is_valid (it_hel))
-                qn_hel = state_iterator_get_quantum_numbers (it_hel)
+             call it_hel%init (pol%state)
+             do while (it_hel%is_valid ())
+                qn_hel = it_hel%get_quantum_numbers ()
                 qn = qn_hel(1) .merge. qn_fc(1)
-                qn_out = qn_hel(1) .merge. qn_fc_fin(1)           
+                qn_rad = qn_hel(1) .merge. qn_fc_fin(1)
+                call qn_rad%tag_radiated ()
                 call interaction_add_state &
-                     (sf_int%interaction_t, [qn, qn_out, qn_w])
-                call state_iterator_advance (it_hel)
+                     (sf_int%interaction_t, [qn, qn_rad, qn_w])
+                call it_hel%advance ()
              end do
              call polarization_final (pol)    
           end do
@@ -465,14 +470,13 @@ contains
     associate (data => sf_int%data)
       select case (data%id)
       case (23)
-         call state_iterator_init (it, &
-              interaction_get_state_matrix_ptr (sf_int%interaction_t))
-         do while (state_iterator_is_valid (it))
-            i = state_iterator_get_me_index (it)
-            flv = state_iterator_get_flavor (it, 1)
-            q = flavor_get_charge (flv)
-            t3 = flavor_get_isospin (flv)
-            if (flavor_is_antiparticle (flv)) then
+         call it%init (interaction_get_state_matrix_ptr (sf_int%interaction_t))
+         do while (it%is_valid ())
+            i = it%get_me_index ()
+            flv = it%get_flavor (1)
+            q = flv%get_charge ()
+            t3 = flv%get_isospin ()
+            if (flv%is_antiparticle ()) then
                sf_int%cv(i) = - data%cv &
                     * (t3 - 2._default * q * data%sinthw**2) / data%costhw
                sf_int%ca(i) = data%ca *  t3 / data%costhw    
@@ -481,22 +485,21 @@ contains
                     * (t3 - 2._default * q * data%sinthw**2) / data%costhw
                sf_int%ca(i) = data%ca *  t3 / data%costhw    
             end if
-            call state_iterator_advance (it)
+            call it%advance ()
          end do
       case (24)
-         call state_iterator_init (it, &
-              interaction_get_state_matrix_ptr (sf_int%interaction_t))
-         do while (state_iterator_is_valid (it))
-            i = state_iterator_get_me_index (it)
-            if (flavor_is_antiparticle (state_iterator_get_flavor (it, 1))) &
-                 then
+         call it%init (interaction_get_state_matrix_ptr (sf_int%interaction_t))
+         do while (it%is_valid ())
+            i = it%get_me_index ()
+            flv = it%get_flavor (1)
+            if (flv%is_antiparticle ()) then
                sf_int%cv(i) = data%cv / sqrt(2._default)
                sf_int%ca(i) = - data%ca / sqrt(2._default)
             else          
                sf_int%cv(i) = data%cv / sqrt(2._default)
                sf_int%ca(i) = data%ca / sqrt(2._default)
             end if
-            call state_iterator_advance (it)
+            call it%advance ()
          end do
       end select
     end associate
@@ -772,7 +775,7 @@ contains
     write (u, "(A)")
 
     call model%init_sm_test ()
-    call flavor_init (flv, 2, model)
+    call flv%init (2, model)
     pdg_in = 2
 
     call reset_interaction_counter ()
@@ -799,7 +802,7 @@ contains
     write (u, "(A)")  "* Initialize incoming momentum with E=1500"
     write (u, "(A)")
     E = 1500
-    k = vector4_moving (E, sqrt (E**2 - flavor_get_mass (flv)**2), 3)
+    k = vector4_moving (E, sqrt (E**2 - flv%get_mass ()**2), 3)
     call pacify (k, 1e-10_default)
     call vector4_write (k, u)
     call sf_int%seed_kinematics ([k])
@@ -885,7 +888,7 @@ contains
     write (u, "(A)")
 
     call model%init_sm_test ()
-    call flavor_init (flv, 2, model)
+    call flv%init (2, model)
     pdg_in = 2
 
     call reset_interaction_counter ()
@@ -912,7 +915,7 @@ contains
     write (u, "(A)")  "* Initialize incoming momentum with E=1500"
     write (u, "(A)")
     E = 1500
-    k = vector4_moving (E, sqrt (E**2 - flavor_get_mass (flv)**2), 3)
+    k = vector4_moving (E, sqrt (E**2 - flv%get_mass ()**2), 3)
     call pacify (k, 1e-10_default)
     call vector4_write (k, u)
     call sf_int%seed_kinematics ([k])
@@ -998,7 +1001,7 @@ contains
     write (u, "(A)")
 
     call modeL%init_sm_test ()
-    call flavor_init (flv, 2, model)
+    call flv%init (2, model)
     pdg_in = 2
 
     call reset_interaction_counter ()
@@ -1022,7 +1025,7 @@ contains
     write (u, "(A)")  "* Initialize incoming momentum with E=1500"
     write (u, "(A)")
     E = 1500
-    k = vector4_moving (E, sqrt (E**2 - flavor_get_mass (flv)**2), 3)
+    k = vector4_moving (E, sqrt (E**2 - flv%get_mass ()**2), 3)
     call pacify (k, 1e-10_default)
     call vector4_write (k, u)
     call sf_int%seed_kinematics ([k])        
@@ -1111,7 +1114,7 @@ contains
     write (u, "(A)")
 
     call model%init_sm_test ()
-    call flavor_init (flv, 2, model)
+    call flv%init (2, model)
     pdg_in = [1, 2, -1, -2]
 
     call reset_interaction_counter ()
@@ -1138,7 +1141,7 @@ contains
     write (u, "(A)")  "* Initialize incoming momentum with E=1500"
     write (u, "(A)")
     E = 1500
-    k = vector4_moving (E, sqrt (E**2 - flavor_get_mass (flv)**2), 3)
+    k = vector4_moving (E, sqrt (E**2 - flv%get_mass ()**2), 3)
     call pacify (k, 1e-10_default)
     call vector4_write (k, u)
     call sf_int%seed_kinematics ([k])

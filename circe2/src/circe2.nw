@@ -2,7 +2,7 @@
 @ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Implementation of [[circe2]]}
 <<Version>>=
-'Version 2.2.4'
+'Version 2.2.5'
 @ 
 <<[[implicit none]]>>=
 implicit none
@@ -298,11 +298,11 @@ according to the histogram for channel [[ic]].
 <<[[circe2]] declarations>>=
 public :: circe2_generate
 interface circe2_generate
-   module procedure circe2_generate
+   module procedure circe2_generate_ph
 end interface circe2_generate
 @ 
 <<[[circe2]] implementation>>=
-subroutine circe2_generate (c2s, rng, y, p, h)
+subroutine circe2_generate_ph (c2s, rng, y, p, h)
   type(circe2_state), intent(in) :: c2s
   class(rng_type), intent(inout) :: rng
   real(kind=default), dimension(:), intent(out) :: y
@@ -312,7 +312,7 @@ subroutine circe2_generate (c2s, rng, y, p, h)
   <<Find [[ic]] for [[p]] and [[h]]>>
   <<Complain and [[return]] iff $[[ic]] \le 0$>>
   call circe2_generate_channel (c2s%ch(ic), rng, y)
-end subroutine circe2_generate
+end subroutine circe2_generate_ph
 <<Separator>>
 @
 <<[[circe2]] declarations>>=
@@ -554,24 +554,24 @@ end function circe2_luminosity
 <<[[circe2]] declarations>>=
 public :: circe2_distribution
 interface circe2_distribution
-   module procedure circe2_distribution
+   module procedure circe2_distribution_ph
 end interface circe2_distribution
 @ 
 <<[[circe2]] implementation>>=
-function circe2_distribution (c2s, p, h, yy)
+function circe2_distribution_ph (c2s, p, h, yy)
   type(circe2_state), intent(in) :: c2s
   integer, dimension(:), intent(in) :: p
   real(kind=default), dimension(:), intent(in)  :: yy
   integer, dimension(:), intent(in) :: h
-  real(kind=default) :: circe2_distribution
+  real(kind=default) :: circe2_distribution_ph
   integer :: i, ic
   <<Find [[ic]] for [[p]] and [[h]]>>
   if (ic <= 0) then
-     circe2_distribution = 0
+     circe2_distribution_ph = 0
   else
-     circe2_distribution = circe2_distribution_channel (c2s%ch(ic), yy)
+     circe2_distribution_ph = circe2_distribution_channel (c2s%ch(ic), yy)
   end if
-end function circe2_distribution
+end function circe2_distribution_ph
 <<Separator>>
 @ 
 <<[[circe2]] declarations>>=

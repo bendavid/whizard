@@ -254,7 +254,7 @@ contains
     kinds=double_pdf_kinds(1:2,this%integrand_id)
   end function qcd_2_2_get_pdf_int_kinds
 
-  elemental function qcd_2_2_get_parton_id(this,n) result(id)
+  pure function qcd_2_2_get_parton_id(this,n) result(id)
     class(qcd_2_2_type), intent(in)::this
     integer, intent(in)::n
     integer::id
@@ -281,7 +281,7 @@ contains
     kind=valid_processes(6,this%process_id)
   end function qcd_2_2_get_diagram_kind
 
-  elemental function qcd_2_2_get_diagram_color_kind(this) result(kind)
+  pure function qcd_2_2_get_diagram_color_kind(this) result(kind)
     ! This is one more hack. Before merging into the interleaved algorithm, muli has only cared for 
     ! summed cross sections, but not in specific color flows. So two different diagrams with equal 
     ! cross sections were summed up to diagram kind 1. 

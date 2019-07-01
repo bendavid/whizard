@@ -49,4 +49,9 @@
  factorization scale = 200.
  |amp (1, 6, 1)| =  0.2217E+00
 
+* Set alpha(QCD) directly and compute matrix element again
+
+ alpha_qcd = 0.1000
+ |amp (1, 6, 1)| =  0.2094E+00
+
 * Test output end: prc_omega_5

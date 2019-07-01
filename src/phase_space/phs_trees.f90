@@ -1,4 +1,4 @@
-! WHIZARD 2.2.4 Feb 06 2015
+! WHIZARD 2.2.5 Feb 27 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -496,7 +496,7 @@ contains
        do i = 0, size (flv) - 1
           if (btest(k,i)) then
              if (ibclr(k,i) == 0) then
-                tree%mass_sum(k) = flavor_get_mass (flv(i+1))
+                tree%mass_sum(k) = flv(i+1)%get_mass ()
              else
                 tree%mass_sum(k) = &
                      tree%mass_sum(ibclr(k,i)) + tree%mass_sum(ibset(0,i))

@@ -709,9 +709,11 @@ targets from markers.
     class(identified_t), intent(in) :: this
     class(marker_t), intent(inout) :: marker
     integer(dik), intent(out) :: status
+    integer(dik) :: id
+    id = this%get_id ()
     call marker%mark_begin ("identified_t")
     call marker%mark ("name", this%get_name ())
-    call marker%mark ("id", this%get_id ())
+    call marker%mark ("id", id)
     call marker%mark_end ("identified_t")
   end subroutine identified_write_to_marker
   
@@ -899,7 +901,7 @@ targets from markers.
 <<Muli base: unique type: TBP>>=
   procedure :: get_unique_id => unique_get_unique_id  
 <<Muli base: procedures>>=
-  elemental function unique_get_unique_id (this)
+  pure function unique_get_unique_id (this)
     class(unique_t), intent(in) :: this
     integer(dik) :: unique_get_unique_id
     unique_get_unique_id = this%unique_id
@@ -3875,7 +3877,7 @@ end module muli_momentum
 <<Muli mom: trans mom: TBP>>=
   procedure :: get_unit_scale => transverse_mom_get_unit_scale
 <<Muli mom: procedures>>=
-  elemental function transverse_mom_get_unit_scale (this) result (scale)
+  pure function transverse_mom_get_unit_scale (this) result (scale)
     class(transverse_mom_t), intent(in) :: this
     real(default) :: scale
     scale = this%momentum(3)
@@ -3886,7 +3888,7 @@ end module muli_momentum
 <<Muli mom: trans mom: TBP>>=
   procedure :: get_unit2_scale => transverse_mom_get_unit2_scale
 <<Muli mom: procedures>>=
-  elemental function transverse_mom_get_unit2_scale (this) result (scale)
+  pure function transverse_mom_get_unit2_scale (this) result (scale)
     class(transverse_mom_t), intent(in) :: this
     real(default) :: scale
     scale = this%momentum(4)
@@ -4099,7 +4101,7 @@ end module muli_momentum
 @
 <<Muli mom: interfaces>>=
   abstract interface
-     elemental function qcd_get_int_by_int (this, n)
+     pure function qcd_get_int_by_int (this, n)
        import 
        class(qcd_2_2_class), intent(in) :: this
        integer, intent(in) :: n
@@ -7388,9 +7390,10 @@ upper "right" bound of the segment. Additionally the differences of
 these values to the values of the left neighbor is stored. 
 
 <<[[muli_trapezium.f90]]>>=
+<<File header>>
 
 module muli_trapezium
-
+  use, intrinsic :: iso_fortran_env, only: output_unit
 <<Use kinds>>
   use constants
   use diagnostics
@@ -9175,17 +9178,18 @@ second index distingiushes between [[r_value]], [[d_value]],
     open (den_unit, file = dir // den_file)
     do while (associated (list))
        ! print *,list%r_position,list%get_r_value()
-       write (val_unit, fmt, advance="no")  list%r_position
-       call write_array (val_unit, list%get_r_value_array(), fmt)
-       write (int_unit,fmt,advance="no")  list%r_position
-       call write_array (int_unit, list%get_r_integral(), fmt)
-       write (err_unit, fmt, advance="no")  list%r_position
-       call write_array (err_unit, list%get_error(), fmt)
-       write (pro_unit, fmt, advance="no")  list%r_position
-       call write_array (pro_unit, list%get_r_probability(), fmt)
-       write (den_unit, fmt, advance="no")  list%r_position
-       call write_array (den_unit, list%get_r_probability() * &
-            list%get_r_value_array(), fmt)
+       !!! !!! !!! gfortran 5.0.0 ICE       
+       ! write (val_unit, fmt, advance="no")  list%r_position
+       ! call write_array (val_unit, list%get_r_value_array(), fmt)
+       ! write (int_unit,fmt,advance="no")  list%r_position
+       ! call write_array (int_unit, list%get_r_integral(), fmt)
+       ! write (err_unit, fmt, advance="no")  list%r_position
+       ! call write_array (err_unit, list%get_error(), fmt)
+       ! write (pro_unit, fmt, advance="no")  list%r_position
+       ! call write_array (pro_unit, list%get_r_probability(), fmt)
+       ! write (den_unit, fmt, advance="no")  list%r_position
+       ! call write_array (den_unit, list%get_r_probability() * &
+       !      list%get_r_value_array(), fmt)
        list => list%right
     end do
     close (val_unit)
@@ -9231,12 +9235,14 @@ second index distingiushes between [[r_value]], [[d_value]],
        !    sum (node%values (1:this%dim-1, d_integral_index))
        node%values(1, error_index) = sum (node%values(1:this%dim-1, error_index))
        error_sum = error_sum + node%values (1, error_index)
-       call node%set_d_integral (node%get_d_position() * &
-            (node%get_d_value() / 2 - node%get_r_value_array ()))
+       !!! !!! !!! gfortran 5.0.0 ICE
+       ! call node%set_d_integral (node%get_d_position() * &
+       !      (node%get_d_value() / 2 - node%get_r_value_array ()))
        call node%set_r_probability (exp (-integral))
        call node%set_r_integral (integral)
-       integral = integral - node%get_d_integral()
-       call node%set_d_probability (node%get_r_probability() - exp(-integral))
+       !!! !!! !!! gfortran 5.0.0 ICE       
+       ! integral = integral - node%get_d_integral()
+       ! call node%set_d_probability (node%get_r_probability() - exp(-integral))
        ! call muli_trapezium_write (node, output_unit)
        call node%get_left (node)
     end do integrate
@@ -16499,7 +16505,7 @@ contains
     kinds=double_pdf_kinds(1:2,this%integrand_id)
   end function qcd_2_2_get_pdf_int_kinds
 
-  elemental function qcd_2_2_get_parton_id(this,n) result(id)
+  pure function qcd_2_2_get_parton_id(this,n) result(id)
     class(qcd_2_2_type), intent(in)::this
     integer, intent(in)::n
     integer::id
@@ -16526,7 +16532,7 @@ contains
     kind=valid_processes(6,this%process_id)
   end function qcd_2_2_get_diagram_kind
 
-  elemental function qcd_2_2_get_diagram_color_kind(this) result(kind)
+  pure function qcd_2_2_get_diagram_color_kind(this) result(kind)
     ! This is one more hack. Before merging into the interleaved algorithm, muli has only cared for 
     ! summed cross sections, but not in specific color flows. So two different diagrams with equal 
     ! cross sections were summed up to diagram kind 1. 

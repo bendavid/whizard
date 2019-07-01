@@ -30,14 +30,14 @@ module system_dependencies
   ! configure.
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-  use, intrinsic :: omp_lib
+  
 
   implicit none
   public
  
   ! Program version
-  character(*), parameter :: WHIZARD_VERSION = "2.2.4"
-  character(*), parameter :: WHIZARD_DATE = "Feb 06 2015"
+  character(*), parameter :: WHIZARD_VERSION = "2.2.5"
+  character(*), parameter :: WHIZARD_DATE = "Feb 27 2015"
 
   ! System paths
   ! These are used for testing without existing installation
@@ -213,7 +213,7 @@ module system_dependencies
   character(*), parameter :: DEFAULT_FC = &
        "gfortran"
   character(*), parameter :: DEFAULT_FCFLAGS = &
-       " -fopenmp -g -O2"
+       "  -g -O2"
   character(*), parameter :: DEFAULT_FCFLAGS_PIC = &
        " -fno-common"
   character(*), parameter :: DEFAULT_FC_SRC_EXT = &
@@ -311,30 +311,30 @@ contains
   ! OpenMP wrapper routines, work independent of OpenMP status
   function openmp_is_active () result (flag)
     logical :: flag
-    flag = .true.
-!    flag = .false.
+!    flag = .true.
+    flag = .false.
   end function openmp_is_active
 
   subroutine openmp_set_num_threads (num)
     integer, intent(in) :: num
-    call omp_set_num_threads (num)
+!    call omp_set_num_threads (num)
   end subroutine openmp_set_num_threads
   
   function openmp_get_num_threads () result (num)
     integer :: num
-    num = omp_get_num_threads ()
-!    num = 1
+!    num = omp_get_num_threads ()
+    num = 1
   end function openmp_get_num_threads
   
   function openmp_get_max_threads () result (num)
     integer :: num
-    num = omp_get_max_threads ()
-!    num = 1
+!    num = omp_get_max_threads ()
+    num = 1
   end function openmp_get_max_threads
   
   function openmp_get_default_max_threads () result (num)
     integer :: num
-    num = 8
+    num = 1
   end function openmp_get_default_max_threads
 
 end module system_dependencies

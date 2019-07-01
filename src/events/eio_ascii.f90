@@ -1,4 +1,4 @@
-! WHIZARD 2.2.4 Feb 06 2015
+! WHIZARD 2.2.5 Feb 27 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -67,6 +67,7 @@ module eio_ascii
      logical :: writing = .false.
      integer :: unit = 0
      logical :: keep_beams = .false.     
+     logical :: keep_remnants = .true.
    contains
      procedure :: set_parameters => eio_ascii_set_parameters
      procedure :: write => eio_ascii_write
@@ -118,14 +119,17 @@ module eio_ascii
 
 contains
   
-  subroutine eio_ascii_set_parameters (eio, keep_beams, extension, &
+  subroutine eio_ascii_set_parameters (eio, &
+       keep_beams, keep_remnants, extension, &
        show_process, show_transforms, show_decay, verbose)
     class(eio_ascii_t), intent(inout) :: eio
     logical, intent(in), optional :: keep_beams
+    logical, intent(in), optional :: keep_remnants
     type(string_t), intent(in), optional :: extension
     logical, intent(in), optional :: show_process, show_transforms, show_decay
     logical, intent(in), optional :: verbose
     if (present (keep_beams))  eio%keep_beams = keep_beams
+    if (present (keep_remnants))  eio%keep_remnants = keep_remnants
     if (present (extension)) then
        eio%extension = extension
     else
@@ -194,6 +198,7 @@ contains
        write (u, "(3x,A)")  "[closed]"
     end if
     write (u, "(3x,A,L1)")    "Keep beams        = ", object%keep_beams
+    write (u, "(3x,A,L1)")    "Keep remnants     = ", object%keep_remnants
     select type (object)
     type is (eio_ascii_debug_t)
        write (u, "(3x,A,L1)")    "Show process      = ", object%show_process
@@ -336,22 +341,27 @@ contains
     end if
   end subroutine eio_ascii_split_out
   
-  subroutine eio_ascii_output (eio, event, i_prc, reading, pacify)
+  subroutine eio_ascii_output (eio, event, i_prc, reading, passed, pacify)
     class(eio_ascii_t), intent(inout) :: eio
     class(generic_event_t), intent(in), target :: event
     integer, intent(in) :: i_prc
-    logical, intent(in), optional :: reading, pacify
+    logical, intent(in), optional :: reading, passed, pacify
+    if (present (passed)) then
+       if (.not. passed)  return
+    end if
     if (eio%writing) then
        select type (eio)
        type is (eio_ascii_lha_t)
           call hepeup_from_event (event, &
                process_index = i_prc, &
-               keep_beams = eio%keep_beams)
+               keep_beams = eio%keep_beams, &
+               keep_remnants = eio%keep_remnants)
           call hepeup_write_lha (eio%unit)
        type is (eio_ascii_lha_verb_t)
           call hepeup_from_event (event, &
                process_index = i_prc, &
-               keep_beams = eio%keep_beams)
+               keep_beams = eio%keep_beams, &
+               keep_remnants = eio%keep_remnants)
           call hepeup_write_verbose (eio%unit)          
        type is (eio_ascii_ascii_t)
           call event%write (eio%unit, &
@@ -362,7 +372,8 @@ contains
        type is (eio_ascii_athena_t)
           call hepevt_from_event (event, &
                i_evt = event%get_index (), &          
-               keep_beams = eio%keep_beams)
+               keep_beams = eio%keep_beams, &
+               keep_remnants = eio%keep_remnants)
           call hepevt_write_athena (eio%unit)                    
        type is (eio_ascii_debug_t)
           call event%write (eio%unit, &
@@ -373,27 +384,32 @@ contains
        type is (eio_ascii_hepevt_t)
           call hepevt_from_event (event, &
                i_evt = event%get_index (), &                         
-               keep_beams = eio%keep_beams)
+               keep_beams = eio%keep_beams, &
+               keep_remnants = eio%keep_remnants)
           call hepevt_write_hepevt (eio%unit)                              
        type is (eio_ascii_hepevt_verb_t)
           call hepevt_from_event (event, &
                i_evt = event%get_index (), &                         
-               keep_beams = eio%keep_beams)
+               keep_beams = eio%keep_beams, &
+               keep_remnants = eio%keep_remnants)
           call hepevt_write_verbose (eio%unit)
        type is (eio_ascii_long_t)
           call hepevt_from_event (event, &
                i_evt = event%get_index (), & 
-               keep_beams = eio%keep_beams)
+               keep_beams = eio%keep_beams, &
+               keep_remnants = eio%keep_remnants)
           call hepevt_write_ascii (eio%unit, .true.)                           
        type is (eio_ascii_mokka_t)
           call hepevt_from_event (event, &
                i_evt = event%get_index (), &                         
-               keep_beams = eio%keep_beams)
+               keep_beams = eio%keep_beams, &
+               keep_remnants = eio%keep_remnants)
           call hepevt_write_mokka (eio%unit)                              
        type is (eio_ascii_short_t)
           call hepevt_from_event (event, &
                i_evt = event%get_index (), &  
-               keep_beams = eio%keep_beams)
+               keep_beams = eio%keep_beams, &
+               keep_remnants = eio%keep_remnants)
           call hepevt_write_ascii (eio%unit, .false.)                    
        end select       
     else

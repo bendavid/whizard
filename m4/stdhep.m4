@@ -8,6 +8,8 @@ include([aux.m4])
 AC_DEFUN([WO_PROG_STDHEP],
 [dnl
 AC_REQUIRE([AC_PROG_FC])
+### for the testing routines
+AC_REQUIRE([AC_PROG_CXX])
 
 AC_ARG_ENABLE([stdhep],
   [AS_HELP_STRING([--enable-stdhep],
@@ -68,6 +70,10 @@ else
   STDHEP_AVAILABLE_FLAG=".false."
 fi
 AC_SUBST(STDHEP_AVAILABLE_FLAG)
+
+### Require libstdc++ in any case, since the XDR reader is always built.
+### Remove this if the XDR reader becomes optional.
+     wo_require_stdcpp="yes"
 
 AM_CONDITIONAL([STDHEP_AVAILABLE], [test "$enable_stdhep" = "yes"])
 ])

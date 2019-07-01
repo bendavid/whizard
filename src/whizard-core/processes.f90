@@ -1,4 +1,4 @@
-! WHIZARD 2.2.4 Feb 06 2015
+! WHIZARD 2.2.5 Feb 27 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -223,6 +223,7 @@ module processes
      real(default) :: scale = 0
      real(default) :: fac_scale = 0
      real(default) :: ren_scale = 0
+     real(default), allocatable :: alpha_qcd_forced
      real(default) :: weight = 1
      type(vector4_t), dimension(:), allocatable :: p_hard
      type(nlo_data_t), pointer :: nlo_data => null ()
@@ -236,6 +237,7 @@ module processes
      procedure :: setup_event_data => term_instance_setup_event_data
      procedure :: setup_real_interaction => term_instance_setup_real_interaction
      procedure :: reset => term_instance_reset
+     procedure :: set_alpha_qcd_forced => term_instance_set_alpha_qcd_forced
      procedure :: compute_eff_kinematics => &
           term_instance_compute_eff_kinematics
      procedure :: recover_hard_kinematics => &
@@ -356,7 +358,9 @@ module processes
      procedure :: get_counter => process_instance_get_counter
      procedure :: get_trace => process_instance_get_trace
      procedure :: set_trace => process_instance_set_trace
-     procedure :: display_real_kinematics => process_instance_display_real_kinematics
+     procedure :: set_alpha_qcd_forced => process_instance_set_alpha_qcd_forced
+     procedure :: display_real_kinematics => &
+          process_instance_display_real_kinematics
      procedure :: has_nlo_component => process_instance_has_nlo_component
      procedure :: create_blha_interface => process_instance_create_blha_interface
      procedure :: load_blha_libraries => process_instance_load_blha_libraries
@@ -958,7 +962,7 @@ contains
          all (pdg_in(1,:) == pdg_in(1,i0)) .and. &
          all (pdg_in(2,:) == pdg_in(2,i0))) then
        pdg_scattering = pdg_array_get (pdg_in(:,i0), 1)
-       call flavor_init (flv_in, pdg_scattering, process%config%model)
+       call flv_in%init (pdg_scattering, process%config%model)
        call process%beam_config%init_scattering (flv_in, sqrts, beam_structure)
     else
        call msg_fatal ("Setting up process '" // char (process%meta%id) // "':", &
@@ -995,7 +999,7 @@ contains
     if (all (pdg_array_get_length (pdg_in) == 1) &
          .and. all (pdg_in(1,:) == pdg_in(1,i0))) then
        pdg_decay = pdg_array_get (pdg_in(:,i0), 1)
-       call flavor_init (flv_in, pdg_decay, process%config%model)
+       call flv_in%init (pdg_decay, process%config%model)
        call process%beam_config%init_decay (flv_in, rest_frame, beam_structure)
     else
        call msg_fatal ("Setting up decay '" &
@@ -1013,8 +1017,8 @@ contains
           associate (data => process%component(i)%core%data)
             allocate (flv (data%n_flv), mass (data%n_flv))
             do j = 1, data%n_in + data%n_out
-               call flavor_init (flv, data%flv_state(j,:), process%config%model)
-               mass = flavor_get_mass (flv)
+               call flv%init (data%flv_state(j,:), process%config%model)
+               mass = flv%get_mass ()
                if (any (mass /= mass(1))) then
                   call msg_fatal ("Process '" // char (process%meta%id) // "': " &
                        // "mass values in flavor combination do not coincide. ")
@@ -2748,9 +2752,9 @@ contains
     character :: sgn
     u = given_output_unit (unit)
     write (u, "(1x,A,I0)")  "Term #", term%i_term_global
-    call state_iterator_init (it, interaction_get_state_matrix_ptr (term%int))
-    do while (state_iterator_is_valid (it))
-       i = state_iterator_get_me_index (it)
+    call it%init (interaction_get_state_matrix_ptr (term%int))
+    do while (it%is_valid ())
+       i = it%get_me_index ()
        f = term%flv(i)
        h = term%hel(i)
        c = term%col(i)
@@ -2760,9 +2764,9 @@ contains
           sgn = " "
        end if
        write (u, "(1x,A1,1x,I0,2x)", advance="no")  sgn, i
-       call quantum_numbers_write (state_iterator_get_quantum_numbers (it), u)
+       call quantum_numbers_write (it%get_quantum_numbers (), u)
        write (u, *)
-       call state_iterator_advance (it)
+       call it%advance ()
     end do
   end subroutine process_term_write_state_summary
   
@@ -2843,12 +2847,13 @@ contains
                   term%flv(i) = f
                   term%hel(i) = h
                   term%col(i) = c
-                  call flavor_init (flv, data%flv_state(:,f), model)
-                  call color_init_from_array (col, data%col_state(:,:,c), &
+                  call flv%init (data%flv_state(:,f), model)
+                  call color_init_from_array (col, &
+                       data%col_state(:,:,c), &
                        data%ghost_flag(:,c))
-                  call color_invert (col(:data%n_in))
-                  call helicity_init (hel, data%hel_state(:,h))
-                  call quantum_numbers_init (qn, flv, col, hel)
+                  call col(:data%n_in)%invert ()
+                  call hel%init (data%hel_state(:,h))
+                  call qn%init (flv, col, hel)
                   call interaction_add_state (term%int, qn)
                end if
             end do
@@ -3089,8 +3094,8 @@ contains
     flag = .false.
     do i_term = 1, process%get_n_terms ()
        call process%get_term_flv_out (i_term, flv)
-       call flavor_set_model (flv, model)
-       flag = .not. all (flavor_is_stable (flv))
+       call flv%set_model (model)
+       flag = .not. all (flv%is_stable ())
        deallocate (flv)
        if (flag)  return
     end do
@@ -3156,13 +3161,16 @@ contains
   end subroutine process_make_rng
   
   function process_compute_amplitude &
-       (process, i, j, p, f, h, c, fac_scale, ren_scale) result (amp)
+       (process, i, j, p, f, h, c, fac_scale, ren_scale, alpha_qcd_forced) &
+       result (amp)
     class(process_t), intent(in) :: process
     integer, intent(in) :: i, j
     type(vector4_t), dimension(:), intent(in) :: p
     integer, intent(in) :: f, h, c
     real(default), intent(in), optional :: fac_scale, ren_scale
+    real(default), intent(in), allocatable, optional :: alpha_qcd_forced
     real(default) :: fscale, rscale
+    real(default), allocatable :: aqcd_forced
     complex(default) :: amp
     amp = 0
     if (0 < i .and. i <= process%meta%n_components) then
@@ -3182,8 +3190,12 @@ contains
                else
                   rscale = fscale
                end if
-               amp = process%component(i)%core% &
-                    compute_amplitude (j, p, f, h, c, fscale, rscale)
+               if (present (alpha_qcd_forced)) then
+                  if (allocated (alpha_qcd_forced)) &
+                       allocate (aqcd_forced, source = alpha_qcd_forced)
+               end if
+               amp = process%component(i)%core%compute_amplitude &
+                    (j, p, f, h, c, fscale, rscale, aqcd_forced)
             end if
           end associate
        else
@@ -3845,6 +3857,10 @@ contains
        write (u, "(3x,A,ES19.12)")  "overall scale         = ", term%scale
        write (u, "(3x,A,ES19.12)")  "factorization scale   = ", term%fac_scale
        write (u, "(3x,A,ES19.12)")  "renormalization scale = ", term%ren_scale
+       if (allocated (term%alpha_qcd_forced)) then
+          write (u, "(3x,A,ES19.12)")  "alpha(QCD) forced     = ", &
+               term%alpha_qcd_forced
+       end if
        write (u, "(3x,A,ES19.12)")  "reweighting factor    = ", term%weight
     end if
     call term%k_term%write (u)
@@ -3964,7 +3980,7 @@ contains
       n_tot = interaction_get_n_tot  (int_eff)
       allocate (flv_int (n_tot))
       flv_int = quantum_numbers_get_flavor &
-           (state_matrix_get_quantum_numbers (state_matrix, 1))
+           (state_matrix%get_quantum_numbers (1))
       allocate (f_in (n_in))
       f_in = flv_int(1:n_in)
       deallocate (flv_int)
@@ -3980,7 +3996,7 @@ contains
           state_matrix => interaction_get_state_matrix_ptr (src_int)
           allocate (flv_src (interaction_get_n_tot (src_int)))
           flv_src = quantum_numbers_get_flavor &
-               (state_matrix_get_quantum_numbers (state_matrix, 1))
+               (state_matrix%get_quantum_numbers (1))
           f_out(j) = flv_src(i)
           deallocate (flv_src)
        end if
@@ -4082,8 +4098,19 @@ contains
   subroutine term_instance_reset (term)
     class(term_instance_t), intent(inout) :: term
     call term%connected%reset_expressions ()
+    if (allocated (term%alpha_qcd_forced))  deallocate (term%alpha_qcd_forced)
     term%active = .false.
   end subroutine term_instance_reset
+  
+  subroutine term_instance_set_alpha_qcd_forced (term, alpha_qcd)
+    class(term_instance_t), intent(inout) :: term
+    real(default), intent(in) :: alpha_qcd
+    if (allocated (term%alpha_qcd_forced)) then
+       term%alpha_qcd_forced = alpha_qcd
+    else
+       allocate (term%alpha_qcd_forced, source = alpha_qcd)
+    end if
+  end subroutine term_instance_set_alpha_qcd_forced
   
   subroutine term_instance_compute_eff_kinematics (term, component)
     class(term_instance_t), intent(inout) :: term
@@ -4127,10 +4154,12 @@ contains
     call term%isolated%send_kinematics ()
   end subroutine term_instance_recover_hard_kinematics
 
-  subroutine term_instance_evaluate_expressions (term)
+  subroutine term_instance_evaluate_expressions (term, scale_forced)
     class(term_instance_t), intent(inout) :: term
+    real(default), intent(in), allocatable, optional :: scale_forced
     call term%connected%evaluate_expressions (term%passed, &
-         term%scale, term%fac_scale, term%ren_scale, term%weight)
+         term%scale, term%fac_scale, term%ren_scale, term%weight, &
+         scale_forced)
     term%checked = .true.
   end subroutine term_instance_evaluate_expressions
        
@@ -4147,7 +4176,7 @@ contains
           do i = 1, term%config%n_allowed
              term%amp(i) = core%compute_amplitude (i_term, term%p_hard, &
                 term%config%flv(i), term%config%hel(i), term%config%col(i), &
-                term%fac_scale, term%ren_scale, &
+                term%fac_scale, term%ren_scale, term%alpha_qcd_forced, &
                 component(i_component)%tmp)
           end do
           call interaction_set_matrix_element (term%int_hard, term%amp)
@@ -4222,7 +4251,7 @@ contains
               term%amp(i) = core%compute_amplitude (i_term, &
                  interaction_get_momenta (term%int_hard_real), &
                  term%config%flv(i), term%config%hel(i), term%config%col(i), &
-                 term%fac_scale, term%ren_scale, &
+                 term%fac_scale, term%ren_scale, term%alpha_qcd_forced, &
                  component%tmp)
            end do
         type is (prc_gosam_t)
@@ -4237,6 +4266,7 @@ contains
                   interaction_get_momenta (term%nlo_data%int_born), &
                   term%nlo_data%flv_born(i), term%nlo_data%hel_born(i), &
                   term%nlo_data%col_born(i), term%fac_scale, term%ren_scale, &
+                  term%alpha_qcd_forced, &
                   component%tmp)
            end do
         type is (prc_gosam_t)
@@ -4860,13 +4890,14 @@ contains
     end if
   end subroutine process_instance_recover_hard_kinematics
        
-  subroutine process_instance_evaluate_expressions (instance)
+  subroutine process_instance_evaluate_expressions (instance, scale_forced)
     class(process_instance_t), intent(inout) :: instance
+    real(default), intent(in), allocatable, optional :: scale_forced
     integer :: i
     if (instance%evaluation_status >= STAT_EFF_KINEMATICS) then
        do i = 1, size (instance%term)
           if (instance%term(i)%active) then
-             call instance%term(i)%evaluate_expressions ()
+             call instance%term(i)%evaluate_expressions (scale_forced)
           end if
        end do
        if (any (instance%term%passed)) then
@@ -5053,11 +5084,13 @@ contains
        instance%sqme = instance%sqme_collector%get_sqme_sum ()
   end subroutine process_instance_evaluate_sqme
   
-  subroutine process_instance_recover (instance, channel, i_term, update_sqme)
+  subroutine process_instance_recover &
+       (instance, channel, i_term, update_sqme, scale_forced)
     class(process_instance_t), intent(inout) :: instance
     integer, intent(in) :: channel
     integer, intent(in) :: i_term
     logical, intent(in) :: update_sqme
+    real(default), intent(in), allocatable, optional :: scale_forced
     call instance%activate ()
     instance%evaluation_status = STAT_EFF_KINEMATICS
     call instance%recover_hard_kinematics (i_term)
@@ -5069,7 +5102,7 @@ contains
     call instance%compute_hard_kinematics (i_term)
     call instance%compute_eff_kinematics (i_term)
     call instance%compute_other_channels (i_term)
-    call instance%evaluate_expressions ()
+    call instance%evaluate_expressions (scale_forced)
     if (update_sqme)  call instance%evaluate_trace ()
   end subroutine process_instance_recover
   
@@ -5328,7 +5361,7 @@ contains
     type(interaction_t), pointer :: int
     logical :: ok
     int => instance%get_trace_int_ptr (i_term)
-    call particle_set_init (pset, ok, int, int, FM_IGNORE_HELICITY, &
+    call pset%init (ok, int, int, FM_IGNORE_HELICITY, &
          [0._default, 0._default], .false., .true.)
   end subroutine process_instance_get_trace
     
@@ -5342,12 +5375,19 @@ contains
     integer :: n_in
     int => instance%get_trace_int_ptr (i_term)
     n_in = instance%process%get_n_in ()
-    call particle_set_fill_interaction (pset, int, n_in, &
+    call pset%fill_interaction (int, n_in, &
          recover_beams = recover_beams, &
          check_match = check_match, &
          state_flv = instance%get_state_flv (i_term))
   end subroutine process_instance_set_trace
 
+  subroutine process_instance_set_alpha_qcd_forced (instance, i_term, alpha_qcd)
+    class(process_instance_t), intent(inout) :: instance
+    integer, intent(in) :: i_term
+    real(default), intent(in) :: alpha_qcd
+    call instance%term(i_term)%set_alpha_qcd_forced (alpha_qcd)
+  end subroutine process_instance_set_alpha_qcd_forced
+  
   subroutine process_instance_display_real_kinematics (instance, i)
      class(process_instance_t), intent(in) :: instance
      integer, intent(in) :: i
@@ -5596,12 +5636,14 @@ contains
   end subroutine test_recover_kinematics
     
   function test_compute_amplitude &
-       (object, j, p, f, h, c, fac_scale, ren_scale, tmp) result (amp)
+       (object, j, p, f, h, c, fac_scale, ren_scale, alpha_qcd_forced, tmp) &
+       result (amp)
     class(test_t), intent(in) :: object
     integer, intent(in) :: j
     type(vector4_t), dimension(:), intent(in) :: p
     integer, intent(in) :: f, h, c
     real(default), intent(in) :: fac_scale, ren_scale
+    real(default), intent(in), allocatable :: alpha_qcd_forced
     class(workspace_t), intent(inout), allocatable, optional :: tmp
     complex(default) :: amp
     real(default), dimension(:,:), allocatable :: parray
@@ -5887,7 +5929,7 @@ contains
     write (u, "(A)")
     
     call write_separator (u)
-    call particle_set_write (pset, u)
+    call pset%write (u)
     call write_separator (u)
 
     write (u, "(A)")
@@ -5918,7 +5960,7 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
     
-    call particle_set_final (pset)
+    call pset%final ()
     call process_instance%final ()
     deallocate (process_instance)
     
@@ -6132,7 +6174,7 @@ contains
     write (u, "(A)")
     
     call write_separator (u)
-    call particle_set_write (pset, u)
+    call pset%write (u)
     call write_separator (u)
 
     write (u, "(A)")
@@ -6153,7 +6195,7 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
 
-    call particle_set_final (pset)
+    call pset%final ()
 
     call process_instance%final ()
     deallocate (process_instance)
@@ -6315,7 +6357,7 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
 
-    call particle_set_final (pset)
+    call pset%final ()
 
     call process_instance%final ()
     deallocate (process_instance)
@@ -6878,7 +6920,7 @@ contains
     write (u, "(A)")
     
     call write_separator (u)
-    call particle_set_write (pset, u)
+    call pset%write (u)
     call write_separator (u)
 
     write (u, "(A)")
@@ -6897,7 +6939,7 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
 
-    call particle_set_final (pset)
+    call pset%final ()
     call process_instance%final ()
     deallocate (process_instance)
     
@@ -7091,8 +7133,8 @@ contains
     call process_instance%set_mcpar ([0._default, 0._default])
 
     model => process%get_model_ptr ()
-    call flavor_init (flv_beam, 25, model)
-    m = flavor_get_mass (flv_beam)
+    call flv_beam%init (25, model)
+    m = flv_beam%get_mass ()
     p = 3 * m / 4
     E = sqrt (m**2 + p**2)
     call process_instance%set_beam_momenta ([vector4_moving (E, p, 3)])
@@ -7125,7 +7167,7 @@ contains
     write (u, "(A)")
     
     call write_separator (u)
-    call particle_set_write (pset, u)
+    call pset%write (u)
     call write_separator (u)
 
     write (u, "(A)")
@@ -7145,7 +7187,7 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
 
-    call particle_set_final (pset)
+    call pset%final ()
     call process_instance%final ()
     deallocate (process_instance)
     

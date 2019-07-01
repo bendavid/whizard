@@ -3052,8 +3052,6 @@ it just checks whether they are disjoint (no common [[src]] entry).
 
 @ %def index_lists_are_disjoint
 @
-\subsection{C-compatible particle type}
-@
 \subsection{subevents}
 Particles are collected in subevents.  This type is implemented as a
 dynamically allocated array, which need not be completely filled.  The
@@ -3429,6 +3427,26 @@ Return true if the subevent has entries.
   end function subevt_get_sqrts_hat
     
 @ %def subevt_get_sqrts_hat
+@ Return the number of incoming (outgoing) particles, respectively.
+Beam particles or composites are not counted.
+<<Subevents: public>>=
+  public :: subevt_get_n_in
+  public :: subevt_get_n_out
+<<Subevents: procedures>>=
+  function subevt_get_n_in (subevt) result (n_in)
+    type(subevt_t), intent(in) :: subevt
+    integer :: n_in
+    n_in = count (subevt%prt(:subevt%n_active)%type == PRT_INCOMING)
+  end function subevt_get_n_in
+    
+  function subevt_get_n_out (subevt) result (n_out)
+    type(subevt_t), intent(in) :: subevt
+    integer :: n_out
+    n_out = count (subevt%prt(:subevt%n_active)%type == PRT_OUTGOING)
+  end function subevt_get_n_out
+    
+@ %def subevt_get_n_in
+@ %def subevt_get_n_out
 @ 
 <<Subevents: interfaces>>=
   interface c_prt

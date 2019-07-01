@@ -1,4 +1,4 @@
-! WHIZARD 2.2.4 Feb 06 2015
+! WHIZARD 2.2.5 Feb 27 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -273,10 +273,10 @@ contains
     if (present (success))  success = .true.
   end subroutine eio_raw_switch_inout
   
-  subroutine eio_raw_output (eio, event, i_prc, reading, pacify)
+  subroutine eio_raw_output (eio, event, i_prc, reading, passed, pacify)
     class(eio_raw_t), intent(inout) :: eio
     class(generic_event_t), intent(in), target :: event
-    logical, intent(in), optional :: reading, pacify
+    logical, intent(in), optional :: reading, passed, pacify
     integer, intent(in) :: i_prc
     type(particle_set_t), pointer :: pset
     integer :: i
@@ -297,15 +297,15 @@ contains
              end do
              allocate (pset)
              call event%get_hard_particle_set (pset)
-             call particle_set_write_raw (pset, eio%unit)
-             call particle_set_final (pset)
+             call pset%write_raw (eio%unit)
+             call pset%final ()
              deallocate (pset)
              select case (eio%file_version)
              case (2:)
                 if (event%has_transform ()) then
                    write (eio%unit)  .true.
                    pset => event%get_particle_set_ptr ()
-                   call particle_set_write_raw (pset, eio%unit)
+                   call pset%write_raw (eio%unit)
                 else
                    write (eio%unit)  .false.
                 end if
@@ -384,11 +384,11 @@ contains
              model => event%process%get_model_ptr ()
           end if
           allocate (pset)
-          call particle_set_read_raw (pset, eio%unit, iostat)
+          call pset%read_raw (eio%unit, iostat)
           if (iostat /= 0)  return
-          if (associated (model))  call particle_set_set_model (pset, model)
+          if (associated (model))  call pset%set_model (model)
           call event%set_hard_particle_set (pset)
-          call particle_set_final (pset)
+          call pset%final ()
           deallocate (pset)
           select case (eio%file_version)
           case (2:)
@@ -396,10 +396,10 @@ contains
              if (iostat /= 0)  return
              if (has_transform) then
                 allocate (pset)
-                call particle_set_read_raw (pset, eio%unit, iostat)
+                call pset%read_raw (eio%unit, iostat)
                 if (iostat /= 0)  return
                 if (associated (model)) &
-                     call particle_set_set_model (pset, model)
+                     call pset%set_model (model)
                 call event%link_particle_set (pset)
              end if
           end select

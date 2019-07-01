@@ -1,4 +1,4 @@
-! WHIZARD 2.2.4 Feb 06 2015
+! WHIZARD 2.2.5 Feb 27 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -126,7 +126,7 @@ contains
     n_flv = pdg_array_get_length (pdg_in)
     allocate (data%flv_in (n_flv))
     do i = 1, n_flv
-       call flavor_init (data%flv_in(i), pdg_array_get (pdg_in, i), model)
+       call data%flv_in(i)%init (pdg_array_get (pdg_in, i), model)
     end do
     data%alpha = alpha
     data%q_max = q_max
@@ -136,19 +136,19 @@ contains
     if (present (recoil)) then
        data%recoil = recoil
     end if
-    data%real_mass = flavor_get_mass (data%flv_in(1))
+    data%real_mass = data%flv_in(1)%get_mass ()
     if (present (mass)) then
        if (mass > 0) then
           data%mass = mass
        else
           data%mass = data%real_mass
-          if (any (flavor_get_mass (data%flv_in) /= data%mass)) then
+          if (any (data%flv_in%get_mass () /= data%mass)) then
              data%error = MASS_MIX;  return
           end if
        end if
     else
        data%mass = data%real_mass
-       if (any (flavor_get_mass (data%flv_in) /= data%mass)) then
+       if (any (data%flv_in%get_mass () /= data%mass)) then
           data%error = MASS_MIX;  return
        end if
     end if
@@ -158,8 +158,8 @@ contains
        data%error = Q_MAX_TOO_SMALL;  return
     end if
     data%log = log (1 + (data%q_max / data%mass)**2)
-    charge = flavor_get_charge (data%flv_in(1))
-    if (any (abs (flavor_get_charge (data%flv_in)) /= abs (charge))) then
+    charge = data%flv_in(1)%get_charge ()
+    if (any (abs (data%flv_in%get_charge ()) /= abs (charge))) then
        data%error = CHARGE_MIX;  return
     else if (charge == 0) then
        data%error = CHARGE_ZERO;  return
@@ -213,7 +213,7 @@ contains
        write (u, "(3x,A)", advance="no") "  flavor =  "
        do i = 1, size (data%flv_in)
           if (i > 1)  write (u, "(',',1x)", advance="no")
-          call flavor_write (data%flv_in(i), u)
+          call data%flv_in(i)%write (u)
        end do
        write (u, *)    
        write (u, "(3x,A," // FMT_19 // ")") "  alpha  = ", data%alpha
@@ -241,7 +241,7 @@ contains
   subroutine isr_data_get_pdg_out (data, pdg_out)
     class(isr_data_t), intent(in) :: data
     type(pdg_array_t), dimension(:), intent(inout) :: pdg_out
-    pdg_out(1) = flavor_get_pdg (data%flv_in)
+    pdg_out(1) = data%flv_in%get_pdg ()
   end subroutine isr_data_get_pdg_out
   
   function isr_data_get_eps (data) result (eps)
@@ -371,11 +371,12 @@ contains
     type(polarization_t) :: pol
     type(quantum_numbers_t), dimension(1) :: qn_fc, qn_hel
     type(flavor_t) :: flv_photon
+    type(color_t) :: col_photon
     type(quantum_numbers_t) :: qn_photon, qn
     type(state_iterator_t) :: it_hel
     real(default) :: m2
     integer :: i
-    mask = new_quantum_numbers_mask (.false., .false., &
+    mask = quantum_numbers_mask (.false., .false., &
          mask_h = [.false., .true., .false.])
     hel_lock = [3, 0, 1]
     select type (data)
@@ -384,20 +385,22 @@ contains
        call sf_int%base_init (mask, [m2], [0._default], [m2], &
             hel_lock = hel_lock)
        sf_int%data => data              
-       call flavor_init (flv_photon, PHOTON, data%model)
-       call quantum_numbers_init (qn_photon, flv_photon)
+       call flv_photon%init (PHOTON, data%model)
+       call col_photon%init ()
+       call qn_photon%init (flv_photon, col_photon)
+       call qn_photon%tag_radiated ()
        do i = 1, size (data%flv_in)
           call polarization_init_generic (pol, data%flv_in(i))
-          call quantum_numbers_init (qn_fc(1), &
+          call qn_fc(1)%init (&
                flv = data%flv_in(i), &
                col = color_from_flavor (data%flv_in(i), 1))
-          call state_iterator_init (it_hel, pol%state)
-          do while (state_iterator_is_valid (it_hel))
-             qn_hel = state_iterator_get_quantum_numbers (it_hel)
+          call it_hel%init (pol%state)
+          do while (it_hel%is_valid ())
+             qn_hel = it_hel%get_quantum_numbers ()
              qn = qn_hel(1) .merge. qn_fc(1)
              call interaction_add_state &
                   (sf_int%interaction_t, [qn, qn_photon, qn])
-             call state_iterator_advance (it_hel)
+             call it_hel%advance ()
           end do
           call polarization_final (pol)
        end do
@@ -556,7 +559,7 @@ contains
 
     call model%init_qed_test ()
     pdg_in = ELECTRON
-    call flavor_init (flv, ELECTRON, model)
+    call flv%init (ELECTRON, model)
 
     call reset_interaction_counter ()
     
@@ -577,7 +580,7 @@ contains
     write (u, "(A)")  "* Initialize incoming momentum with E=500"
     write (u, "(A)")
     E = 500
-    k = vector4_moving (E, sqrt (E**2 - flavor_get_mass (flv)**2), 3)
+    k = vector4_moving (E, sqrt (E**2 - flv%get_mass ()**2), 3)
     call pacify (k, 1e-10_default)
     call vector4_write (k, u)
     call sf_int%seed_kinematics ([k])
@@ -673,7 +676,7 @@ contains
     write (u, "(A)")
 
     call model%init_qed_test ()
-    call flavor_init (flv, ELECTRON, model)
+    call flv%init (ELECTRON, model)
     pdg_in = ELECTRON
 
     call reset_interaction_counter ()
@@ -695,7 +698,7 @@ contains
     write (u, "(A)")  "* Initialize incoming momentum with E=500"
     write (u, "(A)")
     E = 500
-    k = vector4_moving (E, sqrt (E**2 - flavor_get_mass (flv)**2), 3)
+    k = vector4_moving (E, sqrt (E**2 - flv%get_mass ()**2), 3)
     call pacify (k, 1e-10_default)
     call vector4_write (k, u)
     call sf_int%seed_kinematics ([k])
@@ -794,7 +797,7 @@ contains
     write (u, "(A)")
 
     call model%init_qed_test ()
-    call flavor_init (flv, ELECTRON, model)
+    call flv%init (ELECTRON, model)
     pdg_in = ELECTRON
 
     call reset_interaction_counter ()
@@ -818,7 +821,7 @@ contains
     write (u, "(A)")  "* Initialize incoming momentum with E=500"
     write (u, "(A)")
     E = 500
-    k = vector4_moving (E, sqrt (E**2 - flavor_get_mass (flv)**2), 3)
+    k = vector4_moving (E, sqrt (E**2 - flv%get_mass ()**2), 3)
     call pacify (k, 1e-10_default)
     call vector4_write (k, u)
     call sf_int%seed_kinematics ([k])
@@ -928,7 +931,7 @@ contains
     write (u, "(A)")
 
     call model%init_qed_test ()
-    call flavor_init (flv, ELECTRON, model)
+    call flv%init (ELECTRON, model)
     pdg_in = ELECTRON
 
     call reset_interaction_counter ()
@@ -967,8 +970,8 @@ contains
     write (u, "(A)")  "* Initialize incoming momenta with E=500"
     write (u, "(A)")
     E = 500
-    k(1) = vector4_moving (E,   sqrt (E**2 - flavor_get_mass (flv)**2), 3)
-    k(2) = vector4_moving (E, - sqrt (E**2 - flavor_get_mass (flv)**2), 3)
+    k(1) = vector4_moving (E,   sqrt (E**2 - flv%get_mass ()**2), 3)
+    k(2) = vector4_moving (E, - sqrt (E**2 - flv%get_mass ()**2), 3)
     call pacify (k, 1e-10_default)
     do i = 1, 2
        call vector4_write (k(i), u)

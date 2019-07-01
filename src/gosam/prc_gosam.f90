@@ -1,4 +1,4 @@
-! WHIZARD 2.2.4 Feb 06 2015
+! WHIZARD 2.2.5 Feb 27 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -1045,12 +1045,14 @@ contains
   end subroutine prc_gosam_compute_eff_kinematics
 
   function prc_gosam_compute_amplitude &
-       (object, j, p, f, h, c, fac_scale, ren_scale, tmp) result (amp)
+       (object, j, p, f, h, c, fac_scale, ren_scale, alpha_qcd_forced, tmp) &
+       result (amp)
     class(prc_gosam_t), intent(in) :: object
     integer, intent(in) :: j
     type(vector4_t), dimension(:), intent(in) :: p
     integer, intent(in) :: f, h, c
     real(default), intent(in) :: fac_scale, ren_scale
+    real(default), intent(in), allocatable :: alpha_qcd_forced
     class(workspace_t), intent(inout), allocatable, optional :: tmp
     complex(default) :: amp
     select type (tmp)
@@ -1408,9 +1410,9 @@ contains
     allocate (flv (n_part), masses (n_part), widths (n_part))
     do i_flv = 1, n_flv
        associate (i_pdg => object%data%flv_state (:,i_flv))
-          call flavor_init (flv, i_pdg, model)
-          masses = flavor_get_mass (flv)
-          widths = flavor_get_width (flv)
+          call flv%init (i_pdg, model)
+          masses = flv%get_mass ()
+          widths = flv%get_width ()
           select type (driver => object%driver)
           type is (gosam_driver_t)
              do i_part = 1, n_part

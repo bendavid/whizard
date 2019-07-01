@@ -1,4 +1,4 @@
-! WHIZARD 2.2.4 Feb 06 2015
+! WHIZARD 2.2.5 Feb 27 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -127,17 +127,17 @@ module polarizations
 
 contains
 
-  elemental subroutine polarization_init (pol, flv)
+  subroutine polarization_init (pol, flv)
     type(polarization_t), intent(out) :: pol
     type(flavor_t), intent(in) :: flv
-    pol%spin_type = flavor_get_spin_type (flv)
-    pol%multiplicity = flavor_get_multiplicity (flv)
-    call state_matrix_init (pol%state, store_values = .true.)
+    pol%spin_type = flv%get_spin_type ()
+    pol%multiplicity = flv%get_multiplicity ()
+    call pol%state%init (store_values = .true.)
   end subroutine polarization_init
     
-  elemental subroutine polarization_final (pol)
+  subroutine polarization_final (pol)
     type(polarization_t), intent(inout) :: pol
-    call state_matrix_final (pol%state)
+    call pol%state%final ()
   end subroutine polarization_final
 
   subroutine polarization_write (pol, unit)
@@ -148,7 +148,7 @@ contains
     write (u, "(1x,A,I1,A,I1,A)")  &
          "Polarization: [spin_type = ", pol%spin_type, &
          ", mult = ", pol%multiplicity, "]"
-    call state_matrix_write (pol%state, unit=unit)
+    call pol%state%write (unit=unit)
   end subroutine polarization_write
 
   subroutine polarization_assign (pol_out, pol_in)
@@ -166,7 +166,7 @@ contains
     write (u) pol%polarized
     write (u) pol%spin_type
     write (u) pol%multiplicity
-    call state_matrix_write_raw (pol%state, u)
+    call pol%state%write_raw (u)
   end subroutine polarization_write_raw
 
   subroutine polarization_read_raw (pol, u, iostat)
@@ -176,7 +176,7 @@ contains
     read (u, iostat=iostat) pol%polarized
     read (u, iostat=iostat) pol%spin_type
     read (u, iostat=iostat) pol%multiplicity
-    call state_matrix_read_raw (pol%state, u, iostat=iostat)
+    call pol%state%read_raw (u, iostat=iostat)
   end subroutine polarization_read_raw
 
   elemental function polarization_is_polarized (pol) result (polarized)
@@ -189,13 +189,15 @@ contains
     logical :: diagonal
     type(polarization_t), intent(in) :: pol
     type(state_iterator_t) :: it
+    type(quantum_numbers_t), dimension(:), allocatable :: qn
     diagonal = .true.
-    call state_iterator_init (it, pol%state)
-    do while (state_iterator_is_valid (it))
-       diagonal = all (quantum_numbers_are_diagonal &
-            (state_iterator_get_quantum_numbers (it)))
+    allocate (qn (pol%state%get_depth ()))
+    call it%init (pol%state)
+    do while (it%is_valid ())
+       qn = it%get_quantum_numbers ()
+       diagonal = all (qn%are_diagonal ())
        if (.not. diagonal) exit
-       call state_iterator_advance (it)
+       call it%advance ()
     end do
   end function polarization_is_diagonal0
 
@@ -216,23 +218,23 @@ contains
     type(helicity_t) :: hel
     type(quantum_numbers_t), dimension(1) :: qn
     complex(default) :: value, t
-    call state_iterator_init (it, state)
-    flv = state_iterator_get_flavor (it, 1)
-    hel = state_iterator_get_helicity (it, 1)
-    if (helicity_is_defined (hel)) then
+    call it%init (state)
+    flv = it%get_flavor (1)
+    hel = it%get_helicity (1)
+    if (hel%is_defined ()) then
        call polarization_init (pol, flv)
        pol%polarized = .true.
        t = 0
-       do while (state_iterator_is_valid (it))
-          hel = state_iterator_get_helicity (it, 1)
-          call quantum_numbers_init (qn(1), hel)
-          value = state_iterator_get_matrix_element (it)
-          call state_matrix_add_state (pol%state, qn, value=value)
-          if (helicity_is_diagonal (hel))  t = t + value
-          call state_iterator_advance (it)
+       do while (it%is_valid ())
+          hel = it%get_helicity (1)
+          call qn(1)%init (hel)
+          value = it%get_matrix_element ()
+          call pol%state%add_state (qn, value=value)
+          if (hel%is_diagonal ())  t = t + value
+          call it%advance ()
        end do
-       call state_matrix_freeze (pol%state)
-       if (t /= 0)  call state_matrix_renormalize (pol%state, 1._default / t)
+       call pol%state%freeze ()
+       if (t /= 0)  call pol%state%renormalize (1._default / t)
     else
        call polarization_init_unpolarized (pol, flv)
     end if
@@ -243,16 +245,16 @@ contains
     type(flavor_t), intent(in) :: flv
     type(quantum_numbers_t), dimension(1) :: qn
     complex(default) :: value
-    if (flavor_is_left_handed (flv)) then
+    if (flv%is_left_handed ()) then
        call polarization_init_circular (pol, flv, -1._default)
-    else if (flavor_is_right_handed (flv)) then
+    else if (flv%is_right_handed ()) then
        call polarization_init_circular (pol, flv, 1._default)
     else
        call polarization_init (pol, flv)
-       value = 1._default / flavor_get_multiplicity (flv)
-       call state_matrix_add_state (pol%state, qn)
-       call state_matrix_freeze (pol%state)
-       call state_matrix_set_matrix_element (pol%state, value)
+       value = 1._default / flv%get_multiplicity ()
+       call pol%state%add_state (qn)
+       call pol%state%freeze ()
+       call pol%state%set_matrix_element (value)
     end if
   end subroutine polarization_init_unpolarized
     
@@ -276,31 +278,31 @@ contains
     hmax = pol%spin_type / 2
     select case (pol%multiplicity)
     case (1)
-       if (flavor_is_left_handed (flv)) then
-          call helicity_init (hel, -hmax)
-       else if (flavor_is_right_handed (flv)) then
-          call helicity_init (hel, hmax)
+       if (flv%is_left_handed ()) then
+          call hel%init (-hmax)
+       else if (flv%is_right_handed ()) then
+          call hel%init (hmax)
        else
-          call helicity_init (hel, 0)
+          call hel%init (0)
        end if
-       call quantum_numbers_init (qn(1), hel)
-       call state_matrix_add_state (pol%state, qn)
+       call qn(1)%init (hel)
+       call pol%state%add_state (qn)
     case (2)
        do h = -hmax, hmax, 2*hmax
-          call helicity_init (hel, h)
-          call quantum_numbers_init (qn(1), hel)
-          call state_matrix_add_state (pol%state, qn)
+          call hel%init (h)
+          call qn(1)%init (hel)
+          call pol%state%add_state (qn)
        end do
     case default
        do h = -hmax, hmax
           if (fermion .and. h == 0)  cycle
-          call helicity_init (hel, h)
-          call quantum_numbers_init (qn(1), hel)
-          call state_matrix_add_state (pol%state, qn)
+          call hel%init (h)
+          call qn(1)%init (hel)
+          call pol%state%add_state (qn)
        end do
     end select
-    call state_matrix_freeze (pol%state)
-    call state_matrix_set_matrix_element (pol%state, value)
+    call pol%state%freeze ()
+    call pol%state%set_matrix_element (value)
   end subroutine polarization_init_trivial
 
   subroutine polarization_init_circular (pol, flv, fraction)
@@ -314,25 +316,25 @@ contains
     call polarization_init (pol, flv)
     pol%polarized = .true.
     hmax = pol%spin_type / 2
-    call helicity_init (hel(1), hmax)
-    call helicity_init (hel(2),-hmax)
+    call hel(1)%init ( hmax)
+    call hel(2)%init (-hmax)
     if (abs (fraction) /= 1) then
        value = (1 + fraction) / 2
-       call quantum_numbers_init (qn(1), hel(1))
-       call state_matrix_add_state (pol%state, qn, value=value)
+       call qn(1)%init (hel(1))
+       call pol%state%add_state (qn, value=value)
        value = (1 - fraction) / 2
-       call quantum_numbers_init (qn(1), hel(2))
-       call state_matrix_add_state (pol%state, qn, value=value)
+       call qn(1)%init (hel(2))
+       call pol%state%add_state (qn, value=value)
     else
        value = abs (fraction)
        if (fraction > 0) then
-          call quantum_numbers_init (qn(1), hel(1))
+          call qn(1)%init (hel(1))
        else
-          call quantum_numbers_init (qn(1), hel(2))
+          call qn(1)%init (hel(2))
        end if
-       call state_matrix_add_state (pol%state, qn, value=value)
+       call pol%state%add_state (qn, value=value)
     end if
-    call state_matrix_freeze (pol%state)
+    call pol%state%freeze ()
   end subroutine polarization_init_circular
 
   subroutine polarization_init_transversal (pol, flv, phi, fraction)
@@ -354,33 +356,33 @@ contains
     call polarization_init (pol, flv)
     pol%polarized = .true.
     hmax = pol%spin_type / 2
-    call helicity_init (hel(1,1), hmax, hmax)
-    call helicity_init (hel(1,2), hmax,-hmax)
-    call helicity_init (hel(2,1),-hmax, hmax)
-    call helicity_init (hel(2,2),-hmax,-hmax)
+    call hel(1,1)%init ( hmax, hmax)
+    call hel(1,2)%init ( hmax,-hmax)
+    call hel(2,1)%init (-hmax, hmax)
+    call hel(2,2)%init (-hmax,-hmax)
     value(1,1) = (1 + alpha(3)) / 2
     value(2,2) = (1 - alpha(3)) / 2
-    if (flavor_is_antiparticle (flv)) then
+    if (flv%is_antiparticle ()) then
        value(1,2) = (alpha(1) + imago * alpha(2)) / 2
     else
        value(1,2) = (alpha(1) - imago * alpha(2)) / 2
     end if
     value(2,1) = conjg (value(1,2))
     if (value(1,1) /= 0) then
-       call quantum_numbers_init (qn(1), hel(1,1))
-       call state_matrix_add_state (pol%state, qn, value=value(1,1))
+       call qn(1)%init (hel(1,1))
+       call pol%state%add_state (qn, value=value(1,1))
     end if
     if (value(2,2) /= 0) then
-       call quantum_numbers_init (qn(1), hel(2,2))
-       call state_matrix_add_state (pol%state, qn, value=value(2,2))
+       call qn(1)%init (hel(2,2))
+       call pol%state%add_state (qn, value=value(2,2))
     end if
     if (value(1,2) /= 0) then
-       call quantum_numbers_init (qn(1), hel(1,2))
-       call state_matrix_add_state (pol%state, qn, value=value(1,2))
-       call quantum_numbers_init (qn(1), hel(2,1))
-       call state_matrix_add_state (pol%state, qn, value=value(2,1))
+       call qn(1)%init (hel(1,2))
+       call pol%state%add_state (qn, value=value(1,2))
+       call qn(1)%init (hel(2,1))
+       call pol%state%add_state (qn, value=value(2,1))
     end if
-    call state_matrix_freeze (pol%state)
+    call pol%state%freeze ()
   end subroutine polarization_init_axis
 
   subroutine polarization_init_angles (pol, flv, r, theta, phi)
@@ -406,22 +408,21 @@ contains
     complex(default) :: value
     integer :: n_values
     value = abs (fraction)
-    spin_type = flavor_get_spin_type (flv)
-    multiplicity = flavor_get_multiplicity (flv)
+    spin_type = flv%get_spin_type ()
+    multiplicity = flv%get_multiplicity ()
     if (mod (spin_type, 2) == 1 .and. multiplicity > 2) then
        if (fraction /= 1) then
           call polarization_init_trivial (pol, flv, 1 - fraction)
-          n_values = state_matrix_get_n_matrix_elements (pol%state)
-          call state_matrix_add_to_matrix_element &
-               (pol%state, n_values/2 + 1, value)
+          n_values = pol%state%get_n_matrix_elements ()
+          call pol%state%add_to_matrix_element (n_values/2 + 1, value)
        else
           call polarization_init (pol, flv)
           pol%polarized = .true.
-          call helicity_init (hel, 0)
-          call quantum_numbers_init (qn(1), hel)
-          call state_matrix_add_state (pol%state, qn)
-          call state_matrix_freeze (pol%state)
-          call state_matrix_set_matrix_element (pol%state, value)
+          call hel%init (0)
+          call qn(1)%init (hel)
+          call pol%state%add_state (qn)
+          call pol%state%freeze ()
+          call pol%state%set_matrix_element (value)
        end if
     else
        call polarization_init_unpolarized (pol, flv)
@@ -450,22 +451,22 @@ contains
     i = 0
     select case (pol%multiplicity)
     case (1)
-       if (flavor_is_left_handed (flv)) then
-          call helicity_init (hel, -hmax)
-       else if (flavor_is_right_handed (flv)) then
-          call helicity_init (hel, hmax)
+       if (flv%is_left_handed ()) then
+          call hel%init (-hmax)
+       else if (flv%is_right_handed ()) then
+          call hel%init ( hmax)
        else
-          call helicity_init (hel, 0)
+          call hel%init (0)
        end if
-       call quantum_numbers_init (qn(1), hel)
-       call state_matrix_add_state (pol%state, qn)
+       call qn(1)%init (hel)
+       call pol%state%add_state (qn)
     case (2)
        do h = -hmax, hmax, 2*hmax
           i = i + 1
           if (mask(i)) then
-             call helicity_init (hel, h)
-             call quantum_numbers_init (qn(1), hel)
-             call state_matrix_add_state (pol%state, qn)
+             call hel%init (h)
+             call qn(1)%init (hel)
+             call pol%state%add_state (qn)
           end if
        end do
     case default
@@ -473,14 +474,14 @@ contains
           if (fermion .and. h == 0)  cycle
           i = i + 1
           if (mask(i)) then
-             call helicity_init (hel, h)
-             call quantum_numbers_init (qn(1), hel)
-             call state_matrix_add_state (pol%state, qn)
+             call hel%init (h)
+             call qn(1)%init (hel)
+             call pol%state%add_state (qn)
           end if
        end do
     end select
-    call state_matrix_freeze (pol%state)
-    call state_matrix_set_matrix_element (pol%state, value)
+    call pol%state%freeze ()
+    call pol%state%set_matrix_element (value)
   end subroutine polarization_init_diagonal
 
   subroutine polarization_init_generic (pol, flv)
@@ -496,21 +497,21 @@ contains
     hmax = pol%spin_type / 2
     select case (pol%multiplicity)
     case (1)
-       if (flavor_is_left_handed (flv)) then
-          call helicity_init (hel, -hmax)
-       else if (flavor_is_right_handed (flv)) then
-          call helicity_init (hel, hmax)
+       if (flv%is_left_handed ()) then
+          call hel%init (-hmax)
+       else if (flv%is_right_handed ()) then
+          call hel%init ( hmax)
        else
-          call helicity_init (hel, 0)
+          call hel%init (0)
        end if
-       call quantum_numbers_init (qn(1), hel)
-       call state_matrix_add_state (pol%state, qn)
+       call qn(1)%init (hel)
+       call pol%state%add_state (qn)
     case (2)
        do h1 = -hmax, hmax, 2*hmax
           do h2 = -hmax, hmax, 2*hmax
-             call helicity_init (hel, h1, h2)
-             call quantum_numbers_init (qn(1), hel)
-             call state_matrix_add_state (pol%state, qn)
+             call hel%init (h1, h2)
+             call qn(1)%init (hel)
+             call pol%state%add_state (qn)
           end do
        end do
     case default
@@ -518,13 +519,13 @@ contains
           if (fermion .and. h1 == 0)  cycle
           do h2 = -hmax, hmax
              if (fermion .and. h2 == 0)  cycle
-             call helicity_init (hel, h1, h2)
-             call quantum_numbers_init (qn(1), hel)
-             call state_matrix_add_state (pol%state, qn)
+             call hel%init (h1, h2)
+             call qn(1)%init (hel)
+             call pol%state%add_state (qn)
           end do
        end do
     end select
-    call state_matrix_freeze (pol%state)
+    call pol%state%freeze ()
   end subroutine polarization_init_generic
 
   subroutine combine_polarization_states (pol, state)
@@ -543,23 +544,23 @@ contains
     integer :: hmax, i, j
     if (pol%polarized) then
        hmax = pol%spin_type / 2
-       call helicity_init (hel(1,1), hmax, hmax)
-       call helicity_init (hel(1,2), hmax,-hmax)
-       call helicity_init (hel(2,1),-hmax, hmax)
-       call helicity_init (hel(2,2),-hmax,-hmax)
+       call hel(1,1)%init ( hmax, hmax)
+       call hel(1,2)%init ( hmax,-hmax)
+       call hel(2,1)%init (-hmax, hmax)
+       call hel(2,2)%init (-hmax,-hmax)
        value = 0
-       call state_iterator_init (it, pol%state)
-       do while (state_iterator_is_valid (it))
-          hel1 = state_iterator_get_helicity (it)
+       call it%init (pol%state)
+       do while (it%is_valid ())
+          hel1 = it%get_helicity ()
           SCAN_HEL: do i = 1, 2
              do j = 1, 2
                 if (hel1(1) == hel(i,j)) then
-                   value(i,j) = state_iterator_get_matrix_element (it)
+                   value(i,j) = it%get_matrix_element ()
                    exit SCAN_HEL
                 end if
              end do
           end do SCAN_HEL
-          call state_iterator_advance (it)
+          call it%advance ()
        end do
        alpha(1) = real(value(1,2) + value(2,1))
        alpha(2) = - aimag(value(1,2) - value(2,1))
@@ -670,12 +671,12 @@ contains
     real(default) :: trace, trace_sq
     real(default) :: tol
     tol = 0;  if (present (tolerance))  tol = tolerance
-    pmatrix%spin_type = flavor_get_spin_type (flv)
-    pmatrix%massive = flavor_get_mass (flv) /= 0
+    pmatrix%spin_type = flv%get_spin_type ()
+    pmatrix%massive = flv%get_mass () /= 0
     if (.not. pmatrix%massive) then
-       if (flavor_is_left_handed (flv)) then
+       if (flv%is_left_handed ()) then
           pmatrix%chirality = -1
-       else if (flavor_is_right_handed (flv)) then
+       else if (flv%is_right_handed ()) then
           pmatrix%chirality = +1
        end if
     end if
@@ -790,7 +791,7 @@ contains
     pol%polarized = .true.
     pol%spin_type = pmatrix%spin_type
     pol%multiplicity = pmatrix%multiplicity
-    call state_matrix_init (pol%state, store_values = .true.)
+    call pol%state%init (store_values = .true.)
     fermion = mod (pol%spin_type, 2) == 0
     h = pol%spin_type / 2
     select case (pmatrix%chirality)
@@ -815,9 +816,9 @@ contains
        value = (1 - pmatrix%degree) / pol%multiplicity
        do h = hmin, hmax, dh
           if (h == 0 .and. fermion)  cycle
-          call helicity_init (hel, h)
-          call quantum_numbers_init (qn(1), hel)
-          call state_matrix_add_state (pol%state, qn, value = value)
+          call hel%init (h)
+          call qn(1)%init (hel)
+          call pol%state%add_state (qn, value = value)
        end do
     end if
     do i = 1, pmatrix%n_entry
@@ -825,21 +826,21 @@ contains
          h1 = index(1)
          h2 = index(2)
          if (h1 == h2) then
-            call helicity_init (hel, h1)
-            call quantum_numbers_init (qn(1), hel)
-            call state_matrix_add_state (pol%state, qn, value = value, &
+            call hel%init (h1)
+            call qn(1)%init (hel)
+            call pol%state%add_state (qn, value = value, &
                  sum_values = .true.)
          else
-            call helicity_init (hel, h2, h1)
-            call quantum_numbers_init (qn(1), hel)
-            call state_matrix_add_state (pol%state, qn, value = value)
-            call helicity_init (hel, h1, h2)
-            call quantum_numbers_init (qn(1), hel)
-            call state_matrix_add_state (pol%state, qn, value = conjg (value))
+            call hel%init (h2, h1)
+            call qn(1)%init (hel)
+            call pol%state%add_state (qn, value = value)
+            call hel%init (h1, h2)
+            call qn(1)%init (hel)
+            call pol%state%add_state (qn, value = conjg (value))
          end if
        end associate
     end do
-    call state_matrix_freeze (pol%state)
+    call pol%state%freeze ()
   end subroutine polarization_init_pmatrix
 
   subroutine polarization_test (u, results)
@@ -875,7 +876,7 @@ contains
     write (u, "(A)") "* Unpolarized fermion"
     write (u, "(A)")
     
-    call flavor_init (flv, 1, model)
+    call flv%init (1, model)
     call polarization_init_unpolarized (pol, flv)
     call polarization_write (pol, u)
     write (u, "(A,L1)")  "   diagonal =", polarization_is_diagonal (pol)
@@ -914,7 +915,7 @@ contains
     call polarization_init_generic (pol, flv)
     call polarization_write (pol, u)
     call polarization_final (pol)
-    call flavor_init (flv, 21, model)
+    call flv%init (21, model)
     
     write (u, "(A)") 
     write (u, "(A)")  "* Circularly polarized gluon, frac=0.3"
@@ -923,7 +924,7 @@ contains
     call polarization_init_circular (pol, flv, 0.3_default)
     call polarization_write (pol, u)
     call polarization_final (pol)   
-    call flavor_init (flv, 23, model)
+    call flv%init (23, model)
     
     write (u, "(A)") 
     write (u, "(A)") "* Circularly polarized massive vector, frac=-0.7"
@@ -973,7 +974,7 @@ contains
     call polarization_init_generic (pol, flv)
     call polarization_write (pol, u)
     call polarization_final (pol)
-    call flavor_init (flv, 21, model)
+    call flv%init (21, model)
     
     write (u, "(A)") 
     write (u, "(A)")  "* Axis polarization (0.2, 0.4, 0.6)"
@@ -1025,7 +1026,7 @@ contains
     write (u, "(A)") "* Unpolarized fermion"
     write (u, "(A)")
     
-    call flavor_init (flv, 1, model)
+    call flv%init (1, model)
     call pmatrix%init (2, 0)
     call pmatrix%normalize (flv, 0._default, tolerance)
     call pmatrix%write (u)
@@ -1077,7 +1078,7 @@ contains
     write (u, "(A)")  "* Left-handed massive fermion, frac=1"
     write (u, "(A)")
     
-    call flavor_init (flv, 11, model)
+    call flv%init (11, model)
     call pmatrix%init (2, 1)
     call pmatrix%set_entry (1, [-1,-1], (1._default, 0._default))
     call pmatrix%normalize (flv, 1._default, tolerance)
@@ -1095,7 +1096,7 @@ contains
     write (u, "(A)")  "* Left-handed massive fermion, frac=0.8"
     write (u, "(A)")
     
-    call flavor_init (flv, 11, model)
+    call flv%init (11, model)
     call pmatrix%init (2, 1)
     call pmatrix%set_entry (1, [-1,-1], (1._default, 0._default))
     call pmatrix%normalize (flv, 0.8_default, tolerance)
@@ -1110,7 +1111,7 @@ contains
     write (u, "(A)")  "* Left-handed massless fermion"
     write (u, "(A)")
     
-    call flavor_init (flv, 12, model)
+    call flv%init (12, model)
     call pmatrix%init (2, 0)
     call pmatrix%normalize (flv, 1._default, tolerance)
     call pmatrix%write (u)
@@ -1124,7 +1125,7 @@ contains
     write (u, "(A)")  "* Right-handed massless fermion, frac=0.5"
     write (u, "(A)")
     
-    call flavor_init (flv, -12, model)
+    call flv%init (-12, model)
     call pmatrix%init (2, 1)
     call pmatrix%set_entry (1, [1,1], (1._default, 0._default))
     call pmatrix%normalize (flv, 0.5_default, tolerance)
@@ -1139,7 +1140,7 @@ contains
     write (u, "(A)")  "* Circularly polarized gluon, frac=0.3"
     write (u, "(A)") 
     
-    call flavor_init (flv, 21, model)
+    call flv%init (21, model)
     call pmatrix%init (2, 1)
     call pmatrix%set_entry (1, [1,1], (1._default, 0._default))
     call pmatrix%normalize (flv, 0.3_default, tolerance)
@@ -1154,7 +1155,7 @@ contains
     write (u, "(A)") "* Circularly polarized massive vector, frac=0.7"
     write (u, "(A)") 
     
-    call flavor_init (flv, 23, model)
+    call flv%init (23, model)
     call pmatrix%init (2, 1)
     call pmatrix%set_entry (1, [1,1], (1._default, 0._default))
     call pmatrix%normalize (flv, 0.7_default, tolerance)
@@ -1169,7 +1170,7 @@ contains
     write (u, "(A)")  "* Circularly polarized massive vector"
     write (u, "(A)")
     
-    call flavor_init (flv, 23, model)
+    call flv%init (23, model)
     call pmatrix%init (2, 1)
     call pmatrix%set_entry (1, [1,1], (1._default, 0._default))
     call pmatrix%normalize (flv, 1._default, tolerance)
@@ -1184,7 +1185,7 @@ contains
     write (u, "(A)")  "* Longitudinally polarized massive vector, frac=0.4"
     write (u, "(A)")
     
-    call flavor_init (flv, 23, model)
+    call flv%init (23, model)
     call pmatrix%init (2, 1)
     call pmatrix%set_entry (1, [0,0], (1._default, 0._default))
     call pmatrix%normalize (flv, 0.4_default, tolerance)
@@ -1202,7 +1203,7 @@ contains
     write (u, "(A)")  "* Longitudinally polarized massive vector"
     write (u, "(A)") 
     
-    call flavor_init (flv, 23, model)
+    call flv%init (23, model)
     call pmatrix%init (2, 1)
     call pmatrix%set_entry (1, [0,0], (1._default, 0._default))
     call pmatrix%normalize (flv, 1._default, tolerance)
@@ -1220,7 +1221,7 @@ contains
     write (u, "(A)")  "* Axis polarization (0.2, 0.4, 0.6)"
     write (u, "(A)") 
     
-    call flavor_init (flv, 11, model)
+    call flv%init (11, model)
     alpha = [0.2_default, 0.4_default, 0.6_default]
     alpha = alpha / sqrt (sum (alpha**2))
     call pmatrix%init (2, 3)

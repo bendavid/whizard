@@ -9,6 +9,7 @@
  ASCII event stream (default format):
    Writing to file   = eio_ascii_1.evt
    Keep beams        = F
+   Keep remnants     = T
 
 * File contents:
 
@@ -59,6 +60,7 @@ event_excess* =>  0.000000000000E+00
  ASCII event stream (default format):
    [closed]
    Keep beams        = T
+   Keep remnants     = T
 
 * Cleanup
 

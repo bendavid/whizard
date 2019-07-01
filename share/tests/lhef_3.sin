@@ -29,3 +29,7 @@ simulate (lhef_3_p)
 $sample = "lhef_3.2"
 ?keep_beams = true
 simulate (lhef_3_p)
+
+$sample = "lhef_3.3"
+?keep_remnants = false
+simulate (lhef_3_p)

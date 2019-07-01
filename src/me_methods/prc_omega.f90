@@ -1,4 +1,4 @@
-! WHIZARD 2.2.4 Feb 06 2015
+! WHIZARD 2.2.5 Feb 27 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -935,12 +935,14 @@ contains
   end subroutine prc_omega_reset_helicity_selection
   
   function prc_omega_compute_amplitude &
-       (object, j, p, f, h, c, fac_scale, ren_scale, tmp) result (amp)
+       (object, j, p, f, h, c, fac_scale, ren_scale, alpha_qcd_forced, tmp) &
+       result (amp)
     class(prc_omega_t), intent(in) :: object
     integer, intent(in) :: j
     type(vector4_t), dimension(:), intent(in) :: p
     integer, intent(in) :: f, h, c
     real(default), intent(in) :: fac_scale, ren_scale
+    real(default), intent(in), allocatable :: alpha_qcd_forced
     class(workspace_t), intent(inout), allocatable, optional :: tmp
     real(default) :: alpha_qcd
     complex(default) :: amp
@@ -962,7 +964,11 @@ contains
        end if
        if (new_event) then
           if (allocated (object%qcd%alpha)) then
-             alpha_qcd = object%qcd%alpha%get (fac_scale)
+             if (allocated (alpha_qcd_forced)) then
+                alpha_qcd = alpha_qcd_forced
+             else
+                alpha_qcd = object%qcd%alpha%get (fac_scale)
+             end if
              call driver%update_alpha_s (alpha_qcd)
              if (present (tmp)) then
                 if (allocated (tmp)) then
@@ -1744,6 +1750,7 @@ end subroutine prc_omega_diags_test
     type(vector4_t), dimension(4) :: p
     complex(default) :: amp
     real(default) :: fac_scale
+    real(default), allocatable :: alpha_qcd_forced
     integer :: i
     
     write (u, "(A)")  "* Test output: prc_omega_5"
@@ -1831,7 +1838,7 @@ end subroutine prc_omega_diags_test
        write (u, "(1x,A,F4.0)")  "factorization scale = ", fac_scale
 
        amp = core%compute_amplitude &
-            (1, p, 1, 6, 1, fac_scale, 100._default)
+            (1, p, 1, 6, 1, fac_scale, 100._default, alpha_qcd_forced)
 
        write (u, "(1x,A,1x,E11.4)") "|amp (1, 6, 1)| =", abs (amp)
 
@@ -1844,7 +1851,20 @@ end subroutine prc_omega_diags_test
        write (u, "(1x,A,F4.0)")  "factorization scale = ", fac_scale
 
        amp = core%compute_amplitude &
-            (1, p, 1, 6, 1, fac_scale, 100._default)
+            (1, p, 1, 6, 1, fac_scale, 100._default, alpha_qcd_forced)
+
+       write (u, "(1x,A,1x,E11.4)") "|amp (1, 6, 1)| =", abs (amp)
+
+       write (u, "(A)")
+       write (u, "(A)")  "* Set alpha(QCD) directly and &
+            &compute matrix element again"
+       write (u, "(A)")
+
+       allocate (alpha_qcd_forced, source = 0.1_default)
+       write (u, "(1x,A,F6.4)")  "alpha_qcd = ", alpha_qcd_forced
+
+       amp = core%compute_amplitude &
+            (1, p, 1, 6, 1, fac_scale, 100._default, alpha_qcd_forced)
 
        write (u, "(1x,A,1x,E11.4)") "|amp (1, 6, 1)| =", abs (amp)
 

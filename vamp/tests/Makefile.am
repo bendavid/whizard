@@ -5,25 +5,26 @@
 AM_FCFLAGS = -I$(top_builddir)/src
 AM_LDFLAGS =
 
+KINDS = $(top_builddir)/src/kinds.lo
 LIBVAMP = $(top_builddir)/src/libvamp.la
 
 TESTS = tao_test
 EXTRA_PROGRAMS = tao_test
 
 tao_test_SOURCES = tao_test.f90
-tao_test_LDADD = $(LIBVAMP)
+tao_test_LDADD = $(KINDS) $(LIBVAMP)
 
 TESTS += vamp_test
 EXTRA_PROGRAMS += vamp_test
 
 vamp_test_SOURCES = vamp_test.f90 constants.f90 kinematics.f90 coordinates.f90
-vamp_test_LDADD = $(LIBVAMP)
+vamp_test_LDADD = $(KINDS) $(LIBVAMP)
 
 TESTS += vamp_test0
 EXTRA_PROGRAMS += vamp_test0
 
 vamp_test0_SOURCES = vamp_test0.f90
-vamp_test0_LDADD = $(LIBVAMP)
+vamp_test0_LDADD = $(KINDS) $(LIBVAMP)
 
 VPATH = $(srcdir):$(top_builddir)/src:$(top_srcdir)/src
 

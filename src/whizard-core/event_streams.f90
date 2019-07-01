@@ -1,4 +1,4 @@
-! WHIZARD 2.2.4 Feb 06 2015
+! WHIZARD 2.2.5 Feb 27 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -498,11 +498,11 @@ contains
   end subroutine event_stream_array_switch_inout
   
   subroutine event_stream_array_output (es_array, event, i_prc, &
-                                        event_index, pacify)
+                                        event_index, passed, pacify)
     class(event_stream_array_t), intent(inout) :: es_array
     type(event_t), intent(in), target :: event
     integer, intent(in) :: i_prc, event_index
-    logical, intent(in), optional :: pacify
+    logical, intent(in), optional :: passed, pacify
     integer :: i
     do i = 1, size (es_array%entry)
        if (i /= es_array%i_in) then
@@ -514,6 +514,7 @@ contains
                end if
             end if
             call eio%output (event, i_prc, reading = es_array%i_in /= 0, &
+                 passed = passed, &
                  pacify = pacify)
           end associate
        end if

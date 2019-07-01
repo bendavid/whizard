@@ -78,6 +78,7 @@ REF_OUTPUT_FILES_BASE = \
     ref-output/evaluator_1.ref \
     ref-output/evaluator_2.ref \
     ref-output/evaluator_3.ref \
+    ref-output/evaluator_4.ref \
     ref-output/os_interface_1.ref \
     ref-output/format_1.ref \
     ref-output/hepmc_interface_1.ref \
@@ -102,7 +103,6 @@ REF_OUTPUT_FILES_BASE = \
     ref-output/particles_5.ref \
     ref-output/particles_6.ref \
     ref-output/particles_7.ref \
-    ref-output/particles_8.ref \
     ref-output/beam_structures_1.ref \
     ref-output/beam_structures_2.ref \
     ref-output/beam_structures_3.ref \
@@ -298,6 +298,7 @@ REF_OUTPUT_FILES_BASE = \
     ref-output/prc_omega_4.ref \
     ref-output/prc_omega_5.ref \
     ref-output/prc_omega_diags_1.ref \
+    ref-output/hep_events_1.ref \
     ref-output/eio_data_1.ref \
     ref-output/eio_data_2.ref \
     ref-output/eio_base_1.ref \
@@ -316,6 +317,8 @@ REF_OUTPUT_FILES_BASE = \
     ref-output/eio_lcio_2.ref \
     ref-output/eio_stdhep_1.ref \
     ref-output/eio_stdhep_2.ref \
+    ref-output/eio_stdhep_3.ref \
+    ref-output/eio_stdhep_4.ref \
     ref-output/eio_ascii_1.ref \
     ref-output/eio_ascii_2.ref \
     ref-output/eio_ascii_3.ref \
@@ -499,15 +502,23 @@ REF_OUTPUT_FILES_BASE = \
     ref-output/hepmc_5.ref \
     ref-output/hepmc_6.ref \
     ref-output/hepmc_7.ref \
+    ref-output/hepmc_9.ref \
+    ref-output/hepmc_10.ref \
     ref-output/lhef_1.ref \
     ref-output/lhef_2.ref \
     ref-output/lhef_3.ref \
     ref-output/lhef_4.ref \
     ref-output/lhef_5.ref \
     ref-output/lhef_6.ref \
+    ref-output/lhef_9.ref \
+    ref-output/lhef_10.ref \
+    ref-output/select_1.ref \
+    ref-output/select_2.ref \
     ref-output/stdhep_1.ref \
     ref-output/stdhep_2.ref \
     ref-output/stdhep_3.ref \
+    ref-output/stdhep_4.ref \
+    ref-output/stdhep_5.ref \
     ref-output/fatal_beam_decay.ref \
     ref-output/smtest_1.ref \
     ref-output/smtest_3.ref \
@@ -705,6 +716,7 @@ UNIT_TESTS_SIN = \
     prc_template_me.sin \
     prc_omega.sin \
     prc_omega_diags.sin \
+    hep_events.sin \
     eio_data.sin \
     eio_base.sin \
     eio_raw.sin \
@@ -810,6 +822,10 @@ MISC_TESTS_SIN = \
     lhef_6.sin \
     lhef_7.sin \
     lhef_8.sin \
+    lhef_9.sin \
+    lhef_10.sin \
+    select_1.sin \
+    select_2.sin \
     parton_shower_1.sin \
     parton_shower_2.sin \
     pythia6_1.sin \
@@ -825,10 +841,14 @@ MISC_TESTS_SIN = \
     hepmc_6.sin \
     hepmc_7.sin \
     hepmc_8.sin \
+    hepmc_9.sin \
+    hepmc_10.sin \
     lcio.sin \
     stdhep_1.sin \
     stdhep_2.sin \
     stdhep_3.sin \
+    stdhep_4.sin \
+    stdhep_5.sin \
     fatal_beam_decay.sin \
     smtest_1.sin \
     smtest_2.sin \

@@ -1,4 +1,4 @@
-! WHIZARD 2.2.4 Feb 06 2015
+! WHIZARD 2.2.5 Feb 27 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -193,7 +193,7 @@ contains
           unweighted = .true.
        case (4)
           unweighted = .false.
-       case (1,2)  ! not supported by WHIZARD
+       case (1,2)  !!! not supported by WHIZARD
           unweighted = .false.
        case default
           call msg_fatal ("HEPRUP: unsupported IDWTUP value")
@@ -256,7 +256,7 @@ contains
           max_weight = 1
        case (4)
           max_weight = XMAXUP(i) / pb_per_fb
-       case (1,2)   ! not supported by WHIZARD
+       case (1,2)   !!! not supported by WHIZARD
           max_weight = 0
        case default
           call msg_fatal ("HEPRUP: unsupported IDWTUP value")
@@ -739,37 +739,47 @@ contains
     end do
   end subroutine hepeup_read_lhef
 
-  subroutine hepeup_from_particle_set (particle_set, keep_beams)
-    type(particle_set_t), intent(in), target :: particle_set
-    logical, intent(in), optional :: keep_beams  
-    type(particle_t), pointer :: prt
+  subroutine hepeup_from_particle_set (particle_set, keep_beams, keep_remnants)
+    type(particle_set_t), intent(in) :: particle_set
+    logical, intent(in), optional :: keep_beams
+    logical, intent(in), optional :: keep_remnants
     type(particle_set_t), target :: pset_hepevt
-    integer :: i, n_parents
+    integer :: i, n_parents, status, n_tot
     integer, dimension(1) :: i_mother
-    call particle_set_to_hepevt_form (particle_set, pset_hepevt, keep_beams)
-    call hepeup_init (pset_hepevt%n_tot)
-    do i = 1, pset_hepevt%n_tot
-       prt => pset_hepevt%prt(i)
-       call hepeup_set_particle (i, &
-            particle_get_pdg (prt), &
-            particle_get_status (prt), &
-            particle_get_parents (prt), &
-            particle_get_color (prt), &
-            particle_get_momentum (prt), &
-            particle_get_p2 (prt))
-       n_parents = particle_get_n_parents (prt)
-       if (n_parents == 1) then
-          i_mother = particle_get_parents (prt)
-          select case (particle_get_polarization_status (prt))
-          case (PRT_GENERIC_POLARIZATION)
-             call hepeup_set_particle_spin (i, &
-                  particle_get_momentum (prt), &
-                  particle_get_polarization (prt), &
-                  particle_get_momentum (pset_hepevt%prt(i_mother(1))))
-          end select
-       end if
+    logical :: activate_remnants
+    activate_remnants = .true.
+    if (present (keep_remnants))  activate_remnants = keep_remnants
+    call particle_set%to_hepevt_form (pset_hepevt, keep_beams)
+    n_tot = pset_hepevt%get_n_tot ()
+    call hepeup_init (n_tot)
+    do i = 1, n_tot
+       associate (prt => pset_hepevt%prt(i))
+         status = prt%get_status ()
+         if (activate_remnants &
+              .and. status == PRT_BEAM_REMNANT &
+              .and. prt%get_n_children () == 0) &
+              status = PRT_OUTGOING
+         call hepeup_set_particle (i, &
+              prt%get_pdg (), &
+              status, &
+              prt%get_parents (), &
+              prt%get_color (), &
+              prt%get_momentum (), &
+              prt%get_p2 ())
+         n_parents = prt%get_n_parents ()
+         if (n_parents == 1) then
+            i_mother = prt%get_parents ()
+            select case (prt%get_polarization_status ())
+            case (PRT_GENERIC_POLARIZATION)
+               call hepeup_set_particle_spin (i, &
+                    prt%get_momentum (), &
+                    prt%get_polarization (), &
+                    pset_hepevt%prt(i_mother(1))%get_momentum ())
+            end select
+         end if
+       end associate
     end do
-    call particle_set_final (pset_hepevt)
+    call pset_hepevt%final ()
   end subroutine hepeup_from_particle_set
 
   subroutine hepeup_to_particle_set &
@@ -802,60 +812,68 @@ contains
     do i = 1, NUP
        k = i + off
        call hepeup_get_particle (i, pdg, status, col = c, p = p, m2 = p2)
-       call flavor_init (flv, pdg, model, alt_model)
-       call particle_set_flavor (prt(k), flv)
-       call particle_reset_status (prt(k), status)
-       call color_init (col, c)
-       call particle_set_color (prt(k), col)
-       call particle_set_momentum (prt(k), p, p2)
+       call flv%init (pdg, model, alt_model)
+       call prt(k)%set_flavor (flv)
+       call prt(k)%reset_status (status)
+       call col%init (c)
+       call prt(k)%set_color (col)
+       call prt(k)%set_momentum (p, p2)
        where (MOTHUP(:,i) /= 0)
           parent = MOTHUP(:,i) + off
        elsewhere
           parent = 0
        end where
-       call particle_set_parents (prt(k), parent)
+       call prt(k)%set_parents (parent)
        child = [(j, j = 1 + off, NUP + off)]
        where (MOTHUP(1,:NUP) /= i .and. MOTHUP(2,:NUP) /= i)  child = 0
-       call particle_set_children (prt(k), child)
+       call prt(k)%set_children (child)
     end do
     if (reconstruct) then
        do k = 1, 2
-          call particle_reset_status (prt(k), PRT_BEAM)
-          call particle_set_children (prt(k), [k+2,k+4])
+          call prt(k)%reset_status (PRT_BEAM)
+          call prt(k)%set_children ([k+2,k+4])
        end do
        do k = 3, 4
-          call particle_reset_status (prt(k), PRT_BEAM_REMNANT)
-          call particle_set_parents (prt(k), [k-2])
+          call prt(k)%reset_status (PRT_BEAM_REMNANT)
+          call prt(k)%set_parents ([k-2])
        end do
        do k = 5, 6
-          call particle_set_parents (prt(k), [k-4])
+          call prt(k)%set_parents ([k-4])
        end do
-!     else
-!        call handle_beams (prt)
     end if
-    call particle_set_replace (particle_set, prt)
+    call particle_set%replace (prt)
   end subroutine hepeup_to_particle_set
   
-  subroutine hepevt_from_particle_set (particle_set, keep_beams)
-    type(particle_set_t), intent(in), target :: particle_set
-    type(particle_t), pointer :: prt
+  subroutine hepevt_from_particle_set &
+       (particle_set, keep_beams, keep_remnants)
+    type(particle_set_t), intent(in) :: particle_set
     type(particle_set_t), target :: pset_hepevt
     logical, intent(in), optional :: keep_beams
-    integer :: i
-    call particle_set_to_hepevt_form (particle_set, pset_hepevt, keep_beams)
-    call hepevt_init (pset_hepevt%n_tot, pset_hepevt%n_out)    
-    do i = 1, pset_hepevt%n_tot
-       prt => pset_hepevt%prt(i)
-       call hepevt_set_particle (i, &
-            particle_get_pdg (prt), &
-            particle_get_status (prt), &
-            particle_get_parents (prt), &
-            particle_get_children (prt), &
-            particle_get_momentum (prt), &
-            particle_get_p2 (prt), &
-            particle_get_helicity (prt))
+    logical, intent(in), optional :: keep_remnants
+    integer :: i, status, n_tot
+    logical :: activate_remnants
+    activate_remnants = .true.
+    if (present (keep_remnants))  activate_remnants = keep_remnants
+    call particle_set%to_hepevt_form (pset_hepevt, keep_beams)
+    n_tot = pset_hepevt%get_n_tot ()
+    call hepevt_init (n_tot, pset_hepevt%get_n_out ())
+    do i = 1, n_tot
+       associate (prt => pset_hepevt%prt(i))
+         status = prt%get_status ()
+         if (activate_remnants &
+              .and. status == PRT_BEAM_REMNANT &
+              .and. prt%get_n_children () == 0) &
+              status = PRT_OUTGOING
+         call hepevt_set_particle (i, &
+              prt%get_pdg (), status, &
+              prt%get_parents (), &
+              prt%get_children (), &
+              prt%get_momentum (), &
+              prt%get_p2 (), &
+              prt%get_helicity ())
+       end associate
     end do
-    call particle_set_final (pset_hepevt)
+    call pset_hepevt%final ()
   end subroutine hepevt_from_particle_set
 
 

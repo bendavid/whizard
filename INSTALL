@@ -26,7 +26,7 @@ Prerequisites are:
  - Make
  - Objective Caml compiler (version 3.12 or higher)
  - Fortran 2003 compiler
- - C/C++ (for FastJet/HepMC/LHAPDF/LCIO interfaces)
+ - C/C++ (for PYTHIA8/FastJet/HepMC/LHAPDF/LCIO interfaces)
 
 The Objective Caml (OCaml) compiler is available from 
 http://pauillac.inria.fr/ocaml/
@@ -35,7 +35,7 @@ http://pauillac.inria.fr/ocaml/
 #  Specific problems with some FORTRAN compilers
 #-------------------------------------------------------------
 
-Note for NAG users: For version 5.2 of NAG, the standard debugging
+Note for NAG users: For several versions of NAG, the standard debugging
 flag -g is referencing for historical reasons to the upsf90 
 debugger which is no longer supported. If you want to use debugging
 information set the -g90 flag referring to the dbx90 or gdb 
@@ -47,6 +47,10 @@ debuggers.
 
 The following external libraries and programs can be linked to
 WHIZARD:
+
+-- PYTHIA8 for hadronization and showering. It is available
+   from http://home.thep.lu.se/~torbjorn/Pythia.html
+   [not yet functional]
 
 -- LHAPDF for proton, pion and photon structure functions. 
    You can get it from: http://projects.hepforge.org/lhapdf
@@ -95,9 +99,9 @@ Darwin 9.6.X-9.8.X (Leopard) and Darwin 10.0.X-10.6.X (Snow
 Leopard), Darwin 10.7.X (Lion), Darwin 10.8.X (Mountain Lion),
 Darwin 10.9.X (Maverick) as well as Darwin 10.10.X (Yosemite).
 The single pass linker here forces to explicitly include static
-C++ libraries when externally linking HepMC, FastJet, LHAPDF or
-LCIO. The necessary flags are automatically taken care of by
-the configure script.
+C++ libraries when externally linking PYTHIA8, HepMC, FastJet,
+LHAPDF or LCIO. The necessary flags are automatically taken
+care of by the configure script.
 
 #-------------------------------------------------------------
 #  installing from a source code tar ball
@@ -220,6 +224,7 @@ Optional Features:
   --enable-gosam	  enable GoSAM for external NLO matrix elements [[no]]
   --enable-hoppet         enable HOPPET for b quark pdf matching [[no]]
   --enable-fastjet	  enable FastJet for handling event data [[no]]
+  --enable-pythia8        enable PYTHIA8 for shower and hadronization [[no]]
   --enable-optimization-for-parameter-files
 			  enable (useless) optimization for parameter file
 			  [[no]]
@@ -236,6 +241,14 @@ Optional Packages:
   --with-gnu-ld           assume the C compiler uses GNU ld [default=no]
   --with-sysroot=DIR Search for dependent libraries within DIR
                         (or the compiler's sysroot if not specified).
+  --with-pythia8=dir      assume the given directory for PYTHIA8
+  --with-fastjet=dir      assume the given directory for FastJet
+  --with-gosam=dir        assume the given directory for GoSam
+  --with-golem=dir        assume the given directory for Golem
+  --with-form=dir         assume the given directory for Form
+  --with-qgraf=dir        assume the given directory for QGRAF
+  --with-ninja=dir        assume the given directory for Ninja
+  --with-samurai=dir      assume the given directory for Samurai
 
 Some influential environment variables:
   CC          C compiler command
@@ -245,6 +258,8 @@ Some influential environment variables:
   LIBS        libraries to pass to the linker, e.g. -l<library>
   CPPFLAGS    C/C++/Objective C preprocessor flags, e.g. -I<include dir> if
               you have headers in a nonstandard directory <include dir>
+  LT_SYS_LIBRARY_PATH
+                User-defined run-time library search path.
   CPP         C preprocessor
   FC          Fortran compiler command
   FCFLAGS     Fortran compiler flags

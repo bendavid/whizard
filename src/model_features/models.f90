@@ -1,4 +1,4 @@
-! WHIZARD 2.2.4 Feb 06 2015
+! WHIZARD 2.2.5 Feb 27 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -588,6 +588,7 @@ contains
     integer, intent(in) :: i
     type(parameter_t), intent(in) :: par
     type(string_t) :: name
+    real(default) :: value
     name = par%data%get_name ()
     select case (par%type)
     case (PAR_INDEPENDENT)
@@ -595,8 +596,8 @@ contains
           call model%set_parameter_parse_node (i, name, par%pn, &
                constant = .true.)
        else
-          call model%set_parameter_constant (i, name, &
-               par%data%get_real ())
+          value = par%data%get_real ()
+          call model%set_parameter_constant (i, name, value)
        end if
     case (PAR_DERIVED)
        call model%set_parameter_parse_node (i, name, par%pn, &

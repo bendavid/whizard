@@ -1,4 +1,4 @@
-! WHIZARD 2.2.4 Feb 06 2015
+! WHIZARD 2.2.5 Feb 27 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -93,6 +93,8 @@ module events
      type(event_expr_t) :: expr
      logical :: selection_evaluated = .false.
      logical :: passed = .false.
+     real(default), allocatable :: alpha_qcd_forced
+     real(default), allocatable :: scale_forced
      real(default) :: reweight = 1
      logical :: analysis_flag = .false.
    contains
@@ -109,6 +111,7 @@ module events
      procedure :: setup_expressions => event_setup_expressions
      procedure :: evaluate_transforms => event_evaluate_transforms
      procedure :: evaluate_expressions => event_evaluate_expressions
+     procedure :: passed_selection => event_passed_selection
      procedure :: store_alt_values => event_store_alt_values
      procedure :: reset => event_reset
      procedure :: import_instance_results => event_import_instance_results
@@ -122,6 +125,8 @@ module events
      procedure :: get_hard_particle_set => event_get_hard_particle_set
      procedure :: select => event_select
      procedure :: set_hard_particle_set => event_set_hard_particle_set
+     procedure :: set_alpha_qcd_forced => event_set_alpha_qcd_forced
+     procedure :: set_scale_forced => event_set_scale_forced
      procedure :: recalculate => event_recalculate
      procedure :: get_process_ptr => event_get_process_ptr
      procedure :: get_process_instance_ptr => event_get_process_instance_ptr
@@ -469,6 +474,12 @@ contains
     end if
   end subroutine event_evaluate_expressions
   
+  function event_passed_selection (event) result (flag)
+    class(event_t), intent(in) :: event
+    logical :: flag
+    flag = event%passed
+  end function event_passed_selection
+  
   subroutine event_store_alt_values (event)
     class(event_t), intent(inout) :: event
     if (event%weight_alt_is_known ()) then
@@ -494,6 +505,8 @@ contains
     if (associated (event%instance)) then
        call event%instance%reset (reset_mci = .true.)
     end if
+    if (allocated (event%alpha_qcd_forced))  deallocate (event%alpha_qcd_forced)
+    if (allocated (event%scale_forced))  deallocate (event%scale_forced)
     evt => event%transform_first
     do while (associated (evt))
        call evt%reset ()
@@ -643,6 +656,26 @@ contains
     end do
   end subroutine event_set_hard_particle_set
 
+  subroutine event_set_alpha_qcd_forced (event, alpha_qcd)
+    class(event_t), intent(inout) :: event
+    real(default), intent(in) :: alpha_qcd
+    if (allocated (event%alpha_qcd_forced)) then
+       event%alpha_qcd_forced = alpha_qcd
+    else
+       allocate (event%alpha_qcd_forced, source = alpha_qcd)
+    end if
+  end subroutine event_set_alpha_qcd_forced
+  
+  subroutine event_set_scale_forced (event, scale)
+    class(event_t), intent(inout) :: event
+    real(default), intent(in) :: scale
+    if (allocated (event%scale_forced)) then
+       event%scale_forced = scale
+    else
+       allocate (event%scale_forced, source = scale)
+    end if
+  end subroutine event_set_scale_forced
+  
   subroutine event_recalculate &
        (event, update_sqme, weight_factor, recover_beams)
     class(event_t), intent(inout) :: event
@@ -661,7 +694,12 @@ contains
        end if
        call event%instance%choose_mci (i_mci)
        call event%instance%set_trace (particle_set, i_term, recover_beams)
-       call event%instance%recover (channel, i_term, update_sqme) 
+       if (allocated (event%alpha_qcd_forced)) then
+          call event%instance%set_alpha_qcd_forced &
+               (i_term, event%alpha_qcd_forced)
+       end if
+       call event%instance%recover (channel, i_term, update_sqme, &
+            event%scale_forced) 
        if (signal_is_pending ())  return
        if (update_sqme .and. present (weight_factor)) then
           call event%instance%evaluate_event_data &
@@ -962,7 +1000,7 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
 
-    call particle_set_final (particle_set)
+    call particle_set%final ()
 
     call event%final ()
     deallocate (event)
@@ -1055,7 +1093,7 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Cleanup"
 
-    call particle_set_final (particle_set)
+    call particle_set%final ()
 
     call event%final ()
     deallocate (event)

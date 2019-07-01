@@ -1,4 +1,4 @@
-! WHIZARD 2.2.4 Feb 06 2015
+! WHIZARD 2.2.5 Feb 27 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -519,8 +519,8 @@ contains
        type(flavor_t) :: flv
        do i = 1, size (pdg_list)
           i_pdg = abs (pdg_list(i))
-          call flavor_init (flv, i_pdg, cfg%model)
-          if (flavor_get_mass (flv) > 0._default) then 
+          call flv%init (i_pdg, cfg%model)
+          if (flv%get_mass () > 0._default) then 
              !!! Avoid duplicates in output
              if (.not. any (checked == i_pdg)) then
                 i_massive_tmp(k) = i_pdg
@@ -789,7 +789,7 @@ contains
     if (full .and. cfg%dirty) call msg_bug ( &
        "BUG: attempted to write out a dirty BLHA configuration")
     if (full) then
-       write (u,'(A)') "# BLHA order written by WHIZARD 2.2.4"
+       write (u,'(A)') "# BLHA order written by WHIZARD 2.2.5"
        write (u,'(A)')
     end if
     select case (cfg%mode)

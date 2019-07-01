@@ -48,10 +48,15 @@ dist_noinst_DATA = me_methods.nw
 # Dump module names into file Modules
 libme_methods_Modules = ${libme_methods_la_SOURCES:.f90=}
 Modules: Makefile
-	@rm -f $@
-	for module in $(libme_methods_Modules); do \
-          echo $$module >> $@; \
+	@for module in $(libme_methods_Modules); do \
+          echo $$module >> $@.new; \
         done
+	@if diff $@ $@.new -q >/dev/null; then \
+          rm $@.new; \
+	else \
+          mv $@.new $@; echo "Modules updated"; \
+        fi
+BUILT_SOURCES = Modules
 
 ## Fortran module dependencies
 # Get module lists from other directories

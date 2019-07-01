@@ -1,4 +1,4 @@
-! WHIZARD 2.2.4 Feb 06 2015
+! WHIZARD 2.2.5 Feb 27 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -41,6 +41,7 @@ module decays
   use os_interface
   use sm_qcd
   use flavors
+  use helicities
   use quantum_numbers
   use state_matrices
   use interactions
@@ -152,6 +153,7 @@ module decays
   end type decay_root_t
   
   type, extends (decay_root_config_t) :: decay_config_t
+     type(flavor_t) :: flv
      real(default) :: weight = 0
      real(default) :: integral = 0
      real(default) :: abs_error = 0
@@ -160,6 +162,7 @@ module decays
    contains
      procedure :: write => decay_config_write
      procedure :: connect => decay_config_connect
+     procedure :: set_flv => decay_config_set_flv
      procedure :: compute => decay_config_compute
   end type decay_config_t
   
@@ -320,14 +323,14 @@ contains
        select type (prt_config => object%prt(i)%c)
        type is (stable_config_t)
           write (u, "(1x,A)", advance="no") &
-               char (flavor_get_name (prt_config%flv(1)))
+               char (prt_config%flv(1)%get_name ())
           do j = 2, size (prt_config%flv)
              write (u, "(':',A)", advance="no") &
-                  char (flavor_get_name (prt_config%flv(j)))
+                  char (prt_config%flv(j)%get_name ())
           end do
        type is (unstable_config_t)
           write (u, "(1x,A)", advance="no") &
-               char (flavor_get_name (prt_config%flv))
+               char (prt_config%flv%get_name ())
        end select
     end do
     write (u, *)
@@ -361,7 +364,7 @@ contains
          type is (unstable_config_t)
             if (all (flv(i,:) == flv(i,1))) then
                call prt_config%init (flv(i,1))
-               call flavor_get_decays (flv(i,1), decay)
+               call flv(i,1)%get_decays (decay)
                call prt_config%init_decays (decay, model, process_stack)
             else
                call prt_config%write ()
@@ -590,9 +593,9 @@ contains
        else
           call process%get_term_flv_out (i, flv)
        end if
-       call flavor_set_model (flv, model)
+       call flv%set_model (model)
        allocate (stable (size (flv, 1)))
-       stable = flavor_is_stable (flv(:,1))
+       stable = flv(:,1)%is_stable ()
        call decay%init_term (i, flv, stable, model, process_stack)
        deallocate (flv, stable)
     end do
@@ -775,6 +778,12 @@ contains
     call decay%mci_selector%init (integral_mci)
   end subroutine decay_config_connect
 
+  subroutine decay_config_set_flv (decay, flv)
+    class(decay_config_t), intent(inout) :: decay
+    type(flavor_t), intent(in) :: flv
+    decay%flv = flv
+  end subroutine decay_config_set_flv
+  
   recursive subroutine decay_config_compute (decay)
     class(decay_config_t), intent(inout) :: decay
     call decay%decay_root_config_t%compute ()
@@ -895,10 +904,10 @@ contains
     ind = 0;  if (present (indent))  ind = indent
     call write_indent (u, ind)
     write (u, "(1x,'+',1x,A)", advance = "no")  "Stable:"
-    write (u, "(1x,A)", advance = "no")  char (flavor_get_name (object%flv(1)))
+    write (u, "(1x,A)", advance = "no")  char (object%flv(1)%get_name ())
     do i = 2, size (object%flv)
        write (u, "(':',A)", advance = "no") &
-            char (flavor_get_name (object%flv(i)))
+            char (object%flv(i)%get_name ())
     end do
     write (u, *)
   end subroutine stable_config_write
@@ -909,7 +918,7 @@ contains
     integer, dimension (size (flv)) :: pdg
     logical, dimension (size (flv)) :: mask
     integer :: i
-    pdg = flavor_get_pdg (flv)
+    pdg = flv%get_pdg ()
     mask(1) = .true.
     forall (i = 2 : size (pdg))
        mask(i) = all (pdg(i) /= pdg(1:i-1))
@@ -955,7 +964,7 @@ contains
     verb = .true.;  if (present (verbose))  verb = verbose
     call write_indent (u, ind)
     write (u, "(1x,'+',1x,A,1x,A)")  "Unstable:", &
-         char (flavor_get_name (object%flv))
+         char (object%flv%get_name ())
     call write_indent (u, ind)
     write (u, 1)  "total width =", object%integral
     call write_indent (u, ind)
@@ -992,6 +1001,7 @@ contains
          else
             call decay%init (model, decay_id(i))
          end if
+         call decay%set_flv (unstable%flv)
        end associate
     end do
   end subroutine unstable_config_init_decays
@@ -1150,8 +1160,7 @@ contains
     end if
     int_last_decay => chain%last%get_matrix_int_ptr ()
     allocate (qn_mask (interaction_get_n_tot (int_last_decay)))
-    call quantum_numbers_mask_init (qn_mask, &
-         mask_f = .true., mask_c = .true., mask_h = .true.)
+    call qn_mask%init (mask_f = .true., mask_c = .true., mask_h = .true.)
     call evaluator_init_qn_sum (chain%correlated_trace, int_last_decay, qn_mask)
   end subroutine decay_chain_build
     
@@ -1176,6 +1185,8 @@ contains
     type(decay_chain_entry_t), pointer :: entry
     type(connected_state_t), pointer :: previous_state
     type(isolated_state_t), pointer :: current_decay
+    type(helicity_t) :: hel
+    type(quantum_numbers_t) :: qn_filter_conn
     allocate (entry)
     if (associated (chain%last)) then
        entry%previous => chain%last
@@ -1193,10 +1204,23 @@ contains
          (decay%selected_term)
     call entry%setup_connected_trace &
          (current_decay, previous_state%get_trace_int_ptr (), resonant=.true.)
-    call entry%setup_connected_matrix &
-         (current_decay, previous_state%get_matrix_int_ptr (), resonant=.true.)
-    call entry%setup_connected_flows &
-         (current_decay, previous_state%get_flows_int_ptr (), resonant=.true.)
+    if (entry%config%flv%has_decay_helicity ()) then
+       call hel%init (entry%config%flv%get_decay_helicity ())
+       call qn_filter_conn%init (hel)
+       call entry%setup_connected_matrix &
+            (current_decay, previous_state%get_matrix_int_ptr (), &
+            resonant=.true., qn_filter_conn = qn_filter_conn)
+       call entry%setup_connected_flows &
+            (current_decay, previous_state%get_flows_int_ptr (), &
+            resonant=.true., qn_filter_conn = qn_filter_conn)
+    else
+       call entry%setup_connected_matrix &
+            (current_decay, previous_state%get_matrix_int_ptr (), &
+            resonant=.true.)
+       call entry%setup_connected_flows &
+            (current_decay, previous_state%get_flows_int_ptr (), &
+            resonant=.true.)
+    end if
     chain%last => entry
     call chain%build_term_entries (decay%term(decay%selected_term))
   end subroutine decay_chain_build_decay_entries
@@ -1498,9 +1522,9 @@ contains
 !    call model_list%read_model (var_str ("SM"), &
 !         var_str ("SM.mdl"), os_data, model)
 
-    call flavor_init (flv_h, 25, model)
-    call flavor_init (flv_hbb(:,1), [5, -5], model)
-    call flavor_init (flv_hgg(:,1), [22, 22], model)
+    call flv_h%init (25, model)
+    call flv_hbb(:,1)%init ([5, -5], model)
+    call flv_hgg(:,1)%init ([22, 22], model)
 
     write (u, "(A)")  "* Set up branching and decay"
     write (u, "(A)")
@@ -1564,12 +1588,12 @@ contains
     call model%set_unstable (25, [var_str ("h_ww")])
     call model%set_unstable (24, [var_str ("w_ud"), var_str ("w_en")])
 
-    call flavor_init (flv_h, 25, model)
-    call flavor_init (flv_hww(:,1), [24, -24], model)
-    call flavor_init (flv_wp, 24, model)
-    call flavor_init (flv_wm,-24, model)
-    call flavor_init (flv_wud(:,1), [2, -1], model)
-    call flavor_init (flv_wen(:,1), [-11, 12], model)
+    call flv_h%init (25, model)
+    call flv_hww(:,1)%init ([24, -24], model)
+    call flv_wp%init (24, model)
+    call flv_wm%init (-24, model)
+    call flv_wud(:,1)%init ([2, -1], model)
+    call flv_wen(:,1)%init ([-11, 12], model)
     
 
     write (u, "(A)")  "* Set up branching and decay"
@@ -1577,7 +1601,7 @@ contains
 
     allocate (unstable)
     unstable%flv = flv_h
-    call flavor_get_decays (unstable%flv, decay)
+    call unstable%flv%get_decays (decay)
     call unstable%init_decays (decay, model)
     
     associate (decay => unstable%decay_config(1))
@@ -1661,7 +1685,7 @@ contains
     write (u, "(A)")
 
     allocate (unstable)
-    call flavor_init (unstable%flv, 25, model)
+    call unstable%flv%init (25, model)
     call unstable%init_decays ([procname2], model)
     
     write (u, "(A)")  "* Connect decay with process object"
@@ -1718,7 +1742,7 @@ contains
     model => process%get_model_ptr ()
 
     allocate (unstable)
-    call flavor_init (unstable%flv, 25, model)
+    call unstable%flv%init (25, model)
     call unstable%init_decays ([procname2], model)
     
     call model%set_unstable (25, [procname2])

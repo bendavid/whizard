@@ -165,22 +165,15 @@ We need an UNDEFINED value:
 
 @ %def BEAM_REMNANT HADRON_REMNANT
 @ %def HADRON_REMNANT_SINGLET HADRON_REMNANT_TRIPLET HADRON_REMNANT_OCTET
-@ Generic particles for internal use in event analysis:
-<<Physics defs: public parameters>>=
-  integer, parameter, public :: PRT_ANY = 81
-  integer, parameter, public :: PRT_VISIBLE = 82
-  integer, parameter, public :: PRT_CHARGED = 83
-  integer, parameter, public :: PRT_COLORED = 84
-
-@ %def PRT_ANY PRT_VISIBLE PRT_CHARGED PRT_COLORED
-@ Further particle codes for internal use:
+@ 
+Further particle codes for internal use:
 <<Physics defs: public parameters>>=
   integer, parameter, public :: INTERNAL = 94
   integer, parameter, public :: INVALID = 97
-  integer, parameter, public :: KEYSTONE = 98
+
   integer, parameter, public :: COMPOSITE = 99
 
-@ %def INTERNAL INVALID KEYSTONE COMPOSITE
+@ %def INTERNAL INVALID COMPOSITE
 @
 \subsection{Spin codes}
 Somewhat redundant, but for better readability we define named

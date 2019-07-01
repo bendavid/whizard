@@ -1,4 +1,4 @@
-! WHIZARD 2.2.4 Feb 06 2015
+! WHIZARD 2.2.5 Feb 27 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -151,6 +151,8 @@ module interactions
      integer, dimension(:), allocatable :: hel_lock
      logical :: update_state_matrix = .false.
      logical :: update_values = .false.
+   contains
+   
   end type interaction_t
 
 
@@ -301,7 +303,7 @@ contains
     integer :: i, j
     set_rel = .false.;  if (present (set_relations))  set_rel = set_relations
     call interaction_set_tag (int, tag)
-    call state_matrix_init (int%state_matrix, store_values)
+    call int%state_matrix%init (store_values)
     int%n_in = n_in
     int%n_vir = n_vir
     int%n_out = n_out
@@ -362,17 +364,18 @@ contains
     call interaction_set_tag (tag=tag)
   end subroutine reset_interaction_counter
 
-  elemental subroutine interaction_final (int)
+  subroutine interaction_final (int)
     type(interaction_t), intent(inout) :: int
-    call state_matrix_final (int%state_matrix)
+    call int%state_matrix%final ()
   end subroutine interaction_final
 
   subroutine interaction_write &
-       (int, unit, verbose, show_momentum_sum, show_mass, show_state, testflag)
+       (int, unit, verbose, show_momentum_sum, show_mass, show_state, &
+       col_verbose, testflag)
     type(interaction_t), intent(in) :: int
     integer, intent(in), optional :: unit
     logical, intent(in), optional :: verbose, show_momentum_sum, show_mass
-    logical, intent(in), optional :: show_state, testflag
+    logical, intent(in), optional :: show_state, col_verbose, testflag
     integer :: u
     integer :: i, index_link
     type(interaction_t), pointer :: int_link
@@ -410,7 +413,7 @@ contains
           end if
           if (allocated (int%mask)) then
              write (u, "(1x,A)", advance="no")  "mask [fch] = "
-             call quantum_numbers_mask_write (int%mask(i), u)
+             call int%mask(i)%write (u)
              write (u, *)
           end if
           if (int%parents(i)%has_entries () &
@@ -451,9 +454,9 @@ contains
           end if
        end if
        if (show_st) then
-          call state_matrix_write (int%state_matrix, &
-               write_value_list=verbose, verbose=verbose, &
-               unit=unit, testflag = testflag)
+          call int%state_matrix%write (write_value_list=verbose, &
+               verbose=verbose, unit=unit, col_verbose=col_verbose, &
+               testflag = testflag)
        end if
     else
        write (u, "(1x,A)") "Interaction: [empty]"
@@ -516,9 +519,8 @@ contains
     integer, intent(out), optional :: me_index
     type(quantum_numbers_t), dimension(size(qn)) :: qn_tmp
     qn_tmp = qn
-    call quantum_numbers_undefine (qn_tmp, int%mask)
-    call state_matrix_add_state &
-         (int%state_matrix, qn_tmp, index, value, sum_values, &
+    call qn_tmp%undefine (int%mask)
+    call int%state_matrix%add_state (qn_tmp, index, value, sum_values, &
          counter_index, me_index)
     int%update_values = .true.
   end subroutine interaction_add_state
@@ -526,12 +528,12 @@ contains
   subroutine interaction_freeze (int)
     type(interaction_t), intent(inout) :: int
     if (int%update_state_matrix) then
-       call state_matrix_collapse (int%state_matrix, int%mask)
+       call int%state_matrix%collapse (int%mask)
        int%update_state_matrix = .false.
        int%update_values = .true.
     end if
     if (int%update_values) then
-       call state_matrix_freeze (int%state_matrix)
+       call int%state_matrix%freeze ()
        int%update_values = .false.
     end if
   end subroutine interaction_freeze
@@ -539,94 +541,94 @@ contains
   function interaction_is_empty (int) result (flag)
     logical :: flag
     type(interaction_t), intent(in) :: int
-    flag = state_matrix_is_empty (int%state_matrix)
+    flag = int%state_matrix%is_empty ()
   end function interaction_is_empty
 
   function interaction_get_n_matrix_elements (int) result (n)
     integer :: n
     type(interaction_t), intent(in) :: int
-    n = state_matrix_get_n_matrix_elements (int%state_matrix)
+    n = int%state_matrix%get_n_matrix_elements ()
   end function interaction_get_n_matrix_elements
 
   function interaction_get_norm (int) result (norm)
     real(default) :: norm
     type(interaction_t), intent(in) :: int
-    norm = state_matrix_get_norm (int%state_matrix)
+    norm = int%state_matrix%get_norm ()
   end function interaction_get_norm
 
   function interaction_get_quantum_numbers (int, i) result (qn)
     type(quantum_numbers_t), dimension(:), allocatable :: qn
     type(interaction_t), intent(in), target :: int
     integer, intent(in) :: i
-    allocate (qn (state_matrix_get_depth (int%state_matrix)))
-    qn = state_matrix_get_quantum_numbers (int%state_matrix, i)
+    allocate (qn (int%state_matrix%get_depth ()))
+    qn = int%state_matrix%get_quantum_numbers (i)
   end function interaction_get_quantum_numbers
 
   function interaction_get_matrix_element (int, i) result (me)
     complex(default) :: me
     type(interaction_t), intent(in) :: int
     integer, intent(in) :: i
-    me = state_matrix_get_matrix_element (int%state_matrix, i)
+    me = int%state_matrix%get_matrix_element (i)
   end function interaction_get_matrix_element
 
   subroutine interaction_set_matrix_element_qn (int, qn, val)
     type(interaction_t), intent(inout) :: int
     type(quantum_numbers_t), dimension(:), intent(in) :: qn
     complex(default), intent(in) :: val
-    call state_matrix_set_matrix_element (int%state_matrix, qn, val)
+    call int%state_matrix%set_matrix_element (qn, val)
   end subroutine interaction_set_matrix_element_qn
 
   subroutine interaction_set_matrix_element_all (int, value)
     type(interaction_t), intent(inout) :: int
     complex(default), intent(in) :: value
-    call state_matrix_set_matrix_element (int%state_matrix, value)
+    call int%state_matrix%set_matrix_element (value)
   end subroutine interaction_set_matrix_element_all
 
   subroutine interaction_set_matrix_element_array (int, value)
     type(interaction_t), intent(inout) :: int
     complex(default), dimension(:), intent(in) :: value
-    call state_matrix_set_matrix_element (int%state_matrix, value)
+    call int%state_matrix%set_matrix_element (value)
   end subroutine interaction_set_matrix_element_array
 
   pure subroutine interaction_set_matrix_element_single (int, i, value)
     type(interaction_t), intent(inout) :: int
     integer, intent(in) :: i
     complex(default), intent(in) :: value
-    call state_matrix_set_matrix_element (int%state_matrix, i, value)
+    call int%state_matrix%set_matrix_element (i, value)
   end subroutine interaction_set_matrix_element_single
 
   subroutine interaction_set_matrix_element_clone (int, int1)
     type(interaction_t), intent(inout) :: int
     type(interaction_t), intent(in) :: int1
-    call state_matrix_set_matrix_element (int%state_matrix, int1%state_matrix)
+    call int%state_matrix%set_matrix_element (int1%state_matrix)
   end subroutine interaction_set_matrix_element_clone
 
   subroutine interaction_get_diagonal_entries (int, i)
     type(interaction_t), intent(in) :: int
     integer, dimension(:), allocatable, intent(out) :: i
-    call state_matrix_get_diagonal_entries (int%state_matrix, i)
+    call int%state_matrix%get_diagonal_entries (i)
   end subroutine interaction_get_diagonal_entries
 
   subroutine interaction_normalize_by_trace (int)
     type(interaction_t), intent(inout) :: int
-    call state_matrix_normalize_by_trace (int%state_matrix)
+    call int%state_matrix%normalize_by_trace ()
   end subroutine interaction_normalize_by_trace
 
   subroutine interaction_normalize_by_max (int)
     type(interaction_t), intent(inout) :: int
-    call state_matrix_normalize_by_max (int%state_matrix)
+    call int%state_matrix%normalize_by_max ()
   end subroutine interaction_normalize_by_max
 
   subroutine interaction_set_norm (int, norm)
     type(interaction_t), intent(inout) :: int
     real(default), intent(in) :: norm
-    call state_matrix_set_norm (int%state_matrix, norm)
+    call int%state_matrix%set_norm (norm)
   end subroutine interaction_set_norm
 
   function interaction_get_max_color_value (int) result (cmax)
     integer :: cmax
     type(interaction_t), intent(in) :: int
-    cmax = state_matrix_get_max_color_value (int%state_matrix)
+    cmax = int%state_matrix%get_max_color_value ()
   end function interaction_get_max_color_value
 
   subroutine interaction_factorize &
@@ -639,19 +641,19 @@ contains
          dimension(:), allocatable, intent(out) :: single_state
     type(state_matrix_t), intent(out), optional :: correlated_state
     type(quantum_numbers_t), dimension(:), intent(in), optional :: qn_in
-    call state_matrix_factorize &
-         (int%state_matrix, mode, x, ok, single_state, correlated_state, qn_in)
+    call int%state_matrix%factorize &
+         (mode, x, ok, single_state, correlated_state, qn_in)
   end subroutine interaction_factorize
 
   function interaction_sum (int) result (value)
     complex(default) :: value
     type(interaction_t), intent(in) :: int
-    value = state_matrix_sum (int%state_matrix)
+    value = int%state_matrix%sum ()
   end function interaction_sum
 
   subroutine interaction_add_color_contractions (int)
     type(interaction_t), intent(inout) :: int
-    call state_matrix_add_color_contractions (int%state_matrix)
+    call int%state_matrix%add_color_contractions ()
   end subroutine interaction_add_color_contractions
 
   pure subroutine interaction_evaluate_product &
@@ -660,8 +662,8 @@ contains
     integer, intent(in) :: i
     type(interaction_t), intent(in) :: int1, int2
     integer, dimension(:), intent(in) :: index1, index2
-    call state_matrix_evaluate_product &
-         (int%state_matrix, i, int1%state_matrix, int2%state_matrix, &
+    call int%state_matrix%evaluate_product &
+         (i, int1%state_matrix, int2%state_matrix, &
           index1, index2)
   end subroutine interaction_evaluate_product
 
@@ -672,8 +674,8 @@ contains
     type(interaction_t), intent(in) :: int1, int2
     integer, dimension(:), intent(in) :: index1, index2
     complex(default), dimension(:), intent(in) :: factor
-    call state_matrix_evaluate_product_cf &
-         (int%state_matrix, i, int1%state_matrix, int2%state_matrix, &
+    call int%state_matrix%evaluate_product_cf &
+         (i, int1%state_matrix, int2%state_matrix, &
           index1, index2, factor)
   end subroutine interaction_evaluate_product_cf
 
@@ -682,8 +684,7 @@ contains
     integer, intent(in) :: i
     type(interaction_t), intent(in) :: int1
     integer, dimension(:), intent(in) :: index1
-    call state_matrix_evaluate_square_c &
-         (int%state_matrix, i, int1%state_matrix, index1)
+    call int%state_matrix%evaluate_square_c (i, int1%state_matrix, index1)
   end subroutine interaction_evaluate_square_c
 
   pure subroutine interaction_evaluate_sum (int, i, int1, index1)
@@ -691,8 +692,7 @@ contains
     integer, intent(in) :: i
     type(interaction_t), intent(in) :: int1
     integer, dimension(:), intent(in) :: index1
-    call state_matrix_evaluate_sum &
-         (int%state_matrix, i, int1%state_matrix, index1)
+    call int%state_matrix%evaluate_sum (i, int1%state_matrix, index1)
   end subroutine interaction_evaluate_sum
 
   pure subroutine interaction_evaluate_me_sum (int, i, int1, index1)
@@ -700,8 +700,7 @@ contains
     integer, intent(in) :: i
     type(interaction_t), intent(in) :: int1
     integer, dimension(:), intent(in) :: index1
-    call state_matrix_evaluate_me_sum &
-         (int%state_matrix, i, int1%state_matrix, index1)
+    call int%state_matrix%evaluate_me_sum (i, int1%state_matrix, index1)
   end subroutine interaction_evaluate_me_sum
 
   function interaction_get_tag (int) result (tag)
@@ -887,10 +886,10 @@ contains
     integer, intent(out) :: i
     type(state_iterator_t) :: it
     type(flavor_t), dimension(int%n_tot) :: flv_array
-    call state_iterator_init (it, int%state_matrix)
-    flv_array = state_iterator_get_flavor (it)
+    call it%init (int%state_matrix)
+    flv_array = it%get_flavor ()
     do i = int%n_in + int%n_vir + 1, int%n_tot
-       if (.not. flavor_is_stable (flv_array(i))) then
+       if (.not. flv_array(i)%is_stable ()) then
           flv = flv_array(i)
           p = int%p(i)
           return
@@ -912,12 +911,12 @@ contains
     allocate (flv (n_out, n_state))
     allocate (flv_state (n_tot))
     i = 1
-    call state_iterator_init (it, interaction_get_state_matrix_ptr (int))
-    do while (state_iterator_is_valid (it))
-       flv_state = state_iterator_get_flavor (it)
+    call it%init (interaction_get_state_matrix_ptr (int))
+    do while (it%is_valid ())
+       flv_state = it%get_flavor ()
        flv(:,i) = flv_state(n_in+n_vir+1:)
        i = i + 1
-       call state_iterator_advance (it)
+       call it%advance ()
     end do
   end subroutine interaction_get_flv_out
   
@@ -950,7 +949,7 @@ contains
     if (int%mask(ii) .neqv. mask) then
        int%mask(ii) = int%mask(ii) .or. mask
        if (int%hel_lock(ii) /= 0) then
-          call quantum_numbers_mask_assign (mask_tmp, mask, helicity=.true.)
+          call mask_tmp%assign (mask, helicity=.true.)
           int%mask(int%hel_lock(ii)) = int%mask(int%hel_lock(ii)) .or. mask_tmp
        end if
     end if
@@ -997,16 +996,16 @@ contains
     if (size (value) == 1) then
        call interaction_set_matrix_element (int, value(1))
     else
-       call state_iterator_init (it, int%state_matrix)
-       do while (state_iterator_is_valid (it))
-          flv = state_iterator_get_flavor (it, pos)
+       call it%init (int%state_matrix)
+       do while (it%is_valid ())
+          flv = it%get_flavor (pos)
           SCAN_FLV: do i = 1, size (value)
              if (flv == flv_in(i)) then
-                call state_iterator_set_matrix_element (it, value(i))
+                call it%set_matrix_element (value(i))
                 exit SCAN_FLV
              end if
           end do SCAN_FLV
-          call state_iterator_advance (it)
+          call it%advance ()
        end do
     end if
   end subroutine interaction_set_flavored_values
@@ -1318,7 +1317,7 @@ contains
          cmplx (0.2_default, 0._default, kind=default))
     call interaction_freeze (int)
     call interaction_set_momenta (int, p)
-    mask = new_quantum_numbers_mask (.false.,.false., [.true.,.true.,.true.])
+    mask = quantum_numbers_mask (.false.,.false., [.true.,.true.,.true.])
     call interaction_init (rad, 1, 0, 2, &
          mask=mask, set_relations=.true., store_values = .true.)
     call rad_set (1)
@@ -1352,11 +1351,11 @@ contains
       type(helicity_t), dimension(3) :: hel
       type(quantum_numbers_t), dimension(3) :: qn
       complex(default), intent(in) :: val
-      call flavor_init (flv, [21, q, -q])
-      call color_init_col_acl (col(2), 5, 0)
-      call color_init_col_acl (col(3), 0, 5)
-      call helicity_init (hel, [h1, hq, -hq], [h2, hq, -hq])
-      call quantum_numbers_init (qn, flv, col, hel)
+      call flv%init ([21, q, -q])
+      call col(2)%init_col_acl (5, 0)
+      call col(3)%init_col_acl (0, 5)
+      call hel%init ([h1, hq, -hq], [h2, hq, -hq])
+      call qn%init (flv, col, hel)
       call interaction_add_state (int, qn)
       call interaction_set_matrix_element (int, val)
     end subroutine int_set
@@ -1364,8 +1363,8 @@ contains
       integer, intent(in) :: q
       type(flavor_t), dimension(3) :: flv
       type(quantum_numbers_t), dimension(3) :: qn
-      call flavor_init (flv, [ q, q, 21 ])
-      call quantum_numbers_init (qn, flv)
+      call flv%init ([ q, q, 21 ])
+      call qn%init (flv)
       call interaction_add_state (rad, qn)
     end subroutine rad_set
   end subroutine interaction_1

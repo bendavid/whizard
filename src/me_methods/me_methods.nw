@@ -354,13 +354,15 @@ Otherwise, the routine should compute the result directly.
 <<Prc core: interfaces>>=
   abstract interface
      function prc_core_compute_amplitude &
-          (object, j, p, f, h, c, fac_scale, ren_scale, tmp) result (amp)
+          (object, j, p, f, h, c, fac_scale, ren_scale, alpha_qcd_forced, tmp) &
+          result (amp)
        import
        class(prc_core_t), intent(in) :: object
        integer, intent(in) :: j
        type(vector4_t), dimension(:), intent(in) :: p
        integer, intent(in) :: f, h, c
        real(default), intent(in) :: fac_scale, ren_scale
+       real(default), intent(in), allocatable :: alpha_qcd_forced
        class(workspace_t), intent(inout), allocatable, optional :: tmp
        complex(default) :: amp
      end function prc_core_compute_amplitude
@@ -822,15 +824,15 @@ responsible for writing interfaces and wrappers.
     end do       
     do i = 1, writer%n_in
        prt_in(i) = writer%model%get_pdg (writer%prt_in(i))
-       call flavor_init (flv_in(i), prt_in(i), writer%model)
-       mult_in(i) = flavor_get_multiplicity (flv_in(i))
-       col_in(i) = abs(flavor_get_color_type (flv_in(i)))
+       call flv_in(i)%init (prt_in(i), writer%model)
+       mult_in(i) = flv_in(i)%get_multiplicity ()
+       col_in(i) = abs (flv_in(i)%get_color_type ())
        mult(i) = mult_in(i)
        end do
     do j = 1, writer%n_out
        prt_out(j) = writer%model%get_pdg (writer%prt_out(j))    
-       call flavor_init (flv_out(j), prt_out(j), writer%model)       
-       mult_out(j) = flavor_get_multiplicity (flv_out(j))       
+       call flv_out(j)%init (prt_out(j), writer%model)       
+       mult_out(j) = flv_out(j)%get_multiplicity ()       
        mult(writer%n_in + j) = mult_out(j)
        end do
     prt(1:writer%n_in) = prt_in(1:writer%n_in)
@@ -1155,7 +1157,7 @@ responsible for writing interfaces and wrappers.
       k = 0
       do i = 1, size(flv)
          k = k + 1
-         select case (flavor_get_color_type (flv(i)))	 
+         select case (flv(i)%get_color_type ())
 	 case (1,-1)
 	    str = str // "0,0, "
 	 case (3)
@@ -1661,12 +1663,14 @@ unset the [[new_kinematics]] flag.
   procedure :: compute_amplitude => prc_template_me_compute_amplitude
 <<Template matrix elements: procedures>>=
   function prc_template_me_compute_amplitude &
-       (object, j, p, f, h, c, fac_scale, ren_scale, tmp) result (amp)
+       (object, j, p, f, h, c, fac_scale, ren_scale, alpha_qcd_forced, tmp) &
+       result (amp)
     class(prc_template_me_t), intent(in) :: object
     integer, intent(in) :: j
     type(vector4_t), dimension(:), intent(in) :: p
     integer, intent(in) :: f, h, c
     real(default), intent(in) :: fac_scale, ren_scale
+    real(default), intent(in), allocatable :: alpha_qcd_forced
     class(workspace_t), intent(inout), allocatable, optional :: tmp
     complex(default) :: amp
     integer :: n_tot, i
@@ -3261,18 +3265,25 @@ If the [[tmp]] status flag is present, we can make sure that we call
 [[new_event]] only once for a given kinematics.  After the first call, we
 unset the [[new_kinematics]] flag.
 
+The core objects computes the appropriate $\alpha_s$ value via the [[qcd]]
+subobject, taking into account the provided [[fac_scale]] value.  However, if
+the extra parameter [[alpha_qcd_forced]] is allocated, it overrides this
+setting.
+
 The [[is_allowed]] query is not redundant, since the status may change during
 the run if helicities are switched off.
 <<Omega interface: prc omega: TBP>>=
   procedure :: compute_amplitude => prc_omega_compute_amplitude
 <<Omega interface: procedures>>=
   function prc_omega_compute_amplitude &
-       (object, j, p, f, h, c, fac_scale, ren_scale, tmp) result (amp)
+       (object, j, p, f, h, c, fac_scale, ren_scale, alpha_qcd_forced, tmp) &
+       result (amp)
     class(prc_omega_t), intent(in) :: object
     integer, intent(in) :: j
     type(vector4_t), dimension(:), intent(in) :: p
     integer, intent(in) :: f, h, c
     real(default), intent(in) :: fac_scale, ren_scale
+    real(default), intent(in), allocatable :: alpha_qcd_forced
     class(workspace_t), intent(inout), allocatable, optional :: tmp
     real(default) :: alpha_qcd
     complex(default) :: amp
@@ -3294,7 +3305,11 @@ the run if helicities are switched off.
        end if
        if (new_event) then
           if (allocated (object%qcd%alpha)) then
-             alpha_qcd = object%qcd%alpha%get (fac_scale)
+             if (allocated (alpha_qcd_forced)) then
+                alpha_qcd = alpha_qcd_forced
+             else
+                alpha_qcd = object%qcd%alpha%get (fac_scale)
+             end if
              call driver%update_alpha_s (alpha_qcd)
              if (present (tmp)) then
                 if (allocated (tmp)) then
@@ -4139,6 +4154,7 @@ method [[compute_amplitude]].
     type(vector4_t), dimension(4) :: p
     complex(default) :: amp
     real(default) :: fac_scale
+    real(default), allocatable :: alpha_qcd_forced
     integer :: i
     
     write (u, "(A)")  "* Test output: prc_omega_5"
@@ -4226,7 +4242,7 @@ method [[compute_amplitude]].
        write (u, "(1x,A,F4.0)")  "factorization scale = ", fac_scale
 
        amp = core%compute_amplitude &
-            (1, p, 1, 6, 1, fac_scale, 100._default)
+            (1, p, 1, 6, 1, fac_scale, 100._default, alpha_qcd_forced)
 
        write (u, "(1x,A,1x,E11.4)") "|amp (1, 6, 1)| =", abs (amp)
 
@@ -4239,7 +4255,20 @@ method [[compute_amplitude]].
        write (u, "(1x,A,F4.0)")  "factorization scale = ", fac_scale
 
        amp = core%compute_amplitude &
-            (1, p, 1, 6, 1, fac_scale, 100._default)
+            (1, p, 1, 6, 1, fac_scale, 100._default, alpha_qcd_forced)
+
+       write (u, "(1x,A,1x,E11.4)") "|amp (1, 6, 1)| =", abs (amp)
+
+       write (u, "(A)")
+       write (u, "(A)")  "* Set alpha(QCD) directly and &
+            &compute matrix element again"
+       write (u, "(A)")
+
+       allocate (alpha_qcd_forced, source = 0.1_default)
+       write (u, "(1x,A,F6.4)")  "alpha_qcd = ", alpha_qcd_forced
+
+       amp = core%compute_amplitude &
+            (1, p, 1, 6, 1, fac_scale, 100._default, alpha_qcd_forced)
 
        write (u, "(1x,A,1x,E11.4)") "|amp (1, 6, 1)| =", abs (amp)
 

@@ -1,4 +1,4 @@
-! WHIZARD 2.2.4 Feb 06 2015
+! WHIZARD 2.2.5 Feb 27 2015
 ! 
 ! Copyright (C) 1999-2015 by 
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -1269,6 +1269,7 @@ contains
     type(string_t) :: libname, procname
     type(rt_data_t), target :: global
     type(flavor_t) :: flv
+    type(string_t) :: name
     
     write (u, "(A)")  "* Test output: integrations_8"
     write (u, "(A)")  "*   Purpose: integrate test process using VAMP &
@@ -1319,9 +1320,10 @@ contains
 
     call reset_interaction_counter ()
 
-    call flavor_init (flv, 25, global%model)
+    call flv%init (25, global%model)
          
-    call global%beam_structure%init_sf (flavor_get_name ([flv, flv]), [1])
+    name = flv%get_name ()
+    call global%beam_structure%init_sf ([name, name], [1])
     call global%beam_structure%set_sf (1, 1, var_str ("sf_test_1"))
 
     write (u, "(A)")  "* Integrate"
