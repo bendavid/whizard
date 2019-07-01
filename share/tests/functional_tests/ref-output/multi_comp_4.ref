@@ -29,7 +29,7 @@ sqrts =  5.000000000000E+02
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'multi_comp_4p_i1.phs'
+| Phase space: writing configuration file 'multi_comp_4p.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'multi_comp_4p'
 |   Library name  = 'multi_comp_4_lib'
@@ -69,10 +69,10 @@ Warning: No cuts have been defined.
 |   W+  (mass = 8.0419000E+01 GeV)
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'multi_comp_4d_i1.phs'
+| Phase space: writing configuration file 'multi_comp_4d.i1.phs'
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'multi_comp_4d_i4.phs'
+| Phase space: writing configuration file 'multi_comp_4d.i4.phs'
 | ------------------------------------------------------------------------
 | Process [decay]: 'multi_comp_4d'
 |   Library name  = 'multi_comp_4_lib'
@@ -132,10 +132,10 @@ Warning: No cuts have been defined.
 n_events = 100
 ?write_raw = false
 | Starting simulation for process 'multi_comp_4p'
-| Simulate: using integration grids from file 'multi_comp_4p_m1.vg'
+| Simulate: using integration grids from file 'multi_comp_4p.m1.vg'
 | Simulate: activating decays
-| Simulate: using integration grids from file 'multi_comp_4d_m1.vg'
-| Simulate: using integration grids from file 'multi_comp_4d_m2.vg'
+| Simulate: using integration grids from file 'multi_comp_4d.m1.vg'
+| Simulate: using integration grids from file 'multi_comp_4d.m2.vg'
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 4
 | Simulation: requested number of events = 100

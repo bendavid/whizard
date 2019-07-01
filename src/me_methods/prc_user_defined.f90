@@ -1,4 +1,4 @@
-! WHIZARD 2.6.3 Feb 10 2018
+! WHIZARD 2.6.4 Aug 23 2018
 !
 ! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -123,7 +123,6 @@ module prc_user_defined
     procedure :: init_sf_handler_dummy => prc_user_defined_base_init_sf_handler_dummy
     procedure :: apply_structure_functions => prc_user_defined_base_apply_structure_functions
     procedure :: get_sf_value => prc_user_defined_base_get_sf_value
-    procedure :: get_i_whizard_to_i_olc_base => prc_user_defined_base_get_i_whizard_to_i_olc
     procedure(prc_user_defined_base_includes_polarization), deferred :: &
       includes_polarization
     procedure(prc_user_defined_base_create_and_load_extra_libraries), &
@@ -520,13 +519,6 @@ contains
     class(prc_user_defined_base_t), intent(in) :: core
     val = core%sf_handler%val
   end function prc_user_defined_base_get_sf_value
-
-  function prc_user_defined_base_get_i_whizard_to_i_olc (object, i) result (i_out)
-    integer :: i_out
-    class(prc_user_defined_base_t), intent(in) :: object
-    integer, intent(in) :: i
-    i_out = i
-  end function prc_user_defined_base_get_i_whizard_to_i_olc
 
   subroutine user_defined_def_set_active_writer (def, active)
     class(user_defined_def_t), intent(inout) :: def

@@ -47,7 +47,7 @@ openmp_num_threads = 1
 | Initialized builtin PDF CTEQ6L
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'mlm_matching_isr_qqee_i1.phs'
+| Phase space: writing configuration file 'mlm_matching_isr_qqee.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'mlm_matching_isr_qqee'
 |   Library name  = 'mlm_matching_isr_lib'
@@ -85,7 +85,7 @@ n_events = 1
 $sample = "mlm_matching_isr_a"
 ?mlm_matching = false
 | Starting simulation for process 'mlm_matching_isr_qqee'
-| Simulate: using integration grids from file 'mlm_matching_isr_qqee_m1.vg'
+| Simulate: using integration grids from file 'mlm_matching_isr_qqee.m1.vg'
 | Simulate: activating parton shower
 | Shower: interfacing PDF builtin set #3
 | Shower: Using WHIZARD internal shower
@@ -113,7 +113,7 @@ $sample = "mlm_matching_isr_a"
 |   sqrts = 1.960000000000E+03 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'mlm_matching_isr_qqee_i1.phs'
+| Phase space: writing configuration file 'mlm_matching_isr_qqee.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'mlm_matching_isr_qqee'
 |   Library name  = 'mlm_matching_isr_lib'
@@ -152,7 +152,7 @@ $sample = "mlm_matching_isr_a"
 |   sqrts = 1.960000000000E+03 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'mlm_matching_isr_qqeeg_i1.phs'
+| Phase space: writing configuration file 'mlm_matching_isr_qqeeg.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'mlm_matching_isr_qqeeg'
 |   Library name  = 'mlm_matching_isr_lib'
@@ -191,7 +191,7 @@ $sample = "mlm_matching_isr_a"
 |   sqrts = 1.960000000000E+03 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'mlm_matching_isr_qgeeq_i1.phs'
+| Phase space: writing configuration file 'mlm_matching_isr_qgeeq.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'mlm_matching_isr_qgeeq'
 |   Library name  = 'mlm_matching_isr_lib'
@@ -230,7 +230,7 @@ $sample = "mlm_matching_isr_a"
 |   sqrts = 1.960000000000E+03 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'mlm_matching_isr_gqeeq_i1.phs'
+| Phase space: writing configuration file 'mlm_matching_isr_gqeeq.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'mlm_matching_isr_gqeeq'
 |   Library name  = 'mlm_matching_isr_lib'
@@ -261,28 +261,28 @@ $sample = "mlm_matching_isr_a"
 |=============================================================================|
 $sample = "mlm_matching_isr_b"
 | Starting simulation for processes 'mlm_matching_isr_qqee' etc.
-| Simulate: using integration grids from file 'mlm_matching_isr_qqee_m1.vg'
+| Simulate: using integration grids from file 'mlm_matching_isr_qqee.m1.vg'
 | Simulate: activating parton shower
 | Shower: interfacing PDF builtin set #3
 | Shower: Using WHIZARD internal shower
 | Simulate: applying MLM matching
 | Simulate: activating hadronization
 | Hadronization: Using PYTHIA6 interface for hadronization and decays
-| Simulate: using integration grids from file 'mlm_matching_isr_qqeeg_m1.vg'
+| Simulate: using integration grids from file 'mlm_matching_isr_qqeeg.m1.vg'
 | Simulate: activating parton shower
 | Shower: interfacing PDF builtin set #3
 | Shower: Using WHIZARD internal shower
 | Simulate: applying MLM matching
 | Simulate: activating hadronization
 | Hadronization: Using PYTHIA6 interface for hadronization and decays
-| Simulate: using integration grids from file 'mlm_matching_isr_qgeeq_m1.vg'
+| Simulate: using integration grids from file 'mlm_matching_isr_qgeeq.m1.vg'
 | Simulate: activating parton shower
 | Shower: interfacing PDF builtin set #3
 | Shower: Using WHIZARD internal shower
 | Simulate: applying MLM matching
 | Simulate: activating hadronization
 | Hadronization: Using PYTHIA6 interface for hadronization and decays
-| Simulate: using integration grids from file 'mlm_matching_isr_gqeeq_m1.vg'
+| Simulate: using integration grids from file 'mlm_matching_isr_gqeeq.m1.vg'
 | Simulate: activating parton shower
 | Shower: interfacing PDF builtin set #3
 | Shower: Using WHIZARD internal shower

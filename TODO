@@ -20,10 +20,6 @@ O'Mega
   - model files unification
   - helicity optimization (numerically done/analytically pending)
 
-Models
-* Release 2.6 (Zhijie,Simon)
-  - Tests for 7, 8 fermions ... 
-
 * 2.6
   - W-gamma couplings to resonances
   - W'
@@ -41,8 +37,6 @@ Misc
 
 * 2.6
   - review gamelan (partially done, esp. docu)
-
-
 
 
 VAMP

@@ -40,13 +40,13 @@ error_threshold =  1.00000E-05
 | Initialized builtin PDF CTEQ6L
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'nlo_6_p1_i1.phs'
+| Phase space: writing configuration file 'nlo_6_p1.i1.phs'
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'nlo_6_p1_i3.phs'
+| Phase space: writing configuration file 'nlo_6_p1.i3.phs'
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'nlo_6_p1_i6.phs'
+| Phase space: writing configuration file 'nlo_6_p1.i6.phs'
 Warning: No resonances found. Proceed in usual FKS mode.
 | ------------------------------------------------------------------------
 | Process [scattering]: 'nlo_6_p1'

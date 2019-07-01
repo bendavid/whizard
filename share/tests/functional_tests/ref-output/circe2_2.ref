@@ -30,7 +30,7 @@ seed = 0
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'circe2_2_p1_i1.phs'
+| Phase space: writing configuration file 'circe2_2_p1.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'circe2_2_p1'
 |   Library name  = 'circe2_2_lib'
@@ -80,7 +80,7 @@ $circe2_design = "ILC"
 | RNG: Setting seed for random-number generator to 2
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'circe2_2_p2_i1.phs'
+| Phase space: writing configuration file 'circe2_2_p2.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'circe2_2_p2'
 |   Library name  = 'circe2_2_lib'

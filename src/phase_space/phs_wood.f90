@@ -1,4 +1,4 @@
-! WHIZARD 2.6.3 Feb 10 2018
+! WHIZARD 2.6.4 Aug 23 2018
 !
 ! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -63,6 +63,7 @@ module phs_wood
 
   type, extends (phs_config_t) :: phs_wood_config_t
      character(32) :: md5sum_forest = ""
+     type(string_t) :: phs_path
      integer :: io_unit = 0
      logical :: io_unit_keep_open = .false.
      logical :: use_equivalences = .false.
@@ -92,11 +93,12 @@ module phs_wood
      procedure :: extract_resonance_history_set &
           => phs_wood_config_extract_resonance_history_set
      procedure :: configure => phs_wood_config_configure
+     procedure :: compute_md5sum_forest => phs_wood_config_compute_md5sum_forest
+     procedure :: make_phs_filename => phs_wood_make_phs_filename
      procedure :: reshuffle_flavors => phs_wood_config_reshuffle_flavors
      procedure :: set_momentum_links => phs_wood_config_set_momentum_links
      procedure :: record_s_mappings => phs_wood_config_record_s_mappings
      procedure :: record_on_shell => phs_wood_config_record_on_shell
-     procedure :: compute_md5sum_forest => phs_wood_config_compute_md5sum_forest
      procedure :: get_md5sum => phs_wood_config_get_md5sum
      procedure :: read_phs_file => phs_wood_read_phs_file
      procedure :: startup_message => phs_wood_config_startup_message
@@ -246,12 +248,12 @@ contains
                   &Increasing phs_off_shell ...")
           end if
        end do
-    endif
+    end if
     if (phs_config%use_cascades2) then
        valid = feyngraph_set_is_valid (phs_config%feyngraph_set)
     else
        valid = cascade_set_is_valid (phs_config%cascade_set)
-    endif
+    end if
     if (valid) then
        call msg_message ("Phase space: ... success.")
     else
@@ -278,7 +280,7 @@ contains
           call feyngraph_set_write_process_bincode_format (phs_config%feyngraph_set, u)
        else
           call cascade_set_write_process_bincode_format (phs_config%cascade_set, u)
-       endif
+       end if
        write (u, "(A)")
        write (u, "(3x,A,A,A32,A)") "md5sum_process    = ", &
             '"', phs_config%md5sum_process, '"'
@@ -291,7 +293,7 @@ contains
           call feyngraph_set_write_file_format (phs_config%feyngraph_set, u)
        else
           call cascade_set_write_file_format (phs_config%cascade_set, u)
-       endif
+       end if
        if (phs_config%vis_channels) then
           unit_tex = free_unit ()
           open (unit=unit_tex, file=char(filename_vis // ".tex"), &
@@ -302,7 +304,7 @@ contains
           else
              call cascade_set_write_graph_format (phs_config%cascade_set, &
                   filename_vis // "-graphs", phs_config%id, unit_tex)
-          endif
+          end if
           close (unit_tex)
           call msg_message ("Phase space: visualizing channels in file " &
                // char(trim(filename_vis)) // "...")
@@ -375,7 +377,7 @@ contains
     if (allocated (phs_config%feyngraph_set)) then
        call phs_config%feyngraph_set%final ()
        deallocate (phs_config%feyngraph_set)
-    endif
+    end if
   end subroutine phs_wood_config_clear_phase_space
 
   subroutine phs_wood_config_extract_resonance_history_set &
@@ -389,7 +391,7 @@ contains
 
   subroutine phs_wood_config_configure (phs_config, sqrts, &
        sqrts_fixed, cm_frame, azimuthal_dependence, rebuild, ignore_mismatch, &
-       nlo_type)
+       nlo_type, subdir)
     class(phs_wood_config_t), intent(inout) :: phs_config
     real(default), intent(in) :: sqrts
     logical, intent(in), optional :: sqrts_fixed
@@ -398,6 +400,7 @@ contains
     logical, intent(in), optional :: rebuild
     logical, intent(in), optional :: ignore_mismatch
     integer, intent(in), optional :: nlo_type
+    type(string_t), intent(in), optional :: subdir
     type(string_t) :: filename, filename_vis
     logical :: variable_limits
     logical :: ok, exist, found, check, match, rebuild_phs
@@ -430,19 +433,14 @@ contains
     phs_config%md5sum_forest = ""
     call phs_config%compute_md5sum (include_id = .false.)
     if (phs_config%io_unit == 0) then
-       if (phs_config%run_id /= "") then
-          filename = phs_config%id // "." // phs_config%run_id // ".phs"
-          filename_vis = phs_config%id // "." // phs_config%run_id // "_phs"
-       else
-          filename = phs_config%id // ".phs"
-          filename_vis = phs_config%id // "_phs"
-       end if
+       filename = phs_config%make_phs_filename (subdir)
+       filename_vis = phs_config%make_phs_filename (subdir) // "-vis"
        if (.not. rebuild_phs) then
           if (check) then
-             call phs_config%read_phs_file (exist, found, match)
+             call phs_config%read_phs_file (exist, found, match, subdir=subdir)
              rebuild_phs = .not. (exist .and. found .and. match)
           else
-             call phs_config%read_phs_file (exist, found)
+             call phs_config%read_phs_file (exist, found, subdir=subdir)
              rebuild_phs = .not. (exist .and. found)
           end if
        end if
@@ -514,6 +512,42 @@ contains
     end if
   end subroutine phs_wood_config_configure
 
+  subroutine phs_wood_config_compute_md5sum_forest (phs_config)
+    class(phs_wood_config_t), intent(inout) :: phs_config
+    integer :: u
+    u = free_unit ()
+    open (u, status = "scratch", action = "readwrite")
+    call phs_config%write_forest (u)
+    rewind (u)
+    phs_config%md5sum_forest = md5sum (u)
+    close (u)
+  end subroutine phs_wood_config_compute_md5sum_forest
+
+  function phs_wood_make_phs_filename (phs_config, subdir) result (filename)
+    class(phs_wood_config_t), intent(in) :: phs_config
+    type(string_t), intent(in), optional :: subdir
+    type(string_t) :: filename
+    type(string_t) :: basename, suffix, comp_code, comp_index
+    basename = phs_config%id
+    call split (basename, suffix, "_", back=.true.)
+    comp_code = extract (suffix, 1, 1)
+    comp_index = extract (suffix, 2)
+    if (comp_code == "i" .and. verify (comp_index, "1234567890") == 0) then
+       suffix = "." // comp_code // comp_index
+    else
+       basename = phs_config%id
+       suffix = ""
+    end if
+    if (phs_config%run_id /= "") then
+       filename = basename // "." // phs_config%run_id // suffix // ".phs"
+    else
+       filename = basename // suffix // ".phs"
+    end if
+    if (present (subdir)) then
+       filename = subdir // "/" // filename
+    end if
+  end function phs_wood_make_phs_filename
+    
   subroutine phs_wood_config_reshuffle_flavors (phs_config, reshuffle, flv_extra)
     class(phs_wood_config_t), intent(inout) :: phs_config
     integer, intent(in), dimension(:), allocatable :: reshuffle
@@ -561,17 +595,6 @@ contains
     end do
   end subroutine phs_wood_config_record_on_shell
 
-  subroutine phs_wood_config_compute_md5sum_forest (phs_config)
-    class(phs_wood_config_t), intent(inout) :: phs_config
-    integer :: u
-    u = free_unit ()
-    open (u, status = "scratch", action = "readwrite")
-    call phs_config%write_forest (u)
-    rewind (u)
-    phs_config%md5sum_forest = md5sum (u)
-    close (u)
-  end subroutine phs_wood_config_compute_md5sum_forest
-
   function phs_wood_config_get_md5sum (phs_config) result (md5sum)
     class(phs_wood_config_t), intent(in) :: phs_config
     character(32) :: md5sum
@@ -582,18 +605,15 @@ contains
     end if
   end function phs_wood_config_get_md5sum
 
-  subroutine phs_wood_read_phs_file (phs_config, exist, found, match)
+  subroutine phs_wood_read_phs_file (phs_config, exist, found, match, subdir)
     class(phs_wood_config_t), intent(inout) :: phs_config
     logical, intent(out) :: exist
     logical, intent(out) :: found
     logical, intent(out), optional :: match
+    type(string_t), intent(in), optional :: subdir
     type(string_t) :: filename
     integer :: u
-    if (phs_config%run_id /= "") then
-       filename = phs_config%id // "." // phs_config%run_id // ".phs"
-    else
-       filename = phs_config%id // ".phs"
-    end if
+    filename = phs_config%make_phs_filename (subdir)
     inquire (file = char (filename), exist = exist)
     if (exist) then
        u = free_unit ()

@@ -30,25 +30,26 @@
 WHIZARD_DRIVER = run_whizard.sh
 
 TESTS_EXTENDED = \
-	extra_shower_1.run \
-	extra_shower_2.run \
-	extra_shower_3_bb.run \
-	extra_shower_3_jj.run \
-	extra_shower_3_qqqq.run \
-	extra_shower_3_tt.run \
-	extra_shower_3_z_nu.run \
-	extra_shower_3_z_tau.run \
-	extra_shower_4_ee.run \
-	extra_shower_5.run \
-	extra_shower_6.run
+	shower_1_norad.run \
+	shower_2_aall.run \
+	shower_3_bb.run \
+	shower_3_jj.run \
+	shower_3_qqqq.run \
+	shower_3_tt.run \
+	shower_3_z.run \
+	shower_3_z_nu.run \
+	shower_3_z_tau.run \
+	shower_4_ee.run \
+	shower_5.run \
+	shower_6.run
 
 XFAIL_TESTS_EXTENDED =
 
 TESTS_REQ_GAMELAN = \
-	extra_shower_2.run
+	shower_2.run
 
 TESTS_REQ_SLHA = \
-	extra_shower_6.run
+	shower_6.run
 
 TEST_DRIVERS_RUN = \
     $(TESTS_EXTENDED)

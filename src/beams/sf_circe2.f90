@@ -1,4 +1,4 @@
-! WHIZARD 2.6.3 Feb 10 2018
+! WHIZARD 2.6.4 Aug 23 2018
 !
 ! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -147,7 +147,7 @@ contains
        do h = 1, 4
           data%lumi_hel_frac(h) = &
                circe2_luminosity (circe2_global_state, data%pdg_in, &
-                                  [data%h1(h), data%h2(h)]) &
+                            [data%h1(h), data%h2(h)]) &
                / data%lumi
        end do
     end if
@@ -454,11 +454,12 @@ contains
     end if
   end subroutine circe2_inverse_kinematics
 
-  subroutine circe2_apply (sf_int, scale, rescaling_function, i_rescale)
+  subroutine circe2_apply (sf_int, scale, rescale, i_sub, fill_sub)
     class(circe2_t), intent(inout) :: sf_int
     real(default), intent(in) :: scale
-    class(rescaling_function_t), intent(in), optional :: rescaling_function
-    integer, intent(in), optional :: i_rescale
+    class(sf_rescale_t), intent(in), optional :: rescale
+    integer, intent(in), optional :: i_sub
+    logical, intent(in), optional :: fill_sub
     complex(default) :: f
     associate (data => sf_int%data)
       f = 1

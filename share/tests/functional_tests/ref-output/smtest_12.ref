@@ -24,7 +24,7 @@ $integration_method = "midpoint"
 |   t  (mass = 1.7310000E+02 GeV)
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'smtest_12d_i1.phs'
+| Phase space: writing configuration file 'smtest_12d.i1.phs'
 | ------------------------------------------------------------------------
 | Process [decay]: 'smtest_12d'
 |   Library name  = 'smtest_12_lib'
@@ -59,7 +59,7 @@ sqrts =  5.000000000000E+02
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'smtest_12p_i1.phs'
+| Phase space: writing configuration file 'smtest_12p.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'smtest_12p'
 |   Library name  = 'smtest_12_lib'
@@ -93,7 +93,7 @@ Warning: No cuts have been defined.
 ?unweighted = false
 n_events = 1
 | Starting simulation for process 'smtest_12p'
-| Simulate: using integration grids from file 'smtest_12p_m1.vg'
+| Simulate: using integration grids from file 'smtest_12p.m1.vg'
 | Simulate: activating decays
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 2

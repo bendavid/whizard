@@ -1,4 +1,4 @@
-! WHIZARD 2.6.3 Feb 10 2018
+! WHIZARD 2.6.4 Aug 23 2018
 !
 ! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -165,6 +165,7 @@ module fks_regions
     type(string_t) :: nlo_correction_type
     integer, dimension(:), allocatable :: i_reg_to_i_con
     logical :: pseudo_isr = .false.
+    logical :: sc_required = .false.
   contains
     procedure :: init => singular_region_init
     procedure :: write => singular_region_write
@@ -312,6 +313,7 @@ module fks_regions
     procedure :: write => region_data_write
     procedure :: has_pseudo_isr => region_data_has_pseudo_isr
     procedure :: check_consistency => region_data_check_consistency
+    procedure :: requires_spin_correlations => region_data_requires_spin_correlations
     procedure :: final => region_data_final
   end type region_data_t
 
@@ -1333,6 +1335,8 @@ contains
           exit
        end if
     end do
+    sregion%sc_required = any (sregion%flst_uborn%flst == GLUON) .or. &
+            any (sregion%flst_uborn%flst == PHOTON)
   contains
     subroutine debug_input_values()
       call msg_debug2 (D_SUBTRACTION, "singular_region_init")
@@ -2719,7 +2723,7 @@ contains
               i_em = get_emitter_index (i1, i2, reg_data%n_legs_real)
               i_res = sregion%ftuples(i_reg)%i_res
               call reg_data%get_contributors (i_res, i_em, contributors, share_emitter)
-        !!! Lookup contributor index
+              !!! Lookup contributor index
               do i_con = 1, size (reg_data%alr_contributors)
                  if (all (reg_data%alr_contributors(i_con)%c == contributors)) then
                     sregion%i_reg_to_i_con (i_reg) = i_con
@@ -3336,6 +3340,17 @@ contains
            (is_fermion (pdg_2) .and. is_massless_vector (pdg_1))
     end function
   end subroutine region_data_check_consistency
+
+  function region_data_requires_spin_correlations (reg_data) result (val)
+    class(region_data_t), intent(in) :: reg_data
+    logical :: val
+    integer :: alr
+    val = .false.
+    do alr = 1, reg_data%n_regions
+       val = reg_data%regions(alr)%sc_required
+       if (val) return
+    end do
+  end function region_data_requires_spin_correlations
 
   subroutine region_data_final (reg_data)
     class(region_data_t), intent(inout) :: reg_data

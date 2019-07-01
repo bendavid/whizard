@@ -30,7 +30,7 @@ seed = 0
 |   sqrts = 1.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'epa_2a_i1.phs'
+| Phase space: writing configuration file 'epa_2a.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'epa_2a'
 |   Library name  = 'epa_2_lib'
@@ -62,7 +62,7 @@ seed = 0
 $epa_handler_mode = "recoil"
 n_events = 100
 | Starting simulation for process 'epa_2a'
-| Simulate: using integration grids from file 'epa_2a_m1.vg'
+| Simulate: using integration grids from file 'epa_2a.m1.vg'
 | Simulate: activating EPA handler
 | Simulate: ISR/EPA handler mode: pair recoil
 | RNG: Initializing TAO random-number generator

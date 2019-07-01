@@ -1,4 +1,4 @@
-! WHIZARD 2.6.3 Feb 10 2018
+! WHIZARD 2.6.4 Aug 23 2018
 !
 ! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -958,7 +958,7 @@ contains
 
     x = 0.1_default
     xb = 1 - x
-    
+
     write (u, "(A)")
     write (u, "(A)")  "* (1) Collinear setup, moderate kinematics"
     write (u, "(A)")

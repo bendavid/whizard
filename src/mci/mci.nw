@@ -7398,9 +7398,9 @@ suffix.
        call split (basename, suffix, ".", back=.true.)
        write (buffer, "(I0)")  i_mci
        if (basename /= "") then
-          mci%grid_filename = basename // "_m" // trim (buffer) // "." // suffix
+          mci%grid_filename = basename // ".m" // trim (buffer) // "." // suffix
        else
-          mci%grid_filename = suffix // "_m" // trim (buffer) // ".vg"
+          mci%grid_filename = suffix // ".m" // trim (buffer) // ".vg"
        end if
     end if
   end subroutine mci_vamp_record_index
@@ -12020,9 +12020,9 @@ append the index to the grid filename, just before the final dotted suffix.
        call split (basename, suffix, ".", back=.true.)
        write (buffer, "(I0)") i_mci
        if (basename /= "") then
-          mci%integrator_filename = basename // "_m" // trim (buffer) // "." // suffix
+          mci%integrator_filename = basename // ".m" // trim (buffer) // "." // suffix
        else
-          mci%integrator_filename = suffix // "_m" // trim (buffer) // ".vg2"
+          mci%integrator_filename = suffix // ".m" // trim (buffer) // ".vg2"
        end if
     end if
   end subroutine mci_vamp2_record_index
@@ -13631,6 +13631,7 @@ module dispatch_mci
 
 <<Use strings>>
   use diagnostics
+  use os_interface
   use variables
 
   use mci_base
@@ -13642,6 +13643,8 @@ module dispatch_mci
 <<Standard module head>>
 
 <<Dispatch mci: public>>
+
+<<Dispatch mci: parameters>>
 
 contains
 
@@ -13664,9 +13667,9 @@ Allocate an integrator according to the variable [[$integration_method]].
     type(history_parameters_t) :: history_par
     type(mci_vamp2_config_t) :: mci_vamp2_config
     logical :: rebuild_grids, check_grid_file, negative_weights, verbose
-    logical :: dispatch_nlo = .false.
+    logical :: dispatch_nlo
     type(string_t) :: grid_path
-    if (present (is_nlo)) dispatch_nlo = is_nlo
+    dispatch_nlo = .false.; if (present (is_nlo)) dispatch_nlo = is_nlo
     integration_method = &
          var_list%get_sval (var_str ("$integration_method"))
     select case (char (integration_method))
@@ -13685,8 +13688,11 @@ Allocate an integrator according to the variable [[$integration_method]].
           else
              call mci%set_grid_filename (process_id)
           end if
-          grid_path = var_list%get_sval (var_str ("$grid_path"))
-          if (grid_path /= "") call mci%prepend_grid_path (grid_path)
+          grid_path = var_list%get_sval (var_str ("$integrate_workspace"))
+          if (grid_path /= "") then
+             call setup_grid_path (grid_path)
+             call mci%prepend_grid_path (grid_path)
+          end if
           call mci%set_history_parameters (history_par)
           call mci%set_rebuild_flag (rebuild_grids, check_grid_file)
           mci%negative_weights = negative_weights
@@ -13703,8 +13709,11 @@ Allocate an integrator according to the variable [[$integration_method]].
           else
              call mci%set_integrator_filename (process_id)
           end if
-          grid_path = var_list%get_sval (var_str ("$grid_path"))
-          if (grid_path /= "") call mci%prepend_integrator_path (grid_path)
+          grid_path = var_list%get_sval (var_str ("$integrate_workspace"))
+          if (grid_path /= "") then
+             call setup_grid_path (grid_path)
+             call mci%prepend_integrator_path (grid_path)
+          end if
           call mci%set_rebuild_flag (rebuild_grids, check_grid_file)
           mci%negative_weights = negative_weights
           mci%verbose = verbose
@@ -13803,6 +13812,29 @@ Allocate an integrator according to the variable [[$integration_method]].
   end subroutine unpack_options_vamp2
 
 @
+@ Make sure that the VAMP grid subdirectory, if requested, exists before it is
+used.  Also include a sanity check on the directory name.
+<<Dispatch mci: parameters>>=
+  character(*), parameter :: ALLOWED_IN_DIRNAME = &
+       "abcdefghijklmnopqrstuvwxyz&
+       &ABCDEFGHIJKLMNOPQRSTUVWXYZ&
+       &1234567890&
+       &.,_-+="
+@ %def ALLOWED_IN_DIRNAME
+<<Dispatch mci: procedures>>=
+  subroutine setup_grid_path (grid_path)
+    type(string_t), intent(in) :: grid_path
+    if (verify (grid_path, ALLOWED_IN_DIRNAME) == 0) then
+       call msg_message ("Integrator: preparing VAMP grid directory '" &
+            // char (grid_path) // "'")
+       call os_system_call ("mkdir -p '" // grid_path // "'")
+    else
+       call msg_fatal ("Integrator: VAMP grid_path '" &
+            // char (grid_path) // "' contains illegal characters")
+    end if
+  end subroutine setup_grid_path
+  
+@ %def setup_grid_path
 @
 \subsection{Unit tests}
 Test module, followed by the corresponding implementation module.

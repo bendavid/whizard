@@ -1,0 +1,17 @@
+!!! Process: Generic tests of Whizard+Shower at ILC 500 GeV
+!!! Reported by: Mikael Berggren on 2015-06-21
+!!! Purpose: Try to catch all possible misbehaviors in the matrix of options
+!!! Here are other possible processes to test
+
+# Z leptonic
+process shower_3_z_bhabhaA = e1,E1 => electrons, electrons, A
+
+# Z to bosons
+process ee_zz = e1,E1 =>  Z,Z
+process ee_az = e1,E1 =>  A,Z
+process ee_aa = e1,E1 =>  A,A
+process ee_zh = e1,E1 =>  H,Z
+
+# WW : qq l nu
+process shower_3_ww_sl0tauq   =   e1,E1 =>  up_type_q,down_type_q,tau,neutrino
+process shower_3_ww_sl0muq    =   e1,E1 =>  up_type_q,down_type_q,mu,neutrino

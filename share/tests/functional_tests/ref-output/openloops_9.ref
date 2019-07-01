@@ -38,10 +38,10 @@ sqrts =  1.30000E+04
 | Initialized builtin PDF CTEQ6L
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'openloops_9_p1_i1.phs'
+| Phase space: writing configuration file 'openloops_9_p1.i1.phs'
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'openloops_9_p1_i3.phs'
+| Phase space: writing configuration file 'openloops_9_p1.i3.phs'
 | One-Loop-Provider: Using OpenLoops
 | Loading library: [...]
 | One-Loop-Provider: Using OpenLoops

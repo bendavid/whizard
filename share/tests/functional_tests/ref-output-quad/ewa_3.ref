@@ -41,7 +41,7 @@ ewa_mass =  5.10997E-04
 | RNG: Setting seed for random-number generator to 1
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'ewa_3_p1_i1.phs'
+| Phase space: writing configuration file 'ewa_3_p1.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'ewa_3_p1'
 |   Library name  = 'ewa_3_lib'
@@ -92,7 +92,7 @@ Warning: No cuts have been defined.
 | RNG: Setting seed for random-number generator to 3
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'ewa_3_p2_i1.phs'
+| Phase space: writing configuration file 'ewa_3_p2.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'ewa_3_p2'
 |   Library name  = 'ewa_3_lib'

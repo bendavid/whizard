@@ -1,4 +1,4 @@
-! WHIZARD 2.6.3 Feb 10 2018
+! WHIZARD 2.6.4 Aug 23 2018
 !
 ! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -144,6 +144,7 @@ module particles
    contains
      generic :: init => init_interaction
      procedure :: init_interaction => particle_set_init_interaction
+     generic :: assignment(=) => init_particle_set
      generic :: init => init_particle_set
      procedure :: init_particle_set => particle_set_init_particle_set
      procedure :: set_model => particle_set_set_model
@@ -211,10 +212,6 @@ module particles
      procedure :: order_color_lines => particle_set_order_color_lines
   end type particle_set_t
 
-
-  interface assignment(=)
-     module procedure particle_set_init_particle_set
-  end interface
 
   interface pacify
      module procedure pacify_particle
@@ -2665,9 +2662,10 @@ contains
     n_vertices = max (vf, vt)
   end subroutine particle_set_assign_vertices
 
-  subroutine particle_set_to_subevt (particle_set, subevt)
+  subroutine particle_set_to_subevt (particle_set, subevt, colorize)
     class(particle_set_t), intent(in) :: particle_set
     type(subevt_t), intent(out) :: subevt
+    logical, intent(in), optional :: colorize
     integer :: n_tot, n_beam, n_in, n_out, n_rad
     integer :: i, k, n_active
     integer, dimension(2) :: hel
@@ -2720,6 +2718,12 @@ contains
                   hel = prt%hel%to_pair ()
                   call subevt_polarize (subevt, k, hel(1))
                end if
+            end if
+         end if
+         if (present (colorize)) then
+            if (colorize) then
+               call subevt_colorize &
+                    (subevt, i, prt%col%get_col (), prt%col%get_acl ())
             end if
          end if
        end associate

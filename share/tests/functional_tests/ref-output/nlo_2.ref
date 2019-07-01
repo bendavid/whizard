@@ -35,10 +35,10 @@ error_threshold =  1.00000E-05
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'nlo_2_p1_i1.phs'
+| Phase space: writing configuration file 'nlo_2_p1.i1.phs'
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'nlo_2_p1_i3.phs'
+| Phase space: writing configuration file 'nlo_2_p1.i3.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'nlo_2_p1'
 |   Library name  = 'nlo_2_lib'

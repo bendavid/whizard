@@ -1,4 +1,4 @@
-! WHIZARD 2.6.3 Feb 10 2018
+! WHIZARD 2.6.4 Aug 23 2018
 !
 ! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -396,7 +396,7 @@ contains
     call tag_gen_n%write (var_str ("WHIZARD"), unit)
     write (unit, *)
     write (unit, "(2x)", advance = "no")
-    call tag_gen_v%write (var_str ("2.6.3"), unit)
+    call tag_gen_v%write (var_str ("2.6.4"), unit)
     write (unit, *)
     call tag_head%close (unit); write (unit, *)
     call tag_init%write (unit); write (unit, *)

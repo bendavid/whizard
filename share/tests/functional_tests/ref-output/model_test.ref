@@ -177,7 +177,7 @@ seed = 0
 |   sqrts = 2.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'models_ccww_thdm_i1.phs'
+| Phase space: writing configuration file 'models_ccww_thdm.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'models_ccww_thdm'
 |   Library name  = 'model_test_1_lib'
@@ -214,7 +214,7 @@ seed = 1
 |   sqrts = 2.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'models_ccww_thdm_ckm_i1.phs'
+| Phase space: writing configuration file 'models_ccww_thdm_ckm.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'models_ccww_thdm_ckm'
 |   Library name  = 'model_test_1_lib'
@@ -251,7 +251,7 @@ seed = 2
 |   sqrts = 2.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'models_ccww_grav_test_i1.phs'
+| Phase space: writing configuration file 'models_ccww_grav_test.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'models_ccww_grav_test'
 |   Library name  = 'model_test_1_lib'
@@ -288,7 +288,7 @@ seed = 3
 |   sqrts = 2.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'models_ccww_hsext_i1.phs'
+| Phase space: writing configuration file 'models_ccww_hsext.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'models_ccww_hsext'
 |   Library name  = 'model_test_1_lib'
@@ -325,7 +325,7 @@ seed = 4
 |   sqrts = 2.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'models_ccww_littlest_i1.phs'
+| Phase space: writing configuration file 'models_ccww_littlest.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'models_ccww_littlest'
 |   Library name  = 'model_test_1_lib'
@@ -362,7 +362,7 @@ seed = 5
 |   sqrts = 2.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'models_ccww_littlest_eta_i1.phs'
+| Phase space: writing configuration file 'models_ccww_littlest_eta.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'models_ccww_littlest_eta'
 |   Library name  = 'model_test_1_lib'
@@ -399,7 +399,7 @@ seed = 6
 |   sqrts = 2.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'models_ccww_littlest_tpar_i1.phs'
+| Phase space: writing configuration file 'models_ccww_littlest_tpar.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'models_ccww_littlest_tpar'
 |   Library name  = 'model_test_1_lib'
@@ -436,7 +436,7 @@ seed = 7
 |   sqrts = 2.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'models_ccww_mssm_i1.phs'
+| Phase space: writing configuration file 'models_ccww_mssm.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'models_ccww_mssm'
 |   Library name  = 'model_test_1_lib'
@@ -473,7 +473,7 @@ seed = 8
 |   sqrts = 2.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'models_ccww_mssm_ckm_i1.phs'
+| Phase space: writing configuration file 'models_ccww_mssm_ckm.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'models_ccww_mssm_ckm'
 |   Library name  = 'model_test_1_lib'
@@ -510,7 +510,7 @@ seed = 9
 |   sqrts = 2.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'models_ccww_mssm_grav_i1.phs'
+| Phase space: writing configuration file 'models_ccww_mssm_grav.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'models_ccww_mssm_grav'
 |   Library name  = 'model_test_1_lib'
@@ -547,7 +547,7 @@ seed = 10
 |   sqrts = 2.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'models_ccww_nmssm_i1.phs'
+| Phase space: writing configuration file 'models_ccww_nmssm.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'models_ccww_nmssm'
 |   Library name  = 'model_test_1_lib'
@@ -584,7 +584,7 @@ seed = 11
 |   sqrts = 2.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'models_ccww_nmssm_ckm_i1.phs'
+| Phase space: writing configuration file 'models_ccww_nmssm_ckm.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'models_ccww_nmssm_ckm'
 |   Library name  = 'model_test_1_lib'
@@ -621,7 +621,7 @@ seed = 12
 |   sqrts = 2.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'models_ccww_nmssm_hgg_i1.phs'
+| Phase space: writing configuration file 'models_ccww_nmssm_hgg.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'models_ccww_nmssm_hgg'
 |   Library name  = 'model_test_1_lib'
@@ -658,7 +658,7 @@ seed = 13
 |   sqrts = 2.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'models_ccww_psssm_i1.phs'
+| Phase space: writing configuration file 'models_ccww_psssm.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'models_ccww_psssm'
 |   Library name  = 'model_test_1_lib'
@@ -695,7 +695,7 @@ seed = 14
 |   sqrts = 2.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'models_uudd_qcd_i1.phs'
+| Phase space: writing configuration file 'models_uudd_qcd.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'models_uudd_qcd'
 |   Library name  = 'model_test_1_lib'
@@ -732,7 +732,7 @@ seed = 15
 |   sqrts = 2.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'models_eemm_qed_i1.phs'
+| Phase space: writing configuration file 'models_eemm_qed.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'models_eemm_qed'
 |   Library name  = 'model_test_1_lib'
@@ -769,7 +769,7 @@ seed = 16
 |   sqrts = 2.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'models_ccww_sm_i1.phs'
+| Phase space: writing configuration file 'models_ccww_sm.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'models_ccww_sm'
 |   Library name  = 'model_test_1_lib'
@@ -806,7 +806,7 @@ seed = 17
 |   sqrts = 2.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'models_ccww_sm_ckm_i1.phs'
+| Phase space: writing configuration file 'models_ccww_sm_ckm.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'models_ccww_sm_ckm'
 |   Library name  = 'model_test_1_lib'
@@ -843,7 +843,7 @@ seed = 18
 |   sqrts = 2.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'models_ccww_sm_ac_i1.phs'
+| Phase space: writing configuration file 'models_ccww_sm_ac.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'models_ccww_sm_ac'
 |   Library name  = 'model_test_1_lib'
@@ -880,7 +880,7 @@ seed = 19
 |   sqrts = 2.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'models_ccww_sm_ac_ckm_i1.phs'
+| Phase space: writing configuration file 'models_ccww_sm_ac_ckm.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'models_ccww_sm_ac_ckm'
 |   Library name  = 'model_test_1_lib'
@@ -917,7 +917,7 @@ seed = 20
 |   sqrts = 2.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'models_ccww_sm_dim6_i1.phs'
+| Phase space: writing configuration file 'models_ccww_sm_dim6.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'models_ccww_sm_dim6'
 |   Library name  = 'model_test_1_lib'
@@ -954,7 +954,7 @@ seed = 21
 |   sqrts = 2.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'models_wwww_sm_rx_i1.phs'
+| Phase space: writing configuration file 'models_wwww_sm_rx.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'models_wwww_sm_rx'
 |   Library name  = 'model_test_1_lib'
@@ -991,7 +991,7 @@ seed = 22
 |   sqrts = 2.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'models_wwww_sm_ul_i1.phs'
+| Phase space: writing configuration file 'models_wwww_sm_ul.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'models_wwww_sm_ul'
 |   Library name  = 'model_test_1_lib'
@@ -1028,7 +1028,7 @@ seed = 23
 |   sqrts = 2.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'models_wwww_noh_rx_i1.phs'
+| Phase space: writing configuration file 'models_wwww_noh_rx.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'models_wwww_noh_rx'
 |   Library name  = 'model_test_1_lib'
@@ -1065,7 +1065,7 @@ seed = 24
 |   sqrts = 2.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'models_ccww_sm_top_i1.phs'
+| Phase space: writing configuration file 'models_ccww_sm_top.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'models_ccww_sm_top'
 |   Library name  = 'model_test_1_lib'
@@ -1102,7 +1102,7 @@ seed = 25
 |   sqrts = 2.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'models_ccww_sm_top_anom_i1.phs'
+| Phase space: writing configuration file 'models_ccww_sm_top_anom.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'models_ccww_sm_top_anom'
 |   Library name  = 'model_test_1_lib'
@@ -1139,7 +1139,7 @@ seed = 26
 |   sqrts = 2.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'models_ccww_sm_higgs_i1.phs'
+| Phase space: writing configuration file 'models_ccww_sm_higgs.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'models_ccww_sm_higgs'
 |   Library name  = 'model_test_1_lib'
@@ -1176,7 +1176,7 @@ seed = 27
 |   sqrts = 2.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'models_ccww_sm_higgs_ckm_i1.phs'
+| Phase space: writing configuration file 'models_ccww_sm_higgs_ckm.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'models_ccww_sm_higgs_ckm'
 |   Library name  = 'model_test_1_lib'
@@ -1214,7 +1214,7 @@ seed = 28
 |   sqrts = 2.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'models_ccww_sm_tt_thresh_i1.phs'
+| Phase space: writing configuration file 'models_ccww_sm_tt_thresh.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'models_ccww_sm_tt_thresh'
 |   Library name  = 'model_test_1_lib'
@@ -1251,7 +1251,7 @@ seed = 29
 |   sqrts = 2.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'models_ccww_simplest_i1.phs'
+| Phase space: writing configuration file 'models_ccww_simplest.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'models_ccww_simplest'
 |   Library name  = 'model_test_1_lib'
@@ -1288,7 +1288,7 @@ seed = 30
 |   sqrts = 2.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'models_ccww_simplest_univ_i1.phs'
+| Phase space: writing configuration file 'models_ccww_simplest_univ.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'models_ccww_simplest_univ'
 |   Library name  = 'model_test_1_lib'
@@ -1325,7 +1325,7 @@ seed = 31
 |   sqrts = 2.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'models_ccww_template_i1.phs'
+| Phase space: writing configuration file 'models_ccww_template.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'models_ccww_template'
 |   Library name  = 'model_test_1_lib'
@@ -1362,7 +1362,7 @@ seed = 32
 |   sqrts = 2.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'models_ccww_threeshl_i1.phs'
+| Phase space: writing configuration file 'models_ccww_threeshl.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'models_ccww_threeshl'
 |   Library name  = 'model_test_1_lib'
@@ -1399,7 +1399,7 @@ seed = 33
 |   sqrts = 2.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'models_ccww_threeshl_nohf_i1.phs'
+| Phase space: writing configuration file 'models_ccww_threeshl_nohf.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'models_ccww_threeshl_nohf'
 |   Library name  = 'model_test_1_lib'
@@ -1436,7 +1436,7 @@ seed = 34
 |   sqrts = 2.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'models_ccww_ued_i1.phs'
+| Phase space: writing configuration file 'models_ccww_ued.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'models_ccww_ued'
 |   Library name  = 'model_test_1_lib'
@@ -1473,7 +1473,7 @@ seed = 35
 |   sqrts = 2.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'models_wwww_ssc_i1.phs'
+| Phase space: writing configuration file 'models_wwww_ssc.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'models_wwww_ssc'
 |   Library name  = 'model_test_1_lib'
@@ -1510,7 +1510,7 @@ seed = 36
 |   sqrts = 2.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'models_wwww_ssc_2_i1.phs'
+| Phase space: writing configuration file 'models_wwww_ssc_2.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'models_wwww_ssc_2'
 |   Library name  = 'model_test_1_lib'
@@ -1547,7 +1547,7 @@ seed = 37
 |   sqrts = 2.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'models_wwww_ssc_altt_i1.phs'
+| Phase space: writing configuration file 'models_wwww_ssc_altt.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'models_wwww_ssc_altt'
 |   Library name  = 'model_test_1_lib'
@@ -1584,7 +1584,7 @@ seed = 38
 |   sqrts = 2.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'models_wwww_alth_i1.phs'
+| Phase space: writing configuration file 'models_wwww_alth.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'models_wwww_alth'
 |   Library name  = 'model_test_1_lib'
@@ -1621,7 +1621,7 @@ seed = 39
 |   sqrts = 2.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'models_ccww_xdim_i1.phs'
+| Phase space: writing configuration file 'models_ccww_xdim.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'models_ccww_xdim'
 |   Library name  = 'model_test_1_lib'
@@ -1658,7 +1658,7 @@ seed = 40
 |   sqrts = 2.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'models_ccww_wzw_i1.phs'
+| Phase space: writing configuration file 'models_ccww_wzw.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'models_ccww_wzw'
 |   Library name  = 'model_test_1_lib'
@@ -1695,7 +1695,7 @@ seed = 41
 |   sqrts = 2.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'models_ccww_zprime_i1.phs'
+| Phase space: writing configuration file 'models_ccww_zprime.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'models_ccww_zprime'
 |   Library name  = 'model_test_1_lib'
@@ -1721,90 +1721,90 @@ Warning: No cuts have been defined.
 |-----------------------------------------------------------------------------|
    1         99  5.6983638E+03  6.02E+02   10.57    1.05   30.61
 |=============================================================================|
-models_ccww_zprime:
-   5.6983638E+03 +- 6.02E+02 fb
-models_ccww_wzw:
-   5.9222102E+03 +- 6.23E+02 fb
-models_ccww_xdim:
-   6.5751622E+08 +- 4.44E+07 fb
-models_wwww_alth:
-   2.3538217E+08 +- 2.26E+08 fb
-models_wwww_ssc_altt:
-   9.7035892E+08 +- 6.17E+08 fb
-models_wwww_ssc_2:
-   8.7439298E+06 +- 4.17E+06 fb
-models_wwww_ssc:
-   1.7800933E+08 +- 1.31E+08 fb
-models_ccww_ued:
-   5.9392959E+08 +- 3.86E+07 fb
-models_ccww_threeshl_nohf:
-   6.5389875E+03 +- 6.31E+02 fb
-models_ccww_threeshl:
-   8.1746005E+03 +- 6.73E+02 fb
-models_ccww_template:
-   5.2092827E+03 +- 5.58E+02 fb
-models_ccww_simplest_univ:
-   6.4988268E+03 +- 6.33E+02 fb
-models_ccww_simplest:
-   7.7043505E+03 +- 6.46E+02 fb
-models_ccww_sm_tt_thresh:
-   7.1165240E+03 +- 6.76E+02 fb
-models_ccww_sm_higgs_ckm:
-   7.2866110E+03 +- 6.44E+02 fb
-models_ccww_sm_higgs:
-   6.1901689E+03 +- 5.99E+02 fb
-models_ccww_sm_top_anom:
-   5.0274506E+03 +- 5.41E+02 fb
-models_ccww_sm_top:
-   6.7123251E+03 +- 6.25E+02 fb
-models_wwww_noh_rx:
-   2.1032248E+10 +- 1.99E+10 fb
-models_wwww_sm_ul:
-   9.7080025E+08 +- 7.49E+08 fb
-models_wwww_sm_rx:
-   3.0227479E+07 +- 9.65E+06 fb
-models_ccww_sm_dim6:
-   6.3233409E+03 +- 5.61E+02 fb
-models_ccww_sm_ac_ckm:
-   5.6718111E+03 +- 6.23E+02 fb
-models_ccww_sm_ac:
-   5.7751152E+03 +- 5.94E+02 fb
-models_ccww_sm_ckm:
-   5.8798557E+03 +- 5.74E+02 fb
-models_ccww_sm:
-   5.4136006E+03 +- 5.84E+02 fb
-models_eemm_qed:
-   2.1772937E+03 +- 4.57E+01 fb
-models_uudd_qcd:
-   1.2587507E+05 +- 2.94E+03 fb
-models_ccww_psssm:
-   6.4182194E+08 +- 5.96E+07 fb
-models_ccww_nmssm_hgg:
-   5.8020707E+03 +- 5.14E+02 fb
-models_ccww_nmssm_ckm:
-   5.6207771E+03 +- 5.42E+02 fb
-models_ccww_nmssm:
-   5.3772942E+03 +- 5.41E+02 fb
-models_ccww_mssm_grav:
-   7.0900237E+03 +- 6.59E+02 fb
-models_ccww_mssm_ckm:
-   6.9673584E+03 +- 6.29E+02 fb
-models_ccww_mssm:
-   5.9494213E+03 +- 6.28E+02 fb
-models_ccww_littlest_tpar:
-   6.2761051E+03 +- 5.73E+02 fb
-models_ccww_littlest_eta:
-   5.9060694E+03 +- 5.73E+02 fb
-models_ccww_littlest:
-   6.7081379E+03 +- 5.93E+02 fb
-models_ccww_hsext:
-   8.3080339E+05 +- 5.36E+04 fb
-models_ccww_grav_test:
-   5.5673184E+03 +- 5.70E+02 fb
-models_ccww_thdm_ckm:
-   7.3770184E+03 +- 6.73E+02 fb
 models_ccww_thdm:
-   7.5144851E+03 +- 6.76E+02 fb
+   7.5144851E+03 +- 6.76E+02 fb  (  9.0   %)
+models_ccww_thdm_ckm:
+   7.3770184E+03 +- 6.73E+02 fb  (  9.1   %)
+models_ccww_grav_test:
+   5.5673184E+03 +- 5.70E+02 fb  ( 10.    %)
+models_ccww_hsext:
+   8.3080339E+05 +- 5.36E+04 fb  (  6.5   %)
+models_ccww_littlest:
+   6.7081379E+03 +- 5.93E+02 fb  (  8.8   %)
+models_ccww_littlest_eta:
+   5.9060694E+03 +- 5.73E+02 fb  (  9.7   %)
+models_ccww_littlest_tpar:
+   6.2761051E+03 +- 5.73E+02 fb  (  9.1   %)
+models_ccww_mssm:
+   5.9494213E+03 +- 6.28E+02 fb  ( 11.    %)
+models_ccww_mssm_ckm:
+   6.9673584E+03 +- 6.29E+02 fb  (  9.0   %)
+models_ccww_mssm_grav:
+   7.0900237E+03 +- 6.59E+02 fb  (  9.3   %)
+models_ccww_nmssm:
+   5.3772942E+03 +- 5.41E+02 fb  ( 10.    %)
+models_ccww_nmssm_ckm:
+   5.6207771E+03 +- 5.42E+02 fb  (  9.6   %)
+models_ccww_nmssm_hgg:
+   5.8020707E+03 +- 5.14E+02 fb  (  8.9   %)
+models_ccww_psssm:
+   6.4182194E+08 +- 5.96E+07 fb  (  9.3   %)
+models_uudd_qcd:
+   1.2587507E+05 +- 2.94E+03 fb  (  2.3   %)
+models_eemm_qed:
+   2.1772937E+03 +- 4.57E+01 fb  (  2.1   %)
+models_ccww_sm:
+   5.4136006E+03 +- 5.84E+02 fb  ( 11.    %)
+models_ccww_sm_ckm:
+   5.8798557E+03 +- 5.74E+02 fb  (  9.8   %)
+models_ccww_sm_ac:
+   5.7751152E+03 +- 5.94E+02 fb  ( 10.    %)
+models_ccww_sm_ac_ckm:
+   5.6718111E+03 +- 6.23E+02 fb  ( 11.    %)
+models_ccww_sm_dim6:
+   6.3233409E+03 +- 5.61E+02 fb  (  8.9   %)
+models_wwww_sm_rx:
+   3.0227479E+07 +- 9.65E+06 fb  ( 32.    %)
+models_wwww_sm_ul:
+   9.7080025E+08 +- 7.49E+08 fb  ( 77.    %)
+models_wwww_noh_rx:
+   2.1032248E+10 +- 1.99E+10 fb  ( 95.    %)
+models_ccww_sm_top:
+   6.7123251E+03 +- 6.25E+02 fb  (  9.3   %)
+models_ccww_sm_top_anom:
+   5.0274506E+03 +- 5.41E+02 fb  ( 11.    %)
+models_ccww_sm_higgs:
+   6.1901689E+03 +- 5.99E+02 fb  (  9.7   %)
+models_ccww_sm_higgs_ckm:
+   7.2866110E+03 +- 6.44E+02 fb  (  8.8   %)
+models_ccww_sm_tt_thresh:
+   7.1165240E+03 +- 6.76E+02 fb  (  9.5   %)
+models_ccww_simplest:
+   7.7043505E+03 +- 6.46E+02 fb  (  8.4   %)
+models_ccww_simplest_univ:
+   6.4988268E+03 +- 6.33E+02 fb  (  9.7   %)
+models_ccww_template:
+   5.2092827E+03 +- 5.58E+02 fb  ( 11.    %)
+models_ccww_threeshl:
+   8.1746005E+03 +- 6.73E+02 fb  (  8.2   %)
+models_ccww_threeshl_nohf:
+   6.5389875E+03 +- 6.31E+02 fb  (  9.6   %)
+models_ccww_ued:
+   5.9392959E+08 +- 3.86E+07 fb  (  6.5   %)
+models_wwww_ssc:
+   1.7800933E+08 +- 1.31E+08 fb  ( 74.    %)
+models_wwww_ssc_2:
+   8.7439298E+06 +- 4.17E+06 fb  ( 48.    %)
+models_wwww_ssc_altt:
+   9.7035892E+08 +- 6.17E+08 fb  ( 64.    %)
+models_wwww_alth:
+   2.3538217E+08 +- 2.26E+08 fb  ( 96.    %)
+models_ccww_xdim:
+   6.5751622E+08 +- 4.44E+07 fb  (  6.7   %)
+models_ccww_wzw:
+   5.9222102E+03 +- 6.23E+02 fb  ( 11.    %)
+models_ccww_zprime:
+   5.6983638E+03 +- 6.02E+02 fb  ( 11.    %)
 | There were no errors and   42 warning(s).
 | WHIZARD run finished.
 |=============================================================================|

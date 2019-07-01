@@ -42,7 +42,7 @@ Process library: resonances_6_lib
 |   sqrts = 2.500000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'resonances_6_p_i1.phs'
+| Phase space: writing configuration file 'resonances_6_p.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'resonances_6_p'
 |   Library name  = 'resonances_6_lib'
@@ -80,7 +80,7 @@ Warning: No cuts have been defined.
 |   sqrts = 2.500000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'resonances_6_p_i1.phs'
+| Phase space: writing configuration file 'resonances_6_p.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'resonances_6_p'
 |   Library name  = 'resonances_6_lib'
@@ -116,7 +116,7 @@ Warning: No cuts have been defined.
 |   sqrts = 2.500000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'resonances_6_q_i1.phs'
+| Phase space: writing configuration file 'resonances_6_q.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'resonances_6_q'
 |   Library name  = 'resonances_6_lib'
@@ -145,7 +145,7 @@ Warning: No cuts have been defined.
 n_events = 1
 ?resonance_history = true
 | Starting simulation for process 'resonances_6_p'
-| Simulate: using integration grids from file 'resonances_6_p_m1.vg'
+| Simulate: using integration grids from file 'resonances_6_p.m1.vg'
 | Using library for resonant subprocesses 'resonances_6_p_R'
 | Simulate: initializing resonant subprocess 'resonances_6_p_R1'
 | RNG: Initializing TAO random-number generator
@@ -179,7 +179,7 @@ Warning: No cuts have been defined.
 | Events: closing LHEF file 'resonances_6_p.lhe'
 | Events: closing raw file 'resonances_6_p.evx'
 | Starting simulation for process 'resonances_6_q'
-| Simulate: using integration grids from file 'resonances_6_q_m1.vg'
+| Simulate: using integration grids from file 'resonances_6_q.m1.vg'
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 5
 | Simulation: requested number of events = 1

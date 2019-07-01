@@ -1,4 +1,4 @@
-! WHIZARD 2.6.3 Feb 10 2018
+! WHIZARD 2.6.4 Aug 23 2018
 !
 ! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -1552,18 +1552,20 @@ contains
     call lib%driver%set_md5sum (lib%md5sum)
   end subroutine process_library_compute_md5sum
 
-  subroutine process_library_write_makefile (lib, os_data, force, verbose, testflag)
+  subroutine process_library_write_makefile &
+       (lib, os_data, force, verbose, testflag, workspace)
     class(process_library_t), intent(inout) :: lib
     type(os_data_t), intent(in) :: os_data
     logical, intent(in) :: force, verbose
     logical, intent(in), optional :: testflag
+    type(string_t), intent(in), optional :: workspace
     character(32) :: md5sum_file
     logical :: generate
     integer :: unit
     if (lib%external .and. .not. lib%static) then
        generate = .true.
        if (.not. force) then
-          md5sum_file = lib%driver%get_md5sum_makefile ()
+          md5sum_file = lib%driver%get_md5sum_makefile (workspace)
           if (lib%md5sum == md5sum_file) then
              call msg_message ("Process library '" // char (lib%basename) &
                   // "': keeping makefile")
@@ -1574,7 +1576,9 @@ contains
           call msg_message ("Process library '" // char (lib%basename) &
                // "': writing makefile")
           unit = free_unit ()
-          open (unit, file = char (lib%driver%basename // ".makefile"), &
+          open (unit, &
+               file = char (workspace_prefix (workspace) &
+               &            // lib%driver%basename // ".makefile"), &
                status="replace", action="write")
           call lib%driver%generate_makefile (unit, os_data, verbose, testflag)
           close (unit)
@@ -1583,16 +1587,17 @@ contains
     end if
   end subroutine process_library_write_makefile
 
-  subroutine process_library_write_driver (lib, force)
+  subroutine process_library_write_driver (lib, force, workspace)
     class(process_library_t), intent(inout) :: lib
     logical, intent(in) :: force
+    type(string_t), intent(in), optional :: workspace
     character(32) :: md5sum_file
     logical :: generate
     integer :: unit
     if (lib%external .and. .not. lib%static) then
        generate = .true.
        if (.not. force) then
-          md5sum_file = lib%driver%get_md5sum_driver ()
+          md5sum_file = lib%driver%get_md5sum_driver (workspace)
           if (lib%md5sum == md5sum_file) then
              call msg_message ("Process library '" // char (lib%basename) &
                   // "': keeping driver")
@@ -1603,7 +1608,9 @@ contains
           call msg_message ("Process library '" // char (lib%basename) &
                // "': writing driver")
           unit = free_unit ()
-          open (unit, file = char (lib%driver%basename // ".f90"), &
+          open (unit, & 
+               file = char (workspace_prefix (workspace) &
+               &            // lib%driver%basename // ".f90"), &
                status="replace", action="write")
           call lib%driver%generate_driver_code (unit)
           close (unit)
@@ -1612,15 +1619,16 @@ contains
     end if
   end subroutine process_library_write_driver
 
-  subroutine process_library_update_status (lib, os_data)
+  subroutine process_library_update_status (lib, os_data, workspace)
     class(process_library_t), intent(inout) :: lib
     type(os_data_t), intent(in) :: os_data
+    type(string_t), intent(in), optional :: workspace
     character(32) :: md5sum_file
     integer :: i, i_external, i_component
     if (lib%external) then
        select case (lib%status)
        case (STAT_CONFIGURED:STAT_LINKED)
-          call lib%driver%load (os_data, noerror=.true.)
+          call lib%driver%load (os_data, noerror=.true., workspace=workspace)
        end select
        if (lib%driver%loaded) then
           md5sum_file = lib%driver%get_md5sum (0)
@@ -1658,7 +1666,8 @@ contains
                if (i_external /= 0) then
                   select case (entry%status)
                   case (STAT_CONFIGURED)
-                     md5sum_file = lib%driver%get_md5sum_source (i_external)
+                     md5sum_file = lib%driver%get_md5sum_source &
+                          (i_external, workspace)
                      if (entry%def%get_md5sum (i_component) == md5sum_file) then
                         entry%status = STAT_SOURCE
                      end if
@@ -1667,7 +1676,7 @@ contains
              end associate
           end do
           if (all (lib%entry%status >= STAT_SOURCE)) then
-             md5sum_file = lib%driver%get_md5sum_driver ()
+             md5sum_file = lib%driver%get_md5sum_driver (workspace)
              if (lib%md5sum == md5sum_file) then
                 lib%status = STAT_SOURCE
              end if
@@ -1676,10 +1685,12 @@ contains
     end if
   end subroutine process_library_update_status
 
-  subroutine process_library_make_source (lib, os_data, keep_old_source)
+  subroutine process_library_make_source &
+       (lib, os_data, keep_old_source, workspace)
     class(process_library_t), intent(inout) :: lib
     type(os_data_t), intent(in) :: os_data
     logical, intent(in), optional :: keep_old_source
+    type(string_t), intent(in), optional :: workspace
     logical :: keep_old
     integer :: i, i_external
     keep_old = .false.
@@ -1698,12 +1709,13 @@ contains
                   i_external = entry%i_external
                   if (i_external /= 0 &
                        .and. lib%entry(i)%status == STAT_CONFIGURED) then
-                     call lib%driver%clean_proc (i_external, os_data)
+                     call lib%driver%clean_proc &
+                          (i_external, os_data, workspace)
                   end if
                 end associate
                 if (signal_is_pending ())  return
              end do
-             call lib%driver%make_source (os_data)
+             call lib%driver%make_source (os_data, workspace)
           end if
           lib%status = STAT_SOURCE
           where (lib%entry%i_external /= 0 &
@@ -1715,21 +1727,23 @@ contains
     end if
   end subroutine process_library_make_source
 
-  subroutine process_library_make_compile (lib, os_data, keep_old_source)
+  subroutine process_library_make_compile &
+       (lib, os_data, keep_old_source, workspace)
     class(process_library_t), intent(inout) :: lib
     type(os_data_t), intent(in) :: os_data
     logical, intent(in), optional :: keep_old_source
+    type(string_t), intent(in), optional :: workspace
     if (lib%external .and. .not. lib%static) then
        select case (lib%status)
        case (STAT_CONFIGURED)
-          call lib%make_source (os_data, keep_old_source)
+          call lib%make_source (os_data, keep_old_source, workspace)
        end select
        if (signal_is_pending ())  return
        select case (lib%status)
        case (STAT_SOURCE)
           call msg_message ("Process library '" // char (lib%basename) &
                // "': compiling sources")
-          call lib%driver%make_compile (os_data)
+          call lib%driver%make_compile (os_data, workspace)
           where (lib%entry%i_external /= 0 &
                .and. lib%entry%status == STAT_SOURCE)
              lib%entry%status = STAT_COMPILED
@@ -1739,34 +1753,37 @@ contains
     end if
   end subroutine process_library_make_compile
 
-  subroutine process_library_make_link (lib, os_data, keep_old_source)
+  subroutine process_library_make_link &
+       (lib, os_data, keep_old_source, workspace)
     class(process_library_t), intent(inout) :: lib
     type(os_data_t), intent(in) :: os_data
     logical, intent(in), optional :: keep_old_source
+    type(string_t), intent(in), optional :: workspace
     if (lib%external .and. .not. lib%static) then
        select case (lib%status)
        case (STAT_CONFIGURED:STAT_SOURCE)
-          call lib%make_compile (os_data, keep_old_source)
+          call lib%make_compile (os_data, keep_old_source, workspace)
        end select
        if (signal_is_pending ())  return
        select case (lib%status)
        case (STAT_COMPILED)
           call msg_message ("Process library '" // char (lib%basename) &
                // "': linking")
-          call lib%driver%make_link (os_data)
+          call lib%driver%make_link (os_data, workspace)
           lib%entry%status = STAT_LINKED
           lib%status = STAT_LINKED
        end select
     end if
   end subroutine process_library_make_link
 
-  subroutine process_library_load (lib, os_data, keep_old_source)
+  subroutine process_library_load (lib, os_data, keep_old_source, workspace)
     class(process_library_t), intent(inout) :: lib
     type(os_data_t), intent(in) :: os_data
     logical, intent(in), optional :: keep_old_source
+    type(string_t), intent(in), optional :: workspace
     select case (lib%status)
     case (STAT_CONFIGURED:STAT_COMPILED)
-       call lib%make_link (os_data, keep_old_source)
+       call lib%make_link (os_data, keep_old_source, workspace)
     end select
     if (signal_is_pending ())  return
     select case (lib%status)
@@ -1774,7 +1791,7 @@ contains
        if (lib%external) then
           call msg_message ("Process library '" // char (lib%basename) &
                // "': loading")
-          call lib%driver%load (os_data)
+          call lib%driver%load (os_data, workspace=workspace)
           call lib%load_entries ()
        end if
        lib%entry%status = STAT_ACTIVE
@@ -1808,18 +1825,19 @@ contains
     end select
   end subroutine process_library_unload
 
-  subroutine process_library_clean (lib, os_data, distclean)
+  subroutine process_library_clean (lib, os_data, distclean, workspace)
     class(process_library_t), intent(inout) :: lib
     type(os_data_t), intent(in) :: os_data
     logical, intent(in) :: distclean
+    type(string_t), intent(in), optional :: workspace
     call lib%unload ()
     if (lib%external .and. .not. lib%static) then
        call msg_message ("Process library '" // char (lib%basename) &
             // "': removing old files")
        if (distclean) then
-          call lib%driver%distclean (os_data)
+          call lib%driver%distclean (os_data, workspace)
        else
-          call lib%driver%clean (os_data)
+          call lib%driver%clean (os_data, workspace)
        end if
     end if
     where (lib%entry%i_external /= 0)

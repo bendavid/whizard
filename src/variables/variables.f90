@@ -1,4 +1,4 @@
-! WHIZARD 2.6.3 Feb 10 2018
+! WHIZARD 2.6.4 Aug 23 2018
 !
 ! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -3023,6 +3023,18 @@ contains
          'when setting it to \ttt{true} again at a later part of the ' // &
          '\sindarin\ input file. Mainly for debugging purposes.  ' // &
          '(cf. also \ttt{?openmp\_logging}, \ttt{?mpi\_logging})'))
+    call var_list%append_string (var_str ("$job_id"), &
+         intrinsic=.true., &
+         description=var_str ('Arbitrary string that can be used for ' // &
+         'creating unique names.  The variable is initialized with the ' // &
+         'value of the \ttt{job\_id} option on startup. (cf. also ' // &
+         '\ttt{\$compile\_workspace}, \ttt{\$run\_id})'))
+    call var_list%append_string (var_str ("$compile_workspace"), &
+         intrinsic=.true., &
+         description=var_str ('If set, create process source code ' // &
+         'and process-driver library code in a subdirectory with this ' // &
+         'name.  If non-existent, the directory will be created. (cf. ' // &
+         'also \ttt{\$job\_id}, \ttt{\$run\_id}, \ttt{\$integrate\_workspace})'))
     call var_list%append_int (var_str ("seed"), seed, &
           intrinsic=.true., &
           description=var_str ('Integer variable \ttt{seed = {\em <num>}} ' // &
@@ -3481,6 +3493,11 @@ contains
          'are written out. Possible options are \ttt{"ignore"}, \ttt{"helicity"}, ' // &
          '\ttt{"factorized"}, and \ttt{"correlated"}. For more details cf. the ' // &
          'detailed section.'))
+    call var_list%append_log (var_str ("?colorize_subevt"), .false., &
+            intrinsic=.true., &
+            description=var_str ('Flag that enables color-index tracking ' // &
+            'in the subevent (\ttt{subevt}) objects that are used for ' // &
+            'internal event analysis.'))
     call var_list%append_real (var_str ("tolerance"), 0._default, &
           intrinsic=.true., &
           description=var_str ('Real variable that defines the absolute ' // &
@@ -3656,7 +3673,8 @@ contains
           'same process.  It identifies process instances with respect ' // &
           'to adapted integration grids and similar run-specific data.  ' // &
           'The run ID is kept when copying processes for creating instances, ' // &
-          'however, so it does not distinguish event samples.'))
+          'however, so it does not distinguish event samples. (cf.\ also ' // &
+          '\ttt{\$job\_id}, \ttt{\$compile\_workspace}'))
     call var_list%append_int (var_str ("n_calls_test"), 0, &
           intrinsic=.true., &
           description=var_str ('Integer variable that allows to set a ' // &
@@ -3716,12 +3734,15 @@ contains
           intrinsic=.true., &
           description=var_str ('Real parameter that allows to vary the ' // &
           'exponent of the channel weights for the \vamp\ integrator.'))
-    call var_list%append_string (var_str ("$grid_path"), var_str (""), &
+    call var_list%append_string (var_str ("$integrate_workspace"), &
           intrinsic=.true., &
           description=var_str ('Character string that tells \whizard\ ' // &
-          'the path where to find the \vamp\ and \vamptwo\ grid files. ' // &
-          'If empty (as per default), \whizard\ searches for them in the ' // &
-          'current directory.'))
+          'the subdirectory where to find the run-specific phase-space ' // &
+          'configuration and the \vamp\ and \vamptwo\ grid files. ' // &
+          'If undefined (as per default), \whizard\ creates them and ' // &
+          'searches for them in the ' // &
+          'current directory.  (cf. also  \ttt{\$job\_id}, ' // &
+          '\ttt{\$run\_id}, \ttt{\$compile\_workspace})'))
   end subroutine var_list_set_integration_defaults
 
   subroutine var_list_set_phase_space_defaults (var_list)
@@ -5386,7 +5407,26 @@ contains
          '\ttt{true}, generates \LaTeX\ code and executes it into a PDF ' // &
          ' to produce a table of all singular FKS regions and their ' // &
          ' flavor structures. The default is \ttt{false}.'))
-    call var_list%append_string (var_str ("$fks_mapping_type"), &
+   call var_list%append_real (var_str ("fks_xi_cut"), &
+        1.0_default, intrinsic = .true., &
+        description = var_str ('Real paramter for the FKS ' // &
+        'phase space that applies a cut to $\xi$ variable with $0 < \xi_{\text{cut}}' // &
+        '\leq \xi_{\text{max}}$. The dependence on the parameter vanishs between ' // &
+        'real subtraction and integrated subtraction term.'))
+   call var_list%append_real (var_str ("fks_delta_zero"), &
+        2._default, intrinsic = .true., &
+        description = var_str ('Real paramter for the FKS ' // &
+        'phase space that applies a cut to the $y$ variable with $0 < \delta_0 \leq 2$. ' // &
+        'The dependence on the parameter vanishs between real subtraction and integrated' // &
+        'subtraction term.'))
+   call var_list%append_real (var_str ("fks_delta_i"), &
+        2._default, intrinsic = .true., &
+        description = var_str ('Real paramter for the FKS ' // &
+        'phase space that applies a cut to the $y$ variable with $0 < \delta_{\mathrm{I}} \leq 2$ '// &
+        'for initial state singularities only. ' // &
+        'The dependence on the parameter vanishs between real subtraction and integrated' // &
+        'subtraction term.'))
+   call var_list%append_string (var_str ("$fks_mapping_type"), &
          var_str ("default"), intrinsic = .true., &
          description=var_str ('Sets the FKS mapping type. Possible values ' // &
          'are \ttt{"default"} and \ttt{"resonances"}. The latter option ' // &

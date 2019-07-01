@@ -1,4 +1,4 @@
-! WHIZARD 2.6.3 Feb 10 2018
+! WHIZARD 2.6.4 Aug 23 2018
 !
 ! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -788,9 +788,9 @@ contains
        call phs_data%write_forest (u)
     end select
 
-    vis_file = "phs_wood_vis_1_phs.tex"
-    ps_file  = "phs_wood_vis_1_phs.ps"
-    pdf_file = "phs_wood_vis_1_phs.pdf"
+    vis_file = "phs_wood_vis_1.phs-vis.tex"
+    ps_file  = "phs_wood_vis_1.phs-vis.ps"
+    pdf_file = "phs_wood_vis_1.phs-vis.pdf"
     inquire (file = char (vis_file), exist = exist)
     if (exist) then
        u_vis = free_unit ()

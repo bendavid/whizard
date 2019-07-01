@@ -38,7 +38,7 @@ circe1_mapping_slope =  2.00000E+00
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'circe1_3_p4_i1.phs'
+| Phase space: writing configuration file 'circe1_3_p4.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'circe1_3_p4'
 |   Library name  = 'circe1_3_lib'

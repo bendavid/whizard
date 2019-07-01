@@ -1,4 +1,4 @@
-! WHIZARD 2.6.3 Feb 10 2018
+! WHIZARD 2.6.4 Aug 23 2018
 !
 ! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -455,6 +455,7 @@ contains
     logical, intent(in), optional :: verbose
     integer :: u
     logical :: verb
+    real(default) :: err_percent
     u = given_output_unit (unit)
     verb = .true.;  if (present (verbose)) verb = verbose
     if (verb) then
@@ -467,6 +468,10 @@ contains
        case default;  return
        end select
     else
+       if (object%meta%run_id /= "") then
+          write (u, "('Run',1x,A,':',1x)", advance="no") &
+               char (object%meta%run_id)
+       end if
        write (u, "(A)", advance="no") char (object%meta%id)
        select case (object%meta%num_id)
        case (0)
@@ -481,12 +486,29 @@ contains
             object%get_integral_tot (), object%get_error_tot ()
        select case (object%meta%type)
        case (PRC_DECAY)
-          write (u, "(1x,A)")  "GeV"
+          write (u, "(1x,A)", advance="no")  "GeV"
        case (PRC_SCATTERING)
-          write (u, "(1x,A)")  "fb"
+          write (u, "(1x,A)", advance="no")  "fb "
        case default
-          write (u, *)
+          write (u, "(1x,A)", advance="no")  "   "
        end select
+       if (object%get_integral_tot () /= 0) then
+          err_percent = abs (100 &
+               * object%get_error_tot () / object%get_integral_tot ())
+       else
+          err_percent = 0
+       end if
+       if (err_percent == 0) then
+          write (u, "(1x,'(',F4.0,4x,'%)')")  err_percent
+       else if (err_percent < 0.1) then
+          write (u, "(1x,'(',F7.3,1x,'%)')")  err_percent
+       else if (err_percent < 1) then
+          write (u, "(1x,'(',F6.2,2x,'%)')")  err_percent
+       else if (err_percent < 10) then
+          write (u, "(1x,'(',F5.1,3x,'%)')")  err_percent
+       else
+          write (u, "(1x,'(',F4.0,4x,'%)')")  err_percent
+       end if
     else
        write (u, "(A)")  "[integral undefined]"
     end if
@@ -496,7 +518,7 @@ contains
     class(process_t), intent(inout) :: process
     integer :: i
     call process%meta%final ()
-    call process%config%final ()
+    ! call process%config%final ()
     if (allocated (process%component)) then
        do i = 1, size (process%component)
           call process%component(i)%final ()
@@ -664,11 +686,12 @@ contains
     integer :: i, j, k, i_term
     integer, dimension(:), allocatable :: n_entry
     integer :: n_components, n_tot
-    integer :: i_sub = 0
+    integer :: i_sub
     type(string_t) :: subtraction_method
     class(prc_core_t), pointer :: core => null ()
     logical :: setup_subtraction_component, singular_real
     integer :: nlo_type_to_fetch
+    i_sub = 0
     model => process%config%model
     n_components = process%meta%n_components
     allocate (n_entry (n_components), source = 0)
@@ -956,11 +979,12 @@ contains
   end subroutine process_beams_startup_message
 
   subroutine process_configure_phs (process, rebuild, ignore_mismatch, &
-     combined_integration)
+     combined_integration, subdir)
     class(process_t), intent(inout) :: process
     logical, intent(in), optional :: rebuild
     logical, intent(in), optional :: ignore_mismatch
     logical, intent(in), optional :: combined_integration
+    type(string_t), intent(in), optional :: subdir
     real(default) :: sqrts
     integer :: i, i_born
     class(phs_config_t), pointer :: phs_config_born
@@ -971,12 +995,12 @@ contains
             select type (pcm => process%pcm)
             type is (pcm_default_t)
                call component%configure_phs (sqrts, process%beam_config, &
-                    rebuild, ignore_mismatch)
+                    rebuild, ignore_mismatch, subdir)
             class is (pcm_nlo_t)
                select case (component%config%get_nlo_type ())
                case (BORN, NLO_VIRTUAL, NLO_SUBTRACTION)
                   call component%configure_phs (sqrts, process%beam_config, &
-                       rebuild, ignore_mismatch)
+                       rebuild, ignore_mismatch, subdir)
                   call check_and_extend_phs (component)
                case (NLO_REAL, NLO_MISMATCH, NLO_DGLAP)
                   i_born = component%config%get_associated_born ()
@@ -993,7 +1017,7 @@ contains
                      end select
                   end select
                   call component%configure_phs (sqrts, &
-                       process%beam_config, rebuild, ignore_mismatch)
+                       process%beam_config, rebuild, ignore_mismatch, subdir)
                end select
             class default
                call msg_bug ("process_configure_phs: unsupported PCM type")
@@ -2857,7 +2881,8 @@ contains
        if (nlo_type_fetched == NLO_MISMATCH)  nlo_type_fetched = NLO_SUBTRACTION
        i_core = process%get_i_core_nlo_type (nlo_type_fetched)
        if (config%can_be_integrated () .or. &
-            process%get_nlo_type (i_core) == NLO_SUBTRACTION) then
+            process%get_nlo_type (i_core) == NLO_SUBTRACTION .or. &
+            process%get_nlo_type (i_core) == NLO_REAL) then
           if (.not. loaded (i_core)) then
              select type (core => process%cm%cores(i_core)%core)
              class is (prc_user_defined_base_t)

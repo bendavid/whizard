@@ -30,7 +30,7 @@ seed = 0
 |   sqrts = 1.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'event_dump_2_p1_i1.phs'
+| Phase space: writing configuration file 'event_dump_2_p1.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'event_dump_2_p1'
 |   Library name  = 'event_dump_2_lib'
@@ -66,7 +66,7 @@ Warning: No cuts have been defined.
 |   sqrts = 1.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'event_dump_2_p2_i1.phs'
+| Phase space: writing configuration file 'event_dump_2_p2.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'event_dump_2_p2'
 |   Library name  = 'event_dump_2_lib'
@@ -98,8 +98,8 @@ $sample = "event_dump_2"
 event_index_offset = 100
 n_events = 3
 | Starting simulation for processes 'event_dump_2_p1' etc.
-| Simulate: using integration grids from file 'event_dump_2_p1_m1.vg'
-| Simulate: using integration grids from file 'event_dump_2_p2_m1.vg'
+| Simulate: using integration grids from file 'event_dump_2_p1.m1.vg'
+| Simulate: using integration grids from file 'event_dump_2_p2.m1.vg'
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 2
 | Simulation: requested number of events = 3

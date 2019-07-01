@@ -1,4 +1,4 @@
-! WHIZARD 2.6.3 Feb 10 2018
+! WHIZARD 2.6.4 Aug 23 2018
 !
 ! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -57,6 +57,7 @@ module subevt_expr
      integer :: n_tot = 0
      logical :: has_selection = .false.
      class(expr_t), allocatable :: selection
+     logical :: colorize_subevt = .false.
    contains
      procedure :: base_write => subevt_expr_write
      procedure (subevt_expr_final), deferred :: final
@@ -66,6 +67,7 @@ module subevt_expr
      procedure :: setup_var_self => subevt_expr_setup_var_self
      procedure :: link_var_list => subevt_expr_link_var_list
      procedure :: setup_selection => subevt_expr_setup_selection
+     procedure :: colorize => subevt_expr_colorize
      procedure :: reset_contents => subevt_expr_reset_contents
      procedure :: base_reset_contents => subevt_expr_reset_contents
      procedure :: base_evaluate => subevt_expr_evaluate
@@ -238,6 +240,12 @@ contains
     end if
   end subroutine subevt_expr_setup_selection
 
+  subroutine subevt_expr_colorize (expr, colorize_subevt)
+    class(subevt_expr_t), intent(inout), target :: expr
+    logical, intent(in) :: colorize_subevt
+    expr%colorize_subevt = colorize_subevt
+  end subroutine subevt_expr_colorize
+    
   subroutine subevt_expr_reset_contents (expr)
     class(subevt_expr_t), intent(inout) :: expr
     expr%subevt_filled = .false.
@@ -752,7 +760,7 @@ contains
   subroutine event_expr_fill_subevt (expr, particle_set)
     class(event_expr_t), intent(inout) :: expr
     type(particle_set_t), intent(in) :: particle_set
-    call particle_set%to_subevt (expr%subevt_t)
+    call particle_set%to_subevt (expr%subevt_t, expr%colorize_subevt)
     expr%sqrts_hat = subevt_get_sqrts_hat (expr%subevt_t)
     expr%n_in  = subevt_get_n_in  (expr%subevt_t)
     expr%n_out = subevt_get_n_out (expr%subevt_t)

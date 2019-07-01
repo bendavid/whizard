@@ -1,4 +1,4 @@
-! WHIZARD 2.6.3 Feb 10 2018
+! WHIZARD 2.6.4 Aug 23 2018
 !
 ! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -1841,10 +1841,8 @@ contains
     n_vtx = orig%get_n_vtx ()
     call model%basic_init (orig%get_name (), n_par, n_prt, n_vtx)
     if (allocated (orig%schemes)) then
-       allocate (model%schemes (size (orig%schemes)))
-       model%schemes(:) = orig%schemes(:)
+       model%schemes = orig%schemes
        if (allocated (orig%selected_scheme)) then
-          allocate (model%selected_scheme)
           model%selected_scheme = orig%selected_scheme
           call model%set_scheme_num (orig%get_scheme_num ())
        end if

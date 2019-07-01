@@ -1,4 +1,4 @@
-! WHIZARD 2.6.3 Feb 10 2018
+! WHIZARD 2.6.4 Aug 23 2018
 !
 ! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -35,7 +35,6 @@ module evaluators
   use physics_defs, only: n_beam_structure_int
   use diagnostics
   use lorentz
-  use model_data
   use flavors
   use colors
   use helicities

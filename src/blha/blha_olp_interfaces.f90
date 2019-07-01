@@ -1,4 +1,4 @@
-! WHIZARD 2.6.3 Feb 10 2018
+! WHIZARD 2.6.4 Aug 23 2018
 !
 ! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -133,7 +133,6 @@ module blha_olp_interfaces
     integer, dimension(:, :), allocatable :: i_tree, i_spin_c, i_color_c
     integer, dimension(:, :), allocatable :: i_virt
     integer, dimension(:, :), allocatable :: i_hel
-    integer, dimension(:), allocatable :: i_whizard_to_i_olc
     logical, dimension(3) :: ew_parameter_mask
     integer :: sqme_tree_pos
   contains
@@ -161,14 +160,6 @@ module blha_olp_interfaces
     procedure :: includes_polarization => prc_blha_includes_polarization
     procedure(prc_blha_init_driver), deferred :: &
         init_driver
-    procedure :: reset_i_whizard_to_i_olc => prc_blha_reset_i_whizard_to_i_olc
-    procedure :: set_i_whizard_to_i_olc_trivial => prc_blha_set_i_whizard_to_i_olc_trivial
-    procedure :: set_i_whizard_to_i_olc => prc_blha_set_i_whizard_to_i_olc
-    generic :: get_i_whizard_to_i_olc => get_i_whizard_to_i_olc_all
-    generic :: get_i_whizard_to_i_olc => get_i_whizard_to_i_olc_single
-    procedure :: get_i_whizard_to_i_olc_all => prc_blha_get_i_whizard_to_i_olc_all
-    procedure :: get_i_whizard_to_i_olc_single => prc_blha_get_i_whizard_to_i_olc_single
-    procedure :: warmup_helicities => prc_blha_warmup_helicities
   end type prc_blha_t
 
   type, abstract, extends (user_defined_driver_t) :: blha_driver_t
@@ -1413,12 +1404,6 @@ contains
     end do
   end function prc_blha_get_beam_helicities_array
 
-  subroutine prc_blha_reset_i_whizard_to_i_olc (object)
-    class(prc_blha_t), intent(inout) :: object
-    if (allocated (object%i_whizard_to_i_olc)) &
-         deallocate (object%i_whizard_to_i_olc)
-  end subroutine prc_blha_reset_i_whizard_to_i_olc
-
   recursive function blha_loop_positions (i_flv, n_sub) result (index)
     integer :: index
     integer, intent(in) :: i_flv, n_sub
@@ -1429,78 +1414,6 @@ contains
        index = blha_loop_positions (i_flv - 1, n_sub) + n_sub + 1
     end if
   end function blha_loop_positions
-
-  subroutine prc_blha_set_i_whizard_to_i_olc_trivial (object, n_flv, n_hel)
-    class(prc_blha_t), intent(inout) :: object
-    integer, intent(in) :: n_flv, n_hel
-    integer :: i_flv
-    call msg_debug (D_CORE, "setting up trivial helicity list")
-    if (allocated (object%i_whizard_to_i_olc)) &
-         deallocate (object%i_whizard_to_i_olc)
-    allocate (object%i_whizard_to_i_olc (n_flv * n_hel))
-    object%i_whizard_to_i_olc = 0
-    do i_flv = 1, n_flv
-       object%i_whizard_to_i_olc(i_flv) = i_flv
-    end do
-  end subroutine prc_blha_set_i_whizard_to_i_olc_trivial
-
-  subroutine prc_blha_set_i_whizard_to_i_olc (object, helicities)
-    class(prc_blha_t), intent(inout) :: object
-    integer, intent(in), dimension(:,:) :: helicities
-    integer, dimension(:, :), allocatable :: hel_olc
-    integer :: n1, n2
-    integer :: i, j
-    call msg_debug (D_CORE, "setting up helicity list from OLC file")
-    n1 = size (helicities, dim=1)
-    n2 = size (object%get_beam_helicities (), dim=1)
-    if (allocated (object%i_whizard_to_i_olc)) &
-         deallocate (object%i_whizard_to_i_olc)
-    allocate (object%i_whizard_to_i_olc (n2))
-    allocate (hel_olc (n2, 2))
-    hel_olc = object%get_beam_helicities (invert_second = .true.)
-    do i = 1, n1
-       do j = 1, n2
-          if (all (helicities(i, :) == hel_olc(j, :))) &
-             object%i_whizard_to_i_olc(j) = i
-       end do
-    end do
-    deallocate (hel_olc)
-  end subroutine prc_blha_set_i_whizard_to_i_olc
-
-  function prc_blha_get_i_whizard_to_i_olc_all (object) result (i_out)
-    integer, dimension(:), allocatable :: i_out
-    class(prc_blha_t), intent(in) :: object
-    allocate (i_out (size (object%i_whizard_to_i_olc)))
-    i_out = object%i_whizard_to_i_olc
-  end function prc_blha_get_i_whizard_to_i_olc_all
-
-  function prc_blha_get_i_whizard_to_i_olc_single (object, i) result (i_out)
-    integer :: i_out
-    class(prc_blha_t), intent(in) :: object
-    integer, intent(in) :: i
-    i_out = object%i_whizard_to_i_olc (i)
-  end function prc_blha_get_i_whizard_to_i_olc_single
-
-  subroutine prc_blha_warmup_helicities (object, p)
-    class(prc_blha_t), intent(inout) :: object
-    type(vector4_t), intent(in), dimension(:) :: p
-    real(double), dimension(5 * object%n_particles) :: mom
-    real(double), dimension(:), allocatable :: r
-    real(default) :: alpha_s
-    real(double) :: ren_scale, acc
-    integer :: i_hel
-    allocate (r (blha_result_array_size (object%n_particles, BLHA_AMP_LOOP)))
-    alpha_s = 0.1178_double
-    ren_scale = 200._double
-    mom = object%create_momentum_array (p)
-    select type (driver => object%driver)
-    class is (blha_driver_t)
-       call driver%set_alpha_s (alpha_s)
-       do i_hel = 1, object%n_hel
-          call driver%blha_olp_eval2 (i_hel, mom, ren_scale, r, acc)
-       end do
-    end select
-  end subroutine prc_blha_warmup_helicities
 
 
 end module blha_olp_interfaces

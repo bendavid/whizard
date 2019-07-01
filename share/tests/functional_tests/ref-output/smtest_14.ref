@@ -28,7 +28,7 @@ openmp_num_threads = 1
 |   sqrts = 2.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'smtest_14_1_i1.phs'
+| Phase space: writing configuration file 'smtest_14_1.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'smtest_14_1'
 |   Library name  = 'smtest_14_lib'

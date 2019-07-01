@@ -1,4 +1,4 @@
-! WHIZARD 2.6.3 Feb 10 2018
+! WHIZARD 2.6.4 Aug 23 2018
 !
 ! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -2332,11 +2332,12 @@ contains
     end if
   end subroutine sf_test_inverse_kinematics
 
-  subroutine sf_test_apply (sf_int, scale, rescaling_function, i_rescale)
+  subroutine sf_test_apply (sf_int, scale, rescale, i_sub, fill_sub)
     class(sf_test_t), intent(inout) :: sf_int
     real(default), intent(in) :: scale
-    class(rescaling_function_t), intent(in), optional :: rescaling_function
-    integer, intent(in), optional :: i_rescale
+    class(sf_rescale_t), intent(in), optional :: rescale
+    integer, intent(in), optional :: i_sub
+    logical, intent(in), optional :: fill_sub
     select case (sf_int%data%mode)
     case (0)
        call sf_int%set_matrix_element &
@@ -2531,11 +2532,12 @@ contains
     end if
   end subroutine sf_test_spectrum_inverse_kinematics
 
-  subroutine sf_test_spectrum_apply (sf_int, scale, rescaling_function, i_rescale)
+  subroutine sf_test_spectrum_apply (sf_int, scale, rescale, i_sub, fill_sub)
     class(sf_test_spectrum_t), intent(inout) :: sf_int
     real(default), intent(in) :: scale
-    class(rescaling_function_t), intent(in), optional :: rescaling_function
-    integer, intent(in), optional :: i_rescale
+    class(sf_rescale_t), intent(in), optional :: rescale
+    integer, intent(in), optional :: i_sub
+    logical, intent(in), optional :: fill_sub
     call sf_int%set_matrix_element &
          (cmplx (1._default, kind=default))
     sf_int%status = SF_EVALUATED
@@ -2699,11 +2701,12 @@ contains
     if (set_mom)  call sf_int%reduce_momenta (x)
   end subroutine sf_test_generator_inverse_kinematics
 
-  subroutine sf_test_generator_apply (sf_int, scale, rescaling_function, i_rescale)
+  subroutine sf_test_generator_apply (sf_int, scale, rescale, i_sub, fill_sub)
     class(sf_test_generator_t), intent(inout) :: sf_int
     real(default), intent(in) :: scale
-    class(rescaling_function_t), intent(in), optional :: rescaling_function
-    integer, intent(in), optional :: i_rescale
+    class(sf_rescale_t), intent(in), optional :: rescale
+    integer, intent(in), optional :: i_sub
+    logical, intent(in), optional :: fill_sub
     call sf_int%set_matrix_element &
          (cmplx (1._default, kind=default))
     sf_int%status = SF_EVALUATED

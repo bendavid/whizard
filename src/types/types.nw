@@ -2992,10 +2992,13 @@ initializers below do the rest.
      integer :: type = PRT_UNDEFINED
      integer :: pdg
      logical :: polarized = .false.
+     logical :: colorized = .false.
      integer :: h
      type(vector4_t) :: p
      real(default) :: p2
      integer, dimension(:), allocatable :: src
+     integer, dimension(:), allocatable :: col
+     integer, dimension(:), allocatable :: acl
   end type prt_t
 
 @ %def prt_t
@@ -3125,6 +3128,69 @@ is not set.
   end function prt_get_helicity
 
 @ %def prt_get_helicity
+<<Subevents: public>>=
+  public :: prt_is_colorized
+<<Subevents: procedures>>=
+  elemental function prt_is_colorized (prt) result (flag)
+    logical :: flag
+    type(prt_t), intent(in) :: prt
+    flag = prt%colorized
+  end function prt_is_colorized
+
+@ %def prt_is_colorized
+@ The number of open color (anticolor) lines.  We inspect the list of color
+(anticolor) lines and count the entries that do not appear in the list
+of anticolors (colors).  (There is no check against duplicates; we assume that
+color line indices are unique.)
+<<Subevents: public>>=
+  public :: prt_get_n_col
+  public :: prt_get_n_acl
+<<Subevents: procedures>>=
+  elemental function prt_get_n_col (prt) result (n)
+    integer :: n
+    type(prt_t), intent(in) :: prt
+    integer, dimension(:), allocatable :: col, acl
+    integer :: i
+    n = 0
+    if (prt%colorized) then
+       do i = 1, size (prt%col)
+          if (all (prt%col(i) /= prt%acl)) n = n + 1
+       end do
+    end if
+  end function prt_get_n_col
+
+  elemental function prt_get_n_acl (prt) result (n)
+    integer :: n
+    type(prt_t), intent(in) :: prt
+    integer, dimension(:), allocatable :: col, acl
+    integer :: i
+    n = 0
+    if (prt%colorized) then
+       do i = 1, size (prt%acl)
+          if (all (prt%acl(i) /= prt%col)) n = n + 1
+       end do
+    end if
+  end function prt_get_n_acl
+
+@ %def prt_get_n_col
+@ %def prt_get_n_acl
+@ Return the color and anticolor-flow line indices explicitly.
+<<Subevents: public>>=
+  public :: prt_get_color_indices
+<<Subevents: procedures>>=
+  subroutine prt_get_color_indices (prt, col, acl)
+    type(prt_t), intent(in) :: prt
+    integer, dimension(:), allocatable, intent(out) :: col, acl
+    if (prt%colorized) then
+       col = prt%col
+       acl = prt%acl
+    else
+       col = [integer::]
+       acl = [integer::]
+    end if
+  end subroutine prt_get_color_indices
+
+@ %def prt_get_color_indices
 @
 \subsubsection{Setting data}
 Set the PDG, momentum and momentum squared, and ancestors.  If
@@ -3188,6 +3254,17 @@ allocate-on-assignment is available, this can be simplified.
   end subroutine prt_polarize
 
 @ %def prt_polarize
+@ Set color-flow indices (optional).
+<<Subevents: procedures>>=
+  subroutine prt_colorize (prt, col, acl)
+    type(prt_t), intent(inout) :: prt
+    integer, dimension(:), intent(in) :: col, acl
+    prt%colorized = .true.
+    prt%col = col
+    prt%acl = acl
+  end subroutine prt_colorize
+
+@ %def prt_colorize
 @
 \subsubsection{Conversion}
 Transform a [[prt_t]] object into a [[c_prt_t]] object.
@@ -3251,6 +3328,15 @@ Transform a [[prt_t]] object into a [[c_prt_t]] object.
     end select
     select case (prt%type)
     case (PRT_BEAM, PRT_INCOMING, PRT_OUTGOING, PRT_COMPOSITE)
+       if (prt%colorized) then
+          write (u, "(*(I0,:,','))", advance="no")  prt%col
+          write (u, "('/')", advance="no")
+          write (u, "(*(I0,:,','))", advance="no")  prt%acl
+          write (u, "('|')", advance="no")
+       end if
+    end select
+    select case (prt%type)
+    case (PRT_BEAM, PRT_INCOMING, PRT_OUTGOING, PRT_COMPOSITE)
        write (u, "(" // FMT_14 // ",';'," // FMT_14 // ",','," // &
             FMT_14 // ",','," // FMT_14 // ")", advance="no") tmp%p
        write (u, "('|'," // fmt // ")", advance="no") tmp%p2
@@ -3299,15 +3385,37 @@ occurs at most once.
 
 The result is intent(inout), so it will not be initialized when the
 subroutine is entered.
+
+If the particles carry color, we recall that the combined particle is a
+composite which is understood as outgoing.  If one of the arguments is an
+incoming particle, is color entries must be reversed.
 <<Subevents: procedures>>=
   subroutine prt_combine (prt, prt_in1, prt_in2, ok)
     type(prt_t), intent(inout) :: prt
     type(prt_t), intent(in) :: prt_in1, prt_in2
     logical :: ok
     integer, dimension(:), allocatable :: src
+    integer, dimension(:), allocatable :: col1, acl1, col2, acl2
     call combine_index_lists (src, prt_in1%src, prt_in2%src)
     ok = allocated (src)
-    if (ok)  call prt_init_composite (prt, prt_in1%p + prt_in2%p, src)
+    if (ok) then
+       call prt_init_composite (prt, prt_in1%p + prt_in2%p, src)
+       if (prt_in1%colorized .or. prt_in2%colorized) then
+          select case (prt_in1%type)
+          case default
+             call prt_get_color_indices (prt_in1, col1, acl1)
+          case (PRT_BEAM, PRT_INCOMING)
+             call prt_get_color_indices (prt_in1, acl1, col1)
+          end select
+          select case (prt_in2%type)
+          case default
+             call prt_get_color_indices (prt_in2, col2, acl2)
+          case (PRT_BEAM, PRT_INCOMING)
+             call prt_get_color_indices (prt_in2, acl2, col2)
+          end select
+          call prt_colorize (prt, [col1, col2], [acl1, acl2])
+       end if
+    end if
   end subroutine prt_combine
 
 @ %def prt_combine
@@ -3712,6 +3820,25 @@ incoming/outgoing particles.
   end subroutine subevt_polarize
 
 @ %def subevt_polarize
+@ Set color-flow indices for an entry
+<<Subevents: public>>=
+  public :: subevt_colorize
+<<Subevents: procedures>>=
+  subroutine subevt_colorize (subevt, i, col, acl)
+    type(subevt_t), intent(inout) :: subevt
+    integer, intent(in) :: i, col, acl
+    if (col > 0 .and. acl > 0) then
+       call prt_colorize (subevt%prt(i), [col], [acl])
+    else if (col > 0) then
+       call prt_colorize (subevt%prt(i), [col], [integer ::])
+    else if (acl > 0) then
+       call prt_colorize (subevt%prt(i), [integer ::], [acl])
+    else
+       call prt_colorize (subevt%prt(i), [integer ::], [integer ::])
+    end if
+  end subroutine subevt_colorize
+
+@ %def subevt_colorize
 @
 \subsubsection{Accessing contents}
 Return true if the subevent has entries.

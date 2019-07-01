@@ -1,4 +1,4 @@
-! WHIZARD 2.6.3 Feb 10 2018
+! WHIZARD 2.6.4 Aug 23 2018
 !
 ! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -30,6 +30,7 @@ module dispatch_mci
 
   use iso_varying_string, string_t => varying_string
   use diagnostics
+  use os_interface
   use variables
 
   use mci_base
@@ -42,6 +43,12 @@ module dispatch_mci
   private
 
   public :: dispatch_mci_s
+
+  character(*), parameter :: ALLOWED_IN_DIRNAME = &
+       "abcdefghijklmnopqrstuvwxyz&
+       &ABCDEFGHIJKLMNOPQRSTUVWXYZ&
+       &1234567890&
+       &.,_-+="
 
 contains
 
@@ -56,9 +63,9 @@ contains
     type(history_parameters_t) :: history_par
     type(mci_vamp2_config_t) :: mci_vamp2_config
     logical :: rebuild_grids, check_grid_file, negative_weights, verbose
-    logical :: dispatch_nlo = .false.
+    logical :: dispatch_nlo
     type(string_t) :: grid_path
-    if (present (is_nlo)) dispatch_nlo = is_nlo
+    dispatch_nlo = .false.; if (present (is_nlo)) dispatch_nlo = is_nlo
     integration_method = &
          var_list%get_sval (var_str ("$integration_method"))
     select case (char (integration_method))
@@ -77,8 +84,11 @@ contains
           else
              call mci%set_grid_filename (process_id)
           end if
-          grid_path = var_list%get_sval (var_str ("$grid_path"))
-          if (grid_path /= "") call mci%prepend_grid_path (grid_path)
+          grid_path = var_list%get_sval (var_str ("$integrate_workspace"))
+          if (grid_path /= "") then
+             call setup_grid_path (grid_path)
+             call mci%prepend_grid_path (grid_path)
+          end if
           call mci%set_history_parameters (history_par)
           call mci%set_rebuild_flag (rebuild_grids, check_grid_file)
           mci%negative_weights = negative_weights
@@ -95,8 +105,11 @@ contains
           else
              call mci%set_integrator_filename (process_id)
           end if
-          grid_path = var_list%get_sval (var_str ("$grid_path"))
-          if (grid_path /= "") call mci%prepend_integrator_path (grid_path)
+          grid_path = var_list%get_sval (var_str ("$integrate_workspace"))
+          if (grid_path /= "") then
+             call setup_grid_path (grid_path)
+             call mci%prepend_integrator_path (grid_path)
+          end if
           call mci%set_rebuild_flag (rebuild_grids, check_grid_file)
           mci%negative_weights = negative_weights
           mci%verbose = verbose
@@ -190,5 +203,17 @@ contains
 
   end subroutine dispatch_mci_s
 
+  subroutine setup_grid_path (grid_path)
+    type(string_t), intent(in) :: grid_path
+    if (verify (grid_path, ALLOWED_IN_DIRNAME) == 0) then
+       call msg_message ("Integrator: preparing VAMP grid directory '" &
+            // char (grid_path) // "'")
+       call os_system_call ("mkdir -p '" // grid_path // "'")
+    else
+       call msg_fatal ("Integrator: VAMP grid_path '" &
+            // char (grid_path) // "' contains illegal characters")
+    end if
+  end subroutine setup_grid_path
+  
 
 end module dispatch_mci

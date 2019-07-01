@@ -32,6 +32,7 @@ beams -> variables
 beams -> particles
 beams -> utilities
 beams -> rng
+beams -> qed_pdf
 beams -> physics
 beams -> types
 }
@@ -247,6 +248,14 @@ subgraph cluster0 {
  style=filled 
  color=gray95 
 edge[color=cadetblue1]
+qed_pdf -> basics
+qed_pdf -> physics
+qed_pdf -> utilities
+}
+subgraph cluster0 {
+ style=filled 
+ color=gray95 
+edge[color=chartreuse2]
 process_integration -> beams
 process_integration -> model_features
 process_integration -> fks
@@ -272,7 +281,7 @@ process_integration -> combinatorics
 subgraph cluster0 {
  style=filled 
  color=gray95 
-edge[color=chartreuse2]
+edge[color=chocolate1]
 qft -> system
 qft -> types
 qft -> basics
@@ -284,7 +293,7 @@ qft -> combinatorics
 subgraph cluster0 {
  style=filled 
  color=gray95 
-edge[color=chocolate1]
+edge[color=gold]
 rng -> variables
 rng -> basics
 rng -> system
@@ -293,7 +302,7 @@ rng -> utilities
 subgraph cluster0 {
  style=filled 
  color=gray95 
-edge[color=gold]
+edge[color=lightcyan]
 shower -> beams
 shower -> variables
 shower -> rng
@@ -310,19 +319,19 @@ shower -> basics
 subgraph cluster0 {
  style=filled 
  color=gray95 
-edge[color=lightcyan]
+edge[color=hotpink]
 system -> basics
 }
 subgraph cluster0 {
  style=filled 
  color=gray95 
-edge[color=hotpink]
+edge[color=brown1]
 testing -> basics
 }
 subgraph cluster0 {
  style=filled 
  color=gray95 
-edge[color=brown1]
+edge[color=green]
 threshold -> physics
 threshold -> system
 threshold -> basics
@@ -330,7 +339,7 @@ threshold -> basics
 subgraph cluster0 {
  style=filled 
  color=gray95 
-edge[color=green]
+edge[color=cyan]
 transforms -> basics
 transforms -> process_integration
 transforms -> rng
@@ -353,7 +362,7 @@ transforms -> types
 subgraph cluster0 {
  style=filled 
  color=gray95 
-edge[color=cyan]
+edge[color=blue]
 types -> system
 types -> utilities
 types -> combinatorics
@@ -364,7 +373,7 @@ types -> parsing
 subgraph cluster0 {
  style=filled 
  color=gray95 
-edge[color=blue]
+edge[color=salmon]
 user -> beams
 user -> utilities
 user -> qft
@@ -377,13 +386,13 @@ user -> system
 subgraph cluster0 {
  style=filled 
  color=gray95 
-edge[color=salmon]
+edge[color=red]
 utilities -> basics
 }
 subgraph cluster0 {
  style=filled 
  color=gray95 
-edge[color=red]
+edge[color=orange]
 variables -> expr_base
 variables -> utilities
 variables -> system
@@ -394,7 +403,7 @@ variables -> physics
 subgraph cluster0 {
  style=filled 
  color=gray95 
-edge[color=orange]
+edge[color=navy]
 whizard_core -> events
 whizard_core -> rng
 whizard_core -> fks

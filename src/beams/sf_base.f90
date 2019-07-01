@@ -1,4 +1,4 @@
-! WHIZARD 2.6.3 Feb 10 2018
+! WHIZARD 2.6.4 Aug 23 2018
 !
 ! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -47,9 +47,9 @@ module sf_base
   implicit none
   private
 
+  public :: sf_rescale_t
   public :: sf_data_t
   public :: sf_config_t
-  public :: rescaling_function_t
   public :: sf_int_t
   public :: sf_chain_t
   public :: sf_chain_instance_t
@@ -67,6 +67,19 @@ module sf_base
   integer, parameter, public :: SF_FAILED_EVALUATION = 13
   integer, parameter, public :: SF_EVALUATED = 20
 
+
+  type, abstract :: sf_rescale_t
+    integer :: i_restricted_beam = -1
+    integer :: i_beam = 0
+    logical :: gluon = .false.
+  contains
+    procedure (sf_rescale_apply), deferred :: apply
+    procedure :: set_i_beam => sf_rescale_set_i_beam
+    procedure :: restrict_to_beam => sf_rescale_restrict_to_beam
+    procedure :: is_restricted => sf_rescale_is_restricted
+    procedure :: set_gluons => sf_rescale_set_gluons
+    procedure :: has_gluons => sf_rescale_has_gluons
+  end type sf_rescale_t
 
   type, abstract :: sf_data_t
    contains
@@ -88,16 +101,6 @@ module sf_base
      procedure :: get_pdf_set => sf_config_get_pdf_set
      procedure :: get_beam_file => sf_config_get_beam_file
   end type sf_config_t
-
-  type, abstract :: rescaling_function_t
-    integer, dimension(:,:), allocatable :: sf_indices
-    integer, dimension(:,:), allocatable :: sf_indices_gluon
-    integer :: i_beam = 0
-  contains
-    procedure (rescaling_function_init_indices), deferred :: init_indices
-    procedure (rescaling_function_apply), deferred :: apply
-    procedure :: set_i_beam => rescaling_function_set_i_beam
-  end type rescaling_function_t
 
   type, abstract, extends (interaction_t) :: sf_int_t
      integer :: status = SF_UNDEFINED
@@ -233,6 +236,14 @@ module sf_base
 
 
   abstract interface
+     subroutine sf_rescale_apply (func, x)
+       import
+       class(sf_rescale_t), intent(in) :: func
+       real(default), intent(inout) :: x
+     end subroutine sf_rescale_apply
+  end interface
+
+  abstract interface
      subroutine sf_data_write (data, unit, verbose)
        import
        class(sf_data_t), intent(in) :: data
@@ -263,21 +274,6 @@ module sf_base
        class(sf_data_t), intent(in) :: data
        class(sf_int_t), intent(inout), allocatable :: sf_int
      end subroutine sf_data_allocate_sf_int
-  end interface
-
-  abstract interface
-     subroutine rescaling_function_init_indices (func)
-       import
-       class(rescaling_function_t), intent(inout) :: func
-     end subroutine rescaling_function_init_indices
-  end interface
-
-  abstract interface
-     subroutine rescaling_function_apply (func, x)
-       import
-       class(rescaling_function_t), intent(in) :: func
-       real(default), intent(inout) :: x
-     end subroutine rescaling_function_apply
   end interface
 
   abstract interface
@@ -334,17 +330,50 @@ module sf_base
   end interface
 
   abstract interface
-     subroutine sf_int_apply (sf_int, scale, rescaling_function, i_rescale)
+     subroutine sf_int_apply (sf_int, scale, rescale, i_sub, fill_sub)
        import
        class(sf_int_t), intent(inout) :: sf_int
        real(default), intent(in) :: scale
-       class(rescaling_function_t), intent(in), optional :: rescaling_function
-       integer, intent(in), optional :: i_rescale
+       class(sf_rescale_t), intent(in), optional :: rescale
+       integer, intent(in), optional :: i_sub
+       logical, intent(in), optional :: fill_sub
      end subroutine sf_int_apply
   end interface
 
 
 contains
+
+  subroutine sf_rescale_set_i_beam (func, i_beam)
+    class(sf_rescale_t), intent(inout) :: func
+    integer, intent(in) :: i_beam
+    func%i_beam = i_beam
+  end subroutine sf_rescale_set_i_beam
+
+  subroutine sf_rescale_restrict_to_beam (func, i_beam)
+    class(sf_rescale_t), intent(inout) :: func
+    integer, intent(in) :: i_beam
+    if (func%i_restricted_beam > 0) &
+         call msg_bug ("[sf_rescale_restrict_to_beam] restricted beam already set.")
+    func%i_restricted_beam = i_beam
+  end subroutine sf_rescale_restrict_to_beam
+
+  logical function sf_rescale_is_restricted (func, i_beam) result (yorn)
+    class(sf_rescale_t), intent(in) :: func
+    integer, intent(in) :: i_beam
+    yorn = (func%i_restricted_beam > 0)
+    yorn = yorn .and. (func%i_restricted_beam /= i_beam)
+  end function sf_rescale_is_restricted
+
+  subroutine sf_rescale_set_gluons (func, yorn)
+    class(sf_rescale_t), intent(inout) :: func
+    logical, intent(in) :: yorn
+    func%gluon = yorn
+  end subroutine sf_rescale_set_gluons
+
+  logical function sf_rescale_has_gluons (func) result (yorn)
+    class(sf_rescale_t), intent(in) :: func
+    yorn = func%gluon
+  end function sf_rescale_has_gluons
 
   function sf_data_is_generator (data) result (flag)
     class(sf_data_t), intent(in) :: data
@@ -397,12 +426,6 @@ contains
     type(string_t) :: file
     file = sf_config%data%get_beam_file ()
   end function sf_config_get_beam_file
-
-  subroutine rescaling_function_set_i_beam (func, i_beam)
-    class(rescaling_function_t), intent(inout) :: func
-    integer, intent(in) :: i_beam
-    func%i_beam = i_beam
-  end subroutine rescaling_function_set_i_beam
 
   subroutine write_sf_status (status, u)
     integer, intent(in) :: status
@@ -1308,14 +1331,14 @@ contains
     end if
   end subroutine sf_chain_exchange_mask
 
-  subroutine sf_chain_instance_init_evaluators (chain, has_pdfs)
+  subroutine sf_chain_instance_init_evaluators (chain, extended_sf)
     class(sf_chain_instance_t), intent(inout), target :: chain
-    logical, intent(in), optional :: has_pdfs
+    logical, intent(in), optional :: extended_sf
     type(interaction_t), pointer :: int
     type(quantum_numbers_mask_t) :: mask
     integer :: i
     logical :: yorn
-    yorn = .false.; if (present (has_pdfs)) yorn = has_pdfs
+    yorn = .false.; if (present (extended_sf)) yorn = extended_sf
     if (chain%status >= SF_DONE_MASK) then
        if (allocated (chain%sf)) then
           if (size (chain%sf) /= 0) then
@@ -1324,16 +1347,16 @@ contains
              do i = 1, size (chain%sf)
                 associate (sf => chain%sf(i))
                    if (yorn) then
-                       if (int%get_n_sub () == 0) then
-                            call interaction_declare_subtraction (int, n_beam_structure_int)
-                       end if
-                       if (sf%int%interaction_t%get_n_sub () == 0) then
-                            call interaction_declare_subtraction &
-                                 (sf%int%interaction_t, n_beam_structure_int)
-                       end if
+                      if (int%get_n_sub () == 0) then
+                         call int%declare_subtraction (n_beam_structure_int)
+                      end if
+                      if (sf%int%interaction_t%get_n_sub () == 0) then
+                         call sf%int%interaction_t%declare_subtraction &
+                              (n_beam_structure_int)
+                      end if
                    end if
-                   call sf%eval%init_product &
-                        (int, sf%int%interaction_t, mask, ignore_sub = .true.)
+                   call sf%eval%init_product (int, sf%int%interaction_t, mask,&
+                        & ignore_sub = .true.)
                    if (sf%eval%is_empty ()) then
                       chain%status = SF_FAILED_CONNECTIONS
                       return
@@ -1343,6 +1366,9 @@ contains
              end do
              call find_outgoing_particles ()
           end if
+       else if (chain%out_eval == 0) then
+          int => beam_get_int_ptr (chain%beam_t)
+          call int%tag_hard_process ()
        end if
        chain%status = SF_DONE_CONNECTIONS
     end if
@@ -1367,7 +1393,9 @@ contains
          end do
          chain%out_eval_i(j) = out_i
       end do
+      call int%tag_hard_process (chain%out_eval_i)
     end subroutine find_outgoing_particles
+
   end subroutine sf_chain_instance_init_evaluators
 
   subroutine sf_chain_instance_write_interaction (chain, i_sf, i_int, unit)
@@ -1622,40 +1650,50 @@ contains
     end if
   end subroutine sf_chain_instance_return_beam_momenta
 
-  subroutine sf_chain_instance_evaluate (chain, scale, rescaling_function, i_rescale)
+  subroutine sf_chain_instance_evaluate (chain, scale, sf_rescale)
     class(sf_chain_instance_t), intent(inout), target :: chain
     real(default), intent(in) :: scale
-    class(rescaling_function_t), intent(inout), optional :: rescaling_function
-    integer, intent(in), optional :: i_rescale
+    class(sf_rescale_t), intent(inout), optional :: sf_rescale
     type(interaction_t), pointer :: out_int
     real(default) :: sf_sum
-    integer :: i, i_skip
-    i_skip = 0; if (present (i_rescale)) i_skip = i_rescale
+    integer :: i_beam, i_sub, n_sub
     if (chain%status >= SF_DONE_KINEMATICS) then
        if (allocated (chain%sf)) then
           if (size (chain%sf) /= 0) then
-             do i = 1, size (chain%sf)
-                associate (sf => chain%sf(i))
-                   if (i_skip > 0 .and. i /= i_skip) then
-                      call sf%int%transfer_me_to_sub (i_skip)
-                      if (present (rescaling_function)) then
-                         if (allocated (rescaling_function%sf_indices_gluon)) then
-                            if (i_skip == 1) then
-                               call sf%int%transfer_me_to_sub (3)
-                            else
-                               call sf%int%transfer_me_to_sub (4)
-                            end if
-                         end if
-                      end if
-                   else
-                      if (present (rescaling_function)) &
-                           call rescaling_function%set_i_beam (i)
-                      call sf%int%apply (scale, rescaling_function, i_rescale)
-                      if (sf%int%status <= SF_FAILED_EVALUATION) then
-                         chain%status = SF_FAILED_EVALUATION
-                         return
-                      end if
+             do i_beam = 1, size (chain%sf)
+                associate (sf => chain%sf(i_beam))
+                  n_sub = 0 ! default: no looping over rescaled beams
+                  if (present (sf_rescale)) then
+                     ! TODO sbrass cache n_sub as it is computed from the state matrix
+                     n_sub = sf%int%get_n_sub ()
+                     call sf_rescale%set_i_beam (i_beam)
                   end if
+                  SUB: do i_sub = 0, n_sub
+                     select case (i_sub)
+                     case (0)
+                        if (n_sub == 0) then
+                           call sf%int%apply (scale, sf_rescale)
+                        else
+                           call sf%int%apply (scale, fill_sub = .true.)
+                        end if
+                     case (1:2)
+                        if (present (sf_rescale)) then
+                           if (sf_rescale%is_restricted (i_beam)) cycle SUB
+                        end if
+                        if (i_sub == i_beam) then
+                           call sf%int%apply(scale, sf_rescale, i_sub)
+                        end if
+                     case (3:4)
+                        ! dummy : handled more appropriately on a lower level (sf%int%apply ())
+                     case default
+                        call msg_bug ("sf_chain_instance_evaluate: more than 2&
+                             & subtraction indices are curently not handled.")
+                     end select
+                     if (sf%int%status <= SF_FAILED_EVALUATION) then
+                        chain%status = SF_FAILED_EVALUATION
+                        return
+                     end if
+                  end do SUB
                   if (.not. sf%eval%is_empty ())  call sf%eval%evaluate ()
                 end associate
              end do

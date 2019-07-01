@@ -30,7 +30,7 @@ seed = 0
 |   sqrts = 1.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'epa_1a_i1.phs'
+| Phase space: writing configuration file 'epa_1a.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'epa_1a'
 |   Library name  = 'epa_1_lib'
@@ -69,7 +69,7 @@ seed = 0
 |   sqrts = 1.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'epa_1b_i1.phs'
+| Phase space: writing configuration file 'epa_1b.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'epa_1b'
 |   Library name  = 'epa_1_lib'
@@ -103,7 +103,7 @@ seed = 0
 $sample = "epa_1a"
 n_events = 1
 | Starting simulation for process 'epa_1a'
-| Simulate: using integration grids from file 'epa_1a_m1.vg'
+| Simulate: using integration grids from file 'epa_1a.m1.vg'
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 1
 | Simulation: requested number of events = 1
@@ -121,7 +121,7 @@ $epa_handler_mode = "recoil"
 $sample = "epa_1b"
 n_events = 1
 | Starting simulation for process 'epa_1b'
-| Simulate: using integration grids from file 'epa_1b_m1.vg'
+| Simulate: using integration grids from file 'epa_1b.m1.vg'
 | Simulate: activating EPA handler
 | Simulate: ISR/EPA handler mode: pair recoil
 | RNG: Initializing TAO random-number generator

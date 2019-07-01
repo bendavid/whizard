@@ -1,4 +1,4 @@
-! WHIZARD 2.6.3 Feb 10 2018
+! WHIZARD 2.6.4 Aug 23 2018
 !
 ! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -29,6 +29,7 @@
 module phs_none
 
   use kinds, only: default
+  use iso_varying_string, string_t => varying_string
   use io_units, only: given_output_unit
   use diagnostics, only: msg_message, msg_fatal
   use phs_base, only: phs_config_t, phs_t
@@ -76,7 +77,7 @@ contains
 
   subroutine phs_none_config_configure (phs_config, sqrts, &
        sqrts_fixed, cm_frame, azimuthal_dependence, rebuild, ignore_mismatch, &
-       nlo_type)
+       nlo_type, subdir)
     class(phs_none_config_t), intent(inout) :: phs_config
     real(default), intent(in) :: sqrts
     logical, intent(in), optional :: sqrts_fixed
@@ -85,6 +86,7 @@ contains
     logical, intent(in), optional :: rebuild
     logical, intent(in), optional :: ignore_mismatch
     integer, intent(in), optional :: nlo_type
+    type(string_t), intent(in), optional :: subdir
   end subroutine phs_none_config_configure
 
   subroutine phs_none_config_startup_message (phs_config, unit)

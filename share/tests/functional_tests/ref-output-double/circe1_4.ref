@@ -31,7 +31,7 @@ seed = 0
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'circe1_4_p1_i1.phs'
+| Phase space: writing configuration file 'circe1_4_p1.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'circe1_4_p1'
 |   Library name  = 'circe1_4_lib'
@@ -76,7 +76,7 @@ seed = 0
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'circe1_4_p2_i1.phs'
+| Phase space: writing configuration file 'circe1_4_p2.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'circe1_4_p2'
 |   Library name  = 'circe1_4_lib'
@@ -130,7 +130,7 @@ seed = 1
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'circe1_4_p3_i1.phs'
+| Phase space: writing configuration file 'circe1_4_p3.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'circe1_4_p3'
 |   Library name  = 'circe1_4_lib'

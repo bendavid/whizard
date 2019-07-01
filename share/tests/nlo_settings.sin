@@ -1,0 +1,44 @@
+model = SM ("GF_MW_MZ")
+$blha_ew_scheme = "alpha_qed"
+
+mZ = 91.188
+mW = 80.419002
+mH = 125.0
+GF = 1.16639E-5
+wZ = 0.0
+wtop = 0.0
+wW = 0.0
+wH = 0.0
+
+ms = 0
+mc = 0
+mb = 0
+mtop = 173.2
+
+me = 0
+mmu = 0
+mtau = 1.777
+
+alphas = 0.118
+
+?alphas_is_fixed = false
+?alphas_from_mz = true
+?alphas_from_lambda_qcd = false
+alphas_nf = 5
+
+alias jet = u:U:d:D:s:S:c:C:b:B:gl
+
+$born_me_method = "openloops"
+$real_tree_me_method = "openloops"
+$correlation_me_method = "openloops"
+$loop_me_method = "openloops"
+
+sqrts = 1 TeV
+scale = sqrts
+
+show(model)
+
+jet_algorithm = antikt_algorithm
+jet_r = 0.5
+
+

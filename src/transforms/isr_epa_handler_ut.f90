@@ -1,4 +1,4 @@
-! WHIZARD 2.6.3 Feb 10 2018
+! WHIZARD 2.6.4 Aug 23 2018
 !
 ! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -41,7 +41,15 @@ contains
   subroutine isr_handler_test (u, results)
     integer, intent(in) :: u
     type(test_results_t), intent(inout) :: results
-  
+    call test (isr_handler_1, "isr_handler_1", &
+         "collinear case, no modification", &
+         u, results)
+    call test (isr_handler_2, "isr_handler_2", &
+         "two-photon recoil", &
+         u, results)
+    call test (isr_handler_3, "isr_handler_3", &
+         "two-photon recoil with boost", &
+         u, results)
   end subroutine isr_handler_test
 
   subroutine epa_handler_test (u, results)

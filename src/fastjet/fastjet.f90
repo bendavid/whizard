@@ -511,8 +511,10 @@ contains
     real(default), intent(in), optional :: p
     real(default), intent(in), optional :: jet_ycut
     type(cpp_string_t) :: description_str
-    real(default) :: ycut = -1._default
-    real(default) :: pp = -1._default
+    real(default) :: ycut
+    real(default) :: pp
+    ycut = -1._default
+    pp = -1._default
     if (present (jet_ycut)) then
        ycut = jet_ycut
     end if

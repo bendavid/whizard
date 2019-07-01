@@ -1,4 +1,4 @@
-! WHIZARD 2.6.3 Feb 10 2018
+! WHIZARD 2.6.4 Aug 23 2018
 !
 ! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -58,6 +58,8 @@ module prclib_interfaces
   public :: write_driver_code
   public :: prclib_unload_hook
   public :: prclib_reload_hook
+  public :: workspace_prefix
+  public :: workspace_path
 
   type, abstract :: prc_writer_t
      character(32) :: md5sum = ""
@@ -1579,137 +1581,219 @@ contains
     write (unit, "(3A)")  "end subroutine ", char (prefix), "get_fptr"
   end subroutine write_get_fptr_sub
 
-  subroutine prclib_driver_make_source (driver, os_data)
+  function workspace_prefix (workspace) result (prefix)
+    type(string_t), intent(in), optional :: workspace
+    type(string_t) :: prefix
+    if (present (workspace)) then
+       if (workspace /= "") then
+          prefix = workspace // "/"
+       else
+          prefix = ""
+       end if
+    else
+       prefix = ""
+    end if
+  end function workspace_prefix
+
+  function workspace_path (workspace) result (path)
+    type(string_t), intent(in), optional :: workspace
+    type(string_t) :: path
+    if (present (workspace)) then
+       if (workspace /= "") then
+          path = workspace
+       else
+          path = "."
+       end if
+    else
+       path = "."
+    end if
+  end function workspace_path
+
+  function workspace_cmd (workspace) result (cmd)
+    type(string_t), intent(in), optional :: workspace
+    type(string_t) :: cmd
+    if (present (workspace)) then
+       if (workspace /= "") then
+          cmd = "cd " // workspace // " && "
+       else
+          cmd = ""
+       end if
+    else
+       cmd = ""
+    end if
+  end function workspace_cmd
+  
+  subroutine prclib_driver_make_source (driver, os_data, workspace)
     class(prclib_driver_t), intent(in) :: driver
     type(os_data_t), intent(in) :: os_data
+    type(string_t), intent(in), optional :: workspace
     integer :: i
     do i = 1, driver%n_processes
        call driver%record(i)%write_source_code ()
     end do
-    call os_system_call ("make source " // os_data%makeflags &
+    call os_system_call ( &
+         workspace_cmd (workspace) &
+         // "make source " // os_data%makeflags &
          // " -f " // driver%basename // ".makefile")
   end subroutine prclib_driver_make_source
 
-  subroutine prclib_driver_make_compile (driver, os_data)
+  subroutine prclib_driver_make_compile (driver, os_data, workspace)
     class(prclib_driver_t), intent(in) :: driver
     type(os_data_t), intent(in) :: os_data
+    type(string_t), intent(in), optional :: workspace
     integer :: i
     do i = 1, driver%n_processes
        call driver%record(i)%before_compile ()
     end do
-    call os_system_call ("make compile " // os_data%makeflags &
+    call os_system_call ( &
+         workspace_cmd (workspace) &
+         // "make compile " // os_data%makeflags &
          // " -f " // driver%basename // ".makefile")
     do i = 1, driver%n_processes
        call driver%record(i)%after_compile ()
     end do
   end subroutine prclib_driver_make_compile
 
-  subroutine prclib_driver_make_link (driver, os_data)
+  subroutine prclib_driver_make_link (driver, os_data, workspace)
     class(prclib_driver_t), intent(in) :: driver
     type(os_data_t), intent(in) :: os_data
+    type(string_t), intent(in), optional :: workspace
     integer :: i
-    call os_system_call ("make link " // os_data%makeflags &
+    call os_system_call ( &
+         workspace_cmd (workspace) &
+         // "make link " // os_data%makeflags &
          // " -f " // driver%basename // ".makefile")
   end subroutine prclib_driver_make_link
 
-  subroutine prclib_driver_clean_library (driver, os_data)
+  subroutine prclib_driver_clean_library (driver, os_data, workspace)
     class(prclib_driver_t), intent(in) :: driver
     type(os_data_t), intent(in) :: os_data
+    type(string_t), intent(in), optional :: workspace
     if (driver%makefile_exists ()) then
-       call os_system_call ("make clean-library " // os_data%makeflags &
+       call os_system_call ( &
+         workspace_cmd (workspace) &
+         // "make clean-library " // os_data%makeflags &
             // " -f " // driver%basename // ".makefile")
     end if
   end subroutine prclib_driver_clean_library
 
-  subroutine prclib_driver_clean_objects (driver, os_data)
+  subroutine prclib_driver_clean_objects (driver, os_data, workspace)
     class(prclib_driver_t), intent(in) :: driver
     type(os_data_t), intent(in) :: os_data
+    type(string_t), intent(in), optional :: workspace
     if (driver%makefile_exists ()) then
-       call os_system_call ("make clean-objects " // os_data%makeflags &
+       call os_system_call ( &
+         workspace_cmd (workspace) &
+         // "make clean-objects " // os_data%makeflags &
             // " -f " // driver%basename // ".makefile")
     end if
   end subroutine prclib_driver_clean_objects
 
-  subroutine prclib_driver_clean_source (driver, os_data)
+  subroutine prclib_driver_clean_source (driver, os_data, workspace)
     class(prclib_driver_t), intent(in) :: driver
     type(os_data_t), intent(in) :: os_data
+    type(string_t), intent(in), optional :: workspace
     if (driver%makefile_exists ()) then
-       call os_system_call ("make clean-source " // os_data%makeflags &
+       call os_system_call ( &
+         workspace_cmd (workspace) &
+         // "make clean-source " // os_data%makeflags &
             // " -f " // driver%basename // ".makefile")
     end if
   end subroutine prclib_driver_clean_source
 
-  subroutine prclib_driver_clean_driver (driver, os_data)
+  subroutine prclib_driver_clean_driver (driver, os_data, workspace)
     class(prclib_driver_t), intent(in) :: driver
     type(os_data_t), intent(in) :: os_data
+    type(string_t), intent(in), optional :: workspace
     if (driver%makefile_exists ()) then
-       call os_system_call ("make clean-driver " // os_data%makeflags &
+       call os_system_call ( &
+         workspace_cmd (workspace) &
+         // "make clean-driver " // os_data%makeflags &
             // " -f " // driver%basename // ".makefile")
     end if
   end subroutine prclib_driver_clean_driver
 
-  subroutine prclib_driver_clean_makefile (driver, os_data)
+  subroutine prclib_driver_clean_makefile (driver, os_data, workspace)
     class(prclib_driver_t), intent(in) :: driver
     type(os_data_t), intent(in) :: os_data
+    type(string_t), intent(in), optional :: workspace
     if (driver%makefile_exists ()) then
-       call os_system_call ("make clean-makefile " // os_data%makeflags &
+       call os_system_call ( &
+         workspace_cmd (workspace) &
+         // "make clean-makefile " // os_data%makeflags &
             // " -f " // driver%basename // ".makefile")
     end if
   end subroutine prclib_driver_clean_makefile
 
-  subroutine prclib_driver_clean (driver, os_data)
+  subroutine prclib_driver_clean (driver, os_data, workspace)
     class(prclib_driver_t), intent(in) :: driver
     type(os_data_t), intent(in) :: os_data
+    type(string_t), intent(in), optional :: workspace
     if (driver%makefile_exists ()) then
-       call os_system_call ("make clean " // os_data%makeflags &
+       call os_system_call ( &
+         workspace_cmd (workspace) &
+         // "make clean " // os_data%makeflags &
             // " -f " // driver%basename // ".makefile")
     end if
   end subroutine prclib_driver_clean
 
-  subroutine prclib_driver_distclean (driver, os_data)
+  subroutine prclib_driver_distclean (driver, os_data, workspace)
     class(prclib_driver_t), intent(in) :: driver
     type(os_data_t), intent(in) :: os_data
+    type(string_t), intent(in), optional :: workspace
     if (driver%makefile_exists ()) then
-       call os_system_call ("make distclean " // os_data%makeflags &
+       call os_system_call ( &
+         workspace_cmd (workspace) &
+         // "make distclean " // os_data%makeflags &
             // " -f " // driver%basename // ".makefile")
     end if
   end subroutine prclib_driver_distclean
 
-  subroutine prclib_driver_clean_proc (driver, i, os_data)
+  subroutine prclib_driver_clean_proc (driver, i, os_data, workspace)
     class(prclib_driver_t), intent(in) :: driver
     integer, intent(in) :: i
     type(os_data_t), intent(in) :: os_data
+    type(string_t), intent(in), optional :: workspace
     type(string_t) :: id
     if (driver%makefile_exists ()) then
        id = driver%record(i)%id
-      call os_system_call ("make clean-" // driver%record(i)%id // " " &
+      call os_system_call ( &
+         workspace_cmd (workspace) &
+         // "make clean-" // driver%record(i)%id // " " &
            // os_data%makeflags &
            // " -f " // driver%basename // ".makefile")
     end if
   end subroutine prclib_driver_clean_proc
 
-  function prclib_driver_makefile_exists (driver) result (flag)
+  function prclib_driver_makefile_exists (driver, workspace) result (flag)
     class(prclib_driver_t), intent(in) :: driver
+    type(string_t), intent(in), optional :: workspace
     logical :: flag
-    inquire (file = char (driver%basename) // ".makefile", exist = flag)
+    inquire (file = char (workspace_prefix (workspace) &
+         &                // driver%basename) // ".makefile", &
+         exist = flag)
   end function prclib_driver_makefile_exists
 
-  subroutine prclib_driver_load (driver, os_data, noerror)
+  subroutine prclib_driver_load (driver, os_data, noerror, workspace)
     class(prclib_driver_t), intent(inout) :: driver
     type(os_data_t), intent(in) :: os_data
     logical, intent(in), optional :: noerror
+    type(string_t), intent(in), optional :: workspace
     type(c_funptr) :: c_fptr
     logical :: ignore
 
     ignore = .false.;  if (present (noerror))  ignore = noerror
 
-    driver%libname = os_get_dlname (driver%basename, os_data, noerror, noerror)
+    driver%libname = os_get_dlname ( &
+         workspace_prefix (workspace) // driver%basename, &
+         os_data, noerror, noerror)
     if (driver%libname == "")  return
     select type (driver)
     type is (prclib_driver_dynamic_t)
        if (.not. dlaccess_is_open (driver%dlaccess)) then
           call dlaccess_init &
-               (driver%dlaccess, var_str ("."), driver%libname, os_data)
+               (driver%dlaccess, workspace_path (workspace), &
+                driver%libname, os_data)
           if (.not. ignore)  call driver%check_dlerror ()
        end if
        driver%loaded = dlaccess_is_open (driver%dlaccess)
@@ -1835,15 +1919,16 @@ contains
     call driver%check_dlerror ()
   end function prclib_driver_dynamic_get_c_funptr
 
-  function prclib_driver_get_md5sum_makefile (driver) result (md5sum)
+  function prclib_driver_get_md5sum_makefile (driver, workspace) result (md5sum)
     class(prclib_driver_t), intent(in) :: driver
+    type(string_t), intent(in), optional :: workspace
     character(32) :: md5sum
     type(string_t) :: filename
     character(80) :: buffer
     logical :: exist
     integer :: u, iostat
     md5sum = ""
-    filename = driver%basename // ".makefile"
+    filename = workspace_prefix (workspace) // driver%basename // ".makefile"
     inquire (file = char (filename), exist = exist)
     if (exist) then
        u = free_unit ()
@@ -1863,15 +1948,16 @@ contains
     end if
   end function prclib_driver_get_md5sum_makefile
 
-  function prclib_driver_get_md5sum_driver (driver) result (md5sum)
+  function prclib_driver_get_md5sum_driver (driver, workspace) result (md5sum)
     class(prclib_driver_t), intent(in) :: driver
+    type(string_t), intent(in), optional :: workspace
     character(32) :: md5sum
     type(string_t) :: filename
     character(80) :: buffer
     logical :: exist
     integer :: u, iostat
     md5sum = ""
-    filename = driver%basename // ".f90"
+    filename = workspace_prefix (workspace) // driver%basename // ".f90"
     inquire (file = char (filename), exist = exist)
     if (exist) then
        u = free_unit ()
@@ -1891,9 +1977,11 @@ contains
     end if
   end function prclib_driver_get_md5sum_driver
 
-  function prclib_driver_get_md5sum_source (driver, i) result (md5sum)
+  function prclib_driver_get_md5sum_source &
+       (driver, i, workspace) result (md5sum)
     class(prclib_driver_t), intent(in) :: driver
     integer, intent(in) :: i
+    type(string_t), intent(in), optional :: workspace
     character(32) :: md5sum
     type(string_t) :: filename
     character(80) :: buffer
@@ -1901,7 +1989,7 @@ contains
     integer :: u, iostat
     md5sum = ""
 
-    filename = driver%record(i)%id // ".f90"
+    filename = workspace_prefix (workspace) // driver%record(i)%id // ".f90"
     inquire (file = char (filename), exist = exist)
     if (exist) then
        u = free_unit ()

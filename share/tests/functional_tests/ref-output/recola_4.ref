@@ -32,7 +32,7 @@ sqrts =  5.00000E+02
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'recola_4_p1_i1.phs'
+| Phase space: writing configuration file 'recola_4_p1.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'recola_4_p1'
 |   Library name  = 'recola_4_lib'

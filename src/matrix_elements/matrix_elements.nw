@@ -2640,7 +2640,63 @@ Since we should have written a Makefile, these tasks amount to simple
 so calling [[link]] executes also the [[source]] and [[compile]]
 steps, when necessary.
 
-The first routine writes source-code files for the individual
+Optionally, we can use a subdirectory.  We construct a prefix for the
+subdirectory, and generate a shell [[cd]] call that moves us into the
+workspace.
+
+The [[prefix]] version is intended to be prepended to a filename, and can be
+empty.  The [[path]] version is intended to be prepended with a following
+slash, so the default is [[.]].
+<<Prclib interfaces: public>>=
+  public :: workspace_prefix
+  public :: workspace_path
+<<Prclib interfaces: procedures>>=
+  function workspace_prefix (workspace) result (prefix)
+    type(string_t), intent(in), optional :: workspace
+    type(string_t) :: prefix
+    if (present (workspace)) then
+       if (workspace /= "") then
+          prefix = workspace // "/"
+       else
+          prefix = ""
+       end if
+    else
+       prefix = ""
+    end if
+  end function workspace_prefix
+
+  function workspace_path (workspace) result (path)
+    type(string_t), intent(in), optional :: workspace
+    type(string_t) :: path
+    if (present (workspace)) then
+       if (workspace /= "") then
+          path = workspace
+       else
+          path = "."
+       end if
+    else
+       path = "."
+    end if
+  end function workspace_path
+
+  function workspace_cmd (workspace) result (cmd)
+    type(string_t), intent(in), optional :: workspace
+    type(string_t) :: cmd
+    if (present (workspace)) then
+       if (workspace /= "") then
+          cmd = "cd " // workspace // " && "
+       else
+          cmd = ""
+       end if
+    else
+       cmd = ""
+    end if
+  end function workspace_cmd
+  
+@ %def workspace_prefix
+@ %def workspace_path
+@ %def workspace_cmd
+@ The first routine writes source-code files for the individual
 processes.  First it calls the writer routines directly for each
 process, then it calls [[make source]].  The make command may either
 post-process the files, or it may do the complete work, e.g., calling
@@ -2648,14 +2704,17 @@ an external program the generates the files.
 <<Prclib interfaces: prclib driver: TBP>>=
   procedure :: make_source => prclib_driver_make_source
 <<Prclib interfaces: procedures>>=
-  subroutine prclib_driver_make_source (driver, os_data)
+  subroutine prclib_driver_make_source (driver, os_data, workspace)
     class(prclib_driver_t), intent(in) :: driver
     type(os_data_t), intent(in) :: os_data
+    type(string_t), intent(in), optional :: workspace
     integer :: i
     do i = 1, driver%n_processes
        call driver%record(i)%write_source_code ()
     end do
-    call os_system_call ("make source " // os_data%makeflags &
+    call os_system_call ( &
+         workspace_cmd (workspace) &
+         // "make source " // os_data%makeflags &
          // " -f " // driver%basename // ".makefile")
   end subroutine prclib_driver_make_source
 
@@ -2667,14 +2726,17 @@ completed.  Similarly, [[after_compile]] scans all processes again.
 <<Prclib interfaces: prclib driver: TBP>>=
   procedure :: make_compile => prclib_driver_make_compile
 <<Prclib interfaces: procedures>>=
-  subroutine prclib_driver_make_compile (driver, os_data)
+  subroutine prclib_driver_make_compile (driver, os_data, workspace)
     class(prclib_driver_t), intent(in) :: driver
     type(os_data_t), intent(in) :: os_data
+    type(string_t), intent(in), optional :: workspace
     integer :: i
     do i = 1, driver%n_processes
        call driver%record(i)%before_compile ()
     end do
-    call os_system_call ("make compile " // os_data%makeflags &
+    call os_system_call ( &
+         workspace_cmd (workspace) &
+         // "make compile " // os_data%makeflags &
          // " -f " // driver%basename // ".makefile")
     do i = 1, driver%n_processes
        call driver%record(i)%after_compile ()
@@ -2687,11 +2749,14 @@ process library on disk.
 <<Prclib interfaces: prclib driver: TBP>>=
   procedure :: make_link => prclib_driver_make_link
 <<Prclib interfaces: procedures>>=
-  subroutine prclib_driver_make_link (driver, os_data)
+  subroutine prclib_driver_make_link (driver, os_data, workspace)
     class(prclib_driver_t), intent(in) :: driver
     type(os_data_t), intent(in) :: os_data
+    type(string_t), intent(in), optional :: workspace
     integer :: i
-    call os_system_call ("make link " // os_data%makeflags &
+    call os_system_call ( &
+         workspace_cmd (workspace) &
+         // "make link " // os_data%makeflags &
          // " -f " // driver%basename // ".makefile")
   end subroutine prclib_driver_make_link
 
@@ -2713,65 +2778,86 @@ If there is no makefile, do nothing.
   procedure :: clean => prclib_driver_clean
   procedure :: distclean => prclib_driver_distclean
 <<Prclib interfaces: procedures>>=
-  subroutine prclib_driver_clean_library (driver, os_data)
+  subroutine prclib_driver_clean_library (driver, os_data, workspace)
     class(prclib_driver_t), intent(in) :: driver
     type(os_data_t), intent(in) :: os_data
+    type(string_t), intent(in), optional :: workspace
     if (driver%makefile_exists ()) then
-       call os_system_call ("make clean-library " // os_data%makeflags &
+       call os_system_call ( &
+         workspace_cmd (workspace) &
+         // "make clean-library " // os_data%makeflags &
             // " -f " // driver%basename // ".makefile")
     end if
   end subroutine prclib_driver_clean_library
 
-  subroutine prclib_driver_clean_objects (driver, os_data)
+  subroutine prclib_driver_clean_objects (driver, os_data, workspace)
     class(prclib_driver_t), intent(in) :: driver
     type(os_data_t), intent(in) :: os_data
+    type(string_t), intent(in), optional :: workspace
     if (driver%makefile_exists ()) then
-       call os_system_call ("make clean-objects " // os_data%makeflags &
+       call os_system_call ( &
+         workspace_cmd (workspace) &
+         // "make clean-objects " // os_data%makeflags &
             // " -f " // driver%basename // ".makefile")
     end if
   end subroutine prclib_driver_clean_objects
 
-  subroutine prclib_driver_clean_source (driver, os_data)
+  subroutine prclib_driver_clean_source (driver, os_data, workspace)
     class(prclib_driver_t), intent(in) :: driver
     type(os_data_t), intent(in) :: os_data
+    type(string_t), intent(in), optional :: workspace
     if (driver%makefile_exists ()) then
-       call os_system_call ("make clean-source " // os_data%makeflags &
+       call os_system_call ( &
+         workspace_cmd (workspace) &
+         // "make clean-source " // os_data%makeflags &
             // " -f " // driver%basename // ".makefile")
     end if
   end subroutine prclib_driver_clean_source
 
-  subroutine prclib_driver_clean_driver (driver, os_data)
+  subroutine prclib_driver_clean_driver (driver, os_data, workspace)
     class(prclib_driver_t), intent(in) :: driver
     type(os_data_t), intent(in) :: os_data
+    type(string_t), intent(in), optional :: workspace
     if (driver%makefile_exists ()) then
-       call os_system_call ("make clean-driver " // os_data%makeflags &
+       call os_system_call ( &
+         workspace_cmd (workspace) &
+         // "make clean-driver " // os_data%makeflags &
             // " -f " // driver%basename // ".makefile")
     end if
   end subroutine prclib_driver_clean_driver
 
-  subroutine prclib_driver_clean_makefile (driver, os_data)
+  subroutine prclib_driver_clean_makefile (driver, os_data, workspace)
     class(prclib_driver_t), intent(in) :: driver
     type(os_data_t), intent(in) :: os_data
+    type(string_t), intent(in), optional :: workspace
     if (driver%makefile_exists ()) then
-       call os_system_call ("make clean-makefile " // os_data%makeflags &
+       call os_system_call ( &
+         workspace_cmd (workspace) &
+         // "make clean-makefile " // os_data%makeflags &
             // " -f " // driver%basename // ".makefile")
     end if
   end subroutine prclib_driver_clean_makefile
 
-  subroutine prclib_driver_clean (driver, os_data)
+  subroutine prclib_driver_clean (driver, os_data, workspace)
     class(prclib_driver_t), intent(in) :: driver
     type(os_data_t), intent(in) :: os_data
+    type(string_t), intent(in), optional :: workspace
     if (driver%makefile_exists ()) then
-       call os_system_call ("make clean " // os_data%makeflags &
+       call os_system_call ( &
+         workspace_cmd (workspace) &
+         // "make clean " // os_data%makeflags &
             // " -f " // driver%basename // ".makefile")
     end if
   end subroutine prclib_driver_clean
 
-  subroutine prclib_driver_distclean (driver, os_data)
+  subroutine prclib_driver_distclean (driver, os_data, workspace)
     class(prclib_driver_t), intent(in) :: driver
     type(os_data_t), intent(in) :: os_data
+    type(string_t), intent(in), optional :: workspace
     if (driver%makefile_exists ()) then
-       call os_system_call ("make distclean " // os_data%makeflags &
+       call os_system_call ( &
+         workspace_cmd (workspace) &
+         // "make distclean " // os_data%makeflags &
             // " -f " // driver%basename // ".makefile")
     end if
   end subroutine prclib_driver_distclean
@@ -2790,14 +2876,17 @@ do anything if the files exist.
 <<Prclib interfaces: prclib driver: TBP>>=
   procedure :: clean_proc => prclib_driver_clean_proc
 <<Prclib interfaces: procedures>>=
-  subroutine prclib_driver_clean_proc (driver, i, os_data)
+  subroutine prclib_driver_clean_proc (driver, i, os_data, workspace)
     class(prclib_driver_t), intent(in) :: driver
     integer, intent(in) :: i
     type(os_data_t), intent(in) :: os_data
+    type(string_t), intent(in), optional :: workspace
     type(string_t) :: id
     if (driver%makefile_exists ()) then
        id = driver%record(i)%id
-      call os_system_call ("make clean-" // driver%record(i)%id // " " &
+      call os_system_call ( &
+         workspace_cmd (workspace) &
+         // "make clean-" // driver%record(i)%id // " " &
            // os_data%makeflags &
            // " -f " // driver%basename // ".makefile")
     end if
@@ -2810,10 +2899,13 @@ Check for the appropriate makefile.
 <<Prclib interfaces: prclib driver: TBP>>=
   procedure :: makefile_exists => prclib_driver_makefile_exists
 <<Prclib interfaces: procedures>>=
-  function prclib_driver_makefile_exists (driver) result (flag)
+  function prclib_driver_makefile_exists (driver, workspace) result (flag)
     class(prclib_driver_t), intent(in) :: driver
+    type(string_t), intent(in), optional :: workspace
     logical :: flag
-    inquire (file = char (driver%basename) // ".makefile", exist = flag)
+    inquire (file = char (workspace_prefix (workspace) &
+         &                // driver%basename) // ".makefile", &
+         exist = flag)
   end function prclib_driver_makefile_exists
 
 @ %def prclib_driver_makefile_exists
@@ -2826,22 +2918,26 @@ have become assigned.
 <<Prclib interfaces: prclib driver: TBP>>=
   procedure :: load => prclib_driver_load
 <<Prclib interfaces: procedures>>=
-  subroutine prclib_driver_load (driver, os_data, noerror)
+  subroutine prclib_driver_load (driver, os_data, noerror, workspace)
     class(prclib_driver_t), intent(inout) :: driver
     type(os_data_t), intent(in) :: os_data
     logical, intent(in), optional :: noerror
+    type(string_t), intent(in), optional :: workspace
     type(c_funptr) :: c_fptr
     logical :: ignore
 
     ignore = .false.;  if (present (noerror))  ignore = noerror
 
-    driver%libname = os_get_dlname (driver%basename, os_data, noerror, noerror)
+    driver%libname = os_get_dlname ( &
+         workspace_prefix (workspace) // driver%basename, &
+         os_data, noerror, noerror)
     if (driver%libname == "")  return
     select type (driver)
     type is (prclib_driver_dynamic_t)
        if (.not. dlaccess_is_open (driver%dlaccess)) then
           call dlaccess_init &
-               (driver%dlaccess, var_str ("."), driver%libname, os_data)
+               (driver%dlaccess, workspace_path (workspace), &
+                driver%libname, os_data)
           if (.not. ignore)  call driver%check_dlerror ()
        end if
        driver%loaded = dlaccess_is_open (driver%dlaccess)
@@ -3009,15 +3105,16 @@ Recall the MD5 sum written in the Makefile
 <<Prclib interfaces: prclib driver: TBP>>=
   procedure :: get_md5sum_makefile => prclib_driver_get_md5sum_makefile
 <<Prclib interfaces: procedures>>=
-  function prclib_driver_get_md5sum_makefile (driver) result (md5sum)
+  function prclib_driver_get_md5sum_makefile (driver, workspace) result (md5sum)
     class(prclib_driver_t), intent(in) :: driver
+    type(string_t), intent(in), optional :: workspace
     character(32) :: md5sum
     type(string_t) :: filename
     character(80) :: buffer
     logical :: exist
     integer :: u, iostat
     md5sum = ""
-    filename = driver%basename // ".makefile"
+    filename = workspace_prefix (workspace) // driver%basename // ".makefile"
     inquire (file = char (filename), exist = exist)
     if (exist) then
        u = free_unit ()
@@ -3042,15 +3139,16 @@ Recall the MD5 sum written in the Makefile
 <<Prclib interfaces: prclib driver: TBP>>=
   procedure :: get_md5sum_driver => prclib_driver_get_md5sum_driver
 <<Prclib interfaces: procedures>>=
-  function prclib_driver_get_md5sum_driver (driver) result (md5sum)
+  function prclib_driver_get_md5sum_driver (driver, workspace) result (md5sum)
     class(prclib_driver_t), intent(in) :: driver
+    type(string_t), intent(in), optional :: workspace
     character(32) :: md5sum
     type(string_t) :: filename
     character(80) :: buffer
     logical :: exist
     integer :: u, iostat
     md5sum = ""
-    filename = driver%basename // ".f90"
+    filename = workspace_prefix (workspace) // driver%basename // ".f90"
     inquire (file = char (filename), exist = exist)
     if (exist) then
        u = free_unit ()
@@ -3075,9 +3173,11 @@ Recall the MD5 sum written in the Makefile
 <<Prclib interfaces: prclib driver: TBP>>=
   procedure :: get_md5sum_source => prclib_driver_get_md5sum_source
 <<Prclib interfaces: procedures>>=
-  function prclib_driver_get_md5sum_source (driver, i) result (md5sum)
+  function prclib_driver_get_md5sum_source &
+       (driver, i, workspace) result (md5sum)
     class(prclib_driver_t), intent(in) :: driver
     integer, intent(in) :: i
+    type(string_t), intent(in), optional :: workspace
     character(32) :: md5sum
     type(string_t) :: filename
     character(80) :: buffer
@@ -3085,7 +3185,7 @@ Recall the MD5 sum written in the Makefile
     integer :: u, iostat
     md5sum = ""
 
-    filename = driver%record(i)%id // ".f90"
+    filename = workspace_prefix (workspace) // driver%record(i)%id // ".f90"
     inquire (file = char (filename), exist = exist)
     if (exist) then
        u = free_unit ()
@@ -7135,21 +7235,25 @@ overwritten.
 @ Write an appropriate makefile, if there are external processes.  Unless
 [[force]] is in effect, first check if there is already a makefile with the
 correct MD5 sum.  If yes, do nothing.
+
+The [[workspace]] optional argument puts any library code in a subdirectory.
 <<Process libraries: process library: TBP>>=
   procedure :: write_makefile => process_library_write_makefile
 <<Process libraries: procedures>>=
-  subroutine process_library_write_makefile (lib, os_data, force, verbose, testflag)
+  subroutine process_library_write_makefile &
+       (lib, os_data, force, verbose, testflag, workspace)
     class(process_library_t), intent(inout) :: lib
     type(os_data_t), intent(in) :: os_data
     logical, intent(in) :: force, verbose
     logical, intent(in), optional :: testflag
+    type(string_t), intent(in), optional :: workspace
     character(32) :: md5sum_file
     logical :: generate
     integer :: unit
     if (lib%external .and. .not. lib%static) then
        generate = .true.
        if (.not. force) then
-          md5sum_file = lib%driver%get_md5sum_makefile ()
+          md5sum_file = lib%driver%get_md5sum_makefile (workspace)
           if (lib%md5sum == md5sum_file) then
              call msg_message ("Process library '" // char (lib%basename) &
                   // "': keeping makefile")
@@ -7160,7 +7264,9 @@ correct MD5 sum.  If yes, do nothing.
           call msg_message ("Process library '" // char (lib%basename) &
                // "': writing makefile")
           unit = free_unit ()
-          open (unit, file = char (lib%driver%basename // ".makefile"), &
+          open (unit, &
+               file = char (workspace_prefix (workspace) &
+               &            // lib%driver%basename // ".makefile"), &
                status="replace", action="write")
           call lib%driver%generate_makefile (unit, os_data, verbose, testflag)
           close (unit)
@@ -7170,21 +7276,23 @@ correct MD5 sum.  If yes, do nothing.
   end subroutine process_library_write_makefile
 
 @ %def process_library_write_makefile
+@ 
 @ Write the driver source code for the library to file, if there are
 external processes.
 <<Process libraries: process library: TBP>>=
   procedure :: write_driver => process_library_write_driver
 <<Process libraries: procedures>>=
-  subroutine process_library_write_driver (lib, force)
+  subroutine process_library_write_driver (lib, force, workspace)
     class(process_library_t), intent(inout) :: lib
     logical, intent(in) :: force
+    type(string_t), intent(in), optional :: workspace
     character(32) :: md5sum_file
     logical :: generate
     integer :: unit
     if (lib%external .and. .not. lib%static) then
        generate = .true.
        if (.not. force) then
-          md5sum_file = lib%driver%get_md5sum_driver ()
+          md5sum_file = lib%driver%get_md5sum_driver (workspace)
           if (lib%md5sum == md5sum_file) then
              call msg_message ("Process library '" // char (lib%basename) &
                   // "': keeping driver")
@@ -7195,7 +7303,9 @@ external processes.
           call msg_message ("Process library '" // char (lib%basename) &
                // "': writing driver")
           unit = free_unit ()
-          open (unit, file = char (lib%driver%basename // ".f90"), &
+          open (unit, & 
+               file = char (workspace_prefix (workspace) &
+               &            // lib%driver%basename // ".f90"), &
                status="replace", action="write")
           call lib%driver%generate_driver_code (unit)
           close (unit)
@@ -7236,15 +7346,16 @@ current compilation.
 <<Process libraries: process library: TBP>>=
   procedure :: update_status => process_library_update_status
 <<Process libraries: procedures>>=
-  subroutine process_library_update_status (lib, os_data)
+  subroutine process_library_update_status (lib, os_data, workspace)
     class(process_library_t), intent(inout) :: lib
     type(os_data_t), intent(in) :: os_data
+    type(string_t), intent(in), optional :: workspace
     character(32) :: md5sum_file
     integer :: i, i_external, i_component
     if (lib%external) then
        select case (lib%status)
        case (STAT_CONFIGURED:STAT_LINKED)
-          call lib%driver%load (os_data, noerror=.true.)
+          call lib%driver%load (os_data, noerror=.true., workspace=workspace)
        end select
        if (lib%driver%loaded) then
           md5sum_file = lib%driver%get_md5sum (0)
@@ -7282,7 +7393,8 @@ current compilation.
                if (i_external /= 0) then
                   select case (entry%status)
                   case (STAT_CONFIGURED)
-                     md5sum_file = lib%driver%get_md5sum_source (i_external)
+                     md5sum_file = lib%driver%get_md5sum_source &
+                          (i_external, workspace)
                      if (entry%def%get_md5sum (i_component) == md5sum_file) then
                         entry%status = STAT_SOURCE
                      end if
@@ -7291,7 +7403,7 @@ current compilation.
              end associate
           end do
           if (all (lib%entry%status >= STAT_SOURCE)) then
-             md5sum_file = lib%driver%get_md5sum_driver ()
+             md5sum_file = lib%driver%get_md5sum_driver (workspace)
              if (lib%md5sum == md5sum_file) then
                 lib%status = STAT_SOURCE
              end if
@@ -7315,10 +7427,12 @@ Finally, if any source code has been generated, we need a driver file.
 <<Process libraries: process library: TBP>>=
   procedure :: make_source => process_library_make_source
 <<Process libraries: procedures>>=
-  subroutine process_library_make_source (lib, os_data, keep_old_source)
+  subroutine process_library_make_source &
+       (lib, os_data, keep_old_source, workspace)
     class(process_library_t), intent(inout) :: lib
     type(os_data_t), intent(in) :: os_data
     logical, intent(in), optional :: keep_old_source
+    type(string_t), intent(in), optional :: workspace
     logical :: keep_old
     integer :: i, i_external
     keep_old = .false.
@@ -7337,12 +7451,13 @@ Finally, if any source code has been generated, we need a driver file.
                   i_external = entry%i_external
                   if (i_external /= 0 &
                        .and. lib%entry(i)%status == STAT_CONFIGURED) then
-                     call lib%driver%clean_proc (i_external, os_data)
+                     call lib%driver%clean_proc &
+                          (i_external, os_data, workspace)
                   end if
                 end associate
                 if (signal_is_pending ())  return
              end do
-             call lib%driver%make_source (os_data)
+             call lib%driver%make_source (os_data, workspace)
           end if
           lib%status = STAT_SOURCE
           where (lib%entry%i_external /= 0 &
@@ -7361,21 +7476,23 @@ Feynman diagram files.
 <<Process libraries: process library: TBP>>=
   procedure :: make_compile => process_library_make_compile
 <<Process libraries: procedures>>=
-  subroutine process_library_make_compile (lib, os_data, keep_old_source)
+  subroutine process_library_make_compile &
+       (lib, os_data, keep_old_source, workspace)
     class(process_library_t), intent(inout) :: lib
     type(os_data_t), intent(in) :: os_data
     logical, intent(in), optional :: keep_old_source
+    type(string_t), intent(in), optional :: workspace
     if (lib%external .and. .not. lib%static) then
        select case (lib%status)
        case (STAT_CONFIGURED)
-          call lib%make_source (os_data, keep_old_source)
+          call lib%make_source (os_data, keep_old_source, workspace)
        end select
        if (signal_is_pending ())  return
        select case (lib%status)
        case (STAT_SOURCE)
           call msg_message ("Process library '" // char (lib%basename) &
                // "': compiling sources")
-          call lib%driver%make_compile (os_data)
+          call lib%driver%make_compile (os_data, workspace)
           where (lib%entry%i_external /= 0 &
                .and. lib%entry%status == STAT_SOURCE)
              lib%entry%status = STAT_COMPILED
@@ -7390,21 +7507,23 @@ Feynman diagram files.
 <<Process libraries: process library: TBP>>=
   procedure :: make_link => process_library_make_link
 <<Process libraries: procedures>>=
-  subroutine process_library_make_link (lib, os_data, keep_old_source)
+  subroutine process_library_make_link &
+       (lib, os_data, keep_old_source, workspace)
     class(process_library_t), intent(inout) :: lib
     type(os_data_t), intent(in) :: os_data
     logical, intent(in), optional :: keep_old_source
+    type(string_t), intent(in), optional :: workspace
     if (lib%external .and. .not. lib%static) then
        select case (lib%status)
        case (STAT_CONFIGURED:STAT_SOURCE)
-          call lib%make_compile (os_data, keep_old_source)
+          call lib%make_compile (os_data, keep_old_source, workspace)
        end select
        if (signal_is_pending ())  return
        select case (lib%status)
        case (STAT_COMPILED)
           call msg_message ("Process library '" // char (lib%basename) &
                // "': linking")
-          call lib%driver%make_link (os_data)
+          call lib%driver%make_link (os_data, workspace)
           lib%entry%status = STAT_LINKED
           lib%status = STAT_LINKED
        end select
@@ -7417,13 +7536,14 @@ functions.
 <<Process libraries: process library: TBP>>=
   procedure :: load => process_library_load
 <<Process libraries: procedures>>=
-  subroutine process_library_load (lib, os_data, keep_old_source)
+  subroutine process_library_load (lib, os_data, keep_old_source, workspace)
     class(process_library_t), intent(inout) :: lib
     type(os_data_t), intent(in) :: os_data
     logical, intent(in), optional :: keep_old_source
+    type(string_t), intent(in), optional :: workspace
     select case (lib%status)
     case (STAT_CONFIGURED:STAT_COMPILED)
-       call lib%make_link (os_data, keep_old_source)
+       call lib%make_link (os_data, keep_old_source, workspace)
     end select
     if (signal_is_pending ())  return
     select case (lib%status)
@@ -7431,7 +7551,7 @@ functions.
        if (lib%external) then
           call msg_message ("Process library '" // char (lib%basename) &
                // "': loading")
-          call lib%driver%load (os_data)
+          call lib%driver%load (os_data, workspace=workspace)
           call lib%load_entries ()
        end if
        lib%entry%status = STAT_ACTIVE
@@ -7481,18 +7601,19 @@ functions.
 <<Process libraries: process library: TBP>>=
   procedure :: clean => process_library_clean
 <<Process libraries: procedures>>=
-  subroutine process_library_clean (lib, os_data, distclean)
+  subroutine process_library_clean (lib, os_data, distclean, workspace)
     class(process_library_t), intent(inout) :: lib
     type(os_data_t), intent(in) :: os_data
     logical, intent(in) :: distclean
+    type(string_t), intent(in), optional :: workspace
     call lib%unload ()
     if (lib%external .and. .not. lib%static) then
        call msg_message ("Process library '" // char (lib%basename) &
             // "': removing old files")
        if (distclean) then
-          call lib%driver%distclean (os_data)
+          call lib%driver%distclean (os_data, workspace)
        else
-          call lib%driver%clean (os_data)
+          call lib%driver%clean (os_data, workspace)
        end if
     end if
     where (lib%entry%i_external /= 0)
@@ -7508,34 +7629,6 @@ functions.
   end subroutine process_library_clean
 
 @ %def process_library_clean
-@ Unload and clean the compiled library and all generated object files, so
-force a recompilation.
-<<XXX Process libraries: process library: TBP>>=
-  procedure :: clean_objects => process_library_clean_objects
-<<XXX Process libraries: procedures>>=
-  subroutine process_library_clean_objects (lib, os_data)
-    class(process_library_t), intent(inout) :: lib
-    type(os_data_t), intent(in) :: os_data
-    call lib%unload ()
-    if (lib%external .and. .not. lib%static) then
-       call msg_message ("Process library '" // char (lib%basename) &
-            // "': removing compiled objects")
-       call lib%driver%clean_library (os_data)
-       call lib%driver%clean_objects (os_data)
-    end if
-    where (lib%entry%i_external /= 0)
-       lib%entry%status = STAT_CONFIGURED
-    elsewhere
-       lib%entry%status = STAT_LINKED
-    end where
-    if (lib%external) then
-       lib%status = STAT_CONFIGURED
-    else
-       lib%status = STAT_LINKED
-    end if
-  end subroutine process_library_clean_objects
-
-@ %def process_library_clean_objects
 @ Unload and revert the library status to INITIAL.  This allows for
 appending new processes.  No files are deleted.
 <<Process libraries: process library: TBP>>=

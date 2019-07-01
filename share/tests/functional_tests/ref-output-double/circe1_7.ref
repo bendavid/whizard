@@ -30,7 +30,7 @@ openmp_num_threads = 1
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'circe1_7_p1_i1.phs'
+| Phase space: writing configuration file 'circe1_7_p1.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'circe1_7_p1'
 |   Library name  = 'circe1_7_lib'
@@ -80,7 +80,7 @@ circe1_chat = 2
 | RNG: Setting seed for random-number generator to 2
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'circe1_7_p3_i1.phs'
+| Phase space: writing configuration file 'circe1_7_p3.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'circe1_7_p3'
 |   Library name  = 'circe1_7_lib'
@@ -129,7 +129,7 @@ Warning: No cuts have been defined.
 | RNG: Setting seed for random-number generator to 4
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'circe1_7_p4_i1.phs'
+| Phase space: writing configuration file 'circe1_7_p4.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'circe1_7_p4'
 |   Library name  = 'circe1_7_lib'

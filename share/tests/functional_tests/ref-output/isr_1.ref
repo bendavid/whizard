@@ -26,7 +26,7 @@ openmp_num_threads = 1
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'isr_1_1_i1.phs'
+| Phase space: writing configuration file 'isr_1_1.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'isr_1_1'
 |   Library name  = 'isr_1_lib'
@@ -62,7 +62,7 @@ Warning: No cuts have been defined.
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'isr_1_1_i1.phs'
+| Phase space: writing configuration file 'isr_1_1.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'isr_1_1'
 |   Library name  = 'isr_1_lib'
@@ -100,7 +100,7 @@ Warning: No cuts have been defined.
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'isr_1_2_i1.phs'
+| Phase space: writing configuration file 'isr_1_2.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'isr_1_2'
 |   Library name  = 'isr_1_lib'

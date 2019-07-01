@@ -31,14 +31,36 @@
 noinst_LTLIBRARIES = libcombinatorics.la
 check_LTLIBRARIES = libcombinatorics_ut.la
 
-libcombinatorics_la_SOURCES = \
+COMMON_F90 = \
   bytes.f90 \
   hashes.f90 \
   md5.f90 \
   permutations.f90 \
   sorting.f90 \
-  grids.f90 \
   solver.f90
+MPI_F90 = \
+  grids.f90_mpi
+SERIAL_F90 = \
+  grids.f90_serial
+
+EXTRA_DIST = \
+  $(COMMON_F90) \
+  $(SERIAL_F90) \
+  $(MPI_F90)
+
+nodist_libcombinatorics_la_SOURCES = \
+  $(COMMON_F90) \
+  grids.f90
+
+DISTCLEANFILES = grids.f90
+
+if FC_USE_MPI
+grids.f90: grids.f90_mpi
+	-cp -f $< $@
+else
+grids.f90: grids.f90_serial
+	-cp -f $< $@
+endif
 
 libcombinatorics_ut_la_SOURCES = \
   md5_uti.f90 md5_ut.f90 \
@@ -51,12 +73,11 @@ dist_noinst_DATA = combinatorics.nw
 
 # Dump module names into file Modules
 libcombinatorics_Modules = \
-  ${libcombinatorics_la_SOURCES:.f90=} \
-  ${libcombinatorics_ut_la_SOURCES:.f90=}
+  $(nodist_libcombinatorics_la_SOURCES:.f90=) \
+  $(libcombinatorics_ut_la_SOURCES:.f90=)
 Modules: Makefile
 	@for module in \
-	  $(libcombinatorics_Modules) \
-	  $(libcombinatorics_ut_Modules); do \
+	  $(libcombinatorics_Modules); do \
           echo $$module >> $@.new; \
         done
 	@if diff $@ $@.new -q >/dev/null; then \
@@ -77,7 +98,7 @@ module_lists = \
 $(module_lists):
 	$(MAKE) -C `dirname $@` Modules
 
-Module_dependencies.sed: $(libcombinatorics_la_SOURCES) \
+Module_dependencies.sed: $(nodist_libcombinatorics_la_SOURCES) \
   $(libcombinatorics_ut_la_SOURCES)
 Module_dependencies.sed: $(module_lists)
 	@rm -f $@
@@ -92,7 +113,7 @@ Module_dependencies.sed: $(module_lists)
 		done \
 	done
 
-DISTCLEANFILES = Module_dependencies.sed
+DISTCLEANFILES += Module_dependencies.sed
 
 # The following line just says
 #    include Makefile.depend
@@ -100,7 +121,7 @@ DISTCLEANFILES = Module_dependencies.sed
 @am__include@ @am__quote@Makefile.depend@am__quote@
 
 Makefile.depend: Module_dependencies.sed
-Makefile.depend: $(libcombinatorics_la_SOURCES) \
+Makefile.depend: $(nodist_libcombinatorics_la_SOURCES) \
   $(libcombinatorics_ut_la_SOURCES)
 	@rm -f $@
 	for src in $^; do \
@@ -151,10 +172,7 @@ nodist_execmod_HEADERS = \
 ## (Re)create F90 sources from NOWEB source.
 if NOWEB_AVAILABLE
 
-FILTER =
-if FC_USE_MPI
-FILTER += -filter "sed 's/defn MPI:/defn/'"
-endif
+FILTER = -filter "sed 's/defn MPI:/defn/'"
 
 PRELUDE = $(top_srcdir)/src/noweb-frame/whizard-prelude.nw
 POSTLUDE = $(top_srcdir)/src/noweb-frame/whizard-postlude.nw
@@ -162,14 +180,18 @@ POSTLUDE = $(top_srcdir)/src/noweb-frame/whizard-postlude.nw
 combinatorics.stamp: $(PRELUDE) $(srcdir)/combinatorics.nw $(POSTLUDE)
 	@rm -f combinatorics.tmp
 	@touch combinatorics.tmp
-	for src in \
-	  $(libcombinatorics_la_SOURCES) \
-	  $(libcombinatorics_ut_la_SOURCES); do \
-	  $(NOTANGLE) -R[[$$src]] $(FILTER) $^ | $(CPIF) $$src; \
+	for src in $(COMMON_F90) $(libcombinatorics_ut_la_SOURCES); do \
+	  $(NOTANGLE) -R[[$$src]] $^ | $(CPIF) $$src; \
+        done
+	for src in $(SERIAL_F90:.f90_serial=.f90); do \
+	  $(NOTANGLE) -R[[$$src]] $^ | $(CPIF) $$src'_serial'; \
+        done
+	for src in $(MPI_F90:.f90_mpi=.f90); do \
+	  $(NOTANGLE) -R[[$$src]] $(FILTER) $^ | $(CPIF) $$src'_mpi'; \
         done
 	@mv -f combinatorics.tmp combinatorics.stamp
 
-$(libcombinatorics_la_SOURCES) $(libcombinatorics_ut_la_SOURCES): combinatorics.stamp
+$(COMMON_F90) $(SERIAL_F90) $(MPI_F90) $(libcombinatorics_ut_la_SOURCES): combinatorics.stamp
 ## Recover from the removal of $@
 	@if test -f $@; then :; else \
 	  rm -f combinatorics.stamp; \
@@ -184,14 +206,14 @@ endif
 ## Remove sources that can be recreated using NOWEB
 if NOWEB_AVAILABLE
 maintainer-clean-noweb:
-	-rm -f *.f90 *.c
+	-rm -f *.f90 *.f90_serial *.f90_mpi *.c
 endif
 .PHONY: maintainer-clean-noweb
 
 ## Remove those sources also if builddir and srcdir are different
 if NOWEB_AVAILABLE
 clean-noweb:
-	test "$(srcdir)" != "." && rm -f *.f90 *.c || true
+	test "$(srcdir)" != "." && rm -f *.f90 *.f90_serial *.f90_mpi *.c || true
 endif
 .PHONY: clean-noweb
 

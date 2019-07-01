@@ -4814,6 +4814,9 @@ The flavor type is an integer representing the PDG code, or
 undefined (zero).  Negative codes represent antiflavors.  They should
 be used only for particles which do have a distinct antiparticle.
 
+The [[hard_process]] flag can be set for particles that are participating in
+the hard interaction.
+
 The [[radiated]] flag can be set for particles that are the result of
 a beam-structure interaction (hadron beam remnant, ISR photon, etc.),
 not of the hard interaction itself.
@@ -4826,6 +4829,7 @@ particle-data pointer, if it is associated.
   type :: flavor_t
      private
      integer :: f = UNDEFINED
+     logical :: hard_process = .false.
      logical :: radiated = .false.
      type(field_data_t), pointer :: field_data => null ()
    contains
@@ -4858,6 +4862,7 @@ explicitly.
   elemental subroutine flavor_init_empty (flv)
     class(flavor_t), intent(inout) :: flv
     flv%f = UNDEFINED
+    flv%hard_process = .false.
     flv%radiated = .false.
     flv%field_data => null ()
   end subroutine flavor_init_empty
@@ -4866,6 +4871,7 @@ explicitly.
     class(flavor_t), intent(inout) :: flv
     integer, intent(in) :: f
     flv%f = f
+    flv%hard_process = .false.
     flv%radiated = .false.
     flv%field_data => null ()
   end subroutine flavor_init
@@ -4874,6 +4880,7 @@ explicitly.
     class(flavor_t), intent(inout) :: flv
     type(field_data_t), intent(in), target :: field_data
     flv%f = field_data%get_pdg ()
+    flv%hard_process = .false.
     flv%radiated = .false.
     flv%field_data => field_data
   end subroutine flavor_init_field_data
@@ -4883,6 +4890,7 @@ explicitly.
     integer, intent(in) :: f
     class(model_data_t), intent(in), target :: model
     flv%f = f
+    flv%hard_process = .false.
     flv%radiated = .false.
     flv%field_data => model%get_field_ptr (f, check=.true.)
   end subroutine flavor_init_model
@@ -4892,6 +4900,7 @@ explicitly.
     integer, intent(in) :: f
     class(model_data_t), intent(in), target :: model, alt_model
     flv%f = f
+    flv%hard_process = .false.
     flv%radiated = .false.
     flv%field_data => model%get_field_ptr (f, check=.false.)
     if (.not. associated (flv%field_data)) then
@@ -4911,6 +4920,7 @@ explicitly.
     type(string_t), intent(in) :: name
     class(model_data_t), intent(in), target :: model
     flv%f = model%get_pdg (name)
+    flv%hard_process = .false.
     flv%radiated = .false.
     flv%field_data => model%get_field_ptr (name, check=.true.)
   end subroutine flavor_init_name_model
@@ -4926,6 +4936,16 @@ explicitly.
   end subroutine flavor_tag_radiated
 
 @ %def flavor_tag_radiated
+@ Set the [[hard_process]] flag.
+<<Flavors: flavor: TBP>>=
+  procedure :: tag_hard_process => flavor_tag_hard_process
+<<Flavors: procedures>>=
+  elemental subroutine flavor_tag_hard_process (flv)
+    class(flavor_t), intent(inout) :: flv
+    flv%hard_process = .true.
+  end subroutine flavor_tag_hard_process
+
+@ %def flavor_tag_hard_process
 @ Undefine the flavor state:
 <<Flavors: flavor: TBP>>=
   procedure :: undefine => flavor_undefine
@@ -5071,6 +5091,18 @@ which may be subject to fragmentation.
   end function flavor_is_radiated
 
 @ %def flavor_is_radiated
+@ Check the [[hard_process]] flag. A particle is tagged with this flag if
+it participates in the hard interaction and is not a beam remnant.
+<<Flavors: flavor: TBP>>=
+  procedure :: is_hard_process => flavor_is_hard_process
+<<Flavors: procedures>>=
+  elemental function flavor_is_hard_process (flv) result (flag)
+    class(flavor_t), intent(in) :: flv
+    logical :: flag
+    flag = flv%hard_process
+  end function flavor_is_hard_process
+
+@ %def flavor_is_hard_process
 @
 \subsubsection{Accessing contents}
 With the exception of the PDG code, all particle property enquiries are
@@ -5993,6 +6025,16 @@ us to avoid temporaries in some places.
   end subroutine quantum_numbers_tag_radiated
 
 @ %def quantum_numbers_tag_radiated
+@ Set the [[hard_process]] flag for the flavor component.
+<<Quantum numbers: quantum numbers: TBP>>=
+  procedure :: tag_hard_process => quantum_numbers_tag_hard_process
+<<Quantum numbers: procedures>>=
+  elemental subroutine quantum_numbers_tag_hard_process (qn)
+    class(quantum_numbers_t), intent(inout) :: qn
+    call qn%f%tag_hard_process ()
+  end subroutine quantum_numbers_tag_hard_process
+
+@ %def quantum_numbers_tag_hard_process
 @
 <<Quantum numbers: quantum numbers: TBP>>=
   procedure :: set_subtraction_index => quantum_numbers_set_subtraction_index
@@ -6082,6 +6124,17 @@ diagonal by definition.
   end function quantum_numbers_is_color_ghost
 
 @ %def quantum_numbers_is_color_ghost
+@ Check if the flavor participates in the hard interaction.
+<<Quantum numbers: quantum numbers: TBP>>=
+  procedure :: are_hard_process => quantum_numbers_are_hard_process
+<<Quantum numbers: procedures>>=
+  elemental function quantum_numbers_are_hard_process (qn) result (hard_process)
+    logical :: hard_process
+    class(quantum_numbers_t), intent(in) :: qn
+    hard_process = qn%f%is_hard_process ()
+  end function quantum_numbers_are_hard_process
+
+@ %def quantum_numbers_are_hard_process
 @
 \subsection{Comparisons}
 Matching and equality is derived from the individual quantum numbers.
@@ -7121,7 +7174,7 @@ nodes.
      integer :: n_counters = 0
      complex(default), dimension(:), allocatable :: me
      real(default) :: norm = 1
-     integer :: n_sub = 0
+     integer :: n_sub = -1
    contains
    <<State matrices: state matrix: TBP>>
   end type state_matrix_t
@@ -7305,7 +7358,40 @@ necessary when we have read a state matrix from file.
   end subroutine state_matrix_set_model
 
 @ %def state_matrix_set_model
-@
+@ Iterate over [[state]], get the quantum numbers array [[qn]] for each iteration, and tag
+all array elements of [[qn]] with the indizes given by [[tag]] as part of the hard interaction.
+Then add them to [[tagged_state]] and return it. If no [[tag]] is given, tag all [[qn]] as
+part of the hard process.
+<<State matrices: state matrix: TBP>>=
+  procedure :: tag_hard_process => state_matrix_tag_hard_process
+<<State matrices: procedures>>=
+  subroutine state_matrix_tag_hard_process (state, tagged_state, tag)
+    class(state_matrix_t), intent(in), target :: state
+    type(state_matrix_t), intent(out) :: tagged_state
+    integer, dimension(:), intent(in), optional :: tag
+    type(state_iterator_t) :: it
+    type(quantum_numbers_t), dimension(:), allocatable :: qn
+    complex(default) :: value
+    integer :: i
+    call tagged_state%init (store_values = .true.)
+    call it%init (state)
+    do while (it%is_valid ())
+       qn = it%get_quantum_numbers ()
+       value = it%get_matrix_element ()
+       if (present (tag)) then
+          do i = 1, size (tag)
+             call qn(tag(i))%tag_hard_process ()
+          end do
+       else
+          call qn%tag_hard_process ()
+       end if
+       call tagged_state%add_state (qn, index = it%get_me_index (), value = value)
+       call it%advance ()
+    end do
+    call tagged_state%freeze ()
+  end subroutine state_matrix_tag_hard_process
+
+@ %def state_matrix_tag_hard_process
 \subsubsection{Properties of the quantum state}
 A state is defined if its root is allocated:
 <<State matrices: state matrix: TBP>>=
@@ -7424,6 +7510,20 @@ A state is defined if its root is allocated:
   end subroutine state_matrix_set_n_sub
 
 @ %def state_matrix_set_n_sub
+@ Return number of subtractions.
+<<State matrices: state matrix: TBP>>=
+  procedure :: get_n_sub => state_matrix_get_n_sub
+<<State matrices: procedures>>=
+  function state_matrix_get_n_sub (state) result (n_sub)
+    integer :: n_sub
+    class(state_matrix_t), intent(in) :: state
+    if (state%n_sub < 0) then
+       call msg_bug ("[state_matrix_get_n_sub] number of subtractions not set.")
+    end if
+    n_sub = state%n_sub
+  end function state_matrix_get_n_sub
+
+@ %def state_matrix_get_n_sub
 @ Return the number of leaves.  This can be larger than the number of
 independent matrix elements.
 <<State matrices: state matrix: TBP>>=
@@ -7476,10 +7576,11 @@ state matrix since there is no shortcut.
     class(state_matrix_t), intent(in), target :: state
     integer, intent(in) :: i
     logical, intent(in), optional :: by_me_index
-    logical :: opt_by_me_index = .false.
+    logical :: opt_by_me_index
     type(quantum_numbers_t), dimension(state%depth) :: qn
     type(state_iterator_t) :: it
     integer :: k
+    opt_by_me_index = .false.
     if (present (by_me_index)) opt_by_me_index = by_me_index
     k = 0
     call it%init (state)
@@ -7657,9 +7758,8 @@ node.
 <<State matrices: state matrix: TBP>>=
   procedure :: add_state => state_matrix_add_state
 <<State matrices: procedures>>=
-  subroutine state_matrix_add_state &
-       (state, qn, index, value, sum_values, counter_index, ignore_sub, &
-        me_index)
+  subroutine state_matrix_add_state (state, qn, index, value, &
+         sum_values, counter_index, ignore_sub, me_index)
     class(state_matrix_t), intent(inout) :: state
     type(quantum_numbers_t), dimension(:), intent(in) :: qn
     integer, intent(in), optional :: index
@@ -7779,9 +7879,10 @@ be frozen.
     type(quantum_numbers_mask_t), dimension(:), intent(in) :: mask
     type(state_matrix_t), intent(out) :: red_state
     logical, optional, intent(in)  :: keep_me_index
-    logical :: opt_keep_me_index = .false.
+    logical :: opt_keep_me_index
     type(state_iterator_t) :: it
     type(quantum_numbers_t), dimension(size(mask)) :: qn
+    opt_keep_me_index = .false.
     if (present (keep_me_index)) opt_keep_me_index = keep_me_index
     call red_state%init ()
     call it%init (state)
@@ -7994,29 +8095,6 @@ generic:
   end subroutine state_matrix_add_to_matrix_element
 
 @ %def state_matrix_add_to_matrix_element
-@
-<<State matrices: state matrix: TBP>>=
-  procedure :: transfer_me_to_sub => state_matrix_transfer_me_to_sub
-<<State matrices: procedures>>=
-  subroutine state_matrix_transfer_me_to_sub (state, i_sub)
-    class(state_matrix_t), intent(inout), target :: state
-    integer, intent(in) :: i_sub
-    type(state_iterator_t) :: it
-    type(quantum_numbers_t), dimension(:), allocatable :: qn
-    complex(default) :: me
-    call it%init (state)
-    do while (it%is_valid ())
-       qn = it%get_quantum_numbers ()
-       if (all (qn%get_sub () == 0)) then
-          me = it%get_matrix_element ()
-          call qn%set_subtraction_index (i_sub)
-          call state%set_matrix_element (qn, me)
-       end if
-       call it%advance ()
-    end do
-  end subroutine state_matrix_transfer_me_to_sub
-
-@ %def state_matrix_transfer_me_to_sub
 @
 \subsection{State iterators}
 Accessing the quantum state from outside is best done using a
@@ -8544,8 +8622,11 @@ is reflected in the state-matrix norm.
 
 @ %def state_matrix_sum
 @ Return the trace of a state matrix, i.e., the sum over all diagonal
-values.  If [[qn_in]] is provided, only branches that match this
-quantum-numbers array are considered.
+values.  
+
+If [[qn_in]] is provided, only branches that match this
+quantum-numbers array in flavor and helicity are considered.  (This mode is
+used for selecting a color state.)
 <<State matrices: state matrix: TBP>>=
   procedure :: trace => state_matrix_trace
 <<State matrices: procedures>>=
@@ -8561,7 +8642,7 @@ quantum-numbers array are considered.
     do while (it%is_valid ())
        qn = it%get_quantum_numbers ()
        if (present (qn_in)) then
-          if (.not. all (qn .match. qn_in)) then
+          if (.not. all (qn .fhmatch. qn_in)) then
              call it%advance ();  cycle
           end if
        end if
@@ -8739,7 +8820,7 @@ matrix elements proper.
     type(quantum_numbers_t), dimension(state2%depth) :: qn2
     type(quantum_numbers_t), dimension(state1%depth+state2%depth) :: qn3
     complex(default) :: val1, val2
-    call state3%init (store_values=.true.)
+    call state3%init (store_values = .true.)
     call it1%init (state1)
     do while (it1%is_valid ())
        qn1 = it1%get_quantum_numbers ()
@@ -8900,10 +8981,10 @@ cuts.
     end if
     allocate (single_state (depth))
     do i = 1, depth
-       call single_state(i)%init (store_values=.true.)
+       call single_state(i)%init (store_values = .true.)
     end do
     if (present (correlated_state)) &
-         call correlated_state%init (store_values=.true.)
+         call correlated_state%init (store_values = .true.)
     qn = it%get_quantum_numbers ()
     select case (mode)
     case (FM_SELECT_HELICITY)  ! single branch selected; shortcut
@@ -9898,7 +9979,6 @@ module interactions
 <<Use kinds>>
   use io_units
   use diagnostics
-  use pdg_arrays, only: is_elementary
   use sorting
   use lorentz
   use flavors
@@ -9941,11 +10021,6 @@ such handled specially.
    <<Interactions: qn index map: TBP>>
   end type qn_index_map_t
 
-<<Interactions: interfaces>>=
-  interface qn_index_map_t
-     module procedure qn_index_map_init, qn_index_map_init_trivial
-  end interface qn_index_map_t
-
 @ %def qn_index_map_t
 @ Construct a mapping from interaction to an array of (sorted) quantum numbers.
 
@@ -9954,9 +10029,12 @@ we retrieve from the interaction.
 
 We consider helicity matrix elements only, when [[qn_hel]] is allocated.
 Else the helicity index is handled trivially as [[1]].
+<<Interactions: qn index map: TBP>>=
+  generic :: init => qn_index_map_init
+  procedure, private :: qn_index_map_init
 <<Interactions: procedures>>=
-type(qn_index_map_t) function qn_index_map_init (int, qn_flv, n_sub, qn_hel) &
-       result (self)
+  subroutine qn_index_map_init (self, int, qn_flv, n_sub, qn_hel) 
+    class(qn_index_map_t), intent(out) :: self
     class(interaction_t), intent(in) :: int
     type(quantum_numbers_t), dimension(:, :), intent(in) :: qn_flv
     integer, intent(in) :: n_sub
@@ -9977,43 +10055,68 @@ type(qn_index_map_t) function qn_index_map_init (int, qn_flv, n_sub, qn_hel) &
     end if
     allocate (self%index (self%n_flv, self%n_hel, 0:self%n_sub), source=0)
     associate (n_me => int%get_n_matrix_elements ())
-      do i = 1, n_me
-         qn_int = int%get_quantum_numbers (i, by_me_index = .true.)
-         qn = pack (qn_int, get_elementary (qn_int))
-         i_flv = find_flv_index (self, qn)
-         i_hel = 1; if (allocated (self%qn_hel)) &
-            i_hel = find_hel_index (self, qn)
-         i_sub = find_sub_index (self, qn)
-         self%index(i_flv, i_hel, i_sub) = i
-      end do
+       do i = 1, n_me
+          qn_int = int%get_quantum_numbers (i, by_me_index = .true.)
+          qn = pack (qn_int, qn_int%are_hard_process ())
+          i_flv = find_flv_index (self, qn)
+          i_hel = 1; if (allocated (self%qn_hel)) &
+               i_hel = find_hel_index (self, qn)
+          i_sub = find_sub_index (self, qn)
+          self%index(i_flv, i_hel, i_sub) = i
+       end do
     end associate
   contains
     integer function find_flv_index (self, qn) result (i_flv)
       type(qn_index_map_t), intent(in) :: self
       type(quantum_numbers_t), dimension(:), intent(in) :: qn
       integer :: j
+      i_flv = 0
       do j = 1, self%n_flv
          if (.not. all (qn .fmatch. self%qn_flv(:, j))) cycle
          i_flv = j
          exit
       end do
+      if (i_flv < 1) then
+         call msg_message ("QN:")
+         call quantum_numbers_write (qn)
+         call msg_message ("")
+         call msg_message ("QN_FLV:")
+         do j = 1, self%n_flv
+            call quantum_numbers_write (self%qn_flv(:, j))
+            call msg_message ("")
+         end do
+         call msg_bug ("[find_flv_index] could not find flv in qn_flv.")
+      end if
     end function find_flv_index
 
     integer function find_hel_index (self, qn) result (i_hel)
       type(qn_index_map_t), intent(in) :: self
       type(quantum_numbers_t), dimension(:), intent(in) :: qn
       integer :: j
+      i_hel = 0
       do j = 1, self%n_hel
          if (.not. all (qn .hmatch. self%qn_hel(:, j))) cycle
          i_hel = j
          exit
       end do
+      if (i_hel < 1) then
+         call msg_message ("QN:")
+         call quantum_numbers_write (qn)
+         call msg_message ("")
+         call msg_message ("QN_HEL:")
+         do j = 1, self%n_hel
+            call quantum_numbers_write (self%qn_hel(:, j))
+            call msg_message ("")
+         end do
+         call msg_bug ("[find_hel_index] could not find hel in qn_hel.")
+      end if
     end function find_hel_index
 
     integer function find_sub_index (self, qn) result (i_sub)
       type(qn_index_map_t), intent(in) :: self
       type(quantum_numbers_t), dimension(:), intent(in) :: qn
       integer :: s
+      i_sub = -1
       do s = 0, self%n_sub
          if ((all (pack(qn%get_sub (), qn%get_sub () > 0) == s)) &
               .or. (all (qn%get_sub () == 0) .and. s == 0)) then
@@ -10021,20 +10124,22 @@ type(qn_index_map_t) function qn_index_map_init (int, qn_flv, n_sub, qn_hel) &
             exit
          end if
       end do
+      if (i_sub < 0) then
+         call msg_message ("QN:")
+         call quantum_numbers_write (qn)
+         call msg_bug ("[find_sub_index] could not find sub in qn.")
+      end if
     end function find_sub_index
-
-    impure elemental logical function get_elementary (qn) result (yorn)
-      type(quantum_numbers_t), intent(in) :: qn
-      type(flavor_t) :: flv
-      flv = qn%get_flavor ()
-      yorn = is_elementary (flv%get_pdg ())
-    end function get_elementary
- end function qn_index_map_init
+  end subroutine qn_index_map_init
 
 @ %def qn_index_map_init
 @ Construct a trivial mapping.
+<<Interactions: qn index map: TBP>>=
+  generic :: init => qn_index_map_init_trivial
+  procedure, private :: qn_index_map_init_trivial
 <<Interactions: procedures>>=
-  type(qn_index_map_t) function qn_index_map_init_trivial (int) result (self)
+  subroutine qn_index_map_init_trivial (self, int)
+    class(qn_index_map_t), intent(out) :: self
     class(interaction_t), intent(in) :: int
     integer :: qn
     self%n_flv = int%get_n_matrix_elements ()
@@ -10044,7 +10149,7 @@ type(qn_index_map_t) function qn_index_map_init (int, qn_flv, n_sub, qn_hel) &
     do qn = 1, self%n_flv
        self%index(qn, 1, 0) = qn
     end do
-  end function qn_index_map_init_trivial
+  end subroutine qn_index_map_init_trivial
 
 @ %def qn_index_map_init_trivial
 @ Write the index map to unit.
@@ -10679,7 +10784,8 @@ with reintroduced matrix element indices.
     type(quantum_numbers_mask_t), intent(in), dimension(:) :: qn_mask
     logical, optional, intent(in) :: keep_order
     type(state_matrix_t) :: state
-    logical :: opt_keep_order = .false.
+    logical :: opt_keep_order
+    opt_keep_order = .false.
     if (present (keep_order)) opt_keep_order = keep_order
     call int%state_matrix%reduce (qn_mask, state, keep_me_index = keep_order)
     int%state_matrix = state
@@ -10898,7 +11004,7 @@ this would be unity).
   function interaction_get_n_sub (int) result (n_sub)
     integer :: n_sub
     class(interaction_t), intent(in) :: int
-    n_sub = int%state_matrix%compute_n_sub ()
+    n_sub = int%state_matrix%get_n_sub ()
   end function interaction_get_n_sub
 
 @ %def interaction_get_n_sub
@@ -11292,7 +11398,22 @@ c=conjugate first factor; f=include weighting factor.
 @ %def interaction_evaluate_square_c
 @ %def interaction_evaluate_sum
 @ %def interaction_evaluate_me_sum
-@
+@ Tag quantum numbers of the state matrix als part of the hard process, according
+to the indices specified in [[tag]]. If no [[tag]] is given, all quantum numbers are
+tagged as part of the hard process.
+<<Interactions: interaction: TBP>>=
+  procedure :: tag_hard_process => interaction_tag_hard_process
+<<Interactions: procedures>>=
+  subroutine interaction_tag_hard_process (int, tag)
+    class(interaction_t), intent(inout) :: int
+    integer, dimension(:), intent(in), optional :: tag
+    type(state_matrix_t) :: state
+    call int%state_matrix%tag_hard_process (state, tag)
+    call int%state_matrix%final ()
+    int%state_matrix = state
+  end subroutine interaction_tag_hard_process
+
+@ %def interaction_tag_hard_process
 \subsection{Accessing contents}
 Return the integer tag.
 <<Interactions: interaction: TBP>>=
@@ -12028,63 +12149,35 @@ to the current one.
   end subroutine interaction_pacify_momenta
 
 @ %def interaction_pacify_momenta
-@
-<<Interactions: public>>=
-  public :: interaction_declare_subtraction
+@ For each subtraction entry starting from [[SUB = 0]], we duplicate the original state matrix entries as is.
+<<Interactions: interaction: TBP>>=
+  procedure :: declare_subtraction => interaction_declare_subtraction
 <<Interactions: procedures>>=
   subroutine interaction_declare_subtraction (int, n_sub)
-    type(interaction_t), intent(inout), target :: int
+    class(interaction_t), intent(inout), target :: int
     integer, intent(in) :: n_sub
+    integer :: i_sub
     type(state_iterator_t) :: it
-    type(quantum_numbers_t), dimension(:), allocatable :: qn, qn_save
-    integer :: i, s
-    integer :: n_me_orig, n_sub_int
-    complex(default), dimension(:), allocatable :: me_orig
-    type(state_matrix_t), target :: state_matrix_save
-    state_matrix_save = int%state_matrix
-    call it%init (state_matrix_save)
-    i = 1; n_me_orig = int%state_matrix%get_n_matrix_elements ()
-    allocate (me_orig (n_me_orig))
-    allocate (qn (it%get_depth ()))
-    do while (it%is_valid () .and. i <= n_me_orig)
-       qn = it%get_quantum_numbers ()
-       qn_save = qn
-       me_orig (i) = it%get_matrix_element ()
-       n_sub_int = 0
-       do s = 1, n_sub
-          call qn%set_subtraction_index (s)
-          if (.not. all (qn == qn_save)) then
-             n_sub_int = n_sub_int + 1
-             call int%state_matrix%add_state (qn)
-          end if
-       end do
-       call it%advance ()
-       i = i + 1
-    end do
-    call int%state_matrix%freeze ()
-    call int%state_matrix%set_n_sub ()
-    do i = 1, n_me_orig
-       call int%state_matrix%set_matrix_element (i, me_orig(i))
-       do s = 1, n_sub_int
-          call int%state_matrix%set_matrix_element (s + n_me_orig + (i - 1) * n_sub_int, me_orig(i))
+    type(quantum_numbers_t), dimension(:), allocatable :: qn
+    type(state_matrix_t) :: state_matrix
+    call state_matrix%init (store_values = .true.)
+    allocate (qn (int%get_state_depth ()))
+    do i_sub = 0, n_sub
+       call it%init (int%state_matrix)
+       do while (it%is_valid ())
+          qn = it%get_quantum_numbers ()
+          call qn%set_subtraction_index (i_sub)
+          call state_matrix%add_state (qn, value = it%get_matrix_element ())
+          call it%advance ()
        end do
     end do
-    deallocate (me_orig, qn, qn_save)
-    call state_matrix_save%final ()
+    call state_matrix%freeze ()
+    call state_matrix%set_n_sub ()
+    call int%state_matrix%final ()
+    int%state_matrix = state_matrix
   end subroutine interaction_declare_subtraction
 
 @ %def interaction_declare_subtraction
-@
-<<Interactions: interaction: TBP>>=
-  procedure :: transfer_me_to_sub => interaction_transfer_me_to_sub
-<<Interactions: procedures>>=
-  subroutine interaction_transfer_me_to_sub (int, i_sub)
-    class(interaction_t), intent(inout) :: int
-    integer, intent(in) :: i_sub
-    call int%state_matrix%transfer_me_to_sub (i_sub)
-  end subroutine interaction_transfer_me_to_sub
-
-@ %def interaction_transfer_me_to_sub
 @
 \subsection{Recovering connections}
 When creating an evaluator for two interactions, we have to know by
@@ -12372,7 +12465,6 @@ module evaluators
   use physics_defs, only: n_beam_structure_int
   use diagnostics
   use lorentz
-  use model_data
   use flavors
   use colors
   use helicities
@@ -13244,7 +13336,7 @@ assignments remain fixed from now on.
          n_in, n_vir, n_out, &
          connection_table, &
          prt_map_in, prt_is_connected, &
-	 qn_mask_in, qn_mask_conn_initial, &
+         qn_mask_in, qn_mask_conn_initial, &
          qn_mask_conn, qn_filter_conn, qn_mask_rest)
     call make_pairing_array (eval%pairing_array, &
          eval%get_n_matrix_elements (), &

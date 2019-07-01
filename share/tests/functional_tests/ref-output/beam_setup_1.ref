@@ -27,7 +27,7 @@ seed = 0
 |   sqrts = 1.000000000000E+03 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'beam_setup_1p_i1.phs'
+| Phase space: writing configuration file 'beam_setup_1p.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'beam_setup_1p'
 |   Library name  = 'beam_setup_1_lib'
@@ -69,7 +69,7 @@ seed = 0
 |   sqrts = 1.000000000000E+03 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'beam_setup_1p_i1.phs'
+| Phase space: writing configuration file 'beam_setup_1p.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'beam_setup_1p'
 |   Library name  = 'beam_setup_1_lib'
@@ -111,7 +111,7 @@ seed = 0
 |   sqrts = 1.000000000000E+03 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'beam_setup_1p_i1.phs'
+| Phase space: writing configuration file 'beam_setup_1p.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'beam_setup_1p'
 |   Library name  = 'beam_setup_1_lib'
@@ -153,7 +153,7 @@ seed = 0
 |   sqrts = 1.000000000000E+03 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'beam_setup_1p_i1.phs'
+| Phase space: writing configuration file 'beam_setup_1p.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'beam_setup_1p'
 |   Library name  = 'beam_setup_1_lib'
@@ -195,7 +195,7 @@ seed = 0
 |   sqrts = 1.000000000000E+03 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'beam_setup_1p_i1.phs'
+| Phase space: writing configuration file 'beam_setup_1p.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'beam_setup_1p'
 |   Library name  = 'beam_setup_1_lib'
@@ -239,7 +239,7 @@ seed = 0
 |   sqrts = 1.000000000000E+03 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'beam_setup_1p_i1.phs'
+| Phase space: writing configuration file 'beam_setup_1p.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'beam_setup_1p'
 |   Library name  = 'beam_setup_1_lib'
@@ -283,7 +283,7 @@ seed = 0
 |   sqrts = 1.000000000000E+03 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'beam_setup_1p_i1.phs'
+| Phase space: writing configuration file 'beam_setup_1p.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'beam_setup_1p'
 |   Library name  = 'beam_setup_1_lib'
@@ -330,7 +330,7 @@ seed = 0
 |   sqrts = 1.000000000000E+03 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'beam_setup_1p_i1.phs'
+| Phase space: writing configuration file 'beam_setup_1p.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'beam_setup_1p'
 |   Library name  = 'beam_setup_1_lib'
@@ -372,7 +372,7 @@ seed = 0
 |   sqrts = 1.000000000000E+03 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'beam_setup_1p_i1.phs'
+| Phase space: writing configuration file 'beam_setup_1p.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'beam_setup_1p'
 |   Library name  = 'beam_setup_1_lib'

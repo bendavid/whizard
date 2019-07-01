@@ -1,4 +1,4 @@
-! WHIZARD 2.6.3 Feb 10 2018
+! WHIZARD 2.6.4 Aug 23 2018
 !
 ! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -49,6 +49,7 @@ module instances
   use variables
   use pdg_arrays, only: is_quark
   use sf_base
+  use isr_collinear
   use physics_defs
   use process_constants
   use process_libraries
@@ -58,7 +59,6 @@ module instances
   use prc_core, only: prc_core_t, prc_core_state_t
 
   !!! We should depend less on these modules (move it to pcm_nlo_t e.g.)
-  use dglap_remnant, only: rescale_dglap_t
   use phs_wood, only: phs_wood_t
   use phs_fks
   use blha_olp_interfaces, only: prc_blha_t
@@ -169,8 +169,6 @@ module instances
         => term_instance_evaluate_interaction_userdef_tree
      procedure :: evaluate_interaction_userdef_loop &
         => term_instance_evaluate_interaction_userdef_loop
-     procedure :: compute_me_array_bounds => &
-          term_instance_compute_me_array_bounds
      procedure :: evaluate_trace => term_instance_evaluate_trace
      procedure :: evaluate_scaled_sf_chains => term_instance_evaluate_scaled_sf_chains
      procedure :: evaluate_event_data => term_instance_evaluate_event_data
@@ -184,6 +182,8 @@ module instances
      procedure :: get_i_term_global => term_instance_get_i_term_global
      procedure :: is_subtraction => term_instance_is_subtraction
      procedure :: get_n_sub => term_instance_get_n_sub
+     procedure :: get_n_sub_color => term_instance_get_n_sub_color
+     procedure :: get_n_sub_spin => term_instance_get_n_sub_spin
      procedure :: set_born_sqmes => term_instance_set_born_sqmes
   end type term_instance_t
 
@@ -215,7 +215,6 @@ module instances
      procedure :: transfer_same_kinematics => process_instance_transfer_same_kinematics
      procedure :: redo_sf_chains => process_instance_redo_sf_chains
      procedure :: integrate => process_instance_integrate
-     procedure :: transfer_helicities => process_instance_transfer_helicities
      procedure :: setup_sf_chain => process_instance_setup_sf_chain
      procedure :: setup_event_data => process_instance_setup_event_data
      procedure :: choose_mci => process_instance_choose_mci
@@ -303,7 +302,6 @@ module instances
      procedure :: has_nlo_component => process_instance_has_nlo_component
      procedure :: keep_failed_events => process_instance_keep_failed_events
      procedure :: get_term_indices => process_instance_get_term_indices
-     procedure :: setup_blha_helicities => process_instance_setup_blha_helicities
      procedure :: get_boost_to_lab => process_instance_get_boost_to_lab
      procedure :: get_boost_to_cms => process_instance_get_boost_to_cms
      procedure :: is_cm_frame => process_instance_is_cm_frame
@@ -518,7 +516,7 @@ contains
          (term%is_subtraction () .and. process%pcm_contains_pdfs ())
     call term%connected%setup_connected_trace (term%isolated, &
          undo_helicities = undo_helicities (core, me_already_squared), &
-         n_sub = n_sub, keep_fs_flavors = keep_fs_flavors, &
+         keep_fs_flavors = keep_fs_flavors, &
          extended_sf = requires_extended_sf)
     associate (int_eff => term%isolated%int_eff)
       state_matrix => int_eff%get_state_matrix_ptr ()
@@ -564,12 +562,12 @@ contains
                  n_sub = n_sub, is_born = is_born, is_polarized = core%includes_polarization ())
           end associate
        class default
-          term%connected_qn_index = qn_index_map_t (term%connected%trace)
-          term%hard_qn_index = qn_index_map_t (term%int_hard)
+          call term%connected_qn_index%init (term%connected%trace)
+          call term%hard_qn_index%init (term%int_hard)
        end select
     class default
-       term%connected_qn_index = qn_index_map_t (term%connected%trace)
-       term%hard_qn_index = qn_index_map_t (term%int_hard)
+       call term%connected_qn_index%init (term%connected%trace)
+       call term%hard_qn_index%init (term%int_hard)
     end select
   contains
 
@@ -630,10 +628,10 @@ contains
     if (is_polarized) then
        ! term%config%data from higher scope
        call setup_qn_hel (int, term%config%data, qn_hel)
-       qn_index = qn_index_map_t (int, qn_config, n_sub, qn_hel)
+       call qn_index%init (int, qn_config, n_sub, qn_hel)
        call qn_index%set_helicity_flip (.true.)
     else
-       qn_index = qn_index_map_t (int, qn_config, n_sub)
+       call qn_index%init (int, qn_config, n_sub)
     end if
   end subroutine setup_qn_index
 
@@ -718,7 +716,7 @@ contains
     select type (config => term%pcm_instance%config)
     type is (pcm_nlo_t)
        call term%k_term%init_sf_chain (sf_chain, beam_config, &
-            has_pdfs = config%has_pdfs .and. extended_sf)
+            extended_sf = config%has_pdfs .and. extended_sf)
     class default
        call term%k_term%init_sf_chain (sf_chain, beam_config)
     end select
@@ -1096,9 +1094,8 @@ contains
    end subroutine setup_connected
  end subroutine term_instance_setup_event_data
 
-  subroutine term_instance_evaluate_color_correlations (term, p, core)
+  subroutine term_instance_evaluate_color_correlations (term, core)
     class(term_instance_t), intent(inout) :: term
-    type(vector4_t), intent(in), dimension(:) :: p
     class(prc_core_t), intent(inout) :: core
     integer :: i_flv_born
     select type (pcm_instance => term%pcm_instance)
@@ -1204,10 +1201,10 @@ contains
          else if (pcm%has_pdfs .and. term%is_subtraction ()) then
             n_offset = n_beam_structure_int
          end if
-         allocate (sqme (term%get_n_sub () - n_offset), source = zero)
-         do i_sub = 1 + n_offset, term%get_n_sub ()
-            sqme(i_sub - n_offset) = real(term%connected%trace%get_matrix_element ( &
-                 term%connected_qn_index%get_index (i_flv, i_sub = i_sub)), default)
+         allocate (sqme (term%get_n_sub_color ()), source = zero)
+         do i_sub = 1, term%get_n_sub_color ()
+            sqme(i_sub) = real(term%connected%trace%get_matrix_element ( &
+                 term%connected_qn_index%get_index (i_flv, i_sub = i_sub + n_offset)), default)
          end do
          call blha_color_c_fill_offdiag (pcm%region_data%n_legs_born, &
               sqme, sqme_color_c)
@@ -1219,9 +1216,8 @@ contains
     end subroutine transfer_me_array_to_bij
   end subroutine term_instance_evaluate_color_correlations
 
-  subroutine term_instance_evaluate_charge_correlations (term, p, core)
+  subroutine term_instance_evaluate_charge_correlations (term, core)
     class(term_instance_t), intent(inout) :: term
-    type(vector4_t), intent(in), dimension(:) :: p
     class(prc_core_t), intent(inout) :: core
     integer :: i_flv_born
     select type (pcm_instance => term%pcm_instance)
@@ -1270,44 +1266,47 @@ contains
     end subroutine transfer_me_array_to_bij
   end subroutine term_instance_evaluate_charge_correlations
 
-  subroutine term_instance_evaluate_spin_correlations (term, p, core)
+  subroutine term_instance_evaluate_spin_correlations (term, core)
     class(term_instance_t), intent(inout) :: term
-    type(vector4_t), intent(in), dimension(:) :: p
     class(prc_core_t), intent(inout) :: core
-    integer :: i_flv, i_hel, i_emitter, emitter
-    integer :: n_flv, n_hel
+    integer :: i_flv, i_hel, i_sub, i_emitter, emitter
+    integer :: n_flv, n_sub_color, n_sub_spin, n_offset
     real(default), dimension(0:3, 0:3) :: sqme_spin_c
-    logical :: bp, bad_point
+    real(default), dimension(:), allocatable :: sqme_spin_c_all
+    real(default), dimension(:), allocatable :: sqme_spin_c_arr
     call msg_debug2 (D_PROCESS_INTEGRATION, &
          "term_instance_evaluate_spin_correlations")
-    bad_point = .false.
     select type (pcm_instance => term%pcm_instance)
     type is (pcm_instance_nlo_t)
-       if (pcm_instance%real_sub%requires_spin_correlations () .and. &
-            term%nlo_type == NLO_REAL) then
-          n_flv = term%hard_qn_index%get_n_flv ()
-          n_hel = term%hard_qn_index%get_n_hel ()
+       if (pcm_instance%real_sub%requires_spin_correlations () &
+            .and. term%nlo_type == NLO_REAL) then
           select type (core)
           type is (prc_openloops_t)
-             call core%update_alpha_s (term%core_state, term%fac_scale)
-             do i_flv = 1, n_flv
-                do i_hel = 1, n_hel
-                   select type (config => pcm_instance%config)
-                   type is (pcm_nlo_t)
-                      do i_emitter = 1, config%region_data%n_emitters
-                         emitter = config%region_data%emitters(i_emitter)
-                         if (emitter > 0) then
-                            call core%compute_sqme_spin_c (i_flv, i_hel, emitter, &
-                                 p, term%ren_scale, sqme_spin_c, bp)
-                            bad_point = bad_point .or. bp
-                            ! TODO vincent Helizitäten für Spin-Korrelierte
-                            pcm_instance%real_sub%sqme_born_spin_c(:,:,emitter,i_flv) = sqme_spin_c
-                         end if
-                      end do
-                   end select
+             select type (config => pcm_instance%config)
+             type is (pcm_nlo_t)
+                n_flv = term%connected_qn_index%get_n_flv ()
+                n_sub_color = term%get_n_sub_color ()
+                n_sub_spin = term%get_n_sub_spin ()
+                n_offset = 0; if(config%has_pdfs) n_offset = n_beam_structure_int
+                allocate (sqme_spin_c_arr(16))
+                do i_flv = 1, n_flv
+                   allocate (sqme_spin_c_all(n_sub_spin))
+                   do i_sub = 1, n_sub_spin
+                      sqme_spin_c_all(i_sub) = real(term%connected%trace%get_matrix_element &
+                           (term%connected_qn_index%get_index (i_flv, &
+                           i_sub = i_sub + n_offset + n_sub_color)), default)
+                   end do
+                   do i_emitter = 1, config%region_data%n_emitters
+                      emitter = config%region_data%emitters(i_emitter)
+                      if (emitter > 0) then
+                         call split_array (sqme_spin_c_all, sqme_spin_c_arr)
+                         sqme_spin_c = reshape (sqme_spin_c_arr, (/4,4/))
+                         pcm_instance%real_sub%sqme_born_spin_c(:,:,emitter,i_flv) = sqme_spin_c
+                      end if
+                   end do
+                   deallocate (sqme_spin_c_all)
                 end do
-             end do
-             call pcm_instance%set_bad_point (bad_point)
+             end select
           class default
              call msg_fatal ("Spin correlations so far only supported by OpenLoops.")
           end select
@@ -1318,21 +1317,23 @@ contains
   subroutine term_instance_compute_sqme_coll_isr (term)
     class(term_instance_t), intent(in) :: term
     integer :: i_flv
+    integer, parameter :: BEAM_PLUS = 1, BEAM_MINUS = 2, &
+       PDF = 1, PDF_SINGLET = 2
     select type (pcm_instance => term%pcm_instance)
     type is (pcm_instance_nlo_t)
        select type (pcm => term%pcm_instance%config)
        type is (pcm_nlo_t)
           associate (me => term%connected%trace%get_matrix_element ())
              do i_flv = 1, pcm%region_data%n_flv_born
-                call set_sqme_coll_isr (1, 1, i_flv, &
+                call set_sqme_coll_isr (BEAM_PLUS, PDF, i_flv, &
                      real(me(term%connected_qn_index%get_index (i_flv, i_sub = 1))))
-                call set_sqme_coll_isr (2, 1, i_flv, &
+                call set_sqme_coll_isr (BEAM_MINUS, PDF, i_flv, &
                      real(me(term%connected_qn_index%get_index (i_flv, i_sub = 2))))
                 if (pcm%settings%nlo_correction_type == "QCD" .or. &
                      pcm%settings%nlo_correction_type == "Full") then
-                   call set_sqme_coll_isr (1, 2, i_flv, &
+                   call set_sqme_coll_isr (BEAM_PLUS, PDF_SINGLET, i_flv, &
                         real(me(term%connected_qn_index%get_index (i_flv, i_sub = 3))))
-                   call set_sqme_coll_isr (2, 2, i_flv, &
+                   call set_sqme_coll_isr (BEAM_MINUS, PDF_SINGLET, i_flv, &
                         real(me(term%connected_qn_index%get_index (i_flv, i_sub = 4))))
                 end if
              end do
@@ -1344,21 +1345,21 @@ contains
                 print *, "n_flv: ", pcm%region_data%n_flv_born
                 print *, "i_flv: ", i_flv
                 print *, "Beam 1: "
-                print *, " quarks: ", pcm_instance%real_sub%sqme_coll_isr (1, 1, :)
-                print *, " gluon:  ", pcm_instance%real_sub%sqme_coll_isr (1, 2, :)
+                print *, " quarks: ", pcm_instance%real_sub%sqme_coll_isr (BEAM_PLUS, PDF, :)
+                print *, " gluon:  ", pcm_instance%real_sub%sqme_coll_isr (BEAM_PLUS, PDF_SINGLET, :)
                 print *, "Beam 2: "
-                print *, " quarks: ", pcm_instance%real_sub%sqme_coll_isr (2, 1, :)
-                print *, " gluon:  ", pcm_instance%real_sub%sqme_coll_isr (2, 2, :)
+                print *, " quarks: ", pcm_instance%real_sub%sqme_coll_isr (BEAM_MINUS, PDF, :)
+                print *, " gluon:  ", pcm_instance%real_sub%sqme_coll_isr (BEAM_MINUS, PDF_SINGLET, :)
              else if (term%nlo_type == NLO_DGLAP) then
                 print *, "nlo_type: DGLAP"
                 print *, "n_flv: ", pcm%region_data%n_flv_born
                 print *, "i_flv: ", i_flv
                 print *, "Beam 1: "
-                print *, " quarks: ", pcm_instance%dglap_remnant%sqme_coll_isr (1, 1, :)
-                print *, " gluon:  ", pcm_instance%dglap_remnant%sqme_coll_isr (1, 2, :)
+                print *, " quarks: ", pcm_instance%dglap_remnant%sqme_coll_isr (BEAM_PLUS, PDF, :)
+                print *, " gluon:  ", pcm_instance%dglap_remnant%sqme_coll_isr (BEAM_PLUS, PDF_SINGLET, :)
                 print *, "Beam 2: "
-                print *, " quarks: ", pcm_instance%dglap_remnant%sqme_coll_isr (2, 1, :)
-                print *, " gluon:  ", pcm_instance%dglap_remnant%sqme_coll_isr (2, 2, :)
+                print *, " quarks: ", pcm_instance%dglap_remnant%sqme_coll_isr (BEAM_MINUS, PDF, :)
+                print *, " gluon:  ", pcm_instance%dglap_remnant%sqme_coll_isr (BEAM_MINUS, PDF_SINGLET, :)
              end if
           end if
        end select
@@ -1478,10 +1479,10 @@ contains
            type is (pcm_instance_nlo_t)
               associate (virtual => pcm_instance%virtual)
                 do i_flv = 1, term%connected_qn_index%get_n_flv ()
-                   virtual%sqme_virt_fin(i_flv) = &
+                   virtual%sqme_born(i_flv) = &
                         real (term%connected%trace%get_matrix_element ( &
                         term%connected_qn_index%get_index (i_flv, i_sub = 0)))
-                   virtual%sqme_born(i_flv) = &
+                   virtual%sqme_virt_fin(i_flv) = &
                         real (term%connected%trace%get_matrix_element ( &
                         term%connected_qn_index%get_index (i_flv, i_sub = 1)))
                 end do
@@ -1708,18 +1709,21 @@ contains
     class(term_instance_t), intent(inout) :: term
     class(prc_core_t), intent(inout) :: core
     real(default) :: sqme
-    integer :: n_flv, n_hel, n_sub
-    integer :: i_flv, i_hel, i_sub, i_color_c
-    logical :: bad_point
     real(default), dimension(:), allocatable :: sqme_color_c
-    integer :: n_pdf_off
+    real(default), dimension(:), allocatable :: sqme_spin_c
+    real(default), dimension(16) :: sqme_spin_c_tmp
+    integer :: n_flv, n_hel, n_sub_color, n_sub_spin, n_pdf_off
+    integer :: i_flv, i_hel, i_sub, i_color_c, i_spin_c, i_emitter
+    integer :: emitter
+    logical :: bad_point, bp
     call msg_debug2 (D_PROCESS_INTEGRATION, &
          "term_instance_evaluate_interaction_userdef_tree")
     allocate (sqme_color_c (blha_result_array_size &
          (term%int_hard%get_n_tot (), BLHA_AMP_COLOR_C)))
     n_flv = term%hard_qn_index%get_n_flv ()
     n_hel = term%hard_qn_index%get_n_hel ()
-    n_sub = term%hard_qn_index%get_n_sub ()
+    n_sub_color = term%get_n_sub_color ()
+    n_sub_spin = term%get_n_sub_spin ()
     do i_flv = 1, n_flv
        do i_hel = 1, n_hel
           select type (core)
@@ -1750,10 +1754,35 @@ contains
                      sqme_color_c, bad_point)
                 call term%pcm_instance%set_bad_point (bad_point)
              end select
-             do i_sub = 1 + n_pdf_off, n_sub
-                i_color_c = term%hard_qn_index%get_index (i_flv, i_hel, i_sub)
-                term%amp(i_color_c) = cmplx (sqme_color_c(i_sub - n_pdf_off), 0, default)
+             do i_sub = 1, n_sub_color
+                i_color_c = term%hard_qn_index%get_index (i_flv, i_hel, i_sub + n_pdf_off)
+                term%amp(i_color_c) = cmplx (sqme_color_c(i_sub), 0, default)
              end do
+             if (n_sub_spin > 0) then
+                bad_point = .false.
+                allocate (sqme_spin_c(0))
+                select type (core)
+                type is (prc_openloops_t)
+                   select type (config => term%pcm_instance%config)
+                   type is (pcm_nlo_t)
+                      do i_emitter = 1, config%region_data%n_emitters
+                         emitter = config%region_data%emitters(i_emitter)
+                         if (emitter > 0) then
+                            call core%compute_sqme_spin_c (i_flv, i_hel, emitter, &
+                                 term%p_hard, term%ren_scale, sqme_spin_c_tmp, bp)
+                            sqme_spin_c = [sqme_spin_c, sqme_spin_c_tmp]
+                            bad_point = bad_point .or. bp
+                         end if
+                      end do
+                   end select
+                   do i_sub = 1, n_sub_spin
+                      i_spin_c = term%hard_qn_index%get_index (i_flv, i_hel, &
+                           i_sub + n_pdf_off + n_sub_color)
+                      term%amp(i_spin_c) = cmplx (sqme_spin_c(i_sub), 0, default)
+                   end do
+                end select
+                deallocate (sqme_spin_c)
+             end if
           end if
        end do
     end do
@@ -1783,8 +1812,8 @@ contains
                   term%ren_scale, sqme_virt, bad_point)
              call term%pcm_instance%set_bad_point (bad_point)
           end select
-          associate (i_loop => term%hard_qn_index%get_index (i_flv, i_hel = i_hel, i_sub = 0), &
-               i_born => term%hard_qn_index%get_index (i_flv, i_hel = i_hel, i_sub = i_virt))
+          associate (i_born => term%hard_qn_index%get_index (i_flv, i_hel = i_hel, i_sub = 0), &
+               i_loop => term%hard_qn_index%get_index (i_flv, i_hel = i_hel, i_sub = i_virt))
             term%amp(i_loop) = cmplx (sqme_virt(3), 0, default)
             term%amp(i_born) = cmplx (sqme_virt(4), 0, default)
           end associate
@@ -1806,44 +1835,9 @@ contains
     end do
   end subroutine term_instance_evaluate_interaction_userdef_loop
 
-  subroutine term_instance_compute_me_array_bounds &
-         (term_instance, core, n_hel, n_sub, n_flv, n_virtuals)
-    class(term_instance_t), intent(in) :: term_instance
-    class(prc_core_t), intent(in) :: core
-    integer, intent(out) :: n_hel, n_sub, n_flv, n_virtuals
-    logical :: includes_polarization, can_have_sub, use_color
-    n_sub = term_instance%int_hard%get_n_sub ()
-    !n_sub = 0
-    !select type (config => term_instance%pcm_instance%config)
-    !type is (pcm_nlo_t)
-    !   use_color = config%settings%use_internal_color_correlations
-    !   can_have_sub = term_instance%nlo_type == NLO_VIRTUAL .or. &
-    !        (term_instance%nlo_type == NLO_REAL .and. &
-    !        term_instance%config%i_term_global == term_instance%config%i_sub) .or. &
-    !        term_instance%nlo_type == NLO_MISMATCH
-    !   if (can_have_sub .and. .not. use_color) n_sub = config%get_n_sub ()
-    !end select
-    n_virtuals = term_instance%int_hard%get_n_matrix_elements ()
-    n_flv = term_instance%config%data%n_flv
-    select type (core)
-    class is (prc_user_defined_base_t)
-       includes_polarization = core%includes_polarization ()
-    class default
-       includes_polarization = .false.
-    end select
-    if (includes_polarization) then
-       n_hel = term_instance%int_hard%get_n_in_helicities ()
-    else
-       n_hel = 1
-    end if
-    if (n_sub > 0) then
-       n_virtuals = n_virtuals - n_hel * n_sub * n_flv
-    end if
-  end subroutine term_instance_compute_me_array_bounds
-
   subroutine term_instance_evaluate_trace (term)
     class(term_instance_t), intent(inout) :: term
-    class(rescaling_function_t), allocatable :: func
+    class(sf_rescale_t), allocatable :: func
     call term%k_term%evaluate_sf_chain (term%fac_scale)
     call term%evaluate_scaled_sf_chains ()
     call term%isolated%evaluate_sf_chain (term%fac_scale)
@@ -1853,53 +1847,54 @@ contains
 
   subroutine term_instance_evaluate_scaled_sf_chains (term)
     class(term_instance_t), intent(inout) :: term
-    class(rescaling_function_t), allocatable :: func
-    if (term%pcm_instance%config%has_pdfs) then
-       if (term%nlo_type == NLO_REAL) then
-          if (term%is_subtraction ()) then
-             allocate (rescale_collinear_t :: func)
-             call func%init_indices ()
-             select type (pcm => term%pcm_instance)
-             type is (pcm_instance_nlo_t)
-                select type (func)
-                type is (rescale_collinear_t)
-                   call func%set (pcm%real_kinematics%xi_tilde)
-                end select
-             end select
-             call term%k_term%sf_chain%evaluate (term%fac_scale, func, 1)
-             call term%k_term%sf_chain%evaluate (term%fac_scale, func, 2)
-             deallocate (func)
-          else if (term%k_term%emitter >= 0 .and. term%k_term%emitter <= term%k_term%n_in) then
-             allocate (rescale_real_t :: func)
-             call func%init_indices ()
-             select type (pcm => term%pcm_instance)
-             type is (pcm_instance_nlo_t)
-                select type (func)
-                type is (rescale_real_t)
-                   call func%set (pcm%real_kinematics%xi_tilde * &
-                        pcm%real_kinematics%xi_max (term%k_term%i_phs), &
-                        pcm%real_kinematics%y (term%k_term%i_phs))
-                end select
-             end select
-             call term%k_term%sf_chain%evaluate (term%fac_scale, func)
-             deallocate (func)
-          else
-             call term%k_term%sf_chain%evaluate (term%fac_scale)
-          end if
-       else if (term%nlo_type == NLO_DGLAP) then
-          allocate (rescale_dglap_t :: func)
-          call func%init_indices ()
+    class(sf_rescale_t), allocatable :: func
+    integer :: i_sub
+    if (.not. term%pcm_instance%config%has_pdfs) return
+    if (term%nlo_type == NLO_REAL) then
+       if (term%is_subtraction ()) then
+          allocate (sf_rescale_collinear_t :: func)
           select type (pcm => term%pcm_instance)
           type is (pcm_instance_nlo_t)
              select type (func)
-             type is (rescale_dglap_t)
-                call func%set (pcm%isr_kinematics%z)
+             type is (sf_rescale_collinear_t)
+                call func%set (pcm%real_kinematics%xi_tilde)
+                call func%set_gluons (.true.)
              end select
           end select
-          call term%k_term%sf_chain%evaluate (term%fac_scale, func, 1)
-          call term%k_term%sf_chain%evaluate (term%fac_scale, func, 2)
+          call term%k_term%sf_chain%evaluate (term%fac_scale, func)
           deallocate (func)
+       else if (term%k_term%emitter >= 0 .and. term%k_term%emitter <= term%k_term%n_in) then
+          allocate (sf_rescale_real_t :: func)
+          select type (pcm => term%pcm_instance)
+          type is (pcm_instance_nlo_t)
+             select type (func)
+             type is (sf_rescale_real_t)
+                call func%set (pcm%real_kinematics%xi_tilde * &
+                     pcm%real_kinematics%xi_max (term%k_term%i_phs), &
+                     pcm%real_kinematics%y (term%k_term%i_phs))
+                ! TODO sbrass Obviously, it is completely irrelevant,
+                ! TODO sbrass which beam is treated for hadronic beams. It becomes
+                ! TODO sbrass problematic when handling "e, p"-beams.
+                call func%restrict_to_beam (term%k_term%emitter)
+             end select
+          end select
+          call term%k_term%sf_chain%evaluate (term%fac_scale, func)
+          deallocate (func)
+       else
+          call term%k_term%sf_chain%evaluate (term%fac_scale)
        end if
+    else if (term%nlo_type == NLO_DGLAP) then
+       allocate (sf_rescale_dglap_t :: func)
+       select type (pcm => term%pcm_instance)
+       type is (pcm_instance_nlo_t)
+          select type (func)
+          type is (sf_rescale_dglap_t)
+             call func%set (pcm%isr_kinematics%z)
+             call func%set_gluons (.true.)
+          end select
+       end select
+       call term%k_term%sf_chain%evaluate (term%fac_scale, func)
+       deallocate (func)
     end if
   end subroutine term_instance_evaluate_scaled_sf_chains
 
@@ -1989,14 +1984,19 @@ contains
     integer :: n_sub
     class(term_instance_t), intent(in) :: term
     n_sub = term%config%n_sub
-    ! n_sub = 1
-    ! if (.not. pcm_nlo%settings%use_internal_color_correlations) then
-    !    n_tot = pcm_nlo%region_data%n_legs_born
-    !    n_sub = n_sub + n_tot * (n_tot - 1) / 2
-    ! else
-    !    !!! TODO (cw-2016-12-05): Implementation
-    ! end if
   end function term_instance_get_n_sub
+
+  function term_instance_get_n_sub_color (term) result (n_sub_color)
+    integer :: n_sub_color
+    class(term_instance_t), intent(in) :: term
+    n_sub_color = term%config%n_sub_color
+  end function term_instance_get_n_sub_color
+
+  function term_instance_get_n_sub_spin (term) result (n_sub_spin)
+    integer :: n_sub_spin
+    class(term_instance_t), intent(in) :: term
+    n_sub_spin = term%config%n_sub_spin
+  end function term_instance_get_n_sub_spin
 
   subroutine process_instance_write_header (object, unit, testflag)
     class(process_instance_t), intent(in) :: object
@@ -2352,19 +2352,6 @@ contains
        call process%set_counter_mci_entry (i_mci_work, instance%get_counter ())
     end associate
   end subroutine process_instance_integrate
-
-  subroutine process_instance_transfer_helicities (instance, i_component, core)
-    class(process_instance_t), intent(inout) :: instance
-    integer, intent(in) :: i_component
-    !!! intent(inout) is annoying. Transfer list should be somewhere else
-    class(prc_blha_t), intent(inout) :: core
-    integer, dimension(:,:), allocatable :: helicities
-    integer, dimension(:), allocatable :: i_term
-    allocate (i_term (size (instance%process%get_component_i_terms (i_component))))
-    i_term = instance%process%get_component_i_terms (i_component)
-    call instance%term(i_term(1))%get_helicities_for_openloops (helicities)
-    call core%set_i_whizard_to_i_olc (helicities)
-  end subroutine process_instance_transfer_helicities
 
   subroutine process_instance_setup_sf_chain (instance, config)
     class(process_instance_t), intent(inout) :: instance
@@ -2734,7 +2721,6 @@ contains
                i_real_fin = instance%process%get_associated_real_fin (1)
                if (instance%process%uses_real_partition ()) &
                     call term%apply_real_partition (instance%process)
-
                if (term%config%i_component /= i_real_fin) then
                   if ((term%nlo_type == NLO_REAL .and. term%k_term%emitter < 0) &
                        .or. term%nlo_type == NLO_MISMATCH &
@@ -2746,14 +2732,15 @@ contains
                         type is (pcm_nlo_t)
                            if (char (config%settings%nlo_correction_type) == "QCD" .or. &
                                 char (config%settings%nlo_correction_type) == "Full") &
-                                call term%evaluate_color_correlations (term%p_seed, core_sub)
+                                call term%evaluate_color_correlations (core_sub)
                            if (char (config%settings%nlo_correction_type) == "QED" .or. &
                                 char (config%settings%nlo_correction_type) == "Full") &
-                                call term%evaluate_charge_correlations (term%p_seed, core_sub)
+                                call term%evaluate_charge_correlations (core_sub)
                         end select
                      end if
-                     if (term%is_subtraction ()) &
-                          call term%evaluate_spin_correlations (term%p_seed, core_sub)
+                     if (term%is_subtraction ()) then
+                        call term%evaluate_spin_correlations (core_sub)
+                     end if
                      if ((term%is_subtraction () .or. term%nlo_type == NLO_DGLAP) &
                           .and. term%pcm_instance%config%has_pdfs) &
                           call term%compute_sqme_coll_isr ()
@@ -2799,25 +2786,11 @@ contains
     class(term_instance_t), intent(inout) :: term
     class(prc_core_t), intent(in) :: core
     integer :: i_flv, ii_flv
-    integer :: n_hel, n_sub, n_flv, n_born
     real(default) :: sqme
-    call term%compute_me_array_bounds (core, n_hel, n_sub, n_flv, n_born)
     select type (pcm_instance => term%pcm_instance)
     type is (pcm_instance_nlo_t)
-       if (term%pcm_instance%config%has_pdfs .and. term%is_subtraction ()) &
-            n_sub = n_sub - n_beam_structure_int
-       do i_flv = 1, n_flv
+       do i_flv = 1, term%connected_qn_index%get_n_flv ()
           ii_flv = term%connected_qn_index%get_index (i_flv, i_sub = 0)
-          ! TODO: sbrass
-          ! Understand this conditional.
-          !if (pcm_instance%config%has_pdfs) then
-          !   if (n_sub > 0) then
-          !      print *, "pcm_instance%config%has_pdfs .and. n_sub = ", n_sub, " > 0"
-          !      print *, "ii_flv = i_flv + n_sub * n_hel * (i_flv - 1) !!!!!!!!!"
-          !      stop
-          !      ii_flv = i_flv + n_sub * n_hel * (i_flv - 1)
-          !   end if
-          !end if
           sqme = real (term%connected%trace%get_matrix_element (ii_flv))
           select case (term%nlo_type)
           case (NLO_REAL)
@@ -2950,12 +2923,12 @@ contains
              type is (pcm_nlo_t)
                 if (char (config%settings%nlo_correction_type) == "QCD" .or. &
                      char (config%settings%nlo_correction_type) == "Full") &
-                     call term%evaluate_color_correlations (term%p_seed, core)
+                     call term%evaluate_color_correlations (core)
                 if (char (config%settings%nlo_correction_type) == "QED" .or. &
                      char (config%settings%nlo_correction_type) == "Full") &
-                     call term%evaluate_charge_correlations (term%p_seed, core)
+                     call term%evaluate_charge_correlations (core)
              end select
-             call term%evaluate_spin_correlations (term%p_seed, core)
+             call term%evaluate_spin_correlations (core)
              if (term%pcm_instance%config%has_pdfs) &
                   call term%compute_sqme_coll_isr ()
           else if (term%nlo_type == NLO_DGLAP) then
@@ -3486,67 +3459,6 @@ contains
     allocate (i_term (count (instance%term%nlo_type == nlo_type)))
     i_term = pack (instance%term%get_i_term_global (), instance%term%nlo_type == nlo_type)
   end function process_instance_get_term_indices
-
-  subroutine process_instance_setup_blha_helicities (instance)
-    class(process_instance_t), intent(inout), target :: instance
-    integer :: i, i_component, n_sub, n_flv, n_flvs, n_born, n_hel, i_term
-    type(vector4_t), dimension(:), allocatable :: p
-    type(core_manager_t), pointer :: cm => null ()
-    logical, dimension(:), allocatable :: core_checked
-
-    cm => instance%process%get_core_manager_ptr ()
-    allocate (core_checked (cm%n_cores))
-    core_checked = .false.
-    do i_term = 1, size (instance%term)
-       associate (term => instance%term(i_term))
-          i = term%config%i_core
-          if (.not. core_checked(i)) then
-             select type (core => cm%cores(i)%core)
-             class is (prc_blha_t)
-                if (core%includes_polarization ()) then
-                   i_component = instance%term(i_term)%config%i_component
-                   if (instance%process%component_can_be_integrated (i_component)) then
-                      call instance%transfer_helicities (i_component, core)
-                      ! TODO sbrass do we still need a warmup for Openloops?
-                      ! call instance%get_test_phase_space_point (i_component, i, p)
-                      ! call core%warmup_helicities (p)
-                   end if
-                else
-                   select type (pcm => instance%process%get_pcm_ptr ())
-                   type is (pcm_nlo_t)
-                      select case (term%nlo_type)
-                      case (NLO_REAL)
-                         if (term%config%i_term_global == term%config%i_sub) then
-                            n_flv = pcm%get_n_flv_born ()
-                         else
-                            n_flv = pcm%get_n_flv_real ()
-                         end if
-                         if (term%config%i_term_global == term%config%i_sub) then
-                            n_sub = term%get_n_sub ()
-                         else
-                            n_sub = 0
-                         end if
-                      case (NLO_VIRTUAL)
-                         n_flv = pcm%get_n_flv_born ()
-                         n_sub = term%get_n_sub ()
-                      case default
-                         n_flv = pcm%get_n_flv_born ()
-                         n_sub = 0
-                      end select
-                   class default
-                      n_flv = core%data%n_flv
-                      n_sub = 0
-                   end select
-                   call term%compute_me_array_bounds (core, n_hel, n_sub, n_flvs, n_born)
-                   call core%set_i_whizard_to_i_olc_trivial (n_flv, n_hel)
-                end if
-             end select
-             core_checked(i) = .true.
-          end if
-       end associate
-    end do
-    deallocate (core_checked)
-  end subroutine process_instance_setup_blha_helicities
 
   function process_instance_get_boost_to_lab (instance, i_term) result (lt)
     type(lorentz_transformation_t) :: lt

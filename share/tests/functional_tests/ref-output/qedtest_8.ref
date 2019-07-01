@@ -31,7 +31,7 @@ openmp_num_threads = 1
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'qedtest_8_p_i1.phs'
+| Phase space: writing configuration file 'qedtest_8_p.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'qedtest_8_p'
 |   Library name  = 'qedtest_8_lib'
@@ -75,7 +75,7 @@ Warning: No cuts have been defined.
 |   e-  (mass = 0.0000000E+00 GeV)
 |   e+  (mass = 0.0000000E+00 GeV)
 |   sqrts = 5.000000000000E+02 GeV
-| Phase space: keeping configuration file 'qedtest_8_p_i1.phs'
+| Phase space: keeping configuration file 'qedtest_8_p.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'qedtest_8_p'
 |   Library name  = 'qedtest_8_lib'
@@ -97,14 +97,14 @@ Warning: No cuts have been defined.
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-| VAMP: using grids and results from file 'qedtest_8_p_m1.vg'
+| VAMP: using grids and results from file 'qedtest_8_p.m1.vg'
    1        800  3.4721369E+02  3.08E-01    0.09    0.03*  66.65
    2        800  3.4793298E+02  2.41E-01    0.07    0.02*  60.65
    3        800  3.4792475E+02  2.44E-01    0.07    0.02   79.69
 |-----------------------------------------------------------------------------|
    3       2400  3.4775909E+02  1.50E-01    0.04    0.02   79.69    2.06   3
 |-----------------------------------------------------------------------------|
-| VAMP: using grids and results from file 'qedtest_8_p_m1.vg'
+| VAMP: using grids and results from file 'qedtest_8_p.m1.vg'
    4        800  3.4755512E+02  2.48E-01    0.07    0.02   79.61
    5        800  3.4721533E+02  2.48E-01    0.07    0.02   79.53
    6        800  3.4728703E+02  2.46E-01    0.07    0.02*  79.55

@@ -39,8 +39,8 @@ Available options for custom paths:
    --prefix DIR    : directory containing the WHIZARD installation
    --bindir DIR    : directory containing the WHIZARD executables
    --libdir DIR    : directory containing the WHIZARD libraries
+   -               : do not process further options
 EOI
-exit
 }
 
 unset prefix
@@ -50,12 +50,16 @@ unset libdir
 
 while test -n "$1"; do
    case "$1" in
+      "-")
+         break
+         ;;
       "--prefix")
 	 if test -n "$2"; then
 	     shift
 	     prefix=$1
          else
              usage
+	     return 1
          fi
          ;;
       "--exec_prefix")
@@ -64,6 +68,7 @@ while test -n "$1"; do
 	     exec_prefix=$1
          else
              usage
+	     return 1
          fi
          ;;
       "--bindir")
@@ -72,6 +77,7 @@ while test -n "$1"; do
 	     bindir=$1
          else
              usage
+	     return 1
          fi
          ;;
       "--libdir")
@@ -80,13 +86,16 @@ while test -n "$1"; do
 	     libdir=$1
          else
              usage
+	     return 1
          fi
          ;;
       "--help")
          usage
+	 return 0
          ;;
       *)
          usage
+	 return 1
    esac
    shift
 done

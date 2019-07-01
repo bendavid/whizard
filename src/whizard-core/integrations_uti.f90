@@ -1,4 +1,4 @@
-! WHIZARD 2.6.3 Feb 10 2018
+! WHIZARD 2.6.4 Aug 23 2018
 !
 ! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -569,7 +569,7 @@ contains
     write (u, "(A)")  "* Generated phase-space file"
     write (u, "(A)")
 
-    phs_file = procname // "_i1.r1.phs"
+    phs_file = procname // ".r1.i1.phs"
     inquire (file = char (phs_file), exist = exist)
     if (exist) then
        u_phs = free_unit ()
@@ -834,9 +834,9 @@ contains
     write (u, "(A)")  "* Generated history files"
     write (u, "(A)")
 
-    his_file = procname // ".r1-history.tex"
-    ps_file  = procname // ".r1-history.ps"
-    pdf_file = procname // ".r1-history.pdf"
+    his_file = procname // ".r1.history.tex"
+    ps_file  = procname // ".r1.history.ps"
+    pdf_file = procname // ".r1.history.pdf"
     inquire (file = char (his_file), exist = exist)
     if (exist) then
        u_his = free_unit ()

@@ -28,7 +28,7 @@ seed = 1
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'beam_setup_5p_i1.phs'
+| Phase space: writing configuration file 'beam_setup_5p.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'beam_setup_5p'
 |   Library name  = 'beam_setup_5_lib'
@@ -72,7 +72,7 @@ Warning: No cuts have been defined.
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'beam_setup_5p_i1.phs'
+| Phase space: writing configuration file 'beam_setup_5p.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'beam_setup_5p'
 |   Library name  = 'beam_setup_5_lib'
@@ -94,7 +94,7 @@ Warning: No cuts have been defined.
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-| VAMP: parameter mismatch, discarding grid file 'beam_setup_5p_m1.vg'
+| VAMP: parameter mismatch, discarding grid file 'beam_setup_5p.m1.vg'
    1        100     2.875E-07   3.70E-11    0.01    0.00    99.8
 |-----------------------------------------------------------------------------|
    1        100     2.875E-07   3.70E-11    0.01    0.00    99.8
@@ -115,7 +115,7 @@ Warning: No cuts have been defined.
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'beam_setup_5p_i1.phs'
+| Phase space: writing configuration file 'beam_setup_5p.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'beam_setup_5p'
 |   Library name  = 'beam_setup_5_lib'
@@ -137,7 +137,7 @@ Warning: No cuts have been defined.
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-| VAMP: parameter mismatch, discarding grid file 'beam_setup_5p_m1.vg'
+| VAMP: parameter mismatch, discarding grid file 'beam_setup_5p.m1.vg'
    1        100     1.561E+03   7.10E+01    4.55    0.45    52.1
 |-----------------------------------------------------------------------------|
    1        100     1.561E+03   7.10E+01    4.55    0.45    52.1
@@ -159,7 +159,7 @@ Warning: No cuts have been defined.
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'beam_setup_5p_i1.phs'
+| Phase space: writing configuration file 'beam_setup_5p.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'beam_setup_5p'
 |   Library name  = 'beam_setup_5_lib'
@@ -181,7 +181,7 @@ Warning: No cuts have been defined.
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-| VAMP: parameter mismatch, discarding grid file 'beam_setup_5p_m1.vg'
+| VAMP: parameter mismatch, discarding grid file 'beam_setup_5p.m1.vg'
    1        100     6.934E+02   3.55E+01    5.12    0.51    48.6
 |-----------------------------------------------------------------------------|
    1        100     6.934E+02   3.55E+01    5.12    0.51    48.6
@@ -202,7 +202,7 @@ Warning: No cuts have been defined.
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'beam_setup_5p_i1.phs'
+| Phase space: writing configuration file 'beam_setup_5p.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'beam_setup_5p'
 |   Library name  = 'beam_setup_5_lib'
@@ -224,7 +224,7 @@ Warning: No cuts have been defined.
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-| VAMP: parameter mismatch, discarding grid file 'beam_setup_5p_m1.vg'
+| VAMP: parameter mismatch, discarding grid file 'beam_setup_5p.m1.vg'
    1        100     2.876E-07   3.51E-11    0.01    0.00    99.9
 |-----------------------------------------------------------------------------|
    1        100     2.876E-07   3.51E-11    0.01    0.00    99.9
@@ -246,7 +246,7 @@ seed = 1
 | RNG: Setting seed for random-number generator to 2
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'beam_setup_5p_i1.phs'
+| Phase space: writing configuration file 'beam_setup_5p.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'beam_setup_5p'
 |   Library name  = 'beam_setup_5_lib'
@@ -270,7 +270,7 @@ Warning: No cuts have been defined.
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-| VAMP: parameter mismatch, discarding grid file 'beam_setup_5p_m1.vg'
+| VAMP: parameter mismatch, discarding grid file 'beam_setup_5p.m1.vg'
    1        100     5.313E+02   3.06E+01    5.76    0.58    40.7
 |-----------------------------------------------------------------------------|
    1        100     5.313E+02   3.06E+01    5.76    0.58    40.7
@@ -295,7 +295,7 @@ Warning: No cuts have been defined.
 | RNG: Setting seed for random-number generator to 4
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'beam_setup_5p_i1.phs'
+| Phase space: writing configuration file 'beam_setup_5p.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'beam_setup_5p'
 |   Library name  = 'beam_setup_5_lib'
@@ -319,7 +319,7 @@ Warning: No cuts have been defined.
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-| VAMP: parameter mismatch, discarding grid file 'beam_setup_5p_m1.vg'
+| VAMP: parameter mismatch, discarding grid file 'beam_setup_5p.m1.vg'
    1        100     2.652E-07   1.06E-08    4.01    0.40    53.1
 |-----------------------------------------------------------------------------|
    1        100     2.652E-07   1.06E-08    4.01    0.40    53.1
@@ -343,7 +343,7 @@ Warning: No cuts have been defined.
 | RNG: Setting seed for random-number generator to 6
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'beam_setup_5p_i1.phs'
+| Phase space: writing configuration file 'beam_setup_5p.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'beam_setup_5p'
 |   Library name  = 'beam_setup_5_lib'
@@ -367,7 +367,7 @@ Warning: No cuts have been defined.
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-| VAMP: parameter mismatch, discarding grid file 'beam_setup_5p_m1.vg'
+| VAMP: parameter mismatch, discarding grid file 'beam_setup_5p.m1.vg'
    1        100     1.556E+03   9.44E+01    6.06    0.61    31.8
 |-----------------------------------------------------------------------------|
    1        100     1.556E+03   9.44E+01    6.06    0.61    31.8
@@ -392,7 +392,7 @@ Warning: No cuts have been defined.
 | RNG: Setting seed for random-number generator to 8
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'beam_setup_5p_i1.phs'
+| Phase space: writing configuration file 'beam_setup_5p.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'beam_setup_5p'
 |   Library name  = 'beam_setup_5_lib'
@@ -416,7 +416,7 @@ Warning: No cuts have been defined.
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-| VAMP: parameter mismatch, discarding grid file 'beam_setup_5p_m1.vg'
+| VAMP: parameter mismatch, discarding grid file 'beam_setup_5p.m1.vg'
    1        100     5.693E+02   4.13E+01    7.25    0.73    30.6
 |-----------------------------------------------------------------------------|
    1        100     5.693E+02   4.13E+01    7.25    0.73    30.6
@@ -440,7 +440,7 @@ Warning: No cuts have been defined.
 | RNG: Setting seed for random-number generator to 10
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'beam_setup_5p_i1.phs'
+| Phase space: writing configuration file 'beam_setup_5p.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'beam_setup_5p'
 |   Library name  = 'beam_setup_5_lib'
@@ -464,7 +464,7 @@ Warning: No cuts have been defined.
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-| VAMP: parameter mismatch, discarding grid file 'beam_setup_5p_m1.vg'
+| VAMP: parameter mismatch, discarding grid file 'beam_setup_5p.m1.vg'
    1        100     2.872E-07   8.02E-09    2.79    0.28    59.3
 |-----------------------------------------------------------------------------|
    1        100     2.872E-07   8.02E-09    2.79    0.28    59.3
@@ -482,7 +482,7 @@ seed = 1
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'beam_setup_5p_i1.phs'
+| Phase space: writing configuration file 'beam_setup_5p.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'beam_setup_5p'
 |   Library name  = 'beam_setup_5_lib'
@@ -507,7 +507,7 @@ Warning: No cuts have been defined.
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-| VAMP: parameter mismatch, discarding grid file 'beam_setup_5p_m1.vg'
+| VAMP: parameter mismatch, discarding grid file 'beam_setup_5p.m1.vg'
    1        100     5.204E+02   3.06E+01    5.89    0.59    39.4
 |-----------------------------------------------------------------------------|
    1        100     5.204E+02   3.06E+01    5.89    0.59    39.4
@@ -530,7 +530,7 @@ Warning: No cuts have been defined.
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'beam_setup_5p_i1.phs'
+| Phase space: writing configuration file 'beam_setup_5p.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'beam_setup_5p'
 |   Library name  = 'beam_setup_5_lib'
@@ -555,7 +555,7 @@ Warning: No cuts have been defined.
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-| VAMP: parameter mismatch, discarding grid file 'beam_setup_5p_m1.vg'
+| VAMP: parameter mismatch, discarding grid file 'beam_setup_5p.m1.vg'
    1        100     2.884E-07   6.58E-09    2.28    0.23    62.2
 |-----------------------------------------------------------------------------|
    1        100     2.884E-07   6.58E-09    2.28    0.23    62.2
@@ -577,7 +577,7 @@ Warning: No cuts have been defined.
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'beam_setup_5p_i1.phs'
+| Phase space: writing configuration file 'beam_setup_5p.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'beam_setup_5p'
 |   Library name  = 'beam_setup_5_lib'
@@ -602,7 +602,7 @@ Warning: No cuts have been defined.
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-| VAMP: parameter mismatch, discarding grid file 'beam_setup_5p_m1.vg'
+| VAMP: parameter mismatch, discarding grid file 'beam_setup_5p.m1.vg'
    1        100     1.403E+03   7.74E+01    5.52    0.55    44.6
 |-----------------------------------------------------------------------------|
    1        100     1.403E+03   7.74E+01    5.52    0.55    44.6
@@ -625,7 +625,7 @@ Warning: No cuts have been defined.
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'beam_setup_5p_i1.phs'
+| Phase space: writing configuration file 'beam_setup_5p.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'beam_setup_5p'
 |   Library name  = 'beam_setup_5_lib'
@@ -650,7 +650,7 @@ Warning: No cuts have been defined.
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-| VAMP: parameter mismatch, discarding grid file 'beam_setup_5p_m1.vg'
+| VAMP: parameter mismatch, discarding grid file 'beam_setup_5p.m1.vg'
    1        100     6.563E+02   3.75E+01    5.72    0.57    38.7
 |-----------------------------------------------------------------------------|
    1        100     6.563E+02   3.75E+01    5.72    0.57    38.7
@@ -672,7 +672,7 @@ Warning: No cuts have been defined.
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'beam_setup_5p_i1.phs'
+| Phase space: writing configuration file 'beam_setup_5p.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'beam_setup_5p'
 |   Library name  = 'beam_setup_5_lib'
@@ -697,7 +697,7 @@ Warning: No cuts have been defined.
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-| VAMP: parameter mismatch, discarding grid file 'beam_setup_5p_m1.vg'
+| VAMP: parameter mismatch, discarding grid file 'beam_setup_5p.m1.vg'
    1        100     2.739E-07   9.96E-09    3.64    0.36    49.3
 |-----------------------------------------------------------------------------|
    1        100     2.739E-07   9.96E-09    3.64    0.36    49.3

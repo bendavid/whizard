@@ -35,10 +35,10 @@ sqrts =  5.00000E+02
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'nlo_4_p1_i1.phs'
+| Phase space: writing configuration file 'nlo_4_p1.i1.phs'
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'nlo_4_p1_i3.phs'
+| Phase space: writing configuration file 'nlo_4_p1.i3.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'nlo_4_p1'
 |   Library name  = 'nlo_4_lib'
@@ -83,7 +83,7 @@ n_events = 1
 ?fixed_order_nlo_events = true
 ?unweighted = false
 | Starting simulation for process 'nlo_4_p1'
-| Simulate: using integration grids from file 'nlo_4_p1_m1.vg'
+| Simulate: using integration grids from file 'nlo_4_p1.m1.vg'
 | Simulate: activating fixed-order NLO events
 | QCD alpha: using a running strong coupling
 | RNG: Initializing TAO random-number generator

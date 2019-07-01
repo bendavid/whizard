@@ -1,4 +1,4 @@
-! WHIZARD 2.6.3 Feb 10 2018
+! WHIZARD 2.6.4 Aug 23 2018
 !
 ! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -78,6 +78,7 @@ module rt_data
   type :: rt_data_t
      type(lexer_t), pointer :: lexer => null ()
      type(rt_data_t), pointer :: context => null ()
+     type(string_t), dimension(:), allocatable :: export
      type(var_list_t) :: var_list
      type(iterations_list_t) :: it_list
      type(os_data_t) :: os_data
@@ -118,6 +119,11 @@ module rt_data
      procedure :: deactivate => rt_data_deactivate
      procedure :: copy_globals => rt_data_copy_globals
      procedure :: restore_globals => rt_data_restore_globals
+     procedure :: write_exports => rt_data_write_exports
+     procedure :: get_n_export => rt_data_get_n_export
+     procedure :: append_exports => rt_data_append_exports
+     procedure :: handle_exports => rt_data_handle_exports
+     procedure :: transfer_process_stack => rt_data_transfer_process_stack
      procedure :: final => rt_data_global_final
      procedure :: local_final => rt_data_local_final
      procedure :: read_model => rt_data_read_model
@@ -274,6 +280,12 @@ contains
     u = given_output_unit (unit)
     call write_separator (u, 2)
     write (u, "(1x,A)")  "Runtime data:"
+    if (object%get_n_export () > 0) then
+       call write_separator (u, 2)
+       write (u, "(1x,A)")  "Exported objects and variables:"
+       call write_separator (u)
+       call object%write_exports (u)
+    end if
     if (present (vars)) then
        if (size (vars) /= 0) then
           call write_separator (u, 2)
@@ -573,10 +585,95 @@ contains
 
   subroutine rt_data_restore_globals (global, local)
     class(rt_data_t), intent(inout) :: global
-    class(rt_data_t), intent(in) :: local
+    class(rt_data_t), intent(inout) :: local
     global%prclib_stack = local%prclib_stack
+    call local%handle_exports (global)
   end subroutine rt_data_restore_globals
 
+  subroutine rt_data_write_exports (rt_data, unit)
+    class(rt_data_t), intent(in) :: rt_data
+    integer, intent(in), optional :: unit
+    integer :: u, i
+    u = given_output_unit (unit)
+    do i = 1, rt_data%get_n_export ()
+       write (u, "(A)")  char (rt_data%export(i))
+    end do
+  end subroutine rt_data_write_exports
+
+  function rt_data_get_n_export (rt_data) result (n)
+    class(rt_data_t), intent(in) :: rt_data
+    integer :: n
+    if (allocated (rt_data%export)) then
+       n = size (rt_data%export)
+    else
+       n = 0
+    end if
+  end function rt_data_get_n_export
+
+  subroutine rt_data_append_exports (rt_data, export)
+    class(rt_data_t), intent(inout) :: rt_data
+    type(string_t), dimension(:), intent(in) :: export
+    logical, dimension(:), allocatable :: mask
+    type(string_t), dimension(:), allocatable :: tmp
+    integer :: i, j, n
+    if (.not. allocated (rt_data%export))  allocate (rt_data%export (0))
+    n = size (rt_data%export)
+    allocate (mask (size (export)), source=.false.)
+    do i = 1, size (export)
+       mask(i) = all (export(i) /= rt_data%export) &
+            .and. all (export(i) /= export(:i-1))
+    end do
+    if (count (mask) > 0) then
+       allocate (tmp (n + count (mask)))
+       tmp(1:n) = rt_data%export(:)
+       j = n
+       do i = 1, size (export)
+          if (mask(i)) then
+             j = j + 1
+             tmp(j) = export(i)
+          end if
+       end do
+       call move_alloc (from=tmp, to=rt_data%export)
+    end if
+  end subroutine rt_data_append_exports
+
+  subroutine rt_data_handle_exports (local, global)
+    class(rt_data_t), intent(inout), target :: local
+    class(rt_data_t), intent(inout), target :: global
+    type(string_t) :: export
+    integer :: i
+    if (local%get_n_export () > 0) then
+       do i = 1, local%get_n_export ()
+          export = local%export(i)
+          select case (char (export))
+          case ("results")
+             call msg_message ("Exporting integration results &
+                  &to outer environment")
+             call local%transfer_process_stack (global)
+          case default
+             call msg_bug ("handle exports: '" &
+                  // char (export) // "' unsupported")
+          end select
+       end do
+    end if
+  end subroutine rt_data_handle_exports
+
+  subroutine rt_data_transfer_process_stack (local, global)
+    class(rt_data_t), intent(inout), target :: local
+    class(rt_data_t), intent(inout), target :: global
+    type(process_entry_t), pointer :: process
+    type(string_t) :: process_id
+    do
+       call local%process_stack%pop_last (process)
+       if (.not. associated (process))  exit
+       process_id = process%get_id ()
+       call global%process_stack%push (process)
+       call global%process_stack%fill_result_vars (process_id)
+       call global%process_stack%update_result_vars &
+            (process_id, global%var_list)
+    end do
+  end subroutine rt_data_transfer_process_stack
+    
   subroutine rt_data_global_final (global)
     class(rt_data_t), intent(inout) :: global
     call global%process_stack%final ()

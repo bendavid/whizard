@@ -34,10 +34,10 @@ sqrts =  5.00000E+02
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'fks_res_3_p1_i1.phs'
+| Phase space: writing configuration file 'fks_res_3_p1.i1.phs'
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'fks_res_3_p1_i3.phs'
+| Phase space: writing configuration file 'fks_res_3_p1.i3.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'fks_res_3_p1'
 |   Library name  = 'fks_res_3_lib'
@@ -96,10 +96,10 @@ sqrts =  5.00000E+02
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'fks_res_3_p1_i1.phs'
+| Phase space: writing configuration file 'fks_res_3_p1.i1.phs'
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'fks_res_3_p1_i3.phs'
+| Phase space: writing configuration file 'fks_res_3_p1.i3.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'fks_res_3_p1'
 |   Library name  = 'fks_res_3_lib'

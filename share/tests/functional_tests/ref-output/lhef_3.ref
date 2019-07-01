@@ -28,7 +28,7 @@ openmp_num_threads = 1
 | Initialized builtin PDF CTEQ6L
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'lhef_3_p_i1.phs'
+| Phase space: writing configuration file 'lhef_3_p.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'lhef_3_p'
 |   Library name  = 'lhef_3_lib'
@@ -61,7 +61,7 @@ $lhef_version = "1.0"
 $sample = "lhef_3.1"
 ?keep_beams = false
 | Starting simulation for process 'lhef_3_p'
-| Simulate: using integration grids from file 'lhef_3_p_m1.vg'
+| Simulate: using integration grids from file 'lhef_3_p.m1.vg'
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 1
 | Simulation: requested number of events = 1
@@ -78,7 +78,7 @@ Warning: Encountered events with excess weight: 1 events (100.000 %)
 $sample = "lhef_3.2"
 ?keep_beams = true
 | Starting simulation for process 'lhef_3_p'
-| Simulate: using integration grids from file 'lhef_3_p_m1.vg'
+| Simulate: using integration grids from file 'lhef_3_p.m1.vg'
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 2
 | Simulation: requested number of events = 1
@@ -95,7 +95,7 @@ Warning: Encountered events with excess weight: 1 events (100.000 %)
 $sample = "lhef_3.3"
 ?keep_remnants = false
 | Starting simulation for process 'lhef_3_p'
-| Simulate: using integration grids from file 'lhef_3_p_m1.vg'
+| Simulate: using integration grids from file 'lhef_3_p.m1.vg'
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 3
 | Simulation: requested number of events = 1
@@ -126,8 +126,8 @@ LHEF file contents (no beams):
  4 1  1.0000000000E+00  1.3178174384E+01 -1.0000000000E+00  1.1780000000E-01
  2 -1 0 0 501 0  0.0000000000E+00  0.0000000000E+00  1.9027611654E+00  1.9027611654E+00  0.0000000000E+00  0.0000000000E+00  9.0000000000E+00
  -2 -1 0 0 0 502  0.0000000000E+00  0.0000000000E+00 -2.2817403893E+01  2.2817403893E+01  0.0000000000E+00  0.0000000000E+00  9.0000000000E+00
- 21 1 1 2 501 511 -4.0213919904E+00 -3.8448480372E+00 -1.7079232814E+01  1.7962590111E+01  0.0000000000E+00  0.0000000000E+00  9.0000000000E+00
- 21 1 1 2 511 502  4.0213919904E+00  3.8448480372E+00 -3.8354099139E+00  6.7575749480E+00  0.0000000000E+00  0.0000000000E+00  9.0000000000E+00
+ 21 1 1 2 510 502 -4.0213919904E+00 -3.8448480372E+00 -1.7079232814E+01  1.7962590111E+01  0.0000000000E+00  0.0000000000E+00  9.0000000000E+00
+ 21 1 1 2 501 510  4.0213919904E+00  3.8448480372E+00 -3.8354099139E+00  6.7575749480E+00  0.0000000000E+00  0.0000000000E+00  9.0000000000E+00
 </event>
 </LesHouchesEvents>
 LHEF file contents (with beams):

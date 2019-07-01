@@ -1,0 +1,33 @@
+?logging = true
+?openmp_logging = false
+?vis_history = false
+?integration_timer = false
+openmp_num_threads = 1
+sample_format = debug
+?debug_decay = false
+?debug_process = false
+?debug_verbose = false
+?write_raw = false
+
+include ("nlo_settings.sin")
+
+alias bjet = b:B
+
+cuts = all Pt > 30 GeV [bjet] and all abs(Eta) < 4 [bjet]
+       and count [cluster if E > 0 GeV [bjet]] > 3
+
+alpha_power = 2
+alphas_power = 2
+
+alpha_s_nf = 4
+mb = 4.75
+
+scale = (sqrt (eval Pt [extract index 1 [b]]**2 + eval M [extract index 1 [b]]**2)
+      +  sqrt (eval Pt [extract index 2 [b]]**2 + eval M [extract index 2 [b]]**2)
+      +  sqrt (eval Pt [extract index 1 [B]]**2 + eval M [extract index 1 [B]]**2)
+      +  sqrt (eval Pt [extract index 2 [B]]**2 + eval M [extract index 2 [B]]**2)) / 2
+
+process nlo_ee4b = e1, E1 => b, B, b, B { nlo_calculation = full }
+mult_call_real = 2
+mult_call_virt = 0.1
+integrate (nlo_ee4b) { iterations = 10:20000:"gw",2:20000 }

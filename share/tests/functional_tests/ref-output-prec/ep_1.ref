@@ -32,7 +32,7 @@ openmp_num_threads = 1
 | Initialized builtin PDF CTEQ6L
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'ep_1_p1_i1.phs'
+| Phase space: writing configuration file 'ep_1_p1.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'ep_1_p1'
 |   Library name  = 'ep_1_lib'
@@ -80,7 +80,7 @@ openmp_num_threads = 1
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'ep_1_q1_i1.phs'
+| Phase space: writing configuration file 'ep_1_q1.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'ep_1_q1'
 |   Library name  = 'ep_1_lib'
@@ -128,7 +128,7 @@ openmp_num_threads = 1
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'ep_1_p2_i1.phs'
+| Phase space: writing configuration file 'ep_1_p2.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'ep_1_p2'
 |   Library name  = 'ep_1_lib'
@@ -176,7 +176,7 @@ openmp_num_threads = 1
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'ep_1_q2_i1.phs'
+| Phase space: writing configuration file 'ep_1_q2.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'ep_1_q2'
 |   Library name  = 'ep_1_lib'

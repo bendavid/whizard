@@ -1,4 +1,4 @@
-! WHIZARD 2.6.3 Feb 10 2018
+! WHIZARD 2.6.4 Aug 23 2018
 !
 ! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -78,7 +78,7 @@ module state_matrices
      integer :: n_counters = 0
      complex(default), dimension(:), allocatable :: me
      real(default) :: norm = 1
-     integer :: n_sub = 0
+     integer :: n_sub = -1
    contains
      procedure :: init => state_matrix_init
      procedure :: final => state_matrix_final
@@ -86,6 +86,7 @@ module state_matrices
      procedure :: write_raw => state_matrix_write_raw
      procedure :: read_raw => state_matrix_read_raw
      procedure :: set_model => state_matrix_set_model
+     procedure :: tag_hard_process => state_matrix_tag_hard_process
      procedure :: is_defined => state_matrix_is_defined
      procedure :: is_empty => state_matrix_is_empty
      generic :: get_n_matrix_elements => get_n_matrix_elements_all, get_n_matrix_elements_mask
@@ -94,6 +95,7 @@ module state_matrices
      procedure :: get_me_size => state_matrix_get_me_size
      procedure :: compute_n_sub => state_matrix_compute_n_sub
      procedure :: set_n_sub => state_matrix_set_n_sub
+     procedure :: get_n_sub => state_matrix_get_n_sub
      procedure :: get_n_leaves => state_matrix_get_n_leaves
      procedure :: get_depth => state_matrix_get_depth
      procedure :: get_norm => state_matrix_get_norm
@@ -129,7 +131,6 @@ module state_matrices
      procedure :: set_matrix_element_clone => &
         state_matrix_set_matrix_element_clone
      procedure :: add_to_matrix_element => state_matrix_add_to_matrix_element
-     procedure :: transfer_me_to_sub => state_matrix_transfer_me_to_sub
      procedure :: get_diagonal_entries => state_matrix_get_diagonal_entries
      procedure :: renormalize => state_matrix_renormalize
      procedure :: normalize_by_trace => state_matrix_normalize_by_trace
@@ -517,6 +518,32 @@ contains
     end do
   end subroutine state_matrix_set_model
 
+  subroutine state_matrix_tag_hard_process (state, tagged_state, tag)
+    class(state_matrix_t), intent(in), target :: state
+    type(state_matrix_t), intent(out) :: tagged_state
+    integer, dimension(:), intent(in), optional :: tag
+    type(state_iterator_t) :: it
+    type(quantum_numbers_t), dimension(:), allocatable :: qn
+    complex(default) :: value
+    integer :: i
+    call tagged_state%init (store_values = .true.)
+    call it%init (state)
+    do while (it%is_valid ())
+       qn = it%get_quantum_numbers ()
+       value = it%get_matrix_element ()
+       if (present (tag)) then
+          do i = 1, size (tag)
+             call qn(tag(i))%tag_hard_process ()
+          end do
+       else
+          call qn%tag_hard_process ()
+       end if
+       call tagged_state%add_state (qn, index = it%get_me_index (), value = value)
+       call it%advance ()
+    end do
+    call tagged_state%freeze ()
+  end subroutine state_matrix_tag_hard_process
+
   elemental function state_matrix_is_defined (state) result (defined)
     logical :: defined
     class(state_matrix_t), intent(in) :: state
@@ -599,6 +626,15 @@ contains
     state%n_sub = state%compute_n_sub ()
   end subroutine state_matrix_set_n_sub
 
+  function state_matrix_get_n_sub (state) result (n_sub)
+    integer :: n_sub
+    class(state_matrix_t), intent(in) :: state
+    if (state%n_sub < 0) then
+       call msg_bug ("[state_matrix_get_n_sub] number of subtractions not set.")
+    end if
+    n_sub = state%n_sub
+  end function state_matrix_get_n_sub
+
   function state_matrix_get_n_leaves (state) result (n)
     integer :: n
     class(state_matrix_t), intent(in) :: state
@@ -627,10 +663,11 @@ contains
     class(state_matrix_t), intent(in), target :: state
     integer, intent(in) :: i
     logical, intent(in), optional :: by_me_index
-    logical :: opt_by_me_index = .false.
+    logical :: opt_by_me_index
     type(quantum_numbers_t), dimension(state%depth) :: qn
     type(state_iterator_t) :: it
     integer :: k
+    opt_by_me_index = .false.
     if (present (by_me_index)) opt_by_me_index = by_me_index
     k = 0
     call it%init (state)
@@ -761,9 +798,8 @@ contains
     end function node_get_max_color_value
   end function state_matrix_get_max_color_value
 
-  subroutine state_matrix_add_state &
-       (state, qn, index, value, sum_values, counter_index, ignore_sub, &
-        me_index)
+  subroutine state_matrix_add_state (state, qn, index, value, &
+         sum_values, counter_index, ignore_sub, me_index)
     class(state_matrix_t), intent(inout) :: state
     type(quantum_numbers_t), dimension(:), intent(in) :: qn
     integer, intent(in), optional :: index
@@ -856,9 +892,10 @@ contains
     type(quantum_numbers_mask_t), dimension(:), intent(in) :: mask
     type(state_matrix_t), intent(out) :: red_state
     logical, optional, intent(in)  :: keep_me_index
-    logical :: opt_keep_me_index = .false.
+    logical :: opt_keep_me_index
     type(state_iterator_t) :: it
     type(quantum_numbers_t), dimension(size(mask)) :: qn
+    opt_keep_me_index = .false.
     if (present (keep_me_index)) opt_keep_me_index = keep_me_index
     call red_state%init ()
     call it%init (state)
@@ -1011,24 +1048,6 @@ contains
        call msg_fatal ("Cannot add to matrix element - it%node not allocated")
     end if
   end subroutine state_matrix_add_to_matrix_element
-
-  subroutine state_matrix_transfer_me_to_sub (state, i_sub)
-    class(state_matrix_t), intent(inout), target :: state
-    integer, intent(in) :: i_sub
-    type(state_iterator_t) :: it
-    type(quantum_numbers_t), dimension(:), allocatable :: qn
-    complex(default) :: me
-    call it%init (state)
-    do while (it%is_valid ())
-       qn = it%get_quantum_numbers ()
-       if (all (qn%get_sub () == 0)) then
-          me = it%get_matrix_element ()
-          call qn%set_subtraction_index (i_sub)
-          call state%set_matrix_element (qn, me)
-       end if
-       call it%advance ()
-    end do
-  end subroutine state_matrix_transfer_me_to_sub
 
   subroutine state_iterator_init (it, state)
     class(state_iterator_t), intent(out) :: it
@@ -1394,7 +1413,7 @@ contains
     do while (it%is_valid ())
        qn = it%get_quantum_numbers ()
        if (present (qn_in)) then
-          if (.not. all (qn .match. qn_in)) then
+          if (.not. all (qn .fhmatch. qn_in)) then
              call it%advance ();  cycle
           end if
        end if
@@ -1515,7 +1534,7 @@ contains
     type(quantum_numbers_t), dimension(state2%depth) :: qn2
     type(quantum_numbers_t), dimension(state1%depth+state2%depth) :: qn3
     complex(default) :: val1, val2
-    call state3%init (store_values=.true.)
+    call state3%init (store_values = .true.)
     call it1%init (state1)
     do while (it1%is_valid ())
        qn1 = it1%get_quantum_numbers ()
@@ -1608,10 +1627,10 @@ contains
     end if
     allocate (single_state (depth))
     do i = 1, depth
-       call single_state(i)%init (store_values=.true.)
+       call single_state(i)%init (store_values = .true.)
     end do
     if (present (correlated_state)) &
-         call correlated_state%init (store_values=.true.)
+         call correlated_state%init (store_values = .true.)
     qn = it%get_quantum_numbers ()
     select case (mode)
     case (FM_SELECT_HELICITY)  ! single branch selected; shortcut

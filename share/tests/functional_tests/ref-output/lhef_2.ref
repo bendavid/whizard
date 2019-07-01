@@ -27,7 +27,7 @@ openmp_num_threads = 1
 |   sqrts = 1.000000000000E+03 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'lhef_2_p_i1.phs'
+| Phase space: writing configuration file 'lhef_2_p.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'lhef_2_p'
 |   Library name  = 'lhef_2_lib'
@@ -56,7 +56,7 @@ Warning: No cuts have been defined.
 n_events = 1
 $lhef_version = "1.0"
 | Starting simulation for process 'lhef_2_p'
-| Simulate: using integration grids from file 'lhef_2_p_m1.vg'
+| Simulate: using integration grids from file 'lhef_2_p.m1.vg'
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 1
 | Simulation: requested number of events = 1

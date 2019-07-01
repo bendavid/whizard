@@ -1,4 +1,4 @@
-! WHIZARD 2.6.3 Feb 10 2018
+! WHIZARD 2.6.4 Aug 23 2018
 !
 ! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -45,7 +45,6 @@ module cascades2
   use resonances, only: resonance_info_t
   use resonances, only: resonance_history_t
   use resonances, only: resonance_history_set_t
-  !$ use :: omp_lib !NODEP!
 
   implicit none
   private
@@ -132,6 +131,7 @@ module cascades2
    contains
      procedure :: final => feyngraph_final
      procedure :: make_kingraphs => feyngraph_make_kingraphs
+     procedure :: make_inverse_kingraphs => feyngraph_make_inverse_kingraphs
      procedure :: compute_mappings => feyngraph_compute_mappings
      procedure :: make_invertible => feyngraph_make_invertible
   end type feyngraph_t
@@ -208,6 +208,8 @@ module cascades2
 
   type :: f_node_ptr_t
      type (f_node_t), pointer :: node => null ()
+     contains
+         procedure :: final => f_node_ptr_final
   end type f_node_ptr_t
 
   type :: k_node_ptr_t
@@ -247,6 +249,7 @@ module cascades2
      integer :: string_len = 0
      type (f_node_t), pointer :: node => null ()
      type (f_node_entry_t), pointer :: next => null ()
+     integer :: subtree_size = 0
    contains
      procedure :: final => f_node_entry_final
      procedure :: write => f_node_entry_write
@@ -285,7 +288,6 @@ module cascades2
      type (kingraph_t), pointer :: first => null ()
      type (kingraph_t), pointer :: last => null ()
      type (compare_tree_t) :: compare_tree
-     !$ integer (OMP_lock_kind) :: lock
    contains
      procedure :: final => grove_final
      procedure :: write_file_format => grove_write_file_format
@@ -297,7 +299,6 @@ module cascades2
 
   type :: grove_list_t
      type (grove_t), pointer :: first => null ()
-     !$ integer (OMP_lock_kind) :: lock
    contains
      procedure :: final => grove_list_final
      procedure :: get_grove => grove_list_get_grove
@@ -322,6 +323,7 @@ module cascades2
      integer :: n_graphs = 0
      type (grove_list_t), pointer :: grove_list => null ()
      logical :: use_dag = .true.
+     type (dag_t), pointer :: dag => null ()
      type (feyngraph_set_t), dimension (:), pointer :: fset => null ()
    contains
      procedure :: final => feyngraph_set_final
@@ -333,24 +335,30 @@ module cascades2
      type (dag_string_t) :: string
      logical :: leaf = .false.
      type (f_node_ptr_t), dimension (:), allocatable :: f_node
+     integer :: subtree_size = 0
    contains
+       procedure :: final => dag_node_final
        procedure :: make_f_nodes => dag_node_make_f_nodes
   end type dag_node_t
 
   type :: dag_options_t
      integer :: string_len
      type (dag_string_t) :: string
+     type (f_node_ptr_t), dimension (:), allocatable :: f_node_ptr1
+     type (f_node_ptr_t), dimension (:), allocatable :: f_node_ptr2
    contains
-       procedure :: make_f_nodes_single => dag_options_make_f_nodes_single
-       procedure :: make_f_nodes_pair => dag_options_make_f_nodes_pair
-       generic :: make_f_nodes => make_f_nodes_single, make_f_nodes_pair
+       procedure :: final => dag_options_final
+       procedure :: make_f_nodes => dag_options_make_f_nodes
   end type dag_options_t
 
   type :: dag_combination_t
      integer :: string_len
      type (dag_string_t) :: string
      integer, dimension (2) :: combination
+     type (f_node_ptr_t), dimension (:), allocatable :: f_node_ptr1
+     type (f_node_ptr_t), dimension (:), allocatable :: f_node_ptr2
    contains
+       procedure :: final => dag_combination_final
        procedure :: make_f_nodes => dag_combination_make_f_nodes
   end type dag_combination_t
 
@@ -364,6 +372,7 @@ module cascades2
      integer :: n_combinations = 0
    contains
        procedure :: read_string => dag_read_string
+       procedure :: final => dag_final
        procedure :: construct => dag_construct
        procedure :: get_nodes_and_combinations => dag_get_nodes_and_combinations
        procedure :: get_options => dag_get_options
@@ -382,34 +391,27 @@ module cascades2
   interface assignment (=)
      module procedure f_node_ptr_assign
   end interface assignment (=)
-
   interface assignment (=)
      module procedure k_node_assign
   end interface assignment (=)
-
   interface assignment (=)
      module procedure f_node_entry_assign
   end interface assignment (=)
-
   interface assignment (=)
      module procedure k_node_entry_assign
   end interface assignment (=)
-
   interface operator (.match.)
      module procedure grove_prop_match
   end interface operator (.match.)
   interface operator (==)
      module procedure grove_prop_equal
   end interface operator (==)
-
   interface operator (==)
      module procedure tree_equal
   end interface operator (==)
-
   interface operator (.eqv.)
      module procedure subtree_eqv
   end interface operator (.eqv.)
-
 
 contains
 
@@ -431,15 +433,15 @@ contains
     if (allocated (tree2%bc)) then
        allocate (tree1%bc(size(tree2%bc)))
        tree1%bc = tree2%bc
-    endif
+    end if
     if (allocated (tree2%pdg)) then
        allocate (tree1%pdg(size(tree2%pdg)))
        tree1%pdg = tree2%pdg
-    endif
+    end if
     if (allocated (tree2%mapping)) then
        allocate (tree1%mapping(size(tree2%mapping)))
        tree1%mapping = tree2%mapping
-    endif
+    end if
     tree1%n_entries = tree2%n_entries
     tree1%keep = tree2%keep
     tree1%empty = tree2%empty
@@ -461,7 +463,7 @@ contains
        tree%mapping(pos) = mapping
        tree%n_entries = pos
        tree%empty = .false.
-    endif
+    end if
   end subroutine tree_add_entry_from_numbers
 
   subroutine tree_merge (tree, tree1, tree2, bc, pdg, mapping)
@@ -489,7 +491,7 @@ contains
        tree%mapping(tree_size) = mapping
        tree%n_entries = tree_size
        tree%empty = .false.
-    endif
+    end if
   end subroutine tree_merge
 
   subroutine tree_add_entry_from_node (tree, node)
@@ -500,7 +502,7 @@ contains
        pdg = abs (node%particle%pdg)
     else
        pdg = node%particle%pdg
-    endif
+    end if
     if (associated (node%daughter1) .and. &
          associated (node%daughter2)) then
        call tree_merge (tree, node%daughter1%subtree, &
@@ -509,7 +511,7 @@ contains
     else
        call tree_add_entry_from_numbers (tree, node%bincode, &
             node%particle%pdg, node%mapping)
-    endif
+    end if
     call tree%sort ()
   end subroutine tree_add_entry_from_node
 
@@ -600,11 +602,16 @@ contains
     if (f_node%index == 0) then
        counter = counter + 1
        f_node%index = counter
-    endif
+    end if
   end subroutine f_node_set_index
 
+  subroutine f_node_ptr_final (f_node_ptr)
+    class (f_node_ptr_t), intent (inout) :: f_node_ptr
+    f_node_ptr%node => null ()
+  end subroutine f_node_ptr_final
+
   subroutine f_node_ptr_assign (ptr1, ptr2)
-    type (f_node_ptr_t), intent (inout) :: ptr1
+    type (f_node_ptr_t), intent (out) :: ptr1
     type (f_node_ptr_t), intent (in) :: ptr2
     ptr1%node => ptr2%node
   end subroutine f_node_ptr_assign
@@ -650,7 +657,7 @@ contains
     if (k_node%index == 0) then
        counter = counter + 1
        k_node%index = counter
-    endif
+    end if
   end subroutine k_node_set_index
 
   subroutine f_node_entry_write (f_node_entry, u)
@@ -665,45 +672,53 @@ contains
     entry1%node => entry2%node
     entry1%subtree_string = entry2%subtree_string
     entry1%string_len = entry2%string_len
+    entry1%subtree_size = entry2%subtree_size
   end subroutine f_node_entry_assign
 
-  subroutine f_node_list_add_entry (list, subtree_string, ptr_to_node, recycle)
+  subroutine f_node_list_add_entry (list, subtree_string, ptr_to_node, &
+       recycle, subtree_size)
     class (f_node_list_t), intent (inout) :: list
     character (len=*), intent (in) :: subtree_string
     type (f_node_t), pointer, intent (out) :: ptr_to_node
     logical, intent (in) :: recycle
+    integer, intent (in), optional :: subtree_size
     type (f_node_entry_t), pointer :: current
+    type (f_node_entry_t), pointer :: second
     integer :: subtree_len
     ptr_to_node => null ()
     if (recycle) then
        subtree_len = len_trim (subtree_string)
        current => list%first
        do while (associated (current))
+          if (present (subtree_size)) then
+             if (current%subtree_size /= subtree_size) exit
+          end if
           if (current%string_len == subtree_len) then
              if (trim (current%subtree_string) == trim (subtree_string)) then
                 ptr_to_node => current%node
                 exit
-             endif
-          endif
+             end if
+          end if
           current => current%next
        enddo
-    endif
+    end if
     if (.not. associated (ptr_to_node)) then
-       !$OMP CRITICAL (add_f_node_entry)
        if (list%n_entries == 0) then
           allocate (list%first)
           list%last => list%first
        else
-          allocate (list%last%next)
-          list%last => list%last%next
-       endif
+          second => list%first
+          list%first => null ()
+          allocate (list%first)
+          list%first%next => second
+       end if
        list%n_entries = list%n_entries + 1
-       list%last%subtree_string = trim(subtree_string)
-       list%last%string_len = subtree_len
-       allocate (list%last%node)
-       call list%last%node%set_index ()
-       ptr_to_node => list%last%node
-       !$OMP END CRITICAL (add_f_node_entry)
+       list%first%subtree_string = trim(subtree_string)
+       list%first%string_len = subtree_len
+       if (present (subtree_size)) list%first%subtree_size = subtree_size
+       allocate (list%first%node)
+       call list%first%node%set_index ()
+       ptr_to_node => list%first%node
     end if
   end subroutine f_node_list_add_entry
 
@@ -739,7 +754,7 @@ contains
     else
        allocate (list%last%next)
        list%last => list%last%next
-    endif
+    end if
     list%n_entries = list%n_entries + 1
     list%last%recycle = recycle
     allocate (list%last%node)
@@ -756,14 +771,14 @@ contains
        rec = recycle
     else
        rec = .false.
-    endif
+    end if
     if (list%n_entries == 0) then
        allocate (list%first)
        list%last => list%first
     else
        allocate (list%last%next)
        list%last => list%last%next
-    endif
+    end if
     list%n_entries = list%n_entries + 1
     list%last%recycle = rec
     list%last%node => ptr_to_node
@@ -785,7 +800,6 @@ contains
        set(pos)%node => current%node
        current => current%next
     enddo
-    !$OMP PARALLEL DO PRIVATE(j)
     do i=1, list%n_entries
        if (set(i)%node%keep) then
           do j=i+1, list%n_entries
@@ -793,21 +807,16 @@ contains
                 if (set(i)%node%bincode == set(j)%node%bincode) then
                    call subtree_select (set(i)%node%subtree,set(j)%node%subtree, model)
                    if (.not. set(i)%node%subtree%keep) then
-                      !$OMP CRITICAL (deactivate_subtree)
                       set(i)%node%keep = .false.
-                      !$OMP END CRITICAL (deactivate_subtree)
                       exit
                    else if (.not. set(j)%node%subtree%keep) then
-                      !$OMP CRITICAL (deactivate_subtree)
                       set(j)%node%keep = .false.
-                      !$OMP END CRITICAL (deactivate_subtree)
-                   endif
-                endif
-             endif
+                   end if
+                end if
+             end if
           enddo
-       endif
+       end if
     enddo
-    !$OMP END PARALLEL DO
     deallocate (set)
   end subroutine k_node_list_check_subtree_equivalences
 
@@ -842,15 +851,15 @@ contains
                 deallocate (garbage)
              else
                 exit
-             endif
+             end if
           enddo
           if (current%recycle .and. current%node%keep) then
              nodes(pos)%node => current%node
              pos = pos + 1
-          endif
+          end if
           current => current%next
        enddo
-    endif
+    end if
   end subroutine k_node_list_get_nodes
 
   subroutine f_node_list_final (list)
@@ -873,7 +882,7 @@ contains
           call ctree%entry(i)%final ()
           deallocate (ctree%entry)
        end do
-    endif
+    end if
   end subroutine compare_tree_final
 
   recursive subroutine compare_tree_entry_final (ct_entry)
@@ -907,8 +916,8 @@ contains
           allocate (ctree%entry (sz))
        else
           call msg_bug ("Compare tree could not be created")
-       endif
-    endif
+       end if
+    end if
     allocate (identifier (ctree%depth))
     pos = 0
     do i = size(kingraph%tree%bc), 1, -1
@@ -916,14 +925,14 @@ contains
           pos = pos + 1
           identifier(pos) = kingraph%tree%bc(i)
           if (pos == ctree%depth) exit
-       endif
+       end if
     enddo
     if (size (identifier) > 1) then
        call ctree%entry(identifier(1))%check_kingraph (kingraph, model, &
             preliminary, identifier(1), identifier(2:))
     else if (size (identifier) == 1) then
        call ctree%entry(identifier(1))%check_kingraph (kingraph, model, preliminary)
-    endif
+    end if
     deallocate (identifier)
   end subroutine compare_tree_check_kingraph
 
@@ -944,15 +953,15 @@ contains
        else if (size (identifier) == 1) then
           call ct_entry%entry(identifier(1))%check_kingraph (kingraph, &
                model, preliminary)
-       endif
+       end if
     else
        if (allocated (ct_entry%graph_entry)) then
           call perform_check
        else
           allocate (ct_entry%graph_entry(1))
           ct_entry%graph_entry(1)%graph => kingraph
-       endif
-    endif
+       end if
+    end if
 
     contains
 
@@ -970,9 +979,9 @@ contains
                  else if (rebuild .and. .not. ct_entry%graph_entry(i)%graph%keep) then
                     ct_entry%graph_entry(i)%graph => kingraph
                     rebuild = .false.
-                 endif
-              endif
-           endif
+                 end if
+              end if
+           end if
         enddo
         if (rebuild) call rebuild_graph_entry
       end subroutine perform_check
@@ -1028,7 +1037,7 @@ contains
     else
        set%particle => null ()
        set%grove_list => null ()
-    endif
+    end if
     set%model => null ()
     if (allocated (set%flv)) deallocate (set%flv)
     set%last => null ()
@@ -1043,14 +1052,21 @@ contains
           call set%particle(i)%final ()
        end do
        deallocate (set%particle)
-    endif
+    end if
     if (associated (set%grove_list)) then
        call msg_debug (D_PHASESPACE, "grove_list: final")
        call set%grove_list%final ()
        deallocate (set%grove_list)
-    endif
+    end if
     call msg_debug (D_PHASESPACE, "f_node_list: final")
     call set%f_node_list%final ()
+    if (associated (set%dag)) then
+       call msg_debug (D_PHASESPACE, "dag: final")
+       if (associated (set%dag)) then
+          call set%dag%final ()
+          deallocate (set%dag)
+       end if
+    end if
   end subroutine feyngraph_set_final
 
   subroutine feyngraph_set_build (feyngraph_set, u_in)
@@ -1061,13 +1077,13 @@ contains
     type (feyngraph_t), pointer :: current_graph
     type (feyngraph_t), pointer :: compare_graph
     logical :: present
-    type (dag_t) :: dag
     if (feyngraph_set%use_dag) then
+       allocate (feyngraph_set%dag)
        if (.not. associated (feyngraph_set%first)) then
-          call dag%read_string (u_in, feyngraph_set%flv(:,1))
-          call dag%construct ()
-          call dag%make_feyngraphs (feyngraph_set)
-       endif
+          call feyngraph_set%dag%read_string (u_in, feyngraph_set%flv(:,1))
+          call feyngraph_set%dag%construct (feyngraph_set)
+          call feyngraph_set%dag%make_feyngraphs (feyngraph_set)
+       end if
     else
        if (.not. associated (feyngraph_set%first)) then
           read (unit=u_in, fmt='(A)', iostat=stat, advance='yes') omega_feyngraph_output
@@ -1078,7 +1094,7 @@ contains
              feyngraph_set%n_graphs = feyngraph_set%n_graphs + 1
           else
              call msg_fatal ("Invalid input file")
-          endif
+          end if
           read (unit=u_in, fmt='(A)', iostat=stat, advance='yes') omega_feyngraph_output
           do while (stat == 0)
              if (omega_feyngraph_output(1:1) == '(') then
@@ -1090,8 +1106,8 @@ contains
                       if (compare_graph%omega_feyngraph_output == omega_feyngraph_output) then
                          present = .true.
                          exit
-                      endif
-                   endif
+                      end if
+                   end if
                    compare_graph => compare_graph%next
                 enddo
                 if (.not. present) then
@@ -1099,11 +1115,11 @@ contains
                    feyngraph_set%last => feyngraph_set%last%next
                    feyngraph_set%last%omega_feyngraph_output = trim(omega_feyngraph_output)
                    feyngraph_set%n_graphs = feyngraph_set%n_graphs + 1
-                endif
+                end if
                 read (unit=u_in, fmt='(A)', iostat=stat, advance='yes') omega_feyngraph_output
              else
                 exit
-             endif
+             end if
           enddo
           current_graph => feyngraph_set%first
           do while (associated (current_graph))
@@ -1111,8 +1127,8 @@ contains
              current_graph => current_graph%next
           enddo
           feyngraph_set%f_node_list%max_tree_size = feyngraph_set%first%n_nodes
-       endif
-    endif
+       end if
+    end if
   end subroutine feyngraph_set_build
 
   subroutine dag_read_string (dag, u_in, flv)
@@ -1131,13 +1147,13 @@ contains
        if (len_trim(process_string) /= 0) then
           if (index (process_string, "::") > 0) then
              process_found = process_string_match (trim (process_string), flv)
-          endif
+          end if
        else if (.not. rewound) then
           rewind (u_in)
           rewound = .true.
        else
           call msg_bug ("Process string not found in O'Mega input file.")
-       endif
+       end if
     enddo
     call fds_file_get_line (u_in, dag%string)
     call dag%string%clean ()
@@ -1164,7 +1180,7 @@ contains
           exit
        else if (buffer (fragment_len:fragment_len) == BACKSLASH_CHAR) then
           fragment_len = fragment_len - 1
-       endif
+       end if
        call chain%append (buffer(:fragment_len))
        if (buffer(fragment_len+1:fragment_len+1) /= BACKSLASH_CHAR) exit
     enddo
@@ -1172,7 +1188,7 @@ contains
        call chain%compress ()
        string = chain%first
        call chain%final ()
-    endif
+    end if
   end subroutine fds_file_get_line
 
   function process_string_match (string, flv) result (match)
@@ -1192,7 +1208,7 @@ contains
        else
           match = .false.
           exit
-       endif
+       end if
     enddo
   end function process_string_match
 
@@ -1522,9 +1538,9 @@ contains
              part_prop%anti => feyngraph_set%particle(i)
              call feyngraph_set%particle(i)%init (feyngraph_set, char(anti%get_name()))
              exit
-          endif
+          end if
        enddo
-    endif
+    end if
   end subroutine part_prop_init
 
   subroutine f_node_assign_particle_properties (node, feyngraph_set)
@@ -1535,7 +1551,7 @@ contains
     particle_label = node%particle_label(1:index (node%particle_label, '[')-1)
     if (.not. associated (feyngraph_set%particle)) then
        allocate (feyngraph_set%particle (PRT_ARRAY_SIZE))
-    endif
+    end if
     do i = 1, size (feyngraph_set%particle)
        if (particle_label == feyngraph_set%particle(i)%particle_label) then
           node%particle => feyngraph_set%particle(i)
@@ -1544,7 +1560,7 @@ contains
           call feyngraph_set%particle(i)%init (feyngraph_set, particle_label)
           node%particle => feyngraph_set%particle(i)
           exit
-       endif
+       end if
     enddo
 !!! Since the O'Mega output uses the anti-particles instead of the particles specified
 !!! in the process definition, we revert this here. An exception is the first particle
@@ -1604,7 +1620,7 @@ contains
        end if
        if (.not. associated (mother_node%particle)) then
           call mother_node%assign_particle_properties (feyngraph_set)
-       endif
+       end if
        if (n_daughters /= 2 .and. n_daughters /= 0) then
           mother_node%keep = .false.
           feyngraph%keep = .false.
@@ -1633,26 +1649,26 @@ contains
              n_open_par = n_open_par - 1
           end if
        end do
-    endif
+    end if
     if (associated (mother_node%daughter1)) then
        if (.not. mother_node%daughter1%keep) then
           mother_node%keep = .false.
-       endif
-    endif
+       end if
+    end if
     if (associated (mother_node%daughter2)) then
        if (.not. mother_node%daughter2%keep) then
           mother_node%keep = .false.
-       endif
-    endif
+       end if
+    end if
     if (associated (mother_node%daughter1) .and. &
          associated (mother_node%daughter2)) then
        mother_node%n_subtree_nodes = &
             mother_node%daughter1%n_subtree_nodes &
             + mother_node%daughter2%n_subtree_nodes + 1
-    endif
+    end if
     if (.not. mother_node%keep) then
        feyngraph%keep = .false.
-    endif
+    end if
   end subroutine node_construct_subtree_rec
 
   subroutine feyngraph_construct (feyngraph_set, feyngraph)
@@ -1663,30 +1679,145 @@ contains
     feyngraph%n_nodes = feyngraph%root%n_subtree_nodes
   end subroutine feyngraph_construct
 
-  subroutine dag_construct (dag)
+  subroutine dag_node_final (dag_node)
+    class (dag_node_t), intent (inout) :: dag_node
+    integer :: i
+    call dag_node%string%final ()
+    if (allocated (dag_node%f_node)) then
+       do i=1, size (dag_node%f_node)
+          if (associated (dag_node%f_node(i)%node)) then
+             call dag_node%f_node(i)%node%final ()
+             deallocate (dag_node%f_node(i)%node)
+          end if
+       enddo
+       deallocate (dag_node%f_node)
+    end if
+  end subroutine dag_node_final
+
+  subroutine dag_options_final (dag_options)
+    class (dag_options_t), intent (inout) :: dag_options
+    integer :: i
+    call dag_options%string%final ()
+    if (allocated (dag_options%f_node_ptr1)) then
+       do i=1, size (dag_options%f_node_ptr1)
+          dag_options%f_node_ptr1(i)%node => null ()
+       enddo
+       deallocate (dag_options%f_node_ptr1)
+    end if
+        if (allocated (dag_options%f_node_ptr2)) then
+       do i=1, size (dag_options%f_node_ptr2)
+          dag_options%f_node_ptr2(i)%node => null ()
+       enddo
+       deallocate (dag_options%f_node_ptr2)
+    end if
+  end subroutine dag_options_final
+
+  subroutine dag_combination_final (dag_combination)
+    class (dag_combination_t), intent (inout) :: dag_combination
+    integer :: i
+    call dag_combination%string%final ()
+    if (allocated (dag_combination%f_node_ptr1)) then
+       do i=1, size (dag_combination%f_node_ptr1)
+          dag_combination%f_node_ptr1(i)%node => null ()
+       enddo
+       deallocate (dag_combination%f_node_ptr1)
+    end if
+    if (allocated (dag_combination%f_node_ptr2)) then
+       do i=1, size (dag_combination%f_node_ptr2)
+          dag_combination%f_node_ptr2(i)%node => null ()
+       enddo
+       deallocate (dag_combination%f_node_ptr2)
+    end if
+  end subroutine dag_combination_final
+
+  subroutine dag_final (dag)
     class (dag_t), intent (inout) :: dag
+    integer :: i
+    call dag%string%final ()
+    if (allocated (dag%node)) then
+       do i=1, size (dag%node)
+          call dag%node(i)%final ()
+       enddo
+       deallocate (dag%node)
+    end if
+    if (allocated (dag%options)) then
+       do i=1, size (dag%options)
+          call dag%options(i)%final ()
+       enddo
+       deallocate (dag%options)
+    end if
+    if (allocated (dag%combination)) then
+       do i=1, size (dag%combination)
+          call dag%combination(i)%final ()
+       enddo
+       deallocate (dag%combination)
+    end if
+  end subroutine dag_final
+
+  subroutine dag_construct (dag, feyngraph_set)
+    class (dag_t), intent (inout) :: dag
+    type (feyngraph_set_t), intent (inout) :: feyngraph_set
     integer :: n_nodes
     integer :: n_options
     integer :: n_combinations
     logical :: continue_loop
+    integer :: subtree_size
+    integer :: i,j
+    subtree_size = 1
     call dag%get_nodes_and_combinations (leaves = .true.)
+    do i=1, dag%n_nodes
+       call dag%node(i)%make_f_nodes (feyngraph_set, dag)
+    enddo
     continue_loop = .true.
+    subtree_size = subtree_size + 2
     do while (continue_loop)
        n_nodes = dag%n_nodes
        n_options = dag%n_options
        n_combinations = dag%n_combinations
        call dag%get_nodes_and_combinations (leaves = .false.)
+       if (n_nodes /= dag%n_nodes) then
+          dag%node(n_nodes+1:dag%n_nodes)%subtree_size = subtree_size
+          do i = n_nodes+1, dag%n_nodes
+             call dag%node(i)%make_f_nodes (feyngraph_set, dag)
+          enddo
+          subtree_size = subtree_size + 2
+       end if
+       if (n_combinations /= dag%n_combinations) then
+          !$OMP PARALLEL DO
+          do i = n_combinations+1, dag%n_combinations
+             call dag%combination(i)%make_f_nodes (feyngraph_set, dag)
+          enddo
+          !$OMP END PARALLEL DO
+       end if
        call dag%get_options ()
+       if (n_options /= dag%n_options) then
+          !$OMP PARALLEL DO
+          do i = n_options+1, dag%n_options
+             call dag%options(i)%make_f_nodes (feyngraph_set, dag)
+          enddo
+          !$OMP END PARALLEL DO
+       end if
        if (n_nodes == dag%n_nodes .and. n_options == dag%n_options &
             .and. n_combinations == dag%n_combinations) then
           continue_loop = .false.
-       endif
+       end if
     enddo
 !!! add root node to dag
     call dag%add_node (dag%string%t, leaf = .false.)
+    dag%node(dag%n_nodes)%subtree_size = subtree_size
+    call dag%node(dag%n_nodes)%make_f_nodes (feyngraph_set, dag)
     if (debug2_active (D_PHASESPACE)) then
        call dag%write (output_unit)
-    endif
+    end if
+!!! set indices for all f_nodes
+    do i=1, dag%n_nodes
+       if (allocated (dag%node(i)%f_node)) then
+          do j=1, size (dag%node(i)%f_node)
+             if (associated (dag%node(i)%f_node(j)%node)) &
+                  call dag%node(i)%f_node(j)%node%set_index ()
+          enddo
+       end if
+    enddo
   end subroutine dag_construct
 
   subroutine dag_get_nodes_and_combinations (dag, leaves)
@@ -1708,8 +1839,8 @@ contains
              if (popcnt(dag%string%t(i)%bincode) == 1) then
                 call dag%add_node (dag%string%t(i:i), .true., i_node)
                 call dag%string%t(i)%init_dag_object_token (DAG_NODE_TK, i_node)
-             endif
-          endif
+             end if
+          end if
        enddo
        call dag%string%update_char_len ()
     else
@@ -1734,7 +1865,7 @@ contains
                    else
                       call dag%add_node (dag%string%t(i:j), leaves, i_node)
                       call new_string%t(new_size)%init_dag_object_token (DAG_NODE_TK, i_node)
-                   endif
+                   end if
                    i = j + 1
                    exit
                 case (OPEN_PAR_TK, OPEN_CURLY_TK, CLOSED_CURLY_TK)
@@ -1750,11 +1881,11 @@ contains
              new_size = new_size + 1
              new_string%t(new_size) = dag%string%t(i)
              i = i + 1
-          endif
+          end if
        enddo
        dag%string = new_string%t(:new_size)
        call dag%string%update_char_len ()
-    endif
+    end if
   end subroutine dag_get_nodes_and_combinations
 
   subroutine dag_get_options (dag)
@@ -1794,7 +1925,7 @@ contains
           new_size = new_size + 1
           new_string%t(new_size) = dag%string%t(i)
           i = i + 1
-       endif
+       end if
     enddo
     dag%string = new_string%t(:new_size)
     call dag%string%update_char_len ()
@@ -1818,16 +1949,16 @@ contains
         allocate (dag%node (dag%n_nodes+DAG_STACK_SIZE))
         dag%node(:dag%n_nodes) = tmp_node
         deallocate (tmp_node)
-     endif
+     end if
      do i = 1, dag%n_nodes
         if (dag%node(i)%string_len == string_len) then
            if (size (dag%node(i)%string%t) == size (string)) then
               if (all(dag%node(i)%string%t == string)) then
                  if (present (i_node)) i_node = i
                  return
-              endif
-           endif
-        endif
+              end if
+           end if
+        end if
      enddo
      dag%n_nodes = dag%n_nodes + 1
      dag%node(dag%n_nodes)%string = string
@@ -1853,16 +1984,16 @@ contains
         allocate (dag%options (dag%n_options+DAG_STACK_SIZE))
         dag%options(:dag%n_options) = tmp_options
         deallocate (tmp_options)
-     endif
+     end if
      do i = 1, dag%n_options
         if (dag%options(i)%string_len == string_len) then
            if (size (dag%options(i)%string%t) == size (string)) then
               if (all(dag%options(i)%string%t == string)) then
                  if (present (i_options)) i_options = i
                  return
-              endif
-           endif
-        endif
+              end if
+           end if
+        end if
      enddo
      dag%n_options = dag%n_options + 1
      dag%options(dag%n_options)%string = string
@@ -1887,16 +2018,16 @@ contains
         allocate (dag%combination (dag%n_combinations+DAG_STACK_SIZE))
         dag%combination(:dag%n_combinations) = tmp_combination
         deallocate (tmp_combination)
-     endif
+     end if
      do i = 1, dag%n_combinations
         if (dag%combination(i)%string_len == string_len) then
            if (size (dag%combination(i)%string%t) == size (string)) then
               if (all(dag%combination(i)%string%t == string)) then
                  i_combination = i
                  return
-              endif
-           endif
-        endif
+              end if
+           end if
+        end if
      enddo
      dag%n_combinations = dag%n_combinations + 1
      dag%combination(dag%n_combinations)%string = string
@@ -1904,12 +2035,10 @@ contains
      if (present (i_combination)) i_combination = dag%n_combinations
   end subroutine dag_add_combination
 
-  recursive subroutine dag_node_make_f_nodes (dag_node, feyngraph_set, dag)
+  subroutine dag_node_make_f_nodes (dag_node, feyngraph_set, dag)
     class (dag_node_t), intent (inout) :: dag_node
     type (feyngraph_set_t), intent (inout) :: feyngraph_set
     type (dag_t), intent (inout) :: dag
-    type (f_node_ptr_t), dimension (:), allocatable :: daughter1_ptr
-    type (f_node_ptr_t), dimension (:), allocatable :: daughter2_ptr
     character (len=LABEL_LEN) :: particle_label
     integer :: i, j
     integer, dimension (2) :: obj
@@ -1924,14 +2053,13 @@ contains
     if (dag_node%leaf) then
 !!! construct subtree with procedure similar to the one for the old output
        allocate (dag_node%f_node(1))
-       call feyngraph_set%f_node_list%add_entry (char(dag_node%string), &
-            dag_node%f_node(1)%node, .false.)
+       allocate (dag_node%f_node(1)%node)
        dag_node%f_node(1)%node%particle_label = particle_label
        call dag_node%f_node(1)%node%assign_particle_properties (feyngraph_set)
        if (.not. dag_node%f_node(1)%node%keep) then
           deallocate (dag_node%f_node)
           return
-       endif
+       end if
     else
        n_obj = 0
        do i = 1, size (dag_node%string%t)
@@ -1945,100 +2073,142 @@ contains
        enddo
        if (n_obj == 1) then
           if (obj(1) == DAG_OPTIONS_TK) then
-             call dag%options(i_obj(1))%make_f_nodes (feyngraph_set, dag, daughter1_ptr, daughter2_ptr)
+             if (allocated (dag%options(i_obj(1))%f_node_ptr1)) then
+                size1 = size(dag%options(i_obj(1))%f_node_ptr1)
+                allocate (dag_node%f_node(size1))
+                do i=1, size1
+                   allocate (dag_node%f_node(i)%node)
+                   dag_node%f_node(i)%node%particle_label = particle_label
+                   call dag_node%f_node(i)%node%assign_particle_properties (feyngraph_set)
+                   dag_node%f_node(i)%node%daughter1 => dag%options(i_obj(1))%f_node_ptr1(i)%node
+                   dag_node%f_node(i)%node%daughter2 => dag%options(i_obj(1))%f_node_ptr2(i)%node
+                   dag_node%f_node(i)%node%n_subtree_nodes = &
+                        dag%options(i_obj(1))%f_node_ptr1(i)%node%n_subtree_nodes &
+                        + dag%options(i_obj(1))%f_node_ptr2(i)%node%n_subtree_nodes + 1
+                enddo
+             end if
           else if (obj(1) == DAG_COMBINATION_TK) then
-             call dag%combination(i_obj(1))%make_f_nodes(feyngraph_set, dag, daughter1_ptr, daughter2_ptr)
-          endif
-          allocate (dag_node%f_node(size(daughter1_ptr)))
-          !$OMP PARALLEL DO
-          do i=1, size(dag_node%f_node)
-             call feyngraph_set%f_node_list%add_entry (char(dag_node%string), dag_node%f_node(i)%node, .false.)
-          enddo
-          !$OMP END PARALLEL DO
-          do i=1, size(dag_node%f_node)
-             call dag_node%f_node(i)%node%set_index ()
-             dag_node%f_node(i)%node%particle_label = particle_label
-             call dag_node%f_node(i)%node%assign_particle_properties (feyngraph_set)
-             dag_node%f_node(i)%node%daughter1 => daughter1_ptr(i)%node
-             dag_node%f_node(i)%node%daughter2 => daughter2_ptr(i)%node
-             dag_node%f_node(i)%node%n_subtree_nodes = daughter1_ptr(i)%node%n_subtree_nodes &
-                  + daughter2_ptr(i)%node%n_subtree_nodes + 1
-          enddo
+             if (allocated (dag%combination(i_obj(1))%f_node_ptr1)) then
+                size1 = size(dag%combination(i_obj(1))%f_node_ptr1)
+                allocate (dag_node%f_node(size1))
+                do i=1, size1
+                   allocate (dag_node%f_node(i)%node)
+                   dag_node%f_node(i)%node%particle_label = particle_label
+                   call dag_node%f_node(i)%node%assign_particle_properties (feyngraph_set)
+                   dag_node%f_node(i)%node%daughter1 => dag%combination(i_obj(1))%f_node_ptr1(i)%node
+                   dag_node%f_node(i)%node%daughter2 => dag%combination(i_obj(1))%f_node_ptr2(i)%node
+                   dag_node%f_node(i)%node%n_subtree_nodes = &
+                        dag%combination(i_obj(1))%f_node_ptr1(i)%node%n_subtree_nodes &
+                     + dag%combination(i_obj(1))%f_node_ptr2(i)%node%n_subtree_nodes + 1
+                enddo
+             end if
+          end if
 !!! simply set daughter pointers, daughters are already combined correctly
        else if (n_obj == 2) then
-          if (obj(1) == DAG_NODE_TK) then
-             call dag%node(i_obj(1))%make_f_nodes (feyngraph_set, dag)
-             allocate (daughter1_ptr (size (dag%node(i_obj(1))%f_node)))
-             daughter1_ptr = dag%node(i_obj(1))%f_node
-          else if (obj(1) == DAG_OPTIONS_TK) then
-             call dag%options(i_obj(1))%make_f_nodes (feyngraph_set, dag, daughter1_ptr)
-          endif
-          if (obj(2) == DAG_NODE_TK) then
-             call dag%node(i_obj(2))%make_f_nodes (feyngraph_set, dag)
-             allocate (daughter2_ptr (size (dag%node(i_obj(2))%f_node)))
-             daughter2_ptr = dag%node(i_obj(2))%f_node
-          else if (obj(2) == DAG_OPTIONS_TK) then
-             call dag%options(i_obj(2))%make_f_nodes (feyngraph_set, dag, daughter2_ptr)
-          endif
-!!! make all combinations of daughters
           size1 = 0
-          do i=1, size (daughter1_ptr)
-             if (daughter1_ptr(i)%node%keep) size1 = size1 + 1
-          enddo
           size2 = 0
-          do i=1, size (daughter2_ptr)
-             if (daughter2_ptr(i)%node%keep) size2 = size2 + 1
-          enddo
-          new_size = size1*size2
-          allocate (dag_node%f_node(new_size))
-          pos = 0
-          do i = 1, size (daughter1_ptr)
-             if (daughter1_ptr(i)%node%keep) then
-                do j = 1, size (daughter2_ptr)
-                   if (daughter2_ptr(j)%node%keep) then
-                      pos = pos + 1
-                      call feyngraph_set%f_node_list%add_entry(char(dag_node%string), &
-                           dag_node%f_node(pos)%node, .false.)
-                      call dag_node%f_node(pos)%node%set_index ()
-                      dag_node%f_node(pos)%node%particle_label = particle_label
-                      call dag_node%f_node(pos)%node%assign_particle_properties (feyngraph_set)
-                      dag_node%f_node(pos)%node%daughter1 => daughter1_ptr(i)%node
-                      dag_node%f_node(pos)%node%daughter2 => daughter2_ptr(j)%node
-                      dag_node%f_node(pos)%node%n_subtree_nodes = daughter1_ptr(i)%node%n_subtree_nodes &
-                           + daughter2_ptr(j)%node%n_subtree_nodes + 1
-                      call feyngraph_set%model%match_vertex (daughter1_ptr(i)%node%particle%pdg, &
-                           daughter2_ptr(j)%node%particle%pdg, match)
-                      if (allocated (match)) then
-                         if (any (abs(match) == abs(dag_node%f_node(pos)%node%particle%pdg))) then
-                            dag_node%f_node(pos)%node%keep = .true.
-                         else
-                            dag_node%f_node(pos)%node%keep = .false.
-                         endif
-                         deallocate (match)
-                      else
-                         dag_node%f_node(pos)%node%keep = .false.
-                      endif
-                   endif
+          if (obj(1) == DAG_NODE_TK) then
+             if (allocated (dag%node(i_obj(1))%f_node)) then
+                do i=1, size (dag%node(i_obj(1))%f_node)
+                   if (dag%node(i_obj(1))%f_node(i)%node%keep) size1 = size1 + 1
                 enddo
-             endif
-          enddo
-          deallocate (daughter1_ptr, daughter2_ptr)
-       endif
-    endif
+             end if
+          else if (obj(1) == DAG_OPTIONS_TK) then
+             if (allocated (dag%options(i_obj(1))%f_node_ptr1)) then
+                do i=1, size (dag%options(i_obj(1))%f_node_ptr1)
+                   if (dag%options(i_obj(1))%f_node_ptr1(i)%node%keep) size1 = size1 + 1
+                enddo
+             end if
+          end if
+          if (obj(2) == DAG_NODE_TK) then
+             if (allocated (dag%node(i_obj(2))%f_node)) then
+                do i=1, size (dag%node(i_obj(2))%f_node)
+                   if (dag%node(i_obj(2))%f_node(i)%node%keep) size2 = size2 + 1
+                enddo
+             end if
+          else if (obj(2) == DAG_OPTIONS_TK) then
+             if (allocated (dag%options(i_obj(2))%f_node_ptr1)) then
+                do i=1, size (dag%options(i_obj(2))%f_node_ptr1)
+                   if (dag%options(i_obj(2))%f_node_ptr1(i)%node%keep) size2 = size2 + 1
+                enddo
+             end if
+          end if
+!!! make all combinations of daughters
+          select case (obj(1))
+          case (DAG_NODE_TK)
+             select case (obj(2))
+             case (DAG_NODE_TK)
+                call combine_all_daughters(dag%node(i_obj(1))%f_node, &
+                     dag%node(i_obj(2))%f_node)
+             case (DAG_OPTIONS_TK)
+                call combine_all_daughters(dag%node(i_obj(1))%f_node, &
+                     dag%options(i_obj(2))%f_node_ptr1)
+             end select
+          case (DAG_OPTIONS_TK)
+             select case (obj(2))
+             case (DAG_NODE_TK)
+                call combine_all_daughters(dag%options(i_obj(1))%f_node_ptr1, &
+                     dag%node(i_obj(2))%f_node)
+             case (DAG_OPTIONS_TK)
+                call combine_all_daughters(dag%options(i_obj(1))%f_node_ptr1, &
+                     dag%options(i_obj(2))%f_node_ptr1)
+             end select
+          end select
+       end if
+    end if
+
+  contains
+
+    subroutine combine_all_daughters (daughter1_ptr, daughter2_ptr)
+      type (f_node_ptr_t), dimension (:), intent (in) :: daughter1_ptr
+      type (f_node_ptr_t), dimension (:), intent (in) :: daughter2_ptr
+      integer :: i, j
+      integer :: pos
+      new_size = size1*size2
+      allocate (dag_node%f_node(new_size))
+      pos = 0
+      do i = 1, size (daughter1_ptr)
+         if (daughter1_ptr(i)%node%keep) then
+            do j = 1, size (daughter2_ptr)
+               if (daughter2_ptr(j)%node%keep) then
+                  pos = pos + 1
+                  allocate (dag_node%f_node(pos)%node)
+                  dag_node%f_node(pos)%node%particle_label = particle_label
+                  call dag_node%f_node(pos)%node%assign_particle_properties (feyngraph_set)
+                  dag_node%f_node(pos)%node%daughter1 => daughter1_ptr(i)%node
+                  dag_node%f_node(pos)%node%daughter2 => daughter2_ptr(j)%node
+                  dag_node%f_node(pos)%node%n_subtree_nodes = daughter1_ptr(i)%node%n_subtree_nodes &
+                       + daughter2_ptr(j)%node%n_subtree_nodes + 1
+                  call feyngraph_set%model%match_vertex (daughter1_ptr(i)%node%particle%pdg, &
+                       daughter2_ptr(j)%node%particle%pdg, match)
+                  if (allocated (match)) then
+                     if (any (abs(match) == abs(dag_node%f_node(pos)%node%particle%pdg))) then
+                        dag_node%f_node(pos)%node%keep = .true.
+                     else
+                        dag_node%f_node(pos)%node%keep = .false.
+                     end if
+                     deallocate (match)
+                  else
+                     dag_node%f_node(pos)%node%keep = .false.
+                  end if
+               end if
+            enddo
+         end if
+      enddo
+    end subroutine combine_all_daughters
   end subroutine dag_node_make_f_nodes
 
-  recursive subroutine dag_options_make_f_nodes_single (dag_options, &
-       feyngraph_set, dag, node_ptr)
+  subroutine dag_options_make_f_nodes (dag_options, &
+       feyngraph_set, dag)
     class (dag_options_t), intent (inout) :: dag_options
     type (feyngraph_set_t), intent (inout) :: feyngraph_set
     type (dag_t), intent (inout) :: dag
-    type (f_node_ptr_t), dimension(:), allocatable, intent (out) :: node_ptr
-    type (f_node_ptr_t), dimension(:), allocatable :: tmp_node_ptr
     integer, dimension (:), allocatable :: obj, i_obj
     integer :: n_obj
     integer :: i
     integer :: pos
 !!! read options
+    if (allocated (dag_options%f_node_ptr1)) return
     n_obj = count ((dag_options%string%t%type == DAG_NODE_TK) .or. &
          (dag_options%string%t%type == DAG_OPTIONS_TK) .or. &
          (dag_options%string%t%type == DAG_COMBINATION_TK), 1)
@@ -2052,91 +2222,73 @@ contains
           i_obj(pos) = dag_options%string%t(i)%index
        end select
     enddo
-    do i=1, n_obj
-       if (allocated (node_ptr)) then
-          call dag%node(i_obj(i))%make_f_nodes (feyngraph_set, dag)
-          if (allocated (dag%node(i_obj(i))%f_node)) then
-             allocate (tmp_node_ptr (size (node_ptr)))
-             tmp_node_ptr = node_ptr
-             deallocate (node_ptr)
-             allocate (node_ptr (size (tmp_node_ptr) + size (dag%node(i_obj(i))%f_node)))
-             node_ptr(:size(tmp_node_ptr)) = tmp_node_ptr
-             node_ptr(size(tmp_node_ptr)+1:) = dag%node(i_obj(i))%f_node
-             deallocate (tmp_node_ptr)
-          endif
-       else
-          call dag%node(i_obj(i))%make_f_nodes (feyngraph_set, dag)
-          allocate (node_ptr (size (dag%node(i_obj(i))%f_node)))
-          node_ptr = dag%node(i_obj(i))%f_node
-       endif
-    enddo
+    if (any (dag_options%string%t%type == DAG_NODE_TK)) then
+       call dag_options_make_f_nodes_single
+    else if (any (dag_options%string%t%type == DAG_COMBINATION_TK)) then
+       call dag_options_make_f_nodes_pair
+    end if
     deallocate (obj, i_obj)
-  end subroutine dag_options_make_f_nodes_single
 
-  subroutine dag_options_make_f_nodes_pair (dag_options, &
-       feyngraph_set, dag, node_ptr1, node_ptr2)
-    class (dag_options_t), intent (inout) :: dag_options
-    type (feyngraph_set_t), intent (inout) :: feyngraph_set
-    type (dag_t), intent (inout) :: dag
-    type (f_node_ptr_t), dimension(:), allocatable, intent (out) :: node_ptr1
-    type (f_node_ptr_t), dimension(:), allocatable, intent (out) :: node_ptr2
-    type (f_node_ptr_t), dimension(:), allocatable :: tmp_node_ptr1, tmp_node_ptr2
-    type (f_node_ptr_t), dimension(:), allocatable :: dummy_node_ptr1, dummy_node_ptr2
-    integer, dimension (:), allocatable :: obj, i_obj
-    integer :: n_obj
-    integer :: pos
-    integer :: i
-!!! read options
-    n_obj = count ((dag_options%string%t%type == DAG_NODE_TK) .or. &
-         (dag_options%string%t%type == DAG_OPTIONS_TK) .or. &
-         (dag_options%string%t%type == DAG_COMBINATION_TK), 1)
-    allocate (obj(n_obj)); allocate (i_obj(n_obj))
-    pos = 0
-    do i = 1, size (dag_options%string%t)
-       select case (dag_options%string%t(i)%type)
-       case (DAG_NODE_TK, DAG_OPTIONS_TK, DAG_COMBINATION_TK)
-          pos = pos + 1
-          obj(pos) = dag_options%string%t(i)%type
-          i_obj(pos) = dag_options%string%t(i)%index
-       end select
-    enddo
+  contains
+
+    subroutine dag_options_make_f_nodes_single
+      integer :: i_start, i_end
+      integer :: n_nodes
+      n_nodes = 0
+      do i=1, n_obj
+         if (allocated (dag%node(i_obj(i))%f_node)) then
+            n_nodes = n_nodes + size (dag%node(i_obj(i))%f_node)
+         end if
+      enddo
+      if (n_nodes /= 0) then
+         allocate (dag_options%f_node_ptr1 (n_nodes))
+         i_end = 0
+         do i = 1, n_obj
+            if (allocated (dag%node(i_obj(i))%f_node)) then
+               i_start = i_end + 1
+               i_end = i_end + size (dag%node(i_obj(i))%f_node)
+               dag_options%f_node_ptr1(i_start:i_end) = dag%node(i_obj(i))%f_node
+            end if
+         enddo
+      end if
+    end subroutine dag_options_make_f_nodes_single
+
+    subroutine dag_options_make_f_nodes_pair
+      integer :: i_start, i_end
+      integer :: n_nodes
 !!! get f_nodes from each combination
-    do i=1, n_obj
-       if (allocated (node_ptr1) .and. allocated (node_ptr2)) then
-          call dag%combination(i_obj(i))%make_f_nodes (feyngraph_set, dag, dummy_node_ptr1, dummy_node_ptr2)
-          if (allocated (dummy_node_ptr1) .and. allocated (dummy_node_ptr2)) then
-             allocate (tmp_node_ptr1 (size (node_ptr1)))
-             allocate (tmp_node_ptr2 (size (node_ptr2)))
-             tmp_node_ptr1 = node_ptr1; tmp_node_ptr2 = node_ptr2
-             deallocate (node_ptr1, node_ptr2)
-             allocate (node_ptr1 (size (tmp_node_ptr1) + size (dummy_node_ptr1)))
-             allocate (node_ptr2 (size (tmp_node_ptr2) + size (dummy_node_ptr2)))
-             node_ptr1(:size(tmp_node_ptr1)) = tmp_node_ptr1
-             node_ptr2(:size(tmp_node_ptr2)) = tmp_node_ptr2
-             node_ptr1(size(tmp_node_ptr1)+1:) = dummy_node_ptr1
-             node_ptr2(size(tmp_node_ptr2)+1:) = dummy_node_ptr2
-             deallocate (tmp_node_ptr1, dummy_node_ptr1, tmp_node_ptr2, dummy_node_ptr2)
-          endif
-       else
-          call dag%combination(i_obj(i))%make_f_nodes (feyngraph_set, dag, node_ptr1, node_ptr2)
-       endif
-    enddo
-    deallocate (obj, i_obj)
-  end subroutine dag_options_make_f_nodes_pair
+      n_nodes = 0
+      do i=1, n_obj
+         if (allocated (dag%combination(i_obj(i))%f_node_ptr1)) then
+            n_nodes = n_nodes + size (dag%combination(i_obj(i))%f_node_ptr1)
+         end if
+      enddo
+      if (n_nodes /= 0) then
+         allocate (dag_options%f_node_ptr1 (n_nodes))
+         allocate (dag_options%f_node_ptr2 (n_nodes))
+         i_end = 0
+         do i=1, n_obj
+            if (allocated (dag%combination(i_obj(i))%f_node_ptr1)) then
+               i_start = i_end + 1
+               i_end = i_end + size (dag%combination(i_obj(i))%f_node_ptr1)
+               dag_options%f_node_ptr1(i_start:i_end) = dag%combination(i_obj(i))%f_node_ptr1
+               dag_options%f_node_ptr2(i_start:i_end) = dag%combination(i_obj(i))%f_node_ptr2
+            end if
+         enddo
+      end if
+    end subroutine dag_options_make_f_nodes_pair
+  end subroutine dag_options_make_f_nodes
 
   subroutine dag_combination_make_f_nodes (dag_combination, &
-       feyngraph_set, dag, node_ptr1, node_ptr2)
+       feyngraph_set, dag)
     class (dag_combination_t), intent (inout) :: dag_combination
     type (feyngraph_set_t), intent (inout) :: feyngraph_set
     type (dag_t), intent (inout) :: dag
-    type (f_node_ptr_t), dimension(:), allocatable, intent (out) :: node_ptr1
-    type (f_node_ptr_t), dimension(:), allocatable, intent (out) :: node_ptr2
-    type (f_node_ptr_t), dimension(:), allocatable :: dummy_node_ptr1
-    type (f_node_ptr_t), dimension(:), allocatable :: dummy_node_ptr2
     integer, dimension (2) :: obj, i_obj
     integer :: n_obj
     integer :: new_size, size1, size2
     integer :: i, j, pos
+    if (allocated (dag_combination%f_node_ptr1)) return
     n_obj = 0
     do i = 1, size (dag_combination%string%t)
        select case (dag_combination%string%t(i)%type)
@@ -2147,68 +2299,95 @@ contains
           i_obj(n_obj) = dag_combination%string%t(i)%index
        end select
     enddo
+    size1 = 0
+    size2 = 0
     if (obj(1) == DAG_NODE_TK) then
-       call dag%node(i_obj(1))%make_f_nodes (feyngraph_set, dag)
-       allocate (dummy_node_ptr1 (size (dag%node(i_obj(1))%f_node)))
-       dummy_node_ptr1 = dag%node(i_obj(1))%f_node
+       if (allocated (dag%node(i_obj(1))%f_node)) &
+            size1 = size (dag%node(i_obj(1))%f_node)
     else if (obj(1) == DAG_OPTIONS_TK) then
-       call dag%options(i_obj(1))%make_f_nodes (feyngraph_set, dag, dummy_node_ptr1)
-    endif
-    if (allocated (dummy_node_ptr1)) then
-       if (obj(2) == DAG_NODE_TK) then
-          call dag%node(i_obj(2))%make_f_nodes (feyngraph_set, dag)
-          allocate (dummy_node_ptr2 (size (dag%node(i_obj(2))%f_node)))
-          dummy_node_ptr2 = dag%node(i_obj(2))%f_node
-       else if (obj(2) == DAG_OPTIONS_TK) then
-          call dag%options(i_obj(2))%make_f_nodes (feyngraph_set, dag, dummy_node_ptr2)
-       endif
-    endif
+       if (allocated (dag%options(i_obj(1))%f_node_ptr1)) &
+            size1 = size (dag%options(i_obj(1))%f_node_ptr1)
+    end if
+    if (obj(2) == DAG_NODE_TK) then
+       if (allocated (dag%node(i_obj(2))%f_node)) &
+            size2 = size (dag%node(i_obj(2))%f_node)
+    else if (obj(2) == DAG_OPTIONS_TK) then
+       if (allocated (dag%options(i_obj(2))%f_node_ptr1)) &
+            size2 = size (dag%options(i_obj(2))%f_node_ptr1)
+    end if
 !!! combine the 2 arrays of f_nodes
-    if (allocated (dummy_node_ptr1) .and. allocated (dummy_node_ptr2)) then
-       size1 = size (dummy_node_ptr1)
-       size2 = size (dummy_node_ptr2)
-       new_size = size1*size2
-       allocate (node_ptr1 (new_size))
-       allocate (node_ptr2 (new_size))
+    new_size = size1*size2
+    if (new_size /= 0) then
+       allocate (dag_combination%f_node_ptr1 (new_size))
+       allocate (dag_combination%f_node_ptr2 (new_size))
        pos = 0
-       do i = 1, size1
-          do j = 1, size2
-             pos = pos + 1
-             node_ptr1(pos) = dummy_node_ptr1(i)
-             node_ptr2(pos) = dummy_node_ptr2(j)
-          enddo
-       enddo
-       deallocate (dummy_node_ptr1, dummy_node_ptr2)
-    endif
+       select case (obj(1))
+       case (DAG_NODE_TK)
+          select case (obj(2))
+          case (DAG_NODE_TK)
+             do i = 1, size1
+                do j = 1, size2
+                   pos = pos + 1
+                   dag_combination%f_node_ptr1(pos) = dag%node(i_obj(1))%f_node(i)
+                   dag_combination%f_node_ptr2(pos) = dag%node(i_obj(2))%f_node(j)
+                enddo
+             enddo
+          case (DAG_OPTIONS_TK)
+             do i = 1, size1
+                do j = 1, size2
+                   pos = pos + 1
+                   dag_combination%f_node_ptr1(pos) = dag%node(i_obj(1))%f_node(i)
+                   dag_combination%f_node_ptr2(pos) = dag%options(i_obj(2))%f_node_ptr1(j)
+                enddo
+             enddo
+          end select
+       case (DAG_OPTIONS_TK)
+          select case (obj(2))
+          case (DAG_NODE_TK)
+             do i = 1, size1
+                do j = 1, size2
+                   pos = pos + 1
+                   dag_combination%f_node_ptr1(pos) = dag%options(i_obj(1))%f_node_ptr1(i)
+                   dag_combination%f_node_ptr2(pos) = dag%node(i_obj(2))%f_node(j)
+                enddo
+             enddo
+          case (DAG_OPTIONS_TK)
+             do i = 1, size1
+                do j = 1, size2
+                   pos = pos + 1
+                   dag_combination%f_node_ptr1(pos) = dag%options(i_obj(1))%f_node_ptr1(i)
+                   dag_combination%f_node_ptr2(pos) = dag%options(i_obj(2))%f_node_ptr1(j)
+                enddo
+             enddo
+          end select
+       end select
+    end if
   end subroutine dag_combination_make_f_nodes
 
   subroutine dag_make_feyngraphs (dag, feyngraph_set)
     class (dag_t), intent (inout) :: dag
     type (feyngraph_set_t), intent (inout) :: feyngraph_set
     integer :: i
-    type (f_node_ptr_t), dimension (:), allocatable :: node_ptr
-    call dag%node(dag%n_nodes)%make_f_nodes (feyngraph_set, dag)
-    allocate (node_ptr (size (dag%node(dag%n_nodes)%f_node)))
-    node_ptr = dag%node(dag%n_nodes)%f_node
-    if (allocated (node_ptr)) then
-       do i = 1, size (node_ptr)
+    integer :: max_subtree_size
+    max_subtree_size = dag%node(dag%n_nodes)%subtree_size
+    if (allocated (dag%node(dag%n_nodes)%f_node)) then
+       do i = 1, size (dag%node(dag%n_nodes)%f_node)
           if (.not. associated (feyngraph_set%first)) then
              allocate (feyngraph_set%last)
              feyngraph_set%first => feyngraph_set%last
           else
              allocate (feyngraph_set%last%next)
              feyngraph_set%last => feyngraph_set%last%next
-          endif
-          feyngraph_set%last%root => node_ptr(i)%node
+          end if
+          feyngraph_set%last%root => dag%node(dag%n_nodes)%f_node(i)%node
 !!! The first particle was correct in the O'Mega parsable DAG output. It was however
 !!! changed to its anti-particle in f_node_assign_particle_properties, which we revert here.
           feyngraph_set%last%root%particle => feyngraph_set%last%root%particle%anti
           feyngraph_set%last%n_nodes = feyngraph_set%last%root%n_subtree_nodes
           feyngraph_set%n_graphs = feyngraph_set%n_graphs + 1
        enddo
-       deallocate (node_ptr)
        feyngraph_set%f_node_list%max_tree_size = feyngraph_set%first%n_nodes
-    endif
+    end if
   end subroutine dag_make_feyngraphs
 
   subroutine dag_write (dag, u)
@@ -2231,7 +2410,7 @@ contains
 
   subroutine k_node_make_nonresonant_copy (k_node)
     type (k_node_t), intent (in) :: k_node
-    type (k_node_t), pointer :: copy => null ()
+    type (k_node_t), pointer :: copy
     call k_node%f_node%k_node_list%add_entry (copy, recycle=.true.)
     copy%daughter1 => k_node%daughter1
     copy%daughter2 => k_node%daughter2
@@ -2254,7 +2433,7 @@ contains
        if (.not. feyngraph%root%keep) return
        if (feyngraph_set%process_type == SCATTERING) then
           call split_up_t_lines (kingraph_root)
-       endif
+       end if
        do i=1, size (kingraph_root)
           if (associated (feyngraph%kin_last)) then
              allocate (feyngraph%kin_last%next)
@@ -2262,17 +2441,17 @@ contains
           else
              allocate (feyngraph%kin_last)
              feyngraph%kin_first => feyngraph%kin_last
-          endif
+          end if
           feyngraph%kin_last%root => kingraph_root(i)%node
           feyngraph%kin_last%n_nodes = feyngraph%n_nodes
           feyngraph%kin_last%keep = feyngraph%keep
           if (feyngraph_set%process_type == SCATTERING) then
              feyngraph%kin_last%root%bincode = &
                   f_node_get_external_bincode (feyngraph_set, feyngraph%root)
-          endif
+          end if
        enddo
        deallocate (kingraph_root)
-    endif
+    end if
   end subroutine feyngraph_make_kingraphs
 
   recursive subroutine k_node_init_from_f_node (f_node, k_node_ptr, feyngraph_set)
@@ -2289,8 +2468,8 @@ contains
        if (.not. allocated (k_node_ptr) .and. f_node%k_node_list%n_entries > 0) then
           f_node%keep = .false.
           return
-       endif
-    endif
+       end if
+    end if
     if (.not. allocated (k_node_ptr)) then
        if (associated (f_node%daughter1) .and. associated (f_node%daughter2)) then
           call k_node_init_from_f_node (f_node%daughter1, daughter_ptr1, &
@@ -2300,7 +2479,7 @@ contains
           if (.not. (f_node%daughter1%keep .and. f_node%daughter2%keep)) then
              f_node%keep = .false.
              return
-          endif
+          end if
           n_nodes = size (daughter_ptr1) * size (daughter_ptr2)
           allocate (k_node_ptr (n_nodes))
           pos = 1
@@ -2310,7 +2489,7 @@ contains
                    call f_node%k_node_list%add_entry (k_node_ptr(pos)%node, recycle = .false.)
                 else
                    call f_node%k_node_list%add_entry (k_node_ptr(pos)%node, recycle = .true.)
-                endif
+                end if
                 k_node_ptr(pos)%node%f_node => f_node
                 k_node_ptr(pos)%node%daughter1 => daughter_ptr1(i)%node
                 k_node_ptr(pos)%node%daughter2 => daughter_ptr2(j)%node
@@ -2328,7 +2507,7 @@ contains
              call f_node%k_node_list%add_entry (k_node_ptr(1)%node, recycle=.false.)
           else
              call f_node%k_node_list%add_entry (k_node_ptr(1)%node, recycle=.true.)
-          endif
+          end if
           k_node_ptr(1)%node%f_node => f_node
           k_node_ptr(1)%node%f_node_index = f_node%index
           k_node_ptr(1)%node%incoming = f_node%incoming
@@ -2336,8 +2515,8 @@ contains
           k_node_ptr(1)%node%particle => f_node%particle
           k_node_ptr(1)%node%bincode = f_node_get_external_bincode (feyngraph_set, &
                f_node)
-       endif
-    endif
+       end if
+    end if
   end subroutine k_node_init_from_f_node
 
   recursive subroutine split_up_t_lines (t_node)
@@ -2359,7 +2538,7 @@ contains
           else if (ref_node%daughter2%incoming .or. ref_node%daughter2%t_line) then
              ref_daughter => ref_node%daughter2
              ref_daughter_index = 2
-          endif
+          end if
           do j=1, size (t_daughter)
              if (.not. associated (t_daughter(j)%node)) then
                 t_daughter(j)%node => ref_daughter
@@ -2374,13 +2553,13 @@ contains
                    ref_node%daughter1 => new_daughter
                 else if (ref_daughter_index == 2) then
                    ref_node%daughter2 => new_daughter
-                endif
+                end if
                 ref_daughter => new_daughter
-             endif
+             end if
           enddo
        else
           return
-       endif
+       end if
     enddo
     call split_up_t_lines (t_daughter)
     deallocate (t_daughter)
@@ -2388,9 +2567,9 @@ contains
 
   subroutine kingraph_set_inverse_daughters (kingraph)
     type (kingraph_t), intent (inout) :: kingraph
-    type (k_node_t), pointer :: mother => null ()
-    type (k_node_t), pointer :: t_daughter => null ()
-    type (k_node_t), pointer :: s_daughter => null ()
+    type (k_node_t), pointer :: mother
+    type (k_node_t), pointer :: t_daughter
+    type (k_node_t), pointer :: s_daughter
     mother => kingraph%root
     do while (associated (mother))
        if (associated (mother%daughter1) .and. &
@@ -2401,13 +2580,13 @@ contains
              t_daughter => mother%daughter2; s_daughter => mother%daughter1
           else
              exit
-          endif
+          end if
           t_daughter%inverse_daughter1 => mother
           t_daughter%inverse_daughter2 => s_daughter
           mother => t_daughter
        else
           exit
-       endif
+       end if
     enddo
   end subroutine kingraph_set_inverse_daughters
 
@@ -2424,7 +2603,7 @@ contains
        n_out_decay = feyngraph_set%n_out
     else
        n_out_decay = feyngraph_set%n_out + 1
-    endif
+    end if
     particle_label = f_node%particle_label
     start_pos = index (particle_label, '[') + 1
     end_pos = index (particle_label, ']') - 1
@@ -2438,13 +2617,13 @@ contains
        enddo
     else
        n_prt = end_pos - start_pos + 1
-    endif
+    end if
     if (n_prt == 1) then
        bincode = calculate_external_bincode (particle_label, &
             feyngraph_set%process_type, n_out_decay)
     else if (n_prt == n_out_decay) then
        bincode = ibset (0, n_out_decay)
-    endif
+    end if
   end function f_node_get_external_bincode
 
   subroutine node_assign_bincode (node)
@@ -2452,7 +2631,7 @@ contains
     if (associated (node%daughter1) .and. associated (node%daughter2) &
          .and. .not. node%incoming) then
        node%bincode = ior(node%daughter1%bincode, node%daughter2%bincode)
-    endif
+    end if
   end subroutine node_assign_bincode
 
   function calculate_external_bincode (label_number_string, process_type, n_out_decay) result (bincode)
@@ -2472,13 +2651,13 @@ contains
           number_int = n_out_decay + 3
        else
           number_int = n_out_decay + 2
-       endif
+       end if
     case ('2')
        if (process_type == SCATTERING) then
           number_int = n_out_decay + 2
        else
           number_int = 2
-       endif
+       end if
     case ('A')
        number_int = 10
     case ('B')
@@ -2502,11 +2681,11 @@ contains
     if (.not. node%mapping_assigned) then
        if (node%particle%mass > feyngraph_set%phs_par%m_threshold_s) then
           node%effective_mass = node%particle%mass
-       endif
+       end if
        if (associated (node%daughter1) .and. associated (node%daughter2)) then
           if (.not. (node%daughter1%keep .and. node%daughter2%keep)) then
              node%keep = .false.; return
-          endif
+          end if
           node%ext_mass_sum = node%daughter1%ext_mass_sum &
                + node%daughter2%ext_mass_sum
           keep = .false.
@@ -2518,10 +2697,10 @@ contains
                    keep = .true.
                    node%mapping = S_CHANNEL
                    node%resonant = .true.
-                endif
+                end if
              else
                 call warn_decay (node%particle)
-             endif
+             end if
 !!! Collinear and IR singular cases
           else if (node%particle%mass < feyngraph_set%phs_par%sqrts) then
 !!! Massless splitting
@@ -2539,15 +2718,15 @@ contains
                       node%mapping = COLLINEAR   !!! three-vector-splitting
                    else
                       node%mapping = INFRARED    !!! vector spliiting into matter
-                   endif
+                   end if
                 else
                    if (node%daughter1%particle%is_vector &
                         .or. node%daughter2%particle%is_vector) then
                       node%mapping = COLLINEAR   !!! vector radiation off matter
                    else
                       node%mapping = INFRARED    !!! scalar radiation/splitting
-                   endif
-                endif
+                   end if
+                end if
 !!! IR radiation off massive particle [cascades]
              else if (node%effective_mass > 0 .and. &
                   node%daughter1%effective_mass > 0 .and. &
@@ -2571,8 +2750,8 @@ contains
                 keep = .true.
                 node%log_enhanced = .true.
                 node%mapping = RADIATION
-             endif
-          endif
+             end if
+          end if
 !!! Non-singular cases, including failed resonances [from cascades]
           if (.not. keep) then
 !!! Two on-shell particles from a virtual mother [from cascades, here eventually more than 2]
@@ -2583,21 +2762,19 @@ contains
                 node%effective_mass = max (node%ext_mass_sum, eff_mass_sum)
                 if (node%effective_mass < feyngraph_set%phs_par%m_threshold_s) then
                    node%effective_mass = 0
-                endif
-             endif
-          endif
+                end if
+             end if
+          end if
 !!! Complete and register feyngraph (make copy in case of resonance)
           if (keep) then
              node%on_shell = node%resonant .or. node%log_enhanced
              if (node%resonant) then
                 if (feyngraph_set%phs_par%keep_nonresonant) then
-                   !$OMP CRITICAL (make_nonres_copy)
                    call k_node_make_nonresonant_copy (node)
-                   !$OMP END CRITICAL (make_nonres_copy)
-                endif
+                end if
                 node%ext_mass_sum = node%particle%mass
-             endif
-          endif
+             end if
+          end if
           node%mapping_assigned = .true.
           call node_assign_bincode (node)
           call node%subtree%add_entry (node)
@@ -2610,17 +2787,17 @@ contains
           node%on_shell = .true.
           if (node%particle%mass >= feyngraph_set%phs_par%m_threshold_s) then
              node%effective_mass = node%particle%mass
-          endif
-       endif
+          end if
+       end if
     else if (node%is_nonresonant_copy) then
        call node_assign_bincode (node)
        call node%subtree%add_entry (node)
        node%is_nonresonant_copy = .false.
-    endif
+    end if
     call node_count_specific_properties (node)
     if (node%n_off_shell > feyngraph_set%phs_par%off_shell) then
        node%keep = .false.
-    endif
+    end if
   contains
     subroutine warn_decay (particle)
       type(part_prop_t), intent(in) :: particle
@@ -2657,7 +2834,7 @@ contains
           node%n_resonances &
                = node%daughter1%n_resonances &
                + node%daughter2%n_resonances
-       endif
+       end if
        if (node%log_enhanced) then
           node%n_log_enhanced &
                = node%daughter1%n_log_enhanced &
@@ -2666,7 +2843,7 @@ contains
           node%n_log_enhanced &
                = node%daughter1%n_log_enhanced &
                + node%daughter2%n_log_enhanced
-       endif
+       end if
        if (node%resonant) then
           node%n_off_shell = 0
        else if (node%log_enhanced) then
@@ -2677,15 +2854,15 @@ contains
           node%n_off_shell &
                = node%daughter1%n_off_shell &
                + node%daughter2%n_off_shell + 1
-       endif
+       end if
        if (node%t_line) then
           if (node%daughter1%t_line .or. node%daughter1%incoming) then
              node%n_t_channel = node%daughter1%n_t_channel + 1
           else if (node%daughter2%t_line .or. node%daughter2%incoming) then
              node%n_t_channel = node%daughter2%n_t_channel + 1
-          endif
-       endif
-    endif
+          end if
+       end if
+    end if
   end subroutine node_count_specific_properties
 
   subroutine kingraph_assign_mappings_s (feyngraph, kingraph, feyngraph_set)
@@ -2695,7 +2872,7 @@ contains
     if (.not. (kingraph%root%daughter1%keep .and. kingraph%root%daughter2%keep)) then
        kingraph%keep = .false.
        call kingraph%tree%final ()
-    endif
+    end if
     if (kingraph%keep) then
        kingraph%root%on_shell = .true.
        kingraph%root%mapping = EXTERNAL_PRT
@@ -2707,7 +2884,7 @@ contains
        if (kingraph%root%ext_mass_sum >= feyngraph_set%phs_par%sqrts) then
           kingraph%root%keep = .false.
           kingraph%keep = .false.; call kingraph%tree%final (); return
-       endif
+       end if
        call kingraph%root%subtree%add_entry (kingraph%root)
        kingraph%root%multiplicity &
             = kingraph%root%daughter1%multiplicity &
@@ -2733,9 +2910,9 @@ contains
                kingraph%root%n_off_shell
           kingraph%grove_prop%n_log_enhanced = &
                kingraph%root%n_log_enhanced
-       endif
+       end if
        kingraph%tree = kingraph%root%subtree
-    endif
+    end if
   end subroutine kingraph_assign_mappings_s
 
   subroutine kingraph_compute_mappings_t_line (feyngraph, kingraph, feyngraph_set)
@@ -2746,7 +2923,7 @@ contains
     if (.not. kingraph%root%keep) then
        kingraph%keep = .false.
        call kingraph%tree%final ()
-    endif
+    end if
     if (kingraph%keep) kingraph%tree = kingraph%root%subtree
   end subroutine kingraph_compute_mappings_t_line
 
@@ -2761,7 +2938,7 @@ contains
     if (.not. (node%daughter1%keep .and. node%daughter2%keep)) then
        node%keep = .false.
        return
-    endif
+    end if
     s_node => null ()
     t_node => null ()
     new_s_node => null ()
@@ -2770,22 +2947,22 @@ contains
           t_node => node%daughter1; s_node => node%daughter2
        else if (node%daughter2%t_line .or. node%daughter2%incoming) then
           t_node => node%daughter2; s_node => node%daughter1
-       endif
+       end if
        if (t_node%t_line) then
           call node_compute_t_line (feyngraph, kingraph, t_node, feyngraph_set)
           if (.not. t_node%keep) then
              node%keep = .false.
              return
-          endif
+          end if
        else if (t_node%incoming) then
           t_node%mapping = EXTERNAL_PRT
           t_node%on_shell = .true.
           t_node%ext_mass_sum = t_node%particle%mass
           if (t_node%particle%mass >= feyngraph_set%phs_par%m_threshold_t) then
              t_node%effective_mass = t_node%particle%mass
-          endif
+          end if
           call t_node%subtree%add_entry (t_node)
-       endif
+       end if
 !!! root:
        if (.not. node%incoming) then
           if (t_node%incoming) then
@@ -2794,7 +2971,7 @@ contains
              node%ext_mass_sum &
                   = node%daughter1%ext_mass_sum &
                   + node%daughter2%ext_mass_sum
-          endif
+          end if
           if (node%particle%mass > feyngraph_set%phs_par%m_threshold_t) then
              node%effective_mass = max (node%particle%mass, &
                   s_node%effective_mass)
@@ -2802,7 +2979,7 @@ contains
              node%effective_mass = s_node%effective_mass
           else
              node%effective_mass = 0
-          endif
+          end if
 !!! Allowed decay of beam particle
           if (t_node%incoming &
                .and. t_node%particle%mass > s_node%particle%mass &
@@ -2824,7 +3001,7 @@ contains
                < feyngraph_set%phs_par%m_threshold_t) then
              node%log_enhanced = .true.
              node%mapping = RADIATION
-          endif
+          end if
           node%mapping_assigned = .true.
           call node_assign_bincode (node)
           call node%subtree%add_entry (node)
@@ -2835,7 +3012,7 @@ contains
           else if (node%n_t_channel > feyngraph_set%phs_par%t_channel) then
              node%keep = .false.;
              kingraph%keep = .false.; call kingraph%tree%final (); return
-          endif
+          end if
        else
           node%mapping = EXTERNAL_PRT
           node%on_shell = .true.
@@ -2846,7 +3023,7 @@ contains
           if (.not. (node%ext_mass_sum < feyngraph_set%phs_par%sqrts)) then
              node%keep = .false.
              kingraph%keep = .false.; call kingraph%tree%final (); return
-          endif
+          end if
           if (kingraph%keep) then
              if (t_node%incoming .and. s_node%log_enhanced) then
                 call s_node%f_node%k_node_list%add_entry (new_s_node, recycle=.false.)
@@ -2857,7 +3034,7 @@ contains
                    node%daughter1 => new_s_node
                 else if (s_node%index ==  node%daughter2%index) then
                    node%daughter2 => new_s_node
-                endif
+                end if
                 new_s_node%subtree = s_node%subtree
                 new_s_node%mapping = NO_MAPPING
                 new_s_node%log_enhanced = .false.
@@ -2886,12 +3063,12 @@ contains
                    node%daughter1 => new_s_node
                 else if (s_node%index == node%daughter2%index) then
                    node%daughter2 => new_s_node
-                endif
+                end if
                 where (new_s_node%subtree%bc == new_s_node%bincode)
                    new_s_node%subtree%mapping = ON_SHELL
                 endwhere
-             endif
-          endif
+             end if
+          end if
           call node%subtree%add_entry (node)
           node%multiplicity &
                = node%daughter1%multiplicity &
@@ -2920,9 +3097,9 @@ contains
              kingraph%grove_prop%n_off_shell = node%n_off_shell
              kingraph%grove_prop%n_log_enhanced = node%n_log_enhanced
              kingraph%grove_prop%n_t_channel = node%n_t_channel
-          endif
-       endif
-    endif
+          end if
+       end if
+    end if
   contains
     subroutine beam_decay (fatal_beam_decay)
       logical, intent(in) :: fatal_beam_decay
@@ -2948,21 +3125,28 @@ contains
     end subroutine beam_decay
   end subroutine node_compute_t_line
 
+  subroutine feyngraph_make_inverse_kingraphs (feyngraph)
+    class (feyngraph_t), intent (inout) :: feyngraph
+    type (kingraph_t), pointer :: current
+    current => feyngraph%kin_first
+    do while (associated (current))
+       if (current%inverse) exit
+       call current%make_inverse_copy (feyngraph)
+       current => current%next
+    enddo
+  end subroutine feyngraph_make_inverse_kingraphs
+
   subroutine feyngraph_compute_mappings (feyngraph, feyngraph_set)
     class (feyngraph_t), intent (inout) :: feyngraph
     type (feyngraph_set_t), intent (inout) :: feyngraph_set
     type (kingraph_t), pointer :: current
-    call feyngraph%make_kingraphs (feyngraph_set)
     current => feyngraph%kin_first
     do while (associated (current))
        if (feyngraph_set%process_type == DECAY) then
           call kingraph_assign_mappings_s (feyngraph, current, feyngraph_set)
        else if (feyngraph_set%process_type == SCATTERING) then
-          if (.not. current%inverse) then
-             call current%make_inverse_copy (feyngraph)
-          endif
           call kingraph_compute_mappings_t_line (feyngraph, current, feyngraph_set)
-       endif
+       end if
        current => current%next
     enddo
   end subroutine feyngraph_compute_mappings
@@ -2976,43 +3160,78 @@ contains
     type (k_node_list_t), allocatable :: compare_list
     integer :: n_entries
     integer :: pos
-    integer :: i, j
+    integer :: i, j, k
     do i = 1, feyngraph_set%f_node_list%max_tree_size - 2, 2
-       current => feyngraph_set%f_node_list%first
+!!! Counter number of f_nodes with subtree size i for s channel calculations
        n_entries = 0
-       do while (associated (current))
-          if (.not. (current%node%incoming .or. current%node%t_line) &
-               .and. current%node%n_subtree_nodes == i) then
-             n_entries = n_entries + 1
-          endif
-          current => current%next
-       enddo
+       if (feyngraph_set%use_dag) then
+          do j=1, feyngraph_set%dag%n_nodes
+             if (allocated (feyngraph_set%dag%node(j)%f_node)) then
+                do k=1, size(feyngraph_set%dag%node(j)%f_node)
+                   if (associated (feyngraph_set%dag%node(j)%f_node(k)%node)) then
+                      if (.not. (feyngraph_set%dag%node(j)%f_node(k)%node%incoming &
+                           .or. feyngraph_set%dag%node(j)%f_node(k)%node%t_line) &
+                           .and. feyngraph_set%dag%node(j)%f_node(k)%node%n_subtree_nodes == i) then
+                         n_entries = n_entries + 1
+                      end if
+                   end if
+                enddo
+             end if
+          enddo
+       else
+          current => feyngraph_set%f_node_list%first
+          do while (associated (current))
+             if (.not. (current%node%incoming .or. current%node%t_line) &
+                  .and. current%node%n_subtree_nodes == i) then
+                n_entries = n_entries + 1
+             end if
+             current => current%next
+          enddo
+       end if
        if (n_entries == 0) exit
+!!! Create a temporary k node list for comparison
        allocate (set(n_entries))
-       current => feyngraph_set%f_node_list%first
        pos = 0
-       do while (associated (current))
-          if (.not. (current%node%incoming .or. current%node%t_line) &
-               .and. current%node%n_subtree_nodes == i) then
-             pos = pos + 1
-             set(pos)%node => current%node
-          endif
-          current => current%next
-       enddo
+       if (feyngraph_set%use_dag) then
+          do j=1, feyngraph_set%dag%n_nodes
+             if (allocated (feyngraph_set%dag%node(j)%f_node)) then
+                do k=1, size(feyngraph_set%dag%node(j)%f_node)
+                   if (associated (feyngraph_set%dag%node(j)%f_node(k)%node)) then
+                      if (.not. (feyngraph_set%dag%node(j)%f_node(k)%node%incoming &
+                           .or. feyngraph_set%dag%node(j)%f_node(k)%node%t_line) &
+                           .and. feyngraph_set%dag%node(j)%f_node(k)%node%n_subtree_nodes == i) then
+                         pos = pos + 1
+                         set(pos)%node => feyngraph_set%dag%node(j)%f_node(k)%node
+                      end if
+                   end if
+                enddo
+             end if
+          enddo
+       else
+          current => feyngraph_set%f_node_list%first
+          do while (associated (current))
+             if (.not. (current%node%incoming .or. current%node%t_line) &
+                  .and. current%node%n_subtree_nodes == i) then
+                pos = pos + 1
+                set(pos)%node => current%node
+             end if
+             current => current%next
+          enddo
+       end if
        allocate (compare_list)
        compare_list%observer = .true.
-       !$OMP PARALLEL DO PRIVATE (k_set, k_entry)
        do j = 1, n_entries
           call k_node_init_from_f_node (set(j)%node, k_set, &
                feyngraph_set)
-          if (allocated (k_set)) then
-             k_entry => set(j)%node%k_node_list%first
-             do while (associated (k_entry))
-                call node_assign_mapping_s(feyngraph_set%first, k_entry%node, feyngraph_set)
-                k_entry => k_entry%next
-             enddo
-             deallocate (k_set)
-          endif
+          if (allocated (k_set)) deallocate (k_set)
+       enddo
+       !$OMP PARALLEL DO PRIVATE (k_entry)
+       do j = 1, n_entries
+          k_entry => set(j)%node%k_node_list%first
+          do while (associated (k_entry))
+             call node_assign_mapping_s(feyngraph_set%first, k_entry%node, feyngraph_set)
+             k_entry => k_entry%next
+          enddo
        enddo
        !$OMP END PARALLEL DO
        do j = 1, size (set)
@@ -3021,8 +3240,8 @@ contains
              if (k_entry%node%keep) then
                 if (k_entry%node%mapping == NO_MAPPING .or. k_entry%node%mapping == NONRESONANT) then
                    call compare_list%add_pointer (k_entry%node)
-                endif
-             endif
+                end if
+             end if
              k_entry => k_entry%next
           enddo
        enddo
@@ -3039,18 +3258,13 @@ contains
     type (grove_t), intent (inout), pointer :: return_grove
     logical, intent (in) :: preliminary
     type (grove_t), pointer :: current_grove
+    return_grove => null ()
     if (.not. associated(grove_list%first)) then
-       !$ call OMP_set_lock (grove_list%lock)
-       if (.not. associated (grove_list%first)) then
-          allocate (grove_list%first)
-          !$ call OMP_init_lock (grove_list%first%lock)
-          grove_list%first%grove_prop = kingraph%grove_prop
-          return_grove => grove_list%first
-          !$ call OMP_unset_lock (grove_list%lock)
-          return
-       endif
-       !$ call OMP_unset_lock (grove_list%lock)
-    endif
+       allocate (grove_list%first)
+       grove_list%first%grove_prop = kingraph%grove_prop
+       return_grove => grove_list%first
+       return
+    end if
     current_grove => grove_list%first
     do while (associated (current_grove))
        if ((preliminary .and. (current_grove%grove_prop .match. kingraph%grove_prop)) .or. &
@@ -3058,22 +3272,16 @@ contains
           return_grove => current_grove
           exit
        else if (.not. associated (current_grove%next)) then
-          !$ call OMP_set_lock (current_grove%lock)
-          if (.not. associated (current_grove%next)) then
-             allocate (current_grove%next)
-             !$ call OMP_init_lock (current_grove%next%lock)
-             current_grove%next%grove_prop = kingraph%grove_prop
-             if (size (kingraph%tree%bc) < 9) &
-                  current_grove%compare_tree%depth = 1
-             return_grove => current_grove%next
-             !$ call OMP_unset_lock (current_grove%lock)
-             exit
-          endif
-          !$ call OMP_unset_lock (current_grove%lock)
-       endif
+          allocate (current_grove%next)
+          current_grove%next%grove_prop = kingraph%grove_prop
+          if (size (kingraph%tree%bc) < 9) &
+               current_grove%compare_tree%depth = 1
+          return_grove => current_grove%next
+          exit
+       end if
        if (associated (current_grove%next)) then
           current_grove => current_grove%next
-       endif
+       end if
     enddo
   end subroutine grove_list_get_grove
 
@@ -3090,17 +3298,14 @@ contains
     current => null ()
     if (preliminary) then
        if (kingraph%index == 0) then
-          !$OMP CRITICAL (increase_index)
           index = index + 1
           kingraph%index = index
-          !$OMP END CRITICAL (increase_index)
-       endif
-    endif
+       end if
+    end if
     call grove_list%get_grove (kingraph, grove, preliminary)
-    !$ call OMP_set_lock (grove%lock)
     if (check) then
        call grove%compare_tree%check_kingraph (kingraph, model, preliminary)
-    endif
+    end if
     if (kingraph%keep) then
        if (associated (grove%first)) then
           grove%last%grove_next => kingraph
@@ -3108,9 +3313,8 @@ contains
        else
           grove%first => kingraph
           grove%last => kingraph
-       endif
-    endif
-    !$ call OMP_unset_lock (grove%lock)
+       end if
+    end if
   end subroutine grove_list_add_kingraph
 
   subroutine grove_list_add_feyngraph (grove_list, feyngraph, model)
@@ -3127,7 +3331,7 @@ contains
                preliminary=.true., check=.true., model=model)
        else
           exit
-       endif
+       end if
     enddo
     if (associated (feyngraph%kin_first)) then
        current_kingraph => feyngraph%kin_first
@@ -3140,9 +3344,9 @@ contains
                   preliminary=.true., check=.true., model=model)
           else
              current_kingraph => current_kingraph%next
-          endif
+          end if
        enddo
-    endif
+    end if
   end subroutine grove_list_add_feyngraph
 
   function grove_prop_match (grove_prop1, grove_prop2) result (gp_match)
@@ -3194,14 +3398,14 @@ contains
                 return
              end select
           end select
-       endif
+       end if
     enddo
     if (equal) then
        kingraph2%keep = .false.
        call kingraph2%tree%final ()
     else
        eqv = .true.
-    endif
+    end if
   end function kingraph_eqv
 
   subroutine kingraph_select (kingraph1, kingraph2, model, preliminary)
@@ -3218,7 +3422,7 @@ contains
        if (.not. preliminary) then
           kingraph2%keep = .false.; call kingraph2%tree%final ()
           return
-       endif
+       end if
        do i=1, size (kingraph1%tree%bc)
           if (abs(kingraph1%tree%pdg(i)) /= abs(kingraph2%tree%pdg(i))) then
              if (kingraph1%tree%mapping(i) /= EXTERNAL_PRT) then
@@ -3228,7 +3432,7 @@ contains
                    if (abs(kingraph1%tree%pdg(j)) /= abs(kingraph2%tree%pdg(j))) then
                       n_ext2 = popcnt (kingraph1%tree%bc(j))
                       if (n_ext2 < n_ext1) exit
-                   endif
+                   end if
                 enddo
                 if (n_ext2 < n_ext1) cycle
                 allocate (tmp_bc(i-1))
@@ -3248,7 +3452,7 @@ contains
                 daughter_pdg = pack (tmp_pdg, tmp_pdg /= 0)
                 if (size (daughter_pdg) == 2) then
                    call model%match_vertex(daughter_pdg(1), daughter_pdg(2), pdg_match)
-                endif
+                end if
                 do j=1, size (pdg_match)
                    if (abs(pdg_match(j)) == abs(kingraph1%tree%pdg(i))) then
                       kingraph2%keep = .false.; call kingraph2%tree%final ()
@@ -3256,14 +3460,14 @@ contains
                    else if (abs(pdg_match(j)) == abs(kingraph2%tree%pdg(i))) then
                       kingraph1%keep = .false.; call kingraph1%tree%final ()
                       exit
-                   endif
+                   end if
                 enddo
                 deallocate (tmp_bc, tmp_pdg, daughter_bc, daughter_pdg, pdg_match)
                 if (.not. (kingraph1%keep .and. kingraph2%keep)) exit
-             endif
-          endif
+             end if
+          end if
        enddo
-    endif
+    end if
   end subroutine kingraph_select
 
   subroutine grove_list_merge (target_list, grove_list, model, prc_component)
@@ -3286,7 +3490,7 @@ contains
           else
              call current_graph%final ()
              deallocate (current_graph)
-          endif
+          end if
        enddo
        current_grove => current_grove%next
     enddo
@@ -3311,7 +3515,7 @@ contains
           if (current_graph%keep) then
              call grove_list%add_kingraph (kingraph=current_graph, &
                   preliminary=.false., check=.false.)
-          endif
+          end if
           current_graph => next_graph
        enddo
        current_grove => current_grove%next
@@ -3372,7 +3576,7 @@ contains
          if (current%keep) then
             ch_number = ch_number + 1
             call current%write_file_format (feyngraph_set, ch_number, u)
-         endif
+         end if
          current => current%grove_next
       enddo
     end subroutine grove_write_file_format
@@ -3394,7 +3598,7 @@ contains
             .or. (kingraph%tree%bc(i) == bincode_incoming &
             .and. feyngraph_set%process_type == DECAY)) then
           write (unit=u, fmt='(1X,I0)', advance='no') kingraph%tree%bc(i)
-       endif
+       end if
     enddo
     write (unit=u, fmt='(A)', advance='yes')
     do i=1, size(kingraph%tree%bc)
@@ -3443,7 +3647,7 @@ contains
         if (feyngraph_set%particle(i)%pdg == pdg) then
            particle_name = feyngraph_set%particle(i)%particle_label
            exit
-        endif
+        end if
      enddo
    end function get_particle_name
 
@@ -3457,9 +3661,9 @@ contains
        if (.not. t_line_found) then
           if (associated (feyngraph%root%daughter2)) then
              call f_node_t_line_check (feyngraph%root%daughter2, t_line_found)
-          endif
-       endif
-    endif
+          end if
+       end if
+    end if
 
   contains
 
@@ -3475,15 +3679,15 @@ contains
           call f_node_t_line_check (node%daughter2, t_line_found)
           if (node%daughter2%incoming .or. node%daughter2%t_line) then
              node%t_line = .true.
-          endif
-       endif
+          end if
+       end if
     else
        pos = index (node%particle_label, '[') + 1
        if (node%particle_label(pos:pos) == '2') then
           node%incoming = .true.
           t_line_found = .true.
-       endif
-    endif
+       end if
+    end if
   end subroutine f_node_t_line_check
 
   end subroutine feyngraph_make_invertible
@@ -3500,7 +3704,7 @@ contains
     else
        allocate(feyngraph%kin_first)
        feyngraph%kin_last => feyngraph%kin_first
-    endif
+    end if
     kingraph_copy => feyngraph%kin_last
     call kingraph_set_inverse_daughters (original_kingraph)
     kingraph_copy%inverse = .true.
@@ -3513,7 +3717,7 @@ contains
           potential_root => potential_root%daughter1
        else if (potential_root%daughter2%incoming .or. potential_root%daughter2%t_line) then
           potential_root => potential_root%daughter2
-       endif
+       end if
     enddo
     call node_inverse_deep_copy (potential_root, kingraph_copy%root)
   end subroutine kingraph_make_inverse_copy
@@ -3527,7 +3731,7 @@ contains
        node_copy%particle => original_node%particle%anti
     else
        node_copy%particle => original_node%particle
-    endif
+    end if
     if (associated (original_node%inverse_daughter1) .and. associated (original_node%inverse_daughter2)) then
        if (original_node%inverse_daughter1%incoming .or. original_node%inverse_daughter1%t_line) then
           node_copy%daughter2 => original_node%inverse_daughter2
@@ -3537,8 +3741,8 @@ contains
           node_copy%daughter1 => original_node%inverse_daughter1
           call node_inverse_deep_copy (original_node%inverse_daughter2, &
                node_copy%daughter2)
-       endif
-    endif
+       end if
+    end if
   end subroutine node_inverse_deep_copy
 
   subroutine feyngraph_set_generate_single (feyngraph_set, model, n_in, n_out, &
@@ -3579,26 +3783,34 @@ contains
        do i=1, feyngraph_set%n_graphs
           if (set(i)%graph%keep) then
              call set(i)%graph%make_invertible ()
-          endif
+          end if
        enddo
        !$OMP END PARALLEL DO
-    endif
+    end if
     call f_node_list_compute_mappings_s (feyngraph_set)
     do i=1, feyngraph_set%n_graphs
        if (set(i)%graph%keep) then
-          call set(i)%graph%compute_mappings (feyngraph_set)
-       endif
+          call set(i)%graph%make_kingraphs (feyngraph_set)
+       end if
     enddo
-    !$ call OMP_init_lock (feyngraph_set%grove_list%lock)
-    !$OMP PARALLEL DO
+    if (feyngraph_set%process_type == SCATTERING) then
+       do i=1, feyngraph_set%n_graphs
+          if (set(i)%graph%keep) then
+             call set(i)%graph%make_inverse_kingraphs ()
+          end if
+       enddo
+    end if
+    do i=1, feyngraph_set%n_graphs
+       if (set(i)%graph%keep) then
+          call set(i)%graph%compute_mappings (feyngraph_set)
+       end if
+    enddo
     do i=1, feyngraph_set%n_graphs
        if (set(i)%graph%keep) then
           call feyngraph_set%grove_list%add_feyngraph (set(i)%graph, &
                feyngraph_set%model)
-       endif
+       end if
     enddo
-    !$OMP END PARALLEL DO
-    !$ call OMP_destroy_lock (feyngraph_set%grove_list%lock)
   end subroutine feyngraph_set_find_phs_parametrizations
 
   elemental function tree_equal (tree1, tree2) result (flag)
@@ -3611,10 +3823,10 @@ contains
                all (abs(tree1%pdg) == abs(tree2%pdg))
        else
           flag = .false.
-       endif
+       end if
     else
        flag = .false.
-    endif
+    end if
   end function tree_equal
 
   pure function subtree_eqv (subtree1, subtree2) result (eqv)
@@ -3648,7 +3860,7 @@ contains
              case default
                 return
              end select
-          endif
+          end if
        enddo
        do i = subtree1%n_entries, 1, -1
           if (subtree1%mapping(i) /= subtree2%mapping(i)) then
@@ -3662,10 +3874,10 @@ contains
              case default
                 return
              end select
-          endif
+          end if
        enddo
        if (.not. equal) eqv = .true.
-    endif
+    end if
   end function subtree_eqv
 
   subroutine subtree_select (subtree1, subtree2, model)
@@ -3694,26 +3906,22 @@ contains
 !!! Relevant if tree contains only abs (pdg). In this case, changing the
 !!! sign of one of the pdg codes should give a result.
                    call model%match_vertex(-daughter_pdg(1), daughter_pdg(2), pdg_match)
-                endif
-             endif
+                end if
+             end if
              do k=1, size (pdg_match)
                 if (abs(pdg_match(k)) == abs(subtree1%pdg(j))) then
-                   !$OMP CRITICAL (deactivate)
                    if (subtree1%keep) subtree2%keep = .false.
-                   !$OMP END CRITICAL (deactivate)
                    exit
                 else if (abs(pdg_match(k)) == abs(subtree2%pdg(j))) then
-                   !$OMP CRITICAL (deactivate)
                    if (subtree2%keep) subtree1%keep = .false.
-                   !$OMP END CRITICAL (deactivate)
                    exit
-                endif
+                end if
              enddo
              deallocate (tmp_bc, tmp_pdg, daughter_bc, daughter_pdg, pdg_match)
              if (.not. (subtree1%keep .and. subtree2%keep)) exit
-          endif
+          end if
        enddo
-    endif
+    end if
   end subroutine subtree_select
 
   subroutine kingraph_assign_resonance_hash (kingraph)
@@ -3723,10 +3931,10 @@ contains
     allocate (tree_resonant (kingraph%tree%n_entries))
     tree_resonant = (kingraph%tree%mapping == S_CHANNEL)
     kingraph%grove_prop%res_hash = hash (transfer &
-         (concat (sort (pack (kingraph%tree%pdg, tree_resonant)), &
-         sort (pack (abs (kingraph%tree%pdg), &
-         kingraph%tree%mapping == T_CHANNEL .or. &
-         kingraph%tree%mapping == U_CHANNEL))), mold))
+         ([sort (pack (kingraph%tree%pdg, tree_resonant)), &
+           sort (pack (abs (kingraph%tree%pdg), &
+           kingraph%tree%mapping == T_CHANNEL .or. &
+           kingraph%tree%mapping == U_CHANNEL))], mold))
     deallocate (tree_resonant)
   end subroutine kingraph_assign_resonance_hash
 
@@ -3953,7 +4161,7 @@ contains
          else
             call vertex_write (node, node%daughter1)
             call vertex_write (node, node%daughter2)
-         endif
+         end if
          if (node%mapping == EXTERNAL_PRT) then
             call line_write (node%bincode, 0, node%particle)
             call external_write (node%bincode, node%particle%tex_name, &
@@ -4087,7 +4295,6 @@ contains
     end do
     allocate (feyngraph_set%particle (PRT_ARRAY_SIZE))
     allocate (feyngraph_set%grove_list)
-    !$ call OMP_init_lock (feyngraph_set%grove_list%lock)
     allocate (feyngraph_set%fset (size (flv, 2)))
     do i = 1, size (feyngraph_set%fset)
        feyngraph_set%fset(i)%use_dag = feyngraph_set%use_dag
@@ -4101,7 +4308,6 @@ contains
        if (.not. vis_channels) call feyngraph_set%fset(i)%final()
     enddo
     call feyngraph_set%grove_list%rebuild ()
-    !$ call OMP_destroy_lock (feyngraph_set%grove_list%lock)
   end subroutine feyngraph_set_generate
 
   function feyngraph_set_is_valid (feyngraph_set) result (flag)
@@ -4118,12 +4324,12 @@ contains
              if (kingraph%keep) then
                 flag = .true.
                 return
-             endif
+             end if
              kingraph => kingraph%next
           enddo
           grove => grove%next
        enddo
-    endif
+    end if
   end function feyngraph_set_is_valid
 
   subroutine kingraph_extract_resonance_history &

@@ -4973,7 +4973,9 @@ possible, in particular if the squared matrix element is zero.
   end subroutine particle_set_init_interaction
 
 @ %def particle_set_init_interaction
+@ Duplicate generic binding, to make sure that assignment works as it should.
 <<Particles: particle set: TBP>>=
+  generic :: assignment(=) => init_particle_set
   generic :: init => init_particle_set
   procedure :: init_particle_set => particle_set_init_particle_set
 <<Particles: procedures>>=
@@ -5012,13 +5014,6 @@ possible, in particular if the squared matrix element is zero.
   end subroutine particle_set_set_model
 
 @ %def particle_set_set_model
-@ Duplicate implementation.
-<<Particles: interfaces>>=
-  interface assignment(=)
-     module procedure particle_set_init_particle_set
-  end interface
-
-@
 @ Pointer components are hidden inside the particle polarization, and
 in the correlated state matrix.
 <<Particles: particle set: TBP>>=
@@ -7087,12 +7082,18 @@ We keep beam particles, incoming partons, and outgoing partons.
 Furthermore, we keep radiated particles (a.k.a.\ beam remnants) if
 they have no children in the current particle set, and mark them as
 outgoing particles.
+
+If [[colorize]] is set and true, mark all particles in the subevent as
+colorized, and set color/anticolor flow indices where they are defined.
+Colorless particles do not get indices but are still marked as colorized, for
+consistency.
 <<Particles: particle set: TBP>>=
   procedure :: to_subevt => particle_set_to_subevt
 <<Particles: procedures>>=
-  subroutine particle_set_to_subevt (particle_set, subevt)
+  subroutine particle_set_to_subevt (particle_set, subevt, colorize)
     class(particle_set_t), intent(in) :: particle_set
     type(subevt_t), intent(out) :: subevt
+    logical, intent(in), optional :: colorize
     integer :: n_tot, n_beam, n_in, n_out, n_rad
     integer :: i, k, n_active
     integer, dimension(2) :: hel
@@ -7145,6 +7146,12 @@ outgoing particles.
                   hel = prt%hel%to_pair ()
                   call subevt_polarize (subevt, k, hel(1))
                end if
+            end if
+         end if
+         if (present (colorize)) then
+            if (colorize) then
+               call subevt_colorize &
+                    (subevt, i, prt%col%get_col (), prt%col%get_acl ())
             end if
          end if
        end associate

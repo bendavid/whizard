@@ -2,7 +2,64 @@ ChangeLog -- Summary of changes to the WHIZARD package
 
 Use svn log to see detailed changes.
 
-	Version 2.6.3
+	Version 2.6.4
+
+2018-08-23
+	RELEASE: version 2.6.4
+
+2018-08-09
+	Infrastructure to check colored subevents
+
+2018-07-10
+	Infrastructure for running WHIZARD in batch mode
+
+2018-07-04
+	MPI available from distribution tarball
+
+2018-06-03
+	Support Intel Fortran Compiler under MAC OS X
+
+2018-05-07
+	FKS slicing parameter delta_i (initial state) implementend
+
+2018-05-03
+	Refactor structure function assignment for NLO
+
+2018-05-02
+	FKS slicing parameter xi_cut, delta_0 implemented
+
+2018-04-20
+	Workspace subdirectory for process integration (grid/phs files)
+	Packing/unpacking of files at job end/start
+	Exporting integration results from scan loops
+
+2018-04-13
+	Extended QCD NLO test suite
+
+2018-04-09
+	Bugfix for Higgs Singlet Extension model
+
+2018-04-06
+	Workspace subdirectory for process generation and compilation
+	--job-id option for creating job-specific names
+
+2018-03-20
+	Bug fix for color flow matching in hadron collisions
+	   with identical initial state quarks
+
+2018-03-08
+	Structure functions quantum numbers correctly assigned for NLO
+
+2018-02-24
+	Configure setup includes 'pgfortran' and 'flang'
+
+2018-02-21
+	Include spin-correlated matrix elements in interactions
+
+2018-02-15
+	Separate module for QED ISR structure functions
+
+##################################################################
 
 2018-02-10
 	RELEASE: version 2.6.3
@@ -796,20 +853,20 @@ Use svn log to see detailed changes.
 	
 2011-12-09
 	Option --user-target added
-	
+
 ##################################################################
 
-2011-12-07 
+2011-12-07
 	RELEASE: version 2.0.6
 
 2011-12-07
 	Bug fixes in SM_top_anom
 	Added missing entries to HepMC format
-	
+
 2011-12-06
 	Allow to pass options to O'Mega
 	Bug fix for HEPEVT block for showered/hadronized events
-	
+
 2011-12-01
 	Reenabled user plug-in for external code for
 	   cuts, structure functions, routines etc.
@@ -822,32 +879,32 @@ Use svn log to see detailed changes.
 
 2011-11-23
 	Make WHIZARD compatible for MAC OS X Lion/XCode 4
-	
-2011-09-25 
+
+2011-09-25
 	WHIZARD paper published: Eur.Phys.J. C71 (2011) 1742
 
-2011-08-16 
+2011-08-16
 	Model SM_QCD: QCD with one EW insertion
 
-2011-07-19 
+2011-07-19
 	Explicit output channel for dvips avoids printing
 
-2011-07-10 
+2011-07-10
 	Test suite for WHIZARD unit tests
 
-2011-07-01 
+2011-07-01
 	Commands for matrix element tests
 	More OpenMP parallelization of kinematics
-	Added unit tests 
+	Added unit tests
 
-2011-06-23 
+2011-06-23
 	Conversion of CIRCE2 from F77 to F90, major
-	  clean-up 
+	  clean-up
 
-2011-06-14 
+2011-06-14
 	Conversion of CIRCE1 from F77 to F90
 
-2011-06-10 
+2011-06-10
 	OpenMP parallelization of channel kinematics
 		(by Matthias Trudewind)
 

@@ -1,4 +1,4 @@
-! WHIZARD 2.6.3 Feb 10 2018
+! WHIZARD 2.6.4 Aug 23 2018
 !
 ! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -487,7 +487,7 @@ contains
     mask_d = quantum_numbers_mask (.false., .false., .false., &
          mask_hd = polarized .and. diagonal)
     call beam%int%basic_init &
-         (0, 0, beam_data%n, mask=mask, store_values=.true.)
+         (0, 0, beam_data%n, mask = mask, store_values = .true.)
     state_hel = beam_data%get_helicity_state_matrix ()
     allocate (qn (beam_data%n))
     call qn%init (beam_data%flv, color_from_flavor (beam_data%flv, 1))

@@ -41,7 +41,7 @@ $beam_events_file = "uniform_spread_2.5%.dat"
 |   sqrts = 2.500000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'tauola_1_p1_i1.phs'
+| Phase space: writing configuration file 'tauola_1_p1.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'tauola_1_p1'
 |   Library name  = 'tauola_1_lib'
@@ -76,7 +76,7 @@ n_events = 1
 $sample = "tauola_1_p1"
 | Starting simulation for process 'tauola_1_p1'
 | Beam events: reading from file 'uniform_spread_2.5%.dat'
-| Simulate: using integration grids from file 'tauola_1_p1_m1.vg'
+| Simulate: using integration grids from file 'tauola_1_p1.m1.vg'
 | Simulate: activating parton shower
 | Shower: Using PYTHIA6 shower
 | Simulate: activating hadronization

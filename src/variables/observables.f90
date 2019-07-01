@@ -1,4 +1,4 @@
-! WHIZARD 2.6.3 Feb 10 2018
+! WHIZARD 2.6.4 Aug 23 2018
 !
 ! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -76,6 +76,10 @@ contains
          (var_list, var_str ("PDG"), obs_pdg1, prt1)
     call var_list_append_obs1_iptr &
          (var_list, var_str ("Hel"), obs_helicity1, prt1)
+    call var_list_append_obs1_iptr &
+         (var_list, var_str ("Ncol"), obs_n_col1, prt1)
+    call var_list_append_obs1_iptr &
+         (var_list, var_str ("Nacl"), obs_n_acl1, prt1)
     call var_list_append_obs1_rptr &
          (var_list, var_str ("M"), obs_signed_mass1, prt1)
     call var_list_append_obs1_rptr &
@@ -120,6 +124,10 @@ contains
          (var_list, var_str ("PDG"), obs_pdg2, prt1, prt2)
     call var_list_append_obs2_iptr &
          (var_list, var_str ("Hel"), obs_helicity2, prt1, prt2)
+    call var_list_append_obs2_iptr &
+         (var_list, var_str ("Ncol"), obs_n_col2, prt1, prt2)
+    call var_list_append_obs2_iptr &
+         (var_list, var_str ("Nacl"), obs_n_acl2, prt1, prt2)
     call var_list_append_obs2_rptr &
          (var_list, var_str ("M"), obs_signed_mass2, prt1, prt2)
     call var_list_append_obs2_rptr &
@@ -174,7 +182,8 @@ contains
     logical :: flag
     type(string_t), intent(in) :: string
     select case (char (string))
-    case ("PDG", "Hel", "M", "M2", "E", "Px", "Py", "Pz", "P", "Pl", "Pt", &
+    case ("PDG", "Hel", "Ncol", &
+         "M", "M2", "E", "Px", "Py", "Pz", "P", "Pl", "Pt", &
          "Theta", "Phi", "Rap", "Eta", "Theta_star", "Dist", "kT")
        flag = .true.
     case default
@@ -270,6 +279,24 @@ contains
     end if
   end function obs_helicity1
 
+  integer function obs_n_col1 (prt1) result (n)
+    type(prt_t), intent(in) :: prt1
+    if (prt_is_colorized (prt1)) then
+       n = prt_get_n_col (prt1)
+    else
+       n = 0
+    end if
+  end function obs_n_col1
+
+  integer function obs_n_acl1 (prt1) result (n)
+    type(prt_t), intent(in) :: prt1
+    if (prt_is_colorized (prt1)) then
+       n = prt_get_n_acl (prt1)
+    else
+       n = 0
+    end if
+  end function obs_n_acl1
+
   real(default) function obs_mass_squared1 (prt1) result (p2)
     type(prt_t), intent(in) :: prt1
     p2 = prt_get_msq (prt1)
@@ -360,6 +387,18 @@ contains
     call msg_fatal (" Helicity is undefined as binary observable")
     h = 0
   end function obs_helicity2
+
+  integer function obs_n_col2 (prt1, prt2) result (n)
+    type(prt_t), intent(in) :: prt1, prt2
+    call msg_fatal (" Ncol is undefined as binary observable")
+    n = 0
+  end function obs_n_col2
+
+  integer function obs_n_acl2 (prt1, prt2) result (n)
+    type(prt_t), intent(in) :: prt1, prt2
+    call msg_fatal (" Nacl is undefined as binary observable")
+    n = 0
+  end function obs_n_acl2
 
   real(default) function obs_mass_squared2 (prt1, prt2) result (p2)
     type(prt_t), intent(in) :: prt1, prt2

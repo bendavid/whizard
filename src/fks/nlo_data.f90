@@ -1,4 +1,4 @@
-! WHIZARD 2.6.3 Feb 10 2018
+! WHIZARD 2.6.4 Aug 23 2018
 !
 ! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -63,12 +63,12 @@ module nlo_data
     real(default) :: fks_dij_exp2
     real(default) :: xi_min
     real(default) :: y_max
+    real(default) :: xi_cut, delta_zero, delta_i
     type(string_t), dimension(:), allocatable :: excluded_resonances
     integer :: n_f
   contains
     procedure :: write => fks_template_write
-    procedure :: set_dij_exp => fks_template_set_dij_exp
-    procedure :: set_xi_and_y_bounds => fks_template_set_xi_and_y_bounds
+    procedure :: set_parameters => fks_template_set_parameters
     procedure :: set_mapping_type => fks_template_set_mapping_type
     procedure :: set_counter => fks_template_set_counter
   end type fks_template_t
@@ -127,21 +127,28 @@ contains
     end select
     write (u,'(1x,A,ES4.3,ES4.3)') 'd_ij exponentials: ', &
        template%fks_dij_exp1, template%fks_dij_exp2
+    write (u, '(1x,A,ES4.3,ES4.3)') 'xi_cut: ', &
+       template%xi_cut
+    write (u, '(1x,A,ES4.3,ES4.3)') 'delta_zero: ', &
+       template%delta_zero
+    write (u, '(1x,A,ES4.3,ES4.3)') 'delta_i: ', &
+         template%delta_i
   end subroutine fks_template_write
 
-  subroutine fks_template_set_dij_exp (template, exp1, exp2)
+  subroutine fks_template_set_parameters (template, exp1, exp2, xi_min, &
+    y_max, xi_cut, delta_zero, delta_i)
     class(fks_template_t), intent(inout) :: template
     real(default), intent(in) :: exp1, exp2
+    real(default), intent(in) :: xi_min, y_max, &
+         xi_cut, delta_zero, delta_i
     template%fks_dij_exp1 = exp1
     template%fks_dij_exp2 = exp2
-  end subroutine fks_template_set_dij_exp
-
-  subroutine fks_template_set_xi_and_y_bounds (template, xi_min, y_max)
-    class(fks_template_t), intent(inout) :: template
-    real(default), intent(in) :: xi_min, y_max
     template%xi_min = xi_min
     template%y_max = y_max
-  end subroutine fks_template_set_xi_and_y_bounds
+    template%xi_cut = xi_cut
+    template%delta_zero = delta_zero
+    template%delta_i = delta_i
+  end subroutine fks_template_set_parameters
 
   subroutine fks_template_set_mapping_type (template, val)
     class(fks_template_t), intent(inout) :: template

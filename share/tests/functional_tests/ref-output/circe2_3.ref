@@ -39,7 +39,7 @@ openmp_num_threads = 1
 | RNG: Setting seed for random-number generator to 1
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'muonmuon_i1.phs'
+| Phase space: writing configuration file 'muonmuon.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'muonmuon'
 |   Library name  = 'circe2_3_lib'

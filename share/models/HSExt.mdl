@@ -228,11 +228,11 @@ vertex E3 n3 Wm
 # vertex C c H 
 vertex B b H 
 vertex T t H 
-vertex B h S
-vertex T t S 
-# vertex E2 e2 H 
-vertex E3 e3 H 
-vertex E3 e3 S
+vertex B h HS
+vertex T t HS
+# vertex E2 e2 H
+vertex E3 e3 H
+vertex E3 e3 HS
 
 # Vector-boson self-interactions
 vertex Wp Wm A
@@ -247,17 +247,17 @@ vertex Wp Wm A A
 vertex H Z A
 vertex H A A
 vertex H g g 
-vertex S Z A
-vertex S A A
-vertex S g g 
+vertex HS Z A
+vertex HS A A
+vertex HS g g 
 
 vertex H Wp Wm
 vertex H Z Z
-vertex S Wp Wm
-vertex S Z Z
+vertex HS Wp Wm
+vertex HS Z Z
 
 # Higgs self-interactions
 vertex H H H
-vertex H H S
-vertex H S S
-vertex S S S
+vertex H H HS
+vertex H HS HS
+vertex HS HS HS

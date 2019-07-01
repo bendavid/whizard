@@ -40,7 +40,7 @@ n_events = 10
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'analyze_4_p_i1.phs'
+| Phase space: writing configuration file 'analyze_4_p.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'analyze_4_p'
 |   Library name  = 'analyze_4_lib'
@@ -73,7 +73,7 @@ n_events = 10
    4       9998  1.5615495E+03  1.52E+01    0.97    0.97    5.70
 |=============================================================================|
 | Simulate: integration done
-| Simulate: using integration grids from file 'analyze_4_p_m1.vg'
+| Simulate: using integration grids from file 'analyze_4_p.m1.vg'
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 2
 | Simulation: requested number of events = 10
@@ -92,7 +92,7 @@ $out_file = "analyze_4.dat"
 seed = 1
 n_events = 10
 | Starting simulation for process 'analyze_4_p'
-| Simulate: using integration grids from file 'analyze_4_p_m1.vg'
+| Simulate: using integration grids from file 'analyze_4_p.m1.vg'
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 1
 | Simulation: requested number of events = 10

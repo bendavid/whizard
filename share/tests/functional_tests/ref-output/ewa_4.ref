@@ -41,7 +41,7 @@ ewa_mass =  0.00000E+00
 | Initialized builtin PDF CTEQ6L
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'ewa_4_p1_i1.phs'
+| Phase space: writing configuration file 'ewa_4_p1.i1.phs'
 | Phase space: 3 channels, 2 dimensions
 | Phase space: found 3 channels, collected in 2 groves.
 | Phase space: Using 3 equivalences between channels.
@@ -89,7 +89,7 @@ Warning: No cuts have been defined.
 |   sqrts = 1.400000000000E+04 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'ewa_4_p2_i1.phs'
+| Phase space: writing configuration file 'ewa_4_p2.i1.phs'
 | Phase space: 5 channels, 2 dimensions
 | Phase space: found 5 channels, collected in 2 groves.
 | Phase space: Using 9 equivalences between channels.

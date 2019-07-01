@@ -1,4 +1,4 @@
-! WHIZARD 2.6.3 Feb 10 2018
+! WHIZARD 2.6.4 Aug 23 2018
 !
 ! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -61,10 +61,13 @@ contains
     if (exclude_from_resonance /= var_str ("default")) &
        call split_string (exclude_from_resonance, var_str (":"), &
        fks_template%excluded_resonances)
-    call fks_template%set_dij_exp (fks_dij_exp1, fks_dij_exp2)
-    call fks_template%set_xi_and_y_bounds &
-         (var_list%get_rval (var_str ("fks_xi_min")), &
-         var_list%get_rval (var_str ("fks_y_max")))
+    call fks_template%set_parameters ( &
+         exp1 = fks_dij_exp1, exp2 = fks_dij_exp2, & 
+         xi_min = var_list%get_rval (var_str ("fks_xi_min")), &
+         y_max = var_list%get_rval (var_str ("fks_y_max")), &
+         xi_cut = var_list%get_rval (var_str ("fks_xi_cut")), &
+         delta_zero = var_list%get_rval (var_str ("fks_delta_zero")), &
+         delta_i = var_list%get_rval (var_str ("fks_delta_i")))
     select case (char (fks_mapping_type))
     case ("default")
        call fks_template%set_mapping_type (FKS_DEFAULT)

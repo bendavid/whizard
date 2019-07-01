@@ -1,4 +1,4 @@
-! WHIZARD 2.6.3 Feb 10 2018
+! WHIZARD 2.6.4 Aug 23 2018
 !
 ! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -55,6 +55,7 @@ module rt_data_uti
   public :: rt_data_8
   public :: rt_data_9
   public :: rt_data_10
+  public :: rt_data_11
 
 contains
 
@@ -736,6 +737,60 @@ contains
     write (u, "(A)")
     write (u, "(A)")  "* Test output end: rt_data_10"
   end subroutine rt_data_10
+
+  subroutine rt_data_11 (u)
+    integer, intent(in) :: u
+    type(rt_data_t) :: global
+    type(string_t), dimension(:), allocatable :: exports
+    integer :: i
+
+    write (u, "(A)")  "* Test output: rt_data_11"
+    write (u, "(A)")  "*   Purpose: handle export object list"
+    write (u, "(A)")
+
+    write (u, "(A)")  "* Empty export list"
+    write (u, "(A)")
+    
+    call global%write_exports (u)
+
+    write (u, "(A)")  "* Add an entry"
+    write (u, "(A)")
+    
+    allocate (exports (1))
+    exports(1) = var_str ("results")
+    do i = 1, size (exports)
+       write (u, "('+ ',A)")  char (exports(i))
+    end do
+    write (u, *)
+    
+    call global%append_exports (exports)
+    call global%write_exports (u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Add more entries, including doubler"
+    write (u, "(A)")
+    
+    deallocate (exports)
+    allocate (exports (3))
+    exports(1) = var_str ("foo")
+    exports(2) = var_str ("results")
+    exports(3) = var_str ("bar")
+    do i = 1, size (exports)
+       write (u, "('+ ',A)")  char (exports(i))
+    end do
+    write (u, *)
+
+    call global%append_exports (exports)
+    call global%write_exports (u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Cleanup"
+    
+    call global%final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: rt_data_11"
+  end subroutine rt_data_11
 
 
 end module rt_data_uti

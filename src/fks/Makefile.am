@@ -36,11 +36,13 @@ libfks_la_SOURCES = \
   nlo_data.f90 \
   virtual.f90 \
   real_subtraction.f90 \
+  isr_collinear.f90 \
   dglap_remnant.f90 \
   dispatch_fks.f90
 
 libfks_ut_la_SOURCES = \
-  fks_regions_uti.f90 fks_regions_ut.f90
+  fks_regions_uti.f90 fks_regions_ut.f90 \
+  real_subtraction_uti.f90 real_subtraction_ut.f90
 
 ## Omitting this would exclude it from the distribution
 dist_noinst_DATA = fks.nw
@@ -55,7 +57,7 @@ Modules: Makefile
           rm $@.new; \
 	else \
           mv $@.new $@; echo "Modules updated"; \
-        fi
+	fi
 BUILT_SOURCES = Modules
 
 ## Fortran module dependencies
@@ -67,7 +69,6 @@ module_lists = \
   ../system/Modules \
   ../parsing/Modules \
   ../user/Modules \
-  ../rng/Modules \
   ../combinatorics/Modules \
   ../physics/Modules \
   ../qft/Modules \

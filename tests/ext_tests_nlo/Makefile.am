@@ -30,22 +30,56 @@
 WHIZARD_DRIVER = run_whizard.sh
 
 TESTS_EXTENDED = \
-	extra_nlo_decay.run \
-	extra_nlo_tt.run \
-	extra_nlo_tt_powheg.run \
-	extra_nlo_tt_powheg_sudakov.run \
-	extra_nlo_uu.run \
-	extra_nlo_uu_powheg.run \
-	extra_nlo_methods_gosam.run \
-	extra_threshold_factorized.run \
-	extra_nlo_threshold.run \
-	extra_nlo_jets.run
+	nlo_decay_tbw.run \
+	nlo_tt.run \
+	nlo_tt_powheg.run \
+	nlo_tt_powheg_sudakov.run \
+	nlo_uu.run \
+	nlo_uu_powheg.run \
+	nlo_qq_powheg.run \
+	nlo_methods_gosam.run \
+	nlo_threshold_factorized.run \
+	nlo_threshold.run \
+	nlo_jets.run \
+	nlo_eejj.run \
+	nlo_eejjj.run \
+	nlo_ee4j.run \
+	nlo_ee5j.run \
+	nlo_eebb.run \
+	nlo_eebbj.run \
+	nlo_eebbjj.run \
+	nlo_ee4b.run \
+	nlo_eett.run \
+	nlo_eettj.run \
+	nlo_eettjj.run \
+	nlo_eettjjj.run \
+	nlo_eettbb.run \
+	nlo_eetta.run \
+	nlo_eettaa.run \
+	nlo_eettaj.run \
+	nlo_eettajj.run \
+	nlo_eettaz.run \
+	nlo_eettah.run \
+	nlo_eettz.run \
+	nlo_eettzj.run \
+	nlo_eettzjj.run \
+	nlo_eettzz.run \
+	nlo_eettww.run \
+	nlo_eettwmjj.run \
+	nlo_eettwpjj.run \
+	nlo_eetth.run \
+	nlo_eetthj.run \
+	nlo_eetthjj.run \
+	nlo_eetthh.run \
+	nlo_eetthz.run \
+	nlo_ee4t.run \
+	nlo_ee4tj.run
 
 XFAIL_TESTS_EXTENDED =
 
 TESTS_REQ_GAMELAN = \
-	extra_nlo_tt_powheg.run \
-	extra_nlo_uu_powheg.run
+	nlo_tt_powheg.run \
+	nlo_uu_powheg.run
 
 TEST_DRIVERS_RUN = \
     $(TESTS_EXTENDED)
@@ -75,6 +109,42 @@ SUFFIXES = .sh .run
 	$(SED) -i 's|@python_bin@|$(PYTHON_BIN)|g' $@
 	$(SED) -i 's|@share_dir@|$(top_srcdir)/share/tests/|g' $@
 	@chmod +x $@
+
+nlo_eejj.run: nlo_settings.sin
+nlo_eejjj.run: nlo_settings.sin
+nlo_ee4j.run: nlo_settings.sin
+nlo_ee5j.run: nlo_settings.sin
+nlo_eebb.run: nlo_settings.sin
+nlo_eebbj.run: nlo_settings.sin
+nlo_eebbjj.run: nlo_settings.sin
+nlo_ee4b.run: nlo_settings.sin
+nlo_eett.run: nlo_settings.sin
+nlo_eettj.run: nlo_settings.sin
+nlo_eettjj.run: nlo_settings.sin
+nlo_eettjjj.run: nlo_settings.sin
+nlo_eettbb.run: nlo_settings.sin
+nlo_eetta.run: nlo_settings.sin
+nlo_eettaa.run: nlo_settings.sin
+nlo_eettaj.run: nlo_settings.sin
+nlo_eettajj.run: nlo_settings.sin
+nlo_eettah.run: nlo_settings.sin
+nlo_eettaz.run: nlo_settings.sin
+nlo_eettz.run: nlo_settings.sin
+nlo_eettzj.run: nlo_settings.sin
+nlo_eettzjj.run: nlo_settings.sin
+nlo_eettzz.run: nlo_settings.sin
+nlo_eettww.run: nlo_settings.sin
+nlo_eettwmjj.run: nlo_settings.sin
+nlo_eettwpjj.run: nlo_settings.sin
+nlo_eetth.run: nlo_settings.sin
+nlo_eetthj.run: nlo_settings.sin
+nlo_eetthjj.run: nlo_settings.sin
+nlo_eetthh.run: nlo_settings.sin
+nlo_eetthz.run: nlo_settings.sin
+nlo_ee4t.run: nlo_settings.sin
+nlo_ee4tj.run: nlo_settings.sin
+nlo_settings.sin: $(top_builddir)/share/tests/functional_tests/nlo_settings.sin
+	cp $< $@
 
 #$(SED) -i 's|@python_bin@|$(PYTHON_BIN)|g' $@
 #$(SED) -i 's|@share_dir@|$(top_srcdir)/share/tests/|g' $@

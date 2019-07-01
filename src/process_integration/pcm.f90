@@ -1,4 +1,4 @@
-! WHIZARD 2.6.3 Feb 10 2018
+! WHIZARD 2.6.4 Aug 23 2018
 !
 ! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -435,11 +435,9 @@ contains
     select type (config => pcm_instance%config)
     type is (pcm_nlo_t)
        associate (region_data => config%region_data)
-          call pcm_instance%real_sub%init (region_data)
-          call pcm_instance%real_sub%set_resonance_mappings &
-               (config%settings%use_resonance_mappings)
-             if (allocated (config%settings%selected_alr)) then
-                associate (selected_alr => config%settings%selected_alr)
+          call pcm_instance%real_sub%init (region_data, config%settings)
+          if (allocated (config%settings%selected_alr)) then
+              associate (selected_alr => config%settings%selected_alr)
                 if (any (selected_alr < 0)) then
                    call msg_fatal ("Fixed alpha region must be non-negative!")
                 else if (any (selected_alr > region_data%n_regions)) then
@@ -449,10 +447,8 @@ contains
                    allocate (pcm_instance%real_sub%selected_alr (size (selected_alr)))
                    pcm_instance%real_sub%selected_alr = selected_alr
                 end if
-          end associate
-             end if
-          pcm_instance%real_sub%sub_soft%factorization_mode &
-               = config%settings%factorization_mode
+             end associate
+          end if
        end associate
     end select
   end subroutine pcm_instance_nlo_init_real_subtraction
@@ -583,19 +579,16 @@ contains
   end subroutine pcm_instance_nlo_set_x_rad
 
   subroutine pcm_instance_nlo_init_virtual (pcm_instance, model)
-    class(pcm_instance_nlo_t), intent(inout) :: pcm_instance
+    class(pcm_instance_nlo_t), intent(inout), target :: pcm_instance
     class(model_data_t), intent(in) :: model
+    type(nlo_settings_t), pointer :: settings
     select type (config => pcm_instance%config)
     type is (pcm_nlo_t)
        associate (region_data => config%region_data)
-          call pcm_instance%virtual%init (region_data%get_flv_states_born (), &
-               region_data%n_in, config%settings%fks_template%n_f, &
-               config%settings%use_internal_color_correlations, &
-               config%settings%virtual_selection, &
-               config%settings%virtual_resonance_aware_collinear, &
-               region_data%regions(1)%nlo_correction_type, model)
-          pcm_instance%virtual%factorization_mode = config%settings%factorization_mode
-          pcm_instance%virtual%has_pdfs = config%has_pdfs
+         settings => config%settings
+         call pcm_instance%virtual%init (region_data%get_flv_states_born (), &
+              region_data%n_in, settings, &
+              region_data%regions(1)%nlo_correction_type, model, config%has_pdfs)
        end associate
     end select
   end subroutine pcm_instance_nlo_init_virtual
@@ -614,7 +607,7 @@ contains
     type(vector4_t), dimension(:), allocatable :: pp
     associate (virtual => pcm_instance%virtual)
        allocate (pp (size (p)))
-       if (virtual%factorization_mode == FACTORIZATION_THRESHOLD) then
+       if (virtual%settings%factorization_mode == FACTORIZATION_THRESHOLD) then
           pp = pcm_instance%real_kinematics%p_born_onshell%get_momenta (1)
        else
           pp = p
@@ -693,6 +686,7 @@ contains
     select type (config => pcm_instance%config)
     type is (pcm_nlo_t)
        call pcm_instance%dglap_remnant%init ( &
+            config%settings, &
             config%region_data%n_flv_born, &
             pcm_instance%isr_kinematics, &
             config%region_data%get_flv_states_born (), config%get_n_alr ())

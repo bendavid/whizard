@@ -33,7 +33,7 @@ openmp_num_threads = 1
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'smtest_13_1_i1.phs'
+| Phase space: writing configuration file 'smtest_13_1.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'smtest_13_1'
 |   Library name  = 'smtest_13_lib'
@@ -95,7 +95,7 @@ Warning: No cuts have been defined.
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'smtest_13_3_i1.phs'
+| Phase space: writing configuration file 'smtest_13_3.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'smtest_13_3'
 |   Library name  = 'smtest_13_lib'
@@ -130,16 +130,16 @@ Warning: No cuts have been defined.
 |-----------------------------------------------------------------------------|
    6      29808     4.283E+02   3.93E-02    0.01    0.02    69.1    1.40   3
 |=============================================================================|
-smtest_13_3:
-   4.2831114E+02 +- 3.93E-02 fb
-smtest_13_2:
-   0.0000000E+00 +- 0.00E+00 fb
 smtest_13_1:
-   4.2829887E+02 +- 3.24E-02 fb
+   4.2829887E+02 +- 3.24E-02 fb  (  0.008 %)
+smtest_13_2:
+   0.0000000E+00 +- 0.00E+00 fb  (  0.    %)
+smtest_13_3:
+   4.2831114E+02 +- 3.93E-02 fb  (  0.009 %)
 n_events = 10
 | Starting simulation for processes 'smtest_13_1' etc.
-| Simulate: using integration grids from file 'smtest_13_1_m1.vg'
-| Simulate: using integration grids from file 'smtest_13_3_m1.vg'
+| Simulate: using integration grids from file 'smtest_13_1.m1.vg'
+| Simulate: using integration grids from file 'smtest_13_3.m1.vg'
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 3
 Warning: Process 'smtest_13_2': matrix element vanishes, no events can be generated.

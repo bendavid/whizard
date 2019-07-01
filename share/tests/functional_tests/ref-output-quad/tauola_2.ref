@@ -37,7 +37,7 @@ error_threshold =  1.00000E-08
 |   H  (mass = 1.2500000E+02 GeV)
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'tauola_2_dec1_i1.phs'
+| Phase space: writing configuration file 'tauola_2_dec1.i1.phs'
 | ------------------------------------------------------------------------
 | Process [decay]: 'tauola_2_dec1'
 |   Library name  = 'tauola_2_lib'
@@ -72,7 +72,7 @@ error_threshold =  1.00000E-08
 |   W-  (mass = 8.0419000E+01 GeV)
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'tauola_2_dec2_i1.phs'
+| Phase space: writing configuration file 'tauola_2_dec2.i1.phs'
 | ------------------------------------------------------------------------
 | Process [decay]: 'tauola_2_dec2'
 |   Library name  = 'tauola_2_lib'
@@ -114,7 +114,7 @@ $beam_events_file = "uniform_spread_2.5%.dat"
 |   sqrts = 2.500000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'tauola_2_p1_i1.phs'
+| Phase space: writing configuration file 'tauola_2_p1.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'tauola_2_p1'
 |   Library name  = 'tauola_2_lib'
@@ -159,7 +159,7 @@ Warning: No cuts have been defined.
 |   sqrts = 2.500000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'tauola_2_p2_i1.phs'
+| Phase space: writing configuration file 'tauola_2_p2.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'tauola_2_p2'
 |   Library name  = 'tauola_2_lib'
@@ -199,13 +199,13 @@ n_events = 1
 $sample = "tauola_2_p1"
 | Starting simulation for process 'tauola_2_p1'
 | Beam events: reading from file 'uniform_spread_2.5%.dat'
-| Simulate: using integration grids from file 'tauola_2_p1_m1.vg'
+| Simulate: using integration grids from file 'tauola_2_p1.m1.vg'
 | Simulate: activating decays
 | Simulate: activating parton shower
 | Shower: Using PYTHIA6 shower
 | Simulate: activating hadronization
 | Hadronization: Using PYTHIA6 interface for hadronization and decays
-| Simulate: using integration grids from file 'tauola_2_dec1_m1.vg'
+| Simulate: using integration grids from file 'tauola_2_dec1.m1.vg'
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 4
 | Simulation: requested number of events = 1
@@ -226,13 +226,13 @@ n_events = 1
 $sample = "tauola_2_p2"
 | Starting simulation for process 'tauola_2_p2'
 | Beam events: reading from file 'uniform_spread_2.5%.dat'
-| Simulate: using integration grids from file 'tauola_2_p2_m1.vg'
+| Simulate: using integration grids from file 'tauola_2_p2.m1.vg'
 | Simulate: activating decays
 | Simulate: activating parton shower
 | Shower: Using PYTHIA6 shower
 | Simulate: activating hadronization
 | Hadronization: Using PYTHIA6 interface for hadronization and decays
-| Simulate: using integration grids from file 'tauola_2_dec2_m1.vg'
+| Simulate: using integration grids from file 'tauola_2_dec2.m1.vg'
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 5
 | Simulation: requested number of events = 1

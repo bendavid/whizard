@@ -20,7 +20,7 @@ sqrts =  1.000000000000E+03
 |   sqrts = 1.000000000000E+03 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'testproc_10_p1_i1.phs'
+| Phase space: writing configuration file 'testproc_10_p1.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'testproc_10_p1'
 |   Library name  = 'testproc_10_lib'
@@ -56,7 +56,7 @@ Warning: No cuts have been defined.
 |   s  (mass = 1.2500000E+02 GeV)
 |   s  (mass = 1.2500000E+02 GeV)
 |   sqrts = 1.000000000000E+03 GeV
-| Phase space: keeping configuration file 'testproc_10_p1_i1.phs'
+| Phase space: keeping configuration file 'testproc_10_p1.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'testproc_10_p1'
 |   Library name  = 'testproc_10_lib'
@@ -78,7 +78,7 @@ Warning: No cuts have been defined.
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-| VAMP: using grids and results from file 'testproc_10_p1_m1.vg'
+| VAMP: using grids and results from file 'testproc_10_p1.m1.vg'
    1       1000  7.7464622E+03  0.00E+00    0.00    0.00* 100.00
 |-----------------------------------------------------------------------------|
    1       1000  7.7464622E+03  0.00E+00    0.00    0.00  100.00
@@ -95,7 +95,7 @@ sqrts =  5.000000000000E+02
 | Phase space: discarding old configuration (configuration parameters changed)
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'testproc_10_p1_i1.phs'
+| Phase space: writing configuration file 'testproc_10_p1.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'testproc_10_p1'
 |   Library name  = 'testproc_10_lib'
@@ -117,7 +117,7 @@ Warning: No cuts have been defined.
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-| VAMP: parameter mismatch, discarding grid file 'testproc_10_p1_m1.vg'
+| VAMP: parameter mismatch, discarding grid file 'testproc_10_p1.m1.vg'
    1       1000  3.0985849E+04  0.00E+00    0.00    0.00* 100.00
 |-----------------------------------------------------------------------------|
    1       1000  3.0985849E+04  0.00E+00    0.00    0.00  100.00
@@ -133,7 +133,7 @@ Warning: No cuts have been defined.
 |   s  (mass = 1.2500000E+02 GeV)
 |   s  (mass = 1.2500000E+02 GeV)
 |   sqrts = 5.000000000000E+02 GeV
-| Phase space: keeping configuration file 'testproc_10_p1_i1.phs'
+| Phase space: keeping configuration file 'testproc_10_p1.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'testproc_10_p1'
 |   Library name  = 'testproc_10_lib'
@@ -155,7 +155,7 @@ Warning: No cuts have been defined.
 |=============================================================================|
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
-| VAMP: parameter mismatch, discarding grid file 'testproc_10_p1_m1.vg'
+| VAMP: parameter mismatch, discarding grid file 'testproc_10_p1.m1.vg'
    1       1000  3.0985849E+04  0.00E+00    0.00    0.00* 100.00
 |-----------------------------------------------------------------------------|
    1       1000  3.0985849E+04  0.00E+00    0.00    0.00  100.00

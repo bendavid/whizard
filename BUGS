@@ -4,7 +4,7 @@ General:
   gfortran 4.8.4 (or newer) Fortran compilers as well as Intel ifort
   17.0.4 (or newer).
 
-  [See the file EXTENSIONS for the list of Fortran 2003/2008/2015 
+  [See the file EXTENSIONS for the list of Fortran 2003/2008/2018 
    features that the compiler must support.]
 
 * WHIZARD 2.6+ incorporates all features from WHIZARD 1, making the
@@ -16,6 +16,9 @@ General:
 
 Known bugs:
 
+* MPI version of WHIZARD: version 2.6.3 could produce the MPI-parallelized
+  version only from the svn repository, and not from the release tarball.
+  This was corrected for version 2.6.4.
 
 * In version 2.6.0 the top threshold calculations do not work due to a
   regression. This is fixed in 2.6.1. In version 2.6.1 all processes

@@ -60,7 +60,9 @@ TESTS_DEFAULT = \
     rebuild_4.run \
     susyhit.run \
     helicity.run \
-    libraries_4.run
+    libraries_4.run \
+    job_id_1.run \
+    pack_1.run
 
 XFAIL_TESTS_DEFAULT =
 
@@ -79,6 +81,9 @@ TESTS_REQ_OCAML = \
     model_change_1.run \
     model_change_2.run \
     model_test.run \
+    job_id_2.run \
+    job_id_3.run \
+    job_id_4.run \
     qedtest_1.run \
     qedtest_2.run \
     qedtest_3.run \
@@ -118,7 +123,9 @@ TESTS_REQ_OCAML = \
     reweight_8.run \
     analyze_1.run \
     analyze_2.run \
+    analyze_5.run \
     colors.run \
+    colors_2.run \
     colors_hgg.run \
     alphas.run \
     jets_xsec.run \
@@ -211,6 +218,7 @@ TESTS_REQ_OCAML = \
     show_2.run \
     show_3.run \
     show_4.run \
+    show_5.run \
     method_ovm_1.run \
     multi_comp_1.run \
     multi_comp_2.run \
@@ -571,6 +579,7 @@ BUILT_SOURCES = \
     PYTHIA6_FLAG \
     OPENLOOPS_FLAG \
     RECOLA_FLAG \
+    GZIP_FLAG \
     STATIC_FLAG \
     ref-output
 
@@ -640,6 +649,11 @@ if EVENT_ANALYSIS_AVAILABLE
 	touch $@
 endif
 
+GZIP_FLAG:
+if GZIP_AVAILABLE
+	touch $@
+endif
+
 STATIC_FLAG:
 if STATIC_AVAILABLE
 	touch $@
@@ -687,7 +701,8 @@ clean-local: clean-macosx
 	rm -f TESTFLAG GAMELAN_FLAG MPI_FLAG RECOLA_FLAG
 	rm -f OCAML_FLAG OPENLOOPS_FLAG FASTJET_FLAG HEPMC_FLAG LCIO_FLAG
 	rm -f EVENT_ANALYSIS_FLAG PYTHIA6_FLAG LHAPDF5_FLAG
-	rm -f LHAPDF6_FLAG STATIC_FLAG static_1.exe static_2.exe
+	rm -f LHAPDF6_FLAG 
+	rm -f GZIP_FLAG STATIC_FLAG static_1.exe static_2.exe
 	rm -f *.run *.log slha_test.out
 	rm -f core* stdhep_rd
 	rm -f *.f90 *.f90.in *.c *.$(FC_MODULE_EXT) *.o *.la
@@ -701,12 +716,15 @@ clean-local: clean-macosx
 	rm -f *.phs *.vg *.vg2 *.pg *.vgb *.evt *.evx *.lhe *.hepmc *.dat *.debug *.fds
 	rm -f *.tmp *.hepevt *.hepevt.verb *.lha *.lha.verb *.slcio
 	rm -f prc_omega_diags_1_p_i1_diags.out prc_omega_diags_1_p_i1_diags.toc
+	rm -rf pack_1.1 pack_1.2 pack_1.3 pack_1.4
+	rm -rf pack_1.1.tgz pack_1.2.tgz pack_1.3.tgz pack_1.4.tgz
 	rm -f *.hep *.up.hep *.[1-9] *.[1-9][0-9] *.[1-9][0-9][0-9] 
 	rm -f *.tex *.mp *.mpx *.t[1-9] *.t[1-9][0-9] *.t[1-9][0-9][0-9] 
 	rm -f *.ltp *.aux *.dvi *.ps *.pdf so_test.*
 	rm -f *.tbl sps1ap_decays.slha bar structure_6[a-b].out 
 	rm -f slhaspectrum.in suspect2.out suspect2_lha.out 
 	rm -f susyhit.in susyhit_slha.out suspect2_lha.in
+	rm -rf job_id_3_x.8001 job_id_4_x.8001
 	rm -rf ufo_1_SM ufo_2_SM ufo_3_models
 	rm -f ufo_1_SM.ufo.mdl ufo_2_SM.ufo.mdl ufo_3_SM.ufo.mdl
 	rm -f *.$(WT_OMEGA_CACHE_SUFFIX)

@@ -35,7 +35,7 @@ SUBDIRS = \
   system \
   combinatorics pdf_builtin testing \
   hoppet \
-  muli parsing physics \
+  muli parsing physics qed_pdf \
   fastjet types qft threshold \
   models particles matrix_elements variables \
   events prebuilt rng \
@@ -102,6 +102,7 @@ libwhizard_la_LIBADD = \
   types/libtypes.la \
   qft/libqft.la \
   physics/libphysics.la \
+  qed_pdf/libqed_pdf.la \
   expr_base/libexpr_base.la \
   rng/librng.la \
   parsing/libparsing.la \
@@ -157,6 +158,10 @@ if LOOPTOOLS_AVAILABLE
 libwhizard_la_LIBADD += $(LDFLAGS_LOOPTOOLS) looptools/liblooptools.la
 else
 libwhizard_la_LIBADD += looptools/liblooptools_dummy.la
+endif
+
+if IS_IFORT_DARWIN
+libwhizard_la_LIBADD += $(FCLIBS)
 endif
 
 ## -------------------------------------------------------------------
@@ -217,6 +222,10 @@ whizard_SOURCES =
 ## Without dummy, libtool uses the C linker (default: ld)
 nodist_EXTRA_whizard_SOURCES = dummy.f90
 
+if IS_IFORT_DARWIN
+whizard_LDFLAGS =  $(AM_LDFLAGS) -static
+endif
+
 whizard_LDADD  = whizard-core/libwhizard_main.la
 whizard_LDADD += ./libwhizard.la
 whizard_LDADD += prebuilt/libwhizard_prebuilt.la
@@ -238,6 +247,10 @@ whizard_ut_SOURCES =
 ## A dummy source tells libtool that the F90 compiler is used for linking
 ## Without dummy, libtool uses the C linker (default: ld)
 nodist_EXTRA_whizard_ut_SOURCES = dummy.f90
+
+if IS_IFORT_DARWIN
+whizard_ut_LDFLAGS =  $(AM_LDFLAGS) -static
+endif
 
 whizard_ut_LDADD  = whizard-core/libwhizard_main_ut.la
 whizard_ut_LDADD += ./libwhizard_test.la

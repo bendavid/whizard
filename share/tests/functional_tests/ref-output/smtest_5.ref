@@ -40,7 +40,7 @@ auto_decays_multiplicity = 2
 |   W+  (mass = 8.0419000E+01 GeV)
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'decay_p24_1_i1.phs'
+| Phase space: writing configuration file 'decay_p24_1.i1.phs'
 | ------------------------------------------------------------------------
 | Process [decay]: 'decay_p24_1'
 |   Library name  = 'smtest_5_lib_dp24'
@@ -75,7 +75,7 @@ Warning: No cuts have been defined.
 |   W+  (mass = 8.0419000E+01 GeV)
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'decay_p24_2_i1.phs'
+| Phase space: writing configuration file 'decay_p24_2.i1.phs'
 | ------------------------------------------------------------------------
 | Process [decay]: 'decay_p24_2'
 |   Library name  = 'smtest_5_lib_dp24'
@@ -110,7 +110,7 @@ Warning: No cuts have been defined.
 |   W+  (mass = 8.0419000E+01 GeV)
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'decay_p24_3_i1.phs'
+| Phase space: writing configuration file 'decay_p24_3.i1.phs'
 | ------------------------------------------------------------------------
 | Process [decay]: 'decay_p24_3'
 |   Library name  = 'smtest_5_lib_dp24'
@@ -145,7 +145,7 @@ Warning: No cuts have been defined.
 |   W+  (mass = 8.0419000E+01 GeV)
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'decay_p24_4_i1.phs'
+| Phase space: writing configuration file 'decay_p24_4.i1.phs'
 | ------------------------------------------------------------------------
 | Process [decay]: 'decay_p24_4'
 |   Library name  = 'smtest_5_lib_dp24'
@@ -180,7 +180,7 @@ Warning: No cuts have been defined.
 |   W+  (mass = 8.0419000E+01 GeV)
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'decay_p24_5_i1.phs'
+| Phase space: writing configuration file 'decay_p24_5.i1.phs'
 | ------------------------------------------------------------------------
 | Process [decay]: 'decay_p24_5'
 |   Library name  = 'smtest_5_lib_dp24'
@@ -248,7 +248,7 @@ Warning: No cuts have been defined.
 |   W-  (mass = 8.0419000E+01 GeV)
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'decay_a24_1_i1.phs'
+| Phase space: writing configuration file 'decay_a24_1.i1.phs'
 | ------------------------------------------------------------------------
 | Process [decay]: 'decay_a24_1'
 |   Library name  = 'smtest_5_lib_da24'
@@ -283,7 +283,7 @@ Warning: No cuts have been defined.
 |   W-  (mass = 8.0419000E+01 GeV)
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'decay_a24_2_i1.phs'
+| Phase space: writing configuration file 'decay_a24_2.i1.phs'
 | ------------------------------------------------------------------------
 | Process [decay]: 'decay_a24_2'
 |   Library name  = 'smtest_5_lib_da24'
@@ -318,7 +318,7 @@ Warning: No cuts have been defined.
 |   W-  (mass = 8.0419000E+01 GeV)
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'decay_a24_3_i1.phs'
+| Phase space: writing configuration file 'decay_a24_3.i1.phs'
 | ------------------------------------------------------------------------
 | Process [decay]: 'decay_a24_3'
 |   Library name  = 'smtest_5_lib_da24'
@@ -353,7 +353,7 @@ Warning: No cuts have been defined.
 |   W-  (mass = 8.0419000E+01 GeV)
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'decay_a24_4_i1.phs'
+| Phase space: writing configuration file 'decay_a24_4.i1.phs'
 | ------------------------------------------------------------------------
 | Process [decay]: 'decay_a24_4'
 |   Library name  = 'smtest_5_lib_da24'
@@ -388,7 +388,7 @@ Warning: No cuts have been defined.
 |   W-  (mass = 8.0419000E+01 GeV)
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'decay_a24_5_i1.phs'
+| Phase space: writing configuration file 'decay_a24_5.i1.phs'
 | ------------------------------------------------------------------------
 | Process [decay]: 'decay_a24_5'
 |   Library name  = 'smtest_5_lib_da24'

@@ -1,4 +1,4 @@
-! WHIZARD 2.6.3 Feb 10 2018
+! WHIZARD 2.6.4 Aug 23 2018
 !
 ! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -54,6 +54,8 @@ module compilations
      type(process_library_t), pointer :: lib => null ()
      logical :: recompile_library = .false.
      logical :: verbose = .false.
+     logical :: use_workspace = .false.
+     type(string_t) :: workspace
    contains
      procedure :: init => compilation_item_init
      procedure :: compile => compilation_item_compile
@@ -76,6 +78,12 @@ module compilations
   end type compilation_t
 
 
+  character(*), parameter :: ALLOWED_IN_DIRNAME = &
+       "abcdefghijklmnopqrstuvwxyz&
+       &ABCDEFGHIJKLMNOPQRSTUVWXYZ&
+       &1234567890&
+       &.,_-+="
+
 contains
 
   subroutine compilation_item_init (comp, libname, stack, var_list)
@@ -91,7 +99,17 @@ contains
     end if
     comp%recompile_library = &
          var_list%get_lval (var_str ("?recompile_library"))
-    comp%verbose = var_list%get_lval (var_str ("?me_verbose"))
+    comp%verbose = &
+         var_list%get_lval (var_str ("?me_verbose"))
+    comp%use_workspace = &
+         var_list%is_known (var_str ("$compile_workspace"))
+    if (comp%use_workspace) then
+       comp%workspace = &
+            var_list%get_sval (var_str ("$compile_workspace"))
+       if (comp%workspace == "")  comp%use_workspace = .false.
+    else
+       comp%workspace = ""
+    end if
   end subroutine compilation_item_init
 
   subroutine compilation_item_compile (comp, model, os_data, force, recompile)
@@ -100,32 +118,49 @@ contains
     type(os_data_t), intent(in) :: os_data
     logical, intent(in) :: force, recompile
     if (associated (comp%lib)) then
+       if (comp%use_workspace)  call setup_workspace (comp%workspace, os_data)
        call msg_message ("Process library '" &
             // char (comp%libname) // "': compiling ...")
        call comp%lib%configure (os_data)
        if (signal_is_pending ())  return
        call comp%lib%compute_md5sum (model)
-       call comp%lib%write_makefile (os_data, force, comp%verbose)
+       call comp%lib%write_makefile &
+            (os_data, force, verbose=comp%verbose, workspace=comp%workspace)
        if (signal_is_pending ())  return
        if (force) then
-          call comp%lib%clean (os_data, distclean = .false.)
+          call comp%lib%clean &
+               (os_data, distclean = .false., workspace=comp%workspace)
           if (signal_is_pending ())  return
        end if
-       call comp%lib%write_driver (force)
+       call comp%lib%write_driver (force, workspace=comp%workspace)
        if (signal_is_pending ())  return
        if (recompile) then
-          call comp%lib%load (os_data, keep_old_source = .true.)
+          call comp%lib%load &
+               (os_data, keep_old_source = .true., workspace=comp%workspace)
           if (signal_is_pending ())  return
        end if
-       call comp%lib%update_status (os_data)
+       call comp%lib%update_status (os_data, workspace=comp%workspace)
     end if
   end subroutine compilation_item_compile
+
+  subroutine setup_workspace (workspace, os_data)
+    type(string_t), intent(in) :: workspace
+    type(os_data_t), intent(in) :: os_data
+    if (verify (workspace, ALLOWED_IN_DIRNAME) == 0) then
+       call msg_message ("Compile: preparing workspace directory '" &
+            // char (workspace) // "'")
+       call os_system_call ("mkdir -p '" // workspace // "'")
+    else
+       call msg_fatal ("compile: workspace name '" &
+            // char (workspace) // "' contains illegal characters")
+    end if
+  end subroutine setup_workspace
 
   subroutine compilation_item_load (comp, os_data)
     class(compilation_item_t), intent(inout) :: comp
     type(os_data_t), intent(in) :: os_data
     if (associated (comp%lib)) then
-       call comp%lib%load (os_data)
+       call comp%lib%load (os_data, workspace=comp%workspace)
     end if
   end subroutine compilation_item_load
 
@@ -241,12 +276,13 @@ contains
     close (u)
   end subroutine compilation_write_dispatcher
 
-  subroutine compilation_write_makefile (compilation, os_data, ext_libtag, verbose)
+  subroutine compilation_write_makefile &
+       (compilation, os_data, ext_libtag, verbose)
     class(compilation_t), intent(in) :: compilation
     type(os_data_t), intent(in) :: os_data
+    logical, intent(in) :: verbose
     type(string_t), intent(in), optional :: ext_libtag
     type(string_t) :: file, ext_tag
-    logical, intent(in) :: verbose
     integer :: u, i
     if (present (ext_libtag)) then
        ext_tag = ext_libtag
@@ -395,7 +431,8 @@ contains
        if (signal_is_pending ())  return
        call item%success ()
     end do
-    call compilation%write_makefile (global%os_data, ext_libtag, verbose)
+    call compilation%write_makefile &
+         (global%os_data, ext_libtag=ext_libtag, verbose=verbose)
     if (signal_is_pending ())  return
     call compilation%make_compile (global%os_data)
     if (signal_is_pending ())  return

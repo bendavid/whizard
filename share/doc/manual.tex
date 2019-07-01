@@ -278,7 +278,7 @@ Parameter & Value & Default & Description \\
 }
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %END LATEX
-\newcommand{\thisversion}{2.6.3}
+\newcommand{\thisversion}{2.6.4}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -674,7 +674,10 @@ of \whizard:
   & & more efficient (alternative) phase space generation \\
   2.6.2 & 12/2017 & $Hee$ coupling, improved resonance matching \\
   2.6.3 & 02/2018 & Partial NLO refactoring for quantum numbers,
-  unified RECOLA 1/2 interface. \\\hline
+  unified RECOLA 1/2 interface. \\
+  2.6.4. & 08/2018 & Gridpack functionality; Bug fixes: color flows,
+  HSExt model, MPI setup
+  \\\hline
 \end{tabular}
 \end{center}
 
@@ -1603,7 +1606,373 @@ developers (\ttt{whizard@desy.de}) and provide them with the logfiles
 of the failing test as well as the setup of your configuration.
 
 
-\section{Working With WHIZARD}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\clearpage
+
+\chapter{Working with \whizard}
+\label{chap:start}
+
+\whizard\ can run as a stand-alone program.  You (the user) can steer
+\whizard\ either interactively or by a script file.  We will first
+describe the latter method, since it will be the most common way to
+interact with the \whizard\ system.
+
+\section{Hello World}
+
+The legacy version series 1 of the program relied on a bunch of input
+files that the user had to provide in some obfuscated format.  This
+approach is sufficient for straightforward applications.  However, once
+you get experienced with a program, you start thinking about uses that
+the program's authors did not foresee.  In case of a Monte Carlo
+package, typical abuses are parameter scans, complex patterns of cuts
+and reweighting factors, or data analysis without recourse to external
+packages.  This requires more flexibility.
+
+Instead of transferring control over data input to some generic
+scripting language like PERL or PYTHON (or even C++), which come with
+their own peculiarities and learning curves, we decided to unify data
+input and scripting in a dedicated steering language that is
+particularly adapted to the needs of Monte-Carlo integration,
+simulation, and simple analysis of the results.  Thus we discovered
+what everybody knew anyway: that W(h)izards communicate in \sindarin,
+Scripting INtegration, Data Analysis, Results display and INterfaces.
+
+\sindarin\ is a DSL -- a domain-specific scripting language -- that is
+designed for the single purpose of steering and talking to \whizard.
+Now since \sindarin\ is a programming language, we honor the old
+tradition of starting with the famous Hello World program.  In
+\sindarin\ this reads simply
+\begin{quote}
+\begin{verbatim}
+printf "Hello World!"
+\end{verbatim}
+\end{quote}
+Open your favorite editor, type this text, and save it into a file
+named \verb|hello.sin|.
+
+\begin{figure}
+  \centering
+\begin{scriptsize}
+\begin{Verbatim}[frame=single]
+    | Writing log to 'whizard.log'
+    |=============================================================================|
+    |                                                                             |
+    |    WW             WW  WW   WW  WW  WWWWWW      WW      WWWWW    WWWW        |
+    |     WW    WW     WW   WW   WW  WW     WW      WWWW     WW  WW   WW  WW      |
+    |      WW  WW WW  WW    WWWWWWW  WW    WW      WW  WW    WWWWW    WW   WW     |
+    |       WWWW   WWWW     WW   WW  WW   WW      WWWWWWWW   WW  WW   WW  WW      |
+    |        WW     WW      WW   WW  WW  WWWWWW  WW      WW  WW   WW  WWWW        |
+    |                                                                             |
+    |                                                                             |
+    |                                        W                                    |
+    |                                       sW                                    |
+    |                                       WW                                    |
+    |                                      sWW                                    |
+    |                                      WWW                                    |
+    |                                     wWWW                                    |
+    |                                    wWWWW                                    |
+    |                                    WW WW                                    |
+    |                                    WW WW                                    |
+    |                                   wWW WW                                    |
+    |                                  wWW  WW                                    |
+    |                                  WW   WW                                    |
+    |                                  WW   WW                                    |
+    |                                 WW    WW                                    |
+    |                                 WW    WW                                    |
+    |                                WW     WW                                    |
+    |                                WW     WW                                    |
+    |           wwwwww              WW      WW                                    |
+    |              WWWWWww          WW      WW                                    |
+    |                 WWWWWwwwww   WW       WW                                    |
+    |                     wWWWwwwwwWW       WW                                    |
+    |                 wWWWWWWWWWWwWWW       WW                                    |
+    |                wWWWWW       wW        WWWWWWW                               |
+    |                  WWWW       wW        WW  wWWWWWWWwww                       |
+    |                   WWWW                      wWWWWWWWwwww                    |
+    |                     WWWW                      WWWW     WWw                  |
+    |                       WWWWww                   WWWW                         |
+    |                           WWWwwww              WWWW                         |
+    |                               wWWWWwww       wWWWWW                         |
+    |                                     WwwwwwwwwWWW                            |
+    |                                                                             |
+    |                                                                             |
+    |                                                                             |
+    |  by:   Wolfgang Kilian, Thorsten Ohl, Juergen Reuter                        |
+    |        with contributions from Christian Speckner                           |
+    |        Contact: <whizard@desy.de>                                           |
+    |                                                                             |
+    |  if you use WHIZARD please cite:                                            |
+    |        W. Kilian, T. Ohl, J. Reuter,  Eur.Phys.J.C71 (2011) 1742            |
+    |                                          [arXiv: 0708.4233 [hep-ph]]        |
+    |        M. Moretti, T. Ohl, J. Reuter, arXiv: hep-ph/0102195                 |
+    |                                                                             |
+    |=============================================================================|
+    |                               WHIZARD 2.6.4
+    |=============================================================================|
+    | Reading model file '/usr/local/share/whizard/models/SM.mdl'
+    | Preloaded model: SM
+    | Process library 'default_lib': initialized
+    | Preloaded library: default_lib
+    | Reading commands from file 'hello.sin'
+    Hello World!
+    | WHIZARD run finished.
+    |=============================================================================|
+\end{Verbatim}
+\end{scriptsize}
+  \caption{Output of the \ttt{"Hello world!"} \sindarin\ script.\label{fig:helloworld}}
+\end{figure}
+
+Now we assume that you -- or your kind system administrator -- has
+installed \whizard\ in your executable path.  Then you should open a
+command shell and execute (we will come to the meaning of the
+\verb|-r| option later.)
+\begin{verbatim}
+/home/user$ whizard -r hello.sin
+\end{verbatim}
+and if everything works well, you get the output (the complete output
+including the \whizard\ banner is shown in Fig.~\ref{fig:helloworld})
+\begin{footnotesize}
+\begin{verbatim}
+| Writing log to 'whizard.log'
+\end{verbatim}
+\centerline{[... here a banner is displayed]}
+\begin{Verbatim}
+|=============================================================================|
+|                               WHIZARD 2.6.4
+|=============================================================================|
+| Reading model file '/usr/local/share/whizard/models/SM.mdl'
+| Preloaded model: SM
+! Process library 'default_lib': initialized
+! Preloaded library: default_lib
+| Reading commands from file 'hello.sin'
+Hello World!
+| WHIZARD run finished.
+|=============================================================================|
+\end{Verbatim}
+\end{footnotesize}
+If this has just worked for you, you can be confident that you have a working
+\whizard\ installation, and you have been able to successfully run the
+program.
+
+\section{A Simple Calculation}
+You may object that \whizard\ is not exactly designed for printing out
+plain text.  So let us demonstrate a more useful example.
+
+Looking at the Hello World output, we first observe that the program
+writes a log file named (by default) \verb|whizard.log|.  This file
+receives all screen output, except for the output of external programs
+that are called by \whizard.  You don't have to cache \whizard's screen
+output yourself.
+
+After the welcome banner, \whizard\ tells you that it reads a physics
+\emph{model}, and that it initializes and preloads a \emph{process library}.  The
+process library is initially empty.  It is ready for receiving
+definitions of elementary high-energy physics processes (scattering or
+decay) that you provide.  The processes are set in the context of a
+definite model of high-energy physics.  By default this is the
+Standard Model, dubbed \verb|SM|.
+
+Here is the \sindarin\ code for defining a SM physics process, computing
+its cross section, and generating a simulated event sample in Les Houches
+event format:
+\begin{quote}
+\begin{Verbatim}
+process ee = e1, E1 => e2, E2
+sqrts = 360 GeV
+n_events = 10
+sample_format = lhef
+simulate (ee)
+\end{Verbatim}
+\end{quote}
+As before, you save this text in a file (named, e.g.,
+\verb|ee.sin|) which is run by
+\begin{verbatim}
+/home/user$ whizard -r ee.sin
+\end{verbatim}
+(We will come to the meaning of the \verb|-r| option later.)
+This produces a lot of output which looks similar to this:
+
+ \begin{footnotesize}
+ \begin{verbatim}
+ | Writing log to 'whizard.log'
+[... banner ...]
+ |=============================================================================|
+ |                               WHIZARD 2.6.4
+ |=============================================================================|
+ | Reading model file '/usr/local/share/whizard/models/SM.mdl'
+ | Preloaded model: SM
+ | Process library 'default_lib': initialized
+ | Preloaded library: default_lib
+ | Reading commands from file 'ee.sin'
+ | Process library 'default_lib': recorded process 'ee'
+ sqrts =  3.600000000000E+02
+ n_events = 10
+ \end{verbatim}
+
+ \begin{verbatim}
+ | Starting simulation for process 'ee'
+ | Simulate: process 'ee' needs integration
+ | Integrate: current process library needs compilation
+ | Process library 'default_lib': compiling ...
+ | Process library 'default_lib': writing makefile
+ | Process library 'default_lib': removing old files
+ rm -f default_lib.la
+ rm -f default_lib.lo default_lib_driver.mod opr_ee_i1.mod ee_i1.lo
+ rm -f ee_i1.f90
+ | Process library 'default_lib': writing driver
+ | Process library 'default_lib': creating source code
+ rm -f ee_i1.f90
+ rm -f opr_ee_i1.mod
+ rm -f ee_i1.lo
+ /usr/local/bin/omega_SM.opt -o ee_i1.f90 -target:whizard
+  -target:parameter_module parameters_SM -target:module opr_ee_i1
+  -target:md5sum '70DB728462039A6DC1564328E2F3C3A5' -fusion:progress
+  -scatter 'e- e+ -> mu- mu+'
+ [1/1] e- e+ -> mu- mu+ ... allowed. [time: 0.00 secs, total: 0.00 secs, remaining: 0.00 secs]
+ all processes done. [total time: 0.00 secs]
+ SUMMARY: 6 fusions, 2 propagators, 2 diagrams
+ | Process library 'default_lib': compiling sources
+[.....]
+ \end{verbatim}
+
+
+ \begin{verbatim}
+ | Process library 'default_lib': loading
+ | Process library 'default_lib': ... success.
+ | Integrate: compilation done
+ | RNG: Initializing TAO random-number generator
+ | RNG: Setting seed for random-number generator to 9616
+ | Initializing integration for process ee:
+ | ------------------------------------------------------------------------
+ | Process [scattering]: 'ee'
+ |   Library name  = 'default_lib'
+ |   Process index = 1
+ |   Process components:
+ |     1: 'ee_i1':   e-, e+ => mu-, mu+ [omega]
+ | ------------------------------------------------------------------------
+ | Beam structure: [any particles]
+ | Beam data (collision):
+ |   e-  (mass = 5.1099700E-04 GeV)
+ |   e+  (mass = 5.1099700E-04 GeV)
+ |   sqrts = 3.600000000000E+02 GeV
+ | Phase space: generating configuration ...
+ | Phase space: ... success.
+ | Phase space: writing configuration file 'ee_i1.phs'
+ | Phase space: 2 channels, 2 dimensions
+ | Phase space: found 2 channels, collected in 2 groves.
+ | Phase space: Using 2 equivalences between channels.
+ | Phase space: wood
+ Warning: No cuts have been defined.
+ \end{verbatim}
+
+
+ \begin{verbatim}
+ | Starting integration for process 'ee'
+ | Integrate: iterations not specified, using default
+ | Integrate: iterations = 3:1000:"gw", 3:10000:""
+ | Integrator: 2 chains, 2 channels, 2 dimensions
+ | Integrator: Using VAMP channel equivalences
+ | Integrator: 1000 initial calls, 20 bins, stratified = T
+ | Integrator: VAMP
+ |=============================================================================|
+ | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
+ |=============================================================================|
+    1        784  8.3282892E+02  1.68E+00    0.20    0.06*  39.99
+    2        784  8.3118961E+02  1.23E+00    0.15    0.04*  76.34
+    3        784  8.3278951E+02  1.36E+00    0.16    0.05   54.45
+ |-----------------------------------------------------------------------------|
+    3       2352  8.3211789E+02  8.01E-01    0.10    0.05   54.45    0.50   3
+ |-----------------------------------------------------------------------------|
+    4       9936  8.3331732E+02  1.22E-01    0.01    0.01*  54.51
+    5       9936  8.3341072E+02  1.24E-01    0.01    0.01   54.52
+    6       9936  8.3331151E+02  1.23E-01    0.01    0.01*  54.51
+ |-----------------------------------------------------------------------------|
+    6      29808  8.3334611E+02  7.10E-02    0.01    0.01   54.51    0.20   3
+ |=============================================================================|
+ \end{verbatim}
+
+ \begin{verbatim}
+[.....]
+| Simulate: integration done
+| Simulate: using integration grids from file 'ee_m1.vg'
+| RNG: Initializing TAO random-number generator
+| RNG: Setting seed for random-number generator to 9617
+| Simulation: requested number of events = 10
+|             corr. to luminosity [fb-1] =   1.2000E-02
+| Events: writing to LHEF file 'ee.lhe'
+| Events: writing to raw file 'ee.evx'
+| Events: generating 10 unweighted, unpolarized events ...
+| Events: event normalization mode '1'
+|         ... event sample complete.
+| Events: closing LHEF file 'ee.lhe'
+| Events: closing raw file 'ee.evx'
+| There were no errors and    1 warning(s).
+| WHIZARD run finished.
+|=============================================================================|
+ \end{verbatim}
+ \end{footnotesize}
+%$
+The final result is the desired event file, \ttt{ee.lhe}.
+
+Let us discuss the output quickly to walk you through the procedures
+of a \whizard\ run: after the logfile message and the banner, the
+reading of the physics model and the initialization of a process
+library, the recorded process with tag \ttt{'ee'} is recorded. Next,
+user-defined parameters like the center-of-mass energy and the number
+of demanded (unweighted) events are displayed. As a next step,
+\whizard\ is starting the simulation of the process with tag
+\ttt{'ee'}. It recognizes that there has not yet been an integration
+over phase space (done by an optional \ttt{integrate} command,
+cf. Sec.~\ref{sec:integrate}), and consequently starts the
+integration. It then acknowledges, that the process code for the
+process \ttt{'ee'} needs to be compiled first (done by an optional
+\ttt{compile} command, cf. Sec.~\ref{sec:compilation}). So, \whizard\
+compiles the process library, writes the makefile for its steering,
+and as a safeguard against garbage removes possibly existing
+files. Then, the source code for the library and its processes are
+generated: for the process code, the default method -- the matrix
+element generator \oMega\ is called (cf. Sec.~\ref{sec:omega_me}); and
+the sources are being compiled.
+
+The next steps are the loading of the process library, and \whizard\
+reports the completion of the integration. For the Monte-Carlo
+integration, a random number generator is initialized. Here, it is the
+default generator, TAO (for more details, cf. Sec.~\ref{sec:tao},
+while the random seed is set to a value initialized by the system
+clock, as no seed has been provided in the \sindarin\ input file.
+
+Now, the integration for the process \ttt{'ee'} is initialized, and
+information about the process (its name, the name of its process
+library, its index inside the library, and the process components out
+of which it consists, cf. Sec.~\ref{sec:processcomp}) are
+displayed. Then, the beam structure is shown, which in that case are
+symmetric partonic electron and positron beams with the center-of-mass
+energy provided by the user (360 GeV). The next step is the generation
+of the phase space, for which the default phase space method
+\ttt{wood} (for more details cf. Sec.~\ref{sec:wood}) is selected. The
+integration is performed, and the result with absolute and relative
+error, unweighting efficiency, accuracy, $\chi^2$ quality is shown.
+
+The final step is the event generation
+(cf. Chap.~\ref{chap:events}). The integration grids are now being
+used, again the random number generator is initialized. Finally, event
+generation of ten unweighted events starts (\whizard\ let us know to
+which integrated luminosity that would correspond), and events are
+written both in an internal (binary) event format as well as in the
+demanded LHE format. This concludes the \whizard\ run.
+
+After a more comprehensive introduction into the \sindarin\ steering
+language in the next chapter, Chap.~\ref{chap:sindarinintro}, we will
+discuss all the details of the different steps of this introductory
+example.
+
+
+\clearpage
+
+\section{WHIZARD in a Computing Environment}
 
 \subsection{Working on a Single Computer}
 \label{sec:workspace}
@@ -1744,22 +2113,209 @@ generation.  If desired, you can set command-line options or
 information.
 
 
+\subsection{Files and Directories: default and customization}
 
-\subsection{Submitting Batch Jobs with WHIZARD}
-\label{sec:batch}
+\whizard\ jobs take a small set of files as input.  In many cases, this is
+just a single \sindarin\ script provided by the user.
+When running, \whizard\ can produce a set of auxiliary and output files:
+\begin{enumerate}
+\item
+  \textbf{Job.}
+  Files pertaining to the \whizard\ job as a whole.  This is the default log
+  file \ttt{whizard.log}.
+\item
+  \textbf{Process compilation.}  Files that originate from generating and
+  compiling process code.  If the default \oMega\ generator is used, these
+  files include Fortran source code as well as compiled libraries that are
+  dynamically linked to the running executable.  The file names are derived
+  from either the process-library name or the individual process names, as
+  defined in the \sindarin\ input.  The default library name is
+  \ttt{default\_lib}.
+\item
+  \textbf{Integration.}
+  Files that are created by integration, i.e., when calculating the total cross
+  section for a scattering process using the Monte-Carlo algorithm.  The file
+  names are derived from the process name.
+\item
+  \textbf{Simulation.}
+  Files that are created during simulation, i.e., generating event samples for
+  a process or a set of processes.  By default, the file names are derived
+  from the name of the first process.  Event-file formats are distinguished
+  by appropriate file name extensions.
+\item
+  \textbf{Result Analysis.}
+  Files that are created by the internal analysis tools and written by the
+  command \ttt{write\_analysis} (or \ttt{compile\_analysis}).  The default
+  base name is \ttt{whizard\_analysis}.
+\end{enumerate}
 
-There is  a possibility to distribute \whizard\ from one machine to
-another, e.g. on a batch cluster. You can suggest \whizard\ to make a
-statically linked copy of itself, which includes all processes that
-you want to study, hard-coded.  The external libraries (\fortran, and
-possibly \hepmc\ and \ttt{stdc++}) must be available on the target
-system, and it must be binary-compatible, but there is no need for
-transferring the complete \whizard\ installation or relocating paths.
-The drawback is that generating, compiling and linking matrix element
-code is done on the submitting host.
+A complex workflow with several processes, parameter sets, or runs, can easily
+lead to in file-name clashes or a messy working directory.  Furthermore,
+running a batch job on a dedicated computing environment often requires
+transferring data from a user directory to the server and back.
 
-Since this procedure is accomplished by \sindarin\ commands, it is
-explained below in Sec.~\ref{sec:static}.
+Custom directory and file names can be used to organize things and facilitate
+dealing with the environment, along with the available batch-system tools for
+coordinating file transfer.
+\begin{enumerate}
+\item
+  \textbf{Job.}
+  \begin{itemize}
+  \item
+    The \ttt{-L} option on the command line defines a custom base name for
+    the log file.
+  \item
+    The \ttt{-J} option on the command line defines a job ID.  For instance,
+    this may be set to the job ID assigned by the batch system.  Within the
+    \sindarin\ script, the job ID is available as the string variable
+    \ttt{\$job\_id} and can be used for constructing custom job-specific file
+    and directory names, as described below.
+  \end{itemize}
+\item
+  \textbf{Process compilation.}
+  \begin{itemize}
+  \item
+    The user can require the program to put all files created during the
+    compilation step including the library to be linked, in a subdirectory of
+    the working directory.  To enable this, set the string variable
+    \ttt{\$compile\_workspace} within the \sindarin\ script.
+  \end{itemize}
+\item
+  \textbf{Integration.}
+  \begin{itemize}
+  \item
+    The value of the string variable \ttt{\$run\_id}, if set, is appended to
+    the base name of all files created by integration, separated by dots.  If
+    the \sindarin\ script scans over parameters, varying the run ID avoids
+    repeatedly overwriting files with identical name during the scan.
+  \item
+    The user can require the program to put the important files created during
+    the integration step -- the phase-space configuration file and the
+    \vamp\ grid files -- in a subdirectory of the working directory.  To
+    enable this, set the string variable \ttt{\$integrate\_workspace} within
+    the \sindarin\ script.  (\ttt{\$compile\_workspace} and
+    \ttt{\$integrate\_workspace} may be set to the same value.)
+  \end{itemize}
+  Log files produced during the integration step are put in the working
+  directory.
+\item
+  \textbf{Simulation.}
+  \begin{itemize}
+  \item
+    The value of the string variable \ttt{\$run\_id}, if set, identifies
+    the specific integration run that is used for the event sample.  It is
+    also inserted into default event-sample file names.
+  \item
+    The variable \ttt{\$sample}, if set, defines an arbitrary base name for the
+    files related to the event sample.
+  \end{itemize}
+  Files resulting from simulation are put in the working directory.
+\item
+  \textbf{Result Analysis.}
+  \begin{itemize}
+  \item
+    The variable \ttt{\$out\_file}, if set,
+    defines an arbitrary base name for the analysis data and
+    auxiliary files.
+  \end{itemize}
+  Files resulting from result analysis are put in the working directory.
+\end{enumerate}
+
+
+\subsection{Batch jobs on a different machine}
+
+It is possible to separate the tasks of process-code compilation, integration,
+and simulation, and execute them on different machines.  To make use of
+this feature, the local and remote machines including all
+installed libraries that are relevant for \whizard, must be
+binary-compatible.
+\begin{enumerate}
+\item
+  Process-code compilation may be done once on a local machine, while the
+  time-consuming tasks of integration and event generation for specific
+  parameter sets are delegated to a remote machine, e.g., a batch cluster.  To
+  enable this, prepare a \sindarin\ script that just produces process code
+  (i.e., terminates with a \ttt{compile} command) for the local machine.  You
+  may define \ttt{\$compile\_workspace} such that all generated code
+  conveniently ends up in a single subdirectory.
+
+  To start the batch job, transfer the workspace subdirectory to the remote
+  machine
+  and start \whizard\ there.  The \sindarin\ script on the remote machine must
+  include the local script unchanged in all parts that are relevant for
+  process definition.  The program will recognize the contents of the
+  workspace, skip compilation and instead link the process library immediately.
+  To proceed further, the script should define the run-specific parameters and
+  contain the appropriate commands for integration and simulation.
+\item
+  Analogously, you may execute both process-code compilation and integration
+  locally, but generate event samples on a remote machine.  To this end,
+  prepare a \sindarin\ script that produces process code and computes integrals
+  (i.e., terminates with an \ttt{integrate} command) for the local machine.
+  You may define \ttt{\$compile\_workspace} and \ttt{\$integrate\_workspace}
+  (which may coincide) such that all generated code, phase-space and
+  integration grid data conveniently end up in subdirectories.
+
+  To start the batch job, transfer the workspace(s) to the remote machine and
+  start \whizard\ there.  The \sindarin\ script on the remote machine must
+  include the local script unchanged in all parts that are relevant for
+  process definition and integration.  The program will recognize the contents
+  of the workspace, skip compilation and integration and instead load the
+  process library and integration results immediately.  To proceed further,
+  the script should define the sample-specific parameters and contain the
+  appropriate commands for simulation.
+\end{enumerate}
+
+To simplify transferring whole directories, \whizard\ supports the
+\ttt{--pack} and \ttt{--unpack} options.  You may specify any number of these
+options for a \whizard\ run.  (The feature relies on the GNU version of the
+\ttt{tar} utility.)
+
+For instance,
+\begin{code}
+whizard script1.sin --pack my_ws
+\end{code}
+runs \whizard\ with the \sindarin\ script \ttt{script1.sin} as input, where
+within the script you have defined
+\begin{code}
+$compile_workspace = "my_ws"
+\end{code}
+as the target directory for process-compilation files.  After completion, the
+program will tar and gzip the target directory as \ttt{my\_ws.tgz}.  You
+should copy this file to the remote machine as one of the job's input files.
+
+On the remote machine, you can then run the program with
+\begin{code}
+whizard script2.sin --unpack my_ws.tgz
+\end{code}
+where \ttt{script2.sin} should include \ttt{script1.sin}, and add integration
+or simulation commands.  The contents of \ttt{ws.tgz} will thus be unpacked
+and reused on the remote machine, instead of generating new process code.
+
+
+
+\subsection{Static Linkage}
+
+In its default running mode, \whizard\ compiles process-specific matrix
+element code on the fly and dynamically links the resulting library.  On the
+computing server, this requires availability of the appropriate Fortran
+compiler, as well as the \ocaml\ compiler suite, and the dynamical linking
+feature.
+
+Since this may be unavailable or undesired, there is a possibility to
+distribute \whizard\ as a statically linked executable that contains a
+pre-compiled library of processes.  This removes the need for the Fortran
+compiler, the \ocaml\ system, and extra dynamic linking.  Any external
+libraries that are accessed (the \fortran\ runtime environment, and possibly
+some dynamically linked external libraries and/or the C++ runtime library,
+must still be available on the target system, binary-compatible.  Otherwise,
+there is no need for transferring the complete \whizard\ installation or
+process-code compilation data.
+
+Generating, compiling and linking matrix element code is done in advance on a
+machine that can access the required tools and produces compatible libraries.
+This procedure is accomplished by \sindarin\ commands, explained below in
+Sec.~\ref{sec:static}.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -2170,368 +2726,6 @@ Some compilers started to include \ttt{IEEE} exception handling
 support (\ttt{Fortran 2008} status), but we do not use these
 implementations in the \whizard\ code (yet).
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-\clearpage
-
-\chapter{Getting Started}
-\label{chap:start}
-
-\whizard\ can run as a stand-alone program.  You (the user) can steer
-\whizard\ either interactively or by a script file.  We will first
-describe the latter method, since it will be the most common way to
-interact with the \whizard\ system.
-
-\section{Hello World}
-
-The legacy version series 1 of the program relied on a bunch of input
-files that the user had to provide in some obfuscated format.  This
-approach is sufficient for straightforward applications.  However, once
-you get experienced with a program, you start thinking about uses that
-the program's authors did not foresee.  In case of a Monte Carlo
-package, typical abuses are parameter scans, complex patterns of cuts
-and reweighting factors, or data analysis without recourse to external
-packages.  This requires more flexibility.
-
-Instead of transferring control over data input to some generic
-scripting language like PERL or PYTHON (or even C++), which come with
-their own peculiarities and learning curves, we decided to unify data
-input and scripting in a dedicated steering language that is
-particularly adapted to the needs of Monte-Carlo integration,
-simulation, and simple analysis of the results.  Thus we discovered
-what everybody knew anyway: that W(h)izards communicate in \sindarin,
-Scripting INtegration, Data Analysis, Results display and INterfaces.
-
-\sindarin\ is a DSL -- a domain-specific scripting language -- that is
-designed for the single purpose of steering and talking to \whizard.
-Now since \sindarin\ is a programming language, we honor the old
-tradition of starting with the famous Hello World program.  In
-\sindarin\ this reads simply
-\begin{quote}
-\begin{verbatim}
-printf "Hello World!"
-\end{verbatim}
-\end{quote}
-Open your favorite editor, type this text, and save it into a file
-named \verb|hello.sin|.
-
-\begin{figure}
-  \centering
-\begin{scriptsize}
-\begin{Verbatim}[frame=single]
-    | Writing log to 'whizard.log'
-    |=============================================================================|
-    |                                                                             |
-    |    WW             WW  WW   WW  WW  WWWWWW      WW      WWWWW    WWWW        |
-    |     WW    WW     WW   WW   WW  WW     WW      WWWW     WW  WW   WW  WW      |
-    |      WW  WW WW  WW    WWWWWWW  WW    WW      WW  WW    WWWWW    WW   WW     |
-    |       WWWW   WWWW     WW   WW  WW   WW      WWWWWWWW   WW  WW   WW  WW      |
-    |        WW     WW      WW   WW  WW  WWWWWW  WW      WW  WW   WW  WWWW        |
-    |                                                                             |
-    |                                                                             |
-    |                                        W                                    |
-    |                                       sW                                    |
-    |                                       WW                                    |
-    |                                      sWW                                    |
-    |                                      WWW                                    |
-    |                                     wWWW                                    |
-    |                                    wWWWW                                    |
-    |                                    WW WW                                    |
-    |                                    WW WW                                    |
-    |                                   wWW WW                                    |
-    |                                  wWW  WW                                    |
-    |                                  WW   WW                                    |
-    |                                  WW   WW                                    |
-    |                                 WW    WW                                    |
-    |                                 WW    WW                                    |
-    |                                WW     WW                                    |
-    |                                WW     WW                                    |
-    |           wwwwww              WW      WW                                    |
-    |              WWWWWww          WW      WW                                    |
-    |                 WWWWWwwwww   WW       WW                                    |
-    |                     wWWWwwwwwWW       WW                                    |
-    |                 wWWWWWWWWWWwWWW       WW                                    |
-    |                wWWWWW       wW        WWWWWWW                               |
-    |                  WWWW       wW        WW  wWWWWWWWwww                       |
-    |                   WWWW                      wWWWWWWWwwww                    |
-    |                     WWWW                      WWWW     WWw                  |
-    |                       WWWWww                   WWWW                         |
-    |                           WWWwwww              WWWW                         |
-    |                               wWWWWwww       wWWWWW                         |
-    |                                     WwwwwwwwwWWW                            |
-    |                                                                             |
-    |                                                                             |
-    |                                                                             |
-    |  by:   Wolfgang Kilian, Thorsten Ohl, Juergen Reuter                        |
-    |        with contributions from Christian Speckner                           |
-    |        Contact: <whizard@desy.de>                                           |
-    |                                                                             |
-    |  if you use WHIZARD please cite:                                            |
-    |        W. Kilian, T. Ohl, J. Reuter,  Eur.Phys.J.C71 (2011) 1742            |
-    |                                          [arXiv: 0708.4233 [hep-ph]]        |
-    |        M. Moretti, T. Ohl, J. Reuter, arXiv: hep-ph/0102195                 |
-    |                                                                             |
-    |=============================================================================|
-    |                               WHIZARD 2.6.3
-    |=============================================================================|
-    | Reading model file '/usr/local/share/whizard/models/SM.mdl'
-    | Preloaded model: SM
-    | Process library 'default_lib': initialized
-    | Preloaded library: default_lib
-    | Reading commands from file 'hello.sin'
-    Hello World!
-    | WHIZARD run finished.
-    |=============================================================================|
-\end{Verbatim}
-\end{scriptsize}
-  \caption{Output of the \ttt{"Hello world!"} \sindarin\ script.\label{fig:helloworld}}
-\end{figure}
-
-Now we assume that you -- or your kind system administrator -- has
-installed \whizard\ in your executable path.  Then you should open a
-command shell and execute (we will come to the meaning of the
-\verb|-r| option later.)
-\begin{verbatim}
-/home/user$ whizard -r hello.sin
-\end{verbatim}
-and if everything works well, you get the output (the complete output
-including the \whizard\ banner is shown in Fig.~\ref{fig:helloworld})
-\begin{footnotesize}
-\begin{verbatim}
-| Writing log to 'whizard.log'
-\end{verbatim}
-\centerline{[... here a banner is displayed]}
-\begin{Verbatim}
-|=============================================================================|
-|                               WHIZARD 2.6.3
-|=============================================================================|
-| Reading model file '/usr/local/share/whizard/models/SM.mdl'
-| Preloaded model: SM
-! Process library 'default_lib': initialized
-! Preloaded library: default_lib
-| Reading commands from file 'hello.sin'
-Hello World!
-| WHIZARD run finished.
-|=============================================================================|
-\end{Verbatim}
-\end{footnotesize}
-If this has just worked for you, you can be confident that you have a working
-\whizard\ installation, and you have been able to successfully run the
-program.
-
-\section{A Simple Calculation}
-You may object that \whizard\ is not exactly designed for printing out
-plain text.  So let us demonstrate a more useful example.
-
-Looking at the Hello World output, we first observe that the program
-writes a log file named (by default) \verb|whizard.log|.  This file
-receives all screen output, except for the output of external programs
-that are called by \whizard.  You don't have to cache \whizard's screen
-output yourself.
-
-After the welcome banner, \whizard\ tells you that it reads a physics
-\emph{model}, and that it initializes and preloads a \emph{process library}.  The
-process library is initially empty.  It is ready for receiving
-definitions of elementary high-energy physics processes (scattering or
-decay) that you provide.  The processes are set in the context of a
-definite model of high-energy physics.  By default this is the
-Standard Model, dubbed \verb|SM|.
-
-Here is the \sindarin\ code for defining a SM physics process, computing
-its cross section, and generating a simulated event sample in Les Houches
-event format:
-\begin{quote}
-\begin{Verbatim}
-process ee = e1, E1 => e2, E2
-sqrts = 360 GeV
-n_events = 10
-sample_format = lhef
-simulate (ee)
-\end{Verbatim}
-\end{quote}
-As before, you save this text in a file (named, e.g.,
-\verb|ee.sin|) which is run by
-\begin{verbatim}
-/home/user$ whizard -r ee.sin
-\end{verbatim}
-(We will come to the meaning of the \verb|-r| option later.)
-This produces a lot of output which looks similar to this:
-
- \begin{footnotesize}
- \begin{verbatim}
- | Writing log to 'whizard.log'
-[... banner ...]
- |=============================================================================|
- |                               WHIZARD 2.6.3
- |=============================================================================|
- | Reading model file '/usr/local/share/whizard/models/SM.mdl'
- | Preloaded model: SM
- | Process library 'default_lib': initialized
- | Preloaded library: default_lib
- | Reading commands from file 'ee.sin'
- | Process library 'default_lib': recorded process 'ee'
- sqrts =  3.600000000000E+02
- n_events = 10
- \end{verbatim}
-
- \begin{verbatim}
- | Starting simulation for process 'ee'
- | Simulate: process 'ee' needs integration
- | Integrate: current process library needs compilation
- | Process library 'default_lib': compiling ...
- | Process library 'default_lib': writing makefile
- | Process library 'default_lib': removing old files
- rm -f default_lib.la
- rm -f default_lib.lo default_lib_driver.mod opr_ee_i1.mod ee_i1.lo
- rm -f ee_i1.f90
- | Process library 'default_lib': writing driver
- | Process library 'default_lib': creating source code
- rm -f ee_i1.f90
- rm -f opr_ee_i1.mod
- rm -f ee_i1.lo
- /usr/local/bin/omega_SM.opt -o ee_i1.f90 -target:whizard
-  -target:parameter_module parameters_SM -target:module opr_ee_i1
-  -target:md5sum '70DB728462039A6DC1564328E2F3C3A5' -fusion:progress
-  -scatter 'e- e+ -> mu- mu+'
- [1/1] e- e+ -> mu- mu+ ... allowed. [time: 0.00 secs, total: 0.00 secs, remaining: 0.00 secs]
- all processes done. [total time: 0.00 secs]
- SUMMARY: 6 fusions, 2 propagators, 2 diagrams
- | Process library 'default_lib': compiling sources
-[.....]
- \end{verbatim}
-
-
- \begin{verbatim}
- | Process library 'default_lib': loading
- | Process library 'default_lib': ... success.
- | Integrate: compilation done
- | RNG: Initializing TAO random-number generator
- | RNG: Setting seed for random-number generator to 9616
- | Initializing integration for process ee:
- | ------------------------------------------------------------------------
- | Process [scattering]: 'ee'
- |   Library name  = 'default_lib'
- |   Process index = 1
- |   Process components:
- |     1: 'ee_i1':   e-, e+ => mu-, mu+ [omega]
- | ------------------------------------------------------------------------
- | Beam structure: [any particles]
- | Beam data (collision):
- |   e-  (mass = 5.1099700E-04 GeV)
- |   e+  (mass = 5.1099700E-04 GeV)
- |   sqrts = 3.600000000000E+02 GeV
- | Phase space: generating configuration ...
- | Phase space: ... success.
- | Phase space: writing configuration file 'ee_i1.phs'
- | Phase space: 2 channels, 2 dimensions
- | Phase space: found 2 channels, collected in 2 groves.
- | Phase space: Using 2 equivalences between channels.
- | Phase space: wood
- Warning: No cuts have been defined.
- \end{verbatim}
-
-
- \begin{verbatim}
- | Starting integration for process 'ee'
- | Integrate: iterations not specified, using default
- | Integrate: iterations = 3:1000:"gw", 3:10000:""
- | Integrator: 2 chains, 2 channels, 2 dimensions
- | Integrator: Using VAMP channel equivalences
- | Integrator: 1000 initial calls, 20 bins, stratified = T
- | Integrator: VAMP
- |=============================================================================|
- | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
- |=============================================================================|
-    1        784  8.3282892E+02  1.68E+00    0.20    0.06*  39.99
-    2        784  8.3118961E+02  1.23E+00    0.15    0.04*  76.34
-    3        784  8.3278951E+02  1.36E+00    0.16    0.05   54.45
- |-----------------------------------------------------------------------------|
-    3       2352  8.3211789E+02  8.01E-01    0.10    0.05   54.45    0.50   3
- |-----------------------------------------------------------------------------|
-    4       9936  8.3331732E+02  1.22E-01    0.01    0.01*  54.51
-    5       9936  8.3341072E+02  1.24E-01    0.01    0.01   54.52
-    6       9936  8.3331151E+02  1.23E-01    0.01    0.01*  54.51
- |-----------------------------------------------------------------------------|
-    6      29808  8.3334611E+02  7.10E-02    0.01    0.01   54.51    0.20   3
- |=============================================================================|
- \end{verbatim}
-
- \begin{verbatim}
-[.....]
-| Simulate: integration done
-| Simulate: using integration grids from file 'ee_m1.vg'
-| RNG: Initializing TAO random-number generator
-| RNG: Setting seed for random-number generator to 9617
-| Simulation: requested number of events = 10
-|             corr. to luminosity [fb-1] =   1.2000E-02
-| Events: writing to LHEF file 'ee.lhe'
-| Events: writing to raw file 'ee.evx'
-| Events: generating 10 unweighted, unpolarized events ...
-| Events: event normalization mode '1'
-|         ... event sample complete.
-| Events: closing LHEF file 'ee.lhe'
-| Events: closing raw file 'ee.evx'
-| There were no errors and    1 warning(s).
-| WHIZARD run finished.
-|=============================================================================|
- \end{verbatim}
- \end{footnotesize}
-%$
-The final result is the desired event file, \ttt{ee.lhe}.
-
-Let us discuss the output quickly to walk you through the procedures
-of a \whizard\ run: after the logfile message and the banner, the
-reading of the physics model and the initialization of a process
-library, the recorded process with tag \ttt{'ee'} is recorded. Next,
-user-defined parameters like the center-of-mass energy and the number
-of demanded (unweighted) events are displayed. As a next step,
-\whizard\ is starting the simulation of the process with tag
-\ttt{'ee'}. It recognizes that there has not yet been an integration
-over phase space (done by an optional \ttt{integrate} command,
-cf. Sec.~\ref{sec:integrate}), and consequently starts the
-integration. It then acknowledges, that the process code for the
-process \ttt{'ee'} needs to be compiled first (done by an optional
-\ttt{compile} command, cf. Sec.~\ref{sec:compilation}). So, \whizard\
-compiles the process library, writes the makefile for its steering,
-and as a safeguard against garbage removes possibly existing
-files. Then, the source code for the library and its processes are
-generated: for the process code, the default method -- the matrix
-element generator \oMega\ is called (cf. Sec.~\ref{sec:omega_me}); and
-the sources are being compiled.
-
-The next steps are the loading of the process library, and \whizard\
-reports the completion of the integration. For the Monte-Carlo
-integration, a random number generator is initialized. Here, it is the
-default generator, TAO (for more details, cf. Sec.~\ref{sec:tao},
-while the random seed is set to a value initialized by the system
-clock, as no seed has been provided in the \sindarin\ input file.
-
-Now, the integration for the process \ttt{'ee'} is initialized, and
-information about the process (its name, the name of its process
-library, its index inside the library, and the process components out
-of which it consists, cf. Sec.~\ref{sec:processcomp}) are
-displayed. Then, the beam structure is shown, which in that case are
-symmetric partonic electron and positron beams with the center-of-mass
-energy provided by the user (360 GeV). The next step is the generation
-of the phase space, for which the default phase space method
-\ttt{wood} (for more details cf. Sec.~\ref{sec:wood}) is selected. The
-integration is performed, and the result with absolute and relative
-error, unweighting efficiency, accuracy, $\chi^2$ quality is shown.
-
-The final step is the event generation
-(cf. Chap.~\ref{chap:events}). The integration grids are now being
-used, again the random number generator is initialized. Finally, event
-generation of ten unweighted events starts (\whizard\ let us know to
-which integrated luminosity that would correspond), and events are
-written both in an internal (binary) event format as well as in the
-demanded LHE format. This concludes the \whizard\ run.
-
-After a more comprehensive introduction into the \sindarin\ steering
-language in the next chapter, Chap.~\ref{chap:sindarinintro}, we will
-discuss all the details of the different steps of this introductory
-example.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -3452,7 +3646,7 @@ Further macros are
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\chapter{Detailed WHIZARD Steering: \sindarin}
+\chapter{\sindarin\ in Details}
 \label{chap:sindarin}
 
 \section{Data and expressions}
@@ -4257,12 +4451,24 @@ argument is always the subevent or alias enclosed in square brackets.
     \cos\theta_{j1,j2})$. At the moment, $Q^2 = 1$ GeV$^2$.
   \end{itemize}
 \end{itemize}
-There is also an integer-valued observable:
+There are also integer-valued observables:
 \begin{itemize}
 \item \ttt{PDG}
   \begin{itemize}
   \item One argument: PDG code of the particle.  For a composite particle, the
     code is undefined (value 0).
+  \end{itemize}
+\item \ttt{Ncol}
+  \begin{itemize}
+  \item One argument: Number of open color lines.  Only count color
+    lines, not anticolor lines.  This is defined only if the global flag
+    \ttt{?colorize\_subevt} is true.
+  \end{itemize}
+\item \ttt{Nacl}
+  \begin{itemize}
+  \item One argument: Number of open anticolor lines.  Only count anticolor
+    lines, not color lines.  This is defined only if the global flag
+    \ttt{?colorize\_subevt} is true.
   \end{itemize}
 \end{itemize}
 
@@ -4685,7 +4891,7 @@ would exclude all photon propagators from the matrix element and
 leaves only the $Z$ exchange here. In the same way,
 \verb|$restrictions = "!gl"| would exclude all gluon exchange. This
 exclusion of internal propagators works also for lists of particles,
-like 
+like
 \begin{code}
   $restrictions = "!Z:H"
 \end{code}
@@ -6042,7 +6248,7 @@ radiates the photon of the hard interaction, which can be reset by the
 user with the variable \ttt{epa\_mass}. There are two dimensionful
 scale parameters, the minimal momentum transfer to the photon,
 \ttt{epa\_q\_min}, which must not be zero, and the upper momentum-transfer
-cutoff 
+cutoff
 for the EPA structure function, \ttt{epa\_q\_max}. The default for the
 latter value is the collider energy, $\sqrt{s}$, or the energy reduced
 by another structure function like e.g. beamstrahlung,
@@ -8467,14 +8673,21 @@ Several \sindarin\ options exist to control the behavior of \openloops.
 The installation of \recola\ is explained in detail on the HepForge page
 \url{https://recola.hepforge.org}. In the following the main steps for
 usage with \whizard\ are summarized. The minimal required version number
-of \recola\ is 1.2.
+of \recola\ is 1.3.0.
 
 \recola\ can be linked to \whizard\ during configuration by including
 \begin{code}
-  --enable-recola --with-recola=$RECOLA_PATH,
+  --enable-recola
 \end{code}
-where \ttt{\$RECOLA\_PATH} is the directory the \recola\ library is
-located in. \recola\ can then be used with the \sindarin\ option
+In case the \recola\ library is not in a standard path or a path
+accessible in the \ttt{LD\_LIBRARY\_PATH} (or
+\ttt{DYLD\_LIBRARY\_PATH}) of the operating system, then the option
+\begin{code}
+   --with-recola=$RECOLA_PATH
+\end{code}
+can be set, where \ttt{\$RECOLA\_PATH} is the directory the
+\recola\ library is located in. \recola\ can then be used with the
+\sindarin\ option
 \begin{code}
   $method = "recola"
 \end{code}
@@ -8516,7 +8729,7 @@ The convergence of the integration can crucially be influenced by the
 presence of resonances.  A better convergence is in this case achieved
 activating the resonance-aware FKS subtraction,
 \begin{code}
-  $fks_method = "resonances".
+  $fks_mapping_type = "resonances".
 \end{code}
 This mode comes with an additional integration component, the
 so-called soft mismatch.
@@ -8761,7 +8974,7 @@ with lags $k = 100$ and $l = 37$ and period length $\rho = 2^{30} - 2$.
 \label{sec:rngstream}
 
 The RNGStream \cite{L_Ecuyer:2002} was originally implemented in \cpp\ with
-floating point arithmetic and has been ported to \fortranOThree\. The RNGstream
+floating point arithmetic and has been ported to \fortranOThree{}. The RNGstream
 can be selected by the \sindarin\ option
 \begin{code}
   $rng_method = "rng_stream"
@@ -8904,7 +9117,7 @@ phase space integrator, \ttt{phs\_single}. From version 2.6.0 of
 phase space algorithm, called \ttt{fast\_wood},
 cf. Sec.~\ref{sec:fast_wood}, whose implementation differs technically
 and which therefore solves certain technical flaws of the \ttt{wood}
-implementation. 
+implementation.
 
 \section{The default method: \ttt{wood}}
 \label{sec:wood}
@@ -8971,7 +9184,7 @@ same name as the corresponding process (or process component) with the
 suffix \ttt{.phs}. For the \ttt{wood} phase-space method this file is
 written by a \fortran\ module which constructs a similar tree-like
 structure as the directed acyclical graphs (DAGs) in the
-\oMega\ matrix element generator but in a less efficient way. 
+\oMega\ matrix element generator but in a less efficient way.
 
 In some very rare cases with externally generated models
 (cf. Chapter~\ref{chap:extmodels}) the phase-space generation has been
@@ -9017,7 +9230,7 @@ groves. A phase-space (\ttt{.phs}) file looks typically like this:
  grove #2
  ! Channel #2
    tree  3
-   map   3 s_channel      23 ! Z  
+   map   3 s_channel      23 ! Z
 \end{code}
 The first line contains the process name, followed by a list of
 subprocesses with the external particles and their binary codes. Then
@@ -9069,13 +9282,13 @@ Another example is shown here,
  ! Channel #4
    tree  3 19
    map   3 infrared       22 ! A
-   map  19 t_channel       2 ! u  
+   map  19 t_channel       2 ! u
 \end{code}
 where \whizard\ notifies in different situations a photon exchange as
 \ttt{infrared}. So it detects a possible infrared singularity where a
 particle can become arbitrarily soft. Such a situation can tell the
 user that there might be a cut necessary in order to get a meaningful
-integration result. 
+integration result.
 
 The phase-space setup that is generated and used by the \ttt{wood}
 phase-space method can be visualized using the \sindarin\ option
@@ -9125,7 +9338,7 @@ only phase-space channels are generated for which there are indeed
 (sub)amplitudes in the matrix elements, and this also allows to
 exclude vetoed channels due to restrictions imposed on the matrix
 elements from the phase-space setup (cf. next
-Sec.~\ref{sec:ps_restrictions}.
+Sec.~\ref{sec:ps_restrictions}).
 
 %%%%%
 
@@ -9148,7 +9361,7 @@ absent. Using the \ttt{fast\_wood} phase-space algorithm
 restrictions command. So it advisable for the user in the case of very
 complicated processes with restrictions to use the \ttt{fast\_wood}
 phase-space method to make \whizard\ generation and integration of the
-phase space less cumbersome. 
+phase space less cumbersome.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -9173,7 +9386,7 @@ large logarithms can be done analytically or (semi-)numerically,
 however, usually only for very inclusive quantities. At the level of
 exclusive events, these phase space regions are the realm of (QCD and
 also QED) parton showers that approximate multi-leg matrix elements
-from the hard perturbative into to the soft-/collinear regime. 
+from the hard perturbative into to the soft-/collinear regime.
 
 The hard matrix elements are then the core building blocks of the
 physics description inside the MC event generator. \whizard\ generates
@@ -9183,18 +9396,18 @@ leading-order processes. This is done by the \oMega\ subpackage that
 is automatically called by \whizard. Besides these physical matrix
 elements, there exist a couple of methods to generate dummy matrix
 elements for testing purposes, or for generating beam profiles and
-using them with externally linked special matrix elements. 
+using them with externally linked special matrix elements.
 
 Especially for one-loop processes (next-to-leading order for
 tree-allowed processes or leading-order for loop-induced processes),
 \whizard\ allows to use matrix elements from external providers, so
 called OLP programs (one-loop providers). Of course, all of these
 external packages can also generate tree-level matrix elements, which
-can then be used as well in \whizard. 
+can then be used as well in \whizard.
 
 We start the discussion with the two different options for test matrix
 elements, internal test matrix elements with no generated compiled code
-in Sec.~\ref{sec:unit_me} and so called template matrix elements with
+in Sec.~\ref{sec:test_me} and so called template matrix elements with
 actual \fortran\ code that is compiled and linked, and can also be
 modified by the user in Sec.~\ref{sec:template_me}. Then, we move to
 the main matrix element method by the matrix element generator
@@ -9223,7 +9436,7 @@ for the Standard Model, or the Minimal Supersymmetric Standard Model
 \ttt{t} with PDG codes 25 and 6, respectively. So, the models
 \ttt{QED} and {QCD} will not work. Irrespective of what is given in
 the \sindarin\ file as a scattering input process, \whizard\ will
-always take the process 
+always take the process
 \begin{code}
   model = SM
   process <proc_name>= H, H => H, H
@@ -9244,7 +9457,7 @@ the volume of the relativistic two-particle phase space. The only two
 parameters that influence the result are the collider energy,
 \ttt{sqrts}, and the mass of the Higgs particle with PDG code 25 (this
 mass parameter can be changed in the model \ttt{Test} as \ttt{ms},
-while it would be \ttt{mH} in the Standard Model \ttt{SM}. 
+while it would be \ttt{mH} in the Standard Model \ttt{SM}.
 
 It is also possible to use a test matrix element, again internal, for
 decay processes, where again \whizard\ will take a predefined process:
@@ -9252,7 +9465,7 @@ decay processes, where again \whizard\ will take a predefined process:
   model = SM
   process <proc_name> = H => t, tbar
 \end{code}
-in the \ttt{SM} model or 
+in the \ttt{SM} model or
 \begin{code}
   model = Test
   process <proc_name> = s => f, fbar
@@ -9260,14 +9473,14 @@ in the \ttt{SM} model or
 Again, this is the same process with PDG codes $25 \to 6 \; -6$ in the
 corresponding models. Note that in the model \ttt{SM} the mass of the
 quark is set via the variable \ttt{mtop}, while it is \ttt{mf} in the
-model \ttt{Test}. 
+model \ttt{Test}.
 
 Besides the fact that the user always gets a fixed process and cannot
 modify any matrix element code by hand, one can do all things as for a
 normal process like generating events, different weights, testing
 rebuild flags, using different setups and reweight events
 accordingly. Also factorized processes with production and decay can
-be tested that way. 
+be tested that way.
 
 In order to avoid confusion, it is highly recommended to use this
 method \ttt{unit\_test} only with the test model setup, model
@@ -9291,7 +9504,7 @@ the \whizard\ main executable (or library), providing an interface
 that is (almost) identical to the matrix element code produced by the
 \oMega\ generator (cf. the next section,
 Sec.~\ref{sec:omega_me}. There are actually two different methods for
-that purpose, providing matrix elements with different normalizations: 
+that purpose, providing matrix elements with different normalizations:
 \begin{code}
   $method = "template"
 \end{code}
@@ -9302,7 +9515,7 @@ are only close to one but not exactly one. Furthermore, the
 normalization is not exact if any of the external particles have
 non-zero masses, or there are any cuts involved. But otherwise, the
 integral from \whizard\ should give unity irrespective of the number
-of final state particles. 
+of final state particles.
 
 In contrast to this, the second method,
 \begin{code}
@@ -9319,18 +9532,18 @@ flux factor, resulting in
   \sigma(s, 2 \to 2,0) = \frac{3.8937966\cdot 10^{11}}{16\pi} \cdot
   \frac{1}{s \text{[GeV]}^2} \; \text{fb}
 \end{equation}
-for the massless case and 
+for the massless case and
 \begin{equation}
   \sigma(s, 2 \to 2,m_i) = \frac{3.8937966\cdot 10^{11}}{16\pi} \cdot
   \sqrt{\frac{\lambda (s,m_3^2,m_4^2)}{\lambda (s,m_1^2,m_2^2)}}
-  \cdot \frac{1}{s \text{[GeV]}^2} \; \text{fb} 
+  \cdot \frac{1}{s \text{[GeV]}^2} \; \text{fb}
 \end{equation}
 for the massive case. Here, $m_1$ and $m_2$ are the masses of the
 incoming, $m_3$ and $m_4$ the masses of the outgoing particles, and
-$\lambda(x,y,z) = x^2 + y^2 + z^2 - 2xy - 2xz - 2yz$. 
+$\lambda(x,y,z) = x^2 + y^2 + z^2 - 2xy - 2xz - 2yz$.
 
 For the general massless case with no cuts, the integral should be
-exactly 
+exactly
 \begin{equation}
   \sigma(s, 2\to n, 0) = \frac{(2\pi)^4}{2 s}\Phi_n(s)
   = \frac{1}{16\pi s}\,\frac{\Phi_n(s)}{\Phi_2(s)},
@@ -9340,13 +9553,13 @@ given by
 \begin{equation}\label{phi-n}
   \Phi_n(s) = \frac{1}{4(2\pi)^5} \left(\frac{s}{16\pi^2}\right)^{n-2}
   \frac{1}{(n-1)!(n-2)!}.
-\end{equation} 
+\end{equation}
 For $n\neq2$ the phase space volume is dimensionful, so the
 units of the integral are $\fb\times\GeV^{2(n-2)}$. (Note that for
 physical matrix elements this is compensated by momentum factors from
 wave functions, propagators, vertices and possibly dimensionful
 coupling constants, but here the matrix element is just equal to
-unity.) 
+unity.)
 
 Note that the phase-space integration for the \ttt{template} and
 \ttt{template\_unity} matrix element methods is organized in the same
@@ -9373,7 +9586,7 @@ even if no \ocaml\ compiler is found or used and consequently the
 \oMega\ matrix elemente generator (cf. Sec.~\ref{sec:omega_me} is
 disable. The methods produce a process library for their corresponding
 processes, and a makefile, by  which \whizard\ steers compilation and
-linking of the process source code. 
+linking of the process source code.
 
 %%%%%
 
@@ -9452,7 +9665,7 @@ brackets behind the corresponding process definition. Examples are
 With the exception of the restrictions steered by the
 \ttt{\$restrictions = "<restriction>"} string expression, these options
 have to be set in their specific \oMega\ syntax verbatim via the
-string command \ttt{\$omega\_flags = "<expr>"}. 
+string command \ttt{\$omega\_flags = "<expr>"}.
 
 
 
@@ -9477,7 +9690,7 @@ Of course, this will only work correctly of \gosam\ with all its
 subcomponents has been correctly found during configuration of
 \whizard\ and then subsequently correctly linked.
 
-In order to generate the tables for spin, flavor and color states for 
+In order to generate the tables for spin, flavor and color states for
 the  corresponding process, first \oMega\ is called to provide
 \fortran\ code for the interfaces to all the metadata for the
 process(es) to be evaluated. Next, the \gosam\ \python\ script is
@@ -9508,10 +9721,10 @@ calculation, there is the possible to separately choose the matrix
 element method for those components via the keywords
 \ttt{\$loop\_me\_method}, \ttt{\$real\_tree\_me\_method},
 \ttt{\$correlation\_me\_method}  etc. These
-keywords overwrite the master switch of the \ttt{\$method} keyword. 
+keywords overwrite the master switch of the \ttt{\$method} keyword.
 
 For more information on the switches and details of the functionality
-of \gosam, cf. \url{http://gosam.hepforge.org}. 
+of \gosam, cf. \url{http://gosam.hepforge.org}.
 
 %%%%%
 
@@ -9525,7 +9738,7 @@ degrees of freedom for the corresponding process. Information exchange
 between \whizard\ and \openloops\ then works in the same automatic way
 as for \gosam\ via the BLHA interface. This matrix element method is
 invoked via
-\begin{code}  
+\begin{code}
   $method = "openloops"
 \end{code}
 This again is the master switch that will tell \whizard\ to use
@@ -9547,7 +9760,7 @@ generator for general process libraries for \openloops\ will get rid
 of that restriction.
 
 For more information on the installation, switches and details of the
-functionality of \openloops, cf. \url{http://openloops.hepforge.org}. 
+functionality of \openloops, cf. \url{http://openloops.hepforge.org}.
 
 %%%%%
 
@@ -11145,7 +11358,7 @@ This is the modern version of the Les Houches accord event format
 <LesHouchesEvents version="1.0">
 <header>
   <generator_name>WHIZARD</generator_name>
-  <generator_version>2.6.3</generator_version>
+  <generator_version>2.6.4</generator_version>
 </header>
 <init>
  25 25  5.0000000000E+02  5.0000000000E+02 -1 -1 -1 -1 3 1
@@ -12516,7 +12729,7 @@ The first set of options is intended for normal operation.
 \end{description}
 The second set of options refers to the configuration.  They are
 relevant when dealing with a relocated \whizard\ installation, e.g.,
-on a batch systems.  Cf.\ Sec.~\ref{sec:batch}:
+on a batch systems.
 \begin{description}
 \item[\ttt{--prefix DIR}]: Specify the actual location of the \whizard\
   installation, including all subdirectories.
@@ -15254,7 +15467,7 @@ file \ttt{default\_cuts.sin}.
 \ttt{incoming} \newline
 Constructor that specifies particles (or subevents) as incoming. It is
 used in cuts, analyses or selections, e.g. \ttt{cuts = all Theta > 20
-degree [incoming lepton, lepton]}. (cf. also \ttt{beam}, \ttt{outgoing}, 
+degree [incoming lepton, lepton]}. (cf. also \ttt{beam}, \ttt{outgoing},
 \ttt{cuts}, \ttt{analysis}, \ttt{selection}, \ttt{record})
 %%%%%
 \item
@@ -15498,6 +15711,20 @@ process. It can be used in cuts or in an analysis. (cf. also
 \ttt{sqrts\_hat}, \ttt{cuts}, \ttt{record}, \ttt{n\_out}, \ttt{n\_tot})
 %%%%%
 \item
+\ttt{Nacl} \newline
+Unary observable specifier that returns the total number of open anticolor lines
+of a particle or subevent (i.e., composite particle).  Defined only if
+\ttt{?colorize\_subevt} is true.. (cf. also
+\ttt{Ncol}, \ttt{?colorize\_subevt})
+%%%%%
+\item
+\ttt{Ncol} \newline
+Unary observable specifier that returns the total number of open color lines
+of a particle or subevent (i.e., composite particle).  Defined only if
+\ttt{?colorize\_subevt} is true.. (cf. also
+\ttt{Nacl}, \ttt{?colorize\_subevt})
+%%%%%
+\item
 \ttt{nint} \newline
 This is a function \ttt{nint ({\em <num\_val>})} that converts real
 numbers into the closest integer, e.g. \ttt{int i = nint (4.56789)}
@@ -15570,7 +15797,7 @@ used in cuts, analyses or selections, e.g. \ttt{cuts = all Theta > 20
 degree [incoming lepton, outgoing lepton]}. Note that the \ttt{outgoing}
 keyword is redundant and included only for completeness: \ttt{outgoing lepton}
 has the same meaning as \ttt{lepton}.  (cf. also \ttt{beam},
-\ttt{incoming}, 
+\ttt{incoming},
 \ttt{cuts}, \ttt{analysis}, \ttt{selection}, \ttt{record})
 %%%%%
 \item
@@ -16448,24 +16675,24 @@ respectively.
   %%CITATION = ARXIV:0806.4145;%%
 
 %\cite{Binoth:2010xt}
-\bibitem{Binoth:2010xt} 
+\bibitem{Binoth:2010xt}
   T.~Binoth {\it et al.},
   %``A Proposal for a standard interface between Monte Carlo tools and one-loop programs,''
   Comput.\ Phys.\ Commun.\  {\bf 181}, 1612 (2010)
   doi:10.1016/j.cpc.2010.05.016
   [arXiv:1001.1307 [hep-ph]].
   %%CITATION = doi:10.1016/j.cpc.2010.05.016;%%
-  
+
 %\cite{Alioli:2013nda}
-\bibitem{Alioli:2013nda} 
+\bibitem{Alioli:2013nda}
   S.~Alioli {\it et al.},
   %``Update of the Binoth Les Houches Accord for a standard interface
-  %between Monte Carlo tools and one-loop programs,'' 
+  %between Monte Carlo tools and one-loop programs,''
   Comput.\ Phys.\ Commun.\  {\bf 185}, 560 (2014)
   doi:10.1016/j.cpc.2013.10.020
   [arXiv:1308.3462 [hep-ph]].
   %%CITATION = doi:10.1016/j.cpc.2013.10.020;%%
-  
+
 %\cite{Speckner:2010zi}
 \bibitem{Speckner:2010zi}
   C.~Speckner,

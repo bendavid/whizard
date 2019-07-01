@@ -1,4 +1,4 @@
-! WHIZARD 2.6.3 Feb 10 2018
+! WHIZARD 2.6.4 Aug 23 2018
 !
 ! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -150,7 +150,6 @@ module phs_base
      procedure (phs_config_write), deferred :: write
      procedure :: base_write => phs_config_write
      procedure :: init => phs_config_init
-     procedure :: set_component_index => phs_config_set_component_index
      procedure (phs_config_configure), deferred :: configure
      procedure :: set_sf_channel => phs_config_set_sf_channel
      procedure :: collect_channels => phs_config_collect_channels
@@ -237,7 +236,7 @@ module phs_base
   abstract interface
      subroutine phs_config_configure (phs_config, sqrts, &
           sqrts_fixed, cm_frame, azimuthal_dependence, rebuild, ignore_mismatch, &
-          nlo_type)
+          nlo_type, subdir)
        import
        class(phs_config_t), intent(inout) :: phs_config
        real(default), intent(in) :: sqrts
@@ -247,6 +246,7 @@ module phs_base
        logical, intent(in), optional :: rebuild
        logical, intent(in), optional :: ignore_mismatch
        integer, intent(in), optional :: nlo_type
+       type(string_t), intent(in), optional :: subdir
      end subroutine phs_config_configure
   end interface
 
@@ -592,22 +592,6 @@ contains
     end do
     phs_config%md5sum_process = data%md5sum
   end subroutine phs_config_init
-
-  subroutine phs_config_set_component_index (phs_config, index)
-    class(phs_config_t), intent(inout) :: phs_config
-    integer, intent(in) :: index
-    type(string_t), dimension(:), allocatable :: id
-    type(string_t) :: suffix
-    integer :: i, n
-    suffix = var_str ('i') // int2string (index)
-    call split_string (phs_config%id, var_str ('_'), id)
-    phs_config%id = var_str ('')
-    n = size (id) - 1
-    do i = 1, n
-       phs_config%id = phs_config%id // id(i) // var_str ('_')
-    end do
-    phs_config%id = phs_config%id // suffix
-  end subroutine phs_config_set_component_index
 
   subroutine phs_config_set_sf_channel (phs_config, sf_channel)
     class(phs_config_t), intent(inout) :: phs_config

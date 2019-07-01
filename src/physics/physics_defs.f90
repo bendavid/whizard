@@ -1,4 +1,4 @@
-! WHIZARD 2.6.3 Feb 10 2018
+! WHIZARD 2.6.4 Aug 23 2018
 !
 ! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -126,6 +126,7 @@ module physics_defs
   integer, parameter, public :: COMPONENT_UNDEFINED = 99
 
   integer, parameter, public :: n_beam_structure_int = 4
+  integer, parameter, public :: n_beam_gluon_offset = 2
 
   integer, parameter, public :: THR_POS_WP = 3
   integer, parameter, public :: THR_POS_WM = 4

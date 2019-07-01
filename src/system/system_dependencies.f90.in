@@ -271,6 +271,11 @@ module system_dependencies
   character(*), parameter :: DEFAULT_SHRLIB_EXT = "@SHRLIB_EXT@"
   character(*), parameter :: DEFAULT_FC_SHRLIB_EXT = "so"
 
+  ! Pack/unpack
+  character(*), parameter :: DEFAULT_PACK_CMD = "tar -czf"
+  character(*), parameter :: DEFAULT_UNPACK_CMD = "tar -xzf"
+  character(*), parameter :: DEFAULT_PACK_EXT = ".tgz"
+
   ! Make
   character(*), parameter :: DEFAULT_MAKEFLAGS = &
        "@DEFAULT_MAKEFLAGS@"

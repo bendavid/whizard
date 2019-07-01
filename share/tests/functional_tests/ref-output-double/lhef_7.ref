@@ -25,7 +25,7 @@ error_threshold =  1.000000000000E-08
 |   W+  (mass = 8.0419000E+01 GeV)
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'lhef_7_d1_i1.phs'
+| Phase space: writing configuration file 'lhef_7_d1.i1.phs'
 | ------------------------------------------------------------------------
 | Process [decay]: 'lhef_7_d1'
 |   Library name  = 'lhef_7_lib'
@@ -61,7 +61,7 @@ error_threshold =  1.000000000000E-08
 |   W-  (mass = 8.0419000E+01 GeV)
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'lhef_7_d2_i1.phs'
+| Phase space: writing configuration file 'lhef_7_d2.i1.phs'
 | ------------------------------------------------------------------------
 | Process [decay]: 'lhef_7_d2'
 |   Library name  = 'lhef_7_lib'
@@ -118,7 +118,7 @@ $sample = "lhef_7a"
 | Initialized builtin PDF CTEQ6L
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'lhef_7_p1_i1.phs'
+| Phase space: writing configuration file 'lhef_7_p1.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'lhef_7_p1'
 |   Library name  = 'lhef_7_lib'
@@ -155,10 +155,10 @@ $sample = "lhef_7a"
    6        993  2.6565292E+02  8.99E+00    3.39    1.07    5.43
 |=============================================================================|
 | Simulate: integration done
-| Simulate: using integration grids from file 'lhef_7_p1_m1.vg'
+| Simulate: using integration grids from file 'lhef_7_p1.m1.vg'
 | Simulate: activating decays
-| Simulate: using integration grids from file 'lhef_7_d1_m1.vg'
-| Simulate: using integration grids from file 'lhef_7_d2_m1.vg'
+| Simulate: using integration grids from file 'lhef_7_d1.m1.vg'
+| Simulate: using integration grids from file 'lhef_7_d2.m1.vg'
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 3
 | Events: writing to LHEF file 'lhef_7a.lhe'
@@ -175,10 +175,10 @@ $sample = "lhef_7b"
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 4
 Warning: Reading phs file: MD5 sum check disabled
-| Phase space: keeping configuration file 'lhef_7_p1_i1.phs'
+| Phase space: keeping configuration file 'lhef_7_p1.i1.phs'
 | Simulate: activating decays
-| Simulate: using integration grids from file 'lhef_7_d1_m1.vg'
-| Simulate: using integration grids from file 'lhef_7_d2_m1.vg'
+| Simulate: using integration grids from file 'lhef_7_d1.m1.vg'
+| Simulate: using integration grids from file 'lhef_7_d2.m1.vg'
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 5
 | Recalculating observables

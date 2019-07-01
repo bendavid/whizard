@@ -64,10 +64,10 @@ sqrts =  3.43000E+02
 |   sqrts = 3.430000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'user_prc_threshold_2_p1_i1.phs'
+| Phase space: writing configuration file 'user_prc_threshold_2_p1.i1.phs'
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'user_prc_threshold_2_p1_i3.phs'
+| Phase space: writing configuration file 'user_prc_threshold_2_p1.i3.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'user_prc_threshold_2_p1'
 |   Library name  = 'user_prc_threshold_2_lib'
@@ -122,10 +122,10 @@ sqrts =  3.45000E+02
 |   sqrts = 3.450000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'user_prc_threshold_2_p1_i1.phs'
+| Phase space: writing configuration file 'user_prc_threshold_2_p1.i1.phs'
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'user_prc_threshold_2_p1_i3.phs'
+| Phase space: writing configuration file 'user_prc_threshold_2_p1.i3.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'user_prc_threshold_2_p1'
 |   Library name  = 'user_prc_threshold_2_lib'

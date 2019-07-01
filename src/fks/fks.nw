@@ -1462,6 +1462,7 @@ also be supplied by a symmetry factor, explained below.
     type(string_t) :: nlo_correction_type
     integer, dimension(:), allocatable :: i_reg_to_i_con
     logical :: pseudo_isr = .false.
+    logical :: sc_required = .false.
   contains
   <<fks regions: singular region: TBP>>
   end type singular_region_t
@@ -1501,6 +1502,8 @@ also be supplied by a symmetry factor, explained below.
           exit
        end if
     end do
+    sregion%sc_required = any (sregion%flst_uborn%flst == GLUON) .or. &
+            any (sregion%flst_uborn%flst == PHOTON)
   contains
     subroutine debug_input_values()
       call msg_debug2 (D_SUBTRACTION, "singular_region_init")
@@ -3288,7 +3291,7 @@ of the present one is increased.
               i_em = get_emitter_index (i1, i2, reg_data%n_legs_real)
               i_res = sregion%ftuples(i_reg)%i_res
               call reg_data%get_contributors (i_res, i_em, contributors, share_emitter)
-        !!! Lookup contributor index
+              !!! Lookup contributor index
               do i_con = 1, size (reg_data%alr_contributors)
                  if (all (reg_data%alr_contributors(i_con)%c == contributors)) then
                     sregion%i_reg_to_i_con (i_reg) = i_con
@@ -4003,6 +4006,22 @@ checks that no [[futple]] appears more than once.
   end subroutine region_data_check_consistency
 
 @ %def region_data_check_consistency
+@
+<<fks regions: reg data: TBP>>=
+  procedure :: requires_spin_correlations => region_data_requires_spin_correlations
+<<fks regions: procedures>>=
+  function region_data_requires_spin_correlations (reg_data) result (val)
+    class(region_data_t), intent(in) :: reg_data
+    logical :: val
+    integer :: alr
+    val = .false.
+    do alr = 1, reg_data%n_regions
+       val = reg_data%regions(alr)%sc_required
+       if (val) return
+    end do
+  end function region_data_requires_spin_correlations
+
+@ %def region_data_requires_spin_correlations
 @
 <<fks regions: reg data: TBP>>=
   procedure :: final => region_data_final
@@ -5525,8 +5544,7 @@ module virtual
   use sm_physics
   use lorentz
   use flavors
-  use blha_olp_interfaces, only: blha_loop_positions
-  use nlo_data, only: get_threshold_momenta
+  use nlo_data, only: get_threshold_momenta, nlo_settings_t
   use nlo_data, only: ASSOCIATED_LEG_PAIR
   use fks_regions
 
@@ -5549,22 +5567,20 @@ end module virtual
   public :: virtual_t
 <<virtual: types>>=
   type :: virtual_t
-    real(default), dimension(:,:), allocatable :: gamma_0, gamma_p, c_flv
-    real(default) :: ren_scale2, fac_scale, es_scale2
-    integer, dimension(:), allocatable :: n_is_neutrinos
-    integer :: n_in, n_legs, n_flv
-    logical :: bad_point = .false.
-    type(string_t) :: selection
-    integer :: factorization_mode = NO_FACTORIZATION
-    real(default), dimension(:), allocatable :: sqme_born
-    real(default), dimension(:), allocatable :: sqme_virt_fin
-    real(default), dimension(:,:,:), allocatable :: sqme_color_c
-    real(default), dimension(:,:,:), allocatable :: sqme_charge_c
-    logical :: use_internal_color_c = .false.
-    logical :: collinear_resonance_aware = .true.
-    logical :: has_pdfs = .false.
-  contains
-  <<virtual: virtual: TBP>>
+     type(nlo_settings_t), pointer :: settings
+     real(default), dimension(:,:), allocatable :: gamma_0, gamma_p, c_flv
+     real(default) :: ren_scale2, fac_scale, es_scale2
+     integer, dimension(:), allocatable :: n_is_neutrinos
+     integer :: n_in, n_legs, n_flv
+     logical :: bad_point = .false.
+     type(string_t) :: selection
+     real(default), dimension(:), allocatable :: sqme_born
+     real(default), dimension(:), allocatable :: sqme_virt_fin
+     real(default), dimension(:,:,:), allocatable :: sqme_color_c
+     real(default), dimension(:,:,:), allocatable :: sqme_charge_c
+     logical :: has_pdfs = .false.
+   contains
+   <<virtual: virtual: TBP>>
   end type virtual_t
 
 @ %def virtual_t
@@ -5572,16 +5588,15 @@ end module virtual
 <<virtual: virtual: TBP>>=
   procedure :: init => virtual_init
 <<virtual: procedures>>=
- subroutine virtual_init (virt, flv_born, n_in, n_f, &
-        use_internal_color_c, selection, resonance_aware, &
-        nlo_corr_type, model)
+  subroutine virtual_init (virt, flv_born, n_in, settings, &
+      nlo_corr_type, model, has_pdfs)
     class(virtual_t), intent(inout) :: virt
     integer, intent(in), dimension(:,:) :: flv_born
-    integer, intent(in) :: n_in, n_f
-    logical, intent(in) :: use_internal_color_c
-    type(string_t), intent(in) :: selection, nlo_corr_type
-    logical, intent(in) :: resonance_aware
+    integer, intent(in) :: n_in
+    type(nlo_settings_t), intent(in), pointer :: settings
+    type(string_t), intent(in) :: nlo_corr_type
     class(model_data_t), intent(in) :: model
+    logical, intent(in) :: has_pdfs
     integer :: i_flv
     virt%n_legs = size (flv_born, 1); virt%n_flv = size (flv_born, 2)
     virt%n_in = n_in
@@ -5592,7 +5607,7 @@ end module virtual
     allocate (virt%gamma_0 (virt%n_legs, virt%n_flv), &
        virt%gamma_p (virt%n_legs, virt%n_flv), &
        virt%c_flv (virt%n_legs, virt%n_flv))
-    call virt%init_constants (flv_born, n_f, nlo_corr_type, model)
+    call virt%init_constants (flv_born, settings%fks_template%n_f, nlo_corr_type, model)
     allocate (virt%n_is_neutrinos (virt%n_flv))
     virt%n_is_neutrinos = 0
     do i_flv = 1, virt%n_flv
@@ -5601,14 +5616,14 @@ end module virtual
        if (is_neutrino (flv_born(2, i_flv))) &
           virt%n_is_neutrinos(i_flv) = virt%n_is_neutrinos(i_flv) + 1
     end do
-    virt%use_internal_color_c = use_internal_color_c
-    select case (char (selection))
+    select case (char (settings%virtual_selection))
     case ("Full", "OLP", "Subtraction")
-       virt%selection = selection
+       virt%selection = settings%virtual_selection
     case default
        call msg_fatal ('Virtual selection: Possible values are "Full", "OLP" or "Subtraction')
     end select
-    virt%collinear_resonance_aware = resonance_aware
+    virt%settings => settings
+    virt%has_pdfs = has_pdfs
   contains
 
     function is_neutrino (flv) result (neutrino)
@@ -5646,15 +5661,15 @@ For uncolored particles, [[virtual_init_constants]] sets $C$, $\gamma$ and $\gam
     integer, intent(in) :: nf_input
     type(string_t), intent(in) :: nlo_corr_type
     class(model_data_t), intent(in) :: model
-    integer :: i_part, i_flv, nf
-    real(default) :: CA_factor
+    integer :: i_part, i_flv
+    real(default) :: nf, CA_factor
     real(default), dimension(:,:), allocatable :: CF_factor, TR_factor
     type(flavor_t) :: flv
     allocate (CF_factor (size (flv_born, 1), size (flv_born, 2)), &
          TR_factor (size (flv_born, 1), size (flv_born, 2)))
     if (nlo_corr_type == "QCD") then
        CA_factor = CA; CF_factor = CF; TR_factor = TR
-       nf = nf_input
+       nf = real(nf_input, default)
     else if (nlo_corr_type == "QED") then
        CA_factor = zero
        do i_flv = 1, size (flv_born, 2)
@@ -5664,19 +5679,21 @@ For uncolored particles, [[virtual_init_constants]] sets $C$, $\gamma$ and $\gam
              TR_factor(i_part, i_flv) = (flv%get_charge ())**2
           end do
        end do
-       nf = 4 !!! for testing only, needs dynamical treatment!
+       ! TODO vincent_r fixed nf needs replacement  !!! for testing only, needs dynamical treatment!
+       nf = real(4, default)
     end if
     do i_flv = 1, size (flv_born, 2)
        do i_part = 1, size (flv_born, 1)
           if (is_corresponding_vector (flv_born(i_part, i_flv), nlo_corr_type)) then
-             virt%gamma_0(i_part, i_flv) = 11 / 6 * CA_factor - 2 / 3 &
-                  * TR_factor(i_part, i_flv) * nf
-             virt%gamma_p(i_part, i_flv) = (67.0 / 9 - 2 * pi**2 / 3) * CA_factor &
-                - 23.0 / 9 * TR_factor(i_part, i_flv) * nf
+             virt%gamma_0(i_part, i_flv) = 11._default / 6._default * CA_factor &
+                  - two / three * TR_factor(i_part, i_flv) * nf
+             virt%gamma_p(i_part, i_flv) = (67._default / 9._default &
+                  - two * pi**2 / three) * CA_factor &
+                  - 23._default / 9._default * TR_factor(i_part, i_flv) * nf
              virt%c_flv(i_part, i_flv) = CA_factor
           else if (is_corresponding_fermion (flv_born(i_part, i_flv), nlo_corr_type)) then
-             virt%gamma_0(i_part, i_flv) = 1.5 * CF_factor(i_part, i_flv)
-             virt%gamma_p(i_part, i_flv) = (6.5 - 2 * pi**2 / 3) * CF_factor(i_part, i_flv)
+             virt%gamma_0(i_part, i_flv) = 1.5_default * CF_factor(i_part, i_flv)
+             virt%gamma_p(i_part, i_flv) = (6.5_default - two * pi**2 / three) * CF_factor(i_part, i_flv)
              virt%c_flv(i_part, i_flv) = CF_factor(i_part, i_flv)
           else
              virt%gamma_0(i_part, i_flv) = zero
@@ -5758,19 +5775,6 @@ center-of-mass energy.
   end subroutine virtual_set_ellis_sexton_scale
 
 @ %def virtual_set_ellis_sexton_scale
-@
-<<virtual: virtual: TBP>>=
-  procedure :: compute_n_sub => virtual_compute_n_sub
-<<virtual: procedures>>=
-  function virtual_compute_n_sub (virt) result (n_sub)
-    integer :: n_sub
-    class(virtual_t), intent(in) :: virt
-    n_sub = 1
-    if (.not. virt%use_internal_color_c) &
-         n_sub = n_sub + virt%n_legs * (virt%n_legs - 1 ) / 2
-  end function virtual_compute_n_sub
-
-@ %def virtual_compute_n_sub
 @ The virtual-subtracted matrix element is given by the equation
 \begin{equation}
   \label{eqn:virt_sub}
@@ -5804,51 +5808,44 @@ particles involved in the radiation process are massive or massless.
        print *, 'virt%es_scale2 =    ', virt%es_scale2 !!! Debugging
     end if
     s = sum (p_born(1 : virt%n_in))**2
-    if (virt%factorization_mode == FACTORIZATION_THRESHOLD) &
+    if (virt%settings%factorization_mode == FACTORIZATION_THRESHOLD) &
          call set_s_for_threshold ()
-    s_o_Q2 = s / virt%es_scale2
+    s_o_Q2 = s / virt%es_scale2 * virt%settings%fks_template%xi_cut**2
     do i_flv = 1, reg_data%n_flv_born
-
        if (separate_alrs) then
           ii_flv = i_flv
        else
           ii_flv = 1
        end if
-
        if (virt%selection == var_str ("Full") .or. virt%selection == var_str ("OLP")) then
           !!! A factor of alpha_coupling/twopi is assumed to be included in vfin
           sqme_virt(ii_flv) = sqme_virt(ii_flv) + virt%sqme_virt_fin(i_flv)
        end if
-
        if (virt%selection == var_str ("Full") .or. virt%selection == var_str ("Subtraction")) then
-          call virt%evaluate_initial_state (i_flv, sqrt(s), reg_data, QB)
+          call virt%evaluate_initial_state (i_flv, QB)
           call virt%compute_collinear_contribution (i_flv, p_born, sqrt(s), reg_data, QB)
-
-          select case (virt%factorization_mode)
+          select case (virt%settings%factorization_mode)
           case (FACTORIZATION_THRESHOLD)
-             call virt%compute_eikonals_threshold (i_flv, p_born, s, s_o_Q2, reg_data, QB, BI)
+             call virt%compute_eikonals_threshold (i_flv, p_born, s_o_Q2, QB, BI)
           case default
-             call virt%compute_massive_self_eikonals (i_flv, p_born, s, reg_data, QB)
-             call virt%compute_eikonals (i_flv, p_born, s, s_o_Q2, reg_data, BI)
+             call virt%compute_massive_self_eikonals (i_flv, p_born, s_o_Q2, reg_data, QB)
+             call virt%compute_eikonals (i_flv, p_born, s_o_Q2, reg_data, BI)
           end select
-
           if (debug2_active (D_VIRTUAL)) then
              print *, 'Evaluate i_flv: ', i_flv
              print *, 'sqme_born: ', virt%sqme_born (i_flv)
-             print *, 'Q * sqme_born: ', QB(i_flv)
-             print *, 'BI: ', BI(i_flv)
+             print *, 'Q * sqme_born: ', alpha_coupling / twopi * QB(i_flv)
+             print *, 'BI: ', alpha_coupling / twopi * BI(i_flv)
              print *, 'vfin: ', virt%sqme_virt_fin (i_flv)
           end if
           sqme_virt(ii_flv) = &
                sqme_virt(ii_flv) + alpha_coupling / twopi * (QB(i_flv) + BI(i_flv))
        end if
     end do
-
     if (debug2_active (D_VIRTUAL)) then
        call msg_debug2 (D_VIRTUAL, "virtual-subtracted matrix element(s): ")
        print *, sqme_virt
     end if
-
     do i_flv = 1, reg_data%n_flv_born
        if (virt%n_is_neutrinos(i_flv) > 0) &
             sqme_virt = sqme_virt * virt%n_is_neutrinos(i_flv) * two
@@ -5869,16 +5866,18 @@ particles involved in the radiation process are massive or massless.
   procedure :: compute_eikonals => virtual_compute_eikonals
 <<virtual: procedures>>=
   subroutine virtual_compute_eikonals (virtual, i_flv, &
-           p_born, s, s_o_Q2, reg_data, BI)
+           p_born, s_o_Q2, reg_data, BI)
     class(virtual_t), intent(inout) :: virtual
     integer, intent(in) :: i_flv
     type(vector4_t), intent(in), dimension(:)  :: p_born
-    real(default), intent(in) :: s, s_o_Q2
+    real(default), intent(in) :: s_o_Q2
     type(region_data_t), intent(in) :: reg_data
     real(default), intent(inout), dimension(:) :: BI
     integer :: i, j
     real(default) :: I_ij, BI_tmp
     BI_tmp = zero
+    ! TODO vincent_r: Split the procedure into one computing QCD eikonals and one computing QED eikonals.
+    ! TODO vincent_r: In the best case, remove the dependency on reg_data completely.
     associate (flst_born => reg_data%flv_born(i_flv), &
             nlo_corr_type => reg_data%regions(1)%nlo_correction_type)
        do i = 1, virtual%n_legs
@@ -5899,12 +5898,12 @@ particles involved in the radiation process are massive or massless.
                    if (debug2_active (D_VIRTUAL)) &
                         print *, 'b_ij: ', virtual%sqme_charge_c (i, j, i_flv), 'I_ij: ', I_ij
                 end if
+             else if (debug2_active (D_VIRTUAL)) then
+                print *, 'b_ij: ', i, j, virtual%sqme_color_c (i, j, i_flv), 'I_ij: ', I_ij
              end if
-                      if (debug2_active (D_VIRTUAL)) &
-                           print *, 'b_ij: ', i, j, virtual%sqme_color_c (i, j, i_flv), 'I_ij: ', I_ij
           end do
        end do
-       if (virtual%use_internal_color_c .or. nlo_corr_type == "QED") &
+       if (virtual%settings%use_internal_color_correlations .or. nlo_corr_type == "QED") &
             BI_tmp = BI_tmp * virtual%sqme_born (i_flv)
     end associate
     BI(i_flv) = BI(i_flv) + BI_tmp
@@ -5916,12 +5915,11 @@ particles involved in the radiation process are massive or massless.
   procedure :: compute_eikonals_threshold => virtual_compute_eikonals_threshold
 <<virtual: procedures>>=
   subroutine virtual_compute_eikonals_threshold (virtual, i_flv, &
-         p_born, s, s_o_Q2, reg_data, QB, BI)
+         p_born, s_o_Q2, QB, BI)
     class(virtual_t), intent(in) :: virtual
     integer, intent(in) :: i_flv
     type(vector4_t), intent(in), dimension(:) :: p_born
-    real(default), intent(in) :: s, s_o_Q2
-    type(region_data_t), intent(in) :: reg_data
+    real(default), intent(in) :: s_o_Q2
     real(default), intent(inout), dimension(:) :: QB
     real(default), intent(inout), dimension(:) :: BI
     type(vector4_t), dimension(4) :: p_thr
@@ -5932,19 +5930,16 @@ particles involved in the radiation process are massive or massless.
        BI(i_flv) = BI(i_flv) + evaluate_leg_pair (ASSOCIATED_LEG_PAIR(leg), i_flv)
     end do
   contains
-
     subroutine compute_massive_self_eikonals (sqme_born, QB)
       real(default), intent(in) :: sqme_born
       real(default), intent(inout) :: QB
-      real(default) :: term_1, term_2
       integer :: i
       call msg_debug2 (D_VIRTUAL, "compute_massive_self_eikonals")
       call msg_debug2 (D_VIRTUAL, "s_o_Q2", s_o_Q2)
       call msg_debug2 (D_VIRTUAL, "log (s_o_Q2)", log (s_o_Q2))
       do i = 1, 4
-         term_1 = log (s_o_Q2)
-         term_2 = 0.5_default * I_m_eps (p_thr(i))
-         QB = QB - (cf * (term_1 - term_2)) * sqme_born
+         QB = QB - (cf * (log (s_o_Q2) - 0.5_default * I_m_eps (p_thr(i)))) &
+              * sqme_born
       end do
     end subroutine compute_massive_self_eikonals
 
@@ -5966,9 +5961,10 @@ particles involved in the radiation process are massive or massless.
             end if
          end do
       end do
-      if (virtual%use_internal_color_c) b_ij_times_I = b_ij_times_I * virtual%sqme_born (i_flv)
+      if (virtual%settings%use_internal_color_correlations) &
+           b_ij_times_I = b_ij_times_I * virtual%sqme_born (i_flv)
       if (debug2_active (D_VIRTUAL)) then
-         print *, 'internal color: ', virtual%use_internal_color_c
+         print *, 'internal color: ', virtual%settings%use_internal_color_correlations
          print *, 'b_ij_times_I =    ', b_ij_times_I
          print *, 'QB           =    ', QB
       end if
@@ -5993,8 +5989,7 @@ general structure is $\mathcal{Q} \cdot \mathcal{B}$. The initial-state contribu
 to $\mathcal{Q}$ is simply given by
 \begin{equation}
   \label{eqn:virt_Q_isr}
-  \mathcal{Q} = -\log\frac{\mu_F^2}{Q^2} \left(\gamma(\mathcal{I}_1)
-       + \gamma(\mathcal{I}_2)\right),
+  \mathcal{Q} = -\log\frac{\mu_F^2}{Q^2} \left(\gamma(\mathcal{I}_1) + 2 C (\mathcal{I}_1) \log(\xi_{\text{cut}}) + \gamma(\mathcal{I}_2) + 2 C (\mathcal{I}_2) \log(\xi_{\text{cut}}) \right),
 \end{equation}
 where $Q^2$ is the Ellis-Sexton scale and $\gamma$ is as in eqns. \ref{eqn:gamma(q)}
 and \ref{eqn:gamma(g)}.\\
@@ -6005,17 +6000,16 @@ initial-initial interactions.
 <<virtual: virtual: TBP>>=
   procedure :: evaluate_initial_state => virtual_evaluate_initial_state
 <<virtual: procedures>>=
-  subroutine virtual_evaluate_initial_state (virt, i_flv, sqrts, reg_data, QB)
+  subroutine virtual_evaluate_initial_state (virt, i_flv, QB)
     class(virtual_t), intent(inout) :: virt
     integer, intent(in) :: i_flv
-    real(default), intent(in) :: sqrts
-    type(region_data_t), intent(in) :: reg_data
     real(default), intent(inout), dimension(:) :: QB
     integer :: i
     if (virt%n_in == 2) then
        do i = 1, virt%n_in
-          QB(i_flv) = QB(i_flv) - virt%gamma_0 (i, i_flv) * &
-               log(virt%fac_scale**2 / virt%es_scale2) * virt%sqme_born (i_flv)
+          QB(i_flv) = QB(i_flv) - (virt%gamma_0 (i, i_flv) + two * virt%c_flv(i, i_flv) &
+               * log (virt%settings%fks_template%xi_cut)) &
+               * log(virt%fac_scale**2 / virt%es_scale2) * virt%sqme_born (i_flv)
        end do
     end if
   end subroutine virtual_evaluate_initial_state
@@ -6047,9 +6041,9 @@ $\mathcal{Q}$ is given by
   \label{eqn:virt_Q_fsr_old}
   \begin{split}
    \mathcal{Q} = \sum_{k=n_{in}}^{n_L^{(B)}} \left[\gamma'(\mathcal{I}_k)
-        - \log\frac{s}{2Q^2}\left(\gamma(\mathcal{I}_k)
-        - 2C(\mathcal{I}_k) \log\frac{2E_k}{\sqrt{s}}\right) \right.\\
-        + \left. 2C(\mathcal{I}_k) \log^2\frac{2E_k}{\sqrt{s}}
+        - \log\frac{s\delta_{0}}{2Q^2}\left(\gamma(\mathcal{I}_k)
+        - 2C(\mathcal{I}_k) \log\frac{2E_k}{\xi_{\text{cut}}\sqrt{s}}\right) \right.\\
+        + \left. 2C(\mathcal{I}_k) \left( \log^2\frac{2E_k}{\sqrt{s}} - \log^2 \xi_{\text{cut}} \right)
         - 2\gamma(\mathcal{I}_k)\log\frac{2E_k}{\sqrt{s}}\right].
   \end{split}
 \end{equation}
@@ -6082,7 +6076,6 @@ Equation \ref{eqn:virt_Q_fsr} leads to \ref{eqn:virt_Q_fsr_old} with the substit
     real(default) :: s1, s2, s3, s4, s5
     integer :: alr, em
     real(default) :: E_em, log_xi_max, E_tot2
-    logical :: massive
     logical, dimension(virt%n_flv, virt%n_legs) :: evaluated
     integer :: i_contr
     type(vector4_t) :: k_res
@@ -6093,9 +6086,8 @@ Equation \ref{eqn:virt_Q_fsr} leads to \ref{eqn:virt_Q_fsr_old} with the substit
        em = reg_data%regions(alr)%emitter
        if (em == 0) cycle
        if (evaluated(i_flv, em)) cycle
-       massive = reg_data%regions(alr)%flst_uborn%massive(em)
        !!! Collinear terms only for massless particles
-       if (massive) cycle
+       if (reg_data%regions(alr)%flst_uborn%massive(em)) cycle
        E_em = p_born(em)%p(0)
        if (allocated (reg_data%alr_contributors)) then
           i_contr = reg_data%alr_to_i_contributor (alr)
@@ -6107,85 +6099,95 @@ Equation \ref{eqn:virt_Q_fsr} leads to \ref{eqn:virt_Q_fsr_old} with the substit
           E_tot2 = sqrts**2
           log_xi_max = log (two * E_em / sqrts)
        end if
-       if (virt%collinear_resonance_aware) then
-          if (debug_active (D_VIRTUAL)) &
-              call msg_debug (D_VIRTUAL, "Using resonance-aware collinear subtraction")
-          s1 = virt%gamma_p(em, i_flv)
-          s2 = two * (log (sqrts / (two * E_em)) + log_xi_max) * &
-               (log (sqrts / (two * E_em)) + log_xi_max + log (virt%es_scale2 / sqrts**2)) &
-             * virt%c_flv(em, i_flv)
-          s3 = two * log_xi_max * &
-               (log_xi_max - log (virt%es_scale2 / E_tot2)) * virt%c_flv(em, i_flv)
-          s4 = (log (virt%es_scale2 / E_tot2) - two * log_xi_max) * virt%gamma_0(em, i_flv)
-          QB(i_flv) = QB(i_flv) + (s1 + s2 + s3 + s4) * virt%sqme_born(i_flv)
-       else
-          if (debug_active (D_VIRTUAL)) &
-              call msg_debug (D_VIRTUAL, "Using old-fashioned collinear subtraction")
-          s1 = virt%gamma_p(em, i_flv)
-          s2 = log (sqrts**2 / virt%es_scale2) * virt%gamma_0(em,i_flv)
-          s3 = log (sqrts**2 / virt%es_scale2) * two * virt%c_flv(em,i_flv) * &
-               log (two * E_em / sqrts)
-          s4 = two * virt%c_flv(em,i_flv) * log (two * E_em / sqrts)**2
-          s5 = two * virt%gamma_0(em,i_flv) * log (two * E_em / sqrts)
-          QB(i_flv) = QB(i_flv) + (s1 - s2 + s3 + s4 - s5) * virt%sqme_born(i_flv)
-       end if
+       ! TODO sbrass evaluate xi-cut formalism for resonance-aware FKS
+       associate (xi_cut => virt%settings%fks_template%xi_cut, delta_zero => virt%settings%fks_template%delta_zero)
+         if (virt%settings%virtual_resonance_aware_collinear) then
+            if (debug_active (D_VIRTUAL)) &
+                 call msg_debug (D_VIRTUAL, "Using resonance-aware collinear subtraction")
+            s1 = virt%gamma_p(em, i_flv)
+            s2 = two * (log (sqrts / (two * E_em)) + log_xi_max) * &
+                 (log (sqrts / (two * E_em)) + log_xi_max + log (virt%es_scale2 / sqrts**2)) &
+                 * virt%c_flv(em, i_flv)
+            s3 = two * log_xi_max * &
+                 (log_xi_max - log (virt%es_scale2 / E_tot2)) * virt%c_flv(em, i_flv)
+            s4 = (log (virt%es_scale2 / E_tot2) - two * log_xi_max) * virt%gamma_0(em, i_flv)
+            QB(i_flv) = QB(i_flv) + (s1 + s2 + s3 + s4) * virt%sqme_born(i_flv)
+         else
+            if (debug_active (D_VIRTUAL)) &
+                 call msg_debug (D_VIRTUAL, "Using old-fashioned collinear subtraction")
+            s1 = virt%gamma_p(em, i_flv)
+            s2 = log (delta_zero * sqrts**2 / (two * virt%es_scale2)) * virt%gamma_0(em,i_flv)
+            s3 = log (delta_zero * sqrts**2 / (two * virt%es_scale2)) * two * virt%c_flv(em,i_flv) * &
+                 log (two * E_em / (xi_cut * sqrts))
+            ! s4 = two * virt%c_flv(em,i_flv) * (log (two * E_em / sqrts)**2 - log (xi_cut)**2)
+            s4 = two * virt%c_flv(em,i_flv) * & ! a**2 - b**2 = (a - b) * (a + b), for better numerical performance
+                 (log (two * E_em / sqrts) + log (xi_cut)) * (log (two * E_em / sqrts) - log (xi_cut))
+            s5 = two * virt%gamma_0(em,i_flv) * log (two * E_em / sqrts)
+            QB(i_flv) = QB(i_flv) + (s1 - s2 + s3 + s4 - s5) * virt%sqme_born(i_flv)
+         end if
+       end associate
        evaluated(i_flv, em) = .true.
     end do
   end subroutine virtual_compute_collinear_contribution
 
 @ %def virtual_compute_collinear_contribution
-@
+@ For the massless-massive case and $i = j$ we get the massive self-eikonal of (A.10) in arXiv:0908.4272, given as
+\begin{equation}
+  \mathcal{I}_{ii} = \log \frac{\xi^2_{\text{cut}}s}{Q^2} - \frac{1}{\beta} \log \frac{1 + \beta}{1 - \beta}.
+\end{equation}
 <<virtual: virtual: TBP>>=
   procedure :: compute_massive_self_eikonals => virtual_compute_massive_self_eikonals
 <<virtual: procedures>>=
   subroutine virtual_compute_massive_self_eikonals (virt, i_flv, &
-           p_born, s, reg_data,  QB)
+           p_born, s_over_Q2, reg_data,  QB)
     class(virtual_t), intent(inout) :: virt
     integer, intent(in) :: i_flv
     type(vector4_t), intent(in), dimension(:) :: p_born
-    real(default), intent(in) :: s
+    real(default), intent(in) :: s_over_Q2
     type(region_data_t), intent(in) :: reg_data
     real(default), intent(inout), dimension(:) :: QB
-    real(default) :: term1, term2
     integer :: i
     logical :: massive
     do i = 1, virt%n_legs
        massive = reg_data%flv_born(i_flv)%massive(i)
        if (massive) then
-          term1 = log(s / virt%es_scale2)
-          term2 = 0.5_default * I_m_eps (p_born(i))
-          QB(i_flv) = QB(i_flv) - (virt%c_flv (i, i_flv) * (term1 - term2)) * &
-               virt%sqme_born (i_flv)
+          QB(i_flv) = QB(i_flv) - (virt%c_flv (i, i_flv) &
+               * (log (s_over_Q2) - 0.5_default * I_m_eps (p_born(i)))) &
+               * virt%sqme_born (i_flv)
        end if
     end do
   end subroutine virtual_compute_massive_self_eikonals
 
 @ %def virtual_compute_massive_self_eikonals
-@ The following code implements the $\mathcal{I}_{ij}$-function appearing in eq. blub.
-They are defined as follows:
+@ The following code implements the $\mathcal{I}_{ij}$-function.
+The complete formulas can be found in arXiv:0908.4272 (A.1-A.17).
+The implementation may differ in the detail from the formulas presented in the above paper.
+The parameter $\xi_{\text{cut}}$ is unphysically and cancels with appropriate factors in the real subtraction.
+We keep the additional parameter for debug usage.
+The implemented formulas are then defined as follows:
 \begin{itemize}
-\item[Massles-Massles Case]
+\item[massless-massless case]
+  $p^2 = 0, k^2 = 0,$
   \begin{equation}
     \begin{split}
-    \mathcal{I}_{ij} &= \frac{1}{2}\log^2\frac{s}{Q^2} + \log\frac{s}{Q^2}\log\frac{k_ik_j}{2E_iE_j}
-                                                       - \rm{Li}_2\left(\frac{k_ik_j}{2E_iE_j}\right) \\
-                     &+ \frac{1}{2}\log^2\frac{k_ik_j}{2E_iE_j} - \log\left(1-\frac{k_ik_j}{2E_iE_j}\right)
-                        \log\frac{k_ik_j}{2E_iE_j}.
+    \mathcal{I}_{ij} &= \frac{1}{2}\log^2\frac{\xi^2_{\text{cut}}s}{Q^2} + \log\frac{\xi^2_{\text{cut}}s}{Q^2}\log\frac{k_ik_j}{2E_iE_j} - \rm{Li}_2\left(\frac{k_ik_j}{2E_iE_j}\right) \\
+                     &+ \frac{1}{2}\log^2\frac{k_ik_j}{2E_iE_j} - \log\left(1-\frac{k_ik_j}{2E_iE_j}\right) \log\frac{k_ik_j}{2E_iE_j}.
     \end{split}
     \label{I_00}
   \end{equation}
-\item[Massive-Massive Case]
+\item[massive-massive case]
+  $p^2 \neq 0, k^2 \neq 0,$
   \begin{equation}
-     \mathcal{I}_{ij} = -\frac{1}{2}I_0(k_i, k_j)\log\frac{Q^2}{s} - \frac{1}{2}I_\epsilon(k_i,k_j)
+     \mathcal{I}_{ij} = \frac{1}{2}I_0(k_i, k_j)\log\frac{\xi^2_{\text{cut}}s}{Q^2} - \frac{1}{2}I_\epsilon(k_i,k_j)
      \label{I_mm}
   \end{equation}
   with
-  \begin{equation*}
-    I_0(k_i, k_j) = \frac{1}{\beta}\log\frac{1+\beta}{1-\beta}, \qquad
-                    \beta = \sqrt{1-\frac{k_i^2k_j^2}{(k_i \cdot k_j)^2}}
-  \end{equation*}
+  \begin{equation}
+    I_0(k_i, k_j) = \frac{1}{\beta}\log\frac{1+\beta}{1-\beta}, \qquad \beta = \sqrt{1-\frac{k_i^2k_j^2}{(k_i \cdot k_j)^2}}
+  \end{equation}
   and a rather involved expression for $I_\epsilon$:
-  \begin{align*}
+  \begin{align}
+    \allowdisplaybreaks
     I_\epsilon(k_i, k_j) &= \left(K(z_j)-K(z_i)\right) \frac{1-\vec{\beta_i}\cdot\vec{\beta_j}}{\sqrt{a(1-b)}}, \\
     \vec{\beta_i} &= \frac{\vec{k}_i}{k_i^0}, \\
     a &= \beta_i^2 + \beta_j^2 - 2\vec{\beta}_i \cdot \vec{\beta}_j, \\
@@ -6199,24 +6201,24 @@ They are defined as follows:
     z_j &= \frac{\sqrt{x_j^2 + 4c^2} + x_j}{2c}, \\
     K(z) = &-\frac{1}{2}\log^2\frac{(z-z_-)(z_+-z)}{(z_++z)(z_-+z)} - 2Li_2\left(\frac{2z_-(z_+-z)}{(z_+-z_-)(z_-+z)}\right) \\
            &-2Li_2\left(-\frac{2z_+(z_-+z)}{(z_+-z_-)(z_+-z)}\right)
-  \end{align*}
+  \end{align}
 
-\item[Massive-Massless Case]
+\item[massless-massive case]
+  $p^2 = 0, k^2 \neq 0,$
   \begin{equation}
-     \mathcal{I}_{ij} = \frac{1}{2}\left[\log^2\frac{Q}{s} - \frac{\pi^2}{6}\right] -\frac{1}{2}I_0(k_i,k_j)\log\frac{Q^2}{s}
-                       -\frac{1}{2}I_\epsilon(k_i,k_j)
+     \mathcal{I}_{ij} = \frac{1}{2}\left[\log^2\frac{\xi^2_{\text{cut}}s}{Q^2} - \frac{\pi^2}{6}\right] -\frac{1}{2}I_0(k_i,k_j)\log\frac{\xi^2_{\text{cut}}s}{Q^2} - \frac{1}{2}I_\epsilon(k_i,k_j)
      \label{I_0m}
   \end{equation}
   with
-  \begin{align*}
+  \begin{align}
      I_0(p,k) &= \log\frac{(\hat{p}\cdot\hat{k})^2}{\hat{k}^2}, \\
-     I_\varepsilon(p,k) &= -2\left[\frac{1}{4}\log^2\frac{1-\beta}{1+\beta} + \log\frac{\hat{p}\cdot\hat{k}}{1+\beta}\log\frac{\hat{p}\cdot\hat{k}}{1-\beta}
-                           +Li_2\left(1-\frac{\hat{p}\cdot\hat{k}}{1+\beta}\right) + Li_2\left(1-\frac{\hat{p}\cdot\hat{k}}{1-\beta}\right)\right]
-  \end{align*}
+     I_\varepsilon(p,k) &= -2\left[\frac{1}{4}\log^2\frac{1-\beta}{1+\beta} + \log\frac{\hat{p}\cdot\hat{k}}{1+\beta}\log\frac{\hat{p}\cdot\hat{k}}{1-\beta} + \rm{Li}_2\left(1-\frac{\hat{p}\cdot\hat{k}}{1+\beta}\right) + \rm{Li}_2\left(1-\frac{\hat{p}\cdot\hat{k}}{1-\beta}\right)\right],
+  \end{align}
   using
-  \begin{equation*}
-     \hat{p} = \frac{p}{p^0}, \quad \hat{k} = \frac{k}{k^0}, \quad \beta = \frac{|\vec{k}|}{k_0}.
-  \end{equation*}
+  \begin{align}
+    \hat{p} = \frac{p}{p^0}, \quad \hat{k} = \frac{k}{k^0}, \quad \beta = \frac{|\vec{k}|}{k_0}, \\
+    \rm{Li}_2(1 - x) + \rm{Li}_2(1 - x^{-1}) = -\frac{1}{2} \log^2 x.
+  \end{align}
 
 \end{itemize}
 
@@ -6250,15 +6252,15 @@ They are defined as follows:
     s1 = 0; s2 = 0; s3 = 0; s4 = 0; s5 = 0
     Ei = pi%p(0); Ej = pj%p(0)
     pij = pi * pj; Eij = Ei * Ej
-    s1 = 0.5 * log(s_o_Q2)**2
+    s1 = 0.5_default * log(s_o_Q2)**2
     s2 = log(s_o_Q2) * log(pij / (two * Eij))
     s3 = Li2 (pij / (two * Eij))
-    s4 = 0.5 * log (pij / (two * Eij))**2
-    arglog = one - pij / (2*Eij)
+    s4 = 0.5_default * log (pij / (two * Eij))**2
+    arglog = one - pij / (two * Eij)
     if (arglog > tiny_value) then
       s5 = log(arglog) * log(pij / (two * Eij))
     else
-      s5 = 0
+      s5 = zero
     end if
     I = s1 + s2 - s3 + s4 - s5
   end function compute_I00
@@ -6287,9 +6289,6 @@ They are defined as follows:
     I = s1 - s2
   end function compute_Imm
 
-@ %def virtual_compute_I
-@
-<<virtual: procedures>>=
   function I_m_eps (p) result (I)
     type(vector4_t), intent(in) :: p
     real(default) :: I
@@ -6302,16 +6301,6 @@ They are defined as follows:
     end if
   end function I_m_eps
 
-@ %def I_m_eps
-@ For $p^2=0$ and $k^2 \neq 0$, this computes the expression
-\begin{equation*}
-  I_\epsilon(p,k) = -2\left[\frac{1}{4}\log^2\frac{1-\beta}{1+\beta}
-                    +\log \frac{\hat{p} \cdot k}{1+\beta}\log{\hat{p} \cdot k}{1-\beta}
-                    +Li_2\left(1-\frac{\hat{p} \cdot k}{1+\beta}\right)
-                    +Li_2\left(1-\frac{\hat{p} \cdot k}{1-\beta}\right)\right],
-\end{equation*}
-with $\hat{p} = \frac{p}{p^0}$ and $\beta = \frac{|\vec{k}|}{k^0}$.
-<<virtual: procedures>>=
   function I_0m_eps (p, k) result (I)
     type(vector4_t), intent(in) :: p, k
     real(default) :: I
@@ -6325,12 +6314,6 @@ with $\hat{p} = \frac{p}{p^0}$ and $\beta = \frac{|\vec{k}|}{k^0}$.
         + Li2(one - (pp*kp) / (one + beta)) + Li2(one - (pp*kp) / (one - beta)))
   end function I_0m_eps
 
-@ %def I_0m_eps
-@ For $p^2=0$ and $k^2 \neq 0$, computes the expression
-\begin{equation*}
-  I_0(p,k) = \log\frac{(\hat{p}\cdot\hat{k})^2}{\hat{k}^2}
-\end{equation*}
-<<virtual: procedures>>=
   function I_0m_0 (p, k) result (I)
     type(vector4_t), intent(in) :: p, k
     real(default) :: I
@@ -6340,28 +6323,6 @@ with $\hat{p} = \frac{p}{p^0}$ and $\beta = \frac{|\vec{k}|}{k^0}$.
     I = log((pp*kp)**2 / kp**2)
   end function I_0m_0
 
-@ %def I_0m_0
-@ For $k_1^2 \neq 0$ and $k_2^2 \neq 0$, computes the expression
-\begin{equation*}
-  I_\epsilon(k_1, k_2) = \left[K(z_2) - K(z_1)\right]
-                         \frac{1-\vec{\beta}_1\cdot\vec{\beta}_2}{\sqrt{a(1-b)}},
-\end{equation*}
-where $\vec{\beta}_i = \frac{\vec{k}_i}{k_i^0}$. Further
-\begin{align*}
-  a &= \beta_1^2 + \beta_2^2 - 2\vec{\beta}_1\cdot\vec{\beta}_2, \\
-  b &= \frac{\beta_1^2\beta_2^2 - \left(\vec{\beta}_1\cdot\vec{\beta}_2\right)^2}{a}, \\
-  c &= \sqrt{\frac{b}{4a}}, \\
-  K(z) = &-\frac{1}{2}\log^2\frac{(z-z_-)(z_+-z)}{(z_++z)(z_-+z)}
-          - 2Li_2\left(\frac{2z_-(z_+-z)}{(z_+-z_-)(z_-+z)}\right) \\
-         &-2Li_2\left(-\frac{2z_+(z_-+z)}{(z_+-z_-)(z_+-z)}\right),\\
-  z_+ &= \frac{1+\sqrt{1-b}}{\sqrt{b}}, \\
-  z_- &= \frac{1-\sqrt{1-b}}{\sqrt{b}}, \\
-  x_1 &= \frac{\beta_1^2-\vec{\beta}_1\cdot \vec{\beta}_2}{a}, \\
-  x_2 &= 1-x_1
-  z_1 &= \frac{\sqrt{x_1^2+4c^2}-x_1}{2c}, \\
-  z_2 &= \frac{\sqrt{x_2^2+4c^2}+x_2}{2c}.
-\end{align*}
-<<virtual: procedures>>=
   function I_mm_eps (p1, p2) result (I)
     type(vector4_t), intent(in) :: p1, p2
     real(default) :: I
@@ -6407,14 +6368,6 @@ where $\vec{\beta}_i = \frac{\vec{k}_i}{k_i^0}$. Further
     end subroutine switch_beta
   end function I_mm_eps
 
-@ %def I_mm_eps
-@ For $k_1^2 \neq 0$ and $k_2^2 \neq 0$ ,computes the expression
-\begin{equation*}
-  I_0(k_1, k_2) = \frac{1}{\beta} \log\frac{1+\beta}{1-\beta},
-  \quad
-  \beta = \sqrt{1-\frac{k_1^2k_2^2}{(k_1 \cdot k_2)^2}}
-\end{equation*}
-<<virtual: procedures>>=
   function I_mm_0 (k1, k2) result (I)
     type(vector4_t), intent(in) :: k1, k2
     real(default) :: I
@@ -7079,10 +7032,13 @@ These inputs are then used to get the numerical value of the soft mismatch.
 \subsection{Collinear and soft-collinear subtraction terms}
 This data type deals with the calculation of the collinear and
 soft-collinear contribution to the cross section.
+<<real subtraction: public>>=
+  public :: coll_subtraction_t
 <<real subtraction: types>>=
   type :: coll_subtraction_t
     integer :: n_in, n_alr
     logical :: use_resonance_mappings = .false.
+    real(default) :: CA = 0, CF = 0, TR = 0
   contains
   <<real subtraction: coll sub: TBP>>
   end type coll_subtraction_t
@@ -7100,6 +7056,19 @@ soft-collinear contribution to the cross section.
   end subroutine coll_subtraction_init
 
 @ %def coll_subtraction_init
+@ Set the corresponding algebra parameters of the underlying gauge group of the correction.
+<<real subtraction: coll sub: TBP>>=
+  procedure :: set_parameters => coll_subtraction_set_parameters
+<<real subtraction: procedures>>=
+  subroutine coll_subtraction_set_parameters (coll_sub, CA, CF, TR)
+    class(coll_subtraction_t), intent(inout) :: coll_sub
+    real(default), intent(in) :: CA, CF, TR
+    coll_sub%CA = CA
+    coll_sub%CF = CF
+    coll_sub%TR = TR
+  end subroutine coll_subtraction_set_parameters
+
+@ %def coll_subtraction_set_parameters
 @ This subroutine computes the collinear limit of $g^\alpha(\xi,y)$ introduced
 in eq.~\ref{fks: sub: real}. Care is given to also enable the usage for
 the soft-collinear limit. This, we write all formulas in terms of soft-finite
@@ -7118,10 +7087,11 @@ Inserting the splitting functions exemplarily for $q \to qg$ yields
   g^\alpha = \frac{8\pi\alpha_s}{k_{\mathrm{em}}^2} C_F (1-y) \xi^2
              \frac{1+(1-z)^2}{z} \mathcal{B},
 \end{equation*}
-where we have chosen $z = E_\mathrm{rad} / \bar{E}_\mathrm{em}$.
-$\bar{E}_\mathrm{em}$ denotes the emitter energy in the Born frame.
-Consequently, $1 - z = E_\mathrm{em} / \bar{E}_\mathrm{em}$.
-The denominator can be rewritten to
+where we have chosen $z = E_\mathrm{rad} / \bar{E}_\mathrm{em}$ and $\bar{E}_\mathrm{em}$ denotes the emitter energy in the Born frame.
+The collinear final state imposes $\bar{k}_n = k_{n} + k_{k + 1}$ for the
+connection between $\Phi_n$- and $\Phi_{n+1}$-phasepace and we get $1 - z = E_\mathrm{em} / \bar{E}_\mathrm{em}$.
+The denominator can be rewritten by the constraint $\bar{k}_n^2 = (k_n +
+k_{n+1})^2 = 0$ to
 \begin{equation*}
   k_{\mathrm{em}}^2 = 2 E_\mathrm{rad} E_\mathrm{em} (1-y)
 \end{equation*}
@@ -7132,9 +7102,16 @@ the whole expression is indeed collinear-finite. We can further transform
 \end{equation*}
 so that in total we have
 \begin{equation*}
-  g^\alpha = \frac{4\pi\alpha_s}{1-z} C_F \left(\frac{\xi}{z}\right)^2
+  g^\alpha = \frac{4\pi\alpha_s}{1-z} \frac{1}{\bar{k}_{\text{em}}^2} C_F \left(\frac{\xi}{z}\right)^2
              (1 + (1-z)^2) \mathcal{B}
 \end{equation*}
+Follow up calculations give us
+\begin{align*}
+  g^{\alpha, g \rightarrow gg} & = \frac{4\pi\alpha_s}{1-z}\frac{1}{\bar{k}_{\text{em}}^2}
+                                 C_{\mathrm{A}} \frac{\xi}{z} \left\lbrace 2 \left( \frac{z}{1 - z} \xi + \frac{1 - z}{\frac{z}{\xi}} \right) \mathcal{B} + 4\xi z(1 - z) \hat{k}_{\perp}^{\mu} \hat{k}_{\perp}^{\nu} \mathcal{B}_{\mu\nu} \right\rbrace, \\
+  g^{\alpha, g \rightarrow qq} & = \frac{4\pi\alpha_s}{1-z} \frac{1}{\bar{k}_{\text{em}}^2} T_{\mathrm{R}}
+                                 \frac{\xi}{z} \left\lbrace \xi \mathcal{B} - 4\xi z(1 - z) \hat{k}_{\perp}^{\mu} \hat{k}_{\perp}^{\nu} \mathcal{B}_{\mu\nu} \right\rbrace.
+\end{align*}
 The ratio $z / \xi$ is finite in the soft limit
 \begin{equation*}
   \frac{z}{\xi} = \frac{q^0}{2\bar{E}_\mathrm{em}}
@@ -7151,55 +7128,40 @@ the splitting functions.
   procedure :: compute_fsr => coll_subtraction_compute_fsr
 <<real subtraction: procedures>>=
   function coll_subtraction_compute_fsr &
-     (coll_sub, sregion, p_res, p_born, sqme_born, mom_times_sqme_spin_c, &
-     xi, alpha_coupling, alr, double_fsr) result (sqme)
+     (coll_sub, emitter, flst, p_res, p_born, sqme_born, mom_times_sqme_spin_c, &
+     xi, alpha_coupling, double_fsr) result (sqme)
     real(default) :: sqme
     class(coll_subtraction_t), intent(in) :: coll_sub
-    type(singular_region_t), intent(in) :: sregion
+    integer, intent(in) :: emitter
+    integer, dimension(:), intent(in) :: flst
     type(vector4_t), intent(in) :: p_res
     type(vector4_t), intent(in), dimension(:) :: p_born
     real(default), intent(in) :: sqme_born, mom_times_sqme_spin_c
     real(default), intent(in) :: xi, alpha_coupling
-    integer, intent(in) :: alr
     logical, intent(in) :: double_fsr
-    real(default) :: q0, z, p0
-    real(default) :: z_o_xi, onemz
-    real(default) :: pggz
-    real(default) :: CA_factor, CF_factor, TR_factor
-    integer :: nlegs, emitter
-    integer :: flv_em, flv_rad
-
-    nlegs = size (sregion%flst_real%flst)
-    emitter = sregion%emitter
-    flv_rad = sregion%flst_real%flst(nlegs)
-    flv_em = sregion%flst_real%flst(emitter)
+    real(default) :: q0, z, p0, z_o_xi, onemz
+    integer :: nlegs, flv_em, flv_rad
+    nlegs = size (flst)
+    flv_rad = flst(nlegs); flv_em = flst(emitter)
     q0 = p_res**1
     p0 = p_res * p_born(emitter) / q0
     !!! Here, z corresponds to 1-z in the formulas of arXiv:1002.2581;
     !!! the integrand is symmetric under this variable change
     z_o_xi = q0 / (two * p0)
     z = xi * z_o_xi; onemz = one - z
-    if (sregion%nlo_correction_type == "QCD") then
-       CA_factor = CA; CF_factor = CF; TR_factor = TR
-    else if (sregion%nlo_correction_type == "QED") then
-       CA_factor = zero
-       CF_factor = sregion%flst_real%charge(emitter)**2
-       TR_factor = sregion%flst_real%charge(emitter)**2
-    end if
     if (is_gluon (flv_em) .and. is_gluon (flv_rad)) then
-       pggz = two * CA_factor * (xi * z / onemz + onemz / z_o_xi)
-       sqme = pggz * sqme_born + four * CA_factor * z * onemz * xi * mom_times_sqme_spin_c
+       sqme = coll_sub%CA * ( two * ( z / onemz * xi + onemz / z_o_xi ) * sqme_born &
+            + four * xi * z * onemz * mom_times_sqme_spin_c )
     else if (is_fermion (flv_em) .and. is_fermion (flv_rad)) then
-       sqme = TR_factor * xi * (sqme_born - four * z * onemz * mom_times_sqme_spin_c)
+       sqme = coll_sub%TR * xi * (sqme_born - four * z * onemz * mom_times_sqme_spin_c)
     else if (is_fermion (flv_em) .and. is_massless_vector (flv_rad)) then
-       sqme = sqme_born * CF_factor * (one + onemz**2) / z_o_xi
+       sqme = sqme_born * coll_sub%CF * (one + onemz**2) / z_o_xi
     else
        sqme = zero
     end if
     sqme = sqme / (p0**2 * onemz * z_o_xi)
     sqme = sqme * four * pi * alpha_coupling
     if (double_fsr) sqme = sqme * onemz
-
   end function coll_subtraction_compute_fsr
 
 @ %def coll_subtraction_compute_fsr
@@ -7251,58 +7213,43 @@ Now what about this boosting to the other beam?
   procedure :: compute_isr => coll_subtraction_compute_isr
 <<real subtraction: procedures>>=
   function coll_subtraction_compute_isr &
-     (coll_sub, sregion, p_born, sqme_born, mom_times_sqme_spin_c, &
-     xi, alpha_coupling, alr, emitter, isr_mode) result (sqme)
+     (coll_sub, emitter, flst, p_born, sqme_born, mom_times_sqme_spin_c, &
+     xi, alpha_coupling, isr_mode) result (sqme)
     real(default) :: sqme
     class(coll_subtraction_t), intent(in) :: coll_sub
-    type(singular_region_t), intent(in) :: sregion
+    integer, intent(in) :: emitter
+    integer, dimension(:), intent(in) :: flst
     type(vector4_t), intent(in), dimension(:) :: p_born
     real(default), intent(in) :: sqme_born
     real(default), intent(in) :: mom_times_sqme_spin_c
     real(default), intent(in) :: xi, alpha_coupling
-    integer, intent(in) :: alr, emitter, isr_mode
-    real(default) :: z, onemz
-    real(default) :: p02
-    real(default) :: CF_factor, TR_factor, CA_factor
-    integer :: flv_em, flv_rad
-    integer :: nlegs
-
+    integer, intent(in) :: isr_mode
+    real(default) :: z, onemz, p02
+    integer :: nlegs, flv_em, flv_rad
     if (isr_mode == SQRTS_VAR .and. vector_set_is_cms (p_born, coll_sub%n_in)) then
        call vector4_write_set (p_born, show_mass = .true., &
             check_conservation = .true.)
        call msg_fatal ("Collinear subtraction, ISR: Phase space point &
             &must be in lab frame")
     end if
-
-    nlegs = size (sregion%flst_real%flst)
-    flv_rad = sregion%flst_real%flst(nlegs)
-    flv_em = sregion%flst_real%flst(emitter)
+    nlegs = size (flst)
+    flv_rad = flst(nlegs); flv_em = flst(emitter)
     !!! No need to pay attention to n_in = 1, because this case always has a
     !!! massive initial-state particle and thus no collinear divergence.
     p02 = p_born(1)%p(0) * p_born(2)%p(0) / two
     z = one - xi; onemz = xi
-    if (sregion%nlo_correction_type == "QCD") then
-       CA_factor = CA; CF_factor = CF; TR_factor = TR
-    else if (sregion%nlo_correction_type == "QED") then
-       CA_factor = zero
-       CF_factor = sregion%flst_real%charge(emitter)**2
-       TR_factor = sregion%flst_real%charge(nlegs)**2
-    end if
-
-
     if (is_massless_vector (flv_em) .and. is_massless_vector (flv_rad)) then
-       sqme = CA_factor * (two * (z + z * onemz**2) * sqme_born + four * onemz**2 &
+       sqme = coll_sub%CA * (two * (z + z * onemz**2) * sqme_born + four * onemz**2 &
           / z * mom_times_sqme_spin_c)
     else if (is_fermion (flv_em) .and. is_massless_vector (flv_rad)) then
-       sqme = CF_factor * (one + z**2) * sqme_born
+       sqme = coll_sub%CF * (one + z**2) * sqme_born
     else if (is_fermion (flv_em) .and. is_fermion (flv_rad)) then
-       sqme = CF_factor * (z * onemz * sqme_born + four * onemz**2 / z * mom_times_sqme_spin_c)
+       sqme = coll_sub%CF * (z * onemz * sqme_born + four * onemz**2 / z * mom_times_sqme_spin_c)
     else if (is_massless_vector (flv_em) .and. is_fermion (flv_rad)) then
-       sqme = TR_factor * (z**2 + onemz**2) * onemz * sqme_born
+       sqme = coll_sub%TR * (z**2 + onemz**2) * onemz * sqme_born
     else
        sqme = zero
     end if
-
     if (isr_mode == SQRTS_VAR) then
        sqme = sqme / p02 * z
     else
@@ -7327,16 +7274,19 @@ Now what about this boosting to the other beam?
 @ %def coll_subtraction_final
 @
 \subsection{Real Subtraction}
+
+We store a pointer to the a [[nlo_settings_t]] object which holds tuning parameters, e.g. cutoffs for the subtraction terms.
 <<real subtraction: public>>=
   public :: real_subtraction_t
 <<real subtraction: types>>=
   type :: real_subtraction_t
-    type(region_data_t), pointer :: reg_data => null ()
-    type(real_kinematics_t), pointer :: real_kinematics => null ()
-    type(isr_kinematics_t), pointer :: isr_kinematics => null ()
-    type(real_scales_t) :: scales
-    real(default), dimension(:,:), allocatable :: sqme_real_non_sub
-    real(default), dimension(:), allocatable :: sqme_born
+     type(nlo_settings_t), pointer :: settings => null ()
+     type(region_data_t), pointer :: reg_data => null ()
+     type(real_kinematics_t), pointer :: real_kinematics => null ()
+     type(isr_kinematics_t), pointer :: isr_kinematics => null ()
+     type(real_scales_t) :: scales
+     real(default), dimension(:,:), allocatable :: sqme_real_non_sub
+     real(default), dimension(:), allocatable :: sqme_born
     real(default), dimension(:,:,:), allocatable :: sqme_coll_isr
     real(default), dimension(:,:,:), allocatable :: sqme_born_color_c
     real(default), dimension(:,:,:), allocatable :: sqme_born_charge_c
@@ -7358,16 +7308,16 @@ Now what about this boosting to the other beam?
 <<real subtraction: real subtraction: TBP>>=
   procedure :: init => real_subtraction_init
 <<real subtraction: procedures>>=
-  subroutine real_subtraction_init (rsub, reg_data)
+  subroutine real_subtraction_init (rsub, reg_data, settings)
     class(real_subtraction_t), intent(inout), target :: rsub
     type(region_data_t), intent(in), target :: reg_data
+    type(nlo_settings_t), intent(in), target :: settings
     integer :: alr
     call msg_debug (D_SUBTRACTION, "real_subtraction_init")
     call msg_debug (D_SUBTRACTION, "n_in", reg_data%n_in)
     call msg_debug (D_SUBTRACTION, "nlegs_born", reg_data%n_legs_born)
     call msg_debug (D_SUBTRACTION, "nlegs_real", reg_data%n_legs_real)
     call msg_debug (D_SUBTRACTION, "reg_data%n_regions", reg_data%n_regions)
-
     if (debug2_active (D_SUBTRACTION))  call reg_data%write ()
     rsub%reg_data => reg_data
     allocate (rsub%sqme_born (reg_data%n_flv_born))
@@ -7382,34 +7332,23 @@ Now what about this boosting to the other beam?
     rsub%sqme_real_non_sub = zero
     allocate (rsub%sc_required (reg_data%n_regions))
     do alr = 1, reg_data%n_regions
-       rsub%sc_required(alr) = any (reg_data%regions(alr)%flst_uborn%flst == GLUON) .or. &
-            any (reg_data%regions(alr)%flst_uborn%flst == PHOTON)
+       rsub%sc_required(alr) = reg_data%regions(alr)%sc_required
     end do
     if (rsub%requires_spin_correlations ()) then
        allocate (rsub%sqme_born_spin_c (0:3, 0:3, reg_data%n_legs_born, reg_data%n_flv_born))
        rsub%sqme_born_spin_c = zero
     end if
-
     call rsub%sub_soft%init (reg_data)
     call rsub%sub_coll%init (reg_data%n_regions, reg_data%n_in)
-
     allocate (rsub%sqme_coll_isr (2, 2, reg_data%n_flv_born))
     rsub%sqme_coll_isr = zero
+    rsub%settings => settings
+    rsub%sub_soft%use_resonance_mappings = settings%use_resonance_mappings
+    rsub%sub_coll%use_resonance_mappings = settings%use_resonance_mappings
+    rsub%sub_soft%factorization_mode = settings%factorization_mode
   end subroutine real_subtraction_init
 
 @ %def real_subtraction_init
-@
-<<real subtraction: real subtraction: TBP>>=
-  procedure :: set_resonance_mappings => real_subtraction_set_resonance_mappings
-<<real subtraction: procedures>>=
-  subroutine real_subtraction_set_resonance_mappings (rsub, use_mappings)
-    class(real_subtraction_t), intent(inout) :: rsub
-    logical, intent(in) :: use_mappings
-    rsub%sub_soft%use_resonance_mappings = use_mappings
-    rsub%sub_coll%use_resonance_mappings = use_mappings
-  end subroutine real_subtraction_set_resonance_mappings
-
-@ %def real_subtraction_set_resonance_mappings
 @
 <<real subtraction: real subtraction: TBP>>=
   procedure :: set_real_kinematics => real_subtraction_set_real_kinematics
@@ -7465,7 +7404,7 @@ Writing out the plus-distribution and introducing $\tilde{\xi} =
 turns out to be equal to
 \begin{equation}
   \begin{split}
-    \sigma^\alpha_{\rm{real}} &= \int d\Phi_n \int_0^{2/pi}d\phi
+    \sigma^\alpha_{\rm{real}} &= \int d\Phi_n \int_0^{2\pi}d\phi
     \int_{-1}^1 \frac{dy}{1-y} \Bigg\{\int_0^1
     d\tilde{\xi}\Bigg[\frac{g^\alpha(\tilde{\xi}\xi_{\rm{max}},y)}{\tilde{\xi}}
     - \underbrace{\frac{g^\alpha(0,y)}{\tilde{\xi}}}_{\text{soft}} -
@@ -7621,7 +7560,7 @@ the corresponding jacobians.
     real(default) :: sqme_rad, sqme_soft, sqme_coll, sqme_cs, sqme_remn
     sqme_rad = zero; sqme_soft = zero; sqme_coll = zero
     sqme_cs = zero; sqme_remn = zero
-    associate (region => rsub%reg_data%regions(alr))
+    associate (region => rsub%reg_data%regions(alr), template => rsub%settings%fks_template)
       if (rsub%radiation_event) then
          sqme_rad = rsub%sqme_real_non_sub (rsub%reg_data%get_matrix_element_index (alr), i_phs)
          call evaluate_fks_factors (sqme_rad, rsub%reg_data, rsub%real_kinematics, &
@@ -7631,11 +7570,17 @@ the corresponding jacobians.
               emitter)
       end if
       if (rsub%subtraction_event .and. .not. rsub%subtraction_deactivated) then
+         if (debug2_active (D_SUBTRACTION)) then
+            print *, "[real_subtraction_evaluate_region_fsr]"
+            print *, "xi: ", rsub%real_kinematics%xi_max(i_phs) * rsub%real_kinematics%xi_tilde
+            print *, "y: ", rsub%real_kinematics%y(i_phs)
+         end if
          call rsub%evaluate_subtraction_terms_fsr (alr, emitter, i_phs, i_res, alpha_coupling, &
               sqme_soft, sqme_coll, sqme_cs)
          call apply_kinematic_factors_subtraction_fsr (sqme_soft, sqme_coll, sqme_cs, &
               rsub%real_kinematics, i_phs)
-         sqme_remn = compute_sqme_remnant_fsr (sqme_soft, sqme_cs, rsub%real_kinematics, i_phs)
+         sqme_remn = compute_sqme_remnant_fsr (sqme_soft, sqme_cs, &
+              rsub%real_kinematics%xi_max(i_phs), template%xi_cut, rsub%real_kinematics%xi_tilde)
          select case (rsub%purpose)
          case (INTEGRATION)
             sqme_tot = sqme_rad - sqme_soft - sqme_coll + sqme_cs + sqme_remn
@@ -7651,20 +7596,18 @@ the corresponding jacobians.
       end if
       sqme_tot = sqme_tot * rsub%real_kinematics%jac_rand(i_phs)
     end associate
-
     if (debug_active (D_SUBTRACTION) .and. .not. debug2_active (D_SUBTRACTION)) then
        call register_debug_sqme ()
     else if (debug2_active (D_SUBTRACTION)) then
        call write_computation_status ()
     end if
-
   contains
-
+  <<real subtraction: real subtraction evaluate region fsr: procedures>>
     subroutine register_debug_sqme ()
       real(default), dimension(:), allocatable, save :: sqme_rad_store
       logical :: soft, collinear
-      real(default), parameter :: soft_threshold = 0.1_default
-      real(default), parameter :: coll_threshold = 0.1_default
+      real(default), parameter :: soft_threshold = 0.01_default
+      real(default), parameter :: coll_threshold = 0.01_default
       real(default) :: this_sqme_rad, s_alpha, E_gluon
       logical, dimension(:), allocatable, save :: count_alr
       !!! TODO (cw-2017-02-18): Need to be able to set this (?)
@@ -7692,29 +7635,30 @@ the corresponding jacobians.
             if (write_histo .and. .not. rsub%radiation_event) &
                  call write_point_to_file (E_gluon, this_sqme_rad, sqme_soft)
             if ( .not. nearly_equal (this_sqme_rad, sqme_soft, &
-                 abs_smallness=tiny_07, rel_smallness=tiny_07*1000)) then
-               call msg_print_color ("Soft MEs do not match", COL_RED)
+                 abs_smallness=tiny_13, rel_smallness=tiny_07*10000)) then
+               call msg_print_color (char ("Soft MEs do not match in region " // str (alr)), COL_RED)
             else
                call msg_print_color (char ("sqme_soft OK in region " // str (alr)), COL_GREEN)
             end if
             print *, 'this_sqme_rad, sqme_soft =    ', this_sqme_rad, sqme_soft
          end if
          if (collinear) then
-            if (abs (this_sqme_rad - sqme_coll) > min (this_sqme_rad, sqme_coll) .and. &
-                 sqme_coll > tiny_10 .and. this_sqme_rad > tiny_10) then
-               call msg_print_color ("Collinear MEs do not match", COL_RED)
-               print *, 'alr: ', alr, 'sqme_rad: ', this_sqme_rad, 'sqme_coll: ', sqme_coll
+            if ( .not. nearly_equal (this_sqme_rad, sqme_coll, &
+                 abs_smallness=tiny_13, rel_smallness=tiny_07*10000)) then
+               call msg_print_color (char ("Collinear MEs do not match in region " // str (alr)), COL_RED)
             else
                call msg_print_color (char ("sqme_coll OK in region " // str (alr)), COL_GREEN)
             end if
+            print *, 'this_sqme_rad, sqme_coll =    ', this_sqme_rad, sqme_coll
          end if
          if (soft .and. collinear) then
-            if (abs (this_sqme_rad - sqme_cs) > min (this_sqme_rad, sqme_cs) .and. &
-                 sqme_cs > tiny_10 .and. this_sqme_rad > tiny_10) then
-               call msg_print_color ("Soft-collinear MEs do not match", COL_RED)
+            if ( .not. nearly_equal (this_sqme_rad, sqme_cs, &
+                 abs_smallness=tiny_13, rel_smallness=tiny_07*10000)) then
+               call msg_print_color (char ("Soft-collinear MEs do not match in region " // str (alr)), COL_RED)
             else
                call msg_print_color (char ("sqme_cs OK in region " // str (alr)), COL_GREEN)
             end if
+            print *, 'this_sqme_rad, sqme_cs =    ', this_sqme_rad, sqme_cs
          end if
          count_alr (alr) = .true.
          if (all (count_alr)) then
@@ -7724,12 +7668,16 @@ the corresponding jacobians.
       end if
     end subroutine register_debug_sqme
 
-    subroutine write_computation_status (passed, total, region_type)
+    subroutine write_computation_status (passed, total, region_type, full)
       integer, intent(in), optional :: passed, total
       character(*), intent(in), optional :: region_type
       integer :: i_born
       integer :: u
       real(default) :: xi
+      logical :: yorn
+      logical, intent(in), optional :: full
+      yorn = .true.
+      if (present (full)) yorn = full
       call msg_debug (D_SUBTRACTION, "real_subtraction_evaluate_region_fsr")
       u = given_output_unit (); if (u < 0) return
       i_born = rsub%reg_data%regions(alr)%uborn_index
@@ -7740,17 +7688,19 @@ the corresponding jacobians.
       write (u,'(A,I3)') 'i_phs: ', i_phs
       write (u,'(A,F6.4)') 'xi_max: ', rsub%real_kinematics%xi_max (i_phs)
       write (u,'(A,F6.4,2X,A,F6.4)') 'xi: ', xi, 'y: ', rsub%real_kinematics%y (i_phs)
-      write (u,'(A,ES16.9)')  'sqme_born: ', rsub%sqme_born(i_born)
-      write (u,'(A,ES16.9)')  'sqme_real: ', sqme_rad
-      write (u,'(A,ES16.9)')  'sqme_soft: ', sqme_soft
-      write (u,'(A,ES16.9)')  'sqme_coll: ', sqme_coll
-      write (u,'(A,ES16.9)')  'sqme_coll-soft: ', sqme_cs
-      write (u,'(A,ES16.9)')  'sqme_remn: ', sqme_remn
-      write (u,'(A,ES16.9)')  'sqme_tot: ', sqme_tot
-      if (present (passed) .and. present (total) .and. &
-           present (region_type)) &
-         write (u,'(A)') char (str (passed) // " of " // str (total) // &
+      if (yorn) then
+         write (u,'(A,ES16.9)')  'sqme_born: ', rsub%sqme_born(i_born)
+         write (u,'(A,ES16.9)')  'sqme_real: ', sqme_rad
+         write (u,'(A,ES16.9)')  'sqme_soft: ', sqme_soft
+         write (u,'(A,ES16.9)')  'sqme_coll: ', sqme_coll
+         write (u,'(A,ES16.9)')  'sqme_coll-soft: ', sqme_cs
+         write (u,'(A,ES16.9)')  'sqme_remn: ', sqme_remn
+         write (u,'(A,ES16.9)')  'sqme_tot: ', sqme_tot
+         if (present (passed) .and. present (total) .and. &
+              present (region_type)) &
+              write (u,'(A)') char (str (passed) // " of " // str (total) // &
               " " // region_type // " points passed in total")
+      end if
       write (u,'(A,ES16.9)')  'jacobian - real: ', rsub%real_kinematics%jac(i_phs)%jac(1)
       write (u,'(A,ES16.9)')  'jacobian - soft: ', rsub%real_kinematics%jac(i_phs)%jac(2)
       write (u,'(A,ES16.9)')  'jacobian - coll: ', rsub%real_kinematics%jac(i_phs)%jac(3)
@@ -7772,6 +7722,22 @@ the corresponding jacobians.
   end function real_subtraction_evaluate_region_fsr
 
 @ %def real_subtraction_evalute_region_fsr
+@ For final state radiation, the subtraction remnant cross section is
+\begin{equation}
+  \sigma_{\text{remn}} = \left(\sigma_{\text{soft}} - \sigma_{\text{soft-coll}}\right)
+      \log \frac{\xi_{\text{max}}}{\xi_{\text{cut}}}) \cdot \tilde{\xi}.
+\end{equation}
+We use the already computed [[sqme_soft]] and [[sqme_cs]] with a factor of
+$\tilde{\xi}$ which we have to compensate.
+<<real subtraction: real subtraction evaluate region fsr: procedures>>=
+  function compute_sqme_remnant_fsr (sqme_soft, sqme_cs, xi_max, xi_cut, xi_tilde) result (sqme_remn)
+    real(default) :: sqme_remn
+    real(default), intent(in) :: sqme_soft, sqme_cs, xi_max, xi_cut, xi_tilde
+    sqme_remn = zero
+    sqme_remn = sqme_remn + (sqme_soft - sqme_cs) * log (xi_max / xi_cut) * xi_tilde
+  end function compute_sqme_remnant_fsr
+
+@ %def compute_sqme_remnant_fsr
 @
 <<real subtraction: real subtraction: TBP>>=
   procedure :: evaluate_region_isr => real_subtraction_evaluate_region_isr
@@ -7782,17 +7748,14 @@ the corresponding jacobians.
     class(real_subtraction_t), intent(inout) :: rsub
     integer, intent(in) :: alr, emitter, i_phs, i_res
     real(default), intent(in) :: alpha_coupling
-    integer :: i_real
     real(default) :: sqme_rad, sqme_soft, sqme_coll_plus, sqme_coll_minus
     real(default) :: sqme_cs_plus, sqme_cs_minus
     real(default) :: sqme_remn
-
     sqme_rad = zero; sqme_soft = zero;
     sqme_coll_plus = zero; sqme_coll_minus = zero
     sqme_cs_plus = zero; sqme_cs_minus = zero
     sqme_remn = zero
-
-    associate (region => rsub%reg_data%regions(alr))
+    associate (region => rsub%reg_data%regions(alr), template => rsub%settings%fks_template)
       if (rsub%radiation_event) then
          sqme_rad = rsub%sqme_real_non_sub (rsub%reg_data%get_matrix_element_index (alr), i_phs)
          call evaluate_fks_factors (sqme_rad, rsub%reg_data, rsub%real_kinematics, &
@@ -7807,19 +7770,15 @@ the corresponding jacobians.
               sqme_coll_minus, sqme_cs_plus, sqme_cs_minus, rsub%real_kinematics, i_phs)
          sqme_remn = compute_sqme_remnant_isr (rsub%isr_kinematics%isr_mode, &
               sqme_soft, sqme_cs_plus, sqme_cs_minus, &
-              rsub%isr_kinematics, rsub%real_kinematics, i_phs)
-
+              rsub%isr_kinematics, rsub%real_kinematics, i_phs, template%xi_cut)
          sqme_tot = sqme_rad - sqme_soft - sqme_coll_plus - sqme_coll_minus &
               + sqme_cs_plus + sqme_cs_minus + sqme_remn
       else
          sqme_tot = sqme_rad
       end if
     end associate
-
     sqme_tot = sqme_tot * rsub%real_kinematics%jac_rand (i_phs)
-
     call debug_output ()
-
   contains
 
     subroutine debug_output ()
@@ -7873,10 +7832,38 @@ the corresponding jacobians.
        write (u,'(A,ES16.9)')  'jacobian - collminus: ', rsub%real_kinematics%jac(i_phs)%jac(4)
 
     end subroutine write_computation_status
-
+  <<real subtraction: evaluate region isr: procedures>>
   end function real_subtraction_evaluate_region_isr
 
 @ %def real_subtraction_evaluate_region_isr
+@
+<<real subtraction: evaluate region isr: procedures>>=
+  function compute_sqme_remnant_isr (isr_mode, sqme_soft, sqme_cs_plus, sqme_cs_minus, &
+     isr_kinematics, real_kinematics, i_phs, xi_cut) result (sqme_remn)
+    real(default) :: sqme_remn
+    integer, intent(in) :: isr_mode
+    real(default), intent(in) :: sqme_soft, sqme_cs_plus, sqme_cs_minus
+    type(isr_kinematics_t), intent(in) :: isr_kinematics
+    type(real_kinematics_t), intent(in) :: real_kinematics
+    integer, intent(in) :: i_phs
+    real(default), intent(in) :: xi_cut
+    real(default) :: xi_tilde, xi_max, xi_max_plus, xi_max_minus
+    xi_max = real_kinematics%xi_max (i_phs)
+    select case (isr_mode)
+    case (SQRTS_VAR)
+       xi_max_plus = one - isr_kinematics%x(I_PLUS)
+       xi_max_minus = one - isr_kinematics%x(I_MINUS)
+    case (SQRTS_FIXED)
+       xi_max_plus = real_kinematics%xi_max (i_phs)
+       xi_max_minus = real_kinematics%xi_max (i_phs)
+    end select
+    xi_tilde = real_kinematics%xi_tilde
+    sqme_remn = log(xi_max / xi_cut) * xi_tilde * sqme_soft
+    sqme_remn = sqme_remn - log (xi_max_plus / xi_cut) * xi_tilde * sqme_cs_plus &
+                          - log (xi_max_minus / xi_cut) * xi_tilde * sqme_cs_minus
+  end function compute_sqme_remnant_isr
+
+@ %def compute_sqme_remnant_isr
 @
 <<real subtraction: real subtraction: TBP>>=
   procedure :: evaluate_subtraction_terms_fsr => &
@@ -7888,9 +7875,23 @@ the corresponding jacobians.
     integer, intent(in) :: alr, emitter, i_phs, i_res
     real(default), intent(in) :: alpha_coupling
     real(default), intent(out) :: sqme_soft, sqme_coll, sqme_cs
-    sqme_soft = rsub%compute_sub_soft (alr, emitter, i_phs, i_res, alpha_coupling)
-    sqme_coll = rsub%compute_sub_coll (alr, emitter, i_phs, alpha_coupling)
-    sqme_cs = rsub%compute_sub_coll_soft (alr, emitter, alpha_coupling)
+    sqme_soft = zero; sqme_coll = zero; sqme_cs = zero
+    associate (xi => rsub%real_kinematics%xi_tilde * rsub%real_kinematics%xi_max(i_phs), &
+         y => rsub%real_kinematics%y(i_phs), template => rsub%settings%fks_template)
+      if (template%xi_cut > xi) &
+           sqme_soft = rsub%compute_sub_soft (alr, emitter, i_phs, i_res, alpha_coupling)
+      if (y - 1 + template%delta_zero > 0) &
+           sqme_coll = rsub%compute_sub_coll (alr, emitter, i_phs, alpha_coupling)
+      if (template%xi_cut > xi .and. y - 1 + template%delta_zero > 0) &
+           sqme_cs = rsub%compute_sub_coll_soft (alr, emitter, i_phs, alpha_coupling)
+      if (debug2_active (D_SUBTRACTION)) then
+         print *, "FSR Cutoff:"
+         print *, "sub_soft: ", template%xi_cut > xi, "(ME: ", sqme_soft, ")"
+         print *, "sub_coll: ", (y - 1 + template%delta_zero) > 0, "(ME: ", sqme_coll, ")"
+         print *, "sub_coll_soft: ", template%xi_cut > xi .and. (y - 1 + template%delta_zero) > 0, &
+              "(ME: ", sqme_cs, ")"
+      end if
+    end associate
   end subroutine real_subtraction_evaluate_subtraction_terms_fsr
 
 @ %def real_subtraction_evaluate_subtraction_terms_fsr
@@ -7972,23 +7973,6 @@ the corresponding jacobians.
   end subroutine apply_kinematic_factors_subtraction_fsr
 
 @ %def apply_kinematic_factors_subtraction_fsr
-@ For final state radiation, the subtraction remnant cross section is
-\begin{equation}
-  \sigma_{\text{remn}} = \left(\sigma_{\text{soft}} - \sigma_{\text{coll}}\right)
-      \log\xi_{\text{max}} \cdot \tilde{\xi}.
-\end{equation}
-<<real subtraction: procedures>>=
-  function compute_sqme_remnant_fsr (sqme_soft, sqme_cs, &
-     real_kinematics, i_phs) result (sqme_remn)
-    real(default) :: sqme_remn
-    real(default), intent(in) :: sqme_soft, sqme_cs
-    type(real_kinematics_t), intent(in) :: real_kinematics
-    integer, intent(in) :: i_phs
-    sqme_remn = (sqme_soft - sqme_cs) * &
-         log (real_kinematics%xi_max (i_phs)) * real_kinematics%xi_tilde
-  end function compute_sqme_remnant_fsr
-
-@ %def compute_sqme_remnant_fsr
 @
 <<real subtraction: procedures>>=
   subroutine apply_kinematic_factors_subtraction_isr &
@@ -8013,33 +7997,6 @@ the corresponding jacobians.
 
 @ %def apply_kinematic_factors_subtraction_isr
 @
-<<real subtraction: procedures>>=
-  function compute_sqme_remnant_isr (isr_mode, sqme_soft, sqme_cs_plus, sqme_cs_minus, &
-     isr_kinematics, real_kinematics, i_phs) result (sqme_remn)
-    real(default) :: sqme_remn
-    integer, intent(in) :: isr_mode
-    real(default), intent(in) :: sqme_soft, sqme_cs_plus, sqme_cs_minus
-    type(isr_kinematics_t), intent(in) :: isr_kinematics
-    type(real_kinematics_t), intent(in) :: real_kinematics
-    integer, intent(in) :: i_phs
-    real(default) :: xi_tilde, xi_max, xi_max_plus, xi_max_minus
-    xi_max = real_kinematics%xi_max (i_phs)
-    select case (isr_mode)
-    case (SQRTS_VAR)
-       xi_max_plus = one - isr_kinematics%x(I_PLUS)
-       xi_max_minus = one - isr_kinematics%x(I_MINUS)
-    case (SQRTS_FIXED)
-       xi_max_plus = real_kinematics%xi_max (i_phs)
-       xi_max_minus = real_kinematics%xi_max (i_phs)
-    end select
-    xi_tilde = real_kinematics%xi_tilde
-    sqme_remn = log(xi_max) * xi_tilde * sqme_soft
-    sqme_remn = sqme_remn - log (xi_max_plus) * xi_tilde * sqme_cs_plus &
-                          - log (xi_max_minus) * xi_tilde * sqme_cs_minus
-  end function compute_sqme_remnant_isr
-
-@ %def compute_sqme_remnant_isr
-@
 <<real subtraction: real subtraction: TBP>>=
   procedure :: evaluate_subtraction_terms_isr => &
       real_subtraction_evaluate_subtraction_terms_isr
@@ -8047,28 +8004,40 @@ the corresponding jacobians.
   subroutine real_subtraction_evaluate_subtraction_terms_isr (rsub, &
       alr, emitter, i_phs, i_res, alpha_coupling, sqme_soft, sqme_coll_plus, &
       sqme_coll_minus, sqme_cs_plus, sqme_cs_minus)
-
     class(real_subtraction_t), intent(inout) :: rsub
     integer, intent(in) :: alr, emitter, i_phs, i_res
     real(default), intent(in) :: alpha_coupling
     real(default), intent(out) :: sqme_soft
     real(default), intent(out) :: sqme_coll_plus, sqme_coll_minus
     real(default), intent(out) :: sqme_cs_plus, sqme_cs_minus
-    sqme_soft = rsub%compute_sub_soft (alr, emitter, i_phs, i_res, alpha_coupling)
-    if (emitter /= 2) then
-       sqme_coll_plus = rsub%compute_sub_coll (alr, 1, i_phs, alpha_coupling)
-       sqme_cs_plus = rsub%compute_sub_coll_soft (alr, 1, alpha_coupling)
-    else
-       sqme_coll_plus = zero
-       sqme_cs_plus = zero
-    end if
-    if (emitter /= 1) then
-       sqme_coll_minus = rsub%compute_sub_coll (alr, 2, i_phs, alpha_coupling)
-       sqme_cs_minus = rsub%compute_sub_coll_soft (alr, 2, alpha_coupling)
-    else
-       sqme_coll_minus = zero
-       sqme_cs_minus = zero
-    end if
+    sqme_coll_plus = zero; sqme_cs_plus = zero
+    sqme_coll_minus = zero; sqme_cs_minus = zero
+    associate (xi => rsub%real_kinematics%xi_tilde * rsub%real_kinematics%xi_max(i_phs), &
+         y => rsub%real_kinematics%y(i_phs), template => rsub%settings%fks_template)
+      if (template%xi_cut > xi) &
+           sqme_soft = rsub%compute_sub_soft (alr, emitter, i_phs, i_res, alpha_coupling)
+      if (emitter /= 2) then
+         ! Cut symmetrically for the limits y = +1 or y = -1
+         if (abs (y) - 1 + template%delta_i > 0) &
+              sqme_coll_plus = rsub%compute_sub_coll (alr, 1, i_phs, alpha_coupling)
+         if (template%xi_cut > xi .and. abs (y) - 1 + template%delta_i > 0) &
+              sqme_cs_plus = rsub%compute_sub_coll_soft (alr, 1, i_phs, alpha_coupling)
+      end if
+      if (emitter /= 1) then
+         ! Cut symmetrically for the limits y = +1 or y = -1
+         if (abs (y) - 1 + template%delta_i > 0) &
+              sqme_coll_minus = rsub%compute_sub_coll (alr, 2, i_phs, alpha_coupling)
+         if (template%xi_cut > xi .and. abs (y) - 1 + template%delta_i > 0) &
+              sqme_cs_minus = rsub%compute_sub_coll_soft (alr, 2, i_phs, alpha_coupling)
+      end if
+      if (debug2_active (D_SUBTRACTION)) then
+         print *, "ISR Cutoff:"
+         print *, "sub_soft: ", template%xi_cut > xi, "(ME: ", sqme_soft, ")"
+         print *, "sub_coll: ", (abs (y) - 1 + template%delta_zero) > 0, "(ME: ", sqme_coll_plus, sqme_coll_minus, ")"
+         print *, "sub_coll_soft: ", template%xi_cut > xi .and. (abs (y) - 1 + template%delta_zero) > 0, &
+              "(ME: ", sqme_cs_plus, sqme_cs_minus, ")"
+      end if
+    end associate
   end subroutine real_subtraction_evaluate_subtraction_terms_isr
 
 @ %def real_subtraction_evaluate_subtraction_terms_isr
@@ -8122,39 +8091,38 @@ to be more consistent with the evaluation of the Born phase space.
     type(vector4_t), dimension(:), allocatable :: p_born
     associate (real_kinematics => rsub%real_kinematics, &
             nlo_corr_type => rsub%reg_data%regions(alr)%nlo_correction_type)
-       if (rsub%reg_data%regions(alr)%has_soft_divergence ()) then
-          i_xi_ref = rsub%sub_soft%i_xi_ref (alr, i_phs)
-          q2 = real_kinematics%xi_ref_momenta (i_xi_ref)**2
-          allocate (p_born (rsub%reg_data%n_legs_born))
-          if (rsub%reg_data%has_pseudo_isr ()) then
-             p_born = real_kinematics%p_born_onshell%get_momenta(1)
-          else
-             p_born = real_kinematics%p_born_cms%get_momenta(1)
-          end if
-          if (emitter > rsub%sub_soft%reg_data%n_in) then
-             call rsub%sub_soft%create_softvec_fsr &
-                  (p_born, real_kinematics%y_soft(i_phs), &
-                  real_kinematics%phi, emitter, &
-                  real_kinematics%xi_ref_momenta(i_xi_ref))
-          else
-             call rsub%sub_soft%create_softvec_isr &
-                  (real_kinematics%y_soft(i_phs), real_kinematics%phi)
-          end if
-          i_born = rsub%reg_data%regions(alr)%uborn_index
-          if (nlo_corr_type == "QCD") then
-             sqme_soft = rsub%sub_soft%compute &
-                  (p_born, rsub%sqme_born_color_c(:,:,i_born), &
-                  real_kinematics%y(i_phs), &
-                  q2, alpha_coupling, alr, emitter, i_res)
-          else if (nlo_corr_type == "QED") then
-             sqme_soft = rsub%sub_soft%compute &
-                  (p_born, rsub%sqme_born_charge_c(:,:,i_born), &
-                  real_kinematics%y(i_phs), &
-                  q2, alpha_coupling, alr, emitter, i_res)
-          end if
-       else
-          sqme_soft = zero
-       end if
+      sqme_soft = zero
+      if (rsub%reg_data%regions(alr)%has_soft_divergence ()) then
+         i_xi_ref = rsub%sub_soft%i_xi_ref (alr, i_phs)
+         q2 = real_kinematics%xi_ref_momenta (i_xi_ref)**2
+         allocate (p_born (rsub%reg_data%n_legs_born))
+         if (rsub%reg_data%has_pseudo_isr ()) then
+            p_born = real_kinematics%p_born_onshell%get_momenta(1)
+         else
+            p_born = real_kinematics%p_born_cms%get_momenta(1)
+         end if
+         if (emitter > rsub%sub_soft%reg_data%n_in) then
+            call rsub%sub_soft%create_softvec_fsr &
+                 (p_born, real_kinematics%y_soft(i_phs), &
+                 real_kinematics%phi, emitter, &
+                 real_kinematics%xi_ref_momenta(i_xi_ref))
+         else
+            call rsub%sub_soft%create_softvec_isr &
+                 (real_kinematics%y_soft(i_phs), real_kinematics%phi)
+         end if
+         i_born = rsub%reg_data%regions(alr)%uborn_index
+         if (nlo_corr_type == "QCD") then
+            sqme_soft = rsub%sub_soft%compute &
+                 (p_born, rsub%sqme_born_color_c(:,:,i_born), &
+                 real_kinematics%y(i_phs), &
+                 q2, alpha_coupling, alr, emitter, i_res)
+         else if (nlo_corr_type == "QED") then
+            sqme_soft = rsub%sub_soft%compute &
+                 (p_born, rsub%sqme_born_charge_c(:,:,i_born), &
+                 real_kinematics%y(i_phs), &
+                 q2, alpha_coupling, alr, emitter, i_res)
+         end if
+      end if
     end associate
     if (debug2_active (D_SUBTRACTION)) call check_soft_vector ()
   contains
@@ -8186,17 +8154,18 @@ to be more consistent with the evaluation of the Born phase space.
     integer, intent(in) :: alr, i_born, emitter
     real(default), dimension(0:3) :: k_perp
     integer :: mu, nu
-
     if (rsub%sc_required(alr)) then
        if (debug2_active(D_SUBTRACTION)) call check_me_consistency ()
        associate (real_kin => rsub%real_kinematics)
-          if (emitter > rsub%reg_data%n_in) then
-             k_perp = k_perp_fsr (real_kin%p_born_cms%get_momentum(1, emitter), &
-                  rsub%real_kinematics%phi)
-          else
-             k_perp = k_perp_isr (real_kin%p_born_cms%get_momentum(1, emitter), &
-                  rsub%real_kinematics%phi)
-          end if
+         if (emitter > rsub%reg_data%n_in) then
+            k_perp = real_subtraction_compute_k_perp_fsr ( &
+                 real_kin%p_born_lab%get_momentum(1, emitter), &
+                 rsub%real_kinematics%phi)
+         else
+            k_perp = real_subtraction_compute_k_perp_isr ( &
+                 real_kin%p_born_lab%get_momentum(1, emitter), &
+                 rsub%real_kinematics%phi)
+         end if
        end associate
        mom_times_sqme = zero
        do mu = 0, 3
@@ -8226,36 +8195,43 @@ to be more consistent with the evaluation of the Born phase space.
          call msg_print_color ("Success", COL_GREEN)
       end if
     end subroutine check_me_consistency
-
-    function k_perp_fsr (p, phi)
-      real(default), dimension(0:3) :: k_perp_fsr
-      type(vector4_t), intent(in) :: p
-      real(default), intent(in) :: phi
-      type(vector4_t) :: k
-      type(vector3_t) :: vec
-      type(lorentz_transformation_t) :: rot
-      vec = p%p(1:3) / p%p(0)
-      k%p(0) = zero
-      k%p(1) = p%p(1); k%p(2) = p%p(2)
-      k%p(3) = - (p%p(1)**2 + p%p(2)**2) / p%p(3)
-      rot = rotation (cos(phi), sin(phi), vec)
-      k = rot * k
-      k%p(1:3) = k%p(1:3) / space_part_norm (k)
-      k_perp_fsr = k%p
-    end function k_perp_fsr
-
-    function k_perp_isr (p, phi)
-      real(default), dimension(0:3) :: k_perp_isr
-      type(vector4_t), intent(in) :: p
-      real(default), intent(in) :: phi
-      k_perp_isr(0) = zero
-      k_perp_isr(1) = cos(phi)
-      k_perp_isr(2) = sin(phi)
-      k_perp_isr(3) = zero
-    end function k_perp_isr
   end function real_subtraction_get_spin_correlation_term
 
 @ %def real_subtraction_get_spin_correlation_term
+@ Construct a normalised momentum perpendicular to momentum [[p]] and rotate by
+an arbitrary angle [[phi]].
+<<real subtraction: public>>=
+  public :: real_subtraction_compute_k_perp_fsr, &
+       real_subtraction_compute_k_perp_isr
+<<real subtraction: procedures>>=
+  function real_subtraction_compute_k_perp_fsr (p, phi) result (k_perp_fsr)
+    real(default), dimension(0:3) :: k_perp_fsr
+    type(vector4_t), intent(in) :: p
+    real(default), intent(in) :: phi
+    type(vector4_t) :: k
+    type(vector3_t) :: vec
+    type(lorentz_transformation_t) :: rot
+    vec = p%p(1:3) / p%p(0)
+    k%p(0) = zero
+    k%p(1) = p%p(1); k%p(2) = p%p(2)
+    k%p(3) = - (p%p(1)**2 + p%p(2)**2) / p%p(3)
+    rot = rotation (cos(phi), sin(phi), vec)
+    k = rot * k
+    k%p(1:3) = k%p(1:3) / space_part_norm (k)
+    k_perp_fsr = k%p
+  end function real_subtraction_compute_k_perp_fsr
+
+  function real_subtraction_compute_k_perp_isr (p, phi) result (k_perp_isr)
+    real(default), dimension(0:3) :: k_perp_isr
+    type(vector4_t), intent(in) :: p
+    real(default), intent(in) :: phi
+    k_perp_isr(0) = zero
+    k_perp_isr(1) = cos(phi)
+    k_perp_isr(2) = sin(phi)
+    k_perp_isr(3) = zero
+  end function real_subtraction_compute_k_perp_isr
+
+@ %def real_subtraction_compute_k_perp_fsr, real_subtraction_compute_k_perp_isr
 @
 <<real subtraction: real subtraction: TBP>>=
   procedure :: compute_sub_coll => real_subtraction_compute_sub_coll
@@ -8271,51 +8247,65 @@ to be more consistent with the evaluation of the Born phase space.
     integer :: i_con, pdf_type
     real(default) :: pfr
     associate (sregion => rsub%reg_data%regions(alr))
-       if (sregion%has_collinear_divergence ()) then
-          xi = rsub%real_kinematics%xi_tilde * rsub%real_kinematics%xi_max (i_phs)
-          if (rsub%sub_coll%use_resonance_mappings) then
-             i_con = rsub%reg_data%alr_to_i_contributor (alr)
-          else
-             i_con = 1
-          end if
-          mom_times_sqme_spin_c = rsub%get_spin_correlation_term (alr, sregion%uborn_index, em)
-          if (em <= rsub%sub_coll%n_in) then
-             select case (rsub%isr_kinematics%isr_mode)
-             case (SQRTS_FIXED)
-                xi_max = rsub%real_kinematics%xi_max(i_phs)
-             case (SQRTS_VAR)
-                xi_max = one - rsub%isr_kinematics%x(em)
-             end select
-             xi = rsub%real_kinematics%xi_tilde * xi_max
-             if (rsub%reg_data%regions(alr)%flst_real%flst(em) == 21) then
-                pdf_type = 2
-             else
-                pdf_type = 1
-             end if
-             sqme_coll = rsub%sub_coll%compute_isr (sregion, &
-                  rsub%real_kinematics%p_born_lab%phs_point(1)%p, &
-                  rsub%sqme_coll_isr(em, pdf_type, sregion%uborn_index), &
-                  mom_times_sqme_spin_c, &
-                  xi, alpha_coupling, alr, em, &
-                  rsub%isr_kinematics%isr_mode)
-          else
-             sqme_coll = rsub%sub_coll%compute_fsr (sregion, &
-                  rsub%real_kinematics%xi_ref_momenta (i_con), &
-                  rsub%real_kinematics%p_born_lab%get_momenta(1), &
-                  rsub%sqme_born(sregion%uborn_index), mom_times_sqme_spin_c, &
-                  xi, alpha_coupling, alr, sregion%double_fsr)
-             if (rsub%sub_coll%use_resonance_mappings) then
-                select type (fks_mapping => rsub%reg_data%fks_mapping)
-                type is (fks_mapping_resonances_t)
-                   pfr = fks_mapping%get_resonance_weight (alr, &
-                         rsub%real_kinematics%p_born_cms%get_momenta(1))
-                end select
-                sqme_coll = sqme_coll * pfr
-             end if
-          end if
-       else
-          sqme_coll = zero
-       end if
+      sqme_coll = zero
+      if (sregion%has_collinear_divergence ()) then
+         xi = rsub%real_kinematics%xi_tilde * rsub%real_kinematics%xi_max(i_phs)
+         if (rsub%sub_coll%use_resonance_mappings) then
+            i_con = rsub%reg_data%alr_to_i_contributor (alr)
+         else
+            i_con = 1
+         end if
+         mom_times_sqme_spin_c = rsub%get_spin_correlation_term (alr, sregion%uborn_index, em)
+         if (em <= rsub%sub_coll%n_in) then
+            select case (rsub%isr_kinematics%isr_mode)
+            case (SQRTS_FIXED)
+               xi_max = rsub%real_kinematics%xi_max(i_phs)
+            case (SQRTS_VAR)
+               xi_max = one - rsub%isr_kinematics%x(em)
+            end select
+            xi = rsub%real_kinematics%xi_tilde * xi_max
+            ! TODO sbrass introduce overall PDF/PDF_SINGLET parameter
+            ! TODO sbrass use is_gluon instead of magic number
+            if (rsub%reg_data%regions(alr)%flst_real%flst(em) == 21) then
+               pdf_type = 2
+            else
+               pdf_type = 1
+            end if
+            if (sregion%nlo_correction_type == "QCD") then
+               call rsub%sub_coll%set_parameters (CA = CA, CF = CF, TR = TR)
+            else if (sregion%nlo_correction_type == "QED") then
+               call rsub%sub_coll%set_parameters (CA = zero, &
+                    CF = sregion%flst_real%charge(em)**2, &
+                    TR = sregion%flst_real%charge(size(sregion%flst_real%flst))**2)
+            end if
+            sqme_coll = rsub%sub_coll%compute_isr (em, sregion%flst_real%flst, &
+                 rsub%real_kinematics%p_born_lab%phs_point(1)%p, &
+                 rsub%sqme_coll_isr(em, pdf_type, sregion%uborn_index), &
+                 mom_times_sqme_spin_c, &
+                 xi, alpha_coupling, rsub%isr_kinematics%isr_mode)
+         else
+            if (sregion%nlo_correction_type == "QCD") then
+               call rsub%sub_coll%set_parameters (CA = CA, CF = CF, TR = TR)
+            else if (sregion%nlo_correction_type == "QED") then
+               call rsub%sub_coll%set_parameters (CA = zero, &
+                    CF = sregion%flst_real%charge(sregion%emitter)**2, &
+                    TR = sregion%flst_real%charge(sregion%emitter)**2)
+            end if
+            sqme_coll = rsub%sub_coll%compute_fsr (sregion%emitter, sregion%flst_real%flst, &
+                 rsub%real_kinematics%xi_ref_momenta (i_con), &
+                 rsub%real_kinematics%p_born_lab%get_momenta(1), &
+                 rsub%sqme_born(sregion%uborn_index), mom_times_sqme_spin_c, &
+                 xi, alpha_coupling, sregion%double_fsr)
+            if (rsub%sub_coll%use_resonance_mappings) then
+               select type (fks_mapping => rsub%reg_data%fks_mapping)
+               type is (fks_mapping_resonances_t)
+                  pfr = fks_mapping%get_resonance_weight (alr, &
+                       rsub%real_kinematics%p_born_cms%get_momenta(1))
+               end select
+               sqme_coll = sqme_coll * pfr
+            end if
+         end if
+      end if
     end associate
   end function real_subtraction_compute_sub_coll
 
@@ -8324,37 +8314,50 @@ to be more consistent with the evaluation of the Born phase space.
 <<real subtraction: real subtraction: TBP>>=
   procedure :: compute_sub_coll_soft => real_subtraction_compute_sub_coll_soft
 <<real subtraction: procedures>>=
-  function real_subtraction_compute_sub_coll_soft (rsub, alr, em, alpha_coupling) &
-         result (sqme_cs)
+  function real_subtraction_compute_sub_coll_soft (rsub, alr, em, i_phs, alpha_coupling) &
+       result (sqme_cs)
     real(default) :: sqme_cs
     class(real_subtraction_t), intent(inout) :: rsub
-    integer, intent(in) :: alr, em
+    integer, intent(in) :: alr, em, i_phs
     real(default), intent(in) :: alpha_coupling
     real(default) :: mom_times_sqme_spin_c
     integer :: i_con
     associate (sregion => rsub%reg_data%regions(alr))
-       if (sregion%has_collinear_divergence ()) then
-          if (rsub%sub_coll%use_resonance_mappings) then
-             i_con = rsub%reg_data%alr_to_i_contributor (alr)
-          else
-             i_con = 1
-          end if
-          mom_times_sqme_spin_c = rsub%get_spin_correlation_term (alr, sregion%uborn_index, em)
-          if (em <= rsub%sub_coll%n_in) then
-             sqme_cs = rsub%sub_coll%compute_isr (sregion, &
-                  rsub%real_kinematics%p_born_lab%phs_point(1)%p, &
-                  rsub%sqme_born(sregion%uborn_index), mom_times_sqme_spin_c, &
-                  zero, alpha_coupling, alr, em, rsub%isr_kinematics%isr_mode)
-          else
-             sqme_cs = rsub%sub_coll%compute_fsr (sregion, &
-                  rsub%real_kinematics%xi_ref_momenta(i_con), &
-                  rsub%real_kinematics%p_born_lab%phs_point(1)%p, &
-                  rsub%sqme_born(sregion%uborn_index), mom_times_sqme_spin_c, &
-                  zero, alpha_coupling, alr, sregion%double_fsr)
-          end if
-       else
-          sqme_cs = zero
-       end if
+      sqme_cs = zero
+      if (sregion%has_collinear_divergence ()) then
+         if (rsub%sub_coll%use_resonance_mappings) then
+            i_con = rsub%reg_data%alr_to_i_contributor (alr)
+         else
+            i_con = 1
+         end if
+         mom_times_sqme_spin_c = rsub%get_spin_correlation_term (alr, sregion%uborn_index, em)
+         if (em <= rsub%sub_coll%n_in) then
+            if (sregion%nlo_correction_type == "QCD") then
+               call rsub%sub_coll%set_parameters (CA = CA, CF = CF, TR = TR)
+            else if (sregion%nlo_correction_type == "QED") then
+               call rsub%sub_coll%set_parameters (CA = zero, &
+                    CF = sregion%flst_real%charge(em)**2, &
+                    TR = sregion%flst_real%charge(size(sregion%flst_real%flst))**2)
+            end if
+            sqme_cs = rsub%sub_coll%compute_isr (em, sregion%flst_real%flst, &
+                 rsub%real_kinematics%p_born_lab%phs_point(1)%p, &
+                 rsub%sqme_born(sregion%uborn_index), mom_times_sqme_spin_c, &
+                 zero, alpha_coupling, rsub%isr_kinematics%isr_mode)
+         else
+            if (sregion%nlo_correction_type == "QCD") then
+               call rsub%sub_coll%set_parameters (CA = CA, CF = CF, TR = TR)
+            else if (sregion%nlo_correction_type == "QED") then
+               call rsub%sub_coll%set_parameters (CA = zero, &
+                    CF = sregion%flst_real%charge(sregion%emitter)**2, &
+                    TR = sregion%flst_real%charge(sregion%emitter)**2)
+            end if
+            sqme_cs = rsub%sub_coll%compute_fsr (sregion%emitter, sregion%flst_real%flst, &
+                 rsub%real_kinematics%xi_ref_momenta(i_con), &
+                 rsub%real_kinematics%p_born_lab%phs_point(1)%p, &
+                 rsub%sqme_born(sregion%uborn_index), mom_times_sqme_spin_c, &
+                 zero, alpha_coupling, sregion%double_fsr)
+         end if
+      end if
     end associate
   end function real_subtraction_compute_sub_coll_soft
 
@@ -8554,6 +8557,152 @@ extracted higher up.
 
 @ %def real_partition_fixed_order_get_f
 @
+\subsection{Unit tests}
+Test module, followed by the corresponding implementation module.
+<<[[real_subtraction_ut.f90]]>>=
+<<File header>>
+
+module real_subtraction_ut
+  use unit_tests
+  use real_subtraction_uti
+
+<<Standard module head>>
+
+<<Real subtraction: public test>>
+
+contains
+
+<<Real subtraction: test driver>>
+
+end module real_subtraction_ut
+@ %def real_subtraction_ut
+@
+<<[[real_subtraction_uti.f90]]>>=
+<<File header>>
+
+module real_subtraction_uti
+<<Use kinds>>
+
+  use physics_defs
+  use lorentz
+  use numeric_utils
+  use real_subtraction
+
+<<Standard module head>>
+
+<<Real subtraction: test declarations>>
+
+contains
+
+<<Real subtraction: tests>>
+
+end module real_subtraction_uti
+@ %def real_subtraction_ut
+@ API: driver for the unit tests below.
+<<Real subtraction: public test>>=
+  public :: real_subtraction_test
+<<Real subtraction: test driver>>=
+  subroutine real_subtraction_test (u, results)
+    integer, intent(in) :: u
+    type(test_results_t), intent(inout) :: results
+  <<Real subtraction: execute tests>>
+  end subroutine real_subtraction_test
+
+@ %def real_subtraction_test
+@ Test the final-state collinear subtraction.
+<<Real subtraction: execute tests>>=
+  call test (real_subtraction_1, "real_subtraction_1", &
+       "final-state collinear subtraction", &
+       u, results)
+<<Real subtraction: test declarations>>=
+  public :: real_subtraction_1
+<<Real subtraction: tests>>=
+  subroutine real_subtraction_1 (u)
+    integer, intent(in) :: u
+
+    type(coll_subtraction_t) :: coll_sub
+    real(default) :: sqme_coll
+    type(vector4_t) :: p_res
+    type(vector4_t), dimension(5) :: p_born
+    real(default), dimension(4) :: k_perp
+    real(default), dimension(4,4) :: b_munu
+    integer :: mu, nu
+    real(default) :: born, born_c
+    integer, dimension(6) :: flst
+
+    p_born(1)%p = [500, 0, 0, 500]
+    p_born(2)%p = [500, 0, 0, -500]
+    p_born(3)%p = [3.7755E+02, 2.2716E+02, -95.4172, 2.8608E+02]
+    p_born(4)%p = [4.9529E+02, -2.739E+02, 84.8535, -4.0385E+02]
+    p_born(5)%p = [1.2715E+02, 46.7375, 10.5637, 1.1778E+02]
+    p_res = p_born(1) + p_born(2)
+    flst = [11, -11 , -2, 2, -2, 2]
+
+    b_munu(1, :) = [0., 0., 0., 0.]
+    b_munu(2, :) = [0., 1., 1., 1.]
+    b_munu(3, :) = [0., 1., 1., 1.]
+    b_munu(4, :) = [0., 1., 1., 1.]
+
+    k_perp = real_subtraction_compute_k_perp_fsr (p = p_born(5), phi = 0.5_default)
+    born = - b_munu(1, 1) + b_munu(2, 2) + b_munu(3, 3) + b_munu(4, 4)
+    born_c = 0.
+    do mu = 1, 4
+       do nu = 1, 4
+          born_c = born_c + k_perp(mu) * k_perp(nu) * b_munu(mu, nu)
+       end do
+    end do
+
+    write (u, "(A)") "* Test output: real_subtraction_1"
+    write (u, "(A)") "*   Purpose: final-state collinear subtraction"
+    write (u, "(A)")
+
+    write (u, "(A, L1)") "* vanishing scalar-product of 3-momenta k_perp and p_born(emitter): ", &
+         nearly_equal (dot_product (p_born(5)%p(1:3), k_perp(2:4)), 0._default)
+
+    call coll_sub%init (n_alr = 1, n_in = 2)
+    call coll_sub%set_parameters (CA, CF, TR)
+
+    write (u, "(A)")
+    write (u, "(A)") "* g -> qq splitting"
+    write (u, "(A)")
+
+    sqme_coll = coll_sub%compute_fsr(5, flst, p_res, p_born, &
+         born, born_c, 0.5_default, 0.25_default, .false.)
+
+    write (u, "(A,F15.12)") "ME: ", sqme_coll
+
+    write (u, "(A)")
+    write (u, "(A)") "* g -> gg splitting"
+    write (u, "(A)")
+
+    b_munu(1, :) = [0., 0., 0., 0.]
+    b_munu(2, :) = [0., 0., 0., 1.]
+    b_munu(3, :) = [0., 0., 1., 1.]
+    b_munu(4, :) = [0., 0., 1., 1.]
+
+    k_perp = real_subtraction_compute_k_perp_fsr (p = p_born(5), phi = 0.5_default)
+    born = - b_munu(1, 1) + b_munu(2, 2) + b_munu(3, 3) + b_munu(4, 4)
+    born_c = 0.
+    do mu = 1, 4
+       do nu = 1, 4
+          born_c = born_c + k_perp(mu) * k_perp(nu) * b_munu(mu, nu)
+       end do
+    end do
+
+    flst = [11, -11, 2, -2, 21, 21]
+    sqme_coll = coll_sub%compute_fsr(5, flst, p_res, p_born, &
+         born, born_c, 0.5_default, 0.25_default, .true.)
+
+    write (u, "(A,F15.12)") "ME: ", sqme_coll
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: real_subtraction_1"
+    write (u, "(A)")
+  end subroutine real_subtraction_1
+
+@ %def real_subtraction_1
+@
+
 \clearpage
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Combining the FKS Pieces}
@@ -8611,6 +8760,7 @@ end module nlo_data
     real(default) :: fks_dij_exp2
     real(default) :: xi_min
     real(default) :: y_max
+    real(default) :: xi_cut, delta_zero, delta_i
     type(string_t), dimension(:), allocatable :: excluded_resonances
     integer :: n_f
   contains
@@ -8639,34 +8789,35 @@ end module nlo_data
     end select
     write (u,'(1x,A,ES4.3,ES4.3)') 'd_ij exponentials: ', &
        template%fks_dij_exp1, template%fks_dij_exp2
+    write (u, '(1x,A,ES4.3,ES4.3)') 'xi_cut: ', &
+       template%xi_cut
+    write (u, '(1x,A,ES4.3,ES4.3)') 'delta_zero: ', &
+       template%delta_zero
+    write (u, '(1x,A,ES4.3,ES4.3)') 'delta_i: ', &
+         template%delta_i
   end subroutine fks_template_write
 
 @ %def fks_template_write
-@
+@ Set FKS parameters. $\xi_{\text{cut}}, \delta_0$ and $\delta_{\mathrm{I}}$ steer the ratio of the integrated and real subtraction.
 <<nlo data: fks template: TBP>>=
-  procedure :: set_dij_exp => fks_template_set_dij_exp
+  procedure :: set_parameters => fks_template_set_parameters
 <<nlo data: procedures>>=
-  subroutine fks_template_set_dij_exp (template, exp1, exp2)
+  subroutine fks_template_set_parameters (template, exp1, exp2, xi_min, &
+    y_max, xi_cut, delta_zero, delta_i)
     class(fks_template_t), intent(inout) :: template
     real(default), intent(in) :: exp1, exp2
+    real(default), intent(in) :: xi_min, y_max, &
+         xi_cut, delta_zero, delta_i
     template%fks_dij_exp1 = exp1
     template%fks_dij_exp2 = exp2
-  end subroutine fks_template_set_dij_exp
-
-@ %def fks_template_set_dij_exp
-@
-<<nlo data: fks template: TBP>>=
-  procedure :: set_xi_and_y_bounds => fks_template_set_xi_and_y_bounds
-<<nlo data: procedures>>=
-  subroutine fks_template_set_xi_and_y_bounds (template, xi_min, y_max)
-    class(fks_template_t), intent(inout) :: template
-    real(default), intent(in) :: xi_min, y_max
     template%xi_min = xi_min
     template%y_max = y_max
-  end subroutine fks_template_set_xi_and_y_bounds
+    template%xi_cut = xi_cut
+    template%delta_zero = delta_zero
+    template%delta_i = delta_i
+  end subroutine fks_template_set_parameters
 
-@ %def fks_template_set_xi_and_y_bounds
-@
+@ %def fks_template_set_parameters
 <<nlo data: fks template: TBP>>=
   procedure :: set_mapping_type => fks_template_set_mapping_type
 <<nlo data: procedures>>=
@@ -8866,9 +9017,14 @@ procedure :: init => nlo_settings_init
 \clearpage
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Contribution of divergencies due to PDF Evolution}
-The origin of these contributions is a bit tricky to understand, because we cannot understand the
-initial-state real collinear contributions without also taking into account the evolution
-of parton density functions at $\mathcal{O}(\alpha_s)$. The NLO PDF evolution is given by
+
+\begin{itemize}
+\item arXiv:hep-ph/9512328, (2.1)-(2.5), (4.29)-(4.53)
+\item arXiv:0709.2092, (2.102)-(2.106)
+\end{itemize}
+
+The parton distrubition densities have to be evaluated at NLO, too.
+The NLO PDF evolution is given by
 \begin{equation}
   \label{eqn:pdf_nlo}
   f (\bar{x}) = \int_0^1 \int_0^1 dx dz f(x) \Gamma(z) \delta (\bar{x} - x z),
@@ -8878,7 +9034,8 @@ where $\Gamma$ are the DGLAP evolution kernels for an $a \to d$ splitting,
   \label{eqn:dglap}
   \Gamma_a^{(d)} = \delta_{ad}\delta(1-x) - \frac{\alpha_s}{2\pi} \left(\frac{1}{\epsilon} P_{ad}(x,0) - K_{ad}(x)\right) + \mathcal{O}(\alpha_s).
 \end{equation}
-$K_{ad}$ is a renormalization scheme matching factor, which is exactly zero in $\bar{MS}$. Let the leading-order hadronic cross section be given by
+$K_{ad}$ is a renormalization scheme matching factor, which is exactly zero in $\bar{MS}$. 
+Let the leading-order hadronic cross section be given by
 \begin{equation}
   \label{eqn:xsec_hadro_lo}
   d\sigma^{(0)}(s) = \int dx_\oplus dx_\ominus f_\oplus (x_\oplus) f_\ominus (x_\ominus) d\tilde{\sigma}^{(0)} (x_\oplus x_\ominus s),
@@ -8901,13 +9058,13 @@ $d\hat{\sigma}$ is called the subtracted partonic cross section. Expanding in $\
 Let us now turn the soft-subtracted real part of the cross section. For ease of notation, it is constrained to one singular region,
 \begin{align*}
   \label{eqn:R-in}
-  d\sigma^{(in)}_\alpha &= \left[\left(\frac{1}{\xi}\right)_+ - 2\epsilon\left(\frac{\log \xi}{\xi}\right)_+\right] (1-y^2)\xi^2 \mathcal{R}_\alpha \mathcal{S}_\alpha \\
+  d\sigma^{(in)}_\alpha &= \left[\left(\frac{1}{\xi}\right)_{c} - 2\epsilon\left(\frac{\log \xi}{\xi}\right)_{c}\right] (1-y^2)\xi^2 \mathcal{R}_\alpha \mathcal{S}_\alpha \\
                  &\times  \frac{1}{2(2\pi)^{3-2\epsilon}} \left(\frac{\sqrt{s}}{2}\right)^{2-2\epsilon} \left( 1 - y^2\right)^{-1-\epsilon} d\phi d\xi dy d\Omega^{2-2\epsilon},
 \end{align*}
 where we regularize collinear divergencies using the identity
 \begin{equation*}
   \left (1 - y^2 \right)^{-1-\epsilon} = -\frac{2^{-\epsilon}}{\epsilon} \left (\delta(1-y) + \delta(1+y)\right)
-     + \underbrace{\frac{1}{2} \left[ \left (\frac {1}{1-y}\right)_+ + \left (\frac{1}{1+y}\right)_+ \right]}_{\mathcal{P}(y)}.
+     + \underbrace{\frac{1}{2} \left[ \left (\frac {1}{1-y}\right)_{c} + \left (\frac{1}{1+y}\right)_{c} \right]}_{\mathcal{P}(y)}.
 \end{equation*}
 This enables us to split the cross section into a finite and a singular part. The latter can further be separated into a contribution of the incoming and of the outgoing particles,
 \begin{equation*}
@@ -8916,14 +9073,14 @@ This enables us to split the cross section into a finite and a singular part. Th
 They are given by
 \begin{align}
   \label{eqn:sigma-f}
-  d\sigma^{(in,f)}_\alpha = & \mathcal{P}(y) \left[\left(\frac{1}{\xi}\right)_+ - 2\epsilon \left(\frac{\log\xi}{\xi}\right)_+\right] \frac{1}{2(2\pi)^{3-2\epsilon}}
+  d\sigma^{(in,f)}_\alpha = & \mathcal{P}(y) \left[\left(\frac{1}{\xi}\right)_{c} - 2\epsilon \left(\frac{\log\xi}{\xi}\right)_{c}\right] \frac{1}{2(2\pi)^{3-2\epsilon}}
      \left(\frac{\sqrt{s}}{2}\right)^{2-2\epsilon} \\
      & \times (1-y^2)\xi^2 \mathcal{R}_\alpha \mathcal{S}_\alpha d\phi d\xi dy d\Omega^{2-2\epsilon}
 \end{align}
 and
 \begin{align}
   \label{eqn:sigma-pm}
-  d\sigma^{(in,\pm)}_\alpha &= -\frac{2^{-\epsilon}}{\epsilon} \delta (1 \mp y) \left[ \left( \frac{1}{\xi}\right)_+ - 2\epsilon \left(\frac{\log\xi}{\xi}\right)_+\right] \\
+  d\sigma^{(in,\pm)}_\alpha &= -\frac{2^{-\epsilon}}{\epsilon} \delta (1 \mp y) \left[ \left( \frac{1}{\xi}\right)_{c} - 2\epsilon \left(\frac{\log\xi}{\xi}\right)_{c}\right] \\
                     & \times \frac{1}{2(2\pi)^{3-2\epsilon}} \left( \frac{\sqrt{s}}{2}\right)^{2-2\epsilon} (1-y^2)\xi^2 \mathcal{R}_\alpha \mathcal{S}_\alpha d\phi d\xi dy d\Omega^{2-2\epsilon}.
 \end{align}
 Equation \ref{eqn:sigma-f} is the contribution to the real cross section which is computed in [[evaluate_region_isr]]. It is regularized both in the soft and collinear limit via the plus distributions.
@@ -8959,9 +9116,10 @@ first derivative,
 This finally gives us the equation for the collinear remnant. Note that there is still one soft $1/\epsilon$-pole, which cancels out with the corresponding expression in the soft-virtual terms.
 \begin{align}
   d\hat{\sigma}^{(in,+)} &= \frac{\alpha_s}{2\pi} \frac{1}{\epsilon} \gamma(a) \mathcal{R}_\alpha \mathcal{S}_\alpha \\
-                         &+ \frac{\alpha_s}{2\pi} \sum_d \left\lbrace (1-z) P_{da}^<(z,0)\left[\left(\frac{1}{1-z}\right)_+ \log\frac{s}{\mu^2} + 2 \left(\frac{\log(1-z)}{1-z}\right)_+\right] \right .\\
-                         &\left . -(1-z)\frac{\partial P_{da}^<(z,\epsilon)}{\partial \epsilon} \left(\frac{1}{1-z}\right)_+ - K_{da}(z)\right\rbrace \mathcal{R}_\alpha \mathcal{S}_\alpha
+                         &+ \frac{\alpha_s}{2\pi} \sum_d \left\lbrace (1-z) P_{da}^<(z,0)\left[\left(\frac{1}{1-z}\right)_{c} \log\frac{s\delta_{\mathrm{I}}}{\mu^2} + 2 \left(\frac{\log(1-z)}{1-z}\right)_{c}\right] \right .\\
+                         &\left . -(1-z)\frac{\partial P_{da}^<(z,\epsilon)}{\partial \epsilon} \left(\frac{1}{1-z}\right)_{c} - K_{da}(z)\right\rbrace \mathcal{R}_\alpha \mathcal{S}_\alpha
 \end{align}
+
 
 <<[[dglap_remnant.f90]]>>=
 <<File header>>
@@ -8975,7 +9133,6 @@ module dglap_remnant
   use constants
   use physics_defs
   use pdg_arrays
-  use sf_base, only: rescaling_function_t
   use phs_fks, only: isr_kinematics_t
 
   use nlo_data
@@ -8995,88 +9152,18 @@ end module dglap_remnant
 @ %def module dglap_remnant
 @
 <<dglap remnant: public>>=
-  public :: rescale_dglap_t
-<<dglap remnant: types>>=
-  type, extends(rescaling_function_t) :: rescale_dglap_t
-     real(default), dimension(:), allocatable :: z
-   contains
-   <<dglap remnant: rescale dglap: TBP>>
-  end type rescale_dglap_t
-
-@ %def rescale_dglap_t
-@ Allocate [[sf_indices]] for 6 Quarks (and 6 Antiquarks) and a gluon,
-respectively for each emitter. Additionally, add gluon indices.
-
-We add terms in four steps for each quark (and gluon), for two emitters, and two gluon
-contributions.
-<<dglap remnant: rescale dglap: TBP>>=
-  procedure :: init_indices => rescale_dglap_init_indices
-<<dglap remnant: procedures>>=
-  subroutine rescale_dglap_init_indices (func)
-    class(rescale_dglap_t), intent(inout) :: func
-    integer :: i
-    call msg_debug2 (D_BEAMS, "recale_dglap_init_indices")
-    allocate (func%sf_indices(3, 13))
-    allocate (func%sf_indices_gluon(2, 13))
-    func%sf_indices(1,:) = [(i, i = 1, 13)]
-    func%sf_indices(2,:) = [(13 + 4 * i - 3, i = 1, 13)]
-    func%sf_indices(3,:) = [(13 + 4 * i - 2, i = 1, 13)]
-    func%sf_indices_gluon(1,:) = [(13 + 4 * i - 1, i = 1 ,13)]
-    func%sf_indices_gluon(2,:) = [(13 + 4 * i, i = 1 ,13)]
-    if (debug2_active (D_BEAMS)) then
-       print *, "Beam 1:"
-       print *, " quark indices: ", func%sf_indices(2, :)
-       print *, " gluon indices: ", func%sf_indices_gluon(1, :)
-       print *, "Beam 2:"
-       print *, " quark indices: ", func%sf_indices(3, :)
-       print *, " gluon indices: ", func%sf_indices_gluon(2, :)
-    end if
-  end subroutine rescale_dglap_init_indices
-
-@ %def rescale_dglap_init_indices
-@
-<<dglap remnant: rescale dglap: TBP>>=
-  procedure :: apply => rescale_dglap_apply
-<<dglap remnant: procedures>>=
-  subroutine rescale_dglap_apply (func, x)
-    class(rescale_dglap_t), intent(in) :: func
-    real(default), intent(inout) :: x
-    if (debug2_active (D_BEAMS))  then
-       print *, "Rescaling function - DGLAP:"
-       print *, "Input: ", x
-       print *, "Beam index: ", func%i_beam
-       print *, "z: ", func%z
-    end if
-    x = x / func%z(func%i_beam)
-    if (debug2_active (D_BEAMS)) print *, "scaled x: ", x
-  end subroutine rescale_dglap_apply
-
-@ %def rescale_dglap_apply
-@
-<<dglap remnant: rescale dglap: TBP>>=
-  procedure :: set => rescale_dglap_set
-<<dglap remnant: procedures>>=
-  subroutine rescale_dglap_set (func, z)
-    class(rescale_dglap_t), intent(inout) :: func
-    real(default), dimension(:), intent(in) :: z
-    ! allocate-on-assginment
-    func%z = z
-  end subroutine rescale_dglap_set
-
-@  %def rescale_dglap_set
-@
-<<dglap remnant: public>>=
   public :: dglap_remnant_t
 <<dglap remnant: types>>=
   type :: dglap_remnant_t
-    type(isr_kinematics_t), pointer :: isr_kinematics => null ()
-    integer, dimension(:), allocatable :: light_quark_flv
-    integer, dimension(:,:), allocatable :: flv_in
-    real(default), dimension(:), allocatable :: sqme_born
-    real(default), dimension(:,:,:), allocatable :: sqme_coll_isr
-    integer :: n_flv
-  contains
-  <<dglap remnant: dglap remnant: TBP>>
+     type(nlo_settings_t), pointer :: settings => null ()
+     type(isr_kinematics_t), pointer :: isr_kinematics => null ()
+     integer, dimension(:), allocatable :: light_quark_flv
+     integer, dimension(:,:), allocatable :: flv_in
+     real(default), dimension(:), allocatable :: sqme_born
+     real(default), dimension(:,:,:), allocatable :: sqme_coll_isr
+     integer :: n_flv
+   contains
+   <<dglap remnant: dglap remnant: TBP>>
   end type dglap_remnant_t
 
 @ %def dglap_remnant_t
@@ -9084,20 +9171,21 @@ contributions.
 <<dglap remnant: dglap remnant: TBP>>=
   procedure :: init => dglap_remnant_init
 <<dglap remnant: procedures>>=
-  subroutine dglap_remnant_init (dglap, n_flv_born, isr_kinematics, flv, n_alr)
+  subroutine dglap_remnant_init (dglap, settings, n_flv_born, isr_kinematics, flv, n_alr)
     class(dglap_remnant_t), intent(inout) :: dglap
+    type(nlo_settings_t), intent(in), target :: settings
     integer, intent(in) :: n_flv_born
     type(isr_kinematics_t), intent(in), target :: isr_kinematics
     integer, dimension(:,:), intent(in) :: flv
     integer, intent(in) :: n_alr
     integer :: i, j, n_quarks
-    logical, dimension(-6:6) :: quark_checked = .false.
-
+    logical, dimension(-6:6) :: quark_checked
+    dglap%settings => settings
+    quark_checked = .false.
     allocate (dglap%sqme_born(n_flv_born))
     dglap%sqme_born = zero
     allocate (dglap%sqme_coll_isr(2, 2, n_flv_born))
     dglap%sqme_coll_isr = zero
-
     dglap%isr_kinematics => isr_kinematics
     dglap%n_flv = size (flv, dim=2)
     allocate (dglap%flv_in (2, dglap%n_flv))
@@ -9122,33 +9210,30 @@ contributions.
 @ %def dglap_remnant_init
 @
 <<dglap remnant: dglap remnant: TBP>>=
-  procedure :: get_summed_quark_sqmes => dglap_remnant_get_summed_quark_sqmes
+  procedure :: get_pdf_singlet => dglap_remnant_get_pdf_singlet
 <<dglap remnant: procedures>>=
-  function dglap_remnant_get_summed_quark_sqmes (dglap, emitter) result (sum_sqme)
+  function dglap_remnant_get_pdf_singlet (dglap, emitter) result (sum_sqme)
     real(default) :: sum_sqme
     class(dglap_remnant_t), intent(in) :: dglap
     integer, intent(in) :: emitter
     integer :: i_flv
+    integer, parameter :: PDF_SINGLET = 2
     sum_sqme = zero
     do i_flv = 1, size (dglap%sqme_coll_isr, dim=3)
        if (any (dglap%flv_in(emitter, i_flv) == dglap%light_quark_flv)) &
-            sum_sqme = sum_sqme + dglap%sqme_coll_isr (emitter, 1, i_flv)
+            sum_sqme = sum_sqme + dglap%sqme_coll_isr (emitter, PDF_SINGLET, i_flv)
     end do
-  end function dglap_remnant_get_summed_quark_sqmes
+  end function dglap_remnant_get_pdf_singlet
 
 @ %def dglap_remnant_get_summed_quark_sqmes
 @ Evaluates formula (...). Note that, as also is the case for the real subtraction,
 we have to take into account an additional term, occuring because the integral the
 plus distribution is evaluated over is not constrained on the interval $[0,1]$.
-Explicitly, this means
-\begin{equation}
-  \int_{\bar{x}_\oplus}^1 dz \left( \frac{1}{1-z} \right)_+ = \log(1-\bar{x}_\oplus)f(1) + \int_{\bar{x}_\oplus}^1 \frac{f(z) - f(1)}{1-z},
-\end{equation}
-and
-\begin{equation}
-  \int_{\bar{x}_\oplus}^1 dz \left(\frac{\log(1-z)}{1-z}\right)_+ f(z) = \frac{1}{2}\log^2(1-\bar{x}_\oplus) f(1)
-   + \int_{\bar{x}_\oplus}^1 \frac{\log(1-z)[f(z) - f(1)]}{1-z},
-\end{equation}
+Explicitly, this means (see JHEP 06(2010)043, (4.11)-(4.12))
+\begin{align}
+  \int_{\bar{x}_\oplus}^1 dz \left( \frac{1}{1-z} \right)_{\xi_{\text{cut}}} & = \log \frac{1-\bar{x}_\oplus}{\xi_{\text{cut}}} f(1) + \int_{\bar{x}_\oplus}^1 \frac{f(z) - f(1)}{1-z}, \\
+  \int_{\bar{x}_\oplus}^1 dz \left(\frac{\log(1-z)}{1-z}\right)_{\xi_{\text{cut}}} f(z) & = \frac{1}{2}\left( \log^2(1-\bar{x}_\oplus) - log^2 (\xi_{\text{cut}}) \right)f(1) + \int_{\bar{x}_\oplus}^1 \frac{\log(1-z)[f(z) - f(1)]}{1-z},
+\end{align}
 and the same of course for $\bar{x}_\ominus$. These two terms are stored in the [[plus_dist_remnant]] variable below.
 <<dglap remnant: dglap remnant: TBP>>=
   procedure :: evaluate => dglap_remnant_evaluate
@@ -9164,152 +9249,119 @@ and the same of course for $\bar{x}_\ominus$. These two terms are stored in the 
     real(default) :: sb, xb, onemz
     real(default) :: fac_scale2, jac
     real(default) :: sqme_scaled
-
+    integer, parameter :: PDF = 1, PDF_SINGLET = 2
     sb = dglap%isr_kinematics%sqrts_born**2
     fac_scale2 = dglap%isr_kinematics%fac_scale**2
-
     do i_flv = 1, dglap%n_flv
        if (separate_alrs) then
           ii_flv = i_flv
        else
           ii_flv = 1
        end if
-
        tmp = zero
        do emitter = 1, 2
-          associate (z => dglap%isr_kinematics%z(emitter))
-             jac = dglap%isr_kinematics%jacobian(emitter)
-             onemz = one - z
-             factor = log(sb / z / fac_scale2) / onemz + two * log(onemz) / onemz
-             factor_soft = log(sb / fac_scale2) / onemz + two * log(onemz) / onemz
-
-             xb = dglap%isr_kinematics%x(emitter)
-             plus_dist_remnant = log(one - xb) * log(sb / fac_scale2) + log(one - xb)**2
-
-             if (is_gluon(dglap%flv_in(emitter, i_flv))) then
-                sqme_scaled = dglap%sqme_coll_isr(emitter, 2, i_flv)
-                tmp(emitter) = p_hat_gg(z) * factor / z * sqme_scaled * jac &
-                     - p_hat_gg(one) * factor_soft * dglap%sqme_born(i_flv) * jac &
-                     + p_hat_gg(one) * plus_dist_remnant * dglap%sqme_born(i_flv)
-
-                tmp(emitter) = tmp(emitter) + &
-                     (p_hat_qg(z) * factor - p_derived_qg(z)) / z * jac * &
-                     dglap%get_summed_quark_sqmes (emitter)
-             else if (is_quark(dglap%flv_in(emitter, i_flv))) then
-                sqme_scaled = dglap%sqme_coll_isr(emitter, 1, i_flv)
-                tmp(emitter) = p_hat_qq(z) * factor / z * sqme_scaled * jac &
-                     - p_derived_qq(z) / z * sqme_scaled * jac &
-                     - p_hat_qq(one) * factor_soft * dglap%sqme_born(i_flv) * jac &
-                     + p_hat_qq(one) * plus_dist_remnant * dglap%sqme_born(i_flv)
-
-                sqme_scaled = dglap%sqme_coll_isr(emitter, 2, i_flv)
-                tmp(emitter) = tmp(emitter) + &
-                     (p_hat_gq(z) * factor - p_derived_gq(z)) / z * sqme_scaled * jac
-
-             end if
+          associate (z => dglap%isr_kinematics%z(emitter), template => dglap%settings%fks_template)
+            jac = dglap%isr_kinematics%jacobian(emitter)
+            onemz = one - z
+            factor = log (sb * template%delta_i / z / fac_scale2) / onemz + two * log (onemz) / onemz
+            factor_soft = log (sb * template%delta_i / fac_scale2) / onemz + two * log (onemz) / onemz
+            xb = dglap%isr_kinematics%x(emitter)
+            plus_dist_remnant = log ((one - xb) / template%xi_cut) * log (sb * template%delta_i / fac_scale2) &
+                 + (log (one - xb)**2 - log (template%xi_cut)**2)
+            if (is_gluon(dglap%flv_in(emitter, i_flv))) then
+               sqme_scaled = dglap%sqme_coll_isr(emitter, PDF, i_flv)
+               tmp(emitter) = p_hat_gg(z) * factor / z * sqme_scaled * jac &
+                    - p_hat_gg(one) * factor_soft * dglap%sqme_born(i_flv) * jac &
+                    + p_hat_gg(one) * plus_dist_remnant * dglap%sqme_born(i_flv)
+               tmp(emitter) = tmp(emitter) + &
+                    (p_hat_qg(z) * factor - p_derived_qg(z)) / z * jac * &
+                    dglap%get_pdf_singlet (emitter)
+            else if (is_quark(dglap%flv_in(emitter, i_flv))) then
+               sqme_scaled = dglap%sqme_coll_isr(emitter, PDF, i_flv)
+               tmp(emitter) = p_hat_qq(z) * factor / z * sqme_scaled * jac &
+                    - p_derived_qq(z) / z * sqme_scaled * jac &
+                    - p_hat_qq(one) * factor_soft * dglap%sqme_born(i_flv) * jac &
+                    + p_hat_qq(one) * plus_dist_remnant * dglap%sqme_born(i_flv)
+               sqme_scaled = dglap%sqme_coll_isr(emitter, PDF_SINGLET, i_flv)
+               tmp(emitter) = tmp(emitter) + &
+                    (p_hat_gq(z) * factor - p_derived_gq(z)) / z * sqme_scaled * jac
+            end if
           end associate
        end do
        sqme_dglap(ii_flv) = sqme_dglap(ii_flv) + alpha_s / twopi * (tmp(1) + tmp(2))
     end do
+  contains
+  <<dglap remnant: dglap remnant evaluate: procedures>>
   end subroutine dglap_remnant_evaluate
 
 @ %def dglap_remnant_evaluate
-@
-\begin{equation}
-    \hat{P}^{gg}(z) = 2C_A \left[z + \frac{(1-z)^2}{z} + z(1-z)^2\right]
-\end{equation}
-<<dglap remnant: procedures>>=
+@ We introduce $\hat{P}(z, \epsilon) = (1 - z) P(z, \epsilon)$ and have
+\begin{align}
+  \hat{P}^{gg}(z) & = 2C_A \left[z + \frac{(1-z)^2}{z} + z(1-z)^2\right], \\
+  \hat{P}^{qg}(z) & = C_F (1-z) \frac{1 + (1-z)^2}{z}, \\
+  \hat{P}^{gq}(z) & = T_F (1 - z - 2z(1-z)^2), \\
+  \hat{P}^{qq}(z) & = C_F (1 + z^2).
+\end{align}
+<<dglap remnant: dglap remnant evaluate: procedures>>=
   function p_hat_gg (z)
     real(default) :: p_hat_gg
   <<p variables>>
     p_hat_gg = two * CA * (z + onemz**2 / z + z * onemz**2)
   end function p_hat_gg
 
-@ %def p_hat_gg
-@
-\begin{equation}
-  \hat{P}^{qg}(z) = C_F (1-z) \frac{1 + (1-z)^2}{z}
-\end{equation}
-<<dglap remnant: procedures>>=
   function p_hat_qg (z)
     real(default) :: p_hat_qg
   <<p variables>>
     p_hat_qg = CF * onemz / z * (one + onemz**2)
   end function p_hat_qg
 
-@ %def p_hat_qg
-@
-\begin{equation}
-  \hat{P}^{gq}(z) = T_F (1 - z - 2z(1-z)^2)
-\end{equation}
-<<dglap remnant: procedures>>=
   function p_hat_gq (z)
     real(default) :: p_hat_gq
   <<p variables>>
     p_hat_gq = TR * (onemz - two * z * onemz**2)
   end function p_hat_gq
 
-@ %def p_hat_gq
-@
-\begin{equation}
-  \hat{P}^{qq}(z) = C_F (1 + z^2)
-\end{equation}
-<<dglap remnant: procedures>>=
   function p_hat_qq (z)
     real(default) :: p_hat_qq
     real(default), intent(in) :: z
     p_hat_qq = CF * (one + z**2)
   end function p_hat_qq
 
-@ %def p_hat_qq
+@ %def p_hat_qq, p_hat_gq, p_hat_qg, p_hat_gg
 @
-\begin{equation}
-  \frac{\partial P^{gg}(z,\epsilon)}{\partial \epsilon}|_{\epsilon = 0} = 0
-\end{equation}
-<<dglap remnant: procedures>>=
+\begin{align}
+  \frac{\partial P^{gg}(z,\epsilon)}{\partial \epsilon}|_{\epsilon = 0} & = 0, \\
+  \frac{\partial P^{qg}(z,\epsilon)}{\partial \epsilon}|_{\epsilon = 0} & = -C_F z, \\
+  \frac{\partial P^{gq}(z,\epsilon)}{\partial \epsilon}|_{\epsilon = 0} & = -
+2 T_F z (1-z), \\
+  \frac{\partial P^{gq}(z,\epsilon)}{\partial \epsilon}|_{\epsilon = 0} & = -C_F (1-z).\\
+\end{align}
+<<dglap remnant: dglap remnant evaluate: procedures>>=
   function p_derived_gg (z)
     real(default) :: p_derived_gg
     real(default), intent(in) :: z
     p_derived_gg = zero
   end function p_derived_gg
 
-@ %def p_derived_gg
-@
-\begin{equation}
-  \frac{\partial P^{qg}(z,\epsilon)}{\partial \epsilon}|_{\epsilon = 0} = -C_F z
-\end{equation}
-<<dglap remnant: procedures>>=
   function p_derived_qg (z)
     real(default) :: p_derived_qg
     real(default), intent(in) :: z
     p_derived_qg = -CF * z
   end function p_derived_qg
 
-@ %def p_derived_qg
-@
-\begin{equation}
-  \frac{\partial P^{gq}(z,\epsilon)}{\partial \epsilon}|_{\epsilon = 0} = - 2 T_F z (1-z)
-\end{equation}
-<<dglap remnant: procedures>>=
   function p_derived_gq (z)
     real(default) :: p_derived_gq
   <<p variables>>
     p_derived_gq = -two * TR * z * onemz
   end function p_derived_gq
 
-@ %def p_derived_gq
-@
-\begin{equation}
-   \frac{\partial P^{gq}(z,\epsilon)}{\partial \epsilon}|_{\epsilon = 0} = -C_F (1-z)
-\end{equation}
-<<dglap remnant: procedures>>=
   function p_derived_qq (z)
     real(default) :: p_derived_qq
   <<p variables>>
     p_derived_qq = -CF * onemz
   end function p_derived_qq
 
-@ %def p_derived_qq
+@ %def p_derived_gg, p_derived_qg, p_derived_gq, p_derived_qq
 @
 <<p variables>>=
   real(default), intent(in) :: z
@@ -9330,6 +9382,171 @@ and the same of course for $\bar{x}_\ominus$. These two terms are stored in the 
   end subroutine dglap_remnant_final
 
 @ %def dglap_remnant_final
+@
+\subsection{Rescaling function}
+
+NLO applications require that the beam energy fractions
+can be recomputed flexibly for different components of
+the calculation, e.g. in the collinear subtraction. To
+deal with this, we use a rescaling function which is given
+to [[sf_int_apply]] as an optional argument to use a different
+set of [[x]] values.
+
+<<[[isr_collinear.f90]]>>=
+<<File header>>
+
+module isr_collinear
+
+<<Use kinds with double>>
+<<Use strings>>
+  use diagnostics
+  use constants, only: one, two
+  use physics_defs, only: n_beam_structure_int
+  use sf_base, only: sf_rescale_t
+
+<<Standard module head>>
+
+<<isr collinear: public>>
+
+<<isr collinear: types>>
+
+contains
+
+<<isr collinear: procedures>>
+
+end module isr_collinear
+
+@ %def module isr_collinear
+
+<<isr collinear: public>>=
+  public :: sf_rescale_collinear_t
+<<isr collinear: types>>=
+  type, extends (sf_rescale_t) :: sf_rescale_collinear_t
+     real(default) :: xi_tilde
+  contains
+  <<isr collinear: rescale collinear: TBP>>
+  end type sf_rescale_collinear_t
+
+@ %def sf_rescale_collinear_t
+@
+<<isr collinear: rescale collinear: TBP>>=
+  procedure :: apply => sf_rescale_collinear_apply
+<<isr collinear: procedures>>=
+  subroutine sf_rescale_collinear_apply (func, x)
+    class(sf_rescale_collinear_t), intent(in) :: func
+    real(default), intent(inout) :: x
+    real(default) :: xi
+    if (debug2_active (D_BEAMS)) then
+       print *, 'Rescaling function - Collinear: '
+       print *, 'Input: ', x
+       print *, 'xi_tilde: ', func%xi_tilde
+    end if
+    xi = func%xi_tilde * (one - x)
+    x = x / (one - xi)
+    if (debug2_active (D_BEAMS))  print *, 'scaled x: ', x
+  end subroutine sf_rescale_collinear_apply
+
+@ %def sf_rescale_collinear_apply
+@
+<<isr collinear: rescale collinear: TBP>>=
+  procedure :: set => sf_rescale_collinear_set
+<<isr collinear: procedures>>=
+  subroutine sf_rescale_collinear_set (func, xi_tilde)
+    class(sf_rescale_collinear_t), intent(inout) :: func
+    real(default), intent(in) :: xi_tilde
+    func%xi_tilde = xi_tilde
+  end subroutine sf_rescale_collinear_set
+
+@ %def sf_rescale_collinear_set
+@
+<<isr collinear: public>>=
+  public :: sf_rescale_real_t
+<<isr collinear: types>>=
+  type, extends (sf_rescale_t) :: sf_rescale_real_t
+     real(default) :: xi, y
+  contains
+  <<isr collinear: rescale real: TBP>>
+  end type sf_rescale_real_t
+
+@ %def sf_rescale_real_t
+@
+<<isr collinear: rescale real: TBP>>=
+  procedure :: apply => sf_rescale_real_apply
+<<isr collinear: procedures>>=
+  subroutine sf_rescale_real_apply (func, x)
+    class(sf_rescale_real_t), intent(in) :: func
+    real(default), intent(inout) :: x
+    real(default) :: onepy, onemy
+    if (debug2_active (D_BEAMS)) then
+       print *, 'Rescaling function - Real: '
+       print *, 'Input: ', x
+       print *, 'Beam index: ', func%i_beam
+       print *, 'xi: ', func%xi, 'y: ', func%y
+    end if
+    x = x / sqrt (one - func%xi)
+    onepy = one + func%y; onemy = one - func%y
+    if (func%i_beam == 1) then
+       x = x * sqrt ((two - func%xi * onemy) / (two - func%xi * onepy))
+    else if (func%i_beam == 2) then
+       x = x * sqrt ((two - func%xi * onepy) / (two - func%xi * onemy))
+    else
+       call msg_fatal ("sf_rescale_real_apply - invalid beam index")
+    end if
+    if (debug2_active (D_BEAMS))  print *, 'scaled x: ', x
+  end subroutine sf_rescale_real_apply
+
+@ %def sf_rescale_real_apply
+@
+<<isr collinear: rescale real: TBP>>=
+  procedure :: set => sf_rescale_real_set
+<<isr collinear: procedures>>=
+  subroutine sf_rescale_real_set (func, xi, y)
+    class(sf_rescale_real_t), intent(inout) :: func
+    real(default), intent(in) :: xi, y
+    func%xi = xi; func%y = y
+  end subroutine sf_rescale_real_set
+
+@ %def sf_rescale_real_set
+<<isr collinear: public>>=
+  public :: sf_rescale_dglap_t
+<<isr collinear: types>>=
+  type, extends(sf_rescale_t) :: sf_rescale_dglap_t
+     real(default), dimension(:), allocatable :: z
+   contains
+   <<isr collinear: rescale dglap: TBP>>
+  end type sf_rescale_dglap_t
+
+@ %def sf_rescale_dglap_t
+@
+<<isr collinear: rescale dglap: TBP>>=
+  procedure :: apply => sf_rescale_dglap_apply
+<<isr collinear: procedures>>=
+  subroutine sf_rescale_dglap_apply (func, x)
+    class(sf_rescale_dglap_t), intent(in) :: func
+    real(default), intent(inout) :: x
+    if (debug2_active (D_BEAMS))  then
+       print *, "Rescaling function - DGLAP:"
+       print *, "Input: ", x
+       print *, "Beam index: ", func%i_beam
+       print *, "z: ", func%z
+    end if
+    x = x / func%z(func%i_beam)
+    if (debug2_active (D_BEAMS)) print *, "scaled x: ", x
+  end subroutine sf_rescale_dglap_apply
+
+@ %def sf_rescale_dglap_apply
+@
+<<isr collinear: rescale dglap: TBP>>=
+  procedure :: set => sf_rescale_dglap_set
+<<isr collinear: procedures>>=
+  subroutine sf_rescale_dglap_set (func, z)
+    class(sf_rescale_dglap_t), intent(inout) :: func
+    real(default), dimension(:), intent(in) :: z
+    ! allocate-on-assginment
+    func%z = z
+  end subroutine sf_rescale_dglap_set
+
+@  %def sf_rescale_dglap_set
 @
 \section{Dispatch}
 @
@@ -9378,10 +9595,13 @@ end module dispatch_fks
     if (exclude_from_resonance /= var_str ("default")) &
        call split_string (exclude_from_resonance, var_str (":"), &
        fks_template%excluded_resonances)
-    call fks_template%set_dij_exp (fks_dij_exp1, fks_dij_exp2)
-    call fks_template%set_xi_and_y_bounds &
-         (var_list%get_rval (var_str ("fks_xi_min")), &
-         var_list%get_rval (var_str ("fks_y_max")))
+    call fks_template%set_parameters ( &
+         exp1 = fks_dij_exp1, exp2 = fks_dij_exp2, & 
+         xi_min = var_list%get_rval (var_str ("fks_xi_min")), &
+         y_max = var_list%get_rval (var_str ("fks_y_max")), &
+         xi_cut = var_list%get_rval (var_str ("fks_xi_cut")), &
+         delta_zero = var_list%get_rval (var_str ("fks_delta_zero")), &
+         delta_i = var_list%get_rval (var_str ("fks_delta_i")))
     select case (char (fks_mapping_type))
     case ("default")
        call fks_template%set_mapping_type (FKS_DEFAULT)

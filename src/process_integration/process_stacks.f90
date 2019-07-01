@@ -1,4 +1,4 @@
-! WHIZARD 2.6.3 Feb 10 2018
+! WHIZARD 2.6.4 Aug 23 2018
 !
 ! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -67,6 +67,7 @@ module process_stacks
      procedure :: init_var_list => process_stack_init_var_list
      procedure :: link_var_list => process_stack_link_var_list
      procedure :: push => process_stack_push
+     procedure :: pop_last => process_stack_pop_last
      procedure :: init_result_vars => process_stack_init_result_vars
      procedure :: fill_result_vars => process_stack_fill_result_vars
      procedure :: update_result_vars => process_stack_update_result_vars
@@ -134,20 +135,33 @@ contains
     end if
   end subroutine process_stack_write_var_list
 
-  recursive subroutine process_stack_show (object, unit)
+  recursive subroutine process_stack_show (object, unit, fifo)
     class(process_stack_t), intent(in) :: object
     integer, intent(in), optional :: unit
+    logical, intent(in), optional :: fifo
     type(process_entry_t), pointer :: process
-    integer :: u
+    logical :: reverse
+    integer :: u, i, j
     u = given_output_unit (unit)
+    reverse = .false.;  if (present (fifo))  reverse = fifo
     select case (object%n)
     case (0)
     case default
-       process => object%first
-       do while (associated (process))
-          call process%show (u, verbose=.false.)
-          process => process%next
-       end do
+       if (.not. reverse) then
+          process => object%first
+          do while (associated (process))
+             call process%show (u, verbose=.false.)
+             process => process%next
+          end do 
+       else
+          do i = 1, object%n
+             process => object%first
+             do j = 1, object%n - i
+                process => process%next
+             end do
+             call process%show (u, verbose=.false.)
+          end do
+       end if
     end select
     if (associated (object%next))  call object%next%show ()
   end subroutine process_stack_show
@@ -180,6 +194,29 @@ contains
     stack%n = stack%n + 1
   end subroutine process_stack_push
 
+  subroutine process_stack_pop_last (stack, process)
+    class(process_stack_t), intent(inout) :: stack
+    type(process_entry_t), intent(inout), pointer :: process
+    type(process_entry_t), pointer :: previous
+    integer :: i
+    select case (stack%n)
+    case (:0)
+       process => null ()
+    case (1)
+       process => stack%first
+       stack%first => null ()
+       stack%n = 0
+    case (2:)
+       process => stack%first
+       do i = 2, stack%n
+          previous => process
+          process => process%next
+       end do
+       previous%next => null ()
+       stack%n = stack%n - 1
+    end select
+  end subroutine process_stack_pop_last
+    
   subroutine process_stack_init_result_vars (stack, id)
     class(process_stack_t), intent(inout) :: stack
     type(string_t), intent(in) :: id

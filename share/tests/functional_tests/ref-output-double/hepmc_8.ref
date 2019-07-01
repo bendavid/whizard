@@ -33,7 +33,7 @@ $sample = "hepmc_8a"
 |   sqrts = 1.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'hepmc_8_p_i1.phs'
+| Phase space: writing configuration file 'hepmc_8_p.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'hepmc_8_p'
 |   Library name  = 'hepmc_8_lib'
@@ -62,7 +62,7 @@ Warning: No cuts have been defined.
    1       1000  2.2160909E+04  1.10E+04   49.53   15.66    0.20
 |=============================================================================|
 | Simulate: integration done
-| Simulate: using integration grids from file 'hepmc_8_p_m1.vg'
+| Simulate: using integration grids from file 'hepmc_8_p.m1.vg'
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 1
 | Simulation: requested number of events = 1

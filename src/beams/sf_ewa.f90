@@ -1,4 +1,4 @@
-! WHIZARD 2.6.3 Feb 10 2018
+! WHIZARD 2.6.4 Aug 23 2018
 !
 ! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -611,11 +611,12 @@ contains
     end if
   end subroutine ewa_inverse_kinematics
 
-  subroutine ewa_apply (sf_int, scale, rescaling_function, i_rescale)
+  subroutine ewa_apply (sf_int, scale, rescale, i_sub, fill_sub)
     class(ewa_t), intent(inout) :: sf_int
     real(default), intent(in) :: scale
-    class(rescaling_function_t), intent(in), optional :: rescaling_function
-    integer, intent(in), optional :: i_rescale
+    class(sf_rescale_t), intent(in), optional :: rescale
+    integer, intent(in), optional :: i_sub
+    logical, intent(in), optional :: fill_sub
     real(default) :: x, xb, pt2, c1, c2
     real(default) :: cv, ca
     real(default) :: f, fm, fp, fL

@@ -26,13 +26,13 @@ sqrts =  2.500000000000E+02
 |   sqrts = 2.500000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'resonances_8_a_i1.phs'
+| Phase space: writing configuration file 'resonances_8_a.i1.phs'
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'resonances_8_a_i2.phs'
+| Phase space: writing configuration file 'resonances_8_a.i2.phs'
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'resonances_8_a_i3.phs'
+| Phase space: writing configuration file 'resonances_8_a.i3.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'resonances_8_a'
 |   Library name  = 'resonances_8_lib'

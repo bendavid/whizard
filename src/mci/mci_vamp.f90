@@ -1,4 +1,4 @@
-! WHIZARD 2.6.3 Feb 10 2018
+! WHIZARD 2.6.4 Aug 23 2018
 !
 ! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -720,9 +720,9 @@ contains
        call split (basename, suffix, ".", back=.true.)
        write (buffer, "(I0)")  i_mci
        if (basename /= "") then
-          mci%grid_filename = basename // "_m" // trim (buffer) // "." // suffix
+          mci%grid_filename = basename // ".m" // trim (buffer) // "." // suffix
        else
-          mci%grid_filename = suffix // "_m" // trim (buffer) // ".vg"
+          mci%grid_filename = suffix // ".m" // trim (buffer) // ".vg"
        end if
     end if
   end subroutine mci_vamp_record_index

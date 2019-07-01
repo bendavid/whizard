@@ -35,10 +35,10 @@ seed = 1111
 |   t  (mass = 1.7310000E+02 GeV)
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'openloops_6_p0_i1.phs'
+| Phase space: writing configuration file 'openloops_6_p0.i1.phs'
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'openloops_6_p0_i3.phs'
+| Phase space: writing configuration file 'openloops_6_p0.i3.phs'
 | One-Loop-Provider: Using OpenLoops
 | Loading library: [...]
 | One-Loop-Provider: Using OpenLoops
@@ -138,10 +138,10 @@ seed = 2222
 |   t  (mass = 1.7310000E+02 GeV)  polarized
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'openloops_6_p1_i1.phs'
+| Phase space: writing configuration file 'openloops_6_p1.i1.phs'
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'openloops_6_p1_i3.phs'
+| Phase space: writing configuration file 'openloops_6_p1.i3.phs'
 | One-Loop-Provider: Using OpenLoops
 | Loading library: [...]
 | One-Loop-Provider: Using OpenLoops
@@ -241,10 +241,10 @@ seed = 3333
 |   t  (mass = 1.7310000E+02 GeV)  polarized
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'openloops_6_p2_i1.phs'
+| Phase space: writing configuration file 'openloops_6_p2.i1.phs'
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'openloops_6_p2_i3.phs'
+| Phase space: writing configuration file 'openloops_6_p2.i3.phs'
 | One-Loop-Provider: Using OpenLoops
 | Loading library: [...]
 | One-Loop-Provider: Using OpenLoops

@@ -26,7 +26,7 @@ openmp_num_threads = 1
 |   sqrts = 2.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'restrictions_sm_eemm_i1.phs'
+| Phase space: writing configuration file 'restrictions_sm_eemm.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'restrictions_sm_eemm'
 |   Library name  = 'restrictions_lib'
@@ -62,7 +62,7 @@ Warning: No cuts have been defined.
 |   sqrts = 2.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'restrictions_sm_eemm_z_i1.phs'
+| Phase space: writing configuration file 'restrictions_sm_eemm_z.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'restrictions_sm_eemm_z'
 |   Library name  = 'restrictions_lib'
@@ -88,10 +88,10 @@ Warning: No cuts have been defined.
 |-----------------------------------------------------------------------------|
    1        784  4.9554542E+02  6.17E-01    0.12    0.03   63.78
 |=============================================================================|
-restrictions_sm_eemm_z:
-   4.9554542E+02 +- 6.17E-01 fb
 restrictions_sm_eemm:
-   2.8454055E+03 +- 5.43E+00 fb
+   2.8454055E+03 +- 5.43E+00 fb  (  0.19  %)
+restrictions_sm_eemm_z:
+   4.9554542E+02 +- 6.17E-01 fb  (  0.12  %)
 | There were no errors and    2 warning(s).
 | WHIZARD run finished.
 |=============================================================================|

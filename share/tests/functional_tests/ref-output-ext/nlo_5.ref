@@ -39,10 +39,10 @@ seed = 0
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'nlo_5_p1_i1.phs'
+| Phase space: writing configuration file 'nlo_5_p1.i1.phs'
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'nlo_5_p1_i3.phs'
+| Phase space: writing configuration file 'nlo_5_p1.i3.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'nlo_5_p1'
 |   Library name  = 'nlo_5_lib'
@@ -91,7 +91,7 @@ n_events = 5
 ?sample_pacify = true
 ?write_raw = false
 | Starting simulation for process 'nlo_5_p1'
-| Simulate: using integration grids from file 'nlo_5_p1_m2.vg'
+| Simulate: using integration grids from file 'nlo_5_p1.m2.vg'
 | Simulate: activating fixed-order NLO events
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 1

@@ -39,7 +39,7 @@ Process library: resonances_7_lib
 |   sqrts = 2.500000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'resonances_7_a_i1.phs'
+| Phase space: writing configuration file 'resonances_7_a.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'resonances_7_a'
 |   Library name  = 'resonances_7_lib'
@@ -69,7 +69,7 @@ Warning: No cuts have been defined.
 |   sqrts = 2.500000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'resonances_7_b_i1.phs'
+| Phase space: writing configuration file 'resonances_7_b.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'resonances_7_b'
 |   Library name  = 'resonances_7_lib'

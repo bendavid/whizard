@@ -1,4 +1,4 @@
-! WHIZARD 2.6.3 Feb 10 2018
+! WHIZARD 2.6.4 Aug 23 2018
 !
 ! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -70,7 +70,7 @@ contains
        write (u, "(A)")  "* Test result: Test failed!"
     else
        write (u, "(A)")  "* Test result: Test passed"
-    endif
+    end if
 
     close (u_in)
     write (u, *)

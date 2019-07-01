@@ -1,4 +1,4 @@
-! WHIZARD 2.6.3 Feb 10 2018
+! WHIZARD 2.6.4 Aug 23 2018
 !
 ! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -199,7 +199,7 @@ module process_config
      type(process_constants_t) :: data
      real(default) :: alpha_s = 0
      integer, dimension(:), allocatable :: flv, hel, col
-     integer :: n_sub
+     integer :: n_sub, n_sub_color, n_sub_spin
      type(interaction_t) :: int
      type(interaction_t), pointer :: int_eff => null ()
      class(pcm_t), pointer :: pcm => null ()
@@ -809,7 +809,7 @@ contains
           allocate (component%mci_template, source = mci_template)
        allocate (component%phs_config, source = phs_config_template)
        call component%phs_config%init (data, config%model)
-       call component%phs_config%set_component_index (component%index)
+       !!! call component%phs_config%set_component_index (component%index)
     end if
   end subroutine process_component_init
 
@@ -836,12 +836,13 @@ contains
 
   subroutine process_component_configure_phs &
        (component, sqrts, beam_config, rebuild, &
-        ignore_mismatch)
+        ignore_mismatch, subdir)
     class(process_component_t), intent(inout) :: component
     real(default), intent(in) :: sqrts
     type(process_beam_config_t), intent(in) :: beam_config
     logical, intent(in), optional :: rebuild
     logical, intent(in), optional :: ignore_mismatch
+    type(string_t), intent(in), optional :: subdir
     logical :: no_strfun
     integer :: nlo_type
     no_strfun = beam_config%n_strfun == 0
@@ -851,7 +852,8 @@ contains
          sqrts_fixed = no_strfun, &
          cm_frame = beam_config%lab_is_cm_frame .and. no_strfun, &
          rebuild = rebuild, ignore_mismatch = ignore_mismatch, &
-         nlo_type = nlo_type)
+         nlo_type = nlo_type, &
+         subdir = subdir)
   end subroutine process_component_configure_phs
 
   subroutine process_component_compute_md5sum (component)
@@ -1058,16 +1060,24 @@ contains
 
     subroutine compute_n_sub ()
       logical :: can_have_sub
+      integer :: n_sub_color, n_sub_spin
       use_color = .false.; if (present (use_internal_color)) &
            use_color = use_internal_color
       can_have_sub = nlo_t == NLO_VIRTUAL .or. &
            (nlo_t == NLO_REAL .and. term%i_term_global == term%i_sub) .or. &
            nlo_t == NLO_MISMATCH
-      if (can_have_sub .and. .not. use_color) then
-         n_sub = n_tot * (n_tot - 1) / 2
-      else
-         n_sub = 0
+      n_sub_color = 0; n_sub_spin = 0
+      if (can_have_sub) then
+         if (.not. use_color) n_sub_color = n_tot * (n_tot - 1) / 2
+         if (nlo_t == NLO_REAL) then
+            select type (pcm_nlo => term%pcm)
+            class is (pcm_nlo_t)
+               if (pcm_nlo%region_data%requires_spin_correlations ()) &
+                    n_sub_spin = 16 * pcm_nlo%region_data%n_emitters
+            end select
+         end if
       end if
+      n_sub = n_sub_color + n_sub_spin
       !!! For the virtual subtraction we also need the finite virtual contribution
       !!! corresponding to the $\epsilon^0$-pole
       if (nlo_t == NLO_VIRTUAL)  n_sub = n_sub + 1
@@ -1076,6 +1086,8 @@ contains
               .or. nlo_t == NLO_DGLAP)) n_sub = n_sub + n_beam_structure_int
       end if
       term%n_sub = n_sub
+      term%n_sub_color = n_sub_color
+      term%n_sub_spin = n_sub_spin
     end subroutine compute_n_sub
 
     subroutine fill_quantum_numbers ()
@@ -1122,6 +1134,7 @@ contains
                       else
                          call qn%init (flv, col, s)
                       end if
+                      call qn%tag_hard_process ()
                       call term%int%add_state (qn)
                   end do
                end do
@@ -1151,6 +1164,7 @@ contains
                      else
                         call qn%init (flv, s)
                      end if
+                     call qn%tag_hard_process ()
                      call term%int%add_state (qn)
                   end do
                end do
@@ -1174,6 +1188,7 @@ contains
             term%col(i) = 1
             call flv%init (term%data%flv_state (:,f), model)
             call qn%init (flv, s)
+            call qn%tag_hard_process ()
             call term%int%add_state (qn)
          end do
       end do
@@ -1198,6 +1213,7 @@ contains
                     call col(:data%n_in)%invert ()
                     call hel%init (data%hel_state(:,h))
                     call qn%init (flv, col, hel)
+                    call qn%tag_hard_process ()
                     call term%int%add_state (qn)
                  end if
               end do

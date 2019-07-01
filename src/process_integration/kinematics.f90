@@ -1,4 +1,4 @@
-! WHIZARD 2.6.3 Feb 10 2018
+! WHIZARD 2.6.4 Aug 23 2018
 !
 ! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -145,11 +145,11 @@ contains
     if (nlo_type == NLO_VIRTUAL)  k%only_cm_frame = .true.
   end subroutine kinematics_set_nlo_info
 
-  subroutine kinematics_init_sf_chain (k, sf_chain, config, has_pdfs)
+  subroutine kinematics_init_sf_chain (k, sf_chain, config, extended_sf)
     class(kinematics_t), intent(inout) :: k
     type(sf_chain_t), intent(in), target :: sf_chain
     type(process_beam_config_t), intent(in) :: config
-    logical, intent(in), optional :: has_pdfs
+    logical, intent(in), optional :: extended_sf
     integer :: n_strfun, n_channel
     integer :: c
     k%n_in = config%data%get_n_in ()
@@ -165,7 +165,7 @@ contains
     end if
     call k%sf_chain%link_interactions ()
     call k%sf_chain%exchange_mask ()
-    call k%sf_chain%init_evaluators (has_pdfs)
+    call k%sf_chain%init_evaluators (extended_sf = extended_sf)
   end subroutine kinematics_init_sf_chain
 
   subroutine kinematics_init_phs (k, config)
@@ -332,14 +332,13 @@ contains
     end if
   end subroutine kinematics_get_mcpar
 
-  subroutine kinematics_evaluate_sf_chain (k, fac_scale, rescaling_function, i_rescale)
+  subroutine kinematics_evaluate_sf_chain (k, fac_scale, sf_rescale)
     class(kinematics_t), intent(inout) :: k
     real(default), intent(in) :: fac_scale
-    class(rescaling_function_t), intent(inout), optional :: rescaling_function
-    integer, intent(in), optional :: i_rescale
+    class(sf_rescale_t), intent(inout), optional :: sf_rescale
     select case (k%sf_chain%get_status ())
     case (SF_DONE_KINEMATICS)
-       call k%sf_chain%evaluate (fac_scale, rescaling_function, i_rescale)
+       call k%sf_chain%evaluate (fac_scale, sf_rescale)
     end select
   end subroutine kinematics_evaluate_sf_chain
 

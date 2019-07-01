@@ -47,7 +47,7 @@ Warning:  Phase space: Initial beam particle can decay
 |  mass(u) =  0.0000000000E+00
 Warning:  Phase space: Initial beam particle can decay
 | Phase space: ... success.
-| Phase space: writing configuration file 'ep_3_p1_i1.phs'
+| Phase space: writing configuration file 'ep_3_p1.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'ep_3_p1'
 |   Library name  = 'ep_3_lib'
@@ -90,7 +90,7 @@ Warning:  Phase space: Initial beam particle can decay
 |  mass(u) =  0.0000000000E+00
 Warning:  Phase space: Initial beam particle can decay
 | Phase space: ... success.
-| Phase space: writing configuration file 'ep_3_p2_i1.phs'
+| Phase space: writing configuration file 'ep_3_p2.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'ep_3_p2'
 |   Library name  = 'ep_3_lib'
@@ -138,7 +138,7 @@ Warning:  Phase space: Initial beam particle can decay
 |  mass(u) =  0.0000000000E+00
 Warning:  Phase space: Initial beam particle can decay
 | Phase space: ... success.
-| Phase space: writing configuration file 'ep_3_q1_i1.phs'
+| Phase space: writing configuration file 'ep_3_q1.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'ep_3_q1'
 |   Library name  = 'ep_3_lib'
@@ -181,7 +181,7 @@ Warning:  Phase space: Initial beam particle can decay
 |  mass(u) =  0.0000000000E+00
 Warning:  Phase space: Initial beam particle can decay
 | Phase space: ... success.
-| Phase space: writing configuration file 'ep_3_q2_i1.phs'
+| Phase space: writing configuration file 'ep_3_q2.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'ep_3_q2'
 |   Library name  = 'ep_3_lib'
@@ -230,7 +230,7 @@ Warning:  Phase space: Initial beam particle can decay
 |  mass(u) =  0.0000000000E+00
 Warning:  Phase space: Initial beam particle can decay
 | Phase space: ... success.
-| Phase space: writing configuration file 'ep_3_p3_i1.phs'
+| Phase space: writing configuration file 'ep_3_p3.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'ep_3_p3'
 |   Library name  = 'ep_3_lib'
@@ -273,7 +273,7 @@ Warning:  Phase space: Initial beam particle can decay
 |  mass(u) =  0.0000000000E+00
 Warning:  Phase space: Initial beam particle can decay
 | Phase space: ... success.
-| Phase space: writing configuration file 'ep_3_p4_i1.phs'
+| Phase space: writing configuration file 'ep_3_p4.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'ep_3_p4'
 |   Library name  = 'ep_3_lib'
@@ -321,7 +321,7 @@ Warning:  Phase space: Initial beam particle can decay
 |  mass(u) =  0.0000000000E+00
 Warning:  Phase space: Initial beam particle can decay
 | Phase space: ... success.
-| Phase space: writing configuration file 'ep_3_q3_i1.phs'
+| Phase space: writing configuration file 'ep_3_q3.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'ep_3_q3'
 |   Library name  = 'ep_3_lib'
@@ -364,7 +364,7 @@ Warning:  Phase space: Initial beam particle can decay
 |  mass(u) =  0.0000000000E+00
 Warning:  Phase space: Initial beam particle can decay
 | Phase space: ... success.
-| Phase space: writing configuration file 'ep_3_q4_i1.phs'
+| Phase space: writing configuration file 'ep_3_q4.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'ep_3_q4'
 |   Library name  = 'ep_3_lib'

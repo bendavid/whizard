@@ -54,10 +54,10 @@ seed = 0
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'openloops_4_omomom_i1.phs'
+| Phase space: writing configuration file 'openloops_4_omomom.i1.phs'
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'openloops_4_omomom_i3.phs'
+| Phase space: writing configuration file 'openloops_4_omomom.i3.phs'
 | One-Loop-Provider: Using OpenLoops
 | Loading library: [...]
 | One-Loop-Provider: Using OpenLoops
@@ -164,10 +164,10 @@ seed = 0
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'openloops_4_olomom_i1.phs'
+| Phase space: writing configuration file 'openloops_4_olomom.i1.phs'
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'openloops_4_olomom_i3.phs'
+| Phase space: writing configuration file 'openloops_4_olomom.i3.phs'
 | One-Loop-Provider: Using OpenLoops
 | Loading library: [...]
 | One-Loop-Provider: Using OpenLoops
@@ -278,10 +278,10 @@ seed = 0
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'openloops_4_omolom_i1.phs'
+| Phase space: writing configuration file 'openloops_4_omolom.i1.phs'
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'openloops_4_omolom_i3.phs'
+| Phase space: writing configuration file 'openloops_4_omolom.i3.phs'
 | One-Loop-Provider: Using OpenLoops
 | Loading library: [...]
 | One-Loop-Provider: Using OpenLoops
@@ -392,10 +392,10 @@ seed = 0
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'openloops_4_omomol_i1.phs'
+| Phase space: writing configuration file 'openloops_4_omomol.i1.phs'
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'openloops_4_omomol_i3.phs'
+| Phase space: writing configuration file 'openloops_4_omomol.i3.phs'
 | One-Loop-Provider: Using OpenLoops
 | Loading library: [...]
 | One-Loop-Provider: Using OpenLoops
@@ -506,10 +506,10 @@ seed = 0
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'openloops_4_ololol_i1.phs'
+| Phase space: writing configuration file 'openloops_4_ololol.i1.phs'
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'openloops_4_ololol_i3.phs'
+| Phase space: writing configuration file 'openloops_4_ololol.i3.phs'
 | One-Loop-Provider: Using OpenLoops
 | Loading library: [...]
 | One-Loop-Provider: Using OpenLoops
@@ -642,10 +642,10 @@ seed = 0
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'openloops_4_threshold_i1.phs'
+| Phase space: writing configuration file 'openloops_4_threshold.i1.phs'
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'openloops_4_threshold_i3.phs'
+| Phase space: writing configuration file 'openloops_4_threshold.i3.phs'
 | One-Loop-Provider: Using OpenLoops
 | Loading library: [...]
 | One-Loop-Provider: Using OpenLoops

@@ -25,7 +25,7 @@ sqrts =  1.000000000000E+03
 |   sqrts = 1.000000000000E+03 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'select_1_p_i1.phs'
+| Phase space: writing configuration file 'select_1_p.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'select_1_p'
 |   Library name  = 'select_1_lib'
@@ -59,7 +59,7 @@ n_events = 100
 $sample = "select_1a"
 ?sample_select = false
 | Starting simulation for process 'select_1_p'
-| Simulate: using integration grids from file 'select_1_p_m1.vg'
+| Simulate: using integration grids from file 'select_1_p.m1.vg'
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 1
 | Events: writing to LHEF file 'select_1a.lhe'
@@ -76,7 +76,7 @@ $out_file = "select_1a.dat"
 $sample = "select_1b"
 ?sample_select = true
 | Starting simulation for process 'select_1_p'
-| Simulate: using integration grids from file 'select_1_p_m1.vg'
+| Simulate: using integration grids from file 'select_1_p.m1.vg'
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 2
 | Events: writing to LHEF file 'select_1b.lhe'

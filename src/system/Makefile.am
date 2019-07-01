@@ -31,29 +31,39 @@
 noinst_LTLIBRARIES = libsystem.la
 check_LTLIBRARIES = libsystem_ut.la
 
-libsystem_la_SOURCES = \
-  system_dependencies.f90 \
+COMMON_F90 = \
   system_defs.f90 \
   signal_interface.c \
   sprintf_interface.c \
   diagnostics.f90 \
-  os_interface.f90 \
   formats.f90 \
-  cputime.f90
+  cputime.f90 
+MPI_F90 = \
+  os_interface.f90_mpi
+SERIAL_F90 = \
+  os_interface.f90_serial
+
+EXTRA_DIST = \
+  $(COMMON_F90) \
+  $(SERIAL_F90) \
+  $(MPI_F90)
+
+nodist_libsystem_la_SOURCES = \
+  system_dependencies.f90 \
+  os_interface.f90 \
+  $(COMMON_F90)
+
+DISTCLEANFILES = os_interface.f90
+
+if FC_USE_MPI
+os_interface.f90: os_interface.f90_mpi
+	-cp -f $< $@
+else
+os_interface.f90: os_interface.f90_serial
+	-cp -f $< $@
+endif
 
 libsystem_ut_la_SOURCES = \
-  os_interface_uti.f90 os_interface_ut.f90 \
-  formats_uti.f90 formats_ut.f90 \
-  cputime_uti.f90 cputime_ut.f90
-
-SRC_FROM_NOWEB = \
-  system_defs.f90 \
-  signal_interface.c \
-  sprintf_interface.c \
-  diagnostics.f90 \
-  os_interface.f90 \
-  formats.f90 \
-  cputime.f90 \
   os_interface_uti.f90 os_interface_ut.f90 \
   formats_uti.f90 formats_ut.f90 \
   cputime_uti.f90 cputime_ut.f90
@@ -63,8 +73,8 @@ dist_noinst_DATA = system.nw
 
 # Dump module names into file Modules
 libsystem_Modules = \
-  ${libsystem_la_SOURCES:.f90=} \
-  ${libsystem_ut_la_SOURCES:.f90=}
+  $(nodist_libsystem_la_SOURCES:.f90=) \
+  $(libsystem_ut_la_SOURCES:.f90=)
 Modules: Makefile
 	@for module in $(libsystem_Modules); do \
           echo $$module >> $@.new; \
@@ -86,7 +96,7 @@ module_lists = \
 $(module_lists):
 	$(MAKE) -C `dirname $@` Modules
 
-Module_dependencies.sed: $(libsystem_la_SOURCES) $(libsystem_ut_la_SOURCES)
+Module_dependencies.sed: $(nodist_libsystem_la_SOURCES) $(libsystem_ut_la_SOURCES)
 Module_dependencies.sed: $(module_lists)
 	@rm -f $@
 	echo 's/, *only:.*//' >> $@
@@ -100,7 +110,7 @@ Module_dependencies.sed: $(module_lists)
 		done \
 	done
 
-DISTCLEANFILES = Module_dependencies.sed
+DISTCLEANFILES += Module_dependencies.sed
 
 # The following line just says
 #    include Makefile.depend
@@ -108,7 +118,7 @@ DISTCLEANFILES = Module_dependencies.sed
 @am__include@ @am__quote@Makefile.depend@am__quote@
 
 Makefile.depend: Module_dependencies.sed
-Makefile.depend: $(libsystem_la_SOURCES) $(libsystem_ut_la_SOURCES)
+Makefile.depend: $(nodist_libsystem_la_SOURCES) $(libsystem_ut_la_SOURCES)
 	@rm -f $@
 	for src in $^; do \
 	  module="`basename $$src | sed 's/\.f[90][0358]//'`"; \
@@ -162,10 +172,7 @@ endif
 ## (Re)create F90 sources from NOWEB source.
 if NOWEB_AVAILABLE
 
-FILTER =
-if FC_USE_MPI
-FILTER += -filter "sed 's/defn MPI:/defn/'"
-endif
+FILTER = -filter "sed 's/defn MPI:/defn/'"
 
 PRELUDE = $(top_srcdir)/src/noweb-frame/whizard-prelude.nw
 POSTLUDE = $(top_srcdir)/src/noweb-frame/whizard-postlude.nw
@@ -173,12 +180,18 @@ POSTLUDE = $(top_srcdir)/src/noweb-frame/whizard-postlude.nw
 system.stamp: $(PRELUDE) $(srcdir)/system.nw $(POSTLUDE)
 	@rm -f system.tmp
 	@touch system.tmp
-	for src in $(SRC_FROM_NOWEB); do \
-	  $(NOTANGLE) -R[[$$src]] $(FILTER) $^ | $(CPIF) $$src; \
+	for src in $(COMMON_F90) $(libsystem_ut_la_SOURCES); do \
+	  $(NOTANGLE) -R[[$$src]] $^ | $(CPIF) $$src; \
+        done
+	for src in $(SERIAL_F90:.f90_serial=.f90); do \
+	  $(NOTANGLE) -R[[$$src]] $^ | $(CPIF) $$src'_serial'; \
+        done
+	for src in $(MPI_F90:.f90_mpi=.f90); do \
+	  $(NOTANGLE) -R[[$$src]] $(FILTER) $^ | $(CPIF) $$src'_mpi'; \
         done
 	@mv -f system.tmp system.stamp
 
-$(SRC_FROM_NOWEB): system.stamp
+$(COMMON_F90) $(SERIAL_F90) $(MPI_F90) $(libsystem_ut_la_SOURCES): system.stamp
 ## Recover from the removal of $@
 	@if test -f $@; then :; else \
 	  rm -f system.stamp; \
@@ -193,14 +206,14 @@ endif
 ## Remove sources that can be recreated using NOWEB
 if NOWEB_AVAILABLE
 maintainer-clean-noweb:
-	-rm -f *.f90 *.c
+	-rm -f *.f90 *.f90_serial *.f90_mpi *.c
 endif
 .PHONY: maintainer-clean-noweb
 
 ## Remove those sources also if builddir and srcdir are different
 if NOWEB_AVAILABLE
 clean-noweb:
-	test "$(srcdir)" != "." && rm -f *.f90 *.c || true
+	test "$(srcdir)" != "." && rm -f *.f90 *.f90_serial *.f90_mpi *.c || true
 endif
 .PHONY: clean-noweb
 

@@ -1,4 +1,4 @@
-! WHIZARD 2.6.3 Feb 10 2018
+! WHIZARD 2.6.4 Aug 23 2018
 !
 ! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -55,8 +55,6 @@ module phs_fks
   private
 
   public :: isr_kinematics_t
-  public :: rescale_collinear_t
-  public :: rescale_real_t
   public :: phs_point_set_t
   public :: real_jacobian_t
   public :: real_kinematics_t
@@ -116,22 +114,6 @@ module phs_fks
     real(default), dimension(2) :: jacobian = one
     integer :: isr_mode = SQRTS_FIXED
   end type isr_kinematics_t
-
-  type, extends (rescaling_function_t) :: rescale_collinear_t
-     real(default) :: xi_tilde
-  contains
-    procedure :: init_indices => rescale_collinear_init_indices
-    procedure :: apply => rescale_collinear_apply
-    procedure :: set => rescale_collinear_set
-  end type rescale_collinear_t
-
-  type, extends (rescaling_function_t) :: rescale_real_t
-     real(default) :: xi, y
-  contains
-    procedure :: init_indices => rescale_real_init_indices
-    procedure :: apply => rescale_real_apply
-    procedure :: set => rescale_real_set
-  end type rescale_real_t
 
   type :: phs_point_set_t
      type(phs_point_t), dimension(:), allocatable :: phs_point
@@ -351,73 +333,6 @@ module phs_fks
 
 
 contains
-
-  subroutine rescale_collinear_init_indices (func)
-    class(rescale_collinear_t), intent(inout) :: func
-    integer :: i
-    allocate (func%sf_indices (3, 13))
-    allocate (func%sf_indices_gluon (2, 13))
-    func%sf_indices (1, :) = [(i, i = 1, 13)]
-    func%sf_indices (2, :) = [(13 + 4 * i - 3, i = 1, 13)]
-    func%sf_indices (3, :) = [(13 + 4 * i - 2, i = 1, 13)]
-    func%sf_indices_gluon (1, :) = [(13 + 4 * i - 1, i = 1, 13)]
-    func%sf_indices_gluon (2, :) = [(13 + 4 * i, i = 1, 13)]
-  end subroutine rescale_collinear_init_indices
-
-  subroutine rescale_collinear_apply (func, x)
-    class(rescale_collinear_t), intent(in) :: func
-    real(default), intent(inout) :: x
-    real(default) :: xi
-    if (debug2_active (D_BEAMS)) then
-       print *, 'Rescaling function - Collinear: '
-       print *, 'Input: ', x
-       print *, 'xi_tilde: ', func%xi_tilde
-    end if
-    xi = func%xi_tilde * (one - x)
-    x = x / (one - xi)
-    if (debug2_active (D_BEAMS))  print *, 'scaled x: ', x
-  end subroutine rescale_collinear_apply
-
-  subroutine rescale_collinear_set (func, xi_tilde)
-    class(rescale_collinear_t), intent(inout) :: func
-    real(default), intent(in) :: xi_tilde
-    func%xi_tilde = xi_tilde
-  end subroutine rescale_collinear_set
-
-  subroutine rescale_real_init_indices (func)
-    class(rescale_real_t), intent(inout) :: func
-    integer :: i
-    allocate (func%sf_indices (1, 13))
-    func%sf_indices (1, :) = [(i, i = 1, 13)]
-  end subroutine rescale_real_init_indices
-
-  subroutine rescale_real_apply (func, x)
-    class(rescale_real_t), intent(in) :: func
-    real(default), intent(inout) :: x
-    real(default) :: onepy, onemy
-    if (debug2_active (D_BEAMS)) then
-       print *, 'Rescaling function - Real: '
-       print *, 'Input: ', x
-       print *, 'Beam index: ', func%i_beam
-       print *, 'xi: ', func%xi, 'y: ', func%y
-    end if
-    x = x / sqrt (one - func%xi)
-    onepy = one + func%y; onemy = one - func%y
-    if (func%i_beam == 1) then
-       x = x * sqrt ((two - func%xi * onemy) / (two - func%xi * onepy))
-    else if (func%i_beam == 2) then
-       x = x * sqrt ((two - func%xi * onepy) / (two - func%xi * onemy))
-    else
-       call msg_fatal ("rescale_real_apply - invalid beam index")
-    end if
-    if (debug2_active (D_BEAMS))  print *, 'scaled x: ', x
-  end subroutine rescale_real_apply
-
-  subroutine rescale_real_set (func, xi, y)
-    class(rescale_real_t), intent(inout) :: func
-    real(default), intent(in) :: xi, y
-    func%xi = xi; func%y = y
-  end subroutine rescale_real_set
 
   subroutine phs_point_set_init (phs_point_set, n_particles, n_phs)
     class(phs_point_set_t), intent(out) :: phs_point_set
@@ -830,7 +745,7 @@ contains
 
   subroutine phs_fks_config_configure (phs_config, sqrts, &
         sqrts_fixed, cm_frame, azimuthal_dependence, rebuild, &
-        ignore_mismatch, nlo_type)
+        ignore_mismatch, nlo_type, subdir)
     class(phs_fks_config_t), intent(inout) :: phs_config
     real(default), intent(in) :: sqrts
     logical, intent(in), optional :: sqrts_fixed
@@ -839,6 +754,7 @@ contains
     logical, intent(in), optional :: rebuild
     logical, intent(in), optional :: ignore_mismatch
     integer, intent(in), optional :: nlo_type
+    type(string_t), intent(in), optional :: subdir
     if (phs_config%extension_mode == EXTENSION_NONE) then
        select case (phs_config%mode)
        case (PHS_MODE_ADDITIONAL_PARTICLE)
@@ -877,7 +793,7 @@ contains
        allocate (phs_config%feyngraph_set)
     else
        allocate (phs_config%cascade_set)
-    endif
+    end if
     n_flv_born = size (phs_config%flv, 1) - 1
     n_state = size (phs_config%flv, 2)
     allocate (flv_born (n_flv_born, n_state))
@@ -895,7 +811,7 @@ contains
             "variable ?omega_write_phs_output has been set correctly.")
        unit_fds = free_unit ()
        open (unit=unit_fds, file=char(file_name), status='old', action='read')
-    endif
+    end if
     off_shell = phs_config%par%off_shell
     do extra_off_shell = 0, max (n_flv_born - 2, 0)
        phs_config%par%off_shell = off_shell + extra_off_shell
@@ -910,14 +826,14 @@ contains
                phs_config%model, phs_config%n_in, phs_config%n_out - 1, &
                flv_born, phs_config%par, phs_config%fatal_beam_decay)
           if (cascade_set_is_valid (phs_config%cascade_set)) exit
-       endif
+       end if
     end do
     if (phs_config%use_cascades2) then
        close (unit_fds)
        valid = feyngraph_set_is_valid (phs_config%feyngraph_set)
     else
        valid = cascade_set_is_valid (phs_config%cascade_set)
-    endif
+    end if
     if (.not. valid) &
        call msg_fatal ("Resonance extraction: Phase space generation failed")
   end subroutine phs_fks_config_generate_phase_space_extra
@@ -950,7 +866,7 @@ contains
     if (allocated (phs_cfg_born%feyngraph_set)) then
        allocate (phs_config%feyngraph_set)
        phs_config%feyngraph_set = phs_cfg_born%feyngraph_set
-    endif
+    end if
     phs_config%md5sum_born_config = phs_cfg_born%md5sum_phs_config
   end subroutine phs_fks_config_set_born_config
 
@@ -972,7 +888,7 @@ contains
        else
           call cascade_set_get_resonance_histories &
                (phs_config%cascade_set, n_filter = 2, res_hists = resonance_histories)
-       endif
+       end if
     end if
   end function phs_fks_config_get_resonance_histories
 
@@ -2513,7 +2429,8 @@ contains
     type(vector4_t) :: p_res, p_em
     integer :: i, i_phs, emitter
     logical :: thr
-    logical :: construct_massive_fsr = .false.
+    logical :: construct_massive_fsr
+    construct_massive_fsr = .false.
     thr = .false.; if (present (threshold)) thr = threshold
     do i_phs = 1, size (phs_identifiers)
        emitter = phs_identifiers(i_phs)%emitter

@@ -1,0 +1,33 @@
+?logging = true
+?openmp_logging = false
+?vis_history = false
+?integration_timer = false
+openmp_num_threads = 1
+sample_format = debug
+?debug_decay = false
+?debug_process = false
+?debug_verbose = false
+?write_raw = false
+
+include("nlo_settings.sin")
+
+cuts = let subevt @clustered_jets = cluster [jet] in
+       let subevt @pt_selected = select if Pt > 30 GeV [@clustered_jets] in
+       let subevt @eta_selected = select if abs(Eta) < 4 [@pt_selected] in
+       count [@eta_selected] >= 2
+
+scale = let int njet = count [jet] in
+        if njet == 2 then
+           (eval Pt [extract index 1 [jet]] + eval Pt [extract index 2 [jet]]) / 2
+        else
+           (eval Pt [extract index 1 [jet]] + eval Pt [extract index 2 [jet]]
+           +eval Pt [extract index 3 [jet]]) / 2
+        endif
+
+alpha_power = 2
+alphas_power = 0
+
+#?combined_nlo_integration = true
+#?nlo_use_born_scale = false
+process nlo_eejj = e1, E1 => jet, jet { nlo_calculation = full }
+integrate (nlo_eejj) { iterations = 5:50000:"gw",2:20000 }

@@ -11837,7 +11837,8 @@ observable and the node evaluation.
 
     call node%final_rec ()
     deallocate (node)
-    call var_list%final ()
+    !!! Workaround for NAGFOR 6.2 
+    ! call var_list%final ()
     deallocate (var_list)
     deallocate (prt)
 
@@ -14325,10 +14326,8 @@ part of the [[model_data_t]] base type and are copied afterwards via its
     n_vtx = orig%get_n_vtx ()
     call model%basic_init (orig%get_name (), n_par, n_prt, n_vtx)
     if (allocated (orig%schemes)) then
-       allocate (model%schemes (size (orig%schemes)))
-       model%schemes(:) = orig%schemes(:)
+       model%schemes = orig%schemes
        if (allocated (orig%selected_scheme)) then
-          allocate (model%selected_scheme)
           model%selected_scheme = orig%selected_scheme
           call model%set_scheme_num (orig%get_scheme_num ())
        end if

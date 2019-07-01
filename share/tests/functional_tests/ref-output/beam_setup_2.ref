@@ -24,7 +24,7 @@ seed = 0
 |   Z  (mass = 9.1188200E+01 GeV)
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'beam_setup_2p_i1.phs'
+| Phase space: writing configuration file 'beam_setup_2p.i1.phs'
 | ------------------------------------------------------------------------
 | Process [decay]: 'beam_setup_2p'
 |   Library name  = 'beam_setup_2_lib'
@@ -62,7 +62,7 @@ seed = 0
 |   Z  (mass = 9.1188200E+01 GeV)  polarized
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'beam_setup_2p_i1.phs'
+| Phase space: writing configuration file 'beam_setup_2p.i1.phs'
 | ------------------------------------------------------------------------
 | Process [decay]: 'beam_setup_2p'
 |   Library name  = 'beam_setup_2_lib'
@@ -100,7 +100,7 @@ seed = 0
 |   Z  (mass = 9.1188200E+01 GeV)  polarized
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'beam_setup_2p_i1.phs'
+| Phase space: writing configuration file 'beam_setup_2p.i1.phs'
 | ------------------------------------------------------------------------
 | Process [decay]: 'beam_setup_2p'
 |   Library name  = 'beam_setup_2_lib'

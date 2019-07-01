@@ -32,7 +32,7 @@ openmp_num_threads = 1
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'circe1_2_p1_i1.phs'
+| Phase space: writing configuration file 'circe1_2_p1.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'circe1_2_p1'
 |   Library name  = 'circe1_2_lib'
@@ -83,7 +83,7 @@ circe1_mapping_slope =  2.00000E+00
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'circe1_2_p4_i1.phs'
+| Phase space: writing configuration file 'circe1_2_p4.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'circe1_2_p4'
 |   Library name  = 'circe1_2_lib'

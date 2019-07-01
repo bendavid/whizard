@@ -32,7 +32,7 @@ sqrts =  1.00000E+02
 |   sqrts = 1.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'recola_5_p1_i1.phs'
+| Phase space: writing configuration file 'recola_5_p1.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'recola_5_p1'
 |   Library name  = 'recola_5_lib'
@@ -71,7 +71,7 @@ Warning: No cuts have been defined.
 |   sqrts = 1.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'recola_5_p2_i1.phs'
+| Phase space: writing configuration file 'recola_5_p2.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'recola_5_p2'
 |   Library name  = 'recola_5_lib'

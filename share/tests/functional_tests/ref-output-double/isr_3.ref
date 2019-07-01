@@ -35,7 +35,7 @@ seed = 0
 | RNG: Setting seed for random-number generator to 1
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'isr_3a_i1.phs'
+| Phase space: writing configuration file 'isr_3a.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'isr_3a'
 |   Library name  = 'isr_3_lib'
@@ -77,7 +77,7 @@ seed = 0
 | RNG: Setting seed for random-number generator to 1
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'isr_3b_i1.phs'
+| Phase space: writing configuration file 'isr_3b.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'isr_3b'
 |   Library name  = 'isr_3_lib'
@@ -111,7 +111,7 @@ Warning: No cuts have been defined.
 $sample = "isr_3a"
 n_events = 1
 | Starting simulation for process 'isr_3a'
-| Simulate: using integration grids from file 'isr_3a_m1.vg'
+| Simulate: using integration grids from file 'isr_3a.m1.vg'
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 2
 | Simulation: requested number of events = 1
@@ -129,7 +129,7 @@ $isr_handler_mode = "recoil"
 $sample = "isr_3b"
 n_events = 1
 | Starting simulation for process 'isr_3b'
-| Simulate: using integration grids from file 'isr_3b_m1.vg'
+| Simulate: using integration grids from file 'isr_3b.m1.vg'
 | Simulate: activating ISR handler
 | Simulate: ISR/EPA handler mode: pair recoil
 | RNG: Initializing TAO random-number generator

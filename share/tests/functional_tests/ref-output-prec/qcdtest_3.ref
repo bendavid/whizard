@@ -28,7 +28,7 @@ openmp_num_threads = 1
 | Initialized builtin PDF CTEQ6L
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'qcdtest_3_p1_i1.phs'
+| Phase space: writing configuration file 'qcdtest_3_p1.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'qcdtest_3_p1'
 |   Library name  = 'qcdtest_3_lib'
@@ -69,7 +69,7 @@ n_events = 1
 ?read_raw = false
 $sample = "qcdtest_3a"
 | Starting simulation for process 'qcdtest_3_p1'
-| Simulate: using integration grids from file 'qcdtest_3_p1_m1.vg'
+| Simulate: using integration grids from file 'qcdtest_3_p1.m1.vg'
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 1
 | Simulation: requested number of events = 1
@@ -90,7 +90,7 @@ QCD.alphas =>  2.356000000000E-01
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 2
 Warning: Reading phs file: MD5 sum check disabled
-| Phase space: keeping configuration file 'qcdtest_3_p1_i1.phs'
+| Phase space: keeping configuration file 'qcdtest_3_p1.i1.phs'
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 3
 | Simulation: requested number of events = 1
@@ -109,7 +109,7 @@ $sample = "qcdtest_3c"
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 4
 Warning: Reading phs file: MD5 sum check disabled
-| Phase space: keeping configuration file 'qcdtest_3_p1_i1.phs'
+| Phase space: keeping configuration file 'qcdtest_3_p1.i1.phs'
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 5
 | Simulation: requested number of events = 1

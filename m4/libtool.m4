@@ -4641,6 +4641,13 @@ m4_if([$1], [CXX], [
       # Common symbols not allowed in MH_DYLIB files
       _LT_TAGVAR(lt_prog_compiler_pic, $1)='-fno-common'
       case $cc_basename in
+      # icc used to be incompatible with GCC.
+      # ICC 10 doesn't accept -KPIC any more.
+      icc* | ifort*)
+	_LT_TAGVAR(lt_prog_compiler_wl, $1)='-Wl,'
+	_LT_TAGVAR(lt_prog_compiler_pic, $1)='-fPIC'
+	_LT_TAGVAR(lt_prog_compiler_static, $1)='-static'
+        ;;      
       nagfor*)
         # NAG Fortran compiler
         _LT_TAGVAR(lt_prog_compiler_wl, $1)='-Wl,-Wl,,'
@@ -4717,6 +4724,12 @@ m4_if([$1], [CXX], [
 	_LT_TAGVAR(lt_prog_compiler_pic, $1)='-fPIC'
 	_LT_TAGVAR(lt_prog_compiler_static, $1)='-static'
 	;;
+      armflang* | flang*)
+        # Flang and ARM HPC Compiler
+        _LT_TAGVAR(lt_prog_compiler_wl, $1)='-Wl,'
+        _LT_TAGVAR(lt_prog_compiler_pic, $1)='-fPIC -DPIC'
+        _LT_TAGVAR(lt_prog_compiler_static, $1)='-static'
+        ;;
       pgcc* | pgf77* | pgf90* | pgf95* | pgfortran*)
         # Portland Group compilers (*not* the Pentium gcc compiler,
 	# which looks to be a dead project)

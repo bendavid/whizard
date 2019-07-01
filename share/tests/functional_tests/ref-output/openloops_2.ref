@@ -41,10 +41,10 @@ seed = 0
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'openloops_2_p1_i1.phs'
+| Phase space: writing configuration file 'openloops_2_p1.i1.phs'
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'openloops_2_p1_i3.phs'
+| Phase space: writing configuration file 'openloops_2_p1.i3.phs'
 | One-Loop-Provider: Using OpenLoops
 | Loading library: [...]
 | One-Loop-Provider: Using OpenLoops
@@ -109,10 +109,10 @@ seed = 0
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'openloops_2_p1_i1.phs'
+| Phase space: writing configuration file 'openloops_2_p1.i1.phs'
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'openloops_2_p1_i3.phs'
+| Phase space: writing configuration file 'openloops_2_p1.i3.phs'
 | One-Loop-Provider: Using OpenLoops
 | Loading library: [...]
 | One-Loop-Provider: Using OpenLoops
@@ -177,10 +177,10 @@ seed = 0
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'openloops_2_p1_i1.phs'
+| Phase space: writing configuration file 'openloops_2_p1.i1.phs'
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'openloops_2_p1_i3.phs'
+| Phase space: writing configuration file 'openloops_2_p1.i3.phs'
 | One-Loop-Provider: Using OpenLoops
 | Loading library: [...]
 | One-Loop-Provider: Using OpenLoops

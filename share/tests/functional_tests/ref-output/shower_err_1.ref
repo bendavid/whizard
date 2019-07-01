@@ -26,7 +26,7 @@ openmp_num_threads = 1
 |   sqrts = 1.000000000000E+03 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'shower_err_1_i1.phs'
+| Phase space: writing configuration file 'shower_err_1.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'shower_err_1'
 |   Library name  = 'shower_err_1_lib'
@@ -58,7 +58,7 @@ openmp_num_threads = 1
 n_events = 1
 ?ps_isr_active = true
 | Starting simulation for process 'shower_err_1'
-| Simulate: using integration grids from file 'shower_err_1_m1.vg'
+| Simulate: using integration grids from file 'shower_err_1.m1.vg'
 | Simulate: activating parton shower
 | Shower: Using WHIZARD internal shower
 | RNG: Initializing TAO random-number generator

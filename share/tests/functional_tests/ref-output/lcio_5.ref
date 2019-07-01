@@ -26,7 +26,7 @@ sqrts =  5.000000000000E+02
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'lcio_5_p_i1.phs'
+| Phase space: writing configuration file 'lcio_5_p.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'lcio_5_p'
 |   Library name  = 'lcio_5_lib'
@@ -58,7 +58,7 @@ Warning: No cuts have been defined.
 n_events = 1
 openmp_num_threads = 1
 | Starting simulation for process 'lcio_5_p'
-| Simulate: using integration grids from file 'lcio_5_p_m1.vg'
+| Simulate: using integration grids from file 'lcio_5_p.m1.vg'
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 1
 | Simulation: requested number of events = 1

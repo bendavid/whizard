@@ -1,4 +1,4 @@
-! WHIZARD 2.6.3 Feb 10 2018
+! WHIZARD 2.6.4 Aug 23 2018
 !
 ! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -38,7 +38,6 @@ module sorting
   public :: sort_abs
   public :: order
   public :: order_abs
-  public :: concat
 
   interface sort
      module procedure sort_int
@@ -65,11 +64,6 @@ module sorting
 
   interface merge_abs
      module procedure merge_int_abs
-  end interface
-
-  interface concat
-     module procedure concat_int
-     module procedure concat_real
   end interface
 
 
@@ -232,20 +226,6 @@ contains
     end do
     res = tmp
   end subroutine merge_int_abs
-
-  function concat_int (val1, val2) result (val12)
-    integer, dimension(:), intent(in) :: val1, val2
-    integer, dimension(size(val1)+size(val2)) :: val12
-    val12(:size(val1)) = val1
-    val12(size(val1)+1:) = val2
-  end function concat_int
-
-  function concat_real (val1, val2) result (val12)
-    real(default), dimension(:), intent(in) :: val1, val2
-    integer, dimension(size(val1)+size(val2)) :: val12
-    val12(:size(val1)) = val1
-    val12(size(val1)+1:) = val2
-  end function concat_real
 
 
 end module sorting

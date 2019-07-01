@@ -43,10 +43,10 @@ sqrts =  5.00000E+02
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'powheg_1_p1_i1.phs'
+| Phase space: writing configuration file 'powheg_1_p1.i1.phs'
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'powheg_1_p1_i3.phs'
+| Phase space: writing configuration file 'powheg_1_p1.i3.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'powheg_1_p1'
 |   Library name  = 'powheg_1_lib'
@@ -91,7 +91,7 @@ n_events = 1
 ?sample_pacify = true
 ?write_raw = false
 | Starting simulation for process 'powheg_1_p1'
-| Simulate: using integration grids from file 'powheg_1_p1_m1.vg'
+| Simulate: using integration grids from file 'powheg_1_p1.m1.vg'
 | Simulate: activating parton shower
 | Shower: Using WHIZARD internal shower
 | Simulate: applying POWHEG matching
@@ -112,7 +112,7 @@ n_events = 1
 | Events: closing ASCII file 'powheg_1_p1.debug'
 n_events = 2
 | Starting simulation for process 'powheg_1_p1'
-| Simulate: using integration grids from file 'powheg_1_p1_m1.vg'
+| Simulate: using integration grids from file 'powheg_1_p1.m1.vg'
 | Simulate: activating parton shower
 | Shower: Using WHIZARD internal shower
 | Simulate: applying POWHEG matching
@@ -158,13 +158,13 @@ real_partition_scale =  5.00000E+00
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'powheg_1_p2_i1.phs'
+| Phase space: writing configuration file 'powheg_1_p2.i1.phs'
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'powheg_1_p2_i3.phs'
+| Phase space: writing configuration file 'powheg_1_p2.i3.phs'
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'powheg_1_p2_i5.phs'
+| Phase space: writing configuration file 'powheg_1_p2.i5.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'powheg_1_p2'
 |   Library name  = 'powheg_1_lib'
@@ -230,8 +230,8 @@ Warning: No cuts have been defined.
 tolerance =  1.08355E+02
 | expect: success
 | Starting simulation for process 'powheg_1_p2'
-| Simulate: using integration grids from file 'powheg_1_p2_m1.vg'
-| Simulate: using integration grids from file 'powheg_1_p2_m2.vg'
+| Simulate: using integration grids from file 'powheg_1_p2.m1.vg'
+| Simulate: using integration grids from file 'powheg_1_p2.m2.vg'
 | Simulate: activating parton shower
 | Shower: Using WHIZARD internal shower
 | Simulate: applying POWHEG matching

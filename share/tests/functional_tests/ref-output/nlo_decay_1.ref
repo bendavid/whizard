@@ -33,10 +33,10 @@ SM.mtop =>  1.73200E+02
 |   W+  (mass = 8.0385000E+01 GeV)
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'nlo_decay_1_p1_i1.phs'
+| Phase space: writing configuration file 'nlo_decay_1_p1.i1.phs'
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'nlo_decay_1_p1_i3.phs'
+| Phase space: writing configuration file 'nlo_decay_1_p1.i3.phs'
 | ------------------------------------------------------------------------
 | Process [decay]: 'nlo_decay_1_p1'
 |   Library name  = 'nlo_decay_1_lib'
@@ -102,10 +102,10 @@ Warning: No cuts have been defined.
 |   t  (mass = 1.7320000E+02 GeV)
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'nlo_decay_1_p2_i1.phs'
+| Phase space: writing configuration file 'nlo_decay_1_p2.i1.phs'
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'nlo_decay_1_p2_i3.phs'
+| Phase space: writing configuration file 'nlo_decay_1_p2.i3.phs'
 | ------------------------------------------------------------------------
 | Process [decay]: 'nlo_decay_1_p2'
 |   Library name  = 'nlo_decay_1_lib'

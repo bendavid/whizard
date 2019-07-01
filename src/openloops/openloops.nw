@@ -78,7 +78,7 @@ end module prc_openloops
        import
        integer(kind = c_int), value :: id, emitter
        real(kind = c_double), intent(in) :: pp(5 * N_EXTERNAL)
-       real(kind = c_double), intent(out) :: res(N_EXTERNAL), resmunu(16)
+       real(kind = c_double), intent(out) :: res, resmunu(16)
      end subroutine ol_evaluate_scpowheg
   end interface
 
@@ -634,7 +634,6 @@ filenames do not clash.
     call core%start ()
     call core%read_contract_file (flv_states)
     call core%print_parameter_file (i_core)
-    call core%reset_i_whizard_to_i_olc ()
   end subroutine prc_openloops_create_and_load_extra_libraries
 
 @ %def prc_openloops_create_and_load_extra_libraries
@@ -655,26 +654,24 @@ are requested.
     integer, intent(in) :: em
     type(vector4_t), intent(in), dimension(:) :: p
     real(default), intent(in) :: ren_scale
-    real(default), intent(out), dimension(0:3, 0:3) :: sqme_spin_c
+    real(default), intent(out), dimension(16) :: sqme_spin_c
     logical, intent(out) :: bad_point
     real(double), dimension(5*N_EXTERNAL) :: mom
-    real(double), dimension(N_EXTERNAL) :: res
+    real(double) :: res
     real(double), dimension(16) :: res_munu
     real(default) :: alpha_s
     if (object%i_spin_c(i_flv, i_hel) > 0) then
        mom = object%create_momentum_array (p)
-       sqme_spin_c = zero
        if (vanishes (ren_scale)) call msg_fatal &
             ("prc_openloops_compute_sqme_spin_c: ren_scale vanishes")
        alpha_s = object%qcd%alpha%get (ren_scale)
-
        select type (driver => object%driver)
        type is (openloops_driver_t)
           call driver%set_alpha_s (alpha_s)
           call driver%evaluate_spin_correlations_powheg &
                (object%i_spin_c(i_flv, i_hel), mom, em, res, res_munu)
        end select
-       sqme_spin_c = reshape (res_munu, (/4,4/))
+       sqme_spin_c = res_munu
        bad_point = .false.
        if (object%includes_polarization ()) &
             sqme_spin_c = object%n_hel * sqme_spin_c

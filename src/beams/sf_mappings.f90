@@ -1,4 +1,4 @@
-! WHIZARD 2.6.3 Feb 10 2018
+! WHIZARD 2.6.4 Aug 23 2018
 !
 ! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -53,7 +53,6 @@ module sf_mappings
   public :: sf_ei_mapping_t
   public :: sf_eir_mapping_t
   public :: sf_eio_mapping_t
-  public :: log_prec
   public :: map_on_shell
   public :: map_on_shell_inverse
   public :: map_on_shell_single
@@ -1536,19 +1535,6 @@ contains
        yb = one / (one + log1 / log2)
     end if
   end subroutine inverse_prec_y
-
-  function log_prec (x, xb) result (lx)
-    real(default), intent(in) :: x, xb
-    real(default) :: a1, a2, a3, lx
-    a1 = xb
-    a2 = a1 * xb / 2
-    a3 = a2 * xb * 2 / 3
-    if (abs (a3) < epsilon (a3)) then
-       lx = - a1 - a2 - a3
-    else
-       lx = log (x)
-    end if
-  end function log_prec
 
   subroutine map_on_shell (r, factor, p, lm2, x_free)
     real(default), dimension(2), intent(out) :: r

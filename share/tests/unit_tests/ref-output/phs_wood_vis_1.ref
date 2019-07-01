@@ -173,7 +173,7 @@ process phs_wood_vis_1
 \setlength{\parsep}{20pt}
 
 \begin{document}
-\begin{fmffile}{phs_wood_vis_1_phs-graphs}
+\begin{fmffile}{phs_wood_vis_1.phs-vis-graphs}
 \fmfcmd{color magenta; magenta = red + blue;}
 \fmfcmd{color cyan; cyan = green + blue;}
 \begin{fmfshrink}{0.5}

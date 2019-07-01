@@ -1,4 +1,4 @@
-! WHIZARD 2.6.3 Feb 10 2018
+! WHIZARD 2.6.4 Aug 23 2018
 !
 ! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -85,7 +85,8 @@ contains
 
     call node%final_rec ()
     deallocate (node)
-    call var_list%final ()
+    !!! Workaround for NAGFOR 6.2 
+    ! call var_list%final ()
     deallocate (var_list)
     deallocate (prt)
 

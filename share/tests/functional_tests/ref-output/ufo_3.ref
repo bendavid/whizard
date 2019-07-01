@@ -30,7 +30,7 @@ openmp_num_threads = 1
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'ufo_3_nnh_i1.phs'
+| Phase space: writing configuration file 'ufo_3_nnh.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'ufo_3_nnh'
 |   Library name  = 'ufo_3_lib'

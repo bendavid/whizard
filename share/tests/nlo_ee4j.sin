@@ -1,0 +1,39 @@
+?logging = true
+?openmp_logging = false
+?vis_history = false
+?integration_timer = false
+openmp_num_threads = 1
+sample_format = debug
+?debug_decay = false
+?debug_process = false
+?debug_verbose = false
+?write_raw = false
+
+include("nlo_settings.sin")
+
+cuts = let subevt @clustered_jets = cluster [jet] in
+       let subevt @pt_selected = select if Pt > 30 GeV [@clustered_jets] in
+       let subevt @eta_selected = select if abs(Eta) < 4 [@pt_selected] in
+       count [@eta_selected] >= 4
+
+scale = let subevt @clustered_jets = cluster [jet] in
+        let subevt @pt_selected = select if Pt > 30 GeV [@clustered_jets] in
+        let subevt @eta_selected = select if abs(Eta) < 4 [@pt_selected] in
+        let int njet = count [@eta_selected] in
+        if njet == 4 then
+          (eval Pt [extract index 1 [@eta_selected]] + eval Pt [extract index 2 [@eta_selected]]
+          + eval Pt [extract index 3 [@eta_selected]] + eval Pt [extract index 4 [@eta_selected]]) / 2
+        elsif njet == 5 then
+          ( eval Pt [extract index 1 [@eta_selected]] + eval Pt [extract index 2 [@eta_selected]]
+          + eval Pt [extract index 3 [@eta_selected]] + eval Pt [extract index 4 [@eta_selected]]
+          + eval Pt [extract index 5 [@eta_selected]]) / 2
+        endif
+
+alpha_power = 2
+alphas_power = 2
+?nlo_use_born_scale = false
+?nlo_cut_all_sqmes = false
+process nlo_ee4j = e1, E1 => jet, jet, jet, jet { nlo_calculation = full }
+mult_call_real = 3
+
+integrate (nlo_ee4j) {iterations = 10:50000:"gw"}

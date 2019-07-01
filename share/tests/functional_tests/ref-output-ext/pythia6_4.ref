@@ -35,7 +35,7 @@ openmp_num_threads = 1
 | RNG: Setting seed for random-number generator to 1
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'pythia6_4_p1_i1.phs'
+| Phase space: writing configuration file 'pythia6_4_p1.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'pythia6_4_p1'
 |   Library name  = 'pythia6_4_lib'
@@ -83,7 +83,7 @@ n_events = 1
 $shower_method = "PYTHIA6"
 $sample = "pythia6_4a"
 | Starting simulation for process 'pythia6_4_p1'
-| Simulate: using integration grids from file 'pythia6_4_p1_m1.vg'
+| Simulate: using integration grids from file 'pythia6_4_p1.m1.vg'
 | Simulate: activating parton shower
 | Shower: Using PYTHIA6 shower
 | RNG: Initializing TAO random-number generator
@@ -101,7 +101,7 @@ $sample = "pythia6_4a"
 $sample = "pythia6_4b"
 ?hadronization_active = true
 | Starting simulation for process 'pythia6_4_p1'
-| Simulate: using integration grids from file 'pythia6_4_p1_m1.vg'
+| Simulate: using integration grids from file 'pythia6_4_p1.m1.vg'
 | Simulate: activating parton shower
 | Shower: Using PYTHIA6 shower
 | Simulate: activating hadronization

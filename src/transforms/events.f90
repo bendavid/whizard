@@ -1,4 +1,4 @@
-! WHIZARD 2.6.3 Feb 10 2018
+! WHIZARD 2.6.4 Aug 23 2018
 !
 ! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -64,6 +64,7 @@ module events
      integer :: norm_mode = NORM_UNDEFINED
      integer :: factorization_mode = FM_IGNORE_HELICITY
      logical :: keep_correlations = .false.
+     logical :: colorize_subevt = .false.
      real(default) :: sigma = 1
      integer :: n = 1
      real(default) :: safety_factor = 1
@@ -175,6 +176,9 @@ contains
        write (u, "(A)")  "factorize"
     end select
     write (u, "(3x,A,L1)")  "Keep correlations  = ", object%keep_correlations
+    if (object%colorize_subevt) then
+       write (u, "(3x,A,L1)")  "Colorize subevent  = ", object%colorize_subevt
+    end if
     if (.not. nearly_equal (object%safety_factor, one)) then
        write (u, "(3x,A," // FMT_12 // ")")  &
             "Safety factor      = ", object%safety_factor
@@ -397,6 +401,8 @@ contains
        else
           event%config%factorization_mode = FM_IGNORE_HELICITY
        end if
+       event%config%colorize_subevt = &
+            var_list%get_lval (var_str ("?colorize_subevt"))
        if (event%config%unweighted) then
           event%config%safety_factor = var_list%get_rval (&
                var_str ("safety_factor"))
@@ -476,6 +482,7 @@ contains
     call event%expr%setup_selection (event%config%ef_selection)
     call event%expr%setup_analysis (event%config%ef_analysis)
     call event%expr%setup_reweight (event%config%ef_reweight)
+    call event%expr%colorize (event%config%colorize_subevt)
   end subroutine event_setup_expressions
 
   subroutine event_evaluate_transforms (event, r)
@@ -484,7 +491,8 @@ contains
     class(evt_t), pointer :: evt
     real(default) :: sigma_over_sqme
     integer :: i_term
-    logical :: failed_but_keep = .false.
+    logical :: failed_but_keep
+    failed_but_keep = .false.
     call msg_debug (D_TRANSFORMS, "event_evaluate_transforms")
     call event%discard_particle_set ()
     call event%check ()
@@ -746,7 +754,8 @@ contains
     integer, intent(in) :: i_mci
     real(default), dimension(:), intent(in), optional :: r
     integer, intent(in), optional :: i_nlo
-    logical :: generate_new = .true.
+    logical :: generate_new
+    generate_new = .true.
     if (present (i_nlo)) generate_new = (i_nlo == 1)
     if (generate_new) call event%reset_contents ()
     event%selected_i_mci = i_mci

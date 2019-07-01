@@ -26,7 +26,7 @@ seed = 0
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'polarized_1_p1_i1.phs'
+| Phase space: writing configuration file 'polarized_1_p1.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'polarized_1_p1'
 |   Library name  = 'polarized_1_lib'
@@ -57,7 +57,7 @@ Warning: No cuts have been defined.
 | Particle tau+ declared as polarized
 n_events = 1
 | Starting simulation for process 'polarized_1_p1'
-| Simulate: using integration grids from file 'polarized_1_p1_m1.vg'
+| Simulate: using integration grids from file 'polarized_1_p1.m1.vg'
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 1
 | Simulation: requested number of events = 1

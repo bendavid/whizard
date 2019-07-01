@@ -1,4 +1,4 @@
-! WHIZARD 2.6.3 Feb 10 2018
+! WHIZARD 2.6.4 Aug 23 2018
 !
 ! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -55,6 +55,8 @@ module numeric_utils
   public :: remove_duplicates_from_list
   public :: extend_integer_array
   public :: crop_integer_array
+  public :: log_prec
+  public :: split_array
 
 
 
@@ -65,6 +67,10 @@ module numeric_utils
      module procedure nearly_equal_complex
   end interface nearly_equal
 
+  interface split_array
+     module procedure split_integer_array
+     module procedure split_real_array
+  end interface
 
 contains
 
@@ -281,6 +287,43 @@ contains
     list = list_store
     deallocate (list_store)
   end subroutine crop_integer_array
+
+  function log_prec (x, xb) result (lx)
+    real(default), intent(in) :: x, xb
+    real(default) :: a1, a2, a3, lx
+    a1 = xb
+    a2 = a1 * xb / two
+    a3 = a2 * xb * two / three
+    if (abs (a3) < epsilon (a3)) then
+       lx = - a1 - a2 - a3
+    else
+       lx = log (x)
+    end if
+  end function log_prec
+  
+  subroutine split_integer_array (list1, list2)
+    integer, intent(inout), dimension(:), allocatable :: list1, list2
+    integer, dimension(:), allocatable :: list_store
+    allocate (list_store (size (list1) - size (list2)))
+    list2 = list1(:size (list2))
+    list_store = list1 (size (list2) + 1:)
+    deallocate (list1)
+    allocate (list1 (size (list_store)))
+    list1 = list_store
+    deallocate (list_store)
+  end subroutine split_integer_array
+
+  subroutine split_real_array (list1, list2)
+    real(default), intent(inout), dimension(:), allocatable :: list1, list2
+    real(default), dimension(:), allocatable :: list_store
+    allocate (list_store (size (list1) - size (list2)))
+    list2 = list1(:size (list2))
+    list_store = list1 (size (list2) + 1:)
+    deallocate (list1)
+    allocate (list1 (size (list_store)))
+    list1 = list_store
+    deallocate (list_store)
+  end subroutine split_real_array
 
 
 end module numeric_utils

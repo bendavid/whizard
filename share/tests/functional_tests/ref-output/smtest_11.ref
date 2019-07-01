@@ -30,7 +30,7 @@ error_threshold =  1.000000000000E-08
 |   t  (mass = 1.7310000E+02 GeV)
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'smtest_11_tpd_i1.phs'
+| Phase space: writing configuration file 'smtest_11_tpd.i1.phs'
 | ------------------------------------------------------------------------
 | Process [decay]: 'smtest_11_tpd'
 |   Library name  = 'smtest_11_lib'
@@ -70,7 +70,7 @@ Warning: No cuts have been defined.
 |   tbar  (mass = 1.7310000E+02 GeV)
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'smtest_11_tmd_i1.phs'
+| Phase space: writing configuration file 'smtest_11_tmd.i1.phs'
 | ------------------------------------------------------------------------
 | Process [decay]: 'smtest_11_tmd'
 |   Library name  = 'smtest_11_lib'
@@ -110,7 +110,7 @@ Warning: No cuts have been defined.
 |   W+  (mass = 8.0419000E+01 GeV)
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'smtest_11_wpd_i1.phs'
+| Phase space: writing configuration file 'smtest_11_wpd.i1.phs'
 | ------------------------------------------------------------------------
 | Process [decay]: 'smtest_11_wpd'
 |   Library name  = 'smtest_11_lib'
@@ -150,7 +150,7 @@ Warning: No cuts have been defined.
 |   W-  (mass = 8.0419000E+01 GeV)
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'smtest_11_wmd_i1.phs'
+| Phase space: writing configuration file 'smtest_11_wmd.i1.phs'
 | ------------------------------------------------------------------------
 | Process [decay]: 'smtest_11_wmd'
 |   Library name  = 'smtest_11_lib'
@@ -194,7 +194,7 @@ openmp_num_threads = 1
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'smtest_11_tt_i1.phs'
+| Phase space: writing configuration file 'smtest_11_tt.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'smtest_11_tt'
 |   Library name  = 'smtest_11_lib'
@@ -224,12 +224,12 @@ n_events = 1
 ?hepevt_ensure_order = false
 $sample = "smtest_11a"
 | Starting simulation for process 'smtest_11_tt'
-| Simulate: using integration grids from file 'smtest_11_tt_m1.vg'
+| Simulate: using integration grids from file 'smtest_11_tt.m1.vg'
 | Simulate: activating decays
-| Simulate: using integration grids from file 'smtest_11_wpd_m1.vg'
-| Simulate: using integration grids from file 'smtest_11_tpd_m1.vg'
-| Simulate: using integration grids from file 'smtest_11_wmd_m1.vg'
-| Simulate: using integration grids from file 'smtest_11_tmd_m1.vg'
+| Simulate: using integration grids from file 'smtest_11_wpd.m1.vg'
+| Simulate: using integration grids from file 'smtest_11_tpd.m1.vg'
+| Simulate: using integration grids from file 'smtest_11_wmd.m1.vg'
+| Simulate: using integration grids from file 'smtest_11_tmd.m1.vg'
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 5
 | Simulation: requested number of events = 1
@@ -245,12 +245,12 @@ $sample = "smtest_11a"
 ?hepevt_ensure_order = true
 $sample = "smtest_11b"
 | Starting simulation for process 'smtest_11_tt'
-| Simulate: using integration grids from file 'smtest_11_tt_m1.vg'
+| Simulate: using integration grids from file 'smtest_11_tt.m1.vg'
 | Simulate: activating decays
-| Simulate: using integration grids from file 'smtest_11_wpd_m1.vg'
-| Simulate: using integration grids from file 'smtest_11_tpd_m1.vg'
-| Simulate: using integration grids from file 'smtest_11_wmd_m1.vg'
-| Simulate: using integration grids from file 'smtest_11_tmd_m1.vg'
+| Simulate: using integration grids from file 'smtest_11_wpd.m1.vg'
+| Simulate: using integration grids from file 'smtest_11_tpd.m1.vg'
+| Simulate: using integration grids from file 'smtest_11_wmd.m1.vg'
+| Simulate: using integration grids from file 'smtest_11_tmd.m1.vg'
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 6
 | Simulation: requested number of events = 1

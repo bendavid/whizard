@@ -33,7 +33,7 @@ n_events = 1
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'qedtest_9_p_i1.phs'
+| Phase space: writing configuration file 'qedtest_9_p.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'qedtest_9_p'
 |   Library name  = 'qedtest_9_lib'
@@ -68,7 +68,7 @@ Warning: No cuts have been defined.
    6       2400  3.4735199E+02  1.43E-01    0.04    0.02   79.55    0.52   3
 |=============================================================================|
 | Starting simulation for process 'qedtest_9_p'
-| Simulate: using integration grids from file 'qedtest_9_p_m1.vg'
+| Simulate: using integration grids from file 'qedtest_9_p.m1.vg'
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 1
 | Simulation: requested number of events = 1
@@ -93,7 +93,7 @@ QED.mtau =>  0.000000000000E+00
 |   e+  (mass = 0.0000000E+00 GeV)
 |   sqrts = 5.000000000000E+02 GeV
 Warning: Reading phs file: MD5 sum check disabled
-| Phase space: keeping configuration file 'qedtest_9_p_i1.phs'
+| Phase space: keeping configuration file 'qedtest_9_p.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'qedtest_9_p'
 |   Library name  = 'qedtest_9_lib'
@@ -116,7 +116,7 @@ Warning: No cuts have been defined.
 | It      Calls  Integral[fb]  Error[fb]   Err[%]    Acc  Eff[%]   Chi2 N[It] |
 |=============================================================================|
 Warning: Reading grid file: MD5 sum check disabled
-| VAMP: using grids and results from file 'qedtest_9_p_m1.vg'
+| VAMP: using grids and results from file 'qedtest_9_p.m1.vg'
    1        800  3.4721369E+02  3.08E-01    0.09    0.03*  66.65
    2        800  3.4793298E+02  2.41E-01    0.07    0.02*  60.65
    3        800  3.4792475E+02  2.44E-01    0.07    0.02   79.69
@@ -124,7 +124,7 @@ Warning: Reading grid file: MD5 sum check disabled
    3       2400  3.4775909E+02  1.50E-01    0.04    0.02   79.69    2.06   3
 |-----------------------------------------------------------------------------|
 Warning: Reading grid file: MD5 sum check disabled
-| VAMP: using grids and results from file 'qedtest_9_p_m1.vg'
+| VAMP: using grids and results from file 'qedtest_9_p.m1.vg'
    4        800  3.4755512E+02  2.48E-01    0.07    0.02   79.61
    5        800  3.4721533E+02  2.48E-01    0.07    0.02   79.53
    6        800  3.4728703E+02  2.46E-01    0.07    0.02*  79.55
@@ -135,7 +135,7 @@ Warning: Reading grid file: MD5 sum check disabled
 ?check_event_file = false
 | Starting simulation for process 'qedtest_9_p'
 Warning: Reading grid file: MD5 sum check disabled
-| Simulate: using integration grids from file 'qedtest_9_p_m1.vg'
+| Simulate: using integration grids from file 'qedtest_9_p.m1.vg'
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 3
 | Simulation: requested number of events = 1

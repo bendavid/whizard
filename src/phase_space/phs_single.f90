@@ -1,4 +1,4 @@
-! WHIZARD 2.6.3 Feb 10 2018
+! WHIZARD 2.6.4 Aug 23 2018
 !
 ! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -29,6 +29,7 @@
 module phs_single
 
   use kinds, only: default
+  use iso_varying_string, string_t => varying_string
   use io_units
   use constants
   use numeric_utils
@@ -87,7 +88,7 @@ contains
 
   subroutine phs_single_config_configure (phs_config, sqrts, &
        sqrts_fixed, cm_frame, azimuthal_dependence, rebuild, ignore_mismatch, &
-       nlo_type)
+       nlo_type, subdir)
     class(phs_single_config_t), intent(inout) :: phs_config
     real(default), intent(in) :: sqrts
     logical, intent(in), optional :: sqrts_fixed
@@ -96,6 +97,7 @@ contains
     logical, intent(in), optional :: rebuild
     logical, intent(in), optional :: ignore_mismatch
     integer, intent(in), optional :: nlo_type
+    type(string_t), intent(in), optional :: subdir
     if (.not. present (nlo_type)) &
       phs_config%nlo_type = BORN
     if (phs_config%n_out == 2) then

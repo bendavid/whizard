@@ -34,7 +34,7 @@ Warning:  Phase space: Initial beam particle can decay
 |  mass(W-) =  0.8041900000E+02
 Warning:  Phase space: Initial beam particle can decay
 | Phase space: ... success.
-| Phase space: writing configuration file 'fatal_beam_decay_1_i1.phs'
+| Phase space: writing configuration file 'fatal_beam_decay_1.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'fatal_beam_decay_1'
 |   Library name  = 'fatal_beam_decay_lib'

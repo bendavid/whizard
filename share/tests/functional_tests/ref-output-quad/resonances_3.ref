@@ -35,7 +35,7 @@ openmp_num_threads = 1
 | RNG: Setting seed for random-number generator to 4
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'resonances_3_p_i1.phs'
+| Phase space: writing configuration file 'resonances_3_p.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'resonances_3_p'
 |   Library name  = 'resonances_3_lib'
@@ -71,7 +71,7 @@ Warning: No cuts have been defined.
 |=============================================================================|
 n_events = 100
 | Starting simulation for process 'resonances_3_p'
-| Simulate: using integration grids from file 'resonances_3_p_m1.vg'
+| Simulate: using integration grids from file 'resonances_3_p.m1.vg'
 | Creating library for resonant subprocesses 'resonances_3_p_R'
 | Process library 'resonances_3_p_R': initialized
 | Resonant subprocess #1: 3+4~Z

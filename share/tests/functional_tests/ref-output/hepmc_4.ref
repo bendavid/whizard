@@ -26,7 +26,7 @@ sqrts =  1.000000000000E+03
 |   sqrts = 1.000000000000E+03 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'hepmc_4_p_i1.phs'
+| Phase space: writing configuration file 'hepmc_4_p.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'hepmc_4_p'
 |   Library name  = 'hepmc_4_lib'
@@ -56,7 +56,7 @@ n_events = 5
 sample_split_n_evt = 2
 openmp_num_threads = 1
 | Starting simulation for process 'hepmc_4_p'
-| Simulate: using integration grids from file 'hepmc_4_p_m1.vg'
+| Simulate: using integration grids from file 'hepmc_4_p.m1.vg'
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 1
 | Simulation: requested number of events = 5

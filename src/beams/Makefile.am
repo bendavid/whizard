@@ -79,7 +79,7 @@ Modules: Makefile
           rm $@.new; \
 	else \
           mv $@.new $@; echo "Modules updated"; \
-        fi
+	fi
 BUILT_SOURCES = Modules
 
 ## Fortran module dependencies
@@ -95,7 +95,8 @@ module_lists = \
   ../qft/Modules \
   ../types/Modules \
   ../particles/Modules \
-  ../variables/Modules
+  ../variables/Modules \
+  ../qed_pdf/Modules
 
 # Explicit dependencies, not automatically generated
 sf_circe1.lo: ../../circe1/src/circe1.$(FC_MODULE_EXT)
@@ -147,7 +148,7 @@ DISTCLEANFILES += Makefile.depend
 	@:
 #	touch $@
 
-AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system -I../combinatorics -I../rng -I../physics -I../fastjet -I../qft -I../types -I../particles -I../../circe1/src -I../../circe2/src -I../pdf_builtin -I../lhapdf -I../variables -I../expr_base -I../user -I../parsing
+AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system -I../combinatorics -I../rng -I../physics -I../fastjet -I../qft -I../types -I../particles -I../../circe1/src -I../../circe2/src -I../pdf_builtin -I../lhapdf -I../qed_pdf -I../variables -I../expr_base -I../user -I../parsing
 
 
 ########################################################################

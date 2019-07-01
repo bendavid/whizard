@@ -25,7 +25,7 @@ accuracy_goal =  1.000000000000E+00
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'rebuild_3_p_i1.phs'
+| Phase space: writing configuration file 'rebuild_3_p.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'rebuild_3_p'
 |   Library name  = 'rebuild_3_lib'
@@ -58,7 +58,7 @@ Warning: No cuts have been defined.
 |=============================================================================|
 n_events = 1
 | Starting simulation for process 'rebuild_3_p'
-| Simulate: using integration grids from file 'rebuild_3_p_m1.vg'
+| Simulate: using integration grids from file 'rebuild_3_p.m1.vg'
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 1
 | Simulation: requested number of events = 1
@@ -99,7 +99,7 @@ accuracy_goal =  1.000000000000E+00
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'rebuild_3_p_i1.phs'
+| Phase space: writing configuration file 'rebuild_3_p.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'rebuild_3_p'
 |   Library name  = 'rebuild_3_lib'
@@ -132,7 +132,7 @@ Warning: No cuts have been defined.
 |=============================================================================|
 n_events = 1
 | Starting simulation for process 'rebuild_3_p'
-| Simulate: using integration grids from file 'rebuild_3_p_m1.vg'
+| Simulate: using integration grids from file 'rebuild_3_p.m1.vg'
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 1
 | Simulation: requested number of events = 1

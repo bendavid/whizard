@@ -5,6 +5,8 @@
 
 PDG => [int] = unary observable
 Hel => [int] = unary observable
+Ncol => [int] = unary observable
+Nacl => [int] = unary observable
 M => [real] = unary observable
 M2 => [real] = unary observable
 E => [real] = unary observable

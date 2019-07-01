@@ -2139,34 +2139,6 @@ comes first, or if they are equal.
   end do
   res = tmp
 @
-\subsection{Concatenating arrays}
-Not precisely a sorting function, but useful: Concatenate two arrays.
-<<Sorting: public>>=
-  public :: concat
-<<Sorting: interfaces>>=
-  interface concat
-     module procedure concat_int
-     module procedure concat_real
-  end interface
-
-@ %def concat
-<<Sorting: procedures>>=
-  function concat_int (val1, val2) result (val12)
-    integer, dimension(:), intent(in) :: val1, val2
-    integer, dimension(size(val1)+size(val2)) :: val12
-  <<Sorting: concat>>
-  end function concat_int
-
-  function concat_real (val1, val2) result (val12)
-    real(default), dimension(:), intent(in) :: val1, val2
-    integer, dimension(size(val1)+size(val2)) :: val12
-  <<Sorting: concat>>
-  end function concat_real
-
-@ %def concat_int
-<<Sorting: concat>>=
-  val12(:size(val1)) = val1
-  val12(size(val1)+1:) = val2
 @
 \subsection{Unit tests}
 Test module, followed by the corresponding implementation module.

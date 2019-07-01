@@ -1215,4 +1215,56 @@ larger module which deals with list manipulations.
   end subroutine crop_integer_array
 
 @ %def crop_integer_array
+@ We also need an evaluation of $\log x$ which is stable near $x=1$.
+<<Numeric utils: public>>=
+  public :: log_prec
+<<Numeric utils: procedures>>=
+  function log_prec (x, xb) result (lx)
+    real(default), intent(in) :: x, xb
+    real(default) :: a1, a2, a3, lx
+    a1 = xb
+    a2 = a1 * xb / two
+    a3 = a2 * xb * two / three
+    if (abs (a3) < epsilon (a3)) then
+       lx = - a1 - a2 - a3
+    else
+       lx = log (x)
+    end if
+  end function log_prec
+  
+@ %def log_prec
+@
+<<Numeric utils: public>>=
+  public :: split_array
+<<Numeric utils: interfaces>>=
+  interface split_array
+     module procedure split_integer_array
+     module procedure split_real_array
+  end interface
+<<Numeric utils: procedures>>=
+  subroutine split_integer_array (list1, list2)
+    integer, intent(inout), dimension(:), allocatable :: list1, list2
+    integer, dimension(:), allocatable :: list_store
+    allocate (list_store (size (list1) - size (list2)))
+    list2 = list1(:size (list2))
+    list_store = list1 (size (list2) + 1:)
+    deallocate (list1)
+    allocate (list1 (size (list_store)))
+    list1 = list_store
+    deallocate (list_store)
+  end subroutine split_integer_array
+
+  subroutine split_real_array (list1, list2)
+    real(default), intent(inout), dimension(:), allocatable :: list1, list2
+    real(default), dimension(:), allocatable :: list_store
+    allocate (list_store (size (list1) - size (list2)))
+    list2 = list1(:size (list2))
+    list_store = list1 (size (list2) + 1:)
+    deallocate (list1)
+    allocate (list1 (size (list_store)))
+    list1 = list_store
+    deallocate (list_store)
+  end subroutine split_real_array
+
+@ %def split_array
 @

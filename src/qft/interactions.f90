@@ -1,4 +1,4 @@
-! WHIZARD 2.6.3 Feb 10 2018
+! WHIZARD 2.6.4 Aug 23 2018
 !
 ! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -31,7 +31,6 @@ module interactions
   use kinds, only: default
   use io_units
   use diagnostics
-  use pdg_arrays, only: is_elementary
   use sorting
   use lorentz
   use flavors
@@ -64,7 +63,6 @@ module interactions
   public :: interaction_exchange_mask
   public :: interaction_send_momenta
   public :: interaction_pacify_momenta
-  public :: interaction_declare_subtraction
   public :: find_connections
 
   type :: qn_index_map_t
@@ -75,6 +73,10 @@ module interactions
      integer :: n_flv = 0, n_hel = 0, n_sub = 0
      integer, dimension(:, :, :), allocatable :: index
    contains
+     generic :: init => qn_index_map_init
+     procedure, private :: qn_index_map_init
+     generic :: init => qn_index_map_init_trivial
+     procedure, private :: qn_index_map_init_trivial
      procedure :: write => qn_index_map_write
      procedure :: set_helicity_flip => qn_index_map_set_helicity_flip
      procedure :: get_index => qn_index_map_get_index
@@ -181,6 +183,7 @@ module interactions
      procedure :: evaluate_square_c => interaction_evaluate_square_c
      procedure :: evaluate_sum => interaction_evaluate_sum
      procedure :: evaluate_me_sum => interaction_evaluate_me_sum
+     procedure :: tag_hard_process => interaction_tag_hard_process
      procedure :: get_tag => interaction_get_tag
      procedure :: get_n_tot => interaction_get_n_tot
      procedure :: get_n_in => interaction_get_n_in
@@ -207,13 +210,9 @@ module interactions
      procedure :: set_source_link => interaction_set_source_link
      procedure :: find_source => interaction_find_source
      procedure :: receive_momenta => interaction_receive_momenta
-     procedure :: transfer_me_to_sub => interaction_transfer_me_to_sub
+     procedure :: declare_subtraction => interaction_declare_subtraction
   end type interaction_t
 
-
-  interface qn_index_map_t
-     module procedure qn_index_map_init, qn_index_map_init_trivial
-  end interface qn_index_map_t
 
   interface assignment(=)
      module procedure interaction_assign
@@ -222,8 +221,8 @@ module interactions
 
 contains
 
-type(qn_index_map_t) function qn_index_map_init (int, qn_flv, n_sub, qn_hel) &
-       result (self)
+  subroutine qn_index_map_init (self, int, qn_flv, n_sub, qn_hel) 
+    class(qn_index_map_t), intent(out) :: self
     class(interaction_t), intent(in) :: int
     type(quantum_numbers_t), dimension(:, :), intent(in) :: qn_flv
     integer, intent(in) :: n_sub
@@ -244,43 +243,68 @@ type(qn_index_map_t) function qn_index_map_init (int, qn_flv, n_sub, qn_hel) &
     end if
     allocate (self%index (self%n_flv, self%n_hel, 0:self%n_sub), source=0)
     associate (n_me => int%get_n_matrix_elements ())
-      do i = 1, n_me
-         qn_int = int%get_quantum_numbers (i, by_me_index = .true.)
-         qn = pack (qn_int, get_elementary (qn_int))
-         i_flv = find_flv_index (self, qn)
-         i_hel = 1; if (allocated (self%qn_hel)) &
-            i_hel = find_hel_index (self, qn)
-         i_sub = find_sub_index (self, qn)
-         self%index(i_flv, i_hel, i_sub) = i
-      end do
+       do i = 1, n_me
+          qn_int = int%get_quantum_numbers (i, by_me_index = .true.)
+          qn = pack (qn_int, qn_int%are_hard_process ())
+          i_flv = find_flv_index (self, qn)
+          i_hel = 1; if (allocated (self%qn_hel)) &
+               i_hel = find_hel_index (self, qn)
+          i_sub = find_sub_index (self, qn)
+          self%index(i_flv, i_hel, i_sub) = i
+       end do
     end associate
   contains
     integer function find_flv_index (self, qn) result (i_flv)
       type(qn_index_map_t), intent(in) :: self
       type(quantum_numbers_t), dimension(:), intent(in) :: qn
       integer :: j
+      i_flv = 0
       do j = 1, self%n_flv
          if (.not. all (qn .fmatch. self%qn_flv(:, j))) cycle
          i_flv = j
          exit
       end do
+      if (i_flv < 1) then
+         call msg_message ("QN:")
+         call quantum_numbers_write (qn)
+         call msg_message ("")
+         call msg_message ("QN_FLV:")
+         do j = 1, self%n_flv
+            call quantum_numbers_write (self%qn_flv(:, j))
+            call msg_message ("")
+         end do
+         call msg_bug ("[find_flv_index] could not find flv in qn_flv.")
+      end if
     end function find_flv_index
 
     integer function find_hel_index (self, qn) result (i_hel)
       type(qn_index_map_t), intent(in) :: self
       type(quantum_numbers_t), dimension(:), intent(in) :: qn
       integer :: j
+      i_hel = 0
       do j = 1, self%n_hel
          if (.not. all (qn .hmatch. self%qn_hel(:, j))) cycle
          i_hel = j
          exit
       end do
+      if (i_hel < 1) then
+         call msg_message ("QN:")
+         call quantum_numbers_write (qn)
+         call msg_message ("")
+         call msg_message ("QN_HEL:")
+         do j = 1, self%n_hel
+            call quantum_numbers_write (self%qn_hel(:, j))
+            call msg_message ("")
+         end do
+         call msg_bug ("[find_hel_index] could not find hel in qn_hel.")
+      end if
     end function find_hel_index
 
     integer function find_sub_index (self, qn) result (i_sub)
       type(qn_index_map_t), intent(in) :: self
       type(quantum_numbers_t), dimension(:), intent(in) :: qn
       integer :: s
+      i_sub = -1
       do s = 0, self%n_sub
          if ((all (pack(qn%get_sub (), qn%get_sub () > 0) == s)) &
               .or. (all (qn%get_sub () == 0) .and. s == 0)) then
@@ -288,17 +312,16 @@ type(qn_index_map_t) function qn_index_map_init (int, qn_flv, n_sub, qn_hel) &
             exit
          end if
       end do
+      if (i_sub < 0) then
+         call msg_message ("QN:")
+         call quantum_numbers_write (qn)
+         call msg_bug ("[find_sub_index] could not find sub in qn.")
+      end if
     end function find_sub_index
+  end subroutine qn_index_map_init
 
-    impure elemental logical function get_elementary (qn) result (yorn)
-      type(quantum_numbers_t), intent(in) :: qn
-      type(flavor_t) :: flv
-      flv = qn%get_flavor ()
-      yorn = is_elementary (flv%get_pdg ())
-    end function get_elementary
- end function qn_index_map_init
-
-  type(qn_index_map_t) function qn_index_map_init_trivial (int) result (self)
+  subroutine qn_index_map_init_trivial (self, int)
+    class(qn_index_map_t), intent(out) :: self
     class(interaction_t), intent(in) :: int
     integer :: qn
     self%n_flv = int%get_n_matrix_elements ()
@@ -308,7 +331,7 @@ type(qn_index_map_t) function qn_index_map_init (int, qn_flv, n_sub, qn_hel) &
     do qn = 1, self%n_flv
        self%index(qn, 1, 0) = qn
     end do
-  end function qn_index_map_init_trivial
+  end subroutine qn_index_map_init_trivial
 
   subroutine qn_index_map_write (self, unit)
     class(qn_index_map_t), intent(in) :: self
@@ -719,7 +742,8 @@ type(qn_index_map_t) function qn_index_map_init (int, qn_flv, n_sub, qn_hel) &
     type(quantum_numbers_mask_t), intent(in), dimension(:) :: qn_mask
     logical, optional, intent(in) :: keep_order
     type(state_matrix_t) :: state
-    logical :: opt_keep_order = .false.
+    logical :: opt_keep_order
+    opt_keep_order = .false.
     if (present (keep_order)) opt_keep_order = keep_order
     call int%state_matrix%reduce (qn_mask, state, keep_me_index = keep_order)
     int%state_matrix = state
@@ -868,7 +892,7 @@ type(qn_index_map_t) function qn_index_map_init (int, qn_flv, n_sub, qn_hel) &
   function interaction_get_n_sub (int) result (n_sub)
     integer :: n_sub
     class(interaction_t), intent(in) :: int
-    n_sub = int%state_matrix%compute_n_sub ()
+    n_sub = int%state_matrix%get_n_sub ()
   end function interaction_get_n_sub
 
   function interaction_get_quantum_numbers_single (int, i, by_me_index) result (qn)
@@ -1117,6 +1141,15 @@ type(qn_index_map_t) function qn_index_map_init (int, qn_flv, n_sub, qn_hel) &
     integer, dimension(:), intent(in) :: index1
     call int%state_matrix%evaluate_me_sum (i, int1%state_matrix, index1)
   end subroutine interaction_evaluate_me_sum
+
+  subroutine interaction_tag_hard_process (int, tag)
+    class(interaction_t), intent(inout) :: int
+    integer, dimension(:), intent(in), optional :: tag
+    type(state_matrix_t) :: state
+    call int%state_matrix%tag_hard_process (state, tag)
+    call int%state_matrix%final ()
+    int%state_matrix = state
+  end subroutine interaction_tag_hard_process
 
   function interaction_get_tag (int) result (tag)
     class(interaction_t), intent(in) :: int
@@ -1629,51 +1662,28 @@ type(qn_index_map_t) function qn_index_map_init (int, qn_flv, n_sub, qn_hel) &
   end subroutine interaction_pacify_momenta
 
   subroutine interaction_declare_subtraction (int, n_sub)
-    type(interaction_t), intent(inout), target :: int
+    class(interaction_t), intent(inout), target :: int
     integer, intent(in) :: n_sub
+    integer :: i_sub
     type(state_iterator_t) :: it
-    type(quantum_numbers_t), dimension(:), allocatable :: qn, qn_save
-    integer :: i, s
-    integer :: n_me_orig, n_sub_int
-    complex(default), dimension(:), allocatable :: me_orig
-    type(state_matrix_t), target :: state_matrix_save
-    state_matrix_save = int%state_matrix
-    call it%init (state_matrix_save)
-    i = 1; n_me_orig = int%state_matrix%get_n_matrix_elements ()
-    allocate (me_orig (n_me_orig))
-    allocate (qn (it%get_depth ()))
-    do while (it%is_valid () .and. i <= n_me_orig)
-       qn = it%get_quantum_numbers ()
-       qn_save = qn
-       me_orig (i) = it%get_matrix_element ()
-       n_sub_int = 0
-       do s = 1, n_sub
-          call qn%set_subtraction_index (s)
-          if (.not. all (qn == qn_save)) then
-             n_sub_int = n_sub_int + 1
-             call int%state_matrix%add_state (qn)
-          end if
-       end do
-       call it%advance ()
-       i = i + 1
-    end do
-    call int%state_matrix%freeze ()
-    call int%state_matrix%set_n_sub ()
-    do i = 1, n_me_orig
-       call int%state_matrix%set_matrix_element (i, me_orig(i))
-       do s = 1, n_sub_int
-          call int%state_matrix%set_matrix_element (s + n_me_orig + (i - 1) * n_sub_int, me_orig(i))
+    type(quantum_numbers_t), dimension(:), allocatable :: qn
+    type(state_matrix_t) :: state_matrix
+    call state_matrix%init (store_values = .true.)
+    allocate (qn (int%get_state_depth ()))
+    do i_sub = 0, n_sub
+       call it%init (int%state_matrix)
+       do while (it%is_valid ())
+          qn = it%get_quantum_numbers ()
+          call qn%set_subtraction_index (i_sub)
+          call state_matrix%add_state (qn, value = it%get_matrix_element ())
+          call it%advance ()
        end do
     end do
-    deallocate (me_orig, qn, qn_save)
-    call state_matrix_save%final ()
+    call state_matrix%freeze ()
+    call state_matrix%set_n_sub ()
+    call int%state_matrix%final ()
+    int%state_matrix = state_matrix
   end subroutine interaction_declare_subtraction
-
-  subroutine interaction_transfer_me_to_sub (int, i_sub)
-    class(interaction_t), intent(inout) :: int
-    integer, intent(in) :: i_sub
-    call int%state_matrix%transfer_me_to_sub (i_sub)
-  end subroutine interaction_transfer_me_to_sub
 
   subroutine find_connections (int1, int2, n, connection_index)
     class(interaction_t), intent(in) :: int1, int2

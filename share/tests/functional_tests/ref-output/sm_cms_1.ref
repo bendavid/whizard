@@ -32,7 +32,7 @@ openmp_num_threads = 1
 |   sqrts = 1.650000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'sm_cms_1_ww_i1.phs'
+| Phase space: writing configuration file 'sm_cms_1_ww.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'sm_cms_1_ww'
 |   Library name  = 'sm_cms_1_lib'
@@ -88,7 +88,7 @@ seed = 0
 |   sqrts = 1.650000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'sm_cms_2_ww_i1.phs'
+| Phase space: writing configuration file 'sm_cms_2_ww.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'sm_cms_2_ww'
 |   Library name  = 'sm_cms_1_lib'

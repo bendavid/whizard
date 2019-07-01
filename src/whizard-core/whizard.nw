@@ -102,6 +102,16 @@ is part of a doubly-linked list.
   end function file_is_open
 
 @ %def file_is_open
+@ Return the unit number of a file for direct access.  It should be checked
+first whether the file is open.
+<<User files: procedures>>=
+  function file_get_unit (file) result (unit)
+    integer :: unit
+    type(file_t), intent(in) :: file
+    unit = file%unit
+  end function file_get_unit
+
+@ %def file_get_unit
 @ Write to the file.  Error if in wrong mode.  If there is no string, just
 write an empty record.  If there is a string, respect the [[advancing]]
 option.
@@ -225,6 +235,25 @@ doubly-linked because we may delete entries.
   end function file_list_is_open
 
 @ %def file_list_is_open
+@ Return the unit number for a file.  It should be checked first whether the
+file is open.
+<<User files: public>>=
+  public :: file_list_get_unit
+<<User files: procedures>>=
+  function file_list_get_unit (file_list, name) result (unit)
+    integer :: unit
+    type(file_list_t), intent(in) :: file_list
+    type(string_t), intent(in) :: name
+    type(file_t), pointer :: current
+    current => file_list_get_file_ptr (file_list, name)
+    if (associated (current)) then
+       unit = file_get_unit (current)
+    else
+       unit = -1
+    end if
+  end function file_list_get_unit
+  
+@ %def file_list_get_unit
 @ Append a new file entry, i.e., open this file.  Error if it is
 already open.
 <<User files: public>>=
@@ -585,6 +614,7 @@ temporarily override defaults.  The data set is transparent.
   type :: rt_data_t
      type(lexer_t), pointer :: lexer => null ()
      type(rt_data_t), pointer :: context => null ()
+     type(string_t), dimension(:), allocatable :: export
      type(var_list_t) :: var_list
      type(iterations_list_t) :: it_list
      type(os_data_t) :: os_data
@@ -626,6 +656,12 @@ temporarily override defaults.  The data set is transparent.
     u = given_output_unit (unit)
     call write_separator (u, 2)
     write (u, "(1x,A)")  "Runtime data:"
+    if (object%get_n_export () > 0) then
+       call write_separator (u, 2)
+       write (u, "(1x,A)")  "Exported objects and variables:"
+       call write_separator (u)
+       call object%write_exports (u)
+    end if
     if (present (vars)) then
        if (size (vars) /= 0) then
           call write_separator (u, 2)
@@ -1041,18 +1077,146 @@ should be kept.  Currently, this is only the process library stack.
   end subroutine rt_data_copy_globals
 
 @ %def rt_data_copy_globals
-@ This restores global objects, for which local modifications
-should be kept.
+@ This restores global objects for which local modifications
+should be kept.  May also modify (remove) the local objects.
 <<RT data: rt data: TBP>>=
   procedure :: restore_globals => rt_data_restore_globals
 <<RT data: procedures>>=
   subroutine rt_data_restore_globals (global, local)
     class(rt_data_t), intent(inout) :: global
-    class(rt_data_t), intent(in) :: local
+    class(rt_data_t), intent(inout) :: local
     global%prclib_stack = local%prclib_stack
+    call local%handle_exports (global)
   end subroutine rt_data_restore_globals
 
 @ %def rt_data_restore_globals
+@
+\subsection{Exported objects}
+Exported objects are transferred to the global state when a local environment
+is closed.  (For the top-level global data set, there is no effect.)
+
+The current implementation handles only the [[results]] object, which resolves
+to the local process stack.  The stack elements are appended to the global
+stack without modification, the local stack becomes empty.
+
+Write names of objects to be exported:
+<<RT data: rt data: TBP>>=
+  procedure :: write_exports => rt_data_write_exports
+<<RT data: procedures>>=
+  subroutine rt_data_write_exports (rt_data, unit)
+    class(rt_data_t), intent(in) :: rt_data
+    integer, intent(in), optional :: unit
+    integer :: u, i
+    u = given_output_unit (unit)
+    do i = 1, rt_data%get_n_export ()
+       write (u, "(A)")  char (rt_data%export(i))
+    end do
+  end subroutine rt_data_write_exports
+
+@ %def rt_data_write_exports
+@ The number of entries in the export list.
+<<RT data: rt data: TBP>>=
+  procedure :: get_n_export => rt_data_get_n_export
+<<RT data: procedures>>=
+  function rt_data_get_n_export (rt_data) result (n)
+    class(rt_data_t), intent(in) :: rt_data
+    integer :: n
+    if (allocated (rt_data%export)) then
+       n = size (rt_data%export)
+    else
+       n = 0
+    end if
+  end function rt_data_get_n_export
+
+@ %def rt_data_get_n_export
+@ Return a specific export 
+@ Append new names to the export list.  If a duplicate occurs, do not transfer
+it.
+<<RT data: rt data: TBP>>=
+  procedure :: append_exports => rt_data_append_exports
+<<RT data: procedures>>=
+  subroutine rt_data_append_exports (rt_data, export)
+    class(rt_data_t), intent(inout) :: rt_data
+    type(string_t), dimension(:), intent(in) :: export
+    logical, dimension(:), allocatable :: mask
+    type(string_t), dimension(:), allocatable :: tmp
+    integer :: i, j, n
+    if (.not. allocated (rt_data%export))  allocate (rt_data%export (0))
+    n = size (rt_data%export)
+    allocate (mask (size (export)), source=.false.)
+    do i = 1, size (export)
+       mask(i) = all (export(i) /= rt_data%export) &
+            .and. all (export(i) /= export(:i-1))
+    end do
+    if (count (mask) > 0) then
+       allocate (tmp (n + count (mask)))
+       tmp(1:n) = rt_data%export(:)
+       j = n
+       do i = 1, size (export)
+          if (mask(i)) then
+             j = j + 1
+             tmp(j) = export(i)
+          end if
+       end do
+       call move_alloc (from=tmp, to=rt_data%export)
+    end if
+  end subroutine rt_data_append_exports
+
+@ %def rt_data_append_exports
+@ Transfer export-objects from the [[local]] rt data to the [[global]] rt
+data, as far as supported.
+<<RT data: rt data: TBP>>=
+  procedure :: handle_exports => rt_data_handle_exports
+<<RT data: procedures>>=
+  subroutine rt_data_handle_exports (local, global)
+    class(rt_data_t), intent(inout), target :: local
+    class(rt_data_t), intent(inout), target :: global
+    type(string_t) :: export
+    integer :: i
+    if (local%get_n_export () > 0) then
+       do i = 1, local%get_n_export ()
+          export = local%export(i)
+          select case (char (export))
+          case ("results")
+             call msg_message ("Exporting integration results &
+                  &to outer environment")
+             call local%transfer_process_stack (global)
+          case default
+             call msg_bug ("handle exports: '" &
+                  // char (export) // "' unsupported")
+          end select
+       end do
+    end if
+  end subroutine rt_data_handle_exports
+
+@ %def rt_data_handle_exports
+@ Export the process stack.  One-by-one, take the last process from the local
+stack and push it on the global stack.  Also handle the corresponding result
+variables: append if the process did not exist yet in the global stack,
+otherwise update.
+
+TODO: result variables don't work that way yet, require initialization in the
+global variable list.
+<<RT data: rt data: TBP>>=
+  procedure :: transfer_process_stack => rt_data_transfer_process_stack
+<<RT data: procedures>>=
+  subroutine rt_data_transfer_process_stack (local, global)
+    class(rt_data_t), intent(inout), target :: local
+    class(rt_data_t), intent(inout), target :: global
+    type(process_entry_t), pointer :: process
+    type(string_t) :: process_id
+    do
+       call local%process_stack%pop_last (process)
+       if (.not. associated (process))  exit
+       process_id = process%get_id ()
+       call global%process_stack%push (process)
+       call global%process_stack%fill_result_vars (process_id)
+       call global%process_stack%update_result_vars &
+            (process_id, global%var_list)
+    end do
+  end subroutine rt_data_transfer_process_stack
+    
+@ %def rt_data_transfer_process_stack
 @
 \subsection{Finalization}
 Finalizer for the variable list and the structure-function list.
@@ -2743,6 +2907,7 @@ the collision energy.  The method [[get_sqrts]] fetches the correct value.
   end subroutine rt_data_9
 
 @ %def rt_data_9
+@
 \subsubsection{Descriptions}
 <<RT data: execute tests>>=
   call test(rt_data_10, "rt_data_10", &
@@ -2792,6 +2957,73 @@ the collision energy.  The method [[get_sqrts]] fetches the correct value.
   end subroutine rt_data_10
 
 @ %def rt_data_10
+@
+\subsubsection{Export objects}
+Export objects are variables or other data that should be copied or otherwise
+applied to corresponding objects in the outer scope.
+
+We test appending and retrieval for the export list.
+<<RT data: execute tests>>=
+  call test(rt_data_11, "rt_data_11", &
+            "export objects", u, results)
+<<RT data: test declarations>>=
+  public :: rt_data_11
+<<RT data: tests>>=
+  subroutine rt_data_11 (u)
+    integer, intent(in) :: u
+    type(rt_data_t) :: global
+    type(string_t), dimension(:), allocatable :: exports
+    integer :: i
+
+    write (u, "(A)")  "* Test output: rt_data_11"
+    write (u, "(A)")  "*   Purpose: handle export object list"
+    write (u, "(A)")
+
+    write (u, "(A)")  "* Empty export list"
+    write (u, "(A)")
+    
+    call global%write_exports (u)
+
+    write (u, "(A)")  "* Add an entry"
+    write (u, "(A)")
+    
+    allocate (exports (1))
+    exports(1) = var_str ("results")
+    do i = 1, size (exports)
+       write (u, "('+ ',A)")  char (exports(i))
+    end do
+    write (u, *)
+    
+    call global%append_exports (exports)
+    call global%write_exports (u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Add more entries, including doubler"
+    write (u, "(A)")
+    
+    deallocate (exports)
+    allocate (exports (3))
+    exports(1) = var_str ("foo")
+    exports(2) = var_str ("results")
+    exports(3) = var_str ("bar")
+    do i = 1, size (exports)
+       write (u, "('+ ',A)")  char (exports(i))
+    end do
+    write (u, *)
+
+    call global%append_exports (exports)
+    call global%write_exports (u)
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Cleanup"
+    
+    call global%final ()
+
+    write (u, "(A)")
+    write (u, "(A)")  "* Test output end: rt_data_11"
+  end subroutine rt_data_11
+
+@ %def rt_data_11
 @
 @
 \clearpage
@@ -4414,6 +4646,8 @@ module compilations
 
 <<Compilations: types>>
 
+<<Compilations: parameters>>
+
 contains
 
 <<Compilations: procedures>>
@@ -4434,12 +4668,17 @@ process library.
      type(process_library_t), pointer :: lib => null ()
      logical :: recompile_library = .false.
      logical :: verbose = .false.
+     logical :: use_workspace = .false.
+     type(string_t) :: workspace
    contains
    <<Compilations: compilation item: TBP>>
   end type compilation_item_t
 
 @ %def compilation_item_t
-@ Initialize:
+@ Initialize.
+
+Set flags and global properties of the library.  Establish the workspace name,
+if defined.
 <<Compilations: compilation item: TBP>>=
   procedure :: init => compilation_item_init
 <<Compilations: procedures>>=
@@ -4456,7 +4695,17 @@ process library.
     end if
     comp%recompile_library = &
          var_list%get_lval (var_str ("?recompile_library"))
-    comp%verbose = var_list%get_lval (var_str ("?me_verbose"))
+    comp%verbose = &
+         var_list%get_lval (var_str ("?me_verbose"))
+    comp%use_workspace = &
+         var_list%is_known (var_str ("$compile_workspace"))
+    if (comp%use_workspace) then
+       comp%workspace = &
+            var_list%get_sval (var_str ("$compile_workspace"))
+       if (comp%workspace == "")  comp%use_workspace = .false.
+    else
+       comp%workspace = ""
+    end if
   end subroutine compilation_item_init
 
 @ %def compilation_item_init
@@ -4473,28 +4722,56 @@ accessible by a makefile will be overwritten.
     type(os_data_t), intent(in) :: os_data
     logical, intent(in) :: force, recompile
     if (associated (comp%lib)) then
+       if (comp%use_workspace)  call setup_workspace (comp%workspace, os_data)
        call msg_message ("Process library '" &
             // char (comp%libname) // "': compiling ...")
        call comp%lib%configure (os_data)
        if (signal_is_pending ())  return
        call comp%lib%compute_md5sum (model)
-       call comp%lib%write_makefile (os_data, force, comp%verbose)
+       call comp%lib%write_makefile &
+            (os_data, force, verbose=comp%verbose, workspace=comp%workspace)
        if (signal_is_pending ())  return
        if (force) then
-          call comp%lib%clean (os_data, distclean = .false.)
+          call comp%lib%clean &
+               (os_data, distclean = .false., workspace=comp%workspace)
           if (signal_is_pending ())  return
        end if
-       call comp%lib%write_driver (force)
+       call comp%lib%write_driver (force, workspace=comp%workspace)
        if (signal_is_pending ())  return
        if (recompile) then
-          call comp%lib%load (os_data, keep_old_source = .true.)
+          call comp%lib%load &
+               (os_data, keep_old_source = .true., workspace=comp%workspace)
           if (signal_is_pending ())  return
        end if
-       call comp%lib%update_status (os_data)
+       call comp%lib%update_status (os_data, workspace=comp%workspace)
     end if
   end subroutine compilation_item_compile
 
 @ %def compilation_item_compile
+@ The workspace directory is created if it does not exist.  (Applies only if
+the use has set the workspace directory.)
+<<Compilations: parameters>>=
+  character(*), parameter :: ALLOWED_IN_DIRNAME = &
+       "abcdefghijklmnopqrstuvwxyz&
+       &ABCDEFGHIJKLMNOPQRSTUVWXYZ&
+       &1234567890&
+       &.,_-+="
+@ %def ALLOWED_IN_DIRNAME
+<<Compilations: procedures>>=
+  subroutine setup_workspace (workspace, os_data)
+    type(string_t), intent(in) :: workspace
+    type(os_data_t), intent(in) :: os_data
+    if (verify (workspace, ALLOWED_IN_DIRNAME) == 0) then
+       call msg_message ("Compile: preparing workspace directory '" &
+            // char (workspace) // "'")
+       call os_system_call ("mkdir -p '" // workspace // "'")
+    else
+       call msg_fatal ("compile: workspace name '" &
+            // char (workspace) // "' contains illegal characters")
+    end if
+  end subroutine setup_workspace
+
+@ %def setup_workspace
 @ Load the current library, just after compiling it.
 <<Compilations: compilation item: TBP>>=
   procedure :: load => compilation_item_load
@@ -4503,7 +4780,7 @@ accessible by a makefile will be overwritten.
     class(compilation_item_t), intent(inout) :: comp
     type(os_data_t), intent(in) :: os_data
     if (associated (comp%lib)) then
-       call comp%lib%load (os_data)
+       call comp%lib%load (os_data, workspace=comp%workspace)
     end if
   end subroutine compilation_item_load
 
@@ -4596,6 +4873,7 @@ contain a set of static process libraries.
 
 @ %def compilation_write
 @ Initialize: we know the names of the executable and of the libraries.
+Optionally, we may provide a workspace directory.
 <<Compilations: compilation: TBP>>=
   procedure :: init => compilation_init
 <<Compilations: procedures>>=
@@ -4674,12 +4952,13 @@ write a subroutine which returns the names of the compiled libraries.
 <<Compilations: compilation: TBP>>=
   procedure :: write_makefile => compilation_write_makefile
 <<Compilations: procedures>>=
-  subroutine compilation_write_makefile (compilation, os_data, ext_libtag, verbose)
+  subroutine compilation_write_makefile &
+       (compilation, os_data, ext_libtag, verbose)
     class(compilation_t), intent(in) :: compilation
     type(os_data_t), intent(in) :: os_data
+    logical, intent(in) :: verbose
     type(string_t), intent(in), optional :: ext_libtag
     type(string_t) :: file, ext_tag
-    logical, intent(in) :: verbose
     integer :: u, i
     if (present (ext_libtag)) then
        ext_tag = ext_libtag
@@ -4856,7 +5135,8 @@ stack, but it does not reset the currently selected library.
        if (signal_is_pending ())  return
        call item%success ()
     end do
-    call compilation%write_makefile (global%os_data, ext_libtag, verbose)
+    call compilation%write_makefile &
+         (global%os_data, ext_libtag=ext_libtag, verbose=verbose)
     if (signal_is_pending ())  return
     call compilation%make_compile (global%os_data)
     if (signal_is_pending ())  return
@@ -5481,12 +5761,14 @@ local changes to currently inactive models.
     type(fks_template_t) :: fks_template
     type(string_t) :: sf_string
     class(phs_config_t), allocatable :: phs_config_template_other
-    integer :: i_real = 0
+    type(string_t) :: workspace
+    integer :: i_real
     integer :: i_core
     integer :: i_core_born, i_core_real
     logical :: first_real_component, has_pdfs
     integer :: nlo_type_fetched
     class(pcm_t), pointer :: pcm => null ()
+    i_real = 0
     verb = .true.; if (present (verbose))  verb = verbose
     initialize_only = .false.;  if (present (init_only))  initialize_only = init_only
     call intg%process%set_var_list (local%get_var_list_ptr ())
@@ -5580,9 +5862,17 @@ local changes to currently inactive models.
     call setup_beams ()
     call setup_structure_functions ()
 
-    call intg%process%configure_phs &
-         (intg%rebuild_phs, intg%ignore_phs_mismatch, &
-          combined_integration = intg%combined_integration)
+    workspace = var_list%get_sval (var_str ("$integrate_workspace"))
+    if (workspace == "") then
+       call intg%process%configure_phs &
+            (intg%rebuild_phs, intg%ignore_phs_mismatch, &
+            combined_integration = intg%combined_integration)
+    else
+       call intg%process%configure_phs &
+            (intg%rebuild_phs, intg%ignore_phs_mismatch, &
+            combined_integration = intg%combined_integration, &
+            subdir = workspace)
+    end if
 
     if (intg%process%is_nlo_calculation ()) then
        call dispatch_fks_s (fks_template, local%var_list)
@@ -5680,10 +5970,10 @@ local changes to currently inactive models.
        !!! We avoid two dots in the filename due to a bug in certain MetaPost versions.
        if (intg%run_id /= "") then
           intg%history_filename = intg%process_id // "." // intg%run_id &
-               // "-history"
+               // ".history"
           intg%log_filename = intg%process_id // "." // intg%run_id // ".log"
        else
-          intg%history_filename = intg%process_id // "-history"
+          intg%history_filename = intg%process_id // ".history"
           intg%log_filename = intg%process_id // ".log"
        end if
        intg%vis_history = &
@@ -5902,7 +6192,7 @@ component, making it a bottleneck of the calculation. Thus, the calculation
 is throttled twice, first by the number of calls for the real component,
 second by the number of surplus calls of computation-intense virtual
 matrix elements. Therefore, we want to set a different number of calls
-for each component, which is done by the subroutine [[integration_apply_multipliers]].
+for each component, which is done by the subroutine [[integration_apply_call_multipliers]].
 <<Integrations: integration: TBP>>=
   procedure :: init_iteration_multipliers => integration_init_iteration_multipliers
 <<Integrations: procedures>>=
@@ -5946,16 +6236,16 @@ for each component, which is done by the subroutine [[integration_apply_multipli
     nlo_type = intg%process%get_component_nlo_type (i_component)
     do pass = 1, n_pass
        associate (multipliers => intg%iteration_multipliers)
-          select case (nlo_type)
-          case (NLO_REAL)
-             multiplier = multipliers%mult_real
-          case (NLO_VIRTUAL)
-             multiplier = multipliers%mult_virt
-          case (NLO_DGLAP)
-             multiplier = multipliers%mult_dglap
-          case default
-             return
-          end select
+         select case (nlo_type)
+         case (NLO_REAL)
+            multiplier = multipliers%mult_real
+         case (NLO_VIRTUAL)
+            multiplier = multipliers%mult_virt
+         case (NLO_DGLAP)
+            multiplier = multipliers%mult_dglap
+         case default
+            return
+         end select
        end associate
        if (n_pass <= size (intg%iteration_multipliers%n_calls0)) then
           n_calls0 = intg%iteration_multipliers%n_calls0 (pass)
@@ -6020,9 +6310,6 @@ of the integration history.
 
     allocate (process_instance)
     call process_instance%init (intg%process)
-
-    if (intg%process%needs_extra_code ()) &
-       call process_instance%setup_blha_helicities ()
 
     var_list => intg%process%get_var_list_ptr ()
     call openmp_set_num_threads_verbose &
@@ -7019,7 +7306,7 @@ groves.
     write (u, "(A)")  "* Generated phase-space file"
     write (u, "(A)")
 
-    phs_file = procname // "_i1.r1.phs"
+    phs_file = procname // ".r1.i1.phs"
     inquire (file = char (phs_file), exist = exist)
     if (exist) then
        u_phs = free_unit ()
@@ -7335,9 +7622,9 @@ This test is only run when event analysis can be done.
     write (u, "(A)")  "* Generated history files"
     write (u, "(A)")
 
-    his_file = procname // ".r1-history.tex"
-    ps_file  = procname // ".r1-history.ps"
-    pdf_file = procname // ".r1-history.pdf"
+    his_file = procname // ".r1.history.tex"
+    ps_file  = procname // ".r1.history.ps"
+    pdf_file = procname // ".r1.history.pdf"
     inquire (file = char (his_file), exist = exist)
     if (exist) then
        u_his = free_unit ()
@@ -10797,7 +11084,8 @@ base type by the [[connect]] method, so we can reference them later.
     integer :: i
     logical :: res_include_trivial
     logical :: combined_integration
-    integer :: selected_mci = 0
+    integer :: selected_mci
+    selected_mci = 0
     call msg_debug (D_CORE, "entry_init")
     call msg_debug (D_CORE, "process_id", process_id)
     call prepare_process &
@@ -10990,7 +11278,6 @@ does not affect parameters.
              call process%create_and_load_extra_libraries &
                   (local%beam_structure, process%get_var_list_ptr (), &
                   local%os_data)
-          call process_instance%setup_blha_helicities ()
        end if
     end if
     call process_instance%setup_event_data (model)
@@ -16613,6 +16900,8 @@ when compiling.
        allocate (cmd_if_t :: command)
     case ("cmd_include")
        allocate (cmd_include_t :: command)
+    case ("cmd_export")
+       allocate (cmd_export_t :: command)
     case ("cmd_quit")
        allocate (cmd_quit_t :: command)
     case default
@@ -18525,7 +18814,8 @@ variables to show.
     type(process_t), pointer :: process
     logical :: pacified
     character(SHOW_BUFFER_SIZE) :: buffer
-    integer :: i, j, u, u_log, u_out
+    type(string_t) :: out_file
+    integer :: i, j, u, u_log, u_out, u_ext
     u = free_unit ()
     var_list => cmd%local%var_list
     if (associated (cmd%local%model)) then
@@ -18534,6 +18824,14 @@ variables to show.
        model_vars => null ()
     end if
     pacified = var_list%get_lval (var_str ("?pacify"))
+    out_file = var_list%get_sval (var_str ("$out_file"))
+    if (file_list_is_open (global%out_files, out_file, action="write")) then
+       call msg_message ("show: copying output to file '" &
+            // char (out_file) // "'")
+       u_ext = file_list_get_unit (global%out_files, out_file)
+    else
+       u_ext = -1
+    end if
     open (u, status = "scratch", action = "readwrite")
     if (associated (cmd%local%model)) then
        name = cmd%local%model%get_name ()
@@ -18564,7 +18862,7 @@ variables to show.
           case ("iterations")
              call cmd%local%it_list%write (u)
           case ("results")
-             call cmd%local%process_stack%show (u)
+             call cmd%local%process_stack%show (u, fifo=.true.)
           case ("stable")
              call cmd%local%model%show_stable (u)
           case ("polarized")
@@ -18682,10 +18980,12 @@ variables to show.
        read (u, "(A)", end = 1)  buffer
        if (u_log > 0)  write (u_log, "(A)")  trim (buffer)
        if (u_out > 0)  write (u_out, "(A)")  trim (buffer)
+       if (u_ext > 0)  write (u_ext, "(A)")  trim (buffer)
     end do
 1   close (u)
     if (u_log > 0)  flush (u_log)
     if (u_out > 0)  flush (u_out)
+    if (u_ext > 0)  flush (u_ext)
   end subroutine cmd_show_execute
 
 @ %def cmd_show_execute
@@ -23714,6 +24014,150 @@ compile its contents.  Use the global data set.
 
 @ %def cmd_include_execute
 @
+\subsubsection{Export values}
+This command exports the current values of variables or other objects to the
+surrounding scope.  By default, a scope enclosed by braces keeps all objects
+local to it.  The [[export]] command exports the values that are generated
+within the scope to the corresponding object in the outer scope.
+
+The allowed set of exportable objects is, in principle, the same as the set of
+objects that the [[show]] command supports.  This includes some convenience
+abbreviations.
+
+TODO: The initial implementation inherits syntax from [[show]], but supports
+only the [[results]] pseudo-object.  The results (i.e., the process stack) is
+appended to the outer process stack instead of being discarded.  The behavior
+of the [[export]] command for other object kinds is to be defined on a
+case-by-case basis.  It may involve replacing the outer value or, instead,
+doing some sort of appending or reduction.
+<<Commands: types>>=
+  type, extends (command_t) :: cmd_export_t
+     private
+     type(string_t), dimension(:), allocatable :: name
+   contains
+   <<Commands: cmd export: TBP>>
+  end type cmd_export_t
+
+@ %def cmd_export_t
+@ Output: list the object names, not values.
+<<Commands: cmd export: TBP>>=
+  procedure :: write => cmd_export_write
+<<Commands: procedures>>=
+  subroutine cmd_export_write (cmd, unit, indent)
+    class(cmd_export_t), intent(in) :: cmd
+    integer, intent(in), optional :: unit, indent
+    integer :: u, i
+    u = given_output_unit (unit);  if (u < 0)  return
+    call write_indent (u, indent)
+    write (u, "(1x,A)", advance="no")  "export: "
+    if (allocated (cmd%name)) then
+       do i = 1, size (cmd%name)
+          write (u, "(1x,A)", advance="no")  char (cmd%name(i))
+       end do
+       write (u, *)
+    else
+       write (u, "(5x,A)")  "[undefined]"
+    end if
+  end subroutine cmd_export_write
+
+@ %def cmd_export_write
+@ Compile.  Allocate an array which is filled with the names of the
+variables to export.
+<<Commands: cmd export: TBP>>=
+  procedure :: compile => cmd_export_compile
+<<Commands: procedures>>=
+  subroutine cmd_export_compile (cmd, global)
+    class(cmd_export_t), intent(inout) :: cmd
+    type(rt_data_t), intent(inout), target :: global
+    type(parse_node_t), pointer :: pn_arg, pn_var, pn_prefix, pn_name
+    type(string_t) :: key
+    integer :: i, n_args
+    pn_arg => parse_node_get_sub_ptr (cmd%pn, 2)
+    if (associated (pn_arg)) then
+       select case (char (parse_node_get_rule_key (pn_arg)))
+       case ("show_arg")
+          cmd%pn_opt => parse_node_get_next_ptr (pn_arg)
+       case default
+          cmd%pn_opt => pn_arg
+          pn_arg => null ()
+       end select
+    end if
+    call cmd%compile_options (global)
+    if (associated (pn_arg)) then
+       n_args = parse_node_get_n_sub (pn_arg)
+       allocate (cmd%name (n_args))
+       pn_var => parse_node_get_sub_ptr (pn_arg)
+       i = 0
+       do while (associated (pn_var))
+          i = i + 1
+          select case (char (parse_node_get_rule_key (pn_var)))
+          case ("model", "library", "beams", "iterations", &
+                "cuts", "weight", "int", "real", "complex", &
+                "scale", "factorization_scale", "renormalization_scale", &
+                "selection", "reweight", "analysis", "pdg", &
+                "stable", "unstable", "polarized", "unpolarized", &
+                "results", "expect", "intrinsic", "string", "logical")
+             cmd%name(i) = parse_node_get_key (pn_var)
+          case ("result_var")
+             pn_prefix => parse_node_get_sub_ptr (pn_var)
+             pn_name => parse_node_get_next_ptr (pn_prefix)
+             if (associated (pn_name)) then
+                cmd%name(i) = parse_node_get_key (pn_prefix) &
+                     // "(" // parse_node_get_string (pn_name) // ")"
+             else
+                cmd%name(i) = parse_node_get_key (pn_prefix)
+             end if
+          case ("log_var", "string_var", "alias_var")
+             pn_prefix => parse_node_get_sub_ptr (pn_var)
+             pn_name => parse_node_get_next_ptr (pn_prefix)
+             key = parse_node_get_key (pn_prefix)
+             if (associated (pn_name)) then
+                select case (char (parse_node_get_rule_key (pn_name)))
+                case ("var_name")
+                   select case (char (key))
+                   case ("?", "$")  ! $ sign
+                      cmd%name(i) = key // parse_node_get_string (pn_name)
+                   case ("alias")
+                      cmd%name(i) = parse_node_get_string (pn_name)
+                   end select
+                case default
+                   call parse_node_mismatch &
+                        ("var_name",  pn_name)
+                end select
+             else
+                cmd%name(i) = key
+             end if
+          case default
+             cmd%name(i) = parse_node_get_string (pn_var)
+          end select
+          !!! restriction imposed by current lack of implementation
+          select case (char (parse_node_get_rule_key (pn_var)))
+          case ("results")
+          case default
+             call msg_fatal ("export: object (type) '" &
+                  // char (parse_node_get_rule_key (pn_var)) &
+                  // "' not supported yet")
+          end select
+          pn_var => parse_node_get_next_ptr (pn_var)
+       end do
+    else
+       allocate (cmd%name (0))
+    end if
+  end subroutine cmd_export_compile
+
+@ %def cmd_export_compile
+@ Execute.  Scan the list of objects to export.
+<<Commands: cmd export: TBP>>=
+  procedure :: execute => cmd_export_execute
+<<Commands: procedures>>=
+  subroutine cmd_export_execute (cmd, global)
+    class(cmd_export_t), intent(inout) :: cmd
+    type(rt_data_t), intent(inout), target :: global
+    call global%append_exports (cmd%name)
+  end subroutine cmd_export_execute
+
+@ %def cmd_export_execute
+@
 \subsubsection{Quit command execution}
 The code is the return code of the whole program if it is terminated
 by this command.
@@ -23955,6 +24399,7 @@ Also here, after each command we set a breakpoint.
          // "cmd_unstable | cmd_stable | cmd_simulate | cmd_rescan | " &
          // "cmd_process | cmd_compile | cmd_exec | " &
          // "cmd_scan | cmd_if | cmd_include | cmd_quit | " &
+         // "cmd_export | " &
          // "cmd_polarized | cmd_unpolarized | " &
          // "cmd_open_out | cmd_close_out | cmd_printf | " &
          // "cmd_write_analysis | cmd_compile_analysis | cmd_nlo | cmd_components")
@@ -24275,6 +24720,8 @@ Also here, after each command we set a breakpoint.
     call ifile_append (ifile, "KEY quit")
     call ifile_append (ifile, "KEY exit")
     call ifile_append (ifile, "ARG quit_arg = ( expr )")
+    call ifile_append (ifile, "SEQ cmd_export = export show_arg options?")
+    call ifile_append (ifile, "KEY export")
     call ifile_append (ifile, "SEQ cmd_write_analysis = " &
          // "write_analysis_clause options?")
     call ifile_append (ifile, "SEQ cmd_compile_analysis = " &
@@ -27604,6 +28051,9 @@ state.
   public :: whizard_options_t
 <<WHIZARD: types>>=
   type :: whizard_options_t
+     type(string_t) :: job_id
+     type(string_t), dimension(:), allocatable :: pack_args
+     type(string_t), dimension(:), allocatable :: unpack_args
      type(string_t) :: preload_model
      type(string_t) :: default_lib
      type(string_t) :: preload_libraries
@@ -27713,7 +28163,9 @@ handling uses global state.  This should be improved.
     call init_syntax_tables ()
     whizard%options = options
     call whizard%global%global_init (paths, logfile)
+    call whizard%init_job_id ()
     call whizard%init_rebuild_flags ()
+    call whizard%unpack_files ()
     call whizard%preload_model ()
     call whizard%preload_library ()
     call whizard%global%init_fallback_model &
@@ -27730,12 +28182,29 @@ process and model lists need to be finalized.
     class(whizard_t), intent(inout), target :: whizard
     call whizard%global%final ()
     call whizard%pt_stack%final ()
+    call whizard%pack_files ()
 !!! JRR: WK please check (#529)
     !    call user_code_final ()
     call final_syntax_tables ()
   end subroutine whizard_final
 
 @ %def whizard_final
+@ Set the job ID, if nonempty.  If the ID string is empty, the value remains
+undefined.
+<<WHIZARD: whizard: TBP>>=
+  procedure :: init_job_id => whizard_init_job_id
+<<WHIZARD: procedures>>=
+  subroutine whizard_init_job_id (whizard)
+    class(whizard_t), intent(inout), target :: whizard
+    associate (var_list => whizard%global%var_list, options => whizard%options)
+      if (options%job_id /= "") then
+         call var_list%set_string (var_str ("$job_id"), &
+              options%job_id, is_known=.true.)
+      end if
+    end associate
+  end subroutine whizard_init_job_id
+  
+@ %def whizard_init_job_id
 @
 Set the rebuild flags.  They can be specified on the command line and
 set the initial value for the associated logical variables.
@@ -27761,6 +28230,54 @@ set the initial value for the associated logical variables.
   end subroutine whizard_init_rebuild_flags
 
 @ %def whizard_init_rebuild_flags
+@
+Pack/unpack files in the working directory, if requested.
+<<WHIZARD: whizard: TBP>>=
+  procedure :: pack_files => whizard_pack_files
+  procedure :: unpack_files => whizard_unpack_files
+<<WHIZARD: procedures>>=
+  subroutine whizard_pack_files (whizard)
+    class(whizard_t), intent(in), target :: whizard
+    logical :: exist
+    integer :: i
+    type(string_t) :: file
+    if (allocated (whizard%options%pack_args)) then
+       do i = 1, size (whizard%options%pack_args)
+          file = whizard%options%pack_args(i)
+          call msg_message ("Packing file/dir '" // char (file) // "'")
+          exist = os_file_exist (file) .or. os_dir_exist (file) 
+          if (exist) then
+             call os_pack_file (whizard%options%pack_args(i), &
+                  whizard%global%os_data)
+          else
+             call msg_error ("File/dir '" // char (file) // "' not found")
+          end if
+       end do
+    end if
+  end subroutine whizard_pack_files
+
+  subroutine whizard_unpack_files (whizard)
+    class(whizard_t), intent(in), target :: whizard
+    logical :: exist
+    integer :: i
+    type(string_t) :: file
+    if (allocated (whizard%options%unpack_args)) then
+       do i = 1, size (whizard%options%unpack_args)
+          file = whizard%options%unpack_args(i)
+          call msg_message ("Unpacking file '" // char (file) // "'")
+          exist = os_file_exist (file) 
+          if (exist) then
+             call os_unpack_file (whizard%options%unpack_args(i), &
+                  whizard%global%os_data)
+          else
+             call msg_error ("File '" // char (file) // "' not found")
+          end if
+       end do
+    end if
+  end subroutine whizard_unpack_files
+
+@ %def whizard_pack_files
+@ %def whizard_unpack_files
 @
 This procedure preloads a model, if a model name is given.
 <<WHIZARD: whizard: TBP>>=
@@ -28414,12 +28931,15 @@ program main
   logical :: look_for_options
   logical :: interactive
   logical :: banner
-  type(string_t) :: files, this, model, default_lib, library, libraries
+  type(string_t) :: job_id, files, this, model, default_lib, library, libraries
   type(string_t) :: logfile, query_string
   logical :: user_code_enable = .false.
   integer :: n_user_src = 0, n_user_lib = 0
   type(string_t) :: user_src, user_lib, user_target
   type(paths_t) :: paths
+  type(string_t) :: pack_arg, unpack_arg
+  type(string_t), dimension(:), allocatable :: pack_args, unpack_args
+  type(string_t), dimension(:), allocatable :: tmp_strings
   logical :: rebuild_library, rebuild_user
   logical :: rebuild_phs, rebuild_grids, rebuild_events
   logical :: recompile_library
@@ -28436,6 +28956,7 @@ program main
   ! Initial values
   look_for_options = .true.
   interactive = .false.
+  job_id = ""
   files = ""
   model = "SM"
   default_lib = "default_lib"
@@ -28522,6 +29043,9 @@ program main
               call no_option_value (long_option, value)
               interactive = .true.
               cycle SCAN_CMDLINE
+           case ("--job-id")
+              job_id = get_option_value (i, long_option, value)
+              cycle SCAN_CMDLINE
            case ("--library")
               library = get_option_value (i, long_option, value)
               libraries = libraries // " " // library
@@ -28578,6 +29102,28 @@ program main
            case ("--no-banner")
               call no_option_value (long_option, value)
               banner = .false.
+              cycle SCAN_CMDLINE
+           case ("--pack")
+              pack_arg = get_option_value (i, long_option, value)
+              if (allocated (pack_args)) then
+                 call move_alloc (from=pack_args, to=tmp_strings)
+                 allocate (pack_args (size (tmp_strings)+1))
+                 pack_args(1:size(tmp_strings)) = tmp_strings
+              else
+                 allocate (pack_args (1))
+              end if
+              pack_args(size(pack_args)) = pack_arg
+              cycle SCAN_CMDLINE
+           case ("--unpack")
+              unpack_arg = get_option_value (i, long_option, value)
+              if (allocated (unpack_args)) then
+                 call move_alloc (from=unpack_args, to=tmp_strings)
+                 allocate (unpack_args (size (tmp_strings)+1))
+                 unpack_args(1:size(tmp_strings)) = tmp_strings
+              else
+                 allocate (unpack_args (1))
+              end if
+              unpack_args(size(unpack_args)) = unpack_arg
               cycle SCAN_CMDLINE
            case ("--model")
               model = get_option_value (i, long_option, value)
@@ -28686,6 +29232,13 @@ program main
                  case ("-i")
                     interactive = .true.
                     cycle SCAN_SHORT_OPTIONS
+                 case ("-J")
+                    if (j == len_trim (arg)) then
+                       job_id = get_option_value (i, var_str (option))
+                    else
+                       job_id = trim (arg(j+1:))
+                    end if
+                    cycle SCAN_CMDLINE
                  case ("-l")
                     if (j == len_trim (arg)) then
                        library = get_option_value (i, var_str (option))
@@ -28746,6 +29299,17 @@ program main
    if (.not. quit) then
 
       ! Set options and initialize the whizard object
+      options%job_id = job_id
+      if (allocated (pack_args)) then
+         options%pack_args = pack_args
+      else
+         allocate (options%pack_args (0))
+      end if
+      if (allocated (unpack_args)) then
+         options%unpack_args = unpack_args
+      else
+         allocate (options%unpack_args (0))
+      end if
       options%preload_model = model
       options%default_lib = default_lib
       options%preload_libraries = libraries
@@ -28846,7 +29410,8 @@ end program main
     print "(A)", "    --single-event    only compute one phase-space point (for debugging)"
     print "(A)", "-e, --execute CMDS    execute SINDARIN CMDS before reading FILE(s)"
     print "(A)", "-i, --interactive     run interactively after reading FILE(s)"
-    print "(A)", "-l, --library         preload process library NAME"
+    print "(A)", "-J, --job-id STRING   set job ID to STRING (default: empty)"
+    print "(A)", "-l, --library LIB     preload process library NAME"
     print "(A)", "    --localprefix DIR"
     print "(A)", "                      search in DIR for local models (default: ~/.whizard)"
     print "(A)", "-L, --logfile FILE    write log to FILE (default: 'whizard.log'"
@@ -28858,6 +29423,7 @@ end program main
     print "(A)", "    --no-logging      switch off logging at startup"
     print "(A)", "    --no-model        do not preload a model"
     print "(A)", "    --no-rebuild      do not force rebuilding"
+    print "(A)", "    --pack DIR        tar/gzip DIR after job"
     print "(A)", "-q, --query VARIABLE  display documentation of VARIABLE"
     print "(A)", "-r, --rebuild         rebuild all (see below)"
     print "(A)", "    --rebuild-library"
@@ -28869,6 +29435,7 @@ end program main
     print "(A)", "    --rebuild-events  rebuild event samples"
     print "(A)", "    --recompile       recompile process code"
     print "(A)", "    --show-config     show build-time configuration"
+    print "(A)", "    --unpack FILE     untar/gunzip FILE before job"
     print "(A)", "-u  --user            enable user-provided code"
     print "(A)", "    --user-src FILE   user-provided source file"
     print "(A)", "    --user-lib FILE   user-provided library file"
@@ -29752,6 +30319,15 @@ This is for developers only, but needs a well-defined interface.
      call fks_regions_test (u, results)
 <<Main: all tests>>=
   call fks_regions_test (u, results)
+@
+\subsubsection{Real subtraction}
+<<Main: use tests>>=
+  use real_subtraction_ut, only: real_subtraction_test
+<<Main: test cases>>=
+  case ("real_subtraction")
+     call real_subtraction_test (u, results)
+<<Main: all tests>>=
+  call real_subtraction_test (u, results)
 @
 \subsubsection{RECOLA}
 <<Main: use tests>>=

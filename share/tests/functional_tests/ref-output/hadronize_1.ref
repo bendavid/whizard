@@ -35,7 +35,7 @@ openmp_num_threads = 1
 |   sqrts = 1.000000000000E+03 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'hadronize_1_p1_i1.phs'
+| Phase space: writing configuration file 'hadronize_1_p1.i1.phs'
 | Phase space: 2 channels, 2 dimensions
 | Phase space: found 2 channels, collected in 2 groves.
 | Phase space: Using 2 equivalences between channels.
@@ -71,7 +71,7 @@ $hadronization_method = "WHIZARD"
 $sample = "hadronize_1"
 ?sample_pacify = true
 | Starting simulation for process 'hadronize_1_p1'
-| Simulate: using integration grids from file 'hadronize_1_p1_m1.vg'
+| Simulate: using integration grids from file 'hadronize_1_p1.m1.vg'
 | Simulate: activating parton shower
 | Shower: Using WHIZARD internal shower
 | Simulate: activating hadronization

@@ -34,7 +34,7 @@ $sample = "reweight_4a"
 | Initialized builtin PDF CTEQ6L
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'reweight_4_p1_i1.phs'
+| Phase space: writing configuration file 'reweight_4_p1.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'reweight_4_p1'
 |   Library name  = 'reweight_4_lib'
@@ -63,7 +63,7 @@ $sample = "reweight_4a"
    1       1000  3.6977136E+07  2.01E+07   54.45   17.22    0.62
 |=============================================================================|
 | Simulate: integration done
-| Simulate: using integration grids from file 'reweight_4_p1_m1.vg'
+| Simulate: using integration grids from file 'reweight_4_p1.m1.vg'
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 1
 | Events: writing to raw file 'reweight_4a.evx'
@@ -88,7 +88,7 @@ $pdf_builtin_set = "CT10"
 |   sqrts = 8.000000000000E+03 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'reweight_4_p2_i1.phs'
+| Phase space: writing configuration file 'reweight_4_p2.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'reweight_4_p2'
 |   Library name  = 'reweight_4_lib'
@@ -109,14 +109,14 @@ $pdf_builtin_set = "CT10"
 | RNG: Setting seed for random-number generator to 3
 | Initialized builtin PDF MSTW2008LO
 Warning: Reading phs file: MD5 sum check disabled
-| Phase space: keeping configuration file 'reweight_4_p2_i1.phs'
+| Phase space: keeping configuration file 'reweight_4_p2.i1.phs'
 | ...  alternate process setup complete.
 | Simulate: initializing alternate process setup ...
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 4
 | Initialized builtin PDF CT10
 Warning: Reading phs file: MD5 sum check disabled
-| Phase space: keeping configuration file 'reweight_4_p2_i1.phs'
+| Phase space: keeping configuration file 'reweight_4_p2.i1.phs'
 | ...  alternate process setup complete.
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 5

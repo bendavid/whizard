@@ -1,4 +1,4 @@
-! WHIZARD 2.6.3 Feb 10 2018
+! WHIZARD 2.6.4 Aug 23 2018
 !
 ! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -99,6 +99,7 @@ module quantum_numbers
      procedure :: set_color_ghost => quantum_numbers_set_color_ghost
      procedure :: set_model => quantum_numbers_set_model
      procedure :: tag_radiated => quantum_numbers_tag_radiated
+     procedure :: tag_hard_process => quantum_numbers_tag_hard_process
      procedure :: set_subtraction_index => quantum_numbers_set_subtraction_index
      procedure :: get_subtraction_index => quantum_numbers_get_subtraction_index
      procedure :: get_color_type => quantum_numbers_get_color_type
@@ -106,6 +107,7 @@ module quantum_numbers
      procedure :: are_associated => quantum_numbers_are_associated
      procedure :: are_diagonal => quantum_numbers_are_diagonal
      procedure :: is_color_ghost => quantum_numbers_is_color_ghost
+     procedure :: are_hard_process => quantum_numbers_are_hard_process
      generic :: operator(.match.) => quantum_numbers_match
      generic :: operator(.fmatch.) => quantum_numbers_match_f
      generic :: operator(.hmatch.) => quantum_numbers_match_h
@@ -426,6 +428,11 @@ contains
     call qn%f%tag_radiated ()
   end subroutine quantum_numbers_tag_radiated
 
+  elemental subroutine quantum_numbers_tag_hard_process (qn)
+    class(quantum_numbers_t), intent(inout) :: qn
+    call qn%f%tag_hard_process ()
+  end subroutine quantum_numbers_tag_hard_process
+
   elemental subroutine quantum_numbers_set_subtraction_index (qn, i)
     class(quantum_numbers_t), intent(inout) :: qn
     integer, intent(in) :: i
@@ -467,6 +474,12 @@ contains
     class(quantum_numbers_t), intent(in) :: qn
     ghost = qn%c%is_ghost ()
   end function quantum_numbers_is_color_ghost
+
+  elemental function quantum_numbers_are_hard_process (qn) result (hard_process)
+    logical :: hard_process
+    class(quantum_numbers_t), intent(in) :: qn
+    hard_process = qn%f%is_hard_process ()
+  end function quantum_numbers_are_hard_process
 
   elemental function quantum_numbers_match (qn1, qn2) result (match)
     logical :: match

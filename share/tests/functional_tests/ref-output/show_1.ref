@@ -26,7 +26,7 @@ error_threshold =  1.000000000000E-08
 |   H  (mass = 1.2500000E+02 GeV)
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'show_1_p1_i1.phs'
+| Phase space: writing configuration file 'show_1_p1.i1.phs'
 | ------------------------------------------------------------------------
 | Process [decay]: 'show_1_p1'
 |   Library name  = 'show_1_lib'
@@ -66,7 +66,7 @@ Warning: No cuts have been defined.
 |   W+  (mass = 8.0419000E+01 GeV)
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'show_1_p2_i1.phs'
+| Phase space: writing configuration file 'show_1_p2.i1.phs'
 | ------------------------------------------------------------------------
 | Process [decay]: 'show_1_p2'
 |   ID (num)      = 77
@@ -102,7 +102,7 @@ Warning: No cuts have been defined.
 |   W+  (mass = 8.0419000E+01 GeV)
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'show_1_p3_i1.phs'
+| Phase space: writing configuration file 'show_1_p3.i1.phs'
 | ------------------------------------------------------------------------
 | Process [decay]: 'show_1_p3'
 |   Library name  = 'show_1_lib'
@@ -321,16 +321,16 @@ SM.me =>  5.109970000000E-04
 [user variable] i = 42
 Process: show_1_p1 [SM]
   1: H => b, bbar [omega]
-  Computed width = 4.3122140E-03 +- 0.00E+00 GeV
+  Computed width = 4.3122140E-03 +- 0.00E+00 GeV (  0.    %)
 Process: show_1_p2 (77) [SM]
   1: W+ => e+, nue [omega]
-  Computed width = 2.2756406E-01 +- 0.00E+00 GeV
-show_1_p3:
-   2.2756347E-01 +- 0.00E+00 GeV
-show_1_p2 (77):
-   2.2756406E-01 +- 0.00E+00 GeV
+  Computed width = 2.2756406E-01 +- 0.00E+00 GeV (  0.    %)
 show_1_p1:
-   4.3122140E-03 +- 0.00E+00 GeV
+   4.3122140E-03 +- 0.00E+00 GeV (  0.    %)
+show_1_p2 (77):
+   2.2756406E-01 +- 0.00E+00 GeV (  0.    %)
+show_1_p3:
+   2.2756347E-01 +- 0.00E+00 GeV (  0.    %)
 [user variable] i = 2
 | expect: success
 | Summary of value checks:

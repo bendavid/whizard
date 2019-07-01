@@ -1,4 +1,4 @@
-! WHIZARD 2.6.3 Feb 10 2018
+! WHIZARD 2.6.4 Aug 23 2018
 !
 ! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -87,6 +87,8 @@ module resonances
      procedure :: clear => resonance_history_clear
      procedure :: copy => resonance_history_copy
      procedure :: write => resonance_history_write
+     procedure, private :: resonance_history_assign
+     generic :: assignment(=) => resonance_history_assign
      procedure, private :: resonance_history_equal
      generic :: operator(==) => resonance_history_equal
      procedure, private :: resonance_history_contains
@@ -309,6 +311,15 @@ contains
        call res_hist%resonances(i)%write (u, verbose)
     end do
   end subroutine resonance_history_write
+
+  subroutine resonance_history_assign (res_hist_out, res_hist_in)
+    class(resonance_history_t), intent(out) :: res_hist_out
+    class(resonance_history_t), intent(in) :: res_hist_in
+    if (allocated (res_hist_in%resonances)) then
+       res_hist_out%resonances = res_hist_in%resonances
+       res_hist_out%n_resonances = res_hist_in%n_resonances
+    end if
+  end subroutine resonance_history_assign
 
   elemental function resonance_history_equal (rh1, rh2) result (equal)
     logical :: equal

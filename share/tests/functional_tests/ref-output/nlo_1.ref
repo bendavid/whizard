@@ -29,10 +29,10 @@ sqrts =  2.50000E+02
 |   sqrts = 2.500000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'nlo_1_p1_i1.phs'
+| Phase space: writing configuration file 'nlo_1_p1.i1.phs'
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'nlo_1_p1_i3.phs'
+| Phase space: writing configuration file 'nlo_1_p1.i3.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'nlo_1_p1'
 |   Library name  = 'nlo_1_lib'
@@ -86,10 +86,10 @@ Warning: No cuts have been defined.
 |   sqrts = 2.500000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'nlo_1_p1_i1.phs'
+| Phase space: writing configuration file 'nlo_1_p1.i1.phs'
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'nlo_1_p1_i3.phs'
+| Phase space: writing configuration file 'nlo_1_p1.i3.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'nlo_1_p1'
 |   Library name  = 'nlo_1_lib'

@@ -31,9 +31,31 @@
 noinst_LTLIBRARIES = libblha.la
 check_LTLIBRARIES = libblha_ut.la
 
-libblha_la_SOURCES = \
-  blha_config.f90 \
+COMMON_F90 = \
   blha_olp_interfaces.f90
+MPI_F90 = \
+  blha_config.f90_mpi
+SERIAL_F90 = \
+  blha_config.f90_serial
+
+EXTRA_DIST = \
+  $(COMMON_F90) \
+  $(SERIAL_F90) \
+  $(MPI_F90)
+
+nodist_libblha_la_SOURCES = \
+  blha_config.f90 \
+  $(COMMON_F90)
+
+DISTCLEANFILES = blha_config.f90
+
+if FC_USE_MPI
+blha_config.f90: blha_config.f90_mpi
+	-cp -f $< $@
+else
+blha_config.f90: blha_config.f90_serial
+	-cp -f $< $@
+endif
 
 libblha_ut_la_SOURCES = \
   blha_uti.f90 blha_ut.f90
@@ -42,7 +64,7 @@ libblha_ut_la_SOURCES = \
 dist_noinst_DATA = blha.nw
 
 # Dump module names into file Modules
-libblha_Modules = ${libblha_la_SOURCES:.f90=} ${libblha_ut_la_SOURCES:.f90=}
+libblha_Modules = $(nodist_libblha_la_SOURCES:.f90=) $(libblha_ut_la_SOURCES:.f90=)
 Modules: Makefile
 	@for module in $(libblha_Modules); do \
           echo $$module >> $@.new; \
@@ -82,7 +104,7 @@ include_modules = ${include_modules_bare:../%=-I../%}
 $(module_lists):
 	$(MAKE) -C `dirname $@` Modules
 
-Module_dependencies.sed: $(libblha_la_SOURCES) ${libblha_ut_la_SOURCES}
+Module_dependencies.sed: $(nodist_libblha_la_SOURCES) $(libblha_ut_la_SOURCES)
 Module_dependencies.sed: $(module_lists)
 	@rm -f $@
 	echo 's/, *only:.*//' >> $@
@@ -96,7 +118,7 @@ Module_dependencies.sed: $(module_lists)
 		done \
 	done
 
-DISTCLEANFILES = Module_dependencies.sed
+DISTCLEANFILES += Module_dependencies.sed
 
 # The following line just says
 #    include Makefile.depend
@@ -104,7 +126,7 @@ DISTCLEANFILES = Module_dependencies.sed
 @am__include@ @am__quote@Makefile.depend@am__quote@
 
 Makefile.depend: Module_dependencies.sed
-Makefile.depend: $(libblha_la_SOURCES) ${libblha_ut_la_SOURCES}
+Makefile.depend: $(nodist_libblha_la_SOURCES) $(libblha_ut_la_SOURCES)
 	@rm -f $@
 	for src in $^; do \
 	  module="`basename $$src | sed 's/\.f[90][0358]//'`"; \
@@ -147,10 +169,7 @@ endif
 ## (Re)create F90 sources from NOWEB source.
 if NOWEB_AVAILABLE
 
-FILTER =
-if FC_USE_MPI
-FILTER += -filter "sed 's/defn MPI:/defn/'"
-endif
+FILTER = -filter "sed 's/defn MPI:/defn/'"
 
 PRELUDE = $(top_srcdir)/src/noweb-frame/whizard-prelude.nw
 POSTLUDE = $(top_srcdir)/src/noweb-frame/whizard-postlude.nw
@@ -158,12 +177,18 @@ POSTLUDE = $(top_srcdir)/src/noweb-frame/whizard-postlude.nw
 blha.stamp: $(PRELUDE) $(srcdir)/blha.nw $(POSTLUDE)
 	@rm -f blha.tmp
 	@touch blha.tmp
-	for src in $(libblha_la_SOURCES) $(libblha_ut_la_SOURCES); do \
-	  $(NOTANGLE) -R[[$$src]] $(FILTER) $^ | $(CPIF) $$src; \
+	for src in $(COMMON_F90) $(libblha_ut_la_SOURCES); do \
+	  $(NOTANGLE) -R[[$$src]] $^ | $(CPIF) $$src; \
+        done
+	for src in $(SERIAL_F90:.f90_serial=.f90); do \
+	  $(NOTANGLE) -R[[$$src]] $^ | $(CPIF) $$src'_serial'; \
+        done
+	for src in $(MPI_F90:.f90_mpi=.f90); do \
+	  $(NOTANGLE) -R[[$$src]] $(FILTER) $^ | $(CPIF) $$src'_mpi'; \
         done
 	@mv -f blha.tmp blha.stamp
 
-$(libblha_la_SOURCES) $(libblha_ut_la_SOURCES): blha.stamp
+$(COMMON_F90) $(SERIAL_F90) $(MPI_F90) $(libblha_ut_la_SOURCES): blha.stamp
 ## Recover from the removal of $@
 	@if test -f $@; then :; else \
 	  rm -f blha.stamp; \
@@ -178,14 +203,14 @@ endif
 ## Remove sources that can be recreated using NOWEB
 if NOWEB_AVAILABLE
 maintainer-clean-noweb:
-	-rm -f *.f90 *.c
+	-rm -f *.f90 *.f90_serial *.f90_mpi *.c
 endif
 .PHONY: maintainer-clean-noweb
 
 ## Remove those sources also if builddir and srcdir are different
 if NOWEB_AVAILABLE
 clean-noweb:
-	test "$(srcdir)" != "." && rm -f *.f90 *.c || true
+	test "$(srcdir)" != "." && rm -f *.f90 *.f90_serial *.f90_mpi *.c || true
 endif
 .PHONY: clean-noweb
 

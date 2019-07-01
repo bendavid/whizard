@@ -28,7 +28,7 @@ openmp_num_threads = 1
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'cuts_cc_i1.phs'
+| Phase space: writing configuration file 'cuts_cc.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'cuts_cc'
 |   Library name  = 'cuts_lib'
@@ -64,7 +64,7 @@ openmp_num_threads = 1
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'cuts_cc_i1.phs'
+| Phase space: writing configuration file 'cuts_cc.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'cuts_cc'
 |   Library name  = 'cuts_lib'
@@ -100,7 +100,7 @@ openmp_num_threads = 1
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'cuts_cc_i1.phs'
+| Phase space: writing configuration file 'cuts_cc.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'cuts_cc'
 |   Library name  = 'cuts_lib'
@@ -136,7 +136,7 @@ openmp_num_threads = 1
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'cuts_cc_i1.phs'
+| Phase space: writing configuration file 'cuts_cc.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'cuts_cc'
 |   Library name  = 'cuts_lib'
@@ -172,7 +172,7 @@ openmp_num_threads = 1
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'cuts_cc_i1.phs'
+| Phase space: writing configuration file 'cuts_cc.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'cuts_cc'
 |   Library name  = 'cuts_lib'
@@ -209,7 +209,7 @@ openmp_num_threads = 1
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'cuts_cc_i1.phs'
+| Phase space: writing configuration file 'cuts_cc.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'cuts_cc'
 |   Library name  = 'cuts_lib'
@@ -245,7 +245,7 @@ openmp_num_threads = 1
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'cuts_cc_i1.phs'
+| Phase space: writing configuration file 'cuts_cc.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'cuts_cc'
 |   Library name  = 'cuts_lib'
@@ -281,7 +281,7 @@ openmp_num_threads = 1
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'cuts_cc_i1.phs'
+| Phase space: writing configuration file 'cuts_cc.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'cuts_cc'
 |   Library name  = 'cuts_lib'

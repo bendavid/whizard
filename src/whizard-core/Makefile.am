@@ -31,20 +31,56 @@
 noinst_LTLIBRARIES = libwhizard_core.la
 check_LTLIBRARIES = libwhizard_core_ut.la
 
-libwhizard_core_la_SOURCES = \
+COMMON_F90 = \
   user_files.f90 \
   rt_data.f90  \
   dispatch_me_methods.f90 \
   process_configurations.f90 \
   compilations.f90 \
-  integrations.f90 \
   event_streams.f90 \
-  restricted_subprocesses.f90 \
-  simulations.f90 \
-  commands.f90 \
   whizard.f90 \
   cmdline_options.f90 \
   features.f90
+MPI_F90 = \
+  integrations.f90_mpi \
+  restricted_subprocesses.f90_mpi \
+  simulations.f90_mpi \
+  commands.f90_mpi
+SERIAL_F90 = \
+  integrations.f90_serial \
+  restricted_subprocesses.f90_serial \
+  simulations.f90_serial \
+  commands.f90_serial
+
+nodist_libwhizard_core_la_SOURCES = \
+  $(COMMON_F90) \
+  integrations.f90 \
+  restricted_subprocesses.f90 \
+  simulations.f90 \
+  commands.f90
+
+DISTCLEANFILES = integrations.f90 restricted_subprocesses.f90 \
+	simulations.f90 commands.f90
+
+if FC_USE_MPI
+integrations.f90: integrations.f90_mpi
+	-cp -f $< $@
+restricted_subprocesses.f90: restricted_subprocesses.f90_mpi
+	-cp -f $< $@
+simulations.f90: simulations.f90_mpi
+	-cp -f $< $@
+commands.f90: commands.f90_mpi
+	-cp -f $< $@
+else
+integrations.f90: integrations.f90_serial
+	-cp -f $< $@
+restricted_subprocesses.f90: restricted_subprocesses.f90_serial
+	-cp -f $< $@
+simulations.f90: simulations.f90_serial
+	-cp -f $< $@
+commands.f90: commands.f90_serial
+	-cp -f $< $@
+endif
 
 libwhizard_core_ut_la_SOURCES = \
   expr_tests_uti.f90 expr_tests_ut.f90 \
@@ -66,11 +102,42 @@ libwhizard_core_la_LIBADD = whizard-c-interface.lo
 lib_LTLIBRARIES = libwhizard_main.la
 check_LTLIBRARIES += libwhizard_main_ut.la
 
-libwhizard_main_la_SOURCES = \
+MPI_F90 += main.f90_mpi
+SERIAL_F90 += main.f90_serial
+
+nodist_libwhizard_main_la_SOURCES = \
   main.f90
 
-libwhizard_main_ut_la_SOURCES = \
+DISTCLEANFILES += main.f90
+
+if FC_USE_MPI
+main.f90: main.f90_mpi
+	-cp -f $< $@
+else
+main.f90: main.f90_serial
+	-cp -f $< $@
+endif
+
+MPI_F90 += main_ut.f90_mpi
+SERIAL_F90 += main_ut.f90_serial
+
+nodist_libwhizard_main_ut_la_SOURCES = \
   main_ut.f90
+
+DISTCLEANFILES += main_ut.f90
+
+if FC_USE_MPI
+main_ut.f90: main_ut.f90_mpi
+	-cp -f $< $@
+else
+main_ut.f90: main_ut.f90_serial
+	-cp -f $< $@
+endif
+
+EXTRA_DIST = \
+  $(COMMON_F90) \
+  $(SERIAL_F90) \
+  $(MPI_F90)
 
 ## Omitting this would exclude it from the distribution
 dist_noinst_DATA = whizard.nw
@@ -115,10 +182,10 @@ module_lists = \
 $(module_lists):
 	$(MAKE) -C `dirname $@` Modules
 
-Module_dependencies.sed: $(libwhizard_core_la_SOURCES) \
+Module_dependencies.sed: $(nodist_libwhizard_core_la_SOURCES) \
   $(libwhizard_core_ut_la_SOURCES) \
-  $(libwhizard_main_la_SOURCES) \
-  $(libwhizard_main_ut_la_SOURCES) \
+  $(nodist_libwhizard_main_la_SOURCES) \
+  $(nodist_libwhizard_main_ut_la_SOURCES) \
   $(EXTRA_libwhizard_core_la_SOURCES)
 Module_dependencies.sed: $(module_lists)
 	@rm -f $@
@@ -133,7 +200,7 @@ Module_dependencies.sed: $(module_lists)
 		done \
 	done
 
-DISTCLEANFILES = Module_dependencies.sed
+DISTCLEANFILES += Module_dependencies.sed
 
 # The following line just says
 #    include Makefile.depend
@@ -141,10 +208,10 @@ DISTCLEANFILES = Module_dependencies.sed
 @am__include@ @am__quote@Makefile.depend@am__quote@
 
 Makefile.depend: Module_dependencies.sed
-Makefile.depend: $(libwhizard_core_la_SOURCES) \
+Makefile.depend: $(nodist_libwhizard_core_la_SOURCES) \
   $(libwhizard_core_ut_la_SOURCES) \
-  $(libwhizard_main_la_SOURCES) \
-  $(libwhizard_main_ut_la_SOURCES) \
+  $(nodist_libwhizard_main_la_SOURCES) \
+  $(nodist_libwhizard_main_ut_la_SOURCES) \
   $(EXTRA_libwhizard_core_la_SOURCES)
 	@rm -f $@
 	for src in $^; do \
@@ -163,7 +230,7 @@ SUFFIXES = .lo .$(FC_MODULE_EXT)
 	@:
 #	touch $@
 
-AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system -I../combinatorics -I../parsing -I../rng -I../physics -I../qft -I../expr_base -I../types -I../matrix_elements -I../particles -I../beams -I../me_methods -I../events -I../phase_space -I../mci -I../vegas  -I../user -I../blha -I../gosam -I../openloops -I../fks -I../variables -I../model_features -I../muli -I../shower -I../matching -I../process_integration -I../transforms -I../xdr -I../../vamp/src -I../pdf_builtin -I../../circe1/src -I../../circe2/src -I../lhapdf -I../fastjet -I../threshold -I../tauola -I../recola
+AM_FCFLAGS = -I../basics -I../utilities -I../testing -I../system -I../combinatorics -I../parsing -I../rng -I../physics -I../qed_pdf -I../qft -I../expr_base -I../types -I../matrix_elements -I../particles -I../beams -I../me_methods -I../events -I../phase_space -I../mci -I../vegas  -I../user -I../blha -I../gosam -I../openloops -I../fks -I../variables -I../model_features -I../muli -I../shower -I../matching -I../process_integration -I../transforms -I../xdr -I../../vamp/src -I../pdf_builtin -I../../circe1/src -I../../circe2/src -I../lhapdf -I../fastjet -I../threshold -I../tauola -I../recola
 ########################################################################
 ## Default Fortran compiler options
 
@@ -192,16 +259,11 @@ endif
 ## (Re)create F90 sources from NOWEB source.
 if NOWEB_AVAILABLE
 
-FILTER =
-if FC_USE_MPI
-FILTER += -filter "sed 's/defn MPI:/defn/'"
-endif
+FILTER = -filter "sed 's/defn MPI:/defn/'"
 
-WHIZARD_SRC = \
-  $(libwhizard_core_la_SOURCES) \
+COMMON_SRC = \
+  $(COMMON_F90) \
   $(libwhizard_core_ut_la_SOURCES) \
-  $(libwhizard_main_la_SOURCES) \
-  $(libwhizard_main_ut_la_SOURCES) \
   $(EXTRA_libwhizard_core_la_SOURCES)
 
 PRELUDE = $(top_srcdir)/src/noweb-frame/whizard-prelude.nw
@@ -210,12 +272,18 @@ POSTLUDE = $(top_srcdir)/src/noweb-frame/whizard-postlude.nw
 whizard.stamp: $(PRELUDE) $(srcdir)/whizard.nw $(POSTLUDE)
 	@rm -f whizard.tmp
 	@touch whizard.tmp
-	for src in $(WHIZARD_SRC); do \
-	  $(NOTANGLE) -R[[$$src]] $(FILTER) $^ | $(CPIF) $$src; \
+	for src in $(COMMON_SRC); do \
+	  $(NOTANGLE) -R[[$$src]] $^ | $(CPIF) $$src; \
+        done
+	for src in $(MPI_F90:.f90_mpi=.f90); do \
+	  $(NOTANGLE) -R[[$$src]] $(FILTER) $^ | $(CPIF) $$src'_mpi'; \
+        done
+	for src in $(SERIAL_F90:.f90_serial=.f90); do \
+	  $(NOTANGLE) -R[[$$src]] $^ | $(CPIF) $$src'_serial'; \
         done
 	@mv -f whizard.tmp whizard.stamp
 
-$(WHIZARD_SRC): whizard.stamp
+$(MPI_F90) $(SERIAL_F90) $(COMMON_SRC): whizard.stamp
 ## Recover from the removal of $@
 	@if test -f $@; then :; else \
 	  rm -f whizard.stamp; \
@@ -229,14 +297,14 @@ endif
 ## Remove sources that can be recreated using NOWEB
 if NOWEB_AVAILABLE
 maintainer-clean-noweb:
-	-rm -f *.f90 *.c
+	-rm -f *.f90 *.f90_mpi *.f90_serial *.c
 endif
 .PHONY: maintainer-clean-noweb
 
 ## Remove those sources also if builddir and srcdir are different
 if NOWEB_AVAILABLE
 clean-noweb:
-	test "$(srcdir)" != "." && rm -f *.f90 *.c || true
+	test "$(srcdir)" != "." && rm -f *.f90 *.f90_mpi *.f90_serial *.c || true
 endif
 .PHONY: clean-noweb
 

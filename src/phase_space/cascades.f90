@@ -1,4 +1,4 @@
-! WHIZARD 2.6.3 Feb 10 2018
+! WHIZARD 2.6.4 Aug 23 2018
 !
 ! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -527,11 +527,11 @@ contains
     type(cascade_t), intent(inout) :: cascade
     integer(i8), dimension(1) :: mold
     cascade%res_hash = hash (transfer &
-         (concat (sort (pack (cascade%tree_pdg, &
-                              cascade%tree_resonant)), &
-                  sort (pack (abs (cascade%tree_pdg), &
-                              cascade%tree_mapping == T_CHANNEL .or. &
-                              cascade%tree_mapping == U_CHANNEL))), &
+         ([sort (pack (cascade%tree_pdg, &
+                 cascade%tree_resonant)), &
+           sort (pack (abs (cascade%tree_pdg), &
+                 cascade%tree_mapping == T_CHANNEL .or. &
+                 cascade%tree_mapping == U_CHANNEL))], &
           mold))
   end subroutine cascade_assign_resonance_hash
 

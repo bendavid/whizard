@@ -33,7 +33,7 @@ seed = 0
 |   sqrts = 1.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'isr_epa_1a_i1.phs'
+| Phase space: writing configuration file 'isr_epa_1a.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'isr_epa_1a'
 |   Library name  = 'isr_epa_1_lib'
@@ -67,7 +67,7 @@ $isr_handler_mode = "recoil"
 $epa_handler_mode = "recoil"
 n_events = 100
 | Starting simulation for process 'isr_epa_1a'
-| Simulate: using integration grids from file 'isr_epa_1a_m1.vg'
+| Simulate: using integration grids from file 'isr_epa_1a.m1.vg'
 | Simulate: activating ISR handler
 | Simulate: activating EPA handler
 | Simulate: ISR/EPA handler mode: pair recoil

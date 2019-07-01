@@ -1,4 +1,4 @@
-! WHIZARD 2.6.3 Feb 10 2018
+! WHIZARD 2.6.4 Aug 23 2018
 !
 ! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -69,6 +69,8 @@ contains
          u, results)
     call test(rt_data_10, "rt_data_10", &
               "descriptions", u, results)
+    call test(rt_data_11, "rt_data_11", &
+              "export objects", u, results)
   end subroutine rt_data_test
 
 

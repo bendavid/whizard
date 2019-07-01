@@ -28,7 +28,7 @@ openmp_num_threads = 1
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'energy_scan_1_p1_i1.phs'
+| Phase space: writing configuration file 'energy_scan_1_p1.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'energy_scan_1_p1'
 |   Library name  = 'energy_scan_1_lib'

@@ -227,8 +227,11 @@ virtual-subtracted or subtraction-dummy matrix element.
 @ % def BORN, NLO_REAL, NLO_VIRTUAL, NLO_SUBTRACTION, GKS
 @ [[NLO_FULL]] is not strictly a component status code but having it is
 convenient.
+We define the number of additional subtractions for beam-involved NLO calculations.
+Each subtraction refers to a rescaling of one of two beams.
 <<Physics defs: public parameters>>=
   integer, parameter, public :: n_beam_structure_int = 4
+  integer, parameter, public :: n_beam_gluon_offset = 2
 
 @ %def n_beam_structure_int
 @

@@ -1,4 +1,4 @@
-! WHIZARD 2.6.3 Feb 10 2018
+! WHIZARD 2.6.4 Aug 23 2018
 !
 ! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -212,7 +212,7 @@ contains
                 do j = 1, i - 1
                    dag_token%particle_name(j:j) = char_string(j:j)
                 enddo
-             endif
+             end if
              set_bincode = .true.
           case ("]")
              set_bincode = .false.
@@ -230,11 +230,11 @@ contains
                    bit_pos = 12
                 end select
                 dag_token%bincode = ibset(dag_token%bincode, bit_pos - 1)
-             endif
+             end if
           end select
           if (dag_token%type /= NODE_TK) exit
        enddo
-    endif
+    end if
   end subroutine dag_token_assign_from_char_string
 
   elemental subroutine dag_token_assign_from_dag_token (token_out, token_in)
@@ -284,7 +284,7 @@ contains
                 token_pos = token_pos + 1
                 token(token_pos) = node_char(:node_char_len)
                 node_char_len = 0
-             endif
+             end if
              token_pos = token_pos + 1
              token(token_pos) = char_string(i:i)
           case default
@@ -295,12 +295,12 @@ contains
        if (node_char_len > 0) then
           token_pos = token_pos + 1
           token(token_pos) = node_char(:node_char_len)
-       endif
+       end if
        if (token_pos > 0) then
           allocate (dag_string%t(token_pos))
           dag_string%t = token(:token_pos)
           deallocate (token)
-       endif
+       end if
     end if
   end subroutine dag_string_assign_from_char_string
 
@@ -310,7 +310,7 @@ contains
     if (allocated (string_in%t)) then
        allocate (string_out%t (size(string_in%t)))
        string_out%t = string_in%t
-    endif
+    end if
     string_out%char_len = string_in%char_len
   end subroutine dag_string_assign_from_dag_string
 
@@ -326,7 +326,7 @@ contains
        res_string%t(1) = token1
        res_string%t(2) = token2
        res_string%char_len = token1%char_len + token2%char_len
-    endif
+    end if
   end function concat_dag_token_dag_token
 
   function concat_dag_string_dag_token (dag_string, dag_token) result (res_string)
@@ -344,7 +344,7 @@ contains
        res_string%t(:t_size) = dag_string%t
        res_string%t(t_size+1) = dag_token
        res_string%char_len = dag_string%char_len + dag_token%char_len
-    endif
+    end if
   end function concat_dag_string_dag_token
 
   function concat_dag_token_dag_string (dag_token, dag_string) result (res_string)
@@ -362,7 +362,7 @@ contains
        res_string%t(2:t_size+1) = dag_string%t
        res_string%t(1) = dag_token
        res_string%char_len = dag_token%char_len + dag_string%char_len
-    endif
+    end if
   end function concat_dag_token_dag_string
 
   function concat_dag_string_dag_string (string1, string2) result (res_string)
@@ -382,8 +382,8 @@ contains
           res_string%t(:t1_size) = string1%t
           res_string%t(t1_size+1:) = string2%t
           res_string%char_len = string1%char_len + string2%char_len
-       endif
-    endif
+       end if
+    end if
   end function concat_dag_string_dag_string
 
   elemental function dag_token_eq_dag_token (token1, token2) result (flag)
@@ -403,7 +403,7 @@ contains
          (allocated (string1%t) .eqv. allocated (string2%t))
     if (flag) then
        if (allocated (string1%t)) flag = all (string1%t == string2%t)
-    endif
+    end if
   end function dag_string_eq_dag_string
 
   elemental function dag_token_eq_dag_string (dag_token, dag_string) result (flag)
@@ -540,7 +540,7 @@ contains
           write (fmt_spec, fmt="(A,I2,A)") "(A,I", n_digits, ",A)"
        else
           write (fmt_spec, fmt="(A,I1,A)") "(A,I", n_digits, ",A)"
-       endif
+       end if
        select case (dag_token%type)
           case (DAG_NODE_TK)
              write (char_string, fmt=fmt_spec) "<N", dag_token%index, ">"
@@ -573,8 +573,8 @@ contains
                 return
              else
                 write (char_string(bc_pos:bc_pos), fmt="(A1)") "/"
-             endif
-          endif
+             end if
+          end if
        enddo
     end select
   end function char_dag_token
@@ -623,7 +623,7 @@ contains
        do i=1, size (dag_string%t)
           char_len = char_len + dag_string%t(i)%char_len
        enddo
-    endif
+    end if
     dag_string%char_len = char_len
   end subroutine dag_string_update_char_len
 
@@ -636,7 +636,7 @@ contains
     else
        allocate (dag_chain%last%next)
        dag_chain%last => dag_chain%last%next
-    endif
+    end if
     dag_chain%last = char_string
     dag_chain%char_len = dag_chain%char_len + dag_chain%last%char_len
     dag_chain%t_size = dag_chain%t_size + size (dag_chain%last%t)
@@ -665,7 +665,7 @@ contains
 
   subroutine dag_string_final (dag_string)
     class (dag_string_t), intent (inout) :: dag_string
-    deallocate (dag_string%t)
+    if (allocated (dag_string%t)) deallocate (dag_string%t)
     dag_string%next => null ()
   end subroutine dag_string_final
 

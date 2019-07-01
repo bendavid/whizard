@@ -87,8 +87,8 @@ test -z "$SED"   && SED=sed
 test -z "$MP"    && MP=mpost
 test -z "$LATEX" && LATEX=latex
 
-BUILDDIR=/Users/reuter/Physik/whizard/trunk/_build
-PKGLIBDIR=/Users/reuter/local/lib/whizard
+BUILDDIR=/home/reuter/local/packages/whizard/trunk/_build_gfortran
+PKGLIBDIR=/home/reuter/local/lib/whizard
 
 if test -z "$GMLDIR"; then
   if test -f ./gamelan.mp; then

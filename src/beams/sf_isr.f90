@@ -1,4 +1,4 @@
-! WHIZARD 2.6.3 Feb 10 2018
+! WHIZARD 2.6.4 Aug 23 2018
 !
 ! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -47,6 +47,7 @@ module sf_isr
   use sf_aux
   use sf_mappings
   use sf_base
+  use electron_pdfs
 
   implicit none
   private
@@ -67,6 +68,7 @@ module sf_isr
      private
      class(model_data_t), pointer :: model => null ()
      type(flavor_t), dimension(:), allocatable :: flv_in
+     type(qed_pdf_t) :: pdf
      real(default) :: alpha = 0
      real(default) :: q_max = 0
      real(default) :: real_mass = 0
@@ -170,6 +172,8 @@ contains
     if (data%eps > 1) then
        data%error = EPS_TOO_LARGE;  return
     end if
+    call data%pdf%init &
+         (data%mass, data%alpha, charge, data%q_max, data%order)
   end subroutine isr_data_init
 
   elemental subroutine isr_data_set_order (data, order)
@@ -291,6 +295,7 @@ contains
     class(isr_t), intent(inout) :: object
     integer, intent(in) :: order
     call object%data%set_order (order)
+    call object%data%pdf%set_order (order)
   end subroutine isr_set_order
 
   subroutine isr_complete_kinematics (sf_int, x, xb, f, r, rb, map)
@@ -431,21 +436,14 @@ contains
     end select
   end subroutine isr_init
 
-  subroutine isr_apply (sf_int, scale, rescaling_function, i_rescale)
+  subroutine isr_apply (sf_int, scale, rescale, i_sub, fill_sub)
     class(isr_t), intent(inout) :: sf_int
     real(default), intent(in) :: scale
-    class(rescaling_function_t), intent(in), optional :: rescaling_function
-    integer, intent(in), optional :: i_rescale
+    class(sf_rescale_t), intent(in), optional :: rescale
+    integer, intent(in), optional :: i_sub
+    logical, intent(in), optional :: fill_sub
     real(default) :: f, finv, x, xb, eps, rb
     real(default) :: log_x, log_xb, x_2
-    real(default), parameter :: &
-         & xmin = 0.00714053329734592839549879772019_default
-    real(default), parameter :: &
-         & zeta3 = 1.20205690315959428539973816151_default
-    real(default), parameter :: &
-         & g1 = 3._default / 4._default, &
-         & g2 = (27 - 8 * pi**2) / 96._default, &
-         & g3 = (27 - 24 * pi**2 + 128 * zeta3) / 384._default
     associate (data => sf_int%data)
       eps = sf_int%data%eps
       x = sf_int%x
@@ -456,33 +454,7 @@ contains
       else
          f = 0
       end if
-      if (f > 0 .and. data%order > 0) then
-         f = f * (1 + g1 * eps)
-         x_2 = x * x
-         if (rb > 0)  f = f * (1 - (1-x_2) / (2 * rb))
-         if (data%order > 1) then
-            f = f * (1 + g2 * eps**2)
-            if (rb > 0 .and. xb > 0 .and. x > xmin) then
-               log_x  = log_prec (x, xb)
-               log_xb = log_prec (xb, x)
-               f = f * (1 - ((1 + 3 * x_2) * log_x + xb * (4 * (1 + x) * log_xb + 5 + x)) &
-                    / (8 * rb) * eps)
-            end if
-            if (data%order > 2) then
-               f = f * (1 + g3 * eps**3)
-               if (rb > 0 .and. xb > 0 .and. x > xmin) then
-                  f = f * (1 - ((1 + x) * xb &
-                       * (6 * Li2(x) + 12 * log_xb**2 - 3 * pi**2) &
-                       + 1.5_default * (1 + 8 * x + 3 * x_2) * log_x &
-                       + 6 * (x + 5) * xb * log_xb &
-                       + 12 * (1 + x_2) * log_x * log_xb &
-                       - (1 + 7 * x_2) * log_x**2 / 2 &
-                       + (39 - 24 * x - 15 * x_2) / 4) &
-                       / (48 * rb) * eps**2)
-               end if
-            end if
-         end if
-      end if
+      call data%pdf%evolve_qed_pdf (x, xb, rb, f)
     end associate
     call sf_int%set_matrix_element (cmplx (f, kind=default))
     sf_int%status = SF_EVALUATED

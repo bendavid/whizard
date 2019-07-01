@@ -14,7 +14,7 @@ sqrts =  2.000000000000E+02
 |   sqrts = 2.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'defaultcuts_e4_i1.phs'
+| Phase space: writing configuration file 'defaultcuts_e4.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'defaultcuts_e4'
 |   Library name  = 'defaultcuts_lib'

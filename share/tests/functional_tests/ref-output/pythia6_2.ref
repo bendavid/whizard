@@ -31,7 +31,7 @@ openmp_num_threads = 1
 |   sqrts = 1.000000000000E+03 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'pythia6_2_p1_i1.phs'
+| Phase space: writing configuration file 'pythia6_2_p1.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'pythia6_2_p1'
 |   Library name  = 'pythia6_2_lib'
@@ -69,7 +69,7 @@ n_events = 1
 $shower_method = "PYTHIA6"
 $sample = "pythia6_2a"
 | Starting simulation for process 'pythia6_2_p1'
-| Simulate: using integration grids from file 'pythia6_2_p1_m1.vg'
+| Simulate: using integration grids from file 'pythia6_2_p1.m1.vg'
 | Simulate: activating parton shower
 | Shower: Using PYTHIA6 shower
 | RNG: Initializing TAO random-number generator
@@ -87,7 +87,7 @@ $sample = "pythia6_2a"
 $sample = "pythia6_2b"
 ?hadronization_active = true
 | Starting simulation for process 'pythia6_2_p1'
-| Simulate: using integration grids from file 'pythia6_2_p1_m1.vg'
+| Simulate: using integration grids from file 'pythia6_2_p1.m1.vg'
 | Simulate: activating parton shower
 | Shower: Using PYTHIA6 shower
 | Simulate: activating hadronization
@@ -112,7 +112,7 @@ $sample = "pythia6_2b"
 |   Z  (mass = 9.1188200E+01 GeV)
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'pythia6_2_p2_i1.phs'
+| Phase space: writing configuration file 'pythia6_2_p2.i1.phs'
 | ------------------------------------------------------------------------
 | Process [decay]: 'pythia6_2_p2'
 |   Library name  = 'pythia6_2_lib'
@@ -152,7 +152,7 @@ Warning: No cuts have been defined.
 |   H  (mass = 1.2500000E+02 GeV)
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'pythia6_2_p3_i1.phs'
+| Phase space: writing configuration file 'pythia6_2_p3.i1.phs'
 | ------------------------------------------------------------------------
 | Process [decay]: 'pythia6_2_p3'
 |   Library name  = 'pythia6_2_lib'
@@ -186,12 +186,12 @@ Warning: No cuts have been defined.
 |   Decay options: helicity treated exactly
 $sample = "pythia6_2c"
 | Starting simulation for process 'pythia6_2_p1'
-| Simulate: using integration grids from file 'pythia6_2_p1_m1.vg'
+| Simulate: using integration grids from file 'pythia6_2_p1.m1.vg'
 | Simulate: activating decays
 | Simulate: activating parton shower
 | Shower: Using PYTHIA6 shower
-| Simulate: using integration grids from file 'pythia6_2_p2_m1.vg'
-| Simulate: using integration grids from file 'pythia6_2_p3_m1.vg'
+| Simulate: using integration grids from file 'pythia6_2_p2.m1.vg'
+| Simulate: using integration grids from file 'pythia6_2_p3.m1.vg'
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 5
 | Simulation: requested number of events = 1
@@ -207,14 +207,14 @@ $sample = "pythia6_2c"
 $sample = "pythia6_2d"
 ?hadronization_active = true
 | Starting simulation for process 'pythia6_2_p1'
-| Simulate: using integration grids from file 'pythia6_2_p1_m1.vg'
+| Simulate: using integration grids from file 'pythia6_2_p1.m1.vg'
 | Simulate: activating decays
 | Simulate: activating parton shower
 | Shower: Using PYTHIA6 shower
 | Simulate: activating hadronization
 | Hadronization: Using PYTHIA6 interface for hadronization and decays
-| Simulate: using integration grids from file 'pythia6_2_p2_m1.vg'
-| Simulate: using integration grids from file 'pythia6_2_p3_m1.vg'
+| Simulate: using integration grids from file 'pythia6_2_p2.m1.vg'
+| Simulate: using integration grids from file 'pythia6_2_p3.m1.vg'
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 6
 | Simulation: requested number of events = 1

@@ -27,7 +27,7 @@ openmp_num_threads = 1
 |   sqrts = 1.000000000000E+03 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'event_weights_2_p_i1.phs'
+| Phase space: writing configuration file 'event_weights_2_p.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'event_weights_2_p'
 |   Library name  = 'event_weights_2_lib'
@@ -68,7 +68,7 @@ $sample_normalization = "auto"
 $sample = "event_weights_2a"
 seed = 0
 | Starting simulation for process 'event_weights_2_p'
-| Simulate: using integration grids from file 'event_weights_2_p_m1.vg'
+| Simulate: using integration grids from file 'event_weights_2_p.m1.vg'
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Events: writing to weight stream file 'event_weights_2a.weights.dat'
@@ -82,7 +82,7 @@ $sample_normalization = "1"
 $sample = "event_weights_2b"
 seed = 0
 | Starting simulation for process 'event_weights_2_p'
-| Simulate: using integration grids from file 'event_weights_2_p_m1.vg'
+| Simulate: using integration grids from file 'event_weights_2_p.m1.vg'
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Events: writing to weight stream file 'event_weights_2b.weights.dat'
@@ -96,7 +96,7 @@ $sample_normalization = "1/n"
 $sample = "event_weights_2c"
 seed = 0
 | Starting simulation for process 'event_weights_2_p'
-| Simulate: using integration grids from file 'event_weights_2_p_m1.vg'
+| Simulate: using integration grids from file 'event_weights_2_p.m1.vg'
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Events: writing to weight stream file 'event_weights_2c.weights.dat'
@@ -110,7 +110,7 @@ $sample_normalization = "sigma"
 $sample = "event_weights_2d"
 seed = 0
 | Starting simulation for process 'event_weights_2_p'
-| Simulate: using integration grids from file 'event_weights_2_p_m1.vg'
+| Simulate: using integration grids from file 'event_weights_2_p.m1.vg'
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Events: writing to weight stream file 'event_weights_2d.weights.dat'
@@ -124,7 +124,7 @@ $sample_normalization = "sigma/n"
 $sample = "event_weights_2e"
 seed = 0
 | Starting simulation for process 'event_weights_2_p'
-| Simulate: using integration grids from file 'event_weights_2_p_m1.vg'
+| Simulate: using integration grids from file 'event_weights_2_p.m1.vg'
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 0
 | Events: writing to weight stream file 'event_weights_2e.weights.dat'

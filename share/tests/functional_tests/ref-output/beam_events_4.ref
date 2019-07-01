@@ -30,7 +30,7 @@ seed = 0
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'beam_events_4_p1_i1.phs'
+| Phase space: writing configuration file 'beam_events_4_p1.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'beam_events_4_p1'
 |   Library name  = 'beam_events_4_lib'
@@ -70,7 +70,7 @@ Warning: No cuts have been defined.
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'beam_events_4_p2_i1.phs'
+| Phase space: writing configuration file 'beam_events_4_p2.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'beam_events_4_p2'
 |   Library name  = 'beam_events_4_lib'
@@ -103,9 +103,9 @@ Warning: No cuts have been defined.
 n_events = 10
 | Starting simulation for processes 'beam_events_4_p1' etc.
 | Beam events: reading from file 'uniform_spread_2.5%.dat'
-| Simulate: using integration grids from file 'beam_events_4_p1_m1.vg'
+| Simulate: using integration grids from file 'beam_events_4_p1.m1.vg'
 | Beam events: reading from file 'uniform_spread_2.5%.dat'
-| Simulate: using integration grids from file 'beam_events_4_p2_m1.vg'
+| Simulate: using integration grids from file 'beam_events_4_p2.m1.vg'
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 2
 | Simulation: requested number of events = 10

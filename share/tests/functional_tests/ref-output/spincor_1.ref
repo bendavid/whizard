@@ -26,7 +26,7 @@ sqrts =  5.000000000000E+02
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'spincor_1p_i1.phs'
+| Phase space: writing configuration file 'spincor_1p.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'spincor_1p'
 |   Library name  = 'spincor_1_lib'
@@ -60,7 +60,7 @@ Warning: No cuts have been defined.
 |   W+  (mass = 8.0419000E+01 GeV)
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'spincor_1d_i1.phs'
+| Phase space: writing configuration file 'spincor_1d.i1.phs'
 | ------------------------------------------------------------------------
 | Process [decay]: 'spincor_1d'
 |   Library name  = 'spincor_1_lib'
@@ -95,9 +95,9 @@ Warning: No cuts have been defined.
 |   Decay options: helicity treated exactly
 n_events = 100
 | Starting simulation for process 'spincor_1p'
-| Simulate: using integration grids from file 'spincor_1p_m1.vg'
+| Simulate: using integration grids from file 'spincor_1p.m1.vg'
 | Simulate: activating decays
-| Simulate: using integration grids from file 'spincor_1d_m1.vg'
+| Simulate: using integration grids from file 'spincor_1d.m1.vg'
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 2
 | Simulation: requested number of events = 100
@@ -119,9 +119,9 @@ Warning: Encountered events with excess weight: 1 events (  1.000 %)
 |   Decay options: isotropic
 n_events = 100
 | Starting simulation for process 'spincor_1p'
-| Simulate: using integration grids from file 'spincor_1p_m1.vg'
+| Simulate: using integration grids from file 'spincor_1p.m1.vg'
 | Simulate: activating decays
-| Simulate: using integration grids from file 'spincor_1d_m1.vg'
+| Simulate: using integration grids from file 'spincor_1d.m1.vg'
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 3
 | Simulation: requested number of events = 100

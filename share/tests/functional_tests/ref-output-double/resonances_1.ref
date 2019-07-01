@@ -32,7 +32,7 @@ openmp_num_threads = 1
 |   sqrts = 2.300000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'resonances_1_p_i1.phs'
+| Phase space: writing configuration file 'resonances_1_p.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'resonances_1_p'
 |   Library name  = 'resonances_1_lib'
@@ -66,7 +66,7 @@ openmp_num_threads = 1
 |=============================================================================|
 n_events = 100
 | Starting simulation for process 'resonances_1_p'
-| Simulate: using integration grids from file 'resonances_1_p_m1.vg'
+| Simulate: using integration grids from file 'resonances_1_p.m1.vg'
 | Creating library for resonant subprocesses 'resonances_1_p_R'
 | Process library 'resonances_1_p_R': initialized
 | Resonant subprocess #1: 4+5~W- && 3+6~W+

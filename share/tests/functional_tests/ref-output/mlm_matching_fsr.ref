@@ -35,7 +35,7 @@ openmp_num_threads = 1
 |   sqrts = 9.100000000000E+01 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'mlm_matching_fsr_eeuu_i1.phs'
+| Phase space: writing configuration file 'mlm_matching_fsr_eeuu.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'mlm_matching_fsr_eeuu'
 |   Library name  = 'mlm_matching_fsr_lib'
@@ -67,7 +67,7 @@ n_events = 1
 $sample = "mlm_matching_fsr_1"
 ?sample_pacify = true
 | Starting simulation for process 'mlm_matching_fsr_eeuu'
-| Simulate: using integration grids from file 'mlm_matching_fsr_eeuu_m1.vg'
+| Simulate: using integration grids from file 'mlm_matching_fsr_eeuu.m1.vg'
 | Simulate: activating parton shower
 | Shower: Using WHIZARD internal shower
 | RNG: Initializing TAO random-number generator
@@ -83,7 +83,7 @@ $sample = "mlm_matching_fsr_1"
 | Events: closing ASCII file 'mlm_matching_fsr_1.evt'
 | Events: closing raw file 'mlm_matching_fsr_1.evx'
 mlm_matching_fsr_eeuu:
-   7.0170233E+06 +- 7.72E+02 fb
+   7.0170233E+06 +- 7.72E+02 fb  (  0.011 %)
 SM.ms =>  0.00000E+00
 SM.mc =>  0.00000E+00
 sqrts =  9.10000E+01
@@ -107,7 +107,7 @@ mlm_ETclusminE =  1.00000E+01
 |   sqrts = 9.100000000000E+01 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'mlm_matching_fsr_eeuu_i1.phs'
+| Phase space: writing configuration file 'mlm_matching_fsr_eeuu.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'mlm_matching_fsr_eeuu'
 |   Library name  = 'mlm_matching_fsr_lib'
@@ -139,7 +139,7 @@ n_events = 1
 $sample = "mlm_matching_fsr_2"
 ?sample_pacify = true
 | Starting simulation for process 'mlm_matching_fsr_eeuu'
-| Simulate: using integration grids from file 'mlm_matching_fsr_eeuu_m1.vg'
+| Simulate: using integration grids from file 'mlm_matching_fsr_eeuu.m1.vg'
 | Simulate: activating parton shower
 | Shower: Using WHIZARD internal shower
 | Simulate: applying MLM matching
@@ -156,9 +156,9 @@ $sample = "mlm_matching_fsr_2"
 | Events: closing ASCII file 'mlm_matching_fsr_2.evt'
 | Events: closing raw file 'mlm_matching_fsr_2.evx'
 mlm_matching_fsr_eeuu:
-   7.0190407E+06 +- 7.75E+02 fb
+   7.0170233E+06 +- 7.72E+02 fb  (  0.011 %)
 mlm_matching_fsr_eeuu:
-   7.0170233E+06 +- 7.72E+02 fb
+   7.0190407E+06 +- 7.75E+02 fb  (  0.011 %)
 | WHIZARD run finished.
 |=============================================================================|
 Contents of mlm_matching_fsr_1.evt:

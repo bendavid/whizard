@@ -29,7 +29,7 @@ seed = 1
 |   t  (mass = 1.7310000E+02 GeV)
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'recola_8_p1_i1.phs'
+| Phase space: writing configuration file 'recola_8_p1.i1.phs'
 | ------------------------------------------------------------------------
 | Process [decay]: 'recola_8_p1'
 |   Library name  = 'recola_8_lib'

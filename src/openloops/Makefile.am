@@ -30,14 +30,36 @@
 ## We create a library which is still to be combined with auxiliary libs.
 noinst_LTLIBRARIES = liboloops.la
 
-liboloops_la_SOURCES = \
+COMMOM_F90 =
+MPI_F90 = \
+  prc_openloops.f90_mpi
+SERIAL_F90 = \
+  prc_openloops.f90_serial
+
+EXTRA_DIST = \
+  $(COMMON_F90) \
+  $(SERIAL_F90) \
+  $(MPI_F90)
+
+nodist_liboloops_la_SOURCES = \
+  $(COMMON_F90) \
   prc_openloops.f90
+
+DISTCLEANFILES = prc_openloops.f90
+
+if FC_USE_MPI
+prc_openloops.f90: prc_openloops.f90_mpi
+	-cp -f $< $@
+else
+prc_openloops.f90: prc_openloops.f90_serial
+	-cp -f $< $@
+endif
 
 ## Omitting this would exclude it from the distribution
 dist_noinst_DATA = openloops.nw
 
 # Dump module names into file Modules
-liboloops_Modules = ${liboloops_la_SOURCES:.f90=}
+liboloops_Modules = $(nodist_liboloops_la_SOURCES:.f90=)
 Modules: Makefile
 	@for module in $(liboloops_Modules); do \
           echo $$module >> $@.new; \
@@ -69,7 +91,7 @@ module_lists = \
 $(module_lists):
 	$(MAKE) -C `dirname $@` Modules
 
-Module_dependencies.sed: $(liboloops_la_SOURCES)
+Module_dependencies.sed: $(nodist_liboloops_la_SOURCES)
 Module_dependencies.sed: $(module_lists)
 	@rm -f $@
 	echo 's/, *only:.*//' >> $@
@@ -83,7 +105,7 @@ Module_dependencies.sed: $(module_lists)
 		done \
 	done
 
-DISTCLEANFILES = Module_dependencies.sed
+DISTCLEANFILES += Module_dependencies.sed
 
 
 # The following line just says
@@ -92,7 +114,7 @@ DISTCLEANFILES = Module_dependencies.sed
 @am__include@ @am__quote@Makefile.depend@am__quote@
 
 Makefile.depend: Module_dependencies.sed
-Makefile.depend: $(liboloops_la_SOURCES)
+Makefile.depend: $(nodist_liboloops_la_SOURCES)
 	@rm -f $@
 	for src in $^; do \
 	  module="`basename $$src | sed 's/\.f[90][0358]//'`"; \
@@ -139,10 +161,7 @@ endif
 ## (Re)create F90 sources from NOWEB source.
 if NOWEB_AVAILABLE
 
-FILTER =
-if FC_USE_MPI
-FILTER += -filter "sed 's/defn MPI:/defn/'"
-endif
+FILTER = -filter "sed 's/defn MPI:/defn/'"
 
 PRELUDE = $(top_srcdir)/src/noweb-frame/whizard-prelude.nw
 POSTLUDE = $(top_srcdir)/src/noweb-frame/whizard-postlude.nw
@@ -150,12 +169,18 @@ POSTLUDE = $(top_srcdir)/src/noweb-frame/whizard-postlude.nw
 openloops.stamp: $(PRELUDE) $(srcdir)/openloops.nw $(POSTLUDE)
 	@rm -f openloops.tmp
 	@touch openloops.tmp
-	for src in $(liboloops_la_SOURCES); do \
-	  $(NOTANGLE) -R[[$$src]] $(FILTER) $^ | $(CPIF) $$src; \
+	for src in $(COMMON_F90); do \
+	  $(NOTANGLE) -R[[$$src]] $^ | $(CPIF) $$src; \
+        done
+	for src in $(SERIAL_F90:.f90_serial=.f90); do \
+	  $(NOTANGLE) -R[[$$src]] $^ | $(CPIF) $$src'_serial'; \
+        done
+	for src in $(MPI_F90:.f90_mpi=.f90); do \
+	  $(NOTANGLE) -R[[$$src]] $(FILTER) $^ | $(CPIF) $$src'_mpi'; \
         done
 	@mv -f openloops.tmp openloops.stamp
 
-$(liboloops_la_SOURCES): openloops.stamp
+$(COMMON_F90) $(SERIAL_F90) $(MPI_F90): openloops.stamp
 ## Recover from the removal of $@
 	@if test -f $@; then :; else \
 	  rm -f openloops.stamp; \
@@ -170,14 +195,14 @@ endif
 ## Remove sources that can be recreated using NOWEB
 if NOWEB_AVAILABLE
 maintainer-clean-noweb:
-	-rm -f *.f90 *.c
+	-rm -f *.f90 *.f90_mpi *.f90_serial *.c
 endif
 .PHONY: maintainer-clean-noweb
 
 ## Remove those sources also if builddir and srcdir are different
 if NOWEB_AVAILABLE
 clean-noweb:
-	test "$(srcdir)" != "." && rm -f *.f90 *.c || true
+	test "$(srcdir)" != "." && rm -f *.f90 *.f90_mpi *.f90_serial *.c || true
 endif
 .PHONY: clean-noweb
 

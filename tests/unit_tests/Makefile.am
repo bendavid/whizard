@@ -80,6 +80,7 @@ UNIT_TESTS = \
     phs_wood.run \
     phs_fks_generator.run \
     fks_regions.run \
+    real_subtraction.run \
     rng_base.run \
     rng_tao.run \
     rng_stream.run \

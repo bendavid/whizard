@@ -1,4 +1,4 @@
-! WHIZARD 2.6.3 Feb 10 2018
+! WHIZARD 2.6.4 Aug 23 2018
 !
 ! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -50,6 +50,10 @@ module subevents
   public :: prt_get_msq
   public :: prt_is_polarized
   public :: prt_get_helicity
+  public :: prt_is_colorized
+  public :: prt_get_n_col
+  public :: prt_get_n_acl
+  public :: prt_get_color_indices
   public :: c_prt
   public :: prt_write
   public :: are_disjoint
@@ -71,6 +75,7 @@ module subevents
   public :: subevt_set_p2_incoming
   public :: subevt_set_p2_outgoing
   public :: subevt_polarize
+  public :: subevt_colorize
   public :: subevt_is_nonempty
   public :: subevt_get_length
   public :: subevt_get_prt
@@ -102,10 +107,13 @@ module subevents
      integer :: type = PRT_UNDEFINED
      integer :: pdg
      logical :: polarized = .false.
+     logical :: colorized = .false.
      integer :: h
      type(vector4_t) :: p
      real(default) :: p2
      integer, dimension(:), allocatable :: src
+     integer, dimension(:), allocatable :: col
+     integer, dimension(:), allocatable :: acl
   end type prt_t
 
   type :: subevt_t
@@ -238,6 +246,50 @@ contains
     h = prt%h
   end function prt_get_helicity
 
+  elemental function prt_is_colorized (prt) result (flag)
+    logical :: flag
+    type(prt_t), intent(in) :: prt
+    flag = prt%colorized
+  end function prt_is_colorized
+
+  elemental function prt_get_n_col (prt) result (n)
+    integer :: n
+    type(prt_t), intent(in) :: prt
+    integer, dimension(:), allocatable :: col, acl
+    integer :: i
+    n = 0
+    if (prt%colorized) then
+       do i = 1, size (prt%col)
+          if (all (prt%col(i) /= prt%acl)) n = n + 1
+       end do
+    end if
+  end function prt_get_n_col
+
+  elemental function prt_get_n_acl (prt) result (n)
+    integer :: n
+    type(prt_t), intent(in) :: prt
+    integer, dimension(:), allocatable :: col, acl
+    integer :: i
+    n = 0
+    if (prt%colorized) then
+       do i = 1, size (prt%acl)
+          if (all (prt%acl(i) /= prt%col)) n = n + 1
+       end do
+    end if
+  end function prt_get_n_acl
+
+  subroutine prt_get_color_indices (prt, col, acl)
+    type(prt_t), intent(in) :: prt
+    integer, dimension(:), allocatable, intent(out) :: col, acl
+    if (prt%colorized) then
+       col = prt%col
+       acl = prt%acl
+    else
+       col = [integer::]
+       acl = [integer::]
+    end if
+  end subroutine prt_get_color_indices
+
   subroutine prt_set (prt, pdg, p, p2, src)
     type(prt_t), intent(inout) :: prt
     integer, intent(in) :: pdg
@@ -282,6 +334,14 @@ contains
     prt%polarized = .true.
     prt%h = h
   end subroutine prt_polarize
+
+  subroutine prt_colorize (prt, col, acl)
+    type(prt_t), intent(inout) :: prt
+    integer, dimension(:), intent(in) :: col, acl
+    prt%colorized = .true.
+    prt%col = col
+    prt%acl = acl
+  end subroutine prt_colorize
 
   elemental function c_prt_from_prt (prt) result (c_prt)
     type(c_prt_t) :: c_prt
@@ -328,6 +388,15 @@ contains
     end select
     select case (prt%type)
     case (PRT_BEAM, PRT_INCOMING, PRT_OUTGOING, PRT_COMPOSITE)
+       if (prt%colorized) then
+          write (u, "(*(I0,:,','))", advance="no")  prt%col
+          write (u, "('/')", advance="no")
+          write (u, "(*(I0,:,','))", advance="no")  prt%acl
+          write (u, "('|')", advance="no")
+       end if
+    end select
+    select case (prt%type)
+    case (PRT_BEAM, PRT_INCOMING, PRT_OUTGOING, PRT_COMPOSITE)
        write (u, "(" // FMT_14 // ",';'," // FMT_14 // ",','," // &
             FMT_14 // ",','," // FMT_14 // ")", advance="no") tmp%p
        write (u, "('|'," // fmt // ")", advance="no") tmp%p2
@@ -356,9 +425,27 @@ contains
     type(prt_t), intent(in) :: prt_in1, prt_in2
     logical :: ok
     integer, dimension(:), allocatable :: src
+    integer, dimension(:), allocatable :: col1, acl1, col2, acl2
     call combine_index_lists (src, prt_in1%src, prt_in2%src)
     ok = allocated (src)
-    if (ok)  call prt_init_composite (prt, prt_in1%p + prt_in2%p, src)
+    if (ok) then
+       call prt_init_composite (prt, prt_in1%p + prt_in2%p, src)
+       if (prt_in1%colorized .or. prt_in2%colorized) then
+          select case (prt_in1%type)
+          case default
+             call prt_get_color_indices (prt_in1, col1, acl1)
+          case (PRT_BEAM, PRT_INCOMING)
+             call prt_get_color_indices (prt_in1, acl1, col1)
+          end select
+          select case (prt_in2%type)
+          case default
+             call prt_get_color_indices (prt_in2, col2, acl2)
+          case (PRT_BEAM, PRT_INCOMING)
+             call prt_get_color_indices (prt_in2, acl2, col2)
+          end select
+          call prt_colorize (prt, [col1, col2], [acl1, acl2])
+       end if
+    end if
   end subroutine prt_combine
 
   function are_disjoint (prt_in1, prt_in2) result (flag)
@@ -650,6 +737,20 @@ contains
     integer, intent(in) :: i, h
     call prt_polarize (subevt%prt(i), h)
   end subroutine subevt_polarize
+
+  subroutine subevt_colorize (subevt, i, col, acl)
+    type(subevt_t), intent(inout) :: subevt
+    integer, intent(in) :: i, col, acl
+    if (col > 0 .and. acl > 0) then
+       call prt_colorize (subevt%prt(i), [col], [acl])
+    else if (col > 0) then
+       call prt_colorize (subevt%prt(i), [col], [integer ::])
+    else if (acl > 0) then
+       call prt_colorize (subevt%prt(i), [integer ::], [acl])
+    else
+       call prt_colorize (subevt%prt(i), [integer ::], [integer ::])
+    end if
+  end subroutine subevt_colorize
 
   function subevt_is_nonempty (subevt) result (flag)
     logical :: flag

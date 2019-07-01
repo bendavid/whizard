@@ -1,4 +1,4 @@
-! WHIZARD 2.6.3 Feb 10 2018
+! WHIZARD 2.6.4 Aug 23 2018
 !
 ! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -56,6 +56,9 @@ module whizard
   public :: write_syntax_tables
 
   type :: whizard_options_t
+     type(string_t) :: job_id
+     type(string_t), dimension(:), allocatable :: pack_args
+     type(string_t), dimension(:), allocatable :: unpack_args
      type(string_t) :: preload_model
      type(string_t) :: default_lib
      type(string_t) :: preload_libraries
@@ -85,7 +88,10 @@ module whizard
    contains
      procedure :: init => whizard_init
      procedure :: final => whizard_final
+     procedure :: init_job_id => whizard_init_job_id
      procedure :: init_rebuild_flags => whizard_init_rebuild_flags
+     procedure :: pack_files => whizard_pack_files
+     procedure :: unpack_files => whizard_unpack_files
      procedure :: preload_model => whizard_preload_model
      procedure :: preload_library => whizard_preload_library
      procedure :: process_ifile => whizard_process_ifile
@@ -129,7 +135,9 @@ contains
     call init_syntax_tables ()
     whizard%options = options
     call whizard%global%global_init (paths, logfile)
+    call whizard%init_job_id ()
     call whizard%init_rebuild_flags ()
+    call whizard%unpack_files ()
     call whizard%preload_model ()
     call whizard%preload_library ()
     call whizard%global%init_fallback_model &
@@ -140,11 +148,22 @@ contains
     class(whizard_t), intent(inout), target :: whizard
     call whizard%global%final ()
     call whizard%pt_stack%final ()
+    call whizard%pack_files ()
 !!! JRR: WK please check (#529)
     !    call user_code_final ()
     call final_syntax_tables ()
   end subroutine whizard_final
 
+  subroutine whizard_init_job_id (whizard)
+    class(whizard_t), intent(inout), target :: whizard
+    associate (var_list => whizard%global%var_list, options => whizard%options)
+      if (options%job_id /= "") then
+         call var_list%set_string (var_str ("$job_id"), &
+              options%job_id, is_known=.true.)
+      end if
+    end associate
+  end subroutine whizard_init_job_id
+  
   subroutine whizard_init_rebuild_flags (whizard)
     class(whizard_t), intent(inout), target :: whizard
     associate (var_list => whizard%global%var_list, options => whizard%options)
@@ -162,6 +181,46 @@ contains
            options%rebuild_events, intrinsic=.true.)
     end associate
   end subroutine whizard_init_rebuild_flags
+
+  subroutine whizard_pack_files (whizard)
+    class(whizard_t), intent(in), target :: whizard
+    logical :: exist
+    integer :: i
+    type(string_t) :: file
+    if (allocated (whizard%options%pack_args)) then
+       do i = 1, size (whizard%options%pack_args)
+          file = whizard%options%pack_args(i)
+          call msg_message ("Packing file/dir '" // char (file) // "'")
+          exist = os_file_exist (file) .or. os_dir_exist (file) 
+          if (exist) then
+             call os_pack_file (whizard%options%pack_args(i), &
+                  whizard%global%os_data)
+          else
+             call msg_error ("File/dir '" // char (file) // "' not found")
+          end if
+       end do
+    end if
+  end subroutine whizard_pack_files
+
+  subroutine whizard_unpack_files (whizard)
+    class(whizard_t), intent(in), target :: whizard
+    logical :: exist
+    integer :: i
+    type(string_t) :: file
+    if (allocated (whizard%options%unpack_args)) then
+       do i = 1, size (whizard%options%unpack_args)
+          file = whizard%options%unpack_args(i)
+          call msg_message ("Unpacking file '" // char (file) // "'")
+          exist = os_file_exist (file) 
+          if (exist) then
+             call os_unpack_file (whizard%options%unpack_args(i), &
+                  whizard%global%os_data)
+          else
+             call msg_error ("File '" // char (file) // "' not found")
+          end if
+       end do
+    end if
+  end subroutine whizard_unpack_files
 
   subroutine whizard_preload_model (whizard)
     class(whizard_t), intent(inout), target :: whizard

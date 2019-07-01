@@ -27,7 +27,7 @@ seed = 0
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'colors_bbg_i1.phs'
+| Phase space: writing configuration file 'colors_bbg.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'colors_bbg'
 |   Library name  = 'colors_lib'
@@ -65,7 +65,7 @@ seed = 0
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'colors_ugug_i1.phs'
+| Phase space: writing configuration file 'colors_ugug.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'colors_ugug'
 |   Library name  = 'colors_lib'
@@ -105,7 +105,7 @@ seed = 0
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'colors_bbg_i1.phs'
+| Phase space: writing configuration file 'colors_bbg.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'colors_bbg'
 |   Library name  = 'colors_lib'
@@ -143,7 +143,7 @@ seed = 0
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'colors_ugug_i1.phs'
+| Phase space: writing configuration file 'colors_ugug.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'colors_ugug'
 |   Library name  = 'colors_lib'

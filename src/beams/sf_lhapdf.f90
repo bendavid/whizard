@@ -1,4 +1,4 @@
-! WHIZARD 2.6.3 Feb 10 2018
+! WHIZARD 2.6.4 Aug 23 2018
 !
 ! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -36,6 +36,7 @@ module sf_lhapdf
   use system_dependencies, only: LHAPDF5_AVAILABLE
   use system_dependencies, only: LHAPDF6_AVAILABLE
   use diagnostics
+  use physics_defs, only: n_beam_gluon_offset
   use physics_defs, only: PROTON, PHOTON, PIPLUS, GLUON
   use physics_defs, only: HADRON_REMNANT_SINGLET
   use physics_defs, only: HADRON_REMNANT_TRIPLET
@@ -601,27 +602,43 @@ contains
     end select
   end subroutine lhapdf_init
 
-  subroutine lhapdf_apply (sf_int, scale, rescaling_function, i_rescale)
+  subroutine lhapdf_apply (sf_int, scale, rescale, i_sub, fill_sub)
     class(lhapdf_t), intent(inout) :: sf_int
     real(default), intent(in) :: scale
-    class(rescaling_function_t), intent(in), optional :: rescaling_function
-    integer, intent(in), optional :: i_rescale
+    class(sf_rescale_t), intent(in), optional :: rescale
+    integer, intent(in), optional :: i_sub
+    logical, intent(in), optional :: fill_sub
     real(default) :: x, s
     double precision :: xx, qq, ss
     double precision, dimension(-6:6) :: ff
     double precision :: fphot
     complex(default), dimension(:), allocatable :: fc
-    integer :: i, i_idx
+    integer :: i, i_sub_opt, j_sub
+    logical :: fill_sub_opt
     external :: evolvePDFM, evolvePDFpM
+    i_sub_opt = 0; if (present (i_sub)) i_sub_opt = i_sub
+    fill_sub_opt = .false.; if (present (fill_sub)) fill_sub_opt = fill_sub
+    if (present (rescale) .and. fill_sub_opt) then
+       call msg_bug ("[lhapdf_apply] &
+            & sf_rescale and fill_sub option are mutually exclusive.")
+    end if
+    if (i_sub_opt > 0 .and. fill_sub_opt) then
+       call msg_bug ("[lhapdf_apply] &
+            & i_sub and fill_sub options are mutually exclusive.")
+    end if
     associate (data => sf_int%data)
       sf_int%q = scale
       x = sf_int%x
-      if (present (rescaling_function))  call rescaling_function%apply (x)
+      if (present (rescale))  call rescale%apply (x)
       s = sf_int%s
       xx = x
-      call msg_debug (D_BEAMS, "lhapdf_apply")
-      call msg_debug (D_BEAMS, "rescaling_function: ", present(rescaling_function))
-      call msg_debug (D_BEAMS, "x: ", x)
+      if (debug2_active (D_BEAMS)) then
+         call msg_debug2 (D_BEAMS, "lhapdf_apply")
+         call msg_debug2 (D_BEAMS, "rescale: ", present(rescale))
+         call msg_debug2 (D_BEAMS, "i_sub: ", i_sub_opt)
+         call msg_debug2 (D_BEAMS, "fill_sub: ", fill_sub_opt)
+         call msg_debug2 (D_BEAMS, "x: ", x)
+      end if
       qq = min (data%qmax, scale)
       qq = max (data%qmin, qq)
       if (.not. data% photon) then
@@ -683,21 +700,21 @@ contains
          fc = max (pack (ff / x, data%mask), 0._default)
       end if
     end associate
-    if (debug_active (D_BEAMS))  print *, 'Set pdfs: ', real (fc)
-    if (present (rescaling_function)) then
-       if (present (i_rescale)) then
-          i_idx = i_rescale + 1
-       else
-          i_idx = 1
-       end if
-       call sf_int%set_matrix_element (fc, rescaling_function%sf_indices(i_idx, :))
-       if (allocated (rescaling_function%sf_indices_gluon)) then
-          do i = 1, 13
-             call sf_int%set_matrix_element (rescaling_function%sf_indices_gluon(i_rescale, i), fc(7))
-          end do
+    if (debug_active (D_BEAMS)) print *, 'Set pdfs: ', real (fc)
+    if (present (rescale) .and. i_sub_opt > 0) then
+       call sf_int%set_matrix_element (fc, [(i_sub_opt * size(fc) + i, i = 1, size(fc))])
+       if (rescale%has_gluons ()) then
+          j_sub = i_sub_opt + n_beam_gluon_offset
+          call sf_int%set_matrix_element (&
+               spread (fc(7), 1, size(fc)), [(j_sub * size(fc) + i, i = 1, size(fc))])
        end if
     else
        call sf_int%set_matrix_element (fc, [(i, i = 1, size(fc))])
+    end if
+    if(fill_sub_opt) then
+       do j_sub = 1, sf_int%get_n_sub ()
+          call sf_int%set_matrix_element (fc, [(j_sub * size(fc) + i, i = 1, size(fc))])
+       end do
     end if
     sf_int%status = SF_EVALUATED
   end subroutine lhapdf_apply

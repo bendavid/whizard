@@ -38,7 +38,7 @@ $sample = "hepmc_10a"
 | Initialized builtin PDF CTEQ6L
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'hepmc_10_p_i1.phs'
+| Phase space: writing configuration file 'hepmc_10_p.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'hepmc_10_p'
 |   Library name  = 'hepmc_10_lib'
@@ -68,7 +68,7 @@ $sample = "hepmc_10a"
    1       1000  3.6766981E+07  1.97E+07   53.64   16.96    0.62
 |=============================================================================|
 | Simulate: integration done
-| Simulate: using integration grids from file 'hepmc_10_p_m1.vg'
+| Simulate: using integration grids from file 'hepmc_10_p.m1.vg'
 | QCD alpha: using a running strong coupling
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 1
@@ -93,7 +93,7 @@ $sample = "hepmc_10b"
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 2
 Warning: Reading phs file: MD5 sum check disabled
-| Phase space: keeping configuration file 'hepmc_10_p_i1.phs'
+| Phase space: keeping configuration file 'hepmc_10_p.i1.phs'
 | QCD alpha: using a running strong coupling
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 3
@@ -117,7 +117,7 @@ $sample = "hepmc_10c"
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 4
 Warning: Reading phs file: MD5 sum check disabled
-| Phase space: keeping configuration file 'hepmc_10_p_i1.phs'
+| Phase space: keeping configuration file 'hepmc_10_p.i1.phs'
 | QCD alpha: using a running strong coupling
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 5

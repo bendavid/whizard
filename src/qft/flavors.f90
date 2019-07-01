@@ -1,4 +1,4 @@
-! WHIZARD 2.6.3 Feb 10 2018
+! WHIZARD 2.6.4 Aug 23 2018
 !
 ! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -52,6 +52,7 @@ module flavors
   type :: flavor_t
      private
      integer :: f = UNDEFINED
+     logical :: hard_process = .false.
      logical :: radiated = .false.
      type(field_data_t), pointer :: field_data => null ()
    contains
@@ -69,6 +70,7 @@ module flavors
      procedure, private :: flavor_init_model_alt
      procedure, private :: flavor_init_name_model
      procedure :: tag_radiated => flavor_tag_radiated
+     procedure :: tag_hard_process => flavor_tag_hard_process
      procedure :: undefine => flavor_undefine
      procedure :: write => flavor_write
      procedure :: write_raw => flavor_write_raw
@@ -78,6 +80,7 @@ module flavors
      procedure :: is_valid => flavor_is_valid
      procedure :: is_associated => flavor_is_associated
      procedure :: is_radiated => flavor_is_radiated
+     procedure :: is_hard_process => flavor_is_hard_process
      procedure :: get_pdg => flavor_get_pdg
      procedure :: get_pdg_anti => flavor_get_pdg_anti
      procedure :: get_pdg_abs => flavor_get_pdg_abs
@@ -132,6 +135,7 @@ contains
   elemental subroutine flavor_init_empty (flv)
     class(flavor_t), intent(inout) :: flv
     flv%f = UNDEFINED
+    flv%hard_process = .false.
     flv%radiated = .false.
     flv%field_data => null ()
   end subroutine flavor_init_empty
@@ -140,6 +144,7 @@ contains
     class(flavor_t), intent(inout) :: flv
     integer, intent(in) :: f
     flv%f = f
+    flv%hard_process = .false.
     flv%radiated = .false.
     flv%field_data => null ()
   end subroutine flavor_init
@@ -148,6 +153,7 @@ contains
     class(flavor_t), intent(inout) :: flv
     type(field_data_t), intent(in), target :: field_data
     flv%f = field_data%get_pdg ()
+    flv%hard_process = .false.
     flv%radiated = .false.
     flv%field_data => field_data
   end subroutine flavor_init_field_data
@@ -157,6 +163,7 @@ contains
     integer, intent(in) :: f
     class(model_data_t), intent(in), target :: model
     flv%f = f
+    flv%hard_process = .false.
     flv%radiated = .false.
     flv%field_data => model%get_field_ptr (f, check=.true.)
   end subroutine flavor_init_model
@@ -166,6 +173,7 @@ contains
     integer, intent(in) :: f
     class(model_data_t), intent(in), target :: model, alt_model
     flv%f = f
+    flv%hard_process = .false.
     flv%radiated = .false.
     flv%field_data => model%get_field_ptr (f, check=.false.)
     if (.not. associated (flv%field_data)) then
@@ -185,6 +193,7 @@ contains
     type(string_t), intent(in) :: name
     class(model_data_t), intent(in), target :: model
     flv%f = model%get_pdg (name)
+    flv%hard_process = .false.
     flv%radiated = .false.
     flv%field_data => model%get_field_ptr (name, check=.true.)
   end subroutine flavor_init_name_model
@@ -193,6 +202,11 @@ contains
     class(flavor_t), intent(inout) :: flv
     flv%radiated = .true.
   end subroutine flavor_tag_radiated
+
+  elemental subroutine flavor_tag_hard_process (flv)
+    class(flavor_t), intent(inout) :: flv
+    flv%hard_process = .true.
+  end subroutine flavor_tag_hard_process
 
   elemental subroutine flavor_undefine (flv)
     class(flavor_t), intent(inout) :: flv
@@ -277,6 +291,12 @@ contains
     logical :: flag
     flag = flv%radiated
   end function flavor_is_radiated
+
+  elemental function flavor_is_hard_process (flv) result (flag)
+    class(flavor_t), intent(in) :: flv
+    logical :: flag
+    flag = flv%hard_process
+  end function flavor_is_hard_process
 
   elemental function flavor_get_pdg (flv) result (f)
     integer :: f

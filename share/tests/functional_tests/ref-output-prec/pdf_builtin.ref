@@ -37,7 +37,7 @@ openmp_num_threads = 1
 |   sqrts = 1.000000000000E+03 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'pdf_builtin_1_p_i1.phs'
+| Phase space: writing configuration file 'pdf_builtin_1_p.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'pdf_builtin_1_p'
 |   Library name  = 'pdf_builtin_1_lib'
@@ -83,7 +83,7 @@ $pdf_builtin_set = "cteq6l"
 | Initialized builtin PDF CTEQ6L
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'pdf_builtin_1_p_i1.phs'
+| Phase space: writing configuration file 'pdf_builtin_1_p.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'pdf_builtin_1_p'
 |   Library name  = 'pdf_builtin_1_lib'
@@ -131,7 +131,7 @@ $pdf_builtin_set = "mstw2008lo"
 | Initialized builtin PDF MSTW2008LO
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'pdf_builtin_1_p_i1.phs'
+| Phase space: writing configuration file 'pdf_builtin_1_p.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'pdf_builtin_1_p'
 |   Library name  = 'pdf_builtin_1_lib'
@@ -179,7 +179,7 @@ $pdf_builtin_set = "mstw2008nlo"
 | Initialized builtin PDF MSTW2008NLO
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'pdf_builtin_1_p_i1.phs'
+| Phase space: writing configuration file 'pdf_builtin_1_p.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'pdf_builtin_1_p'
 |   Library name  = 'pdf_builtin_1_lib'
@@ -227,7 +227,7 @@ $pdf_builtin_set = "mstw2008nnlo"
 | Initialized builtin PDF MSTW2008NNLO
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'pdf_builtin_1_p_i1.phs'
+| Phase space: writing configuration file 'pdf_builtin_1_p.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'pdf_builtin_1_p'
 |   Library name  = 'pdf_builtin_1_lib'
@@ -275,7 +275,7 @@ $pdf_builtin_set = "ct10"
 | Initialized builtin PDF CT10
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'pdf_builtin_1_p_i1.phs'
+| Phase space: writing configuration file 'pdf_builtin_1_p.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'pdf_builtin_1_p'
 |   Library name  = 'pdf_builtin_1_lib'
@@ -323,7 +323,7 @@ $pdf_builtin_set = "CJ12_max"
 | Initialized builtin PDF CJ12_max
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'pdf_builtin_1_p_i1.phs'
+| Phase space: writing configuration file 'pdf_builtin_1_p.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'pdf_builtin_1_p'
 |   Library name  = 'pdf_builtin_1_lib'
@@ -371,7 +371,7 @@ $pdf_builtin_set = "CJ12_mid"
 | Initialized builtin PDF CJ12_mid
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'pdf_builtin_1_p_i1.phs'
+| Phase space: writing configuration file 'pdf_builtin_1_p.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'pdf_builtin_1_p'
 |   Library name  = 'pdf_builtin_1_lib'
@@ -419,7 +419,7 @@ $pdf_builtin_set = "CJ12_min"
 | Initialized builtin PDF CJ12_min
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'pdf_builtin_1_p_i1.phs'
+| Phase space: writing configuration file 'pdf_builtin_1_p.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'pdf_builtin_1_p'
 |   Library name  = 'pdf_builtin_1_lib'
@@ -467,7 +467,7 @@ $pdf_builtin_set = "mmht2014lo"
 | Initialized builtin PDF MMHT2014LO
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'pdf_builtin_1_p_i1.phs'
+| Phase space: writing configuration file 'pdf_builtin_1_p.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'pdf_builtin_1_p'
 |   Library name  = 'pdf_builtin_1_lib'
@@ -515,7 +515,7 @@ $pdf_builtin_set = "mmht2014nlo"
 | Initialized builtin PDF MMHT2014NLO
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'pdf_builtin_1_p_i1.phs'
+| Phase space: writing configuration file 'pdf_builtin_1_p.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'pdf_builtin_1_p'
 |   Library name  = 'pdf_builtin_1_lib'
@@ -563,7 +563,7 @@ $pdf_builtin_set = "mmht2014nnlo"
 | Initialized builtin PDF MMHT2014NNLO
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'pdf_builtin_1_p_i1.phs'
+| Phase space: writing configuration file 'pdf_builtin_1_p.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'pdf_builtin_1_p'
 |   Library name  = 'pdf_builtin_1_lib'
@@ -611,7 +611,7 @@ $pdf_builtin_set = "CT14LL"
 | Initialized builtin PDF CT14LL
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'pdf_builtin_1_p_i1.phs'
+| Phase space: writing configuration file 'pdf_builtin_1_p.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'pdf_builtin_1_p'
 |   Library name  = 'pdf_builtin_1_lib'
@@ -659,7 +659,7 @@ $pdf_builtin_set = "CT14L"
 | Initialized builtin PDF CT14L
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'pdf_builtin_1_p_i1.phs'
+| Phase space: writing configuration file 'pdf_builtin_1_p.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'pdf_builtin_1_p'
 |   Library name  = 'pdf_builtin_1_lib'
@@ -707,7 +707,7 @@ $pdf_builtin_set = "CT14N"
 | Initialized builtin PDF CT14N
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'pdf_builtin_1_p_i1.phs'
+| Phase space: writing configuration file 'pdf_builtin_1_p.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'pdf_builtin_1_p'
 |   Library name  = 'pdf_builtin_1_lib'
@@ -755,7 +755,7 @@ $pdf_builtin_set = "CT14NN"
 | Initialized builtin PDF CT14NN
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'pdf_builtin_1_p_i1.phs'
+| Phase space: writing configuration file 'pdf_builtin_1_p.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'pdf_builtin_1_p'
 |   Library name  = 'pdf_builtin_1_lib'
@@ -803,7 +803,7 @@ $pdf_builtin_set = "CJ15LO"
 | Initialized builtin PDF CJ15LO
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'pdf_builtin_1_p_i1.phs'
+| Phase space: writing configuration file 'pdf_builtin_1_p.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'pdf_builtin_1_p'
 |   Library name  = 'pdf_builtin_1_lib'
@@ -851,7 +851,7 @@ $pdf_builtin_set = "CJ15NLO"
 | Initialized builtin PDF CJ15NLO
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'pdf_builtin_1_p_i1.phs'
+| Phase space: writing configuration file 'pdf_builtin_1_p.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'pdf_builtin_1_p'
 |   Library name  = 'pdf_builtin_1_lib'
@@ -897,7 +897,7 @@ $pdf_builtin_set = "CJ15NLO"
 |   sqrts = 1.000000000000E+03 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'pdf_builtin_2_p_i1.phs'
+| Phase space: writing configuration file 'pdf_builtin_2_p.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'pdf_builtin_2_p'
 |   Library name  = 'pdf_builtin_1_lib'
@@ -943,7 +943,7 @@ $pdf_builtin_set = "mrst2004qedp"
 | Initialized builtin PDF MRST2004QEDp
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'pdf_builtin_2_p_i1.phs'
+| Phase space: writing configuration file 'pdf_builtin_2_p.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'pdf_builtin_2_p'
 |   Library name  = 'pdf_builtin_1_lib'

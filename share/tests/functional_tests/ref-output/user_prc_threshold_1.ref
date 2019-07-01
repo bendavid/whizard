@@ -62,7 +62,7 @@ $restrictions = "3+5~t && 4+6~tbar"
 |   sqrts = 3.500000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'user_prc_threshold_1_p1_i1.phs'
+| Phase space: writing configuration file 'user_prc_threshold_1_p1.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'user_prc_threshold_1_p1'
 |   Library name  = 'user_prc_threshold_1_lib'
@@ -126,7 +126,7 @@ seed = 0
 |   sqrts = 3.500000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'user_prc_threshold_1_p2_i1.phs'
+| Phase space: writing configuration file 'user_prc_threshold_1_p2.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'user_prc_threshold_1_p2'
 |   Library name  = 'user_prc_threshold_1_lib'
@@ -192,7 +192,7 @@ $method = "threshold"
 |   sqrts = 3.500000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'user_prc_threshold_1_p5_i1.phs'
+| Phase space: writing configuration file 'user_prc_threshold_1_p5.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'user_prc_threshold_1_p5'
 |   Library name  = 'user_prc_threshold_1_lib'
@@ -296,10 +296,10 @@ Warning: You have not disabled VAMP equivalences.
 |   sqrts = 3.500000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'user_prc_threshold_1_p6_i1.phs'
+| Phase space: writing configuration file 'user_prc_threshold_1_p6.i1.phs'
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'user_prc_threshold_1_p6_i3.phs'
+| Phase space: writing configuration file 'user_prc_threshold_1_p6.i3.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'user_prc_threshold_1_p6'
 |   Library name  = 'user_prc_threshold_1_lib'
@@ -390,7 +390,7 @@ SM_tt_threshold.offshell_strategy =>  0.00000E+00
 |   sqrts = 3.500000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'user_prc_threshold_1_sig_thr_i1.phs'
+| Phase space: writing configuration file 'user_prc_threshold_1_sig_thr.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'user_prc_threshold_1_sig_thr'
 |   Library name  = 'user_prc_threshold_1_lib'
@@ -463,7 +463,7 @@ SM_tt_threshold.offshell_strategy =>  2.00000E+00
 |   sqrts = 3.500000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'user_prc_threshold_1_factorized_i1.phs'
+| Phase space: writing configuration file 'user_prc_threshold_1_factorized.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'user_prc_threshold_1_factorized'
 |   Library name  = 'user_prc_threshold_1_lib'

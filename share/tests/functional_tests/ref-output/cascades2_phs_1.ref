@@ -29,7 +29,7 @@ $phs_method = "fast_wood"
 | Phase space: generating configuration ...
 Warning:  Intermediate decay of zero-width particle e- may be possible.
 | Phase space: ... success.
-| Phase space: writing configuration file 'collision_i1.phs'
+| Phase space: writing configuration file 'collision.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'collision'
 |   Library name  = 'cascades2_phs_1_lib'

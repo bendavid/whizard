@@ -32,10 +32,10 @@ seed = 0
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'flvsum_1_p0_i1.phs'
+| Phase space: writing configuration file 'flvsum_1_p0.i1.phs'
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'flvsum_1_p0_i4.phs'
+| Phase space: writing configuration file 'flvsum_1_p0.i4.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'flvsum_1_p0'
 |   Library name  = 'flvsum_1_lib'
@@ -95,7 +95,7 @@ Warning: No cuts have been defined.
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'flvsum_1_p1_i1.phs'
+| Phase space: writing configuration file 'flvsum_1_p1.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'flvsum_1_p1'
 |   Library name  = 'flvsum_1_lib'
@@ -131,7 +131,7 @@ Warning: No cuts have been defined.
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'flvsum_1_p2_i1.phs'
+| Phase space: writing configuration file 'flvsum_1_p2.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'flvsum_1_p2'
 |   Library name  = 'flvsum_1_lib'

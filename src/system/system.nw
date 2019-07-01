@@ -1832,6 +1832,9 @@ for linking. The default for the Fortran compiler on most systems is
      type(string_t) :: ldflags_looptools
      type(string_t) :: shrlib_ext
      type(string_t) :: fc_shrlib_ext
+     type(string_t) :: pack_cmd
+     type(string_t) :: unpack_cmd
+     type(string_t) :: pack_ext
      type(string_t) :: makeflags
      type(string_t) :: prefix
      type(string_t) :: exec_prefix
@@ -1923,6 +1926,9 @@ necessary.
     os_data%ldflags_looptools = DEFAULT_LDFLAGS_LOOPTOOLS
     os_data%shrlib_ext     = DEFAULT_SHRLIB_EXT
     os_data%fc_shrlib_ext  = DEFAULT_FC_SHRLIB_EXT
+    os_data%pack_cmd       = DEFAULT_PACK_CMD
+    os_data%unpack_cmd     = DEFAULT_UNPACK_CMD
+    os_data%pack_ext       = DEFAULT_PACK_EXT
     os_data%makeflags      = DEFAULT_MAKEFLAGS
     os_data%prefix      = PREFIX
     os_data%exec_prefix = EXEC_PREFIX
@@ -2464,6 +2470,36 @@ system call.
 
 @ %def os_file_exist
 @
+\subsection{Pack/unpack}
+The argument to [[pack]] may be a file or a directory.  The name of the packed
+file will get the [[pack_ext]] extension appended.  The argument to [[unpack]]
+must be a file, with the extension already included in the file name.
+<<OS interface: public>>=
+  public :: os_pack_file
+  public :: os_unpack_file
+<<OS interface: procedures>>=
+  subroutine os_pack_file (file, os_data, status)
+    type(string_t), intent(in) :: file
+    type(os_data_t), intent(in) :: os_data
+    integer, intent(out), optional :: status
+    type(string_t) :: command_string
+    command_string = os_data%pack_cmd // " " &
+         // file // os_data%pack_ext // " " // file
+    call os_system_call (command_string, status)
+  end subroutine os_pack_file
+
+  subroutine os_unpack_file (file, os_data, status)
+    type(string_t), intent(in) :: file
+    type(os_data_t), intent(in) :: os_data
+    integer, intent(out), optional :: status
+    type(string_t) :: command_string
+    command_string = os_data%unpack_cmd // " " // file
+    call os_system_call (command_string, status)
+  end subroutine os_unpack_file
+
+@ %def os_pack_file
+@ %def os_unpack_file
+@
 \subsection{Fortran compiler and linker}
 Compile a single module for use in a shared library, but without
 linking.
@@ -2762,6 +2798,7 @@ but we can simplify things like logging or receiving [[n_size]] or [[rank]].
   end function mpi_is_comm_master
 
 @ %def mpi_is_comm_master
+@
 \subsection{Unit tests}
 Test module, followed by the corresponding implementation module.
 <<[[os_interface_ut.f90]]>>=

@@ -35,7 +35,7 @@ $sample = "lhef_5a"
 | Initialized builtin PDF CTEQ6L
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'lhef_5_p_i1.phs'
+| Phase space: writing configuration file 'lhef_5_p.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'lhef_5_p'
 |   Library name  = 'lhef_5_lib'
@@ -64,7 +64,7 @@ $sample = "lhef_5a"
    1       1000  3.6977136E+07  2.01E+07   54.45   17.22    0.62
 |=============================================================================|
 | Simulate: integration done
-| Simulate: using integration grids from file 'lhef_5_p_m1.vg'
+| Simulate: using integration grids from file 'lhef_5_p.m1.vg'
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 1
 | Events: writing to LHEF file 'lhef_5a.lhe'
@@ -79,7 +79,7 @@ $sample = "lhef_5b"
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 2
 Warning: Reading phs file: MD5 sum check disabled
-| Phase space: keeping configuration file 'lhef_5_p_i1.phs'
+| Phase space: keeping configuration file 'lhef_5_p.i1.phs'
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 3
 | Recalculating observables

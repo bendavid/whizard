@@ -1,4 +1,4 @@
-! WHIZARD 2.6.3 Feb 10 2018
+! WHIZARD 2.6.4 Aug 23 2018
 !
 ! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -356,14 +356,13 @@ contains
   end subroutine isolated_state_setup_square_flows
 
   subroutine connected_state_setup_connected_trace &
-       (state, isolated, int, resonant, undo_helicities, n_sub, &
+       (state, isolated, int, resonant, undo_helicities, &
         keep_fs_flavors, extended_sf)
     class(connected_state_t), intent(inout), target :: state
     type(isolated_state_t), intent(in), target :: isolated
     type(interaction_t), intent(in), optional, target :: int
     logical, intent(in), optional :: resonant
     logical, intent(in), optional :: undo_helicities
-    integer, intent(in), optional :: n_sub
     logical, intent(in), optional :: keep_fs_flavors
     logical, intent(in), optional :: extended_sf
     type(quantum_numbers_mask_t) :: mask

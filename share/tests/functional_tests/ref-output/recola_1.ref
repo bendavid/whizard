@@ -31,7 +31,7 @@ sqrts =  1.00000E+02
 |   sqrts = 1.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'recola_1_p1_i1.phs'
+| Phase space: writing configuration file 'recola_1_p1.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'recola_1_p1'
 |   Library name  = 'recola_1_lib'
@@ -64,7 +64,7 @@ Warning: No cuts have been defined.
 ?write_raw = false
 n_events = 2
 | Starting simulation for process 'recola_1_p1'
-| Simulate: using integration grids from file 'recola_1_p1_m1.vg'
+| Simulate: using integration grids from file 'recola_1_p1.m1.vg'
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 2
 | Simulation: requested number of events = 2

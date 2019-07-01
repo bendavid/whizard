@@ -30,13 +30,13 @@ sqrts =  1.000000000000E+03
 |   sqrts = 1.000000000000E+03 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'multi_comp_2_p1_i1.phs'
+| Phase space: writing configuration file 'multi_comp_2_p1.i1.phs'
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'multi_comp_2_p1_i5.phs'
+| Phase space: writing configuration file 'multi_comp_2_p1.i5.phs'
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'multi_comp_2_p1_i9.phs'
+| Phase space: writing configuration file 'multi_comp_2_p1.i9.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'multi_comp_2_p1'
 |   Library name  = 'multi_comp_2_lib'
@@ -131,9 +131,9 @@ sqrts =  1.000000000000E+03
 n_events = 1000
 ?write_raw = false
 | Starting simulation for process 'multi_comp_2_p1'
-| Simulate: using integration grids from file 'multi_comp_2_p1_m1.vg'
-| Simulate: using integration grids from file 'multi_comp_2_p1_m2.vg'
-| Simulate: using integration grids from file 'multi_comp_2_p1_m3.vg'
+| Simulate: using integration grids from file 'multi_comp_2_p1.m1.vg'
+| Simulate: using integration grids from file 'multi_comp_2_p1.m2.vg'
+| Simulate: using integration grids from file 'multi_comp_2_p1.m3.vg'
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 1
 | Simulation: requested number of events = 1000

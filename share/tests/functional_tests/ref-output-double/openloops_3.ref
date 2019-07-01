@@ -43,10 +43,14 @@ SM.wtop =>  0.00000E+00
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'openloops_3_p1_i1.phs'
+| Phase space: writing configuration file 'openloops_3_p1.i1.phs'
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'openloops_3_p1_i3.phs'
+| Phase space: writing configuration file 'openloops_3_p1.i3.phs'
+| One-Loop-Provider: Using OpenLoops
+| Loading library: [...]
+| One-Loop-Provider: Using OpenLoops
+| Loading library: [...]
 | One-Loop-Provider: Using OpenLoops
 | Loading library: [...]
 | One-Loop-Provider: Using OpenLoops
@@ -108,7 +112,11 @@ n_events = 1
 | Loading library: [...]
 | One-Loop-Provider: Using OpenLoops
 | Loading library: [...]
-| Simulate: using integration grids from file 'openloops_3_p1_m1.vg'
+| One-Loop-Provider: Using OpenLoops
+| Loading library: [...]
+| One-Loop-Provider: Using OpenLoops
+| Loading library: [...]
+| Simulate: using integration grids from file 'openloops_3_p1.m1.vg'
 | Simulate: activating fixed-order NLO events
 | QCD alpha: using a running strong coupling
 | RNG: Initializing TAO random-number generator
@@ -144,10 +152,10 @@ seed = 3333
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'openloops_3_p2_i1.phs'
+| Phase space: writing configuration file 'openloops_3_p2.i1.phs'
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'openloops_3_p2_i3.phs'
+| Phase space: writing configuration file 'openloops_3_p2.i3.phs'
 | One-Loop-Provider: Using OpenLoops
 | Loading library: [...]
 | One-Loop-Provider: Using OpenLoops
@@ -207,7 +215,7 @@ n_events = 1
 | Loading library: [...]
 | One-Loop-Provider: Using OpenLoops
 | Loading library: [...]
-| Simulate: using integration grids from file 'openloops_3_p2_m2.vg'
+| Simulate: using integration grids from file 'openloops_3_p2.m2.vg'
 | Simulate: activating fixed-order NLO events
 | QCD alpha: using a running strong coupling
 | RNG: Initializing TAO random-number generator
@@ -243,10 +251,14 @@ seed = 4444
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'openloops_3_p3_i1.phs'
+| Phase space: writing configuration file 'openloops_3_p3.i1.phs'
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'openloops_3_p3_i3.phs'
+| Phase space: writing configuration file 'openloops_3_p3.i3.phs'
+| One-Loop-Provider: Using OpenLoops
+| Loading library: [...]
+| One-Loop-Provider: Using OpenLoops
+| Loading library: [...]
 | One-Loop-Provider: Using OpenLoops
 | Loading library: [...]
 | One-Loop-Provider: Using OpenLoops
@@ -306,7 +318,11 @@ n_events = 1
 | Loading library: [...]
 | One-Loop-Provider: Using OpenLoops
 | Loading library: [...]
-| Simulate: using integration grids from file 'openloops_3_p3_m3.vg'
+| One-Loop-Provider: Using OpenLoops
+| Loading library: [...]
+| One-Loop-Provider: Using OpenLoops
+| Loading library: [...]
+| Simulate: using integration grids from file 'openloops_3_p3.m3.vg'
 | Simulate: activating fixed-order NLO events
 | QCD alpha: using a running strong coupling
 | RNG: Initializing TAO random-number generator

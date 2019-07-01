@@ -29,10 +29,10 @@ seed = 0
 |   sqrts = 2.500000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'real_partition_1_p1_i1.phs'
+| Phase space: writing configuration file 'real_partition_1_p1.i1.phs'
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'real_partition_1_p1_i3.phs'
+| Phase space: writing configuration file 'real_partition_1_p1.i3.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'real_partition_1_p1'
 |   Library name  = 'real_partition_1_lib'
@@ -102,13 +102,13 @@ real_partition_scale =  1.00000E+02
 |   sqrts = 2.500000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'real_partition_1_p2_i1.phs'
+| Phase space: writing configuration file 'real_partition_1_p2.i1.phs'
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'real_partition_1_p2_i3.phs'
+| Phase space: writing configuration file 'real_partition_1_p2.i3.phs'
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'real_partition_1_p2_i5.phs'
+| Phase space: writing configuration file 'real_partition_1_p2.i5.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'real_partition_1_p2'
 |   Library name  = 'real_partition_1_lib'

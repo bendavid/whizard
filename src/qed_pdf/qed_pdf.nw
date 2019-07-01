@@ -1,0 +1,258 @@
+%% -*- ess-noweb-default-code-mode: f90-mode; noweb-default-code-mode: f90-mode; -*-
+% WHIZARD code as NOWEB source: QED ISR structure functions ("PDFs")
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{QED Parton Distribution Functions}
+\label{chap:qed_pdf}
+\includemodulegraph{qed_pdf}
+
+We start with a module that gives access to the ISR structure function:
+\begin{description}
+\item[electron\_pdfs]
+\end{description}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Electron PDFs}
+
+This module contains the formulae for the numerical evaluation of
+different incarnations of the QED initial-state radiation (ISR)
+structure functions (a.k.a. electron PDFs).
+
+<<[[electron_pdfs.f90]]>>=
+<<File header>>
+
+module electron_pdfs
+
+<<Use kinds>>
+<<Use strings>>
+  use io_units
+  use constants, only: pi
+  use format_defs, only: FMT_19
+  use numeric_utils
+  use sm_physics, only: Li2
+  
+<<Standard module head>>
+
+<<Electron PDFs: public>>
+
+<<Electron PDFs: types>>
+
+contains
+
+<<Electron PDFs: procedures>>
+
+end module electron_pdfs
+@ %def electron_pdfs 
+@
+\subsection{The physics for electron beam structure functions}
+The ISR structure function is in the most crude approximation (LLA
+without $\alpha$ corrections, i.e. $\epsilon^0$)
+\begin{equation}
+  f_0(x) = \epsilon (1-x)^{-1+\epsilon} \qquad\text{with}\qquad
+  \epsilon = \frac{\alpha}{\pi}q_e^2\ln\frac{s}{m^2},
+\end{equation}
+where $m$ is the mass of the incoming (and outgoing) particle, which
+is initially assumed on-shell.
+
+Here, the form of $\epsilon$ results from the kinematical bounds for
+the momentum squared of the outgoing particle, which in the limit
+$m^2\ll s$ are given by
+\begin{align}
+  t_0 &= -2\bar xE(E+p) + m^2 \approx -\bar x s,
+\\
+  t_1 &= -2\bar xE(E-p) + m^2 \approx x m^2,
+\end{align}
+so the integration over the propagator $1/(t-m^2)$ yields
+\begin{equation}
+  \ln\frac{t_0-m^2}{t_1-m^2} = \ln\frac{s}{m^2}.
+\end{equation}
+
+The structure function has three parameters: $\alpha$, $m_{\rm in}$ of
+the incoming particle and $s$, the hard scale.  Internally, we store
+the exponent $\epsilon$ which is the relevant parameter.  (In
+conventional notation, $\epsilon=\beta/2$.)  As defaults, we take the
+actual values of $\alpha$ (which is probably $\alpha(s)$), the actual
+mass $m_{\rm in}$ and the squared total c.m. energy $s$.
+
+Including $\epsilon$, $\epsilon^2$, and $\epsilon^3$ corrections, the
+successive approximation of the ISR structure function read
+\begin{align}
+  f_0(x) &= \epsilon(1-x)^{-1+\epsilon} \\
+  f_1(x) &= g_1(\epsilon)\,f_0(x) - \frac{\epsilon}{2}(1+x) \\
+\begin{split}
+  f_2(x) &= g_2(\epsilon)\,f_0(x) - \frac{\epsilon}{2}(1+x) \\
+  &\quad - \frac{\epsilon^2}{8}\left(
+    \frac{1+3x^2}{1-x}\ln x + 4(1+x) \ln(1-x) + 5 + x \right)
+\end{split} \\
+\begin{split}
+  f_3(x) &= g_3(\epsilon)\,f_0(x) - \frac{\epsilon}{2}(1+x) \\
+  &\quad - \frac{\epsilon^2}{8}\left(
+    \frac{1+3x^2}{1-x}\ln x + 4(1+x) \ln(1-x) + 5 + x \right) \\
+  &\quad - \frac{\epsilon^3}{48}\left( \vphantom{\frac{1}{1-x}}
+    (1+x)\left[6\mathop{\rm Li_2}(x) + 12\ln^2(1-x) - 3\pi^2\right]\right.
+     + 6(x+5)\ln(1-x) \\
+  &\qquad\qquad + \frac{1}{1-x}\left[\frac32(1+8x+3x^2)\ln x
+                               + 12(1+x^2)\ln x\ln(1-x) \right. \\
+  &\qquad\qquad\qquad\qquad
+       \left.\left. - \frac12(1+7x^2)\ln^2x + \frac14(39-24x-15x^2)\right]
+       \vphantom{\frac{1}{1-x}} \right)
+\end{split}
+\end{align}
+where the successive approximations to the prefactor of the leading
+singularity
+\begin{equation}
+  g(\epsilon) = \frac{\exp\left(\epsilon(-\gamma_E + \tfrac34)\right)}
+              {\Gamma(1 + \epsilon)},
+\end{equation}
+are given by
+\begin{align}
+  g_0(\epsilon) &= 1 \\
+  g_1(\epsilon) &= 1 + \frac34\epsilon \\
+  g_2(\epsilon) &= 1 + \frac34\epsilon
+    + \frac{27 - 8\pi^2}{96}\epsilon^2 \\
+  g_3(\epsilon) &= 1 + \frac34\epsilon
+    + \frac{27 - 8\pi^2}{96}\epsilon^2
+    + \frac{27 - 24\pi^2 + 128 \zeta(3)}{384}\epsilon^3,
+\end{align}
+where, numerically
+\begin{equation}
+  \zeta(3) = 1.20205690315959428539973816151\ldots
+\end{equation}
+Although one could calculate the function $g(\epsilon)$ exactly,
+truncating its Taylor expansion ensures the exact normalization of the
+truncated structure function at each given order:
+\begin{equation}
+  \int_0^1 dx\,f_i(x) = 1 \qquad\text{for all $i$.}
+\end{equation}
+
+Effectively, the $O(\epsilon)$ correction reduces the low-$x$ tail of
+the structure function by $50\%$ while increasing the coefficient of
+the singularity by $O(\epsilon)$.  Relative to this, the
+$O(\epsilon^2)$ correction slightly enhances $x>\frac12$ compared to
+$x<\frac12$.  At $x=0$, $f_2(x)$ introduces a logarithmic singularity
+which should be cut off at $x_0=O(e^{-1/\epsilon})$: for lower $x$ the
+perturbative series breaks down.  The $f_3$ correction is slightly
+positive for low $x$ values and negative near $x=1$, where the
+$\mathop{\rm Li_2}$ piece slightly softens the singularity at $x=1$.
+
+Instead of the definition for $\epsilon$ given above, it is customary
+to include a universal nonlogarithmic piece:
+\begin{equation}
+  \epsilon = \frac{\alpha}{\pi}q_e^2\left(\ln\tfrac{s}{m^2} - 1\right)
+\end{equation}
+
+\subsection{Implementation}
+
+The basic type for lepton beam (QED) structure functions:
+<<Electron PDFs: public>>=
+  public :: qed_pdf_t
+<<Electron PDFs: types>>=
+  type :: qed_pdf_t     
+     private
+     integer :: flv = 0
+     real(default) :: mass = 0
+     real(default) :: q_max = 0
+     real(default) :: alpha = 0
+     real(default) :: eps = 0
+     integer :: order
+   contains
+   <<Electron PDFs: QED PDF: TBP>>
+  end type qed_pdf_t
+
+@ %def qed_pdf_t 
+@
+<<Electron PDFs: QED PDF: TBP>>=
+  procedure :: init => qed_pdf_init
+<<Electron PDFs: procedures>>=
+  subroutine qed_pdf_init &
+       (qed_pdf, mass, alpha, charge, q_max, order)
+    class(qed_pdf_t), intent(out) :: qed_pdf
+    real(default), intent(in) :: mass, alpha, q_max, charge
+    integer, intent(in) :: order
+    qed_pdf%mass = mass
+    qed_pdf%q_max = q_max
+    qed_pdf%alpha = alpha
+    qed_pdf%order = order    
+    qed_pdf%eps = alpha/pi * charge**2 &
+         * (2 * log (q_max / mass) - 1)         
+  end subroutine qed_pdf_init
+
+@ %def qed_pdf_init
+@ Write routine.
+<<Electron PDFs: QED PDF: TBP>>=
+  procedure :: write => qed_pdf_write
+<<Electron PDFs: procedures>>=
+  subroutine qed_pdf_write (qed_pdf, unit)
+    class(qed_pdf_t), intent(in) :: qed_pdf
+    integer, intent(in), optional :: unit
+    integer :: u
+    u = given_output_unit (unit)
+    write (u, "(3x,A)")  "QED structure function (PDF):"
+    write (u, "(5x,A,I0)") "Flavor    = ", qed_pdf%flv
+    write (u, "(5x,A," // FMT_19 // ")") "Mass      = ", qed_pdf%mass
+    write (u, "(5x,A," // FMT_19 // ")") "q_max     = ", qed_pdf%q_max
+    write (u, "(5x,A," // FMT_19 // ")") "alpha     = ", qed_pdf%alpha    
+    write (u, "(5x,A,I0)") "Order     = ", qed_pdf%order 
+    write (u, "(5x,A," // FMT_19 // ")") "epsilon   = ", qed_pdf%eps   
+  end subroutine qed_pdf_write
+
+@ %def qed_pdf_write
+@ For some unit tests, the order has to be set explicitly. 
+<<Electron PDFs: QED PDF: TBP>>=
+  procedure :: set_order => qed_pdf_set_order
+<<Electron PDFs: procedures>>=
+  subroutine qed_pdf_set_order (qed_pdf, order)
+    class(qed_pdf_t), intent(inout) :: qed_pdf
+    integer, intent(in) :: order
+    qed_pdf%order = order
+  end subroutine qed_pdf_set_order
+
+@ %def qed_pdf_set_order
+@ Calculate the actual value depending on the order and a possible
+mapping parameter.
+<<Electron PDFs: QED PDF: TBP>>=
+  procedure :: evolve_qed_pdf => qed_pdf_evolve_qed_pdf
+<<Electron PDFs: procedures>>=
+  subroutine qed_pdf_evolve_qed_pdf (qed_pdf, x, xb, rb, ff)
+    class(qed_pdf_t), intent(inout) :: qed_pdf
+    real(default), intent(in) :: x, xb, rb
+    real(default), intent(inout) :: ff
+    real(default), parameter :: &
+         & xmin = 0.00714053329734592839549879772019_default   
+    real(default), parameter :: &
+         & zeta3 = 1.20205690315959428539973816151_default
+    real(default), parameter :: &
+         g1 = 3._default / 4._default, &
+         g2 = (27 - 8 * pi**2) / 96._default, &
+         g3 = (27 - 24 * pi**2 + 128 * zeta3) / 384._default
+    real(default) :: x_2, log_x, log_xb
+    if (ff > 0 .and. qed_pdf%order > 0) then
+       ff = ff * (1 + g1 * qed_pdf%eps)
+       x_2 = x * x
+       if (rb > 0)  ff = ff * (1 - (1-x_2) / (2 * rb))
+       if (qed_pdf%order > 1) then
+          ff = ff * (1 + g2 * qed_pdf%eps**2)
+          if (rb > 0 .and. xb > 0 .and. x > xmin) then
+             log_x  = log_prec (x, xb)
+             log_xb = log_prec (xb, x)
+             ff = ff * (1 - ((1 + 3 * x_2) * log_x + xb * (4 * (1 + x) * &
+                  log_xb + 5 + x)) / (8 * rb) * qed_pdf%eps)
+          end if
+          if (qed_pdf%order > 2) then
+             ff = ff * (1 + g3 * qed_pdf%eps**3)
+             if (rb > 0 .and. xb > 0 .and. x > xmin) then
+                ff = ff * (1 - ((1 + x) * xb &
+                     * (6 * Li2(x) + 12 * log_xb**2 - 3 * pi**2) &
+                     + 1.5_default * (1 + 8 * x + 3 * x_2) * log_x &
+                     + 6 * (x + 5) * xb * log_xb &
+                     + 12 * (1 + x_2) * log_x * log_xb &
+                     - (1 + 7 * x_2) * log_x**2 / 2 &
+                     + (39 - 24 * x - 15 * x_2) / 4) &
+                     / (48 * rb) * qed_pdf%eps**2)
+             end if
+          end if
+       end if
+    end if
+  end subroutine qed_pdf_evolve_qed_pdf
+
+@ %def qed_pdf_evolve_qed_pdf
+@

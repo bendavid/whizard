@@ -27,7 +27,7 @@ sqrts =  2.50000E+02
 |   sqrts = 2.500000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'br_redef_1_zh_i1.phs'
+| Phase space: writing configuration file 'br_redef_1_zh.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'br_redef_1_zh'
 |   Library name  = 'br_redef_1_lib'
@@ -61,7 +61,7 @@ Warning: No cuts have been defined.
 |   H  (mass = 1.2500000E+02 GeV)
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'br_redef_1_hbb_i1.phs'
+| Phase space: writing configuration file 'br_redef_1_hbb.i1.phs'
 | ------------------------------------------------------------------------
 | Process [decay]: 'br_redef_1_hbb'
 |   Library name  = 'br_redef_1_lib'
@@ -96,7 +96,7 @@ Warning: No cuts have been defined.
 |   H  (mass = 1.2500000E+02 GeV)
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'br_redef_1_htt_i1.phs'
+| Phase space: writing configuration file 'br_redef_1_htt.i1.phs'
 | ------------------------------------------------------------------------
 | Process [decay]: 'br_redef_1_htt'
 |   Library name  = 'br_redef_1_lib'
@@ -134,10 +134,10 @@ integral(br_redef_1_htt) =  2.58763E-04
 $sample = "br_redef_1_zh_a"
 n_events = 1
 | Starting simulation for process 'br_redef_1_zh'
-| Simulate: using integration grids from file 'br_redef_1_zh_m1.vg'
+| Simulate: using integration grids from file 'br_redef_1_zh.m1.vg'
 | Simulate: activating decays
-| Simulate: using integration grids from file 'br_redef_1_hbb_m1.vg'
-| Simulate: using integration grids from file 'br_redef_1_htt_m1.vg'
+| Simulate: using integration grids from file 'br_redef_1_hbb.m1.vg'
+| Simulate: using integration grids from file 'br_redef_1_htt.m1.vg'
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 4
 | Simulation: requested number of events = 1
@@ -160,10 +160,10 @@ integral(br_redef_1_hbb) =  2.00000E-03
 $sample = "br_redef_1_zh_b"
 n_events = 1
 | Starting simulation for process 'br_redef_1_zh'
-| Simulate: using integration grids from file 'br_redef_1_zh_m1.vg'
+| Simulate: using integration grids from file 'br_redef_1_zh.m1.vg'
 | Simulate: activating decays
-| Simulate: using integration grids from file 'br_redef_1_hbb_m1.vg'
-| Simulate: using integration grids from file 'br_redef_1_htt_m1.vg'
+| Simulate: using integration grids from file 'br_redef_1_hbb.m1.vg'
+| Simulate: using integration grids from file 'br_redef_1_htt.m1.vg'
 | RNG: Initializing TAO random-number generator
 | RNG: Setting seed for random-number generator to 5
 | Simulation: requested number of events = 1

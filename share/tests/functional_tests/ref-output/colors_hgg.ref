@@ -31,7 +31,7 @@ seed = 0
 |   H  (mass = 1.2500000E+02 GeV)
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'colors_hgg_i1.phs'
+| Phase space: writing configuration file 'colors_hgg.i1.phs'
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: Using 2 equivalences between channels.
@@ -71,7 +71,7 @@ seed = 0
 |   H  (mass = 1.2500000E+02 GeV)
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'colors_hgg_i1.phs'
+| Phase space: writing configuration file 'colors_hgg.i1.phs'
 | Phase space: 1 channels, 2 dimensions
 | Phase space: found 1 channel, collected in 1 grove.
 | Phase space: Using 2 equivalences between channels.

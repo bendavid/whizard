@@ -1,4 +1,4 @@
-! WHIZARD 2.6.3 Feb 10 2018
+! WHIZARD 2.6.4 Aug 23 2018
 !
 ! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -40,6 +40,7 @@ module user_files
   public :: file_list_t
   public :: file_list_final
   public :: file_list_is_open
+  public :: file_list_get_unit
   public :: file_list_open
   public :: file_list_close
   public :: file_list_write
@@ -109,6 +110,12 @@ contains
             // "': illegal action specifier")
     end select
   end function file_is_open
+
+  function file_get_unit (file) result (unit)
+    integer :: unit
+    type(file_t), intent(in) :: file
+    unit = file%unit
+  end function file_get_unit
 
   subroutine file_write_string (file, string, advancing)
     type(file_t), intent(in) :: file
@@ -196,6 +203,19 @@ contains
     end if
   end function file_list_is_open
 
+  function file_list_get_unit (file_list, name) result (unit)
+    integer :: unit
+    type(file_list_t), intent(in) :: file_list
+    type(string_t), intent(in) :: name
+    type(file_t), pointer :: current
+    current => file_list_get_file_ptr (file_list, name)
+    if (associated (current)) then
+       unit = file_get_unit (current)
+    else
+       unit = -1
+    end if
+  end function file_list_get_unit
+  
   subroutine file_list_open (file_list, name, action, status, position)
     type(file_list_t), intent(inout) :: file_list
     type(string_t), intent(in) :: name

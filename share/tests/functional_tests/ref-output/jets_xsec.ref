@@ -29,7 +29,7 @@ openmp_num_threads = 1
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'jets_jj_i1.phs'
+| Phase space: writing configuration file 'jets_jj.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'jets_jj'
 |   Library name  = 'jets_xsec_lib'
@@ -65,7 +65,7 @@ openmp_num_threads = 1
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'jets_uu_i1.phs'
+| Phase space: writing configuration file 'jets_uu.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'jets_uu'
 |   Library name  = 'jets_xsec_lib'
@@ -101,7 +101,7 @@ openmp_num_threads = 1
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'jets_dd_i1.phs'
+| Phase space: writing configuration file 'jets_dd.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'jets_dd'
 |   Library name  = 'jets_xsec_lib'
@@ -137,7 +137,7 @@ openmp_num_threads = 1
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'jets_gg_i1.phs'
+| Phase space: writing configuration file 'jets_gg.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'jets_gg'
 |   Library name  = 'jets_xsec_lib'

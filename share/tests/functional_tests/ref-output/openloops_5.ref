@@ -42,10 +42,10 @@ seed = 0
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'openloops_5_p1_nlo_i1.phs'
+| Phase space: writing configuration file 'openloops_5_p1_nlo.i1.phs'
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'openloops_5_p1_nlo_i3.phs'
+| Phase space: writing configuration file 'openloops_5_p1_nlo.i3.phs'
 | One-Loop-Provider: Using OpenLoops
 | Loading library: [...]
 | One-Loop-Provider: Using OpenLoops
@@ -136,10 +136,10 @@ seed = 0
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'openloops_5_p2_nlo_i1.phs'
+| Phase space: writing configuration file 'openloops_5_p2_nlo.i1.phs'
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'openloops_5_p2_nlo_i3.phs'
+| Phase space: writing configuration file 'openloops_5_p2_nlo.i3.phs'
 | One-Loop-Provider: Using OpenLoops
 | Loading library: [...]
 | One-Loop-Provider: Using OpenLoops
@@ -230,10 +230,10 @@ seed = 0
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'openloops_5_p3_nlo_i1.phs'
+| Phase space: writing configuration file 'openloops_5_p3_nlo.i1.phs'
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'openloops_5_p3_nlo_i3.phs'
+| Phase space: writing configuration file 'openloops_5_p3_nlo.i3.phs'
 | One-Loop-Provider: Using OpenLoops
 | Loading library: [...]
 | One-Loop-Provider: Using OpenLoops
@@ -324,10 +324,10 @@ seed = 0
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'openloops_5_p4_nlo_i1.phs'
+| Phase space: writing configuration file 'openloops_5_p4_nlo.i1.phs'
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'openloops_5_p4_nlo_i3.phs'
+| Phase space: writing configuration file 'openloops_5_p4_nlo.i3.phs'
 | One-Loop-Provider: Using OpenLoops
 | Loading library: [...]
 | One-Loop-Provider: Using OpenLoops

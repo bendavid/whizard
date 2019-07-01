@@ -24,7 +24,9 @@ wo_fc_grep_Sun=`$GREP 'Sun' conftest.log | head -1`
 wo_fc_grep_Lahey=`$GREP 'Lahey' conftest.log | head -1`
 wo_fc_grep_PGF90=`$GREP 'pgf90' conftest.log | head -1`
 wo_fc_grep_PGF95=`$GREP 'pgf95' conftest.log | head -1`
+wo_fc_grep_PGFORTRAN=`$GREP 'pgfortran' conftest.log | head -1`
 wo_fc_grep_PGHPF=`$GREP 'pghpf' conftest.log | head -1`
+wo_fc_grep_FLANG=`$GREP 'clang version' conftest.log | head -1`
 wo_fc_grep_default=`cat conftest.log | head -1`
 
 if test -n "$wo_fc_grep_GFORTRAN"; then
@@ -43,8 +45,12 @@ elif test -n "$wo_fc_grep_PGF90"; then
   wo_cv_fc_id_string=$wo_fc_grep_PGF90
 elif test -n "$wo_fc_grep_PGF95"; then
   wo_cv_fc_id_string=$wo_fc_grep_PGF95
+elif test -n "$wo_fc_grep_PGFORTRAN"; then
+  wo_cv_fc_id_string=$wo_fc_grep_PGFORTRAN
 elif test -n "$wo_fc_grep_PGHPF"; then
   wo_cv_fc_id_string=$wo_fc_grep_PGHPF
+elif test -n "$wo_fc_grep_FLANG"; then
+  wo_cv_fc_id_string=$wo_fc_grep_FLANG
 else
   wo_cv_fc_id_string=$wo_fc_grep_default
 fi
@@ -73,8 +79,12 @@ elif test -n "$wo_fc_grep_PGF90"; then
   wo_cv_fc_vendor="PGI"
 elif test -n "$wo_fc_grep_PGF95"; then
   wo_cv_fc_vendor="PGI"
+elif test -n "$wo_fc_grep_PGFORTRAN"; then
+  wo_cv_fc_vendor="PGI"
 elif test -n "$wo_fc_grep_PGHPF"; then
   wo_cv_fc_vendor="PGI"
+elif test -n "$wo_fc_grep_FLANG"; then
+  wo_cv_fc_vendor="flang"
 else
   wo_cv_fc_vendor="unknown"
 fi
@@ -104,13 +114,16 @@ NAG)
   wo_cv_fc_version=[`echo $FC_ID_STRING | $SED -e 's/.* Release \([0-9][0-9]*\.[0-9][0-9]*\).*$/\1/'`]
   ;;
 Intel)
-  wo_cv_fc_version=[`echo $FC_ID_STRING | $SED -e 's/[a-zA-Z\(\)]//g;s/[0-9]\{8\}$//g' | $SED -r 's/\s+//g'`]
+  wo_cv_fc_version=[`echo $FC_ID_STRING | $SED -e 's/[a-zA-Z\(\)[:blank:]]//g;s/[0-9]\{8\}$//g'`]
   ;;
 Sun)
   wo_cv_fc_version=[`echo $FC_ID_STRING | $SED -e 's/.* Fortran 95 \([0-9][0-9]*\.[0-9][0-9]*\) .*/\1/'`]
   ;;
 PGI)
   wo_cv_fc_version=[`echo $FC_ID_STRING | $SED -e 's/[a-zA-Z\(\)]//g;s/^[0-9]\{2\}//g;s/32.*\|64.*//g'`]
+  ;;
+flang)
+ wo_cv_fc_version=[`echo $FC_ID_STRING | $SED -e 's/.*clang version \([0-9][0-9]*\.[0-9][0-9]*\).*$/\1/'`]
   ;;
 *)
   wo_cv_fc_version="unknown"
@@ -217,14 +230,39 @@ AC_SUBST([OBJ_EXT])
 AC_DEFUN([WO_FC_LIBRARY_LDFLAGS],
 [dnl
 AC_REQUIRE([AC_PROG_FC])
-case "$FC" in
-nagfor*)
+case $host in
+*-darwin*)
+  system_darwin="yes"
+  ;;
+*)
+  system_darwin="no"
+  ;;
+esac
+case $FC_VENDOR in
+NAG)
   WO_NAGFOR_LIBRARY_LDFLAGS()
+  ;;
+Intel)
+  case $host in
+  *-darwin*)
+     fcflags_tmp=$FCFLAGS
+     FCFLAGS="-shared-intel $FCFLAGS"
+     AC_FC_LIBRARY_LDFLAGS()
+     fc_libs_tmp=`echo $FCLIBS | $SED -e 's/\/Applications.*/ /'`
+     FCFLAGS=$fcflags_tmp
+     FCLIBS=$fc_libs_tmp
+     ;;
+  *)
+     AC_FC_LIBRARY_LDFLAGS()
+     ;;
+  esac
   ;;
 *)
   AC_FC_LIBRARY_LDFLAGS()
   ;;
 esac
+AM_CONDITIONAL([IS_IFORT_DARWIN],
+        [test "$system_darwin" = "yes" -a "$FC_VENDOR" = "Intel"])
 ])
 
 ### Check the NAG Fortran compiler

@@ -28,7 +28,7 @@ seed = 0
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'alphas_ugug_i1.phs'
+| Phase space: writing configuration file 'alphas_ugug.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'alphas_ugug'
 |   Library name  = 'alphas_lib'
@@ -72,7 +72,7 @@ seed = 0
 |   u   (mass = 0.0000000E+00 GeV)
 |   gl  (mass = 0.0000000E+00 GeV)
 |   sqrts = 5.000000000000E+02 GeV
-| Phase space: keeping configuration file 'alphas_ugug_i1.phs'
+| Phase space: keeping configuration file 'alphas_ugug.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'alphas_ugug'
 |   Library name  = 'alphas_lib'
@@ -116,7 +116,7 @@ seed = 0
 |   u   (mass = 0.0000000E+00 GeV)
 |   gl  (mass = 0.0000000E+00 GeV)
 |   sqrts = 5.000000000000E+02 GeV
-| Phase space: keeping configuration file 'alphas_ugug_i1.phs'
+| Phase space: keeping configuration file 'alphas_ugug.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'alphas_ugug'
 |   Library name  = 'alphas_lib'

@@ -5416,18 +5416,6 @@ Used for testing.
 @ %def prc_user_defined_base_get_sf_value
 @
 <<Prc User: prc user defined base: TBP>>=
-  procedure :: get_i_whizard_to_i_olc_base => prc_user_defined_base_get_i_whizard_to_i_olc
-<<Prc User: procedures>>=
-  function prc_user_defined_base_get_i_whizard_to_i_olc (object, i) result (i_out)
-    integer :: i_out
-    class(prc_user_defined_base_t), intent(in) :: object
-    integer, intent(in) :: i
-    i_out = i
-  end function prc_user_defined_base_get_i_whizard_to_i_olc
-
-@ %def prc_user_defined_base_get_i_whizard_to_i_olc
-@
-<<Prc User: prc user defined base: TBP>>=
   procedure(prc_user_defined_base_includes_polarization), deferred :: &
     includes_polarization
 <<Prc User: interfaces>>=

@@ -36,7 +36,7 @@ openmp_num_threads = 1
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'template_me_2_p1_i1.phs'
+| Phase space: writing configuration file 'template_me_2_p1.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'template_me_2_p1'
 |   Library name  = 'template_me_2_lib'
@@ -72,7 +72,7 @@ Warning: No cuts have been defined.
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'template_me_2_p2_i1.phs'
+| Phase space: writing configuration file 'template_me_2_p2.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'template_me_2_p2'
 |   Library name  = 'template_me_2_lib'
@@ -108,7 +108,7 @@ Warning: No cuts have been defined.
 |   sqrts = 5.000000000000E+02 GeV
 | Phase space: generating configuration ...
 | Phase space: ... success.
-| Phase space: writing configuration file 'template_me_2_p3_i1.phs'
+| Phase space: writing configuration file 'template_me_2_p3.i1.phs'
 | ------------------------------------------------------------------------
 | Process [scattering]: 'template_me_2_p3'
 |   Library name  = 'template_me_2_lib'

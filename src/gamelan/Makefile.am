@@ -27,12 +27,12 @@
 
 ## Install the gml executable and WHIZARD logo here:
 GML=whizard-gml
-gmlexeclibdir = $(PKGLIBDIR)/gamelan
-gmlexecbindir = $(BINDIR)
+gmlexeclibdir = $(pkglibdir)/gamelan
+gmlexecbindir = $(bindir)
 dist_gmlexecbin_SCRIPTS = $(GML)
 
 ## Install the gml MetaPost code here:
-gmllibdir = $(PKGLIBDIR)/gamelan
+gmllibdir = $(pkglibdir)/gamelan
 
 ## The NOWEB source and the test / demofiles generated from it must be distributed,
 ## but not installed.

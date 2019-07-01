@@ -1,4 +1,4 @@
-! WHIZARD 2.6.3 Feb 10 2018
+! WHIZARD 2.6.4 Aug 23 2018
 !
 ! Copyright (C) 1999-2018 by
 !     Wolfgang Kilian <kilian@physik.uni-siegen.de>
@@ -205,16 +205,16 @@ contains
        select type (eio)
        type is (eio_stdhep_hepeup_t)
           call stdhep_init_out (char (eio%filename), &
-               "WHIZARD 2.6.3", eio%n_events_expected)
+               "WHIZARD 2.6.4", eio%n_events_expected)
           call stdhep_write (100)
           call stdhep_write (STDHEP_HEPRUP)
        type is (eio_stdhep_hepevt_t)
           call stdhep_init_out (char (eio%filename), &
-               "WHIZARD 2.6.3", eio%n_events_expected)
+               "WHIZARD 2.6.4", eio%n_events_expected)
           call stdhep_write (100)
        type is (eio_stdhep_hepev4_t)
           call stdhep_init_out (char (eio%filename), &
-               "WHIZARD 2.6.3", eio%n_events_expected)
+               "WHIZARD 2.6.4", eio%n_events_expected)
           call stdhep_write (100)
        end select
     end if
@@ -251,16 +251,16 @@ contains
                error = data%error(i))
        end do
        call stdhep_init_out (char (eio%filename), &
-            "WHIZARD 2.6.3", eio%n_events_expected)
+            "WHIZARD 2.6.4", eio%n_events_expected)
        call stdhep_write (100)
        call stdhep_write (STDHEP_HEPRUP)
     type is (eio_stdhep_hepevt_t)
        call stdhep_init_out (char (eio%filename), &
-            "WHIZARD 2.6.3", eio%n_events_expected)
+            "WHIZARD 2.6.4", eio%n_events_expected)
        call stdhep_write (100)
     type is (eio_stdhep_hepev4_t)
        call stdhep_init_out (char (eio%filename), &
-            "WHIZARD 2.6.3", eio%n_events_expected)
+            "WHIZARD 2.6.4", eio%n_events_expected)
        call stdhep_write (100)
     end select
     if (present (success))  success = .true.

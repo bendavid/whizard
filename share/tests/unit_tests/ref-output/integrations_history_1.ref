@@ -389,7 +389,7 @@ model "Test"
 \begin{gmlfile}
 \section*{Integration Results Display}
 
-Process: \verb|integrations_history_1.r1-history|
+Process: \verb|integrations_history_1.r1.history|
 
 \vspace*{2\baselineskip}
 \unitlength 1mm
