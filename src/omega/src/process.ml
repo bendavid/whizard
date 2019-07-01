@@ -1,10 +1,10 @@
-(* $Id: process.ml 2695 2010-07-08 22:15:33Z ohl $
+(* $Id: process.ml 3216 2011-05-09 07:47:35Z ohl $
 
-   Copyright (C) 1999-2010 by
+   Copyright (C) 1999-2011 by
 
-       Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+       Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
-       Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+       Juergen Reuter <juergen.reuter@desy.de>
 
    WHIZARD is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by
@@ -174,6 +174,9 @@ module Make (M : Model.T) =
 
 (* \thocwmodulesection{Remove Duplicate Final States} *)
 
+(* Test if all final states are the same.  Identical to
+   [ThoList.homogeneous] $\circ$ [(List.map snd)]. *)
+
     let rec homogeneous_final_state = function
       | [] | [_] -> true
       | (_, fs1) :: ((_, fs2) :: _ as rest) ->
@@ -219,11 +222,18 @@ module Make (M : Model.T) =
     let bundle_to_strings list =
       List.map fiber_to_string list
 
+(* Subtract $n+1$ from each element in [index_set] and drop
+   all negative numbers from the result.*)
+
     let shift_left_pred' n index_set =
       List.fold_right
         (fun i acc -> let i' = i - n - 1 in if i' < 0 then acc else i' :: acc)
         index_set []
-        
+
+(* Convert 1-based indices for initial and final state to 0-based
+   indices for the final state only.  (NB: [ThoList.partitioned_sort]
+   expects 0-based indices.) *)
+
     let shift_left_pred fin index_sets =
       let n = match fin with [_] -> 1 | [_;_] -> 2 | _ -> 0 in
       List.fold_right
@@ -232,26 +242,109 @@ module Make (M : Model.T) =
           | [] -> acc
           | iset' -> iset' :: acc)
         index_sets []
+
+    module FSet = Set.Make (struct type t = flavor let compare = compare end)
+
+(* Take a list of final states and return a list of sets of flavors appearing
+   in each slot. *)
+
+    let flavors = function
+      | [] -> []
+      | fs :: fs_list ->
+          List.fold_right (List.map2 FSet.add) fs_list (List.map FSet.singleton fs)
         
-    let remove_duplicate_final_states partition = function 
+    let flavor_sums flavor_sets =
+      let _, result =
+        List.fold_left
+          (fun (n, acc) flavors ->
+            if FSet.cardinal flavors = 1 then
+              (succ n, acc)
+            else
+              (succ n, (n, flavors) :: acc))
+          (0, []) flavor_sets in
+      List.rev result
+
+    let overlapping s1 s2 =
+      not (FSet.is_empty (FSet.inter s1 s2))
+
+    let rec merge_overlapping (n, flavors) = function
+      | [] -> [([n], flavors)]
+      | (n_list, flavor_set) :: rest ->
+          if overlapping flavors flavor_set then
+            (n::n_list, FSet.union flavors flavor_set) :: rest
+          else
+            (n_list, flavor_set) :: merge_overlapping (n, flavors) rest
+
+    let overlapping_flavor_sums flavor_sums =
+      List.rev_map
+        (fun (n_list, flavor_set) -> (n_list, FSet.elements flavor_set))
+        (List.fold_right merge_overlapping flavor_sums [])
+
+    module ISet = Set.Make (struct type t = int let compare = compare end)
+
+    let integer_range n1 n2 =
+      let rec integer_range' acc n' =
+        if n' < n1 then
+          acc
+        else
+          integer_range' (ISet.add n' acc) (pred n') in
+      integer_range' ISet.empty n2
+
+    let coarsest_partition = function
+      | [] -> invalid_arg "coarsest_partition: empty process list"
+      | ((_, fs) :: _) as proc_list ->
+          let fs_list = List.map snd proc_list in
+          let overlaps =
+            List.map fst (overlapping_flavor_sums (flavor_sums (flavors fs_list))) in
+          let singletons =
+            ISet.elements
+              (List.fold_right ISet.remove
+                 (List.concat overlaps) (integer_range 0 (pred (List.length fs)))) in
+          List.map (fun n -> [n]) singletons @ overlaps
+
+    module IPowSet =
+      PowSet.Make (struct type t = int let compare = compare let to_string = string_of_int end)
+
+    let merge_partitions p_list =
+      IPowSet.to_lists (IPowSet.basis (IPowSet.union (List.map IPowSet.of_lists p_list)))
+
+(*i
+    let merge_partitions p_list =
+      let p' = merge_partitions p_list in
+      List.iter
+        (fun p -> Printf.eprintf "p  = %s\n" (IPowSet.to_string (IPowSet.of_lists p)))
+        p_list;
+      Printf.eprintf "p' = %s\n" (IPowSet.to_string (IPowSet.of_lists p'));
+      p'
+i*)
+
+    let remove_duplicate_final_states cascade_partition = function 
       | [] -> []
       | [process] -> [process]
       | list ->
           if homogeneous_final_state list then
             list
           else
+            let partition = coarsest_partition list in
             let pi (fin, fout) =
-              (fin,
-               ThoList.partitioned_sort by_color (shift_left_pred fin partition) fout) in
+              let partition' =
+                merge_partitions [partition; shift_left_pred fin cascade_partition] in
+              (fin, ThoList.partitioned_sort by_color partition' fout) in
             Process_Bundle.base (Process_Bundle.of_list pi list)
 
 (*i
-    let remove_duplicate_final_states list =
+    let remove_duplicate_final_states partition list =
+      let overlaps = coarsest_partition list in
+      Printf.eprintf "::: %s\n"
+        (String.concat ", "
+           (List.map
+              (fun ns -> "{" ^ (String.concat "," (List.map string_of_int ns)) ^ "}")
+              overlaps));
       List.iter (fun (fin, fout) -> 
-        Printf.eprintf ">>> %s\n" (process_to_string fin fout)) list;
-      let result = remove_duplicate_final_states list in
+        Printf.eprintf ">>> %s\n" (to_string (fin, fout))) list;
+      let result = remove_duplicate_final_states partition list in
       List.iter (fun (fin, fout) -> 
-        Printf.eprintf "<<< %s\n" (process_to_string fin fout)) result;
+        Printf.eprintf "<<< %s\n" (to_string (fin, fout))) result;
       result
 i*)
 

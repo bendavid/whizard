@@ -5,10 +5,10 @@
 ##
 ########################################################################
 #
-# Copyright (C) 1999-2010 by 
-#     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+# Copyright (C) 1999-2011 by 
+#     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
-#     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+#     Juergen Reuter <juergen.reuter@desy.de>
 #     Christian Specker <christian.speckner@physik.uni-freiburg.de>
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
@@ -30,7 +30,8 @@
 SUBDIRS = src share
 
 ## Use the same compiler and compiler flags for distcheck
-DISTCHECK_CONFIGURE_FLAGS = F77=$(F77) F77FLAGS="$(F77FLAGS)" FC=$(FC) FCFLAGS="$(FCFLAGS)" LIBS="$(LIBS)"
+DISTCHECK_CONFIGURE_FLAGS = F77=$(F77) F77FLAGS="$(F77FLAGS)" FC=$(FC) FCFLAGS="$(FCFLAGS)" \
+	LIBS="$(LIBS)" --enable-distribution
 
 ## Use the m4 directory for local Autoconf macros
 ACLOCAL_AMFLAGS = -I m4

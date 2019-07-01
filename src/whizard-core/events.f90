@@ -1,9 +1,9 @@
-! WHIZARD 2.0.4 Tue Oct 26 2010
+! WHIZARD 2.0.5 Tue May 10 2011
 ! 
-! (C) 1999-2010 by 
-!     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+! Copyright (C) 1999-2011 by 
+!     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
-!     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+!     Juergen Reuter <juergen.reuter@desy.de>
 !     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
 !     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
 !
@@ -75,6 +75,7 @@ module events
   public :: event_update_alpha_s
   public :: event_compute_sqme
   public :: event_update_weight
+  public :: event_passes_selection
   public :: event_renormalize_weight
   public :: event_reweight
   public :: event_do_analysis
@@ -169,12 +170,14 @@ contains
   end subroutine event_write
 
   subroutine event_generate (event, rng, unweighted, &
-       factorization_mode, keep_correlations, keep_virtual)
+       factorization_mode, keep_correlations, keep_virtual, &
+       shower_settings)
     type(event_t), intent(inout), target :: event
     type(tao_random_state), intent(inout) :: rng
     logical, intent(in) :: unweighted
     integer, intent(in) :: factorization_mode
     logical, intent(in) :: keep_correlations, keep_virtual
+    type(shower_settings_t), intent(in), optional :: shower_settings
     integer :: u
     if (unweighted) then
        call process_generate_unweighted_event &
@@ -194,8 +197,11 @@ contains
          factorization_mode, keep_correlations, keep_virtual)
     if(event%particle_set_exists) then
        call event_write_to_hepeup(event)
-       call event_apply_shower_particle_set(event%particle_set, & 
-    process_get_shower_settings(event%process),process_get_model_ptr(event%process))
+       if (present (shower_settings)) then
+          call event_apply_shower_particle_set (event%particle_set, & 
+               shower_settings, &
+               process_get_model_ptr(event%process))
+       end if
     end if
   end subroutine event_generate
 
@@ -290,6 +296,21 @@ contains
             (event, event%vars%sqme / event%vars%sqme_ref)
     end if
   end subroutine event_update_weight
+
+  function event_passes_selection (event, subevt, selection_expr) result (flag)
+    logical :: flag
+    type(event_t), intent(inout), target :: event
+    type(subevt_t), intent(inout), target :: subevt
+    type(eval_tree_t), intent(inout), target :: selection_expr
+    real(default) :: factor
+    if (event%is_valid .and. eval_tree_is_defined (selection_expr)) then
+       call particle_set_to_subevt (event%particle_set, subevt)
+       call eval_tree_evaluate (selection_expr)
+       flag = eval_tree_get_log (selection_expr)
+    else
+       flag = .true.
+    end if
+  end function event_passes_selection
 
   subroutine event_renormalize_weight (event, factor)
     type(event_t), intent(inout) :: event
@@ -442,7 +463,9 @@ contains
        if (.not. associated (event%vars)) &
             call msg_bug ("Writing event: event variables not associated")
        call event_vars_write_raw (event%vars, unit)
-       write (unit)  process_get_scale (event%process)
+       write (unit)  process_get_scale (event%process)       
+       write (unit)  process_get_fac_scale (event%process)
+       write (unit)  process_get_ren_scale (event%process)       
        write (unit)  process_get_alpha_s (event%process)
        call particle_set_write_raw (event%particle_set, unit)
     end if
@@ -458,7 +481,7 @@ contains
     integer, intent(out) :: iostat
     integer :: proc
     type(process_t), pointer :: process
-    real(default) :: scale, alpha_s, sqme
+    real(default) :: scale, ren_scale, fac_scale, alpha_s, sqme
     call event_vars_read_raw (event_vars, unit, iostat)
     if (iostat /= 0) return
     proc = event_vars%process_index
@@ -475,7 +498,9 @@ contains
     end if
     call event_init (event, process, event_vars)
     event%is_valid = .true.
-    read (unit, iostat=iostat)  scale
+    read (unit, iostat=iostat)  scale    
+    read (unit, iostat=iostat)  fac_scale
+    read (unit, iostat=iostat)  ren_scale    
     if (iostat /= 0)  return
     read (unit, iostat=iostat)  alpha_s
     if (iostat /= 0)  return
@@ -485,6 +510,8 @@ contains
     if (associated (event%process)) then
        call process_set_particles (event%process, event%particle_set)
        call process_set_scale (event%process, scale)
+       call process_set_fac_scale (event%process, fac_scale)
+       call process_set_ren_scale (event%process, ren_scale)       
        call process_set_alpha_s (event%process, alpha_s)
        call process_set_sqme (event%process, event%vars%sqme)
     end if
@@ -526,7 +553,7 @@ contains
        call event_init (event, process, event_vars)
        event%is_valid = .true.
        scale = hepmc_event_get_scale (hepmc_event)
-       if (scale > 0)  call process_set_scale (process, scale)
+       if (scale > 0)  call process_set_fac_scale (process, scale)
        alpha_s = hepmc_event_get_alpha_qcd (hepmc_event)
        if (alpha_s > 0)  call process_set_alpha_s (process, alpha_s)
        event_vars%event_index = hepmc_event_get_event_index (hepmc_event)
@@ -563,7 +590,7 @@ contains
        call hepmc_event_add_weight (hepmc_event, event%vars%sqme)
        call hepmc_event_add_weight (hepmc_event, event%vars%sqme_ref)
        call hepmc_event_set_scale (hepmc_event, &
-            process_get_scale (event%process))
+            process_get_fac_scale (event%process))
        call hepmc_event_set_alpha_qcd (hepmc_event, &
             process_get_alpha_s (event%process))
        call particle_set_fill_hepmc_event (event%particle_set, hepmc_event)
@@ -578,7 +605,7 @@ contains
        call particle_set_fill_hepeup (event%particle_set)
        if (associated (event%process)) then
           call hepeup_set_event_parameters (proc_id = event%vars%process_num_id)
-          scale = process_get_scale (event%process)
+          scale = process_get_fac_scale (event%process)
           if (scale /= 0)  call hepeup_set_event_parameters (scale = scale)
           alpha_qcd = process_get_alpha_s (event%process)       
           if (alpha_qcd /= 0) &

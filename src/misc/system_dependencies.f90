@@ -1,9 +1,9 @@
 ! WHIZARD <<Version>> <<Date>>
 ! 
-! (C) 1999-2010 by 
-!     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+! Copyright (C) 1999-2011 by 
+!     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
-!     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+!     Juergen Reuter <juergen.reuter@desy.de>
 !     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
 !     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
 !
@@ -30,53 +30,52 @@ module system_dependencies
   ! configure.
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+  use omp_lib
+
   implicit none
   public
  
   ! Program version
-  character(*), parameter :: WHIZARD_VERSION = "2.0.4"
-  character(*), parameter :: WHIZARD_DATE = "Oct 26 2010"
+  character(*), parameter :: WHIZARD_VERSION = "2.0.5"
+  character(*), parameter :: WHIZARD_DATE = "May 10 2011"
 
   ! System paths
   ! These are used for testing without existing installation
   character(*), parameter :: WHIZARD_TEST_AUX_MODPATH = &
-       "/afs/physik.uni-freiburg.de/home/reuter/Physik/progs/omwhiz/svn/trunk/build/src/misc"
+       "/afs/desy.de/group/theorie/software/packages/whizard_elf64/build/src/misc"
   character(*), parameter :: WHIZARD_TEST_MODELS_MODPATH = &
-       "/afs/physik.uni-freiburg.de/home/reuter/Physik/progs/omwhiz/svn/trunk/build/src/models"
+       "/afs/desy.de/group/theorie/software/packages/whizard_elf64/build/src/models"
   character(*), parameter :: WHIZARD_TEST_OMEGA_MODPATH = &
-       "/afs/physik.uni-freiburg.de/home/reuter/Physik/progs/omwhiz/svn/trunk/build/src/om" // &
-"ega/src"
+       "/afs/desy.de/group/theorie/software/packages/whizard_elf64/build/src/omega/src"
   character(*), parameter :: WHIZARD_TEST_CORE_MODPATH = &
-       "/afs/physik.uni-freiburg.de/home/reuter/Physik/progs/omwhiz/svn/trunk/build/src/wh" // &
-"izard-core"
+       "/afs/desy.de/group/theorie/software/packages/whizard_elf64/build/src/whizard-core"
   character(*), parameter :: WHIZARD_TEST_CORE_LIBPATH = &
-       "/afs/physik.uni-freiburg.de/home/reuter/Physik/progs/omwhiz/svn/trunk/build/src/wh" // &
-"izard-core"
+       "/afs/desy.de/group/theorie/software/packages/whizard_elf64/build/src/whizard-core"
   character(*), parameter :: WHIZARD_TEST_OMEGA_BINPATH = &
-       "/afs/physik.uni-freiburg.de/home/reuter/Physik/progs/omwhiz/svn/trunk/build/src/om" // &
-"ega/bin"
+       "/afs/desy.de/group/theorie/software/packages/whizard_elf64/build/src/omega/bin"
   character(*), parameter :: WHIZARD_TEST_SRC_LIBPATH = &
-       "/afs/physik.uni-freiburg.de/home/reuter/Physik/progs/omwhiz/svn/trunk/build/src"
+       "/afs/desy.de/group/theorie/software/packages/whizard_elf64/build/src"
   character(*), parameter :: WHIZARD_TEST_HEPMC_LIBPATH = &
-       "/afs/physik.uni-freiburg.de/home/reuter/Physik/progs/omwhiz/svn/trunk/build/src/hepmc"
+       "/afs/desy.de/group/theorie/software/packages/whizard_elf64/build/src/hepmc"
   character(*), parameter :: WHIZARD_TEST_MODELPATH = &
-       "/afs/physik.uni-freiburg.de/home/reuter/Physik/progs/omwhiz/svn/trunk/share/models"
+       "/afs/desy.de/group/theorie/software/packages/whizard_elf64/share/models"
   character(*), parameter :: WHIZARD_TEST_MODELS_LIBPATH = &
-       "/afs/physik.uni-freiburg.de/home/reuter/Physik/progs/omwhiz/svn/trunk/build/src/models"
+       "/afs/desy.de/group/theorie/software/packages/whizard_elf64/build/src/models"
   character(*), parameter :: WHIZARD_TEST_SUSYPATH = &
-       "/afs/physik.uni-freiburg.de/home/reuter/Physik/progs/omwhiz/svn/trunk/share/susy"
+       "/afs/desy.de/group/theorie/software/packages/whizard_elf64/share/susy"
   character(*), parameter :: WHIZARD_TEST_GMLPATH= &
-       "/afs/physik.uni-freiburg.de/home/reuter/Physik/progs/omwhiz/svn/trunk/build/src/gamelan"
+       "/afs/desy.de/group/theorie/software/packages/whizard_elf64/build/src/gamelan"
   character(*), parameter :: WHIZARD_TEST_CUTSPATH = &
-       "/afs/physik.uni-freiburg.de/home/reuter/Physik/progs/omwhiz/svn/trunk/share/cuts"
+       "/afs/desy.de/group/theorie/software/packages/whizard_elf64/share/cuts"
   character(*), parameter :: WHIZARD_TEST_TESTDATAPATH = &
-       "/afs/physik.uni-freiburg.de/home/reuter/Physik/progs/omwhiz/svn/trunk/share/test"
+       "/afs/desy.de/group/theorie/software/packages/whizard_elf64/share/test"
   character(*), parameter :: WHIZARD_TEST_TEXPATH = ""
   character(*), parameter :: WHIZARD_TEST_CIRCE2PATH = &
-       "/afs/physik.uni-freiburg.de/home/reuter/Physik/progs/omwhiz/svn/trunk/src/circe2/s" // &
-"hare/data"
+       "/afs/desy.de/group/theorie/software/packages/whizard_elf64/src/circe2/share/data"
   character(*), parameter :: WHIZARD_TEST_BEAMSIMPATH = &
-       "/afs/physik.uni-freiburg.de/home/reuter/Physik/progs/omwhiz/svn/trunk/share/beam-sim"
+       "/afs/desy.de/group/theorie/software/packages/whizard_elf64/share/beam-sim"
+  character(*), parameter :: PDF_BUILTIN_TEST_DATAPATH = &
+       "/afs/desy.de/group/theorie/software/packages/whizard_elf64/share/pdf_builtin"
 
   ! WHIZARD-specific include flags
   character(*), parameter :: WHIZARD_TEST_INCLUDES = &
@@ -94,13 +93,13 @@ module system_dependencies
 
   ! Libtool
   character(*), parameter :: WHIZARD_LIBTOOL_TEST = &
-       "/afs/physik.uni-freiburg.de/home/reuter/Physik/progs/omwhiz/svn/trunk/build/libtool"
+       "/afs/desy.de/group/theorie/software/packages/whizard_elf64/build/libtool"
 
 
   ! System paths
   ! These are used for the installed version
   character(*), parameter :: PREFIX = &
-       "/opt/whizard"
+       "/afs/desy.de/group/theorie/software/ELF64"
   character(*), parameter :: EXEC_PREFIX = &
        "${prefix}"
   character(*), parameter :: BINDIR = &
@@ -112,7 +111,7 @@ module system_dependencies
   character(*), parameter :: DATAROOTDIR = &
        "${prefix}/share"
 
-  character(*), parameter :: PKGLIBDIR = LIBDIR // "/whizard"
+  character(*), parameter :: PKGLIBDIR = LIBDIR  // "/whizard"
   character(*), parameter :: PKGDATADIR = DATAROOTDIR // "/whizard"
   character(*), parameter :: PKGTEXDIR = DATAROOTDIR // "/texmf/whizard"
   character(*), parameter :: PKGCIRCE2DIR = DATAROOTDIR // "/circe2"
@@ -128,7 +127,7 @@ module system_dependencies
   character(*), parameter :: WHIZARD_OMEGA_BINPATH = &
        BINDIR
   character(*), parameter :: WHIZARD_OMEGA_LIBPATH = &
-       PKGLIBDIR
+       LIBDIR
   character(*), parameter :: WHIZARD_MODELPATH = &
        PKGDATADIR // "/models"
   character(*), parameter :: WHIZARD_MODELS_LIBPATH = &
@@ -147,6 +146,8 @@ module system_dependencies
        PKGCIRCE2DIR // "/data"
   character(*), parameter :: WHIZARD_BEAMSIMPATH = &
        PKGDATADIR // "/beam-sim"
+  character(*), parameter :: PDF_BUILTIN_DATAPATH = &
+       PKGDATADIR // "/pdf_builtin"
 
   ! WHIZARD-specific include flags
   character(*), parameter :: WHIZARD_INCLUDES = &
@@ -167,9 +168,9 @@ module system_dependencies
 
   ! Fortran compiler
   character(*), parameter :: DEFAULT_FC = &
-       "gfortran45"
+       "gfortran"
   character(*), parameter :: DEFAULT_FCFLAGS = &
-       " -g -O2"
+       " -fopenmp -g -O2"
   character(*), parameter :: DEFAULT_FCFLAGS_PIC = &
        " -fPIC"
   character(*), parameter :: DEFAULT_FC_SRC_EXT = &
@@ -179,17 +180,19 @@ module system_dependencies
 
   ! Linker
   character(*), parameter :: DEFAULT_LD = &
-       "/usr/bin/ld"
+       "/usr/bin/ld -m elf_x86_64"
   character(*), parameter :: DEFAULT_LDFLAGS = &
-       " "
+       ""
   character(*), parameter :: DEFAULT_LDFLAGS_SO = "-shared"
   character(*), parameter :: DEFAULT_LDFLAGS_STATIC = &
-       "-lwhizard "
+       "-lstdc++"
+  character(*), parameter :: DEFAULT_LDFLAGS_HEPMC = &
+       "-L/opt/whizard/lib -lHepMC"
   character(*), parameter :: DEFAULT_SHLIB_EXT = ".so"
 
   ! LHAPDF library
   character(*), parameter :: LHAPDF_PDFSETS_PATH = &
-       "/opt/whizard//share/lhapdf/PDFsets"
+       "/afs/desy.de/group/theorie/software/ELF64/share/lhapdf/PDFsets"
 
   ! Available methods for event analysis display
   character(*), parameter :: EVENT_ANALYSIS_PS = &
@@ -207,7 +210,46 @@ module system_dependencies
   character(*), parameter :: PRG_PS2PDF = &
        "ps2pdf14"
 
+  ! Hardwired options for batch-mode processing
+  character(*), parameter :: OPT_LATEX  = &
+       "-halt-on-error"
+  character(*), parameter :: OPT_MPOST  = &
+       "-halt-on-error"
+
   ! Misc
   logical, parameter :: LHAPDF_AVAILABLE = .true.
+
+contains
+
+  ! Subroutines that depend on configure settings
+
+  ! OpenMP wrapper routines, work independent of OpenMP status
+  function openmp_is_active () result (flag)
+    logical :: flag
+    flag = .true.
+!    flag = .false.
+  end function openmp_is_active
+
+  subroutine openmp_set_num_threads (num)
+    integer, intent(in) :: num
+    call omp_set_num_threads (num)
+  end subroutine openmp_set_num_threads
+  
+  function openmp_get_num_threads () result (num)
+    integer :: num
+    num = omp_get_num_threads ()
+!    num = 1
+  end function openmp_get_num_threads
+  
+  function openmp_get_max_threads () result (num)
+    integer :: num
+    num = omp_get_max_threads ()
+!    num = 1
+  end function openmp_get_max_threads
+  
+  function openmp_get_default_max_threads () result (num)
+    integer :: num
+    num = 16
+  end function openmp_get_default_max_threads
 
 end module system_dependencies

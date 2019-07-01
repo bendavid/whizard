@@ -1,9 +1,9 @@
-! WHIZARD 2.0.4 Tue Oct 26 2010
+! WHIZARD 2.0.5 Tue May 10 2011
 ! 
-! (C) 1999-2010 by 
-!     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+! Copyright (C) 1999-2011 by 
+!     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
-!     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+!     Juergen Reuter <juergen.reuter@desy.de>
 !     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
 !     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
 !
@@ -72,10 +72,11 @@ contains
     data%sqrts = sqrts
   end subroutine escan_data_init
 
-  subroutine escan_data_write (data, unit)
+  subroutine escan_data_write (data, unit, md5)
     type(escan_data_t), intent(in) :: data
     integer, intent(in), optional :: unit
     integer :: u
+    logical, intent(in), optional :: md5
     u = output_unit (unit);  if (u < 0)  return
     write (u, *) "Energy-scan data:"
     if (all (data%affects_beam)) then

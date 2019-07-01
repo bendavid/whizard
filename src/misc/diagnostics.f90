@@ -1,9 +1,9 @@
-! WHIZARD 2.0.4 Tue Oct 26 2010
+! WHIZARD 2.0.5 Tue May 10 2011
 ! 
-! (C) 1999-2010 by 
-!     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+! Copyright (C) 1999-2011 by 
+!     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
-!     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+!     Juergen Reuter <juergen.reuter@desy.de>
 !     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
 !     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
 !
@@ -497,7 +497,7 @@ subroutine message_print (level, string, str_arr, unit, logfile)
     call message_print (0, "|                                                                             |", unit=unit)
     call message_print (0, "|  by:   Wolfgang Kilian    <kilian@hep.physik.uni-siegen.de>                 |", unit=unit)
     call message_print (0, "|        Thorsten Ohl       <ohl@physik.uni-wuerzburg.de>                     |", unit=unit)
-    call message_print (0, "|        Juergen Reuter     <reuter@physik.uni-freiburg.de>                   |", unit=unit)
+    call message_print (0, "|        Juergen Reuter     <juergen.reuter@desy.de>                          |", unit=unit)
     call message_print (0, "|        Christian Speckner <christian.speckner@physik.uni-freiburg.de>       |", unit=unit)
     call message_print (0, "|                                                                             |", unit=unit)
     call message_print (0, "|  if you use WHIZARD please cite:                                            |", unit=unit)   

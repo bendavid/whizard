@@ -1,11 +1,33 @@
 ## Makefile.am -- Makefile for WHIZARD
 ##
 ## Process this file with automake to produce Makefile.in
+#
+# Copyright (C) 1999-2011 by 
+#     Wolfgang Kilian <kilian@physik.uni-siegen.de>
+#     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
+#     Juergen Reuter <juergen.reuter@desy.de>
+#     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+#
+# WHIZARD is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License as published by 
+# the Free Software Foundation; either version 2, or (at your option)
+# any later version.
+#
+# WHIZARD is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+#
+########################################################################
 
 ## Subdirectories to configure
 SUBDIRS = \
   pythia matching hepmc lhapdf stdhep circe1 \
-  circe2 misc vamp shower whizard-core prebuilt \
+  circe2 misc pdf_builtin vamp shower whizard-core prebuilt \
   omega models 
 if MPOST_AVAILABLE
 SUBDIRS += gamelan feynmf
@@ -16,7 +38,7 @@ endif
 ## built in the subdirectories
 ## and the wrapper O'Mega library, which contains omegalib and
 ## the W/O interface modules for the various models
-pkglib_LTLIBRARIES = libwhizard.la libomega.la
+lib_LTLIBRARIES = libwhizard.la libomega.la
 
 libwhizard_la_SOURCES =
 
@@ -28,7 +50,8 @@ libwhizard_la_LIBADD = \
   vamp/src/libvamp.la \
   circe1/src/libcirce1.la \
   circe2/src/libcirce2.la \
-  misc/libaux.la
+  misc/libaux.la \
+  pdf_builtin/libpdf_builtin.la
 if SHOWER_AVAILABLE
 libwhizard_la_LIBADD += \
   shower/libshower.la 
@@ -48,10 +71,12 @@ libomega_la_LIBADD = \
   models/libmodels.la
 
 
-## If LHAPDF is not available, link in a dummy as replacements
+## If (parts of) LHAPDF is not available, link in a dummy as replacements
 if LHAPDF_AVAILABLE
 libwhizard_la_LIBADD += $(LDFLAGS_LHAPDF)
-else
+endif
+
+if LHAPDF_DUMMY
 libwhizard_la_LIBADD += lhapdf/libLHAPDF_dummy.la
 endif 
 
@@ -79,13 +104,24 @@ whizard_LDADD += $(LDFLAGS_LHAPDF)
 whizard_LDADD += $(LDFLAGS_STDHEP)
 whizard_LDADD += $(LDFLAGS_HEPMC)
 
-if WHIZARD_WITH_OPENMP
-whizard_LDADD += $(OPENMP_FCFLAGS)
-libwhizard_la_LIBADD += $(OPENMP_FCFLAGS)
-libomega_la_LIBADD += $(OPENMP_FCFLAGS)
+AM_FCFLAGS =
+
+########################################################################
+## Default Fortran compiler options
+
+## Profiling
+if FC_USE_PROFILING
+AM_FCFLAGS += $(FCFLAGS_PROFILING)
 endif
 
-## -------------------------------------------------------------------
+## OpenMP
+if FC_USE_OPENMP
+AM_FCFLAGS += $(FCFLAGS_OPENMP)
+endif
+
+########################################################################
+## Non-standard cleanup tasks
+
 ## Remove backup files
 maintainer-clean-local:
 	-rm -f *~

@@ -1,9 +1,9 @@
-! WHIZARD 2.0.4 Tue Oct 26 2010
+! WHIZARD 2.0.5 Tue May 10 2011
 ! 
-! (C) 1999-2010 by 
-!     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+! Copyright (C) 1999-2011 by 
+!     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
-!     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+!     Juergen Reuter <juergen.reuter@desy.de>
 !     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
 !     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
 !
@@ -29,6 +29,7 @@ module processes
 
   use kinds, only: default !NODEP!
   use iso_varying_string, string_t => varying_string !NODEP!
+  use limits, only: GML_MIN_RANGE_RATIO !NODEP!
   use system_dependencies !NODEP!
   use constants !NODEP!
   use file_utils !NODEP!
@@ -62,6 +63,7 @@ module processes
   use sf_escan
   use sf_beam_events
   use sf_lhapdf
+  use sf_pdf_builtin
   use strfun
   use mappings
   use phs_forests
@@ -69,7 +71,6 @@ module processes
   use process_libraries
   use prclib_interfaces
   use hard_interactions
-  use shower_interface
 
   implicit none
   private
@@ -80,6 +81,7 @@ module processes
   public :: process_assign_global_var_list
   public :: process_write
   public :: process_write_logfile
+  public :: process_display_integration_history
   public :: process_p
   public :: process_ptr_array_create
   public :: process_is_valid
@@ -94,7 +96,6 @@ module processes
   public :: process_get_md5sum_results
   public :: process_get_md5sum_polarized
   public :: process_get_model_ptr
-  public :: process_get_shower_settings
   public :: process_get_n_in
   public :: process_get_n_out
   public :: process_get_n_tot
@@ -108,6 +109,8 @@ module processes
   public :: process_get_n_channels
   public :: process_get_n_bins
   public :: process_get_scale
+  public :: process_get_fac_scale
+  public :: process_get_ren_scale  
   public :: process_get_alpha_s
   public :: process_get_sqme
   public :: process_get_reweighting_factor
@@ -127,6 +130,8 @@ module processes
   public :: process_get_hi_eval_sqme_ptr
   public :: process_get_hi_eval_flows_ptr
   public :: process_set_scale
+  public :: process_set_fac_scale
+  public :: process_set_ren_scale  
   public :: process_set_alpha_s
   public :: process_set_sqme
   public :: process_setup_beams
@@ -141,6 +146,8 @@ module processes
   public :: process_setup_cuts
   public :: process_setup_weight
   public :: process_setup_scale
+  public :: process_setup_fac_scale
+  public :: process_setup_ren_scale
   public :: grid_parameters_t
   public :: process_setup_grids
   public :: process_reset_helicity_selection
@@ -173,6 +180,7 @@ module processes
   public :: process_results_write
   public :: process_record_integral
   public :: process_request_copy
+  public :: process_tag_as_working_copy
   public :: process_free_copy
   public :: process_store_final
   public :: process_store_unload
@@ -267,6 +275,8 @@ module processes
      real(default) :: reweighting_factor = 0
      real(default) :: sample_function_value = 0
      real(default) :: scale = 0
+     real(default) :: fac_scale = 0
+     real(default) :: ren_scale = 0     
      logical :: negative_weights = .false.
      logical :: alpha_s_is_fixed = .true.
      integer :: alpha_s_order = 0
@@ -298,12 +308,13 @@ module processes
      type(eval_tree_t) :: cut_expr
      type(eval_tree_t) :: reweighting_expr
      type(eval_tree_t) :: scale_expr
+     type(eval_tree_t) :: fac_scale_expr
+     type(eval_tree_t) :: ren_scale_expr
      logical, dimension(:), allocatable :: active_channel
      type(vamp_grids) :: grids
      type(vamp_history), dimension(:), allocatable :: v_history
      type(vamp_history), dimension(:,:), allocatable :: v_histories
      type(integration_results_t) :: results
-     type(shower_settings_t) :: shower_settings
   end type process_t
 
   type :: process_p
@@ -331,7 +342,9 @@ module processes
      character(32) :: mappings   = ""
      character(32) :: cuts       = ""
      character(32) :: weight     = ""
-     character(32) :: scale      = ""
+     character(32) :: scale      = ""     
+     character(32) :: fac_scale  = ""
+     character(32) :: ren_scale  = ""     
   end type md5sum_grids_t
 
   type :: process_entry_t
@@ -352,6 +365,7 @@ module processes
 
   interface process_set_strfun
      module procedure process_set_strfun_lhapdf  
+     module procedure process_set_strfun_pdf_builtin
      module procedure process_set_strfun_isr
      module procedure process_set_strfun_epa
      module procedure process_set_strfun_ewa     
@@ -414,25 +428,31 @@ contains
     end if
   end subroutine integration_entry_init
 
-  function integration_entry_get_n_calls (entry) result (n)
+  elemental function integration_entry_get_pass (entry) result (n)
+    integer :: n
+    type(integration_entry_t), intent(in) :: entry
+    n = entry%pass
+  end function integration_entry_get_pass
+
+  elemental function integration_entry_get_n_calls (entry) result (n)
     integer :: n
     type(integration_entry_t), intent(in) :: entry
     n = entry%n_calls
   end function integration_entry_get_n_calls
 
-  function integration_entry_get_integral (entry) result (int)
+  elemental function integration_entry_get_integral (entry) result (int)
     real(default) :: int
     type(integration_entry_t), intent(in) :: entry
     int = entry%integral
   end function integration_entry_get_integral
 
-  function integration_entry_get_error (entry) result (err)
+  elemental function integration_entry_get_error (entry) result (err)
     real(default) :: err
     type(integration_entry_t), intent(in) :: entry
     err = entry%error
   end function integration_entry_get_error
 
-  function integration_entry_get_relative_error (entry) result (err)
+  elemental function integration_entry_get_relative_error (entry) result (err)
     real(default) :: err
     type(integration_entry_t), intent(in) :: entry
     if (entry%integral /= 0) then
@@ -442,13 +462,13 @@ contains
     end if
   end function integration_entry_get_relative_error
 
-  function integration_entry_get_accuracy (entry) result (acc)
+  elemental function integration_entry_get_accuracy (entry) result (acc)
     real(default) :: acc
     type(integration_entry_t), intent(in) :: entry
     acc = accuracy (entry%integral, entry%error, entry%n_calls)
   end function integration_entry_get_accuracy
 
-  function accuracy (integral, error, n_calls) result (acc)
+  elemental function accuracy (integral, error, n_calls) result (acc)
     real(default) :: acc
     real(default), intent(in) :: integral, error
     integer, intent(in) :: n_calls
@@ -459,19 +479,19 @@ contains
     end if
   end function accuracy
 
-  function integration_entry_get_efficiency (entry) result (eff)
+  elemental function integration_entry_get_efficiency (entry) result (eff)
     real(default) :: eff
     type(integration_entry_t), intent(in) :: entry
     eff = entry%efficiency
   end function integration_entry_get_efficiency
 
-  function integration_entry_get_chi2 (entry) result (chi2)
+  elemental function integration_entry_get_chi2 (entry) result (chi2)
     real(default) :: chi2
     type(integration_entry_t), intent(in) :: entry
     chi2 = entry%chi2
   end function integration_entry_get_chi2
 
-  function integration_entry_get_time_per_event (entry) result (tpe)
+  elemental function integration_entry_get_time_per_event (entry) result (tpe)
     real(default) :: tpe
     type(integration_entry_t), intent(in) :: entry
     real(default) :: time_in_seconds
@@ -483,13 +503,13 @@ contains
     end if
   end function integration_entry_get_time_per_event
 
-  function integration_entry_has_improved (entry) result (flag)
+  elemental function integration_entry_has_improved (entry) result (flag)
     logical :: flag
     type(integration_entry_t), intent(in) :: entry
     flag = entry%improved
   end function integration_entry_has_improved
 
-  function integration_entry_get_n_groves (entry) result (n_groves)
+  elemental function integration_entry_get_n_groves (entry) result (n_groves)
     integer :: n_groves
     type(integration_entry_t), intent(in) :: entry
     if (allocated (entry%grove_weight)) then
@@ -1040,6 +1060,221 @@ contains
     close (u)
   end function integration_results_get_md5sum
 
+  subroutine integration_results_write_driver (results, filename)
+    type(integration_results_t), intent(in) :: results
+    type(string_t), intent(in) :: filename
+    type(string_t) :: file_basename, file_tex
+    integer :: unit
+    integer :: n, i, n_pass, pass
+    integer, dimension(:), allocatable :: ipass
+    real(default) :: ymin, ymax, yavg, ydif, y0, y1
+    real(default) :: int, err
+    file_basename = filename // ".history"
+    file_tex = file_basename // ".tex"
+    unit = free_unit ()
+    open (unit=unit, file=char(file_tex), action="write", status="replace")
+    n = results%n_it
+    n_pass = results%n_pass
+    allocate (ipass (results%n_pass))
+    ipass(1) = 0
+    pass = 2
+    do i = 1, n-1
+       if (integration_entry_get_pass (results%entry(i)) &
+           /= integration_entry_get_pass (results%entry(i+1))) then
+          ipass(pass) = i
+          pass = pass + 1
+       end if
+    end do
+    ymin = minval (integration_entry_get_integral (results%entry(:n)) &
+                   - integration_entry_get_error (results%entry(:n)))
+    ymax = maxval (integration_entry_get_integral (results%entry(:n)) &
+                   + integration_entry_get_error (results%entry(:n)))
+    yavg = (ymax + ymin) / 2
+    ydif = (ymax - ymin)
+    if (ydif * 1.5 > GML_MIN_RANGE_RATIO * yavg) then
+       y0 = yavg - ydif * 0.75
+       y1 = yavg + ydif * 0.75
+    else
+       y0 = yavg * (1 - GML_MIN_RANGE_RATIO / 2)
+       y1 = yavg * (1 + GML_MIN_RANGE_RATIO / 2)
+    end if
+    write (unit, "(A)") "\documentclass{article}"
+    write (unit, "(A)") "\usepackage{a4wide}"
+    write (unit, "(A)") "\usepackage{gamelan}"
+    write (unit, "(A)") "\usepackage{amsmath}"
+    write (unit, "(A)") ""
+    write (unit, "(A)") "\begin{document}"
+    write (unit, "(A)") "\begin{gmlfile}"
+    write (unit, "(A)") "\section*{Integration Results Display}"
+    write (unit, "(A)") ""
+    write (unit, "(A)") "Process: \verb|" // char (filename) // "|"
+    write (unit, "(A)") ""
+    write (unit, "(A)") "\vspace*{2\baselineskip}"
+    write (unit, "(A)") "\unitlength 1mm"
+    write (unit, "(A)") "\begin{gmlcode}"
+    write (unit, "(A)") "  picture sym;  sym = fshape (circle scaled 1mm)();"
+    write (unit, "(A)") "  color col.band;  col.band = 0.9white;"
+    write (unit, "(A)") "  color col.eband;  col.eband = 0.98white;"
+    write (unit, "(A)") "\end{gmlcode}"
+    write (unit, "(A)") "\begin{gmlgraph*}(130,180)[history]"
+    write (unit, "(A)") "  setup (linear, linear);"
+    write (unit, "(A,I0,A)") "  history.n_pass = ", n_pass, ";"
+    write (unit, "(A,I0,A)") "  history.n_it   = ", n, ";"
+    write (unit, "(A,A,A)")  "  history.y0 = #""", char (mp_format (y0)), """;"
+    write (unit, "(A,A,A)")  "  history.y1 = #""", char (mp_format (y1)), """;"
+    write (unit, "(A)") &
+         "  graphrange (#0.5, history.y0), (#(n+0.5), history.y1);"
+    do pass = 1, n_pass
+       write (unit, "(A,I0,A,I0,A)") &
+            "  history.pass[", pass, "] = ", ipass(pass), ";"
+       write (unit, "(A,I0,A,A,A)") &
+            "  history.avg[", pass, "] = #""", &
+            char (mp_format &
+               (integration_entry_get_integral (results%average(pass)))), &
+            """;"
+       write (unit, "(A,I0,A,A,A)") &
+            "  history.err[", pass, "] = #""", &
+            char (mp_format &
+               (integration_entry_get_error (results%average(pass)))), &
+            """;"
+       write (unit, "(A,I0,A,A,A)") &
+            "  history.chi[", pass, "] = #""", &
+            char (mp_format &
+               (integration_entry_get_chi2 (results%average(pass)))), &
+            """;"
+    end do
+    write (unit, "(A,I0,A,I0,A)") &
+         "  history.pass[", n_pass + 1, "] = ", n, ";"
+    write (unit, "(A)")  "  for i = 1 upto history.n_pass:"
+    write (unit, "(A)")  "    if history.chi[i] greater one:"
+    write (unit, "(A)")  "    fill plot ("
+    write (unit, "(A)")  &
+         "      (#(history.pass[i]  +.5), " &
+         // "history.avg[i] minus history.err[i] times history.chi[i]),"
+    write (unit, "(A)")  &
+         "      (#(history.pass[i+1]+.5), " &
+         // "history.avg[i] minus history.err[i] times history.chi[i]),"
+    write (unit, "(A)")  &
+         "      (#(history.pass[i+1]+.5), " &
+         // "history.avg[i] plus history.err[i] times history.chi[i]),"
+    write (unit, "(A)")  &
+         "      (#(history.pass[i]  +.5), " &
+         // "history.avg[i] plus history.err[i] times history.chi[i])"
+    write (unit, "(A)")  "    ) withcolor col.eband fi;"
+    write (unit, "(A)")  "    fill plot ("
+    write (unit, "(A)")  &
+         "      (#(history.pass[i]  +.5), history.avg[i] minus history.err[i]),"
+    write (unit, "(A)")  &
+         "      (#(history.pass[i+1]+.5), history.avg[i] minus history.err[i]),"
+    write (unit, "(A)")  &
+         "      (#(history.pass[i+1]+.5), history.avg[i] plus history.err[i]),"
+    write (unit, "(A)")  &
+         "      (#(history.pass[i]  +.5), history.avg[i] plus history.err[i])"
+    write (unit, "(A)")  "    ) withcolor col.band;"
+    write (unit, "(A)")  "    draw plot ("
+    write (unit, "(A)")  &
+         "      (#(history.pass[i]  +.5), history.avg[i]),"
+    write (unit, "(A)")  &
+         "      (#(history.pass[i+1]+.5), history.avg[i])"
+    write (unit, "(A)")  "      ) dashed evenly;"
+    write (unit, "(A)")  "  endfor"
+    write (unit, "(A)")  "  for i = 1 upto history.n_pass + 1:"
+    write (unit, "(A)")  "    draw plot ("
+    write (unit, "(A)")  &
+         "      (#(history.pass[i]+.5), history.y0),"
+    write (unit, "(A)")  &
+         "      (#(history.pass[i]+.5), history.y1)"
+    write (unit, "(A)")  "      ) dashed withdots;"
+    write (unit, "(A)")  "  endfor"
+    do i = 1, n
+       write (unit, "(A,I0,A,A,A,A,A)") "  plot (history) (#", &
+          i, ", #""", &
+          char (mp_format (integration_entry_get_integral (results%entry(i)))),&
+          """) vbar #""", &
+          char (mp_format (integration_entry_get_error (results%entry(i)))), &
+          """;"
+    end do
+    write (unit, "(A)") "  draw piecewise from (history) " &
+      // "withsymbol sym;"
+    write (unit, "(A)") "  fullgrid.lr (5,20);"
+    write (unit, "(A)") "  standardgrid.bt (n);"
+    write (unit, "(A)") "\end{gmlgraph*}"
+    write (unit, "(A)") "\end{gmlfile}"
+    write (unit, "(A)") "\clearpage"
+    write (unit, "(A)") "\begin{verbatim}"
+    call integration_results_write (results, unit)
+    write (unit, "(A)") "\end{verbatim}"
+    write (unit, "(A)") "\end{document}"
+    close (unit)
+  end subroutine integration_results_write_driver
+
+  subroutine integration_results_compile_driver (results, filename, os_data)
+    type(integration_results_t), intent(in) :: results
+    type(string_t), intent(in) :: filename
+    type(os_data_t), intent(in) :: os_data
+    integer :: unit, unit_dev, status
+    type(string_t) :: file_basename
+    type(string_t) :: file_tex, file_dvi, file_ps, file_pdf, file_mp
+    type(string_t) :: setenv_tex, setenv_mp, pipe, pipe_dvi
+    type(string_t) :: latex_opt, mpost_opt
+    file_basename = filename // ".history"
+    file_tex = file_basename // ".tex"
+    file_dvi = file_basename // ".dvi"
+    file_ps = file_basename // ".ps"
+    file_pdf = file_basename // ".pdf"
+    file_mp = file_basename // ".mp"
+    call msg_message ("Creating integration history display "& 
+         // char (file_ps) // " and " // char (file_pdf))
+    BLOCK: do
+       unit_dev = free_unit ()
+       open (file = "/dev/null", unit = unit_dev, &
+              action = "write", iostat = status)
+       if (status /= 0) then
+          pipe = ""
+          pipe_dvi = ""
+       else
+          pipe = " > /dev/null"
+          pipe_dvi = " 2>/dev/null 1>/dev/null"
+       end if
+       close (unit_dev)
+       if (os_data%whizard_texpath /= "") then
+          setenv_tex = &
+               "TEXINPUTS=" // os_data%whizard_texpath // ":$TEXINPUTS "
+          setenv_mp = &
+               "MPINPUTS=" // os_data%whizard_texpath // ":$MPINPUTS "
+       else
+          setenv_tex = ""
+          setenv_mp = ""
+       end if
+       call os_system_call (setenv_tex // os_data%latex // " " // &
+            file_tex // pipe, status)
+       if (status /= 0)  exit BLOCK
+       if (os_data%gml /= "") then
+          call os_system_call (setenv_mp // os_data%gml // " " // &
+               file_mp // pipe, status)
+       else 
+          call msg_error ("Could not use GAMELAN/MetaPOST.")
+          exit BLOCK
+       end if
+       if (status /= 0)  exit BLOCK
+       call os_system_call (setenv_tex // os_data%latex // " " // &
+             file_tex // pipe, status)
+       if (status /= 0)  exit BLOCK
+       call os_system_call (os_data%dvips // " " // &
+          file_dvi // pipe_dvi, status)
+       if (status /= 0)  exit BLOCK
+       if (os_data%event_analysis_pdf) then
+          call os_system_call (os_data%ps2pdf // " " // &
+                  file_ps, status)
+       end if
+       if (status /= 0)  exit BLOCK
+       exit BLOCK
+    end do BLOCK
+    if (status /= 0) then
+       call msg_error ("Unable to compile integration history display")
+    end if
+  end subroutine integration_results_compile_driver
+
   subroutine process_init &
        (process, prc_lib, process_lib_index, process_store_index, &
         process_id, model, lhapdf_status, var_list, use_beams)
@@ -1055,7 +1290,7 @@ contains
     integer :: n_in, n_out, n_tot
     integer :: n_beam
     integer :: lhapdf_set, lhapdf_member
-    type(string_t) :: lhapdf_prefix, lhapdf_file
+    type(string_t) :: lhapdf_prefix, lhapdf_file, lhapdf_dir
     process%prc_lib => prc_lib
     process%lib_index = process_lib_index
     process%store_index = process_store_index
@@ -1123,13 +1358,14 @@ contains
     if (process%alpha_s_from_lhapdf) then
        if (LHAPDF_AVAILABLE) then
           lhapdf_set = 1
-          lhapdf_prefix = LHAPDF_PDFSETS_PATH // "/"
+          lhapdf_dir = var_list_get_sval (var_list, &
+               var_str ("$lhapdf_dir"))  ! $
           lhapdf_file = var_list_get_sval (var_list, &
                var_str ("$lhapdf_file"))  ! $
           lhapdf_member = var_list_get_ival (var_list, &
                var_str ("lhapdf_member"))
           call lhapdf_init (lhapdf_status, &
-               lhapdf_set, lhapdf_prefix, lhapdf_file, lhapdf_member)
+               lhapdf_set, lhapdf_dir, lhapdf_file, lhapdf_member)
        else             
           call msg_error &
                ("LHAPDF not linked: reset alpha_s_from_lhapdf to false")
@@ -1163,7 +1399,6 @@ contains
     allocate (process%j_out (n_out))
     call subevt_init (process%subevt, n_beam + n_in + n_out)
 !    call integration_results_init (process%results)
-    call shower_settings_init(process%shower_settings, process%var_list)
     process%initialized = .true.
   end subroutine process_init
 
@@ -1206,6 +1441,8 @@ contains
        call eval_tree_final (process%cut_expr)
        call eval_tree_final (process%reweighting_expr)
        call eval_tree_final (process%scale_expr)
+       call eval_tree_final (process%fac_scale_expr)
+       call eval_tree_final (process%ren_scale_expr)       
     end if
     if (process%vamp_grids_defined) then
        call vamp_delete_grids (process%grids)
@@ -1283,7 +1520,9 @@ contains
           write (u, *)  "[empty]"
        end if
     end if
-    write (u, *)  "  Process energy scale    = ", process%scale
+    write (u, *)  "  General scale           = ", process%scale
+    write (u, *)  "  Factorization scale     = ", process%fac_scale
+    write (u, *)  "  Renormalization scale   = ", process%ren_scale    
     write (u, *)  repeat ("-", 72)
     write (u, *)  "QCD coupling parameters ="
     write (u, *)  "  alpha-s is fixed = ", process%alpha_s_is_fixed
@@ -1401,9 +1640,15 @@ contains
     write (u, "(A)")  "Weight expression:"
     call eval_tree_write (process%reweighting_expr, unit)
     write (u, "(A)")  repeat ("-", 72)
-    write (u, "(A)")  "Scale expression:"
+    write (u, "(A)")  "General scale expression:"
     call eval_tree_write (process%scale_expr, unit)
     write (u, "(A)")  repeat ("-", 72)
+    write (u, "(A)")  "Factorization scale expression:"
+    call eval_tree_write (process%fac_scale_expr, unit)
+    write (u, "(A)")  repeat ("-", 72)
+    write (u, "(A)")  "Renormalization scale expression:"    
+    call eval_tree_write (process%ren_scale_expr, unit)
+    write (u, "(A)")  repeat ("-", 72)    
     if (process%vamp_grids_defined) then
        call vamp_write_grids (process%grids, u)
     else
@@ -1453,8 +1698,14 @@ contains
     write (u, "(A)")  "Weight expression:"
     call eval_tree_write (process%reweighting_expr, unit)
     write (u, "(A)")  repeat ("-", 79)
-    write (u, "(A)")  "Scale expression:"
-    call eval_tree_write (process%scale_expr, unit)
+    write (u, "(A)")  "General scale expression:"
+    call eval_tree_write (process%scale_expr, unit)    
+    write (u, "(A)")  repeat ("-", 79)
+    write (u, "(A)")  "Factorization scale expression:"
+    call eval_tree_write (process%fac_scale_expr, unit)
+    write (u, "(A)")  repeat ("-", 79)
+    write (u, "(A)")  "Renormalization scale expression:"
+    call eval_tree_write (process%ren_scale_expr, unit)    
     write (u, "(A)")  repeat ("#", 79)
     write (u, "(A)")  "Summary of quantum-number states:"
     write (u, "(A)")  " + sign: allowed and contributing"
@@ -1495,6 +1746,14 @@ contains
     call process_write_log (process, unit)
     close (unit)
   end subroutine process_write_logfile
+
+  subroutine process_display_integration_history (process, os_data)
+    type(process_t), intent(in) :: process
+    type(os_data_t), intent(in) :: os_data
+    call integration_results_write_driver (process%results, process%id)
+    call integration_results_compile_driver &
+         (process%results, process%id, os_data)
+  end subroutine process_display_integration_history
 
   subroutine process_ptr_array_create (prc_array, process_id)
     type(process_p), dimension(:), intent(out), allocatable :: prc_array
@@ -1579,12 +1838,6 @@ contains
     model => process%model
   end function process_get_model_ptr
 
-  function process_get_shower_settings (process) result (shower_settings)
-    type(shower_settings_t) :: shower_settings
-    type(process_t), intent(in) :: process
-    shower_settings = process%shower_settings
-  end function process_get_shower_settings
-
   pure function process_get_n_in (process) result (n)
     integer :: n
     type(process_t), intent(in) :: process
@@ -1667,6 +1920,18 @@ contains
     type(process_t), intent(in) :: process
     scale = process%scale
   end function process_get_scale
+
+  function process_get_fac_scale (process) result (scale)
+    real(default) :: scale
+    type(process_t), intent(in) :: process
+    scale = process%fac_scale
+  end function process_get_fac_scale
+  
+  function process_get_ren_scale (process) result (scale)
+    real(default) :: scale
+    type(process_t), intent(in) :: process
+    scale = process%ren_scale
+  end function process_get_ren_scale  
 
   function process_get_alpha_s (process) result (alpha_s)
     real(default) :: alpha_s
@@ -1790,6 +2055,18 @@ contains
     process%scale = scale
   end subroutine process_set_scale
 
+  subroutine process_set_fac_scale (process, scale)
+    type(process_t), intent(inout) :: process
+    real(default), intent(in) :: scale
+    process%fac_scale = scale
+  end subroutine process_set_fac_scale
+
+  subroutine process_set_ren_scale (process, scale)
+    type(process_t), intent(inout) :: process
+    real(default), intent(in) :: scale
+    process%ren_scale = scale
+  end subroutine process_set_ren_scale
+
   subroutine process_set_alpha_s (process, alpha_s)
     type(process_t), intent(inout) :: process
     real(default), intent(in) :: alpha_s
@@ -1864,6 +2141,17 @@ contains
             (process%sfchain, i, line, lhapdf_data, n_parameters)
     end if
   end subroutine process_set_strfun_lhapdf
+
+  subroutine process_set_strfun_pdf_builtin &
+       (process, i, line, pdf_builtin_data, n_parameters)
+    type(process_t), intent(inout), target :: process
+    integer, intent(in) :: i, line, n_parameters
+    type(pdf_builtin_data_t), intent(in) :: pdf_builtin_data
+    if (process%use_beams) then
+       call strfun_chain_set_strfun &
+            (process%sfchain, i, line, pdf_builtin_data, n_parameters)
+    end if
+  end subroutine process_set_strfun_pdf_builtin
 
   subroutine process_set_strfun_isr &
        (process, i, line, isr_data, n_parameters)
@@ -2325,27 +2613,56 @@ contains
          flavor_get_pdg (process%flv_out))
   end subroutine process_setup_subevt
 
-  subroutine process_setup_cuts (process, parse_node)
+  subroutine process_setup_cuts (process, parse_node, md5sum)
     type(process_t), intent(inout), target :: process
     type(parse_node_t), intent(in), target :: parse_node
+    character(32), intent(out), optional :: md5sum
     call eval_tree_init_lexpr &
          (process%cut_expr, parse_node, process%var_list, process%subevt)
+    if (present (md5sum)) &
+         md5sum = eval_tree_get_md5sum (process%cut_expr)
   end subroutine process_setup_cuts
 
-  subroutine process_setup_weight (process, parse_node)
+  subroutine process_setup_weight (process, parse_node, md5sum)
     type(process_t), intent(inout), target :: process
     type(parse_node_t), intent(in), target :: parse_node
+    character(32), intent(out), optional :: md5sum
     call eval_tree_init_expr &
          (process%reweighting_expr, parse_node, process%var_list, &
           process%subevt)
+    if (present (md5sum)) &
+         md5sum = eval_tree_get_md5sum (process%reweighting_expr)
   end subroutine process_setup_weight
 
-  subroutine process_setup_scale (process, parse_node)
+  subroutine process_setup_scale (process, parse_node, md5sum)
     type(process_t), intent(inout), target :: process
     type(parse_node_t), intent(in), target :: parse_node
+    character(32), intent(out), optional :: md5sum
     call eval_tree_init_expr &
          (process%scale_expr, parse_node, process%var_list, process%subevt)
+    if (present (md5sum)) &
+         md5sum = eval_tree_get_md5sum (process%scale_expr)
   end subroutine process_setup_scale
+
+  subroutine process_setup_fac_scale (process, parse_node, md5sum)
+    type(process_t), intent(inout), target :: process
+    type(parse_node_t), intent(in), target :: parse_node
+    character(32), intent(out), optional :: md5sum
+    call eval_tree_init_expr &
+         (process%fac_scale_expr, parse_node, process%var_list, process%subevt)
+    if (present (md5sum)) &
+         md5sum = eval_tree_get_md5sum (process%fac_scale_expr)
+  end subroutine process_setup_fac_scale
+
+  subroutine process_setup_ren_scale (process, parse_node, md5sum)
+    type(process_t), intent(inout), target :: process
+    type(parse_node_t), intent(in), target :: parse_node
+    character(32), intent(out), optional :: md5sum
+    call eval_tree_init_expr &
+         (process%ren_scale_expr, parse_node, process%var_list, process%subevt)
+    if (present (md5sum)) &
+         md5sum = eval_tree_get_md5sum (process%cut_expr)
+  end subroutine process_setup_ren_scale
 
   subroutine grid_parameters_write (grid_par, unit)
     type(grid_parameters_t), intent(in) :: grid_par
@@ -2619,8 +2936,28 @@ contains
           process%scale = process%sqrts_hat
        end if
     else
-       process%scale = process%sqrts_hat
+       process%scale = process%sqrts_hat      
+    end if   
+    if (eval_tree_is_defined (process%fac_scale_expr)) then
+       call eval_tree_evaluate (process%fac_scale_expr)
+       if (eval_tree_result_is_known (process%fac_scale_expr)) then
+          process%fac_scale = eval_tree_get_real (process%fac_scale_expr)
+       else
+          process%fac_scale = process%scale
+       end if
+    else
+       process%fac_scale = process%scale
     end if
+    if (eval_tree_is_defined (process%ren_scale_expr)) then
+       call eval_tree_evaluate (process%ren_scale_expr)
+       if (eval_tree_result_is_known (process%ren_scale_expr)) then
+          process%ren_scale = eval_tree_get_real (process%ren_scale_expr)
+       else
+          process%ren_scale = process%scale
+       end if
+    else
+       process%ren_scale = process%scale
+    end if    
   end subroutine process_compute_scale
 
   subroutine process_compute_vamp_phs_factor (process, weights)
@@ -2654,7 +2991,7 @@ contains
     type(process_t), intent(inout) :: process
     real(default) :: scale, nf, as_mz, mz, lambda, alpha_s
     integer :: order
-    scale = process%scale
+    scale = process%ren_scale
     as_mz = process%alpha_s_mz
     mz = process%mz
     lambda = process%lambda_qcd
@@ -2694,7 +3031,7 @@ contains
   subroutine process_evaluate (process)
     type(process_t), intent(inout), target :: process
     if (process%use_beams) then
-       call strfun_chain_evaluate (process%sfchain, process%scale)
+       call strfun_chain_evaluate (process%sfchain, process%fac_scale)
        process%sf_mapping_factor = &
             strfun_chain_get_mapping_factor (process%sfchain)
     else
@@ -2835,6 +3172,7 @@ contains
           call integration_results_write_current (process%results, unit=u)
           if (u >= 0) flush (u)
        end if
+       call integration_results_write_driver (process%results, process%id)
     end do
   end subroutine process_integrate
 
@@ -2905,6 +3243,8 @@ contains
     write (u, *) "  md5sum_cuts        = ", '"', md5sum%cuts, '"'
     write (u, *) "  md5sum_weight      = ", '"', md5sum%weight, '"'
     write (u, *) "  md5sum_scale       = ", '"', md5sum%scale, '"'
+    write (u, *) "  md5sum_fac_scale   = ", '"', md5sum%fac_scale, '"'
+    write (u, *) "  md5sum_ren_scale   = ", '"', md5sum%ren_scale, '"'    
     write (u, *)
     call grid_parameters_write (grid_parameters, u)
     write (u, *)
@@ -3001,7 +3341,19 @@ contains
     read (u, *)  buffer, equals, md5sum_file
     if (md5sum_file /= md5sum%scale) then
        call msg_message &
-            ("Scale expression have changed, discarding old grid file")
+            ("General scale expression has changed, discarding old grid file")
+       close (u);  return
+    end if    
+    read (u, *)  buffer, equals, md5sum_file
+    if (md5sum_file /= md5sum%fac_scale) then
+       call msg_message &
+            ("Factorization scale expression has changed, discarding old grid file")
+       close (u);  return
+    end if
+    read (u, *)  buffer, equals, md5sum_file
+    if (md5sum_file /= md5sum%ren_scale) then
+       call msg_message &
+            ("Renormalization scale expression has changed, discarding old grid file")
        close (u);  return
     end if
     read (u, *)
@@ -3391,7 +3743,9 @@ contains
     copy%var_list = original%var_list
     copy%cut_expr = original%cut_expr
     copy%reweighting_expr = original%reweighting_expr
-    copy%scale_expr = original%scale_expr
+    copy%scale_expr = original%scale_expr    
+    copy%fac_scale_expr = original%fac_scale_expr
+    copy%ren_scale_expr = original%ren_scale_expr    
     if (allocated (original%active_channel)) then
        allocate (copy%active_channel (size (original%active_channel)))
        copy%active_channel = original%active_channel
@@ -3486,6 +3840,17 @@ contains
        copy => process
     end if
   end function process_get_working_copy_ptr
+
+  subroutine process_tag_as_working_copy (process)
+    type(process_t), intent(inout), target :: process 
+    type(process_t), pointer :: original
+    if (associated (process%original)) then
+       original => process%original
+       original%working_copy => process
+    else
+       call msg_bug ("Process tag as working copy failed")
+    end if
+  end subroutine process_tag_as_working_copy
 
   subroutine process_free_copy (process)
     type(process_t), intent(inout), target :: process
@@ -4134,7 +4499,7 @@ contains
     print *, "* Scale setup"
     call stream_init (stream, var_str ("1 TeV"))
     call parse_tree_init_expr (parse_tree, stream, .true.)
-    call process_setup_scale (process, parse_tree_get_root_ptr (parse_tree))
+    call process_setup_fac_scale (process, parse_tree_get_root_ptr (parse_tree))
     call parse_tree_final (parse_tree)
     call stream_final (stream)
     print *

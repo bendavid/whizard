@@ -453,7 +453,8 @@ C... local variables
       IVETO=0
       
 c     matching parameters setup
-
+      NCY=50
+      NCPHI=60
 c     ktmode 0=cone algorithm, 1 kt algorithm, 2 edited kt alg.
 c     (1,2 still beta!!)
 c      ktmode = 0
@@ -578,8 +579,9 @@ c     set showered events particle momenta
 
       nrjets = 0
       do el = 1, nhep
-         if (isthep(el).eq.1.and.icolup(1,el).ne.0.or.
-     $        icolup(2,el).ne.0) then
+         if (isthep(el).eq.1.and.
+     $        (idhep(el).eq.21.or.
+     $        abs(idhep(el)).le.5)) then
             nrjets = nrjets + 1
             do j=1,4
                peh(j,nrjets) = phep(j,el)
@@ -598,7 +600,7 @@ c     sort pt_scales for showered events
 c     debug output
 
 c      if (ievnt.ge.25.and.ievnt.le.35) then
-
+c
 c         print *,pjets,'vs',njet
 c         print *,'-------------'
 c         do i=1,njet
@@ -775,8 +777,8 @@ c            goto 999
             im = hist(kah)/nmaxkt
             ikah = mod(hist(kah),nmaxkt)
             if (im.le.0.and.ikah.ne.kah) then
-               print *, 'Event ',ievnt,'thrown: not able to
-     $              cluster parton',i
+c               print *, 'Event ',ievnt,'thrown: not able to
+c     $              cluster parton',i
                goto 999
             endif
             

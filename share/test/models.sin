@@ -34,6 +34,10 @@ model = NMSSM_CKM
 read_slha ("nmssm.slha")
 process models_ccww_nmssm_ckm	   =    c, C	=>	Wp, Wm
 
+model = NMSSM_Hgg
+read_slha ("nmssm.slha")
+process models_ccww_nmssm_hgg	   =    g,g	=>	Wp, Wm
+
 model = PSSSM
 ## read_slha ("nmssm.slha")
 process models_ccww_psssm	   =    c, C	=>	Wp, Wm
@@ -57,7 +61,7 @@ model = SM_ac_CKM
 process models_ccww_sm_ac_ckm 	   = 	c, C	=>	Wp, Wm
 
 model = SM_km
-process models_ccww_sm_km 	   = 	c, C	=>	Wp, Wm
+process models_ccww_sm_km 	   = 	Wp, Wm	=>	Wp, Wm
 
 model = SM_top
 process models_ccww_sm_top 	   = 	c, C	=>	Wp, Wm
@@ -100,7 +104,8 @@ integrate (models_ccww_littlest, models_ccww_littlest_eta,
            models_ccww_littlest_tpar)
 integrate (models_ccww_mssm, models_ccww_mssm_ckm, models_ccww_mssm_grav)
 integrate (models_uudd_qcd, models_eemm_qed)
-integrate (models_ccww_nmssm, models_ccww_nmssm_ckm, models_ccww_psssm)
+integrate (models_ccww_nmssm, models_ccww_nmssm_ckm, models_ccww_nmssm_hgg,
+	   models_ccww_psssm)
 integrate (models_ccww_sm, models_ccww_sm_ckm, models_ccww_sm_ac, 
            models_ccww_sm_ac_ckm,
            models_ccww_sm_km, models_ccww_sm_top, models_ccww_sm_top_anom)

@@ -105,9 +105,10 @@ C...If event generation failed, quit loop
 
       CLOSE (LNHOUT)
       CLOSE (LNHIN)
+      GOTO 99
 
  90   WRITE(*,*) 'Error: Could not open LHEF event file'
       WRITE(*,*) 'Quitting...'
-      END
+ 99   END
 
 

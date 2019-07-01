@@ -1,9 +1,9 @@
-! WHIZARD 2.0.4 Tue Oct 26 2010
+! WHIZARD 2.0.5 Tue May 10 2011
 ! 
-! (C) 1999-2010 by 
-!     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+! Copyright (C) 1999-2011 by 
+!     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
-!     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+!     Juergen Reuter <juergen.reuter@desy.de>
 !     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
 !     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
 !
@@ -79,6 +79,7 @@ module models
   public :: particle_data_get_width
   public :: particle_data_get_isospin
   public :: model_t
+  public :: model_final
   public :: model_write
   public :: model_get_name
   public :: model_get_md5sum
@@ -89,6 +90,7 @@ module models
   public :: model_parameters_to_array
   public :: model_parameters_update
   public :: model_get_particle_ptr
+  public :: model_test_particle
   public :: model_set_particle_mass
   public :: model_set_particle_width
   public :: model_get_particle_pdg
@@ -98,6 +100,7 @@ module models
   public :: syntax_model_file_init
   public :: syntax_model_file_final
   public :: syntax_model_file_write
+  public :: model_read
   public :: model_list_write
   public :: model_list_read_model
   public :: model_list_model_exists
@@ -763,15 +766,21 @@ contains
   end function particle_data_get_isospin
 
   function particle_data_get_charged_pdg (prt) result (aval)
-    type(pdg_array_t) :: aval
+    type(pdg_array_t) :: aval, aval_p, aval_a
     type(particle_data_t), dimension(:), intent(in) :: prt
-    aval = pack (prt%pdg, abs (prt%charge_type) > 1)
+    aval_p = pack ( prt%pdg, abs (prt%charge_type) > 1) 
+    aval_a = pack (-prt%pdg, abs (prt%charge_type) > 1 &
+         .and. prt%has_antiparticle ) 
+    aval = aval_p // aval_a
   end function particle_data_get_charged_pdg
 
   function particle_data_get_colored_pdg (prt) result (aval)
-    type(pdg_array_t) :: aval
+    type(pdg_array_t) :: aval, aval_p, aval_a
     type(particle_data_t), dimension(:), intent(in) :: prt
-    aval = pack (prt%pdg, abs (prt%color_type) > 1)
+    aval_p = pack ( prt%pdg, abs (prt%color_type) > 1) 
+    aval_a = pack (-prt%pdg, abs (prt%color_type) > 1 & 
+         .and. prt%has_antiparticle )  
+    aval = aval_p // aval_a
   end function particle_data_get_colored_pdg
 
   subroutine vertex_init (vtx, pdg, model)
@@ -1325,6 +1334,25 @@ contains
        end if
     end if
   end function model_get_particle_ptr
+
+  function model_test_particle (model, pdg) result (exists)
+    logical :: exists
+    type(particle_data_t), pointer :: prt
+    type(model_t), intent(in), target :: model
+    integer, intent(in) :: pdg
+    integer :: i
+    prt => null ()
+    if (pdg /= UNDEFINED) then
+       do i = 1, size (model%prt)
+          if (model%prt(i)%pdg == abs (pdg)) then
+             prt => model%prt(i);  exit
+          end if
+       end do
+       exists = associated(prt)
+    else
+       exists = .false.
+    end if
+  end function model_test_particle
 
   subroutine model_set_particle_mass (model, pdg, mass)
     type(model_t), intent(inout) :: model

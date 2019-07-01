@@ -1,9 +1,9 @@
-! WHIZARD 2.0.4 Tue Oct 26 2010
+! WHIZARD 2.0.5 Tue May 10 2011
 ! 
-! (C) 1999-2010 by 
-!     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+! Copyright (C) 1999-2011 by 
+!     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
-!     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+!     Juergen Reuter <juergen.reuter@desy.de>
 !     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
 !     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
 !
@@ -75,10 +75,12 @@ module sf_lhapdf
      integer :: set = 0
      logical :: invert = .false.
      logical :: photon = .false.
+     logical :: has_photon = .false.
      integer :: photon_scheme = 0
      real(default) :: xmin = 0, xmax = 0
      real(default) :: qmin = 0, qmax = 0
      logical, dimension(-6:6) :: mask = .true.
+     logical :: mask_photon = .true.
   end type lhapdf_data_t
 
 
@@ -108,6 +110,15 @@ interface
      double precision, intent(in) :: x, q
      double precision, dimension(-6:6), intent(out) :: ff
    end subroutine evolvePDFM
+end interface
+
+interface
+   subroutine evolvePDFphotonM (set, x, q, ff, fphot)
+     integer, intent(in) :: set
+     double precision, intent(in) :: x, q
+     double precision, dimension(-6:6), intent(out) :: ff
+     double precision, intent(out) :: fphot
+   end subroutine evolvePDFphotonM
 end interface
 
 interface
@@ -147,6 +158,11 @@ interface
    end subroutine GetQ2maxM
 end interface
 
+interface
+   function has_photon () result(flag)
+      logical :: flag
+   end function has_photon
+end interface
 
 contains
 
@@ -178,10 +194,11 @@ contains
   subroutine lhapdf_init (status, set, prefix, file, member)
     type(lhapdf_status_t), intent(inout) :: status
     integer, intent(in) :: set
-    type(string_t), intent(in) :: prefix
+    type(string_t), intent(inout) :: prefix
     type(string_t), intent(inout) :: file
     integer, intent(inout) :: member
     if (lhapdf_status_is_initialized (status, set))  return
+    if (prefix == "")  prefix = LHAPDF_PDFSETS_PATH
     if (file == "") then
        select case (set)
        case (1);  file = LHAPDF_DEFAULT_PROTON
@@ -189,10 +206,11 @@ contains
        case (3);  file = LHAPDF_DEFAULT_PHOTON
        end select
     end if
-    if (data_file_exists (prefix // file)) then
-       call InitPDFsetM (set, char (prefix // file))
+    if (data_file_exists (prefix // "/" // file)) then
+       call InitPDFsetM (set, char (prefix // "/" // file))
     else
-       call msg_fatal ("LHAPDF: Data file '" // char (file) // "' not found.")
+       call msg_fatal ("LHAPDF: Data file '" &
+            // char (file) // "' not found in '" // char (prefix) // "'.")
        return
     end if
     if (.not. dataset_member_exists (set, member)) then
@@ -218,12 +236,12 @@ contains
   end subroutine lhapdf_init
 
   subroutine lhapdf_data_init &
-       (data, status, model, flv, file, member, photon_scheme)
+       (data, status, model, flv, prefix, file, member, photon_scheme)
     type(lhapdf_data_t), intent(out) :: data
     type(lhapdf_status_t), intent(inout) :: status
     type(model_t), intent(in), target :: model
     type(flavor_t), intent(in) :: flv
-    type(string_t), intent(in), optional :: file
+    type(string_t), intent(in), optional :: prefix, file
     integer, intent(in), optional :: member
     integer, intent(in), optional :: photon_scheme
     integer :: mem
@@ -256,7 +274,11 @@ contains
             // "incoming particle must be (anti)proton, pion, or photon.")
        return
     end select
-    data%prefix = LHAPDF_PDFSETS_PATH // "/"
+    if (present (prefix)) then
+       data%prefix = prefix
+    else
+       data%prefix = ""
+    end if
     if (present (file)) then
        data%file = file
     else
@@ -271,6 +293,7 @@ contains
     data%xmax = xmax
     data%qmin = sqrt (q2min)
     data%qmax = sqrt (q2max)
+    data%has_photon = has_photon ()
   end subroutine lhapdf_data_init
 
   subroutine lhapdf_data_set_mask (data, mask)
@@ -279,16 +302,24 @@ contains
     data%mask = mask
   end subroutine lhapdf_data_set_mask
 
-  subroutine lhapdf_data_write (data, unit)
+  subroutine lhapdf_data_write (data, unit, md5)
     type(lhapdf_data_t), intent(in) :: data
     integer, intent(in), optional :: unit
     integer :: u
+    logical, intent(in), optional :: md5
+    logical :: is_md5
+    if (present (md5)) then
+       is_md5 = md5
+    else
+       is_md5 = .false.
+    end if
     u = output_unit (unit);  if (u < 0)  return
     write (u, *) "LHAPDF data:"
     if (data%set /= 0) then
        write (u, "(3x,A)", advance="no") "flavor       = "
        call flavor_write (data%flv_in, u);  write (u, *)
-       write (u, *) "  prefix       = ", char (data%prefix)
+       if (.not. is_md5) &
+          write (u, *) "  prefix       = ", char (data%prefix)
        write (u, *) "  file         = ", char (data%file)
        write (u, *) "  member       = ", data%member
        write (u, *) "  x(min)       = ", data%xmin
@@ -299,6 +330,7 @@ contains
        if (data%photon)  write (u, *) "  IP2 (scheme) = ", data%photon_scheme
        write (u, *) "  mask         = ", &
             data%mask(-6:-1), "*", data%mask(0), "*", data%mask(1:6)
+       write (u, *) "  photon mask  = ", data%mask_photon
     else
        write (u, *) "  [undefined]"
     end if
@@ -332,6 +364,16 @@ contains
                (/ qn_beam, qn_remnant, qn_parton /))
        end if
     end do
+    if (data%has_photon .and. data%mask_photon) then
+       call flavor_init (flv, PHOTON, data%model)
+       call flavor_init (flv_remnant, HADRON_REMNANT_SINGLET, data%model)
+       call quantum_numbers_init (qn_remnant, flv = flv_remnant, &
+          col = color_from_flavor (flv_remnant, 1))
+       call quantum_numbers_init (qn_parton, flv = flv, &
+          col = color_from_flavor (flv, 1, reverse=.true.))
+       call interaction_add_state (int, &
+          (/qn_beam, qn_remnant, qn_parton /))
+    end if
     call interaction_freeze (int)
   end subroutine interaction_init_lhapdf
 
@@ -370,6 +412,7 @@ contains
     type(lhapdf_data_t), intent(in) :: lhapdf_data
     double precision :: xx, qq, ss
     double precision, dimension(-6:6) :: ff
+    double precision :: fphot
     complex(default), dimension(:), allocatable :: fc
     external :: evolvePDFM, evolvePDFpM
     xx = x
@@ -377,17 +420,31 @@ contains
     qq = max (lhapdf_data% qmin, qq)
     if (.not. lhapdf_data% photon) then
        if (lhapdf_data% invert) then
-          call evolvePDFM (lhapdf_data% set, xx, qq, ff(6:-6:-1))
+          if (lhapdf_data%has_photon) then
+             call evolvePDFphotonM (lhapdf_data% set, xx, qq, ff(6:-6:-1), fphot)
+          else
+             call evolvePDFM (lhapdf_data% set, xx, qq, ff(6:-6:-1))
+          end if
        else
-          call evolvePDFM (lhapdf_data% set, xx, qq, ff)
+          if (lhapdf_data%has_photon) then
+             call evolvePDFphotonM (lhapdf_data% set, xx, qq, ff, fphot)
+          else
+             call evolvePDFM (lhapdf_data% set, xx, qq, ff)
+          end if
        end if
     else
        ss = s
        call evolvePDFpM (lhapdf_data% set, xx, qq, &
             ss, lhapdf_data% photon_scheme, ff)
     end if
-    allocate (fc (count (lhapdf_data% mask)))
-    fc = max (pack (ff / x, lhapdf_data% mask) * f, 0._default)
+    if (lhapdf_data%has_photon) then
+       allocate (fc (count ((/lhapdf_data%mask, lhapdf_data%mask_photon/))))
+       fc = max (pack ((/ff, fphot/) / x, &
+         (/lhapdf_data% mask, lhapdf_data%mask_photon/)) * f, 0._default)
+    else
+       allocate (fc (count (lhapdf_data%mask)))
+       fc = max (pack (ff / x, lhapdf_data%mask) * f, 0._default)
+    end if
     call interaction_set_matrix_element (int, fc)
   end subroutine interaction_apply_lhapdf
 

@@ -1,14 +1,14 @@
 # Makefile.am -- Makefile for O'Mega within and without WHIZARD
-# $Id: Makefile.am 2798 2010-09-15 13:36:15Z jr_reuter $
+# $Id: Makefile.am 3203 2011-04-30 10:43:05Z jr_reuter $
 ##
 ## Process this file with automake to produce Makefile.in
 ##
 ########################################################################
 #
-# Copyright (C) 1999-2010 by 
-#     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+# Copyright (C) 1999-2011 by 
+#     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
-#     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+#     Juergen Reuter <juergen.reuter@desy.de>
 #     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
@@ -53,7 +53,11 @@ LATEX_STYLES = \
     noweb.sty ocamlweb.sty \
     feynmp.sty feynmp.mp emp.sty
 
+if DISTRIBUTION
 PDFS = omega.pdf omega-paper-1.pdf omega-paper-2.pdf 
+else
+PDFS = 
+endif
 
 # Avoid mpost race condition
 omega-paper-2.pdf: omega-paper-1.pdf 
@@ -76,6 +80,7 @@ endif
 
 SUFFIXES = .mly .mll .ml .implementation .mli .interface .nw .tex .dvi .eps .pdf .ps
 
+if DISTRIBUTION
 if SUPP_PDF_AVAILABLE
 if PDFLATEX_AVAILABLE
 .tex.pdf:
@@ -110,12 +115,15 @@ endif DVIPS_AVAILABLE
 endif LATEX_AVAILABLE
 endif !PDFLATEX_AVAILABLE
 endif SUPP_PDF_AVAILABLE
+endif DISTRIBUTION
 
+if DISTRIBUTION
 if SUPP_PDF_AVAILABLE
 if PDFLATEX_AVAILABLE
 omega-paper-1.pdf: el_te_ph.pdf modules.pdf
-endif
-endif
+endif PDFLATEX_AVAILABLE
+endif SUPP_PDF_AVAILABLE
+endif DISTRIBUTION
 
 OMEGA_CORE_INTERFACES = $(OMEGA_CORE_MLI:.mli=.interface)
 OMEGA_CORE_IMPLEMENTATIONS = $(OMEGA_CORE_ML:.ml=.implementation)
@@ -144,11 +152,12 @@ else NOWEB_AVAILABLE
 
 omega.pdf: \
     $(OMEGA_INTERFACES) $(OMEGA_IMPLEMENTATIONS) omegalib.tex index.tex \
-    $(PICTURES_PDF) $(PICTURES_PS)
+    $(PICTURES_PDF) $(PICTURES_EPS)
 
 .nw.tex:
 	$(NOWEAVE) -delay $< | $(CPIF) $@
 
+if DISTRIBUTION
 if OCAMLWEB_AVAILABLE
 
 .mll.implementation:
@@ -168,12 +177,25 @@ index.tex: $(OMEGA_CAML)
 	sed -n '/\\ocwbeginindex{}/,/\\ocwendindex{}/p' >$@
 
 endif OCAMLWEB_AVAILABLE
+endif DISTRIBUTION
 
 endif NOWEB_AVAILABLE
 
+if EPSPDF_AVAILABLE
+if EPSPDF_043
+.eps.pdf:
+	$(EPSPDF) $< $@ 
+else
 if EPSTOPDF_AVAILABLE
 .eps.pdf:
 	$(EPSTOPDF) --outfile=$@ $<
+endif
+endif
+else
+if EPSTOPDF_AVAILABLE
+.eps.pdf:
+	$(EPSTOPDF) --outfile=$@ $<
+endif
 endif
 
 ########################################################################
@@ -181,7 +203,7 @@ endif
 ## Cleanup tasks
 mostlyclean-latex:
 	-rm -f *.log *.aux *.toc *.mpx *.idx *.out omega*.mp \
-	omega*pics.t[0-9]* omega*pics.[0-9]* $(PICTURES_PDF) $(PICTURES_PS) \
+	omega*pics.t[0-9]* omega*pics.[0-9]* $(PICTURES_PDF) \
 	omegalib.tex
 clean-latex:
 maintainer-clean-latex:
@@ -222,6 +244,18 @@ mostlyclean-local: mostlyclean-latex mostlyclean-caml mostlyclean-omega
 clean-local: clean-latex clean-caml
 maintainer-clean-local: maintainer-clean-latex maintainer-clean-caml \
 	maintainer-clean-omega maintainer-clean-backup
+
+if !DISTRIBUTION
+install-data-hook: 
+	-$(INSTALL) -m 644 omega.pdf $(DESTDIR)$(datarootdir)/doc/omega
+	-$(INSTALL) -m 644 omega-paper-1.pdf $(DESTDIR)$(datarootdir)/doc/omega
+	-$(INSTALL) -m 644 omega-paper-2.pdf $(DESTDIR)$(datarootdir)/doc/omega
+
+uninstall-hook: 
+	-rm -f $(DESTDIR)/$(datarootdir)/doc/omega/omega.pdf 
+	-rm -f $(DESTDIR)/$(datarootdir)/doc/omega/omega-paper-1.pdf 
+	-rm -f $(DESTDIR)/$(datarootdir)/doc/omega/omega-paper-2.pdf 
+endif
 
 distclean-local:
 	-test "$(srcdir)" != "." && rm -f $(LATEX_STYLES)

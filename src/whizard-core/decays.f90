@@ -1,9 +1,9 @@
-! WHIZARD 2.0.4 Tue Oct 26 2010
+! WHIZARD 2.0.5 Tue May 10 2011
 ! 
-! (C) 1999-2010 by 
-!     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+! Copyright (C) 1999-2011 by 
+!     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
-!     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+!     Juergen Reuter <juergen.reuter@desy.de>
 !     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
 !     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
 !
@@ -478,6 +478,7 @@ contains
     real(default) :: excess
     type(evaluator_t), pointer :: process_eval_sqme
     call process_set_beam_momenta (decay%process, (/ p /))
+    call process_tag_as_working_copy (decay%process)
     call process_generate_unweighted_event (decay%process, rng, excess=excess)
     process_eval_sqme => process_get_eval_sqme_ptr (decay%process)
     call evaluator_normalize_by_trace (process_eval_sqme)

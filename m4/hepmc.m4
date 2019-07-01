@@ -39,20 +39,19 @@ AC_SUBST([HEPMC_VERSION])
 
 wo_hepmc_ldflags="-lHepMC"
 
-LDFLAGS_STATIC=""
 if test "$enable_hepmc" = "yes"; then
    ### Checking for static C++ libraries for the static version
    ### This is only necessary for MAC OS X and BSD-like OS
    case $host in
      *-darwin*)
-	LDFLAGS_STATIC="-lstdc++-static" ;;
+	wo_ldflags_stdcpp="-lstdc++-static" ;;
      *-*-freebsd2*|*-*-freebsd3.0*|*-*-freebsdelf3.0*)
-	LDFLAGS_STATIC="-lstdc++-static" ;;
+	wo_ldflags_stdcpp="-lstdc++-static" ;;
      *)
-        LDFLAGS_STATIC="" ;;
+        wo_ldflags_stdcpp="-lstdc++" ;;
   esac
-  AC_MSG_CHECKING([for LDFLAGS_STATIC: host system is $host_os: static flag])
-  AC_MSG_RESULT([$LDFLAGS_STATIC])
+  AC_MSG_CHECKING([for wo_ldflags_stdcpp: host system is $host_os: static flag])
+  AC_MSG_RESULT([$wo_ldflags_stdcpp])
   AC_MSG_CHECKING([for GenEvent class in -lHepMC])
   if test -n "$HEPMC_DIR"; then
     wo_hepmc_ldflags="-L$HEPMC_DIR/lib $wo_hepmc_ldflags"
@@ -80,7 +79,6 @@ if test "$enable_hepmc" = "yes"; then
   LDFLAGS_HEPMC=$wo_hepmc_ldflags
 fi
 
-AC_SUBST([LDFLAGS_STATIC])
 AC_SUBST([HEPMC_INCLUDES])
 AC_SUBST([LDFLAGS_HEPMC])
 

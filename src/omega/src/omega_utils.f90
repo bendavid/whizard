@@ -1,4 +1,4 @@
-!  $Id: omegalib.nw 2848 2010-10-07 14:26:20Z jr_reuter $
+!  $Id: omegalib.nw 3104 2011-04-02 10:31:01Z cnspeckn $
 !
 !  Copyright (C) 1999-2009 by 
 !      Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
@@ -40,26 +40,29 @@ module omega_utils
   integer, parameter, public :: omega_utils_2010_01_A = 0
 contains
   pure subroutine omega_update_helicity_selection &
-               (count, amp, max_abs, sum_abs, mask, threshold, cutoff)
+               (count, amp, max_abs, sum_abs, mask, threshold, cutoff, mask_dirty)
     integer, intent(inout) :: count
     complex(kind=default), dimension(:,:,:), intent(in) :: amp
     real(kind=default), dimension(:), intent(inout) :: max_abs
     real(kind=default), intent(inout) :: sum_abs
-    logical, dimension(:), intent(out) :: mask
+    logical, dimension(:), intent(inout) :: mask
     real(kind=default), intent(in) :: threshold
     integer, intent(in) :: cutoff
+    logical, intent(out) :: mask_dirty
     integer :: h
     real(kind=default) :: avg
+    mask_dirty = .false.
     if (threshold > 0) then
        count = count + 1
        if (count <= cutoff) then
-          forall (h = lbound (amp, 2) : ubound (amp, 2))
-             max_abs(h) = max (max_abs(h), maxval (abs (amp(:,h,:))))
+          forall (h = lbound (amp, 3) : ubound (amp, 3))
+             max_abs(h) = max (max_abs(h), maxval (abs (amp(:,:,h))))
           end forall
           sum_abs = sum_abs + sum (abs (amp))
           if (count == cutoff) then
              avg = sum_abs / size (amp) / cutoff
              mask = max_abs >= threshold * epsilon (avg) * avg
+             mask_dirty = .true.
           end if
        end if
     end if

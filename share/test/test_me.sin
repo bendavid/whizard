@@ -1,7 +1,9 @@
 model = SM
 
 process test_me_eemm = e1, E1 => e2, E2 { $method = "test" }
+process test_me_ugug = u, g => u, g { $method = "test" }
 process test_me_unit = e1, E1 => e2, E2 { $method = "unit" }
+process test_me_unit_col = u, U => g, g { $method = "unit" }
 
 compile
 
@@ -17,9 +19,21 @@ tolerance = 3*0.01
 expect (integral (test_me_eemm) ==~ 1.000)
 
 seed = 0
-integrate (test_me_unit) 
+integrate (test_me_ugug) 
 printf "Expecting 1.000"
+tolerance = 3*0.01
+expect (integral (test_me_ugug) ==~ 1.000)
+
+seed = 0
+integrate (test_me_unit) 
+printf "Expecting 774646"
 tolerance = 3*1.0
 expect (integral (test_me_unit) ==~ 774646)
+
+seed = 0
+integrate (test_me_unit_col) 
+printf "Expecting 774646"
+tolerance = 3*100
+expect (integral (test_me_unit_col) ==~ 774646)
 
 show (results)

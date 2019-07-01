@@ -1,14 +1,15 @@
 # Makefile.am -- Makefile for O'Mega within and without WHIZARD
-# $Id: Makefile.am 1473 2010-01-07 07:55:00Z ohl $
+# $Id: Makefile.am 3191 2011-04-18 07:35:49Z jr_reuter $
 ##
 ## Process this file with automake to produce Makefile.in
 ##
 ########################################################################
 #
-# Copyright (C) 1999-2009 by 
-#     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+# Copyright (C) 1999-2011 by 
+#     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
-#     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+#     Juergen Reuter <juergen.reuter@desy.de>
+#     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by 
@@ -45,9 +46,6 @@
 ### 	-target:parameter_module omega_parameters_mssm_4
 ### 
 ### FC_OPT = @FC_OPT@
-### FC_DUSTY = -FI
-### # FC_DUSTY = @FC_DUSTY@
-### FC_WIDE = @FC_WIDE@
 ### FC_FLAGS = $(FC_OPT) -I$(build_libdir)
 ### 
 ### if FC_IMPURE
@@ -174,7 +172,7 @@
 ### 	$(FC) $(FC_FLAGS) -c -o $@ $<
 ### 
 ### %_p.o: $(build_srcdir)/%.$(FC_SRC_EXT) parameters.MSSM_4.omega.o
-### 	$(FC) $(FC_FLAGS) $(FC_PROF) -c -o $@ $<
+### 	$(FC) $(FC_FLAGS) -c -o $@ $<
 ### 
 ### ########################################################################
 ### 
@@ -201,22 +199,22 @@
 ### 	$(FC) $(FC_FLAGS) -o $@ $(OBJST) maint.o $(FC_LIB_FLAGS)
 ### 
 ### madgraph4.o: $(build_srcdir)/madgraph4.$(FC_SRC_EXT) lib$(HELAS).a
-### 	$(FC) $(FC_DUSTY) $(FC_FLAGS) $(FC_WIDE) -c -o $@ $<
+### 	$(FC) $(FC_FLAGS) -c -o $@ $<
 ### 
 ### madgraph5.o: $(build_srcdir)/madgraph5.$(FC_SRC_EXT) lib$(HELAS).a
-### 	$(FC) $(FC_DUSTY) $(FC_FLAGS) $(FC_WIDE) -c -o $@ $<
+### 	$(FC) $(FC_FLAGS) -c -o $@ $<
 ### 
 ### madgraph6.o: $(build_srcdir)/madgraph6.$(FC_SRC_EXT) lib$(HELAS).a
-### 	$(FC) $(FC_DUSTY) $(FC_FLAGS) $(FC_WIDE) -c -o $@ $<
+### 	$(FC) $(FC_FLAGS) -c -o $@ $<
 ### 
 ### madgraph7.o: $(build_srcdir)/madgraph7.$(FC_SRC_EXT) lib$(HELAS).a
-### 	$(FC) $(FC_DUSTY) $(FC_FLAGS) $(FC_WIDE) -c -o $@ $<
+### 	$(FC) $(FC_FLAGS) -c -o $@ $<
 ### 
 ### madgraph8.o: $(build_srcdir)/madgraph8.$(FC_SRC_EXT) lib$(HELAS).a
-### 	$(FC) $(FC_DUSTY) $(FC_FLAGS) $(FC_WIDE) -c -o $@ $<
+### 	$(FC) $(FC_FLAGS) -c -o $@ $<
 ### 
 ### madgraphx.o: $(build_srcdir)/madgraphx.$(FC_SRC_EXT) lib$(HELAS).a
-### 	$(FC) $(FC_DUSTY) $(FC_FLAGS) $(FC_WIDE) -c -o $@ $<
+### 	$(FC) $(FC_FLAGS) -c -o $@ $<
 ### 
 ### ########################################################################
 ### #
@@ -661,7 +659,7 @@
 ### 	ar cr $@ $<
 ### 
 ### $(HELAS).o: $(build_srcdir)/$(HELAS).$(FC_SRC_EXT)
-### 	$(FC) $(FC_DUSTY) $(FC_FLAGS) -c -o $@ $<
+### 	$(FC) $(FC_FLAGS) -c -o $@ $<
 ### 
 ### clean:
 ### 	rm -f *.o main[4-9] *~ *.mod *_module*

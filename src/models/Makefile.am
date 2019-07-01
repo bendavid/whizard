@@ -2,10 +2,11 @@
 ##
 ## Process this file with automake to produce Makefile.in
 #
-# Copyright (C) 1999-2009 by 
-#     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+# Copyright (C) 1999-2011 by 
+#     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
-#     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+#     Juergen Reuter <juergen.reuter@desy.de>
+#     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by 
@@ -42,6 +43,7 @@ libmodels_la_SOURCES = \
   parameters.MSSM_Grav.f90 \
   parameters.NMSSM.f90 \
   parameters.NMSSM_CKM.f90 \
+  parameters.NMSSM_Hgg.f90 \
   parameters.QED.f90 \
   parameters.QCD.f90 \
   parameters.PSSSM.f90 \
@@ -76,6 +78,7 @@ nodist_execmod_HEADERS = \
   parameters_mssm_grav.$(FC_MODULE_EXT) \
   parameters_nmssm.$(FC_MODULE_EXT) \
   parameters_nmssm_ckm.$(FC_MODULE_EXT) \
+  parameters_nmssm_hgg.$(FC_MODULE_EXT) \
   parameters_qed.$(FC_MODULE_EXT) \
   parameters_qcd.$(FC_MODULE_EXT) \
   parameters_psssm.$(FC_MODULE_EXT) \
@@ -167,6 +170,9 @@ parameters_nmssm.$(FC_MODULE_EXT): parameters.NMSSM.lo
 parameters_nmssm_ckm.$(FC_MODULE_EXT): parameters.NMSSM_CKM.lo
 	@:
 
+parameters_nmssm_hgg.$(FC_MODULE_EXT): parameters.NMSSM_Hgg.lo
+	@:
+
 parameters_psssm.$(FC_MODULE_EXT): parameters.PSSSM.lo
 	@:
 
@@ -250,11 +256,17 @@ $(libmodels_la_OBJECTS) $(external_Threeshl_la_OBJECTS): \
 
 AM_FCFLAGS = -I$(auxdir) -Ithreeshl_bundle
 
+########################################################################
+## Default Fortran compiler options
+
+## Profiling
+if FC_USE_PROFILING
+AM_FCFLAGS += $(FCFLAGS_PROFILING)
+endif
+
 ## OpenMP
-AM_LDFLAGS =
-if WHIZARD_WITH_OPENMP
-AM_FCFLAGS += $(OPENMP_FCFLAGS)
-AM_LDFLAGS += $(OPENMP_FCFLAGS)
+if FC_USE_OPENMP
+AM_FCFLAGS += $(FCFLAGS_OPENMP)
 endif
 
 ########################################################################

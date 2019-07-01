@@ -1,9 +1,9 @@
-! WHIZARD 2.0.4 Tue Oct 26 2010
+! WHIZARD 2.0.5 Tue May 10 2011
 ! 
-! (C) 1999-2010 by 
-!     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+! Copyright (C) 1999-2011 by 
+!     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
-!     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+!     Juergen Reuter <juergen.reuter@desy.de>
 !     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
 !     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
 !
@@ -45,6 +45,9 @@ module iterations
   public :: iterations_list_get_n_calls_array
   public :: iterations_list_get_n_pass
   public :: iterations_list_get_n_calls
+  public :: iterations_list_has_custom_adaptation
+  public :: iterations_list_adapt_grids
+  public :: iterations_list_adapt_weights
   public :: iterations_list_get_n_it
   public :: iterations_list_adjust_n_calls
   public :: iterations_lists_init_default
@@ -53,6 +56,9 @@ module iterations
      private
      integer :: n_it = 0
      integer :: n_calls = 0
+     logical :: custom_adaptation = .false.
+     logical :: adapt_grids = .false.
+     logical :: adapt_weights = .false.
   end type iterations_spec_t
 
   type :: iterations_list_t
@@ -70,14 +76,25 @@ module iterations
 
 contains
 
-  subroutine iterations_list_init (it_list, n_it, n_calls)
+  subroutine iterations_list_init (it_list, n_it, n_calls, adapt, adapt_code)
     type(iterations_list_t), intent(inout) :: it_list
     integer, dimension(:), intent(in) :: n_it, n_calls
+    logical, dimension(:), intent(in), optional :: adapt
+    type(string_t), dimension(:), intent(in), optional :: adapt_code
     it_list%n_pass = size (n_it)
     if (allocated (it_list%pass)) deallocate (it_list%pass)    
     allocate (it_list%pass (it_list%n_pass))
     it_list%pass%n_it = n_it
     it_list%pass%n_calls = n_calls
+    if (present (adapt)) then
+       it_list%pass%custom_adaptation = adapt
+       if (any (verify (adapt_code, "wg") /= 0)) then
+          call msg_error ("iteration specification: " &
+               // "adaptation code letters must be 'w' or 'g'")
+       end if
+       it_list%pass%adapt_grids = scan (adapt_code, "g") /= 0
+       it_list%pass%adapt_weights = scan (adapt_code, "w") /= 0
+    end if
   end subroutine iterations_list_init
 
   subroutine iterations_list_complete (it_list, it_list_default)
@@ -116,6 +133,12 @@ contains
           write (ibuf, "(I0,':',I0)") &
                it_list%pass(i)%n_it, it_list%pass(i)%n_calls
           buffer = buffer // trim (ibuf)
+          if (it_list%pass(i)%custom_adaptation) then
+             buffer = buffer // '"'
+             if (it_list%pass(i)%adapt_grids)  buffer = buffer // "g"
+             if (it_list%pass(i)%adapt_weights)  buffer = buffer // "w"
+             buffer = buffer // '"'
+          end if          
        end do
     else
        buffer = buffer // "[undefined]"
@@ -163,6 +186,39 @@ contains
        n_calls = 0
     end if
   end function iterations_list_get_n_calls
+
+  function iterations_list_has_custom_adaptation (it_list, pass) result (flag)
+    logical :: flag
+    type(iterations_list_t), intent(in) :: it_list
+    integer, intent(in) :: pass
+    if (pass <= it_list%n_pass) then
+       flag = it_list%pass(pass)%custom_adaptation
+    else
+       flag = .false.
+    end if
+  end function iterations_list_has_custom_adaptation
+
+  function iterations_list_adapt_grids (it_list, pass) result (flag)
+    logical :: flag
+    type(iterations_list_t), intent(in) :: it_list
+    integer, intent(in) :: pass
+    if (pass <= it_list%n_pass) then
+       flag = it_list%pass(pass)%adapt_grids
+    else
+       flag = .false.
+    end if
+  end function iterations_list_adapt_grids
+
+  function iterations_list_adapt_weights (it_list, pass) result (flag)
+    logical :: flag
+    type(iterations_list_t), intent(in) :: it_list
+    integer, intent(in) :: pass
+    if (pass <= it_list%n_pass) then
+       flag = it_list%pass(pass)%adapt_weights
+    else
+       flag = .false.
+    end if
+  end function iterations_list_adapt_weights
 
   function iterations_list_get_n_it_tot (it_list) result (n_it)
     integer :: n_it

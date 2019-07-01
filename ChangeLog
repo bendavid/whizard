@@ -2,18 +2,74 @@ ChangeLog -- Summary of changes to the WHIZARD package
 	
 Use svn log to see detailed changes.
 
-        Version 2.0.4
+        Version 2.0.5
+
+2011-05-10 
+	RELEASE: version 2.0.5
+
+2011-05-09
+	Fixed bug in final state flavor sums
+	Minor improvements on phase-space setup
+	
+2011-05-05
+	Minor bug fixes
+	
+2011-04-15
+	WHIZARD as a precompiled 64-bit binary available
+	
+2011-04-06
+	Wall clock instead of cpu time for time estimates
+	
+2011-04-05
+	Major improvement on the phase space setup
+
+2011-04-02
+	OpenMP parallelization for helicity loop
+ 	
+2011-03-31
+	Tools for relocating WHIZARD and use in batch
+	environments
+	
+2011-03-29
+	Completely static builds possible, profiling options
+	
+2011-03-28
+	Visualization of integration history
+	
+2011-03-27
+	Fixed broken K-matrix implementation
+	
+2011-03-23
+	Including the GAMELAN manual in the distribution
+	
+2011-01-26
+	WHIZARD analysis can handle hadronized event files
+	
+2011-01-17
+	MSTW2008 and CT10 included
+	
+2010-12-23
+	Inclusion of NMSSM with Hgg couplings
+	
+2010-12-21 
+	Advanced options for integration passes
+	
+2010-11-16 
+	WHIZARD supports CTEQ6 and possibly other PDFs
+	directly; data files included in the distribution
+	
+##################################################################
 
 2010-10-26 
 	RELEASE: version 2.0.4
 
-2010-10-06
+2010-10-06 
 	Bug fix in MSSM implementation
 	
-2010-10-01
+2010-10-01 
 	Update to libtool 2.4
 	
-2010-09-29
+2010-09-29 
 	Support for anomalous top couplings (form factors etc.)
 	Bug fix for running gauge Yukawa SUSY couplings
 

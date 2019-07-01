@@ -1,10 +1,10 @@
-(* $Id: modellib_SM.ml 2856 2010-10-14 12:50:05Z fbach $
+(* $Id: modellib_SM.ml 3090 2011-03-31 22:07:21Z jr_reuter $
 
-   Copyright (C) 1999-2010 by
+   Copyright (C) 1999-2011 by
 
-       Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+       Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
-       Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+       Juergen Reuter <juergen.reuter@desy.de>
        Christian Speckner <christian.speckner@physik.uni-freiburg.de>
        Fabian Bach <fabian.bach@cern.ch> (only parts of this file)
 
@@ -23,9 +23,9 @@
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
 let rcs_file = RCS.parse "Modellib_SM" ["Lagragians"]
-    { RCS.revision = "$Revision: 2856 $";
-      RCS.date = "$Date: 2010-10-14 14:50:05 +0200 (Thu, 14 Oct 2010) $";
-      RCS.author = "$Author: fbach $";
+    { RCS.revision = "$Revision: 3090 $";
+      RCS.date = "$Date: 2011-04-01 00:07:21 +0200 (Fri, 01 Apr 2011) $";
+      RCS.author = "$Author: jr_reuter $";
       RCS.source
         = "$URL: svn+ssh://jr_reuter@login.hepforge.org/hepforge/svn/whizard/trunk/src/omega/src/modellib_SM.ml $" }
 
@@ -616,6 +616,7 @@ module SM (Flags : SM_flags) =
     type matter_field = L of int | N of int | U of int | D of int
     type gauge_boson = Ga | Wp | Wm | Z | Gl
     type other = Phip | Phim | Phi0 | H
+                 | Aux_top of int*int*int*int*string    (* lorentz*color*charge*conj*vertex *)
     type flavor = M of matter_field | G of gauge_boson | O of other
 
     let matter_field f = M f
@@ -655,6 +656,12 @@ module SM (Flags : SM_flags) =
       else
         ConjSpinor
 
+    let lorentz_aux = function
+      | 2 -> Tensor_1
+      | 1 -> Vector
+      | 0 -> Scalar
+      | _ -> invalid_arg ("SM.lorentz_aux: wrong value")
+
     let lorentz = function
       | M f ->
           begin match f with
@@ -666,12 +673,17 @@ module SM (Flags : SM_flags) =
           | Ga | Gl -> Vector
           | Wp | Wm | Z -> Massive_Vector
           end
-      | O f -> Scalar
+      | O f ->
+          begin match f with
+          | Aux_top (l,_,_,_,_) -> lorentz_aux l
+          | _ -> Scalar
+          end
 
     let color = function 
       | M (U n) -> Color.SUN (if n > 0 then 3 else -3)
-      | M (D n) -> Color.SUN  (if n > 0 then 3 else -3)
+      | M (D n) -> Color.SUN (if n > 0 then 3 else -3)
       | G Gl -> Color.AdjSUN 3
+      | O (Aux_top (_,co,_,_,_)) -> if co == 0 then Color.Singlet else Color.AdjSUN 3
       | _ -> Color.Singlet
 
     let prop_spinor n =
@@ -679,6 +691,12 @@ module SM (Flags : SM_flags) =
         Prop_Spinor
       else
         Prop_ConjSpinor
+
+    let prop_aux = function
+      | 2 -> Aux_Tensor_1
+      | 1 -> Aux_Vector
+      | 0 -> Aux_Scalar
+      | _ -> invalid_arg ("SM.prop_aux: wrong value")
 
     let propagator = function
       | M f ->
@@ -695,6 +713,7 @@ module SM (Flags : SM_flags) =
           begin match f with
           | Phip | Phim | Phi0 -> Only_Insertion
           | H -> Prop_Scalar
+          | Aux_top (l,_,_,_,_) -> prop_aux l
           end
 
 (* Optionally, ask for the fudge factor treatment for the widths of
@@ -733,6 +752,7 @@ module SM (Flags : SM_flags) =
           O (begin match f with
           | Phip -> Phim | Phim -> Phip | Phi0 -> Phi0
           | H -> H
+          | Aux_top (l,co,ch,n,v) -> Aux_top (l,co,-ch,-n,v)
           end)
 
     let fermion = function
@@ -791,6 +811,7 @@ module SM (Flags : SM_flags) =
           | H | Phi0 ->  0//1
           | Phip ->  1//1
           | Phim -> -1//1
+          | Aux_top (_,_,ch,_,_) -> ch//1
           end
 
     let lepton = function
@@ -813,14 +834,23 @@ module SM (Flags : SM_flags) =
       [ charge f; lepton f; baryon f] @ generation f
 
     type constant =
-      | Unit | Pi | Alpha_QED | Sin2thw
-      | Sinthw | Costhw | E | G_weak | Vev
+      | Unit | Half | Pi | Alpha_QED | Sin2thw
+      | Sinthw | Costhw | E | G_weak | I_G_weak | Vev
       | Q_lepton | Q_up | Q_down | G_CC | G_CCQ of int*int
       | G_NC_neutrino | G_NC_lepton | G_NC_up | G_NC_down 
-      | G_TVA_ttA 
-      | G_VLR_ttZ | G_TVA_ttZ 
-      | G_VLR_tbW | G_TLR_tbW 
-      | G_TVA_ttG
+      | G_TVA_ttA | G_TVA_bbA 
+      | G_VLR_ttZ | G_TVA_ttZ | G_TVA_bbZ 
+      | G_VLR_btW | G_VLR_tbW
+      | G_TLR_btW | G_TRL_tbW
+      | G_TLR_btWZ | G_TRL_tbWZ
+      | G_TLR_btWA | G_TRL_tbWA
+      | G_TVA_ttWW | G_TVA_bbWW
+      | G_TVA_ttG | G_TVA_ttGG
+      | G_SP_ttH
+      | G_VLR_qGuG | G_VLR_qBuB
+      | G_VLR_qBuB_u | G_VLR_qBuB_d | G_VLR_qBuB_e | G_VL_qBuB_n
+      | G_VL_qW | G_VL_qW_u | G_VL_qW_d
+      | G_SL_DttR | G_SR_DttR | G_SL_DttL | G_SLR_DbtR | G_SL_DbtL
       | I_Q_W | I_G_ZWW
       | G_WWWW | G_ZZWW | G_AZWW | G_AAWW
       | I_G1_AWW | I_G1_ZWW
@@ -925,7 +955,8 @@ module SM (Flags : SM_flags) =
         Real Q_down, Prod [Quot (Const 1, Const 3); Atom E];
         Real G_CC, Neg (Quot (Atom G_weak, Prod [Const 2; Sqrt (Const 2)]));
         Complex I_Q_W, Prod [I; Atom E];
-        Complex I_G_ZWW, Prod [I; Atom G_weak; Atom Costhw]]
+        Complex I_G_weak, Prod [I; Atom G_weak];
+        Complex I_G_ZWW, Prod [I; Atom G_weak; Atom Costhw] ]
              
 (* \begin{equation}
       - \frac{g}{2\cos\theta_w}
@@ -972,42 +1003,18 @@ module SM (Flags : SM_flags) =
    \end{equation} *)
 
     let mgm ((m1, g, m2), fbf, c) = ((M m1, G g, M m2), fbf, c)
+    let mom ((m1, o, m2), fbf, c) = ((M m1, O o, M m2), fbf, c)
 
     let electromagnetic_currents n =
       List.map mgm
         [ ((L (-n), Ga, L n), FBF (1, Psibar, V, Psi), Q_lepton);
           ((U (-n), Ga, U n), FBF (1, Psibar, V, Psi), Q_up);
           ((D (-n), Ga, D n), FBF (1, Psibar, V, Psi), Q_down) ]
-
-(* \begin{equation}
-     \Delta\mathcal{L}_{tt\gamma} =
-        - e \frac{\upsilon}{\Lambda^2}
-            \bar{t} i\sigma^{\mu\nu} k_\nu (d_V(k^2) + i d_A(k^2) \gamma_5) t A_\mu
-   \end{equation} *)
-
-    let anomalous_ttA =
-      if Flags.top_anom then
-        [ ((M (U (-3)), G Ga, M (U 3)), FBF (1, Psibar, TVAM, Psi), G_TVA_ttA) ]
-      else
-        []
         
     let color_currents n =
       List.map mgm
         [ ((U (-n), Gl, U n), FBF ((-1), Psibar, V, Psi), Gs);
           ((D (-n), Gl, D n), FBF ((-1), Psibar, V, Psi), Gs) ]
-
-(* \begin{equation}
-     \Delta\mathcal{L}_{ttg} =
-        - g_s \frac{\upsilon}{\Lambda^2}
-            \bar{t}\lambda^a i\sigma^{\mu\nu}k_\nu
-                (d_V(k^2)+id_A(k^2)\gamma_5)tG^a_\mu
-   \end{equation} *)
-
-    let anomalous_ttG =
-      if Flags.top_anom then
-        [ ((M (U (-3)), G Gl, M (U 3)), FBF (1, Psibar, TVAM, Psi), G_TVA_ttG) ]
-      else
-        []
 
 (* \begin{equation}
      \mathcal{L}_{\textrm{NC}} =
@@ -1021,21 +1028,6 @@ module SM (Flags : SM_flags) =
           ((N (-n), Z, N n), FBF (1, Psibar, VA, Psi), G_NC_neutrino);
           ((U (-n), Z, U n), FBF (1, Psibar, VA, Psi), G_NC_up);
           ((D (-n), Z, D n), FBF (1, Psibar, VA, Psi), G_NC_down) ] 
-
-(* \begin{equation}
-     \Delta\mathcal{L}_{ttZ} =
-        - \frac{g}{2 c_W} \frac{\upsilon^2}{\Lambda^2}\left\lbrack
-              \bar{t} \fmslash{Z} (X_L(k^2) P_L + X_R(k^2) P_R) t
-            - \bar{t}\frac{i\sigma^{\mu\nu}k_\nu}{m_Z}
-                  (d_V(k^2)+id_A(k^2)\gamma_5)tZ_\mu\right\rbrack
-   \end{equation} *)
-
-    let anomalous_ttZ =
-      if Flags.top_anom then
-        [ ((M (U (-3)), G Z, M (U 3)), FBF (1, Psibar, VLRM, Psi), G_VLR_ttZ);
-          ((M (U (-3)), G Z, M (U 3)), FBF (1, Psibar, TVAM, Psi), G_TVA_ttZ) ]
-      else
-        []
 
 (* \begin{equation}
      \mathcal{L}_{\textrm{CC}} =
@@ -1064,24 +1056,6 @@ module SM (Flags : SM_flags) =
             ((U (-n1), Wp, D n2), FBF (1, Psibar, VL, Psi), G_CCQ (n1,n2)) ] in
       ThoList.flatmap charged_currents' [1;2;3] @ 
       List.flatten (Product.list2 charged_currents_2 [1;2;3] [1;2;3])
-
-(* \begin{equation}
-     \Delta\mathcal{L}_{tbW} =
-        - frac{g}{\sqrt{2}} \frac{\upsilon^2}{\Lambda^2}\left\lbrack
-            \bar{b}\fmslash{W}^-(V_L(k^2) P_L+V_R(k^2) P_R) t
-          - \bar{b}\frac{i\sigma^{\mu\nu}k_\nu}{m_W}
-                (g_L(k^2)P_L+g_R(k^2)P_R\gamma_5)tW^-_\mu\right\rbrack
-        + \textnormal{H.c.}
-   \end{equation} *)
-
-    let anomalous_tbW =
-      if Flags.top_anom then
-        [ ((M (D (-3)), G Wm, M (U 3)), FBF (1, Psibar, VLRM, Psi), G_VLR_tbW);
-          ((M (U (-3)), G Wp, M (D 3)), FBF (1, Psibar, VLRM, Psi), G_VLR_tbW);
-          ((M (D (-3)), G Wm, M (U 3)), FBF (1, Psibar, TLRM, Psi), G_TLR_tbW);
-          ((M (U (-3)), G Wp, M (D 3)), FBF (1, Psibar, TLRM, Psi), G_TLR_tbW) ]
-      else
-        []
 
     let yukawa =
       [ ((M (U (-3)), O H, M (U 3)), FBF (1, Psibar, S, Psi), G_Htt);
@@ -1315,6 +1289,7 @@ module SM (Flags : SM_flags) =
 
 *)
 
+
     let k_matrix_quartic_gauge =
       if Flags.k_matrix then
         List.map qgc
@@ -1325,11 +1300,11 @@ module SM (Flags : SM_flags) =
             ((Wm, Wp, Wm, Wp), Vector4_K_Matrix_jr (0,
                    [(1, C_13_42)]), D_Alpha_WWWW0_U);
             ((Wp, Wm, Wp, Wm), Vector4_K_Matrix_jr (0,
-                   [(1, C_12_34)]), D_Alpha_WWWW0_S);
+                   [(1, C_12_34)]), D_Alpha_WWWW0_S); 
             ((Wp, Wm, Wp, Wm), Vector4_K_Matrix_jr (0,
                    [(1, C_14_23)]), D_Alpha_WWWW0_T);
             ((Wp, Wm, Wp, Wm), Vector4_K_Matrix_jr (0,
-                   [(1, C_13_42)]), D_Alpha_WWWW0_U);
+                   [(1, C_13_42)]), D_Alpha_WWWW0_U); 
             ((Wm, Wm, Wp, Wp), Vector4_K_Matrix_jr (0,
                    [(1, C_12_34)]), D_Alpha_WWWW2_S);
             ((Wm, Wm, Wp, Wp), Vector4_K_Matrix_jr (0,
@@ -1355,7 +1330,7 @@ module SM (Flags : SM_flags) =
             ((Z, Wp, Wm, Z), Vector4_K_Matrix_jr (2,
                    [(1, C_13_42)]), D_Alpha_ZZWW1_U);
             ((Z, Wp, Wm, Z), Vector4_K_Matrix_jr (2,
-                   [(1, C_14_23)]), D_Alpha_ZZWW1_T); 
+                   [(1, C_14_23)]), D_Alpha_ZZWW1_T);
             ((Z, Z, Z, Z), Vector4_K_Matrix_jr (0,
                    [(1, C_12_34)]), D_Alpha_ZZZZ_S);
             ((Z, Z, Z, Z), Vector4_K_Matrix_jr (0,
@@ -1363,30 +1338,33 @@ module SM (Flags : SM_flags) =
             ((Z, Z, Z, Z), Vector4_K_Matrix_jr (3,
                    [(1, C_14_23)]), D_Alpha_ZZZZ_S);
             ((Z, Z, Z, Z), Vector4_K_Matrix_jr (3,
-                   [(1, C_13_42); (1, C_12_34)]), D_Alpha_ZZZZ_T) ]
+                   [(1, C_13_42); (1, C_12_34)]), D_Alpha_ZZZZ_T)]
       else
         []
+
 
 
 (*i Thorsten's original implementation of the K matrix, which we keep since
    it still might be usefull for the future. 
 
+
     let k_matrix_quartic_gauge =
       if Flags.k_matrix then
         List.map qgc
-          [ ((Wm, Wp, Wm, Wp), Vector4_K_Matrix_tho (true, [K_Matrix_Coeff 0, 
+          [ ((Wm, Wp, Wm, Wp), Vector4_K_Matrix_tho (0, [K_Matrix_Coeff 0, 
                          K_Matrix_Pole 0]), Alpha_WWWW0);
-            ((Wm, Wm, Wp, Wp), Vector4_K_Matrix_tho (true, [K_Matrix_Coeff 2, 
+            ((Wm, Wm, Wp, Wp), Vector4_K_Matrix_tho (0, [K_Matrix_Coeff 2, 
                          K_Matrix_Pole 2]), Alpha_WWWW2);
-            ((Wm, Wp, Z, Z), Vector4_K_Matrix_tho (true, [(K_Matrix_Coeff 0, 
+            ((Wm, Wp, Z, Z), Vector4_K_Matrix_tho (0, [(K_Matrix_Coeff 0, 
                          K_Matrix_Pole 0); (K_Matrix_Coeff 2, 
                          K_Matrix_Pole 2)]), Alpha_ZZWW0);
-            ((Wm, Z, Wp, Z), Vector4_K_Matrix_tho (true, [K_Matrix_Coeff 1, 
+            ((Wm, Z, Wp, Z), Vector4_K_Matrix_tho (0, [K_Matrix_Coeff 1, 
                          K_Matrix_Pole 1]), Alpha_ZZWW1);
             ((Z, Z, Z, Z), Vector4_K_Matrix_tho (0, [K_Matrix_Coeff 0, 
                          K_Matrix_Pole 0]), Alpha_ZZZZ) ]
       else
         []
+
 i*)
 
     let quartic_gauge =
@@ -1543,10 +1521,249 @@ i*)
         ((O Phim, G Wp, G Ga), Scalar_Vector_Vector 1, I_Q_W);
         ((O Phim, G Wp, G Z), Scalar_Vector_Vector 1, I_G_ZWW) ]
 
+(* Anomalous trilinear interactions $f_i f_j V$ and $ttH$:
+   \begin{equation}
+     \Delta\mathcal{L}_{tt\gamma} =
+        - e \frac{\upsilon}{\Lambda^2}
+            \bar{t} i\sigma^{\mu\nu} k_\nu (d_V(k^2) + i d_A(k^2) \gamma_5) t A_\mu
+   \end{equation} *)
+
+    let anomalous_ttA =
+      if Flags.top_anom then
+        [ ((M (U (-3)), G Ga, M (U 3)), FBF (1, Psibar, TVAM, Psi), G_TVA_ttA) ]
+      else
+        []
+
+(* \begin{equation}
+     \Delta\mathcal{L}_{bb\gamma} =
+        - e \frac{\upsilon}{\Lambda^2}
+            \bar{b} i\sigma^{\mu\nu} k_\nu (d_V(k^2) + i d_A(k^2) \gamma_5) b A_\mu
+   \end{equation} *)
+
+    let anomalous_bbA =
+      if Flags.top_anom then
+        [ ((M (D (-3)), G Ga, M (D 3)), FBF (1, Psibar, TVAM, Psi), G_TVA_bbA) ]
+      else
+        []
+
+(* \begin{equation}
+     \Delta\mathcal{L}_{ttg} =
+        - g_s \frac{\upsilon}{\Lambda^2}
+            \bar{t}\lambda^a i\sigma^{\mu\nu}k_\nu
+                (d_V(k^2)+id_A(k^2)\gamma_5)tG^a_\mu
+   \end{equation} *)
+
+    let anomalous_ttG =
+      if Flags.top_anom then
+        [ ((M (U (-3)), G Gl, M (U 3)), FBF (1, Psibar, TVAM, Psi), G_TVA_ttG) ]
+      else
+        []
+
+(* \begin{equation}
+     \Delta\mathcal{L}_{ttZ} =
+        - \frac{g}{2 c_W} \frac{\upsilon^2}{\Lambda^2}\left\lbrack
+              \bar{t} \fmslash{Z} (X_L(k^2) P_L + X_R(k^2) P_R) t
+            + \bar{t}\frac{i\sigma^{\mu\nu}k_\nu}{m_Z}
+                  (d_V(k^2)+id_A(k^2)\gamma_5)tZ_\mu\right\rbrack
+   \end{equation} *)
+
+    let anomalous_ttZ =
+      if Flags.top_anom then
+        [ ((M (U (-3)), G Z, M (U 3)), FBF (1, Psibar, VLRM, Psi), G_VLR_ttZ);
+          ((M (U (-3)), G Z, M (U 3)), FBF (1, Psibar, TVAM, Psi), G_TVA_ttZ) ]
+      else
+        []
+
+(* \begin{equation}
+     \Delta\mathcal{L}_{bbZ} =
+        - \frac{g}{2 c_W} \frac{\upsilon^2}{\Lambda^2}
+              \bar{b}\frac{i\sigma^{\mu\nu}k_\nu}{m_Z}
+                  (d_V(k^2)+id_A(k^2)\gamma_5)bZ_\mu
+   \end{equation} *)
+
+    let anomalous_bbZ =
+      if Flags.top_anom then
+        [ ((M (D (-3)), G Z, M (D 3)), FBF (1, Psibar, TVAM, Psi), G_TVA_bbZ) ]
+      else
+        []
+
+(* \begin{equation}
+     \Delta\mathcal{L}_{tbW} =
+        - \frac{g}{\sqrt{2}} \frac{\upsilon^2}{\Lambda^2}\left\lbrack
+            \bar{b}\fmslash{W}^-(V_L(k^2) P_L+V_R(k^2) P_R) t
+          + \bar{b}\frac{i\sigma^{\mu\nu}k_\nu}{m_W}
+                (g_L(k^2)P_L+g_R(k^2)P_R)tW^-_\mu\right\rbrack
+        + \textnormal{H.c.}
+   \end{equation} *)
+
+    let anomalous_tbW =
+      if Flags.top_anom then
+        [ ((M (D (-3)), G Wm, M (U 3)), FBF (1, Psibar, VLRM, Psi), G_VLR_btW);
+          ((M (U (-3)), G Wp, M (D 3)), FBF (1, Psibar, VLRM, Psi), G_VLR_tbW);
+          ((M (D (-3)), G Wm, M (U 3)), FBF (1, Psibar, TLRM, Psi), G_TLR_btW);
+          ((M (U (-3)), G Wp, M (D 3)), FBF (1, Psibar, TRLM, Psi), G_TRL_tbW) ]
+      else
+        []
+
+(* \begin{equation}
+     \Delta\mathcal{L}_{ttH} =
+        - \frac{1}{\sqrt{2}} \bar{t} (Y_V(k^2)+iY_A(k^2)\gamma_5)t H
+   \end{equation} *)
+
+    let anomalous_ttH =
+      if Flags.top_anom then
+        [ ((M (U (-3)), O H, M (U 3)), FBF (1, Psibar, SPM, Psi), G_SP_ttH) ]
+      else
+        []
+
+(* quartic fermion-gauge interactions $f_i f_j V_1 V_2$ emerging from gauge-invariant
+effective operators:
+   \begin{equation}
+     \Delta\mathcal{L}_{ttgg} =
+        - \frac{g_s^2}{2} f_{abc} \frac{\upsilon}{\Lambda^2}
+            \bar{t} \lambda^a \sigma^{\mu\nu}
+                (d_V(k^2)+id_A(k^2)\gamma_5)t G^b_\mu G^c_\nu
+   \end{equation} *)
+
+    let anomalous_ttGG =
+      if Flags.top_anom then
+        [ ((M (U (-3)), O (Aux_top (2,1,0,1,"ttGG")), M (U 3)), FBF (1, Psibar, TVA, Psi), G_TVA_ttGG);
+          ((O (Aux_top (2,1,0,-1,"ttGG")), G Gl, G Gl), Aux_Gauge_Gauge 1, I_Gs) ]
+      else
+        []
+
+(* \begin{equation}
+     \Delta\mathcal{L}_{tbWA} =
+        - i\sin\theta_w \frac{g^2}{2\sqrt{2}} \frac{\upsilon^2}{\Lambda^2}\left\lbrack
+            \bar{b}\frac{\sigma^{\mu\nu}}{m_W}
+                (g_L(k^2)P_L+g_R(k^2)P_R)t A_\mu W^-_\nu \right\rbrack
+        + \textnormal{H.c.}
+   \end{equation} *)
+
+    let anomalous_tbWA =
+      if Flags.top_anom then
+        [ ((M (D (-3)), O (Aux_top (2,0,-1,1,"btWA")), M (U 3)), FBF (1, Psibar, TLR, Psi), G_TLR_btWA);
+          ((O (Aux_top (2,0,1,-1,"btWA")), G Ga, G Wm), Aux_Gauge_Gauge 1, I_G_weak);
+          ((M (U (-3)), O (Aux_top (2,0,1,1,"tbWA")), M (D 3)), FBF (1, Psibar, TRL, Psi), G_TRL_tbWA);
+          ((O (Aux_top (2,0,-1,-1,"tbWA")), G Wp, G Ga), Aux_Gauge_Gauge 1, I_G_weak) ]
+      else
+        []
+
+(* \begin{equation}
+     \Delta\mathcal{L}_{tbWZ} =
+        - i\cos\theta_w \frac{g^2}{2\sqrt{2}} \frac{\upsilon^2}{\Lambda^2}\left\lbrack
+            \bar{b}\frac{\sigma^{\mu\nu}}{m_W}
+                (g_L(k^2)P_L+g_R(k^2)P_R)t Z_\mu W^-_\nu \right\rbrack
+        + \textnormal{H.c.}
+   \end{equation} *)
+
+    let anomalous_tbWZ =
+      if Flags.top_anom then
+        [ ((M (D (-3)), O (Aux_top (2,0,-1,1,"btWZ")), M (U 3)), FBF (1, Psibar, TLR, Psi), G_TLR_btWZ);
+          ((O (Aux_top (2,0,1,-1,"btWZ")), G Z, G Wm), Aux_Gauge_Gauge 1, I_G_weak);
+          ((M (U (-3)), O (Aux_top (2,0,1,1,"tbWZ")), M (D 3)), FBF (1, Psibar, TRL, Psi), G_TRL_tbWZ);
+          ((O (Aux_top (2,0,-1,-1,"tbWZ")), G Wp, G Z), Aux_Gauge_Gauge 1, I_G_weak) ]
+      else
+        []
+
+(* \begin{equation}
+     \Delta\mathcal{L}_{ttWW} =
+        - i \frac{g^2}{2} \frac{\upsilon^2}{\Lambda^2}
+            \bar{t} \frac{\sigma^{\mu\nu}}{m_W}
+                (d_V(k^2)+id_A(k^2)\gamma_5)t W^-_\mu W^+_\nu
+   \end{equation} *)
+
+    let anomalous_ttWW =
+      if Flags.top_anom then
+        [ ((M (U (-3)), O (Aux_top (2,0,0,1,"ttWW")), M (U 3)), FBF (1, Psibar, TVA, Psi), G_TVA_ttWW);
+          ((O (Aux_top (2,0,0,-1,"ttWW")), G Wm, G Wp), Aux_Gauge_Gauge 1, I_G_weak) ]
+      else
+        []
+
+(* \begin{equation}
+     \Delta\mathcal{L}_{bbWW} =
+        - i \frac{g^2}{2} \frac{\upsilon^2}{\Lambda^2}
+            \bar{b} \frac{\sigma^{\mu\nu}}{m_W}
+                (d_V(k^2)+id_A(k^2)\gamma_5)b W^-_\mu W^+_\nu
+   \end{equation} *)
+
+    let anomalous_bbWW =
+      if Flags.top_anom then
+        [ ((M (D (-3)), O (Aux_top (2,0,0,1,"ttWW")), M (D 3)), FBF (1, Psibar, TVA, Psi), G_TVA_bbWW);
+          ((O (Aux_top (2,0,0,-1,"ttWW")), G Wm, G Wp), Aux_Gauge_Gauge 1, I_G_weak) ]
+      else
+        []
+
+(* 4-fermion contact terms emerging from operator rewriting: *)
+
+    let anomalous_top_qGuG_tt =
+      [ ((M (U (-3)), O (Aux_top (1,1,0,1,"qGuG")), M (U 3)), FBF (1, Psibar, VLR, Psi), G_VLR_qGuG) ]
+
+    let anomalous_top_qGuG_ff n =
+      List.map mom
+        [ ((U (-n), Aux_top (1,1,0,-1,"qGuG"), U n), FBF (1, Psibar, V, Psi), Unit);
+          ((D (-n), Aux_top (1,1,0,-1,"qGuG"), D n), FBF (1, Psibar, V, Psi), Unit) ]
+
+    let anomalous_top_qGuG =
+      if Flags.top_anom then
+        anomalous_top_qGuG_tt @ ThoList.flatmap anomalous_top_qGuG_ff [1;2;3]
+      else
+        []
+
+    let anomalous_top_qBuB_tt =
+      [ ((M (U (-3)), O (Aux_top (1,0,0,1,"qBuB")), M (U 3)), FBF (1, Psibar, VLR, Psi), G_VLR_qBuB) ]
+
+    let anomalous_top_qBuB_ff n =
+      List.map mom
+        [ ((U (-n), Aux_top (1,0,0,-1,"qBuB"), U n), FBF (1, Psibar, VLR, Psi), G_VLR_qBuB_u);
+          ((D (-n), Aux_top (1,0,0,-1,"qBuB"), D n), FBF (1, Psibar, VLR, Psi), G_VLR_qBuB_d);
+          ((L (-n), Aux_top (1,0,0,-1,"qBuB"), L n), FBF (1, Psibar, VLR, Psi), G_VLR_qBuB_e);
+          ((N (-n), Aux_top (1,0,0,-1,"qBuB"), N n), FBF (1, Psibar, VL, Psi), G_VL_qBuB_n) ]
+
+    let anomalous_top_qBuB =
+      if Flags.top_anom then
+        anomalous_top_qBuB_tt @ ThoList.flatmap anomalous_top_qBuB_ff [1;2;3]
+      else
+        []
+
+    let anomalous_top_qW_tq =
+      [ ((M (U (-3)), O (Aux_top (1,0,0,1,"qWtt")), M (U 3)), FBF (1, Psibar, VL, Psi), G_VL_qW);
+        ((M (D (-3)), O (Aux_top (1,0,-1,1,"qWbt")), M (U 3)), FBF (1, Psibar, VL, Psi), G_VL_qW);
+        ((M (U (-3)), O (Aux_top (1,0,1,1,"qWtb")), M (D 3)), FBF (1, Psibar, VL, Psi), G_VL_qW) ]
+
+    let anomalous_top_qW_ff n =
+      List.map mom
+        [ ((U (-n), Aux_top (1,0,0,-1,"qWtt"), U n), FBF (1, Psibar, VL, Psi), G_VL_qW_u);
+          ((D (-n), Aux_top (1,0,0,-1,"qWtt"), D n), FBF (1, Psibar, VL, Psi), G_VL_qW_d);
+          ((N (-n), Aux_top (1,0,0,-1,"qWtt"), N n), FBF (1, Psibar, VL, Psi), G_VL_qW_u);
+          ((L (-n), Aux_top (1,0,0,-1,"qWtt"), L n), FBF (1, Psibar, VL, Psi), G_VL_qW_d);
+          ((D (-n), Aux_top (1,0,-1,-1,"qWtb"), U n), FBF (1, Psibar, VL, Psi), Half);
+          ((U (-n), Aux_top (1,0,1,-1,"qWbt"), D n), FBF (1, Psibar, VL, Psi), Half);
+          ((L (-n), Aux_top (1,0,-1,-1,"qWtb"), N n), FBF (1, Psibar, VL, Psi), Half);
+          ((N (-n), Aux_top (1,0,1,-1,"qWbt"), L n), FBF (1, Psibar, VL, Psi), Half) ]
+
+    let anomalous_top_qW =
+      if Flags.top_anom then
+        anomalous_top_qW_tq @ ThoList.flatmap anomalous_top_qW_ff [1;2;3]
+      else
+        []
+
+    let anomalous_top_DuDd =
+      if Flags.top_anom then
+        [ ((M (U (-3)), O (Aux_top (0,0,0,1,"DttR")), M (U 3)), FBF (1, Psibar, SR, Psi), Half);
+          ((M (U (-3)), O (Aux_top (0,0,0,-1,"DttR")), M (U 3)), FBF (1, Psibar, SL, Psi), G_SL_DttR);
+          ((M (D (-3)), O (Aux_top (0,0,0,-1,"DttR")), M (D 3)), FBF (1, Psibar, SR, Psi), G_SR_DttR);
+          ((M (U (-3)), O (Aux_top (0,0,0,1,"DttL")), M (U 3)), FBF (1, Psibar, SL, Psi), Half);
+          ((M (D (-3)), O (Aux_top (0,0,0,-1,"DttL")), M (D 3)), FBF (1, Psibar, SL, Psi), G_SL_DttL);
+          ((M (D (-3)), O (Aux_top (0,0,-1,1,"DbtR")), M (U 3)), FBF (1, Psibar, SR, Psi), Half);
+          ((M (U (-3)), O (Aux_top (0,0,1,-1,"DbtR")), M (D 3)), FBF (1, Psibar, SLR, Psi), G_SLR_DbtR);
+          ((M (D (-3)), O (Aux_top (0,0,-1,1,"DbtL")), M (U 3)), FBF (1, Psibar, SL, Psi), Half);
+          ((M (U (-3)), O (Aux_top (0,0,1,-1,"DbtL")), M (D 3)), FBF (1, Psibar, SL, Psi), G_SL_DbtL) ]
+      else
+        []
+
     let vertices3 =
       (ThoList.flatmap electromagnetic_currents [1;2;3] @
-       anomalous_ttA @ anomalous_ttZ @ anomalous_tbW @
-       anomalous_ttG @
        ThoList.flatmap color_currents [1;2;3] @
        ThoList.flatmap neutral_currents [1;2;3] @
        (if Flags.ckm_present then
@@ -1555,7 +1772,15 @@ i*)
          charged_currents_triv) @
        yukawa @ triple_gauge @
        gauge_higgs @ higgs @ higgs_triangle_vertices 
-       @ goldstone_vertices)
+       @ goldstone_vertices @
+       anomalous_ttA @ anomalous_bbA @
+       anomalous_ttZ @ anomalous_bbZ @
+       anomalous_tbW @ anomalous_tbWA @ anomalous_tbWZ @
+       anomalous_ttWW @ anomalous_bbWW @
+       anomalous_ttG @ anomalous_ttGG @
+       anomalous_ttH @
+       anomalous_top_qGuG @ anomalous_top_qBuB @
+       anomalous_top_qW @ anomalous_top_DuDd)
 
     let vertices4 =
       quartic_gauge @ gauge_higgs4 @ higgs4
@@ -1624,6 +1849,7 @@ i*)
           begin match f with
           | Phip -> "phi+" | Phim -> "phi-" | Phi0 -> "phi0" 
           | H -> "H"
+          | Aux_top (_,_,_,_,v) -> "Aux_" ^ v
           end
 
     let flavor_to_TeX = function
@@ -1660,6 +1886,7 @@ i*)
           begin match f with
           | Phip -> "\\phi^+" | Phim -> "\\phi^-" | Phi0 -> "\\phi^0" 
           | H -> "H"
+          | Aux_top (_,_,_,_,v) -> "\\textnormal{Aux_" ^ v ^ "}"
           end
 
     let flavor_symbol = function
@@ -1684,6 +1911,7 @@ i*)
           begin match f with
           | Phip -> "pp" | Phim -> "pm" | Phi0 -> "p0" 
           | H -> "h"
+          | Aux_top (_,_,_,_,v) -> "aux_" ^ v
           end
 
     let pdg = function
@@ -1708,6 +1936,7 @@ i*)
           begin match f with
           | Phip | Phim -> 27 | Phi0 -> 26
           | H -> 25
+          | Aux_top (_,_,_,_,_) -> 81
           end
 
     let mass_symbol f = 
@@ -1717,16 +1946,30 @@ i*)
       "width(" ^ string_of_int (abs (pdg f)) ^ ")"
 
     let constant_symbol = function
-      | Unit -> "unit" | Pi -> "PI"
+      | Unit -> "unit" | Half -> "half" | Pi -> "PI"
       | Alpha_QED -> "alpha" | E -> "e" | G_weak -> "g" | Vev -> "vev"
+      | I_G_weak -> "ig" 
       | Sin2thw -> "sin2thw" | Sinthw -> "sinthw" | Costhw -> "costhw"
       | Q_lepton -> "qlep" | Q_up -> "qup" | Q_down -> "qdwn"
       | G_NC_lepton -> "gnclep" | G_NC_neutrino -> "gncneu"
       | G_NC_up -> "gncup" | G_NC_down -> "gncdwn"
-      | G_TVA_ttA -> "gtva_tta" 
-      | G_VLR_ttZ -> "gvlr_ttz" | G_TVA_ttZ -> "gtva_ttz"
-      | G_VLR_tbW -> "gvlr_tbw" | G_TLR_tbW -> "gtlr_tbw"
-      | G_TVA_ttG -> "gtva_ttg"
+      | G_TVA_ttA -> "gtva_tta" | G_TVA_bbA -> "gtva_bba" 
+      | G_VLR_ttZ -> "gvlr_ttz" | G_TVA_ttZ -> "gtva_ttz" | G_TVA_bbZ -> "gtva_bbz"
+      | G_VLR_btW -> "gvlr_btw" | G_VLR_tbW -> "gvlr_tbw"
+      | G_TLR_btW -> "gtlr_btw" | G_TRL_tbW -> "gtrl_tbw"
+      | G_TLR_btWA -> "gtlr_btwa" | G_TRL_tbWA -> "gtrl_tbwa"
+      | G_TLR_btWZ -> "gtlr_btwz" | G_TRL_tbWZ -> "gtrl_tbwz"
+      | G_TVA_ttWW -> "gtva_ttww" | G_TVA_bbWW -> "gtva_bbww"
+      | G_TVA_ttG -> "gtva_ttg" | G_TVA_ttGG -> "gtva_ttgg"
+      | G_SP_ttH -> "gsp_tth"
+      | G_VLR_qGuG -> "gvlr_qgug"
+      | G_VLR_qBuB -> "gvlr_qbub"
+      | G_VLR_qBuB_u -> "gvlr_qbub_u" | G_VLR_qBuB_d -> "gvlr_qbub_d"
+      | G_VLR_qBuB_e -> "gvlr_qbub_e" | G_VL_qBuB_n -> "gvl_qbub_n"
+      | G_VL_qW -> "gvl_qw"
+      | G_VL_qW_u -> "gvl_qw_u" | G_VL_qW_d -> "gvl_qw_d"
+      | G_SL_DttR -> "gsl_dttr" | G_SR_DttR -> "gsr_dttr" | G_SL_DttL -> "gsl_dttl"
+      | G_SLR_DbtR -> "gslr_dbtr" | G_SL_DbtL -> "gsl_dbtl"
       | G_CC -> "gcc"
       | G_CCQ (n1,n2) -> "gccq" ^ string_of_int n1 ^ string_of_int n2
       | I_Q_W -> "iqw" | I_G_ZWW -> "igzww" 

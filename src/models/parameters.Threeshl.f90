@@ -1,9 +1,9 @@
-! $Id: parameters.Threeshl.f90 2817 2010-09-21 18:31:09Z jr_reuter $
+! $Id: parameters.Threeshl.f90 3070 2011-03-28 08:09:25Z jr_reuter $
 !
-! Copyright (C) 1999-2010 by 
-!     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+! Copyright (C) 1999-2011 by 
+!     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
-!     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+!     Juergen Reuter <juergen.reuter@desy.de>
 !     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it

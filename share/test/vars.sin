@@ -15,7 +15,7 @@ i = 9
 
 show (foo, bar, i)
 
-scan int k = (1, 2 => 3, 4 => 10 /+ 4) {
+scan int k = (1, (2 => 3), (4 => 10 /+ 4)) {
   real k2 = k^2
   i = -k
 }
@@ -30,13 +30,13 @@ mW = mW - 0.3 GeV
 show (mW, sw)
 
 scan mW = (75 GeV, 
-           80 GeV => 82 GeV /+ 0.5 GeV, 
-           83 GeV => 90 GeV /* 1.2) {
+           (80 GeV => 82 GeV /+ 0.5 GeV), 
+           (83 GeV => 90 GeV */* 5)) {
   show (sw)
 }
 printf "mW is %g and sw is: %8.4f" (mW, sw)
 
-scan seed = (32 => 1 // 2) { show (seed_value) }
+scan seed = (32 => 1 /- 2) { show (seed_value) }
 
 scan string $str = ("foo", "bar")
 logical ?ok = false

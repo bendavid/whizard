@@ -174,13 +174,19 @@ Optional Features:
   --disable-dependency-tracking  speeds up one-time build
   --enable-dependency-tracking   do not reject slow dependency extractors
   --disable-libtool-lock  avoid locking (might break parallel builds)
+  --enable-distribution   build the distribution incl. all docu (developers
+                          only) [[no]]   
   --enable-dl             enable libdl for creating/loading process libraries
                           on-the-fly [[yes]]
   --disable-noweb         disable the noweb programs, even if available [[no]]
+  --disable-noweb-force   force to disable the noweb programs, even if
+                          available, which is for distribution testing
+                          purposes only. The default never has any effect.
+                          [[no]]
   --enable-fc-quadruple   use quadruple precision in Fortran code [[no]]
+  --enable-fc-openmp      use OpenMP for the Fortran code [[no]]
   --enable-fc-profiling   use profiling for the Fortran code [[no]]
   --enable-fc-impure	  compile Omega libraries impure [[no]]
-  --disable-openmp	  do not use OpenMP
   --disable-ocaml	  disable the OCaml parts, even if OCaml available
   			  [[no]]
   --enable-lhapdf         enable LHAPDF for structure functions [[yes]]
@@ -202,10 +208,8 @@ Optional Packages:
   --with-pic              try to use only PIC/non-PIC objects [default=use
                           both]
   --with-gnu-ld           assume the C compiler uses GNU ld [default=no]
-  --with-openmp           Include OpenMP directives in the O'Mega generated
-                          matrix elements (conflicts with --disable-openmp).
-                          NB: currently the code might run slower and burn
-                          more cycles at the same time.
+  --with-sysroot=DIR Search for dependent libraries within DIR
+                        (or the compiler's sysroot if not specified).
 
 Some influential environment variables:
   CC          C compiler command
@@ -218,6 +222,8 @@ Some influential environment variables:
   CPP         C preprocessor
   FC          Fortran compiler command
   FCFLAGS     Fortran compiler flags
+  F77         Fortran 77 compiler command
+  FFLAGS      Fortran 77 compiler flags
   CXX         C++ compiler command
   CXXFLAGS    C++ compiler flags
   CXXCPP      C++ preprocessor
@@ -236,9 +242,9 @@ OcamlWeb is available from http://www.lri.fr/~filliatr/ocamlweb/.
 
 The check out can be done in that way:
 
-svn co svn.hepforge.org/hepforge/home/whizard/event-generators/whizard/trunk
+svn co http://svn.hepforge.org/whizard/trunk <checkout_dir>
 
-cd trunk
+cd <checkout_dir>
 autoreconf
 
 Now continue with directions as if you unpacked a source code tarball.
@@ -247,7 +253,7 @@ Now continue with directions as if you unpacked a source code tarball.
 # building autotools
 #-------------------------------------------------------------
 
-If you do not have at least autoconf 2.60 and automake 1.10, you will 
+If you do not have at least autoconf 2.65 and automake 1.10, you will 
 need to build autoconf and automake.  On some platforms,  you may also
 need to build m4 and texinfo.
 

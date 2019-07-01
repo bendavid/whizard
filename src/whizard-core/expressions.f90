@@ -1,9 +1,9 @@
-! WHIZARD 2.0.4 Tue Oct 26 2010
+! WHIZARD 2.0.5 Tue May 10 2011
 ! 
-! (C) 1999-2010 by 
-!     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+! Copyright (C) 1999-2011 by 
+!     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
-!     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+!     Juergen Reuter <juergen.reuter@desy.de>
 !     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
 !     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
 !
@@ -33,6 +33,7 @@ module expressions
   use file_utils !NODEP!
   use diagnostics !NODEP!
   use lorentz !NODEP!
+  use md5
   use formats
   use sorting
   use ifiles
@@ -88,6 +89,7 @@ module expressions
   public :: eval_tree_get_pdg_array_ptr
   public :: eval_tree_get_string_ptr
   public :: eval_tree_write
+  public :: eval_tree_get_md5sum
   public :: eval_log
   public :: eval_int
   public :: eval_real
@@ -4297,21 +4299,21 @@ contains
     type(eval_node_t), pointer :: en
     type(parse_node_t), intent(in) :: pn
     type(var_list_t), intent(in), target :: var_list
-    type(parse_node_t), pointer :: pn_pvalue, pn_concatenation, pn_op, pn_arg
+    type(parse_node_t), pointer :: pn_pterm, pn_concatenation, pn_op, pn_arg
     type(eval_node_t), pointer :: en1, en2
     type(subevt_t) :: subevt
     if (debug) then
        print *, "read pexpr";  call parse_node_write (pn)
     end if
-    pn_pvalue => parse_node_get_sub_ptr (pn)
-    call eval_node_compile_pvalue (en, pn_pvalue, var_list)
+    pn_pterm => parse_node_get_sub_ptr (pn)
+    call eval_node_compile_pterm (en, pn_pterm, var_list)
     pn_concatenation => &
-         parse_node_get_next_ptr (pn_pvalue, tag="pconcatenation")
+         parse_node_get_next_ptr (pn_pterm, tag="pconcatenation")
     do while (associated (pn_concatenation))
        pn_op => parse_node_get_sub_ptr (pn_concatenation)
        pn_arg => parse_node_get_next_ptr (pn_op)
        en1 => en
-       call eval_node_compile_pvalue (en2, pn_arg, var_list)
+       call eval_node_compile_pterm (en2, pn_arg, var_list)
        allocate (en)
        if (en1%type == EN_CONSTANT .and. en2%type == EN_CONSTANT) then
           call subevt_join (subevt, en1%pval, en2%pval)
@@ -4321,8 +4323,8 @@ contains
           deallocate (en1, en2)
        else   
           call eval_node_init_branch &
-               (en, var_str ("combine"), V_SEV, en1, en2)
-          call eval_node_set_op2_sev (en, combine_pp)
+               (en, var_str ("join"), V_SEV, en1, en2)
+          call eval_node_set_op2_sev (en, join_pp)
        end if
        pn_concatenation => parse_node_get_next_ptr (pn_concatenation)
     end do
@@ -4331,6 +4333,45 @@ contains
        print *, "done pexpr"
     end if
   end subroutine eval_node_compile_pexpr
+
+  recursive subroutine eval_node_compile_pterm (en, pn, var_list)
+    type(eval_node_t), pointer :: en
+    type(parse_node_t), intent(in) :: pn
+    type(var_list_t), intent(in), target :: var_list
+    type(parse_node_t), pointer :: pn_pvalue, pn_combination, pn_op, pn_arg
+    type(eval_node_t), pointer :: en1, en2
+    type(subevt_t) :: subevt
+    if (debug) then
+       print *, "read pterm";  call parse_node_write (pn)
+    end if
+    pn_pvalue => parse_node_get_sub_ptr (pn)
+    call eval_node_compile_pvalue (en, pn_pvalue, var_list)
+    pn_combination => &
+         parse_node_get_next_ptr (pn_pvalue, tag="pcombination")
+    do while (associated (pn_combination))
+       pn_op => parse_node_get_sub_ptr (pn_combination)
+       pn_arg => parse_node_get_next_ptr (pn_op)
+       en1 => en
+       call eval_node_compile_pvalue (en2, pn_arg, var_list)
+       allocate (en)
+       if (en1%type == EN_CONSTANT .and. en2%type == EN_CONSTANT) then
+          call subevt_combine (subevt, en1%pval, en2%pval)
+          call eval_node_init_subevt (en, subevt)
+          call eval_node_final_rec (en1)
+          call eval_node_final_rec (en2)
+          deallocate (en1, en2)
+       else   
+          call eval_node_init_branch &
+               (en, var_str ("combine"), V_SEV, en1, en2)
+          call eval_node_set_op2_sev (en, combine_pp)
+       end if
+       pn_combination => parse_node_get_next_ptr (pn_combination)
+    end do
+    if (debug) then
+       call eval_node_write (en)
+       print *, "done pterm"
+    end if
+  end subroutine eval_node_compile_pterm
 
   recursive subroutine eval_node_compile_pvalue (en, pn, var_list)
     type(eval_node_t), pointer :: en
@@ -4817,7 +4858,7 @@ contains
     case ("sprintf_fun")
        call eval_node_compile_sprintf (en, pn, var_list)
     case ("sprintd_fun")
-       call eval_node_compile_sprint (en, pn, var_list)
+       call eval_node_compile_sprintd (en, pn, var_list)
     case ("string_literal")
        allocate (en)
        call eval_node_init_string (en, parse_node_get_string (pn))
@@ -4865,7 +4906,7 @@ contains
     end if
   end subroutine eval_node_compile_sprintf
 
-  recursive subroutine eval_node_compile_sprint (en, pn, var_list)
+  recursive subroutine eval_node_compile_sprintd (en, pn, var_list)
     type(eval_node_t), pointer :: en
     type(parse_node_t), intent(in) :: pn
     type(var_list_t), intent(in), target :: var_list
@@ -4891,7 +4932,7 @@ contains
        call eval_node_write (en)
        print *, "done sprintd_fun"
     end if
-  end subroutine eval_node_compile_sprint
+  end subroutine eval_node_compile_sprintd
 
   subroutine eval_node_compile_sprintf_args (en, pn, var_list, n_args)
     type(eval_node_t), pointer :: en
@@ -5655,8 +5696,8 @@ contains
     call ifile_append (ifile, "KEY string")
     call ifile_append (ifile, "SEQ var_string_spec = '$' var_name = sexpr") ! $
     call ifile_append (ifile, "ALT string_function = sprintd_fun | sprintf_fun")
-    call ifile_append (ifile, "SEQ sprintd_fun = sprint sprintf_args?")
-    call ifile_append (ifile, "KEY sprint")
+    call ifile_append (ifile, "SEQ sprintd_fun = sprintd sprintf_args?")
+    call ifile_append (ifile, "KEY sprintd")
     call ifile_append (ifile, "SEQ sprintf_fun = sprintf_clause sprintf_args?")
     call ifile_append (ifile, "SEQ sprintf_clause = sprintf sexpr")
     call ifile_append (ifile, "KEY sprintf")
@@ -5668,9 +5709,12 @@ contains
 
   subroutine define_pexpr_syntax (ifile)
     type(ifile_t), intent(inout) :: ifile
-    call ifile_append (ifile, "SEQ pexpr = pvalue pconcatenation*")
-    call ifile_append (ifile, "SEQ pconcatenation = '&' pvalue")
+    call ifile_append (ifile, "SEQ pexpr = pterm pconcatenation*")
+    call ifile_append (ifile, "SEQ pconcatenation = '&' pterm")
 !    call ifile_append (ifile, "KEY '&'")
+    call ifile_append (ifile, "SEQ pterm = pvalue pcombination*")
+    call ifile_append (ifile, "SEQ pcombination = '+' pvalue")
+!    call ifile_append (ifile, "KEY '+'")
     call ifile_append (ifile, "ALT pvalue = " // &
          "pexpr_src | pvariable | " // &
          "grouped_pexpr | block_pexpr | conditional_pexpr | " // &
@@ -6227,6 +6271,18 @@ contains
     end if
     if (vl)  call var_list_write (eval_tree%var_list, unit)
   end subroutine eval_tree_write
+
+  function eval_tree_get_md5sum (eval_tree) result (md5sum_et)
+    character(32) :: md5sum_et
+    type(eval_tree_t), intent(in) :: eval_tree
+    integer :: u
+    u = free_unit ()
+    open (unit = u, status = "scratch", action = "readwrite")
+    call eval_tree_write (eval_tree, unit=u)
+    rewind (u)
+    md5sum_et = md5sum (u)
+    close (u)
+  end function eval_tree_get_md5sum
 
   function eval_log &
        (parse_node, var_list, subevt, event_vars, is_known) result (lval)

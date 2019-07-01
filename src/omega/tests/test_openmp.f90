@@ -1,11 +1,12 @@
-! $Id: test_openmp.f90 2695 2010-07-08 22:15:33Z ohl $
+! $Id: test_openmp.f90 3150 2011-04-09 20:03:28Z jr_reuter $
 ! driver.f90 -- O'Mega self test driver
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
-! Copyright (C) 1999-2009 by 
-!     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+! Copyright (C) 1999-2011 by 
+!     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
-!     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+!     Juergen Reuter <juergen.reuter@desy.de>
+!      Christian Speckner <christian.speckner@physik.uni-freiburg.de>
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -26,6 +27,7 @@
 program test_openmp
 
   use omp_lib
+  use parameters_QCD, init_parameters_qcd => init_parameters
 
   use kinds
   use constants
@@ -41,7 +43,7 @@ program test_openmp
   real(kind=double), dimension(:), allocatable :: amp2
   integer :: max_threads, num_threads
   
-  call init_parameters
+  call init_parameters_qcd ()
 
   max_threads = omp_get_max_threads ()
   write (unit = *, fmt = "(1X, 'max. threads: ', I3)")  max_threads

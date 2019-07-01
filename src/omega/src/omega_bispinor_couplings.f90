@@ -1,4 +1,4 @@
-!  $Id: omegalib.nw 2848 2010-10-07 14:26:20Z jr_reuter $
+!  $Id: omegalib.nw 3104 2011-04-02 10:31:01Z cnspeckn $
 !
 !  Copyright (C) 1999-2009 by 
 !      Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
@@ -67,12 +67,14 @@ contains
     type(momentum), intent(in) :: p
     integer, intent(in) :: s
     complex(kind=default), dimension(2) :: chip, chim
-    real(kind=default) :: pabs, norm
+    real(kind=default) :: pabs, norm, delta
     pabs = sqrt (dot_product (p%x, p%x))
+    if (m < epsilon (m) * pabs) then
+        delta = 0 
+    else
+        delta = sqrt (max (p%t - pabs, 0._default))
+    end if
     if (pabs + p%x(3) <= 1000 * epsilon (pabs) * pabs) then
-  !!! OLD VERSION !!!!!!
-  !!!  if (1 + p%x(3) / pabs <= epsilon (pabs)) then
-  !!!!!!!!!!!!!!!!!!!!!!
        chip = (/ cmplx ( 0.0, 0.0, kind=default), &
                  cmplx ( 1.0, 0.0, kind=default) /)
        chim = (/ cmplx (-1.0, 0.0, kind=default), &
@@ -85,62 +87,28 @@ contains
                         cmplx (pabs + p%x(3), kind=default) /)
     end if
     if (s > 0) then
-       psi%a(1:2) = sqrt (max (p%t - pabs, 0.0_default)) * chip
+       psi%a(1:2) = delta * chip
        psi%a(3:4) = sqrt (p%t + pabs) * chip
     else
        psi%a(1:2) = sqrt (p%t + pabs) * chim
-       psi%a(3:4) = sqrt (max (p%t - pabs, 0.0_default)) * chim
+       psi%a(3:4) = delta * chim
     end if
     pabs = m ! make the compiler happy and use m
   end function u
-  !pure function u (m, p, s) result (psi)
-  !  type(bispinor) :: psi
-  !  real(kind=default), intent(in) :: m
-  !  type(momentum), intent(in) :: p
-  !  integer, intent(in) :: s
-  !  complex(kind=default), dimension(2) :: chip, chim
-  !  real(kind=default) :: pabs, norm
-  !  pabs = sqrt (dot_product (p%x, p%x))
-  !  if (p%x(3) <= epsilon(p%x(3))) then
-  !     chip = (/ cmplx ( 0.0, 0.0, kind=default), &
-  !               cmplx ( 1.0, 0.0, kind=default) /)
-  !     chim = (/ cmplx (-1.0, 0.0, kind=default), &
-  !               cmplx ( 0.0, 0.0, kind=default) /)
-  !     else
-  !        if (1 + p%x(3) / pabs <= epsilon (pabs)) then
-  !           chip = (/ cmplx ( 0.0, 0.0, kind=default), &
-  !                     cmplx ( 1.0, 0.0, kind=default) /)
-  !           chim = (/ cmplx (-1.0, 0.0, kind=default), &
-  !                     cmplx ( 0.0, 0.0, kind=default) /)
-  !        else
-  !           norm = 1 / sqrt (2*pabs*(pabs + p%x(3)))
-  !           chip = norm * (/ cmplx (pabs + p%x(3), kind=default), &
-  !                            cmplx (p%x(1), p%x(2), kind=default) /)
-  !           chim = norm * (/ cmplx (-p%x(1), p%x(2), kind=default), &
-  !                            cmplx (pabs + p%x(3), kind=default) /)
-  !        end if
-  !  end if
-  !  if (s > 0) then
-  !     psi%a(1:2) = sqrt (max (p%t - pabs, 0.0_default)) * chip
-  !     psi%a(3:4) = sqrt (p%t + pabs) * chip
-  !  else
-  !     psi%a(1:2) = sqrt (p%t + pabs) * chim
-  !     psi%a(3:4) = sqrt (max (p%t - pabs, 0.0_default)) * chim
-  !  end if
-  !  pabs = m ! make the compiler happy and use m
-  !end function u  
   pure function v (m, p, s) result (psi)
     type(bispinor) :: psi
     real(kind=default), intent(in) :: m
     type(momentum), intent(in) :: p
     integer, intent(in) :: s
     complex(kind=default), dimension(2) :: chip, chim
-    real(kind=default) :: pabs, norm
+    real(kind=default) :: pabs, norm, delta
     pabs = sqrt (dot_product (p%x, p%x))
+    if (m < epsilon (m) * pabs) then
+        delta = 0 
+    else
+        delta = sqrt (max (p%t - pabs, 0._default))
+    end if
     if (pabs + p%x(3) <= 1000 * epsilon (pabs) * pabs) then
-  !!! OLD VERSION !!!!!!
-  !!!  if (1 + p%x(3) / pabs <= epsilon (pabs)) then
-  !!!!!!!!!!!!!!!!!!!!!!
        chip = (/ cmplx ( 0.0, 0.0, kind=default), &
                  cmplx ( 1.0, 0.0, kind=default) /)
        chim = (/ cmplx (-1.0, 0.0, kind=default), &
@@ -154,49 +122,13 @@ contains
     end if
     if (s > 0) then
        psi%a(1:2) = - sqrt (p%t + pabs) * chim
-       psi%a(3:4) =   sqrt (max (p%t - pabs, 0.0_default)) * chim
+       psi%a(3:4) = delta * chim
     else
-       psi%a(1:2) =   sqrt (max (p%t - pabs, 0.0_default)) * chip
+       psi%a(1:2) = delta * chip
        psi%a(3:4) = - sqrt (p%t + pabs) * chip
     end if
     pabs = m ! make the compiler happy and use m
   end function v
-  !pure function v (m, p, s) result (psi)
-  !  type(bispinor) :: psi
-  !  real(kind=default), intent(in) :: m
-  !  type(momentum), intent(in) :: p
-  !  integer, intent(in) :: s
-  !  complex(kind=default), dimension(2) :: chip, chim
-  !  real(kind=default) :: pabs, norm
-  !  pabs = sqrt (dot_product (p%x, p%x))
-  !  if (p%x(3) <= epsilon (p%x(3))) then 
-  !     chip = (/ cmplx ( 1.0, 0.0, kind=default), &
-  !               cmplx ( 0.0, 0.0, kind=default) /)
-  !     chim = (/ cmplx ( 0.0, 0.0, kind=default), &
-  !               cmplx ( 1.0, 0.0, kind=default) /)
-  !     else
-  !        if (1 + p%x(3) / pabs <= epsilon (pabs)) then
-  !           chip = (/ cmplx ( 0.0, 0.0, kind=default), &
-  !                     cmplx ( 1.0, 0.0, kind=default) /)
-  !           chim = (/ cmplx (-1.0, 0.0, kind=default), &
-  !                     cmplx ( 0.0, 0.0, kind=default) /)
-  !        else
-  !           norm = 1 / sqrt (2*pabs*(pabs + p%x(3)))
-  !           chip = norm * (/ cmplx (pabs + p%x(3), kind=default), &
-  !                            cmplx (p%x(1), p%x(2), kind=default) /)
-  !           chim = norm * (/ cmplx (-p%x(1), p%x(2), kind=default), &
-  !                            cmplx (pabs + p%x(3), kind=default) /)
-  !        end if
-  !  end if
-  !  if (s > 0) then
-  !     psi%a(1:2) = - sqrt (p%t + pabs) * chim
-  !     psi%a(3:4) =   sqrt (max (p%t - pabs, 0.0_default)) * chim
-  !  else
-  !     psi%a(1:2) =   sqrt (max (p%t - pabs, 0.0_default)) * chip
-  !     psi%a(3:4) = - sqrt (p%t + pabs) * chip
-  !  end if
-  !  pabs = m ! make the compiler happy and use m
-  !end function v
   pure function ghost (m, p, s) result (psi) 
       type(bispinor) :: psi
       real(kind=default), intent(in) :: m 

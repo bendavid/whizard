@@ -57,7 +57,7 @@ if test "$enable_lhapdf" = "yes"; then
   else
     enable_lhapdf="no"
   fi
-  
+     
 else
   AC_MSG_CHECKING([for LHAPDF])
   AC_MSG_RESULT([(disabled)])
@@ -67,15 +67,51 @@ AC_SUBST(LHAPDF_ROOT)
 AC_SUBST(LHAPDF_VERSION)
 AC_SUBST(LHAPDF_PDFSETS_PATH)
 
+dnl LHAPDF requires the STD C++ library, when linking statically
+if test "$enable_lhapdf" = "yes"; then
+   ### Checking for static C++ libraries for the static version
+   ### This is only necessary for MAC OS X and BSD-like OS
+   case $host in
+     *-darwin*)
+	wo_ldflags_stdcpp="-lstdc++-static" ;;
+     *-*-freebsd2*|*-*-freebsd3.0*|*-*-freebsdelf3.0*)
+	wo_ldflags_stdcpp="-lstdc++-static" ;;
+     *)
+        wo_ldflags_stdcpp="-lstdc++" ;;
+  esac
+  AC_MSG_CHECKING([for wo_ldflags_stdcpp: host system is $host_os: static flag])
+  AC_MSG_RESULT([$wo_ldflags_stdcpp])
+fi
+
 if test "$enable_lhapdf" = "yes"; then
   wo_lhapdf_libdir="-L$LHAPDF_ROOT/lib"
   AC_LANG([Fortran])
-  AC_CHECK_LIB([LHAPDF], [initpdfsetm],
-    [LDFLAGS_LHAPDF="$wo_lhapdf_libdir -lLHAPDF"],
-    [enable_lhapdf="no"],
-    [$wo_lhapdf_libdir])
+  AC_CHECK_LIB([LHAPDF],[getxminm],[LDFLAGS_LHAPDF="$wo_lhapdf_libdir -lLHAPDF"],
+    [dnl
+      AC_MSG_NOTICE([warning:  ********************************************************])
+      AC_MSG_NOTICE([warning:  Either your LHAPDF version is too old (you need 5.3.0 or])
+      AC_MSG_NOTICE([warning:  higher), or LHAPDF was compiled with a different FORTRAN])
+      AC_MSG_NOTICE([warning:  compiler you and forgot to add the proper runtime to    ])
+      AC_MSG_NOTICE([warning:  LIBS / LD_LIBRARY_PATH. Disabling LHAPDF support...     ])
+      AC_MSG_NOTICE([warning:  ********************************************************])
+      enable_lhapdf=no
+    ],[$wo_lhapdf_libdir])
 fi
 AC_SUBST(LDFLAGS_LHAPDF)
+
+
+dnl Determine whether we need to stub photon-as-parton related bits of LHAPDF
+if test "$enable_lhapdf" = "yes"; then
+  AC_LANG([Fortran])
+  AC_CHECK_LIB([LHAPDF],[has_photon],[test],[dnl
+     AC_MSG_NOTICE([warning:  ********************************************************])
+     AC_MSG_NOTICE([warning:  Your LHAPDF version is not supported for PDF sets like  ])
+     AC_MSG_NOTICE([warning:  MRTS2004QED which include the photon as a parton ---    ])
+     AC_MSG_NOTICE([warning:  don't try to use those!                                 ])
+     AC_MSG_NOTICE([warning:  ********************************************************])
+     LHAPDF_HAS_PHOTON_DUMMY=true
+   ],[$wo_lhapdf_libdir])
+fi
 
 if test "$enable_lhapdf" = "yes"; then
   LHAPDF_AVAILABLE_FLAG=".true."
@@ -85,4 +121,11 @@ fi
 AC_SUBST(LHAPDF_AVAILABLE_FLAG)
 
 AM_CONDITIONAL([LHAPDF_AVAILABLE], [test "$enable_lhapdf" = "yes"])
+AM_CONDITIONAL([LHAPDF_FULL_DUMMY], [test "$enable_lhapdf" = "no"])
+AM_CONDITIONAL([LHAPDF_HAS_PHOTON_DUMMY], [test -n "$LHAPDF_HAS_PHOTON_DUMMY"])
+AM_CONDITIONAL([LHAPDF_DUMMY], [
+   test -n "$LHAPDF_HAS_PHOTON_DUMMY" || \
+   test "$enable_lhapdf" = "no" dnl
+ ])
+
 ])

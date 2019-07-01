@@ -5,10 +5,10 @@
 ##
 ########################################################################
 #
-# Copyright (C) 1999-2010 by 
-#     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+# Copyright (C) 1999-2011 by 
+#     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
-#     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+#     Juergen Reuter <juergen.reuter@desy.de>
 #     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
@@ -28,11 +28,14 @@
 ########################################################################
 
 ## The files in this directory end up in an auxiliary libtool library.
+AM_FFLAGS =
+AM_FCFLAGS =
 
 if PYTHIA_AVAILABLE
 
 if FC_IS_NAG
-AM_FFLAGS = -dcfuns -w
+AM_FFLAGS += -dcfuns -w
+AM_FCFLAGS += -dcfuns -w
 endif
 
 noinst_LTLIBRARIES = libpythia_wo.la
@@ -40,6 +43,24 @@ noinst_LTLIBRARIES = libpythia_wo.la
 libpythia_wo_la_SOURCES = pythia.f
 
 endif	
+
+########################################################################
+## Default Fortran compiler options
+
+## Profiling
+if FC_USE_PROFILING
+AM_FFLAGS += $(FCFLAGS_PROFILING)
+AM_FCFLAGS += $(FCFLAGS_PROFILING)
+endif
+
+## OpenMP
+if FC_USE_OPENMP
+AM_FFLAGS += $(FCFLAGS_OPENMP)
+AM_FCFLAGS += $(FCFLAGS_OPENMP)
+endif
+
+########################################################################
+## Non-standard cleanup tasks
 
 ## Remove backup files
 maintainer-clean-local:

@@ -1,10 +1,11 @@
-(* $Id: thoList.ml 2695 2010-07-08 22:15:33Z ohl $
+(* $Id: thoList.ml 2948 2010-12-24 03:25:57Z jr_reuter $
 
-   Copyright (C) 1999-2009 by
+   Copyright (C) 1999-2011 by
 
        Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
        Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+       Christian Speckner <christian.speckner@physik.uni-freiburg.de>
 
    WHIZARD is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by

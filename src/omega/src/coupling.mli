@@ -1,10 +1,11 @@
-(* $Id: coupling.mli 2838 2010-09-29 15:52:35Z jr_reuter $
+(* $Id: coupling.mli 3070 2011-03-28 08:09:25Z jr_reuter $
 
-   Copyright (C) 1999-2009 by
+   Copyright (C) 1999-2011 by
 
-       Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+       Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
-       Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+       Juergen Reuter <juergen.reuter@desy.de>
+       Christian Speckner <christian.speckner@physik.uni-freiburg.de>
 
    WHIZARD is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by
@@ -141,6 +142,7 @@ type 'a propagator =
   | Prop_Col_Scalar | Prop_Col_Feynman | Prop_Col_Majorana 
   | Prop_Col_Unitarity 
   | Aux_Scalar | Aux_Vector | Aux_Tensor_1
+  | Aux_Col_Vector | Aux_Col_Tensor_1
   | Aux_Spinor | Aux_ConjSpinor | Aux_Majorana
   | Only_Insertion
 
@@ -187,7 +189,8 @@ type width =
 type fermion = Psi | Chi | Grav 
 type fermionbar = Psibar | Chibar | Gravbar 
 type boson =
-  | SP | S | P | SL | SR | SLR | VA | V | A | VL | VR | VLR | VLRM | TVAM | TLRM
+  | SP | SPM | S | P | SL | SR | SLR | VA | V | A | VL | VR | VLR | VLRM
+  | TVA | TLR | TRL | TVAM | TLRM | TRLM
   | POT | MOM | MOM5 | MOML | MOMR | LMOM | RMOM | VMOM | VA2
 type boson2 = S2 | P2 | S2P | S2L | S2R | S2LR 
   | SV | PV | SLV | SRV | SLRV | V2 | V2LR

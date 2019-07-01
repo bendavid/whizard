@@ -1,7 +1,7 @@
-!!! module: shower_particle_module
+!!! module: shower_parton_module
 !!! This code is part of my Ph.D studies.
 !!! 
-!!! Copyright (C) 2010 Sebastian Schmidt <sebastian.schmidt@physik.uni-freiburg.de>
+!!! Copyright (C) 2011 Sebastian Schmidt <sebastian.t.schmidt@desy.de>
 !!! 
 !!! This program is free software; you can redistribute it and/or modify it
 !!! under the terms of the GNU General Public License as published by the Free 
@@ -16,7 +16,7 @@
 !!! You should have received a copy of the GNU General Public License along
 !!! with this program; if not, see <http://www.gnu.org/licenses/>.
 !!! 
-!!! Latest Change: Fri Mar 26 14:50:53 2010 Time zone: 3600 seconds
+!!! Latest Change: Thu Jan 13 17:11:14 2011 Time zone: 3600 seconds
 !!! 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
@@ -55,6 +55,30 @@ module shower_parton_module
   end type parton_pointer_t
 
 contains
+
+  subroutine parton_copy(prt1, prt2)
+    type(parton_t), intent(in) :: prt1
+    type(parton_t), intent(out) :: prt2
+
+    prt2%nr = prt1%nr
+    prt2%typ = prt1%typ
+    prt2%momentum = prt1%momentum
+    prt2%t = prt1%t
+    prt2%scale = prt1%scale
+    prt2%z = prt1%z
+    prt2%costheta = prt1%costheta
+    prt2%x = prt1%x
+    prt2%simulated = prt1%simulated
+    prt2%belongstoFSR = prt1%belongstoFSR
+    prt2%belongstointeraction = prt1%belongstointeraction
+    if(associated(prt1%parent)) prt2%parent => prt1%parent
+    if(associated(prt1%child1)) prt2%child1 => prt1%child1
+    if(associated(prt1%child2)) prt2%child2 => prt1%child2
+    if(associated(prt1%initial)) prt2%initial => prt1%initial
+    prt2%c1 = prt1%c1
+    prt2%c2 = prt1%c2
+    prt2%aux_pt = prt1%aux_pt
+  end subroutine parton_copy
 
   function parton_get_costheta(prt) result(costheta)		! returns the angle between the daughters assuming them to be massless
     type(parton_t), intent(in) :: prt
@@ -143,7 +167,6 @@ contains
                                vector4_get_component(prt%momentum,3), vector4_get_component(prt%momentum,0), & 
                                parton_p4square(prt), prt%t, prt%scale
 
-        ! TODO always print x
     if (parton_is_branched(prt)) then
 104    format(1x, F8.5, F8.5, F8.5, F8.5, F8.5, 1x, A1)
        if(prt%belongstoFSR) then
@@ -266,7 +289,7 @@ contains
     type(parton_t), intent(inout) :: prt
     real(default), intent(in) :: E
 
-    prt%momentum = vector4_moving(E, space_part(prt%momentum))
+    call vector4_set_component(prt%momentum, 0, E)
   end subroutine parton_set_energy
 
   function parton_get_energy(prt) result(E)
@@ -289,6 +312,20 @@ contains
 
     parent=>prt%parent
   end function parton_get_parent
+
+  subroutine parton_set_initial(prt, initial)
+    type(parton_t), intent(inout) :: prt
+    type(parton_t), intent(in) , target :: initial
+
+    prt%initial=>initial
+  end subroutine parton_set_initial
+
+  function parton_get_initial(prt) result(initial)
+    type(parton_t), intent(in) :: prt
+    type(parton_t), pointer :: initial
+
+    initial=>prt%initial
+  end function parton_get_initial
 
   subroutine parton_set_child(prt, child, i)
     type(parton_t), intent(inout) :: prt
@@ -403,31 +440,33 @@ contains
     end if
   end function P_prt_to_child1
 
-  function thetabar(prt) result(retvalue)
+  function thetabar(prt, recoiler) result(retvalue)
     ! returns whether kinematics of branching of prt into its daughters are allowed
     type(parton_t), intent(inout) :: prt
+    type(parton_t), intent(in) :: recoiler
     logical :: retvalue
 
     real(default) :: ctheta, cthetachild1
-    real(default) p1, p2, p3
+    real(default) p1, p4, p3, E3, shat
 
-    p1=sqrt(parton_get_energy(prt)**2-prt%t)
-    p2=sqrt(parton_get_energy(prt%child1)**2-prt%child1%t)
-    p3=sqrt(max(0._default, parton_get_energy(prt%child2)**2-prt%child2%t))
+    shat = (prt%child1%momentum + recoiler%momentum)**2
+    E3 = 0.5_default*(shat/prt%z -recoiler%t + prt%child1%t - parton_mass_squared(prt%child2))/sqrt(shat)
+
+    ! absolute values of momenta in a 3 -> 1 + 4 branching
+    p3=sqrt(E3**2-prt%t)
+    p1=sqrt(parton_get_energy(prt%child1)**2-prt%child1%t)
+    p4=sqrt(max(0._default, (E3-parton_get_energy(prt%child1))**2-prt%child2%t))
 
     if(p3>0._default) then
-       retvalue=( (p2+p3 .ge. p1) .and. (p1 .ge. abs(p2-p3)) )
+       retvalue=( (p1+p4 .ge. p3) .and. (p3 .ge. abs(p1-p4)) )
        if (retvalue .and. isr_angular_ordered) then
           ! check angular ordering
           if(associated(prt%child1)) then
              if(associated(prt%child1%child2)) then
-                ctheta=( prt%child1%t + prt%child2%t + 2._default*prt%z*(1._default-prt%z)* & 
-                        (parton_get_energy(prt)**2)-prt%t )  /( 2._default*p2*p3 )
-                cthetachild1=( prt%child1%child1%t + prt%child1%child2%t + 2._default*prt%child1%z*(1._default-prt%child1%z)* & 
-                             (parton_get_energy(prt%child1)**2)-prt%child1%t )/ & 
-                             ( 2._default*sqrt(prt%child1%z**2*parton_get_energy(prt%child1)**2 & 
-                              - prt%child1%child1%t)*sqrt((1._default-prt%child1%z)**2* &
-                              parton_get_energy(prt%child1)**2-prt%child1%child2%t) )
+                ctheta = ( E3**2 - p1**2 - p4**2 +prt%t)/(2._default*p1*p4)
+                cthetachild1=( parton_get_energy(prt%child1)**2 - space_part(prt%child1%child1%momentum)**2 &
+                     - space_part(prt%child1%child2%momentum)**2 + prt%child1%t) &
+                     /(2._default*space_part(prt%child1%child1%momentum)**1*space_part(prt%child1%child2%momentum)**1)
                 retvalue= (ctheta > cthetachild1)
              end if
           end if

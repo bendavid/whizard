@@ -1,9 +1,9 @@
-! WHIZARD 2.0.4 Tue Oct 26 2010
+! WHIZARD 2.0.5 Tue May 10 2011
 ! 
-! (C) 1999-2010 by 
-!     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+! Copyright (C) 1999-2011 by 
+!     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
-!     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+!     Juergen Reuter <juergen.reuter@desy.de>
 !     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
 !     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
 !
@@ -106,8 +106,11 @@ module commands
   integer, parameter :: CMD_LIBRARY = 32
   integer, parameter :: CMD_CUTS = 33
   integer, parameter :: CMD_SCALE = 34
-  integer, parameter :: CMD_WEIGHT = 35
-  integer, parameter :: CMD_REWEIGHT = 36
+  integer, parameter :: CMD_FAC_SCALE = 35
+  integer, parameter :: CMD_REN_SCALE = 36
+  integer, parameter :: CMD_WEIGHT = 37
+  integer, parameter :: CMD_SELECTION = 38
+  integer, parameter :: CMD_REWEIGHT = 39
 
   integer, parameter :: CMD_VAR = 41
   integer, parameter :: CMD_SHOW = 45
@@ -152,6 +155,8 @@ module commands
   integer, parameter :: STEP_SUB = 2
   integer, parameter :: STEP_MUL = 3
   integer, parameter :: STEP_DIV = 4
+  integer, parameter :: STEP_COMP_ADD = 11
+  integer, parameter :: STEP_COMP_MUL = 13
 
   type :: command_t
      private
@@ -170,7 +175,10 @@ module commands
      type(cmd_beam_polarization_t), pointer :: beam_polarization => null ()
      type(cmd_cuts_t), pointer :: cuts => null ()
      type(cmd_scale_t), pointer :: scale => null ()
+     type(cmd_fac_scale_t), pointer :: fac_scale => null ()
+     type(cmd_ren_scale_t), pointer :: ren_scale => null ()     
      type(cmd_weight_t), pointer :: weight => null ()
+     type(cmd_selection_t), pointer :: selection => null ()
      type(cmd_reweight_t), pointer :: reweight => null ()
      type(cmd_seed_t), pointer :: seed => null ()
      type(cmd_iterations_t), pointer :: iterations => null ()
@@ -369,13 +377,28 @@ module commands
 
   type :: cmd_scale_t
      private
-     type(parse_node_t), pointer :: pn_expr => null ()
+     type(parse_node_t), pointer :: pn_expr => null ()     
   end type cmd_scale_t
+
+  type :: cmd_fac_scale_t
+     private
+     type(parse_node_t), pointer :: pn_expr => null ()     
+  end type cmd_fac_scale_t
+
+  type :: cmd_ren_scale_t
+     private
+     type(parse_node_t), pointer :: pn_expr => null ()     
+  end type cmd_ren_scale_t
 
   type :: cmd_weight_t
      private
      type(parse_node_t), pointer :: pn_expr => null ()
   end type cmd_weight_t
+
+  type :: cmd_selection_t
+     private
+     type(parse_node_t), pointer :: pn_expr => null ()
+  end type cmd_selection_t
 
   type :: cmd_reweight_t
      private
@@ -562,6 +585,7 @@ module commands
      integer :: n_pass = 0
      type(parse_node_p), dimension(:), allocatable :: pn_expr_n_it
      type(parse_node_p), dimension(:), allocatable :: pn_expr_n_calls
+     type(parse_node_p), dimension(:), allocatable :: pn_sexpr_adapt
   end type cmd_iterations_t
 
   type :: cmd_scan_t
@@ -654,9 +678,15 @@ contains
     case (CMD_CUTS)
        deallocate (command%cuts)
     case (CMD_SCALE)
-       deallocate (command%scale)
+       deallocate (command%scale)       
+    case (CMD_FAC_SCALE)
+       deallocate (command%fac_scale)
+    case (CMD_REN_SCALE)
+       deallocate (command%ren_scale)       
     case (CMD_WEIGHT)
        deallocate (command%weight)
+    case (CMD_SELECTION)
+       deallocate (command%selection)
     case (CMD_REWEIGHT)
        deallocate (command%reweight)
     case (CMD_SEED)
@@ -790,10 +820,19 @@ contains
        call cmd_cuts_compile (command%cuts, pn)
     case ("cmd_scale")
        command%type = CMD_SCALE
-       call cmd_scale_compile (command%scale, pn)
+       call cmd_scale_compile (command%scale, pn)       
+    case ("cmd_fac_scale")
+       command%type = CMD_FAC_SCALE
+       call cmd_fac_scale_compile (command%fac_scale, pn)
+    case ("cmd_ren_scale")
+       command%type = CMD_REN_SCALE
+       call cmd_ren_scale_compile (command%ren_scale, pn)       
     case ("cmd_weight")
        command%type = CMD_WEIGHT
        call cmd_weight_compile (command%weight, pn)
+    case ("cmd_selection")
+       command%type = CMD_SELECTION
+       call cmd_selection_compile (command%selection, pn)
     case ("cmd_reweight")
        command%type = CMD_REWEIGHT
        call cmd_reweight_compile (command%reweight, pn)
@@ -864,7 +903,7 @@ contains
     case ("cmd_close_out")
        command%type = CMD_CLOSE_OUT
        call cmd_close_out_compile (command%close_out, pn, global)
-    case ("cmd_print")
+    case ("cmd_printd")
        command%type = CMD_PRINTD
        call cmd_printd_compile (command%printd, pn, global)
     case ("cmd_printf")
@@ -920,9 +959,15 @@ contains
     case (CMD_CUTS)
        call cmd_cuts_execute (command%cuts, global)
     case (CMD_SCALE)
-       call cmd_scale_execute (command%scale, global)
+       call cmd_scale_execute (command%scale, global)       
+    case (CMD_FAC_SCALE)
+       call cmd_fac_scale_execute (command%fac_scale, global)
+    case (CMD_REN_SCALE)
+       call cmd_ren_scale_execute (command%ren_scale, global)       
     case (CMD_WEIGHT)
        call cmd_weight_execute (command%weight, global)
+    case (CMD_SELECTION)
+       call cmd_selection_execute (command%selection, global)
     case (CMD_REWEIGHT)
        call cmd_reweight_execute (command%reweight, global)
     case (CMD_SEED)
@@ -1143,7 +1188,7 @@ contains
     type(rt_data_t), intent(inout), target :: global
     type(pdg_array_t) :: pdg_in, pdg_out
     integer :: i, method
-    logical :: rebuild_library
+    logical :: rebuild_library, omega_openmp
     type(string_t) :: restrictions, method_str    
     call rt_data_link (process%local, global)
     if (associated (process%options)) then
@@ -1169,6 +1214,8 @@ contains
          (process%local%var_list, var_str ("$restrictions"))
     method_str = var_list_get_sval &
          (process%local%var_list, var_str ("$method"))
+    omega_openmp = var_list_get_lval &
+         (process%local%var_list, var_str ("?omega_openmp"))
     method = method_of_string (method_str)
     if (all (scan (process%prt_in, "?") == 0) .and. &
          all (scan (process%prt_out, "?") == 0)) then
@@ -1178,7 +1225,8 @@ contains
             process%id, process%local%model, &
             process%prt_in, process%prt_out, &
             method = method, restrictions = restrictions, &
-            rebuild_library = rebuild_library, message = .true.)
+            rebuild_library = rebuild_library, message = .true., &
+            omega_openmp = omega_openmp)
     else
        call msg_error ("Broken process declaration: skipped")
     end if
@@ -1693,8 +1741,9 @@ contains
           select case (char (parse_node_get_rule_key (pn_var)))
           case ("model", "beams", "results", "unstable", &
                 "real", "int", "intrinsic", &
-                "cuts", "scale", "weight", "reweight", "analysis", &
-                "expect")
+                "cuts", "scale", "factorization_scale", &
+                "renormalization_scale", "weight", &
+                "selection", "reweight", "analysis", "expect")
              show%name(i) = parse_node_get_key (pn_var)
           case ("library_spec")
              pn_prefix => parse_node_get_sub_ptr (pn_var)
@@ -1840,8 +1889,24 @@ contains
                 call parse_node_write_rec (global%pn_scale_expr)
                 call parse_node_write_rec (global%pn_scale_expr,u)
              else
-                call msg_message ("No scale expression defined")
+                call msg_message ("No general scale expression defined")
+             end if          
+          case ("factorization_scale")
+             if (associated (global%pn_fac_scale_expr)) then
+                call parse_node_write_rec (global%pn_fac_scale_expr)
+                call parse_node_write_rec (global%pn_fac_scale_expr,u)
+                call msg_message ("Factorization scale expression superseding scale defintion.")
+             else
+                call msg_message ("No factorization scale expression defined")
              end if
+          case ("renormalization_scale")
+             if (associated (global%pn_ren_scale_expr)) then
+                call parse_node_write_rec (global%pn_ren_scale_expr)
+                call parse_node_write_rec (global%pn_ren_scale_expr,u)
+                call msg_message ("Renormalization scale expression superseding scale defintion.")
+             else
+                call msg_message ("No renormalization scale expression defined")
+             end if          
           case ("analysis")
              if (associated (global%pn_analysis_lexpr)) then
                 call parse_node_write_rec (global%pn_analysis_lexpr)
@@ -2169,6 +2234,8 @@ contains
        strfun_def%type = STRF_NONE
     case ("lhapdf")
        strfun_def%type = STRF_LHAPDF
+    case ("pdf_builtin")
+       strfun_def%type = STRF_PDF_BUILTIN
     case ("isr")
        strfun_def%type = STRF_ISR
     case ("epa")
@@ -2357,7 +2424,7 @@ contains
     logical, dimension(2), intent(in) :: affects_beam
     type(rt_data_t), intent(inout), target :: global
     type(sf_data_t), pointer :: sf_data
-    type(string_t) :: lhapdf_file
+    type(string_t) :: lhapdf_file, lhapdf_dir
     integer :: lhapdf_member, lhapdf_photon_scheme
     real(default) :: isr_alpha, isr_q_max, isr_mass
     integer :: isr_order
@@ -2376,6 +2443,8 @@ contains
     type(string_t) :: beam_events_file
     logical :: beam_events_warn_eof
     logical :: exist
+    logical :: pdf_builtin_have_name
+    type(string_t) :: pdf_builtin_prefix, pdf_builtin_name
     call rt_data_link (strfun_def%local, global)
     if (associated (strfun_def%options)) then
        call command_list_execute (strfun_def%options, strfun_def%local)
@@ -2399,6 +2468,8 @@ contains
             strfun_def%type, affects_beam, strfun_def%n_parameters, sf_data)
        select case (strfun_def%type)
        case (STRF_LHAPDF)
+          lhapdf_dir  = var_list_get_sval (strfun_def%local%var_list, &
+               var_str ("$lhapdf_dir"))  ! $
           lhapdf_file = var_list_get_sval (strfun_def%local%var_list, &
                var_str ("$lhapdf_file"))  ! $
           lhapdf_member = var_list_get_ival (strfun_def%local%var_list, &
@@ -2407,7 +2478,27 @@ contains
                var_str ("lhapdf_photon_scheme"))
           call sf_data_init_lhapdf (sf_data, global%lhapdf_status, &
                global%model, global%beam_data%flv, &
-               lhapdf_file, lhapdf_member, lhapdf_photon_scheme)
+               lhapdf_dir, lhapdf_file, lhapdf_member, lhapdf_photon_scheme)
+       case (STRF_PDF_BUILTIN)
+          pdf_builtin_have_name = var_list_is_known (strfun_def%local%var_list, &
+               var_str ("$pdf_builtin_set"))
+          if (pdf_builtin_have_name) pdf_builtin_name = var_list_get_sval ( &
+               strfun_def%local%var_list, var_str ("$pdf_builtin_set"))
+          pdf_builtin_have_name = trim (pdf_builtin_name) /= ""
+          pdf_builtin_prefix = ""
+          if (var_list_is_known (strfun_def%local%var_list, &
+               var_str ("$pdf_builtin_path"))) &
+             pdf_builtin_prefix = var_list_get_sval ( &
+                  strfun_def%local%var_list, var_str ("$pdf_builtin_path"))
+          if (trim (pdf_builtin_prefix) == "") &
+             pdf_builtin_prefix = strfun_def%local%os_data%pdf_builtin_datapath
+          if (pdf_builtin_have_name) then
+             call sf_data_init_pdf_builtin (sf_data, global%model, &
+                  global%beam_data%flv, name=pdf_builtin_name, path=pdf_builtin_prefix)
+          else
+             call sf_data_init_pdf_builtin (sf_data, global%model, &
+                  global%beam_data%flv, path=pdf_builtin_prefix)
+          end if
        case (STRF_ISR)
           isr_alpha = var_list_get_rval (strfun_def%local%var_list, &
                var_str ("isr_alpha"))
@@ -2894,11 +2985,37 @@ contains
     scale%pn_expr => parse_node_get_sub_ptr (pn, 3)
   end subroutine cmd_scale_compile
 
+  subroutine cmd_fac_scale_compile (scale, pn)
+    type(cmd_fac_scale_t), pointer :: scale
+    type(parse_node_t), intent(in), target :: pn
+    allocate (scale)
+    scale%pn_expr => parse_node_get_sub_ptr (pn, 3)
+  end subroutine cmd_fac_scale_compile
+
+  subroutine cmd_ren_scale_compile (scale, pn)
+    type(cmd_ren_scale_t), pointer :: scale
+    type(parse_node_t), intent(in), target :: pn
+    allocate (scale)
+    scale%pn_expr => parse_node_get_sub_ptr (pn, 3)
+  end subroutine cmd_ren_scale_compile
+
   subroutine cmd_scale_execute (scale, global)
     type(cmd_scale_t), intent(inout), target :: scale
     type(rt_data_t), intent(inout), target :: global
     global%pn_scale_expr => scale%pn_expr
   end subroutine cmd_scale_execute
+
+  subroutine cmd_fac_scale_execute (scale, global)
+    type(cmd_fac_scale_t), intent(inout), target :: scale
+    type(rt_data_t), intent(inout), target :: global
+    global%pn_fac_scale_expr => scale%pn_expr
+  end subroutine cmd_fac_scale_execute
+
+  subroutine cmd_ren_scale_execute (scale, global)
+    type(cmd_ren_scale_t), intent(inout), target :: scale
+    type(rt_data_t), intent(inout), target :: global
+    global%pn_ren_scale_expr => scale%pn_expr    
+  end subroutine cmd_ren_scale_execute
 
   subroutine cmd_weight_compile (weight, pn)
     type(cmd_weight_t), pointer :: weight
@@ -2912,6 +3029,19 @@ contains
     type(rt_data_t), intent(inout), target :: global
     global%pn_weight_expr => weight%pn_expr
   end subroutine cmd_weight_execute
+
+  subroutine cmd_selection_compile (selection, pn)
+    type(cmd_selection_t), pointer :: selection
+    type(parse_node_t), intent(in), target :: pn
+    allocate (selection)
+    selection%pn_expr => parse_node_get_sub_ptr (pn, 3)
+  end subroutine cmd_selection_compile
+
+  subroutine cmd_selection_execute (selection, global)
+    type(cmd_selection_t), intent(inout), target :: selection
+    type(rt_data_t), intent(inout), target :: global
+    global%pn_selection_lexpr => selection%pn_expr
+  end subroutine cmd_selection_execute
 
   subroutine cmd_reweight_compile (reweight, pn)
     type(cmd_reweight_t), pointer :: reweight
@@ -3463,7 +3593,8 @@ contains
        do while (associated (pn_tag))
           key = parse_node_get_rule_key (pn_tag)
           select case (char (key))
-          case ("iterations", "cuts", "weight", "scale", "analysis", "expect")
+          case ("iterations", "cuts", "weight", "scale", "factorization_scale", &
+                "renormalization_scale", "analysis", "expect")
              clear%id(i) = key
           case ("analysis_id")
              clear%id(i) = parse_node_get_string (pn_tag)
@@ -3497,7 +3628,13 @@ contains
              call msg_message ("Cleared integration weight setup")
           case ("scale")
              global%pn_scale_expr => null ()
-             call msg_message ("Cleared event scale setup")
+             call msg_message ("Cleared general scale setup")        
+          case ("factorization_scale")
+             global%pn_fac_scale_expr => null ()
+             call msg_message ("Cleared factorization scale setup")
+          case ("renormalization_scale")
+             global%pn_ren_scale_expr => null ()
+             call msg_message ("Cleared renormalization scale setup")        
           case ("analysis")
              global%pn_analysis_lexpr => null ()
              call msg_message ("Cleared analysis setup")
@@ -4706,10 +4843,14 @@ contains
     call simulation_init (sim, simulate%process_id, simulate%local, &
          global%var_list, ok, verbose=.true.)
     if (ok) then
+       call simulation_setup_selection &
+            (sim, simulate%local%pn_selection_lexpr, verbose=.true.)
        call simulation_setup_reweight &
             (sim, simulate%local%pn_reweight_expr, verbose=.true.)
        call simulation_setup_analysis &
             (sim, simulate%local%pn_analysis_lexpr, verbose=.true.)
+       call openmp_set_num_threads_verbose &
+            (var_list_get_ival (global%var_list, "openmp_num_threads"))
        do i_evt = 1, simulation_get_n_events (sim)
           call simulation_event (sim, simulate%local%rng, ok, verbose=.true.)
           if (.not. ok)  exit
@@ -4782,6 +4923,8 @@ contains
          rescan%process_id, rescan%local, global%var_list, ok, &
          filename=filename, verbose=.true.)
     if (ok) then
+       call simulation_setup_selection &
+            (sim, rescan%local%pn_selection_lexpr, verbose=.true.)
        call simulation_setup_reweight &
             (sim, rescan%local%pn_reweight_expr, verbose=.true.)
        call simulation_setup_analysis &
@@ -4846,8 +4989,8 @@ contains
     type(cmd_iterations_t), pointer :: iterations
     type(parse_node_t), intent(in), target :: pn
     type(rt_data_t), intent(in), target :: global
-    type(parse_node_t), pointer :: pn_arg, pn_n_it, pn_n_calls
-    type(parse_node_t), pointer :: pn_it_spec, pn_calls_spec
+    type(parse_node_t), pointer :: pn_arg, pn_n_it, pn_n_calls, pn_adapt
+    type(parse_node_t), pointer :: pn_it_spec, pn_calls_spec, pn_adapt_spec
     integer :: i
     allocate (iterations)
     pn_arg => parse_node_get_sub_ptr (pn, 3)
@@ -4855,24 +4998,22 @@ contains
        iterations%n_pass = parse_node_get_n_sub (pn_arg)
        allocate (iterations%pn_expr_n_it (iterations%n_pass))
        allocate (iterations%pn_expr_n_calls (iterations%n_pass))
+       allocate (iterations%pn_sexpr_adapt (iterations%n_pass))
        pn_it_spec => parse_node_get_sub_ptr (pn_arg)
        i = 1
        do while (associated (pn_it_spec))
-          select case (char (parse_node_get_rule_key (pn_it_spec)))
-          case ("it_spec")
-             pn_n_it => parse_node_get_sub_ptr (pn_it_spec)
-             pn_calls_spec => parse_node_get_next_ptr (pn_n_it)
-          case ("calls_spec")
-             pn_n_it => null ()
-             pn_calls_spec => pn_it_spec
-          end select
-          if (associated (pn_calls_spec)) then
-             pn_n_calls => parse_node_get_sub_ptr (pn_calls_spec, 2)
+          pn_n_it => parse_node_get_sub_ptr (pn_it_spec)
+          pn_calls_spec => parse_node_get_next_ptr (pn_n_it)
+          pn_n_calls => parse_node_get_sub_ptr (pn_calls_spec, 2)
+          pn_adapt_spec => parse_node_get_next_ptr (pn_calls_spec)
+          if (associated (pn_adapt_spec)) then
+             pn_adapt => parse_node_get_sub_ptr (pn_adapt_spec, 2)
           else
-             pn_n_calls => null ()
+             pn_adapt => null ()
           end if
           iterations%pn_expr_n_it(i)%ptr => pn_n_it
           iterations%pn_expr_n_calls(i)%ptr => pn_n_calls
+          iterations%pn_sexpr_adapt(i)%ptr => pn_adapt
           i = i + 1
           pn_it_spec => parse_node_get_next_ptr (pn_it_spec)
        end do
@@ -4886,13 +5027,23 @@ contains
     type(cmd_iterations_t), intent(inout) :: iterations
     type(rt_data_t), intent(inout) :: global
     integer, dimension(iterations%n_pass) :: n_it, n_calls
+    logical, dimension(iterations%n_pass) :: custom_adapt
+    type(string_t), dimension(iterations%n_pass) :: adapt_code
     integer :: i
     do i = 1, iterations%n_pass
        n_it(i) = eval_int (iterations%pn_expr_n_it(i)%ptr, global%var_list)
        n_calls(i) = &
             eval_int (iterations%pn_expr_n_calls(i)%ptr, global%var_list)
+       if (associated (iterations%pn_sexpr_adapt(i)%ptr)) then
+          adapt_code(i) = &
+               eval_string (iterations%pn_sexpr_adapt(i)%ptr, &
+                            global%var_list, is_known = custom_adapt(i))
+       else
+          custom_adapt(i) = .false.
+       end if        
     end do
-    call iterations_list_init (global%it_list, n_it, n_calls)
+    call iterations_list_init &
+        (global%it_list, n_it, n_calls, custom_adapt, adapt_code)
   end subroutine cmd_iterations_execute
 
   recursive subroutine cmd_scan_final (loop)
@@ -4962,9 +5113,15 @@ contains
     case ("cmd_cuts_list")
        str_init = 'cuts = true'
     case ("cmd_scale_list")
-       str_init = 'scale = 0'
+       str_init = 'scale = 0'       
+    case ("cmd_fac_scale_list")
+       str_init = 'factorization_scale = 0'
+    case ("cmd_ren_scale_list")
+       str_init = 'renormalization_scale = 0'       
     case ("cmd_weight_list")
        str_init = 'weight = 0'
+    case ("cmd_selection_list")
+       str_init = 'selection = true'
     case ("cmd_reweight_list")
        str_init = 'reweight = 0'
     case ("cmd_analysis_list")
@@ -5026,7 +5183,8 @@ contains
           new = .true.
        case default
           call parse_node_mismatch &
-               ("scan: model|library|seed|cuts|weight|scale|analysis|" &
+               ("scan: model|library|seed|cuts|weight|" // &
+                "scale|factorization_scale|renormalization_scale|analysis|" &
                 // "variable",  pn_cmd)
        end select
        call var_list_check_user_var &
@@ -5082,6 +5240,8 @@ contains
                       case ("/-");  loop%step_type(i) = STEP_SUB
                       case ("/*");  loop%step_type(i) = STEP_MUL
                       case ("//");  loop%step_type(i) = STEP_DIV
+                      case ("+/+");  loop%step_type(i) = STEP_COMP_ADD
+                      case ("*/*");  loop%step_type(i) = STEP_COMP_MUL
                       end select
                       pn_step_expr => parse_node_get_next_ptr (pn_step_op)
                       loop%pn_step_expr(i)%ptr => pn_step_expr
@@ -5116,8 +5276,8 @@ contains
     type(string_t) :: model_name
     logical :: is_seed
     integer :: i, j
-    integer :: i1, i2, istep, ival
-    real(default) :: r1, r2, rstep, rval
+    integer :: i1, i2, istep, ival, n_steps
+    real(default) :: r1, r2, rstep, rval, rlog, r1log, r2log
     logical :: is_known
     type(var_entry_t), pointer :: var
     type(var_list_t), pointer :: model_vars
@@ -5179,33 +5339,35 @@ contains
           end if
           select case (loop%var_type)
           case (V_REAL)
+             n_steps = -1
              select case (loop%step_type(i))
              case (STEP_NONE, STEP_ADD)
-                do j = 0, huge (0)
-                   rval = r1 + j * rstep
-                   if (rstep > 0) then
-                      if (rval > r2) exit
-                   else
-                      if (rval < r2) exit
-                   end if
-                   call set_real (rval, j/=0)
-                   if (associated (loop%body)) then
-                      call command_list_execute (loop%body, loop%local)
-                      if (loop%local%quit) then
-                         global%quit_code = loop%local%quit_code
-                         global%quit = .true.
-                         return
-                      end if
-                   end if
-                end do
+                if (rstep /= 0)  n_steps = nint ((r2 - r1) / rstep)
              case (STEP_SUB)
-                do j = 0, huge (0)
-                   rval = r1 - j * rstep
-                   if (rstep > 0) then
-                      if (rval < r2) exit
-                   else
-                      if (rval > r2) exit
+                if (rstep /= 0)  n_steps = nint (- (r2 - r1) / rstep)
+             case (STEP_COMP_ADD)
+                if (istep /= 0)  n_steps = istep
+             case (STEP_MUL, STEP_DIV, STEP_COMP_MUL)
+                if (r1 * r2 > 0) then
+                   if (rstep > 0 .and. rstep /= 1) then
+                      r1log = log (abs (r1))
+                      r2log = log (abs (r2))
+                      select case (loop%step_type(i))
+                      case (STEP_MUL)
+                         n_steps = nint (log (r2 / r1) / log (rstep))
+                      case (STEP_DIV)
+                         n_steps = nint (- log (r2 / r1) / log (rstep))
+                      case (STEP_COMP_MUL)
+                         n_steps = istep
+                      end select
                    end if
+                end if
+             end select
+             if (n_steps == 0)  n_steps = -1
+             select case (loop%step_type(i))
+             case (STEP_NONE, STEP_ADD, STEP_COMP_ADD, STEP_SUB)
+                do j = 0, n_steps
+                   rval = (j * r2 + (n_steps-j) * r1) / n_steps
                    call set_real (rval, j/=0)
                    if (associated (loop%body)) then
                       call command_list_execute (loop%body, loop%local)
@@ -5216,14 +5378,10 @@ contains
                       end if
                    end if
                 end do
-             case (STEP_MUL)
-                rval = r1
-                do j = 0, huge (0)
-                   if (rstep > 1) then
-                      if (rval > r2)  exit
-                   else 
-                      if (rval < r2) exit
-                   end if
+             case (STEP_MUL, STEP_COMP_MUL, STEP_DIV)
+                do j = 0, n_steps
+                   rlog = (j * r2log + (n_steps-j) * r1log) / n_steps
+                   rval = sign (exp (rlog), r1)
                    call set_real (rval, j/=0)
                    if (associated (loop%body)) then
                       call command_list_execute (loop%body, loop%local)
@@ -5233,39 +5391,16 @@ contains
                          return
                       end if
                    end if
-                   rval = rval * rstep
-                end do
-             case (STEP_DIV)
-                rval = r1
-                do j = 0, huge (0)
-                   if (rstep > 1) then
-                      if (rval < r2)  exit
-                   else 
-                      if (rval > r2) exit
-                   end if
-                   call set_real (rval, j/=0)
-                   if (associated (loop%body)) then
-                      call command_list_execute (loop%body, loop%local)
-                      if (loop%local%quit) then
-                         global%quit_code = loop%local%quit_code
-                         global%quit = .true.
-                         return
-                      end if
-                   end if
-                   rval = rval / rstep
                 end do
              end select
           case (V_INT)
              select case (loop%step_type(i))
-             case (STEP_NONE, STEP_ADD)
-                do j = 0, huge (0)
-                   ival = i1 + j * istep
-                   if (istep > 0) then
-                      if (ival > i2) exit
-                   else
-                      if (ival < i2) exit
-                   end if
-                   call set_int (ival, j/=0, is_seed)
+             case (STEP_SUB);  istep = - istep
+             end select
+             select case (loop%step_type(i))
+             case (STEP_NONE, STEP_ADD, STEP_SUB)
+                do j = i1, i2, istep
+                   call set_int (j, j/=i1, is_seed)
                    if (associated (loop%body)) then
                       call command_list_execute (loop%body, loop%local)
                       if (loop%local%quit) then
@@ -5275,62 +5410,13 @@ contains
                       end if
                    end if
                 end do
-             case (STEP_SUB)
-                do j = 0, huge (0)
-                   ival = i1 - j * istep
-                   if (istep > 0) then
-                      if (ival < i2) exit
-                   else
-                      if (ival > i2) exit
-                   end if
-                   call set_int (ival, j/=0, is_seed)
-                   if (associated (loop%body)) then
-                      call command_list_execute (loop%body, loop%local)
-                      if (loop%local%quit) then
-                         global%quit_code = loop%local%quit_code
-                         global%quit = .true.
-                         return
-                      end if
-                   end if
-                end do
-             case (STEP_MUL)
-                ival = i1
-                do j = 0, huge (0)
-                   if (istep > 1) then
-                      if (ival > i2)  exit
-                   else 
-                      if (ival < i2) exit
-                   end if
-                   call set_int (ival, j/=0, is_seed)
-                   if (associated (loop%body)) then
-                      call command_list_execute (loop%body, loop%local)
-                      if (loop%local%quit) then
-                         global%quit_code = loop%local%quit_code
-                         global%quit = .true.
-                         return
-                      end if
-                   end if
-                   ival = ival * istep
-                end do
-             case (STEP_DIV)
-                ival = i1
-                do j = 0, huge (0)
-                   if (istep > 1) then
-                      if (ival < i2)  exit
-                   else 
-                      if (ival > i2) exit
-                   end if
-                   call set_int (ival, j/=0, is_seed)
-                   if (associated (loop%body)) then
-                      call command_list_execute (loop%body, loop%local)
-                      if (loop%local%quit) then
-                         global%quit_code = loop%local%quit_code
-                         global%quit = .true.
-                         return
-                      end if
-                   end if
-                   ival = ival / istep
-                end do
+             case (STEP_MUL, STEP_DIV)
+                call msg_error ("Skipping scan: " &
+                     // "Multiplicative steps not allowed " &
+                     // "for integer scan variable")
+             case (STEP_COMP_ADD, STEP_COMP_MUL)
+                call msg_error ("Skipping scan: " &
+                     // "Range division not allowed for integer scan variable")
              end select
           end select
        end if
@@ -5690,7 +5776,8 @@ contains
          // "cmd_var | cmd_slha | " &
          // "cmd_show | " &
          // "cmd_expect | " &
-         // "cmd_cuts | cmd_scale | cmd_weight | cmd_reweight | " &
+         // "cmd_cuts | cmd_scale | cmd_fac_scale | cmd_ren_scale | " &
+         // "cmd_weight | cmd_selection | cmd_reweight | " &
          // "cmd_beams | cmd_integrate | " &
          // "cmd_observable | cmd_histogram | cmd_plot | cmd_graph | " &
          // "cmd_clear | cmd_record | " &
@@ -5700,7 +5787,7 @@ contains
          // "cmd_scan | cmd_if | cmd_include | cmd_quit | " &
          // "cmd_polarized | cmd_unpolarized | " &
          // "cmd_beam_polarization | " &
-         // "cmd_open_out | cmd_close_out | cmd_print | cmd_printf | " &
+         // "cmd_open_out | cmd_close_out | cmd_printd | cmd_printf | " &
          // "cmd_write_analysis | cmd_compile_analysis | " &
          // "cmd_histogram_writer | cmd_plot_writer")
     call ifile_append (ifile, "GRO options = '{' local_command_list '}'")
@@ -5711,13 +5798,14 @@ contains
          // "cmd_var | cmd_slha | " &
          // "cmd_show | " &
          // "cmd_expect | " &
-         // "cmd_cuts | cmd_scale | cmd_weight | cmd_reweight | " &
+         // "cmd_cuts | cmd_scale | cmd_fac_scale | cmd_ren_scale | " &
+         // "cmd_weight | cmd_selection | cmd_reweight | " &
          // "cmd_beams | " &
          // "cmd_observable | cmd_histogram | cmd_plot | cmd_graph | " &
          // "cmd_clear | cmd_record | " &
          // "cmd_analysis | " &
          // "cmd_beam_polarization | " &
-         // "cmd_open_out | cmd_close_out | cmd_print | cmd_printf | " &
+         // "cmd_open_out | cmd_close_out | cmd_printd | cmd_printf | " &
          // "cmd_write_analysis | cmd_compile_analysis | " &
          // "cmd_histogram_writer | cmd_plot_writer")
     call ifile_append (ifile, "SEQ cmd_model = model '=' model_name")
@@ -5755,7 +5843,8 @@ contains
     call ifile_append (ifile, "ARG show_arg = ( var_generic* )")
     call ifile_append (ifile, "ALT var_generic = " &
          // "model | beams | results | unstable | real | int | " &
-         // "cuts | weight | scale | analysis | expect | " &
+         // "cuts | weight | scale | factorization_scale | renormalization_scale | " & 
+         // "analysis | expect | " &
          // "library_spec | " &
          // "intrinsic | result_var | " &
          // "log_var | alias_var | string_var | num_var")
@@ -5779,12 +5868,18 @@ contains
     call ifile_append (ifile, "KEY expect")
     call ifile_append (ifile, "ARG expect_arg = ( lexpr )")
     call ifile_append (ifile, "SEQ cmd_cuts = cuts '=' lexpr")
-    call ifile_append (ifile, "SEQ cmd_scale = scale '=' expr")
+    call ifile_append (ifile, "SEQ cmd_scale = scale '=' expr")    
+    call ifile_append (ifile, "SEQ cmd_fac_scale = factorization_scale '=' expr")
+    call ifile_append (ifile, "SEQ cmd_ren_scale = renormalization_scale '=' expr")
     call ifile_append (ifile, "SEQ cmd_weight = weight '=' expr")
+    call ifile_append (ifile, "SEQ cmd_selection = selection '=' lexpr")
     call ifile_append (ifile, "SEQ cmd_reweight = reweight '=' expr")
     call ifile_append (ifile, "KEY cuts")
-    call ifile_append (ifile, "KEY scale")
+    call ifile_append (ifile, "KEY scale")    
+    call ifile_append (ifile, "KEY factorization_scale")
+    call ifile_append (ifile, "KEY renormalization_scale")    
     call ifile_append (ifile, "KEY weight")
+    call ifile_append (ifile, "KEY selection")
     call ifile_append (ifile, "KEY reweight")
     call ifile_append (ifile, "SEQ cmd_process = process process_id '=' " &
          // "process_prt '=>' process_prt options?")     
@@ -5815,7 +5910,7 @@ contains
     call ifile_append (ifile, "LIS strfun_pair = strfun_def, strfun_def?")
     call ifile_append (ifile, "SEQ strfun_def = strfun_id options?")
     call ifile_append (ifile, "ALT strfun_id = " &
-          // "none | lhapdf | isr | epa | ewa | " &
+          // "none | lhapdf | isr | epa | ewa | pdf_builtin | " &
           // "circe1 | circe2 | energy_scan | beam_events")
     call ifile_append (ifile, "KEY none")
     call ifile_append (ifile, "KEY lhapdf")
@@ -5826,6 +5921,7 @@ contains
     call ifile_append (ifile, "KEY circe2")
     call ifile_append (ifile, "KEY energy_scan")
     call ifile_append (ifile, "KEY beam_events")
+    call ifile_append (ifile, "KEY pdf_builtin")
     call ifile_append (ifile, "SEQ cmd_integrate = " &
          // "integrate proc_arg options?") 
     call ifile_append (ifile, "KEY integrate")
@@ -5838,8 +5934,9 @@ contains
     call ifile_append (ifile, "KEY iterations")
     call ifile_append (ifile, "LIS iterations_list = iterations_spec+")
     call ifile_append (ifile, "ALT iterations_spec = it_spec")
-    call ifile_append (ifile, "SEQ it_spec = expr calls_spec")
+    call ifile_append (ifile, "SEQ it_spec = expr calls_spec adapt_spec?")
     call ifile_append (ifile, "SEQ calls_spec = ':' expr")
+    call ifile_append (ifile, "SEQ adapt_spec = ':' sexpr")
     call ifile_append (ifile, "SEQ cmd_sample_format = " &
          // "sample_format '=' event_format_list")
     call ifile_append (ifile, "KEY sample_format")
@@ -5867,9 +5964,9 @@ contains
     call ifile_append (ifile, "KEY open_out")
     call ifile_append (ifile, "KEY close_out")
     call ifile_append (ifile, "ARG open_arg = (sexpr)")
-    call ifile_append (ifile, "SEQ cmd_print = print_cmd options?")
-    call ifile_append (ifile, "SEQ print_cmd = print sprintf_args?")
-    call ifile_append (ifile, "KEY print")
+    call ifile_append (ifile, "SEQ cmd_printd = printd_cmd options?")
+    call ifile_append (ifile, "SEQ printd_cmd = printd sprintf_args?")
+    call ifile_append (ifile, "KEY printd")
     call ifile_append (ifile, "SEQ cmd_printf = printf_cmd options?")
     call ifile_append (ifile, "SEQ printf_cmd = printf_clause sprintf_args?")
     call ifile_append (ifile, "SEQ printf_clause = printf sexpr")
@@ -5878,7 +5975,8 @@ contains
     call ifile_append (ifile, "KEY clear")
     call ifile_append (ifile, "ARG clear_arg = ( clear_obj* )")
     call ifile_append (ifile, "ALT clear_obj = " &
-         // "iterations | cuts | weight | scale | analysis | expect | " &
+         // "iterations | cuts | weight | scale | factorization_scale | " &
+         // "renormalization_scale | analysis | expect | " &
          // "analysis_tag")
     call ifile_append (ifile, "SEQ cmd_record = record_cmd")
     call ifile_append (ifile, "SEQ cmd_unstable = " &
@@ -5909,7 +6007,9 @@ contains
          // "cmd_model_list | cmd_library_list | " &
          // "cmd_seed_list | " &
          // "cmd_cuts_list | cmd_scale_list | " &
-         // "cmd_weight_list | cmd_reweight_list | cmd_analysis_list | " &
+         // "cmd_fac_scale_list | cmd_ren_scale_list | " &
+         // "cmd_weight_list | cmd_selection_list | " &
+         // "cmd_reweight_list | cmd_analysis_list | " &
          // "cmd_var_list")
     call ifile_append (ifile, "SEQ cmd_model_list = model = model_list_arg")
     call ifile_append (ifile, "ARG model_list_arg = ( model_name* )")
@@ -5917,15 +6017,20 @@ contains
          // "library = library_list_arg")
     call ifile_append (ifile, "ARG library_list_arg = ( lib_name* )")
     call ifile_append (ifile, "SEQ cmd_seed_list = seed = num_step_list_arg")
-    call ifile_append (ifile, "ARG num_step_list_arg = ( num_steps* )")
+    call ifile_append (ifile, "ARG num_step_list_arg = ( num_steps_expr* )")
+    call ifile_append (ifile, "ALT num_steps_expr = grouped_num_steps | num_steps")
+    call ifile_append (ifile, "GRO grouped_num_steps = ( num_steps )")
     call ifile_append (ifile, "SEQ num_steps = expr range_spec?")
     call ifile_append (ifile, "SEQ range_spec = '=>' expr step_spec?")
     call ifile_append (ifile, "SEQ step_spec = step_op expr")
-    call ifile_append (ifile, "ALT step_op = '/+' | '/-' | '/*' | '//'")
+    call ifile_append (ifile, "ALT step_op = " &
+         // "'/+' | '/-' | '/*' | '//' | '+/+' | '*/*'")
     call ifile_append (ifile, "KEY '/+'")
     call ifile_append (ifile, "KEY '/-'")
     call ifile_append (ifile, "KEY '/*'")
     call ifile_append (ifile, "KEY '//'")
+    call ifile_append (ifile, "KEY '+/+'")
+    call ifile_append (ifile, "KEY '*/*'")
     call ifile_append (ifile, "ALT cmd_var_list = " &
          // "log_decl_list | log_list | " &
          // "int_list | real_list | complex_list | num_list | " &
@@ -5948,8 +6053,11 @@ contains
          // "alias var_name alias_list_arg")
     call ifile_append (ifile, "ARG alias_list_arg = ( cexpr* )")
     call ifile_append (ifile, "SEQ cmd_cuts_list = cuts = log_list_arg")
-    call ifile_append (ifile, "SEQ cmd_scale_list = scale = num_list_arg")
+    call ifile_append (ifile, "SEQ cmd_scale_list = scale = num_list_arg")    
+    call ifile_append (ifile, "SEQ cmd_fac_scale_list = factorization_scale = num_list_arg")
+    call ifile_append (ifile, "SEQ cmd_ren_scale_list = renormalization_scale = num_list_arg")    
     call ifile_append (ifile, "SEQ cmd_weight_list = weight = num_list_arg")
+    call ifile_append (ifile, "SEQ cmd_selection_list = selection = log_list_arg")
     call ifile_append (ifile, "SEQ cmd_reweight_list = reweight = num_list_arg")
     call ifile_append (ifile, "ARG num_list_arg = ( expr* )")
     call ifile_append (ifile, "SEQ cmd_analysis_list = analysis = log_list_arg")

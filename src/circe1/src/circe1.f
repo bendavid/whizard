@@ -135,8 +135,6 @@ c   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
       parameter (A9NEGY = TEV15, A9NREV = 1)
       real xa9lum(GEV090:A9NEGY,NACC,0:A9NREV)
       real xa9(0:7,GEV090:A9NEGY,NACC,0:A9NREV)
-      double precision betinc
-      external betinc
       data accnam(SBAND)  /'SBAND'/
       data accnam(TESLA)  /'TESLA'/
       data accnam(JLCNLC) /'JLCNLC'/

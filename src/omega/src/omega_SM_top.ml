@@ -1,6 +1,6 @@
 (* $Id: omega_SM_top.ml,v 1.3.10.2 2006/05/15 09:06:23 ohl Exp $ 
 
-   Copyright (C) 1999-2010 by
+   Copyright (C) 1999-2011 by
 
        Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
@@ -456,7 +456,7 @@ module Anomtop (Flags : SM_flags) =
       | "d" -> M (D 1) | "dbar" -> M (D (-1))
       | "s" -> M (D 2) | "sbar" -> M (D (-2))
       | "b" -> M (D 3) | "bbar" -> M (D (-3))
-      | "g" -> G Gl
+      | "g" | "gl" -> G Gl
       | "A" -> G Ga | "Z" | "Z0" -> G Z
       | "W+" -> G Wp | "W-" -> G Wm
       | "H" -> O H

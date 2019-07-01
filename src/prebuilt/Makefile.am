@@ -3,7 +3,7 @@
 ## Process this file with automake to produce Makefile.in
 
 ## The main program makes up a library on its own.
-pkglib_LTLIBRARIES = libwhizard_prebuilt.la
+lib_LTLIBRARIES = libwhizard_prebuilt.la
 
 libwhizard_prebuilt_la_SOURCES = libmanager.f90
 
@@ -12,14 +12,25 @@ $(libwhizard_prebuilt_la_OBJECTS): \
   ../misc/iso_varying_string.$(FC_MODULE_EXT) \
   ../whizard-core/process_libraries.$(FC_MODULE_EXT)
 
-AM_FCFLAGS = -I../misc -I../whizard-core
+auxdir = $(top_builddir)/src/misc
+
+AM_FCFLAGS = -I$(auxdir) -I../whizard-core
+
+########################################################################
+## Default Fortran compiler options
+
+## Profiling
+if FC_USE_PROFILING
+AM_FCFLAGS += $(FCFLAGS_PROFILING)
+endif
 
 ## OpenMP
-AM_LDFLAGS =
-if WHIZARD_WITH_OPENMP
-AM_FCFLAGS += $(OPENMP_FCFLAGS)
-AM_LDFLAGS += $(OPENMP_FCFLAGS)
+if FC_USE_OPENMP
+AM_FCFLAGS += $(FCFLAGS_OPENMP)
 endif
+
+########################################################################
+## Cleanup
 
 ## Remove F90 module files
 clean-local:

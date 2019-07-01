@@ -4,10 +4,11 @@
 ##
 ########################################################################
 #
-# Copyright (C) 1999-2010 by 
-#     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+# Copyright (C) 1999-2011 by 
+#     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
-#     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+#     Juergen Reuter <juergen.reuter@desy.de>
+#     Christian Speckner <Christian.Speckner@physik.uni-freiburg.de>
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by 
@@ -51,7 +52,8 @@ TESTS_REQ_OCAML = \
     cuts.run \
     ilc.run \
     mssmtest.run \
-    models.run
+    models.run \
+    pdf_builtin.run
 XFAIL_TESTS_REQ_OCAML =
 
 TESTS_REQ_LHAPDF = \
@@ -63,7 +65,7 @@ TESTS_REQ_STDHEP = \
     stdhep_up.run
 XFAIL_TESTS_REQ_STDHEP =
 
-TESTS_STATC = \
+TESTS_STATIC = \
     static.run
 XFAIL_TESTS_STATIC =
 
@@ -72,6 +74,14 @@ TESTS_EXTENDED = \
     mssm_ext.run \
     nmssm_ext.run
 XFAIL_TESTS_EXTENDED =
+
+TESTS_REQ_GAMELAN = \
+    plain.run \
+    test_me.run \
+    $(TESTS_REQ_OCAML) \
+    $(TESTS_REQ_LHAPDF) \
+    $(TESTS_REQ_STDHEP) \
+    $(TESTS_EXTENDED)
 
 TEST_DRIVERS_RUN = \
     $(TESTS_DEFAULT) \
@@ -179,7 +189,7 @@ SUFFIXES = .sh .run
 	chmod +x $@
 
 plain.run: TEST.mdl
-qedtest.run: gamelan.sty
+$(TESTS_REQ_GAMELAN): gamelan.sty
 susyhit.run: susyhit.in
 
 TEST.mdl: $(top_srcdir)/share/test/TEST.mdl

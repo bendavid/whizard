@@ -732,11 +732,12 @@ vertex sn31 SE32 Wm
 vertex se32 SN31 Wp 
 
 # Yukawa (neutral)
-vertex S s h 
-vertex C c h 
+### keeping only 3rd generation for the moment
+# vertex S s h 
+# vertex C c h 
 vertex B b h 
 vertex T t h 
-vertex E2 e2 h 
+# vertex E2 e2 h 
 vertex E3 e3 h 
 
 ! SUSY Higgses

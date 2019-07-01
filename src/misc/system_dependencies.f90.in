@@ -1,9 +1,9 @@
 ! WHIZARD <<Version>> <<Date>>
 ! 
-! (C) 1999-2010 by 
-!     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+! Copyright (C) 1999-2011 by 
+!     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
-!     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+!     Juergen Reuter <juergen.reuter@desy.de>
 !     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
 !     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
 !
@@ -29,6 +29,8 @@ module system_dependencies
   ! split into chunks respecting the FORTRAN line length constraint by
   ! configure.
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+  @FC_OPENMP_HEADER@
 
   implicit none
   public
@@ -72,6 +74,8 @@ module system_dependencies
        "@SRCDIR@/src/circe2/share/data"
   character(*), parameter :: WHIZARD_TEST_BEAMSIMPATH = &
        "@SRCDIR@/share/beam-sim"
+  character(*), parameter :: PDF_BUILTIN_TEST_DATAPATH = &
+       "@SRCDIR@/share/pdf_builtin"
 
   ! WHIZARD-specific include flags
   character(*), parameter :: WHIZARD_TEST_INCLUDES = &
@@ -107,7 +111,7 @@ module system_dependencies
   character(*), parameter :: DATAROOTDIR = &
        "@datarootdir@"
 
-  character(*), parameter :: PKGLIBDIR = LIBDIR // "/whizard"
+  character(*), parameter :: PKGLIBDIR = LIBDIR  // "/whizard"
   character(*), parameter :: PKGDATADIR = DATAROOTDIR // "/whizard"
   character(*), parameter :: PKGTEXDIR = DATAROOTDIR // "/texmf/whizard"
   character(*), parameter :: PKGCIRCE2DIR = DATAROOTDIR // "/circe2"
@@ -123,7 +127,7 @@ module system_dependencies
   character(*), parameter :: WHIZARD_OMEGA_BINPATH = &
        BINDIR
   character(*), parameter :: WHIZARD_OMEGA_LIBPATH = &
-       PKGLIBDIR
+       LIBDIR
   character(*), parameter :: WHIZARD_MODELPATH = &
        PKGDATADIR // "/models"
   character(*), parameter :: WHIZARD_MODELS_LIBPATH = &
@@ -142,6 +146,8 @@ module system_dependencies
        PKGCIRCE2DIR // "/data"
   character(*), parameter :: WHIZARD_BEAMSIMPATH = &
        PKGDATADIR // "/beam-sim"
+  character(*), parameter :: PDF_BUILTIN_DATAPATH = &
+       PKGDATADIR // "/pdf_builtin"
 
   ! WHIZARD-specific include flags
   character(*), parameter :: WHIZARD_INCLUDES = &
@@ -164,7 +170,7 @@ module system_dependencies
   character(*), parameter :: DEFAULT_FC = &
        "@FC@"
   character(*), parameter :: DEFAULT_FCFLAGS = &
-       "@WHIZARD_OPENMP_FCFLAGS@ @FCFLAGS@"
+       "@FCFLAGS_PROFILING@ @FCFLAGS_OPENMP@ @FCFLAGS@"
   character(*), parameter :: DEFAULT_FCFLAGS_PIC = &
        "@FCFLAGS_PIC@"
   character(*), parameter :: DEFAULT_FC_SRC_EXT = &
@@ -176,10 +182,12 @@ module system_dependencies
   character(*), parameter :: DEFAULT_LD = &
        "@LD@"
   character(*), parameter :: DEFAULT_LDFLAGS = &
-       "@WHIZARD_OPENMP_LDFLAGS@ "
+       ""
   character(*), parameter :: DEFAULT_LDFLAGS_SO = "-shared"
   character(*), parameter :: DEFAULT_LDFLAGS_STATIC = &
-       "-lwhizard @LDFLAGS_STATIC@"
+       "@LDFLAGS_STATIC@"
+  character(*), parameter :: DEFAULT_LDFLAGS_HEPMC = &
+       "@LDFLAGS_HEPMC@"
   character(*), parameter :: DEFAULT_SHLIB_EXT = ".so"
 
   ! LHAPDF library
@@ -202,7 +210,46 @@ module system_dependencies
   character(*), parameter :: PRG_PS2PDF = &
        "@PS2PDF@"
 
+  ! Hardwired options for batch-mode processing
+  character(*), parameter :: OPT_LATEX  = &
+       "-halt-on-error"
+  character(*), parameter :: OPT_MPOST  = &
+       "-halt-on-error"
+
   ! Misc
   logical, parameter :: LHAPDF_AVAILABLE = @LHAPDF_AVAILABLE_FLAG@
+
+contains
+
+  ! Subroutines that depend on configure settings
+
+  ! OpenMP wrapper routines, work independent of OpenMP status
+  function openmp_is_active () result (flag)
+    logical :: flag
+@FC_OPENMP_ON@    flag = .true.
+@FC_OPENMP_OFF@    flag = .false.
+  end function openmp_is_active
+
+  subroutine openmp_set_num_threads (num)
+    integer, intent(in) :: num
+@FC_OPENMP_ON@    call omp_set_num_threads (num)
+  end subroutine openmp_set_num_threads
+  
+  function openmp_get_num_threads () result (num)
+    integer :: num
+@FC_OPENMP_ON@    num = omp_get_num_threads ()
+@FC_OPENMP_OFF@    num = 1
+  end function openmp_get_num_threads
+  
+  function openmp_get_max_threads () result (num)
+    integer :: num
+@FC_OPENMP_ON@    num = omp_get_max_threads ()
+@FC_OPENMP_OFF@    num = 1
+  end function openmp_get_max_threads
+  
+  function openmp_get_default_max_threads () result (num)
+    integer :: num
+    num = @FC_OPENMP_DEFAULT_MAX_THREADS@
+  end function openmp_get_default_max_threads
 
 end module system_dependencies

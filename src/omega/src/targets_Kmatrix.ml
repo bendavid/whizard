@@ -1,10 +1,11 @@
-(* $Id: targets_Kmatrix.ml 774 2009-06-11 17:42:04Z ohl $
+(* $Id: targets_Kmatrix.ml 2975 2011-01-25 14:04:43Z jr_reuter $
 
-   Copyright (C) 1999-2009 by
+   Copyright (C) 1999-2011 by
 
        Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
        Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+       Christian Speckner <christian.speckner@physik.uni-freiburg.de>
 
    WHIZARD is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by
@@ -21,16 +22,17 @@
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
 let rcs_file = RCS.parse "Targets_Kmatrix" ["K-Matrix Support routines"]
-    { RCS.revision = "$Revision: 774 $";
-      RCS.date = "$Date: 2009-06-11 19:42:04 +0200 (Thu, 11 Jun 2009) $";
-      RCS.author = "$Author: ohl $";
+    { RCS.revision = "$Revision: 2975 $";
+      RCS.date = "$Date: 2011-01-25 15:04:43 +0100 (Tue, 25 Jan 2011) $";
+      RCS.author = "$Author: jr_reuter $";
       RCS.source
         = "$URL: svn+ssh://jr_reuter@login.hepforge.org/hepforge/svn/whizard/trunk/src/omega/src/targets_Kmatrix.ml $" }
 
 module Fortran =
   struct
 
-    open Printf
+    open Format
+
     let nl = print_newline
 
 (* Special functions for the K matrix approach. This might be generalized
@@ -43,7 +45,7 @@ module Fortran =
           "pure "
         else 
           "" in
-      printf "  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"; nl (); 
+      printf "  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"; nl ();
       printf "  !!! Special K matrix functions"; nl (); 
       printf "  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"; nl (); 
       nl();
@@ -170,7 +172,7 @@ module Fortran =
       printf "        else"; nl ();
       printf "          a00(1) = vev**2/s**2 * cc(1)**2 * &"; nl ();
       printf "              (3.0 * s**2/cmplx(s-m(1)**2,m(1)*width_res(w_res,1,&"; nl ();
-      printf "              wkm(1),m(1),cc(1))) + 2.0 * s0stu(s,m(1)))"; nl ();
+      printf "              wkm(1),m(1),cc(1)),default) + 2.0 * s0stu(s,m(1)))"; nl ();
       printf "        end if"; nl ();          
       printf "      else"; nl ();
       printf "         a00(1) = 0"; nl ();
@@ -233,7 +235,7 @@ module Fortran =
       printf "        else"; nl ();
       printf "          a02(4) = vev**2/s**2 * cc(4)**2 * ( s**2/ &"; nl (); 
       printf "               cmplx(s-m(4)**2,m(4)*width_res(w_res,4,wkm(4),&"; nl ();
-      printf "               m(4),cc(4)))/10.0 + &"; nl ();
+      printf "               m(4),cc(4)),default)/10.0 + &"; nl ();
       printf "               (1.+6.*s/m(4)**2+6.*s**2/m(4)**4)*s2stu(s,m(4))/ &"; nl ();
       printf "               3. + s**2/m(4)**2/180.)"; nl ();
       printf "        end if"; nl ();          
@@ -280,7 +282,7 @@ module Fortran =
       printf "        else"; nl ();
       printf "          a11(3) = vev**4/s**2 * cc(3)**2 * ( 2.*s / &"; nl (); 
       printf "              cmplx(s-m(3)**2,m(3)*width_res(w_res,3,wkm(3),m(3),&"; nl ();
-      printf "              cc(3)))/3. + s/m(3)**2 + 2.*p1stu(s,m(3)))"; nl ();
+      printf "              cc(3)),default)/3. + s/m(3)**2 + 2.*p1stu(s,m(3)))"; nl ();
       printf "        end if"; nl ();          
       printf "      else"; nl ();
       printf "         a11(3) = 0"; nl ();
@@ -325,7 +327,7 @@ module Fortran =
       printf "        else"; nl ();
       printf "          a20(2) = vev**2/s**2 * cc(2)**2 * ( s**2 / &"; nl (); 
       printf "              cmplx(s-m(2)**2,m(2)*width_res(w_res,2,wkm(2),&"; nl ();
-      printf "              m(2),cc(2)))/2. + s0stu(s,m(2))/6.)"; nl ();
+      printf "              m(2),cc(2)),default)/2. + s0stu(s,m(2))/6.)"; nl ();
       printf "        end if"; nl ();          
       printf "      else"; nl ();
       printf "         a20(2) = 0"; nl ();
@@ -389,7 +391,7 @@ module Fortran =
       printf "        else"; nl ();
       printf "          a22(5) = vev**2/s**2 * cc(5)**2 * ( s**2 / &"; nl (); 
       printf "              cmplx(s-m(5)**2,m(5)*width_res(w_res,5,wkm(5),&"; nl ();
-      printf "              m(5),cc(5)))/80. + (1.0+6.0* &"; nl ();
+      printf "              m(5),cc(5)),default)/80. + (1.0+6.0* &"; nl ();
       printf "              s/m(5)**2+6.0*s**2/m(5)**4)*s2stu(s,m(5))/36.0 + &"; nl ();
       printf "              s**2/m(5)**2/2160.0)"; nl ();
       printf "        end if"; nl ();                    
@@ -514,6 +516,7 @@ module Fortran =
       printf "               - 5*(da02(cc,s,m)+2*da22(cc,s,m))/6)"; nl (); 
       printf "  end function dalz4_s"; nl ();
       nl ();
+      printf "  @[<5>"; 
       printf "  %sfunction dalz4_t (cc,m,k) result (alz4_t)" pure; nl ();
       printf "      type(momentum), intent(in) :: k"; nl ();
       printf "      real(kind=default), dimension(1:5), intent(in) :: cc, m"; nl ();
@@ -523,7 +526,7 @@ module Fortran =
       printf "      alz4_t = g**4/costhw**4*5*(da02(cc,s,m) &"; nl ();
       printf "               + 2*da22(cc,s,m))/4"; nl (); 
       printf "  end function dalz4_t"; nl ();
-      nl ()
+      nl ();
   end
 
 (*i

@@ -1,5 +1,5 @@
 # Makefile.sources -- Makefile component for O'Mega
-# $Id: Makefile.sources 2838 2010-09-29 15:52:35Z jr_reuter $
+# $Id: Makefile.sources 3130 2011-04-07 14:25:10Z kilian $
 ##
 ## Process Makefile.am with automake to include this file in Makefile.in
 ##
@@ -159,6 +159,7 @@ OMEGA_APPLICATIONS_ML = \
     omega_MSSM_Grav.ml \
     omega_NMSSM.ml \
     omega_NMSSM_CKM.ml \
+    omega_NMSSM_Hgg.ml \
     omega_PSSSM.ml \
     omega_Littlest.ml \
     omega_Littlest_Eta.ml \
@@ -229,11 +230,15 @@ OMEGA_CAML = $(OMEGA_ML) $(OMEGA_MLI) $(OMEGA_MLL) $(OMEGA_MLY) $(OMEGA_DERIVED_
 ########################################################################
 
 AM_FCFLAGS =
-AM_LDFLAGS =
 
-if OMEGA_WITH_OPENMP
-AM_FCFLAGS += $(OPENMP_FCFLAGS)
-AM_LDFLAGS += $(OPENMP_FCFLAGS)
+## Profiling
+if FC_USE_PROFILING
+AM_FCFLAGS += $(FCFLAGS_PROFILING)
+endif
+
+## OpenMP
+if FC_USE_OPENMP
+AM_FCFLAGS += $(FCFLAGS_OPENMP)
 endif
 
 if STANDALONE_OMEGA_BUILD

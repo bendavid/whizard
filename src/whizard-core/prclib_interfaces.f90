@@ -1,9 +1,9 @@
-! WHIZARD 2.0.4 Tue Oct 26 2010
+! WHIZARD 2.0.5 Tue May 10 2011
 ! 
-! (C) 1999-2010 by 
-!     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+! Copyright (C) 1999-2011 by 
+!     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
-!     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+!     Juergen Reuter <juergen.reuter@desy.de>
 !     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
 !     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
 !
@@ -37,6 +37,7 @@ module prclib_interfaces
   public :: prc_get_n_processes
   public :: prc_get_stringptr
   public :: prc_get_int
+  public :: prc_get_log
   public :: prc_set_int_tab1
   public :: prc_set_int_tab2
   public :: prc_set_cf_tab
@@ -71,6 +72,13 @@ module prclib_interfaces
        integer(c_int), intent(in) :: pid
        integer(c_int) :: n
      end function prc_get_int
+  end interface
+  abstract interface
+     function prc_get_log (pid) result (l) bind(C)
+       import
+       integer(c_int), intent(in) :: pid
+       logical(c_bool) :: l
+     end function prc_get_log
   end interface
   abstract interface
      subroutine prc_set_int_tab1 (pid, cptr, shape) bind(C)

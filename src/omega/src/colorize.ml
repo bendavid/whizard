@@ -1,10 +1,11 @@
-(* $Id: colorize.ml 2640 2010-06-23 22:16:40Z ohl $
+(* $Id: colorize.ml 3070 2011-03-28 08:09:25Z jr_reuter $
 
-   Copyright (C) 1999-2010 by
+   Copyright (C) 1999-2011 by
 
-       Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+       Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
-       Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+       Juergen Reuter <juergen.reuter@desy.de>
+       Christian Speckner <christian.speckner@physik.uni-freiburg.de>
 
    WHIZARD is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by
@@ -21,9 +22,9 @@
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
 let rcs_file = RCS.parse "Colorize" ["Colorizing Monochrome Models"]
-    { RCS.revision = "$Revision: 2640 $";
-      RCS.date = "$Date: 2010-06-24 00:16:40 +0200 (Thu, 24 Jun 2010) $";
-      RCS.author = "$Author: ohl $";
+    { RCS.revision = "$Revision: 3070 $";
+      RCS.date = "$Date: 2011-03-28 10:09:25 +0200 (Mon, 28 Mar 2011) $";
+      RCS.author = "$Author: jr_reuter $";
       RCS.source
         = "$URL: svn+ssh://jr_reuter@login.hepforge.org/hepforge/svn/whizard/trunk/src/omega/src/colorize.ml $" }
 
@@ -109,8 +110,11 @@ module It (M : Model.T) =
       | Prop_Majorana -> Prop_Col_Majorana   (* Spin 1/2 octets. *)
       | Prop_Feynman -> Prop_Col_Feynman   (* Spin 1 states, massless. *)
       | Prop_Unitarity -> Prop_Col_Unitarity   (* Spin 1 states, massive. *)
+      | Aux_Vector -> Aux_Col_Vector  (* constant colored vector propagator *)
+      | Aux_Tensor_1 -> Aux_Col_Tensor_1  (* constant colored tensor propagator *)
       | Prop_Col_Scalar | Prop_Col_Feynman
       | Prop_Col_Majorana | Prop_Col_Unitarity
+      | Aux_Col_Vector | Aux_Col_Tensor_1
         -> failwith ("Colorize.It().colorize_propagator: already colored particle!")
       | _ -> failwith ("Colorize.It().colorize_propagator: impossible!")
 
@@ -655,7 +659,8 @@ module It (M : Model.T) =
           | CF_io (f1, c1, c1'), CF_io (f2, c2, c2') ->
               let sign =
                 begin match v with
-                | V3 (Gauge_Gauge_Gauge _, _, _) -> 1
+                | V3 (Gauge_Gauge_Gauge _, _, _)
+                | V3 (Aux_Gauge_Gauge _, _, _) -> 1
                 | V3 (FBF (_, _, _, _), fuse2, _) ->
                     begin match fuse2 with
                     | F12 ->  1 (* works, but needs theoretical underpinning *)

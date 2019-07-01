@@ -1,9 +1,9 @@
-! WHIZARD 2.0.4 Tue Oct 26 2010
+! WHIZARD 2.0.5 Tue May 10 2011
 ! 
-! (C) 1999-2010 by 
-!     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+! Copyright (C) 1999-2011 by 
+!     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
-!     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+!     Juergen Reuter <juergen.reuter@desy.de>
 !     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
 !     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
 !
@@ -45,6 +45,7 @@ module strfun
   use sf_escan
   use sf_beam_events
   use sf_lhapdf
+  use sf_pdf_builtin
 
   implicit none
   private
@@ -74,7 +75,7 @@ module strfun
   integer, parameter, public :: STRF_NONE = 0
   integer, parameter, public :: STRF_LHAPDF = 1, STRF_ISR = 2, &
        STRF_EPA = 3, STRF_EWA = 4, STRF_CIRCE1 = 5, STRF_CIRCE2 = 6, &
-       STRF_ESCAN = 7, STRF_BEVT = 8
+       STRF_ESCAN = 7, STRF_BEVT = 8, STRF_PDF_BUILTIN = 9
   
   integer, parameter, public :: SFM_NONE = 0
   integer, parameter, public :: SFM_PDFPAIR = 1
@@ -90,6 +91,7 @@ module strfun
      type(string_t) :: name
      type(interaction_t) :: int
      type(lhapdf_data_t), dimension(:), allocatable :: lhapdf_data
+     type(pdf_builtin_data_t), dimension(:), allocatable :: pdf_builtin_data
      type(isr_data_t), dimension(:), allocatable :: isr_data
      type(epa_data_t), dimension(:), allocatable :: epa_data
      type(ewa_data_t), dimension(:), allocatable :: ewa_data     
@@ -134,6 +136,7 @@ module strfun
      module procedure strfun_init_circe2
      module procedure strfun_init_escan
      module procedure strfun_init_beam_events
+     module procedure strfun_init_pdf_builtin
   end interface
 
   interface strfun_final
@@ -146,6 +149,7 @@ module strfun
 
   interface strfun_chain_set_strfun
      module procedure strfun_chain_set_lhapdf
+     module procedure strfun_chain_set_pdf_builtin
      module procedure strfun_chain_set_isr
      module procedure strfun_chain_set_epa
      module procedure strfun_chain_set_ewa     
@@ -166,6 +170,16 @@ contains
     strfun%lhapdf_data = lhapdf_data
     call interaction_init_lhapdf (strfun%int, lhapdf_data)
   end subroutine strfun_init_lhapdf
+
+  subroutine strfun_init_pdf_builtin (strfun, pdf_builtin_data)
+    type(strfun_t), intent(out) :: strfun
+    type(pdf_builtin_data_t), intent(in) :: pdf_builtin_data
+    strfun%type = STRF_PDF_BUILTIN
+    strfun%name = "builtin PDF: " // pdf_builtin_get_name (pdf_builtin_data)
+    allocate (strfun%pdf_builtin_data (1))
+    strfun%pdf_builtin_data = pdf_builtin_data
+    call interaction_init_pdf_builtin (strfun%int, pdf_builtin_data)
+  end subroutine strfun_init_pdf_builtin  
 
   subroutine strfun_init_isr (strfun, isr_data)
     type(strfun_t), intent(out) :: strfun
@@ -267,6 +281,9 @@ contains
        deallocate (strfun%beam_events_data)
     case (STRF_LHAPDF)
        deallocate (strfun%lhapdf_data)
+    case (STRF_PDF_BUILTIN)
+       call pdf_builtin_final (strfun%pdf_builtin_data(1))
+       deallocate (strfun%pdf_builtin_data)
     end select
     call interaction_final (strfun%int)
     strfun%type = STRF_NONE
@@ -284,6 +301,13 @@ contains
        case (STRF_LHAPDF)
           call lhapdf_data_write (strfun%lhapdf_data(1), u)
           write (u, *) "LHAPDF event data:"
+          write (u, *) "  x     =", strfun%x
+          write (u, *) "  f     =", strfun%f
+          write (u, *) "  scale =", strfun%scale
+          write (u, *) "  p2    =", strfun%s
+       case (STRF_PDF_BUILTIN)
+          call pdf_builtin_data_write (strfun%pdf_builtin_data(1), u)
+          write (u, *) "PDF event data:"
           write (u, *) "  x     =", strfun%x
           write (u, *) "  f     =", strfun%f
           write (u, *) "  scale =", strfun%scale
@@ -330,6 +354,9 @@ contains
     case (STRF_LHAPDF)
        call interaction_set_kinematics_lhapdf (strfun%int, &
             strfun%x, strfun%f, strfun%s, r(1), strfun%lhapdf_data(1))
+    case (STRF_PDF_BUILTIN)
+       call interaction_set_kinematics_pdf_builtin (strfun%int, &
+            strfun%x, strfun%f, strfun%s, r(1), strfun%pdf_builtin_data(1))
     case (STRF_ISR)
        call interaction_apply_isr (strfun%int, r, strfun%isr_data(1), no_map)
     case (STRF_EPA)
@@ -359,6 +386,9 @@ contains
     case (STRF_LHAPDF)
        call interaction_apply_lhapdf (strfun%int, scale, &
             strfun%x, strfun%f, strfun%s, strfun%lhapdf_data(1))
+    case (STRF_PDF_BUILTIN)
+       call interaction_apply_pdf_builtin (strfun%int, scale, &
+            strfun%x, strfun%f, strfun%s, strfun%pdf_builtin_data(1))
     end select
   end subroutine strfun_apply
     
@@ -644,7 +674,17 @@ contains
     sfchain%n_parameters(i) = n_parameters
     call strfun_chain_link (sfchain, i, line, (/1/), (/3/))
   end subroutine strfun_chain_set_lhapdf
-  
+
+  subroutine strfun_chain_set_pdf_builtin &
+       (sfchain, i, line, pdf_builtin_data, n_parameters)
+    type(strfun_chain_t), intent(inout), target :: sfchain
+    integer, intent(in) :: i, line, n_parameters
+    type(pdf_builtin_data_t), intent(in) :: pdf_builtin_data
+    call strfun_init (sfchain%strfun(i), pdf_builtin_data)
+    sfchain%n_parameters(i) = n_parameters
+    call strfun_chain_link (sfchain, i, line, (/1/), (/3/))
+  end subroutine strfun_chain_set_pdf_builtin
+
   subroutine strfun_chain_set_isr &
        (sfchain, i, line, isr_data, n_parameters)
     type(strfun_chain_t), intent(inout), target :: sfchain

@@ -1,6 +1,31 @@
 # Makefile.am --
 # $Id: Makefile.am 317 2010-04-18 00:31:03Z ohl $
 ########################################################################
+##
+## Process this file with automake to produce Makefile.in
+#
+# Copyright (C) 1999-2011 by 
+#     Wolfgang Kilian <kilian@physik.uni-siegen.de>
+#     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
+#     Juergen Reuter <juergen.reuter@desy.de>
+#     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+#
+# WHIZARD is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License as published by 
+# the Free Software Foundation; either version 2, or (at your option)
+# any later version.
+#
+# WHIZARD is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+#
+########################################################################
+
 
 WEBS = \
   prelude.nw \
@@ -14,7 +39,11 @@ WEBS = \
   pmep.nw \
   postlude.nw
 
+if DISTRIBUTION
 PDFS = vamp.pdf preview.pdf preview2.pdf
+else
+PDFS = 
+endif
 
 LATEX_STYLES = \
     feynmp.sty feynmp.mp \
@@ -62,6 +91,7 @@ SUFFIXES = .tex .pdf
 
 MPOST_LATEX = TEX=$(LATEX) $(MPOST)
 
+if DISTRIBUTION
 if PDFLATEX_AVAILABLE
 if MPOST_AVAILABLE
 if SUPP_PDF_AVAILABLE
@@ -74,6 +104,7 @@ if SUPP_PDF_AVAILABLE
 	if grep -s 'Rerun to get cross-references right.' $*.log; then \
 	  pdflatex $<; \
 	fi
+endif
 endif
 endif
 endif
@@ -110,6 +141,18 @@ mostlyclean-local: mostlyclean-latex mostlyclean-vamp
 clean-local: clean-latex
 maintainer-clean-local: maintainer-clean-latex maintainer-clean-vamp \
 	maintainer-clean-backup
+
+if !DISTRIBUTION
+install-data-hook: 
+	-$(INSTALL) -m 644 vamp.pdf $(DESTDIR)$(datarootdir)/doc/vamp 
+	-$(INSTALL) -m 644 preview.pdf $(DESTDIR)$(datarootdir)/doc/vamp 
+	-$(INSTALL) -m 644 preview2.pdf $(DESTDIR)$(datarootdir)/doc/vamp 
+
+uninstall-hook: 
+	-rm -f $(DESTDIR)/$(datarootdir)/doc/vamp/vamp.pdf 
+	-rm -f $(DESTDIR)/$(datarootdir)/doc/vamp/preview.pdf 
+	-rm -f $(DESTDIR)/$(datarootdir)/doc/vamp/preview2.pdf
+endif
 
 distclean-local:
 	-test "$(srcdir)" != "." && rm -f $(LATEX_STYLES)

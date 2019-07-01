@@ -1,10 +1,11 @@
-(* $Id: fusion.ml 2644 2010-06-24 16:35:49Z ohl $
+(* $Id: fusion.ml 3215 2011-05-08 16:07:40Z ohl $
 
-   Copyright (C) 1999-2009 by
+   Copyright (C) 1999-2011 by
 
-       Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+       Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
-       Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+       Juergen Reuter <juergen.reuter@desy.de>
+       Christian Speckner <christian.speckner@physik.uni-freiburg.de>
 
    WHIZARD is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by
@@ -21,8 +22,8 @@
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
 let rcs_file = RCS.parse "Fusion" ["General Fusions"]
-    { RCS.revision = "$Revision: 2644 $";
-      RCS.date = "$Date: 2010-06-24 18:35:49 +0200 (Thu, 24 Jun 2010) $";
+    { RCS.revision = "$Revision: 3215 $";
+      RCS.date = "$Date: 2011-05-08 18:07:40 +0200 (Sun, 08 May 2011) $";
       RCS.author = "$Author: ohl $";
       RCS.source
         = "$URL: svn+ssh://jr_reuter@login.hepforge.org/hepforge/svn/whizard/trunk/src/omega/src/fusion.ml $" }
@@ -708,7 +709,15 @@ module Tagged (Tagger : Tagger) (PT : Tuple.Poly)
 (* \thocwmodulesubsection{Partitions} *)
 
 (* Vertices that are not crossing invariant need special treatment so
-   that they're only generated for the correct combinations of momenta.  *)
+   that they're only generated for the correct combinations of momenta.
+
+   NB: the [crossing] checks here are a bit redundant, because  [CM.fuse] below
+   will bring the killed vertices back to life and will have to filter once more.
+   Nevertheless, we keep them here, for the unlikely case that anybody ever wants
+   to use uncolored amplitudes directly.
+
+   NB: the analogous problem does not occur for [select_wf], because this applies
+   to momenta instead of vertices. *)
 
 (* \begin{dubious}
      Using [PT.Mismatched_arity] is not really good style \ldots
@@ -721,10 +730,10 @@ module Tagged (Tagger : Tagger) (PT : Tuple.Poly)
 
    \end{dubious} *)
 
-    let crossing c momenta =
+    let kmatrix_cuts c momenta =
       match c with
-      | V4 (Vector4_K_Matrix_tho (disc,_), fusion, _) 
-      | V4 (Vector4_K_Matrix_jr (disc,_), fusion, _) ->
+      | V4 (Vector4_K_Matrix_tho (disc, _), fusion, _) 
+      | V4 (Vector4_K_Matrix_jr (disc, _), fusion, _) ->
           let s12, s23, s13 =
             begin match PT.to_list momenta with
             | [q1; q2; q3] -> (P.Scattering.timelike (P.add q1 q2),
@@ -763,16 +772,12 @@ module Tagged (Tagger : Tagger) (PT : Tuple.Poly)
          A.wf_tag = A.Tags.null_wf },
        Product.fold2 (fun (c, f) p acc ->
          try
-           if select_p
-               (P.of_ints dim p1)
-               (PT.to_list (PT.map (P.of_ints dim) p)) then begin
-             if crossing c (PT.map (P.of_ints dim) p) then
-               (c, PT.map2 (fun f' p' -> { A.flavor = f';
-                                           A.momentum = P.of_ints dim p';
-                                           A.wf_tag = A.Tags.null_wf }) f p) :: acc
-             else
-               acc
-           end else
+           let p' = PT.map (P.of_ints dim) p in
+           if select_p (P.of_ints dim p1) (PT.to_list p') && kmatrix_cuts c p' then
+             (c, PT.map2 (fun f'' p'' -> { A.flavor = f'';
+                                           A.momentum = p'';
+                                           A.wf_tag = A.Tags.null_wf }) f p') :: acc
+           else
              acc
          with
          | PT.Mismatched_arity -> acc) f23 p23 [])
@@ -826,8 +831,7 @@ i*)
           let p = PT.fold_left_internal P.add momenta in
           List.fold_left
             (fun acc (f, c) ->
-              if select_wf f p (PT.to_list momenta)
-                  && crossing c momenta then
+              if select_wf f p (PT.to_list momenta) && kmatrix_cuts c momenta then
                 let s = stat_fuse ss f in
                 let flip =
                   PT.fold_left (fun acc s' -> acc * stat_sign s') (stat_sign s) ss in
@@ -1258,7 +1262,10 @@ i*)
       | _ -> failwith "colorize_external: not unique"
 
     let fuse_c_wf rhs =
-      CM.fuse (List.map (fun wf -> wf.CA.flavor) (PT.to_list rhs))
+      let momenta = PT.map (fun wf -> wf.CA.momentum) rhs in
+      List.filter
+        (fun (_, c) -> kmatrix_cuts c momenta)
+        (CM.fuse (List.map (fun wf -> wf.CA.flavor) (PT.to_list rhs)))
 
     let colorize_coupling c coupling =
         { coupling with Tagged_Coupling.coupling = c }
@@ -2055,7 +2062,7 @@ i*)
 
 (* \begin{dubious}
      Eventually, we might want to support inhomogeneous helicities.  However,
-     this makes little physics sense for external particles on the mas shell,
+     this makes little physics sense for external particles on the mass shell,
      unless we have a model with degenerate massive fermions and bosons.
    \end{dubious} *)
 

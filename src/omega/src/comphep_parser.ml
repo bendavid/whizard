@@ -13,7 +13,7 @@ type token =
   | END
 
 open Parsing;;
-# 24 "../../../../src/omega/src/comphep_parser.mly"
+# 25 "../../../../src/omega/src/comphep_parser.mly"
 module S = Comphep_syntax
 # 19 "comphep_parser.ml"
 let yytransl_const = [|
@@ -118,27 +118,27 @@ let yyact = [|
 ; (fun __caml_parser_env ->
     let _1 = (Parsing.peek_val __caml_parser_env 1 : 'e) in
     Obj.repr(
-# 46 "../../../../src/omega/src/comphep_parser.mly"
+# 47 "../../../../src/omega/src/comphep_parser.mly"
                            ( _1 )
 # 124 "comphep_parser.ml"
                :  Comphep_syntax.raw ))
 ; (fun __caml_parser_env ->
     let _1 = (Parsing.peek_val __caml_parser_env 0 :  string ) in
     Obj.repr(
-# 50 "../../../../src/omega/src/comphep_parser.mly"
+# 51 "../../../../src/omega/src/comphep_parser.mly"
                            ( S.symbol _1 )
 # 131 "comphep_parser.ml"
                : 'e))
 ; (fun __caml_parser_env ->
     let _1 = (Parsing.peek_val __caml_parser_env 0 :  int ) in
     Obj.repr(
-# 51 "../../../../src/omega/src/comphep_parser.mly"
+# 52 "../../../../src/omega/src/comphep_parser.mly"
                            ( S.integer _1 )
 # 138 "comphep_parser.ml"
                : 'e))
 ; (fun __caml_parser_env ->
     Obj.repr(
-# 52 "../../../../src/omega/src/comphep_parser.mly"
+# 53 "../../../../src/omega/src/comphep_parser.mly"
                            ( S.imag )
 # 144 "comphep_parser.ml"
                : 'e))
@@ -146,14 +146,14 @@ let yyact = [|
     let _1 = (Parsing.peek_val __caml_parser_env 3 :  string ) in
     let _3 = (Parsing.peek_val __caml_parser_env 1 : 'e) in
     Obj.repr(
-# 53 "../../../../src/omega/src/comphep_parser.mly"
+# 54 "../../../../src/omega/src/comphep_parser.mly"
                            ( S.apply _1 _3 )
 # 152 "comphep_parser.ml"
                : 'e))
 ; (fun __caml_parser_env ->
     let _2 = (Parsing.peek_val __caml_parser_env 1 : 'e) in
     Obj.repr(
-# 54 "../../../../src/omega/src/comphep_parser.mly"
+# 55 "../../../../src/omega/src/comphep_parser.mly"
                            ( _2 )
 # 159 "comphep_parser.ml"
                : 'e))
@@ -161,7 +161,7 @@ let yyact = [|
     let _1 = (Parsing.peek_val __caml_parser_env 2 : 'e) in
     let _3 = (Parsing.peek_val __caml_parser_env 0 : 'e) in
     Obj.repr(
-# 55 "../../../../src/omega/src/comphep_parser.mly"
+# 56 "../../../../src/omega/src/comphep_parser.mly"
                            ( S.dot _1 _3 )
 # 167 "comphep_parser.ml"
                : 'e))
@@ -169,7 +169,7 @@ let yyact = [|
     let _1 = (Parsing.peek_val __caml_parser_env 2 : 'e) in
     let _3 = (Parsing.peek_val __caml_parser_env 0 : 'e) in
     Obj.repr(
-# 56 "../../../../src/omega/src/comphep_parser.mly"
+# 57 "../../../../src/omega/src/comphep_parser.mly"
                            ( S.multiply _1 _3 )
 # 175 "comphep_parser.ml"
                : 'e))
@@ -177,7 +177,7 @@ let yyact = [|
     let _1 = (Parsing.peek_val __caml_parser_env 2 : 'e) in
     let _3 = (Parsing.peek_val __caml_parser_env 0 : 'e) in
     Obj.repr(
-# 57 "../../../../src/omega/src/comphep_parser.mly"
+# 58 "../../../../src/omega/src/comphep_parser.mly"
                            ( S.divide _1 _3 )
 # 183 "comphep_parser.ml"
                : 'e))
@@ -185,7 +185,7 @@ let yyact = [|
     let _1 = (Parsing.peek_val __caml_parser_env 2 : 'e) in
     let _3 = (Parsing.peek_val __caml_parser_env 0 : 'e) in
     Obj.repr(
-# 58 "../../../../src/omega/src/comphep_parser.mly"
+# 59 "../../../../src/omega/src/comphep_parser.mly"
                            ( S.add _1 _3 )
 # 191 "comphep_parser.ml"
                : 'e))
@@ -193,21 +193,21 @@ let yyact = [|
     let _1 = (Parsing.peek_val __caml_parser_env 2 : 'e) in
     let _3 = (Parsing.peek_val __caml_parser_env 0 : 'e) in
     Obj.repr(
-# 59 "../../../../src/omega/src/comphep_parser.mly"
+# 60 "../../../../src/omega/src/comphep_parser.mly"
                            ( S.subtract _1 _3 )
 # 199 "comphep_parser.ml"
                : 'e))
 ; (fun __caml_parser_env ->
     let _2 = (Parsing.peek_val __caml_parser_env 0 : 'e) in
     Obj.repr(
-# 60 "../../../../src/omega/src/comphep_parser.mly"
+# 61 "../../../../src/omega/src/comphep_parser.mly"
                            ( _2 )
 # 206 "comphep_parser.ml"
                : 'e))
 ; (fun __caml_parser_env ->
     let _2 = (Parsing.peek_val __caml_parser_env 0 : 'e) in
     Obj.repr(
-# 61 "../../../../src/omega/src/comphep_parser.mly"
+# 62 "../../../../src/omega/src/comphep_parser.mly"
                            ( S.neg _2 )
 # 213 "comphep_parser.ml"
                : 'e))
@@ -215,7 +215,7 @@ let yyact = [|
     let _1 = (Parsing.peek_val __caml_parser_env 2 : 'e) in
     let _3 = (Parsing.peek_val __caml_parser_env 0 :  int ) in
     Obj.repr(
-# 62 "../../../../src/omega/src/comphep_parser.mly"
+# 63 "../../../../src/omega/src/comphep_parser.mly"
                            ( S.power _1 _3 )
 # 221 "comphep_parser.ml"
                : 'e))

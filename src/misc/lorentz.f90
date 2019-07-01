@@ -1,9 +1,9 @@
-! WHIZARD 2.0.4 Tue Oct 26 2010
+! WHIZARD 2.0.5 Tue May 10 2011
 ! 
-! (C) 1999-2010 by 
-!     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+! Copyright (C) 1999-2011 by 
+!     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
-!     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+!     Juergen Reuter <juergen.reuter@desy.de>
 !     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
 !     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
 !
@@ -50,6 +50,7 @@ module lorentz
   public :: vector4_canonical
   public :: vector4_at_rest
   public :: vector4_moving
+  public :: vector4_set_component
   public :: vector4_get_component
   public :: vector4_get_components
   public :: lorentz_transformation_t
@@ -673,6 +674,13 @@ contains
 !        q%p(i) = sum (p%p(i), mask=mask)
 !     end do
 !   end function sum_vector4_mask
+
+  subroutine vector4_set_component (p, k, c)
+    type(vector4_t), intent(inout) :: p
+    integer, intent(in) :: k
+    real(default), intent(in) :: c
+    p%p(k) = c
+  end subroutine vector4_set_component
 
   elemental function vector4_get_component (p, k) result (c)
     real(default) :: c

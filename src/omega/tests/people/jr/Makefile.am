@@ -1,14 +1,15 @@
 # Makefile.am -- Makefile for O'Mega within and without WHIZARD
-# $Id: Makefile.am 1564 2010-01-21 18:19:23Z ohl $
+# $Id: Makefile.am 3191 2011-04-18 07:35:49Z jr_reuter $
 ##
 ## Process this file with automake to produce Makefile.in
 ##
 ########################################################################
 #
-# Copyright (C) 1999-2009 by 
-#     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+# Copyright (C) 1999-2011 by 
+#     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
-#     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+#     Juergen Reuter <juergen.reuter@desy.de>
+#     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by 
@@ -53,7 +54,6 @@
 ### F132 = -132
 ### FCOPT = $(F132) -I$(build_libdir) -O3 
 ### # FCOPT = -I $(build_libdir) -pg -O3 -Oassumed=contig
-### FC_DUSTY = -dcfuns -fixed
 ### 
 ### # FCOPT = -M $(build_libdir) -Am -Nmaxserious=1
 ### # FCOPT = -M $(build_libdir) -Am -O3 -x - -Nmaxserious=1
@@ -166,7 +166,7 @@
 ### 	ar cr $@ $<
 ### 
 ### $(HELAS).o: $(HELAS).$(FC_SRC_EXT)
-### 	$(FC) $(FC_DUSTY) $(FCOPT) -c -o $@ $<
+### 	$(FC) $(FCOPT) -c -o $@ $<
 ### 
 ### 
 ### clean:

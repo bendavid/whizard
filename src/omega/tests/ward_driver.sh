@@ -1,11 +1,11 @@
 #! /bin/sh
-# $Id: ward_driver.sh 2695 2010-07-08 22:15:33Z ohl $
+# $Id: ward_driver.sh 3116 2011-04-05 10:20:25Z kilian $
 ########################################################################
 
 omega="$1"
 shift
 
-models="qed qcd sym"
+models="qed qcd sym sm sm_top_anom"
 
 modules=""
 

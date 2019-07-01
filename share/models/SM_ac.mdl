@@ -22,8 +22,8 @@ parameter wtop   = 1.523        # t-quark width
 parameter wZ     = 2.443        # Z-boson width
 parameter wW     = 2.049        # W-boson width
 parameter wH     = 0            # Higgs width  
-parameter xi0    = 0    	# R_xi parameter for Z-boson
-parameter xipm   = 0		# R_xi parameter for W-boson
+parameter xi0    = 0            # R_xi parameter for Z-boson
+parameter xipm   = 0            # R_xi parameter for W-boson
 parameter a4     = 0            # Coefficient of L4         
 parameter a5     = 0            # Coefficient of L5                      
 parameter a6     = 0            # Coefficient of L6        
@@ -43,7 +43,7 @@ parameter k5a    = 0            # anomalous TGC
 parameter k5z    = 0            # anomalous TGC
 parameter l5a    = 0            # anomalous TGC
 parameter l5z    = 0            # anomalous TGC
-	
+
 # Dependent parameters
 derived v     = 1 / sqrt (sqrt (2.) * GF)     # v (Higgs vev)
 derived cw    = mW / mZ                       # cos(theta-W)
@@ -247,7 +247,3 @@ vertex H H Wp Wm
 # Higgs self-interactions
 vertex H H H
 vertex H H H H
-
-
-
-

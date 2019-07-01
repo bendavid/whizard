@@ -1,9 +1,9 @@
-! WHIZARD 2.0.4 Tue Oct 26 2010
+! WHIZARD 2.0.5 Tue May 10 2011
 ! 
-! (C) 1999-2010 by 
-!     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+! Copyright (C) 1999-2011 by 
+!     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
-!     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+!     Juergen Reuter <juergen.reuter@desy.de>
 !     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
 !     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
 !
@@ -68,6 +68,7 @@ module parser
   public :: parse_tree_write
   public :: parse_tree_bug
   public :: parse_tree_get_root_ptr
+  public :: parse_tree_reduce
   public :: parse_tree_get_process_ptr
   public :: parse_test
 
@@ -912,6 +913,49 @@ contains
     type(parse_tree_t), intent(in), target :: parse_tree
     node => parse_tree%root_node
   end function parse_tree_get_root_ptr
+
+  subroutine parse_tree_reduce (parse_tree, rule_key)
+    type(parse_tree_t), intent(inout) :: parse_tree
+    type(string_t), dimension(:), intent(in) :: rule_key
+    type(parse_node_t), pointer :: pn
+    pn => parse_tree%root_node
+    if (associated (pn)) then
+       call parse_node_reduce (pn, null(), null())
+    end if
+  contains
+    recursive subroutine parse_node_reduce (pn, pn_prev, pn_parent)
+      type(parse_node_t), intent(inout), pointer :: pn
+      type(parse_node_t), intent(in), pointer :: pn_prev, pn_parent
+      type(parse_node_t), pointer :: pn_sub, pn_sub_prev, pn_tmp
+      pn_sub_prev => null ()
+      pn_sub => pn%sub_first
+      do while (associated (pn_sub))
+         call parse_node_reduce (pn_sub, pn_sub_prev, pn)
+         pn_sub_prev => pn_sub
+         pn_sub => pn_sub%next
+      end do
+      if (any (parse_node_get_rule_key (pn) == rule_key)) then
+         if (parse_node_get_n_sub (pn) == 1) then
+            pn_tmp => pn
+            pn => pn%sub_first
+            if (associated (pn_prev)) then
+               pn_prev%next => pn
+            else if (associated (pn_parent)) then
+               pn_parent%sub_first => pn
+            else
+               parse_tree%root_node => pn
+            end if
+            if (associated (pn_tmp%next)) then 
+               pn%next => pn_tmp%next
+            else if (associated (pn_parent)) then
+               pn_parent%sub_last => pn
+            end if
+            call parse_node_final (pn_tmp, recursive=.false.)
+            deallocate (pn_tmp)
+         end if
+      end if
+    end subroutine parse_node_reduce
+ end subroutine parse_tree_reduce
 
   function parse_tree_get_process_ptr (parse_tree, process) result (node)
     type(parse_node_t), pointer :: node

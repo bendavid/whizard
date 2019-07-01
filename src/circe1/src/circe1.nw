@@ -1977,7 +1977,7 @@ This simple approximation is good enough
      $               * betinc (a1(5)+1, a1(6)+1, KIREPS)
       gamma0 = gamma0 / KIREPS
 @
-<<Local variables for [[circes]]>>=
+<<Alternative: Local variables for [[circes]]>>=
       double precision betinc
       external betinc
 @

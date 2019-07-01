@@ -1,10 +1,11 @@
-(* $Id: config.ml.in 2695 2010-07-08 22:15:33Z ohl $
+(* $Id: config.ml.in 3130 2011-04-07 14:25:10Z kilian $
 
-   Copyright (C) 1999-2009 by
+   Copyright (C) 1999-2011 by
 
-       Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+       Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
-       Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+       Juergen Reuter <juergen.reuter@desy.de>
+       Christian Speckner <christian.speckner@physik.uni-freiburg.de>
 
    WHIZARD is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by
@@ -20,8 +21,8 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
-let system_cache_dir = "/opt/whizard/var/cache"
-let user_cache_dir = "~/.whizard/var/cache"
+let system_cache_dir = "/afs/desy.de/group/theorie/software/ELF64/var/cache"
+let user_cache_dir = "/afs/desy.de/user/r/reuter/.whizard/var/cache"
 
 (* \begin{dubious}
      This relies on the fast that the executable names should be unique.

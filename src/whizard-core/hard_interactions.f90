@@ -1,9 +1,9 @@
-! WHIZARD 2.0.4 Tue Oct 26 2010
+! WHIZARD 2.0.5 Tue May 10 2011
 ! 
-! (C) 1999-2010 by 
-!     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+! Copyright (C) 1999-2011 by 
+!     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
-!     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+!     Juergen Reuter <juergen.reuter@desy.de>
 !     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
 !     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
 !
@@ -49,6 +49,7 @@ module hard_interactions
   implicit none
   private
 
+  public :: hard_interaction_data_check_masses
   public :: hard_interaction_t
   public :: hard_interaction_init
   public :: hard_interaction_unload
@@ -274,7 +275,24 @@ contains
     data%col_flow_index(2,:) = cf_index2
     data%col_factor = col_factor
     call hard_interaction_data_reload (data, prc_lib, pid=pid)
+    call hard_interaction_data_check_masses (data)
   end subroutine hard_interaction_data_init
+
+  subroutine hard_interaction_data_check_masses (data)
+    type(hard_interaction_data_t), intent(in) :: data
+    type(flavor_t), dimension(:), allocatable :: flv
+    real(default), dimension(:), allocatable :: mass
+    integer :: i, j
+    allocate (flv (data%n_flv), mass (data%n_flv))
+    do i = 1, data%n_tot
+       call flavor_init (flv, data%flv_state(i,:), data%model)
+       mass = flavor_get_mass (flv)
+       if (any (mass /= mass(1))) then
+          call msg_fatal ("Process '" // char (data%id) // "': " &
+               // "mass values in flavor combination do not coincide.")
+       end if
+    end do
+  end subroutine hard_interaction_data_check_masses 
 
   subroutine hard_interaction_data_write (data, unit)
     type(hard_interaction_data_t), intent(in) :: data

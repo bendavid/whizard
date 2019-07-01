@@ -1,4 +1,4 @@
-# $Id: Threeshl.mdl 2795 2010-09-14 16:27:35Z cnspeckn $
+# $Id: Threeshl.mdl 3152 2011-04-13 13:17:36Z cnspeckn $
 
 ########################################################################
 # Three-site higgsless model (unitary gauge)
@@ -12,7 +12,7 @@ parameter mtau		= 1.78
 parameter muq		= 0.
 parameter mdq		= 0.
 parameter mcq		= 1.25
-parameter msq		= 0.95
+parameter msq		= 0.095
 parameter mtq		= 174.
 parameter mbq		= 4.2
 parameter mw		= 80.403

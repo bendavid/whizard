@@ -1,9 +1,9 @@
-! WHIZARD 2.0.4 Tue Oct 26 2010
+! WHIZARD 2.0.5 Tue May 10 2011
 ! 
-! (C) 1999-2010 by 
-!     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+! Copyright (C) 1999-2011 by 
+!     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
-!     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+!     Juergen Reuter <juergen.reuter@desy.de>
 !     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
 !     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
 !
@@ -49,11 +49,13 @@ module simulations
   use rt_data
   use integrations
   use event_files
+  use shower_interface
 
   implicit none
   private
 
   public :: simulation_t
+  public :: simulation_setup_selection
   public :: simulation_setup_reweight
   public :: simulation_setup_analysis
   public :: simulation_init
@@ -81,6 +83,7 @@ module simulations
     integer :: normalization_mode = NORM_UNDEFINED
     logical :: negative_weights = .false.
     logical :: polarized = .false.
+    type(shower_settings_t) :: shower_settings
   end type simulation_parameters_t
 
   type :: checkpointing_t
@@ -129,7 +132,10 @@ module simulations
     integer :: n_events = 0
     integer :: n_read = 0
     integer :: i_evt = 0
+    integer :: n_selected = 0
     real(default) :: luminosity = 0
+    logical :: user_selection = .false.
+    type(eval_tree_t) :: selection_expr
     type(eval_tree_t) :: reweight_expr
     type(eval_tree_t) :: analysis_expr
     type(subevt_t) :: subevt
@@ -175,6 +181,12 @@ contains
             (sim, unweighted, var_str ("auto"), negative_weights, polarized)
     end select
   end subroutine simulation_parameters_init
+
+  subroutine simulation_parameters_init_shower (sim, var_list)
+    type(simulation_parameters_t), intent(inout) :: sim
+    type(var_list_t), intent(in) :: var_list
+    call shower_settings_init (sim%shower_settings, var_list)
+  end subroutine simulation_parameters_init_shower
 
   subroutine simulation_parameters_write_message (sim, unit)
     type(simulation_parameters_t), intent(in) :: sim
@@ -223,6 +235,7 @@ contains
     write (u, *) "  normalization_mode = ", sim%normalization_mode
     write (u, *) "  negative_weights   = ", sim%negative_weights
     write (u, *) "  polarized          = ", sim%polarized
+    call shower_settings_write (sim%shower_settings, unit)
   end subroutine simulation_parameters_write
 
   function simulation_parameters_get_norm (sim, sigma, n) result (norm)
@@ -370,6 +383,7 @@ contains
               (var_list, var_str ("?negative_weights")), &
          var_list_get_lval &
               (var_list, var_str ("?polarized_events")))
+    call simulation_parameters_init_shower (sim%spar, var_list)
     if (present (verbose)) then
        if (verbose)  call simulation_parameters_write_message (sim%spar)
     end if
@@ -755,7 +769,29 @@ contains
     call checkpointing_init (sim%checkpointing, sim%var_list)
     sim%n_read = 0
     sim%i_evt = 0
+    sim%n_selected = 0
   end subroutine simulation_prepare_event_generation
+
+  subroutine simulation_setup_selection (sim, pn_selection_lexpr, verbose)
+    type(simulation_t), intent(inout), target :: sim
+    type(parse_node_t), pointer :: pn_selection_lexpr
+    logical, intent(in), optional :: verbose
+    logical :: verb
+    verb = .false.;  if (present (verbose)) verb = verbose
+    if (verb) then
+       if (associated (pn_selection_lexpr)) then
+          call msg_message ("Applying user-defined selection expression.")
+       end if
+    end if
+    if (associated (pn_selection_lexpr)) then
+       sim%user_selection = .true.
+       call eval_tree_init_lexpr (sim%selection_expr, &
+            pn_selection_lexpr, sim%var_list, sim%subevt, &
+            sim%event_vars)
+    else
+       sim%user_selection = .false.
+    end if
+  end subroutine simulation_setup_selection
 
   subroutine simulation_setup_reweight (sim, pn_reweight_expr, verbose)
     type(simulation_t), intent(inout), target :: sim
@@ -923,7 +959,8 @@ contains
             (sim%event, rng, sim%spar%unweighted, &
              factorization_mode, &
              keep_correlations=.false., &
-             keep_virtual=.true.)
+             keep_virtual=.true., &
+             shower_settings = sim%spar%shower_settings)
        if (event_is_valid (sim%event))  exit GENERATE
     end do GENERATE
     if (.not. event_is_valid (sim%event)) then
@@ -952,9 +989,14 @@ contains
 
   subroutine simulation_handle_event (sim)
     type(simulation_t), intent(inout), target :: sim
-    call event_reweight (sim%event, sim%subevt, sim%reweight_expr)
-    call event_do_analysis (sim%event, sim%subevt, sim%analysis_expr)
-    call event_file_list_write_event (sim%event_file_list, sim%event, i_evt=sim%i_evt)
+    if (event_passes_selection (sim%event, sim%subevt, sim%selection_expr)) &
+         then
+       sim%n_selected = sim%n_selected + 1
+       call event_reweight (sim%event, sim%subevt, sim%reweight_expr)
+       call event_do_analysis (sim%event, sim%subevt, sim%analysis_expr)
+       call event_file_list_write_event &
+            (sim%event_file_list, sim%event, i_evt=sim%i_evt)
+    end if
     if (sim%write_raw .and. .not. sim%read_raw) &
          call event_write_raw (sim%event, sim%u_raw)
     call checkpointing_msg_event &
@@ -985,6 +1027,7 @@ contains
     call eval_tree_final (sim%analysis_expr)
     if (verb) then
        if (sim%rescan) then
+          call msg_selection (sim%user_selection, sim%n_selected)
           call msg_message ("Rescanning finished.")
        else
           if (sim%read_raw) then
@@ -997,9 +1040,20 @@ contains
                    sim%n_events, "total."
              call msg_message ()
           end if
+          call msg_selection (sim%user_selection, sim%n_selected)
           call msg_message ("Simulation finished.")
        end if
     end if
+  contains
+    subroutine msg_selection (user_selection, n_selected)
+      logical, intent(in) :: user_selection
+      integer, intent(in) :: n_selected
+      if (user_selection) then
+          write (msg_buffer, "(A,1x,I0)") &
+             "Events passing selection cuts:", n_selected
+          call msg_message ()
+       end if
+    end subroutine msg_selection
   end subroutine simulation_finish_event_generation
 
   subroutine simulation_basic_final (sim)

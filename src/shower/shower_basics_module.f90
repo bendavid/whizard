@@ -1,7 +1,7 @@
 !!! module: shower_basics_module
 !!! This code is part of my Ph.D studies.
 !!! 
-!!! Copyright (C) 2010 Sebastian Schmidt <sebastian.schmidt@physik.uni-freiburg.de>
+!!! Copyright (C) 2011 Sebastian Schmidt <sebastian.t.schmidt@desy.de>
 !!! 
 !!! This program is free software; you can redistribute it and/or modify it
 !!! under the terms of the GNU General Public License as published by the Free 
@@ -16,7 +16,7 @@
 !!! You should have received a copy of the GNU General Public License along
 !!! with this program; if not, see <http://www.gnu.org/licenses/>.
 !!! 
-!!! Latest Change: Thu Jul  1 16:12:04 2010 Time zone: 7200 seconds
+!!! Latest Change: Thu Jan 13 17:21:18 2011 Time zone: 3600 seconds
 !!! 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
@@ -48,6 +48,8 @@ module shower_basics_module
   !! set emitted timelike partons in spacelike shower on shell, true corresponds to MSTP(63)=0
   logical :: isr_only_onshell_emitted_partons = .true.
   logical :: isr_angular_ordered = .true.       ! whether isr is angular ordered, MSTP(62)
+  logical :: treat_light_quarks_massless = .false.   ! treat d and u quarks as massless
+  logical :: treat_duscb_quarks_massless = .false.     ! treat all quarks except t as massless
 
   ! varying parameters
   real(default) :: primordial_kt_width=1.5_default   ! width of Gaussian primordial kt distribution   !! PARP(91)
@@ -56,8 +58,8 @@ module shower_basics_module
   real(default) :: minenergy_timelike=1._default    ! min energy of emitted timelike parton in isr  !! PARP(65)
   real(default) :: tscalefactor_isr=1._default    ! factor for first scale, default=1  ! should be a parameter
   ! factor, by which the integral in the sudhakov-factor is suppressed for the respective first scale in isr
-  ! higher values -> more activity
-  real(default) :: first_integral_suppression_factor=2._default 
+  ! higher values -> higher starting scales
+  real(default) :: first_integral_suppression_factor=1._default 
 
   ! auxiliary and temporaily paramters
   real(default) :: scalefactor1 = 0.02_default      ! temporary for Pt-ordered shower
@@ -145,21 +147,66 @@ contains
     select case(abs(typ))
         ! It is assumed that quark masses are ordered mass(1)<mass(2)<mass(3)<...
     case (1) !d 
-       mass2=0.330_default**2
+       if(treat_light_quarks_massless.or.treat_duscb_quarks_massless) then
+          mass2=0._default
+       else
+          mass2=0.330_default**2
+       end if
     case (2) !u
-       mass2=0.330_default**2
+       if(treat_light_quarks_massless.or.treat_duscb_quarks_massless) then
+          mass2=0._default
+       else
+          mass2=0.330_default**2
+       end if
     case (3) !s
-       mass2=0.500_default**2
+       if(treat_duscb_quarks_massless) then
+          mass2=0._default
+       else
+          mass2=0.500_default**2
+       end if
     case (4) !c
-       mass2=1.500_default**2
+       if(treat_duscb_quarks_massless) then
+          mass2=0._default
+       else
+          mass2=1.500_default**2
+       end if
     case (5) !b
-       mass2=4.800_default**2
+       if(treat_duscb_quarks_massless) then
+          mass2=0._default
+       else
+          mass2=4.800_default**2
+       end if
     case (6) !t
        mass2=175.00_default**2
-    case (2212) !proton
-       mass2=0.93827_default**2
     case (21) ! Gluon
        mass2=0.0_default
+    case (2112) !neutron
+       mass2=0.939565_default**2
+    case (2212) !proton
+       mass2=0.93827_default**2
+       ! other mesons and baryons needed for beam-remnant
+    case (411) ! D+
+       mass2=1869.60_default**2
+    case (421) ! D0
+       mass2=1864.83_default**2
+    case (511) ! B0
+       mass2=5279.50_default**2
+    case (521) ! B+
+       mass2=5279.17_default**2
+    case (2224) !Delta++
+       mass2=1.232_default**2
+    case (3212) !Sigma0
+       mass2=1.192642_default**2
+    case (3222) !Sigma+
+       mass2=1.18937_default**2
+    case (4212) ! Sigma_c+
+       mass2=2452.9_default**2
+    case (4222) ! Sigma_c++
+       mass2=2454.02_default**2
+    case (5212) ! Sigma_b0
+       mass2=5815.2_default**2
+    case (5222) ! Sigma_b+
+       mass2=5807.8_default**2
     case (0) ! I take 0 to be partons whose type is not yet clear
        mass2=0.0_default
     case (9999) ! beam remnant

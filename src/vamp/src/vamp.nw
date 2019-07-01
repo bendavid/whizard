@@ -632,8 +632,20 @@ g%dv2g = (g%calls / num_cells)**2 &
 @ %def jacobi dv2g
 @ 
 <<Adjust [[grid]] and other state for new [[num_calls]]>>=
-g%f_min = 1.0
-g%f_max = 0.0
+call vamp_nullify_f_limits (g)
+@ When the grid is refined or reshaped, the recorded minimum and maximum of
+the sampling function should be nullified:
+@ 
+<<Declaration of [[vamp]] procedures>>=
+public :: vamp_nullify_f_limits
+@
+<<Implementation of [[vamp]] procedures>>=
+elemental subroutine vamp_nullify_f_limits (g)
+  type(vamp_grid), intent(inout) :: g
+  g%f_min = 1.0
+  g%f_max = 0.0
+end subroutine vamp_nullify_f_limits
+@ %def vamp_nullify_f_limits
 @ %def f_min f_max
 @ 
 <<Declaration of [[vamp]] procedures>>=
@@ -1053,6 +1065,7 @@ pure subroutine vamp_refine_grid (g, exc)
            num_div = int (quad / product (quad)**(1.0/ndim) * g%num_div))
   else
      call refine_division (g%div)
+     call vamp_nullify_f_limits (g)
   end if
 end subroutine vamp_refine_grid
 @ %def vamp_refine_grid
@@ -1063,6 +1076,7 @@ subroutine vamp_refine_grids (g)
   integer :: ch
   do ch=1, size(g%grids)
      call refine_division (g%grids(ch)%div)
+     call vamp_nullify_f_limits (g%grids(ch))
   end do
 end subroutine vamp_refine_grids
 @ %def vamp_refine_grids

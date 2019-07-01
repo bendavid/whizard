@@ -1,10 +1,11 @@
-(* $Id: modellib_MSSM.ml 2701 2010-07-11 23:04:45Z jr_reuter $
+(* $Id: modellib_MSSM.ml 3070 2011-03-28 08:09:25Z jr_reuter $
 
-   Copyright (C) 1999-2010 by
+   Copyright (C) 1999-2011 by
 
-       Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+       Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
-       Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+       Juergen Reuter <juergen.reuter@desy.de>
+       Christian Speckner <christian.speckner@physik.uni-freiburg.de>
 
    WHIZARD is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by
@@ -20,11 +21,11 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
-(* $Id: modellib_MSSM.ml 2701 2010-07-11 23:04:45Z jr_reuter $ *)
+(* $Id: modellib_MSSM.ml 3070 2011-03-28 08:09:25Z jr_reuter $ *)
 
 let rcs_file = RCS.parse "Modellib_MSSM" ["MSSM"]
-    { RCS.revision = "$Revision: 2701 $";
-      RCS.date = "$Date: 2010-07-12 01:04:45 +0200 (Mon, 12 Jul 2010) $";
+    { RCS.revision = "$Revision: 3070 $";
+      RCS.date = "$Date: 2011-03-28 10:09:25 +0200 (Mon, 28 Mar 2011) $";
       RCS.author = "$Author: jr_reuter $";
       RCS.source
         = "$URL: svn+ssh://jr_reuter@login.hepforge.org/hepforge/svn/whizard/trunk/src/omega/src/modellib_MSSM.ml $" }

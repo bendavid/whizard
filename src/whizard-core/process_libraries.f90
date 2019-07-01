@@ -1,9 +1,9 @@
-! WHIZARD 2.0.4 Tue Oct 26 2010
+! WHIZARD 2.0.5 Tue May 10 2011
 ! 
-! (C) 1999-2010 by 
-!     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+! Copyright (C) 1999-2011 by 
+!     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
-!     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+!     Juergen Reuter <juergen.reuter@desy.de>
 !     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
 !     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
 !
@@ -63,6 +63,7 @@ module process_libraries
   public :: process_library_get_process_pid
   public :: process_library_get_process_md5sum
   public :: process_library_get_process_model_name
+  public :: process_library_get_openmp_status
   public :: process_library_generate_code
   public :: process_library_write_driver
   public :: write_library_manager
@@ -108,6 +109,7 @@ module process_libraries
      type(string_t), dimension(:), allocatable :: prt_in, prt_out
      type(string_t) :: restrictions
      character(32) :: md5sum = ""
+     logical :: omega_openmp = .false.
      type(process_configuration_t), pointer :: next => null ()
   end type process_configuration_t
 
@@ -135,6 +137,7 @@ module process_libraries
      procedure(prc_get_int), nopass, pointer :: get_n_col => null ()
      procedure(prc_get_int), nopass, pointer :: get_n_cin => null ()
      procedure(prc_get_int), nopass, pointer :: get_n_cf  => null ()
+     procedure(prc_get_log), nopass, pointer :: get_openmp_status => null ()
      procedure(prc_set_int_tab1), nopass, pointer :: set_flv_state => null ()
      procedure(prc_set_int_tab1), nopass, pointer :: set_hel_state => null ()
      procedure(prc_set_int_tab2), nopass, pointer :: set_col_state => null ()
@@ -190,7 +193,7 @@ contains
 
   subroutine process_configuration_init &
        (prc_conf, prc_id, model, prt_in, prt_out, method, status, &
-        restrictions, known_md5sum)
+        restrictions, known_md5sum, omega_openmp)
     type(process_configuration_t), intent(inout) :: prc_conf
     type(string_t), intent(in) :: prc_id
     type(model_t), intent(in), target :: model
@@ -199,6 +202,7 @@ contains
     integer, intent(in), optional :: method
     type(string_t), intent(in), optional :: restrictions
     character(32), intent(in), optional :: known_md5sum
+    logical, intent(in), optional :: omega_openmp
     prc_conf%id = prc_id
     prc_conf%model => model
     prc_conf%n_in  = size (prt_in)
@@ -224,6 +228,11 @@ contains
        prc_conf%restrictions = canonicalize_restrictions (restrictions, model)
     else
        prc_conf%restrictions = ""
+    end if
+    if (present (omega_openmp)) then
+       prc_conf%omega_openmp = omega_openmp
+    else
+       prc_conf%omega_openmp = .false.
     end if
     if (present (known_md5sum)) then
        prc_conf%md5sum = known_md5sum
@@ -302,7 +311,7 @@ contains
          comment_chars = "", &
          quote_chars = "'", &
          quote_match = "'", &
-         single_chars = "+~", &
+         single_chars = "+~:", &
          special_class = (/ "&" /), &
          keyword_list = null ())
     call stream_init (stream, string)
@@ -322,7 +331,7 @@ contains
           newstring = newstring // token
        case (T_IDENTIFIER)
           select case (char (extract (token, 1, 1)))
-          case ("+", "~", "&")
+          case ("+", "~", "&", ":")
              newstring = newstring // token
           case default
              newstring = newstring // canonicalize_prt (token, model)
@@ -487,35 +496,39 @@ contains
 
   subroutine process_library_append &
        (prc_lib, prc_id, model, prt_in, prt_out, method, &
-        status, restrictions, rebuild_library, message, known_md5sum)
+        status, restrictions, rebuild_library, message, known_md5sum, &
+        omega_openmp)
     type(process_library_t), intent(inout), target :: prc_lib
     type(string_t), intent(in) :: prc_id
     type(model_t), intent(in), target :: model
     type(string_t), dimension(:), intent(in) :: prt_in, prt_out
     integer, intent(in), optional :: status, method
     type(string_t), intent(in), optional :: restrictions
-    logical, intent(in), optional :: rebuild_library, message
+    logical, intent(in), optional :: rebuild_library, message, omega_openmp
     character(32), intent(in), optional :: known_md5sum
     type(process_configuration_t), pointer :: current
     character(32) :: old_md5sum
     integer :: old_status
     logical :: keep_status
     logical :: msg
+    logical :: old_omega_openmp
     keep_status = .true.;  if (present (rebuild_library))  keep_status = .not. rebuild_library
     msg = .false.;  if (present (message))  msg = message
     current => process_library_get_process_ptr (prc_lib, prc_id)
     if (associated (current)) then
        old_md5sum = current%md5sum
        old_status = current%status
+       old_omega_openmp = current%omega_openmp
        call process_configuration_init &
             (current, prc_id, model, prt_in, prt_out, method, status, &
-             restrictions, known_md5sum)
+             restrictions, known_md5sum, omega_openmp)
        if (size (prt_in) == 0) then
           call msg_warning ("Process '" // char (prc_id) &
                // "': matrix element vanishes in selected model '" &
                // char (model_get_name (model)) // "'")
        else if (keep_status) then
-          if (current%md5sum == old_md5sum) then
+          if ((current%md5sum == old_md5sum) .and. &
+               (old_omega_openmp .eqv. omega_openmp)) then
              if (current%status <= old_status) then
                  call msg_message ("Process '" // char (prc_id) &
                       // "': keeping configuration")
@@ -529,7 +542,8 @@ contains
                   // "': configuration changed, overwriting.")
           end if
        else
-          if (current%md5sum /= old_md5sum) then
+          if ((current%md5sum /= old_md5sum) .or. &
+               (current%omega_openmp .neqv. old_omega_openmp)) then
              call msg_message ("Process '" // char (prc_id) &
                   // "': ignoring previous configuration")
           end if
@@ -546,7 +560,7 @@ contains
        call process_library_check_name_consistency (prc_id, prc_lib)
        call process_configuration_init &
             (current, prc_id, model, prt_in, prt_out, method, status, &
-             restrictions, known_md5sum)
+             restrictions, known_md5sum, omega_openmp)
        call process_update_code_status (current, keep_status)
        if (msg)  call msg_message &
             ("Added process to library '" // char (prc_lib%basename) // "':")
@@ -562,48 +576,53 @@ contains
     integer :: u, iostat
     character(80) :: buffer
     character(32) :: md5sum 
+    logical :: omega_openmp
     filename = prc_conf%id // ".f90"
     inquire (file=char(filename), exist=exist)
     if (exist) then
        found = .false.
        u = free_unit ()
+       omega_openmp = .false.
        open (u, file=char(filename), action="read")
        SCAN_FILE: do
           read (u, "(A)", iostat=iostat)  buffer
           select case (iostat)
           case (0)
-             select case (buffer(1:12))
-             case ("    md5sum =")
+             if (buffer(1:12) == "    md5sum =") then
                 md5sum = buffer(15:47)
-                if (keep_status) then
-                   if (prc_conf%status < STAT_CODE_GENERATED) then
-                      if (md5sum == prc_conf%md5sum) then
-                         call msg_message ("Process '" // char (prc_conf%id) &
-                              // "': using existing source code")
-                         prc_conf%status = STAT_CODE_GENERATED
-                      else
-                         call msg_warning ("Process '" // char (prc_conf%id) &
-                              // "': will overwrite existing source code")
-                      end if
-                   else if (md5sum /= prc_conf%md5sum) then
-                      call msg_warning ("Process '" // char (prc_conf%id) &
-                           // "': source code and loaded checksums differ")
-                   end if
-                else if (prc_conf%status < STAT_CODE_GENERATED) then
-                   call msg_message ("Process '" // char (prc_conf%id) &
-                        // "': ignoring existing source code")
-                end if
                 found = .true.
-                exit SCAN_FILE
-             end select
+             end if
+             if (buffer(1:5) == "!$OMP") omega_openmp = .true.
           case default
              exit SCAN_FILE
           end select
        end do SCAN_FILE
        close (u)
-       if (.not. found) &
-            call msg_warning ("Process '" // char (prc_conf%id) &
+       if (found) then
+          if (keep_status) then
+             if (prc_conf%status < STAT_CODE_GENERATED) then
+                if ((md5sum == prc_conf%md5sum) .and. &
+                     (omega_openmp .eqv. prc_conf%omega_openmp)) then
+                   call msg_message ("Process '" // char (prc_conf%id) &
+                        // "': using existing source code")
+                   prc_conf%status = STAT_CODE_GENERATED
+                else
+                   call msg_warning ("Process '" // char (prc_conf%id) &
+                        // "': will overwrite existing source code")
+                end if
+             else if ((md5sum /= prc_conf%md5sum) .or. &
+                  (omega_openmp .neqv. prc_conf%omega_openmp)) then
+                call msg_warning ("Process '" // char (prc_conf%id) &
+                     // "': source code and loaded checksums differ")
+             end if
+          else if (prc_conf%status < STAT_CODE_GENERATED) then
+             call msg_message ("Process '" // char (prc_conf%id) &
+                  // "': ignoring existing source code")
+          end if
+       else
+         call msg_warning ("Process '" // char (prc_conf%id) &
             // "': No MD5 sum found in source code")
+       end if
     end if
   end subroutine process_update_code_status
 
@@ -632,6 +651,7 @@ contains
     integer(c_int), dimension(:,:), allocatable, target :: flv_state_tmp
     type(string_t) :: prc_id, model_name, filename, restrictions
     type(string_t), dimension(:), allocatable :: prt_in, prt_out
+    logical :: omega_openmp
     character(32) :: md5sum
     n_prc = prc_lib% get_n_prc ()
     SCAN_PROCESSES: do p = 1, n_prc
@@ -640,6 +660,7 @@ contains
        md5sum = process_library_get_process_md5sum (prc_lib, pid)
        model_name = process_library_get_process_model_name (prc_lib, pid)
        restrictions = process_library_get_process_restrictions (prc_lib, pid)
+       omega_openmp = process_library_get_openmp_status (prc_lib, pid)
        filename = model_name // ".mdl"
        model => null ()
        call model_list_read_model (model_name, filename, os_data, model)
@@ -670,7 +691,7 @@ contains
        call process_library_append &
             (prc_lib, prc_id, model, prt_in, prt_out, &
              status=STAT_LOADED, restrictions=restrictions, &
-             known_md5sum=md5sum)
+             known_md5sum=md5sum, omega_openmp=omega_openmp)
        deallocate (prt_in, prt_out, flv_state, flv_state_tmp)
     end do SCAN_PROCESSES
   contains
@@ -765,6 +786,15 @@ contains
     end if
   end function process_library_get_process_restrictions
 
+  function process_library_get_openmp_status &
+       (prc_lib, pid) result (openmp_status)
+    type(process_library_t), intent(in), target :: prc_lib
+    integer(c_int), intent(in) :: pid
+    logical :: openmp_status
+    type(c_ptr) :: cptr
+    openmp_status =  prc_lib%get_openmp_status (pid)
+  end function process_library_get_openmp_status
+
   function process_library_get_process_md5sum (prc_lib, pid) result (md5sum)
     type(string_t) :: md5sum
     type(process_library_t), intent(in), target :: prc_lib
@@ -850,7 +880,8 @@ contains
     integer, intent(out) :: status
     logical, intent(in), optional :: simulate
     type(string_t) :: command_string, binary_name
-    type(string_t) :: model_id, omega_mode, omega_cascade
+    type(string_t) :: model_id, omega_mode, omega_cascade, omega_kmatrix, &
+       omega_openmp
     integer :: j
     logical :: sim, binary_found
     sim = .false.;  if (present (simulate))  sim = simulate
@@ -859,6 +890,24 @@ contains
     model_id = model_get_name (prc_conf%model)
     binary_name = "omega_" // model_id // ".opt"
     binary_found = .false.
+    select case (char (model_id))
+    case ("SM_km")
+       omega_kmatrix = " -target:kmatrix_write"
+    case default
+       omega_kmatrix = ""
+    end select
+    if (prc_conf%omega_openmp) then
+       omega_openmp = " -target:openmp "
+       call msg_message ("Enabling OpenMP support in O'Mega")
+!       call msg_message ("WARNING: enabling OpenMP support in O'Mega --- " &
+!         // "make sure that _both_ ")
+!       call msg_message ("   WHIZARD _and_ the matrix element are compiled with " &
+!         // "the proper OpenMP compiler flags.")
+!       call msg_message ("   Be prepared for broken results if you compile only " &
+!         // " the matrix element with OpenMP flags.")
+    else
+       omega_openmp = ""
+    end if
     if (.not. os_data%use_testfiles) then
        command_string = os_data%whizard_omega_binpath_local &
           // "/" // binary_name
@@ -887,6 +936,7 @@ contains
          // " -target:whizard" &
          // " -target:parameter_module parameters_" // model_id &
          // " -target:module " // prc_conf%id &
+         // omega_kmatrix // omega_openmp &
          // " -target:md5sum " // prc_conf%md5sum &
          // omega_cascade &
          // " -fusion:progress" &
@@ -920,7 +970,7 @@ contains
     type(os_data_t), intent(in) :: os_data
     integer, intent(out) :: status
     logical, intent(in) :: unit
-    integer, dimension(prc_conf%n_in) :: prt_in, mult_in
+    integer, dimension(prc_conf%n_in) :: prt_in, mult_in, col_in
     type(flavor_t), dimension(1:prc_conf%n_in) :: flv_in    
     integer, dimension(prc_conf%n_out) :: prt_out, mult_out
     integer, dimension(prc_conf%n_tot) :: prt, mult
@@ -929,7 +979,7 @@ contains
     type(flavor_t), dimension(1:prc_conf%n_out) :: flv_out    
     type(string_t) :: proc_str, comment_str
     integer :: u, i, j, count
-    integer :: hel, hel_in, hel_out, fac, factor
+    integer :: hel, hel_in, hel_out, fac, factor, col_fac
     type(string_t) :: filename
     comment_str = ""
     do i = 1, prc_conf%n_in
@@ -942,6 +992,7 @@ contains
        prt_in(i) = model_get_particle_pdg (prc_conf%model, prc_conf%prt_in(i))
        call flavor_init (flv_in(i), prt_in(i), prc_conf%model)
        mult_in(i) = flavor_get_multiplicity (flv_in(i))
+       col_in(i) = abs(flavor_get_color_type (flv_in(i)))
        mult(i) = mult_in(i)
        end do
     do j = 1, prc_conf%n_out
@@ -955,6 +1006,7 @@ contains
     proc_str = converter (prt)
     hel_in = product (mult_in)
     hel_out = product (mult_out)
+    col_fac = product (col_in)
     hel = hel_in * hel_out
     fac = hel
     dummy = 1
@@ -964,6 +1016,7 @@ contains
           factor = factor * (i - 2) * (i - 1)
        end do
     end if    
+    factor = factor * col_fac
     allocate (sxxx(1:hel,1:prc_conf%n_tot))
     call create_spin_table (dummy,hel,fac,mult,sxxx)
     call msg_message ("Writing test matrix element for process '" &
@@ -990,7 +1043,7 @@ contains
     write (u, "(A)") "  public :: number_flavor_states, flavor_states"
     write (u, "(A)") "  public :: number_color_flows, color_flows"
     write (u, "(A)") "  public :: number_color_indices, number_color_factors, &"
-    write (u, "(A)") "     color_factors, color_sum"
+    write (u, "(A)") "     color_factors, color_sum, openmp_supported"
     write (u, "(A)") "  public :: init, final, update_alpha_s"  
     write (u, "(A)") "  public :: reset_helicity_selection"
     write (u, "(A)") "                                         "    
@@ -1043,8 +1096,8 @@ contains
     write (u, "(A)") "    reshape ( (/ f0001 /), (/ n_prt, n_flv /) )"
     write (u, "(A)") "                                                 " 
     write (u, "(A)") "  integer, dimension(n_cindex, n_prt), parameter, private :: &"
-    write (u, "(A)") "    c0001 = reshape ( (/ " // (repeat ("0,0, ", prc_conf%n_tot-1)) &
-                             // "0,0 /), " // " (/ n_cindex, n_prt /) )"
+    write (u, "(A)") "    c0001 = reshape ( (/ " // char (dummy_colorizer (flv_in)) // " " // &
+      (repeat ("0,0, ", prc_conf%n_out-1)) // "0,0 /), " // " (/ n_cindex, n_prt /) )"
     write (u, "(A)") "  integer, dimension(n_cindex, n_prt, n_cflow), parameter, private :: &"
     write (u, "(A)") "  table_color_flows = reshape ( (/ c0001 /), (/ n_cindex, n_prt, n_cflow /) )"
     write (u, "(A)") "                                           "   
@@ -1147,6 +1200,11 @@ contains
     write (u, "(A)") "    n = size (table_color_factors)"
     write (u, "(A)") "  end function number_color_factors"
     write (u, "(A)") "                                           "                                  
+    write (u, "(A)") "  pure function openmp_supported () result (status)"
+    write (u, "(A)") "    logical :: status"
+    write (u, "(A)") "    status = .false."
+    write (u, "(A)") "  end function openmp_supported"
+    write (u, "(A)") "                                           "                                  
     write (u, "(A)") "  subroutine new_event (p)"
     write (u, "(A)") "    real(default), dimension(0:3,*), intent(in) :: p"    
     write (u, "(A)") "    call calculate_amplitudes (amp, p)"        
@@ -1176,7 +1234,8 @@ contains
     write (u, "(A)") "    integer :: i"            
     write (u, "(A)") "    ! We give all helicities the same weight!"            
     if (unit) then 
-       write (u, "(A)") "    amp = const"
+       write (u, "(A,1x,I0,1x,A)") "    fac = ", col_fac
+       write (u, "(A)") "    amp = const * sqrt(fac)"
     else
        write (u, "(A,1x,I0,1x,A)") "    fac = ", factor 
        write (u, "(A)") "    amp = sqrt((2 * (k(0,1)*k(0,2) &"
@@ -1257,7 +1316,31 @@ contains
       end do   
       index = index + 1
       call create_spin_table (index, nhel, fac, mult, inta)
-    end subroutine create_spin_table    
+    end subroutine create_spin_table  
+    function dummy_colorizer (flv) result (str)
+      type(flavor_t), dimension(:), intent(in) :: flv
+      type(string_t) :: str
+      integer :: i, k
+      str = ""
+      k = 0
+      do i = 1, size(flv)
+         k = k + 1
+         select case (flavor_get_color_type (flv(i)))    
+         case (1,-1)
+            str = str // "0,0, "
+         case (3)
+            str = str // int2string(k) // ",0, "
+         case (-3)
+            str = str // "0," // int2string(-k) // ", "
+         case (8)
+            str = str // int2string(k) // "," // int2string(-k-1) // ", "
+            k = k + 1
+         case default
+            call msg_error ("Color type not supported.")
+         end select
+      end do    
+      str = adjustl(trim(str))
+    end function dummy_colorizer    
   end subroutine write_unit_matrix_element
 
   subroutine process_library_write_driver (prc_lib)
@@ -1296,6 +1379,7 @@ contains
     call write_get_process_id_fun ()
     call write_get_model_name_fun ()
     call write_get_restrictions_fun ()
+    call write_get_openmp_status_fun ()
     call write_get_md5sum_fun ()
     call write_string_to_array_fun ()
     call write_get_int_fun ("n_in",  "number_particles_in")
@@ -1321,7 +1405,17 @@ contains
     prc_lib%status = max (prc_lib%status, STAT_CODE_GENERATED)
 
   contains
-    
+
+    function logical_to_string (flag) result (str)
+    logical, intent(in) :: flag
+    type(string_t) :: str
+      if (flag) then
+         str = ".true."
+      else
+         str = ".false."
+      end if
+    end function logical_to_string
+
     subroutine write_get_n_processes_fun ()
       write (u, "(A)")  ""
       write (u, "(A)")  "! Return the number of processes in this library"
@@ -1396,7 +1490,7 @@ contains
 
     subroutine write_get_restrictions_fun ()
       write (u, "(A)")  ""
-      write (u, "(A)")  "! Return the model name for process #i (as a C pointer to a character array)"
+      write (u, "(A)")  "! Return the restriction string process #i (as a C pointer to a character array)"
       write (u, "(A)")  "subroutine " // char (prefix) &
            // "get_restrictions (i, cptr, len) bind(C)"
       write (u, "(A)")  "  use iso_c_binding"
@@ -1423,6 +1517,25 @@ contains
       write (u, "(A)")  "end subroutine " // char (prefix) &
            // "get_restrictions"
     end subroutine write_get_restrictions_fun
+
+    subroutine write_get_openmp_status_fun ()
+      write (u, "(A)")  ""
+      write (u, "(A)")  "! Return the OpenMP support status"
+      write (u, "(A)")  "function " // char (prefix) &
+           // "get_openmp_status (i) result (openmp_status) bind(C)"
+      write (u, "(A)")  "  use iso_c_binding"
+      call write_use_lines ("openmp_supported", "openmp_supported")
+      write (u, "(A)")  "  integer(c_int), intent(in) :: i"
+      write (u, "(A)")  "  logical(c_bool) :: openmp_status"
+      write (u, "(A)")  "  select case (i)"
+      do i = 1, n_prc
+         write (u, "(A,I0,A)")  "  case (", i, ");  " &
+              // "openmp_status = " // char (prc_id(i)) // "_openmp_supported ()"
+      end do
+      write (u, "(A)")  "  end select"
+      write (u, "(A)")  "end function " // char (prefix) &
+           // "get_openmp_status"
+    end subroutine write_get_openmp_status_fun
 
     subroutine write_get_md5sum_fun ()
       integer :: i
@@ -2031,6 +2144,8 @@ contains
            // char (libname)// "_" //  "get_n_cin"
       write (u, "(A)")  "  procedure(prc_get_int), bind(C) :: " &
            // char (libname)// "_" //  "get_n_cf"
+      write (u, "(A)")  "  procedure(prc_get_log), bind(C) :: " &
+           // char (libname)// "_" //  "get_openmp_status"
       write (u, "(A)")  "  procedure(prc_set_int_tab1), bind(C) :: " &
            // char (libname)// "_" //  "set_flv_state"
       write (u, "(A)")  "  procedure(prc_set_int_tab1), bind(C) :: " &
@@ -2071,6 +2186,7 @@ contains
       call write_fun_code (char (libname), "get_n_col")
       call write_fun_code (char (libname), "get_n_cin")
       call write_fun_code (char (libname), "get_n_cf")
+      call write_fun_code (char (libname), "get_openmp_status")
       call write_fun_code (char (libname), "set_flv_state")
       call write_fun_code (char (libname), "set_hel_state")
       call write_fun_code (char (libname), "set_col_state")
@@ -2107,7 +2223,7 @@ contains
     logical :: exist
     type(process_configuration_t), pointer :: current
     integer :: i, j, mi
-    flags = ""
+    flags = " -lomega"
     if ((.not. os_data%use_testfiles) .and. &
                os_dir_exist (os_data%whizard_models_libpath_local)) &
                  flags = flags // " -L" // os_data%whizard_models_libpath_local
@@ -2143,7 +2259,9 @@ contains
        current => current%next
     end do SCAN
     deallocate (models)
+    flags = flags // " -lwhizard"
   end function get_modellibs_flags
+
   subroutine process_library_compile &
        (prc_lib, os_data, recompile_library, objlist_link)
     type(process_library_t), intent(inout) :: prc_lib
@@ -2195,10 +2313,12 @@ contains
     type(process_library_t), intent(in) :: prc_lib
     type(os_data_t), intent(in) :: os_data
     type(string_t), intent(in) :: objlist
+    type(os_data_t) :: local_os_data
+    local_os_data = os_data
+    local_os_data%ldflags = os_data%ldflags &
+         // " " // get_modellibs_flags (prc_lib, os_data)
     if (objlist /= "") then
-       call os_link_shared (objlist // " " // &
-            os_data%whizard_ldflags // " " // os_data%ldflags // &
-            get_modellibs_flags (prc_lib, os_data),  prc_lib%basename, os_data)
+       call os_link_shared (objlist,  prc_lib%basename, local_os_data)
     end if
   end subroutine process_library_link
 
@@ -2225,7 +2345,6 @@ contains
     do i = 1, size (libname)
        objlist = objlist // " " // libname(i) // ext_a
     end do
-    print *, char (flags)
     call os_link_static (objlist // flags, exec_name, os_data)
   end subroutine link_executable
 
@@ -2272,6 +2391,9 @@ contains
     c_fptr = process_library_get_c_funptr &
          (prc_lib, prefix, var_str ("get_restrictions"))
     call c_f_procpointer (c_fptr, prc_lib%get_restrictions)
+    c_fptr = process_library_get_c_funptr &
+         (prc_lib, prefix, var_str ("get_openmp_status"))
+    call c_f_procpointer (c_fptr, prc_lib%get_openmp_status)
     c_fptr = process_library_get_c_funptr &
          (prc_lib, prefix, var_str ("get_md5sum"))
     call c_f_procpointer (c_fptr, prc_lib%get_md5sum)

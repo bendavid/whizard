@@ -1,10 +1,11 @@
-(* $Id: whizard.ml 2219 2010-04-04 16:05:44Z ohl $
+(* $Id: whizard.ml 2948 2010-12-24 03:25:57Z jr_reuter $
 
-   Copyright (C) 1999-2009 by
+   Copyright (C) 1999-2011 by
 
        Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
        Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+       Christian Speckner <christian.speckner@physik.uni-freiburg.de>
 
    WHIZARD is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by
@@ -21,9 +22,9 @@
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
 let rcs = RCS.parse "Whizard" ["Whizard Interface"]
-    { RCS.revision = "$Revision: 2219 $";
-      RCS.date = "$Date: 2010-04-04 18:05:44 +0200 (Sun, 04 Apr 2010) $";
-      RCS.author = "$Author: ohl $";
+    { RCS.revision = "$Revision: 2948 $";
+      RCS.date = "$Date: 2010-12-24 04:25:57 +0100 (Fri, 24 Dec 2010) $";
+      RCS.author = "$Author: jr_reuter $";
       RCS.source
         = "$URL: svn+ssh://jr_reuter@login.hepforge.org/hepforge/svn/whizard/trunk/src/omega/src/whizard.ml $" }
 

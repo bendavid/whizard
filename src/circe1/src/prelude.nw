@@ -307,8 +307,8 @@ in section~\ref{sec:conclusions}.
 \end{table}
 \begin{figure}[tp]
   \begin{center}
-%    \includegraphics{dist.1}\quad\includegraphics{dist.2} \\
-%    \includegraphics{dist.3}\quad\includegraphics{dist.4}
+    \includegraphics{dist1}\quad\includegraphics{dist2} \\
+    \includegraphics{dist3}\quad\includegraphics{dist4}
   \end{center}
   \caption{\label{fig:dist}%
     Version 1, revision 1996 09 02 of the factorized $e^\pm$- and
@@ -366,7 +366,7 @@ in section~\ref{sec:conclusions}.
 \end{table}
 \begin{figure}[tp]
   \begin{center}
-%    \includegraphics{dist.5}\quad\includegraphics{dist.6}
+    \includegraphics{dist5}\quad\includegraphics{dist6}
   \end{center}
   \caption{\label{fig:dist/Tesla}%
     Version 1, revision 1996 09 02 of the factorized $e^\pm$- and
@@ -400,7 +400,7 @@ in section~\ref{sec:conclusions}.
 \end{table}
 \begin{figure}[tp]
   \begin{center}
-%    \includegraphics{dist.7}\quad\includegraphics{dist.8}
+    %% \includegraphics{dist7}\quad\includegraphics{dist8}
   \end{center}
   \caption{\label{fig:dist/Tesla/hi}%
     Version 5, revision 1998 05 05 of the factorized $e^\pm$- and
@@ -984,7 +984,7 @@ as well.
 \label{sec:technical}
 \begin{figure}[tp]
   \begin{center}
-%    \includegraphics{figures.1}
+    \includegraphics{figures1}
   \end{center}
   \caption{\label{fig:architecture}%
     Architecture of \Kirke/: [[circes()]] selects energy and accelerator
@@ -1240,7 +1240,7 @@ $(1-x_\gamma)^\alpha$
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{figure}[tp]
   \begin{center}
-%    \includegraphics{fit.11}\quad\includegraphics{fit.21}
+    \includegraphics{fit11}\quad\includegraphics{fit21}
   \end{center}
   \caption{\label{fig:fit/S-Band/500GeV}%
     Fit of the $e^\pm$- and $\gamma$-distributions for the S-Band
@@ -1250,7 +1250,7 @@ $(1-x_\gamma)^\alpha$
 \end{figure}
 \begin{figure}[tp]
   \begin{center}
-%    \includegraphics{fit.12}\quad\includegraphics{fit.22}
+    \includegraphics{fit12}\quad\includegraphics{fit22}
   \end{center}
   \caption{\label{fig:fit/Tesla/500GeV}%
     Fit of the $e^\pm$- and $\gamma$-distributions for the Tesla
@@ -1258,7 +1258,7 @@ $(1-x_\gamma)^\alpha$
 \end{figure}
 \begin{figure}[tp]
   \begin{center}
-%    \includegraphics{fit.13}\quad\includegraphics{fit.23}
+    \includegraphics{fit13}\quad\includegraphics{fit23}
   \end{center}
   \caption{\label{fig:fit/X-Band/500GeV}%
     Fit of the $e^\pm$- and $\gamma$-distributions for the X-Band
@@ -1266,7 +1266,7 @@ $(1-x_\gamma)^\alpha$
 \end{figure}
 \begin{figure}[tp]
   \begin{center}
-%    \includegraphics{fit.15}\quad\includegraphics{fit.25}
+    \includegraphics{fit15}\quad\includegraphics{fit25}
   \end{center}
   \caption{\label{fig:fit/Tesla/1TeV}%
     Fit of the $e^\pm$- and $\gamma$-distributions for the Tesla

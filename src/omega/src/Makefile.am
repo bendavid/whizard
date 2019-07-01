@@ -1,14 +1,14 @@
 # Makefile.am -- Makefile for O'Mega within and without WHIZARD
-# $Id: Makefile.am 2798 2010-09-15 13:36:15Z jr_reuter $
+# $Id: Makefile.am 3092 2011-04-01 09:12:12Z kilian $
 ##
 ## Process this file with automake to produce Makefile.in
 ##
 ########################################################################
 #
-# Copyright (C) 1999-2010 by 
-#     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+# Copyright (C) 1999-2011 by 
+#     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
-#     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+#     Juergen Reuter <juergen.reuter@desy.de>
 #     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
@@ -28,8 +28,8 @@
 ########################################################################
 
 # Build the O'Mega Fortran library using libtool
-# (use pkglib_ instead of lib_ to make the -rpath and *.lai business work ...)
-pkglib_LTLIBRARIES = libomega_core.la
+# (?use pkglib_ instead of lib_ to make the -rpath and *.lai business work ...)
+lib_LTLIBRARIES = libomega_core.la
 pkginclude_DATA = $(OMEGALIB_MOD)
 
 libomega_core_la_SOURCES = $(OMEGALIB_F90)

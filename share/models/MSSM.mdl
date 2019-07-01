@@ -654,11 +654,12 @@ vertex sb2 ST2 Wp
 vertex se32 SN31 Wp 
 
 # Yukawa (neutral)
-vertex S s h 
-vertex C c h 
+### keeping only 3rd generation for the moment
+# vertex S s h 
+# vertex C c h 
 vertex B b h 
 vertex T t h 
-vertex E2 e2 h
+# vertex E2 e2 h
 vertex E3 e3 h 
 vertex e3 E3 HH
 vertex b B HH

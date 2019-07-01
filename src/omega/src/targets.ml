@@ -1,6 +1,6 @@
-(* $Id: targets.ml 2838 2010-09-29 15:52:35Z jr_reuter $
+(* $Id: targets.ml 3104 2011-04-02 10:31:01Z cnspeckn $
 
-   Copyright (C) 1999-2010 by
+   Copyright (C) 1999-2011 by
 
        Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
@@ -23,9 +23,9 @@
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
 let rcs_file = RCS.parse "Targets" ["Code Generation"]
-    { RCS.revision = "$Revision: 2838 $";
-      RCS.date = "$Date: 2010-09-29 17:52:35 +0200 (Wed, 29 Sep 2010) $";
-      RCS.author = "$Author: jr_reuter $";
+    { RCS.revision = "$Revision: 3104 $";
+      RCS.date = "$Date: 2011-04-02 12:31:01 +0200 (Sat, 02 Apr 2011) $";
+      RCS.author = "$Author: cnspeckn $";
       RCS.source
         = "$URL: svn+ssh://jr_reuter@login.hepforge.org/hepforge/svn/whizard/trunk/src/omega/src/targets.ml $" }
 
@@ -236,12 +236,12 @@ module Fortran_Fermions : Fermions =
       let c1 = fastener c 1 and
           c2 = fastener c 2 in 
       match fusion with
-      | F13 -> printf "%s_ff(%s,%s,%s,%s,%s)" f (c1 ~p:p12 ()) (c2 ~p:p12 ()) wf1 wf2 p12 
-      | F31 -> printf "%s_ff(%s,%s,%s,%s,%s)" f (c1 ~p:p12 ()) (c2 ~p:p12 ()) wf2 wf1 p12
-      | F23 -> printf "f_%sf(%s,%s,%s,%s,%s)" f (c1 ~p:p1 ()) (c2 ~p:p1 ()) wf1 wf2 p1
-      | F32 -> printf "f_%sf(%s,%s,%s,%s,%s)" f (c1 ~p:p2 ()) (c2 ~p:p2 ()) wf2 wf1 p2
-      | F12 -> printf "f_f%s(%s,%s,%s,%s,%s)" f (c1 ~p:p2 ()) (c2 ~p:p2 ()) wf1 wf2 p2
-      | F21 -> printf "f_f%s(%s,%s,%s,%s,%s)" f (c1 ~p:p1 ()) (c2 ~p:p1 ()) wf2 wf1 p1
+      | F13 -> printf "%s_ff(%s,%s,@,%s,%s,%s)" f (c1 ~p:p12 ()) (c2 ~p:p12 ()) wf1 wf2 p12 
+      | F31 -> printf "%s_ff(%s,%s,@,%s,%s,%s)" f (c1 ~p:p12 ()) (c2 ~p:p12 ()) wf2 wf1 p12
+      | F23 -> printf "f_%sf(%s,%s,@,%s,%s,%s)" f (c1 ~p:p1 ()) (c2 ~p:p1 ()) wf1 wf2 p1
+      | F32 -> printf "f_%sf(%s,%s,@,%s,%s,%s)" f (c1 ~p:p2 ()) (c2 ~p:p2 ()) wf2 wf1 p2
+      | F12 -> printf "f_f%s(%s,%s,@,%s,%s,%s)" f (c1 ~p:p2 ()) (c2 ~p:p2 ()) wf1 wf2 p2
+      | F21 -> printf "f_f%s(%s,%s,@,%s,%s,%s)" f (c1 ~p:p1 ()) (c2 ~p:p1 ()) wf2 wf1 p1
   
     let print_current = function
       | coeff, Psibar, VA, Psi -> print_fermion_current2 coeff "va"
@@ -266,8 +266,13 @@ module Fortran_Fermions : Fermions =
 
     let print_current_mom = function
       | coeff, Psibar, VLRM, Psi -> print_fermion_current_mom1 coeff "vlr"
-      | coeff, Psibar, TVAM, Psi -> print_fermion_current_mom2 coeff "tva"
-      | coeff, Psibar, TLRM, Psi -> print_fermion_current_mom2 coeff "tlr"
+      | coeff, Psibar, SPM, Psi -> print_fermion_current_mom1 coeff "sp"
+      | coeff, Psibar, TVA, Psi -> print_fermion_current_mom1 coeff "tva"
+      | coeff, Psibar, TVAM, Psi -> print_fermion_current_mom2 coeff "tvam"
+      | coeff, Psibar, TLR, Psi -> print_fermion_current_mom1 coeff "tlr"
+      | coeff, Psibar, TLRM, Psi -> print_fermion_current_mom2 coeff "tlrm"
+      | coeff, Psibar, TRL, Psi -> print_fermion_current_mom1 coeff "trl"
+      | coeff, Psibar, TRLM, Psi -> print_fermion_current_mom2 coeff "trlm"
       | coeff, Psibar, _, Psi -> invalid_arg
             "Targets.Fortran_Fermions: only sigma tensor coupling here"
       | _, Chibar, _, _ | _, _, _, Chi -> invalid_arg
@@ -327,8 +332,6 @@ module Make_Fortran (Fermions : Fermions)
     open Coupling
     open Format
 
-    let openmp = Config.openmp
-
     type output_mode =
       | Single_Function
       | Single_Module of int
@@ -348,6 +351,7 @@ module Make_Fortran (Fermions : Fermions)
     let no_write = ref false        
     let km_write = ref false
     let km_pure = ref false
+    let openmp = ref false
 
     let options = Options.create
       [ "90", Arg.Clear fortran95,
@@ -375,7 +379,8 @@ module Make_Fortran (Fermions : Fermions)
         "whizard", Arg.Set whizard, "include WHIZARD interface";
         "no_write", Arg.Set no_write, "no 'write' statements";
         "kmatrix_write", Arg.Set km_write, "write K matrix functions";
-        "kmatrix_write_pure", Arg.Set km_pure, "write K matrix pure functions"]
+        "kmatrix_write_pure", Arg.Set km_pure, "write K matrix pure functions";
+        "openmp", Arg.Set openmp, "activate OpenMP support in generated code"]
 
 (* Fortran style line continuation: *)
 
@@ -440,8 +445,11 @@ module Make_Fortran (Fermions : Fermions)
     (* ["NC"] is already used up in the module ["constants"]: *)
     let nc_parameter = "N_"
     let omega_color_factor_abbrev = "OCF"
+    let openmp_tld_type = "thread_local_data"
+    let openmp_tld = "tld"
 
-    let flavors_symbol flavors =
+    let flavors_symbol ?(decl = false) flavors =
+      (if !openmp & not decl then openmp_tld ^ "%" else "" ) ^
       "oks_" ^ String.concat "" (List.map CM.flavor_symbol flavors)
 
     let p2s p =
@@ -471,28 +479,29 @@ module Make_Fortran (Fermions : Fermions)
       | None -> name
       | Some tag -> name ^ "_" ^ tag
 
-    let variable wf =
-      add_tag wf ("owf_" ^ CM.flavor_symbol (F.flavor wf) ^ "_" ^ format_p wf)
+    let variable ?(decl = false) wf =
+      (if !openmp & not decl then openmp_tld ^ "%" else "")
+      ^ add_tag wf ("owf_" ^ CM.flavor_symbol (F.flavor wf) ^ "_" ^ format_p wf)
 
     let momentum wf = "p" ^ format_p wf
     let spin wf = "s(" ^ string_of_int (ext_momentum wf) ^ ")"
 
-    let format_multiple_variable wf i =
-      variable wf ^ "_X" ^ string_of_int i
+    let format_multiple_variable ?(decl = false) wf i =
+      variable ~decl:decl wf ^ "_X" ^ string_of_int i
 
-    let multiple_variable amplitude dictionary wf =
+    let multiple_variable ?(decl = false) amplitude dictionary wf =
       try
-        format_multiple_variable wf (dictionary amplitude wf)
+        format_multiple_variable ~decl:decl wf (dictionary amplitude wf)
       with
       | Not_found -> variable wf
 
-    let multiple_variables multiplicity wf =
+    let multiple_variables ?(decl = false) multiplicity wf =
       try
         List.map
-          (format_multiple_variable wf)
+          (format_multiple_variable ~decl:decl wf)
           (ThoList.range 1 (multiplicity wf))
       with
-      | Not_found -> [variable wf]
+      | Not_found -> [variable ~decl:decl wf]
 
     let declaration_chunk_size = 64
 
@@ -500,7 +509,7 @@ module Make_Fortran (Fermions : Fermions)
       | [] -> ()
       | wfs ->
           printf "    @[<2>%s :: " t;
-          print_list (ThoList.flatmap (multiple_variables multiplicity) wfs); nl ()
+          print_list (ThoList.flatmap (multiple_variables ~decl:true multiplicity) wfs); nl ()
 
     let declare_list multiplicity t = function
       | [] -> ()
@@ -737,7 +746,6 @@ i*)
       printf "module %s" !parameter_module; nl ();
       printf "  use kinds"; nl ();
       printf "  use constants"; nl ();
-(*i      printf "  use omega_constants"; nl ();   i*)
       printf "  implicit none"; nl ();
       printf "  private"; nl ();
       printf "  @[<2>public :: setup_parameters";
@@ -886,7 +894,7 @@ i*)
       | [] -> ()
       | amplitudes ->
           printf "    @[<2>complex(kind=%s) :: " !kind;
-          print_list (List.map (fun a -> flavors_symbol (flavors a)) amplitudes); nl ()
+          print_list (List.map (fun a -> flavors_symbol ~decl:true (flavors a)) amplitudes); nl ()
 
     let declare_brakets = function
       | [] -> ()
@@ -906,12 +914,6 @@ i*)
                                   (fun wf -> PSet.add (F.momentum_list wf))
                                   (F.externals a) PSet.empty))
               PSet.empty processes));
-      declare_wavefunctions multiplicity
-        (WFSet.elements
-           (List.fold_left
-              (fun set a ->
-                WFSet.union set (List.fold_right WFSet.add (F.externals a) WFSet.empty))
-              WFSet.empty processes));
       declare_momenta
         (PSet.elements
            (List.fold_left
@@ -920,13 +922,28 @@ i*)
                                   (fun wf -> PSet.add (F.momentum_list wf))
                                   (F.variables a) PSet.empty))
               PSet.empty processes));
+      if !openmp then begin
+         printf "  type %s@[<2>" openmp_tld_type;
+         nl ();
+      end ;
+      declare_wavefunctions multiplicity
+        (WFSet.elements
+           (List.fold_left
+              (fun set a ->
+                WFSet.union set (List.fold_right WFSet.add (F.externals a) WFSet.empty))
+              WFSet.empty processes));
       declare_wavefunctions multiplicity
         (WFSet.elements
            (List.fold_left
               (fun set a ->
                 WFSet.union set (List.fold_right WFSet.add (F.variables a) WFSet.empty))
               WFSet.empty processes));
-      declare_brakets processes
+      declare_brakets processes;
+      if !openmp then begin
+         printf "@]  end type %s\n" openmp_tld_type;
+         printf "  type(%s) :: %s" openmp_tld_type openmp_tld;
+         nl ();
+      end
 
 (* [print_current] is the most important function that has to match the functions
    in \verb+omega95+ (see appendix~\ref{sec:fortran}).  It offers plentiful
@@ -1080,16 +1097,11 @@ i*)
 
           | FBF (coeff, fb, b, f) ->
               begin match coeff, fb, b, f with
-              | _, Psibar, VLRM, Psi -> let p12 =
-                  Printf.sprintf "(-%s-%s)" p1 p2 in
-                  Fermions.print_current_mom (coeff, fb, b, f) c wf1 wf2 p1 p2 
-                      p12 fusion
-              | _, Psibar, TVAM, Psi -> let p12 =
-                  Printf.sprintf "(-%s-%s)" p1 p2 in
-                  Fermions.print_current_mom (coeff, fb, b, f) c wf1 wf2 p1 p2 
-                      p12 fusion
-              | _, Psibar, TLRM, Psi -> let p12 =
-                  Printf.sprintf "(-%s-%s)" p1 p2 in
+              | _, Psibar, VLRM, Psi | _, Psibar, SPM, Psi
+              | _, Psibar, TVA, Psi | _, Psibar, TVAM, Psi 
+              | _, Psibar, TLR, Psi | _, Psibar, TLRM, Psi
+              | _, Psibar, TRL, Psi | _, Psibar, TRLM, Psi ->
+                  let p12 = Printf.sprintf "(-%s-%s)" p1 p2 in
                   Fermions.print_current_mom (coeff, fb, b, f) c wf1 wf2 p1 p2 
                       p12 fusion
               | _, _, _, _ ->
@@ -1534,6 +1546,7 @@ i*)
           printf "pr_grav(%s,%s,%s," p m w
       | Aux_Scalar | Aux_Spinor | Aux_ConjSpinor | Aux_Majorana
       | Aux_Vector | Aux_Tensor_1 -> printf "("
+      | Aux_Col_Vector | Aux_Col_Tensor_1 -> printf "%s * (" minus_third
       | Only_Insertion -> printf "("
 
     let print_projector f p m gamma =
@@ -1569,6 +1582,7 @@ i*)
           printf "pj_tensor(%s,%s,%s," p m gamma
       | Aux_Scalar | Aux_Spinor | Aux_ConjSpinor | Aux_Majorana
       | Aux_Vector | Aux_Tensor_1 -> printf "("
+      | Aux_Col_Vector | Aux_Col_Tensor_1 -> printf "%s * (" minus_third
       | Only_Insertion -> printf "("
 
     let print_gauss f p m gamma =
@@ -2268,7 +2282,7 @@ i*)
         (num_flavors a) (List.length (CF.color_flows a)) (CF.process_table a);
       nl ();
       printf
-        "  @[<2>complex(kind=%s), dimension(n_flv, n_hel, n_cflow), save :: amp" !kind;
+        "  @[<2>complex(kind=%s), dimension(n_flv, n_cflow, n_hel), save :: amp" !kind;
       nl ();
       nl ()
 
@@ -2283,6 +2297,11 @@ i*)
       printf "  @[<2>integer, save :: ";
       printf "hel_count = 0, ";
       printf "hel_cutoff = 100"; nl ();
+      printf "  @[<2>integer :: ";
+      printf "i"; nl ();
+      printf "  @[<2>integer, save, dimension(n_hel) :: ";
+      printf "hel_map = (/(i, i = 1, n_hel)/)"; nl ();
+      printf "  @[<2>integer, save :: hel_finite = n_hel"; nl ();
       nl ()
 
 (* \thocwmodulesubsection{Optional MD5 sum function} *)
@@ -2316,6 +2335,14 @@ i*)
         printf "  end subroutine update_alpha_s"; nl ();
         nl ()
       end
+
+    let print_inquiry_function_openmp () = begin
+      printf "  pure function openmp_supported () result (status)"; nl ();
+      printf "    logical :: status"; nl ();
+      printf "    status = %s" (if !openmp then ".true." else ".false."); nl ();
+      printf "  end function openmp_supported"; nl ();
+      nl ()
+    end
 
     let print_inquiry_function_declarations name =
       printf "  @[<2>public :: number_%s,@ %s" name name;
@@ -2405,10 +2432,21 @@ i*)
       printf "  @[<5>";
       printf "subroutine new_event (p)"; nl ();
       printf "    real(kind=%s), dimension(0:3,*), intent(in) :: p" !kind; nl ();
+      printf "    logical :: mask_dirty"; nl ();
+      printf "    integer :: hel"; nl ();
       printf "    call calculate_amplitudes (amp, p, hel_is_allowed)"; nl ();
       printf "    if ((hel_threshold .gt. 0) .and. (hel_count .le. hel_cutoff)) then"; nl ();
       printf "      call @[<3>omega_update_helicity_selection@ (hel_count,@ amp,@ ";
-      printf "hel_max_abs,@ hel_sum_abs,@ hel_is_allowed,@ hel_threshold,@ hel_cutoff)"; nl ();
+      printf "hel_max_abs,@ hel_sum_abs,@ hel_is_allowed,@ hel_threshold,@ hel_cutoff,@ mask_dirty)"; nl ();
+      printf "      if (mask_dirty) then"; nl ();
+      printf "        hel_finite = 0"; nl ();
+      printf "        do hel = 1, n_hel"; nl ();
+      printf "          if (hel_is_allowed(hel)) then"; nl ();
+      printf "            hel_finite = hel_finite + 1"; nl ();
+      printf "            hel_map(hel_finite) = hel"; nl ();
+      printf "          end if"; nl ();
+      printf "        end do"; nl ();
+      printf "      end if"; nl ();
       printf "    end if"; nl();
       printf "  end subroutine new_event"; nl ();
       nl ();
@@ -2436,7 +2474,7 @@ i*)
       printf "function get_amplitude (flv, hel, col) result (amp_result)"; nl ();
       printf "    complex(kind=%s) :: amp_result" !kind; nl ();
       printf "    integer, intent(in) :: flv, hel, col"; nl ();
-      printf "    amp_result = amp(flv, hel, col)"; nl ();
+      printf "    amp_result = amp(flv, col, hel)"; nl ();
       printf "  end function get_amplitude"; nl ();
       nl ()
 
@@ -2682,12 +2720,22 @@ i*)
        ThoList.enumerate 1 (ThoList.chopn num_brakets (CF.processes amplitudes)))
 
     let print_compute_fusions1 dictionary (n, fusions) =
-      printf "  @[<5>subroutine compute_fusions_%04d ()" n; nl ();
+      if !openmp then begin
+        printf "  subroutine compute_fusions_%04d (%s)" n openmp_tld; nl ();
+        printf "  @[<5>type(%s), intent(inout) :: %s" openmp_tld_type openmp_tld; nl ();
+      end else begin
+        printf "  @[<5>subroutine compute_fusions_%04d ()" n; nl ();
+      end;
       print_fusions dictionary fusions;
       printf "  end subroutine compute_fusions_%04d" n; nl ()
         
     and print_compute_brakets1 dictionary (n, processes) =
-      printf "  @[<5>subroutine compute_brakets_%04d ()" n; nl ();
+      if !openmp then begin
+        printf "  subroutine compute_brakets_%04d (%s)" n openmp_tld; nl ();
+        printf "  @[<5>type(%s), intent(inout) :: %s" openmp_tld_type openmp_tld; nl ();
+      end else begin
+        printf "  @[<5>subroutine compute_brakets_%04d ()" n; nl ();
+      end;
       List.iter (print_brakets dictionary) processes;
       printf "  end subroutine compute_brakets_%04d" n; nl ()
       
@@ -2697,7 +2745,7 @@ i*)
       ["number_particles_in"; "number_particles_out";
        "number_color_indices";
        "reset_helicity_selection"; "new_event";
-       "is_allowed"; "get_amplitude"; "color_sum"] @
+       "is_allowed"; "get_amplitude"; "color_sum"; "openmp_supported"] @
       ThoList.flatmap
         (fun n -> ["number_" ^ n; n])
         ["spin_states"; "flavor_states"; "color_flows"; "color_factors"]
@@ -2768,11 +2816,15 @@ i*)
          ("number_particles_out", "n_out")];
       List.iter print_inquiry_functions
         ["spin_states"; "flavor_states"];
+      print_inquiry_function_openmp ();
       print_color_flows ();
       print_color_factors ();
       print_dispatch_functions ();
-      if !km_write || !km_pure then
-        Targets_Kmatrix.Fortran.print !km_pure
+      nl();
+      current_continuation_line := 0;
+      if !km_write || !km_pure then (Targets_Kmatrix.Fortran.print !km_pure);
+      current_continuation_line := 1;
+      nl()
 
     let print_calculate_amplitudes declarations computations amplitudes =
       printf "  @[<5>subroutine calculate_amplitudes (amp, k, mask)"; nl ();
@@ -2780,7 +2832,7 @@ i*)
       printf "    real(kind=%s), dimension(0:3,*), intent(in) :: k" !kind; nl ();
       printf "    logical, dimension(:), intent(in) :: mask"; nl ();
       printf "    integer, dimension(n_prt) :: s"; nl ();
-      printf "    integer :: h"; nl ();
+      printf "    integer :: h, hi"; nl ();
       declarations ();
       begin match CF.processes amplitudes with
       | p :: _ -> print_external_momenta p
@@ -2789,39 +2841,50 @@ i*)
       ignore (List.fold_left print_momenta PSet.empty (CF.processes amplitudes));
       printf "    amp = 0"; nl ();
       if num_helicities amplitudes > 0 then begin
-        if openmp then begin
-          printf "!$OMP PARALLEL DO DEFAULT(FIRSTPRIVATE) SHARED(AMP)"; nl ()
+        printf "    if (hel_finite == 0) return"; nl ();
+        if !openmp then begin
+          printf "!$OMP PARALLEL DO DEFAULT(SHARED) PRIVATE(s, h, %s) SCHEDULE(STATIC)" openmp_tld; nl();
         end;
-        printf "    do h = 1, n_hel"; nl ();
-        printf "     if (mask(h)) then"; nl ();
+        printf "    do hi = 1, hel_finite"; nl ();
+        printf "      h = hel_map(hi)"; nl ();
         printf "      s = table_spin_states(:,h)"; nl ();
         ignore (List.fold_left print_externals WFSet.empty (CF.processes amplitudes));
         computations ();
-        List.iter print_fudge_factor (CF.processes amplitudes);
-        Array.iteri (fun f c_list ->
-          Array.iteri (fun c -> function
-            | Some a ->
-                printf "      amp(%d,h,%d) = %s"
-                  (succ f) (succ c) (flavors_symbol (flavors a)); nl ()
-            | None -> ())
-            c_list)
-          (CF.process_table amplitudes);
+        List.iter print_fudge_factor (CF.processes amplitudes); 
+        (* This sorting should slightly improve cache locality. *)
+        let triple_snd = fun (_,  x, _) -> x
+        in let triple_fst = fun (x, _, _) -> x
+        in let rec builder1 flvi flowi flows = match flows with
+          | (Some a) :: tl -> (flvi, flowi, flavors_symbol (flavors a)) :: (builder1 flvi (flowi + 1) tl)
+          | None :: tl -> builder1 flvi (flowi + 1) tl
+          | [] -> []
+        in let rec builder2 flvi flvs = match flvs with
+          | flv :: tl -> (builder1 flvi 1 flv) @ (builder2 (flvi + 1) tl)
+          | [] -> []
+        in let unsorted = builder2 1 (List.map Array.to_list (Array.to_list (CF.process_table amplitudes)))
+        in let sorted = List.sort (fun a b -> 
+            if (triple_snd a != triple_snd b) then triple_snd a - triple_snd b else (triple_fst a - triple_fst b))
+          unsorted
+        in List.iter (fun (flvi, flowi, flv) ->
+          (printf "      amp(%d,%d,h) = %s" flvi flowi flv; nl ();)) sorted;
+
 (*i     printf "     else"; nl ();
         printf "      amp(:,h,:) = 0"; nl (); i*)
-        printf "     end if"; nl ();
         printf "    end do"; nl ();
-        if openmp then begin
-          printf "!$OMP END PARALLEL DO"; nl ()
+        if !openmp then begin
+          printf "!$OMP END PARALLEL DO"; nl ();
         end;
       end;
       printf "  end subroutine calculate_amplitudes"; nl ()
 
     let print_compute_chops chopped_fusions chopped_brakets () =
       List.iter
-        (fun (i, _) -> printf "      call compute_fusions_%04d ()" i; nl ())
+        (fun (i, _) -> printf "      call compute_fusions_%04d (%s)" i
+           (if !openmp then openmp_tld else ""); nl ())
         chopped_fusions;
       List.iter
-        (fun (i, _) -> printf "      call compute_brakets_%04d ()" i; nl ())
+        (fun (i, _) -> printf "      call compute_brakets_%04d (%s)" i
+           (if !openmp then openmp_tld else ""); nl ())
         chopped_brakets
 
 (* \thocwmodulesubsection{Single Function} *)
@@ -2927,12 +2990,22 @@ i*)
       let dictionary = CF.dictionary amplitudes in
 
       let print_compute_fusions (n, fusions) () =
-        printf "  @[<5>subroutine compute_fusions_%04d ()" n; nl ();
+        if !openmp then begin
+          printf "  subroutine compute_fusions_%04d (%s)" n openmp_tld; nl ();
+          printf "  @[<5>type(%s), intent(inout) :: %s" openmp_tld_type openmp_tld; nl ();
+        end else begin
+          printf "  @[<5>subroutine compute_fusions_%04d ()" n; nl ();
+        end;
         print_fusions dictionary fusions;
         printf "  end subroutine compute_fusions_%04d" n; nl () in
         
       let print_compute_brakets (n, processes) () =
-        printf "  @[<5>subroutine compute_brakets_%04d ()" n; nl ();
+        if !openmp then begin
+          printf "  subroutine compute_brakets_%04d (%s)" n openmp_tld; nl ();
+          printf "  @[<5>type(%s), intent(inout) :: %s" openmp_tld_type openmp_tld; nl ();
+        end else begin
+          printf "  @[<5>subroutine compute_brakets_%04d ()" n; nl ();
+        end;
         List.iter (print_brakets dictionary) processes;
         printf "  end subroutine compute_brakets_%04d" n; nl () in
         

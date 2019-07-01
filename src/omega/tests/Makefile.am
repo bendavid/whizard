@@ -1,14 +1,14 @@
 # Makefile.am -- Makefile for O'Mega within and without WHIZARD
-# $Id: Makefile.am 2798 2010-09-15 13:36:15Z jr_reuter $
+# $Id: Makefile.am 3150 2011-04-09 20:03:28Z jr_reuter $
 ##
 ## Process this file with automake to produce Makefile.in
 ##
 ########################################################################
 #
-# Copyright (C) 1999-2010 by 
-#     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+# Copyright (C) 1999-2011 by 
+#     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
-#     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+#     Juergen Reuter <juergen.reuter@desy.de>
 #     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
@@ -43,18 +43,18 @@ OMEGA_QCD_OPTS = $(OMEGA_SPLIT) -target:parameter_module parameters_QCD
 OMEGA_SYM = $(top_builddir)/bin/omega_SYM.opt
 OMEGA_SYM_OPTS = $(OMEGA_SPLIT) -target:parameter_module parameters_SYM
 
-OMEGA_SM = $(top_builddir)/bin/omega_SM.opt
-OMEGA_SM_OPTS = $(OMEGA_SPLIT) -target:parameter_module parameters_SM
-
 OMEGA_XXX = $(top_builddir)/bin/omega_%%%.opt
 OMEGA_XXX_OPTS = -target:parameter_module parameters_%%%
 
 AM_FCFLAGS = -I$(top_builddir)/src
 AM_LDFLAGS =
 
-if OMEGA_WITH_OPENMP
-AM_FCFLAGS += $(OPENMP_FCFLAGS)
-AM_LDFLAGS += $(OPENMP_FCFLAGS)
+########################################################################
+## Default Fortran compiler options
+
+## OpenMP
+if FC_USE_OPENMP
+AM_FCFLAGS += $(FCFLAGS_OPENMP)
 endif
 
 ########################################################################
@@ -130,7 +130,8 @@ EXTRA_DIST += ward_identities.list
 
 WARD_SUPPORT_F90 = \
     omega_interface.f90 omega_testtools.f90 tao_random_numbers.f90 \
-    parameters_QED.f90 parameters_QCD.f90 parameters_SYM.f90 
+    parameters_QED.f90 parameters_QCD.f90 parameters_SYM.f90 \
+    parameters_SM.f90 parameters_SM_top_anom.f90
 WARD_SUPPORT_O = $(WARD_SUPPORT_F90:.f90=.o)
 ward_lib.o: $(WARD_SUPPORT_O)
 
@@ -235,22 +236,23 @@ compare_split_function.o compare_split_module.o: $(COMPARE_LIB_O)
 
 ######################################################################## 
 
-if OMEGA_WITH_OPENMP
+if FC_USE_OPENMP
 TESTS += test_openmp
 EXTRA_PROGRAMS += test_openmp
-endif
 
 test_openmp_SOURCES = test_openmp.f90 parameters_QCD.f90
 nodist_test_openmp_SOURCES = amplitude_openmp.f90
 test_openmp_LDADD = $(top_builddir)/src/libomega_core.la
 
 amplitude_openmp.f90: $(OMEGA_QCD) Makefile
-	$(OMEGA_QCD) $(OMEGA_QCD_OPTS) -target:module amplitude_openmp \
+	$(OMEGA_QCD) $(OMEGA_QCD_OPTS) -target:openmp -target:module amplitude_openmp \
 	  -scatter "gl gl -> gl gl gl" > $@
 
 test_openmp.o: amplitude_openmp.o
 test_openmp.o: parameters_QCD.o
 amplitude_openmp.o: parameters_QCD.o
+
+endif
 
 ######################################################################## 
 
@@ -294,11 +296,12 @@ amplitude_benchmark_v1.o amplitude_benchmark_v2.o \
 ########################################################################
 
 installcheck-local:
-	PATH=$(bindir):$$PATH; export PATH; \
-	LD_LIBRARY_PATH=$(pkglibdir):$$LD_LIBRARY_PATH; export LD_LIBRARY_PATH; \
+	PATH=$(DESTDIR)$(bindir):$$PATH; export PATH; \
+	LD_LIBRARY_PATH=$(DESTDIR)$(libdir):$(DESTDIR)$(pkglibdir):$$LD_LIBRARY_PATH; export LD_LIBRARY_PATH; \
 	omega_QED.opt $(OMEGA_QED_OPTS) -scatter "e+ e- -> m+ m-" \
 	  -target:module amplitude_qed_eemm > amplitude_qed_eemm.f90; \
-	$(FC) $(AM_FCFLAGS) $(FCFLAGS) -I$(pkgincludedir) -L$(pkglibdir) \
+	$(FC) $(AM_FCFLAGS) $(FCFLAGS) -I$(pkgincludedir) \
+          -L$(DESTDIR)$(libdir) -L$(DESTDIR)$(pkglibdir) \
 	  $(srcdir)/parameters_QED.f90 amplitude_qed_eemm.f90 \
 	  $(srcdir)/test_qed_eemm.f90 -lomega_core; \
 	./a.out

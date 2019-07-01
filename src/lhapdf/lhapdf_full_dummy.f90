@@ -1,4 +1,4 @@
-! Dummy replacement routines
+! Dummy replacement routines for the case that LHAPDF is fully absent.
 
 subroutine InitPDFsetM (set, file)
   integer, intent(in) :: set
@@ -107,3 +107,28 @@ double precision function alphasPDF (Q)
   write (0, "(A)")  "*************************************************************"
   stop
 end function alphasPDF
+
+subroutine evolvePDFphoton (x, q, ff, fphot)
+  double precision, intent(in) :: x, q
+  double precision, dimension(-6:6), intent(out) :: ff
+  double precision, intent(out) :: fphot
+  ff = 0
+  fphot = 0
+  write (0, "(A)")  "*************************************************************"
+  write (0, "(A)")  "*** LHAPDF: Error: library not linked, WHIZARD terminates ***"
+  write (0, "(A)")  "*************************************************************"
+  stop
+end subroutine evolvePDFphoton
+
+subroutine evolvePDFphotonM (set, x, q, ff, fphot)
+  integer, intent(in) :: set
+  double precision, intent(in) :: x, q
+  double precision, dimension(-6:6), intent(out) :: ff
+  double precision, intent(out) :: fphot
+  ff = 0
+  fphot = 0
+  write (0, "(A)")  "*************************************************************"
+  write (0, "(A)")  "*** LHAPDF: Error: library not linked, WHIZARD terminates ***"
+  write (0, "(A)")  "*************************************************************"
+  stop
+end subroutine evolvePDFphotonM

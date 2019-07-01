@@ -26,32 +26,66 @@ parameter khgg 	 = 1.000	# anomaly Higgs couplings K factors
 parameter xi0    = 0.000	# R_xi parameter for Z-boson
 parameter xipm   = 0.000	# R_xi parameter for W-boson
 
-# general set of parameters for anomalous top-gauge vector/tensor vertices
-parameter tv_ttA = 0.000        # vector coeff. of ttA tensor coupling
-parameter ta_ttA = 0.000        # axial coeff. (*i) of ttA tensor cpl.
-parameter vl_ttZ = 0.000        # left-handed coeff. of ttZ vector cpl.
-parameter vr_ttZ = 0.000        # right-handed coeff. of ttZ vector cpl.
-parameter tv_ttZ = 0.000        # vector coeff. of ttZ tensor cpl.
-parameter ta_ttZ = 0.000        # axial coeff. (*i) of ttZ tensor cpl.
-parameter vl_tbW = 0.000        # left-handed coeff. of tbW vector cpl.
-parameter vr_tbW = 0.000        # right-handed coeff. of tbW vector cpl.
-parameter tl_tbW = 0.000        # left-handed coeff. of tbW tensor cpl.
-parameter tr_tbW = 0.000        # right-handed coeff. of tbW tensor cpl.
-parameter tv_ttG = 0.000        # vector coeff. of ttg tensor cpl.
-parameter ta_ttG = 0.000        # axial coeff. (*i) of ttg tensor cpl.
-parameter Lambda = 1000         # effective energy scale (GeV)
-parameter fun    = 0            # ansatz for k^2-dependence of form factors
-                # (0) no dependence: ~  1
-                # (1) Lorentzian:    ~  Lambda^2 / (Lambda^2 + k^2)
-                # (2) dipole:        ~ (Lambda^2 / (Lambda^2 + k^2))^2
-                # (3) exponential:   ~  exp(-k^2/Lambda^2)
+# General set of parameters for anomalous top-gauge and top-Higgs vertices
+parameter tv_ttA    = 0.000     # vector coeff. of ttA tensor coupling
+parameter ta_ttA    = 0.000     # axial coeff. (*i) of ttA tensor cpl.
+parameter vl_ttZ    = 0.000     # left-handed coeff. of ttZ vector cpl.
+                                # FIXED by gauge inv. !
+parameter vr_ttZ    = 0.000     # right-handed coeff. of ttZ vector cpl.
+parameter tv_ttZ    = 0.000     # vector coeff. of ttZ tensor cpl.
+                                # FIXED by gauge inv. !
+parameter ta_ttZ    = 0.000     # axial coeff. (*i) of ttZ tensor cpl.
+                                # FIXED by gauge inv. !
+parameter vl_tbW    = 0.000     # left-handed coeff. of tbW vector cpl.
+parameter vr_tbW_Re = 0.000     # right-handed coeff. of tbW vector cpl.
+parameter vr_tbW_Im = 0.000
+parameter tl_tbW_Re = 0.000     # left-handed coeff. of bbartW- tensor cpl.
+parameter tl_tbW_Im = 0.000
+parameter tr_tbW_Re = 0.000     # right-handed coeff. of bbarW- tensor cpl.
+parameter tr_tbW_Im = 0.000
+parameter tv_ttG    = 0.000     # vector coeff. of ttg tensor cpl.
+parameter ta_ttG    = 0.000     # axial coeff. (*i) of ttg tensor cpl.
+parameter s_ttH     = 0.000     # scalar coeff. of ttH cpl.
+parameter p_ttH     = 0.000     # pseudo scalar coeff. of ttH  cpl.
+parameter Lambda    = 2000      # effective energy scale (GeV)
+parameter fun       = 0         # ansatz for k^2-dependence of form factors
+                   # (0) no dependence: ~  1
+                   # (1) Lorentzian:    ~  Lambda^2 / (Lambda^2 + k^2)
+                   # (2) dipole:        ~ (Lambda^2 / (Lambda^2 + k^2))^2
+                   # (3) exponential:   ~  exp(-k^2/Lambda^2)
 
-# Dependent parameters
+# Enforce gauge invariance
+
+parameter gauge_inv = 1
+
+# Setting this switch to a positive value enforces interrelations imposed by gauge
+# invariance among some couplings introduced above and additional bottom
+# couplings, i. e. any inconsistent values stated above (or zeros assumed for the
+# bottom couplings) are OVERRIDEN as follows:
+# vl_ttZ = vl_tbW * 2
+# tv_ttZ = tr_tbW_Re / cw - ee * tw tv_ttA
+# ta_ttZ = tr_tbW_Im / cw - ee * tw ta_ttA
+# tv_bbA = tl_tbW_Re * sw / ee
+# ta_bbA = tl_tbW_Im * sw / ee 
+# tv_bbZ = tl_tbW_Re * cw
+# ta_bbZ = tl_tbW_Im * cw
+
+# Redundant operator coefficients (turning on 4-fermion contact vertices)
+parameter Re_CqG = 0.000        # real part of C_qG
+parameter Re_CuG = 0.000        # real part of C_uG
+parameter Re_CqB = 0.000        # real part of C_qB
+parameter Re_CuB = 0.000        # real part of C_uB
+parameter Re_CqW = 0.000        # real part of C_qW
+parameter Re_CDu = 0.000        # real part of C_Du
+parameter Re_CDd = 0.000        # real part of C_Dd
+parameter Im_CDd = 0.000        # imaginary part of C_Dd
+
+# Dependent SM parameters
 derived v     = 1 / sqrt (sqrt (2.) * GF)     # v (Higgs vev)
 derived cw    = mW / mZ                       # cos(theta-W)
 derived sw    = sqrt (1-cw**2)                # sin(theta-W)
 derived ee    = 2 * sw * mW / v               # em-coupling (GF scheme)
-derived alpha_em_i = 4 * pi / ee**2           # inverse fine structure const
+derived alpha_em_i = 4 * pi / ee**2	      # inverse fine structure constant
 
 ########################################################################
 # Particle content
@@ -227,11 +261,12 @@ vertex E2 n2 Wm
 vertex E3 n3 Wm 
 
 # Yukawa
-vertex S s H 
-vertex C c H 
+### keeping only 3rd generation for the moment 
+# vertex S s H 
+# vertex C c H 
 vertex B b H 
 vertex T t H 
-vertex E2 e2 H 
+# vertex E2 e2 H 
 vertex E3 e3 H 
 
 # Vector-boson self-interactions

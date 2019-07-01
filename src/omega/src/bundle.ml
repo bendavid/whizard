@@ -1,10 +1,10 @@
-(* $Id: bundle.ml 2695 2010-07-08 22:15:33Z ohl $
+(* $Id: bundle.ml 3116 2011-04-05 10:20:25Z kilian $
 
-   Copyright (C) 1999-2010 by
+   Copyright (C) 1999-2011 by
 
-       Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+       Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
-       Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+       Juergen Reuter <juergen.reuter@desy.de>
 
    WHIZARD is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by

@@ -1,9 +1,9 @@
-! WHIZARD 2.0.4 Tue Oct 26 2010
+! WHIZARD 2.0.5 Tue May 10 2011
 ! 
-! (C) 1999-2010 by 
-!     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+! Copyright (C) 1999-2011 by 
+!     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
-!     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+!     Juergen Reuter <juergen.reuter@desy.de>
 !     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
 !     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
 !
@@ -41,6 +41,7 @@ module file_utils
   public :: lower_case
   public :: quote_underscore
   public :: tex_format
+  public :: mp_format
 
   interface upper_case
      module procedure upper_case_char, upper_case_string
@@ -183,6 +184,14 @@ contains
        string = sign // trim (cstr)
     end if
   end function tex_format
+
+  function mp_format (rval) result (string)
+    type(string_t) :: string
+    real(default), intent(in) :: rval
+    character(16) :: tmp
+    write (tmp, "(G16.8)")  rval
+    string = lower_case (trim (adjustl (trim (tmp))))
+  end function mp_format
 
 
 end module file_utils

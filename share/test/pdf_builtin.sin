@@ -1,0 +1,45 @@
+alias q = u:d:s
+alias Q = U:D:S
+process drell_yan = q, Q => e2, E2
+process epmprod = A, A => e1, E1
+
+compile
+
+ms = 0
+me = 0
+mmu = 0
+
+alias lepton = e1:e2:e3:E1:E2:E3
+cuts = all Pt > 100 GeV [lepton]
+   and all M > 10 GeV [lepton, lepton]
+
+sqrts = 1000
+iterations = 4:500, 2:500
+
+sample_format = lhef
+
+integrate (drell_yan)
+
+beams = u, U
+integrate (drell_yan)
+
+beams = p, p => pdf_builtin {$pdf_builtin_set = "cteq6l"}
+integrate (drell_yan)
+
+beams = p, p => pdf_builtin {$pdf_builtin_set = "mstw2008lo"}
+integrate (drell_yan)
+
+beams = p, p => pdf_builtin {$pdf_builtin_set = "mstw2008nlo"}
+integrate (drell_yan)
+
+beams = p, p => pdf_builtin {$pdf_builtin_set = "mstw2008nnlo"}
+integrate (drell_yan)
+
+beams = p, p => pdf_builtin {$pdf_builtin_set = "ct10"}
+integrate (drell_yan)
+
+beams = A, A
+integrate (epmprod)
+
+beams = p, p => pdf_builtin {$pdf_builtin_set = "mrst2004qedp"}
+integrate (epmprod)

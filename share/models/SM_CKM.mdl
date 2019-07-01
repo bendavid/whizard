@@ -228,11 +228,12 @@ vertex S t Wm
 vertex B t Wm 
 
 # Yukawa (neutral)
-vertex S s H
-vertex C c H 
+### keeping only 3rd generation for the moment
+# vertex S s H
+# vertex C c H 
 vertex B b H 
 vertex T t H 
-vertex E2 e2 H 
+# vertex E2 e2 H 
 vertex E3 e3 H 
 
 # Vector-boson self-interactions

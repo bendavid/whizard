@@ -1,14 +1,14 @@
 # Makefile.am -- Makefile for O'Mega within and without WHIZARD
-# $Id: Makefile.am 2798 2010-09-15 13:36:15Z jr_reuter $
+# $Id: Makefile.am 3070 2011-03-28 08:09:25Z jr_reuter $
 ##
 ## Process this file with automake to produce Makefile.in
 ##
 ########################################################################
 #
-# Copyright (C) 1999-2010 by 
-#     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+# Copyright (C) 1999-2011 by 
+#     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
-#     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+#     Juergen Reuter <juergen.reuter@desy.de>
 #     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
@@ -43,14 +43,15 @@ SUBDIRS = src lib $(OPT_OMEGA) tools scripts
 DIST_SUBDIRS = src lib models bin share tools extensions tests scripts
 
 ## Use the same compiler and compiler flags for distcheck
-DISTCHECK_CONFIGURE_FLAGS = FC=$(FC) FCFLAGS="$(FCFLAGS)" LIBS="$(LIBS)"
+DISTCHECK_CONFIGURE_FLAGS = FC=$(FC) FCFLAGS="$(FCFLAGS)" LIBS="$(LIBS)" \
+	--enable-distribution
 
 EXTRA_DISTCHECK_CONFIGURE_FLAGS = \
-    "--disable-noweb" \
-    "--disable-noweb --disable-ocaml" \
-    "--disable-noweb --disable-shared" \
-    "--disable-noweb --disable-static" \
-    "--disable-noweb --enable-fc-quadruple"
+    "--disable-noweb-force" \
+    "--disable-noweb-force --disable-ocaml" \
+    "--disable-noweb-force --disable-shared" \
+    "--disable-noweb-force --disable-static" \
+    "--disable-noweb-force --enable-fc-quadruple"
 
 extra-distcheck:
 	@echo "================================================="  >$@.log
@@ -79,7 +80,7 @@ install-all-caches:
 
 install-data-local:
 	$(INSTALL) -d -m 755 $(OMEGA_USER_CACHE_DIR)
-	$(INSTALL) -d -m 755 $(OMEGA_SYSTEM_CACHE_DIR)
+	$(INSTALL) -d -m 755 $(DESTDIR)$(OMEGA_SYSTEM_CACHE_DIR)
 endif
 
 uninstall-local:

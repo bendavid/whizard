@@ -1,11 +1,12 @@
-! $Id: ward_lib.f90 2695 2010-07-08 22:15:33Z ohl $
+! $Id: ward_lib.f90 3116 2011-04-05 10:20:25Z kilian $
 ! ward_lib.f90 -- check On Shell Ward Identities in O'Mega 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
-! Copyright (C) 1999-2010 by 
-!     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+! Copyright (C) 1999-2011 by 
+!     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
-!     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+!     Juergen Reuter <juergen.reuter@desy.de>
+!     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
 ! under the terms of the GNU General Public License as published by 
@@ -51,6 +52,8 @@ contains
     logical :: match, passed
     integer :: n_out, n_flv, n_hel, n_col
     integer :: i, i_flv, i_hel, i_col
+    integer :: i_prt
+    integer, dimension(:,:), allocatable :: spin_states_phys, spin_states_unphys
     real(kind=default), dimension(:,:), allocatable :: p
     complex(kind=default), dimension(:), allocatable :: a
     character(len=80) :: msg
@@ -72,6 +75,10 @@ contains
     call unphysical%reset_helicity_selection (-1.0_default, -1)
     allocate (p(0:3,2+n_out))
     allocate (a(n_hel))
+    allocate (spin_states_phys(2+n_out,n_hel))
+    allocate (spin_states_unphys(2+n_out,unphysical%number_spin_states()))
+    call physical%spin_states(spin_states_phys)
+    call unphysical%spin_states(spin_states_unphys)
     call beams (ROOTS, 0.0_default, 0.0_default, p(:,1), p(:,2))
     do i = 1, N
        call massless_isotropic_decay (ROOTS, p(:,3:))
@@ -81,12 +88,32 @@ contains
           do i_col = 1, n_col
              do i_hel = 1, n_hel
                 a(i_hel) = physical%get_amplitude (i_flv, i_hel, i_col)
+
+!                do i_prt = 1, (2+n_out)
+!                   if (spin_states_phys(i_prt,i_hel).eq.0) then
+!                      a(i_hel) = 0.0_default
+!                      exit
+!                   end if
+!                end do
+
              end do
              a_avg = sum (abs (a)) / n_hel
+
+!write (*, "(1X,'a_avg=',E15.5)") a_avg
+
              if (.not. ieee_is_nan (a_avg)) then
                 if (a_avg > 0) then
                    do i_hel = 1, n_hel / 2
+!                   do i_hel = 1, size(spin_states_unphys,dim=2)
                       wi = unphysical%get_amplitude (i_flv, i_hel, i_col)
+
+!                      do i_prt = 1, (2+n_out)
+!                         if (spin_states_unphys(i_prt,i_hel).eq.0) then
+!                            wi = 0.0_default
+!                            exit
+!                         end if
+!                      end do
+
                       attempts = attempts + 1
                       write (msg, "(1X,'evt=',I5,', flv=',I3,', col=',I3,', hel=',I3)") &
                            i, i_flv, i_col, i_hel
@@ -112,6 +139,8 @@ contains
     end do
     deallocate (p)
     deallocate (a)
+    deallocate (spin_states_phys)
+    deallocate (spin_states_unphys)
   end subroutine check
 
   subroutine quantum_numbers (physical, unphysical, n_out, n_flv, n_hel, n_col, match)
@@ -151,7 +180,7 @@ contains
     end if
     if (unphysical%number_spin_states () .ne. n_hel/2) then
        print *, "#spin_states don't match!"
-       match = .false.
+!       match = .false.
     end if
     if (unphysical%number_color_indices () .ne. n_cix) then
        print *, "#color_indices don't match!"

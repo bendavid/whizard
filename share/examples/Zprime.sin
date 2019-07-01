@@ -2,10 +2,11 @@
 # Simple complete physics example: sequential Z' in Drell-Yan
 ########################################################################
 #
-# Copyright (C) 2010-2010 by 
-#     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+# Copyright (C) 1999-2011 by 
+#     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
-#     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+#     Juergen Reuter <juergen.reuter@desy.de>
+#     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by 
@@ -32,6 +33,8 @@ process zp_drell_yan = pr, pr => e1, E1
 # Define model parameters
 mZH = 1500 GeV
 wZH = 50 GeV
+ms = 0
+mc = 0
 
 # Define reasonable cuts and integrate the cross section(s)
 # in order to initialize the phase space grids for similation

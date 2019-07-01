@@ -1,9 +1,9 @@
-! WHIZARD 2.0.4 Tue Oct 26 2010
+! WHIZARD 2.0.5 Tue May 10 2011
 ! 
-! (C) 1999-2010 by 
-!     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+! Copyright (C) 1999-2011 by 
+!     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
-!     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+!     Juergen Reuter <juergen.reuter@desy.de>
 !     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
 !     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
 !
@@ -34,6 +34,7 @@ module sorting
 
   public :: sort
   public :: order
+  public :: concat
   public :: sorting_test
 
   interface sort
@@ -49,6 +50,11 @@ module sorting
   interface merge
      module procedure merge_int
      module procedure merge_real
+  end interface
+
+  interface concat
+     module procedure concat_int
+     module procedure concat_real
   end interface
 
 
@@ -157,6 +163,20 @@ contains
     end do
     res = tmp
   end subroutine merge_real
+
+  function concat_int (val1, val2) result (val12)
+    integer, dimension(:), intent(in) :: val1, val2
+    integer, dimension(size(val1)+size(val2)) :: val12
+    val12(:size(val1)) = val1
+    val12(size(val1)+1:) = val2
+  end function concat_int
+
+  function concat_real (val1, val2) result (val12)
+    real(default), dimension(:), intent(in) :: val1, val2
+    integer, dimension(size(val1)+size(val2)) :: val12
+    val12(:size(val1)) = val1
+    val12(size(val1)+1:) = val2
+  end function concat_real
 
   subroutine sorting_test ()
     integer, parameter :: NMAX = 10

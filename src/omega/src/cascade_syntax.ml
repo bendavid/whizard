@@ -1,10 +1,11 @@
-(* $Id: cascade_syntax.ml 766 2009-06-10 22:29:02Z ohl $
+(* $Id: cascade_syntax.ml 3070 2011-03-28 08:09:25Z jr_reuter $
 
-   Copyright (C) 1999-2009 by
+   Copyright (C) 1999-2011 by
 
-       Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+       Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
-       Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+       Juergen Reuter <juergen.reuter@desy.de>
+       Christian Speckner <christian.speckner@physik.uni-freiburg.de>
 
    WHIZARD is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by

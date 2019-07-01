@@ -5,6 +5,8 @@ module pythia_dummy
   public :: pygive
   public :: pylist
   public :: pyevnt
+  public :: pyp
+  public :: upinit
 contains  
   subroutine pylist (i)
     integer, intent(in) :: i
@@ -22,7 +24,12 @@ contains
     write (0, "(A)")  "**************************************************************"
     stop      
   end subroutine pyinit
-  
+  subroutine upinit
+    write (0, "(A)")  "**************************************************************"
+    write (0, "(A)")  "*** Error: Shower has not been enabled, WHIZARD terminates ***"
+    write (0, "(A)")  "**************************************************************"
+    stop      
+  end subroutine upinit
   subroutine pygive (chin)
     character chin*(*)
     write (0, "(A)")  "**************************************************************"
@@ -36,6 +43,20 @@ contains
     write (0, "(A)")  "**************************************************************"
     stop      
   end subroutine pyevnt
+  subroutine pyexec()
+    write (0, "(A)")  "**************************************************************"
+    write (0, "(A)")  "*** Error: Shower has not been enabled, WHIZARD terminates ***"
+    write (0, "(A)")  "**************************************************************"
+    stop      
+  end subroutine pyexec
+  function pyp(I,J)
+    integer, intent(in) :: i,j
+    double precision :: pyp
+    write (0, "(A)")  "**************************************************************"
+    write (0, "(A)")  "*** Error: Shower has not been enabled, WHIZARD terminates ***"
+    write (0, "(A)")  "**************************************************************"
+    stop      
+  end function pyp
 end module pythia_dummy
 
 module shower_basics_module
@@ -208,6 +229,8 @@ module shower_module
   public :: shower_execute_next_isr_branching
   public :: shower_update_beamremnants
   public :: shower_add_interaction2ton
+  public :: shower_simulate_no_isr_shower
+  public :: shower_simulate_no_fsr_shower
   public :: shower_boost_to_labframe
   public :: shower_get_final_partons
   public :: shower_print
@@ -311,6 +334,20 @@ contains
       write (0, "(A)")  "**************************************************************"
       stop      
     end subroutine shower_add_interaction2ton
+    subroutine shower_simulate_no_isr_shower (shower)
+      type(shower_t), intent(inout) :: shower
+      write (0, "(A)")  "**************************************************************"
+      write (0, "(A)")  "*** Error: Shower has not been enabled, WHIZARD terminates ***"
+      write (0, "(A)")  "**************************************************************"
+      stop      
+    end subroutine shower_simulate_no_isr_shower
+    subroutine shower_simulate_no_fsr_shower (shower)
+      type(shower_t), intent(inout) :: shower
+      write (0, "(A)")  "**************************************************************"
+      write (0, "(A)")  "*** Error: Shower has not been enabled, WHIZARD terminates ***"
+      write (0, "(A)")  "**************************************************************"
+      stop      
+    end subroutine shower_simulate_no_fsr_shower
     subroutine shower_update_beamremnants (shower)
       type(shower_t), intent(in) :: shower
       write (0, "(A)")  "**************************************************************"
@@ -341,3 +378,16 @@ contains
       stop      
     end subroutine shower_final
 end module shower_module
+
+module shower_topythia_module
+  use shower_module
+  public :: shower_create
+contains
+  SUBROUTINE shower_converttopythia(shower)
+    TYPE(shower_t), INTENT(in) :: shower
+      write (0, "(A)")  "**************************************************************"
+      write (0, "(A)")  "*** Error: Shower has not been enabled, WHIZARD terminates ***"
+      write (0, "(A)")  "**************************************************************"
+      stop      
+    end subroutine shower_converttopythia
+end module shower_topythia_module

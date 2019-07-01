@@ -4,6 +4,10 @@ process lhapdf_drell_yan = q, Q => e2, E2
 
 compile
 
+ms = 0
+me = 0
+mmu = 0
+
 alias lepton = e1:e2:e3:E1:E2:E3
 cuts = all Pt > 100 GeV [lepton]
 

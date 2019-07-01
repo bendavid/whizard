@@ -12,17 +12,19 @@ AC_REQUIRE([AC_PROG_FC])
 AC_CACHE_CHECK([the compiler ID string],
 [wo_cv_fc_id_string],
 [dnl
-$FC -version >conftest.log 2>&1
-$FC -V >>conftest.log 2>&1
+$FC -V >conftest.log 2>&1
+$FC -version >>conftest.log 2>&1
 $FC --version >>conftest.log 2>&1
 
-wo_fc_grep_GFORTRAN=`grep -i 'GNU Fortran' conftest.log | head -1`
-wo_fc_grep_G95=`grep -i 'g95' conftest.log | grep -i 'gcc' | head -1`
-wo_fc_grep_NAG=`grep 'NAG' conftest.log | head -1`
-wo_fc_grep_Intel=`grep 'Intel' conftest.log | head -1`
-wo_fc_grep_Sun=`grep 'Sun' conftest.log | head -1`
-wo_fc_grep_Lahey=`grep 'Lahey' conftest.log | head -1`
-wo_fc_grep_PGI=`grep 'pgf' conftest.log | head -1`
+wo_fc_grep_GFORTRAN=`$GREP -i 'GNU Fortran' conftest.log | head -1`
+wo_fc_grep_G95=`$GREP -i 'g95' conftest.log | $GREP -i 'gcc' | head -1`
+wo_fc_grep_NAG=`$GREP 'NAG' conftest.log | head -1`
+wo_fc_grep_Intel=`$GREP 'IFORT' conftest.log | head -1`
+wo_fc_grep_Sun=`$GREP 'Sun' conftest.log | head -1`
+wo_fc_grep_Lahey=`$GREP 'Lahey' conftest.log | head -1`
+wo_fc_grep_PGF90=`$GREP 'pgf90' conftest.log | head -1`
+wo_fc_grep_PGF95=`$GREP 'pgf95' conftest.log | head -1`
+wo_fc_grep_PGHPF=`$GREP 'pghpf' conftest.log | head -1`
 wo_fc_grep_default=`cat conftest.log | head -1`
 
 if test -n "$wo_fc_grep_GFORTRAN"; then
@@ -37,8 +39,12 @@ elif test -n "$wo_fc_grep_Sun"; then
   wo_cv_fc_id_string=$wo_fc_grep_Sun
 elif test -n "$wo_fc_grep_Lahey"; then
   wo_cv_fc_id_string=$wo_fc_grep_Lahey
-elif test -n "$wo_fc_grep_PGI"; then
-  wo_cv_fc_id_string=$wo_fc_grep_PGI
+elif test -n "$wo_fc_grep_PGF90"; then
+  wo_cv_fc_id_string=$wo_fc_grep_PGF90
+elif test -n "$wo_fc_grep_PGF95"; then
+  wo_cv_fc_id_string=$wo_fc_grep_PGF95
+elif test -n "$wo_fc_grep_PGHPF"; then
+  wo_cv_fc_id_string=$wo_fc_grep_PGHPF
 else
   wo_cv_fc_id_string=$wo_fc_grep_default
 fi
@@ -63,7 +69,11 @@ elif test -n "$wo_fc_grep_Sun"; then
   wo_cv_fc_vendor="Sun"
 elif test -n "$wo_fc_grep_Lahey"; then
   wo_cv_fc_vendor="Lahey"
-elif test -n "$wo_fc_grep_PGI"; then
+elif test -n "$wo_fc_grep_PGF90"; then
+  wo_cv_fc_vendor="PGI"
+elif test -n "$wo_fc_grep_PGF95"; then
+  wo_cv_fc_vendor="PGI"
+elif test -n "$wo_fc_grep_PGHPF"; then
   wo_cv_fc_vendor="PGI"
 else
   wo_cv_fc_vendor="unknown"
@@ -85,19 +95,22 @@ AC_CACHE_CHECK([the compiler version],
 [dnl
 case $FC_VENDOR in
 gfortran)
-  wo_cv_fc_version=[`echo $FC_ID_STRING | sed -e 's/.*\([0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\).*/\1/'`]
+  wo_cv_fc_version=[`echo $FC_ID_STRING | $SED -e 's/.*\([0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\).*/\1/'`]
   ;;
 g95)
-  wo_cv_fc_version=[`echo $FC_ID_STRING | sed -e 's/.*g95 \([0-9][0-9]*\.[0-9][0-9]*\).*$/\1/'`]
+  wo_cv_fc_version=[`echo $FC_ID_STRING | $SED -e 's/.*g95 \([0-9][0-9]*\.[0-9][0-9]*\).*$/\1/'`]
   ;;
 NAG)
-  wo_cv_fc_version=[`echo $FC_ID_STRING | sed -e 's/.* Release \([0-9][0-9]*\.[0-9][0-9]*.*$\)/\1/'`]
+  wo_cv_fc_version=[`echo $FC_ID_STRING | $SED -e 's/.* Release \([0-9][0-9]*\.[0-9][0-9]*.*$\)/\1/'`]
   ;;
 Intel)
-  wo_cv_fc_version=[`echo $FC_ID_STRING | sed -e 's/.* Version \([0-9][0-9]*\.[0-9][0-9]*\) .*/\1/'`]
+  wo_cv_fc_version=[`echo $FC_ID_STRING | $SED -e 's/[a-zA-Z\(\)]//g;s/[0-9]\{8\}$//g'`]
   ;;
 Sun)
-  wo_cv_fc_version=[`echo $FC_ID_STRING | sed -e 's/.* Fortran 95 \([0-9][0-9]*\.[0-9][0-9]*\) .*/\1/'`]
+  wo_cv_fc_version=[`echo $FC_ID_STRING | $SED -e 's/.* Fortran 95 \([0-9][0-9]*\.[0-9][0-9]*\) .*/\1/'`]
+  ;;
+PGI)
+  wo_cv_fc_version=[`echo $FC_ID_STRING | $SED -e 's/[a-zA-Z\(\)]//g;s/^[0-9]\{2\}//g;s/32.*\|64.*//g'`]
   ;;
 *)
   wo_cv_fc_version="unknown"
@@ -109,86 +122,10 @@ AC_SUBST([FC_VERSION])
  
 AC_CACHE_CHECK([the major version],
 [wo_cv_fc_major_version],
-[wo_cv_fc_major_version=[`echo $wo_cv_fc_version | sed -e 's/\([0-9][0-9]*\)\..*/\1/'`]
+[wo_cv_fc_major_version=[`echo $wo_cv_fc_version | $SED -e 's/\([0-9][0-9]*\)\..*/\1/'`]
 ])
 FC_MAJOR_VERSION="$wo_cv_fc_major_version"
 AC_SUBST([FC_MAJOR_VERSION])
-
-
-# case "$FC_VENDOR" in
-# 
-#   Intel)
-# 
-#     if test "$FC_MAJOR_VERSION" -lt 7; then
-#       AC_MSG_ERROR([versions before 7.0 of the Intel Fortran compiler dnl
-# are not supported, because they are too old and buggy.])
-#     fi
-# 
-#     if test "$FC_MAJOR_VERSION" -lt 11; then
-#       AC_MSG_ERROR([versions before 11.0 of the Intel Fortran compiler dnl
-# do not support F2003 features.])
-#     fi
-# 
-#     THO_FORTRAN_FIND_OPTION([FC_OPT], [$FC], [$FC_EXT], [-O3 -O])
-#     THO_FORTRAN_FILTER_OPTIONS([FC_OPT], [$FC], [$FC_EXT], [-u])
-#     THO_FORTRAN_FIND_OPTION([FC_PROF], [$FC], [$FC_EXT], [-p])
-# 
-#     if test "$FC_IFC_VERSION" -ge 8; then
-#       FC_MDIR=-module
-#       FC_WIDE=-132
-#       FC_DUSTY=-FI
-#     else
-#       FC_MDIR=
-#       FC_WIDE=-extend_source
-#       FC_DUSTY=-FI
-#     fi
-#
-#   Lahey)
-#     THO_FORTRAN_FILTER_OPTIONS([FC_OPT], [$FC], [$FC_EXT],
-#       [-O --tpp --nap --nchk --npca --nsav --ntrace dnl
-#        --fc --in --nli --quiet --warn])
-#     THO_FORTRAN_FIND_OPTION([FC_PROF], [$FC], [$FC_EXT], [-pg])
-#     FC_MDIR=
-#     FC_WIDE=--wide
-#     FC_DUSTY=--fix
-#     ;;
-# 
-#   NAG)
-#     THO_FORTRAN_FIND_OPTION([FC_OPT], [$FC], [$FC_EXT],
-#       ["-O3 -Oassumed=contig" -O3 -O])
-#     THO_FORTRAN_FIND_OPTION([FC_PROF], [$FC], [$FC_EXT], [-pg])
-#     FC_MDIR=-mdir
-#     FC_WIDE=-132
-#     FC_DUSTY="-dcfuns -fixed"
-#     ;;
-# 
-#   Compaq)
-#     THO_FORTRAN_FIND_OPTION([FC_OPT], [$FC], [$FC_EXT], [-O])
-#     THO_FORTRAN_FIND_OPTION([FC_PROF], [$FC], [$FC_EXT], [-pg])
-#     FC_MDIR=-module
-#     FC_WIDE=-132
-#     FC_DUSTY=-extend_source
-#     ;;
-# 
-#   Sun)
-#     THO_FORTRAN_FIND_OPTION([FC_OPT], [$FC], [$FC_EXT], [-O])
-#     THO_FORTRAN_FIND_OPTION([FC_PROF], [$FC], [$FC_EXT], [-pg])
-#     FC_MDIR=-moddir=
-#     FC_MDIR_NOSPACE=yes
-#     FC_WIDE=-e
-#     FC_DUSTY=-fixed
-#     ;;
-# 
-#   *)
-#     THO_FORTRAN_FIND_OPTION([FC_OPT], [$FC], [$FC_EXT], [-O])
-#     THO_FORTRAN_FIND_OPTION([FC_PROF], [$FC], [$FC_EXT], [-pg])
-#     FC_MDIR=
-#     FC_WIDE=-132
-#     FC_DUSTY="-dcfuns -fixed"
-#     ;;
-# 
-# esac
-
 ])
 ### end WO_FC_GET_VENDOR_AND_VERSION
 
@@ -255,7 +192,7 @@ AC_DEFUN([WO_NAGFOR_LIBRARY_LDFLAGS],
     wo_nagfor_output=`eval $ac_link AS_MESSAGE_LOG_FD>&1 2>&1`
     echo "$wo_nagfor_output" >&AS_MESSAGE_LOG_FD
     FCFLAGS=$wo_save_fcflags
-    wo_cv_fc_libs=`echo $wo_nagfor_output | sed -e 's/.* -o conftest \(.*\)$/\1/' | sed -e "s/conftest.$ac_objext //"`
+    wo_cv_fc_libs=`echo $wo_nagfor_output | $SED -e 's/.* -o conftest \(.*\)$/\1/' | $SED -e "s/conftest.$ac_objext //"`
   else
     wo_cv_fc_libs=$FCLIBS
   fi
@@ -324,7 +261,11 @@ AC_COMPILE_IFELSE([dnl
 ])
 FC_SUPPORTS_ALLOCATABLE="$wo_cv_fc_allocatable"
 AC_SUBST([FC_SUPPORTS_ALLOCATABLE])
-])
+if test "$FC_SUPPORTS_ALLOCATABLE" = "no"; then
+AC_MSG_NOTICE([error: ****************************************************************************])
+AC_MSG_NOTICE([error: Fortran compiler does not support allocatable structures, configure aborted.])
+AC_MSG_ERROR([****************************************************************************])
+fi])
 ### end WO_FC_CHECK_TR15581
 
 
@@ -597,6 +538,100 @@ AC_SUBST([FC_LDFLAGS_WRAPPING])
 ])
 ### end WO_FC_CHECK_LDFLAGS_WRAPPING
 
+### Check for OpenMP support
+AC_DEFUN([WO_FC_CHECK_OPENMP],
+[AC_CACHE_CHECK([whether $FC supports OpenMP],
+  [wo_cv_fc_openmp],
+  [dnl
+AC_REQUIRE([AC_PROG_FC])
+AC_LANG([Fortran])
+case $FC_VENDOR in
+gfortran)
+  wo_cv_fc_openmp="yes"
+  wo_cv_fcflags_openmp="-fopenmp"
+  wo_cv_fc_openmp_header="use omp_lib"
+  ;;
+NAG)
+  wo_cv_fc_openmp="no"
+  ;;
+Intel)
+  wo_cv_fc_openmp="yes"
+  wo_cv_fcflags_openmp="-openmp"
+  wo_cv_fc_openmp_header="use omp_lib"
+  ;;
+PGI)
+  wo_cv_fc_openmp="yes"
+  wo_cv_fcflags_openmp="-mp"
+  wo_cv_fc_openmp_header=""
+  ;;
+*)
+  wo_cv_fc_openmp="no"
+  ;;
+esac
+if test "$wo_cv_fc_openmp"="yes"; then
+fcflags_tmp=$FCFLAGS
+FCFLAGS="$wo_cv_fcflags_openmp $FCFLAGS"
+unset OMP_NUM_THREADS
+AC_RUN_IFELSE([dnl
+  program conftest
+  $wo_cv_fc_openmp_header
+  open (11, file="conftest.out", action="write", status="replace")
+  write (11, "(I0)") omp_get_max_threads ()
+  close (11)
+  end program conftest
+  ],
+  [dnl
+  wo_cv_fc_openmp="yes"
+  wo_cv_fc_openmp_thread_limit=`cat conftest.out`],
+  [wo_cv_fc_openmp="no"],
+  [wo_cv_fc_openmp="maybe [cross-compiling]"])
+FCFLAGS=$fcflags_tmp
+fi
+])
+if test "$wo_cv_fc_openmp" = "yes"; then
+AC_CACHE_CHECK([the default number of threads used by OpenMP],
+[wo_cv_fc_openmp_thread_limit])
+fi
+FC_SUPPORTS_OPENMP="$wo_cv_fc_openmp"
+AC_SUBST([FC_SUPPORTS_OPENMP])
+])
+### end WO_FC_CHECK_OPENMP
+
+### Enable/disable OpenMP support
+AC_DEFUN([WO_FC_SET_OPENMP],
+[dnl
+AC_REQUIRE([WO_FC_CHECK_OPENMP])
+AC_ARG_ENABLE([fc_openmp],
+  [AS_HELP_STRING([--enable-fc-openmp],
+    [use OpenMP for the Fortran code [[no]]])])
+AC_CACHE_CHECK([whether OpenMP is activated], [wo_cv_fc_use_openmp],
+[dnl
+if test "$FC_SUPPORTS_OPENMP" = "yes" -a "$enable_fc_openmp" = "yes"; then
+  wo_cv_fc_use_openmp="yes"
+else
+  wo_cv_fc_use_openmp="no"
+fi])
+AM_CONDITIONAL([FC_USE_OPENMP],
+	[test "$wo_cv_fc_use_openmp" = "yes"])
+AM_COND_IF([FC_USE_OPENMP],
+[FC_OPENMP_ON=""
+FC_OPENMP_OFF="!"
+FCFLAGS_OPENMP="$wo_cv_fcflags_openmp"
+FC_OPENMP_HEADER="$wo_cv_fc_openmp_header"
+FC_OPENMP_DEFAULT_MAX_THREADS="$wo_cv_fc_openmp_thread_limit"
+],
+[FC_OPENMP_ON="!"
+FC_OPENMP_OFF=""
+FC_OPENMP_DEFAULT_MAX_THREADS="1"
+])
+AC_SUBST([FC_OPENMP_ON])
+AC_SUBST([FC_OPENMP_OFF])
+AC_SUBST([FCFLAGS_OPENMP])
+AC_SUBST([FC_OPENMP_HEADER])
+AC_SUBST([FC_OPENMP_DEFAULT_MAX_THREADS])
+])
+### end WO_FC_SET_OPENMP
+
 ### Check for profiling support
 AC_DEFUN([WO_FC_CHECK_PROFILING],
 [AC_CACHE_CHECK([whether $FC supports profiling via -pg],
@@ -631,21 +666,21 @@ AC_SUBST([FC_SUPPORTS_PROFILING])
 AC_DEFUN([WO_FC_SET_PROFILING],
 [dnl
 AC_REQUIRE([WO_FC_CHECK_PROFILING])
-AC_ARG_ENABLE([profiling],
+AC_ARG_ENABLE([fc_profiling],
   [AS_HELP_STRING([--enable-fc-profiling],
     [use profiling for the Fortran code [[no]]])])
-AC_CACHE_CHECK([the default setting for profiling], [wo_cv_fc_prof],
+AC_CACHE_CHECK([whether profiling is activated], [wo_cv_fc_prof],
 [dnl
-if test "$FC_SUPPORTS_PROFILING" = "yes" -a "$profiling" = "yes"; then
+if test "$FC_SUPPORTS_PROFILING" = "yes" -a "$enable_fc_profiling" = "yes"; then
   wo_cv_fc_prof="yes"
-  FC_PROF="-pg"	
+  FCFLAGS_PROFILING="-pg"	
 else
   wo_cv_fc_prof="no"
-  FC_PROF=""
+  FCFLAGS_PROFILING=""
 fi])
-AC_SUBST(FC_PROF)
-AM_CONDITIONAL([FC_PROF_SET],
-	[test -n "$FC_PROF"])
+AC_SUBST(FCFLAGS_PROFILING)
+AM_CONDITIONAL([FC_USE_PROFILING],
+	[test -n "$FCFLAGS_PROFILING"])
 ])
 ### end WO_FC_SET_PROFILING
 
@@ -788,19 +823,6 @@ fi])
 dnl
 dnl --------------------------------------------------------------------
 dnl
-dnl FC_TEST_OPTION(VARIABLE, COMPILER, EXTENSION, OPTION)
-dnl
-dnl   Test whether the COMPILER accepts the OPTION (using EXTENSION
-dnl   for the test source).  If so, the VARIABLE will be set to OPTION.
-dnl
-AC_DEFUN([FC_TEST_OPTION],
-[if test -n "$2"; then
-   COMPILE_FC([$1], [$2 $4], [$3], [], [$4], [])
-fi])
-
-dnl
-dnl --------------------------------------------------------------------
-dnl
 dnl COMPILE_FC(VARIABLE, COMPILER, EXTENSION, MODULE,
 dnl                       VALUE_SUCCESS, VALUE_FAILURE, KEEP)
 dnl
@@ -813,7 +835,7 @@ end program conftest
 __END__
 $2 -o conftest conftest.$3 >/dev/null 2>&1
 ./conftest >conftest.out 2>/dev/null
-if test 42 = "`sed 's/ //g' conftest.out`"; then
+if test 42 = "`$SED 's/ //g' conftest.out`"; then
   $1="$5"
 else
   $1="$6"
@@ -821,85 +843,6 @@ fi
 if test -z "$7"; then
   rm -rf conftest* CONFTEST*
 fi])
-
-
-dnl --------------------------------------------------------------------
-dnl
-dnl FC_TEST_EXTENSION(VARIABLE, COMPILER, EXTENSION)
-dnl
-
-AC_DEFUN([FC_TEST_EXTENSION],
-[AC_SUBST([$1])
-if test -n "$2"; then
-   COMPILE_FC([$1], [$2], [$3], [], [$3], [])
-fi])
-
-dnl
-dnl --------------------------------------------------------------------
-dnl
-dnl FC_FIND_EXTENSION(VARIABLE, COMPILER, EXTENSIONS)
-dnl
-AC_DEFUN([FC_FIND_EXTENSION],
-[AC_SUBST([$1])
-for ext in $3; do
-   AC_MSG_CHECKING([whether $2 supports .$ext])
-   FC_TEST_EXTENSION([$1], [$2], [$ext])
-   if test -n "[$]$1"; then
-      AC_MSG_RESULT([yes]);
-      FC_COMPILES="yes"
-      break 
-   else
-      AC_MSG_RESULT([no])
-   fi
-done
-AC_SUBST([FC_COMPILES])
-if test "$FC_COMPILES" != "yes"; then
-AC_MSG_NOTICE([error: **************************************************************])
-AC_MSG_NOTICE([error: Fortran compiler cannot create executables, configure aborted.])
-AC_MSG_ERROR([**************************************************************])
-fi]
-)
-
-dnl
-dnl
-dnl --------------------------------------------------------------------
-dnl
-dnl FC_FIND_OPTION(VARIABLE, COMPILER, EXTENSION, OPTIONS)
-dnl
-dnl   Append the first accepted option from OPTIONS to VARIABLE.
-dnl
-AC_DEFUN([FC_FIND_OPTION],
-[AC_SUBST([$1])
-for option in $4; do
-   AC_MSG_CHECKING([whether '$2' accepts $option])
-   FC_TEST_OPTION([tmp_$1], [$2], [$3], [$option])
-   if test -n "[$]tmp_$1"; then
-      $1="[$]$1 [$]tmp_$1"
-      AC_MSG_RESULT([yes])
-      break
-   else
-      AC_MSG_RESULT([no])
-   fi
-done])
-
-dnl --------------------------------------------------------------------
-dnl
-dnl FC_FILTER_OPTIONS(VARIABLE, COMPILER, EXTENSION, OPTIONS)
-dnl
-dnl   Append all accepted options from OPTIONS to VARIABLE.
-dnl
-AC_DEFUN([FC_FILTER_OPTIONS],
-[AC_SUBST([$1])
-for option in $4; do
-   AC_MSG_CHECKING([whether '$2' accepts $option])
-   FC_TEST_OPTION([tmp_$1], [$2], [$3], [$option])
-   if test -n "[$]tmp_$1"; then
-      $1="[$]$1 [$]tmp_$1"
-      AC_MSG_RESULT([yes])
-   else
-      AC_MSG_RESULT([no])
-   fi
-done])
 
 dnl
 dnl --------------------------------------------------------------------
@@ -936,31 +879,9 @@ else
   $1=""
   $2=""
   AC_MSG_RESULT([compiler failed])
+  AC_MSG_NOTICE([error: **************************************************************])
+  AC_MSG_NOTICE([error: Fortran compiler cannot create proper module files. This])
+  AC_MSG_NOTICE([error: might be caused by linking against a wrong gcc library.])
+  AC_MSG_ERROR([**************************************************************])
 fi
 rm -rf conftest* CONFTEST* module_name* module_NAME* MODULE_NAME*])
-
-dnl
-dnl ## This is an old and currently unused attempt at treating deviations
-dnl ## from "module_name.extension" of the FORTRAN naming convention.
-dnl ## It should be cleaned up, if we ever need it again.
-dnl 
-dnl WO_FC_MODULE_FILE([FC_MODULE_NAME], [FC_MODULE_EXT], [$FC], [$FC_EXT])
-dnl WO_FC_FILENAME_CASE_CONVERSION
-dnl AC_SUBST([FC_MAKE_MODULE_NAME])
-dnl case "$FC_MODULE_NAME" in
-dnl   module_NAME)
-dnl     FC_MAKE_MODULE_NAME='$*.$(FC_MODULE_EXT)'
-dnl     ;;
-dnl   module_name)
-dnl     FC_MAKE_MODULE_NAME='"`echo $* | $(LOWERCASE)`".$(FC_MODULE_EXT)'
-dnl     ;;
-dnl   MODULE_NAME)
-dnl     FC_MAKE_MODULE_NAME='"`echo $* | $(UPPERCASE)`".$(FC_MODULE_EXT)'
-dnl     ;;
-dnl   conftest)
-dnl     FC_MAKE_MODULE_NAME='$*.$(FC_MODULE_EXT)'
-dnl     ;;
-dnl   *)
-dnl     ;;
-dnl esac
-dnl 

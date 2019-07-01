@@ -1,9 +1,9 @@
 ! $Id: parameters.SM_top_anom.f90,v 1.4 2006/06/16 13:31:48 kilian Exp $
 !
-! Copyright (C) 1999-2010 by 
-!     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+! Copyright (C) 1999-2011 by 
+!     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
-!     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+!     Juergen Reuter <juergen.reuter@desy.de>
 !     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
 !     Fabian Bach <fabian.bach@cern.ch> (only this file)
 !
@@ -31,7 +31,7 @@ module parameters_sm_top_anom
 
   real(default), dimension(27), public :: mass, width
   real(default), public :: as
-  complex(default), public :: gs, igs
+  complex(default), public :: gs, igs, ig, unit, half
 
   real(default), public :: e, g, e_em
   real(default), public :: sinthw, costhw, sin2thw, tanthw
@@ -41,20 +41,28 @@ module parameters_sm_top_anom
   complex(default), public :: qlep, qup, qdwn, gcc, qw, &
        gzww, gwww, ghww, ghhww, ghzz, ghhzz, &
        ghbb, ghtt, ghcc, ghtautau, gh3, gh4, ghmm, & 		
-       iqw, igzww, igwww, gw4, gzzww, gazww, gaaww
-  real(default), public :: vev, lambda
+       iqw, igzww, igwww, gw4, gzzww, gazww, gaaww, &
+       gvl_qbub_n, gvl_qw, gvl_qw_u, gvl_qw_d, &
+       gsl_dttr, gsr_dttr, gsl_dttl, gsl_dbtl
+  real(default), public :: vev, lambda, gi_flag
   complex(default), dimension(2), public :: &
        gncneu, gnclep, gncup, gncdwn, &
-       tvaa, vlrz, tvaz, vlrw, tlrw, tvag
+       tvaa, tvaabb, vlrz, tvaz, tvazbb, vlrw, tlrw, tvag, sph, &
+       gvlr_qbub, gvlr_qbub_u, gvlr_qbub_d, gvlr_qbub_e, &
+       gvlr_qgug, gslr_dbtr
   integer, public :: fun_flag
+  logical, public :: bz=.false., bw=.false., ba=.false.
 
   public :: import_from_whizard, model_update_alpha_s, &
-       gmom, gtva_tta, gvlr_ttz, gtva_ttz, gvlr_tbw, gtlr_tbw, gtva_ttg
+       gmom, gtva_tta, gvlr_ttz, gtva_ttz, gvlr_btw, gvlr_tbw, &
+       gtlr_btw, gtrl_tbw, gtlr_btwz, gtrl_tbwz, gtlr_btwa, gtrl_tbwa, &
+       gtva_ttww, gtva_bba, gtva_bbz, gtva_bbww, &
+       gtva_ttg, gtva_ttgg, gsp_tth
 
 contains
 
   subroutine import_from_whizard (par_array)
-    real(default), dimension(39), intent(in) :: par_array
+    real(default), dimension(53), intent(in) :: par_array
     type :: parameter_set
        real(default) :: gf
        real(default) :: mZ
@@ -84,13 +92,27 @@ contains
        real(default) :: tvZ
        real(default) :: taZ
        real(default) :: vlW
-       real(default) :: vrW
-       real(default) :: tlW
-       real(default) :: trW
+       real(default) :: vrWRe
+       real(default) :: vrWIm
+       real(default) :: tlWRe
+       real(default) :: tlWIm
+       real(default) :: trWRe
+       real(default) :: trWIm
        real(default) :: tvG
        real(default) :: taG
+       real(default) :: sH
+       real(default) :: pH
        real(default) :: lam
        real(default) :: fun
+       real(default) :: gi
+       real(default) :: re_CqG
+       real(default) :: re_CuG
+       real(default) :: re_CqB
+       real(default) :: re_CuB
+       real(default) :: re_CqW
+       real(default) :: re_CDu
+       real(default) :: re_CDd
+       real(default) :: im_CDd
        real(default) :: v
        real(default) :: cw
        real(default) :: sw
@@ -129,17 +151,31 @@ contains
     par%tvZ    = par_array(26)
     par%taZ    = par_array(27)
     par%vlW    = par_array(28)
-    par%vrW    = par_array(29)
-    par%tlW    = par_array(30)
-    par%trW    = par_array(31)
-    par%tvG    = par_array(32)
-    par%taG    = par_array(33)
-    par%lam    = par_array(34)
-    par%fun    = par_array(35)
-    par%v      = par_array(36)
-    par%cw     = par_array(37)
-    par%sw     = par_array(38)
-    par%ee     = par_array(39)
+    par%vrWRe  = par_array(29)
+    par%vrWIm  = par_array(30)
+    par%tlWRe  = par_array(31)
+    par%tlWIm  = par_array(32)
+    par%trWRe  = par_array(33)
+    par%trWIm  = par_array(34)
+    par%tvG    = par_array(35)
+    par%taG    = par_array(36)
+    par%sH     = par_array(37)
+    par%pH     = par_array(38)
+    par%lam    = par_array(39)
+    par%fun    = par_array(40)
+    par%gi     = par_array(41)
+    par%re_CqG = par_array(42)
+    par%re_CuG = par_array(43)
+    par%re_CqB = par_array(44)
+    par%re_CuB = par_array(45)
+    par%re_CqW = par_array(46)
+    par%re_CDu = par_array(47)
+    par%re_CDd = par_array(48)
+    par%im_CDd = par_array(49)
+    par%v      = par_array(50)
+    par%cw     = par_array(51)
+    par%sw     = par_array(52)
+    par%ee     = par_array(53)
     mass(1:27) = 0
     width(1:27) = 0
     mass(3) = par%ms
@@ -180,6 +216,9 @@ contains
     qeup = 2.0_default / 3.0_default
     qedwn = - 1.0_default / 3.0_default
     g = e / sinthw
+    ig = cmplx (0.0_default, 1.0_default, kind=default) * g
+    unit = 1.0_default
+    half = 0.5_default
     gcc = - g / 2 / sqrt (2.0_default)
     gncneu(1) = - g / 2 / costhw * ( + 0.5_default)
     gnclep(1) = - g / 2 / costhw * ( - 0.5_default - 2 * qelep * sin2thw)
@@ -205,16 +244,66 @@ contains
     ghww = mass(24) * g
     tvaa(1) = par%tvA
     tvaa(2) = par%taA * (0,1)
+    tvaabb(1) = 0.0_default
+    tvaabb(2) = 0.0_default
     vlrz(1) = par%vlZ
     vlrz(2) = par%vrZ
     tvaz(1) = par%tvZ
     tvaz(2) = par%taZ * (0,1)
+    tvazbb(1) = 0.0_default
+    tvazbb(2) = 0.0_default
     vlrw(1) = par%vlW
-    vlrw(2) = par%vrW
-    tlrw(1) = par%tlW
-    tlrw(2) = par%trW
+    vlrw(2) = par%vrWRe + par%vrWIm * (0,1)
+    tlrw(1) = par%tlWRe + par%tlWIm * (0,1)
+    tlrw(2) = par%trWRe + par%trWIm * (0,1)
     tvag(1) = par%tvG
     tvag(2) = par%taG * (0,1)
+    sph(1) = par%sH
+    sph(2) = par%pH * (0,1)
+
+    gi_flag = par%gi
+    if ( gi_flag > 0. ) then
+
+      if ( abs(par%vlW) > 0. ) then
+        vlrw(1) = par%vlZ / 2.0_default
+      else
+        vlrz(1) = par%vlW * 2.0_default
+      end if
+
+      if ( ( abs(par%tvZ) > 0. ).or.( abs(par%taZ) > 0. ) ) then
+        bz = .true.
+      end if
+      if ( ( abs(par%trWRe) > 0. ).or.( abs(par%trWIm) > 0. ) ) then
+        bw = .true.
+      end if
+      if ( ( abs(par%tvA) > 0. ).or.( abs(par%taA)> 0. ) ) then
+        ba = .true.
+      end if
+      if ( bz.or.bw.or.ba ) then
+        print *, "WARNING: anomalous top tensor couplings to W, A and Z"
+        print *, "are related by gauge invariance: Inferring Z couplings"
+        print *, "from W/A couplings according to the relation in the"
+        print *, "model file and IGNORING any inconsistent values set"
+        print *, "manually! (Exception: only tX_ttZ != 0: tr_tbW ~ tv_ttZ"
+        print *, "+ i*ta_ttZ and tX_ttA = 0)"
+      end if
+      if ( ( bz.and.bw ).and..not.ba ) then
+        tvaa(1) =  (par%trWRe / costhw - par%tvZ) / (tanthw*e)
+        tvaa(2) = ((par%trWIm / costhw - par%taZ) / (tanthw*e)) * (0,1)
+      else if ( bz.and..not.bw ) then
+        tlrw(2) =   par%tvZ * costhw + par%tvA * sinthw*e &
+                  +(par%taZ * costhw + par%taA * sinthw*e) * (0,1)
+      else
+        tvaz(1) =  par%trWRe / costhw - par%tvA * tanthw*e
+        tvaz(2) = (par%trWIm / costhw - par%taA * tanthw*e) * (0,1)
+      end if
+
+      tvaabb(1) = par%tlWRe * sinthw / e
+      tvaabb(2) = par%tlWIm * sinthw / e
+      tvazbb(1) = par%tlWRe * costhw
+      tvazbb(2) = par%tlWIm * costhw
+    end if
+
     lambda = par%lam
     fun_flag = nint(par%fun)
     ghhww = g**2 / 2.0_default
@@ -230,6 +319,28 @@ contains
     !!! Color flow basis, divide by sqrt(2)
     gs = sqrt(2.0_default*PI*par%alphas)
     igs = cmplx (0.0_default, 1.0_default, kind=default) * gs    
+
+    gvlr_qgug(1)   =   gs / 2 / (2*lambda**2) * par%re_CqG
+    gvlr_qgug(2)   =   gs / 2 / (2*lambda**2) * par%re_CuG
+    gvlr_qbub(1)   =   g  / 2 * tanthw / (2*lambda**2) * par%re_CqB
+    gvlr_qbub(2)   =   g  / 2 *tanthw / (2*lambda**2) * par%re_CuB
+    gvlr_qbub_u(1) =   1.0_default / 3.0_default / 2
+    gvlr_qbub_u(2) =   4.0_default / 3.0_default / 2
+    gvlr_qbub_d(1) =   1.0_default / 3.0_default / 2
+    gvlr_qbub_d(2) = - 2.0_default / 3.0_default / 2
+    gvlr_qbub_e(1) = - 1.0_default / 2
+    gvlr_qbub_e(2) = - 2.0_default / 2
+    gvl_qbub_n     = - 1.0_default / 2
+    gvl_qw         =   g / 2 / (lambda**2) * par%re_CqW
+    gvl_qw_u       =   0.5_default / 2
+    gvl_qw_d       = - 0.5_default / 2
+    gsl_dttr       =   mass(6) / 2 / (sqrt(2.0_default)*vev*lambda**2) * 2.0_default * par%re_CDu
+    gsr_dttr       =   mass(6) / 2 / (sqrt(2.0_default)*vev*lambda**2) * (par%re_CDd + par%im_CDd*(0,1))
+    gsl_dttl       =   mass(6) / 2 / (sqrt(2.0_default)*vev*lambda**2) * (par%re_CDd - par%im_CDd*(0,1))
+    gslr_dbtr(1)   =   mass(6) / 2 / (sqrt(2.0_default)*vev*lambda**2) * 2.0_default * par%re_CDu
+    gslr_dbtr(2)   = - mass(6) / 2 / (sqrt(2.0_default)*vev*lambda**2) * (par%re_CDd + par%im_CDd*(0,1))
+    gsl_dbtl       = - mass(6) / 2 / (sqrt(2.0_default)*vev*lambda**2) * (par%re_CDd - par%im_CDd*(0,1))
+
   end subroutine import_from_whizard
 
   subroutine model_update_alpha_s (alpha_s)
@@ -260,42 +371,140 @@ contains
     complex(default) :: c
     real(default), intent(in) :: k2
     integer, intent(in) :: i
-    c = e * gmom(k2, i, tvaa, lambda)
+    c = - e * gmom(k2, i, tvaa, lambda)
   end function gtva_tta
+
+  pure function gtva_bba(k2, i) result (c)
+    complex(default) :: c
+    real(default), intent(in) :: k2
+    integer, intent(in) :: i
+    c = - e * gmom(k2, i, tvaabb, lambda)
+  end function gtva_bba
 
   pure function gvlr_ttz(k2, i) result (c)
     complex(default) :: c
     real(default), intent(in) :: k2
     integer, intent(in) :: i
-    c = mass(23) * gmom(k2, i, vlrz, lambda)
+    c = - mass(23) / 2 * gmom(k2, i, vlrz, lambda)
   end function gvlr_ttz
 
   pure function gtva_ttz(k2, i) result (c)
     complex(default) :: c
     real(default), intent(in) :: k2
     integer, intent(in) :: i
-    c = gmom(k2, i, tvaz, lambda)
+    c = - gmom(k2, i, tvaz, lambda)
   end function gtva_ttz
+
+  pure function gtva_bbz(k2, i) result (c)
+    complex(default) :: c
+    real(default), intent(in) :: k2
+    integer, intent(in) :: i
+    c = - gmom(k2, i, tvazbb, lambda)
+  end function gtva_bbz
+
+  pure function gvlr_btw(k2, i) result (c)
+    complex(default) :: c
+    real(default), intent(in) :: k2
+    integer, intent(in) :: i
+    c = - sqrt(2.0_default) / 2 * mass(24)*gmom(k2, i, vlrw, lambda)
+  end function gvlr_btw
 
   pure function gvlr_tbw(k2, i) result (c)
     complex(default) :: c
     real(default), intent(in) :: k2
     integer, intent(in) :: i
-    c = sqrt(2.0_default)*mass(24)*gmom(k2, i, vlrw, lambda)
+    c = - sqrt(2.0_default) / 2 * mass(24)*gmom(k2, i, conjg(vlrw), lambda)
   end function gvlr_tbw
 
-  pure function gtlr_tbw(k2, i) result (c)
+  pure function gtlr_btw(k2, i) result (c)
     complex(default) :: c
     real(default), intent(in) :: k2
     integer, intent(in) :: i
-    c = sqrt(2.0_default)*gmom(k2, i, tlrw, lambda)
-  end function gtlr_tbw
+    c = - sqrt(2.0_default) / 2 * gmom(k2, i, tlrw, lambda)
+  end function gtlr_btw
+
+  pure function gtrl_tbw(k2, i) result (c)
+    complex(default) :: c
+    real(default), intent(in) :: k2
+    integer, intent(in) :: i
+    c = - sqrt(2.0_default) / 2 * gmom(k2, i, conjg(tlrw), lambda)
+  end function gtrl_tbw
+
+  pure function gtlr_btwa(k2, i) result (c)
+    complex(default) :: c
+    real(default), intent(in) :: k2
+    integer, intent(in) :: i
+    c = - sinthw / 2 * gtlr_btw(k2, i)
+  end function gtlr_btwa
+
+  pure function gtrl_tbwa(k2, i) result (c)
+    complex(default) :: c
+    real(default), intent(in) :: k2
+    integer, intent(in) :: i
+    c = - sinthw / 2 * gtrl_tbw(k2, i)
+  end function gtrl_tbwa
+
+  pure function gtlr_btwz(k2, i) result (c)
+    complex(default) :: c
+    real(default), intent(in) :: k2
+    integer, intent(in) :: i
+    c = - costhw / 2 * gtlr_btw(k2, i)
+  end function gtlr_btwz
+
+  pure function gtrl_tbwz(k2, i) result (c)
+    complex(default) :: c
+    real(default), intent(in) :: k2
+    integer, intent(in) :: i
+    c = - costhw / 2 * gtrl_tbw(k2, i)
+  end function gtrl_tbwz
+
+  pure function gtva_ttww(k2, i) result (c)
+    complex(default) :: c
+    real(default), intent(in) :: k2
+    integer, intent(in) :: i
+    complex(default) :: norm
+    norm = - 1.0_default / sqrt(2.0_default)
+    select case (i)
+      case (1)
+        c = norm * real(gtlr_btw(k2, 2))
+      case (2)
+        c = norm * aimag(gtlr_btw(k2, 2)) * (0, 1)
+    end select
+  end function gtva_ttww
+
+  pure function gtva_bbww(k2, i) result (c)
+    complex(default) :: c
+    real(default), intent(in) :: k2
+    integer, intent(in) :: i
+    complex(default) :: norm
+    norm = - 1.0_default / sqrt(2.0_default)
+    select case (i)
+      case (1)
+        c = norm * real(gtlr_btw(k2, 1))
+      case (2)
+        c = - norm * aimag(gtlr_btw(k2, 1)) * (0, 1)
+    end select
+  end function gtva_bbww
 
   pure function gtva_ttg(k2, i) result (c)
     complex(default) :: c
     real(default), intent(in) :: k2
     integer, intent(in) :: i
-    c = gs * gmom(k2, i, tvag, lambda)
+    c = - gs * gmom(k2, i, tvag, lambda)
   end function gtva_ttg
+
+  pure function gtva_ttgg(k2, i) result (c)
+    complex(default) :: c
+    real(default), intent(in) :: k2
+    integer, intent(in) :: i
+    c = - gtva_ttg(k2, i)
+  end function gtva_ttgg
+
+  pure function gsp_tth(k2, i) result (c)
+    complex(default) :: c
+    real(default), intent(in) :: k2
+    integer, intent(in) :: i
+    c = - sqrt(0.5_default) * gmom(k2, i, sph, lambda)
+  end function gsp_tth
 
 end module parameters_sm_top_anom

@@ -1,10 +1,11 @@
-(* $Id: modellib_NMSSM.mli 2699 2010-07-10 10:17:20Z jr_reuter $
+(* $Id: modellib_NMSSM.mli 3070 2011-03-28 08:09:25Z jr_reuter $
 
-   Copyright (C) 1999-2009 by
+   Copyright (C) 1999-2011 by
 
-       Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+       Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
-       Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+       Juergen Reuter <juergen.reuter@desy.de>
+       Christian Speckner <christian.speckner@physik.uni-freiburg.de>
 
    WHIZARD is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by
@@ -30,10 +31,12 @@
 module type NMSSM_flags = 
   sig 
     val ckm_present       : bool
+    val higgs_triangle    : bool (* $H\gamma\gamma$, $Hg\gamma$ and $Hgg couplings *)
    end
 
 module NMSSM : NMSSM_flags
 module NMSSM_CKM : NMSSM_flags
+module NMSSM_Hgg : NMSSM_flags
 module NMSSM_func : functor (F: NMSSM_flags) -> Model.T with module Ch = Charges.QQ
 
 

@@ -1,9 +1,9 @@
-! WHIZARD 2.0.4 Tue Oct 26 2010
+! WHIZARD 2.0.5 Tue May 10 2011
 ! 
-! (C) 1999-2010 by 
-!     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+! Copyright (C) 1999-2011 by 
+!     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
-!     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+!     Juergen Reuter <juergen.reuter@desy.de>
 !     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
 !     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
 !
@@ -117,6 +117,12 @@ program main
               cycle SCAN_CMDLINE
            case ("--datarootdir")
               paths%datarootdir = get_option_value (i, long_option, value)
+              cycle SCAN_CMDLINE
+           case ("--libtool")
+              paths%libtool = get_option_value (i, long_option, value)
+              cycle SCAN_CMDLINE
+           case ("--lhapdfdir")
+              paths%lhapdfdir = get_option_value (i, long_option, value)
               cycle SCAN_CMDLINE
            case ("--check")
               check = get_option_value (i, long_option, value)
@@ -365,7 +371,7 @@ contains
 
   subroutine print_version ()
     print "(A)", "WHIZARD " // WHIZARD_VERSION 
-    print "(A)", "Copyright (C) 1999-2010 Wolfgang Kilian, Thorsten Ohl, Juergen Reuter"
+    print "(A)", "Copyright (C) 1999-2011 Wolfgang Kilian, Thorsten Ohl, Juergen Reuter"
     print "(A)", "This is free software; see the source for copying conditions.  There is NO"
     print "(A)", "warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE."
     print *
@@ -375,7 +381,7 @@ contains
     print "(A)", "WHIZARD " // WHIZARD_VERSION
     print "(A)", "Usage: whizard [OPTIONS] [FILE]"
     print "(A)", "Run WHIZARD with the command list taken from FILE(s)"
-    print "(A)", "Options for resetting default directories " &
+    print "(A)", "Options for resetting default directories and tools" &
             // "(GNU naming conventions):"
     print "(A)", "    --prefix DIR"
     print "(A)", "    --exec_prefix DIR"
@@ -383,6 +389,8 @@ contains
     print "(A)", "    --libdir DIR"
     print "(A)", "    --includedir DIR"
     print "(A)", "    --datarootdir DIR"
+    print "(A)", "    --libtool LOCAL_LIBTOOL"
+    print "(A)", "    --lhapdfdir DIR   (PDF sets directory)"
     print "(A)", "Other options:"
     print "(A)", "-h, --help            display this help and exit"
     print "(A)", "-e, --execute CMDS    execute SINDARIN CMDS before reading FILE(s)"

@@ -57,13 +57,13 @@ parameter lz     = 0            # anomalous TGC
 parameter k5a    = 0            # anomalous TGC 
 parameter k5z    = 0            # anomalous TGC 
 parameter l5a    = 0            # anomalous TGC 
-parameter l5z    = 0	       # anomalous TGC       
-parameter mreg   = 0            # regulator mass for one-loop correction
+parameter l5z    = 0	        # anomalous TGC       
+parameter mreg   = 1000         # regulator mass for one-loop correction
 parameter fhig   = 0            # fudge factor for the lowest order K matrix 
-                               # regularization of the Higgs boson
+                                # regularization of the Higgs boson
 parameter fkm    = 1            # fudge factor to switch K matrix unitarization
-			       # for resonances on or off
-parameter wres   = 0 	       # switch for resonance widths without K matrix
+			        # for resonances on or off
+parameter wres   = 0 	        # switch for resonance widths without K matrix
 
 # Dependent parameters
 derived v     = 1 / sqrt (sqrt (2.) * GF)     # v (Higgs vev)
@@ -139,7 +139,7 @@ particle TAU_LEPTON 15  like E_LEPTON
   tex_anti "\tau^+"
   mass mtau
 particle TAU_NEUTRINO 16  like E_NEUTRINO
-  name "nu_tau" nutau n3 vt "tau_neutrino" 
+  name nutau "nu_tau" n3 vt "tau_neutrino" 
   anti nutaubar N3 "vt~"               
   tex_name "\nu_\tau"
   tex_anti "\bar\nu_\tau"
@@ -196,7 +196,7 @@ particle HADRON_REMNANT_OCTET 93
 
 # QED
 vertex D d A 
-vertex U u 
+vertex U u A
 vertex S s A 
 vertex C c A 
 vertex B b A 
@@ -247,7 +247,6 @@ vertex E2 n2 Wm
 vertex E3 n3 Wm 
 
 # Vector-boson self-interactions
-# These have been generated automatically, therefore unsorted
 vertex A Wm Wp 
 vertex Wm Wp Z 
 

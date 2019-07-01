@@ -1,9 +1,9 @@
-! WHIZARD 2.0.4 Tue Oct 26 2010
+! WHIZARD 2.0.5 Tue May 10 2011
 ! 
-! (C) 1999-2010 by 
-!     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+! Copyright (C) 1999-2011 by 
+!     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
-!     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+!     Juergen Reuter <juergen.reuter@desy.de>
 !     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
 !     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
 !
@@ -30,6 +30,7 @@ module rt_data
   use kinds, only: default !NODEP!
   use iso_varying_string, string_t => varying_string !NODEP!
   use file_utils !NODEP!
+  use system_dependencies !NODEP!
   use diagnostics !NODEP!
   use tao_random_numbers !NODEP!
   use variables
@@ -69,8 +70,11 @@ module rt_data
      logical :: sf_list_allocated = .false.
      type(sf_list_t), pointer  :: sf_list => null ()
      type(parse_node_t), pointer :: pn_cuts_lexpr => null ()
-     type(parse_node_t), pointer :: pn_scale_expr => null ()
+     type(parse_node_t), pointer :: pn_scale_expr => null ()     
+     type(parse_node_t), pointer :: pn_fac_scale_expr => null ()
+     type(parse_node_t), pointer :: pn_ren_scale_expr => null ()     
      type(parse_node_t), pointer :: pn_weight_expr => null ()
+     type(parse_node_t), pointer :: pn_selection_lexpr => null ()
      type(parse_node_t), pointer :: pn_reweight_expr => null ()
      type(parse_node_t), pointer :: pn_analysis_lexpr => null ()
      type(parse_node_t), pointer :: pn_histogram_writer => null ()
@@ -147,6 +151,9 @@ contains
           intrinsic=.true.)
     call var_list_append_real &
          (global%var_list, var_str ("luminosity"), 0._default, &
+          intrinsic=.true.)
+    call var_list_append_string &
+         (global%var_list, var_str ("$lhapdf_dir"), paths%lhapdfdir, &
           intrinsic=.true.)
     call var_list_append_string &
          (global%var_list, var_str ("$lhapdf_file"), var_str (""), &
@@ -287,7 +294,7 @@ contains
          (global%var_list, var_str ("helicity_selection_cutoff"), 1000, &
           intrinsic=.true.)
     call var_list_append_int &
-         (global%var_list, var_str ("threshold_calls"), 0, &
+         (global%var_list, var_str ("threshold_calls"), 10, &
           intrinsic=.true.)
     call var_list_append_int &
          (global%var_list, var_str ("min_calls_per_channel"), 10, &
@@ -326,10 +333,13 @@ contains
          (global%var_list, var_str ("phs_threshold_t"), 100._default, &
           intrinsic=.true.)
     call var_list_append_int &
-         (global%var_list, var_str ("phs_off_shell"), 1, &
+         (global%var_list, var_str ("phs_off_shell"), 2, &
           intrinsic=.true.)
     call var_list_append_int &
-         (global%var_list, var_str ("phs_t_channel"), 2, &
+         (global%var_list, var_str ("phs_t_channel"), 6, &
+          intrinsic=.true.)
+    call var_list_append_log &
+         (global%var_list, var_str ("?phs_keep_nonresonant"), .false., &
           intrinsic=.true.)
     call var_list_append_real &
          (global%var_list, var_str ("phs_e_scale"), 10._default, &
@@ -344,10 +354,7 @@ contains
          (global%var_list, var_str ("?allow_global_mapping"), .false., &
           intrinsic=.true.)
     call var_list_append_log &
-         (global%var_list, var_str ("?adapt_final_grids"), .true., &
-          intrinsic=.true.)
-    call var_list_append_log &
-         (global%var_list, var_str ("?adapt_final_weights"), .false., &
+         (global%var_list, var_str ("?vis_history"), .true., &
           intrinsic=.true.)       
     call var_list_append_log &
          (global%var_list, var_str ("?isotropic_decay"), .false., &
@@ -614,6 +621,10 @@ contains
     call var_list_append_log &
          (global%var_list, var_str ("?ps_isr_only_onshell_emitted_partons"), .false., &
             intrinsic=.true.)
+    ! default settings for hadronization
+    call var_list_append_log &
+         (global%var_list, var_str ("?hadronization_active"), .false., &
+            intrinsic=.true.)
 
     call var_list_append_string (global%var_list, var_str ("$datafile"), &
           intrinsic=.true.)
@@ -639,6 +650,26 @@ contains
     call var_list_append_log &
          (global%var_list, var_str ("?mlm_matching"), .false., &
           intrinsic=.true.)
+    call var_list_append_string (global%var_list, &
+         var_str ("$pdf_builtin_path"), intrinsic=.true.)
+    call var_list_append_string (global%var_list, &
+         var_str ("$pdf_builtin_set"), intrinsic=.true.)
+    call var_list_append_log &
+         (global%var_list, var_str ("?omega_openmp"), &
+         openmp_is_active (), &
+         locked=.true., intrinsic=.true.)
+    call var_list_append_log &
+         (global%var_list, var_str ("?openmp_is_active"), &
+         openmp_is_active (), &
+         locked=.true., intrinsic=.true.)
+    call var_list_append_int &
+         (global%var_list, var_str ("openmp_num_threads_default"), &
+         openmp_get_default_max_threads (), &
+         locked=.true., intrinsic=.true.)
+    call var_list_append_int &
+         (global%var_list, var_str ("openmp_num_threads"), &
+         openmp_get_max_threads (), &
+         intrinsic=.true.)
     call rt_data_init_pointer_variables (global)
     call iterations_lists_init_default (global%it_list_default)
   end subroutine rt_data_global_init
@@ -684,6 +715,9 @@ contains
     local%it_list = global%it_list
     local%it_list_default => global%it_list_default
     if (allocated (global%event_fmt)) then
+       if (allocated (local%event_fmt)) then
+         deallocate (local%event_fmt)
+       end if 
        allocate (local%event_fmt (size (global%event_fmt)))
        local%event_fmt = global%event_fmt
     end if
@@ -696,7 +730,11 @@ contains
     local%sf_list => global%sf_list
     local%pn_cuts_lexpr => global%pn_cuts_lexpr
     local%pn_weight_expr => global%pn_weight_expr
-    local%pn_scale_expr => global%pn_scale_expr
+    local%pn_scale_expr => global%pn_scale_expr    
+    local%pn_fac_scale_expr => global%pn_fac_scale_expr
+    local%pn_ren_scale_expr => global%pn_ren_scale_expr    
+    local%pn_selection_lexpr => global%pn_selection_lexpr
+    local%pn_reweight_expr => global%pn_reweight_expr
     local%pn_analysis_lexpr => global%pn_analysis_lexpr
     local%out_files => global%out_files
     local%rng => global%rng

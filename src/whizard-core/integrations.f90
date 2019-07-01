@@ -1,9 +1,9 @@
-! WHIZARD 2.0.4 Tue Oct 26 2010
+! WHIZARD 2.0.5 Tue May 10 2011
 ! 
-! (C) 1999-2010 by 
-!     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+! Copyright (C) 1999-2011 by 
+!     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
-!     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+!     Juergen Reuter <juergen.reuter@desy.de>
 !     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
 !     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
 !
@@ -66,8 +66,6 @@ module integrations
     type(phs_parameters_t) :: phs_par
     type(mapping_defaults_t) :: mapping_defaults
     logical :: rebuild_grids = .false.
-    logical :: adapt_final_grids = .false.
-    logical :: adapt_final_weights = .false.
     type(grid_parameters_t) :: grid_parameters
     type(string_t) :: grids_filename
     logical :: helicity_selection_active = .false.
@@ -77,6 +75,7 @@ module integrations
     real(default) :: sqrts = -1
     real(default) :: alpha_s = -1
     logical :: time_estimate = .false.
+    logical :: vis_history = .true.
     type(beam_data_t) :: beam_data
     logical :: use_beams = .false.
     logical :: allow_global_mapping = .false.
@@ -145,6 +144,8 @@ contains
          var_list_get_rval (var_list, var_str ("phs_threshold_t"))
     intg%phs_par%off_shell = &
          var_list_get_ival (var_list, var_str ("phs_off_shell"))
+    intg%phs_par%keep_nonresonant = &
+         var_list_get_lval (var_list, var_str ("?phs_keep_nonresonant"))
     intg%phs_par%t_channel = &
          var_list_get_ival (var_list, var_str ("phs_t_channel"))
     intg%mapping_defaults%energy_scale = &
@@ -157,10 +158,6 @@ contains
          var_list_get_lval (var_list, var_str ("?allow_global_mapping"))
     intg%rebuild_grids = &
          var_list_get_lval (var_list, var_str ("?rebuild_grids"))
-    intg%adapt_final_grids = &
-         var_list_get_lval (var_list, var_str ("?adapt_final_grids"))
-    intg%adapt_final_weights = &
-         var_list_get_lval (var_list, var_str ("?adapt_final_weights"))
     intg%grid_parameters%threshold_calls = &
          var_list_get_ival (var_list, var_str ("threshold_calls"))
     intg%grid_parameters%min_calls_per_channel = &
@@ -193,6 +190,8 @@ contains
     intg%sqrts = var_list_get_rval (var_list, "sqrts")
     intg%time_estimate = &
          var_list_get_lval (var_list, var_str ("?time_estimate"))
+    intg%vis_history = &
+         var_list_get_lval (var_list, var_str ("?vis_history"))
   end subroutine integration_basic_init
 
   subroutine integration_check_beam_data (intg, beam_data)
@@ -389,8 +388,8 @@ contains
     logical :: verb
     verb = .true.;  if (present (verbose))  verb = verbose
     if (associated (pn_cuts_lexpr)) then
-       call process_setup_cuts (intg%process, pn_cuts_lexpr)
-       intg%md5sum%cuts = parse_node_get_md5sum (pn_cuts_lexpr)
+       call process_setup_cuts (intg%process, pn_cuts_lexpr, &
+            intg%md5sum%cuts)
        if (verb)  call msg_message ("Applying user-defined cuts.")
     else
        if (verb)  call msg_warning ("No cuts have been defined.")
@@ -404,8 +403,8 @@ contains
     logical :: verb
     verb = .true.;  if (present (verbose))  verb = verbose
     if (associated (pn_weight_expr)) then
-       call process_setup_weight (intg%process, pn_weight_expr)
-       intg%md5sum%weight = parse_node_get_md5sum (pn_weight_expr)
+       call process_setup_weight (intg%process, pn_weight_expr, &
+            intg%md5sum%weight)
        if (verb)  call msg_message ("Using user-defined reweighting factor.")
     end if
   end subroutine integration_setup_weight
@@ -417,11 +416,37 @@ contains
     logical :: verb
     verb = .true.;  if (present (verbose))  verb = verbose
     if (associated (pn_scale_expr)) then
-       call process_setup_scale (intg%process, pn_scale_expr)
-       intg%md5sum%scale = parse_node_get_md5sum (pn_scale_expr)
-       if (verb)  call msg_message ("Using user-defined event scale.")
+       call process_setup_scale (intg%process, pn_scale_expr, &
+            intg%md5sum%scale)
+       if (verb)  call msg_message ("Using user-defined general scale.")
     end if
   end subroutine integration_setup_scale
+
+  subroutine integration_setup_fac_scale (intg, pn_scale_expr, verbose)
+    type(integration_t), intent(inout) :: intg
+    type(parse_node_t), pointer :: pn_scale_expr
+    logical, intent(in), optional :: verbose
+    logical :: verb
+    verb = .true.;  if (present (verbose))  verb = verbose
+    if (associated (pn_scale_expr)) then
+       call process_setup_fac_scale (intg%process, pn_scale_expr, &
+            intg%md5sum%fac_scale)
+       if (verb)  call msg_message ("Using user-defined factorization scale.")
+    end if
+  end subroutine integration_setup_fac_scale
+
+  subroutine integration_setup_ren_scale (intg, pn_scale_expr, verbose)
+    type(integration_t), intent(inout) :: intg
+    type(parse_node_t), pointer :: pn_scale_expr
+    logical, intent(in), optional :: verbose
+    logical :: verb
+    verb = .true.;  if (present (verbose))  verb = verbose
+    if (associated (pn_scale_expr)) then
+       call process_setup_ren_scale (intg%process, pn_scale_expr, &
+            intg%md5sum%ren_scale)
+       if (verb)  call msg_message ("Using user-defined renormalization scale.")
+    end if
+  end subroutine integration_setup_ren_scale
 
   subroutine integration_setup_grids (intg, verbose)
     type(integration_t), intent(inout) :: intg
@@ -481,11 +506,19 @@ contains
     integer, intent(in) :: pass
     logical, intent(in), optional :: verbose
     integer :: n_calls, i, u
-    logical :: verb, iteration_is_on_file
+    logical :: iteration_is_on_file, adapt_grids, adapt_weights
+    logical :: verb 
     verb = .true.;  if (present (verbose))  verb = verbose
     u = logfile_unit ()
     intg%pass = pass
     n_calls = iterations_list_get_n_calls (intg%it_list, intg%pass)
+    if (iterations_list_has_custom_adaptation (intg%it_list, intg%pass)) then
+       adapt_grids = iterations_list_adapt_grids (intg%it_list, intg%pass)
+       adapt_weights = iterations_list_adapt_weights (intg%it_list, intg%pass)
+    else
+       adapt_grids = .true.
+       adapt_weights = .true.
+    end if
     LOOP_IT: do i = 1, iterations_list_get_n_it (intg%it_list, intg%pass)
        intg%it = intg%it + 1
        iteration_is_on_file = intg%pass < intg%pass_on_file &
@@ -503,8 +536,8 @@ contains
                intg%grid_parameters, &
                intg%pass, 1, 1, n_calls, &
                discard_integrals = i==1, &
-               adapt_grids = .true., &
-               adapt_weights = i>2, &
+               adapt_grids = adapt_grids, &
+               adapt_weights = adapt_weights .and. i>2, &
                print_current = verb, &
                time_estimate = intg%time_estimate, &
                grids_filename = intg%grids_filename, &
@@ -521,13 +554,16 @@ contains
     call process_write_logfile (intg%process)
   end subroutine integration_warmup
 
-  subroutine integration_evaluate (intg, rng, pass, global_var_list, verbose)
+  subroutine integration_evaluate &
+       (intg, rng, pass, global_var_list, os_data, verbose)
     type(integration_t), intent(inout) :: intg
     type(tao_random_state), intent(inout) :: rng
     integer, intent(in) :: pass
     type(var_list_t), intent(inout) :: global_var_list
+    type(os_data_t), intent(in) :: os_data
     logical, intent(in), optional :: verbose
     integer :: it_on_file, n_calls, n_it, i, u
+    logical :: adapt_grids, adapt_weights
     logical :: verb
     verb = .true.;  if (present (verbose))  verb = verbose
     u = logfile_unit ()
@@ -539,6 +575,13 @@ contains
     end if
     n_calls = iterations_list_get_n_calls (intg%it_list, intg%pass)
     n_it = iterations_list_get_n_it (intg%it_list, intg%pass)
+    if (iterations_list_has_custom_adaptation (intg%it_list, intg%pass)) then
+       adapt_grids = iterations_list_adapt_grids (intg%it_list, intg%pass)
+       adapt_weights = iterations_list_adapt_weights (intg%it_list, intg%pass)
+    else
+       adapt_grids = .true.
+       adapt_weights = .false.
+    end if
     do i = 1, it_on_file
        intg%it = intg%it + 1
        if (verb) then
@@ -553,8 +596,8 @@ contains
          intg%grid_parameters, &
          intg%pass, it_on_file + 1, n_it, n_calls, &
          discard_integrals = .true., &
-         adapt_grids = intg%adapt_final_grids, &
-         adapt_weights = intg%adapt_final_weights, &
+         adapt_grids = adapt_grids, &
+         adapt_weights = adapt_weights, &
          print_current = verb, &
          time_estimate = intg%time_estimate, &
          grids_filename = intg%grids_filename, &
@@ -564,6 +607,9 @@ contains
        if (u > 0) then
           call process_results_write_average (intg%process, intg%pass, unit=u)
           flush (u)
+       end if
+       if (intg%vis_history) then
+          call process_display_integration_history (intg%process, os_data)
        end if
     end if
     call process_record_integral (intg%process, global_var_list)
@@ -620,7 +666,9 @@ contains
        if (ok) then
           call integration_setup_subevt (intg)
           call integration_setup_cuts (intg, global%pn_cuts_lexpr, verbose)
-          call integration_setup_scale (intg, global%pn_scale_expr, verbose)
+          call integration_setup_scale (intg, global%pn_scale_expr, verbose)      
+          call integration_setup_fac_scale (intg, global%pn_fac_scale_expr, verbose)
+          call integration_setup_ren_scale (intg, global%pn_ren_scale_expr, verbose)      
           call integration_setup_weight (intg, global%pn_weight_expr, verbose)
        end if
        if (integrate .and. ok) then
@@ -644,28 +692,36 @@ contains
     end do
   end subroutine integration_init1
 
-  subroutine integration_integrate0 (intg, rng, global_var_list, verbose)
+  subroutine integration_integrate0 &
+       (intg, rng, global_var_list, os_data, verbose)
     type(integration_t), intent(inout) :: intg
     type(tao_random_state), intent(inout) :: rng
     type(var_list_t), intent(inout) :: global_var_list
+    type(os_data_t), intent(in) :: os_data
     logical, intent(in), optional :: verbose
     integer :: pass
+    call openmp_set_num_threads_verbose &
+       (var_list_get_ival (global_var_list, var_str ("openmp_num_threads")))
     call integration_write_header (intg, verbose)
     do pass = 1, iterations_list_get_n_pass (intg%it_list) - 1
        call integration_warmup (intg, rng, pass, verbose)
     end do
-    call integration_evaluate (intg, rng, pass, global_var_list, verbose)
+    call integration_evaluate &
+         (intg, rng, pass, global_var_list, os_data, verbose)
     call integration_write_footer (intg, verbose)
   end subroutine integration_integrate0
 
-  subroutine integration_integrate1 (intg, rng, global_var_list, verbose)
+  subroutine integration_integrate1 &
+      (intg, rng, global_var_list, os_data, verbose)
     type(integration_t), dimension(:), intent(inout) :: intg
     type(tao_random_state), intent(inout) :: rng
     type(var_list_t), intent(inout) :: global_var_list
+    type(os_data_t), intent(in) :: os_data
     logical, intent(in), optional :: verbose
     integer :: proc
     do proc = 1, size (intg)
-       call integration_integrate0 (intg(proc), rng, global_var_list, verbose)
+       call integration_integrate0 &
+            (intg(proc), rng, global_var_list, os_data, verbose)
     end do
   end subroutine integration_integrate1
 
@@ -745,7 +801,7 @@ contains
     if (.not. intg%phs_only) then
        if (ok) then
           call integration_integrate &
-               (intg, global%rng, global_var_list, verbose)
+               (intg, global%rng, global_var_list, global%os_data, verbose)
        else
           call integration_integrate_dummy (intg, global_var_list, verbose)
        end if

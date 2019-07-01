@@ -1,10 +1,11 @@
-(* $Id: omega_Threeshl_nohf.ml 1518 2010-01-16 12:25:45Z cnspeckn $
+(* $Id: omega_Threeshl_nohf.ml 2948 2010-12-24 03:25:57Z jr_reuter $
 
-   Copyright (C) 1999-2009 by
+   Copyright (C) 1999-2011 by
 
        Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
        Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+       Christian Speckner <christian.speckner@physik.uni-freiburg.de>
 
    WHIZARD is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by

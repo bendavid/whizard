@@ -701,35 +701,36 @@ vertex sb2 ST2 Wp
 vertex se32 SN31 Wp 
 
 # Yukawa (neutral)
-vertex S s h1 
-vertex C c h1
+### keeping only 3rd generation for the moment
+# vertex S s h1 
+# vertex C c h1
 vertex B b h1
 vertex T t h1 
-vertex E2 e2 h1 
+# vertex E2 e2 h1 
 vertex E3 e3 h1 
-vertex S s h2 
-vertex C c h2
+# vertex S s h2 
+# vertex C c h2
 vertex B b h2
 vertex T t h2 
-vertex E2 e2 h2 
+# vertex E2 e2 h2 
 vertex E3 e3 h2
-vertex S s h3 
-vertex C c h3
+# vertex S s h3 
+# vertex C c h3
 vertex B b h3
 vertex T t h3 
-vertex E2 e2 h3 
+# vertex E2 e2 h3 
 vertex E3 e3 h3  
-vertex S s A01 
-vertex C c A01
+# vertex S s A01 
+# vertex C c A01
 vertex B b A01
 vertex T t A01 
-vertex E2 e2 A01 
+# vertex E2 e2 A01 
 vertex E3 e3 A01 
-vertex S s A02 
-vertex C c A02
+# vertex S s A02 
+# vertex C c A02
 vertex B b A02
 vertex T t A02 
-vertex E2 e2 A02 
+# vertex E2 e2 A02 
 vertex E3 e3 A02 
 
 

@@ -1,11 +1,12 @@
-# $Id: Z-lineshape.sin 2753 2010-08-10 23:43:24Z jr_reuter $
+# $Id: Z-lineshape.sin 3208 2011-05-03 07:26:54Z kilian $
 # Simple complete physics example: Z lineshape in the Standard Model
 ########################################################################
 #
-# Copyright (C) 2010-2010 by 
-#     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+# Copyright (C) 1999-2011 by 
+#     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
-#     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+#     Juergen Reuter <juergen.reuter@desy.de>
+#     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by 
@@ -49,9 +50,9 @@ plot lineshape_born { x_min = 88 GeV  x_max = 95 GeV }
 $title = "The Z Lineshape in $e^+e^-\to\mu^+\mu^-\gamma$"
 plot lineshape_rc { x_min = 88 GeV  x_max = 95 GeV }
 
-scan sqrts = (88.0 GeV => 90.0 GeV /+ 0.5 GeV,
-              90.1 GeV => 91.9 GeV /+ 0.1 GeV,
-              92.0 GeV => 95.0 GeV /+ 0.5 GeV) {
+scan sqrts = ((88.0 GeV => 90.0 GeV /+ 0.5 GeV),
+              (90.1 GeV => 91.9 GeV /+ 0.1 GeV),
+              (92.0 GeV => 95.0 GeV /+ 0.5 GeV)) {
   beams = e1, E1
   integrate (born) { iterations = 1:2000 }
   record lineshape_born (sqrts, integral (born) / 1000)

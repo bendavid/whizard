@@ -73,16 +73,86 @@ AC_DEFUN([AC_PROG_PS2PDF], [dnl
 AC_CHECK_PROGS(PS2PDF,[ps2pdf14 ps2pdf13 ps2pdf12 ps2pdf],no)
 AM_CONDITIONAL([PS2PDF_AVAILABLE], [test "$PS2PDF" != "no"])
 AC_SUBST(PS2PDF)
+if test "$enable_distribution" = "yes"; then
+if test "$PDFLATEX" = "no" -a "$LATEX" = "no" || test "$PDFLATEX" = "no" -a "$DVIPS" = "no" || test "$PDFLATEX" = "no" -a "$PS2PDF" = "no"; then
+AC_MSG_NOTICE([error: **********************************])
+AC_MSG_NOTICE([error: No way to make documentation PDFs.])
+AC_MSG_ERROR([**********************************])
+fi
+fi
 ])
 
-dnl Checking for epstopdf 
+dnl Checking for epspdf and epstopdf
+dnl epspdf older than 0.4.3 do have problems on the MAC
+
+AC_DEFUN([AC_PROG_EPSPDF], [dnl
+AC_CHECK_PROGS(EPSPDF,[epspdf],no)
+AM_CONDITIONAL([EPSPDF_AVAILABLE], [test "$EPSPDF" != "no"])
+AC_SUBST(EPSPDF)
+if test "$EPSPDF" != "no"; then
+  EPSPDFVERSION=`$EPSPDF --help 2>&1 | $GREP -i "epspdf.*[[0-9]]\+\.[[0-9]]\+\.[[0-9\]]\+" | tail -n 1 | $SED "s/[[^0123456789\.]]//g"`
+  AC_MSG_RESULT([epspdf version is $EPSPDFVERSION])	
+  AC_CACHE_VAL([wo_epspdf_cv_integer_version],
+    [wo_epspdf_cv_integer_version="`echo $EPSPDFVERSION | \
+      $AWK '[$]1 {
+        changequote(<<,>>)dnl
+          split (<<$>>1, version, "[.+]+");
+          printf ("%d%02d%03d", version[1], version[2], version[3])}'`"
+        changequote([,])])
+  EPSPDFINTEGERVERSION=$wo_epspdf_cv_integer_version
+  AC_SUBST([EPSPDFVERSION])
+  if test $EPSPDFINTEGERVERSION -ge 004003; then
+    AC_MSG_RESULT([epspdf present and newer than 0.4.2; using epspdf for conversion.])
+  else
+    AC_MSG_RESULT([epspdf version older than 0.4.3; searching for epstopdf.])
+  fi
+  AM_CONDITIONAL([EPSPDF_043],
+	[test $EPSPDFINTEGERVERSION -ge 004003])
+else  
+  AM_CONDITIONAL([EPSPDF_043],false)  
+  EPSPDFINTEGERVERSION=000000
+fi
+  AC_SUBST([EPSPDFINTEGERVERSION])
+
+])
+
+dnl Catching the buggy version 2.9.8
 
 AC_DEFUN([AC_PROG_EPSTOPDF], [dnl
 AC_CHECK_PROGS(EPSTOPDF,[epstopdf],no)
-AM_CONDITIONAL([EPSTOPDF_AVAILABLE], [test "$EPSTOPDF" != "no"])
+if test "$EPSTOPDF" != "no"; then
+  wo_epstopdf_cv_version="`$EPSTOPDF -v 2>&1 | \
+     $AWK '{
+       if (NR == 1 && toupper([$]1) ~ /EPSTOPDF/) { printf [$]9 } else 
+      {if (NR == 2 && toupper([$]1) ~ /EPSTOPDF/) { printf substr([$]2,1,length([$]2)-1) }}}'`" 
+  EPSTOPDFVERSION=$wo_epstopdf_cv_version 
+  AC_MSG_RESULT([epstopdf version is $EPSTOPDFVERSION])	
+  if test "$EPSTOPDFVERSION" = "2.9.8" -o "$EPSTOPDFVERSION" = "2.9.8gw" \
+            -o "$EPSTOPDFVERSION" = "2.9.8GW"; then
+    AC_MSG_RESULT([********************************************************])	
+    AC_MSG_RESULT([epstopdf version 2.9.8 is known to be buggy, be careful.])	
+    AC_MSG_RESULT([********************************************************])	
+    AM_CONDITIONAL([EPSTOPDF_AVAILABLE], true)
+    EPSTOPDF_BUGGY="yes"
+  else
+    AM_CONDITIONAL([EPSTOPDF_AVAILABLE], true)
+    EPSTOPDF_BUGGY="no"
+  fi
+else
+    AM_CONDITIONAL([EPSTOPDF_AVAILABLE], false)
+    EPSTOPDF_BUGGY="no"
+fi
 AC_SUBST(EPSTOPDF)
+AC_SUBST(EPSTOPDF_BUGGY)
+AC_SUBST(EPSTOPDFVERSION)
+if test "$enable_distribution" = "yes"; then
+if test "$EPSPDF" = "no" -a "$EPSTOPDF" = "no"; then
+AC_MSG_NOTICE([error: ***********************************************])
+AC_MSG_NOTICE([error: Neither a viable epspdf nor epstopdf available.])
+AC_MSG_ERROR([***********************************************])
+fi
+fi
 ])
-
 
 dnl Checking for supp-pdf.tex (auxiliary for PDF output)
 
@@ -99,6 +169,13 @@ if test "$PLAINTEX" != "no"; then
   (eval "$wo_cmd") 2>&5 && wo_cv_supp_pdf_exists="yes" 
 fi])
 AM_CONDITIONAL([SUPP_PDF_AVAILABLE], [test "$wo_cv_supp_pdf_exists" != "no"])
+if test "$enable_distribution" = "yes"; then
+if test "$wo_cv_supp_pdf_exists" = "no"; then
+AC_MSG_NOTICE([error: ********************************************************])
+AC_MSG_NOTICE([error: No LaTeX supp-pdf.tex available, please install conTeXt.])
+AC_MSG_ERROR([********************************************************])
+fi
+fi
 ])
 
 dnl Checking for pdflatex
@@ -153,5 +230,12 @@ dnl Checking for gzip (putting this together with the LaTeX part)
 AC_DEFUN([AC_PROG_GZIP],[
 AC_CHECK_PROGS(GZIP,[gzip],no)
 AM_CONDITIONAL([GZIP_AVAILABLE], [test "$GZIP" != "no"])
+if test "$enable_distribution" = "yes"; then
+if test "$GZIP" = "no"; then
+AC_MSG_NOTICE([error: *********************************************])
+AC_MSG_NOTICE([error: Gzip not installed, no distribution possible.])
+AC_MSG_ERROR([*********************************************])
+fi
+fi
 AC_SUBST(GZIP)
 ])

@@ -1,4 +1,4 @@
-!  $Id: omegalib.nw 2848 2010-10-07 14:26:20Z jr_reuter $
+!  $Id: omegalib.nw 3104 2011-04-02 10:31:01Z cnspeckn $
 !
 !  Copyright (C) 1999-2009 by 
 !      Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
@@ -112,69 +112,4 @@ contains
        end select
     end if
   end function eps
-  !!! OLD VERSION !!!!!!
-  !!! pure function eps (m, k, s) result (e)
-  !!!   type(vector) :: e
-  !!!   real(kind=default), intent(in) :: m
-  !!!   type(momentum), intent(in) :: k
-  !!!   integer, intent(in) :: s
-  !!!   real(kind=default) :: kt, kabs, kabs2, sqrt2
-  !!!   integer, parameter :: x = 2, y = 3, z = 1
-  !!!   sqrt2 = sqrt (2.0_default)
-  !!!   kabs2 = dot_product (k%x, k%x)
-  !!!   e%t = 0
-  !!!   e%x = 0
-  !!!   if (kabs2 > 0) then
-  !!!      kabs = sqrt (kabs2)
-  !!!      select case (s)
-  !!!      case (1)
-  !!!         kt = sqrt (k%x(x)**2 + k%x(y)**2)
-  !!!         e%x(x) = cmplx (   k%x(z)*k%x(x)/kabs, &
-  !!!                          - k%x(y), kind=default) / kt / sqrt2
-  !!!         e%x(y) = cmplx (   k%x(y)*k%x(z)/kabs, &
-  !!!                            k%x(x), kind=default) / kt / sqrt2
-  !!!         e%x(z) = - kt / kabs / sqrt2
-  !!!      case (-1)
-  !!!         kt = sqrt (k%x(x)**2 + k%x(y)**2)
-  !!!         e%x(x) = cmplx (   k%x(z)*k%x(x)/kabs, &
-  !!!                            k%x(y), kind=default) / kt / sqrt2
-  !!!         e%x(y) = cmplx (   k%x(y)*k%x(z)/kabs, &
-  !!!                          - k%x(x), kind=default) / kt / sqrt2
-  !!!         e%x(z) = - kt / kabs / sqrt2
-  !!!      case (0)
-  !!!         if (m > 0) then
-  !!!            e%t = kabs / m
-  !!!            e%x = k%t / (m*kabs) * k%x 
-  !!!         end if
-  !!!      case (3) 
-  !!!         e = (0,1) * k
-  !!!      case (4)
-  !!!         if (m > 0) then
-  !!!            e = (1 / m) * k
-  !!!         else
-  !!!            e = (1 / k%t) * k
-  !!!         end if
-  !!!      end select
-  !!!   else
-  !!!      select case (s)
-  !!!      case (1)
-  !!!         e%x(x) = cmplx (   1,   0, kind=default) / sqrt2
-  !!!         e%x(y) = cmplx (   0,   1, kind=default) / sqrt2
-  !!!      case (-1)
-  !!!         e%x(x) = cmplx (   1,   0, kind=default) / sqrt2
-  !!!         e%x(y) = cmplx (   0, - 1, kind=default) / sqrt2
-  !!!      case (0)
-  !!!         if (m > 0) then
-  !!!            e%x(z) = 1
-  !!!         end if
-  !!!      case (4)
-  !!!         if (m > 0) then
-  !!!            e = (1 / m) * k
-  !!!         else
-  !!!            e = (1 / k%t) * k
-  !!!         end if
-  !!!      end select
-  !!!   end if
-  !!! end function eps
-  !!!!!!!!!!!!!!!!!!!!!!!!
 end module omega_polarizations

@@ -1,9 +1,9 @@
-! WHIZARD 2.0.4 Tue Oct 26 2010
+! WHIZARD 2.0.5 Tue May 10 2011
 ! 
-! (C) 1999-2010 by 
-!     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+! Copyright (C) 1999-2011 by 
+!     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
-!     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+!     Juergen Reuter <juergen.reuter@desy.de>
 !     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
 !     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
 !
@@ -84,11 +84,13 @@ contains
 
   function time_current () result (time)
     type(time_t) :: time
-    call cpu_time (time%value)
+    integer :: msecs
+    call system_clock (msecs)
+    time%value = real (msecs) / 1000.
     time%known = time%value > 0
   end function time_current
 
-  subroutine real_assign_time (r, time)
+  pure subroutine real_assign_time (r, time)
     real(default), intent(out) :: r
     type(time_t), intent(in) :: time
     if (time%known) then
@@ -98,7 +100,7 @@ contains
     end if
   end subroutine real_assign_time
     
-  function subtract_times (t_end, t_begin) result (time)
+  pure function subtract_times (t_end, t_begin) result (time)
     type(time_t) :: time
     type(time_t), intent(in) :: t_end, t_begin
     if (t_end%known .and. t_begin%known) then

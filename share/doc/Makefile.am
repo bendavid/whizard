@@ -1,32 +1,61 @@
 ## Makefile.am -- Makefile for WHIZARD
 ##
 ## Process this file with automake to produce Makefile.in
+#
+# Copyright (C) 1999-2011 by 
+#     Wolfgang Kilian <kilian@physik.uni-siegen.de>
+#     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
+#     Juergen Reuter <juergen.reuter@desy.de>
+#     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+#
+# WHIZARD is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License as published by 
+# the Free Software Foundation; either version 2, or (at your option)
+# any later version.
+#
+# WHIZARD is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+#
+########################################################################
 
 ## The manual source has to be distributed
 dist_noinst_DATA = manual.tex $(PACKAGE).tex
 
 ## The primary targets
+if DISTRIBUTION
 if NOWEB_AVAILABLE
-dist_pdf_DATA = manual.pdf $(PACKAGE).pdf
+dist_pdf_DATA = manual.pdf $(PACKAGE).pdf gamelan_manual.pdf
 else
-dist_pdf_DATA = manual.pdf 
+dist_pdf_DATA = manual.pdf gamelan_manual.pdf
+endif
+else 
+dist_pdf_DATA = 
 endif
 
-ps-local: manual.ps $(PACKAGE).ps
-pdf-local: manual.pdf $(PACKAGE).pdf
+ps-local: manual.ps $(PACKAGE).ps gamelan_manual.ps
+pdf-local: manual.pdf $(PACKAGE).pdf gamelan_manual.pdf
 
 if HEVEA_AVAILABLE
 # html_DATA = manual.html index.html
 endif
 
 LATEX_STYLES = \
-    noweb.sty thophys.sty
+    noweb.sty thophys.sty gamelan.sty
 
 EXTRA_DIST = $(LATEX_STYLES)
 
 ## don't try to run the files in parallel (TeXLive 2009 doesn't like it)
 manual.ps: $(PACKAGE).ps
 manual.pdf: $(PACKAGE).pdf
+$(PACKAGE).ps: gamelan_manual.ps
+$(PACKAGE).pdf: gamelan_manual.pdf
+gamelan_manual.pdf: gamelan.sty
 
 ## Rules for creating PS
 .tex.dvi:
@@ -39,6 +68,7 @@ manual.pdf: $(PACKAGE).pdf
 	$(DVIPS) $<
 
 ## Rules for creating PDF
+if DISTRIBUTION
 if PDFLATEX_AVAILABLE 
 .tex.pdf: 
 	-$(PDFLATEX) $<; \
@@ -54,6 +84,7 @@ else
 	@echo "Neither pdflatex nor ps2pdf available. The PDF manual cannot be made"
 endif 	
 endif
+endif
 
 ## Rules for creating HTML
 if HEVEA_AVAILABLE
@@ -62,6 +93,7 @@ HEVEAOPTS = -exec xxdate.exe \
 	custom.hva
 HACHAOPTS = -tocbis
 
+if DISTRIBUTION
 index.html: manual.html
 	$(HACHA) $(HACHAOPTS) -o index.html manual.html
 
@@ -73,10 +105,14 @@ manual.html: manual.tex
 else	
 	@echo "HEVEA not available. The HTML manual cannot be made"
 endif
+endif
 
 if NOWEB_AVAILABLE
 $(PACKAGE).tex: $(top_srcdir)/src/whizard-core/$(PACKAGE).nw
 	$(NOWEAVE) -delay $< | $(CPIF) $@
+
+gamelan.sty: $(top_srcdir)/src/gamelan/gamelan.nw
+	$(NOTANGLE) -R$@ $< | $(CPIF) $@
 endif
 
 ## Cleanup tasks
@@ -114,6 +150,18 @@ mostlyclean-local: mostlyclean-latex mostlyclean-html mostlyclean-whizard
 clean-local: clean-latex clean-html
 maintainer-clean-local: maintainer-clean-latex maintainer-clean-html \
 	maintainer-clean-whizard maintainer-clean-backup
+
+if !DISTRIBUTION
+install-data-hook: 
+	-$(INSTALL) -m 644 manual.pdf $(DESTDIR)$(datarootdir)/doc/whizard
+	-$(INSTALL) -m 644 $(PACKAGE).pdf $(DESTDIR)$(datarootdir)/doc/whizard
+	-$(INSTALL) -m 644 gamelan_manual.pdf $(DESTDIR)$(datarootdir)/doc/whizard
+
+uninstall-hook: 
+	-rm -f $(DESTDIR)/$(datarootdir)/doc/whizard/manual.pdf 
+	-rm -f $(DESTDIR)/$(datarootdir)/doc/whizard/$(PACKAGE).pdf 
+	-rm -f $(DESTDIR)/$(datarootdir)/doc/whizard/gamelan_manual.pdf
+endif
 
 distclean-local:
 	-test "$(srcdir)" != "." && rm -f $(LATEX_STYLES)

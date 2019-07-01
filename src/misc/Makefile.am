@@ -5,10 +5,10 @@
 ##
 ########################################################################
 #
-# Copyright (C) 1999-2010 by 
-#     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+# Copyright (C) 1999-2011 by 
+#     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
-#     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+#     Juergen Reuter <juergen.reuter@desy.de>
 #     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
@@ -87,17 +87,24 @@ SUFFIXES = .lo .$(FC_MODULE_EXT)
 	@:
 #	touch $@
 
-## OpenMP
 AM_FCFLAGS =
-AM_LDFLAGS =
-if WHIZARD_WITH_OPENMP
-AM_FCFLAGS += $(OPENMP_FCFLAGS)
-AM_LDFLAGS += $(OPENMP_FCFLAGS)
+
+########################################################################
+## Default Fortran compiler options
+
+## Profiling
+if FC_USE_PROFILING
+AM_FCFLAGS += $(FCFLAGS_PROFILING)
+endif
+
+## OpenMP
+if FC_USE_OPENMP
+AM_FCFLAGS += $(FCFLAGS_OPENMP)
 endif
 
 ########################################################################
-
 ## Non-standard targets and dependencies
+
 ## (Re)create F90 sources from NOWEB source.
 if NOWEB_AVAILABLE
 

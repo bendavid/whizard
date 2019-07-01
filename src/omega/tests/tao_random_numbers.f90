@@ -1,10 +1,10 @@
-! $Id: tao_random_numbers.f90 2695 2010-07-08 22:15:33Z ohl $
+! $Id: tao_random_numbers.f90 3116 2011-04-05 10:20:25Z kilian $
 !
-!  Copyright (C) 1999-2009 by 
-!
-!      Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+!  Copyright (C) 1999-2011 by 
+!      Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !      Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
-!      Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+!      Juergen Reuter <juergen.reuter@desy.de>
+!      Christian Speckner <christian.speckner@physik.uni-freiburg.de>
 !
 !  WHIZARD is free software; you can redistribute it and/or modify it
 !  under the terms of the GNU General Public License as published by 
@@ -145,7 +145,7 @@ module tao_random_numbers
      integer :: buffer_end, last
   end type tao_random_state
   character(len=*), public, parameter :: TAO_RANDOM_NUMBERS_RCS_ID = &
-       "$Id: tao_random_numbers.f90 2695 2010-07-08 22:15:33Z ohl $"
+       "$Id: tao_random_numbers.f90 3116 2011-04-05 10:20:25Z kilian $"
 contains
   subroutine seed_static (seed)
     integer, optional, intent(in) :: seed

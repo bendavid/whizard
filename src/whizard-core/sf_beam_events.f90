@@ -1,9 +1,9 @@
-! WHIZARD 2.0.4 Tue Oct 26 2010
+! WHIZARD 2.0.5 Tue May 10 2011
 ! 
-! (C) 1999-2010 by 
-!     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+! Copyright (C) 1999-2011 by 
+!     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
-!     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+!     Juergen Reuter <juergen.reuter@desy.de>
 !     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
 !     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
 !
@@ -78,10 +78,11 @@ contains
     data%warn_eof = warn_eof
   end subroutine beam_events_data_init
 
-  subroutine beam_events_data_write (data, unit)
+  subroutine beam_events_data_write (data, unit, md5)
     type(beam_events_data_t), intent(in) :: data
     integer, intent(in), optional :: unit
     integer :: u
+    logical, intent(in), optional :: md5
     u = output_unit (unit);  if (u < 0)  return
     write (u, *) "Beam-event file data:"
     if (all (data%affects_beam)) then

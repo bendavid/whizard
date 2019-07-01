@@ -1,10 +1,12 @@
-(* $Id: modellib_NMSSM.ml 2701 2010-07-11 23:04:45Z jr_reuter $
+(* $Id: modellib_NMSSM.ml 3070 2011-03-28 08:09:25Z jr_reuter $
 
-   Copyright (C) 1999-2010 by
+   Copyright (C) 1999-2011 by
 
-       Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+       Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
-       Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+       Juergen Reuter <juergen.reuter@desy.de>
+       Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+       with contributions from Felix Braam (this file only)
 
    WHIZARD is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by
@@ -21,8 +23,8 @@
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
 let rcs_file = RCS.parse "Modellib_NMSSM" ["NMSSM"]
-    { RCS.revision = "$Revision: 2701 $";
-      RCS.date = "$Date: 2010-07-12 01:04:45 +0200 (Mon, 12 Jul 2010) $";
+    { RCS.revision = "$Revision: 3070 $";
+      RCS.date = "$Date: 2011-03-28 10:09:25 +0200 (Mon, 28 Mar 2011) $";
       RCS.author = "$Author: jr_reuter $";
       RCS.source
         = "$URL: svn+ssh://jr_reuter@login.hepforge.org/hepforge/svn/whizard/trunk/src/omega/src/modellib_NMSSM.ml $" }
@@ -36,16 +38,25 @@ let rcs_file = RCS.parse "Modellib_NMSSM" ["NMSSM"]
 module type NMSSM_flags =
   sig
     val ckm_present       : bool
+    val higgs_triangle    : bool
   end
 
 module NMSSM : NMSSM_flags =
   struct 
     let ckm_present       = false
+    let higgs_triangle    = false
   end
 
 module NMSSM_CKM : NMSSM_flags =
   struct 
     let ckm_present       = true
+    let higgs_triangle    = false
+  end
+
+module NMSSM_Hgg : NMSSM_flags =
+  struct 
+    let ckm_present       = false
+    let higgs_triangle    = true
   end
 
 module NMSSM_func (Flags : NMSSM_flags) = 
@@ -411,6 +422,7 @@ module NMSSM_func (Flags : NMSSM_flags) =
       | G_ZZSFSF of sff*int*sfm*sfm | G_ZPSFSF of sff*int*sfm*sfm 
       | G_GlZSFSF of sff*int*sfm*sfm | G_GlPSQSQ 
       | G_GlWSUSD of vc*sfm*sfm*int*int
+      | G_GLUGLUA0 of phiggs | G_GLUGLUH0 of shiggs 
 
 (* \begin{subequations}
      \begin{align}
@@ -727,6 +739,12 @@ generalization to complex parameters is obvious. *)
    sign of the covariant derivative since they are quadratic in the
    gauge couplings. *)
 
+(** Effective Higgs-Gluon-Gluon coupling. **)
+     let gauge_higgs_GlGlS s=
+        ((SHiggs s, Gl, Gl), Dim5_Scalar_Gauge2 1, G_GLUGLUH0 s)
+     let gauge_higgs_GlGlP p=
+        ((PHiggs p, Gl, Gl), Dim5_Scalar_Gauge2_Skew 1, G_GLUGLUA0 p)
+
 (*** REVISED: Compatible with CD+. FB***)
 (*** Revision: 2005-03-10: first two vertices corrected. ***)
 (*** REVISED: Compact version using new COMBOS*)
@@ -754,7 +772,13 @@ generalization to complex parameters is obvious. *)
        List.flatten (Product.list2 gauge_higgs_ZSP [S1;S2;S3] [P1;P2]) @
        List.map gauge_higgs_WWS [S1;S2;S3] @
        List.map gauge_higgs_ZZS [S1;S2;S3] @
-       [gauge_higgs_ZCC] @ [gauge_higgs_GaCC] 
+       [gauge_higgs_ZCC] @ [gauge_higgs_GaCC] @
+      (if Flags.higgs_triangle then
+         List.map gauge_higgs_GlGlS [S1;S2;S3] @
+         List.map gauge_higgs_GlGlP [P1;P2]
+       else
+         [])
+
 (*** REVISED: Compact version using new COMBOS*)
 (*** REVISED: Couplings adjusted to FF-convention*)
      let gauge_higgs4_ZZPP (p1,p2) = 
@@ -1516,6 +1540,8 @@ generalization to complex parameters is obvious. *)
       | G_GH_WPC p -> "g_WhpA0(" ^ string_of_phiggs p ^ ")"        
       | G_GH_ZZS s -> "g_ZZh0(" ^ string_of_shiggs s ^ ")"  
       | G_GH_WWS s -> "g_WWh0(" ^ string_of_shiggs s ^ ")"
+      | G_GLUGLUH0 s -> "g_glugluh0(" ^ string_of_shiggs s ^ ")"
+      | G_GLUGLUA0 p -> "g_gluglua0(" ^ string_of_phiggs p ^ ")"
       | G_GH_ZCC -> "g_Zhmhp"
       | G_GH_GaCC -> "g_Ahmhp"
       | G_ZSF (f,g,m1,m2) -> "g_z" ^ string_of_sff f ^ string_of_sff f ^ "(" ^ 

@@ -1,4 +1,4 @@
-!  $Id: omegalib.nw 2848 2010-10-07 14:26:20Z jr_reuter $
+!  $Id: omegalib.nw 3104 2011-04-02 10:31:01Z cnspeckn $
 !
 !  Copyright (C) 1999-2009 by 
 !      Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
@@ -41,7 +41,7 @@ contains
     amp2 = 0
     do n = 1, size (cf)
        amp2 = amp2 &
-            + cf(n)%factor * amp(flv,hel,cf(n)%i1) * conjg (amp(flv,hel,cf(n)%i2))
+            + cf(n)%factor * amp(flv,cf(n)%i1,hel) * conjg (amp(flv,cf(n)%i2,hel))
     end do
   end function omega_color_sum
 end module omega_color

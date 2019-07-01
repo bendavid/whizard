@@ -1,9 +1,9 @@
-! WHIZARD 2.0.4 Tue Oct 26 2010
+! WHIZARD 2.0.5 Tue May 10 2011
 ! 
-! (C) 1999-2010 by 
-!     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+! Copyright (C) 1999-2011 by 
+!     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
-!     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+!     Juergen Reuter <juergen.reuter@desy.de>
 !     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
 !     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
 !
@@ -33,7 +33,7 @@ use iso_fortran_env, only: iostat_end, iostat_eor !NODEP!
 
   integer, parameter, public :: VERSION_STRLEN = 255
   character(len=VERSION_STRLEN), parameter, public :: &
-       & VERSION_STRING = "WHIZARD version 2.0.4 (Tue Oct 26 2010)"
+       & VERSION_STRING = "WHIZARD version 2.0.5 (Tue May 10 2011)"
   integer, parameter, public :: MIN_UNIT = 11, MAX_UNIT = 99
   integer, parameter, public :: ENVVAR_LEN = 1000
   integer, parameter, public :: DLERROR_LEN = 160
@@ -58,9 +58,13 @@ use iso_fortran_env, only: iostat_end, iostat_eor !NODEP!
   character(*), parameter, public :: LHAPDF_DEFAULT_PROTON = "cteq6ll.LHpdf"
   character(*), parameter, public :: LHAPDF_DEFAULT_PION   = "ABFKWPI.LHgrid"
   character(*), parameter, public :: LHAPDF_DEFAULT_PHOTON = "GSG960.LHgrid"
+  character(*), parameter, public :: PDF_BUILTIN_DEFAULT_PROTON = "CTEQ6L"
+  character(*), parameter, public :: PDF_BUILTIN_DEFAULT_PION   = "NONE"
+  character(*), parameter, public :: PDF_BUILTIN_DEFAULT_PHOTON = "NONE"
   integer, parameter, public :: MAX_EXTERNAL = 32
   real, parameter, public :: CASCADE_SET_FILL_RATIO = 0.1
   integer, parameter, public :: MAX_WARN_RESONANCE = 50
+  real, parameter, public :: GML_MIN_RANGE_RATIO = 0.02
   integer, parameter, public :: MAX_TRIES_FOR_DECAY_CHAIN = 100000
   character(*), parameter, public :: &
        RAW_EVENT_FILE_ID_STRING = "WHIZARD raw event file"

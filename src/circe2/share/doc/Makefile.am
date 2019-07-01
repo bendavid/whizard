@@ -1,5 +1,30 @@
 # Makefile.am --
 # $Id: Makefile.am 317 2010-04-18 00:31:03Z ohl $
+##
+## Process this file with automake to produce Makefile.in
+##
+########################################################################
+#
+# Copyright (C) 1999-2011 by 
+#     Wolfgang Kilian <kilian@physik.uni-siegen.de>
+#     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
+#     Juergen Reuter <juergen.reuter@desy.de>
+#     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
+#
+# WHIZARD is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License as published by 
+# the Free Software Foundation; either version 2, or (at your option)
+# any later version.
+#
+# WHIZARD is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+#
 ########################################################################
 
 include $(top_srcdir)/src/Makefile.sources
@@ -7,7 +32,11 @@ include $(top_srcdir)/src/Makefile.sources
 WEBS = \
   prelude.nw circe2.nw postlude.nw
 
+if DISTRIBUTION
 PDFS = circe2.pdf 
+else
+PDFS = 
+endif
 
 LATEX_STYLES = \
     emp.sty noweb.sty thohacks.sty thopp.sty ocamlweb.sty
@@ -16,7 +45,9 @@ EXTRA_DIST = \
   tex-comments.sh \
   $(LATEX_STYLES)
 
+if DISTRIBUTION
 dist_doc_DATA = $(PDFS)
+endif
 
 if NOWEB_AVAILABLE
 pdf-local: circe2.pdf 
@@ -58,6 +89,7 @@ circe2.pdf: $(CIRCE2TOOLLIB_INTERFACE) $(CIRCE2TOOLLIB_IMPLEMENTATION) \
 		$(CIRCE2TOOL_IMPLEMENTATION) index.tex
 endif
 
+if DISTRIBUTION
 if PDFLATEX_AVAILABLE
 if MPOST_AVAILABLE
 if SUPP_PDF_AVAILABLE
@@ -73,6 +105,7 @@ if SUPP_PDF_AVAILABLE
 endif SUPP_PDF_AVAILABLE
 endif MPOST_AVAILABLE
 endif PDFLATEX_AVAILABLE
+endif DISTRIBUTION
 
 if OCAMLWEB_AVAILABLE
 .ml.implementation:
@@ -133,6 +166,14 @@ mostlyclean-local: mostlyclean-latex mostlyclean-circe2 \
 clean-local: clean-latex clean-caml
 maintainer-clean-local: maintainer-clean-latex maintainer-clean-circe2 \
 		maintainer-clean-caml maintainer-clean-backup
+
+if !DISTRIBUTION
+install-data-hook: 
+	-$(INSTALL) -m 644 circe2.pdf $(DESTDIR)$(datarootdir)/doc/circe2
+
+uninstall-hook: 
+	-rm -f $(DESTDIR)/$(datarootdir)/doc/circe2/circe2.pdf 
+endif
 
 distclean-local:
 	-test "$(srcdir)" != "." && rm -f $(LATEX_STYLES)

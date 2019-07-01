@@ -280,6 +280,13 @@ AC_DEFUN([AC_PROG_OCAMLWEB],
   AC_SUBST([OCAMLWEB])
   AC_SUBST([OCAMLWEBVERSION])
   AM_CONDITIONAL([OCAMLWEB_AVAILABLE],[test "$OCAMLWEB" != "no"])
+if test "$enable_distribution" = "yes"; then
+if test "$OCAMLWEB" = "no"; then
+AC_MSG_NOTICE([error: **************************])
+AC_MSG_NOTICE([error: Ocamlweb is not installed.])
+AC_MSG_ERROR([**************************])
+fi
+fi
 ])
  
 dnl

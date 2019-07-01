@@ -1,9 +1,9 @@
-! WHIZARD 2.0.4 Tue Oct 26 2010
+! WHIZARD 2.0.5 Tue May 10 2011
 ! 
-! (C) 1999-2010 by 
-!     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+! Copyright (C) 1999-2011 by 
+!     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
-!     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+!     Juergen Reuter <juergen.reuter@desy.de>
 !     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
 !     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
 !
@@ -82,6 +82,7 @@ module phs_forests
      real(default) :: m_threshold_t = 100._default
      integer :: off_shell = 1
      integer :: t_channel = 2
+     logical :: keep_nonresonant = .true.
   end type phs_parameters_t
 
   type :: equivalence_t
@@ -162,6 +163,7 @@ contains
     write (u, *) "  m_threshold_t = ", phs_par%m_threshold_t
     write (u, *) "  off_shell = ", phs_par%off_shell
     write (u, *) "  t_channel = ", phs_par%t_channel
+    write (u, *) "  keep_nonresonant = ", phs_par%keep_nonresonant
   end subroutine phs_parameters_write
 
   subroutine phs_parameters_read (phs_par, unit)
@@ -174,6 +176,7 @@ contains
     read (unit, *)  dummy, equals, phs_par%m_threshold_t
     read (unit, *)  dummy, equals, phs_par%off_shell
     read (unit, *)  dummy, equals, phs_par%t_channel
+    read (unit, *)  dummy, equals, phs_par%keep_nonresonant
   end subroutine phs_parameters_read
 
   function phs_parameters_eq (phs_par1, phs_par2) result (equal)
@@ -183,7 +186,8 @@ contains
          .and. phs_par1%m_threshold_s == phs_par2%m_threshold_s &
          .and. phs_par1%m_threshold_t == phs_par2%m_threshold_t &
          .and. phs_par1%off_shell == phs_par2%off_shell &
-         .and. phs_par1%t_channel == phs_par2%t_channel
+         .and. phs_par1%t_channel == phs_par2%t_channel &
+         .and.(phs_par1%keep_nonresonant .eqv. phs_par2%keep_nonresonant)
   end function phs_parameters_eq
 
   function phs_parameters_ne (phs_par1, phs_par2) result (ne)
@@ -193,7 +197,8 @@ contains
          .or. phs_par1%m_threshold_s /= phs_par2%m_threshold_s &
          .or. phs_par1%m_threshold_t /= phs_par2%m_threshold_t &
          .or. phs_par1%off_shell /= phs_par2%off_shell &
-         .or. phs_par1%t_channel /= phs_par2%t_channel
+         .or. phs_par1%t_channel /= phs_par2%t_channel &
+         .or.(phs_par1%keep_nonresonant .neqv. phs_par2%keep_nonresonant)
   end function phs_parameters_ne
 
   subroutine equivalence_list_add (eql, left, right, perm)
@@ -594,7 +599,8 @@ contains
          // "m_threshold_s = real " &
          // "m_threshold_t = real " &
          // "off_shell = integer " &
-         // "t_channel = integer ")
+         // "t_channel = integer " &
+         // "keep_nonresonant = logical")
     call ifile_append (ifile, "KEY '='")
     call ifile_append (ifile, "KEY md5sum_process")
     call ifile_append (ifile, "KEY md5sum_model")
@@ -604,9 +610,11 @@ contains
     call ifile_append (ifile, "KEY m_threshold_t")
     call ifile_append (ifile, "KEY off_shell")
     call ifile_append (ifile, "KEY t_channel")
+    call ifile_append (ifile, "KEY keep_nonresonant")
     call ifile_append (ifile, "QUO md5sum = '""' ... '""'")
     call ifile_append (ifile, "REA real")
     call ifile_append (ifile, "INT integer")
+    call ifile_append (ifile, "IDE logical")
     call ifile_append (ifile, "SEQ phase_space = grove_def+")
     call ifile_append (ifile, "SEQ grove_def = grove tree_def+")
     call ifile_append (ifile, "KEY grove")
@@ -758,9 +766,10 @@ contains
          md5sum_process, md5sum_model, md5sum_parameters
     type(phs_parameters_t), intent(in) :: phs_par
     logical, intent(out) :: match
-    type(parse_node_t), pointer :: pn_md5sum, pn_rval, pn_ival
+    type(parse_node_t), pointer :: pn_md5sum, pn_rval, pn_ival, pn_lval
     character(32) :: md5sum
     type(phs_parameters_t) :: phs_par_old
+    character(1) :: lstr
     pn_md5sum => parse_node_get_sub_ptr (pn_header, 3)
     md5sum = parse_node_get_string (pn_md5sum)
     if (md5sum /= "" .and. md5sum /= md5sum_process) then
@@ -790,6 +799,9 @@ contains
     phs_par_old%off_shell = parse_node_get_integer (pn_ival)
     pn_ival => parse_node_get_next_ptr (pn_ival, 3)
     phs_par_old%t_channel = parse_node_get_integer (pn_ival)
+    pn_lval => parse_node_get_next_ptr (pn_ival, 3)
+    lstr = parse_node_get_string (pn_lval)
+    read (lstr, "(L1)")  phs_par_old%keep_nonresonant
     if (phs_par_old /= phs_par) then
        call msg_message &
             ("Rebuilding phase space (phase-space parameters have changed)")

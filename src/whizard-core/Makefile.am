@@ -2,10 +2,10 @@
 ##
 ## Process this file with automake to produce Makefile.in
 #
-# Copyright (C) 1999-2010 by 
-#     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+# Copyright (C) 1999-2011 by 
+#     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 #     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
-#     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+#     Juergen Reuter <juergen.reuter@desy.de>
 #     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
 #
 # WHIZARD is free software; you can redistribute it and/or modify it
@@ -45,7 +45,8 @@ libwhizard_core_la_SOURCES = \
   particles.f90 \
   beams.f90 \
   sf_aux.f90 sf_isr.f90 sf_epa.f90 sf_ewa.f90 sf_circe1.f90 \
-  sf_circe2.f90 sf_escan.f90 sf_beam_events.f90 sf_lhapdf.f90 strfun.f90 \
+  sf_circe2.f90 sf_escan.f90 sf_beam_events.f90 sf_lhapdf.f90 \
+  sf_pdf_builtin.f90 strfun.f90 \
   mappings.f90 phs_trees.f90 phs_forests.f90 \
   cascades.f90 \
   prclib_interfaces.f90 \
@@ -62,7 +63,7 @@ libwhizard_core_la_SOURCES = \
 sprintf_interface.c:
 
 ## The main program makes up a library on its own.
-pkglib_LTLIBRARIES = libwhizard_main.la
+lib_LTLIBRARIES = libwhizard_main.la
 
 libwhizard_main_la_SOURCES = main.f90
 
@@ -106,7 +107,8 @@ $(libwhizard_core_la_OBJECTS): \
 #$(libwhizard_core_la_OBJECTS): \
   ../shower/shower_module.$(FC_MODULE_EXT) \
   ../shower/shower_particle.$(FC_MODULE_EXT) \
-  ../shower/shower_basics.$(FC_MODULE_EXT)
+  ../shower/shower_basics.$(FC_MODULE_EXT) \
+  ../pdf_builtin/pdf_builtin.$(FC_MODULE_EXT)
 
 SUFFIXES = .lo .$(FC_MODULE_EXT)
 # Fortran90 module files are generated at the same time as object files
@@ -114,21 +116,29 @@ SUFFIXES = .lo .$(FC_MODULE_EXT)
 	@:
 #	touch $@
 
-AM_FCFLAGS = -I../misc -I../vamp/src -I../shower
+AM_FCFLAGS = -I../misc -I../vamp/src -I../shower -I../pdf_builtin 
+
+########################################################################
+## Default Fortran compiler options
+
+## Profiling
+if FC_USE_PROFILING
+AM_FCFLAGS += $(FCFLAGS_PROFILING)
+endif
 
 ## OpenMP
-AM_LDFLAGS =
-if WHIZARD_WITH_OPENMP
-AM_FCFLAGS += $(OPENMP_FCFLAGS)
-AM_LDFLAGS += $(OPENMP_FCFLAGS)
+if FC_USE_OPENMP
+AM_FCFLAGS += $(FCFLAGS_OPENMP)
 endif
+
+########################################################################
+## Non-standard targets and dependencies
 
 ## Install the modules used by generated matrix element code
 execmoddir = $(pkglibdir)/mod/whizard-core
 nodist_execmod_HEADERS = \
   prclib_interfaces.$(FC_MODULE_EXT)
 
-## Non-standard targets and dependencies
 ## (Re)create F90 sources from NOWEB source.
 if NOWEB_AVAILABLE
 
@@ -151,6 +161,7 @@ $(WHIZARD_SRC): whizard.stamp
 
 endif
 
+########################################################################
 ## Non-standard cleanup tasks
 ## Remove sources that can be recreated using NOWEB
 if NOWEB_AVAILABLE

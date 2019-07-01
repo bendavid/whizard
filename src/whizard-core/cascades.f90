@@ -1,9 +1,9 @@
-! WHIZARD 2.0.4 Tue Oct 26 2010
+! WHIZARD 2.0.5 Tue May 10 2011
 ! 
-! (C) 1999-2010 by 
-!     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+! Copyright (C) 1999-2011 by 
+!     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
-!     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+!     Juergen Reuter <juergen.reuter@desy.de>
 !     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
 !     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
 !
@@ -83,9 +83,10 @@ module cascades
      ! global tree properties
      integer :: multiplicity = 0
      integer :: internal = 0
+     integer :: n_off_shell = 0
      integer :: n_resonances = 0
      integer :: n_log_enhanced = 0
-     integer :: n_t_channel = -1
+     integer :: n_t_channel = 0
      integer :: res_hash = 0
      ! the sub-node tree
      integer :: depth = 0
@@ -125,6 +126,7 @@ module cascades
      real(default) :: m_threshold_t = 0
      integer :: off_shell = 0
      integer :: t_channel = 0
+     logical :: keep_nonresonant
      integer :: n_groves = 0
      ! The cascade list
      type(cascade_t), pointer :: first => null ()
@@ -414,7 +416,7 @@ contains
     write (u, *) '  res/log/tch:  ', &
          cascade%resonant, cascade%log_enhanced, cascade%t_channel
     write (u, *) '  Multiplicity: ', cascade%multiplicity
-    write (u, *) '  n internal:   ', cascade%internal
+    write (u, *) '  n intern/off: ', cascade%internal, cascade%n_off_shell
     write (u, *) '  n res/log/tch:', &
          cascade%n_resonances, cascade%n_log_enhanced, cascade%n_t_channel
     write (u, *) '  Depth:        ', cascade%depth
@@ -472,6 +474,7 @@ contains
     end if
     cascade%on_shell = .true.
     cascade%n_t_channel = 0
+    cascade%n_off_shell = 0
     cascade%tree(1) = cascade%bincode
     cascade%tree_pdg(1) = cascade%pdg
     cascade%tree_mapping(1) = EXTERNAL_PRT
@@ -488,7 +491,12 @@ contains
     type(cascade_t), intent(inout) :: cascade
     integer(i8), dimension(1) :: mold
     cascade%res_hash = hash (transfer &
-         (sort (pack (cascade%tree_pdg, cascade%tree_resonant)), mold))
+         (concat (sort (pack (cascade%tree_pdg, &
+                              cascade%tree_resonant)), &
+                  sort (pack (cascade%tree_pdg, &
+                              cascade%tree_mapping == T_CHANNEL .or. &
+                              cascade%tree_mapping == U_CHANNEL))), &
+          mold))
   end subroutine cascade_assign_resonance_hash
 
   subroutine hash_entry_final (hash_entry)
@@ -637,6 +645,7 @@ contains
     cascade_set%m_threshold_t = phs_par%m_threshold_t
     cascade_set%off_shell = phs_par%off_shell
     cascade_set%t_channel = phs_par%t_channel
+    cascade_set%keep_nonresonant = phs_par%keep_nonresonant
     cascade_set%fill_ratio = CASCADE_SET_FILL_RATIO
     size_guess = ishft (256, min (2 * (cascade_set%n_tot - 3), 22))
     cascade_set%n_entries_max = size_guess * cascade_set%fill_ratio
@@ -761,7 +770,7 @@ contains
                 if (first_in_grove) then
                    first_in_grove = .false.
                    write (u, *)
-                   write (u, "(1x,'!',1x,A,I2,A)", advance='no') &
+                   write (u, "(1x,'!',1x,A,1x,I0,A)", advance='no') &
                       'Multiplicity =', cascade%multiplicity, ","
                    select case (cascade%n_resonances)
                    case (0)
@@ -769,16 +778,18 @@ contains
                    case (1)
                       write (u, '(1x,A)', advance='no') ' 1 resonance,  '
                    case default
-                      write (u, '(1x,I2,1x,A)', advance='no') &
+                      write (u, '(1x,I0,1x,A)', advance='no') &
                            cascade%n_resonances, 'resonances, '
                    end select
-                   write (u, '(1x,I2,1x,A)', advance='no') &
+                   write (u, '(1x,I0,1x,A)', advance='no') &
                         cascade%n_log_enhanced, 'logs, '
+                   write (u, '(1x,I0,1x,A)', advance='no') &
+                        cascade%n_off_shell, 'off-shell, '
                    select case (cascade%n_t_channel)
                    case (0);  write (u, '(1x,A)') 's-channel graph'
                    case (1);  write (u, '(1x,A)') ' 1 t-channel line'
                    case default
-                      write(u,'(1x,I2,1x,A)') &
+                      write(u,'(1x,I0,1x,A)') &
                            cascade%n_t_channel, 't-channel lines'
                    end select
                    write (u, '(1x,A,I0)') 'grove #', grove
@@ -806,6 +817,7 @@ contains
     write (u, '(A)') "\documentclass[10pt]{article}"
     write (u, '(A)') "\usepackage{amsmath}"
     write (u, '(A)') "\usepackage{feynmp}"
+    write (u, '(A)') "\usepackage{url}"
     write (u, '(A)') "\usepackage{color}"
     write (u, *)
     write (u, '(A)') "\textwidth 18.5cm"
@@ -834,7 +846,7 @@ contains
     write (u, *)
     write (u, '(A)') "\vspace{10pt}"
     write (u, '(A)') "\noindent" // &
-         & "\textbf{Process:} \texttt{" // char (process_id) // "}"
+         & "\textbf{Process:} \url{" // char (process_id) // "}"
     call cascade_set_write_process_tex_format (cascade_set, u)
     write (u, *)
     write (u, '(A)') "\noindent" // &
@@ -878,6 +890,8 @@ contains
                         cascade%n_resonances, "\\"
                    write (u, '(A,I1,A)') "Log-enhanced: ", &
                         cascade%n_log_enhanced, "\\"
+                   write (u, '(A,I1,A)') "Off-shell:    ", &
+                        cascade%n_off_shell, "\\"
                    write (u, '(A,I1,A)') "t-channel:    ", &
                         cascade%n_t_channel, ""
                    write (u, '(A)') "\end{tabular}"
@@ -924,6 +938,8 @@ contains
     write (u, *)  cascade_set%m_threshold_s, cascade_set%m_threshold_t
     write (u, "(3x,A)", advance="no")  "off shell     ="
     write (u, *)  cascade_set%off_shell
+    write (u, "(3x,A)", advance="no")  "keep_nonreson ="
+    write (u, *)  cascade_set%keep_nonresonant
     write (u, "(3x,A)", advance="no")  "n_groves      ="
     write (u, *)  cascade_set%n_groves
     write (u, *)
@@ -1293,15 +1309,20 @@ contains
        cascade3%on_shell = cascade3%resonant .or. cascade3%log_enhanced
        if (cascade3%resonant) then
           cascade3%pdg = abs (flavor_get_pdg (cascade3%flv))
-          allocate (cascade4)
-          cascade4 = cascade3
-          cascade4%index = cascade_index ()
+          if (cascade_set%keep_nonresonant) then
+             allocate (cascade4)
+             cascade4 = cascade3
+             cascade4%index = cascade_index ()
+             cascade4%pdg = UNDEFINED
+             cascade4%mapping = NO_MAPPING
+             cascade4%resonant = .false.
+             cascade4%on_shell = .false.
+          end if      
+          cascade3%m_min = cascade3%m_rea
           call cascade_fusion (cascade_set, cascade1, cascade2, cascade3)
-          cascade4%pdg = UNDEFINED
-          cascade4%mapping = NO_MAPPING
-          cascade4%resonant = .false.
-          cascade4%on_shell = .false.
-          call cascade_fusion (cascade_set, cascade1, cascade2, cascade4)
+          if (cascade_set%keep_nonresonant) then
+             call cascade_fusion (cascade_set, cascade1, cascade2, cascade4)
+          end if
        else
           call cascade_fusion (cascade_set, cascade1, cascade2, cascade3)
        end if
@@ -1484,11 +1505,17 @@ contains
        cascade3%n_log_enhanced = &
             cascade1%n_log_enhanced + cascade2%n_log_enhanced
     end if
+    if (cascade3%resonant) then
+       cascade3%n_off_shell = 0    
+    else if (cascade3%log_enhanced) then
+       cascade3%n_off_shell = cascade1%n_off_shell + cascade2%n_off_shell
+    else
+       cascade3%n_off_shell = cascade1%n_off_shell + cascade2%n_off_shell + 1
+    end if
     if (cascade3%t_channel) then
        cascade3%n_t_channel = cascade1%n_t_channel + 1
     end if
-    if (cascade3%internal - cascade3%n_resonances - cascade3%n_log_enhanced &
-         > cascade_set%off_shell) then
+    if (cascade3%n_off_shell > cascade_set%off_shell) then
        deallocate (cascade3)
     else if (cascade3%n_t_channel > cascade_set%t_channel) then
        deallocate (cascade3)
@@ -1537,11 +1564,11 @@ contains
     cascade4%internal = (cascade4%depth - 3) / 2
     cascade4%multiplicity = cascade1%multiplicity + cascade2%multiplicity
     cascade4%n_resonances = cascade1%n_resonances + cascade2%n_resonances
+    cascade4%n_off_shell = cascade1%n_off_shell + cascade2%n_off_shell
     cascade4%n_log_enhanced = &
             cascade1%n_log_enhanced + cascade2%n_log_enhanced
-    cascade4%n_t_channel = cascade1%n_t_channel + cascade2%n_t_channel + 1
-    if (cascade4%internal - cascade4%n_resonances - cascade4%n_log_enhanced &
-         > cascade_set%off_shell) then
+    cascade4%n_t_channel = cascade1%n_t_channel + cascade2%n_t_channel
+    if (cascade4%n_off_shell > cascade_set%off_shell) then
        deallocate (cascade4)
        ok = .false.
     else if (cascade4%n_t_channel > cascade_set%t_channel) then
@@ -1764,7 +1791,8 @@ contains
   subroutine cascade_set_assign_groves (cascade_set)
     type(cascade_set_t), intent(inout), target :: cascade_set
     type(cascade_t), pointer :: cascade1, cascade2
-    integer :: multiplicity, n_resonances, n_log_enhanced, n_t_channel
+    integer :: multiplicity
+    integer :: n_resonances, n_log_enhanced, n_t_channel, n_off_shell
     integer :: res_hash
     integer :: grove
     grove = 0
@@ -1777,6 +1805,7 @@ contains
           multiplicity = cascade1%multiplicity
           n_resonances = cascade1%n_resonances
           n_log_enhanced = cascade1%n_log_enhanced
+          n_off_shell = cascade1%n_off_shell
           n_t_channel = cascade1%n_t_channel
           res_hash = cascade1%res_hash
           cascade2 => cascade1%next
@@ -1785,6 +1814,7 @@ contains
                 if (cascade2%multiplicity == multiplicity &
                      .and. cascade2%n_resonances == n_resonances &
                      .and. cascade2%n_log_enhanced == n_log_enhanced &
+                     .and. cascade2%n_off_shell == n_off_shell &
                      .and. cascade2%n_t_channel == n_t_channel &
                      .and. cascade2%res_hash == res_hash) then
                    cascade2%grove = grove

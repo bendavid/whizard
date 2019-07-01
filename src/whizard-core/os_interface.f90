@@ -1,9 +1,9 @@
-! WHIZARD 2.0.4 Tue Oct 26 2010
+! WHIZARD 2.0.5 Tue May 10 2011
 ! 
-! (C) 1999-2010 by 
-!     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+! Copyright (C) 1999-2011 by 
+!     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
-!     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+!     Juergen Reuter <juergen.reuter@desy.de>
 !     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
 !     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
 !
@@ -55,6 +55,7 @@ module os_interface
   public :: os_link_shared
   public :: os_link_static
   public :: os_get_dlname
+  public :: openmp_set_num_threads_verbose
   public :: os_interface_test
 
   type :: paths_t
@@ -65,6 +66,8 @@ module os_interface
      type(string_t) :: includedir
      type(string_t) :: datarootdir
      type(string_t) :: localprefix
+     type(string_t) :: libtool
+     type(string_t) :: lhapdfdir
   end type paths_t
 
   type :: os_data_t
@@ -79,6 +82,7 @@ module os_interface
      type(string_t) :: ldflags
      type(string_t) :: ldflags_so
      type(string_t) :: ldflags_static
+     type(string_t) :: ldflags_hepmc
      type(string_t) :: shlib_ext
      type(string_t) :: prefix
      type(string_t) :: exec_prefix
@@ -102,6 +106,7 @@ module os_interface
      type(string_t) :: whizard_omega_binpath_local
      type(string_t) :: whizard_circe2path
      type(string_t) :: whizard_beamsimpath
+     type(string_t) :: pdf_builtin_datapath
      logical :: event_analysis_ps  = .false.
      logical :: event_analysis_pdf = .false.
      type(string_t) :: latex
@@ -174,6 +179,8 @@ contains
     paths%includedir = ""
     paths%datarootdir = ""
     paths%localprefix = ""
+    paths%libtool = ""
+    paths%lhapdfdir = ""
   end subroutine paths_init
 
   subroutine os_data_init (os_data, paths)
@@ -206,6 +213,7 @@ contains
     os_data%ldflags        = DEFAULT_LDFLAGS
     os_data%ldflags_so     = DEFAULT_LDFLAGS_SO
     os_data%ldflags_static = DEFAULT_LDFLAGS_STATIC
+    os_data%ldflags_hepmc  = DEFAULT_LDFLAGS_HEPMC
     os_data%shlib_ext      = DEFAULT_SHLIB_EXT
     os_data%prefix      = PREFIX
     os_data%exec_prefix = EXEC_PREFIX
@@ -215,11 +223,11 @@ contains
     os_data%datarootdir = DATAROOTDIR
     if (present (paths)) then
        if (paths%prefix      /= "")  os_data%prefix      = paths%prefix
-       if (paths%exec_prefix /= "")  os_data%exec_prefix = paths%prefix
-       if (paths%bindir      /= "")  os_data%bindir      = paths%prefix
-       if (paths%libdir      /= "")  os_data%libdir      = paths%prefix
-       if (paths%includedir  /= "")  os_data%includedir  = paths%prefix
-       if (paths%datarootdir /= "")  os_data%datarootdir = paths%prefix
+       if (paths%exec_prefix /= "")  os_data%exec_prefix = paths%exec_prefix
+       if (paths%bindir      /= "")  os_data%bindir      = paths%bindir
+       if (paths%libdir      /= "")  os_data%libdir      = paths%libdir
+       if (paths%includedir  /= "")  os_data%includedir  = paths%includedir
+       if (paths%datarootdir /= "")  os_data%datarootdir = paths%datarootdir
     end if
     if (os_data%use_testfiles) then
        os_data%whizard_omega_binpath  = WHIZARD_TEST_OMEGA_BINPATH
@@ -235,6 +243,7 @@ contains
        os_data%whizard_testdatapath   = WHIZARD_TEST_TESTDATAPATH
        os_data%whizard_circe2path     = WHIZARD_TEST_CIRCE2PATH
        os_data%whizard_beamsimpath    = WHIZARD_TEST_BEAMSIMPATH
+       os_data%pdf_builtin_datapath   = PDF_BUILTIN_TEST_DATAPATH
     else
        if (os_dir_exist (local_includes)) then
           os_data%whizard_includes = "-I" // local_includes // " "// &
@@ -245,6 +254,9 @@ contains
        os_data%whizard_omega_binpath  = WHIZARD_OMEGA_BINPATH
        os_data%whizard_ldflags        = WHIZARD_LDFLAGS
        os_data%whizard_libtool        = WHIZARD_LIBTOOL
+       if(present(paths)) then
+          if (paths%libtool /= "")  os_data%whizard_libtool = paths%libtool
+       end if
        os_data%whizard_modelpath      = WHIZARD_MODELPATH
        os_data%whizard_models_libpath = WHIZARD_MODELS_LIBPATH
        os_data%whizard_susypath       = WHIZARD_SUSYPATH
@@ -252,14 +264,16 @@ contains
        os_data%whizard_cutspath       = WHIZARD_CUTSPATH
        os_data%whizard_texpath        = WHIZARD_TEXPATH
        os_data%whizard_testdatapath   = WHIZARD_TESTDATAPATH
-       os_data%whizard_circe2path     = WHIZARD_CIRCE2PATH       
+       os_data%whizard_circe2path     = WHIZARD_CIRCE2PATH
        os_data%whizard_beamsimpath    = WHIZARD_BEAMSIMPATH
+       os_data%pdf_builtin_datapath   = PDF_BUILTIN_DATAPATH
     end if
     os_data%event_analysis_ps  = EVENT_ANALYSIS_PS  == "yes"
     os_data%event_analysis_pdf = EVENT_ANALYSIS_PDF == "yes"
-    os_data%latex  = PRG_LATEX
-    os_data%mpost  = PRG_MPOST    
-    os_data%gml    = os_data%whizard_gmlpath // "/gml"
+    os_data%latex  = PRG_LATEX // " " // OPT_LATEX
+    os_data%mpost  = PRG_MPOST // " " // OPT_MPOST
+    os_data%gml    = os_data%whizard_gmlpath // "/gml" // " " // OPT_MPOST &
+         // " " // "--gmldir " // os_data%whizard_gmlpath
     os_data%dvips  = PRG_DVIPS
     os_data%ps2pdf = PRG_PS2PDF
     call os_data_expand_paths (os_data)
@@ -291,6 +305,7 @@ contains
     call expand_paths (os_data%whizard_models_libpath_local)
     call expand_paths (os_data%whizard_modelpath_local)
     call expand_paths (os_data%whizard_omega_binpath_local)
+    call expand_paths (os_data%pdf_builtin_datapath)
     call expand_paths (os_data%latex)
     call expand_paths (os_data%mpost)    
     call expand_paths (os_data%gml)
@@ -323,6 +338,7 @@ contains
     write (u, *) "ldflags        = ", char (os_data%ldflags)
     write (u, *) "ldflags_so     = ", char (os_data%ldflags_so)
     write (u, *) "ldflags_static = ", char (os_data%ldflags_static)
+    write (u, *) "ldflags_hepmc  = ", char (os_data%ldflags_hepmc)
     write (u, *) "shlib_ext      = ", char (os_data%shlib_ext)
     write (u, *) "prefix         = ", char (os_data%prefix)
     write (u, *) "exec_prefix    = ", char (os_data%exec_prefix)
@@ -534,21 +550,25 @@ contains
        command_string = &
             os_data%whizard_libtool // " --mode=link " // &
             os_data%fc // " " // &
-            "-static " // &
+            "-static-libtool-libs " // &
+            os_data%fcflags // " " // &
             os_data%whizard_ldflags // " " // &
             os_data%ldflags // " " // &
             os_data%ldflags_static // " " // &
             "-o '" // exec_name // "' " // &
-            objlist
+            objlist // " " // &
+            os_data%ldflags_hepmc
     else
        command_string = &
             os_data%ld // " " // &
             os_data%ldflags_so // " " // &
+            os_data%fcflags // " " // &
             os_data%whizard_ldflags // " " // &
             os_data%ldflags // " " // &
             os_data%ldflags_static // " " // &
             "-o '" // exec_name // "' " // &
-            objlist
+            objlist // " " // &
+            os_data%ldflags_hepmc
     end if
     call os_system_call (command_string, status)
   end subroutine os_link_static
@@ -611,6 +631,45 @@ contains
        end if
     end if
   end function os_get_dlname
+
+  subroutine openmp_set_num_threads_verbose (num_threads)
+    integer, intent(in) :: num_threads
+    integer :: n_threads
+    n_threads = num_threads
+    if (openmp_is_active ()) then
+       if (num_threads == 1) then
+          write (msg_buffer, "(A,I0,A)")  "OpenMP: Using ", num_threads, &
+              " thread"
+          call msg_message
+          n_threads = num_threads
+       else if (num_threads > 1) then
+          write (msg_buffer, "(A,I0,A)")  "OpenMP: Using ", num_threads, &
+              " threads"
+          call msg_message
+          n_threads = num_threads
+       else
+          write (msg_buffer, "(A,I0,A)")  "OpenMP: " &
+               // "Illegal value of openmp_num_threads (", num_threads, &
+               ") ignored"
+          call msg_error
+          n_threads = openmp_get_default_max_threads ()
+          write (msg_buffer, "(A,I0,A)")  "OpenMP: Using ", &
+              n_threads, " threads"
+          call msg_message
+       end if
+       if (n_threads > openmp_get_default_max_threads ()) then
+          write (msg_buffer, "(A,I0)")  "OpenMP: " &
+               // "Number of threads is greater than library default of ", &
+               openmp_get_default_max_threads ()
+          call msg_warning
+       end if
+       call openmp_set_num_threads (n_threads)
+    else if (num_threads /= 1) then
+       write (msg_buffer, "(A,I0,A)")  "openmp_num_threads set to ", &
+             num_threads, ", but OpenMP is not active: ignored"
+       call msg_warning
+    end if
+  end subroutine openmp_set_num_threads_verbose
 
   subroutine os_interface_test ()
     call os_interface_test1 ()

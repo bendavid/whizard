@@ -236,6 +236,7 @@ module vamp_rest
   private :: set_grid_options
   private :: vamp_reshape_grid_internal
   public :: vamp_reshape_grid
+  public :: vamp_nullify_f_limits
   public :: vamp_rigid_divisions
   public :: vamp_get_covariance, vamp_nullify_covariance
   public :: vamp_get_variance, vamp_nullify_variance
@@ -720,8 +721,7 @@ contains
     g%jacobi = product (volume_division (g%div)) / g%calls 
     g%dv2g = (g%calls / num_cells)**2 &
          / g%calls_per_cell / g%calls_per_cell / (g%calls_per_cell - 1.0)
-    g%f_min = 1.0
-    g%f_max = 0.0
+    call vamp_nullify_f_limits (g)
     g%all_stratified = all (stratified_division (g%div))
     if (present (covariance)) then
        ndim = size (g%div)
@@ -751,6 +751,11 @@ contains
           independent=independent, equivalent_to_ch=equivalent_to_ch, &
           multiplicity=multiplicity)
   end subroutine vamp_reshape_grid
+   subroutine vamp_nullify_f_limits (g)
+    type(vamp_grid), intent(inout) :: g
+    g%f_min = 1.0
+    g%f_max = 0.0
+  end subroutine vamp_nullify_f_limits
    function vamp_rigid_divisions (g) result (ng)
     type(vamp_grid), intent(in) :: g
     integer, dimension(size(g%div)) :: ng
@@ -1035,6 +1040,7 @@ contains
              num_div = int (quad / product (quad)**(1.0/ndim) * g%num_div))
     else
        call refine_division (g%div)
+       call vamp_nullify_f_limits (g)
     end if
   end subroutine vamp_refine_grid
   subroutine vamp_refine_grids (g)
@@ -1042,6 +1048,7 @@ contains
     integer :: ch
     do ch=1, size(g%grids)
        call refine_division (g%grids(ch)%div)
+       call vamp_nullify_f_limits (g%grids(ch))
     end do
   end subroutine vamp_refine_grids
    subroutine vamp_sample_grid &

@@ -1,9 +1,9 @@
-! WHIZARD 2.0.4 Tue Oct 26 2010
+! WHIZARD 2.0.5 Tue May 10 2011
 ! 
-! (C) 1999-2010 by 
-!     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+! Copyright (C) 1999-2011 by 
+!     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
-!     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+!     Juergen Reuter <juergen.reuter@desy.de>
 !     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
 !     with contributions by Sebastian Schmidt, Daniel Wiesler, Felix Braam
 !
@@ -43,6 +43,7 @@ module strfun_config
   use sf_escan
   use sf_beam_events
   use sf_lhapdf
+  use sf_pdf_builtin
   use strfun
   use processes
 
@@ -58,8 +59,10 @@ module strfun_config
   public :: STRF_CIRCE2
   public :: STRF_ESCAN
   public :: STRF_BEVT
+  public :: STRF_PDF_BUILTIN
   public :: sf_data_t
   public :: sf_data_init_lhapdf
+  public :: sf_data_init_pdf_builtin
   public :: sf_data_init_isr
   public :: sf_data_init_epa
   public :: sf_data_init_ewa
@@ -92,6 +95,7 @@ module strfun_config
      logical, dimension(2) :: affects_beam = .false.
      integer :: n_parameters = 0
      type(lhapdf_data_t), dimension(2) :: lhapdf
+     type(pdf_builtin_data_t), dimension(2) :: pdf_builtin
      type(isr_data_t), dimension(2) :: isr
      type(epa_data_t), dimension(2) :: epa
      type(ewa_data_t), dimension(2) :: ewa     
@@ -138,10 +142,11 @@ contains
     end if
   end subroutine sf_mapping_write
      
-  subroutine sf_data_write (sf_data, unit)
+  subroutine sf_data_write (sf_data, unit, md5)
     type(sf_data_t), intent(in) :: sf_data
     integer, intent(in), optional :: unit
     integer :: u, i
+    logical, intent(in), optional :: md5
     u = output_unit (unit);  if (u < 0)  return
     write (u, "(A)")  "Structure function"
     do i = 1, 2
@@ -150,25 +155,27 @@ contains
           case (STRF_NONE)
              write (u, "(1x,A)") "[none]"
           case (STRF_LHAPDF)
-             call lhapdf_data_write (sf_data%lhapdf(i), unit)             
+             call lhapdf_data_write (sf_data%lhapdf(i), unit, md5)
+          case (STRF_PDF_BUILTIN)
+             call pdf_builtin_data_write (sf_data%pdf_builtin(i), unit, md5)
           case (STRF_ISR)
-             call isr_data_write (sf_data%isr(i), unit)
+             call isr_data_write (sf_data%isr(i), unit, md5)
           case (STRF_EPA)
-             call epa_data_write (sf_data%epa(i), unit)
+             call epa_data_write (sf_data%epa(i), unit, md5)
           case (STRF_EWA)
-             call ewa_data_write (sf_data%ewa(i), unit)
+             call ewa_data_write (sf_data%ewa(i), unit, md5)
           end select
        end if
     end do
     select case (sf_data%type)
     case (STRF_CIRCE1)
-       call circe1_data_write (sf_data%circe1, unit)
+       call circe1_data_write (sf_data%circe1, unit, md5)
     case (STRF_CIRCE2)
-       call circe2_data_write (sf_data%circe2, unit)
+       call circe2_data_write (sf_data%circe2, unit, md5)
     case (STRF_ESCAN)
-       call escan_data_write (sf_data%escan, unit)
+       call escan_data_write (sf_data%escan, unit, md5)
     case (STRF_BEVT)
-       call beam_events_data_write (sf_data%beam_events, unit)
+       call beam_events_data_write (sf_data%beam_events, unit, md5)
     end select
     write (u, *)  "affects beams = ", sf_data%affects_beam
     write (u, *)  "n_parameters  = ", sf_data%n_parameters
@@ -178,19 +185,19 @@ contains
   end subroutine sf_data_write
 
   subroutine sf_data_init_lhapdf &
-       (sf_data, lhapdf_status, model, flv, file, member, photon_scheme)
+       (sf_data, lhapdf_status, model, flv, prefix, file, member, photon_scheme)
     type(sf_data_t), intent(inout) :: sf_data
     type(lhapdf_status_t), intent(inout) :: lhapdf_status
     type(model_t), intent(in), target :: model
     type(flavor_t), dimension(2), intent(in) :: flv
-    type(string_t), intent(in), optional :: file
+    type(string_t), intent(in), optional :: prefix, file
     integer, intent(in), optional :: member
     integer, intent(in), optional :: photon_scheme
     integer :: i
     do i = 1, 2
        if (sf_data%affects_beam(i)) then
           call lhapdf_data_init (sf_data%lhapdf(i), lhapdf_status, &
-               model, flv(i), file, member, photon_scheme)
+               model, flv(i), prefix, file, member, photon_scheme)
        end if
     end do
     if (all (sf_data%affects_beam)) then
@@ -202,6 +209,29 @@ contains
        sf_data%has_mapping = .true.
     end if
   end subroutine sf_data_init_lhapdf
+
+  subroutine sf_data_init_pdf_builtin &
+       (sf_data, model, flv, name, path)
+    type(sf_data_t), intent(inout) :: sf_data
+    type(model_t), intent(in), target :: model
+    type(flavor_t), dimension(2), intent(in) :: flv
+    type(string_t), intent(in), optional :: name, path
+    integer :: i
+    do i = 1, 2
+       if (sf_data%affects_beam(i)) then
+          call pdf_builtin_init (sf_data%pdf_builtin(i), model, &
+               flv(i), name, path)
+       end if
+    end do
+    if (all (sf_data%affects_beam)) then
+       allocate (sf_data%mapping%index (2))
+       sf_data%mapping%index = (/1, sf_data%n_parameters+1/)
+       sf_data%mapping%type = SFM_PDFPAIR
+       allocate (sf_data%mapping%par (1))
+       sf_data%mapping%par = 2._default
+       sf_data%has_mapping = .true.
+    end if
+  end subroutine sf_data_init_pdf_builtin
 
   subroutine sf_data_init_isr &
        (sf_data, model, flv, alpha, q_max, mass, order)
@@ -349,17 +379,18 @@ contains
     call beam_events_data_open (sf_data%beam_events)
   end subroutine sf_data_init_beam_events
 
-  subroutine sf_list_write (sf_list, unit)
+  subroutine sf_list_write (sf_list, unit, md5)
     type(sf_list_t), intent(in) :: sf_list
     integer, intent(in), optional :: unit
     integer :: u
+    logical, intent(in), optional :: md5
     type(sf_data_t), pointer :: current
     u = output_unit (unit);  if (u < 0)  return
     write (u, "(A)")  "Structure function list"
     if (associated (sf_list%first)) then
        current => sf_list%first
        do while (associated (current))
-          call sf_data_write (current, unit)
+          call sf_data_write (current, unit, md5)
           current => current%next
        end do
     else
@@ -439,7 +470,7 @@ contains
     integer :: unit
     unit = free_unit ()
     open (unit = unit, status = "scratch", action = "readwrite")
-    call sf_list_write (sf_list, unit)
+    call sf_list_write (sf_list, unit, md5=.true.)
     rewind (unit)
     sf_list%md5sum = md5sum (unit)
     close (unit)
@@ -506,6 +537,9 @@ contains
              case (STRF_LHAPDF)
                 call process_set_strfun &
                      (process, i_sf, j, current%lhapdf(j), current%n_parameters)
+             case (STRF_PDF_BUILTIN)
+                call process_set_strfun &
+                     (process, i_sf, j, current%pdf_builtin(j), current%n_parameters)
              case (STRF_ISR)
                 call process_set_strfun &
                      (process, i_sf, j, current%isr(j), current%n_parameters)

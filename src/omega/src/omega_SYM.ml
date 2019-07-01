@@ -1,10 +1,11 @@
-(* $Id: omega_SYM.ml 2695 2010-07-08 22:15:33Z ohl $
+(* $Id: omega_SYM.ml 3116 2011-04-05 10:20:25Z kilian $
 
-   Copyright (C) 1999-2019 by
+   Copyright (C) 1999-2011 by
 
        Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
        Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+       Christian Speckner <christian.speckner@physik.uni-freiburg.de>
 
    WHIZARD is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by
@@ -23,9 +24,9 @@
 
 let rcs_file = RCS.parse "omega_SYM"
     ["Super Yang-Mills (incomplete, just for stress-testing Colorize.It())"]
-    { RCS.revision = "$Revision: 2695 $";
-      RCS.date = "$Date: 2010-07-09 00:15:33 +0200 (Fri, 09 Jul 2010) $";
-      RCS.author = "$Author: ohl $";
+    { RCS.revision = "$Revision: 3116 $";
+      RCS.date = "$Date: 2011-04-05 12:20:25 +0200 (Tue, 05 Apr 2011) $";
+      RCS.author = "$Author: kilian $";
       RCS.source
         = "$URL: svn+ssh://jr_reuter@login.hepforge.org/hepforge/svn/whizard/trunk/src/omega/src/omega_SYM.ml $" }
 

@@ -1,10 +1,11 @@
-(* $Id: powSet.mli 2695 2010-07-08 22:15:33Z ohl $
+(* $Id: powSet.mli 3218 2011-05-09 15:26:05Z ohl $
 
-   Copyright (C) 1999-2010 by
+   Copyright (C) 1999-2011 by
 
        Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
        Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+       Christian Speckner <christian.speckner@physik.uni-freiburg.de>
 
    WHIZARD is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by
@@ -20,8 +21,23 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
-(* In the end, this should be generalized from \textit{power set} to
-   \textit{lattice} with a notion of subtraction. *)
+(* Manipulate the power set, i.\,e.~the set of all subsets, of an
+   set [Ordered_Type].  The concrete order is actually irrelevant, we just
+   need it to construct [Set.S]s in the implementation.
+   In fact, what we are implementating is the \textit{free semilattice}
+   generated from the set of subsets of [Ordered_Type], where the join
+   operation is the set union.
+
+   The non trivial operation is [basis], which takes a set of subsets
+   and returns the smallest set of disjoint subsets from which the argument
+   can be reconstructed by forming unions.
+   It is used in O'Mega for finding coarsest partitions of sets of
+   partiticles.
+
+   \begin{dubious}
+     Eventually, this could be generalized from \textit{power set} or
+     \textit{semi lattice} to \textit{lattice} with a notion of subtraction.
+   \end{dubious} *)
 
 module type Ordered_Type =
   sig
@@ -39,8 +55,12 @@ module type T =
 
     val empty : t
     val is_empty : t -> bool
+
+    (* Set union (a.\,k.\,a.~join).  *)
     val union : t list -> t
 
+    (* Construct the abstract type from a list of subsets represented as
+       lists and the inverse operation. *)
     val of_lists : elt list list -> t
     val to_lists : t -> elt list list
 

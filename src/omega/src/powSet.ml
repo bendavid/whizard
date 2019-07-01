@@ -1,10 +1,11 @@
-(* $Id: powSet.ml 2695 2010-07-08 22:15:33Z ohl $
+(* $Id: powSet.ml 3218 2011-05-09 15:26:05Z ohl $
 
-   Copyright (C) 1999-2010 by
+   Copyright (C) 1999-2011 by
 
        Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
        Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+       Christian Speckner <christian.speckner@physik.uni-freiburg.de>
 
    WHIZARD is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by
@@ -123,7 +124,7 @@ module Make (E : Ordered_Type) =
      \exists_{i\not=j}:& (s  \setminus s_i) \cap (s  \cap      s_j) \not=\emptyset\,,
    \end{align}
    \end{subequations}
-   because for $s_i=\{i\}$ and $s=\{1,2,3\}$
+   because, e.\,g., for $s_i=\{i\}$ and $s=\{1,2,3\}$
    \begin{subequations}
    \begin{align}
      (s  \setminus s_1) \cap (s  \setminus s_2) &= \{2,3\} \cap \{1,3\} = \{3\} \\
@@ -142,8 +143,7 @@ module Make (E : Ordered_Type) =
                        $s  \setminus s_i$&$\emptyset       $&$\not=\emptyset$&$\not=\emptyset  $
      \end{tabular}
    \end{center}
-   Fortunately, we also know
-   We also know from~(\ref{eq:powset:overlap}) that
+   Fortunately, we also know from~(\ref{eq:powset:overlap}) that
    \begin{subequations}
    \begin{align}
      \forall_i:\;& |s  \setminus s_i| < |s| \\
@@ -169,23 +169,27 @@ module Make (E : Ordered_Type) =
     and augment_basis_overlapping s ps =
       basis (EPowSet.fold (fun s' -> EPowSet.union (product s s')) ps EPowSet.empty)
 
-(*i let basis ps =
-      Printf.eprintf "basis %s\n" (to_string ps);
-      flush stderr;
-      let result = basis ps in
-      Printf.eprintf "basis => %s\n" (to_string result);
-      flush stderr;
-      result i*)
-
   end
 
 (*i
-module EPowSet = Make (struct type t = int let compare = compare let to_string = string_of_int end)
-let _ = EPowSet.basis (EPowSet.of_lists [[1;3];[2;4];[3;4];[5;6]])
-let _ = EPowSet.basis (EPowSet.of_lists [[1;2];[3;4];[5;6]])
-let _ = EPowSet.basis (EPowSet.of_lists [[1;2;3;4];[3;4];[5;6]])
-let _ = EPowSet.basis (EPowSet.of_lists [[1;2];[1;3;4];[1;4;5]])
-let _ = EPowSet.basis (EPowSet.of_lists [[1;3;4];[1;3;4];[1;3;4]])
+
+module EPowSet =
+  Make (struct type t = int let compare = compare let to_string = string_of_int end)
+
+let test lists =
+  let ps = EPowSet.of_lists lists in
+  let basis = EPowSet.basis ps in
+  Printf.eprintf "basis %s -> %s\n" (EPowSet.to_string ps) (EPowSet.to_string basis);
+  flush stderr
+
+let _ = List.iter test
+    [ [[1;3];[2;4];[3;4];[5;6]];
+      [[1;2];[3;4];[5;6]];
+      [[1;2;3;4];[3;4];[5;6]];
+      [[1;2];[1;3;4];[1;4;5]];
+      [[1;3;4];[1;3;4];[1;3;4]]
+    ]
+
 i*)
 
 (*i

@@ -1,10 +1,11 @@
-(* $Id: tuple.ml 759 2009-06-10 09:38:07Z ohl $
+(* $Id: tuple.ml 2948 2010-12-24 03:25:57Z jr_reuter $
 
-   Copyright (C) 1999-2009 by
+   Copyright (C) 1999-2011 by
 
        Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
        Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+       Christian Speckner <christian.speckner@physik.uni-freiburg.de>
 
    WHIZARD is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by
@@ -21,9 +22,9 @@
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
 let rcs_file = RCS.parse "Tuple" ["Tuples of fixed and indefinite arity"]
-    { RCS.revision = "$Revision: 759 $";
-      RCS.date = "$Date: 2009-06-10 11:38:07 +0200 (Wed, 10 Jun 2009) $";
-      RCS.author = "$Author: ohl $";
+    { RCS.revision = "$Revision: 2948 $";
+      RCS.date = "$Date: 2010-12-24 04:25:57 +0100 (Fri, 24 Dec 2010) $";
+      RCS.author = "$Author: jr_reuter $";
       RCS.source
         = "$URL: svn+ssh://jr_reuter@login.hepforge.org/hepforge/svn/whizard/trunk/src/omega/src/tuple.ml $" }
 

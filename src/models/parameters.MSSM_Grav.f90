@@ -1,9 +1,9 @@
 ! $Id: parameters.MSSM.omega.f90,v 1.9 2005/10/25 09:21:48 kilian Exp $
 !
-! Copyright (C) 1999-2010 by 
-!     Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+! Copyright (C) 1999-2011 by 
+!     Wolfgang Kilian <kilian@physik.uni-siegen.de>
 !     Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
-!     Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+!     Juergen Reuter <juergen.reuter@desy.de>
 !     Christian Speckner <christian.speckner@physik.uni-freiburg.de>
 !
 ! WHIZARD is free software; you can redistribute it and/or modify it
@@ -541,8 +541,8 @@ contains
        real(default) :: wsd1
        real(default) :: wsc1
        real(default) :: wss1
-       real(default) :: wsb1
        real(default) :: wstop1
+       real(default) :: wsb1
        real(default) :: wsu2
        real(default) :: wsd2
        real(default) :: wsc2
@@ -682,8 +682,8 @@ contains
     par%wsd1   = par_array(70)
     par%wsc1   = par_array(71)
     par%wss1   = par_array(72)
-    par%wsb1   = par_array(73)
-    par%wstop1 = par_array(74)
+    par%wstop1 = par_array(73)
+    par%wsb1   = par_array(74)
     par%wsu2   = par_array(75)
     par%wsd2   = par_array(76)
     par%wsc2   = par_array(77)

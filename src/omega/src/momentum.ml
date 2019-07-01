@@ -1,10 +1,11 @@
-(* $Id: momentum.ml 2000 2010-03-05 13:57:05Z ohl $
+(* $Id: momentum.ml 3070 2011-03-28 08:09:25Z jr_reuter $
 
-   Copyright (C) 1999-2009 by
+   Copyright (C) 1999-2011 by
 
-       Wolfgang Kilian <kilian@hep.physik.uni-siegen.de>
+       Wolfgang Kilian <kilian@physik.uni-siegen.de>
        Thorsten Ohl <ohl@physik.uni-wuerzburg.de>
-       Juergen Reuter <juergen.reuter@physik.uni-freiburg.de>
+       Juergen Reuter <juergen.reuter@desy.de>
+       Christian Speckner <christian.speckner@physik.uni-freiburg.de>
 
    WHIZARD is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by
@@ -21,9 +22,9 @@
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  *)
 
 let rcs_file = RCS.parse "Momentum" ["Finite disjoint sums of momenta"]
-    { RCS.revision = "$Revision: 2000 $";
-      RCS.date = "$Date: 2010-03-05 14:57:05 +0100 (Fri, 05 Mar 2010) $";
-      RCS.author = "$Author: ohl $";
+    { RCS.revision = "$Revision: 3070 $";
+      RCS.date = "$Date: 2011-03-28 10:09:25 +0200 (Mon, 28 Mar 2011) $";
+      RCS.author = "$Author: jr_reuter $";
       RCS.source
         = "$URL: svn+ssh://jr_reuter@login.hepforge.org/hepforge/svn/whizard/trunk/src/omega/src/momentum.ml $" }
 
